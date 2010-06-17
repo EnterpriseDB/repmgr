@@ -1,0 +1,47 @@
+Phase 2
+=======
+
+Idea is that we keep a transaction running on primary with a snapshot
+that prevents VACUUM from ever removing records that a query on the
+standby can see. So there are never any query conflicts.
+
+Make two connections to primary, P1 and P2. One to Standby, S.
+
+P1:
+BEGIN;
+SELECT txid_current(); INTO Pn->xid
+SELECT pg_sleep(10000000000);
+
+P2:
+BEGIN;
+SELECT txid_current(); INTO Pn->xid
+SELECT pg_sleep(10000000000);
+
+Then every 1sec
+
+S: GetOldestXmin() INTO S->xmin
+
+/*
+ * If both P1 and P2 are older than oldest xmin on S
+ * then we cancel the oldest of P1 and P2, and
+ * start a new xid on that channel. So that P1 and P2
+ * slowly step forwards, as queries complete on the
+ * standby.
+ */
+if (TransactionIdPrecedes(P1->xid, S->xmin) &&
+   TransactionIdPrecedes(P2->xid, S->xmin))
+{
+  if (TransactionIdPrecedes(P1->xid, P2->xid))
+       cancel_and_rerun(1)
+  else
+       cancel_and_rerun(2)
+)
+
+cancel_and_rerun()
+{
+  cancel Pn
+
+BEGIN;
+SELECT txid_current(); INTO Pn->xid
+SELECT pg_sleep(10000000000);
+}

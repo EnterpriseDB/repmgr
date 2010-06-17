@@ -1,0 +1,43 @@
+Repmgr
+--------
+
+This module is for monitor a cluster, to install follow next steps
+
+On Primary:
+
+1) Install last_xlog_replay_timestamp() function
+2) Create tables for repmgr configuration and monitor (see repmgr.sql)
+3) Edit repmgr.conf 
+
+On Standby:
+
+1) Install xlog_replay_time module 
+   NOTE: this should be done before the standby starts for the first time, 
+         the reason is that when the standby tries to replay WAL segment
+         where the function was created this file should exist or it will
+         be an error.
+2) Start replica
+3) Edit repmgr.conf 
+
+
+
+Installing xlog_replay_time module
+---------------------------------------
+cd repmgr/sql_utils
+make USE_PGXS=1
+make install USE_PGXS=1
+
+
+Installing last_xlog_replay_timestamp() function
+-------------------------------------------------
+psql -f $PGDIR/share/contrib/xlog_replay_time.sql
+
+
+repmgr.conf
+------------
+
+The configuration file has 3 parameters
+
+1) cluster: A string (single quoted) that identify the cluster we are on 
+2) node: An integer that identify our node in the cluster
+3) conninfo: A string (single quoted) that teach has how to connect to this node
