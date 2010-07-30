@@ -20,10 +20,16 @@ PG_FUNCTION_INFO_V1(last_xlog_replay_timestamp);
 Datum
 last_xlog_replay_timestamp(PG_FUNCTION_ARGS)
 {
+TimestampTz rTime;
+bool        fromSource;
+
 	if (!InRecovery)
 		PG_RETURN_NULL();
 	else
-	    PG_RETURN_TIMESTAMPTZ(GetLatestXLogTime());
+	{
+		GetXLogReceiptTime(&rTime, &fromStream);
+	    PG_RETURN_TIMESTAMPTZ(rTime);
+	}
 }
 
 
