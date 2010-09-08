@@ -1,7 +1,6 @@
 #
 # Makefile
 # Copyright (c) 2ndQuadrant, 2010
-#
 
 PROGRAM = repmgr
 OBJS    = config.o dbutils.o main.o
