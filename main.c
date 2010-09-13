@@ -12,7 +12,6 @@
 #include <unistd.h>
 
 #include "repmgr.h"
-#include "access/transam.h"
 
 char    myClusterName[MAXLEN];
 
@@ -36,7 +35,6 @@ void getLocalMonitoredInfo(char *currTimestamp, char *xlogLocation,
 
 void MonitorCheck(void);
 void MonitorExecute(void);
-TransactionId startSleepingTransaction(PGconn * conn, bool stop_current);
 
 
 int
@@ -199,92 +197,13 @@ getLocalMonitoredInfo(char *currTimestamp, char *xlogLocation, char *xlogTimesta
 
 void
 MonitorCheck(void) { 
-	PGconn *p1;
-	PGconn *p2;
-
-	TransactionId p1_xid;
-	TransactionId p2_xid;
-	TransactionId local_xmin;
-
-	int cicles = 0;
-
-	/* 
-	 * We are trying to avoid cleanup on primary for records that are still 
-	 * visible on standby
-	 */
-	p1 = establishDBConnection(primaryConninfo, false);
-	p2 = establishDBConnection(primaryConninfo, false);
-
-	p1_xid = startSleepingTransaction(p1, false);
-	if (p1_xid == InvalidTransactionId)
-	{
-		PQfinish(myLocalConn);
-		PQfinish(primaryConn);
-		exit(1);
-	}
-	p2_xid = startSleepingTransaction(p2, false);
-	if (p2_xid == InvalidTransactionId)
-	{
-		PQfinish(p1);
-		PQfinish(myLocalConn);
-		PQfinish(primaryConn);
-		exit(1);
-	}
-
-	/* 
-	 * We are using two long running transactions on primary to avoid
-	 * cleanup of records that are still visible on this standby.
-	 * Every second check if we can let advance the cleanup to avoid
-     * bloat on primary.
-	 *
-	 * Every 3 cicles (around 3 seconds), insert monitor info
+	/*
+	 * Every 3 seconds, insert monitor info
      */
 	for (;;) 
 	{  
-		PGresult *res;
-
-		res = PQexec(myLocalConn, "SELECT get_oldest_xmin()");
-    	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-    	{
-    	    fprintf(stderr, "PQexec failed: %s", PQerrorMessage(myLocalConn));
-    	    PQclear(res);
-    	}
-		local_xmin = atol(PQgetvalue(res, 0, 0));
-		PQclear(res);
-
-		if (TransactionIdPrecedes(p1_xid, local_xmin) &&
-		    TransactionIdPrecedes(p2_xid, local_xmin))
-		{
-			if (TransactionIdPrecedes(p1_xid, p2_xid))
-			{
-				p1_xid = startSleepingTransaction(p1, true);
-				if (p1_xid == InvalidTransactionId)
-				{
-					PQfinish(p1);
-					PQfinish(p2);
-					PQfinish(myLocalConn);
-					PQfinish(primaryConn);
-					exit(1);
-				}
-			}
-			else
-			{
-				p2_xid = startSleepingTransaction(p2, true);
-				if (p2_xid == InvalidTransactionId)
-				{
-					PQfinish(p1);
-					PQfinish(p2);
-					PQfinish(myLocalConn);
-					PQfinish(primaryConn);
-					exit(1);
-				}
-			}
-		}
-		PQclear(res);
-	
-		if (cicles++ >= 3)
-			MonitorExecute(); 
-		sleep(1); 
+		MonitorExecute(); 
+		sleep(3); 
 	} 
 }
 
@@ -407,70 +326,3 @@ checkNodeConfiguration(char *conninfo)
 	}
 	PQclear(res);
 }
-
-
-TransactionId
-startSleepingTransaction(PGconn *conn, bool stop_current) {
-	TransactionId txid;
-	PGresult *res;
-
-	/* 
-	 * if stop_current is set we cancel any query that is currently
-	 * executing on this connection
-	 */
-	if (stop_current)
-	{
-		char errbuf[256];
-
-		if (PQcancel(PQgetCancel(conn), errbuf, 256) == 0)
-			fprintf(stderr, "Can't stop current query: %s", errbuf);
-
-		if (PQisBusy(conn) == 1)
-			return InvalidTransactionId;
-		else
-			PQexec(conn, "ROLLBACK");
-	}
-		
-	if (!PQexec(conn, "BEGIN"))
-	{
-		fprintf(stderr, "Can't start a transaction on primary. Error: %s",
-						PQerrorMessage(conn));
-		return InvalidTransactionId;
-	}
-
-	res = PQexec(conn, "SELECT txid_current()");
-    if (PQresultStatus(res) != PGRES_TUPLES_OK)
-    {
-        fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
-        PQclear(res);
-		return InvalidTransactionId;
-    }
-	txid = atol(PQgetvalue(res, 0, 0));
-	PQclear(res);
-	
-	/* Let this transaction sleep */
-	PQsendQuery(conn, "SELECT pg_sleep(10000000000)");
-	return txid;
-}
-
-
-/*
- * TransactionIdPrecedes --- is id1 logically < id2?
- * This function was copied from src/backend/access/transam/transam.c
- */
-bool
-TransactionIdPrecedes(TransactionId id1, TransactionId id2)
-{
-    /*
-     * If either ID is a permanent XID then we can just do unsigned
-     * comparison.  If both are normal, do a modulo-2^31 comparison.
-     */
-    int32       diff;
-
-    if (!TransactionIdIsNormal(id1) || !TransactionIdIsNormal(id2))
-        return (id1 < id2);
-
-    diff = (int32) (id1 - id2);
-    return (diff < 0);
-}
-

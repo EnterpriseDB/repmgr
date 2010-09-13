@@ -8,12 +8,10 @@
 #include "postgres.h"
 #include "fmgr.h"
 #include "access/xlog.h"
-#include "storage/procarray.h"
 
 PG_MODULE_MAGIC;
 
 Datum last_xlog_replay_timestamp(PG_FUNCTION_ARGS);
-Datum oldest_xmin(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(last_xlog_replay_timestamp);
 
@@ -30,13 +28,4 @@ bool        fromSource;
 		GetXLogReceiptTime(&rTime, &fromStream);
 	    PG_RETURN_TIMESTAMPTZ(rTime);
 	}
-}
-
-
-PG_FUNCTION_INFO_V1(oldest_xmin);
-
-Datum
-oldest_xmin(PG_FUNCTION_ARGS)
-{
-	    PG_RETURN_INT64(GetOldestXmin(false, false));
 }
