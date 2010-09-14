@@ -19,7 +19,7 @@ Datum
 last_xlog_replay_timestamp(PG_FUNCTION_ARGS)
 {
 TimestampTz rTime;
-bool        fromSource;
+bool        fromStream;
 
 	if (!InRecovery)
 		PG_RETURN_NULL();
