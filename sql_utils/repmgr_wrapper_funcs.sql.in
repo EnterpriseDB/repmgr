@@ -1,9 +1,0 @@
-/*
- * repmgr_wrapper_function.sql
- * Copyright (c) 2ndQuadrant, 2010
- *
- */
-
-CREATE FUNCTION get_last_xlog_replay_timestamp() RETURNS timestamp with time zone 
-AS 'MODULE_PATHNAME', 'last_xlog_replay_timestamp' 
-LANGUAGE C STRICT;

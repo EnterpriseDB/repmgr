@@ -195,7 +195,6 @@ MonitorExecute(void)
 	char last_wal_primary_location[MAXLEN];
 	char last_wal_standby_received[MAXLEN];
 	char last_wal_standby_applied[MAXLEN];
-	char last_wal_standby_timestamp[MAXLEN];
 
 	unsigned long long int lsn_primary;
 	unsigned long long int lsn_standby_received;
@@ -204,7 +203,7 @@ MonitorExecute(void)
 	/* Get local xlog info */
     sprintf(sqlquery,
             "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-                  "pg_last_xlog_replay_location(), get_last_xlog_replay_timestamp()");
+                   "pg_last_xlog_replay_location()");
 
     res = PQexec(myLocalConn, sqlquery);
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -217,7 +216,6 @@ MonitorExecute(void)
     strcpy(monitor_standby_timestamp, PQgetvalue(res, 0, 0));
     strcpy(last_wal_standby_received , PQgetvalue(res, 0, 1));
     strcpy(last_wal_standby_applied , PQgetvalue(res, 0, 2));
-    strcpy(last_wal_standby_timestamp, PQgetvalue(res, 0, 3));
     PQclear(res);
 
 	/* Get primary xlog info */
@@ -246,13 +244,12 @@ MonitorExecute(void)
 				"INSERT INTO repl_status "
 				"VALUES(%d, %d, '%s'::timestamp with time zone, "
                       " '%s', '%s', "
-					  " '%s'::timestamp with time zone, "
 					  " %lld, %lld)",
                 primaryId, myLocalId, monitor_standby_timestamp, 
 				last_wal_primary_location, 
-				last_wal_standby_received, last_wal_standby_timestamp, 
+				last_wal_standby_received, 
 				(lsn_primary - lsn_standby_received),
-				(lsn_standby_applied - lsn_standby_received));
+				(lsn_standby_received - lsn_standby_applied));
 
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We
