@@ -123,7 +123,7 @@ getPrimaryConnection(void)
 	for (i = 0; i < PQntuples(res1); i++)
     {
 		primaryId   = atoi(PQgetvalue(res1, i, 0));
-		strcmp(primaryConninfo, PQgetvalue(res1, i, 2));
+		strcpy(primaryConninfo, PQgetvalue(res1, i, 2));
 		primaryConn = establishDBConnection(primaryConninfo, false);
 
     	res2 = PQexec(primaryConn, "SELECT pg_is_in_recovery()");

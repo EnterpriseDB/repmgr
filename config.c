@@ -31,7 +31,7 @@ parse_config(char *cluster_name, int *node, char *conninfo)
 
     	/* Copy into correct entry in parameters struct */
     	if (strcmp(name, "cluster") == 0)
-    		*node = atoi(value);
+    		strncpy (cluster_name, value, MAXLEN);
     	else if (strcmp(name, "node") == 0)
     		*node = atoi(value);
     	else if (strcmp(name, "conninfo") == 0)

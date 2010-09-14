@@ -21,7 +21,7 @@ last_xlog_replay_timestamp(PG_FUNCTION_ARGS)
 TimestampTz rTime;
 bool        fromStream;
 
-	if (!InRecovery)
+	if (!RecoveryInProgress())
 		PG_RETURN_NULL();
 	else
 	{
