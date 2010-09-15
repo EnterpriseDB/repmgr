@@ -1,8 +1,8 @@
 /*
- * main.c
+ * repmgrd.c
  * Copyright (c) 2ndQuadrant, 2010
  *
- * Replication manager
+ * Replication manager daemon
  * This module connects to the nodes of a replication cluster and monitors
  * how far are they from master 
  */
