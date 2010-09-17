@@ -1,32 +1,97 @@
-Repmgr
---------
+repmgr
+======
 
-This module is for monitor a cluster, to install follow next steps
+To install repmgr and repmgrd follow this steps:
 
-On Primary:
-
-1) Create tables for repmgr configuration and monitor (see repmgr.sql)
-2) Edit repmgr.conf 
-
-On Standby:
-
-1) Start replica
-2) Edit repmgr.conf 
+1) Extract the distribution tar file into the contrib directory of the PostgreSQL distribution sources
+2) Check your primary server is correctly configured
+3) Write a suitable repmgr.conf for the node
+4) Build repmgr programs 
+5) Set up trusted copy between postgres accounts (this is only useful for the STANDBY CLONE case)
 
 
+Extract the distribution tar file 
+=================================
+cp repmgr.tar.gz ${postgresql_sources}/contrib/. 
+cd ${postgresql_sources}/contrib 
+tar xvzf repmgr-1.0.tar.gz
 
-Installing xlog_replay_time module
----------------------------------------
-cd repmgr/sql_utils
-make USE_PGXS=1
-make install USE_PGXS=1
+
+Check your primary server configuration
+=======================================
+
+PostgreSQL should have been previously built and installed on the system
+
+postgresql.conf
+---------------
+listen_addresses='*'
+wal_level = 'hot_standby'
+archive_mode = on
+archive_command = 'cd .'	 # we can also use exit 0, anything that just do nothing
+max_wal_senders = 10
+wal_keep_segments = 5000      # 80 GB required on pg_xlog
+hot_standby = on
+
+Also you need to add the machines that will participate in the cluster in pg_hba.conf.
+ie:
+host     all              all         10.8.0.0/24         trust
+host     replication      all         10.8.0.0/24         trust
 
 
-repmgr.conf
-------------
+Write a suitable repmgr.conf
+============================
 
-The configuration file has 3 parameters
+This should be placed in the same place as the programs, we will keep it in repmgr-1.0;
+and should have these three parameters:
 
 1) cluster: A string (single quoted) that identify the cluster we are on 
 2) node: An integer that identify our node in the cluster
 3) conninfo: A string (single quoted) that teach has how to connect to this node
+
+
+Build repmgr programs
+=====================
+
+make repmgr
+make repmgrd
+
+make install (this will put the binaries on the same location as your postgres binaries)
+
+
+Set up trusted copy between postgres accounts
+---------------------------------------------
+
+Initial copy between nodes uses the rsync program running over ssh.  For this to work, the postgres accounts on each system need to be able to access files on their partner node without a password.
+
+First generate a ssh key, using an empty passphrase, and copy the resulting keys and a maching authorization file to a privledged user on the other system::
+
+  [postgres@db1]$ ssh-keygen -t rsa
+  Generating public/private rsa key pair.
+  Enter file in which to save the key (/var/lib/pgsql/.ssh/id_rsa): 
+  Enter passphrase (empty for no passphrase): 
+  Enter same passphrase again: 
+  Your identification has been saved in /var/lib/pgsql/.ssh/id_rsa.
+  Your public key has been saved in /var/lib/pgsql/.ssh/id_rsa.pub.
+  The key fingerprint is:
+  aa:bb:cc:dd:ee:ff:aa:11:22:33:44:55:66:77:88:99 postgres@db1.domain.com
+  [postgres@db1]$ cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+  [postgres@db1]$ chmod go-rwx ~/.ssh/*
+  [postgres@db1]$ cd ~/.ssh
+  [postgres@db1]$ scp id_rsa.pub id_rsa authorized_keys user@db2:
+
+Login as that user on the other system, and install the files into the postgres user's account::
+
+  [user@db2 ~]$ sudo chown postgres.postgres authorized_keys id_rsa.pub id_rsa
+  [user@db2 ~]$ sudo mkdir -p ~postgres/.ssh
+  [user@db2 ~]$ sudo chown postgres.postgres ~postgres/.ssh
+  [user@db2 ~]$ sudo mv authorized_keys id_rsa.pub id_rsa ~postgres/.ssh
+  [user@db2 ~]$ sudo chmod -R go-rwx ~postgres/.ssh
+
+Now test that ssh in both directions works (you may have to accept some new known hosts in the process)
+
+
+repmgr daemon
+=============
+
+To use the repmgrd (repmgr daemon) to monitor standby's so we know which ones are more like primary you need to execute the repmgr.sql script in the postgres database.
+You also need to add a row for every node in the repl_node table

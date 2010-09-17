@@ -26,7 +26,6 @@ char	primaryConninfo[MAXLEN];
 PGconn *primaryConn;
 
 
-void setMyLocalMode(void);
 void checkClusterConfiguration(void);
 void checkNodeConfiguration(char *conninfo);
 void getPrimaryConnection(void);
@@ -49,7 +48,7 @@ main(int argc, char **argv)
 	if (myLocalId == -1) 
 	{
 		fprintf(stderr, "Node information is missing. "
-						"Check the configuration file.");
+						"Check the configuration file.\n");
 		exit(1);
 	}
 
@@ -59,7 +58,7 @@ main(int argc, char **argv)
      * Set my server mode, establish a connection to primary
 	 * and start monitor
      */
-	setMyLocalMode();
+	myLocalMode = is_standby(myLocalConn) ? STANDBY_MODE : PRIMARY_MODE;
 	checkClusterConfiguration();
 	checkNodeConfiguration(conninfo);
 	if (myLocalMode == STANDBY_MODE)
@@ -81,27 +80,6 @@ main(int argc, char **argv)
  * This function ask if we are in recovery, if false we are the primary else 
  * we are a standby
  */
-void
-setMyLocalMode(void)
-{
-    PGresult   *res;
-
-    res = PQexec(myLocalConn, "SELECT pg_is_in_recovery()");
-    if (PQresultStatus(res) != PGRES_TUPLES_OK)
-    {
-        fprintf(stderr, "Can't query server mode: %s", PQerrorMessage(myLocalConn));
-        PQclear(res);
-        PQfinish(myLocalConn);
-		exit(1);
-    }
-
-	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
-		myLocalMode = PRIMARY_MODE;
-	else
-		myLocalMode = STANDBY_MODE;	
-
-	PQclear(res);
-}
 
 
 void
@@ -114,7 +92,7 @@ getPrimaryConnection(void)
     res1 = PQexec(myLocalConn, "SELECT * FROM repl_nodes");
     if (PQresultStatus(res1) != PGRES_TUPLES_OK)
     {
-        fprintf(stderr, "Can't get nodes info: %s", PQerrorMessage(myLocalConn));
+        fprintf(stderr, "Can't get nodes info: %s\n", PQerrorMessage(myLocalConn));
         PQclear(res1);
         PQfinish(myLocalConn);
 		exit(1);
@@ -129,7 +107,7 @@ getPrimaryConnection(void)
     	res2 = PQexec(primaryConn, "SELECT pg_is_in_recovery()");
     	if (PQresultStatus(res2) != PGRES_TUPLES_OK)
     	{
-    	    fprintf(stderr, "Can't get nodes info: %s", PQerrorMessage(primaryConn));
+    	    fprintf(stderr, "Can't get nodes info: %s\n", PQerrorMessage(primaryConn));
 			PQclear(res1);
     	    PQclear(res2);
         	PQfinish(primaryConn);
@@ -162,7 +140,7 @@ getPrimaryConnection(void)
      * to start failover procedure o just fix some situation on the
      * standby.
      */
-   	fprintf(stderr, "There isn't a primary node");
+   	fprintf(stderr, "There isn't a primary node\n");
 	PQclear(res1);
     PQfinish(myLocalConn);
 	exit(1);
@@ -208,7 +186,7 @@ MonitorExecute(void)
     res = PQexec(myLocalConn, sqlquery);
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
-        fprintf(stderr, "PQexec failed: %s", PQerrorMessage(myLocalConn));
+        fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(myLocalConn));
         PQclear(res);
         return;
     }
@@ -224,7 +202,7 @@ MonitorExecute(void)
     res = PQexec(primaryConn, sqlquery);
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
-        fprintf(stderr, "PQexec failed: %s", PQerrorMessage(primaryConn));
+        fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(primaryConn));
         PQclear(res);
         return;
     }
@@ -256,7 +234,7 @@ MonitorExecute(void)
 	 * will check the result next time we pause for a monitor step.
 	 */
 	if (!PQexec(primaryConn, sqlquery))
-		fprintf(stderr, "replication monitor insert failed: %s",
+		fprintf(stderr, "replication monitor insert failed: %s\n",
 						PQerrorMessage(primaryConn));
 }
 
@@ -270,7 +248,7 @@ checkClusterConfiguration(void)
 							  " WHERE relname = 'repl_nodes'");
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
-        fprintf(stderr, "PQexec failed: %s", PQerrorMessage(myLocalConn));
+        fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(myLocalConn));
         PQclear(res);
         PQfinish(myLocalConn);
         PQfinish(primaryConn);
@@ -284,7 +262,7 @@ checkClusterConfiguration(void)
 	 */
 	if (PQntuples(res) == 0)
 	{
-        fprintf(stderr, "The replication cluster is not configured");
+        fprintf(stderr, "The replication cluster is not configured\n");
         PQclear(res);
         PQfinish(myLocalConn);
         PQfinish(primaryConn);
@@ -310,7 +288,7 @@ checkNodeConfiguration(char *conninfo)
     res = PQexec(myLocalConn, sqlquery); 
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
-        fprintf(stderr, "PQexec failed: %s", PQerrorMessage(myLocalConn));
+        fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(myLocalConn));
         PQclear(res);
         PQfinish(myLocalConn);
         PQfinish(primaryConn);
@@ -331,7 +309,7 @@ checkNodeConfiguration(char *conninfo)
 
     	if (!PQexec(primaryConn, sqlquery))
 		{
-			fprintf(stderr, "Cannot insert node details, %s",
+			fprintf(stderr, "Cannot insert node details, %s\n",
 							PQerrorMessage(primaryConn));
 			PQfinish(myLocalConn);
 			PQfinish(primaryConn);
@@ -350,7 +328,7 @@ walLocationToBytes(char *wal_location)
 
     if (sscanf(wal_location, "%X/%X", &xlogid, &xrecoff) != 2)
     {
-        fprintf(stderr, "wrong log location format: %s", wal_location);
+        fprintf(stderr, "wrong log location format: %s\n", wal_location);
         return 0;
     }
     return ((xlogid * 16 * 1024 * 1024 * 255) + xrecoff);

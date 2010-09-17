@@ -3,11 +3,17 @@
 # Copyright (c) 2ndQuadrant, 2010
 #
 
-PROGRAM = repmgrd
-OBJS    = config.o dbutils.o repmgrd.o
+repmgrd_OBJS = dbutils.o config.o repmgrd.o
+repmgr_OBJS = dbutils.o config.o repmgr.o
 
 PG_CPPFLAGS = -I$(libpq_srcdir)
 PG_LIBS = $(libpq_pgport)
+
+repmgrd: $(repmgrd_OBJS)
+	$(CC) $(CFLAGS) $(repmgrd_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o repmgrd
+
+repmgr: $(repmgr_OBJS)
+	$(CC) $(CFLAGS) $(repmgr_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o repmgr
 
 ifdef USE_PGXS
 PGXS := $(shell pg_config --pgxs)
@@ -18,3 +24,12 @@ top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
+
+install:
+	$(INSTALL_PROGRAM) repmgrd$(X) '$(DESTDIR)$(bindir)'
+	$(INSTALL_PROGRAM) repmgr$(X) '$(DESTDIR)$(bindir)'
+
+clean:
+	rm -f *.o
+	rm -f repmgrd
+	rm -f repmgr

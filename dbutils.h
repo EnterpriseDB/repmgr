@@ -5,3 +5,4 @@
  */
 
 PGconn *establishDBConnection(const char *conninfo, const bool exit_on_error);
+bool    is_standby(PGconn *conn);
