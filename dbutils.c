@@ -56,3 +56,76 @@ is_standby(PGconn *conn)
 	PQclear(res);
 	return result;
 }
+
+
+bool
+is_supported_version(PGconn *conn)
+{
+	PGresult	*res;
+	int			major_version;
+
+    res = PQexec(conn, "SELECT split_part(split_part(version(), ' ', 2), '.', 1)");
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+    {
+		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
+        PQclear(res);
+    }
+    major_version = atoi(PQgetvalue(res, 0, 0));
+    PQclear(res);
+
+	return (major_version >= 9) ? true : false;
+}
+
+
+bool
+guc_setted(PGconn *conn, const char *parameter, const char *op, const char *value)
+{
+	PGresult	*res;
+	char		sqlquery[8192];
+
+	sprintf(sqlquery, "SELECT true FROM pg_settings "
+					  " WHERE name = '%s' AND setting %s '%s'",
+					  parameter, op, value);
+
+    res = PQexec(conn, sqlquery);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+    {
+		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
+        PQclear(res);
+    }
+	if (PQgetisnull(res, 0, 0))
+	{
+		PQclear(res);
+		return false;
+	}
+   	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
+	{
+		PQclear(res);
+    	return false;
+	}
+	PQclear(res);
+
+	return true;
+}
+
+
+char *
+get_cluster_size(PGconn *conn)
+{
+	PGresult	*res;
+	char		*size;
+	char		sqlquery[8192];
+
+	sprintf(sqlquery, "SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
+					  "  FROM pg_database ");
+
+    res = PQexec(conn, sqlquery);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+    {
+		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
+        PQclear(res);
+    }
+   	strcpy(size, PQgetvalue(res, 0, 0))
+	PQclear(res);
+	return size;
+}

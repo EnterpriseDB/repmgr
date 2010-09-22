@@ -8,6 +8,7 @@
 #define _REPMGR_H_
 
 #include "postgres_fe.h"
+#include "getopt_long.h"
 #include "libpq-fe.h"
 
 #include "dbutils.h"
