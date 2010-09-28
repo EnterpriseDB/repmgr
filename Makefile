@@ -1,7 +1,6 @@
 #
 # Makefile
 # Copyright (c) 2ndQuadrant, 2010
-#
 
 repmgrd_OBJS = dbutils.o config.o repmgrd.o
 repmgr_OBJS = dbutils.o config.o repmgr.o
