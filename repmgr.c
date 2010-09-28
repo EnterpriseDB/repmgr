@@ -4,6 +4,9 @@
  *
  * Command interpreter for the repmgr
  * This module execute some tasks based on commands and then exit
+ * 
+ * Commands implemented are.
+ * STANDBY CLONE, STANDBY FOLLOW, STANDBY PROMOTE
  */
 
 #include "repmgr.h"
@@ -13,6 +16,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "check_dir.h"
+
 #define RECOVERY_FILE "recovery.conf"
 #define RECOVERY_DONE_FILE "recovery.done"
 
@@ -21,6 +26,8 @@
 #define STANDBY_FOLLOW 	3
 
 static void help(const char *progname);
+static bool create_recovery_file(void);
+
 static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
@@ -117,7 +124,13 @@ main(int argc, char **argv)
 		}
 	}
 
-    /* Get real command from command line */
+    /* 
+	 * Now we need to obtain the action, this comes in the form:
+     * STANDBY {CLONE [node]|PROMOTE|FOLLOW [node]}
+	 * 
+     * the node part is optional, if we receive it then we shouldn't
+     * have received a -h option
+     */
     if (optind < argc)
 	{
         stndby = argv[optind++];
@@ -142,6 +155,20 @@ main(int argc, char **argv)
 			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 			exit(1);
 		}	
+	}
+
+	/* For STANDBY CLONE and STANDBY FOLLOW we still can receive a last argument */
+	if ((action == STANDBY_CLONE) || (action == STANDBY_FOLLOW))
+	{
+	    if (optind < argc)
+		{
+			if (host != NULL)
+			{
+				fprintf(stderr, _("Conflicting parameters you can't use -h while providing a node separately. Try \"%s --help\" for more information.\n"), progname);
+				exit(1);
+			}	
+    	    host = argv[optind++];
+		}
 	}
 
 	switch (optind < argc)
@@ -205,17 +232,11 @@ do_standby_clone(void)
 	char 		sqlquery[8192];
 	char 		script[8192];
 
-	int			r;
+	int			r, i;
 	char		data_dir_full_path[MAXLEN];
 	char		data_dir[MAXLEN];
-	char		recovery_file_path[MAXLEN];
-
-	char		*dummy_file;
-	FILE		*recovery_file;
 
 	char		*first_wal_segment, *last_wal_segment;
-
-	char		line[MAXLEN];
 
     /* Connection parameters for master only */
     keywords[0] = "host";
@@ -223,19 +244,52 @@ do_standby_clone(void)
     keywords[1] = "port";
     values[1] = masterport;
 
-	/* Can we write in this directory? write a dummy file to test that */
-	sprintf(dummy_file, "%s/dummy", ((data_dir == NULL) ? "." : data_dir));
-    recovery_file = fopen(dummy_file, "w");
-    if (recovery_file == NULL)
-	{
-		fprintf(stderr, _("Can't write in this directory, check permissions"));
-		return;
-	}
-	/* If we could write the file, unlink it... it was just a test */
-	fclose(recovery_file);
-	unlink(recovery_file);
+	if (data_dir == NULL)
+		strcpy(data_dir, ".");
 
-	/* inform the master we will start a backup */
+	/* Check this directory could be used as a PGDATA dir */
+    switch (check_data_dir(data_dir))
+    {
+        case 0:
+            /* data_dir not there, must create it */
+			if (verbose)
+	            printf(_("creating directory %s ... "), data_dir);
+            fflush(stdout);
+
+            if (!create_directory(data_dir))
+			{
+            	fprintf(stderr, _("%s: couldn't create directory %s ... "), 
+						progname, data_dir);
+				return;
+			}
+            break;
+        case 1:
+            /* Present but empty, fix permissions and use it */
+			if (verbose)
+	            printf(_("fixing permissions on existing directory %s ... "),
+   			                data_dir);
+            fflush(stdout);
+
+			if (!set_directory_permissions(data_dir))
+            {
+                fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
+                        progname, data_dir, strerror(errno));
+				return;
+            }
+            break;
+        case 2:
+            /* Present and not empty */
+            fprintf(stderr,
+                    _("%s: directory \"%s\" exists but is not empty\n"),
+                    progname, data_dir);
+            return;     
+        default:
+            /* Trouble accessing directory */
+            fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
+                    progname, data_dir, strerror(errno));
+    }
+
+	/* We need to connect to check configuration and start a backup */
 	conn = PQconnectdbParams(keywords, values, true);	
     if (!conn)
     {
@@ -267,10 +321,10 @@ do_standby_clone(void)
 		fprintf(stderr, _("%s needs parameter 'wal_level' to be set to 'hot_standby'\n", progname)); 
 		return;
 	}
-	if (!guc_setted("wal_keep_segments", "=", "5000"))
+	if (!guc_setted("wal_keep_segments", ">=", "5000"))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set greater than 0\n", progname)); 
+		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set to 5000 or greater\n", progname)); 
 		return;
 	}
 	if (!guc_setted("archive_mode", "=", "on"))
@@ -280,9 +334,71 @@ do_standby_clone(void)
 		return;
 	}
 
-	if (verbose)
-		printf(_("Succesfully connected to primary. Current installation size is %s\n", get_cluster_size(conn)));
+	printf(_("Succesfully connected to primary. Current installation size is %s\n", get_cluster_size(conn)));
 
+	/* Check if the tablespace locations exists and that we can write to them */
+	sprintf(sqlquery, "select location from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
+    res = PQexec(conn, sqlquery);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+        fprintf(stderr, "Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        PQfinish(conn);
+        return;
+	}
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		/* Check this directory could be used as a PGDATA dir */
+	    switch (check_dir(PQgetvalue(res), i, 0))
+	    {
+	        case 0:
+	            /* data_dir not there, must create it */
+				if (verbose)
+		            printf(_("creating directory \"%s\"... "), data_dir);
+	            fflush(stdout);
+	
+	            if (!create_directory(data_dir))
+				{
+	            	fprintf(stderr, _("%s: couldn't create directory \"%s\"... "), 
+							progname, data_dir);
+					PQclear(res);
+					PQfinish(conn);
+					return;
+				}
+	            break;
+	        case 1:
+	            /* Present but empty, fix permissions and use it */
+				if (verbose)
+		            printf(_("fixing permissions on existing directory \"%s\"... "),
+	   			                data_dir);
+   	         fflush(stdout);
+	
+   	         if (!set_directory_permissions(data_dir))
+   	         {
+   	             fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
+   	                     progname, data_dir, strerror(errno));
+					PQclear(res);
+					PQfinish(conn);
+					return;
+   	         }
+   	         break;
+   	     case 2:
+   	         /* Present and not empty */
+			fprintf(stderr,
+   	        		_("%s: directory \"%s\" exists but is not empty\n"),
+   	                progname, data_dir);
+			PQclear(res);
+			PQfinish(conn);
+   	        return;     
+   	     default:
+   	         /* Trouble accessing directory */
+   	        fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
+   	                progname, data_dir, strerror(errno));
+			PQclear(res);
+			PQfinish(conn);
+			return;
+	}
+		
 	fprintf(stderr, "Starting backup...\n");
 	
 	/* Get the data directory full path and the last subdirectory */
@@ -301,6 +417,10 @@ do_standby_clone(void)
 	strcpy(data_dir, PQgetvalue(res, 0, 1));
     PQclear(res);
 
+	/* 
+     * inform the master we will start a backup and get the first XLog filename
+	 * so we can say to the user we need those files
+     */
 	sprintf(sqlquery, "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))", time(NULL));
     res = PQexec(conn, sqlquery);
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -314,7 +434,7 @@ do_standby_clone(void)
     PQclear(res);
     PQfinish(conn);
 
-	/* rsync data directory to current location */
+	/* rsync data directory to data_dir */
 	sprintf(script, "rsync --checksum --keep-dirlinks --compress --progress -r %s:%s %s", 
 					host, data_dir_full_path, ((data_dir == NULL) ? "." : data_dir));
 	r = system(script);
@@ -360,33 +480,7 @@ do_standby_clone(void)
 		return;
 
 	/* Finally, write the recovery.conf file */
-	sprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
-
-    recovery_file = fopen(recovery_file_path, "w");
-    if (recovery_file == NULL)
-    {
-        fprintf(stderr, "could not create recovery.conf file, it could be necesary to create it manually\n");
-		return;
-    }
-
-	sprintf(line, "standby_mode = 'on'\n");
-	if (fputs(line, recovery_file) == EOF)
-    {
-        fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
-    	fclose(recovery_file);
-		return;
-    }
-
-	sprintf(line, "primary_conninfo = '%s'\n", master_conninfo);
-	if (fputs(line, recovery_file) == EOF)
-    {
-        fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
-    	fclose(recovery_file);
-		return;
-    }
-
-    /*FreeFile(recovery_file);*/
-    fclose(recovery_file);
+	create_recovery_file();
 
 	/* We don't start the service because we still may want to move the directory */
 	return;
@@ -480,10 +574,6 @@ do_standby_follow(void)
 
 	int			r;
 	char		data_dir[MAXLEN];
-	char		recovery_file_path[MAXLEN];
-	FILE		*recovery_file;
-
-	char		line[MAXLEN];
 
 	/*
 	 * Read the configuration file: repmgr.conf
@@ -533,33 +623,8 @@ do_standby_follow(void)
     PQfinish(conn);
 
 	/* Finally, write the recovery.conf file */
-	sprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
-
-    recovery_file = fopen(recovery_file_path, "w");
-    if (recovery_file == NULL)
-    {
-        fprintf(stderr, "could not create recovery.conf file, it could be necesary to create it manually\n");
-		return;
-    }
-
-	sprintf(line, "standby_mode = 'on'\n");
-	if (fputs(line, recovery_file) == EOF)
-    {
-        fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
-    	fclose(recovery_file);
-		return;
-    }
-
-	sprintf(line, "primary_conninfo = '%s'\n", master_conninfo);
-	if (fputs(line, recovery_file) == EOF)
-    {
-        fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
-    	fclose(recovery_file);
-		return;
-    }
-
-    /*FreeFile(recovery_file);*/
-    fclose(recovery_file);
+	if (!create_recovery_file())
+		return;		
 
 	/* Finally, restart the service */
 	/* We assume the pg_ctl script is in the PATH */
@@ -578,12 +643,62 @@ do_standby_follow(void)
 static void 
 help(const char *progname)
 {
-    printf(stderr, "\n%s: Replicator manager \n"
-					"This command program performs some tasks like clone a node, promote it "
-					"or making follow another node and then exits.\n"
-                    "COMMANDS:\n"
-                    "standby clone [node]  - allows creation of a new standby\n"
-                    "standby promote       - allows manual promotion of a specific standby into a "
-                                            "new master in the event of a failover\n"
-                    "standby follow [node] - allows the standby to re-point itself to a new master\n", progname);
+    printf(_("\n%s: Replicator manager \n", progname));
+    printf(_("Usage:\n"));
+    printf(_(" %s [OPTIONS] standby {clone|promote|follow} [master]\n", progname));
+    printf(_("\nOptions:\n"));
+	printf(_("  --help                    show this help, then exit\n"));
+	printf(_("  --version                 output version information, then exit\n"));
+	printf(_("  --verbose                 output verbose activity information\n"));
+	printf(_("\nConnection options:\n"));
+	printf(_("  -d, --dbname=DBNAME       database to connect to\n"));
+	printf(_("  -h, --host=HOSTNAME       database server host or socket directory\n"));
+	printf(_("  -p, --port=PORT           database server port\n"));
+	printf(_("  -U, --username=USERNAME   user name to connect as\n"));
+    printf(_("\n%s performs some tasks like clone a node, promote it ", progname));
+    printf(_("or making follow another node and then exits.\n"));
+    printf(_("COMMANDS:\n"));
+    printf(_(" standby clone [node]  - allows creation of a new standby\n"));
+    printf(_(" standby promote       - allows manual promotion of a specific standby into a "));
+    printf(_("new master in the event of a failover\n"));
+    printf(_(" standby follow [node] - allows the standby to re-point itself to a new master\n"));
+}
+
+
+static bool
+create_recovery_file(void)
+{
+	FILE		*recovery_file;
+	char		recovery_file_path[MAXLEN];
+	char		line[MAXLEN];
+
+	sprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
+
+    recovery_file = fopen(recovery_file_path, "w");
+    if (recovery_file == NULL)
+    {
+        fprintf(stderr, "could not create recovery.conf file, it could be necesary to create it manually\n");
+		return false;
+    }
+
+	sprintf(line, "standby_mode = 'on'\n");
+	if (fputs(line, recovery_file) == EOF)
+    {
+        fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
+    	fclose(recovery_file);
+		return false;
+    }
+
+	sprintf(line, "primary_conninfo = '%s'\n", host);
+	if (fputs(line, recovery_file) == EOF)
+    {
+        fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
+    	fclose(recovery_file);
+		return false;
+    }
+
+    /*FreeFile(recovery_file);*/
+    fclose(recovery_file);
+
+	return true;
 }

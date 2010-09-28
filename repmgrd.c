@@ -26,6 +26,12 @@ char	primaryConninfo[MAXLEN];
 PGconn *primaryConn;
 
 
+const char *progname;
+
+const char	*config_file = NULL;
+bool		verbose = false;
+
+
 void checkClusterConfiguration(void);
 void checkNodeConfiguration(char *conninfo);
 void getPrimaryConnection(void);
@@ -39,12 +45,58 @@ unsigned long long int walLocationToBytes(char *wal_location);
 int
 main(int argc, char **argv)
 {
+	static struct option long_options[] = {
+		{"config", required_argument, NULL, 'f'},
+		{"verbose", no_argument, NULL, 'v'},
+		{NULL, 0, NULL, 0}
+	};
+
+	int			optindex;
+	int			c;
+	int			action;
+
     char conninfo[MAXLEN]; 
+
+	progname = get_progname(argv[0]);
+
+	if (argc > 1)
+	{
+		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
+		{
+			help(progname);
+			exit(0);
+		}
+		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
+		{
+			printf("%s (PostgreSQL) " PG_VERSION "\n", progname);
+			exit(0);
+		}
+	}
+
+
+	while ((c = getopt_long(argc, argv, "f:v", long_options, &optindex)) != -1)
+	{
+		switch (c)
+		{
+			case 'f':
+				config_file = optarg;
+				break;
+			case 'v':
+				verbose = true;
+				break;
+			default:
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				exit(1);
+		}
+	}
+	
+	if (config_file == NULL)
+		sprintf(config_file, "./%s", CONFIG_FILE);
 
 	/*
 	 * Read the configuration file: repmgr.conf
      */
-	parse_config(myClusterName, &myLocalId, conninfo);
+	parse_config(config_file, myClusterName, &myLocalId, conninfo);
 	if (myLocalId == -1) 
 	{
 		fprintf(stderr, "Node information is missing. "
@@ -219,7 +271,7 @@ MonitorExecute(void)
 	 * Build the SQL to execute on primary
 	 */
 	sprintf(sqlquery,
-				"INSERT INTO repl_status "
+				"INSERT INTO repl_monitor "
 				"VALUES(%d, %d, '%s'::timestamp with time zone, "
                       " '%s', '%s', "
 					  " %lld, %lld)",

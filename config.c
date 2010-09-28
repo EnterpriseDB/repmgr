@@ -8,10 +8,10 @@
 #include "repmgr.h"
 
 void
-parse_config(char *cluster_name, int *node, char *conninfo)
+parse_config(const *char config_file, char *cluster_name, int *node, char *conninfo)
 {
 	char *s, buff[256];
-	FILE *fp = fopen (CONFIG_FILE, "r");
+	FILE *fp = fopen (config_file, "r");
 
 	if (fp == NULL)
     	return;

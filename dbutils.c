@@ -2,9 +2,7 @@
  * dbutils.c
  * Copyright (c) 2ndQuadrant, 2010
  *
- * Database connections/managements functions
- * XXX At least i can create another function here to avoid code duplication
- *     on the main file
+ * Database connection/management functions
  *
  */
 
@@ -69,6 +67,8 @@ is_supported_version(PGconn *conn)
     {
 		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
         PQclear(res);
+		PQfinish(conn);
+		exit(1);
     }
     major_version = atoi(PQgetvalue(res, 0, 0));
     PQclear(res);
@@ -92,6 +92,8 @@ guc_setted(PGconn *conn, const char *parameter, const char *op, const char *valu
     {
 		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
         PQclear(res);
+		PQfinish(conn);
+		exit(1);
     }
 	if (PQgetisnull(res, 0, 0))
 	{
@@ -124,6 +126,8 @@ get_cluster_size(PGconn *conn)
     {
 		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
         PQclear(res);
+		PQfinish(conn);
+		exit(1);
     }
    	strcpy(size, PQgetvalue(res, 0, 0))
 	PQclear(res);
