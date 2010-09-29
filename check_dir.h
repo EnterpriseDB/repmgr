@@ -4,6 +4,6 @@
  *
  */
 
-int  check_dir(const char *dir);
-bool create_directory(const char *dir);
-bool set_directory_permissions(const char *dir);
+int  check_dir(char *dir);
+bool create_directory(char *dir);
+bool set_directory_permissions(char *dir);

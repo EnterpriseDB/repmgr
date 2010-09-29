@@ -28,10 +28,11 @@ PGconn *primaryConn;
 
 const char *progname;
 
-const char	*config_file = NULL;
-bool		verbose = false;
+char	*config_file = NULL;
+bool	verbose = false;
 
 
+static void help(const char *progname);
 void checkClusterConfiguration(void);
 void checkNodeConfiguration(char *conninfo);
 void getPrimaryConnection(void);
@@ -53,7 +54,6 @@ main(int argc, char **argv)
 
 	int			optindex;
 	int			c;
-	int			action;
 
     char conninfo[MAXLEN]; 
 
@@ -384,4 +384,29 @@ walLocationToBytes(char *wal_location)
         return 0;
     }
     return ((xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
+}
+
+
+static void 
+help(const char *progname)
+{
+    printf(_("\n%s: Replicator manager \n"), progname);
+    printf(_("Usage:\n"));
+    printf(_(" %s [OPTIONS] standby {clone|promote|follow} [master]\n"), progname);
+    printf(_("\nOptions:\n"));
+	printf(_("  --help                    show this help, then exit\n"));
+	printf(_("  --version                 output version information, then exit\n"));
+	printf(_("  --verbose                 output verbose activity information\n"));
+	printf(_("\nConnection options:\n"));
+	printf(_("  -d, --dbname=DBNAME       database to connect to\n"));
+	printf(_("  -h, --host=HOSTNAME       database server host or socket directory\n"));
+	printf(_("  -p, --port=PORT           database server port\n"));
+	printf(_("  -U, --username=USERNAME   user name to connect as\n"));
+    printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
+    printf(_("or making follow another node and then exits.\n"));
+    printf(_("COMMANDS:\n"));
+    printf(_(" standby clone [node]  - allows creation of a new standby\n"));
+    printf(_(" standby promote       - allows manual promotion of a specific standby into a "));
+    printf(_("new master in the event of a failover\n"));
+    printf(_(" standby follow [node] - allows the standby to re-point itself to a new master\n"));
 }

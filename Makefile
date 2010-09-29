@@ -3,7 +3,7 @@
 # Copyright (c) 2ndQuadrant, 2010
 
 repmgrd_OBJS = dbutils.o config.o repmgrd.o
-repmgr_OBJS = dbutils.o config.o repmgr.o
+repmgr_OBJS = dbutils.o check_dir.o config.o repmgr.o
 
 PG_CPPFLAGS = -I$(libpq_srcdir)
 PG_LIBS = $(libpq_pgport)

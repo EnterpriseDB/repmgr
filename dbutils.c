@@ -111,11 +111,11 @@ guc_setted(PGconn *conn, const char *parameter, const char *op, const char *valu
 }
 
 
-char *
+const char *
 get_cluster_size(PGconn *conn)
 {
 	PGresult	*res;
-	char		*size;
+	const char		*size;
 	char		sqlquery[8192];
 
 	sprintf(sqlquery, "SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
@@ -129,7 +129,7 @@ get_cluster_size(PGconn *conn)
 		PQfinish(conn);
 		exit(1);
     }
-   	strcpy(size, PQgetvalue(res, 0, 0))
+   	size = PQgetvalue(res, 0, 0);
 	PQclear(res);
 	return size;
 }

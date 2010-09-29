@@ -21,12 +21,13 @@
 #define RECOVERY_FILE "recovery.conf"
 #define RECOVERY_DONE_FILE "recovery.done"
 
+#define STANDBY_NORMAL  0		/* Not a real action, just to initialize */
 #define STANDBY_CLONE 	1
 #define STANDBY_PROMOTE 2
 #define STANDBY_FOLLOW 	3
 
 static void help(const char *progname);
-static bool create_recovery_file(void);
+static bool create_recovery_file(const char *data_dir);
 
 static void do_standby_clone(void);
 static void do_standby_promote(void);
@@ -66,7 +67,7 @@ main(int argc, char **argv)
 
 	int			optindex;
 	int			c;
-	int			action;
+	int			action = STANDBY_NORMAL;
 
 	progname = get_progname(argv[0]);
 
@@ -236,19 +237,14 @@ do_standby_clone(void)
 	char		data_dir_full_path[MAXLEN];
 	char		data_dir[MAXLEN];
 
-	char		*first_wal_segment, *last_wal_segment;
-
-    /* Connection parameters for master only */
-    keywords[0] = "host";
-    values[0] = host;
-    keywords[1] = "port";
-    values[1] = masterport;
+	const char	*first_wal_segment = NULL; 
+    const char	*last_wal_segment = NULL;
 
 	if (data_dir == NULL)
 		strcpy(data_dir, ".");
 
 	/* Check this directory could be used as a PGDATA dir */
-    switch (check_data_dir(data_dir))
+    switch (check_dir(data_dir))
     {
         case 0:
             /* data_dir not there, must create it */
@@ -289,6 +285,12 @@ do_standby_clone(void)
                     progname, data_dir, strerror(errno));
     }
 
+    /* Connection parameters for master only */
+    keywords[0] = "host";
+    values[0] = host;
+    keywords[1] = "port";
+    values[1] = masterport;
+
 	/* We need to connect to check configuration and start a backup */
 	conn = PQconnectdbParams(keywords, values, true);	
     if (!conn)
@@ -302,7 +304,7 @@ do_standby_clone(void)
 	if (!is_supported_version(conn))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs PostgreSQL 9.0 or better\n", progname)); 
+		fprintf(stderr, _("%s needs PostgreSQL 9.0 or better\n"), progname); 
 		return;
 	}
 
@@ -315,26 +317,27 @@ do_standby_clone(void)
 	}
 
 	/* And check if it is well configured */
-	if (!guc_setted("wal_level", "=", "hot_standby"))
+	if (!guc_setted(conn, "wal_level", "=", "hot_standby"))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'wal_level' to be set to 'hot_standby'\n", progname)); 
+		fprintf(stderr, _("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname); 
 		return;
 	}
-	if (!guc_setted("wal_keep_segments", ">=", "5000"))
+	if (!guc_setted(conn, "wal_keep_segments", ">=", "5000"))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set to 5000 or greater\n", progname)); 
+		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set to 5000 or greater\n"), progname); 
 		return;
 	}
-	if (!guc_setted("archive_mode", "=", "on"))
+	if (!guc_setted(conn, "archive_mode", "=", "on"))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'archive_mode' to be set to 'on'\n", progname)); 
+		fprintf(stderr, _("%s needs parameter 'archive_mode' to be set to 'on'\n"), progname); 
 		return;
 	}
 
-	printf(_("Succesfully connected to primary. Current installation size is %s\n", get_cluster_size(conn)));
+	if (verbose)
+		printf(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
 
 	/* Check if the tablespace locations exists and that we can write to them */
 	sprintf(sqlquery, "select location from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
@@ -349,7 +352,7 @@ do_standby_clone(void)
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		/* Check this directory could be used as a PGDATA dir */
-	    switch (check_dir(PQgetvalue(res), i, 0))
+	    switch (check_dir(PQgetvalue(res, i, 0)))
 	    {
 	        case 0:
 	            /* data_dir not there, must create it */
@@ -397,6 +400,7 @@ do_standby_clone(void)
 			PQclear(res);
 			PQfinish(conn);
 			return;
+		}
 	}
 		
 	fprintf(stderr, "Starting backup...\n");
@@ -430,9 +434,9 @@ do_standby_clone(void)
         PQfinish(conn);
         return;
     }
-	strcpy(first_wal_segment, PQgetvalue(res, 0, 0));
-    PQclear(res);
-    PQfinish(conn);
+	first_wal_segment = PQgetvalue(res, 0, 0);
+	PQclear(res);
+	PQfinish(conn);
 
 	/* rsync data directory to data_dir */
 	sprintf(script, "rsync --checksum --keep-dirlinks --compress --progress -r %s:%s %s", 
@@ -467,20 +471,20 @@ do_standby_clone(void)
         PQfinish(conn);
         return;
     }
-	strcpy(last_wal_segment, PQgetvalue(res, 0, 0));
+	last_wal_segment = PQgetvalue(res, 0, 0);
     PQclear(res);
     PQfinish(conn);
 
 	if (verbose)
-		printf(_("%s requires primary to keep WAL files %s until at least %s", 
-					progname, first_wal_segment, last_wal_segment));
+		printf(_("%s requires primary to keep WAL files %s until at least %s"), 
+					progname, first_wal_segment, last_wal_segment);
 
 	/* Now, if the rsync failed then exit */
 	if (r != 0)
 		return;
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file();
+	create_recovery_file(dest_dir);
 
 	/* We don't start the service because we still may want to move the directory */
 	return;
@@ -490,10 +494,6 @@ do_standby_clone(void)
 static void 
 do_standby_promote(void)
 {
-	char    myClusterName[MAXLEN];
-	int     myLocalId   = -1;
-    char 	myConninfo[MAXLEN]; 
-
 	PGconn 		*conn;
 	PGresult	*res;
 	char 		sqlquery[8192];
@@ -504,18 +504,18 @@ do_standby_promote(void)
 	char		recovery_file_path[MAXLEN];
 	char		recovery_done_path[MAXLEN];
 
-	/*
-	 * Read the configuration file: repmgr.conf
-     */
-	parse_config(myClusterName, &myLocalId, myConninfo);
-	if (myLocalId == -1) 
-	{
-		fprintf(stderr, "Node information is missing. "
-						"Check the configuration file.\n");
-		exit(1);
-	}
+    /* Connection parameters for standby. always use localhost for standby */
+    values[0] = "localhost";
+    values[1] = standbyport;
 
-	conn = establishDBConnection(myConninfo, true);	
+	/* We need to connect to check configuration */
+	conn = PQconnectdbParams(keywords, values, true);	
+    if (!conn)
+    {
+        fprintf(stderr, _("%s: could not connect to master\n"),
+                progname);
+        return;
+    }
 
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
@@ -524,7 +524,10 @@ do_standby_promote(void)
 		return;
 	}
 
-	fprintf(stderr, "Promoting standby...\n");
+	/* XXX also we need to check if there isn't any master already */
+
+	if (verbose)
+		printf(_("\n%s: Promoting standby...\n"), progname);
 	
 	/* Get the data directory full path and the last subdirectory */
 	sprintf(sqlquery, "SELECT setting "
@@ -561,43 +564,47 @@ do_standby_promote(void)
 static void 
 do_standby_follow(void)
 {
-	char    myClusterName[MAXLEN];
-	int     myLocalId   = -1;
-    char 	myConninfo[MAXLEN]; 
-
 	PGconn 		*conn;
 	PGresult	*res;
 	char 		sqlquery[8192];
 	char 		script[8192];
 
-	char		master_conninfo[MAXLEN];
-
 	int			r;
 	char		data_dir[MAXLEN];
 
-	/*
-	 * Read the configuration file: repmgr.conf
-     */
-	parse_config(myClusterName, &myLocalId, myConninfo);
-	if (myLocalId == -1) 
-	{
-		fprintf(stderr, "Node information is missing. "
-						"Check the configuration file.\n");
-		exit(1);
-	}
+    /* Connection parameters for master */
+    values[0] = host;
+    values[1] = masterport;
 
-	sprintf(master_conninfo, "host=%s", host);
-	conn = establishDBConnection(master_conninfo, true);	
+	conn = PQconnectdbParams(keywords, values, true);	
+    if (!conn)
+    {
+        fprintf(stderr, _("%s: could not connect to master\n"),
+                progname);
+        return;
+    }
 
-	/* Check we are going to point to a primary */
+	/* Check we are going to point to a master */
 	if (is_standby(conn))
 	{
-		fprintf(stderr, "repmgr: The should follow to a primary node\n");
+		fprintf(stderr, "repmgr: The node to follow should be a master\n");
 		return;
 	}
 	PQfinish(conn);
 
-	conn = establishDBConnection(myConninfo, true);	
+    /* Connection parameters for standby. always use localhost for standby */
+    values[0] = "localhost";
+    values[1] = standbyport;
+
+	/* We need to connect to check configuration */
+	conn = PQconnectdbParams(keywords, values, true);	
+    if (!conn)
+    {
+        fprintf(stderr, _("%s: could not connect to the local standby\n"),
+                progname);
+        return;
+    }
+
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
 	{
@@ -605,7 +612,8 @@ do_standby_follow(void)
 		return;
 	}
 
-	fprintf(stderr, "Changing standby's primary...\n");
+	if (verbose)
+		printf(_("\n%s: Changing standby's master...\n"), progname);
 	
 	/* Get the data directory full path and the last subdirectory */
 	sprintf(sqlquery, "SELECT setting "
@@ -623,7 +631,7 @@ do_standby_follow(void)
     PQfinish(conn);
 
 	/* Finally, write the recovery.conf file */
-	if (!create_recovery_file())
+	if (!create_recovery_file(data_dir))
 		return;		
 
 	/* Finally, restart the service */
@@ -643,9 +651,9 @@ do_standby_follow(void)
 static void 
 help(const char *progname)
 {
-    printf(_("\n%s: Replicator manager \n", progname));
+    printf(_("\n%s: Replicator manager \n"), progname);
     printf(_("Usage:\n"));
-    printf(_(" %s [OPTIONS] standby {clone|promote|follow} [master]\n", progname));
+    printf(_(" %s [OPTIONS] standby {clone|promote|follow} [master]\n"), progname);
     printf(_("\nOptions:\n"));
 	printf(_("  --help                    show this help, then exit\n"));
 	printf(_("  --version                 output version information, then exit\n"));
@@ -655,7 +663,7 @@ help(const char *progname)
 	printf(_("  -h, --host=HOSTNAME       database server host or socket directory\n"));
 	printf(_("  -p, --port=PORT           database server port\n"));
 	printf(_("  -U, --username=USERNAME   user name to connect as\n"));
-    printf(_("\n%s performs some tasks like clone a node, promote it ", progname));
+    printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
     printf(_("or making follow another node and then exits.\n"));
     printf(_("COMMANDS:\n"));
     printf(_(" standby clone [node]  - allows creation of a new standby\n"));
@@ -666,7 +674,7 @@ help(const char *progname)
 
 
 static bool
-create_recovery_file(void)
+create_recovery_file(const char *data_dir)
 {
 	FILE		*recovery_file;
 	char		recovery_file_path[MAXLEN];

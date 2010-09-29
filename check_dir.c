@@ -8,8 +8,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
 
+#include "postgres_fe.h"
 #include "check_dir.h"
+
+
+static int mkdir_p(char *path, mode_t omode);
 
 /*
  * make sure the directory either doesn't exist or is empty
@@ -22,14 +29,11 @@
  * or -1 if trouble accessing directory
  */
 int
-check_dir(const char *dir)
+check_dir(char *dir)
 {
     DIR        *chkdir;
     struct 		dirent *file;
     int         result = 1;
-
-	char		*dummy_file;
-	FILE 		*dummy_fd;
 
     errno = 0;
 
@@ -65,7 +69,7 @@ check_dir(const char *dir)
     closedir(chkdir);
 
     if (errno != 0)
-        return -1          /* some kind of I/O error? */
+        return -1;          /* some kind of I/O error? */
 
 	return result;
 }
@@ -75,7 +79,7 @@ check_dir(const char *dir)
  * Create directory 
  */
 bool
-create_directory(const char *dir)
+create_directory(char *dir)
 {
     if (mkdir_p(dir, 0700) == 0)
         return true;
@@ -87,7 +91,114 @@ create_directory(const char *dir)
 }
 
 bool
-set_directory_permissions(const char *dir)
+set_directory_permissions(char *dir)
 {
-	return (chmod(data_dir, 0700) != 0) ? false : true;
+	return (chmod(dir, 0700) != 0) ? false : true;
+}
+
+
+
+/* function from initdb.c */
+/* source stolen from FreeBSD /src/bin/mkdir/mkdir.c and adapted */
+
+/*
+ * this tries to build all the elements of a path to a directory a la mkdir -p
+ * we assume the path is in canonical form, i.e. uses / as the separator
+ * we also assume it isn't null.
+ *
+ * note that on failure, the path arg has been modified to show the particular
+ * directory level we had problems with.
+ */
+static int
+mkdir_p(char *path, mode_t omode)
+{
+	struct stat sb;
+	mode_t		numask,
+				oumask;
+	int			first,
+				last,
+				retval;
+	char	   *p;
+
+	p = path;
+	oumask = 0;
+	retval = 0;
+
+#ifdef WIN32
+	/* skip network and drive specifiers for win32 */
+	if (strlen(p) >= 2)
+	{
+		if (p[0] == '/' && p[1] == '/')
+		{
+			/* network drive */
+			p = strstr(p + 2, "/");
+			if (p == NULL)
+				return 1;
+		}
+		else if (p[1] == ':' &&
+				 ((p[0] >= 'a' && p[0] <= 'z') ||
+				  (p[0] >= 'A' && p[0] <= 'Z')))
+		{
+			/* local drive */
+			p += 2;
+		}
+	}
+#endif
+
+	if (p[0] == '/')			/* Skip leading '/'. */
+		++p;
+	for (first = 1, last = 0; !last; ++p)
+	{
+		if (p[0] == '\0')
+			last = 1;
+		else if (p[0] != '/')
+			continue;
+		*p = '\0';
+		if (!last && p[1] == '\0')
+			last = 1;
+		if (first)
+		{
+			/*
+			 * POSIX 1003.2: For each dir operand that does not name an
+			 * existing directory, effects equivalent to those caused by the
+			 * following command shall occcur:
+			 *
+			 * mkdir -p -m $(umask -S),u+wx $(dirname dir) && mkdir [-m mode]
+			 * dir
+			 *
+			 * We change the user's umask and then restore it, instead of
+			 * doing chmod's.
+			 */
+			oumask = umask(0);
+			numask = oumask & ~(S_IWUSR | S_IXUSR);
+			(void) umask(numask);
+			first = 0;
+		}
+		if (last)
+			(void) umask(oumask);
+
+		/* check for pre-existing directory; ok if it's a parent */
+		if (stat(path, &sb) == 0)
+		{
+			if (!S_ISDIR(sb.st_mode))
+			{
+				if (last)
+					errno = EEXIST;
+				else
+					errno = ENOTDIR;
+				retval = 1;
+				break;
+			}
+		}
+		else if (mkdir(path, last ? omode : S_IRWXU | S_IRWXG | S_IRWXO) < 0)
+		{
+			retval = 1;
+			break;
+		}
+		if (!last)
+			*p = '/';
+	}
+	if (!first && !last)
+		(void) umask(oumask);
+	return retval;
 }
