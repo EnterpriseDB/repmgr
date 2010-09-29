@@ -41,7 +41,7 @@ const char *values[6];
 const char	*dbname = NULL;
 char		*host = NULL;
 char		*username = NULL;
-const char	*dest_dir = NULL;
+char		*dest_dir = NULL;
 bool		verbose = false;
 
 int			numport = 0;
@@ -235,27 +235,26 @@ do_standby_clone(void)
 
 	int			r, i;
 	char		data_dir_full_path[MAXLEN];
-	char		data_dir[MAXLEN];
 
 	const char	*first_wal_segment = NULL; 
     const char	*last_wal_segment = NULL;
 
-	if (data_dir == NULL)
-		strcpy(data_dir, ".");
+	if (dest_dir == NULL)
+		strcpy(dest_dir, ".");
 
 	/* Check this directory could be used as a PGDATA dir */
-    switch (check_dir(data_dir))
+    switch (check_dir(dest_dir))
     {
         case 0:
-            /* data_dir not there, must create it */
+            /* dest_dir not there, must create it */
 			if (verbose)
-	            printf(_("creating directory %s ... "), data_dir);
+	            printf(_("creating directory %s ... "), dest_dir);
             fflush(stdout);
 
-            if (!create_directory(data_dir))
+            if (!create_directory(dest_dir))
 			{
             	fprintf(stderr, _("%s: couldn't create directory %s ... "), 
-						progname, data_dir);
+						progname, dest_dir);
 				return;
 			}
             break;
@@ -263,13 +262,13 @@ do_standby_clone(void)
             /* Present but empty, fix permissions and use it */
 			if (verbose)
 	            printf(_("fixing permissions on existing directory %s ... "),
-   			                data_dir);
+   			                dest_dir);
             fflush(stdout);
 
-			if (!set_directory_permissions(data_dir))
+			if (!set_directory_permissions(dest_dir))
             {
                 fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
-                        progname, data_dir, strerror(errno));
+                        progname, dest_dir, strerror(errno));
 				return;
             }
             break;
@@ -277,12 +276,12 @@ do_standby_clone(void)
             /* Present and not empty */
             fprintf(stderr,
                     _("%s: directory \"%s\" exists but is not empty\n"),
-                    progname, data_dir);
+                    progname, dest_dir);
             return;     
         default:
             /* Trouble accessing directory */
             fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
-                    progname, data_dir, strerror(errno));
+                    progname, dest_dir, strerror(errno));
     }
 
     /* Connection parameters for master only */
@@ -340,7 +339,7 @@ do_standby_clone(void)
 		printf(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
 
 	/* Check if the tablespace locations exists and that we can write to them */
-	sprintf(sqlquery, "select location from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
+	sprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
     res = PQexec(conn, sqlquery);
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -355,15 +354,15 @@ do_standby_clone(void)
 	    switch (check_dir(PQgetvalue(res, i, 0)))
 	    {
 	        case 0:
-	            /* data_dir not there, must create it */
+	            /* dest_dir not there, must create it */
 				if (verbose)
-		            printf(_("creating directory \"%s\"... "), data_dir);
+		            printf(_("creating directory \"%s\"... "), dest_dir);
 	            fflush(stdout);
 	
-	            if (!create_directory(data_dir))
+	            if (!create_directory(dest_dir))
 				{
 	            	fprintf(stderr, _("%s: couldn't create directory \"%s\"... "), 
-							progname, data_dir);
+							progname, dest_dir);
 					PQclear(res);
 					PQfinish(conn);
 					return;
@@ -373,13 +372,13 @@ do_standby_clone(void)
 	            /* Present but empty, fix permissions and use it */
 				if (verbose)
 		            printf(_("fixing permissions on existing directory \"%s\"... "),
-	   			                data_dir);
+	   			                dest_dir);
    	         fflush(stdout);
 	
-   	         if (!set_directory_permissions(data_dir))
+   	         if (!set_directory_permissions(dest_dir))
    	         {
    	             fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
-   	                     progname, data_dir, strerror(errno));
+   	                     progname, dest_dir, strerror(errno));
 					PQclear(res);
 					PQfinish(conn);
 					return;
@@ -389,14 +388,14 @@ do_standby_clone(void)
    	         /* Present and not empty */
 			fprintf(stderr,
    	        		_("%s: directory \"%s\" exists but is not empty\n"),
-   	                progname, data_dir);
+   	                progname, dest_dir);
 			PQclear(res);
 			PQfinish(conn);
    	        return;     
    	     default:
    	         /* Trouble accessing directory */
    	        fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
-   	                progname, data_dir, strerror(errno));
+   	                progname, dest_dir, strerror(errno));
 			PQclear(res);
 			PQfinish(conn);
 			return;
@@ -406,8 +405,7 @@ do_standby_clone(void)
 	fprintf(stderr, "Starting backup...\n");
 	
 	/* Get the data directory full path and the last subdirectory */
-	sprintf(sqlquery, "SELECT setting, "
-							" TRIM(SUBSTRING(setting FROM '.[^/]*$'), '/') "
+	sprintf(sqlquery, "SELECT setting "
                        " FROM pg_settings WHERE name = 'data_directory'");
     res = PQexec(conn, sqlquery);
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -418,7 +416,6 @@ do_standby_clone(void)
         return;
     }
 	strcpy(data_dir_full_path, PQgetvalue(res, 0, 0));
-	strcpy(data_dir, PQgetvalue(res, 0, 1));
     PQclear(res);
 
 	/* 
@@ -438,9 +435,9 @@ do_standby_clone(void)
 	PQclear(res);
 	PQfinish(conn);
 
-	/* rsync data directory to data_dir */
-	sprintf(script, "rsync --checksum --keep-dirlinks --compress --progress -r %s:%s %s", 
-					host, data_dir_full_path, ((data_dir == NULL) ? "." : data_dir));
+	/* rsync data directory to dest_dir */
+	sprintf(script, "rsync --checksum --keep-dirlinks --compress --progress -r %s:%s/* %s", 
+					host, data_dir_full_path, dest_dir);
 	r = system(script);
     if (r != 0)
     {
@@ -503,6 +500,13 @@ do_standby_promote(void)
 	char		data_dir[MAXLEN];
 	char		recovery_file_path[MAXLEN];
 	char		recovery_done_path[MAXLEN];
+
+	/* 
+	 * dest-dir (-D) option has no meaning here but i see no reason
+	 * to fail, so just give a message if we are in verbode mode
+     */
+	if (verbose && dest_dir)
+		fprintf(stderr, _("Ignoring dest-dir option because it has no meaning while promoting"));
 
     /* Connection parameters for standby. always use localhost for standby */
     values[0] = "localhost";
@@ -663,6 +667,7 @@ help(const char *progname)
 	printf(_("  -h, --host=HOSTNAME       database server host or socket directory\n"));
 	printf(_("  -p, --port=PORT           database server port\n"));
 	printf(_("  -U, --username=USERNAME   user name to connect as\n"));
+	printf(_("  -D, --data-dir=DIR   	  directory where the files will be copied to\n"));
     printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
     printf(_("or making follow another node and then exits.\n"));
     printf(_("COMMANDS:\n"));
@@ -697,7 +702,7 @@ create_recovery_file(const char *data_dir)
 		return false;
     }
 
-	sprintf(line, "primary_conninfo = '%s'\n", host);
+	sprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host, ((masterport==NULL) ? "5432" : masterport));
 	if (fputs(line, recovery_file) == EOF)
     {
         fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");

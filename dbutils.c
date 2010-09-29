@@ -95,15 +95,10 @@ guc_setted(PGconn *conn, const char *parameter, const char *op, const char *valu
 		PQfinish(conn);
 		exit(1);
     }
-	if (PQgetisnull(res, 0, 0))
+	if (PQntuples(res) == 0)
 	{
 		PQclear(res);
-		return false;
-	}
-   	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
-	{
-		PQclear(res);
-    	return false;
+	   	return false;
 	}
 	PQclear(res);
 
