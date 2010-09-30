@@ -8,4 +8,4 @@ PGconn *establishDBConnection(const char *conninfo, const bool exit_on_error);
 bool    is_standby(PGconn *conn);
 bool 	is_supported_version(PGconn *conn);
 bool 	guc_setted(PGconn *conn, const char *parameter, const char *op, const char *value);
-char   *get_cluster_size(PGconn *conn);
+const char   *get_cluster_size(PGconn *conn);
