@@ -28,6 +28,7 @@
 
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir);
+static int  copy_remote_files(char *host, char *remote_path, char *local_path, bool is_directory);
 
 static void do_standby_clone(void);
 static void do_standby_promote(void);
@@ -231,10 +232,15 @@ do_standby_clone(void)
 	PGconn 		*conn;
 	PGresult	*res;
 	char 		sqlquery[8192];
-	char 		script[8192];
 
 	int			r, i;
-	char		data_dir_full_path[MAXLEN];
+	char		master_data_directory[MAXLEN];
+	char		master_config_file[MAXLEN];
+	char		master_hba_file[MAXLEN];
+	char		master_ident_file[MAXLEN];
+
+	char		master_control_file[MAXLEN];
+	char		local_control_file[MAXLEN];
 
 	const char	*first_wal_segment = NULL; 
     const char	*last_wal_segment = NULL;
@@ -404,18 +410,31 @@ do_standby_clone(void)
 		
 	fprintf(stderr, "Starting backup...\n");
 	
-	/* Get the data directory full path and the last subdirectory */
-	sprintf(sqlquery, "SELECT setting "
-                       " FROM pg_settings WHERE name = 'data_directory'");
+	/* Get the data directory full path and the configuration files location */
+	sprintf(sqlquery, "SELECT name, setting "
+                      "  FROM pg_settings "
+					  " WHERE name IN ('data_directory', 'config_file', 'hba_file', 'ident_file')");
     res = PQexec(conn, sqlquery);
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
-        fprintf(stderr, "Can't get info about data directory: %s\n", PQerrorMessage(conn));
+        fprintf(stderr, "Can't get info about data directory and configuration files: %s\n", PQerrorMessage(conn));
         PQclear(res);
         PQfinish(conn);
         return;
     }
-	strcpy(data_dir_full_path, PQgetvalue(res, 0, 0));
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		if (strcmp(PQgetvalue(res, i, 0), "data_directory") == 0)
+			strcpy(master_data_directory, PQgetvalue(res, i, 1));
+		else if (strcmp(PQgetvalue(res, i, 0), "config_file") == 0)
+			strcpy(master_config_file, PQgetvalue(res, i, 1));
+		else if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
+			strcpy(master_hba_file, PQgetvalue(res, i, 1));
+		else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
+			strcpy(master_ident_file, PQgetvalue(res, i, 1));
+		else
+			fprintf(stderr, _("uknown parameter: %s"), PQgetvalue(res, i, 0));
+	}
     PQclear(res);
 
 	/* 
@@ -435,19 +454,42 @@ do_standby_clone(void)
 	PQclear(res);
 	PQfinish(conn);
 
-	/* rsync data directory to dest_dir */
-	sprintf(script, "rsync --checksum --keep-dirlinks --compress --progress -r %s:%s/* %s", 
-					host, data_dir_full_path, dest_dir);
-	r = system(script);
-    if (r != 0)
-    {
-        fprintf(stderr, "Can't rsync data directory\n");
-		/* 
-		 * we need to return but before that i will let the pg_stop_backup()
-		 * happen
-		 */
-    }
-	
+	/*
+	 * 1) first move global/pg_control 
+	 *
+	 * 2) then move data_directory ommiting the files we have already moved and pg_xlog
+	 *    content
+	 *
+	 * 3) finally We need to backup configuration files (that could be on other directories, debian
+	 * like systems likes to do that), so look at config_file, hba_file and ident_file but we 
+	 * can omit external_pid_file ;)
+	 *
+	 * On error we need to return but before that execute pg_stop_backup()
+	 */
+
+	sprintf(master_control_file, "%s/global/pg_control", master_data_directory);
+	sprintf(local_control_file, "%s/global", dest_dir);
+	r = copy_remote_files(host, master_control_file, local_control_file, false); 
+	if (r != 0)
+		goto stop_backup;
+
+	r = copy_remote_files(host, master_data_directory, dest_dir, true); 
+	if (r != 0)
+		goto stop_backup;
+
+	r = copy_remote_files(host, master_config_file, dest_dir, false); 
+	if (r != 0)
+		goto stop_backup;
+
+	r = copy_remote_files(host, master_hba_file, dest_dir, false); 
+	if (r != 0)
+		goto stop_backup;
+
+	r = copy_remote_files(host, master_ident_file, dest_dir, false); 
+	if (r != 0)
+		goto stop_backup;
+
+stop_backup:
     /* inform the master that we have finished the backup */
 	conn = PQconnectdbParams(keywords, values, true);	
     if (!conn)
@@ -472,13 +514,13 @@ do_standby_clone(void)
     PQclear(res);
     PQfinish(conn);
 
-	if (verbose)
-		printf(_("%s requires primary to keep WAL files %s until at least %s"), 
-					progname, first_wal_segment, last_wal_segment);
-
 	/* Now, if the rsync failed then exit */
 	if (r != 0)
 		return;
+
+	if (verbose)
+		printf(_("%s requires primary to keep WAL files %s until at least %s"), 
+					progname, first_wal_segment, last_wal_segment);
 
 	/* Finally, write the recovery.conf file */
 	create_recovery_file(dest_dir);
@@ -714,4 +756,35 @@ create_recovery_file(const char *data_dir)
     fclose(recovery_file);
 
 	return true;
+}
+
+
+static int
+copy_remote_files(char *host, char *remote_path, char *local_path, bool is_directory)
+{
+	char script[8192];
+	char options[8192];
+	int  r;
+
+	sprintf(options, "--checksum --compress --progress --rsh=ssh"); 
+
+	if (is_directory)
+	{
+		strcat(options, " --archive --hard-links --exclude=pg_xlog* --exclude=pg_control");
+		sprintf(script, "rsync %s %s:%s/* %s", 
+						options, host, remote_path, local_path);
+	}
+	else
+	{
+		sprintf(script, "rsync %s %s:%s %s/.", 
+						options, host, remote_path, local_path);
+	}
+
+	r = system(script);
+	
+    if (r != 0)
+        fprintf(stderr, _("Can't rsync from remote file or directory (%s:%s)\n"), 
+						host, remote_path);
+
+	return r;
 }
