@@ -240,7 +240,7 @@ do_standby_clone(void)
     const char	*last_wal_segment = NULL;
 
 	if (dest_dir == NULL)
-		strcpy(dest_dir, ".");
+		dest_dir = ".";
 
 	/* Check this directory could be used as a PGDATA dir */
     switch (check_dir(dest_dir))
