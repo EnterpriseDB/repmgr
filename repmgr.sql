@@ -26,11 +26,23 @@ CREATE TABLE repl_monitor (
 
 
 /*
- * A useful view 
+ * This view shows the latest monitor info about every node.
+ * Interesting thing to see:
+ * replication_lag: in bytes (this is how far the latest xlog record 
+ *                            we have received is from master)
+ * apply_lag: in bytes (this is how far the latest xlog record
+ *                      we have applied is from the latest record we 
+ *                      have received)
+ * time-lag: how many seconds are we from being up-to-date with master
  */
 drop view if exists repl_status;
 CREATE VIEW repl_status AS
-SELECT *, now() - (select max(last_monitor_time) from repl_monitor b
-                    where b.primary_node = a.primary_node
-                      and b.standby_node = a.standby_node)
-  FROM repl_monitor a;
+WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node
+                                                       ORDER BY last_monitor_time desc)
+                        FROM repl_monitor)
+SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, 
+       last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, 
+       pg_size_pretty(apply_lag) apply_lag, 
+       age(now(), last_monitor_time) AS time_lag
+  FROM monitor_info a
+ WHERE row_number = 1;

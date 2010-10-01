@@ -33,14 +33,14 @@ bool	verbose = false;
 
 
 static void help(const char *progname);
-void checkClusterConfiguration(void);
-void checkNodeConfiguration(char *conninfo);
-void getPrimaryConnection(void);
+static void checkClusterConfiguration(void);
+static void checkNodeConfiguration(char *conninfo);
+static void getPrimaryConnection(void);
 
-void MonitorCheck(void);
-void MonitorExecute(void);
+static void MonitorCheck(void);
+static void MonitorExecute(void);
 
-unsigned long long int walLocationToBytes(char *wal_location);
+static unsigned long long int walLocationToBytes(char *wal_location);
 
 
 int
@@ -111,6 +111,13 @@ main(int argc, char **argv)
 	 * and start monitor
      */
 	myLocalMode = is_standby(myLocalConn) ? STANDBY_MODE : PRIMARY_MODE;
+	if (myLocalMode == PRIMARY_MODE)
+	{
+		primaryId = myLocalId;
+		strcpy(primaryConninfo, conninfo);
+		primaryConn = myLocalConn;
+	}
+
 	checkClusterConfiguration();
 	checkNodeConfiguration(conninfo);
 	if (myLocalMode == STANDBY_MODE)
@@ -132,9 +139,7 @@ main(int argc, char **argv)
  * This function ask if we are in recovery, if false we are the primary else 
  * we are a standby
  */
-
-
-void
+static void
 getPrimaryConnection(void)
 {
     PGresult *res1;
@@ -199,7 +204,7 @@ getPrimaryConnection(void)
 }
 
 
-void
+static void
 MonitorCheck(void) { 
 	/*
 	 * Every 3 seconds, insert monitor info
@@ -215,8 +220,7 @@ MonitorCheck(void) {
 /*
  * Check if its time for next monitor call and if so, do it.
  */
-
-void
+static void
 MonitorExecute(void)
 {
     PGresult *res;
@@ -291,7 +295,7 @@ MonitorExecute(void)
 }
 
 
-void
+static void
 checkClusterConfiguration(void)
 {
     PGresult   *res;
@@ -324,7 +328,7 @@ checkClusterConfiguration(void)
 }
 
 
-void
+static void
 checkNodeConfiguration(char *conninfo)
 {
     PGresult   *res;
@@ -372,7 +376,7 @@ checkNodeConfiguration(char *conninfo)
 }
 
 
-unsigned long long int 
+static unsigned long long int 
 walLocationToBytes(char *wal_location)
 {
     unsigned int xlogid;
