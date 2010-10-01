@@ -551,7 +551,9 @@ do_standby_promote(void)
 		fprintf(stderr, _("Ignoring dest-dir option because it has no meaning while promoting"));
 
     /* Connection parameters for standby. always use localhost for standby */
+	keywords[0] = "host";
     values[0] = "localhost";
+	keywords[1] = "port";
     values[1] = standbyport;
 
 	/* We need to connect to check configuration */
@@ -562,6 +564,13 @@ do_standby_promote(void)
                 progname);
         return;
     }
+
+	if (!is_supported_version(conn))
+	{
+		PQfinish(conn);
+		fprintf(stderr, _("%s needs PostgreSQL 9.0 or better\n"), progname); 
+		return;
+	}
 
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
@@ -619,7 +628,9 @@ do_standby_follow(void)
 	char		data_dir[MAXLEN];
 
     /* Connection parameters for master */
+	keywords[0] = "host";
     values[0] = host;
+	keywords[1] = "port";
     values[1] = masterport;
 
 	conn = PQconnectdbParams(keywords, values, true);	
