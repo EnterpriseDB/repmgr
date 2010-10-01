@@ -467,8 +467,16 @@ do_standby_clone(void)
 	 * On error we need to return but before that execute pg_stop_backup()
 	 */
 
+	/* need to create the global sub directory */
 	sprintf(master_control_file, "%s/global/pg_control", master_data_directory);
 	sprintf(local_control_file, "%s/global", dest_dir);
+	if (!create_directory(local_control_file))
+	{	
+    	fprintf(stderr, _("%s: couldn't create directory %s ... "), 
+						progname, dest_dir);
+		goto stop_backup;
+	}
+
 	r = copy_remote_files(host, master_control_file, local_control_file, false); 
 	if (r != 0)
 		goto stop_backup;
@@ -521,6 +529,14 @@ stop_backup:
 	if (verbose)
 		printf(_("%s requires primary to keep WAL files %s until at least %s"), 
 					progname, first_wal_segment, last_wal_segment);
+
+	/* we need to create the pg_xlog sub directory too, i'm reusing a variable here */
+	sprintf(local_control_file, "%s/pg_xlog", dest_dir);
+	if (!create_directory(local_control_file))
+	{	
+    	fprintf(stderr, _("%s: couldn't create directory %s, you will need to do it manually... "), 
+						progname, dest_dir);
+	}
 
 	/* Finally, write the recovery.conf file */
 	create_recovery_file(dest_dir);
