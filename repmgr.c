@@ -817,7 +817,7 @@ copy_remote_files(char *host, char *remote_path, char *local_path, bool is_direc
 	if (is_directory)
 	{
 		strcat(options, " --archive --exclude=pg_xlog* --exclude=pg_control");
-		sprintf(script, "rsync %s %s:%s %s", 
+		sprintf(script, "rsync %s %s:%s/* %s", 
 						options, host, remote_path, local_path);
 	}
 	else
