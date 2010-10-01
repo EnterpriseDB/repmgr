@@ -233,7 +233,8 @@ do_standby_clone(void)
 	PGresult	*res;
 	char 		sqlquery[8192];
 
-	int			r, i;
+	int			r;
+	int			i;
 	char		master_data_directory[MAXLEN];
 	char		master_config_file[MAXLEN];
 	char		master_hba_file[MAXLEN];
@@ -452,7 +453,6 @@ do_standby_clone(void)
     }
 	first_wal_segment = PQgetvalue(res, 0, 0);
 	PQclear(res);
-	PQfinish(conn);
 
 	/*
 	 * 1) first move global/pg_control 
@@ -484,6 +484,25 @@ do_standby_clone(void)
 	r = copy_remote_files(host, master_data_directory, dest_dir, true); 
 	if (r != 0)
 		goto stop_backup;
+
+    /* 
+	 * Copy tablespace locations, i'm doing this separately because i couldn't find and appropiate
+     * rsync option but besides we could someday make all these rsync happen concurrently
+     */
+    sprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
+    res = PQexec(conn, sqlquery);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+    {
+        fprintf(stderr, "Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+		goto stop_backup;
+    }
+    for (i = 0; i < PQntuples(res); i++)
+	{
+		r = copy_remote_files(host, PQgetvalue(res, i, 0), PQgetvalue(res, i, 0), true); 
+		if (r != 0)
+			goto stop_backup;
+	}
 
 	r = copy_remote_files(host, master_config_file, dest_dir, false); 
 	if (r != 0)
@@ -797,8 +816,8 @@ copy_remote_files(char *host, char *remote_path, char *local_path, bool is_direc
 
 	if (is_directory)
 	{
-		strcat(options, " --archive --hard-links --exclude=pg_xlog* --exclude=pg_control");
-		sprintf(script, "rsync %s %s:%s/* %s", 
+		strcat(options, " --archive --exclude=pg_xlog* --exclude=pg_control");
+		sprintf(script, "rsync %s %s:%s %s", 
 						options, host, remote_path, local_path);
 	}
 	else
