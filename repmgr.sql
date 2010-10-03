@@ -1,3 +1,8 @@
+CREATE USER repmgr;
+CREATE DATABASE repmgr OWNER repmgr;
+
+\c repmgr
+
 /*
  * The table repl_nodes keeps information about all machines in
  * a cluster
@@ -8,6 +13,7 @@ CREATE TABLE repl_nodes (
   cluster   text	not null,	-- Name to identify the cluster
   conninfo	text	not null 	
 );
+ALTER TABLE repl_nodes OWNER TO repmgr;
 
 /*
  * Keeps monitor info about every node and their relative "position" 
@@ -23,6 +29,7 @@ CREATE TABLE repl_monitor (
   replication_lag                BIGINT NOT NULL, 
   apply_lag                      BIGINT NOT NULL  
 );
+ALTER TABLE repl_monitor OWNER TO repmgr;
 
 
 /*
@@ -46,3 +53,5 @@ SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location,
        age(now(), last_monitor_time) AS time_lag
   FROM monitor_info a
  WHERE row_number = 1;
+
+ALTER VIEW repl_status OWNER TO repmgr;

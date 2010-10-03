@@ -41,6 +41,7 @@ static void help(const char *progname);
 static void checkClusterConfiguration(void);
 static void checkNodeConfiguration(char *conninfo);
 static void getPrimaryConnection(void);
+static void CancelQuery(void);
 
 static void MonitorExecute(void);
 
@@ -144,13 +145,16 @@ main(int argc, char **argv)
 		strcpy(primaryConninfo, conninfo);
 		primaryConn = myLocalConn;
 	}
+	else
+	{
+		/* I need the id of the primary as well as a connection to it */
+		getPrimaryConnection();
+	}
 
 	checkClusterConfiguration();
 	checkNodeConfiguration(conninfo);
 	if (myLocalMode == STANDBY_MODE)
 	{
-		/* I need the id of the primary as well as a connection to it */
-		getPrimaryConnection();
 		MonitorCheck();		
 	}
 
@@ -174,8 +178,8 @@ getPrimaryConnection(void)
 
 	/* find all nodes belonging to this cluster */
 	sprintf(sqlquery, "SELECT * FROM repl_nodes "
- 					  " WHERE cluster = '%s' ",
-					  myClusterName);
+ 					  " WHERE cluster = '%s' and id <> %d",
+					  myClusterName, myLocalId);
 
     res1 = PQexec(myLocalConn, sqlquery);
     if (PQresultStatus(res1) != PGRES_TUPLES_OK)

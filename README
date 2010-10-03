@@ -1,4 +1,5 @@
-=====================================================
+repmgr daemon
+==================================================================
 repmgr: Replication Manager for PostgreSQL's clusters
 =====================================================
 
@@ -23,6 +24,15 @@ repmgr works in two components:
 COMMANDS
 ========
 
+None of this commands need the repmgr.conf file but they need to be able to
+connect to the remote and local database.
+
+You can teach it which is the remote database by using the -h parameter or 
+as a last parameter in standby clone and standby follow. If you need to specify
+a port different then the default 5432 you can specify a -p parameter.
+Standby is always considered as localhost and a second -p parameter will indicate
+its port if is different from the default one.
+
 * standby clone [node to be cloned] 
 
 Backup via rsync the data directory of the primary. And creates the recovery file
@@ -31,6 +41,8 @@ It doesn't need the repmgr.conf so it can be executed anywhere in the new node.
 So, you can step where you want your new data directory and execute:
 
 ./repmgr standby clone 10.68.1.161
+or from wherever you are
+./repmgr -D /path/to/new/data/directory standby clone 10.68.1.161
 
 That will make a backup of the primary then you only need to execute:
 
@@ -77,7 +89,32 @@ host     all              all         10.8.0.0/24         trust
 host     replication      all         10.8.0.0/24         trust
 
 
-Configuration file
+EXAMPLES
+========
+
+Suppose we have 3 nodes: node1 (the master), node2 and node3
+
+To make node2 and node3 be standbys of node1, execute this on both nodes (node2 and node3):
+repmgr -D /var/lib/postgresql/9.0 standby clone node1
+
+If we lose node1 we can run on node2:
+repmgr standby promote 
+
+which makes node2 the new master, we then run on node3:
+repmgr standby follow node2
+
+to make node3 follow node2 (rather than node1)
+
+If now we want to add a new node we can a prepare a new server (node4) and run: 
+repmgr -D /var/lib/postgresql/9.0 standby clone node2
+
+NOTE: you need to have PGDIR/bin in your path, if you don't want that as a 
+permanent setting you can do it this way:
+
+PATH=$PGDIR/bin:$PATH repmgr standby promote
+
+
+CONFIGURATION FILE
 ==================
 
 repmgr.conf: This is looked for in the directory repmgrd or repmgr exists
@@ -85,3 +122,11 @@ The configuration file should have 3 lines:
 cluster : tha name of this cluster
 node    : specify the number of this node inside the cluster
 conninfo: specify how we can connect to this node's PostgreSQL service 
+
+
+REPMGR DAEMON
+=============
+
+It reads the repmgr.conf file in current directory or as indicated with -f 
+parameter looks if the standby is in repl_nodes and if it is no
+The repmgr daemon creates 2 connections: one to master and other to standby.

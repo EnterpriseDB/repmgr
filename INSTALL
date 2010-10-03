@@ -3,11 +3,14 @@ repmgr
 
 To install repmgr and repmgrd follow this steps:
 
-1) Extract the distribution tar file into the contrib directory of the PostgreSQL distribution sources
+1) Extract the distribution tar file into the contrib directory of the 
+   PostgreSQL distribution sources
 2) Check your primary server is correctly configured
 3) Write a suitable repmgr.conf for the node
 4) Build repmgr programs 
-5) Set up trusted copy between postgres accounts (this is only useful for the STANDBY CLONE case)
+5) Set up trusted copy between postgres accounts (this is only useful for the 
+   STANDBY CLONE case)
+6) repmgrd additional steps
 
 
 Extract the distribution tar file 
@@ -27,26 +30,32 @@ postgresql.conf
 listen_addresses='*'
 wal_level = 'hot_standby'
 archive_mode = on
-archive_command = 'cd .'	 # we can also use exit 0, anything that just do nothing
+archive_command = 'cd .'	 # we can also use exit 0, anything that just do 
+                             # nothing
 max_wal_senders = 10
-wal_keep_segments = 5000      # 80 GB required on pg_xlog
+wal_keep_segments = 5000     # 80 GB required on pg_xlog
 hot_standby = on
 
-Also you need to add the machines that will participate in the cluster in pg_hba.conf.
+Also you need to add the machines that will participate in the cluster in 
+pg_hba.conf. 
+NOTE: Is preferred that you have a repmgr user and database and just give 
+access to that user, also if you put a password to the user you need to create
+a .pgpass file
 ie:
-host     all              all         10.8.0.0/24         trust
+
+host     repmgr           repmgr      10.8.0.0/24         trust
 host     replication      all         10.8.0.0/24         trust
 
 
 Write a suitable repmgr.conf
 ============================
 
-This should be placed in the same place as the programs, we will keep it in repmgr-1.0;
-and should have these three parameters:
+It should have these three parameters:
 
 1) cluster: A string (single quoted) that identify the cluster we are on 
 2) node: An integer that identify our node in the cluster
-3) conninfo: A string (single quoted) that teach has how to connect to this node
+3) conninfo: A string (single quoted) that teach repmgr how to connect to this 
+             node
 
 
 Build repmgr programs
@@ -55,15 +64,19 @@ Build repmgr programs
 make repmgr
 make repmgrd
 
-make install (this will put the binaries on the same location as your postgres binaries)
+make install (this will put the binaries on the same location as your postgres 
+binaries)
 
 
 Set up trusted copy between postgres accounts
 ---------------------------------------------
 
-Initial copy between nodes uses the rsync program running over ssh.  For this to work, the postgres accounts on each system need to be able to access files on their partner node without a password.
+Initial copy between nodes uses the rsync program running over ssh.  For this 
+to work, the postgres accounts on each system need to be able to access files 
+on their partner node without a password.
 
-First generate a ssh key, using an empty passphrase, and copy the resulting keys and a maching authorization file to a privledged user on the other system::
+First generate a ssh key, using an empty passphrase, and copy the resulting 
+keys and a maching authorization file to a privledged user on the other system:
 
   [postgres@db1]$ ssh-keygen -t rsa
   Generating public/private rsa key pair.
@@ -79,7 +92,8 @@ First generate a ssh key, using an empty passphrase, and copy the resulting keys
   [postgres@db1]$ cd ~/.ssh
   [postgres@db1]$ scp id_rsa.pub id_rsa authorized_keys user@db2:
 
-Login as that user on the other system, and install the files into the postgres user's account::
+Login as that user on the other system, and install the files into the postgres 
+user's account::
 
   [user@db2 ~]$ sudo chown postgres.postgres authorized_keys id_rsa.pub id_rsa
   [user@db2 ~]$ sudo mkdir -p ~postgres/.ssh
@@ -87,11 +101,15 @@ Login as that user on the other system, and install the files into the postgres 
   [user@db2 ~]$ sudo mv authorized_keys id_rsa.pub id_rsa ~postgres/.ssh
   [user@db2 ~]$ sudo chmod -R go-rwx ~postgres/.ssh
 
-Now test that ssh in both directions works (you may have to accept some new known hosts in the process)
+Now test that ssh in both directions works (you may have to accept some new 
+known hosts in the process)
 
 
-repmgr daemon
-=============
+repmgrd additional steps
+========================
 
-To use the repmgrd (repmgr daemon) to monitor standby's so we know which ones are more like primary you need to execute the repmgr.sql script in the postgres database.
+To use the repmgrd (repmgr daemon) to monitor standby so we know how is going 
+the replication and how far they are from primary, you need to execute the 
+repmgr.sql script in the postgres database.
+
 You also need to add a row for every node in the repl_node table
