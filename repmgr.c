@@ -357,19 +357,22 @@ do_standby_clone(void)
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
+		char *tblspc_dir;
+
+		strcpy(tblspc_dir, PQgetvalues(res, i, 0));
 		/* Check this directory could be used as a PGDATA dir */
-	    switch (check_dir(PQgetvalue(res, i, 0)))
+	    switch (check_dir(tblspc_dir))
 	    {
 	        case 0:
-	            /* dest_dir not there, must create it */
+	            /* tblspc_dir not there, must create it */
 				if (verbose)
-		            printf(_("creating directory \"%s\"... "), dest_dir);
+		            printf(_("creating directory \"%s\"... "), tblspc_dir);
 	            fflush(stdout);
 	
-	            if (!create_directory(dest_dir))
+	            if (!create_directory(tblspc_dir))
 				{
 	            	fprintf(stderr, _("%s: couldn't create directory \"%s\"... "), 
-							progname, dest_dir);
+							progname, tblspc_dir);
 					PQclear(res);
 					PQfinish(conn);
 					return;
@@ -379,13 +382,13 @@ do_standby_clone(void)
 	            /* Present but empty, fix permissions and use it */
 				if (verbose)
 		            printf(_("fixing permissions on existing directory \"%s\"... "),
-	   			                dest_dir);
+	   			                tblspc_dir);
    	         fflush(stdout);
 	
-   	         if (!set_directory_permissions(dest_dir))
+   	         if (!set_directory_permissions(tblspc_dir))
    	         {
    	             fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
-   	                     progname, dest_dir, strerror(errno));
+   	                     progname, tblspc_dir, strerror(errno));
 					PQclear(res);
 					PQfinish(conn);
 					return;
@@ -395,14 +398,14 @@ do_standby_clone(void)
    	         /* Present and not empty */
 			fprintf(stderr,
    	        		_("%s: directory \"%s\" exists but is not empty\n"),
-   	                progname, dest_dir);
+   	                progname, tblspc_dir);
 			PQclear(res);
 			PQfinish(conn);
    	        return;     
    	     default:
    	         /* Trouble accessing directory */
    	        fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
-   	                progname, dest_dir, strerror(errno));
+   	                progname, tblspc_dir, strerror(errno));
 			PQclear(res);
 			PQfinish(conn);
 			return;
