@@ -359,7 +359,7 @@ do_standby_clone(void)
 	{
 		char *tblspc_dir;
 
-		strcpy(tblspc_dir, PQgetvalues(res, i, 0));
+		strcpy(tblspc_dir, PQgetvalue(res, i, 0));
 		/* Check this directory could be used as a PGDATA dir */
 	    switch (check_dir(tblspc_dir))
 	    {
