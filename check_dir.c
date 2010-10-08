@@ -202,3 +202,15 @@ mkdir_p(char *path, mode_t omode)
 		(void) umask(oumask);
 	return retval;
 }
+
+
+bool
+is_pg_dir(char *dir)
+{
+	char	path[8192];
+	struct stat sb;
+
+	sprintf(path, "%s/PG_VERSION", dir);
+
+        return (stat(path, &sb) == 0) ? true : false;
+}

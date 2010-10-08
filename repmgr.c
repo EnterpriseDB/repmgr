@@ -44,6 +44,7 @@ char		*host = NULL;
 char		*username = NULL;
 char		*dest_dir = NULL;
 bool		verbose = false;
+bool		force = false;
 
 int			numport = 0;
 char		*masterport = NULL;
@@ -62,6 +63,7 @@ main(int argc, char **argv)
 		{"port", required_argument, NULL, 'p'},
 		{"username", required_argument, NULL, 'U'},
 		{"dest-dir", required_argument, NULL, 'D'},
+		{"force", no_argument, NULL, 'f'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
 	};
@@ -87,7 +89,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:v", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:fv", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -117,6 +119,9 @@ main(int argc, char **argv)
 			case 'D':
 				dest_dir = optarg;
 				break;			
+			case 'f':
+				force = true;
+				break;
 			case 'v':
 				verbose = true;
 				break;
@@ -235,6 +240,7 @@ do_standby_clone(void)
 
 	int			r;
 	int			i;
+	bool		pg_dir = false;
 	char		master_data_directory[MAXLEN];
 	char		master_config_file[MAXLEN];
 	char		master_hba_file[MAXLEN];
@@ -284,7 +290,23 @@ do_standby_clone(void)
             fprintf(stderr,
                     _("%s: directory \"%s\" exists but is not empty\n"),
                     progname, dest_dir);
-            return;     
+
+		pg_dir = is_pg_dir(dest_dir);
+			if (pg_dir && !force) 
+			{
+				fprintf(stderr, _("\nThis looks like a PostgreSQL directroy.\n"
+						  "If you are sure you want to clone here, "
+						  "please check there is no PostgreSQL server " 
+						  "running and use the --force option\n"));
+				return;
+			}
+			else if (pg_dir && force)
+			{
+				/* Let it continue */
+				break;
+			}
+			else 
+				return;
         default:
             /* Trouble accessing directory */
             fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
@@ -357,7 +379,7 @@ do_standby_clone(void)
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		char *tblspc_dir;
+		char *tblspc_dir = NULL;
 
 		strcpy(tblspc_dir, PQgetvalue(res, i, 0));
 		/* Check this directory could be used as a PGDATA dir */
@@ -396,12 +418,15 @@ do_standby_clone(void)
    	         break;
    	     case 2:
    	         /* Present and not empty */
-			fprintf(stderr,
-   	        		_("%s: directory \"%s\" exists but is not empty\n"),
-   	                progname, tblspc_dir);
-			PQclear(res);
-			PQfinish(conn);
-   	        return;     
+			if (!force)
+			{
+				fprintf(stderr,
+   		        		_("%s: directory \"%s\" exists but is not empty\n"),
+   			                progname, tblspc_dir);
+				PQclear(res);
+				PQfinish(conn);
+   	        		return;     
+			}
    	     default:
    	         /* Trouble accessing directory */
    	        fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
@@ -815,11 +840,13 @@ copy_remote_files(char *host, char *remote_path, char *local_path, bool is_direc
 	char options[8192];
 	int  r;
 
-	sprintf(options, "--checksum --compress --progress --rsh=ssh"); 
+	sprintf(options, "--archive --checksum --compress --progress --rsh=ssh"); 
+	if (force)
+		strcat(options, " --delete");
 
 	if (is_directory)
 	{
-		strcat(options, " --archive --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
+		strcat(options, " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
 		sprintf(script, "rsync %s %s:%s/* %s", 
 						options, host, remote_path, local_path);
 	}
