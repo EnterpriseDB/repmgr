@@ -63,7 +63,7 @@ main(int argc, char **argv)
 		{"port", required_argument, NULL, 'p'},
 		{"username", required_argument, NULL, 'U'},
 		{"dest-dir", required_argument, NULL, 'D'},
-		{"force", no_argument, NULL, 'f'},
+		{"force", no_argument, NULL, 'F'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
 	};
@@ -89,7 +89,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:fv", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:Fv", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -119,7 +119,7 @@ main(int argc, char **argv)
 			case 'D':
 				dest_dir = optarg;
 				break;			
-			case 'f':
+			case 'F':
 				force = true;
 				break;
 			case 'v':
