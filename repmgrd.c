@@ -234,10 +234,10 @@ MonitorExecute(void)
 	 * Build the SQL to execute on primary
 	 */
 	sprintf(sqlquery,
-				"INSERT INTO repl_monitor "
+				"INSERT INTO repmgr_%s.repl_monitor "
 				"VALUES(%d, %d, '%s'::timestamp with time zone, "
                       " '%s', '%s', "
-					  " %lld, %lld)",
+					  " %lld, %lld)", myClusterName,
                 primaryId, myLocalId, monitor_standby_timestamp, 
 				last_wal_primary_location, 
 				last_wal_standby_received, 
@@ -259,8 +259,10 @@ checkClusterConfiguration(void)
 {
     PGresult   *res;
 
-    res = PQexec(myLocalConn, "SELECT oid FROM pg_class "
-							  " WHERE relname = 'repl_nodes'");
+	sprintf(sqlquery, "SELECT oid FROM pg_class "
+					  " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
+					  myClusterName);
+    res = PQexec(myLocalConn, sqlquery); 
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
         fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(myLocalConn));
@@ -295,9 +297,9 @@ checkNodeConfiguration(char *conninfo)
 	/*
 	 * Check if we have my node information in repl_nodes
 	 */
-	sprintf(sqlquery, "SELECT * FROM repl_nodes "
+	sprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
  					  " WHERE id = %d AND cluster = '%s' ",
-					  myLocalId, myClusterName);
+					  myClusterName, myLocalId, myClusterName);
 
     res = PQexec(myLocalConn, sqlquery); 
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -317,9 +319,9 @@ checkNodeConfiguration(char *conninfo)
 	{
         PQclear(res);
 		/* Adding the node */
-		sprintf(sqlquery, "INSERT INTO repl_nodes "
+		sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 						  "VALUES (%d, '%s', '%s')",
-						  myLocalId, myClusterName, conninfo); 
+						  myClusterName, myLocalId, myClusterName, conninfo); 
 
     	if (!PQexec(primaryConn, sqlquery))
 		{

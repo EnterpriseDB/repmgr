@@ -310,7 +310,7 @@ do_master_register(void)
         return;
 	}
 	
-	if (!PQgetisnull(res, 0, 0))	/* schema exists */
+	if (!PQntuples(res) > 0)	/* schema exists */
 	{
 		if (!force)					/* and we are not forcing so error */
 		{
@@ -476,7 +476,7 @@ do_standby_register(void)
         return;
 	}
 	
-	if (PQgetisnull(res, 0, 0))		/* schema doesn't exists */
+	if (PQntuples(res) == 0)		/* schema doesn't exists */
 	{
 		fprintf(stderr, "Schema repmgr_%s doesn't exists.", myClusterName); 
        	PQclear(res);
