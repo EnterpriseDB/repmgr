@@ -1,7 +1,5 @@
 CREATE USER repmgr;
-CREATE DATABASE repmgr OWNER repmgr;
-
-\c repmgr
+CREATE SCHEMA repmgr;
 
 /*
  * The table repl_nodes keeps information about all machines in
@@ -40,7 +38,7 @@ ALTER TABLE repl_monitor OWNER TO repmgr;
  * apply_lag: in bytes (this is how far the latest xlog record
  *                      we have applied is from the latest record we 
  *                      have received)
- * time-lag: how many seconds are we from being up-to-date with master
+ * time_lag: how many seconds are we from being up-to-date with master
  */
 drop view if exists repl_status;
 CREATE VIEW repl_status AS

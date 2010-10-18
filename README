@@ -33,6 +33,16 @@ a port different then the default 5432 you can specify a -p parameter.
 Standby is always considered as localhost and a second -p parameter will indicate
 its port if is different from the default one.
 
+* master register
+
+Registers a master in a cluster, it needs to be executed before any node is 
+registered
+
+* standby register
+
+Registers a standby in a cluster, it needs to be executed before any repmgrd 
+is executed
+
 * standby clone [node to be cloned] 
 
 Backup via rsync the data directory of the primary. And creates the recovery file
@@ -128,5 +138,17 @@ REPMGR DAEMON
 =============
 
 It reads the repmgr.conf file in current directory or as indicated with -f 
-parameter looks if the standby is in repl_nodes and if it is no
+parameter looks if the standby is in repl_nodes and if it is not add it.
+
+Before you can run the repmgr daemon (repmgrd) you need to register a master
+and at least a standby in a cluster, for that you need to use the MASTER 
+REGISTER and STANDBY REGISTER commands.
+
+For example, following last example and assuming that repmgr.conf is in postgres
+home directory you will run this on the master:
+
+repmgr -f /home/postgres/repmgr.conf master register
+
+and the same in the standby.
+
 The repmgr daemon creates 2 connections: one to master and other to standby.

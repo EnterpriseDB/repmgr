@@ -3,10 +3,12 @@
  * Copyright (c) 2ndQuadrant, 2010
  *
  * Command interpreter for the repmgr
- * This module execute some tasks based on commands and then exit
+ * This module is a command-line utility to easily setup a cluster of
+ * hot standby servers for an HA environment
  * 
  * Commands implemented are.
- * STANDBY CLONE, STANDBY FOLLOW, STANDBY PROMOTE
+ * MASTER REGISTER, STANDBY REGISTER, STANDBY CLONE, STANDBY FOLLOW, 
+ * STANDBY PROMOTE
  */
 
 #include "repmgr.h"
@@ -21,15 +23,19 @@
 #define RECOVERY_FILE "recovery.conf"
 #define RECOVERY_DONE_FILE "recovery.done"
 
-#define STANDBY_NORMAL  0		/* Not a real action, just to initialize */
-#define STANDBY_CLONE 	1
-#define STANDBY_PROMOTE 2
-#define STANDBY_FOLLOW 	3
+#define NO_ACTION        0		/* Not a real action, just to initialize */
+#define MASTER_REGISTER  1
+#define STANDBY_REGISTER 2
+#define STANDBY_CLONE 	 3
+#define STANDBY_PROMOTE  4
+#define STANDBY_FOLLOW 	 5
 
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir);
 static int  copy_remote_files(char *host, char *remote_path, char *local_path, bool is_directory);
 
+static void do_master_register(void);
+static void do_standby_register(void);
 static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
@@ -43,6 +49,7 @@ const char	*dbname = NULL;
 char		*host = NULL;
 char		*username = NULL;
 char		*dest_dir = NULL;
+char		*config_file = NULL;
 bool		verbose = false;
 bool		force = false;
 
@@ -50,8 +57,8 @@ int			numport = 0;
 char		*masterport = NULL;
 char		*standbyport = NULL;
 
-char		*stndby = NULL;
-char		*stndby_cmd = NULL;
+char		*server_mode = NULL;
+char		*server_cmd = NULL;
 
 
 int
@@ -63,6 +70,7 @@ main(int argc, char **argv)
 		{"port", required_argument, NULL, 'p'},
 		{"username", required_argument, NULL, 'U'},
 		{"dest-dir", required_argument, NULL, 'D'},
+		{"config-file", required_argument, NULL, 'f'},
 		{"force", no_argument, NULL, 'F'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
@@ -70,7 +78,7 @@ main(int argc, char **argv)
 
 	int			optindex;
 	int			c;
-	int			action = STANDBY_NORMAL;
+	int			action = NO_ACTION;
 
 	progname = get_progname(argv[0]);
 
@@ -89,7 +97,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:Fv", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:F:v", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -119,6 +127,11 @@ main(int argc, char **argv)
 			case 'D':
 				dest_dir = optarg;
 				break;			
+			case 'f':
+				config_file = optarg;
+				if (config_file == NULL)
+					sprintf(config_file, "./%s", CONFIG_FILE);
+				break;			
 			case 'F':
 				force = true;
 				break;
@@ -132,16 +145,17 @@ main(int argc, char **argv)
 	}
 
     /* 
-	 * Now we need to obtain the action, this comes in the form:
-     * STANDBY {CLONE [node]|PROMOTE|FOLLOW [node]}
+	 * Now we need to obtain the action, this comes in one of these forms:
+     * MASTER REGISTER |
+     * STANDBY {REGISTER | CLONE [node] | PROMOTE | FOLLOW [node]}
 	 * 
      * the node part is optional, if we receive it then we shouldn't
      * have received a -h option
      */
     if (optind < argc)
 	{
-        stndby = argv[optind++];
-		if (strcasecmp(stndby, "STANDBY") != 0)
+        server_mode = argv[optind++];
+		if (strcasecmp(server_mode, "STANDBY") != 0 && strcasecmp(server_mode, "MASTER") != 0)
 		{
 			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 			exit(1);
@@ -150,12 +164,25 @@ main(int argc, char **argv)
 
     if (optind < argc)
 	{
-        stndby_cmd = argv[optind++];
-		if (strcasecmp(stndby_cmd, "CLONE") == 0)  
+        server_cmd = argv[optind++];
+		if (strcasecmp(server_cmd, "REGISTER") == 0)  
+		{
+			/* 
+             * we don't use this info in any other place so i will 
+             * just execute the compare again instead of having an 
+             * additional variable to hold a value that we will use 
+             * no more
+             */
+			if (strcasecmp(server_mode, "MASTER") == 0)
+				action = MASTER_REGISTER;
+ 			else if (strcasecmp(server_mode, "STANDBY") == 0)
+				action = STANDBY_REGISTER;
+		}
+		else if (strcasecmp(server_cmd, "CLONE") == 0)  
 			action = STANDBY_CLONE;
-   		else if (strcasecmp(stndby_cmd, "PROMOTE") == 0) 
+   		else if (strcasecmp(server_cmd, "PROMOTE") == 0) 
 			action = STANDBY_PROMOTE;
-   		else if (strcasecmp(stndby_cmd, "FOLLOW") == 0) 
+   		else if (strcasecmp(server_cmd, "FOLLOW") == 0) 
 			action = STANDBY_FOLLOW;
 		else
 		{
@@ -164,8 +191,9 @@ main(int argc, char **argv)
 		}	
 	}
 
-	/* For STANDBY CLONE and STANDBY FOLLOW we still can receive a last argument */
-	if ((action == STANDBY_CLONE) || (action == STANDBY_FOLLOW))
+	/* For some actions we still can receive a last argument */
+	if ((action == STANDBY_CLONE)   || (action == STANDBY_FOLLOW) ||
+        (action == MASTER_REGISTER) || (action == STANDBY_REGISTER))
 	{
 	    if (optind < argc)
 		{
@@ -213,6 +241,12 @@ main(int argc, char **argv)
 
 	switch (action)
 	{
+		case MASTER_REGISTER:
+			do_master_register();
+			break;
+		case STANDBY_REGISTER:
+			do_standby_register();
+			break;
 		case STANDBY_CLONE:
 			do_standby_clone();
 			break;
@@ -232,13 +266,273 @@ main(int argc, char **argv)
 
 
 static void 
+do_master_register(void)
+{
+	PGconn 		*conn;
+	PGresult	*res;
+	char 		sqlquery[8192];
+
+	char    	myClusterName[MAXLEN];
+	int     	myLocalId   = -1;
+    char 		conninfo[MAXLEN]; 
+
+	bool		schema_exists = false;
+
+	/*
+	 * Read the configuration file: repmgr.conf
+     */
+	parse_config(config_file, myClusterName, &myLocalId, conninfo);
+	if (myLocalId == -1) 
+	{
+		fprintf(stderr, "Node information is missing. "
+						"Check the configuration file.\n");
+		exit(1);
+	}
+
+    conn = establishDBConnection(conninfo, true);
+
+	/* Check we are a master */
+	if (is_standby(conn))
+	{
+		fprintf(stderr, "repmgr: This node should be a master\n");
+		PQfinish(conn);
+		return;
+	}
+
+	/* Check if there is a schema for this cluster */
+	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", myClusterName);
+	res = PQexec(conn, sqlquery);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+        fprintf(stderr, "Can't get info about schemas: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        PQfinish(conn);
+        return;
+	}
+	
+	if (!PQgetisnull(res, 0, 0))	/* schema exists */
+	{
+		if (!force)					/* and we are not forcing so error */
+		{
+			fprintf(stderr, "Schema repmgr_%s already exists.", myClusterName); 
+        	PQclear(res);
+        	PQfinish(conn);
+			return;
+		}
+		schema_exists = true;
+	}
+	PQclear(res);
+		
+	if (!schema_exists)
+	{
+		/* ok, create the schema */
+		sprintf(sqlquery, "CREATE SCHEMA repmgr_%s", myClusterName);
+	    if (!PQexec(conn, sqlquery))
+		{
+			fprintf(stderr, "Cannot create the schema repmgr_%s: %s\n",
+							myClusterName, PQerrorMessage(conn));
+	   		PQfinish(conn);
+			return;
+		}
+		
+		/* ... the tables */
+		sprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_nodes (        "
+						  "  id        integer primary key, "
+						  "  cluster   text    not null,    "
+						  "  conninfo  text    not null)", myClusterName);
+	    if (!PQexec(conn, sqlquery))
+		{
+			fprintf(stderr, "Cannot create the table repmgr_%s.repl_nodes: %s\n",
+							myClusterName, PQerrorMessage(conn));
+	   		PQfinish(conn);
+			return;
+		}
+	
+		sprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_monitor ( "
+						  "  primary_node                   INTEGER NOT NULL, "
+						  "  standby_node                   INTEGER NOT NULL, "
+						  "  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL, "
+						  "  last_wal_primary_location      TEXT NOT NULL,   "
+						  "  last_wal_standby_location      TEXT NOT NULL,   "
+						  "  replication_lag                BIGINT NOT NULL, "
+						  "  apply_lag                      BIGINT NOT NULL) ", myClusterName);
+	    if (!PQexec(conn, sqlquery))
+		{
+			fprintf(stderr, "Cannot create the table repmgr_%s.repl_monitor: %s\n",
+							myClusterName, PQerrorMessage(conn));
+   			PQfinish(conn);
+			return;
+		}
+
+		/* and the view */	
+		sprintf(sqlquery, "CREATE VIEW repmgr_%s.repl_status AS "
+						  "  WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
+    	                                                                          " ORDER BY last_monitor_time desc) "
+			                                      "  FROM repmgr_%s.repl_monitor) "
+						  "  SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
+    	                  "         last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, " 
+						  "         pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
+						  "    FROM monitor_info a "
+						  "   WHERE row_number = 1", myClusterName, myClusterName);
+    	if (!PQexec(conn, sqlquery))
+		{
+			fprintf(stderr, "Cannot create the view repmgr_%s.repl_status: %s\n",
+							myClusterName, PQerrorMessage(conn));
+   			PQfinish(conn);
+			return;
+		}
+	}
+	else
+	{
+		PGconn *master_conn;
+		int 	id;
+
+		/* Ensure there isn't any other master already registered */
+		master_conn = getMasterConnection(conn, myLocalId, myClusterName, &id);		
+		if (master_conn != NULL)
+		{
+			PQfinish(master_conn);
+			fprintf(stderr, "There is a master already in this cluster");
+			return;
+		}
+	}
+
+	/* Now register the master */
+	if (force)
+	{
+    	sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
+        	              " WHERE id = %d",
+            	          myClusterName, myLocalId);
+
+	    if (!PQexec(conn, sqlquery))
+    	{
+    		fprintf(stderr, "Cannot delete node details, %s\n",
+    	                    PQerrorMessage(conn));
+    	    PQfinish(conn);
+			return;
+    	}
+	}
+
+    sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
+                      "VALUES (%d, '%s', '%s')",
+                      myClusterName, myLocalId, myClusterName, conninfo);
+                      
+    if (!PQexec(conn, sqlquery))
+    {
+    	fprintf(stderr, "Cannot insert node details, %s\n",
+                        PQerrorMessage(conn));
+        PQfinish(conn);
+		return;
+    }
+
+	PQfinish(conn);
+	return;
+}
+
+
+static void 
+do_standby_register(void)
+{
+	PGconn 		*conn;
+	PGconn		*master_conn;
+	int			master_id;
+
+	PGresult	*res;
+	char 		sqlquery[8192];
+
+	char    	myClusterName[MAXLEN];
+	int     	myLocalId   = -1;
+    char 		conninfo[MAXLEN]; 
+
+	/*
+	 * Read the configuration file: repmgr.conf
+     */
+	parse_config(config_file, myClusterName, &myLocalId, conninfo);
+	if (myLocalId == -1) 
+	{
+		fprintf(stderr, "Node information is missing. "
+						"Check the configuration file.\n");
+		exit(1);
+	}
+
+    conn = establishDBConnection(conninfo, true);
+
+	/* Check we are a standby */
+	if (!is_standby(conn))
+	{
+		fprintf(stderr, "repmgr: This node should be a standby\n");
+		PQfinish(conn);
+		return;
+	}
+
+	/* Check if there is a schema for this cluster */
+	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", myClusterName);
+	res = PQexec(conn, sqlquery);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+        fprintf(stderr, "Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
+        PQclear(res);
+        PQfinish(conn);
+        return;
+	}
+	
+	if (PQgetisnull(res, 0, 0))		/* schema doesn't exists */
+	{
+		fprintf(stderr, "Schema repmgr_%s doesn't exists.", myClusterName); 
+       	PQclear(res);
+       	PQfinish(conn);
+		return;
+	}
+	PQclear(res);
+		
+	master_conn = getMasterConnection(conn, myLocalId, myClusterName, &master_id);
+	if (!master_conn)
+		return;
+
+	/* Now register the standby */
+
+	if (force)
+	{
+    	sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
+        	              " WHERE id = %d",
+            	          myClusterName, myLocalId);
+
+	    if (!PQexec(master_conn, sqlquery))
+    	{
+    		fprintf(stderr, "Cannot delete node details, %s\n",
+    	                    PQerrorMessage(master_conn));
+    	    PQfinish(master_conn);
+    	    PQfinish(conn);
+			return;
+    	}
+	}
+
+    sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
+                      "VALUES (%d, '%s', '%s')",
+                      myClusterName, myLocalId, myClusterName, conninfo);
+                      
+    if (!PQexec(master_conn, sqlquery))
+    {
+    	fprintf(stderr, "Cannot insert node details, %s\n",
+                        PQerrorMessage(master_conn));
+        PQfinish(master_conn);
+        PQfinish(conn);
+		return;
+    }
+
+	PQfinish(master_conn);
+	PQfinish(conn);
+	return;
+}
+
+static void 
 do_standby_clone(void)
 {
 	PGconn 		*conn;
 	PGresult	*res;
 	char 		sqlquery[8192];
 
-	int			r;
+	int			r = 0;
 	int			i;
 	bool		pg_dir = false;
 	char		master_data_directory[MAXLEN];
@@ -783,10 +1077,12 @@ help(const char *progname)
 	printf(_("  -h, --host=HOSTNAME       database server host or socket directory\n"));
 	printf(_("  -p, --port=PORT           database server port\n"));
 	printf(_("  -U, --username=USERNAME   user name to connect as\n"));
-	printf(_("  -D, --data-dir=DIR   	  directory where the files will be copied to\n"));
+	printf(_("  -D, --data-dir=DIR        directory where the files will be copied to\n"));
     printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
     printf(_("or making follow another node and then exits.\n"));
     printf(_("COMMANDS:\n"));
+    printf(_(" master register       - registers the master in a cluster\n"));
+    printf(_(" standby register      - registers a standby in a cluster\n"));
     printf(_(" standby clone [node]  - allows creation of a new standby\n"));
     printf(_(" standby promote       - allows manual promotion of a specific standby into a "));
     printf(_("new master in the event of a failover\n"));

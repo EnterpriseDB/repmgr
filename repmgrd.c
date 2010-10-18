@@ -40,7 +40,6 @@ bool	verbose = false;
 static void help(const char *progname);
 static void checkClusterConfiguration(void);
 static void checkNodeConfiguration(char *conninfo);
-static void getPrimaryConnection(void);
 static void CancelQuery(void);
 
 static void MonitorExecute(void);
@@ -148,7 +147,9 @@ main(int argc, char **argv)
 	else
 	{
 		/* I need the id of the primary as well as a connection to it */
-		getPrimaryConnection();
+		primaryConn = getMasterConnection(myLocalConn, myLocalId, myClusterName, &primaryId);
+		if (primaryConn == NULL)
+			exit(1);
 	}
 
 	checkClusterConfiguration();
@@ -163,88 +164,6 @@ main(int argc, char **argv)
 
     return 0;
 }
-
-
-/*
- * get a connection to primary by reading repl_nodes, creating a connection 
- * to each node (one at a time) and finding if it is a primary or a standby
- */
-static void
-getPrimaryConnection(void)
-{
-    PGresult *res1;
-    PGresult *res2;
-	int		  i;
-
-	/* find all nodes belonging to this cluster */
-	sprintf(sqlquery, "SELECT * FROM repl_nodes "
- 					  " WHERE cluster = '%s' and id <> %d",
-					  myClusterName, myLocalId);
-
-    res1 = PQexec(myLocalConn, sqlquery);
-    if (PQresultStatus(res1) != PGRES_TUPLES_OK)
-    {
-        fprintf(stderr, "Can't get nodes info: %s\n", PQerrorMessage(myLocalConn));
-        PQclear(res1);
-        CloseConnections();
-		exit(1);
-    }
-
-	for (i = 0; i < PQntuples(res1); i++)
-    {
-		/* initialize with the values of the current node being processed */
-		primaryId   = atoi(PQgetvalue(res1, i, 0));
-		strcpy(primaryConninfo, PQgetvalue(res1, i, 2));
-		primaryConn = establishDBConnection(primaryConninfo, false);
-
-		/* 
-		 * I can't use the is_standby() function here because on error that 
-  		 * function closes the one i pass and exit, but i still need to close
-		 * myLocalConn
-		 */
-    	res2 = PQexec(primaryConn, "SELECT pg_is_in_recovery()");
-    	if (PQresultStatus(res2) != PGRES_TUPLES_OK)
-    	{
-    	    fprintf(stderr, "Can't get nodes info: %s\n", PQerrorMessage(primaryConn));
-			PQclear(res1);
-    	    PQclear(res2);
-        	CloseConnections();
-			exit(1);
-    	}
-
-		/* if false, this is the primary */
-		if (strcmp(PQgetvalue(res2, 0, 0), "f") == 0)
-		{
-			PQclear(res2);
-			PQclear(res1);
-			/* We turn off synchronous_commit for the monitor info inserts */
-    		res1 = PQexec(primaryConn, "SET synchronous_commit TO off");
-			PQclear(res1);
-			return;
-		}
-		else
-		{
-			/* if it is a standby clear info */
-			PQclear(res2);
-			PQfinish(primaryConn);
-			primaryId = -1;
-		}
-    }
-
-	/* If we finish this loop without finding a primary then
-     * we doesn't have the info or the primary has failed (or we 
-     * reached max_connections or superuser_reserved_connections, 
-     * anything else i'm missing?),
-	 * Probably we will need to check the error to know if we need 
-     * to start failover procedure or just fix some situation on the
-     * standby.
-     */
-   	fprintf(stderr, "There isn't a primary node the cluster\n");
-	PQclear(res1);
-	CloseConnections();
-	exit(1);
-}
-
 
 
 /*
