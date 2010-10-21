@@ -207,7 +207,10 @@ main(int argc, char **argv)
 		exit(1);
 
 	if (config_file == NULL)
+	{
+		config_file = malloc(10 + sizeof(CONFIG_FILE));
 		sprintf(config_file, "./%s", CONFIG_FILE);
+	}
 
     if (dbname == NULL)
     {
