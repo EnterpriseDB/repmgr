@@ -62,7 +62,8 @@ pg_ctl -D /your_data_directory_path start
 * standby promote 
 
 Allows manual promotion of a specific standby into a new primary in the event of a failover
-This needs to be executed on the same directory where the repmgr.conf is in the standby.
+This needs to be executed on the same directory where the repmgr.conf is in the standby or 
+then use the -f option to indicate where the repmgr.conf is.
 Doesn't need any additional arguments:
 
 ./repmgr standby promote
@@ -70,12 +71,13 @@ Doesn't need any additional arguments:
 That will restart your standby postgresql service
 
 
-* standby follow [node to be followed] 
+* standby follow 
 
 Allows the standby to re-point itself to a new primary indicated as a parameter.
-This needs to be executed on the same directory where the repmgr.conf is in the standby.
+This needs to be executed on the same directory where the repmgr.conf is in the standby or 
+then use the -f option to indicate where the repmgr.conf is.
 
-./repmgr standby follow 10.68.1.162
+./repmgr standby follow
 
 
 PRE-REQUISITES
@@ -108,10 +110,10 @@ To make node2 and node3 be standbys of node1, execute this on both nodes (node2 
 repmgr -D /var/lib/postgresql/9.0 standby clone node1
 
 If we lose node1 we can run on node2:
-repmgr standby promote 
+repmgr -f /home/postgres/repmgr.conf standby promote 
 
 which makes node2 the new master, we then run on node3:
-repmgr standby follow node2
+repmgr standby follow
 
 to make node3 follow node2 (rather than node1)
 
