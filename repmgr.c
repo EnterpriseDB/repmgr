@@ -33,6 +33,7 @@
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir);
 static int  copy_remote_files(char *host, char *remote_path, char *local_path, bool is_directory);
+static bool check_parameters_for_action(const int action);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -129,8 +130,6 @@ main(int argc, char **argv)
 				break;			
 			case 'f':
 				config_file = optarg;
-				if (config_file == NULL)
-					sprintf(config_file, "./%s", CONFIG_FILE);
 				break;			
 			case 'F':
 				force = true;
@@ -192,8 +191,7 @@ main(int argc, char **argv)
 	}
 
 	/* For some actions we still can receive a last argument */
-	if ((action == STANDBY_CLONE)   || (action == STANDBY_FOLLOW) ||
-        (action == MASTER_REGISTER) || (action == STANDBY_REGISTER))
+	if (action == STANDBY_CLONE)
 	{
 	    if (optind < argc)
 		{
@@ -216,6 +214,12 @@ main(int argc, char **argv)
 			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 			exit(1);
 	}
+
+	if (!check_parameters_for_action(action))
+		exit(1);
+
+	if (config_file == NULL)
+		sprintf(config_file, "./%s", CONFIG_FILE);
 
     if (dbname == NULL)
     {
@@ -310,7 +314,7 @@ do_master_register(void)
         return;
 	}
 	
-	if (!PQntuples(res) > 0)	/* schema exists */
+	if (PQntuples(res) > 0)			/* schema exists */
 	{
 		if (!force)					/* and we are not forcing so error */
 		{
@@ -547,7 +551,7 @@ do_standby_clone(void)
     const char	*last_wal_segment = NULL;
 
 	if (dest_dir == NULL)
-		dest_dir = ".";
+		strcpy(dest_dir, ".");
 
 	/* Check this directory could be used as a PGDATA dir */
     switch (check_dir(dest_dir))
@@ -895,32 +899,31 @@ do_standby_promote(void)
 	char 		sqlquery[8192];
 	char 		script[8192];
 
+	char    	myClusterName[MAXLEN];
+	int     	myLocalId   = -1;
+    char 		conninfo[MAXLEN]; 
+
+	PGconn		*old_master_conn;
+	int			old_master_id;
+
 	int			r;
 	char		data_dir[MAXLEN];
 	char		recovery_file_path[MAXLEN];
 	char		recovery_done_path[MAXLEN];
 
-	/* 
-	 * dest-dir (-D) option has no meaning here but i see no reason
-	 * to fail, so just give a message if we are in verbode mode
+	/*
+	 * Read the configuration file: repmgr.conf
      */
-	if (verbose && dest_dir)
-		fprintf(stderr, _("Ignoring dest-dir option because it has no meaning while promoting"));
-
-    /* Connection parameters for standby. always use localhost for standby */
-	keywords[0] = "host";
-    values[0] = "localhost";
-	keywords[1] = "port";
-    values[1] = standbyport;
+	parse_config(config_file, myClusterName, &myLocalId, conninfo);
+	if (myLocalId == -1) 
+	{
+		fprintf(stderr, "Node information is missing. "
+						"Check the configuration file.\n");
+		exit(1);
+	}
 
 	/* We need to connect to check configuration */
-	conn = PQconnectdbParams(keywords, values, true);	
-    if (!conn)
-    {
-        fprintf(stderr, _("%s: could not connect to master\n"),
-                progname);
-        return;
-    }
+    conn = establishDBConnection(conninfo, true);
 
 	if (!is_supported_version(conn))
 	{
@@ -936,7 +939,14 @@ do_standby_promote(void)
 		return;
 	}
 
-	/* XXX also we need to check if there isn't any master already */
+	/* we also need to check if there isn't any master already */
+	old_master_conn = getMasterConnection(conn, myLocalId, myClusterName, &old_master_id);		
+	if (old_master_conn != NULL)
+	{
+		PQfinish(old_master_conn);
+		fprintf(stderr, "There is a master already in this cluster");
+		return;
+	}
 
 	if (verbose)
 		printf(_("\n%s: Promoting standby...\n"), progname);
@@ -981,55 +991,76 @@ do_standby_follow(void)
 	char 		sqlquery[8192];
 	char 		script[8192];
 
+	char    	myClusterName[MAXLEN];
+	int     	myLocalId   = -1;
+    char 		conninfo[MAXLEN]; 
+
+	PGconn		*master_conn;
+	int			master_id;
+
 	int			r;
 	char		data_dir[MAXLEN];
 
-    /* Connection parameters for master */
-	keywords[0] = "host";
-    values[0] = host;
-	keywords[1] = "port";
-    values[1] = masterport;
-
-	conn = PQconnectdbParams(keywords, values, true);	
-    if (!conn)
-    {
-        fprintf(stderr, _("%s: could not connect to master\n"),
-                progname);
-        return;
-    }
-
-	/* Check we are going to point to a master */
-	if (is_standby(conn))
+	/*
+	 * Read the configuration file: repmgr.conf
+     */
+	parse_config(config_file, myClusterName, &myLocalId, conninfo);
+	if (myLocalId == -1) 
 	{
-		fprintf(stderr, "repmgr: The node to follow should be a master\n");
-		return;
+		fprintf(stderr, "Node information is missing. "
+						"Check the configuration file.\n");
+		exit(1);
 	}
-	PQfinish(conn);
-
-    /* Connection parameters for standby. always use localhost for standby */
-    values[0] = "localhost";
-    values[1] = standbyport;
 
 	/* We need to connect to check configuration */
-	conn = PQconnectdbParams(keywords, values, true);	
-    if (!conn)
-    {
-        fprintf(stderr, _("%s: could not connect to the local standby\n"),
-                progname);
-        return;
-    }
+    conn = establishDBConnection(conninfo, true);
 
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
 	{
-		fprintf(stderr, "repmgr: The command should be executed in a standby node\n");
+		fprintf(stderr, "\n%s: The command should be executed in a standby node\n", progname);
 		return;
 	}
+
+	/* should be v9 or better */
+	if (!is_supported_version(conn))
+	{
+		PQfinish(conn);
+		fprintf(stderr, _("\n%s needs PostgreSQL 9.0 or better\n"), progname); 
+		return;
+	}
+
+	/* we also need to check if there is any master in the cluster */
+	master_conn = getMasterConnection(conn, myLocalId, myClusterName, &master_id);		
+	if (master_conn == NULL)
+	{
+		PQfinish(conn);
+		fprintf(stderr, "There isn't a master to follow in this cluster");
+		return;
+	}
+
+	/* Check we are going to point to a master */
+	if (is_standby(master_conn))
+	{
+		PQfinish(conn);
+		fprintf(stderr, "%s: The node to follow should be a master\n", progname);
+		return;
+	}
+
+	/* should be v9 or better */
+	if (!is_supported_version(master_conn))
+	{
+		PQfinish(conn);
+		PQfinish(master_conn);
+		fprintf(stderr, _("%s needs PostgreSQL 9.0 or better\n"), progname); 
+		return;
+	}
+	PQfinish(master_conn);
 
 	if (verbose)
 		printf(_("\n%s: Changing standby's master...\n"), progname);
 	
-	/* Get the data directory full path and the last subdirectory */
+	/* Get the data directory full path */
 	sprintf(sqlquery, "SELECT setting "
                        " FROM pg_settings WHERE name = 'data_directory'");
     res = PQexec(conn, sqlquery);
@@ -1067,7 +1098,8 @@ help(const char *progname)
 {
     printf(_("\n%s: Replicator manager \n"), progname);
     printf(_("Usage:\n"));
-    printf(_(" %s [OPTIONS] standby {clone|promote|follow} [master]\n"), progname);
+    printf(_(" %s [OPTIONS] master  {register}\n"), progname);
+    printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"), progname);
     printf(_("\nOptions:\n"));
 	printf(_("  --help                    show this help, then exit\n"));
 	printf(_("  --version                 output version information, then exit\n"));
@@ -1078,6 +1110,7 @@ help(const char *progname)
 	printf(_("  -p, --port=PORT           database server port\n"));
 	printf(_("  -U, --username=USERNAME   user name to connect as\n"));
 	printf(_("  -D, --data-dir=DIR        directory where the files will be copied to\n"));
+	printf(_("  -f, --config_file=PATH    path to the configuration file\n"));
     printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
     printf(_("or making follow another node and then exits.\n"));
     printf(_("COMMANDS:\n"));
@@ -1086,7 +1119,7 @@ help(const char *progname)
     printf(_(" standby clone [node]  - allows creation of a new standby\n"));
     printf(_(" standby promote       - allows manual promotion of a specific standby into a "));
     printf(_("new master in the event of a failover\n"));
-    printf(_(" standby follow [node] - allows the standby to re-point itself to a new master\n"));
+    printf(_(" standby follow        - allows the standby to re-point itself to a new master\n"));
 }
 
 
@@ -1159,4 +1192,130 @@ copy_remote_files(char *host, char *remote_path, char *local_path, bool is_direc
 						host, remote_path);
 
 	return r;
+}
+
+
+/*
+ * Tries to avoid useless or conflicting parameters
+ */
+static bool
+check_parameters_for_action(const int action)
+{
+	bool ok = true;
+
+	switch (action)
+	{
+		case MASTER_REGISTER:
+			/*
+			 * To register a master we only need the repmgr.conf
+			 * all other parameters are at least useless and could be
+			 * confusing so reject them
+			 */
+			if (config_file == NULL) {
+				fprintf(stderr, "\nMASTER REGISTER command needs the config_file parameter.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			if ((host != NULL)   || (masterport != NULL) || (username != NULL) || 
+                (dbname != NULL))
+			{
+				fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a MASTER REGISTER command.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			} 
+			if (dest_dir != NULL) {
+				fprintf(stderr, "\nYou don't need a destination directory for MASTER REGISTER command");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			break;
+		case STANDBY_REGISTER:
+			/*
+			 * To register a standby we only need the repmgr.conf
+			 * we don't need connection parameters to the master
+			 * because we can detect the master in repl_nodes
+			 */
+			if (config_file == NULL) {
+				fprintf(stderr, "\nSTANDBY REGISTER command needs the config_file parameter.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			if ((host != NULL)   || (masterport != NULL) || (username != NULL) || 
+                (dbname != NULL))
+			{
+				fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY REGISTER command.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			} 
+			if (dest_dir != NULL) {
+				fprintf(stderr, "\nYou don't need a destination directory for STANDBY REGISTER command");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			break;
+		case STANDBY_PROMOTE:
+			/*
+			 * To promote a standby we only need the repmgr.conf
+			 * we don't want connection parameters to the master
+			 * because we will try to detect the master in repl_nodes
+			 * if we can't find it then the promote action will be cancelled
+			 */
+			if (config_file == NULL) {
+				fprintf(stderr, "\nSTANDBY PROMOTE command needs the config_file parameter.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			if ((host != NULL)   || (masterport != NULL) || (username != NULL) || 
+                (dbname != NULL))
+			{
+				fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY PROMOTE command.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			} 
+			if (dest_dir != NULL) {
+				fprintf(stderr, "\nYou don't need a destination directory for STANDBY PROMOTE command");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			break;
+		case STANDBY_FOLLOW:
+			/*
+			 * To make a standby follow a master we only need the repmgr.conf
+			 * we don't want connection parameters to the new master
+			 * because we will try to detect the master in repl_nodes
+			 * if we can't find it then the follow action will be cancelled
+			 */
+			if (config_file == NULL) {
+				fprintf(stderr, "\nSTANDBY FOLLOW command needs the config_file parameter.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			if ((host != NULL)   || (masterport != NULL) || (username != NULL) || 
+                (dbname != NULL))
+			{
+				fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY FOLLOW command.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			} 
+			if (dest_dir != NULL) {
+				fprintf(stderr, "\nYou don't need a destination directory for STANDBY FOLLOW command");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			break;
+		case STANDBY_CLONE:
+			/*
+			 * To clone a master into a standby we need connection parameters
+			 * repmgr.conf is useless because we don't have a server running 
+			 * in the standby
+			 */
+			if (config_file != NULL) {
+				fprintf(stderr, "\nYou need to use connection parameters to the master when issuing a STANDBY CLONE command.");
+				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+				ok = false;
+			}
+			break;
+	}
+
+	return ok;
 }
