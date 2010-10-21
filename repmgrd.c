@@ -118,7 +118,10 @@ main(int argc, char **argv)
 	setup_cancel_handler();
 	
 	if (config_file == NULL)
+	{
+		config_file = malloc(5 + sizeof(CONFIG_FILE));
 		sprintf(config_file, "./%s", CONFIG_FILE);
+	}
 
 	/*
 	 * Read the configuration file: repmgr.conf

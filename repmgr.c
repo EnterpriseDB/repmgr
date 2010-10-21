@@ -208,7 +208,7 @@ main(int argc, char **argv)
 
 	if (config_file == NULL)
 	{
-		config_file = malloc(10 + sizeof(CONFIG_FILE));
+		config_file = malloc(5 + sizeof(CONFIG_FILE));
 		sprintf(config_file, "./%s", CONFIG_FILE);
 	}
 
