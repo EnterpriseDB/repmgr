@@ -56,7 +56,6 @@ bool		force = false;
 
 int			numport = 0;
 char		*masterport = NULL;
-char		*standbyport = NULL;
 
 char		*server_mode = NULL;
 char		*server_cmd = NULL;
@@ -109,18 +108,7 @@ main(int argc, char **argv)
 				host = optarg;
 				break;
 			case 'p':
-                numport++;
-                switch (numport)
-                {
-                    case 1:
-                        masterport = optarg;
-                        break;
-                    case 2:
-                        standbyport = optarg;
-                        break;
-                    default:
-                        fprintf(stderr, _("%s: too many parameters of same type; master and standby only\n"), progname);
-                }
+                masterport = optarg;
                 break;
 			case 'U':
 				username = optarg;
@@ -230,9 +218,6 @@ main(int argc, char **argv)
         else
             dbname = "postgres";
     }
-
-    if (standbyport == NULL)
-        standbyport = masterport;
 
     keywords[2] = "user";
     values[2] = username;
