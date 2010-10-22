@@ -477,12 +477,12 @@ do_standby_register(void)
 	}
 	PQclear(res);
 		
+	/* check if there is a master in this cluster */
 	master_conn = getMasterConnection(conn, myLocalId, myClusterName, &master_id);
 	if (!master_conn)
 		return;
 
 	/* Now register the standby */
-
 	if (force)
 	{
     	sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
@@ -538,6 +538,7 @@ do_standby_clone(void)
 	const char	*first_wal_segment = NULL; 
     const char	*last_wal_segment = NULL;
 
+	/* if dest_dir hasn't been provided, initialize to current directory */
 	if (dest_dir == NULL)
 	{
 		dest_dir = malloc(5);
