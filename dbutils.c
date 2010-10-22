@@ -172,7 +172,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster, int *master_id)
     	res2 = PQexec(master_conn, "SELECT pg_is_in_recovery()");
     	if (PQresultStatus(res2) != PGRES_TUPLES_OK)
     	{
-    	    fprintf(stderr, "Can't get nodes info: %s\n", PQerrorMessage(master_conn));
+    	    fprintf(stderr, "Can't get recovery state from this node: %s\n", PQerrorMessage(master_conn));
     	    PQclear(res2);
 			PQfinish(master_conn);
 			continue;
@@ -202,9 +202,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster, int *master_id)
      * to start failover procedure or just fix some situation on the
      * standby.
      */
-   	fprintf(stderr, "There isn't a master node in the cluster\n");
 	PQclear(res1);
-	PQfinish(master_conn);
-	return (PGconn *) NULL;
+	return NULL;
 }
 
