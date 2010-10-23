@@ -515,7 +515,7 @@ do_standby_register(void)
 	}
 
 	/* master and standby version should match */
-	if (strcmp(master_version, standby_version) == 0)
+	if (strcmp(master_version, standby_version) != 0)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
@@ -1105,7 +1105,7 @@ do_standby_follow(void)
 	}
 
 	/* master and standby version should match */
-	if (strcmp(master_version, standby_version) == 0)
+	if (strcmp(master_version, standby_version) != 0)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
@@ -1270,11 +1270,6 @@ check_parameters_for_action(const int action)
 			 * all other parameters are at least useless and could be
 			 * confusing so reject them
 			 */
-			if (config_file == NULL) {
-				fprintf(stderr, "\nMASTER REGISTER command needs the config_file parameter.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
-				ok = false;
-			}
 			if ((host != NULL)   || (masterport != NULL) || (username != NULL) || 
                 (dbname != NULL))
 			{
@@ -1294,11 +1289,6 @@ check_parameters_for_action(const int action)
 			 * we don't need connection parameters to the master
 			 * because we can detect the master in repl_nodes
 			 */
-			if (config_file == NULL) {
-				fprintf(stderr, "\nSTANDBY REGISTER command needs the config_file parameter.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
-				ok = false;
-			}
 			if ((host != NULL)   || (masterport != NULL) || (username != NULL) || 
                 (dbname != NULL))
 			{
@@ -1319,11 +1309,6 @@ check_parameters_for_action(const int action)
 			 * because we will try to detect the master in repl_nodes
 			 * if we can't find it then the promote action will be cancelled
 			 */
-			if (config_file == NULL) {
-				fprintf(stderr, "\nSTANDBY PROMOTE command needs the config_file parameter.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
-				ok = false;
-			}
 			if ((host != NULL)   || (masterport != NULL) || (username != NULL) || 
                 (dbname != NULL))
 			{
@@ -1344,11 +1329,6 @@ check_parameters_for_action(const int action)
 			 * because we will try to detect the master in repl_nodes
 			 * if we can't find it then the follow action will be cancelled
 			 */
-			if (config_file == NULL) {
-				fprintf(stderr, "\nSTANDBY FOLLOW command needs the config_file parameter.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
-				ok = false;
-			}
 			if ((host != NULL)   || (masterport != NULL) || (username != NULL) || 
                 (dbname != NULL))
 			{
