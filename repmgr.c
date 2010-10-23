@@ -269,6 +269,7 @@ do_master_register(void)
     char 		conninfo[MAXLEN]; 
 
 	bool		schema_exists = false;
+	const char *master_version = NULL;
 
 	/*
 	 * Read the configuration file: repmgr.conf
@@ -282,6 +283,15 @@ do_master_register(void)
 	}
 
     conn = establishDBConnection(conninfo, true);
+
+	/* master should be v9 or better */
+	master_version = pg_version(conn);
+	if (strcmp(master_version, "") == 0)
+	{
+		PQfinish(conn);
+		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"), progname); 
+		return;
+	}
 
 	/* Check we are a master */
 	if (is_standby(conn))
@@ -436,6 +446,9 @@ do_standby_register(void)
 	int     	myLocalId   = -1;
     char 		conninfo[MAXLEN]; 
 
+	const char	*master_version = NULL;
+	const char	*standby_version = NULL;
+
 	/*
 	 * Read the configuration file: repmgr.conf
      */
@@ -448,6 +461,15 @@ do_standby_register(void)
 	}
 
     conn = establishDBConnection(conninfo, true);
+
+	/* should be v9 or better */
+	standby_version = pg_version(conn);
+	if (strcmp(standby_version, "") == 0)
+	{
+		PQfinish(conn);
+		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"), progname); 
+		return;
+	}
 
 	/* Check we are a standby */
 	if (!is_standby(conn))
@@ -481,6 +503,27 @@ do_standby_register(void)
 	master_conn = getMasterConnection(conn, myLocalId, myClusterName, &master_id);
 	if (!master_conn)
 		return;
+
+	/* master should be v9 or better */
+	master_version = pg_version(master_conn);
+	if (strcmp(master_version, "") == 0)
+	{
+		PQfinish(conn);
+		PQfinish(master_conn);
+		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"), progname); 
+		return;
+	}
+
+	/* master and standby version should match */
+	if (strcmp(master_version, standby_version) == 0)
+	{
+		PQfinish(conn);
+		PQfinish(master_conn);
+		fprintf(stderr, _("%s needs versions of both master (%s) and standby (%s) to match.\n"), 
+				progname, master_version, standby_version); 
+		return;
+	}
+
 
 	/* Now register the standby */
 	if (force)
@@ -517,6 +560,7 @@ do_standby_register(void)
 	return;
 }
 
+
 static void 
 do_standby_clone(void)
 {
@@ -537,6 +581,8 @@ do_standby_clone(void)
 
 	const char	*first_wal_segment = NULL; 
     const char	*last_wal_segment = NULL;
+
+	const char	*master_version = NULL;
 
 	/* if dest_dir hasn't been provided, initialize to current directory */
 	if (dest_dir == NULL)
@@ -619,10 +665,11 @@ do_standby_clone(void)
     }
 
 	/* primary should be v9 or better */
-	if (!is_supported_version(conn))
+	master_version = pg_version(conn);
+	if (strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs PostgreSQL 9.0 or better\n"), progname); 
+		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"), progname); 
 		return;
 	}
 
@@ -903,6 +950,8 @@ do_standby_promote(void)
 	char		recovery_file_path[MAXLEN];
 	char		recovery_done_path[MAXLEN];
 
+	const char	*standby_version = NULL;
+
 	/*
 	 * Read the configuration file: repmgr.conf
      */
@@ -917,10 +966,12 @@ do_standby_promote(void)
 	/* We need to connect to check configuration */
     conn = establishDBConnection(conninfo, true);
 
-	if (!is_supported_version(conn))
+	/* we need v9 or better */
+	standby_version = pg_version(conn);
+	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs PostgreSQL 9.0 or better\n"), progname); 
+		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"), progname); 
 		return;
 	}
 
@@ -993,6 +1044,9 @@ do_standby_follow(void)
 	int			r;
 	char		data_dir[MAXLEN];
 
+	const char	*master_version = NULL;
+	const char	*standby_version = NULL;
+
 	/*
 	 * Read the configuration file: repmgr.conf
      */
@@ -1015,10 +1069,11 @@ do_standby_follow(void)
 	}
 
 	/* should be v9 or better */
-	if (!is_supported_version(conn))
+	standby_version = pg_version(conn);
+	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("\n%s needs PostgreSQL 9.0 or better\n"), progname); 
+		fprintf(stderr, _("\n%s needs standby to be PostgreSQL 9.0 or better\n"), progname); 
 		return;
 	}
 
@@ -1040,13 +1095,25 @@ do_standby_follow(void)
 	}
 
 	/* should be v9 or better */
-	if (!is_supported_version(master_conn))
+	master_version = pg_version(master_conn);
+	if (strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		fprintf(stderr, _("%s needs PostgreSQL 9.0 or better\n"), progname); 
+		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"), progname); 
 		return;
 	}
+
+	/* master and standby version should match */
+	if (strcmp(master_version, standby_version) == 0)
+	{
+		PQfinish(conn);
+		PQfinish(master_conn);
+		fprintf(stderr, _("%s needs versions of both master (%s) and standby (%s) to match.\n"), 
+				progname, master_version, standby_version); 
+		return;
+	}
+
 	PQfinish(master_conn);
 
 	if (verbose)

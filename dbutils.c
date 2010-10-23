@@ -56,13 +56,21 @@ is_standby(PGconn *conn)
 }
 
 
-bool
-is_supported_version(PGconn *conn)
+/* 
+ * If postgreSQL version is 9 or superior returns the major version
+ * if 8 or inferior returns an empty string
+ */
+char *
+pg_version(PGconn *conn)
 {
 	PGresult	*res;
-	int			major_version;
+	char		*major_version;
 
-    res = PQexec(conn, "SELECT split_part(split_part(version(), ' ', 2), '.', 1)");
+	int			major_version1;
+	char		*major_version2;
+
+    res = PQexec(conn, "WITH pg_version(ver) AS (SELECT split_part(version(), ' ', 2)) "
+                       "SELECT split_part(ver, '.', 1), split_part(ver, '.', 2) FROM pg_version");
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
 		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
@@ -70,10 +78,20 @@ is_supported_version(PGconn *conn)
 		PQfinish(conn);
 		exit(1);
     }
-    major_version = atoi(PQgetvalue(res, 0, 0));
+    major_version1 = atoi(PQgetvalue(res, 0, 0));
+    major_version2 = PQgetvalue(res, 0, 1);
     PQclear(res);
 
-	return (major_version >= 9) ? true : false;
+	major_version = malloc(10);
+	if (major_version1 >= 9)
+	{
+		/* form a major version string */
+		sprintf(major_version, "%d.%s", major_version1, major_version2);
+	}
+	else
+		strcpy(major_version, "");
+
+	return major_version;
 }
 
 

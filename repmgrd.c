@@ -81,6 +81,7 @@ main(int argc, char **argv)
 	int			c;
 
     char conninfo[MAXLEN]; 
+	const char	*standby_version = NULL;
 
 	progname = get_progname(argv[0]);
 
@@ -135,6 +136,15 @@ main(int argc, char **argv)
 	}
 
     myLocalConn = establishDBConnection(conninfo, true);
+
+	/* should be v9 or better */
+	standby_version = pg_version(myLocalConn);
+	if (strcmp(standby_version, "") == 0)
+	{
+		PQfinish(myLocalConn);
+		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"), progname); 
+		exit(1);
+	}
 
     /*
      * Set my server mode, establish a connection to primary
