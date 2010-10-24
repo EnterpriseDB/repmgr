@@ -197,6 +197,15 @@ MonitorExecute(void)
 	unsigned long long int lsn_standby_received;
 	unsigned long long int lsn_standby_applied;
 
+	/* Check if we still are a standby, we could be promoted */
+	if (!is_standby(myLocalConn))
+	{	
+		fprintf(stderr, "\n%s: seems like we have been promoted, so exit from monitoring...\n", 
+				progname);
+		CloseConnections();
+		exit(1);
+	}
+
 	/* 
 	 * first check if there is a command being executed,
 	 * and if that is the case, cancel the query so i can
