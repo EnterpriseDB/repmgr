@@ -1114,6 +1114,13 @@ do_standby_follow(void)
 		return;
 	}
 
+	/* 
+	 * set the host and masterport variables with the master ones 
+	 * before closing the connection because we will need them to 
+	 * recreate the recovery.conf file
+	 */
+	host = PQhost(master_conn);
+	masterport = PQport(master_conn);
 	PQfinish(master_conn);
 
 	if (verbose)
@@ -1134,7 +1141,7 @@ do_standby_follow(void)
     PQclear(res);
     PQfinish(conn);
 
-	/* Finally, write the recovery.conf file */
+	/* write the recovery.conf file */
 	if (!create_recovery_file(data_dir))
 		return;		
 
