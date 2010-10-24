@@ -1025,7 +1025,9 @@ do_standby_promote(void)
 	/* reconnect to check we got promoted */
     conn = establishDBConnection(conninfo, true);
 	if (is_standby(conn))
-		fprintf(stderr, "%s: STANDBY PROMOTE failed, this is still a standby node\n", progname);
+		fprintf(stderr, "\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
+	else
+		fprintf(stderr, "\n%s: you should REINDEX any hash indexes you have.\n", progname);
 	PQfinish(conn);
 
 	return;
