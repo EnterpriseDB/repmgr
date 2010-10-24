@@ -1022,6 +1022,12 @@ do_standby_promote(void)
 		return;
     }
 
+	/* reconnect to check we got promoted */
+    conn = establishDBConnection(conninfo, true);
+	if (is_standby(conn))
+		fprintf(stderr, "%s: STANDBY PROMOTE failed, this is still a standby node\n", progname);
+	PQfinish(conn);
+
 	return;
 }
 
