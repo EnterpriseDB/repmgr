@@ -1127,8 +1127,10 @@ do_standby_follow(void)
 	 * before closing the connection because we will need them to 
 	 * recreate the recovery.conf file
 	 */
-	host = PQhost(master_conn);
-	masterport = PQport(master_conn);
+	host = malloc(20);
+	masterport = malloc(10);
+	strcpy(host, PQhost(master_conn));
+	strcpy(masterport, PQport(master_conn));
 	PQfinish(master_conn);
 
 	if (verbose)
