@@ -1023,12 +1023,16 @@ do_standby_promote(void)
     }
 
 	/* reconnect to check we got promoted */
-    conn = establishDBConnection(conninfo, true);
-	if (is_standby(conn))
-		fprintf(stderr, "\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
-	else
-		fprintf(stderr, "\n%s: you should REINDEX any hash indexes you have.\n", progname);
-	PQfinish(conn);
+	/* 
+     * XXX i'm removing this because it gives an annoying message saying couldn't connect
+     * but is just the server starting up
+*    conn = establishDBConnection(conninfo, true);
+*	if (is_standby(conn))
+*		fprintf(stderr, "\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
+*	else
+*		fprintf(stderr, "\n%s: you should REINDEX any hash indexes you have.\n", progname);
+*	PQfinish(conn);
+	*/
 
 	return;
 }
