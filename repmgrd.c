@@ -67,6 +67,8 @@ static void setup_cancel_handler(void);
 							sleep(3); \
 						} 
 
+#define MAX_RETRIES 3
+
 
 int
 main(int argc, char **argv)
@@ -197,7 +199,31 @@ MonitorExecute(void)
 	unsigned long long int lsn_standby_received;
 	unsigned long long int lsn_standby_applied;
 
-	/* Check if we still are a standby, we could be promoted */
+	int	connection_retries;
+
+	/* 
+	 * Check if the master is still available, if after 3 retries we cannot 
+	 * from the error, try to get a new master. If cannot find one then error
+	 * and exit
+	 */
+	for (connection_retries = 0; connection_retries < MAX_RETRIES; connection_retries++)
+	{
+		if (PQstatus(primaryConn) != CONNECTION_OK)
+		{
+			fprintf(stderr, "Connection to master has been lost, trying to recover...");
+			PQreset(primaryConn);
+		}	
+		else
+			break;
+	}
+	if ((connection_retries = MAX_RETRIES) && (PQstatus(primaryConn) != CONNECTION_OK))
+	{
+		primaryConn = getMasterConnection(myLocalConn, myLocalId, myClusterName, &primaryId);
+		if (primaryConn == NULL)
+			exit(1);
+	}
+
+	/* Check if we still are a standby, we could have been promoted */
 	if (!is_standby(myLocalConn))
 	{	
 		fprintf(stderr, "\n%s: seems like we have been promoted, so exit from monitoring...\n", 
