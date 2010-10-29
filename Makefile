@@ -8,6 +8,8 @@ repmgr_OBJS = dbutils.o check_dir.o config.o repmgr.o
 PG_CPPFLAGS = -I$(libpq_srcdir)
 PG_LIBS = $(libpq_pgport)
 
+all:  repmgrd repmgr
+
 repmgrd: $(repmgrd_OBJS)
 	$(CC) $(CFLAGS) $(repmgrd_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o repmgrd
 
