@@ -1,11 +1,11 @@
-=====================================================
-repmgr: Replication Manager for PostgreSQL's clusters
-=====================================================
+===================================================
+repmgr: Replication Manager for PostgreSQL clusters
+===================================================
 
 Introduction
 ============
 
-PostgreSQL 9.0 allow us to have replicated hot standby servers 
+PostgreSQL 9.0 allow us to have replicated Hot Standby servers 
 which we can query and/or use for high availability.
 
 While the main components of the feature are included with
@@ -104,6 +104,8 @@ the full path of the binary instead, such as::
 
   /usr/pgsql-9.0/bin/repmgr --version
   /usr/pgsql-9.0/bin/repmgr --version
+
+Below this base binary installation directory is referred to as PGDIR.
 
 Set up trusted copy between postgres accounts
 ---------------------------------------------
@@ -270,7 +272,7 @@ If now we want to add a new node we can a prepare a new server (node4) and run::
 
   repmgr -D /var/lib/postgresql/9.0 standby clone node2
 
-NOTE: yu need to have PGDIR/bin in your path, if you don't want that as a 
+NOTE: you need to have PGDIR/bin in your path, if you don't want that as a 
 permanent setting you can do it this way::
 
   PATH=$PGDIR/bin:$PATH repmgr standby promote
@@ -285,19 +287,38 @@ To use the repmgrd (repmgr daemon) to monitor standby so we know how is going
 the replication and how far they are from primary, you need to execute the 
 ``repmgr.sql`` script in the postgres database.
 
-You also need to add a row for every node in the repl_node table
+You also need to add a row for every node in the ``repl_node`` table.  This work
+may be done for you by the daemon itself, as described below.
+
+Lag monitoring
+--------------
+
+To look at the current lag between primary and each node listed
+in ``repl_node``, consult the repl_status view::
+
+  psql -d postgres -c "SELECT * FROM repl_status"
+
+This view shows the latest monitor info from every node.
+ 
+* replication_lag: in bytes.  This is how far the latest xlog record 
+  we have received is from master.
+
+* apply_lag: in bytes.  This is how far the latest xlog record
+  we have applied is from the latest record we have received.
+
+* time_lag: in seconds.  How many seconds behind the master is this node.
 
 Usage
 -----
 
-It reads the repmgr.conf file in current directory or as indicated with -f 
+repmgrd reads the ``repmgr.conf`` file in current directory or as indicated with -f 
 parameter looks if the standby is in repl_nodes and if it is not add it.
 
 Before you can run the repmgr daemon (repmgrd) you need to register a master
 and at least a standby in a cluster, for that you need to use the MASTER 
 REGISTER and STANDBY REGISTER commands.
 
-For example, following last example and assuming that repmgr.conf is in postgres
+For example, following last example and assuming that ``repmgr.conf`` is in postgres
 home directory you will run this on the master::
 
   repmgr -f /home/postgres/repmgr.conf master register
