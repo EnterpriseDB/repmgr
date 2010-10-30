@@ -18,13 +18,147 @@ databases as a single cluster.
 repmgr works in two components:
 
 * repmgr: command program that performs tasks and then exits
-* repmgrd: management and monitoring daemon that watches cluster
+* repmgrd: management and monitoring daemon that watches the cluster
 
+Installation Outline
+====================
 
-COMMANDS
+To install and use repmgr and repmgrd follow these steps:
+
+1. Build repmgr programs 
+
+2. Set up trusted copy between postgres accounts, needed for the
+   ``STANDBY CLONE`` step
+
+3. Check your primary server is correctly configured
+
+4. Write a suitable repmgr.conf for the node
+
+5. Setup repmgrd to aid in failover transitions
+
+Build repmgr programs
+---------------------
+
+Both methods of installation will place the binaries at the same location as your
+postgres binaries, such as ``psql``.  There are two ways to build it.  The second
+requires a full PostgreSQL source code tree to install the program directly into.
+The first instead uses the PostgreSQL Extension System (PGXS) to install.  For
+this method to work, you will need the pg_config program available in your PATH.
+In some distributions of PostgreSQL, this requires installing a separate
+development package in addition to the basic server software.  For example, 
+the RPM packages of PostgreSQL put ``pg_config`` into the ``postgresql-devel``
+package, not the main server one.
+
+Build repmgr programs - PGXS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are using a packaged PostgreSQL build and have ``pg_config``
+available, the package can be built and installed using PGXS instead::
+
+  tar xvzf repmgr-1.0.tar.gz
+  cd repmgr
+  make USE_PGXS=1
+  make USE_PGXS=1 install
+
+This is preferred to building from the ``contrib`` subdirectory of the main
+source code tree.
+
+If you need to remove the source code temporary files from this directory,
+that can be done like this::
+
+  make USE_PGXS=1 clean
+
+Using a full source code tree
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In this method, the repmgr distribution is copied into the PostgreSQL source
+code tree, assumed to be at the ${postgresql_sources} for this example.
+The resulting subdirectory must be named ``contrib/repmgr``, without any
+version number::
+
+  cp repmgr.tar.gz ${postgresql_sources}/contrib
+  cd ${postgresql_sources}/contrib 
+  tar xvzf repmgr-1.0.tar.gz
+  cd repmgr
+  make
+  make install
+
+If you need to remove the source code temporary files from this directory,
+that can be done like this::
+
+  make clean
+
+Confirm software was built correctly
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You should now find the repmgr programs available in the subdirectory where
+the rest of your PostgreSQL installation is at.  You can confirm the software
+is available by checking its version::
+
+  repmgr --version
+  repmgrd --version
+    
+Note that if you have a RPM install of PostgreSQL 9.0, the entire PostgreSQL
+binary directory will not be in your PATH by default.  You may need to include
+the full path of the binary instead, such as::
+
+  /usr/pgsql-9.0/bin/repmgr --version
+  /usr/pgsql-9.0/bin/repmgr --version
+
+Set up trusted copy between postgres accounts
+---------------------------------------------
+
+Initial copy between nodes uses the rsync program running over ssh.  For this 
+to work, the postgres accounts on each system need to be able to access files 
+on their partner node without a password.
+
+First generate a ssh key, using an empty passphrase, and copy the resulting 
+keys and a maching authorization file to a privledged user on the other system::
+
+  [postgres@db1]$ ssh-keygen -t rsa
+  Generating public/private rsa key pair.
+  Enter file in which to save the key (/var/lib/pgsql/.ssh/id_rsa): 
+  Enter passphrase (empty for no passphrase): 
+  Enter same passphrase again: 
+  Your identification has been saved in /var/lib/pgsql/.ssh/id_rsa.
+  Your public key has been saved in /var/lib/pgsql/.ssh/id_rsa.pub.
+  The key fingerprint is:
+  aa:bb:cc:dd:ee:ff:aa:11:22:33:44:55:66:77:88:99 postgres@db1.domain.com
+  [postgres@db1]$ cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+  [postgres@db1]$ chmod go-rwx ~/.ssh/*
+  [postgres@db1]$ cd ~/.ssh
+  [postgres@db1]$ scp id_rsa.pub id_rsa authorized_keys user@db2:
+
+Login as a user on the other system, and install the files into the postgres 
+user's account::
+
+  [user@db2 ~]$ sudo chown postgres.postgres authorized_keys id_rsa.pub id_rsa
+  [user@db2 ~]$ sudo mkdir -p ~postgres/.ssh
+  [user@db2 ~]$ sudo chown postgres.postgres ~postgres/.ssh
+  [user@db2 ~]$ sudo mv authorized_keys id_rsa.pub id_rsa ~postgres/.ssh
+  [user@db2 ~]$ sudo chmod -R go-rwx ~postgres/.ssh
+
+Now test that ssh in both directions works.  You may have to accept some new 
+known hosts in the process.
+
+CONFIGURATION FILE
+==================
+
+``repmgr.conf`` is looked for in the directory repmgrd or repmgr exists.
+The configuration file should have 3 lines:
+
+It should have these three parameters:
+
+1. cluster: A string (single quoted) that identify the cluster we are on 
+
+2. node: An integer that identify our node in the cluster
+
+3. conninfo: A string (single quoted) specifying how we can connect to this node's PostgreSQL service
+
+Commands
 ========
 
-None of this commands need the repmgr.conf file but they need to be able to
+None of this commands need the ``repmgr.conf`` file but they need to be able to
 connect to the remote and local database.
 
 You can teach it which is the remote database by using the -h parameter or 
@@ -80,27 +214,39 @@ its port if is different from the default one.
 
         ./repmgr standby follow
 
-PREREQUISITES
-=============
+Primary server configuration
+============================
 
-Primary must be configured with the following in its ``postgresql.conf``::
+PostgreSQL should have been previously built and installed on the system.  Here
+is a sample of changes to the postgresql.conf file::
 
   listen_addresses='*'
   wal_level = 'hot_standby'
   archive_mode = on
-  archive_command = 'cd .'
+  archive_command = 'cd .'	 # we can also use exit 0, anything that just do 
+                             # nothing
   max_wal_senders = 10
-  wal_keep_segments = 5000      # 80 GB required on pg_xlog
+  wal_keep_segments = 5000     # 80 GB required on pg_xlog
   hot_standby = on
 
-Also you need to add the machines that will participate in the cluster in
-``pg_hba.conf``, such as::
+Also you need to add the machines that will participate in the cluster in 
+``pg_hba.conf`` file.  One possibility is to trust all connections from the
+replication users from all internal addresses, such as::
 
-  host     all              all         10.8.0.0/24         trust
-  host     replication      all         10.8.0.0/24         trust
+  host     all              all         192.168.1.0/24         trust
+  host     replication      all         192.168.1.0/24         trust
 
+A more secure setup adds a repmgr user and database, just giving
+access to that user:
 
-EXAMPLES
+  host     repmgr           repmgr      192.168.1.0/24         trust
+  host     replication      all         192.168.1.0/24         trust
+
+If you give a password to the user, you need to create a ``.pgpass`` file for
+them as well to allow automatic login.  In this case you might use the
+``md5`` authentication method instead of ``trust`` for the repmgr user.
+
+Examples
 ========
 
 Suppose we have 3 nodes: node1 (the master), node2 and node3
@@ -124,23 +270,25 @@ If now we want to add a new node we can a prepare a new server (node4) and run::
 
   repmgr -D /var/lib/postgresql/9.0 standby clone node2
 
-NOTE: you need to have PGDIR/bin in your path, if you don't want that as a 
+NOTE: yu need to have PGDIR/bin in your path, if you don't want that as a 
 permanent setting you can do it this way::
 
   PATH=$PGDIR/bin:$PATH repmgr standby promote
 
-CONFIGURATION FILE
-==================
-
-``repmgr.conf`` is looked for in the directory repmgrd or repmgr exists.
-The configuration file should have 3 lines:
-
-* cluster : the name of this cluster
-* node    : specify the number of this node inside the cluster
-* conninfo: specify how we can connect to this node's PostgreSQL service
-
-REPMGR DAEMON
+repmgr Daemon
 =============
+
+Setup
+-----
+
+To use the repmgrd (repmgr daemon) to monitor standby so we know how is going 
+the replication and how far they are from primary, you need to execute the 
+``repmgr.sql`` script in the postgres database.
+
+You also need to add a row for every node in the repl_node table
+
+Usage
+-----
 
 It reads the repmgr.conf file in current directory or as indicated with -f 
 parameter looks if the standby is in repl_nodes and if it is not add it.
