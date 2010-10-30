@@ -45,9 +45,7 @@ requires a full PostgreSQL source code tree to install the program directly into
 The first instead uses the PostgreSQL Extension System (PGXS) to install.  For
 this method to work, you will need the pg_config program available in your PATH.
 In some distributions of PostgreSQL, this requires installing a separate
-development package in addition to the basic server software.  For example, 
-the RPM packages of PostgreSQL put ``pg_config`` into the ``postgresql-devel``
-package, not the main server one.
+development package in addition to the basic server software.
 
 Build repmgr programs - PGXS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -67,6 +65,8 @@ If you need to remove the source code temporary files from this directory,
 that can be done like this::
 
   make USE_PGXS=1 clean
+  
+See below for building notes specific to RedHat Linux variants.
 
 Using a full source code tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -88,6 +88,36 @@ that can be done like this::
 
   make clean
 
+Notes on RedHat Linux, Fedora, and CentOS Builds
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The RPM packages of PostgreSQL put ``pg_config`` into the ``postgresql-devel``
+package, not the main server one.  And if you have a RPM install of PostgreSQL
+9.0, the entire PostgreSQL binary directory will not be in your PATH by default
+either.  Individual utilities are made available via the ``alternatives``
+mechanism, but not all commands will be wrapped that way.  The files installed
+by repmgr will certainly not be in the default PATH for the postgres user
+on such a system.  They will instead be in /usr/pgsql-9.0/bin/ on this
+type of system.
+
+When building repmgr against a RPM packaged build, you may discover that some
+development packages are needed as well.  The following build errors can
+occur::
+
+  /usr/bin/ld: cannot find -lxslt
+  /usr/bin/ld: cannot find -lpam
+  
+Install the following packages to correct those::
+
+  yum install libxslt-devel
+  yum install pam-devel
+
+If building repmgr as a regular user, then doing the install into the system
+directories using sudo, the syntax is hard.  ``pg_config`` won't be in root's
+path either.  The following recipe should work::
+
+  sudo PATH="/usr/pgsql-9.0/bin:$PATH" make USE_PGXS=1 install
+
 Confirm software was built correctly
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -98,9 +128,8 @@ is available by checking its version::
   repmgr --version
   repmgrd --version
     
-Note that if you have a RPM install of PostgreSQL 9.0, the entire PostgreSQL
-binary directory will not be in your PATH by default.  You may need to include
-the full path of the binary instead, such as::
+You may need to include
+the full path of the binary instead, such as this RHEL example::
 
   /usr/pgsql-9.0/bin/repmgr --version
   /usr/pgsql-9.0/bin/repmgr --version
