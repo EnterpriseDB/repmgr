@@ -254,8 +254,8 @@ is a sample of changes to the postgresql.conf file::
   listen_addresses='*'
   wal_level = 'hot_standby'
   archive_mode = on
-  archive_command = 'cd .'	 # we can also use exit 0, anything that just do 
-                             # nothing
+  archive_command = 'cd .'	 # we can also use exit 0, anything that 
+                             # just does nothing
   max_wal_senders = 10
   wal_keep_segments = 5000     # 80 GB required on pg_xlog
   hot_standby = on
@@ -268,7 +268,7 @@ replication users from all internal addresses, such as::
   host     replication      all         192.168.1.0/24         trust
 
 A more secure setup adds a repmgr user and database, just giving
-access to that user:
+access to that user::
 
   host     repmgr           repmgr      192.168.1.0/24         trust
   host     replication      all         192.168.1.0/24         trust
@@ -297,7 +297,8 @@ Which makes node2 the new master.  We then run on node3::
 
 To make node3 follow node2 (rather than node1)
 
-If now we want to add a new node we can a prepare a new server (node4) and run::
+If now we want to add a new node we can a prepare a new server (node4)
+and run::
 
   repmgr -D /var/lib/postgresql/9.0 standby clone node2
 
