@@ -32,7 +32,7 @@ To install and use repmgr and repmgrd follow these steps:
 
 3. Check your primary server is correctly configured
 
-4. Write a suitable repmgr.conf for the node
+4. Write a suitable ``repmgr.conf`` for the node
 
 5. Setup repmgrd to aid in failover transitions
 
@@ -132,9 +132,9 @@ You may need to include
 the full path of the binary instead, such as this RHEL example::
 
   /usr/pgsql-9.0/bin/repmgr --version
-  /usr/pgsql-9.0/bin/repmgr --version
+  /usr/pgsql-9.0/bin/repmgrd --version
 
-Below this base binary installation directory is referred to as PGDIR.
+Below this binary installation base directory is referred to as PGDIR.
 
 Set up trusted copy between postgres accounts
 ---------------------------------------------
@@ -172,7 +172,39 @@ user's account::
 Now test that ssh in both directions works.  You may have to accept some new 
 known hosts in the process.
 
-CONFIGURATION FILE
+Primary server configuration
+============================
+
+PostgreSQL should have been previously built and installed on the system.  Here
+is a sample of changes to the ``postgresql.conf`` file::
+
+  listen_addresses='*'
+  wal_level = 'hot_standby'
+  archive_mode = on
+  archive_command = 'cd .'	 # we can also use exit 0, anything that 
+                             # just does nothing
+  max_wal_senders = 10
+  wal_keep_segments = 5000     # 80 GB required on pg_xlog
+  hot_standby = on
+
+Also you need to add the machines that will participate in the cluster in 
+``pg_hba.conf`` file.  One possibility is to trust all connections from the
+replication users from all internal addresses, such as::
+
+  host     all              all         192.168.1.0/24         trust
+  host     replication      all         192.168.1.0/24         trust
+
+A more secure setup adds a repmgr user and database, just giving
+access to that user::
+
+  host     repmgr           repmgr      192.168.1.0/24         trust
+  host     replication      all         192.168.1.0/24         trust
+
+If you give a password to the user, you need to create a ``.pgpass`` file for
+them as well to allow automatic login.  In this case you might use the
+``md5`` authentication method instead of ``trust`` for the repmgr user.
+
+Configuration File
 ==================
 
 ``repmgr.conf`` is looked for in the directory repmgrd or repmgr exists.
@@ -186,11 +218,52 @@ It should have these three parameters:
 
 3. conninfo: A string (single quoted) specifying how we can connect to this node's PostgreSQL service
 
+Command line syntax
+===================
+
+The current supported syntax for the program can be seen using::
+
+  repmgr --help
+  
+The output from this program looks like this::
+
+  repmgr: Replicator manager 
+  Usage:
+   repmgr [OPTIONS] master  {register}
+   repmgr [OPTIONS] standby {register|clone|promote|follow}
+
+  General options:
+    --help                     show this help, then exit
+    --version                  output version information, then exit
+    --verbose                  output verbose activity information
+
+  Connection options:
+    -d, --dbname=DBNAME        database to connect to
+    -h, --host=HOSTNAME        database server host or socket directory
+    -p, --port=PORT            database server port
+    -U, --username=USERNAME    database user name to connect as
+
+  Configuration options:
+    -D, --data-dir=DIR         local directory where the files will be copied to
+    -f, --config_file=PATH     path to the configuration file
+    -R, --remote-user=USERNAME database server username for rsync
+
+  repmgr performs some tasks like clone a node, promote it or making follow another node and then exits.
+  COMMANDS:
+   master register       - registers the master in a cluster
+   standby register      - registers a standby in a cluster
+   standby clone [node]  - allows creation of a new standby
+   standby promote       - allows manual promotion of a specific standby into a new master in the event of a failover
+   standby follow        - allows the standby to re-point itself to a new master
+
+The ``--verbose`` option can be useful in troubleshooting issues with
+the program.
+
 Commands
 ========
 
-None of this commands need the ``repmgr.conf`` file but they need to be able to
-connect to the remote and local database.
+Not all of these commands need the ``repmgr.conf`` file, but they need to be able to
+connect to the remote and local databases.
 
 You can teach it which is the remote database by using the -h parameter or 
 as a last parameter in standby clone and standby follow. If you need to specify
@@ -212,7 +285,7 @@ its port if is different from the default one.
 
   * Backup via rsync the data directory of the primary. And creates the recovery file
     we need to start a new hot standby server.
-    It doesn't need the repmgr.conf so it can be executed anywhere in the new node.
+    It doesn't need the ``repmgr.conf`` so it can be executed anywhere in the new node.
     So, you can step where you want your new data directory and execute::
 
       ./repmgr standby clone 10.68.1.161
@@ -245,38 +318,6 @@ its port if is different from the default one.
 
         ./repmgr standby follow
 
-Primary server configuration
-============================
-
-PostgreSQL should have been previously built and installed on the system.  Here
-is a sample of changes to the postgresql.conf file::
-
-  listen_addresses='*'
-  wal_level = 'hot_standby'
-  archive_mode = on
-  archive_command = 'cd .'	 # we can also use exit 0, anything that 
-                             # just does nothing
-  max_wal_senders = 10
-  wal_keep_segments = 5000     # 80 GB required on pg_xlog
-  hot_standby = on
-
-Also you need to add the machines that will participate in the cluster in 
-``pg_hba.conf`` file.  One possibility is to trust all connections from the
-replication users from all internal addresses, such as::
-
-  host     all              all         192.168.1.0/24         trust
-  host     replication      all         192.168.1.0/24         trust
-
-A more secure setup adds a repmgr user and database, just giving
-access to that user::
-
-  host     repmgr           repmgr      192.168.1.0/24         trust
-  host     replication      all         192.168.1.0/24         trust
-
-If you give a password to the user, you need to create a ``.pgpass`` file for
-them as well to allow automatic login.  In this case you might use the
-``md5`` authentication method instead of ``trust`` for the repmgr user.
-
 Examples
 ========
 
@@ -302,13 +343,37 @@ and run::
 
   repmgr -D /var/lib/postgresql/9.0 standby clone node2
 
-NOTE: you need to have PGDIR/bin in your path, if you don't want that as a 
-permanent setting you can do it this way::
+NOTE: you need to have PGDIR/bin in your path.  If you don't want that as a 
+permanent setting, you can do it this way::
 
   PATH=$PGDIR/bin:$PATH repmgr standby promote
 
 repmgr Daemon
 =============
+
+Command line syntax
+-------------------
+
+The current supported syntax for the program can be seen using::
+
+  repmgrd --help
+  
+The output from this program looks like this::
+
+  repmgrd: Replicator manager daemon 
+  Usage:
+   repmgrd [OPTIONS]
+  
+  Options:
+    --help                    show this help, then exit
+    --version                 output version information, then exit
+    --verbose                 output verbose activity information
+    -f, --config_file=PATH    database to connect to
+  
+  repmgrd monitors a cluster of servers.
+
+The ``--verbose`` option can be useful in troubleshooting issues with
+the program.
 
 Setup
 -----

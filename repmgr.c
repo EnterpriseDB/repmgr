@@ -30,9 +30,11 @@
 #define STANDBY_PROMOTE  4
 #define STANDBY_FOLLOW 	 5
 
+#define QUERY_STR_LEN    8192
+
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir);
-static int  copy_remote_files(char *host, char *remote_path, char *local_path, bool is_directory);
+static int  copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_path, bool is_directory);
 static bool check_parameters_for_action(const int action);
 
 static void do_master_register(void);
@@ -51,6 +53,7 @@ char		*host = NULL;
 char		*username = NULL;
 char		*dest_dir = NULL;
 char		*config_file = NULL;
+char		*remote_user = NULL;
 bool		verbose = false;
 bool		force = false;
 
@@ -71,6 +74,7 @@ main(int argc, char **argv)
 		{"username", required_argument, NULL, 'U'},
 		{"dest-dir", required_argument, NULL, 'D'},
 		{"config-file", required_argument, NULL, 'f'},
+		{"remote-user", required_argument, NULL, 'R'},
 		{"force", no_argument, NULL, 'F'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
@@ -97,7 +101,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:F:v", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:R:F:v", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -118,6 +122,9 @@ main(int argc, char **argv)
 				break;			
 			case 'f':
 				config_file = optarg;
+				break;			
+			case 'R':
+				remote_user = optarg;
 				break;			
 			case 'F':
 				force = true;
@@ -262,7 +269,7 @@ do_master_register(void)
 {
 	PGconn 		*conn;
 	PGresult	*res;
-	char 		sqlquery[8192];
+	char 		sqlquery[QUERY_STR_LEN];
 
 	char    	myClusterName[MAXLEN];
 	int     	myLocalId   = -1;
@@ -440,7 +447,7 @@ do_standby_register(void)
 	int			master_id;
 
 	PGresult	*res;
-	char 		sqlquery[8192];
+	char 		sqlquery[QUERY_STR_LEN];
 
 	char    	myClusterName[MAXLEN];
 	int     	myLocalId   = -1;
@@ -566,7 +573,7 @@ do_standby_clone(void)
 {
 	PGconn 		*conn;
 	PGresult	*res;
-	char 		sqlquery[8192];
+	char 		sqlquery[QUERY_STR_LEN];
 
 	int			r = 0;
 	int			i;
@@ -842,11 +849,11 @@ do_standby_clone(void)
 		goto stop_backup;
 	}
 
-	r = copy_remote_files(host, master_control_file, local_control_file, false); 
+	r = copy_remote_files(host, remote_user, master_control_file, local_control_file, false); 
 	if (r != 0)
 		goto stop_backup;
 
-	r = copy_remote_files(host, master_data_directory, dest_dir, true); 
+	r = copy_remote_files(host, remote_user, master_data_directory, dest_dir, true); 
 	if (r != 0)
 		goto stop_backup;
 
@@ -864,20 +871,20 @@ do_standby_clone(void)
     }
     for (i = 0; i < PQntuples(res); i++)
 	{
-		r = copy_remote_files(host, PQgetvalue(res, i, 0), PQgetvalue(res, i, 0), true); 
+		r = copy_remote_files(host, remote_user, PQgetvalue(res, i, 0), PQgetvalue(res, i, 0), true); 
 		if (r != 0)
 			goto stop_backup;
 	}
 
-	r = copy_remote_files(host, master_config_file, dest_dir, false); 
+	r = copy_remote_files(host, remote_user, master_config_file, dest_dir, false); 
 	if (r != 0)
 		goto stop_backup;
 
-	r = copy_remote_files(host, master_hba_file, dest_dir, false); 
+	r = copy_remote_files(host, remote_user, master_hba_file, dest_dir, false); 
 	if (r != 0)
 		goto stop_backup;
 
-	r = copy_remote_files(host, master_ident_file, dest_dir, false); 
+	r = copy_remote_files(host, remote_user, master_ident_file, dest_dir, false); 
 	if (r != 0)
 		goto stop_backup;
 
@@ -911,14 +918,14 @@ stop_backup:
 		return;
 
 	if (verbose)
-		printf(_("%s requires primary to keep WAL files %s until at least %s"), 
+		printf(_("%s requires primary to keep WAL files %s until at least %s\n"), 
 					progname, first_wal_segment, last_wal_segment);
 
 	/* we need to create the pg_xlog sub directory too, i'm reusing a variable here */
 	sprintf(local_control_file, "%s/pg_xlog", dest_dir);
 	if (!create_directory(local_control_file))
 	{	
-    	fprintf(stderr, _("%s: couldn't create directory %s, you will need to do it manually... "), 
+    	fprintf(stderr, _("%s: couldn't create directory %s, you will need to do it manually...\n"), 
 						progname, dest_dir);
 	}
 
@@ -935,8 +942,8 @@ do_standby_promote(void)
 {
 	PGconn 		*conn;
 	PGresult	*res;
-	char 		sqlquery[8192];
-	char 		script[8192];
+	char 		sqlquery[QUERY_STR_LEN];
+	char 		script[QUERY_STR_LEN];
 
 	char    	myClusterName[MAXLEN];
 	int     	myLocalId   = -1;
@@ -1043,8 +1050,8 @@ do_standby_follow(void)
 {
 	PGconn 		*conn;
 	PGresult	*res;
-	char 		sqlquery[8192];
-	char 		script[8192];
+	char 		sqlquery[QUERY_STR_LEN];
+	char 		script[QUERY_STR_LEN];
 
 	char    	myClusterName[MAXLEN];
 	int     	myLocalId   = -1;
@@ -1180,18 +1187,21 @@ help(const char *progname)
     printf(_("Usage:\n"));
     printf(_(" %s [OPTIONS] master  {register}\n"), progname);
     printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"), progname);
-    printf(_("\nOptions:\n"));
-	printf(_("  --help                    show this help, then exit\n"));
-	printf(_("  --version                 output version information, then exit\n"));
-	printf(_("  --verbose                 output verbose activity information\n"));
+    printf(_("\nGeneral options:\n"));
+	printf(_("  --help                     show this help, then exit\n"));
+	printf(_("  --version                  output version information, then exit\n"));
+	printf(_("  --verbose                  output verbose activity information\n"));
 	printf(_("\nConnection options:\n"));
-	printf(_("  -d, --dbname=DBNAME       database to connect to\n"));
-	printf(_("  -h, --host=HOSTNAME       database server host or socket directory\n"));
-	printf(_("  -p, --port=PORT           database server port\n"));
-	printf(_("  -U, --username=USERNAME   user name to connect as\n"));
-	printf(_("  -D, --data-dir=DIR        directory where the files will be copied to\n"));
-	printf(_("  -f, --config_file=PATH    path to the configuration file\n"));
-    printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
+	printf(_("  -d, --dbname=DBNAME        database to connect to\n"));
+	printf(_("  -h, --host=HOSTNAME        database server host or socket directory\n"));
+	printf(_("  -p, --port=PORT            database server port\n"));
+	printf(_("  -U, --username=USERNAME    database user name to connect as\n"));
+	printf(_("\nConfiguration options:\n"));
+	printf(_("  -D, --data-dir=DIR         local directory where the files will be copied to\n"));
+	printf(_("  -f, --config_file=PATH     path to the configuration file\n"));
+	printf(_("  -R, --remote-user=USERNAME database server username for rsync\n"));
+   
+	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
     printf(_("or making follow another node and then exits.\n"));
     printf(_("COMMANDS:\n"));
     printf(_(" master register       - registers the master in a cluster\n"));
@@ -1243,33 +1253,46 @@ create_recovery_file(const char *data_dir)
 
 
 static int
-copy_remote_files(char *host, char *remote_path, char *local_path, bool is_directory)
+copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_path, bool is_directory)
 {
-	char script[8192];
-	char options[8192];
+	char script[QUERY_STR_LEN];
+	char options[QUERY_STR_LEN];
+	char host_string[QUERY_STR_LEN];
 	int  r;
 
 	sprintf(options, "--archive --checksum --compress --progress --rsh=ssh"); 
 	if (force)
 		strcat(options, " --delete");
 
+	if (remote_user == NULL)
+	{
+		sprintf(host_string,"%s",host);
+	}
+	else
+	{
+		sprintf(host_string,"%s@%s",remote_user,host);
+	}
+
 	if (is_directory)
 	{
 		strcat(options, " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
 		sprintf(script, "rsync %s %s:%s/* %s", 
-						options, host, remote_path, local_path);
+						options, host_string, remote_path, local_path);
 	}
 	else
 	{
 		sprintf(script, "rsync %s %s:%s %s/.", 
-						options, host, remote_path, local_path);
+						options, host_string, remote_path, local_path);
 	}
 
+	if (verbose)
+		printf("rsync command line:  '%s'\n",script);
+
 	r = system(script);
-	
+		
     if (r != 0)
         fprintf(stderr, _("Can't rsync from remote file or directory (%s:%s)\n"), 
-						host, remote_path);
+						host_string, remote_path);
 
 	return r;
 }
