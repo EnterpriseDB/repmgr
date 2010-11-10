@@ -67,8 +67,6 @@ static void setup_cancel_handler(void);
 							sleep(3); \
 						} 
 
-#define MAX_RETRIES 3
-
 
 int
 main(int argc, char **argv)
@@ -206,21 +204,42 @@ MonitorExecute(void)
 	 * from the error, try to get a new master. If cannot find one then error
 	 * and exit
 	 */
-	for (connection_retries = 0; connection_retries < MAX_RETRIES; connection_retries++)
+	for (connection_retries = 0; connection_retries < 3; connection_retries++)
 	{
 		if (PQstatus(primaryConn) != CONNECTION_OK)
 		{
-			fprintf(stderr, "Connection to master has been lost, trying to recover...");
+			fprintf(stderr, "\n%s: Connection to master has been lost, trying to recover...\n", progname);
+			/* wait 5 minutes between retries */
+			sleep(300);
+
 			PQreset(primaryConn);
 		}	
 		else
+		{
+			fprintf(stderr, "\n%s: Connection to master has been restored, continue monitoring.\n", progname);
 			break;
+		}
 	}
-	if ((connection_retries = MAX_RETRIES) && (PQstatus(primaryConn) != CONNECTION_OK))
+	if ((connection_retries = 3) && (PQstatus(primaryConn) != CONNECTION_OK))
 	{
-		primaryConn = getMasterConnection(myLocalConn, myLocalId, myClusterName, &primaryId);
-		if (primaryConn == NULL)
-			exit(1);
+		fprintf(stderr, "\n%s: We couldn't reconnect to master, searching if ", progname);
+		fprintf(stderr, "another node has been promoted.\n", progname);
+		for (connection_retries = 0; connection_retries < 30; connection_retries++)
+		{
+			primaryConn = getMasterConnection(myLocalConn, myLocalId, myClusterName, &primaryId);
+			if (PQstatus(primaryConn) == CONNECTION_OK)
+			{
+				/* Connected, we can continue the process so break the loop */
+				fprintf(stderr, "\n%s: Connected to node %d, continue monitoring.\n", progname, primaryId);
+				break;
+			}
+			else
+			{
+				fprintf(stderr, "\n%s: We haven't found a new master, waiting before retry...\n", progname);
+				/* wait 10 minutes before retries, after 30 failures we stop trying */
+				sleep(600);
+			}
+		}
 	}
 
 	/* Check if we still are a standby, we could have been promoted */

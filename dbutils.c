@@ -181,6 +181,8 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster, int *master_id)
 		*master_id = atoi(PQgetvalue(res1, i, 0));
 		strcpy(master_conninfo, PQgetvalue(res1, i, 2));
 		master_conn = establishDBConnection(master_conninfo, false);
+		if (PQstatus(master_conn) != CONNECTION_OK)
+			continue;
 
 		/* 
 		 * I can't use the is_standby() function here because on error that 
