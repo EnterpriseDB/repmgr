@@ -240,6 +240,11 @@ MonitorExecute(void)
 			}
 		}
 	}
+	if (PQstatus(primaryConn) != CONNECTION_OK)
+	{
+		fprintf(stderr, "\n%s: We couldn't reconnect for long enough, exiting...\n", progname);
+		exit(1);
+	}
 
 	/* Check if we still are a standby, we could have been promoted */
 	if (!is_standby(myLocalConn))
