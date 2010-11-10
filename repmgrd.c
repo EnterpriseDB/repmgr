@@ -200,17 +200,16 @@ MonitorExecute(void)
 	int	connection_retries;
 
 	/* 
-	 * Check if the master is still available, if after 3 retries we cannot 
-	 * from the error, try to get a new master. If cannot find one then error
-	 * and exit
+	 * Check if the master is still available, if after 5 minutes of retries 
+	 * we cannot reconnect, try to get a new master. 
 	 */
-	for (connection_retries = 0; connection_retries < 3; connection_retries++)
+	for (connection_retries = 0; connection_retries < 15; connection_retries++)
 	{
 		if (PQstatus(primaryConn) != CONNECTION_OK)
 		{
 			fprintf(stderr, "\n%s: Connection to master has been lost, trying to recover...\n", progname);
-			/* wait 5 minutes between retries */
-			sleep(300);
+			/* wait 20 seconds between retries */
+			sleep(20);
 
 			PQreset(primaryConn);
 		}	
@@ -220,11 +219,11 @@ MonitorExecute(void)
 			break;
 		}
 	}
-	if ((connection_retries = 3) && (PQstatus(primaryConn) != CONNECTION_OK))
+	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
 		fprintf(stderr, "\n%s: We couldn't reconnect to master, searching if ", progname);
 		fprintf(stderr, "another node has been promoted.\n", progname);
-		for (connection_retries = 0; connection_retries < 30; connection_retries++)
+		for (connection_retries = 0; connection_retries < 6; connection_retries++)
 		{
 			primaryConn = getMasterConnection(myLocalConn, myLocalId, myClusterName, &primaryId);
 			if (PQstatus(primaryConn) == CONNECTION_OK)
@@ -236,8 +235,8 @@ MonitorExecute(void)
 			else
 			{
 				fprintf(stderr, "\n%s: We haven't found a new master, waiting before retry...\n", progname);
-				/* wait 10 minutes before retries, after 30 failures we stop trying */
-				sleep(600);
+				/* wait 5 minutes before retries, after 6 failures (30 minutes) we stop trying */
+				sleep(300);
 			}
 		}
 	}
