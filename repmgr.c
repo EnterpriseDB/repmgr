@@ -54,6 +54,7 @@ char		*username = NULL;
 char		*dest_dir = NULL;
 char		*config_file = NULL;
 char		*remote_user = NULL;
+char		*wal_keep_segments = NULL;	
 bool		verbose = false;
 bool		force = false;
 
@@ -75,6 +76,7 @@ main(int argc, char **argv)
 		{"dest-dir", required_argument, NULL, 'D'},
 		{"config-file", required_argument, NULL, 'f'},
 		{"remote-user", required_argument, NULL, 'R'},
+		{"wal-keep-segments", required_argument, NULL, 'w'},
 		{"force", no_argument, NULL, 'F'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
@@ -101,7 +103,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:R:F:v", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:R:w:F:v", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -126,6 +128,9 @@ main(int argc, char **argv)
 			case 'R':
 				remote_user = optarg;
 				break;			
+			case 'w':
+				wal_keep_segments = optarg;
+				break;
 			case 'F':
 				force = true;
 				break;
@@ -217,6 +222,12 @@ main(int argc, char **argv)
 	{
 		config_file = malloc(5 + sizeof(CONFIG_FILE));
 		sprintf(config_file, "./%s", CONFIG_FILE);
+	}
+
+	if (wal_keep_segments == NULL)
+	{
+		wal_keep_segments = malloc(5);
+		strcpy(wal_keep_segments, "5000");
 	}
 
     if (dbname == NULL)
@@ -695,10 +706,10 @@ do_standby_clone(void)
 		fprintf(stderr, _("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname); 
 		return;
 	}
-	if (!guc_setted(conn, "wal_keep_segments", ">=", "5000"))
+	if (!guc_setted(conn, "wal_keep_segments", ">=", wal_keep_segments))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set to 5000 or greater\n"), progname); 
+		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set to %s or greater\n"), wal_keep_segments, progname); 
 		return;
 	}
 	if (!guc_setted(conn, "archive_mode", "=", "on"))
@@ -1200,6 +1211,7 @@ help(const char *progname)
 	printf(_("  -D, --data-dir=DIR         local directory where the files will be copied to\n"));
 	printf(_("  -f, --config_file=PATH     path to the configuration file\n"));
 	printf(_("  -R, --remote-user=USERNAME database server username for rsync\n"));
+	printf(_("  -w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
    
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
     printf(_("or making follow another node and then exits.\n"));
