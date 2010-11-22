@@ -247,6 +247,7 @@ The output from this program looks like this::
     -D, --data-dir=DIR         local directory where the files will be copied to
     -f, --config_file=PATH     path to the configuration file
     -R, --remote-user=USERNAME database server username for rsync
+    -w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)
 
   repmgr performs some tasks like clone a node, promote it or making follow another node and then exits.
   COMMANDS:
@@ -421,4 +422,133 @@ home directory you will run this on the master::
 and the same in the standby.
 
 The repmgr daemon creates 2 connections: one to master and other to standby.
+
+Detailed walkthrough
+====================
+
+The following scenario involves two PostgreSQL installations on the same server hardware:
+
+* A primary (master) server called “prime,” with a user as “prime,” who is also the owner of the files. This server is operating on port 5433.  This server will be known as “node1” in the cluster “test”
+
+* A standby server called “standby,” with a user of “standby,” who is the owner of the files.  This server is operating on port 5434.  This server will be known and “node2” on the cluster “test.”
+* A database exists on “prime” called “testdb.”
+* The Postgress installation in each of the above is defined as $PGDATA, which represents /stripe/prime on the “prime” server and /stripe/standby on the “standby server.
+
+Clearing the PostgreSQL installation on the Standby
+---------------------------------------------------
+
+To reenact a “new” build of a streaming replica, I take my existing test environment as described above and strip away the PostgreSQL installation on my existing replica
+
+* Stop both servers.
+
+* Assuming I have a terminal window open for each server, I go to “standby” and remove the PostgreSQL installation by typing::
+
+    cd $PGDATA  (the equivalent in my installation, of typing cd /stripe/standby)
+    rm -rf *
+
+  To delete the entire PostgreSQL installation.
+
+At this point, I have my original “prime” server with its PostgreSQL installation and repmgr installed in the ~/repmgr directory – in this specific installation that is /home /prime/repmgr
+
+Building the standby
+--------------------
+
+We assume that repmgr is installed on “prime” in the directory: /home/prime/repmgr
+There needs to be a repmgr.conf file on each server as follows:
+On “prime” it should contain::
+
+  cluster=test
+  node=1
+  conninfo='host=127.0.0.1 dbname=dbtest'
+
+On “standby” it should contain::
+
+  cluster=test
+  node=2
+  conninfo='host=127.0.0.1 dbname=dbtest'
+
+Next, with “prime” server running, we want to use the clone standby command in repmgr to copy over the entire PostgreSQL installation and the database onto the “standby” server.  On the “standby” server, type::
+
+  repmgr -D $PGDATA -p 5433 -U prime -R prime --verbose standby clone localhost
+
+Next, we need a recovery.conf file on “standby” in the $PGDATA directory that reads as follows::
+
+  standby_mode = 'on'
+  primary_conninfo = 'host=127.0.0.1 port=5433'
+
+Make sure that standby has a qualifying role in the database, “testdb” in this case and can login. Start psql on the testdb database on “prime” and type at the testdb#  prompt::
+
+  CREATE ROLE standby SUPERUSER LOGIN
+
+
+Registering the master and standby
+----------------------------------
+
+First, register the master by typing on “prime”::
+
+  repmgr -f /home/prime/repmgr/repmgr.conf --verbose master register
+
+On “standby,” edit the postgresql.conf file and change the port to 5434.
+
+Start the “standby” server.
+
+Then register the standby by typing on “standby”::
+
+  repmgr -f /home/standby/repmgr/repmgr.conf --verbose standby register
+
+Verify that one can make queries against the standby server and cannot make insertions into the standby database.
+
+At this point, we have a functioning primary on “prime” and a functioning standby server running on “standby.”
+
+
+Simulating the failure of the primary server
+--------------------------------------------
+
+To simulate the loss of the primary server, we simply stop the “prime” server.  At this point, the standby contains the database as it existed at the time of the “failure” of the primary server.
+
+
+Promoting the Standby to be the Primary
+---------------------------------------
+
+We now need to promote the standby server to be the primary to allow our applications to read and write to the database by typing::
+
+  repmgr -f /home/standby/repmgr/repmgr.conf --verbose standby promote
+
+The server stops and restarts and now has read/write ability.
+
+Bringing the former Primary up as a Standby
+-------------------------------------------
+
+To make the former primary act as a standby, which is necessary before restoring the original roles, type::
+
+  repmgr -U standby -R prime -h 127.0.0.1 -p 5433 -d dbtest --force --verbose standby clone
+
+Stop and restart the “prime” server, which is now acting as a standby server.
+
+Make sure the record(s) inserted in step four now appear on the now standby (prime).
+Make sure the database on “prime” is read-only.
+
+
+Restoring the original roles of prime to primary and standby to standby
+-----------------------------------------------------------------------
+
+We restore the configuration to its original configuration by stopping the “standby” (now acting as a primary) and promoting “prime” back to be the primary server, then bringing up “standby” as a standby with a valid recovery.conf file on “standby.”
+
+Stop the “standby” server.
+
+Type::
+
+  repmgr -f /home/prime/repmgr/repmgr.conf standby promote
+
+Now the original primary, “prime” is acting again as primary.
+
+Start the “standby” server and type this on “prime”::
+
+  repmgr standby clone --force -h 127.0.0.1 -p 5434 -U prime -R standby --verbose
+
+Stop the “standby” and change the port to be 5434 in the postgresql.conf file.
+
+Verify the roles have reversed by attempting to insert a record on “standby” and on “prime.”
+
+The servers are now again acting as primary on “prime” and standby on “standby.”
 
