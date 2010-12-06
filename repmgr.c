@@ -1212,6 +1212,7 @@ help(const char *progname)
 	printf(_("  -f, --config_file=PATH     path to the configuration file\n"));
 	printf(_("  -R, --remote-user=USERNAME database server username for rsync\n"));
 	printf(_("  -w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
+	printf(_("  -F, --force                force potentially dangerous operations to happen\n"));
    
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
     printf(_("or making follow another node and then exits.\n"));
