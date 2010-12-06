@@ -31,63 +31,63 @@ static int mkdir_p(char *path, mode_t omode);
 int
 check_dir(char *dir)
 {
-    DIR        *chkdir;
-    struct 		dirent *file;
-    int         result = 1;
+	DIR		   *chkdir;
+	struct		dirent *file;
+	int			result = 1;
 
-    errno = 0;
+	errno = 0;
 
-    chkdir = opendir(dir);
+	chkdir = opendir(dir);
 
-    if (!chkdir)
-        return (errno == ENOENT) ? 0 : -1;
+	if (!chkdir)
+		return (errno == ENOENT) ? 0 : -1;
 
-    while ((file = readdir(chkdir)) != NULL)
-    {
-        if (strcmp(".", file->d_name) == 0 ||
-            strcmp("..", file->d_name) == 0)
-        {
-            /* skip this and parent directory */
-            continue;
-        }
-        else
-        {
-            result = 2;         /* not empty */
-            break;
-        }
-    }
+	while ((file = readdir(chkdir)) != NULL)
+	{
+		if (strcmp(".", file->d_name) == 0 ||
+			strcmp("..", file->d_name) == 0)
+		{
+			/* skip this and parent directory */
+			continue;
+		}
+		else
+		{
+			result = 2;			/* not empty */
+			break;
+		}
+	}
 
 #ifdef WIN32
-    /*
-     * This fix is in mingw cvs (runtime/mingwex/dirent.c rev 1.4), but not in
-     * released version
-     */
-    if (GetLastError() == ERROR_NO_MORE_FILES)
-        errno = 0;
+	/*
+	 * This fix is in mingw cvs (runtime/mingwex/dirent.c rev 1.4), but not in
+	 * released version
+	 */
+	if (GetLastError() == ERROR_NO_MORE_FILES)
+		errno = 0;
 #endif
 
-    closedir(chkdir);
+	closedir(chkdir);
 
-    if (errno != 0)
-        return -1;          /* some kind of I/O error? */
+	if (errno != 0)
+		return -1;			/* some kind of I/O error? */
 
 	return result;
 }
 
 
 /*
- * Create directory 
+ * Create directory
  */
 bool
 create_directory(char *dir)
 {
-    if (mkdir_p(dir, 0700) == 0)
-        return true;
+	if (mkdir_p(dir, 0700) == 0)
+		return true;
 
-    fprintf(stderr, _("Could not create directory \"%s\": %s\n"),
-            dir, strerror(errno));
+	fprintf(stderr, _("Could not create directory \"%s\": %s\n"),
+			dir, strerror(errno));
 
-    return false;
+	return false;
 }
 
 bool
@@ -114,10 +114,10 @@ mkdir_p(char *path, mode_t omode)
 {
 	struct stat sb;
 	mode_t		numask,
-				oumask;
+		oumask;
 	int			first,
-				last,
-				retval;
+		last,
+		retval;
 	char	   *p;
 
 	p = path;
@@ -212,5 +212,5 @@ is_pg_dir(char *dir)
 
 	sprintf(path, "%s/PG_VERSION", dir);
 
-        return (stat(path, &sb) == 0) ? true : false;
+	return (stat(path, &sb) == 0) ? true : false;
 }
