@@ -1,3 +1,10 @@
+/*
+ * repmgr.sql
+ *
+ * Copyright (c) Heroku, 2010
+ *
+ */
+
 CREATE USER repmgr;
 CREATE SCHEMA repmgr;
 
@@ -5,7 +12,6 @@ CREATE SCHEMA repmgr;
  * The table repl_nodes keeps information about all machines in
  * a cluster
  */
-drop table if exists repl_nodes cascade;
 CREATE TABLE repl_nodes (
   id            integer primary key,
   cluster   text        not null,       -- Name to identify the cluster
@@ -17,7 +23,6 @@ ALTER TABLE repl_nodes OWNER TO repmgr;
  * Keeps monitor info about every node and their relative "position"
  * to primary
  */
-drop table if exists repl_monitor cascade;
 CREATE TABLE repl_monitor (
   primary_node                   INTEGER NOT NULL,
   standby_node                   INTEGER NOT NULL,
@@ -40,7 +45,6 @@ ALTER TABLE repl_monitor OWNER TO repmgr;
  *                      have received)
  * time_lag: how many seconds are we from being up-to-date with master
  */
-drop view if exists repl_status;
 CREATE VIEW repl_status AS
 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node
                                                        ORDER BY last_monitor_time desc)
