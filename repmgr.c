@@ -335,7 +335,7 @@ do_master_register(void)
 	/* Check if there is a schema for this cluster */
 	sqlquery_snprintf(sqlquery,
 					  "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'",
-			myClusterName);
+					  myClusterName);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -373,9 +373,9 @@ do_master_register(void)
 
 		/* ... the tables */
 		sqlquery_snprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_nodes ( "
-				"	 id		   integer primary key, "
-				"	 cluster   text	   not null,	"
-				"	 conninfo  text	   not null)", myClusterName);
+						  "	 id		   integer primary key, "
+						  "	 cluster   text	   not null,	"
+						  "	 conninfo  text	   not null)", myClusterName);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr,
@@ -386,14 +386,14 @@ do_master_register(void)
 		}
 
 		sqlquery_snprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_monitor ( "
-				"	 primary_node					INTEGER NOT NULL, "
-				"	 standby_node					INTEGER NOT NULL, "
-				"	 last_monitor_time				TIMESTAMP WITH TIME ZONE NOT NULL, "
-				"	 last_wal_primary_location		TEXT NOT NULL,	 "
-				"	 last_wal_standby_location		TEXT NOT NULL,	 "
-				"	 replication_lag				BIGINT NOT NULL, "
-				"	 apply_lag						BIGINT NOT NULL) ",
-				myClusterName);
+						  "	 primary_node					INTEGER NOT NULL, "
+						  "	 standby_node					INTEGER NOT NULL, "
+						  "	 last_monitor_time				TIMESTAMP WITH TIME ZONE NOT NULL, "
+						  "	 last_wal_primary_location		TEXT NOT NULL,	 "
+						  "	 last_wal_standby_location		TEXT NOT NULL,	 "
+						  "	 replication_lag				BIGINT NOT NULL, "
+						  "	 apply_lag						BIGINT NOT NULL) ",
+						  myClusterName);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr,
@@ -405,14 +405,14 @@ do_master_register(void)
 
 		/* and the view */
 		sqlquery_snprintf(sqlquery, "CREATE VIEW repmgr_%s.repl_status AS "
-				"	 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
-				" ORDER BY last_monitor_time desc) "
-				"	 FROM repmgr_%s.repl_monitor) "
-				"	 SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
-				"			last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
-				"			pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
-				"	   FROM monitor_info a "
-				"	  WHERE row_number = 1", myClusterName, myClusterName);
+						  "	 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
+						  " ORDER BY last_monitor_time desc) "
+						  "	 FROM repmgr_%s.repl_monitor) "
+						  "	 SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
+						  "			last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
+						  "			pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
+						  "	   FROM monitor_info a "
+						  "	  WHERE row_number = 1", myClusterName, myClusterName);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr,
@@ -441,8 +441,8 @@ do_master_register(void)
 	if (force)
 	{
 		sqlquery_snprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
-				" WHERE id = %d",
-				myClusterName, myLocalId);
+						  " WHERE id = %d",
+						  myClusterName, myLocalId);
 
 		if (!PQexec(conn, sqlquery))
 		{
@@ -454,8 +454,8 @@ do_master_register(void)
 	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
-			"VALUES (%d, '%s', '%s')",
-			myClusterName, myLocalId, myClusterName, conninfo);
+					  "VALUES (%d, '%s', '%s')",
+					  myClusterName, myLocalId, myClusterName, conninfo);
 
 	if (!PQexec(conn, sqlquery))
 	{
@@ -519,8 +519,9 @@ do_standby_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sqlquery_snprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'",
-			myClusterName);
+	sqlquery_snprintf(sqlquery,
+					  "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'",
+					  myClusterName);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -572,8 +573,8 @@ do_standby_register(void)
 	if (force)
 	{
 		sqlquery_snprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
-				" WHERE id = %d",
-				myClusterName, myLocalId);
+						  " WHERE id = %d",
+						  myClusterName, myLocalId);
 
 		if (!PQexec(master_conn, sqlquery))
 		{
@@ -586,8 +587,8 @@ do_standby_register(void)
 	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
-			"VALUES (%d, '%s', '%s')",
-			myClusterName, myLocalId, myClusterName, conninfo);
+					  "VALUES (%d, '%s', '%s')",
+					  myClusterName, myLocalId, myClusterName, conninfo);
 
 	if (!PQexec(master_conn, sqlquery))
 	{
@@ -748,8 +749,13 @@ do_standby_clone(void)
 	if (verbose)
 		printf(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
 
-	/* Check if the tablespace locations exists and that we can write to them */
-	sqlquery_snprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
+	/*
+	 * Check if the tablespace locations exists and that we can write to them.
+	 */
+	sqlquery_snprintf(sqlquery,
+					  "SELECT spclocation "
+					  "  FROM pg_tablespace "
+					  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -824,9 +830,12 @@ do_standby_clone(void)
 	fprintf(stderr, "Starting backup...\n");
 
 	/* Get the data directory full path and the configuration files location */
-	sqlquery_snprintf(sqlquery, "SELECT name, setting "
-			"	 FROM pg_settings "
-			" WHERE name IN ('data_directory', 'config_file', 'hba_file', 'ident_file')");
+	sqlquery_snprintf(
+		sqlquery,
+		"SELECT name, setting "
+		"  FROM pg_settings "
+		"  WHERE name IN ('data_directory', 'config_file', 'hba_file', "
+		"    'ident_file')");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -854,7 +863,10 @@ do_standby_clone(void)
 	 * inform the master we will start a backup and get the first XLog filename
 	 * so we can say to the user we need those files
 	 */
-	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))", time(NULL));
+	sqlquery_snprintf(
+		sqlquery,
+		"SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))",
+		time(NULL));
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -906,7 +918,10 @@ do_standby_clone(void)
 	 * find and appropiate rsync option but besides we could someday make all
 	 * these rsync happen concurrently
 	 */
-	sqlquery_snprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
+	sqlquery_snprintf(sqlquery,
+					  "SELECT spclocation "
+					  "  FROM pg_tablespace "
+					  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -1062,7 +1077,7 @@ do_standby_promote(void)
 
 	/* Get the data directory full path and the last subdirectory */
 	sqlquery_snprintf(sqlquery, "SELECT setting "
-			" FROM pg_settings WHERE name = 'data_directory'");
+					  " FROM pg_settings WHERE name = 'data_directory'");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -1212,7 +1227,7 @@ do_standby_follow(void)
 
 	/* Get the data directory full path */
 	sqlquery_snprintf(sqlquery, "SELECT setting "
-			" FROM pg_settings WHERE name = 'data_directory'");
+					  " FROM pg_settings WHERE name = 'data_directory'");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -1305,7 +1320,7 @@ create_recovery_file(const char *data_dir)
 	}
 
 	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host,
-			((masterport==NULL) ? "5432" : masterport));
+					((masterport==NULL) ? "5432" : masterport));
 	if (fputs(line, recovery_file) == EOF)
 	{
 		fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
@@ -1348,7 +1363,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		strcat(options,
 			   " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
-				options, host_string, remote_path, local_path);
+						options, host_string, remote_path, local_path);
 	}
 	else
 	{

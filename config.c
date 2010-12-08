@@ -43,7 +43,7 @@ parse_config(const char *config_file, char *cluster_name, int *node,
 			strncpy (conninfo, value, MAXLEN);
 		else
 			printf("WARNING: %s/%s: Unknown name/value pair!\n",
-			       name, value);
+				   name, value);
 	}
 
 	/* Close file */

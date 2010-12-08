@@ -116,8 +116,8 @@ guc_setted(PGconn *conn, const char *parameter, const char *op,
 	char		sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
-			" WHERE name = '%s' AND setting %s '%s'",
-			parameter, op, value);
+					  " WHERE name = '%s' AND setting %s '%s'",
+					  parameter, op, value);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -145,9 +145,10 @@ get_cluster_size(PGconn *conn)
 	const char		*size;
 	char		sqlquery[QUERY_STR_LEN];
 
-	sqlquery_snprintf(sqlquery,
-			"SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
-			"	 FROM pg_database ");
+	sqlquery_snprintf(
+		sqlquery,
+		"SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
+		"	 FROM pg_database ");
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -179,8 +180,8 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 
 	/* find all nodes belonging to this cluster */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
-			" WHERE cluster = '%s' and id <> %d",
-			cluster, cluster, id);
+					  " WHERE cluster = '%s' and id <> %d",
+					  cluster, cluster, id);
 
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)

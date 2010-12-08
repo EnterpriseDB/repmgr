@@ -61,7 +61,7 @@ static void setup_cancel_handler(void);
 /*
  * Every 3 seconds, insert monitor info
  */
-#define MonitorCheck()			 \
+#define MonitorCheck()						  \
 	for (;;)								  \
 	{										  \
 		MonitorExecute();					  \
@@ -273,9 +273,10 @@ MonitorExecute(void)
 		CancelQuery();
 
 	/* Get local xlog info */
-	sqlquery_snprintf(sqlquery,
-			"SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-			"pg_last_xlog_replay_location()");
+	sqlquery_snprintf(
+		sqlquery,
+		"SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
+		"pg_last_xlog_replay_location()");
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -314,15 +315,15 @@ MonitorExecute(void)
 	 * Build the SQL to execute on primary
 	 */
 	sqlquery_snprintf(sqlquery,
-			"INSERT INTO repmgr_%s.repl_monitor "
-			"VALUES(%d, %d, '%s'::timestamp with time zone, "
-			" '%s', '%s', "
-			" %lld, %lld)", myClusterName,
-			primaryId, myLocalId, monitor_standby_timestamp,
-			last_wal_primary_location,
-			last_wal_standby_received,
-			(lsn_primary - lsn_standby_received),
-			(lsn_standby_received - lsn_standby_applied));
+					  "INSERT INTO repmgr_%s.repl_monitor "
+					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
+					  " '%s', '%s', "
+					  " %lld, %lld)", myClusterName,
+					  primaryId, myLocalId, monitor_standby_timestamp,
+					  last_wal_primary_location,
+					  last_wal_standby_received,
+					  (lsn_primary - lsn_standby_received),
+					  (lsn_standby_received - lsn_standby_applied));
 
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We
@@ -340,8 +341,8 @@ checkClusterConfiguration(void)
 	PGresult   *res;
 
 	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
-			" WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
-			myClusterName);
+					  " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
+					  myClusterName);
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -378,8 +379,8 @@ checkNodeConfiguration(char *conninfo)
 
 	/* Check if we have my node information in repl_nodes */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
-			" WHERE id = %d AND cluster = '%s' ",
-			myClusterName, myLocalId, myClusterName);
+					  " WHERE id = %d AND cluster = '%s' ",
+					  myClusterName, myLocalId, myClusterName);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -401,8 +402,8 @@ checkNodeConfiguration(char *conninfo)
 
 		/* Adding the node */
 		sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
-				"VALUES (%d, '%s', '%s')",
-				myClusterName, myLocalId, myClusterName, conninfo);
+						  "VALUES (%d, '%s', '%s')",
+						  myClusterName, myLocalId, myClusterName, conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{
