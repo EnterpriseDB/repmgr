@@ -1,6 +1,8 @@
 /*
  * repmgr.c
+ *
  * Copyright (c) 2ndQuadrant, 2010
+ * Copyright (c) Heroku, 2010
  *
  * Command interpreter for the repmgr
  * This module is a command-line utility to easily setup a cluster of
@@ -19,6 +21,7 @@
 #include <unistd.h>
 
 #include "check_dir.h"
+#include "strutil.h"
 
 #define RECOVERY_FILE "recovery.conf"
 #define RECOVERY_DONE_FILE "recovery.done"
@@ -30,7 +33,6 @@
 #define STANDBY_PROMOTE	 4
 #define STANDBY_FOLLOW	 5
 
-#define QUERY_STR_LEN	 8192
 
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir);
@@ -227,8 +229,10 @@ main(int argc, char **argv)
 
 	if (config_file == NULL)
 	{
-		config_file = malloc(5 + sizeof(CONFIG_FILE));
-		sprintf(config_file, "./%s", CONFIG_FILE);
+		const int buf_sz = 3 + sizeof(CONFIG_FILE);
+
+		config_file = malloc(buf_sz);
+		xsnprintf(config_file, buf_sz, "./%s", CONFIG_FILE);
 	}
 
 	if (wal_keep_segments == NULL)
@@ -329,7 +333,8 @@ do_master_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'",
+	sqlquery_snprintf(sqlquery,
+					  "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'",
 			myClusterName);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -357,7 +362,7 @@ do_master_register(void)
 	if (!schema_exists)
 	{
 		/* ok, create the schema */
-		sprintf(sqlquery, "CREATE SCHEMA repmgr_%s", myClusterName);
+		sqlquery_snprintf(sqlquery, "CREATE SCHEMA repmgr_%s", myClusterName);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot create the schema repmgr_%s: %s\n",
@@ -367,7 +372,7 @@ do_master_register(void)
 		}
 
 		/* ... the tables */
-		sprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_nodes (		  "
+		sqlquery_snprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_nodes ( "
 				"	 id		   integer primary key, "
 				"	 cluster   text	   not null,	"
 				"	 conninfo  text	   not null)", myClusterName);
@@ -380,7 +385,7 @@ do_master_register(void)
 			return;
 		}
 
-		sprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_monitor ( "
+		sqlquery_snprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_monitor ( "
 				"	 primary_node					INTEGER NOT NULL, "
 				"	 standby_node					INTEGER NOT NULL, "
 				"	 last_monitor_time				TIMESTAMP WITH TIME ZONE NOT NULL, "
@@ -399,7 +404,7 @@ do_master_register(void)
 		}
 
 		/* and the view */
-		sprintf(sqlquery, "CREATE VIEW repmgr_%s.repl_status AS "
+		sqlquery_snprintf(sqlquery, "CREATE VIEW repmgr_%s.repl_status AS "
 				"	 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
 				" ORDER BY last_monitor_time desc) "
 				"	 FROM repmgr_%s.repl_monitor) "
@@ -435,7 +440,7 @@ do_master_register(void)
 	/* Now register the master */
 	if (force)
 	{
-		sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
+		sqlquery_snprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 				" WHERE id = %d",
 				myClusterName, myLocalId);
 
@@ -448,7 +453,7 @@ do_master_register(void)
 		}
 	}
 
-	sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 			"VALUES (%d, '%s', '%s')",
 			myClusterName, myLocalId, myClusterName, conninfo);
 
@@ -514,7 +519,7 @@ do_standby_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'",
+	sqlquery_snprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'",
 			myClusterName);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -566,7 +571,7 @@ do_standby_register(void)
 	/* Now register the standby */
 	if (force)
 	{
-		sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
+		sqlquery_snprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 				" WHERE id = %d",
 				myClusterName, myLocalId);
 
@@ -580,7 +585,7 @@ do_standby_register(void)
 		}
 	}
 
-	sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 			"VALUES (%d, '%s', '%s')",
 			myClusterName, myLocalId, myClusterName, conninfo);
 
@@ -744,7 +749,7 @@ do_standby_clone(void)
 		printf(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
 
 	/* Check if the tablespace locations exists and that we can write to them */
-	sprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
+	sqlquery_snprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -819,7 +824,7 @@ do_standby_clone(void)
 	fprintf(stderr, "Starting backup...\n");
 
 	/* Get the data directory full path and the configuration files location */
-	sprintf(sqlquery, "SELECT name, setting "
+	sqlquery_snprintf(sqlquery, "SELECT name, setting "
 			"	 FROM pg_settings "
 			" WHERE name IN ('data_directory', 'config_file', 'hba_file', 'ident_file')");
 	res = PQexec(conn, sqlquery);
@@ -849,7 +854,7 @@ do_standby_clone(void)
 	 * inform the master we will start a backup and get the first XLog filename
 	 * so we can say to the user we need those files
 	 */
-	sprintf(sqlquery, "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))", time(NULL));
+	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))", time(NULL));
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -876,9 +881,9 @@ do_standby_clone(void)
 	 */
 
 	/* need to create the global sub directory */
-	sprintf(master_control_file, "%s/global/pg_control",
-			master_data_directory);
-	sprintf(local_control_file, "%s/global", dest_dir);
+	maxlen_snprintf(master_control_file, "%s/global/pg_control",
+					master_data_directory);
+	maxlen_snprintf(local_control_file, "%s/global", dest_dir);
 	if (!create_directory(local_control_file))
 	{
 		fprintf(stderr, _("%s: couldn't create directory %s ... "),
@@ -901,7 +906,7 @@ do_standby_clone(void)
 	 * find and appropiate rsync option but besides we could someday make all
 	 * these rsync happen concurrently
 	 */
-	sprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
+	sqlquery_snprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -944,7 +949,7 @@ stop_backup:
 
 	fprintf(stderr, "Finishing backup...\n");
 
-	sprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
+	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -970,7 +975,7 @@ stop_backup:
 	 * We need to create the pg_xlog sub directory too, I'm reusing a variable
 	 * here.
 	 */
-	sprintf(local_control_file, "%s/pg_xlog", dest_dir);
+	maxlen_snprintf(local_control_file, "%s/pg_xlog", dest_dir);
 	if (!create_directory(local_control_file))
 	{
 		fprintf(stderr, _("%s: couldn't create directory %s, you will need to do it manually...\n"),
@@ -994,7 +999,7 @@ do_standby_promote(void)
 	PGconn		*conn;
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
-	char		script[QUERY_STR_LEN];
+	char		script[MAXLEN];
 
 	char		myClusterName[MAXLEN];
 	int			myLocalId	= -1;
@@ -1056,7 +1061,7 @@ do_standby_promote(void)
 		printf(_("\n%s: Promoting standby...\n"), progname);
 
 	/* Get the data directory full path and the last subdirectory */
-	sprintf(sqlquery, "SELECT setting "
+	sqlquery_snprintf(sqlquery, "SELECT setting "
 			" FROM pg_settings WHERE name = 'data_directory'");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1071,12 +1076,12 @@ do_standby_promote(void)
 	PQclear(res);
 	PQfinish(conn);
 
-	sprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
-	sprintf(recovery_done_path, "%s/%s", data_dir, RECOVERY_DONE_FILE);
+	maxlen_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
+	maxlen_snprintf(recovery_done_path, "%s/%s", data_dir, RECOVERY_DONE_FILE);
 	rename(recovery_file_path, recovery_done_path);
 
 	/* We assume the pg_ctl script is in the PATH */
-	sprintf(script, "pg_ctl -D %s -m fast restart", data_dir);
+	maxlen_snprintf(script, "pg_ctl -D %s -m fast restart", data_dir);
 	r = system(script);
 	if (r != 0)
 	{
@@ -1108,7 +1113,7 @@ do_standby_follow(void)
 	PGconn		*conn;
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
-	char		script[QUERY_STR_LEN];
+	char		script[MAXLEN];
 
 	char		myClusterName[MAXLEN];
 	int			myLocalId	= -1;
@@ -1206,7 +1211,7 @@ do_standby_follow(void)
 		printf(_("\n%s: Changing standby's master...\n"), progname);
 
 	/* Get the data directory full path */
-	sprintf(sqlquery, "SELECT setting "
+	sqlquery_snprintf(sqlquery, "SELECT setting "
 			" FROM pg_settings WHERE name = 'data_directory'");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1227,7 +1232,7 @@ do_standby_follow(void)
 
 	/* Finally, restart the service */
 	/* We assume the pg_ctl script is in the PATH */
-	sprintf(script, "pg_ctl -D %s -m fast restart", data_dir);
+	maxlen_snprintf(script, "pg_ctl -D %s -m fast restart", data_dir);
 	r = system(script);
 	if (r != 0)
 	{
@@ -1282,7 +1287,7 @@ create_recovery_file(const char *data_dir)
 	char		recovery_file_path[MAXLEN];
 	char		line[MAXLEN];
 
-	sprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
+	maxlen_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
 
 	recovery_file = fopen(recovery_file_path, "w");
 	if (recovery_file == NULL)
@@ -1291,7 +1296,7 @@ create_recovery_file(const char *data_dir)
 		return false;
 	}
 
-	sprintf(line, "standby_mode = 'on'\n");
+	maxlen_snprintf(line, "standby_mode = 'on'\n");
 	if (fputs(line, recovery_file) == EOF)
 	{
 		fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
@@ -1299,7 +1304,7 @@ create_recovery_file(const char *data_dir)
 		return false;
 	}
 
-	sprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host,
+	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host,
 			((masterport==NULL) ? "5432" : masterport));
 	if (fputs(line, recovery_file) == EOF)
 	{
@@ -1319,35 +1324,36 @@ static int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
 				  char *local_path, bool is_directory)
 {
-	char script[QUERY_STR_LEN];
-	char options[QUERY_STR_LEN];
-	char host_string[QUERY_STR_LEN];
+	char script[MAXLEN];
+	char options[MAXLEN];
+	char host_string[MAXLEN];
 	int	 r;
 
-	sprintf(options, "--archive --checksum --compress --progress --rsh=ssh");
+	maxlen_snprintf(options,
+					"--archive --checksum --compress --progress --rsh=ssh");
 	if (force)
 		strcat(options, " --delete");
 
 	if (remote_user == NULL)
 	{
-		sprintf(host_string,"%s",host);
+		maxlen_snprintf(host_string, "%s", host);
 	}
 	else
 	{
-		sprintf(host_string,"%s@%s",remote_user,host);
+		maxlen_snprintf(host_string,"%s@%s",remote_user,host);
 	}
 
 	if (is_directory)
 	{
 		strcat(options,
 			   " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
-		sprintf(script, "rsync %s %s:%s/* %s",
+		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
 				options, host_string, remote_path, local_path);
 	}
 	else
 	{
-		sprintf(script, "rsync %s %s:%s %s/.",
-				options, host_string, remote_path, local_path);
+		maxlen_snprintf(script, "rsync %s %s:%s %s/.",
+						options, host_string, remote_path, local_path);
 	}
 
 	if (verbose)

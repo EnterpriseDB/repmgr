@@ -1,6 +1,8 @@
 /*
  * check_dir.c
+ *
  * Copyright (c) 2ndQuadrant, 2010
+ * Copyright (c) Heroku, 2010
  *
  * Directories management functions
  */
@@ -12,8 +14,11 @@
 #include <stdio.h>
 #include <string.h>
 
+/* NB: postgres_fe must be included BEFORE check_dir */
 #include "postgres_fe.h"
 #include "check_dir.h"
+
+#include "strutil.h"
 
 
 static int mkdir_p(char *path, mode_t omode);
@@ -207,10 +212,11 @@ mkdir_p(char *path, mode_t omode)
 bool
 is_pg_dir(char *dir)
 {
-	char	path[8192];
-	struct stat sb;
+	const size_t buf_sz = 8192;
+	char		 path[buf_sz];
+	struct stat	 sb;
 
-	sprintf(path, "%s/PG_VERSION", dir);
+	xsnprintf(path, buf_sz, "%s/PG_VERSION", dir);
 
 	return (stat(path, &sb) == 0) ? true : false;
 }

@@ -1,6 +1,8 @@
 /*
- * dbutils.h
+ * repmgr.h
+ *
  * Copyright (c) 2ndQuadrant, 2010
+ * Copyright (c) Heroku, 2010
  *
  */
 
@@ -18,7 +20,6 @@
 #define PRIMARY_MODE		0
 #define STANDBY_MODE		1
 
-#define MAXLEN				80
 #define CONFIG_FILE			"repmgr.conf"
 
 #endif

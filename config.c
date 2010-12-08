@@ -1,11 +1,15 @@
 /*
  * config.c
+ *
  * Copyright (c) 2ndQuadrant, 2010
+ * Copyright (c) Heroku, 2010
  *
  * Functions to parse the config file
  */
 
 #include "repmgr.h"
+
+#include "strutil.h"
 
 void
 parse_config(const char *config_file, char *cluster_name, int *node,

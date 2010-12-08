@@ -7,6 +7,7 @@
  */
 
 #include "repmgr.h"
+#include "strutil.h"
 
 PGconn *
 establishDBConnection(const char *conninfo, const bool exit_on_error)
@@ -66,11 +67,13 @@ is_standby(PGconn *conn)
 char *
 pg_version(PGconn *conn)
 {
-	PGresult	*res;
-	char		*major_version;
+	PGresult			*res;
 
-	int			major_version1;
-	char		*major_version2;
+	const size_t		 major_version_sz = 10;
+	char				*major_version;
+
+	int					 major_version1;
+	char				*major_version2;
 
 	res = PQexec(conn,
 				 "WITH pg_version(ver) AS "
@@ -90,12 +93,13 @@ pg_version(PGconn *conn)
 	major_version2 = PQgetvalue(res, 0, 1);
 	PQclear(res);
 
-	major_version = malloc(10);
+	major_version = malloc(major_version_sz);
 
 	if (major_version1 >= 9)
 	{
 		/* form a major version string */
-		sprintf(major_version, "%d.%s", major_version1, major_version2);
+		xsnprintf(major_version, major_version_sz, "%d.%s",
+				  major_version1, major_version2);
 	}
 	else
 		strcpy(major_version, "");
@@ -109,9 +113,9 @@ guc_setted(PGconn *conn, const char *parameter, const char *op,
 		   const char *value)
 {
 	PGresult	*res;
-	char		sqlquery[8192];
+	char		sqlquery[QUERY_STR_LEN];
 
-	sprintf(sqlquery, "SELECT true FROM pg_settings "
+	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
 			" WHERE name = '%s' AND setting %s '%s'",
 			parameter, op, value);
 
@@ -139,9 +143,9 @@ get_cluster_size(PGconn *conn)
 {
 	PGresult	*res;
 	const char		*size;
-	char		sqlquery[8192];
+	char		sqlquery[QUERY_STR_LEN];
 
-	sprintf(sqlquery,
+	sqlquery_snprintf(sqlquery,
 			"SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
 			"	 FROM pg_database ");
 
@@ -169,12 +173,12 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	PGconn	 *master_conn = NULL;
 	PGresult *res1;
 	PGresult *res2;
-	char	 sqlquery[8192];
+	char	 sqlquery[QUERY_STR_LEN];
 	char	 master_conninfo[8192];
 	int		 i;
 
 	/* find all nodes belonging to this cluster */
-	sprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
 			" WHERE cluster = '%s' and id <> %d",
 			cluster, cluster, id);
 

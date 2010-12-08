@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "repmgr.h"
+#include "strutil.h"
 
 #include "libpq/pqsignal.h"
 
@@ -29,7 +30,7 @@ int		primaryId;
 char	primaryConninfo[MAXLEN];
 PGconn *primaryConn;
 
-char sqlquery[8192];
+char sqlquery[QUERY_STR_LEN];
 
 const char *progname;
 
@@ -121,8 +122,10 @@ main(int argc, char **argv)
 
 	if (config_file == NULL)
 	{
-		config_file = malloc(5 + sizeof(CONFIG_FILE));
-		sprintf(config_file, "./%s", CONFIG_FILE);
+		const size_t buf_sz = 3 + sizeof(CONFIG_FILE);
+
+		config_file = malloc(buf_sz);
+		xsnprintf(config_file, buf_sz, "./%s", CONFIG_FILE);
 	}
 
 	/*
@@ -270,7 +273,7 @@ MonitorExecute(void)
 		CancelQuery();
 
 	/* Get local xlog info */
-	sprintf(sqlquery,
+	sqlquery_snprintf(sqlquery,
 			"SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
 			"pg_last_xlog_replay_location()");
 
@@ -289,7 +292,7 @@ MonitorExecute(void)
 	PQclear(res);
 
 	/* Get primary xlog info */
-	sprintf(sqlquery, "SELECT pg_current_xlog_location() ");
+	sqlquery_snprintf(sqlquery, "SELECT pg_current_xlog_location() ");
 
 	res = PQexec(primaryConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -310,7 +313,7 @@ MonitorExecute(void)
 	/*
 	 * Build the SQL to execute on primary
 	 */
-	sprintf(sqlquery,
+	sqlquery_snprintf(sqlquery,
 			"INSERT INTO repmgr_%s.repl_monitor "
 			"VALUES(%d, %d, '%s'::timestamp with time zone, "
 			" '%s', '%s', "
@@ -336,7 +339,7 @@ checkClusterConfiguration(void)
 {
 	PGresult   *res;
 
-	sprintf(sqlquery, "SELECT oid FROM pg_class "
+	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
 			" WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
 			myClusterName);
 	res = PQexec(myLocalConn, sqlquery);
@@ -374,7 +377,7 @@ checkNodeConfiguration(char *conninfo)
 	PGresult   *res;
 
 	/* Check if we have my node information in repl_nodes */
-	sprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
 			" WHERE id = %d AND cluster = '%s' ",
 			myClusterName, myLocalId, myClusterName);
 
@@ -397,7 +400,7 @@ checkNodeConfiguration(char *conninfo)
 		PQclear(res);
 
 		/* Adding the node */
-		sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
+		sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 				"VALUES (%d, '%s', '%s')",
 				myClusterName, myLocalId, myClusterName, conninfo);
 
