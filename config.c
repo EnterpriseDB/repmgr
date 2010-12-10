@@ -15,7 +15,7 @@ void
 parse_config(const char *config_file, char *cluster_name, int *node,
 			 char *conninfo)
 {
-	char *s, buff[256];
+	char *s, buff[1024];
 	FILE *fp = fopen (config_file, "r");
 
 	if (fp == NULL)

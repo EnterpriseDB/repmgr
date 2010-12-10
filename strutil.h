@@ -9,7 +9,7 @@
 #define _STRUTIL_H_
 
 #define QUERY_STR_LEN	 8192
-#define MAXLEN		 80
+#define MAXLEN		 1024
 
 
 extern int xsnprintf(char *str, size_t size, const char *format, ...);
