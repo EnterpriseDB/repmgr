@@ -1,6 +1,8 @@
 /*
  * dbutils.c
+ *
  * Copyright (c) 2ndQuadrant, 2010
+ * Copyright (c) Heroku, 2010
  *
  * Database connection/management functions
  *
@@ -91,7 +93,6 @@ pg_version(PGconn *conn)
 
 	major_version1 = atoi(PQgetvalue(res, 0, 0));
 	major_version2 = PQgetvalue(res, 0, 1);
-	PQclear(res);
 
 	major_version = malloc(major_version_sz);
 
@@ -103,6 +104,8 @@ pg_version(PGconn *conn)
 	}
 	else
 		strcpy(major_version, "");
+
+	PQclear(res);
 
 	return major_version;
 }
