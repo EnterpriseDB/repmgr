@@ -180,6 +180,10 @@ main(int argc, char **argv)
 		MonitorCheck();
 	}
 
+	/* Prevent a double-free */
+	if (primaryConn == myLocalConn)
+		myLocalConn = NULL;
+
 	/* close the connection to the database and cleanup */
 	CloseConnections();
 
