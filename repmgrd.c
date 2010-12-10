@@ -1,6 +1,8 @@
 /*
  * repmgrd.c
+ *
  * Copyright (c) 2ndQuadrant, 2010
+ * Copyright (c) Heroku, 2010
  *
  * Replication manager daemon
  * This module connects to the nodes of a replication cluster and monitors
@@ -23,12 +25,12 @@ char	myClusterName[MAXLEN];
 /* Local info */
 int		myLocalMode = STANDBY_MODE;
 int		myLocalId	= -1;
-PGconn *myLocalConn;
+PGconn *myLocalConn = NULL;
 
 /* Primary info */
 int		primaryId;
 char	primaryConninfo[MAXLEN];
-PGconn *primaryConn;
+PGconn *primaryConn = NULL;
 
 char sqlquery[QUERY_STR_LEN];
 
