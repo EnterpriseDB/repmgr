@@ -64,10 +64,9 @@ is_standby(PGconn *conn)
  * if 8 or inferior returns an empty string
  */
 char *
-pg_version(PGconn *conn)
+pg_version(PGconn *conn, char* major_version)
 {
 	PGresult	*res;
-	char		*major_version;
 
 	int			major_version1;
 	char		*major_version2;
@@ -85,12 +84,10 @@ pg_version(PGconn *conn)
     major_version2 = PQgetvalue(res, 0, 1);
     PQclear(res);
 
-	/* FIX: this is never deallocated */
-	major_version = malloc(10);
 	if (major_version1 >= 9)
 	{
 		/* form a major version string */
-		sprintf(major_version, "%d.%s", major_version1, major_version2);
+		snprintf(major_version, MAXVERSIONSTR, "%d.%s", major_version1, major_version2);
 	}
 	else
 		strcpy(major_version, "");
