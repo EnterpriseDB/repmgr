@@ -30,11 +30,11 @@ parse_config(const char *config_file, char *cluster_name, int *node, char *conni
 		parse_line(buff, name, value);
 
 		/* Copy into correct entry in parameters struct */
-		if (strncmp(name, "cluster", 7) == 0)
+		if (strcmp(name, "cluster") == 0)
 			strncpy (cluster_name, value, MAXLEN);
-		else if (strncmp(name, "node", 4) == 0)
+		else if (strcmp(name, "node") == 0)
 			*node = atoi(value);
-		else if (strncmp(name, "conninfo", 8) == 0)
+		else if (strcmp(name, "conninfo") == 0)
 			strncpy (conninfo, value, MAXLEN);
 		else
 			printf ("WARNING: %s/%s: Unknown name/value pair!\n", name, value);
