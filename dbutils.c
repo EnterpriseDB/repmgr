@@ -8,6 +8,9 @@
 
 #include "repmgr.h"
 
+#define MAXQUERY 8192
+#define MAXCONNINFO 1024
+
 PGconn *
 establishDBConnection(const char *conninfo, const bool exit_on_error)
 {
@@ -82,6 +85,7 @@ pg_version(PGconn *conn)
     major_version2 = PQgetvalue(res, 0, 1);
     PQclear(res);
 
+	/* FIX: this is never deallocated */
 	major_version = malloc(10);
 	if (major_version1 >= 9)
 	{
@@ -99,7 +103,7 @@ bool
 guc_setted(PGconn *conn, const char *parameter, const char *op, const char *value)
 {
 	PGresult	*res;
-	char		sqlquery[8192];
+	char		sqlquery[MAXQUERY];
 
 	sprintf(sqlquery, "SELECT true FROM pg_settings "
 					  " WHERE name = '%s' AND setting %s '%s'",
@@ -129,7 +133,7 @@ get_cluster_size(PGconn *conn)
 {
 	PGresult	*res;
 	const char		*size;
-	char		sqlquery[8192];
+	char		sqlquery[MAXQUERY];
 
 	sprintf(sqlquery, "SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
 					  "  FROM pg_database ");
@@ -157,8 +161,8 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster, int *master_id)
 	PGconn	 *master_conn = NULL;
     PGresult *res1;
     PGresult *res2;
-	char 	 sqlquery[8192];
-	char	 master_conninfo[8192];
+	char 	 sqlquery[MAXQUERY];
+	char	 master_conninfo[MAXCONNINFO];
 	int		 i;
 
 	/* find all nodes belonging to this cluster */
@@ -179,7 +183,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster, int *master_id)
     {
 		/* initialize with the values of the current node being processed */
 		*master_id = atoi(PQgetvalue(res1, i, 0));
-		strcpy(master_conninfo, PQgetvalue(res1, i, 2));
+		strncpy(master_conninfo, PQgetvalue(res1, i, 2), MAXCONNINFO);
 		master_conn = establishDBConnection(master_conninfo, false);
 		if (PQstatus(master_conn) != CONNECTION_OK)
 			continue;

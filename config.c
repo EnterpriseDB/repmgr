@@ -7,10 +7,12 @@
 
 #include "repmgr.h"
 
+#define MAXLINELENGTH	4096
+
 void
 parse_config(const char *config_file, char *cluster_name, int *node, char *conninfo)
 {
-	char *s, buff[MAXLEN];
+	char *s, buff[MAXLINELENGTH];
 	char name[MAXLEN];
 	char value[MAXLEN];
 
