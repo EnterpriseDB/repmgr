@@ -87,7 +87,7 @@ parse_line(char *buff, char *name, char *value)
 	 * Now the value
 	 */ 
 	j = 0;
-	for ( ++i ; i < MAXLEN; i++)
+	for ( ++i ; i < MAXLEN; ++i)
 		if (buff[i] == '\'')
 			continue;
 		else if (buff[i] != '\n')
