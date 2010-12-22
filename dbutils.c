@@ -8,23 +8,26 @@
 
 #include "repmgr.h"
 
+#define MAXQUERY 8192
+#define MAXCONNINFO 1024
+
 PGconn *
 establishDBConnection(const char *conninfo, const bool exit_on_error)
 {
-	PGconn *conn;
-    /* Make a connection to the database */
-    conn = PQconnectdb(conninfo);
-    /* Check to see that the backend connection was successfully made */
-    if ((PQstatus(conn) != CONNECTION_OK))
-    {
-        fprintf(stderr, "Connection to database failed: %s", 
+	/* Make a connection to the database */
+	PGconn *conn = PQconnectdb(conninfo);
+
+	/* Check to see that the backend connection was successfully made */
+	if ((PQstatus(conn) != CONNECTION_OK))
+	{
+		fprintf(stderr, "Connection to database failed: %s", 
 					PQerrorMessage(conn));
 		if (exit_on_error)
 		{
-    	    PQfinish(conn);
+			PQfinish(conn);
 			exit(1);
 		}
-    }
+	}
 
 	return conn;
 }
@@ -34,17 +37,17 @@ establishDBConnection(const char *conninfo, const bool exit_on_error)
 bool
 is_standby(PGconn *conn)
 {
-    PGresult   *res;
+	PGresult   *res;
 	bool		result;
 
-    res = PQexec(conn, "SELECT pg_is_in_recovery()");
-    if (PQresultStatus(res) != PGRES_TUPLES_OK)
-    {
-        fprintf(stderr, "Can't query server mode: %s", PQerrorMessage(conn));
-        PQclear(res);
-        PQfinish(conn);
+	res = PQexec(conn, "SELECT pg_is_in_recovery()");
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		fprintf(stderr, "Can't query server mode: %s", PQerrorMessage(conn));
+		PQclear(res);
+		PQfinish(conn);
 		exit(1);
-    }
+	}
 
 	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
 		result = false;
@@ -61,10 +64,9 @@ is_standby(PGconn *conn)
  * if 8 or inferior returns an empty string
  */
 char *
-pg_version(PGconn *conn)
+pg_version(PGconn *conn, char* major_version)
 {
 	PGresult	*res;
-	char		*major_version;
 
 	int			major_version1;
 	char		*major_version2;
@@ -82,11 +84,10 @@ pg_version(PGconn *conn)
     major_version2 = PQgetvalue(res, 0, 1);
     PQclear(res);
 
-	major_version = malloc(10);
 	if (major_version1 >= 9)
 	{
 		/* form a major version string */
-		sprintf(major_version, "%d.%s", major_version1, major_version2);
+		snprintf(major_version, MAXVERSIONSTR, "%d.%s", major_version1, major_version2);
 	}
 	else
 		strcpy(major_version, "");
@@ -99,7 +100,7 @@ bool
 guc_setted(PGconn *conn, const char *parameter, const char *op, const char *value)
 {
 	PGresult	*res;
-	char		sqlquery[8192];
+	char		sqlquery[MAXQUERY];
 
 	sprintf(sqlquery, "SELECT true FROM pg_settings "
 					  " WHERE name = '%s' AND setting %s '%s'",
@@ -129,7 +130,7 @@ get_cluster_size(PGconn *conn)
 {
 	PGresult	*res;
 	const char		*size;
-	char		sqlquery[8192];
+	char		sqlquery[MAXQUERY];
 
 	sprintf(sqlquery, "SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
 					  "  FROM pg_database ");
@@ -157,8 +158,8 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster, int *master_id)
 	PGconn	 *master_conn = NULL;
     PGresult *res1;
     PGresult *res2;
-	char 	 sqlquery[8192];
-	char	 master_conninfo[8192];
+	char 	 sqlquery[MAXQUERY];
+	char	 master_conninfo[MAXCONNINFO];
 	int		 i;
 
 	/* find all nodes belonging to this cluster */
@@ -179,7 +180,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster, int *master_id)
     {
 		/* initialize with the values of the current node being processed */
 		*master_id = atoi(PQgetvalue(res1, i, 0));
-		strcpy(master_conninfo, PQgetvalue(res1, i, 2));
+		strncpy(master_conninfo, PQgetvalue(res1, i, 2), MAXCONNINFO);
 		master_conn = establishDBConnection(master_conninfo, false);
 		if (PQstatus(master_conn) != CONNECTION_OK)
 			continue;

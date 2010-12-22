@@ -20,5 +20,6 @@
 
 #define MAXLEN				80
 #define CONFIG_FILE			"repmgr.conf"
+#define MAXVERSIONSTR		16
 
 #endif

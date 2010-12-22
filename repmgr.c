@@ -287,7 +287,7 @@ do_master_register(void)
     char 		conninfo[MAXLEN]; 
 
 	bool		schema_exists = false;
-	const char *master_version = NULL;
+	char master_version[MAXVERSIONSTR];
 
 	/*
 	 * Read the configuration file: repmgr.conf
@@ -303,7 +303,7 @@ do_master_register(void)
     conn = establishDBConnection(conninfo, true);
 
 	/* master should be v9 or better */
-	master_version = pg_version(conn);
+	pg_version(conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
@@ -464,8 +464,8 @@ do_standby_register(void)
 	int     	myLocalId   = -1;
     char 		conninfo[MAXLEN]; 
 
-	const char	*master_version = NULL;
-	const char	*standby_version = NULL;
+	char master_version[MAXVERSIONSTR];
+	char standby_version[MAXVERSIONSTR];
 
 	/*
 	 * Read the configuration file: repmgr.conf
@@ -481,7 +481,7 @@ do_standby_register(void)
     conn = establishDBConnection(conninfo, true);
 
 	/* should be v9 or better */
-	standby_version = pg_version(conn);
+	pg_version(conn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
@@ -523,7 +523,7 @@ do_standby_register(void)
 		return;
 
 	/* master should be v9 or better */
-	master_version = pg_version(master_conn);
+	pg_version(master_conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
@@ -600,7 +600,7 @@ do_standby_clone(void)
 	const char	*first_wal_segment = NULL; 
     const char	*last_wal_segment = NULL;
 
-	const char	*master_version = NULL;
+	char	master_version[MAXVERSIONSTR];
 
 	/* if dest_dir hasn't been provided, initialize to current directory */
 	if (dest_dir == NULL)
@@ -683,7 +683,7 @@ do_standby_clone(void)
     }
 
 	/* primary should be v9 or better */
-	master_version = pg_version(conn);
+	pg_version(conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
@@ -968,7 +968,7 @@ do_standby_promote(void)
 	char		recovery_file_path[MAXLEN];
 	char		recovery_done_path[MAXLEN];
 
-	const char	*standby_version = NULL;
+	char	standby_version[MAXVERSIONSTR];
 
 	/*
 	 * Read the configuration file: repmgr.conf
@@ -985,7 +985,7 @@ do_standby_promote(void)
     conn = establishDBConnection(conninfo, true);
 
 	/* we need v9 or better */
-	standby_version = pg_version(conn);
+	pg_version(conn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
@@ -1074,8 +1074,8 @@ do_standby_follow(void)
 	int			r;
 	char		data_dir[MAXLEN];
 
-	const char	*master_version = NULL;
-	const char	*standby_version = NULL;
+	char	master_version[MAXVERSIONSTR];
+	char	standby_version[MAXVERSIONSTR];
 
 	/*
 	 * Read the configuration file: repmgr.conf
@@ -1099,7 +1099,7 @@ do_standby_follow(void)
 	}
 
 	/* should be v9 or better */
-	standby_version = pg_version(conn);
+	pg_version(conn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
@@ -1125,7 +1125,7 @@ do_standby_follow(void)
 	}
 
 	/* should be v9 or better */
-	master_version = pg_version(master_conn);
+	pg_version(master_conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
