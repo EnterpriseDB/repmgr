@@ -84,7 +84,7 @@ main(int argc, char **argv)
 	int			c;
 
 	char conninfo[MAXLEN];
-	const char	*standby_version = NULL;
+	char standby_version[MAXVERSIONSTR];
 
 	progname = get_progname(argv[0]);
 
@@ -144,7 +144,7 @@ main(int argc, char **argv)
 	myLocalConn = establishDBConnection(conninfo, true);
 
 	/* should be v9 or better */
-	standby_version = pg_version(myLocalConn);
+	pg_version(myLocalConn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(myLocalConn);

@@ -9,21 +9,21 @@
  */
 
 #include "repmgr.h"
+
 #include "strutil.h"
 
 PGconn *
 establishDBConnection(const char *conninfo, const bool exit_on_error)
 {
-	PGconn *conn;
-
 	/* Make a connection to the database */
-	conn = PQconnectdb(conninfo);
+	PGconn *conn = PQconnectdb(conninfo);
 
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
 		fprintf(stderr, "Connection to database failed: %s",
 				PQerrorMessage(conn));
+
 		if (exit_on_error)
 		{
 			PQfinish(conn);
@@ -33,7 +33,6 @@ establishDBConnection(const char *conninfo, const bool exit_on_error)
 
 	return conn;
 }
-
 
 
 bool
@@ -67,12 +66,9 @@ is_standby(PGconn *conn)
  * if 8 or inferior returns an empty string
  */
 char *
-pg_version(PGconn *conn)
+pg_version(PGconn *conn, char* major_version)
 {
-	PGresult			*res;
-
-	const size_t		 major_version_sz = 10;
-	char				*major_version;
+	PGresult	*res;
 
 	int					 major_version1;
 	char				*major_version2;
@@ -94,13 +90,11 @@ pg_version(PGconn *conn)
 	major_version1 = atoi(PQgetvalue(res, 0, 0));
 	major_version2 = PQgetvalue(res, 0, 1);
 
-	major_version = malloc(major_version_sz);
-
 	if (major_version1 >= 9)
 	{
 		/* form a major version string */
-		xsnprintf(major_version, major_version_sz, "%d.%s",
-				  major_version1, major_version2);
+		xsnprintf(major_version, MAXVERSIONSTR, "%d.%s", major_version1,
+				  major_version2);
 	}
 	else
 		strcpy(major_version, "");
@@ -145,8 +139,8 @@ const char *
 get_cluster_size(PGconn *conn)
 {
 	PGresult	*res;
-	const char		*size;
-	char		sqlquery[QUERY_STR_LEN];
+	const char	*size;
+	char		 sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(
 		sqlquery,
@@ -178,7 +172,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	PGresult *res1;
 	PGresult *res2;
 	char	 sqlquery[QUERY_STR_LEN];
-	char	 master_conninfo[8192];
+	char	 master_conninfo[MAXCONNINFO];
 	int		 i;
 
 	/* find all nodes belonging to this cluster */
@@ -200,7 +194,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	{
 		/* initialize with the values of the current node being processed */
 		*master_id = atoi(PQgetvalue(res1, i, 0));
-		strcpy(master_conninfo, PQgetvalue(res1, i, 2));
+		strncpy(master_conninfo, PQgetvalue(res1, i, 2), MAXCONNINFO);
 		master_conn = establishDBConnection(master_conninfo, false);
 
 		if (PQstatus(master_conn) != CONNECTION_OK)
