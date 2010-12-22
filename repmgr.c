@@ -623,8 +623,8 @@ do_standby_clone(void)
 	char		master_control_file[MAXLEN];
 	char		local_control_file[MAXLEN];
 
-	const char	*first_wal_segment = NULL;
-	const char	*last_wal_segment = NULL;
+	char		*first_wal_segment = NULL;
+	const char	*last_wal_segment  = NULL;
 
 	char	master_version[MAXVERSIONSTR];
 
@@ -875,6 +875,16 @@ do_standby_clone(void)
 		PQfinish(conn);
 		return;
 	}
+
+	if (verbose)
+	{
+		char	*first_wal_seg_pq = PQgetvalue(res, 0, 0);
+		size_t	 buf_sz			  = strlen(first_wal_seg_pq);
+
+		first_wal_segment = malloc(buf_sz + 1);
+		xsnprintf(first_wal_segment, buf_sz, "%s", first_wal_seg_pq);
+	}
+
 	first_wal_segment = PQgetvalue(res, 0, 0);
 	PQclear(res);
 
@@ -976,9 +986,18 @@ stop_backup:
 	last_wal_segment = PQgetvalue(res, 0, 0);
 
 	if (verbose)
+	{
 		printf(
 			_("%s requires primary to keep WAL files %s until at least %s\n"),
 			progname, first_wal_segment, last_wal_segment);
+
+		/*
+		 * Only free the first_wal_segment since it was copied out of the
+		 * pqresult.
+		 */
+		free(first_wal_segment);
+		first_wal_segment = NULL;
+	}
 
 	PQclear(res);
 	PQfinish(conn);
