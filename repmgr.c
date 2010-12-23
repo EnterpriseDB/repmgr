@@ -886,7 +886,6 @@ do_standby_clone(void)
 		xsnprintf(first_wal_segment, buf_sz + 1, "%s", first_wal_seg_pq);
 	}
 
-	first_wal_segment = PQgetvalue(res, 0, 0);
 	PQclear(res);
 
 	/*
