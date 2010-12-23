@@ -6,15 +6,15 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  */
 
 #include <sys/stat.h>
@@ -43,63 +43,63 @@ static int mkdir_p(char *path, mode_t omode);
 int
 check_dir(char *dir)
 {
-    DIR        *chkdir;
-    struct 		dirent *file;
-    int         result = 1;
+	DIR        *chkdir;
+	struct 		dirent *file;
+	int         result = 1;
 
-    errno = 0;
+	errno = 0;
 
-    chkdir = opendir(dir);
+	chkdir = opendir(dir);
 
-    if (!chkdir)
-        return (errno == ENOENT) ? 0 : -1;
+	if (!chkdir)
+		return (errno == ENOENT) ? 0 : -1;
 
-    while ((file = readdir(chkdir)) != NULL)
-    {
-        if (strcmp(".", file->d_name) == 0 ||
-            strcmp("..", file->d_name) == 0)
-        {
-            /* skip this and parent directory */
-            continue;
-        }
-        else
-        {
-            result = 2;         /* not empty */
-            break;
-        }
-    }
+	while ((file = readdir(chkdir)) != NULL)
+	{
+		if (strcmp(".", file->d_name) == 0 ||
+		        strcmp("..", file->d_name) == 0)
+		{
+			/* skip this and parent directory */
+			continue;
+		}
+		else
+		{
+			result = 2;         /* not empty */
+			break;
+		}
+	}
 
 #ifdef WIN32
-    /*
-     * This fix is in mingw cvs (runtime/mingwex/dirent.c rev 1.4), but not in
-     * released version
-     */
-    if (GetLastError() == ERROR_NO_MORE_FILES)
-        errno = 0;
+	/*
+	 * This fix is in mingw cvs (runtime/mingwex/dirent.c rev 1.4), but not in
+	 * released version
+	 */
+	if (GetLastError() == ERROR_NO_MORE_FILES)
+		errno = 0;
 #endif
 
-    closedir(chkdir);
+	closedir(chkdir);
 
-    if (errno != 0)
-        return -1;          /* some kind of I/O error? */
+	if (errno != 0)
+		return -1;          /* some kind of I/O error? */
 
 	return result;
 }
 
 
 /*
- * Create directory 
+ * Create directory
  */
 bool
 create_directory(char *dir)
 {
-    if (mkdir_p(dir, 0700) == 0)
-        return true;
+	if (mkdir_p(dir, 0700) == 0)
+		return true;
 
-    fprintf(stderr, _("Could not create directory \"%s\": %s\n"),
-            dir, strerror(errno));
+	fprintf(stderr, _("Could not create directory \"%s\": %s\n"),
+	        dir, strerror(errno));
 
-    return false;
+	return false;
 }
 
 bool
@@ -126,10 +126,10 @@ mkdir_p(char *path, mode_t omode)
 {
 	struct stat sb;
 	mode_t		numask,
-				oumask;
+	oumask;
 	int			first,
-				last,
-				retval;
+	last,
+	retval;
 	char	   *p;
 
 	p = path;
@@ -148,8 +148,8 @@ mkdir_p(char *path, mode_t omode)
 				return 1;
 		}
 		else if (p[1] == ':' &&
-				 ((p[0] >= 'a' && p[0] <= 'z') ||
-				  (p[0] >= 'A' && p[0] <= 'Z')))
+		         ((p[0] >= 'a' && p[0] <= 'z') ||
+		          (p[0] >= 'A' && p[0] <= 'Z')))
 		{
 			/* local drive */
 			p += 2;
@@ -224,5 +224,5 @@ is_pg_dir(char *dir)
 
 	sprintf(path, "%s/PG_VERSION", dir);
 
-        return (stat(path, &sb) == 0) ? true : false;
+	return (stat(path, &sb) == 0) ? true : false;
 }

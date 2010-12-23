@@ -6,15 +6,15 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  */
 
 #include "repmgr.h"
@@ -55,28 +55,28 @@ parse_config(const char *config_file, char *cluster_name, int *node, char *conni
 	}
 
 
-  	/* Close file */
-  	fclose (fp);
+	/* Close file */
+	fclose (fp);
 }
 
 char *
 trim (char *s)
 {
-  /* Initialize start, end pointers */
-  char *s1 = s, *s2 = &s[strlen (s) - 1];
+	/* Initialize start, end pointers */
+	char *s1 = s, *s2 = &s[strlen (s) - 1];
 
-  /* Trim and delimit right side */
-  while ( (isspace (*s2)) && (s2 >= s1) )
-    --s2;
-  *(s2+1) = '\0';
+	/* Trim and delimit right side */
+	while ( (isspace (*s2)) && (s2 >= s1) )
+		--s2;
+	*(s2+1) = '\0';
 
-  /* Trim left side */
-  while ( (isspace (*s1)) && (s1 < s2) )
-    ++s1;
+	/* Trim left side */
+	while ( (isspace (*s1)) && (s1 < s2) )
+		++s1;
 
-  /* Copy finished string */
-  strcpy (s, s1);
-  return s;
+	/* Copy finished string */
+	strcpy (s, s1);
+	return s;
 }
 
 void
@@ -99,7 +99,7 @@ parse_line(char *buff, char *name, char *value)
 
 	/*
 	 * Now the value
-	 */ 
+	 */
 	j = 0;
 	for ( ++i ; i < MAXLEN; ++i)
 		if (buff[i] == '\'')
