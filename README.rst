@@ -96,26 +96,6 @@ that can be done like this::
 
   make clean
 
-Notes on Ubuntu and Debian builds
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can make a deb package using::
-
-  make USE_PGXS=1 deb
-
-this build a debian package one level up from where you build, i.o.w in the 
-same directory that you have your repmgr/ directory.
-
-Depending on what -dev packages are installed on your build system, you 
-may need to one or more of the following as well::
-
-  sudo apt-get install libxslt1-dev
-  sudo apt-get install libpam-dev
-  sudo apt-get install libedit-dev
-
-It is also possible that you miss some others.
-
-
 Notes on RedHat Linux, Fedora, and CentOS Builds
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -200,6 +180,37 @@ If you already tried to build repmgr before doing this, you'll need to do::
     make USE_PGXS=1 clean
 
 To get rid of leftover files from the wrong architecture.
+
+Notes on Ubuntu, Debian or other Debian-based Builds
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Debian packages of PostgreSQL put ``pg_config`` into the development package
+called ``postgresql-server-dev-$version``.
+
+When building repmgr against a Debian packages build, you may discover that some
+development packages are needed as well. You will need the following development
+packages installed::
+
+  sudo apt-get install libxslt1-dev libxml2-dev libpam-dev libedit-dev
+
+If you build and install repmgr manually it will not be on the system path. The
+binaries will be installed in /usr/lib/postgresql/$version/bin/ which is not on
+the default path. The reason behind this is that Ubuntu/Debian systems manage
+multiple installed versions of PostgreSQL on the same system through a wrapper
+called pg_wrapper and repmgr is not (yet) known to this wrapper.
+
+You can solve this in many different ways, the most Debian like is to make an
+alternate for repmgr and repmgrd::
+
+  sudo update-alternatives --install /usr/bin/repmgr repmgr /usr/lib/postgresql/9.0/bin/repmgr 10
+  sudo update-alternatives --install /usr/bin/repmgrd repmgrd /usr/lib/postgresql/9.0/bin/repmgrd 10
+
+You can also make a deb package of repmgr using::
+
+  make USE_PGXS=1 deb
+
+This will build a Debian package one level up from where you build, normally the 
+same directory that you have your repmgr/ directory in.
 
 Confirm software was built correctly
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
