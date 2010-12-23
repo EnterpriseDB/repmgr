@@ -723,7 +723,7 @@ do_standby_clone(void)
 	if (!guc_setted(conn, "wal_keep_segments", ">=", wal_keep_segments))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set to %s or greater\n"), wal_keep_segments, progname);
+		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set to %s or greater\n"), progname, wal_keep_segments);
 		return;
 	}
 	if (!guc_setted(conn, "archive_mode", "=", "on"))
