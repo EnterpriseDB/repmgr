@@ -1377,7 +1377,7 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 		}
 
 		maxlen_snprintf(line,
-						"primary_conninfo = 'host=%s port=%s' password=%s\n",
+						"primary_conninfo = 'host=%s port=%s password=%s'\n",
 						host, ((masterport==NULL) ? "5432" : masterport),
 						password);
 	}
