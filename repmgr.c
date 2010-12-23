@@ -1217,9 +1217,20 @@ do_standby_follow(void)
 	 * before closing the connection because we will need them to
 	 * recreate the recovery.conf file
 	 */
-	host = malloc(20);
+
+	/*
+	 * Copy the hostname to the 'host' global variable from the master
+	 * connection.
+	 */
+	{
+		char		*pqhost		 = PQhost(master_conn);
+		const int	 host_buf_sz = strlen(pqhost);
+
+		host = malloc(host_buf_sz + 1);
+		xsnprintf(host, host_buf_sz, "%s", pqhost);
+	}
+
 	masterport = malloc(10);
-	strcpy(host, PQhost(master_conn));
 	strcpy(masterport, PQport(master_conn));
 	PQfinish(master_conn);
 
