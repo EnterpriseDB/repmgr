@@ -168,7 +168,7 @@ main(int argc, char **argv)
 	{
 		/* I need the id of the primary as well as a connection to it */
 		primaryConn = getMasterConnection(myLocalConn, myLocalId,
-										  myClusterName, &primaryId);
+										  myClusterName, &primaryId, NULL);
 		if (primaryConn == NULL)
 			exit(1);
 	}
@@ -240,7 +240,7 @@ MonitorExecute(void)
 			 connection_retries++)
 		{
 			primaryConn = getMasterConnection(myLocalConn, myLocalId,
-											  myClusterName, &primaryId);
+											  myClusterName, &primaryId, NULL);
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{
 				/* Connected, we can continue the process so break the loop */

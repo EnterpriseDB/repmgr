@@ -35,7 +35,7 @@
 
 
 static void help(const char *progname);
-static bool create_recovery_file(const char *data_dir);
+static bool create_recovery_file(const char *data_dir, char *master_conninfo);
 static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
 							  char *local_path, bool is_directory);
 static bool check_parameters_for_action(const int action);
@@ -428,7 +428,8 @@ do_master_register(void)
 		int		id;
 
 		/* Ensure there isn't any other master already registered */
-		master_conn = getMasterConnection(conn, myLocalId, myClusterName, &id);
+		master_conn = getMasterConnection(conn, myLocalId, myClusterName, &id,
+										  NULL);
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
@@ -543,7 +544,7 @@ do_standby_register(void)
 
 	/* check if there is a master in this cluster */
 	master_conn = getMasterConnection(conn, myLocalId, myClusterName,
-									  &master_id);
+									  &master_id, NULL);
 	if (!master_conn)
 		return;
 
@@ -1018,7 +1019,7 @@ stop_backup:
 	}
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file(dest_dir);
+	create_recovery_file(dest_dir, NULL);
 
 	/*
 	 * We don't start the service because we still may want to move the
@@ -1084,7 +1085,7 @@ do_standby_promote(void)
 
 	/* we also need to check if there isn't any master already */
 	old_master_conn = getMasterConnection(conn, myLocalId, myClusterName,
-										  &old_master_id);
+										  &old_master_id, NULL);
 	if (old_master_conn != NULL)
 	{
 		PQfinish(old_master_conn);
@@ -1153,6 +1154,7 @@ do_standby_follow(void)
 	char		myClusterName[MAXLEN];
 	int			myLocalId	= -1;
 	char		conninfo[MAXLEN];
+	char		master_conninfo[MAXLEN];
 
 	PGconn		*master_conn;
 	int			master_id;
@@ -1193,7 +1195,7 @@ do_standby_follow(void)
 
 	/* we also need to check if there is any master in the cluster */
 	master_conn = getMasterConnection(conn, myLocalId, myClusterName,
-									  &master_id);
+									  &master_id, master_conninfo);
 	if (master_conn == NULL)
 	{
 		PQfinish(conn);
@@ -1273,7 +1275,7 @@ do_standby_follow(void)
 	PQfinish(conn);
 
 	/* write the recovery.conf file */
-	if (!create_recovery_file(data_dir))
+	if (!create_recovery_file(data_dir, master_conninfo))
 		return;
 
 	/* Finally, restart the service */
@@ -1326,8 +1328,13 @@ help(const char *progname)
 }
 
 
+/*
+ * Creates a recovery file for a standby.
+ *
+ * Writes master_conninfo to recovery.conf if is non-NULL
+ */
 static bool
-create_recovery_file(const char *data_dir)
+create_recovery_file(const char *data_dir, char *master_conninfo)
 {
 	FILE		*recovery_file;
 	char		recovery_file_path[MAXLEN];
@@ -1348,6 +1355,28 @@ create_recovery_file(const char *data_dir)
 		fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
 		fclose(recovery_file);
 		return false;
+	}
+
+	if (master_conninfo == NULL)
+	{
+		char *password = getenv("PGPASSWORD");
+
+		if (password == NULL)
+		{
+			fprintf(stderr,
+					_("%s: Panic! PGPASSWORD not set, how can we get here?\n"),
+					progname);
+			exit(255);
+		}
+
+		maxlen_snprintf(line,
+						"primary_conninfo = 'host=%s port=%s' password=%s\n",
+						host, ((masterport==NULL) ? "5432" : masterport),
+						password);
+	}
+	else
+	{
+		maxlen_snprintf(line, "primary_conninfo = '%s'\n", master_conninfo);
 	}
 
 	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host,

@@ -163,17 +163,29 @@ get_cluster_size(PGconn *conn)
 /*
  * get a connection to master by reading repl_nodes, creating a connection
  * to each node (one at a time) and finding if it is a master or a standby
+ *
+ * NB: If master_conninfo_out may be NULL.  If it is non-null, it is assumed to
+ * point to allocated memory of MAXCONNINFO in length, and the master server
+ * connection string is placed there.
  */
 PGconn *
 getMasterConnection(PGconn *standby_conn, int id, char *cluster,
-					int *master_id)
+					int *master_id, char *master_conninfo_out)
 {
 	PGconn	 *master_conn = NULL;
 	PGresult *res1;
 	PGresult *res2;
 	char	 sqlquery[QUERY_STR_LEN];
-	char	 master_conninfo[MAXCONNINFO];
+	char	 master_conninfo_stack[MAXCONNINFO];
+	char	*master_conninfo = &*master_conninfo_stack;
 	int		 i;
+
+	/*
+	 * If the caller wanted to get a copy of the connection info string, sub
+	 * out the local stack pointer for the pointer passed by the caller.
+	 */
+	if (master_conninfo_out != NULL)
+		master_conninfo = master_conninfo_out;
 
 	/* find all nodes belonging to this cluster */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
