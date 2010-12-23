@@ -1378,8 +1378,6 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 		maxlen_snprintf(line, "primary_conninfo = '%s'\n", master_conninfo);
 	}
 
-	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host,
-					((masterport==NULL) ? "5432" : masterport));
 	if (fputs(line, recovery_file) == EOF)
 	{
 		fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
