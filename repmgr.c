@@ -1356,6 +1356,14 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 		return false;
 	}
 
+	/*
+	 * Template a password into the connection string in recovery.conf.
+	 * Sometimes this is passed by the user explicitly, and otherwise we try to
+	 * get it into th environment
+	 *
+	 * XXX: This is pretty dirty, at least push this up to the caller rather
+	 * than hitting environment variables at this level.
+	 */
 	if (master_conninfo == NULL)
 	{
 		char *password = getenv("PGPASSWORD");
@@ -1374,9 +1382,7 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 						password);
 	}
 	else
-	{
 		maxlen_snprintf(line, "primary_conninfo = '%s'\n", master_conninfo);
-	}
 
 	if (fputs(line, recovery_file) == EOF)
 	{
