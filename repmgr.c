@@ -883,7 +883,7 @@ do_standby_clone(void)
 		size_t	 buf_sz			  = strlen(first_wal_seg_pq);
 
 		first_wal_segment = malloc(buf_sz + 1);
-		xsnprintf(first_wal_segment, buf_sz, "%s", first_wal_seg_pq);
+		xsnprintf(first_wal_segment, buf_sz + 1, "%s", first_wal_seg_pq);
 	}
 
 	first_wal_segment = PQgetvalue(res, 0, 0);
