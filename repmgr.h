@@ -43,6 +43,7 @@
 #define DEFAULT_DEST_DIR		"."
 #define DEFAULT_MASTER_PORT		"5432"
 #define DEFAULT_DBNAME			"postgres"
+#define DEFAULT_REPMGR_SCHEMA_PREFIX	"repmgr_"
 
 /* Run time options type */
 typedef struct {

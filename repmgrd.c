@@ -48,6 +48,7 @@ const char *progname;
 
 char	*config_file = DEFAULT_CONFIG_FILE;
 bool	verbose = false;
+char	repmgr_schema[MAXLEN];
 
 // should initialize with {0} to be ANSI complaint ? but this raises error with gcc -Wall
 repmgr_config config = {};
@@ -145,6 +146,7 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	logger_init(progname, local_options.loglevel, local_options.logfacility);
+	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
 
 	myLocalConn = establishDBConnection(local_options.conninfo, true);
 
@@ -317,10 +319,10 @@ MonitorExecute(void)
 	 * Build the SQL to execute on primary
 	 */
 	snprintf(sqlquery,
-	        QUERY_STR_LEN, "INSERT INTO repmgr_%s.repl_monitor "
+	        QUERY_STR_LEN, "INSERT INTO %s.repl_monitor "
 	        "VALUES(%d, %d, '%s'::timestamp with time zone, "
 	        " '%s', '%s', "
-	        " %lld, %lld)", local_options.cluster_name,
+	        " %lld, %lld)", repmgr_schema,
 	        primary_options.node, local_options.node, monitor_standby_timestamp,
 	        last_wal_primary_location,
 	        last_wal_standby_received,
@@ -343,8 +345,8 @@ checkClusterConfiguration(void)
 	PGresult   *res;
 
 	snprintf(sqlquery, QUERY_STR_LEN, "SELECT oid FROM pg_class "
-	        " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
-	        local_options.cluster_name);
+	        " WHERE oid = '%s.repl_nodes'::regclass",
+	        repmgr_schema);
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -380,9 +382,9 @@ checkNodeConfiguration(char *conninfo)
 	/*
 	 * Check if we have my node information in repl_nodes
 	 */
-	snprintf(sqlquery, QUERY_STR_LEN, "SELECT * FROM repmgr_%s.repl_nodes "
+	snprintf(sqlquery, QUERY_STR_LEN, "SELECT * FROM %s.repl_nodes "
 	        " WHERE id = %d AND cluster = '%s' ",
-	        local_options.cluster_name, local_options.node, local_options.cluster_name);
+	        repmgr_schema, local_options.node, local_options.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -402,9 +404,9 @@ checkNodeConfiguration(char *conninfo)
 	{
 		PQclear(res);
 		/* Adding the node */
-		snprintf(sqlquery, QUERY_STR_LEN, "INSERT INTO repmgr_%s.repl_nodes "
+		snprintf(sqlquery, QUERY_STR_LEN, "INSERT INTO %s.repl_nodes "
 		        "VALUES (%d, '%s', '%s')",
-		        local_options.cluster_name, local_options.node, local_options.cluster_name, local_options.conninfo);
+		        repmgr_schema, local_options.node, local_options.cluster_name, local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{

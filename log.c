@@ -80,7 +80,9 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 
 		if (f == 0) {
 			/* No syslog requested, just stderr */
-			stderr_log_notice(_("Use stderr for logging\n"));
+#ifdef REPMGR_DEBUG
+			printf(_("Use stderr for logging\n"));
+#endif
 			return true;
 		}
 		else if (f == -1) {
