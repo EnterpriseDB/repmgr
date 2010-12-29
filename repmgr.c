@@ -214,7 +214,7 @@ main(int argc, char **argv)
 		{
 			if (host != NULL)
 			{
-				log_err(_("Conflicting parameters you can't use -h while providing a node separately."));
+				log_err(_("Conflicting parameters you can't use -h while providing a node separately.\n"));
 				usage();
 				exit(1);
 			}
@@ -359,7 +359,7 @@ do_master_register(void)
 	{
 		if (!force)					/* and we are not forcing so error */
 		{
-			log_notice(_("Schema repmgr_%s already exists."), options.cluster_name);
+			log_notice(_("Schema repmgr_%s already exists.\n"), options.cluster_name);
 			PQclear(res);
 			PQfinish(conn);
 			return;
@@ -437,7 +437,7 @@ do_master_register(void)
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
-			log_notice(_("There is a master already in cluster %s"), options.cluster_name);
+			log_warning(_("There is a master already in cluster %s\n"), options.cluster_name);
 			return;
 		}
 	}
@@ -471,7 +471,7 @@ do_master_register(void)
 	}
 
 	PQfinish(conn);
-	log_info(_("Master node correctly registered for cluster %s with id %d (conninfo: %s)"),
+	log_notice(_("Master node correctly registered for cluster %s with id %d (conninfo: %s)"),
 		options.cluster_name, options.node, options.conninfo);
 	return;
 }
@@ -522,7 +522,7 @@ do_standby_register(void)
 
 	if (PQntuples(res) == 0)		/* schema doesn't exists */
 	{
-		log_err("Schema repmgr_%s doesn't exists.", options.cluster_name);
+		log_err("Schema repmgr_%s doesn't exists.\n", options.cluster_name);
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -629,19 +629,19 @@ do_standby_clone(void)
 	{
 	case 0:
 		/* dest_dir not there, must create it */
-		log_info(_("creating directory %s ... "), dest_dir);
+		log_info(_("creating directory %s ...\n"), dest_dir);
 		fflush(stdout);
 
 		if (!create_directory(dest_dir))
 		{
-			log_err(_("%s: couldn't create directory %s ... "),
+			log_err(_("%s: couldn't create directory %s ...\n"),
 			        progname, dest_dir);
 			return;
 		}
 		break;
 	case 1:
 		/* Present but empty, fix permissions and use it */
-		log_info(_("fixing permissions on existing directory %s ... "),
+		log_info(_("fixing permissions on existing directory %s ...\n"),
 		       dest_dir);
 		fflush(stdout);
 
@@ -759,7 +759,7 @@ do_standby_clone(void)
 
 			if (!create_directory(tblspc_dir))
 			{
-				log_err(_("%s: couldn't create directory \"%s\"... "),
+				log_err(_("%s: couldn't create directory \"%s\"...\n"),
 				        progname, tblspc_dir);
 				PQclear(res);
 				PQfinish(conn);
@@ -828,7 +828,7 @@ do_standby_clone(void)
 		else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
 			strcpy(master_ident_file, PQgetvalue(res, i, 1));
 		else
-			log_warning(_("unknown parameter: %s"), PQgetvalue(res, i, 0));
+			log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
 	}
 	PQclear(res);
 
@@ -837,7 +837,7 @@ do_standby_clone(void)
 	 * so we can say to the user we need those files
 	 */
 	sprintf(sqlquery, "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))", time(NULL));
-	log_debug("standby clone: %s", sqlquery);
+	log_debug("standby clone: %s\n", sqlquery);
 	
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -868,7 +868,7 @@ do_standby_clone(void)
 	sprintf(local_control_file, "%s/global", dest_dir);
 	if (!create_directory(local_control_file))
 	{
-		log_err(_("%s: couldn't create directory %s ... "),
+		log_err(_("%s: couldn't create directory %s ...\n"),
 		        progname, dest_dir);
 		goto stop_backup;
 	}
@@ -925,7 +925,7 @@ stop_backup:
 	log_notice("Finishing backup...\n");
 
 	sprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
-	log_debug("standby clone: %s", sqlquery);
+	log_debug("standby clone: %s\n", sqlquery);
 	
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1005,7 +1005,7 @@ do_standby_promote(void)
 	if (old_master_conn != NULL)
 	{
 		PQfinish(old_master_conn);
-		log_err("There is a master already in this cluster");
+		log_err("There is a master already in this cluster\n");
 		return;
 	}
 
@@ -1097,7 +1097,7 @@ do_standby_follow(void)
 	if (master_conn == NULL)
 	{
 		PQfinish(conn);
-		log_err("There isn't a master to follow in this cluster");
+		log_err("There isn't a master to follow in this cluster\n");
 		return;
 	}
 
@@ -1324,13 +1324,13 @@ check_parameters_for_action(const int action)
 		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
 		        (dbname != NULL))
 		{
-			log_err("\nYou can't use connection parameters to the master when issuing a MASTER REGISTER command.");
+			log_err("You can't use connection parameters to the master when issuing a MASTER REGISTER command.\n");
 			usage();
 			ok = false;
 		}
 		if (dest_dir != NULL)
 		{
-			log_err("\nYou don't need a destination directory for MASTER REGISTER command");
+			log_err("You don't need a destination directory for MASTER REGISTER command\n");
 			usage();
 			ok = false;
 		}
@@ -1344,13 +1344,13 @@ check_parameters_for_action(const int action)
 		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
 		        (dbname != NULL))
 		{
-			log_err("\nYou can't use connection parameters to the master when issuing a STANDBY REGISTER command.");
+			log_err("You can't use connection parameters to the master when issuing a STANDBY REGISTER command.\n");
 			usage();
 			ok = false;
 		}
 		if (dest_dir != NULL)
 		{
-			log_err("\nYou don't need a destination directory for STANDBY REGISTER command");
+			log_err("You don't need a destination directory for STANDBY REGISTER command\n");
 			usage();
 			ok = false;
 		}
@@ -1365,13 +1365,13 @@ check_parameters_for_action(const int action)
 		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
 		        (dbname != NULL))
 		{
-			log_err("\nYou can't use connection parameters to the master when issuing a STANDBY PROMOTE command.");
+			log_err("You can't use connection parameters to the master when issuing a STANDBY PROMOTE command.\n");
 			usage();
 			ok = false;
 		}
 		if (dest_dir != NULL)
 		{
-			log_err("\nYou don't need a destination directory for STANDBY PROMOTE command");
+			log_err("You don't need a destination directory for STANDBY PROMOTE command\n");
 			usage();
 			ok = false;
 		}
@@ -1386,13 +1386,13 @@ check_parameters_for_action(const int action)
 		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
 		        (dbname != NULL))
 		{
-			log_err("\nYou can't use connection parameters to the master when issuing a STANDBY FOLLOW command.");
+			log_err("You can't use connection parameters to the master when issuing a STANDBY FOLLOW command.\n");
 			usage();
 			ok = false;
 		}
 		if (dest_dir != NULL)
 		{
-			log_err("\nYou don't need a destination directory for STANDBY FOLLOW command");
+			log_err("You don't need a destination directory for STANDBY FOLLOW command\n");
 			usage();
 			ok = false;
 		}
@@ -1405,7 +1405,7 @@ check_parameters_for_action(const int action)
 		 */
 		if (config_file != NULL)
 		{
-			log_err("\nYou need to use connection parameters to the master when issuing a STANDBY CLONE command.");
+			log_err("You need to use connection parameters to the master when issuing a STANDBY CLONE command.\n");
 			usage();
 			ok = false;
 		}

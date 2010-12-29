@@ -80,7 +80,7 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 
 		if (f == 0) {
 			/* No syslog requested, just stderr */
-			stderr_log_notice(_("Use stderr for logging"));
+			stderr_log_notice(_("Use stderr for logging\n"));
 			return true;
 		}
 		else if (f == -1) {
