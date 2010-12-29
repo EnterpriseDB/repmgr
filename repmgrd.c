@@ -235,8 +235,8 @@ MonitorExecute(void)
 	}
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
-		fprintf(stderr, "\n%s: We couldn't reconnect to master, checking if ", progname);
-		fprintf(stderr, "%s: another node has been promoted.\n", progname);
+		fprintf(stderr, "\n%s: We couldn't reconnect to master, checking if "
+		                "another node has been promoted.\n", progname);
 		for (connection_retries = 0; connection_retries < 6; connection_retries++)
 		{
 			primaryConn = getMasterConnection(myLocalConn, myLocalId, myClusterName, &primaryId);
