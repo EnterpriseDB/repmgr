@@ -59,27 +59,16 @@ static void help(const char* progname);
 static void usage(void);
 
 /* Global variables */
-const char *progname;
-const char *keywords[6];
-const char *values[6];
+static const char *progname;
+static const char *keywords[6];
+static const char *values[6];
 
-const char	*dbname = NULL;
-char		*host = NULL;
-char		*username = NULL;
-char		*dest_dir = NULL;
-char		*config_file = NULL;
-char		*remote_user = NULL;
-char		*wal_keep_segments = NULL;
-bool		verbose = false;
-bool		force = false;
+/* Initialization of runtime options */
+t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, "" };
+t_configuration_options options = { "", -1, "", "", "" };
 
-int			numport = 0;
-char		*masterport = NULL;
-
-char		*server_mode = NULL;
-char		*server_cmd = NULL;
-
-configuration_options options;
+static char		*server_mode = NULL;
+static char		*server_cmd = NULL;
 
 int
 main(int argc, char **argv)
@@ -125,34 +114,36 @@ main(int argc, char **argv)
 		switch (c)
 		{
 		case 'd':
-			dbname = optarg;
+			strncpy(runtime_options.dbname, optarg, MAXLEN);
 			break;
 		case 'h':
-			host = optarg;
+			strncpy(runtime_options.host, optarg, MAXLEN);
 			break;
 		case 'p':
-			masterport = optarg;
+			if (atoi(optarg) > 0)
+				strncpy(runtime_options.masterport, optarg, MAXLEN);
 			break;
 		case 'U':
-			username = optarg;
+			strncpy(runtime_options.username, optarg, MAXLEN);
 			break;
 		case 'D':
-			dest_dir = optarg;
+			strncpy(runtime_options.dest_dir, optarg, MAXFILENAME);
 			break;
 		case 'f':
-			config_file = optarg;
+			strncpy(runtime_options.config_file, optarg, MAXLEN);
 			break;
 		case 'R':
-			remote_user = optarg;
+			strncpy(runtime_options.remote_user, optarg, MAXLEN);
 			break;
 		case 'w':
-			wal_keep_segments = optarg;
+			if (atoi(optarg) > 0)
+				strncpy(runtime_options.wal_keep_segments, optarg, MAXLEN);
 			break;
 		case 'F':
-			force = true;
+			runtime_options.force = true;
 			break;
 		case 'v':
-			verbose = true;
+			runtime_options.verbose = true;
 			break;
 		default:
 			usage();
@@ -212,13 +203,13 @@ main(int argc, char **argv)
 	{
 		if (optind < argc)
 		{
-			if (host != NULL)
+			if (runtime_options.host[0])
 			{
 				log_err(_("Conflicting parameters you can't use -h while providing a node separately.\n"));
 				usage();
 				exit(1);
 			}
-			host = argv[optind++];
+			strncpy(runtime_options.host, argv[optind++], MAXLEN);
 		}
 	}
 
@@ -236,23 +227,17 @@ main(int argc, char **argv)
 	if (!check_parameters_for_action(action))
 		exit(1);
 
-	if (!config_file)
-		config_file = CONFIG_FILE;
+	if (!runtime_options.config_file[0])
+		strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
 
-	if (wal_keep_segments == NULL)
-	{
-		wal_keep_segments = malloc(5);
-		strcpy(wal_keep_segments, "5000");
-	}
-
-	if (dbname == NULL)
+	if (!runtime_options.dbname[0])
 	{
 		if (getenv("PGDATABASE"))
-			dbname = getenv("PGDATABASE");
+			strncpy(runtime_options.dbname, getenv("PGDATABASE"), MAXLEN);
 		else if (getenv("PGUSER"))
-			dbname = getenv("PGUSER");
+			strncpy(runtime_options.dbname, getenv("PGUSER"), MAXLEN);
 		else
-			dbname = "postgres";
+			strncpy(runtime_options.dbname, DEFAULT_DBNAME, MAXLEN);
 	}
 	
 	/*
@@ -267,9 +252,9 @@ main(int argc, char **argv)
 	}
 
 	keywords[2] = "user";
-	values[2] = username;
+	values[2] = runtime_options.username;
 	keywords[3] = "dbname";
-	values[3] = dbname;
+	values[3] = runtime_options.dbname;
 	keywords[4] = "application_name";
 	values[4] = (char *) progname;
 	keywords[5] = NULL;
@@ -278,7 +263,10 @@ main(int argc, char **argv)
 	/*
 	 * Read the configuration file: repmgr.conf
 	 */
-	parse_config(config_file, &options);
+	if (runtime_options.verbose)
+		printf(_("Opening configuration file: %s\n"), runtime_options.config_file);
+
+	parse_config(runtime_options.config_file, &options);
 	if (options.node == -1)
 	{
 		log_err("Node information is missing. "
@@ -357,7 +345,7 @@ do_master_register(void)
 
 	if (PQntuples(res) > 0)			/* schema exists */
 	{
-		if (!force)					/* and we are not forcing so error */
+		if (!runtime_options.force)	/* and we are not forcing so error */
 		{
 			log_notice(_("Schema repmgr_%s already exists.\n"), options.cluster_name);
 			PQclear(res);
@@ -443,7 +431,7 @@ do_master_register(void)
 	}
 
 	/* Now register the master */
-	if (force)
+	if (runtime_options.force)
 	{
 		sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 		        " WHERE id = %d",
@@ -558,7 +546,7 @@ do_standby_register(void)
 
 
 	/* Now register the standby */
-	if (force)
+	if (runtime_options.force)
 	{
 		sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 		        " WHERE id = %d",
@@ -618,47 +606,46 @@ do_standby_clone(void)
 	char	master_version[MAXVERSIONSTR];
 
 	/* if dest_dir hasn't been provided, initialize to current directory */
-	if (dest_dir == NULL)
+	if (!runtime_options.dest_dir[0])
 	{
-		dest_dir = malloc(5);
-		strcpy(dest_dir, ".");
+		strncpy(runtime_options.dest_dir, DEFAULT_DEST_DIR, MAXFILENAME);
 	}
 
 	/* Check this directory could be used as a PGDATA dir */
-	switch (check_dir(dest_dir))
+	switch (check_dir(runtime_options.dest_dir))
 	{
 	case 0:
 		/* dest_dir not there, must create it */
-		log_info(_("creating directory %s ...\n"), dest_dir);
+		log_info(_("creating directory %s ...\n"), runtime_options.dest_dir);
 		fflush(stdout);
 
-		if (!create_directory(dest_dir))
+		if (!create_directory(runtime_options.dest_dir))
 		{
 			log_err(_("%s: couldn't create directory %s ...\n"),
-			        progname, dest_dir);
+			        progname, runtime_options.dest_dir);
 			return;
 		}
 		break;
 	case 1:
 		/* Present but empty, fix permissions and use it */
 		log_info(_("fixing permissions on existing directory %s ...\n"),
-		       dest_dir);
+		       runtime_options.dest_dir);
 		fflush(stdout);
 
-		if (!set_directory_permissions(dest_dir))
+		if (!set_directory_permissions(runtime_options.dest_dir))
 		{
 			log_err(_("%s: could not change permissions of directory \"%s\": %s\n"),
-			        progname, dest_dir, strerror(errno));
+			        progname, runtime_options.dest_dir, strerror(errno));
 			return;
 		}
 		break;
 	case 2:
 		/* Present and not empty */
 		log_warning( _("%s: directory \"%s\" exists but is not empty\n"),
-		        progname, dest_dir);
+		        progname, runtime_options.dest_dir);
 
-		pg_dir = is_pg_dir(dest_dir);
-		if (pg_dir && !force)
+		pg_dir = is_pg_dir(runtime_options.dest_dir);
+		if (pg_dir && !runtime_options.force)
 		{
 			log_warning( _("\nThis looks like a PostgreSQL directory.\n"
 			                  "If you are sure you want to clone here, "
@@ -666,7 +653,7 @@ do_standby_clone(void)
 			                  "running and use the --force option\n"));
 			return;
 		}
-		else if (pg_dir && force)
+		else if (pg_dir && runtime_options.force)
 		{
 			/* Let it continue */
 			break;
@@ -676,14 +663,14 @@ do_standby_clone(void)
 	default:
 		/* Trouble accessing directory */
 		log_err( _("%s: could not access directory \"%s\": %s\n"),
-		        progname, dest_dir, strerror(errno));
+		        progname, runtime_options.dest_dir, strerror(errno));
 	}
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
-	values[0] = host;
+	values[0] = runtime_options.host;
 	keywords[1] = "port";
-	values[1] = masterport;
+	values[1] = runtime_options.masterport;
 
 	/* We need to connect to check configuration and start a backup */
 	conn = PQconnectdbParams(keywords, values, true);
@@ -718,10 +705,10 @@ do_standby_clone(void)
 		log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname);
 		return;
 	}
-	if (!guc_setted(conn, "wal_keep_segments", ">=", wal_keep_segments))
+	if (!guc_setted(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments))
 	{
 		PQfinish(conn);
-		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option)\n"), progname, wal_keep_segments);
+		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option)\n"), progname, runtime_options.wal_keep_segments);
 		return;
 	}
 	if (!guc_setted(conn, "archive_mode", "=", "on"))
@@ -753,7 +740,7 @@ do_standby_clone(void)
 		{
 		case 0:
 			/* tblspc_dir not there, must create it */
-			if (verbose)
+			if (runtime_options.verbose)
 				printf(_("creating directory \"%s\"... "), tblspc_dir);
 			fflush(stdout);
 
@@ -768,7 +755,7 @@ do_standby_clone(void)
 			break;
 		case 1:
 			/* Present but empty, fix permissions and use it */
-			if (verbose)
+			if (runtime_options.verbose)
 				printf(_("fixing permissions on existing directory \"%s\"... "),
 				       tblspc_dir);
 			fflush(stdout);
@@ -784,7 +771,7 @@ do_standby_clone(void)
 			break;
 		case 2:
 			/* Present and not empty */
-			if (!force)
+			if (!runtime_options.force)
 			{
 				fprintf(stderr,
 				        _("%s: directory \"%s\" exists but is not empty\n"),
@@ -865,19 +852,19 @@ do_standby_clone(void)
 
 	/* need to create the global sub directory */
 	sprintf(master_control_file, "%s/global/pg_control", master_data_directory);
-	sprintf(local_control_file, "%s/global", dest_dir);
+	sprintf(local_control_file, "%s/global", runtime_options.dest_dir);
 	if (!create_directory(local_control_file))
 	{
 		log_err(_("%s: couldn't create directory %s ...\n"),
-		        progname, dest_dir);
+		        progname, runtime_options.dest_dir);
 		goto stop_backup;
 	}
 
-	r = copy_remote_files(host, remote_user, master_control_file, local_control_file, false);
+	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_control_file, local_control_file, false);
 	if (r != 0)
 		goto stop_backup;
 
-	r = copy_remote_files(host, remote_user, master_data_directory, dest_dir, true);
+	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_data_directory, runtime_options.dest_dir, true);
 	if (r != 0)
 		goto stop_backup;
 
@@ -895,20 +882,20 @@ do_standby_clone(void)
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		r = copy_remote_files(host, remote_user, PQgetvalue(res, i, 0), PQgetvalue(res, i, 0), true);
+		r = copy_remote_files(runtime_options.host, runtime_options.remote_user, PQgetvalue(res, i, 0), PQgetvalue(res, i, 0), true);
 		if (r != 0)
 			goto stop_backup;
 	}
 
-	r = copy_remote_files(host, remote_user, master_config_file, dest_dir, false);
+	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_config_file, runtime_options.dest_dir, false);
 	if (r != 0)
 		goto stop_backup;
 
-	r = copy_remote_files(host, remote_user, master_hba_file, dest_dir, false);
+	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_hba_file, runtime_options.dest_dir, false);
 	if (r != 0)
 		goto stop_backup;
 
-	r = copy_remote_files(host, remote_user, master_ident_file, dest_dir, false);
+	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_ident_file, runtime_options.dest_dir, false);
 	if (r != 0)
 		goto stop_backup;
 
@@ -943,20 +930,20 @@ stop_backup:
 	if (r != 0)
 		return;
 
-	if (verbose)
+	if (runtime_options.verbose)
 		printf(_("%s requires primary to keep WAL files %s until at least %s\n"),
 		       progname, first_wal_segment, last_wal_segment);
 
 	/* we need to create the pg_xlog sub directory too, i'm reusing a variable here */
-	sprintf(local_control_file, "%s/pg_xlog", dest_dir);
+	sprintf(local_control_file, "%s/pg_xlog", runtime_options.dest_dir);
 	if (!create_directory(local_control_file))
 	{
 		log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
-		        progname, dest_dir);
+		        progname, runtime_options.dest_dir);
 	}
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file(dest_dir);
+	create_recovery_file(runtime_options.dest_dir);
 
 	/* We don't start the service because we still may want to move the directory */
 	return;
@@ -1009,7 +996,7 @@ do_standby_promote(void)
 		return;
 	}
 
-	if (verbose)
+	if (runtime_options.verbose)
 		printf(_("\n%s: Promoting standby...\n"), progname);
 
 	/* Get the data directory full path and the last subdirectory */
@@ -1134,13 +1121,11 @@ do_standby_follow(void)
 	 * before closing the connection because we will need them to
 	 * recreate the recovery.conf file
 	 */
-	host = malloc(20);
-	masterport = malloc(10);
-	strcpy(host, PQhost(master_conn));
-	strcpy(masterport, PQport(master_conn));
+	strncpy(runtime_options.host, PQhost(master_conn), MAXLEN);
+	strncpy(runtime_options.masterport, PQport(master_conn), MAXLEN);
 	PQfinish(master_conn);
 
-	if (verbose)
+	if (runtime_options.verbose)
 		printf(_("\n%s: Changing standby's master...\n"), progname);
 
 	/* Get the data directory full path */
@@ -1240,7 +1225,7 @@ create_recovery_file(const char *data_dir)
 		return false;
 	}
 
-	sprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host, ((masterport==NULL) ? "5432" : masterport));
+	sprintf(line, "primary_conninfo = 'host=%s port=%s'\n", runtime_options.host, runtime_options.masterport);
 	if (fputs(line, recovery_file) == EOF)
 	{
 		log_err("recovery file could not be written, it could be necessary to create it manually\n");
@@ -1263,12 +1248,12 @@ copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_
 	char host_string[QUERY_STR_LEN];
 	int  r;
 
-	if (strnlen(config.rsync_options, QUERY_STR_LEN) == 0)
+	if (strnlen(runtime_options.rsync_options, QUERY_STR_LEN) == 0)
 	    sprintf(options, "--archive --checksum --compress --progress --rsh=ssh");
 	else
-	    strncpy(options, config.rsync_options, QUERY_STR_LEN);
+	    strncpy(options, runtime_options.rsync_options, QUERY_STR_LEN);
 	
-	if (force)
+	if (runtime_options.force)
 		strcat(options, " --delete");
 
 	if (remote_user == NULL)
@@ -1292,7 +1277,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_
 		        options, host_string, remote_path, local_path);
 	}
 
-	if (verbose)
+	if (runtime_options.verbose)
 		printf("rsync command line:  '%s'\n",script);
 
 	r = system(script);
@@ -1321,14 +1306,14 @@ check_parameters_for_action(const int action)
 		 * all other parameters are at least useless and could be
 		 * confusing so reject them
 		 */
-		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
-		        (dbname != NULL))
+		if (runtime_options.host[0] || runtime_options.masterport[0] || runtime_options.username[0] || 
+		        runtime_options.dbname[0])
 		{
 			log_err("You can't use connection parameters to the master when issuing a MASTER REGISTER command.\n");
 			usage();
 			ok = false;
 		}
-		if (dest_dir != NULL)
+		if (runtime_options.dest_dir[0])
 		{
 			log_err("You don't need a destination directory for MASTER REGISTER command\n");
 			usage();
@@ -1341,14 +1326,14 @@ check_parameters_for_action(const int action)
 		 * we don't need connection parameters to the master
 		 * because we can detect the master in repl_nodes
 		 */
-		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
-		        (dbname != NULL))
+		if (runtime_options.host[0] || runtime_options.masterport[0] || runtime_options.username[0] || 
+		        runtime_options.dbname[0])
 		{
 			log_err("You can't use connection parameters to the master when issuing a STANDBY REGISTER command.\n");
 			usage();
 			ok = false;
 		}
-		if (dest_dir != NULL)
+		if (runtime_options.dest_dir[0])
 		{
 			log_err("You don't need a destination directory for STANDBY REGISTER command\n");
 			usage();
@@ -1362,14 +1347,14 @@ check_parameters_for_action(const int action)
 		 * because we will try to detect the master in repl_nodes
 		 * if we can't find it then the promote action will be cancelled
 		 */
-		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
-		        (dbname != NULL))
+		if (runtime_options.host[0] || runtime_options.masterport[0] || runtime_options.username[0] || 
+		        runtime_options.dbname[0])
 		{
 			log_err("You can't use connection parameters to the master when issuing a STANDBY PROMOTE command.\n");
 			usage();
 			ok = false;
 		}
-		if (dest_dir != NULL)
+		if (runtime_options.dest_dir[0])
 		{
 			log_err("You don't need a destination directory for STANDBY PROMOTE command\n");
 			usage();
@@ -1383,14 +1368,14 @@ check_parameters_for_action(const int action)
 		 * because we will try to detect the master in repl_nodes
 		 * if we can't find it then the follow action will be cancelled
 		 */
-		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
-		        (dbname != NULL))
+		if (runtime_options.host[0] || runtime_options.masterport[0] || runtime_options.username[0] || 
+		        runtime_options.dbname[0])
 		{
 			log_err("You can't use connection parameters to the master when issuing a STANDBY FOLLOW command.\n");
 			usage();
 			ok = false;
 		}
-		if (dest_dir != NULL)
+		if (runtime_options.dest_dir[0])
 		{
 			log_err("You don't need a destination directory for STANDBY FOLLOW command\n");
 			usage();
@@ -1403,7 +1388,7 @@ check_parameters_for_action(const int action)
 		 * repmgr.conf is useless because we don't have a server running
 		 * in the standby
 		 */
-		if (config_file != NULL)
+		if (runtime_options.config_file[0])
 		{
 			log_err("You need to use connection parameters to the master when issuing a STANDBY CLONE command.\n");
 			usage();

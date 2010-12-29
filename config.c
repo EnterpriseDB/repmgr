@@ -20,7 +20,7 @@
 #include "config.h"
 
 void
-parse_config(const char* config_file, configuration_options* options)
+parse_config(const char* config_file, t_configuration_options* options)
 {
 	char *s, buff[MAXLINELENGTH];
 	char name[MAXLEN];

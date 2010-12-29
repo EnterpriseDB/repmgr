@@ -30,12 +30,35 @@
 #define STANDBY_MODE		1
 
 #define MAXLEN			80
-#define CONFIG_FILE		"./repmgr.conf"
 #define MAXVERSIONSTR		16
 #define QUERY_STR_LEN		8192
 
 #include "config.h"
 #define MAXFILENAME		1024
 #define MAXLINELENGTH	4096
+#define ERRBUFF_SIZE		512
+
+#define DEFAULT_CONFIG_FILE		"./repmgr.conf"
+#define DEFAULT_WAL_KEEP_SEGMENTS	"5000"
+#define DEFAULT_DEST_DIR		"."
+#define DEFAULT_MASTER_PORT		"5432"
+#define DEFAULT_DBNAME			"postgres"
+
+/* Run time options type */
+typedef struct {
+
+	char dbname[MAXLEN];
+	char host[MAXLEN];
+	char username[MAXLEN];
+	char dest_dir[MAXFILENAME];
+	char config_file[MAXFILENAME];
+	char remote_user[MAXLEN];
+	char wal_keep_segments[MAXLEN];
+	bool verbose;
+	bool force;
+
+	char masterport[MAXLEN];
+
+} t_runtime_options;
 
 #endif

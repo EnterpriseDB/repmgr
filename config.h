@@ -26,7 +26,8 @@ typedef struct {
 	char loglevel[MAXLEN];
 	char logfacility[MAXLEN];
     char rsync_options[QUERY_STR_LEN];
-} configuration_options;
-void parse_config(const char *config_file, repmgr_config *config);
+} t_configuration_options;
+
+void parse_config(const char* config_file, t_configuration_options* options);
 void parse_line(char *buff, char *name, char *value);
 char *trim(char *s);

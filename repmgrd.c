@@ -32,20 +32,21 @@
 
 #include "libpq/pqsignal.h"
 
+
 /* Local info */
-configuration_options local_options;
+t_configuration_options local_options;
 int     myLocalMode = STANDBY_MODE;
 PGconn *myLocalConn;
 
 /* Primary info */
-configuration_options primary_options;
+t_configuration_options primary_options;
 PGconn *primaryConn;
 
-char sqlquery[8192];
+char sqlquery[QUERY_STR_LEN];
 
 const char *progname;
 
-char	*config_file = CONFIG_FILE;
+char	*config_file = DEFAULT_CONFIG_FILE;
 bool	verbose = false;
 
 // should initialize with {0} to be ANSI complaint ? but this raises error with gcc -Wall
@@ -164,7 +165,7 @@ main(int argc, char **argv)
 	if (myLocalMode == PRIMARY_MODE)
 	{
 		primary_options.node = local_options.node;
-		strcpy(primary_options.conninfo, local_options.conninfo);
+		strncpy(primary_options.conninfo, local_options.conninfo, MAXLEN);
 		primaryConn = myLocalConn;
 	}
 	else
@@ -275,7 +276,7 @@ MonitorExecute(void)
 		CancelQuery();
 
 	/* Get local xlog info */
-	sprintf(sqlquery,
+	snprintf(sqlquery, QUERY_STR_LEN,
 	        "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
 	        "pg_last_xlog_replay_location()");
 
@@ -288,13 +289,13 @@ MonitorExecute(void)
 		return;
 	}
 
-	strcpy(monitor_standby_timestamp, PQgetvalue(res, 0, 0));
-	strcpy(last_wal_standby_received , PQgetvalue(res, 0, 1));
-	strcpy(last_wal_standby_applied , PQgetvalue(res, 0, 2));
+	strncpy(monitor_standby_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+	strncpy(last_wal_standby_received , PQgetvalue(res, 0, 1), MAXLEN);
+	strncpy(last_wal_standby_applied , PQgetvalue(res, 0, 2), MAXLEN);
 	PQclear(res);
 
 	/* Get primary xlog info */
-	sprintf(sqlquery, "SELECT pg_current_xlog_location() ");
+	snprintf(sqlquery, QUERY_STR_LEN, "SELECT pg_current_xlog_location() ");
 
 	res = PQexec(primaryConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -304,7 +305,7 @@ MonitorExecute(void)
 		return;
 	}
 
-	strcpy(last_wal_primary_location, PQgetvalue(res, 0, 0));
+	strncpy(last_wal_primary_location, PQgetvalue(res, 0, 0), MAXLEN);
 	PQclear(res);
 
 	/* Calculate the lag */
@@ -315,8 +316,8 @@ MonitorExecute(void)
 	/*
 	 * Build the SQL to execute on primary
 	 */
-	sprintf(sqlquery,
-	        "INSERT INTO repmgr_%s.repl_monitor "
+	snprintf(sqlquery,
+	        QUERY_STR_LEN, "INSERT INTO repmgr_%s.repl_monitor "
 	        "VALUES(%d, %d, '%s'::timestamp with time zone, "
 	        " '%s', '%s', "
 	        " %lld, %lld)", local_options.cluster_name,
@@ -341,7 +342,7 @@ checkClusterConfiguration(void)
 {
 	PGresult   *res;
 
-	sprintf(sqlquery, "SELECT oid FROM pg_class "
+	snprintf(sqlquery, QUERY_STR_LEN, "SELECT oid FROM pg_class "
 	        " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
 	        local_options.cluster_name);
 	res = PQexec(myLocalConn, sqlquery);
@@ -379,7 +380,7 @@ checkNodeConfiguration(char *conninfo)
 	/*
 	 * Check if we have my node information in repl_nodes
 	 */
-	sprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
+	snprintf(sqlquery, QUERY_STR_LEN, "SELECT * FROM repmgr_%s.repl_nodes "
 	        " WHERE id = %d AND cluster = '%s' ",
 	        local_options.cluster_name, local_options.node, local_options.cluster_name);
 
@@ -401,7 +402,7 @@ checkNodeConfiguration(char *conninfo)
 	{
 		PQclear(res);
 		/* Adding the node */
-		sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
+		snprintf(sqlquery, QUERY_STR_LEN, "INSERT INTO repmgr_%s.repl_nodes "
 		        "VALUES (%d, '%s', '%s')",
 		        local_options.cluster_name, local_options.node, local_options.cluster_name, local_options.conninfo);
 
@@ -472,12 +473,12 @@ setup_cancel_handler(void)
 static void
 CancelQuery(void)
 {
-	char errbuf[256];
+	char errbuf[ERRBUFF_SIZE];
 	PGcancel *pgcancel;
 
 	pgcancel = PQgetCancel(primaryConn);
 
-	if (!pgcancel || PQcancel(pgcancel, errbuf, 256) == 0)
+	if (!pgcancel || PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
 		log_warning("Can't stop current query: %s", errbuf);
 
 	PQfreeCancel(pgcancel);
