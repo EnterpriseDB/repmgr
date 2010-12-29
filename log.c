@@ -59,7 +59,7 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 		ident = DEFAULT_IDENT;
 	}
 
-	if (level) {
+	if (level && *level) {
 		l = detect_log_level(level);
 #ifdef REPMGR_DEBUG
 		printf("Assigned level for logger: %d\n", l);
@@ -68,10 +68,10 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 		if (l > 0)
 			log_level = l;
 		else
-			stderr_log_warning(_("Cannot detect log level %s (use any of DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)"), level);
+			stderr_log_warning(_("Cannot detect log level %s (use any of DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)\n"), level);
 	}
 
-	if (facility) {
+	if (facility && *facility) {
 
 		f = detect_log_facility(facility);
 #ifdef REPMGR_DEBUG
@@ -83,25 +83,27 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 #ifdef REPMGR_DEBUG
 			printf(_("Use stderr for logging\n"));
 #endif
-			return true;
 		}
 		else if (f == -1) {
-			stderr_log_warning(_("Cannot detect log facility %s (use any of LOCAL0, LOCAL1, ..., LOCAL7, USER or STDERR)"), facility);
+			stderr_log_warning(_("Cannot detect log facility %s (use any of LOCAL0, LOCAL1, ..., LOCAL7, USER or STDERR)\n"), facility);
 		}
 #ifdef HAVE_SYSLOG
 		else {
 			syslog_facility = f;
+			log_type = REPMGR_SYSLOG;
 		}
 #endif
 	}
 
 #ifdef HAVE_SYSLOG
 
-	setlogmask (LOG_UPTO (log_level));
-	openlog (ident, LOG_CONS | LOG_PID | LOG_NDELAY, syslog_facility);
+	if (log_type == REPMGR_SYSLOG)
+	{
+		setlogmask (LOG_UPTO (log_level));
+		openlog (ident, LOG_CONS | LOG_PID | LOG_NDELAY, syslog_facility);
 
-	log_type = REPMGR_SYSLOG;
-	stderr_log_notice(_("Setup syslog (level: %s, facility: %s)"), level, facility);
+		stderr_log_notice(_("Setup syslog (level: %s, facility: %s)\n"), level, facility);
+	}
 
 #endif
 

@@ -63,6 +63,7 @@ static const char *progname;
 static const char *keywords[6];
 static const char *values[6];
 char repmgr_schema[MAXLEN];
+bool read_config_file = true;
 
 /* Initialization of runtime options */
 t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, "" };
@@ -228,9 +229,6 @@ main(int argc, char **argv)
 	if (!check_parameters_for_action(action))
 		exit(1);
 
-	if (!runtime_options.config_file[0])
-		strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
-
 	if (!runtime_options.dbname[0])
 	{
 		if (getenv("PGDATABASE"))
@@ -261,18 +259,25 @@ main(int argc, char **argv)
 	keywords[5] = NULL;
 	values[5] = NULL;
 
-	/*
-	 * Read the configuration file: repmgr.conf
-	 */
-	if (runtime_options.verbose)
-		printf(_("Opening configuration file: %s\n"), runtime_options.config_file);
+	if (read_config_file) {
 
-	parse_config(runtime_options.config_file, &options);
-	if (options.node == -1)
-	{
-		log_err("Node information is missing. "
-		        "Check the configuration file.\n");
-		exit(1);
+		if (!runtime_options.config_file[0])
+			strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
+
+		/*
+		 * Read the configuration file: repmgr.conf
+		 */
+		if (runtime_options.verbose)
+			printf(_("Opening configuration file: %s\n"), runtime_options.config_file);
+
+		parse_config(runtime_options.config_file, &options);
+		if (options.node == -1)
+		{
+			log_err("Node information is missing. "
+				"Check the configuration file.\n");
+			exit(1);
+		}
+
 	}
 
 	logger_init(progname, options.loglevel, options.logfacility);
@@ -941,27 +946,30 @@ stop_backup:
 		return;
 	}
 	last_wal_segment = PQgetvalue(res, 0, 0);
-	PQclear(res);
-	PQfinish(conn);
 
 	/* Now, if the rsync failed then exit */
-	if (r != 0)
-		return;
+	if (r == 0)
+	{
 
 	if (runtime_options.verbose)
 		printf(_("%s requires primary to keep WAL files %s until at least %s\n"),
 		       progname, first_wal_segment, last_wal_segment);
 
-	/* we need to create the pg_xlog sub directory too, i'm reusing a variable here */
-	snprintf(local_control_file, MAXFILENAME, "%s/pg_xlog", runtime_options.dest_dir);
-	if (!create_directory(local_control_file))
-	{
-		log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
-		        progname, runtime_options.dest_dir);
+		/* we need to create the pg_xlog sub directory too, i'm reusing a variable here */
+		snprintf(local_control_file, MAXFILENAME, "%s/pg_xlog", runtime_options.dest_dir);
+		if (!create_directory(local_control_file))
+		{
+			log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
+				progname, runtime_options.dest_dir);
+		}
+
+		/* Finally, write the recovery.conf file */
+		create_recovery_file(runtime_options.dest_dir);
+
 	}
 
-	/* Finally, write the recovery.conf file */
-	create_recovery_file(runtime_options.dest_dir);
+	PQclear(res);
+	PQfinish(conn);
 
 	/* We don't start the service because we still may want to move the directory */
 	return;
@@ -1414,6 +1422,7 @@ check_parameters_for_action(const int action)
 			usage();
 			ok = false;
 		}
+		read_config_file = false;
 		break;
 	}
 
