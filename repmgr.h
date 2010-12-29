@@ -26,15 +26,16 @@
 
 #include "dbutils.h"
 
-
 #define PRIMARY_MODE		0
 #define STANDBY_MODE		1
 
-#define MAXLEN				80
-#define CONFIG_FILE			"repmgr.conf"
+#define MAXLEN			80
+#define CONFIG_FILE		"./repmgr.conf"
 #define MAXVERSIONSTR		16
 #define QUERY_STR_LEN		8192
 
 #include "config.h"
+#define MAXFILENAME		1024
+#define MAXLINELENGTH	4096
 
 #endif

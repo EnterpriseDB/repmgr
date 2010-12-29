@@ -27,23 +27,25 @@
 #include <unistd.h>
 
 #include "repmgr.h"
+#include "config.h"
+#include "log.h"
 
 #include "libpq/pqsignal.h"
 
 /* Local info */
+configuration_options local_options;
 int     myLocalMode = STANDBY_MODE;
 PGconn *myLocalConn;
 
 /* Primary info */
-int		primaryId;
-char	primaryConninfo[MAXLEN];
+configuration_options primary_options;
 PGconn *primaryConn;
 
 char sqlquery[8192];
 
 const char *progname;
 
-char	*config_file = NULL;
+char	*config_file = CONFIG_FILE;
 bool	verbose = false;
 
 // should initialize with {0} to be ANSI complaint ? but this raises error with gcc -Wall
@@ -130,24 +132,19 @@ main(int argc, char **argv)
 
 	setup_cancel_handler();
 
-	if (config_file == NULL)
-	{
-		config_file = malloc(5 + sizeof(CONFIG_FILE));
-		sprintf(config_file, "./%s", CONFIG_FILE);
-	}
-
 	/*
 	 * Read the configuration file: repmgr.conf
 	 */
-	parse_config(config_file, &config);
-	if (config.node == -1)
+	parse_config(config_file, &local_options);
+	if (local_options.node == -1)
 	{
 		fprintf(stderr, "Node information is missing. "
 		        "Check the configuration file.\n");
 		exit(1);
 	}
+	logger_init(progname, local_options.loglevel, local_options.logfacility);
 
-	myLocalConn = establishDBConnection(config.conninfo, true);
+	myLocalConn = establishDBConnection(local_options.conninfo, true);
 
 	/* should be v9 or better */
 	pg_version(myLocalConn, standby_version);
@@ -165,20 +162,20 @@ main(int argc, char **argv)
 	myLocalMode = is_standby(myLocalConn) ? STANDBY_MODE : PRIMARY_MODE;
 	if (myLocalMode == PRIMARY_MODE)
 	{
-		primaryId = config.node;
-		strcpy(primaryConninfo, config.conninfo);
+		primary_options.node = local_options.node;
+		strcpy(primary_options.conninfo, local_options.conninfo);
 		primaryConn = myLocalConn;
 	}
 	else
 	{
 		/* I need the id of the primary as well as a connection to it */
-		primaryConn = getMasterConnection(myLocalConn, config.node, config.cluster_name, &primaryId);
+		primaryConn = getMasterConnection(myLocalConn, local_options.node, local_options.cluster_name, &primary_options.node);
 		if (primaryConn == NULL)
 			exit(1);
 	}
 
 	checkClusterConfiguration();
-	checkNodeConfiguration(config.conninfo);
+	checkNodeConfiguration(local_options.conninfo);
 	if (myLocalMode == STANDBY_MODE)
 	{
 		MonitorCheck();
@@ -237,11 +234,11 @@ MonitorExecute(void)
 		                "another node has been promoted.\n", progname);
 		for (connection_retries = 0; connection_retries < 6; connection_retries++)
 		{
-			primaryConn = getMasterConnection(myLocalConn, config.node, config.cluster_name, &primaryId);
+			primaryConn = getMasterConnection(myLocalConn, local_options.node, local_options.cluster_name, &primary_options.node);
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{
 				/* Connected, we can continue the process so break the loop */
-				fprintf(stderr, "\n%s: Connected to node %d, continue monitoring.\n", progname, primaryId);
+				fprintf(stderr, "\n%s: Connected to node %d, continue monitoring.\n", progname, primary_options.node);
 				break;
 			}
 			else
@@ -320,8 +317,8 @@ MonitorExecute(void)
 	        "INSERT INTO repmgr_%s.repl_monitor "
 	        "VALUES(%d, %d, '%s'::timestamp with time zone, "
 	        " '%s', '%s', "
-	        " %lld, %lld)", config.cluster_name,
-	        primaryId, config.node, monitor_standby_timestamp,
+	        " %lld, %lld)", local_options.cluster_name,
+	        primary_options.node, local_options.node, monitor_standby_timestamp,
 	        last_wal_primary_location,
 	        last_wal_standby_received,
 	        (lsn_primary - lsn_standby_received),
@@ -344,7 +341,7 @@ checkClusterConfiguration(void)
 
 	sprintf(sqlquery, "SELECT oid FROM pg_class "
 	        " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
-	        config.cluster_name);
+	        local_options.cluster_name);
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -382,7 +379,7 @@ checkNodeConfiguration(char *conninfo)
 	 */
 	sprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
 	        " WHERE id = %d AND cluster = '%s' ",
-	        config.cluster_name, config.node, config.cluster_name);
+	        local_options.cluster_name, local_options.node, local_options.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -404,7 +401,7 @@ checkNodeConfiguration(char *conninfo)
 		/* Adding the node */
 		sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 		        "VALUES (%d, '%s', '%s')",
-		        config.cluster_name, config.node, config.cluster_name, conninfo);
+		        local_options.cluster_name, local_options.node, local_options.cluster_name, local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{
@@ -444,7 +441,7 @@ help(const char *progname)
 	printf(_("  --help                    show this help, then exit\n"));
 	printf(_("  --version                 output version information, then exit\n"));
 	printf(_("  --verbose                 output verbose activity information\n"));
-	printf(_("  -f, --config_file=PATH    database to connect to\n"));
+	printf(_("  -f, --config_file=PATH    configuration file\n"));
 	printf(_("\n%s monitors a cluster of servers.\n"), progname);
 }
 

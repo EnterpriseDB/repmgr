@@ -31,6 +31,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "log.h"
+#include "config.h"
 #include "check_dir.h"
 
 #define RECOVERY_FILE "recovery.conf"
@@ -75,7 +77,7 @@ char		*masterport = NULL;
 char		*server_mode = NULL;
 char		*server_cmd = NULL;
 
-repmgr_config	config = {};
+configuration_options options;
 
 int
 main(int argc, char **argv)
@@ -231,11 +233,8 @@ main(int argc, char **argv)
 	if (!check_parameters_for_action(action))
 		exit(1);
 
-	if (config_file == NULL)
-	{
-		config_file = malloc(5 + sizeof(CONFIG_FILE));
-		sprintf(config_file, "./%s", CONFIG_FILE);
-	}
+	if (!config_file)
+		config_file = CONFIG_FILE;
 
 	if (wal_keep_segments == NULL)
 	{
@@ -273,6 +272,19 @@ main(int argc, char **argv)
 	keywords[5] = NULL;
 	values[5] = NULL;
 
+	/*
+	 * Read the configuration file: repmgr.conf
+	 */
+	parse_config(config_file, &options);
+	if (options.node == -1)
+	{
+		fprintf(stderr, "Node information is missing. "
+		        "Check the configuration file.\n");
+		exit(1);
+	}
+
+	logger_init(progname, options.loglevel, options.logfacility);
+
 	switch (action)
 	{
 	case MASTER_REGISTER:
@@ -294,6 +306,7 @@ main(int argc, char **argv)
 		fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 		exit(1);
 	}
+	logger_shutdown();
 
 	return 0;
 }
@@ -309,31 +322,31 @@ do_master_register(void)
 	bool		schema_exists = false;
 	char master_version[MAXVERSIONSTR];
 
-	conn = establishDBConnection(config.conninfo, true);
+	conn = establishDBConnection(options.conninfo, true);
 
 	/* master should be v9 or better */
 	pg_version(conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		log_err( _("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		return;
 	}
 
 	/* Check we are a master */
 	if (is_standby(conn))
 	{
-		fprintf(stderr, "repmgr: This node should be a master\n");
+		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(conn);
 		return;
 	}
 
 	/* Check if there is a schema for this cluster */
-	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", config.cluster_name);
+	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", options.cluster_name);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get info about schemas: %s\n", PQerrorMessage(conn));
+		log_err(_("Can't get info about schemas: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -343,7 +356,7 @@ do_master_register(void)
 	{
 		if (!force)					/* and we are not forcing so error */
 		{
-			fprintf(stderr, "Schema repmgr_%s already exists.", config.cluster_name);
+			log_notice(_("Schema repmgr_%s already exists."), options.cluster_name);
 			PQclear(res);
 			PQfinish(conn);
 			return;
@@ -355,11 +368,11 @@ do_master_register(void)
 	if (!schema_exists)
 	{
 		/* ok, create the schema */
-		sprintf(sqlquery, "CREATE SCHEMA repmgr_%s", config.cluster_name);
+		sprintf(sqlquery, "CREATE SCHEMA repmgr_%s", options.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
-			fprintf(stderr, "Cannot create the schema repmgr_%s: %s\n",
-			        config.cluster_name, PQerrorMessage(conn));
+			log_err(_("Cannot create the schema repmgr_%s: %s\n"),
+			        options.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -368,11 +381,11 @@ do_master_register(void)
 		sprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_nodes (        "
 		        "  id        integer primary key, "
 		        "  cluster   text    not null,    "
-		        "  conninfo  text    not null)", config.cluster_name);
+		        "  conninfo  text    not null)", options.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
-			fprintf(stderr, "Cannot create the table repmgr_%s.repl_nodes: %s\n",
-			        config.cluster_name, PQerrorMessage(conn));
+			log_err(_("Cannot create the table repmgr_%s.repl_nodes: %s\n"),
+			        options.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -384,11 +397,11 @@ do_master_register(void)
 		        "  last_wal_primary_location      TEXT NOT NULL,   "
 		        "  last_wal_standby_location      TEXT NOT NULL,   "
 		        "  replication_lag                BIGINT NOT NULL, "
-		        "  apply_lag                      BIGINT NOT NULL) ", config.cluster_name);
+		        "  apply_lag                      BIGINT NOT NULL) ", options.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
-			fprintf(stderr, "Cannot create the table repmgr_%s.repl_monitor: %s\n",
-			        config.cluster_name, PQerrorMessage(conn));
+			log_err(_("Cannot create the table repmgr_%s.repl_monitor: %s\n"),
+			        options.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -402,11 +415,11 @@ do_master_register(void)
 		        "         last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
 		        "         pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
 		        "    FROM monitor_info a "
-		        "   WHERE row_number = 1", config.cluster_name, config.cluster_name);
+		        "   WHERE row_number = 1", options.cluster_name, options.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
-			fprintf(stderr, "Cannot create the view repmgr_%s.repl_status: %s\n",
-			        config.cluster_name, PQerrorMessage(conn));
+			log_err(_("Cannot create the view repmgr_%s.repl_status: %s\n"),
+			        options.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -417,11 +430,11 @@ do_master_register(void)
 		int 	id;
 
 		/* Ensure there isn't any other master already registered */
-		master_conn = getMasterConnection(conn, config.node, config.cluster_name, &id);
+		master_conn = getMasterConnection(conn, options.node, options.cluster_name, &id);
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
-			fprintf(stderr, "There is a master already in this cluster");
+			log_notice(_("There is a master already in cluster %s"), options.cluster_name);
 			return;
 		}
 	}
@@ -431,11 +444,11 @@ do_master_register(void)
 	{
 		sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 		        " WHERE id = %d",
-		        config.cluster_name, config.node);
+		        options.cluster_name, options.node);
 
 		if (!PQexec(conn, sqlquery))
 		{
-			fprintf(stderr, "Cannot delete node details, %s\n",
+			log_warning(_("Cannot delete node details, %s\n"),
 			        PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
@@ -444,17 +457,19 @@ do_master_register(void)
 
 	sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 	        "VALUES (%d, '%s', '%s')",
-	        config.cluster_name, config.node, config.cluster_name, config.conninfo);
+	        options.cluster_name, options.node, options.cluster_name, options.conninfo);
 
 	if (!PQexec(conn, sqlquery))
 	{
-		fprintf(stderr, "Cannot insert node details, %s\n",
+		log_warning(_("Cannot insert node details, %s\n"),
 		        PQerrorMessage(conn));
 		PQfinish(conn);
 		return;
 	}
 
 	PQfinish(conn);
+	log_info(_("Master node correctly registered for cluster %s with id %d (conninfo: %s)"),
+		options.cluster_name, options.node, options.conninfo);
 	return;
 }
 
@@ -472,7 +487,7 @@ do_standby_register(void)
 	char master_version[MAXVERSIONSTR];
 	char standby_version[MAXVERSIONSTR];
 
-	conn = establishDBConnection(config.conninfo, true);
+	conn = establishDBConnection(options.conninfo, true);
 
 	/* should be v9 or better */
 	pg_version(conn, standby_version);
@@ -492,7 +507,7 @@ do_standby_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", config.cluster_name);
+	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", options.cluster_name);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -504,7 +519,7 @@ do_standby_register(void)
 
 	if (PQntuples(res) == 0)		/* schema doesn't exists */
 	{
-		fprintf(stderr, "Schema repmgr_%s doesn't exists.", config.cluster_name);
+		fprintf(stderr, "Schema repmgr_%s doesn't exists.", options.cluster_name);
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -512,9 +527,11 @@ do_standby_register(void)
 	PQclear(res);
 
 	/* check if there is a master in this cluster */
-	master_conn = getMasterConnection(conn, config.node, config.cluster_name, &master_id);
-	if (!master_conn)
+	master_conn = getMasterConnection(conn, options.node, options.cluster_name, &master_id);
+	if (!master_conn) {
+		fprintf(stderr, _("Cannot retrieve information about the connection to the master\n"));
 		return;
+	}
 
 	/* master should be v9 or better */
 	pg_version(master_conn, master_version);
@@ -542,7 +559,7 @@ do_standby_register(void)
 	{
 		sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 		        " WHERE id = %d",
-		        config.cluster_name, config.node);
+		        options.cluster_name, options.node);
 
 		if (!PQexec(master_conn, sqlquery))
 		{
@@ -556,7 +573,8 @@ do_standby_register(void)
 
 	sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 	        "VALUES (%d, '%s', '%s')",
-	        config.cluster_name, config.node, config.cluster_name, config.conninfo);
+	        options.cluster_name, options.node, options.cluster_name, options.conninfo);
+	fprintf(stderr, "QUERY: %s\n", sqlquery);
 
 	if (!PQexec(master_conn, sqlquery))
 	{
@@ -608,41 +626,38 @@ do_standby_clone(void)
 	{
 	case 0:
 		/* dest_dir not there, must create it */
-		if (verbose)
-			printf(_("creating directory %s ... "), dest_dir);
+		log_info(_("creating directory %s ... "), dest_dir);
 		fflush(stdout);
 
 		if (!create_directory(dest_dir))
 		{
-			fprintf(stderr, _("%s: couldn't create directory %s ... "),
+			log_err(_("%s: couldn't create directory %s ... "),
 			        progname, dest_dir);
 			return;
 		}
 		break;
 	case 1:
 		/* Present but empty, fix permissions and use it */
-		if (verbose)
-			printf(_("fixing permissions on existing directory %s ... "),
-			       dest_dir);
+		log_info(_("fixing permissions on existing directory %s ... "),
+		       dest_dir);
 		fflush(stdout);
 
 		if (!set_directory_permissions(dest_dir))
 		{
-			fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
+			log_err(_("%s: could not change permissions of directory \"%s\": %s\n"),
 			        progname, dest_dir, strerror(errno));
 			return;
 		}
 		break;
 	case 2:
 		/* Present and not empty */
-		fprintf(stderr,
-		        _("%s: directory \"%s\" exists but is not empty\n"),
+		log_warning( _("%s: directory \"%s\" exists but is not empty\n"),
 		        progname, dest_dir);
 
 		pg_dir = is_pg_dir(dest_dir);
 		if (pg_dir && !force)
 		{
-			fprintf(stderr, _("\nThis looks like a PostgreSQL directroy.\n"
+			log_warning( _("\nThis looks like a PostgreSQL directory.\n"
 			                  "If you are sure you want to clone here, "
 			                  "please check there is no PostgreSQL server "
 			                  "running and use the --force option\n"));
@@ -657,7 +672,7 @@ do_standby_clone(void)
 			return;
 	default:
 		/* Trouble accessing directory */
-		fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
+		log_err( _("%s: could not access directory \"%s\": %s\n"),
 		        progname, dest_dir, strerror(errno));
 	}
 
@@ -671,7 +686,7 @@ do_standby_clone(void)
 	conn = PQconnectdbParams(keywords, values, true);
 	if (!conn)
 	{
-		fprintf(stderr, _("%s: could not connect to master\n"),
+		log_err(_("%s: could not connect to master\n"),
 		        progname);
 		return;
 	}
@@ -681,7 +696,7 @@ do_standby_clone(void)
 	if (strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		return;
 	}
 
@@ -689,7 +704,7 @@ do_standby_clone(void)
 	if (is_standby(conn))
 	{
 		PQfinish(conn);
-		fprintf(stderr, "\nThe command should clone a primary node\n");
+		log_err(_("\nThe command should clone a primary node\n"));
 		return;
 	}
 
@@ -697,24 +712,23 @@ do_standby_clone(void)
 	if (!guc_setted(conn, "wal_level", "=", "hot_standby"))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname);
+		log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname);
 		return;
 	}
 	if (!guc_setted(conn, "wal_keep_segments", ">=", wal_keep_segments))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'wal_keep_segments' to be set to %s or greater\n"), progname, wal_keep_segments);
+		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option)\n"), progname, wal_keep_segments);
 		return;
 	}
 	if (!guc_setted(conn, "archive_mode", "=", "on"))
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs parameter 'archive_mode' to be set to 'on'\n"), progname);
+		log_err(_("%s needs parameter 'archive_mode' to be set to 'on'\n"), progname);
 		return;
 	}
 
-	if (verbose)
-		printf(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
+	log_info(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
 
 	/* Check if the tablespace locations exists and that we can write to them */
 	sprintf(sqlquery, "select spclocation from pg_tablespace where spcname not in ('pg_default', 'pg_global')");
@@ -961,7 +975,7 @@ do_standby_promote(void)
 	char	standby_version[MAXVERSIONSTR];
 
 	/* We need to connect to check configuration */
-	conn = establishDBConnection(config.conninfo, true);
+	conn = establishDBConnection(options.conninfo, true);
 
 	/* we need v9 or better */
 	pg_version(conn, standby_version);
@@ -980,7 +994,7 @@ do_standby_promote(void)
 	}
 
 	/* we also need to check if there isn't any master already */
-	old_master_conn = getMasterConnection(conn, config.node, config.cluster_name, &old_master_id);
+	old_master_conn = getMasterConnection(conn, options.node, options.cluster_name, &old_master_id);
 	if (old_master_conn != NULL)
 	{
 		PQfinish(old_master_conn);
@@ -1023,7 +1037,7 @@ do_standby_promote(void)
 	/*
 	 * XXX i'm removing this because it gives an annoying message saying couldn't connect
 	 * but is just the server starting up
-	*    conn = establishDBConnection(config.conninfo, true);
+	*    conn = establishDBConnection(options.conninfo, true);
 	*    if (is_standby(conn))
 	*    	fprintf(stderr, "\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
 	*    else
@@ -1053,7 +1067,7 @@ do_standby_follow(void)
 	char	standby_version[MAXVERSIONSTR];
 
 	/* We need to connect to check configuration */
-	conn = establishDBConnection(config.conninfo, true);
+	conn = establishDBConnection(options.conninfo, true);
 
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
@@ -1072,7 +1086,7 @@ do_standby_follow(void)
 	}
 
 	/* we also need to check if there is any master in the cluster */
-	master_conn = getMasterConnection(conn, config.node, config.cluster_name, &master_id);
+	master_conn = getMasterConnection(conn, options.node, options.cluster_name, &master_id);
 	if (master_conn == NULL)
 	{
 		PQfinish(conn);
@@ -1202,14 +1216,14 @@ create_recovery_file(const char *data_dir)
 	recovery_file = fopen(recovery_file_path, "w");
 	if (recovery_file == NULL)
 	{
-		fprintf(stderr, "could not create recovery.conf file, it could be necesary to create it manually\n");
+		fprintf(stderr, "could not create recovery.conf file, it could be necessary to create it manually\n");
 		return false;
 	}
 
 	sprintf(line, "standby_mode = 'on'\n");
 	if (fputs(line, recovery_file) == EOF)
 	{
-		fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
+		fprintf(stderr, "recovery file could not be written, it could be necessary to create it manually\n");
 		fclose(recovery_file);
 		return false;
 	}
@@ -1217,7 +1231,7 @@ create_recovery_file(const char *data_dir)
 	sprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host, ((masterport==NULL) ? "5432" : masterport));
 	if (fputs(line, recovery_file) == EOF)
 	{
-		fprintf(stderr, "recovery file could not be written, it could be necesary to create it manually\n");
+		fprintf(stderr, "recovery file could not be written, it could be necessary to create it manually\n");
 		fclose(recovery_file);
 		return false;
 	}

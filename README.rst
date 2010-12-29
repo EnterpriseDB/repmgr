@@ -622,13 +622,13 @@ and it should contain::
 
   cluster=test
   node=1
-  conninfo='host=127.0.0.1 dbname=dbtest'
+  conninfo='host=127.0.0.1 dbname=testdb'
 
 On “standby" create the file ``/home/standby/repmgr/repmgr.conf`` with::
 
   cluster=test
   node=2
-  conninfo='host=127.0.0.1 dbname=dbtest'
+  conninfo='host=127.0.0.1 dbname=testdb'
 
 Next, with “prime" server running, we want to use the ``clone standby`` command
 in repmgr to copy over the entire PostgreSQL database cluster onto the
@@ -692,7 +692,7 @@ Bringing the former Primary up as a Standby
 To make the former primary act as a standby, which is necessary before
 restoring the original roles, type::
 
-  repmgr -U standby -R prime -h 127.0.0.1 -p 5433 -d dbtest --force --verbose standby clone
+  repmgr -U standby -R prime -h 127.0.0.1 -p 5433 -d testdb --force --verbose standby clone
 
 Stop and restart the “prime" server, which is now acting as a standby server.
 

@@ -17,14 +17,16 @@
  *
  */
 
-typedef struct
-{
-    char cluster_name[MAXLEN];
-    int node;
-    char conninfo[MAXLEN];
-    char rsync_options[QUERY_STR_LEN];
-} repmgr_config;
+#include "repmgr.h"
 
+typedef struct {
+	char cluster_name[MAXLEN];
+	int node;
+	char conninfo[MAXLEN];
+	char loglevel[MAXLEN];
+	char logfacility[MAXLEN];
+    char rsync_options[QUERY_STR_LEN];
+} configuration_options;
 void parse_config(const char *config_file, repmgr_config *config);
 void parse_line(char *buff, char *name, char *value);
 char *trim(char *s);

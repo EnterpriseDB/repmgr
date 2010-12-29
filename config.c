@@ -17,12 +17,10 @@
  *
  */
 
-#include "repmgr.h"
-
-#define MAXLINELENGTH	4096
+#include "config.h"
 
 void
-parse_config(const char *config_file, repmgr_config *config)
+parse_config(const char* config_file, configuration_options* options)
 {
 	char *s, buff[MAXLINELENGTH];
 	char name[MAXLEN];
@@ -60,6 +58,11 @@ parse_config(const char *config_file, repmgr_config *config)
 			strncpy (config->conninfo, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
 			strncpy (config->rsync_options, value, QUERY_STR_LEN);
+			strncpy (options->cluster_name, value, MAXLEN);
+		else if (strcmp(name, "loglevel") == 0)
+			strncpy (options->loglevel, value, MAXLEN);
+		else if (strcmp(name, "logfacility") == 0)
+			strncpy (options->logfacility, value, MAXLEN);
 		else
 			printf ("WARNING: %s/%s: Unknown name/value pair!\n", name, value);
 	}

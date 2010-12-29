@@ -1,0 +1,118 @@
+/*
+ * log.h
+ * Copyright (c) 2ndQuadrant, 2010
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+#ifndef _REPMGR_LOG_H_
+#define _REPMGR_LOG_H_
+
+#define REPMGR_SYSLOG 1
+#define REPMGR_STDERR 2
+
+/* Standard error logging */
+#define stderr_log_debug(...) if (log_level >= LOG_DEBUG) fprintf(stderr, __VA_ARGS__)
+#define stderr_log_info(...) if (log_level >= LOG_INFO) fprintf(stderr, __VA_ARGS__)
+#define stderr_log_notice(...) if (log_level >= LOG_NOTICE) fprintf(stderr, __VA_ARGS__)
+#define stderr_log_warning(...) if (log_level >= LOG_WARNING) fprintf(stderr, __VA_ARGS__)
+#define stderr_log_err(...) if (log_level >= LOG_ERR) fprintf(stderr, __VA_ARGS__)
+#define stderr_log_crit(...) if (log_level >= LOG_CRIT) fprintf(stderr, __VA_ARGS__)
+#define stderr_log_alert(...) if (log_level >= LOG_ALERT) fprintf(stderr, __VA_ARGS__)
+#define stderr_log_emerg(...) if (log_level >= LOG_EMERG) fprintf(stderr, __VA_ARGS__)
+
+#ifdef HAVE_SYSLOG
+
+#include <syslog.h>
+
+#define log_debug(...) \
+	if (log_type == REPMGR_SYSLOG) \
+		syslog(LOG_DEBUG, __VA_ARGS__); \
+	else \
+		stderr_log_debug(__VA_ARGS__);
+
+#define log_info(...) \
+	{ \
+		if (log_type == REPMGR_SYSLOG) syslog(LOG_INFO, __VA_ARGS__); \
+		else stderr_log_info(__VA_ARGS__); \
+	}
+
+#define log_notice(...) \
+	{ \
+		if (log_type == REPMGR_SYSLOG) syslog(LOG_NOTICE, __VA_ARGS__); \
+		else stderr_log_notice(__VA_ARGS__); \
+	}
+
+#define log_warning(...) \
+	{ \
+		if (log_type == REPMGR_SYSLOG) syslog(LOG_WARNING, __VA_ARGS__); \
+		else stderr_log_warning(__VA_ARGS__); \
+	}
+
+#define log_err(...) \
+	{ \
+		if (log_type == REPMGR_SYSLOG) syslog(LOG_ERR, __VA_ARGS__); \
+		else stderr_log_err(__VA_ARGS__); \
+	}
+
+#define log_crit(...) \
+	{ \
+		if (log_type == REPMGR_SYSLOG) syslog(LOG_CRIT, __VA_ARGS__); \
+		else stderr_log_crit(__VA_ARGS__); \
+	}
+
+#define log_alert(...) \
+	{ \
+		if (log_type == REPMGR_SYSLOG) syslog(LOG_ALERT, __VA_ARGS__); \
+		else stderr_log_alert(__VA_ARGS__); \
+	}
+
+#define log_emerg(...) \
+	{ \
+		if (log_type == REPMGR_SYSLOG) syslog(LOG_ALERT, __VA_ARGS__); \
+		else stderr_log_alert(__VA_ARGS__); \
+	}
+
+#else
+
+#define	LOG_EMERG	0	/* system is unusable */
+#define	LOG_ALERT	1	/* action must be taken immediately */
+#define	LOG_CRIT	2	/* critical conditions */
+#define	LOG_ERR		3	/* error conditions */
+#define	LOG_WARNING	4	/* warning conditions */
+#define	LOG_NOTICE	5	/* normal but significant condition */
+#define	LOG_INFO	6	/* informational */
+#define	LOG_DEBUG	7	/* debug-level messages */
+
+#define log_debug(...) stderr_log_debug(__VA_ARGS__)
+#define log_info(...) stderr_log_info(__VA_ARGS__)
+#define log_notice(...) stderr_log_notice(__VA_ARGS__)
+#define log_warning(...) stderr_log_warning(__VA_ARGS__)
+#define log_err(...) stderr_log_err(__VA_ARGS__)
+#define log_crit(...) stderr_log_crit(__VA_ARGS__)
+#define log_alert(...) stderr_log_alert(__VA_ARGS__)
+#define log_emerg(...) stderr_log_emerg(__VA_ARGS__)
+
+#endif
+
+
+/* Logger initialisation and shutdown */
+bool logger_shutdown(void);
+bool logger_init(const char* ident, const char* level, const char* facility);
+
+extern int log_type;
+extern int log_level;
+
+#endif
