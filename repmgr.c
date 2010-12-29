@@ -55,9 +55,11 @@ static void do_standby_register(void);
 static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
+static void help(const char* progname);
+static void usage(void);
 
+/* Global variables */
 const char *progname;
-
 const char *keywords[6];
 const char *values[6];
 
@@ -153,7 +155,7 @@ main(int argc, char **argv)
 			verbose = true;
 			break;
 		default:
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			usage();
 			exit(1);
 		}
 	}
@@ -171,7 +173,7 @@ main(int argc, char **argv)
 		server_mode = argv[optind++];
 		if (strcasecmp(server_mode, "STANDBY") != 0 && strcasecmp(server_mode, "MASTER") != 0)
 		{
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			usage();
 			exit(1);
 		}
 	}
@@ -200,7 +202,7 @@ main(int argc, char **argv)
 			action = STANDBY_FOLLOW;
 		else
 		{
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			usage();
 			exit(1);
 		}
 	}
@@ -212,7 +214,8 @@ main(int argc, char **argv)
 		{
 			if (host != NULL)
 			{
-				fprintf(stderr, _("Conflicting parameters you can't use -h while providing a node separately. Try \"%s --help\" for more information.\n"), progname);
+				log_err(_("Conflicting parameters you can't use -h while providing a node separately."));
+				usage();
 				exit(1);
 			}
 			host = argv[optind++];
@@ -224,9 +227,9 @@ main(int argc, char **argv)
 	case 0:
 		break;
 	default:
-		fprintf(stderr, _("%s: too many command-line arguments (first is \"%s\")\n"),
+		log_err(_("%s: too many command-line arguments (first is \"%s\")\n"),
 		        progname, argv[optind + 1]);
-		fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+		usage();
 		exit(1);
 	}
 
@@ -278,7 +281,7 @@ main(int argc, char **argv)
 	parse_config(config_file, &options);
 	if (options.node == -1)
 	{
-		fprintf(stderr, "Node information is missing. "
+		log_err("Node information is missing. "
 		        "Check the configuration file.\n");
 		exit(1);
 	}
@@ -303,7 +306,7 @@ main(int argc, char **argv)
 		do_standby_follow();
 		break;
 	default:
-		fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+		usage();
 		exit(1);
 	}
 	logger_shutdown();
@@ -494,14 +497,14 @@ do_standby_register(void)
 	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		return;
 	}
 
 	/* Check we are a standby */
 	if (!is_standby(conn))
 	{
-		fprintf(stderr, "repmgr: This node should be a standby\n");
+		log_err(_("repmgr: This node should be a standby (%s)\n"), options.conninfo);
 		PQfinish(conn);
 		return;
 	}
@@ -511,7 +514,7 @@ do_standby_register(void)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
+		log_err("Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -519,7 +522,7 @@ do_standby_register(void)
 
 	if (PQntuples(res) == 0)		/* schema doesn't exists */
 	{
-		fprintf(stderr, "Schema repmgr_%s doesn't exists.", options.cluster_name);
+		log_err("Schema repmgr_%s doesn't exists.", options.cluster_name);
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -529,7 +532,7 @@ do_standby_register(void)
 	/* check if there is a master in this cluster */
 	master_conn = getMasterConnection(conn, options.node, options.cluster_name, &master_id);
 	if (!master_conn) {
-		fprintf(stderr, _("Cannot retrieve information about the connection to the master\n"));
+		log_err(_("Cannot retrieve information about the connection to the master\n"));
 		return;
 	}
 
@@ -539,7 +542,7 @@ do_standby_register(void)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		return;
 	}
 
@@ -548,7 +551,7 @@ do_standby_register(void)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		fprintf(stderr, _("%s needs versions of both master (%s) and standby (%s) to match.\n"),
+		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
 		        progname, master_version, standby_version);
 		return;
 	}
@@ -563,7 +566,7 @@ do_standby_register(void)
 
 		if (!PQexec(master_conn, sqlquery))
 		{
-			fprintf(stderr, "Cannot delete node details, %s\n",
+			log_err("Cannot delete node details, %s\n",
 			        PQerrorMessage(master_conn));
 			PQfinish(master_conn);
 			PQfinish(conn);
@@ -574,11 +577,11 @@ do_standby_register(void)
 	sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 	        "VALUES (%d, '%s', '%s')",
 	        options.cluster_name, options.node, options.cluster_name, options.conninfo);
-	fprintf(stderr, "QUERY: %s\n", sqlquery);
+	log_debug("QUERY: %s\n", sqlquery);
 
 	if (!PQexec(master_conn, sqlquery))
 	{
-		fprintf(stderr, "Cannot insert node details, %s\n",
+		log_err("Cannot insert node details, %s\n",
 		        PQerrorMessage(master_conn));
 		PQfinish(master_conn);
 		PQfinish(conn);
@@ -735,7 +738,7 @@ do_standby_clone(void)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
+		log_err("Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -756,7 +759,7 @@ do_standby_clone(void)
 
 			if (!create_directory(tblspc_dir))
 			{
-				fprintf(stderr, _("%s: couldn't create directory \"%s\"... "),
+				log_err(_("%s: couldn't create directory \"%s\"... "),
 				        progname, tblspc_dir);
 				PQclear(res);
 				PQfinish(conn);
@@ -772,7 +775,7 @@ do_standby_clone(void)
 
 			if (!set_directory_permissions(tblspc_dir))
 			{
-				fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
+				log_err(_("%s: could not change permissions of directory \"%s\": %s\n"),
 				        progname, tblspc_dir, strerror(errno));
 				PQclear(res);
 				PQfinish(conn);
@@ -792,7 +795,7 @@ do_standby_clone(void)
 			}
 		default:
 			/* Trouble accessing directory */
-			fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
+			log_err(_("%s: could not access directory \"%s\": %s\n"),
 			        progname, tblspc_dir, strerror(errno));
 			PQclear(res);
 			PQfinish(conn);
@@ -800,7 +803,7 @@ do_standby_clone(void)
 		}
 	}
 
-	fprintf(stderr, "Starting backup...\n");
+	log_notice("Starting backup...\n");
 
 	/* Get the data directory full path and the configuration files location */
 	sprintf(sqlquery, "SELECT name, setting "
@@ -809,7 +812,7 @@ do_standby_clone(void)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get info about data directory and configuration files: %s\n", PQerrorMessage(conn));
+		log_err("Can't get info about data directory and configuration files: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -825,7 +828,7 @@ do_standby_clone(void)
 		else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
 			strcpy(master_ident_file, PQgetvalue(res, i, 1));
 		else
-			fprintf(stderr, _("uknown parameter: %s"), PQgetvalue(res, i, 0));
+			log_warning(_("unknown parameter: %s"), PQgetvalue(res, i, 0));
 	}
 	PQclear(res);
 
@@ -834,10 +837,12 @@ do_standby_clone(void)
 	 * so we can say to the user we need those files
 	 */
 	sprintf(sqlquery, "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))", time(NULL));
+	log_debug("standby clone: %s", sqlquery);
+	
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't start backup: %s\n", PQerrorMessage(conn));
+		log_err("Can't start backup: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -863,7 +868,7 @@ do_standby_clone(void)
 	sprintf(local_control_file, "%s/global", dest_dir);
 	if (!create_directory(local_control_file))
 	{
-		fprintf(stderr, _("%s: couldn't create directory %s ... "),
+		log_err(_("%s: couldn't create directory %s ... "),
 		        progname, dest_dir);
 		goto stop_backup;
 	}
@@ -884,7 +889,7 @@ do_standby_clone(void)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
+		log_err("Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		goto stop_backup;
 	}
@@ -912,18 +917,20 @@ stop_backup:
 	conn = PQconnectdbParams(keywords, values, true);
 	if (!conn)
 	{
-		fprintf(stderr, _("%s: could not connect to master\n"),
+		log_err(_("%s: could not connect to master\n"),
 		        progname);
 		return;
 	}
 
-	fprintf(stderr, "Finishing backup...\n");
+	log_notice("Finishing backup...\n");
 
 	sprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
+	log_debug("standby clone: %s", sqlquery);
+	
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't stop backup: %s\n", PQerrorMessage(conn));
+		log_err("Can't stop backup: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -944,7 +951,7 @@ stop_backup:
 	sprintf(local_control_file, "%s/pg_xlog", dest_dir);
 	if (!create_directory(local_control_file))
 	{
-		fprintf(stderr, _("%s: couldn't create directory %s, you will need to do it manually...\n"),
+		log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
 		        progname, dest_dir);
 	}
 
@@ -982,14 +989,14 @@ do_standby_promote(void)
 	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		return;
 	}
 
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
 	{
-		fprintf(stderr, "repmgr: The command should be executed in a standby node\n");
+		log_err("repmgr: The command should be executed on a standby node\n");
 		return;
 	}
 
@@ -998,7 +1005,7 @@ do_standby_promote(void)
 	if (old_master_conn != NULL)
 	{
 		PQfinish(old_master_conn);
-		fprintf(stderr, "There is a master already in this cluster");
+		log_err("There is a master already in this cluster");
 		return;
 	}
 
@@ -1011,7 +1018,7 @@ do_standby_promote(void)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get info about data directory: %s\n", PQerrorMessage(conn));
+		log_err("Can't get info about data directory: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -1029,7 +1036,7 @@ do_standby_promote(void)
 	r = system(script);
 	if (r != 0)
 	{
-		fprintf(stderr, "Can't restart service\n");
+		log_err("Can't restart service\n");
 		return;
 	}
 
@@ -1039,9 +1046,9 @@ do_standby_promote(void)
 	 * but is just the server starting up
 	*    conn = establishDBConnection(options.conninfo, true);
 	*    if (is_standby(conn))
-	*    	fprintf(stderr, "\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
+	*    	log_err("\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
 	*    else
-	*    	fprintf(stderr, "\n%s: you should REINDEX any hash indexes you have.\n", progname);
+	*    	log_err("\n%s: you should REINDEX any hash indexes you have.\n", progname);
 	*    PQfinish(conn);
 	*/
 
@@ -1072,7 +1079,7 @@ do_standby_follow(void)
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
 	{
-		fprintf(stderr, "\n%s: The command should be executed in a standby node\n", progname);
+		log_err("\n%s: The command should be executed in a standby node\n", progname);
 		return;
 	}
 
@@ -1081,7 +1088,7 @@ do_standby_follow(void)
 	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
-		fprintf(stderr, _("\n%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		log_err(_("\n%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		return;
 	}
 
@@ -1090,7 +1097,7 @@ do_standby_follow(void)
 	if (master_conn == NULL)
 	{
 		PQfinish(conn);
-		fprintf(stderr, "There isn't a master to follow in this cluster");
+		log_err("There isn't a master to follow in this cluster");
 		return;
 	}
 
@@ -1098,7 +1105,7 @@ do_standby_follow(void)
 	if (is_standby(master_conn))
 	{
 		PQfinish(conn);
-		fprintf(stderr, "%s: The node to follow should be a master\n", progname);
+		log_err("%s: The node to follow should be a master\n", progname);
 		return;
 	}
 
@@ -1108,7 +1115,7 @@ do_standby_follow(void)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		return;
 	}
 
@@ -1117,7 +1124,7 @@ do_standby_follow(void)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		fprintf(stderr, _("%s needs versions of both master (%s) and standby (%s) to match.\n"),
+		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
 		        progname, master_version, standby_version);
 		return;
 	}
@@ -1142,7 +1149,7 @@ do_standby_follow(void)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get info about data directory: %s\n", PQerrorMessage(conn));
+		log_err("Can't get info about data directory: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -1161,7 +1168,7 @@ do_standby_follow(void)
 	r = system(script);
 	if (r != 0)
 	{
-		fprintf(stderr, "Can't restart service\n");
+		log_err("Can't restart service\n");
 		return;
 	}
 
@@ -1169,8 +1176,13 @@ do_standby_follow(void)
 }
 
 
-static void
-help(const char *progname)
+void usage(void)
+{
+	log_err(_("\n\n%s: Replicator manager \n"), progname);
+	log_err(_("Try \"%s --help\" for more information.\n"), progname);
+}
+
+void help(const char *progname)
 {
 	printf(_("\n%s: Replicator manager \n"), progname);
 	printf(_("Usage:\n"));
@@ -1216,14 +1228,14 @@ create_recovery_file(const char *data_dir)
 	recovery_file = fopen(recovery_file_path, "w");
 	if (recovery_file == NULL)
 	{
-		fprintf(stderr, "could not create recovery.conf file, it could be necessary to create it manually\n");
+		log_err("could not create recovery.conf file, it could be necessary to create it manually\n");
 		return false;
 	}
 
 	sprintf(line, "standby_mode = 'on'\n");
 	if (fputs(line, recovery_file) == EOF)
 	{
-		fprintf(stderr, "recovery file could not be written, it could be necessary to create it manually\n");
+		log_err("recovery file could not be written, it could be necessary to create it manually\n");
 		fclose(recovery_file);
 		return false;
 	}
@@ -1231,7 +1243,7 @@ create_recovery_file(const char *data_dir)
 	sprintf(line, "primary_conninfo = 'host=%s port=%s'\n", host, ((masterport==NULL) ? "5432" : masterport));
 	if (fputs(line, recovery_file) == EOF)
 	{
-		fprintf(stderr, "recovery file could not be written, it could be necessary to create it manually\n");
+		log_err("recovery file could not be written, it could be necessary to create it manually\n");
 		fclose(recovery_file);
 		return false;
 	}
@@ -1286,7 +1298,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_
 	r = system(script);
 
 	if (r != 0)
-		fprintf(stderr, _("Can't rsync from remote file or directory (%s:%s)\n"),
+		log_err(_("Can't rsync from remote file or directory (%s:%s)\n"),
 		        host_string, remote_path);
 
 	return r;
@@ -1312,14 +1324,14 @@ check_parameters_for_action(const int action)
 		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
 		        (dbname != NULL))
 		{
-			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a MASTER REGISTER command.");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou can't use connection parameters to the master when issuing a MASTER REGISTER command.");
+			usage();
 			ok = false;
 		}
 		if (dest_dir != NULL)
 		{
-			fprintf(stderr, "\nYou don't need a destination directory for MASTER REGISTER command");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou don't need a destination directory for MASTER REGISTER command");
+			usage();
 			ok = false;
 		}
 		break;
@@ -1332,14 +1344,14 @@ check_parameters_for_action(const int action)
 		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
 		        (dbname != NULL))
 		{
-			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY REGISTER command.");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou can't use connection parameters to the master when issuing a STANDBY REGISTER command.");
+			usage();
 			ok = false;
 		}
 		if (dest_dir != NULL)
 		{
-			fprintf(stderr, "\nYou don't need a destination directory for STANDBY REGISTER command");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou don't need a destination directory for STANDBY REGISTER command");
+			usage();
 			ok = false;
 		}
 		break;
@@ -1353,14 +1365,14 @@ check_parameters_for_action(const int action)
 		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
 		        (dbname != NULL))
 		{
-			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY PROMOTE command.");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou can't use connection parameters to the master when issuing a STANDBY PROMOTE command.");
+			usage();
 			ok = false;
 		}
 		if (dest_dir != NULL)
 		{
-			fprintf(stderr, "\nYou don't need a destination directory for STANDBY PROMOTE command");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou don't need a destination directory for STANDBY PROMOTE command");
+			usage();
 			ok = false;
 		}
 		break;
@@ -1374,14 +1386,14 @@ check_parameters_for_action(const int action)
 		if ((host != NULL)   || (masterport != NULL) || (username != NULL) ||
 		        (dbname != NULL))
 		{
-			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY FOLLOW command.");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou can't use connection parameters to the master when issuing a STANDBY FOLLOW command.");
+			usage();
 			ok = false;
 		}
 		if (dest_dir != NULL)
 		{
-			fprintf(stderr, "\nYou don't need a destination directory for STANDBY FOLLOW command");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou don't need a destination directory for STANDBY FOLLOW command");
+			usage();
 			ok = false;
 		}
 		break;
@@ -1393,8 +1405,8 @@ check_parameters_for_action(const int action)
 		 */
 		if (config_file != NULL)
 		{
-			fprintf(stderr, "\nYou need to use connection parameters to the master when issuing a STANDBY CLONE command.");
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			log_err("\nYou need to use connection parameters to the master when issuing a STANDBY CLONE command.");
+			usage();
 			ok = false;
 		}
 		break;

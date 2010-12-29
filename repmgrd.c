@@ -51,7 +51,8 @@ bool	verbose = false;
 // should initialize with {0} to be ANSI complaint ? but this raises error with gcc -Wall
 repmgr_config config = {};
 
-static void help(const char *progname);
+static void help(const char* progname);
+static void usage(void);
 static void checkClusterConfiguration(void);
 static void checkNodeConfiguration(char *conninfo);
 static void CancelQuery(void);
@@ -125,7 +126,7 @@ main(int argc, char **argv)
 			verbose = true;
 			break;
 		default:
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+			usage();
 			exit(1);
 		}
 	}
@@ -138,7 +139,7 @@ main(int argc, char **argv)
 	parse_config(config_file, &local_options);
 	if (local_options.node == -1)
 	{
-		fprintf(stderr, "Node information is missing. "
+		log_err("Node information is missing. "
 		        "Check the configuration file.\n");
 		exit(1);
 	}
@@ -151,7 +152,7 @@ main(int argc, char **argv)
 	if (strcmp(standby_version, "") == 0)
 	{
 		PQfinish(myLocalConn);
-		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		exit(1);
 	}
 
@@ -183,6 +184,9 @@ main(int argc, char **argv)
 
 	/* close the connection to the database and cleanup */
 	CloseConnections();
+	
+	/* Shuts down logging system */
+	logger_shutdown();
 
 	return 0;
 }
@@ -216,7 +220,7 @@ MonitorExecute(void)
 	{
 		if (PQstatus(primaryConn) != CONNECTION_OK)
 		{
-			fprintf(stderr, "\n%s: Connection to master has been lost, trying to recover...\n", progname);
+			log_warning(_("Connection to master has been lost, trying to recover..."));
 			/* wait 20 seconds between retries */
 			sleep(20);
 
@@ -224,26 +228,25 @@ MonitorExecute(void)
 		}
 		else
 		{
-			fprintf(stderr, "\n%s: Connection to master has been restored, continue monitoring.\n", progname);
+			log_notice(_("Connection to master has been restored, continue monitoring."));
 			break;
 		}
 	}
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
-		fprintf(stderr, "\n%s: We couldn't reconnect to master, checking if "
-		                "another node has been promoted.\n", progname);
+		log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted."));
 		for (connection_retries = 0; connection_retries < 6; connection_retries++)
 		{
 			primaryConn = getMasterConnection(myLocalConn, local_options.node, local_options.cluster_name, &primary_options.node);
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{
 				/* Connected, we can continue the process so break the loop */
-				fprintf(stderr, "\n%s: Connected to node %d, continue monitoring.\n", progname, primary_options.node);
+				log_err(_("Connected to node %d, continue monitoring."), primary_options.node);
 				break;
 			}
 			else
 			{
-				fprintf(stderr, "\n%s: We haven't found a new master, waiting before retry...\n", progname);
+				log_err(_("We haven't found a new master, waiting before retry..."));
 				/* wait 5 minutes before retries, after 6 failures (30 minutes) we stop trying */
 				sleep(300);
 			}
@@ -251,15 +254,14 @@ MonitorExecute(void)
 	}
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
-		fprintf(stderr, "\n%s: We couldn't reconnect for long enough, exiting...\n", progname);
+		log_err(_("We couldn't reconnect for long enough, exiting..."));
 		exit(1);
 	}
 
 	/* Check if we still are a standby, we could have been promoted */
 	if (!is_standby(myLocalConn))
 	{
-		fprintf(stderr, "\n%s: seems like we have been promoted, so exit from monitoring...\n",
-		        progname);
+		log_err(_("It seems like we have been promoted, so exit from monitoring..."));
 		CloseConnections();
 		exit(1);
 	}
@@ -280,7 +282,7 @@ MonitorExecute(void)
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(myLocalConn));
+		log_err("PQexec failed: %s\n", PQerrorMessage(myLocalConn));
 		PQclear(res);
 		/* if there is any error just let it be and retry in next loop */
 		return;
@@ -297,7 +299,7 @@ MonitorExecute(void)
 	res = PQexec(primaryConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(primaryConn));
+		log_err("PQexec failed: %s\n", PQerrorMessage(primaryConn));
 		PQclear(res);
 		return;
 	}
@@ -329,7 +331,7 @@ MonitorExecute(void)
 	 * will check the result next time we pause for a monitor step.
 	 */
 	if (PQsendQuery(primaryConn, sqlquery) == 0)
-		fprintf(stderr, "Query could not be sent to primary. %s\n",
+		log_warning("Query could not be sent to primary. %s\n",
 		        PQerrorMessage(primaryConn));
 }
 
@@ -345,7 +347,7 @@ checkClusterConfiguration(void)
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(myLocalConn));
+		log_err("PQexec failed: %s\n", PQerrorMessage(myLocalConn));
 		PQclear(res);
 		PQfinish(myLocalConn);
 		PQfinish(primaryConn);
@@ -359,7 +361,7 @@ checkClusterConfiguration(void)
 	 */
 	if (PQntuples(res) == 0)
 	{
-		fprintf(stderr, "The replication cluster is not configured\n");
+		log_err("The replication cluster is not configured\n");
 		PQclear(res);
 		PQfinish(myLocalConn);
 		PQfinish(primaryConn);
@@ -384,7 +386,7 @@ checkNodeConfiguration(char *conninfo)
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "PQexec failed: %s\n", PQerrorMessage(myLocalConn));
+		log_err("PQexec failed: %s\n", PQerrorMessage(myLocalConn));
 		PQclear(res);
 		PQfinish(myLocalConn);
 		PQfinish(primaryConn);
@@ -405,7 +407,7 @@ checkNodeConfiguration(char *conninfo)
 
 		if (!PQexec(primaryConn, sqlquery))
 		{
-			fprintf(stderr, "Cannot insert node details, %s\n",
+			log_err("Cannot insert node details, %s\n",
 			        PQerrorMessage(primaryConn));
 			PQfinish(myLocalConn);
 			PQfinish(primaryConn);
@@ -424,15 +426,20 @@ walLocationToBytes(char *wal_location)
 
 	if (sscanf(wal_location, "%X/%X", &xlogid, &xrecoff) != 2)
 	{
-		fprintf(stderr, "wrong log location format: %s\n", wal_location);
+		log_err("wrong log location format: %s\n", wal_location);
 		return 0;
 	}
 	return ((xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
 }
 
 
-static void
-help(const char *progname)
+void usage(void)
+{
+	log_err(_("\n\n%s: Replicator manager daemon \n"), progname);
+	log_err(_("Try \"%s --help\" for more information.\n"), progname);
+}
+
+void help(const char *progname)
 {
 	printf(_("\n%s: Replicator manager daemon \n"), progname);
 	printf(_("Usage:\n"));
@@ -471,7 +478,7 @@ CancelQuery(void)
 	pgcancel = PQgetCancel(primaryConn);
 
 	if (!pgcancel || PQcancel(pgcancel, errbuf, 256) == 0)
-		fprintf(stderr, "Can't stop current query: %s", errbuf);
+		log_warning("Can't stop current query: %s", errbuf);
 
 	PQfreeCancel(pgcancel);
 }

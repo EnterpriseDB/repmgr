@@ -50,7 +50,10 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 #ifdef HAVE_SYSLOG
 	int syslog_facility = DEFAULT_SYSLOG_FACILITY;
 #endif
-printf("Logger init: detect stuff: %s, %s\n", level, facility);
+
+#ifdef REPMGR_DEBUG
+	printf("Logger initialisation (Level: %s, Facility: %s)\n", level, facility);
+#endif
 
 	if (!ident) {
 		ident = DEFAULT_IDENT;
@@ -58,7 +61,9 @@ printf("Logger init: detect stuff: %s, %s\n", level, facility);
 
 	if (level) {
 		l = detect_log_level(level);
-printf("Logger level: %d\n", l);
+#ifdef REPMGR_DEBUG
+		printf("Assigned level for logger: %d\n", l);
+#endif
 
 		if (l > 0)
 			log_level = l;
@@ -67,8 +72,12 @@ printf("Logger level: %d\n", l);
 	}
 
 	if (facility) {
+
 		f = detect_log_facility(facility);
-printf("Logger facility: %d\n", f);
+#ifdef REPMGR_DEBUG
+		printf("Assigned facility for logger: %d\n", f);
+#endif
+
 		if (f == 0) {
 			/* No syslog requested, just stderr */
 			stderr_log_notice(_("Use stderr for logging"));
