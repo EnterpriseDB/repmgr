@@ -153,22 +153,32 @@ int detect_log_facility(const char* facility)
 
 		local = atoi (&facility[5]);
 
-		if (local == 0)
-			return LOG_LOCAL0;
-		if (local == 1)
-			return LOG_LOCAL1;
-		if (local == 2)
-			return LOG_LOCAL2;
-		if (local == 3)
-			return LOG_LOCAL3;
-		if (local == 4)
-			return LOG_LOCAL4;
-		if (local == 5)
-			return LOG_LOCAL5;
-		if (local == 6)
-			return LOG_LOCAL6;
-		if (local == 7)
-			return LOG_LOCAL7;
+		switch(local) {
+			case 0:
+				return LOG_LOCAL0;
+				break;
+			case 1:
+				return LOG_LOCAL1;
+				break;
+			case 2:
+				return LOG_LOCAL2;
+				break;
+			case 3:
+				return LOG_LOCAL3;
+				break;
+			case 4:
+				return LOG_LOCAL4;
+				break;
+			case 5:
+				return LOG_LOCAL5;
+				break;
+			case 6:
+				return LOG_LOCAL6;
+				break;
+			case 7:
+				return LOG_LOCAL7;
+				break;
+		}
 
 	}
 	else if (!strcmp(facility, "USER")) {
