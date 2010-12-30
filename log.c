@@ -35,6 +35,8 @@
 #define DEFAULT_SYSLOG_FACILITY LOG_LOCAL0
 #endif
 
+/* #define REPMGR_DEBUG */
+
 static int detect_log_level(const char* level);
 static int detect_log_facility(const char* facility);
 

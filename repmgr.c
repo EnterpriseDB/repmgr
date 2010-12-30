@@ -626,6 +626,8 @@ do_standby_clone(void)
 
 	char	master_version[MAXVERSIONSTR];
 
+	/* TODO: clone does not read config file - we need to enable logging or syslog */
+
 	/* if dest_dir hasn't been provided, initialize to current directory */
 	if (!runtime_options.dest_dir[0])
 	{
@@ -882,13 +884,19 @@ do_standby_clone(void)
 		goto stop_backup;
 	}
 
+	log_info("standby clone: master control file '%s'\n", master_control_file);
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_control_file, local_control_file, false);
-	if (r != 0)
+	if (r != 0) {
+		log_warning("standby clone: failed copying master control file '%s'\n", master_control_file);
 		goto stop_backup;
+	}
 
+	log_info("standby clone: master data directory '%s'\n", master_data_directory);
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_data_directory, runtime_options.dest_dir, true);
-	if (r != 0)
+	if (r != 0) {
+		log_warning("standby clone: failed copying master data directory '%s'\n", master_data_directory);
 		goto stop_backup;
+	}
 
 	/*
 	 * Copy tablespace locations, i'm doing this separately because i couldn't find and appropiate
@@ -905,22 +913,35 @@ do_standby_clone(void)
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		r = copy_remote_files(runtime_options.host, runtime_options.remote_user, PQgetvalue(res, i, 0), PQgetvalue(res, i, 0), true);
-		if (r != 0)
+		strncpy(tblspc_dir, PQgetvalue(res, i, 0), MAXFILENAME);
+		log_info("standby clone: master tablespace '%s'\n", tblspc_dir);
+		r = copy_remote_files(runtime_options.host, runtime_options.remote_user, tblspc_dir, tblspc_dir, true);
+		if (r != 0) {
+			log_warning("standby clone: failed copying tablespace directory '%s'\n", tblspc_dir);
 			goto stop_backup;
+		}
 	}
 
+	log_info("standby clone: master config file '%s'\n", master_config_file);
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_config_file, runtime_options.dest_dir, false);
-	if (r != 0)
+	if (r != 0) {
+		log_warning("standby clone: failed copying master config file '%s'\n", master_config_file);
 		goto stop_backup;
+	}
 
+	log_info("standby clone: master hba file '%s'\n", master_hba_file);
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_hba_file, runtime_options.dest_dir, false);
-	if (r != 0)
+	if (r != 0) {
+		log_warning("standby clone: failed copying master hba file '%s'\n", master_hba_file);
 		goto stop_backup;
+	}
 
+	log_info("standby clone: master ident file '%s'\n", master_ident_file);
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_ident_file, runtime_options.dest_dir, false);
-	if (r != 0)
+	if (r != 0) {
+		log_warning("standby clone: failed copying master ident file '%s'\n", master_ident_file);
 		goto stop_backup;
+	}
 
 stop_backup:
 	/* inform the master that we have finished the backup */
@@ -1305,8 +1326,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_
 		        options, host_string, remote_path, local_path);
 	}
 
-	if (runtime_options.verbose)
-		printf("rsync command line:  '%s'\n",script);
+	log_info("rsync command line:  '%s'\n", script);
 
 	r = system(script);
 
