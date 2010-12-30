@@ -477,7 +477,7 @@ do_master_register(void)
 	}
 
 	PQfinish(conn);
-	log_notice(_("Master node correctly registered for cluster %s with id %d (conninfo: %s)"),
+	log_notice(_("Master node correctly registered for cluster %s with id %d (conninfo: %s)\n"),
 		options.cluster_name, options.node, options.conninfo);
 	return;
 }
