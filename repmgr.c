@@ -63,7 +63,7 @@ static const char *progname;
 static const char *keywords[6];
 static const char *values[6];
 char repmgr_schema[MAXLEN];
-bool read_config_file = true;
+bool need_a_node = true;
 
 /* Initialization of runtime options */
 t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, "" };
@@ -259,18 +259,19 @@ main(int argc, char **argv)
 	keywords[5] = NULL;
 	values[5] = NULL;
 
-	if (read_config_file) {
+	if (!runtime_options.config_file[0])
+		strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
 
-		if (!runtime_options.config_file[0])
-			strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
+	/*
+	 * Read the configuration file: repmgr.conf
+	 */
+	if (runtime_options.verbose)
+		printf(_("Opening configuration file: %s\n"), runtime_options.config_file);
 
-		/*
-		 * Read the configuration file: repmgr.conf
-		 */
-		if (runtime_options.verbose)
-			printf(_("Opening configuration file: %s\n"), runtime_options.config_file);
+	parse_config(runtime_options.config_file, &options);
 
-		parse_config(runtime_options.config_file, &options);
+	if (need_a_node) {
+
 		if (options.node == -1)
 		{
 			log_err("Node information is missing. "
@@ -625,8 +626,6 @@ do_standby_clone(void)
 	const char	*last_wal_segment = NULL;
 
 	char	master_version[MAXVERSIONSTR];
-
-	/* TODO: clone does not read config file - we need to enable logging or syslog */
 
 	/* if dest_dir hasn't been provided, initialize to current directory */
 	if (!runtime_options.dest_dir[0])
@@ -1438,11 +1437,9 @@ check_parameters_for_action(const int action)
 		 */
 		if (runtime_options.config_file[0])
 		{
-			log_err("You need to use connection parameters to the master when issuing a STANDBY CLONE command.\n");
-			usage();
-			ok = false;
+			log_notice("Only command line parameters for the connection to the master are used when issuing a STANDBY CLONE command.\n");
 		}
-		read_config_file = false;
+		need_a_node = false;
 		break;
 	}
 
