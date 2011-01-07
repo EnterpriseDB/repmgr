@@ -30,11 +30,8 @@
 
 #include "libpq/pqsignal.h"
 
-char    myClusterName[MAXLEN];
-
 /* Local info */
 int     myLocalMode = STANDBY_MODE;
-int     myLocalId   = -1;
 PGconn *myLocalConn;
 
 /* Primary info */
@@ -49,6 +46,8 @@ const char *progname;
 char	*config_file = NULL;
 bool	verbose = false;
 
+// should initialize with {0} to be ANSI complaint ? but this raises error with gcc -Wall
+repmgr_config config = {};
 
 static void help(const char *progname);
 static void checkClusterConfiguration(void);
@@ -94,7 +93,6 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c;
 
-	char conninfo[MAXLEN];
 	char standby_version[MAXVERSIONSTR];
 
 	progname = get_progname(argv[0]);
@@ -141,15 +139,15 @@ main(int argc, char **argv)
 	/*
 	 * Read the configuration file: repmgr.conf
 	 */
-	parse_config(config_file, myClusterName, &myLocalId, conninfo);
-	if (myLocalId == -1)
+	parse_config(config_file, &config);
+	if (config.node == -1)
 	{
 		fprintf(stderr, "Node information is missing. "
 		        "Check the configuration file.\n");
 		exit(1);
 	}
 
-	myLocalConn = establishDBConnection(conninfo, true);
+	myLocalConn = establishDBConnection(config.conninfo, true);
 
 	/* should be v9 or better */
 	pg_version(myLocalConn, standby_version);
@@ -167,20 +165,20 @@ main(int argc, char **argv)
 	myLocalMode = is_standby(myLocalConn) ? STANDBY_MODE : PRIMARY_MODE;
 	if (myLocalMode == PRIMARY_MODE)
 	{
-		primaryId = myLocalId;
-		strcpy(primaryConninfo, conninfo);
+		primaryId = config.node;
+		strcpy(primaryConninfo, config.conninfo);
 		primaryConn = myLocalConn;
 	}
 	else
 	{
 		/* I need the id of the primary as well as a connection to it */
-		primaryConn = getMasterConnection(myLocalConn, myLocalId, myClusterName, &primaryId);
+		primaryConn = getMasterConnection(myLocalConn, config.node, config.cluster_name, &primaryId);
 		if (primaryConn == NULL)
 			exit(1);
 	}
 
 	checkClusterConfiguration();
-	checkNodeConfiguration(conninfo);
+	checkNodeConfiguration(config.conninfo);
 	if (myLocalMode == STANDBY_MODE)
 	{
 		MonitorCheck();
@@ -239,7 +237,7 @@ MonitorExecute(void)
 		                "another node has been promoted.\n", progname);
 		for (connection_retries = 0; connection_retries < 6; connection_retries++)
 		{
-			primaryConn = getMasterConnection(myLocalConn, myLocalId, myClusterName, &primaryId);
+			primaryConn = getMasterConnection(myLocalConn, config.node, config.cluster_name, &primaryId);
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{
 				/* Connected, we can continue the process so break the loop */
@@ -322,8 +320,8 @@ MonitorExecute(void)
 	        "INSERT INTO repmgr_%s.repl_monitor "
 	        "VALUES(%d, %d, '%s'::timestamp with time zone, "
 	        " '%s', '%s', "
-	        " %lld, %lld)", myClusterName,
-	        primaryId, myLocalId, monitor_standby_timestamp,
+	        " %lld, %lld)", config.cluster_name,
+	        primaryId, config.node, monitor_standby_timestamp,
 	        last_wal_primary_location,
 	        last_wal_standby_received,
 	        (lsn_primary - lsn_standby_received),
@@ -346,7 +344,7 @@ checkClusterConfiguration(void)
 
 	sprintf(sqlquery, "SELECT oid FROM pg_class "
 	        " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
-	        myClusterName);
+	        config.cluster_name);
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -384,7 +382,7 @@ checkNodeConfiguration(char *conninfo)
 	 */
 	sprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
 	        " WHERE id = %d AND cluster = '%s' ",
-	        myClusterName, myLocalId, myClusterName);
+	        config.cluster_name, config.node, config.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -406,7 +404,7 @@ checkNodeConfiguration(char *conninfo)
 		/* Adding the node */
 		sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 		        "VALUES (%d, '%s', '%s')",
-		        myClusterName, myLocalId, myClusterName, conninfo);
+		        config.cluster_name, config.node, config.cluster_name, conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{

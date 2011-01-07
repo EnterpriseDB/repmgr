@@ -22,7 +22,7 @@
 #define MAXLINELENGTH	4096
 
 void
-parse_config(const char *config_file, char *cluster_name, int *node, char *conninfo)
+parse_config(const char *config_file, repmgr_config *config)
 {
 	char *s, buff[MAXLINELENGTH];
 	char name[MAXLEN];
@@ -30,9 +30,16 @@ parse_config(const char *config_file, char *cluster_name, int *node, char *conni
 
 	FILE *fp = fopen (config_file, "r");
 
-	if (fp == NULL)
-		return;
-
+	if (fp == NULL) {
+		fprintf(stderr, _("Could not find configuration file '%s'\n"), config_file);
+		exit(1);
+	}
+	
+	/* Initialize */
+	memset(config->cluster_name, 0, sizeof(config->cluster_name));
+	config->node = -1;
+	memset(config->conninfo, 0, sizeof(config->conninfo));
+	
 	/* Read next line */
 	while ((s = fgets (buff, sizeof buff, fp)) != NULL)
 	{
@@ -45,18 +52,32 @@ parse_config(const char *config_file, char *cluster_name, int *node, char *conni
 
 		/* Copy into correct entry in parameters struct */
 		if (strcmp(name, "cluster") == 0)
-			strncpy (cluster_name, value, MAXLEN);
+			strncpy (config->cluster_name, value, MAXLEN);
 		else if (strcmp(name, "node") == 0)
-			*node = atoi(value);
+			config->node = atoi(value);
 		else if (strcmp(name, "conninfo") == 0)
-			strncpy (conninfo, value, MAXLEN);
+			strncpy (config->conninfo, value, MAXLEN);
 		else
 			printf ("WARNING: %s/%s: Unknown name/value pair!\n", name, value);
 	}
 
-
 	/* Close file */
 	fclose (fp);
+
+	/* Check config settings */
+	if (strnlen(config->cluster_name, MAXLEN)==0)
+	{
+		fprintf(stderr, "Cluster name is missing. "
+		        "Check the configuration file.\n");
+		exit(1);
+	}
+
+	if (config->node == -1)
+	{
+		fprintf(stderr, "Node information is missing. "
+		        "Check the configuration file.\n");
+		exit(1);
+	}
 }
 
 char *
