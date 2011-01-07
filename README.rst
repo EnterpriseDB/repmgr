@@ -160,8 +160,7 @@ is available by checking its version::
   repmgr --version
   repmgrd --version
     
-You may need to include
-the full path of the binary instead, such as this RHEL example::
+You may need to include the full path of the binary instead, such as this RHEL example::
 
   /usr/pgsql-9.0/bin/repmgr --version
   /usr/pgsql-9.0/bin/repmgrd --version
