@@ -25,7 +25,6 @@
 #include "libpq-fe.h"
 
 #include "dbutils.h"
-#include "config.h"
 
 
 #define PRIMARY_MODE		0
@@ -34,5 +33,8 @@
 #define MAXLEN				80
 #define CONFIG_FILE			"repmgr.conf"
 #define MAXVERSIONSTR		16
+#define QUERY_STR_LEN		8192
+
+#include "config.h"
 
 #endif

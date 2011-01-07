@@ -43,8 +43,6 @@
 #define STANDBY_PROMOTE  4
 #define STANDBY_FOLLOW 	 5
 
-#define QUERY_STR_LEN    8192
-
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_path, bool is_directory);
@@ -77,6 +75,7 @@ char		*masterport = NULL;
 char		*server_mode = NULL;
 char		*server_cmd = NULL;
 
+repmgr_config	config = {};
 
 int
 main(int argc, char **argv)
@@ -253,6 +252,17 @@ main(int argc, char **argv)
 		else
 			dbname = "postgres";
 	}
+	
+	/*
+	 * Read the configuration file: repmgr.conf
+	 */
+	parse_config(config_file, &config);
+	if (config.node == -1)
+	{
+		fprintf(stderr, "Node information is missing. "
+		        "Check the configuration file.\n");
+		exit(1);
+	}
 
 	keywords[2] = "user";
 	values[2] = username;
@@ -296,25 +306,10 @@ do_master_register(void)
 	PGresult	*res;
 	char 		sqlquery[QUERY_STR_LEN];
 
-	char    	myClusterName[MAXLEN];
-	int     	myLocalId   = -1;
-	char 		conninfo[MAXLEN];
-
 	bool		schema_exists = false;
 	char master_version[MAXVERSIONSTR];
 
-	/*
-	 * Read the configuration file: repmgr.conf
-	 */
-	parse_config(config_file, myClusterName, &myLocalId, conninfo);
-	if (myLocalId == -1)
-	{
-		fprintf(stderr, "Node information is missing. "
-		        "Check the configuration file.\n");
-		exit(1);
-	}
-
-	conn = establishDBConnection(conninfo, true);
+	conn = establishDBConnection(config.conninfo, true);
 
 	/* master should be v9 or better */
 	pg_version(conn, master_version);
@@ -334,7 +329,7 @@ do_master_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", myClusterName);
+	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", config.cluster_name);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -348,7 +343,7 @@ do_master_register(void)
 	{
 		if (!force)					/* and we are not forcing so error */
 		{
-			fprintf(stderr, "Schema repmgr_%s already exists.", myClusterName);
+			fprintf(stderr, "Schema repmgr_%s already exists.", config.cluster_name);
 			PQclear(res);
 			PQfinish(conn);
 			return;
@@ -360,11 +355,11 @@ do_master_register(void)
 	if (!schema_exists)
 	{
 		/* ok, create the schema */
-		sprintf(sqlquery, "CREATE SCHEMA repmgr_%s", myClusterName);
+		sprintf(sqlquery, "CREATE SCHEMA repmgr_%s", config.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot create the schema repmgr_%s: %s\n",
-			        myClusterName, PQerrorMessage(conn));
+			        config.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -373,11 +368,11 @@ do_master_register(void)
 		sprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_nodes (        "
 		        "  id        integer primary key, "
 		        "  cluster   text    not null,    "
-		        "  conninfo  text    not null)", myClusterName);
+		        "  conninfo  text    not null)", config.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot create the table repmgr_%s.repl_nodes: %s\n",
-			        myClusterName, PQerrorMessage(conn));
+			        config.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -389,11 +384,11 @@ do_master_register(void)
 		        "  last_wal_primary_location      TEXT NOT NULL,   "
 		        "  last_wal_standby_location      TEXT NOT NULL,   "
 		        "  replication_lag                BIGINT NOT NULL, "
-		        "  apply_lag                      BIGINT NOT NULL) ", myClusterName);
+		        "  apply_lag                      BIGINT NOT NULL) ", config.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot create the table repmgr_%s.repl_monitor: %s\n",
-			        myClusterName, PQerrorMessage(conn));
+			        config.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -407,11 +402,11 @@ do_master_register(void)
 		        "         last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
 		        "         pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
 		        "    FROM monitor_info a "
-		        "   WHERE row_number = 1", myClusterName, myClusterName);
+		        "   WHERE row_number = 1", config.cluster_name, config.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot create the view repmgr_%s.repl_status: %s\n",
-			        myClusterName, PQerrorMessage(conn));
+			        config.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -422,7 +417,7 @@ do_master_register(void)
 		int 	id;
 
 		/* Ensure there isn't any other master already registered */
-		master_conn = getMasterConnection(conn, myLocalId, myClusterName, &id);
+		master_conn = getMasterConnection(conn, config.node, config.cluster_name, &id);
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
@@ -436,7 +431,7 @@ do_master_register(void)
 	{
 		sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 		        " WHERE id = %d",
-		        myClusterName, myLocalId);
+		        config.cluster_name, config.node);
 
 		if (!PQexec(conn, sqlquery))
 		{
@@ -449,7 +444,7 @@ do_master_register(void)
 
 	sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 	        "VALUES (%d, '%s', '%s')",
-	        myClusterName, myLocalId, myClusterName, conninfo);
+	        config.cluster_name, config.node, config.cluster_name, config.conninfo);
 
 	if (!PQexec(conn, sqlquery))
 	{
@@ -474,25 +469,10 @@ do_standby_register(void)
 	PGresult	*res;
 	char 		sqlquery[QUERY_STR_LEN];
 
-	char    	myClusterName[MAXLEN];
-	int     	myLocalId   = -1;
-	char 		conninfo[MAXLEN];
-
 	char master_version[MAXVERSIONSTR];
 	char standby_version[MAXVERSIONSTR];
 
-	/*
-	 * Read the configuration file: repmgr.conf
-	 */
-	parse_config(config_file, myClusterName, &myLocalId, conninfo);
-	if (myLocalId == -1)
-	{
-		fprintf(stderr, "Node information is missing. "
-		        "Check the configuration file.\n");
-		exit(1);
-	}
-
-	conn = establishDBConnection(conninfo, true);
+	conn = establishDBConnection(config.conninfo, true);
 
 	/* should be v9 or better */
 	pg_version(conn, standby_version);
@@ -512,7 +492,7 @@ do_standby_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", myClusterName);
+	sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", config.cluster_name);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -524,7 +504,7 @@ do_standby_register(void)
 
 	if (PQntuples(res) == 0)		/* schema doesn't exists */
 	{
-		fprintf(stderr, "Schema repmgr_%s doesn't exists.", myClusterName);
+		fprintf(stderr, "Schema repmgr_%s doesn't exists.", config.cluster_name);
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -532,7 +512,7 @@ do_standby_register(void)
 	PQclear(res);
 
 	/* check if there is a master in this cluster */
-	master_conn = getMasterConnection(conn, myLocalId, myClusterName, &master_id);
+	master_conn = getMasterConnection(conn, config.node, config.cluster_name, &master_id);
 	if (!master_conn)
 		return;
 
@@ -562,7 +542,7 @@ do_standby_register(void)
 	{
 		sprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 		        " WHERE id = %d",
-		        myClusterName, myLocalId);
+		        config.cluster_name, config.node);
 
 		if (!PQexec(master_conn, sqlquery))
 		{
@@ -576,7 +556,7 @@ do_standby_register(void)
 
 	sprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 	        "VALUES (%d, '%s', '%s')",
-	        myClusterName, myLocalId, myClusterName, conninfo);
+	        config.cluster_name, config.node, config.cluster_name, config.conninfo);
 
 	if (!PQexec(master_conn, sqlquery))
 	{
@@ -970,10 +950,6 @@ do_standby_promote(void)
 	char 		sqlquery[QUERY_STR_LEN];
 	char 		script[QUERY_STR_LEN];
 
-	char    	myClusterName[MAXLEN];
-	int     	myLocalId   = -1;
-	char 		conninfo[MAXLEN];
-
 	PGconn		*old_master_conn;
 	int			old_master_id;
 
@@ -984,19 +960,8 @@ do_standby_promote(void)
 
 	char	standby_version[MAXVERSIONSTR];
 
-	/*
-	 * Read the configuration file: repmgr.conf
-	 */
-	parse_config(config_file, myClusterName, &myLocalId, conninfo);
-	if (myLocalId == -1)
-	{
-		fprintf(stderr, "Node information is missing. "
-		        "Check the configuration file.\n");
-		exit(1);
-	}
-
 	/* We need to connect to check configuration */
-	conn = establishDBConnection(conninfo, true);
+	conn = establishDBConnection(config.conninfo, true);
 
 	/* we need v9 or better */
 	pg_version(conn, standby_version);
@@ -1015,7 +980,7 @@ do_standby_promote(void)
 	}
 
 	/* we also need to check if there isn't any master already */
-	old_master_conn = getMasterConnection(conn, myLocalId, myClusterName, &old_master_id);
+	old_master_conn = getMasterConnection(conn, config.node, config.cluster_name, &old_master_id);
 	if (old_master_conn != NULL)
 	{
 		PQfinish(old_master_conn);
@@ -1058,7 +1023,7 @@ do_standby_promote(void)
 	/*
 	 * XXX i'm removing this because it gives an annoying message saying couldn't connect
 	 * but is just the server starting up
-	*    conn = establishDBConnection(conninfo, true);
+	*    conn = establishDBConnection(config.conninfo, true);
 	*    if (is_standby(conn))
 	*    	fprintf(stderr, "\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
 	*    else
@@ -1078,10 +1043,6 @@ do_standby_follow(void)
 	char 		sqlquery[QUERY_STR_LEN];
 	char 		script[QUERY_STR_LEN];
 
-	char    	myClusterName[MAXLEN];
-	int     	myLocalId   = -1;
-	char 		conninfo[MAXLEN];
-
 	PGconn		*master_conn;
 	int			master_id;
 
@@ -1091,19 +1052,8 @@ do_standby_follow(void)
 	char	master_version[MAXVERSIONSTR];
 	char	standby_version[MAXVERSIONSTR];
 
-	/*
-	 * Read the configuration file: repmgr.conf
-	 */
-	parse_config(config_file, myClusterName, &myLocalId, conninfo);
-	if (myLocalId == -1)
-	{
-		fprintf(stderr, "Node information is missing. "
-		        "Check the configuration file.\n");
-		exit(1);
-	}
-
 	/* We need to connect to check configuration */
-	conn = establishDBConnection(conninfo, true);
+	conn = establishDBConnection(config.conninfo, true);
 
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
@@ -1122,7 +1072,7 @@ do_standby_follow(void)
 	}
 
 	/* we also need to check if there is any master in the cluster */
-	master_conn = getMasterConnection(conn, myLocalId, myClusterName, &master_id);
+	master_conn = getMasterConnection(conn, config.node, config.cluster_name, &master_id);
 	if (master_conn == NULL)
 	{
 		PQfinish(conn);
