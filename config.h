@@ -22,6 +22,7 @@ typedef struct
     char cluster_name[MAXLEN];
     int node;
     char conninfo[MAXLEN];
+    char rsync_options[QUERY_STR_LEN];
 } repmgr_config;
 
 void parse_config(const char *config_file, repmgr_config *config);

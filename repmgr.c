@@ -1237,7 +1237,11 @@ copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_
 	char host_string[QUERY_STR_LEN];
 	int  r;
 
-	sprintf(options, "--archive --checksum --compress --progress --rsh=ssh");
+	if (strnlen(config.rsync_options, QUERY_STR_LEN) == 0)
+	    sprintf(options, "--archive --checksum --compress --progress --rsh=ssh");
+	else
+	    strncpy(options, config.rsync_options, QUERY_STR_LEN);
+	
 	if (force)
 		strcat(options, " --delete");
 

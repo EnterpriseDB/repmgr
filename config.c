@@ -39,6 +39,7 @@ parse_config(const char *config_file, repmgr_config *config)
 	memset(config->cluster_name, 0, sizeof(config->cluster_name));
 	config->node = -1;
 	memset(config->conninfo, 0, sizeof(config->conninfo));
+	memset(config->rsync_options, 0, sizeof(config->rsync_options));
 	
 	/* Read next line */
 	while ((s = fgets (buff, sizeof buff, fp)) != NULL)
@@ -57,6 +58,8 @@ parse_config(const char *config_file, repmgr_config *config)
 			config->node = atoi(value);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy (config->conninfo, value, MAXLEN);
+		else if (strcmp(name, "rsync_options") == 0)
+			strncpy (config->rsync_options, value, QUERY_STR_LEN);
 		else
 			printf ("WARNING: %s/%s: Unknown name/value pair!\n", name, value);
 	}
