@@ -136,7 +136,12 @@ When building repmgr against a Debian packages build, you may discover that some
 development packages are needed as well. You will need the following development
 packages installed::
 
-  sudo apt-get install libxslt1-dev libxml2-dev libpam-dev libedit-dev
+  sudo apt-get install libxslt-dev libxml2-dev libpam-dev libedit-dev
+
+If your using Debian packages for PostgreSQL and are building repmgr with the
+USE_PGXS option you also need to install the corresponding development package::
+
+  sudo apt-get install postgresql-server-dev-9.0
 
 If you build and install repmgr manually it will not be on the system path. The
 binaries will be installed in /usr/lib/postgresql/$version/bin/ which is not on
