@@ -212,6 +212,8 @@ If you give a password to the user, you need to create a ``.pgpass`` file for
 them as well to allow automatic login.  In this case you might use the
 ``md5`` authentication method instead of ``trust`` for the repmgr user.
 
+Don't forget to restart the database server after making all these changes.
+
 Configuration File
 ==================
 
