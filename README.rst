@@ -175,6 +175,11 @@ correct one for your architecture.  Example::
 
 Instead just deleting the package from the wrong platform might not leave behind
 the correct files, due to the way in which these accidentally happen to interact.
+If you already tried to build repmgr before doing this, you'll need to do::
+
+    make USE_PGXS=1 clean
+
+To get rid of leftover files from the wrong architecture.
 
 Confirm software was built correctly
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
