@@ -1,0 +1,9 @@
+Package: repmgr
+Version: 1.0-1
+Section: database
+Priority: optional
+Architecture: all
+Depends: rsync, postgresql-9.0
+Maintainer: Greg Smith <greg@2ndQuadrant.com>
+Description: PostgreSQL replication setup, magament and monitoring
+ has two main executables
