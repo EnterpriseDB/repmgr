@@ -96,6 +96,26 @@ that can be done like this::
 
   make clean
 
+Notes on Ubuntu and Debian builds
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can make a deb package using::
+
+  make USE_PGXS=1 deb
+
+this build a debian package one level up from where you build, i.o.w in the 
+same directory that you have your repmgr/ directory.
+
+Depending on what -dev packages are installed on your build system, you 
+may need to one or more of the following as well::
+
+  sudo apt-get install libxslt1-dev
+  sudo apt-get install libpam-dev
+  sudo apt-get install libedit-dev
+
+It is also possible that you miss some others.
+
+
 Notes on RedHat Linux, Fedora, and CentOS Builds
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
