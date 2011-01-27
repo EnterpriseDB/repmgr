@@ -34,3 +34,10 @@ clean:
 	rm -f *.o
 	rm -f repmgrd
 	rm -f repmgr
+
+deb: repmgrd repmgr
+	mkdir -p ./debian/usr/bin
+	cp repmgrd repmgr ./debian/usr/bin/
+	dpkg-deb --build debian
+	mv debian.deb ../postgresql-repmgr-9.0_1.0.0.deb
+
