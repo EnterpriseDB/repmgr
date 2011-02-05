@@ -1,10 +1,19 @@
 /*
- * dbutils.c
+ * dbutils.c - Database connection/management functions
+ * Copyright (C) 2ndQuadrant, 2010
  *
- * Copyright (c) 2ndQuadrant, 2010
- * Copyright (c) Heroku, 2010
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * Database connection/management functions
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -113,8 +122,8 @@ guc_setted(PGconn *conn, const char *parameter, const char *op,
 	char		sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
-					  " WHERE name = '%s' AND setting %s '%s'",
-					  parameter, op, value);
+	        " WHERE name = '%s' AND setting %s '%s'",
+	        parameter, op, value);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -190,7 +199,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	/* find all nodes belonging to this cluster */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
 					  " WHERE cluster = '%s' and id <> %d",
-					  cluster, cluster, id);
+	        cluster, cluster, id);
 
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)

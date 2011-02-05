@@ -212,6 +212,8 @@ If you give a password to the user, you need to create a ``.pgpass`` file for
 them as well to allow automatic login.  In this case you might use the
 ``md5`` authentication method instead of ``trust`` for the repmgr user.
 
+Don't forget to restart the database server after making all these changes.
+
 Configuration File
 ==================
 
@@ -627,3 +629,16 @@ and on “prime."
 
 The servers are now again acting as primary on “prime" and standby on “standby".
 
+License and Contributions
+=========================
+
+repmgr is licensed under the GPL v3.  All of its code and documentation is
+Copyright 2010, 2ndQuadrant Limited.  See the files COPYRIGHT and LICENSE for
+details.
+
+Contributions to repmgr are welcome, and listed in the file CREDITS.
+2ndQuadrant Limited requires that any contributions provide a copyright
+assignment and a disclaimer of any work-for-hire ownership claims from the
+employer of the developer.  This lets us make sure that all of the repmgr
+distribution remains free code.  Please contact info@2ndQuadrant.com for a
+copy of the relevant Copyright Assignment Form.

@@ -1,16 +1,27 @@
 /*
- * repmgr.c
+ * repmgr.c - Command interpreter for the repmgr
  *
- * Copyright (c) 2ndQuadrant, 2010
- * Copyright (c) Heroku, 2010
  *
- * Command interpreter for the repmgr
  * This module is a command-line utility to easily setup a cluster of
  * hot standby servers for an HA environment
  *
  * Commands implemented are.
  * MASTER REGISTER, STANDBY REGISTER, STANDBY CLONE, STANDBY FOLLOW,
  * STANDBY PROMOTE
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include "repmgr.h"
@@ -71,7 +82,8 @@ char		*server_cmd = NULL;
 int
 main(int argc, char **argv)
 {
-	static struct option long_options[] = {
+	static struct option long_options[] =
+	{
 		{"dbname", required_argument, NULL, 'd'},
 		{"host", required_argument, NULL, 'h'},
 		{"port", required_argument, NULL, 'p'},
@@ -111,40 +123,40 @@ main(int argc, char **argv)
 	{
 		switch (c)
 		{
-			case 'd':
-				dbname = optarg;
-				break;
-			case 'h':
-				host = optarg;
-				break;
-			case 'p':
+		case 'd':
+			dbname = optarg;
+			break;
+		case 'h':
+			host = optarg;
+			break;
+		case 'p':
 				masterport = optarg;
 				break;
-			case 'U':
-				username = optarg;
+		case 'U':
+			username = optarg;
+			break;
+		case 'D':
+			dest_dir = optarg;
 				break;
-			case 'D':
-				dest_dir = optarg;
+		case 'f':
+			config_file = optarg;
 				break;
-			case 'f':
-				config_file = optarg;
+		case 'R':
+			remote_user = optarg;
 				break;
-			case 'R':
-				remote_user = optarg;
-				break;
-			case 'w':
-				wal_keep_segments = optarg;
-				break;
-			case 'F':
-				force = true;
-				break;
-			case 'v':
-				verbose = true;
-				break;
-			default:
+		case 'w':
+			wal_keep_segments = optarg;
+			break;
+		case 'F':
+			force = true;
+			break;
+		case 'v':
+			verbose = true;
+			break;
+		default:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				exit(1);
+			exit(1);
 		}
 	}
 
@@ -214,14 +226,14 @@ main(int argc, char **argv)
 
 	switch (optind < argc)
 	{
-		case 0:
-			break;
-		default:
-			fprintf(stderr, _("%s: too many command-line arguments (first is \"%s\")\n"),
-					progname, argv[optind + 1]);
+	case 0:
+		break;
+	default:
+		fprintf(stderr, _("%s: too many command-line arguments (first is \"%s\")\n"),
+		        progname, argv[optind + 1]);
 			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 					progname);
-			exit(1);
+		exit(1);
 	}
 
 	if (!check_parameters_for_action(action))
@@ -262,25 +274,25 @@ main(int argc, char **argv)
 
 	switch (action)
 	{
-		case MASTER_REGISTER:
-			do_master_register();
-			break;
-		case STANDBY_REGISTER:
-			do_standby_register();
-			break;
-		case STANDBY_CLONE:
-			do_standby_clone();
-			break;
-		case STANDBY_PROMOTE:
-			do_standby_promote();
-			break;
-		case STANDBY_FOLLOW:
-			do_standby_follow();
-			break;
-		default:
+	case MASTER_REGISTER:
+		do_master_register();
+		break;
+	case STANDBY_REGISTER:
+		do_standby_register();
+		break;
+	case STANDBY_CLONE:
+		do_standby_clone();
+		break;
+	case STANDBY_PROMOTE:
+		do_standby_promote();
+		break;
+	case STANDBY_FOLLOW:
+		do_standby_follow();
+		break;
+	default:
 			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 					progname);
-			exit(1);
+		exit(1);
 	}
 
 	return 0;
@@ -641,29 +653,29 @@ do_standby_clone(void)
 	{
 		case 0:
 			/* dest_dir not there, must create it */
-			if (verbose)
+		if (verbose)
 				printf(_("creating directory %s ... "), dest_dir);
 			fflush(stdout);
 
 			if (!create_directory(dest_dir))
-			{
+		{
 				fprintf(stderr, _("%s: couldn't create directory %s ... "),
-						progname, dest_dir);
-				return;
-			}
+			        progname, dest_dir);
+			return;
+		}
 			break;
 		case 1:
 			/* Present but empty, fix permissions and use it */
-			if (verbose)
+		if (verbose)
 				printf(_("fixing permissions on existing directory %s ... "),
 					   dest_dir);
 			fflush(stdout);
 
-			if (!set_directory_permissions(dest_dir))
+		if (!set_directory_permissions(dest_dir))
 			{
 				fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
 						progname, dest_dir, strerror(errno));
-				return;
+			return;
 			}
 			break;
 		case 2:
@@ -674,20 +686,20 @@ do_standby_clone(void)
 
 			pg_dir = is_pg_dir(dest_dir);
 			if (pg_dir && !force)
-			{
-				fprintf(stderr, _("\nThis looks like a PostgreSQL directroy.\n"
+		{
+			fprintf(stderr, _("\nThis looks like a PostgreSQL directroy.\n"
 								  "If you are sure you want to clone here, "
 								  "please check there is no PostgreSQL server "
 								  "running and use the --force option\n"));
-				return;
-			}
-			else if (pg_dir && force)
-			{
-				/* Let it continue */
-				break;
-			}
+			return;
+		}
+		else if (pg_dir && force)
+		{
+			/* Let it continue */
+			break;
+		}
 			else
-				return;
+			return;
 		default:
 			/* Trouble accessing directory */
 			fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
@@ -775,23 +787,23 @@ do_standby_clone(void)
 		{
 			case 0:
 				/* tblspc_dir not there, must create it */
-				if (verbose)
+			if (verbose)
 					printf(_("creating directory \"%s\"... "), tblspc_dir);
 				fflush(stdout);
 
 				if (!create_directory(tblspc_dir))
-				{
+			{
 					fprintf(stderr,
 							_("%s: couldn't create directory \"%s\"... "),
-							progname, tblspc_dir);
-					PQclear(res);
-					PQfinish(conn);
-					return;
-				}
+				        progname, tblspc_dir);
+				PQclear(res);
+				PQfinish(conn);
+				return;
+			}
 				break;
 			case 1:
 				/* Present but empty, fix permissions and use it */
-				if (verbose)
+			if (verbose)
 					printf(_("fixing permissions on existing directory \"%s\"... "),
 						   tblspc_dir);
 				fflush(stdout);
@@ -800,9 +812,9 @@ do_standby_clone(void)
 				{
 					fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
 							progname, tblspc_dir, strerror(errno));
-					PQclear(res);
-					PQfinish(conn);
-					return;
+				PQclear(res);
+				PQfinish(conn);
+				return;
 				}
 				break;
 			case 2:
@@ -1426,12 +1438,12 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		strcat(options,
 			   " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
-						options, host_string, remote_path, local_path);
+		        options, host_string, remote_path, local_path);
 	}
 	else
 	{
 		maxlen_snprintf(script, "rsync %s %s:%s %s/.",
-						options, host_string, remote_path, local_path);
+		        options, host_string, remote_path, local_path);
 	}
 
 	if (verbose)
@@ -1458,105 +1470,110 @@ check_parameters_for_action(const int action)
 
 	switch (action)
 	{
-		case MASTER_REGISTER:
-			/*
-			 * To register a master we only need the repmgr.conf
-			 * all other parameters are at least useless and could be
-			 * confusing so reject them
-			 */
+	case MASTER_REGISTER:
+		/*
+		 * To register a master we only need the repmgr.conf
+		 * all other parameters are at least useless and could be
+		 * confusing so reject them
+		 */
 			if ((host != NULL)	 || (masterport != NULL) ||
 				(username != NULL) || (dbname != NULL))
-			{
-				fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a MASTER REGISTER command.");
+		{
+			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a MASTER REGISTER command.");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
+			ok = false;
 			}
-			if (dest_dir != NULL) {
-				fprintf(stderr, "\nYou don't need a destination directory for MASTER REGISTER command");
+		if (dest_dir != NULL)
+		{
+			fprintf(stderr, "\nYou don't need a destination directory for MASTER REGISTER command");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
-			}
-			break;
-		case STANDBY_REGISTER:
-			/*
-			 * To register a standby we only need the repmgr.conf
-			 * we don't need connection parameters to the master
-			 * because we can detect the master in repl_nodes
-			 */
+			ok = false;
+		}
+		break;
+	case STANDBY_REGISTER:
+		/*
+		 * To register a standby we only need the repmgr.conf
+		 * we don't need connection parameters to the master
+		 * because we can detect the master in repl_nodes
+		 */
 			if ((host != NULL)	 || (masterport != NULL) ||
 				(username != NULL) || (dbname != NULL))
-			{
-				fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY REGISTER command.");
+		{
+			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY REGISTER command.");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
+			ok = false;
 			}
-			if (dest_dir != NULL) {
-				fprintf(stderr, "\nYou don't need a destination directory for STANDBY REGISTER command");
+		if (dest_dir != NULL)
+		{
+			fprintf(stderr, "\nYou don't need a destination directory for STANDBY REGISTER command");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
-			}
-			break;
-		case STANDBY_PROMOTE:
-			/*
-			 * To promote a standby we only need the repmgr.conf
-			 * we don't want connection parameters to the master
-			 * because we will try to detect the master in repl_nodes
-			 * if we can't find it then the promote action will be cancelled
-			 */
+			ok = false;
+		}
+		break;
+	case STANDBY_PROMOTE:
+		/*
+		 * To promote a standby we only need the repmgr.conf
+		 * we don't want connection parameters to the master
+		 * because we will try to detect the master in repl_nodes
+		 * if we can't find it then the promote action will be cancelled
+		 */
 			if ((host != NULL)	 || (masterport != NULL) ||
 				(username != NULL) || (dbname != NULL))
-			{
-				fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY PROMOTE command.");
+		{
+			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY PROMOTE command.");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
+			ok = false;
 			}
-			if (dest_dir != NULL) {
-				fprintf(stderr, "\nYou don't need a destination directory for STANDBY PROMOTE command");
+		if (dest_dir != NULL)
+		{
+			fprintf(stderr, "\nYou don't need a destination directory for STANDBY PROMOTE command");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
-			}
-			break;
-		case STANDBY_FOLLOW:
-			/*
-			 * To make a standby follow a master we only need the repmgr.conf
-			 * we don't want connection parameters to the new master
-			 * because we will try to detect the master in repl_nodes
-			 * if we can't find it then the follow action will be cancelled
-			 */
+			ok = false;
+		}
+		break;
+	case STANDBY_FOLLOW:
+		/*
+		 * To make a standby follow a master we only need the repmgr.conf
+		 * we don't want connection parameters to the new master
+		 * because we will try to detect the master in repl_nodes
+		 * if we can't find it then the follow action will be cancelled
+		 */
 			if ((host != NULL)	 || (masterport != NULL) ||
 				(username != NULL) || (dbname != NULL))
-			{
-				fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY FOLLOW command.");
+		{
+			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY FOLLOW command.");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
+			ok = false;
 			}
-			if (dest_dir != NULL) {
-				fprintf(stderr, "\nYou don't need a destination directory for STANDBY FOLLOW command");
+		if (dest_dir != NULL)
+		{
+			fprintf(stderr, "\nYou don't need a destination directory for STANDBY FOLLOW command");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
-			}
-			break;
-		case STANDBY_CLONE:
-			/*
-			 * To clone a master into a standby we need connection parameters
+			ok = false;
+		}
+		break;
+	case STANDBY_CLONE:
+		/*
+		 * To clone a master into a standby we need connection parameters
 			 * repmgr.conf is useless because we don't have a server running
-			 * in the standby
-			 */
-			if (config_file != NULL) {
-				fprintf(stderr, "\nYou need to use connection parameters to the master when issuing a STANDBY CLONE command.");
+		 * in the standby
+		 */
+		if (config_file != NULL)
+		{
+			fprintf(stderr, "\nYou need to use connection parameters to the master when issuing a STANDBY CLONE command.");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				ok = false;
-			}
-			break;
+			ok = false;
+		}
+		break;
 	}
 
 	return ok;

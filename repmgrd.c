@@ -1,12 +1,24 @@
 /*
- * repmgrd.c
+ * repmgrd.c - Replication manager daemon
  *
- * Copyright (c) 2ndQuadrant, 2010
- * Copyright (c) Heroku, 2010
+ * Copyright (C) 2ndQuadrant, 2010
  *
- * Replication manager daemon
  * This module connects to the nodes of a replication cluster and monitors
  * how far are they from master
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
  */
 
 #include <signal.h>
@@ -74,7 +86,8 @@ static void setup_cancel_handler(void);
 int
 main(int argc, char **argv)
 {
-	static struct option long_options[] = {
+	static struct option long_options[] =
+	{
 		{"config", required_argument, NULL, 'f'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
@@ -107,16 +120,16 @@ main(int argc, char **argv)
 	{
 		switch (c)
 		{
-			case 'f':
-				config_file = optarg;
-				break;
-			case 'v':
-				verbose = true;
-				break;
-			default:
+		case 'f':
+			config_file = optarg;
+			break;
+		case 'v':
+			verbose = true;
+			break;
+		default:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-				exit(1);
+			exit(1);
 		}
 	}
 
@@ -235,7 +248,6 @@ MonitorExecute(void)
 	{
 		fprintf(stderr, "\n%s: We couldn't reconnect to master, checking if ",
 				progname);
-		fprintf(stderr, "%s: another node has been promoted.\n", progname);
 		for (connection_retries = 0; connection_retries < 6;
 			 connection_retries++)
 		{
@@ -265,7 +277,7 @@ MonitorExecute(void)
 	if (!is_standby(myLocalConn))
 	{
 		fprintf(stderr, "\n%s: seems like we have been promoted, so exit from monitoring...\n",
-				progname);
+		        progname);
 		CloseConnections();
 		exit(1);
 	}
@@ -324,7 +336,7 @@ MonitorExecute(void)
 					  "INSERT INTO repmgr_%s.repl_monitor "
 					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
 					  " '%s', '%s', "
-					  " %lld, %lld)", myClusterName,
+	        " %lld, %lld)", myClusterName,
 					  primaryId, myLocalId, monitor_standby_timestamp,
 					  last_wal_primary_location,
 					  last_wal_standby_received,
@@ -347,8 +359,8 @@ checkClusterConfiguration(void)
 	PGresult   *res;
 
 	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
-					  " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
-					  myClusterName);
+	        " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
+	        myClusterName);
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -386,7 +398,7 @@ checkNodeConfiguration(char *conninfo)
 	/* Check if we have my node information in repl_nodes */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
 					  " WHERE id = %d AND cluster = '%s' ",
-					  myClusterName, myLocalId, myClusterName);
+	        myClusterName, myLocalId, myClusterName);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -408,7 +420,7 @@ checkNodeConfiguration(char *conninfo)
 
 		/* Adding the node */
 		sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
-						  "VALUES (%d, '%s', '%s')",
+		        "VALUES (%d, '%s', '%s')",
 						  myClusterName, myLocalId, myClusterName, conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
