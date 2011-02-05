@@ -26,12 +26,14 @@
 #include "libpq-fe.h"
 
 #include "dbutils.h"
-#include "config.h"
 
 
 #define PRIMARY_MODE		0
 #define STANDBY_MODE		1
 
 #define CONFIG_FILE			"repmgr.conf"
+#define QUERY_STR_LEN		8192
+
+#include "config.h"
 
 #endif

@@ -126,6 +126,35 @@ path either.  The following recipe should work::
 
   sudo PATH="/usr/pgsql-9.0/bin:$PATH" make USE_PGXS=1 install
 
+Notes on Ubuntu, Debian or other Debian-based Builds
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Debian packages of PostgreSQL put ``pg_config`` into the development package
+called ``postgresql-server-dev-$version``.
+
+When building repmgr against a Debian packages build, you may discover that some
+development packages are needed as well. You will need the following development
+packages installed::
+
+  sudo apt-get install libxslt-dev libxml2-dev libpam-dev libedit-dev
+
+If your using Debian packages for PostgreSQL and are building repmgr with the
+USE_PGXS option you also need to install the corresponding development package::
+
+  sudo apt-get install postgresql-server-dev-9.0
+
+If you build and install repmgr manually it will not be on the system path. The
+binaries will be installed in /usr/lib/postgresql/$version/bin/ which is not on
+the default path. The reason behind this is that Ubuntu/Debian systems manage
+multiple installed versions of PostgreSQL on the same system through a wrapper
+called pg_wrapper and repmgr is not (yet) known to this wrapper.
+
+You can solve this in many different ways, the most Debian like is to make an
+alternate for repmgr and repmgrd::
+
+  sudo update-alternatives --install /usr/bin/repmgr repmgr /usr/lib/postgresql/9.0/bin/repmgr 10
+  sudo update-alternatives --install /usr/bin/repmgrd repmgrd /usr/lib/postgresql/9.0/bin/repmgrd 10
+
 Confirm software was built correctly
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -136,8 +165,7 @@ is available by checking its version::
   repmgr --version
   repmgrd --version
     
-You may need to include
-the full path of the binary instead, such as this RHEL example::
+You may need to include the full path of the binary instead, such as this RHEL example::
 
   /usr/pgsql-9.0/bin/repmgr --version
   /usr/pgsql-9.0/bin/repmgrd --version
