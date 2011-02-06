@@ -45,6 +45,13 @@
 #define DEFAULT_DBNAME			"postgres"
 #define DEFAULT_REPMGR_SCHEMA_PREFIX	"repmgr_"
 
+/* Exit return code */
+
+#define ERR_BAD_CONFIG 1
+#define ERR_BAD_RSYNC 2
+#define ERR_STOP_BACKUP 3
+#define ERR_NO_RESTART 4
+
 /* Run time options type */
 typedef struct {
 

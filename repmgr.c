@@ -149,7 +149,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			usage();
-			exit(1);
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -167,7 +167,7 @@ main(int argc, char **argv)
 		if (strcasecmp(server_mode, "STANDBY") != 0 && strcasecmp(server_mode, "MASTER") != 0)
 		{
 			usage();
-			exit(1);
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -196,7 +196,7 @@ main(int argc, char **argv)
 		else
 		{
 			usage();
-			exit(1);
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -209,7 +209,7 @@ main(int argc, char **argv)
 			{
 				log_err(_("Conflicting parameters you can't use -h while providing a node separately.\n"));
 				usage();
-				exit(1);
+				exit(ERR_BAD_CONFIG);
 			}
 			strncpy(runtime_options.host, argv[optind++], MAXLEN);
 		}
@@ -223,11 +223,11 @@ main(int argc, char **argv)
 		log_err(_("%s: too many command-line arguments (first is \"%s\")\n"),
 		        progname, argv[optind + 1]);
 		usage();
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	if (!check_parameters_for_action(action))
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 
 	if (!runtime_options.dbname[0])
 	{
@@ -247,7 +247,7 @@ main(int argc, char **argv)
 	{
 		fprintf(stderr, "Node information is missing. "
 		        "Check the configuration file.\n");
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	keywords[2] = "user";
@@ -276,7 +276,7 @@ main(int argc, char **argv)
 		{
 			log_err("Node information is missing. "
 				"Check the configuration file.\n");
-			exit(1);
+			exit(ERR_BAD_CONFIG);
 		}
 
 	}
@@ -305,7 +305,7 @@ main(int argc, char **argv)
 		break;
 	default:
 		usage();
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 	logger_shutdown();
 
@@ -339,7 +339,7 @@ do_master_register(void)
 	{
 		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check if there is a schema for this cluster */
@@ -351,7 +351,7 @@ do_master_register(void)
 		log_err(_("Can't get info about schemas: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	if (PQntuples(res) > 0)			/* schema exists */
@@ -361,7 +361,7 @@ do_master_register(void)
 			log_notice(_("Schema %s already exists.\n"), repmgr_schema);
 			PQclear(res);
 			PQfinish(conn);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 		schema_exists = true;
 	}
@@ -379,7 +379,7 @@ do_master_register(void)
 			log_err(_("Cannot create the schema %s: %s\n"),
 			        repmgr_schema, PQerrorMessage(conn));
 			PQfinish(conn);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 
 		/* ... the tables */
@@ -393,7 +393,7 @@ do_master_register(void)
 			log_err(_("Cannot create the table %s.repl_nodes: %s\n"),
 			        repmgr_schema, PQerrorMessage(conn));
 			PQfinish(conn);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 
 		snprintf(sqlquery, QUERY_STR_LEN, "CREATE TABLE %s.repl_monitor ( "
@@ -410,7 +410,7 @@ do_master_register(void)
 			log_err(_("Cannot create the table %s.repl_monitor: %s\n"),
 			        repmgr_schema, PQerrorMessage(conn));
 			PQfinish(conn);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 
 		/* and the view */
@@ -429,7 +429,7 @@ do_master_register(void)
 			log_err(_("Cannot create the view %s.repl_status: %s\n"),
 			        repmgr_schema, PQerrorMessage(conn));
 			PQfinish(conn);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 	else
@@ -443,7 +443,7 @@ do_master_register(void)
 		{
 			PQfinish(master_conn);
 			log_warning(_("There is a master already in cluster %s\n"), options.cluster_name);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -460,7 +460,7 @@ do_master_register(void)
 			log_warning(_("Cannot delete node details, %s\n"),
 			        PQerrorMessage(conn));
 			PQfinish(conn);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -474,7 +474,7 @@ do_master_register(void)
 		log_warning(_("Cannot insert node details, %s\n"),
 		        PQerrorMessage(conn));
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	PQfinish(conn);
@@ -505,7 +505,7 @@ do_standby_register(void)
 	{
 		PQfinish(conn);
 		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check we are a standby */
@@ -513,7 +513,7 @@ do_standby_register(void)
 	{
 		log_err(_("repmgr: This node should be a standby (%s)\n"), options.conninfo);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check if there is a schema for this cluster */
@@ -525,7 +525,7 @@ do_standby_register(void)
 		log_err("Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	if (PQntuples(res) == 0)		/* schema doesn't exists */
@@ -533,15 +533,15 @@ do_standby_register(void)
 		log_err("Schema %s doesn't exists.\n", repmgr_schema);
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	PQclear(res);
 
 	/* check if there is a master in this cluster */
 	master_conn = getMasterConnection(conn, options.node, options.cluster_name, &master_id);
 	if (!master_conn) {
-		log_err(_("Cannot retrieve information about the connection to the master\n"));
-		return;
+		log_err(_("A master must be defined before configuring a slave\n"));
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* master should be v9 or better */
@@ -551,7 +551,7 @@ do_standby_register(void)
 		PQfinish(conn);
 		PQfinish(master_conn);
 		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* master and standby version should match */
@@ -561,7 +561,7 @@ do_standby_register(void)
 		PQfinish(master_conn);
 		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
 		        progname, master_version, standby_version);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 
@@ -579,7 +579,7 @@ do_standby_register(void)
 			        PQerrorMessage(master_conn));
 			PQfinish(master_conn);
 			PQfinish(conn);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -594,7 +594,7 @@ do_standby_register(void)
 		        PQerrorMessage(master_conn));
 		PQfinish(master_conn);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	PQfinish(master_conn);
@@ -645,7 +645,7 @@ do_standby_clone(void)
 		{
 			log_err(_("%s: couldn't create directory %s ...\n"),
 			        progname, runtime_options.dest_dir);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 		break;
 	case 1:
@@ -658,7 +658,7 @@ do_standby_clone(void)
 		{
 			log_err(_("%s: could not change permissions of directory \"%s\": %s\n"),
 			        progname, runtime_options.dest_dir, strerror(errno));
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 		break;
 	case 2:
@@ -673,7 +673,7 @@ do_standby_clone(void)
 			                  "If you are sure you want to clone here, "
 			                  "please check there is no PostgreSQL server "
 			                  "running and use the --force option\n"));
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 		else if (pg_dir && runtime_options.force)
 		{
@@ -700,7 +700,7 @@ do_standby_clone(void)
 	{
 		log_err(_("%s: could not connect to master\n"),
 		        progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* primary should be v9 or better */
@@ -709,7 +709,7 @@ do_standby_clone(void)
 	{
 		PQfinish(conn);
 		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check we are cloning a primary node */
@@ -717,7 +717,7 @@ do_standby_clone(void)
 	{
 		PQfinish(conn);
 		log_err(_("\nThe command should clone a primary node\n"));
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* And check if it is well configured */
@@ -725,19 +725,20 @@ do_standby_clone(void)
 	{
 		PQfinish(conn);
 		log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	if (!guc_setted(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments))
 	{
 		PQfinish(conn);
 		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option)\n"), progname, runtime_options.wal_keep_segments);
 		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	if (!guc_setted(conn, "archive_mode", "=", "on"))
 	{
 		PQfinish(conn);
 		log_err(_("%s needs parameter 'archive_mode' to be set to 'on'\n"), progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	log_info(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
@@ -752,7 +753,7 @@ do_standby_clone(void)
 		log_err("Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
@@ -772,7 +773,7 @@ do_standby_clone(void)
 				        progname, tblspc_dir);
 				PQclear(res);
 				PQfinish(conn);
-				return;
+				exit(ERR_BAD_CONFIG);
 			}
 			break;
 		case 1:
@@ -788,7 +789,7 @@ do_standby_clone(void)
 				        progname, tblspc_dir, strerror(errno));
 				PQclear(res);
 				PQfinish(conn);
-				return;
+				exit(ERR_BAD_CONFIG);
 			}
 			break;
 		case 2:
@@ -800,7 +801,7 @@ do_standby_clone(void)
 				        progname, tblspc_dir);
 				PQclear(res);
 				PQfinish(conn);
-				return;
+				exit(ERR_BAD_CONFIG);
 			}
 		default:
 			/* Trouble accessing directory */
@@ -808,7 +809,7 @@ do_standby_clone(void)
 			        progname, tblspc_dir, strerror(errno));
 			PQclear(res);
 			PQfinish(conn);
-			return;
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -825,7 +826,7 @@ do_standby_clone(void)
 		log_err("Can't get info about data directory and configuration files: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
@@ -855,7 +856,7 @@ do_standby_clone(void)
 		log_err("Can't start backup: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	first_wal_segment = PQgetvalue(res, 0, 0);
 	PQclear(res);
@@ -949,7 +950,7 @@ stop_backup:
 	{
 		log_err(_("%s: could not connect to master\n"),
 		        progname);
-		return;
+		exit(ERR_BAD_RSYNC);
 	}
 
 	log_notice("Finishing backup...\n");
@@ -963,13 +964,13 @@ stop_backup:
 		log_err("Can't stop backup: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_STOP_BACKUP);
 	}
 	last_wal_segment = PQgetvalue(res, 0, 0);
 
-	/* Now, if the rsync failed then exit */
-	if (r == 0)
-	{
+	/* If the rsync failed then exit */
+	if (r != 0)
+		exit(ERR_BAD_CONFIG);
 
 	if (runtime_options.verbose)
 		printf(_("%s requires primary to keep WAL files %s until at least %s\n"),
@@ -1023,14 +1024,14 @@ do_standby_promote(void)
 	{
 		PQfinish(conn);
 		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check we are in a standby node */
 	if (!is_standby(conn))
 	{
 		log_err("repmgr: The command should be executed on a standby node\n");
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* we also need to check if there isn't any master already */
@@ -1039,7 +1040,7 @@ do_standby_promote(void)
 	{
 		PQfinish(old_master_conn);
 		log_err("There is a master already in this cluster\n");
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	if (runtime_options.verbose)
@@ -1055,7 +1056,7 @@ do_standby_promote(void)
 		log_err("Can't get info about data directory: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	strcpy(data_dir, PQgetvalue(res, 0, 0));
 	PQclear(res);
@@ -1065,26 +1066,27 @@ do_standby_promote(void)
 	snprintf(recovery_done_path, MAXFILENAME, "%s/%s", data_dir, RECOVERY_DONE_FILE);
 	rename(recovery_file_path, recovery_done_path);
 
-	/* We assume the pg_ctl script is in the PATH */
-	snprintf(script, QUERY_STR_LEN, "pg_ctl -D %s -m fast restart", data_dir);
+	/* 
+	 * We assume the pg_ctl script is in the PATH.  Restart and wait for
+	 * the server to finish starting, so that the check below will
+	 * find an active server rather than one starting up.  This may
+	 * hang for up the default timeout (60 seconds).
+	 */
+	snprintf(script, QUERY_STR_LEN, "pg_ctl -D %s -w -m fast restart", data_dir);
 	r = system(script);
 	if (r != 0)
 	{
-		log_err("Can't restart service\n");
-		return;
+		log_err("Can't restart PostgreSQL server\n");
+		exit(ERR_NO_RESTART);
 	}
 
 	/* reconnect to check we got promoted */
-	/*
-	 * XXX i'm removing this because it gives an annoying message saying couldn't connect
-	 * but is just the server starting up
-	*    conn = establishDBConnection(options.conninfo, true);
-	*    if (is_standby(conn))
-	*    	log_err("\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
-	*    else
-	*    	log_err("\n%s: you should REINDEX any hash indexes you have.\n", progname);
-	*    PQfinish(conn);
-	*/
+	conn = establishDBConnection(options.conninfo, true);
+	if (is_standby(conn))
+		log_err("\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
+	else
+		log_err("\n%s: you should REINDEX any hash indexes you have.\n", progname);
+	PQfinish(conn);
 
 	return;
 }
@@ -1115,6 +1117,7 @@ do_standby_follow(void)
 	{
 		log_err("\n%s: The command should be executed in a standby node\n", progname);
 		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* should be v9 or better */
@@ -1123,7 +1126,7 @@ do_standby_follow(void)
 	{
 		PQfinish(conn);
 		log_err(_("\n%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* we also need to check if there is any master in the cluster */
@@ -1132,7 +1135,7 @@ do_standby_follow(void)
 	{
 		PQfinish(conn);
 		log_err("There isn't a master to follow in this cluster\n");
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check we are going to point to a master */
@@ -1140,7 +1143,7 @@ do_standby_follow(void)
 	{
 		PQfinish(conn);
 		log_err("%s: The node to follow should be a master\n", progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* should be v9 or better */
@@ -1150,7 +1153,7 @@ do_standby_follow(void)
 		PQfinish(conn);
 		PQfinish(master_conn);
 		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* master and standby version should match */
@@ -1160,7 +1163,7 @@ do_standby_follow(void)
 		PQfinish(master_conn);
 		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
 		        progname, master_version, standby_version);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
@@ -1185,7 +1188,7 @@ do_standby_follow(void)
 		log_err("Can't get info about data directory: %s\n", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	strcpy(data_dir, PQgetvalue(res, 0, 0));
 	PQclear(res);
@@ -1193,7 +1196,7 @@ do_standby_follow(void)
 
 	/* write the recovery.conf file */
 	if (!create_recovery_file(data_dir))
-		return;
+		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
 	/* We assume the pg_ctl script is in the PATH */
@@ -1203,6 +1206,7 @@ do_standby_follow(void)
 	{
 		log_err("Can't restart service\n");
 		return;
+		exit(ERR_NO_RESTART);
 	}
 
 	return;
