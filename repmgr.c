@@ -686,6 +686,7 @@ do_standby_clone(void)
 		/* Trouble accessing directory */
 		log_err( _("%s: could not access directory \"%s\": %s\n"),
 		        progname, runtime_options.dest_dir, strerror(errno));
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Connection parameters for master only */
