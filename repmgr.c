@@ -528,7 +528,7 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (PQntuples(res) == 0)		/* schema doesn't exists */
+	if (PQntuples(res) == 0)		/* schema doesn't exist */
 	{
 		log_err("Schema %s doesn't exists.\n", repmgr_schema);
 		PQclear(res);
@@ -731,7 +731,6 @@ do_standby_clone(void)
 	{
 		PQfinish(conn);
 		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option)\n"), progname, runtime_options.wal_keep_segments);
-		return;
 		exit(ERR_BAD_CONFIG);
 	}
 	if (!guc_setted(conn, "archive_mode", "=", "on"))
