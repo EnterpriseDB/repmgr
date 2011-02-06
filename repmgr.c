@@ -970,30 +970,33 @@ stop_backup:
 
 	/* If the rsync failed then exit */
 	if (r != 0)
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_BAD_RSYNC);
 
 	if (runtime_options.verbose)
 		printf(_("%s requires primary to keep WAL files %s until at least %s\n"),
 		       progname, first_wal_segment, last_wal_segment);
 
-		/* we need to create the pg_xlog sub directory too, i'm reusing a variable here */
-		snprintf(local_control_file, MAXFILENAME, "%s/pg_xlog", runtime_options.dest_dir);
-		if (!create_directory(local_control_file))
-		{
-			log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
-				progname, runtime_options.dest_dir);
-		}
-
-		/* Finally, write the recovery.conf file */
-		create_recovery_file(runtime_options.dest_dir);
-
+	/* we need to create the pg_xlog sub directory too, i'm reusing a variable here */
+	snprintf(local_control_file, MAXFILENAME, "%s/pg_xlog", runtime_options.dest_dir);
+	if (!create_directory(local_control_file))
+	{
+		log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
+			progname, runtime_options.dest_dir);
+		r = ERR_NEEDS_XLOG; /* continue, but eventually exit returning error */
 	}
+
+	/* Finally, write the recovery.conf file */
+	create_recovery_file(runtime_options.dest_dir);
 
 	PQclear(res);
 	PQfinish(conn);
 
-	/* We don't start the service because we still may want to move the directory */
-	return;
+	/* 
+	 * We don't start the service yet because we still may want to
+	 * move the directory
+	 */
+
+	exit(r);
 }
 
 

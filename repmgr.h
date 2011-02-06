@@ -51,6 +51,7 @@
 #define ERR_BAD_RSYNC 2
 #define ERR_STOP_BACKUP 3
 #define ERR_NO_RESTART 4
+#define ERR_NEEDS_XLOG 5
 
 /* Run time options type */
 typedef struct {
