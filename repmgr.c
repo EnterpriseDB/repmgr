@@ -543,7 +543,7 @@ do_standby_register(void)
 	/* Check if there is a schema for this cluster */
 	sqlquery_snprintf(sqlquery,
 					  "SELECT 1 FROM pg_namespace "
-					  " WHERE nspname = 'repmgr_%s'", schema_str);
+					  " WHERE nspname = '%s'", schema_str);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -555,9 +555,10 @@ do_standby_register(void)
 		return;
 	}
 
-	if (PQntuples(res) == 0)		/* schema doesn't exists */
+	/* schema doesn't exist */
+	if (PQntuples(res) == 0)
 	{
-		fprintf(stderr, "Schema %s doesn't exists.", schema_quoted);
+		fprintf(stderr, "Schema %s doesn't exist.\n", schema_quoted);
 		PQclear(res);
 		PQfinish(conn);
 		return;
