@@ -316,6 +316,8 @@ do_master_register(void)
 	PGconn		*conn;
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
+	char		schema_str[MAXLEN];
+	char		schema_quoted[MAXLEN];
 
 	bool		schema_exists = false;
 	char		master_version[MAXVERSIONSTR];
@@ -340,9 +342,20 @@ do_master_register(void)
 		return;
 	}
 
+	/* Assemble the unquoted schema name */
+	maxlen_snprintf(schema_str, "repmgr_%s", config.cluster_name);
+	{
+		char *identifier = PQescapeIdentifier(conn, schema_str,
+											  strlen(schema_str));
+
+		maxlen_snprintf(schema_quoted, "%s", identifier);
+		free(identifier);
+	}
+
 	/* Check if there is a schema for this cluster */
-	sqlquery_snprintf(sqlquery, "SELECT 1 FROM pg_namespace "
-					  "WHERE nspname = 'repmgr_%s'", config.cluster_name);
+	sqlquery_snprintf(sqlquery,
+					  "SELECT 1 FROM pg_namespace "
+					  "WHERE nspname = '%s'", schema_str);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -357,7 +370,7 @@ do_master_register(void)
 	{
 		if (!force)					/* and we are not forcing so error */
 		{
-			fprintf(stderr, "Schema repmgr_%s already exists.", config.cluster_name);
+			fprintf(stderr, "Schema %s already exists.", schema_quoted);
 			PQclear(res);
 			PQfinish(conn);
 			return;
@@ -369,20 +382,20 @@ do_master_register(void)
 	if (!schema_exists)
 	{
 		/* ok, create the schema */
-		sqlquery_snprintf(sqlquery, "CREATE SCHEMA repmgr_%s", config.cluster_name);
+		sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", schema_quoted);
 		if (!PQexec(conn, sqlquery))
 		{
-			fprintf(stderr, "Cannot create the schema repmgr_%s: %s\n",
-					config.cluster_name, PQerrorMessage(conn));
+			fprintf(stderr, "Cannot create the schema %s: %s\n", schema_quoted,
+					PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
 
 		/* ... the tables */
-		sqlquery_snprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_nodes ( "
+		sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_nodes ( "
 						  "	 id		   integer primary key, "
 						  "	 cluster   text	   not null,	"
-						  "  conninfo  text    not null)", config.cluster_name);
+						  "  conninfo  text    not null)", schema_quoted);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr,
@@ -391,7 +404,7 @@ do_master_register(void)
 			return;
 		}
 
-		sqlquery_snprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_monitor ( "
+		sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_monitor ( "
 						  "	 primary_node					INTEGER NOT NULL, "
 						  "	 standby_node					INTEGER NOT NULL, "
 						  "	 last_monitor_time				TIMESTAMP WITH TIME ZONE NOT NULL, "
@@ -399,7 +412,7 @@ do_master_register(void)
 						  "	 last_wal_standby_location		TEXT NOT NULL,	 "
 						  "	 replication_lag				BIGINT NOT NULL, "
 						  "  apply_lag                      BIGINT NOT NULL) ",
-						  config.cluster_name);
+						  schema_quoted);
 	}
 
 	if (!PQexec(conn, sqlquery))
@@ -411,15 +424,17 @@ do_master_register(void)
 	}
 
 	/* and the view */
-	sqlquery_snprintf(sqlquery, "CREATE VIEW repmgr_%s.repl_status AS "
+	sqlquery_snprintf(sqlquery, "CREATE VIEW %s.repl_status AS "
 					  "	 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
 					  " ORDER BY last_monitor_time desc) "
-					  "	 FROM repmgr_%s.repl_monitor) "
+					  "	 FROM %s.repl_monitor) "
 					  "	 SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
 					  "			last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
 					  "			pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
 					  "	   FROM monitor_info a "
-					  "   WHERE row_number = 1", config.cluster_name, config.cluster_name);
+					  "   WHERE row_number = 1",
+					  schema_quoted, schema_quoted);
+
 	if (!PQexec(conn, sqlquery))
 	{
 		fprintf(stderr,
@@ -447,9 +462,9 @@ do_master_register(void)
 	/* Now register the master */
 	if (force)
 	{
-		sqlquery_snprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
-						  " WHERE id = %d",
-						  config.cluster_name, config.node);
+		sqlquery_snprintf(sqlquery,
+						  "DELETE FROM %s.repl_nodes WHERE id = %d",
+						  schema_quoted, config.node);
 
 		if (!PQexec(conn, sqlquery))
 		{
@@ -460,9 +475,9 @@ do_master_register(void)
 		}
 	}
 
-	sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
 					  "VALUES (%d, '%s', '%s')",
-					  config.cluster_name, config.node, config.cluster_name,
+					  schema_quoted, config.node, config.cluster_name,
 					  config.conninfo);
 
 	if (!PQexec(conn, sqlquery))
@@ -487,11 +502,15 @@ do_standby_register(void)
 
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
+	char		schema_str[MAXLEN];
+	char		schema_quoted[MAXLEN];
 
 	char master_version[MAXVERSIONSTR];
 	char standby_version[MAXVERSIONSTR];
 
 	conn = establishDBConnection(config.conninfo, true);
+
+	/* XXX: A lot of copied code from do_master_register! Refactor */
 
 	/* should be v9 or better */
 	pg_version(conn, standby_version);
@@ -511,9 +530,20 @@ do_standby_register(void)
 		return;
 	}
 
+	/* Assemble the unquoted schema name */
+	maxlen_snprintf(schema_str, "repmgr_%s", config.cluster_name);
+	{
+		char *identifier = PQescapeIdentifier(conn, schema_str,
+											  strlen(schema_str));
+
+		maxlen_snprintf(schema_quoted, "%s", identifier);
+		free(identifier);
+	}
+
 	/* Check if there is a schema for this cluster */
-	sqlquery_snprintf(sqlquery, "SELECT 1 FROM pg_namespace "
-					  "WHERE nspname = 'repmgr_%s'", config.cluster_name);
+	sqlquery_snprintf(sqlquery,
+					  "SELECT 1 FROM pg_namespace "
+					  " WHERE nspname = 'repmgr_%s'", schema_str);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -527,7 +557,7 @@ do_standby_register(void)
 
 	if (PQntuples(res) == 0)		/* schema doesn't exists */
 	{
-		fprintf(stderr, "Schema repmgr_%s doesn't exists.", config.cluster_name);
+		fprintf(stderr, "Schema %s doesn't exists.", schema_quoted);
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -566,9 +596,10 @@ do_standby_register(void)
 	/* Now register the standby */
 	if (force)
 	{
-		sqlquery_snprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
+		sqlquery_snprintf(sqlquery,
+						  "DELETE FROM %s.repl_nodes "
 						  " WHERE id = %d",
-		        config.cluster_name, config.node);
+						  schema_quoted, config.node);
 
 		if (!PQexec(master_conn, sqlquery))
 		{
@@ -580,9 +611,10 @@ do_standby_register(void)
 		}
 	}
 
-	sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
 					  "VALUES (%d, '%s', '%s')",
-	        config.cluster_name, config.node, config.cluster_name, config.conninfo);
+					  schema_quoted, config.node, config.cluster_name,
+					  config.conninfo);
 
 	if (!PQexec(master_conn, sqlquery))
 	{

@@ -181,12 +181,15 @@ PGconn *
 getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 					int *master_id, char *master_conninfo_out)
 {
-	PGconn	 *master_conn = NULL;
-	PGresult *res1;
-	PGresult *res2;
-	char	 sqlquery[QUERY_STR_LEN];
-	char	 master_conninfo_stack[MAXCONNINFO];
-	char	*master_conninfo = &*master_conninfo_stack;
+	PGconn		*master_conn	 = NULL;
+	PGresult	*res1;
+	PGresult	*res2;
+	char		 sqlquery[QUERY_STR_LEN];
+	char		 master_conninfo_stack[MAXCONNINFO];
+	char		*master_conninfo = &*master_conninfo_stack;
+	char		 schema_str[MAXLEN];
+	char		 schema_quoted[MAXLEN];
+
 	int		 i;
 
 	/*
@@ -196,10 +199,24 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	if (master_conninfo_out != NULL)
 		master_conninfo = master_conninfo_out;
 
+	/*
+	 * XXX: This is copied in at least two other procedures
+	 *
+	 * Assemble the unquoted schema name
+	 */
+	maxlen_snprintf(schema_str, "repmgr_%s", cluster);
+	{
+		char *identifier = PQescapeIdentifier(standby_conn, schema_str,
+											  strlen(schema_str));
+
+		maxlen_snprintf(schema_quoted, "%s", identifier);
+		free(identifier);
+	}
+
 	/* find all nodes belonging to this cluster */
-	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
 					  " WHERE cluster = '%s' and id <> %d",
-					  cluster, cluster, id);
+					  schema_quoted, cluster, id);
 
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
