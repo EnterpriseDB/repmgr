@@ -36,11 +36,11 @@
 /* Local info */
 t_configuration_options local_options;
 int     myLocalMode = STANDBY_MODE;
-PGconn *myLocalConn;
+PGconn *myLocalConn = NULL;
 
 /* Primary info */
 t_configuration_options primary_options;
-PGconn *primaryConn;
+PGconn *primaryConn = NULL;
 
 char sqlquery[QUERY_STR_LEN];
 
@@ -71,7 +71,7 @@ static void setup_cancel_handler(void);
 							CancelQuery(); \
 						if (myLocalConn != NULL) \
 							PQfinish(myLocalConn);	\
-						if (primaryConn != NULL) \
+						if (primaryConn != NULL && primaryConn != myLocalConn) \
 							PQfinish(primaryConn);
 
 /*
