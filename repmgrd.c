@@ -231,7 +231,10 @@ MonitorExecute(void)
 		}
 		else
 		{
-			log_notice(_("Connection to master has been restored, continue monitoring."));
+			if (connection_retries > 0)
+			{
+				log_notice(_("Connection to master has been restored, continue monitoring."));
+			}
 			break;
 		}
 	}
