@@ -349,7 +349,7 @@ do_master_register(void)
 											  strlen(schema_str));
 
 		maxlen_snprintf(schema_quoted, "%s", identifier);
-		free(identifier);
+		PQfreemem(identifier);
 	}
 
 	/* Check if there is a schema for this cluster */
@@ -537,7 +537,7 @@ do_standby_register(void)
 											  strlen(schema_str));
 
 		maxlen_snprintf(schema_quoted, "%s", identifier);
-		free(identifier);
+		PQfreemem(identifier);
 	}
 
 	/* Check if there is a schema for this cluster */

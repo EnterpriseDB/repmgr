@@ -210,7 +210,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 											  strlen(schema_str));
 
 		maxlen_snprintf(schema_quoted, "%s", identifier);
-		free(identifier);
+		PQfreemem(identifier);
 	}
 
 	/* find all nodes belonging to this cluster */
