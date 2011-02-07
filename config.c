@@ -17,14 +17,12 @@
  *
  */
 
+#include "config.h"
 #include "repmgr.h"
-
 #include "strutil.h"
-
 
 void
 parse_config(const char *config_file, repmgr_config *config)
-			 char *conninfo)
 {
 	char *s, buff[MAXLINELENGTH];
 	char name[MAXLEN];

@@ -178,7 +178,9 @@ main(int argc, char **argv)
 	else
 	{
 		/* I need the id of the primary as well as a connection to it */
-		primaryConn = getMasterConnection(myLocalConn, config.node, config.cluster_name, &primaryId);
+		primaryConn = getMasterConnection(myLocalConn, config.node,
+										  config.cluster_name, &primaryId,
+										  NULL);
 
 		if (primaryConn == NULL)
 			exit(1);
@@ -249,7 +251,9 @@ MonitorExecute(void)
 		for (connection_retries = 0; connection_retries < 6;
 			 connection_retries++)
 		{
-			primaryConn = getMasterConnection(myLocalConn, config.node, config.cluster_name, &primaryId);
+			primaryConn = getMasterConnection(myLocalConn, config.node,
+											  config.cluster_name, &primaryId,
+											  NULL);
 
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{

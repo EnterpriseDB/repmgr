@@ -16,15 +16,22 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
+#include "strutil.h"
+
 
 typedef struct
 {
-    char cluster_name[MAXLEN];
-    int node;
-    char conninfo[MAXLEN];
-    char rsync_options[QUERY_STR_LEN];
+	char cluster_name[MAXLEN];
+	int node;
+	char conninfo[MAXLEN];
+	char rsync_options[QUERY_STR_LEN];
 } repmgr_config;
 
 void parse_config(const char *config_file, repmgr_config *config);
 void parse_line(char *buff, char *name, char *value);
 char *trim(char *s);
+
+#endif

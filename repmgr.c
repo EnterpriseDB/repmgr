@@ -341,7 +341,8 @@ do_master_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sqlquery_sprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", config.cluster_name);
+	sqlquery_snprintf(sqlquery, "SELECT 1 FROM pg_namespace "
+					  "WHERE nspname = 'repmgr_%s'", config.cluster_name);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -372,7 +373,7 @@ do_master_register(void)
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot create the schema repmgr_%s: %s\n",
-			        config.cluster_name, PQerrorMessage(conn));
+					config.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -381,11 +382,11 @@ do_master_register(void)
 		sqlquery_snprintf(sqlquery, "CREATE TABLE repmgr_%s.repl_nodes ( "
 						  "	 id		   integer primary key, "
 						  "	 cluster   text	   not null,	"
-		        "  conninfo  text    not null)", config.cluster_name);
+						  "  conninfo  text    not null)", config.cluster_name);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr,
-			        config.cluster_name, PQerrorMessage(conn));
+					config.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
@@ -397,33 +398,34 @@ do_master_register(void)
 						  "	 last_wal_primary_location		TEXT NOT NULL,	 "
 						  "	 last_wal_standby_location		TEXT NOT NULL,	 "
 						  "	 replication_lag				BIGINT NOT NULL, "
-		        "  apply_lag                      BIGINT NOT NULL) ", config.cluster_name);
-						  myClusterName);
-		if (!PQexec(conn, sqlquery))
-		{
-			fprintf(stderr,
-			        config.cluster_name, PQerrorMessage(conn));
-			PQfinish(conn);
-			return;
-		}
+						  "  apply_lag                      BIGINT NOT NULL) ",
+						  config.cluster_name);
+	}
 
-		/* and the view */
-		sqlquery_snprintf(sqlquery, "CREATE VIEW repmgr_%s.repl_status AS "
-						  "	 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
-						  " ORDER BY last_monitor_time desc) "
-						  "	 FROM repmgr_%s.repl_monitor) "
-						  "	 SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
-						  "			last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
-						  "			pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
-						  "	   FROM monitor_info a "
-		        "   WHERE row_number = 1", config.cluster_name, config.cluster_name);
-		if (!PQexec(conn, sqlquery))
-		{
-			fprintf(stderr,
-			        config.cluster_name, PQerrorMessage(conn));
-			PQfinish(conn);
-			return;
-		}
+	if (!PQexec(conn, sqlquery))
+	{
+		fprintf(stderr,
+				config.cluster_name, PQerrorMessage(conn));
+		PQfinish(conn);
+		return;
+	}
+
+	/* and the view */
+	sqlquery_snprintf(sqlquery, "CREATE VIEW repmgr_%s.repl_status AS "
+					  "	 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
+					  " ORDER BY last_monitor_time desc) "
+					  "	 FROM repmgr_%s.repl_monitor) "
+					  "	 SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
+					  "			last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
+					  "			pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
+					  "	   FROM monitor_info a "
+					  "   WHERE row_number = 1", config.cluster_name, config.cluster_name);
+	if (!PQexec(conn, sqlquery))
+	{
+		fprintf(stderr,
+				config.cluster_name, PQerrorMessage(conn));
+		PQfinish(conn);
+		return;
 	}
 	else
 	{
@@ -431,8 +433,9 @@ do_master_register(void)
 		int		id;
 
 		/* Ensure there isn't any other master already registered */
-		master_conn = getMasterConnection(conn, config.node, config.cluster_name, &id);
-										  NULL);
+		master_conn = getMasterConnection(conn, config.node,
+										  config.cluster_name, &id, NULL);
+
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
@@ -446,7 +449,7 @@ do_master_register(void)
 	{
 		sqlquery_snprintf(sqlquery, "DELETE FROM repmgr_%s.repl_nodes "
 						  " WHERE id = %d",
-		        config.cluster_name, config.node);
+						  config.cluster_name, config.node);
 
 		if (!PQexec(conn, sqlquery))
 		{
@@ -459,7 +462,8 @@ do_master_register(void)
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
 					  "VALUES (%d, '%s', '%s')",
-	        config.cluster_name, config.node, config.cluster_name, config.conninfo);
+					  config.cluster_name, config.node, config.cluster_name,
+					  config.conninfo);
 
 	if (!PQexec(conn, sqlquery))
 	{
@@ -508,9 +512,9 @@ do_standby_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sqlquery_snprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'", config.cluster_name);
-					  "SELECT 1 FROM pg_namespace WHERE nspname = 'repmgr_%s'",
-					  myClusterName);
+	sqlquery_snprintf(sqlquery, "SELECT 1 FROM pg_namespace "
+					  "WHERE nspname = 'repmgr_%s'", config.cluster_name);
+
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -531,8 +535,9 @@ do_standby_register(void)
 	PQclear(res);
 
 	/* check if there is a master in this cluster */
-	master_conn = getMasterConnection(conn, config.node, config.cluster_name, &master_id);
+	master_conn = getMasterConnection(conn, config.node, config.cluster_name,
 									  &master_id, NULL);
+
 	if (!master_conn)
 		return;
 
@@ -1056,7 +1061,8 @@ do_standby_promote(void)
 	}
 
 	/* we also need to check if there isn't any master already */
-	old_master_conn = getMasterConnection(conn, config.node, config.cluster_name, &old_master_id);
+	old_master_conn = getMasterConnection(conn, config.node, config.cluster_name,
+										  &old_master_id, NULL);
 
 	if (old_master_conn != NULL)
 	{
@@ -1152,7 +1158,8 @@ do_standby_follow(void)
 	}
 
 	/* we also need to check if there is any master in the cluster */
-	master_conn = getMasterConnection(conn, config.node, config.cluster_name, &master_id);
+	master_conn = getMasterConnection(conn, config.node, config.cluster_name,
+									  &master_id, (char *) &master_conninfo);
 
 	if (master_conn == NULL)
 	{
@@ -1366,11 +1373,13 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	char host_string[MAXLEN];
 	int	 r;
 
-	if (strnlen(config.rsync_options, QUERY_STR_LEN) == 0)
-	    sprintf(options, "--archive --checksum --compress --progress --rsh=ssh");
+	if (strnlen(config.rsync_options, MAXLEN) == 0)
+		maxlen_snprintf(
+			options, "%s",
+			"--archive --checksum --compress --progress --rsh=ssh");
 	else
-	    strncpy(options, config.rsync_options, QUERY_STR_LEN);
-	
+		maxlen_snprintf(options, "%s", config.rsync_options);
+
 	if (force)
 		strcat(options, " --delete");
 

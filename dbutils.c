@@ -199,7 +199,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	/* find all nodes belonging to this cluster */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
 					  " WHERE cluster = '%s' and id <> %d",
-	        cluster, cluster, id);
+					  cluster, cluster, id);
 
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)

@@ -17,13 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#ifndef _REPMGR_H_
-#define _REPMGR_H_
-
 #include "postgres_fe.h"
 #include "getopt_long.h"
 #include "libpq-fe.h"
+
+
+#ifndef _REPMGR_H_
+#define _REPMGR_H_
 
 #include "dbutils.h"
 
@@ -32,7 +32,6 @@
 #define STANDBY_MODE		1
 
 #define CONFIG_FILE			"repmgr.conf"
-#define QUERY_STR_LEN		8192
 
 #include "config.h"
 

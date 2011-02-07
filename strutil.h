@@ -8,6 +8,9 @@
 #ifndef _STRUTIL_H_
 #define _STRUTIL_H_
 
+#include <stdlib.h>
+
+
 #define QUERY_STR_LEN	8192
 #define MAXLEN			1024
 #define MAXLINELENGTH	4096
