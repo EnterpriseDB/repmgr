@@ -242,8 +242,8 @@ main(int argc, char **argv)
 	/*
 	 * Read the configuration file: repmgr.conf
 	 */
-	parse_config(config_file, &config);
-	if (config.node == -1)
+	parse_config(runtime_options.config_file, &options);
+	if (options.node == -1)
 	{
 		fprintf(stderr, "Node information is missing. "
 		        "Check the configuration file.\n");
@@ -1086,9 +1086,13 @@ do_standby_promote(void)
 	/* reconnect to check we got promoted */
 	conn = establishDBConnection(options.conninfo, true);
 	if (is_standby(conn))
+	{
 		log_err("\n%s: STANDBY PROMOTE failed, this is still a standby node.\n", progname);
+	}
 	else
-		log_err("\n%s: you should REINDEX any hash indexes you have.\n", progname);
+	{
+		log_err("\n%s: STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n", progname);
+	}
 	PQfinish(conn);
 
 	return;
@@ -1299,17 +1303,17 @@ static int
 copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_path, bool is_directory)
 {
 	char script[QUERY_STR_LEN];
-	char options[QUERY_STR_LEN];
+	char rsync_flags[QUERY_STR_LEN];
 	char host_string[QUERY_STR_LEN];
 	int  r;
 
-	if (strnlen(runtime_options.rsync_options, QUERY_STR_LEN) == 0)
-	    snprintf(options, QUERY_STR_LEN, "--archive --checksum --compress --progress --rsh=ssh");
+	if (strnlen(options.rsync_options, QUERY_STR_LEN) == 0)
+	    snprintf(rsync_flags, QUERY_STR_LEN, "--archive --checksum --compress --progress --rsh=ssh");
 	else
-	    strncpy(options, runtime_options.rsync_options, QUERY_STR_LEN);
+	    strncpy(rsync_flags, options.rsync_options, QUERY_STR_LEN);
 	
 	if (runtime_options.force)
-		strcat(options, " --delete");
+		strcat(rsync_flags, " --delete");
 
 	if (remote_user == NULL)
 	{
@@ -1322,14 +1326,14 @@ copy_remote_files(char *host, char *remote_user, char *remote_path, char *local_
 
 	if (is_directory)
 	{
-		strcat(options, " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
+		strcat(rsync_flags, " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
 		snprintf(script, QUERY_STR_LEN, "rsync %s %s:%s/* %s",
-		        options, host_string, remote_path, local_path);
+		        rsync_flags, host_string, remote_path, local_path);
 	}
 	else
 	{
 		snprintf(script, QUERY_STR_LEN, "rsync %s %s:%s %s/.",
-		        options, host_string, remote_path, local_path);
+		        rsync_flags, host_string, remote_path, local_path);
 	}
 
 	log_info("rsync command line:  '%s'\n", script);

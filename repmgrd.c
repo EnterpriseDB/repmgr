@@ -50,8 +50,10 @@ char	*config_file = DEFAULT_CONFIG_FILE;
 bool	verbose = false;
 char	repmgr_schema[MAXLEN];
 
-// should initialize with {0} to be ANSI complaint ? but this raises error with gcc -Wall
-repmgr_config config = {};
+/* 
+ * should initialize with {0} to be ANSI complaint ? but this raises
+ * error with gcc -Wall */
+t_configuration_options config = {};
 
 static void help(const char* progname);
 static void usage(void);

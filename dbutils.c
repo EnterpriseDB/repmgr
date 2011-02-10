@@ -57,7 +57,7 @@ is_standby(PGconn *conn)
 		fprintf(stderr, "Can't query server mode: %s", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		exit(ERR_NO_DB_CON);
+		exit(ERR_DB_QUERY);
 	}
 
 	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
