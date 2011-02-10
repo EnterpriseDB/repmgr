@@ -540,7 +540,7 @@ The repmgr daemon creates 2 connections: one to the master and another to the
 standby.
 
 Error codes
------------
+===========
 
 When the repmgr or repmgrd program exits, it will set one of the
 following 
@@ -755,3 +755,13 @@ assignment and a disclaimer of any work-for-hire ownership claims from the
 employer of the developer.  This lets us make sure that all of the repmgr
 distribution remains free code.  Please contact info@2ndQuadrant.com for a
 copy of the relevant Copyright Assignment Form.
+
+Code style
+----------
+
+Code in repmgr is formatted to a consistent style using the following command::
+
+  astyle --style=ansi --indent=tab --suffix=none *.c *.h
+
+Contributors should reformat their code similarly before submitting code to
+the project, in order to minimize merge conflicts with other work.
