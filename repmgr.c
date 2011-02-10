@@ -1559,6 +1559,16 @@ check_parameters_for_action(const int action)
 		break;
 		case STANDBY_CLONE:
 			/*
+			 * Issue a friendly notice that the configuration file is not
+			 * necessary nor read at all in when performing a STANDBY CLONE
+			 * action.
+			 */
+			if (config_file != NULL)
+				fprintf(stderr, "NOTICE: The passed configuration file is not "
+						"required nor used when performing the STANDBY CLONE "
+						"command.\n");
+
+			/*
 			 * To clone a master into a standby we need connection parameters
 			 * repmgr.conf is useless because we don't have a server running in
 			 * the standby; warn the user, but keep going.
