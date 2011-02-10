@@ -17,7 +17,12 @@
  *
  */
 
+#ifndef _REPMGR_CHECK_DIR_H_
+#define _REPMGR_CHECK_DIR_H_
+
 int  check_dir(char *dir);
 bool create_directory(char *dir);
 bool set_directory_permissions(char *dir);
 bool is_pg_dir(char *dir);
+
+#endif
