@@ -1,6 +1,6 @@
 /*
  * log.c - Logging methods
- * Copyright (C) 2ndQuadrant, 2010
+ * Copyright (C) 2ndQuadrant, 2010-2011
  *
  * This module is a set of methods for logging (currently only syslog)
  *
