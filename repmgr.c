@@ -1557,19 +1557,20 @@ check_parameters_for_action(const int action)
 			ok = false;
 		}
 		break;
-	case STANDBY_CLONE:
-		/*
-		 * To clone a master into a standby we need connection parameters
-			 * repmgr.conf is useless because we don't have a server running
-		 * in the standby
-		 */
-		if (config_file != NULL)
-		{
-			fprintf(stderr, "\nYou need to use connection parameters to the master when issuing a STANDBY CLONE command.");
+		case STANDBY_CLONE:
+			/*
+			 * To clone a master into a standby we need connection parameters
+			 * repmgr.conf is useless because we don't have a server running in
+			 * the standby; warn the user, but keep going.
+			 */
+			if (host == NULL)
+			{
+				fprintf(stderr, "\nYou need to use connection parameters to "
+						"the master when issuing a STANDBY CLONE command.");
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
 						progname);
-			ok = false;
-		}
+				ok = false;
+			}
 		break;
 	}
 
