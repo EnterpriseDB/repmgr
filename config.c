@@ -30,7 +30,7 @@ parse_config(const char* config_file, t_configuration_options* options)
 
 	if (fp == NULL) {
 		fprintf(stderr, _("Could not find configuration file '%s'\n"), config_file);
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 	
 	/* Initialize */
@@ -75,14 +75,14 @@ parse_config(const char* config_file, t_configuration_options* options)
 	{
 		fprintf(stderr, "Cluster name is missing. "
 		        "Check the configuration file.\n");
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	if (config->node == -1)
 	{
 		fprintf(stderr, "Node information is missing. "
 		        "Check the configuration file.\n");
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 }
 

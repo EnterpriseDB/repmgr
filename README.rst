@@ -539,6 +539,23 @@ and the same in the standby.
 The repmgr daemon creates 2 connections: one to the master and another to the
 standby.
 
+Error codes
+-----------
+
+When the repmgr or repmgrd program exits, it will set one of the
+following 
+
+* SUCCESS 0:  Program ran successfully.
+
+* ERR_BAD_CONFIG 1:  One of the configuration checks the program makes failed.
+* ERR_BAD_RSYNC 2:  An rsync call made by the program returned an error.
+* ERR_STOP_BACKUP 3:  A ``pg_stop_backup()`` call made by the program didn't succeed.
+* ERR_NO_RESTART 4:  An attempt to restart a PostgreSQL instance failed.
+* ERR_NEEDS_XLOG 5:  Could note create the ``pg_xlog`` directory when cloning.
+* ERR_DB_CON 6:  Error when trying to connect to a database.
+* ERR_DB_QUERY 7:  Error executing a database query.
+* ERR_PROMOTED 8:  Exiting program because the node has been promoted to master.
+
 Detailed walkthrough
 ====================
 

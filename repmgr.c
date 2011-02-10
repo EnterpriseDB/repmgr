@@ -101,12 +101,12 @@ main(int argc, char **argv)
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
 		{
 			help(progname);
-			exit(0);
+			exit(SUCCESS);
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
 			printf("%s (PostgreSQL) " PG_VERSION "\n", progname);
-			exit(0);
+			exit(SUCCESS);
 		}
 	}
 
