@@ -262,16 +262,21 @@ main(int argc, char **argv)
 		else
 			dbname = "postgres";
 	}
-	
+
 	/*
-	 * Read the configuration file: repmgr.conf
+	 * Read the configuration file: repmgr.conf, but only if we're not doing a
+	 * STANDBY CLONE action: it is not necessary to have the configuration file
+	 * in that case.
 	 */
-	parse_config(config_file, &config);
-	if (config.node == -1)
+	if (action != STANDBY_CLONE)
 	{
-		fprintf(stderr, "Node information is missing. "
-		        "Check the configuration file.\n");
-		exit(1);
+		parse_config(config_file, &config);
+		if (config.node == -1)
+		{
+			fprintf(stderr, "Node information is missing. "
+					"Check the configuration file.\n");
+			exit(1);
+		}
 	}
 
 	keywords[2] = "user";
