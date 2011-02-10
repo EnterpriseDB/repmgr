@@ -22,13 +22,14 @@
 
 #include "repmgr.h"
 
-typedef struct {
+typedef struct
+{
 	char cluster_name[MAXLEN];
 	int node;
 	char conninfo[MAXLEN];
 	char loglevel[MAXLEN];
 	char logfacility[MAXLEN];
-    char rsync_options[QUERY_STR_LEN];
+	char rsync_options[QUERY_STR_LEN];
 } t_configuration_options;
 
 void parse_config(const char* config_file, t_configuration_options* options);

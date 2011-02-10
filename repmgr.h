@@ -58,7 +58,8 @@
 #define ERR_PROMOTED 8
 
 /* Run time options type */
-typedef struct {
+typedef struct
+{
 
 	char dbname[MAXLEN];
 	char host[MAXLEN];

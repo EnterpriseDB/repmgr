@@ -57,11 +57,13 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 	printf("Logger initialisation (Level: %s, Facility: %s)\n", level, facility);
 #endif
 
-	if (!ident) {
+	if (!ident)
+	{
 		ident = DEFAULT_IDENT;
 	}
 
-	if (level && *level) {
+	if (level && *level)
+	{
 		l = detect_log_level(level);
 #ifdef REPMGR_DEBUG
 		printf("Assigned level for logger: %d\n", l);
@@ -73,24 +75,28 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 			stderr_log_warning(_("Cannot detect log level %s (use any of DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)\n"), level);
 	}
 
-	if (facility && *facility) {
+	if (facility && *facility)
+	{
 
 		f = detect_log_facility(facility);
 #ifdef REPMGR_DEBUG
 		printf("Assigned facility for logger: %d\n", f);
 #endif
 
-		if (f == 0) {
+		if (f == 0)
+		{
 			/* No syslog requested, just stderr */
 #ifdef REPMGR_DEBUG
 			printf(_("Use stderr for logging\n"));
 #endif
 		}
-		else if (f == -1) {
+		else if (f == -1)
+		{
 			stderr_log_warning(_("Cannot detect log facility %s (use any of LOCAL0, LOCAL1, ..., LOCAL7, USER or STDERR)\n"), facility);
 		}
 #ifdef HAVE_SYSLOG
-		else {
+		else
+		{
 			syslog_facility = f;
 			log_type = REPMGR_SYSLOG;
 		}
@@ -149,42 +155,46 @@ int detect_log_level(const char* level)
 int detect_log_facility(const char* facility)
 {
 	int local = 0;
-	if (!strncmp(facility, "LOCAL", 5) && strlen(facility) == 6) {
+	if (!strncmp(facility, "LOCAL", 5) && strlen(facility) == 6)
+	{
 
 		local = atoi (&facility[5]);
 
-		switch(local) {
-			case 0:
-				return LOG_LOCAL0;
-				break;
-			case 1:
-				return LOG_LOCAL1;
-				break;
-			case 2:
-				return LOG_LOCAL2;
-				break;
-			case 3:
-				return LOG_LOCAL3;
-				break;
-			case 4:
-				return LOG_LOCAL4;
-				break;
-			case 5:
-				return LOG_LOCAL5;
-				break;
-			case 6:
-				return LOG_LOCAL6;
-				break;
-			case 7:
-				return LOG_LOCAL7;
-				break;
+		switch (local)
+		{
+		case 0:
+			return LOG_LOCAL0;
+			break;
+		case 1:
+			return LOG_LOCAL1;
+			break;
+		case 2:
+			return LOG_LOCAL2;
+			break;
+		case 3:
+			return LOG_LOCAL3;
+			break;
+		case 4:
+			return LOG_LOCAL4;
+			break;
+		case 5:
+			return LOG_LOCAL5;
+			break;
+		case 6:
+			return LOG_LOCAL6;
+			break;
+		case 7:
+			return LOG_LOCAL7;
+			break;
 		}
 
 	}
-	else if (!strcmp(facility, "USER")) {
+	else if (!strcmp(facility, "USER"))
+	{
 		return LOG_USER;
 	}
-	else if (!strcmp(facility, "STDERR")) {
+	else if (!strcmp(facility, "STDERR"))
+	{
 		return 0;
 	}
 

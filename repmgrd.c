@@ -50,7 +50,7 @@ char	*config_file = DEFAULT_CONFIG_FILE;
 bool	verbose = false;
 char	repmgr_schema[MAXLEN];
 
-/* 
+/*
  * should initialize with {0} to be ANSI complaint ? but this raises
  * error with gcc -Wall */
 t_configuration_options config = {};
@@ -189,7 +189,7 @@ main(int argc, char **argv)
 
 	/* close the connection to the database and cleanup */
 	CloseConnections();
-	
+
 	/* Shuts down logging system */
 	logger_shutdown();
 
@@ -284,8 +284,8 @@ MonitorExecute(void)
 
 	/* Get local xlog info */
 	snprintf(sqlquery, QUERY_STR_LEN,
-	        "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-	        "pg_last_xlog_replay_location()");
+	         "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
+	         "pg_last_xlog_replay_location()");
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -324,15 +324,15 @@ MonitorExecute(void)
 	 * Build the SQL to execute on primary
 	 */
 	snprintf(sqlquery,
-	        QUERY_STR_LEN, "INSERT INTO %s.repl_monitor "
-	        "VALUES(%d, %d, '%s'::timestamp with time zone, "
-	        " '%s', '%s', "
-	        " %lld, %lld)", repmgr_schema,
-	        primary_options.node, local_options.node, monitor_standby_timestamp,
-	        last_wal_primary_location,
-	        last_wal_standby_received,
-	        (lsn_primary - lsn_standby_received),
-	        (lsn_standby_received - lsn_standby_applied));
+	         QUERY_STR_LEN, "INSERT INTO %s.repl_monitor "
+	         "VALUES(%d, %d, '%s'::timestamp with time zone, "
+	         " '%s', '%s', "
+	         " %lld, %lld)", repmgr_schema,
+	         primary_options.node, local_options.node, monitor_standby_timestamp,
+	         last_wal_primary_location,
+	         last_wal_standby_received,
+	         (lsn_primary - lsn_standby_received),
+	         (lsn_standby_received - lsn_standby_applied));
 
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We
@@ -340,7 +340,7 @@ MonitorExecute(void)
 	 */
 	if (PQsendQuery(primaryConn, sqlquery) == 0)
 		log_warning("Query could not be sent to primary. %s\n",
-		        PQerrorMessage(primaryConn));
+		            PQerrorMessage(primaryConn));
 }
 
 
@@ -350,8 +350,8 @@ checkClusterConfiguration(void)
 	PGresult   *res;
 
 	snprintf(sqlquery, QUERY_STR_LEN, "SELECT oid FROM pg_class "
-	        " WHERE oid = '%s.repl_nodes'::regclass",
-	        repmgr_schema);
+	         " WHERE oid = '%s.repl_nodes'::regclass",
+	         repmgr_schema);
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -388,8 +388,8 @@ checkNodeConfiguration(char *conninfo)
 	 * Check if we have my node information in repl_nodes
 	 */
 	snprintf(sqlquery, QUERY_STR_LEN, "SELECT * FROM %s.repl_nodes "
-	        " WHERE id = %d AND cluster = '%s' ",
-	        repmgr_schema, local_options.node, local_options.cluster_name);
+	         " WHERE id = %d AND cluster = '%s' ",
+	         repmgr_schema, local_options.node, local_options.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -410,8 +410,8 @@ checkNodeConfiguration(char *conninfo)
 		PQclear(res);
 		/* Adding the node */
 		snprintf(sqlquery, QUERY_STR_LEN, "INSERT INTO %s.repl_nodes "
-		        "VALUES (%d, '%s', '%s')",
-		        repmgr_schema, local_options.node, local_options.cluster_name, local_options.conninfo);
+		         "VALUES (%d, '%s', '%s')",
+		         repmgr_schema, local_options.node, local_options.cluster_name, local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{

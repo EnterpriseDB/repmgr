@@ -28,17 +28,18 @@ parse_config(const char* config_file, t_configuration_options* options)
 
 	FILE *fp = fopen (config_file, "r");
 
-	if (fp == NULL) {
+	if (fp == NULL)
+	{
 		fprintf(stderr, _("Could not find configuration file '%s'\n"), config_file);
 		exit(ERR_BAD_CONFIG);
 	}
-	
+
 	/* Initialize */
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
 	options->node = -1;
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
-	
+
 	/* Read next line */
 	while ((s = fgets (buff, sizeof buff, fp)) != NULL)
 	{
