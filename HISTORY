@@ -1,12 +1,12 @@
-1.0.0 2010-12-05 First public release (Greg Smith)
+1.0.0 2010-12-05 First public release
 
-1.0.1 2011-02-XX Fix missing "--force" option in help
+1.0.1 2011-02-XX Fix missing "--force" option in help (Greg Smith)
                	 Correct warning message for wal_keep_segments (Bas van Oostveen)
                  Add Debian build/usage docs (Bas, Hannu Krosing, Cedric Villemain)
                  Add Debian .deb packaging (Hannu)
                  Move configuration data into a structure (Bas)
-                 Make rsync options configurable (Bas)
-                 Add syslog as alternate logging destination (Gabriele Bartolini)
+                 Make rsync options configurable (Bas, Gabriele Bartolini)
+                 Add syslog as alternate logging destination (Gabriele)
                  Change from using malloc to static memory allocations (Gabriele)
                  Add debugging messages after every query (Gabriele)
                  Parameterize schema name used for repmgr (Gabriele)
