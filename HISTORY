@@ -6,3 +6,11 @@
                  Add Debian .deb packaging (Hannu)
                  Move configuration data into a structure (Bas)
                  Make rsync options configurable (Bas)
+                 Add syslog as alternate logging destination (Gabriele Bartolini)
+                 Change from using malloc to static memory allocations (Gabriele)
+                 Add debugging messages after every query (Gabriele)
+                 Parameterize schema name used for repmgr (Gabriele)
+                 Avoid buffer overruns by using snprintf etc. (Gabriele)
+                 Fix use of database query after close (Gabriele)
+                 Add information about progress during "standby clone" (Gabriele)
+
