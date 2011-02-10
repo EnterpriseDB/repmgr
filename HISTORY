@@ -1,4 +1,4 @@
-1.0.0 2010-12-05 First public release
+1.0.0 2010-12-05 First public release (Greg Smith)
 
 1.0.1 2011-02-XX Fix missing "--force" option in help
                	 Correct warning message for wal_keep_segments (Bas van Oostveen)
@@ -13,4 +13,6 @@
                  Avoid buffer overruns by using snprintf etc. (Gabriele)
                  Fix use of database query after close (Gabriele)
                  Add information about progress during "standby clone" (Gabriele)
-
+                 Fix double free error in repmgrd (Charles Duffy)
+                 Make repmgr exit with an error code when encountering an error (Charles)
+                 Standardize on error return codes, use in repmgrd too (Greg) 

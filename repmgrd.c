@@ -107,12 +107,12 @@ main(int argc, char **argv)
 		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
 		{
 			help(progname);
-			exit(0);
+			exit(SUCCESS);
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
 			printf("%s (PostgreSQL) " PG_VERSION "\n", progname);
-			exit(0);
+			exit(SUCCESS);
 		}
 	}
 
@@ -129,7 +129,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			usage();
-			exit(1);
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -143,7 +143,7 @@ main(int argc, char **argv)
 	{
 		log_err("Node information is missing. "
 		        "Check the configuration file.\n");
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 	logger_init(progname, local_options.loglevel, local_options.logfacility);
 	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
@@ -156,7 +156,7 @@ main(int argc, char **argv)
 	{
 		PQfinish(myLocalConn);
 		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
@@ -175,7 +175,7 @@ main(int argc, char **argv)
 		/* I need the id of the primary as well as a connection to it */
 		primaryConn = getMasterConnection(myLocalConn, local_options.node, local_options.cluster_name, &primary_options.node);
 		if (primaryConn == NULL)
-			exit(1);
+			exit(ERR_BAD_CONFIG);
 	}
 
 	checkClusterConfiguration();
@@ -258,7 +258,7 @@ MonitorExecute(void)
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
 		log_err(_("We couldn't reconnect for long enough, exiting..."));
-		exit(1);
+		exit(ERR_DB_CON);
 	}
 
 	/* Check if we still are a standby, we could have been promoted */
@@ -266,7 +266,7 @@ MonitorExecute(void)
 	{
 		log_err(_("It seems like we have been promoted, so exit from monitoring..."));
 		CloseConnections();
-		exit(1);
+		exit(ERR_PROMOTED);
 	}
 
 	/*
@@ -354,7 +354,7 @@ checkClusterConfiguration(void)
 		PQclear(res);
 		PQfinish(myLocalConn);
 		PQfinish(primaryConn);
-		exit(1);
+		exit(ERR_DB_QUERY);
 	}
 
 	/*
@@ -368,7 +368,7 @@ checkClusterConfiguration(void)
 		PQclear(res);
 		PQfinish(myLocalConn);
 		PQfinish(primaryConn);
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 	PQclear(res);
 }
@@ -393,7 +393,7 @@ checkNodeConfiguration(char *conninfo)
 		PQclear(res);
 		PQfinish(myLocalConn);
 		PQfinish(primaryConn);
-		exit(1);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
@@ -414,7 +414,7 @@ checkNodeConfiguration(char *conninfo)
 			        PQerrorMessage(primaryConn));
 			PQfinish(myLocalConn);
 			PQfinish(primaryConn);
-			exit(1);
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 	PQclear(res);

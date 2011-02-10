@@ -36,7 +36,7 @@ establishDBConnection(const char *conninfo, const bool exit_on_error)
 		if (exit_on_error)
 		{
 			PQfinish(conn);
-			exit(1);
+			exit(ERR_DB_CON);
 		}
 	}
 
@@ -57,7 +57,7 @@ is_standby(PGconn *conn)
 		fprintf(stderr, "Can't query server mode: %s", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		exit(1);
+		exit(ERR_NO_DB_CON);
 	}
 
 	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
@@ -89,7 +89,7 @@ pg_version(PGconn *conn, char* major_version)
 		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		exit(1);
+		exit(ERR_DB_QUERY);
 	}
 	major_version1 = atoi(PQgetvalue(res, 0, 0));
 	major_version2 = PQgetvalue(res, 0, 1);
@@ -123,7 +123,7 @@ guc_setted(PGconn *conn, const char *parameter, const char *op, const char *valu
 		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		exit(1);
+		exit(ERR_DB_QUERY);
 	}
 	if (PQntuples(res) == 0)
 	{
@@ -152,7 +152,7 @@ get_cluster_size(PGconn *conn)
 		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		exit(1);
+		exit(ERR_DB_QUERY);
 	}
 	size = PQgetvalue(res, 0, 0);
 	PQclear(res);
@@ -184,7 +184,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster, int *master_id)
 		fprintf(stderr, "Can't get nodes info: %s\n", PQerrorMessage(standby_conn));
 		PQclear(res1);
 		PQfinish(standby_conn);
-		exit(1);
+		exit(ERR_DB_QUERY);
 	}
 
 	for (i = 0; i < PQntuples(res1); i++)
