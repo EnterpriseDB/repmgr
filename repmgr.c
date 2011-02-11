@@ -254,6 +254,12 @@ main(int argc, char **argv)
 		printf(_("Opening configuration file: %s\n"), runtime_options.config_file);
 
 	parse_config(runtime_options.config_file, &options);
+	if (options.node == -1)
+	{
+		fprintf(stderr, "Node information is missing. "
+		        "Check the configuration file.\n");
+		exit(ERR_BAD_CONFIG);
+	}
 
 	keywords[2] = "user";
 	values[2] = runtime_options.username;
