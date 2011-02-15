@@ -243,32 +243,39 @@ main(int argc, char **argv)
 			strncpy(runtime_options.dbname, DEFAULT_DBNAME, MAXLEN);
 	}
 
-	/*
-	 * Read the configuration file: repmgr.conf, but only if we're not doing a
-	 * STANDBY CLONE action: it is not necessary to have the configuration file
-	 * in that case.
+	/* Read the configuration file: repmgr.conf */
+	if (!runtime_options.config_file[0])
+		strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
+
+	if (runtime_options.verbose)
+		printf(_("Opening configuration file: %s\n"), runtime_options.config_file);
+
+	parse_config(runtime_options.config_file, &options);
+
+	keywords[2] = "user";
+	values[2] = runtime_options.username;
+	keywords[3] = "dbname";
+	values[3] = runtime_options.dbname;
+	keywords[4] = "application_name";
+	values[4] = (char *) progname;
+	keywords[5] = NULL;
+	values[5] = NULL;
+
+	logger_init(progname, options.loglevel, options.logfacility);
+
+	/* 
+	 * Node configuration information is not needed for all actions,
+	 * with STANDBY CLONE being the main exception.
 	 */
-	if (action != STANDBY_CLONE)
-	{
-		if (runtime_options.verbose)
-			printf(_("Opening configuration file: %s\n"), runtime_options.config_file);
-
-		parse_config(runtime_options.config_file, &options);
-	}
-
 	if (need_a_node)
 	{
-
 		if (options.node == -1)
 		{
 			log_err("Node information is missing. "
 			        "Check the configuration file.\n");
 			exit(ERR_BAD_CONFIG);
 		}
-
 	}
-
-	logger_init(progname, options.loglevel, options.logfacility);
 
 	/* Prepare the repmgr schema variable */
 	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, options.cluster_name);
