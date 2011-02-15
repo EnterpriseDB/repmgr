@@ -1,7 +1,6 @@
 /*
- * strutil.h
- * Copyright (C) 2ndQuadrant, 2010-2011
- *
+ * errcode.h
+ * Copyright (C) 2ndQuadrant, 2011
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,21 +17,21 @@
  *
  */
 
-#ifndef _STRUTIL_H_
-#define _STRUTIL_H_
+#ifndef _ERRCODE_H_
+#define _ERRCODE_H_
 
-#include <stdlib.h>
-#include <errcode.h>
+/* Exit return code */
 
-#define QUERY_STR_LEN	8192
-#define MAXLEN			1024
-#define MAXLINELENGTH	4096
-#define MAXVERSIONSTR	16
-#define MAXCONNINFO		1024
+#define SUCCESS 0
+#define ERR_BAD_CONFIG 1
+#define ERR_BAD_RSYNC 2
+#define ERR_STOP_BACKUP 3
+#define ERR_NO_RESTART 4
+#define ERR_NEEDS_XLOG 5
+#define ERR_DB_CON 6
+#define ERR_DB_QUERY 7
+#define ERR_PROMOTED 8
+#define ERR_BAD_PASSWORD 9
+#define ERR_STR_OVERFLOW 10
 
-
-extern int xsnprintf(char *str, size_t size, const char *format, ...);
-extern int sqlquery_snprintf(char *str, const char *format, ...);
-extern int maxlen_snprintf(char *str, const char *format, ...);
-
-#endif	/* _STRUTIL_H_ */
+#endif	/* _ERRCODE_H_ */

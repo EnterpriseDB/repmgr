@@ -1025,19 +1025,15 @@ stop_backup:
 	}
 	last_wal_segment = PQgetvalue(res, 0, 0);
 
-	if (runtime_options.verbose)
-	{
-		printf(
-		    _("%s requires primary to keep WAL files %s until at least %s\n"),
-		    progname, first_wal_segment, last_wal_segment);
+	log_info(_("%s requires primary to keep WAL files %s until at least %s\n"),
+		progname, first_wal_segment, last_wal_segment);
 
-		/*
-		 * Only free the first_wal_segment since it was copied out of the
-		 * pqresult.
-		 */
-		free(first_wal_segment);
-		first_wal_segment = NULL;
-	}
+	/*
+	 * Only free the first_wal_segment since it was copied out of the
+	 * pqresult.
+	 */
+	free(first_wal_segment);
+	first_wal_segment = NULL;
 
 	PQclear(res);
 	PQfinish(conn);
@@ -1045,9 +1041,6 @@ stop_backup:
 	/* If the rsync failed then exit */
 	if (r != 0)
 		exit(ERR_BAD_RSYNC);
-
-	log_info(_("%s requires primary to keep WAL files %s until at least %s\n"),
-	         progname, first_wal_segment, last_wal_segment);
 
 	/*
 	 * We need to create the pg_xlog sub directory too, I'm reusing a variable
