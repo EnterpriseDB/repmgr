@@ -54,7 +54,7 @@ char	repmgr_schema[MAXLEN];
 
 /*
  * should initialize with {0} to be ANSI complaint ? but this raises
- * error with gcc -Wall 
+ * error with gcc -Wall
  */
 t_configuration_options config = {};
 
@@ -178,8 +178,8 @@ main(int argc, char **argv)
 	else
 	{
 		/* I need the id of the primary as well as a connection to it */
-		primaryConn = getMasterConnection(myLocalConn, local_options.node, 
-			local_options.cluster_name, &primary_options.node,NULL);
+		primaryConn = getMasterConnection(myLocalConn, local_options.node,
+		                                  local_options.cluster_name, &primary_options.node,NULL);
 		if (primaryConn == NULL)
 			exit(ERR_BAD_CONFIG);
 	}
@@ -253,8 +253,8 @@ MonitorExecute(void)
 		log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted."));
 		for (connection_retries = 0; connection_retries < 6; connection_retries++)
 		{
-			primaryConn = getMasterConnection(myLocalConn, local_options.node, 
-				local_options.cluster_name, &primary_options.node,NULL);
+			primaryConn = getMasterConnection(myLocalConn, local_options.node,
+			                                  local_options.cluster_name, &primary_options.node,NULL);
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{
 				/* Connected, we can continue the process so break the loop */
@@ -334,15 +334,15 @@ MonitorExecute(void)
 	 * Build the SQL to execute on primary
 	 */
 	sqlquery_snprintf(sqlquery,
-	         "INSERT INTO %s.repl_monitor "
-	         "VALUES(%d, %d, '%s'::timestamp with time zone, "
-	         " '%s', '%s', "
-	         " %lld, %lld)", repmgr_schema,
-	         primary_options.node, local_options.node, monitor_standby_timestamp,
-	         last_wal_primary_location,
-	         last_wal_standby_received,
-	         (lsn_primary - lsn_standby_received),
-	         (lsn_standby_received - lsn_standby_applied));
+	                  "INSERT INTO %s.repl_monitor "
+	                  "VALUES(%d, %d, '%s'::timestamp with time zone, "
+	                  " '%s', '%s', "
+	                  " %lld, %lld)", repmgr_schema,
+	                  primary_options.node, local_options.node, monitor_standby_timestamp,
+	                  last_wal_primary_location,
+	                  last_wal_standby_received,
+	                  (lsn_primary - lsn_standby_received),
+	                  (lsn_standby_received - lsn_standby_applied));
 
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We
@@ -360,8 +360,8 @@ checkClusterConfiguration(void)
 	PGresult   *res;
 
 	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
-	         " WHERE oid = '%s.repl_nodes'::regclass",
-	         repmgr_schema);
+	                  " WHERE oid = '%s.repl_nodes'::regclass",
+	                  repmgr_schema);
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -400,8 +400,8 @@ checkNodeConfiguration(char *conninfo)
 	 * Check if we have my node information in repl_nodes
 	 */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
-	         " WHERE id = %d AND cluster = '%s' ",
-	         repmgr_schema, local_options.node, local_options.cluster_name);
+	                  " WHERE id = %d AND cluster = '%s' ",
+	                  repmgr_schema, local_options.node, local_options.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -423,8 +423,8 @@ checkNodeConfiguration(char *conninfo)
 
 		/* Adding the node */
 		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
-		         "VALUES (%d, '%s', '%s')",
-		         repmgr_schema, local_options.node, local_options.cluster_name, local_options.conninfo);
+		                  "VALUES (%d, '%s', '%s')",
+		                  repmgr_schema, local_options.node, local_options.cluster_name, local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{
