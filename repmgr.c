@@ -263,7 +263,7 @@ main(int argc, char **argv)
 
 	logger_init(progname, options.loglevel, options.logfacility);
 
-	/* 
+	/*
 	 * Node configuration information is not needed for all actions,
 	 * with STANDBY CLONE being the main exception.
 	 */
@@ -1033,7 +1033,7 @@ stop_backup:
 	last_wal_segment = PQgetvalue(res, 0, 0);
 
 	log_info(_("%s requires primary to keep WAL files %s until at least %s\n"),
-		progname, first_wal_segment, last_wal_segment);
+	         progname, first_wal_segment, last_wal_segment);
 
 	/*
 	 * Only free the first_wal_segment since it was copied out of the
