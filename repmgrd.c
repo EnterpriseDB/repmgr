@@ -29,6 +29,7 @@
 #include "repmgr.h"
 #include "config.h"
 #include "log.h"
+#include "strutil.h"
 
 #include "libpq/pqsignal.h"
 
@@ -40,6 +41,7 @@ PGconn *myLocalConn = NULL;
 
 /* Primary info */
 t_configuration_options primary_options;
+
 PGconn *primaryConn = NULL;
 
 char sqlquery[QUERY_STR_LEN];
@@ -52,7 +54,8 @@ char	repmgr_schema[MAXLEN];
 
 /*
  * should initialize with {0} to be ANSI complaint ? but this raises
- * error with gcc -Wall */
+ * error with gcc -Wall 
+ */
 t_configuration_options config = {};
 
 static void help(const char* progname);
@@ -69,22 +72,22 @@ static void handle_sigint(SIGNAL_ARGS);
 static void setup_cancel_handler(void);
 
 #define CloseConnections()	\
-						if (PQisBusy(primaryConn) == 1) \
-							CancelQuery(); \
-						if (myLocalConn != NULL) \
-							PQfinish(myLocalConn);	\
-						if (primaryConn != NULL && primaryConn != myLocalConn) \
-							PQfinish(primaryConn);
+	if (PQisBusy(primaryConn) == 1) \
+		CancelQuery(); \
+	if (myLocalConn != NULL) \
+		PQfinish(myLocalConn);	\
+	if (primaryConn != NULL && primaryConn != myLocalConn) \
+		PQfinish(primaryConn);
 
 /*
  * Every 3 seconds, insert monitor info
  */
-#define MonitorCheck() \
-						for (;;) \
-						{ \
-							MonitorExecute(); \
-							sleep(3); \
-						}
+#define MonitorCheck()						  \
+	for (;;)								  \
+	{										  \
+		MonitorExecute();					  \
+		sleep(3);							  \
+	}
 
 
 int
@@ -175,7 +178,8 @@ main(int argc, char **argv)
 	else
 	{
 		/* I need the id of the primary as well as a connection to it */
-		primaryConn = getMasterConnection(myLocalConn, local_options.node, local_options.cluster_name, &primary_options.node);
+		primaryConn = getMasterConnection(myLocalConn, local_options.node, 
+			local_options.cluster_name, &primary_options.node,NULL);
 		if (primaryConn == NULL)
 			exit(ERR_BAD_CONFIG);
 	}
@@ -186,6 +190,10 @@ main(int argc, char **argv)
 	{
 		MonitorCheck();
 	}
+
+	/* Prevent a double-free */
+	if (primaryConn == myLocalConn)
+		myLocalConn = NULL;
 
 	/* close the connection to the database and cleanup */
 	CloseConnections();
@@ -245,7 +253,8 @@ MonitorExecute(void)
 		log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted."));
 		for (connection_retries = 0; connection_retries < 6; connection_retries++)
 		{
-			primaryConn = getMasterConnection(myLocalConn, local_options.node, local_options.cluster_name, &primary_options.node);
+			primaryConn = getMasterConnection(myLocalConn, local_options.node, 
+				local_options.cluster_name, &primary_options.node,NULL);
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{
 				/* Connected, we can continue the process so break the loop */
@@ -283,9 +292,10 @@ MonitorExecute(void)
 		CancelQuery();
 
 	/* Get local xlog info */
-	snprintf(sqlquery, QUERY_STR_LEN,
-	         "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-	         "pg_last_xlog_replay_location()");
+	sqlquery_snprintf(
+	    sqlquery,
+	    "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
+	    "pg_last_xlog_replay_location()");
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -302,7 +312,7 @@ MonitorExecute(void)
 	PQclear(res);
 
 	/* Get primary xlog info */
-	snprintf(sqlquery, QUERY_STR_LEN, "SELECT pg_current_xlog_location() ");
+	sqlquery_snprintf(sqlquery, "SELECT pg_current_xlog_location() ");
 
 	res = PQexec(primaryConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -323,8 +333,8 @@ MonitorExecute(void)
 	/*
 	 * Build the SQL to execute on primary
 	 */
-	snprintf(sqlquery,
-	         QUERY_STR_LEN, "INSERT INTO %s.repl_monitor "
+	sqlquery_snprintf(sqlquery,
+	         "INSERT INTO %s.repl_monitor "
 	         "VALUES(%d, %d, '%s'::timestamp with time zone, "
 	         " '%s', '%s', "
 	         " %lld, %lld)", repmgr_schema,
@@ -349,7 +359,7 @@ checkClusterConfiguration(void)
 {
 	PGresult   *res;
 
-	snprintf(sqlquery, QUERY_STR_LEN, "SELECT oid FROM pg_class "
+	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
 	         " WHERE oid = '%s.repl_nodes'::regclass",
 	         repmgr_schema);
 	res = PQexec(myLocalConn, sqlquery);
@@ -363,8 +373,10 @@ checkClusterConfiguration(void)
 	}
 
 	/*
-	 * If there isn't any results then we have not configured a primary node yet
-	 * in repmgr or the connection string is pointing to the wrong database.
+	 * If there isn't any results then we have not configured a primary node
+	 * yet in repmgr or the connection string is pointing to the wrong
+	 * database.
+	 *
 	 * XXX if we are the primary, should we try to create the tables needed?
 	 */
 	if (PQntuples(res) == 0)
@@ -387,7 +399,7 @@ checkNodeConfiguration(char *conninfo)
 	/*
 	 * Check if we have my node information in repl_nodes
 	 */
-	snprintf(sqlquery, QUERY_STR_LEN, "SELECT * FROM %s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
 	         " WHERE id = %d AND cluster = '%s' ",
 	         repmgr_schema, local_options.node, local_options.cluster_name);
 
@@ -408,8 +420,9 @@ checkNodeConfiguration(char *conninfo)
 	if (PQntuples(res) == 0)
 	{
 		PQclear(res);
+
 		/* Adding the node */
-		snprintf(sqlquery, QUERY_STR_LEN, "INSERT INTO %s.repl_nodes "
+		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
 		         "VALUES (%d, '%s', '%s')",
 		         repmgr_schema, local_options.node, local_options.cluster_name, local_options.conninfo);
 

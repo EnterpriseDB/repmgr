@@ -2,8 +2,10 @@
 # Makefile
 # Copyright (c) 2ndQuadrant, 2010-2011
 
-repmgrd_OBJS = dbutils.o config.o repmgrd.o log.o
-repmgr_OBJS = dbutils.o check_dir.o config.o repmgr.o log.o
+repmgrd_OBJS = dbutils.o config.o repmgrd.o log.o strutil.o
+repmgr_OBJS = dbutils.o check_dir.o config.o repmgr.o log.o strutil.o
+
+DATA = repmgr.sql uninstall_repmgr.sql
 
 PG_CPPFLAGS = -I$(libpq_srcdir)
 PG_LIBS = $(libpq_pgport)
@@ -26,9 +28,18 @@ include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
+# XXX: Try to use PROGRAM construct (see pgxs.mk) someday. Right now
+# is overriding pgxs install.
 install:
 	$(INSTALL_PROGRAM) repmgrd$(X) '$(DESTDIR)$(bindir)'
 	$(INSTALL_PROGRAM) repmgr$(X) '$(DESTDIR)$(bindir)'
+
+ifneq (,$(DATA)$(DATA_built))
+	@for file in $(addprefix $(srcdir)/, $(DATA)) $(DATA_built); do \
+	  echo "$(INSTALL_DATA) $$file '$(DESTDIR)$(datadir)/$(datamoduledir)'"; \
+	  $(INSTALL_DATA) $$file '$(DESTDIR)$(datadir)/$(datamoduledir)'; \
+	done
+endif
 
 clean:
 	rm -f *.o

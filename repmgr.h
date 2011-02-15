@@ -24,14 +24,11 @@
 #include "getopt_long.h"
 #include "libpq-fe.h"
 
+#include "strutil.h"
 #include "dbutils.h"
 
 #define PRIMARY_MODE		0
 #define STANDBY_MODE		1
-
-#define MAXLEN			80
-#define MAXVERSIONSTR		16
-#define QUERY_STR_LEN		8192
 
 #include "config.h"
 #define MAXFILENAME		1024
@@ -56,6 +53,7 @@
 #define ERR_DB_CON 6
 #define ERR_DB_QUERY 7
 #define ERR_PROMOTED 8
+#define ERR_BAD_PASSWORD 9
 
 /* Run time options type */
 typedef struct

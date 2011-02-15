@@ -21,6 +21,7 @@
 #define _REPMGR_CONFIG_H_
 
 #include "repmgr.h"
+#include "strutil.h"
 
 typedef struct
 {
