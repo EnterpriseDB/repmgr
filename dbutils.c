@@ -31,7 +31,7 @@ establishDBConnection(const char *conninfo, const bool exit_on_error)
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
 		fprintf(stderr, "Connection to database failed: %s",
-				PQerrorMessage(conn));
+		        PQerrorMessage(conn));
 
 		if (exit_on_error)
 		{
@@ -83,10 +83,10 @@ pg_version(PGconn *conn, char* major_version)
 	char				*major_version2;
 
 	res = PQexec(conn,
-				 "WITH pg_version(ver) AS "
-				 "(SELECT split_part(version(), ' ', 2)) "
-				 "SELECT split_part(ver, '.', 1), split_part(ver, '.', 2) "
-				 "FROM pg_version");
+	             "WITH pg_version(ver) AS "
+	             "(SELECT split_part(version(), ' ', 2)) "
+	             "SELECT split_part(ver, '.', 1), split_part(ver, '.', 2) "
+	             "FROM pg_version");
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -103,7 +103,7 @@ pg_version(PGconn *conn, char* major_version)
 	{
 		/* form a major version string */
 		xsnprintf(major_version, MAXVERSIONSTR, "%d.%s", major_version1,
-				  major_version2);
+		          major_version2);
 	}
 	else
 		strcpy(major_version, "");
@@ -116,14 +116,14 @@ pg_version(PGconn *conn, char* major_version)
 
 bool
 guc_setted(PGconn *conn, const char *parameter, const char *op,
-		   const char *value)
+           const char *value)
 {
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
-	        " WHERE name = '%s' AND setting %s '%s'",
-	        parameter, op, value);
+	                  " WHERE name = '%s' AND setting %s '%s'",
+	                  parameter, op, value);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -152,9 +152,9 @@ get_cluster_size(PGconn *conn)
 	char		 sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(
-		sqlquery,
-		"SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
-		"	 FROM pg_database ");
+	    sqlquery,
+	    "SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
+	    "	 FROM pg_database ");
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -179,7 +179,7 @@ get_cluster_size(PGconn *conn)
  */
 PGconn *
 getMasterConnection(PGconn *standby_conn, int id, char *cluster,
-					int *master_id, char *master_conninfo_out)
+                    int *master_id, char *master_conninfo_out)
 {
 	PGconn		*master_conn	 = NULL;
 	PGresult	*res1;
@@ -207,7 +207,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	maxlen_snprintf(schema_str, "repmgr_%s", cluster);
 	{
 		char *identifier = PQescapeIdentifier(standby_conn, schema_str,
-											  strlen(schema_str));
+		                                      strlen(schema_str));
 
 		maxlen_snprintf(schema_quoted, "%s", identifier);
 		PQfreemem(identifier);
@@ -215,14 +215,14 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 
 	/* find all nodes belonging to this cluster */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
-					  " WHERE cluster = '%s' and id <> %d",
-					  schema_quoted, cluster, id);
+	                  " WHERE cluster = '%s' and id <> %d",
+	                  schema_quoted, cluster, id);
 
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
 	{
 		fprintf(stderr, "Can't get nodes info: %s\n",
-				PQerrorMessage(standby_conn));
+		        PQerrorMessage(standby_conn));
 		PQclear(res1);
 		PQfinish(standby_conn);
 		exit(1);
@@ -248,7 +248,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 		if (PQresultStatus(res2) != PGRES_TUPLES_OK)
 		{
 			fprintf(stderr, "Can't get recovery state from this node: %s\n",
-					PQerrorMessage(master_conn));
+			        PQerrorMessage(master_conn));
 			PQclear(res2);
 			PQfinish(master_conn);
 			continue;

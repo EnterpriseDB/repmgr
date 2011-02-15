@@ -125,8 +125,8 @@ main(int argc, char **argv)
 			verbose = true;
 			break;
 		default:
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			exit(1);
 		}
 	}
@@ -148,7 +148,7 @@ main(int argc, char **argv)
 	if (config.node == -1)
 	{
 		fprintf(stderr, "Node information is missing. "
-				"Check the configuration file.\n");
+		        "Check the configuration file.\n");
 		exit(1);
 	}
 
@@ -160,7 +160,7 @@ main(int argc, char **argv)
 	{
 		PQfinish(myLocalConn);
 		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"),
-				progname);
+		        progname);
 		exit(1);
 	}
 
@@ -179,8 +179,8 @@ main(int argc, char **argv)
 	{
 		/* I need the id of the primary as well as a connection to it */
 		primaryConn = getMasterConnection(myLocalConn, config.node,
-										  config.cluster_name, &primaryId,
-										  NULL);
+		                                  config.cluster_name, &primaryId,
+		                                  NULL);
 
 		if (primaryConn == NULL)
 			exit(1);
@@ -247,13 +247,13 @@ MonitorExecute(void)
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
 		fprintf(stderr, "\n%s: We couldn't reconnect to master, checking if ",
-				progname);
+		        progname);
 		for (connection_retries = 0; connection_retries < 6;
-			 connection_retries++)
+		        connection_retries++)
 		{
 			primaryConn = getMasterConnection(myLocalConn, config.node,
-											  config.cluster_name, &primaryId,
-											  NULL);
+			                                  config.cluster_name, &primaryId,
+			                                  NULL);
 
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{
@@ -294,9 +294,9 @@ MonitorExecute(void)
 
 	/* Get local xlog info */
 	sqlquery_snprintf(
-		sqlquery,
-		"SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-		"pg_last_xlog_replay_location()");
+	    sqlquery,
+	    "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
+	    "pg_last_xlog_replay_location()");
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -335,15 +335,15 @@ MonitorExecute(void)
 	 * Build the SQL to execute on primary
 	 */
 	sqlquery_snprintf(sqlquery,
-					  "INSERT INTO repmgr_%s.repl_monitor "
-					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-					  " '%s', '%s', "
-	        " %lld, %lld)", config.cluster_name,
-	        primaryId, config.node, monitor_standby_timestamp,
-					  last_wal_primary_location,
-					  last_wal_standby_received,
-					  (lsn_primary - lsn_standby_received),
-					  (lsn_standby_received - lsn_standby_applied));
+	                  "INSERT INTO repmgr_%s.repl_monitor "
+	                  "VALUES(%d, %d, '%s'::timestamp with time zone, "
+	                  " '%s', '%s', "
+	                  " %lld, %lld)", config.cluster_name,
+	                  primaryId, config.node, monitor_standby_timestamp,
+	                  last_wal_primary_location,
+	                  last_wal_standby_received,
+	                  (lsn_primary - lsn_standby_received),
+	                  (lsn_standby_received - lsn_standby_applied));
 
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We
@@ -351,7 +351,7 @@ MonitorExecute(void)
 	 */
 	if (PQsendQuery(primaryConn, sqlquery) == 0)
 		fprintf(stderr, "Query could not be sent to primary. %s\n",
-				PQerrorMessage(primaryConn));
+		        PQerrorMessage(primaryConn));
 }
 
 
@@ -361,8 +361,8 @@ checkClusterConfiguration(void)
 	PGresult   *res;
 
 	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
-	        " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
-	        config.cluster_name);
+	                  " WHERE oid = 'repmgr_%s.repl_nodes'::regclass",
+	                  config.cluster_name);
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -399,8 +399,8 @@ checkNodeConfiguration(char *conninfo)
 
 	/* Check if we have my node information in repl_nodes */
 	sqlquery_snprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes "
-					  " WHERE id = %d AND cluster = '%s' ",
-	        config.cluster_name, config.node, config.cluster_name);
+	                  " WHERE id = %d AND cluster = '%s' ",
+	                  config.cluster_name, config.node, config.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -422,13 +422,13 @@ checkNodeConfiguration(char *conninfo)
 
 		/* Adding the node */
 		sqlquery_snprintf(sqlquery, "INSERT INTO repmgr_%s.repl_nodes "
-		        "VALUES (%d, '%s', '%s')",
-		        config.cluster_name, config.node, config.cluster_name, conninfo);
+		                  "VALUES (%d, '%s', '%s')",
+		                  config.cluster_name, config.node, config.cluster_name, conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{
 			fprintf(stderr, "Cannot insert node details, %s\n",
-					PQerrorMessage(primaryConn));
+			        PQerrorMessage(primaryConn));
 			PQfinish(myLocalConn);
 			PQfinish(primaryConn);
 			exit(1);

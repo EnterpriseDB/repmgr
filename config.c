@@ -30,17 +30,18 @@ parse_config(const char *config_file, repmgr_config *config)
 
 	FILE *fp = fopen (config_file, "r");
 
-	if (fp == NULL) {
+	if (fp == NULL)
+	{
 		fprintf(stderr, _("Could not find configuration file '%s'\n"), config_file);
 		exit(1);
 	}
-	
+
 	/* Initialize */
 	memset(config->cluster_name, 0, sizeof(config->cluster_name));
 	config->node = -1;
 	memset(config->conninfo, 0, sizeof(config->conninfo));
 	memset(config->rsync_options, 0, sizeof(config->rsync_options));
-	
+
 	/* Read next line */
 	while ((s = fgets (buff, sizeof buff, fp)) != NULL)
 	{

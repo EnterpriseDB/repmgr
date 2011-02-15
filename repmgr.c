@@ -47,7 +47,7 @@
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir, char *master_conninfo);
 static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
-							  char *local_path, bool is_directory);
+                             char *local_path, bool is_directory);
 static bool check_parameters_for_action(const int action);
 
 static void do_master_register(void);
@@ -119,7 +119,7 @@ main(int argc, char **argv)
 
 
 	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:R:w:F:v", long_options,
-							&optindex)) != -1)
+	                        &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -130,20 +130,20 @@ main(int argc, char **argv)
 			host = optarg;
 			break;
 		case 'p':
-				masterport = optarg;
-				break;
+			masterport = optarg;
+			break;
 		case 'U':
 			username = optarg;
 			break;
 		case 'D':
 			dest_dir = optarg;
-				break;
+			break;
 		case 'f':
 			config_file = optarg;
-				break;
+			break;
 		case 'R':
 			remote_user = optarg;
-				break;
+			break;
 		case 'w':
 			wal_keep_segments = optarg;
 			break;
@@ -154,8 +154,8 @@ main(int argc, char **argv)
 			verbose = true;
 			break;
 		default:
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			exit(1);
 		}
 	}
@@ -172,10 +172,10 @@ main(int argc, char **argv)
 	{
 		server_mode = argv[optind++];
 		if (strcasecmp(server_mode, "STANDBY") != 0 &&
-			strcasecmp(server_mode, "MASTER") != 0)
+		        strcasecmp(server_mode, "MASTER") != 0)
 		{
 			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-					progname);
+			        progname);
 			exit(1);
 		}
 	}
@@ -205,7 +205,7 @@ main(int argc, char **argv)
 		else
 		{
 			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-					progname);
+			        progname);
 			exit(1);
 		}
 	}
@@ -231,8 +231,8 @@ main(int argc, char **argv)
 	default:
 		fprintf(stderr, _("%s: too many command-line arguments (first is \"%s\")\n"),
 		        progname, argv[optind + 1]);
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-					progname);
+		fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+		        progname);
 		exit(1);
 	}
 
@@ -274,7 +274,7 @@ main(int argc, char **argv)
 		if (config.node == -1)
 		{
 			fprintf(stderr, "Node information is missing. "
-					"Check the configuration file.\n");
+			        "Check the configuration file.\n");
 			exit(1);
 		}
 	}
@@ -306,8 +306,8 @@ main(int argc, char **argv)
 		do_standby_follow();
 		break;
 	default:
-			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-					progname);
+		fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+		        progname);
 		exit(1);
 	}
 
@@ -335,7 +335,7 @@ do_master_register(void)
 	{
 		PQfinish(conn);
 		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"),
-				progname);
+		        progname);
 		return;
 	}
 
@@ -351,7 +351,7 @@ do_master_register(void)
 	maxlen_snprintf(schema_str, "repmgr_%s", config.cluster_name);
 	{
 		char *identifier = PQescapeIdentifier(conn, schema_str,
-											  strlen(schema_str));
+		                                      strlen(schema_str));
 
 		maxlen_snprintf(schema_quoted, "%s", identifier);
 		PQfreemem(identifier);
@@ -359,13 +359,13 @@ do_master_register(void)
 
 	/* Check if there is a schema for this cluster */
 	sqlquery_snprintf(sqlquery,
-					  "SELECT 1 FROM pg_namespace "
-					  "WHERE nspname = '%s'", schema_str);
+	                  "SELECT 1 FROM pg_namespace "
+	                  "WHERE nspname = '%s'", schema_str);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		fprintf(stderr, "Can't get info about schemas: %s\n",
-				PQerrorMessage(conn));
+		        PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -391,59 +391,59 @@ do_master_register(void)
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot create the schema %s: %s\n", schema_quoted,
-					PQerrorMessage(conn));
+			        PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
 
 		/* ... the tables */
 		sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_nodes ( "
-						  "	 id		   integer primary key, "
-						  "	 cluster   text	   not null,	"
-						  "  conninfo  text    not null)", schema_quoted);
+		                  "	 id		   integer primary key, "
+		                  "	 cluster   text	   not null,	"
+		                  "  conninfo  text    not null)", schema_quoted);
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr,
-					config.cluster_name, PQerrorMessage(conn));
+			        config.cluster_name, PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
 
 		sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_monitor ( "
-						  "	 primary_node					INTEGER NOT NULL, "
-						  "	 standby_node					INTEGER NOT NULL, "
-						  "	 last_monitor_time				TIMESTAMP WITH TIME ZONE NOT NULL, "
-						  "	 last_wal_primary_location		TEXT NOT NULL,	 "
-						  "	 last_wal_standby_location		TEXT NOT NULL,	 "
-						  "	 replication_lag				BIGINT NOT NULL, "
-						  "  apply_lag                      BIGINT NOT NULL) ",
-						  schema_quoted);
+		                  "	 primary_node					INTEGER NOT NULL, "
+		                  "	 standby_node					INTEGER NOT NULL, "
+		                  "	 last_monitor_time				TIMESTAMP WITH TIME ZONE NOT NULL, "
+		                  "	 last_wal_primary_location		TEXT NOT NULL,	 "
+		                  "	 last_wal_standby_location		TEXT NOT NULL,	 "
+		                  "	 replication_lag				BIGINT NOT NULL, "
+		                  "  apply_lag                      BIGINT NOT NULL) ",
+		                  schema_quoted);
 	}
 
 	if (!PQexec(conn, sqlquery))
 	{
 		fprintf(stderr,
-				config.cluster_name, PQerrorMessage(conn));
+		        config.cluster_name, PQerrorMessage(conn));
 		PQfinish(conn);
 		return;
 	}
 
 	/* and the view */
 	sqlquery_snprintf(sqlquery, "CREATE VIEW %s.repl_status AS "
-					  "	 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
-					  " ORDER BY last_monitor_time desc) "
-					  "	 FROM %s.repl_monitor) "
-					  "	 SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
-					  "			last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
-					  "			pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
-					  "	   FROM monitor_info a "
-					  "   WHERE row_number = 1",
-					  schema_quoted, schema_quoted);
+	                  "	 WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
+	                  " ORDER BY last_monitor_time desc) "
+	                  "	 FROM %s.repl_monitor) "
+	                  "	 SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
+	                  "			last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
+	                  "			pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
+	                  "	   FROM monitor_info a "
+	                  "   WHERE row_number = 1",
+	                  schema_quoted, schema_quoted);
 
 	if (!PQexec(conn, sqlquery))
 	{
 		fprintf(stderr,
-				config.cluster_name, PQerrorMessage(conn));
+		        config.cluster_name, PQerrorMessage(conn));
 		PQfinish(conn);
 		return;
 	}
@@ -454,7 +454,7 @@ do_master_register(void)
 
 		/* Ensure there isn't any other master already registered */
 		master_conn = getMasterConnection(conn, config.node,
-										  config.cluster_name, &id, NULL);
+		                                  config.cluster_name, &id, NULL);
 
 		if (master_conn != NULL)
 		{
@@ -468,27 +468,27 @@ do_master_register(void)
 	if (force)
 	{
 		sqlquery_snprintf(sqlquery,
-						  "DELETE FROM %s.repl_nodes WHERE id = %d",
-						  schema_quoted, config.node);
+		                  "DELETE FROM %s.repl_nodes WHERE id = %d",
+		                  schema_quoted, config.node);
 
 		if (!PQexec(conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot delete node details, %s\n",
-					PQerrorMessage(conn));
+			        PQerrorMessage(conn));
 			PQfinish(conn);
 			return;
 		}
 	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
-					  "VALUES (%d, '%s', '%s')",
-					  schema_quoted, config.node, config.cluster_name,
-					  config.conninfo);
+	                  "VALUES (%d, '%s', '%s')",
+	                  schema_quoted, config.node, config.cluster_name,
+	                  config.conninfo);
 
 	if (!PQexec(conn, sqlquery))
 	{
 		fprintf(stderr, "Cannot insert node details, %s\n",
-				PQerrorMessage(conn));
+		        PQerrorMessage(conn));
 		PQfinish(conn);
 		return;
 	}
@@ -523,7 +523,7 @@ do_standby_register(void)
 	{
 		PQfinish(conn);
 		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"),
-				progname);
+		        progname);
 		return;
 	}
 
@@ -539,7 +539,7 @@ do_standby_register(void)
 	maxlen_snprintf(schema_str, "repmgr_%s", config.cluster_name);
 	{
 		char *identifier = PQescapeIdentifier(conn, schema_str,
-											  strlen(schema_str));
+		                                      strlen(schema_str));
 
 		maxlen_snprintf(schema_quoted, "%s", identifier);
 		PQfreemem(identifier);
@@ -547,14 +547,14 @@ do_standby_register(void)
 
 	/* Check if there is a schema for this cluster */
 	sqlquery_snprintf(sqlquery,
-					  "SELECT 1 FROM pg_namespace "
-					  " WHERE nspname = '%s'", schema_str);
+	                  "SELECT 1 FROM pg_namespace "
+	                  " WHERE nspname = '%s'", schema_str);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		fprintf(stderr, "Can't get info about tablespaces: %s\n",
-				PQerrorMessage(conn));
+		        PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -572,7 +572,7 @@ do_standby_register(void)
 
 	/* check if there is a master in this cluster */
 	master_conn = getMasterConnection(conn, config.node, config.cluster_name,
-									  &master_id, NULL);
+	                                  &master_id, NULL);
 
 	if (!master_conn)
 		return;
@@ -584,7 +584,7 @@ do_standby_register(void)
 		PQfinish(conn);
 		PQfinish(master_conn);
 		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"),
-				progname);
+		        progname);
 		return;
 	}
 
@@ -594,7 +594,7 @@ do_standby_register(void)
 		PQfinish(conn);
 		PQfinish(master_conn);
 		fprintf(stderr, _("%s needs versions of both master (%s) and standby (%s) to match.\n"),
-				progname, master_version, standby_version);
+		        progname, master_version, standby_version);
 		return;
 	}
 
@@ -603,14 +603,14 @@ do_standby_register(void)
 	if (force)
 	{
 		sqlquery_snprintf(sqlquery,
-						  "DELETE FROM %s.repl_nodes "
-						  " WHERE id = %d",
-						  schema_quoted, config.node);
+		                  "DELETE FROM %s.repl_nodes "
+		                  " WHERE id = %d",
+		                  schema_quoted, config.node);
 
 		if (!PQexec(master_conn, sqlquery))
 		{
 			fprintf(stderr, "Cannot delete node details, %s\n",
-					PQerrorMessage(master_conn));
+			        PQerrorMessage(master_conn));
 			PQfinish(master_conn);
 			PQfinish(conn);
 			return;
@@ -618,14 +618,14 @@ do_standby_register(void)
 	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
-					  "VALUES (%d, '%s', '%s')",
-					  schema_quoted, config.node, config.cluster_name,
-					  config.conninfo);
+	                  "VALUES (%d, '%s', '%s')",
+	                  schema_quoted, config.node, config.cluster_name,
+	                  config.conninfo);
 
 	if (!PQexec(master_conn, sqlquery))
 	{
 		fprintf(stderr, "Cannot insert node details, %s\n",
-				PQerrorMessage(master_conn));
+		        PQerrorMessage(master_conn));
 		PQfinish(master_conn);
 		PQfinish(conn);
 		return;
@@ -670,46 +670,46 @@ do_standby_clone(void)
 	/* Check this directory could be used as a PGDATA dir */
 	switch (check_dir(dest_dir))
 	{
-		case 0:
-			/* dest_dir not there, must create it */
+	case 0:
+		/* dest_dir not there, must create it */
 		if (verbose)
-				printf(_("creating directory %s ... "), dest_dir);
-			fflush(stdout);
+			printf(_("creating directory %s ... "), dest_dir);
+		fflush(stdout);
 
-			if (!create_directory(dest_dir))
+		if (!create_directory(dest_dir))
 		{
-				fprintf(stderr, _("%s: couldn't create directory %s ... "),
+			fprintf(stderr, _("%s: couldn't create directory %s ... "),
 			        progname, dest_dir);
 			return;
 		}
-			break;
-		case 1:
-			/* Present but empty, fix permissions and use it */
+		break;
+	case 1:
+		/* Present but empty, fix permissions and use it */
 		if (verbose)
-				printf(_("fixing permissions on existing directory %s ... "),
-					   dest_dir);
-			fflush(stdout);
+			printf(_("fixing permissions on existing directory %s ... "),
+			       dest_dir);
+		fflush(stdout);
 
 		if (!set_directory_permissions(dest_dir))
-			{
-				fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
-						progname, dest_dir, strerror(errno));
+		{
+			fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
+			        progname, dest_dir, strerror(errno));
 			return;
-			}
-			break;
-		case 2:
-			/* Present and not empty */
-			fprintf(stderr,
-					_("%s: directory \"%s\" exists but is not empty\n"),
-					progname, dest_dir);
+		}
+		break;
+	case 2:
+		/* Present and not empty */
+		fprintf(stderr,
+		        _("%s: directory \"%s\" exists but is not empty\n"),
+		        progname, dest_dir);
 
-			pg_dir = is_pg_dir(dest_dir);
-			if (pg_dir && !force)
+		pg_dir = is_pg_dir(dest_dir);
+		if (pg_dir && !force)
 		{
 			fprintf(stderr, _("\nThis looks like a PostgreSQL directroy.\n"
-								  "If you are sure you want to clone here, "
-								  "please check there is no PostgreSQL server "
-								  "running and use the --force option\n"));
+			                  "If you are sure you want to clone here, "
+			                  "please check there is no PostgreSQL server "
+			                  "running and use the --force option\n"));
 			return;
 		}
 		else if (pg_dir && force)
@@ -717,12 +717,12 @@ do_standby_clone(void)
 			/* Let it continue */
 			break;
 		}
-			else
+		else
 			return;
-		default:
-			/* Trouble accessing directory */
-			fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
-					progname, dest_dir, strerror(errno));
+	default:
+		/* Trouble accessing directory */
+		fprintf(stderr, _("%s: could not access directory \"%s\": %s\n"),
+		        progname, dest_dir, strerror(errno));
 	}
 
 	/* Connection parameters for master only */
@@ -736,7 +736,7 @@ do_standby_clone(void)
 	if (!conn)
 	{
 		fprintf(stderr, _("%s: could not connect to master\n"),
-				progname);
+		        progname);
 		return;
 	}
 
@@ -746,7 +746,7 @@ do_standby_clone(void)
 	{
 		PQfinish(conn);
 		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"),
-				progname);
+		        progname);
 		return;
 	}
 
@@ -785,9 +785,9 @@ do_standby_clone(void)
 	 * Check if the tablespace locations exists and that we can write to them.
 	 */
 	sqlquery_snprintf(sqlquery,
-					  "SELECT spclocation "
-					  "  FROM pg_tablespace "
-					  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
+	                  "SELECT spclocation "
+	                  "  FROM pg_tablespace "
+	                  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -804,58 +804,58 @@ do_standby_clone(void)
 		/* Check this directory could be used as a PGDATA dir */
 		switch (check_dir(tblspc_dir))
 		{
-			case 0:
-				/* tblspc_dir not there, must create it */
+		case 0:
+			/* tblspc_dir not there, must create it */
 			if (verbose)
-					printf(_("creating directory \"%s\"... "), tblspc_dir);
-				fflush(stdout);
+				printf(_("creating directory \"%s\"... "), tblspc_dir);
+			fflush(stdout);
 
-				if (!create_directory(tblspc_dir))
+			if (!create_directory(tblspc_dir))
 			{
-					fprintf(stderr,
-							_("%s: couldn't create directory \"%s\"... "),
+				fprintf(stderr,
+				        _("%s: couldn't create directory \"%s\"... "),
 				        progname, tblspc_dir);
 				PQclear(res);
 				PQfinish(conn);
 				return;
 			}
-				break;
-			case 1:
-				/* Present but empty, fix permissions and use it */
+			break;
+		case 1:
+			/* Present but empty, fix permissions and use it */
 			if (verbose)
-					printf(_("fixing permissions on existing directory \"%s\"... "),
-						   tblspc_dir);
-				fflush(stdout);
+				printf(_("fixing permissions on existing directory \"%s\"... "),
+				       tblspc_dir);
+			fflush(stdout);
 
-				if (!set_directory_permissions(tblspc_dir))
-				{
-					fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
-							progname, tblspc_dir, strerror(errno));
+			if (!set_directory_permissions(tblspc_dir))
+			{
+				fprintf(stderr, _("%s: could not change permissions of directory \"%s\": %s\n"),
+				        progname, tblspc_dir, strerror(errno));
 				PQclear(res);
 				PQfinish(conn);
 				return;
-				}
-				break;
-			case 2:
-				/* Present and not empty */
-				if (!force)
-				{
-					fprintf(
-						stderr,
-						_("%s: directory \"%s\" exists but is not empty\n"),
-						progname, tblspc_dir);
-					PQclear(res);
-					PQfinish(conn);
-					return;
-				}
-			default:
-				/* Trouble accessing directory */
-				fprintf(stderr,
-						_("%s: could not access directory \"%s\": %s\n"),
-						progname, tblspc_dir, strerror(errno));
+			}
+			break;
+		case 2:
+			/* Present and not empty */
+			if (!force)
+			{
+				fprintf(
+				    stderr,
+				    _("%s: directory \"%s\" exists but is not empty\n"),
+				    progname, tblspc_dir);
 				PQclear(res);
 				PQfinish(conn);
 				return;
+			}
+		default:
+			/* Trouble accessing directory */
+			fprintf(stderr,
+			        _("%s: could not access directory \"%s\": %s\n"),
+			        progname, tblspc_dir, strerror(errno));
+			PQclear(res);
+			PQfinish(conn);
+			return;
 		}
 	}
 
@@ -863,11 +863,11 @@ do_standby_clone(void)
 
 	/* Get the data directory full path and the configuration files location */
 	sqlquery_snprintf(
-		sqlquery,
-		"SELECT name, setting "
-		"  FROM pg_settings "
-		"  WHERE name IN ('data_directory', 'config_file', 'hba_file', "
-		"    'ident_file')");
+	    sqlquery,
+	    "SELECT name, setting "
+	    "  FROM pg_settings "
+	    "  WHERE name IN ('data_directory', 'config_file', 'hba_file', "
+	    "    'ident_file')");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -896,9 +896,9 @@ do_standby_clone(void)
 	 * so we can say to the user we need those files
 	 */
 	sqlquery_snprintf(
-		sqlquery,
-		"SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))",
-		time(NULL));
+	    sqlquery,
+	    "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))",
+	    time(NULL));
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -935,22 +935,22 @@ do_standby_clone(void)
 
 	/* need to create the global sub directory */
 	maxlen_snprintf(master_control_file, "%s/global/pg_control",
-					master_data_directory);
+	                master_data_directory);
 	maxlen_snprintf(local_control_file, "%s/global", dest_dir);
 	if (!create_directory(local_control_file))
 	{
 		fprintf(stderr, _("%s: couldn't create directory %s ... "),
-				progname, dest_dir);
+		        progname, dest_dir);
 		goto stop_backup;
 	}
 
 	r = copy_remote_files(host, remote_user, master_control_file,
-						  local_control_file, false);
+	                      local_control_file, false);
 	if (r != 0)
 		goto stop_backup;
 
 	r = copy_remote_files(host, remote_user, master_data_directory, dest_dir,
-						  true);
+	                      true);
 	if (r != 0)
 		goto stop_backup;
 
@@ -960,27 +960,27 @@ do_standby_clone(void)
 	 * these rsync happen concurrently
 	 */
 	sqlquery_snprintf(sqlquery,
-					  "SELECT spclocation "
-					  "  FROM pg_tablespace "
-					  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
+	                  "SELECT spclocation "
+	                  "  FROM pg_tablespace "
+	                  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		fprintf(stderr, "Can't get info about tablespaces: %s\n",
-				PQerrorMessage(conn));
+		        PQerrorMessage(conn));
 		PQclear(res);
 		goto stop_backup;
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		r = copy_remote_files(host, remote_user, PQgetvalue(res, i, 0),
-							  PQgetvalue(res, i, 0), true);
+		                      PQgetvalue(res, i, 0), true);
 		if (r != 0)
 			goto stop_backup;
 	}
 
 	r = copy_remote_files(host, remote_user, master_config_file, dest_dir,
-						  false);
+	                      false);
 	if (r != 0)
 		goto stop_backup;
 
@@ -989,7 +989,7 @@ do_standby_clone(void)
 		goto stop_backup;
 
 	r = copy_remote_files(host, remote_user, master_ident_file, dest_dir,
-						  false);
+	                      false);
 	if (r != 0)
 		goto stop_backup;
 
@@ -999,7 +999,7 @@ stop_backup:
 	if (!conn)
 	{
 		fprintf(stderr, _("%s: could not connect to master\n"),
-				progname);
+		        progname);
 		return;
 	}
 
@@ -1019,8 +1019,8 @@ stop_backup:
 	if (verbose)
 	{
 		printf(
-			_("%s requires primary to keep WAL files %s until at least %s\n"),
-			progname, first_wal_segment, last_wal_segment);
+		    _("%s requires primary to keep WAL files %s until at least %s\n"),
+		    progname, first_wal_segment, last_wal_segment);
 
 		/*
 		 * Only free the first_wal_segment since it was copied out of the
@@ -1045,7 +1045,7 @@ stop_backup:
 	if (!create_directory(local_control_file))
 	{
 		fprintf(stderr, _("%s: couldn't create directory %s, you will need to do it manually...\n"),
-				progname, dest_dir);
+		        progname, dest_dir);
 	}
 
 	/* Finally, write the recovery.conf file */
@@ -1086,7 +1086,7 @@ do_standby_promote(void)
 	{
 		PQfinish(conn);
 		fprintf(stderr, _("%s needs standby to be PostgreSQL 9.0 or better\n"),
-				progname);
+		        progname);
 		return;
 	}
 
@@ -1094,13 +1094,13 @@ do_standby_promote(void)
 	if (!is_standby(conn))
 	{
 		fprintf(stderr,
-				"repmgr: The command should be executed in a standby node\n");
+		        "repmgr: The command should be executed in a standby node\n");
 		return;
 	}
 
 	/* we also need to check if there isn't any master already */
 	old_master_conn = getMasterConnection(conn, config.node, config.cluster_name,
-										  &old_master_id, NULL);
+	                                      &old_master_id, NULL);
 
 	if (old_master_conn != NULL)
 	{
@@ -1114,12 +1114,12 @@ do_standby_promote(void)
 
 	/* Get the data directory full path and the last subdirectory */
 	sqlquery_snprintf(sqlquery, "SELECT setting "
-					  " FROM pg_settings WHERE name = 'data_directory'");
+	                  " FROM pg_settings WHERE name = 'data_directory'");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		fprintf(stderr, "Can't get info about data directory: %s\n",
-				PQerrorMessage(conn));
+		        PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -1197,7 +1197,7 @@ do_standby_follow(void)
 
 	/* we also need to check if there is any master in the cluster */
 	master_conn = getMasterConnection(conn, config.node, config.cluster_name,
-									  &master_id, (char *) &master_conninfo);
+	                                  &master_id, (char *) &master_conninfo);
 
 	if (master_conn == NULL)
 	{
@@ -1211,7 +1211,7 @@ do_standby_follow(void)
 	{
 		PQfinish(conn);
 		fprintf(stderr, "%s: The node to follow should be a master\n",
-				progname);
+		        progname);
 		return;
 	}
 
@@ -1222,7 +1222,7 @@ do_standby_follow(void)
 		PQfinish(conn);
 		PQfinish(master_conn);
 		fprintf(stderr, _("%s needs master to be PostgreSQL 9.0 or better\n"),
-				progname);
+		        progname);
 		return;
 	}
 
@@ -1232,7 +1232,7 @@ do_standby_follow(void)
 		PQfinish(conn);
 		PQfinish(master_conn);
 		fprintf(stderr, _("%s needs versions of both master (%s) and standby (%s) to match.\n"),
-				progname, master_version, standby_version);
+		        progname, master_version, standby_version);
 		return;
 	}
 
@@ -1263,12 +1263,12 @@ do_standby_follow(void)
 
 	/* Get the data directory full path */
 	sqlquery_snprintf(sqlquery, "SELECT setting "
-					  " FROM pg_settings WHERE name = 'data_directory'");
+	                  " FROM pg_settings WHERE name = 'data_directory'");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		fprintf(stderr, "Can't get info about data directory: %s\n",
-				PQerrorMessage(conn));
+		        PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		return;
@@ -1302,7 +1302,7 @@ help(const char *progname)
 	printf(_("Usage:\n"));
 	printf(_(" %s [OPTIONS] master	{register}\n"), progname);
 	printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"),
-		   progname);
+	       progname);
 	printf(_("\nGeneral options:\n"));
 	printf(_("	--help					   show this help, then exit\n"));
 	printf(_("	--version				   output version information, then exit\n"));
@@ -1375,15 +1375,15 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 		if (password == NULL)
 		{
 			fprintf(stderr,
-					_("%s: Panic! PGPASSWORD not set, how can we get here?\n"),
-					progname);
+			        _("%s: Panic! PGPASSWORD not set, how can we get here?\n"),
+			        progname);
 			exit(255);
 		}
 
 		maxlen_snprintf(line,
-						"primary_conninfo = 'host=%s port=%s password=%s'\n",
-						host, ((masterport==NULL) ? "5432" : masterport),
-						password);
+		                "primary_conninfo = 'host=%s port=%s password=%s'\n",
+		                host, ((masterport==NULL) ? "5432" : masterport),
+		                password);
 	}
 	else
 		maxlen_snprintf(line, "primary_conninfo = '%s'\n", master_conninfo);
@@ -1404,7 +1404,7 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 
 static int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
-				  char *local_path, bool is_directory)
+                  char *local_path, bool is_directory)
 {
 	char script[MAXLEN];
 	char options[MAXLEN];
@@ -1413,8 +1413,8 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	if (strnlen(config.rsync_options, MAXLEN) == 0)
 		maxlen_snprintf(
-			options, "%s",
-			"--archive --checksum --compress --progress --rsh=ssh");
+		    options, "%s",
+		    "--archive --checksum --compress --progress --rsh=ssh");
 	else
 		maxlen_snprintf(options, "%s", config.rsync_options);
 
@@ -1433,14 +1433,14 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	if (is_directory)
 	{
 		strcat(options,
-			   " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
+		       " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
-		        options, host_string, remote_path, local_path);
+		                options, host_string, remote_path, local_path);
 	}
 	else
 	{
 		maxlen_snprintf(script, "rsync %s %s:%s %s/.",
-		        options, host_string, remote_path, local_path);
+		                options, host_string, remote_path, local_path);
 	}
 
 	if (verbose)
@@ -1450,8 +1450,8 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	if (r != 0)
 		fprintf(stderr,
-				_("Can't rsync from remote file or directory (%s:%s)\n"),
-				host_string, remote_path);
+		        _("Can't rsync from remote file or directory (%s:%s)\n"),
+		        host_string, remote_path);
 
 	return r;
 }
@@ -1473,19 +1473,19 @@ check_parameters_for_action(const int action)
 		 * all other parameters are at least useless and could be
 		 * confusing so reject them
 		 */
-			if ((host != NULL)	 || (masterport != NULL) ||
-				(username != NULL) || (dbname != NULL))
+		if ((host != NULL)	 || (masterport != NULL) ||
+		        (username != NULL) || (dbname != NULL))
 		{
 			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a MASTER REGISTER command.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			ok = false;
-			}
+		}
 		if (dest_dir != NULL)
 		{
 			fprintf(stderr, "\nYou don't need a destination directory for MASTER REGISTER command");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			ok = false;
 		}
 		break;
@@ -1495,19 +1495,19 @@ check_parameters_for_action(const int action)
 		 * we don't need connection parameters to the master
 		 * because we can detect the master in repl_nodes
 		 */
-			if ((host != NULL)	 || (masterport != NULL) ||
-				(username != NULL) || (dbname != NULL))
+		if ((host != NULL)	 || (masterport != NULL) ||
+		        (username != NULL) || (dbname != NULL))
 		{
 			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY REGISTER command.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			ok = false;
-			}
+		}
 		if (dest_dir != NULL)
 		{
 			fprintf(stderr, "\nYou don't need a destination directory for STANDBY REGISTER command");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			ok = false;
 		}
 		break;
@@ -1518,19 +1518,19 @@ check_parameters_for_action(const int action)
 		 * because we will try to detect the master in repl_nodes
 		 * if we can't find it then the promote action will be cancelled
 		 */
-			if ((host != NULL)	 || (masterport != NULL) ||
-				(username != NULL) || (dbname != NULL))
+		if ((host != NULL)	 || (masterport != NULL) ||
+		        (username != NULL) || (dbname != NULL))
 		{
 			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY PROMOTE command.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			ok = false;
-			}
+		}
 		if (dest_dir != NULL)
 		{
 			fprintf(stderr, "\nYou don't need a destination directory for STANDBY PROMOTE command");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			ok = false;
 		}
 		break;
@@ -1541,46 +1541,46 @@ check_parameters_for_action(const int action)
 		 * because we will try to detect the master in repl_nodes
 		 * if we can't find it then the follow action will be cancelled
 		 */
-			if ((host != NULL)	 || (masterport != NULL) ||
-				(username != NULL) || (dbname != NULL))
+		if ((host != NULL)	 || (masterport != NULL) ||
+		        (username != NULL) || (dbname != NULL))
 		{
 			fprintf(stderr, "\nYou can't use connection parameters to the master when issuing a STANDBY FOLLOW command.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			ok = false;
-			}
+		}
 		if (dest_dir != NULL)
 		{
 			fprintf(stderr, "\nYou don't need a destination directory for STANDBY FOLLOW command");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
 			ok = false;
 		}
 		break;
-		case STANDBY_CLONE:
-			/*
-			 * Issue a friendly notice that the configuration file is not
-			 * necessary nor read at all in when performing a STANDBY CLONE
-			 * action.
-			 */
-			if (config_file != NULL)
-				fprintf(stderr, "NOTICE: The passed configuration file is not "
-						"required nor used when performing the STANDBY CLONE "
-						"command.\n");
+	case STANDBY_CLONE:
+		/*
+		 * Issue a friendly notice that the configuration file is not
+		 * necessary nor read at all in when performing a STANDBY CLONE
+		 * action.
+		 */
+		if (config_file != NULL)
+			fprintf(stderr, "NOTICE: The passed configuration file is not "
+			        "required nor used when performing the STANDBY CLONE "
+			        "command.\n");
 
-			/*
-			 * To clone a master into a standby we need connection parameters
-			 * repmgr.conf is useless because we don't have a server running in
-			 * the standby; warn the user, but keep going.
-			 */
-			if (host == NULL)
-			{
-				fprintf(stderr, "\nYou need to use connection parameters to "
-						"the master when issuing a STANDBY CLONE command.");
-				fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
-						progname);
-				ok = false;
-			}
+		/*
+		 * To clone a master into a standby we need connection parameters
+		 * repmgr.conf is useless because we don't have a server running in
+		 * the standby; warn the user, but keep going.
+		 */
+		if (host == NULL)
+		{
+			fprintf(stderr, "\nYou need to use connection parameters to "
+			        "the master when issuing a STANDBY CLONE command.");
+			fprintf(stderr, _("Try \"%s --help\" for more information.\n"),
+			        progname);
+			ok = false;
+		}
 		break;
 	}
 
