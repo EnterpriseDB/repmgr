@@ -21,3 +21,4 @@
                  Correct freeing of memory from first_wal_segment (Daniel)
                  Allow creating recovery.conf file with a password (Daniel)
                  Inform when STANDBY CLONE sees an unused config file (Daniel)
+                 Use 64-bit computation for WAL apply_lag (Greg)

@@ -450,7 +450,7 @@ walLocationToBytes(char *wal_location)
 		log_err("wrong log location format: %s\n", wal_location);
 		return 0;
 	}
-	return ((xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
+	return (( (long long) xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
 }
 
 
