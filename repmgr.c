@@ -67,6 +67,9 @@ static const char *values[6];
 char repmgr_schema[MAXLEN];
 bool need_a_node = true;
 
+/* XXX This should be mapped into a command line option */
+bool require_password = false;
+
 /* Initialization of runtime options */
 t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, "" };
 t_configuration_options options = { "", -1, "", "", "" };
@@ -1366,9 +1369,11 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", runtime_options.host, runtime_options.masterport);
 
 	/*
-	 * Template a password into the connection string in recovery.conf.
-	 * Sometimes this is passed by the user explicitly, and otherwise we try to
-	 * get it into the environment
+	 * Template a password into the connection string in recovery.conf
+	 * if a full connection string is not already provided.
+	 *
+	 * Sometimes this is passed by the user explicitly, and otherwise
+	 * we try to get it into the environment.
 	 *
 	 * XXX: This is pretty dirty, at least push this up to the caller rather
 	 * than hitting environment variables at this level.
@@ -1377,18 +1382,22 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 	{
 		char *password = getenv("PGPASSWORD");
 
-		if (password == NULL)
+		if (password != NULL)
 		{
-			fprintf(stderr,
-			        _("%s: Panic! PGPASSWORD not set, how can we get here?\n"),
-			        progname);
-			exit(ERR_BAD_PASSWORD);
+			maxlen_snprintf(line,
+			                "primary_conninfo = 'host=%s port=%s password=%s'\n",
+			                runtime_options.host, runtime_options.masterport,
+			                password);
 		}
-
-		maxlen_snprintf(line,
-		                "primary_conninfo = 'host=%s port=%s password=%s'\n",
-		                runtime_options.host, runtime_options.masterport,
-		                password);
+		else
+		{
+			if (require_password)
+			{
+				log_err(_("%s: PGPASSWORD not set, but having one is required\n"),
+				        progname);
+				exit(ERR_BAD_PASSWORD);
+			}
+		}
 	}
 
 	if (fputs(line, recovery_file) == EOF)
