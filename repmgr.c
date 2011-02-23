@@ -525,7 +525,7 @@ do_standby_register(void)
 
 	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establishDBConnection(options.conninfo, true);
-	
+
 	/* should be v9 or better */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
 	pg_version(conn, standby_version);
@@ -1128,7 +1128,7 @@ do_standby_promote(void)
 		log_err("There is a master already in this cluster\n");
 		exit(ERR_BAD_CONFIG);
 	}
-	
+
 	log_notice(_("%s: Promoting standby\n"), progname);
 
 	/* Get the data directory full path and the last subdirectory */

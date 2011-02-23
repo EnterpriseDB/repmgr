@@ -707,10 +707,19 @@ Register the standby by typing on "node2"::
 
 At this point, you have a functioning primary on "node1" and a functioning
 standby server running on "node2".  You can confirm the master knows
-about the standby, and that it is keeping it current, by running the
-following on the master::
+about the standby, and that it is keeping it current, by looking at
+``repl_status``::
 
-  psql -x -d pgbench -c "SELECT * FROM repmgr_test.repl_status"
+	postgres@node2 $ psql -x -d pgbench -c "SELECT * FROM repmgr_test.repl_status"
+	-[ RECORD 1 ]-------------+------------------------------
+	primary_node              | 1
+	standby_node              | 2
+	last_monitor_time         | 2011-02-23 08:19:39.791974-05
+	last_wal_primary_location | 0/1902D5E0
+	last_wal_standby_location | 0/1902D5E0
+	replication_lag           | 0 bytes
+	apply_lag                 | 0 bytes
+	time_lag                  | 00:26:13.30293
 
 Some tests you might do at this point include:
 
@@ -726,7 +735,9 @@ Simulating the failure of the primary server
 
 To simulate the loss of the primary server, simply stop the "node1" server.
 At this point, the standby contains the database as it existed at the time of
-the "failure" of the primary server.
+the "failure" of the primary server.  If looking at ``repl_status`` on
+"node2", you should see the time_lag value increase the longer "node1" 
+is down.
 
 Promoting the Standby to be the Primary
 ---------------------------------------
@@ -742,11 +753,12 @@ Bringing the former Primary up as a Standby
 -------------------------------------------
 
 To make the former primary act as a standby, which is necessary before
-restoring the original roles, type::
+restoring the original roles, type the following on node1::
 
-  repmgr -U postgres -R postgres -h node1 -p 5432 -d pgbench --force --verbose standby clone
+  repmgr -D $PGDATA -d pgbench -p 5432 -U repmgr -R postgres --verbose --force standby clone node2
 
-Stop and restart the "node1" server, which is now acting as a standby server.
+Then start the "node1" server, which is now acting as a standby server.
+Check 
 
 Make sure the record(s) inserted the earlier step are still available on the
 now standby (prime).  Confirm the database on "node1" is read-only.

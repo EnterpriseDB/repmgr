@@ -257,8 +257,8 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 		/* initialize with the values of the current node being processed */
 		*master_id = atoi(PQgetvalue(res1, i, 0));
 		strncpy(master_conninfo, PQgetvalue(res1, i, 2), MAXCONNINFO);
-		log_info(_("checking role of cluster '%s'\n"), 
-			master_conninfo);
+		log_info(_("checking role of cluster '%s'\n"),
+		         master_conninfo);
 		master_conn = establishDBConnection(master_conninfo, false);
 
 		if (PQstatus(master_conn) != CONNECTION_OK)
