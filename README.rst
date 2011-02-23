@@ -250,7 +250,7 @@ on their partner node without a password.
 First generate a ssh key, using an empty passphrase, and copy the resulting 
 keys and a maching authorization file to a privledged user on the other system::
 
-  [postgres@db1]$ ssh-keygen -t rsa
+  [postgres@node1]$ ssh-keygen -t rsa
   Generating public/private rsa key pair.
   Enter file in which to save the key (/var/lib/pgsql/.ssh/id_rsa): 
   Enter passphrase (empty for no passphrase): 
@@ -259,19 +259,19 @@ keys and a maching authorization file to a privledged user on the other system::
   Your public key has been saved in /var/lib/pgsql/.ssh/id_rsa.pub.
   The key fingerprint is:
   aa:bb:cc:dd:ee:ff:aa:11:22:33:44:55:66:77:88:99 postgres@db1.domain.com
-  [postgres@db1]$ cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-  [postgres@db1]$ chmod go-rwx ~/.ssh/*
-  [postgres@db1]$ cd ~/.ssh
-  [postgres@db1]$ scp id_rsa.pub id_rsa authorized_keys user@db2:
+  [postgres@node1]$ cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+  [postgres@node1]$ chmod go-rwx ~/.ssh/*
+  [postgres@node1]$ cd ~/.ssh
+  [postgres@node1]$ scp id_rsa.pub id_rsa authorized_keys postgres@node2:
 
 Login as a user on the other system, and install the files into the postgres 
 user's account::
 
-  [user@db2 ~]$ sudo chown postgres.postgres authorized_keys id_rsa.pub id_rsa
-  [user@db2 ~]$ sudo mkdir -p ~postgres/.ssh
-  [user@db2 ~]$ sudo chown postgres.postgres ~postgres/.ssh
-  [user@db2 ~]$ sudo mv authorized_keys id_rsa.pub id_rsa ~postgres/.ssh
-  [user@db2 ~]$ sudo chmod -R go-rwx ~postgres/.ssh
+  [user@node2 ~]$ sudo chown postgres.postgres authorized_keys id_rsa.pub id_rsa
+  [user@node2 ~]$ sudo mkdir -p ~postgres/.ssh
+  [user@node2 ~]$ sudo chown postgres.postgres ~postgres/.ssh
+  [user@node2 ~]$ sudo mv authorized_keys id_rsa.pub id_rsa ~postgres/.ssh
+  [user@node2 ~]$ sudo chmod -R go-rwx ~postgres/.ssh
 
 Now test that ssh in both directions works.  You may have to accept some new 
 known hosts in the process.
@@ -381,13 +381,13 @@ its port if is different from the default one.
 
 * master register
 
-  * Registers a master in a cluster, it needs to be executed before any node is 
-    registered
+  * Registers a master in a cluster, it needs to be executed before any
+    standby nodes are registered
 
 * standby register
 
-  * Registers a standby in a cluster, it needs to be executed before any repmgrd 
-    is executed
+  * Registers a standby in a cluster, it needs to be executed before
+    repmgrd will function on the node.
 
 * standby clone [node to be cloned] 
 
@@ -432,8 +432,8 @@ its port if is different from the default one.
 
         ./repmgr standby follow
 
-Examples
-========
+Brief examples
+==============
 
 Suppose we have 3 nodes: node1 (the initial master), node2 and node3
 
@@ -464,8 +464,8 @@ this::
 
   PATH=$PGDIR/bin:$PATH repmgr standby promote
 
-repmgr Daemon
-=============
+repmgrd Daemon
+==============
 
 Command line syntax
 -------------------
@@ -507,7 +507,7 @@ Lag monitoring
 To look at the current lag between primary and each node listed
 in ``repl_node``, consult the ``repl_status`` view::
 
-  psql -d postgres -c "SELECT * FROM repl_status"
+  psql -d postgres -c "SELECT * FROM repmgr_test.repl_status"
 
 This view shows the latest monitor info from every node.
  
@@ -539,52 +539,260 @@ and the same in the standby.
 The repmgr daemon creates 2 connections: one to the master and another to the
 standby.
 
-Error codes
-===========
-
-When the repmgr or repmgrd program exits, it will set one of the
-following 
-
-* SUCCESS 0:  Program ran successfully.
-
-* ERR_BAD_CONFIG 1:  One of the configuration checks the program makes failed.
-* ERR_BAD_RSYNC 2:  An rsync call made by the program returned an error.
-* ERR_STOP_BACKUP 3:  A ``pg_stop_backup()`` call made by the program didn't succeed.
-* ERR_NO_RESTART 4:  An attempt to restart a PostgreSQL instance failed.
-* ERR_NEEDS_XLOG 5:  Could note create the ``pg_xlog`` directory when cloning.
-* ERR_DB_CON 6:  Error when trying to connect to a database.
-* ERR_DB_QUERY 7:  Error executing a database query.
-* ERR_PROMOTED 8:  Exiting program because the node has been promoted to master.
-* ERR_BAD_PASSWORD 9:  Password used to connect to a database was rejected.
-
 Detailed walkthrough
 ====================
 
 This assumes you've already followed the steps in "Installation Outline" to
-install repmgr and repmgr on the system.
+install repmgr and repmgrd on the system.
 
-The following scenario involves two PostgreSQL installations on the same server
-hardware, so that additional systems aren't needed for testing.  A normal
-production installation of ``repmgr`` will normally involve two different
-systems running on the same port, typically the default of 5432, 
-with both using files owned by the ``postgres`` user account.  In places where
-``127.0.0.1`` is used as a host name below, you would instead use the name of
-the relevant host for that parameter.  You can usually leave out changes
-to the port number in this case too.
+A normal production installation of ``repmgr`` will normally involve two
+different systems running on the same port, typically the default of 5432, 
+with both using files owned by the ``postgres`` user account.  This
+walkthrough assumes the following setup:
 
-The test setup assumes you might be using the default installation of
+* A primary (master) server called "node1," running as the "postgres" user 
+  who is also the owner of the files. This server is operating on port 5432.  This
+  server will be known as "node1" in the cluster "test".
+
+* A secondary (standby) server called "node2," running as the "postgres" user 
+  who is also the owner of the files. This server is operating on port 5432.  This
+  server will be known as "node2" in the cluster "test".
+
+* Another standby server called "node3" with a similar configuration to "node2".
+
+* The Postgress installation in each of the above is defined as $PGDATA, 
+  which is represented here as ``/var/lib/pgsql/9.0/data``
+  
+Creating some sample data
+-------------------------
+
+If you already have a database with useful data to replicate, you can
+skip this step and use it instead.  But if you do not already have
+data in this cluster to replication, you can create some like this::
+
+    createdb pgbench
+	pgbench -i -s 10 pgbench
+	
+Examples below will use the database name ``pgbench`` to match this.
+Substitute the name of your database instead.  Note that the standby
+nodes created here will include information for every database in the
+cluster, not just the specified one.  Needing the database name is
+mainly for user authentication purposes.
+
+Setting up a repmgr user
+------------------------
+
+Make sure that the "standby" user has a role in the database, "pgbench" in this
+case, and can login.   On "node1"::
+
+  createuser --login --superuser repmgr
+
+Alternately you could start ``psql`` on the pgbench database on "node1" and at
+the node1b# prompt type::
+
+  CREATE ROLE repmgr SUPERUSER LOGIN;
+
+The main advantage of the latter is that you can do it remotely to any
+system you already have superuser access to.
+
+Clearing the PostgreSQL installation on the Standby
+---------------------------------------------------
+
+To setup a new streaming replica, startin by removing any PostgreSQL
+installation on the existing standby nodes.
+
+* Stop any server on "node2" and "node3".  You can confirm the database
+  servers running using a command like this:
+  
+    ps -eaf | grep postgreg
+	
+  And looking for the various database server processes:  server, logger,
+  wal writer, and autovacuum launcher.
+  
+* Go to "node2" and "node3" database directories and remove the PostgreSQL installation::
+
+    cd $PGDATA
+    rm -rf *
+
+  This will delete the entire database installation in ``/var/lib/pgsql/9.0/data``.
+  Be careful that $PGDATA is defined here; executing ``ls`` to confirm you're
+  in the right place is always a good idea before executing ``rm``.
+
+Testing remote access to the master
+-----------------------------------
+
+On the "node2" server, first test that you can connect to "node1" the
+way repmgr will by executing::
+
+  psql -h node1 -U repmgr -d pgbench
+
+Possible sources for a problem here include:
+
+ * Login role specified was not created on "node1"
+
+ * The database configuration on "node1" is not listening on a TCP/IP port.
+   That could be because the ``listen_addresses`` parameter was not updated,
+   or if it was but the server wasn't restarted afterwards.  You can
+   test this on "node1" itself the same way::
+
+     psql -h node1 -U repmgr -d pgbench
+
+   With the "-h" parameter forcing a connnection over TCP/IP, rather
+   than the default UNIX socket method.
+
+ * There is a firewall setup that prevents incoming access to the
+   PostgreSQL port (defaulting to 5432) used to access "node1".  In
+   this situation you would be able to connect to the "node1" server
+   on itself, but not from any other host, and you'd just get a timeout
+   when trying rather than a proper error message.
+	 
+ * The ``pg_hba.conf`` file does not list appropriate statements to allow
+   this user to login.  In this case you should connect to the server,
+   but see an error message mentioning the ``pg_hba.conf``.
+
+Cloning the standby
+-------------------
+
+With "node1" server running, we want to use the ``clone standby`` command
+in repmgr to copy over the entire PostgreSQL database cluster onto the
+"node2" server.  Execute the clone process with::
+
+  repmgr -D $PGDATA -d pgbench -p 5432 -U repmgr -R postgres --verbose standby clone node1
+
+Here "-U" specifies the database user to connect to the master as, while
+"-R" specifies what user to run the rsync command as.  Potentially you
+could leave out one or both of these, in situations where the user and/or
+role setup is the same on each node.
+
+If this fails with an error message about accessing the master database,
+you should return to the previous step and confirm access to "node1"
+from "node2" with ``psql``, using the same parameters given to repmgr.
+
+Setup repmgr configuration file
+-------------------------------
+
+Create a directory to store each repmgr configuration in for each node.
+In that, there needs to be a ``repmgr.conf`` file for each node in the cluster.
+For each node we'll assume this is stored in ``/var/lib/pgsql/repmgr/repmgr.conf``
+following the standard directory structure of a RHEL system.  It should contain::
+
+  cluster=test
+  node=1
+  conninfo='host=node1 user=repmgr dbname=pgbench'
+
+On "node2" create the file ``/var/lib/pgsql/repmgr/repmgr.conf`` with::
+
+  cluster=test
+  node=2
+  conninfo='host=node2 user=repmgr dbname=pgbench'
+
+The STANDBY CLONE process should have created a recovery.conf file on
+"node2" in the $PGDATA directory that reads as follows::
+
+  standby_mode = 'on'
+  primary_conninfo = 'host=node1 port=5432'
+
+Registering the master and standby
+----------------------------------
+
+First, register the master by typing on "node1"::
+
+  repmgr -f /var/lib/pgsql/repmgr/repmgr.conf --verbose master register
+
+Start the "standby" server.
+
+Register the standby by typing on "node2"::
+
+  repmgr -f /var/lib/pgsql/repmgr/repmgr.conf --verbose standby register
+
+At this point, you have a functioning primary on "node1" and a functioning
+standby server running on "node2".  You can confirm the master knows
+about the standby, and that it is keeping it current, by running the
+following on the master::
+
+  psql -x -d pgbench -c "SELECT * FROM repmgr_test.repl_status"
+
+Some tests you might do at this point include:
+
+* Insert some records into the primary server here, confirm they appear
+  very quickly (within milliseconds) on the standby, and that the
+  repl_status view advances accordingly.
+
+* Verify that you can run queries against the standby server, but
+  cannot make insertions into the standby database.  
+
+Simulating the failure of the primary server
+--------------------------------------------
+
+To simulate the loss of the primary server, simply stop the "node1" server.
+At this point, the standby contains the database as it existed at the time of
+the "failure" of the primary server.
+
+Promoting the Standby to be the Primary
+---------------------------------------
+
+Now you can promote the standby server to be the primary, to allow
+applications to read and write to the database again, by typing::
+
+  repmgr -f /var/lib/pgsql/repmgr/repmgr.conf --verbose standby promote
+
+The server restarts and now has read/write ability.
+
+Bringing the former Primary up as a Standby
+-------------------------------------------
+
+To make the former primary act as a standby, which is necessary before
+restoring the original roles, type::
+
+  repmgr -U postgres -R postgres -h node1 -p 5432 -d pgbench --force --verbose standby clone
+
+Stop and restart the "node1" server, which is now acting as a standby server.
+
+Make sure the record(s) inserted the earlier step are still available on the
+now standby (prime).  Confirm the database on "node1" is read-only.
+
+Restoring the original roles of prime to primary and standby to standby
+-----------------------------------------------------------------------
+
+Now restore to the original configuration by stopping
+"node2" (now acting as a primary), promoting "node1" again to be the
+primary server, then bringing up "node2" as a standby with a valid
+``recovery.conf`` file.
+
+Stop the "node2" server::
+
+  repmgr -f /var/lib/pgsql/repmgr/repmgr.conf standby promote
+
+Now the original primary, "node1" is acting again as primary.
+
+Start the "node2" server and type this on "node1"::
+
+  repmgr standby clone --force -h node2 -p 5432 -U postgres -R postgres --verbose
+
+Verify the roles have reversed by attempting to insert a record on "node"
+and on "node1".
+
+The servers are now again acting as primary on "node1" and standby on "node2".
+
+Alternate setup:  both servers on one host
+==========================================
+
+Another test setup assumes you might be using the default installation of
 PostgreSQL on port 5432 for some other purpose, and instead relocates these
-instances onto different ports running as different users:
+instances onto different ports running as different users.  In places where
+``127.0.0.1`` is used as a host name, a more traditional configuration
+would instead use the name of the relevant host for that parameter. 
+You can usually leave out changes to the port number in this case too.
 
-* A primary (master) server called “prime," with a user as “prime," who is
+* A primary (master) server called "prime," with a user as "prime," who is
   also the owner of the files. This server is operating on port 5433.  This
-  server will be known as “node1" in the cluster “test"
+  server will be known as "node1" in the cluster "test"
 
-* A standby server called “standby", with a user of “standby", who is the
+* A standby server called "standby", with a user of "standby", who is the
   owner of the files.  This server is operating on port 5434.  This server
-  will be known and “node2" on the cluster “test."
+  will be known and "node2" on the cluster "test."
 
-* A database exists on “prime" called “testdb."
+* A database exists on "prime" called "testdb."
 
 * The Postgress installation in each of the above is defined as $PGDATA, 
   which is represented here with ``/data/prime`` as the "prime" server and 
@@ -623,7 +831,7 @@ Setup a streaming replica, strip away any PostgreSQL installation on the existin
 
 * Stop both servers.
 
-* Go to “standby" database directory and remove the PostgreSQL installation::
+* Go to "standby" database directory and remove the PostgreSQL installation::
 
     cd $PGDATA
     rm -rf *
@@ -635,33 +843,33 @@ Building the standby
 
 Create a directory to store each repmgr configuration in for each node.
 In that, there needs to be a ``repmgr.conf`` file for each node in the cluster.
-For “prime" we'll assume this is stored in ``/home/prime/repmgr``
+For "prime" we'll assume this is stored in ``/home/prime/repmgr``
 and it should contain::
 
   cluster=test
   node=1
   conninfo='host=127.0.0.1 dbname=testdb'
 
-On “standby" create the file ``/home/standby/repmgr/repmgr.conf`` with::
+On "standby" create the file ``/home/standby/repmgr/repmgr.conf`` with::
 
   cluster=test
   node=2
   conninfo='host=127.0.0.1 dbname=testdb'
 
-Next, with “prime" server running, we want to use the ``clone standby`` command
+Next, with "prime" server running, we want to use the ``clone standby`` command
 in repmgr to copy over the entire PostgreSQL database cluster onto the
-“standby" server.  On the “standby" server, type::
+"standby" server.  On the "standby" server, type::
 
   repmgr -D $PGDATA -p 5433 -U prime -R prime --verbose standby clone localhost
 
-Next, we need a recovery.conf file on “standby" in the $PGDATA directory
+Next, we need a recovery.conf file on "standby" in the $PGDATA directory
 that reads as follows::
 
   standby_mode = 'on'
   primary_conninfo = 'host=127.0.0.1 port=5433'
 
-Make sure that standby has a qualifying role in the database, “testdb" in this
-case, and can login. Start ``psql`` on the testdb database on “prime" and at
+Make sure that standby has a qualifying role in the database, "testdb" in this
+case, and can login. Start ``psql`` on the testdb database on "prime" and at
 the testdb# prompt type::
 
   CREATE ROLE standby SUPERUSER LOGIN
@@ -669,30 +877,40 @@ the testdb# prompt type::
 Registering the master and standby
 ----------------------------------
 
-First, register the master by typing on “prime"::
+First, register the master by typing on "prime"::
 
   repmgr -f /home/prime/repmgr/repmgr.conf --verbose master register
 
-On “standby," edit the ``postgresql.conf`` file and change the port to 5434.
+On "standby," edit the ``postgresql.conf`` file and change the port to 5434.
 
-Start the “standby" server.
+Start the "standby" server.
 
-Register the standby by typing on “standby"::
+Register the standby by typing on "standby"::
 
   repmgr -f /home/standby/repmgr/repmgr.conf --verbose standby register
 
-At this point, you have a functioning primary on “prime" and a functioning
-standby server running on “standby."  It's recommended that you insert some
-records into the primary server here, then confirm they appear very quickly
-(within milliseconds) on the standby.  Also verify that one can make queries
-against the standby server and cannot make insertions into the standby database.  
+At this point, you have a functioning primary on "prime" and a functioning
+standby server running on "standby."  You can confirm the master knows
+about the standby, and that it is keeping it current, by running the
+following on the master::
+
+  psql -x -d pgbench -c "SELECT * FROM repmgr_test.repl_status"
+
+Some tests you might do at this point include:
+
+* Insert some records into the primary server here, confirm they appear
+  very quickly (within milliseconds) on the standby, and that the
+  repl_status view advances accordingly.
+
+* Verify that you can run queries against the standby server, but
+  cannot make insertions into the standby database.  
 
 Simulating the failure of the primary server
 --------------------------------------------
 
-To simulate the loss of the primary server, simply stop the “prime" server.
+To simulate the loss of the primary server, simply stop the "prime" server.
 At this point, the standby contains the database as it existed at the time of
-the “failure" of the primary server.
+the "failure" of the primary server.
 
 Promoting the Standby to be the Primary
 ---------------------------------------
@@ -712,36 +930,54 @@ restoring the original roles, type::
 
   repmgr -U standby -R prime -h 127.0.0.1 -p 5433 -d testdb --force --verbose standby clone
 
-Stop and restart the “prime" server, which is now acting as a standby server.
+Stop and restart the "prime" server, which is now acting as a standby server.
 
 Make sure the record(s) inserted the earlier step are still available on the
-now standby (prime).  Confirm the database on “prime" is read-only.
+now standby (prime).  Confirm the database on "prime" is read-only.
 
 Restoring the original roles of prime to primary and standby to standby
 -----------------------------------------------------------------------
 
 Now restore to the original configuration by stopping the
-“standby" (now acting as a primary), promoting “prime" again to be the
-primary server, then bringing up “standby" as a standby with a valid
-``recovery.conf`` file on “standby".
+"standby" (now acting as a primary), promoting "prime" again to be the
+primary server, then bringing up "standby" as a standby with a valid
+``recovery.conf`` file on "standby".
 
-Stop the “standby" server::
+Stop the "standby" server::
 
   repmgr -f /home/prime/repmgr/repmgr.conf standby promote
 
-Now the original primary, “prime" is acting again as primary.
+Now the original primary, "prime" is acting again as primary.
 
-Start the “standby" server and type this on “prime"::
+Start the "standby" server and type this on "prime"::
 
   repmgr standby clone --force -h 127.0.0.1 -p 5434 -U prime -R standby --verbose
 
-Stop the “standby" and change the port to be 5434 in the ``postgresql.conf``
+Stop the "standby" and change the port to be 5434 in the ``postgresql.conf``
 file.
 
-Verify the roles have reversed by attempting to insert a record on “standby"
-and on “prime."
+Verify the roles have reversed by attempting to insert a record on "standby"
+and on "prime."
 
-The servers are now again acting as primary on “prime" and standby on “standby".
+The servers are now again acting as primary on "prime" and standby on "standby".
+
+Error codes
+===========
+
+When the repmgr or repmgrd program exits, it will set one of the
+following 
+
+* SUCCESS 0:  Program ran successfully.
+
+* ERR_BAD_CONFIG 1:  One of the configuration checks the program makes failed.
+* ERR_BAD_RSYNC 2:  An rsync call made by the program returned an error.
+* ERR_STOP_BACKUP 3:  A ``pg_stop_backup()`` call made by the program didn't succeed.
+* ERR_NO_RESTART 4:  An attempt to restart a PostgreSQL instance failed.
+* ERR_NEEDS_XLOG 5:  Could note create the ``pg_xlog`` directory when cloning.
+* ERR_DB_CON 6:  Error when trying to connect to a database.
+* ERR_DB_QUERY 7:  Error executing a database query.
+* ERR_PROMOTED 8:  Exiting program because the node has been promoted to master.
+* ERR_BAD_PASSWORD 9:  Password used to connect to a database was rejected.
 
 License and Contributions
 =========================
