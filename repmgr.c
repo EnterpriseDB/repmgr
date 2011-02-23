@@ -1035,15 +1035,16 @@ stop_backup:
 	log_info(_("%s requires primary to keep WAL files %s until at least %s\n"),
 	         progname, first_wal_segment, last_wal_segment);
 
+	/* Finished with the database connection now */
+	PQclear(res);
+	PQfinish(conn);
+
 	/*
 	 * Only free the first_wal_segment since it was copied out of the
 	 * pqresult.
 	 */
 	free(first_wal_segment);
 	first_wal_segment = NULL;
-
-	PQclear(res);
-	PQfinish(conn);
 
 	/* If the rsync failed then exit */
 	if (r != 0)
@@ -1063,9 +1064,6 @@ stop_backup:
 
 	/* Finally, write the recovery.conf file */
 	create_recovery_file(runtime_options.dest_dir, NULL);
-
-	PQclear(res);
-	PQfinish(conn);
 
 	/*
 	 * We don't start the service yet because we still may want to
