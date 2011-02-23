@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "log.h"
 #include "strutil.h"
 
 static int xvsnprintf(char *str, size_t size, const char *format, va_list ap);
@@ -36,7 +37,8 @@ xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 
 	if (retval >= size)
 	{
-		fprintf(stderr, "Buffer not large enough to format entire string\n");
+		log_err(_("Buffer of size not large enough to format entire string '%s'\n"),
+		        str);
 		exit(ERR_STR_OVERFLOW);
 	}
 

@@ -18,8 +18,8 @@
  */
 
 #include "repmgr.h"
-
 #include "strutil.h"
+#include "log.h"
 
 PGconn *
 establishDBConnection(const char *conninfo, const bool exit_on_error)
@@ -30,7 +30,7 @@ establishDBConnection(const char *conninfo, const bool exit_on_error)
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
-		fprintf(stderr, "Connection to database failed: %s",
+		log_err(_("Connection to database failed: %s\n"),
 		        PQerrorMessage(conn));
 
 		if (exit_on_error)
@@ -54,7 +54,8 @@ is_standby(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't query server mode: %s", PQerrorMessage(conn));
+		log_err(_("Can't query server mode: %s"),
+		        PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_DB_QUERY);
@@ -90,7 +91,8 @@ pg_version(PGconn *conn, char* major_version)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
+		log_err(_("Version check PQexec failed: %s"),
+		        PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_DB_QUERY);
@@ -128,7 +130,8 @@ guc_setted(PGconn *conn, const char *parameter, const char *op,
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
+		log_err(_("GUC setting check PQexec failed: %s"),
+		        PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_DB_QUERY);
@@ -159,7 +162,8 @@ get_cluster_size(PGconn *conn)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "PQexec failed: %s", PQerrorMessage(conn));
+		log_err(_("Get cluster size PQexec failed: %s"),
+		        PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_DB_QUERY);
@@ -221,7 +225,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get nodes info: %s\n",
+		log_err(_("Can't get nodes info: %s\n"),
 		        PQerrorMessage(standby_conn));
 		PQclear(res1);
 		PQfinish(standby_conn);
@@ -247,7 +251,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 
 		if (PQresultStatus(res2) != PGRES_TUPLES_OK)
 		{
-			fprintf(stderr, "Can't get recovery state from this node: %s\n",
+			log_err(_("Can't get recovery state from this node: %s\n"),
 			        PQerrorMessage(master_conn));
 			PQclear(res2);
 			PQfinish(master_conn);

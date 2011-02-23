@@ -29,7 +29,7 @@
 #include "check_dir.h"
 
 #include "strutil.h"
-
+#include "log.h"
 
 static int mkdir_p(char *path, mode_t omode);
 
@@ -99,7 +99,7 @@ create_directory(char *dir)
 	if (mkdir_p(dir, 0700) == 0)
 		return true;
 
-	fprintf(stderr, _("Could not create directory \"%s\": %s\n"),
+	log_err(_("Could not create directory \"%s\": %s\n"),
 	        dir, strerror(errno));
 
 	return false;

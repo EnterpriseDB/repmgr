@@ -676,7 +676,6 @@ do_standby_clone(void)
 	case 0:
 		/* dest_dir not there, must create it */
 		log_info(_("creating directory %s ...\n"), runtime_options.dest_dir);
-		fflush(stdout);
 
 		if (!create_directory(runtime_options.dest_dir))
 		{
@@ -687,9 +686,8 @@ do_standby_clone(void)
 		break;
 	case 1:
 		/* Present but empty, fix permissions and use it */
-		log_info(_("fixing permissions on existing directory %s ...\n"),
+		log_info(_("checking and correcting permissions on existing directory %s ...\n"),
 		         runtime_options.dest_dir);
-		fflush(stdout);
 
 		if (!set_directory_permissions(runtime_options.dest_dir))
 		{
@@ -808,9 +806,7 @@ do_standby_clone(void)
 		{
 		case 0:
 			/* tblspc_dir not there, must create it */
-			if (runtime_options.verbose)
-				printf(_("creating directory \"%s\"... "), tblspc_dir);
-			fflush(stdout);
+			log_info(_("creating directory \"%s\"... "), tblspc_dir);
 
 			if (!create_directory(tblspc_dir))
 			{
@@ -823,10 +819,8 @@ do_standby_clone(void)
 			break;
 		case 1:
 			/* Present but empty, fix permissions and use it */
-			if (runtime_options.verbose)
-				printf(_("fixing permissions on existing directory \"%s\"... "),
-				       tblspc_dir);
-			fflush(stdout);
+			log_info(_("fixing permissions on existing directory \"%s\"... "),
+			         tblspc_dir);
 
 			if (!set_directory_permissions(tblspc_dir))
 			{
@@ -841,10 +835,8 @@ do_standby_clone(void)
 			/* Present and not empty */
 			if (!runtime_options.force)
 			{
-				fprintf(
-				    stderr,
-				    _("%s: directory \"%s\" exists but is not empty\n"),
-				    progname, tblspc_dir);
+				log_err(_("%s: directory \"%s\" exists but is not empty\n"),
+				        progname, tblspc_dir);
 				PQclear(res);
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);

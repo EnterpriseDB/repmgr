@@ -20,6 +20,8 @@
 #ifndef _REPMGR_LOG_H_
 #define _REPMGR_LOG_H_
 
+#include "repmgr.h"
+
 #define REPMGR_SYSLOG 1
 #define REPMGR_STDERR 2
 
