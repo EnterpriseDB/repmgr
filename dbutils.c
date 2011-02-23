@@ -43,6 +43,26 @@ establishDBConnection(const char *conninfo, const bool exit_on_error)
 	return conn;
 }
 
+PGconn *
+establishDBConnectionByParams(const char *keywords[], const char *values[],const bool exit_on_error)
+{
+	/* Make a connection to the database */
+	PGconn *conn = PQconnectdbParams(keywords, values, true);
+
+	/* Check to see that the backend connection was successfully made */
+	if ((PQstatus(conn) != CONNECTION_OK))
+	{
+		log_err(_("Connection to database failed: %s\n"),
+		        PQerrorMessage(conn));
+		if (exit_on_error)
+		{
+			PQfinish(conn);
+			exit(ERR_DB_CON);
+		}
+	}
+
+	return conn;
+}
 
 bool
 is_standby(PGconn *conn)

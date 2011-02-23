@@ -732,13 +732,7 @@ do_standby_clone(void)
 
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("%s connecting to master database\n"), progname);
-	conn = PQconnectdbParams(keywords, values, true);
-	if (!conn)
-	{
-		log_err(_("%s: could not connect to master\n"),
-		        progname);
-		exit(ERR_BAD_CONFIG);
-	}
+	conn=establishDBConnectionByParams(keywords,values,true);
 
 	/* primary should be v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
@@ -1011,17 +1005,17 @@ do_standby_clone(void)
 	}
 
 stop_backup:
-	/* inform the master that we have finished the backup */
-	conn = PQconnectdbParams(keywords, values, true);
-	if (!conn)
-	{
-		log_err(_("%s: could not connect to master\n"),
-		        progname);
-		exit(ERR_BAD_RSYNC);
-	}
+
+	/*
+	 * Inform the master that we have finished the backup.
+	 *
+	 * Don't have this one exit if it fails, so that a more informative
+	 * error message will also appear about the backup not being stopped.
+	 */
+	log_info(_("%s connecting to master database to stop backup\n"), progname);
+	conn=establishDBConnectionByParams(keywords,values,false);
 
 	log_notice("Finishing backup...\n");
-
 	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
 	log_debug("standby clone: %s\n", sqlquery);
 

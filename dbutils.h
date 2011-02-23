@@ -21,6 +21,9 @@
 #define _REPMGR_DBUTILS_H_
 
 PGconn *establishDBConnection(const char *conninfo, const bool exit_on_error);
+PGconn *establishDBConnectionByParams(const char *keywords[],
+                                      const char *values[],
+                                      const bool exit_on_error);
 bool	is_standby(PGconn *conn);
 char   *pg_version(PGconn *conn, char* major_version);
 bool	guc_setted(PGconn *conn, const char *parameter, const char *op,
