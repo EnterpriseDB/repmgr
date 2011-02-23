@@ -257,15 +257,17 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 		/* initialize with the values of the current node being processed */
 		*master_id = atoi(PQgetvalue(res1, i, 0));
 		strncpy(master_conninfo, PQgetvalue(res1, i, 2), MAXCONNINFO);
+		log_info(_("checking role of cluster '%s'\n"), 
+			master_conninfo);
 		master_conn = establishDBConnection(master_conninfo, false);
 
 		if (PQstatus(master_conn) != CONNECTION_OK)
 			continue;
 
 		/*
-		 * I can't use the is_standby() function here because on error that
-		 * function closes the connection i pass and exit, but i still need to
-		 * close standby_conn
+		 * Can't use the is_standby() function here because on error that
+		 * function closes the connection passed and exits.  This still
+		 * needs to close master_conn first.
 		 */
 		res2 = PQexec(master_conn, "SELECT pg_is_in_recovery()");
 

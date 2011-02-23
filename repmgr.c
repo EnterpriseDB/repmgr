@@ -319,7 +319,6 @@ main(int argc, char **argv)
 	return 0;
 }
 
-
 static void
 do_master_register(void)
 {
@@ -334,6 +333,7 @@ do_master_register(void)
 	conn = establishDBConnection(options.conninfo, true);
 
 	/* master should be v9 or better */
+	log_info(_("%s connecting to master database\n"), progname);
 	pg_version(conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
@@ -391,7 +391,7 @@ do_master_register(void)
 
 	if (!schema_exists)
 	{
-		log_info("master register: creating database objects inside the %s schema", repmgr_schema);
+		log_info("master register: creating database objects inside the %s schema\n", repmgr_schema);
 
 		/* ok, create the schema */
 		sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", repmgr_schema);
@@ -521,11 +521,13 @@ do_standby_register(void)
 	char master_version[MAXVERSIONSTR];
 	char standby_version[MAXVERSIONSTR];
 
-	conn = establishDBConnection(options.conninfo, true);
-
 	/* XXX: A lot of copied code from do_master_register! Refactor */
 
+	log_info(_("%s connecting to standby database\n"), progname);
+	conn = establishDBConnection(options.conninfo, true);
+	
 	/* should be v9 or better */
+	log_info(_("%s connected to standby, checking its state\n"), progname);
 	pg_version(conn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
@@ -577,6 +579,7 @@ do_standby_register(void)
 	PQclear(res);
 
 	/* check if there is a master in this cluster */
+	log_info(_("%s connecting to master database\n"), progname);
 	master_conn = getMasterConnection(conn, options.node, options.cluster_name,
 	                                  &master_id, NULL);
 	if (!master_conn)
@@ -586,6 +589,7 @@ do_standby_register(void)
 	}
 
 	/* master should be v9 or better */
+	log_info(_("%s connected to master, checking its state\n"), progname);
 	pg_version(master_conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
@@ -606,6 +610,7 @@ do_standby_register(void)
 	}
 
 	/* Now register the standby */
+	log_info(_("%s registering the standby\n"), progname);
 	if (runtime_options.force)
 	{
 		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_nodes "
@@ -637,6 +642,7 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	log_info(_("%s registering the standby complete\n"), progname);
 	PQfinish(master_conn);
 	PQfinish(conn);
 	return;
@@ -1069,7 +1075,7 @@ stop_backup:
 	 * We don't start the service yet because we still may want to
 	 * move the directory
 	 */
-
+	log_info(_("%s standby clone complete\n"), progname);
 	exit(r);
 }
 
@@ -1093,9 +1099,11 @@ do_standby_promote(void)
 	char	standby_version[MAXVERSIONSTR];
 
 	/* We need to connect to check configuration */
+	log_info(_("%s connecting to master database\n"), progname);
 	conn = establishDBConnection(options.conninfo, true);
 
 	/* we need v9 or better */
+	log_info(_("%s connected to master, checking its state\n"), progname);
 	pg_version(conn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
@@ -1120,9 +1128,8 @@ do_standby_promote(void)
 		log_err("There is a master already in this cluster\n");
 		exit(ERR_BAD_CONFIG);
 	}
-
-	if (runtime_options.verbose)
-		printf(_("\n%s: Promoting standby...\n"), progname);
+	
+	log_notice(_("%s: Promoting standby\n"), progname);
 
 	/* Get the data directory full path and the last subdirectory */
 	sqlquery_snprintf(sqlquery, "SELECT setting "
@@ -1140,6 +1147,7 @@ do_standby_promote(void)
 	PQclear(res);
 	PQfinish(conn);
 
+	log_info(_("%s: Marking recovery done\n"), progname);
 	maxlen_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
 	maxlen_snprintf(recovery_done_path, "%s/%s", data_dir, RECOVERY_DONE_FILE);
 	rename(recovery_file_path, recovery_done_path);
@@ -1150,6 +1158,7 @@ do_standby_promote(void)
 	 * find an active server rather than one starting up.  This may
 	 * hang for up the default timeout (60 seconds).
 	 */
+	log_notice(_("%s: restarting server using pg_ctl\n"), progname);
 	maxlen_snprintf(script, "pg_ctl -D %s -w -m fast restart", data_dir);
 	r = system(script);
 	if (r != 0)
@@ -1159,6 +1168,7 @@ do_standby_promote(void)
 	}
 
 	/* reconnect to check we got promoted */
+	log_info(_("%s connecting to now restarted database\n"), progname);
 	conn = establishDBConnection(options.conninfo, true);
 	if (is_standby(conn))
 	{
@@ -1191,9 +1201,11 @@ do_standby_follow(void)
 	char	standby_version[MAXVERSIONSTR];
 
 	/* We need to connect to check configuration */
+	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establishDBConnection(options.conninfo, true);
 
 	/* Check we are in a standby node */
+	log_info(_("%s connected to standby, checking its state\n"), progname);
 	if (!is_standby(conn))
 	{
 		log_err("\n%s: The command should be executed in a standby node\n", progname);
@@ -1211,6 +1223,7 @@ do_standby_follow(void)
 	}
 
 	/* we also need to check if there is any master in the cluster */
+	log_info(_("%s connecting to master database\n"), progname);
 	master_conn = getMasterConnection(conn, options.node,
 	                                  options.cluster_name, &master_id,(char *) &master_conninfo);
 	if (master_conn == NULL)
@@ -1229,6 +1242,7 @@ do_standby_follow(void)
 	}
 
 	/* should be v9 or better */
+	log_info(_("%s connected to master, checking its state\n"), progname);
 	pg_version(master_conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
