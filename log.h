@@ -111,6 +111,7 @@
 /* Logger initialisation and shutdown */
 bool logger_shutdown(void);
 bool logger_init(const char* ident, const char* level, const char* facility);
+void logger_min_verbose(int minimum);
 
 extern int log_type;
 extern int log_level;

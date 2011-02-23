@@ -130,6 +130,17 @@ bool logger_shutdown(void)
 	return true;
 }
 
+/*
+ * Set a minimum logging level.  Intended for command line verbosity
+ * options, which might increase requested logging over what's specified
+ * in the regular configuration file.
+ */
+void logger_min_verbose(int minimum)
+{
+	if (log_level < minimum)
+		log_level = minimum;
+}
+
 int detect_log_level(const char* level)
 {
 	if (!strcmp(level, "DEBUG"))

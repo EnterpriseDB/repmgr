@@ -30,10 +30,14 @@ parse_config(const char* config_file, t_configuration_options* options)
 
 	FILE *fp = fopen (config_file, "r");
 
+	/*
+	 * Since some commands don't require a config file at all, not
+	 * having one isn't necessarily a problem.
+	 */
 	if (fp == NULL)
 	{
-		fprintf(stderr, _("Could not find configuration file '%s'\n"), config_file);
-		exit(ERR_BAD_CONFIG);
+		fprintf(stderr, _("Did not find the configuration file '%s', continuing\n"), config_file);
+		return;
 	}
 
 	/* Initialize */

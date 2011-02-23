@@ -211,7 +211,7 @@ main(int argc, char **argv)
 		{
 			if (runtime_options.host[0])
 			{
-				log_err(_("Conflicting parameters you can't use -h while providing a node separately.\n"));
+				log_err(_("Conflicting parameters:  you can't use -h while providing a node separately.\n"));
 				usage();
 				exit(ERR_BAD_CONFIG);
 			}
@@ -224,7 +224,7 @@ main(int argc, char **argv)
 	case 0:
 		break;
 	default:
-		log_err(_("%s: too many command-line arguments (first is \"%s\")\n"),
+		log_err(_("%s: too many command-line arguments (first extra is \"%s\")\n"),
 		        progname, argv[optind + 1]);
 		usage();
 		exit(ERR_BAD_CONFIG);
@@ -243,7 +243,7 @@ main(int argc, char **argv)
 			strncpy(runtime_options.dbname, DEFAULT_DBNAME, MAXLEN);
 	}
 
-	/* Read the configuration file: repmgr.conf */
+	/* Read the configuration file, normally repmgr.conf */
 	if (!runtime_options.config_file[0])
 		strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
 
@@ -261,7 +261,17 @@ main(int argc, char **argv)
 	keywords[5] = NULL;
 	values[5] = NULL;
 
+	/*
+	 * Initialize the logger.  If verbose command line parameter was
+	 * input, make sure that the log level is at least INFO.  This
+	 * is mainly useful for STANDBY CLONE.  That doesn't require a
+	 * configuration file where a logging level might be specified
+	 * at, but it often requires detailed logging to troubleshoot
+	 * problems.
+	 */
 	logger_init(progname, options.loglevel, options.logfacility);
+	if (runtime_options.verbose)
+		logger_min_verbose(LOG_INFO);
 
 	/*
 	 * Node configuration information is not needed for all actions,
@@ -592,7 +602,6 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-
 	/* Now register the standby */
 	if (runtime_options.force)
 	{
@@ -724,6 +733,7 @@ do_standby_clone(void)
 	values[1] = runtime_options.masterport;
 
 	/* We need to connect to check configuration and start a backup */
+	log_info(_("%s connecting to master database\n"), progname);
 	conn = PQconnectdbParams(keywords, values, true);
 	if (!conn)
 	{
@@ -733,6 +743,7 @@ do_standby_clone(void)
 	}
 
 	/* primary should be v9 or better */
+	log_info(_("%s connected to master, checking its state\n"), progname);
 	pg_version(conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
@@ -1562,7 +1573,8 @@ check_parameters_for_action(const int action)
 		{
 			log_notice("Only command line parameters for the connection "
 			           "to the master are used when issuing a STANDBY CLONE command. "
-			           "The passed configuration file is neither required nor used\n");
+			           "The passed configuration file is neither required nor used for "
+			           "its node configuration portions\n\n");
 		}
 		/*
 		 * To clone a master into a standby we need connection parameters
