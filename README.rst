@@ -13,20 +13,67 @@ PostgreSQL, the user is expected to manage the high availability
 part of it.
 
 repmgr allows you to monitor and manage your replicated PostgreSQL
-databases as a single cluster.
-
-repmgr includes two components:
+databases as a single cluster.  repmgr includes two components:
 
 * repmgr: command program that performs tasks and then exits
+
 * repmgrd: management and monitoring daemon that watches the cluster
+  and can automate remote actions.
 
 Requirements
 ------------
 
 repmgr is currently aimed for installation on UNIX-like systems that include
-development tools such as gcc and gmake.  It also requires that the
+development tools such as ``gcc`` and ``gmake``.  It also requires that the
 ``rsync`` utility is available in the PATH of the user running the repmgr
-programs.
+programs.  Some operations also require PostgreSQL components such
+as ``pg_config`` and ``pg_ctl`` be in the PATH.
+
+Introduction to repmgr commands
+===============================
+
+Suppose we have 3 nodes: node1 (the initial master), node2 and node3.
+To make node2 and node3 be standbys of node1, execute this on both nodes
+(node2 and node3)::
+
+  repmgr -D /var/lib/pgsql/9.0 standby clone node1
+
+In order to get full monitoring and easier state transitions,
+you register each of the nodes, by creating a ``repmgr.conf`` file
+and executing commands like this on the appropriate nodes::
+
+  repmgr -f /var/lib/pgsql/repmgr/repmgr.conf --verbose master register
+  repmgr -f /var/lib/pgsql/repmgr/repmgr.conf --verbose standby register
+
+Once everything is registered, you start the repmgrd daemon.  It
+will maintain a view showing the state of all the nodes in the cluster,
+including how far they are lagging behind the master.
+
+If you lose node1 you can then run this on node2::
+
+  repmgr -f /var/lib/pgsql/repmgr/repmgr.conf standby promote 
+
+To make node2 the new master.  Then on node3 run::
+
+  repmgr -f /var/lib/pgsql/repmgr/repmgr.conf standby follow
+
+To make node3 follow node2 (rather than node1).
+
+If now we want to add a new node, we can a prepare a new server (node4)
+and run::
+
+  repmgr -D /var/lib/pgsql/9.0 standby clone node2
+  
+And if a previously failed node becomes available again, such as
+the lost node1 above, you can get it to resynchronize by only copying
+over changes made while it was down using.  That hapens with what's
+called a forced clone, which overwrites existing data rather than
+assuming it starts with an empty database directory tree::
+
+  repmgr -D /var/lib/pgsql/9.0 --force standby clone node1
+
+This can be much faster than creating a brand new node that must
+copy over every file in the database.
 
 Installation Outline
 ====================
@@ -277,7 +324,7 @@ Now test that ssh in both directions works.  You may have to accept some new
 known hosts in the process.
 
 Primary server configuration
-============================
+----------------------------
 
 PostgreSQL should have been previously built and installed on the system.  Here
 is a sample of changes to the ``postgresql.conf`` file::
@@ -310,237 +357,8 @@ them as well to allow automatic login.  In this case you might use the
 
 Don't forget to restart the database server after making all these changes.
 
-Configuration File
-==================
-
-``repmgr.conf`` is looked for in the directory repmgrd or repmgr exists.
-The configuration file should have 3 lines:
-
-It should have these three parameters:
-
-1. cluster: A string (single quoted) that identify the cluster we are on 
-
-2. node: An integer that identify our node in the cluster
-
-3. conninfo: A string (single quoted) specifying how we can connect to this node's PostgreSQL service
-
-Command line syntax
-===================
-
-The current supported syntax for the program can be seen using::
-
-  repmgr --help
-  
-The output from this program looks like this::
-
-  repmgr: Replicator manager 
-  Usage:
-   repmgr [OPTIONS] master  {register}
-   repmgr [OPTIONS] standby {register|clone|promote|follow}
-
-  General options:
-    --help                     show this help, then exit
-    --version                  output version information, then exit
-    --verbose                  output verbose activity information
-
-  Connection options:
-    -d, --dbname=DBNAME        database to connect to
-    -h, --host=HOSTNAME        database server host or socket directory
-    -p, --port=PORT            database server port
-    -U, --username=USERNAME    database user name to connect as
-
-  Configuration options:
-    -D, --data-dir=DIR         local directory where the files will be copied to
-    -f, --config_file=PATH     path to the configuration file
-    -R, --remote-user=USERNAME database server username for rsync
-    -w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)
-    -F, --force                force potentially dangerous operations to happen
-
-  repmgr performs some tasks like clone a node, promote it or making follow another node and then exits.
-  COMMANDS:
-   master register       - registers the master in a cluster
-   standby register      - registers a standby in a cluster
-   standby clone [node]  - allows creation of a new standby
-   standby promote       - allows manual promotion of a specific standby into a new master in the event of a failover
-   standby follow        - allows the standby to re-point itself to a new master
-
-The ``--verbose`` option can be useful in troubleshooting issues with
-the program.
-
-Commands
-========
-
-Not all of these commands need the ``repmgr.conf`` file, but they need to be able to
-connect to the remote and local databases.
-
-You can teach it which is the remote database by using the -h parameter or 
-as a last parameter in standby clone and standby follow. If you need to specify
-a port different then the default 5432 you can specify a -p parameter.
-Standby is always considered as localhost and a second -p parameter will indicate
-its port if is different from the default one.
-
-* master register
-
-  * Registers a master in a cluster, it needs to be executed before any
-    standby nodes are registered
-
-* standby register
-
-  * Registers a standby in a cluster, it needs to be executed before
-    repmgrd will function on the node.
-
-* standby clone [node to be cloned] 
-
-  * Does a backup via ``rsync`` of the data directory of the primary. And it 
-    creates the recovery file we need to start a new hot standby server.
-    It doesn't need the ``repmgr.conf`` so it can be executed anywhere on the
-    new node.  You can change to the directory you want the new database
-    cluster at and execute::
-
-      ./repmgr standby clone 10.68.1.161
-
-    or run from wherever you are with a full path::
-
-     ./repmgr -D /path/to/new/data/directory standby clone 10.68.1.161
-
-    That will make a backup of the primary then you only need to start the server
-    using a command like::
-
-      pg_ctl -D /your_data_directory_path start
-
-    Note that some installations will also redirect the output log file when
-    executing ``pg_ctl``.
-
-* standby promote 
-
-  * Allows manual promotion of a specific standby into a new primary in the
-    event of a failover.  This needs to be executed on the same directory
-    where the ``repmgr.conf`` is in the standby, or you can use the ``-f`` option
-    to indicate where the ``repmgr.conf`` is at.  It doesn't need any
-    additional arguments::
-
-      ./repmgr standby promote
-
-    That will restart your standby postgresql service.
-
-* standby follow 
-
-    * Allows the standby to base itself to the new primary passed as a
-      parameter.  This needs to be executed on the same directory where the
-      ``repmgr.conf`` is in the standby, or you can use the ``-f`` option
-      to indicate where the ``repmgr.conf`` is at.  Example::
-
-        ./repmgr standby follow
-
-Brief examples
-==============
-
-Suppose we have 3 nodes: node1 (the initial master), node2 and node3
-
-To make node2 and node3 be standbys of node1, execute this on both nodes
-(node2 and node3)::
-
-  repmgr -D /var/lib/postgresql/9.0 standby clone node1
-
-If we lose node1 we can run on node2::
-
-  repmgr -f /home/postgres/repmgr.conf standby promote 
-
-Which makes node2 the new master.  We then run on node3::
-
-  repmgr standby follow
-
-To make node3 follow node2 (rather than node1)
-
-If now we want to add a new node we can a prepare a new server (node4)
-and run::
-
-  repmgr -D /var/lib/postgresql/9.0 standby clone node2
-
-NOTE: you need to have $PGDIR/bin (where the PostgreSQL binaries are installed)
-in your path for the above to work.  If you don't want that as a permanent
-setting, you can temporarily set it before running individual commands like
-this::
-
-  PATH=$PGDIR/bin:$PATH repmgr standby promote
-
-repmgrd Daemon
-==============
-
-Command line syntax
--------------------
-
-The current supported syntax for the program can be seen using::
-
-  repmgrd --help
-  
-The output from this program looks like this::
-
-  repmgrd: Replicator manager daemon 
-  Usage:
-   repmgrd [OPTIONS]
-  
-  Options:
-    --help                    show this help, then exit
-    --version                 output version information, then exit
-    --verbose                 output verbose activity information
-    -f, --config_file=PATH    database to connect to
-  
-  repmgrd monitors a cluster of servers.
-
-The ``--verbose`` option can be useful in troubleshooting issues with
-the program.
-
-Setup
------
-
-To use the repmgrd (repmgr daemon) to monitor standby so we know how is going 
-the replication and how far they are from primary, you need to execute the 
-``repmgr.sql`` script in the postgres database.
-
-You also need to add a row for every node in the ``repl_node`` table.  This work
-may be done for you by the daemon itself, as described below.
-
-Lag monitoring
---------------
-
-To look at the current lag between primary and each node listed
-in ``repl_node``, consult the ``repl_status`` view::
-
-  psql -d postgres -c "SELECT * FROM repmgr_test.repl_status"
-
-This view shows the latest monitor info from every node.
- 
-* replication_lag: in bytes.  This is how far the latest xlog record 
-  we have received is from master.
-
-* apply_lag: in bytes.  This is how far the latest xlog record
-  we have applied is from the latest record we have received.
-
-* time_lag: in seconds.  How many seconds behind the master is this node.
-
-Usage
------
-
-repmgrd reads the ``repmgr.conf`` file in current directory, or as indicated with -f 
-parameter.  It checks if the standby is in repl_nodes and adds it if not.
-
-Before you can run the repmgr daemon (repmgrd) you need to register a master
-and at least a standby in a cluster using the ``MASTER REGISTER`` and 
-``STANDBY REGISTER`` commands.
-
-For example, following last example and assuming that ``repmgr.conf`` is in postgres
-home directory you will run this on the master::
-
-  repmgr -f /home/postgres/repmgr.conf master register
-
-and the same in the standby.
-
-The repmgr daemon creates 2 connections: one to the master and another to the
-standby.
-
-Detailed walkthrough
-====================
+Usage walkthrough
+=================
 
 This assumes you've already followed the steps in "Installation Outline" to
 install repmgr and repmgrd on the system.
@@ -571,7 +389,7 @@ skip this step and use it instead.  But if you do not already have
 data in this cluster to replication, you can create some like this::
 
     createdb pgbench
-	pgbench -i -s 10 pgbench
+    pgbench -i -s 10 pgbench
 	
 Examples below will use the database name ``pgbench`` to match this.
 Substitute the name of your database instead.  Note that the standby
@@ -602,9 +420,9 @@ To setup a new streaming replica, startin by removing any PostgreSQL
 installation on the existing standby nodes.
 
 * Stop any server on "node2" and "node3".  You can confirm the database
-  servers running using a command like this:
+  servers running using a command like this::
   
-    ps -eaf | grep postgreg
+    ps -eaf | grep postgres
 	
   And looking for the various database server processes:  server, logger,
   wal writer, and autovacuum launcher.
@@ -628,27 +446,27 @@ way repmgr will by executing::
 
 Possible sources for a problem here include:
 
- * Login role specified was not created on "node1"
+* Login role specified was not created on "node1"
 
- * The database configuration on "node1" is not listening on a TCP/IP port.
-   That could be because the ``listen_addresses`` parameter was not updated,
-   or if it was but the server wasn't restarted afterwards.  You can
-   test this on "node1" itself the same way::
+* The database configuration on "node1" is not listening on a TCP/IP port.
+  That could be because the ``listen_addresses`` parameter was not updated,
+  or if it was but the server wasn't restarted afterwards.  You can
+  test this on "node1" itself the same way::
 
-     psql -h node1 -U repmgr -d pgbench
+    psql -h node1 -U repmgr -d pgbench
 
-   With the "-h" parameter forcing a connnection over TCP/IP, rather
-   than the default UNIX socket method.
+  With the "-h" parameter forcing a connnection over TCP/IP, rather
+  than the default UNIX socket method.
 
- * There is a firewall setup that prevents incoming access to the
-   PostgreSQL port (defaulting to 5432) used to access "node1".  In
-   this situation you would be able to connect to the "node1" server
-   on itself, but not from any other host, and you'd just get a timeout
-   when trying rather than a proper error message.
+* There is a firewall setup that prevents incoming access to the
+  PostgreSQL port (defaulting to 5432) used to access "node1".  In
+  this situation you would be able to connect to the "node1" server
+  on itself, but not from any other host, and you'd just get a timeout
+  when trying rather than a proper error message.
 	 
- * The ``pg_hba.conf`` file does not list appropriate statements to allow
-   this user to login.  In this case you should connect to the server,
-   but see an error message mentioning the ``pg_hba.conf``.
+* The ``pg_hba.conf`` file does not list appropriate statements to allow
+  this user to login.  In this case you should connect to the server,
+  but see an error message mentioning the ``pg_hba.conf``.
 
 Cloning the standby
 -------------------
@@ -667,6 +485,13 @@ role setup is the same on each node.
 If this fails with an error message about accessing the master database,
 you should return to the previous step and confirm access to "node1"
 from "node2" with ``psql``, using the same parameters given to repmgr.
+
+NOTE: you need to have $PGDIR/bin (where the PostgreSQL binaries are installed)
+in your path for the above to work.  If you don't want that as a permanent
+setting, you can temporarily set it before running individual commands like
+this::
+
+  PATH=$PGDIR/bin:$PATH repmgr -D $PGDATA ...
 
 Setup repmgr configuration file
 -------------------------------
@@ -973,14 +798,210 @@ and on "prime."
 
 The servers are now again acting as primary on "prime" and standby on "standby".
 
+Configuration and command reference
+===================================
+
+Configuration File
+------------------
+
+``repmgr.conf`` is looked for in the directory repmgrd or repmgr exists in.
+The configuration file should have 3 lines:
+
+1. cluster: A string (single quoted) that identify the cluster we are on 
+
+2. node: An integer that identify our node in the cluster
+
+3. conninfo: A string (single quoted) specifying how we can connect to this node's PostgreSQL service
+
+repmgr
+------
+
+Command line syntax
+~~~~~~~~~~~~~~~~~~~
+
+The current supported syntax for the program can be seen using::
+
+  repmgr --help
+  
+The output from this program looks like this::
+
+  repmgr: Replicator manager 
+  Usage:
+   repmgr [OPTIONS] master  {register}
+   repmgr [OPTIONS] standby {register|clone|promote|follow}
+
+  General options:
+    --help                     show this help, then exit
+    --version                  output version information, then exit
+    --verbose                  output verbose activity information
+
+  Connection options:
+    -d, --dbname=DBNAME        database to connect to
+    -h, --host=HOSTNAME        database server host or socket directory
+    -p, --port=PORT            database server port
+    -U, --username=USERNAME    database user name to connect as
+
+  Configuration options:
+    -D, --data-dir=DIR         local directory where the files will be copied to
+    -f, --config_file=PATH     path to the configuration file
+    -R, --remote-user=USERNAME database server username for rsync
+    -w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)
+    -F, --force                force potentially dangerous operations to happen
+
+  repmgr performs some tasks like clone a node, promote it or making follow another node and then exits.
+  COMMANDS:
+   master register       - registers the master in a cluster
+   standby register      - registers a standby in a cluster
+   standby clone [node]  - allows creation of a new standby
+   standby promote       - allows manual promotion of a specific standby into a new master in the event of a failover
+   standby follow        - allows the standby to re-point itself to a new master
+
+The ``--verbose`` option can be useful in troubleshooting issues with
+the program.
+
+repmgr commands
+---------------
+
+Not all of these commands need the ``repmgr.conf`` file, but they need to be able to
+connect to the remote and local databases.
+
+You can teach it which is the remote database by using the -h parameter or 
+as a last parameter in standby clone and standby follow. If you need to specify
+a port different then the default 5432 you can specify a -p parameter.
+Standby is always considered as localhost and a second -p parameter will indicate
+its port if is different from the default one.
+
+* master register
+
+  * Registers a master in a cluster, it needs to be executed before any
+    standby nodes are registered
+
+* standby register
+
+  * Registers a standby in a cluster, it needs to be executed before
+    repmgrd will function on the node.
+
+* standby clone [node to be cloned] 
+
+  * Does a backup via ``rsync`` of the data directory of the primary. And it 
+    creates the recovery file we need to start a new hot standby server.
+    It doesn't need the ``repmgr.conf`` so it can be executed anywhere on the
+    new node.  You can change to the directory you want the new database
+    cluster at and execute::
+
+      ./repmgr standby clone node1
+
+    or run from wherever you are with a full path::
+
+     ./repmgr -D /path/to/new/data/directory standby clone node1
+
+    That will make a backup of the primary then you only need to start the server
+    using a command like::
+
+      pg_ctl -D /your_data_directory_path start
+
+    Note that some installations will also redirect the output log file when
+    executing ``pg_ctl``; check the server startup script you are using
+    and try to match what it does.
+
+* standby promote 
+
+  * Allows manual promotion of a specific standby into a new primary in the
+    event of a failover.  This needs to be executed on the same directory
+    where the ``repmgr.conf`` is in the standby, or you can use the ``-f`` option
+    to indicate where the ``repmgr.conf`` is at.  It doesn't need any
+    additional arguments::
+
+      ./repmgr standby promote
+
+    That will restart your standby postgresql service.
+
+* standby follow 
+
+    * Allows the standby to base itself to the new primary passed as a
+      parameter.  This needs to be executed on the same directory where the
+      ``repmgr.conf`` is in the standby, or you can use the ``-f`` option
+      to indicate where the ``repmgr.conf`` is at.  Example::
+
+        ./repmgr standby follow
+
+repmgrd Daemon
+--------------
+
+Command line syntax
+~~~~~~~~~~~~~~~~~~~
+
+The current supported syntax for the program can be seen using::
+
+  repmgrd --help
+  
+The output from this program looks like this::
+
+  repmgrd: Replicator manager daemon 
+  Usage:
+   repmgrd [OPTIONS]
+  
+  Options:
+    --help                    show this help, then exit
+    --version                 output version information, then exit
+    --verbose                 output verbose activity information
+    -f, --config_file=PATH    database to connect to
+  
+  repmgrd monitors a cluster of servers.
+
+The ``--verbose`` option can be useful in troubleshooting issues with
+the program.
+
+Usage
+-----
+
+repmgrd reads the ``repmgr.conf`` file in current directory, or as indicated with -f 
+parameter.  It checks if the standby is in repl_nodes and adds it if not.
+
+Before you can run the repmgr daemon (repmgrd) you need to register a master
+and at least a standby in a cluster using the ``MASTER REGISTER`` and 
+``STANDBY REGISTER`` commands.
+
+For example, following last example and assuming that ``repmgr.conf`` is in postgres
+home directory you will run this on the master::
+
+  repmgr -f /home/postgres/repmgr.conf master register
+
+and the same in the standby.
+
+The repmgr daemon creates 2 connections: one to the master and another to the
+standby.
+
+Lag monitoring
+--------------
+
+The repmgrd (repmgr daemon) helps monitor a set of master and standby
+servers.  You can see which node is the current master, as well as how
+far behind each is from current.
+
+To look at the current lag between primary and each node listed
+in ``repl_node``, consult the ``repl_status`` view::
+
+  psql -d postgres -c "SELECT * FROM repmgr_test.repl_status"
+
+This view shows the latest monitor info from every node.
+ 
+* replication_lag: in bytes.  This is how far the latest xlog record 
+  we have received is from master.
+
+* apply_lag: in bytes.  This is how far the latest xlog record
+  we have applied is from the latest record we have received.
+
+* time_lag: in seconds.  How many seconds behind the master is this node.
+
+
 Error codes
-===========
+-----------
 
 When the repmgr or repmgrd program exits, it will set one of the
 following 
 
 * SUCCESS 0:  Program ran successfully.
-
 * ERR_BAD_CONFIG 1:  One of the configuration checks the program makes failed.
 * ERR_BAD_RSYNC 2:  An rsync call made by the program returned an error.
 * ERR_STOP_BACKUP 3:  A ``pg_stop_backup()`` call made by the program didn't succeed.
