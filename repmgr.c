@@ -343,6 +343,7 @@ do_master_register(void)
 	}
 
 	/* Check we are a master */
+	log_info(_("%s connected to master, checking its state\n"), progname);
 	if (is_standby(conn))
 	{
 		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);

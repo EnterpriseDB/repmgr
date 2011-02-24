@@ -60,7 +60,7 @@ t_configuration_options config = {};
 
 static void help(const char* progname);
 static void usage(void);
-static void checkClusterConfiguration(void);
+static void checkClusterConfiguration(PGconn *conn,PGconn *primary);
 static void checkNodeConfiguration(char *conninfo);
 static void CancelQuery(void);
 
@@ -147,15 +147,24 @@ main(int argc, char **argv)
 	if (local_options.node == -1)
 	{
 		log_err("Node information is missing. "
-		        "Check the configuration file.\n");
+		        "Check the configuration file, or provide one if you have not done so.\n");
 		exit(ERR_BAD_CONFIG);
 	}
+
 	logger_init(progname, local_options.loglevel, local_options.logfacility);
+	if (verbose)
+		logger_min_verbose(LOG_INFO);
+
 	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
+
+	printf("Establishing database connection\n");
+
+	log_info(_("%s Connecting to database '%s'\n"), progname, local_options.conninfo);
 
 	myLocalConn = establishDBConnection(local_options.conninfo, true);
 
 	/* should be v9 or better */
+	log_info(_("%s connected to database, checking its state\n"), progname);
 	pg_version(myLocalConn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
@@ -178,13 +187,19 @@ main(int argc, char **argv)
 	else
 	{
 		/* I need the id of the primary as well as a connection to it */
+		log_info(_("%s Connecting to primary for cluster '%s'\n"),
+		         progname, local_options.cluster_name);
 		primaryConn = getMasterConnection(myLocalConn, local_options.node,
-		                                  local_options.cluster_name, &primary_options.node,NULL);
+		                                  local_options.cluster_name,
+		                                  &primary_options.node,NULL);
 		if (primaryConn == NULL)
+		{
+			CloseConnections();
 			exit(ERR_BAD_CONFIG);
+		}
 	}
 
-	checkClusterConfiguration();
+	checkClusterConfiguration(myLocalConn,primaryConn);
 	checkNodeConfiguration(local_options.conninfo);
 	if (myLocalMode == STANDBY_MODE)
 	{
@@ -355,20 +370,21 @@ MonitorExecute(void)
 
 
 static void
-checkClusterConfiguration(void)
+checkClusterConfiguration(PGconn *conn, PGconn *primary)
 {
 	PGresult   *res;
 
+	log_info(_("%s Checking cluster configuration with schema '%s'\n"),
+	         progname, repmgr_schema);
 	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
 	                  " WHERE oid = '%s.repl_nodes'::regclass",
 	                  repmgr_schema);
-	res = PQexec(myLocalConn, sqlquery);
+	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err("PQexec failed: %s\n", PQerrorMessage(myLocalConn));
+		log_err("PQexec failed: %s\n", PQerrorMessage(conn));
 		PQclear(res);
-		PQfinish(myLocalConn);
-		PQfinish(primaryConn);
+		CloseConnections();
 		exit(ERR_DB_QUERY);
 	}
 
@@ -383,8 +399,7 @@ checkClusterConfiguration(void)
 	{
 		log_err("The replication cluster is not configured\n");
 		PQclear(res);
-		PQfinish(myLocalConn);
-		PQfinish(primaryConn);
+		CloseConnections();
 		exit(ERR_BAD_CONFIG);
 	}
 	PQclear(res);
@@ -399,17 +414,19 @@ checkNodeConfiguration(char *conninfo)
 	/*
 	 * Check if we have my node information in repl_nodes
 	 */
+	log_info(_("%s Checking node %d in cluster '%s'\n"),
+	         progname, local_options.node, local_options.cluster_name);
 	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
 	                  " WHERE id = %d AND cluster = '%s' ",
-	                  repmgr_schema, local_options.node, local_options.cluster_name);
+	                  repmgr_schema, local_options.node,
+	                  local_options.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err("PQexec failed: %s\n", PQerrorMessage(myLocalConn));
 		PQclear(res);
-		PQfinish(myLocalConn);
-		PQfinish(primaryConn);
+		CloseConnections();
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -422,16 +439,19 @@ checkNodeConfiguration(char *conninfo)
 		PQclear(res);
 
 		/* Adding the node */
+		log_info(_("%s Adding node %d to cluster '%s'\n"),
+		         progname, local_options.node, local_options.cluster_name);
 		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
 		                  "VALUES (%d, '%s', '%s')",
-		                  repmgr_schema, local_options.node, local_options.cluster_name, local_options.conninfo);
+		                  repmgr_schema, local_options.node,
+		                  local_options.cluster_name,
+		                  local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{
 			log_err("Cannot insert node details, %s\n",
 			        PQerrorMessage(primaryConn));
-			PQfinish(myLocalConn);
-			PQfinish(primaryConn);
+			CloseConnections();
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -460,6 +480,7 @@ void usage(void)
 	log_err(_("Try \"%s --help\" for more information.\n"), progname);
 }
 
+
 void help(const char *progname)
 {
 	printf(_("\n%s: Replicator manager daemon \n"), progname);
@@ -474,13 +495,13 @@ void help(const char *progname)
 }
 
 
-
 #ifndef WIN32
 static void
 handle_sigint(SIGNAL_ARGS)
 {
 	CloseConnections();
 }
+
 
 static void
 setup_cancel_handler(void)

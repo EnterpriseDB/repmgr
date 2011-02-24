@@ -238,6 +238,9 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	}
 
 	/* find all nodes belonging to this cluster */
+	log_info(_("finding node lost for cluster '%s'\n"),
+	         master_conninfo);
+
 	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
 	                  " WHERE cluster = '%s' and id <> %d",
 	                  schema_quoted, cluster, id);
@@ -257,7 +260,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 		/* initialize with the values of the current node being processed */
 		*master_id = atoi(PQgetvalue(res1, i, 0));
 		strncpy(master_conninfo, PQgetvalue(res1, i, 2), MAXCONNINFO);
-		log_info(_("checking role of cluster '%s'\n"),
+		log_info(_("checking role of cluster node '%s'\n"),
 		         master_conninfo);
 		master_conn = establishDBConnection(master_conninfo, false);
 
