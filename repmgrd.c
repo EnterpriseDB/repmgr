@@ -157,14 +157,11 @@ main(int argc, char **argv)
 
 	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
 
-	printf("Establishing database connection\n");
-
 	log_info(_("%s Connecting to database '%s'\n"), progname, local_options.conninfo);
-
 	myLocalConn = establishDBConnection(local_options.conninfo, true);
 
 	/* should be v9 or better */
-	log_info(_("%s connected to database, checking its state\n"), progname);
+	log_info(_("%s Connected to database, checking its state\n"), progname);
 	pg_version(myLocalConn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
@@ -203,7 +200,12 @@ main(int argc, char **argv)
 	checkNodeConfiguration(local_options.conninfo);
 	if (myLocalMode == STANDBY_MODE)
 	{
+		log_info(_("%s Starting continuous standby node monitoring'\n"), progname);
 		MonitorCheck();
+	}
+	else
+	{
+		log_info(_("%s This is a primary node, program not needed here; exiting'\n"), progname);
 	}
 
 	/* Prevent a double-free */

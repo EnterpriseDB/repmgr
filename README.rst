@@ -524,11 +524,27 @@ First, register the master by typing on "node1"::
 
   repmgr -f /var/lib/pgsql/repmgr/repmgr.conf --verbose master register
 
-Start the "standby" server.
+Then start the "standby" server.
 
-Register the standby by typing on "node2"::
+You could now register the standby by typing on "node2"::
 
   repmgr -f /var/lib/pgsql/repmgr/repmgr.conf --verbose standby register
+
+However, you can instead start repmgrd::
+
+  repmgrd -f /var/lib/pgsql/repmgr/repmgr.conf --verbose > /var/lib/pgsql/repmgr/repmgr.log 2>&1
+
+Which will automatically register your standby system.  And eventually
+you need repmgrd running anyway, to save lag monitoring information.
+repmgrd will log the deamon activity to the listed file.  You can
+watch what it is doing with::
+
+  tail -f /var/lib/pgsql/repmgr/repmgr.log
+
+Hit control-C to exit this tail command when you are done.
+
+Monitoring and testing
+----------------------
 
 At this point, you have a functioning primary on "node1" and a functioning
 standby server running on "node2".  You can confirm the master knows
@@ -955,19 +971,16 @@ the program.
 Usage
 -----
 
-repmgrd reads the ``repmgr.conf`` file in current directory, or as indicated with -f 
-parameter.  It checks if the standby is in repl_nodes and adds it if not.
+repmgrd reads the ``repmgr.conf`` file in current directory, or as
+indicated with -f parameter.  If run on a standby, it checks if that
+standby is in ``repl_nodes`` and adds it if not.
 
-Before you can run the repmgr daemon (repmgrd) you need to register a master
-and at least a standby in a cluster using the ``MASTER REGISTER`` and 
-``STANDBY REGISTER`` commands.
-
-For example, following last example and assuming that ``repmgr.conf`` is in postgres
-home directory you will run this on the master::
-
-  repmgr -f /home/postgres/repmgr.conf master register
-
-and the same in the standby.
+Before you can run repmgrd you need to register a master in a cluster
+using the ``MASTER REGISTER`` command.  If run on a master,
+repmgrd will exit, as it has nothing to do on them yet.  It is only
+targeted at running on standby servers currently.  If converting
+a former master into a standby, you will need to start repmgrd
+in order to make it fully operational in its new role.
 
 The repmgr daemon creates 2 connections: one to the master and another to the
 standby.
@@ -975,9 +988,9 @@ standby.
 Lag monitoring
 --------------
 
-The repmgrd (repmgr daemon) helps monitor a set of master and standby
-servers.  You can see which node is the current master, as well as how
-far behind each is from current.
+repmgrd helps monitor a set of master and standby servers.  You can
+see which node is the current master, as well as how far behind each
+is from current.
 
 To look at the current lag between primary and each node listed
 in ``repl_node``, consult the ``repl_status`` view::
@@ -993,7 +1006,6 @@ This view shows the latest monitor info from every node.
   we have applied is from the latest record we have received.
 
 * time_lag: in seconds.  How many seconds behind the master is this node.
-
 
 Error codes
 -----------
