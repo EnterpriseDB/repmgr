@@ -238,8 +238,8 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	}
 
 	/* find all nodes belonging to this cluster */
-	log_info(_("finding node lost for cluster '%s'\n"),
-	         master_conninfo);
+	log_info(_("finding node list for cluster '%s'\n"),
+	         cluster);
 
 	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
 	                  " WHERE cluster = '%s' and id <> %d",

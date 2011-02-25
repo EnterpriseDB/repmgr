@@ -200,7 +200,7 @@ main(int argc, char **argv)
 	checkNodeConfiguration(local_options.conninfo);
 	if (myLocalMode == STANDBY_MODE)
 	{
-		log_info(_("%s Starting continuous standby node monitoring'\n"), progname);
+		log_info(_("%s Starting continuous standby node monitoring\n"), progname);
 		MonitorCheck();
 	}
 	else
