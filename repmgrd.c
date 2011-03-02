@@ -477,16 +477,15 @@ walLocationToBytes(char *wal_location)
 
 void usage(void)
 {
-	log_err(_("\n\n%s: Replicator manager daemon \n"), progname);
+	log_err(_("%s: Replicator manager daemon \n"), progname);
 	log_err(_("Try \"%s --help\" for more information.\n"), progname);
 }
 
 
 void help(const char *progname)
 {
-	printf(_("\n%s: Replicator manager daemon \n"), progname);
-	printf(_("Usage:\n"));
-	printf(_(" %s [OPTIONS]\n"), progname);
+	printf(_("Usage: %s [OPTIONS]\n"), progname);
+	printf(_("Replicator manager daemon for PostgreSQL.\n"));
 	printf(_("\nOptions:\n"));
 	printf(_("  --help                    show this help, then exit\n"));
 	printf(_("  --version                 output version information, then exit\n"));
