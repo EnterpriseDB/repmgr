@@ -121,7 +121,6 @@ main(int argc, char **argv)
 		}
 	}
 
-
 	while ((c = getopt_long(argc, argv, "f:v", long_options, &optindex)) != -1)
 	{
 		switch (c)
@@ -250,7 +249,7 @@ MonitorExecute(void)
 	{
 		if (PQstatus(primaryConn) != CONNECTION_OK)
 		{
-			log_warning(_("Connection to master has been lost, trying to recover..."));
+			log_warning(_("Connection to master has been lost, trying to recover...\n"));
 			/* wait 20 seconds between retries */
 			sleep(20);
 
@@ -260,14 +259,14 @@ MonitorExecute(void)
 		{
 			if (connection_retries > 0)
 			{
-				log_notice(_("Connection to master has been restored, continue monitoring."));
+				log_notice(_("Connection to master has been restored, continue monitoring.\n"));
 			}
 			break;
 		}
 	}
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
-		log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted."));
+		log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
 		for (connection_retries = 0; connection_retries < 6; connection_retries++)
 		{
 			primaryConn = getMasterConnection(myLocalConn, local_options.node,
@@ -275,12 +274,12 @@ MonitorExecute(void)
 			if (PQstatus(primaryConn) == CONNECTION_OK)
 			{
 				/* Connected, we can continue the process so break the loop */
-				log_err(_("Connected to node %d, continue monitoring."), primary_options.node);
+				log_err(_("Connected to node %d, continue monitoring.\n"), primary_options.node);
 				break;
 			}
 			else
 			{
-				log_err(_("We haven't found a new master, waiting before retry..."));
+				log_err(_("We haven't found a new master, waiting before retry...\n"));
 				/* wait 5 minutes before retries, after 6 failures (30 minutes) we stop trying */
 				sleep(300);
 			}
@@ -288,14 +287,14 @@ MonitorExecute(void)
 	}
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
-		log_err(_("We couldn't reconnect for long enough, exiting..."));
+		log_err(_("We couldn't reconnect for long enough, exiting...\n"));
 		exit(ERR_DB_CON);
 	}
 
 	/* Check if we still are a standby, we could have been promoted */
 	if (!is_standby(myLocalConn))
 	{
-		log_err(_("It seems like we have been promoted, so exit from monitoring..."));
+		log_err(_("It seems like we have been promoted, so exit from monitoring...\n"));
 		CloseConnections();
 		exit(ERR_PROMOTED);
 	}
@@ -522,7 +521,7 @@ CancelQuery(void)
 	pgcancel = PQgetCancel(primaryConn);
 
 	if (!pgcancel || PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
-		log_warning("Can't stop current query: %s", errbuf);
+		log_warning("Can't stop current query: %s\n", errbuf);
 
 	PQfreeCancel(pgcancel);
 }
