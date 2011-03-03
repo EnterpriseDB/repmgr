@@ -256,7 +256,7 @@ main(int argc, char **argv)
 	parse_config(runtime_options.config_file, &options);
 
 	keywords[2] = "user";
-	values[2] = runtime_options.username;
+	values[2] = (runtime_options.username[0]) ? runtime_options.username : NULL;
 	keywords[3] = "dbname";
 	values[3] = runtime_options.dbname;
 	keywords[4] = "application_name";
@@ -1379,7 +1379,8 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 		return false;
 	}
 
-	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", runtime_options.host, runtime_options.masterport);
+	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", runtime_options.host, 
+																	(runtime_options.masterport[0]) ? runtime_options.masterport : "5432");
 
 	/*
 	 * Template a password into the connection string in recovery.conf
@@ -1399,7 +1400,8 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 		{
 			maxlen_snprintf(line,
 			                "primary_conninfo = 'host=%s port=%s password=%s'\n",
-			                runtime_options.host, runtime_options.masterport,
+			                runtime_options.host, 
+							(runtime_options.masterport[0]) ? runtime_options.masterport : "5432",
 			                password);
 		}
 		else
@@ -1446,7 +1448,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	if (runtime_options.force)
 		strcat(rsync_flags, " --delete");
 
-	if (remote_user == NULL)
+	if (!remote_user[0])
 	{
 		maxlen_snprintf(host_string, "%s", host);
 	}
