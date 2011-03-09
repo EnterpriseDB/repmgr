@@ -1,0 +1,21 @@
+Known issues in repmgr
+======================
+
+* The check for whether ``wal_keep_segments`` is considered large enough
+  does a string comparison rather than an integer one.  It can give both
+  false positive (setting is large enough but flagged as too small) and
+  false negative (setting is too small but not noted as such) errors.
+
+* When running repmgr against a remote machine, operations that start
+  the database server using the ``pg_ctl`` command may accidentally
+  terminate after their associated ssh session ends.
+
+* After running repmgrd as a regular foreground application, hitting
+  control-C causes the program to crash.
+
+Planned feature improvements
+============================
+
+* Before running ``pg_start_backup()``, a sanity check that there is a
+  a working ssh connection to the destination would help find
+  configuration errors before disturbing the database.

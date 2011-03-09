@@ -27,3 +27,7 @@
         Add info messages for database and general work done (Greg)
         Map old verbose flag into a useful setting for the new logger (Greg)
         Document repmgrd startup restrictions and log info about them (Greg)
+
+1.1.0   2011-03-09
+        Make options -U, -R and -p not mandatory (Jaime)
+
