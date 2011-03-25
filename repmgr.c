@@ -1473,6 +1473,16 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	r = system(script);
 
+	/* 
+	 * If we are transfering a directory (ie: data directory, tablespace directories)
+	 * then we can ignore some rsync errors, so if we get some of those errors we
+	 * treat them as 0
+	 * List of ignorable rsync errors:
+     * 24     Partial transfer due to vanished source files
+	 */
+    if (is_directory && (r == 24))
+		r = 0;
+
 	if (r != 0)
 		log_err(_("Can't rsync from remote file or directory (%s:%s)\n"),
 		        host_string, remote_path);
