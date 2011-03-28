@@ -49,7 +49,7 @@
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir, char *master_conninfo);
 static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
-                             char *local_path, bool is_directory);
+                              char *local_path, bool is_directory);
 static bool check_parameters_for_action(const int action);
 
 static void do_master_register(void);
@@ -1379,8 +1379,8 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 		return false;
 	}
 
-	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", runtime_options.host, 
-																	(runtime_options.masterport[0]) ? runtime_options.masterport : "5432");
+	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", runtime_options.host,
+	                (runtime_options.masterport[0]) ? runtime_options.masterport : "5432");
 
 	/*
 	 * Template a password into the connection string in recovery.conf
@@ -1400,8 +1400,8 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 		{
 			maxlen_snprintf(line,
 			                "primary_conninfo = 'host=%s port=%s password=%s'\n",
-			                runtime_options.host, 
-							(runtime_options.masterport[0]) ? runtime_options.masterport : "5432",
+			                runtime_options.host,
+			                (runtime_options.masterport[0]) ? runtime_options.masterport : "5432",
 			                password);
 		}
 		else
@@ -1473,14 +1473,14 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	r = system(script);
 
-	/* 
+	/*
 	 * If we are transfering a directory (ie: data directory, tablespace directories)
 	 * then we can ignore some rsync errors, so if we get some of those errors we
 	 * treat them as 0
 	 * List of ignorable rsync errors:
-     * 24     Partial transfer due to vanished source files
+	 * 24     Partial transfer due to vanished source files
 	 */
-    if (is_directory && (r == 24))
+	if (is_directory && (r == 24))
 		r = 0;
 
 	if (r != 0)
