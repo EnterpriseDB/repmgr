@@ -1488,7 +1488,6 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	if ((r == 24) && is_directory)
 	{
 		if (!runtime_options.ignore_rsync_warn)
-		{
 			log_warning( _("\nrsync completed with return code 24 "
 			               "\"Partial transfer due to vanished source files\".\n"
 			               "This can happen because of normal operation "
@@ -1496,8 +1495,6 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 			               "issue during cloning.  If you are certain no "
 			               "changes were made to the master, try cloning "
 			               "again using \"repmgr --force --ignore-rsync-warning\"."));
-			exit(ERR_BAD_RSYNC);
-		}
 		else
 			r = 0;
 	}
