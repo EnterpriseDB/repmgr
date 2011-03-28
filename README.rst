@@ -863,6 +863,7 @@ The output from this program looks like this::
     -R, --remote-user=USERNAME database server username for rsync
     -w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)
     -F, --force                force potentially dangerous operations to happen
+    -I, --ignore-rsync-warning Ignore partial transfert warning
 
   repmgr performs some tasks like clone a node, promote it or making follow another node and then exits.
   COMMANDS:
