@@ -1485,7 +1485,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	 * List of ignorable rsync errors:
 	 * 24     Partial transfer due to vanished source files
 	 */
-	if ((r == 24) && is_directory)
+	if ((WEXITSTATUS(r) == 24) && is_directory)
 	{
 		if (!runtime_options.ignore_rsync_warn)
 		{
@@ -1501,7 +1501,6 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		else
 			r = 0;
 	}
-
 	if (r != 0)
 		log_err(_("Can't rsync from remote file or directory (%s:%s)\n"),
 		        host_string, remote_path);
