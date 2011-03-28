@@ -71,7 +71,7 @@ bool need_a_node = true;
 bool require_password = false;
 
 /* Initialization of runtime options */
-t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, "" };
+t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, "" };
 t_configuration_options options = { "", -1, "", "", "" };
 
 static char		*server_mode = NULL;
@@ -91,6 +91,7 @@ main(int argc, char **argv)
 		{"remote-user", required_argument, NULL, 'R'},
 		{"wal-keep-segments", required_argument, NULL, 'w'},
 		{"force", no_argument, NULL, 'F'},
+		{"ignore-rsync-warning", no_argument, NULL, 'I'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
 	};
@@ -149,6 +150,9 @@ main(int argc, char **argv)
 			break;
 		case 'F':
 			runtime_options.force = true;
+			break;
+		case 'I':
+			runtime_options.ignore_rsync_warn = true;
 			break;
 		case 'v':
 			runtime_options.verbose = true;
@@ -1337,6 +1341,7 @@ void help(const char *progname)
 	printf(_("	-R, --remote-user=USERNAME database server username for rsync\n"));
 	printf(_("	-w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
+	printf(_("	-I, --ignore-rsync-warning		   Ignore partial transfert warning\n"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
 	printf(_("or making follow another node and then exits.\n"));
@@ -1475,13 +1480,27 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	/*
 	 * If we are transfering a directory (ie: data directory, tablespace directories)
-	 * then we can ignore some rsync errors, so if we get some of those errors we
-	 * treat them as 0
+	 * then we can ignore some rsync warning, so if we get some of those errors we
+	 * treat them as 0 if we have --ignore-rsync-warning commandline option set
 	 * List of ignorable rsync errors:
 	 * 24     Partial transfer due to vanished source files
 	 */
-	if (is_directory && (r == 24))
-		r = 0;
+	if ((r == 24) && is_directory)
+	{
+		if (!runtime_options.ignore_rsync_warn)
+		{
+			log_warning( _("\nrsync completed with return code 24 "
+			               "\"Partial transfer due to vanished source files\".\n"
+			               "This can happen because of normal operation "
+			               "on the master server, but it may indicate an "
+			               "issue during cloning.  If you are certain no "
+			               "changes were made to the master, try cloning "
+			               "again using \"repmgr --force --ignore-rsync-warning\"."));
+			exit(ERR_BAD_RSYNC);
+		}
+		else
+			r = 0;
+	}
 
 	if (r != 0)
 		log_err(_("Can't rsync from remote file or directory (%s:%s)\n"),
