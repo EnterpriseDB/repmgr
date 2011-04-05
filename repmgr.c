@@ -1340,8 +1340,8 @@ void help(const char *progname)
 	printf(_("	-f, --config_file=PATH	   path to the configuration file\n"));
 	printf(_("	-R, --remote-user=USERNAME database server username for rsync\n"));
 	printf(_("	-w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
+	printf(_("	-I, --ignore-rsync-warning ignore rsync partial transfer warning\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
-	printf(_("	-I, --ignore-rsync-warning		   Ignore partial transfert warning\n"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
 	printf(_("or making follow another node and then exits.\n"));
@@ -1479,24 +1479,28 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	r = system(script);
 
 	/*
-	 * If we are transfering a directory (ie: data directory, tablespace directories)
-	 * then we can ignore some rsync warning, so if we get some of those errors we
-	 * treat them as 0 if we have --ignore-rsync-warning commandline option set
+	 * If we are transfering a directory (data directory, tablespace directories)
+	 * then we can ignore some rsync warnings.  If we get some of those errors, we
+	 * treat them as 0 only if passed the --ignore-rsync-warning command-line option.
+	 *
 	 * List of ignorable rsync errors:
-	 * 24     Partial transfer due to vanished source files
+	 *   24     Partial transfer due to vanished source files
 	 */
 	if ((WEXITSTATUS(r) == 24) && is_directory)
 	{
-		if (!runtime_options.ignore_rsync_warn)
-			log_warning( _("\nrsync completed with return code 24 "
+		if (runtime_options.ignore_rsync_warn)
+		{
+			r = 0;
+			log_info(_("rsync partial transfer warning ignored\n"));
+		}
+		else
+			log_warning( _("\nrsync completed with return code 24: "
 			               "\"Partial transfer due to vanished source files\".\n"
 			               "This can happen because of normal operation "
 			               "on the master server, but it may indicate an "
-			               "issue during cloning.  If you are certain no "
-			               "changes were made to the master, try cloning "
+			               "unexpected change during cloning.  If you are certain "
+			               "no changes were made to the master, try cloning "
 			               "again using \"repmgr --force --ignore-rsync-warning\"."));
-		else
-			r = 0;
 	}
 	if (r != 0)
 		log_err(_("Can't rsync from remote file or directory (%s:%s)\n"),
