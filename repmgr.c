@@ -116,7 +116,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:R:w:F:v", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:R:w:F:I:v", long_options,
 	                        &optindex)) != -1)
 	{
 		switch (c)
