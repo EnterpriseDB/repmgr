@@ -37,6 +37,7 @@
         Improve performance of repl_status view (Jaime) 
 
 1.2.0	2012-04-28
+		Test ssh connection before trying to rsync (Cédric)
         Add CLUSTER SHOW command (Carlo Ascani)
         Add CLUSTER CLEANUP command (Jaime)
         Add function write_primary_conninfo (Marco Nenciarini)

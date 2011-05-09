@@ -50,6 +50,7 @@
 
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir, char *master_conninfo);
+static int test_ssh_connection(char *host, char *remote_user);
 static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
                               char *local_path, bool is_directory);
 static bool check_parameters_for_action(const int action);
@@ -1007,6 +1008,15 @@ do_standby_clone(void)
 		}
 	}
 
+	r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+	if (r != 0)
+	{
+		log_err(_("%s: Aborting, remote host %s is not reachable.\n"), progname, runtime_options.host);
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_DB_CON);
+	}
+
 	log_notice("Starting backup...\n");
 
 	/* Get the data directory full path and the configuration files location */
@@ -1564,6 +1574,24 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 	return true;
 }
 
+static int
+test_ssh_connection(char *host, char *remote_user)
+{
+	char script[MAXLEN];
+	int	 r;
+
+	/* Check if we have ssh connectivity to host before trying to rsync */
+	if (!remote_user[0])
+		maxlen_snprintf(script, "ssh -o Batchmode=yes %s /bin/true", host);
+	else
+		maxlen_snprintf(script, "ssh -o Batchmode=yes %s -l %s /bin/true", host, remote_user);
+
+	log_debug(_("command is: %s"), script);
+	r = system(script);
+	if (r != 0)
+		log_info(_("Can not connect to the remote host (%s)\n"), host);
+	return r;
+}
 
 static int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
