@@ -25,7 +25,12 @@ PGconn *
 establishDBConnection(const char *conninfo, const bool exit_on_error)
 {
 	/* Make a connection to the database */
-	PGconn *conn = PQconnectdb(conninfo);
+	PGconn *conn = NULL;
+	char	connection_string[MAXLEN];
+
+	strcpy(connection_string, conninfo);
+	strcat(connection_string, " fallback_application_name='repmgr'");
+	conn = PQconnectdb(connection_string);
 
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
