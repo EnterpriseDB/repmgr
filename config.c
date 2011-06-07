@@ -23,7 +23,7 @@
 #include "repmgr.h"
 
 void
-parse_config(const char* config_file, t_configuration_options* options)
+parse_config(const char *config_file, t_configuration_options *options)
 {
 	char *s, buff[MAXLINELENGTH];
 	char name[MAXLEN];
@@ -43,7 +43,7 @@ parse_config(const char* config_file, t_configuration_options* options)
 	 */
 	if (fp == NULL)
 	{
-		fprintf(stderr, _("Did not find the configuration file '%s', continuing\n"), config_file);
+		log_err(_("Did not find the configuration file '%s', continuing\n"), config_file);
 		return;
 	}
 
@@ -71,7 +71,7 @@ parse_config(const char* config_file, t_configuration_options* options)
 		else if (strcmp(name, "logfacility") == 0)
 			strncpy (options->logfacility, value, MAXLEN);
 		else
-			printf ("WARNING: %s/%s: Unknown name/value pair!\n", name, value);
+			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}
 
 	/* Close file */
@@ -80,18 +80,17 @@ parse_config(const char* config_file, t_configuration_options* options)
 	/* Check config settings */
 	if (strnlen(options->cluster_name, MAXLEN)==0)
 	{
-		fprintf(stderr, "Cluster name is missing. "
-		        "Check the configuration file.\n");
+		log_err(_("Cluster name is missing. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (options->node == -1)
 	{
-		fprintf(stderr, "Node information is missing. "
-		        "Check the configuration file.\n");
+		log_err(_("Node information is missing. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 }
+
 
 char *
 trim (char *s)
@@ -145,3 +144,4 @@ parse_line(char *buff, char *name, char *value)
 	value[j] = '\0';
 	trim(value);
 }
+
