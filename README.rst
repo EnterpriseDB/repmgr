@@ -5,7 +5,7 @@ repmgr: Replication Manager for PostgreSQL clusters
 Introduction
 ============
 
-PostgreSQL 9.0 allow us to have replicated Hot Standby servers 
+PostgreSQL 9+ allow us to have replicated Hot Standby servers
 which we can query and/or use for high availability.
 
 While the main components of the feature are included with
@@ -19,6 +19,17 @@ databases as a single cluster.  repmgr includes two components:
 
 * repmgrd: management and monitoring daemon that watches the cluster
   and can automate remote actions.
+
+Supported Releases
+------------------
+
+repmgr works with PostgreSQL versions 9.0 and 9.1.
+
+There are currently no incompatibilities when upgrading repmgr from 9.0 to 9.1,
+so your 9.0 configuration will work with 9.1
+
+Additional parameters must be added to postgresql.conf to take advantage of
+the new 9.1 features such as synchronous replication or hot standby feedback.
 
 Requirements
 ------------
@@ -1032,7 +1043,13 @@ repmgr is licensed under the GPL v3.  All of its code and documentation is
 Copyright 2010-2011, 2ndQuadrant Limited.  See the files COPYRIGHT and LICENSE for
 details.
 
-Contributions to repmgr are welcome, and listed in the file CREDITS.
+Main sponsorship of repmgr has been from 2ndQuadrant customers.
+
+Additional work has been sponsored by the 4CaaST project for cloud computing,
+which has received funding from the European Union's Seventh Framework Programme
+(FP7/2007-2013) under grant agreement 258862.
+
+Contributions to repmgr are welcome, and will be listed in the file CREDITS.
 2ndQuadrant Limited requires that any contributions provide a copyright
 assignment and a disclaimer of any work-for-hire ownership claims from the
 employer of the developer.  This lets us make sure that all of the repmgr
@@ -1048,3 +1065,36 @@ Code in repmgr is formatted to a consistent style using the following command::
 
 Contributors should reformat their code similarly before submitting code to
 the project, in order to minimize merge conflicts with other work.
+
+Support and Assistance
+======================
+
+2ndQuadrant provides 24x7 production support for repmgr, as well as help you
+configure it correctly, verify an installation and train you in running a
+robust replication cluster.
+
+There is a mailing list/forum to discuss contributions or issues
+http://groups.google.com/group/repmgr
+
+#repmgr is registered in freenode IRC
+
+Further information is available at http://www.repmgr.org/
+
+We'd love to hear from you about how you use repmgr. Case studies and
+news are always welcome. Send us an email at info@2ndQuadrant.com, or
+send a postcard to
+
+repmgr
+c/o 2ndQuadrant
+7200 The Quorum
+Oxford Business Park North
+Oxford
+OX4 2JZ
+
+Thanks from the repmgr core team
+
+Jaime Casanova
+Simon Riggs
+Greg Smith
+Cedric Villemain
+
