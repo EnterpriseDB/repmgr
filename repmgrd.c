@@ -146,7 +146,7 @@ main(int argc, char **argv)
 	if (local_options.node == -1)
 	{
 		log_err(_("Node information is missing. "
-		        "Check the configuration file, or provide one if you have not done so.\n"));
+		          "Check the configuration file, or provide one if you have not done so.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 

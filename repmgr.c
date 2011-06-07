@@ -50,7 +50,7 @@ static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir, char *master_conninfo);
 static int test_ssh_connection(char *host, char *remote_user);
 static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
-                              char *local_path, bool is_directory);
+                             char *local_path, bool is_directory);
 static bool check_parameters_for_action(const int action);
 
 static void do_master_register(void);
@@ -290,7 +290,7 @@ main(int argc, char **argv)
 		if (options.node == -1)
 		{
 			log_err(_("Node information is missing. "
-			        "Check the configuration file.\n"));
+			          "Check the configuration file.\n"));
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -1052,8 +1052,8 @@ stop_backup:
 	last_wal_segment = PQgetvalue(res, 0, 0);
 
 	if (runtime_options.verbose)
-	log_info(_("%s requires primary to keep WAL files %s until at least %s\n"),
-	         progname, first_wal_segment, last_wal_segment);
+		log_info(_("%s requires primary to keep WAL files %s until at least %s\n"),
+		         progname, first_wal_segment, last_wal_segment);
 
 	/* Finished with the database connection now */
 	PQclear(res);
@@ -1638,9 +1638,9 @@ check_parameters_for_action(const int action)
 		if (runtime_options.config_file[0])
 		{
 			log_notice(_("Only command line parameters for the connection "
-			           "to the master are used when issuing a STANDBY CLONE command. "
-			           "The passed configuration file is neither required nor used for "
-			           "its node configuration portions\n\n"));
+			             "to the master are used when issuing a STANDBY CLONE command. "
+			             "The passed configuration file is neither required nor used for "
+			             "its node configuration portions\n\n"));
 		}
 		/*
 		 * To clone a master into a standby we need connection parameters
@@ -1650,7 +1650,7 @@ check_parameters_for_action(const int action)
 		if (runtime_options.host == NULL)
 		{
 			log_notice(_("You need to use connection parameters to "
-			           "the master when issuing a STANDBY CLONE command."));
+			             "the master when issuing a STANDBY CLONE command."));
 			ok = false;
 		}
 		need_a_node = false;
