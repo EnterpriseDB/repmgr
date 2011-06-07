@@ -26,7 +26,7 @@ establishDBConnection(const char *conninfo, const bool exit_on_error)
 {
 	/* Make a connection to the database */
 	PGconn *conn = NULL;
-	char	connection_string[MAXLEN];
+	char    connection_string[MAXLEN];
 
 	strcpy(connection_string, conninfo);
 	strcat(connection_string, " fallback_application_name='repmgr'");
@@ -93,6 +93,84 @@ is_standby(PGconn *conn)
 
 	PQclear(res);
 	return result;
+}
+
+
+
+bool
+is_witness(PGconn *conn, char *schema, char *cluster, int node_id)
+{
+	PGresult   *res;
+	bool		result;
+	char		sqlquery[QUERY_STR_LEN];
+
+	sqlquery_snprintf(sqlquery, "SELECT witness from %s.repl_nodes where cluster = '%s' and id = %d",
+	                  schema, cluster, node_id);
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Can't query server mode: %s"), PQerrorMessage(conn));
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_DB_QUERY);
+	}
+
+	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
+		result = false;
+	else
+		result = true;
+
+	PQclear(res);
+	return result;
+}
+
+
+/* check the PQStatus and try to 'select 1' to confirm good connection */
+bool
+is_pgup(PGconn *conn)
+{
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+	/* Check the connection status twice in case it changes after reset */
+	bool		twice = false;
+
+	/* Check the connection status twice in case it changes after reset */
+	for (;;)
+	{
+		if (PQstatus(conn) != CONNECTION_OK)
+		{
+			if (twice)
+				return false;
+			PQreset(conn);  // reconnect
+			twice = true;
+		}
+		else
+		{
+			/*
+			* Send a SELECT 1 just to check if connection is OK
+			* the PQstatus() won't catch disconnected connection
+			* XXXX
+			* the error message can be used by repmgrd
+			*/
+			sqlquery_snprintf(sqlquery, "SELECT 1");
+			res = PQexec(conn, sqlquery);
+			// we need to retry, because we might just have loose the connection once
+			if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			{
+				log_err(_("PQexec failed: %s\n"), PQerrorMessage(conn));
+				PQclear(res);
+				if (twice)
+					return false;
+				PQreset(conn);  // reconnect
+				twice = true;
+			}
+			else
+			{
+				PQclear(res);
+				return true;
+			}
+		}
+	}
 }
 
 
@@ -207,7 +285,7 @@ get_cluster_size(PGconn *conn)
  * connection string is placed there.
  */
 PGconn *
-getMasterConnection(PGconn *standby_conn, int id, char *cluster,
+getMasterConnection(PGconn *standby_conn, char *schema, int id, char *cluster,
                     int *master_id, char *master_conninfo_out)
 {
 	PGconn		*master_conn	 = NULL;
@@ -216,7 +294,6 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	char		 sqlquery[QUERY_STR_LEN];
 	char		 master_conninfo_stack[MAXCONNINFO];
 	char		*master_conninfo = &*master_conninfo_stack;
-	char		 schema_str[MAXLEN];
 	char		 schema_quoted[MAXLEN];
 
 	int		 i;
@@ -233,10 +310,9 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	 *
 	 * Assemble the unquoted schema name
 	 */
-	maxlen_snprintf(schema_str, "repmgr_%s", cluster);
 	{
-		char *identifier = PQescapeIdentifier(standby_conn, schema_str,
-		                                      strlen(schema_str));
+		char *identifier = PQescapeIdentifier(standby_conn, schema,
+		                                      strlen(schema));
 
 		maxlen_snprintf(schema_quoted, "%s", identifier);
 		PQfreemem(identifier);
@@ -247,7 +323,7 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	         cluster);
 
 	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
-	                  " WHERE cluster = '%s' and id <> %d",
+	                  " WHERE cluster = '%s' and id <> %d and not witness",
 	                  schema_quoted, cluster, id);
 
 	res1 = PQexec(standby_conn, sqlquery);

@@ -11,9 +11,11 @@ PG_CPPFLAGS = -I$(libpq_srcdir)
 PG_LIBS = $(libpq_pgport)
 
 all:  repmgrd repmgr
+	$(MAKE) -C sql
 
 repmgrd: $(repmgrd_OBJS)
 	$(CC) $(CFLAGS) $(repmgrd_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o repmgrd
+	$(MAKE) -C sql
 
 repmgr: $(repmgr_OBJS)
 	$(CC) $(CFLAGS) $(repmgr_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o repmgr
@@ -33,6 +35,7 @@ endif
 install:
 	$(INSTALL_PROGRAM) repmgrd$(X) '$(DESTDIR)$(bindir)'
 	$(INSTALL_PROGRAM) repmgr$(X) '$(DESTDIR)$(bindir)'
+	$(MAKE) -C sql install
 
 ifneq (,$(DATA)$(DATA_built))
 	@for file in $(addprefix $(srcdir)/, $(DATA)) $(DATA_built); do \
@@ -45,10 +48,17 @@ clean:
 	rm -f *.o
 	rm -f repmgrd
 	rm -f repmgr
+	$(MAKE) -C sql clean
 
 deb: repmgrd repmgr
 	mkdir -p ./debian/usr/bin
 	cp repmgrd repmgr ./debian/usr/bin/
+	mkdir -p ./debian/usr/share/postgresql/9.0/contrib/
+	cp sql/repmgr_funcs.sql ./debian/usr/share/postgresql/9.0/contrib/
+	cp sql/uninstall_repmgr_funcs.sql ./debian/usr/share/postgresql/9.0/contrib/
+	mkdir -p ./debian/usr/lib/postgresql/9.0/lib/
+	cp sql/repmgr_funcs.so ./debian/usr/lib/postgresql/9.0/lib/
 	dpkg-deb --build debian
 	mv debian.deb ../postgresql-repmgr-9.0_1.0.0.deb
+	rm -rf ./debian/usr
 

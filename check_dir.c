@@ -31,8 +31,6 @@
 #include "strutil.h"
 #include "log.h"
 
-static int mkdir_p(char *path, mode_t omode);
-
 /*
  * make sure the directory either doesn't exist or is empty
  * we use this function to check the new data directory and
@@ -124,7 +122,7 @@ set_directory_permissions(char *dir)
  * note that on failure, the path arg has been modified to show the particular
  * directory level we had problems with.
  */
-static int
+int
 mkdir_p(char *path, mode_t omode)
 {
 	struct stat sb;
@@ -225,8 +223,85 @@ is_pg_dir(char *dir)
 	const size_t buf_sz = 8192;
 	char		 path[buf_sz];
 	struct stat	 sb;
+	int		r;
 
+	// test pgdata
 	xsnprintf(path, buf_sz, "%s/PG_VERSION", dir);
+	if (stat(path, &sb) == 0)
+		return true;
 
-	return (stat(path, &sb) == 0) ? true : false;
+	// test tablespace dir
+	sprintf(path, "ls %s/PG_9.0_*/ -I*", dir);
+	r = system(path);
+	if (r == 0)
+		return true;
+
+	return false;
+}
+
+
+bool
+create_pgdir(char *dir, bool force)
+{
+	bool	pg_dir = false;
+
+	/* Check this directory could be used as a PGDATA dir */
+	switch (check_dir(dir))
+	{
+	case 0:
+		/* dir not there, must create it */
+		log_info(_("creating directory \"%s\"...\n"), dir);
+
+		if (!create_directory(dir))
+		{
+			log_err(_("couldn't create directory \"%s\"...\n"),
+			        dir);
+			exit(ERR_BAD_CONFIG);
+		}
+		break;
+	case 1:
+		/* Present but empty, fix permissions and use it */
+		log_info(_("checking and correcting permissions on existing directory %s ...\n"),
+		         dir);
+
+		if (!set_directory_permissions(dir))
+		{
+			log_err(_("could not change permissions of directory \"%s\": %s\n"),
+			        dir, strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+		break;
+	case 2:
+		/* Present and not empty */
+		log_warning(_("directory \"%s\" exists but is not empty\n"),
+		            dir);
+
+		pg_dir = is_pg_dir(dir);
+
+		/*
+		 * we use force to reduce the time needed to restore a node which
+		 * turn async after a failover or anything else
+		 */
+		if (pg_dir && force)
+		{
+			/* Let it continue */
+			break;
+		}
+		else if (pg_dir && !force)
+		{
+			log_warning(_("\nThis looks like a PostgreSQL directory.\n"
+			              "If you are sure you want to clone here, "
+			              "please check there is no PostgreSQL server "
+			              "running and use the --force option\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		return false;
+	default:
+		/* Trouble accessing directory */
+		log_err(_("could not access directory \"%s\": %s\n"),
+		        dir, strerror(errno));
+		exit(ERR_BAD_CONFIG);
+	}
+	return true;
 }

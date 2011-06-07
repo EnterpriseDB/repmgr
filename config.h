@@ -28,6 +28,10 @@ typedef struct
 	char cluster_name[MAXLEN];
 	int node;
 	char conninfo[MAXLEN];
+	int failover;
+	int priority;
+	char promote_command[MAXLEN];
+	char follow_command[MAXLEN];
 	char loglevel[MAXLEN];
 	char logfacility[MAXLEN];
 	char rsync_options[QUERY_STR_LEN];
@@ -36,5 +40,6 @@ typedef struct
 void parse_config(const char *config_file, t_configuration_options *options);
 void parse_line(char *buff, char *name, char *value);
 char *trim(char *s);
+bool reload_configuration(char *config_file, t_configuration_options *orig_options);
 
 #endif

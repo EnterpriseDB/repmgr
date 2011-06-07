@@ -35,6 +35,10 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
 	options->node = -1;
 	memset(options->conninfo, 0, sizeof(options->conninfo));
+	options->failover = MANUAL_FAILOVER;
+	options->priority = 0;
+	memset(options->promote_command, 0, sizeof(options->promote_command));
+	memset(options->follow_command, 0, sizeof(options->follow_command));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 
 	/*
@@ -70,6 +74,27 @@ parse_config(const char *config_file, t_configuration_options *options)
 			strncpy (options->loglevel, value, MAXLEN);
 		else if (strcmp(name, "logfacility") == 0)
 			strncpy (options->logfacility, value, MAXLEN);
+		else if (strcmp(name, "failover") == 0)
+		{
+			char failoverstr[MAXLEN];
+			strncpy(failoverstr, value, MAXLEN);
+
+			if (strcmp(failoverstr, "manual") == 0)
+				options->failover = MANUAL_FAILOVER;
+			else if (strcmp(failoverstr, "automatic") == 0)
+				options->failover = AUTOMATIC_FAILOVER;
+			else
+			{
+				log_warning(_("value for failover option is incorrect, it should be automatic or manual. Defaulting to manual.\n"));
+				options->failover = MANUAL_FAILOVER;
+			}
+		}
+		else if (strcmp(name, "priority") == 0)
+			options->priority = atoi(value);
+		else if (strcmp(name, "promote_command") == 0)
+			strncpy(options->promote_command, value, MAXLEN);
+		else if (strcmp(name, "follow_command") == 0)
+			strncpy(options->follow_command, value, MAXLEN);
 		else
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}
@@ -145,3 +170,72 @@ parse_line(char *buff, char *name, char *value)
 	trim(value);
 }
 
+<<<<<<< HEAD:config.c
+
+bool
+reload_configuration(char *config_file, t_configuration_options *orig_options)
+{
+	PGconn	*conn;
+
+	t_configuration_options new_options;
+
+	/*
+	 * Re-read the configuration file: repmgr.conf
+	 */
+	log_info(_("Reloading configuration file and updating repmgr tables\n"));
+	parse_config(config_file, &new_options);
+	if (new_options.node == -1)
+	{
+		log_warning(_("\nCannot load new configuration, will keep current one.\n"));
+		return false;
+	}
+
+	if (strcmp(new_options.cluster_name, orig_options->cluster_name) != 0)
+	{
+		log_warning(_("\nCannot change cluster name, will keep current configuration.\n"));
+		return false;
+	}
+
+	if (new_options.node != orig_options->node)
+	{
+		log_warning(_("\nCannot change node number, will keep current configuration.\n"));
+		return false;
+	}
+
+	if (new_options.failover != MANUAL_FAILOVER && new_options.failover != AUTOMATIC_FAILOVER)
+	{
+		log_warning(_("\nNew value for failover is not valid. Should be MANUAL or AUTOMATIC.\n"));
+		return false;
+	}
+
+	/* Test conninfo string */
+	conn = establishDBConnection(new_options.conninfo, false);
+	if (!conn || (PQstatus(conn) != CONNECTION_OK))
+	{
+		log_warning(_("\nconninfo string is not valid, will keep current configuration.\n"));
+		return false;
+	}
+	PQfinish(conn);
+
+	/* Configuration seems ok, will load new values */
+	strcpy(orig_options->cluster_name, new_options.cluster_name);
+	orig_options->node = new_options.node;
+	strcpy(orig_options->conninfo, new_options.conninfo);
+	orig_options->failover = new_options.failover;
+	orig_options->priority = new_options.priority;
+	strcpy(orig_options->promote_command, new_options.promote_command);
+	strcpy(orig_options->follow_command, new_options.follow_command);
+	strcpy(orig_options->rsync_options, new_options.rsync_options);
+	/*
+	 * XXX These ones can change with a simple SIGHUP?
+
+		strcpy (orig_options->loglevel, new_options.loglevel);
+		strcpy (orig_options->logfacility, new_options.logfacility);
+
+		logger_shutdown();
+		XXX do we have progname here ?
+		logger_init(progname, orig_options.loglevel, orig_options.logfacility);
+	*/
+
+	return true;
+}

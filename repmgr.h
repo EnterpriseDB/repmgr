@@ -30,6 +30,7 @@
 
 #define PRIMARY_MODE		0
 #define STANDBY_MODE		1
+#define WITNESS_MODE		2
 
 #include "config.h"
 #define MAXFILENAME		1024
@@ -41,6 +42,9 @@
 #define DEFAULT_MASTER_PORT		"5432"
 #define DEFAULT_DBNAME			"postgres"
 #define DEFAULT_REPMGR_SCHEMA_PREFIX	"repmgr_"
+
+#define MANUAL_FAILOVER		0
+#define AUTOMATIC_FAILOVER	1
 
 /* Run time options type */
 typedef struct
@@ -58,7 +62,14 @@ typedef struct
 	bool ignore_rsync_warn;
 
 	char masterport[MAXLEN];
+	char localport[MAXLEN];
 
 } t_runtime_options;
+
+#define SLEEP_MONITOR		2
+#define SLEEP_RETRY			3
+#define NUM_RETRY			40
+
+
 
 #endif

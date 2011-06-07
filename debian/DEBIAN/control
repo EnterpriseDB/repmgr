@@ -1,4 +1,4 @@
-Package: repmgr
+Package: repmgr-auto
 Version: 1.0-1
 Section: database
 Priority: optional

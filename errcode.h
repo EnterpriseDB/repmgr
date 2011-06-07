@@ -33,5 +33,6 @@
 #define ERR_PROMOTED 8
 #define ERR_BAD_PASSWORD 9
 #define ERR_STR_OVERFLOW 10
+#define ERR_FAILOVER_FAIL 11
 
 #endif	/* _ERRCODE_H_ */

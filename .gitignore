@@ -1,6 +1,9 @@
 *~
 *.o
+*.so
 repmgr
 repmgrd
 README.htm*
 README.pdf
+sql/repmgr_funcs.so
+sql/repmgr_funcs.sql
