@@ -46,7 +46,6 @@
 #define STANDBY_PROMOTE  4
 #define STANDBY_FOLLOW 	 5
 
-static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir, char *master_conninfo);
 static int test_ssh_connection(char *host, char *remote_user);
 static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
@@ -58,8 +57,8 @@ static void do_standby_register(void);
 static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
-static void help(const char* progname);
 static void usage(void);
+static void help(const char *progname);
 
 /* Global variables */
 static const char *progname;
@@ -397,7 +396,7 @@ do_master_register(void)
 
 	if (!schema_exists)
 	{
-		log_info("master register: creating database objects inside the %s schema\n", repmgr_schema);
+		log_info(_("master register: creating database objects inside the %s schema\n"), repmgr_schema);
 
 		/* ok, create the schema */
 		sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", repmgr_schema);
@@ -496,7 +495,7 @@ do_master_register(void)
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
 	                  "VALUES (%d, '%s', '%s')",
 	                  repmgr_schema, options.node, options.cluster_name, options.conninfo);
-	log_debug("master register: %s\n", sqlquery);
+	log_debug(_("master register: %s\n"), sqlquery);
 
 	if (!PQexec(conn, sqlquery))
 	{
@@ -622,6 +621,7 @@ do_standby_register(void)
 		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_nodes "
 		                  " WHERE id = %d",
 		                  repmgr_schema, options.node);
+
 		log_debug(_("standby register: %s\n"), sqlquery);
 
 		if (!PQexec(master_conn, sqlquery))
@@ -637,11 +637,10 @@ do_standby_register(void)
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
 	                  "VALUES (%d, '%s', '%s')",
 	                  repmgr_schema, options.node, options.cluster_name, options.conninfo);
-	log_debug("standby register: %s\n", sqlquery);
-
+	log_debug(_("standby register: %s\n"), sqlquery);
 	if (!PQexec(master_conn, sqlquery))
 	{
-		log_err("Cannot insert node details, %s\n",
+		log_err(_("Cannot insert node details, %s\n"),
 		        PQerrorMessage(master_conn));
 		PQfinish(master_conn);
 		PQfinish(conn);
@@ -747,7 +746,7 @@ do_standby_clone(void)
 
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("%s connecting to master database\n"), progname);
-	conn=establishDBConnectionByParams(keywords,values,true);
+	conn = establishDBConnectionByParams(keywords,values,true);
 
 	/* primary should be v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
@@ -777,7 +776,7 @@ do_standby_clone(void)
 	if (!guc_setted(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments))
 	{
 		PQfinish(conn);
-		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option)\n"), progname, runtime_options.wal_keep_segments);
+		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the PostgreSQL master.)\n"), progname, runtime_options.wal_keep_segments);
 		exit(ERR_BAD_CONFIG);
 	}
 	if (!guc_setted(conn, "archive_mode", "=", "on"))
@@ -786,8 +785,6 @@ do_standby_clone(void)
 		log_err(_("%s needs parameter 'archive_mode' to be set to 'on'\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
-
-	log_info(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
 
 	/*
 	 * Check if the tablespace locations exists and that we can write to
@@ -898,6 +895,8 @@ do_standby_clone(void)
 	}
 	PQclear(res);
 
+	log_info(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
+
 	/*
 	 * inform the master we will start a backup and get the first XLog filename
 	 * so we can say to the user we need those files
@@ -979,41 +978,45 @@ do_standby_clone(void)
 	                  "SELECT spclocation "
 	                  "  FROM pg_tablespace "
 	                  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
-	log_debug("standby clone: %s\n", sqlquery);
+	log_debug(_("standby clone: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err("Can't get info about tablespaces: %s\n", PQerrorMessage(conn));
+		log_err(_("Can't get info about tablespaces: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		goto stop_backup;
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		strncpy(tblspc_dir, PQgetvalue(res, i, 0), MAXFILENAME);
-		log_info("standby clone: master tablespace '%s'\n", tblspc_dir);
+		log_info(_("standby clone: master tablespace '%s'\n"), tblspc_dir);
 		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-		                      tblspc_dir, tblspc_dir, true);
+		                      tblspc_dir, tblspc_dir,
+		                      true);
 		if (r != 0)
 		{
-			log_warning("standby clone: failed copying tablespace directory '%s'\n", tblspc_dir);
+			log_warning(_("standby clone: failed copying tablespace directory '%s'\n"), tblspc_dir);
 			goto stop_backup;
 		}
 	}
 
-	log_info("standby clone: master config file '%s'\n", master_config_file);
+	log_info(_("standby clone: master config file '%s'\n"), master_config_file);
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-	                      master_config_file, runtime_options.dest_dir, false);
+	                      master_config_file, runtime_options.dest_dir,
+	                      false);
 	if (r != 0)
 	{
-		log_warning("standby clone: failed copying master config file '%s'\n", master_config_file);
+		log_warning(_("standby clone: failed copying master config file '%s'\n"), master_config_file);
 		goto stop_backup;
 	}
 
-	log_info("standby clone: master hba file '%s'\n", master_hba_file);
-	r = copy_remote_files(runtime_options.host, runtime_options.remote_user, master_hba_file, runtime_options.dest_dir, false);
+	log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
+	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+	                      master_hba_file, runtime_options.dest_dir,
+	                      false);
 	if (r != 0)
 	{
-		log_warning("standby clone: failed copying master hba file '%s'\n", master_hba_file);
+		log_warning(_("standby clone: failed copying master hba file '%s'\n"), master_hba_file);
 		goto stop_backup;
 	}
 
@@ -1089,7 +1092,7 @@ stop_backup:
 	 * We don't start the service yet because we still may want to
 	 * move the directory
 	 */
-	log_info(_("%s standby clone complete\n"), progname);
+	log_notice(_("%s standby clone complete\n"), progname);
 	exit(r);
 }
 
