@@ -18,8 +18,9 @@
  */
 
 #include "config.h"
-#include "repmgr.h"
+#include "log.h"
 #include "strutil.h"
+#include "repmgr.h"
 
 void
 parse_config(const char* config_file, t_configuration_options* options)

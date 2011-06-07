@@ -145,8 +145,8 @@ main(int argc, char **argv)
 	parse_config(config_file, &local_options);
 	if (local_options.node == -1)
 	{
-		log_err("Node information is missing. "
-		        "Check the configuration file, or provide one if you have not done so.\n");
+		log_err(_("Node information is missing. "
+		        "Check the configuration file, or provide one if you have not done so.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -316,7 +316,7 @@ MonitorExecute(void)
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err("PQexec failed: %s\n", PQerrorMessage(myLocalConn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(myLocalConn));
 		PQclear(res);
 		/* if there is any error just let it be and retry in next loop */
 		return;
@@ -333,7 +333,7 @@ MonitorExecute(void)
 	res = PQexec(primaryConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err("PQexec failed: %s\n", PQerrorMessage(primaryConn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(primaryConn));
 		PQclear(res);
 		return;
 	}
@@ -365,7 +365,7 @@ MonitorExecute(void)
 	 * will check the result next time we pause for a monitor step.
 	 */
 	if (PQsendQuery(primaryConn, sqlquery) == 0)
-		log_warning("Query could not be sent to primary. %s\n",
+		log_warning(_("Query could not be sent to primary. %s\n"),
 		            PQerrorMessage(primaryConn));
 }
 
@@ -383,7 +383,7 @@ checkClusterConfiguration(PGconn *conn, PGconn *primary)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err("PQexec failed: %s\n", PQerrorMessage(conn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		CloseConnections();
 		exit(ERR_DB_QUERY);
@@ -398,7 +398,7 @@ checkClusterConfiguration(PGconn *conn, PGconn *primary)
 	 */
 	if (PQntuples(res) == 0)
 	{
-		log_err("The replication cluster is not configured\n");
+		log_err(_("The replication cluster is not configured\n"));
 		PQclear(res);
 		CloseConnections();
 		exit(ERR_BAD_CONFIG);
@@ -425,7 +425,7 @@ checkNodeConfiguration(char *conninfo)
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err("PQexec failed: %s\n", PQerrorMessage(myLocalConn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(myLocalConn));
 		PQclear(res);
 		CloseConnections();
 		exit(ERR_BAD_CONFIG);
@@ -450,7 +450,7 @@ checkNodeConfiguration(char *conninfo)
 
 		if (!PQexec(primaryConn, sqlquery))
 		{
-			log_err("Cannot insert node details, %s\n",
+			log_err(_("Cannot insert node details, %s\n"),
 			        PQerrorMessage(primaryConn));
 			CloseConnections();
 			exit(ERR_BAD_CONFIG);
@@ -468,7 +468,7 @@ walLocationToBytes(char *wal_location)
 
 	if (sscanf(wal_location, "%X/%X", &xlogid, &xrecoff) != 2)
 	{
-		log_err("wrong log location format: %s\n", wal_location);
+		log_err(_("wrong log location format: %s\n"), wal_location);
 		return 0;
 	}
 	return (( (long long) xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
@@ -520,7 +520,7 @@ CancelQuery(void)
 	pgcancel = PQgetCancel(primaryConn);
 
 	if (!pgcancel || PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
-		log_warning("Can't stop current query: %s\n", errbuf);
+		log_warning(_("Can't stop current query: %s\n"), errbuf);
 
 	PQfreeCancel(pgcancel);
 }
