@@ -119,7 +119,7 @@ repmgr_shmem_startup(void)
 	{
 		/* First time through ... */
 		shared_state->lock = LWLockAssign();
-		snprintf(shared_state->location, 	
+		snprintf(shared_state->location,
 				sizeof(shared_state->location), "%X/%X", 0, 0);
 	}
 
@@ -155,7 +155,7 @@ repmgr_set_standby_location(char *locationstr)
 /* SQL Functions */
 
 /* Read last xlog location reported by this standby from shared memory */
-Datum 
+Datum
 repmgr_get_last_standby_location(PG_FUNCTION_ARGS)
 {
 	char location[MAXFNAMELEN];
@@ -172,8 +172,8 @@ repmgr_get_last_standby_location(PG_FUNCTION_ARGS)
 }
 
 
-/* Set update last xlog location reported by this standby to shared memory */ 
-Datum       
+/* Set update last xlog location reported by this standby to shared memory */
+Datum
 repmgr_update_standby_location(PG_FUNCTION_ARGS)
 {
 	text       *location = PG_GETARG_TEXT_P(0);
