@@ -1,7 +1,7 @@
 /*
  * repmgr.sql
  *
- * Copyright (C) 2ndQuadrant, 2011
+ * Copyright (C) 2ndQuadrant, 2010-2011
  *
  */
 
