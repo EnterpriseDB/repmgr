@@ -34,6 +34,7 @@ CREATE TABLE repl_monitor (
 );
 ALTER TABLE repl_monitor OWNER TO repmgr;
 
+CREATE INDEX idx_repl_monitor_last_monitor_sort ON repl_monitor(last_monitor_time, standby_node);
 
 /*
  * This view shows the latest monitor info about every node.
@@ -46,14 +47,12 @@ ALTER TABLE repl_monitor OWNER TO repmgr;
  * time_lag: how many seconds are we from being up-to-date with master
  */
 CREATE VIEW repl_status AS
-WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node
-                                                       ORDER BY last_monitor_time desc)
-                        FROM repl_monitor)
 SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location,
        last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag,
        pg_size_pretty(apply_lag) apply_lag,
        age(now(), last_monitor_time) AS time_lag
-  FROM monitor_info a
- WHERE row_number = 1;
+ FROM repl_monitor
+WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time)
+                                              FROM repl_monitor GROUP BY 1);
 
 ALTER VIEW repl_status OWNER TO repmgr;
