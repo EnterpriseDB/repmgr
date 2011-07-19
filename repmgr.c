@@ -1407,9 +1407,9 @@ do_witness_create(void)
 	fclose(pg_conf);
 
 	/* Get the pg_hba.conf full path */
-	sprintf(sqlquery, "SELECT name, setting "
-	        "  FROM pg_settings "
-	        " WHERE name IN ('hba_file')");
+	sqlquery_snprintf(sqlquery, "SELECT name, setting "
+						        "  FROM pg_settings "
+						        " WHERE name IN ('hba_file')");
 	log_debug(_("witness create: %s"), sqlquery);
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1495,7 +1495,7 @@ do_witness_create(void)
 	/* establish a connection to the witness, and create the schema */
 	witnessconn = establishDBConnection(options.conninfo, true);
 
-	log_info(_("Starting copy of configuration from master"));
+	log_info(_("Starting copy of configuration from master...\n"));
 
 	if (!create_schema(witnessconn))
 	{
@@ -1517,12 +1517,16 @@ do_witness_create(void)
 	log_notice(_("Configuration has been succesfully copied to the witness\n"));
 }
 
+
+
 static void
 usage(void)
 {
 	log_err(_("\n\n%s: Replicator manager \n"), progname);
 	log_err(_("Try \"%s --help\" for more information.\n"), progname);
 }
+
+
 
 static void
 help(const char *progname)
@@ -1932,7 +1936,8 @@ create_schema(PGconn *conn)
 
 	/* an index to improve performance of the view */
 	sqlquery_snprintf(sqlquery, "CREATE INDEX idx_repl_status_sort "
-	                            "    ON %s.repl_monitor (last_monitor_time, standby_node) ");
+	                            "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
+								repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
 	if (!PQexec(conn, sqlquery))
 	{
@@ -1943,7 +1948,7 @@ create_schema(PGconn *conn)
 	}
 
 	/* XXX Here we MUST try to load the repmgr_function.sql not hardcode it here */
-	sprintf(sqlquery,
+	sqlquery_snprintf(sqlquery,
 	        "CREATE OR REPLACE FUNCTION public.repmgr_update_standby_location(text) RETURNS boolean "
 	        "AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
 	        "LANGUAGE C STRICT ");
@@ -1954,7 +1959,7 @@ create_schema(PGconn *conn)
 		return false;
 	}
 
-	sprintf(sqlquery,
+	sqlquery_snprintf(sqlquery,
 	        "CREATE OR REPLACE FUNCTION public.repmgr_get_last_standby_location() RETURNS text "
 	        "AS '$libdir/repmgr_funcs', 'repmgr_get_last_standby_location' "
 	        "LANGUAGE C STRICT ");
@@ -1976,7 +1981,8 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 	PGresult	*res;
 	int			i;
 
-	sprintf(sqlquery, "TRUNCATE TABLE repmgr_%s.repl_nodes", options.cluster_name);
+	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", repmgr_schema);
+	log_debug("copy_configuration: %s\n", sqlquery);
 	if (!PQexec(witnessconn, sqlquery))
 	{
 		fprintf(stderr, "Cannot clean node details in the witness, %s\n",
@@ -1984,7 +1990,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		return false;
 	}
 
-	sprintf(sqlquery, "SELECT * FROM repmgr_%s.repl_nodes", options.cluster_name);
+	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes", repmgr_schema);
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
