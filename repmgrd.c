@@ -617,7 +617,7 @@ do_failover(void)
 		if (PQstatus(nodeConn) != CONNECTION_OK)
 			continue;
 
-		sqlquery_snprintf(sqlquery, "SELECT repmgr_get_last_standby_location()");
+		sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()", repmgr_schema);
 		res2 = PQexec(nodeConn, sqlquery);
 		if (PQresultStatus(res2) != PGRES_TUPLES_OK)
 		{
@@ -949,8 +949,8 @@ update_shared_memory(char *last_wal_standby_applied)
 {
 	PGresult *res;
 
-	sprintf(sqlquery, "SELECT repmgr_update_standby_location('%s')",
-	        last_wal_standby_applied);
+	sprintf(sqlquery, "SELECT %s.repmgr_update_standby_location('%s')",
+	        		  repmgr_schema, last_wal_standby_applied);
 
 	/* If an error happens, just inform about that and continue */
 	res = PQexec(myLocalConn, sqlquery);

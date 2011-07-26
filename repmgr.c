@@ -1949,9 +1949,9 @@ create_schema(PGconn *conn)
 
 	/* XXX Here we MUST try to load the repmgr_function.sql not hardcode it here */
 	sqlquery_snprintf(sqlquery,
-	        "CREATE OR REPLACE FUNCTION public.repmgr_update_standby_location(text) RETURNS boolean "
+	        "CREATE OR REPLACE FUNCTION %s.repmgr_update_standby_location(text) RETURNS boolean "
 	        "AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
-	        "LANGUAGE C STRICT ");
+	        "LANGUAGE C STRICT ", repmgr_schema);
 	if (!PQexec(conn, sqlquery))
 	{
 		fprintf(stderr, "Cannot create the function repmgr_update_standby_location: %s\n",
@@ -1960,9 +1960,9 @@ create_schema(PGconn *conn)
 	}
 
 	sqlquery_snprintf(sqlquery,
-	        "CREATE OR REPLACE FUNCTION public.repmgr_get_last_standby_location() RETURNS text "
+	        "CREATE OR REPLACE FUNCTION %s.repmgr_get_last_standby_location() RETURNS text "
 	        "AS '$libdir/repmgr_funcs', 'repmgr_get_last_standby_location' "
-	        "LANGUAGE C STRICT ");
+	        "LANGUAGE C STRICT ", repmgr_schema);
 	if (!PQexec(conn, sqlquery))
 	{
 		fprintf(stderr, "Cannot create the function repmgr_get_last_standby_location: %s\n",
