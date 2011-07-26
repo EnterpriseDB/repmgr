@@ -871,7 +871,10 @@ checkNodeConfiguration(char *conninfo)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-	PQclear(res);
+	else 
+	{
+		PQclear(res);
+	}
 }
 
 

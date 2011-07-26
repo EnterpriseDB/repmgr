@@ -101,7 +101,7 @@ bool
 is_witness(PGconn *conn, char *schema, char *cluster, int node_id)
 {
 	PGresult   *res;
-	bool		result;
+	bool		result = false;
 	char		sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(sqlquery, "SELECT witness from %s.repl_nodes where cluster = '%s' and id = %d",
@@ -115,9 +115,7 @@ is_witness(PGconn *conn, char *schema, char *cluster, int node_id)
 		exit(ERR_DB_QUERY);
 	}
 
-	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
-		result = false;
-	else
+	if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
 		result = true;
 
 	PQclear(res);
