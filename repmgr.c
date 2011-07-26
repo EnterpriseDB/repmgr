@@ -715,6 +715,12 @@ do_standby_clone(void)
 		log_err(_("%s needs parameter 'archive_mode' to be set to 'on'\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
+	if (!guc_setted(conn, "hot_standby", "=", "on"))
+	{
+		PQfinish(conn);
+		log_err(_("%s needs parameter 'hot_standby' to be set to 'on'\n"), progname);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/*
 	 * Check if the tablespace locations exists and that we can write to
