@@ -73,7 +73,7 @@ bool
 is_standby(PGconn *conn)
 {
 	PGresult   *res;
-	bool		result;
+	bool		result = false;
 
 	res = PQexec(conn, "SELECT pg_is_in_recovery()");
 
@@ -86,9 +86,7 @@ is_standby(PGconn *conn)
 		exit(ERR_DB_QUERY);
 	}
 
-	if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
-		result = false;
-	else
+	if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
 		result = true;
 
 	PQclear(res);
