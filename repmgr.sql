@@ -14,8 +14,11 @@ CREATE SCHEMA repmgr;
  */
 CREATE TABLE repl_nodes (
   id            integer primary key,
-  cluster   text        not null,       -- Name to identify the cluster
-  conninfo      text    not null
+  cluster   	text    not null,       -- Name to identify the cluster
+  name			text	not null,
+  conninfo      text    not null,
+  priority  	integer not null,
+  witness   	boolean not null default false
 );
 ALTER TABLE repl_nodes OWNER TO repmgr;
 
@@ -34,8 +37,6 @@ CREATE TABLE repl_monitor (
 );
 ALTER TABLE repl_monitor OWNER TO repmgr;
 
-CREATE INDEX idx_repl_monitor_last_monitor_sort ON repl_monitor(last_monitor_time, standby_node);
-
 /*
  * This view shows the latest monitor info about every node.
  * Interesting thing to see:
@@ -47,12 +48,14 @@ CREATE INDEX idx_repl_monitor_last_monitor_sort ON repl_monitor(last_monitor_tim
  * time_lag: how many seconds are we from being up-to-date with master
  */
 CREATE VIEW repl_status AS
-SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location,
+SELECT primary_node, standby_node, name AS standby_name, last_monitor_time, last_wal_primary_location,
        last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag,
        pg_size_pretty(apply_lag) apply_lag,
        age(now(), last_monitor_time) AS time_lag
- FROM repl_monitor
+ FROM repl_monitor JOIN repl_nodes ON standby_node = id
 WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time)
                                               FROM repl_monitor GROUP BY 1);
 
 ALTER VIEW repl_status OWNER TO repmgr;
+
+CREATE INDEX idx_repl_status_sort ON repl_monitor(last_monitor_time, standby_node);

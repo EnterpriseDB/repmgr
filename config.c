@@ -203,6 +203,12 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 		return false;
 	}
 
+	if (new_options.standby_name != orig_options->standby_name)
+	{
+		log_warning(_("\nCannot change standby name, will keep current configuration.\n"));
+		return false;
+	}
+
 	if (new_options.failover != MANUAL_FAILOVER && new_options.failover != AUTOMATIC_FAILOVER)
 	{
 		log_warning(_("\nNew value for failover is not valid. Should be MANUAL or AUTOMATIC.\n"));

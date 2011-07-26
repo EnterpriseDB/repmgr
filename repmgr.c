@@ -518,9 +518,10 @@ do_master_register(void)
 		}
 	}
 
-	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes (id, cluster, conninfo, priority) "
+	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
 	                  "VALUES (%d, '%s', '%s', %d)",
-	                  repmgr_schema, options.node, options.cluster_name, options.conninfo, options.priority);
+	                  repmgr_schema, options.node, options.cluster_name, options.standby_name, 
+                      options.conninfo, options.priority);
 	log_debug(_("master register: %s\n"), sqlquery);
 
 	if (!PQexec(conn, sqlquery))
@@ -660,9 +661,10 @@ do_standby_register(void)
 		}
 	}
 
-	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, conninfo, priority) "
+	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority) "
 	                  "VALUES (%d, '%s', '%s', %d)",
-	                  repmgr_schema, options.node, options.cluster_name, options.conninfo, options.priority);
+	                  repmgr_schema, options.node, options.cluster_name, options.standby_name, 
+                      options.conninfo, options.priority);
 	log_debug(_("standby register: %s\n"), sqlquery);
 
 	if (!PQexec(master_conn, sqlquery))
@@ -1923,6 +1925,7 @@ create_schema(PGconn *conn)
 	sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_nodes (        "
 	                  "  id        integer primary key, "
 	                  "  cluster   text    not null,    "
+					  "  name      text    not null,    "
 	                  "  conninfo  text    not null,    "
 	                  "  priority  integer not null,    "
 	                  "  witness   boolean not null default false)", repmgr_schema);
@@ -1954,14 +1957,15 @@ create_schema(PGconn *conn)
 
 	/* a view */
 	sqlquery_snprintf(sqlquery, "CREATE VIEW %s.repl_status AS "
-	                  " SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
-	                  "        last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
+	                  " SELECT primary_node, standby_node, name AS standby_name, last_monitor_time, "
+                      "        last_wal_primary_location, last_wal_standby_location, "
+                      "        pg_size_pretty(replication_lag) replication_lag, "
 	                  "        pg_size_pretty(apply_lag) apply_lag, "
 	                  "        age(now(), last_monitor_time) AS time_lag "
-	                  "   FROM %s.repl_monitor "
+	                  "   FROM %s.repl_monitor JOIN %s.repl_nodes ON standby_node = id "
 	                  "  WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time) "
 	                  "                                                FROM %s.repl_monitor GROUP BY 1)",
-	                  repmgr_schema, repmgr_schema, repmgr_schema);
+	                  repmgr_schema, repmgr_schema, repmgr_schema, repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
 	if (!PQexec(conn, sqlquery))
 	{
@@ -2027,7 +2031,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		return false;
 	}
 
-	sqlquery_snprintf(sqlquery, "SELECT id, conninfo, priority, witness FROM %s.repl_nodes", repmgr_schema);
+	sqlquery_snprintf(sqlquery, "SELECT id, name, conninfo, priority, witness FROM %s.repl_nodes", repmgr_schema);
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -2038,12 +2042,13 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, conninfo, priority, witness) "
-		                  "VALUES (%d, '%s', '%s', %d, '%s')",
+		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
+		                  "VALUES (%d, '%s', '%s', '%s', %d, '%s')",
 		                  repmgr_schema, atoi(PQgetvalue(res, i, 0)),
 		                  options.cluster_name, PQgetvalue(res, i, 1),
-		                  atoi(PQgetvalue(res, i, 2)),
-		                  PQgetvalue(res, i, 3));
+		                  PQgetvalue(res, i, 2),
+		                  atoi(PQgetvalue(res, i, 3)),
+		                  PQgetvalue(res, i, 4));
 
 		if (!PQexec(witnessconn, sqlquery))
 		{

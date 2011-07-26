@@ -858,9 +858,10 @@ checkNodeConfiguration(char *conninfo)
 		log_info(_("%s Adding node %d to cluster '%s'\n"),
 		         progname, local_options.node, local_options.cluster_name);
 		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
-		                  "VALUES (%d, '%s', '%s', 'f')",
+		                  "VALUES (%d, '%s', '%s', '%s', 0, 'f')",
 		                  repmgr_schema, local_options.node,
 		                  local_options.cluster_name,
+						  local_options.standby_name,
 		                  local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
