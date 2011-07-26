@@ -37,6 +37,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	options->failover = MANUAL_FAILOVER;
 	options->priority = 0;
+	memset(options->standby_name, 0, sizeof(options->standby_name));
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
@@ -91,6 +92,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 		}
 		else if (strcmp(name, "priority") == 0)
 			options->priority = atoi(value);
+		else if (strcmp(name, "standby_name") == 0)
+			strncpy(options->standby_name, value, MAXLEN);
 		else if (strcmp(name, "promote_command") == 0)
 			strncpy(options->promote_command, value, MAXLEN);
 		else if (strcmp(name, "follow_command") == 0)
@@ -221,6 +224,7 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 	strcpy(orig_options->conninfo, new_options.conninfo);
 	orig_options->failover = new_options.failover;
 	orig_options->priority = new_options.priority;
+	strcpy(orig_options->standby_name, new_options.standby_name);
 	strcpy(orig_options->promote_command, new_options.promote_command);
 	strcpy(orig_options->follow_command, new_options.follow_command);
 	strcpy(orig_options->rsync_options, new_options.rsync_options);

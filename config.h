@@ -30,6 +30,7 @@ typedef struct
 	char conninfo[MAXLEN];
 	int failover;
 	int priority;
+	char standby_name[MAXLEN];
 	char promote_command[MAXLEN];
 	char follow_command[MAXLEN];
 	char loglevel[MAXLEN];

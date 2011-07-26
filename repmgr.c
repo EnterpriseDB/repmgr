@@ -2065,6 +2065,7 @@ write_primary_conninfo(char* line)
 	char host_buf[MAXLEN] = "";
 	char conn_buf[MAXLEN] = "";
 	char user_buf[MAXLEN] = "";
+	char appname_buff[MAXLEN] = "";
 	char password_buf[MAXLEN] = "";
 
 	/* Environment variable for password (UGLY, please use .pgpass!) */
@@ -2086,8 +2087,13 @@ write_primary_conninfo(char* line)
 		maxlen_snprintf(user_buf, " user=%s", runtime_options.username);
 	}
 
-	maxlen_snprintf(conn_buf, "port=%s%s%s%s",
-		(runtime_options.masterport[0]) ? runtime_options.masterport : "5432", host_buf, user_buf, password_buf);
+	if (options.standby_name[0]) {
+		maxlen_snprintf(appname_buff, " application_name=%s", options.standby_name);
+	}
+
+	maxlen_snprintf(conn_buf, "port=%s%s%s%s%s",
+		(runtime_options.masterport[0]) ? runtime_options.masterport : "5432", host_buf, user_buf, password_buf,
+		 appname_buf);
 
 	maxlen_snprintf(line, "primary_conninfo = '%s'", conn_buf);
 
