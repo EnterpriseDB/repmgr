@@ -1903,7 +1903,7 @@ create_schema(PGconn *conn)
 	                  "  standby_node                   INTEGER NOT NULL, "
 	                  "  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL, "
 	                  "  last_wal_primary_location      TEXT NOT NULL,   "
-	                  "  last_wal_standby_location      TEXT NOT NULL,   "
+	                  "  last_wal_standby_location      TEXT,  "
 	                  "  replication_lag                BIGINT NOT NULL, "
 	                  "  apply_lag                      BIGINT NOT NULL) ", repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);

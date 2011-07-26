@@ -28,7 +28,7 @@ CREATE TABLE repl_monitor (
   standby_node                   INTEGER NOT NULL,
   last_monitor_time                      TIMESTAMP WITH TIME ZONE NOT NULL,
   last_wal_primary_location      TEXT NOT NULL,
-  last_wal_standby_location      TEXT NOT NULL,
+  last_wal_standby_location      TEXT,		-- In case of a witness server this will be NULL
   replication_lag                BIGINT NOT NULL,
   apply_lag                      BIGINT NOT NULL
 );
