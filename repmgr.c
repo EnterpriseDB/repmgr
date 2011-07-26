@@ -763,15 +763,7 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-
-	r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
-	if (r != 0)
-	{
-		log_err(_("%s: Aborting, remote host %s is not reachable.\n"), progname, runtime_options.host);
-		goto stop_backup;
-	}
-
-	log_notice(_("Starting backup...\n"));
+	PQclear(res);
 
 	/* Get the data directory full path and the configuration files location */
 	sqlquery_snprintf(sqlquery,
@@ -834,7 +826,8 @@ do_standby_clone(void)
 	if (r != 0)
 	{
 		log_err(_("%s: Aborting, remote host %s is not reachable.\n"), progname, runtime_options.host);
-		goto stop_backup;
+		PQfinish(conn);
+		exit(ERR_BAD_SSH);
 	}
 
 	log_notice(_("Starting backup...\n"));
@@ -950,9 +943,11 @@ do_standby_clone(void)
 		if (r != 0)
 		{
 			log_warning(_("standby clone: failed copying tablespace directory '%s'\n"), tblspc_dir);
+			PQclear(res);
 			goto stop_backup;
 		}
 	}
+	PQclear(res);
 
 	log_info(_("standby clone: master config file '%s'\n"), master_config_file);
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
@@ -991,13 +986,7 @@ stop_backup:
 
 	/*
 	 * Inform the master that we have finished the backup.
-	 *
-	 * Don't have this one exit if it fails, so that a more informative
-	 * error message will also appear about the backup not being stopped.
 	 */
-	log_info(_("%s connecting to master database to stop backup\n"), progname);
-	conn=establishDBConnectionByParams(keywords,values,false);
-
 	log_notice(_("Finishing backup...\n"));
 	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
 	log_debug(_("standby clone: %s\n"), sqlquery);
@@ -1098,8 +1087,8 @@ do_standby_promote(void)
 	pg_version(conn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
-		PQfinish(conn);
 		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1107,6 +1096,7 @@ do_standby_promote(void)
 	if (!is_standby(conn))
 	{
 		log_err(_("%s: The command should be executed on a standby node\n"), progname);
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1115,8 +1105,9 @@ do_standby_promote(void)
 	                                      &old_master_id, NULL);
 	if (old_master_conn != NULL)
 	{
-		PQfinish(old_master_conn);
 		log_err(_("There is a master already in this cluster\n"));
+		PQfinish(old_master_conn);
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1200,7 +1191,7 @@ do_standby_follow(void)
 	if (!is_standby(conn))
 	{
 		log_err(_("\n%s: The command should be executed in a standby node\n"), progname);
-		return;
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1208,8 +1199,8 @@ do_standby_follow(void)
 	pg_version(conn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
-		PQfinish(conn);
 		log_err(_("\n%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1219,16 +1210,17 @@ do_standby_follow(void)
 	                                  options.cluster_name, &master_id,(char *) &master_conninfo);
 	if (master_conn == NULL)
 	{
-		PQfinish(conn);
 		log_err(_("There isn't a master to follow in this cluster\n"));
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check we are going to point to a master */
 	if (is_standby(master_conn))
 	{
-		PQfinish(conn);
 		log_err(_("%s: The node to follow should be a master\n"), progname);
+		PQfinish(conn);
+		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1237,19 +1229,19 @@ do_standby_follow(void)
 	pg_version(master_conn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
+		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(conn);
 		PQfinish(master_conn);
-		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* master and standby version should match */
 	if (strcmp(master_version, standby_version) != 0)
 	{
-		PQfinish(conn);
-		PQfinish(master_conn);
 		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
 		        progname, master_version, standby_version);
+		PQfinish(conn);
+		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1291,7 +1283,6 @@ do_standby_follow(void)
 	if (r != 0)
 	{
 		log_err(_("Can't restart service\n"));
-		return;
 		exit(ERR_NO_RESTART);
 	}
 
@@ -1322,7 +1313,9 @@ do_witness_create(void)
 	/* Check this directory could be used as a PGDATA dir */
 	if (!create_pgdir(runtime_options.dest_dir, runtime_options.force))
 	{
-		return;
+		log_err(_("witness create: couldn't create data directory (\"%s\") for witness"),
+					runtime_options.dest_dir);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Connection parameters for master only */
@@ -1332,28 +1325,28 @@ do_witness_create(void)
 	values[1] = runtime_options.masterport;
 
 	/* We need to connect to check configuration and copy it */
-	masterconn = PQconnectdbParams(keywords, values, true);
+	masterconn = establishDBConnectionByParams(keywords, values, true);
 	if (!masterconn)
 	{
 		log_err(_("%s: could not connect to master\n"), progname);
-		return;
+		exit(ERR_DB_CON);
 	}
 
 	/* primary should be v9 or better */
 	pg_version(masterconn, master_version);
 	if (strcmp(master_version, "") == 0)
 	{
-		PQfinish(masterconn);
 		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
-		return;
+		PQfinish(masterconn);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check we are connecting to a primary node */
 	if (is_standby(masterconn))
 	{
-		PQfinish(masterconn);
 		log_err(_("The command should not run on a standby node\n"));
-		return;
+		PQfinish(masterconn);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	log_info(_("Succesfully connected to primary.\n"));
@@ -1362,7 +1355,8 @@ do_witness_create(void)
 	if (r != 0)
 	{
 		log_err(_("%s: Aborting, remote host %s is not reachable.\n"), progname, runtime_options.host);
-		return;
+		PQfinish(masterconn);
+		exit(ERR_BAD_SSH);
 	}
 
 	/*
@@ -1381,7 +1375,8 @@ do_witness_create(void)
 	if (r != 0)
 	{
 		log_err("Can't iniatialize cluster for witness server\n");
-		return;
+		PQfinish(masterconn);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
@@ -1393,6 +1388,7 @@ do_witness_create(void)
 	if (pg_conf == NULL)
 	{
 		log_err(_("\n%s: could not open \"%s\" for adding extra config: %s\n"), progname, buf, strerror(errno));
+		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1423,7 +1419,7 @@ do_witness_create(void)
 		log_err(_("Can't get info about pg_hba.conf: %s\n"), PQerrorMessage(masterconn));
 		PQclear(res);
 		PQfinish(masterconn);
-		return;
+		exit(ERR_DB_QUERY);
 	}
 	for (i = 0; i < PQntuples(res); i++)
 	{
@@ -1440,7 +1436,8 @@ do_witness_create(void)
 	if (r != 0)
 	{
 		log_err(_("Can't rsync the pg_hba.conf file from master\n"));
-		return;
+		PQfinish(masterconn);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* start new instance */
@@ -1450,7 +1447,8 @@ do_witness_create(void)
 	if (r != 0)
 	{
 		log_err(_("Can't start cluster for witness server\n"));
-		return;
+		PQfinish(masterconn);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* register ourselves in the master */
@@ -1463,7 +1461,7 @@ do_witness_create(void)
 	{
 		log_err(_("Cannot insert node details, %s\n"), PQerrorMessage(masterconn));
 		PQfinish(masterconn);
-		return;
+		exit(ERR_DB_QUERY);
 	}
 
 	/* Let the server start */
@@ -1486,7 +1484,8 @@ do_witness_create(void)
 			if (r != 0)
 			{
 				log_err("Can't create local user\n");
-				return;
+				PQfinish(masterconn);
+				exit(ERR_BAD_CONFIG);
 			}
 			sprintf(createcommand, "createdb -p %s -O %s %s", runtime_options.localport, values[2], values[3]);
 			log_info("creating database for witness: %s", createcommand);
@@ -1494,7 +1493,8 @@ do_witness_create(void)
 			if (r != 0)
 			{
 				log_err("Can't create local db\n");
-				return;
+				PQfinish(masterconn);
+				exit(ERR_BAD_CONFIG);
 			}
 		}
 	}
@@ -1507,7 +1507,7 @@ do_witness_create(void)
 	{
 		PQfinish(masterconn);
 		PQfinish(witnessconn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* copy configuration from master, only repl_nodes is needed */
@@ -1515,7 +1515,7 @@ do_witness_create(void)
 	{
 		PQfinish(masterconn);
 		PQfinish(witnessconn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 	PQfinish(masterconn);
 	PQfinish(witnessconn);
@@ -1996,7 +1996,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		return false;
 	}
 
-	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes", repmgr_schema);
+	sqlquery_snprintf(sqlquery, "SELECT id, conninfo, priority, witness FROM %s.repl_nodes", repmgr_schema);
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -2010,14 +2010,15 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, conninfo, priority, witness) "
 		                  "VALUES (%d, '%s', '%s', %d, '%s')",
 		                  repmgr_schema, atoi(PQgetvalue(res, i, 0)),
-		                  options.cluster_name, PQgetvalue(res, i, 2),
-		                  atoi(PQgetvalue(res, i, 3)),
-		                  PQgetvalue(res, i, 4));
+		                  options.cluster_name, PQgetvalue(res, i, 1),
+		                  atoi(PQgetvalue(res, i, 2)),
+		                  PQgetvalue(res, i, 3));
 
 		if (!PQexec(witnessconn, sqlquery))
 		{
 			fprintf(stderr, "Cannot copy configuration to witness, %s\n",
 			        PQerrorMessage(witnessconn));
+			PQclear(res);
 			return false;
 		}
 	}

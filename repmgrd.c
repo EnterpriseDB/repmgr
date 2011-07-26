@@ -180,8 +180,8 @@ main(int argc, char **argv)
 	pg_version(myLocalConn, standby_version);
 	if (strcmp(standby_version, "") == 0)
 	{
-		PQfinish(myLocalConn);
 		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		PQfinish(myLocalConn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -210,6 +210,7 @@ main(int argc, char **argv)
 		{
 			PQfinish(myLocalConn);
 			myLocalConn = establishDBConnection(local_options.conninfo, true);
+			primaryConn = myLocalConn;
 			update_registration();
 		}
 
@@ -245,6 +246,7 @@ main(int argc, char **argv)
 				{
 					PQfinish(myLocalConn);
 					myLocalConn = establishDBConnection(local_options.conninfo, true);
+					primaryConn = myLocalConn;
 					update_registration();
 				}
 				got_SIGHUP = false;
@@ -589,7 +591,7 @@ do_failover(void)
 	sleep(SLEEP_MONITOR + 1);
 
 	/* get a list of standby nodes, including myself */
-	sprintf(sqlquery, "SELECT * "
+	sprintf(sqlquery, "SELECT id, conninfo "
 	        "  FROM %s.repl_nodes "
 	        " WHERE id IN (SELECT standby_node FROM %s.repl_status) "
 	        "   AND cluster = '%s' "
@@ -611,7 +613,7 @@ do_failover(void)
 		node = atoi(PQgetvalue(res1, i, 0));
 		/* Initialize on false so if we can't reach this node we know that later */
 		nodes[i].is_ready = false;
-		strncpy(nodeConninfo, PQgetvalue(res1, i, 2), MAXLEN);
+		strncpy(nodeConninfo, PQgetvalue(res1, i, 1), MAXLEN);
 		nodeConn = establishDBConnection(nodeConninfo, false);
 		/* if we can't see the node just skip it */
 		if (PQstatus(nodeConn) != CONNECTION_OK)

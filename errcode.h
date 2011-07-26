@@ -34,5 +34,6 @@
 #define ERR_BAD_PASSWORD 9
 #define ERR_STR_OVERFLOW 10
 #define ERR_FAILOVER_FAIL 11
+#define ERR_BAD_SSH	12
 
 #endif	/* _ERRCODE_H_ */
