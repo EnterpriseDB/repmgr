@@ -55,6 +55,7 @@ static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
 static bool check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static bool copy_configuration(PGconn *masterconn, PGconn *witnessconn);
+static void write_primary_conninfo(char* line);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -1599,39 +1600,7 @@ create_recovery_file(const char *data_dir)
 		return false;
 	}
 
-	maxlen_snprintf(line, "primary_conninfo = 'host=%s port=%s'\n", runtime_options.host,
-	                (runtime_options.masterport[0]) ? runtime_options.masterport : "5432");
-
-	/*
-	 * Template a password into the connection string in recovery.conf
-	 *
-	 * Sometimes this is passed by the user explicitly, and otherwise
-	 * we try to get it into the environment.
-	 *
-	 * XXX: This is pretty dirty, at least push this up to the caller rather
-	 * than hitting environment variables at this level.
-	 */
-	{
-		char *password = getenv("PGPASSWORD");
-
-		if (password != NULL)
-		{
-			maxlen_snprintf(line,
-			                "primary_conninfo = 'host=%s port=%s password=%s'\n",
-			                runtime_options.host,
-			                (runtime_options.masterport[0]) ? runtime_options.masterport : "5432",
-			                password);
-		}
-		else
-		{
-			if (require_password)
-			{
-				log_err(_("%s: PGPASSWORD not set, but having one is required\n"),
-				        progname);
-				exit(ERR_BAD_PASSWORD);
-			}
-		}
-	}
+	write_primary_conninfo(line);
 
 	if (fputs(line, recovery_file) == EOF)
 	{
@@ -2020,4 +1989,40 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 	}
 
 	return true;
+}
+
+/* This function uses global variables to determine connection settings. Special
+ * usage of the PGPASSWORD variable is handled, but strongly discouraged */
+static void
+write_primary_conninfo(char* line)
+{
+	char host_buf[MAXLEN] = "";
+	char conn_buf[MAXLEN] = "";
+	char user_buf[MAXLEN] = "";
+	char password_buf[MAXLEN] = "";
+
+	/* Environment variable for password (UGLY, please use .pgpass!) */
+	const char *password = getenv("PGPASSWORD");
+	if (password != NULL) {
+		maxlen_snprintf(password_buf, " password=%s", password);
+	}
+	else if (require_password) {
+		log_err(_("%s: PGPASSWORD not set, but having one is required\n"),
+			progname);
+		exit(ERR_BAD_PASSWORD);
+	}
+
+	if (runtime_options.host[0]) {
+		maxlen_snprintf(host_buf, " host=%s", runtime_options.host);
+	}
+
+	if (runtime_options.username[0]) {
+		maxlen_snprintf(user_buf, " user=%s", runtime_options.username);
+	}
+
+	maxlen_snprintf(conn_buf, "port=%s%s%s%s",
+		(runtime_options.masterport[0]) ? runtime_options.masterport : "5432", host_buf, user_buf, password_buf);
+
+	maxlen_snprintf(line, "primary_conninfo = '%s'", conn_buf);
+
 }
