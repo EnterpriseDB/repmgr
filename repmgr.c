@@ -48,7 +48,7 @@
 #define STANDBY_FOLLOW 	 5
 #define WITNESS_CREATE   6
 
-static bool create_recovery_file(const char *data_dir, char *master_conninfo);
+static bool create_recovery_file(const char *data_dir);
 static int test_ssh_connection(char *host, char *remote_user);
 static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
                              char *local_path, bool is_directory);
@@ -1035,7 +1035,7 @@ stop_backup:
 	}
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file(local_data_directory, NULL);
+	create_recovery_file(local_data_directory);
 
 	/*
 	 * We don't start the service yet because we still may want to
@@ -1273,7 +1273,7 @@ do_standby_follow(void)
 	PQfinish(conn);
 
 	/* write the recovery.conf file */
-	if (!create_recovery_file(data_dir,NULL))
+	if (!create_recovery_file(data_dir))
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
@@ -1574,11 +1574,9 @@ help(const char *progname)
 
 /*
  * Creates a recovery file for a standby.
- *
- * Writes master_conninfo to recovery.conf if is non-NULL
  */
 static bool
-create_recovery_file(const char *data_dir, char *master_conninfo)
+create_recovery_file(const char *data_dir)
 {
 	FILE		*recovery_file;
 	char		recovery_file_path[MAXLEN];
@@ -1606,7 +1604,6 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 
 	/*
 	 * Template a password into the connection string in recovery.conf
-	 * if a full connection string is not already provided.
 	 *
 	 * Sometimes this is passed by the user explicitly, and otherwise
 	 * we try to get it into the environment.
@@ -1614,7 +1611,6 @@ create_recovery_file(const char *data_dir, char *master_conninfo)
 	 * XXX: This is pretty dirty, at least push this up to the caller rather
 	 * than hitting environment variables at this level.
 	 */
-	if (master_conninfo == NULL)
 	{
 		char *password = getenv("PGPASSWORD");
 
