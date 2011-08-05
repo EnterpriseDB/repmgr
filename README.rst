@@ -320,7 +320,7 @@ keys and a maching authorization file to a privledged user on the other system::
   [postgres@node1]$ cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
   [postgres@node1]$ chmod go-rwx ~/.ssh/*
   [postgres@node1]$ cd ~/.ssh
-  [postgres@node1]$ scp id_rsa.pub id_rsa authorized_keys postgres@node2:
+  [postgres@node1]$ scp id_rsa.pub id_rsa authorized_keys user@node2:
 
 Login as a user on the other system, and install the files into the postgres 
 user's account::
