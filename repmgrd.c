@@ -861,7 +861,7 @@ checkNodeConfiguration(char *conninfo)
 		                  "VALUES (%d, '%s', '%s', '%s', 0, 'f')",
 		                  repmgr_schema, local_options.node,
 		                  local_options.cluster_name,
-						  local_options.standby_name,
+						  local_options.node_name,
 		                  local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))

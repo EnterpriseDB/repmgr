@@ -520,7 +520,7 @@ do_master_register(void)
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
 	                  "VALUES (%d, '%s', '%s', %d)",
-	                  repmgr_schema, options.node, options.cluster_name, options.standby_name, 
+	                  repmgr_schema, options.node, options.cluster_name, options.node_name, 
                       options.conninfo, options.priority);
 	log_debug(_("master register: %s\n"), sqlquery);
 
@@ -663,7 +663,7 @@ do_standby_register(void)
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority) "
 	                  "VALUES (%d, '%s', '%s', %d)",
-	                  repmgr_schema, options.node, options.cluster_name, options.standby_name, 
+	                  repmgr_schema, options.node, options.cluster_name, options.node_name, 
                       options.conninfo, options.priority);
 	log_debug(_("standby register: %s\n"), sqlquery);
 
@@ -2092,8 +2092,8 @@ write_primary_conninfo(char* line)
 		maxlen_snprintf(user_buf, " user=%s", runtime_options.username);
 	}
 
-	if (options.standby_name[0]) {
-		maxlen_snprintf(appname_buff, " application_name=%s", options.standby_name);
+	if (options.node_name[0]) {
+		maxlen_snprintf(appname_buff, " application_name=%s", options.node_name);
 	}
 
 	maxlen_snprintf(conn_buf, "port=%s%s%s%s%s",

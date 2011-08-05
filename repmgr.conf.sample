@@ -7,7 +7,7 @@ cluster=test
 
 # Node ID
 node=2
-standby_name=standby2
+node_name=standby2
 
 # Connection information
 conninfo='host=192.168.204.104'
