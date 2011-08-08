@@ -47,6 +47,7 @@
 #define STANDBY_PROMOTE  4
 #define STANDBY_FOLLOW 	 5
 #define WITNESS_CREATE   6
+#define CLUSTER_SHOW     7
 
 static bool create_recovery_file(const char *data_dir);
 static int test_ssh_connection(char *host, char *remote_user);
@@ -63,6 +64,7 @@ static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
 static void do_witness_create(void);
+static void do_cluster_show(void);
 
 static void usage(void);
 static void help(const char *progname);
@@ -180,6 +182,7 @@ main(int argc, char **argv)
 	 * MASTER REGISTER |
 	 * STANDBY {REGISTER | CLONE [node] | PROMOTE | FOLLOW [node]} |
 	 * WITNESS CREATE
+	 * CLUSTER SHOW
 	 *
 	 * the node part is optional, if we receive it then we shouldn't
 	 * have received a -h option
@@ -188,7 +191,8 @@ main(int argc, char **argv)
 	{
 		server_mode = argv[optind++];
 		if (strcasecmp(server_mode, "STANDBY") != 0 && strcasecmp(server_mode, "MASTER") != 0 &&
-		        strcasecmp(server_mode, "WITNESS") != 0)
+		        strcasecmp(server_mode, "WITNESS") != 0 &&
+		        strcasecmp(server_mode, "CLUSTER") != 0 )
 		{
 			usage();
 			exit(ERR_BAD_CONFIG);
@@ -214,6 +218,11 @@ main(int argc, char **argv)
 				action = STANDBY_PROMOTE;
 			else if (strcasecmp(server_cmd, "FOLLOW") == 0)
 				action = STANDBY_FOLLOW;
+		}
+		else if (strcasecmp(server_mode, "CLUSTER") == 0)
+		{
+			if( strcasecmp(server_cmd, "SHOW") == 0)
+				action = CLUSTER_SHOW;
 		}
 		else if (strcasecmp(server_mode, "WITNESS") == 0)
 			if (strcasecmp(server_cmd, "CREATE") == 0)
@@ -336,6 +345,9 @@ main(int argc, char **argv)
 	case WITNESS_CREATE:
 		do_witness_create();
 		break;
+	case CLUSTER_SHOW:
+		do_cluster_show();
+		break;
 	default:
 		usage();
 		exit(ERR_BAD_CONFIG);
@@ -343,6 +355,53 @@ main(int argc, char **argv)
 	logger_shutdown();
 
 	return 0;
+}
+
+static void
+do_cluster_show(void)
+{
+	PGconn	 *conn;
+	PGresult *res;
+	char	 sqlquery[QUERY_STR_LEN];
+	char	 node_role[MAXLEN];
+	int		 i;
+
+	/* We need to connect to check configuration */
+	log_info(_("%s connecting to database\n"), progname);
+	conn = establishDBConnection(options.conninfo, true);
+
+	sqlquery_snprintf(sqlquery, "SELECT conninfo FROM %s.repl_nodes;", repmgr_schema);
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Can't get nodes informations, have you regitered them?\n%s\n"), PQerrorMessage(conn));
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	PQfinish(conn);
+
+	printf("Role      | Connection String \n");
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		conn = establishDBConnection(PQgetvalue(res, i, 0), false);
+		if (PQstatus(conn) != CONNECTION_OK)
+			strcpy(node_role, "  FAILED");
+		else if (is_standby(conn))
+			strcpy(node_role, "  standby");
+		else
+			strcpy(node_role, "* master");
+
+		printf("%-10s", node_role);
+		printf("| %s\n", PQgetvalue(res, i, 0));
+
+		PQfinish(conn);
+	}
+
+	PQclear(res);
+
+
 }
 
 static void
@@ -1543,6 +1602,7 @@ help(const char *progname)
 	printf(_(" %s [OPTIONS] master	{register}\n"), progname);
 	printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"),
 	       progname);
+	printf(_(" %s [OPTIONS] cluster show\n"), progname);
 	printf(_("\nGeneral options:\n"));
 	printf(_("	--help					   show this help, then exit\n"));
 	printf(_("	--version				   output version information, then exit\n"));
@@ -1570,6 +1630,7 @@ help(const char *progname)
 	printf(_(" standby promote		 - allows manual promotion of a specific standby into a "));
 	printf(_("new master in the event of a failover\n"));
 	printf(_(" standby follow		 - allows the standby to re-point itself to a new master\n"));
+	printf(_(" cluster show            - print node informations\n"));
 }
 
 
@@ -1829,6 +1890,9 @@ check_parameters_for_action(const int action)
 		need_a_node = false;
 		break;
 	case WITNESS_CREATE:
+		/* allow all parameters to be supplied */
+		break;
+	case CLUSTER_SHOW:
 		/* allow all parameters to be supplied */
 		break;
 	}
