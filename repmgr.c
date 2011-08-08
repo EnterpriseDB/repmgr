@@ -370,7 +370,7 @@ do_cluster_show(void)
 	log_info(_("%s connecting to database\n"), progname);
 	conn = establishDBConnection(options.conninfo, true);
 
-	sqlquery_snprintf(sqlquery, "SELECT conninfo FROM %s.repl_nodes;", repmgr_schema);
+	sqlquery_snprintf(sqlquery, "SELECT conninfo, witness FROM %s.repl_nodes;", repmgr_schema);
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -388,6 +388,8 @@ do_cluster_show(void)
 		conn = establishDBConnection(PQgetvalue(res, i, 0), false);
 		if (PQstatus(conn) != CONNECTION_OK)
 			strcpy(node_role, "  FAILED");
+		else if (strcmp(PQgetvalue(res, i, 1), "t") == 0)
+			strcpy(node_role, "  witness");
 		else if (is_standby(conn))
 			strcpy(node_role, "  standby");
 		else
