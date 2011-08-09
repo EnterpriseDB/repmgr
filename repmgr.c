@@ -2070,7 +2070,7 @@ write_primary_conninfo(char* line)
 	char host_buf[MAXLEN] = "";
 	char conn_buf[MAXLEN] = "";
 	char user_buf[MAXLEN] = "";
-	char appname_buff[MAXLEN] = "";
+	char appname_buf[MAXLEN] = "";
 	char password_buf[MAXLEN] = "";
 
 	/* Environment variable for password (UGLY, please use .pgpass!) */
@@ -2093,7 +2093,7 @@ write_primary_conninfo(char* line)
 	}
 
 	if (options.node_name[0]) {
-		maxlen_snprintf(appname_buff, " application_name=%s", options.node_name);
+		maxlen_snprintf(appname_buf, " application_name=%s", options.node_name);
 	}
 
 	maxlen_snprintf(conn_buf, "port=%s%s%s%s%s",
