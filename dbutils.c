@@ -318,7 +318,7 @@ getMasterConnection(PGconn *standby_conn, char *schema, int id, char *cluster,
 	log_info(_("finding node list for cluster '%s'\n"),
 	         cluster);
 
-	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
+	sqlquery_snprintf(sqlquery, "SELECT id, conninfo FROM %s.repl_nodes "
 	                  " WHERE cluster = '%s' and id <> %d and not witness",
 	                  schema_quoted, cluster, id);
 
@@ -336,7 +336,7 @@ getMasterConnection(PGconn *standby_conn, char *schema, int id, char *cluster,
 	{
 		/* initialize with the values of the current node being processed */
 		*master_id = atoi(PQgetvalue(res1, i, 0));
-		strncpy(master_conninfo, PQgetvalue(res1, i, 2), MAXCONNINFO);
+		strncpy(master_conninfo, PQgetvalue(res1, i, 1), MAXCONNINFO);
 		log_info(_("checking role of cluster node '%s'\n"),
 		         master_conninfo);
 		master_conn = establishDBConnection(master_conninfo, false);

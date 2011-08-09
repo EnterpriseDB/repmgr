@@ -519,7 +519,7 @@ do_master_register(void)
 	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
-	                  "VALUES (%d, '%s', '%s', %d)",
+	                  "VALUES (%d, '%s', '%s', '%s', %d)",
 	                  repmgr_schema, options.node, options.cluster_name, options.node_name, 
                       options.conninfo, options.priority);
 	log_debug(_("master register: %s\n"), sqlquery);
@@ -662,7 +662,7 @@ do_standby_register(void)
 	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority) "
-	                  "VALUES (%d, '%s', '%s', %d)",
+	                  "VALUES (%d, '%s', '%s', '%s', %d)",
 	                  repmgr_schema, options.node, options.cluster_name, options.node_name, 
                       options.conninfo, options.priority);
 	log_debug(_("standby register: %s\n"), sqlquery);
@@ -1516,9 +1516,9 @@ do_witness_create(void)
 	}
 
 	/* register ourselves in the master */
-	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, conninfo, priority, witness) "
-	                  "VALUES (%d, '%s', '%s', %d, true)",
-	                  repmgr_schema, options.node, options.cluster_name, options.conninfo);
+	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
+	                  "VALUES (%d, '%s', '%s', '%s', %d, true)",
+	                  repmgr_schema, options.node, options.cluster_name, options.node_name, options.conninfo);
 
 	log_debug(_("witness create: %s"), sqlquery);
 	if (!PQexec(masterconn, sqlquery))
