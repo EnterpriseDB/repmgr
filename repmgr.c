@@ -896,6 +896,20 @@ do_standby_clone(void)
 
 	log_notice(_("Starting backup...\n"));
 
+	/* 
+	 * in pg 9.1 default is to wait for a sync standby to ack, 
+	 * avoid that by turning off sync rep for this session
+	 */
+	sqlquery_snprintf(sqlquery, "SET synchronous_commit TO OFF)");
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err("Can't set synchronous_commit: %s\n", PQerrorMessage(conn));
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 	/*
 	 * inform the master we will start a backup and get the first XLog filename
 	 * so we can say to the user we need those files
