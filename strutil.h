@@ -35,4 +35,9 @@ extern int xsnprintf(char *str, size_t size, const char *format, ...);
 extern int sqlquery_snprintf(char *str, const char *format, ...);
 extern int maxlen_snprintf(char *str, const char *format, ...);
 
+/* Add strnlen on platforms that don't have it, like OS X */
+#ifndef strnlen
+extern size_t strnlen(const char *s, size_t n);
+#endif
+
 #endif	/* _STRUTIL_H_ */

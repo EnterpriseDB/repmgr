@@ -20,6 +20,8 @@
 #ifndef _REPMGR_DBUTILS_H_
 #define _REPMGR_DBUTILS_H_
 
+#include "strutil.h"
+
 PGconn *establishDBConnection(const char *conninfo, const bool exit_on_error);
 PGconn *establishDBConnectionByParams(const char *keywords[],
                                       const char *values[],
