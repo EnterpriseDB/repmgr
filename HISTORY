@@ -31,5 +31,6 @@
 1.1.0   2011-03-09
         Make options -U, -R and -p not mandatory (Jaime)
 
-X.X.X	2011-XX-XX
-	Add --ignore-rsync-warning (Cédric)
+1.1.1	2011-XX-XX
+        Add --ignore-rsync-warning (Cédric)
+        Add strnlen for compatibility with OS X (Greg)
