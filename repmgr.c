@@ -442,18 +442,30 @@ do_master_register(void)
 
 		/* and the view */
 		sqlquery_snprintf(sqlquery, "CREATE VIEW %s.repl_status AS "
-		                  "  WITH monitor_info AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY primary_node, standby_node "
-		                  " ORDER BY last_monitor_time desc) "
-		                  "  FROM %s.repl_monitor) "
 		                  "  SELECT primary_node, standby_node, last_monitor_time, last_wal_primary_location, "
 		                  "         last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
 		                  "         pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
-		                  "    FROM monitor_info a "
-		                  "   WHERE row_number = 1", repmgr_schema, repmgr_schema);
+		                  "    FROM %s.repl_monitor "
+	             		  "  WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time) "
+	                	  "                                                FROM %s.repl_monitor GROUP BY 1)",
+	                  	  repmgr_schema, repmgr_schema, repmgr_schema);
 		log_debug("master register: %s\n", sqlquery);
 		if (!PQexec(conn, sqlquery))
 		{
 			log_err(_("Cannot create the view %s.repl_status: %s\n"),
+			        repmgr_schema, PQerrorMessage(conn));
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/* an index to improve performance of the view */
+		sqlquery_snprintf(sqlquery, "CREATE INDEX idx_repl_status_sort "
+		                            "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
+									repmgr_schema);
+		log_debug(_("master register: %s\n"), sqlquery);
+		if (!PQexec(conn, sqlquery))
+		{
+			log_err(_("Cannot indexing table %s.repl_monitor: %s\n"),
 			        repmgr_schema, PQerrorMessage(conn));
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
