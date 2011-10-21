@@ -34,3 +34,4 @@
 1.1.1	2011-XX-XX
         Add --ignore-rsync-warning (Cédric)
         Add strnlen for compatibility with OS X (Greg)
+        Improve performance of the repl_status view (Jaime)
