@@ -900,7 +900,7 @@ do_standby_clone(void)
 	 * in pg 9.1 default is to wait for a sync standby to ack, 
 	 * avoid that by turning off sync rep for this session
 	 */
-	sqlquery_snprintf(sqlquery, "SET synchronous_commit TO OFF)");
+	sqlquery_snprintf(sqlquery, "SET synchronous_commit TO OFF");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
