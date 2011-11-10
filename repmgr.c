@@ -433,7 +433,7 @@ do_master_register(void)
 	log_info(_("%s connected to master, checking its state\n"), progname);
 	if (is_standby(conn))
 	{
-		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		log_err(_("Trying to register as a master a standby node\n"), progname);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
