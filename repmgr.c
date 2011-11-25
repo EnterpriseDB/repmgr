@@ -433,7 +433,7 @@ do_master_register(void)
 	log_info(_("%s connected to master, checking its state\n"), progname);
 	if (is_standby(conn))
 	{
-		log_err(_("Trying to register as a master a standby node\n"), progname);
+		log_err(_("Trying to register a standby node as a master\n"));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
