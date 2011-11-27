@@ -1356,7 +1356,7 @@ do_standby_follow(void)
 
 	/* Finally, restart the service */
 	/* We assume the pg_ctl script is in the PATH */
-	maxlen_snprintf(script, "pg_ctl -D %s -m fast restart", data_dir);
+	maxlen_snprintf(script, "pg_ctl -w -D %s -m fast restart", data_dir);
 	r = system(script);
 	if (r != 0)
 	{
@@ -1519,7 +1519,7 @@ do_witness_create(void)
 	}
 
 	/* start new instance */
-	sprintf(script, "pg_ctl -D %s start", runtime_options.dest_dir);
+	sprintf(script, "pg_ctl -w -D %s start", runtime_options.dest_dir);
 	log_info(_("Start cluster for witness: %s"), script);
 	r = system(script);
 	if (r != 0)
@@ -1541,9 +1541,6 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_DB_QUERY);
 	}
-
-	/* Let the server start */
-	sleep(2);
 
 	/*
 		create the local user and local db if it is not the default one
