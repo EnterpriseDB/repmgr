@@ -594,9 +594,10 @@ do_failover(void)
 	sprintf(sqlquery, "SELECT id, conninfo "
 	        "  FROM %s.repl_nodes "
 	        " WHERE id IN (SELECT standby_node FROM %s.repl_status) "
+			"   AND id <> %d "
 	        "   AND cluster = '%s' "
 	        " ORDER BY priority ",
-	        repmgr_schema, repmgr_schema, local_options.cluster_name);
+	        repmgr_schema, repmgr_schema, primary_options.node, local_options.cluster_name);
 
 	res1 = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
