@@ -81,7 +81,7 @@ bool require_password = false;
 
 /* Initialization of runtime options */
 t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, "" };
-t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "" };
+t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", -1 };
 
 static char		*server_mode = NULL;
 static char		*server_cmd = NULL;

@@ -36,6 +36,7 @@ typedef struct
 	char loglevel[MAXLEN];
 	char logfacility[MAXLEN];
 	char rsync_options[QUERY_STR_LEN];
+	int  master_response_timeout;
 } t_configuration_options;
 
 void parse_config(const char *config_file, t_configuration_options *options);

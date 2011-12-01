@@ -41,6 +41,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
+	options->master_response_timeout = 0;
 
 	/*
 	 * Since some commands don't require a config file at all, not
@@ -98,6 +99,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 			strncpy(options->promote_command, value, MAXLEN);
 		else if (strcmp(name, "follow_command") == 0)
 			strncpy(options->follow_command, value, MAXLEN);
+		else if (strcmp(name, "master_response_timeout") == 0)
+			options->master_response_timeout = atoi(value);
 		else
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}
@@ -215,6 +218,12 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 		return false;
 	}
 
+	if (new_options.master_response_timeout <= 0)
+	{
+		log_warning(_("\nNew value for master_response_timeout is not valid. Should be greater than zero.\n"));
+		return false;
+	}
+
 	/* Test conninfo string */
 	conn = establishDBConnection(new_options.conninfo, false);
 	if (!conn || (PQstatus(conn) != CONNECTION_OK))
@@ -234,6 +243,7 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 	strcpy(orig_options->promote_command, new_options.promote_command);
 	strcpy(orig_options->follow_command, new_options.follow_command);
 	strcpy(orig_options->rsync_options, new_options.rsync_options);
+	orig_options->master_response_timeout = new_options.master_response_timeout;
 	/*
 	 * XXX These ones can change with a simple SIGHUP?
 

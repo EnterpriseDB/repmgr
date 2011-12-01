@@ -17,6 +17,8 @@
  *
  */
 
+#include <unistd.h>
+
 #include "repmgr.h"
 #include "strutil.h"
 #include "log.h"
@@ -123,9 +125,8 @@ is_witness(PGconn *conn, char *schema, char *cluster, int node_id)
 
 /* check the PQStatus and try to 'select 1' to confirm good connection */
 bool
-is_pgup(PGconn *conn)
+is_pgup(PGconn *conn, int timeout)
 {
-	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 	/* Check the connection status twice in case it changes after reset */
 	bool		twice = false;
@@ -143,28 +144,30 @@ is_pgup(PGconn *conn)
 		else
 		{
 			/*
-			* Send a SELECT 1 just to check if connection is OK
-			* the PQstatus() won't catch disconnected connection
-			* XXXX
-			* the error message can be used by repmgrd
+			* Send a SELECT 1 just to check if the connection is OK
 			*/
+			CancelQuery(conn);
+			if (wait_connection_availability(conn, timeout) != 1)
+				goto failed;
+
 			sqlquery_snprintf(sqlquery, "SELECT 1");
-			res = PQexec(conn, sqlquery);
+			if (PQsendQuery(conn, sqlquery) == 0)
+			{
+				log_warning(_("PQsendQuery: Query could not be sent to primary. %s\n"), 
+								PQerrorMessage(conn));
+				goto failed;
+			}
+			if (wait_connection_availability(conn, timeout) != 1)
+				goto failed;
+
+			continue;
+
+failed:
 			// we need to retry, because we might just have loose the connection once
-			if (PQresultStatus(res) != PGRES_TUPLES_OK)
-			{
-				log_err(_("PQexec failed: %s\n"), PQerrorMessage(conn));
-				PQclear(res);
-				if (twice)
-					return false;
-				PQreset(conn);  // reconnect
-				twice = true;
-			}
-			else
-			{
-				PQclear(res);
-				return true;
-			}
+			if (twice)
+				return false;
+			PQreset(conn);  // reconnect
+			twice = true;
 		}
 	}
 }
@@ -388,3 +391,55 @@ getMasterConnection(PGconn *standby_conn, char *schema, int id, char *cluster,
 	PQclear(res1);
 	return NULL;
 }
+
+
+/*
+ * wait until current query finishes ignoring any results, this could be an async command
+ * or a cancelation of a query 
+ * return 1 if Ok; 0 if any error ocurred; -1 if timeout reached
+ */
+int
+wait_connection_availability(PGconn *conn, int timeout)
+{
+	PGresult   *res;
+
+	while(timeout-- >= 0)
+	{
+		if (PQconsumeInput(conn) == 0)
+		{
+			log_warning(_("PQconsumeInput: Query could not be sent to primary. %s\n"), 
+							PQerrorMessage(conn));
+			return 0;
+		}
+	
+		if (PQisBusy(conn) == 0)
+		{
+			res = PQgetResult(conn);
+			if (res == NULL)
+				break;
+			PQclear(res);
+		}
+		sleep(1);
+	}
+	if (timeout >= 0)
+		return 1;
+	else
+		return -1;
+}
+
+
+void
+CancelQuery(PGconn *conn)
+{
+	char errbuf[ERRBUFF_SIZE];
+	PGcancel *pgcancel;
+
+	pgcancel = PQgetCancel(conn);
+
+	if (!pgcancel || PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
+		log_warning(_("Can't stop current query: %s\n"), errbuf);
+
+	PQfreeCancel(pgcancel);
+}
+
+

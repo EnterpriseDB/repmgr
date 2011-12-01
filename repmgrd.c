@@ -76,7 +76,6 @@ static void help(const char* progname);
 static void usage(void);
 static void checkClusterConfiguration(PGconn *conn, PGconn *primary);
 static void checkNodeConfiguration(char *conninfo);
-static void CancelQuery(void);
 
 static void StandbyMonitor(void);
 static void WitnessMonitor(void);
@@ -99,7 +98,7 @@ static void setup_event_handlers(void);
 
 #define CloseConnections()	\
 	if (PQisBusy(primaryConn) == 1) \
-		CancelQuery(); \
+		CancelQuery(primaryConn); \
 	if (myLocalConn != NULL) \
 		PQfinish(myLocalConn);	\
 	if (primaryConn != NULL && primaryConn != myLocalConn) \
@@ -353,12 +352,12 @@ WitnessMonitor(void)
 	}
 
 	/*
-	 * first check if there is a command being executed,
-	 * and if that is the case, cancel the query so i can
-	 * insert the current record
+	 * Cancel any query that is still being executed,
+	 * so i can insert the current record
 	 */
-	if (PQisBusy(primaryConn) == 1)
-		CancelQuery();
+	CancelQuery(primaryConn);
+	if (wait_connection_availability(primaryConn, local_options.master_response_timeout) != 1)
+		return;
 
 	/* Get local xlog info */
 	sqlquery_snprintf(sqlquery, "SELECT CURRENT_TIMESTAMP ");
@@ -469,12 +468,12 @@ StandbyMonitor(void)
 	}
 
 	/*
-	 * first check if there is a command being executed,
-	 * and if that is the case, cancel the query so i can
-	 * insert the current record
+	 * Cancel any query that is still being executed,
+	 * so i can insert the current record
 	 */
-	if (PQisBusy(primaryConn) == 1)
-		CancelQuery();
+	CancelQuery(primaryConn);
+	if (wait_connection_availability(primaryConn, local_options.master_response_timeout) != 1)
+		return;
 
 	/* Get local xlog info */
 	sqlquery_snprintf(
@@ -753,7 +752,7 @@ CheckPrimaryConnection(void)
 	 */
 	for (connection_retries = 0; connection_retries < NUM_RETRY; connection_retries++)
 	{
-		if (!is_pgup(primaryConn))
+		if (!is_pgup(primaryConn, local_options.master_response_timeout))
 		{
 			log_warning(_("%s: Connection to master has been lost, trying to recover... %i seconds before failover decision\n"), progname, (SLEEP_RETRY*(NUM_RETRY-connection_retries)));
 			/* wait SLEEP_RETRY seconds between retries */
@@ -768,7 +767,7 @@ CheckPrimaryConnection(void)
 			break;
 		}
 	}
-	if (!is_pgup(primaryConn))
+	if (!is_pgup(primaryConn, local_options.master_response_timeout))
 	{
 		log_err(_("%s: We couldn't reconnect for long enough, exiting...\n"), progname);
 		/* XXX Anything else to do here? */
@@ -937,21 +936,6 @@ setup_event_handlers(void)
 	pqsignal(SIGINT, handle_sigint);
 }
 #endif
-
-
-static void
-CancelQuery(void)
-{
-	char errbuf[ERRBUFF_SIZE];
-	PGcancel *pgcancel;
-
-	pgcancel = PQgetCancel(primaryConn);
-
-	if (!pgcancel || PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
-		log_warning(_("Can't stop current query: %s\n"), errbuf);
-
-	PQfreeCancel(pgcancel);
-}
 
 
 static void

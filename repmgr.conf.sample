@@ -13,6 +13,9 @@ node_name=standby2
 conninfo='host=192.168.204.104'
 rsync_options=--archive --checksum --compress --progress --rsh=ssh
 
+# How many seconds we wait for master response before declaring master failure
+master_response_timeout=60
+
 # Autofailover options
 failover=automatic
 priority=-1
