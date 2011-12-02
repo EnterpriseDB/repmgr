@@ -388,6 +388,7 @@ WitnessMonitor(void)
 	 * Execute the query asynchronously, but don't check for a result. We
 	 * will check the result next time we pause for a monitor step.
 	 */
+	log_debug("WitnessMonitor: %s\n", sqlquery);
 	if (PQsendQuery(primaryConn, sqlquery) == 0)
 		log_warning(_("Query could not be sent to primary. %s\n"),
 		            PQerrorMessage(primaryConn));
@@ -532,6 +533,7 @@ StandbyMonitor(void)
 	 * Execute the query asynchronously, but don't check for a result. We
 	 * will check the result next time we pause for a monitor step.
 	 */
+	log_debug("StandbyMonitor: %s\n", sqlquery);
 	if (PQsendQuery(primaryConn, sqlquery) == 0)
 		log_warning(_("Query could not be sent to primary. %s\n"),
 		            PQerrorMessage(primaryConn));

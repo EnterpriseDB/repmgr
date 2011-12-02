@@ -160,7 +160,7 @@ is_pgup(PGconn *conn, int timeout)
 			if (wait_connection_availability(conn, timeout) != 1)
 				goto failed;
 
-			continue;
+			break;
 
 failed:
 			// we need to retry, because we might just have loose the connection once
@@ -170,6 +170,7 @@ failed:
 			twice = true;
 		}
 	}
+	return true;
 }
 
 
