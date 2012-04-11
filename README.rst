@@ -814,6 +814,23 @@ and on "prime."
 
 The servers are now again acting as primary on "prime" and standby on "standby".
 
+Maintainance of monitor history
+-------------------------------
+
+Once you have changed roles (with a failover or to restore original roles)
+you would end up with records saying that node1 is primary and other records
+saying that node2 is the primary. Which could be confusing.
+Also, if you don't do anything about it the monitor history will keep growing.
+For both of those reasons you sometime want to make some maintainance of the 
+``repl_monitor`` table.
+
+If you want to clean the history after a few days you can execute a 
+truncate/delete (wheter you want to completely clean history or want to keep
+a few days of history) in a cron. For example to keep just one day of history
+you can put this in your crontab::
+
+0 1 * * *   psql -c "DELETE FROM repmgr_schema.repl_monitor where now() - last_monitor_time >= '1 day'::interval;" postgres
+
 Configuration and command reference
 ===================================
 
