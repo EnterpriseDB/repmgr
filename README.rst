@@ -1024,6 +1024,7 @@ following
 * ERR_DB_QUERY 7:  Error executing a database query.
 * ERR_PROMOTED 8:  Exiting program because the node has been promoted to master.
 * ERR_BAD_PASSWORD 9:  Password used to connect to a database was rejected.
+* ERR_STR_OVERFLOW 10: A string was larger than expected.
 
 License and Contributions
 =========================
