@@ -446,9 +446,9 @@ do_master_register(void)
 		                  "         last_wal_standby_location, pg_size_pretty(replication_lag) replication_lag, "
 		                  "         pg_size_pretty(apply_lag) apply_lag, age(now(), last_monitor_time) AS time_lag "
 		                  "    FROM %s.repl_monitor "
-	             		  "  WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time) "
-	                	  "                                                FROM %s.repl_monitor GROUP BY 1)",
-	                  	  repmgr_schema, repmgr_schema, repmgr_schema);
+		                  "  WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time) "
+		                  "                                                FROM %s.repl_monitor GROUP BY 1)",
+		                  repmgr_schema, repmgr_schema, repmgr_schema);
 		log_debug("master register: %s\n", sqlquery);
 		if (!PQexec(conn, sqlquery))
 		{
@@ -460,8 +460,8 @@ do_master_register(void)
 
 		/* an index to improve performance of the view */
 		sqlquery_snprintf(sqlquery, "CREATE INDEX idx_repl_status_sort "
-		                            "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
-									repmgr_schema);
+		                  "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
+		                  repmgr_schema);
 		log_debug(_("master register: %s\n"), sqlquery);
 		if (!PQexec(conn, sqlquery))
 		{
@@ -902,8 +902,8 @@ do_standby_clone(void)
 	}
 	PQclear(res);
 
-	/* 
-	 * in pg 9.1 default is to wait for a sync standby to ack, 
+	/*
+	 * in pg 9.1 default is to wait for a sync standby to ack,
 	 * avoid that by turning off sync rep for this session
 	 */
 	sqlquery_snprintf(sqlquery, "SET synchronous_commit TO OFF");
