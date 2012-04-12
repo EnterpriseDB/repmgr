@@ -7,7 +7,7 @@
  *
  * Commands implemented are.
  * MASTER REGISTER, STANDBY REGISTER, STANDBY CLONE, STANDBY FOLLOW,
- * STANDBY PROMOTE
+ * STANDBY PROMOTE, CLUSTER SHOW
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@
 #define STANDBY_CLONE 	 3
 #define STANDBY_PROMOTE  4
 #define STANDBY_FOLLOW 	 5
+#define CLUSTER_SHOW     6
 
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir, char *master_conninfo);
@@ -57,7 +58,8 @@ static void do_standby_register(void);
 static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
-static void help(const char* progname);
+static void do_cluster_show(void);
+
 static void usage(void);
 
 /* Global variables */
@@ -166,7 +168,8 @@ main(int argc, char **argv)
 	/*
 	 * Now we need to obtain the action, this comes in one of these forms:
 	 * MASTER REGISTER |
-	 * STANDBY {REGISTER | CLONE [node] | PROMOTE | FOLLOW [node]}
+	 * STANDBY {REGISTER | CLONE [node] | PROMOTE | FOLLOW [node]} |
+	 * CLUSTER SHOW
 	 *
 	 * the node part is optional, if we receive it then we shouldn't
 	 * have received a -h option
@@ -174,8 +177,8 @@ main(int argc, char **argv)
 	if (optind < argc)
 	{
 		server_mode = argv[optind++];
-		if (strcasecmp(server_mode, "STANDBY") != 0 &&
-		        strcasecmp(server_mode, "MASTER") != 0)
+		if (strcasecmp(server_mode, "STANDBY") != 0 && strcasecmp(server_mode, "MASTER") != 0 &&
+		        strcasecmp(server_mode, "CLUSTER") != 0 )
 		{
 			usage();
 			exit(ERR_BAD_CONFIG);
@@ -204,11 +207,17 @@ main(int argc, char **argv)
 			action = STANDBY_PROMOTE;
 		else if (strcasecmp(server_cmd, "FOLLOW") == 0)
 			action = STANDBY_FOLLOW;
-		else
+		else if (strcasecmp(server_mode, "CLUSTER") == 0)
 		{
-			usage();
-			exit(ERR_BAD_CONFIG);
+			if(strcasecmp(server_cmd, "SHOW") == 0)
+				action = CLUSTER_SHOW;
 		}
+	}
+
+	if (action == NO_ACTION)
+	{
+		usage();
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* For some actions we still can receive a last argument */
@@ -314,6 +323,9 @@ main(int argc, char **argv)
 	case STANDBY_FOLLOW:
 		do_standby_follow();
 		break;
+	case CLUSTER_SHOW:
+		do_cluster_show();
+		break;
 	default:
 		usage();
 		exit(ERR_BAD_CONFIG);
@@ -322,6 +334,52 @@ main(int argc, char **argv)
 
 	return 0;
 }
+
+static void
+do_cluster_show(void)
+{
+	PGconn	 *conn;
+	PGresult *res;
+	char	 sqlquery[QUERY_STR_LEN];
+	char	 node_role[MAXLEN];
+	int		 i;
+
+	/* We need to connect to check configuration */
+	log_info(_("%s connecting to database\n"), progname);
+	conn = establishDBConnection(options.conninfo, true);
+
+	sqlquery_snprintf(sqlquery, "SELECT conninfo FROM %s.repl_nodes;", repmgr_schema);
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Can't get nodes informations, have you regitered them?\n%s\n"), PQerrorMessage(conn));
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	PQclear(res);
+	PQfinish(conn);
+
+	printf("Role      | Connection String \n");
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		conn = establishDBConnection(PQgetvalue(res, i, 0), false);
+		if (PQstatus(conn) != CONNECTION_OK)
+			strcpy(node_role, "  FAILED");
+		else if (is_standby(conn))
+			strcpy(node_role, "  standby");
+		else
+			strcpy(node_role, "* master");
+
+		printf("%-10s", node_role);
+		printf("| %s\n", PQgetvalue(res, i, 0));
+
+		PQclear(res);
+		PQfinish(conn);
+	}
+}
+
 
 static void
 do_master_register(void)
@@ -1351,6 +1409,7 @@ void help(const char *progname)
 	printf(_(" %s [OPTIONS] master	{register}\n"), progname);
 	printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"),
 	       progname);
+	printf(_(" %s [OPTIONS] cluster show\n"), progname);
 	printf(_("\nGeneral options:\n"));
 	printf(_("	--help					   show this help, then exit\n"));
 	printf(_("	--version				   output version information, then exit\n"));
@@ -1377,6 +1436,7 @@ void help(const char *progname)
 	printf(_(" standby promote		 - allows manual promotion of a specific standby into a "));
 	printf(_("new master in the event of a failover\n"));
 	printf(_(" standby follow		 - allows the standby to re-point itself to a new master\n"));
+	printf(_(" cluster show            - print node informations\n"));
 }
 
 
@@ -1651,6 +1711,9 @@ check_parameters_for_action(const int action)
 			ok = false;
 		}
 		need_a_node = false;
+		break;
+	case CLUSTER_SHOW:
+		/* allow all parameters to be supplied */
 		break;
 	}
 
