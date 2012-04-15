@@ -59,6 +59,8 @@ typedef struct
 
 	char masterport[MAXLEN];
 
+	/* parameter used by CLUSTER CLEANUP */
+	int	keep_history;
 } t_runtime_options;
 
 #endif

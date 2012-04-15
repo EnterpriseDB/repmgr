@@ -7,7 +7,7 @@
  *
  * Commands implemented are.
  * MASTER REGISTER, STANDBY REGISTER, STANDBY CLONE, STANDBY FOLLOW,
- * STANDBY PROMOTE, CLUSTER SHOW
+ * STANDBY PROMOTE, CLUSTER SHOW, CLUSTER CLEANUP
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@
 #define STANDBY_PROMOTE  4
 #define STANDBY_FOLLOW 	 5
 #define CLUSTER_SHOW     6
+#define CLUSTER_CLEANUP	 7
 
 static void help(const char *progname);
 static bool create_recovery_file(const char *data_dir, char *master_conninfo);
@@ -59,6 +60,7 @@ static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
 static void do_cluster_show(void);
+static void do_cluster_cleanup(void);
 
 static void usage(void);
 
@@ -73,7 +75,7 @@ bool need_a_node = true;
 bool require_password = false;
 
 /* Initialization of runtime options */
-t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, "" };
+t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, "", 0 };
 t_configuration_options options = { "", -1, "", "", "" };
 
 static char		*server_mode = NULL;
@@ -92,6 +94,7 @@ main(int argc, char **argv)
 		{"config-file", required_argument, NULL, 'f'},
 		{"remote-user", required_argument, NULL, 'R'},
 		{"wal-keep-segments", required_argument, NULL, 'w'},
+		{"keep-history", required_argument, NULL, 'k'},
 		{"force", no_argument, NULL, 'F'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
 		{"verbose", no_argument, NULL, 'v'},
@@ -119,7 +122,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:R:w:F:I:v", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:f:R:w:k:F:I:v", long_options,
 	                        &optindex)) != -1)
 	{
 		switch (c)
@@ -150,6 +153,12 @@ main(int argc, char **argv)
 			if (atoi(optarg) > 0)
 				strncpy(runtime_options.wal_keep_segments, optarg, MAXLEN);
 			break;
+		case 'k':
+			if (atoi(optarg) > 0)
+				runtime_options.keep_history = atoi(optarg);
+			else
+				runtime_options.keep_history = 0; 
+			break;
 		case 'F':
 			runtime_options.force = true;
 			break;
@@ -169,7 +178,7 @@ main(int argc, char **argv)
 	 * Now we need to obtain the action, this comes in one of these forms:
 	 * MASTER REGISTER |
 	 * STANDBY {REGISTER | CLONE [node] | PROMOTE | FOLLOW [node]} |
-	 * CLUSTER SHOW
+	 * CLUSTER {SHOW | CLEANUP}
 	 *
 	 * the node part is optional, if we receive it then we shouldn't
 	 * have received a -h option
@@ -211,6 +220,8 @@ main(int argc, char **argv)
 		{
 			if(strcasecmp(server_cmd, "SHOW") == 0)
 				action = CLUSTER_SHOW;
+			else if(strcasecmp(server_cmd, "CLEANUP") == 0)
+				action = CLUSTER_CLEANUP;
 		}
 	}
 
@@ -326,6 +337,9 @@ main(int argc, char **argv)
 	case CLUSTER_SHOW:
 		do_cluster_show();
 		break;
+	case CLUSTER_CLEANUP:
+		do_cluster_cleanup();
+		break;
 	default:
 		usage();
 		exit(ERR_BAD_CONFIG);
@@ -378,6 +392,58 @@ do_cluster_show(void)
 		PQclear(res);
 		PQfinish(conn);
 	}
+}
+
+
+static void
+do_cluster_cleanup(void)
+{
+	int			master_id;
+	PGconn	 *master_conn;
+	PGresult *res;
+	char	 sqlquery[QUERY_STR_LEN];
+	char	 node_role[MAXLEN];
+	int		 i;
+
+	/* check if there is a master in this cluster */
+	log_info(_("%s connecting to master database\n"), progname);
+	master_conn = getMasterConnection(master_conn, options.node, options.cluster_name,
+	                                  &master_id, NULL);
+	if (!master_conn)
+	{
+		log_err(_("cluster cleanup: cannot connect to master\n"));
+		exit(ERR_DB_CON);
+	}
+
+	if (runtime_options.keep_history > 0)
+	{
+		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_monitor "
+									" WHERE age(now(), last_monitor_time) >= '%d days'::interval;", 
+									repmgr_schema, keep_history);
+	}
+	else
+	{
+		sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_monitor;", repmgr_schema);
+	}
+
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("cluster cleanup: Couldn't clean history\n%s\n"), PQerrorMessage(conn));
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	PQclear(res);
+
+	/* Let's VACUUM the table to avoid autovacuum to be launched in an unexpected hour */
+	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor;", repmgr_schema);
+	res = PQexec(conn, sqlquery);
+
+	/* XXX There is any need to check this VACUUM happens without problems? */
+
+	PQclear(res);
+	PQfinish(conn);
 }
 
 
@@ -1409,7 +1475,7 @@ void help(const char *progname)
 	printf(_(" %s [OPTIONS] master	{register}\n"), progname);
 	printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"),
 	       progname);
-	printf(_(" %s [OPTIONS] cluster show\n"), progname);
+	printf(_(" %s [OPTIONS] cluster {show|cleanup}\n"), progname);
 	printf(_("\nGeneral options:\n"));
 	printf(_("	--help					   show this help, then exit\n"));
 	printf(_("	--version				   output version information, then exit\n"));
@@ -1426,6 +1492,7 @@ void help(const char *progname)
 	printf(_("	-w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
 	printf(_("	-I, --ignore-rsync-warning		   Ignore partial transfert warning\n"));
+	printf(_("	-k, --keep-history=VALUE   keeps indicated number of days of history\n"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
 	printf(_("or making follow another node and then exits.\n"));
@@ -1437,6 +1504,7 @@ void help(const char *progname)
 	printf(_("new master in the event of a failover\n"));
 	printf(_(" standby follow		 - allows the standby to re-point itself to a new master\n"));
 	printf(_(" cluster show            - print node informations\n"));
+	printf(_(" cluster cleanup         - cleans monitor's history\n"));
 }
 
 
@@ -1713,6 +1781,9 @@ check_parameters_for_action(const int action)
 		need_a_node = false;
 		break;
 	case CLUSTER_SHOW:
+		/* allow all parameters to be supplied */
+		break;
+	case CLUSTER_CLEANUP:
 		/* allow all parameters to be supplied */
 		break;
 	}
