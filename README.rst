@@ -862,6 +862,7 @@ The output from this program looks like this::
   Usage:
    repmgr [OPTIONS] master  {register}
    repmgr [OPTIONS] standby {register|clone|promote|follow}
+   repmgr [OPTIONS] cluster {show|cleanup}
 
   General options:
     --help                     show this help, then exit
@@ -881,6 +882,7 @@ The output from this program looks like this::
     -w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)
     -F, --force                force potentially dangerous operations to happen
     -I, --ignore-rsync-warning Ignore partial transfert warning
+    -k, --keep-history         keeps indicated number of days of history
 
   repmgr performs some tasks like clone a node, promote it or making follow another node and then exits.
   COMMANDS:
@@ -889,6 +891,8 @@ The output from this program looks like this::
    standby clone [node]  - allows creation of a new standby
    standby promote       - allows manual promotion of a specific standby into a new master in the event of a failover
    standby follow        - allows the standby to re-point itself to a new master
+   cluster show          - print node informations
+   cluster cleanup       - cleans monitor's history
 
 The ``--verbose`` option can be useful in troubleshooting issues with
 the program.
@@ -958,6 +962,26 @@ its port if is different from the default one.
       to indicate where the ``repmgr.conf`` is at.  Example::
 
         ./repmgr standby follow
+
+* cluster show 
+
+    * Shows the role (standby/master) and connection string for all nodes configured 
+      in the cluster or "FAILED" if the node doesn't respond. This allow us to know 
+      which nodes are alive and which one needs attention and to have a notion of the
+      structure of clusters we just have access to.  Example::
+
+        ./repmgr cluster show
+
+* cluster cleanup 
+
+    * Cleans the monitor's history from repmgr tables. This avoids the repl_monitor table
+      to grow excesivelly which in turns affects repl_status view performance, also 
+      keeps controlled the space in disk used by repmgr. This command can be used manually
+      or in a cron to make it periodically.  
+      There is also a --keep-history (-k) option to indicate how many days of history we
+      want to keep, so the command will clean up history older than "keep-history" days. Example::
+
+        ./repmgr cluster cleanup -k 2
 
 repmgrd Daemon
 --------------
