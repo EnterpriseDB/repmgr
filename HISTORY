@@ -31,7 +31,10 @@
 1.1.0   2011-03-09
         Make options -U, -R and -p not mandatory (Jaime)
 
-1.1.1	2011-XX-XX
+1.1.1	2012-04-18
         Add --ignore-rsync-warning (Cédric)
         Add strnlen for compatibility with OS X (Greg)
         Improve performance of repl_status view (Jaime) 
+        Remove last argument from log_err (Jaime, Reported by Jeroen Dekkers)
+        Complete documentation about possible error conditions (Jaime)
+        Document how to clean history (Jaime)
