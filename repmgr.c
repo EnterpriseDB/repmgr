@@ -861,6 +861,7 @@ do_standby_clone(void)
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
 			}
+			break;
 		default:
 			/* Trouble accessing directory */
 			log_err(_("%s: could not access directory \"%s\": %s\n"),
