@@ -427,7 +427,7 @@ do_cluster_cleanup(void)
 	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err(_("cluster cleanup: Couldn't clean history\n%s\n"), PQerrorMessage(conn));
+		log_err(_("cluster cleanup: Couldn't clean history\n%s\n"), PQerrorMessage(master_conn));
 		PQclear(res);
 		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
