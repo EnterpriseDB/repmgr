@@ -353,6 +353,7 @@ static void
 do_cluster_show(void)
 {
 	PGconn	 *conn;
+	PGconn	 *node_conn = NULL;
 	PGresult *res;
 	char	 sqlquery[QUERY_STR_LEN];
 	char	 node_role[MAXLEN];
@@ -373,16 +374,14 @@ do_cluster_show(void)
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
-	PQclear(res);
-	PQfinish(conn);
 
 	printf("Role      | Connection String \n");
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		conn = establishDBConnection(PQgetvalue(res, i, 0), false);
-		if (PQstatus(conn) != CONNECTION_OK)
+		node_conn = establishDBConnection(PQgetvalue(res, i, 0), false);
+		if (PQstatus(node_conn) != CONNECTION_OK)
 			strcpy(node_role, "  FAILED");
-		else if (is_standby(conn))
+		else if (is_standby(node_conn))
 			strcpy(node_role, "  standby");
 		else
 			strcpy(node_role, "* master");
@@ -390,9 +389,10 @@ do_cluster_show(void)
 		printf("%-10s", node_role);
 		printf("| %s\n", PQgetvalue(res, i, 0));
 
-		PQclear(res);
-		PQfinish(conn);
+		PQfinish(node_conn);
 	}
+	PQclear(res);
+	PQfinish(conn);
 }
 
 
