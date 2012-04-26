@@ -402,8 +402,6 @@ do_cluster_cleanup(void)
 	PGconn	 *master_conn;
 	PGresult *res;
 	char	 sqlquery[QUERY_STR_LEN];
-	char	 node_role[MAXLEN];
-	int		 i;
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
@@ -419,31 +417,31 @@ do_cluster_cleanup(void)
 	{
 		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_monitor "
 									" WHERE age(now(), last_monitor_time) >= '%d days'::interval;", 
-									repmgr_schema, keep_history);
+									repmgr_schema, runtime_options.keep_history);
 	}
 	else
 	{
 		sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_monitor;", repmgr_schema);
 	}
 
-	res = PQexec(conn, sqlquery);
+	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("cluster cleanup: Couldn't clean history\n%s\n"), PQerrorMessage(conn));
 		PQclear(res);
-		PQfinish(conn);
+		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 	PQclear(res);
 
 	/* Let's VACUUM the table to avoid autovacuum to be launched in an unexpected hour */
 	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor;", repmgr_schema);
-	res = PQexec(conn, sqlquery);
+	res = PQexec(master_conn, sqlquery);
 
 	/* XXX There is any need to check this VACUUM happens without problems? */
 
 	PQclear(res);
-	PQfinish(conn);
+	PQfinish(master_conn);
 }
 
 
