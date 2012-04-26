@@ -399,19 +399,28 @@ static void
 do_cluster_cleanup(void)
 {
 	int			master_id;
+	PGconn	 *conn; 
 	PGconn	 *master_conn;
 	PGresult *res;
 	char	 sqlquery[QUERY_STR_LEN];
 
+	/* I need a connection to my local db to know what node is the master */
+	log_info(_("%s connecting to database\n"), progname);
+	conn = establishDBConnection(options.conninfo, true);
+
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = getMasterConnection(master_conn, options.node, options.cluster_name,
+	master_conn = getMasterConnection(conn, options.node, options.cluster_name,
 	                                  &master_id, NULL);
 	if (!master_conn)
 	{
 		log_err(_("cluster cleanup: cannot connect to master\n"));
+		PQfinish(conn);
 		exit(ERR_DB_CON);
 	}
+
+	/* I don't need a local connection anymore */
+	PQfinish(conn);
 
 	if (runtime_options.keep_history > 0)
 	{
