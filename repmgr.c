@@ -363,6 +363,7 @@ do_cluster_show(void)
 	conn = establishDBConnection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery, "SELECT conninfo FROM %s.repl_nodes;", repmgr_schema);
+    log_debug("cluster show: %s\n", sqlquery);
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -433,6 +434,7 @@ do_cluster_cleanup(void)
 		sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_monitor;", repmgr_schema);
 	}
 
+    log_debug("cluster cleanup: %s\n", sqlquery);
 	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -445,6 +447,7 @@ do_cluster_cleanup(void)
 
 	/* Let's VACUUM the table to avoid autovacuum to be launched in an unexpected hour */
 	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor;", repmgr_schema);
+    log_debug("cluster cleanup: %s\n", sqlquery);
 	res = PQexec(master_conn, sqlquery);
 
 	/* XXX There is any need to check this VACUUM happens without problems? */
