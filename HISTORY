@@ -37,6 +37,6 @@
         Improve performance of repl_status view (Jaime) 
 
 1.2.0	2012-04-28
-        Add CLUSTER SHOW command (Marco Nenciarini)
+        Add CLUSTER SHOW command (Carlo Ascani)
         Add CLUSTER CLEANUP command (Jaime)
         Add function write_primary_conninfo (Marco Nenciarini)
