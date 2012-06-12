@@ -1589,7 +1589,7 @@ test_ssh_connection(char *host, char *remote_user)
 	log_debug(_("command is: %s"), script);
 	r = system(script);
 	if (r != 0)
-		log_info(_("Can not connect to the remote host (%s)\n"), host);
+		log_info(_("Cannot connect to the remote host (%s)\n"), host);
 	return r;
 }
 

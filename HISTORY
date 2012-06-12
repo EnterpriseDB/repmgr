@@ -36,7 +36,7 @@
         Add strnlen for compatibility with OS X (Greg)
         Improve performance of repl_status view (Jaime) 
 
-1.2.0	2012-04-28
+1.2.0	2012-06-15
 		Test ssh connection before trying to rsync (Cédric)
         Add CLUSTER SHOW command (Carlo Ascani)
         Add CLUSTER CLEANUP command (Jaime)
