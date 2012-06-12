@@ -1033,6 +1033,16 @@ do_standby_clone(void)
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+	
+	/* We need all 4 parameters, and they can be retrieved only by superusers */
+	if (PQntuples(res) != 4)
+	{
+		log_err("%s: STANDBY CLONE should be run by a SUPERUSER\n", progname);
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		if (strcmp(PQgetvalue(res, i, 0), "data_directory") == 0)
