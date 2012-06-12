@@ -940,10 +940,17 @@ do_standby_clone(void)
 	 * Check if the tablespace locations exists and that we can write to
 	 * them.
 	 */
-	sqlquery_snprintf(sqlquery,
-	                  "SELECT spclocation "
-	                  "  FROM pg_tablespace "
-	                  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
+	if (strcmp(master_version, "9.0") == 0 || strcmp(master_version, "9.1") == 0)
+		sqlquery_snprintf(sqlquery,
+		                  "SELECT spclocation "
+		                  "  FROM pg_tablespace "
+		                  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
+	else
+		sqlquery_snprintf(sqlquery,
+		                  "SELECT pg_tablespace_location(oid) spclocation "
+		                  "  FROM pg_tablespace "
+		                  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
+
 	log_debug("standby clone: %s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
@@ -1149,10 +1156,17 @@ do_standby_clone(void)
 	 * find and appropiate rsync option but besides we could someday make all
 	 * these rsync happen concurrently
 	 */
-	sqlquery_snprintf(sqlquery,
-	                  "SELECT spclocation "
-	                  "  FROM pg_tablespace "
-	                  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
+	if (strcmp(master_version, "9.0") == 0 || strcmp(master_version, "9.1") == 0)
+		sqlquery_snprintf(sqlquery,
+		                  "SELECT spclocation "
+		                  "  FROM pg_tablespace "
+		                  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
+	else
+		sqlquery_snprintf(sqlquery,
+		                  "SELECT pg_tablespace_location(oid) spclocation "
+		                  "  FROM pg_tablespace "
+		                  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
+
 	log_debug("standby clone: %s\n", sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
