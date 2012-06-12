@@ -1017,8 +1017,6 @@ do_standby_clone(void)
 		exit(ERR_DB_CON);
 	}
 
-	log_notice("Starting backup...\n");
-
 	/* Get the data directory full path and the configuration files location */
 	sqlquery_snprintf(sqlquery,
 	                  "SELECT name, setting "
@@ -1057,6 +1055,8 @@ do_standby_clone(void)
 			log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
 	}
 	PQclear(res);
+
+	log_notice("Starting backup...\n");
 
 	/*
 	 * in pg 9.1 default is to wait for a sync standby to ack,
