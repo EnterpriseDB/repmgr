@@ -1469,7 +1469,7 @@ do_standby_follow(void)
 	strncpy(runtime_options.masterport, PQport(master_conn), MAXLEN);
 	PQfinish(master_conn);
 
-	log_info(_("%s Changing standby's master"),progname);
+	log_info(_("%s Changing standby's master\n"),progname);
 
 	/* Get the data directory full path */
 	sqlquery_snprintf(sqlquery, "SELECT setting "
