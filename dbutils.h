@@ -31,7 +31,7 @@ char   *pg_version(PGconn *conn, char* major_version);
 bool	guc_setted(PGconn *conn, const char *parameter, const char *op,
                    const char *value);
 const char	 *get_cluster_size(PGconn *conn);
-PGconn *getMasterConnection(PGconn *standby_conn, int id, char *cluster,
+PGconn *getMasterConnection(PGconn *standby_conn, char *cluster,
                             int *master_id, char *master_conninfo_out);
 
 #endif

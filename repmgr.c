@@ -413,7 +413,7 @@ do_cluster_cleanup(void)
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = getMasterConnection(conn, options.node, options.cluster_name,
+	master_conn = getMasterConnection(conn, options.cluster_name,
 	                                  &master_id, NULL);
 	if (!master_conn)
 	{
@@ -613,8 +613,7 @@ do_master_register(void)
 		int		id;
 
 		/* Ensure there isn't any other master already registered */
-		master_conn = getMasterConnection(conn, options.node,
-		                                  options.cluster_name, &id,NULL);
+		master_conn = getMasterConnection(conn, options.cluster_name, &id,NULL);
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
@@ -733,7 +732,7 @@ do_standby_register(void)
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = getMasterConnection(conn, options.node, options.cluster_name,
+	master_conn = getMasterConnection(conn, options.cluster_name,
 	                                  &master_id, NULL);
 	if (!master_conn)
 	{
@@ -1320,7 +1319,7 @@ do_standby_promote(void)
 	}
 
 	/* we also need to check if there isn't any master already */
-	old_master_conn = getMasterConnection(conn, options.node, options.cluster_name,
+	old_master_conn = getMasterConnection(conn, options.cluster_name,
 	                                      &old_master_id, NULL);
 	if (old_master_conn != NULL)
 	{
@@ -1424,8 +1423,7 @@ do_standby_follow(void)
 
 	/* we also need to check if there is any master in the cluster */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = getMasterConnection(conn, options.node,
-	                                  options.cluster_name, &master_id,(char *) &master_conninfo);
+	master_conn = getMasterConnection(conn, options.cluster_name, &master_id,(char *) &master_conninfo);
 	if (master_conn == NULL)
 	{
 		PQfinish(conn);

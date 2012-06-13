@@ -202,7 +202,7 @@ get_cluster_size(PGconn *conn)
  * connection string is placed there.
  */
 PGconn *
-getMasterConnection(PGconn *standby_conn, int id, char *cluster,
+getMasterConnection(PGconn *standby_conn, char *cluster,
                     int *master_id, char *master_conninfo_out)
 {
 	PGconn		*master_conn	 = NULL;
@@ -242,8 +242,8 @@ getMasterConnection(PGconn *standby_conn, int id, char *cluster,
 	         cluster);
 
 	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
-	                  " WHERE cluster = '%s' and id <> %d",
-	                  schema_quoted, cluster, id);
+	                  " WHERE cluster = '%s'",
+	                  schema_quoted, cluster);
 
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
