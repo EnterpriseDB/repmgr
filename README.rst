@@ -825,6 +825,22 @@ and on "prime."
 
 The servers are now again acting as primary on "prime" and standby on "standby".
 
+Maintainance of monitor history
+-------------------------------
+
+Once you have changed roles (with a failover or to restore original roles)
+you would end up with records saying that node1 is primary and other records
+saying that node2 is the primary. Which could be confusing.
+Also, if you don't do anything about it the monitor history will keep growing.
+For both of those reasons you sometime want to make some maintainance of the 
+``repl_monitor`` table.
+
+If you want to clean the history after a few days you can execute the  
+CLUSTER CLEANUP command in a cron. For example to keep just one day of history
+you can put this in your crontab::
+
+0 1 * * *   repmgr cluster cleanup -k 1 -f ~/repmgr.conf
+
 Configuration and command reference
 ===================================
 
@@ -952,6 +968,26 @@ its port if is different from the default one.
       to indicate where the ``repmgr.conf`` is at.  Example::
 
         ./repmgr standby follow
+
+* cluster show 
+
+    * Shows the role (standby/master) and connection string for all nodes configured 
+      in the cluster or "FAILED" if the node doesn't respond. This allow us to know 
+      which nodes are alive and which one needs attention and to have a notion of the
+      structure of clusters we just have access to.  Example::
+
+        ./repmgr cluster show
+
+* cluster cleanup 
+
+    * Cleans the monitor's history from repmgr tables. This avoids the repl_monitor table
+      to grow excesivelly which in turns affects repl_status view performance, also 
+      keeps controlled the space in disk used by repmgr. This command can be used manually
+      or in a cron to make it periodically.  
+      There is also a --keep-history (-k) option to indicate how many days of history we
+      want to keep, so the command will clean up history older than "keep-history" days. Example::
+
+        ./repmgr cluster cleanup -k 2
 
 repmgrd Daemon
 --------------

@@ -64,6 +64,8 @@ typedef struct
 	char masterport[MAXLEN];
 	char localport[MAXLEN];
 
+	/* parameter used by CLUSTER CLEANUP */
+	int keep_history;
 } t_runtime_options;
 
 #define SLEEP_MONITOR		2
