@@ -257,7 +257,7 @@ main(int argc, char **argv)
 		/* I need the id of the primary as well as a connection to it */
 		log_info(_("%s Connecting to primary for cluster '%s'\n"),
 		         progname, local_options.cluster_name);
-		primaryConn = getMasterConnection(myLocalConn, repmgr_schema, local_options.node,
+		primaryConn = getMasterConnection(myLocalConn, repmgr_schema, 
 		                                  local_options.cluster_name,
 		                                  &primary_options.node, NULL);
 		if (primaryConn == NULL)
@@ -428,7 +428,7 @@ StandbyMonitor(void)
 			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
 			for (connection_retries = 0; connection_retries < 6; connection_retries++)
 			{
-				primaryConn = getMasterConnection(myLocalConn, repmgr_schema, local_options.node,
+				primaryConn = getMasterConnection(myLocalConn, repmgr_schema, 
 				                                  local_options.cluster_name, &primary_options.node, NULL);
 				if (PQstatus(primaryConn) == CONNECTION_OK)
 				{
