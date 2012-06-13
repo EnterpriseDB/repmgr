@@ -41,4 +41,4 @@
         Add CLUSTER SHOW command (Carlo Ascani)
         Add CLUSTER CLEANUP command (Jaime)
         Add function write_primary_conninfo (Marco Nenciarini)
-        Teach repmgr how to get tablespace's location in different pg version (Jaime Casanova)
+        Teach repmgr how to get tablespace's location in different pg version (Jaime)
