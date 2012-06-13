@@ -12,10 +12,3 @@ Known issues in repmgr
 
 * After running repmgrd as a regular foreground application, hitting
   control-C causes the program to crash.
-
-Planned feature improvements
-============================
-
-* Before running ``pg_start_backup()``, a sanity check that there is a
-  a working ssh connection to the destination would help find
-  configuration errors before disturbing the database.
