@@ -1472,7 +1472,6 @@ do_witness_create(void)
 
 	char		master_version[MAXVERSIONSTR];
 
-	char    	createcommand[MAXLEN];
 	char		master_hba_file[MAXLEN];
 
 	/* Check this directory could be used as a PGDATA dir */
