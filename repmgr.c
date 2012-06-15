@@ -1532,7 +1532,7 @@ do_witness_create(void)
 
 	/* Create the cluster for witness */
 	/* We assume the pg_ctl script is in the PATH */
-	sprintf(script, "pg_ctl -D %s init", runtime_options.dest_dir);
+	sprintf(script, "pg_ctl -D %s init -o \"-W\"", runtime_options.dest_dir);
 	log_info("Initialize cluster for witness: %s.\n", script);
 
 	r = system(script);
