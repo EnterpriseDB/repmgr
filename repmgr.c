@@ -1629,37 +1629,6 @@ do_witness_create(void)
 		exit(ERR_DB_QUERY);
 	}
 
-	/*
-		create the local user and local db if it is not the default one
-		values[2] is the username we use to connect to master,
-		values[3] is the dbname we use to connect to master,
-		we suppose it is the same in the repmgr.conf (obviously it is preferable)
-		FIXME this is fragile and its a temporary solution
-	*/
-	if (getenv("USER"))
-	{
-		if (!(strcmp(getenv("USER"), values[2]) == 0))
-		{
-			sprintf(createcommand, "createuser -p %s -s %s", runtime_options.localport, values[2]);
-			log_info("creating user for witness: %s", createcommand);
-			r = system(createcommand);
-			if (r != 0)
-			{
-				log_err("Can't create local user\n");
-				PQfinish(masterconn);
-				exit(ERR_BAD_CONFIG);
-			}
-			sprintf(createcommand, "createdb -p %s -O %s %s", runtime_options.localport, values[2], values[3]);
-			log_info("creating database for witness: %s", createcommand);
-			r = system(createcommand);
-			if (r != 0)
-			{
-				log_err("Can't create local db\n");
-				PQfinish(masterconn);
-				exit(ERR_BAD_CONFIG);
-			}
-		}
-	}
 	/* establish a connection to the witness, and create the schema */
 	witnessconn = establishDBConnection(options.conninfo, true);
 
