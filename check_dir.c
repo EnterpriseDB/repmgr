@@ -231,7 +231,7 @@ is_pg_dir(char *dir)
 		return true;
 
 	// test tablespace dir
-	sprintf(path, "ls %s/PG_9.0_*/ -I*", dir);
+	sprintf(path, "ls %s/PG_*/ -I*", dir);
 	r = system(path);
 	if (r == 0)
 		return true;

@@ -83,7 +83,7 @@ bool need_a_node = true;
 bool require_password = false;
 
 /* Initialization of runtime options */
-t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, "", 0 };
+t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, "", "", 0 };
 t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", -1 };
 
 static char		*server_mode = NULL;
@@ -423,11 +423,9 @@ do_cluster_show(void)
 do_cluster_cleanup(void)
 {
 	int         master_id;
-	PGconn   *master_conn;
+	PGconn   *master_conn = NULL;
 	PGresult *res;
 	char     sqlquery[QUERY_STR_LEN];
-	char     node_role[MAXLEN];
-	int      i;
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
@@ -443,30 +441,30 @@ do_cluster_cleanup(void)
 	{
 		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_monitor "
 									" WHERE age(now(), last_monitor_time) >= '%d days'::interval;", 
-									repmgr_schema, keep_history);
+									repmgr_schema, runtime_options.keep_history);
 	}
 	else
 	{
 		sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_monitor;", repmgr_schema);
 	}
-	res = PQexec(conn, sqlquery);
+	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err(_("cluster cleanup: Couldn't clean history\n%s\n"), PQerrorMessage(conn));
+		log_err(_("cluster cleanup: Couldn't clean history\n%s\n"), PQerrorMessage(master_conn));
 		PQclear(res);
-		PQfinish(conn);
+		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 	PQclear(res);
 
 	/* Let's VACUUM the table to avoid autovacuum to be launched in an unexpected hour */
 	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor;", repmgr_schema);
-	res = PQexec(conn, sqlquery);
+	res = PQexec(master_conn, sqlquery);
 
 	/* XXX There is any need to check this VACUUM happens without problems? */
 
 	PQclear(res);
-	PQfinish(conn);
+	PQfinish(master_conn);
 }
 
 
