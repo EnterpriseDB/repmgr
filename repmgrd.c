@@ -30,6 +30,7 @@
 #include "config.h"
 #include "log.h"
 #include "strutil.h"
+#include "version.h"
 
 #include "access/xlogdefs.h"
 #include "libpq/pqsignal.h"
@@ -131,7 +132,7 @@ main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			printf("%s (PostgreSQL) " PG_VERSION "\n", progname);
+			printf("%s %s (PostgreSQL %s)\n", progname, REPMGR_VERSION, PG_VERSION);
 			exit(SUCCESS);
 		}
 	}
