@@ -23,7 +23,7 @@ databases as a single cluster.  repmgr includes two components:
 Supported Releases
 ------------------
 
-repmgr works with PostgreSQL versions 9.0 and 9.1.
+repmgr works with PostgreSQL versions 9.0 and superior.
 
 There are currently no incompatibilities when upgrading repmgr from 9.0 to 9.1,
 so your 9.0 configuration will work with 9.1
@@ -389,7 +389,7 @@ walkthrough assumes the following setup:
 
 * Another standby server called "node3" with a similar configuration to "node2".
 
-* The Postgress installation in each of the above is defined as $PGDATA, 
+* The Postgres installation in each of the above is defined as $PGDATA, 
   which is represented here as ``/var/lib/pgsql/9.0/data``
   
 Creating some sample data
@@ -514,12 +514,14 @@ following the standard directory structure of a RHEL system.  It should contain:
 
   cluster=test
   node=1
+  node_name=earth
   conninfo='host=node1 user=repmgr dbname=pgbench'
 
 On "node2" create the file ``/var/lib/pgsql/repmgr/repmgr.conf`` with::
 
   cluster=test
   node=2
+  node_name=mars
   conninfo='host=node2 user=repmgr dbname=pgbench'
 
 The STANDBY CLONE process should have created a recovery.conf file on
@@ -712,12 +714,14 @@ and it should contain::
 
   cluster=test
   node=1
+  node_name=earth
   conninfo='host=127.0.0.1 dbname=testdb'
 
 On "standby" create the file ``/home/standby/repmgr/repmgr.conf`` with::
 
   cluster=test
   node=2
+  node_name=mars
   conninfo='host=127.0.0.1 dbname=testdb'
 
 Next, with "prime" server running, we want to use the ``clone standby`` command
@@ -1133,4 +1137,3 @@ Jaime Casanova
 Simon Riggs
 Greg Smith
 Cedric Villemain
-
