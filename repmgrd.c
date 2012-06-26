@@ -99,7 +99,7 @@ static void setup_event_handlers(void);
 
 #define CloseConnections()	\
 	if (PQisBusy(primaryConn) == 1) \
-		CancelQuery(primaryConn); \
+		CancelQuery(primaryConn, local_options.master_response_timeout); \
 	if (myLocalConn != NULL) \
 		PQfinish(myLocalConn);	\
 	if (primaryConn != NULL && primaryConn != myLocalConn) \
@@ -356,7 +356,7 @@ WitnessMonitor(void)
 	 * Cancel any query that is still being executed,
 	 * so i can insert the current record
 	 */
-	CancelQuery(primaryConn);
+	CancelQuery(primaryConn, local_options.master_response_timeout);
 	if (wait_connection_availability(primaryConn, local_options.master_response_timeout) != 1)
 		return;
 
@@ -473,7 +473,7 @@ StandbyMonitor(void)
 	 * Cancel any query that is still being executed,
 	 * so i can insert the current record
 	 */
-	CancelQuery(primaryConn);
+	CancelQuery(primaryConn, local_options.master_response_timeout);
 	if (wait_connection_availability(primaryConn, local_options.master_response_timeout) != 1)
 		return;
 

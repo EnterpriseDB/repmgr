@@ -146,7 +146,7 @@ is_pgup(PGconn *conn, int timeout)
 			/*
 			* Send a SELECT 1 just to check if the connection is OK
 			*/
-			CancelQuery(conn);
+			CancelQuery(conn, timeout);
 			if (wait_connection_availability(conn, timeout) != 1)
 				goto failed;
 
@@ -430,10 +430,12 @@ wait_connection_availability(PGconn *conn, int timeout)
 
 
 void
-CancelQuery(PGconn *conn)
+CancelQuery(PGconn *conn, int timeout)
 {
 	char errbuf[ERRBUFF_SIZE];
 	PGcancel *pgcancel;
+
+	wait_connection_availability(conn, timeout);
 
 	pgcancel = PQgetCancel(conn);
 
@@ -442,5 +444,3 @@ CancelQuery(PGconn *conn)
 
 	PQfreeCancel(pgcancel);
 }
-
-
