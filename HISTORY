@@ -38,7 +38,11 @@
 
 1.2.0	2012-06-15
 		Test ssh connection before trying to rsync (Cédric)
-        Add CLUSTER SHOW command (Carlo Ascani)
+        Add CLUSTER SHOW command (Carlo)
         Add CLUSTER CLEANUP command (Jaime)
-        Add function write_primary_conninfo (Marco Nenciarini)
-        Teach repmgr how to get tablespace's location in different pg version (Jaime Casanova)
+        Add function write_primary_conninfo (Marco)
+        Teach repmgr how to get tablespace's location in different pg version (Jaime)
+
+2.0.0   2012-XX-XX
+        Add autofailover capabilities (Jaime)
+        Make CLONE command try to make an exact copy including $PGDATA location 
