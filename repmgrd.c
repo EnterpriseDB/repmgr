@@ -65,6 +65,7 @@ const char *progname;
 
 char	*config_file = DEFAULT_CONFIG_FILE;
 bool	verbose = false;
+bool	no_history = false;
 char	repmgr_schema[MAXLEN];
 
 /*
@@ -113,6 +114,7 @@ main(int argc, char **argv)
 	{
 		{"config", required_argument, NULL, 'f'},
 		{"verbose", no_argument, NULL, 'v'},
+		{"no-history", no_argument, NULL, 'N'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -137,7 +139,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "f:v", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "f:v:N", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -146,6 +148,9 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			verbose = true;
+			break;
+		case 'N':
+			no_history = true;
 			break;
 		default:
 			usage();
@@ -352,6 +357,10 @@ WitnessMonitor(void)
 		exit(0);
 	}
 
+	/* Fast path for the case where no history is requested */
+	if (no_history)
+		return;
+
 	/*
 	 * Cancel any query that is still being executed,
 	 * so i can insert the current record
@@ -468,6 +477,10 @@ StandbyMonitor(void)
 		CloseConnections();
 		exit(ERR_PROMOTED);
 	}
+
+	/* Fast path for the case where no history is requested */
+	if (no_history)
+		return;
 
 	/*
 	 * Cancel any query that is still being executed,
