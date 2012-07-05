@@ -42,7 +42,12 @@
         Add CLUSTER CLEANUP command (Jaime)
         Add function write_primary_conninfo (Marco)
         Teach repmgr how to get tablespace's location in different pg version (Jaime)
+		Improve version message (Carlo)
 
 2.0.0   2012-XX-XX
+        Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
+		Add detection of master failure (Jaime)
+		Add the notion of a witness server (Jaime)
         Add autofailover capabilities (Jaime)
-        Make CLONE command try to make an exact copy including $PGDATA location 
+		Add a configuration parameter to indicate the script ti execute on failover or follow (Jaime)
+		Add an option to supress the INSERT to repl_monitor (Jaime) 
