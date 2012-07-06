@@ -50,4 +50,4 @@
 		Add the notion of a witness server (Jaime)
         Add autofailover capabilities (Jaime)
 		Add a configuration parameter to indicate the script ti execute on failover or follow (Jaime)
-		Add an option to supress the INSERT to repl_monitor (Jaime) 
+		Make the monitoring optional and turned off by default, in can be turned on with --monitoring-history switch (Jaime)
