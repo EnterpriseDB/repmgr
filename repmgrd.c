@@ -65,7 +65,7 @@ const char *progname;
 
 char	*config_file = DEFAULT_CONFIG_FILE;
 bool	verbose = false;
-bool	no_history = false;
+bool	monitoring_history = false;
 char	repmgr_schema[MAXLEN];
 
 /*
@@ -114,7 +114,7 @@ main(int argc, char **argv)
 	{
 		{"config", required_argument, NULL, 'f'},
 		{"verbose", no_argument, NULL, 'v'},
-		{"no-history", no_argument, NULL, 'N'},
+		{"monitoring-history", no_argument, NULL, 'm'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -139,7 +139,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "f:v:N", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "f:v:m", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -149,8 +149,8 @@ main(int argc, char **argv)
 		case 'v':
 			verbose = true;
 			break;
-		case 'N':
-			no_history = true;
+		case 'm':
+			monitoring_history = true;
 			break;
 		default:
 			usage();
@@ -358,7 +358,7 @@ WitnessMonitor(void)
 	}
 
 	/* Fast path for the case where no history is requested */
-	if (no_history)
+	if (!monitoring_history)
 		return;
 
 	/*
@@ -479,7 +479,7 @@ StandbyMonitor(void)
 	}
 
 	/* Fast path for the case where no history is requested */
-	if (no_history)
+	if (!monitoring_history)
 		return;
 
 	/*
@@ -925,6 +925,7 @@ void help(const char *progname)
 	printf(_("  --help                    show this help, then exit\n"));
 	printf(_("  --version                 output version information, then exit\n"));
 	printf(_("  --verbose                 output verbose activity information\n"));
+	printf(_("  --monitoring-history      track advance or lag of the replication in every standby in repl_monitor\n"));
 	printf(_("  -f, --config_file=PATH    configuration file\n"));
 	printf(_("\n%s monitors a cluster of servers.\n"), progname);
 }

@@ -1013,6 +1013,7 @@ The output from this program looks like this::
     --help                    show this help, then exit
     --version                 output version information, then exit
     --verbose                 output verbose activity information
+    --monitoring-history      track advance or lag of the replication in every standby in repl_monitor
     -f, --config_file=PATH    database to connect to
   
   repmgrd monitors a cluster of servers.
@@ -1043,6 +1044,10 @@ Lag monitoring
 repmgrd helps monitor a set of master and standby servers.  You can
 see which node is the current master, as well as how far behind each
 is from current.
+To activate the monitor capabilities of repmgr you must include the
+option --monitoring-history when running it::
+
+  repmgrd --monitoring-history --config-file=/path/to/repmgr.conf &
 
 To look at the current lag between primary and each node listed
 in ``repl_node``, consult the ``repl_status`` view::
