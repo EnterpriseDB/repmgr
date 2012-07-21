@@ -129,7 +129,6 @@ parse_config(const char *config_file, t_configuration_options *options)
 		exit(ERR_BAD_CONFIG);
 	}
 }
-}
 
 
 char *
