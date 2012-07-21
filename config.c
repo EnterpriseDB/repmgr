@@ -41,7 +41,9 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
-	options->master_response_timeout = 0;
+
+	/* if nothing has been provided defaults to 60 */
+	options->master_response_timeout = 60;
 
 	/*
 	 * Since some commands don't require a config file at all, not
@@ -120,6 +122,13 @@ parse_config(const char *config_file, t_configuration_options *options)
 		log_err(_("Node information is missing. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
+
+	if (options->master_response_timeout <= 0)
+	{
+		log_err(_("Master response timeout must be greater than zero. Check the configuration file.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+}
 }
 
 
