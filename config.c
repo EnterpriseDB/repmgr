@@ -45,6 +45,10 @@ parse_config(const char *config_file, t_configuration_options *options)
 	/* if nothing has been provided defaults to 60 */
 	options->master_response_timeout = 60;
 
+	/* it defaults to 6 retries with a time between retries of 10s */
+	options->reconnect_attempts = 6;
+	options->reconnect_intvl = 10;
+
 	/*
 	 * Since some commands don't require a config file at all, not
 	 * having one isn't necessarily a problem.
@@ -103,6 +107,10 @@ parse_config(const char *config_file, t_configuration_options *options)
 			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
 			options->master_response_timeout = atoi(value);
+		else if (strcmp(name, "reconnect_attempts") == 0)
+			options->reconnect_attempts = atoi(value);
+		else if (strcmp(name, "reconnect_interval") == 0)
+			options->reconnect_intvl = atoi(value);
 		else
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}
@@ -126,6 +134,18 @@ parse_config(const char *config_file, t_configuration_options *options)
 	if (options->master_response_timeout <= 0)
 	{
 		log_err(_("Master response timeout must be greater than zero. Check the configuration file.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (options->reconnect_attempts < 0)
+	{
+		log_err(_("Reconnect attempts must be zero or greater. Check the configuration file.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (options->reconnect_intvl <= 0)
+	{
+		log_err(_("Reconnect intervals must be zero or greater. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 }
@@ -232,6 +252,18 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 		return false;
 	}
 
+	if (new_options.reconnect_attempts < 0)
+	{
+		log_warning(_("\nNew value for reconnect_attempts is not valid. Should be greater or equal than zero.\n"));
+		return false;
+	}
+
+	if (new_options.reconnect_intvl < 0)
+	{
+		log_warning(_("\nNew value for reconnect_interval is not valid. Should be greater or equal than zero.\n"));
+		return false;
+	}
+
 	/* Test conninfo string */
 	conn = establishDBConnection(new_options.conninfo, false);
 	if (!conn || (PQstatus(conn) != CONNECTION_OK))
@@ -252,6 +284,8 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 	strcpy(orig_options->follow_command, new_options.follow_command);
 	strcpy(orig_options->rsync_options, new_options.rsync_options);
 	orig_options->master_response_timeout = new_options.master_response_timeout;
+	orig_options->reconnect_attempts = new_options.reconnect_attempts;
+	orig_options->reconnect_intvl = new_options.reconnect_intvl;
 	/*
 	 * XXX These ones can change with a simple SIGHUP?
 

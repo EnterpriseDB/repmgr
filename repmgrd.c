@@ -345,7 +345,7 @@ WitnessMonitor(void)
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, return false.
 	 */
-	CheckPrimaryConnection(); // this take up to NUM_RETRY * SLEEP_RETRY seconds
+	CheckPrimaryConnection(); // this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
@@ -429,7 +429,7 @@ StandbyMonitor(void)
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, try to get a new master.
 	 */
-	CheckPrimaryConnection(); // this take up to NUM_RETRY * SLEEP_RETRY seconds
+	CheckPrimaryConnection(); // this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
@@ -762,17 +762,19 @@ CheckPrimaryConnection(void)
 
 	/*
 	 * Check if the master is still available
-	 * if after NUM_RETRY * SLEEP_RETRY seconds of retries
+	 * if after local_options.reconnect_attempts * local_options.reconnect_intvl seconds of retries
 	 * we cannot reconnect
 	 * return false
 	 */
-	for (connection_retries = 0; connection_retries < NUM_RETRY; connection_retries++)
+	for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 	{
 		if (!is_pgup(primaryConn, local_options.master_response_timeout))
 		{
-			log_warning(_("%s: Connection to master has been lost, trying to recover... %i seconds before failover decision\n"), progname, (SLEEP_RETRY*(NUM_RETRY-connection_retries)));
-			/* wait SLEEP_RETRY seconds between retries */
-			sleep(SLEEP_RETRY);
+			log_warning(_("%s: Connection to master has been lost, trying to recover... %i seconds before failover decision\n"), 
+								progname, 
+								(local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
+			/* wait local_options.reconnect_intvl seconds between retries */
+			sleep(local_options.reconnect_intvl);
 		}
 		else
 		{

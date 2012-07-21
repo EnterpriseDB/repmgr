@@ -16,6 +16,10 @@ rsync_options=--archive --checksum --compress --progress --rsh=ssh
 # How many seconds we wait for master response before declaring master failure
 master_response_timeout=60
 
+# How many time we try to reconnect to master before starting failover procedure
+reconnect_attempts=6
+reconnect_interval=10
+
 # Autofailover options
 failover=automatic
 priority=-1

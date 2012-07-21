@@ -69,9 +69,5 @@ typedef struct
 } t_runtime_options;
 
 #define SLEEP_MONITOR		2
-#define SLEEP_RETRY			3
-#define NUM_RETRY			40
-
-
 
 #endif
