@@ -131,6 +131,8 @@ Log in each server and configure repmgr by editing the file
   node_name=earth
   conninfo='host=192.168.1.10 dbname=repmgr user=repmgr'
   master_response_timeout=60
+  reconnect_attempts=6
+  reconnect_interval=10
   failover=automatic
   promote_command='promote_command.sh'
   follow_command='repmgr standby follow -f /etc/repmgr/repmgr.conf'
@@ -140,6 +142,8 @@ Log in each server and configure repmgr by editing the file
 * *node_name* is an identifier for every node.
 * *conninfo* is used to connect to the local PostgreSQL server (where the configuration file is) from any node. In the witness server configuration it is needed to add a 'port=5499' to the conninfo.
 * *master_response_timeout* is the maximum amount of time we are going to wait before deciding the master has died and start failover procedure.
+* *reconnect_attempts* is the number of times we will try to reconnect to master after a failure has been detected and before start failover procedure.
+* *reconnect_interval* is the amount of time between retries to reconnect to master after a failure has been detected and before start failover procedure.
 * *failover* configure behavior : *manual* or *automatic*.
 * *promote_command* the command executed to do the failover (including the PostgreSQL failover itself). The command must return 0 on success.
 * *follow_command* the command executed to address the current standby to another Master. The command must return 0 on success.
