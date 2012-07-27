@@ -1,5 +1,30 @@
-1.0.0   2010-12-05
-        First public release
+2.0beta 2012-07-27
+        Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
+        Add detection of master failure (Jaime)
+        Add the notion of a witness server (Jaime)
+        Add autofailover capabilities (Jaime)
+        Add a configuration parameter to indicate the script to execute on failover or follow (Jaime)
+        Make the monitoring optional and turned off by default, it can be turned on with --monitoring-history switch (Jaime)
+        Add tunables to specify number of retries to reconnect to master and the time between them (Jaime)
+
+1.2.0	2012-07-27
+		Test ssh connection before trying to rsync (Cédric)
+        Add CLUSTER SHOW command (Carlo)
+        Add CLUSTER CLEANUP command (Jaime)
+        Add function write_primary_conninfo (Marco)
+        Teach repmgr how to get tablespace's location in different pg version (Jaime)
+		Improve version message (Carlo)
+
+1.1.1	2012-04-18
+        Add --ignore-rsync-warning (Cédric)
+        Add strnlen for compatibility with OS X (Greg)
+        Improve performance of the repl_status view (Jaime)
+        Remove last argument from log_err (Jaime, Reported by Jeroen Dekkers)
+        Complete documentation about possible error conditions (Jaime)
+        Document how to clean history (Jaime)
+
+1.1.0   2011-03-09
+        Make options -U, -R and -p not mandatory (Jaime)
 
 1.1.0b1 2011-02-24 
         Fix missing "--force" option in help (Greg Smith)
@@ -28,30 +53,5 @@
         Map old verbose flag into a useful setting for the new logger (Greg)
         Document repmgrd startup restrictions and log info about them (Greg)
 
-1.1.0   2011-03-09
-        Make options -U, -R and -p not mandatory (Jaime)
-
-1.1.1	2012-04-18
-        Add --ignore-rsync-warning (Cédric)
-        Add strnlen for compatibility with OS X (Greg)
-        Improve performance of the repl_status view (Jaime)
-        Remove last argument from log_err (Jaime, Reported by Jeroen Dekkers)
-        Complete documentation about possible error conditions (Jaime)
-        Document how to clean history (Jaime)
-
-1.2.0	2012-07-27
-		Test ssh connection before trying to rsync (Cédric)
-        Add CLUSTER SHOW command (Carlo)
-        Add CLUSTER CLEANUP command (Jaime)
-        Add function write_primary_conninfo (Marco)
-        Teach repmgr how to get tablespace's location in different pg version (Jaime)
-		Improve version message (Carlo)
-
-2.0beta 2012-07-27
-        Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
-        Add detection of master failure (Jaime)
-        Add the notion of a witness server (Jaime)
-        Add autofailover capabilities (Jaime)
-        Add a configuration parameter to indicate the script to execute on failover or follow (Jaime)
-        Make the monitoring optional and turned off by default, it can be turned on with --monitoring-history switch (Jaime)
-        Add tunables to specify number of retries to reconnect to master and the time between them (Jaime)
+1.0.0   2010-12-05
+        First public release
