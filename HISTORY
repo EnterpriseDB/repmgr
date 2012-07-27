@@ -49,9 +49,9 @@
 
 2.0beta 2012-07-27
         Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
-		Add detection of master failure (Jaime)
-		Add the notion of a witness server (Jaime)
+        Add detection of master failure (Jaime)
+        Add the notion of a witness server (Jaime)
         Add autofailover capabilities (Jaime)
-		Add a configuration parameter to indicate the script to execute on failover or follow (Jaime)
-		Make the monitoring optional and turned off by default, it can be turned on with --monitoring-history switch (Jaime)
-		Add tunables to specify number of retries to reconnect to master and the time between them (Jaime)
+        Add a configuration parameter to indicate the script to execute on failover or follow (Jaime)
+        Make the monitoring optional and turned off by default, it can be turned on with --monitoring-history switch (Jaime)
+        Add tunables to specify number of retries to reconnect to master and the time between them (Jaime)
