@@ -269,7 +269,7 @@ main(int argc, char **argv)
 		break;
 	default:
 		log_err(_("%s: too many command-line arguments (first extra is \"%s\")\n"),
-		        progname, argv[optind + 1]);
+		        progname, argv[optind]);
 		usage();
 		exit(ERR_BAD_CONFIG);
 	}
