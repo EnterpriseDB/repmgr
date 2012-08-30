@@ -112,7 +112,7 @@ Log in node2.
 Clone the node1 (the current Master)::
 
   su - postgres
-  repmgr -d repmgr -U repmgr standby clone node1
+  repmgr -d repmgr -U repmgr -h node1 standby clone 
 
 Start the PostgreSQL server::
 
@@ -173,7 +173,7 @@ Log in witness.
 Initialize the witness server::
 
   su - postgres
-  repmgr -d repmgr -U repmgr -h 192.168.1.10 -D $WITNESS_PGDATA -f /etc/repmgr/repmgr.conf witness create node1
+  repmgr -d repmgr -U repmgr -h 192.168.1.10 -D $WITNESS_PGDATA -f /etc/repmgr/repmgr.conf witness create 
 
 It needs information to connect to the master to copy the configuration of the cluster, also it needs to know where it should initialize it's own $PGDATA.
 As part of the procees it also ask for the superuser password so it can connect when needed.
