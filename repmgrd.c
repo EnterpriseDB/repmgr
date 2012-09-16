@@ -32,6 +32,7 @@
 #include "strutil.h"
 #include "version.h"
 
+/* PostgreSQL's headers needed to export some functionality */
 #include "access/xlogdefs.h"
 #include "libpq/pqsignal.h"
 
