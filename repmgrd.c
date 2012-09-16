@@ -708,13 +708,13 @@ do_failover(void)
 			find_best = true;
 		}
 
-		/* we use the macros provided by xlogdefs.h to compare XLogPtr */
+		/* we use the macros provided by xlogdefs.h to compare XLogRecPtr */
 		/*
 		 * Nodes are retrieved ordered by priority, so if the current
-		 * best candidate is lower or equal to the next node's wal location
+		 * best candidate is lower than the next node's wal location
 		 * then assign next node as the new best candidate.
 		 */
-		if (XLByteLE(best_candidate.xlog_location, nodes[i].xlog_location))
+		if (XLByteLT(best_candidate.xlog_location, nodes[i].xlog_location))
 		{
 			best_candidate.nodeId                = nodes[i].nodeId;
 			best_candidate.xlog_location.xlogid  = nodes[i].xlog_location.xlogid;
