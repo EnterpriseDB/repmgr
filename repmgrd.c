@@ -35,6 +35,15 @@
 #include "access/xlogdefs.h"
 #include "libpq/pqsignal.h"
 
+/* 
+ * we do not export InvalidXLogRecPtr so we need to define it 
+ * but since 9.3 it will be defined in xlogdefs.h which we include
+ * so better to ask if it's defined to be future proof
+ */
+#ifndef InvalidXLogRecPtr 
+const XLogRecPtr InvalidXLogRecPtr = {0, 0};
+#endif
+
 /*
  * Struct to keep info about the nodes, used in the voting process in
  * do_failover()
@@ -582,7 +591,8 @@ do_failover(void)
 	 * which seems to be large enough for most scenarios
 	 */
 	nodeInfo nodes[50];
-	nodeInfo best_candidate;
+	/* initialize to keep compiler quiet */
+	nodeInfo best_candidate = {-1, InvalidXLogRecPtr, false };
 
 	/* first we get info about this node, and update shared memory */
 	sprintf(sqlquery, "SELECT pg_last_xlog_replay_location()");
