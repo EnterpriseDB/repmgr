@@ -392,7 +392,7 @@ do_cluster_show(void)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't get nodes informations, have you regitered them?\n%s\n"), PQerrorMessage(conn));
+		log_err(_("Cannot get node information, have you registered them?\n%s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
@@ -948,7 +948,7 @@ do_standby_clone(void)
 	}
 	PQclear(res);
 
-	log_info(_("Succesfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
+	log_info(_("Successfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
 
 	/*
 	 * XXX  master_xlog_directory should be discovered from master configuration
@@ -1522,7 +1522,7 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	log_info(_("Succesfully connected to primary.\n"));
+	log_info(_("Successfully connected to primary.\n"));
 
 	r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
 	if (r != 0)
@@ -1659,7 +1659,7 @@ do_witness_create(void)
 	PQfinish(masterconn);
 	PQfinish(witnessconn);
 
-	log_notice(_("Configuration has been succesfully copied to the witness\n"));
+	log_notice(_("Configuration has been successfully copied to the witness\n"));
 }
 
 
@@ -1710,7 +1710,7 @@ help(const char *progname)
 	printf(_(" standby promote		 - allows manual promotion of a specific standby into a "));
 	printf(_("new master in the event of a failover\n"));
 	printf(_(" standby follow		 - allows the standby to re-point itself to a new master\n"));
-	printf(_(" cluster show            - print node informations\n"));
+	printf(_(" cluster show            - print node information\n"));
     printf(_(" cluster cleanup         - cleans monitor's history\n"));
 }
 
