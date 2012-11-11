@@ -85,7 +85,7 @@ bool need_a_node = true;
 bool require_password = false;
 
 /* Initialization of runtime options */
-t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, "", "", 0 };
+t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 };
 t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", -1 };
 
 static char		*server_mode = NULL;
@@ -107,6 +107,7 @@ main(int argc, char **argv)
 		{"wal-keep-segments", required_argument, NULL, 'w'},
         {"keep-history", required_argument, NULL, 'k'},
 		{"force", no_argument, NULL, 'F'},
+		{"wait", no_argument, NULL, 'W'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
@@ -133,7 +134,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:F:I:v", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:F:W:I:v", long_options,
 	                        &optindex)) != -1)
 	{
 		switch (c)
@@ -176,6 +177,9 @@ main(int argc, char **argv)
 			break;
 		case 'F':
 			runtime_options.force = true;
+			break;
+		case 'W':
+			runtime_options.wait_for_master = true;
 			break;
 		case 'I':
 			runtime_options.ignore_rsync_warn = true;
@@ -1378,10 +1382,18 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* we also need to check if there is any master in the cluster */
-	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = getMasterConnection(conn, repmgr_schema, 
-	                                  options.cluster_name, &master_id,(char *) &master_conninfo);
+	/* 
+	 * we also need to check if there is any master in the cluster 
+	 * or wait for one to appear if we have set the wait option
+	 */
+	log_info(_("%s discovering new master...\n"), progname);
+
+	do
+	{
+		master_conn = getMasterConnection(conn, repmgr_schema, 
+	    	                              options.cluster_name, &master_id,(char *) &master_conninfo);
+	} while (master_conn == NULL && runtime_options.wait_for_master);
+
 	if (master_conn == NULL)
 	{
 		log_err(_("There isn't a master to follow in this cluster\n"));
@@ -1700,6 +1712,7 @@ help(const char *progname)
 	printf(_("	-I, --ignore-rsync-warning ignore rsync partial transfer warning\n"));
     printf(_("  -k, --keep-history=VALUE   keeps indicated number of days of history\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
+	printf(_("	-W, --wait				   wait for a master to appear"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
 	printf(_("or making follow another node and then exits.\n"));
