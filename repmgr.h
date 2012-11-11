@@ -59,6 +59,7 @@ typedef struct
 	char wal_keep_segments[MAXLEN];
 	bool verbose;
 	bool force;
+	bool wait_for_master;
 	bool ignore_rsync_warn;
 
 	char masterport[MAXLEN];
