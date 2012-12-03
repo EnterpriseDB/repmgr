@@ -596,7 +596,7 @@ do_failover(void)
 	nodeInfo best_candidate = {-1, InvalidXLogRecPtr, false };
 
 	/* first we get info about this node, and update shared memory */
-	sprintf(sqlquery, "SELECT pg_last_xlog_replay_location()");
+	sprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
 	res1 = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
 	{
