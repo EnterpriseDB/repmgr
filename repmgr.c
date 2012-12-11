@@ -161,7 +161,7 @@ main(int argc, char **argv)
 			if (atoi(optarg) > 0)
 				runtime_options.keep_history = atoi(optarg);
 			else
-				runtime_options.keep_history = 0; 
+				runtime_options.keep_history = 0;
 			break;
 		case 'F':
 			runtime_options.force = true;
@@ -368,7 +368,7 @@ do_cluster_show(void)
 	conn = establishDBConnection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery, "SELECT conninfo FROM %s.repl_nodes;", repmgr_schema);
-    log_debug("cluster show: %s\n", sqlquery);
+	log_debug("cluster show: %s\n", sqlquery);
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -404,7 +404,7 @@ static void
 do_cluster_cleanup(void)
 {
 	int			master_id;
-	PGconn	 *conn; 
+	PGconn	 *conn;
 	PGconn	 *master_conn;
 	PGresult *res;
 	char	 sqlquery[QUERY_STR_LEN];
@@ -430,15 +430,15 @@ do_cluster_cleanup(void)
 	if (runtime_options.keep_history > 0)
 	{
 		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_monitor "
-									" WHERE age(now(), last_monitor_time) >= '%d days'::interval;", 
-									repmgr_schema, runtime_options.keep_history);
+		                  " WHERE age(now(), last_monitor_time) >= '%d days'::interval;",
+		                  repmgr_schema, runtime_options.keep_history);
 	}
 	else
 	{
 		sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_monitor;", repmgr_schema);
 	}
 
-    log_debug("cluster cleanup: %s\n", sqlquery);
+	log_debug("cluster cleanup: %s\n", sqlquery);
 	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -451,7 +451,7 @@ do_cluster_cleanup(void)
 
 	/* Let's VACUUM the table to avoid autovacuum to be launched in an unexpected hour */
 	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor;", repmgr_schema);
-    log_debug("cluster cleanup: %s\n", sqlquery);
+	log_debug("cluster cleanup: %s\n", sqlquery);
 	res = PQexec(master_conn, sqlquery);
 
 	/* XXX There is any need to check this VACUUM happens without problems? */
@@ -1039,7 +1039,7 @@ do_standby_clone(void)
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
-	
+
 	/* We need all 4 parameters, and they can be retrieved only by superusers */
 	if (PQntuples(res) != 4)
 	{
@@ -1604,7 +1604,7 @@ test_ssh_connection(char *host, char *remote_user)
 	char script[MAXLEN];
 	int	 r;
 
-/* On some OS, true is located in a different place than in Linux */
+	/* On some OS, true is located in a different place than in Linux */
 #ifdef __FreeBSD__
 #define TRUEBIN_PATH "/usr/bin/true"
 #else
@@ -1833,32 +1833,36 @@ check_parameters_for_action(const int action)
 static void
 write_primary_conninfo(char* line)
 {
-    char host_buf[MAXLEN] = "";
-    char conn_buf[MAXLEN] = "";
-    char user_buf[MAXLEN] = "";
-    char password_buf[MAXLEN] = "";
+	char host_buf[MAXLEN] = "";
+	char conn_buf[MAXLEN] = "";
+	char user_buf[MAXLEN] = "";
+	char password_buf[MAXLEN] = "";
 
-    /* Environment variable for password (UGLY, please use .pgpass!) */
-    const char *password = getenv("PGPASSWORD");
-    if (password != NULL) {
-        maxlen_snprintf(password_buf, " password=%s", password);
-    }
-    else if (require_password) {
-        log_err(_("%s: PGPASSWORD not set, but having one is required\n"),
-            progname);
-        exit(ERR_BAD_PASSWORD);
-    }
+	/* Environment variable for password (UGLY, please use .pgpass!) */
+	const char *password = getenv("PGPASSWORD");
+	if (password != NULL)
+	{
+		maxlen_snprintf(password_buf, " password=%s", password);
+	}
+	else if (require_password)
+	{
+		log_err(_("%s: PGPASSWORD not set, but having one is required\n"),
+		        progname);
+		exit(ERR_BAD_PASSWORD);
+	}
 
-    if (runtime_options.host[0]) {
-        maxlen_snprintf(host_buf, " host=%s", runtime_options.host);
-    }
+	if (runtime_options.host[0])
+	{
+		maxlen_snprintf(host_buf, " host=%s", runtime_options.host);
+	}
 
-    if (runtime_options.username[0]) {
-        maxlen_snprintf(user_buf, " user=%s", runtime_options.username);
-    }
+	if (runtime_options.username[0])
+	{
+		maxlen_snprintf(user_buf, " user=%s", runtime_options.username);
+	}
 
-    maxlen_snprintf(conn_buf, "port=%s%s%s%s",
-        (runtime_options.masterport[0]) ? runtime_options.masterport : "5432", host_buf, user_buf, password_buf);
+	maxlen_snprintf(conn_buf, "port=%s%s%s%s",
+	                (runtime_options.masterport[0]) ? runtime_options.masterport : "5432", host_buf, user_buf, password_buf);
 
-    maxlen_snprintf(line, "primary_conninfo = '%s'", conn_buf);
+	maxlen_snprintf(line, "primary_conninfo = '%s'", conn_buf);
 }
