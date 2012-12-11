@@ -36,12 +36,12 @@
 #include "access/xlogdefs.h"
 #include "libpq/pqsignal.h"
 
-/* 
- * we do not export InvalidXLogRecPtr so we need to define it 
+/*
+ * we do not export InvalidXLogRecPtr so we need to define it
  * but since 9.3 it will be defined in xlogdefs.h which we include
  * so better to ask if it's defined to be future proof
  */
-#ifndef InvalidXLogRecPtr 
+#ifndef InvalidXLogRecPtr
 const XLogRecPtr InvalidXLogRecPtr = {0, 0};
 #endif
 
@@ -273,7 +273,7 @@ main(int argc, char **argv)
 		/* I need the id of the primary as well as a connection to it */
 		log_info(_("%s Connecting to primary for cluster '%s'\n"),
 		         progname, local_options.cluster_name);
-		primaryConn = getMasterConnection(myLocalConn, repmgr_schema, 
+		primaryConn = getMasterConnection(myLocalConn, repmgr_schema,
 		                                  local_options.cluster_name,
 		                                  &primary_options.node, NULL);
 		if (primaryConn == NULL)
@@ -448,7 +448,7 @@ StandbyMonitor(void)
 			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
 			for (connection_retries = 0; connection_retries < 6; connection_retries++)
 			{
-				primaryConn = getMasterConnection(myLocalConn, repmgr_schema, 
+				primaryConn = getMasterConnection(myLocalConn, repmgr_schema,
 				                                  local_options.cluster_name, &primary_options.node, NULL);
 				if (PQstatus(primaryConn) == CONNECTION_OK)
 				{
@@ -780,9 +780,9 @@ CheckPrimaryConnection(void)
 	{
 		if (!is_pgup(primaryConn, local_options.master_response_timeout))
 		{
-			log_warning(_("%s: Connection to master has been lost, trying to recover... %i seconds before failover decision\n"), 
-								progname, 
-								(local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
+			log_warning(_("%s: Connection to master has been lost, trying to recover... %i seconds before failover decision\n"),
+			            progname,
+			            (local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
 			/* wait local_options.reconnect_intvl seconds between retries */
 			sleep(local_options.reconnect_intvl);
 		}
@@ -889,7 +889,7 @@ checkNodeConfiguration(char *conninfo)
 		                  "VALUES (%d, '%s', '%s', '%s', 0, 'f')",
 		                  repmgr_schema, local_options.node,
 		                  local_options.cluster_name,
-						  local_options.node_name,
+		                  local_options.node_name,
 		                  local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
@@ -900,7 +900,7 @@ checkNodeConfiguration(char *conninfo)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-	else 
+	else
 	{
 		PQclear(res);
 	}
@@ -973,7 +973,7 @@ update_shared_memory(char *last_wal_standby_applied)
 	PGresult *res;
 
 	sprintf(sqlquery, "SELECT %s.repmgr_update_standby_location('%s')",
-	        		  repmgr_schema, last_wal_standby_applied);
+	        repmgr_schema, last_wal_standby_applied);
 
 	/* If an error happens, just inform about that and continue */
 	res = PQexec(myLocalConn, sqlquery);

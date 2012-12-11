@@ -153,8 +153,8 @@ is_pgup(PGconn *conn, int timeout)
 			sqlquery_snprintf(sqlquery, "SELECT 1");
 			if (PQsendQuery(conn, sqlquery) == 0)
 			{
-				log_warning(_("PQsendQuery: Query could not be sent to primary. %s\n"), 
-								PQerrorMessage(conn));
+				log_warning(_("PQsendQuery: Query could not be sent to primary. %s\n"),
+				            PQerrorMessage(conn));
 				goto failed;
 			}
 			if (wait_connection_availability(conn, timeout) != 1)
@@ -396,7 +396,7 @@ getMasterConnection(PGconn *standby_conn, char *schema, char *cluster,
 
 /*
  * wait until current query finishes ignoring any results, this could be an async command
- * or a cancelation of a query 
+ * or a cancelation of a query
  * return 1 if Ok; 0 if any error ocurred; -1 if timeout reached
  */
 int
@@ -408,11 +408,11 @@ wait_connection_availability(PGconn *conn, int timeout)
 	{
 		if (PQconsumeInput(conn) == 0)
 		{
-			log_warning(_("PQconsumeInput: Query could not be sent to primary. %s\n"), 
-							PQerrorMessage(conn));
+			log_warning(_("PQconsumeInput: Query could not be sent to primary. %s\n"),
+			            PQerrorMessage(conn));
 			return 0;
 		}
-	
+
 		if (PQisBusy(conn) == 0)
 		{
 			res = PQgetResult(conn);

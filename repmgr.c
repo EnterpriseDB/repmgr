@@ -56,7 +56,7 @@
 static bool create_recovery_file(const char *data_dir);
 static int test_ssh_connection(char *host, char *remote_user);
 static int	copy_remote_files(char *host, char *remote_user, char *remote_path,
-                             char *local_path, bool is_directory);
+                              char *local_path, bool is_directory);
 static bool check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static bool copy_configuration(PGconn *masterconn, PGconn *witnessconn);
@@ -105,7 +105,7 @@ main(int argc, char **argv)
 		{"config-file", required_argument, NULL, 'f'},
 		{"remote-user", required_argument, NULL, 'R'},
 		{"wal-keep-segments", required_argument, NULL, 'w'},
-        {"keep-history", required_argument, NULL, 'k'},
+		{"keep-history", required_argument, NULL, 'k'},
 		{"force", no_argument, NULL, 'F'},
 		{"wait", no_argument, NULL, 'W'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
@@ -173,7 +173,7 @@ main(int argc, char **argv)
 			if (atoi(optarg) > 0)
 				runtime_options.keep_history = atoi(optarg);
 			else
-				runtime_options.keep_history = 0; 
+				runtime_options.keep_history = 0;
 			break;
 		case 'F':
 			runtime_options.force = true;
@@ -425,7 +425,7 @@ do_cluster_show(void)
 	PQclear(res);
 }
 
- static void
+static void
 do_cluster_cleanup(void)
 {
 	int         master_id;
@@ -434,14 +434,14 @@ do_cluster_cleanup(void)
 	PGresult *res;
 	char     sqlquery[QUERY_STR_LEN];
 
-    /* We need to connect to check configuration */
-    log_info(_("%s connecting to database\n"), progname);
-    conn = establishDBConnection(options.conninfo, true);
+	/* We need to connect to check configuration */
+	log_info(_("%s connecting to database\n"), progname);
+	conn = establishDBConnection(options.conninfo, true);
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
 	master_conn = getMasterConnection(conn, repmgr_schema, options.cluster_name,
-										&master_id, NULL);
+	                                  &master_id, NULL);
 	if (!master_conn)
 	{
 		log_err(_("cluster cleanup: cannot connect to master\n"));
@@ -453,8 +453,8 @@ do_cluster_cleanup(void)
 	if (runtime_options.keep_history > 0)
 	{
 		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_monitor "
-									" WHERE age(now(), last_monitor_time) >= '%d days'::interval;", 
-									repmgr_schema, runtime_options.keep_history);
+		                  " WHERE age(now(), last_monitor_time) >= '%d days'::interval;",
+		                  repmgr_schema, runtime_options.keep_history);
 	}
 	else
 	{
@@ -566,7 +566,7 @@ do_master_register(void)
 		int		id;
 
 		/* Ensure there isn't any other master already registered */
-		master_conn = getMasterConnection(conn, repmgr_schema, 
+		master_conn = getMasterConnection(conn, repmgr_schema,
 		                                  options.cluster_name, &id,NULL);
 		if (master_conn != NULL)
 		{
@@ -595,8 +595,8 @@ do_master_register(void)
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
 	                  "VALUES (%d, '%s', '%s', '%s', %d)",
-	                  repmgr_schema, options.node, options.cluster_name, options.node_name, 
-                      options.conninfo, options.priority);
+	                  repmgr_schema, options.node, options.cluster_name, options.node_name,
+	                  options.conninfo, options.priority);
 	log_debug(_("master register: %s\n"), sqlquery);
 
 	if (!PQexec(conn, sqlquery))
@@ -738,8 +738,8 @@ do_standby_register(void)
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority) "
 	                  "VALUES (%d, '%s', '%s', '%s', %d)",
-	                  repmgr_schema, options.node, options.cluster_name, options.node_name, 
-                      options.conninfo, options.priority);
+	                  repmgr_schema, options.node, options.cluster_name, options.node_name,
+	                  options.conninfo, options.priority);
 	log_debug(_("standby register: %s\n"), sqlquery);
 
 	if (!PQexec(master_conn, sqlquery))
@@ -925,7 +925,7 @@ do_standby_clone(void)
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
-	
+
 	/* We need all 5 parameters, and they can be retrieved only by superusers */
 	if (PQntuples(res) != 5)
 	{
@@ -988,8 +988,8 @@ do_standby_clone(void)
 
 	log_notice(_("Starting backup...\n"));
 
-	/* 
-	 * in pg 9.1 default is to wait for a sync standby to ack, 
+	/*
+	 * in pg 9.1 default is to wait for a sync standby to ack,
 	 * avoid that by turning off sync rep for this session
 	 */
 	sqlquery_snprintf(sqlquery, "SET synchronous_commit TO OFF");
@@ -1382,17 +1382,18 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* 
-	 * we also need to check if there is any master in the cluster 
+	/*
+	 * we also need to check if there is any master in the cluster
 	 * or wait for one to appear if we have set the wait option
 	 */
 	log_info(_("%s discovering new master...\n"), progname);
 
 	do
 	{
-		master_conn = getMasterConnection(conn, repmgr_schema, 
-	    	                              options.cluster_name, &master_id,(char *) &master_conninfo);
-	} while (master_conn == NULL && runtime_options.wait_for_master);
+		master_conn = getMasterConnection(conn, repmgr_schema,
+		                                  options.cluster_name, &master_id,(char *) &master_conninfo);
+	}
+	while (master_conn == NULL && runtime_options.wait_for_master);
 
 	if (master_conn == NULL)
 	{
@@ -1499,7 +1500,7 @@ do_witness_create(void)
 	if (!create_pgdir(runtime_options.dest_dir, runtime_options.force))
 	{
 		log_err(_("witness create: couldn't create data directory (\"%s\") for witness"),
-					runtime_options.dest_dir);
+		        runtime_options.dest_dir);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1595,8 +1596,8 @@ do_witness_create(void)
 
 	/* Get the pg_hba.conf full path */
 	sqlquery_snprintf(sqlquery, "SELECT name, setting "
-						        "  FROM pg_settings "
-						        " WHERE name IN ('hba_file')");
+	                  "  FROM pg_settings "
+	                  " WHERE name IN ('hba_file')");
 	log_debug(_("witness create: %s"), sqlquery);
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1710,7 +1711,7 @@ help(const char *progname)
 	printf(_("	-R, --remote-user=USERNAME database server username for rsync\n"));
 	printf(_("	-w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
 	printf(_("	-I, --ignore-rsync-warning ignore rsync partial transfer warning\n"));
-    printf(_("  -k, --keep-history=VALUE   keeps indicated number of days of history\n"));
+	printf(_("  -k, --keep-history=VALUE   keeps indicated number of days of history\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
 	printf(_("	-W, --wait				   wait for a master to appear"));
 
@@ -1724,7 +1725,7 @@ help(const char *progname)
 	printf(_("new master in the event of a failover\n"));
 	printf(_(" standby follow		 - allows the standby to re-point itself to a new master\n"));
 	printf(_(" cluster show            - print node informations\n"));
-    printf(_(" cluster cleanup         - cleans monitor's history\n"));
+	printf(_(" cluster cleanup         - cleans monitor's history\n"));
 }
 
 
@@ -1776,7 +1777,7 @@ test_ssh_connection(char *host, char *remote_user)
 	char script[MAXLEN];
 	int	 r;
 
-/* On some OS, true is located in a different place than in Linux */
+	/* On some OS, true is located in a different place than in Linux */
 #ifdef __FreeBSD__
 #define TRUEBIN_PATH "/usr/bin/true"
 #else
@@ -2025,7 +2026,7 @@ create_schema(PGconn *conn)
 	sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_nodes (        "
 	                  "  id        integer primary key, "
 	                  "  cluster   text    not null,    "
-					  "  name      text    not null,    "
+	                  "  name      text    not null,    "
 	                  "  conninfo  text    not null,    "
 	                  "  priority  integer not null,    "
 	                  "  witness   boolean not null default false)", repmgr_schema);
@@ -2058,8 +2059,8 @@ create_schema(PGconn *conn)
 	/* a view */
 	sqlquery_snprintf(sqlquery, "CREATE VIEW %s.repl_status AS "
 	                  " SELECT primary_node, standby_node, name AS standby_name, last_monitor_time, "
-                      "        last_wal_primary_location, last_wal_standby_location, "
-                      "        pg_size_pretty(replication_lag) replication_lag, "
+	                  "        last_wal_primary_location, last_wal_standby_location, "
+	                  "        pg_size_pretty(replication_lag) replication_lag, "
 	                  "        pg_size_pretty(apply_lag) apply_lag, "
 	                  "        age(now(), last_monitor_time) AS time_lag "
 	                  "   FROM %s.repl_monitor JOIN %s.repl_nodes ON standby_node = id "
@@ -2077,8 +2078,8 @@ create_schema(PGconn *conn)
 
 	/* an index to improve performance of the view */
 	sqlquery_snprintf(sqlquery, "CREATE INDEX idx_repl_status_sort "
-	                            "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
-								repmgr_schema);
+	                  "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
+	                  repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
 	if (!PQexec(conn, sqlquery))
 	{
@@ -2090,9 +2091,9 @@ create_schema(PGconn *conn)
 
 	/* XXX Here we MUST try to load the repmgr_function.sql not hardcode it here */
 	sqlquery_snprintf(sqlquery,
-	        "CREATE OR REPLACE FUNCTION %s.repmgr_update_standby_location(text) RETURNS boolean "
-	        "AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
-	        "LANGUAGE C STRICT ", repmgr_schema);
+	                  "CREATE OR REPLACE FUNCTION %s.repmgr_update_standby_location(text) RETURNS boolean "
+	                  "AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
+	                  "LANGUAGE C STRICT ", repmgr_schema);
 	if (!PQexec(conn, sqlquery))
 	{
 		fprintf(stderr, "Cannot create the function repmgr_update_standby_location: %s\n",
@@ -2101,9 +2102,9 @@ create_schema(PGconn *conn)
 	}
 
 	sqlquery_snprintf(sqlquery,
-	        "CREATE OR REPLACE FUNCTION %s.repmgr_get_last_standby_location() RETURNS text "
-	        "AS '$libdir/repmgr_funcs', 'repmgr_get_last_standby_location' "
-	        "LANGUAGE C STRICT ", repmgr_schema);
+	                  "CREATE OR REPLACE FUNCTION %s.repmgr_get_last_standby_location() RETURNS text "
+	                  "AS '$libdir/repmgr_funcs', 'repmgr_get_last_standby_location' "
+	                  "LANGUAGE C STRICT ", repmgr_schema);
 	if (!PQexec(conn, sqlquery))
 	{
 		fprintf(stderr, "Cannot create the function repmgr_get_last_standby_location: %s\n",
@@ -2175,30 +2176,35 @@ write_primary_conninfo(char* line)
 
 	/* Environment variable for password (UGLY, please use .pgpass!) */
 	const char *password = getenv("PGPASSWORD");
-	if (password != NULL) {
+	if (password != NULL)
+	{
 		maxlen_snprintf(password_buf, " password=%s", password);
 	}
-	else if (require_password) {
+	else if (require_password)
+	{
 		log_err(_("%s: PGPASSWORD not set, but having one is required\n"),
-			progname);
+		        progname);
 		exit(ERR_BAD_PASSWORD);
 	}
 
-	if (runtime_options.host[0]) {
+	if (runtime_options.host[0])
+	{
 		maxlen_snprintf(host_buf, " host=%s", runtime_options.host);
 	}
 
-	if (runtime_options.username[0]) {
+	if (runtime_options.username[0])
+	{
 		maxlen_snprintf(user_buf, " user=%s", runtime_options.username);
 	}
 
-	if (options.node_name[0]) {
+	if (options.node_name[0])
+	{
 		maxlen_snprintf(appname_buf, " application_name=%s", options.node_name);
 	}
 
 	maxlen_snprintf(conn_buf, "port=%s%s%s%s%s",
-		(runtime_options.masterport[0]) ? runtime_options.masterport : "5432", host_buf, user_buf, password_buf,
-		 appname_buf);
+	                (runtime_options.masterport[0]) ? runtime_options.masterport : "5432", host_buf, user_buf, password_buf,
+	                appname_buf);
 
 	maxlen_snprintf(line, "primary_conninfo = '%s'", conn_buf);
 

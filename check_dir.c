@@ -127,10 +127,10 @@ mkdir_p(char *path, mode_t omode)
 {
 	struct stat sb;
 	mode_t		numask,
-	oumask;
+	            oumask;
 	int			first,
-	last,
-	retval;
+	            last,
+	            retval;
 	char	   *p;
 
 	p = path;
