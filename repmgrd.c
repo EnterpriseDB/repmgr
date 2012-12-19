@@ -792,7 +792,7 @@ CheckPrimaryConnection(void)
 			{
 				log_info(_("%s: Connection to master has been restored.\n"), progname);
 			}
-			break;
+			return true;
 		}
 	}
 	if (!is_pgup(primaryConn, local_options.master_response_timeout))
