@@ -54,6 +54,7 @@ typedef struct nodeInfo
 	int nodeId;
 	XLogRecPtr xlog_location;
 	bool is_ready;
+	bool is_witness;
 } nodeInfo;
 
 
@@ -574,6 +575,7 @@ do_failover(void)
 	int		total_nodes = 0;
 	int		visible_nodes = 0;
 	bool	find_best = false;
+	bool	witness = false;
 
 	int		i;
 	int		r;
@@ -593,7 +595,7 @@ do_failover(void)
 	 */
 	nodeInfo nodes[50];
 	/* initialize to keep compiler quiet */
-	nodeInfo best_candidate = {-1, InvalidXLogRecPtr, false };
+	nodeInfo best_candidate = {-1, InvalidXLogRecPtr, false, false};
 
 	/* first we get info about this node, and update shared memory */
 	sprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
@@ -617,7 +619,7 @@ do_failover(void)
 	sleep(SLEEP_MONITOR + 1);
 
 	/* get a list of standby nodes, including myself */
-	sprintf(sqlquery, "SELECT id, conninfo "
+	sprintf(sqlquery, "SELECT id, conninfo, witness "
 	        "  FROM %s.repl_nodes "
 	        " WHERE id <> %d "
 	        "   AND cluster = '%s' "
@@ -633,6 +635,7 @@ do_failover(void)
 		exit(ERR_DB_QUERY);
 	}
 
+	log_debug(_("%s: there are %d nodes registered"), progname, PQntuples(res1));
 	/* ask for the locations */
 	for (i = 0; i < PQntuples(res1); i++)
 	{
@@ -640,33 +643,48 @@ do_failover(void)
 		/* Initialize on false so if we can't reach this node we know that later */
 		nodes[i].is_ready = false;
 		strncpy(nodeConninfo, PQgetvalue(res1, i, 1), MAXLEN);
+		witness = (strcmp(PQgetvalue(res1, i, 2), "t") == 0) ? true : false;
+
+		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s"), progname, node, nodeConninfo, (witness) ? "true" : "false");
+
 		nodeConn = establishDBConnection(nodeConninfo, false);
 		/* if we can't see the node just skip it */
 		if (PQstatus(nodeConn) != CONNECTION_OK)
 			continue;
 
-		sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()", repmgr_schema);
-		res2 = PQexec(nodeConn, sqlquery);
-		if (PQresultStatus(res2) != PGRES_TUPLES_OK)
+		/* the witness will always show 0/0 so avoid a useless query */
+		if (!witness)
 		{
-			log_info(_("Can't get node's last standby location: %s\n"), PQerrorMessage(nodeConn));
-			log_info(_("Connection details: %s\n"), nodeConninfo);
+			sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()", repmgr_schema);
+			res2 = PQexec(nodeConn, sqlquery);
+			if (PQresultStatus(res2) != PGRES_TUPLES_OK)
+			{
+				log_info(_("Can't get node's last standby location: %s\n"), PQerrorMessage(nodeConn));
+				log_info(_("Connection details: %s\n"), nodeConninfo);
+				PQclear(res2);
+				PQfinish(nodeConn);
+				continue;
+			}
+
+			if (sscanf(PQgetvalue(res2, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
+				log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res2, 0, 0));
+
 			PQclear(res2);
-			PQfinish(nodeConn);
-			continue;
+		}
+		else
+		{
+			uxlogid = 0;
+			uxrecoff = 0;
 		}
 
 		visible_nodes++;
-
-		if (sscanf(PQgetvalue(res2, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
-			log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res2, 0, 0));
 
 		nodes[i].nodeId = node;
 		nodes[i].xlog_location.xlogid = uxlogid;
 		nodes[i].xlog_location.xrecoff = uxrecoff;
 		nodes[i].is_ready = true;
+		nodes[i].is_witness = witness;
 
-		PQclear(res2);
 		PQfinish(nodeConn);
 	}
 	PQclear(res1);
@@ -696,15 +714,21 @@ do_failover(void)
 	 */
 	for (i = 0; i < total_nodes - 1; i++)
 	{
+		/* witness is never a good candidate */
+		if (nodes[i].is_witness)
+			continue;
+
 		if (!nodes[i].is_ready)
 			continue;
-		else if (!find_best)
+
+		if (!find_best)
 		{
 			/* start with the first ready node, and then move on to the next one */
 			best_candidate.nodeId                = nodes[i].nodeId;
 			best_candidate.xlog_location.xlogid  = nodes[i].xlog_location.xlogid;
 			best_candidate.xlog_location.xrecoff = nodes[i].xlog_location.xrecoff;
 			best_candidate.is_ready              = nodes[i].is_ready;
+			best_candidate.is_witness            = nodes[i].is_witness;
 			find_best = true;
 		}
 
@@ -720,12 +744,19 @@ do_failover(void)
 			best_candidate.xlog_location.xlogid  = nodes[i].xlog_location.xlogid;
 			best_candidate.xlog_location.xrecoff = nodes[i].xlog_location.xrecoff;
 			best_candidate.is_ready              = nodes[i].is_ready;
+			best_candidate.is_witness            = nodes[i].is_witness;
 		}
 	}
 
 	/* once we know who is the best candidate, promote it */
 	if (find_best && (best_candidate.nodeId == local_options.node))
 	{
+		if (best_candidate.is_witness)
+		{
+			log_err(_("%s: Node selected as new master is a witness. Can't be promoted.\n"), progname);
+			exit(ERR_FAILOVER_FAIL);
+		}
+
 		if (verbose)
 			log_info(_("%s: This node is the best candidate to be the new primary, promoting...\n"),
 			         progname);
