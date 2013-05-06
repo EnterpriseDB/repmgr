@@ -116,6 +116,7 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c;
 	int			action = NO_ACTION;
+	const char *password = getenv("PGPASSWORD");
 
 	progname = get_progname(argv[0]);
 
@@ -312,7 +313,6 @@ main(int argc, char **argv)
 	keywords[4] = "application_name";
 	values[4] = (char *) progname;
 
-	const char *password = getenv("PGPASSWORD");
 	if (password != NULL)
 	{
 		keywords[5] = "password";
