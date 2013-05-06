@@ -11,7 +11,8 @@ node_name=standby2
 
 # Connection information
 conninfo='host=192.168.204.104'
-rsync_options=--archive --checksum --compress --progress --rsh=ssh
+rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
+ssh_options=-o "StrictHostKeyChecking no"
 
 # How many seconds we wait for master response before declaring master failure
 master_response_timeout=60

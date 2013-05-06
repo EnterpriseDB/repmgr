@@ -86,7 +86,7 @@ bool require_password = false;
 
 /* Initialization of runtime options */
 t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 };
-t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", -1 };
+t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1 };
 
 static char		*server_mode = NULL;
 static char		*server_cmd = NULL;
@@ -1796,9 +1796,9 @@ test_ssh_connection(char *host, char *remote_user)
 
 	/* Check if we have ssh connectivity to host before trying to rsync */
 	if (!remote_user[0])
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s", host, TRUEBIN_PATH);
+		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s", options.ssh_options, host, TRUEBIN_PATH);
 	else
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s -l %s %s", host, remote_user, TRUEBIN_PATH);
+		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s", options.ssh_options, host, remote_user, TRUEBIN_PATH);
 
 	log_debug(_("command is: %s"), script);
 	r = system(script);
