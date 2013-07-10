@@ -37,5 +37,5 @@ PGconn *getMasterConnection(PGconn *standby_conn, char *schema, char *cluster,
                             int *master_id, char *master_conninfo_out);
 
 int wait_connection_availability(PGconn *conn, int timeout);
-void CancelQuery(PGconn *conn, int timeout);
+bool CancelQuery(PGconn *conn, int timeout);
 #endif
