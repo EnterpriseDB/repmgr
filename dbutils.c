@@ -146,7 +146,8 @@ is_pgup(PGconn *conn, int timeout)
 			/*
 			* Send a SELECT 1 just to check if the connection is OK
 			*/
-			CancelQuery(conn, timeout);
+			if (!CancelQuery(conn, timeout))
+				goto failed;
 			if (wait_connection_availability(conn, timeout) != 1)
 				goto failed;
 
@@ -429,18 +430,33 @@ wait_connection_availability(PGconn *conn, int timeout)
 }
 
 
-void
+bool
 CancelQuery(PGconn *conn, int timeout)
 {
 	char errbuf[ERRBUFF_SIZE];
 	PGcancel *pgcancel;
 
-	wait_connection_availability(conn, timeout);
+	if (wait_connection_availability(conn, timeout) != 1)
+		return false;
 
 	pgcancel = PQgetCancel(conn);
 
-	if (!pgcancel || PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
-		log_warning(_("Can't stop current query: %s\n"), errbuf);
+	if (pgcancel != NULL)
+	{
+		/*
+		 * PQcancel can only return 0 if socket()/connect()/send()
+ 		 * fails, in any of those cases we can assume something
+		 * bad happened to the connection
+		 */
+		if (PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
+		{
+			log_warning(_("Can't stop current query: %s\n"), errbuf);
+			PQfreeCancel(pgcancel);
+			return false;
+		}
 
-	PQfreeCancel(pgcancel);
+		PQfreeCancel(pgcancel);
+	}
+
+	return true;
 }
