@@ -409,7 +409,7 @@ wait_connection_availability(PGconn *conn, int timeout)
 	{
 		if (PQconsumeInput(conn) == 0)
 		{
-			log_warning(_("PQconsumeInput: Query could not be sent to primary. %s\n"),
+			log_warning(_("wait_connection_availability: could not receive data from master. %s\n"),
 			            PQerrorMessage(conn));
 			return 0;
 		}
@@ -425,8 +425,10 @@ wait_connection_availability(PGconn *conn, int timeout)
 	}
 	if (timeout >= 0)
 		return 1;
-	else
+	else {
+		log_warning(_("wait_connection_availability: timeout reached");
 		return -1;
+	}
 }
 
 
