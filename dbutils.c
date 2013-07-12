@@ -443,22 +443,22 @@ CancelQuery(PGconn *conn, int timeout)
 
 	pgcancel = PQgetCancel(conn);
 
-	if (pgcancel != NULL)
-	{
-		/*
-		 * PQcancel can only return 0 if socket()/connect()/send()
- 		 * fails, in any of those cases we can assume something
-		 * bad happened to the connection
-		 */
-		if (PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
-		{
-			log_warning(_("Can't stop current query: %s\n"), errbuf);
-			PQfreeCancel(pgcancel);
-			return false;
-		}
+	if (pgcancel == NULL)
+		return false;
 
+	/*
+	 * PQcancel can only return 0 if socket()/connect()/send()
+ 	 * fails, in any of those cases we can assume something
+	 * bad happened to the connection
+	 */
+	if (PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
+	{
+		log_warning(_("Can't stop current query: %s\n"), errbuf);
 		PQfreeCancel(pgcancel);
+		return false;
 	}
+
+	PQfreeCancel(pgcancel);
 
 	return true;
 }
