@@ -426,7 +426,7 @@ wait_connection_availability(PGconn *conn, int timeout)
 	if (timeout >= 0)
 		return 1;
 	else {
-		log_warning(_("wait_connection_availability: timeout reached");
+		log_warning(_("wait_connection_availability: timeout reached"));
 		return -1;
 	}
 }
