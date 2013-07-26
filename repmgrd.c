@@ -625,7 +625,7 @@ do_failover(void)
 	        "  FROM %s.repl_nodes "
 	        " WHERE id <> %d "
 	        "   AND cluster = '%s' "
-	        " ORDER BY priority ",
+	        " ORDER BY priority, id ",
 	        repmgr_schema, primary_options.node, local_options.cluster_name);
 
 	res1 = PQexec(myLocalConn, sqlquery);
