@@ -52,8 +52,10 @@ const XLogRecPtr InvalidXLogRecPtr = {0, 0};
 typedef struct nodeInfo
 {
 	int nodeId;
+	char conninfostr[MAXLEN];
 	XLogRecPtr xlog_location;
 	bool is_ready;
+	bool is_visible;
 	bool is_witness;
 } nodeInfo;
 
@@ -570,23 +572,22 @@ StandbyMonitor(void)
 static void
 do_failover(void)
 {
-	PGresult *res1;
-	PGresult *res2;
+	PGresult *res;
 	char 	sqlquery[8192];
 
 	int		total_nodes = 0;
 	int		visible_nodes = 0;
+	int     ready_nodes = 0;
+
 	bool	find_best = false;
-	bool	witness = false;
 
 	int		i;
 	int		r;
 
-	int 	node;
-	char	nodeConninfo[MAXLEN];
+	uint32  uxlogid;
+	uint32  uxrecoff;
+	XLogRecPtr xlog_recptr;
 
-	unsigned int uxlogid;
-	unsigned int uxrecoff;
 	char last_wal_standby_applied[MAXLEN];
 
 	PGconn	*nodeConn = NULL;
@@ -596,108 +597,60 @@ do_failover(void)
 	 * which seems to be large enough for most scenarios
 	 */
 	nodeInfo nodes[50];
+
 	/* initialize to keep compiler quiet */
-	nodeInfo best_candidate = {-1, InvalidXLogRecPtr, false, false};
-
-	/* first we get info about this node, and update shared memory */
-	sprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
-	res1 = PQexec(myLocalConn, sqlquery);
-	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
-	{
-		log_err(_("PQexec failed: %s.\nReport an invalid value to not be considered as new primary and exit.\n"), PQerrorMessage(myLocalConn));
-		PQclear(res1);
-		sprintf(last_wal_standby_applied, "'%X/%X'", 0, 0);
-		update_shared_memory(last_wal_standby_applied);
-		exit(ERR_DB_QUERY);
-	}
-
-	/* write last location in shared memory */
-	update_shared_memory(PQgetvalue(res1, 0, 0));
-
-	/*
-	 * we sleep the monitor time + one second
-	 * we bet it should be enough for other repmgrd to update their own data
-	 */
-	sleep(SLEEP_MONITOR + 1);
+	nodeInfo best_candidate = {-1, "", InvalidXLogRecPtr, false, false, false};
 
 	/* get a list of standby nodes, including myself */
 	sprintf(sqlquery, "SELECT id, conninfo, witness "
 	        "  FROM %s.repl_nodes "
-	        " WHERE id <> %d "
-	        "   AND cluster = '%s' "
+	        " WHERE cluster = '%s' "
 	        " ORDER BY priority, id ",
-	        repmgr_schema, primary_options.node, local_options.cluster_name);
+	        repmgr_schema, local_options.cluster_name);
 
-	res1 = PQexec(myLocalConn, sqlquery);
-	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
+	res = PQexec(myLocalConn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't get nodes info: %s\n"), PQerrorMessage(myLocalConn));
-		PQclear(res1);
+		log_err(_("Can't get nodes' info: %s\n"), PQerrorMessage(myLocalConn));
+		PQclear(res);
 		PQfinish(myLocalConn);
 		exit(ERR_DB_QUERY);
 	}
 
-	log_debug(_("%s: there are %d nodes registered"), progname, PQntuples(res1));
-	/* ask for the locations */
-	for (i = 0; i < PQntuples(res1); i++)
+	/*
+	 * total nodes that are registered
+	 */
+	total_nodes = PQntuples(res);
+	log_debug(_("%s: there are %d nodes registered\n"), progname, total_nodes);
+
+	/* Build an array with the nodes and indicate which ones are visible and ready */
+	for (i = 0; i < total_nodes; i++)
 	{
-		node = atoi(PQgetvalue(res1, i, 0));
+		nodes[i].nodeId = atoi(PQgetvalue(res, i, 0));
+		strncpy(nodes[i].conninfostr, PQgetvalue(res, i, 1), MAXLEN);
+		nodes[i].is_witness = (strcmp(PQgetvalue(res, i, 2), "t") == 0) ? true : false;
+
 		/* Initialize on false so if we can't reach this node we know that later */
+		nodes[i].is_visible = false;
 		nodes[i].is_ready = false;
-		strncpy(nodeConninfo, PQgetvalue(res1, i, 1), MAXLEN);
-		witness = (strcmp(PQgetvalue(res1, i, 2), "t") == 0) ? true : false;
+		nodes[i].xlog_location.xlogid = 0;
+		nodes[i].xlog_location.xrecoff = 0;
 
-		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s"), progname, node, nodeConninfo, (witness) ? "true" : "false");
+		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s\n"), 
+					progname, nodes[i].nodeId, nodes[i].conninfostr, (nodes[i].is_witness) ? "true" : "false");
 
-		nodeConn = establishDBConnection(nodeConninfo, false);
+		nodeConn = establishDBConnection(nodes[i].conninfostr, false);
 		/* if we can't see the node just skip it */
 		if (PQstatus(nodeConn) != CONNECTION_OK)
 			continue;
 
-		/* the witness will always show 0/0 so avoid a useless query */
-		if (!witness)
-		{
-			sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()", repmgr_schema);
-			res2 = PQexec(nodeConn, sqlquery);
-			if (PQresultStatus(res2) != PGRES_TUPLES_OK)
-			{
-				log_info(_("Can't get node's last standby location: %s\n"), PQerrorMessage(nodeConn));
-				log_info(_("Connection details: %s\n"), nodeConninfo);
-				PQclear(res2);
-				PQfinish(nodeConn);
-				continue;
-			}
-
-			if (sscanf(PQgetvalue(res2, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
-				log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res2, 0, 0));
-
-			PQclear(res2);
-		}
-		else
-		{
-			uxlogid = 0;
-			uxrecoff = 0;
-		}
-
 		visible_nodes++;
-
-		nodes[i].nodeId = node;
-		nodes[i].xlog_location.xlogid = uxlogid;
-		nodes[i].xlog_location.xrecoff = uxrecoff;
-		nodes[i].is_ready = true;
-		nodes[i].is_witness = witness;
-
+		nodes[i].is_visible = true;
 		PQfinish(nodeConn);
 	}
-	PQclear(res1);
-	/* Close the connection to this server */
-	PQfinish(myLocalConn);
+	PQclear(res);
 
-	/*
-	 * total nodes that are registered, include master which is a node but was
-	 * not counted because it's not a standby
-	 */
-	total_nodes = i + 1;
+	log_debug(_("Total nodes counted: registered=%d, visible=%d\n"), total_nodes, visible_nodes);
 
 	/*
 	 * am i on the group that should keep alive?
@@ -711,16 +664,165 @@ do_failover(void)
 		exit(ERR_FAILOVER_FAIL);
 	}
 
+	/* Query all the nodes to determine which ones are ready */ 
+	for (i = 0; i < total_nodes; i++)
+	{
+		/* if the node is not visible, skip it */
+		if (!nodes[i].is_visible)
+			continue;
+
+		if (nodes[i].is_witness)
+			continue;
+
+		nodeConn = establishDBConnection(nodes[i].conninfostr, false);
+		/* XXX 
+		 * This shouldn't happen, if this happens it means this is a major problem
+		 * maybe network outages? anyway, is better for a human to react 
+		 */
+		if (PQstatus(nodeConn) != CONNECTION_OK)
+		{
+			log_err(_("It seems new problems are arising, manual intervention is needed\n"));
+			exit(ERR_FAILOVER_FAIL);
+		}
+
+		sqlquery_snprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
+		res = PQexec(nodeConn, sqlquery);
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_info(_("Can't get node's last standby location: %s\n"), PQerrorMessage(nodeConn));
+			log_info(_("Connection details: %s\n"), nodes[i].conninfostr);
+			PQclear(res);
+			PQfinish(nodeConn);
+			exit(ERR_FAILOVER_FAIL);
+		}
+
+		if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
+			log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res, 0, 0));
+
+		log_debug("XLog position of node %d: log id=%u (%X), offset=%u (%X)\n", 
+					nodes[i].nodeId, uxlogid, uxlogid, uxrecoff, uxrecoff);
+
+		/* If position is 0/0, error */
+		if (uxlogid == 0 && uxrecoff == 0)
+		{
+			PQclear(res);
+			PQfinish(nodeConn);
+			log_info(_("InvalidXLogRecPtr detected in a standby\n"));
+			exit(ERR_FAILOVER_FAIL);
+		}
+
+		nodes[i].xlog_location.xlogid = uxlogid;
+		nodes[i].xlog_location.xrecoff = uxrecoff;
+
+		PQclear(res);
+		PQfinish(nodeConn);
+	}
+
+	/* last we get info about this node, and update shared memory */
+	sprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
+	res = PQexec(myLocalConn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("PQexec failed: %s.\nReport an invalid value to not be considered as new primary and exit.\n"), PQerrorMessage(myLocalConn));
+		PQfinish(myLocalConn);
+		PQclear(res);
+		sprintf(last_wal_standby_applied, "'%X/%X'", 0, 0);
+		update_shared_memory(last_wal_standby_applied);
+		exit(ERR_DB_QUERY);
+	}	
+
+	/* write last location in shared memory */
+	update_shared_memory(PQgetvalue(res, 0, 0));
+	PQclear(res);
+
+	for (i = 0; i < total_nodes; i++)
+	{
+		while (!nodes[i].is_ready)
+		{
+			/* 
+        	 * the witness will always be masked as ready if it's still 
+        	 * not marked that way and avoid a useless query
+        	 */
+			if (nodes[i].is_witness)
+			{
+				if (!nodes[i].is_ready)
+				{
+					nodes[i].is_ready = true;
+					ready_nodes++;	
+				}
+				break;
+			}
+
+			/* if the node is not visible, skip it */
+			if (!nodes[i].is_visible)
+				break;
+
+			/* if the node is ready there is nothing to check, skip it too */
+			if (nodes[i].is_ready)
+				break;
+
+            nodeConn = establishDBConnection(nodes[i].conninfostr, false);
+            /* XXX 
+             * This shouldn't happen, if this happens it means this is a major problem
+             * maybe network outages? anyway, is better for a human to react 
+             */
+            if (PQstatus(nodeConn) != CONNECTION_OK)
+            {
+				/* XXX */
+                log_info(_("At this point, it could be some race conditions that are acceptable, assume the node is restarting and starting failover procedure\n"));
+				break;
+            }
+
+			sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()", repmgr_schema);
+			res = PQexec(nodeConn, sqlquery);
+            if (PQresultStatus(res) != PGRES_TUPLES_OK)
+            {
+                log_err(_("PQexec failed: %s.\nReport an invalid value to not be considered as new primary and exit.\n"), PQerrorMessage(nodeConn));
+                PQclear(res);
+                PQfinish(nodeConn);
+                exit(ERR_DB_QUERY);
+			}
+
+            if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
+                log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res, 0, 0));
+
+            PQclear(res);
+            PQfinish(nodeConn);
+            /* If position is 0/0, keep checking */
+            if (uxlogid == 0 && uxrecoff == 0)
+                continue;
+
+			xlog_recptr.xlogid = uxlogid;
+			xlog_recptr.xrecoff = uxrecoff;
+
+			if (XLByteLT(nodes[i].xlog_location, xlog_recptr))
+			{
+				nodes[i].xlog_location.xlogid = uxlogid;
+				nodes[i].xlog_location.xrecoff = uxrecoff;
+			}
+
+            log_debug("Last XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
+                        nodes[i].nodeId, nodes[i].xlog_location.xlogid,  nodes[i].xlog_location.xlogid, 
+										 nodes[i].xlog_location.xrecoff, nodes[i].xlog_location.xrecoff);
+
+			ready_nodes++;	
+			nodes[i].is_ready = true;
+		}
+	}
+
+	/* Close the connection to this server */
+	PQfinish(myLocalConn);
+
 	/*
 	 * determine which one is the best candidate to promote to primary
 	 */
-	for (i = 0; i < total_nodes - 1; i++)
+	for (i = 0; i < total_nodes; i++)
 	{
 		/* witness is never a good candidate */
 		if (nodes[i].is_witness)
 			continue;
 
-		if (!nodes[i].is_ready)
+		if (!nodes[i].is_ready || !nodes[i].is_visible)
 			continue;
 
 		if (!find_best)
@@ -759,6 +861,9 @@ do_failover(void)
 			exit(ERR_FAILOVER_FAIL);
 		}
 
+		/* wait */
+		sleep(5);
+
 		if (verbose)
 			log_info(_("%s: This node is the best candidate to be the new primary, promoting...\n"),
 			         progname);
@@ -772,6 +877,9 @@ do_failover(void)
 	}
 	else if (find_best)
 	{
+		/* wait */
+		sleep(10);
+
 		if (verbose)
 			log_info(_("%s: Node %d is the best candidate to be the new primary, we should follow it...\n"),
 			         progname, best_candidate.nodeId);
