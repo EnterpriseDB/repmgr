@@ -81,6 +81,8 @@ bool	verbose = false;
 bool	monitoring_history = false;
 char	repmgr_schema[MAXLEN];
 
+bool	failover_done = false;
+
 /*
  * should initialize with {0} to be ANSI complaint ? but this raises
  * error with gcc -Wall
@@ -203,63 +205,37 @@ main(int argc, char **argv)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
 	/*
-	 * Set my server mode, establish a connection to primary
-	 * and start monitor
-	 */
-	if (is_witness(myLocalConn, repmgr_schema, local_options.cluster_name, local_options.node))
-		myLocalMode = WITNESS_MODE;
-	else if (is_standby(myLocalConn))
-		myLocalMode = STANDBY_MODE;
-	else /* is the master */
-		myLocalMode = PRIMARY_MODE;
-
-	switch (myLocalMode)
+	 * MAIN LOOP
+	 * This loops cicles once per failover and at startup	
+	 * Requisites:
+	 *   - myLocalConn needs to be already setted with an active connection
+	 *   - no master connection
+ 	 */ 
+	do
 	{
-	case PRIMARY_MODE:
-		primary_options.node = local_options.node;
-		strncpy(primary_options.conninfo, local_options.conninfo, MAXLEN);
-		primaryConn = myLocalConn;
-
-		checkClusterConfiguration(myLocalConn, primaryConn);
-		checkNodeConfiguration(local_options.conninfo);
-
-		if (reload_configuration(config_file, &local_options))
-		{
-			PQfinish(myLocalConn);
-			myLocalConn = establishDBConnection(local_options.conninfo, true);
-			primaryConn = myLocalConn;
-			update_registration();
-		}
-
-		log_info(_("%s Starting continuous primary connection check\n"), progname);
-		/* Check that primary is still alive, and standbies are sending info */
 		/*
-		 * Every SLEEP_MONITOR seconds, do master checks
-		 * XXX
-		 * Check that standbies are sending info
-		*/
-		for (;;)
+		 * Set my server mode, establish a connection to primary
+		 * and start monitor
+		 */
+		if (is_witness(myLocalConn, repmgr_schema, local_options.cluster_name, local_options.node))
+			myLocalMode = WITNESS_MODE;
+		else if (is_standby(myLocalConn))
+			myLocalMode = STANDBY_MODE;
+		else /* is the master */
+			myLocalMode = PRIMARY_MODE;
+	
+		switch (myLocalMode)
 		{
-			if (CheckPrimaryConnection())
-			{
-				/*
-									CheckActiveStandbiesConnections();
-									CheckInactiveStandbies();
-				*/
-				sleep(SLEEP_MONITOR);
-			}
-			else
-			{
-				/* XXX
-				 * May we do something more verbose ?
-				 */
-				exit (1);
-			}
-
-			if (got_SIGHUP)
-			{
-				/* if we can reload, then could need to change myLocalConn */
+			case PRIMARY_MODE:
+				primary_options.node = local_options.node;
+				strncpy(primary_options.conninfo, local_options.conninfo, MAXLEN);
+				primaryConn = myLocalConn;
+		
+				checkClusterConfiguration(myLocalConn, primaryConn);
+				checkNodeConfiguration(local_options.conninfo);
+		
 				if (reload_configuration(config_file, &local_options))
 				{
 					PQfinish(myLocalConn);
@@ -267,70 +243,112 @@ main(int argc, char **argv)
 					primaryConn = myLocalConn;
 					update_registration();
 				}
-				got_SIGHUP = false;
-			}
-		}
-		break;
-	case WITNESS_MODE:
-	case STANDBY_MODE:
-		/* I need the id of the primary as well as a connection to it */
-		log_info(_("%s Connecting to primary for cluster '%s'\n"),
-		         progname, local_options.cluster_name);
-		primaryConn = getMasterConnection(myLocalConn, repmgr_schema,
-		                                  local_options.cluster_name,
-		                                  &primary_options.node, NULL);
-		if (primaryConn == NULL)
-		{
-			CloseConnections();
-			exit(ERR_BAD_CONFIG);
-		}
+	
+				log_info(_("%s Starting continuous primary connection check\n"), progname);
+	
+				/* Check that primary is still alive, and standbies are sending info */
+	
+				/*
+				 * Every SLEEP_MONITOR seconds, do master checks
+				 * XXX
+				 * Check that standbies are sending info
+				 */
+				do
+				{
+					if (CheckPrimaryConnection())
+					{
+						/*
+							CheckActiveStandbiesConnections();
+							CheckInactiveStandbies();
+						*/
+						sleep(SLEEP_MONITOR);
+					}
+					else
+					{
+						/* XXX
+						 * May we do something more verbose ?
+						 */
+						exit(1);
+					}
+	
+					if (got_SIGHUP)
+					{
+						/* if we can reload, then could need to change myLocalConn */
+						if (reload_configuration(config_file, &local_options))
+						{
+							PQfinish(myLocalConn);
+							myLocalConn = establishDBConnection(local_options.conninfo, true);
+							primaryConn = myLocalConn;
+							update_registration();
+						}
+						got_SIGHUP = false;
+					}
+				} while (!failover_done);
+				break;
+			case WITNESS_MODE:
+			case STANDBY_MODE:
+				/* I need the id of the primary as well as a connection to it */
+				log_info(_("%s Connecting to primary for cluster '%s'\n"),
+				         progname, local_options.cluster_name);
+				primaryConn = getMasterConnection(myLocalConn, repmgr_schema,
+				                                  local_options.cluster_name,
+				                                  &primary_options.node, NULL);
+				if (primaryConn == NULL)
+				{
+					CloseConnections();
+					exit(ERR_BAD_CONFIG);
+				}
 
-		checkClusterConfiguration(myLocalConn, primaryConn);
-		checkNodeConfiguration(local_options.conninfo);
+				checkClusterConfiguration(myLocalConn, primaryConn);
+				checkNodeConfiguration(local_options.conninfo);
 
-		if (reload_configuration(config_file, &local_options))
-		{
-			PQfinish(myLocalConn);
-			myLocalConn = establishDBConnection(local_options.conninfo, true);
-			update_registration();
-		}
-
-		/*
-		 * Every SLEEP_MONITOR seconds, do checks
-		 */
-		if (myLocalMode == WITNESS_MODE)
-		{
-			log_info(_("%s Starting continuous witness node monitoring\n"), progname);
-		}
-		else if (myLocalMode == STANDBY_MODE)
-		{
-			log_info(_("%s Starting continuous standby node monitoring\n"), progname);
-		}
-
-		for (;;)
-		{
-			if (myLocalMode == WITNESS_MODE)
-				WitnessMonitor();
-			else if (myLocalMode == STANDBY_MODE)
-				StandbyMonitor();
-			sleep(SLEEP_MONITOR);
-
-			if (got_SIGHUP)
-			{
-				/* if we can reload, then could need to change myLocalConn */
 				if (reload_configuration(config_file, &local_options))
 				{
 					PQfinish(myLocalConn);
 					myLocalConn = establishDBConnection(local_options.conninfo, true);
 					update_registration();
 				}
-				got_SIGHUP = false;
-			}
+	
+				/*
+				 * Every SLEEP_MONITOR seconds, do checks
+				 */
+				if (myLocalMode == WITNESS_MODE)
+				{
+					log_info(_("%s Starting continuous witness node monitoring\n"), progname);
+				}
+				else if (myLocalMode == STANDBY_MODE)
+				{
+					log_info(_("%s Starting continuous standby node monitoring\n"), progname);
+				}
+	
+				do
+				{
+					if (myLocalMode == WITNESS_MODE)
+						WitnessMonitor();
+					else if (myLocalMode == STANDBY_MODE)
+						StandbyMonitor();
+					sleep(SLEEP_MONITOR);
+	
+					if (got_SIGHUP)
+					{
+						/* if we can reload, then could need to change myLocalConn */
+						if (reload_configuration(config_file, &local_options))
+						{
+							PQfinish(myLocalConn);
+							myLocalConn = establishDBConnection(local_options.conninfo, true);
+							update_registration();
+						}
+						got_SIGHUP = false;
+					}
+				} while (!failover_done);
+				break;
+			default:
+				log_err(_("%s: Unrecognized mode for node %d\n"), progname, local_options.node);
 		}
-		break;
-	default:
-		log_err(_("%s: Unrecognized mode for node %d\n"), progname, local_options.node);
-	}
+
+		failover_done = false;
+
+	} while (true);
 
 	/* Prevent a double-free */
 	if (primaryConn == myLocalConn)
@@ -481,6 +499,7 @@ StandbyMonitor(void)
 			 * a new primaryConn
 			 */
 			do_failover();
+			return;
 		}
 	}
 
@@ -901,6 +920,9 @@ do_failover(void)
 		exit(ERR_FAILOVER_FAIL);
 	}
 
+	/* to force it to re-calculate mode and master node */
+	failover_done = true;
+
 	/* and reconnect to the local database */
 	myLocalConn = establishDBConnection(local_options.conninfo, true);
 }
@@ -1089,6 +1111,7 @@ static void
 handle_sigint(SIGNAL_ARGS)
 {
 	CloseConnections();
+	logger_shutdown();
 	exit(1);
 }
 
