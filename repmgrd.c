@@ -45,6 +45,26 @@
 const XLogRecPtr InvalidXLogRecPtr = {0, 0};
 #endif
 
+#if PG_VERSION_NUM >= 90300
+    #define XLAssign(a, b) \
+        a = b
+
+    #define XLAssignValue(a, xlogid, xrecoff) \
+        a = xrecoff
+
+    #define XLByteLT(a, b) \
+        (a < b)
+
+#else
+    #define XLAssign(a, b) \
+        a.xlogid  = b.xlogid; \
+        a.xrecoff = b.xrecoff
+
+    #define XLAssignValue(a, uxlogid, uxrecoff) \
+        a.xlogid = uxlogid; \
+        a.xrecoff = uxrecoff
+#endif
+
 /*
  * Struct to keep info about the nodes, used in the voting process in
  * do_failover()
@@ -652,8 +672,7 @@ do_failover(void)
 		/* Initialize on false so if we can't reach this node we know that later */
 		nodes[i].is_visible = false;
 		nodes[i].is_ready = false;
-		nodes[i].xlog_location.xlogid = 0;
-		nodes[i].xlog_location.xrecoff = 0;
+		XLAssignValue(nodes[i].xlog_location, 0, 0);
 
 		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s\n"), 
 					progname, nodes[i].nodeId, nodes[i].conninfostr, (nodes[i].is_witness) ? "true" : "false");
@@ -730,8 +749,7 @@ do_failover(void)
 			exit(ERR_FAILOVER_FAIL);
 		}
 
-		nodes[i].xlog_location.xlogid = uxlogid;
-		nodes[i].xlog_location.xrecoff = uxrecoff;
+		XLAssignValue(nodes[i].xlog_location, uxlogid, uxrecoff);
 
 		PQclear(res);
 		PQfinish(nodeConn);
@@ -811,18 +829,16 @@ do_failover(void)
             if (uxlogid == 0 && uxrecoff == 0)
                 continue;
 
-			xlog_recptr.xlogid = uxlogid;
-			xlog_recptr.xrecoff = uxrecoff;
+			XLAssignValue(xlog_recptr, uxlogid, uxrecoff);
 
 			if (XLByteLT(nodes[i].xlog_location, xlog_recptr))
 			{
-				nodes[i].xlog_location.xlogid = uxlogid;
-				nodes[i].xlog_location.xrecoff = uxrecoff;
+				XLAssignValue(nodes[i].xlog_location, uxlogid, uxrecoff);
 			}
 
             log_debug("Last XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
-                        nodes[i].nodeId, nodes[i].xlog_location.xlogid,  nodes[i].xlog_location.xlogid, 
-										 nodes[i].xlog_location.xrecoff, nodes[i].xlog_location.xrecoff);
+                        nodes[i].nodeId, uxlogid,  uxlogid, 
+										 uxrecoff, uxrecoff);
 
 			ready_nodes++;	
 			nodes[i].is_ready = true;
@@ -848,8 +864,7 @@ do_failover(void)
 		{
 			/* start with the first ready node, and then move on to the next one */
 			best_candidate.nodeId                = nodes[i].nodeId;
-			best_candidate.xlog_location.xlogid  = nodes[i].xlog_location.xlogid;
-			best_candidate.xlog_location.xrecoff = nodes[i].xlog_location.xrecoff;
+			XLAssign(best_candidate.xlog_location, nodes[i].xlog_location);
 			best_candidate.is_ready              = nodes[i].is_ready;
 			best_candidate.is_witness            = nodes[i].is_witness;
 			find_best = true;
@@ -864,8 +879,7 @@ do_failover(void)
 		if (XLByteLT(best_candidate.xlog_location, nodes[i].xlog_location))
 		{
 			best_candidate.nodeId                = nodes[i].nodeId;
-			best_candidate.xlog_location.xlogid  = nodes[i].xlog_location.xlogid;
-			best_candidate.xlog_location.xrecoff = nodes[i].xlog_location.xrecoff;
+			XLAssign(best_candidate.xlog_location, nodes[i].xlog_location);
 			best_candidate.is_ready              = nodes[i].is_ready;
 			best_candidate.is_witness            = nodes[i].is_witness;
 		}
