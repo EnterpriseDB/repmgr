@@ -86,7 +86,7 @@ bool require_password = false;
 
 /* Initialization of runtime options */
 t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 };
-t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", -1 };
+t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1 };
 
 static char		*server_mode = NULL;
 static char		*server_cmd = NULL;
@@ -311,8 +311,18 @@ main(int argc, char **argv)
 	values[3] = runtime_options.dbname;
 	keywords[4] = "application_name";
 	values[4] = (char *) progname;
-	keywords[5] = NULL;
-	values[5] = NULL;
+
+	const char *password = getenv("PGPASSWORD");
+	if (password != NULL)
+	{
+		keywords[5] = "password";
+		values[5] = password;
+	}
+	else
+	{
+		keywords[5] = NULL;
+		values[5] = NULL;
+	}
 
 	/*
 	 * Initialize the logger.  If verbose command line parameter was
@@ -815,7 +825,7 @@ do_standby_clone(void)
 
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("%s connecting to master database\n"), progname);
-	conn = establishDBConnectionByParams(keywords,values,true);
+	conn = establishDBConnectionByParams(keywords, values, true);
 
 	/* primary should be v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
@@ -1786,9 +1796,9 @@ test_ssh_connection(char *host, char *remote_user)
 
 	/* Check if we have ssh connectivity to host before trying to rsync */
 	if (!remote_user[0])
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s", host, TRUEBIN_PATH);
+		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s", options.ssh_options, host, TRUEBIN_PATH);
 	else
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s -l %s %s", host, remote_user, TRUEBIN_PATH);
+		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s", options.ssh_options, host, remote_user, TRUEBIN_PATH);
 
 	log_debug(_("command is: %s"), script);
 	r = system(script);
