@@ -115,8 +115,9 @@ main(int argc, char **argv)
 	};
 
 	int			optindex;
-	int			c;
+	int			c, targ;
 	int			action = NO_ACTION;
+	char *      ptr = NULL;
 
 	progname = get_progname(argv[0]);
 
@@ -186,6 +187,22 @@ main(int argc, char **argv)
 			runtime_options.ignore_rsync_warn = true;
 			break;
 		case 'r':
+			targ = strtol(optarg, &ptr, 10);
+
+			if(targ < 0) {
+				usage();
+				exit(ERR_BAD_CONFIG);
+			}
+			if(ptr && *ptr) {
+				if(strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 && strcmp(ptr, "min") != 0 &&
+				   strcmp(ptr, "h") != 0 && strcmp(ptr, "d") != 0)
+				{
+					usage();
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+
+
 			strncpy(runtime_options.recovery_time_delay, optarg, MAXLEN);
 			break;
 		case 'v':
