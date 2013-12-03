@@ -1718,7 +1718,7 @@ help(const char *progname)
 	printf(_("	-k, --keep-history=VALUE   keeps indicated number of days of history\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
 	printf(_("	-W, --wait				   wait for a master to appear\n"));
-	printf(_("	-r, --recovery-time-delay=VALUE		   enable recovery time delay, value has to be a valid time atom (e.g. 5m)"));
+	printf(_("	-r, --recovery-time-delay=VALUE		   enable recovery time delay, value has to be a valid time atom (e.g. 5min)"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
 	printf(_("or making follow another node and then exits.\n"));
