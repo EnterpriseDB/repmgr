@@ -1806,23 +1806,31 @@ static int
 test_ssh_connection(char *host, char *remote_user)
 {
 	char script[MAXLEN];
-	int	 r;
+	int	 r = 1, i;
 
-	/* On some OS, true is located in a different place than in Linux */
-#ifdef __FreeBSD__
-#define TRUEBIN_PATH "/usr/bin/true"
-#else
-#define TRUEBIN_PATH "/bin/true"
-#endif
+	/* On some OS, true is located in a different place than in Linux
+	 * we have to try them all until all alternatives are gone or we
+	 * found `true' because the target OS may differ from the source
+	 * OS
+	 */
+	const char *truebin_pathes[] = {
+		"/bin/true",
+		"/usr/bin/true",
+		NULL
+	};
 
 	/* Check if we have ssh connectivity to host before trying to rsync */
-	if (!remote_user[0])
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s", host, TRUEBIN_PATH);
-	else
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s -l %s %s", host, remote_user, TRUEBIN_PATH);
+	for(i = 0; truebin_pathes[i] && r != 0; ++i) {
+		if (!remote_user[0])
+			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s", host, truebin_pathes[i]);
+		else
+			maxlen_snprintf(script, "ssh -o Batchmode=yes %s -l %s %s", host, remote_user, truebin_pathes[i]);
 
-	log_debug(_("command is: %s"), script);
-	r = system(script);
+		log_debug(_("command is: %s"), script);
+
+		r = system(script);
+	}
+
 	if (r != 0)
 		log_info(_("Can not connect to the remote host (%s)\n"), host);
 	return r;
