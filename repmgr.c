@@ -85,7 +85,7 @@ bool need_a_node = true;
 bool require_password = false;
 
 /* Initialization of runtime options */
-t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 };
+t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0, "" };
 t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", -1 };
 
 static char		*server_mode = NULL;
@@ -109,6 +109,7 @@ main(int argc, char **argv)
 		{"force", no_argument, NULL, 'F'},
 		{"wait", no_argument, NULL, 'W'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
+		{"recovery-time-delay", required_argument, NULL, 'r'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
 	};
@@ -134,7 +135,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:FWIv", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:FWIvr:", long_options,
 	                        &optindex)) != -1)
 	{
 		switch (c)
@@ -183,6 +184,9 @@ main(int argc, char **argv)
 			break;
 		case 'I':
 			runtime_options.ignore_rsync_warn = true;
+			break;
+		case 'r':
+			strncpy(runtime_options.recovery_time_delay, optarg, MAXLEN);
 			break;
 		case 'v':
 			runtime_options.verbose = true;
@@ -1711,9 +1715,10 @@ help(const char *progname)
 	printf(_("	-R, --remote-user=USERNAME database server username for rsync\n"));
 	printf(_("	-w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
 	printf(_("	-I, --ignore-rsync-warning ignore rsync partial transfer warning\n"));
-	printf(_("  -k, --keep-history=VALUE   keeps indicated number of days of history\n"));
+	printf(_("	-k, --keep-history=VALUE   keeps indicated number of days of history\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
-	printf(_("	-W, --wait				   wait for a master to appear"));
+	printf(_("	-W, --wait				   wait for a master to appear\n"));
+	printf(_("	-r, --recovery-time-delay=VALUE		   enable recovery time delay, value has to be a valid time atom (e.g. 5m)"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
 	printf(_("or making follow another node and then exits.\n"));
@@ -1763,6 +1768,15 @@ create_recovery_file(const char *data_dir)
 		log_err(_("recovery file could not be written, it could be necessary to create it manually\n"));
 		fclose(recovery_file);
 		return false;
+	}
+
+	if(*runtime_options.recovery_time_delay) {
+		maxlen_snprintf(line, "\nrecovery_time_delay = %s\n", runtime_options.recovery_time_delay);
+		if(fputs(line, recovery_file) == EOF) {
+			log_err(_("recovery file could not be written, it could be necessary to create it manually\n"));
+			fclose(recovery_file);
+			return false;
+		}
 	}
 
 	/*FreeFile(recovery_file);*/
