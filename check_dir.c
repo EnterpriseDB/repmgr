@@ -293,7 +293,6 @@ create_pgdir(char *dir, bool force)
 			              "If you are sure you want to clone here, "
 			              "please check there is no PostgreSQL server "
 			              "running and use the --force option\n"));
-			exit(ERR_BAD_CONFIG);
 		}
 
 		return false;
