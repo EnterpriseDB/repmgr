@@ -1827,7 +1827,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	if (is_directory)
 	{
-		strcat(rsync_flags, " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
+		strcat(rsync_flags, " --exclude=pg_xlog* --exclude=pg_log* --exclude=pg_control --exclude=*.pid");
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
 		                rsync_flags, host_string, remote_path, local_path);
 	}
