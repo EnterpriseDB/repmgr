@@ -3,7 +3,7 @@ Version: 1.0-1
 Section: database
 Priority: optional
 Architecture: all
-Depends: rsync, postgresql-9.0
+Depends: rsync, postgresql-9.0 | postgresql-9.1 | postgresql-9.2
 Maintainer: Greg Smith <greg@2ndQuadrant.com>
 Description: PostgreSQL replication setup, magament and monitoring
  has two main executables
