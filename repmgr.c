@@ -109,7 +109,7 @@ main(int argc, char **argv)
 		{"force", no_argument, NULL, 'F'},
 		{"wait", no_argument, NULL, 'W'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
-		{"recovery-time-delay", required_argument, NULL, 'r'},
+		{"min-recovery-apply-delay", required_argument, NULL, 'r'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
 	};
@@ -203,7 +203,7 @@ main(int argc, char **argv)
 			}
 
 
-			strncpy(runtime_options.recovery_time_delay, optarg, MAXLEN);
+			strncpy(runtime_options.min_recovery_apply_delay, optarg, MAXLEN);
 			break;
 		case 'v':
 			runtime_options.verbose = true;
@@ -1735,7 +1735,7 @@ help(const char *progname)
 	printf(_("	-k, --keep-history=VALUE   keeps indicated number of days of history\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
 	printf(_("	-W, --wait				   wait for a master to appear\n"));
-	printf(_("	-r, --recovery-time-delay=VALUE		   enable recovery time delay, value has to be a valid time atom (e.g. 5min)"));
+	printf(_("	-r, --min-recovery-apply-delay=VALUE		   enable recovery time delay, value has to be a valid time atom (e.g. 5min)"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
 	printf(_("or making follow another node and then exits.\n"));
@@ -1787,8 +1787,8 @@ create_recovery_file(const char *data_dir)
 		return false;
 	}
 
-	if(*runtime_options.recovery_time_delay) {
-		maxlen_snprintf(line, "\nrecovery_time_delay = %s\n", runtime_options.recovery_time_delay);
+	if(*runtime_options.min_recovery_apply_delay) {
+		maxlen_snprintf(line, "\nmin_recovery_apply_delay = %s\n", runtime_options.min_recovery_apply_delay);
 		if(fputs(line, recovery_file) == EOF) {
 			log_err(_("recovery file could not be written, it could be necessary to create it manually\n"));
 			fclose(recovery_file);
