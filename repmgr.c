@@ -85,7 +85,7 @@ bool need_a_node = true;
 bool require_password = false;
 
 /* Initialization of runtime options */
-t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 };
+t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0, "" };
 t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", -1 };
 
 static char		*server_mode = NULL;
@@ -109,13 +109,15 @@ main(int argc, char **argv)
 		{"force", no_argument, NULL, 'F'},
 		{"wait", no_argument, NULL, 'W'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
+		{"min-recovery-apply-delay", required_argument, NULL, 'r'},
 		{"verbose", no_argument, NULL, 'v'},
 		{NULL, 0, NULL, 0}
 	};
 
 	int			optindex;
-	int			c;
+	int			c, targ;
 	int			action = NO_ACTION;
+	char *      ptr = NULL;
 
 	progname = get_progname(argv[0]);
 
@@ -134,7 +136,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:FWIv", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:FWIvr:", long_options,
 	                        &optindex)) != -1)
 	{
 		switch (c)
@@ -183,6 +185,25 @@ main(int argc, char **argv)
 			break;
 		case 'I':
 			runtime_options.ignore_rsync_warn = true;
+			break;
+		case 'r':
+			targ = strtol(optarg, &ptr, 10);
+
+			if(targ < 0) {
+				usage();
+				exit(ERR_BAD_CONFIG);
+			}
+			if(ptr && *ptr) {
+				if(strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 && strcmp(ptr, "min") != 0 &&
+				   strcmp(ptr, "h") != 0 && strcmp(ptr, "d") != 0)
+				{
+					usage();
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+
+
+			strncpy(runtime_options.min_recovery_apply_delay, optarg, MAXLEN);
 			break;
 		case 'v':
 			runtime_options.verbose = true;
@@ -770,6 +791,7 @@ do_standby_clone(void)
 	int			r = 0;
 	int			i;
 	bool		flag_success = false;
+	bool		flag_fatal = false;
 	bool		test_mode = false;
 
 	char		tblspc_dir[MAXFILENAME];
@@ -1036,6 +1058,7 @@ do_standby_clone(void)
 	{
 		log_err(_("%s: couldn't use directory %s ...\nUse --force option to force\n"),
 		        progname, local_data_directory);
+		flag_fatal = true;
 		goto stop_backup;
 	}
 
@@ -1203,38 +1226,48 @@ stop_backup:
 	}
 
 	/*
-	 * We need to create the pg_xlog sub directory too.
+	 * only do this on non-fatal errors
 	 */
-	if (!create_directory(local_xlog_directory))
-	{
-		log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
-		        progname, local_xlog_directory);
-		r = ERR_NEEDS_XLOG; /* continue, but eventually exit returning error */
-	}
 
-	/* Finally, write the recovery.conf file */
-	create_recovery_file(local_data_directory);
-
-	/*
-	 * We don't start the service yet because we still may want to
-	 * move the directory
-	 */
-	log_notice(_("%s standby clone complete\n"), progname);
-
-	/*  HINT message : what to do next ? */
-	if (flag_success)
-	{
-		log_notice("HINT: You can now start your postgresql server\n");
-		if (test_mode)
+	if(!flag_fatal) {
+		/*
+		 * We need to create the pg_xlog sub directory too.
+		 */
+		if (!create_directory(local_xlog_directory))
 		{
-			log_notice(_("for example : pg_ctl -D %s start\n"), local_data_directory);
+			log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
+					progname, local_xlog_directory);
+			r = ERR_NEEDS_XLOG; /* continue, but eventually exit returning error */
 		}
-		else
+
+		/* Finally, write the recovery.conf file */
+		create_recovery_file(local_data_directory);
+
+		/*
+		 * We don't start the service yet because we still may want to
+		 * move the directory
+		 */
+		log_notice(_("%s standby clone complete\n"), progname);
+
+		/*  HINT message : what to do next ? */
+		if (flag_success)
 		{
-			log_notice("for example : /etc/init.d/postgresql start\n");
+			log_notice("HINT: You can now start your postgresql server\n");
+			if (test_mode)
+			{
+				log_notice(_("for example : pg_ctl -D %s start\n"), local_data_directory);
+			}
+			else
+			{
+				log_notice("for example : /etc/init.d/postgresql start\n");
+			}
 		}
+
+		exit(r);
 	}
-	exit(r);
+	else {
+		exit(ERR_BAD_CONFIG);
+	}
 }
 
 
@@ -1711,9 +1744,10 @@ help(const char *progname)
 	printf(_("	-R, --remote-user=USERNAME database server username for rsync\n"));
 	printf(_("	-w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
 	printf(_("	-I, --ignore-rsync-warning ignore rsync partial transfer warning\n"));
-	printf(_("  -k, --keep-history=VALUE   keeps indicated number of days of history\n"));
+	printf(_("	-k, --keep-history=VALUE   keeps indicated number of days of history\n"));
 	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
-	printf(_("	-W, --wait				   wait for a master to appear"));
+	printf(_("	-W, --wait				   wait for a master to appear\n"));
+	printf(_("	-r, --min-recovery-apply-delay=VALUE		   enable recovery time delay, value has to be a valid time atom (e.g. 5min)"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
 	printf(_("or making follow another node and then exits.\n"));
@@ -1765,6 +1799,15 @@ create_recovery_file(const char *data_dir)
 		return false;
 	}
 
+	if(*runtime_options.min_recovery_apply_delay) {
+		maxlen_snprintf(line, "\nmin_recovery_apply_delay = %s\n", runtime_options.min_recovery_apply_delay);
+		if(fputs(line, recovery_file) == EOF) {
+			log_err(_("recovery file could not be written, it could be necessary to create it manually\n"));
+			fclose(recovery_file);
+			return false;
+		}
+	}
+
 	/*FreeFile(recovery_file);*/
 	fclose(recovery_file);
 
@@ -1775,23 +1818,31 @@ static int
 test_ssh_connection(char *host, char *remote_user)
 {
 	char script[MAXLEN];
-	int	 r;
+	int	 r = 1, i;
 
-	/* On some OS, true is located in a different place than in Linux */
-#ifdef __FreeBSD__
-#define TRUEBIN_PATH "/usr/bin/true"
-#else
-#define TRUEBIN_PATH "/bin/true"
-#endif
+	/* On some OS, true is located in a different place than in Linux
+	 * we have to try them all until all alternatives are gone or we
+	 * found `true' because the target OS may differ from the source
+	 * OS
+	 */
+	const char *truebin_pathes[] = {
+		"/bin/true",
+		"/usr/bin/true",
+		NULL
+	};
 
 	/* Check if we have ssh connectivity to host before trying to rsync */
-	if (!remote_user[0])
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s", host, TRUEBIN_PATH);
-	else
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s -l %s %s", host, remote_user, TRUEBIN_PATH);
+	for(i = 0; truebin_pathes[i] && r != 0; ++i) {
+		if (!remote_user[0])
+			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s", host, truebin_pathes[i]);
+		else
+			maxlen_snprintf(script, "ssh -o Batchmode=yes %s -l %s %s", host, remote_user, truebin_pathes[i]);
 
-	log_debug(_("command is: %s"), script);
-	r = system(script);
+		log_debug(_("command is: %s"), script);
+
+		r = system(script);
+	}
+
 	if (r != 0)
 		log_info(_("Can not connect to the remote host (%s)\n"), host);
 	return r;
