@@ -68,7 +68,7 @@ typedef struct
 	/* parameter used by CLUSTER CLEANUP */
 	int keep_history;
 
-	char recovery_time_delay[MAXLEN];
+	char min_recovery_apply_delay[MAXLEN];
 } t_runtime_options;
 
 #define SLEEP_MONITOR		2
