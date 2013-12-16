@@ -791,6 +791,7 @@ do_standby_clone(void)
 	int			r = 0;
 	int			i;
 	bool		flag_success = false;
+	bool		flag_fatal = false;
 	bool		test_mode = false;
 
 	char		tblspc_dir[MAXFILENAME];
@@ -1057,6 +1058,7 @@ do_standby_clone(void)
 	{
 		log_err(_("%s: couldn't use directory %s ...\nUse --force option to force\n"),
 		        progname, local_data_directory);
+		flag_fatal = true;
 		goto stop_backup;
 	}
 
@@ -1224,38 +1226,48 @@ stop_backup:
 	}
 
 	/*
-	 * We need to create the pg_xlog sub directory too.
+	 * only do this on non-fatal errors
 	 */
-	if (!create_directory(local_xlog_directory))
-	{
-		log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
-		        progname, local_xlog_directory);
-		r = ERR_NEEDS_XLOG; /* continue, but eventually exit returning error */
-	}
 
-	/* Finally, write the recovery.conf file */
-	create_recovery_file(local_data_directory);
-
-	/*
-	 * We don't start the service yet because we still may want to
-	 * move the directory
-	 */
-	log_notice(_("%s standby clone complete\n"), progname);
-
-	/*  HINT message : what to do next ? */
-	if (flag_success)
-	{
-		log_notice("HINT: You can now start your postgresql server\n");
-		if (test_mode)
+	if(!flag_fatal) {
+		/*
+		 * We need to create the pg_xlog sub directory too.
+		 */
+		if (!create_directory(local_xlog_directory))
 		{
-			log_notice(_("for example : pg_ctl -D %s start\n"), local_data_directory);
+			log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
+					progname, local_xlog_directory);
+			r = ERR_NEEDS_XLOG; /* continue, but eventually exit returning error */
 		}
-		else
+
+		/* Finally, write the recovery.conf file */
+		create_recovery_file(local_data_directory);
+
+		/*
+		 * We don't start the service yet because we still may want to
+		 * move the directory
+		 */
+		log_notice(_("%s standby clone complete\n"), progname);
+
+		/*  HINT message : what to do next ? */
+		if (flag_success)
 		{
-			log_notice("for example : /etc/init.d/postgresql start\n");
+			log_notice("HINT: You can now start your postgresql server\n");
+			if (test_mode)
+			{
+				log_notice(_("for example : pg_ctl -D %s start\n"), local_data_directory);
+			}
+			else
+			{
+				log_notice("for example : /etc/init.d/postgresql start\n");
+			}
 		}
+
+		exit(r);
 	}
-	exit(r);
+	else {
+		exit(ERR_BAD_CONFIG);
+	}
 }
 
 
