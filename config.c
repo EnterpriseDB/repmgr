@@ -41,6 +41,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
+	memset(options->ssh_options, 0, sizeof(options->ssh_options));
 
 	/* if nothing has been provided defaults to 60 */
 	options->master_response_timeout = 60;
@@ -78,6 +79,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 			strncpy (options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
 			strncpy (options->rsync_options, value, QUERY_STR_LEN);
+		else if (strcmp(name, "ssh_options") == 0)
+			strncpy (options->ssh_options, value, QUERY_STR_LEN);
 		else if (strcmp(name, "loglevel") == 0)
 			strncpy (options->loglevel, value, MAXLEN);
 		else if (strcmp(name, "logfacility") == 0)
@@ -283,6 +286,7 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 	strcpy(orig_options->promote_command, new_options.promote_command);
 	strcpy(orig_options->follow_command, new_options.follow_command);
 	strcpy(orig_options->rsync_options, new_options.rsync_options);
+	strcpy(orig_options->ssh_options, new_options.ssh_options);
 	orig_options->master_response_timeout = new_options.master_response_timeout;
 	orig_options->reconnect_attempts = new_options.reconnect_attempts;
 	orig_options->reconnect_intvl = new_options.reconnect_intvl;
