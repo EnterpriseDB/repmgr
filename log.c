@@ -25,8 +25,10 @@
 
 #ifdef HAVE_SYSLOG
 #include <syslog.h>
-#include <stdarg.h>
 #endif
+
+#include <stdarg.h>
+#include <time.h>
 
 #include "log.h"
 
@@ -36,6 +38,29 @@
 #endif
 
 /* #define REPMGR_DEBUG */
+
+void stderr_log_with_level(const char *level_name, int level, const char *fmt, ...) {
+	size_t len = strlen(fmt);
+	char fmt1[len + 150];
+	time_t t;
+	struct tm *tm;
+	char buff[100];
+	va_list ap;
+
+	if(log_level >= level) {
+		time(&t);
+		tm = localtime(&t);
+
+		va_start(ap, fmt);
+
+		strftime(buff, 100, "[%Y-%m-%d %H:%M:%S]", tm);
+		snprintf(fmt1, len + 150, "%s [%s] %s", buff, level_name, fmt);
+		vfprintf(stderr, fmt1, ap);
+
+		va_end(ap);
+	}
+}
+
 
 static int detect_log_level(const char* level);
 static int detect_log_facility(const char* facility);
