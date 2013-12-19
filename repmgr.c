@@ -842,7 +842,7 @@ do_standby_clone(void)
 		log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
-	if (!guc_setted(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments))
+	if (!guc_setted_typed(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments, "integer"))
 	{
 		PQfinish(conn);
 		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the PostgreSQL master.)\n"), progname, runtime_options.wal_keep_segments);

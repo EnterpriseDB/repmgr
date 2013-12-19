@@ -250,6 +250,40 @@ guc_setted(PGconn *conn, const char *parameter, const char *op,
 	return true;
 }
 
+/**
+ * Just like guc_setted except with an extra parameter containing the name of
+ * the pg datatype so that the comparison can be done properly.
+ */
+bool
+guc_setted_typed(PGconn *conn, const char *parameter, const char *op, 
+                 const char *value, const char *datatype)
+{
+	PGresult	*res;
+	char		sqlquery[QUERY_STR_LEN];
+
+	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
+	                  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
+	                  parameter, datatype, op, value, datatype);
+
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("GUC setting check PQexec failed: %s"),
+		        PQerrorMessage(conn));
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_DB_QUERY);
+	}
+	if (PQntuples(res) == 0)
+	{
+		PQclear(res);
+		return false;
+	}
+	PQclear(res);
+
+	return true;
+}
+
 
 const char *
 get_cluster_size(PGconn *conn)
