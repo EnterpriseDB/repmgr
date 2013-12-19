@@ -1,4 +1,11 @@
-2.0beta 2012-07-27
+2.0beta2 2013-12-19
+        Improve autofailover logic and algorithms (Jaime, Andres)
+        Ignore pg_log when cloning (Jaime)
+        Add timestamps to log line in stderr (Christian)
+        Correctly check wal_keep_segments (Jay Taylor)
+        Add a ssh_options parameter (Jay Taylor)
+
+2.0beta1 2012-07-27
         Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
         Add detection of master failure (Jaime)
         Add the notion of a witness server (Jaime)
