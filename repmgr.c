@@ -767,7 +767,7 @@ do_standby_clone(void)
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	int			r = 0;
+	int			r = 0, retval = 0;
 	int			i;
 	bool		flag_success = false;
 	bool		test_mode = false;
@@ -1036,6 +1036,8 @@ do_standby_clone(void)
 	{
 		log_err(_("%s: couldn't use directory %s ...\nUse --force option to force\n"),
 		        progname, local_data_directory);
+		r = ERR_BAD_CONFIG;
+		retval = ERR_BAD_CONFIG;
 		goto stop_backup;
 	}
 
@@ -1175,7 +1177,7 @@ stop_backup:
 		log_err(_("Can't stop backup: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		exit(ERR_STOP_BACKUP);
+		exit(retval == 0 ? ERR_STOP_BACKUP : retval);
 	}
 	last_wal_segment = PQgetvalue(res, 0, 0);
 
