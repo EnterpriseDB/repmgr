@@ -256,7 +256,7 @@ create_pgdir(char *dir, bool force)
 		{
 			log_err(_("couldn't create directory \"%s\"...\n"),
 			        dir);
-			exit(ERR_BAD_CONFIG);
+			return false;
 		}
 		break;
 	case 1:
@@ -268,7 +268,7 @@ create_pgdir(char *dir, bool force)
 		{
 			log_err(_("could not change permissions of directory \"%s\": %s\n"),
 			        dir, strerror(errno));
-			exit(ERR_BAD_CONFIG);
+			return false;
 		}
 		break;
 	case 2:
@@ -293,7 +293,7 @@ create_pgdir(char *dir, bool force)
 			              "If you are sure you want to clone here, "
 			              "please check there is no PostgreSQL server "
 			              "running and use the --force option\n"));
-			exit(ERR_BAD_CONFIG);
+			return false;
 		}
 
 		return false;
@@ -301,7 +301,7 @@ create_pgdir(char *dir, bool force)
 		/* Trouble accessing directory */
 		log_err(_("could not access directory \"%s\": %s\n"),
 		        dir, strerror(errno));
-		exit(ERR_BAD_CONFIG);
+		return false;
 	}
 	return true;
 }
