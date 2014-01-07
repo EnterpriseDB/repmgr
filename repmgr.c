@@ -1500,14 +1500,6 @@ do_witness_create(void)
 
 	char		master_hba_file[MAXLEN];
 
-	/* Check this directory could be used as a PGDATA dir */
-	if (!create_pgdir(runtime_options.dest_dir, runtime_options.force))
-	{
-		log_err(_("witness create: couldn't create data directory (\"%s\") for witness"),
-		        runtime_options.dest_dir);
-		exit(ERR_BAD_CONFIG);
-	}
-
 	/* Connection parameters for master only */
 	keywords[0] = "host";
 	values[0] = runtime_options.host;
@@ -1548,6 +1540,15 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_BAD_SSH);
 	}
+
+	/* Check this directory could be used as a PGDATA dir */
+	if (!create_pgdir(runtime_options.dest_dir, runtime_options.force))
+	{
+		log_err(_("witness create: couldn't create data directory (\"%s\") for witness"),
+		        runtime_options.dest_dir);
+		exit(ERR_BAD_CONFIG);
+	}
+
 
 	/*
 	 * To create a witness server we need to:
