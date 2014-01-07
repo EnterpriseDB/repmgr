@@ -237,7 +237,7 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 		return false;
 	}
 
-	if (new_options.node_name != orig_options->node_name)
+	if (strcmp(new_options.node_name, orig_options->node_name) != 0)
 	{
 		log_warning(_("\nCannot change standby name, will keep current configuration.\n"));
 		return false;
