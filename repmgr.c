@@ -743,7 +743,8 @@ do_standby_register(void)
 	                  options.conninfo, options.priority);
 	log_debug(_("standby register: %s\n"), sqlquery);
 
-	if (!PQexec(master_conn, sqlquery))
+	res = PQexec(master_conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot insert node details, %s\n"),
 		        PQerrorMessage(master_conn));
