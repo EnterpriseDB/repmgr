@@ -565,6 +565,22 @@ do_master_register(void)
 		PGconn *master_conn;
 		int		id;
 
+		if (runtime_options.force)
+		{
+			sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_nodes "
+							  " WHERE id = %d",
+							  repmgr_schema, options.node);
+			log_debug(_("master register: %s\n"), sqlquery);
+
+			if (!PQexec(conn, sqlquery))
+			{
+				log_warning(_("Cannot delete node details, %s\n"),
+							PQerrorMessage(conn));
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+
 		/* Ensure there isn't any other master already registered */
 		master_conn = getMasterConnection(conn, repmgr_schema,
 		                                  options.cluster_name, &id,NULL);
@@ -577,21 +593,6 @@ do_master_register(void)
 	}
 
 	/* Now register the master */
-	if (runtime_options.force)
-	{
-		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_nodes "
-		                  " WHERE id = %d",
-		                  repmgr_schema, options.node);
-		log_debug(_("master register: %s\n"), sqlquery);
-
-		if (!PQexec(conn, sqlquery))
-		{
-			log_warning(_("Cannot delete node details, %s\n"),
-			            PQerrorMessage(conn));
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
 	                  "VALUES (%d, '%s', '%s', '%s', %d)",
