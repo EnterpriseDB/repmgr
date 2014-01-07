@@ -228,11 +228,11 @@ main(int argc, char **argv)
 
 	/*
 	 * MAIN LOOP
-	 * This loops cicles once per failover and at startup	
+	 * This loops cicles once per failover and at startup
 	 * Requisites:
 	 *   - myLocalConn needs to be already setted with an active connection
 	 *   - no master connection
- 	 */ 
+ 	 */
 	do
 	{
 		/*
@@ -245,17 +245,17 @@ main(int argc, char **argv)
 			myLocalMode = STANDBY_MODE;
 		else /* is the master */
 			myLocalMode = PRIMARY_MODE;
-	
+
 		switch (myLocalMode)
 		{
 			case PRIMARY_MODE:
 				primary_options.node = local_options.node;
 				strncpy(primary_options.conninfo, local_options.conninfo, MAXLEN);
 				primaryConn = myLocalConn;
-		
+
 				checkClusterConfiguration(myLocalConn, primaryConn);
 				checkNodeConfiguration(local_options.conninfo);
-		
+
 				if (reload_configuration(config_file, &local_options))
 				{
 					PQfinish(myLocalConn);
@@ -263,11 +263,11 @@ main(int argc, char **argv)
 					primaryConn = myLocalConn;
 					update_registration();
 				}
-	
+
 				log_info(_("%s Starting continuous primary connection check\n"), progname);
-	
+
 				/* Check that primary is still alive, and standbies are sending info */
-	
+
 				/*
 				 * Every SLEEP_MONITOR seconds, do master checks
 				 * XXX
@@ -290,7 +290,7 @@ main(int argc, char **argv)
 						 */
 						exit(1);
 					}
-	
+
 					if (got_SIGHUP)
 					{
 						/* if we can reload, then could need to change myLocalConn */
@@ -328,7 +328,7 @@ main(int argc, char **argv)
 					myLocalConn = establishDBConnection(local_options.conninfo, true);
 					update_registration();
 				}
-	
+
 				/*
 				 * Every SLEEP_MONITOR seconds, do checks
 				 */
@@ -340,7 +340,7 @@ main(int argc, char **argv)
 				{
 					log_info(_("%s Starting continuous standby node monitoring\n"), progname);
 				}
-	
+
 				do
 				{
 					if (myLocalMode == WITNESS_MODE)
@@ -348,7 +348,7 @@ main(int argc, char **argv)
 					else if (myLocalMode == STANDBY_MODE)
 						StandbyMonitor();
 					sleep(SLEEP_MONITOR);
-	
+
 					if (got_SIGHUP)
 					{
 						/* if we can reload, then could need to change myLocalConn */
@@ -674,7 +674,7 @@ do_failover(void)
 		nodes[i].is_ready = false;
 		XLAssignValue(nodes[i].xlog_location, 0, 0);
 
-		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s\n"), 
+		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s\n"),
 					progname, nodes[i].nodeId, nodes[i].conninfostr, (nodes[i].is_witness) ? "true" : "false");
 
 		nodeConn = establishDBConnection(nodes[i].conninfostr, false);
@@ -702,7 +702,7 @@ do_failover(void)
 		exit(ERR_FAILOVER_FAIL);
 	}
 
-	/* Query all the nodes to determine which ones are ready */ 
+	/* Query all the nodes to determine which ones are ready */
 	for (i = 0; i < total_nodes; i++)
 	{
 		/* if the node is not visible, skip it */
@@ -713,9 +713,9 @@ do_failover(void)
 			continue;
 
 		nodeConn = establishDBConnection(nodes[i].conninfostr, false);
-		/* XXX 
+		/* XXX
 		 * This shouldn't happen, if this happens it means this is a major problem
-		 * maybe network outages? anyway, is better for a human to react 
+		 * maybe network outages? anyway, is better for a human to react
 		 */
 		if (PQstatus(nodeConn) != CONNECTION_OK)
 		{
@@ -737,7 +737,7 @@ do_failover(void)
 		if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
 			log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res, 0, 0));
 
-		log_debug("XLog position of node %d: log id=%u (%X), offset=%u (%X)\n", 
+		log_debug("XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
 					nodes[i].nodeId, uxlogid, uxlogid, uxrecoff, uxrecoff);
 
 		/* If position is 0/0, error */
@@ -766,7 +766,7 @@ do_failover(void)
 		sprintf(last_wal_standby_applied, "'%X/%X'", 0, 0);
 		update_shared_memory(last_wal_standby_applied);
 		exit(ERR_DB_QUERY);
-	}	
+	}
 
 	/* write last location in shared memory */
 	update_shared_memory(PQgetvalue(res, 0, 0));
@@ -776,8 +776,8 @@ do_failover(void)
 	{
 		while (!nodes[i].is_ready)
 		{
-			/* 
-        	 * the witness will always be masked as ready if it's still 
+			/*
+        	 * the witness will always be masked as ready if it's still
         	 * not marked that way and avoid a useless query
         	 */
 			if (nodes[i].is_witness)
@@ -785,7 +785,7 @@ do_failover(void)
 				if (!nodes[i].is_ready)
 				{
 					nodes[i].is_ready = true;
-					ready_nodes++;	
+					ready_nodes++;
 				}
 				break;
 			}
@@ -799,9 +799,9 @@ do_failover(void)
 				break;
 
             nodeConn = establishDBConnection(nodes[i].conninfostr, false);
-            /* XXX 
+            /* XXX
              * This shouldn't happen, if this happens it means this is a major problem
-             * maybe network outages? anyway, is better for a human to react 
+             * maybe network outages? anyway, is better for a human to react
              */
             if (PQstatus(nodeConn) != CONNECTION_OK)
             {
@@ -837,10 +837,10 @@ do_failover(void)
 			}
 
             log_debug("Last XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
-                        nodes[i].nodeId, uxlogid,  uxlogid, 
+                        nodes[i].nodeId, uxlogid,  uxlogid,
 										 uxrecoff, uxrecoff);
 
-			ready_nodes++;	
+			ready_nodes++;
 			nodes[i].is_ready = true;
 		}
 	}
