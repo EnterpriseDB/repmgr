@@ -150,11 +150,13 @@ main(int argc, char **argv)
 		{"config", required_argument, NULL, 'f'},
 		{"verbose", no_argument, NULL, 'v'},
 		{"monitoring-history", no_argument, NULL, 'm'},
+		{"daemonize", no_argument, NULL, 'd'},
 		{NULL, 0, NULL, 0}
 	};
 
 	int			optindex;
 	int			c;
+	bool		daemonize = false;
 
 	char standby_version[MAXVERSIONSTR];
 
@@ -174,7 +176,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "f:v:m", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "f:v:md", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -187,9 +189,36 @@ main(int argc, char **argv)
 		case 'm':
 			monitoring_history = true;
 			break;
+		case 'd':
+			daemonize = true;
+			break;
 		default:
 			usage();
 			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	if (daemonize)
+	{
+		pid_t pid = fork();
+		switch (pid)
+		{
+		case -1:
+			log_err("Error in fork(): %s\n", strerror(errno));
+			exit(ERR_SYS_FAILURE);
+			break;
+
+		case 0: // child process
+			pid = setsid();
+			if (pid == (pid_t)-1)
+			{
+				log_err("Error in setsid(): %s\n", strerror(errno));
+				exit(ERR_SYS_FAILURE);
+			}
+			break;
+
+		default: // parent process
+			exit(0);
 		}
 	}
 
@@ -1116,6 +1145,7 @@ void help(const char *progname)
 	printf(_("  --verbose                 output verbose activity information\n"));
 	printf(_("  --monitoring-history      track advance or lag of the replication in every standby in repl_monitor\n"));
 	printf(_("  -f, --config_file=PATH    configuration file\n"));
+	printf(_("  -d, --daemonize           detach process from foreground\n"));
 	printf(_("\n%s monitors a cluster of servers.\n"), progname);
 }
 
