@@ -221,49 +221,49 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 	parse_config(config_file, &new_options);
 	if (new_options.node == -1)
 	{
-		log_warning(_("\nCannot load new configuration, will keep current one.\n"));
+		log_warning(_("Cannot load new configuration, will keep current one.\n"));
 		return false;
 	}
 
 	if (strcmp(new_options.cluster_name, orig_options->cluster_name) != 0)
 	{
-		log_warning(_("\nCannot change cluster name, will keep current configuration.\n"));
+		log_warning(_("Cannot change cluster name, will keep current configuration.\n"));
 		return false;
 	}
 
 	if (new_options.node != orig_options->node)
 	{
-		log_warning(_("\nCannot change node number, will keep current configuration.\n"));
+		log_warning(_("Cannot change node number, will keep current configuration.\n"));
 		return false;
 	}
 
 	if (strcmp(new_options.node_name, orig_options->node_name) != 0)
 	{
-		log_warning(_("\nCannot change standby name, will keep current configuration.\n"));
+		log_warning(_("Cannot change standby name, will keep current configuration.\n"));
 		return false;
 	}
 
 	if (new_options.failover != MANUAL_FAILOVER && new_options.failover != AUTOMATIC_FAILOVER)
 	{
-		log_warning(_("\nNew value for failover is not valid. Should be MANUAL or AUTOMATIC.\n"));
+		log_warning(_("New value for failover is not valid. Should be MANUAL or AUTOMATIC.\n"));
 		return false;
 	}
 
 	if (new_options.master_response_timeout <= 0)
 	{
-		log_warning(_("\nNew value for master_response_timeout is not valid. Should be greater than zero.\n"));
+		log_warning(_("New value for master_response_timeout is not valid. Should be greater than zero.\n"));
 		return false;
 	}
 
 	if (new_options.reconnect_attempts < 0)
 	{
-		log_warning(_("\nNew value for reconnect_attempts is not valid. Should be greater or equal than zero.\n"));
+		log_warning(_("New value for reconnect_attempts is not valid. Should be greater or equal than zero.\n"));
 		return false;
 	}
 
 	if (new_options.reconnect_intvl < 0)
 	{
-		log_warning(_("\nNew value for reconnect_interval is not valid. Should be greater or equal than zero.\n"));
+		log_warning(_("New value for reconnect_interval is not valid. Should be greater or equal than zero.\n"));
 		return false;
 	}
 
@@ -271,7 +271,7 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 	conn = establishDBConnection(new_options.conninfo, false);
 	if (!conn || (PQstatus(conn) != CONNECTION_OK))
 	{
-		log_warning(_("\nconninfo string is not valid, will keep current configuration.\n"));
+		log_warning(_("conninfo string is not valid, will keep current configuration.\n"));
 		return false;
 	}
 	PQfinish(conn);
