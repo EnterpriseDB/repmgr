@@ -42,6 +42,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
+	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
+	memset(options->pgctl_options, 0, sizeof(options->pgctl_options));
 
 	/* if nothing has been provided defaults to 60 */
 	options->master_response_timeout = 60;
@@ -114,6 +116,10 @@ parse_config(const char *config_file, t_configuration_options *options)
 			options->reconnect_attempts = atoi(value);
 		else if (strcmp(name, "reconnect_interval") == 0)
 			options->reconnect_intvl = atoi(value);
+		else if (strcmp(name, "pg_bindir") == 0)
+			strncpy (options->pg_bindir, value, MAXLEN);
+		else if (strcmp(name, "pg_ctl_options") == 0)
+			strncpy (options->pgctl_options, value, MAXLEN);
 		else
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}
@@ -149,6 +155,12 @@ parse_config(const char *config_file, t_configuration_options *options)
 	if (options->reconnect_intvl <= 0)
 	{
 		log_err(_("Reconnect intervals must be zero or greater. Check the configuration file.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (*options->pg_bindir == '\0')
+	{
+		log_err(_("pg_bindir config value not found. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 }

@@ -40,6 +40,8 @@ typedef struct
 	int  master_response_timeout;
 	int  reconnect_attempts;
 	int  reconnect_intvl;
+	char pg_bindir[MAXLEN];
+	char pgctl_options[MAXLEN];
 } t_configuration_options;
 
 void parse_config(const char *config_file, t_configuration_options *options);

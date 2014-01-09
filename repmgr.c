@@ -86,7 +86,7 @@ bool require_password = false;
 
 /* Initialization of runtime options */
 t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 };
-t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1 };
+t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "" };
 
 static char		*server_mode = NULL;
 static char		*server_cmd = NULL;
@@ -1317,13 +1317,12 @@ do_standby_promote(void)
 	rename(recovery_file_path, recovery_done_path);
 
 	/*
-	 * We assume the pg_ctl script is in the PATH.  Restart and wait for
-	 * the server to finish starting, so that the check below will
-	 * find an active server rather than one starting up.  This may
+	 * Restart and wait for the server to finish starting, so that the check
+	 * below will find an active server rather than one starting up.  This may
 	 * hang for up the default timeout (60 seconds).
 	 */
-	log_notice(_("%s: restarting server using pg_ctl\n"), progname);
-	maxlen_snprintf(script, "pg_ctl -D %s -w -m fast restart", data_dir);
+	log_notice(_("%s: restarting server using %s/pg_ctl\n"), progname, options.pg_bindir);
+	maxlen_snprintf(script, "%s/pg_ctl %s -D %s -w -m fast restart", options.pg_bindir, options.pgctl_options, data_dir);
 	r = system(script);
 	if (r != 0)
 	{
@@ -1468,8 +1467,7 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
-	/* We assume the pg_ctl script is in the PATH */
-	maxlen_snprintf(script, "pg_ctl -w -D %s -m fast restart", data_dir);
+	maxlen_snprintf(script, "%s/pg_ctl %s -w -D %s -m fast restart", options.pg_bindir, options.pgctl_options, data_dir);
 	r = system(script);
 	if (r != 0)
 	{
@@ -1558,8 +1556,7 @@ do_witness_create(void)
 	 */
 
 	/* Create the cluster for witness */
-	/* We assume the pg_ctl script is in the PATH */
-	sprintf(script, "pg_ctl -D %s init -o \"-W\"", runtime_options.dest_dir);
+	sprintf(script, "%s/pg_ctl %s -D %s init -o \"-W\"", options.pg_bindir, options.pgctl_options, runtime_options.dest_dir);
 	log_info("Initialize cluster for witness: %s.\n", script);
 
 	r = system(script);
@@ -1632,7 +1629,7 @@ do_witness_create(void)
 	}
 
 	/* start new instance */
-	sprintf(script, "pg_ctl -w -D %s start", runtime_options.dest_dir);
+	sprintf(script, "%s/pg_ctl %s -w -D %s start", options.pg_bindir, options.pgctl_options, runtime_options.dest_dir);
 	log_info(_("Start cluster for witness: %s"), script);
 	r = system(script);
 	if (r != 0)
