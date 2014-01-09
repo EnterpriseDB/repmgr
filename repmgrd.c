@@ -131,7 +131,10 @@ static volatile sig_atomic_t got_SIGHUP = false;
 
 static void handle_sighup(SIGNAL_ARGS);
 static void handle_sigint(SIGNAL_ARGS);
+
+#ifndef WIN32
 static void setup_event_handlers(void);
+#endif
 
 #define CloseConnections()	\
 	if (PQisBusy(primaryConn) == 1) \
@@ -222,7 +225,9 @@ main(int argc, char **argv)
 		}
 	}
 
+	#ifndef WIN32
 	setup_event_handlers();
+	#endif
 
 	/*
 	 * Read the configuration file: repmgr.conf
