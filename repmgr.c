@@ -85,8 +85,8 @@ bool need_a_node = true;
 bool require_password = false;
 
 /* Initialization of runtime options */
-t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 };
-t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "" };
+t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
+t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static char		*server_mode = NULL;
 static char		*server_cmd = NULL;

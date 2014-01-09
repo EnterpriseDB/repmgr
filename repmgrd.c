@@ -112,7 +112,7 @@ char	*pid_file = NULL;
  * should initialize with {0} to be ANSI complaint ? but this raises
  * error with gcc -Wall
  */
-t_configuration_options config = {};
+t_configuration_options config = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static void help(const char* progname);
 static void usage(void);
@@ -220,7 +220,7 @@ main(int argc, char **argv)
 			exit(ERR_SYS_FAILURE);
 			break;
 
-		case 0: // child process
+		case 0: /* child process */
 			pid = setsid();
 			if (pid == (pid_t)-1)
 			{
@@ -229,7 +229,7 @@ main(int argc, char **argv)
 			}
 			break;
 
-		default: // parent process
+		default: /* parent process */
 			exit(0);
 		}
 	}
@@ -461,7 +461,7 @@ WitnessMonitor(void)
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, return false.
 	 */
-	CheckPrimaryConnection(); // this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds
+	CheckPrimaryConnection(); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
@@ -546,7 +546,7 @@ StandbyMonitor(void)
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, try to get a new master.
 	 */
-	CheckPrimaryConnection(); // this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds
+	CheckPrimaryConnection(); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{

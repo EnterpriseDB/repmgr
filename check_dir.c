@@ -225,12 +225,12 @@ is_pg_dir(char *dir)
 	struct stat	 sb;
 	int		r;
 
-	// test pgdata
+	/* test pgdata */
 	xsnprintf(path, buf_sz, "%s/PG_VERSION", dir);
 	if (stat(path, &sb) == 0)
 		return true;
 
-	// test tablespace dir
+	/* test tablespace dir */
 	sprintf(path, "ls %s/PG_*/ -I*", dir);
 	r = system(path);
 	if (r == 0)

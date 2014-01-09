@@ -138,7 +138,7 @@ is_pgup(PGconn *conn, int timeout)
 		{
 			if (twice)
 				return false;
-			PQreset(conn);  // reconnect
+			PQreset(conn);  /* reconnect */
 			twice = true;
 		}
 		else
@@ -164,10 +164,10 @@ is_pgup(PGconn *conn, int timeout)
 			break;
 
 failed:
-			// we need to retry, because we might just have loose the connection once
+			/* we need to retry, because we might just have loose the connection once */
 			if (twice)
 				return false;
-			PQreset(conn);  // reconnect
+			PQreset(conn);  /* reconnect */
 			twice = true;
 		}
 	}
