@@ -769,7 +769,7 @@ do_standby_clone(void)
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	int			r = 0, retval = 0;
+	int			r = 0, retval = SUCCESS;
 	int			i;
 	bool		flag_success = false;
 	bool		test_mode = false;
@@ -1179,7 +1179,7 @@ stop_backup:
 		log_err(_("Can't stop backup: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		exit(retval == 0 ? ERR_STOP_BACKUP : retval);
+		exit(retval);
 	}
 	last_wal_segment = PQgetvalue(res, 0, 0);
 
