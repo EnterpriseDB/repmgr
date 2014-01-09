@@ -22,6 +22,9 @@
 
 #include <signal.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -103,6 +106,8 @@ char	repmgr_schema[MAXLEN];
 
 bool	failover_done = false;
 
+char	*pid_file = NULL;
+
 /*
  * should initialize with {0} to be ANSI complaint ? but this raises
  * error with gcc -Wall
@@ -154,6 +159,7 @@ main(int argc, char **argv)
 		{"verbose", no_argument, NULL, 'v'},
 		{"monitoring-history", no_argument, NULL, 'm'},
 		{"daemonize", no_argument, NULL, 'd'},
+		{"pid-file", required_argument, NULL, 'p'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -179,7 +185,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "f:v:md", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "f:v:mdp:", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -194,6 +200,9 @@ main(int argc, char **argv)
 			break;
 		case 'd':
 			daemonize = true;
+			break;
+		case 'p':
+			pid_file = optarg;
 			break;
 		default:
 			usage();
@@ -223,6 +232,28 @@ main(int argc, char **argv)
 		default: // parent process
 			exit(0);
 		}
+	}
+
+	if (pid_file)
+	{
+		struct stat st;
+		FILE *fd;
+
+		if (stat(pid_file, &st) != -1)
+		{
+			log_err("PID file %s exists. If repmgrd is no longer alive remove the file and restart repmgrd.\n", pid_file);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		fd = fopen(pid_file, "w");
+		if (fd == NULL)
+		{
+			log_err("Could not open PID file %s!\n", pid_file);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		fprintf(fd, "%d", getpid());
+		fclose(fd);
 	}
 
 	#ifndef WIN32
@@ -1151,6 +1182,7 @@ void help(const char *progname)
 	printf(_("  --monitoring-history      track advance or lag of the replication in every standby in repl_monitor\n"));
 	printf(_("  -f, --config_file=PATH    configuration file\n"));
 	printf(_("  -d, --daemonize           detach process from foreground\n"));
+	printf(_("  -p, --pid-file=PATH       write a PID file\n"));
 	printf(_("\n%s monitors a cluster of servers.\n"), progname);
 }
 
@@ -1161,6 +1193,12 @@ handle_sigint(SIGNAL_ARGS)
 {
 	CloseConnections();
 	logger_shutdown();
+
+	if (pid_file)
+	{
+		remove(pid_file);
+	}
+
 	exit(1);
 }
 
@@ -1176,6 +1214,7 @@ setup_event_handlers(void)
 {
 	pqsignal(SIGHUP, handle_sighup);
 	pqsignal(SIGINT, handle_sigint);
+	pqsignal(SIGTERM, handle_sigint);
 }
 #endif
 
