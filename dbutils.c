@@ -440,7 +440,7 @@ wait_connection_availability(PGconn *conn, int timeout)
 	{
 		if (PQconsumeInput(conn) == 0)
 		{
-			log_warning(_("wait_connection_availability: could not receive data from master. %s\n"),
+			log_warning(_("wait_connection_availability: could not receive data from connection. %s\n"),
 			            PQerrorMessage(conn));
 			return 0;
 		}

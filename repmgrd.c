@@ -122,7 +122,7 @@ static void checkNodeConfiguration(char *conninfo);
 
 static void StandbyMonitor(void);
 static void WitnessMonitor(void);
-static bool CheckPrimaryConnection(void);
+static bool CheckConnection(PGconn *conn, const char *type);
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
 static void do_failover(void);
@@ -348,7 +348,7 @@ main(int argc, char **argv)
 				 */
 				do
 				{
-					if (CheckPrimaryConnection())
+					if (CheckConnection(primaryConn, "master"))
 					{
 						/*
 							CheckActiveStandbiesConnections();
@@ -469,7 +469,7 @@ WitnessMonitor(void)
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, return false.
 	 */
-	CheckPrimaryConnection(); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
+	CheckConnection(primaryConn, "master"); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
@@ -548,13 +548,15 @@ StandbyMonitor(void)
 	unsigned long long int lsn_standby_received;
 	unsigned long long int lsn_standby_applied;
 
-	int	connection_retries;
+	int	connection_retries, ret;
+	bool did_retry = false;
 
 	/*
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, try to get a new master.
 	 */
-	CheckPrimaryConnection(); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
+	CheckConnection(primaryConn, "master"); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
+	CheckConnection(myLocalConn, "standby");
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
@@ -597,11 +599,28 @@ StandbyMonitor(void)
 	}
 
 	/* Check if we still are a standby, we could have been promoted */
-	if (!is_standby(myLocalConn))
+	do {
+		ret = is_standby(myLocalConn);
+
+		switch (ret)
+		{
+		case 0:
+			log_err(_("It seems like we have been promoted, so exit from monitoring...\n"));
+			CloseConnections();
+			handle_sigint(0);
+			break;
+
+		case -1:
+			log_err(_("Standby node disappeared, trying to reconnect...\n"));
+			did_retry = true;
+			CheckConnection(myLocalConn, "standby");
+			break;
+		}
+	} while(ret == -1);
+
+	if (did_retry)
 	{
-		log_err(_("It seems like we have been promoted, so exit from monitoring...\n"));
-		CloseConnections();
-		exit(ERR_PROMOTED);
+		log_info(_("standby connection got back up again!\n"));
 	}
 
 	/* Fast path for the case where no history is requested */
@@ -1020,7 +1039,7 @@ do_failover(void)
 
 
 static bool
-CheckPrimaryConnection(void)
+CheckConnection(PGconn *conn, const char *type)
 {
 	int	connection_retries;
 
@@ -1032,10 +1051,11 @@ CheckPrimaryConnection(void)
 	 */
 	for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 	{
-		if (!is_pgup(primaryConn, local_options.master_response_timeout))
+		if (!is_pgup(conn, local_options.master_response_timeout))
 		{
-			log_warning(_("%s: Connection to master has been lost, trying to recover... %i seconds before failover decision\n"),
+			log_warning(_("%s: Connection to %s has been lost, trying to recover... %i seconds before failover decision\n"),
 			            progname,
+						type,
 			            (local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
 			/* wait local_options.reconnect_intvl seconds between retries */
 			sleep(local_options.reconnect_intvl);
@@ -1044,12 +1064,12 @@ CheckPrimaryConnection(void)
 		{
 			if ( connection_retries > 0)
 			{
-				log_info(_("%s: Connection to master has been restored.\n"), progname);
+				log_info(_("%s: Connection to %s has been restored.\n"), progname, type);
 			}
 			return true;
 		}
 	}
-	if (!is_pgup(primaryConn, local_options.master_response_timeout))
+	if (!is_pgup(conn, local_options.master_response_timeout))
 	{
 		log_err(_("%s: We couldn't reconnect for long enough, exiting...\n"), progname);
 		/* XXX Anything else to do here? */
