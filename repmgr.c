@@ -491,6 +491,7 @@ do_master_register(void)
 	bool		schema_exists = false;
 	char		schema_quoted[MAXLEN];
 	char 		master_version[MAXVERSIONSTR];
+	int 		ret;
 
 	conn = establishDBConnection(options.conninfo, true);
 
@@ -506,9 +507,13 @@ do_master_register(void)
 
 	/* Check we are a master */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	if (is_standby(conn))
+	ret = is_standby(conn);
+
+	if (ret)
 	{
-		log_err(_("Trying to register a standby node as a master\n"));
+		log_err(_(ret == 1 ? "Trying to register a standby node as a master\n" :
+				  "Connection to node lost!\n"));
+
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -620,7 +625,7 @@ do_standby_register(void)
 {
 	PGconn		*conn;
 	PGconn		*master_conn;
-	int			master_id;
+	int			master_id, ret;
 
 	PGresult	*res;
 	char 		sqlquery[QUERY_STR_LEN];
@@ -645,9 +650,12 @@ do_standby_register(void)
 	}
 
 	/* Check we are a standby */
-	if (!is_standby(conn))
+	ret = is_standby(conn);
+	if (ret == 0 || ret == -1)
 	{
-		log_err(_("repmgr: This node should be a standby (%s)\n"), options.conninfo);
+		log_err(_(ret == 0 ? "repmgr: This node should be a standby (%s)\n" :
+				  "repmgr: connection to node (%s) lost\n"), options.conninfo);
+
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -770,7 +778,7 @@ do_standby_clone(void)
 	char		sqlquery[QUERY_STR_LEN];
 
 	int			r = 0, retval = SUCCESS;
-	int			i;
+	int			i, is_standby_retval;
 	bool		flag_success = false;
 	bool		test_mode = false;
 
@@ -830,10 +838,13 @@ do_standby_clone(void)
 	}
 
 	/* Check we are cloning a primary node */
-	if (is_standby(conn))
+	is_standby_retval = is_standby(conn);
+	if (is_standby_retval)
 	{
+		log_err(_(is_standby_retval == 1 ? "The command should clone a primary node\n" :
+				  "Connection to node lost!\n"));
+
 		PQfinish(conn);
-		log_err(_("\nThe command should clone a primary node\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1253,7 +1264,7 @@ do_standby_promote(void)
 	PGconn		*old_master_conn;
 	int			old_master_id;
 
-	int			r;
+	int			r, retval;
 	char		data_dir[MAXLEN];
 	char		recovery_file_path[MAXFILENAME];
 	char		recovery_done_path[MAXFILENAME];
@@ -1275,9 +1286,12 @@ do_standby_promote(void)
 	}
 
 	/* Check we are in a standby node */
-	if (!is_standby(conn))
+	retval = is_standby(conn);
+	if (retval == 0 || retval == -1)
 	{
-		log_err(_("%s: The command should be executed on a standby node\n"), progname);
+		log_err(_(retval == 0 ? "%s: The command should be executed on a standby node\n" :
+				  "%s: connection to node lost!\n"), progname);
+
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1333,9 +1347,11 @@ do_standby_promote(void)
 	/* reconnect to check we got promoted */
 	log_info(_("%s connecting to now restarted database\n"), progname);
 	conn = establishDBConnection(options.conninfo, true);
-	if (is_standby(conn))
+	retval = is_standby(conn);
+	if (retval)
 	{
-		log_err(_("\n%s: STANDBY PROMOTE failed, this is still a standby node.\n"), progname);
+		log_err(_(retval == 1 ? "%s: STANDBY PROMOTE failed, this is still a standby node.\n" :
+				  "%s: connection to node lost!\n"), progname);
 	}
 	else
 	{
@@ -1357,7 +1373,7 @@ do_standby_follow(void)
 	PGconn		*master_conn;
 	int			master_id;
 
-	int			r;
+	int			r, retval;
 	char		data_dir[MAXLEN];
 
 	char	master_version[MAXVERSIONSTR];
@@ -1369,9 +1385,12 @@ do_standby_follow(void)
 
 	/* Check we are in a standby node */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
-	if (!is_standby(conn))
+	retval = is_standby(conn);
+	if (retval == 0 || retval == -1)
 	{
-		log_err(_("\n%s: The command should be executed in a standby node\n"), progname);
+		log_err(_(retval == 0 ? "%s: The command should be executed in a standby node\n" :
+				  "%s: connection to node lost!\n"), progname);
+
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1406,9 +1425,12 @@ do_standby_follow(void)
 	}
 
 	/* Check we are going to point to a master */
-	if (is_standby(master_conn))
+	retval = is_standby(master_conn);
+	if (retval)
 	{
-		log_err(_("%s: The node to follow should be a master\n"), progname);
+		log_err(_(retval == 1 ? "%s: The node to follow should be a master\n" :
+				  "%s: connection to node lost!\n"), progname);
+
 		PQfinish(conn);
 		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
@@ -1491,7 +1513,7 @@ do_witness_create(void)
 	char		buf[MAXLEN];
 	FILE		*pg_conf = NULL;
 
-	int			r = 0;
+	int			r = 0, retval;
 	int			i;
 
 	char		master_version[MAXVERSIONSTR];
@@ -1522,9 +1544,12 @@ do_witness_create(void)
 	}
 
 	/* Check we are connecting to a primary node */
-	if (is_standby(masterconn))
+	retval = is_standby(masterconn);
+	if (retval)
 	{
-		log_err(_("The command should not run on a standby node\n"));
+		log_err(_(retval == 1 ? "The command should not run on a standby node\n" :
+				  "Connection to node lost!\n"));
+
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}

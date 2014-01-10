@@ -71,25 +71,22 @@ establishDBConnectionByParams(const char *keywords[], const char *values[],const
 	return conn;
 }
 
-bool
+int
 is_standby(PGconn *conn)
 {
 	PGresult   *res;
-	bool		result = false;
+	int			result = 0;
 
 	res = PQexec(conn, "SELECT pg_is_in_recovery()");
 
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("Can't query server mode: %s"),
 		        PQerrorMessage(conn));
-		PQclear(res);
-		PQfinish(conn);
-		exit(ERR_DB_QUERY);
+		result = -1;
 	}
-
-	if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
-		result = true;
+	else if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
+		result = 1;
 
 	PQclear(res);
 	return result;

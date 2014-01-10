@@ -165,7 +165,7 @@ main(int argc, char **argv)
 	};
 
 	int			optindex;
-	int			c;
+	int			c, ret;
 	bool		daemonize = false;
 
 	char standby_version[MAXVERSIONSTR];
@@ -301,14 +301,21 @@ main(int argc, char **argv)
  	 */
 	do
 	{
+		ret = is_standby(myLocalConn);
+
 		/*
 		 * Set my server mode, establish a connection to primary
 		 * and start monitor
 		 */
 		if (is_witness(myLocalConn, repmgr_schema, local_options.cluster_name, local_options.node))
 			myLocalMode = WITNESS_MODE;
-		else if (is_standby(myLocalConn))
+		else if (ret == 1)
 			myLocalMode = STANDBY_MODE;
+        /* XXX we did this before changing is_standby() to return int; we
+		 * should not exit at this point, but for now we do until we have a
+		 * better strategy */
+		else if (ret == -1)
+			exit(1);
 		else /* is the master */
 			myLocalMode = PRIMARY_MODE;
 
