@@ -556,7 +556,11 @@ StandbyMonitor(void)
 	 * we cannot reconnect, try to get a new master.
 	 */
 	CheckConnection(primaryConn, "master"); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
-	CheckConnection(myLocalConn, "standby");
+
+	if (!CheckConnection(myLocalConn, "standby"))
+	{
+		handle_sigint(0);
+	}
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
@@ -613,7 +617,12 @@ StandbyMonitor(void)
 		case -1:
 			log_err(_("Standby node disappeared, trying to reconnect...\n"));
 			did_retry = true;
-			CheckConnection(myLocalConn, "standby");
+
+			if (!CheckConnection(myLocalConn, "standby"))
+			{
+				handle_sigint(0);
+			}
+
 			break;
 		}
 	} while(ret == -1);
