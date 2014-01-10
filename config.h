@@ -36,10 +36,15 @@ typedef struct
 	char loglevel[MAXLEN];
 	char logfacility[MAXLEN];
 	char rsync_options[QUERY_STR_LEN];
+	char ssh_options[QUERY_STR_LEN];
 	int  master_response_timeout;
 	int  reconnect_attempts;
 	int  reconnect_intvl;
+	char pg_bindir[MAXLEN];
+	char pgctl_options[MAXLEN];
 } t_configuration_options;
+
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "" }
 
 void parse_config(const char *config_file, t_configuration_options *options);
 void parse_line(char *buff, char *name, char *value);

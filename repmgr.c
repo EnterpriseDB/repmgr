@@ -85,8 +85,8 @@ bool need_a_node = true;
 bool require_password = false;
 
 /* Initialization of runtime options */
-t_runtime_options runtime_options = { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 };
-t_configuration_options options = { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", -1 };
+t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
+t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static char		*server_mode = NULL;
 static char		*server_cmd = NULL;
@@ -396,7 +396,7 @@ do_cluster_show(void)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Cannot get node information, have you registered them?\n%s\n"), PQerrorMessage(conn));
+		log_err(_("Can't get nodes information, have you registered them?\n%s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
@@ -565,6 +565,22 @@ do_master_register(void)
 		PGconn *master_conn;
 		int		id;
 
+		if (runtime_options.force)
+		{
+			sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_nodes "
+							  " WHERE id = %d",
+							  repmgr_schema, options.node);
+			log_debug(_("master register: %s\n"), sqlquery);
+
+			if (!PQexec(conn, sqlquery))
+			{
+				log_warning(_("Cannot delete node details, %s\n"),
+							PQerrorMessage(conn));
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+
 		/* Ensure there isn't any other master already registered */
 		master_conn = getMasterConnection(conn, repmgr_schema,
 		                                  options.cluster_name, &id,NULL);
@@ -577,21 +593,6 @@ do_master_register(void)
 	}
 
 	/* Now register the master */
-	if (runtime_options.force)
-	{
-		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_nodes "
-		                  " WHERE id = %d",
-		                  repmgr_schema, options.node);
-		log_debug(_("master register: %s\n"), sqlquery);
-
-		if (!PQexec(conn, sqlquery))
-		{
-			log_warning(_("Cannot delete node details, %s\n"),
-			            PQerrorMessage(conn));
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
 	                  "VALUES (%d, '%s', '%s', '%s', %d)",
@@ -742,7 +743,8 @@ do_standby_register(void)
 	                  options.conninfo, options.priority);
 	log_debug(_("standby register: %s\n"), sqlquery);
 
-	if (!PQexec(master_conn, sqlquery))
+	res = PQexec(master_conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot insert node details, %s\n"),
 		        PQerrorMessage(master_conn));
@@ -767,7 +769,7 @@ do_standby_clone(void)
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	int			r = 0;
+	int			r = 0, retval = SUCCESS;
 	int			i;
 	bool		flag_success = false;
 	bool		test_mode = false;
@@ -842,7 +844,7 @@ do_standby_clone(void)
 		log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
-	if (!guc_setted(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments))
+	if (!guc_setted_typed(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments, "integer"))
 	{
 		PQfinish(conn);
 		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the PostgreSQL master.)\n"), progname, runtime_options.wal_keep_segments);
@@ -1036,6 +1038,8 @@ do_standby_clone(void)
 	{
 		log_err(_("%s: couldn't use directory %s ...\nUse --force option to force\n"),
 		        progname, local_data_directory);
+		r = ERR_BAD_CONFIG;
+		retval = ERR_BAD_CONFIG;
 		goto stop_backup;
 	}
 
@@ -1175,7 +1179,7 @@ stop_backup:
 		log_err(_("Can't stop backup: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
-		exit(ERR_STOP_BACKUP);
+		exit(retval);
 	}
 	last_wal_segment = PQgetvalue(res, 0, 0);
 
@@ -1313,13 +1317,12 @@ do_standby_promote(void)
 	rename(recovery_file_path, recovery_done_path);
 
 	/*
-	 * We assume the pg_ctl script is in the PATH.  Restart and wait for
-	 * the server to finish starting, so that the check below will
-	 * find an active server rather than one starting up.  This may
+	 * Restart and wait for the server to finish starting, so that the check
+	 * below will find an active server rather than one starting up.  This may
 	 * hang for up the default timeout (60 seconds).
 	 */
-	log_notice(_("%s: restarting server using pg_ctl\n"), progname);
-	maxlen_snprintf(script, "pg_ctl -D %s -w -m fast restart", data_dir);
+	log_notice(_("%s: restarting server using %s/pg_ctl\n"), progname, options.pg_bindir);
+	maxlen_snprintf(script, "%s/pg_ctl %s -D %s -w -m fast restart", options.pg_bindir, options.pgctl_options, data_dir);
 	r = system(script);
 	if (r != 0)
 	{
@@ -1464,8 +1467,7 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
-	/* We assume the pg_ctl script is in the PATH */
-	maxlen_snprintf(script, "pg_ctl -w -D %s -m fast restart", data_dir);
+	maxlen_snprintf(script, "%s/pg_ctl %s -w -D %s -m fast restart", options.pg_bindir, options.pgctl_options, data_dir);
 	r = system(script);
 	if (r != 0)
 	{
@@ -1495,14 +1497,6 @@ do_witness_create(void)
 	char		master_version[MAXVERSIONSTR];
 
 	char		master_hba_file[MAXLEN];
-
-	/* Check this directory could be used as a PGDATA dir */
-	if (!create_pgdir(runtime_options.dest_dir, runtime_options.force))
-	{
-		log_err(_("witness create: couldn't create data directory (\"%s\") for witness"),
-		        runtime_options.dest_dir);
-		exit(ERR_BAD_CONFIG);
-	}
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
@@ -1545,6 +1539,15 @@ do_witness_create(void)
 		exit(ERR_BAD_SSH);
 	}
 
+	/* Check this directory could be used as a PGDATA dir */
+	if (!create_pgdir(runtime_options.dest_dir, runtime_options.force))
+	{
+		log_err(_("witness create: couldn't create data directory (\"%s\") for witness"),
+		        runtime_options.dest_dir);
+		exit(ERR_BAD_CONFIG);
+	}
+
+
 	/*
 	 * To create a witness server we need to:
 	 * 1) initialize the cluster
@@ -1553,8 +1556,7 @@ do_witness_create(void)
 	 */
 
 	/* Create the cluster for witness */
-	/* We assume the pg_ctl script is in the PATH */
-	sprintf(script, "pg_ctl -D %s init -o \"-W\"", runtime_options.dest_dir);
+	sprintf(script, "%s/pg_ctl %s -D %s init -o \"-W\"", options.pg_bindir, options.pgctl_options, runtime_options.dest_dir);
 	log_info("Initialize cluster for witness: %s.\n", script);
 
 	r = system(script);
@@ -1627,7 +1629,7 @@ do_witness_create(void)
 	}
 
 	/* start new instance */
-	sprintf(script, "pg_ctl -w -D %s start", runtime_options.dest_dir);
+	sprintf(script, "%s/pg_ctl %s -w -D %s start", options.pg_bindir, options.pgctl_options, runtime_options.dest_dir);
 	log_info(_("Start cluster for witness: %s"), script);
 	r = system(script);
 	if (r != 0)
@@ -1786,9 +1788,9 @@ test_ssh_connection(char *host, char *remote_user)
 
 	/* Check if we have ssh connectivity to host before trying to rsync */
 	if (!remote_user[0])
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s", host, TRUEBIN_PATH);
+		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s", options.ssh_options, host, TRUEBIN_PATH);
 	else
-		maxlen_snprintf(script, "ssh -o Batchmode=yes %s -l %s %s", host, remote_user, TRUEBIN_PATH);
+		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s", options.ssh_options, host, remote_user, TRUEBIN_PATH);
 
 	log_debug(_("command is: %s"), script);
 	r = system(script);
@@ -1827,7 +1829,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	if (is_directory)
 	{
-		strcat(rsync_flags, " --exclude=pg_xlog* --exclude=pg_control --exclude=*.pid");
+		strcat(rsync_flags, " --exclude=pg_xlog* --exclude=pg_log* --exclude=pg_control --exclude=*.pid");
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
 		                rsync_flags, host_string, remote_path, local_path);
 	}

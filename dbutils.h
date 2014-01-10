@@ -32,6 +32,9 @@ bool	is_pgup(PGconn *conn, int timeout);
 char   *pg_version(PGconn *conn, char* major_version);
 bool	guc_setted(PGconn *conn, const char *parameter, const char *op,
                    const char *value);
+bool	guc_setted_typed(PGconn *conn, const char *parameter, const char *op,
+                   const char *value, const char *datatype);
+
 const char	 *get_cluster_size(PGconn *conn);
 PGconn *getMasterConnection(PGconn *standby_conn, char *schema, char *cluster,
                             int *master_id, char *master_conninfo_out);

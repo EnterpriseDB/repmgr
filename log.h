@@ -25,15 +25,17 @@
 #define REPMGR_SYSLOG 1
 #define REPMGR_STDERR 2
 
+void stderr_log_with_level(const char *level_name, int level, const char *fmt, ...);
+
 /* Standard error logging */
-#define stderr_log_debug(...) if (log_level >= LOG_DEBUG) fprintf(stderr, __VA_ARGS__)
-#define stderr_log_info(...) if (log_level >= LOG_INFO) fprintf(stderr, __VA_ARGS__)
-#define stderr_log_notice(...) if (log_level >= LOG_NOTICE) fprintf(stderr, __VA_ARGS__)
-#define stderr_log_warning(...) if (log_level >= LOG_WARNING) fprintf(stderr, __VA_ARGS__)
-#define stderr_log_err(...) if (log_level >= LOG_ERR) fprintf(stderr, __VA_ARGS__)
-#define stderr_log_crit(...) if (log_level >= LOG_CRIT) fprintf(stderr, __VA_ARGS__)
-#define stderr_log_alert(...) if (log_level >= LOG_ALERT) fprintf(stderr, __VA_ARGS__)
-#define stderr_log_emerg(...) if (log_level >= LOG_EMERG) fprintf(stderr, __VA_ARGS__)
+#define stderr_log_debug(...) stderr_log_with_level("DEBUG", LOG_DEBUG, __VA_ARGS__)
+#define stderr_log_info(...)  stderr_log_with_level("INFO", LOG_INFO, __VA_ARGS__)
+#define stderr_log_notice(...) stderr_log_with_level("NOTICE", LOG_NOTICE, __VA_ARGS__)
+#define stderr_log_warning(...) stderr_log_with_level("WARNING", LOG_WARNING, __VA_ARGS__)
+#define stderr_log_err(...) stderr_log_with_level("ERROR", LOG_ERR, __VA_ARGS__)
+#define stderr_log_crit(...) stderr_log_with_level("CRITICAL", LOG_CRIT, __VA_ARGS__)
+#define stderr_log_alert(...) stderr_log_with_level("ALERT", LOG_ALERT, __VA_ARGS__)
+#define stderr_log_emerg(...) stderr_log_with_level("EMERGENCY", LOG_EMERG, __VA_ARGS__)
 
 #ifdef HAVE_SYSLOG
 

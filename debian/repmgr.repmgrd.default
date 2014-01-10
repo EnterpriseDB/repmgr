@@ -1,0 +1,14 @@
+#!/bin/sh
+# default settings for repmgrd. This file is source by /bin/sh from
+# /etc/init.d/repmgrd
+
+# Options for repmgrd
+REPMGRD_OPTS=""
+
+# repmgrd binary
+REPMGR_BIN="/usr/bin/repmgr"
+
+# pid file
+REPMGR_PIDFILE="/var/run/repmgrd.pid"
+
+
