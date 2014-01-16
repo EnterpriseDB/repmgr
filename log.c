@@ -68,7 +68,7 @@ static int detect_log_facility(const char* facility);
 int log_type = REPMGR_STDERR;
 int log_level = LOG_NOTICE;
 
-bool logger_init(const char* ident, const char* level, const char* facility)
+bool logger_init(t_configuration_options *opts, const char* ident, const char* level, const char* facility)
 {
 
 	int l;
@@ -139,6 +139,14 @@ bool logger_init(const char* ident, const char* level, const char* facility)
 	}
 
 #endif
+
+	fclose(stdin);
+	fclose(stdout);
+
+	if (*opts->logfile)
+	{
+		freopen(opts->logfile, "a", stderr);
+	}
 
 	return true;
 

@@ -114,7 +114,7 @@ void stderr_log_with_level(const char *level_name, int level, const char *fmt, .
 
 /* Logger initialisation and shutdown */
 bool logger_shutdown(void);
-bool logger_init(const char* ident, const char* level, const char* facility);
+bool logger_init(t_configuration_options *opts, const char* ident, const char* level, const char* facility);
 void logger_min_verbose(int minimum);
 
 extern int log_type;

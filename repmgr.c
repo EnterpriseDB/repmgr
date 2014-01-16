@@ -322,7 +322,7 @@ main(int argc, char **argv)
 	 * at, but it often requires detailed logging to troubleshoot
 	 * problems.
 	 */
-	logger_init(progname, options.loglevel, options.logfacility);
+	logger_init(&options, progname, options.loglevel, options.logfacility);
 	if (runtime_options.verbose)
 		logger_min_verbose(LOG_INFO);
 

@@ -42,3 +42,8 @@ pg_bindir=/usr/bin/
 # you may add command line arguments for pg_ctl
 #
 # pg_ctl_options='-s'
+
+#
+# redirect stderr to a logfile
+#
+# logfile='/var/log/repmgr.log'

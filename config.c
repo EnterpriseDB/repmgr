@@ -120,6 +120,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 			strncpy (options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
 			strncpy (options->pgctl_options, value, MAXLEN);
+		else if (strcmp(name, "logfile") == 0)
+			strncpy(options->logfile, value, MAXLEN);
 		else
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}
