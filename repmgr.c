@@ -486,7 +486,7 @@ do_master_register(void)
 {
 	PGconn		*conn;
 	PGresult	*res;
-	char 		sqlquery[QUERY_STR_LEN];
+	char 		sqlquery[QUERY_STR_LEN], *ret_ver;
 
 	bool		schema_exists = false;
 	char		schema_quoted[MAXLEN];
@@ -497,11 +497,12 @@ do_master_register(void)
 
 	/* master should be v9 or better */
 	log_info(_("%s connecting to master database\n"), progname);
-	pg_version(conn, master_version);
-	if (strcmp(master_version, "") == 0)
+	ret_ver = pg_version(conn, master_version);
+	if (ret_ver == NULL || strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
-		log_err( _("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret_ver != NULL)
+			log_err( _("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		return;
 	}
 
@@ -628,7 +629,7 @@ do_standby_register(void)
 	int			master_id, ret;
 
 	PGresult	*res;
-	char 		sqlquery[QUERY_STR_LEN];
+	char 		sqlquery[QUERY_STR_LEN], *ret_ver;
 	char		schema_quoted[MAXLEN];
 
 	char master_version[MAXVERSIONSTR];
@@ -641,11 +642,12 @@ do_standby_register(void)
 
 	/* should be v9 or better */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
-	pg_version(conn, standby_version);
-	if (strcmp(standby_version, "") == 0)
+	ret_ver = pg_version(conn, standby_version);
+	if (ret_ver == NULL || strcmp(standby_version, "") == 0)
 	{
 		PQfinish(conn);
-		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret_ver != NULL)
+			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -706,12 +708,13 @@ do_standby_register(void)
 
 	/* master should be v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	pg_version(master_conn, master_version);
-	if (strcmp(master_version, "") == 0)
+	ret_ver = pg_version(master_conn, master_version);
+	if (ret_ver == NULL || strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret_ver != NULL)
+			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -775,7 +778,7 @@ do_standby_clone(void)
 {
 	PGconn		*conn;
 	PGresult	*res;
-	char		sqlquery[QUERY_STR_LEN];
+	char		sqlquery[QUERY_STR_LEN], *ret;
 
 	int			r = 0, retval = SUCCESS;
 	int			i, is_standby_retval;
@@ -829,11 +832,12 @@ do_standby_clone(void)
 
 	/* primary should be v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	pg_version(conn, master_version);
-	if (strcmp(master_version, "") == 0)
+	ret = pg_version(conn, master_version);
+	if (ret == NULL || strcmp(master_version, "") == 0)
 	{
 		PQfinish(conn);
-		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret != NULL)
+			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1258,7 +1262,7 @@ do_standby_promote(void)
 {
 	PGconn		*conn;
 	PGresult	*res;
-	char 		sqlquery[QUERY_STR_LEN];
+	char 		sqlquery[QUERY_STR_LEN], *ret;
 	char		script[MAXLEN];
 
 	PGconn		*old_master_conn;
@@ -1277,10 +1281,11 @@ do_standby_promote(void)
 
 	/* we need v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	pg_version(conn, standby_version);
-	if (strcmp(standby_version, "") == 0)
+	ret = pg_version(conn, standby_version);
+	if (ret == NULL || strcmp(standby_version, "") == 0)
 	{
-		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret != NULL)
+			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1367,7 +1372,7 @@ do_standby_follow(void)
 {
 	PGconn		*conn;
 	PGresult	*res;
-	char 		sqlquery[QUERY_STR_LEN];
+	char 		sqlquery[QUERY_STR_LEN], *ret;
 	char		script[MAXLEN];
 	char		master_conninfo[MAXLEN];
 	PGconn		*master_conn;
@@ -1396,10 +1401,11 @@ do_standby_follow(void)
 	}
 
 	/* should be v9 or better */
-	pg_version(conn, standby_version);
-	if (strcmp(standby_version, "") == 0)
+	ret = pg_version(conn, standby_version);
+	if (ret == NULL || strcmp(standby_version, "") == 0)
 	{
-		log_err(_("\n%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret != NULL)
+			log_err(_("\n%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1438,10 +1444,11 @@ do_standby_follow(void)
 
 	/* should be v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	pg_version(master_conn, master_version);
-	if (strcmp(master_version, "") == 0)
+	ret = pg_version(master_conn, master_version);
+	if (ret == NULL || strcmp(master_version, "") == 0)
 	{
-		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret != NULL)
+			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(conn);
 		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
@@ -1507,7 +1514,7 @@ do_witness_create(void)
 	PGconn 		*masterconn;
 	PGconn 		*witnessconn;
 	PGresult	*res;
-	char 		sqlquery[QUERY_STR_LEN];
+	char 		sqlquery[QUERY_STR_LEN], *ret;
 
 	char		script[MAXLEN];
 	char		buf[MAXLEN];
@@ -1535,10 +1542,11 @@ do_witness_create(void)
 	}
 
 	/* primary should be v9 or better */
-	pg_version(masterconn, master_version);
-	if (strcmp(master_version, "") == 0)
+	ret = pg_version(masterconn, master_version);
+	if (ret == NULL || strcmp(master_version, "") == 0)
 	{
-		log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret != NULL)
+			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}

@@ -168,7 +168,7 @@ main(int argc, char **argv)
 	int			c, ret;
 	bool		daemonize = false;
 
-	char standby_version[MAXVERSIONSTR];
+	char standby_version[MAXVERSIONSTR], *ret_ver;
 
 	progname = get_progname(argv[0]);
 
@@ -283,10 +283,11 @@ main(int argc, char **argv)
 
 	/* should be v9 or better */
 	log_info(_("%s Connected to database, checking its state\n"), progname);
-	pg_version(myLocalConn, standby_version);
-	if (strcmp(standby_version, "") == 0)
+	ret_ver = pg_version(myLocalConn, standby_version);
+	if (ret_ver == NULL || strcmp(standby_version, "") == 0)
 	{
-		log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		if(ret_ver != NULL)
+			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(myLocalConn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -323,9 +324,7 @@ main(int argc, char **argv)
 		 * should not exit at this point, but for now we do until we have a
 		 * better strategy */
 		if (ret == -1)
-		{
 			exit(1);
-		}
 
 		switch (myLocalMode)
 		{

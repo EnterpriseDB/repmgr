@@ -192,8 +192,7 @@ pg_version(PGconn *conn, char* major_version)
 		log_err(_("Version check PQexec failed: %s"),
 		        PQerrorMessage(conn));
 		PQclear(res);
-		PQfinish(conn);
-		exit(ERR_DB_QUERY);
+		return NULL;
 	}
 
 	major_version1 = atoi(PQgetvalue(res, 0, 0));
