@@ -140,9 +140,6 @@ bool logger_init(t_configuration_options *opts, const char* ident, const char* l
 
 #endif
 
-	fclose(stdin);
-	fclose(stdout);
-
 	if (*opts->logfile)
 	{
 		freopen(opts->logfile, "a", stderr);

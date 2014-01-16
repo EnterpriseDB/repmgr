@@ -272,6 +272,9 @@ main(int argc, char **argv)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	fclose(stdin);
+	fclose(stdout);
+
 	logger_init(&local_options, progname, local_options.loglevel, local_options.logfacility);
 	if (verbose)
 		logger_min_verbose(LOG_INFO);
