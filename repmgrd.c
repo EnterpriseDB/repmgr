@@ -382,6 +382,12 @@ main(int argc, char **argv)
 							PQfinish(myLocalConn);
 							myLocalConn = establishDBConnection(local_options.conninfo, true);
 							primaryConn = myLocalConn;
+
+							if (*local_options.logfile)
+							{
+								freopen(local_options.logfile, "a", stderr);
+							}
+
 							update_registration();
 						}
 						got_SIGHUP = false;
