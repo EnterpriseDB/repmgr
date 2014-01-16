@@ -1433,6 +1433,11 @@ do_standby_follow(void)
 
 	do
 	{
+		if (!is_pgup(conn, options.master_response_timeout))
+		{
+			conn = establishDBConnection(options.conninfo, true);
+		}
+
 		master_conn = getMasterConnection(conn, repmgr_schema,
 		                                  options.cluster_name, &master_id,(char *) &master_conninfo);
 	}

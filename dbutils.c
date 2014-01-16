@@ -359,8 +359,7 @@ getMasterConnection(PGconn *standby_conn, char *schema, char *cluster,
 		log_err(_("Can't get nodes info: %s\n"),
 		        PQerrorMessage(standby_conn));
 		PQclear(res1);
-		PQfinish(standby_conn);
-		exit(ERR_DB_QUERY);
+		return NULL;
 	}
 
 	for (i = 0; i < PQntuples(res1); i++)
