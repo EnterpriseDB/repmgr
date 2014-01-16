@@ -301,23 +301,31 @@ main(int argc, char **argv)
  	 */
 	do
 	{
-		ret = is_standby(myLocalConn);
-
 		/*
 		 * Set my server mode, establish a connection to primary
 		 * and start monitor
 		 */
-		if (is_witness(myLocalConn, repmgr_schema, local_options.cluster_name, local_options.node))
+		ret = is_witness(myLocalConn, repmgr_schema, local_options.cluster_name, local_options.node);
+
+		if (ret == 1)
 			myLocalMode = WITNESS_MODE;
-		else if (ret == 1)
-			myLocalMode = STANDBY_MODE;
+		else if (ret == 0)
+		{
+			ret = is_standby(myLocalConn);
+
+			if (ret == 1)
+				myLocalMode = STANDBY_MODE;
+			else if (ret == 0) /* is the master */
+				myLocalMode = PRIMARY_MODE;
+		}
+
         /* XXX we did this before changing is_standby() to return int; we
 		 * should not exit at this point, but for now we do until we have a
 		 * better strategy */
-		else if (ret == -1)
+		if (ret == -1)
+		{
 			exit(1);
-		else /* is the master */
-			myLocalMode = PRIMARY_MODE;
+		}
 
 		switch (myLocalMode)
 		{

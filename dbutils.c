@@ -94,11 +94,11 @@ is_standby(PGconn *conn)
 
 
 
-bool
+int
 is_witness(PGconn *conn, char *schema, char *cluster, int node_id)
 {
 	PGresult   *res;
-	bool		result = false;
+	int			result = 0;
 	char		sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(sqlquery, "SELECT witness from %s.repl_nodes where cluster = '%s' and id = %d",
@@ -107,13 +107,10 @@ is_witness(PGconn *conn, char *schema, char *cluster, int node_id)
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("Can't query server mode: %s"), PQerrorMessage(conn));
-		PQclear(res);
-		PQfinish(conn);
-		exit(ERR_DB_QUERY);
+		result = -1;
 	}
-
-	if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
-		result = true;
+	else if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
+		result = 1;
 
 	PQclear(res);
 	return result;
