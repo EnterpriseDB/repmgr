@@ -213,12 +213,13 @@ pg_version(PGconn *conn, char* major_version)
 }
 
 
-bool
+int
 guc_setted(PGconn *conn, const char *parameter, const char *op,
            const char *value)
 {
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
+	int			retval = 1;
 
 	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
 	                  " WHERE name = '%s' AND setting %s '%s'",
@@ -229,30 +230,29 @@ guc_setted(PGconn *conn, const char *parameter, const char *op,
 	{
 		log_err(_("GUC setting check PQexec failed: %s"),
 		        PQerrorMessage(conn));
-		PQclear(res);
-		PQfinish(conn);
-		exit(ERR_DB_QUERY);
+		retval = -1;
 	}
-	if (PQntuples(res) == 0)
+	else if (PQntuples(res) == 0)
 	{
-		PQclear(res);
-		return false;
+		retval = 0;
 	}
+
 	PQclear(res);
 
-	return true;
+	return retval;
 }
 
 /**
  * Just like guc_setted except with an extra parameter containing the name of
  * the pg datatype so that the comparison can be done properly.
  */
-bool
+int
 guc_setted_typed(PGconn *conn, const char *parameter, const char *op, 
                  const char *value, const char *datatype)
 {
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN];
+	int			retval = 1;
 
 	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
 	                  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
@@ -263,18 +263,16 @@ guc_setted_typed(PGconn *conn, const char *parameter, const char *op,
 	{
 		log_err(_("GUC setting check PQexec failed: %s"),
 		        PQerrorMessage(conn));
-		PQclear(res);
-		PQfinish(conn);
-		exit(ERR_DB_QUERY);
+		retval = -1;
 	}
-	if (PQntuples(res) == 0)
+	else if (PQntuples(res) == 0)
 	{
-		PQclear(res);
-		return false;
+		retval = 0;
 	}
+
 	PQclear(res);
 
-	return true;
+	return retval;
 }
 
 

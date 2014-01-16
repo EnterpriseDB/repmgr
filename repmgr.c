@@ -853,28 +853,39 @@ do_standby_clone(void)
 	}
 
 	/* And check if it is well configured */
-	if (!guc_setted(conn, "wal_level", "=", "hot_standby"))
+	i = guc_setted(conn, "wal_level", "=", "hot_standby");
+	if (i == 0 || i == -1)
 	{
 		PQfinish(conn);
-		log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname);
+		if (i == 0)
+			log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
-	if (!guc_setted_typed(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments, "integer"))
+
+	i = guc_setted_typed(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments, "integer");
+	if (i == 0 || i == -1)
 	{
 		PQfinish(conn);
-		log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the PostgreSQL master.)\n"), progname, runtime_options.wal_keep_segments);
+		if (i == 0)
+			log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the PostgreSQL master.)\n"), progname, runtime_options.wal_keep_segments);
 		exit(ERR_BAD_CONFIG);
 	}
-	if (!guc_setted(conn, "archive_mode", "=", "on"))
+
+	i = guc_setted(conn, "archive_mode", "=", "on");
+	if (i == 0 || i == -1)
 	{
 		PQfinish(conn);
-		log_err(_("%s needs parameter 'archive_mode' to be set to 'on'\n"), progname);
+		if (i == 0)
+			log_err(_("%s needs parameter 'archive_mode' to be set to 'on'\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
-	if (!guc_setted(conn, "hot_standby", "=", "on"))
+
+	i = guc_setted(conn, "hot_standby", "=", "on");
+	if (i == 0 || i == -1)
 	{
 		PQfinish(conn);
-		log_err(_("%s needs parameter 'hot_standby' to be set to 'on'\n"), progname);
+		if (i == 0)
+			log_err(_("%s needs parameter 'hot_standby' to be set to 'on'\n"), progname);
 		exit(ERR_BAD_CONFIG);
 	}
 
