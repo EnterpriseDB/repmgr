@@ -779,6 +779,7 @@ do_standby_clone(void)
 	PGconn		*conn;
 	PGresult	*res;
 	char		sqlquery[QUERY_STR_LEN], *ret;
+	const char *cluster_size;
 
 	int			r = 0, retval = SUCCESS;
 	int			i, is_standby_retval;
@@ -980,7 +981,10 @@ do_standby_clone(void)
 	}
 	PQclear(res);
 
-	log_info(_("Successfully connected to primary. Current installation size is %s\n"), get_cluster_size(conn));
+	cluster_size = get_cluster_size(conn);
+	if (cluster_size == NULL)
+		exit(ERR_DB_QUERY);
+	log_info(_("Successfully connected to primary. Current installation size is %s\n"), cluster_size);
 
 	/*
 	 * XXX  master_xlog_directory should be discovered from master configuration

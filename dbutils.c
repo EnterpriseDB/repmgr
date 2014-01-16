@@ -280,7 +280,7 @@ const char *
 get_cluster_size(PGconn *conn)
 {
 	PGresult	*res;
-	const char	*size;
+	const char	*size = NULL;
 	char		 sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(
@@ -293,11 +293,12 @@ get_cluster_size(PGconn *conn)
 	{
 		log_err(_("Get cluster size PQexec failed: %s"),
 		        PQerrorMessage(conn));
-		PQclear(res);
-		PQfinish(conn);
-		exit(ERR_DB_QUERY);
 	}
-	size = PQgetvalue(res, 0, 0);
+	else
+	{
+		size = PQgetvalue(res, 0, 0);
+	}
+
 	PQclear(res);
 	return size;
 }
