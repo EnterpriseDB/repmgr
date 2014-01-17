@@ -47,3 +47,15 @@ pg_bindir=/usr/bin/
 # redirect stderr to a logfile
 #
 # logfile='/var/log/repmgr.log'
+
+#
+# change monitoring interval; default is 2s
+#
+# sleep_monitor=2
+
+#
+# change wait time for master; before we bail out and exit when the
+# master disappears, we wait 6 * sleep_delay seconds; by default this
+# would be half an hour (since sleep_delay default value is 300)
+#
+# sleep_delay=300

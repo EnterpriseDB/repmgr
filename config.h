@@ -43,9 +43,11 @@ typedef struct
 	char pg_bindir[MAXLEN];
 	char pgctl_options[MAXLEN];
 	char logfile[MAXLEN];
+	int sleep_monitor;
+	int sleep_delay;
 } t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "" }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0 }
 
 void parse_config(const char *config_file, t_configuration_options *options);
 void parse_line(char *buff, char *name, char *value);

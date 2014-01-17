@@ -358,7 +358,7 @@ main(int argc, char **argv)
 				/* Check that primary is still alive, and standbies are sending info */
 
 				/*
-				 * Every SLEEP_MONITOR seconds, do master checks
+				 * Every local_options.sleep_monitor seconds, do master checks
 				 * XXX
 				 * Check that standbies are sending info
 				 */
@@ -370,7 +370,7 @@ main(int argc, char **argv)
 							CheckActiveStandbiesConnections();
 							CheckInactiveStandbies();
 						*/
-						sleep(SLEEP_MONITOR);
+						sleep(local_options.sleep_monitor);
 					}
 					else
 					{
@@ -424,7 +424,7 @@ main(int argc, char **argv)
 				}
 
 				/*
-				 * Every SLEEP_MONITOR seconds, do checks
+				 * Every local_options.sleep_monitor seconds, do checks
 				 */
 				if (myLocalMode == WITNESS_MODE)
 				{
@@ -441,7 +441,7 @@ main(int argc, char **argv)
 						WitnessMonitor();
 					else if (myLocalMode == STANDBY_MODE)
 						StandbyMonitor();
-					sleep(SLEEP_MONITOR);
+					sleep(local_options.sleep_monitor);
 
 					if (got_SIGHUP)
 					{
@@ -600,8 +600,10 @@ StandbyMonitor(void)
 				else
 				{
 					log_err(_("We haven't found a new master, waiting before retry...\n"));
-					/* wait 5 minutes before retries, after 6 failures (30 minutes) we stop trying */
-					sleep(300);
+					/* wait local_options.sleep_delay minutes before retries,
+					 * after 6 failures (6 * local_options.sleep_monitor
+					 * seconds) we stop trying */
+					sleep(local_options.sleep_delay);
 				}
 			}
 
