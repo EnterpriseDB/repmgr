@@ -138,6 +138,8 @@ static volatile sig_atomic_t got_SIGHUP = false;
 static void handle_sighup(SIGNAL_ARGS);
 static void handle_sigint(SIGNAL_ARGS);
 
+static void terminate(int retval);
+
 #ifndef WIN32
 static void setup_event_handlers(void);
 #endif
@@ -269,7 +271,7 @@ main(int argc, char **argv)
 	{
 		log_err(_("Node information is missing. "
 		          "Check the configuration file, or provide one if you have not done so.\n"));
-		exit(ERR_BAD_CONFIG);
+		terminate(ERR_BAD_CONFIG);
 	}
 
 	fclose(stdin);
@@ -291,8 +293,7 @@ main(int argc, char **argv)
 	{
 		if(ret_ver != NULL)
 			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
-		PQfinish(myLocalConn);
-		exit(ERR_BAD_CONFIG);
+		terminate(ERR_BAD_CONFIG);
 	}
 
 
@@ -327,7 +328,7 @@ main(int argc, char **argv)
 		 * should not exit at this point, but for now we do until we have a
 		 * better strategy */
 		if (ret == -1)
-			exit(1);
+			terminate(1);
 
 		switch (myLocalMode)
 		{
@@ -371,7 +372,7 @@ main(int argc, char **argv)
 						/* XXX
 						 * May we do something more verbose ?
 						 */
-						exit(1);
+						terminate(1);
 					}
 
 					if (got_SIGHUP)
@@ -404,8 +405,7 @@ main(int argc, char **argv)
 				                                  &primary_options.node, NULL);
 				if (primaryConn == NULL)
 				{
-					CloseConnections();
-					exit(ERR_BAD_CONFIG);
+					terminate(ERR_BAD_CONFIG);
 				}
 
 				checkClusterConfiguration(myLocalConn, primaryConn);
@@ -493,8 +493,7 @@ WitnessMonitor(void)
 		 * If we can't reconnect, just exit...
 		 * XXX we need to make witness connect to the new master
 		 */
-		PQfinish(myLocalConn);
-		exit(0);
+		terminate(0);
 	}
 
 	/* Fast path for the case where no history is requested */
@@ -575,7 +574,7 @@ StandbyMonitor(void)
 
 	if (!CheckConnection(myLocalConn, "standby"))
 	{
-		handle_sigint(0);
+		terminate(1);
 	}
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
@@ -604,7 +603,7 @@ StandbyMonitor(void)
 			if (PQstatus(primaryConn) != CONNECTION_OK)
 			{
 				log_err(_("We couldn't reconnect for long enough, exiting...\n"));
-				exit(ERR_DB_CON);
+				terminate(ERR_DB_CON);
 			}
 		}
 		else if (local_options.failover == AUTOMATIC_FAILOVER)
@@ -626,8 +625,7 @@ StandbyMonitor(void)
 		{
 		case 0:
 			log_err(_("It seems like we have been promoted, so exit from monitoring...\n"));
-			CloseConnections();
-			handle_sigint(0);
+			terminate(1);
 			break;
 
 		case -1:
@@ -636,7 +634,7 @@ StandbyMonitor(void)
 
 			if (!CheckConnection(myLocalConn, "standby"))
 			{
-				handle_sigint(0);
+				terminate(0);
 			}
 
 			break;
@@ -770,8 +768,7 @@ do_failover(void)
 	{
 		log_err(_("Can't get nodes' info: %s\n"), PQerrorMessage(myLocalConn));
 		PQclear(res);
-		PQfinish(myLocalConn);
-		exit(ERR_DB_QUERY);
+		terminate(ERR_DB_QUERY);
 	}
 
 	/*
@@ -820,7 +817,7 @@ do_failover(void)
 		log_err(_("Can't reach most of the nodes.\n"
 		          "Let the other standby servers decide which one will be the primary.\n"
 		          "Manual action will be needed to readd this node to the cluster.\n"));
-		exit(ERR_FAILOVER_FAIL);
+		terminate(ERR_FAILOVER_FAIL);
 	}
 
 	/* Query all the nodes to determine which ones are ready */
@@ -841,7 +838,7 @@ do_failover(void)
 		if (PQstatus(nodeConn) != CONNECTION_OK)
 		{
 			log_err(_("It seems new problems are arising, manual intervention is needed\n"));
-			exit(ERR_FAILOVER_FAIL);
+			terminate(ERR_FAILOVER_FAIL);
 		}
 
 		sqlquery_snprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
@@ -852,7 +849,7 @@ do_failover(void)
 			log_info(_("Connection details: %s\n"), nodes[i].conninfostr);
 			PQclear(res);
 			PQfinish(nodeConn);
-			exit(ERR_FAILOVER_FAIL);
+			terminate(ERR_FAILOVER_FAIL);
 		}
 
 		if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
@@ -867,7 +864,7 @@ do_failover(void)
 			PQclear(res);
 			PQfinish(nodeConn);
 			log_info(_("InvalidXLogRecPtr detected in a standby\n"));
-			exit(ERR_FAILOVER_FAIL);
+			terminate(ERR_FAILOVER_FAIL);
 		}
 
 		XLAssignValue(nodes[i].xlog_location, uxlogid, uxrecoff);
@@ -882,11 +879,10 @@ do_failover(void)
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("PQexec failed: %s.\nReport an invalid value to not be considered as new primary and exit.\n"), PQerrorMessage(myLocalConn));
-		PQfinish(myLocalConn);
 		PQclear(res);
 		sprintf(last_wal_standby_applied, "'%X/%X'", 0, 0);
 		update_shared_memory(last_wal_standby_applied);
-		exit(ERR_DB_QUERY);
+		terminate(ERR_DB_QUERY);
 	}
 
 	/* write last location in shared memory */
@@ -938,7 +934,7 @@ do_failover(void)
                 log_err(_("PQexec failed: %s.\nReport an invalid value to not be considered as new primary and exit.\n"), PQerrorMessage(nodeConn));
                 PQclear(res);
                 PQfinish(nodeConn);
-                exit(ERR_DB_QUERY);
+                terminate(ERR_DB_QUERY);
 			}
 
             if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
@@ -1012,7 +1008,7 @@ do_failover(void)
 		if (best_candidate.is_witness)
 		{
 			log_err(_("%s: Node selected as new master is a witness. Can't be promoted.\n"), progname);
-			exit(ERR_FAILOVER_FAIL);
+			terminate(ERR_FAILOVER_FAIL);
 		}
 
 		/* wait */
@@ -1026,7 +1022,7 @@ do_failover(void)
 		if (r != 0)
 		{
 			log_err(_("%s: promote command failed. You could check and try it manually.\n"), progname);
-			exit(ERR_BAD_CONFIG);
+			terminate(ERR_BAD_CONFIG);
 		}
 	}
 	else if (find_best)
@@ -1046,13 +1042,13 @@ do_failover(void)
 		if (r != 0)
 		{
 			log_err(_("%s: follow command failed. You could check and try it manually.\n"), progname);
-			exit(ERR_BAD_CONFIG);
+			terminate(ERR_BAD_CONFIG);
 		}
 	}
 	else
 	{
 		log_err(_("%s: Did not find candidates. You should check and try manually.\n"), progname);
-		exit(ERR_FAILOVER_FAIL);
+		terminate(ERR_FAILOVER_FAIL);
 	}
 
 	/* to force it to re-calculate mode and master node */
@@ -1119,8 +1115,7 @@ checkClusterConfiguration(PGconn *conn, PGconn *primary)
 	{
 		log_err(_("PQexec failed: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
-		CloseConnections();
-		exit(ERR_DB_QUERY);
+		terminate(ERR_DB_QUERY);
 	}
 
 	/*
@@ -1134,8 +1129,7 @@ checkClusterConfiguration(PGconn *conn, PGconn *primary)
 	{
 		log_err(_("The replication cluster is not configured\n"));
 		PQclear(res);
-		CloseConnections();
-		exit(ERR_BAD_CONFIG);
+		terminate(ERR_BAD_CONFIG);
 	}
 	PQclear(res);
 }
@@ -1161,8 +1155,7 @@ checkNodeConfiguration(char *conninfo)
 	{
 		log_err(_("PQexec failed: %s\n"), PQerrorMessage(myLocalConn));
 		PQclear(res);
-		CloseConnections();
-		exit(ERR_BAD_CONFIG);
+		terminate(ERR_BAD_CONFIG);
 	}
 
 	/*
@@ -1177,8 +1170,7 @@ checkNodeConfiguration(char *conninfo)
 		if (myLocalMode == WITNESS_MODE)
 		{
 			log_err(_("The witness is not configured\n"));
-			CloseConnections();
-			exit(ERR_BAD_CONFIG);
+			terminate(ERR_BAD_CONFIG);
 		}
 
 		/* Adding the node */
@@ -1195,8 +1187,7 @@ checkNodeConfiguration(char *conninfo)
 		{
 			log_err(_("Cannot insert node details, %s\n"),
 			        PQerrorMessage(primaryConn));
-			CloseConnections();
-			exit(ERR_BAD_CONFIG);
+			terminate(ERR_BAD_CONFIG);
 		}
 	}
 	else
@@ -1248,15 +1239,7 @@ void help(const char *progname)
 static void
 handle_sigint(SIGNAL_ARGS)
 {
-	CloseConnections();
-	logger_shutdown();
-
-	if (pid_file)
-	{
-		remove(pid_file);
-	}
-
-	exit(1);
+	terminate(0);
 }
 
 /* SIGHUP: set flag to re-read config file at next convenient time */
@@ -1274,6 +1257,20 @@ setup_event_handlers(void)
 	pqsignal(SIGTERM, handle_sigint);
 }
 #endif
+
+static void
+terminate(int retval)
+{
+	CloseConnections();
+	logger_shutdown();
+
+	if (pid_file)
+	{
+		remove(pid_file);
+	}
+
+	exit(retval);
+}
 
 
 static void
@@ -1309,8 +1306,7 @@ update_registration(void)
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot update registration: %s\n"), PQerrorMessage(primaryConn));
-		CloseConnections();
-		exit(ERR_DB_CON);
+		terminate(ERR_DB_CON);
 	}
 	PQclear(res);
 }
