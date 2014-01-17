@@ -281,6 +281,11 @@ main(int argc, char **argv)
 	if (verbose)
 		logger_min_verbose(LOG_INFO);
 
+	if (log_type == REPMGR_SYSLOG)
+	{
+		fclose(stderr);
+	}
+
 	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
 
 	log_info(_("%s Connecting to database '%s'\n"), progname, local_options.conninfo);
