@@ -25,7 +25,7 @@
 #define REPMGR_SYSLOG 1
 #define REPMGR_STDERR 2
 
-void stderr_log_with_level(const char *level_name, int level, const char *fmt, ...);
+void stderr_log_with_level(const char *level_name, int level, const char *fmt, ...) __attribute__ ((format (PG_PRINTF_ATTRIBUTE, 3, 4)));
 
 /* Standard error logging */
 #define stderr_log_debug(...) stderr_log_with_level("DEBUG", LOG_DEBUG, __VA_ARGS__)

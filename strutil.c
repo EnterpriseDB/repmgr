@@ -25,7 +25,7 @@
 #include "log.h"
 #include "strutil.h"
 
-static int xvsnprintf(char *str, size_t size, const char *format, va_list ap);
+static int xvsnprintf(char *str, size_t size, const char *format, va_list ap) __attribute__ ((format (PG_PRINTF_ATTRIBUTE, 3, 0)));
 
 /* Add strnlen on platforms that don't have it, like OS X */
 #ifndef strnlen
