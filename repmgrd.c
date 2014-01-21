@@ -848,6 +848,9 @@ do_failover(void)
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
+		uxlogid = 0;
+		uxrecoff = 0;
+
 		sqlquery_snprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
 		res = PQexec(nodeConn, sqlquery);
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -933,6 +936,9 @@ do_failover(void)
                 log_info(_("At this point, it could be some race conditions that are acceptable, assume the node is restarting and starting failover procedure\n"));
 				break;
             }
+
+			uxlogid = 0;
+			uxrecoff = 0;
 
 			sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()", repmgr_schema);
 			res = PQexec(nodeConn, sqlquery);
