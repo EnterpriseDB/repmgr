@@ -1695,7 +1695,7 @@ do_witness_create(void)
 	/* register ourselves in the master */
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
 	                  "VALUES (%d, '%s', '%s', '%s', %d, true)",
-	                  repmgr_schema, options.node, options.cluster_name, options.node_name, options.conninfo);
+	                  repmgr_schema, options.node, options.cluster_name, options.node_name, options.conninfo, options.priority);
 
 	log_debug(_("witness create: %s"), sqlquery);
 	if (!PQexec(masterconn, sqlquery))
