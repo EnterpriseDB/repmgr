@@ -144,6 +144,7 @@ static void terminate(int retval);
 static void setup_event_handlers(void);
 #endif
 
+static void do_daemonize();
 static void check_and_create_pid_file(const char *pid_file);
 
 #define CloseConnections()	\
@@ -217,44 +218,7 @@ main(int argc, char **argv)
 
 	if (daemonize)
 	{
-		pid_t pid = fork();
-		switch (pid)
-		{
-		case -1:
-			log_err("Error in fork(): %s\n", strerror(errno));
-			exit(ERR_SYS_FAILURE);
-			break;
-
-		case 0: /* child process */
-			pid = setsid();
-			if (pid == (pid_t)-1)
-			{
-				log_err("Error in setsid(): %s\n", strerror(errno));
-				exit(ERR_SYS_FAILURE);
-			}
-
-			/* ensure that we are no longer able to open a terminal */
-			pid = fork();
-
-			if(pid == -1) /* error case */
-			{
-				log_err("Error in fork(): %s\n", strerror(errno));
-				exit(ERR_SYS_FAILURE);
-				break;
-			}
-
-			if (pid != 0) /* parent process */
-			{
-				exit(0);
-			}
-
-			/* a child just flows along */
-
-			break;
-
-		default: /* parent process */
-			exit(0);
-		}
+		do_daemonize();
 	}
 
 	if (pid_file)
@@ -1356,6 +1320,50 @@ update_registration(void)
 	}
 	PQclear(res);
 }
+
+static void
+do_daemonize()
+{
+	pid_t pid = fork();
+	switch (pid)
+	{
+	case -1:
+		log_err("Error in fork(): %s\n", strerror(errno));
+		exit(ERR_SYS_FAILURE);
+		break;
+
+	case 0: /* child process */
+		pid = setsid();
+		if (pid == (pid_t)-1)
+		{
+			log_err("Error in setsid(): %s\n", strerror(errno));
+			exit(ERR_SYS_FAILURE);
+		}
+
+		/* ensure that we are no longer able to open a terminal */
+		pid = fork();
+
+		if(pid == -1) /* error case */
+		{
+			log_err("Error in fork(): %s\n", strerror(errno));
+			exit(ERR_SYS_FAILURE);
+			break;
+		}
+
+		if (pid != 0) /* parent process */
+		{
+			exit(0);
+		}
+
+		/* a child just flows along */
+
+		break;
+
+	default: /* parent process */
+		exit(0);
+	}
+}
+
 static void
 check_and_create_pid_file(const char *pid_file)
 {
