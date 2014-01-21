@@ -230,6 +230,24 @@ main(int argc, char **argv)
 				log_err("Error in setsid(): %s\n", strerror(errno));
 				exit(ERR_SYS_FAILURE);
 			}
+
+			/* ensure that we are no longer able to open a terminal */
+			pid = fork();
+
+			if(pid == -1) /* error case */
+			{
+				log_err("Error in fork(): %s\n", strerror(errno));
+				exit(ERR_SYS_FAILURE);
+				break;
+			}
+
+			if (pid != 0) /* parent process */
+			{
+				exit(0);
+			}
+
+			/* a child just flows along */
+
 			break;
 
 		default: /* parent process */
