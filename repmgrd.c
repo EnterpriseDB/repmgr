@@ -951,7 +951,17 @@ do_failover(void)
 			}
 
             if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
+			{
                 log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res, 0, 0));
+
+				/* we can't do anything but fail at this point... */
+				if (*PQgetvalue(res, 0, 0) == '\0')
+				{
+					log_crit("Whoops, seems as if shared_preload_libraries=repmgr_funcs is not set!\n");
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+
 
             PQclear(res);
             PQfinish(nodeConn);
@@ -1314,6 +1324,13 @@ update_shared_memory(char *last_wal_standby_applied)
 		log_warning(_("Cannot update this standby's shared memory: %s\n"), PQerrorMessage(myLocalConn));
 		/* XXX is this enough reason to terminate this repmgrd? */
 	}
+	else if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
+	{
+		/* this surely is more than enough reason to exit */
+		log_warning(_("Cannot update this standby's shared memory, maybe shared_preload_libraries=repmgr_funcs is not set?\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
 	PQclear(res);
 }
 
