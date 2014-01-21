@@ -52,8 +52,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 	options->reconnect_attempts = 6;
 	options->reconnect_intvl = 10;
 
-	options->sleep_monitor = 2;
-	options->sleep_delay = 300;
+	options->monitor_interval_secs = 2;
+	options->retry_promote_interval_secs = 300;
 
 	/*
 	 * Since some commands don't require a config file at all, not
@@ -125,10 +125,10 @@ parse_config(const char *config_file, t_configuration_options *options)
 			strncpy (options->pgctl_options, value, MAXLEN);
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
-		else if (strcmp(name, "sleep_monitor") == 0)
-			options->sleep_monitor = atoi(value);
-		else if (strcmp(name, "sleep_delay") == 0)
-			options->sleep_delay = atoi(value);
+		else if (strcmp(name, "monitor_interval_secs") == 0)
+			options->monitor_interval_secs = atoi(value);
+		else if (strcmp(name, "retry_promote_interval_secs") == 0)
+			options->retry_promote_interval_secs = atoi(value);
 		else
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}

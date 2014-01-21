@@ -51,11 +51,12 @@ pg_bindir=/usr/bin/
 #
 # change monitoring interval; default is 2s
 #
-# sleep_monitor=2
+# monitor_interval_secs=2
 
 #
 # change wait time for master; before we bail out and exit when the
-# master disappears, we wait 6 * sleep_delay seconds; by default this
-# would be half an hour (since sleep_delay default value is 300)
+# master disappears, we wait 6 * retry_promote_interval_secs seconds;
+# by default this would be half an hour (since sleep_delay default
+# value is 300)
 #
-# sleep_delay=300
+# retry_promote_interval_secs=300

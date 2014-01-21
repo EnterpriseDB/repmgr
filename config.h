@@ -43,8 +43,8 @@ typedef struct
 	char pg_bindir[MAXLEN];
 	char pgctl_options[MAXLEN];
 	char logfile[MAXLEN];
-	int sleep_monitor;
-	int sleep_delay;
+	int monitor_interval_secs;
+	int retry_promote_interval_secs;
 } t_configuration_options;
 
 #define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0 }
