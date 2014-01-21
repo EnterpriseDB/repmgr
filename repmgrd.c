@@ -1031,6 +1031,13 @@ do_failover(void)
 			log_info(_("%s: This node is the best candidate to be the new primary, promoting...\n"),
 			         progname);
 		log_debug(_("promote command is: \"%s\"\n"), local_options.promote_command);
+
+		if (log_type == REPMGR_STDERR && *local_options.logfile)
+		{
+			fflush(stderr);
+			fsync(fileno(stderr));
+		}
+
 		r = system(local_options.promote_command);
 		if (r != 0)
 		{
@@ -1051,6 +1058,12 @@ do_failover(void)
 		 * New Primary need some time to be promoted.
 		 * The follow command should take care of that.
 		 */
+		if (log_type == REPMGR_STDERR && *local_options.logfile)
+		{
+			fflush(stderr);
+			fsync(fileno(stderr));
+		}
+
 		r = system(local_options.follow_command);
 		if (r != 0)
 		{
