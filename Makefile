@@ -21,7 +21,8 @@ repmgr: $(repmgr_OBJS)
 	$(CC) $(CFLAGS) $(repmgr_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o repmgr
 
 ifdef USE_PGXS
-PGXS := $(shell pg_config --pgxs)
+PG_CONFIG = pg_config
+PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 else
 subdir = contrib/repmgr
