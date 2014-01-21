@@ -1302,7 +1302,7 @@ terminate(int retval)
 
 	if (pid_file)
 	{
-		remove(pid_file);
+		unlink(pid_file);
 	}
 
 	exit(retval);
