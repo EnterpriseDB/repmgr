@@ -274,8 +274,8 @@ main(int argc, char **argv)
 		terminate(ERR_BAD_CONFIG);
 	}
 
-	fclose(stdin);
-	fclose(stdout);
+	freopen("/dev/null", "r", stdin);
+	freopen("/dev/null", "w", stdout);
 
 	logger_init(&local_options, progname, local_options.loglevel, local_options.logfacility);
 	if (verbose)
