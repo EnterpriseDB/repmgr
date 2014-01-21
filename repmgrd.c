@@ -144,6 +144,8 @@ static void terminate(int retval);
 static void setup_event_handlers(void);
 #endif
 
+static void check_and_create_pid_file(const char *pid_file);
+
 #define CloseConnections()	\
 	if (PQisBusy(primaryConn) == 1) \
 		(void) CancelQuery(primaryConn, local_options.master_response_timeout); \
@@ -257,24 +259,7 @@ main(int argc, char **argv)
 
 	if (pid_file)
 	{
-		struct stat st;
-		FILE *fd;
-
-		if (stat(pid_file, &st) != -1)
-		{
-			log_err("PID file %s exists. If repmgrd is no longer alive remove the file and restart repmgrd.\n", pid_file);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		fd = fopen(pid_file, "w");
-		if (fd == NULL)
-		{
-			log_err("Could not open PID file %s!\n", pid_file);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		fprintf(fd, "%d", getpid());
-		fclose(fd);
+		check_and_create_pid_file(pid_file);
 	}
 
 	#ifndef WIN32
@@ -1370,4 +1355,49 @@ update_registration(void)
 		terminate(ERR_DB_CON);
 	}
 	PQclear(res);
+}
+static void
+check_and_create_pid_file(const char *pid_file)
+{
+	struct stat st;
+	FILE *fd;
+	char buff[MAXLEN];
+	pid_t pid;
+
+	if (stat(pid_file, &st) != -1)
+	{
+		memset(buff, 0, MAXLEN);
+
+		fd = fopen(pid_file, "r");
+
+		if (fd == NULL)
+		{
+			log_err("PID file %s exists but could not opened for reading. If repmgrd is no longer alive remove the file and restart repmgrd.\n", pid_file);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		fread(buff, MAXLEN - 1, 1, fd);
+		fclose(fd);
+
+		pid = atoi(buff);
+
+		if (pid != 0)
+		{
+			if (kill(pid, 0) != -1)
+			{
+				log_err("PID file %s exists and seems to contain a valid PID. If repmgrd is no longer alive remove the file and restart repmgrd.\n", pid_file);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+	}
+
+	fd = fopen(pid_file, "w");
+	if (fd == NULL)
+	{
+		log_err("Could not open PID file %s!\n", pid_file);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	fprintf(fd, "%d", getpid());
+	fclose(fd);
 }
