@@ -250,7 +250,7 @@ main(int argc, char **argv)
 
 	if (log_type == REPMGR_SYSLOG)
 	{
-		fclose(stderr);
+		freopen("/dev/null", "w", stderr);
 	}
 
 	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
