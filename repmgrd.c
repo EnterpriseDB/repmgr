@@ -1327,7 +1327,7 @@ update_shared_memory(char *last_wal_standby_applied)
 	else if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
 	{
 		/* this surely is more than enough reason to exit */
-		log_warning(_("Cannot update this standby's shared memory, maybe shared_preload_libraries=repmgr_funcs is not set?\n"));
+		log_crit(_("Cannot update this standby's shared memory, maybe shared_preload_libraries=repmgr_funcs is not set?\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
