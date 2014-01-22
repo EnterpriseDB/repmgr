@@ -268,11 +268,8 @@ main(int argc, char **argv)
 		}
 	}
 
-	switch (optind < argc)
+	if (optind < argc)
 	{
-	case 0:
-		break;
-	default:
 		log_err(_("%s: too many command-line arguments (first extra is \"%s\")\n"),
 		        progname, argv[optind]);
 		usage();
