@@ -1322,7 +1322,9 @@ update_registration(void)
 static void
 do_daemonize()
 {
+	char *ptr, path[MAXLEN];
 	pid_t pid = fork();
+
 	switch (pid)
 	{
 	case -1:
@@ -1354,6 +1356,23 @@ do_daemonize()
 		}
 
 		/* a child just flows along */
+
+		memset(path, 0, MAXLEN);
+
+		for (ptr = config_file + strlen(config_file); ptr > config_file; --ptr)
+		{
+			if (*ptr == '/')
+			{
+				strncpy(path, config_file, ptr - config_file);
+			}
+		}
+
+		if (*path == '\0')
+		{
+			*path = '/';
+		}
+
+		chdir(path);
 
 		break;
 
