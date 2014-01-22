@@ -1845,7 +1845,7 @@ test_ssh_connection(char *host, char *remote_user)
 	else
 		maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s", options.ssh_options, host, remote_user, TRUEBIN_PATH);
 
-	log_debug(_("command is: %s"), script);
+	log_debug(_("command is: %s\n"), script);
 	r = system(script);
 	if (r != 0)
 		log_info(_("Can not connect to the remote host (%s)\n"), host);
