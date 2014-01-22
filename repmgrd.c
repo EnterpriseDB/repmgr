@@ -1012,7 +1012,6 @@ do_failover(void)
 		if (log_type == REPMGR_STDERR && *local_options.logfile)
 		{
 			fflush(stderr);
-			fsync(fileno(stderr));
 		}
 
 		r = system(local_options.promote_command);
@@ -1038,7 +1037,6 @@ do_failover(void)
 		if (log_type == REPMGR_STDERR && *local_options.logfile)
 		{
 			fflush(stderr);
-			fsync(fileno(stderr));
 		}
 
 		r = system(local_options.follow_command);
