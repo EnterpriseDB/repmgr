@@ -44,7 +44,7 @@ xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 
 	retval = vsnprintf(str, size, format, ap);
 
-	if (retval >= size)
+	if (retval >= (int)size)
 	{
 		log_err(_("Buffer of size not large enough to format entire string '%s'\n"),
 		        str);
