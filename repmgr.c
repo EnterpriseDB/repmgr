@@ -1375,7 +1375,7 @@ do_standby_promote(void)
 	}
 	else
 	{
-		log_err(_("\n%s: STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"), progname);
+		log_err(_("%s: STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"), progname);
 	}
 	PQfinish(conn);
 	return;
@@ -1420,7 +1420,7 @@ do_standby_follow(void)
 	if (ret == NULL || strcmp(standby_version, "") == 0)
 	{
 		if (ret != NULL)
-			log_err(_("\n%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1493,7 +1493,7 @@ do_standby_follow(void)
 	strncpy(runtime_options.masterport, PQport(master_conn), MAXLEN);
 	PQfinish(master_conn);
 
-	log_info(_("%s Changing standby's master"),progname);
+	log_info(_("%s Changing standby's master\n"),progname);
 
 	/* Get the data directory full path */
 	sqlquery_snprintf(sqlquery, "SELECT setting "
@@ -1628,7 +1628,7 @@ do_witness_create(void)
 	pg_conf = fopen(buf, "a");
 	if (pg_conf == NULL)
 	{
-		log_err(_("\n%s: could not open \"%s\" for adding extra config: %s\n"), progname, buf, strerror(errno));
+		log_err(_("%s: could not open \"%s\" for adding extra config: %s\n"), progname, buf, strerror(errno));
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1735,8 +1735,8 @@ do_witness_create(void)
 static void
 usage(void)
 {
-	log_err(_("\n\n%s: Replicator manager \n"), progname);
-	log_err(_("Try \"%s --help\" for more information.\n"), progname);
+	fprintf(stderr, _("\n\n%s: Replicator manager \n"), progname);
+	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 }
 
 
@@ -1912,7 +1912,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 			log_info(_("rsync partial transfer warning ignored\n"));
 		}
 		else
-			log_warning( _("\nrsync completed with return code 24: "
+			log_warning( _("rsync completed with return code 24: "
 			               "\"Partial transfer due to vanished source files\".\n"
 			               "This can happen because of normal operation "
 			               "on the master server, but it may indicate an "
