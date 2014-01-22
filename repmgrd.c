@@ -117,8 +117,8 @@ t_configuration_options config = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static void help(const char* progname);
 static void usage(void);
-static void checkClusterConfiguration(PGconn *conn, PGconn *primary);
-static void checkNodeConfiguration(char *conninfo);
+static void checkClusterConfiguration(PGconn *conn);
+static void checkNodeConfiguration(void);
 
 static void StandbyMonitor(void);
 static void WitnessMonitor(void);
@@ -309,8 +309,8 @@ main(int argc, char **argv)
 				strncpy(primary_options.conninfo, local_options.conninfo, MAXLEN);
 				primaryConn = myLocalConn;
 
-				checkClusterConfiguration(myLocalConn, primaryConn);
-				checkNodeConfiguration(local_options.conninfo);
+				checkClusterConfiguration(myLocalConn);
+				checkNodeConfiguration();
 
 				if (reload_configuration(config_file, &local_options))
 				{
@@ -380,8 +380,8 @@ main(int argc, char **argv)
 					terminate(ERR_BAD_CONFIG);
 				}
 
-				checkClusterConfiguration(myLocalConn, primaryConn);
-				checkNodeConfiguration(local_options.conninfo);
+				checkClusterConfiguration(myLocalConn);
+				checkNodeConfiguration();
 
 				if (reload_configuration(config_file, &local_options))
 				{
@@ -708,7 +708,6 @@ do_failover(void)
 	int     ready_nodes = 0;
 
 	bool	find_best = false;
-	bool	witness = false;
 
 	int		i;
 	int		r;
@@ -1102,7 +1101,7 @@ CheckConnection(PGconn *conn, const char *type)
 
 
 static void
-checkClusterConfiguration(PGconn *conn, PGconn *primary)
+checkClusterConfiguration(PGconn *conn)
 {
 	PGresult   *res;
 
@@ -1137,7 +1136,7 @@ checkClusterConfiguration(PGconn *conn, PGconn *primary)
 
 
 static void
-checkNodeConfiguration(char *conninfo)
+checkNodeConfiguration(void)
 {
 	PGresult   *res;
 
