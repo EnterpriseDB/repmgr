@@ -214,7 +214,7 @@ pg_version(PGconn *conn, char* major_version)
 
 
 int
-guc_setted(PGconn *conn, const char *parameter, const char *op,
+guc_set(PGconn *conn, const char *parameter, const char *op,
            const char *value)
 {
 	PGresult	*res;
@@ -243,11 +243,11 @@ guc_setted(PGconn *conn, const char *parameter, const char *op,
 }
 
 /**
- * Just like guc_setted except with an extra parameter containing the name of
+ * Just like guc_set except with an extra parameter containing the name of
  * the pg datatype so that the comparison can be done properly.
  */
 int
-guc_setted_typed(PGconn *conn, const char *parameter, const char *op, 
+guc_set_typed(PGconn *conn, const char *parameter, const char *op, 
                  const char *value, const char *datatype)
 {
 	PGresult	*res;

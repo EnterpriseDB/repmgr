@@ -851,7 +851,7 @@ do_standby_clone(void)
 	}
 
 	/* And check if it is well configured */
-	i = guc_setted(conn, "wal_level", "=", "hot_standby");
+	i = guc_set(conn, "wal_level", "=", "hot_standby");
 	if (i == 0 || i == -1)
 	{
 		PQfinish(conn);
@@ -860,7 +860,7 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	i = guc_setted_typed(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments, "integer");
+	i = guc_set_typed(conn, "wal_keep_segments", ">=", runtime_options.wal_keep_segments, "integer");
 	if (i == 0 || i == -1)
 	{
 		PQfinish(conn);
@@ -869,7 +869,7 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	i = guc_setted(conn, "archive_mode", "=", "on");
+	i = guc_set(conn, "archive_mode", "=", "on");
 	if (i == 0 || i == -1)
 	{
 		PQfinish(conn);
@@ -878,7 +878,7 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	i = guc_setted(conn, "hot_standby", "=", "on");
+	i = guc_set(conn, "hot_standby", "=", "on");
 	if (i == 0 || i == -1)
 	{
 		PQfinish(conn);
