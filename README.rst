@@ -1085,7 +1085,7 @@ License and Contributions
 =========================
 
 repmgr is licensed under the GPL v3.  All of its code and documentation is
-Copyright 2010-2012, 2ndQuadrant Limited.  See the files COPYRIGHT and LICENSE for
+Copyright 2010-2014, 2ndQuadrant Limited.  See the files COPYRIGHT and LICENSE for
 details.
 
 Main sponsorship of repmgr has been from 2ndQuadrant customers.
