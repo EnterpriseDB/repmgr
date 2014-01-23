@@ -13,13 +13,16 @@ Installation
 
 For convenience, we define:
 
-  * node1 is the hostname fully qualified of the Master server, IP 192.168.1.10
-  * node2 is the hostname fully qualified of the Standby server, IP 192.168.1.11
-  * witness is the hostname fully qualified of the server used for witness, IP 192.168.1.12
+**node1**
+    is the hostname fully qualified of the Master server, IP 192.168.1.10
+**node2**
+    is the hostname fully qualified of the Standby server, IP 192.168.1.11
+**witness**
+    is the hostname fully qualified of the server used for witness, IP 192.168.1.12
 
-:Note: It is not recommanded to use name defining status of a server like «masterserver»,
-       this is a name leading to confusion once a failover take place and the Master is
-       now on the «standbyserver».
+**Note:** It is not recommanded to use name defining status of a server like «masterserver»,
+this is a name leading to confusion once a failover take place and the Master is
+now on the «standbyserver».
 
 Summary
 -------
@@ -30,17 +33,24 @@ and a witness-repmgrd is installed in a third server where it uses a PostgreSQL
 cluster to communicate with other repmgrd daemons.
 
 1. Install PostgreSQL in all the servers involved (including the server used for
-witness)
+   witness)
+
 2. Install repmgr in all the servers involved (including the server used for witness)
+
 3. Configure the Master PostreSQL
+
 4. Clone the Master to the Standby using "repmgr standby clone" command
+
 5. Configure repmgr in all the servers involved (including the server used for witness)
+
 6. Register Master and Standby nodes
+
 7. Initiate witness server
+
 8. Start the repmgrd daemons in all nodes
 
-:Note: A complete Hight-Availability design need at least 3 servers to still have
-       a backup node after a first failure.
+**Note** A complete Hight-Availability design need at least 3 servers to still have
+a backup node after a first failure.
 
 Install PostgreSQL
 ------------------
@@ -76,8 +86,8 @@ Edit the file pg_hba.conf and add lines for the replication::
   host     repmgr           repmgr      192.168.1.10/30         trust
   host     replication      all         192.168.1.10/30         trust
 
-:Note: It is also possible to use a password authentication (md5), .pgpass file
-       should be edited to allow connection between each node.
+**Note:** It is also possible to use a password authentication (md5), .pgpass file
+should be edited to allow connection between each node.
 
 Create the user and database to manage replication::
 
@@ -137,16 +147,26 @@ Log in each server and configure repmgr by editing the file
   promote_command='promote_command.sh'
   follow_command='repmgr standby follow -f /etc/repmgr/repmgr.conf'
 
-* *cluster* is the name of the current replication.
-* *node* is the number of the current node (1, 2 or 3 in the current example).
-* *node_name* is an identifier for every node.
-* *conninfo* is used to connect to the local PostgreSQL server (where the configuration file is) from any node. In the witness server configuration it is needed to add a 'port=5499' to the conninfo.
-* *master_response_timeout* is the maximum amount of time we are going to wait before deciding the master has died and start failover procedure.
-* *reconnect_attempts* is the number of times we will try to reconnect to master after a failure has been detected and before start failover procedure.
-* *reconnect_interval* is the amount of time between retries to reconnect to master after a failure has been detected and before start failover procedure.
-* *failover* configure behavior : *manual* or *automatic*.
-* *promote_command* the command executed to do the failover (including the PostgreSQL failover itself). The command must return 0 on success.
-* *follow_command* the command executed to address the current standby to another Master. The command must return 0 on success.
+**cluster**
+    is the name of the current replication.
+**node**
+    is the number of the current node (1, 2 or 3 in the current example).
+**node_name**
+    is an identifier for every node.
+**conninfo**
+    is used to connect to the local PostgreSQL server (where the configuration file is) from any node. In the witness server configuration it is needed to add a 'port=5499' to the conninfo.
+**master_response_timeout**
+    is the maximum amount of time we are going to wait before deciding the master has died and start failover procedure.
+**reconnect_attempts**
+    is the number of times we will try to reconnect to master after a failure has been detected and before start failover procedure.
+**reconnect_interval**
+    is the amount of time between retries to reconnect to master after a failure has been detected and before start failover procedure.
+**failover**
+    configure behavior: *manual* or *automatic*.
+**promote_command**
+    the command executed to do the failover (including the PostgreSQL failover itself). The command must return 0 on success.
+**follow_command**
+    the command executed to address the current standby to another Master. The command must return 0 on success.
 
 Register Master and Standby
 ---------------------------
@@ -158,9 +178,7 @@ Register the node as Master::
   su - postgres
   repmgr -f /etc/repmgr/repmgr.conf master register
 
-Log in node2.
-
-Register the node as Standby::
+Log in node2. Register it as a standby::
 
   su - postgres
   repmgr -f /etc/repmgr/repmgr.conf standby register
@@ -173,7 +191,7 @@ Log in witness.
 Initialize the witness server::
 
   su - postgres
-  repmgr -d repmgr -U repmgr -h 192.168.1.10 -D $WITNESS_PGDATA -f /etc/repmgr/repmgr.conf witness create 
+  repmgr -d repmgr -U repmgr -h 192.168.1.10 -D $WITNESS_PGDATA -f /etc/repmgr/repmgr.conf witness create
 
 It needs information to connect to the master to copy the configuration of the cluster, also it needs to know where it should initialize it's own $PGDATA.
 As part of the procees it also ask for the superuser password so it can connect when needed.
@@ -183,10 +201,10 @@ Start the repmgrd daemons
 
 Log in node2 and witness.
 
-  su - postgres
-  repmgrd -f /etc/repmgr/repmgr.conf > /var/log/postgresql/repmgr.log 2>&1
+	su - postgres
+	repmgrd -f /etc/repmgr/repmgr.conf > /var/log/postgresql/repmgr.log 2>&1
 
-:Note: The Master does not need a repmgrd daemon.
+**Note:** The Master does not need a repmgrd daemon.
 
 
 Suspend Automatic behavior
@@ -200,12 +218,6 @@ Then, signal repmgrd daemon::
 
 	su - postgres
 	kill -HUP `pidoff repmgrd`
-
-TODO : -HUP configuration update is not implemented and it should check its
-	   configuration file  against its configuration in DB, updating
-	   accordingly the SQL conf (especialy the failover manual or auto)
-	   this allow witness-standby and standby-not-promotable features
-	   and simpler usage of the tool ;)
 
 Usage
 =====
