@@ -1,3 +1,14 @@
+2.0stable 2014-01-30
+        Documentation fixes (Christian)
+        General refactoring, code quality improvements and stabilization work (Christian)
+        Added proper daemonizing (-d/--daemonize) (Christian)
+        Added PID file handling (-p/--pid-file) (Christian)
+        New config option: monitor_interval_secs (Christian)
+        New config option: retry_promote_interval (Christian)
+        New config option: logfile (Christian)
+        New config option: pg_bindir (Christian)
+        New config option: pgctl_options (Christian)
+
 2.0beta2 2013-12-19
         Improve autofailover logic and algorithms (Jaime, Andres)
         Ignore pg_log when cloning (Jaime)
