@@ -1743,39 +1743,44 @@ help(const char *progname)
 {
 	printf(_("\n%s: Replicator manager \n"), progname);
 	printf(_("Usage:\n"));
-	printf(_(" %s [OPTIONS] master	{register}\n"), progname);
+	printf(_(" %s [OPTIONS] master  {register}\n"), progname);
 	printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"),
 	       progname);
 	printf(_(" %s [OPTIONS] cluster {show|cleanup}\n"), progname);
 	printf(_("\nGeneral options:\n"));
-	printf(_("	--help					   show this help, then exit\n"));
-	printf(_("	--version				   output version information, then exit\n"));
-	printf(_("	--verbose				   output verbose activity information\n"));
+	printf(_("  --help                              show this help, then exit\n"));
+	printf(_("  --version                           output version information, then exit\n"));
+	printf(_("  --verbose                           output verbose activity information\n"));
 	printf(_("\nConnection options:\n"));
-	printf(_("	-d, --dbname=DBNAME		   database to connect to\n"));
-	printf(_("	-h, --host=HOSTNAME		   database server host or socket directory\n"));
-	printf(_("	-p, --port=PORT			   database server port\n"));
-	printf(_("	-U, --username=USERNAME	   database user name to connect as\n"));
+	printf(_("  -d, --dbname=DBNAME                 database to connect to\n"));
+	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory\n"));
+	printf(_("  -p, --port=PORT                     database server port\n"));
+	printf(_("  -U, --username=USERNAME             database user name to connect as\n"));
 	printf(_("\nConfiguration options:\n"));
-	printf(_("	-D, --data-dir=DIR		   local directory where the files will be copied to\n"));
-	printf(_("	-l, --local-port=PORT      standby or witness server local port\n"));
-	printf(_("	-f, --config_file=PATH	   path to the configuration file\n"));
-	printf(_("	-R, --remote-user=USERNAME database server username for rsync\n"));
-	printf(_("	-w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)\n"));
-	printf(_("	-I, --ignore-rsync-warning ignore rsync partial transfer warning\n"));
-	printf(_("  -k, --keep-history=VALUE   keeps indicated number of days of history\n"));
-	printf(_("	-F, --force				   force potentially dangerous operations to happen\n"));
-	printf(_("	-W, --wait				   wait for a master to appear"));
+	printf(_("  -D, --data-dir=DIR                  local directory where the files will be\n" \
+		     "                                      copied to\n"));
+	printf(_("  -l, --local-port=PORT               standby or witness server local port\n"));
+	printf(_("  -f, --config_file=PATH              path to the configuration file\n"));
+	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
+	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
+		     "                                      wal_keep_segments (default: 5000)\n"));
+	printf(_("  -I, --ignore-rsync-warning          ignore rsync partial transfer warning\n"));
+	printf(_("  -k, --keep-history=VALUE            keeps indicated number of days of\n" \
+		     "                                      history\n"));
+	printf(_("  -F, --force                         force potentially dangerous operations\n" \
+		     "                                      to happen\n"));
+	printf(_("  -W, --wait                          wait for a master to appear\n"));
 
-	printf(_("\n%s performs some tasks like clone a node, promote it "), progname);
-	printf(_("or making follow another node and then exits.\n"));
+	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
+	printf(_("another node and then exits.\n\n"));
 	printf(_("COMMANDS:\n"));
-	printf(_(" master register		 - registers the master in a cluster\n"));
-	printf(_(" standby register		 - registers a standby in a cluster\n"));
-	printf(_(" standby clone [node]	 - allows creation of a new standby\n"));
-	printf(_(" standby promote		 - allows manual promotion of a specific standby into a "));
-	printf(_("new master in the event of a failover\n"));
-	printf(_(" standby follow		 - allows the standby to re-point itself to a new master\n"));
+	printf(_(" master register         - registers the master in a cluster\n"));
+	printf(_(" standby register        - registers a standby in a cluster\n"));
+	printf(_(" standby clone [node]    - allows creation of a new standby\n"));
+	printf(_(" standby promote         - allows manual promotion of a specific standby into\n" \
+	         "                           a new master in the event of a failover\n"));
+	printf(_(" standby follow          - allows the standby to re-point itself to a new\n" \
+		     "                           master\n"));
 	printf(_(" cluster show            - print node information\n"));
 	printf(_(" cluster cleanup         - cleans monitor's history\n"));
 }
