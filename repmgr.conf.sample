@@ -22,7 +22,7 @@ reconnect_attempts=6
 reconnect_interval=10
 
 # Autofailover options
-failover=automatic
+failover=manual
 priority=-1
 promote_command='repmgr standby promote -f /path/to/repmgr.conf'
 follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
