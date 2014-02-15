@@ -58,6 +58,8 @@ void stderr_log_with_level(const char *level_name, int level, const char *fmt, .
 		vfprintf(stderr, fmt1, ap);
 
 		va_end(ap);
+
+		fflush(stderr);
 	}
 }
 
