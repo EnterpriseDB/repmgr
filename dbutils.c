@@ -18,6 +18,7 @@
  */
 
 #include <unistd.h>
+#include <time.h>
 
 #include "repmgr.h"
 #include "strutil.h"
@@ -426,34 +427,64 @@ getMasterConnection(PGconn *standby_conn, char *schema, char *cluster,
  * return 1 if Ok; 0 if any error ocurred; -1 if timeout reached
  */
 int
-wait_connection_availability(PGconn *conn, int timeout)
+wait_connection_availability(PGconn *conn, unsigned long timeout)
 {
 	PGresult   *res;
+	fd_set      read_set;
+	int         sock = PQsocket(conn);
+	struct timeval tmout, before, after;
 
-	while(timeout-- >= 0)
+	/* recalc to microseconds */
+	timeout *= 1000000;
+
+	while (timeout > 0)
 	{
 		if (PQconsumeInput(conn) == 0)
 		{
 			log_warning(_("wait_connection_availability: could not receive data from connection. %s\n"),
-			            PQerrorMessage(conn));
+						PQerrorMessage(conn));
 			return 0;
 		}
 
 		if (PQisBusy(conn) == 0)
 		{
-			res = PQgetResult(conn);
-			if (res == NULL)
-				break;
-			PQclear(res);
+			do {
+				res = PQgetResult(conn);
+				PQclear(res);
+			} while(res != NULL);
+
+			break;
 		}
-		sleep(1);
+
+
+		tmout.tv_sec = 0;
+		tmout.tv_usec = 250000;
+
+		FD_ZERO(&read_set);
+		FD_SET(sock, &read_set);
+
+		gettimeofday(&before);
+		if (select(sock, &read_set, NULL, NULL, &tmout) == -1)
+		{
+			log_warning(
+				_("wait_connection_availability: select() returned with error: %s"),
+				strerror(errno));
+			return -1;
+		}
+		gettimeofday(&after);
+
+		timeout -= (after.tv_sec * 1000000 + after.tv_usec) -
+			(before.tv_sec * 1000000 + before.tv_usec);
 	}
+
+
 	if (timeout >= 0)
+	{
 		return 1;
-	else {
-		log_warning(_("wait_connection_availability: timeout reached"));
-		return -1;
 	}
+
+	log_warning(_("wait_connection_availability: timeout reached"));
+	return -1;
 }
 
 
