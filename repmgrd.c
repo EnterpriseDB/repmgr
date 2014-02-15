@@ -530,6 +530,7 @@ StandbyMonitor(void)
 	char last_wal_primary_location[MAXLEN];
 	char last_wal_standby_received[MAXLEN];
 	char last_wal_standby_applied[MAXLEN];
+	char last_wal_standby_applied_timestamp[MAXLEN];
 
 	unsigned long long int lsn_primary;
 	unsigned long long int lsn_standby_received;
@@ -637,7 +638,7 @@ StandbyMonitor(void)
 	sqlquery_snprintf(
 	    sqlquery,
 	    "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-	    "pg_last_xlog_replay_location()");
+	    "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp()");
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -651,6 +652,7 @@ StandbyMonitor(void)
 	strncpy(monitor_standby_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
 	strncpy(last_wal_standby_received , PQgetvalue(res, 0, 1), MAXLEN);
 	strncpy(last_wal_standby_applied , PQgetvalue(res, 0, 2), MAXLEN);
+	strncpy(last_wal_standby_applied_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
 	PQclear(res);
 
 	/* Get primary xlog info */
@@ -678,9 +680,10 @@ StandbyMonitor(void)
 	sqlquery_snprintf(sqlquery,
 	                  "INSERT INTO %s.repl_monitor "
 	                  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-	                  " '%s', '%s', "
+	                  " '%s'::timestamp with time zone, '%s', '%s', "
 	                  " %lld, %lld)", repmgr_schema,
 	                  primary_options.node, local_options.node, monitor_standby_timestamp,
+	                  last_wal_standby_applied_timestamp,
 	                  last_wal_primary_location,
 	                  last_wal_standby_received,
 	                  (lsn_primary - lsn_standby_received),

@@ -15,6 +15,7 @@
 #include "storage/shmem.h"
 #include "storage/spin.h"
 #include "utils/builtins.h"
+#include "utils/timestamp.h"
 
 /* same definition as the one in xlog_internal.h */
 #define MAXFNAMELEN 	64
@@ -28,6 +29,7 @@ typedef struct repmgrSharedState
 {
     LWLockId    lock;           		/* protects search/modification */
     char		location[MAXFNAMELEN];	/* last known xlog location */
+	TimestampTz last_updated;
 } repmgrSharedState;
 
 /* Links to shared memory state */
@@ -48,6 +50,12 @@ Datum repmgr_get_last_standby_location(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(repmgr_update_standby_location);
 PG_FUNCTION_INFO_V1(repmgr_get_last_standby_location);
+
+Datum repmgr_update_last_updated(PG_FUNCTION_ARGS);
+Datum repmgr_get_last_updated(PG_FUNCTION_ARGS);
+
+PG_FUNCTION_INFO_V1(repmgr_update_last_updated);
+PG_FUNCTION_INFO_V1(repmgr_get_last_updated);
 
 
 /*
@@ -186,4 +194,39 @@ repmgr_update_standby_location(PG_FUNCTION_ARGS)
     locationstr = text_to_cstring(location);
 
 	PG_RETURN_BOOL(repmgr_set_standby_location(locationstr));
+}
+
+/* update and return last updated with current timestamp */
+Datum
+repmgr_update_last_updated(PG_FUNCTION_ARGS)
+{
+	TimestampTz last_updated = GetCurrentTimestamp();
+
+	/* Safety check... */
+	if (!shared_state)
+		PG_RETURN_NULL();
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	shared_state->last_updated = last_updated;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_TIMESTAMPTZ(last_updated);
+}
+
+
+/* get last updated timestamp */
+Datum
+repmgr_get_last_updated(PG_FUNCTION_ARGS)
+{
+	TimestampTz last_updated;
+
+    /* Safety check... */
+    if (!shared_state)
+        PG_RETURN_NULL();
+
+	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+	last_updated = shared_state->last_updated;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_TIMESTAMPTZ(last_updated);
 }

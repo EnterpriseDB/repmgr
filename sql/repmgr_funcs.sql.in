@@ -1,6 +1,6 @@
 /*
  * repmgr_function.sql
- * Copyright (c) 2ndQuadrant, 2010
+ * Copyright (c) 2ndQuadrant, 2010-2014
  *
  */
 
@@ -12,4 +12,12 @@ LANGUAGE C STRICT;
 
 CREATE FUNCTION repmgr_get_last_standby_location() RETURNS text
 AS 'MODULE_PATHNAME', 'repmgr_get_last_standby_location'
+LANGUAGE C STRICT;
+
+CREATE FUNCTION repmgr_update_last_updated() RETURNS TIMESTAMP WITH TIME ZONE
+AS 'MODULE_PATHNAME', 'repmgr_update_last_updated'
+LANGUAGE C STRICT;
+
+CREATE FUNCTION repmgr_get_last_updated() RETURNS TIMESTAMP WITH TIME ZONE
+AS 'MODULE_PATHNAME', 'repmgr_get_last_updated'
 LANGUAGE C STRICT;

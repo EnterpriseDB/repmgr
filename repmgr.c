@@ -2089,6 +2089,35 @@ create_schema(PGconn *conn)
 	}
 	PQclear(res);
 
+	/* to avoid confusion of the time_lag field and provide a consistent UI we
+	 * use these functions for providing the latest update timestamp */
+	sqlquery_snprintf(sqlquery,
+					  "CREATE FUNCTION %s.repmgr_update_last_updated() RETURNS TIMESTAMP WITH TIME ZONE "
+					  "AS '$libdir/repmgr_funcs', 'repmgr_update_last_updated' "
+					  " LANGUAGE C STRICT", repmgr_schema);
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "Cannot create the function repmgr_update_last_updated: %s\n",
+		        PQerrorMessage(conn));
+		return false;
+	}
+	PQclear(res);
+
+
+	sqlquery_snprintf(sqlquery,
+					  "CREATE FUNCTION %s.repmgr_get_last_updated() RETURNS TIMESTAMP WITH TIME ZONE "
+					  "AS '$libdir/repmgr_funcs', 'repmgr_get_last_updated' "
+					  "LANGUAGE C STRICT", repmgr_schema);
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "Cannot create the function repmgr_get_last_updated: %s\n",
+		        PQerrorMessage(conn));
+		return false;
+	}
+	PQclear(res);
+
 
 	/* ... the tables */
 	sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_nodes (        "
@@ -2113,6 +2142,7 @@ create_schema(PGconn *conn)
 	                  "  primary_node                   INTEGER NOT NULL, "
 	                  "  standby_node                   INTEGER NOT NULL, "
 	                  "  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL, "
+	                  "  last_apply_time                TIMESTAMP WITH TIME ZONE, "
 	                  "  last_wal_primary_location      TEXT NOT NULL,   "
 	                  "  last_wal_standby_location      TEXT,  "
 	                  "  replication_lag                BIGINT NOT NULL, "
@@ -2133,12 +2163,13 @@ create_schema(PGconn *conn)
 	                  " SELECT primary_node, standby_node, name AS standby_name, last_monitor_time, "
 	                  "        last_wal_primary_location, last_wal_standby_location, "
 	                  "        pg_size_pretty(replication_lag) replication_lag, "
+	                  "        age(now(), last_apply_time) AS replication_time_lag, "
 	                  "        pg_size_pretty(apply_lag) apply_lag, "
-	                  "        age(now(), last_monitor_time) AS time_lag "
+	                  "        age(now(), CASE WHEN pg_is_in_recovery() THEN %s.repmgr_get_last_updated() ELSE last_monitor_time END) AS communication_time_lag "
 	                  "   FROM %s.repl_monitor JOIN %s.repl_nodes ON standby_node = id "
 	                  "  WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time) "
 	                  "                                                FROM %s.repl_monitor GROUP BY 1)",
-	                  repmgr_schema, repmgr_schema, repmgr_schema, repmgr_schema);
+	                  repmgr_schema, repmgr_schema, repmgr_schema, repmgr_schema, repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
 
 	res = PQexec(conn, sqlquery);
