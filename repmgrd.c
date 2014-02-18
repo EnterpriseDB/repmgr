@@ -547,6 +547,7 @@ StandbyMonitor(void)
 
 	if (!CheckConnection(myLocalConn, "standby"))
 	{
+		log_err("Failed to connect to local node, exiting!\n");
 		terminate(1);
 	}
 
@@ -1272,6 +1273,8 @@ terminate(int retval)
 	{
 		unlink(pid_file);
 	}
+
+	log_info("Terminating...\n");
 
 	exit(retval);
 }
