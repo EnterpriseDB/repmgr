@@ -956,6 +956,7 @@ do_failover(void)
 
 	/* Close the connection to this server */
 	PQfinish(myLocalConn);
+	myLocalConn = NULL;
 
 	/*
 	 * determine which one is the best candidate to promote to primary
