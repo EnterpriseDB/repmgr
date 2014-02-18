@@ -553,6 +553,9 @@ StandbyMonitor(void)
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
+		PQfinish(primaryConn);
+		primaryConn = NULL;
+
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
 			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
@@ -774,7 +777,12 @@ do_failover(void)
 
 		/* if we can't see the node just skip it */
 		if (PQstatus(nodeConn) != CONNECTION_OK)
+		{
+			if (nodeConn != NULL)
+				PQfinish(nodeConn);
+
 			continue;
+		}
 
 		visible_nodes++;
 		nodes[i].is_visible = true;
@@ -1272,6 +1280,11 @@ terminate(int retval)
 	if (pid_file)
 	{
 		unlink(pid_file);
+	}
+
+	if (progname)
+	{
+		free(progname);
 	}
 
 	log_info("Terminating...\n");
