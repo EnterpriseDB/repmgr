@@ -19,6 +19,7 @@
 
 #include <unistd.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "repmgr.h"
 #include "strutil.h"
@@ -433,6 +434,7 @@ wait_connection_availability(PGconn *conn, unsigned long timeout)
 	fd_set      read_set;
 	int         sock = PQsocket(conn);
 	struct timeval tmout, before, after;
+	struct timezone tz;
 
 	/* recalc to microseconds */
 	timeout *= 1000000;
@@ -463,7 +465,7 @@ wait_connection_availability(PGconn *conn, unsigned long timeout)
 		FD_ZERO(&read_set);
 		FD_SET(sock, &read_set);
 
-		gettimeofday(&before);
+		gettimeofday(&before, &tz);
 		if (select(sock, &read_set, NULL, NULL, &tmout) == -1)
 		{
 			log_warning(
@@ -471,7 +473,7 @@ wait_connection_availability(PGconn *conn, unsigned long timeout)
 				strerror(errno));
 			return -1;
 		}
-		gettimeofday(&after);
+		gettimeofday(&after, &tz);
 
 		timeout -= (after.tv_sec * 1000000 + after.tv_usec) -
 			(before.tv_sec * 1000000 + before.tv_usec);
