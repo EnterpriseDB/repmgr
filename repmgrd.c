@@ -1282,11 +1282,6 @@ terminate(int retval)
 		unlink(pid_file);
 	}
 
-	if (progname)
-	{
-		free(progname);
-	}
-
 	log_info("Terminating...\n");
 
 	exit(retval);
