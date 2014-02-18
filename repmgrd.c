@@ -147,13 +147,20 @@ static void setup_event_handlers(void);
 static void do_daemonize();
 static void check_and_create_pid_file(const char *pid_file);
 
-#define CloseConnections()	\
-	if (PQisBusy(primaryConn) == 1) \
-		(void) CancelQuery(primaryConn, local_options.master_response_timeout); \
-	if (myLocalConn != NULL) \
-		PQfinish(myLocalConn);	\
-	if (primaryConn != NULL && primaryConn != myLocalConn) \
+static void
+CloseConnections() {
+	if (primaryConn != NULL && PQisBusy(primaryConn) == 1)
+		CancelQuery(primaryConn, local_options.master_response_timeout);
+
+	if (myLocalConn != NULL)
+		PQfinish(myLocalConn);
+
+	if (primaryConn != NULL && primaryConn != myLocalConn)
 		PQfinish(primaryConn);
+
+	primaryConn = NULL;
+	myLocalConn = NULL;
+}
 
 
 int
@@ -430,10 +437,6 @@ main(int argc, char **argv)
 		failover_done = false;
 
 	} while (true);
-
-	/* Prevent a double-free */
-	if (primaryConn == myLocalConn)
-		myLocalConn = NULL;
 
 	/* close the connection to the database and cleanup */
 	CloseConnections();
