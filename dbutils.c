@@ -428,7 +428,7 @@ getMasterConnection(PGconn *standby_conn, char *schema, char *cluster,
  * return 1 if Ok; 0 if any error ocurred; -1 if timeout reached
  */
 int
-wait_connection_availability(PGconn *conn, unsigned long timeout)
+wait_connection_availability(PGconn *conn, long long timeout)
 {
 	PGresult   *res;
 	fd_set      read_set;

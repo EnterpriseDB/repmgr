@@ -144,7 +144,7 @@ static void terminate(int retval);
 static void setup_event_handlers(void);
 #endif
 
-static void do_daemonize();
+static void do_daemonize(void);
 static void check_and_create_pid_file(const char *pid_file);
 
 static void
