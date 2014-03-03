@@ -575,13 +575,15 @@ do_master_register(void)
 							  repmgr_schema, options.node);
 			log_debug(_("master register: %s\n"), sqlquery);
 
-			if (!PQexec(conn, sqlquery))
+			res = PQexec(conn, sqlquery);
+			if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 			{
 				log_warning(_("Cannot delete node details, %s\n"),
 							PQerrorMessage(conn));
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
 			}
+			PQclear(res);
 		}
 
 		/* Ensure there isn't any other master already registered */
@@ -603,13 +605,15 @@ do_master_register(void)
 	                  options.conninfo, options.priority);
 	log_debug(_("master register: %s\n"), sqlquery);
 
-	if (!PQexec(conn, sqlquery))
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_warning(_("Cannot insert node details, %s\n"),
 		            PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+	PQclear(res);
 
 	PQfinish(conn);
 	log_notice(_("Master node correctly registered for cluster %s with id %d (conninfo: %s)\n"),
@@ -735,7 +739,8 @@ do_standby_register(void)
 
 		log_debug(_("standby register: %s\n"), sqlquery);
 
-		if (!PQexec(master_conn, sqlquery))
+		res = PQexec(master_conn, sqlquery);
+		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
 			log_err(_("Cannot delete node details, %s\n"),
 			        PQerrorMessage(master_conn));
@@ -743,6 +748,7 @@ do_standby_register(void)
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
+		PQclear(res);
 	}
 
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority) "
@@ -1695,7 +1701,8 @@ do_witness_create(void)
 	                  repmgr_schema, options.node, options.cluster_name, options.node_name, options.conninfo, options.priority);
 
 	log_debug(_("witness create: %s"), sqlquery);
-	if (!PQexec(masterconn, sqlquery))
+	res = PQexec(masterconn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot insert node details, %s\n"), PQerrorMessage(masterconn));
 		PQfinish(masterconn);
@@ -2068,16 +2075,49 @@ static bool
 create_schema(PGconn *conn)
 {
 	char 		sqlquery[QUERY_STR_LEN];
+	PGresult    *res;
 
 	sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
-	if (!PQexec(conn, sqlquery))
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot create the schema %s: %s\n"),
 		        repmgr_schema, PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+	PQclear(res);
+
+	/* to avoid confusion of the time_lag field and provide a consistent UI we
+	 * use these functions for providing the latest update timestamp */
+	sqlquery_snprintf(sqlquery,
+					  "CREATE FUNCTION %s.repmgr_update_last_updated() RETURNS TIMESTAMP WITH TIME ZONE "
+					  "AS '$libdir/repmgr_funcs', 'repmgr_update_last_updated' "
+					  " LANGUAGE C STRICT", repmgr_schema);
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "Cannot create the function repmgr_update_last_updated: %s\n",
+		        PQerrorMessage(conn));
+		return false;
+	}
+	PQclear(res);
+
+
+	sqlquery_snprintf(sqlquery,
+					  "CREATE FUNCTION %s.repmgr_get_last_updated() RETURNS TIMESTAMP WITH TIME ZONE "
+					  "AS '$libdir/repmgr_funcs', 'repmgr_get_last_updated' "
+					  "LANGUAGE C STRICT", repmgr_schema);
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "Cannot create the function repmgr_get_last_updated: %s\n",
+		        PQerrorMessage(conn));
+		return false;
+	}
+	PQclear(res);
+
 
 	/* ... the tables */
 	sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_nodes (        "
@@ -2088,86 +2128,101 @@ create_schema(PGconn *conn)
 	                  "  priority  integer not null,    "
 	                  "  witness   boolean not null default false)", repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
-	if (!PQexec(conn, sqlquery))
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot create the table %s.repl_nodes: %s\n"),
 		        repmgr_schema, PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+	PQclear(res);
 
 	sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_monitor ( "
 	                  "  primary_node                   INTEGER NOT NULL, "
 	                  "  standby_node                   INTEGER NOT NULL, "
 	                  "  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL, "
+	                  "  last_apply_time                TIMESTAMP WITH TIME ZONE, "
 	                  "  last_wal_primary_location      TEXT NOT NULL,   "
 	                  "  last_wal_standby_location      TEXT,  "
 	                  "  replication_lag                BIGINT NOT NULL, "
 	                  "  apply_lag                      BIGINT NOT NULL) ", repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
-	if (!PQexec(conn, sqlquery))
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot create the table %s.repl_monitor: %s\n"),
 		        repmgr_schema, PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+	PQclear(res);
 
 	/* a view */
 	sqlquery_snprintf(sqlquery, "CREATE VIEW %s.repl_status AS "
 	                  " SELECT primary_node, standby_node, name AS standby_name, last_monitor_time, "
 	                  "        last_wal_primary_location, last_wal_standby_location, "
 	                  "        pg_size_pretty(replication_lag) replication_lag, "
+	                  "        age(now(), last_apply_time) AS replication_time_lag, "
 	                  "        pg_size_pretty(apply_lag) apply_lag, "
-	                  "        age(now(), last_monitor_time) AS time_lag "
+	                  "        age(now(), CASE WHEN pg_is_in_recovery() THEN %s.repmgr_get_last_updated() ELSE last_monitor_time END) AS communication_time_lag "
 	                  "   FROM %s.repl_monitor JOIN %s.repl_nodes ON standby_node = id "
 	                  "  WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time) "
 	                  "                                                FROM %s.repl_monitor GROUP BY 1)",
-	                  repmgr_schema, repmgr_schema, repmgr_schema, repmgr_schema);
+	                  repmgr_schema, repmgr_schema, repmgr_schema, repmgr_schema, repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
-	if (!PQexec(conn, sqlquery))
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot create the view %s.repl_status: %s\n"),
 		        repmgr_schema, PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+	PQclear(res);
 
 	/* an index to improve performance of the view */
 	sqlquery_snprintf(sqlquery, "CREATE INDEX idx_repl_status_sort "
 	                  "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
 	                  repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
-	if (!PQexec(conn, sqlquery))
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err(_("Cannot indexing table %s.repl_monitor: %s\n"),
+		log_err(_("Can't index table %s.repl_monitor: %s\n"),
 		        repmgr_schema, PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+	PQclear(res);
 
 	/* XXX Here we MUST try to load the repmgr_function.sql not hardcode it here */
 	sqlquery_snprintf(sqlquery,
 	                  "CREATE OR REPLACE FUNCTION %s.repmgr_update_standby_location(text) RETURNS boolean "
 	                  "AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
 	                  "LANGUAGE C STRICT ", repmgr_schema);
-	if (!PQexec(conn, sqlquery))
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		fprintf(stderr, "Cannot create the function repmgr_update_standby_location: %s\n",
 		        PQerrorMessage(conn));
 		return false;
 	}
+	PQclear(res);
 
 	sqlquery_snprintf(sqlquery,
 	                  "CREATE OR REPLACE FUNCTION %s.repmgr_get_last_standby_location() RETURNS text "
 	                  "AS '$libdir/repmgr_funcs', 'repmgr_get_last_standby_location' "
 	                  "LANGUAGE C STRICT ", repmgr_schema);
-	if (!PQexec(conn, sqlquery))
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		fprintf(stderr, "Cannot create the function repmgr_get_last_standby_location: %s\n",
 		        PQerrorMessage(conn));
 		return false;
 	}
+	PQclear(res);
 
 	return true;
 }
@@ -2182,7 +2237,8 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", repmgr_schema);
 	log_debug("copy_configuration: %s\n", sqlquery);
-	if (!PQexec(witnessconn, sqlquery))
+	res = PQexec(witnessconn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		fprintf(stderr, "Cannot clean node details in the witness, %s\n",
 		        PQerrorMessage(witnessconn));
@@ -2208,7 +2264,8 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		                  atoi(PQgetvalue(res, i, 3)),
 		                  PQgetvalue(res, i, 4));
 
-		if (!PQexec(witnessconn, sqlquery))
+		res = PQexec(witnessconn, sqlquery);
+		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
 			fprintf(stderr, "Cannot copy configuration to witness, %s\n",
 			        PQerrorMessage(witnessconn));

@@ -191,7 +191,9 @@ trim (char *s)
 		++s1;
 
 	/* Copy finished string */
-	strcpy (s, s1);
+	memmove (s, s1, s2 - s1);
+	s[s2 - s1 + 1] = '\0';
+
 	return s;
 }
 

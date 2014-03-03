@@ -144,16 +144,23 @@ static void terminate(int retval);
 static void setup_event_handlers(void);
 #endif
 
-static void do_daemonize();
+static void do_daemonize(void);
 static void check_and_create_pid_file(const char *pid_file);
 
-#define CloseConnections()	\
-	if (PQisBusy(primaryConn) == 1) \
-		(void) CancelQuery(primaryConn, local_options.master_response_timeout); \
-	if (myLocalConn != NULL) \
-		PQfinish(myLocalConn);	\
-	if (primaryConn != NULL && primaryConn != myLocalConn) \
+static void
+CloseConnections() {
+	if (primaryConn != NULL && PQisBusy(primaryConn) == 1)
+		CancelQuery(primaryConn, local_options.master_response_timeout);
+
+	if (myLocalConn != NULL)
+		PQfinish(myLocalConn);
+
+	if (primaryConn != NULL && primaryConn != myLocalConn)
 		PQfinish(primaryConn);
+
+	primaryConn = NULL;
+	myLocalConn = NULL;
+}
 
 
 int
@@ -431,10 +438,6 @@ main(int argc, char **argv)
 
 	} while (true);
 
-	/* Prevent a double-free */
-	if (primaryConn == myLocalConn)
-		myLocalConn = NULL;
-
 	/* close the connection to the database and cleanup */
 	CloseConnections();
 
@@ -530,6 +533,7 @@ StandbyMonitor(void)
 	char last_wal_primary_location[MAXLEN];
 	char last_wal_standby_received[MAXLEN];
 	char last_wal_standby_applied[MAXLEN];
+	char last_wal_standby_applied_timestamp[MAXLEN];
 
 	unsigned long long int lsn_primary;
 	unsigned long long int lsn_standby_received;
@@ -546,11 +550,15 @@ StandbyMonitor(void)
 
 	if (!CheckConnection(myLocalConn, "standby"))
 	{
+		log_err("Failed to connect to local node, exiting!\n");
 		terminate(1);
 	}
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
+		PQfinish(primaryConn);
+		primaryConn = NULL;
+
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
 			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
@@ -637,7 +645,7 @@ StandbyMonitor(void)
 	sqlquery_snprintf(
 	    sqlquery,
 	    "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-	    "pg_last_xlog_replay_location()");
+	    "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp()");
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -651,6 +659,7 @@ StandbyMonitor(void)
 	strncpy(monitor_standby_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
 	strncpy(last_wal_standby_received , PQgetvalue(res, 0, 1), MAXLEN);
 	strncpy(last_wal_standby_applied , PQgetvalue(res, 0, 2), MAXLEN);
+	strncpy(last_wal_standby_applied_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
 	PQclear(res);
 
 	/* Get primary xlog info */
@@ -678,9 +687,10 @@ StandbyMonitor(void)
 	sqlquery_snprintf(sqlquery,
 	                  "INSERT INTO %s.repl_monitor "
 	                  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-	                  " '%s', '%s', "
+	                  " '%s'::timestamp with time zone, '%s', '%s', "
 	                  " %lld, %lld)", repmgr_schema,
 	                  primary_options.node, local_options.node, monitor_standby_timestamp,
+	                  last_wal_standby_applied_timestamp,
 	                  last_wal_primary_location,
 	                  last_wal_standby_received,
 	                  (lsn_primary - lsn_standby_received),
@@ -770,7 +780,12 @@ do_failover(void)
 
 		/* if we can't see the node just skip it */
 		if (PQstatus(nodeConn) != CONNECTION_OK)
+		{
+			if (nodeConn != NULL)
+				PQfinish(nodeConn);
+
 			continue;
+		}
 
 		visible_nodes++;
 		nodes[i].is_visible = true;
@@ -953,6 +968,7 @@ do_failover(void)
 
 	/* Close the connection to this server */
 	PQfinish(myLocalConn);
+	myLocalConn = NULL;
 
 	/*
 	 * determine which one is the best candidate to promote to primary
@@ -1268,6 +1284,8 @@ terminate(int retval)
 	{
 		unlink(pid_file);
 	}
+
+	log_info("Terminating...\n");
 
 	exit(retval);
 }
