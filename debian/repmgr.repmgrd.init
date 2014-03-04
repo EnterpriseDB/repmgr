@@ -1,12 +1,12 @@
 #!/bin/sh
 ### BEGIN INIT INFO
-# Provides:          repmgrd
+# Provides:	     repmgrd
 # Required-Start:    $local_fs $remote_fs $network $syslog $postgresql
 # Required-Stop:     $local_fs $remote_fs $network $syslog $postgresql
-# Should-Start:      $syslog $postgresql
-# Should-Start:      $syslog $postgresql
+# Should-Start:	     $syslog $postgresql
+# Should-Start:	     $syslog $postgresql
 # Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
+# Default-Stop:	     0 1 6
 # Short-Description: Start/stop repmgrd
 ### END INIT INFO
 
@@ -28,27 +28,27 @@ test -x $REPMGRD_BIN || exit 0
 
 case "$REPMGRD_ENABLE" in
     [Nn]*)
-        exit 0
-        ;;
+	exit 0
+	;;
 esac
 
 case "$1" in
     start)
-        start-stop-daemon --start --quiet --make-pidfile --pidfile $REPMGRD_PIDFILE --exec $REPMGRD_BIN $REPMGRD_OPTS
-        ;;
+	start-stop-daemon --start --quiet --make-pidfile --pidfile $REPMGRD_PIDFILE --exec $REPMGRD_BIN $REPMGRD_OPTS
+	;;
 
     stop)
-        start-stop-daemon --stop --oknodo --quiet --pidfile $REPMGRD_PIDFILE
-        ;;
+	start-stop-daemon --stop --oknodo --quiet --pidfile $REPMGRD_PIDFILE
+	;;
 
     restart)
-        $0 stop && $0 start || exit 1
-        ;;
+	$0 stop && $0 start || exit 1
+	;;
 
     *)
-        echo "Usage: $0 {start|stop|restart}"
-        exit 1
-        ;;
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+	;;
 esac
 
 exit 0
