@@ -26,6 +26,12 @@ fi
 
 test -x $REPMGRD_BIN || exit 0
 
+case "$REPMGRD_ENABLE" in
+    [Nn]*)
+        exit 0
+        ;;
+esac
+
 case "$1" in
     start)
         start-stop-daemon --start --quiet --make-pidfile --pidfile $REPMGRD_PIDFILE --exec $REPMGRD_BIN $REPMGRD_OPTS

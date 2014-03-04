@@ -2,6 +2,10 @@
 # default settings for repmgrd. This file is source by /bin/sh from
 # /etc/init.d/repmgrd
 
+# disable repmgrd by default so it won't get started upon installation
+# valid values: yes/no
+REPMGRD_ENABLED=no
+
 # Options for repmgrd
 REPMGRD_OPTS=""
 
