@@ -1366,6 +1366,7 @@ do_daemonize()
 {
 	char *ptr, path[MAXLEN];
 	pid_t pid = fork();
+	int ret;
 
 	switch (pid)
 	{
@@ -1414,7 +1415,12 @@ do_daemonize()
 			*path = '/';
 		}
 
-		chdir(path);
+		ret = chdir(path);
+		if (ret != 0)
+		{
+			log_err("Error changing directory to '%s': %s", path,
+					strerror(errno));
+		}
 
 		break;
 
@@ -1430,6 +1436,7 @@ check_and_create_pid_file(const char *pid_file)
 	FILE *fd;
 	char buff[MAXLEN];
 	pid_t pid;
+	size_t nread;
 
 	if (stat(pid_file, &st) != -1)
 	{
@@ -1443,7 +1450,14 @@ check_and_create_pid_file(const char *pid_file)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		fread(buff, MAXLEN - 1, 1, fd);
+		nread = fread(buff, MAXLEN - 1, 1, fd);
+
+		if (nread == 0 && ferror(fd))
+		{
+			log_err("Error reading PID file '%s', giving up...\n", pid_file);
+			exit(ERR_BAD_CONFIG);
+		}
+
 		fclose(fd);
 
 		pid = atoi(buff);
