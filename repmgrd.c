@@ -179,6 +179,7 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c, ret;
 	bool		daemonize = false;
+	FILE       *fd;
 
 	char standby_version[MAXVERSIONSTR], *ret_ver;
 
@@ -248,8 +249,19 @@ main(int argc, char **argv)
 		terminate(ERR_BAD_CONFIG);
 	}
 
-	freopen("/dev/null", "r", stdin);
-	freopen("/dev/null", "w", stdout);
+	fd = freopen("/dev/null", "r", stdin);
+	if (fd == NULL)
+	{
+		fprintf(stderr, "error reopening stdin to '/dev/null': %s",
+				strerror(errno));
+	}
+
+	fd = freopen("/dev/null", "w", stdout);
+	if (fd == NULL)
+	{
+		fprintf(stderr, "error reopening stdout to '/dev/null': %s",
+				strerror(errno));
+	}
 
 	logger_init(&local_options, progname, local_options.loglevel, local_options.logfacility);
 	if (verbose)
@@ -257,7 +269,13 @@ main(int argc, char **argv)
 
 	if (log_type == REPMGR_SYSLOG)
 	{
-		freopen("/dev/null", "w", stderr);
+		fd = freopen("/dev/null", "w", stderr);
+
+		if (fd == NULL)
+		{
+			fprintf(stderr, "error reopening stderr to '/dev/null': %s",
+					strerror(errno));
+		}
 	}
 
 	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
@@ -365,7 +383,14 @@ main(int argc, char **argv)
 
 							if (*local_options.logfile)
 							{
-								freopen(local_options.logfile, "a", stderr);
+								FILE *fd;
+								fd = freopen(local_options.logfile, "a", stderr);
+								if (fd == NULL)
+								{
+									fprintf(stderr, "error reopening stderr to '%s': %s",
+											local_options.logfile, strerror(errno));
+								}
+
 							}
 
 							update_registration();
