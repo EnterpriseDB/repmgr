@@ -72,30 +72,30 @@ const XLogRecPtr InvalidXLogRecPtr = {0, 0};
  * Struct to keep info about the nodes, used in the voting process in
  * do_failover()
  */
-typedef struct nodeInfo
+typedef struct s_node_info
 {
-	int			nodeId;
-	char		conninfostr[MAXLEN];
+	int			node_id;
+	char		conninfo_str[MAXLEN];
 	XLogRecPtr	xlog_location;
 	bool		is_ready;
 	bool		is_visible;
 	bool		is_witness;
-}	nodeInfo;
+}	t_node_info;
 
 
 char		myClusterName[MAXLEN];
 
 /* Local info */
 t_configuration_options local_options;
-int			myLocalMode = STANDBY_MODE;
-PGconn	   *myLocalConn = NULL;
+int			my_local_mode = STANDBY_MODE;
+PGconn	   *my_local_conn = NULL;
 
 /* Primary info */
 t_configuration_options primary_options;
 
-PGconn	   *primaryConn = NULL;
 
 char		sqlquery[QUERY_STR_LEN];
+PGconn	   *primary_conn = NULL;
 
 const char *progname;
 
@@ -116,17 +116,17 @@ t_configuration_options config = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static void help(const char *progname);
 static void usage(void);
-static void checkClusterConfiguration(PGconn *conn);
-static void checkNodeConfiguration(void);
+static void check_cluster_configuration(PGconn *conn);
+static void check_node_configuration(void);
 
-static void StandbyMonitor(void);
-static void WitnessMonitor(void);
-static bool CheckConnection(PGconn *conn, const char *type);
+static void standby_monitor(void);
+static void witness_monitor(void);
+static bool check_connection(PGconn *conn, const char *type);
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
 static void do_failover(void);
 
-static unsigned long long int walLocationToBytes(char *wal_location);
+static unsigned long long int wal_location_to_bytes(char *wal_location);
 
 /*
  * Flag to mark SIGHUP. Whenever the main loop comes around it
@@ -147,19 +147,19 @@ static void do_daemonize(void);
 static void check_and_create_pid_file(const char *pid_file);
 
 static void
-CloseConnections()
+close_connections()
 {
-	if (primaryConn != NULL && PQisBusy(primaryConn) == 1)
-		CancelQuery(primaryConn, local_options.master_response_timeout);
+	if (primary_conn != NULL && PQisBusy(primary_conn) == 1)
+		cancel_query(primary_conn, local_options.master_response_timeout);
 
-	if (myLocalConn != NULL)
-		PQfinish(myLocalConn);
+	if (my_local_conn != NULL)
+		PQfinish(my_local_conn);
 
-	if (primaryConn != NULL && primaryConn != myLocalConn)
-		PQfinish(primaryConn);
+	if (primary_conn != NULL && primary_conn != my_local_conn)
+		PQfinish(primary_conn);
 
-	primaryConn = NULL;
-	myLocalConn = NULL;
+	primary_conn = NULL;
+	my_local_conn = NULL;
 }
 
 
@@ -286,11 +286,11 @@ main(int argc, char **argv)
 
 	log_info(_("%s Connecting to database '%s'\n"), progname,
 			 local_options.conninfo);
-	myLocalConn = establishDBConnection(local_options.conninfo, true);
+	my_local_conn = establish_db_connection(local_options.conninfo, true);
 
 	/* should be v9 or better */
 	log_info(_("%s Connected to database, checking its state\n"), progname);
-	ret_ver = pg_version(myLocalConn, standby_version);
+	ret_ver = pg_version(my_local_conn, standby_version);
 	if (ret_ver == NULL || strcmp(standby_version, "") == 0)
 	{
 		if (ret_ver != NULL)
@@ -302,7 +302,7 @@ main(int argc, char **argv)
 
 	/*
 	 * MAIN LOOP This loops cicles once per failover and at startup
-	 * Requisites: - myLocalConn needs to be already setted with an active
+	 * Requisites: - my_local_conn needs to be already setted with an active
 	 * connection - no master connection
 	 */
 	do
@@ -311,19 +311,19 @@ main(int argc, char **argv)
 		 * Set my server mode, establish a connection to primary and start
 		 * monitor
 		 */
-		ret = is_witness(myLocalConn, repmgr_schema,
+		ret = is_witness(my_local_conn, repmgr_schema,
 						 local_options.cluster_name, local_options.node);
 
 		if (ret == 1)
-			myLocalMode = WITNESS_MODE;
+			my_local_mode = WITNESS_MODE;
 		else if (ret == 0)
 		{
-			ret = is_standby(myLocalConn);
+			ret = is_standby(my_local_conn);
 
 			if (ret == 1)
-				myLocalMode = STANDBY_MODE;
+				my_local_mode = STANDBY_MODE;
 			else if (ret == 0)	/* is the master */
-				myLocalMode = PRIMARY_MODE;
+				my_local_mode = PRIMARY_MODE;
 		}
 
 		/*
@@ -334,22 +334,22 @@ main(int argc, char **argv)
 		if (ret == -1)
 			terminate(1);
 
-		switch (myLocalMode)
+		switch (my_local_mode)
 		{
 			case PRIMARY_MODE:
 				primary_options.node = local_options.node;
 				strncpy(primary_options.conninfo, local_options.conninfo,
 						MAXLEN);
-				primaryConn = myLocalConn;
+				primary_conn = my_local_conn;
 
-				checkClusterConfiguration(myLocalConn);
-				checkNodeConfiguration();
+				check_cluster_configuration(my_local_conn);
+				check_node_configuration();
 
-				if (reload_configuration(config_file, &local_options))
+				if (reload_config(config_file, &local_options))
 				{
-					PQfinish(myLocalConn);
-					myLocalConn = establishDBConnection(local_options.conninfo, true);
-					primaryConn = myLocalConn;
+					PQfinish(my_local_conn);
+					my_local_conn = establish_db_connection(local_options.conninfo, true);
+					primary_conn = my_local_conn;
 					update_registration();
 				}
 
@@ -367,7 +367,7 @@ main(int argc, char **argv)
 				 */
 				do
 				{
-					if (CheckConnection(primaryConn, "master"))
+					if (check_connection(primary_conn, "master"))
 					{
 						/*
 						 * CheckActiveStandbiesConnections();
@@ -387,13 +387,13 @@ main(int argc, char **argv)
 					{
 						/*
 						 * if we can reload, then could need to change
-						 * myLocalConn
+						 * my_local_conn
 						 */
-						if (reload_configuration(config_file, &local_options))
+						if (reload_config(config_file, &local_options))
 						{
-							PQfinish(myLocalConn);
-							myLocalConn = establishDBConnection(local_options.conninfo, true);
-							primaryConn = myLocalConn;
+							PQfinish(my_local_conn);
+							my_local_conn = establish_db_connection(local_options.conninfo, true);
+							primary_conn = my_local_conn;
 
 							if (*local_options.logfile)
 							{
@@ -414,26 +414,27 @@ main(int argc, char **argv)
 					}
 				} while (!failover_done);
 				break;
+
 			case WITNESS_MODE:
 			case STANDBY_MODE:
 				/* I need the id of the primary as well as a connection to it */
 				log_info(_("%s Connecting to primary for cluster '%s'\n"),
 						 progname, local_options.cluster_name);
-				primaryConn = getMasterConnection(myLocalConn, repmgr_schema,
+				primary_conn = get_master_connection(my_local_conn, repmgr_schema,
 												  local_options.cluster_name,
 												&primary_options.node, NULL);
-				if (primaryConn == NULL)
+				if (primary_conn == NULL)
 				{
 					terminate(ERR_BAD_CONFIG);
 				}
 
-				checkClusterConfiguration(myLocalConn);
-				checkNodeConfiguration();
+				check_cluster_configuration(my_local_conn);
+				check_node_configuration();
 
-				if (reload_configuration(config_file, &local_options))
+				if (reload_config(config_file, &local_options))
 				{
-					PQfinish(myLocalConn);
-					myLocalConn = establishDBConnection(local_options.conninfo, true);
+					PQfinish(my_local_conn);
+					my_local_conn = establish_db_connection(local_options.conninfo, true);
 					update_registration();
 				}
 
@@ -441,12 +442,12 @@ main(int argc, char **argv)
 				 * Every local_options.monitor_interval_secs seconds, do
 				 * checks
 				 */
-				if (myLocalMode == WITNESS_MODE)
+				if (my_local_mode == WITNESS_MODE)
 				{
 					log_info(_("%s Starting continuous witness node monitoring\n"),
 							 progname);
 				}
-				else if (myLocalMode == STANDBY_MODE)
+				else if (my_local_mode == STANDBY_MODE)
 				{
 					log_info(_("%s Starting continuous standby node monitoring\n"),
 							 progname);
@@ -454,22 +455,22 @@ main(int argc, char **argv)
 
 				do
 				{
-					if (myLocalMode == WITNESS_MODE)
-						WitnessMonitor();
-					else if (myLocalMode == STANDBY_MODE)
-						StandbyMonitor();
+					if (my_local_mode == WITNESS_MODE)
+						witness_monitor();
+					else if (my_local_mode == STANDBY_MODE)
+						standby_monitor();
 					sleep(local_options.monitor_interval_secs);
 
 					if (got_SIGHUP)
 					{
 						/*
 						 * if we can reload, then could need to change
-						 * myLocalConn
+						 * my_local_conn
 						 */
-						if (reload_configuration(config_file, &local_options))
+						if (reload_config(config_file, &local_options))
 						{
-							PQfinish(myLocalConn);
-							myLocalConn = establishDBConnection(local_options.conninfo, true);
+							PQfinish(my_local_conn);
+							my_local_conn = establish_db_connection(local_options.conninfo, true);
 							update_registration();
 						}
 						got_SIGHUP = false;
@@ -486,7 +487,7 @@ main(int argc, char **argv)
 	} while (true);
 
 	/* close the connection to the database and cleanup */
-	CloseConnections();
+	close_connections();
 
 	/* Shuts down logging system */
 	logger_shutdown();
@@ -498,7 +499,7 @@ main(int argc, char **argv)
  *
  */
 static void
-WitnessMonitor(void)
+witness_monitor(void)
 {
 	char		monitor_witness_timestamp[MAXLEN];
 	PGresult   *res;
@@ -507,13 +508,13 @@ WitnessMonitor(void)
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, return false.
 	 */
-	CheckConnection(primaryConn, "master");		/* this take up to
+	check_connection(primary_conn, "master");	/* this take up to
 												 * local_options.reconnect_atte
 												 * mpts *
 												 * local_options.reconnect_intv
 												 * l seconds */
 
-	if (PQstatus(primaryConn) != CONNECTION_OK)
+	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
 		/*
 		 * If we can't reconnect, just exit... XXX we need to make witness
@@ -530,19 +531,19 @@ WitnessMonitor(void)
 	 * Cancel any query that is still being executed, so i can insert the
 	 * current record
 	 */
-	if (!CancelQuery(primaryConn, local_options.master_response_timeout))
+	if (!cancel_query(primary_conn, local_options.master_response_timeout))
 		return;
-	if (wait_connection_availability(primaryConn,
+	if (wait_connection_availability(primary_conn,
 								 local_options.master_response_timeout) != 1)
 		return;
 
 	/* Get local xlog info */
 	sqlquery_snprintf(sqlquery, "SELECT CURRENT_TIMESTAMP ");
 
-	res = PQexec(myLocalConn, sqlquery);
+	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("PQexec failed: %s\n"), PQerrorMessage(myLocalConn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(my_local_conn));
 		PQclear(res);
 		/* if there is any error just let it be and retry in next loop */
 		return;
@@ -566,10 +567,10 @@ WitnessMonitor(void)
 	 * Execute the query asynchronously, but don't check for a result. We will
 	 * check the result next time we pause for a monitor step.
 	 */
-	log_debug("WitnessMonitor: %s\n", sqlquery);
-	if (PQsendQuery(primaryConn, sqlquery) == 0)
+	log_debug("witness_monitor: %s\n", sqlquery);
+	if (PQsendQuery(primary_conn, sqlquery) == 0)
 		log_warning(_("Query could not be sent to primary. %s\n"),
-					PQerrorMessage(primaryConn));
+					PQerrorMessage(primary_conn));
 }
 
 
@@ -579,7 +580,7 @@ WitnessMonitor(void)
  * Also do the math to see how far are we in bytes for being uptodate
  */
 static void
-StandbyMonitor(void)
+standby_monitor(void)
 {
 	PGresult   *res;
 	char		monitor_standby_timestamp[MAXLEN];
@@ -600,31 +601,31 @@ StandbyMonitor(void)
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, try to get a new master.
 	 */
-	CheckConnection(primaryConn, "master");		/* this take up to
+	check_connection(primary_conn, "master");	/* this take up to
 												 * local_options.reconnect_atte
 												 * mpts *
 												 * local_options.reconnect_intv
 												 * l seconds */
 
-	if (!CheckConnection(myLocalConn, "standby"))
+	if (!check_connection(my_local_conn, "standby"))
 	{
 		log_err("Failed to connect to local node, exiting!\n");
 		terminate(1);
 	}
 
-	if (PQstatus(primaryConn) != CONNECTION_OK)
+	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		PQfinish(primaryConn);
-		primaryConn = NULL;
+		PQfinish(primary_conn);
+		primary_conn = NULL;
 
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
 			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
 			for (connection_retries = 0; connection_retries < 6; connection_retries++)
 			{
-				primaryConn = getMasterConnection(myLocalConn, repmgr_schema,
+				primary_conn = get_master_connection(my_local_conn, repmgr_schema,
 					local_options.cluster_name, &primary_options.node, NULL);
-				if (PQstatus(primaryConn) == CONNECTION_OK)
+				if (PQstatus(primary_conn) == CONNECTION_OK)
 				{
 					/*
 					 * Connected, we can continue the process so break the
@@ -648,7 +649,7 @@ StandbyMonitor(void)
 				}
 			}
 
-			if (PQstatus(primaryConn) != CONNECTION_OK)
+			if (PQstatus(primary_conn) != CONNECTION_OK)
 			{
 				log_err(_("We couldn't reconnect for long enough, exiting...\n"));
 				terminate(ERR_DB_CON);
@@ -658,7 +659,7 @@ StandbyMonitor(void)
 		{
 			/*
 			 * When we returns from this function we will have a new primary
-			 * and a new primaryConn
+			 * and a new primary_conn
 			 */
 			do_failover();
 			return;
@@ -668,7 +669,7 @@ StandbyMonitor(void)
 	/* Check if we still are a standby, we could have been promoted */
 	do
 	{
-		ret = is_standby(myLocalConn);
+		ret = is_standby(my_local_conn);
 
 		switch (ret)
 		{
@@ -681,7 +682,7 @@ StandbyMonitor(void)
 				log_err(_("Standby node disappeared, trying to reconnect...\n"));
 				did_retry = true;
 
-				if (!CheckConnection(myLocalConn, "standby"))
+				if (!check_connection(my_local_conn, "standby"))
 				{
 					terminate(0);
 				}
@@ -703,9 +704,9 @@ StandbyMonitor(void)
 	 * Cancel any query that is still being executed, so i can insert the
 	 * current record
 	 */
-	if (!CancelQuery(primaryConn, local_options.master_response_timeout))
+	if (!cancel_query(primary_conn, local_options.master_response_timeout))
 		return;
-	if (wait_connection_availability(primaryConn, local_options.master_response_timeout) != 1)
+	if (wait_connection_availability(primary_conn, local_options.master_response_timeout) != 1)
 		return;
 
 	/* Get local xlog info */
@@ -714,10 +715,10 @@ StandbyMonitor(void)
 				"SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
 		  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp()");
 
-	res = PQexec(myLocalConn, sqlquery);
+	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("PQexec failed: %s\n"), PQerrorMessage(myLocalConn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(my_local_conn));
 		PQclear(res);
 		/* if there is any error just let it be and retry in next loop */
 		return;
@@ -732,10 +733,10 @@ StandbyMonitor(void)
 	/* Get primary xlog info */
 	sqlquery_snprintf(sqlquery, "SELECT pg_current_xlog_location() ");
 
-	res = PQexec(primaryConn, sqlquery);
+	res = PQexec(primary_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("PQexec failed: %s\n"), PQerrorMessage(primaryConn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(primary_conn));
 		PQclear(res);
 		return;
 	}
@@ -744,9 +745,9 @@ StandbyMonitor(void)
 	PQclear(res);
 
 	/* Calculate the lag */
-	lsn_primary = walLocationToBytes(last_wal_primary_location);
-	lsn_standby_received = walLocationToBytes(last_wal_standby_received);
-	lsn_standby_applied = walLocationToBytes(last_wal_standby_applied);
+	lsn_primary = wal_location_to_bytes(last_wal_primary_location);
+	lsn_standby_received = wal_location_to_bytes(last_wal_standby_received);
+	lsn_standby_applied = wal_location_to_bytes(last_wal_standby_applied);
 
 	/*
 	 * Build the SQL to execute on primary
@@ -767,10 +768,10 @@ StandbyMonitor(void)
 	 * Execute the query asynchronously, but don't check for a result. We will
 	 * check the result next time we pause for a monitor step.
 	 */
-	log_debug("StandbyMonitor: %s\n", sqlquery);
-	if (PQsendQuery(primaryConn, sqlquery) == 0)
+	log_debug("standby_monitor: %s\n", sqlquery);
+	if (PQsendQuery(primary_conn, sqlquery) == 0)
 		log_warning(_("Query could not be sent to primary. %s\n"),
-					PQerrorMessage(primaryConn));
+					PQerrorMessage(primary_conn));
 }
 
 
@@ -795,16 +796,16 @@ do_failover(void)
 
 	char		last_wal_standby_applied[MAXLEN];
 
-	PGconn	   *nodeConn = NULL;
+	PGconn	   *node_conn = NULL;
 
 	/*
 	 * will get info about until 50 nodes, which seems to be large enough for
 	 * most scenarios
 	 */
-	nodeInfo	nodes[50];
+	t_node_info nodes[50];
 
 	/* initialize to keep compiler quiet */
-	nodeInfo	best_candidate = {-1, "", InvalidXLogRecPtr, false, false, false};
+	t_node_info best_candidate = {-1, "", InvalidXLogRecPtr, false, false, false};
 
 	/* get a list of standby nodes, including myself */
 	sprintf(sqlquery, "SELECT id, conninfo, witness "
@@ -813,10 +814,10 @@ do_failover(void)
 			" ORDER BY priority, id ",
 			repmgr_schema, local_options.cluster_name);
 
-	res = PQexec(myLocalConn, sqlquery);
+	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't get nodes' info: %s\n"), PQerrorMessage(myLocalConn));
+		log_err(_("Can't get nodes' info: %s\n"), PQerrorMessage(my_local_conn));
 		PQclear(res);
 		terminate(ERR_DB_QUERY);
 	}
@@ -833,8 +834,8 @@ do_failover(void)
 	 */
 	for (i = 0; i < total_nodes; i++)
 	{
-		nodes[i].nodeId = atoi(PQgetvalue(res, i, 0));
-		strncpy(nodes[i].conninfostr, PQgetvalue(res, i, 1), MAXLEN);
+		nodes[i].node_id = atoi(PQgetvalue(res, i, 0));
+		strncpy(nodes[i].conninfo_str, PQgetvalue(res, i, 1), MAXLEN);
 		nodes[i].is_witness = (strcmp(PQgetvalue(res, i, 2), "t") == 0) ? true : false;
 
 		/*
@@ -847,16 +848,16 @@ do_failover(void)
 		XLAssignValue(nodes[i].xlog_location, 0, 0);
 
 		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s\n"),
-				  progname, nodes[i].nodeId, nodes[i].conninfostr,
+				  progname, nodes[i].node_id, nodes[i].conninfo_str,
 				  (nodes[i].is_witness) ? "true" : "false");
 
-		nodeConn = establishDBConnection(nodes[i].conninfostr, false);
+		node_conn = establish_db_connection(nodes[i].conninfo_str, false);
 
 		/* if we can't see the node just skip it */
-		if (PQstatus(nodeConn) != CONNECTION_OK)
+		if (PQstatus(node_conn) != CONNECTION_OK)
 		{
-			if (nodeConn != NULL)
-				PQfinish(nodeConn);
+			if (node_conn != NULL)
+				PQfinish(node_conn);
 
 			continue;
 		}
@@ -864,7 +865,7 @@ do_failover(void)
 		visible_nodes++;
 		nodes[i].is_visible = true;
 
-		PQfinish(nodeConn);
+		PQfinish(node_conn);
 	}
 	PQclear(res);
 
@@ -893,14 +894,14 @@ do_failover(void)
 		if (nodes[i].is_witness)
 			continue;
 
-		nodeConn = establishDBConnection(nodes[i].conninfostr, false);
+		node_conn = establish_db_connection(nodes[i].conninfo_str, false);
 
 		/*
 		 * XXX This shouldn't happen, if this happens it means this is a major
 		 * problem maybe network outages? anyway, is better for a human to
 		 * react
 		 */
-		if (PQstatus(nodeConn) != CONNECTION_OK)
+		if (PQstatus(node_conn) != CONNECTION_OK)
 		{
 			log_err(_("It seems new problems are arising, manual intervention is needed\n"));
 			terminate(ERR_FAILOVER_FAIL);
@@ -910,14 +911,14 @@ do_failover(void)
 		uxrecoff = 0;
 
 		sqlquery_snprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
-		res = PQexec(nodeConn, sqlquery);
+		res = PQexec(node_conn, sqlquery);
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
 			log_info(_("Can't get node's last standby location: %s\n"),
-					 PQerrorMessage(nodeConn));
-			log_info(_("Connection details: %s\n"), nodes[i].conninfostr);
+					 PQerrorMessage(node_conn));
+			log_info(_("Connection details: %s\n"), nodes[i].conninfo_str);
 			PQclear(res);
-			PQfinish(nodeConn);
+			PQfinish(node_conn);
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
@@ -926,13 +927,13 @@ do_failover(void)
 					 PQgetvalue(res, 0, 0));
 
 		log_debug("XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
-				  nodes[i].nodeId, uxlogid, uxlogid, uxrecoff, uxrecoff);
+				  nodes[i].node_id, uxlogid, uxlogid, uxrecoff, uxrecoff);
 
 		/* If position is 0/0, error */
 		if (uxlogid == 0 && uxrecoff == 0)
 		{
 			PQclear(res);
-			PQfinish(nodeConn);
+			PQfinish(node_conn);
 			log_info(_("InvalidXLogRecPtr detected in a standby\n"));
 			terminate(ERR_FAILOVER_FAIL);
 		}
@@ -940,17 +941,17 @@ do_failover(void)
 		XLAssignValue(nodes[i].xlog_location, uxlogid, uxrecoff);
 
 		PQclear(res);
-		PQfinish(nodeConn);
+		PQfinish(node_conn);
 	}
 
 	/* last we get info about this node, and update shared memory */
 	sprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
-	res = PQexec(myLocalConn, sqlquery);
+	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("PQexec failed: %s.\nReport an invalid value to not be "
 				  " considered as new primary and exit.\n"),
-				PQerrorMessage(myLocalConn));
+				PQerrorMessage(my_local_conn));
 		PQclear(res);
 		sprintf(last_wal_standby_applied, "'%X/%X'", 0, 0);
 		update_shared_memory(last_wal_standby_applied);
@@ -987,14 +988,14 @@ do_failover(void)
 			if (nodes[i].is_ready)
 				break;
 
-			nodeConn = establishDBConnection(nodes[i].conninfostr, false);
+			node_conn = establish_db_connection(nodes[i].conninfo_str, false);
 
 			/*
 			 * XXX This shouldn't happen, if this happens it means this is a
 			 * major problem maybe network outages? anyway, is better for a
 			 * human to react
 			 */
-			if (PQstatus(nodeConn) != CONNECTION_OK)
+			if (PQstatus(node_conn) != CONNECTION_OK)
 			{
 				/* XXX */
 				log_info(_("At this point, it could be some race conditions "
@@ -1008,14 +1009,14 @@ do_failover(void)
 
 			sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()",
 							  repmgr_schema);
-			res = PQexec(nodeConn, sqlquery);
+			res = PQexec(node_conn, sqlquery);
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
 			{
 				log_err(_("PQexec failed: %s.\nReport an invalid value to not"
 						  "be considered as new primary and exit.\n"),
-						PQerrorMessage(nodeConn));
+						PQerrorMessage(node_conn));
 				PQclear(res);
-				PQfinish(nodeConn);
+				PQfinish(node_conn);
 				terminate(ERR_DB_QUERY);
 			}
 
@@ -1034,7 +1035,7 @@ do_failover(void)
 
 
 			PQclear(res);
-			PQfinish(nodeConn);
+			PQfinish(node_conn);
 			/* If position is 0/0, keep checking */
 			if (uxlogid == 0 && uxrecoff == 0)
 				continue;
@@ -1047,7 +1048,7 @@ do_failover(void)
 			}
 
 			log_debug("Last XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
-					  nodes[i].nodeId, uxlogid, uxlogid,
+					  nodes[i].node_id, uxlogid, uxlogid,
 					  uxrecoff, uxrecoff);
 
 			ready_nodes++;
@@ -1056,8 +1057,8 @@ do_failover(void)
 	}
 
 	/* Close the connection to this server */
-	PQfinish(myLocalConn);
-	myLocalConn = NULL;
+	PQfinish(my_local_conn);
+	my_local_conn = NULL;
 
 	/*
 	 * determine which one is the best candidate to promote to primary
@@ -1077,7 +1078,7 @@ do_failover(void)
 			 * start with the first ready node, and then move on to the next
 			 * one
 			 */
-			best_candidate.nodeId = nodes[i].nodeId;
+			best_candidate.node_id = nodes[i].node_id;
 			XLAssign(best_candidate.xlog_location, nodes[i].xlog_location);
 			best_candidate.is_ready = nodes[i].is_ready;
 			best_candidate.is_witness = nodes[i].is_witness;
@@ -1093,7 +1094,7 @@ do_failover(void)
 		 */
 		if (XLByteLT(best_candidate.xlog_location, nodes[i].xlog_location))
 		{
-			best_candidate.nodeId = nodes[i].nodeId;
+			best_candidate.node_id = nodes[i].node_id;
 			XLAssign(best_candidate.xlog_location, nodes[i].xlog_location);
 			best_candidate.is_ready = nodes[i].is_ready;
 			best_candidate.is_witness = nodes[i].is_witness;
@@ -1101,7 +1102,7 @@ do_failover(void)
 	}
 
 	/* once we know who is the best candidate, promote it */
-	if (find_best && (best_candidate.nodeId == local_options.node))
+	if (find_best && (best_candidate.node_id == local_options.node))
 	{
 		if (best_candidate.is_witness)
 		{
@@ -1139,7 +1140,7 @@ do_failover(void)
 
 		if (verbose)
 			log_info(_("%s: Node %d is the best candidate to be the new primary, we should follow it...\n"),
-					 progname, best_candidate.nodeId);
+					 progname, best_candidate.node_id);
 		log_debug(_("follow command is: \"%s\"\n"), local_options.follow_command);
 
 		/*
@@ -1170,12 +1171,12 @@ do_failover(void)
 	failover_done = true;
 
 	/* and reconnect to the local database */
-	myLocalConn = establishDBConnection(local_options.conninfo, true);
+	my_local_conn = establish_db_connection(local_options.conninfo, true);
 }
 
 
 static bool
-CheckConnection(PGconn *conn, const char *type)
+check_connection(PGconn *conn, const char *type)
 {
 	int			connection_retries;
 
@@ -1217,7 +1218,7 @@ CheckConnection(PGconn *conn, const char *type)
 
 
 static void
-checkClusterConfiguration(PGconn *conn)
+check_cluster_configuration(PGconn *conn)
 {
 	PGresult   *res;
 
@@ -1252,7 +1253,7 @@ checkClusterConfiguration(PGconn *conn)
 
 
 static void
-checkNodeConfiguration(void)
+check_node_configuration(void)
 {
 	PGresult   *res;
 
@@ -1266,10 +1267,10 @@ checkNodeConfiguration(void)
 					  repmgr_schema, local_options.node,
 					  local_options.cluster_name);
 
-	res = PQexec(myLocalConn, sqlquery);
+	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("PQexec failed: %s\n"), PQerrorMessage(myLocalConn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(my_local_conn));
 		PQclear(res);
 		terminate(ERR_BAD_CONFIG);
 	}
@@ -1283,7 +1284,7 @@ checkNodeConfiguration(void)
 	{
 		PQclear(res);
 
-		if (myLocalMode == WITNESS_MODE)
+		if (my_local_mode == WITNESS_MODE)
 		{
 			log_err(_("The witness is not configured\n"));
 			terminate(ERR_BAD_CONFIG);
@@ -1299,10 +1300,10 @@ checkNodeConfiguration(void)
 						  local_options.node_name,
 						  local_options.conninfo);
 
-		if (!PQexec(primaryConn, sqlquery))
+		if (!PQexec(primary_conn, sqlquery))
 		{
 			log_err(_("Cannot insert node details, %s\n"),
-					PQerrorMessage(primaryConn));
+					PQerrorMessage(primary_conn));
 			terminate(ERR_BAD_CONFIG);
 		}
 	}
@@ -1314,7 +1315,7 @@ checkNodeConfiguration(void)
 
 
 static unsigned long long int
-walLocationToBytes(char *wal_location)
+wal_location_to_bytes(char *wal_location)
 {
 	unsigned int xlogid;
 	unsigned int xrecoff;
@@ -1379,7 +1380,7 @@ setup_event_handlers(void)
 static void
 terminate(int retval)
 {
-	CloseConnections();
+	close_connections();
 	logger_shutdown();
 
 	if (pid_file)
@@ -1402,11 +1403,11 @@ update_shared_memory(char *last_wal_standby_applied)
 			repmgr_schema, last_wal_standby_applied);
 
 	/* If an error happens, just inform about that and continue */
-	res = PQexec(myLocalConn, sqlquery);
+	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_warning(_("Cannot update this standby's shared memory: %s\n"),
-					PQerrorMessage(myLocalConn));
+					PQerrorMessage(my_local_conn));
 		/* XXX is this enough reason to terminate this repmgrd? */
 	}
 	else if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
@@ -1431,11 +1432,11 @@ update_registration(void)
 					  repmgr_schema, local_options.conninfo,
 					  local_options.priority, local_options.node);
 
-	res = PQexec(primaryConn, sqlquery);
+	res = PQexec(primary_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot update registration: %s\n"),
-				PQerrorMessage(primaryConn));
+				PQerrorMessage(primary_conn));
 		terminate(ERR_DB_CON);
 	}
 	PQclear(res);

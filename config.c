@@ -235,7 +235,7 @@ parse_line(char *buff, char *name, char *value)
 }
 
 bool
-reload_configuration(char *config_file, t_configuration_options * orig_options)
+reload_config(char *config_file, t_configuration_options * orig_options)
 {
 	PGconn	   *conn;
 
@@ -295,7 +295,7 @@ reload_configuration(char *config_file, t_configuration_options * orig_options)
 	}
 
 	/* Test conninfo string */
-	conn = establishDBConnection(new_options.conninfo, false);
+	conn = establish_db_connection(new_options.conninfo, false);
 	if (!conn || (PQstatus(conn) != CONNECTION_OK))
 	{
 		log_warning(_("conninfo string is not valid, will keep current configuration.\n"));

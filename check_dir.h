@@ -22,9 +22,9 @@
 
 int			mkdir_p(char *path, mode_t omode);
 int			check_dir(char *dir);
-bool		create_directory(char *dir);
-bool		set_directory_permissions(char *dir);
+bool		create_dir(char *dir);
+bool		set_dir_permissions(char *dir);
 bool		is_pg_dir(char *dir);
-bool		create_pgdir(char *dir, bool force);
+bool		create_pg_dir(char *dir, bool force);
 
 #endif

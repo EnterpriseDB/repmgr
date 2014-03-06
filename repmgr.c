@@ -386,7 +386,7 @@ do_cluster_show(void)
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to database\n"), progname);
-	conn = establishDBConnection(options.conninfo, true);
+	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery, "SELECT conninfo, witness FROM %s.repl_nodes;",
 					  repmgr_schema);
@@ -405,7 +405,7 @@ do_cluster_show(void)
 	printf("Role      | Connection String \n");
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		conn = establishDBConnection(PQgetvalue(res, i, 0), false);
+		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
 		if (PQstatus(conn) != CONNECTION_OK)
 			strcpy(node_role, "  FAILED");
 		else if (strcmp(PQgetvalue(res, i, 1), "t") == 0)
@@ -435,12 +435,12 @@ do_cluster_cleanup(void)
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to database\n"), progname);
-	conn = establishDBConnection(options.conninfo, true);
+	conn = establish_db_connection(options.conninfo, true);
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = getMasterConnection(conn, repmgr_schema, options.cluster_name,
-									  &master_id, NULL);
+	master_conn = get_master_connection(conn, repmgr_schema, options.cluster_name,
+										&master_id, NULL);
 	if (!master_conn)
 	{
 		log_err(_("cluster cleanup: cannot connect to master\n"));
@@ -498,7 +498,7 @@ do_master_register(void)
 	char		master_version[MAXVERSIONSTR];
 	int			ret;
 
-	conn = establishDBConnection(options.conninfo, true);
+	conn = establish_db_connection(options.conninfo, true);
 
 	/* master should be v9 or better */
 	log_info(_("%s connecting to master database\n"), progname);
@@ -598,8 +598,8 @@ do_master_register(void)
 		}
 
 		/* Ensure there isn't any other master already registered */
-		master_conn = getMasterConnection(conn, repmgr_schema,
-										  options.cluster_name, &id, NULL);
+		master_conn = get_master_connection(conn, repmgr_schema,
+											options.cluster_name, &id, NULL);
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
@@ -653,7 +653,7 @@ do_standby_register(void)
 	/* XXX: A lot of copied code from do_master_register! Refactor */
 
 	log_info(_("%s connecting to standby database\n"), progname);
-	conn = establishDBConnection(options.conninfo, true);
+	conn = establish_db_connection(options.conninfo, true);
 
 	/* should be v9 or better */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
@@ -717,8 +717,8 @@ do_standby_register(void)
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = getMasterConnection(conn, repmgr_schema, options.cluster_name,
-									  &master_id, NULL);
+	master_conn = get_master_connection(conn, repmgr_schema, options.cluster_name,
+										&master_id, NULL);
 	if (!master_conn)
 	{
 		log_err(_("A master must be defined before configuring a slave\n"));
@@ -855,7 +855,7 @@ do_standby_clone(void)
 
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("%s connecting to master database\n"), progname);
-	conn = establishDBConnectionByParams(keywords, values, true);
+	conn = establish_db_connection_by_params(keywords, values, true);
 
 	/* primary should be v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
@@ -964,7 +964,7 @@ do_standby_clone(void)
 		 * the directory a bit too early XXX build an array of tablespace to
 		 * create later in the backup
 		 */
-		if (!create_pgdir(tblspc_dir, runtime_options.force))
+		if (!create_pg_dir(tblspc_dir, runtime_options.force))
 		{
 			PQclear(res);
 			PQfinish(conn);
@@ -1105,7 +1105,7 @@ do_standby_clone(void)
 	PQclear(res);
 
 	/* Check the directory could be used as a PGDATA dir */
-	if (!create_pgdir(local_data_directory, runtime_options.force))
+	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
 		log_err(_("%s: couldn't use directory %s ...\nUse --force option to force\n"),
 				progname, local_data_directory);
@@ -1134,7 +1134,7 @@ do_standby_clone(void)
 	maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
 	log_info(_("standby clone: master control file '%s'\n"),
 			 master_control_file);
-	if (!create_directory(local_control_file))
+	if (!create_dir(local_control_file))
 	{
 		log_err(_("%s: couldn't create directory %s ...\n"),
 				progname, local_control_file);
@@ -1292,7 +1292,7 @@ stop_backup:
 	/*
 	 * We need to create the pg_xlog sub directory too.
 	 */
-	if (!create_directory(local_xlog_directory))
+	if (!create_dir(local_xlog_directory))
 	{
 		log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
 				progname, local_xlog_directory);
@@ -1349,7 +1349,7 @@ do_standby_promote(void)
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to master database\n"), progname);
-	conn = establishDBConnection(options.conninfo, true);
+	conn = establish_db_connection(options.conninfo, true);
 
 	/* we need v9 or better */
 	log_info(_("%s connected to master, checking its state\n"), progname);
@@ -1375,7 +1375,7 @@ do_standby_promote(void)
 	}
 
 	/* we also need to check if there isn't any master already */
-	old_master_conn = getMasterConnection(conn, repmgr_schema,
+	old_master_conn = get_master_connection(conn, repmgr_schema,
 								 options.cluster_name, &old_master_id, NULL);
 	if (old_master_conn != NULL)
 	{
@@ -1427,7 +1427,7 @@ do_standby_promote(void)
 
 	/* reconnect to check we got promoted */
 	log_info(_("%s connecting to now restarted database\n"), progname);
-	conn = establishDBConnection(options.conninfo, true);
+	conn = establish_db_connection(options.conninfo, true);
 	retval = is_standby(conn);
 	if (retval)
 	{
@@ -1466,7 +1466,7 @@ do_standby_follow(void)
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to standby database\n"), progname);
-	conn = establishDBConnection(options.conninfo, true);
+	conn = establish_db_connection(options.conninfo, true);
 
 	/* Check we are in a standby node */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
@@ -1501,10 +1501,10 @@ do_standby_follow(void)
 	{
 		if (!is_pgup(conn, options.master_response_timeout))
 		{
-			conn = establishDBConnection(options.conninfo, true);
+			conn = establish_db_connection(options.conninfo, true);
 		}
 
-		master_conn = getMasterConnection(conn, repmgr_schema,
+		master_conn = get_master_connection(conn, repmgr_schema,
 				options.cluster_name, &master_id, (char *) &master_conninfo);
 	}
 	while (master_conn == NULL && runtime_options.wait_for_master);
@@ -1626,7 +1626,7 @@ do_witness_create(void)
 	values[1] = runtime_options.masterport;
 
 	/* We need to connect to check configuration and copy it */
-	masterconn = establishDBConnectionByParams(keywords, values, true);
+	masterconn = establish_db_connection_by_params(keywords, values, true);
 	if (!masterconn)
 	{
 		log_err(_("%s: could not connect to master\n"), progname);
@@ -1668,7 +1668,7 @@ do_witness_create(void)
 	}
 
 	/* Check this directory could be used as a PGDATA dir */
-	if (!create_pgdir(runtime_options.dest_dir, runtime_options.force))
+	if (!create_pg_dir(runtime_options.dest_dir, runtime_options.force))
 	{
 		log_err(_("witness create: couldn't create data directory (\"%s\") for witness"),
 				runtime_options.dest_dir);
@@ -1786,7 +1786,7 @@ do_witness_create(void)
 	}
 
 	/* establish a connection to the witness, and create the schema */
-	witnessconn = establishDBConnection(options.conninfo, true);
+	witnessconn = establish_db_connection(options.conninfo, true);
 
 	log_info(_("Starting copy of configuration from master...\n"));
 
