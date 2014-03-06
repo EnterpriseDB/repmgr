@@ -26,7 +26,7 @@
 #include "log.h"
 
 PGconn *
-establishDBConnection(const char *conninfo, const bool exit_on_error)
+establish_db_connection(const char *conninfo, const bool exit_on_error)
 {
 	/* Make a connection to the database */
 	PGconn	   *conn = NULL;
@@ -53,8 +53,8 @@ establishDBConnection(const char *conninfo, const bool exit_on_error)
 }
 
 PGconn *
-establishDBConnectionByParams(const char *keywords[], const char *values[],
-							  const bool exit_on_error)
+establish_db_connection_by_params(const char *keywords[], const char *values[],
+								  const bool exit_on_error)
 {
 	/* Make a connection to the database */
 	PGconn	   *conn = PQconnectdbParams(keywords, values, true);
@@ -144,7 +144,7 @@ is_pgup(PGconn *conn, int timeout)
 			/*
 			 * Send a SELECT 1 just to check if the connection is OK
 			 */
-			if (!CancelQuery(conn, timeout))
+			if (!cancel_query(conn, timeout))
 				goto failed;
 			if (wait_connection_availability(conn, timeout) != 1)
 				goto failed;
@@ -320,8 +320,8 @@ get_cluster_size(PGconn *conn)
  * connection string is placed there.
  */
 PGconn *
-getMasterConnection(PGconn *standby_conn, char *schema, char *cluster,
-					int *master_id, char *master_conninfo_out)
+get_master_connection(PGconn *standby_conn, char *schema, char *cluster,
+					  int *master_id, char *master_conninfo_out)
 {
 	PGconn	   *master_conn = NULL;
 	PGresult   *res1;
@@ -377,7 +377,7 @@ getMasterConnection(PGconn *standby_conn, char *schema, char *cluster,
 		strncpy(master_conninfo, PQgetvalue(res1, i, 1), MAXCONNINFO);
 		log_info(_("checking role of cluster node '%s'\n"),
 				 master_conninfo);
-		master_conn = establishDBConnection(master_conninfo, false);
+		master_conn = establish_db_connection(master_conninfo, false);
 
 		if (PQstatus(master_conn) != CONNECTION_OK)
 			continue;
@@ -499,7 +499,7 @@ wait_connection_availability(PGconn *conn, long long timeout)
 
 
 bool
-CancelQuery(PGconn *conn, int timeout)
+cancel_query(PGconn *conn, int timeout)
 {
 	char		errbuf[ERRBUFF_SIZE];
 	PGcancel   *pgcancel;

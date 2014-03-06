@@ -90,10 +90,10 @@ check_dir(char *dir)
 
 
 /*
- * Create directory
+ * Create directory with error log message when failing
  */
 bool
-create_directory(char *dir)
+create_dir(char *dir)
 {
 	if (mkdir_p(dir, 0700) == 0)
 		return true;
@@ -105,7 +105,7 @@ create_directory(char *dir)
 }
 
 bool
-set_directory_permissions(char *dir)
+set_dir_permissions(char *dir)
 {
 	return (chmod(dir, 0700) != 0) ? false : true;
 }
@@ -242,7 +242,7 @@ is_pg_dir(char *dir)
 
 
 bool
-create_pgdir(char *dir, bool force)
+create_pg_dir(char *dir, bool force)
 {
 	bool		pg_dir = false;
 
@@ -253,7 +253,7 @@ create_pgdir(char *dir, bool force)
 			/* dir not there, must create it */
 			log_info(_("creating directory \"%s\"...\n"), dir);
 
-			if (!create_directory(dir))
+			if (!create_dir(dir))
 			{
 				log_err(_("couldn't create directory \"%s\"...\n"),
 						dir);
@@ -265,7 +265,7 @@ create_pgdir(char *dir, bool force)
 			log_info(_("checking and correcting permissions on existing directory %s ...\n"),
 					 dir);
 
-			if (!set_directory_permissions(dir))
+			if (!set_dir_permissions(dir))
 			{
 				log_err(_("could not change permissions of directory \"%s\": %s\n"),
 						dir, strerror(errno));
