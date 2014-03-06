@@ -29,17 +29,6 @@ static int
 xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 0)));
 
-/* Add strnlen on platforms that don't have it, like OS X */
-#ifndef strnlen
-size_t
-strnlen(const char *s, size_t n)
-{
-	const char *end = (const char *) memchr(s, '\0', n);
-
-	return (end ? end - s : n);
-}
-#endif
-
 static int
 xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 {

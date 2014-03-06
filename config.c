@@ -140,7 +140,7 @@ parse_config(const char *config_file, t_configuration_options * options)
 	fclose(fp);
 
 	/* Check config settings */
-	if (strnlen(options->cluster_name, MAXLEN) == 0)
+	if (*options->cluster_name == '\0')
 	{
 		log_err(_("Cluster name is missing. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
