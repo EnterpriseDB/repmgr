@@ -179,6 +179,7 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c, ret;
 	bool		daemonize = false;
+	FILE       *fd;
 
 	char standby_version[MAXVERSIONSTR], *ret_ver;
 
@@ -248,8 +249,19 @@ main(int argc, char **argv)
 		terminate(ERR_BAD_CONFIG);
 	}
 
-	freopen("/dev/null", "r", stdin);
-	freopen("/dev/null", "w", stdout);
+	fd = freopen("/dev/null", "r", stdin);
+	if (fd == NULL)
+	{
+		fprintf(stderr, "error reopening stdin to '/dev/null': %s",
+				strerror(errno));
+	}
+
+	fd = freopen("/dev/null", "w", stdout);
+	if (fd == NULL)
+	{
+		fprintf(stderr, "error reopening stdout to '/dev/null': %s",
+				strerror(errno));
+	}
 
 	logger_init(&local_options, progname, local_options.loglevel, local_options.logfacility);
 	if (verbose)
@@ -257,7 +269,13 @@ main(int argc, char **argv)
 
 	if (log_type == REPMGR_SYSLOG)
 	{
-		freopen("/dev/null", "w", stderr);
+		fd = freopen("/dev/null", "w", stderr);
+
+		if (fd == NULL)
+		{
+			fprintf(stderr, "error reopening stderr to '/dev/null': %s",
+					strerror(errno));
+		}
 	}
 
 	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
@@ -365,7 +383,14 @@ main(int argc, char **argv)
 
 							if (*local_options.logfile)
 							{
-								freopen(local_options.logfile, "a", stderr);
+								FILE *fd;
+								fd = freopen(local_options.logfile, "a", stderr);
+								if (fd == NULL)
+								{
+									fprintf(stderr, "error reopening stderr to '%s': %s",
+											local_options.logfile, strerror(errno));
+								}
+
 							}
 
 							update_registration();
@@ -1341,6 +1366,7 @@ do_daemonize()
 {
 	char *ptr, path[MAXLEN];
 	pid_t pid = fork();
+	int ret;
 
 	switch (pid)
 	{
@@ -1389,7 +1415,12 @@ do_daemonize()
 			*path = '/';
 		}
 
-		chdir(path);
+		ret = chdir(path);
+		if (ret != 0)
+		{
+			log_err("Error changing directory to '%s': %s", path,
+					strerror(errno));
+		}
 
 		break;
 
@@ -1405,6 +1436,7 @@ check_and_create_pid_file(const char *pid_file)
 	FILE *fd;
 	char buff[MAXLEN];
 	pid_t pid;
+	size_t nread;
 
 	if (stat(pid_file, &st) != -1)
 	{
@@ -1418,7 +1450,14 @@ check_and_create_pid_file(const char *pid_file)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		fread(buff, MAXLEN - 1, 1, fd);
+		nread = fread(buff, MAXLEN - 1, 1, fd);
+
+		if (nread == 0 && ferror(fd))
+		{
+			log_err("Error reading PID file '%s', giving up...\n", pid_file);
+			exit(ERR_BAD_CONFIG);
+		}
+
 		fclose(fd);
 
 		pid = atoi(buff);

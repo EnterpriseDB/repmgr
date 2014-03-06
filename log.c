@@ -144,7 +144,14 @@ bool logger_init(t_configuration_options *opts, const char* ident, const char* l
 
 	if (*opts->logfile)
 	{
-		freopen(opts->logfile, "a", stderr);
+		FILE *fd;
+		fd = freopen(opts->logfile, "a", stderr);
+
+		if (fd == NULL)
+		{
+			fprintf(stderr, "error reopening stderr to '%s': %s",
+					opts->logfile, strerror(errno));
+		}
 	}
 
 	return true;
