@@ -1494,6 +1494,7 @@ do_standby_follow(void)
 	 */
 	strncpy(runtime_options.host, PQhost(master_conn), MAXLEN);
 	strncpy(runtime_options.masterport, PQport(master_conn), MAXLEN);
+	strncpy(runtime_options.username, PQuser(master_conn), MAXLEN);
 	PQfinish(master_conn);
 
 	log_info(_("%s Changing standby's master\n"),progname);
