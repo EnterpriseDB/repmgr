@@ -1948,7 +1948,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	char		host_string[MAXLEN];
 	int			r;
 
-	if (strnlen(options.rsync_options, MAXLEN) == 0)
+	if (*options.rsync_options == '\0')
 		maxlen_snprintf(
 						rsync_flags, "%s",
 					 "--archive --checksum --compress --progress --rsh=ssh");
