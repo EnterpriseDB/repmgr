@@ -104,10 +104,6 @@ bool		failover_done = false;
 
 char	   *pid_file = NULL;
 
-/*
- * should initialize with {0} to be ANSI complaint ? but this raises
- * error with gcc -Wall
- */
 t_configuration_options config = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static void help(const char *progname);
