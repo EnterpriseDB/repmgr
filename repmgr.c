@@ -337,7 +337,7 @@ main(int argc, char **argv)
 	}
 
 	/* Prepare the repmgr schema variable */
-	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
+	maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 			 options.cluster_name);
 
 	switch (action)
@@ -1698,7 +1698,7 @@ do_witness_create(void)
 	 * default port for the witness is 5499, but user can provide a different
 	 * one
 	 */
-	snprintf(buf, sizeof(buf), "%s/postgresql.conf", runtime_options.dest_dir);
+	xsnprintf(buf, sizeof(buf), "%s/postgresql.conf", runtime_options.dest_dir);
 	pg_conf = fopen(buf, "a");
 	if (pg_conf == NULL)
 	{
@@ -1708,18 +1708,18 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	snprintf(buf, sizeof(buf), "\n#Configuration added by %s\n", progname);
+	xsnprintf(buf, sizeof(buf), "\n#Configuration added by %s\n", progname);
 	fputs(buf, pg_conf);
 
 	if (!runtime_options.localport[0])
 		strncpy(runtime_options.localport, "5499", MAXLEN);
-	snprintf(buf, sizeof(buf), "port = %s\n", runtime_options.localport);
+	xsnprintf(buf, sizeof(buf), "port = %s\n", runtime_options.localport);
 	fputs(buf, pg_conf);
 
-	snprintf(buf, sizeof(buf), "shared_preload_libraries = 'repmgr_funcs'\n");
+	xsnprintf(buf, sizeof(buf), "shared_preload_libraries = 'repmgr_funcs'\n");
 	fputs(buf, pg_conf);
 
-	snprintf(buf, sizeof(buf), "listen_addresses = '*'\n");
+	xsnprintf(buf, sizeof(buf), "listen_addresses = '*'\n");
 	fputs(buf, pg_conf);
 
 	fclose(pg_conf);

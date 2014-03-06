@@ -281,7 +281,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
+	xsnprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 			 local_options.cluster_name);
 
 	log_info(_("%s Connecting to database '%s'\n"), progname,
