@@ -91,8 +91,6 @@ PGconn	   *my_local_conn = NULL;
 /* Primary info */
 t_configuration_options primary_options;
 
-
-char		sqlquery[QUERY_STR_LEN];
 PGconn	   *primary_conn = NULL;
 
 const char *progname;
@@ -501,6 +499,7 @@ witness_monitor(void)
 {
 	char		monitor_witness_timestamp[MAXLEN];
 	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
 
 	/*
 	 * Check if the master is still available, if after 5 minutes of retries
@@ -586,6 +585,7 @@ standby_monitor(void)
 	char		last_wal_standby_received[MAXLEN];
 	char		last_wal_standby_applied[MAXLEN];
 	char		last_wal_standby_applied_timestamp[MAXLEN];
+	char		sqlquery[QUERY_STR_LEN];
 
 	unsigned long long int lsn_primary;
 	unsigned long long int lsn_standby_received;
@@ -777,7 +777,7 @@ static void
 do_failover(void)
 {
 	PGresult   *res;
-	char		sqlquery[8192];
+	char		sqlquery[QUERY_STR_LEN];
 
 	int			total_nodes = 0;
 	int			visible_nodes = 0;
@@ -1219,6 +1219,7 @@ static void
 check_cluster_configuration(PGconn *conn)
 {
 	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
 
 	log_info(_("%s Checking cluster configuration with schema '%s'\n"),
 			 progname, repmgr_schema);
@@ -1254,6 +1255,7 @@ static void
 check_node_configuration(void)
 {
 	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
 
 	/*
 	 * Check if we have my node information in repl_nodes
@@ -1396,6 +1398,7 @@ static void
 update_shared_memory(char *last_wal_standby_applied)
 {
 	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
 
 	sprintf(sqlquery, "SELECT %s.repmgr_update_standby_location('%s')",
 			repmgr_schema, last_wal_standby_applied);
@@ -1422,6 +1425,7 @@ static void
 update_registration(void)
 {
 	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(sqlquery, "UPDATE %s.repl_nodes "
 					  "   SET conninfo = '%s', "
