@@ -25,7 +25,9 @@
 #define REPMGR_SYSLOG 1
 #define REPMGR_STDERR 2
 
-void stderr_log_with_level(const char *level_name, int level, const char *fmt, ...) __attribute__ ((format (PG_PRINTF_ATTRIBUTE, 3, 4)));
+void
+stderr_log_with_level(const char *level_name, int level, const char *fmt,...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 
 /* Standard error logging */
 #define stderr_log_debug(...) stderr_log_with_level("DEBUG", LOG_DEBUG, __VA_ARGS__)
@@ -88,17 +90,16 @@ void stderr_log_with_level(const char *level_name, int level, const char *fmt, .
 		if (log_type == REPMGR_SYSLOG) syslog(LOG_ALERT, __VA_ARGS__); \
 		else stderr_log_alert(__VA_ARGS__); \
 	}
-
 #else
 
-#define	LOG_EMERG	0	/* system is unusable */
-#define	LOG_ALERT	1	/* action must be taken immediately */
-#define	LOG_CRIT	2	/* critical conditions */
-#define	LOG_ERR		3	/* error conditions */
-#define	LOG_WARNING	4	/* warning conditions */
-#define	LOG_NOTICE	5	/* normal but significant condition */
-#define	LOG_INFO	6	/* informational */
-#define	LOG_DEBUG	7	/* debug-level messages */
+#define LOG_EMERG	0			/* system is unusable */
+#define LOG_ALERT	1			/* action must be taken immediately */
+#define LOG_CRIT	2			/* critical conditions */
+#define LOG_ERR		3			/* error conditions */
+#define LOG_WARNING 4			/* warning conditions */
+#define LOG_NOTICE	5			/* normal but significant condition */
+#define LOG_INFO	6			/* informational */
+#define LOG_DEBUG	7			/* debug-level messages */
 
 #define log_debug(...) stderr_log_debug(__VA_ARGS__)
 #define log_info(...) stderr_log_info(__VA_ARGS__)
@@ -108,16 +109,18 @@ void stderr_log_with_level(const char *level_name, int level, const char *fmt, .
 #define log_crit(...) stderr_log_crit(__VA_ARGS__)
 #define log_alert(...) stderr_log_alert(__VA_ARGS__)
 #define log_emerg(...) stderr_log_emerg(__VA_ARGS__)
-
 #endif
 
 
 /* Logger initialisation and shutdown */
-bool logger_shutdown(void);
-bool logger_init(t_configuration_options *opts, const char* ident, const char* level, const char* facility);
-void logger_min_verbose(int minimum);
+bool		logger_shutdown(void);
 
-extern int log_type;
-extern int log_level;
+bool logger_init(t_configuration_options * opts, const char *ident,
+			const char *level, const char *facility);
+
+void		logger_min_verbose(int minimum);
+
+extern int	log_type;
+extern int	log_level;
 
 #endif

@@ -39,15 +39,18 @@
 
 /* #define REPMGR_DEBUG */
 
-void stderr_log_with_level(const char *level_name, int level, const char *fmt, ...) {
-	size_t len = strlen(fmt);
-	char fmt1[len + 150];
-	time_t t;
-	struct tm *tm;
-	char buff[100];
-	va_list ap;
+void
+stderr_log_with_level(const char *level_name, int level, const char *fmt,...)
+{
+	size_t		len = strlen(fmt);
+	char		fmt1[len + 150];
+	time_t		t;
+	struct tm  *tm;
+	char		buff[100];
+	va_list		ap;
 
-	if(log_level >= level) {
+	if (log_level >= level)
+	{
 		time(&t);
 		tm = localtime(&t);
 
@@ -64,20 +67,20 @@ void stderr_log_with_level(const char *level_name, int level, const char *fmt, .
 }
 
 
-static int detect_log_level(const char* level);
-static int detect_log_facility(const char* facility);
+static int	detect_log_level(const char *level);
+static int	detect_log_facility(const char *facility);
 
-int log_type = REPMGR_STDERR;
-int log_level = LOG_NOTICE;
+int			log_type = REPMGR_STDERR;
+int			log_level = LOG_NOTICE;
 
-bool logger_init(t_configuration_options *opts, const char* ident, const char* level, const char* facility)
+bool
+logger_init(t_configuration_options * opts, const char *ident, const char *level, const char *facility)
 {
-
-	int l;
-	int f;
+	int			l;
+	int			f;
 
 #ifdef HAVE_SYSLOG
-	int syslog_facility = DEFAULT_SYSLOG_FACILITY;
+	int			syslog_facility = DEFAULT_SYSLOG_FACILITY;
 #endif
 
 #ifdef REPMGR_DEBUG
@@ -134,17 +137,17 @@ bool logger_init(t_configuration_options *opts, const char* ident, const char* l
 
 	if (log_type == REPMGR_SYSLOG)
 	{
-		setlogmask (LOG_UPTO (log_level));
-		openlog (ident, LOG_CONS | LOG_PID | LOG_NDELAY, syslog_facility);
+		setlogmask(LOG_UPTO(log_level));
+		openlog(ident, LOG_CONS | LOG_PID | LOG_NDELAY, syslog_facility);
 
 		stderr_log_notice(_("Setup syslog (level: %s, facility: %s)\n"), level, facility);
 	}
-
 #endif
 
 	if (*opts->logfile)
 	{
-		FILE *fd;
+		FILE	   *fd;
+
 		fd = freopen(opts->logfile, "a", stderr);
 
 		if (fd == NULL)
@@ -158,9 +161,9 @@ bool logger_init(t_configuration_options *opts, const char* ident, const char* l
 
 }
 
-bool logger_shutdown(void)
+bool
+logger_shutdown(void)
 {
-
 #ifdef HAVE_SYSLOG
 	if (log_type == REPMGR_SYSLOG)
 		closelog();
@@ -174,13 +177,15 @@ bool logger_shutdown(void)
  * options, which might increase requested logging over what's specified
  * in the regular configuration file.
  */
-void logger_min_verbose(int minimum)
+void
+logger_min_verbose(int minimum)
 {
 	if (log_level < minimum)
 		log_level = minimum;
 }
 
-int detect_log_level(const char* level)
+int
+detect_log_level(const char *level)
 {
 	if (!strcmp(level, "DEBUG"))
 		return LOG_DEBUG;
@@ -202,40 +207,42 @@ int detect_log_level(const char* level)
 	return 0;
 }
 
-int detect_log_facility(const char* facility)
+int
+detect_log_facility(const char *facility)
 {
-	int local = 0;
+	int			local = 0;
+
 	if (!strncmp(facility, "LOCAL", 5) && strlen(facility) == 6)
 	{
 
-		local = atoi (&facility[5]);
+		local = atoi(&facility[5]);
 
 		switch (local)
 		{
-		case 0:
-			return LOG_LOCAL0;
-			break;
-		case 1:
-			return LOG_LOCAL1;
-			break;
-		case 2:
-			return LOG_LOCAL2;
-			break;
-		case 3:
-			return LOG_LOCAL3;
-			break;
-		case 4:
-			return LOG_LOCAL4;
-			break;
-		case 5:
-			return LOG_LOCAL5;
-			break;
-		case 6:
-			return LOG_LOCAL6;
-			break;
-		case 7:
-			return LOG_LOCAL7;
-			break;
+			case 0:
+				return LOG_LOCAL0;
+				break;
+			case 1:
+				return LOG_LOCAL1;
+				break;
+			case 2:
+				return LOG_LOCAL2;
+				break;
+			case 3:
+				return LOG_LOCAL3;
+				break;
+			case 4:
+				return LOG_LOCAL4;
+				break;
+			case 5:
+				return LOG_LOCAL5;
+				break;
+			case 6:
+				return LOG_LOCAL6;
+				break;
+			case 7:
+				return LOG_LOCAL7;
+				break;
 		}
 
 	}

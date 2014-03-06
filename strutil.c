@@ -25,7 +25,9 @@
 #include "log.h"
 #include "strutil.h"
 
-static int xvsnprintf(char *str, size_t size, const char *format, va_list ap) __attribute__ ((format (PG_PRINTF_ATTRIBUTE, 3, 0)));
+static int
+xvsnprintf(char *str, size_t size, const char *format, va_list ap)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 0)));
 
 /* Add strnlen on platforms that don't have it, like OS X */
 #ifndef strnlen
@@ -33,21 +35,22 @@ size_t
 strnlen(const char *s, size_t n)
 {
 	const char *end = (const char *) memchr(s, '\0', n);
-	return(end ? end - s : n);
+
+	return (end ? end - s : n);
 }
 #endif
 
 static int
 xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 {
-	int retval;
+	int			retval;
 
 	retval = vsnprintf(str, size, format, ap);
 
-	if (retval >= (int)size)
+	if (retval >= (int) size)
 	{
 		log_err(_("Buffer of size not large enough to format entire string '%s'\n"),
-		        str);
+				str);
 		exit(ERR_STR_OVERFLOW);
 	}
 
@@ -56,10 +59,10 @@ xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 
 
 int
-xsnprintf(char *str, size_t size, const char *format, ...)
+xsnprintf(char *str, size_t size, const char *format,...)
 {
-	va_list arglist;
-	int retval;
+	va_list		arglist;
+	int			retval;
 
 	va_start(arglist, format);
 	retval = xvsnprintf(str, size, format, arglist);
@@ -70,7 +73,7 @@ xsnprintf(char *str, size_t size, const char *format, ...)
 
 
 int
-sqlquery_snprintf(char *str, const char *format, ...)
+sqlquery_snprintf(char *str, const char *format,...)
 {
 	va_list		arglist;
 	int			retval;
@@ -83,7 +86,8 @@ sqlquery_snprintf(char *str, const char *format, ...)
 }
 
 
-int maxlen_snprintf(char *str, const char *format, ...)
+int
+maxlen_snprintf(char *str, const char *format,...)
 {
 	va_list		arglist;
 	int			retval;

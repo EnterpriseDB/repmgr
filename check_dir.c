@@ -44,9 +44,9 @@
 int
 check_dir(char *dir)
 {
-	DIR        *chkdir;
-	struct 		dirent *file;
-	int         result = 1;
+	DIR		   *chkdir;
+	struct dirent *file;
+	int			result = 1;
 
 	errno = 0;
 
@@ -58,7 +58,7 @@ check_dir(char *dir)
 	while ((file = readdir(chkdir)) != NULL)
 	{
 		if (strcmp(".", file->d_name) == 0 ||
-		        strcmp("..", file->d_name) == 0)
+			strcmp("..", file->d_name) == 0)
 		{
 			/* skip this and parent directory */
 			continue;
@@ -71,6 +71,7 @@ check_dir(char *dir)
 	}
 
 #ifdef WIN32
+
 	/*
 	 * This fix is in mingw cvs (runtime/mingwex/dirent.c rev 1.4), but not in
 	 * released version
@@ -82,7 +83,7 @@ check_dir(char *dir)
 	closedir(chkdir);
 
 	if (errno != 0)
-		return -1;          /* some kind of I/O error? */
+		return -1;				/* some kind of I/O error? */
 
 	return result;
 }
@@ -98,7 +99,7 @@ create_directory(char *dir)
 		return true;
 
 	log_err(_("Could not create directory \"%s\": %s\n"),
-	        dir, strerror(errno));
+			dir, strerror(errno));
 
 	return false;
 }
@@ -127,10 +128,10 @@ mkdir_p(char *path, mode_t omode)
 {
 	struct stat sb;
 	mode_t		numask,
-	            oumask;
+				oumask;
 	int			first,
-	            last,
-	            retval;
+				last,
+				retval;
 	char	   *p;
 
 	p = path;
@@ -149,8 +150,8 @@ mkdir_p(char *path, mode_t omode)
 				return 1;
 		}
 		else if (p[1] == ':' &&
-		         ((p[0] >= 'a' && p[0] <= 'z') ||
-		          (p[0] >= 'A' && p[0] <= 'Z')))
+				 ((p[0] >= 'a' && p[0] <= 'z') ||
+				  (p[0] >= 'A' && p[0] <= 'Z')))
 		{
 			/* local drive */
 			p += 2;
@@ -221,9 +222,9 @@ bool
 is_pg_dir(char *dir)
 {
 	const size_t buf_sz = 8192;
-	char		 path[buf_sz];
-	struct stat	 sb;
-	int		r;
+	char		path[buf_sz];
+	struct stat sb;
+	int			r;
 
 	/* test pgdata */
 	xsnprintf(path, buf_sz, "%s/PG_VERSION", dir);
@@ -243,65 +244,65 @@ is_pg_dir(char *dir)
 bool
 create_pgdir(char *dir, bool force)
 {
-	bool	pg_dir = false;
+	bool		pg_dir = false;
 
 	/* Check this directory could be used as a PGDATA dir */
 	switch (check_dir(dir))
 	{
-	case 0:
-		/* dir not there, must create it */
-		log_info(_("creating directory \"%s\"...\n"), dir);
+		case 0:
+			/* dir not there, must create it */
+			log_info(_("creating directory \"%s\"...\n"), dir);
 
-		if (!create_directory(dir))
-		{
-			log_err(_("couldn't create directory \"%s\"...\n"),
-			        dir);
-			return false;
-		}
-		break;
-	case 1:
-		/* Present but empty, fix permissions and use it */
-		log_info(_("checking and correcting permissions on existing directory %s ...\n"),
-		         dir);
-
-		if (!set_directory_permissions(dir))
-		{
-			log_err(_("could not change permissions of directory \"%s\": %s\n"),
-			        dir, strerror(errno));
-			return false;
-		}
-		break;
-	case 2:
-		/* Present and not empty */
-		log_warning(_("directory \"%s\" exists but is not empty\n"),
-		            dir);
-
-		pg_dir = is_pg_dir(dir);
-
-		/*
-		 * we use force to reduce the time needed to restore a node which
-		 * turn async after a failover or anything else
-		 */
-		if (pg_dir && force)
-		{
-			/* Let it continue */
+			if (!create_directory(dir))
+			{
+				log_err(_("couldn't create directory \"%s\"...\n"),
+						dir);
+				return false;
+			}
 			break;
-		}
-		else if (pg_dir && !force)
-		{
-			log_warning(_("\nThis looks like a PostgreSQL directory.\n"
-			              "If you are sure you want to clone here, "
-			              "please check there is no PostgreSQL server "
-			              "running and use the --force option\n"));
-			return false;
-		}
+		case 1:
+			/* Present but empty, fix permissions and use it */
+			log_info(_("checking and correcting permissions on existing directory %s ...\n"),
+					 dir);
 
-		return false;
-	default:
-		/* Trouble accessing directory */
-		log_err(_("could not access directory \"%s\": %s\n"),
-		        dir, strerror(errno));
-		return false;
+			if (!set_directory_permissions(dir))
+			{
+				log_err(_("could not change permissions of directory \"%s\": %s\n"),
+						dir, strerror(errno));
+				return false;
+			}
+			break;
+		case 2:
+			/* Present and not empty */
+			log_warning(_("directory \"%s\" exists but is not empty\n"),
+						dir);
+
+			pg_dir = is_pg_dir(dir);
+
+			/*
+			 * we use force to reduce the time needed to restore a node which
+			 * turn async after a failover or anything else
+			 */
+			if (pg_dir && force)
+			{
+				/* Let it continue */
+				break;
+			}
+			else if (pg_dir && !force)
+			{
+				log_warning(_("\nThis looks like a PostgreSQL directory.\n"
+							  "If you are sure you want to clone here, "
+							  "please check there is no PostgreSQL server "
+							  "running and use the --force option\n"));
+				return false;
+			}
+
+			return false;
+		default:
+			/* Trouble accessing directory */
+			log_err(_("could not access directory \"%s\": %s\n"),
+					dir, strerror(errno));
+			return false;
 	}
 	return true;
 }
