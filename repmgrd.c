@@ -83,8 +83,6 @@ typedef struct s_node_info
 }	t_node_info;
 
 
-char		myClusterName[MAXLEN];
-
 /* Local info */
 t_configuration_options local_options;
 int			my_local_mode = STANDBY_MODE;
