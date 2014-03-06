@@ -49,23 +49,22 @@ const XLogRecPtr InvalidXLogRecPtr = {0, 0};
 #endif
 
 #if PG_VERSION_NUM >= 90300
-    #define XLAssign(a, b) \
-        a = b
+#define XLAssign(a, b) \
+		a = b
 
-    #define XLAssignValue(a, xlogid, xrecoff) \
-        a = xrecoff
+#define XLAssignValue(a, xlogid, xrecoff) \
+		a = xrecoff
 
-    #define XLByteLT(a, b) \
-        (a < b)
-
+#define XLByteLT(a, b) \
+		(a < b)
 #else
-    #define XLAssign(a, b) \
-        a.xlogid  = b.xlogid; \
-        a.xrecoff = b.xrecoff
+#define XLAssign(a, b) \
+		a.xlogid  = b.xlogid; \
+		a.xrecoff = b.xrecoff
 
-    #define XLAssignValue(a, uxlogid, uxrecoff) \
-        a.xlogid = uxlogid; \
-        a.xrecoff = uxrecoff
+#define XLAssignValue(a, uxlogid, uxrecoff) \
+		a.xlogid = uxlogid; \
+		a.xrecoff = uxrecoff
 #endif
 
 
@@ -75,39 +74,39 @@ const XLogRecPtr InvalidXLogRecPtr = {0, 0};
  */
 typedef struct nodeInfo
 {
-	int nodeId;
-	char conninfostr[MAXLEN];
-	XLogRecPtr xlog_location;
-	bool is_ready;
-	bool is_visible;
-	bool is_witness;
-} nodeInfo;
+	int			nodeId;
+	char		conninfostr[MAXLEN];
+	XLogRecPtr	xlog_location;
+	bool		is_ready;
+	bool		is_visible;
+	bool		is_witness;
+}	nodeInfo;
 
 
-char    myClusterName[MAXLEN];
+char		myClusterName[MAXLEN];
 
 /* Local info */
 t_configuration_options local_options;
-int     myLocalMode = STANDBY_MODE;
-PGconn *myLocalConn = NULL;
+int			myLocalMode = STANDBY_MODE;
+PGconn	   *myLocalConn = NULL;
 
 /* Primary info */
 t_configuration_options primary_options;
 
-PGconn *primaryConn = NULL;
+PGconn	   *primaryConn = NULL;
 
-char sqlquery[QUERY_STR_LEN];
+char		sqlquery[QUERY_STR_LEN];
 
 const char *progname;
 
-char	*config_file = DEFAULT_CONFIG_FILE;
-bool	verbose = false;
-bool	monitoring_history = false;
-char	repmgr_schema[MAXLEN];
+char	   *config_file = DEFAULT_CONFIG_FILE;
+bool		verbose = false;
+bool		monitoring_history = false;
+char		repmgr_schema[MAXLEN];
 
-bool	failover_done = false;
+bool		failover_done = false;
 
-char	*pid_file = NULL;
+char	   *pid_file = NULL;
 
 /*
  * should initialize with {0} to be ANSI complaint ? but this raises
@@ -115,7 +114,7 @@ char	*pid_file = NULL;
  */
 t_configuration_options config = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
-static void help(const char* progname);
+static void help(const char *progname);
 static void usage(void);
 static void checkClusterConfiguration(PGconn *conn);
 static void checkNodeConfiguration(void);
@@ -148,7 +147,8 @@ static void do_daemonize(void);
 static void check_and_create_pid_file(const char *pid_file);
 
 static void
-CloseConnections() {
+CloseConnections()
+{
 	if (primaryConn != NULL && PQisBusy(primaryConn) == 1)
 		CancelQuery(primaryConn, local_options.master_response_timeout);
 
@@ -177,11 +177,13 @@ main(int argc, char **argv)
 	};
 
 	int			optindex;
-	int			c, ret;
+	int			c,
+				ret;
 	bool		daemonize = false;
-	FILE       *fd;
+	FILE	   *fd;
 
-	char standby_version[MAXVERSIONSTR], *ret_ver;
+	char		standby_version[MAXVERSIONSTR],
+			   *ret_ver;
 
 	progname = get_progname(argv[0]);
 
@@ -203,24 +205,24 @@ main(int argc, char **argv)
 	{
 		switch (c)
 		{
-		case 'f':
-			config_file = optarg;
-			break;
-		case 'v':
-			verbose = true;
-			break;
-		case 'm':
-			monitoring_history = true;
-			break;
-		case 'd':
-			daemonize = true;
-			break;
-		case 'p':
-			pid_file = optarg;
-			break;
-		default:
-			usage();
-			exit(ERR_BAD_CONFIG);
+			case 'f':
+				config_file = optarg;
+				break;
+			case 'v':
+				verbose = true;
+				break;
+			case 'm':
+				monitoring_history = true;
+				break;
+			case 'd':
+				daemonize = true;
+				break;
+			case 'p':
+				pid_file = optarg;
+				break;
+			default:
+				usage();
+				exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -234,9 +236,9 @@ main(int argc, char **argv)
 		check_and_create_pid_file(pid_file);
 	}
 
-	#ifndef WIN32
+#ifndef WIN32
 	setup_event_handlers();
-	#endif
+#endif
 
 	/*
 	 * Read the configuration file: repmgr.conf
@@ -245,7 +247,7 @@ main(int argc, char **argv)
 	if (local_options.node == -1)
 	{
 		log_err(_("Node information is missing. "
-		          "Check the configuration file, or provide one if you have not done so.\n"));
+				  "Check the configuration file, or provide one if you have not done so.\n"));
 		terminate(ERR_BAD_CONFIG);
 	}
 
@@ -263,7 +265,8 @@ main(int argc, char **argv)
 				strerror(errno));
 	}
 
-	logger_init(&local_options, progname, local_options.loglevel, local_options.logfacility);
+	logger_init(&local_options, progname, local_options.loglevel,
+				local_options.logfacility);
 	if (verbose)
 		logger_min_verbose(LOG_INFO);
 
@@ -278,9 +281,11 @@ main(int argc, char **argv)
 		}
 	}
 
-	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX, local_options.cluster_name);
+	snprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
+			 local_options.cluster_name);
 
-	log_info(_("%s Connecting to database '%s'\n"), progname, local_options.conninfo);
+	log_info(_("%s Connecting to database '%s'\n"), progname,
+			 local_options.conninfo);
 	myLocalConn = establishDBConnection(local_options.conninfo, true);
 
 	/* should be v9 or better */
@@ -288,26 +293,26 @@ main(int argc, char **argv)
 	ret_ver = pg_version(myLocalConn, standby_version);
 	if (ret_ver == NULL || strcmp(standby_version, "") == 0)
 	{
-		if(ret_ver != NULL)
-			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"), progname);
+		if (ret_ver != NULL)
+			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"),
+					progname);
 		terminate(ERR_BAD_CONFIG);
 	}
 
 
 	/*
-	 * MAIN LOOP
-	 * This loops cicles once per failover and at startup
-	 * Requisites:
-	 *   - myLocalConn needs to be already setted with an active connection
-	 *   - no master connection
- 	 */
+	 * MAIN LOOP This loops cicles once per failover and at startup
+	 * Requisites: - myLocalConn needs to be already setted with an active
+	 * connection - no master connection
+	 */
 	do
 	{
 		/*
-		 * Set my server mode, establish a connection to primary
-		 * and start monitor
+		 * Set my server mode, establish a connection to primary and start
+		 * monitor
 		 */
-		ret = is_witness(myLocalConn, repmgr_schema, local_options.cluster_name, local_options.node);
+		ret = is_witness(myLocalConn, repmgr_schema,
+						 local_options.cluster_name, local_options.node);
 
 		if (ret == 1)
 			myLocalMode = WITNESS_MODE;
@@ -317,13 +322,15 @@ main(int argc, char **argv)
 
 			if (ret == 1)
 				myLocalMode = STANDBY_MODE;
-			else if (ret == 0) /* is the master */
+			else if (ret == 0)	/* is the master */
 				myLocalMode = PRIMARY_MODE;
 		}
 
-        /* XXX we did this before changing is_standby() to return int; we
+		/*
+		 * XXX we did this before changing is_standby() to return int; we
 		 * should not exit at this point, but for now we do until we have a
-		 * better strategy */
+		 * better strategy
+		 */
 		if (ret == -1)
 			terminate(1);
 
@@ -331,7 +338,8 @@ main(int argc, char **argv)
 		{
 			case PRIMARY_MODE:
 				primary_options.node = local_options.node;
-				strncpy(primary_options.conninfo, local_options.conninfo, MAXLEN);
+				strncpy(primary_options.conninfo, local_options.conninfo,
+						MAXLEN);
 				primaryConn = myLocalConn;
 
 				checkClusterConfiguration(myLocalConn);
@@ -345,36 +353,42 @@ main(int argc, char **argv)
 					update_registration();
 				}
 
-				log_info(_("%s Starting continuous primary connection check\n"), progname);
-
-				/* Check that primary is still alive, and standbies are sending info */
+				log_info(_("%s Starting continuous primary connection check\n"),
+						 progname);
 
 				/*
-				 * Every local_options.monitor_interval_secs seconds, do master checks
-				 * XXX
-				 * Check that standbies are sending info
+				 * Check that primary is still alive, and standbies are
+				 * sending info
+				 */
+
+				/*
+				 * Every local_options.monitor_interval_secs seconds, do
+				 * master checks XXX Check that standbies are sending info
 				 */
 				do
 				{
 					if (CheckConnection(primaryConn, "master"))
 					{
 						/*
-							CheckActiveStandbiesConnections();
-							CheckInactiveStandbies();
-						*/
+						 * CheckActiveStandbiesConnections();
+						 * CheckInactiveStandbies();
+						 */
 						sleep(local_options.monitor_interval_secs);
 					}
 					else
 					{
-						/* XXX
-						 * May we do something more verbose ?
+						/*
+						 * XXX May we do something more verbose ?
 						 */
 						terminate(1);
 					}
 
 					if (got_SIGHUP)
 					{
-						/* if we can reload, then could need to change myLocalConn */
+						/*
+						 * if we can reload, then could need to change
+						 * myLocalConn
+						 */
 						if (reload_configuration(config_file, &local_options))
 						{
 							PQfinish(myLocalConn);
@@ -383,12 +397,13 @@ main(int argc, char **argv)
 
 							if (*local_options.logfile)
 							{
-								FILE *fd;
+								FILE	   *fd;
+
 								fd = freopen(local_options.logfile, "a", stderr);
 								if (fd == NULL)
 								{
 									fprintf(stderr, "error reopening stderr to '%s': %s",
-											local_options.logfile, strerror(errno));
+									 local_options.logfile, strerror(errno));
 								}
 
 							}
@@ -403,10 +418,10 @@ main(int argc, char **argv)
 			case STANDBY_MODE:
 				/* I need the id of the primary as well as a connection to it */
 				log_info(_("%s Connecting to primary for cluster '%s'\n"),
-				         progname, local_options.cluster_name);
+						 progname, local_options.cluster_name);
 				primaryConn = getMasterConnection(myLocalConn, repmgr_schema,
-				                                  local_options.cluster_name,
-				                                  &primary_options.node, NULL);
+												  local_options.cluster_name,
+												&primary_options.node, NULL);
 				if (primaryConn == NULL)
 				{
 					terminate(ERR_BAD_CONFIG);
@@ -423,15 +438,18 @@ main(int argc, char **argv)
 				}
 
 				/*
-				 * Every local_options.monitor_interval_secs seconds, do checks
+				 * Every local_options.monitor_interval_secs seconds, do
+				 * checks
 				 */
 				if (myLocalMode == WITNESS_MODE)
 				{
-					log_info(_("%s Starting continuous witness node monitoring\n"), progname);
+					log_info(_("%s Starting continuous witness node monitoring\n"),
+							 progname);
 				}
 				else if (myLocalMode == STANDBY_MODE)
 				{
-					log_info(_("%s Starting continuous standby node monitoring\n"), progname);
+					log_info(_("%s Starting continuous standby node monitoring\n"),
+							 progname);
 				}
 
 				do
@@ -444,7 +462,10 @@ main(int argc, char **argv)
 
 					if (got_SIGHUP)
 					{
-						/* if we can reload, then could need to change myLocalConn */
+						/*
+						 * if we can reload, then could need to change
+						 * myLocalConn
+						 */
 						if (reload_configuration(config_file, &local_options))
 						{
 							PQfinish(myLocalConn);
@@ -456,7 +477,8 @@ main(int argc, char **argv)
 				} while (!failover_done);
 				break;
 			default:
-				log_err(_("%s: Unrecognized mode for node %d\n"), progname, local_options.node);
+				log_err(_("%s: Unrecognized mode for node %d\n"), progname,
+						local_options.node);
 		}
 
 		failover_done = false;
@@ -478,20 +500,24 @@ main(int argc, char **argv)
 static void
 WitnessMonitor(void)
 {
-	char monitor_witness_timestamp[MAXLEN];
-	PGresult	*res;
+	char		monitor_witness_timestamp[MAXLEN];
+	PGresult   *res;
 
 	/*
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, return false.
 	 */
-	CheckConnection(primaryConn, "master"); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
+	CheckConnection(primaryConn, "master");		/* this take up to
+												 * local_options.reconnect_atte
+												 * mpts *
+												 * local_options.reconnect_intv
+												 * l seconds */
 
 	if (PQstatus(primaryConn) != CONNECTION_OK)
 	{
 		/*
-		 * If we can't reconnect, just exit...
-		 * XXX we need to make witness connect to the new master
+		 * If we can't reconnect, just exit... XXX we need to make witness
+		 * connect to the new master
 		 */
 		terminate(0);
 	}
@@ -501,12 +527,13 @@ WitnessMonitor(void)
 		return;
 
 	/*
-	 * Cancel any query that is still being executed,
-	 * so i can insert the current record
+	 * Cancel any query that is still being executed, so i can insert the
+	 * current record
 	 */
 	if (!CancelQuery(primaryConn, local_options.master_response_timeout))
 		return;
-	if (wait_connection_availability(primaryConn, local_options.master_response_timeout) != 1)
+	if (wait_connection_availability(primaryConn,
+								 local_options.master_response_timeout) != 1)
 		return;
 
 	/* Get local xlog info */
@@ -528,20 +555,21 @@ WitnessMonitor(void)
 	 * Build the SQL to execute on primary
 	 */
 	sqlquery_snprintf(sqlquery,
-	                  "INSERT INTO %s.repl_monitor "
-	                  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-	                  " pg_current_xlog_location(), null,  "
-	                  " 0, 0)",
-	                  repmgr_schema, primary_options.node, local_options.node, monitor_witness_timestamp);
+					  "INSERT INTO %s.repl_monitor "
+					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
+					  " pg_current_xlog_location(), null,  "
+					  " 0, 0)",
+					  repmgr_schema, primary_options.node, local_options.node,
+					  monitor_witness_timestamp);
 
 	/*
-	 * Execute the query asynchronously, but don't check for a result. We
-	 * will check the result next time we pause for a monitor step.
+	 * Execute the query asynchronously, but don't check for a result. We will
+	 * check the result next time we pause for a monitor step.
 	 */
 	log_debug("WitnessMonitor: %s\n", sqlquery);
 	if (PQsendQuery(primaryConn, sqlquery) == 0)
 		log_warning(_("Query could not be sent to primary. %s\n"),
-		            PQerrorMessage(primaryConn));
+					PQerrorMessage(primaryConn));
 }
 
 
@@ -553,25 +581,30 @@ WitnessMonitor(void)
 static void
 StandbyMonitor(void)
 {
-	PGresult *res;
-	char monitor_standby_timestamp[MAXLEN];
-	char last_wal_primary_location[MAXLEN];
-	char last_wal_standby_received[MAXLEN];
-	char last_wal_standby_applied[MAXLEN];
-	char last_wal_standby_applied_timestamp[MAXLEN];
+	PGresult   *res;
+	char		monitor_standby_timestamp[MAXLEN];
+	char		last_wal_primary_location[MAXLEN];
+	char		last_wal_standby_received[MAXLEN];
+	char		last_wal_standby_applied[MAXLEN];
+	char		last_wal_standby_applied_timestamp[MAXLEN];
 
 	unsigned long long int lsn_primary;
 	unsigned long long int lsn_standby_received;
 	unsigned long long int lsn_standby_applied;
 
-	int	connection_retries, ret;
-	bool did_retry = false;
+	int			connection_retries,
+				ret;
+	bool		did_retry = false;
 
 	/*
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, try to get a new master.
 	 */
-	CheckConnection(primaryConn, "master"); /* this take up to local_options.reconnect_attempts * local_options.reconnect_intvl seconds */
+	CheckConnection(primaryConn, "master");		/* this take up to
+												 * local_options.reconnect_atte
+												 * mpts *
+												 * local_options.reconnect_intv
+												 * l seconds */
 
 	if (!CheckConnection(myLocalConn, "standby"))
 	{
@@ -590,19 +623,27 @@ StandbyMonitor(void)
 			for (connection_retries = 0; connection_retries < 6; connection_retries++)
 			{
 				primaryConn = getMasterConnection(myLocalConn, repmgr_schema,
-				                                  local_options.cluster_name, &primary_options.node, NULL);
+					local_options.cluster_name, &primary_options.node, NULL);
 				if (PQstatus(primaryConn) == CONNECTION_OK)
 				{
-					/* Connected, we can continue the process so break the loop */
-					log_err(_("Connected to node %d, continue monitoring.\n"), primary_options.node);
+					/*
+					 * Connected, we can continue the process so break the
+					 * loop
+					 */
+					log_err(_("Connected to node %d, continue monitoring.\n"),
+							primary_options.node);
 					break;
 				}
 				else
 				{
 					log_err(_("We haven't found a new master, waiting before retry...\n"));
-					/* wait local_options.retry_promote_interval_secs minutes before retries,
-					 * after 6 failures (6 * local_options.monitor_interval_secs
-					 * seconds) we stop trying */
+
+					/*
+					 * wait local_options.retry_promote_interval_secs minutes
+					 * before retries, after 6 failures (6 *
+					 * local_options.monitor_interval_secs seconds) we stop
+					 * trying
+					 */
 					sleep(local_options.retry_promote_interval_secs);
 				}
 			}
@@ -616,8 +657,8 @@ StandbyMonitor(void)
 		else if (local_options.failover == AUTOMATIC_FAILOVER)
 		{
 			/*
-			 * When we returns from this function we will have a new primary and
-			 * a new primaryConn
+			 * When we returns from this function we will have a new primary
+			 * and a new primaryConn
 			 */
 			do_failover();
 			return;
@@ -625,28 +666,29 @@ StandbyMonitor(void)
 	}
 
 	/* Check if we still are a standby, we could have been promoted */
-	do {
+	do
+	{
 		ret = is_standby(myLocalConn);
 
 		switch (ret)
 		{
-		case 0:
-			log_err(_("It seems like we have been promoted, so exit from monitoring...\n"));
-			terminate(1);
-			break;
+			case 0:
+				log_err(_("It seems like we have been promoted, so exit from monitoring...\n"));
+				terminate(1);
+				break;
 
-		case -1:
-			log_err(_("Standby node disappeared, trying to reconnect...\n"));
-			did_retry = true;
+			case -1:
+				log_err(_("Standby node disappeared, trying to reconnect...\n"));
+				did_retry = true;
 
-			if (!CheckConnection(myLocalConn, "standby"))
-			{
-				terminate(0);
-			}
+				if (!CheckConnection(myLocalConn, "standby"))
+				{
+					terminate(0);
+				}
 
-			break;
+				break;
 		}
-	} while(ret == -1);
+	} while (ret == -1);
 
 	if (did_retry)
 	{
@@ -658,8 +700,8 @@ StandbyMonitor(void)
 		return;
 
 	/*
-	 * Cancel any query that is still being executed,
-	 * so i can insert the current record
+	 * Cancel any query that is still being executed, so i can insert the
+	 * current record
 	 */
 	if (!CancelQuery(primaryConn, local_options.master_response_timeout))
 		return;
@@ -668,9 +710,9 @@ StandbyMonitor(void)
 
 	/* Get local xlog info */
 	sqlquery_snprintf(
-	    sqlquery,
-	    "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-	    "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp()");
+					  sqlquery,
+				"SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
+		  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp()");
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -682,8 +724,8 @@ StandbyMonitor(void)
 	}
 
 	strncpy(monitor_standby_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
-	strncpy(last_wal_standby_received , PQgetvalue(res, 0, 1), MAXLEN);
-	strncpy(last_wal_standby_applied , PQgetvalue(res, 0, 2), MAXLEN);
+	strncpy(last_wal_standby_received, PQgetvalue(res, 0, 1), MAXLEN);
+	strncpy(last_wal_standby_applied, PQgetvalue(res, 0, 2), MAXLEN);
 	strncpy(last_wal_standby_applied_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
 	PQclear(res);
 
@@ -710,66 +752,66 @@ StandbyMonitor(void)
 	 * Build the SQL to execute on primary
 	 */
 	sqlquery_snprintf(sqlquery,
-	                  "INSERT INTO %s.repl_monitor "
-	                  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-	                  " '%s'::timestamp with time zone, '%s', '%s', "
-	                  " %lld, %lld)", repmgr_schema,
-	                  primary_options.node, local_options.node, monitor_standby_timestamp,
-	                  last_wal_standby_applied_timestamp,
-	                  last_wal_primary_location,
-	                  last_wal_standby_received,
-	                  (lsn_primary - lsn_standby_received),
-	                  (lsn_standby_received - lsn_standby_applied));
+					  "INSERT INTO %s.repl_monitor "
+					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
+					  " '%s'::timestamp with time zone, '%s', '%s', "
+					  " %lld, %lld)", repmgr_schema,
+		 primary_options.node, local_options.node, monitor_standby_timestamp,
+					  last_wal_standby_applied_timestamp,
+					  last_wal_primary_location,
+					  last_wal_standby_received,
+					  (lsn_primary - lsn_standby_received),
+					  (lsn_standby_received - lsn_standby_applied));
 
 	/*
-	 * Execute the query asynchronously, but don't check for a result. We
-	 * will check the result next time we pause for a monitor step.
+	 * Execute the query asynchronously, but don't check for a result. We will
+	 * check the result next time we pause for a monitor step.
 	 */
 	log_debug("StandbyMonitor: %s\n", sqlquery);
 	if (PQsendQuery(primaryConn, sqlquery) == 0)
 		log_warning(_("Query could not be sent to primary. %s\n"),
-		            PQerrorMessage(primaryConn));
+					PQerrorMessage(primaryConn));
 }
 
 
 static void
 do_failover(void)
 {
-	PGresult *res;
-	char 	sqlquery[8192];
+	PGresult   *res;
+	char		sqlquery[8192];
 
-	int		total_nodes = 0;
-	int		visible_nodes = 0;
-	int     ready_nodes = 0;
+	int			total_nodes = 0;
+	int			visible_nodes = 0;
+	int			ready_nodes = 0;
 
-	bool	find_best = false;
+	bool		find_best = false;
 
-	int		i;
-	int		r;
+	int			i;
+	int			r;
 
-	uint32  uxlogid;
-	uint32  uxrecoff;
-	XLogRecPtr xlog_recptr;
+	uint32		uxlogid;
+	uint32		uxrecoff;
+	XLogRecPtr	xlog_recptr;
 
-	char last_wal_standby_applied[MAXLEN];
+	char		last_wal_standby_applied[MAXLEN];
 
-	PGconn	*nodeConn = NULL;
+	PGconn	   *nodeConn = NULL;
 
 	/*
-	 * will get info about until 50 nodes,
-	 * which seems to be large enough for most scenarios
+	 * will get info about until 50 nodes, which seems to be large enough for
+	 * most scenarios
 	 */
-	nodeInfo nodes[50];
+	nodeInfo	nodes[50];
 
 	/* initialize to keep compiler quiet */
-	nodeInfo best_candidate = {-1, "", InvalidXLogRecPtr, false, false, false};
+	nodeInfo	best_candidate = {-1, "", InvalidXLogRecPtr, false, false, false};
 
 	/* get a list of standby nodes, including myself */
 	sprintf(sqlquery, "SELECT id, conninfo, witness "
-	        "  FROM %s.repl_nodes "
-	        " WHERE cluster = '%s' "
-	        " ORDER BY priority, id ",
-	        repmgr_schema, local_options.cluster_name);
+			"  FROM %s.repl_nodes "
+			" WHERE cluster = '%s' "
+			" ORDER BY priority, id ",
+			repmgr_schema, local_options.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -785,21 +827,28 @@ do_failover(void)
 	total_nodes = PQntuples(res);
 	log_debug(_("%s: there are %d nodes registered\n"), progname, total_nodes);
 
-	/* Build an array with the nodes and indicate which ones are visible and ready */
+	/*
+	 * Build an array with the nodes and indicate which ones are visible and
+	 * ready
+	 */
 	for (i = 0; i < total_nodes; i++)
 	{
 		nodes[i].nodeId = atoi(PQgetvalue(res, i, 0));
 		strncpy(nodes[i].conninfostr, PQgetvalue(res, i, 1), MAXLEN);
 		nodes[i].is_witness = (strcmp(PQgetvalue(res, i, 2), "t") == 0) ? true : false;
 
-		/* Initialize on false so if we can't reach this node we know that later */
+		/*
+		 * Initialize on false so if we can't reach this node we know that
+		 * later
+		 */
 		nodes[i].is_visible = false;
 		nodes[i].is_ready = false;
 
 		XLAssignValue(nodes[i].xlog_location, 0, 0);
 
 		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s\n"),
-					progname, nodes[i].nodeId, nodes[i].conninfostr, (nodes[i].is_witness) ? "true" : "false");
+				  progname, nodes[i].nodeId, nodes[i].conninfostr,
+				  (nodes[i].is_witness) ? "true" : "false");
 
 		nodeConn = establishDBConnection(nodes[i].conninfostr, false);
 
@@ -819,17 +868,18 @@ do_failover(void)
 	}
 	PQclear(res);
 
-	log_debug(_("Total nodes counted: registered=%d, visible=%d\n"), total_nodes, visible_nodes);
+	log_debug(_("Total nodes counted: registered=%d, visible=%d\n"),
+			  total_nodes, visible_nodes);
 
 	/*
-	 * am i on the group that should keep alive?
-	 * if i see less than half of total_nodes then i should do nothing
+	 * am i on the group that should keep alive? if i see less than half of
+	 * total_nodes then i should do nothing
 	 */
 	if (visible_nodes < (total_nodes / 2.0))
 	{
 		log_err(_("Can't reach most of the nodes.\n"
-		          "Let the other standby servers decide which one will be the primary.\n"
-		          "Manual action will be needed to readd this node to the cluster.\n"));
+				  "Let the other standby servers decide which one will be the primary.\n"
+		"Manual action will be needed to readd this node to the cluster.\n"));
 		terminate(ERR_FAILOVER_FAIL);
 	}
 
@@ -844,9 +894,11 @@ do_failover(void)
 			continue;
 
 		nodeConn = establishDBConnection(nodes[i].conninfostr, false);
-		/* XXX
-		 * This shouldn't happen, if this happens it means this is a major problem
-		 * maybe network outages? anyway, is better for a human to react
+
+		/*
+		 * XXX This shouldn't happen, if this happens it means this is a major
+		 * problem maybe network outages? anyway, is better for a human to
+		 * react
 		 */
 		if (PQstatus(nodeConn) != CONNECTION_OK)
 		{
@@ -861,7 +913,8 @@ do_failover(void)
 		res = PQexec(nodeConn, sqlquery);
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
-			log_info(_("Can't get node's last standby location: %s\n"), PQerrorMessage(nodeConn));
+			log_info(_("Can't get node's last standby location: %s\n"),
+					 PQerrorMessage(nodeConn));
 			log_info(_("Connection details: %s\n"), nodes[i].conninfostr);
 			PQclear(res);
 			PQfinish(nodeConn);
@@ -869,10 +922,11 @@ do_failover(void)
 		}
 
 		if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
-			log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res, 0, 0));
+			log_info(_("could not parse transaction log location \"%s\"\n"),
+					 PQgetvalue(res, 0, 0));
 
 		log_debug("XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
-					nodes[i].nodeId, uxlogid, uxlogid, uxrecoff, uxrecoff);
+				  nodes[i].nodeId, uxlogid, uxlogid, uxrecoff, uxrecoff);
 
 		/* If position is 0/0, error */
 		if (uxlogid == 0 && uxrecoff == 0)
@@ -894,7 +948,9 @@ do_failover(void)
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("PQexec failed: %s.\nReport an invalid value to not be considered as new primary and exit.\n"), PQerrorMessage(myLocalConn));
+		log_err(_("PQexec failed: %s.\nReport an invalid value to not be "
+				  " considered as new primary and exit.\n"),
+				PQerrorMessage(myLocalConn));
 		PQclear(res);
 		sprintf(last_wal_standby_applied, "'%X/%X'", 0, 0);
 		update_shared_memory(last_wal_standby_applied);
@@ -910,9 +966,9 @@ do_failover(void)
 		while (!nodes[i].is_ready)
 		{
 			/*
-        	 * the witness will always be masked as ready if it's still
-        	 * not marked that way and avoid a useless query
-        	 */
+			 * the witness will always be masked as ready if it's still not
+			 * marked that way and avoid a useless query
+			 */
 			if (nodes[i].is_witness)
 			{
 				if (!nodes[i].is_ready)
@@ -931,34 +987,42 @@ do_failover(void)
 			if (nodes[i].is_ready)
 				break;
 
-            nodeConn = establishDBConnection(nodes[i].conninfostr, false);
-            /* XXX
-             * This shouldn't happen, if this happens it means this is a major problem
-             * maybe network outages? anyway, is better for a human to react
-             */
-            if (PQstatus(nodeConn) != CONNECTION_OK)
-            {
+			nodeConn = establishDBConnection(nodes[i].conninfostr, false);
+
+			/*
+			 * XXX This shouldn't happen, if this happens it means this is a
+			 * major problem maybe network outages? anyway, is better for a
+			 * human to react
+			 */
+			if (PQstatus(nodeConn) != CONNECTION_OK)
+			{
 				/* XXX */
-                log_info(_("At this point, it could be some race conditions that are acceptable, assume the node is restarting and starting failover procedure\n"));
+				log_info(_("At this point, it could be some race conditions "
+						"that are acceptable, assume the node is restarting "
+						   "and starting failover procedure\n"));
 				break;
-            }
+			}
 
 			uxlogid = 0;
 			uxrecoff = 0;
 
-			sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()", repmgr_schema);
+			sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()",
+							  repmgr_schema);
 			res = PQexec(nodeConn, sqlquery);
-            if (PQresultStatus(res) != PGRES_TUPLES_OK)
-            {
-                log_err(_("PQexec failed: %s.\nReport an invalid value to not be considered as new primary and exit.\n"), PQerrorMessage(nodeConn));
-                PQclear(res);
-                PQfinish(nodeConn);
-                terminate(ERR_DB_QUERY);
+			if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			{
+				log_err(_("PQexec failed: %s.\nReport an invalid value to not"
+						  "be considered as new primary and exit.\n"),
+						PQerrorMessage(nodeConn));
+				PQclear(res);
+				PQfinish(nodeConn);
+				terminate(ERR_DB_QUERY);
 			}
 
-            if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
+			if (sscanf(PQgetvalue(res, 0, 0), "%X/%X", &uxlogid, &uxrecoff) != 2)
 			{
-                log_info(_("could not parse transaction log location \"%s\"\n"), PQgetvalue(res, 0, 0));
+				log_info(_("could not parse transaction log location \"%s\"\n"),
+						 PQgetvalue(res, 0, 0));
 
 				/* we can't do anything but fail at this point... */
 				if (*PQgetvalue(res, 0, 0) == '\0')
@@ -969,11 +1033,11 @@ do_failover(void)
 			}
 
 
-            PQclear(res);
-            PQfinish(nodeConn);
-            /* If position is 0/0, keep checking */
-            if (uxlogid == 0 && uxrecoff == 0)
-                continue;
+			PQclear(res);
+			PQfinish(nodeConn);
+			/* If position is 0/0, keep checking */
+			if (uxlogid == 0 && uxrecoff == 0)
+				continue;
 
 			XLAssignValue(xlog_recptr, uxlogid, uxrecoff);
 
@@ -982,9 +1046,9 @@ do_failover(void)
 				XLAssignValue(nodes[i].xlog_location, uxlogid, uxrecoff);
 			}
 
-            log_debug("Last XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
-                        nodes[i].nodeId, uxlogid,  uxlogid,
-										 uxrecoff, uxrecoff);
+			log_debug("Last XLog position of node %d: log id=%u (%X), offset=%u (%X)\n",
+					  nodes[i].nodeId, uxlogid, uxlogid,
+					  uxrecoff, uxrecoff);
 
 			ready_nodes++;
 			nodes[i].is_ready = true;
@@ -1009,26 +1073,30 @@ do_failover(void)
 
 		if (!find_best)
 		{
-			/* start with the first ready node, and then move on to the next one */
-			best_candidate.nodeId                = nodes[i].nodeId;
+			/*
+			 * start with the first ready node, and then move on to the next
+			 * one
+			 */
+			best_candidate.nodeId = nodes[i].nodeId;
 			XLAssign(best_candidate.xlog_location, nodes[i].xlog_location);
-			best_candidate.is_ready              = nodes[i].is_ready;
-			best_candidate.is_witness            = nodes[i].is_witness;
+			best_candidate.is_ready = nodes[i].is_ready;
+			best_candidate.is_witness = nodes[i].is_witness;
 			find_best = true;
 		}
 
 		/* we use the macros provided by xlogdefs.h to compare XLogRecPtr */
+
 		/*
-		 * Nodes are retrieved ordered by priority, so if the current
-		 * best candidate is lower than the next node's wal location
-		 * then assign next node as the new best candidate.
+		 * Nodes are retrieved ordered by priority, so if the current best
+		 * candidate is lower than the next node's wal location then assign
+		 * next node as the new best candidate.
 		 */
 		if (XLByteLT(best_candidate.xlog_location, nodes[i].xlog_location))
 		{
-			best_candidate.nodeId                = nodes[i].nodeId;
+			best_candidate.nodeId = nodes[i].nodeId;
 			XLAssign(best_candidate.xlog_location, nodes[i].xlog_location);
-			best_candidate.is_ready              = nodes[i].is_ready;
-			best_candidate.is_witness            = nodes[i].is_witness;
+			best_candidate.is_ready = nodes[i].is_ready;
+			best_candidate.is_witness = nodes[i].is_witness;
 		}
 	}
 
@@ -1037,7 +1105,8 @@ do_failover(void)
 	{
 		if (best_candidate.is_witness)
 		{
-			log_err(_("%s: Node selected as new master is a witness. Can't be promoted.\n"), progname);
+			log_err(_("%s: Node selected as new master is a witness. Can't be promoted.\n"),
+					progname);
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
@@ -1046,8 +1115,9 @@ do_failover(void)
 
 		if (verbose)
 			log_info(_("%s: This node is the best candidate to be the new primary, promoting...\n"),
-			         progname);
-		log_debug(_("promote command is: \"%s\"\n"), local_options.promote_command);
+					 progname);
+		log_debug(_("promote command is: \"%s\"\n"),
+				  local_options.promote_command);
 
 		if (log_type == REPMGR_STDERR && *local_options.logfile)
 		{
@@ -1057,7 +1127,8 @@ do_failover(void)
 		r = system(local_options.promote_command);
 		if (r != 0)
 		{
-			log_err(_("%s: promote command failed. You could check and try it manually.\n"), progname);
+			log_err(_("%s: promote command failed. You could check and try it manually.\n"),
+					progname);
 			terminate(ERR_BAD_CONFIG);
 		}
 	}
@@ -1068,11 +1139,12 @@ do_failover(void)
 
 		if (verbose)
 			log_info(_("%s: Node %d is the best candidate to be the new primary, we should follow it...\n"),
-			         progname, best_candidate.nodeId);
+					 progname, best_candidate.nodeId);
 		log_debug(_("follow command is: \"%s\"\n"), local_options.follow_command);
+
 		/*
-		 * New Primary need some time to be promoted.
-		 * The follow command should take care of that.
+		 * New Primary need some time to be promoted. The follow command
+		 * should take care of that.
 		 */
 		if (log_type == REPMGR_STDERR && *local_options.logfile)
 		{
@@ -1082,13 +1154,15 @@ do_failover(void)
 		r = system(local_options.follow_command);
 		if (r != 0)
 		{
-			log_err(_("%s: follow command failed. You could check and try it manually.\n"), progname);
+			log_err(_("%s: follow command failed. You could check and try it manually.\n"),
+					progname);
 			terminate(ERR_BAD_CONFIG);
 		}
 	}
 	else
 	{
-		log_err(_("%s: Did not find candidates. You should check and try manually.\n"), progname);
+		log_err(_("%s: Did not find candidates. You should check and try manually.\n"),
+				progname);
 		terminate(ERR_FAILOVER_FAIL);
 	}
 
@@ -1103,37 +1177,38 @@ do_failover(void)
 static bool
 CheckConnection(PGconn *conn, const char *type)
 {
-	int	connection_retries;
+	int			connection_retries;
 
 	/*
-	 * Check if the master is still available
-	 * if after local_options.reconnect_attempts * local_options.reconnect_intvl seconds of retries
-	 * we cannot reconnect
-	 * return false
+	 * Check if the master is still available if after
+	 * local_options.reconnect_attempts * local_options.reconnect_intvl
+	 * seconds of retries we cannot reconnect return false
 	 */
 	for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 	{
 		if (!is_pgup(conn, local_options.master_response_timeout))
 		{
 			log_warning(_("%s: Connection to %s has been lost, trying to recover... %i seconds before failover decision\n"),
-			            progname,
+						progname,
 						type,
-			            (local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
+						(local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
 			/* wait local_options.reconnect_intvl seconds between retries */
 			sleep(local_options.reconnect_intvl);
 		}
 		else
 		{
-			if ( connection_retries > 0)
+			if (connection_retries > 0)
 			{
-				log_info(_("%s: Connection to %s has been restored.\n"), progname, type);
+				log_info(_("%s: Connection to %s has been restored.\n"),
+						 progname, type);
 			}
 			return true;
 		}
 	}
 	if (!is_pgup(conn, local_options.master_response_timeout))
 	{
-		log_err(_("%s: We couldn't reconnect for long enough, exiting...\n"), progname);
+		log_err(_("%s: We couldn't reconnect for long enough, exiting...\n"),
+				progname);
 		/* XXX Anything else to do here? */
 		return false;
 	}
@@ -1147,10 +1222,10 @@ checkClusterConfiguration(PGconn *conn)
 	PGresult   *res;
 
 	log_info(_("%s Checking cluster configuration with schema '%s'\n"),
-	         progname, repmgr_schema);
+			 progname, repmgr_schema);
 	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
-	                  " WHERE oid = '%s.repl_nodes'::regclass",
-	                  repmgr_schema);
+					  " WHERE oid = '%s.repl_nodes'::regclass",
+					  repmgr_schema);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -1185,11 +1260,11 @@ checkNodeConfiguration(void)
 	 * Check if we have my node information in repl_nodes
 	 */
 	log_info(_("%s Checking node %d in cluster '%s'\n"),
-	         progname, local_options.node, local_options.cluster_name);
+			 progname, local_options.node, local_options.cluster_name);
 	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
-	                  " WHERE id = %d AND cluster = '%s' ",
-	                  repmgr_schema, local_options.node,
-	                  local_options.cluster_name);
+					  " WHERE id = %d AND cluster = '%s' ",
+					  repmgr_schema, local_options.node,
+					  local_options.cluster_name);
 
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1200,8 +1275,8 @@ checkNodeConfiguration(void)
 	}
 
 	/*
-	 * If there isn't any results then we have not configured this node yet
-	 * in repmgr, if that is the case we will insert the node to the cluster,
+	 * If there isn't any results then we have not configured this node yet in
+	 * repmgr, if that is the case we will insert the node to the cluster,
 	 * except if it is a witness
 	 */
 	if (PQntuples(res) == 0)
@@ -1216,18 +1291,18 @@ checkNodeConfiguration(void)
 
 		/* Adding the node */
 		log_info(_("%s Adding node %d to cluster '%s'\n"),
-		         progname, local_options.node, local_options.cluster_name);
+				 progname, local_options.node, local_options.cluster_name);
 		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
-		                  "VALUES (%d, '%s', '%s', '%s', 0, 'f')",
-		                  repmgr_schema, local_options.node,
-		                  local_options.cluster_name,
-		                  local_options.node_name,
-		                  local_options.conninfo);
+						  "VALUES (%d, '%s', '%s', '%s', 0, 'f')",
+						  repmgr_schema, local_options.node,
+						  local_options.cluster_name,
+						  local_options.node_name,
+						  local_options.conninfo);
 
 		if (!PQexec(primaryConn, sqlquery))
 		{
 			log_err(_("Cannot insert node details, %s\n"),
-			        PQerrorMessage(primaryConn));
+					PQerrorMessage(primaryConn));
 			terminate(ERR_BAD_CONFIG);
 		}
 	}
@@ -1249,18 +1324,20 @@ walLocationToBytes(char *wal_location)
 		log_err(_("wrong log location format: %s\n"), wal_location);
 		return 0;
 	}
-	return (( (long long) xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
+	return (((long long) xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
 }
 
 
-void usage(void)
+void
+usage(void)
 {
 	log_err(_("%s: Replicator manager daemon \n"), progname);
 	log_err(_("Try \"%s --help\" for more information.\n"), progname);
 }
 
 
-void help(const char *progname)
+void
+help(const char *progname)
 {
 	printf(_("Usage: %s [OPTIONS]\n"), progname);
 	printf(_("Replicator manager daemon for PostgreSQL.\n"));
@@ -1319,16 +1396,17 @@ terminate(int retval)
 static void
 update_shared_memory(char *last_wal_standby_applied)
 {
-	PGresult *res;
+	PGresult   *res;
 
 	sprintf(sqlquery, "SELECT %s.repmgr_update_standby_location('%s')",
-	        repmgr_schema, last_wal_standby_applied);
+			repmgr_schema, last_wal_standby_applied);
 
 	/* If an error happens, just inform about that and continue */
 	res = PQexec(myLocalConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_warning(_("Cannot update this standby's shared memory: %s\n"), PQerrorMessage(myLocalConn));
+		log_warning(_("Cannot update this standby's shared memory: %s\n"),
+					PQerrorMessage(myLocalConn));
 		/* XXX is this enough reason to terminate this repmgrd? */
 	}
 	else if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
@@ -1344,18 +1422,20 @@ update_shared_memory(char *last_wal_standby_applied)
 static void
 update_registration(void)
 {
-	PGresult *res;
+	PGresult   *res;
 
 	sqlquery_snprintf(sqlquery, "UPDATE %s.repl_nodes "
-	                  "   SET conninfo = '%s', "
-	                  "       priority = %d "
-	                  " WHERE id = %d",
-	                  repmgr_schema, local_options.conninfo, local_options.priority, local_options.node);
+					  "   SET conninfo = '%s', "
+					  "       priority = %d "
+					  " WHERE id = %d",
+					  repmgr_schema, local_options.conninfo,
+					  local_options.priority, local_options.node);
 
 	res = PQexec(primaryConn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err(_("Cannot update registration: %s\n"), PQerrorMessage(primaryConn));
+		log_err(_("Cannot update registration: %s\n"),
+				PQerrorMessage(primaryConn));
 		terminate(ERR_DB_CON);
 	}
 	PQclear(res);
@@ -1364,68 +1444,69 @@ update_registration(void)
 static void
 do_daemonize()
 {
-	char *ptr, path[MAXLEN];
-	pid_t pid = fork();
-	int ret;
+	char	   *ptr,
+				path[MAXLEN];
+	pid_t		pid = fork();
+	int			ret;
 
 	switch (pid)
 	{
-	case -1:
-		log_err("Error in fork(): %s\n", strerror(errno));
-		exit(ERR_SYS_FAILURE);
-		break;
-
-	case 0: /* child process */
-		pid = setsid();
-		if (pid == (pid_t)-1)
-		{
-			log_err("Error in setsid(): %s\n", strerror(errno));
-			exit(ERR_SYS_FAILURE);
-		}
-
-		/* ensure that we are no longer able to open a terminal */
-		pid = fork();
-
-		if(pid == -1) /* error case */
-		{
+		case -1:
 			log_err("Error in fork(): %s\n", strerror(errno));
 			exit(ERR_SYS_FAILURE);
 			break;
-		}
 
-		if (pid != 0) /* parent process */
-		{
-			exit(0);
-		}
-
-		/* a child just flows along */
-
-		memset(path, 0, MAXLEN);
-
-		for (ptr = config_file + strlen(config_file); ptr > config_file; --ptr)
-		{
-			if (*ptr == '/')
+		case 0:			/* child process */
+			pid = setsid();
+			if (pid == (pid_t) -1)
 			{
-				strncpy(path, config_file, ptr - config_file);
+				log_err("Error in setsid(): %s\n", strerror(errno));
+				exit(ERR_SYS_FAILURE);
 			}
-		}
 
-		if (*path == '\0')
-		{
-			*path = '/';
-		}
+			/* ensure that we are no longer able to open a terminal */
+			pid = fork();
 
-		ret = chdir(path);
-		if (ret != 0)
-		{
-			log_err("Error changing directory to '%s': %s", path,
-					strerror(errno));
-		}
+			if (pid == -1)		/* error case */
+			{
+				log_err("Error in fork(): %s\n", strerror(errno));
+				exit(ERR_SYS_FAILURE);
+				break;
+			}
 
-		break;
+			if (pid != 0)		/* parent process */
+			{
+				exit(0);
+			}
 
-	default: /* parent process */
-		exit(0);
+			/* a child just flows along */
+
+			memset(path, 0, MAXLEN);
+
+			for (ptr = config_file + strlen(config_file); ptr > config_file; --ptr)
+			{
+				if (*ptr == '/')
+				{
+					strncpy(path, config_file, ptr - config_file);
+				}
+			}
+
+			if (*path == '\0')
+			{
+				*path = '/';
+			}
+
+			ret = chdir(path);
+			if (ret != 0)
+			{
+				log_err("Error changing directory to '%s': %s", path,
+						strerror(errno));
+			}
+
+			break;
+
+		default:				/* parent process */
+			exit(0);
 	}
 }
 
@@ -1433,10 +1514,10 @@ static void
 check_and_create_pid_file(const char *pid_file)
 {
 	struct stat st;
-	FILE *fd;
-	char buff[MAXLEN];
-	pid_t pid;
-	size_t nread;
+	FILE	   *fd;
+	char		buff[MAXLEN];
+	pid_t		pid;
+	size_t		nread;
 
 	if (stat(pid_file, &st) != -1)
 	{
@@ -1446,7 +1527,9 @@ check_and_create_pid_file(const char *pid_file)
 
 		if (fd == NULL)
 		{
-			log_err("PID file %s exists but could not opened for reading. If repmgrd is no longer alive remove the file and restart repmgrd.\n", pid_file);
+			log_err("PID file %s exists but could not opened for reading. "
+					"If repmgrd is no longer alive remove the file and restart repmgrd.\n",
+					pid_file);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -1466,7 +1549,9 @@ check_and_create_pid_file(const char *pid_file)
 		{
 			if (kill(pid, 0) != -1)
 			{
-				log_err("PID file %s exists and seems to contain a valid PID. If repmgrd is no longer alive remove the file and restart repmgrd.\n", pid_file);
+				log_err("PID file %s exists and seems to contain a valid PID. "
+						"If repmgrd is no longer alive remove the file and restart repmgrd.\n",
+						pid_file);
 				exit(ERR_BAD_CONFIG);
 			}
 		}

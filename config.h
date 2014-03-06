@@ -25,33 +25,33 @@
 
 typedef struct
 {
-	char cluster_name[MAXLEN];
-	int node;
-	char conninfo[MAXLEN];
-	int failover;
-	int priority;
-	char node_name[MAXLEN];
-	char promote_command[MAXLEN];
-	char follow_command[MAXLEN];
-	char loglevel[MAXLEN];
-	char logfacility[MAXLEN];
-	char rsync_options[QUERY_STR_LEN];
-	char ssh_options[QUERY_STR_LEN];
-	int  master_response_timeout;
-	int  reconnect_attempts;
-	int  reconnect_intvl;
-	char pg_bindir[MAXLEN];
-	char pgctl_options[MAXLEN];
-	char logfile[MAXLEN];
-	int monitor_interval_secs;
-	int retry_promote_interval_secs;
-} t_configuration_options;
+	char		cluster_name[MAXLEN];
+	int			node;
+	char		conninfo[MAXLEN];
+	int			failover;
+	int			priority;
+	char		node_name[MAXLEN];
+	char		promote_command[MAXLEN];
+	char		follow_command[MAXLEN];
+	char		loglevel[MAXLEN];
+	char		logfacility[MAXLEN];
+	char		rsync_options[QUERY_STR_LEN];
+	char		ssh_options[QUERY_STR_LEN];
+	int			master_response_timeout;
+	int			reconnect_attempts;
+	int			reconnect_intvl;
+	char		pg_bindir[MAXLEN];
+	char		pgctl_options[MAXLEN];
+	char		logfile[MAXLEN];
+	int			monitor_interval_secs;
+	int			retry_promote_interval_secs;
+}	t_configuration_options;
 
 #define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0 }
 
-void parse_config(const char *config_file, t_configuration_options *options);
-void parse_line(char *buff, char *name, char *value);
-char *trim(char *s);
-bool reload_configuration(char *config_file, t_configuration_options *orig_options);
+void		parse_config(const char *config_file, t_configuration_options * options);
+void		parse_line(char *buff, char *name, char *value);
+char	   *trim(char *s);
+bool		reload_configuration(char *config_file, t_configuration_options * orig_options);
 
 #endif

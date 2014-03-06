@@ -50,24 +50,24 @@
 typedef struct
 {
 
-	char dbname[MAXLEN];
-	char host[MAXLEN];
-	char username[MAXLEN];
-	char dest_dir[MAXFILENAME];
-	char config_file[MAXFILENAME];
-	char remote_user[MAXLEN];
-	char wal_keep_segments[MAXLEN];
-	bool verbose;
-	bool force;
-	bool wait_for_master;
-	bool ignore_rsync_warn;
+	char		dbname[MAXLEN];
+	char		host[MAXLEN];
+	char		username[MAXLEN];
+	char		dest_dir[MAXFILENAME];
+	char		config_file[MAXFILENAME];
+	char		remote_user[MAXLEN];
+	char		wal_keep_segments[MAXLEN];
+	bool		verbose;
+	bool		force;
+	bool		wait_for_master;
+	bool		ignore_rsync_warn;
 
-	char masterport[MAXLEN];
-	char localport[MAXLEN];
+	char		masterport[MAXLEN];
+	char		localport[MAXLEN];
 
 	/* parameter used by CLUSTER CLEANUP */
-	int keep_history;
-} t_runtime_options;
+	int			keep_history;
+}	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 }
 

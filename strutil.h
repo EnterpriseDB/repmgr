@@ -31,13 +31,21 @@
 #define MAXCONNINFO		1024
 
 
-extern int xsnprintf(char *str, size_t size, const char *format, ...) __attribute__ ((format (PG_PRINTF_ATTRIBUTE, 3, 4)));
-extern int sqlquery_snprintf(char *str, const char *format, ...) __attribute__ ((format (PG_PRINTF_ATTRIBUTE, 2, 3)));
-extern int maxlen_snprintf(char *str, const char *format, ...) __attribute__ ((format (PG_PRINTF_ATTRIBUTE, 2, 3)));
+extern int
+xsnprintf(char *str, size_t size, const char *format,...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
+
+extern int
+sqlquery_snprintf(char *str, const char *format,...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
+
+extern int
+maxlen_snprintf(char *str, const char *format,...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
 /* Add strnlen on platforms that don't have it, like OS X */
 #ifndef strnlen
 extern size_t strnlen(const char *s, size_t n);
 #endif
 
-#endif	/* _STRUTIL_H_ */
+#endif   /* _STRUTIL_H_ */

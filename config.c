@@ -23,13 +23,14 @@
 #include "repmgr.h"
 
 void
-parse_config(const char *config_file, t_configuration_options *options)
+parse_config(const char *config_file, t_configuration_options * options)
 {
-	char *s, buff[MAXLINELENGTH];
-	char name[MAXLEN];
-	char value[MAXLEN];
+	char	   *s,
+				buff[MAXLINELENGTH];
+	char		name[MAXLEN];
+	char		value[MAXLEN];
 
-	FILE *fp = fopen (config_file, "r");
+	FILE	   *fp = fopen(config_file, "r");
 
 	/* Initialize */
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
@@ -56,17 +57,18 @@ parse_config(const char *config_file, t_configuration_options *options)
 	options->retry_promote_interval_secs = 300;
 
 	/*
-	 * Since some commands don't require a config file at all, not
-	 * having one isn't necessarily a problem.
+	 * Since some commands don't require a config file at all, not having one
+	 * isn't necessarily a problem.
 	 */
 	if (fp == NULL)
 	{
-		log_err(_("Did not find the configuration file '%s', continuing\n"), config_file);
+		log_err(_("Did not find the configuration file '%s', continuing\n"),
+				config_file);
 		return;
 	}
 
 	/* Read next line */
-	while ((s = fgets (buff, sizeof buff, fp)) != NULL)
+	while ((s = fgets(buff, sizeof buff, fp)) != NULL)
 	{
 		/* Skip blank lines and comments */
 		if (buff[0] == '\n' || buff[0] == '#')
@@ -77,22 +79,23 @@ parse_config(const char *config_file, t_configuration_options *options)
 
 		/* Copy into correct entry in parameters struct */
 		if (strcmp(name, "cluster") == 0)
-			strncpy (options->cluster_name, value, MAXLEN);
+			strncpy(options->cluster_name, value, MAXLEN);
 		else if (strcmp(name, "node") == 0)
 			options->node = atoi(value);
 		else if (strcmp(name, "conninfo") == 0)
-			strncpy (options->conninfo, value, MAXLEN);
+			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
-			strncpy (options->rsync_options, value, QUERY_STR_LEN);
+			strncpy(options->rsync_options, value, QUERY_STR_LEN);
 		else if (strcmp(name, "ssh_options") == 0)
-			strncpy (options->ssh_options, value, QUERY_STR_LEN);
+			strncpy(options->ssh_options, value, QUERY_STR_LEN);
 		else if (strcmp(name, "loglevel") == 0)
-			strncpy (options->loglevel, value, MAXLEN);
+			strncpy(options->loglevel, value, MAXLEN);
 		else if (strcmp(name, "logfacility") == 0)
-			strncpy (options->logfacility, value, MAXLEN);
+			strncpy(options->logfacility, value, MAXLEN);
 		else if (strcmp(name, "failover") == 0)
 		{
-			char failoverstr[MAXLEN];
+			char		failoverstr[MAXLEN];
+
 			strncpy(failoverstr, value, MAXLEN);
 
 			if (strcmp(failoverstr, "manual") == 0)
@@ -120,9 +123,9 @@ parse_config(const char *config_file, t_configuration_options *options)
 		else if (strcmp(name, "reconnect_interval") == 0)
 			options->reconnect_intvl = atoi(value);
 		else if (strcmp(name, "pg_bindir") == 0)
-			strncpy (options->pg_bindir, value, MAXLEN);
+			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
-			strncpy (options->pgctl_options, value, MAXLEN);
+			strncpy(options->pgctl_options, value, MAXLEN);
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
@@ -134,10 +137,10 @@ parse_config(const char *config_file, t_configuration_options *options)
 	}
 
 	/* Close file */
-	fclose (fp);
+	fclose(fp);
 
 	/* Check config settings */
-	if (strnlen(options->cluster_name, MAXLEN)==0)
+	if (strnlen(options->cluster_name, MAXLEN) == 0)
 	{
 		log_err(_("Cluster name is missing. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
@@ -176,22 +179,23 @@ parse_config(const char *config_file, t_configuration_options *options)
 
 
 char *
-trim (char *s)
+trim(char *s)
 {
 	/* Initialize start, end pointers */
-	char *s1 = s, *s2 = &s[strlen (s) - 1];
+	char	   *s1 = s,
+			   *s2 = &s[strlen(s) - 1];
 
 	/* Trim and delimit right side */
-	while ( (isspace (*s2)) && (s2 >= s1) )
+	while ((isspace(*s2)) && (s2 >= s1))
 		--s2;
-	*(s2+1) = '\0';
+	*(s2 + 1) = '\0';
 
 	/* Trim left side */
-	while ( (isspace (*s1)) && (s1 < s2) )
+	while ((isspace(*s1)) && (s1 < s2))
 		++s1;
 
 	/* Copy finished string */
-	memmove (s, s1, s2 - s1);
+	memmove(s, s1, s2 - s1);
 	s[s2 - s1 + 1] = '\0';
 
 	return s;
@@ -200,13 +204,13 @@ trim (char *s)
 void
 parse_line(char *buff, char *name, char *value)
 {
-	int i = 0;
-	int j = 0;
+	int			i = 0;
+	int			j = 0;
 
 	/*
 	 * first we find the name of the parameter
 	 */
-	for ( ; i < MAXLEN; ++i)
+	for (; i < MAXLEN; ++i)
 	{
 		if (buff[i] != '=')
 			name[j++] = buff[i];
@@ -219,7 +223,7 @@ parse_line(char *buff, char *name, char *value)
 	 * Now the value
 	 */
 	j = 0;
-	for ( ++i ; i < MAXLEN; ++i)
+	for (++i; i < MAXLEN; ++i)
 		if (buff[i] == '\'')
 			continue;
 		else if (buff[i] != '\n')
@@ -231,9 +235,9 @@ parse_line(char *buff, char *name, char *value)
 }
 
 bool
-reload_configuration(char *config_file, t_configuration_options *orig_options)
+reload_configuration(char *config_file, t_configuration_options * orig_options)
 {
-	PGconn	*conn;
+	PGconn	   *conn;
 
 	t_configuration_options new_options;
 
@@ -313,16 +317,16 @@ reload_configuration(char *config_file, t_configuration_options *orig_options)
 	orig_options->master_response_timeout = new_options.master_response_timeout;
 	orig_options->reconnect_attempts = new_options.reconnect_attempts;
 	orig_options->reconnect_intvl = new_options.reconnect_intvl;
+
 	/*
 	 * XXX These ones can change with a simple SIGHUP?
-
-		strcpy (orig_options->loglevel, new_options.loglevel);
-		strcpy (orig_options->logfacility, new_options.logfacility);
-
-		logger_shutdown();
-		XXX do we have progname here ?
-		logger_init(progname, orig_options.loglevel, orig_options.logfacility);
-	*/
+	 *
+	 * strcpy (orig_options->loglevel, new_options.loglevel); strcpy
+	 * (orig_options->logfacility, new_options.logfacility);
+	 *
+	 * logger_shutdown(); XXX do we have progname here ? logger_init(progname,
+	 * orig_options.loglevel, orig_options.logfacility);
+	 */
 
 	return true;
 }
