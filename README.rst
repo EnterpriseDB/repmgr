@@ -625,18 +625,18 @@ Now restore to the original configuration by stopping
 primary server, then bringing up "node2" as a standby with a valid
 ``recovery.conf`` file.
 
-Stop the "node2" server::
+Stop the "node2" server and type the following on "node1" server::
 
   repmgr -f /var/lib/pgsql/repmgr/repmgr.conf standby promote
 
-Now the original primary, "node1" is acting again as primary.
+Now the original primary, "node1", is acting again as primary.
 
-Start the "node2" server and type this on "node1"::
+Start the "node2" server and type this on "node2"::
 
   repmgr standby clone --force -h node2 -p 5432 -U postgres -R postgres --verbose
 
-Verify the roles have reversed by attempting to insert a record on "node"
-and on "node1".
+Verify the roles have reversed by attempting to insert a record on "node1"
+and on "node2".
 
 The servers are now again acting as primary on "node1" and standby on "node2".
 
