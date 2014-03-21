@@ -1864,7 +1864,7 @@ help(const char *progname)
 	printf(_("  -D, --data-dir=DIR                  local directory where the files will be\n" \
 			 "                                      copied to\n"));
 	printf(_("  -l, --local-port=PORT               standby or witness server local port\n"));
-	printf(_("  -f, --config_file=PATH              path to the configuration file\n"));
+	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
 	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
 	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
 			 "                                      wal_keep_segments (default: 5000)\n"));
