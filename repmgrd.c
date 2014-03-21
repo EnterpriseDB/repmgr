@@ -1343,7 +1343,7 @@ help(const char *progname)
 	printf(_("  --version                 output version information, then exit\n"));
 	printf(_("  --verbose                 output verbose activity information\n"));
 	printf(_("  --monitoring-history      track advance or lag of the replication in every standby in repl_monitor\n"));
-	printf(_("  -f, --config_file=PATH    configuration file\n"));
+	printf(_("  -f, --config-file=PATH    configuration file\n"));
 	printf(_("  -d, --daemonize           detach process from foreground\n"));
 	printf(_("  -p, --pid-file=PATH       write a PID file\n"));
 	printf(_("\n%s monitors a cluster of servers.\n"), progname);

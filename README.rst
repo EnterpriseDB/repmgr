@@ -890,7 +890,7 @@ The output from this program looks like this::
 
   Configuration options:
     -D, --data-dir=DIR         local directory where the files will be copied to
-    -f, --config_file=PATH     path to the configuration file
+    -f, --config-file=PATH     path to the configuration file
     -R, --remote-user=USERNAME database server username for rsync
     -w, --wal-keep-segments=VALUE  minimum value for the GUC wal_keep_segments (default: 5000)
     -I, --ignore-rsync-warning ignore rsync partial transfer warning
@@ -1014,7 +1014,7 @@ The output from this program looks like this::
     --version                 output version information, then exit
     --verbose                 output verbose activity information
     --monitoring-history      track advance or lag of the replication in every standby in repl_monitor
-    -f, --config_file=PATH    database to connect to
+    -f, --config-file=PATH    database to connect to
   
   repmgrd monitors a cluster of servers.
 
