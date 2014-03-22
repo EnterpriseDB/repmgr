@@ -1014,7 +1014,7 @@ The output from this program looks like this::
     --version                 output version information, then exit
     --verbose                 output verbose activity information
     --monitoring-history      track advance or lag of the replication in every standby in repl_monitor
-    -f, --config-file=PATH    database to connect to
+    -f, --config-file=PATH    path to the configuration file
   
   repmgrd monitors a cluster of servers.
 
