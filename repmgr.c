@@ -2324,13 +2324,14 @@ static bool
 copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 {
 	char		sqlquery[MAXLEN];
-	PGresult   *res, *res_witness;
+	PGresult   *res1;
+	PGresult   *res2;
 	int			i;
 
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", repmgr_schema);
 	log_debug("copy_configuration: %s\n", sqlquery);
-	res = PQexec(witnessconn, sqlquery);
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	res1 = PQexec(witnessconn, sqlquery);
+	if (!res1 || PQresultStatus(res1) != PGRES_COMMAND_OK)
 	{
 		fprintf(stderr, "Cannot clean node details in the witness, %s\n",
 				PQerrorMessage(witnessconn));
@@ -2339,35 +2340,35 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 
 	sqlquery_snprintf(sqlquery, "SELECT id, name, conninfo, priority, witness FROM %s.repl_nodes",
 					  repmgr_schema);
-	res = PQexec(masterconn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	res1 = PQexec(masterconn, sqlquery);
+	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
 	{
 		fprintf(stderr, "Can't get configuration from master: %s\n",
 				PQerrorMessage(masterconn));
-		PQclear(res);
+		PQclear(res1);
 		return false;
 	}
-	for (i = 0; i < PQntuples(res); i++)
+	for (i = 0; i < PQntuples(res1); i++)
 	{
 		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
 						  "VALUES (%d, '%s', '%s', '%s', %d, '%s')",
-						  repmgr_schema, atoi(PQgetvalue(res, i, 0)),
-						  options.cluster_name, PQgetvalue(res, i, 1),
-						  PQgetvalue(res, i, 2),
-						  atoi(PQgetvalue(res, i, 3)),
-						  PQgetvalue(res, i, 4));
+						  repmgr_schema, atoi(PQgetvalue(res1, i, 0)),
+						  options.cluster_name, PQgetvalue(res1, i, 1),
+						  PQgetvalue(res1, i, 2),
+						  atoi(PQgetvalue(res1, i, 3)),
+						  PQgetvalue(res1, i, 4));
 
-		res_witness = PQexec(witnessconn, sqlquery);
-		if (!res_witness || PQresultStatus(res_witness) != PGRES_COMMAND_OK)
+		res2 = PQexec(witnessconn, sqlquery);
+		if (!res2 || PQresultStatus(res2) != PGRES_COMMAND_OK)
 		{
 			fprintf(stderr, "Cannot copy configuration to witness, %s\n",
 					PQerrorMessage(witnessconn));
-			PQclear(res_witness);
+			PQclear(res2);
 			return false;
 		}
-		PQclear(res_witness);
+		PQclear(res2);
 	}
-	PQclear(res);
+	PQclear(res1);
 
 	return true;
 }
