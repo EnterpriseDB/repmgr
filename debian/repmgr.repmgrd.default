@@ -6,7 +6,7 @@
 REPMGRD_ENABLED=no
 
 # Options for repmgrd (required)
-#REPMGRD_OPTS="--config_file /path/to/repmgr.conf"
+#REPMGRD_OPTS="--config-file /path/to/repmgr.conf"
 
 # User to run repmgrd as
 #REPMGRD_USER=postgres
