@@ -106,6 +106,7 @@ main(int argc, char **argv)
 		{"remote-user", required_argument, NULL, 'R'},
 		{"wal-keep-segments", required_argument, NULL, 'w'},
 		{"keep-history", required_argument, NULL, 'k'},
+		{"preserve-config", no_argument, NULL, 'P'},
 		{"force", no_argument, NULL, 'F'},
 		{"wait", no_argument, NULL, 'W'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
@@ -136,7 +137,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:FWIvr:", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:PFWIvr:", long_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -176,6 +177,9 @@ main(int argc, char **argv)
 					runtime_options.keep_history = atoi(optarg);
 				else
 					runtime_options.keep_history = 0;
+				break;
+			case 'P':
+				runtime_options.preserve_config = true;
 				break;
 			case 'F':
 				runtime_options.force = true;
@@ -1232,15 +1236,21 @@ do_standby_clone(void)
 	}
 	PQclear(res);
 
-	log_info(_("standby clone: master config file '%s'\n"), master_config_file);
-	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+	if (!runtime_options.preserve_config)
+	{
+		log_info(_("standby clone: master config file '%s'\n"), master_config_file);
+		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 						  master_config_file, local_config_file,
 						  false);
-	if (r != 0)
-	{
-		log_warning(_("standby clone: failed copying master config file '%s'\n"),
-					master_config_file);
-		goto stop_backup;
+		if (r != 0)
+		{
+			log_warning(_("standby clone: failed copying master config file '%s'\n"),
+						master_config_file);
+			goto stop_backup;
+		}
+
+	} else {
+		log_info(_("standby clone: preserving local config file '%s'\n"), local_config_file);
 	}
 
 	log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
@@ -1845,8 +1855,8 @@ usage(void)
 static void
 help(const char *progname)
 {
-	printf(_("\n%s: Replicator manager \n"), progname);
-	printf(_("Usage:\n"));
+	printf(_("\nReplicator manager\n"));
+	printf(_("\nUsage:\n"));
 	printf(_(" %s [OPTIONS] master  {register}\n"), progname);
 	printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"),
 		   progname);
@@ -1869,12 +1879,13 @@ help(const char *progname)
 	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
 			 "                                      wal_keep_segments (default: 5000)\n"));
 	printf(_("  -I, --ignore-rsync-warning          ignore rsync partial transfer warning\n"));
+	printf(_("  -P, --preserve-config               do not update postgresql.conf on standby\n"));
 	printf(_("  -k, --keep-history=VALUE            keeps indicated number of days of\n" \
 			 "                                      history\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations\n" \
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
-	printf(_("	-r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)"));
+	printf(_("  -r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
 	printf(_("another node and then exits.\n\n"));
