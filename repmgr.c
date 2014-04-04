@@ -413,7 +413,7 @@ do_cluster_show(void)
 	log_info(_("%s connecting to database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
 
-	sqlquery_snprintf(sqlquery, "SELECT conninfo, witness FROM %s.repl_nodes;",
+	sqlquery_snprintf(sqlquery, "SELECT conninfo, witness FROM %s.repl_nodes order by id;",
 					  repmgr_schema);
 	res = PQexec(conn, sqlquery);
 
