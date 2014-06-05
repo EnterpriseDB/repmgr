@@ -1745,6 +1745,76 @@ do_witness_create(void)
 
 	fclose(pg_conf);
 
+
+	/* start new instance */
+	sprintf(script, "%s/pg_ctl %s -w -D %s start", options.pg_bindir,
+			options.pgctl_options, runtime_options.dest_dir);
+	log_info(_("Start cluster for witness: %s"), script);
+	r = system(script);
+	if (r != 0)
+	{
+		log_err(_("Can't start cluster for witness server\n"));
+		PQfinish(masterconn);
+		exit(ERR_BAD_CONFIG);
+	}
+	
+	/* check if we need to create a database */
+	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
+	{
+		/* create required db */
+		sprintf(script, "%s/psql -h 127.0.0.1 -p %s -U postgres -v ON_ERROR_STOP=1 -c \"CREATE DATABASE %s WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';\"", 
+			options.pg_bindir,runtime_options.localport,runtime_options.dbname);
+		log_info("Create database for witness db: %s.\n", script);
+
+		r = system(script);
+		if (r != 0)
+		{
+			log_err("Can't create database for witness server\n");
+			PQfinish(masterconn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/* check if we need to create a user */
+	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
+        {
+		/* create required user needs to be superuser to create untrusted language function in c */
+		sprintf(script, "%s/psql -h 127.0.0.1 -p %s -U postgres -v ON_ERROR_STOP=1 -c \"CREATE ROLE %s SUPERUSER LOGIN\"", options.pg_bindir,
+			runtime_options.localport,runtime_options.username);
+		log_info("Create user for witness db: %s.\n", script);
+
+		r = system(script);
+		if (r != 0)
+		{
+			log_err("Can't create user for witness server\n");
+			PQfinish(masterconn);
+			exit(ERR_BAD_CONFIG);
+		}
+		
+		/* eventually alter owner for database */
+		if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0)
+		{
+			/* alter owner of database */
+			sprintf(script, "%s/psql -h 127.0.0.1 -p %s -U postgres -v ON_ERROR_STOP=1 -c \"ALTER DATABASE %s OWNER TO %s;\"", options.pg_bindir,
+			runtime_options.localport,runtime_options.dbname,runtime_options.username);
+			log_info("Change owner of witnesss db: %s.\n", script);
+
+			r = system(script);
+			if (r != 0)
+			{
+				log_err("Can't create user for witness server\n");
+				PQfinish(masterconn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+		else if(runtime_options.dbname[0])
+		{
+			log_err("Can not set username and not change the database from the default postgres db\n");
+			PQfinish(masterconn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+	
 	/* Get the pg_hba.conf full path */
 	sqlquery_snprintf(sqlquery, "SELECT name, setting "
 					  "  FROM pg_settings "
@@ -1777,19 +1847,20 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-
-	/* start new instance */
-	sprintf(script, "%s/pg_ctl %s -w -D %s start", options.pg_bindir,
+	
+	/* reload to adapt for changed pg_hba.conf */
+	sprintf(script, "%s/pg_ctl %s -w -D %s reload", options.pg_bindir,
 			options.pgctl_options, runtime_options.dest_dir);
-	log_info(_("Start cluster for witness: %s"), script);
+	log_info(_("Reload cluster config for witness: %s"), script);
 	r = system(script);
 	if (r != 0)
 	{
-		log_err(_("Can't start cluster for witness server\n"));
+		log_err(_("Can't reload cluster for witness server\n"));
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-
+	
+		
 	/* register ourselves in the master */
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
 					  "VALUES (%d, '%s', '%s', '%s', %d, true)",
@@ -1829,6 +1900,22 @@ do_witness_create(void)
 	PQfinish(witnessconn);
 
 	log_notice(_("Configuration has been successfully copied to the witness\n"));
+
+	/* drop superuser powers if needed */
+	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
+	{
+		sprintf(script, "%s/psql -h 127.0.0.1 -p %s -U postgres -v ON_ERROR_STOP=1 -c \"ALTER ROLE %s NOSUPERUSER \"", 
+			options.pg_bindir,runtime_options.localport,runtime_options.username);
+		log_info("Drop superuser powers on user for witness db: %s.\n", script);
+
+		r = system(script);
+		if (r != 0)
+		{
+			log_err("Can't alter superuser power for dbuser on witness\n");
+			/* no exit here...nevermind */
+		}
+	}
+		
 }
 
 
