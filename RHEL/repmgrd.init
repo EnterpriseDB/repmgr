@@ -78,9 +78,10 @@ status() {
         if [ -f "$LOCKFILE" ]; then
             echo "$prog is running"
         else
+	    RETVAL=3
             echo "$prog is stopped"
         fi
-        exit 0
+        return $RETVAL
 }
 
 # See how we were called.
