@@ -37,7 +37,7 @@
 #define DEFAULT_SYSLOG_FACILITY LOG_LOCAL0
 #endif
 
-#define REPMGR_DEBUG
+/* #define REPMGR_DEBUG */
 
 void
 stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
