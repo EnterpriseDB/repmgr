@@ -36,8 +36,9 @@ endif
 install: install_prog install_ext
 
 install_prog:
-	$(INSTALL_PROGRAM) repmgrd$(X) '$(DESTDIR)$(bindir)'
-	$(INSTALL_PROGRAM) repmgr$(X) '$(DESTDIR)$(bindir)'
+	mkdir -p '$(DESTDIR)$(bindir)'
+	$(INSTALL_PROGRAM) repmgrd$(X) '$(DESTDIR)$(bindir)/'
+	$(INSTALL_PROGRAM) repmgr$(X) '$(DESTDIR)$(bindir)/'
 
 install_ext:
 	$(MAKE) -C sql install
