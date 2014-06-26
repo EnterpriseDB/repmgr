@@ -1,0 +1,4 @@
+#default sysconfig file for repmrgd
+#custom overrides can be placed here
+
+REPMGRD_OPTS="-f /etc/repmgr/repmgr.conf"
