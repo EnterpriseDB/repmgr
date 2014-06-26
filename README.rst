@@ -77,7 +77,7 @@ and run::
   
 And if a previously failed node becomes available again, such as
 the lost node1 above, you can get it to resynchronize by only copying
-over changes made while it was down using.  That hapens with what's
+over changes made while it was down using.  That happens with what's
 called a forced clone, which overwrites existing data rather than
 assuming it starts with an empty database directory tree::
 
