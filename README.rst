@@ -23,7 +23,7 @@ databases as a single cluster.  repmgr includes two components:
 Supported Releases
 ------------------
 
-repmgr works with PostgreSQL versions 9.0 and superior.
+repmgr works with PostgreSQL versions 9.0 and later.
 
 There are currently no incompatibilities when upgrading repmgr from 9.0 to 9.1,
 so your 9.0 configuration will work with 9.1
@@ -77,7 +77,7 @@ and run::
   
 And if a previously failed node becomes available again, such as
 the lost node1 above, you can get it to resynchronize by only copying
-over changes made while it was down using.  That happens with what's
+over changes made while it was down.  That happens with what's
 called a forced clone, which overwrites existing data rather than
 assuming it starts with an empty database directory tree::
 
@@ -131,19 +131,19 @@ If you need to remove the source code temporary files from this directory,
 that can be done like this::
 
   make USE_PGXS=1 clean
-  
+
 See below for building notes specific to RedHat Linux variants.
 
 Using a full source code tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In this method, the repmgr distribution is copied into the PostgreSQL source
-code tree, assumed to be at the ${postgresql_sources} for this example.
+code tree, assumed to be under ${postgresql_sources} for this example.
 The resulting subdirectory must be named ``contrib/repmgr``, without any
 version number::
 
   cp repmgr.tar.gz ${postgresql_sources}/contrib
-  cd ${postgresql_sources}/contrib 
+  cd ${postgresql_sources}/contrib
   tar xvzf repmgr-1.0.tar.gz
   cd repmgr
   make
@@ -237,7 +237,7 @@ If you already tried to build repmgr before doing this, you'll need to do::
 
     make USE_PGXS=1 clean
 
-To get rid of leftover files from the wrong architecture.
+to get rid of leftover files from the wrong architecture.
 
 Notes on Ubuntu, Debian or other Debian-based Builds
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -279,8 +279,8 @@ Confirm software was built correctly
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You should now find the repmgr programs available in the subdirectory where
-the rest of your PostgreSQL installation is at.  You can confirm the software
-is available by checking its version::
+the rest of your PostgreSQL binary files are located.  You can confirm the
+software is available by checking its version::
 
   repmgr --version
   repmgrd --version
@@ -374,10 +374,10 @@ Usage walkthrough
 This assumes you've already followed the steps in "Installation Outline" to
 install repmgr and repmgrd on the system.
 
-A normal production installation of ``repmgr`` will normally involve two
-different systems running on the same port, typically the default of 5432, 
-with both using files owned by the ``postgres`` user account.  This
-walkthrough assumes the following setup:
+A typical production installation of ``repmgr`` might involve two PostgreSQL
+instances on seperate servers, both running under the ``postgres`` user account
+and both using the default port (5432). This walkthrough assumes the following
+setup:
 
 * A primary (master) server called "node1," running as the "postgres" user 
   who is also the owner of the files. This server is operating on port 5432.  This
@@ -660,7 +660,7 @@ You can usually leave out changes to the port number in this case too.
 
 * A database exists on "prime" called "testdb."
 
-* The Postgress installation in each of the above is defined as $PGDATA, 
+* The Postgres installation in each of the above is defined as $PGDATA, 
   which is represented here with ``/data/prime`` as the "prime" server and 
   ``/data/standby`` as the "standby" server.
 
