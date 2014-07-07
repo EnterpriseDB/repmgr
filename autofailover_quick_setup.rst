@@ -49,19 +49,19 @@ cluster to communicate with other repmgrd daemons.
 
 8. Start the repmgrd daemons in all nodes
 
-**Note** A complete Hight-Availability design need at least 3 servers to still have
+**Note** A complete High-Availability design needs at least 3 servers to still have
 a backup node after a first failure.
 
 Install PostgreSQL
 ------------------
 
 You can install PostgreSQL using any of the recommended methods. You should ensure
-it's 9.0 or superior.
+it's 9.0 or later.
 
 Install repmgr
 --------------
 
-Install repmgr following the steps in the README.
+Install repmgr following the steps in the README file.
 
 Configure PostreSQL
 -------------------
@@ -73,7 +73,7 @@ Edit the file postgresql.conf and modify the parameters::
   listen_addresses='*'
   wal_level = 'hot_standby'
   archive_mode = on
-  archive_command = 'cd .'	 # we can also use exit 0, anything that 
+  archive_command = 'cd .'	 # we can also use exit 0, anything that
                              # just does nothing
   max_wal_senders = 10
   wal_keep_segments = 5000   # 80 GB required on pg_xlog
