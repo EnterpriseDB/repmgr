@@ -1369,11 +1369,11 @@ do_standby_promote(void)
 	char		standby_version[MAXVERSIONSTR];
 
 	/* We need to connect to check configuration */
-	log_info(_("%s connecting to master database\n"), progname);
+	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* we need v9 or better */
-	log_info(_("%s connected to master, checking its state\n"), progname);
+	log_info(_("%s connected to standby, checking its state\n"), progname);
 	ret = pg_version(conn, standby_version);
 	if (ret == NULL || strcmp(standby_version, "") == 0)
 	{
