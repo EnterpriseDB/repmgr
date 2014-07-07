@@ -1458,7 +1458,7 @@ do_standby_promote(void)
 	}
 	else
 	{
-		log_err(_("%s: STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"),
+		log_notice(_("%s: STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"),
 				progname);
 	}
 	PQfinish(conn);
