@@ -123,6 +123,7 @@ For the purposes of this guide, we'll assume the database user will be
 ``repmgr_usr`` and the database will be ``repmgr_db``, and that the following
 environment variables are set on each node:
 
+
  - $HOME: the PostgreSQL system user's home directory
  - $PGDATA: the PostgreSQL data directory
 
@@ -134,15 +135,15 @@ Master setup
 
   - create user and database::
 
-    CREATE ROLE repmgr_usr LOGIN SUPERUSER;
-    CREATE DATABASE repmgr_db OWNER repmgr_usr;
+  CREATE ROLE repmgr_usr LOGIN SUPERUSER;
+  CREATE DATABASE repmgr_db OWNER repmgr_usr;
 
   - configure postgresql.conf for replication (see above)
 
   - update pg_hba.conf::
 
-    host    repmgr_usr      repmgr_db   192.168.1.0/24         trust
-    host    replication     all         192.168.1.0/24         trust
+  host    repmgr_usr      repmgr_db   192.168.1.0/24         trust
+  host    replication     all         192.168.1.0/24         trust
 
   Restart the PostgreSQL server after making these changes.
 
@@ -260,7 +261,7 @@ Other standby servers need to be told to follow the new master with::
 
     repmgr -f  $HOME/repmgr/repmgr.conf --verbose standby follow
 
-See file ``autofailover_quick_setup.rst`` for information on how to set up
+See file ``autofailover_quick_setup.rst`` for details on setting up
 automated failover.
 
 
