@@ -82,9 +82,12 @@ Note that repmgr expects a default of 5000 wal_keep_segments, although this
 value can be overridden when executing the `repmgr` client.
 
 Additionally, repmgr requires a dedicated PostgreSQL superuser account
-and a database in which to store monitoring and replication data. The
-database can in principle be any database, including the default postgres
-one, however it's probably advisable to create a dedicated repmgr database.
+and a database in which to store monitoring and replication data. The repmgr
+user account will also be used for replication connections from the standby,
+so a seperate replication user with the `REPLICATION` privilege is not required.
+The database can in principle be any database, including the default `postgres`
+one, however it's probably advisable to create a dedicated database for repmgr
+usage.
 
 
 ### repmgr configuration
@@ -144,7 +147,7 @@ Master setup
 
 	```
 	host    repmgr_db       repmgr_usr  192.168.1.0/24         trust
-	host    replication     repuser     192.168.1.0/24         trust
+	host    replication     repmgr_usr  192.168.1.0/24         trust
 	```
 
   Restart the PostgreSQL server after making these changes.
@@ -171,7 +174,7 @@ Slave/standby setup
 
 1. Use repmgr to clone the master:
 
-        $ repmgr -f $HOME/repmgr/repmgr.conf -D $PGDATA -d repmgr_db -U repmgr_usr -R postgres --verbose standby clone 192.168.1.2
+        $ repmgr -D $PGDATA -d repmgr_db -U repmgr_usr -R postgres --verbose standby clone 192.168.1.2
         Opening configuration file: ./repmgr.conf
         [2014-07-04 10:49:00] [ERROR] Did not find the configuration file './repmgr.conf', continuing
         [2014-07-04 10:49:00] [INFO] repmgr connecting to master database
@@ -190,8 +193,10 @@ Slave/standby setup
   -R is the database system user on the master node. At this point it does not matter
   if the `repmgr.conf` file is not found.
 
-  This will clone the PostgreSQL database files from the master, and additionally
-  create an appropriate `recovery.conf` file.
+  This will clone the PostgreSQL database files from the master, including its
+  `postgresql.conf` and `pg_hba.conf` files, and additionally automatically create
+  the `recovery.conf` file containing the correct parameters to start streaming
+  from the primary node.
 
 2. Start the PostgreSQL server
 
