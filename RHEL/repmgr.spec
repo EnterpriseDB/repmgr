@@ -50,7 +50,7 @@ export PATH=$PATH:/usr/pgsql-9.3/bin/
 %attr(0644,root,root)/etc/repmgr/repmgr.conf.sample
 
 %changelog
-* Thu Jun 05 2015 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.2
+* Thu Jun 05 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.2
 - fix witness creation to create db and user if needed
 * Fri Apr 04 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.1
 - initial build for RHEL6
