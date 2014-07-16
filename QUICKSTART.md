@@ -133,18 +133,21 @@ Master setup
 
   - create user and database:
 
-        CREATE ROLE repmgr_usr LOGIN SUPERUSER;
-        CREATE DATABASE repmgr_db OWNER repmgr_usr;
+	```
+	CREATE ROLE repmgr_usr LOGIN SUPERUSER;
+	CREATE DATABASE repmgr_db OWNER repmgr_usr;
+	```
 
   - configure postgresql.conf for replication (see above)
 
   - update pg_hba.conf:
 
-        host    repmgr_usr      repmgr_db   192.168.1.0/24         trust
-        host    replication     all         192.168.1.0/24         trust
+	```
+	host    repmgr_usr      repmgr_db   192.168.1.0/24         trust
+	host    replication     all         192.168.1.0/24         trust
+	```
 
-  Restart the PostgreSQL server after making these changes.
-
+    Restart the PostgreSQL server after making these changes.
 2. Create the repmgr configuration file:
 
         $ cat $HOME/repmgr/repmgr.conf
@@ -162,7 +165,6 @@ Master setup
         [2014-07-04 10:43:42] [INFO] master register: creating database objects inside the repmgr_test schema
         [2014-07-04 10:43:43] [NOTICE] Master node correctly registered for cluster test with id 1 (conninfo: host=localhost user=repmgr_usr dbname=repmgr_db)
 
-  -d is the database defined in repmgr.conf file.
 
 Slave/standby setup
 -------------------
