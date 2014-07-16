@@ -1,3 +1,11 @@
+2.0.1	2014-07-16
+		Documentation fixes and new QUICKSTART file (Ian)
+		Explicitly specify directories to ignore when cloning (Ian)
+		Fix log level for some log messages (Ian)
+		RHEL/CentOS specfile, init script and Makefile fixes (Nathan Van Overloop)
+        Debian init script and config file documentation fixes (József Kószó)
+		Typo fixes (Riegie Godwin Jeyaranchen, PriceChild)
+
 2.0stable 2014-01-30
         Documentation fixes (Christian)
         General refactoring, code quality improvements and stabilization work (Christian)
