@@ -140,14 +140,14 @@ Master setup
 
   - configure postgresql.conf for replication (see above)
 
-  - update pg_hba.conf:
+  - update pg_hba.conf, e.g.:
 
 	```
-	host    repmgr_usr      repmgr_db   192.168.1.0/24         trust
-	host    replication     all         192.168.1.0/24         trust
+	host    repmgr_db       repmgr_usr  192.168.1.0/24         trust
+	host    replication     repuser     192.168.1.0/24         trust
 	```
 
-    Restart the PostgreSQL server after making these changes.
+  Restart the PostgreSQL server after making these changes.
 
 2. Create the repmgr configuration file:
 
