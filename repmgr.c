@@ -2368,7 +2368,7 @@ static bool
 copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 {
 	char		sqlquery[MAXLEN];
-	PGresult   *res;
+	PGresult   *res, *res2;
 	int			i;
 
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", repmgr_schema);
@@ -2401,11 +2401,12 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 						  atoi(PQgetvalue(res, i, 3)),
 						  PQgetvalue(res, i, 4));
 
-		res = PQexec(witnessconn, sqlquery);
-		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+		res2 = PQexec(witnessconn, sqlquery);
+		if (!res2 || PQresultStatus(res2) != PGRES_COMMAND_OK)
 		{
 			fprintf(stderr, "Cannot copy configuration to witness, %s\n",
 					PQerrorMessage(witnessconn));
+			PQclear(res2);
 			PQclear(res);
 			return false;
 		}
