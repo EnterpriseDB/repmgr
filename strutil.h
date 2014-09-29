@@ -22,7 +22,7 @@
 #define _STRUTIL_H_
 
 #include <stdlib.h>
-#include <errcode.h>
+#include "errcode.h"
 
 #define QUERY_STR_LEN	8192
 #define MAXLEN			1024
