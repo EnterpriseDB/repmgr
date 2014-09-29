@@ -288,6 +288,12 @@ main(int argc, char **argv)
 			strncpy(runtime_options.dbname, DEFAULT_DBNAME, MAXLEN);
 	}
 
+	/* We check that port number is not null */
+	if (!runtime_options.dbname[0])
+	{
+	        strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
+	}
+
 	/* Read the configuration file, normally repmgr.conf */
 	if (!runtime_options.config_file[0])
 		strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
