@@ -9,10 +9,10 @@
 
 ### BEGIN INIT INFO
 # Provides: repmgrd
-# Required-Start:  $local_fs $remote_fs $network $syslog postgresql
-# Required-Stop:     $local_fs $remote_fs $network $syslog postgresql
-# Should-Start:	     $syslog postgresql-9.3
-# Should-Stop: $syslog postgresql-9.3
+# Required-Start:  $local_fs $remote_fs $network $syslog
+# Required-Stop:     $local_fs $remote_fs $network $syslog 
+# Should-Start:	     $syslog 
+# Should-Stop: $syslog 
 # Short-Description: start and stop repmrgd
 # Description: Enable repmgrd replication management and monitoring daemon for PostgreSQL
 #	       this is used to monitor a postgresql cluster.
@@ -65,7 +65,6 @@ start() {
         echo -n $"Starting $prog: "
         daemon --user $REPMGRD_USER $prog -d $REPMGRD_OPTS
 	checklockfile
-	echo $pid > $PIDFILE
         RETVAL=$?
         echo
         [ $RETVAL -eq 0 ] && touch $LOCKFILE
@@ -84,23 +83,15 @@ stop() {
 
 function status()
 {
-	checkpidfile
-	if [ "$RETVAL" -eq "0" ]; then
-		echo  "${prog} (pid ${kpid}) is running..."
-	elif [ "$RETVAL" -eq "1" ]; then
-		echo "PID file exists, but process is not running"
+	checklockfile
+	if [ "$RETVAL" -eq "1" ]; then
+		echo "${prog} is stopped"
 	else
-		checklockfile
 		if [ "$RETVAL" -eq "2" ]; then
-			echo "${prog} lockfile exists but process is not running"
+			echo "${prog} (pid ${pid}) is running but lockfile is missing..."
+			RETVAL="0"
 		else
-			if [ -z "$pid" ]; then
-				echo "${prog} is stopped"
-				RETVAL="3"
-			else
-				echo "pidfile missing but ${prog} (pid ${pid}) is running..."
-				RETVAL="0"
-			fi
+			echo "${prog} (pid ${pid}) is running..."
 		fi
 	fi
 	return $RETVAL
@@ -110,35 +101,19 @@ function checklockfile()
 {
 	pid="$(/usr/bin/pgrep -d , -u ${REPMGRD_USER} ${prog})"
 	if [ -z "$pid" ]; then
-		if [ -f "$LOCKFILE" ]; then
-			# The lockfile exists but the process is not running
-			RETVAL="2"
-		else
-			#lockfile does not exist and process is not running
-			RETVAL="0"
-		fi
-	else
 		#process is not running
+		if [ -f "$LOCKFILE" ] ; then
+			rm -f "$LOCKFILE"
+		fi
 		RETVAL="1"
-	fi
-}
-
-function checkpidfile()
-{
-	if [ -f "${PIDFILE}" ]; then
-		read kpid < ${PIDFILE}
-		if [ "$kpid" == "" ] ; then
-			RETVAL="4"
-		elif [ -d "/proc/${kpid}" ]; then
-			# pid file exists and the process is running
+	else
+		if [ -f "$LOCKFILE" ]; then
+			# The lockfile exists but the process is running
 			RETVAL="0"
 		else
-			# The pid file exists but the process is not running
-			RETVAL="1"
+			#lockfile does not exist and process is running
+			RETVAL="2"
 		fi
-	else
-		# pid file does not exist and program is most likely not running
-		RETVAL="3"
 	fi
 }
 
