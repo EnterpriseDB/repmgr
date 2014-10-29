@@ -551,7 +551,7 @@ witness_monitor(void)
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
 					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-					  " pg_current_xlog_location(), null,  "
+					  " null, pg_current_xlog_location(), null,  "
 					  " 0, 0)",
 					  repmgr_schema, primary_options.node, local_options.node,
 					  monitor_witness_timestamp);
