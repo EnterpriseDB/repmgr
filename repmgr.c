@@ -1743,28 +1743,11 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 	
-	/* check if we need to create a database */
-	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
-	{
-		/* create required db */
-		sprintf(script, "%s/psql -h 127.0.0.1 -p %s -U postgres -v ON_ERROR_STOP=1 -c \"CREATE DATABASE %s WITH TEMPLATE = template0 ENCODING = 'UTF8' LC_COLLATE = 'en_US.UTF-8' LC_CTYPE = 'en_US.UTF-8';\"", 
-			options.pg_bindir,runtime_options.localport,runtime_options.dbname);
-		log_info("Create database for witness db: %s.\n", script);
-
-		r = system(script);
-		if (r != 0)
-		{
-			log_err("Can't create database for witness server\n");
-			PQfinish(masterconn);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
-
 	/* check if we need to create a user */
 	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
         {
 		/* create required user needs to be superuser to create untrusted language function in c */
-		sprintf(script, "%s/psql -h 127.0.0.1 -p %s -U postgres -v ON_ERROR_STOP=1 -c \"CREATE ROLE %s SUPERUSER LOGIN\"", options.pg_bindir,
+		sprintf(script, "%s/createuser -p %s --superuser --login -U postgres %s", options.pg_bindir,
 			runtime_options.localport,runtime_options.username);
 		log_info("Create user for witness db: %s.\n", script);
 
@@ -1776,30 +1759,23 @@ do_witness_create(void)
 			exit(ERR_BAD_CONFIG);
 		}
 		
-		/* eventually alter owner for database */
-		if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0)
-		{
-			/* alter owner of database */
-			sprintf(script, "%s/psql -h 127.0.0.1 -p %s -U postgres -v ON_ERROR_STOP=1 -c \"ALTER DATABASE %s OWNER TO %s;\"", options.pg_bindir,
-			runtime_options.localport,runtime_options.dbname,runtime_options.username);
-			log_info("Change owner of witnesss db: %s.\n", script);
+	/* check if we need to create a database */
+	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
+	{
+		/* create required db */
+		sprintf(script, "%s/createdb -p %s -U postgres --owner=%s %s", 
+			options.pg_bindir, runtime_options.localport,runtime_options.username runtime_options.dbname);
+		log_info("Create database for witness db: %s.\n", script);
 
-			r = system(script);
-			if (r != 0)
-			{
-				log_err("Can't create user for witness server\n");
-				PQfinish(masterconn);
-				exit(ERR_BAD_CONFIG);
-			}
-		}
-		else if(runtime_options.dbname[0])
+		r = system(script);
+		if (r != 0)
 		{
-			log_err("Can not set username and not change the database from the default postgres db\n");
+			log_err("Can't create database for witness server\n");
 			PQfinish(masterconn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-	
+
 	/* Get the pg_hba.conf full path */
 	sqlquery_snprintf(sqlquery, "SELECT name, setting "
 					  "  FROM pg_settings "
@@ -1881,26 +1857,28 @@ do_witness_create(void)
 		PQfinish(witnessconn);
 		exit(ERR_BAD_CONFIG);
 	}
-	PQfinish(masterconn);
-	PQfinish(witnessconn);
-
-	log_notice(_("Configuration has been successfully copied to the witness\n"));
 
 	/* drop superuser powers if needed */
 	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
 	{
-		sprintf(script, "%s/psql -h 127.0.0.1 -p %s -U postgres -v ON_ERROR_STOP=1 -c \"ALTER ROLE %s NOSUPERUSER \"", 
-			options.pg_bindir,runtime_options.localport,runtime_options.username);
-		log_info("Drop superuser powers on user for witness db: %s.\n", script);
+		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", runtime_options.username);
+		log_info("Drop superuser powers on user for witness db: %s.\n", sqlquery);
 
-		r = system(script);
-		if (r != 0)
+		log_debug(_("witness create: %s"), sqlquery);
+		res = PQexec(witnessconn, sqlquery);
+		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
-			log_err("Can't alter superuser power for dbuser on witness\n");
-			/* no exit here...nevermind */
+			log_err(_("Cannot alter user privileges, %s\n"),
+					PQerrorMessage(witnessconn));
+			PQfinish(masterconn);
+			PQfinish(witnessconn);
+			exit(ERR_DB_QUERY);
 		}
 	}
-		
+	PQfinish(masterconn);
+	PQfinish(witnessconn);
+
+	log_notice(_("Configuration has been successfully copied to the witness\n"));
 }
 
 
