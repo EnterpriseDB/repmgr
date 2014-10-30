@@ -1758,13 +1758,14 @@ do_witness_create(void)
 			PQfinish(masterconn);
 			exit(ERR_BAD_CONFIG);
 		}
+	}
 		
 	/* check if we need to create a database */
 	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
 	{
 		/* create required db */
 		sprintf(script, "%s/createdb -p %s -U postgres --owner=%s %s", 
-			options.pg_bindir, runtime_options.localport,runtime_options.username runtime_options.dbname);
+			options.pg_bindir, runtime_options.localport,runtime_options.username, runtime_options.dbname);
 		log_info("Create database for witness db: %s.\n", script);
 
 		r = system(script);
