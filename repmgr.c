@@ -2029,22 +2029,22 @@ test_ssh_connection(char *host, char *remote_user)
 	 * found `true' because the target OS may differ from the source
 	 * OS
 	 */
-	const char *truebin_pathes[] = {
+	const char *truebin_paths[] = {
 		"/bin/true",
 		"/usr/bin/true",
 		NULL
 	};
 
 	/* Check if we have ssh connectivity to host before trying to rsync */
-	for(i = 0; truebin_pathes[i] && r != 0; ++i)
+	for(i = 0; truebin_paths[i] && r != 0; ++i)
 	{
 		if (!remote_user[0])
 			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s",
-							options.ssh_options, host, truebin_pathes[i]);
+							options.ssh_options, host, truebin_paths[i]);
 		else
 			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s",
 							options.ssh_options, host, remote_user,
-							truebin_pathes[i]);
+							truebin_paths[i]);
 
 		log_debug(_("command is: %s\n"), script);
 		r = system(script);
