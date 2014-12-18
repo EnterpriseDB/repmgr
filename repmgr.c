@@ -1763,7 +1763,7 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-	
+
 	/* check if we need to create a user */
 	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
         {
@@ -1780,12 +1780,12 @@ do_witness_create(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-		
+
 	/* check if we need to create a database */
 	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
 	{
 		/* create required db */
-		sprintf(script, "%s/createdb -p %s -U postgres --owner=%s %s", 
+		sprintf(script, "%s/createdb -p %s -U postgres --owner=%s %s",
 			options.pg_bindir, runtime_options.localport,runtime_options.username, runtime_options.dbname);
 		log_info("Create database for witness db: %s.\n", script);
 
@@ -1830,7 +1830,7 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-	
+
 	/* reload to adapt for changed pg_hba.conf */
 	sprintf(script, "%s/pg_ctl %s -w -D %s reload", options.pg_bindir,
 			options.pgctl_options, runtime_options.dest_dir);
@@ -1842,8 +1842,7 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-	
-		
+
 	/* register ourselves in the master */
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
 					  "VALUES (%d, '%s', '%s', '%s', %d, true)",
