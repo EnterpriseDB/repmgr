@@ -1336,8 +1336,8 @@ usage(void)
 void
 help(const char *progname)
 {
-	printf(_("Usage: %s [OPTIONS]\n"), progname);
-	printf(_("Replicator manager daemon for PostgreSQL.\n"));
+	printf(_("\nReplicator manager daemon for PostgreSQL\n"));
+	printf(_("\nUsage: %s [OPTIONS]\n"), progname);
 	printf(_("\nOptions:\n"));
 	printf(_("  --help                    show this help, then exit\n"));
 	printf(_("  --version                 output version information, then exit\n"));
