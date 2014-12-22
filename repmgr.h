@@ -56,6 +56,7 @@ typedef struct
 	char		dest_dir[MAXFILENAME];
 	char		config_file[MAXFILENAME];
 	char		remote_user[MAXLEN];
+	char		superuser[MAXLEN];
 	char		wal_keep_segments[MAXLEN];
 	bool		verbose;
 	bool		force;
@@ -70,6 +71,6 @@ typedef struct
 	int			keep_history;
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, "", "", 0 }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, "", "", 0}
 
 #endif
