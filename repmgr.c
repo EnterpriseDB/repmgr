@@ -100,6 +100,7 @@ main(int argc, char **argv)
 		{"host", required_argument, NULL, 'h'},
 		{"port", required_argument, NULL, 'p'},
 		{"username", required_argument, NULL, 'U'},
+		{"superuser", required_argument, NULL, 'S'},
 		{"dest-dir", required_argument, NULL, 'D'},
 		{"local-port", required_argument, NULL, 'l'},
 		{"config-file", required_argument, NULL, 'f'},
@@ -136,7 +137,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:FWIvr:", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvr:", long_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -153,6 +154,9 @@ main(int argc, char **argv)
 				break;
 			case 'U':
 				strncpy(runtime_options.username, optarg, MAXLEN);
+				break;
+			case 'S':
+				strncpy(runtime_options.superuser, optarg, MAXLEN);
 				break;
 			case 'D':
 				strncpy(runtime_options.dest_dir, optarg, MAXFILENAME);
@@ -1709,8 +1713,11 @@ do_witness_create(void)
 	 */
 
 	/* Create the cluster for witness */
-	sprintf(script, "%s/pg_ctl %s -D %s init -o \"-W\"", options.pg_bindir,
-			options.pgctl_options, runtime_options.dest_dir);
+	if (!runtime_options.superuser[0])
+		strncpy(runtime_options.superuser, "postgres", MAXLEN);
+
+	sprintf(script, "%s/pg_ctl %s -D %s init -o \"-W -U %s\"", options.pg_bindir,
+			options.pgctl_options, runtime_options.dest_dir, runtime_options.superuser);
 	log_info("Initialize cluster for witness: %s.\n", script);
 
 	r = system(script);
@@ -1768,8 +1775,8 @@ do_witness_create(void)
 	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
         {
 		/* create required user needs to be superuser to create untrusted language function in c */
-		sprintf(script, "%s/createuser -p %s --superuser --login -U postgres %s", options.pg_bindir,
-			runtime_options.localport,runtime_options.username);
+		sprintf(script, "%s/createuser -p %s --superuser --login -U %s %s", options.pg_bindir,
+				runtime_options.localport, runtime_options.superuser, runtime_options.username);
 		log_info("Create user for witness db: %s.\n", script);
 
 		r = system(script);
@@ -1785,8 +1792,8 @@ do_witness_create(void)
 	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
 	{
 		/* create required db */
-		sprintf(script, "%s/createdb -p %s -U postgres --owner=%s %s",
-			options.pg_bindir, runtime_options.localport,runtime_options.username, runtime_options.dbname);
+		sprintf(script, "%s/createdb -p %s -U %s --owner=%s %s",
+				options.pg_bindir, runtime_options.localport, runtime_options.superuser, runtime_options.username, runtime_options.dbname);
 		log_info("Create database for witness db: %s.\n", script);
 
 		r = system(script);
@@ -1937,6 +1944,8 @@ help(const char *progname)
 	printf(_("  -l, --local-port=PORT               standby or witness server local port\n"));
 	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
 	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
+	printf(_("  -S, --superuser=USERNAME            superuser username for witness database\n" \
+			 "                                      (default: postgres)\n"));
 	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
 			 "                                      wal_keep_segments (default: 5000)\n"));
 	printf(_("  -I, --ignore-rsync-warning          ignore rsync partial transfer warning\n"));
