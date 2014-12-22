@@ -1723,7 +1723,7 @@ do_witness_create(void)
 	r = system(script);
 	if (r != 0)
 	{
-		log_err("Can't iniatialize cluster for witness server\n");
+		log_err("Can't initialize cluster for witness server\n");
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
