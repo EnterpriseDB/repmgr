@@ -289,3 +289,10 @@ and one view, `repl_status`, which summarizes the latest monitoring information
 for each node.
 
 
+Further reading
+---------------
+
+* http://blog.2ndquadrant.com/announcing-repmgr-2-0/
+* http://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
+* http://blog.2ndquadrant.com/easier_postgresql_90_clusters/
+
