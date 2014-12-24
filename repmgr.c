@@ -1824,7 +1824,7 @@ do_witness_create(void)
 		if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
 			strcpy(master_hba_file, PQgetvalue(res, i, 1));
 		else
-			log_err(_("uknown parameter: %s"), PQgetvalue(res, i, 0));
+			log_err(_("unknown parameter: %s"), PQgetvalue(res, i, 0));
 	}
 	PQclear(res);
 
