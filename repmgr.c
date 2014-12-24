@@ -112,6 +112,7 @@ main(int argc, char **argv)
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
 		{"verbose", no_argument, NULL, 'v'},
 		{"fast-checkpoint", no_argument, NULL, 'X'},
+		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -194,6 +195,8 @@ main(int argc, char **argv)
 				break;
 			case 'X':
 				runtime_options.fast_checkpoint = true;
+			case 1:
+				runtime_options.initdb_no_pwprompt = true;
 				break;
 			default:
 				usage();
@@ -1719,8 +1722,10 @@ do_witness_create(void)
 	if (!runtime_options.superuser[0])
 		strncpy(runtime_options.superuser, "postgres", MAXLEN);
 
-	sprintf(script, "%s/pg_ctl %s -D %s init -o \"-W -U %s\"", options.pg_bindir,
-			options.pgctl_options, runtime_options.dest_dir, runtime_options.superuser);
+	sprintf(script, "%s/pg_ctl %s -D %s init -o \"%s-U %s\"", options.pg_bindir,
+			options.pgctl_options, runtime_options.dest_dir,
+			runtime_options.initdb_no_pwprompt ? "" : "-W ",
+			runtime_options.superuser);
 	log_info("Initialize cluster for witness: %s.\n", script);
 
 	r = system(script);
@@ -1959,7 +1964,7 @@ help(const char *progname)
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
 	printf(_("  -X, --fast-checkpoint               force immediate checkpoint when cloning\n"));
-
+	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
 	printf(_("another node and then exits.\n\n"));
 	printf(_("COMMANDS:\n"));

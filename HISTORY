@@ -1,7 +1,7 @@
 2.0.3   2015-??-??
-        Add option "--initdb-no-pwprompt" (Ian)
         Add -S/--superuser option for witness database creation Ian)
         Add -X/--fast-checkpoint option for cloning (Christoph)
+        Add option "--initdb-no-pwprompt" (Ian)
 
 2.0.2   2015-02-17
         Add "--checksum" in rsync when using "--force" (Jaime)
