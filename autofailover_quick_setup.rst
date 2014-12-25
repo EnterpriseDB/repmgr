@@ -202,7 +202,7 @@ Start the repmgrd daemons
 Log in node2 and witness.
 
 	su - postgres
-	repmgrd -f /etc/repmgr/repmgr.conf > /var/log/postgresql/repmgr.log 2>&1
+	repmgrd -f /etc/repmgr/repmgr.conf --daemonize -> /var/log/postgresql/repmgr.log 2>&1
 
 **Note:** The Master does not need a repmgrd daemon.
 
