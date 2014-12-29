@@ -174,9 +174,7 @@ main(int argc, char **argv)
 	bool		daemonize = false;
 	FILE	   *fd;
 
-	char		standby_version[MAXVERSIONSTR],
-			   *ret_ver;
-
+	int			server_version_num = 0;
 	progname = get_progname(argv[0]);
 
 	if (argc > 1)
@@ -280,14 +278,16 @@ main(int argc, char **argv)
 			 local_options.conninfo);
 	my_local_conn = establish_db_connection(local_options.conninfo, true);
 
-	/* should be v9 or better */
-	log_info(_("%s Connected to database, checking its state\n"), progname);
-	ret_ver = pg_version(my_local_conn, standby_version);
-	if (ret_ver == NULL || strcmp(standby_version, "") == 0)
+	/* Verify that server is a supported version */
+	log_info(_("%s connected to database, checking its state\n"), progname);
+	server_version_num = get_server_version_num(my_local_conn);
+	if(server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
-		if (ret_ver != NULL)
-			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"),
-					progname);
+		if (server_version_num > 0)
+			log_err(_("%s requires PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
 		terminate(ERR_BAD_CONFIG);
 	}
 

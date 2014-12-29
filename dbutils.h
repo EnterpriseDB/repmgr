@@ -30,7 +30,7 @@ PGconn *establish_db_connection_by_params(const char *keywords[],
 int			is_standby(PGconn *conn);
 int			is_witness(PGconn *conn, char *schema, char *cluster, int node_id);
 bool		is_pgup(PGconn *conn, int timeout);
-char	   *pg_version(PGconn *conn, char *major_version);
+int         get_server_version_num(PGconn *conn);
 int guc_set(PGconn *conn, const char *parameter, const char *op,
 		const char *value);
 int guc_set_typed(PGconn *conn, const char *parameter, const char *op,

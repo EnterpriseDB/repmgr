@@ -178,46 +178,24 @@ is_pgup(PGconn *conn, int timeout)
 
 
 /*
- * If postgreSQL version is 9 or superior returns the major version
- * if 8 or inferior returns an empty string
+ * Return the server version number for the connection provided
  */
-char *
-pg_version(PGconn *conn, char *major_version)
+int
+get_server_version_num(PGconn *conn)
 {
 	PGresult   *res;
-
-	int			major_version1;
-	char	   *major_version2;
-
 	res = PQexec(conn,
-				 "WITH pg_version(ver) AS "
-				 "(SELECT split_part(version(), ' ', 2)) "
-				 "SELECT split_part(ver, '.', 1), split_part(ver, '.', 2) "
-				 "FROM pg_version");
+				 "SELECT current_setting('server_version_num')");
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Version check PQexec failed: %s"),
+		log_err(_("Unable to determine server verson number:\n%s"),
 				PQerrorMessage(conn));
 		PQclear(res);
-		return NULL;
+		return -1;
 	}
 
-	major_version1 = atoi(PQgetvalue(res, 0, 0));
-	major_version2 = PQgetvalue(res, 0, 1);
-
-	if (major_version1 >= 9)
-	{
-		/* form a major version string */
-		xsnprintf(major_version, MAXVERSIONSTR, "%d.%s", major_version1,
-				  major_version2);
-	}
-	else
-		strcpy(major_version, "");
-
-	PQclear(res);
-
-	return major_version;
+	return atoi(PQgetvalue(res, 0, 0));
 }
 
 

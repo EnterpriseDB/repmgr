@@ -32,6 +32,9 @@
 #define STANDBY_MODE		1
 #define WITNESS_MODE		2
 
+#define MIN_SUPPORTED_VERSION		"9.1"
+#define MIN_SUPPORTED_VERSION_NUM	90100
+
 #include "config.h"
 #define MAXFILENAME		1024
 #define ERRBUFF_SIZE		512
@@ -45,6 +48,7 @@
 
 #define MANUAL_FAILOVER		0
 #define AUTOMATIC_FAILOVER	1
+
 
 /* Run time options type */
 typedef struct

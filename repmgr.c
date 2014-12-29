@@ -525,27 +525,29 @@ do_master_register(void)
 {
 	PGconn	   *conn;
 	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN],
-			   *ret_ver;
+	char		sqlquery[QUERY_STR_LEN];
 
 	bool		schema_exists = false;
 	char		schema_quoted[MAXLEN];
-	char		master_version[MAXVERSIONSTR];
+	int			master_version_num = 0;
 	int			ret;
 
 	conn = establish_db_connection(options.conninfo, true);
 
-	/* master should be v9 or better */
+	/* Verify that master is a supported server version */
 	log_info(_("%s connecting to master database\n"), progname);
-	ret_ver = pg_version(conn, master_version);
-	if (ret_ver == NULL || strcmp(master_version, "") == 0)
+	master_version_num = get_server_version_num(conn);
+	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(conn);
-		if (ret_ver != NULL)
-			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"),
-					progname);
-		return;
+		if (master_version_num > 0)
+			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
+		exit(ERR_BAD_CONFIG);
 	}
+
 
 	/* Check we are a master */
 	log_info(_("%s connected to master, checking its state\n"), progname);
@@ -678,27 +680,27 @@ do_standby_register(void)
 				ret;
 
 	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN],
-			   *ret_ver;
+	char		sqlquery[QUERY_STR_LEN];
 	char		schema_quoted[MAXLEN];
 
-	char		master_version[MAXVERSIONSTR];
-	char		standby_version[MAXVERSIONSTR];
+	int			master_version_num = 0;
+	int			standby_version_num = 0;
 
 	/* XXX: A lot of copied code from do_master_register! Refactor */
 
 	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
 
-	/* should be v9 or better */
-	log_info(_("%s connected to standby, checking its state\n"), progname);
-	ret_ver = pg_version(conn, standby_version);
-	if (ret_ver == NULL || strcmp(standby_version, "") == 0)
+	/* Verify that standby is a supported server version */
+	standby_version_num = get_server_version_num(conn);
+	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(conn);
-		if (ret_ver != NULL)
-			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"),
-					progname);
+		if (standby_version_num > 0)
+			log_err(_("%s needs standby to be PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -733,6 +735,7 @@ do_standby_register(void)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
+		/* XXX error message does not match query */
 		log_err(_("Can't get info about tablespaces: %s\n"),
 				PQerrorMessage(conn));
 		PQclear(res);
@@ -760,26 +763,29 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* master should be v9 or better */
+	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	ret_ver = pg_version(master_conn, master_version);
-	if (ret_ver == NULL || strcmp(master_version, "") == 0)
+	master_version_num = get_server_version_num(conn);
+	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
+		if (master_version_num > 0)
+			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
 		PQfinish(conn);
 		PQfinish(master_conn);
-		if (ret_ver != NULL)
-			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"),
-					progname);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* master and standby version should match */
-	if (strcmp(master_version, standby_version) != 0)
+	if ((master_version_num / 100) != (standby_version_num / 100))
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
-				progname, master_version, standby_version);
+		/* XXX format version numbers */
+		log_err(_("%s needs versions of both master (%i) and standby (%i) to match.\n"),
+				progname, master_version_num, standby_version_num);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -835,8 +841,8 @@ do_standby_clone(void)
 {
 	PGconn	   *conn;
 	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN],
-			   *ret;
+	char		sqlquery[QUERY_STR_LEN];
+
 	const char *cluster_size;
 
 	int			r = 0,
@@ -867,7 +873,7 @@ do_standby_clone(void)
 	char	   *first_wal_segment = NULL;
 	const char *last_wal_segment = NULL;
 
-	char		master_version[MAXVERSIONSTR];
+	int			master_version_num = 0;
 
 	/*
 	 * if dest_dir has been provided, we copy everything in the same path if
@@ -892,15 +898,18 @@ do_standby_clone(void)
 	log_info(_("%s connecting to master database\n"), progname);
 	conn = establish_db_connection_by_params(keywords, values, true);
 
-	/* primary should be v9 or better */
+	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	ret = pg_version(conn, master_version);
-	if (ret == NULL || strcmp(master_version, "") == 0)
+
+	master_version_num = get_server_version_num(conn);
+	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(conn);
-		if (ret != NULL)
-			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"),
-					progname);
+		if (master_version_num > 0)
+			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -960,8 +969,7 @@ do_standby_clone(void)
 	/*
 	 * Check if the tablespace locations exists and that we can write to them.
 	 */
-	if (strcmp(master_version, "9.0") == 0 ||
-		strcmp(master_version, "9.1") == 0)
+	if (master_version_num < 90200)
 		sqlquery_snprintf(sqlquery,
 						  "SELECT spclocation "
 						  "  FROM pg_tablespace "
@@ -1207,8 +1215,7 @@ do_standby_clone(void)
 	 * test_mode but it does not hurt too much (except if a tablespace is
 	 * created during the test)
 	 */
-	if (strcmp(master_version, "9.0") == 0 ||
-		strcmp(master_version, "9.1") == 0)
+	if (master_version_num < 90200)
 		sqlquery_snprintf(sqlquery,
 						  "SELECT spclocation "
 						  "  FROM pg_tablespace "
@@ -1367,8 +1374,8 @@ do_standby_promote(void)
 {
 	PGconn	   *conn;
 	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN],
-			   *ret;
+	char		sqlquery[QUERY_STR_LEN];
+
 	char		script[MAXLEN];
 
 	PGconn	   *old_master_conn;
@@ -1380,21 +1387,24 @@ do_standby_promote(void)
 	char		recovery_file_path[MAXFILENAME];
 	char		recovery_done_path[MAXFILENAME];
 
-	char		standby_version[MAXVERSIONSTR];
+	int			standby_version_num = 0;
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
 
-	/* we need v9 or better */
+	/* Verify that standby is a supported server version */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
-	ret = pg_version(conn, standby_version);
-	if (ret == NULL || strcmp(standby_version, "") == 0)
+
+	standby_version_num = get_server_version_num(conn);
+	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
-		if (ret != NULL)
-			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"),
-					progname);
 		PQfinish(conn);
+		if (standby_version_num > 0)
+			log_err(_("%s needs standby to be PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1485,8 +1495,7 @@ do_standby_follow(void)
 {
 	PGconn	   *conn;
 	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN],
-			   *ret;
+	char		sqlquery[QUERY_STR_LEN];
 	char		script[MAXLEN];
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
@@ -1496,12 +1505,26 @@ do_standby_follow(void)
 				retval;
 	char		data_dir[MAXLEN];
 
-	char		master_version[MAXVERSIONSTR];
-	char		standby_version[MAXVERSIONSTR];
+	int			master_version_num = 0;
+	int			standby_version_num = 0;
+
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
+
+	/* Verify that standby is a supported server version */
+	standby_version_num = get_server_version_num(conn);
+	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
+	{
+		PQfinish(conn);
+		if (standby_version_num > 0)
+			log_err(_("%s needs standby to be PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/* Check we are in a standby node */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
@@ -1511,17 +1534,6 @@ do_standby_follow(void)
 		log_err(_(retval == 0 ? "%s: The command should be executed in a standby node\n" :
 				  "%s: connection to node lost!\n"), progname);
 
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	/* should be v9 or better */
-	ret = pg_version(conn, standby_version);
-	if (ret == NULL || strcmp(standby_version, "") == 0)
-	{
-		if (ret != NULL)
-			log_err(_("%s needs standby to be PostgreSQL 9.0 or better\n"),
-					progname);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1563,26 +1575,29 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* should be v9 or better */
+	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	ret = pg_version(master_conn, master_version);
-	if (ret == NULL || strcmp(master_version, "") == 0)
+	master_version_num = get_server_version_num(conn);
+	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
-		if (ret != NULL)
-			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"),
-					progname);
+		if (master_version_num > 0)
+			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
 		PQfinish(conn);
 		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* master and standby version should match */
-	if (strcmp(master_version, standby_version) != 0)
+	if ((master_version_num / 100) != (standby_version_num / 100))
 	{
-		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
-				progname, master_version, standby_version);
 		PQfinish(conn);
 		PQfinish(master_conn);
+		/* XXX format version numbers */
+		log_err(_("%s needs versions of both master (%i) and standby (%i) to match.\n"),
+				progname, master_version_num, standby_version_num);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1639,8 +1654,7 @@ do_witness_create(void)
 	PGconn	   *masterconn;
 	PGconn	   *witnessconn;
 	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN],
-			   *ret;
+	char		sqlquery[QUERY_STR_LEN];
 
 	char		script[MAXLEN];
 	char		buf[MAXLEN];
@@ -1650,9 +1664,8 @@ do_witness_create(void)
 				retval;
 	int			i;
 
-	char		master_version[MAXVERSIONSTR];
-
 	char		master_hba_file[MAXLEN];
+	int			master_version_num = 0;
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
@@ -1668,14 +1681,16 @@ do_witness_create(void)
 		exit(ERR_DB_CON);
 	}
 
-	/* primary should be v9 or better */
-	ret = pg_version(masterconn, master_version);
-	if (ret == NULL || strcmp(master_version, "") == 0)
+	/* Verify that master is a supported server version */
+	master_version_num = get_server_version_num(masterconn);
+	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
-		if (ret != NULL)
-			log_err(_("%s needs master to be PostgreSQL 9.0 or better\n"),
-					progname);
 		PQfinish(masterconn);
+		if (master_version_num > 0)
+			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
+					progname,
+					MIN_SUPPORTED_VERSION
+				);
 		exit(ERR_BAD_CONFIG);
 	}
 
