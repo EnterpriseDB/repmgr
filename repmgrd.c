@@ -280,7 +280,7 @@ main(int argc, char **argv)
 
 	/* Verify that server is a supported version */
 	log_info(_("%s connected to database, checking its state\n"), progname);
-	server_version_num = get_server_version_num(my_local_conn);
+	server_version_num = get_server_version(my_local_conn, NULL);
 	if(server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		if (server_version_num > 0)

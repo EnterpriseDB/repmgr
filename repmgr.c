@@ -536,7 +536,7 @@ do_master_register(void)
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_version_num = get_server_version_num(conn);
+	master_version_num = get_server_version(conn, NULL);
 	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(conn);
@@ -683,7 +683,10 @@ do_standby_register(void)
 	char		sqlquery[QUERY_STR_LEN];
 	char		schema_quoted[MAXLEN];
 
+	char		master_version[MAXVERSIONSTR];
 	int			master_version_num = 0;
+
+	char		standby_version[MAXVERSIONSTR];
 	int			standby_version_num = 0;
 
 	/* XXX: A lot of copied code from do_master_register! Refactor */
@@ -692,7 +695,7 @@ do_standby_register(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Verify that standby is a supported server version */
-	standby_version_num = get_server_version_num(conn);
+	standby_version_num = get_server_version(conn, master_version);
 	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(conn);
@@ -765,7 +768,7 @@ do_standby_register(void)
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	master_version_num = get_server_version_num(conn);
+	master_version_num = get_server_version(conn, standby_version);
 	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		if (master_version_num > 0)
@@ -784,8 +787,8 @@ do_standby_register(void)
 		PQfinish(conn);
 		PQfinish(master_conn);
 		/* XXX format version numbers */
-		log_err(_("%s needs versions of both master (%i) and standby (%i) to match.\n"),
-				progname, master_version_num, standby_version_num);
+		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
+				progname, master_version, standby_version);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -901,7 +904,7 @@ do_standby_clone(void)
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
 
-	master_version_num = get_server_version_num(conn);
+	master_version_num = get_server_version(conn, NULL);
 	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(conn);
@@ -1396,7 +1399,7 @@ do_standby_promote(void)
 	/* Verify that standby is a supported server version */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
 
-	standby_version_num = get_server_version_num(conn);
+	standby_version_num = get_server_version(conn, NULL);
 	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(conn);
@@ -1505,7 +1508,10 @@ do_standby_follow(void)
 				retval;
 	char		data_dir[MAXLEN];
 
+	char		master_version[MAXVERSIONSTR];
 	int			master_version_num = 0;
+
+	char		standby_version[MAXVERSIONSTR];
 	int			standby_version_num = 0;
 
 
@@ -1514,7 +1520,7 @@ do_standby_follow(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Verify that standby is a supported server version */
-	standby_version_num = get_server_version_num(conn);
+	standby_version_num = get_server_version(conn, master_version);
 	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(conn);
@@ -1577,7 +1583,7 @@ do_standby_follow(void)
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	master_version_num = get_server_version_num(conn);
+	master_version_num = get_server_version(conn, standby_version);
 	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		if (master_version_num > 0)
@@ -1596,8 +1602,8 @@ do_standby_follow(void)
 		PQfinish(conn);
 		PQfinish(master_conn);
 		/* XXX format version numbers */
-		log_err(_("%s needs versions of both master (%i) and standby (%i) to match.\n"),
-				progname, master_version_num, standby_version_num);
+		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
+				progname, master_version, standby_version);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1682,7 +1688,7 @@ do_witness_create(void)
 	}
 
 	/* Verify that master is a supported server version */
-	master_version_num = get_server_version_num(masterconn);
+	master_version_num = get_server_version(masterconn, NULL);
 	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		PQfinish(masterconn);

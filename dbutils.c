@@ -181,19 +181,23 @@ is_pgup(PGconn *conn, int timeout)
  * Return the server version number for the connection provided
  */
 int
-get_server_version_num(PGconn *conn)
+get_server_version(PGconn *conn, char *server_version)
 {
 	PGresult   *res;
 	res = PQexec(conn,
-				 "SELECT current_setting('server_version_num')");
+				 "SELECT current_setting('server_version_num'), "
+				 "current_setting('server_version')");
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Unable to determine server verson number:\n%s"),
+		log_err(_("Unable to determine server version number:\n%s"),
 				PQerrorMessage(conn));
 		PQclear(res);
 		return -1;
 	}
+
+	if(server_version != NULL)
+		strcpy(server_version, PQgetvalue(res, 0, 0));
 
 	return atoi(PQgetvalue(res, 0, 0));
 }
