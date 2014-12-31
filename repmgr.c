@@ -55,8 +55,9 @@
 
 static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
-static int copy_remote_files(char *host, char *remote_user, char *remote_path,
+static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 				  char *local_path, bool is_directory);
+static int  run_basebackup(void);
 static bool check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static bool copy_configuration(PGconn *masterconn, PGconn *witnessconn);
@@ -786,7 +787,6 @@ do_standby_register(void)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		/* XXX format version numbers */
 		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
 				progname, master_version, standby_version);
 		exit(ERR_BAD_CONFIG);
@@ -850,6 +850,7 @@ do_standby_clone(void)
 
 	int			r = 0,
 				retval = SUCCESS;
+
 	int			i,
 				is_standby_retval;
 	bool		flag_success = false;
@@ -864,17 +865,12 @@ do_standby_clone(void)
 	char		master_stats_temp_directory[MAXFILENAME];
 	char		local_stats_temp_directory[MAXFILENAME];
 
-	char		master_control_file[MAXFILENAME];
-	char		local_control_file[MAXFILENAME];
 	char		master_config_file[MAXFILENAME];
 	char		local_config_file[MAXFILENAME];
 	char		master_hba_file[MAXFILENAME];
 	char		local_hba_file[MAXFILENAME];
 	char		master_ident_file[MAXFILENAME];
 	char		local_ident_file[MAXFILENAME];
-
-	char	   *first_wal_segment = NULL;
-	const char *last_wal_segment = NULL;
 
 	int			master_version_num = 0;
 
@@ -916,6 +912,7 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* ZZZ check user is qualified to perform base backup  */
 	/* Check we are cloning a primary node */
 	is_standby_retval = is_standby(conn);
 	if (is_standby_retval)
@@ -938,6 +935,8 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
+	/* ZZZ change this */
 	i = guc_set_typed(conn, "wal_keep_segments", ">=",
 					  runtime_options.wal_keep_segments, "integer");
 	if (i == 0 || i == -1)
@@ -1020,7 +1019,7 @@ do_standby_clone(void)
 	PQclear(res);
 
 	/* Get the data directory full path and the configuration files location */
-	sqlquery_snprintf(sqlquery,
+/*	sqlquery_snprintf(sqlquery,
 					  "SELECT name, setting "
 					  "  FROM pg_settings "
 					  " WHERE name IN ('data_directory', 'config_file', 'hba_file', 'ident_file', 'stats_temp_directory')");
@@ -1033,10 +1032,10 @@ do_standby_clone(void)
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
-	}
+		}*/
 
 	/* We need all 5 parameters, and they can be retrieved only by superusers */
-	if (PQntuples(res) != 5)
+/*	if (PQntuples(res) != 5)
 	{
 		log_err("%s: STANDBY CLONE should be run by a SUPERUSER\n", progname);
 		PQclear(res);
@@ -1061,6 +1060,7 @@ do_standby_clone(void)
 			log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
 	}
 	PQclear(res);
+*/
 
 	cluster_size = get_cluster_size(conn);
 	if (cluster_size == NULL)
@@ -1096,14 +1096,14 @@ do_standby_clone(void)
 		strncpy(local_xlog_directory, master_xlog_directory, MAXFILENAME);
 	}
 
-	r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+/*	r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
 	if (r != 0)
 	{
 		log_err(_("%s: Aborting, remote host %s is not reachable.\n"),
 				progname, runtime_options.host);
 		PQfinish(conn);
 		exit(ERR_BAD_SSH);
-	}
+		}*/
 
 	log_notice(_("Starting backup...\n"));
 
@@ -1111,7 +1111,7 @@ do_standby_clone(void)
 	 * in pg 9.1 default is to wait for a sync standby to ack, avoid that by
 	 * turning off sync rep for this session
 	 */
-	sqlquery_snprintf(sqlquery, "SET synchronous_commit TO OFF");
+/*	sqlquery_snprintf(sqlquery, "SET synchronous_commit TO OFF");
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -1119,13 +1119,13 @@ do_standby_clone(void)
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
-	}
+		}*/
 
 	/*
 	 * inform the master we will start a backup and get the first XLog
 	 * filename so we can say to the user we need those files
 	 */
-	sqlquery_snprintf(
+/*	sqlquery_snprintf(
 					  sqlquery,
 	  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))",
 					  time(NULL));
@@ -1137,8 +1137,8 @@ do_standby_clone(void)
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
-	}
-
+		}*/
+/*
 	if (runtime_options.verbose)
 	{
 		char	   *first_wal_seg_pq = PQgetvalue(res, 0, 0);
@@ -1148,9 +1148,12 @@ do_standby_clone(void)
 		xsnprintf(first_wal_segment, buf_sz + 1, "%s", first_wal_seg_pq);
 	}
 
-	PQclear(res);
+	PQclear(res);*/
 
 	/* Check the directory could be used as a PGDATA dir */
+
+	/* ZZZ pg_basebackup can do this too, but better to check explicitly */
+	/* ZZZ maybe check tablespace, xlog dirs too */
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
 		log_err(_("%s: couldn't use directory %s ...\nUse --force option to force\n"),
@@ -1175,7 +1178,7 @@ do_standby_clone(void)
 	 */
 
 	/* need to create the global sub directory */
-	maxlen_snprintf(master_control_file, "%s/global/pg_control",
+/*	maxlen_snprintf(master_control_file, "%s/global/pg_control",
 					master_data_directory);
 	maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
 	log_info(_("standby clone: master control file '%s'\n"),
@@ -1209,7 +1212,7 @@ do_standby_clone(void)
 		log_warning(_("standby clone: failed copying master data directory '%s'\n"),
 					master_data_directory);
 		goto stop_backup;
-	}
+		}*/
 
 	/*
 	 * Copy tablespace locations, i'm doing this separately because i couldn't
@@ -1218,7 +1221,7 @@ do_standby_clone(void)
 	 * test_mode but it does not hurt too much (except if a tablespace is
 	 * created during the test)
 	 */
-	if (master_version_num < 90200)
+/*	if (master_version_num < 90200)
 		sqlquery_snprintf(sqlquery,
 						  "SELECT spclocation "
 						  "  FROM pg_tablespace "
@@ -1254,8 +1257,8 @@ do_standby_clone(void)
 			goto stop_backup;
 		}
 	}
-	PQclear(res);
-
+	PQclear(res);*/
+/*
 	log_info(_("standby clone: master config file '%s'\n"), master_config_file);
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 						  master_config_file, local_config_file,
@@ -1287,7 +1290,16 @@ do_standby_clone(void)
 		log_warning(_("standby clone: failed copying master ident file '%s'\n"),
 					master_ident_file);
 		goto stop_backup;
+		}*/
+
+	r = run_basebackup();
+	if (r != 0)
+	{
+		log_warning(_("standby clone: base backup failed\n"));
+		goto stop_backup;
 	}
+
+	// ZZZ possibly add sanity checks, e.g. that backup_label created?
 
 	/* we success so far, flag that to allow a better HINT */
 	flag_success = true;
@@ -1298,7 +1310,7 @@ stop_backup:
 	 * Inform the master that we have finished the backup.
 	 */
 	log_notice(_("Finishing backup...\n"));
-	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
+/*	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
 	log_debug(_("standby clone: %s\n"), sqlquery);
 
 	res = PQexec(conn, sqlquery);
@@ -1313,18 +1325,18 @@ stop_backup:
 
 	if (runtime_options.verbose)
 		log_info(_("%s requires primary to keep WAL files %s until at least %s\n"),
-				 progname, first_wal_segment, last_wal_segment);
+		progname, first_wal_segment, last_wal_segment);*/
 
 	/* Finished with the database connection now */
-	PQclear(res);
-	PQfinish(conn);
+/*	PQclear(res);
+	PQfinish(conn);*/
 
 	/*
 	 * Only free the first_wal_segment since it was copied out of the
 	 * pqresult.
 	 */
-	free(first_wal_segment);
-	first_wal_segment = NULL;
+/*	free(first_wal_segment);
+	first_wal_segment = NULL;*/
 
 	/* If the rsync failed then exit */
 	if (r != 0)
@@ -1337,16 +1349,16 @@ stop_backup:
 	/*
 	 * We need to create the pg_xlog sub directory too.
 	 */
-	if (!create_dir(local_xlog_directory))
+/*	if (!create_dir(local_xlog_directory))
 	{
 		log_err(_("%s: couldn't create directory %s, you will need to do it manually...\n"),
 				progname, local_xlog_directory);
-		r = ERR_NEEDS_XLOG;		/* continue, but eventually exit returning
+		r = ERR_NEEDS_XLOG;	*/	/* continue, but eventually exit returning
 								 * error */
-	}
+//}
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file(local_data_directory);
+	//create_recovery_file(local_data_directory);
 
 	/*
 	 * We don't start the service yet because we still may want to move the
@@ -1601,7 +1613,6 @@ do_standby_follow(void)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
-		/* XXX format version numbers */
 		log_err(_("%s needs versions of both master (%s) and standby (%s) to match.\n"),
 				progname, master_version, standby_version);
 		exit(ERR_BAD_CONFIG);
@@ -2000,6 +2011,7 @@ help(const char *progname)
 
 /*
  * Creates a recovery file for a standby.
+ * ZZZ not needed with basebackup?
  */
 static bool
 create_recovery_file(const char *data_dir)
@@ -2167,6 +2179,29 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	return r;
 }
 
+static int
+run_basebackup()
+{
+	char		script[MAXLEN];
+	int			r = 0;
+
+	maxlen_snprintf(script,
+					"%s/pg_basebackup -h %s -p %s -D %s -l \"repmgr base backup\" --write-recovery-conf",
+					options.pg_bindir,
+					runtime_options.host,
+					runtime_options.masterport,
+					runtime_options.dest_dir
+		);
+	log_info(_("Executing: '%s'\n"), script);
+	r = system(script);
+
+	/* ZZZ handle return values ? */
+
+	log_debug(_("r = %i, %i\n"), r, WEXITSTATUS(r));
+
+	return r;
+}
+
 
 /*
  * Tries to avoid useless or conflicting parameters
@@ -2305,8 +2340,6 @@ check_parameters_for_action(const int action)
 
 	return ok;
 }
-
-
 
 static bool
 create_schema(PGconn *conn)
