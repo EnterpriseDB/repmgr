@@ -1726,7 +1726,7 @@ help(const char *progname)
 	printf(_("  -F, --force                         force potentially dangerous operations\n" \
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
-	printf(_("	-r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)"));
+	printf(_("  -r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)\n"));
 	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
 	printf(_("another node and then exits.\n\n"));
