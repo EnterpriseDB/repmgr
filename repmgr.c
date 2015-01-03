@@ -1005,15 +1005,11 @@ do_standby_clone(void)
 
 stop_backup:
 
-	/*
-	 * Inform the master that we have finished the backup.
-	 */
-	log_notice(_("Finishing backup...\n"));
-
 	/* If the rsync failed then exit */
 	if (r != 0)
 	{
-		log_err(_("Couldn't rsync the master...\nYou have to cleanup the destination directory (%s) manually!\n"),
+		log_err(_("Unable to take a base backup of the primary server\n"));
+		log_warning(_("The destination directory (%s) will need to be cleaned up manually\n"),
 				local_data_directory);
 		exit(ERR_BAD_RSYNC);
 	}
