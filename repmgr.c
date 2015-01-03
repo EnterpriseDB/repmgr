@@ -62,6 +62,7 @@ static bool check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static bool copy_configuration(PGconn *masterconn, PGconn *witnessconn);
 static void write_primary_conninfo(char *line);
+static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -530,25 +531,13 @@ do_master_register(void)
 
 	bool		schema_exists = false;
 	char		schema_quoted[MAXLEN];
-	int			master_version_num = 0;
 	int			ret;
 
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_version_num = get_server_version(conn, NULL);
-	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
-	{
-		PQfinish(conn);
-		if (master_version_num > 0)
-			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
-		exit(ERR_BAD_CONFIG);
-	}
-
+	check_server_version(conn, "master", true, NULL);
 
 	/* Check we are a master */
 	log_info(_("%s connected to master, checking its state\n"), progname);
@@ -696,17 +685,7 @@ do_standby_register(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Verify that standby is a supported server version */
-	standby_version_num = get_server_version(conn, master_version);
-	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
-	{
-		PQfinish(conn);
-		if (standby_version_num > 0)
-			log_err(_("%s needs standby to be PostgreSQL %s or better\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
-		exit(ERR_BAD_CONFIG);
-	}
+	standby_version_num = check_server_version(conn, "standby", true, standby_version);
 
 	/* Check we are a standby */
 	ret = is_standby(conn);
@@ -769,14 +748,9 @@ do_standby_register(void)
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	master_version_num = get_server_version(conn, standby_version);
-	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
+	master_version_num = check_server_version(conn, "master", false, master_version);
+	if(master_version_num < 0)
 	{
-		if (master_version_num > 0)
-			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
 		PQfinish(conn);
 		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
@@ -899,18 +873,7 @@ do_standby_clone(void)
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-
-	master_version_num = get_server_version(conn, NULL);
-	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
-	{
-		PQfinish(conn);
-		if (master_version_num > 0)
-			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
-		exit(ERR_BAD_CONFIG);
-	}
+	master_version_num = check_server_version(conn, "master", true, NULL);
 
 	/* ZZZ check user is qualified to perform base backup  */
 	/* Check we are cloning a primary node */
@@ -1136,8 +1099,6 @@ do_standby_promote(void)
 	char		recovery_file_path[MAXFILENAME];
 	char		recovery_done_path[MAXFILENAME];
 
-	int			standby_version_num = 0;
-
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
@@ -1145,17 +1106,7 @@ do_standby_promote(void)
 	/* Verify that standby is a supported server version */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
 
-	standby_version_num = get_server_version(conn, NULL);
-	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
-	{
-		PQfinish(conn);
-		if (standby_version_num > 0)
-			log_err(_("%s needs standby to be PostgreSQL %s or better\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
-		exit(ERR_BAD_CONFIG);
-	}
+	check_server_version(conn, "standby", true, NULL);
 
 	/* Check we are in a standby node */
 	retval = is_standby(conn);
@@ -1264,22 +1215,12 @@ do_standby_follow(void)
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
+	log_info(_("%s connected to standby, checking its state\n"), progname);
 
 	/* Verify that standby is a supported server version */
-	standby_version_num = get_server_version(conn, master_version);
-	if(standby_version_num < MIN_SUPPORTED_VERSION_NUM)
-	{
-		PQfinish(conn);
-		if (standby_version_num > 0)
-			log_err(_("%s needs standby to be PostgreSQL %s or better\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
-		exit(ERR_BAD_CONFIG);
-	}
+	standby_version_num = check_server_version(conn, "standby", true, standby_version);
 
 	/* Check we are in a standby node */
-	log_info(_("%s connected to standby, checking its state\n"), progname);
 	retval = is_standby(conn);
 	if (retval == 0 || retval == -1)
 	{
@@ -1329,14 +1270,9 @@ do_standby_follow(void)
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	master_version_num = get_server_version(conn, standby_version);
-	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
+	master_version_num = check_server_version(conn, "master", false, master_version);
+	if(master_version_num < 0)
 	{
-		if (master_version_num > 0)
-			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
 		PQfinish(conn);
 		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
@@ -1416,7 +1352,6 @@ do_witness_create(void)
 	int			i;
 
 	char		master_hba_file[MAXLEN];
-	int			master_version_num = 0;
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
@@ -1433,17 +1368,7 @@ do_witness_create(void)
 	}
 
 	/* Verify that master is a supported server version */
-	master_version_num = get_server_version(masterconn, NULL);
-	if(master_version_num < MIN_SUPPORTED_VERSION_NUM)
-	{
-		PQfinish(masterconn);
-		if (master_version_num > 0)
-			log_err(_("%s needs master to be PostgreSQL %s or better\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
-		exit(ERR_BAD_CONFIG);
-	}
+	check_server_version(masterconn, "master", true, NULL);
 
 	/* Check we are connecting to a primary node */
 	retval = is_standby(masterconn);
@@ -2339,4 +2264,51 @@ write_primary_conninfo(char *line)
 
 	maxlen_snprintf(line, "primary_conninfo = '%s'", conn_buf);
 
+}
+
+
+/**
+ * check_server_version()
+ *
+ * Verify that the server is MIN_SUPPORTED_VERSION_NUM or later
+ *
+ * PGconn *conn:
+ *   the connection to check
+ *
+ * char *server_type:
+ *   either "master" or "standby"; used to format error message
+ *
+ * bool exit_on_error:
+ *   exit if reported server version is too low; optional to enable some callers
+ *   to perform additional cleanup
+ *
+ * char *server_version_string
+ *   passed to get_server_version(), which will place the human-readble
+ *   server version string there (e.g. "9.4.0")
+ */
+static int
+check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string)
+{
+	int			server_version_num = 0;
+
+	server_version_num = get_server_version(conn, server_version_string);
+	if(server_version_num < MIN_SUPPORTED_VERSION_NUM)
+	{
+		if (server_version_num > 0)
+			log_err(_("%s needs %s to be PostgreSQL %s or better\n"),
+					progname,
+					server_type,
+					MIN_SUPPORTED_VERSION
+				);
+
+		if(exit_on_error == true)
+		{
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		return -1;
+	}
+
+	return server_version_num;
 }
