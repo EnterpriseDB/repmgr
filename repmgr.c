@@ -2365,6 +2365,22 @@ check_master_config(PGconn *conn, bool exit_on_error)
 		config_ok = false;
 	}
 
+	i = guc_set_typed(conn, "max_wal_senders", ">", "0", "integer");
+	if (i == 0 || i == -1)
+	{
+		if (i == 0)
+			log_err(_("%s needs parameter 'max_wal_senders' to be set to be at least 1\n"),
+					progname);
+
+		if(exit_on_error == true)
+		{
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		config_ok = false;
+	}
+
 	return config_ok;
 }
 
