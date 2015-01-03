@@ -2277,6 +2277,8 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
  * check_master_config()
  *
  * Perform sanity check on master configuration
+ *
+ * TODO: check replication connection is possbile
  */
 static bool
 check_master_config(PGconn *conn, bool exit_on_error)
@@ -2290,7 +2292,7 @@ check_master_config(PGconn *conn, bool exit_on_error)
 	is_standby_retval = is_standby(conn);
 	if (is_standby_retval)
 	{
-		log_err(_(is_standby_retval == 1 ? "The command should clone a primary node\n" :
+		log_err(_(is_standby_retval == 1 ? "The specified node is in standby state and cannot be used as a primary\n" :
 				  "Connection to node lost!\n"));
 
 		if(exit_on_error == true)
@@ -2374,6 +2376,7 @@ static void
 do_check_master_config(void)
 {
 	PGconn	   *conn;
+	bool		config_ok;
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
@@ -2382,7 +2385,7 @@ do_check_master_config(void)
 	values[1] = runtime_options.masterport;
 	keywords[2] = "dbname";
 	values[2] = runtime_options.dbname;
-	printf("%s %s\n", 	values[0], values[1]);
+
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("%s connecting to master database\n"), progname);
 	conn = establish_db_connection_by_params(keywords, values, true);
@@ -2391,7 +2394,12 @@ do_check_master_config(void)
 	log_info(_("%s connected to master, checking its state\n"), progname);
 	check_server_version(conn, "master", false, NULL);
 
-	check_master_config(conn, false);
+	config_ok = check_master_config(conn, false);
+
+	if(config_ok == true)
+	{
+		puts(_("No master configuration problems found"));
+	}
 
 	PQfinish(conn);
 }
