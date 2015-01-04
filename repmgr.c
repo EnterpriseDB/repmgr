@@ -846,10 +846,6 @@ do_standby_clone(void)
 
 	char		master_data_directory[MAXFILENAME];
 	char		local_data_directory[MAXFILENAME];
-	char		master_xlog_directory[MAXFILENAME];
-	char		local_xlog_directory[MAXFILENAME];
-	char		master_stats_temp_directory[MAXFILENAME];
-	char		local_stats_temp_directory[MAXFILENAME];
 
 	char		master_config_file[MAXFILENAME] = "";
 	char		local_config_file[MAXFILENAME] = "";
@@ -867,6 +863,8 @@ do_standby_clone(void)
 	 * dest_dir is set and the master have tablespace, repmgr will stop
 	 * because it is more complex to remap the path for the tablespaces and it
 	 * does not look useful at the moment
+	 *
+	 * XXX test_mode a bit of a misnomer
 	 */
 	if (runtime_options.dest_dir[0])
 	{
@@ -949,12 +947,15 @@ do_standby_clone(void)
 	log_info(_("Successfully connected to primary. Current installation size is %s\n"),
 			 cluster_size);
 
-	// ZZZZZZZZZZZZ
-
 	/*
 	 * Obtain data directory and configuration file locations
 	 * We'll check to see whether the configuration files are in the data
 	 * directory - if not we'll have to copy them via SSH
+	 *
+	 * XXX: if configuration files are symlinks to targets outside the data
+	 * directory, they won't be copied by pg_basebackup, but we can't tell
+	 * this from the below query; we'll probably need to add a check for their
+	 * presence and if missing force copy by SSH
 	 */
 	sqlquery_snprintf(sqlquery,
 					  "  WITH dd AS ("
@@ -965,7 +966,7 @@ do_standby_clone(void)
 					  "    SELECT ps.name, ps.setting,"
 					  "           ps.setting ~ ('^' || dd.setting) AS in_data_dir"
 					  "      FROM dd, pg_settings ps"
-					  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file', 'stats_temp_directory')"
+					  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file')"
 					  "  ORDER BY 1"
 		);
 	log_debug(_("standby clone: %s\n"), sqlquery);
@@ -979,8 +980,8 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* We need all 5 parameters, and they can be retrieved only by superusers */
-	if (PQntuples(res) != 5)
+	/* We need all 4 parameters, and they can be retrieved only by superusers */
+	if (PQntuples(res) != 4)
 	{
 		log_err("%s: STANDBY CLONE should be run by a SUPERUSER\n", progname);
 		PQclear(res);
@@ -1019,35 +1020,17 @@ do_standby_clone(void)
 				strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXFILENAME);
 			}
 		}
-		else if (strcmp(PQgetvalue(res, i, 0), "stats_temp_directory") == 0)
-		{
-			strncpy(master_stats_temp_directory, PQgetvalue(res, i, 1),
-					MAXFILENAME);
-		}
 		else
 			log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
 	}
 	PQclear(res);
 
-	// ZZZZZZZZZZZZ
-
-
-	/*
-	 * XXX	master_xlog_directory should be discovered from master
-	 * configuration but it is not possible via SQL. We need to use a command
-	 * via ssh
-	 */
-	maxlen_snprintf(master_xlog_directory, "%s/pg_xlog", master_data_directory);
 	if (test_mode)
 	{
 		strncpy(local_data_directory, runtime_options.dest_dir, MAXFILENAME);
 		strncpy(local_config_file, runtime_options.dest_dir, MAXFILENAME);
 		strncpy(local_hba_file, runtime_options.dest_dir, MAXFILENAME);
 		strncpy(local_ident_file, runtime_options.dest_dir, MAXFILENAME);
-		maxlen_snprintf(local_stats_temp_directory, "%s/pg_stat_tmp",
-						runtime_options.dest_dir);
-		maxlen_snprintf(local_xlog_directory, "%s/pg_xlog",
-						runtime_options.dest_dir);
 	}
 	else
 	{
@@ -1055,9 +1038,6 @@ do_standby_clone(void)
 		strncpy(local_config_file, master_config_file, MAXFILENAME);
 		strncpy(local_hba_file, master_hba_file, MAXFILENAME);
 		strncpy(local_ident_file, master_ident_file, MAXFILENAME);
-		strncpy(local_stats_temp_directory, master_stats_temp_directory,
-				MAXFILENAME);
-		strncpy(local_xlog_directory, master_xlog_directory, MAXFILENAME);
 	}
 
 	log_notice(_("Starting backup...\n"));
