@@ -56,7 +56,7 @@
 static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
-				  char *local_path, bool is_directory);
+				  char *local_path);
 static int  run_basebackup(void);
 static bool check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
@@ -113,7 +113,6 @@ main(int argc, char **argv)
 		{"keep-history", required_argument, NULL, 'k'},
 		{"force", no_argument, NULL, 'F'},
 		{"wait", no_argument, NULL, 'W'},
-		{"ignore-rsync-warning", no_argument, NULL, 'I'},
 		{"min-recovery-apply-delay", required_argument, NULL, 'r'},
 		{"verbose", no_argument, NULL, 'v'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
@@ -1109,8 +1108,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master config file '%s'\n"), master_config_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_config_file, local_config_file,
-								  false);
+								  master_config_file, local_config_file);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master config file '%s'\n"),
@@ -1123,8 +1121,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_hba_file, local_hba_file,
-								  false);
+								  master_hba_file, local_hba_file);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master hba file '%s'\n"),
@@ -1137,8 +1134,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_ident_file, local_ident_file,
-								  false);
+								  master_ident_file, local_ident_file);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master ident file '%s'\n"),
@@ -1155,7 +1151,7 @@ do_standby_clone(void)
 
 stop_backup:
 
-	/* If the rsync failed then exit */
+	/* If the backup failed then exit */
 	if (r != 0)
 	{
 		log_err(_("Unable to take a base backup of the primary server\n"));
@@ -1630,8 +1626,7 @@ do_witness_create(void)
 	PQclear(res);
 
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-						  master_hba_file, runtime_options.dest_dir,
-						  false);
+						  master_hba_file, runtime_options.dest_dir);
 	if (r != 0)
 	{
 		log_err(_("Can't rsync the pg_hba.conf file from master\n"));
@@ -1749,7 +1744,6 @@ help(const char *progname)
 			 "                                      (default: postgres)\n"));
 	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
 			 "                                      wal_keep_segments (default: 5000)\n"));
-	printf(_("  -I, --ignore-rsync-warning          ignore rsync partial transfer warning\n"));
 	printf(_("  -k, --keep-history=VALUE            keeps indicated number of days of\n" \
 			 "                                      history\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations\n" \
@@ -1868,7 +1862,7 @@ test_ssh_connection(char *host, char *remote_user)
 
 static int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
-				  char *local_path, bool is_directory)
+				  char *local_path)
 {
 	char		script[MAXLEN];
 	char		rsync_flags[MAXLEN];
@@ -1894,50 +1888,16 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		maxlen_snprintf(host_string, "%s@%s", remote_user, host);
 	}
 
-	if (is_directory)
-	{
-		strcat(rsync_flags,
-			   " --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_control --exclude=*.pid");
-		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
-						rsync_flags, host_string, remote_path, local_path);
-	}
-	else
-	{
-		maxlen_snprintf(script, "rsync %s %s:%s %s",
-						rsync_flags, host_string, remote_path, local_path);
-	}
+
+	maxlen_snprintf(script, "rsync %s %s:%s %s",
+					rsync_flags, host_string, remote_path, local_path);
 
 	log_info(_("rsync command line:  '%s'\n"), script);
 
 	r = system(script);
 
-	/*
-	 * If we are transfering a directory (data directory, tablespace
-	 * directories) then we can ignore some rsync warnings.  If we get some of
-	 * those errors, we treat them as 0 only if passed the
-	 * --ignore-rsync-warning command-line option.
-	 *
-	 * List of ignorable rsync errors: 24	  Partial transfer due to vanished
-	 * source files
-	 */
-	if ((WEXITSTATUS(r) == 24) && is_directory)
-	{
-		if (runtime_options.ignore_rsync_warn)
-		{
-			r = 0;
-			log_info(_("rsync partial transfer warning ignored\n"));
-		}
-		else
-			log_warning(_("rsync completed with return code 24: "
-					   "\"Partial transfer due to vanished source files\".\n"
-						  "This can happen because of normal operation "
-						  "on the master server, but it may indicate an "
-					 "unexpected change during cloning.  If you are certain "
-						  "no changes were made to the master, try cloning "
-				  "again using \"repmgr --force --ignore-rsync-warning\"."));
-	}
 	if (r != 0)
-		log_err(_("Can't rsync from remote file or directory (%s:%s)\n"),
+		log_err(_("Can't rsync from remote file (%s:%s)\n"),
 				host_string, remote_path);
 
 	return r;
