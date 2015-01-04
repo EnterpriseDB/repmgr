@@ -841,6 +841,7 @@ do_standby_clone(void)
 	int			i;
 	bool		flag_success = false;
 	bool		test_mode = false;
+	bool		config_file_copy_required = false;
 
 	char		tblspc_dir[MAXFILENAME];
 
@@ -851,12 +852,14 @@ do_standby_clone(void)
 	char		master_stats_temp_directory[MAXFILENAME];
 	char		local_stats_temp_directory[MAXFILENAME];
 
-	char		master_config_file[MAXFILENAME];
-	char		local_config_file[MAXFILENAME];
-	char		master_hba_file[MAXFILENAME];
-	char		local_hba_file[MAXFILENAME];
-	char		master_ident_file[MAXFILENAME];
-	char		local_ident_file[MAXFILENAME];
+	char		master_config_file[MAXFILENAME] = "";
+	char		local_config_file[MAXFILENAME] = "";
+
+	char		master_hba_file[MAXFILENAME] = "";
+	char		local_hba_file[MAXFILENAME] = "";
+
+	char		master_ident_file[MAXFILENAME] = "";
+	char		local_ident_file[MAXFILENAME] = "";
 
 	int			master_version_num = 0;
 
@@ -913,6 +916,7 @@ do_standby_clone(void)
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		if (test_mode)
@@ -945,6 +949,89 @@ do_standby_clone(void)
 		exit(ERR_DB_QUERY);
 	log_info(_("Successfully connected to primary. Current installation size is %s\n"),
 			 cluster_size);
+
+	// ZZZZZZZZZZZZ
+
+	/*
+	 * Obtain data directory and configuration file locations
+	 * We'll check to see whether the configuration files are in the data
+	 * directory - if not we'll have to copy them via SSH
+	 */
+	sqlquery_snprintf(sqlquery,
+					  "  WITH dd AS ("
+					  "    SELECT setting"
+					  "      FROM pg_settings"
+					  "     WHERE name = 'data_directory'"
+					  "  )"
+					  "    SELECT ps.name, ps.setting,"
+					  "           ps.setting ~ ('^' || dd.setting) AS in_data_dir"
+					  "      FROM dd, pg_settings ps"
+					  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file', 'stats_temp_directory')"
+					  "  ORDER BY 1"
+		);
+	log_debug(_("standby clone: %s\n"), sqlquery);
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Can't get info about data directory and configuration files: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* We need all 5 parameters, and they can be retrieved only by superusers */
+	if (PQntuples(res) != 5)
+	{
+		log_err("%s: STANDBY CLONE should be run by a SUPERUSER\n", progname);
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_debug(_("standby clone: %i tuples\n"), PQntuples(res));
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		if (strcmp(PQgetvalue(res, i, 0), "data_directory") == 0)
+		{
+			strncpy(master_data_directory, PQgetvalue(res, i, 1), MAXFILENAME);
+		}
+		else if (strcmp(PQgetvalue(res, i, 0), "config_file") == 0)
+		{
+			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
+			{
+				config_file_copy_required = true;
+				strncpy(master_config_file, PQgetvalue(res, i, 1), MAXFILENAME);
+			}
+		}
+		else if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
+		{
+			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
+			{
+				config_file_copy_required = true;
+				strncpy(master_hba_file, PQgetvalue(res, i, 1), MAXFILENAME);
+			}
+		}
+		else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
+		{
+			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
+			{
+				config_file_copy_required = true;
+				strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXFILENAME);
+			}
+		}
+		else if (strcmp(PQgetvalue(res, i, 0), "stats_temp_directory") == 0)
+		{
+			strncpy(master_stats_temp_directory, PQgetvalue(res, i, 1),
+					MAXFILENAME);
+		}
+		else
+			log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
+	}
+	PQclear(res);
+
+	// ZZZZZZZZZZZZ
+
 
 	/*
 	 * XXX	master_xlog_directory should be discovered from master
@@ -996,6 +1083,69 @@ do_standby_clone(void)
 	{
 		log_warning(_("standby clone: base backup failed\n"));
 		goto stop_backup;
+	}
+
+	/*
+	 * If configuration files were not in the data directory, we need to copy
+	 * them via SSH
+	 *
+	 * TODO: add option to place these files in the same location on the
+	 * standby server?
+	 */
+
+	if(config_file_copy_required == true)
+	{
+		log_notice(_("Copying configuration files from primary\n"));
+		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+		if (r != 0)
+		{
+			log_err(_("%s: Aborting, remote host %s is not reachable.\n"),
+					progname, runtime_options.host);
+			PQfinish(conn);
+			exit(ERR_BAD_SSH);
+		}
+
+		if(strlen(master_config_file))
+		{
+			log_info(_("standby clone: master config file '%s'\n"), master_config_file);
+			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+								  master_config_file, local_config_file,
+								  false);
+			if (r != 0)
+			{
+				log_warning(_("standby clone: failed copying master config file '%s'\n"),
+							master_config_file);
+				goto stop_backup;
+			}
+		}
+
+		if(strlen(master_hba_file))
+		{
+			log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
+			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+								  master_hba_file, local_hba_file,
+								  false);
+			if (r != 0)
+			{
+				log_warning(_("standby clone: failed copying master hba file '%s'\n"),
+							master_hba_file);
+				goto stop_backup;
+			}
+		}
+
+		if(strlen(master_ident_file))
+		{
+			log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
+			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+								  master_ident_file, local_ident_file,
+								  false);
+			if (r != 0)
+			{
+				log_warning(_("standby clone: failed copying master ident file '%s'\n"),
+							master_ident_file);
+				goto stop_backup;
+			}
+		}
 	}
 
 	// ZZZ possibly add sanity checks, e.g. that backup_label created?
