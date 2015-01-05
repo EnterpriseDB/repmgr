@@ -1061,6 +1061,7 @@ do_standby_clone(void)
 	if (r != 0)
 	{
 		log_warning(_("standby clone: base backup failed\n"));
+		retval = ERR_BAD_BASEBACKUP;
 		goto stop_backup;
 	}
 
@@ -1081,7 +1082,8 @@ do_standby_clone(void)
 			log_err(_("%s: Aborting, remote host %s is not reachable.\n"),
 					progname, runtime_options.host);
 			PQfinish(conn);
-			exit(ERR_BAD_SSH);
+			retval = ERR_BAD_SSH;
+			goto stop_backup;
 		}
 
 		if(strlen(master_config_file))
@@ -1093,6 +1095,7 @@ do_standby_clone(void)
 			{
 				log_warning(_("standby clone: failed copying master config file '%s'\n"),
 							master_config_file);
+				retval = ERR_BAD_SSH;
 				goto stop_backup;
 			}
 		}
@@ -1106,6 +1109,7 @@ do_standby_clone(void)
 			{
 				log_warning(_("standby clone: failed copying master hba file '%s'\n"),
 							master_hba_file);
+				retval = ERR_BAD_SSH;
 				goto stop_backup;
 			}
 		}
@@ -1119,6 +1123,7 @@ do_standby_clone(void)
 			{
 				log_warning(_("standby clone: failed copying master ident file '%s'\n"),
 							master_ident_file);
+				retval = ERR_BAD_SSH;
 				goto stop_backup;
 			}
 		}
@@ -1137,7 +1142,7 @@ stop_backup:
 		log_err(_("Unable to take a base backup of the primary server\n"));
 		log_warning(_("The destination directory (%s) will need to be cleaned up manually\n"),
 				local_data_directory);
-		exit(ERR_BAD_BASEBACKUP);
+		exit(retval);
 	}
 
 	log_notice(_("%s base backup of standby complete\n"), progname);
@@ -1157,7 +1162,8 @@ stop_backup:
 			log_notice("for example : /etc/init.d/postgresql start\n");
 		}
 	}
-	exit(r);
+
+	exit(retval);
 }
 
 
@@ -1882,6 +1888,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	return r;
 }
+
 
 static int
 run_basebackup()
