@@ -1182,14 +1182,18 @@ do_standby_promote(void)
 	int			r,
 				retval;
 	char		data_dir[MAXLEN];
-	char		recovery_file_path[MAXFILENAME];
-	char		recovery_done_path[MAXFILENAME];
+
+	int			i,
+				promote_check_timeout  = 60,
+				promote_check_interval = 2;
+	bool		promote_sucess = false;
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Verify that standby is a supported server version */
+	/* XXX verify that primary and standby are compatible versions? */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
 
 	check_server_version(conn, "standby", true, NULL);
@@ -1235,33 +1239,44 @@ do_standby_promote(void)
 	PQclear(res);
 	PQfinish(conn);
 
-	log_info(_("%s: Marking recovery done\n"), progname);
-	maxlen_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
-	maxlen_snprintf(recovery_done_path, "%s/%s", data_dir, RECOVERY_DONE_FILE);
-	rename(recovery_file_path, recovery_done_path);
-
 	/*
-	 * Restart and wait for the server to finish starting, so that the check
-	 * below will find an active server rather than one starting up.  This may
-	 * hang for up the default timeout (60 seconds).
+	 * Promote standby to master.
+	 *
+	 * `pg_ctl promote` returns immediately and has no -w option, so we
+	 * can't be sure when or if the promotion completes.
+	 * For now we'll poll the server until the default timeout (60 seconds)
 	 */
-	log_notice(_("%s: restarting server using %s/pg_ctl\n"), progname,
+	log_notice(_("%s: promoting server using %s/pg_ctl\n"), progname,
 			   options.pg_bindir);
-	maxlen_snprintf(script, "%s/pg_ctl %s -D %s -w -m fast restart",
-					options.pg_bindir, options.pgctl_options, data_dir);
+	maxlen_snprintf(script, "%s/pg_ctl -D %s promote",
+					options.pg_bindir, data_dir);
+
 	r = system(script);
 	if (r != 0)
 	{
-		log_err(_("Can't restart PostgreSQL server\n"));
+		log_err(_("Unable to promote server from standby to primary\n"));
 		exit(ERR_NO_RESTART);
 	}
 
 	/* reconnect to check we got promoted */
-	log_info(_("%s connecting to now restarted database\n"), progname);
+
+	log_info(_("%s reconnecting to promoted server\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
-	retval = is_standby(conn);
-	if (retval)
+
+	for(i = 0; i < promote_check_timeout; i += promote_check_interval)
 	{
+		retval = is_standby(conn);
+		if(!retval)
+		{
+			promote_sucess = true;
+			break;
+		}
+		sleep(promote_check_interval);
+	}
+
+	if (promote_sucess == false)
+	{
+		/* XXX exit with error? */
 		log_err(_(retval == 1 ?
 			  "%s: STANDBY PROMOTE failed, this is still a standby node.\n" :
 				  "%s: connection to node lost!\n"), progname);
