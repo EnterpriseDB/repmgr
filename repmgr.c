@@ -1193,7 +1193,6 @@ do_standby_promote(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Verify that standby is a supported server version */
-	/* XXX verify that primary and standby are compatible versions? */
 	log_info(_("%s connected to standby, checking its state\n"), progname);
 
 	check_server_version(conn, "standby", true, NULL);
