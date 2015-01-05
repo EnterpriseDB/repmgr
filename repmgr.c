@@ -1890,10 +1890,11 @@ run_basebackup()
 	int			r = 0;
 
 	maxlen_snprintf(script,
-					"%s/pg_basebackup -h %s -p %s -D %s -l \"repmgr base backup\" --write-recovery-conf",
+					"%s/pg_basebackup -h %s -p %s -U %s -D %s -l \"repmgr base backup\" --write-recovery-conf",
 					options.pg_bindir,
 					runtime_options.host,
 					runtime_options.masterport,
+					runtime_options.username,
 					runtime_options.dest_dir
 		);
 	log_info(_("Executing: '%s'\n"), script);
@@ -2364,7 +2365,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
  *
  * Perform sanity check on master configuration
  *
- * TODO: check replication connection is possbile
+ * TODO: check replication connection is possble
  */
 static bool
 check_master_config(PGconn *conn, bool exit_on_error)
@@ -2373,7 +2374,8 @@ check_master_config(PGconn *conn, bool exit_on_error)
 				is_standby_retval;
 	bool		config_ok = true;
 
-	/* ZZZ check user is qualified to perform base backup  */
+
+
 	/* Check we are cloning a primary node */
 	is_standby_retval = is_standby(conn);
 	if (is_standby_retval)
@@ -2389,6 +2391,8 @@ check_master_config(PGconn *conn, bool exit_on_error)
 
 		config_ok = false;
 	}
+
+	/* XXX check user is qualified to perform base backup  */
 
 	/* And check if it is well configured */
 	i = guc_set(conn, "wal_level", "=", "hot_standby");
@@ -2406,7 +2410,7 @@ check_master_config(PGconn *conn, bool exit_on_error)
 		config_ok = false;
 	}
 
-	/* ZZZ change this */
+	/* XXX we may need to modify this */
 	i = guc_set_typed(conn, "wal_keep_segments", ">=",
 					  runtime_options.wal_keep_segments, "integer");
 	if (i == 0 || i == -1)
