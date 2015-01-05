@@ -741,7 +741,7 @@ do_standby_register(void)
 	if (PQntuples(res) == 0)
 	{
 		/* schema doesn't exist */
-		log_err(_("Schema %s doesn't exists.\n"), repmgr_schema);
+		log_err(_("Schema %s doesn't exist.\n"), repmgr_schema);
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
