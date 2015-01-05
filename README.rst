@@ -1072,16 +1072,19 @@ Error codes
 When the repmgr or repmgrd program exits, it will set one of the
 following
 
-* SUCCESS 0:  Program ran successfully.
-* ERR_BAD_CONFIG 1:  One of the configuration checks the program makes failed.
-* ERR_BAD_RSYNC 2:  An rsync call made by the program returned an error.
-* ERR_STOP_BACKUP 3:  A ``pg_stop_backup()`` call made by the program didn't succeed.
-* ERR_NO_RESTART 4:  An attempt to restart a PostgreSQL instance failed.
-* ERR_NEEDS_XLOG 5:  Could note create the ``pg_xlog`` directory when cloning.
-* ERR_DB_CON 6:  Error when trying to connect to a database.
-* ERR_DB_QUERY 7:  Error executing a database query.
-* ERR_PROMOTED 8:  Exiting program because the node has been promoted to master.
-* ERR_BAD_PASSWORD 9:  Password used to connect to a database was rejected.
+* SUCCESS (0)             Program ran successfully.
+* ERR_BAD_CONFIG (1)      One of the configuration checks the program makes failed.
+* ERR_BAD_RSYNC (2)       An rsync call made by the program returned an error.
+* ERR_NO_RESTART (4)      An attempt to restart a PostgreSQL instance failed.
+* ERR_DB_CON (6)          Error when trying to connect to a database.
+* ERR_DB_QUERY (7)        Error executing a database query.
+* ERR_PROMOTED (8)        Exiting program because the node has been promoted to master.
+* ERR_BAD_PASSWORD (9)    Password used to connect to a database was rejected.
+* ERR_STR_OVERFLOW (10)   String overflow error
+* ERR_FAILOVER_FAIL (11)  Error encountered during failover (repmgrd only)
+* ERR_BAD_SSH (12)        Error when connecting to remote host via SSH
+* ERR_SYS_FAILURE (13)    Error when forking (repmgrd only)
+* ERR_BAD_BASEBACKUP (14) Error when executing pg_basebackup
 
 License and Contributions
 =========================

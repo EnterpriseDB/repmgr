@@ -1137,7 +1137,7 @@ stop_backup:
 		log_err(_("Unable to take a base backup of the primary server\n"));
 		log_warning(_("The destination directory (%s) will need to be cleaned up manually\n"),
 				local_data_directory);
-		exit(ERR_BAD_RSYNC);
+		exit(ERR_BAD_BASEBACKUP);
 	}
 
 	log_notice(_("%s base backup of standby complete\n"), progname);
