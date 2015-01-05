@@ -944,7 +944,7 @@ do_standby_clone(void)
 	cluster_size = get_cluster_size(conn);
 	if (cluster_size == NULL)
 		exit(ERR_DB_QUERY);
-	log_info(_("Successfully connected to primary. Current installation size is %s\n"),
+	log_info(_("Successfully connected to master. Current installation size is %s\n"),
 			 cluster_size);
 
 	/*
@@ -1075,7 +1075,7 @@ do_standby_clone(void)
 
 	if(config_file_copy_required == true)
 	{
-		log_notice(_("Copying configuration files from primary\n"));
+		log_notice(_("Copying configuration files from master\n"));
 		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
 		if (r != 0)
 		{
@@ -1139,7 +1139,7 @@ stop_backup:
 	/* If the backup failed then exit */
 	if (r != 0)
 	{
-		log_err(_("Unable to take a base backup of the primary server\n"));
+		log_err(_("Unable to take a base backup of the master server\n"));
 		log_warning(_("The destination directory (%s) will need to be cleaned up manually\n"),
 				local_data_directory);
 		exit(retval);
@@ -1213,7 +1213,7 @@ do_standby_promote(void)
 								 options.cluster_name, &old_master_id, NULL);
 	if (old_master_conn != NULL)
 	{
-		log_err(_("There is a master already in this cluster\n"));
+		log_err(_("This cluster already has an active master server\n"));
 		PQfinish(old_master_conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
@@ -1253,7 +1253,7 @@ do_standby_promote(void)
 	r = system(script);
 	if (r != 0)
 	{
-		log_err(_("Unable to promote server from standby to primary\n"));
+		log_err(_("Unable to promote server from standby to master\n"));
 		exit(ERR_NO_RESTART);
 	}
 
@@ -1482,7 +1482,7 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	log_info(_("Successfully connected to primary.\n"));
+	log_info(_("Successfully connected to master.\n"));
 
 	r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
 	if (r != 0)
@@ -2401,7 +2401,7 @@ check_master_config(PGconn *conn, bool exit_on_error)
 	is_standby_retval = is_standby(conn);
 	if (is_standby_retval)
 	{
-		log_err(_(is_standby_retval == 1 ? "The specified node is in standby state and cannot be used as a primary\n" :
+		log_err(_(is_standby_retval == 1 ? "The specified node is in standby state and cannot be used as a master\n" :
 				  "Connection to node lost!\n"));
 
 		if(exit_on_error == true)
