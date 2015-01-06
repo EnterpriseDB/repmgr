@@ -1,6 +1,6 @@
 /*
  * repmgr.c - Command interpreter for the repmgr
- * Copyright (C) 2ndQuadrant, 2010-2014
+ * Copyright (C) 2ndQuadrant, 2010-2015
  *
  * This module is a command-line utility to easily setup a cluster of
  * hot standby servers for an HA environment
@@ -112,6 +112,7 @@ main(int argc, char **argv)
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
 		{"min-recovery-apply-delay", required_argument, NULL, 'r'},
 		{"verbose", no_argument, NULL, 'v'},
+		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -211,6 +212,9 @@ main(int argc, char **argv)
 				break;
 			case 'v':
 				runtime_options.verbose = true;
+				break;
+			case 1:
+				runtime_options.initdb_no_pwprompt = true;
 				break;
 			default:
 				usage();
@@ -1716,8 +1720,10 @@ do_witness_create(void)
 	if (!runtime_options.superuser[0])
 		strncpy(runtime_options.superuser, "postgres", MAXLEN);
 
-	sprintf(script, "%s/pg_ctl %s -D %s init -o \"-W -U %s\"", options.pg_bindir,
-			options.pgctl_options, runtime_options.dest_dir, runtime_options.superuser);
+	sprintf(script, "%s/pg_ctl %s -D %s init -o \"%s-U %s\"", options.pg_bindir,
+			options.pgctl_options, runtime_options.dest_dir,
+			runtime_options.initdb_no_pwprompt ? "" : "-W ",
+			runtime_options.superuser);
 	log_info("Initialize cluster for witness: %s.\n", script);
 
 	r = system(script);
@@ -1824,7 +1830,7 @@ do_witness_create(void)
 		if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
 			strcpy(master_hba_file, PQgetvalue(res, i, 1));
 		else
-			log_err(_("uknown parameter: %s"), PQgetvalue(res, i, 0));
+			log_err(_("unknown parameter: %s"), PQgetvalue(res, i, 0));
 	}
 	PQclear(res);
 
@@ -1954,8 +1960,8 @@ help(const char *progname)
 	printf(_("  -F, --force                         force potentially dangerous operations\n" \
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
-	printf(_("	-r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)"));
-
+	printf(_("  -r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)\n"));
+	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
 	printf(_("another node and then exits.\n\n"));
 	printf(_("COMMANDS:\n"));

@@ -160,6 +160,9 @@ Master setup
         conninfo='host=repmgr_node1 user=repmgr_usr dbname=repmgr_db'
         pg_bindir=/path/to/postgres/bin
 
+   (For an annotated `repmgr.conf` file, see `repmgr.conf.sample` in the
+   repository's root directory).
+
 3. Register the master node with `repmgr`:
 
         $ repmgr -f $HOME/repmgr/repmgr.conf --verbose master register

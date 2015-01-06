@@ -545,7 +545,7 @@ You could now register the standby by typing on "node2"::
 
 However, you can instead start repmgrd::
 
-  repmgrd -f /var/lib/pgsql/repmgr/repmgr.conf --verbose > /var/lib/pgsql/repmgr/repmgr.log 2>&1
+  repmgrd -f /var/lib/pgsql/repmgr/repmgr.conf --daemonize --verbose > /var/lib/pgsql/repmgr/repmgr.log 2>&1
 
 Which will automatically register your standby system.  And eventually
 you need repmgrd running anyway, to save lag monitoring information.
@@ -1015,6 +1015,8 @@ The output from this program looks like this::
     --verbose                 output verbose activity information
     --monitoring-history      track advance or lag of the replication in every standby in repl_monitor
     -f, --config-file=PATH    path to the configuration file
+    -d, --daemonize           detach process from foregroun
+    -p, --pid-file=PATH       write a PID file
 
   repmgrd monitors a cluster of servers.
 
@@ -1085,7 +1087,7 @@ License and Contributions
 =========================
 
 repmgr is licensed under the GPL v3.  All of its code and documentation is
-Copyright 2010-2014, 2ndQuadrant Limited.  See the files COPYRIGHT and LICENSE for
+Copyright 2010-2015, 2ndQuadrant Limited.  See the files COPYRIGHT and LICENSE for
 details.
 
 Main sponsorship of repmgr has been from 2ndQuadrant customers.
