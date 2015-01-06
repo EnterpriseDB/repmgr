@@ -832,7 +832,7 @@ do_standby_clone(void)
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	const char *cluster_size;
+	char		cluster_size[MAXLEN];
 
 	int			r = 0,
 				retval = SUCCESS;
@@ -941,9 +941,9 @@ do_standby_clone(void)
 	PQclear(res);
 
 
-	cluster_size = get_cluster_size(conn);
-	if (cluster_size == NULL)
+	if(get_cluster_size(conn, cluster_size) == false)
 		exit(ERR_DB_QUERY);
+
 	log_info(_("Successfully connected to master. Current installation size is %s\n"),
 			 cluster_size);
 

@@ -266,11 +266,10 @@ guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 }
 
 
-const char *
-get_cluster_size(PGconn *conn)
+bool
+get_cluster_size(PGconn *conn, char *size)
 {
 	PGresult   *res;
-	const char *size = NULL;
 	char		sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(
@@ -283,14 +282,15 @@ get_cluster_size(PGconn *conn)
 	{
 		log_err(_("Get cluster size PQexec failed: %s"),
 				PQerrorMessage(conn));
-	}
-	else
-	{
-		size = PQgetvalue(res, 0, 0);
+
+		PQclear(res);
+		return false;
 	}
 
+	strncpy(size, PQgetvalue(res, 0, 0), MAXLEN);
+
 	PQclear(res);
-	return size;
+	return true;
 }
 
 
@@ -307,10 +307,12 @@ get_data_directory(PGconn *conn, char *data_directory)
 	log_debug(_("get_data_directory(): %s\n"), sqlquery);
 
 	res = PQexec(conn, sqlquery);
+
 	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) != 1)
 	{
 		log_err(_("get_data_directory() - PQexec failed: %s"),
 				PQerrorMessage(conn));
+		PQclear(res);
 		return false;
 	}
 
