@@ -1171,8 +1171,6 @@ static void
 do_standby_promote(void)
 {
 	PGconn	   *conn;
-	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN];
 
 	char		script[MAXLEN];
 
@@ -1187,6 +1185,7 @@ do_standby_promote(void)
 				promote_check_timeout  = 60,
 				promote_check_interval = 2;
 	bool		promote_sucess = false;
+	bool        res;
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to standby database\n"), progname);
@@ -1221,22 +1220,15 @@ do_standby_promote(void)
 
 	log_notice(_("%s: Promoting standby\n"), progname);
 
-	/* Get the data directory full path and the last subdirectory */
-	sqlquery_snprintf(sqlquery, "SELECT setting "
-					  " FROM pg_settings WHERE name = 'data_directory'");
-	log_debug(_("standby promote: %s\n"), sqlquery);
-	res = PQexec(conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	/* Get the data directory */
+	res = get_data_directory(conn, data_dir);
+	PQfinish(conn);
+
+	if (res == false)
 	{
-		log_err(_("Can't get info about data directory: %s\n"),
-				PQerrorMessage(conn));
-		PQclear(res);
-		PQfinish(conn);
+		log_err(_("Unable to determine data directory\n"));
 		exit(ERR_BAD_CONFIG);
 	}
-	strcpy(data_dir, PQgetvalue(res, 0, 0));
-	PQclear(res);
-	PQfinish(conn);
 
 	/*
 	 * Promote standby to master.
@@ -1245,10 +1237,10 @@ do_standby_promote(void)
 	 * can't be sure when or if the promotion completes.
 	 * For now we'll poll the server until the default timeout (60 seconds)
 	 */
-	log_notice(_("%s: promoting server using %s/pg_ctl\n"), progname,
-			   options.pg_bindir);
 	maxlen_snprintf(script, "%s/pg_ctl -D %s promote",
 					options.pg_bindir, data_dir);
+	log_notice(_("%s: promoting server using '%s'\n"), progname,
+			   script);
 
 	r = system(script);
 	if (r != 0)
@@ -1294,8 +1286,7 @@ static void
 do_standby_follow(void)
 {
 	PGconn	   *conn;
-	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN];
+
 	char		script[MAXLEN];
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
@@ -1310,6 +1301,8 @@ do_standby_follow(void)
 
 	char		standby_version[MAXVERSIONSTR];
 	int			standby_version_num = 0;
+
+	bool        res;
 
 
 	/* We need to connect to check configuration */
@@ -1401,21 +1394,14 @@ do_standby_follow(void)
 	log_info(_("%s Changing standby's master\n"), progname);
 
 	/* Get the data directory full path */
-	sqlquery_snprintf(sqlquery, "SELECT setting "
-					  " FROM pg_settings WHERE name = 'data_directory'");
-	log_debug(_("standby follow: %s\n"), sqlquery);
-	res = PQexec(conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	res = get_data_directory(conn, data_dir);
+	PQfinish(conn);
+
+	if (res == false)
 	{
-		log_err(_("Can't get info about data directory: %s\n"),
-				PQerrorMessage(conn));
-		PQclear(res);
-		PQfinish(conn);
+		log_err(_("Unable to determine data directory\n"));
 		exit(ERR_BAD_CONFIG);
 	}
-	strcpy(data_dir, PQgetvalue(res, 0, 0));
-	PQclear(res);
-	PQfinish(conn);
 
 	/* write the recovery.conf file */
 	if (!create_recovery_file(data_dir))
@@ -1424,10 +1410,14 @@ do_standby_follow(void)
 	/* Finally, restart the service */
 	maxlen_snprintf(script, "%s/pg_ctl %s -w -D %s -m fast restart",
 					options.pg_bindir, options.pgctl_options, data_dir);
+
+	log_notice(_("%s: restarting server using '%s'\n"), progname,
+			   script);
+
 	r = system(script);
 	if (r != 0)
 	{
-		log_err(_("Can't restart service\n"));
+		log_err(_("Can't restart server\n"));
 		exit(ERR_NO_RESTART);
 	}
 

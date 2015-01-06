@@ -293,6 +293,35 @@ get_cluster_size(PGconn *conn)
 	return size;
 }
 
+
+bool
+get_data_directory(PGconn *conn, char *data_directory)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(sqlquery,
+					  "SELECT setting "
+					  " FROM pg_settings WHERE name = 'data_directory'");
+
+	log_debug(_("get_data_directory(): %s\n"), sqlquery);
+
+	res = PQexec(conn, sqlquery);
+	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) != 1)
+	{
+		log_err(_("get_data_directory() - PQexec failed: %s"),
+				PQerrorMessage(conn));
+		return false;
+	}
+
+	strncpy(data_directory, PQgetvalue(res, 0, 0), MAXLEN);
+	log_debug(_("get_data_directory(): returned value is '%s'\n"), data_directory);
+	PQclear(res);
+
+	return true;
+}
+
+
 /*
  * get a connection to master by reading repl_nodes, creating a connection
  * to each node (one at a time) and finding if it is a master or a standby

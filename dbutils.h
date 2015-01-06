@@ -30,14 +30,17 @@ PGconn *establish_db_connection_by_params(const char *keywords[],
 int			is_standby(PGconn *conn);
 int			is_witness(PGconn *conn, char *schema, char *cluster, int node_id);
 bool		is_pgup(PGconn *conn, int timeout);
-int         get_server_version(PGconn *conn, char *server_version);
-int guc_set(PGconn *conn, const char *parameter, const char *op,
-		const char *value);
-int guc_set_typed(PGconn *conn, const char *parameter, const char *op,
+int			get_server_version(PGconn *conn, char *server_version);
+const char *get_cluster_size(PGconn *conn);
+bool		get_data_directory(PGconn *conn, char *data_directory);
+
+int			guc_set(PGconn *conn, const char *parameter, const char *op,
+			const char *value);
+int			guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 			  const char *value, const char *datatype);
 
-const char *get_cluster_size(PGconn *conn);
-PGconn *get_master_connection(PGconn *standby_conn, char *schema, char *cluster,
+
+PGconn	   *get_master_connection(PGconn *standby_conn, char *schema, char *cluster,
 					  int *master_id, char *master_conninfo_out);
 
 int			wait_connection_availability(PGconn *conn, long long timeout);
