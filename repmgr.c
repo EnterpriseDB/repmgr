@@ -856,8 +856,6 @@ do_standby_clone(void)
 	char		master_ident_file[MAXFILENAME] = "";
 	char		local_ident_file[MAXFILENAME] = "";
 
-	int			master_version_num = 0;
-
 	/*
 	 * if dest_dir has been provided, we copy everything in the same path if
 	 * dest_dir is set and the master have tablespace, repmgr will stop
@@ -885,7 +883,7 @@ do_standby_clone(void)
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	master_version_num = check_server_version(conn, "master", true, NULL);
+	check_server_version(conn, "master", true, NULL);
 
 	check_master_config(conn, true);
 
