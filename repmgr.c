@@ -889,19 +889,10 @@ do_standby_clone(void)
 
 	check_master_config(conn, true);
 
-	/*
-	 * Check if the tablespace locations exists and that we can write to them.
-	 */
-	if (master_version_num < 90200)
-		sqlquery_snprintf(sqlquery,
-						  "SELECT spclocation "
-						  "  FROM pg_tablespace "
-						  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
-	else
-		sqlquery_snprintf(sqlquery,
-						  "SELECT pg_tablespace_location(oid) spclocation "
-						  "  FROM pg_tablespace "
-						  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
+	sqlquery_snprintf(sqlquery,
+					  "SELECT pg_tablespace_location(oid) spclocation "
+					  "  FROM pg_tablespace "
+					  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
 
 	log_debug("standby clone: %s\n", sqlquery);
 

@@ -48,7 +48,7 @@
 const XLogRecPtr InvalidXLogRecPtr = {0, 0};
 #endif
 
-#if PG_VERSION_NUM >= 90300
+
 #define XLAssign(a, b) \
 		a = b
 
@@ -57,15 +57,7 @@ const XLogRecPtr InvalidXLogRecPtr = {0, 0};
 
 #define XLByteLT(a, b) \
 		(a < b)
-#else
-#define XLAssign(a, b) \
-		a.xlogid  = b.xlogid; \
-		a.xrecoff = b.xrecoff
 
-#define XLAssignValue(a, uxlogid, uxrecoff) \
-		a.xlogid = uxlogid; \
-		a.xrecoff = uxrecoff
-#endif
 
 
 /*
