@@ -33,6 +33,7 @@ typedef struct
 	char		node_name[MAXLEN];
 	char		promote_command[MAXLEN];
 	char		follow_command[MAXLEN];
+	char		demote_command[MAXLEN];
 	char		loglevel[MAXLEN];
 	char		logfacility[MAXLEN];
 	char		rsync_options[QUERY_STR_LEN];
@@ -47,7 +48,7 @@ typedef struct
 	int			retry_promote_interval_secs;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0 }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0 }
 
 void		parse_config(const char *config_file, t_configuration_options * options);
 void		parse_line(char *buff, char *name, char *value);

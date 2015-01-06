@@ -169,6 +169,7 @@ main(int argc, char **argv)
 	};
 
 	int			optindex;
+    int         r;
 	int			c,
 				ret;
 	bool		daemonize = false;
@@ -372,6 +373,21 @@ main(int argc, char **argv)
 						/*
 						 * XXX May we do something more verbose ?
 						 */
+                        log_debug(_("demote command is: \"%s\"\n"), local_options.demote_command);
+
+                        if (log_type == REPMGR_STDERR && *local_options.logfile)
+                        {
+                            fflush(stderr);
+                        }
+
+                        r = system(local_options.demote_command);
+                        if (r != 0)
+                        {
+                            log_err(_("%s: demote command failed. You could check and try it manually.\n"),
+                                    progname);
+                            terminate(ERR_BAD_CONFIG);
+                        }
+
 						terminate(1);
 					}
 
