@@ -32,7 +32,7 @@ int			is_witness(PGconn *conn, char *schema, char *cluster, int node_id);
 bool		is_pgup(PGconn *conn, int timeout);
 int			get_server_version(PGconn *conn, char *server_version);
 bool		get_cluster_size(PGconn *conn, char *size);
-bool		get_data_directory(PGconn *conn, char *data_directory);
+bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 
 int			guc_set(PGconn *conn, const char *parameter, const char *op,
 			const char *value);

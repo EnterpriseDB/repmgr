@@ -1185,7 +1185,7 @@ do_standby_promote(void)
 				promote_check_timeout  = 60,
 				promote_check_interval = 2;
 	bool		promote_sucess = false;
-	bool        res;
+	bool        success;
 
 	/* We need to connect to check configuration */
 	log_info(_("%s connecting to standby database\n"), progname);
@@ -1221,10 +1221,10 @@ do_standby_promote(void)
 	log_notice(_("%s: Promoting standby\n"), progname);
 
 	/* Get the data directory */
-	res = get_data_directory(conn, data_dir);
+	success = get_pg_setting(conn, "data_directory", data_dir);
 	PQfinish(conn);
 
-	if (res == false)
+	if (success == false)
 	{
 		log_err(_("Unable to determine data directory\n"));
 		exit(ERR_BAD_CONFIG);
@@ -1302,7 +1302,7 @@ do_standby_follow(void)
 	char		standby_version[MAXVERSIONSTR];
 	int			standby_version_num = 0;
 
-	bool        res;
+	bool        success;
 
 
 	/* We need to connect to check configuration */
@@ -1394,10 +1394,10 @@ do_standby_follow(void)
 	log_info(_("%s Changing standby's master\n"), progname);
 
 	/* Get the data directory full path */
-	res = get_data_directory(conn, data_dir);
+	success = get_pg_setting(conn, "data_directory", data_dir);
 	PQfinish(conn);
 
-	if (res == false)
+	if (success == false)
 	{
 		log_err(_("Unable to determine data directory\n"));
 		exit(ERR_BAD_CONFIG);
@@ -1439,9 +1439,9 @@ do_witness_create(void)
 
 	int			r = 0,
 				retval;
-	int			i;
 
 	char		master_hba_file[MAXLEN];
+	bool        success;
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
@@ -1593,27 +1593,13 @@ do_witness_create(void)
 	}
 
 	/* Get the pg_hba.conf full path */
-	sqlquery_snprintf(sqlquery, "SELECT name, setting "
-					  "  FROM pg_settings "
-					  " WHERE name IN ('hba_file')");
-	log_debug(_("witness create: %s"), sqlquery);
-	res = PQexec(masterconn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	success = get_pg_setting(masterconn, "hba_file", master_hba_file);
+
+	if (success == false)
 	{
-		log_err(_("Can't get info about pg_hba.conf: %s\n"),
-				PQerrorMessage(masterconn));
-		PQclear(res);
-		PQfinish(masterconn);
+		log_err(_("Can't get info about pg_hba.conf\n"));
 		exit(ERR_DB_QUERY);
 	}
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
-			strcpy(master_hba_file, PQgetvalue(res, i, 1));
-		else
-			log_err(_("unknown parameter: %s"), PQgetvalue(res, i, 0));
-	}
-	PQclear(res);
 
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 						  master_hba_file, runtime_options.dest_dir);

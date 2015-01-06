@@ -278,7 +278,7 @@ get_cluster_size(PGconn *conn, char *size)
 					  "	 FROM pg_database ");
 
 	res = PQexec(conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("Get cluster size PQexec failed: %s"),
 				PQerrorMessage(conn));
@@ -295,32 +295,52 @@ get_cluster_size(PGconn *conn, char *size)
 
 
 bool
-get_data_directory(PGconn *conn, char *data_directory)
+get_pg_setting(PGconn *conn, const char *setting, char *output)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
+	int			i;
+	bool        success = true;
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT setting "
-					  " FROM pg_settings WHERE name = 'data_directory'");
+					  "SELECT name, setting "
+					  " FROM pg_settings WHERE name = '%s'",
+					  setting);
 
-	log_debug(_("get_data_directory(): %s\n"), sqlquery);
+	log_debug(_("get_pg_setting(): %s\n"), sqlquery);
 
 	res = PQexec(conn, sqlquery);
 
-	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) != 1)
+	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("get_data_directory() - PQexec failed: %s"),
+		log_err(_("get_pg_setting() - PQexec failed: %s"),
 				PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
 
-	strncpy(data_directory, PQgetvalue(res, 0, 0), MAXLEN);
-	log_debug(_("get_data_directory(): returned value is '%s'\n"), data_directory);
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		if (strcmp(PQgetvalue(res, i, 0), setting) == 0)
+		{
+			strncpy(output, PQgetvalue(res, i, 1), MAXLEN);
+			success = true;
+			break;
+		}
+		else
+		{
+			log_err(_("unknown parameter: %s"), PQgetvalue(res, i, 0));
+		}
+	}
+
+	if(success == true)
+	{
+		log_debug(_("get_pg_setting(): returned value is '%s'\n"), output);
+	}
+
 	PQclear(res);
 
-	return true;
+	return success;
 }
 
 
