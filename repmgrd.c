@@ -39,16 +39,6 @@
 #include "access/xlogdefs.h"
 #include "libpq/pqsignal.h"
 
-/*
- * we do not export InvalidXLogRecPtr so we need to define it
- * but since 9.3 it will be defined in xlogdefs.h which we include
- * so better to ask if it's defined to be future proof
- */
-#ifndef InvalidXLogRecPtr
-const XLogRecPtr InvalidXLogRecPtr = {0, 0};
-#endif
-
-
 #define XLAssign(a, b) \
 		a = b
 
