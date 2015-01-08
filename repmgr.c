@@ -1034,7 +1034,6 @@ do_standby_clone(void)
 
 	/* Check the directory could be used as a PGDATA dir */
 
-	/* ZZZ pg_basebackup can do this too, but better to check explicitly */
 	/* ZZZ maybe check tablespace, xlog dirs too */
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
@@ -1117,8 +1116,6 @@ do_standby_clone(void)
 			}
 		}
 	}
-
-	// ZZZ possibly add sanity checks, e.g. that backup_label created?
 
 stop_backup:
 
@@ -1729,7 +1726,6 @@ help(const char *progname)
 
 /*
  * Creates a recovery file for a standby.
- * ZZZ not needed with basebackup?
  */
 static bool
 create_recovery_file(const char *data_dir)
@@ -1890,8 +1886,8 @@ run_basebackup()
 	log_info(_("Executing: '%s'\n"), script);
 	r = system(script);
 
-	/* ZZZ remove this output
-     * As of 9.4, pg_basebackup et al only ever return 0 or 1
+	/*
+	 * As of 9.4, pg_basebackup et al only ever return 0 or 1
      */
 	log_debug(_("r = %i, %i\n"), r, WEXITSTATUS(r));
 
