@@ -839,7 +839,6 @@ do_standby_clone(void)
 				retval = SUCCESS;
 
 	int			i;
-	bool		flag_success = false;
 	bool		test_mode = false;
 	bool		config_file_copy_required = false;
 
@@ -1121,9 +1120,6 @@ do_standby_clone(void)
 
 	// ZZZ possibly add sanity checks, e.g. that backup_label created?
 
-	/* we success so far, flag that to allow a better HINT */
-	flag_success = true;
-
 stop_backup:
 
 	/* If the backup failed then exit */
@@ -1140,20 +1136,15 @@ stop_backup:
 
 	log_notice(_("%s base backup of standby complete\n"), progname);
 
-    /* ZZZ option to autostart? */
-	/* HINT message : what to do next ? */
-	if (flag_success)
+	log_notice("HINT: You can now start your postgresql server\n");
+	if (test_mode)
 	{
-		log_notice("HINT: You can now start your postgresql server\n");
-		if (test_mode)
-		{
-			log_notice(_("for example : pg_ctl -D %s start\n"),
-					   local_data_directory);
-		}
-		else
-		{
+		log_notice(_("for example : pg_ctl -D %s start\n"),
+				   local_data_directory);
+	}
+	else
+	{
 			log_notice("for example : /etc/init.d/postgresql start\n");
-		}
 	}
 
 	exit(retval);
