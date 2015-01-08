@@ -1782,7 +1782,6 @@ create_recovery_file(const char *data_dir)
 		}
 	}
 
-	/* FreeFile(recovery_file); */
 	fclose(recovery_file);
 
 	return true;
