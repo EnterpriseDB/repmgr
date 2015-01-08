@@ -62,6 +62,7 @@ static bool check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static bool copy_configuration(PGconn *masterconn, PGconn *witnessconn);
 static void write_primary_conninfo(char *line);
+static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_master_config(PGconn *conn, bool exit_on_error);
 
@@ -1134,6 +1135,9 @@ stop_backup:
 		exit(retval);
 	}
 
+	/* Finally, write the recovery.conf file */
+	create_recovery_file(local_data_directory);
+
 	log_notice(_("%s base backup of standby complete\n"), progname);
 
     /* ZZZ option to autostart? */
@@ -1748,44 +1752,54 @@ create_recovery_file(const char *data_dir)
 	recovery_file = fopen(recovery_file_path, "w");
 	if (recovery_file == NULL)
 	{
-		log_err(_("could not create recovery.conf file, it could be necessary to create it manually\n"));
+		log_err(_("Unable to create recovery.conf file at '%s'\n"), recovery_file_path);
 		return false;
 	}
 
+	/* standby_mode = 'on' */
 	maxlen_snprintf(line, "standby_mode = 'on'\n");
-	if (fputs(line, recovery_file) == EOF)
-	{
-		log_err(_("recovery file could not be written, it could be necessary to create it manually\n"));
-		fclose(recovery_file);
-		return false;
-	}
 
+	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		return false;
+
+	/* primary_conninfo = '...' */
 	write_primary_conninfo(line);
-
-	if (fputs(line, recovery_file) == EOF)
-	{
-		log_err(_("recovery file could not be written, it could be necessary to create it manually\n"));
-		fclose(recovery_file);
+	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
-	}
 
+	/* recovery_target_timeline = 'latest' */
+	maxlen_snprintf(line, "recovery_target_timeline = 'latest'\n");
+	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		return false;
+
+	/* min_recovery_apply_delay = ... (optional) */
 	if(*runtime_options.min_recovery_apply_delay)
 	{
 		maxlen_snprintf(line, "\nmin_recovery_apply_delay = %s\n",
 						runtime_options.min_recovery_apply_delay);
-
-		if (fputs(line, recovery_file) == EOF)
-		{
-			log_err(_("recovery file could not be written, it could be necessary to create it manually\n"));
-			fclose(recovery_file);
+		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
-		}
 	}
 
 	fclose(recovery_file);
 
 	return true;
 }
+
+
+static bool
+write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line)
+{
+	if (fputs(line, recovery_file) == EOF)
+	{
+		log_err(_("Unable to write to recovery file at '%s'\n"), recovery_file_path);
+		fclose(recovery_file);
+		return false;
+	}
+
+	return true;
+}
+
 
 static int
 test_ssh_connection(char *host, char *remote_user)
@@ -1875,7 +1889,7 @@ run_basebackup()
 	int			r = 0;
 
 	maxlen_snprintf(script,
-					"%s/pg_basebackup -h %s -p %s -U %s -D %s -l \"repmgr base backup\" --write-recovery-conf",
+					"%s/pg_basebackup -h %s -p %s -U %s -D %s -l \"repmgr base backup\"",
 					options.pg_bindir,
 					runtime_options.host,
 					runtime_options.masterport,
@@ -2293,7 +2307,7 @@ write_primary_conninfo(char *line)
 					host_buf, user_buf, password_buf,
 					appname_buf);
 
-	maxlen_snprintf(line, "primary_conninfo = '%s'", conn_buf);
+	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conn_buf);
 
 }
 

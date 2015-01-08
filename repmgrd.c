@@ -291,6 +291,7 @@ main(int argc, char **argv)
 	 */
 	do
 	{
+		log_debug("main loop...\n");
 		/*
 		 * Set my server mode, establish a connection to primary and start
 		 * monitor
@@ -351,6 +352,7 @@ main(int argc, char **argv)
 				 */
 				do
 				{
+					log_debug("primary check loop...\n");
 					if (check_connection(primary_conn, "master"))
 					{
 						/*
@@ -439,6 +441,8 @@ main(int argc, char **argv)
 
 				do
 				{
+					log_debug("standby check loop...\n");
+
 					if (my_local_mode == WITNESS_MODE)
 						witness_monitor();
 					else if (my_local_mode == STANDBY_MODE)
