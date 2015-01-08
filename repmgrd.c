@@ -275,7 +275,7 @@ main(int argc, char **argv)
 
 
 	/*
-	 * MAIN LOOP This loops cicles once per failover and at startup
+	 * MAIN LOOP This loops cycles at startup and once per failover and
 	 * Requisites: - my_local_conn needs to be already setted with an active
 	 * connection - no master connection
 	 */
@@ -782,7 +782,7 @@ do_failover(void)
 	 * will get info about until 50 nodes, which seems to be large enough for
 	 * most scenarios
 	 */
-	t_node_info nodes[50];
+	t_node_info nodes[FAILOVER_NODES_MAX_CHECK];
 
 	/* initialize to keep compiler quiet */
 	t_node_info best_candidate = {-1, "", InvalidXLogRecPtr, false, false, false};
@@ -791,8 +791,8 @@ do_failover(void)
 	sprintf(sqlquery, "SELECT id, conninfo, witness "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
-			" ORDER BY priority, id ",
-			repmgr_schema, local_options.cluster_name);
+			" ORDER BY priority, id LIMIT %i",
+			repmgr_schema, local_options.cluster_name, FAILOVER_NODES_MAX_CHECK);
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)

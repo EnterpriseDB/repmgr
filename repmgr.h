@@ -46,6 +46,8 @@
 #define DEFAULT_DBNAME			"postgres"
 #define DEFAULT_REPMGR_SCHEMA_PREFIX	"repmgr_"
 
+#define FAILOVER_NODES_MAX_CHECK 50
+
 #define MANUAL_FAILOVER		0
 #define AUTOMATIC_FAILOVER	1
 
