@@ -80,7 +80,6 @@ const char *progname;
 char	   *config_file = DEFAULT_CONFIG_FILE;
 bool		verbose = false;
 bool		monitoring_history = false;
-char		repmgr_schema[MAXLEN];
 
 bool		failover_done = false;
 
@@ -253,7 +252,8 @@ main(int argc, char **argv)
 		}
 	}
 
-	xsnprintf(repmgr_schema, MAXLEN, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
+	/* Initialise the repmgr schema name */
+	maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 			 local_options.cluster_name);
 
 	log_info(_("%s Connecting to database '%s'\n"), progname,
@@ -286,7 +286,7 @@ main(int argc, char **argv)
 		 * Set my server mode, establish a connection to primary and start
 		 * monitor
 		 */
-		ret = is_witness(my_local_conn, repmgr_schema,
+		ret = is_witness(my_local_conn,
 						 local_options.cluster_name, local_options.node);
 
 		if (ret == 1)
@@ -396,9 +396,9 @@ main(int argc, char **argv)
 				/* I need the id of the primary as well as a connection to it */
 				log_info(_("%s Connecting to primary for cluster '%s'\n"),
 						 progname, local_options.cluster_name);
-				primary_conn = get_master_connection(my_local_conn, repmgr_schema,
-												  local_options.cluster_name,
-												&primary_options.node, NULL);
+				primary_conn = get_master_connection(my_local_conn,
+													 local_options.cluster_name,
+													 &primary_options.node, NULL);
 				if (primary_conn == NULL)
 				{
 					terminate(ERR_BAD_CONFIG);
@@ -537,9 +537,11 @@ witness_monitor(void)
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
 					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-					  " null, pg_current_xlog_location(), null, "
+					  " NULL, pg_current_xlog_location(), NULL, "
 					  " 0, 0) ",
-					  repmgr_schema, primary_options.node, local_options.node,
+					  get_repmgr_schema_quoted(my_local_conn),
+					  primary_options.node,
+					  local_options.node,
 					  monitor_witness_timestamp);
 
 	/*
@@ -603,7 +605,7 @@ standby_monitor(void)
 			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
 			for (connection_retries = 0; connection_retries < 6; connection_retries++)
 			{
-				primary_conn = get_master_connection(my_local_conn, repmgr_schema,
+				primary_conn = get_master_connection(my_local_conn,
 					local_options.cluster_name, &primary_options.node, NULL);
 				if (PQstatus(primary_conn) == CONNECTION_OK)
 				{
@@ -736,7 +738,7 @@ standby_monitor(void)
 					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
 					  "'%s'::timestamp with time zone, '%s', '%s', "
 					  "%lld, %lld) ",
-					  repmgr_schema,
+					  get_repmgr_schema_quoted(primary_conn),
 					  primary_options.node, local_options.node, monitor_standby_timestamp,
 					  last_wal_standby_applied_timestamp,
 					  last_wal_primary_location,
@@ -794,7 +796,7 @@ do_failover(void)
 			" WHERE cluster = '%s' "
 			" ORDER BY priority, id "
 			" LIMIT %i ",
-			repmgr_schema,
+			get_repmgr_schema_quoted(my_local_conn),
 			local_options.cluster_name,
 			FAILOVER_NODES_MAX_CHECK);
 
@@ -991,8 +993,9 @@ do_failover(void)
 			uxlogid = 0;
 			uxrecoff = 0;
 
-			sqlquery_snprintf(sqlquery, "SELECT %s.repmgr_get_last_standby_location()",
-							  repmgr_schema);
+			sqlquery_snprintf(sqlquery,
+							  "SELECT %s.repmgr_get_last_standby_location()",
+							  get_repmgr_schema_quoted(node_conn));
 			res = PQexec(node_conn, sqlquery);
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
 			{
@@ -1212,11 +1215,11 @@ check_cluster_configuration(PGconn *conn)
 	char		sqlquery[QUERY_STR_LEN];
 
 	log_info(_("%s Checking cluster configuration with schema '%s'\n"),
-			 progname, repmgr_schema);
+			 progname, get_repmgr_schema());
 	sqlquery_snprintf(sqlquery,
 					  "SELECT oid FROM pg_class "
 					  " WHERE oid = '%s.repl_nodes'::regclass ",
-					  repmgr_schema);
+					  get_repmgr_schema());
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -1254,9 +1257,12 @@ check_node_configuration(void)
 	log_info(_("%s Checking node %d in cluster '%s'\n"),
 			 progname, local_options.node, local_options.cluster_name);
 	sqlquery_snprintf(sqlquery,
-					  "SELECT * FROM %s.repl_nodes "
-					  " WHERE id = %d AND cluster = '%s' ",
-					  repmgr_schema, local_options.node,
+					  "SELECT * "
+					  "  FROM %s.repl_nodes "
+					  " WHERE id = %d "
+					  "   AND cluster = '%s' ",
+					  get_repmgr_schema_quoted(my_local_conn),
+					  local_options.node,
 					  local_options.cluster_name);
 
 	res = PQexec(my_local_conn, sqlquery);
@@ -1288,7 +1294,8 @@ check_node_configuration(void)
 		sqlquery_snprintf(sqlquery,
 						  "INSERT INTO %s.repl_nodes "
 						  "VALUES (%d, '%s', '%s', '%s', 0, 'f') ",
-						  repmgr_schema, local_options.node,
+						  get_repmgr_schema_quoted(primary_conn),
+						  local_options.node,
 						  local_options.cluster_name,
 						  local_options.node_name,
 						  local_options.conninfo);
@@ -1393,8 +1400,10 @@ update_shared_memory(char *last_wal_standby_applied)
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	sprintf(sqlquery, "SELECT %s.repmgr_update_standby_location('%s')",
-			repmgr_schema, last_wal_standby_applied);
+	sprintf(sqlquery,
+			"SELECT %s.repmgr_update_standby_location('%s')",
+			get_repmgr_schema_quoted(my_local_conn),
+			last_wal_standby_applied);
 
 	/* If an error happens, just inform about that and continue */
 	res = PQexec(my_local_conn, sqlquery);
@@ -1425,7 +1434,7 @@ update_registration(void)
 					  "   SET conninfo = '%s', "
 					  "       priority = %d "
 					  " WHERE id = %d ",
-					  repmgr_schema,
+					  get_repmgr_schema_quoted(primary_conn),
 					  local_options.conninfo,
 					  local_options.priority,
 					  local_options.node);

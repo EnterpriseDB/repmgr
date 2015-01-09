@@ -27,6 +27,7 @@
 #include "strutil.h"
 #include "dbutils.h"
 #include "errcode.h"
+#include "config.h"
 
 #define PRIMARY_MODE		0
 #define STANDBY_MODE		1
@@ -81,4 +82,5 @@ typedef struct
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, "", "", 0, "" }
 
+extern char		repmgr_schema[MAXLEN];
 #endif

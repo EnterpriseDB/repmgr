@@ -25,6 +25,9 @@
 #include "strutil.h"
 #include "log.h"
 
+char repmgr_schema[MAXLEN] = "";
+char repmgr_schema_quoted[MAXLEN] = "";
+
 PGconn *
 establish_db_connection(const char *conninfo, const bool exit_on_error)
 {
@@ -96,16 +99,22 @@ is_standby(PGconn *conn)
 }
 
 
-
 int
-is_witness(PGconn *conn, char *schema, char *cluster, int node_id)
+is_witness(PGconn *conn, char *cluster, int node_id)
 {
 	PGresult   *res;
 	int			result = 0;
 	char		sqlquery[QUERY_STR_LEN];
 
-	sqlquery_snprintf(sqlquery, "SELECT witness from %s.repl_nodes where cluster = '%s' and id = %d",
-					  schema, cluster, node_id);
+	sqlquery_snprintf(sqlquery,
+					  "SELECT witness "
+					  "  FROM %s.repl_nodes "
+					  " WHERE cluster = '%s' "
+					  "   AND id = %d ",
+					  get_repmgr_schema_quoted(conn),
+					  cluster,
+					  node_id);
+
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -353,7 +362,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
  * connection string is placed there.
  */
 PGconn *
-get_master_connection(PGconn *standby_conn, char *schema, char *cluster,
+get_master_connection(PGconn *standby_conn, char *cluster,
 					  int *master_id, char *master_conninfo_out)
 {
 	PGconn	   *master_conn = NULL;
@@ -362,7 +371,6 @@ get_master_connection(PGconn *standby_conn, char *schema, char *cluster,
 	char		sqlquery[QUERY_STR_LEN];
 	char		master_conninfo_stack[MAXCONNINFO];
 	char	   *master_conninfo = &*master_conninfo_stack;
-	char		schema_quoted[MAXLEN];
 
 	int			i;
 
@@ -373,26 +381,18 @@ get_master_connection(PGconn *standby_conn, char *schema, char *cluster,
 	if (master_conninfo_out != NULL)
 		master_conninfo = master_conninfo_out;
 
-	/*
-	 * XXX: This is copied in at least two other procedures
-	 *
-	 * Assemble the unquoted schema name
-	 */
-	{
-		char	   *identifier = PQescapeIdentifier(standby_conn, schema,
-													strlen(schema));
-
-		maxlen_snprintf(schema_quoted, "%s", identifier);
-		PQfreemem(identifier);
-	}
 
 	/* find all nodes belonging to this cluster */
 	log_info(_("finding node list for cluster '%s'\n"),
 			 cluster);
 
-	sqlquery_snprintf(sqlquery, "SELECT id, conninfo FROM %s.repl_nodes "
-					  " WHERE cluster = '%s' and not witness",
-					  schema_quoted, cluster);
+	sqlquery_snprintf(sqlquery,
+					  "SELECT id, conninfo "
+					  "  FROM %s.repl_nodes "
+					  " WHERE cluster = '%s' "
+					  "   AND NOT witness ",
+					  get_repmgr_schema_quoted(standby_conn),
+					  cluster);
 
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
@@ -559,4 +559,26 @@ cancel_query(PGconn *conn, int timeout)
 	PQfreeCancel(pgcancel);
 
 	return true;
+}
+
+char *
+get_repmgr_schema(void)
+{
+	return repmgr_schema;
+}
+
+
+char *
+get_repmgr_schema_quoted(PGconn *conn)
+{
+	if(strcmp(repmgr_schema_quoted, "") == 0)
+	{
+		char	   *identifier = PQescapeIdentifier(conn, repmgr_schema,
+													strlen(repmgr_schema));
+
+		maxlen_snprintf(repmgr_schema_quoted, "%s", identifier);
+		PQfreemem(identifier);
+	}
+
+	return repmgr_schema_quoted;
 }

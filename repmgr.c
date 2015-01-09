@@ -84,7 +84,6 @@ static void help(const char *progname);
 static const char *progname;
 static const char *keywords[6];
 static const char *values[6];
-char		repmgr_schema[MAXLEN];
 bool		need_a_node = true;
 
 /* XXX This should be mapped into a command line option */
@@ -387,7 +386,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	/* Prepare the repmgr schema variable */
+	/* Initialise the repmgr schema name */
 	maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 			 options.cluster_name);
 
@@ -440,8 +439,9 @@ do_cluster_show(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT conninfo, witness FROM %s.repl_nodes ",
-					  repmgr_schema);
+					  "SELECT conninfo, witness "
+					  "  FROM %s.repl_nodes ",
+					  get_repmgr_schema_quoted(conn));
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -491,7 +491,7 @@ do_cluster_cleanup(void)
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = get_master_connection(conn, repmgr_schema, options.cluster_name,
+	master_conn = get_master_connection(conn, options.cluster_name,
 										&master_id, NULL);
 	if (!master_conn)
 	{
@@ -506,14 +506,14 @@ do_cluster_cleanup(void)
 		sqlquery_snprintf(sqlquery,
 						  "DELETE FROM %s.repl_monitor "
 						  " WHERE age(now(), last_monitor_time) >= '%d days'::interval ",
-						  repmgr_schema,
+						  get_repmgr_schema_quoted(master_conn),
 						  runtime_options.keep_history);
 	}
 	else
 	{
 		sqlquery_snprintf(sqlquery,
 						  "TRUNCATE TABLE %s.repl_monitor",
-						  repmgr_schema);
+						  get_repmgr_schema_quoted(master_conn));
 	}
 	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -530,7 +530,7 @@ do_cluster_cleanup(void)
 	 * Let's VACUUM the table to avoid autovacuum to be launched in an
 	 * unexpected hour
 	 */
-	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor", repmgr_schema);
+	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor", get_repmgr_schema_quoted(master_conn));
 	res = PQexec(master_conn, sqlquery);
 
 	/* XXX There is any need to check this VACUUM happens without problems? */
@@ -548,7 +548,6 @@ do_master_register(void)
 	char		sqlquery[QUERY_STR_LEN];
 
 	bool		schema_exists = false;
-	char		schema_quoted[MAXLEN];
 	int			ret;
 
 	bool		node_record_created;
@@ -572,24 +571,12 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * Assemble a quoted schema name XXX This is not currently used due to a
-	 * merge conflict, but probably should be
-	 */
-	if (false)
-	{
-		char	   *identifier = PQescapeIdentifier(conn, repmgr_schema,
-													strlen(repmgr_schema));
-
-		maxlen_snprintf(schema_quoted, "%s", identifier);
-		PQfreemem(identifier);
-	}
 
 	/* Check if there is a schema for this cluster */
 	sqlquery_snprintf(sqlquery,
 					  "SELECT 1 FROM pg_namespace "
 					  "WHERE nspname = '%s' ",
-					  repmgr_schema);
+					  get_repmgr_schema());
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -604,7 +591,7 @@ do_master_register(void)
 	{
 		if (!runtime_options.force)		/* and we are not forcing so error */
 		{
-			log_notice(_("Schema %s already exists.\n"), repmgr_schema);
+			log_notice(_("Schema %s already exists.\n"), get_repmgr_schema());
 			PQclear(res);
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
@@ -616,7 +603,7 @@ do_master_register(void)
 	if (!schema_exists)
 	{
 		log_info(_("master register: creating database objects inside the %s schema\n"),
-				 repmgr_schema);
+				 get_repmgr_schema());
 
 		/* ok, create the schema */
 		if (!create_schema(conn))
@@ -632,7 +619,7 @@ do_master_register(void)
 			sqlquery_snprintf(sqlquery,
 							  "DELETE FROM %s.repl_nodes "
 							  " WHERE id = %d ",
-							  repmgr_schema,
+							  get_repmgr_schema_quoted(conn),
 							  options.node);
 			log_debug(_("master register: %s\n"), sqlquery);
 
@@ -648,7 +635,7 @@ do_master_register(void)
 		}
 
 		/* Ensure there isn't any other master already registered */
-		master_conn = get_master_connection(conn, repmgr_schema,
+		master_conn = get_master_connection(conn,
 											options.cluster_name, &id, NULL);
 		if (master_conn != NULL)
 		{
@@ -690,7 +677,6 @@ do_standby_register(void)
 
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
-	char		schema_quoted[MAXLEN];
 
 	char		master_version[MAXVERSIONSTR];
 	int			master_version_num = 0;
@@ -719,23 +705,10 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * Assemble a quoted schema name XXX This is not currently used due to a
-	 * merge conflict, but probably should be
-	 */
-	if (false)
-	{
-		char	   *identifier = PQescapeIdentifier(conn, repmgr_schema,
-													strlen(repmgr_schema));
-
-		maxlen_snprintf(schema_quoted, "%s", identifier);
-		PQfreemem(identifier);
-	}
-
 	/* Check if there is a schema for this cluster */
 	sqlquery_snprintf(sqlquery,
 					  "SELECT 1 FROM pg_namespace WHERE nspname = '%s'",
-					  repmgr_schema);
+					  get_repmgr_schema());
 	log_debug(_("standby register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -751,7 +724,7 @@ do_standby_register(void)
 	if (PQntuples(res) == 0)
 	{
 		/* schema doesn't exist */
-		log_err(_("Schema %s doesn't exist.\n"), repmgr_schema);
+		log_err(_("Schema %s doesn't exist.\n"), get_repmgr_schema());
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
@@ -760,7 +733,7 @@ do_standby_register(void)
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
-	master_conn = get_master_connection(conn, repmgr_schema, options.cluster_name,
+	master_conn = get_master_connection(conn, options.cluster_name,
 										&master_id, NULL);
 	if (!master_conn)
 	{
@@ -795,7 +768,7 @@ do_standby_register(void)
 		sqlquery_snprintf(sqlquery,
 						  "DELETE FROM %s.repl_nodes "
 						  " WHERE id = %d",
-						  repmgr_schema,
+						  get_repmgr_schema_quoted(master_conn),
 						  options.node);
 
 		log_debug(_("standby register: %s\n"), sqlquery);
@@ -1197,8 +1170,8 @@ do_standby_promote(void)
 	}
 
 	/* we also need to check if there isn't any master already */
-	old_master_conn = get_master_connection(conn, repmgr_schema,
-								 options.cluster_name, &old_master_id, NULL);
+	old_master_conn = get_master_connection(conn,
+											options.cluster_name, &old_master_id, NULL);
 	if (old_master_conn != NULL)
 	{
 		log_err(_("This cluster already has an active master server\n"));
@@ -1326,7 +1299,7 @@ do_standby_follow(void)
 			conn = establish_db_connection(options.conninfo, true);
 		}
 
-		master_conn = get_master_connection(conn, repmgr_schema,
+		master_conn = get_master_connection(conn,
 				options.cluster_name, &master_id, (char *) &master_conninfo);
 	}
 	while (master_conn == NULL && runtime_options.wait_for_master);
@@ -2049,13 +2022,13 @@ create_schema(PGconn *conn)
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
-	sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", repmgr_schema);
+	sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", get_repmgr_schema_quoted(conn));
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot create the schema %s: %s\n"),
-				repmgr_schema, PQerrorMessage(conn));
+				get_repmgr_schema(), PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -2070,7 +2043,7 @@ create_schema(PGconn *conn)
 					  "  RETURNS TIMESTAMP WITH TIME ZONE "
 					  "  AS '$libdir/repmgr_funcs', 'repmgr_update_last_updated' "
 					  "  LANGUAGE C STRICT ",
-					  repmgr_schema);
+					  get_repmgr_schema_quoted(conn));
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -2087,7 +2060,7 @@ create_schema(PGconn *conn)
 					  "  RETURNS TIMESTAMP WITH TIME ZONE "
 					  "  AS '$libdir/repmgr_funcs', 'repmgr_get_last_updated' "
 					  "  LANGUAGE C STRICT ",
-					  repmgr_schema);
+					  get_repmgr_schema_quoted(conn));
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -2108,14 +2081,14 @@ create_schema(PGconn *conn)
 					  "  conninfo  TEXT    NOT NULL,    "
 					  "  priority  INTEGER NOT NULL,    "
 					  "  witness   BOOLEAN NOT NULL DEFAULT FALSE) ",
-					  repmgr_schema);
+					  get_repmgr_schema_quoted(conn));
 
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot create the table %s.repl_nodes: %s\n"),
-				repmgr_schema, PQerrorMessage(conn));
+				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -2131,13 +2104,13 @@ create_schema(PGconn *conn)
 					  "  last_wal_standby_location      TEXT,  "
 					  "  replication_lag                BIGINT NOT NULL, "
 					  "  apply_lag                      BIGINT NOT NULL) ",
-					  repmgr_schema);
+					  get_repmgr_schema_quoted(conn));
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot create the table %s.repl_monitor: %s\n"),
-				repmgr_schema, PQerrorMessage(conn));
+				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -2158,15 +2131,18 @@ create_schema(PGconn *conn)
 					  "                 SELECT standby_node, MAX(last_monitor_time) "
 					  "                  FROM %s.repl_monitor GROUP BY 1 "
 					  "            )",
-					  repmgr_schema, repmgr_schema, repmgr_schema,
-					  repmgr_schema, repmgr_schema);
+					  get_repmgr_schema_quoted(conn),
+					  get_repmgr_schema_quoted(conn),
+					  get_repmgr_schema_quoted(conn),
+					  get_repmgr_schema_quoted(conn),
+					  get_repmgr_schema_quoted(conn));
 	log_debug(_("master register: %s\n"), sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Cannot create the view %s.repl_status: %s\n"),
-				repmgr_schema, PQerrorMessage(conn));
+				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -2176,14 +2152,14 @@ create_schema(PGconn *conn)
 	sqlquery_snprintf(sqlquery,
 					  "CREATE INDEX idx_repl_status_sort "
 					  "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
-					  repmgr_schema);
+					  get_repmgr_schema_quoted(conn));
 
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_err(_("Can't index table %s.repl_monitor: %s\n"),
-				repmgr_schema, PQerrorMessage(conn));
+				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -2194,11 +2170,11 @@ create_schema(PGconn *conn)
 	 * here
 	 */
 	sqlquery_snprintf(sqlquery,
-					  "CREATE OR REPLACE FUNCTION %s.repmgr_update_standby_location(text) "
+					  "CREATE OR REPLACE FUNCTION %s.re_pmgr_update_standby_location(text) "
 					  "  RETURNS boolean "
 					  "  AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
 					  "  LANGUAGE C STRICT ",
-					  repmgr_schema);
+					  get_repmgr_schema_quoted(conn));
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -2214,7 +2190,7 @@ create_schema(PGconn *conn)
 					  "  RETURNS text "
 					  "  AS '$libdir/repmgr_funcs', 'repmgr_get_last_standby_location' "
 					  "  LANGUAGE C STRICT ",
-					  repmgr_schema);
+					  get_repmgr_schema_quoted(conn));
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -2240,7 +2216,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 	PGresult   *res;
 	int			i;
 
-	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", repmgr_schema);
+	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", get_repmgr_schema_quoted(witnessconn));
 	log_debug("copy_configuration: %s\n", sqlquery);
 	res = PQexec(witnessconn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -2252,7 +2228,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT id, name, conninfo, priority, witness FROM %s.repl_nodes",
-					  repmgr_schema);
+					  get_repmgr_schema_quoted(masterconn));
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -2546,7 +2522,7 @@ create_node_record(PGconn *conn, char *action, int node, char *cluster_name, cha
 					  "INSERT INTO %s.repl_nodes "
 					  "       (id, cluster, name, conninfo, priority, witness) "
 					  "VALUES (%d, '%s', '%s', '%s', %d, %s) ",
-					  repmgr_schema,
+					  get_repmgr_schema_quoted(conn),
 					  node,
 					  cluster_name,
 					  node_name,
@@ -2571,3 +2547,4 @@ create_node_record(PGconn *conn, char *action, int node, char *cluster_name, cha
 
 	return true;
 }
+
