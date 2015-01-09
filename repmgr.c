@@ -2170,7 +2170,7 @@ create_schema(PGconn *conn)
 	 * here
 	 */
 	sqlquery_snprintf(sqlquery,
-					  "CREATE OR REPLACE FUNCTION %s.re_pmgr_update_standby_location(text) "
+					  "CREATE OR REPLACE FUNCTION %s.repmgr_update_standby_location(text) "
 					  "  RETURNS boolean "
 					  "  AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
 					  "  LANGUAGE C STRICT ",
