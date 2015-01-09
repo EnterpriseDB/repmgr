@@ -438,7 +438,8 @@ do_cluster_show(void)
 	log_info(_("%s connecting to database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
 
-	sqlquery_snprintf(sqlquery, "SELECT conninfo, witness FROM %s.repl_nodes;",
+	sqlquery_snprintf(sqlquery,
+					  "SELECT conninfo, witness FROM %s.repl_nodes ",
 					  repmgr_schema);
 	res = PQexec(conn, sqlquery);
 
@@ -501,13 +502,16 @@ do_cluster_cleanup(void)
 
 	if (runtime_options.keep_history > 0)
 	{
-		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_monitor "
-			  " WHERE age(now(), last_monitor_time) >= '%d days'::interval;",
-						  repmgr_schema, runtime_options.keep_history);
+		sqlquery_snprintf(sqlquery,
+						  "DELETE FROM %s.repl_monitor "
+						  " WHERE age(now(), last_monitor_time) >= '%d days'::interval ",
+						  repmgr_schema,
+						  runtime_options.keep_history);
 	}
 	else
 	{
-		sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_monitor;",
+		sqlquery_snprintf(sqlquery,
+						  "TRUNCATE TABLE %s.repl_monitor",
 						  repmgr_schema);
 	}
 	res = PQexec(master_conn, sqlquery);
@@ -525,7 +529,7 @@ do_cluster_cleanup(void)
 	 * Let's VACUUM the table to avoid autovacuum to be launched in an
 	 * unexpected hour
 	 */
-	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor;", repmgr_schema);
+	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor", repmgr_schema);
 	res = PQexec(master_conn, sqlquery);
 
 	/* XXX There is any need to check this VACUUM happens without problems? */
@@ -581,7 +585,8 @@ do_master_register(void)
 	/* Check if there is a schema for this cluster */
 	sqlquery_snprintf(sqlquery,
 					  "SELECT 1 FROM pg_namespace "
-					  "WHERE nspname = '%s'", repmgr_schema);
+					  "WHERE nspname = '%s' ",
+					  repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -621,9 +626,11 @@ do_master_register(void)
 
 		if (runtime_options.force)
 		{
-			sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_nodes "
-							  " WHERE id = %d",
-							  repmgr_schema, options.node);
+			sqlquery_snprintf(sqlquery,
+							  "DELETE FROM %s.repl_nodes "
+							  " WHERE id = %d ",
+							  repmgr_schema,
+							  options.node);
 			log_debug(_("master register: %s\n"), sqlquery);
 
 			res = PQexec(conn, sqlquery);
@@ -651,10 +658,15 @@ do_master_register(void)
 
 	/* Now register the master */
 
-	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
-					  "VALUES (%d, '%s', '%s', '%s', %d)",
-		repmgr_schema, options.node, options.cluster_name, options.node_name,
-					  options.conninfo, options.priority);
+	sqlquery_snprintf(sqlquery,
+					  "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
+					  "VALUES (%d, '%s', '%s', '%s', %d) ",
+					  repmgr_schema,
+					  options.node,
+					  options.cluster_name,
+					  options.node_name,
+					  options.conninfo,
+					  options.priority);
 	log_debug(_("master register: %s\n"), sqlquery);
 
 	res = PQexec(conn, sqlquery);
@@ -725,7 +737,8 @@ do_standby_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sqlquery_snprintf(sqlquery, "SELECT 1 FROM pg_namespace WHERE nspname = '%s'",
+	sqlquery_snprintf(sqlquery,
+					  "SELECT 1 FROM pg_namespace WHERE nspname = '%s'",
 					  repmgr_schema);
 	log_debug(_("standby register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
@@ -783,9 +796,11 @@ do_standby_register(void)
 	log_info(_("%s registering the standby\n"), progname);
 	if (runtime_options.force)
 	{
-		sqlquery_snprintf(sqlquery, "DELETE FROM %s.repl_nodes "
+		sqlquery_snprintf(sqlquery,
+						  "DELETE FROM %s.repl_nodes "
 						  " WHERE id = %d",
-						  repmgr_schema, options.node);
+						  repmgr_schema,
+						  options.node);
 
 		log_debug(_("standby register: %s\n"), sqlquery);
 
@@ -801,10 +816,16 @@ do_standby_register(void)
 		PQclear(res);
 	}
 
-	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority) "
-					  "VALUES (%d, '%s', '%s', '%s', %d)",
-		repmgr_schema, options.node, options.cluster_name, options.node_name,
-					  options.conninfo, options.priority);
+	sqlquery_snprintf(sqlquery,
+					  "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority) "
+					  "VALUES (%d, '%s', '%s', '%s', %d) ",
+					  repmgr_schema,
+					  options.node,
+					  options.cluster_name,
+					  options.node_name,
+					  options.conninfo,
+					  options.priority);
+
 	log_debug(_("standby register: %s\n"), sqlquery);
 
 	res = PQexec(master_conn, sqlquery);
@@ -890,7 +911,7 @@ do_standby_clone(void)
 	sqlquery_snprintf(sqlquery,
 					  "SELECT pg_tablespace_location(oid) spclocation "
 					  "  FROM pg_tablespace "
-					  "WHERE spcname NOT IN ('pg_default', 'pg_global')");
+					  "WHERE spcname NOT IN ('pg_default', 'pg_global') ");
 
 	log_debug("standby clone: %s\n", sqlquery);
 
@@ -947,16 +968,16 @@ do_standby_clone(void)
 	 * presence and if missing force copy by SSH
 	 */
 	sqlquery_snprintf(sqlquery,
-					  "  WITH dd AS ("
-					  "    SELECT setting"
-					  "      FROM pg_settings"
-					  "     WHERE name = 'data_directory'"
-					  "  )"
-					  "    SELECT ps.name, ps.setting,"
-					  "           ps.setting ~ ('^' || dd.setting) AS in_data_dir"
-					  "      FROM dd, pg_settings ps"
-					  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file')"
-					  "  ORDER BY 1"
+					  "  WITH dd AS ( "
+					  "    SELECT setting "
+					  "      FROM pg_settings "
+					  "     WHERE name = 'data_directory' "
+					  "  ) "
+					  "    SELECT ps.name, ps.setting, "
+					  "           ps.setting ~ ('^' || dd.setting) AS in_data_dir "
+					  "      FROM dd, pg_settings ps "
+					  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file') "
+					  "  ORDER BY 1 "
 		);
 	log_debug(_("standby clone: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
@@ -1604,10 +1625,15 @@ do_witness_create(void)
 	}
 
 	/* register ourselves in the master */
-	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
-					  "VALUES (%d, '%s', '%s', '%s', %d, true)",
-					  repmgr_schema, options.node, options.cluster_name,
-					  options.node_name, options.conninfo, options.priority);
+	sqlquery_snprintf(sqlquery,
+					  "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
+					  "VALUES (%d, '%s', '%s', '%s', %d, true) ",
+					  repmgr_schema,
+					  options.node,
+					  options.cluster_name,
+					  options.node_name,
+					  options.conninfo,
+					  options.priority);
 
 	log_debug(_("witness create: %s"), sqlquery);
 	res = PQexec(masterconn, sqlquery);
@@ -2056,9 +2082,12 @@ create_schema(PGconn *conn)
 	 * use these functions for providing the latest update timestamp
 	 */
 	sqlquery_snprintf(sqlquery,
-					  "CREATE FUNCTION %s.repmgr_update_last_updated() RETURNS TIMESTAMP WITH TIME ZONE "
-				   "AS '$libdir/repmgr_funcs', 'repmgr_update_last_updated' "
-					  " LANGUAGE C STRICT", repmgr_schema);
+					  "CREATE FUNCTION %s.repmgr_update_last_updated() "
+					  "  RETURNS TIMESTAMP WITH TIME ZONE "
+					  "  AS '$libdir/repmgr_funcs', 'repmgr_update_last_updated' "
+					  "  LANGUAGE C STRICT ",
+					  repmgr_schema);
+
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -2070,9 +2099,12 @@ create_schema(PGconn *conn)
 
 
 	sqlquery_snprintf(sqlquery,
-					  "CREATE FUNCTION %s.repmgr_get_last_updated() RETURNS TIMESTAMP WITH TIME ZONE "
-					  "AS '$libdir/repmgr_funcs', 'repmgr_get_last_updated' "
-					  "LANGUAGE C STRICT", repmgr_schema);
+					  "CREATE FUNCTION %s.repmgr_get_last_updated() "
+					  "  RETURNS TIMESTAMP WITH TIME ZONE "
+					  "  AS '$libdir/repmgr_funcs', 'repmgr_get_last_updated' "
+					  "  LANGUAGE C STRICT ",
+					  repmgr_schema);
+
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -2084,13 +2116,16 @@ create_schema(PGconn *conn)
 
 
 	/* ... the tables */
-	sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_nodes (        "
-					  "  id        integer primary key, "
-					  "  cluster   text    not null,    "
-					  "  name      text    not null,    "
-					  "  conninfo  text    not null,    "
-					  "  priority  integer not null,    "
-			   "  witness   boolean not null default false)", repmgr_schema);
+	sqlquery_snprintf(sqlquery,
+					  "CREATE TABLE %s.repl_nodes (     "
+					  "  id        INTEGER PRIMARY KEY, "
+					  "  cluster   TEXT    NOT NULL,    "
+					  "  name      TEXT    NOT NULL,    "
+					  "  conninfo  TEXT    NOT NULL,    "
+					  "  priority  INTEGER NOT NULL,    "
+					  "  witness   BOOLEAN NOT NULL DEFAULT FALSE) ",
+					  repmgr_schema);
+
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -2102,15 +2137,17 @@ create_schema(PGconn *conn)
 	}
 	PQclear(res);
 
-	sqlquery_snprintf(sqlquery, "CREATE TABLE %s.repl_monitor ( "
+	sqlquery_snprintf(sqlquery,
+					  "CREATE TABLE %s.repl_monitor ( "
 					  "  primary_node                   INTEGER NOT NULL, "
 					  "  standby_node                   INTEGER NOT NULL, "
-	   "  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL, "
-				"  last_apply_time                TIMESTAMP WITH TIME ZONE, "
+					  "  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL, "
+					  "  last_apply_time                TIMESTAMP WITH TIME ZONE, "
 					  "  last_wal_primary_location      TEXT NOT NULL,   "
 					  "  last_wal_standby_location      TEXT,  "
 					  "  replication_lag                BIGINT NOT NULL, "
-		"  apply_lag                      BIGINT NOT NULL) ", repmgr_schema);
+					  "  apply_lag                      BIGINT NOT NULL) ",
+					  repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -2123,16 +2160,20 @@ create_schema(PGconn *conn)
 	PQclear(res);
 
 	/* a view */
-	sqlquery_snprintf(sqlquery, "CREATE VIEW %s.repl_status AS "
-					  " SELECT primary_node, standby_node, name AS standby_name, last_monitor_time, "
-			 "        last_wal_primary_location, last_wal_standby_location, "
-				  "        pg_size_pretty(replication_lag) replication_lag, "
-			  "        age(now(), last_apply_time) AS replication_time_lag, "
-					  "        pg_size_pretty(apply_lag) apply_lag, "
-					  "        age(now(), CASE WHEN pg_is_in_recovery() THEN %s.repmgr_get_last_updated() ELSE last_monitor_time END) AS communication_time_lag "
-		   "   FROM %s.repl_monitor JOIN %s.repl_nodes ON standby_node = id "
-					  "  WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monitor_time) "
-					  "                                                FROM %s.repl_monitor GROUP BY 1)",
+	sqlquery_snprintf(sqlquery,
+					  "CREATE VIEW %s.repl_status AS "
+					  "  SELECT primary_node, standby_node, name AS standby_name, last_monitor_time, "
+					  "         last_wal_primary_location, last_wal_standby_location, "
+					  "         pg_size_pretty(replication_lag) replication_lag, "
+					  "         age(now(), last_apply_time) AS replication_time_lag, "
+					  "         pg_size_pretty(apply_lag) apply_lag, "
+					  "         age(now(), CASE WHEN pg_is_in_recovery() THEN %s.repmgr_get_last_updated() ELSE last_monitor_time END) AS communication_time_lag "
+					  "    FROM %s.repl_monitor "
+					  "    JOIN %s.repl_nodes ON standby_node = id "
+					  "   WHERE (standby_node, last_monitor_time) IN ( "
+					  "                 SELECT standby_node, MAX(last_monitor_time) "
+					  "                  FROM %s.repl_monitor GROUP BY 1 "
+					  "            )",
 					  repmgr_schema, repmgr_schema, repmgr_schema,
 					  repmgr_schema, repmgr_schema);
 	log_debug(_("master register: %s\n"), sqlquery);
@@ -2148,9 +2189,11 @@ create_schema(PGconn *conn)
 	PQclear(res);
 
 	/* an index to improve performance of the view */
-	sqlquery_snprintf(sqlquery, "CREATE INDEX idx_repl_status_sort "
-				 "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
+	sqlquery_snprintf(sqlquery,
+					  "CREATE INDEX idx_repl_status_sort "
+					  "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
 					  repmgr_schema);
+
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -2167,9 +2210,12 @@ create_schema(PGconn *conn)
 	 * here
 	 */
 	sqlquery_snprintf(sqlquery,
-					  "CREATE OR REPLACE FUNCTION %s.repmgr_update_standby_location(text) RETURNS boolean "
-			   "AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
-					  "LANGUAGE C STRICT ", repmgr_schema);
+					  "CREATE OR REPLACE FUNCTION %s.repmgr_update_standby_location(text) "
+					  "  RETURNS boolean "
+					  "  AS '$libdir/repmgr_funcs', 'repmgr_update_standby_location' "
+					  "  LANGUAGE C STRICT ",
+					  repmgr_schema);
+
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -2180,9 +2226,12 @@ create_schema(PGconn *conn)
 	PQclear(res);
 
 	sqlquery_snprintf(sqlquery,
-					  "CREATE OR REPLACE FUNCTION %s.repmgr_get_last_standby_location() RETURNS text "
-			 "AS '$libdir/repmgr_funcs', 'repmgr_get_last_standby_location' "
-					  "LANGUAGE C STRICT ", repmgr_schema);
+					  "CREATE OR REPLACE FUNCTION %s.repmgr_get_last_standby_location() "
+					  "  RETURNS text "
+					  "  AS '$libdir/repmgr_funcs', 'repmgr_get_last_standby_location' "
+					  "  LANGUAGE C STRICT ",
+					  repmgr_schema);
+
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -2214,7 +2263,8 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		return false;
 	}
 
-	sqlquery_snprintf(sqlquery, "SELECT id, name, conninfo, priority, witness FROM %s.repl_nodes",
+	sqlquery_snprintf(sqlquery,
+					  "SELECT id, name, conninfo, priority, witness FROM %s.repl_nodes",
 					  repmgr_schema);
 	res1 = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
@@ -2226,10 +2276,13 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 	}
 	for (i = 0; i < PQntuples(res1); i++)
 	{
-		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
-						  "VALUES (%d, '%s', '%s', '%s', %d, '%s')",
-						  repmgr_schema, atoi(PQgetvalue(res1, i, 0)),
-						  options.cluster_name, PQgetvalue(res1, i, 1),
+		sqlquery_snprintf(sqlquery,
+						  "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
+						  "VALUES (%d, '%s', '%s', '%s', %d, '%s') ",
+						  repmgr_schema,
+						  atoi(PQgetvalue(res1, i, 0)),
+						  options.cluster_name,
+						  PQgetvalue(res1, i, 1),
 						  PQgetvalue(res1, i, 2),
 						  atoi(PQgetvalue(res1, i, 3)),
 						  PQgetvalue(res1, i, 4));

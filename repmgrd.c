@@ -517,7 +517,7 @@ witness_monitor(void)
 		return;
 
 	/* Get local xlog info */
-	sqlquery_snprintf(sqlquery, "SELECT CURRENT_TIMESTAMP ");
+	sqlquery_snprintf(sqlquery, "SELECT CURRENT_TIMESTAMP");
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -537,8 +537,8 @@ witness_monitor(void)
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
 					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-					  " null, pg_current_xlog_location(), null,  "
-					  " 0, 0)",
+					  " null, pg_current_xlog_location(), null, "
+					  " 0, 0) ",
 					  repmgr_schema, primary_options.node, local_options.node,
 					  monitor_witness_timestamp);
 
@@ -690,10 +690,9 @@ standby_monitor(void)
 		return;
 
 	/* Get local xlog info */
-	sqlquery_snprintf(
-					  sqlquery,
-				"SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-		  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp()");
+	sqlquery_snprintf(sqlquery,
+					  "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
+					  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp() ");
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -711,7 +710,7 @@ standby_monitor(void)
 	PQclear(res);
 
 	/* Get primary xlog info */
-	sqlquery_snprintf(sqlquery, "SELECT pg_current_xlog_location() ");
+	sqlquery_snprintf(sqlquery, "SELECT pg_current_xlog_location()");
 
 	res = PQexec(primary_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -735,9 +734,10 @@ standby_monitor(void)
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
 					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-					  " '%s'::timestamp with time zone, '%s', '%s', "
-					  " %lld, %lld)", repmgr_schema,
-		 primary_options.node, local_options.node, monitor_standby_timestamp,
+					  "'%s'::timestamp with time zone, '%s', '%s', "
+					  "%lld, %lld) ",
+					  repmgr_schema,
+					  primary_options.node, local_options.node, monitor_standby_timestamp,
 					  last_wal_standby_applied_timestamp,
 					  last_wal_primary_location,
 					  last_wal_standby_received,
@@ -788,11 +788,15 @@ do_failover(void)
 	t_node_info best_candidate = {-1, "", InvalidXLogRecPtr, false, false, false};
 
 	/* get a list of standby nodes, including myself */
-	sprintf(sqlquery, "SELECT id, conninfo, witness "
+	sprintf(sqlquery,
+			"SELECT id, conninfo, witness "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
-			" ORDER BY priority, id LIMIT %i",
-			repmgr_schema, local_options.cluster_name, FAILOVER_NODES_MAX_CHECK);
+			" ORDER BY priority, id "
+			" LIMIT %i ",
+			repmgr_schema,
+			local_options.cluster_name,
+			FAILOVER_NODES_MAX_CHECK);
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -860,7 +864,7 @@ do_failover(void)
 	{
 		log_err(_("Can't reach most of the nodes.\n"
 				  "Let the other standby servers decide which one will be the primary.\n"
-		"Manual action will be needed to readd this node to the cluster.\n"));
+		"Manual action will be needed to re-add this node to the cluster.\n"));
 		terminate(ERR_FAILOVER_FAIL);
 	}
 
@@ -1084,6 +1088,10 @@ do_failover(void)
 	/* once we know who is the best candidate, promote it */
 	if (find_best && (best_candidate.node_id == local_options.node))
 	{
+		// ZZZ from loop above this should never happen anyway???
+		// in fact do_failover is never called if rempgrd is running on a witness,
+		// as it's only called by standby_monitor()
+
 		if (best_candidate.is_witness)
 		{
 			log_err(_("%s: Node selected as new master is a witness. Can't be promoted.\n"),
@@ -1205,8 +1213,9 @@ check_cluster_configuration(PGconn *conn)
 
 	log_info(_("%s Checking cluster configuration with schema '%s'\n"),
 			 progname, repmgr_schema);
-	sqlquery_snprintf(sqlquery, "SELECT oid FROM pg_class "
-					  " WHERE oid = '%s.repl_nodes'::regclass",
+	sqlquery_snprintf(sqlquery,
+					  "SELECT oid FROM pg_class "
+					  " WHERE oid = '%s.repl_nodes'::regclass ",
 					  repmgr_schema);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1244,7 +1253,8 @@ check_node_configuration(void)
 	 */
 	log_info(_("%s Checking node %d in cluster '%s'\n"),
 			 progname, local_options.node, local_options.cluster_name);
-	sqlquery_snprintf(sqlquery, "SELECT * FROM %s.repl_nodes "
+	sqlquery_snprintf(sqlquery,
+					  "SELECT * FROM %s.repl_nodes "
 					  " WHERE id = %d AND cluster = '%s' ",
 					  repmgr_schema, local_options.node,
 					  local_options.cluster_name);
@@ -1275,8 +1285,9 @@ check_node_configuration(void)
 		/* Adding the node */
 		log_info(_("%s Adding node %d to cluster '%s'\n"),
 				 progname, local_options.node, local_options.cluster_name);
-		sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes "
-						  "VALUES (%d, '%s', '%s', '%s', 0, 'f')",
+		sqlquery_snprintf(sqlquery,
+						  "INSERT INTO %s.repl_nodes "
+						  "VALUES (%d, '%s', '%s', '%s', 0, 'f') ",
 						  repmgr_schema, local_options.node,
 						  local_options.cluster_name,
 						  local_options.node_name,
@@ -1409,12 +1420,15 @@ update_registration(void)
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	sqlquery_snprintf(sqlquery, "UPDATE %s.repl_nodes "
+	sqlquery_snprintf(sqlquery,
+					  "UPDATE %s.repl_nodes "
 					  "   SET conninfo = '%s', "
 					  "       priority = %d "
-					  " WHERE id = %d",
-					  repmgr_schema, local_options.conninfo,
-					  local_options.priority, local_options.node);
+					  " WHERE id = %d ",
+					  repmgr_schema,
+					  local_options.conninfo,
+					  local_options.priority,
+					  local_options.node);
 
 	res = PQexec(primary_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
