@@ -114,9 +114,11 @@ static void check_node_configuration(void);
 static void standby_monitor(void);
 static void witness_monitor(void);
 static bool check_connection(PGconn *conn, const char *type);
+static bool check_gateway(const char *host);
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
 static void do_failover(void);
+static bool is_gwup(const char *host);
 
 static unsigned long long int wal_location_to_bytes(char *wal_location);
 
@@ -137,6 +139,19 @@ static void setup_event_handlers(void);
 
 static void do_daemonize(void);
 static void check_and_create_pid_file(const char *pid_file);
+
+
+static bool
+is_gwup(const char *host)
+{
+	char		command[MAXLEN];
+
+	snprintf(command, MAXLEN, "ping -c1 -q -t1 %s", host);
+
+    log_debug(_("gateway check command is: \"%s\"\n"), command);
+
+    return system(command) == 0;
+}
 
 static void
 close_connections()
@@ -169,6 +184,7 @@ main(int argc, char **argv)
 	};
 
 	int			optindex;
+    int         r;
 	int			c,
 				ret;
 	bool		daemonize = false;
@@ -359,7 +375,7 @@ main(int argc, char **argv)
 				 */
 				do
 				{
-					if (check_connection(primary_conn, "master"))
+					if (check_connection(primary_conn, "master") && (strlen(local_options.gateway) == 0 || check_gateway(local_options.gateway)))
 					{
 						/*
 						 * CheckActiveStandbiesConnections();
@@ -1205,6 +1221,56 @@ check_connection(PGconn *conn, const char *type)
 		log_err(_("%s: We couldn't reconnect for long enough, exiting...\n"),
 				progname);
 		/* XXX Anything else to do here? */
+		return false;
+	}
+	return true;
+}
+
+
+static bool
+check_gateway(const char *host)
+{
+	int			connection_retries;
+    int         r;
+    char        script[MAXLEN];
+
+	/*
+	 * Check if the gateway/network is still available if after
+	 * local_options.reconnect_attempts * local_options.reconnect_intvl
+	 * seconds of retries we cannot reconnect return false
+	 */
+	for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
+	{
+		if (!is_gwup(host))
+		{
+			log_warning(_("%s: Connection to gateway %s has been lost, trying to recover... %i seconds before failover decision\n"),
+						progname,
+						host,
+						(local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
+			/* wait local_options.reconnect_intvl seconds between retries */
+			sleep(local_options.reconnect_intvl);
+		}
+		else
+		{
+			if (connection_retries > 0)
+			{
+				log_info(_("%s: Connection to gateway %s has been restored.\n"),
+						 progname, host);
+			}
+			return true;
+		}
+	}
+	if (!is_gwup(host))
+	{
+		log_err(_("%s: We couldn't reconnect for long enough, stopping postgresql master..., exiting...\n"),
+				progname);
+        maxlen_snprintf(script, "%s/pg_ctl %s -m fast stop", local_options.pg_bindir, local_options.pgctl_options);
+        r = system(script);
+        if (r != 0)
+        {
+            log_err(_("Can't stop PostgreSQL server\n"));
+        }
+
 		return false;
 	}
 	return true;
