@@ -2231,19 +2231,19 @@ create_schema(PGconn *conn)
 /*
  * copy_configuration()
  *
- * Copy record's in master's `repl_nodes` table to witness database
+ * Copy records in master's `repl_nodes` table to witness database
  */
 static bool
 copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 {
 	char		sqlquery[MAXLEN];
-	PGresult   *res1;
+	PGresult   *res;
 	int			i;
 
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", repmgr_schema);
 	log_debug("copy_configuration: %s\n", sqlquery);
-	res1 = PQexec(witnessconn, sqlquery);
-	if (!res1 || PQresultStatus(res1) != PGRES_COMMAND_OK)
+	res = PQexec(witnessconn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		fprintf(stderr, "Cannot clean node details in the witness, %s\n",
 				PQerrorMessage(witnessconn));
@@ -2253,26 +2253,26 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 	sqlquery_snprintf(sqlquery,
 					  "SELECT id, name, conninfo, priority, witness FROM %s.repl_nodes",
 					  repmgr_schema);
-	res1 = PQexec(masterconn, sqlquery);
-	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
+	res = PQexec(masterconn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		fprintf(stderr, "Can't get configuration from master: %s\n",
 				PQerrorMessage(masterconn));
-		PQclear(res1);
+		PQclear(res);
 		return false;
 	}
-	for (i = 0; i < PQntuples(res1); i++)
+	for (i = 0; i < PQntuples(res); i++)
 	{
 		bool node_record_created;
-		char *witness = PQgetvalue(res1, i, 4);
+		char *witness = PQgetvalue(res, i, 4);
 
 		node_record_created = create_node_record(witnessconn,
 												 NULL,
-												 atoi(PQgetvalue(res1, i, 0)),
+												 atoi(PQgetvalue(res, i, 0)),
 												 options.cluster_name,
-												 PQgetvalue(res1, i, 1),
-												 PQgetvalue(res1, i, 2),
-												 atoi(PQgetvalue(res1, i, 3)),
+												 PQgetvalue(res, i, 1),
+												 PQgetvalue(res, i, 2),
+												 atoi(PQgetvalue(res, i, 3)),
 												 strcmp(witness, "t") ? true : false);
 
 
@@ -2283,7 +2283,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 			return false;
 		}
 	}
-	PQclear(res1);
+	PQclear(res);
 
 	return true;
 }
