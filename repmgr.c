@@ -65,6 +65,7 @@ static void write_primary_conninfo(char *line);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_master_config(PGconn *conn, bool exit_on_error);
+static bool create_node_record(PGconn *conn, char *action, int node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -550,6 +551,8 @@ do_master_register(void)
 	char		schema_quoted[MAXLEN];
 	int			ret;
 
+	bool		node_record_created;
+
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Verify that master is a supported server version */
@@ -657,29 +660,20 @@ do_master_register(void)
 	}
 
 	/* Now register the master */
-
-	sqlquery_snprintf(sqlquery,
-					  "INSERT INTO %s.repl_nodes (id, cluster, name, conninfo, priority) "
-					  "VALUES (%d, '%s', '%s', '%s', %d) ",
-					  repmgr_schema,
-					  options.node,
-					  options.cluster_name,
-					  options.node_name,
-					  options.conninfo,
-					  options.priority);
-	log_debug(_("master register: %s\n"), sqlquery);
-
-	res = PQexec(conn, sqlquery);
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		log_warning(_("Cannot insert node details, %s\n"),
-					PQerrorMessage(conn));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
-	PQclear(res);
+	node_record_created = create_node_record(conn,
+											 "master register",
+											 options.node,
+											 options.cluster_name,
+											 options.node_name,
+											 options.conninfo,
+											 options.priority,
+											 false);
 
 	PQfinish(conn);
+
+	if(node_record_created == false)
+		exit(ERR_DB_QUERY);
+
 	log_notice(_("Master node correctly registered for cluster %s with id %d (conninfo: %s)\n"),
 			   options.cluster_name, options.node, options.conninfo);
 	return;
@@ -703,6 +697,8 @@ do_standby_register(void)
 
 	char		standby_version[MAXVERSIONSTR];
 	int			standby_version_num = 0;
+
+	bool		node_record_created;
 
 	/* XXX: A lot of copied code from do_master_register! Refactor */
 
@@ -816,31 +812,22 @@ do_standby_register(void)
 		PQclear(res);
 	}
 
-	sqlquery_snprintf(sqlquery,
-					  "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority) "
-					  "VALUES (%d, '%s', '%s', '%s', %d) ",
-					  repmgr_schema,
-					  options.node,
-					  options.cluster_name,
-					  options.node_name,
-					  options.conninfo,
-					  options.priority);
+	node_record_created = create_node_record(master_conn,
+											 "standby register",
+											 options.node,
+											 options.cluster_name,
+											 options.node_name,
+											 options.conninfo,
+											 options.priority,
+											 false);
 
-	log_debug(_("standby register: %s\n"), sqlquery);
-
-	res = PQexec(master_conn, sqlquery);
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		log_err(_("Cannot insert node details, %s\n"),
-				PQerrorMessage(master_conn));
-		PQfinish(master_conn);
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	log_info(_("%s registering the standby complete\n"), progname);
 	PQfinish(master_conn);
 	PQfinish(conn);
+
+	if(node_record_created == false)
+		exit(ERR_BAD_CONFIG);
+
+	log_info(_("%s registering the standby complete\n"), progname);
 	log_notice(_("Standby node correctly registered for cluster %s with id %d (conninfo: %s)\n"),
 			   options.cluster_name, options.node, options.conninfo);
 	return;
@@ -1444,6 +1431,7 @@ do_witness_create(void)
 
 	char		master_hba_file[MAXLEN];
 	bool        success;
+	bool		node_record_created;
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
@@ -1625,22 +1613,18 @@ do_witness_create(void)
 	}
 
 	/* register ourselves in the master */
-	sqlquery_snprintf(sqlquery,
-					  "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
-					  "VALUES (%d, '%s', '%s', '%s', %d, true) ",
-					  repmgr_schema,
-					  options.node,
-					  options.cluster_name,
-					  options.node_name,
-					  options.conninfo,
-					  options.priority);
 
-	log_debug(_("witness create: %s"), sqlquery);
-	res = PQexec(masterconn, sqlquery);
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	node_record_created = create_node_record(masterconn,
+											 "witness create",
+											 options.node,
+											 options.cluster_name,
+											 options.node_name,
+											 options.conninfo,
+											 options.priority,
+											 true);
+
+	if(node_record_created == false)
 	{
-		log_err(_("Cannot insert node details, %s\n"),
-				PQerrorMessage(masterconn));
 		PQfinish(masterconn);
 		exit(ERR_DB_QUERY);
 	}
@@ -2244,13 +2228,16 @@ create_schema(PGconn *conn)
 	return true;
 }
 
-
+/*
+ * copy_configuration()
+ *
+ * Copy record's in master's `repl_nodes` table to witness database
+ */
 static bool
 copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 {
 	char		sqlquery[MAXLEN];
 	PGresult   *res1;
-	PGresult   *res2;
 	int			i;
 
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", repmgr_schema);
@@ -2276,26 +2263,25 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 	}
 	for (i = 0; i < PQntuples(res1); i++)
 	{
-		sqlquery_snprintf(sqlquery,
-						  "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
-						  "VALUES (%d, '%s', '%s', '%s', %d, '%s') ",
-						  repmgr_schema,
-						  atoi(PQgetvalue(res1, i, 0)),
-						  options.cluster_name,
-						  PQgetvalue(res1, i, 1),
-						  PQgetvalue(res1, i, 2),
-						  atoi(PQgetvalue(res1, i, 3)),
-						  PQgetvalue(res1, i, 4));
+		bool node_record_created;
+		char *witness = PQgetvalue(res1, i, 4);
 
-		res2 = PQexec(witnessconn, sqlquery);
-		if (!res2 || PQresultStatus(res2) != PGRES_COMMAND_OK)
+		node_record_created = create_node_record(witnessconn,
+												 NULL,
+												 atoi(PQgetvalue(res1, i, 0)),
+												 options.cluster_name,
+												 PQgetvalue(res1, i, 1),
+												 PQgetvalue(res1, i, 2),
+												 atoi(PQgetvalue(res1, i, 3)),
+												 strcmp(witness, "t") ? true : false);
+
+
+		if (node_record_created == false)
 		{
-			fprintf(stderr, "Cannot copy configuration to witness, %s\n",
+			fprintf(stderr, "Unable to create node record for witness: %s\n",
 					PQerrorMessage(witnessconn));
-			PQclear(res2);
 			return false;
 		}
-		PQclear(res2);
 	}
 	PQclear(res1);
 
@@ -2547,4 +2533,41 @@ do_check_master_config(void)
 	}
 
 	PQfinish(conn);
+}
+
+
+static bool
+create_node_record(PGconn *conn, char *action, int node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(sqlquery,
+					  "INSERT INTO %s.repl_nodes "
+					  "       (id, cluster, name, conninfo, priority, witness) "
+					  "VALUES (%d, '%s', '%s', '%s', %d, %s) ",
+					  repmgr_schema,
+					  node,
+					  cluster_name,
+					  node_name,
+					  conninfo,
+					  priority,
+					  witness == true ? "TRUE" : "FALSE");
+
+	if(action != NULL)
+	{
+		log_debug(_("%s: %s\n"), action, sqlquery);
+	}
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_warning(_("Cannot insert node details, %s\n"),
+					PQerrorMessage(conn));
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
 }
