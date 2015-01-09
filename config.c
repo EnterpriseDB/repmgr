@@ -42,6 +42,7 @@ parse_config(const char *config_file, t_configuration_options * options)
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	memset(options->demote_command, 0, sizeof(options->demote_command));
+	memset(options->gateway, 0, sizeof(options->gateway));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
@@ -119,6 +120,8 @@ parse_config(const char *config_file, t_configuration_options * options)
 			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "demote_command") == 0)
 			strncpy(options->demote_command, value, MAXLEN);
+		else if (strcmp(name, "gateway") == 0)
+			strncpy(options->gateway, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
 			options->master_response_timeout = atoi(value);
 		else if (strcmp(name, "reconnect_attempts") == 0)
@@ -316,6 +319,7 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	strcpy(orig_options->promote_command, new_options.promote_command);
 	strcpy(orig_options->follow_command, new_options.follow_command);
 	strcpy(orig_options->demote_command, new_options.demote_command);
+	strcpy(orig_options->gateway, new_options.gateway);
 	strcpy(orig_options->rsync_options, new_options.rsync_options);
 	strcpy(orig_options->ssh_options, new_options.ssh_options);
 	orig_options->master_response_timeout = new_options.master_response_timeout;
