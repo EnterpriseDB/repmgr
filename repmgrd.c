@@ -619,7 +619,10 @@ standby_monitor(void)
 				}
 				else
 				{
-					log_err(_("We haven't found a new master, waiting before retry...\n"));
+					log_err(
+                        _("We haven't found a new master, waiting %s seconds before retry...\n"),
+                        local_options.retry_promote_interval_secs
+                        );
 
 					/*
 					 * wait local_options.retry_promote_interval_secs minutes

@@ -37,6 +37,9 @@ establish_db_connection(const char *conninfo, const bool exit_on_error)
 
 	strcpy(connection_string, conninfo);
 	strcat(connection_string, " fallback_application_name='repmgr'");
+
+	log_debug(_("Connecting to: '%s'"), connection_string);
+
 	conn = PQconnectdb(connection_string);
 
 	/* Check to see that the backend connection was successfully made */
@@ -408,8 +411,8 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 		/* initialize with the values of the current node being processed */
 		*master_id = atoi(PQgetvalue(res1, i, 0));
 		strncpy(master_conninfo, PQgetvalue(res1, i, 1), MAXCONNINFO);
-		log_info(_("checking role of cluster node '%s'\n"),
-				 master_conninfo);
+		log_info(_("checking role of cluster node '%i'\n"),
+				 *master_id);
 		master_conn = establish_db_connection(master_conninfo, false);
 
 		if (PQstatus(master_conn) != CONNECTION_OK)
