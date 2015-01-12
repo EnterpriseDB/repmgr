@@ -38,7 +38,7 @@ establish_db_connection(const char *conninfo, const bool exit_on_error)
 	strcpy(connection_string, conninfo);
 	strcat(connection_string, " fallback_application_name='repmgr'");
 
-	log_debug(_("Connecting to: '%s'"), connection_string);
+	log_debug(_("Connecting to: '%s'\n"), connection_string);
 
 	conn = PQconnectdb(connection_string);
 

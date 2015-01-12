@@ -488,10 +488,9 @@ witness_monitor(void)
 	 * we cannot reconnect, return false.
 	 */
 	check_connection(primary_conn, "master");	/* this take up to
-												 * local_options.reconnect_atte
-												 * mpts *
-												 * local_options.reconnect_intv
-												 * l seconds */
+												 * local_options.reconnect_attempts
+												 * local_options.reconnect_intvl seconds
+												 */
 
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
@@ -620,7 +619,7 @@ standby_monitor(void)
 				else
 				{
 					log_err(
-                        _("We haven't found a new master, waiting %s seconds before retry...\n"),
+                        _("We haven't found a new master, waiting %i seconds before retry...\n"),
                         local_options.retry_promote_interval_secs
                         );
 
