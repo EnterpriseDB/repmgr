@@ -1275,14 +1275,13 @@ check_node_configuration(void)
 	char		sqlquery[QUERY_STR_LEN];
 
 	/*
-	 * Check if we have my node information in repl_nodes
+	 * Check if this node has an entry in `repl_nodes`
 	 */
 	log_info(_("%s Checking node %d in cluster '%s'\n"),
 			 progname, local_options.node, local_options.cluster_name);
 
-	// ZZZ change to COUNT(*) ???
 	sqlquery_snprintf(sqlquery,
-					  "SELECT * "
+					  "SELECT COUNT(*) "
 					  "  FROM %s.repl_nodes "
 					  " WHERE id = %d "
 					  "   AND cluster = '%s' ",
