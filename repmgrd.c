@@ -569,9 +569,14 @@ witness_monitor(void)
 	 */
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
-					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-					  " NULL, pg_current_xlog_location(), NULL, "
-					  " 0, 0) ",
+					  "           (primary_node, standby_node, "
+					  "            last_monitor_time, last_apply_time, "
+					  "            last_wal_primary_location, last_wal_standby_location, "
+					  "            replication_lag, apply_lag )"
+					  "      VALUES(%d, %d, "
+					  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
+					  "             pg_current_xlog_location(), NULL, "
+					  "             0, 0) ",
 					  get_repmgr_schema_quoted(my_local_conn),
 					  primary_options.node,
 					  local_options.node,
@@ -654,10 +659,9 @@ standby_monitor(void)
 				else
 				{
 					log_err(
-                        _("We haven't found a new master, waiting %i seconds before retry...\n"),
-                        local_options.retry_promote_interval_secs
-                        );
-
+					    _("We haven't found a new master, waiting %i seconds before retry...\n"),
+					    local_options.retry_promote_interval_secs
+					    );
 
 					sleep(local_options.retry_promote_interval_secs);
 				}
@@ -767,14 +771,18 @@ standby_monitor(void)
 	 */
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
-					  "VALUES(%d, %d, '%s'::timestamp with time zone, "
-					  "'%s'::timestamp with time zone, '%s', '%s', "
-					  "%llu, %llu) ",
+					  "           (primary_node, standby_node, "
+					  "            last_monitor_time, last_apply_time, "
+					  "            last_wal_primary_location, last_wal_standby_location, "
+					  "            replication_lag, apply_lag ) "
+					  "      VALUES(%d, %d, "
+					  "             '%s'::TIMESTAMP WITH TIME ZONE, '%s'::TIMESTAMP WITH TIME ZONE, "
+					  "             '%s', '%s', "
+					  "             %llu, %llu) ",
 					  get_repmgr_schema_quoted(primary_conn),
-					  primary_options.node, local_options.node, monitor_standby_timestamp,
-					  last_wal_standby_applied_timestamp,
-					  last_wal_primary_location,
-					  last_wal_standby_received,
+					  primary_options.node, local_options.node,
+					   monitor_standby_timestamp, last_wal_standby_applied_timestamp,
+					  last_wal_primary_location, last_wal_standby_received,
 					  (long long unsigned int)(lsn_primary - lsn_standby_received),
 					  (long long unsigned int)(lsn_standby_received - lsn_standby_applied));
 
@@ -1317,8 +1325,9 @@ check_node_configuration(void)
 		log_info(_("%s Adding node %d to cluster '%s'\n"),
 				 progname, local_options.node, local_options.cluster_name);
 		sqlquery_snprintf(sqlquery,
-						  "INSERT INTO %s.repl_nodes "
-						  "VALUES (%d, '%s', '%s', '%s', 0, 'f') ",
+						  "INSERT INTO %s.repl_nodes"
+						  "           (id, cluster, name, conninfo, priority, witness) "
+						  "    VALUES (%d, '%s', '%s', '%s', 0, FALSE) ",
 						  get_repmgr_schema_quoted(primary_conn),
 						  local_options.node,
 						  local_options.cluster_name,
