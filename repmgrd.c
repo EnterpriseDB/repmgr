@@ -509,6 +509,7 @@ witness_monitor(void)
 
 		sleep(local_options.master_response_timeout);
 
+		/* Attempt to find the new master */
 		for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 		{
 			log_info(
@@ -645,8 +646,8 @@ standby_monitor(void)
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
 			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
-			// ZZZ why 6 here? make config option?
-			for (connection_retries = 0; connection_retries < 6; connection_retries++)
+
+			for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 			{
 				primary_conn = get_master_connection(my_local_conn,
 					local_options.cluster_name, &primary_options.node, NULL);
@@ -667,12 +668,7 @@ standby_monitor(void)
                         local_options.retry_promote_interval_secs
                         );
 
-					/*
-					 * wait local_options.retry_promote_interval_secs minutes
-					 * before retries, after 6 failures (6 *
-					 * local_options.monitor_interval_secs seconds) we stop
-					 * trying
-					 */
+
 					sleep(local_options.retry_promote_interval_secs);
 				}
 			}

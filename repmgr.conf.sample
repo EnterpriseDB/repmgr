@@ -55,7 +55,7 @@ pg_bindir=/usr/bin/
 
 #
 # change wait time for master; before we bail out and exit when the
-# master disappears, we wait 6 * retry_promote_interval_secs seconds;
+# master disappears, we wait reconnect_attempts * retry_promote_interval_secs seconds;
 # by default this would be half an hour (since sleep_delay default
 # value is 300)
 #
