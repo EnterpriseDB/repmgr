@@ -496,12 +496,12 @@ witness_monitor(void)
 	 */
 	connection_ok = check_connection(primary_conn, "master");
 
-	if(connection_ok == FALSE)
+	if(connection_ok == false)
 	{
+		int			connection_retries;
 		log_debug(_("Old primary node ID: %i\n"), primary_options.node);
-		/* We need to wait a while for the new primary to be promoted */
-		// ZZZ loop here `local_options.reconnect_attempts` times
 
+		/* We need to wait a while for the new primary to be promoted */
 		log_info(
 			_("Waiting %i seconds for a new master to be promoted...\n"),
 			local_options.master_response_timeout
@@ -509,18 +509,39 @@ witness_monitor(void)
 
 		sleep(local_options.master_response_timeout);
 
-		primary_conn = get_master_connection(my_local_conn,
+		for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
+		{
+			log_info(
+				_("Attempt %i of %i to determine new master...\n"),
+				connection_retries + 1,
+				local_options.reconnect_attempts
+				);
+			primary_conn = get_master_connection(my_local_conn,
 											 local_options.cluster_name, &primary_options.node, NULL);
 
-		if (PQstatus(primary_conn) != CONNECTION_OK)
+			if (PQstatus(primary_conn) != CONNECTION_OK)
+			{
+				log_warning(
+					_("Unable to determine a valid master server; waiting %i seconds to retry...\n"),
+					local_options.reconnect_intvl
+					);
+				PQfinish(primary_conn);
+				sleep(local_options.reconnect_intvl);
+			}
+			else
+			{
+				log_debug(_("New master found with node ID: %i\n"), primary_options.node);
+				connection_ok = true;
+				break;
+			}
+		}
+
+		if(connection_ok == false)
 		{
 			log_err(_("Unable to determine a valid master server, exiting...\n"));
-
-			PQfinish(primary_conn);
 			terminate(ERR_DB_CON);
 		}
 
-		log_debug(_("New master found with node ID: %i\n"), primary_options.node);
 	}
 
 	/* Fast path for the case where no history is requested */
