@@ -1628,7 +1628,7 @@ do_witness_create(void)
 		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", runtime_options.username);
 		log_info("Drop superuser powers on user for witness db: %s.\n", sqlquery);
 
-		log_debug(_("witness create: %s"), sqlquery);
+		log_debug(_("witness create: %s\n"), sqlquery);
 		res = PQexec(witnessconn, sqlquery);
 		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
@@ -2242,14 +2242,16 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		bool node_record_created;
 		char *witness = PQgetvalue(res, i, 4);
 
+		log_debug(_("copy_configuration(): %s\n"), witness);
+
 		node_record_created = create_node_record(witnessconn,
-												 NULL,
+												 "copy_configuration",
 												 atoi(PQgetvalue(res, i, 0)),
 												 options.cluster_name,
 												 PQgetvalue(res, i, 1),
 												 PQgetvalue(res, i, 2),
 												 atoi(PQgetvalue(res, i, 3)),
-												 strcmp(witness, "t") ? true : false);
+												 strcmp(witness, "t") == 0 ? true : false);
 
 
 		if (node_record_created == false)
