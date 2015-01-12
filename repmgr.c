@@ -41,7 +41,6 @@
 #include "version.h"
 
 #define RECOVERY_FILE "recovery.conf"
-#define RECOVERY_DONE_FILE "recovery.done"
 
 #define NO_ACTION		 0		/* Not a real action, just to initialize */
 #define MASTER_REGISTER  1
