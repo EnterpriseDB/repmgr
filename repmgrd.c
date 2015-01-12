@@ -35,10 +35,8 @@
 #include "strutil.h"
 #include "version.h"
 
-/* PostgreSQL's headers needed to export some functionality */
+/* Required PostgreSQL headers */
 #include "access/xlogdefs.h"
-#include "libpq/pqsignal.h"
-
 
 /*
  * Struct to keep info about the nodes, used in the voting process in
