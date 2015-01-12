@@ -919,6 +919,7 @@ do_failover(void)
 		if (!nodes[i].is_visible)
 			continue;
 
+		/* if the node is a witness node, skip it */
 		if (nodes[i].is_witness)
 			continue;
 
