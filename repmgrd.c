@@ -473,8 +473,12 @@ main(int argc, char **argv)
 	return 0;
 }
 
+
 /*
+ * witness_monitor()
  *
+ * Monitors witness server; attempt to find and connect to new primary
+ * if existing primary connection is lost
  */
 static void
 witness_monitor(void)
@@ -485,15 +489,15 @@ witness_monitor(void)
 	bool        connection_ok;
 
 	/*
-	 * Check if master is available;
-	 * if not, assume failover situation and try to determie new master
-	 * ZZZ only if `AUTOMATIC_FAILOVER` set???
+	 * Check if master is available; if not, assume failover situation
+	 * and try to determine new master. There may be a delay between detection
+	 * of a missing master and promotion of a standby by that standby's
+	 * rempgrd, so we'll loop for a while before giving up.
 	 */
 	connection_ok = check_connection(primary_conn, "master");
 
 	if(connection_ok == FALSE)
 	{
-
 		log_debug(_("Old primary node ID: %i\n"), primary_options.node);
 		/* We need to wait a while for the new primary to be promoted */
 		// ZZZ loop here `local_options.reconnect_attempts` times
