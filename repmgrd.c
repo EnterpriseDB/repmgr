@@ -482,23 +482,41 @@ witness_monitor(void)
 	char		monitor_witness_timestamp[MAXLEN];
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
+	bool        connection_ok;
 
 	/*
-	 * Check if the master is still available, if after 5 minutes of retries
-	 * we cannot reconnect, return false.
+	 * Check if master is available;
+	 * if not, assume failover situation and try to determie new master
+	 * ZZZ only if `AUTOMATIC_FAILOVER` set???
 	 */
-	check_connection(primary_conn, "master");	/* this take up to
-												 * local_options.reconnect_attempts
-												 * local_options.reconnect_intvl seconds
-												 */
+	connection_ok = check_connection(primary_conn, "master");
 
-	if (PQstatus(primary_conn) != CONNECTION_OK)
+	if(connection_ok == FALSE)
 	{
-		/*
-		 * If we can't reconnect, just exit... XXX we need to make witness
-		 * connect to the new master
-		 */
-		terminate(0);
+
+		log_debug(_("Old primary node ID: %i\n"), primary_options.node);
+		/* We need to wait a while for the new primary to be promoted */
+		// ZZZ loop here `local_options.reconnect_attempts` times
+
+		log_info(
+			_("Waiting %i seconds for a new master to be promoted...\n"),
+			local_options.master_response_timeout
+			);
+
+		sleep(local_options.master_response_timeout);
+
+		primary_conn = get_master_connection(my_local_conn,
+											 local_options.cluster_name, &primary_options.node, NULL);
+
+		if (PQstatus(primary_conn) != CONNECTION_OK)
+		{
+			log_err(_("Unable to determine a valid master server, exiting...\n"));
+
+			PQfinish(primary_conn);
+			terminate(ERR_DB_CON);
+		}
+
+		log_debug(_("New master found with node ID: %i\n"), primary_options.node);
 	}
 
 	/* Fast path for the case where no history is requested */
@@ -602,6 +620,7 @@ standby_monitor(void)
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
 			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
+			// ZZZ why 6 here? make config option?
 			for (connection_retries = 0; connection_retries < 6; connection_retries++)
 			{
 				primary_conn = get_master_connection(my_local_conn,
@@ -805,7 +824,7 @@ do_failover(void)
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't get nodes' info: %s\n"), PQerrorMessage(my_local_conn));
+		log_err(_("Unable to retrieve node records: %s\n"), PQerrorMessage(my_local_conn));
 		PQclear(res);
 		terminate(ERR_DB_QUERY);
 	}
@@ -1201,9 +1220,11 @@ check_connection(PGconn *conn, const char *type)
 	}
 	if (!is_pgup(conn, local_options.master_response_timeout))
 	{
-		log_err(_("%s: We couldn't reconnect for long enough, exiting...\n"),
-				progname);
-		/* XXX Anything else to do here? */
+		log_err(_("%s: Unable to reconnect to master after %i seconds...\n"),
+				progname,
+				local_options.master_response_timeout
+			);
+
 		return false;
 	}
 	return true;
@@ -1258,6 +1279,8 @@ check_node_configuration(void)
 	 */
 	log_info(_("%s Checking node %d in cluster '%s'\n"),
 			 progname, local_options.node, local_options.cluster_name);
+
+	// ZZZ change to COUNT(*) ???
 	sqlquery_snprintf(sqlquery,
 					  "SELECT * "
 					  "  FROM %s.repl_nodes "

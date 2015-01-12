@@ -443,7 +443,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 		}
 		else
 		{
-			/* if it is a standby clear info */
+			/* if it is a standby, clear info */
 			PQclear(res2);
 			PQfinish(master_conn);
 			*master_id = -1;
