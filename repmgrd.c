@@ -1027,11 +1027,6 @@ do_failover(void)
 			if (!nodes[i].is_visible)
 				break;
 
-			/* if the node is ready there is nothing to check, skip it too */
-			/* ZZZ is this check pointless? */
-			if (nodes[i].is_ready)
-				break;
-
 			node_conn = establish_db_connection(nodes[i].conninfo_str, false);
 
 			/*
