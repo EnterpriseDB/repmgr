@@ -20,6 +20,9 @@
 
  */
 
+
+/* ZZZ - remove superfluous debugging output */
+
 #include <signal.h>
 
 #include <sys/types.h>
@@ -424,7 +427,10 @@ main(int argc, char **argv)
 					if (my_local_mode == WITNESS_MODE)
 						witness_monitor();
 					else if (my_local_mode == STANDBY_MODE)
+					{
 						standby_monitor();
+						log_debug(_("returned from standby_monitor()\n"));
+					}
 					sleep(local_options.monitor_interval_secs);
 
 					if (got_SIGHUP)
@@ -441,12 +447,18 @@ main(int argc, char **argv)
 						}
 						got_SIGHUP = false;
 					}
+					if(failover_done)
+					{
+						log_debug(_("standby check loop will terminate\n"));
+					}
 				} while (!failover_done);
 				break;
 			default:
 				log_err(_("%s: Unrecognized mode for node %d\n"), progname,
 						local_options.node);
 		}
+
+		log_debug(_("end of main loop\n"));
 
 		failover_done = false;
 
@@ -678,6 +690,7 @@ standby_monitor(void)
 			 * and a new primary_conn
 			 */
 			do_failover();
+			log_debug("standby_monitor() - returning from do_failover()\n");
 			return;
 		}
 	}
@@ -685,11 +698,22 @@ standby_monitor(void)
 	/* Check if we still are a standby, we could have been promoted */
 	do
 	{
+		log_debug("standby_monitor() - checking if still standby\n");
 		ret = is_standby(my_local_conn);
 
 		switch (ret)
 		{
 			case 0:
+				/*
+				 * This situation can occur if `pg_ctl promote` was manually executed
+				 * on the node. If the original master is still running after this
+				 * node has been promoted, we're in a "two brain" situation which
+				 * will require manual resolution as there's no way of determing
+				 * which master is the correct one.
+				 *
+				 * XXX check if the original master is still active and display a
+				 * warning
+				 */
 				log_err(_("It seems like we have been promoted, so exit from monitoring...\n"));
 				terminate(1);
 				break;
@@ -910,6 +934,7 @@ do_failover(void)
 	/* Query all the nodes to determine which ones are ready */
 	for (i = 0; i < total_nodes; i++)
 	{
+		log_debug("checking node %i...\n", nodes[i].node_id);
 		/* if the node is not visible, skip it */
 		if (!nodes[i].is_visible)
 			continue;
@@ -975,13 +1000,14 @@ do_failover(void)
 		update_shared_memory(last_wal_standby_applied);
 		terminate(ERR_DB_QUERY);
 	}
-
 	/* write last location in shared memory */
 	update_shared_memory(PQgetvalue(res, 0, 0));
 	PQclear(res);
 
+	/* Wait for each node to come up and report a valid LSN */
 	for (i = 0; i < total_nodes; i++)
 	{
+		log_debug(_("is_ready check for node %i\n"), nodes[i].node_id);
 		while (!nodes[i].is_ready)
 		{
 			/*
@@ -1003,6 +1029,7 @@ do_failover(void)
 				break;
 
 			/* if the node is ready there is nothing to check, skip it too */
+			/* ZZZ is this check pointless? */
 			if (nodes[i].is_ready)
 				break;
 
@@ -1038,17 +1065,27 @@ do_failover(void)
 
 			xlog_recptr = lsn_to_xlogrecptr(PQgetvalue(res, 0, 0), &lsn_format_ok);
 
-			/* If position is 0/0, check for format error, otherwise continue loop */
+			/* If position reported as "invalid", check for format error or
+			 * empty string; oherwise position is 0/0 and we need to continue
+			 * looping until a valid LSN is reported
+			 */
 			if(xlog_recptr == InvalidXLogRecPtr)
 			{
-				/* Unable to parse value returned by `repmgr_get_last_standby_location()` */
+				log_debug("Invalid LSN returned - '%s'", PQgetvalue(res, 0, 0));
+
 				if(lsn_format_ok == false)
 				{
+					/* Unable to parse value returned by `repmgr_get_last_standby_location()` */
 					if(*PQgetvalue(res, 0, 0) == '\0')
 					{
 						log_crit("Whoops, seems as if shared_preload_libraries=repmgr_funcs is not set!\n");
 						exit(ERR_BAD_CONFIG);
 					}
+
+					/*
+					 * Very unlikely to happen; in the absence of any better
+					 * strategy keep checking
+					 */
 					log_warning(_("Unable to parse LSN \"%s\"\n"),
 								PQgetvalue(res, 0, 0));
 				}
@@ -1056,6 +1093,7 @@ do_failover(void)
 				PQclear(res);
 				PQfinish(node_conn);
 
+				/* If position is 0/0, keep checking */
 				continue;
 			}
 
@@ -1186,6 +1224,7 @@ do_failover(void)
 		terminate(ERR_FAILOVER_FAIL);
 	}
 
+	log_debug("failover done\n");
 	/* to force it to re-calculate mode and master node */
 	failover_done = true;
 
