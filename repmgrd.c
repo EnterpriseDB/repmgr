@@ -1065,14 +1065,17 @@ do_failover(void)
 			 */
 			if(xlog_recptr == InvalidXLogRecPtr)
 			{
-				log_debug("Invalid LSN returned - '%s'", PQgetvalue(res, 0, 0));
-
 				if(lsn_format_ok == false)
 				{
 					/* Unable to parse value returned by `repmgr_get_last_standby_location()` */
 					if(*PQgetvalue(res, 0, 0) == '\0')
 					{
-						log_crit("Whoops, seems as if shared_preload_libraries=repmgr_funcs is not set!\n");
+						log_crit(
+							_("Unable to obtain LSN from node %i"), nodes[i].node_id
+							);
+						log_info(
+							_("Please check that 'shared_preload_libraries=repmgr_funcs' is set\n")
+							);
 						exit(ERR_BAD_CONFIG);
 					}
 
@@ -1082,6 +1085,14 @@ do_failover(void)
 					 */
 					log_warning(_("Unable to parse LSN \"%s\"\n"),
 								PQgetvalue(res, 0, 0));
+				}
+				else
+				{
+					log_debug(
+						_("Invalid LSN returned from node %i: '%s'\n"),
+						nodes[i].node_id,
+						PQgetvalue(res, 0, 0)
+						);
 				}
 
 				PQclear(res);
