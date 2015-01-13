@@ -829,7 +829,7 @@ do_failover(void)
 	int			visible_nodes = 0;
 	int			ready_nodes = 0;
 
-	bool		find_best = false;
+	bool		candidate_found = false;
 
 	int			i;
 	int			r;
@@ -1127,7 +1127,7 @@ do_failover(void)
 		if (!nodes[i].is_ready || !nodes[i].is_visible)
 			continue;
 
-		if (!find_best)
+		if (!candidate_found)
 		{
 			/*
 			 * start with the first ready node, and then move on to the next
@@ -1137,7 +1137,7 @@ do_failover(void)
 			best_candidate.xlog_location = nodes[i].xlog_location;
 			best_candidate.is_ready = nodes[i].is_ready;
 			best_candidate.is_witness = nodes[i].is_witness;
-			find_best = true;
+			candidate_found = true;
 		}
 
 		/*
@@ -1154,8 +1154,8 @@ do_failover(void)
 		}
 	}
 
-	/* No candidate found */
-	if (!find_best)
+	/* Terminate if no candidate found */
+	if (!candidate_found)
 	{
 		log_err(_("%s: No suitable candidate for promotion found; terminating.\n"),
 				progname);
