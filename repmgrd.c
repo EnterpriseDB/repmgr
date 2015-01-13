@@ -1007,41 +1007,42 @@ do_failover(void)
 	for (i = 0; i < total_nodes; i++)
 	{
 		log_debug(_("is_ready check for node %i\n"), nodes[i].node_id);
+		/*
+		 * ensure witness server is marked as ready, and skip
+		 * LSN check
+		 */
+		if (nodes[i].is_witness)
+		{
+			if (!nodes[i].is_ready)
+			{
+				nodes[i].is_ready = true;
+				ready_nodes++;
+			}
+			continue;
+		}
+
+		/* if the node is not visible, skip it */
+		if (!nodes[i].is_visible)
+			continue;
+
+		node_conn = establish_db_connection(nodes[i].conninfo_str, false);
+
+		/*
+		 * XXX This shouldn't happen, if this happens it means this is a
+		 * major problem maybe network outages? anyway, is better for a
+		 * human to react
+		 */
+		if (PQstatus(node_conn) != CONNECTION_OK)
+		{
+			/* XXX */
+			log_info(_("At this point, it could be some race conditions "
+					   "that are acceptable, assume the node is restarting "
+					   "and starting failover procedure\n"));
+			continue;
+		}
+
 		while (!nodes[i].is_ready)
 		{
-			/*
-			 * the witness will always be masked as ready if it's still not
-			 * marked that way and avoid a useless query
-			 */
-			if (nodes[i].is_witness)
-			{
-				if (!nodes[i].is_ready)
-				{
-					nodes[i].is_ready = true;
-					ready_nodes++;
-				}
-				break;
-			}
-
-			/* if the node is not visible, skip it */
-			if (!nodes[i].is_visible)
-				break;
-
-			node_conn = establish_db_connection(nodes[i].conninfo_str, false);
-
-			/*
-			 * XXX This shouldn't happen, if this happens it means this is a
-			 * major problem maybe network outages? anyway, is better for a
-			 * human to react
-			 */
-			if (PQstatus(node_conn) != CONNECTION_OK)
-			{
-				/* XXX */
-				log_info(_("At this point, it could be some race conditions "
-						"that are acceptable, assume the node is restarting "
-						   "and starting failover procedure\n"));
-				break;
-			}
 
 			sqlquery_snprintf(sqlquery,
 							  "SELECT %s.repmgr_get_last_standby_location()",
@@ -1060,7 +1061,7 @@ do_failover(void)
 			xlog_recptr = lsn_to_xlogrecptr(PQgetvalue(res, 0, 0), &lsn_format_ok);
 
 			/* If position reported as "invalid", check for format error or
-			 * empty string; oherwise position is 0/0 and we need to continue
+			 * empty string; otherwise position is 0/0 and we need to continue
 			 * looping until a valid LSN is reported
 			 */
 			if(xlog_recptr == InvalidXLogRecPtr)
@@ -1076,6 +1077,9 @@ do_failover(void)
 						log_info(
 							_("Please check that 'shared_preload_libraries=repmgr_funcs' is set\n")
 							);
+
+						PQclear(res);
+						PQfinish(node_conn);
 						exit(ERR_BAD_CONFIG);
 					}
 
@@ -1096,7 +1100,6 @@ do_failover(void)
 				}
 
 				PQclear(res);
-				PQfinish(node_conn);
 
 				/* If position is 0/0, keep checking */
 				continue;
@@ -1109,11 +1112,12 @@ do_failover(void)
 
 			log_debug(_("LSN of node %i is: %s\n"), nodes[i].node_id, PQgetvalue(res, 0, 0));
 			PQclear(res);
-			PQfinish(node_conn);
 
 			ready_nodes++;
 			nodes[i].is_ready = true;
 		}
+
+		PQfinish(node_conn);
 	}
 
 	/* Close the connection to this server */
