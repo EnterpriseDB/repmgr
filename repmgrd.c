@@ -892,7 +892,7 @@ do_failover(void)
 		nodes[i].is_visible = false;
 		nodes[i].is_ready = false;
 
-		nodes[i].xlog_location = 0;
+		nodes[i].xlog_location = InvalidXLogRecPtr;
 
 		log_debug(_("%s: node=%d conninfo=\"%s\" witness=%s\n"),
 				  progname, nodes[i].node_id, nodes[i].conninfo_str,
