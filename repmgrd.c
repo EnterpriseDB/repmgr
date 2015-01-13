@@ -931,10 +931,11 @@ do_failover(void)
 		terminate(ERR_FAILOVER_FAIL);
 	}
 
-	/* Query all the nodes to determine which ones are ready */
+	/* Query all available nodes to determine readiness and LSN */
 	for (i = 0; i < total_nodes; i++)
 	{
 		log_debug("checking node %i...\n", nodes[i].node_id);
+
 		/* if the node is not visible, skip it */
 		if (!nodes[i].is_visible)
 			continue;
@@ -972,19 +973,17 @@ do_failover(void)
 
 		log_debug(_("LSN of node %i is: %s\n"), nodes[i].node_id, PQgetvalue(res, 0, 0));
 
+		PQclear(res);
+		PQfinish(node_conn);
+
 		/* If position is 0/0, error */
 		if(xlog_recptr == InvalidXLogRecPtr)
 		{
-			PQclear(res);
-			PQfinish(node_conn);
 			log_info(_("InvalidXLogRecPtr detected on standby node %i\n"), nodes[i].node_id);
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
 		nodes[i].xlog_location = xlog_recptr;
-
-		PQclear(res);
-		PQfinish(node_conn);
 	}
 
 	/* last we get info about this node, and update shared memory */
