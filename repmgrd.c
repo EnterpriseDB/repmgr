@@ -1119,7 +1119,7 @@ do_failover(void)
 	 */
 	for (i = 0; i < total_nodes; i++)
 	{
-		/* witness is never a good candidate */
+		/* witness server can never be a candidate */
 		if (nodes[i].is_witness)
 			continue;
 
@@ -1135,7 +1135,6 @@ do_failover(void)
 			best_candidate.node_id = nodes[i].node_id;
 			best_candidate.xlog_location = nodes[i].xlog_location;
 			best_candidate.is_ready = nodes[i].is_ready;
-			best_candidate.is_witness = nodes[i].is_witness;
 			candidate_found = true;
 		}
 
@@ -1149,7 +1148,6 @@ do_failover(void)
 			best_candidate.node_id = nodes[i].node_id;
 			best_candidate.xlog_location = nodes[i].xlog_location;
 			best_candidate.is_ready = nodes[i].is_ready;
-			best_candidate.is_witness = nodes[i].is_witness;
 		}
 	}
 
@@ -1164,17 +1162,6 @@ do_failover(void)
 	/* once we know who is the best candidate, promote it */
 	if (best_candidate.node_id == local_options.node)
 	{
-		// ZZZ from loop above this should never happen anyway???
-		// in fact do_failover is never called if rempgrd is running on a witness,
-		// as it's only called by standby_monitor()
-
-		if (best_candidate.is_witness)
-		{
-			log_err(_("%s: Node selected as new master is a witness. Can't be promoted.\n"),
-					progname);
-			terminate(ERR_FAILOVER_FAIL);
-		}
-
 		/* wait */
 		sleep(5);
 
