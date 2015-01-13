@@ -1154,8 +1154,16 @@ do_failover(void)
 		}
 	}
 
+	/* No candidate found */
+	if (!find_best)
+	{
+		log_err(_("%s: No suitable candidate for promotion found; terminating.\n"),
+				progname);
+		terminate(ERR_FAILOVER_FAIL);
+	}
+
 	/* once we know who is the best candidate, promote it */
-	if (find_best && (best_candidate.node_id == local_options.node))
+	if (best_candidate.node_id == local_options.node)
 	{
 		// ZZZ from loop above this should never happen anyway???
 		// in fact do_failover is never called if rempgrd is running on a witness,
@@ -1190,7 +1198,7 @@ do_failover(void)
 			terminate(ERR_BAD_CONFIG);
 		}
 	}
-	else if (find_best)
+	else
 	{
 		/* wait */
 		sleep(10);
@@ -1216,12 +1224,6 @@ do_failover(void)
 					progname);
 			terminate(ERR_BAD_CONFIG);
 		}
-	}
-	else
-	{
-		log_err(_("%s: Did not find candidates. You should check and try manually.\n"),
-				progname);
-		terminate(ERR_FAILOVER_FAIL);
 	}
 
 	log_debug("failover done\n");
