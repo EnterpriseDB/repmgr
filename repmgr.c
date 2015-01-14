@@ -2389,8 +2389,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 static bool
 check_upstream_config(PGconn *conn, bool exit_on_error)
 {
-	int			i,
-				is_standby_retval;
+	int			i;
 	bool		config_ok = true;
 
 	/* XXX check user is qualified to perform base backup  */
