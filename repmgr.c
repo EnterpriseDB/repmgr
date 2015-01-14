@@ -63,7 +63,8 @@ static bool copy_configuration(PGconn *masterconn, PGconn *witnessconn);
 static void write_primary_conninfo(char *line);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
-static bool check_master_config(PGconn *conn, bool exit_on_error);
+static bool check_upstream_config(PGconn *conn, bool exit_on_error);
+
 static bool create_node_record(PGconn *conn, char *action, int node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness);
 
 static void do_master_register(void);
@@ -74,7 +75,7 @@ static void do_standby_follow(void);
 static void do_witness_create(void);
 static void do_cluster_show(void);
 static void do_cluster_cleanup(void);
-static void do_check_master_config(void);
+static void do_check_upstream_config(void);
 
 static void usage(void);
 static void help(const char *progname);
@@ -116,7 +117,7 @@ main(int argc, char **argv)
 		{"min-recovery-apply-delay", required_argument, NULL, 'r'},
 		{"verbose", no_argument, NULL, 'v'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
-		{"check-master-config", no_argument, NULL, 2},
+		{"check-upstream-config", no_argument, NULL, 2},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -232,7 +233,7 @@ main(int argc, char **argv)
 
 	if(check_master_config == true)
 	{
-		do_check_master_config();
+		do_check_upstream_config();
 		exit(SUCCESS);
 	}
 
@@ -865,7 +866,7 @@ do_standby_clone(void)
 	log_info(_("%s connected to master, checking its state\n"), progname);
 	check_server_version(conn, "master", true, NULL);
 
-	check_master_config(conn, true);
+	check_upstream_config(conn, true);
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT pg_tablespace_location(oid) spclocation "
@@ -1690,7 +1691,7 @@ help(const char *progname)
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
 	printf(_("  -r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)\n"));
 	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
-	printf(_("  --check-master-config               report problems with master configuration\n"));
+	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
 	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
 	printf(_("another node and then exits.\n\n"));
 	printf(_("COMMANDS:\n"));
@@ -2363,36 +2364,19 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 
 
 /*
- * check_master_config()
+ * check_upstream_config()
  *
- * Perform sanity check on master configuration
+ * Perform sanity check on upstream server configuration
  *
  * TODO: check replication connection is possble
  */
+
 static bool
-check_master_config(PGconn *conn, bool exit_on_error)
+check_upstream_config(PGconn *conn, bool exit_on_error)
 {
 	int			i,
 				is_standby_retval;
 	bool		config_ok = true;
-
-
-
-	/* Check we are cloning a primary node */
-	is_standby_retval = is_standby(conn);
-	if (is_standby_retval)
-	{
-		log_err(_(is_standby_retval == 1 ? "The specified node is in standby state and cannot be used as a master\n" :
-				  "Connection to node lost!\n"));
-
-		if(exit_on_error == true)
-		{
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		config_ok = false;
-	}
 
 	/* XXX check user is qualified to perform base backup  */
 
@@ -2418,7 +2402,7 @@ check_master_config(PGconn *conn, bool exit_on_error)
 	if (i == 0 || i == -1)
 	{
 		if (i == 0)
-			log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the PostgreSQL master.)\n"),
+			log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the upstream server.)\n"),
 					progname, runtime_options.wal_keep_segments);
 
 		if(exit_on_error == true)
@@ -2480,13 +2464,14 @@ check_master_config(PGconn *conn, bool exit_on_error)
 	return config_ok;
 }
 
+
 static void
-do_check_master_config(void)
+do_check_upstream_config(void)
 {
 	PGconn	   *conn;
 	bool		config_ok;
 
-	/* Connection parameters for master only */
+	/* Connection parameters for upstream server only */
 	keywords[0] = "host";
 	values[0] = runtime_options.host;
 	keywords[1] = "port";
@@ -2495,18 +2480,18 @@ do_check_master_config(void)
 	values[2] = runtime_options.dbname;
 
 	/* We need to connect to check configuration and start a backup */
-	log_info(_("%s connecting to master database\n"), progname);
+	log_info(_("%s connecting to upstream server\n"), progname);
 	conn = establish_db_connection_by_params(keywords, values, true);
 
-	/* Verify that master is a supported server version */
-	log_info(_("%s connected to master, checking its state\n"), progname);
-	check_server_version(conn, "master", false, NULL);
+	/* Verify that upstream server is a supported server version */
+	log_info(_("%s connected to upstream server, checking its state\n"), progname);
+	check_server_version(conn, "upstream server", false, NULL);
 
-	config_ok = check_master_config(conn, false);
+	config_ok = check_upstream_config(conn, false);
 
 	if(config_ok == true)
 	{
-		puts(_("No master configuration problems found"));
+		puts(_("No configuration problems found with the upstream server"));
 	}
 
 	PQfinish(conn);
