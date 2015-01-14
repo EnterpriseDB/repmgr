@@ -21,3 +21,7 @@ LANGUAGE C STRICT;
 CREATE FUNCTION repmgr_get_last_updated() RETURNS TIMESTAMP WITH TIME ZONE
 AS 'MODULE_PATHNAME', 'repmgr_get_last_updated'
 LANGUAGE C STRICT;
+
+CREATE FUNCTION repmgr_get_primary_conninfo() RETURNS TEXT
+AS 'MODULE_PATHNAME', 'repmgr_get_primary_conninfo'
+LANGUAGE C STRICT;
