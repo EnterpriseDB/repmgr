@@ -356,6 +356,75 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 }
 
 
+PGconn *
+get_upstream_connection(PGconn *standby_conn, char *cluster,
+					  int *upstream_node_id, char *upstream_conninfo_out)
+{
+	PGconn	   *upstream_conn = NULL;
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+	char		upstream_conninfo_stack[MAXCONNINFO];
+	char	   *upstream_conninfo = &*upstream_conninfo_stack;
+
+	/*
+	 * If the caller wanted to get a copy of the connection info string, sub
+	 * out the local stack pointer for the pointer passed by the caller.
+	 */
+	if (upstream_conninfo_out != NULL)
+		upstream_conninfo = upstream_conninfo_out;
+
+	/* hacky query */
+	sqlquery_snprintf(sqlquery,
+					  "WITH i AS ( "
+					  "  WITH p AS ( "
+					  "    SELECT repmgr_get_primary_conninfo() AS conninfo "
+					  "  )"
+					  "  SELECT p.conninfo, "
+					  "         unnest(regexp_matches(conninfo,'application_name=(\\S+)')) AS name "
+					  "    FROM p "
+					  ") "
+					  " SELECT rn.conninfo, i.name, rn.id "
+					  "   FROM i "
+					  "INNER JOIN %s.repl_nodes rn "
+					  "        ON rn.name = i.name "
+					  "  WHERE cluster = '%s' ",
+					  get_repmgr_schema_quoted(standby_conn),
+					  cluster);
+
+	log_debug("%s", sqlquery);
+
+	res = PQexec(standby_conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Unable to get conninfo for upstream server: %s\n"),
+				PQerrorMessage(standby_conn));
+		PQclear(res);
+		return NULL;
+	}
+
+	// ZZZ check for empty result
+	// maybe modify function to return NULL
+
+	strncpy(upstream_conninfo, PQgetvalue(res, 0, 0), MAXCONNINFO);
+	*upstream_node_id = atoi(PQgetvalue(res, 0, 1));
+
+	PQclear(res);
+
+	log_debug("conninfo is: '%s'", upstream_conninfo);
+	upstream_conn = establish_db_connection(upstream_conninfo, false);
+
+	if (PQstatus(upstream_conn) != CONNECTION_OK)
+	{
+		log_err(_("Unable to connect to upstream server: %s\n"),
+				PQerrorMessage(upstream_conn));
+		return NULL;
+	}
+
+	return upstream_conn;
+}
+
+
 /*
  * get a connection to master by reading repl_nodes, creating a connection
  * to each node (one at a time) and finding if it is a master or a standby
@@ -364,6 +433,8 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
  * point to allocated memory of MAXCONNINFO in length, and the master server
  * connection string is placed there.
  */
+
+// ZZZ value placed in `master_id` used by callers in repmgrd
 PGconn *
 get_master_connection(PGconn *standby_conn, char *cluster,
 					  int *master_id, char *master_conninfo_out)
@@ -377,14 +448,8 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 
 	int			i;
 
-	/*
-	 * If the caller wanted to get a copy of the connection info string, sub
-	 * out the local stack pointer for the pointer passed by the caller.
-	 */
-	if (master_conninfo_out != NULL)
-		master_conninfo = master_conninfo_out;
 
-
+	// ZZZ below old stuff
 	/* find all nodes belonging to this cluster */
 	log_info(_("finding node list for cluster '%s'\n"),
 			 cluster);

@@ -384,12 +384,15 @@ main(int argc, char **argv)
 
 			case WITNESS_MODE:
 			case STANDBY_MODE:
-				/* I need the id of the primary as well as a connection to it */
+
+				/* We need the node id of the upstream server as well as a connection to it */
 				log_info(_("%s Connecting to primary for cluster '%s'\n"),
 						 progname, local_options.cluster_name);
+
 				primary_conn = get_master_connection(my_local_conn,
 													 local_options.cluster_name,
 													 &primary_options.node, NULL);
+
 				if (primary_conn == NULL)
 				{
 					terminate(ERR_BAD_CONFIG);
@@ -398,7 +401,7 @@ main(int argc, char **argv)
 				check_cluster_configuration(my_local_conn);
 				check_node_configuration();
 
-				if (reload_config(config_file, &local_options))
+				if (0 && reload_config(config_file, &local_options))
 				{
 					PQfinish(my_local_conn);
 					my_local_conn = establish_db_connection(local_options.conninfo, true);
@@ -627,11 +630,19 @@ standby_monitor(void)
 				ret;
 	bool		did_retry = false;
 
+	PGconn	   *upstream_conn;
+	int			upstream_node_id;
+
+	upstream_conn = get_upstream_connection(my_local_conn,
+											local_options.cluster_name,
+											&upstream_node_id, NULL);
+
+
 	/*
 	 * Check if the master is still available, if after 5 minutes of retries
 	 * we cannot reconnect, try to get a new master.
 	 */
-	check_connection(primary_conn, "master");	/* this take up to
+	check_connection(upstream_conn, "master");	/* this take up to
 												 * local_options.reconnect_atte
 												 * mpts *
 												 * local_options.reconnect_intv
@@ -643,10 +654,10 @@ standby_monitor(void)
 		terminate(1);
 	}
 
-	if (PQstatus(primary_conn) != CONNECTION_OK)
+	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
-		PQfinish(primary_conn);
-		primary_conn = NULL;
+		PQfinish(upstream_conn);
+		upstream_conn = NULL;
 
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
@@ -695,12 +706,14 @@ standby_monitor(void)
 		}
 	}
 
+	PQfinish(upstream_conn);
+
 	/* Check if we still are a standby, we could have been promoted */
 	do
 	{
-		log_debug("standby_monitor() - checking if still standby\n");
+		log_debug("standby_monitor() - checking if still standby\n"); // ZZZ
 		ret = is_standby(my_local_conn);
-
+		log_debug("ret is %i", ret); // ZZZ
 		switch (ret)
 		{
 			case 0:

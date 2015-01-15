@@ -40,6 +40,9 @@ int			guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 			  const char *value, const char *datatype);
 
 
+PGconn     *get_upstream_connection(PGconn *standby_conn, char *cluster,
+									int *upstream_node_id,
+									char *upstream_conninfo_out);
 PGconn	   *get_master_connection(PGconn *standby_conn, char *cluster,
 					  int *master_id, char *master_conninfo_out);
 
