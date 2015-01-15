@@ -571,36 +571,18 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-
 	/* Check if there is a schema for this cluster */
-	sqlquery_snprintf(sqlquery,
-					  "SELECT 1 FROM pg_namespace "
-					  "WHERE nspname = '%s' ",
-					  get_repmgr_schema());
-	log_debug(_("master register: %s\n"), sqlquery);
-	res = PQexec(conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	schema_exists = check_cluster_schema(conn);
+
+	/* If schema exists and force option not selected, raise an error */
+	if(schema_exists && !runtime_options.force)
 	{
-		log_err(_("Can't get info about schemas: %s\n"), PQerrorMessage(conn));
-		PQclear(res);
+		log_notice(_("Schema '%s' already exists.\n"), get_repmgr_schema());
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (PQntuples(res) > 0)		/* schema exists */
-	{
-		if (!runtime_options.force)		/* and we are not forcing so error */
-		{
-			log_notice(_("Schema %s already exists.\n"), get_repmgr_schema());
-			PQclear(res);
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
-		}
-		schema_exists = true;
-	}
-	PQclear(res);
-
-	if (!schema_exists)
+	if(!schema_exists)
 	{
 		log_info(_("master register: creating database objects inside the %s schema\n"),
 				 get_repmgr_schema());
@@ -706,30 +688,13 @@ do_standby_register(void)
 	}
 
 	/* Check if there is a schema for this cluster */
-	sqlquery_snprintf(sqlquery,
-					  "SELECT 1 FROM pg_namespace WHERE nspname = '%s'",
-					  get_repmgr_schema());
-	log_debug(_("standby register: %s\n"), sqlquery);
-	res = PQexec(conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		/* XXX error message does not match query */
-		log_err(_("Can't get info about tablespaces: %s\n"),
-				PQerrorMessage(conn));
-		PQclear(res);
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	if (PQntuples(res) == 0)
+	if (check_cluster_schema(conn) == false)
 	{
 		/* schema doesn't exist */
-		log_err(_("Schema %s doesn't exist.\n"), get_repmgr_schema());
-		PQclear(res);
+		log_err(_("Schema '%s' doesn't exist.\n"), get_repmgr_schema());
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
-	PQclear(res);
 
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
@@ -2075,12 +2040,12 @@ create_schema(PGconn *conn)
 	/* ... the tables */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE TABLE %s.repl_nodes (     "
-					  "  id        INTEGER PRIMARY KEY, "
-					  "  cluster   TEXT    NOT NULL,    "
-					  "  name      TEXT    NOT NULL,    "
-					  "  conninfo  TEXT    NOT NULL,    "
-					  "  priority  INTEGER NOT NULL,    "
-					  "  witness   BOOLEAN NOT NULL DEFAULT FALSE) ",
+					  "  id               INTEGER PRIMARY KEY, "
+					  "  cluster          TEXT    NOT NULL,    "
+					  "  name             TEXT    NOT NULL,    "
+					  "  conninfo         TEXT    NOT NULL,    "
+					  "  priority         INTEGER NOT NULL,    "
+					  "  witness          BOOLEAN NOT NULL DEFAULT FALSE) ",
 					  get_repmgr_schema_quoted(conn));
 
 	log_debug(_("master register: %s\n"), sqlquery);

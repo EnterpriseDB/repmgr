@@ -27,6 +27,7 @@ PGconn *establish_db_connection(const char *conninfo,
 PGconn *establish_db_connection_by_params(const char *keywords[],
 								  const char *values[],
 								  const bool exit_on_error);
+bool		check_cluster_schema(PGconn *conn);
 int			is_standby(PGconn *conn);
 int			is_witness(PGconn *conn,char *cluster, int node_id);
 bool		is_pgup(PGconn *conn, int timeout);

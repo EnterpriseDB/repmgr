@@ -80,6 +80,42 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 	return conn;
 }
 
+
+bool
+check_cluster_schema(PGconn *conn)
+{
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+
+	sqlquery_snprintf(sqlquery,
+					  "SELECT 1 FROM pg_namespace WHERE nspname = '%s'",
+					  get_repmgr_schema());
+
+	log_debug(_("check_cluster_schema(): %s\n"), sqlquery);
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("check_cluster_schema(): unable to check cluster schema: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	if (PQntuples(res) == 0)
+	{
+		/* schema doesn't exist */
+		log_notice(_("check_cluster_schema(): schema '%s' doesn't exist.\n"), get_repmgr_schema());
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
 int
 is_standby(PGconn *conn)
 {
