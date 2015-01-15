@@ -23,10 +23,13 @@
 #include "repmgr.h"
 #include "strutil.h"
 
+
+
 typedef struct
 {
 	char		cluster_name[MAXLEN];
 	int			node;
+	int         upstream_node;
 	char		conninfo[MAXLEN];
 	int			failover;
 	int			priority;
@@ -47,7 +50,8 @@ typedef struct
 	int			retry_promote_interval_secs;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0 }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0 }
+
 
 void		parse_config(const char *config_file, t_configuration_options * options);
 void		parse_line(char *buff, char *name, char *value);

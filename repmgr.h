@@ -38,7 +38,7 @@
 
 #include "config.h"
 #define MAXFILENAME		1024
-#define ERRBUFF_SIZE		512
+#define ERRBUFF_SIZE	512
 
 #define DEFAULT_CONFIG_FILE		"./repmgr.conf"
 #define DEFAULT_WAL_KEEP_SEGMENTS	"5000"
@@ -51,7 +51,7 @@
 
 #define MANUAL_FAILOVER		0
 #define AUTOMATIC_FAILOVER	1
-
+#define NO_UPSTREAM_NODE	-1
 
 /* Run time options type */
 typedef struct

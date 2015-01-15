@@ -65,7 +65,7 @@ static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_pa
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, bool exit_on_error);
 
-static bool create_node_record(PGconn *conn, char *action, int node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness);
+static bool create_node_record(PGconn *conn, char *action, int node, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -632,6 +632,7 @@ do_master_register(void)
 	node_record_created = create_node_record(conn,
 											 "master register",
 											 options.node,
+											 NO_UPSTREAM_NODE,
 											 options.cluster_name,
 											 options.node_name,
 											 options.conninfo,
@@ -753,6 +754,7 @@ do_standby_register(void)
 	node_record_created = create_node_record(master_conn,
 											 "standby register",
 											 options.node,
+											 options.upstream_node,
 											 options.cluster_name,
 											 options.node_name,
 											 options.conninfo,
@@ -1555,6 +1557,7 @@ do_witness_create(void)
 	node_record_created = create_node_record(masterconn,
 											 "witness create",
 											 options.node,
+											 NO_UPSTREAM_NODE,
 											 options.cluster_name,
 											 options.node_name,
 											 options.conninfo,
@@ -2229,6 +2232,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		node_record_created = create_node_record(witnessconn,
 												 "copy_configuration",
 												 atoi(PQgetvalue(res, i, 0)),
+												 NO_UPSTREAM_NODE,
 												 options.cluster_name,
 												 PQgetvalue(res, i, 1),
 												 PQgetvalue(res, i, 2),
@@ -2480,17 +2484,29 @@ do_check_upstream_config(void)
 
 
 static bool
-create_node_record(PGconn *conn, char *action, int node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness)
+create_node_record(PGconn *conn, char *action, int node, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness)
 {
 	char		sqlquery[QUERY_STR_LEN];
+	char		upstream_node_id[QUERY_STR_LEN];
 	PGresult   *res;
+
+	if(upstream_node != NO_UPSTREAM_NODE)
+	{
+		sqlquery_snprintf(upstream_node_id, "%i", upstream_node);
+	}
+	else
+	{
+		sqlquery_snprintf(upstream_node_id, "%s", "NULL");
+	}
 
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_nodes "
-					  "       (id, cluster, name, conninfo, priority, witness) "
-					  "VALUES (%d, '%s', '%s', '%s', %d, %s) ",
+					  "       (id, upstream_node_id, cluster, "
+					  "        name, conninfo, priority, witness) "
+					  "VALUES (%d, %s, '%s', '%s', '%s', %d, %s) ",
 					  get_repmgr_schema_quoted(conn),
 					  node,
+					  upstream_node_id,
 					  cluster_name,
 					  node_name,
 					  conninfo,

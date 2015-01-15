@@ -85,6 +85,8 @@ parse_config(const char *config_file, t_configuration_options * options)
 			strncpy(options->cluster_name, value, MAXLEN);
 		else if (strcmp(name, "node") == 0)
 			options->node = atoi(value);
+		else if (strcmp(name, "upstream_node") == 0)
+			options->upstream_node = atoi(value);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
