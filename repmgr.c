@@ -2041,11 +2041,13 @@ create_schema(PGconn *conn)
 	sqlquery_snprintf(sqlquery,
 					  "CREATE TABLE %s.repl_nodes (     "
 					  "  id               INTEGER PRIMARY KEY, "
+					  "  upstream_node_id INTEGER NULL REFERENCES %s.repl_nodes (id), "
 					  "  cluster          TEXT    NOT NULL,    "
 					  "  name             TEXT    NOT NULL,    "
 					  "  conninfo         TEXT    NOT NULL,    "
 					  "  priority         INTEGER NOT NULL,    "
 					  "  witness          BOOLEAN NOT NULL DEFAULT FALSE) ",
+					  get_repmgr_schema_quoted(conn),
 					  get_repmgr_schema_quoted(conn));
 
 	log_debug(_("master register: %s\n"), sqlquery);
