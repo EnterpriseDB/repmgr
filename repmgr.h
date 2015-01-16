@@ -21,8 +21,10 @@
 #define _REPMGR_H_
 
 #include "postgres_fe.h"
-#include "getopt_long.h"
 #include "libpq-fe.h"
+
+
+#include "getopt_long.h"
 
 #include "strutil.h"
 #include "dbutils.h"
@@ -52,6 +54,17 @@
 #define MANUAL_FAILOVER		0
 #define AUTOMATIC_FAILOVER	1
 #define NO_UPSTREAM_NODE	-1
+
+
+
+typedef enum {
+    UNKNOWN = 0,
+	PRIMARY,
+	STANDBY,
+	WITNESS
+} t_server_type;
+
+
 
 /* Run time options type */
 typedef struct

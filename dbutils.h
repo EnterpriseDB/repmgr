@@ -22,6 +22,7 @@
 
 #include "strutil.h"
 
+
 PGconn *establish_db_connection(const char *conninfo,
 						const bool exit_on_error);
 PGconn *establish_db_connection_by_params(const char *keywords[],

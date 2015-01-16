@@ -388,6 +388,7 @@ get_cluster_size(PGconn *conn, char *size)
 }
 
 
+
 bool
 get_pg_setting(PGconn *conn, const char *setting, char *output)
 {
@@ -467,7 +468,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 					  cluster,
 					  node_id);
 
-	log_debug("%s", sqlquery);
+	log_debug("%s\n", sqlquery);
 
 	res = PQexec(standby_conn, sqlquery);
 
