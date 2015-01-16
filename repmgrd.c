@@ -714,8 +714,12 @@ standby_monitor(void)
 			 * When we returns from this function we will have a new primary
 			 * and a new primary_conn
 			 */
+
+			// ZZZ if upstream is not cluster primary (i.e. cascading standby),
+			// we need to handle failover differently
+
 			do_failover();
-			log_debug("standby_monitor() - returning from do_failover()\n");
+			log_debug("standby_monitor() - returning from do_failover()\n"); // ZZZ
 			return;
 		}
 	}
