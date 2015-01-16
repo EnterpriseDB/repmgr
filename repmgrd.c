@@ -43,8 +43,7 @@
 #include "access/xlogdefs.h"
 
 /*
- * Struct to keep info about the nodes, used in the voting process in
- * do_failover()
+ * Struct to store node information
  */
 typedef struct s_node_info
 {
@@ -95,7 +94,7 @@ static void update_node_record_set_upstream(PGconn *conn, int this_node_id, int 
 
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
-static void do_failover(void);
+static void do_primary_failover(void);
 
 static t_node_info get_node_info(PGconn *conn,char *cluster, int node_id);
 static XLogRecPtr lsn_to_xlogrecptr(char *lsn, bool *format_ok);
@@ -718,8 +717,8 @@ standby_monitor(void)
 			// ZZZ if upstream is not cluster primary (i.e. cascading standby),
 			// we need to handle failover differently
 
-			do_failover();
-			log_debug("standby_monitor() - returning from do_failover()\n"); // ZZZ
+			do_primary_failover();
+			log_debug("standby_monitor() - returning from do_primary_failover()\n"); // ZZZ
 			return;
 		}
 	}
@@ -850,10 +849,14 @@ standby_monitor(void)
 }
 
 
-// ZZZ this handles failovers where node's upstream is cluster primary
+/*
+ * do_primary_failover()
+ *
+ * Handles failover to new cluster primary
+ */
 
 static void
-do_failover(void)
+do_primary_failover(void)
 {
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
