@@ -432,7 +432,7 @@ main(int argc, char **argv)
 					else if (my_local_mode == STANDBY_MODE)
 					{
 						standby_monitor();
-						log_debug(_("returned from standby_monitor()\n"));
+						log_debug(_("returned from standby_monitor()\n")); // ZZZ
 					}
 					sleep(local_options.monitor_interval_secs);
 
@@ -635,12 +635,13 @@ standby_monitor(void)
 
 	upstream_conn = get_upstream_connection(my_local_conn,
 											local_options.cluster_name,
+											local_options.node,
 											&upstream_node_id, NULL);
 
 
 	/*
-	 * Check if the master is still available, if after 5 minutes of retries
-	 * we cannot reconnect, try to get a new master.
+	 * Check if the upstream node is still available, if after 5 minutes of retries
+	 * we cannot reconnect, try to get a new upstream node.
 	 */
 	check_connection(upstream_conn, "master");	/* this take up to
 												 * local_options.reconnect_atte
@@ -831,7 +832,7 @@ standby_monitor(void)
 					PQerrorMessage(primary_conn));
 }
 
-
+// ZZZ witness
 static void
 do_failover(void)
 {
@@ -865,7 +866,7 @@ do_failover(void)
 
 	/* get a list of standby nodes, including myself */
 	sprintf(sqlquery,
-			"SELECT id, conninfo, witness "
+			"SELECT id, conninfo, type "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
 			" ORDER BY priority, id "
@@ -896,6 +897,7 @@ do_failover(void)
 	{
 		nodes[i].node_id = atoi(PQgetvalue(res, i, 0));
 		strncpy(nodes[i].conninfo_str, PQgetvalue(res, i, 1), MAXLEN);
+		// ZZZ witness
 		nodes[i].is_witness = (strcmp(PQgetvalue(res, i, 2), "t") == 0) ? true : false;
 
 		/*

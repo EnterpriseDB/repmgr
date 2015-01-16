@@ -31,6 +31,7 @@ bool		check_cluster_schema(PGconn *conn);
 int			is_standby(PGconn *conn);
 int			is_witness(PGconn *conn,char *cluster, int node_id);
 bool		is_pgup(PGconn *conn, int timeout);
+int			get_primary_node_id(PGconn *conn, char *cluster);
 int			get_server_version(PGconn *conn, char *server_version);
 bool		get_cluster_size(PGconn *conn, char *size);
 bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
@@ -42,7 +43,8 @@ int			guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 
 
 PGconn     *get_upstream_connection(PGconn *standby_conn, char *cluster,
-									int *upstream_node_id,
+									int node_id,
+									int *upstream_node_id_ptr,
 									char *upstream_conninfo_out);
 PGconn	   *get_master_connection(PGconn *standby_conn, char *cluster,
 					  int *master_id, char *master_conninfo_out);

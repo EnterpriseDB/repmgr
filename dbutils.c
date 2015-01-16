@@ -145,11 +145,13 @@ is_witness(PGconn *conn, char *cluster, int node_id)
 	int			result = 0;
 	char		sqlquery[QUERY_STR_LEN];
 
+	// ZZZ witness
 	sqlquery_snprintf(sqlquery,
-					  "SELECT witness "
+					  "SELECT TRUE "
 					  "  FROM %s.repl_nodes "
 					  " WHERE cluster = '%s' "
-					  "   AND id = %d ",
+					  "   AND id = %d "
+					  "   AND type = 'witness' ",
 					  get_repmgr_schema_quoted(conn),
 					  cluster,
 					  node_id);
@@ -222,6 +224,50 @@ is_pgup(PGconn *conn, int timeout)
 		}
 	}
 	return true;
+}
+
+/*
+ * Return the id of the active primary node, or -1 if no
+ * record available.
+ *
+ * This reports the value stored in the database only and
+ * does not verify whether the node is actually available
+ */
+int
+get_primary_node_id(PGconn *conn, char *cluster)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+	int			retval;
+
+	sqlquery_snprintf(sqlquery,
+					  "SELECT id               "
+					  "  FROM %s.repl_nodes    "
+					  " WHERE cluster = '%s'   "
+					  "   AND type = 'primary' "
+					  "   AND active IS TRUE   ",
+					  get_repmgr_schema_quoted(conn),
+					  cluster);
+
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("get_primary_node_id(): query failed\n%s\n"),
+				PQerrorMessage(conn));
+		retval = -1;
+	}
+	else if (PQntuples(res) == 0)
+	{
+		log_warning(_("get_primary_node_id(): no active primary found\n"));
+		retval = -1;
+	}
+	else
+	{
+		retval = atoi(PQgetvalue(res, 0, 0));
+	}
+	PQclear(res);
+
+	return retval;
 }
 
 
@@ -393,8 +439,8 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 
 
 PGconn *
-get_upstream_connection(PGconn *standby_conn, char *cluster,
-					  int *upstream_node_id, char *upstream_conninfo_out)
+get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
+						int *upstream_node_id_ptr, char *upstream_conninfo_out)
 {
 	PGconn	   *upstream_conn = NULL;
 	PGresult   *res;
@@ -409,23 +455,17 @@ get_upstream_connection(PGconn *standby_conn, char *cluster,
 	if (upstream_conninfo_out != NULL)
 		upstream_conninfo = upstream_conninfo_out;
 
-	/* hacky query */
 	sqlquery_snprintf(sqlquery,
-					  "WITH i AS ( "
-					  "  WITH p AS ( "
-					  "    SELECT repmgr_get_primary_conninfo() AS conninfo "
-					  "  )"
-					  "  SELECT p.conninfo, "
-					  "         unnest(regexp_matches(conninfo,'application_name=(\\S+)')) AS name "
-					  "    FROM p "
-					  ") "
-					  " SELECT rn.conninfo, i.name, rn.id "
-					  "   FROM i "
-					  "INNER JOIN %s.repl_nodes rn "
-					  "        ON rn.name = i.name "
-					  "  WHERE cluster = '%s' ",
+					  "    SELECT un.conninfo, un.name, un.id "
+					  "      FROM %s.repl_nodes un "
+					  "INNER JOIN %s.repl_nodes n "
+					  "        ON (un.id = n.upstream_node_id AND un.cluster = n.cluster)"
+					  "     WHERE n.cluster = '%s' "
+					  "       AND n.id = %i ",
 					  get_repmgr_schema_quoted(standby_conn),
-					  cluster);
+					  get_repmgr_schema_quoted(standby_conn),
+					  cluster,
+					  node_id);
 
 	log_debug("%s", sqlquery);
 
@@ -439,20 +479,19 @@ get_upstream_connection(PGconn *standby_conn, char *cluster,
 		return NULL;
 	}
 
-	// ZZZ check for empty result
-	// maybe modify function to return NULL
-
 	strncpy(upstream_conninfo, PQgetvalue(res, 0, 0), MAXCONNINFO);
-	*upstream_node_id = atoi(PQgetvalue(res, 0, 1));
+
+	if(upstream_node_id_ptr != NULL)
+		*upstream_node_id_ptr = atoi(PQgetvalue(res, 0, 1));
 
 	PQclear(res);
 
-	log_debug("conninfo is: '%s'", upstream_conninfo);
+	log_debug("conninfo is: '%s'\n", upstream_conninfo);
 	upstream_conn = establish_db_connection(upstream_conninfo, false);
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
-		log_err(_("Unable to connect to upstream server: %s\n"),
+		log_err(_("Unable to connect to upstream node: %s\n"),
 				PQerrorMessage(upstream_conn));
 		return NULL;
 	}
@@ -494,7 +533,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 					  "SELECT id, conninfo "
 					  "  FROM %s.repl_nodes "
 					  " WHERE cluster = '%s' "
-					  "   AND NOT witness ",
+					  "   AND type != 'witness' ",
 					  get_repmgr_schema_quoted(standby_conn),
 					  cluster);
 

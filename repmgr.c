@@ -65,7 +65,7 @@ static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_pa
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, bool exit_on_error);
 
-static bool create_node_record(PGconn *conn, char *action, int node, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness);
+static bool create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -439,7 +439,7 @@ do_cluster_show(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT conninfo, witness "
+					  "SELECT conninfo, type "
 					  "  FROM %s.repl_nodes ",
 					  get_repmgr_schema_quoted(conn));
 	res = PQexec(conn, sqlquery);
@@ -457,10 +457,11 @@ do_cluster_show(void)
 	printf("Role      | Connection String \n");
 	for (i = 0; i < PQntuples(res); i++)
 	{
+		// ZZZ witness
 		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
 		if (PQstatus(conn) != CONNECTION_OK)
 			strcpy(node_role, "  FAILED");
-		else if (strcmp(PQgetvalue(res, i, 1), "t") == 0)
+		else if (strcmp(PQgetvalue(res, i, 1), "witness") == 0)
 			strcpy(node_role, "  witness");
 		else if (is_standby(conn))
 			strcpy(node_role, "  standby");
@@ -632,12 +633,12 @@ do_master_register(void)
 	node_record_created = create_node_record(conn,
 											 "master register",
 											 options.node,
+											 "primary",
 											 NO_UPSTREAM_NODE,
 											 options.cluster_name,
 											 options.node_name,
 											 options.conninfo,
-											 options.priority,
-											 false);
+											 options.priority);
 
 	PQfinish(conn);
 
@@ -754,12 +755,12 @@ do_standby_register(void)
 	node_record_created = create_node_record(master_conn,
 											 "standby register",
 											 options.node,
+											 "standby",
 											 options.upstream_node,
 											 options.cluster_name,
 											 options.node_name,
 											 options.conninfo,
-											 options.priority,
-											 false);
+											 options.priority);
 
 	PQfinish(master_conn);
 	PQfinish(conn);
@@ -1557,12 +1558,12 @@ do_witness_create(void)
 	node_record_created = create_node_record(masterconn,
 											 "witness create",
 											 options.node,
+											 "witness",
 											 NO_UPSTREAM_NODE,
 											 options.cluster_name,
 											 options.node_name,
 											 options.conninfo,
-											 options.priority,
-											 true);
+											 options.priority);
 
 	if(node_record_created == false)
 	{
@@ -2044,12 +2045,13 @@ create_schema(PGconn *conn)
 	sqlquery_snprintf(sqlquery,
 					  "CREATE TABLE %s.repl_nodes (     "
 					  "  id               INTEGER PRIMARY KEY, "
+					  "  type             TEXT    NOT NULL CHECK (type IN('primary','standby','witness')), "
 					  "  upstream_node_id INTEGER NULL REFERENCES %s.repl_nodes (id), "
 					  "  cluster          TEXT    NOT NULL,    "
 					  "  name             TEXT    NOT NULL,    "
 					  "  conninfo         TEXT    NOT NULL,    "
 					  "  priority         INTEGER NOT NULL,    "
-					  "  witness          BOOLEAN NOT NULL DEFAULT FALSE) ",
+					  "  active           BOOLEAN NOT NULL DEFAULT TRUE)    ",
 					  get_repmgr_schema_quoted(conn),
 					  get_repmgr_schema_quoted(conn));
 
@@ -2212,7 +2214,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 	}
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT id, name, conninfo, priority, witness FROM %s.repl_nodes",
+					  "SELECT id, type, upstream_node_id, name, conninfo, priority FROM %s.repl_nodes",
 					  get_repmgr_schema_quoted(masterconn));
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -2232,16 +2234,18 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		node_record_created = create_node_record(witnessconn,
 												 "copy_configuration",
 												 atoi(PQgetvalue(res, i, 0)),
-												 NO_UPSTREAM_NODE,
-												 options.cluster_name,
 												 PQgetvalue(res, i, 1),
-												 PQgetvalue(res, i, 2),
-												 atoi(PQgetvalue(res, i, 3)),
-												 strcmp(witness, "t") == 0 ? true : false);
-
+												 strlen(PQgetvalue(res, i, 2))
+												   ? atoi(PQgetvalue(res, i, 2))
+												   : NO_UPSTREAM_NODE,
+												 options.cluster_name,
+												 PQgetvalue(res, i, 3),
+												 PQgetvalue(res, i, 4),
+												 atoi(PQgetvalue(res, i, 5)));
 
 		if (node_record_created == false)
 		{
+			// ZZZ fix error message?
 			fprintf(stderr, "Unable to create node record for witness: %s\n",
 					PQerrorMessage(witnessconn));
 			return false;
@@ -2484,34 +2488,46 @@ do_check_upstream_config(void)
 
 
 static bool
-create_node_record(PGconn *conn, char *action, int node, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, bool witness)
+create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	char		upstream_node_id[QUERY_STR_LEN];
 	PGresult   *res;
 
-	if(upstream_node != NO_UPSTREAM_NODE)
+	if(upstream_node == NO_UPSTREAM_NODE)
 	{
-		sqlquery_snprintf(upstream_node_id, "%i", upstream_node);
+		/*
+		 * No explicit upstream node id provided for standby - attempt to
+		 * get primary node id
+		 */
+		if(strcmp(type, "standby") == 0)
+		{
+			int primary_node_id = get_primary_node_id(conn, cluster_name);
+			sqlquery_snprintf(upstream_node_id, "%i", primary_node_id);
+		}
+		else
+		{
+			sqlquery_snprintf(upstream_node_id, "%s", "NULL");
+		}
 	}
 	else
 	{
-		sqlquery_snprintf(upstream_node_id, "%s", "NULL");
+		sqlquery_snprintf(upstream_node_id, "%i", upstream_node);
 	}
 
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_nodes "
-					  "       (id, upstream_node_id, cluster, "
-					  "        name, conninfo, priority, witness) "
-					  "VALUES (%d, %s, '%s', '%s', '%s', %d, %s) ",
+					  "       (id, type, upstream_node_id, cluster, "
+					  "        name, conninfo, priority) "
+					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %i) ",
 					  get_repmgr_schema_quoted(conn),
 					  node,
+					  type,
 					  upstream_node_id,
 					  cluster_name,
 					  node_name,
 					  conninfo,
-					  priority,
-					  witness == true ? "TRUE" : "FALSE");
+					  priority);
 
 	if(action != NULL)
 	{
