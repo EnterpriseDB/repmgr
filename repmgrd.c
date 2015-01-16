@@ -90,6 +90,7 @@ static void check_node_configuration(void);
 static void standby_monitor(void);
 static void witness_monitor(void);
 static bool check_connection(PGconn *conn, const char *type);
+static void update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_node_id);
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
 static void do_failover(void);
@@ -409,6 +410,7 @@ main(int argc, char **argv)
 				check_cluster_configuration(my_local_conn);
 				check_node_configuration();
 
+                // ZZZ check if this is needed, and why
 				if (0 && reload_config(config_file, &local_options))
 				{
 					PQfinish(my_local_conn);
@@ -871,14 +873,17 @@ do_failover(void)
 	 */
 	t_node_info nodes[FAILOVER_NODES_MAX_CHECK];
 
+    /* Store details of the failed node here */
+    t_node_info failed_primary = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
+
 	/* initialize to keep compiler quiet */
 	t_node_info best_candidate = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
-
 	/* get a list of standby nodes, including myself */
 	sprintf(sqlquery,
 			"SELECT id, conninfo, type, upstream_node_id "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
+            "   AND active IS TRUE "
 			" ORDER BY priority, id "
 			" LIMIT %i ",
 			get_repmgr_schema_quoted(my_local_conn),
@@ -913,6 +918,10 @@ do_failover(void)
 		if(strcmp(PQgetvalue(res, i, 2), "primary") == 0)
 		{
 			nodes[i].type = PRIMARY;
+			failed_primary.node_id = nodes[i].node_id;
+			failed_primary.xlog_location = nodes[i].xlog_location;
+			failed_primary.is_ready = nodes[i].is_ready;
+
 		}
 		else if(strcmp(PQgetvalue(res, i, 2), "standby") == 0)
 		{
@@ -992,7 +1001,6 @@ do_failover(void)
 		/* if node does not have same upstream node, skip it */
 		if (nodes[i].upstream_node_id != node_info.upstream_node_id)
 			continue;
-
 
 		node_conn = establish_db_connection(nodes[i].conninfo_str, false);
 
@@ -1223,7 +1231,7 @@ do_failover(void)
 		terminate(ERR_FAILOVER_FAIL);
 	}
 
-	/* once we know who is the best candidate, promote it */
+	/* if local node is the best candidate, promote it */
 	if (best_candidate.node_id == local_options.node)
 	{
 		/* wait */
@@ -1247,6 +1255,12 @@ do_failover(void)
 					progname);
 			terminate(ERR_BAD_CONFIG);
 		}
+
+        /* and reconnect to the local database */
+        my_local_conn = establish_db_connection(local_options.conninfo, true);
+
+        // ZZZ update master record, this node record
+        update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id);
 	}
 	else
 	{
@@ -1274,14 +1288,16 @@ do_failover(void)
 					progname);
 			terminate(ERR_BAD_CONFIG);
 		}
+
+        /* and reconnect to the local database */
+        my_local_conn = establish_db_connection(local_options.conninfo, true);
+
 	}
 
-	log_debug("failover done\n");
+    log_debug("failover done\n"); // ZZZ
 	/* to force it to re-calculate mode and master node */
 	failover_done = true;
 
-	/* and reconnect to the local database */
-	my_local_conn = establish_db_connection(local_options.conninfo, true);
 }
 
 
@@ -1765,4 +1781,11 @@ get_node_info(PGconn *conn,char *cluster, int node_id)
 	PQclear(res);
 
 	return node_info;
+}
+
+
+static void
+update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_node_id)
+{
+    log_debug("this: %i  failed: %i\n", this_node_id, old_primary_node_id);
 }

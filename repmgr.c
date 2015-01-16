@@ -2173,6 +2173,7 @@ create_schema(PGconn *conn)
 	}
 	PQclear(res);
 
+    // ZZZ no longer needed
 	sqlquery_snprintf(sqlquery,
 					  "CREATE OR REPLACE FUNCTION %s.repmgr_get_primary_conninfo() "
 					  "  RETURNS text "
