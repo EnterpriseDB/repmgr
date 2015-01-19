@@ -148,8 +148,6 @@ is_gwup(const char *host)
 
 	snprintf(command, MAXLEN, "ping -c1 -q -t1 %s", host);
 
-    log_debug(_("gateway check command is: \"%s\"\n"), command);
-
     return system(command) == 0;
 }
 
@@ -1265,6 +1263,7 @@ check_gateway(const char *host)
 		log_err(_("%s: We couldn't reconnect for long enough, stopping postgresql master..., exiting...\n"),
 				progname);
         maxlen_snprintf(script, "%s/pg_ctl %s -m fast stop", local_options.pg_bindir, local_options.pgctl_options);
+        log_info(_("%s: %s.\n"), progname, script);
         r = system(script);
         if (r != 0)
         {
