@@ -618,6 +618,7 @@ witness_monitor(void)
 }
 
 
+// ZZZ update description
 /*
  * Insert monitor info, this is basically the time and xlog replayed,
  * applied on standby and current xlog location in primary.
@@ -716,8 +717,11 @@ standby_monitor(void)
 			 * and a new primary_conn
 			 */
 
-			// ZZZ if upstream is not cluster primary (i.e. cascading standby),
-			// we need to handle failover differently
+			/*
+			 * Failover handling is handled differently depending on whether
+			 * the failed node is the primary or a cascading standby
+			 */
+
             upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
 
             if(upstream_node.type == PRIMARY)
@@ -725,7 +729,6 @@ standby_monitor(void)
                 log_debug(_("Primary node %i failure detected; attempting to promote a standby\n"),
                           node_info.upstream_node_id);
                 do_primary_failover();
-                log_debug("standby_monitor() - returning from do_primary_failover()\n"); // ZZZ
             }
             else
             {
@@ -1355,7 +1358,7 @@ void do_upstream_standby_failover(t_node_info upstream_node)
     log_debug(_("do_upstream_standby_failover(): performing failover for node %i"),
               node_info.node_id);
 
-    
+	// ...
 }
 
 
@@ -1393,8 +1396,9 @@ check_connection(PGconn *conn, const char *type)
 	}
 	if (!is_pgup(conn, local_options.master_response_timeout))
 	{
-		log_err(_("%s: Unable to reconnect to master after %i seconds...\n"),
+		log_err(_("%s: Unable to reconnect to %s after %i seconds...\n"),
 				progname,
+				type,
 				local_options.master_response_timeout
 			);
 
