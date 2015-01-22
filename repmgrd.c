@@ -89,6 +89,8 @@ static void check_node_configuration(void);
 static void standby_monitor(void);
 static void witness_monitor(void);
 static bool check_connection(PGconn *conn, const char *type);
+static bool set_local_node_failed(void);
+
 static void update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_node_id);
 static void update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 
@@ -647,6 +649,19 @@ standby_monitor(void)
 	int			upstream_node_id;
     t_node_info upstream_node;
 
+	/*
+	 * Verify that the local node is still available - if not there's
+	 * no point in doing much else anyway
+	 */
+
+	log_debug("checking local node connection...\n"); // ZZZ
+	if (!check_connection(my_local_conn, "standby"))
+	{
+		set_local_node_failed();
+		log_err(_("Failed to connect to local node, exiting!\n"));
+		terminate(1);
+	}
+
 	upstream_conn = get_upstream_connection(my_local_conn,
 											local_options.cluster_name,
 											local_options.node,
@@ -664,11 +679,7 @@ standby_monitor(void)
 												 * local_options.reconnect_intv
 												 * l seconds */
 
-	if (!check_connection(my_local_conn, "standby"))
-	{
-		log_err("Failed to connect to local node, exiting!\n");
-		terminate(1);
-	}
+
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
@@ -771,6 +782,7 @@ standby_monitor(void)
 
 				if (!check_connection(my_local_conn, "standby"))
 				{
+					set_local_node_failed();
 					terminate(0);
 				}
 
@@ -1394,6 +1406,7 @@ check_connection(PGconn *conn, const char *type)
 			return true;
 		}
 	}
+
 	if (!is_pgup(conn, local_options.master_response_timeout))
 	{
 		log_err(_("%s: Unable to reconnect to %s after %i seconds...\n"),
@@ -1404,6 +1417,59 @@ check_connection(PGconn *conn, const char *type)
 
 		return false;
 	}
+
+	return true;
+}
+
+/*
+ * set_local_node_failed()
+ *
+ * If failure of the local node is detected, attempt to connect
+ * to the current primary server (as stored in the global variable
+ * `primary_conn`) and update its record to failed.
+ */
+
+static bool
+set_local_node_failed(void)
+{
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+
+	if (!check_connection(primary_conn, "master"))
+	{
+		log_err(_("Unable to connect to last known primary node\n"));
+		return false;
+	}
+
+	/*
+	 * Check that this node is still primary - it's just about conceivable
+	 * that it might have become a standby of a new primary in the
+	 * intervening period
+	 */
+
+	// ZZZ TODO
+
+	/*
+	 * Attempt to set own record as inactive
+	 */
+	sqlquery_snprintf(sqlquery,
+					  "UPDATE %s.repl_nodes "
+					  "   SET active = FALSE "
+					  " WHERE id = %i ",
+					  get_repmgr_schema_quoted(primary_conn),
+					  node_info.node_id);
+
+	res = PQexec(primary_conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to set local node %i as inactive on primary: %s\n"),
+				node_info.node_id,
+				PQerrorMessage(primary_conn));
+
+		return false;
+	}
+
+	log_notice(_("Local node %i marked as inactive on primary\n"), node_info.node_id);
 	return true;
 }
 
