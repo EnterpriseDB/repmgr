@@ -1434,6 +1434,8 @@ set_local_node_failed(void)
 {
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
+	int			active_primary_node_id = -1;
+	char		primary_conninfo[MAXLEN];
 
 	if (!check_connection(primary_conn, "master"))
 	{
@@ -1447,7 +1449,48 @@ set_local_node_failed(void)
 	 * intervening period
 	 */
 
-	// ZZZ TODO
+	sqlquery_snprintf(sqlquery,
+					  "SELECT id, conninfo "
+					  "  FROM %s.repl_nodes "
+					  " WHERE type = 'primary' "
+					  "   AND active IS TRUE ",
+					  get_repmgr_schema_quoted(primary_conn));
+
+	res = PQexec(primary_conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Unable to obtain active primary record: %s\n"),
+				PQerrorMessage(primary_conn));
+
+		return false;
+	}
+
+	if(!PQntuples(res))
+	{
+		log_err(_("No active primary record found\n"));
+		return false;
+	}
+
+	active_primary_node_id = atoi(PQgetvalue(res, 0, 0));
+	strncpy(primary_conninfo, PQgetvalue(res, 0, 1), MAXLEN);
+	PQclear(res);
+
+	if(active_primary_node_id != primary_options.node)
+	{
+		log_notice(_("Current active primary is %i; attempting to connect\n"),
+			active_primary_node_id);
+		PQfinish(primary_conn);
+		primary_conn = establish_db_connection(primary_conninfo, false);
+
+		if(PQstatus(primary_conn) != CONNECTION_OK)
+		{
+			log_err(_("Unable to connect to active primary\n"));
+			return false;
+		}
+
+		log_notice(_("Connection to new primary was successful\n"));
+	}
+
 
 	/*
 	 * Attempt to set own record as inactive
