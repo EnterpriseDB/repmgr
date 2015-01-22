@@ -95,8 +95,9 @@ static void update_node_record_set_upstream(PGconn *conn, int this_node_id, int 
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
 static void do_primary_failover(void);
+static void do_upstream_standby_failover(t_node_info upstream_node);
 
-static t_node_info get_node_info(PGconn *conn,char *cluster, int node_id);
+static t_node_info get_node_info(PGconn *conn, char *cluster, int node_id);
 static XLogRecPtr lsn_to_xlogrecptr(char *lsn, bool *format_ok);
 
 /*
@@ -643,6 +644,7 @@ standby_monitor(void)
 
 	PGconn	   *upstream_conn;
 	int			upstream_node_id;
+    t_node_info upstream_node;
 
 	upstream_conn = get_upstream_connection(my_local_conn,
 											local_options.cluster_name,
@@ -716,9 +718,21 @@ standby_monitor(void)
 
 			// ZZZ if upstream is not cluster primary (i.e. cascading standby),
 			// we need to handle failover differently
+            upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
 
-			do_primary_failover();
-			log_debug("standby_monitor() - returning from do_primary_failover()\n"); // ZZZ
+            if(upstream_node.type == PRIMARY)
+            {
+                log_debug(_("Primary node %i failure detected; attempting to promote a standby\n"),
+                          node_info.upstream_node_id);
+                do_primary_failover();
+                log_debug("standby_monitor() - returning from do_primary_failover()\n"); // ZZZ
+            }
+            else
+            {
+                log_debug(_("Failure on upstream node %i detected; attempting to reconnect to new upstream node\n"),
+                          node_info.upstream_node_id);
+                do_upstream_standby_failover(upstream_node);
+            }
 			return;
 		}
 	}
@@ -1274,7 +1288,10 @@ do_primary_failover(void)
 
         /* update node information to reflect new status */
         update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id);
+
+        // ZZZ update node_info?
 	}
+    /* local node not promotion candidate - find the new primary */
 	else
 	{
 		PGconn	   *upstream_conn;
@@ -1310,6 +1327,8 @@ do_primary_failover(void)
 		/* update node information to reflect new status */
         update_node_record_set_upstream(upstream_conn, node_info.node_id, best_candidate.node_id);
 		PQfinish(upstream_conn);
+
+        // ZZZ update node_info?
 	}
 
     log_debug("failover done\n"); // ZZZ
@@ -1317,8 +1336,28 @@ do_primary_failover(void)
 	/* to force it to re-calculate mode and master node */
 	// ^ ZZZ check that behaviour ^
 	failover_done = true;
-
 }
+
+
+/*
+ * do_upstream_standby_failover()
+ *
+ * Attach cascaded standby to new upstream server
+ *
+ * Currently we will try to attach to the failed upstream's upstream.
+ * It might be worth providing a selection of reconnection strategies
+ * as different behaviour might be desirable in different situations;
+ * or maybe the option not to reconnect might be required?
+ */
+static
+void do_upstream_standby_failover(t_node_info upstream_node)
+{
+    log_debug(_("do_upstream_standby_failover(): performing failover for node %i"),
+              node_info.node_id);
+
+    
+}
+
 
 
 static bool
