@@ -97,7 +97,7 @@ static void update_node_record_set_upstream(PGconn *conn, int this_node_id, int 
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
 static void do_primary_failover(void);
-static void do_upstream_standby_failover(t_node_info upstream_node);
+static bool do_upstream_standby_failover(t_node_info upstream_node);
 
 static t_node_info get_node_info(PGconn *conn, char *cluster, int node_id);
 static XLogRecPtr lsn_to_xlogrecptr(char *lsn, bool *format_ok);
@@ -673,6 +673,8 @@ standby_monitor(void)
 	 * Check if the upstream node is still available, if after 5 minutes of retries
 	 * we cannot reconnect, try to get a new upstream node.
 	 */
+
+	// ZZZ change "master" to "upstream" if connected to cascading standby
 	check_connection(upstream_conn, "master");	/* this take up to
 												 * local_options.reconnect_atte
 												 * mpts *
@@ -745,7 +747,12 @@ standby_monitor(void)
             {
                 log_debug(_("Failure on upstream node %i detected; attempting to reconnect to new upstream node\n"),
                           node_info.upstream_node_id);
-                do_upstream_standby_failover(upstream_node);
+
+				if(!do_upstream_standby_failover(upstream_node))
+				{
+					log_err(_("Unable to reconnect to new upstream node,terminating...\n"));
+					terminate(1);
+				}
             }
 			return;
 		}
@@ -1309,6 +1316,7 @@ do_primary_failover(void)
     /* local node not promotion candidate - find the new primary */
 	else
 	{
+		// ZZZ upstream_conn -> new_primary_conn
 		PGconn	   *upstream_conn;
 		/* wait */
 		sleep(10);
@@ -1364,13 +1372,101 @@ do_primary_failover(void)
  * as different behaviour might be desirable in different situations;
  * or maybe the option not to reconnect might be required?
  */
-static
-void do_upstream_standby_failover(t_node_info upstream_node)
+static bool
+do_upstream_standby_failover(t_node_info upstream_node)
 {
-    log_debug(_("do_upstream_standby_failover(): performing failover for node %i"),
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+	int			upstream_node_id = node_info.upstream_node_id;
+	int			r;
+
+	log_debug(_("do_upstream_standby_failover(): performing failover for node %i\n"),
               node_info.node_id);
 
-	// ...
+	if (!check_connection(primary_conn, "master"))
+	{
+		log_err(_("do_upstream_standby_failover(): Unable to connect to last known primary node\n"));
+		return false;
+	}
+
+	// ZZZ temporary
+	sleep(10);
+
+	while(1)
+	{
+		sqlquery_snprintf(sqlquery,
+						  "SELECT id, active, upstream_node_id, type, conninfo "
+						  "  FROM %s.repl_nodes "
+						  " WHERE id = %i ",
+						  get_repmgr_schema_quoted(primary_conn),
+						  upstream_node_id);
+
+		res = PQexec(primary_conn, sqlquery);
+
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_err(_("Unable to query cluster primary: %s\n"), PQerrorMessage(primary_conn));
+			PQclear(res);
+			return false;
+		}
+
+		if(PQntuples(res) == 0)
+		{
+			log_err(_("No node with id %i found"), upstream_node_id);
+			PQclear(res);
+			return false;
+		}
+
+		/* upstream node is inactive */
+		if(strcmp(PQgetvalue(res, 0, 1), "f") == 0)
+		{
+			/*
+			 * Upstream node is an inactive primary, meaning no there are no direct
+			 * upstream nodes available to reattach to.
+			 *
+			 * XXX For now we'll simply terminate, however it would make sense to
+			 * provide an option to either try and find the current primary and/or
+			 * a strategy to connect to a different upstream node
+			 */
+			if(strcmp(PQgetvalue(res, 0, 4), "primary") == 0)
+			{
+				log_err(_("Unable to find active upstream node\n"));
+				PQclear(res);
+				return false;
+			}
+
+			upstream_node_id = atoi(PQgetvalue(res, 0, 2));
+		}
+		else
+		{
+			upstream_node_id = atoi(PQgetvalue(res, 0, 0));
+
+			log_notice(_("Found active upstream node with id %i\n"), upstream_node_id);
+			PQclear(res);
+			break;
+		}
+		PQclear(res);
+
+	}
+
+	/* Close the connection to this server */
+	PQfinish(my_local_conn);
+	my_local_conn = NULL;
+
+	/* Follow new upstream */
+	r = system(local_options.follow_command);
+	if (r != 0)
+	{
+		log_err(_("%s: follow command failed. You could check and try it manually.\n"),
+				progname);
+		terminate(ERR_BAD_CONFIG);
+	}
+
+	update_node_record_set_upstream(primary_conn, node_info.node_id, upstream_node_id);
+
+	my_local_conn = establish_db_connection(local_options.conninfo, true);
+
+	return true;
 }
 
 
@@ -1421,6 +1517,7 @@ check_connection(PGconn *conn, const char *type)
 	return true;
 }
 
+
 /*
  * set_local_node_failed()
  *
@@ -1439,14 +1536,14 @@ set_local_node_failed(void)
 
 	if (!check_connection(primary_conn, "master"))
 	{
-		log_err(_("Unable to connect to last known primary node\n"));
+		log_err(_("set_local_node_failed(): Unable to connect to last known primary node\n"));
 		return false;
 	}
 
 	/*
-	 * Check that this node is still primary - it's just about conceivable
-	 * that it might have become a standby of a new primary in the
-	 * intervening period
+	 * Check that the node `primary_conn` is connected to is node is still
+	 * primary - it's just about conceivable that it might have become a
+	 * standby of a new primary in the intervening period
 	 */
 
 	sqlquery_snprintf(sqlquery,
@@ -1924,7 +2021,6 @@ get_node_info(PGconn *conn,char *cluster, int node_id)
 	{
 		log_err(_("Unable to retrieve record for node %i: %s\n"), node_id, PQerrorMessage(conn));
 		PQclear(res);
-		PQfinish(conn);
 		terminate(ERR_DB_QUERY);
 	}
 

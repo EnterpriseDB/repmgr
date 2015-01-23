@@ -468,7 +468,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 					  cluster,
 					  node_id);
 
-	log_debug("%s\n", sqlquery);
+	log_debug("get_upstream_connection(): %s\n", sqlquery);
 
 	res = PQexec(standby_conn, sqlquery);
 
