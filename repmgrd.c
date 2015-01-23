@@ -1609,7 +1609,7 @@ set_local_node_failed(void)
 		return false;
 	}
 
-	log_notice(_("Local node %i marked as inactive on primary\n"), node_info.node_id);
+	log_notice(_("Marking this node (%i) as inactive on primary\n"), node_info.node_id);
 	return true;
 }
 
