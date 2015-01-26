@@ -1310,8 +1310,6 @@ do_primary_failover(void)
 
         /* update node information to reflect new status */
         update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id);
-
-        // ZZZ update node_info?
 	}
     /* local node not promotion candidate - find the new primary */
 	else
@@ -1345,13 +1343,11 @@ do_primary_failover(void)
         /* and reconnect to the local database */
         my_local_conn = establish_db_connection(local_options.conninfo, true);
 
-
 		new_primary_conn = establish_db_connection(best_candidate.conninfo_str, true);
-		/* update node information to reflect new status */
-        update_node_record_set_upstream(new_primary_conn, node_info.node_id, best_candidate.node_id);
-		PQfinish(new_primary_conn);
 
-        // ZZZ update node_info?
+		/* update node information to reflect new status */
+		update_node_record_set_upstream(new_primary_conn, node_info.node_id, best_candidate.node_id);
+		PQfinish(new_primary_conn);
 	}
 
     log_debug("failover done\n"); // ZZZ
