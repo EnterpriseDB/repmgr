@@ -662,6 +662,10 @@ standby_monitor(void)
 		terminate(1);
 	}
 
+	// ZZZ if connected to cascading standby, check primary conn too;
+	// if original primary has gone away we'll need to get the new one
+	// from the upstream node to write monitoring information
+
 	upstream_conn = get_upstream_connection(my_local_conn,
 											local_options.cluster_name,
 											local_options.node,
@@ -680,7 +684,6 @@ standby_monitor(void)
 												 * mpts *
 												 * local_options.reconnect_intv
 												 * l seconds */
-
 
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
