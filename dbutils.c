@@ -448,6 +448,13 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 		return NULL;
 	}
 
+	if(!PQntuples(res))
+	{
+		log_notice(_("No upstream server record found"));
+		PQclear(res);
+		return NULL;
+	}
+
 	strncpy(upstream_conninfo, PQgetvalue(res, 0, 0), MAXCONNINFO);
 
 	if(upstream_node_id_ptr != NULL)
