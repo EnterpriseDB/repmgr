@@ -647,8 +647,9 @@ standby_monitor(void)
 
 	PGconn	   *upstream_conn;
 	int			upstream_node_id;
-    t_node_info upstream_node;
+	t_node_info upstream_node;
 
+	const char *type = NULL;
 	/*
 	 * Verify that the local node is still available - if not there's
 	 * no point in doing much else anyway
@@ -671,6 +672,9 @@ standby_monitor(void)
 											local_options.node,
 											&upstream_node_id, NULL);
 
+	type = upstream_node_id == primary_options.node
+		? "master"
+		: "upstream";
 
 	// ZZZ "5 minutes"?
 	/*
@@ -678,12 +682,10 @@ standby_monitor(void)
 	 * we cannot reconnect, try to get a new upstream node.
 	 */
 
-	// ZZZ change "master" to "upstream" if connected to cascading standby
-	check_connection(upstream_conn, "master");	/* this take up to
-												 * local_options.reconnect_atte
-												 * mpts *
-												 * local_options.reconnect_intv
-												 * l seconds */
+	check_connection(upstream_conn, type);	/* this takes up to
+											 * local_options.reconnect_attempts
+											 * local_options.reconnect_intvl seconds
+											 */
 
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
@@ -693,7 +695,7 @@ standby_monitor(void)
 
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
-			log_err(_("We couldn't reconnect to master. Now checking if another node has been promoted.\n"));
+			log_err(_("We couldn't reconnect to %s. Now checking if another node has been promoted.\n"), type);
 
 			for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 			{
