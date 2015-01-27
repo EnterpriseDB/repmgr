@@ -1290,6 +1290,9 @@ do_primary_failover(void)
 
         /* update node information to reflect new status */
         update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id);
+
+		/* update internal record for this node*/
+		node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
 	}
     /* local node not promotion candidate - find the new primary */
 	else
@@ -1327,6 +1330,10 @@ do_primary_failover(void)
 
 		/* update node information to reflect new status */
 		update_node_record_set_upstream(new_primary_conn, node_info.node_id, best_candidate.node_id);
+
+		/* update internal record for this node*/
+		node_info = get_node_info(new_primary_conn, local_options.cluster_name, local_options.node);
+
 		PQfinish(new_primary_conn);
 	}
 
