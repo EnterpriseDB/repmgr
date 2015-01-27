@@ -625,7 +625,9 @@ standby_monitor(void)
 	int			upstream_node_id;
 	t_node_info upstream_node;
 
+	int			active_primary_id;
 	const char *type = NULL;
+
 	/*
 	 * Verify that the local node is still available - if not there's
 	 * no point in doing much else anyway
@@ -638,10 +640,6 @@ standby_monitor(void)
 		log_err(_("Failed to connect to local node, exiting!\n"));
 		terminate(1);
 	}
-
-	// ZZZ if connected to cascading standby, check primary conn too;
-	// if original primary has gone away we'll need to get the new one
-	// from the upstream node to write monitoring information
 
 	upstream_conn = get_upstream_connection(my_local_conn,
 											local_options.cluster_name,
@@ -785,6 +783,55 @@ standby_monitor(void)
 	/* Fast path for the case where no history is requested */
 	if (!monitoring_history)
 		return;
+
+
+	/*
+	 * If original primary has gone away we'll need to get the new one
+	 * from the upstream node to write monitoring information
+	 */
+
+	upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
+
+	sprintf(sqlquery,
+			"SELECT id "
+			"  FROM %s.repl_nodes "
+			" WHERE type = 'primary' "
+			"   AND active IS TRUE ",
+			get_repmgr_schema_quoted(my_local_conn));
+
+	res = PQexec(my_local_conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("standby_monitor() - query error:%s\n"), PQerrorMessage(my_local_conn));
+		PQclear(res);
+
+		/* Not a fatal error, just means no monitoring records will be written */
+		return;
+	}
+
+	if(PQntuples(res) == 0)
+	{
+		log_err(_("standby_monitor(): no active primary found\n"));
+		PQclear(res);
+		return;
+	}
+
+	active_primary_id = atoi(PQgetvalue(res, 0, 0));
+	PQclear(res);
+
+	if(active_primary_id != primary_options.node)
+	{
+		log_notice(_("Connecting to active cluster primary (node %i)...\n"), active_primary_id); \
+		if(primary_conn != NULL)
+		{
+			PQfinish(primary_conn);
+		}
+		primary_conn = get_master_connection(my_local_conn,
+											 local_options.cluster_name,
+											 &primary_options.node, NULL);
+
+	}
 
 	/*
 	 * Cancel any query that is still being executed, so i can insert the
