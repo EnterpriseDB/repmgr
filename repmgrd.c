@@ -60,7 +60,6 @@ typedef struct s_node_info
 
 /* Local info */
 t_configuration_options local_options;
-int			my_local_mode = STANDBY_MODE;
 PGconn	   *my_local_conn = NULL;
 
 /* Primary info */
@@ -151,8 +150,7 @@ main(int argc, char **argv)
 	};
 
 	int			optindex;
-	int			c,
-				ret;
+	int			c;
 	bool		daemonize = false;
 	FILE	   *fd;
 
@@ -285,37 +283,15 @@ main(int argc, char **argv)
 	 */
 	do
 	{
-		log_debug("main loop...\n");
+		log_debug("main loop...\n"); // ZZZ
 		/*
 		 * Set my server mode, establish a connection to primary and start
 		 * monitor
 		 */
-		ret = is_witness(my_local_conn,
-						 local_options.cluster_name, local_options.node);
 
-		if (ret == 1)
-			my_local_mode = WITNESS_MODE;
-		else if (ret == 0)
+		switch (node_info.type)
 		{
-			ret = is_standby(my_local_conn);
-
-			if (ret == 1)
-				my_local_mode = STANDBY_MODE;
-			else if (ret == 0)	/* is the master */
-				my_local_mode = PRIMARY_MODE;
-		}
-
-		/*
-		 * XXX we did this before changing is_standby() to return int; we
-		 * should not exit at this point, but for now we do until we have a
-		 * better strategy
-		 */
-		if (ret == -1)
-			terminate(1);
-
-		switch (my_local_mode)
-		{
-			case PRIMARY_MODE:
+			case PRIMARY:
 				primary_options.node = local_options.node;
 				strncpy(primary_options.conninfo, local_options.conninfo,
 						MAXLEN);
@@ -395,8 +371,8 @@ main(int argc, char **argv)
 				} while (!failover_done);
 				break;
 
-			case WITNESS_MODE:
-			case STANDBY_MODE:
+			case WITNESS:
+			case STANDBY:
 
 				/* We need the node id of the upstream server as well as a connection to it */
 				log_info(_("%s Connecting to primary for cluster '%s'\n"),
@@ -426,12 +402,12 @@ main(int argc, char **argv)
 				 * Every local_options.monitor_interval_secs seconds, do
 				 * checks
 				 */
-				if (my_local_mode == WITNESS_MODE)
+				if (node_info.type == WITNESS)
 				{
 					log_info(_("%s Starting continuous witness node monitoring\n"),
 							 progname);
 				}
-				else if (my_local_mode == STANDBY_MODE)
+				else if (node_info.type == STANDBY)
 				{
 					log_info(_("%s Starting continuous standby node monitoring\n"),
 							 progname);
@@ -441,9 +417,9 @@ main(int argc, char **argv)
 				{
 					log_debug("standby check loop...\n");
 
-					if (my_local_mode == WITNESS_MODE)
+					if (node_info.type == WITNESS)
 						witness_monitor();
-					else if (my_local_mode == STANDBY_MODE)
+					else if (node_info.type == STANDBY)
 					{
 						standby_monitor();
 						log_debug(_("returned from standby_monitor()\n")); // ZZZ
@@ -739,8 +715,7 @@ standby_monitor(void)
 			 * Failover handling is handled differently depending on whether
 			 * the failed node is the primary or a cascading standby
 			 */
-
-            upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
+			upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
 
             if(upstream_node.type == PRIMARY)
             {
@@ -1690,7 +1665,7 @@ check_node_configuration(void)
 	{
 		PQclear(res);
 
-		if (my_local_mode == WITNESS_MODE)
+		if (node_info.type == WITNESS)
 		{
 			log_err(_("The witness is not configured\n"));
 			terminate(ERR_BAD_CONFIG);

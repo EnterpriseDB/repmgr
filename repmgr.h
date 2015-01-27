@@ -31,10 +31,6 @@
 #include "errcode.h"
 #include "config.h"
 
-#define PRIMARY_MODE		0
-#define STANDBY_MODE		1
-#define WITNESS_MODE		2
-
 #define MIN_SUPPORTED_VERSION		"9.3"
 #define MIN_SUPPORTED_VERSION_NUM	90300
 
