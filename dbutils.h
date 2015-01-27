@@ -30,7 +30,6 @@ PGconn *establish_db_connection_by_params(const char *keywords[],
 								  const bool exit_on_error);
 bool		check_cluster_schema(PGconn *conn);
 int			is_standby(PGconn *conn);
-int			is_witness(PGconn *conn,char *cluster, int node_id);
 bool		is_pgup(PGconn *conn, int timeout);
 int			get_primary_node_id(PGconn *conn, char *cluster);
 int			get_server_version(PGconn *conn, char *server_version);

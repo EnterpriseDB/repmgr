@@ -138,38 +138,6 @@ is_standby(PGconn *conn)
 }
 
 
-int
-is_witness(PGconn *conn, char *cluster, int node_id)
-{
-	PGresult   *res;
-	int			result = 0;
-	char		sqlquery[QUERY_STR_LEN];
-
-	// ZZZ witness
-	sqlquery_snprintf(sqlquery,
-					  "SELECT TRUE "
-					  "  FROM %s.repl_nodes "
-					  " WHERE cluster = '%s' "
-					  "   AND id = %d "
-					  "   AND type = 'witness' ",
-					  get_repmgr_schema_quoted(conn),
-					  cluster,
-					  node_id);
-
-	res = PQexec(conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_err(_("Can't query server mode: %s"), PQerrorMessage(conn));
-		result = -1;
-	}
-	else if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
-		result = 1;
-
-	PQclear(res);
-	return result;
-}
-
-
 /* check the PQStatus and try to 'select 1' to confirm good connection */
 bool
 is_pgup(PGconn *conn, int timeout)
