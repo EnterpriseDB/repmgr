@@ -90,7 +90,7 @@ static void witness_monitor(void);
 static bool check_connection(PGconn *conn, const char *type);
 static bool set_local_node_failed(void);
 
-static void update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_node_id);
+static bool update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_node_id);
 static void update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 
 static void update_shared_memory(char *last_wal_standby_applied);
@@ -1317,14 +1317,17 @@ do_primary_failover(void)
 		{
 			log_err(_("%s: promote command failed. You could check and try it manually.\n"),
 					progname);
-			terminate(ERR_BAD_CONFIG);
+			terminate(ERR_DB_QUERY);
 		}
 
         /* and reconnect to the local database */
         my_local_conn = establish_db_connection(local_options.conninfo, true);
 
         /* update node information to reflect new status */
-        update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id);
+        if(update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id) == false)
+		{
+			terminate(ERR_DB_QUERY);
+		}
 
 		/* update internal record for this node*/
 		node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
@@ -1365,7 +1368,6 @@ do_primary_failover(void)
 
 		/* update node information to reflect new status */
 		update_node_record_set_upstream(new_primary_conn, node_info.node_id, best_candidate.node_id);
-
 		/* update internal record for this node*/
 		node_info = get_node_info(new_primary_conn, local_options.cluster_name, local_options.node);
 
@@ -2073,7 +2075,7 @@ parse_node_type(const char *type)
 }
 
 
-static void
+static bool
 update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_node_id)
 {
 	PGresult   *res;
@@ -2081,9 +2083,17 @@ update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_n
 
 	log_debug(_("Setting failed node %i inactive; marking node %i as primary\n"), old_primary_node_id, this_node_id);
 
-	// ZZZ handle errors
-	sqlquery_snprintf(sqlquery, "BEGIN");
-	res = PQexec(conn, sqlquery);
+	res = PQexec(conn, "BEGIN");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to begin transaction: %s\n"),
+				PQerrorMessage(conn));
+
+		PQclear(res);
+		return false;
+	}
+
 	PQclear(res);
 
 	sqlquery_snprintf(sqlquery,
@@ -2096,6 +2106,18 @@ update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_n
 					  old_primary_node_id);
 
 	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to set old primary node %i as inactive: %s\n"),
+				old_primary_node_id,
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		PQexec(conn, "ROLLBACK");
+		return false;
+	}
+
 	PQclear(res);
 
 	sqlquery_snprintf(sqlquery,
@@ -2109,13 +2131,34 @@ update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_n
 					  this_node_id);
 
 	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to set current node %i as active primary: %s\n"),
+				this_node_id,
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		PQexec(conn, "ROLLBACK");
+		return false;
+	}
+
 	PQclear(res);
 
-	sqlquery_snprintf(sqlquery, "COMMIT");
-	res = PQexec(conn, sqlquery);
+	res = PQexec(conn, "COMMIT");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to set commit transaction: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
 	PQclear(res);
 
-
+	return true;
 }
 
 
