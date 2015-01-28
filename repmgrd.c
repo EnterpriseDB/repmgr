@@ -99,6 +99,7 @@ static void do_primary_failover(void);
 static bool do_upstream_standby_failover(t_node_info upstream_node);
 
 static t_node_info get_node_info(PGconn *conn, char *cluster, int node_id);
+static t_server_type parse_node_type(const char *type);
 static XLogRecPtr lsn_to_xlogrecptr(char *lsn, bool *format_ok);
 
 /*
@@ -989,29 +990,16 @@ do_primary_failover(void)
 
 		strncpy(nodes[i].conninfo_str, PQgetvalue(res, i, 1), MAXCONNINFO);
 
-		if(strcmp(PQgetvalue(res, i, 2), "primary") == 0)
+		nodes[i].type = parse_node_type(PQgetvalue(res, i, 2));
+
+		if(nodes[i].type == PRIMARY)
 		{
-			nodes[i].type = PRIMARY;
 			failed_primary.node_id = nodes[i].node_id;
 			failed_primary.xlog_location = nodes[i].xlog_location;
 			failed_primary.is_ready = nodes[i].is_ready;
-
-		}
-		else if(strcmp(PQgetvalue(res, i, 2), "standby") == 0)
-		{
-			nodes[i].type = STANDBY;
-		}
-		else if(strcmp(PQgetvalue(res, i, 2), "witness") == 0)
-		{
-			nodes[i].type = WITNESS;
-		}
-		else
-		{
-			// ZZZ handle exception
 		}
 
 		nodes[i].upstream_node_id = atoi(PQgetvalue(res, i, 3));
-
 
 		/*
 		 * Initialize on false so if we can't reach this node we know that
@@ -2057,28 +2045,31 @@ get_node_info(PGconn *conn,char *cluster, int node_id)
 	node_info.node_id = atoi(PQgetvalue(res, 0, 0));
 	node_info.upstream_node_id = atoi(PQgetvalue(res, 0, 1));
 	strncpy(node_info.conninfo_str, PQgetvalue(res, 0, 2), MAXLEN);
-
-	// ZZZ consolidate similar constructs
-	if(strcmp(PQgetvalue(res, 0, 3), "primary") == 0)
-	{
-		node_info.type = PRIMARY;
-	}
-	else if(strcmp(PQgetvalue(res, 0, 3), "standby") == 0)
-	{
-		node_info.type = STANDBY;
-	}
-	else if(strcmp(PQgetvalue(res, 0, 3), "witness") == 0)
-	{
-		node_info.type = WITNESS;
-	}
-	else
-	{
-		node_info.type = UNKNOWN;
-	}
+	node_info.type = parse_node_type(PQgetvalue(res, 0, 3));
 
 	PQclear(res);
 
 	return node_info;
+}
+
+
+static t_server_type
+parse_node_type(const char *type)
+{
+	if(strcmp(type, "primary") == 0)
+	{
+		return PRIMARY;
+	}
+	else if(strcmp(type, "standby") == 0)
+	{
+		return STANDBY;
+	}
+	else if(strcmp(type, "witness") == 0)
+	{
+		return WITNESS;
+	}
+
+	return UNKNOWN;
 }
 
 
