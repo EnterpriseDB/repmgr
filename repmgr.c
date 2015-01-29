@@ -480,7 +480,6 @@ do_cluster_show(void)
 static void
 do_cluster_cleanup(void)
 {
-	int			master_id;
 	PGconn	   *conn = NULL;
 	PGconn	   *master_conn = NULL;
 	PGresult   *res;
@@ -493,7 +492,7 @@ do_cluster_cleanup(void)
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
 	master_conn = get_master_connection(conn, options.cluster_name,
-										&master_id, NULL);
+										NULL, NULL);
 	if (!master_conn)
 	{
 		log_err(_("cluster cleanup: cannot connect to master\n"));
@@ -595,7 +594,6 @@ do_master_register(void)
 	else
 	{
 		PGconn	   *master_conn;
-		int			id;
 
 		if (runtime_options.force)
 		{
@@ -619,7 +617,7 @@ do_master_register(void)
 
 		/* Ensure there isn't any other master already registered */
 		master_conn = get_master_connection(conn,
-											options.cluster_name, &id, NULL);
+											options.cluster_name, NULL, NULL);
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
@@ -656,8 +654,7 @@ do_standby_register(void)
 {
 	PGconn	   *conn;
 	PGconn	   *master_conn;
-	int			master_id,
-				ret;
+	int			ret;
 
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
@@ -701,7 +698,7 @@ do_standby_register(void)
 	/* check if there is a master in this cluster */
 	log_info(_("%s connecting to master database\n"), progname);
 	master_conn = get_master_connection(conn, options.cluster_name,
-										&master_id, NULL);
+										NULL, NULL);
 	if (!master_conn)
 	{
 		log_err(_("A master must be defined before configuring a slave\n"));
@@ -1105,7 +1102,6 @@ do_standby_promote(void)
 	char		script[MAXLEN];
 
 	PGconn	   *old_master_conn;
-	int			old_master_id;
 
 	int			r,
 				retval;
@@ -1139,7 +1135,7 @@ do_standby_promote(void)
 
 	/* we also need to check if there isn't any master already */
 	old_master_conn = get_master_connection(conn,
-											options.cluster_name, &old_master_id, NULL);
+											options.cluster_name, NULL, NULL);
 	if (old_master_conn != NULL)
 	{
 		log_err(_("This cluster already has an active master server\n"));
@@ -1220,7 +1216,6 @@ do_standby_follow(void)
 	char		script[MAXLEN];
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
-	int			master_id;
 
 	int			r,
 				retval;
@@ -1268,7 +1263,7 @@ do_standby_follow(void)
 		}
 
 		master_conn = get_master_connection(conn,
-				options.cluster_name, &master_id, (char *) &master_conninfo);
+				options.cluster_name, NULL, (char *) &master_conninfo);
 	}
 	while (master_conn == NULL && runtime_options.wait_for_master);
 

@@ -485,7 +485,6 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
  * connection string is placed there.
  */
 
-// ZZZ value placed in `master_id` used by callers in repmgrd
 PGconn *
 get_master_connection(PGconn *standby_conn, char *cluster,
 					  int *master_id, char *master_conninfo_out)
@@ -497,10 +496,14 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 	char		master_conninfo_stack[MAXCONNINFO];
 	char	   *master_conninfo = &*master_conninfo_stack;
 
-	int			i;
+	int			i,
+				node_id;
 
+	if(master_id != NULL)
+	{
+		*master_id = -1;
+	}
 
-	// ZZZ below old stuff
 	/* find all nodes belonging to this cluster */
 	log_info(_("finding node list for cluster '%s'\n"),
 			 cluster);
@@ -525,10 +528,10 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 	for (i = 0; i < PQntuples(res1); i++)
 	{
 		/* initialize with the values of the current node being processed */
-		*master_id = atoi(PQgetvalue(res1, i, 0));
+		node_id = atoi(PQgetvalue(res1, i, 0));
 		strncpy(master_conninfo, PQgetvalue(res1, i, 1), MAXCONNINFO);
 		log_info(_("checking role of cluster node '%i'\n"),
-				 *master_id);
+				 node_id);
 		master_conn = establish_db_connection(master_conninfo, false);
 
 		if (PQstatus(master_conn) != CONNECTION_OK)
@@ -555,6 +558,12 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 		{
 			PQclear(res2);
 			PQclear(res1);
+
+			if(master_id != NULL)
+			{
+				*master_id = node_id;
+			}
+
 			return master_conn;
 		}
 		else
@@ -562,7 +571,6 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 			/* if it is a standby, clear info */
 			PQclear(res2);
 			PQfinish(master_conn);
-			*master_id = -1;
 		}
 	}
 
