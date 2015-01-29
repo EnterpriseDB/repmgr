@@ -2086,17 +2086,19 @@ create_schema(PGconn *conn)
 	/* a view */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE VIEW %s.repl_status AS "
-					  "  SELECT primary_node, standby_node, name AS standby_name, last_monitor_time, "
-					  "         last_wal_primary_location, last_wal_standby_location, "
-					  "         pg_size_pretty(replication_lag) AS replication_lag, "
-					  "         age(now(), last_apply_time) AS replication_time_lag, "
-					  "         pg_size_pretty(apply_lag) AS apply_lag, "
-					  "         age(now(), CASE WHEN pg_is_in_recovery() THEN %s.repmgr_get_last_updated() ELSE last_monitor_time END) AS communication_time_lag "
-					  "    FROM %s.repl_monitor "
-					  "    JOIN %s.repl_nodes ON standby_node = id "
-					  "   WHERE (standby_node, last_monitor_time) IN ( "
-					  "                 SELECT standby_node, MAX(last_monitor_time) "
-					  "                  FROM %s.repl_monitor GROUP BY 1 "
+					  "  SELECT m.primary_node, m.standby_node, n.name AS standby_name, "
+					  "         n.type AS node_type, n.active, last_monitor_time, "
+					  "         CASE WHEN n.type='standby' THEN m.last_wal_primary_location ELSE NULL END AS last_wal_primary_location, "
+					  "         m.last_wal_standby_location, "
+					  "         CASE WHEN n.type='standby' THEN pg_size_pretty(m.replication_lag) ELSE NULL END AS replication_lag, "
+					  "         CASE WHEN n.type='standby' THEN age(now(), m.last_apply_time) ELSE NULL END AS replication_time_lag, "
+					  "         CASE WHEN n.type='standby' THEN pg_size_pretty(m.apply_lag) ELSE NULL END AS apply_lag, "
+					  "         age(now(), CASE WHEN pg_is_in_recovery() THEN %s.repmgr_get_last_updated() ELSE m.last_monitor_time END) AS communication_time_lag "
+					  "    FROM %s.repl_monitor m "
+					  "    JOIN %s.repl_nodes n ON m.standby_node = n.id "
+					  "   WHERE (m.standby_node, m.last_monitor_time) IN ( "
+					  "                 SELECT m1.standby_node, MAX(m1.last_monitor_time) "
+					  "                  FROM %s.repl_monitor m1 GROUP BY 1 "
 					  "            )",
 					  get_repmgr_schema_quoted(conn),
 					  get_repmgr_schema_quoted(conn),
