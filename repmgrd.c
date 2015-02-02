@@ -1362,10 +1362,10 @@ do_primary_failover(void)
 
 		if(local_options.use_replication_slots)
 		{
-			if(create_replication_slot(new_primary_conn, local_options.slot_name) == false)
+			if(create_replication_slot(new_primary_conn, node_info.slot_name) == false)
 			{
 				log_err(_("Unable to create slot '%s' on the primary node: %s\n"),
-						local_options.slot_name,
+						node_info.slot_name,
 						PQerrorMessage(new_primary_conn));
 				PQfinish(new_primary_conn);
 				terminate(ERR_DB_QUERY);

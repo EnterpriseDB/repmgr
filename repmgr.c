@@ -63,7 +63,7 @@ static bool copy_configuration(PGconn *masterconn, PGconn *witnessconn);
 static void write_primary_conninfo(char *line);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
-static bool check_upstream_config(PGconn *conn, bool exit_on_error);
+static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
 
 static bool create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority);
 
@@ -337,7 +337,7 @@ main(int argc, char **argv)
 	/* We check that port number is not null */
 	if (!runtime_options.dbname[0])
 	{
-	        strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
+		strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
 	}
 
 	/* Read the configuration file, normally repmgr.conf */
@@ -787,6 +787,8 @@ do_standby_clone(void)
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
+	int			server_version_num;
+
 	char		cluster_size[MAXLEN];
 
 	int			r = 0,
@@ -837,9 +839,9 @@ do_standby_clone(void)
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	check_server_version(primary_conn, "master", true, NULL);
+	server_version_num = check_server_version(primary_conn, "master", true, NULL);
 
-	check_upstream_config(primary_conn, true);
+	check_upstream_config(primary_conn, server_version_num, true);
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT pg_tablespace_location(oid) spclocation "
@@ -2402,7 +2404,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
  */
 
 static bool
-check_upstream_config(PGconn *conn, bool exit_on_error)
+check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 {
 	int			i;
 	bool		config_ok = true;
@@ -2425,22 +2427,67 @@ check_upstream_config(PGconn *conn, bool exit_on_error)
 		config_ok = false;
 	}
 
-	/* XXX we may need to modify this */
-	i = guc_set_typed(conn, "wal_keep_segments", ">=",
-					  runtime_options.wal_keep_segments, "integer");
-	if (i == 0 || i == -1)
+	if(options.use_replication_slots)
 	{
-		if (i == 0)
-			log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the upstream server.)\n"),
-					progname, runtime_options.wal_keep_segments);
-
-		if(exit_on_error == true)
+		/* Does the server support physical replication slots? */
+		if(server_version_num < 90400)
 		{
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
+			log_err(_("Server version must be 9.4 or later to enable replication slots\n"));
+
+			if(exit_on_error == true)
+			{
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			config_ok = false;
+		}
+		/* Server is 9.4 or greater - non-zero `max_replication_slots` required */
+		else
+		{
+			i = guc_set_typed(conn, "max_replication_slots", ">",
+							  "1", "integer");
+			if (i == 0 || i == -1)
+			{
+				if (i == 0)
+				{
+					log_err(_("%s needs parameter 'max_replication_slots' must be set to at least 1 to enable replication slots\n"),
+						progname);
+
+					if(exit_on_error == true)
+					{
+						PQfinish(conn);
+						exit(ERR_BAD_CONFIG);
+					}
+
+					config_ok = false;
+				}
+			}
 		}
 
-		config_ok = false;
+	}
+	/*
+	 * physical replication slots not available or not requested -
+	 * ensure some reasonably high value set for `wal_keep_segments`
+	 */
+	else
+	{
+		i = guc_set_typed(conn, "wal_keep_segments", ">=",
+						  runtime_options.wal_keep_segments, "integer");
+		if (i == 0 || i == -1)
+		{
+			if (i == 0)
+				log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the upstream server.)\n"),
+						progname, runtime_options.wal_keep_segments);
+
+			if(exit_on_error == true)
+			{
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			config_ok = false;
+		}
 	}
 
 	i = guc_set(conn, "archive_mode", "=", "on");
@@ -2499,6 +2546,9 @@ do_check_upstream_config(void)
 {
 	PGconn	   *conn;
 	bool		config_ok;
+	int			server_version_num;
+
+	parse_config(runtime_options.config_file, &options);
 
 	/* Connection parameters for upstream server only */
 	keywords[0] = "host";
@@ -2514,9 +2564,9 @@ do_check_upstream_config(void)
 
 	/* Verify that upstream server is a supported server version */
 	log_info(_("%s connected to upstream server, checking its state\n"), progname);
-	check_server_version(conn, "upstream server", false, NULL);
+	server_version_num = check_server_version(conn, "upstream server", false, NULL);
 
-	config_ok = check_upstream_config(conn, false);
+	config_ok = check_upstream_config(conn, server_version_num, false);
 
 	if(config_ok == true)
 	{
