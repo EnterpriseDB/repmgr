@@ -54,6 +54,7 @@ typedef struct s_node_info
     t_server_type type;
 	bool		is_ready;
 	bool		is_visible;
+	char		slot_name[MAXLEN];
 }	t_node_info;
 
 
@@ -1361,14 +1362,10 @@ do_primary_failover(void)
 
 		if(local_options.use_replication_slots)
 		{
-			// ZZZ store slot name in `repl_nodes`
-			char repmgr_slot_name[MAXLEN];
-			maxlen_snprintf(repmgr_slot_name, "repmgr_slot_%i", local_options.node);
-
-			if(create_replication_slot(new_primary_conn, repmgr_slot_name) == false)
+			if(create_replication_slot(new_primary_conn, local_options.slot_name) == false)
 			{
 				log_err(_("Unable to create slot '%s' on the primary node: %s\n"),
-						repmgr_slot_name,
+						local_options.slot_name,
 						PQerrorMessage(new_primary_conn));
 				PQfinish(new_primary_conn);
 				terminate(ERR_DB_QUERY);
@@ -2038,7 +2035,7 @@ check_and_create_pid_file(const char *pid_file)
 
 
 t_node_info
-get_node_info(PGconn *conn,char *cluster, int node_id)
+get_node_info(PGconn *conn, char *cluster, int node_id)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
@@ -2046,7 +2043,7 @@ get_node_info(PGconn *conn,char *cluster, int node_id)
 	t_node_info node_info = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
 
 	sprintf(sqlquery,
-			"SELECT id, upstream_node_id, conninfo, type "
+			"SELECT id, upstream_node_id, conninfo, type, slot_name "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
 			"   AND id = %i",
@@ -2068,6 +2065,7 @@ get_node_info(PGconn *conn,char *cluster, int node_id)
 	node_info.upstream_node_id = atoi(PQgetvalue(res, 0, 1));
 	strncpy(node_info.conninfo_str, PQgetvalue(res, 0, 2), MAXLEN);
 	node_info.type = parse_node_type(PQgetvalue(res, 0, 3));
+	strncpy(node_info.slot_name, PQgetvalue(res, 0, 4), MAXLEN);
 
 	PQclear(res);
 

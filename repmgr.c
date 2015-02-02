@@ -2083,11 +2083,12 @@ create_schema(PGconn *conn)
 					  "  id               INTEGER PRIMARY KEY, "
 					  "  type             TEXT    NOT NULL CHECK (type IN('primary','standby','witness')), "
 					  "  upstream_node_id INTEGER NULL REFERENCES %s.repl_nodes (id), "
-					  "  cluster          TEXT    NOT NULL,    "
-					  "  name             TEXT    NOT NULL,    "
-					  "  conninfo         TEXT    NOT NULL,    "
-					  "  priority         INTEGER NOT NULL,    "
-					  "  active           BOOLEAN NOT NULL DEFAULT TRUE)    ",
+					  "  cluster          TEXT    NOT NULL, "
+					  "  name             TEXT    NOT NULL, "
+					  "  conninfo         TEXT    NOT NULL, "
+					  "  slot_name        TEXT    NULL, "
+					  "  priority         INTEGER NOT NULL, "
+					  "  active           BOOLEAN NOT NULL DEFAULT TRUE )",
 					  get_repmgr_schema_quoted(conn),
 					  get_repmgr_schema_quoted(conn));
 
@@ -2530,7 +2531,8 @@ static bool
 create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority)
 {
 	char		sqlquery[QUERY_STR_LEN];
-	char		upstream_node_id[QUERY_STR_LEN];
+	char		upstream_node_id[MAXLEN];
+	char		slot_name[MAXLEN];
 	PGresult   *res;
 
 	if(upstream_node == NO_UPSTREAM_NODE)
@@ -2542,23 +2544,32 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 		if(strcmp(type, "standby") == 0)
 		{
 			int primary_node_id = get_primary_node_id(conn, cluster_name);
-			sqlquery_snprintf(upstream_node_id, "%i", primary_node_id);
+			maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
 		}
 		else
 		{
-			sqlquery_snprintf(upstream_node_id, "%s", "NULL");
+			maxlen_snprintf(upstream_node_id, "%s", "NULL");
 		}
 	}
 	else
 	{
-		sqlquery_snprintf(upstream_node_id, "%i", upstream_node);
+		maxlen_snprintf(upstream_node_id, "%i", upstream_node);
+	}
+
+	if(options.use_replication_slots && strcmp(type, "standby") == 0)
+	{
+		maxlen_snprintf(slot_name, "'%s'", repmgr_slot_name);
+	}
+	else
+	{
+		maxlen_snprintf(slot_name, "%s", "NULL");
 	}
 
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_nodes "
 					  "       (id, type, upstream_node_id, cluster, "
-					  "        name, conninfo, priority) "
-					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %i) ",
+					  "        name, conninfo, slot_name, priority) "
+					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %s, %i) ",
 					  get_repmgr_schema_quoted(conn),
 					  node,
 					  type,
@@ -2566,6 +2577,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 					  cluster_name,
 					  node_name,
 					  conninfo,
+					  slot_name,
 					  priority);
 
 	if(action != NULL)
