@@ -783,7 +783,7 @@ do_standby_register(void)
 static void
 do_standby_clone(void)
 {
-	PGconn	   *conn;
+	PGconn	   *primary_conn;
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
@@ -833,13 +833,13 @@ do_standby_clone(void)
 
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("%s connecting to master database\n"), progname);
-	conn = establish_db_connection_by_params(keywords, values, true);
+	primary_conn = establish_db_connection_by_params(keywords, values, true);
 
 	/* Verify that master is a supported server version */
 	log_info(_("%s connected to master, checking its state\n"), progname);
-	check_server_version(conn, "master", true, NULL);
+	check_server_version(primary_conn, "master", true, NULL);
 
-	check_upstream_config(conn, true);
+	check_upstream_config(primary_conn, true);
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT pg_tablespace_location(oid) spclocation "
@@ -848,12 +848,12 @@ do_standby_clone(void)
 
 	log_debug("standby clone: %s\n", sqlquery);
 
-	res = PQexec(conn, sqlquery);
+	res = PQexec(primary_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't get info about tablespaces: %s\n"), PQerrorMessage(conn));
+		log_err(_("Can't get info about tablespaces: %s\n"), PQerrorMessage(primary_conn));
 		PQclear(res);
-		PQfinish(conn);
+		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -863,7 +863,7 @@ do_standby_clone(void)
 		{
 			log_err("Can't clone in test mode when master have tablespace\n");
 			PQclear(res);
-			PQfinish(conn);
+			PQfinish(primary_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -877,17 +877,17 @@ do_standby_clone(void)
 		if (!create_pg_dir(tblspc_dir, runtime_options.force))
 		{
 			PQclear(res);
-			PQfinish(conn);
+			PQfinish(primary_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
 	PQclear(res);
 
 
-	if(get_cluster_size(conn, cluster_size) == false)
+	if(get_cluster_size(primary_conn, cluster_size) == false)
 		exit(ERR_DB_QUERY);
 
-	log_info(_("Successfully connected to master. Current installation size is %s\n"),
+	log_info(_("Successfully primary_connected to master. Current installation size is %s\n"),
 			 cluster_size);
 
 	/*
@@ -913,13 +913,13 @@ do_standby_clone(void)
 					  "  ORDER BY 1 "
 		);
 	log_debug(_("standby clone: %s\n"), sqlquery);
-	res = PQexec(conn, sqlquery);
+	res = PQexec(primary_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("Can't get info about data directory and configuration files: %s\n"),
-				PQerrorMessage(conn));
+				PQerrorMessage(primary_conn));
 		PQclear(res);
-		PQfinish(conn);
+		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -928,7 +928,7 @@ do_standby_clone(void)
 	{
 		log_err("%s: STANDBY CLONE should be run by a SUPERUSER\n", progname);
 		PQclear(res);
-		PQfinish(conn);
+		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1078,7 +1078,7 @@ stop_backup:
 		log_err(_("Unable to take a base backup of the master server\n"));
 		log_warning(_("The destination directory (%s) will need to be cleaned up manually\n"),
 				local_data_directory);
-		PQfinish(conn);
+		PQfinish(primary_conn);
 		exit(retval);
 	}
 
@@ -1092,12 +1092,12 @@ stop_backup:
 	 */
 	if(options.use_replication_slots)
 	{
-		if(create_replication_slot(conn, repmgr_slot_name) == false)
+		if(create_replication_slot(primary_conn, repmgr_slot_name) == false)
 		{
 			log_err(_("Unable to create slot '%s' on the primary node: %s\n"),
 					repmgr_slot_name,
-					PQerrorMessage(conn));
-			PQfinish(conn);
+					PQerrorMessage(primary_conn));
+			PQfinish(primary_conn);
 			exit(ERR_DB_QUERY);
 		}
 	}
@@ -1121,7 +1121,7 @@ stop_backup:
 		log_notice("for example : /etc/init.d/postgresql start\n");
 	}
 
-	PQfinish(conn);
+	PQfinish(primary_conn);
 	exit(retval);
 }
 
