@@ -53,5 +53,6 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 bool		cancel_query(PGconn *conn, int timeout);
 char       *get_repmgr_schema(void);
 char       *get_repmgr_schema_quoted(PGconn *conn);
+bool		create_replication_slot(PGconn *conn, char *slot_name);
 
 #endif

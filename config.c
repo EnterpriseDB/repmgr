@@ -137,6 +137,8 @@ parse_config(const char *config_file, t_configuration_options * options)
 			options->monitor_interval_secs = atoi(value);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
 			options->retry_promote_interval_secs = atoi(value);
+		else if (strcmp(name, "use_replication_slots") == 0)
+			options->use_replication_slots = atoi(value);
 		else
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}

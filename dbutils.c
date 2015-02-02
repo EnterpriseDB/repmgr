@@ -558,6 +558,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 		{
 			PQclear(res2);
 			PQclear(res1);
+			log_debug(_("get_master_connection(): current primary node is %i\n"), node_id);
 
 			if(master_id != NULL)
 			{
@@ -708,4 +709,31 @@ get_repmgr_schema_quoted(PGconn *conn)
 	}
 
 	return repmgr_schema_quoted;
+}
+
+
+bool
+create_replication_slot(PGconn *conn, char *slot_name)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(sqlquery,
+					  "SELECT * FROM pg_create_physical_replication_slot('%s')",
+					  slot_name);
+
+	log_debug(_("create_replication_slot(): Creating slot '%s' on primary\n"), slot_name);
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Unable to create slot '%s' on the primary node: %s\n"),
+				slot_name,
+				PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+	return true;
 }

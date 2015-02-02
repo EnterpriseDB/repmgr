@@ -96,6 +96,8 @@ t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 static char *server_mode = NULL;
 static char *server_cmd = NULL;
 
+static char repmgr_slot_name[MAXLEN];
+
 int
 main(int argc, char **argv)
 {
@@ -389,6 +391,12 @@ main(int argc, char **argv)
 	/* Initialise the repmgr schema name */
 	maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 			 options.cluster_name);
+
+	/* Initialise slot name, if required (9.4 and later) */
+	if(options.use_replication_slots)
+	{
+		maxlen_snprintf(repmgr_slot_name, "repmgr_slot_%i", options.node);
+	}
 
 	switch (action)
 	{
@@ -1015,7 +1023,6 @@ do_standby_clone(void)
 		{
 			log_err(_("%s: Aborting, remote host %s is not reachable.\n"),
 					progname, runtime_options.host);
-			PQfinish(conn);
 			retval = ERR_BAD_SSH;
 			goto stop_backup;
 		}
@@ -1071,13 +1078,37 @@ stop_backup:
 		log_err(_("Unable to take a base backup of the master server\n"));
 		log_warning(_("The destination directory (%s) will need to be cleaned up manually\n"),
 				local_data_directory);
+		PQfinish(conn);
 		exit(retval);
 	}
 
 	/* Finally, write the recovery.conf file */
 	create_recovery_file(local_data_directory);
 
+	/*
+	 * If replication slots requested, create appropriate slot on the primary;
+	 * create_recovery_file() will already have written `primary_slot_name` into
+	 * `recovery.conf`
+	 */
+	if(options.use_replication_slots)
+	{
+		if(create_replication_slot(conn, repmgr_slot_name) == false)
+		{
+			log_err(_("Unable to create slot '%s' on the primary node: %s\n"),
+					repmgr_slot_name,
+					PQerrorMessage(conn));
+			PQfinish(conn);
+			exit(ERR_DB_QUERY);
+		}
+	}
+
 	log_notice(_("%s base backup of standby complete\n"), progname);
+
+	/*
+	 * XXX It might be nice to provide the following options:
+	 * - have repmgr start the daemon automatically
+	 * - provide a custom pg_ctl command
+	 */
 
 	log_notice("HINT: You can now start your postgresql server\n");
 	if (test_mode)
@@ -1087,9 +1118,10 @@ stop_backup:
 	}
 	else
 	{
-			log_notice("for example : /etc/init.d/postgresql start\n");
+		log_notice("for example : /etc/init.d/postgresql start\n");
 	}
 
+	PQfinish(conn);
 	exit(retval);
 }
 
@@ -1709,8 +1741,17 @@ create_recovery_file(const char *data_dir)
 	/* min_recovery_apply_delay = ... (optional) */
 	if(*runtime_options.min_recovery_apply_delay)
 	{
-		maxlen_snprintf(line, "\nmin_recovery_apply_delay = %s\n",
+		maxlen_snprintf(line, "min_recovery_apply_delay = %s\n",
 						runtime_options.min_recovery_apply_delay);
+		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+			return false;
+	}
+
+	/* primary_slot_name = '...' (optional, for 9.4 and later) */
+	if(options.use_replication_slots)
+	{
+		maxlen_snprintf(line, "primary_slot_name = %s\n",
+						repmgr_slot_name);
 		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
 	}

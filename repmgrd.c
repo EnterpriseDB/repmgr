@@ -1320,11 +1320,11 @@ do_primary_failover(void)
 			terminate(ERR_DB_QUERY);
 		}
 
-        /* and reconnect to the local database */
-        my_local_conn = establish_db_connection(local_options.conninfo, true);
+		/* and reconnect to the local database */
+		my_local_conn = establish_db_connection(local_options.conninfo, true);
 
-        /* update node information to reflect new status */
-        if(update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id) == false)
+		/* update node information to reflect new status */
+		if(update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id) == false)
 		{
 			terminate(ERR_DB_QUERY);
 		}
@@ -1345,12 +1345,34 @@ do_primary_failover(void)
 		log_debug(_("follow command is: \"%s\"\n"), local_options.follow_command);
 
 		/*
-		 * New Primary need some time to be promoted. The follow command
+		 * The new primary may some time to be promoted. The follow command
 		 * should take care of that.
 		 */
 		if (log_type == REPMGR_STDERR && *local_options.logfile)
 		{
 			fflush(stderr);
+		}
+
+		/*
+		 * If 9.4 or later, and replication slots in use, we'll need to create a
+		 * slot on the new primary
+		 */
+		new_primary_conn = establish_db_connection(best_candidate.conninfo_str, true);
+
+		if(local_options.use_replication_slots)
+		{
+			// ZZZ store slot name in `repl_nodes`
+			char repmgr_slot_name[MAXLEN];
+			maxlen_snprintf(repmgr_slot_name, "repmgr_slot_%i", local_options.node);
+
+			if(create_replication_slot(new_primary_conn, repmgr_slot_name) == false)
+			{
+				log_err(_("Unable to create slot '%s' on the primary node: %s\n"),
+						repmgr_slot_name,
+						PQerrorMessage(new_primary_conn));
+				PQfinish(new_primary_conn);
+				terminate(ERR_DB_QUERY);
+			}
 		}
 
 		r = system(local_options.follow_command);
@@ -1361,10 +1383,8 @@ do_primary_failover(void)
 			terminate(ERR_BAD_CONFIG);
 		}
 
-        /* and reconnect to the local database */
-        my_local_conn = establish_db_connection(local_options.conninfo, true);
-
-		new_primary_conn = establish_db_connection(best_candidate.conninfo_str, true);
+		/* and reconnect to the local database */
+		my_local_conn = establish_db_connection(local_options.conninfo, true);
 
 		/* update node information to reflect new status */
 		update_node_record_set_upstream(new_primary_conn, node_info.node_id, best_candidate.node_id);

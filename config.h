@@ -48,9 +48,10 @@ typedef struct
 	char		logfile[MAXLEN];
 	int			monitor_interval_secs;
 	int			retry_promote_interval_secs;
+	int			use_replication_slots;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0 }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0, 0 }
 
 
 void		parse_config(const char *config_file, t_configuration_options * options);
