@@ -1739,7 +1739,7 @@ help(const char *progname)
 	printf(_("  -S, --superuser=USERNAME            superuser username for witness database\n" \
 			 "                                      (default: postgres)\n"));
 	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
-			 "                                      wal_keep_segments (default: 5000)\n"));
+			 "                                      wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
 	printf(_("  -k, --keep-history=VALUE            keeps indicated number of days of\n" \
 			 "                                      history\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations\n" \
