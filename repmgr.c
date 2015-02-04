@@ -30,6 +30,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>			/* for stat() */
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -340,17 +341,39 @@ main(int argc, char **argv)
 		strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
 	}
 
-	/* Read the configuration file, normally repmgr.conf */
-	if (!runtime_options.config_file[0])
+	/*
+	 * If a configuration file was provided, check it exists, otherwise
+	 * emit an error
+	 */
+	if (runtime_options.config_file[0])
+	{
+		struct stat config;
+		if(stat(runtime_options.config_file, &config) != 0)
+		{
+			log_err(_("Provided configuration file '%s' not found: %s\n"),
+					runtime_options.config_file,
+					strerror(errno)
+				);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+	/*
+	 * If no configuration file was provided, set to a default file
+	 * which `parse_config()` will attempt to read if it exists
+	 */
+	else
+	{
 		strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
+	}
 
 	if (runtime_options.verbose)
 		printf(_("Opening configuration file: %s\n"),
 			   runtime_options.config_file);
 
 	/*
-	 * XXX Do not read config files for action where it is not required (clone
-	 * for example).
+	 * The configuration file is not required for some actions (e.g. 'standby clone'),
+	 * however if available we'll parse it anyway for options like 'log_level',
+	 * 'use_replication_slots' etc.
 	 */
 	parse_config(runtime_options.config_file, &options);
 
@@ -1984,22 +2007,12 @@ check_parameters_for_action(const int action)
 		case STANDBY_CLONE:
 
 			/*
-			 * Issue a friendly notice that the configuration file is not
-			 * necessary nor read at all in when performing a STANDBY CLONE
-			 * action.
-			 */
-			if (runtime_options.config_file[0])
-			{
-				log_notice(_("Only command line parameters for the connection "
-							 "to the master are used when issuing a STANDBY CLONE command. "
-							 "The passed configuration file is neither required nor used for "
-							 "its node configuration portions\n\n"));
-			}
-
-			/*
-			 * To clone a master into a standby we need connection parameters
-			 * repmgr.conf is useless because we don't have a server running
-			 * in the standby; warn the user, but keep going.
+			 * Previous repmgr versions issued a notice here if a configuration
+			 * file was provided saying it wasn't needed, which was confusing as
+			 * it was needed for the `pg_bindir` parameter.
+			 *
+			 * In any case it's sensible to read the configuration file if available
+			 * for `pg_bindir`, `loglevel` and `use_replication_slots`.
 			 */
 			if (runtime_options.host == NULL)
 			{
@@ -2477,8 +2490,17 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		if (i == 0 || i == -1)
 		{
 			if (i == 0)
+			{
 				log_err(_("%s needs parameter 'wal_keep_segments' to be set to %s or greater (see the '-w' option or edit the postgresql.conf of the upstream server.)\n"),
 						progname, runtime_options.wal_keep_segments);
+				if(server_version_num >= 90400)
+				{
+					log_notice(_("HINT: in PostgreSQL 9.4 and later, replication slots can be used, which "
+							   "do not require 'wal_keep_segments' to be set to a high value "
+							   "(set parameter 'use_replication_slots' in the configuration file to enable)\n"
+								 ));
+				}
+			}
 
 			if(exit_on_error == true)
 			{

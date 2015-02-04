@@ -65,8 +65,9 @@ parse_config(const char *config_file, t_configuration_options * options)
 	 */
 	if (fp == NULL)
 	{
-		log_err(_("Did not find the configuration file '%s', continuing\n"),
-				config_file);
+		log_notice(_("No configuration file provided and default file '%s' not found - "
+					 "continuing with default values\n"),
+				   config_file);
 		return;
 	}
 
