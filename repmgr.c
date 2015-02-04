@@ -65,8 +65,8 @@ static void write_primary_conninfo(char *line);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
-
 static bool create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority);
+static char *make_pg_path(char *file);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -97,7 +97,9 @@ t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 static char *server_mode = NULL;
 static char *server_cmd = NULL;
 
-static char repmgr_slot_name[MAXLEN];
+static char pg_bindir[MAXLEN] = "";
+static char repmgr_slot_name[MAXLEN] = "";
+static char path_buf[MAXLEN] = "";
 
 int
 main(int argc, char **argv)
@@ -119,6 +121,7 @@ main(int argc, char **argv)
 		{"wait", no_argument, NULL, 'W'},
 		{"min-recovery-apply-delay", required_argument, NULL, 'r'},
 		{"verbose", no_argument, NULL, 'v'},
+		{"pg_bindir", required_argument, NULL, 'b'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
 		{NULL, 0, NULL, 0}
@@ -128,7 +131,7 @@ main(int argc, char **argv)
 	int			c, targ;
 	int			action = NO_ACTION;
 	bool 		check_master_config = false;
-	char *ptr = NULL;
+	char 	   *ptr = NULL;
 
 	progname = get_progname(argv[0]);
 
@@ -147,7 +150,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvr:", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvr:b:", long_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -221,6 +224,9 @@ main(int argc, char **argv)
 				break;
 			case 'v':
 				runtime_options.verbose = true;
+				break;
+			case 'b':
+				strncpy(runtime_options.pg_bindir, optarg, MAXLEN);
 				break;
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
@@ -376,6 +382,29 @@ main(int argc, char **argv)
 	 * 'use_replication_slots' etc.
 	 */
 	parse_config(runtime_options.config_file, &options);
+
+	/*
+	 * Initialise pg_bindir - command line parameter will override
+	 * any setting in the configuration file
+	 */
+	if(!strlen(runtime_options.pg_bindir))
+	{
+		strncpy(runtime_options.pg_bindir, options.pg_bindir, MAXLEN);
+	}
+
+	/* Add trailing slash */
+	if(strlen(runtime_options.pg_bindir))
+	{
+		int len = strlen(runtime_options.pg_bindir);
+		if(runtime_options.pg_bindir[len - 1] != '/')
+		{
+			maxlen_snprintf(pg_bindir, "%s/", runtime_options.pg_bindir);
+		}
+		else
+		{
+			strncpy(pg_bindir, runtime_options.pg_bindir, MAXLEN);
+		}
+	}
 
 	keywords[2] = "user";
 	values[2] = (runtime_options.username[0]) ? runtime_options.username : NULL;
@@ -1220,8 +1249,8 @@ do_standby_promote(void)
 	 * can't be sure when or if the promotion completes.
 	 * For now we'll poll the server until the default timeout (60 seconds)
 	 */
-	maxlen_snprintf(script, "%s/pg_ctl -D %s promote",
-					options.pg_bindir, data_dir);
+	maxlen_snprintf(script, "%s -D %s promote",
+					make_pg_path("pg_ctl"), data_dir);
 	log_notice(_("%s: promoting server using '%s'\n"), progname,
 			   script);
 
@@ -1390,8 +1419,8 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
-	maxlen_snprintf(script, "%s/pg_ctl %s -w -D %s -m fast restart",
-					options.pg_bindir, options.pgctl_options, data_dir);
+	maxlen_snprintf(script, "%s %s -w -D %s -m fast restart",
+					make_pg_path("pg_ctl"), options.pgctl_options, data_dir);
 
 	log_notice(_("%s: restarting server using '%s'\n"), progname,
 			   script);
@@ -1484,7 +1513,8 @@ do_witness_create(void)
 	if (!runtime_options.superuser[0])
 		strncpy(runtime_options.superuser, "postgres", MAXLEN);
 
-	sprintf(script, "%s/pg_ctl %s -D %s init -o \"%s-U %s\"", options.pg_bindir,
+	sprintf(script, "%s %s -D %s init -o \"%s-U %s\"",
+			make_pg_path("pg_ctl"),
 			options.pgctl_options, runtime_options.dest_dir,
 			runtime_options.initdb_no_pwprompt ? "" : "-W ",
 			runtime_options.superuser);
@@ -1530,7 +1560,8 @@ do_witness_create(void)
 
 
 	/* start new instance */
-	sprintf(script, "%s/pg_ctl %s -w -D %s start", options.pg_bindir,
+	sprintf(script, "%s %s -w -D %s start",
+			make_pg_path("pg_ctl"),
 			options.pgctl_options, runtime_options.dest_dir);
 	log_info(_("Start cluster for witness: %s"), script);
 	r = system(script);
@@ -1545,7 +1576,8 @@ do_witness_create(void)
 	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
         {
 		/* create required user needs to be superuser to create untrusted language function in c */
-		sprintf(script, "%s/createuser -p %s --superuser --login -U %s %s", options.pg_bindir,
+		sprintf(script, "%s -p %s --superuser --login -U %s %s",
+				make_pg_path("createuser"),
 				runtime_options.localport, runtime_options.superuser, runtime_options.username);
 		log_info("Create user for witness db: %s.\n", script);
 
@@ -1562,8 +1594,9 @@ do_witness_create(void)
 	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
 	{
 		/* create required db */
-		sprintf(script, "%s/createdb -p %s -U %s --owner=%s %s",
-				options.pg_bindir, runtime_options.localport, runtime_options.superuser, runtime_options.username, runtime_options.dbname);
+		sprintf(script, "%s -p %s -U %s --owner=%s %s",
+				make_pg_path("createdb"),
+				runtime_options.localport, runtime_options.superuser, runtime_options.username, runtime_options.dbname);
 		log_info("Create database for witness db: %s.\n", script);
 
 		r = system(script);
@@ -1594,7 +1627,8 @@ do_witness_create(void)
 	}
 
 	/* reload to adapt for changed pg_hba.conf */
-	sprintf(script, "%s/pg_ctl %s -w -D %s reload", options.pg_bindir,
+	sprintf(script, "%s %s -w -D %s reload",
+			make_pg_path("pg_ctl"),
 			options.pgctl_options, runtime_options.dest_dir);
 	log_info(_("Reload cluster config for witness: %s"), script);
 	r = system(script);
@@ -1696,6 +1730,7 @@ help(const char *progname)
 	printf(_("  -p, --port=PORT                     database server port\n"));
 	printf(_("  -U, --username=USERNAME             database user name to connect as\n"));
 	printf(_("\nConfiguration options:\n"));
+	printf(_("  -b. --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -D, --data-dir=DIR                  local directory where the files will be\n" \
 			 "                                      copied to\n"));
 	printf(_("  -l, --local-port=PORT               standby or witness server local port\n"));
@@ -1889,8 +1924,8 @@ run_basebackup()
 	int			r = 0;
 
 	maxlen_snprintf(script,
-					"%s/pg_basebackup -h %s -p %s -U %s -D %s -l \"repmgr base backup\"",
-					options.pg_bindir,
+					"%s -h %s -p %s -U %s -D %s -l \"repmgr base backup\"",
+					make_pg_path("pg_basebackup"),
 					runtime_options.host,
 					runtime_options.masterport,
 					runtime_options.username,
@@ -2670,3 +2705,10 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 	return true;
 }
 
+static char *
+make_pg_path(char *file)
+{
+	maxlen_snprintf(path_buf, "%s%s", pg_bindir, file);
+
+	return path_buf;
+}

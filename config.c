@@ -177,12 +177,6 @@ parse_config(const char *config_file, t_configuration_options * options)
 		log_err(_("Reconnect intervals must be zero or greater. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
-
-	if (*options->pg_bindir == '\0')
-	{
-		log_err(_("pg_bindir config value not found. Check the configuration file.\n"));
-		exit(ERR_BAD_CONFIG);
-	}
 }
 
 
