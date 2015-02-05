@@ -363,6 +363,7 @@ main(int argc, char **argv)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
+
 	/*
 	 * If no configuration file was provided, set to a default file
 	 * which `parse_config()` will attempt to read if it exists
@@ -438,6 +439,19 @@ main(int argc, char **argv)
 					  "Check the configuration file.\n"));
 			exit(ERR_BAD_CONFIG);
 		}
+	}
+
+
+	/*
+	 * If `use_replication_slots` set in the configuration file
+	 * and command line parameter `--wal-keep-segments` was used,
+	 * emit a warning as to the latter's redundancy. Note that
+	 * the version check for 9.4 or later will occur afterwards.
+	 */
+
+	if(options.use_replication_slots && strlen(runtime_options.wal_keep_segments))
+	{
+		log_warning(_("-w/--wal-keep-segments has no effect when replication slots in use\n"));
 	}
 
 	/* Initialise the repmgr schema name */
