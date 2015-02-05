@@ -131,6 +131,7 @@ main(int argc, char **argv)
 	int			c, targ;
 	int			action = NO_ACTION;
 	bool 		check_master_config = false;
+	bool 		wal_keep_segments_used  = false;
 	char 	   *ptr = NULL;
 
 	progname = get_progname(argv[0]);
@@ -186,7 +187,10 @@ main(int argc, char **argv)
 				break;
 			case 'w':
 				if (atoi(optarg) > 0)
+				{
 					strncpy(runtime_options.wal_keep_segments, optarg, MAXLEN);
+					wal_keep_segments_used = true;
+				}
 				break;
 			case 'k':
 				if (atoi(optarg) > 0)
@@ -449,7 +453,7 @@ main(int argc, char **argv)
 	 * the version check for 9.4 or later will occur afterwards.
 	 */
 
-	if(options.use_replication_slots && strlen(runtime_options.wal_keep_segments))
+	if(options.use_replication_slots && wal_keep_segments_used)
 	{
 		log_warning(_("-w/--wal-keep-segments has no effect when replication slots in use\n"));
 	}
