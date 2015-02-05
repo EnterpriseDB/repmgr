@@ -60,3 +60,8 @@ pg_bindir=/usr/bin/
 # value is 300)
 #
 # retry_promote_interval_secs=300
+
+
+# physical replication slots - PostgreSQL 9.4 and later only
+#
+# use_replication_slots=1
