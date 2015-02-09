@@ -867,7 +867,7 @@ do_standby_clone(void)
 				retval = SUCCESS;
 
 	int			i;
-	bool		test_mode = false;
+	bool		target_directory_provided = false;
 	bool		config_file_copy_required = false;
 
 	char		master_data_directory[MAXFILENAME];
@@ -883,18 +883,16 @@ do_standby_clone(void)
 	char		local_ident_file[MAXFILENAME] = "";
 
 	TablespaceListCell *cell;
+
 	/*
-	 * if dest_dir has been provided, we copy everything in the same path if
-	 * dest_dir is set and the master have tablespace, repmgr will stop
-	 * because it is more complex to remap the path for the tablespaces and it
-	 * does not look useful at the moment
-	 *
-	 * XXX test_mode a bit of a misnomer
+	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
+	 * directory (otherwise repmgr will default to the same directory as on the
+	 * source host)
 	 */
 	if (runtime_options.dest_dir[0])
 	{
-		test_mode = true;
-		log_notice(_("%s Destination directory %s provided, try to clone everything in it.\n"),
+		target_directory_provided = true;
+		log_notice(_("%s Destination directory '%s' provided\n"),
 				   progname, runtime_options.dest_dir);
 	}
 
@@ -904,12 +902,12 @@ do_standby_clone(void)
 	keywords[1] = "port";
 	values[1] = runtime_options.masterport;
 
-	/* We need to connect to check configuration and start a backup */
-	log_info(_("%s connecting to master database\n"), progname);
+	/* Connect to check configuration */
+	log_info(_("%s connecting to upstream node\n"), progname);
 	primary_conn = establish_db_connection_by_params(keywords, values, true);
 
-	/* Verify that master is a supported server version */
-	log_info(_("%s connected to master, checking its state\n"), progname);
+	/* Verify that upstream node is a supported server version */
+	log_info(_("%s connected to upstream node, checking its state\n"), progname);
 	server_version_num = check_server_version(primary_conn, "master", true, NULL);
 
 	check_upstream_config(primary_conn, server_version_num, true);
@@ -922,7 +920,7 @@ do_standby_clone(void)
 	 * We'll do that here as a value-added service.
 	 *
 	 * XXX -T/--tablespace-mapping not available for PostgreSQL 9.3 -
-	 * emit warning or fail
+	 * currently we can't handle that and will fail with an error
 	 */
 
 	if(options.tablespace_dirs.head != NULL)
@@ -964,7 +962,7 @@ do_standby_clone(void)
 	if(get_cluster_size(primary_conn, cluster_size) == false)
 		exit(ERR_DB_QUERY);
 
-	log_info(_("Successfully primary_connected to master. Current installation size is %s\n"),
+	log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
 			 cluster_size);
 
 	/*
@@ -987,8 +985,8 @@ do_standby_clone(void)
 					  "           ps.setting ~ ('^' || dd.setting) AS in_data_dir "
 					  "      FROM dd, pg_settings ps "
 					  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file') "
-					  "  ORDER BY 1 "
-		);
+					  "  ORDER BY 1 ");
+
 	log_debug(_("standby clone: %s\n"), sqlquery);
 	res = PQexec(primary_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1045,7 +1043,12 @@ do_standby_clone(void)
 	}
 	PQclear(res);
 
-	if (test_mode)
+	/*
+	 * target directory (-D/--pgdata) provided - use that as new data directory
+	 * (useful when executing backup on local machine only or creating the backup
+	 * in a different local directory when backup source is a remote host)
+	 */
+	if (target_directory_provided)
 	{
 		strncpy(local_data_directory, runtime_options.dest_dir, MAXFILENAME);
 		strncpy(local_config_file, runtime_options.dest_dir, MAXFILENAME);
@@ -1185,7 +1188,7 @@ stop_backup:
 	 */
 
 	log_notice("HINT: You can now start your postgresql server\n");
-	if (test_mode)
+	if (target_directory_provided)
 	{
 		log_notice(_("for example : pg_ctl -D %s start\n"),
 				   local_data_directory);
