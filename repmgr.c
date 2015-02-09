@@ -35,6 +35,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "pqexpbuffer.h"
+
 #include "log.h"
 #include "config.h"
 #include "check_dir.h"
@@ -868,8 +870,6 @@ do_standby_clone(void)
 	bool		test_mode = false;
 	bool		config_file_copy_required = false;
 
-	char		tblspc_dir[MAXFILENAME];
-
 	char		master_data_directory[MAXFILENAME];
 	char		local_data_directory[MAXFILENAME];
 
@@ -882,6 +882,7 @@ do_standby_clone(void)
 	char		master_ident_file[MAXFILENAME] = "";
 	char		local_ident_file[MAXFILENAME] = "";
 
+	TablespaceListCell *cell;
 	/*
 	 * if dest_dir has been provided, we copy everything in the same path if
 	 * dest_dir is set and the master have tablespace, repmgr will stop
@@ -913,48 +914,52 @@ do_standby_clone(void)
 
 	check_upstream_config(primary_conn, server_version_num, true);
 
-	sqlquery_snprintf(sqlquery,
-					  "SELECT pg_tablespace_location(oid) spclocation "
-					  "  FROM pg_tablespace "
-					  "WHERE spcname NOT IN ('pg_default', 'pg_global') ");
+	/*
+	 * Check that tablespaces named in any `tablespace_mapping` configuration
+	 * file parameters exist.
+	 *
+	 * pg_basebackup doesn't verify mappings, so any errors will not be caught.
+	 * We'll do that here as a value-added service.
+	 *
+	 * XXX -T/--tablespace-mapping not available for PostgreSQL 9.3 -
+	 * emit warning or fail
+	 */
 
-	log_debug("standby clone: %s\n", sqlquery);
-
-	res = PQexec(primary_conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if(options.tablespace_dirs.head != NULL)
 	{
-		log_err(_("Can't get info about tablespaces: %s\n"), PQerrorMessage(primary_conn));
-		PQclear(res);
-		PQfinish(primary_conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		if (test_mode)
+		if(get_server_version(primary_conn, NULL) < 90400)
 		{
-			log_err("Can't clone in test mode when master have tablespace\n");
-			PQclear(res);
+			log_err(_("Configuration option `tablespace_mapping` requires PostgreSQL 9.4 or later\n"));
 			PQfinish(primary_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		strncpy(tblspc_dir, PQgetvalue(res, i, 0), MAXFILENAME);
-
-		/*
-		 * Check this directory could be used for tablespace this will create
-		 * the directory a bit too early XXX build an array of tablespace to
-		 * create later in the backup
-		 */
-		if (!create_pg_dir(tblspc_dir, runtime_options.force))
+		for (cell = options.tablespace_dirs.head; cell; cell = cell->next)
 		{
-			PQclear(res);
-			PQfinish(primary_conn);
-			exit(ERR_BAD_CONFIG);
+
+			sqlquery_snprintf(sqlquery,
+							  "SELECT spcname "
+							  "  FROM pg_tablespace "
+							  "WHERE pg_tablespace_location(oid) = '%s'",
+							  cell->old_dir);
+			res = PQexec(primary_conn, sqlquery);
+			if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			{
+				log_err(_("Unable to execute tablespace query: %s\n"), PQerrorMessage(primary_conn));
+				PQclear(res);
+				PQfinish(primary_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			if (PQntuples(res) == 0)
+			{
+				log_err(_("No tablespace matching path '%s' found\n"), cell->old_dir);
+				PQclear(res);
+				PQfinish(primary_conn);
+				exit(ERR_BAD_CONFIG);
+			}
 		}
 	}
-	PQclear(res);
-
 
 	if(get_cluster_size(primary_conn, cluster_size) == false)
 		exit(ERR_DB_QUERY);
@@ -1938,17 +1943,44 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 static int
 run_basebackup()
 {
-	char		script[MAXLEN];
-	int			r = 0;
+	char				script[MAXLEN];
+	int					r = 0;
+	PQExpBufferData 	params;
+	TablespaceListCell *cell;
+
+	/* Creare pg_basebackup command line options */
+
+	initPQExpBuffer(&params);
+
+	if(strlen(runtime_options.host))
+		appendPQExpBuffer(&params, " -h %s", runtime_options.host);
+
+	if(strlen(runtime_options.masterport))
+		appendPQExpBuffer(&params, " -p %s", runtime_options.masterport);
+
+	if(strlen(runtime_options.username))
+		appendPQExpBuffer(&params, " -U %s", runtime_options.username);
+
+	if(strlen(runtime_options.dest_dir))
+		appendPQExpBuffer(&params, " -D %s", runtime_options.dest_dir);
+
+	if(options.tablespace_dirs.head != NULL)
+	{
+		for (cell = options.tablespace_dirs.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(&params, " -T %s=%s", cell->old_dir, cell->new_dir);
+		}
+	}
 
 	maxlen_snprintf(script,
-					"%s -h %s -p %s -U %s -D %s -l \"repmgr base backup\"",
+					"%s -l \"repmgr base backup\" %s %s",
 					make_pg_path("pg_basebackup"),
-					runtime_options.host,
-					runtime_options.masterport,
-					runtime_options.username,
-					runtime_options.dest_dir
+					params.data,
+					options.pg_basebackup_options
 		);
+
+	termPQExpBuffer(&params);
+
 	log_info(_("Executing: '%s'\n"), script);
 	r = system(script);
 
