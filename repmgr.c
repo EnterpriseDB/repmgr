@@ -1171,9 +1171,6 @@ stop_backup:
 	{
 		if(create_replication_slot(primary_conn, repmgr_slot_name) == false)
 		{
-			log_err(_("Unable to create slot '%s' on the primary node: %s\n"),
-					repmgr_slot_name,
-					PQerrorMessage(primary_conn));
 			PQfinish(primary_conn);
 			exit(ERR_DB_QUERY);
 		}
