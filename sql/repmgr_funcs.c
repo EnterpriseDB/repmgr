@@ -58,8 +58,7 @@ Datum		repmgr_get_last_updated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgr_update_last_updated);
 PG_FUNCTION_INFO_V1(repmgr_get_last_updated);
 
-Datum repmgr_get_primary_conninfo(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(repmgr_get_primary_conninfo);
+
 
 /*
  * Module load callback
@@ -234,19 +233,4 @@ repmgr_get_last_updated(PG_FUNCTION_ARGS)
 	PG_RETURN_TIMESTAMPTZ(last_updated);
 }
 
-
-/*
- * get the `primary_conninfo` string used by walreceiver,
- * which is the value parsed from recovery.conf at startup
- *
- * XXX is there a better way of doing this?
- */
-Datum
-repmgr_get_primary_conninfo(PG_FUNCTION_ARGS)
-{
-	/* use volatile pointer to prevent code rearrangement */
-	volatile WalRcvData *walrcv = WalRcv;
-
-	PG_RETURN_TEXT_P(cstring_to_text((const char *)walrcv->conninfo));
-}
 

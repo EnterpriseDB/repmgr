@@ -2312,22 +2312,6 @@ create_schema(PGconn *conn)
 	}
 	PQclear(res);
 
-    // ZZZ no longer needed
-	sqlquery_snprintf(sqlquery,
-					  "CREATE OR REPLACE FUNCTION %s.repmgr_get_primary_conninfo() "
-					  "  RETURNS text "
-					  "  AS '$libdir/repmgr_funcs', 'repmgr_get_primary_conninfo' "
-					  "  LANGUAGE C STRICT ",
-					  get_repmgr_schema_quoted(conn));
-
-	res = PQexec(conn, sqlquery);
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "Cannot create the function repmgr_get_primary_conninfo: %s\n",
-				PQerrorMessage(conn));
-		return false;
-	}
-	PQclear(res);
 	return true;
 }
 
