@@ -23,7 +23,18 @@
 #include "repmgr.h"
 #include "strutil.h"
 
+typedef struct TablespaceListCell
+{
+	struct TablespaceListCell *next;
+	char		old_dir[MAXPGPATH];
+	char		new_dir[MAXPGPATH];
+} TablespaceListCell;
 
+typedef struct TablespaceList
+{
+	TablespaceListCell *head;
+	TablespaceListCell *tail;
+} TablespaceList;
 
 typedef struct
 {
@@ -45,13 +56,15 @@ typedef struct
 	int			reconnect_intvl;
 	char		pg_bindir[MAXLEN];
 	char		pgctl_options[MAXLEN];
+	char		pg_basebackup_options[MAXLEN];
 	char		logfile[MAXLEN];
 	int			monitor_interval_secs;
 	int			retry_promote_interval_secs;
 	int			use_replication_slots;
+	TablespaceList tablespace_dirs;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", 0, 0, 0 }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, {NULL, NULL} }
 
 
 void		parse_config(const char *config_file, t_configuration_options * options);

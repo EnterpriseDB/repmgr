@@ -22,6 +22,8 @@
 #include "strutil.h"
 #include "repmgr.h"
 
+static void tablespace_list_append(t_configuration_options *options, const char *arg);
+
 void
 parse_config(const char *config_file, t_configuration_options * options)
 {
@@ -45,6 +47,7 @@ parse_config(const char *config_file, t_configuration_options * options)
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	memset(options->pgctl_options, 0, sizeof(options->pgctl_options));
+	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
 
 	/* if nothing has been provided defaults to 60 */
 	options->master_response_timeout = 60;
@@ -55,6 +58,9 @@ parse_config(const char *config_file, t_configuration_options * options)
 
 	options->monitor_interval_secs = 2;
 	options->retry_promote_interval_secs = 300;
+
+	options->tablespace_dirs.head = NULL;
+	options->tablespace_dirs.tail = NULL;
 
 	/*
 	 * Since some commands don't require a config file at all, not having one
@@ -132,6 +138,8 @@ parse_config(const char *config_file, t_configuration_options * options)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
 			strncpy(options->pgctl_options, value, MAXLEN);
+		else if (strcmp(name, "pg_basebackup_options") == 0)
+			strncpy(options->pg_basebackup_options, value, MAXLEN);
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
@@ -140,6 +148,8 @@ parse_config(const char *config_file, t_configuration_options * options)
 			options->retry_promote_interval_secs = atoi(value);
 		else if (strcmp(name, "use_replication_slots") == 0)
 			options->use_replication_slots = atoi(value);
+		else if (strcmp(name, "tablespace_mapping") == 0)
+			tablespace_list_append(options, value);
 		else
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
 	}
@@ -331,4 +341,72 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	 */
 
 	return true;
+}
+
+
+
+/*
+ * Split argument into old_dir and new_dir and append to tablespace mapping
+ * list.
+ *
+ * Adapted from pg_basebackup.c
+ */
+static void
+tablespace_list_append(t_configuration_options *options, const char *arg)
+{
+	TablespaceListCell *cell;
+	char	   *dst;
+	char	   *dst_ptr;
+	const char *arg_ptr;
+
+	cell = (TablespaceListCell *) malloc(sizeof(TablespaceListCell));
+	if(cell == NULL)
+	{
+		log_err(_("Unable to allocate memory. Terminating.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	dst_ptr = dst = cell->old_dir;
+	for (arg_ptr = arg; *arg_ptr; arg_ptr++)
+	{
+		if (dst_ptr - dst >= MAXPGPATH)
+		{
+			log_err(_("directory name too long\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (*arg_ptr == '\\' && *(arg_ptr + 1) == '=')
+			;					/* skip backslash escaping = */
+		else if (*arg_ptr == '=' && (arg_ptr == arg || *(arg_ptr - 1) != '\\'))
+		{
+			if (*cell->new_dir)
+			{
+				log_err(_("multiple \"=\" signs in tablespace mapping\n"));
+				exit(ERR_BAD_CONFIG);
+			}
+			else
+			{
+				dst = dst_ptr = cell->new_dir;
+			}
+		}
+		else
+			*dst_ptr++ = *arg_ptr;
+	}
+
+	if (!*cell->old_dir || !*cell->new_dir)
+	{
+		log_err(_("invalid tablespace mapping format \"%s\", must be \"OLDDIR=NEWDIR\"\n"),
+				arg);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	canonicalize_path(cell->old_dir);
+	canonicalize_path(cell->new_dir);
+
+	if (options->tablespace_dirs.tail)
+		options->tablespace_dirs.tail->next = cell;
+	else
+		options->tablespace_dirs.head = cell;
+
+	options->tablespace_dirs.tail = cell;
 }
