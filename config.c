@@ -24,6 +24,18 @@
 
 static void tablespace_list_append(t_configuration_options *options, const char *arg);
 
+
+/*
+ * parse_config()
+ *
+ * Set default options and overwrite with values from provided configuration
+ * file.
+ *
+ * Returns true if a configuration file could be parsed, otherwise false.
+ *
+ * Any configuration options changed in this function must also be changed in
+ * reload_config()
+ */
 bool
 parse_config(const char *config_file, t_configuration_options * options)
 {
@@ -252,8 +264,8 @@ bool
 reload_config(char *config_file, t_configuration_options * orig_options)
 {
 	PGconn	   *conn;
-
 	t_configuration_options new_options;
+	bool	  config_changed = false;
 
 	/*
 	 * Re-read the configuration file: repmgr.conf
@@ -308,29 +320,80 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 		return false;
 	}
 
-	/* Test conninfo string */
-	conn = establish_db_connection(new_options.conninfo, false);
-	if (!conn || (PQstatus(conn) != CONNECTION_OK))
+	if(strcmp(orig_options->conninfo, new_options.conninfo) != 0)
 	{
-		log_warning(_("conninfo string is not valid, will keep current configuration.\n"));
-		return false;
+		/* Test conninfo string */
+		conn = establish_db_connection(new_options.conninfo, false);
+		if (!conn || (PQstatus(conn) != CONNECTION_OK))
+		{
+			log_warning(_("conninfo string is not valid, will keep current configuration.\n"));
+			return false;
+		}
+		PQfinish(conn);
 	}
-	PQfinish(conn);
 
-	/* Configuration seems ok, will load new values */
-	strcpy(orig_options->cluster_name, new_options.cluster_name);
-	orig_options->node = new_options.node;
-	strcpy(orig_options->conninfo, new_options.conninfo);
-	orig_options->failover = new_options.failover;
-	orig_options->priority = new_options.priority;
-	strcpy(orig_options->node_name, new_options.node_name);
-	strcpy(orig_options->promote_command, new_options.promote_command);
-	strcpy(orig_options->follow_command, new_options.follow_command);
-	strcpy(orig_options->rsync_options, new_options.rsync_options);
-	strcpy(orig_options->ssh_options, new_options.ssh_options);
-	orig_options->master_response_timeout = new_options.master_response_timeout;
-	orig_options->reconnect_attempts = new_options.reconnect_attempts;
-	orig_options->reconnect_intvl = new_options.reconnect_intvl;
+	/*
+	 * No configuration problems detected - copy any changed values
+	 *
+	 * NB: keep these in the same order as in config.h to make it easier
+	 * to manage them
+	 */
+
+	/* cluster_name */
+	if(strcmp(orig_options->cluster_name, new_options.cluster_name) != 0)
+	{
+		strcpy(orig_options->cluster_name, new_options.cluster_name);
+		config_changed = true;
+	}
+
+	/* conninfo */
+	if(strcmp(orig_options->conninfo, new_options.conninfo) != 0)
+	{
+		strcpy(orig_options->conninfo, new_options.conninfo);
+		config_changed = true;
+	}
+
+	/* node */
+	if(orig_options->node != new_options.node)
+	{
+		orig_options->node = new_options.node;
+		config_changed = true;
+	}
+
+	/* failover */
+	if(orig_options->failover != new_options.failover)
+	{
+		orig_options->failover = new_options.failover;
+		config_changed = true;
+	}
+
+	/* priority */
+	if(orig_options->priority != new_options.priority)
+	{
+		orig_options->priority = new_options.priority;
+		config_changed = true;
+	}
+
+	/* node_name */
+	if(strcmp(orig_options->node_name, new_options.node_name) != 0)
+	{
+		strcpy(orig_options->node_name, new_options.node_name);
+		config_changed = true;
+	}
+
+	/* promote_command */
+	if(strcmp(orig_options->promote_command, new_options.promote_command) != 0)
+	{
+		strcpy(orig_options->promote_command, new_options.promote_command);
+		config_changed = true;
+	}
+
+	/* follow_command */
+	if(strcmp(orig_options->follow_command, new_options.follow_command) != 0)
+	{
+		strcpy(orig_options->follow_command, new_options.follow_command);
+		config_changed = true;
+	}
 
 	/*
 	 * XXX These ones can change with a simple SIGHUP?
@@ -342,7 +405,86 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	 * orig_options.loglevel, orig_options.logfacility);
 	 */
 
-	return true;
+	/* rsync_options */
+	if(strcmp(orig_options->rsync_options, new_options.rsync_options) != 0)
+	{
+		strcpy(orig_options->rsync_options, new_options.rsync_options);
+		config_changed = true;
+	}
+
+	/* ssh_options */
+	if(strcmp(orig_options->ssh_options, new_options.ssh_options) != 0)
+	{
+		strcpy(orig_options->ssh_options, new_options.ssh_options);
+		config_changed = true;
+	}
+
+	/* master_response_timeout */
+	if(orig_options->master_response_timeout != new_options.master_response_timeout)
+	{
+		orig_options->master_response_timeout = new_options.master_response_timeout;
+		config_changed = true;
+	}
+
+	/* reconnect_attempts */
+	if(orig_options->reconnect_attempts != new_options.reconnect_attempts)
+	{
+		orig_options->reconnect_attempts = new_options.reconnect_attempts;
+		config_changed = true;
+	}
+
+	/* reconnect_intvl */
+	if(orig_options->reconnect_intvl != new_options.reconnect_intvl)
+	{
+		orig_options->reconnect_intvl = new_options.reconnect_intvl;
+		config_changed = true;
+	}
+
+	/* pgctl_options */
+	if(strcmp(orig_options->pgctl_options, new_options.pgctl_options) != 0)
+	{
+		strcpy(orig_options->pgctl_options, new_options.pgctl_options);
+		config_changed = true;
+	}
+
+	/* pg_basebackup_options */
+	if(strcmp(orig_options->pg_basebackup_options, new_options.pg_basebackup_options) != 0)
+	{
+		strcpy(orig_options->pg_basebackup_options, new_options.pg_basebackup_options);
+		config_changed = true;
+	}
+
+	/* monitor_interval_secs */
+	if(orig_options->monitor_interval_secs != new_options.monitor_interval_secs)
+	{
+		orig_options->monitor_interval_secs = new_options.monitor_interval_secs;
+		config_changed = true;
+	}
+
+	/* retry_promote_interval_secs */
+	if(orig_options->retry_promote_interval_secs != new_options.retry_promote_interval_secs)
+	{
+		orig_options->retry_promote_interval_secs = new_options.retry_promote_interval_secs;
+		config_changed = true;
+	}
+
+	/* use_replication_slots */
+	if(orig_options->use_replication_slots != new_options.use_replication_slots)
+	{
+		orig_options->use_replication_slots = new_options.use_replication_slots;
+		config_changed = true;
+	}
+
+	if(config_changed == true)
+	{
+		log_debug(_("reload_config(): configuration has changed\n"));
+	}
+	else
+	{
+		log_debug(_("reload_config(): configuration has not changed"));
+	}
+
+	return config_changed;
 }
 
 

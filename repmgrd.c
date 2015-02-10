@@ -376,7 +376,7 @@ main(int argc, char **argv)
 			case WITNESS:
 			case STANDBY:
 
-				/* We need the node id of the upstream server as well as a connection to it */
+				/* We need the node id of the primary server as well as a connection to it */
 				log_info(_("%s Connecting to primary for cluster '%s'\n"),
 						 progname, local_options.cluster_name);
 
