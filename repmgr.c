@@ -2357,6 +2357,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 		PQclear(res);
 		return false;
 	}
+
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		bool node_record_created;
@@ -2378,8 +2379,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn)
 
 		if (node_record_created == false)
 		{
-			// ZZZ fix error message?
-			fprintf(stderr, "Unable to create node record for witness: %s\n",
+			fprintf(stderr, "Unable to copy node record to witness database: %s\n",
 					PQerrorMessage(witnessconn));
 			return false;
 		}
