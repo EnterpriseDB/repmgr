@@ -392,8 +392,7 @@ main(int argc, char **argv)
 				check_cluster_configuration(my_local_conn);
 				check_node_configuration();
 
-                // ZZZ check if this is needed, and why
-				if (0 && reload_config(config_file, &local_options))
+				if (reload_config(config_file, &local_options))
 				{
 					PQfinish(my_local_conn);
 					my_local_conn = establish_db_connection(local_options.conninfo, true);
