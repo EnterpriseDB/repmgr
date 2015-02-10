@@ -133,7 +133,8 @@ main(int argc, char **argv)
 	int			c, targ;
 	int			action = NO_ACTION;
 	bool 		check_master_config = false;
-	bool 		wal_keep_segments_used  = false;
+	bool 		wal_keep_segments_used = false;
+	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
 
 	progname = get_progname(argv[0]);
@@ -388,7 +389,7 @@ main(int argc, char **argv)
 	 * however if available we'll parse it anyway for options like 'log_level',
 	 * 'use_replication_slots' etc.
 	 */
-	parse_config(runtime_options.config_file, &options);
+	config_file_parsed = parse_config(runtime_options.config_file, &options);
 
 	/*
 	 * Initialise pg_bindir - command line parameter will override
@@ -441,8 +442,16 @@ main(int argc, char **argv)
 	{
 		if (options.node == -1)
 		{
-			log_err(_("Node information is missing. "
-					  "Check the configuration file.\n"));
+			if(config_file_parsed == true)
+			{
+				log_err(_("No node information was found. "
+						  "Check the configuration file.\n"));
+			}
+			else
+			{
+				log_err(_("No node information was found. "
+						  "Please supply a configuration file.\n"));
+			}
 			exit(ERR_BAD_CONFIG);
 		}
 	}

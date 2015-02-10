@@ -67,7 +67,7 @@ typedef struct
 #define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, {NULL, NULL} }
 
 
-void		parse_config(const char *config_file, t_configuration_options * options);
+bool		parse_config(const char *config_file, t_configuration_options * options);
 void		parse_line(char *buff, char *name, char *value);
 char	   *trim(char *s);
 bool		reload_config(char *config_file, t_configuration_options * orig_options);

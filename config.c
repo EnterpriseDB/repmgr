@@ -24,7 +24,7 @@
 
 static void tablespace_list_append(t_configuration_options *options, const char *arg);
 
-void
+bool
 parse_config(const char *config_file, t_configuration_options * options)
 {
 	char	   *s,
@@ -74,7 +74,7 @@ parse_config(const char *config_file, t_configuration_options * options)
 		log_notice(_("No configuration file provided and default file '%s' not found - "
 					 "continuing with default values\n"),
 				   config_file);
-		return;
+		return false;
 	}
 
 	/* Read next line */
@@ -187,6 +187,8 @@ parse_config(const char *config_file, t_configuration_options * options)
 		log_err(_("Reconnect intervals must be zero or greater. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
+
+	return true;
 }
 
 
