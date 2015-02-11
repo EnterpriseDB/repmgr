@@ -1488,7 +1488,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		maxlen_snprintf(rsync_flags, "%s", options.rsync_options);
 
 	if (runtime_options.force)
-		strcat(rsync_flags, " --delete");
+		strcat(rsync_flags, " --delete --checksum");
 
 	if (!remote_user[0])
 	{
