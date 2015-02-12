@@ -349,7 +349,7 @@ main(int argc, char **argv)
 	}
 
 	/* We check that port number is not null */
-	if (!runtime_options.dbname[0])
+	if (!runtime_options.masterport[0])
 	{
 		strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
 	}
