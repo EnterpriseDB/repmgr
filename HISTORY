@@ -4,6 +4,7 @@
         Add -S/--superuser option for witness database creation
         Use createdb/createuser instead of psql (Jaime)
         Fixes to witness creation and monitoring (wamonite)
+        Use default master port if none supplied (Martín)
         Documentation fixes and improvements (Ian)
 
 2.0.1	2014-07-16
