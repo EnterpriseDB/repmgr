@@ -1,3 +1,11 @@
+2.0.2   2015-02-??
+        Add "--checksum" in rsync when using "--force" (Jaime)
+        Add option "--initdb-no-pwprompt" (Ian)
+        Add -S/--superuser option for witness database creation
+        Use createdb/createuser instead of psql (Jaime)
+        Fixes to witness creation and monitoring (wamonite)
+        Documentation fixes and improvements (Ian)
+
 2.0.1	2014-07-16
 		Documentation fixes and new QUICKSTART file (Ian)
 		Explicitly specify directories to ignore when cloning (Ian)
@@ -25,7 +33,7 @@
         Add a ssh_options parameter (Jay Taylor)
 
 2.0beta1 2012-07-27
-        Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
+        Make CLONE command try to make an exact copy including $PGDATA location (Cedric)
         Add detection of master failure (Jaime)
         Add the notion of a witness server (Jaime)
         Add autofailover capabilities (Jaime)
