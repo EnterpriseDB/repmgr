@@ -1,10 +1,17 @@
-2.0.1	2014-07-16
-		Documentation fixes and new QUICKSTART file (Ian)
-		Explicitly specify directories to ignore when cloning (Ian)
-		Fix log level for some log messages (Ian)
-		RHEL/CentOS specfile, init script and Makefile fixes (Nathan Van Overloop)
+2.0.2   2015-02-17
+        Add "--checksum" in rsync when using "--force" (Jaime)
+        Use createdb/createuser instead of psql (Jaime)
+        Fixes to witness creation and monitoring (wamonite)
+        Use default master port if none supplied (Martín)
+        Documentation fixes and improvements (Ian)
+
+2.0.1   2014-07-16
+        Documentation fixes and new QUICKSTART file (Ian)
+        Explicitly specify directories to ignore when cloning (Ian)
+        Fix log level for some log messages (Ian)
+        RHEL/CentOS specfile, init script and Makefile fixes (Nathan Van Overloop)
         Debian init script and config file documentation fixes (József Kószó)
-		Typo fixes (Riegie Godwin Jeyaranchen, PriceChild)
+        Typo fixes (Riegie Godwin Jeyaranchen, PriceChild)
 
 2.0stable 2014-01-30
         Documentation fixes (Christian)
@@ -25,7 +32,7 @@
         Add a ssh_options parameter (Jay Taylor)
 
 2.0beta1 2012-07-27
-        Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
+        Make CLONE command try to make an exact copy including $PGDATA location (Cedric)
         Add detection of master failure (Jaime)
         Add the notion of a witness server (Jaime)
         Add autofailover capabilities (Jaime)
@@ -52,7 +59,7 @@
 1.1.0   2011-03-09
         Make options -U, -R and -p not mandatory (Jaime)
 
-1.1.0b1 2011-02-24 
+1.1.0b1 2011-02-24
         Fix missing "--force" option in help (Greg Smith)
         Correct warning message for wal_keep_segments (Bas van Oostveen)
         Add Debian build/usage docs (Bas, Hannu Krosing, Cedric Villemain)
