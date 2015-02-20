@@ -1188,7 +1188,7 @@ stop_backup:
 		}
 	}
 
-	log_notice(_("%s base backup of standby complete\n"), progname);
+	log_notice(_("%s standby clone (using pg_basebackup) complete\n"), progname);
 
 	/*
 	 * XXX It might be nice to provide the following options:
