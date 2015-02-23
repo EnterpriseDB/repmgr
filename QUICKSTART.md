@@ -50,8 +50,8 @@ Installation
   see README.rst for further details.
 
 * Source installation
- - `repmgr` source code is hosted at github (https://github.com/2ndQuadrant/`repmgr`);
-   tar.gz files can be downloaded from https://github.com/2ndQuadrant/`repmgr`/releases .
+ - `repmgr` source code is hosted at github (https://github.com/2ndQuadrant/repmgr);
+   tar.gz files can be downloaded from https://github.com/2ndQuadrant/repmgr/releases .
 
    `repmgr` can be built easily using PGXS:
 
