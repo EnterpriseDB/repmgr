@@ -1768,7 +1768,7 @@ do_witness_create(void)
 	/* start new instance */
 	sprintf(script, "%s/pg_ctl %s -w -D %s start", options.pg_bindir,
 			options.pgctl_options, runtime_options.dest_dir);
-	log_info(_("Start cluster for witness: %s"), script);
+	log_info(_("Start cluster for witness: %s\n"), script);
 	r = system(script);
 	if (r != 0)
 	{
@@ -1815,7 +1815,7 @@ do_witness_create(void)
 	sqlquery_snprintf(sqlquery, "SELECT name, setting "
 					  "  FROM pg_settings "
 					  " WHERE name IN ('hba_file')");
-	log_debug(_("witness create: %s"), sqlquery);
+	log_debug(_("witness create: %s\n"), sqlquery);
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -1898,7 +1898,6 @@ do_witness_create(void)
 		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", runtime_options.username);
 		log_info("Drop superuser powers on user for witness db: %s.\n", sqlquery);
 
-		log_debug(_("witness create: %s"), sqlquery);
 		res = PQexec(witnessconn, sqlquery);
 		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
