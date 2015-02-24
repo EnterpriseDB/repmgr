@@ -1101,7 +1101,7 @@ do_standby_clone(void)
 	 * them via SSH
 	 *
 	 * TODO: add option to place these files in the same location on the
-	 * standby server?
+	 * standby server as on the primary?
 	 */
 
 	if(config_file_copy_required == true)
