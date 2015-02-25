@@ -930,6 +930,12 @@ do_standby_clone(void)
 
 	check_upstream_config(primary_conn, server_version_num, true);
 
+	if(get_cluster_size(primary_conn, cluster_size) == false)
+		exit(ERR_DB_QUERY);
+
+	log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
+			 cluster_size);
+
 	/*
 	 * Check that tablespaces named in any `tablespace_mapping` configuration
 	 * file parameters exist.
@@ -977,12 +983,6 @@ do_standby_clone(void)
 			}
 		}
 	}
-
-	if(get_cluster_size(primary_conn, cluster_size) == false)
-		exit(ERR_DB_QUERY);
-
-	log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
-			 cluster_size);
 
 	/*
 	 * Obtain data directory and configuration file locations
