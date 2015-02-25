@@ -737,3 +737,70 @@ create_replication_slot(PGconn *conn, char *slot_name)
 	PQclear(res);
 	return true;
 }
+
+
+bool
+start_backup(PGconn *conn, char *first_wal_segment)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(
+					  sqlquery,
+	  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))",
+					  time(NULL));
+
+	log_debug(_("standby clone: %s\n"), sqlquery);
+
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Can't start backup: %s\n"), PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	if (first_wal_segment != NULL)
+	{
+		char	   *first_wal_seg_pq = PQgetvalue(res, 0, 0);
+		size_t		buf_sz = strlen(first_wal_seg_pq);
+
+		first_wal_segment = malloc(buf_sz + 1);
+		xsnprintf(first_wal_segment, buf_sz + 1, "%s", first_wal_seg_pq);
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
+bool
+stop_backup(PGconn *conn, char *last_wal_segment)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
+
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Can't stop backup: %s\n"), PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	if (last_wal_segment != NULL)
+	{
+		char	   *last_wal_seg_pq = PQgetvalue(res, 0, 0);
+		size_t		buf_sz = strlen(last_wal_seg_pq);
+
+		last_wal_segment =  malloc(buf_sz + 1);
+		xsnprintf(last_wal_segment, buf_sz + 1, "%s", last_wal_seg_pq);
+	}
+
+	PQclear(res);
+
+	return true;
+}

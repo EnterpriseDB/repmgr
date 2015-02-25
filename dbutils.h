@@ -55,4 +55,7 @@ char       *get_repmgr_schema(void);
 char       *get_repmgr_schema_quoted(PGconn *conn);
 bool		create_replication_slot(PGconn *conn, char *slot_name);
 
+bool		start_backup(PGconn *conn, char *first_wal_segment);
+bool		stop_backup(PGconn *conn, char *last_wal_segment);
+
 #endif

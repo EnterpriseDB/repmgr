@@ -58,7 +58,7 @@
 static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
-				  char *local_path);
+				  char *local_path, bool is_directory);
 static int  run_basebackup(void);
 static bool check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
@@ -126,6 +126,7 @@ main(int argc, char **argv)
 		{"pg_bindir", required_argument, NULL, 'b'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
+		{"rsync-only", no_argument, NULL, 3},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -240,6 +241,9 @@ main(int argc, char **argv)
 				break;
 			case 2:
 				check_master_config = true;
+				break;
+			case 3:
+				runtime_options.rsync_only = true;
 				break;
 			default:
 				usage();
@@ -891,6 +895,11 @@ do_standby_clone(void)
 	char		master_ident_file[MAXFILENAME] = "";
 	char		local_ident_file[MAXFILENAME] = "";
 
+	char		master_control_file[MAXFILENAME] = "";
+	char		local_control_file[MAXFILENAME] = "";
+
+	char	   *first_wal_segment = NULL;
+	char	   *last_wal_segment = NULL;
 	TablespaceListCell *cell;
 
 	/*
@@ -936,6 +945,7 @@ do_standby_clone(void)
 	{
 		if(get_server_version(primary_conn, NULL) < 90400)
 		{
+			/* XXX handle this with --rsync-only option */
 			log_err(_("Configuration option `tablespace_mapping` requires PostgreSQL 9.4 or later\n"));
 			PQfinish(primary_conn);
 			exit(ERR_BAD_CONFIG);
@@ -1074,8 +1084,23 @@ do_standby_clone(void)
 
 	log_notice(_("Starting backup...\n"));
 
+	/*
+	 * When using rsync only, we need to check the SSH connection
+	 * early
+	 */
+	if(runtime_options.rsync_only)
+	{
+		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+		if (r != 0)
+		{
+			log_err(_("%s: Aborting, remote host %s is not reachable.\n"),
+					progname, runtime_options.host);
+			retval = ERR_BAD_SSH;
+			goto stop_backup;
+		}
+	}
 
-	/* Check the directory could be used as a PGDATA dir */
+	/* Check the local data directory can be used */
 
 	/* ZZZ maybe check tablespace, xlog dirs too */
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
@@ -1087,13 +1112,78 @@ do_standby_clone(void)
 		goto stop_backup;
 	}
 
-
-	r = run_basebackup();
-	if (r != 0)
+	if(runtime_options.rsync_only)
 	{
-		log_warning(_("standby clone: base backup failed\n"));
-		retval = ERR_BAD_BASEBACKUP;
-		goto stop_backup;
+		if(start_backup(primary_conn, first_wal_segment) == false)
+		{
+			r = ERR_BAD_BASEBACKUP;
+			retval = ERR_BAD_BASEBACKUP;
+			goto stop_backup;
+		}
+
+		/*
+		 * 1) first move global/pg_control
+		 *
+		 * 2) then move data_directory ommiting the files we have already moved
+		 * and pg_xlog content
+		 */
+
+		/* Create the global sub directory */
+		maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
+		log_info(_("standby clone: master control file '%s'\n"),
+				 master_control_file);
+		if (!create_dir(local_control_file))
+		{
+			log_err(_("%s: couldn't create directory %s ...\n"),
+					progname, local_control_file);
+			goto stop_backup;
+		}
+
+		maxlen_snprintf(master_control_file, "%s/global/pg_control",
+						master_data_directory);
+
+		log_info(_("standby clone: master control file '%s'\n"),
+				 master_control_file);
+		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+							  master_control_file, local_control_file,
+							  false);
+		if (r != 0)
+		{
+			log_warning(_("standby clone: failed copying master control file '%s'\n"),
+						master_control_file);
+			goto stop_backup;
+		}
+
+		/* Copy the data directory */
+		log_info(_("standby clone: master data directory '%s'\n"),
+				 master_data_directory);
+		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+							  master_data_directory, local_data_directory,
+							  true);
+		if (r != 0)
+		{
+			log_warning(_("standby clone: failed copying master data directory '%s'\n"),
+						master_data_directory);
+			goto stop_backup;
+		}
+
+		// ZZZ tablespaces
+
+		/*
+		 * With rsync we'll need to explicitly copy configuration files in any
+		 * case
+		 */
+		config_file_copy_required = true;
+	}
+	else
+	{
+		r = run_basebackup();
+		if (r != 0)
+		{
+			log_warning(_("standby clone: base backup failed\n"));
+			retval = ERR_BAD_BASEBACKUP;
+			goto stop_backup;
+		}
 	}
 
 	/*
@@ -1120,7 +1210,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master config file '%s'\n"), master_config_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_config_file, local_config_file);
+								  master_config_file, local_config_file, false);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master config file '%s'\n"),
@@ -1134,7 +1224,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_hba_file, local_hba_file);
+								  master_hba_file, local_hba_file, false);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master hba file '%s'\n"),
@@ -1148,7 +1238,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_ident_file, local_ident_file);
+								  master_ident_file, local_ident_file, false);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master ident file '%s'\n"),
@@ -1160,6 +1250,16 @@ do_standby_clone(void)
 	}
 
 stop_backup:
+
+	if(runtime_options.rsync_only)
+	{
+		log_notice(_("Notifying master about backup completion...\n"));
+		if(stop_backup(primary_conn, last_wal_segment) == false)
+		{
+			r = ERR_BAD_BASEBACKUP;
+			retval = ERR_BAD_BASEBACKUP;
+		}
+	}
 
 	/* If the backup failed then exit */
 	if (r != 0)
@@ -1188,7 +1288,15 @@ stop_backup:
 		}
 	}
 
-	log_notice(_("%s standby clone (using pg_basebackup) complete\n"), progname);
+	if(runtime_options.rsync_only)
+	{
+		log_notice(_("%s standby clone (using rsync) complete\n"), progname);
+	}
+	else
+	{
+		log_notice(_("%s standby clone (using pg_basebackup) complete\n"), progname);
+	}
+
 
 	/*
 	 * XXX It might be nice to provide the following options:
@@ -1650,7 +1758,7 @@ do_witness_create(void)
 	}
 
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-						  master_hba_file, runtime_options.dest_dir);
+						  master_hba_file, runtime_options.dest_dir, false);
 	if (r != 0)
 	{
 		log_err(_("Can't rsync the pg_hba.conf file from master\n"));
@@ -1778,6 +1886,7 @@ help(const char *progname)
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
 	printf(_("  -r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)\n"));
+	printf(_("  --rsync-only                        use only rsync to make the initial base backup\n"));
 	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
 	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
@@ -1907,7 +2016,7 @@ test_ssh_connection(char *host, char *remote_user)
 
 static int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
-				  char *local_path)
+				  char *local_path, bool is_directory)
 {
 	char		script[MAXLEN];
 	char		rsync_flags[MAXLEN];
@@ -1933,9 +2042,18 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		maxlen_snprintf(host_string, "%s@%s", remote_user, host);
 	}
 
-
-	maxlen_snprintf(script, "rsync %s %s:%s %s",
-					rsync_flags, host_string, remote_path, local_path);
+	if (is_directory)
+	{
+		strcat(rsync_flags,
+			   " --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_control --exclude=*.pid");
+		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
+						rsync_flags, host_string, remote_path, local_path);
+	}
+	else
+	{
+		maxlen_snprintf(script, "rsync %s %s:%s %s",
+						rsync_flags, host_string, remote_path, local_path);
+	}
 
 	log_info(_("rsync command line:  '%s'\n"), script);
 
