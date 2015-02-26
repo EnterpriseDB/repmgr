@@ -352,7 +352,10 @@ main(int argc, char **argv)
 			strncpy(runtime_options.dbname, DEFAULT_DBNAME, MAXLEN);
 	}
 
-	/* We check that port number is not null */
+	/*
+	 * If no primary port (-p, --port) provided, explicitly set the
+	 * default PostgreSQL port.
+	 */
 	if (!runtime_options.masterport[0])
 	{
 		strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
