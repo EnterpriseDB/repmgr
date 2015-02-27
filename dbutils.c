@@ -248,7 +248,7 @@ get_server_version(PGconn *conn, char *server_version)
 	PGresult   *res;
 	res = PQexec(conn,
 				 "SELECT current_setting('server_version_num'), "
-				 "current_setting('server_version')");
+				 "       current_setting('server_version')");
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{

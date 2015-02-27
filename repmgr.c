@@ -35,6 +35,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "storage/fd.h"         /* for PG_TEMP_FILE_PREFIX */
 #include "pqexpbuffer.h"
 
 #include "log.h"
@@ -58,7 +59,7 @@
 static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
-				  char *local_path, bool is_directory);
+							  char *local_path, bool is_directory, int server_version_num);
 static int  run_basebackup(void);
 static bool check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
@@ -87,7 +88,7 @@ static void help(const char *progname);
 static const char *progname;
 static const char *keywords[6];
 static const char *values[6];
-bool		need_a_node = true;
+static bool		   need_a_node = true;
 
 /* XXX This should be mapped into a command line option */
 bool		require_password = false;
@@ -1160,7 +1161,7 @@ do_standby_clone(void)
 				 master_control_file);
 		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 							  master_control_file, local_control_file,
-							  false);
+							  false, server_version_num);
 		if (r != 0)
 		{
 			log_warning(_("standby clone: failed copying master control file '%s'\n"),
@@ -1173,7 +1174,7 @@ do_standby_clone(void)
 				 master_data_directory);
 		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 							  master_data_directory, local_data_directory,
-							  true);
+							  true, server_version_num);
 		if (r != 0)
 		{
 			log_warning(_("standby clone: failed copying master data directory '%s'\n"),
@@ -1224,7 +1225,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master config file '%s'\n"), master_config_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_config_file, local_config_file, false);
+								  master_config_file, local_config_file, false, server_version_num);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master config file '%s'\n"),
@@ -1238,7 +1239,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_hba_file, local_hba_file, false);
+								  master_hba_file, local_hba_file, false, server_version_num);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master hba file '%s'\n"),
@@ -1252,7 +1253,7 @@ do_standby_clone(void)
 		{
 			log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_ident_file, local_ident_file, false);
+								  master_ident_file, local_ident_file, false, server_version_num);
 			if (r != 0)
 			{
 				log_warning(_("standby clone: failed copying master ident file '%s'\n"),
@@ -1772,7 +1773,7 @@ do_witness_create(void)
 	}
 
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-						  master_hba_file, runtime_options.dest_dir, false);
+						  master_hba_file, runtime_options.dest_dir, false, -1);
 	if (r != 0)
 	{
 		log_err(_("Can't rsync the pg_hba.conf file from master\n"));
@@ -2030,22 +2031,31 @@ test_ssh_connection(char *host, char *remote_user)
 
 static int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
-				  char *local_path, bool is_directory)
+				  char *local_path, bool is_directory, int server_version_num)
 {
+	PQExpBufferData 	rsync_flags;
 	char		script[MAXLEN];
-	char		rsync_flags[MAXLEN];
 	char		host_string[MAXLEN];
 	int			r;
 
+	initPQExpBuffer(&rsync_flags);
+
 	if (*options.rsync_options == '\0')
-		maxlen_snprintf(
-						rsync_flags, "%s",
-					 "--archive --checksum --compress --progress --rsh=ssh");
+	{
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  "--archive --checksum --compress --progress --rsh=ssh");
+	}
 	else
-		maxlen_snprintf(rsync_flags, "%s", options.rsync_options);
+	{
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  options.rsync_options);
+	}
 
 	if (runtime_options.force)
-		strcat(rsync_flags, " --delete --checksum");
+	{
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  " --delete --checksum");
+	}
 
 	if (!remote_user[0])
 	{
@@ -2056,17 +2066,51 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		maxlen_snprintf(host_string, "%s@%s", remote_user, host);
 	}
 
+	/*
+	 * When copying the main PGDATA directory, certain files and contents
+	 * of certain directories need to be excluded.
+	 *
+	 * See function 'sendDir()' in 'src/backend/replication/basebackup.c' -
+	 * we're basically simulating what pg_basebackup does, but with rsync rather
+	 * than the BASEBACKUP replication protocol command.
+	 */
 	if (is_directory)
 	{
-		strcat(rsync_flags,
-			   " --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_control --exclude=*.pid");
+		/* Files we don't want */
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  " --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control");
+
+		if(server_version_num >= 90400)
+		{
+			/*
+			 * Ideally we'd use PG_AUTOCONF_FILENAME from utils/guc.h, but
+			 * that has too many dependencies for a mere client program.
+			 */
+			appendPQExpBuffer(&rsync_flags, "%s",
+							  " --exclude=postgresql.auto.conf.tmp");
+		}
+
+		/* Temporary files we don't want, if they exist */
+		appendPQExpBuffer(&rsync_flags, " --exclude=%s*",
+						  PG_TEMP_FILE_PREFIX);
+
+		/* Directories we don't want */
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  " --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_stat_tmp/*");
+
+		if(server_version_num >= 90400)
+		{
+			appendPQExpBuffer(&rsync_flags, "%s",
+							  " --exclude=pg_replslot/*");
+		}
+
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
-						rsync_flags, host_string, remote_path, local_path);
+						rsync_flags.data, host_string, remote_path, local_path);
 	}
 	else
 	{
 		maxlen_snprintf(script, "rsync %s %s:%s %s",
-						rsync_flags, host_string, remote_path, local_path);
+						rsync_flags.data, host_string, remote_path, local_path);
 	}
 
 	log_info(_("rsync command line:  '%s'\n"), script);
