@@ -804,3 +804,29 @@ stop_backup(PGconn *conn, char *last_wal_segment)
 
 	return true;
 }
+
+
+bool
+set_config_bool(PGconn *conn, const char *config_param, bool state)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(sqlquery,
+					  "SET %s TO %s",
+					  config_param,
+					  state ? "TRUE" : "FALSE");
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err("Unable to set '%s': %s\n", config_param, PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}

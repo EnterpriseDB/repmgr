@@ -57,5 +57,6 @@ bool		create_replication_slot(PGconn *conn, char *slot_name);
 
 bool		start_backup(PGconn *conn, char *first_wal_segment);
 bool		stop_backup(PGconn *conn, char *last_wal_segment);
+bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 
 #endif

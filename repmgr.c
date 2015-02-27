@@ -1114,6 +1114,17 @@ do_standby_clone(void)
 
 	if(runtime_options.rsync_only)
 	{
+
+		/*
+		 * From pg 9.1 default is to wait for a sync standby to ack, avoid that by
+		 * turning off sync rep for this session
+		 */
+		if(set_config_bool(primary_conn, "synchronous_commit", false) == false)
+		{
+			PQfinish(primary_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
 		if(start_backup(primary_conn, first_wal_segment) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
