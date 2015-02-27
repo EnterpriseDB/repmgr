@@ -20,7 +20,7 @@ Conceptual Overview
  - `repmgrd`: an optional daemon process which runs on standby nodes to monitor
    replication and node status
 
-Each PostgreSQL node requires a `repmgr` configuration file; additionally
+Each PostgreSQL node requires a `repmgr.conf` configuration file; additionally
 it must be "registered" using the `repmgr` command-line client. `repmgr` stores
 information about managed nodes in a custom schema on the node's current master
 database.
@@ -92,7 +92,7 @@ usage.
 
 ### repmgr configuration
 
-Each PostgreSQL node requires a `repmgr` configuration file containing
+Each PostgreSQL node requires a `repmgr.conf` configuration file containing
 identification and database connection information:
 
     cluster=test
@@ -111,7 +111,10 @@ identification and database connection information:
 * `pg_bindir`: (optional) location of PostgreSQL binaries, if not in the default $PATH
 
 Note that the configuration file should *not* be stored inside the PostgreSQL
-data directory.
+data directory. The configuration file can be specified with the
+`-f, --config-file=PATH` option and can have any arbitrary name. If no
+configuration file is specified, `repmgr` will search for `repmgr.conf`
+in the current working directory.
 
 Each node configuration needs to be registered with `repmgr`, either using the
 `repmgr` command line tool, or the `repmgrd` daemon; for details see below. Details
