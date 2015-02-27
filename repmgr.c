@@ -2660,8 +2660,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			{
 				if (i == 0)
 				{
-					log_err(_("%s needs parameter 'max_replication_slots' must be set to at least 1 to enable replication slots\n"),
-						progname);
+					log_err(_("parameter 'max_replication_slots' must be set to at least 1 to enable replication slots\n"));
 
 					if(exit_on_error == true)
 					{
