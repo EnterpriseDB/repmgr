@@ -1137,37 +1137,12 @@ do_standby_clone(void)
 		}
 
 		/*
-		 * 1) first move global/pg_control
+		 * 1. copy data directory, omitting directories which should not be
+		 *    copied, or for which copying would serve no purpose.
 		 *
-		 * 2) then move data_directory ommiting the files we have already moved
-		 * and pg_xlog content
+		 * 2. copy pg_control file
 		 */
 
-		/* Create the global sub directory */
-		maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
-		log_info(_("standby clone: master control file '%s'\n"),
-				 master_control_file);
-		if (!create_dir(local_control_file))
-		{
-			log_err(_("%s: couldn't create directory %s ...\n"),
-					progname, local_control_file);
-			goto stop_backup;
-		}
-
-		maxlen_snprintf(master_control_file, "%s/global/pg_control",
-						master_data_directory);
-
-		log_info(_("standby clone: master control file '%s'\n"),
-				 master_control_file);
-		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-							  master_control_file, local_control_file,
-							  false, server_version_num);
-		if (r != 0)
-		{
-			log_warning(_("standby clone: failed copying master control file '%s'\n"),
-						master_control_file);
-			goto stop_backup;
-		}
 
 		/* Copy the data directory */
 		log_info(_("standby clone: master data directory '%s'\n"),
@@ -1189,6 +1164,8 @@ do_standby_clone(void)
 		 * case
 		 */
 		config_file_copy_required = true;
+
+
 	}
 	else
 	{
@@ -1258,6 +1235,40 @@ do_standby_clone(void)
 			{
 				log_warning(_("standby clone: failed copying master ident file '%s'\n"),
 							master_ident_file);
+				retval = ERR_BAD_SSH;
+				goto stop_backup;
+			}
+		}
+
+		/*
+		 * When using rsync, copy pg_control file last, emulating the base backup
+		 * protocol.
+		 */
+		if(runtime_options.rsync_only)
+		{
+			maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
+
+			log_info(_("standby clone: local control file '%s'\n"),
+					 local_control_file);
+
+			if (!create_dir(local_control_file))
+			{
+				log_err(_("%s: couldn't create directory %s ...\n"),
+						progname, local_control_file);
+				goto stop_backup;
+			}
+
+			maxlen_snprintf(master_control_file, "%s/global/pg_control",
+							master_data_directory);
+			log_info(_("standby clone: master control file '%s'\n"),
+				 master_control_file);
+			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+								  master_control_file, local_control_file,
+								  false, server_version_num);
+			if (r != 0)
+			{
+				log_warning(_("standby clone: failed copying master control file '%s'\n"),
+							master_control_file);
 				retval = ERR_BAD_SSH;
 				goto stop_backup;
 			}
