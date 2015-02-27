@@ -1246,7 +1246,9 @@ check_gateway(const char *host)
 						host,
 						(local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
 			/* wait local_options.reconnect_intvl seconds between retries */
-			sleep(local_options.reconnect_intvl);
+            // to avoid the race condition with the new slave being promoted to
+            // master
+			sleep(local_options.reconnect_intvl - 1);   
 		}
 		else
 		{
