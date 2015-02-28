@@ -951,7 +951,7 @@ do_standby_clone(void)
 	 * currently we can't handle that and will fail with an error
 	 */
 
-	if(options.tablespace_dirs.head != NULL)
+	if(options.tablespace_mapping.head != NULL)
 	{
 		if(get_server_version(primary_conn, NULL) < 90400)
 		{
@@ -961,7 +961,7 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		for (cell = options.tablespace_dirs.head; cell; cell = cell->next)
+		for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
 		{
 
 			sqlquery_snprintf(sqlquery,
@@ -2160,9 +2160,9 @@ run_basebackup()
 	if(strlen(runtime_options.dest_dir))
 		appendPQExpBuffer(&params, " -D %s", runtime_options.dest_dir);
 
-	if(options.tablespace_dirs.head != NULL)
+	if(options.tablespace_mapping.head != NULL)
 	{
-		for (cell = options.tablespace_dirs.head; cell; cell = cell->next)
+		for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
 		{
 			appendPQExpBuffer(&params, " -T %s=%s", cell->old_dir, cell->new_dir);
 		}

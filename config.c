@@ -71,8 +71,8 @@ parse_config(const char *config_file, t_configuration_options * options)
 	options->monitor_interval_secs = 2;
 	options->retry_promote_interval_secs = 300;
 
-	options->tablespace_dirs.head = NULL;
-	options->tablespace_dirs.tail = NULL;
+	options->tablespace_mapping.head = NULL;
+	options->tablespace_mapping.tail = NULL;
 
 	/*
 	 * Since some commands don't require a config file at all, not having one
@@ -544,10 +544,10 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 	canonicalize_path(cell->old_dir);
 	canonicalize_path(cell->new_dir);
 
-	if (options->tablespace_dirs.tail)
-		options->tablespace_dirs.tail->next = cell;
+	if (options->tablespace_mapping.tail)
+		options->tablespace_mapping.tail->next = cell;
 	else
-		options->tablespace_dirs.head = cell;
+		options->tablespace_mapping.head = cell;
 
-	options->tablespace_dirs.tail = cell;
+	options->tablespace_mapping.tail = cell;
 }
