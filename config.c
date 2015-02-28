@@ -77,9 +77,6 @@ parse_config(const char *config_file, t_configuration_options * options)
 	/*
 	 * Since some commands don't require a config file at all, not having one
 	 * isn't necessarily a problem.
-	 *
-	 * XXX this currently results in an ERROR being logged, which is silly
-	 * because it's not an error per-se
 	 */
 	if (fp == NULL)
 	{
