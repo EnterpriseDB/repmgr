@@ -1,8 +1,10 @@
 3.0beta1
-		Require PostgreSQL 9.3 or later (Ian)
-		Use `pg_basebackup` instead of `rsync` to clone standby servers (Ian)
-		Use `pg_ctl promote` to promote a standby to primary
+        Require PostgreSQL 9.3 or later (Ian)
+	Use `pg_basebackup` by default (instead of `rsync`) to clone standby servers (Ian)
+	Use `pg_ctl promote` to promote a standby to primary
+        Enable tablespace remapping using `pg_basebackup` (in PostgreSQL 9.3 with `rsync`) (Ian)
         Code consolidation and cleanup (Ian)
+
 
 2.0.1	2014-07-16
 		Documentation fixes and new QUICKSTART file (Ian)
