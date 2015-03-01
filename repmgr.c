@@ -904,7 +904,6 @@ do_standby_clone(void)
 
 	char	   *first_wal_segment = NULL;
 	char	   *last_wal_segment = NULL;
-	TablespaceListCell *cell;
 
 	/*
 	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
@@ -947,23 +946,24 @@ do_standby_clone(void)
 	 * pg_basebackup doesn't verify mappings, so any errors will not be caught.
 	 * We'll do that here as a value-added service.
 	 *
-	 * XXX -T/--tablespace-mapping not available for PostgreSQL 9.3 -
-	 * currently we can't handle that and will fail with an error
+	 * -T/--tablespace-mapping is not available as a pg_basebackup option for
+	 * PostgreSQL 9.3 - we can only handle that with rsync, so if `--rsync-only`
+	 # not set, fail with an error
 	 */
 
 	if(options.tablespace_mapping.head != NULL)
 	{
+		TablespaceListCell *cell;
+
 		if(get_server_version(primary_conn, NULL) < 90400)
 		{
-			/* XXX handle this with --rsync-only option */
-			log_err(_("Configuration option `tablespace_mapping` requires PostgreSQL 9.4 or later\n"));
+			log_err(_("In PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
 			PQfinish(primary_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
 		for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
 		{
-
 			sqlquery_snprintf(sqlquery,
 							  "SELECT spcname "
 							  "  FROM pg_tablespace "
@@ -1157,15 +1157,99 @@ do_standby_clone(void)
 			goto stop_backup;
 		}
 
-		// ZZZ tablespaces
+		/* Handle tablespaces */
+
+		sqlquery_snprintf(sqlquery,
+						  " SELECT oid, pg_tablespace_location(oid) AS spclocation "
+						  "   FROM pg_tablespace "
+						  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
+
+		res = PQexec(primary_conn, sqlquery);
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_err(_("Unable to execute tablespace query: %s\n"), PQerrorMessage(primary_conn));
+			PQclear(res);
+			PQfinish(primary_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		for (i = 0; i < PQntuples(res); i++)
+		{
+			bool mapping_found = false;
+			PQExpBufferData tblspc_dir_src;
+			PQExpBufferData tblspc_dir_dst;
+			PQExpBufferData tblspc_oid;
+			TablespaceListCell *cell;
+
+			initPQExpBuffer(&tblspc_dir_src);
+			initPQExpBuffer(&tblspc_dir_dst);
+			initPQExpBuffer(&tblspc_oid);
+
+			appendPQExpBuffer(&tblspc_oid, "%s", PQgetvalue(res, i, 0));
+			appendPQExpBuffer(&tblspc_dir_src, "%s", PQgetvalue(res, i, 1));
+
+			/* Check if tablespace path matches one of the provided tablespace mappings */
+
+			if(options.tablespace_mapping.head != NULL)
+			{
+				for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
+				{
+					if(strcmp( tblspc_dir_src.data, cell->old_dir) == 0) {
+						mapping_found = true;
+						break;
+					}
+				}
+			}
+
+			if(mapping_found == true)
+			{
+				appendPQExpBuffer(&tblspc_dir_dst, "%s", cell->new_dir);
+				log_debug(_("Mapping source tablespace '%s' (OID %s) to '%s'\n"), tblspc_dir_src.data, tblspc_oid.data, tblspc_dir_dst.data);
+			}
+			else
+			{
+				appendPQExpBuffer(&tblspc_dir_dst, "%s",  tblspc_dir_src.data);
+			}
+
+
+			/* Copy tablespace directory */
+			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+								  tblspc_dir_src.data, tblspc_dir_dst.data,
+								  true, server_version_num);
+
+			/* Update symlink in pg_tblspc */
+			if(mapping_found == true)
+			{
+				PQExpBufferData tblspc_symlink;
+
+				initPQExpBuffer(&tblspc_symlink);
+				appendPQExpBuffer(&tblspc_symlink, "%s/pg_tblspc/%s",
+								  local_data_directory,
+								  tblspc_oid.data);
+				log_debug(_("symlink: %s\n"), tblspc_symlink.data);
+
+				if (unlink(tblspc_symlink.data) < 0 && errno != ENOENT)
+				{
+					log_err(_("Unable to remove tablespace symlink %s\n"), tblspc_symlink.data);
+					exit(ERR_BAD_CONFIG);
+				}
+				if (symlink(tblspc_dir_dst.data, tblspc_symlink.data) < 0)
+				{
+					log_err(_("Unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dst.data);
+					exit(ERR_BAD_CONFIG);
+				}
+
+
+			}
+		}
+
+		PQclear(res);
 
 		/*
 		 * With rsync we'll need to explicitly copy configuration files in any
 		 * case
 		 */
 		config_file_copy_required = true;
-
-
 	}
 	else
 	{
