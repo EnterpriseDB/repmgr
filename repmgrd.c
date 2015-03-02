@@ -519,7 +519,7 @@ witness_monitor(void)
 				local_options.reconnect_attempts
 				);
 			primary_conn = get_master_connection(my_local_conn,
-											 local_options.cluster_name, &primary_options.node, NULL);
+												 local_options.cluster_name, &primary_options.node, NULL);
 
 			if (PQstatus(primary_conn) != CONNECTION_OK)
 			{
@@ -534,6 +534,16 @@ witness_monitor(void)
 			{
 				log_debug(_("New master found with node ID: %i\n"), primary_options.node);
 				connection_ok = true;
+
+				/*
+				 * Update the repl_nodes table from the new primary to reflect the changed
+				 * node configuration
+				 *
+				 * XXX it would be neat to be able to handle this with e.g. table-based
+				 * logical replication
+				 */
+				copy_configuration(primary_conn, my_local_conn, local_options.cluster_name);
+
 				break;
 			}
 		}

@@ -22,6 +22,7 @@
 #include <sys/time.h>
 
 #include "repmgr.h"
+#include "config.h"
 #include "strutil.h"
 #include "log.h"
 
@@ -823,6 +824,150 @@ set_config_bool(PGconn *conn, const char *config_param, bool state)
 	{
 		log_err("Unable to set '%s': %s\n", config_param, PQerrorMessage(conn));
 		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
+/*
+ * copy_configuration()
+ *
+ * Copy records in master's `repl_nodes` table to witness database
+ *
+ * This is used by `repmgr` when setting up the witness database, and
+ * `repmgrd` after a failover event occurs
+ */
+bool
+copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
+{
+	char		sqlquery[MAXLEN];
+	PGresult   *res;
+	int			i;
+
+	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", get_repmgr_schema_quoted(witnessconn));
+	log_debug("copy_configuration: %s\n", sqlquery);
+	res = PQexec(witnessconn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "Cannot clean node details in the witness, %s\n",
+				PQerrorMessage(witnessconn));
+		return false;
+	}
+
+	sqlquery_snprintf(sqlquery,
+					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name FROM %s.repl_nodes",
+					  get_repmgr_schema_quoted(masterconn));
+	res = PQexec(masterconn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		fprintf(stderr, "Can't get configuration from master: %s\n",
+				PQerrorMessage(masterconn));
+		PQclear(res);
+		return false;
+	}
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		bool node_record_created;
+		char *witness = PQgetvalue(res, i, 4);
+
+		log_debug(_("copy_configuration(): %s\n"), witness);
+
+		node_record_created = create_node_record(witnessconn,
+												 "copy_configuration",
+												 atoi(PQgetvalue(res, i, 0)),
+												 PQgetvalue(res, i, 1),
+												 strlen(PQgetvalue(res, i, 2))
+												   ? atoi(PQgetvalue(res, i, 2))
+												   : NO_UPSTREAM_NODE,
+												 cluster_name,
+												 PQgetvalue(res, i, 3),
+												 PQgetvalue(res, i, 4),
+												 atoi(PQgetvalue(res, i, 5)),
+												 strlen(PQgetvalue(res, i, 6))
+													? PQgetvalue(res, i, 6)
+													: NULL
+												 );
+
+		if (node_record_created == false)
+		{
+			fprintf(stderr, "Unable to copy node record to witness database: %s\n",
+					PQerrorMessage(witnessconn));
+			return false;
+		}
+	}
+	PQclear(res);
+
+	return true;
+}
+
+bool
+create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	char		upstream_node_id[MAXLEN];
+	char		slot_name_buf[MAXLEN];
+	PGresult   *res;
+
+	if(upstream_node == NO_UPSTREAM_NODE)
+	{
+		/*
+		 * No explicit upstream node id provided for standby - attempt to
+		 * get primary node id
+		 */
+		if(strcmp(type, "standby") == 0)
+		{
+			int primary_node_id = get_primary_node_id(conn, cluster_name);
+			maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
+		}
+		else
+		{
+			maxlen_snprintf(upstream_node_id, "%s", "NULL");
+		}
+	}
+	else
+	{
+		maxlen_snprintf(upstream_node_id, "%i", upstream_node);
+	}
+
+	if(slot_name == NULL)
+	{
+		maxlen_snprintf(slot_name_buf, "'%s'", slot_name);
+	}
+	else
+	{
+		maxlen_snprintf(slot_name_buf, "%s", "NULL");
+	}
+
+	sqlquery_snprintf(sqlquery,
+					  "INSERT INTO %s.repl_nodes "
+					  "       (id, type, upstream_node_id, cluster, "
+					  "        name, conninfo, slot_name, priority) "
+					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %s, %i) ",
+					  get_repmgr_schema_quoted(conn),
+					  node,
+					  type,
+					  upstream_node_id,
+					  cluster_name,
+					  node_name,
+					  conninfo,
+					  slot_name_buf,
+					  priority);
+
+	if(action != NULL)
+	{
+		log_debug(_("%s: %s\n"), action, sqlquery);
+	}
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_warning(_("Cannot insert node details, %s\n"),
+					PQerrorMessage(conn));
 		return false;
 	}
 
