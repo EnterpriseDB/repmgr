@@ -276,6 +276,13 @@ main(int argc, char **argv)
 
 	/* Retrieve record for this node from the database */
 	node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
+
+	if(node_info.node_id == -1)
+	{
+		log_err(_("Node %i is not registered\n"), local_options.node);
+		terminate(ERR_BAD_CONFIG);
+	}
+
 	log_debug("Node id is %i, upstream is %i\n", node_info.node_id, node_info.upstream_node_id);
 
 	/*
@@ -2065,6 +2072,13 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 		log_err(_("Unable to retrieve record for node %i: %s\n"), node_id, PQerrorMessage(conn));
 		PQclear(res);
 		terminate(ERR_DB_QUERY);
+	}
+
+	if (!PQntuples(res)) {
+		log_warning(_("No record found record for node %i\n"), node_id);
+		PQclear(res);
+		node_info.node_id = -1;
+		return node_info;
 	}
 
 	node_info.node_id = atoi(PQgetvalue(res, 0, 0));
