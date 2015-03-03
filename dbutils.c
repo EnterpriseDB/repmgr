@@ -105,7 +105,7 @@ check_cluster_schema(PGconn *conn)
 	if (PQntuples(res) == 0)
 	{
 		/* schema doesn't exist */
-		log_notice(_("check_cluster_schema(): schema '%s' doesn't exist.\n"), get_repmgr_schema());
+		log_debug(_("check_cluster_schema(): schema '%s' doesn't exist\n"), get_repmgr_schema());
 		PQclear(res);
 
 		return false;
