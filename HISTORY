@@ -1,8 +1,12 @@
 3.0beta1
         Require PostgreSQL 9.3 or later (Ian)
-	Use `pg_basebackup` by default (instead of `rsync`) to clone standby servers (Ian)
-	Use `pg_ctl promote` to promote a standby to primary
+        Use `pg_basebackup` by default (instead of `rsync`) to clone standby servers (Ian)
+        Use `pg_ctl promote` to promote a standby to primary
         Enable tablespace remapping using `pg_basebackup` (in PostgreSQL 9.3 with `rsync`) (Ian)
+        Support cascaded standbys (Ian)
+        "pg_bindir" no longer required as a configuration parameter (Ian)
+        Enable replications to be used (PostgreSQL 9.4 and later (Ian)
+        Command line option "--check-upstream-config" (Ian)
         Code consolidation and cleanup (Ian)
 
 2.0.3   2015-??-??

@@ -1,5 +1,5 @@
-repmgr: Quickstart guide
-========================
+repmgr: Replication Manager for PostgreSQL clusters
+===================================================
 
 `repmgr` is an open-source tool suite for mananaging replication and failover
 among multiple PostgreSQL server nodes. It enhances PostgreSQL's built-in
@@ -7,34 +7,57 @@ hot-standby capabilities with a set of administration tools for monitoring
 replication, setting up standby servers and performing failover/switchover
 operations.
 
-This quickstart guide assumes you are familiar with PostgreSQL replication
-setup and Linux/UNIX system administration. For a more detailed tutorial
-covering setup on a variety of different systems, see the README.rst file.
+This document assumes you are familiar with PostgreSQL replication setup and
+Linux/UNIX system administration.
+
+Repmgr 3 Features
+-----------------
+
+`repmgr 3` takes advantage of features introduced in PostgreSQL 9.3 and
+later, including timeline following and replication slots, to make setting
+up and managing replication smoother and easier. For earlier PostgreSQL
+versions please continue use the 2.x branch.
+
+New features in `repmgr 3` include:
+
+* uses pg_basebackup to clone servers
+* Supports timeline following, meaning a standby does not have to be
+  restarted after being promoted to master
+* supports cascading replication
+* supports tablespace remapping (in PostgreSQL 9.3 via rsync only)
+* enables use of replication slots (PostgreSQL 9.4 and later)
+* usability improvements, including better logging and error reporting
 
 Conceptual Overview
 -------------------
 
 `repmgr` provides two binaries:
 
- - `repmgr`: a command-line client to manage replication and `repmgr` configuration
+ - `repmgr`: a command-line client to manage replication and `repmgr`
+   configuration
  - `repmgrd`: an optional daemon process which runs on standby nodes to monitor
    replication and node status
 
 Each PostgreSQL node requires a `repmgr.conf` configuration file; additionally
-it must be "registered" using the `repmgr` command-line client. `repmgr` stores
-information about managed nodes in a custom schema on the node's current master
-database.
+it must be "registered" with the current master node using the `repmgr`
+command-line client. `repmgr` stores information about managed nodes in a
+custom schema on the node's current master database; see below for details.
 
+Supported Releases
+------------------
+
+`repmgr` works with PostgreSQL 9.3 and later. All server nodes must be running
+the same PostgreSQL major version, and preferably should be running the same
+minor version.
+
+PostgreSQL versions 9.0 ~ 9.2 are supporeted by `repmgr` version 2.
 
 Requirements
 ------------
 
-`repmgr` works with PostgreSQL 9.0 and later. All server nodes must be running the
-same PostgreSQL major version, and preferably should be running the same minor
-version.
-
 `repmgr` will work on any Linux or UNIX-like environment capable of running
-PostgreSQL. `rsync` must also be installed.
+PostgreSQL. `rsync` and password-less SSH connections between servers are
+only required if `rsync` is to be used to clone standby servers.
 
 
 Installation
@@ -63,13 +86,16 @@ Configuration
 
 ### Server configuration
 
-Password-less SSH logins must be enabled for the database system user (typically `postgres`)
-between all server nodes to enable `repmgr` to copy required files.
+By default, `repmgr` uses PostgreSQL's build-in replication protocol
+for communicating with remote servers, e.g. when cloning a primary.
+However, password-less SSH logins may need to be enable for the database
+system user (typically `postgres`) between all server nodes if you
+wish `repmgr` to copy configuration files not located in
 
 ### PostgreSQL configuration
 
-The master PostgreSQL node needs to be configured for replication with the
-following settings:
+PostgreSQL node needs to be configured for replication with the following
+settings:
 
     wal_level = 'hot_standby'      # minimal, archive, hot_standby, or logical
     archive_mode = on              # allows archiving to be done
@@ -81,19 +107,26 @@ following settings:
 Note that `repmgr` expects a default of 5000 wal_keep_segments, although this
 value can be overridden when executing the `repmgr` client.
 
+From PostgreSQL 9.4, replication slots are available, which remove the
+requirement to retain a fixed number of WAL logfile segments. See
+'repmgr configuration' for details.
+
 Additionally, `repmgr` requires a dedicated PostgreSQL superuser account
 and a database in which to store monitoring and replication data. The `repmgr`
 user account will also be used for replication connections from the standby,
-so a seperate replication user with the `REPLICATION` privilege is not required.
+so a separate replication user with the `REPLICATION` privilege is not required.
 The database can in principle be any database, including the default `postgres`
 one, however it's probably advisable to create a dedicated database for `repmgr`
-usage.
+usage. Both user and database will be created by `repmgr`.
+
+ZZZ possible to create for existing servers?
 
 
 ### repmgr configuration
 
 Each PostgreSQL node requires a `repmgr.conf` configuration file containing
-identification and database connection information:
+identification and database connection information. This is a sample
+minimal configuration:
 
     cluster=test
     node=1
@@ -116,118 +149,14 @@ data directory. The configuration file can be specified with the
 configuration file is specified, `repmgr` will search for `repmgr.conf`
 in the current working directory.
 
-Each node configuration needs to be registered with `repmgr`, either using the
-`repmgr` command line tool, or the `repmgrd` daemon; for details see below. Details
-about each node are inserted into the `repmgr` database (for details see below).
+Each node configuration needs to be registered using the `repmgr` command line
+tool; this inserts details about each node into the control database.
 
+Example replication setup
+-------------------------
 
-Replication setup and monitoring
---------------------------------
+See the QUICKSTART.md file for an annotated example setup.
 
-For the purposes of this guide, we'll assume the database user will be
-`repmgr_usr` and the database will be `repmgr_db`, and that the following
-environment variables are set on each node:
-
- - $HOME: the PostgreSQL system user's home directory
- - $PGDATA: the PostgreSQL data directory
-
-
-Master setup
-------------
-
-1. Configure PostgreSQL
-
-  - create user and database:
-
-	```
-	CREATE ROLE repmgr_usr LOGIN SUPERUSER;
-	CREATE DATABASE repmgr_db OWNER repmgr_usr;
-	```
-
-  - configure `postgresql.conf` for replication (see above)
-
-  - update `pg_hba.conf`, e.g.:
-
-	```
-	host    repmgr_db       repmgr_usr  192.168.1.0/24         trust
-	host    replication     repmgr_usr  192.168.1.0/24         trust
-	```
-
-  Restart the PostgreSQL server after making these changes.
-2. Create the `repmgr` configuration file:
-
-        $ cat $HOME/repmgr/repmgr.conf
-        cluster=test
-        node=1
-        node_name=node1
-        conninfo='host=repmgr_node1 user=repmgr_usr dbname=repmgr_db'
-        pg_bindir=/path/to/postgres/bin
-
-   (For an annotated `repmgr.conf` file, see `repmgr.conf.sample` in the
-   repository's root directory).
-
-3. Register the master node with `repmgr`:
-
-        $ repmgr -f $HOME/repmgr/repmgr.conf --verbose master register
-        [2014-07-04 10:43:42] [INFO] repmgr mgr connecting to master database
-        [2014-07-04 10:43:42] [INFO] repmgr connected to master, checking its state
-        [2014-07-04 10:43:42] [INFO] master register: creating database objects inside the repmgr_test schema
-        [2014-07-04 10:43:43] [NOTICE] Master node correctly registered for cluster test with id 1 (conninfo: host=localhost user=repmgr_usr dbname=repmgr_db)
-
-
-Slave/standby setup
--------------------
-
-1. Use `repmgr` to clone the master:
-
-        $ repmgr -D $PGDATA -d repmgr_db -U repmgr_usr -R postgres --verbose standby clone 192.168.1.2
-        Opening configuration file: ./repmgr.conf
-        [2014-07-04 10:49:00] [ERROR] Did not find the configuration file './repmgr.conf', continuing
-        [2014-07-04 10:49:00] [INFO] repmgr connecting to master database
-        [2014-07-04 10:49:00] [INFO] repmgr connected to master, checking its state
-        [2014-07-04 10:49:00] [INFO] Successfully connected to primary. Current installation size is 1807 MB
-        [2014-07-04 10:49:00] [NOTICE] Starting backup...
-        [2014-07-04 10:49:00] [INFO] creating directory "/path/to/data/"...
-        (...)
-        [2014-07-04 10:53:19] [NOTICE] Finishing backup...
-        NOTICE:  pg_stop_backup complete, all required WAL segments have been archived
-        [2014-07-04 10:53:21] [INFO] repmgr requires primary to keep WAL files 0000000100000000000000AD until at least 0000000100000000000000AD
-        [2014-07-04 10:53:21] [NOTICE] repmgr standby clone complete
-        [2014-07-04 10:53:21] [NOTICE] HINT: You can now start your postgresql server
-        [2014-07-04 10:53:21] [NOTICE] for example : /etc/init.d/postgresql start
-
-  -R is the database system user on the master node. At this point it does not matter
-  if the `repmgr.conf` file is not found.
-
-  This will clone the PostgreSQL database files from the master, including its
-  `postgresql.conf` and `pg_hba.conf` files, and additionally automatically create
-  the `recovery.conf` file containing the correct parameters to start streaming
-  from the primary node.
-
-2. Start the PostgreSQL server
-
-3. Create the `repmgr` configuration file:
-
-        $ cat $HOME/repmgr/repmgr.conf
-        cluster=test
-        node=2
-        node_name=node2
-        conninfo='host=repmgr_node2 user=repmgr_usr dbname=repmgr_db'
-        pg_bindir=/path/to/postgres/bin
-
-4. Register the master node with `repmgr`:
-
-        $ repmgr -f $HOME/repmgr/repmgr.conf --verbose standby register
-        Opening configuration file: /path/to/repmgr/repmgr.conf
-        [2014-07-04 11:48:13] [INFO] repmgr connecting to standby database
-        [2014-07-04 11:48:13] [INFO] repmgr connected to standby, checking its state
-        [2014-07-04 11:48:13] [INFO] repmgr connecting to master database
-        [2014-07-04 11:48:13] [INFO] finding node list for cluster 'test'
-        [2014-07-04 11:48:13] [INFO] checking role of cluster node 'host=repmgr_node1 user=repmgr_usr dbname=repmgr_db'
-        [2014-07-04 11:48:13] [INFO] repmgr connected to master, checking its state
-        [2014-07-04 11:48:13] [INFO] repmgr registering the standby
-        [2014-07-04 11:48:13] [INFO] repmgr registering the standby complete
-        [2014-07-04 11:48:13] [NOTICE] Standby node correctly registered for cluster test with id 2 (conninfo: host=localhost user=repmgr_usr dbname=repmgr_db)
 
 Monitoring
 ----------
@@ -289,10 +218,46 @@ The schema contains two tables:
 * `repl_nodes`
   stores information about all registered servers in the cluster
 * `repl_monitor`
-  stores monitoring information about each node
+  stores monitoring information about each node (generated by `repmgrd`
 
 and one view, `repl_status`, which summarizes the latest monitoring information
 for each node.
+
+
+Support and Assistance
+----------------------
+
+2ndQuadrant provides 24x7 production support for repmgr, including
+configuration assistance, installation verification and training for
+running a robust replication cluster.
+
+There is a mailing list/forum to discuss contributions or issues
+http://groups.google.com/group/repmgr
+
+#repmgr is registered in freenode IRC
+
+Further information is available at http://www.repmgr.org/
+
+We'd love to hear from you about how you use repmgr. Case studies and
+news are always welcome. Send us an email at info@2ndQuadrant.com, or
+send a postcard to
+
+repmgr
+c/o 2ndQuadrant
+7200 The Quorum
+Oxford Business Park North
+Oxford
+OX4 2JZ
+United Kingdom
+
+Thanks from the repmgr core team.
+
+Ian Barwick
+Jaime Casanova
+Abhijit Menon-Sen
+Simon Riggs
+Cedric Villemain
+
 
 
 Further reading
