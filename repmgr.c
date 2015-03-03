@@ -2740,7 +2740,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		else
 		{
 			i = guc_set_typed(conn, "max_replication_slots", ">",
-							  "1", "integer");
+							  "0", "integer");
 			if (i == 0 || i == -1)
 			{
 				if (i == 0)
