@@ -154,6 +154,7 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c;
 	bool		daemonize = false;
+
 	FILE	   *fd;
 
 	int			server_version_num = 0;

@@ -30,7 +30,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/stat.h>			/* for stat() */
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -404,31 +403,6 @@ main(int argc, char **argv)
 		strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
 	}
 
-	/*
-	 * If a configuration file was provided, check it exists, otherwise
-	 * emit an error
-	 */
-	if (runtime_options.config_file[0])
-	{
-		struct stat config;
-		if(stat(runtime_options.config_file, &config) != 0)
-		{
-			log_err(_("Provided configuration file '%s' not found: %s\n"),
-					runtime_options.config_file,
-					strerror(errno)
-				);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
-
-	/*
-	 * If no configuration file was provided, set to a default file
-	 * which `parse_config()` will attempt to read if it exists
-	 */
-	else
-	{
-		strncpy(runtime_options.config_file, DEFAULT_CONFIG_FILE, MAXLEN);
-	}
 
 	if (runtime_options.verbose)
 		/* Logging is not yet set up, so using printf() */

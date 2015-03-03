@@ -17,6 +17,8 @@
  *
  */
 
+#include <sys/stat.h>			/* for stat() */
+
 #include "config.h"
 #include "log.h"
 #include "strutil.h"
@@ -37,14 +39,72 @@ static void tablespace_list_append(t_configuration_options *options, const char 
  * reload_config()
  */
 bool
-parse_config(const char *config_file, t_configuration_options * options)
+parse_config(const char *config_file, t_configuration_options *options)
 {
 	char	   *s,
 				buff[MAXLINELENGTH];
+	char		config_file_buf[MAXLEN];
 	char		name[MAXLEN];
 	char		value[MAXLEN];
+    bool 		config_file_provided = true;
+	FILE	   *fp;
 
-	FILE	   *fp = fopen(config_file, "r");
+	/* Sanity checks */
+
+	/*
+	 * If a configuration file was provided, check it exists, otherwise
+	 * emit an error
+	 */
+	if (config_file[0])
+	{
+		struct stat config;
+		if(stat(config_file, &config) != 0)
+		{
+			log_err(_("Provided configuration file '%s' not found: %s\n"),
+					config_file,
+					strerror(errno)
+				);
+			exit(ERR_BAD_CONFIG);
+		}
+		strncpy(config_file_buf, config_file, MAXLEN);
+		config_file_provided = true;
+	}
+
+	/*
+	 * If no configuration file was provided, set to a default file
+	 * which `parse_config()` will attempt to read if it exists
+	 */
+	else
+	{
+		strncpy(config_file_buf, DEFAULT_CONFIG_FILE, MAXLEN);
+	}
+
+
+	fp = fopen(config_file_buf, "r");
+
+	/*
+	 * Since some commands don't require a config file at all, not having one
+	 * isn't necessarily a problem.
+	 *
+	 * If the user explictly provided a configuration file and we can't
+	 * read it we'll raise an error.
+	 *
+	 * If no configuration file was provided, we'll try and read the default\
+	 * file if it exists and is readable, but won't worry if it's not.
+	 */
+	if (fp == NULL)
+	{
+		if(config_file_provided)
+		{
+			log_err(_("Unable to open provided configuration file '%s' - terminating\n"), config_file_buf);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		log_notice(_("No configuration file provided and default file '%s' not found - "
+					 "continuing with default values\n"),
+				   DEFAULT_CONFIG_FILE);
+		return false;
+	}
 
 	/* Initialize */
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
@@ -74,17 +134,7 @@ parse_config(const char *config_file, t_configuration_options * options)
 	options->tablespace_mapping.head = NULL;
 	options->tablespace_mapping.tail = NULL;
 
-	/*
-	 * Since some commands don't require a config file at all, not having one
-	 * isn't necessarily a problem.
-	 */
-	if (fp == NULL)
-	{
-		log_notice(_("No configuration file provided and default file '%s' not found - "
-					 "continuing with default values\n"),
-				   config_file);
-		return false;
-	}
+
 
 	/* Read next line */
 	while ((s = fgets(buff, sizeof buff, fp)) != NULL)
@@ -268,6 +318,7 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	 * Re-read the configuration file: repmgr.conf
 	 */
 	log_info(_("Reloading configuration file and updating repmgr tables\n"));
+
 	parse_config(config_file, &new_options);
 	if (new_options.node == -1)
 	{
