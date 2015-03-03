@@ -46,7 +46,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	char		config_file_buf[MAXLEN];
 	char		name[MAXLEN];
 	char		value[MAXLEN];
-    bool 		config_file_provided = true;
+	bool 		config_file_provided = false;
 	FILE	   *fp;
 
 	/* Sanity checks */

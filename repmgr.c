@@ -404,10 +404,12 @@ main(int argc, char **argv)
 	}
 
 
-	if (runtime_options.verbose)
-		/* Logging is not yet set up, so using printf() */
-		printf(_("Opening configuration file: %s\n"),
-			   runtime_options.config_file);
+	if (runtime_options.verbose && runtime_options.config_file[0])
+	{
+
+		log_notice(_("Opening configuration file: %s\n"),
+				   runtime_options.config_file);
+	}
 
 	/*
 	 * The configuration file is not required for some actions (e.g. 'standby clone'),
@@ -1053,7 +1055,6 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	log_debug(_("standby clone: %i tuples\n"), PQntuples(res));
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		if (strcmp(PQgetvalue(res, i, 0), "data_directory") == 0)
@@ -2276,12 +2277,12 @@ run_basebackup()
 	termPQExpBuffer(&params);
 
 	log_info(_("Executing: '%s'\n"), script);
-	r = system(script);
 
 	/*
 	 * As of 9.4, pg_basebackup et al only ever return 0 or 1
      */
-	log_debug(_("r = %i, %i\n"), r, WEXITSTATUS(r));
+
+	r = system(script);
 
 	return r;
 }
