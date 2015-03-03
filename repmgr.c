@@ -63,7 +63,7 @@ static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 							  char *local_path, bool is_directory, int server_version_num);
 static int  run_basebackup(void);
-static bool check_parameters_for_action(const int action);
+static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static void write_primary_conninfo(char *line);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
@@ -81,7 +81,8 @@ static void do_cluster_show(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
 
-static void usage(void);
+static void error_list_append(char *error_message);
+static void exit_with_errors(void);
 static void help(const char *progname);
 
 /* Global variables */
@@ -100,10 +101,13 @@ t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 static char *server_mode = NULL;
 static char *server_cmd = NULL;
 
-static char pg_bindir[MAXLEN] = "";
-static char repmgr_slot_name[MAXLEN] = "";
+static char  pg_bindir[MAXLEN] = "";
+static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
-static char path_buf[MAXLEN] = "";
+static char  path_buf[MAXLEN] = "";
+
+/* Collate command line errors here for friendlier reporting */
+static ErrorList cli_errors;
 
 int
 main(int argc, char **argv)
@@ -156,6 +160,8 @@ main(int argc, char **argv)
 		}
 	}
 
+	/* Prevent getopt_long() from printing an error message */
+	opterr = 0;
 
 	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvr:b:", long_options,
 							&optindex)) != -1)
@@ -216,17 +222,19 @@ main(int argc, char **argv)
 			case 'r':
 				targ = strtol(optarg, &ptr, 10);
 
-				if(targ < 0) {
-					usage();
-					exit(ERR_BAD_CONFIG);
+				if(targ < 1)
+				{
+					error_list_append(_("Invalid value provided for '-r/--min-recovery-apply-delay'"));
+					break;
 				}
-				if(ptr && *ptr) {
+				if(ptr && *ptr)
+				{
 					if(strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 &&
 					   strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
 					   strcmp(ptr, "d") != 0)
 					{
-						usage();
-						exit(ERR_BAD_CONFIG);
+						error_list_append(_("Value provided for '-r/--min-recovery-apply-delay' must be one of ms/s/min/h/d"));
+						break;
 					}
 				}
 
@@ -248,10 +256,22 @@ main(int argc, char **argv)
 				runtime_options.rsync_only = true;
 				break;
 			default:
-				usage();
-				exit(ERR_BAD_CONFIG);
+			{
+				PQExpBufferData unknown_option;
+				initPQExpBuffer(&unknown_option);
+				appendPQExpBuffer(&unknown_option, _("Unknown option '%s'"), argv[optind - 1]);
+
+				error_list_append(unknown_option.data);
+			}
 		}
 	}
+
+	/* Exit here already if errors in command line options found */
+	if(cli_errors.head != NULL)
+	{
+		exit_with_errors();
+	}
+
 
 	if(check_master_config == true)
 	{
@@ -275,8 +295,10 @@ main(int argc, char **argv)
 			strcasecmp(server_mode, "WITNESS") != 0 &&
 			strcasecmp(server_mode, "CLUSTER") != 0)
 		{
-			usage();
-			exit(ERR_BAD_CONFIG);
+			PQExpBufferData unknown_mode;
+			initPQExpBuffer(&unknown_mode);
+			appendPQExpBuffer(&unknown_mode, _("Unknown server mode '%s'"), server_mode);
+			error_list_append(unknown_mode.data);
 		}
 	}
 
@@ -308,14 +330,24 @@ main(int argc, char **argv)
 				action = CLUSTER_CLEANUP;
 		}
 		else if (strcasecmp(server_mode, "WITNESS") == 0)
+		{
 			if (strcasecmp(server_cmd, "CREATE") == 0)
 				action = WITNESS_CREATE;
+		}
 	}
 
-	if (action == NO_ACTION)
-	{
-		usage();
-		exit(ERR_BAD_CONFIG);
+	if (action == NO_ACTION) {
+		if(server_cmd == NULL)
+		{
+			error_list_append("No server command provided");
+		}
+		else
+		{
+			PQExpBufferData unknown_action;
+			initPQExpBuffer(&unknown_action);
+			appendPQExpBuffer(&unknown_action, _("Unknown server command '%s'"), server_cmd);
+			error_list_append(unknown_action.data);
+		}
 	}
 
 	/* For some actions we still can receive a last argument */
@@ -325,24 +357,33 @@ main(int argc, char **argv)
 		{
 			if (runtime_options.host[0])
 			{
-				log_err(_("Conflicting parameters:  you can't use -h while providing a node separately.\n"));
-				usage();
-				exit(ERR_BAD_CONFIG);
+				error_list_append(_("Conflicting parameters:  you can't use -h while providing a node separately."));
 			}
-			strncpy(runtime_options.host, argv[optind++], MAXLEN);
+			else
+			{
+				strncpy(runtime_options.host, argv[optind++], MAXLEN);
+			}
 		}
 	}
 
 	if (optind < argc)
 	{
-		log_err(_("%s: too many command-line arguments (first extra is \"%s\")\n"),
-				progname, argv[optind]);
-		usage();
-		exit(ERR_BAD_CONFIG);
+		PQExpBufferData too_many_args;
+		initPQExpBuffer(&too_many_args);
+		appendPQExpBuffer(&too_many_args, _("too many command-line arguments (first extra is \"%s\")"), argv[optind]);
+		error_list_append(too_many_args.data);
 	}
 
-	if (!check_parameters_for_action(action))
-		exit(ERR_BAD_CONFIG);
+	check_parameters_for_action(action);
+
+	/*
+	 * Sanity checks for command line parameters completed by now;
+	 * any further errors will be runtime ones
+	 */
+	if(cli_errors.head != NULL)
+	{
+		exit_with_errors();
+	}
 
 	if (!runtime_options.dbname[0])
 	{
@@ -390,6 +431,7 @@ main(int argc, char **argv)
 	}
 
 	if (runtime_options.verbose)
+		/* Logging is not yet set up, so using printf() */
 		printf(_("Opening configuration file: %s\n"),
 			   runtime_options.config_file);
 
@@ -489,6 +531,7 @@ main(int argc, char **argv)
 		repmgr_slot_name_ptr = repmgr_slot_name;
 	}
 
+
 	switch (action)
 	{
 		case MASTER_REGISTER:
@@ -516,9 +559,11 @@ main(int argc, char **argv)
 			do_cluster_cleanup();
 			break;
 		default:
-			usage();
-			exit(ERR_BAD_CONFIG);
+			/* An action will have been determined by this point  */
+			break;
 	}
+
+
 	logger_shutdown();
 
 	return 0;
@@ -1956,16 +2001,6 @@ do_witness_create(void)
 }
 
 
-
-static void
-usage(void)
-{
-	fprintf(stderr, _("\n\n%s: Replicator manager \n"), progname);
-	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
-}
-
-
-
 static void
 help(const char *progname)
 {
@@ -2281,11 +2316,9 @@ run_basebackup()
 /*
  * Tries to avoid useless or conflicting parameters
  */
-static bool
+static void
 check_parameters_for_action(const int action)
 {
-	bool		ok = true;
-
 	switch (action)
 	{
 		case MASTER_REGISTER:
@@ -2298,15 +2331,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				log_err(_("You can't use connection parameters to the master when issuing a MASTER REGISTER command.\n"));
-				usage();
-				ok = false;
+				error_list_append(_("You can't use connection parameters to the master when issuing a MASTER REGISTER command."));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				log_err(_("You don't need a destination directory for MASTER REGISTER command\n"));
-				usage();
-				ok = false;
+				error_list_append(_("You don't need a destination directory for MASTER REGISTER command"));
 			}
 			break;
 		case STANDBY_REGISTER:
@@ -2319,15 +2348,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				log_err(_("You can't use connection parameters to the master when issuing a STANDBY REGISTER command.\n"));
-				usage();
-				ok = false;
+				error_list_append(_("You can't use connection parameters to the master when issuing a STANDBY REGISTER command."));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				log_err(_("You don't need a destination directory for STANDBY REGISTER command\n"));
-				usage();
-				ok = false;
+				error_list_append(_("You don't need a destination directory for STANDBY REGISTER command"));
 			}
 			break;
 		case STANDBY_PROMOTE:
@@ -2341,15 +2366,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				log_err(_("You can't use connection parameters to the master when issuing a STANDBY PROMOTE command.\n"));
-				usage();
-				ok = false;
+				error_list_append(_("You can't use connection parameters to the master when issuing a STANDBY PROMOTE command."));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				log_err(_("You don't need a destination directory for STANDBY PROMOTE command\n"));
-				usage();
-				ok = false;
+				error_list_append(_("You don't need a destination directory for STANDBY PROMOTE command"));
 			}
 			break;
 		case STANDBY_FOLLOW:
@@ -2363,15 +2384,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				log_err(_("You can't use connection parameters to the master when issuing a STANDBY FOLLOW command.\n"));
-				usage();
-				ok = false;
+				error_list_append(_("You can't use connection parameters to the master when issuing a STANDBY FOLLOW command."));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				log_err(_("You don't need a destination directory for STANDBY FOLLOW command\n"));
-				usage();
-				ok = false;
+				error_list_append(_("You don't need a destination directory for STANDBY FOLLOW command"));
 			}
 			break;
 		case STANDBY_CLONE:
@@ -2388,7 +2405,6 @@ check_parameters_for_action(const int action)
 			{
 				log_notice(_("You need to use connection parameters to "
 						"the master when issuing a STANDBY CLONE command."));
-				ok = false;
 			}
 			need_a_node = false;
 			break;
@@ -2403,7 +2419,7 @@ check_parameters_for_action(const int action)
 			break;
 	}
 
-	return ok;
+	return;
 }
 
 static bool
@@ -2895,4 +2911,50 @@ make_pg_path(char *file)
 	maxlen_snprintf(path_buf, "%s%s", pg_bindir, file);
 
 	return path_buf;
+}
+
+
+static void
+error_list_append(char *error_message)
+{
+	ErrorListCell *cell;
+
+	cell = (ErrorListCell *) malloc(sizeof(ErrorListCell));
+
+	if(cell == NULL)
+	{
+		log_err(_("Unable to allocate memory. Terminating.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	cell->error_message = error_message;
+
+	if(cli_errors.tail)
+	{
+		cli_errors.tail->next = cell;
+	}
+	else
+	{
+		cli_errors.head = cell;
+	}
+
+	cli_errors.tail = cell;
+}
+
+
+static void
+exit_with_errors(void)
+{
+	ErrorListCell *cell;
+
+	fprintf(stderr, _("%s: Replication manager \n"), progname);
+
+	for (cell = cli_errors.head; cell; cell = cell->next)
+	{
+		fprintf(stderr, "[ERROR] %s\n", cell->error_message);
+	}
+
+	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+
+	exit(ERR_BAD_CONFIG);
 }
