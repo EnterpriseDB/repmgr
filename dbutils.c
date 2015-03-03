@@ -307,7 +307,8 @@ guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 	char		sqlquery[QUERY_STR_LEN];
 	int			retval = 1;
 
-	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
+	sqlquery_snprintf(sqlquery,
+					  "SELECT true FROM pg_settings "
 					  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
 					  parameter, datatype, op, value, datatype);
 
@@ -934,7 +935,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 		maxlen_snprintf(upstream_node_id, "%i", upstream_node);
 	}
 
-	if(slot_name == NULL)
+	if(slot_name != NULL && slot_name[0])
 	{
 		maxlen_snprintf(slot_name_buf, "'%s'", slot_name);
 	}
