@@ -57,7 +57,10 @@ Requirements
 
 `repmgr` will work on any Linux or UNIX-like environment capable of running
 PostgreSQL. `rsync` and password-less SSH connections between servers are
-only required if `rsync` is to be used to clone standby servers.
+only required if `rsync` is to be used to clone standby servers. Also,
+if `repmgr` is meant to copy PostgreSQL configuration files located outside
+of the main data directory, pg_basebackup will not be able to copy these,
+and `rsync` will be used.
 
 
 Installation
