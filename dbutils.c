@@ -977,6 +977,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 	{
 		log_warning(_("Cannot insert node details, %s\n"),
 					PQerrorMessage(conn));
+		PQclear(res);
 		return false;
 	}
 
@@ -984,3 +985,34 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 
 	return true;
 }
+
+
+bool
+delete_node_record(PGconn *conn, int node, char *action)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(sqlquery,
+					  "DELETE FROM %s.repl_nodes "
+					  " WHERE id = %d",
+					  get_repmgr_schema_quoted(conn),
+					  node);
+	if(action != NULL)
+	{
+		log_debug(_("%s: %s\n"), action, sqlquery);
+	}
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_warning(_("Cannot delete node details, %s\n"),
+					PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+	return true;
+}
+

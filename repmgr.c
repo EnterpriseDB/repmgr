@@ -670,8 +670,6 @@ static void
 do_master_register(void)
 {
 	PGconn	   *conn;
-	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN];
 
 	bool		schema_exists = false;
 	int			ret;
@@ -721,26 +719,6 @@ do_master_register(void)
 	{
 		PGconn	   *master_conn;
 
-		if (runtime_options.force)
-		{
-			sqlquery_snprintf(sqlquery,
-							  "DELETE FROM %s.repl_nodes "
-							  " WHERE id = %d ",
-							  get_repmgr_schema_quoted(conn),
-							  options.node);
-			log_debug(_("master register: %s\n"), sqlquery);
-
-			res = PQexec(conn, sqlquery);
-			if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
-			{
-				log_warning(_("Cannot delete node details, %s\n"),
-							PQerrorMessage(conn));
-				PQfinish(conn);
-				exit(ERR_BAD_CONFIG);
-			}
-			PQclear(res);
-		}
-
 		/* Ensure there isn't any other master already registered */
 		master_conn = get_master_connection(conn,
 											options.cluster_name, NULL, NULL);
@@ -750,6 +728,20 @@ do_master_register(void)
 			log_warning(_("There is a master already in cluster %s\n"),
 						options.cluster_name);
 			exit(ERR_BAD_CONFIG);
+		}
+
+		if (runtime_options.force)
+		{
+			bool node_record_deleted = delete_node_record(conn,
+														  options.node,
+														  "master register");
+
+			if (node_record_deleted == false)
+			{
+				PQfinish(master_conn);
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
 		}
 	}
 
@@ -783,9 +775,6 @@ do_standby_register(void)
 	PGconn	   *master_conn;
 	int			ret;
 
-	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN];
-
 	char		master_version[MAXVERSIONSTR];
 	int			master_version_num = 0;
 
@@ -793,8 +782,6 @@ do_standby_register(void)
 	int			standby_version_num = 0;
 
 	bool		node_record_created;
-
-	/* XXX: A lot of copied code from do_master_register! Refactor */
 
 	log_info(_("%s connecting to standby database\n"), progname);
 	conn = establish_db_connection(options.conninfo, true);
@@ -856,24 +843,16 @@ do_standby_register(void)
 	log_info(_("%s registering the standby\n"), progname);
 	if (runtime_options.force)
 	{
-		sqlquery_snprintf(sqlquery,
-						  "DELETE FROM %s.repl_nodes "
-						  " WHERE id = %d",
-						  get_repmgr_schema_quoted(master_conn),
-						  options.node);
+		bool node_record_deleted = delete_node_record(master_conn,
+													  options.node,
+													  "standby register");
 
-		log_debug(_("standby register: %s\n"), sqlquery);
-
-		res = PQexec(master_conn, sqlquery);
-		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+		if (node_record_deleted == false)
 		{
-			log_err(_("Cannot delete node details, %s\n"),
-					PQerrorMessage(master_conn));
 			PQfinish(master_conn);
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
-		PQclear(res);
 	}
 
 	node_record_created = create_node_record(master_conn,
