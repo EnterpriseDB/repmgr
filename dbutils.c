@@ -906,6 +906,14 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 	return true;
 }
 
+
+/*
+ * create_node_record()
+ *
+ * Create an entry in the `repl_nodes` table.
+ *
+ * XXX we should pass the record parameters as a struct.
+ */
 bool
 create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name)
 {

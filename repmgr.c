@@ -500,7 +500,13 @@ main(int argc, char **argv)
 	maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 			 options.cluster_name);
 
-	/* Initialise slot name, if required (9.4 and later) */
+	/*
+	 * Initialise slot name, if required (9.4 and later)
+	 *
+	 * NOTE: the slot name will be defined for each record, including
+	 * the master; the `slot_name` column in `repl_nodes` defines
+	 * the name of the slot, but does not imply a slot has been created.
+	 */
 	if(options.use_replication_slots)
 	{
 		maxlen_snprintf(repmgr_slot_name, "repmgr_slot_%i", options.node);
