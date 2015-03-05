@@ -207,6 +207,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 			options->retry_promote_interval_secs = atoi(value);
 		else if (strcmp(name, "use_replication_slots") == 0)
 			options->use_replication_slots = atoi(value);
+		else if (strcmp(name, "ignore_external_config_files") == 0)
+			options->ignore_external_config_files = atoi(value);
 		else if (strcmp(name, "tablespace_mapping") == 0)
 			tablespace_list_append(options, value);
 		else

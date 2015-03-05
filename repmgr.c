@@ -903,12 +903,15 @@ do_standby_clone(void)
 
 	char		master_config_file[MAXFILENAME] = "";
 	char		local_config_file[MAXFILENAME] = "";
+	bool		config_file_outside_pgdata = false;
 
 	char		master_hba_file[MAXFILENAME] = "";
 	char		local_hba_file[MAXFILENAME] = "";
+	bool		hba_file_outside_pgdata = false;
 
 	char		master_ident_file[MAXFILENAME] = "";
 	char		local_ident_file[MAXFILENAME] = "";
+	bool		ident_file_outside_pgdata = false;
 
 	char		master_control_file[MAXFILENAME] = "";
 	char		local_control_file[MAXFILENAME] = "";
@@ -1051,6 +1054,7 @@ do_standby_clone(void)
 		{
 			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
+				config_file_outside_pgdata = true;
 				config_file_copy_required = true;
 				strncpy(master_config_file, PQgetvalue(res, i, 1), MAXFILENAME);
 			}
@@ -1059,6 +1063,7 @@ do_standby_clone(void)
 		{
 			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
+				hba_file_outside_pgdata  = true;
 				config_file_copy_required = true;
 				strncpy(master_hba_file, PQgetvalue(res, i, 1), MAXFILENAME);
 			}
@@ -1067,6 +1072,7 @@ do_standby_clone(void)
 		{
 			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
+				ident_file_outside_pgdata = true;
 				config_file_copy_required = true;
 				strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXFILENAME);
 			}
@@ -1088,6 +1094,9 @@ do_standby_clone(void)
 		strncpy(local_hba_file, runtime_options.dest_dir, MAXFILENAME);
 		strncpy(local_ident_file, runtime_options.dest_dir, MAXFILENAME);
 	}
+	/*
+	 * Otherwise use the same data directory as on the remote host
+	 */
 	else
 	{
 		strncpy(local_data_directory, master_data_directory, MAXFILENAME);
@@ -1099,8 +1108,7 @@ do_standby_clone(void)
 	log_notice(_("Starting backup...\n"));
 
 	/*
-	 * When using rsync only, we need to check the SSH connection
-	 * early
+	 * When using rsync only, we need to check the SSH connection early
 	 */
 	if(runtime_options.rsync_only)
 	{
@@ -1128,7 +1136,6 @@ do_standby_clone(void)
 
 	if(runtime_options.rsync_only)
 	{
-
 		/*
 		 * From pg 9.1 default is to wait for a sync standby to ack, avoid that by
 		 * turning off sync rep for this session
@@ -1294,43 +1301,64 @@ do_standby_clone(void)
 
 		if(strlen(master_config_file))
 		{
-			log_info(_("standby clone: master config file '%s'\n"), master_config_file);
-			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_config_file, local_config_file, false, server_version_num);
-			if (r != 0)
+			if(options.ignore_external_config_files && config_file_outside_pgdata)
 			{
-				log_warning(_("standby clone: failed copying master config file '%s'\n"),
-							master_config_file);
-				retval = ERR_BAD_SSH;
-				goto stop_backup;
+				log_notice(_("standby clone: not copying master config file '%s'\n"), master_config_file);
+			}
+			else
+			{
+				log_info(_("standby clone: master config file '%s'\n"), master_config_file);
+				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+									  master_config_file, local_config_file, false, server_version_num);
+				if (r != 0)
+				{
+					log_warning(_("standby clone: failed copying master config file '%s'\n"),
+								master_config_file);
+					retval = ERR_BAD_SSH;
+					goto stop_backup;
+				}
 			}
 		}
 
 		if(strlen(master_hba_file))
 		{
-			log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
-			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_hba_file, local_hba_file, false, server_version_num);
-			if (r != 0)
+			if(options.ignore_external_config_files && hba_file_outside_pgdata)
 			{
-				log_warning(_("standby clone: failed copying master hba file '%s'\n"),
-							master_hba_file);
-				retval = ERR_BAD_SSH;
-				goto stop_backup;
+				log_notice(_("standby clone: not copying master config file '%s'\n"), master_hba_file);
+			}
+			else
+			{
+				log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
+				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+									  master_hba_file, local_hba_file, false, server_version_num);
+				if (r != 0)
+				{
+					log_warning(_("standby clone: failed copying master hba file '%s'\n"),
+								master_hba_file);
+					retval = ERR_BAD_SSH;
+					goto stop_backup;
+				}
 			}
 		}
 
 		if(strlen(master_ident_file))
 		{
-			log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
-			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_ident_file, local_ident_file, false, server_version_num);
-			if (r != 0)
+			if(options.ignore_external_config_files && ident_file_outside_pgdata)
 			{
-				log_warning(_("standby clone: failed copying master ident file '%s'\n"),
-							master_ident_file);
-				retval = ERR_BAD_SSH;
-				goto stop_backup;
+				log_notice(_("standby clone: not copying master config file '%s'\n"), master_ident_file);
+			}
+			else
+			{
+				log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
+				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+									  master_ident_file, local_ident_file, false, server_version_num);
+				if (r != 0)
+				{
+					log_warning(_("standby clone: failed copying master ident file '%s'\n"),
+								master_ident_file);
+					retval = ERR_BAD_SSH;
+					goto stop_backup;
+				}
 			}
 		}
 

@@ -1,6 +1,7 @@
 FAQ - Frequently Asked Questions about repmgr
 =============================================
 
+This FAQ applies to `repmgr` 3.0 and later.
 
 General
 -------
@@ -40,11 +41,38 @@ General
 
   Yes, this is no problem.
 
+- How can a failed master be re-added as a standby?
+
 - Is there an easy way to check my master server is correctly configured
   for use with `repmgr`?
 
   Yes - execute `repmgr` with the `--check-upstream-config` option, and it
   will let you know which items in `postgresql.conf` need to be modified.
+
+- Even though I specified custom `rsync` options, `rempgr` appends
+  the `--checksum` - why?
+
+  When syncing a stale data directory from an active server, it's
+  essential that `rsync` compares the content of files rather than
+  just timestamp and size, to ensure that all changed files are
+  copied and prevent corruption.
+
+- How can I prevent `rempgr` from copying `postgresql.conf` and
+  `pg_hba.conf` from the PostgreSQL configuration directory in `/etc`?
+
+  Include the option `ignore_external_config_files=1` in `repmgr.conf`
+
+- How can I prevent `rempgr` from copying local configuration files
+  in the data directory?
+
+  If you're updating an existing but stale data directory which
+  contains e.g. configuration files you don't want to be overwritten
+  with the same file from the master, specify the files in the
+  `rsync_options` configuration option, e.g.
+
+     rsync_options=--exclude=postgresql.local.conf
+
+  This option is only available when using the `--rsync-only` option.
 
 `repmgrd`
 ---------

@@ -61,6 +61,18 @@ pg_bindir=/usr/bin/
 #
 # retry_promote_interval_secs=300
 
+# Command line arguments for pg_basebackup
+#
+# pg_basebackup_options=
+
+# Don't copy configuration files located outside the data directory.
+#
+# ignore_external_config_files=1
+#
+# By default repmgr will attempt to copy postgresql.conf, pg_hba.conf and pg_ident.conf
+# from the master, however this may not be desirable if the files are e.g.maintained
+# by configuration management software.
+
 
 # physical replication slots - PostgreSQL 9.4 and later only
 #
