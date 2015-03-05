@@ -5,10 +5,18 @@
  * This module is a command-line utility to easily setup a cluster of
  * hot standby servers for an HA environment
  *
- * Commands implemented are.
+ * Commands implemented are:
+ *
  * MASTER REGISTER
- * STANDBY REGISTER, STANDBY CLONE, STANDBY FOLLOW, STANDBY PROMOTE
- * CLUSTER SHOW, CLUSTER CLEANUP
+ *
+ * STANDBY REGISTER
+ * STANDBY CLONE
+ * STANDBY FOLLOW
+ * STANDBY PROMOTE
+ *
+ * CLUSTER SHOW
+ * CLUSTER CLEANUP
+ *
  * WITNESS CREATE
  *
  * This program is free software: you can redistribute it and/or modify
