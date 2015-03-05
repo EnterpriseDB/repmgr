@@ -1503,8 +1503,8 @@ do_upstream_standby_failover(t_node_info upstream_node)
 			PQclear(res);
 			break;
 		}
-		PQclear(res);
 
+		PQclear(res);
 	}
 
 	/* Close the connection to this server */

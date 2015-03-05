@@ -488,7 +488,7 @@ main(int argc, char **argv)
 	 * If `use_replication_slots` set in the configuration file
 	 * and command line parameter `--wal-keep-segments` was used,
 	 * emit a warning as to the latter's redundancy. Note that
-	 * the version check for 9.4 or later will occur afterwards.
+	 * the version check for 9.4 or later is done in check_upstream_config()
 	 */
 
 	if(options.use_replication_slots && wal_keep_segments_used)
@@ -506,6 +506,7 @@ main(int argc, char **argv)
 	 * NOTE: the slot name will be defined for each record, including
 	 * the master; the `slot_name` column in `repl_nodes` defines
 	 * the name of the slot, but does not imply a slot has been created.
+	 * The version check for 9.4 or later  is done in check_upstream_config()
 	 */
 	if(options.use_replication_slots)
 	{
