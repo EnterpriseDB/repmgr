@@ -841,7 +841,7 @@ do_standby_clone(void)
 
 	int			r = 0,
 				retval = SUCCESS;
-	int			i,
+	int			i,j,
 				is_standby_retval;
 	bool		flag_success = false;
 	bool		test_mode = false;
@@ -919,11 +919,30 @@ do_standby_clone(void)
 	i = guc_set(conn, "wal_level", "=", "hot_standby");
 	if (i == 0 || i == -1)
 	{
-		PQfinish(conn);
 		if (i == 0)
-			log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"),
-					progname);
-		exit(ERR_BAD_CONFIG);
+		{
+		        /* We could be using PG 9.4 with log_level logical, which is good enough for
+			   hot standby replication.
+			   We should check if the wal_level is set to that value, in which case we are 
+			   good to proceed.
+			   No need to check if we are in 9.4 first, as the query used in guc_set will just
+			   return zero rows if on < 9.4, and so will work anyway. 
+			*/
+		        j = guc_set(conn, "wal_level", "=", "logical");
+		        if (j == 0 || j == -1)
+			{
+			        PQfinish(conn);
+				if (j == 0)
+				         log_err(_("%s needs parameter 'wal_level' to be set to at least 'hot_standby'\n"),
+						 progname);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+		else if (i == -1)
+		{
+		        PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 
 	i = guc_set_typed(conn, "wal_keep_segments", ">=",
