@@ -77,6 +77,7 @@ static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_pa
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
 static char *make_pg_path(char *file);
+static bool log_event(PGconn *standby_conn, bool success, char *details);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -929,6 +930,7 @@ do_standby_clone(void)
 {
 	PGconn	   *upstream_conn;
 	PGresult   *res;
+
 	char		sqlquery[QUERY_STR_LEN];
 
 	int			server_version_num;
@@ -1516,16 +1518,19 @@ stop_backup:
 
 	/* Add details about relevant runtime options used */
 	appendPQExpBuffer(&event_details,
-					  _("Backup method: %s"),
+					  _("Cloned from host '%s', port %s"),
+					  runtime_options.host,
+					  runtime_options.masterport);
+
+	appendPQExpBuffer(&event_details,
+					  _("; backup method: %s"),
 					  runtime_options.rsync_only ? "rsync" : "pg_basebackup");
 
 	appendPQExpBuffer(&event_details,
 					  _("; --force: %s"),
 					  runtime_options.force ? "Y" : "N");
 
-	record_created = create_event_record(upstream_conn,
-										 options.node,
-										 "standby_clone",
+	record_created = log_event(upstream_conn,
 										 true,
 										 event_details.data);
 	//destroyPQExpBuffer(&event_details);
@@ -1537,6 +1542,27 @@ stop_backup:
 
 	PQfinish(upstream_conn);
 	exit(retval);
+}
+
+
+static bool
+log_event(PGconn *standby_conn, bool success, char *details)
+{
+	PGconn *primary_conn;
+	bool    retval;
+
+	primary_conn = get_primary_connection(standby_conn,
+										   options.cluster_name,
+										    NULL, NULL);
+
+	retval = create_event_record(primary_conn,
+								 options.node,
+								 "standby_clone",
+								 success,
+								 details);
+	PQfinish(primary_conn);
+
+	return retval;
 }
 
 
