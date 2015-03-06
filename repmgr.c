@@ -927,7 +927,7 @@ do_standby_register(void)
 static void
 do_standby_clone(void)
 {
-	PGconn	   *primary_conn;
+	PGconn	   *upstream_conn;
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
@@ -986,15 +986,15 @@ do_standby_clone(void)
 
 	/* Connect to check configuration */
 	log_info(_("%s connecting to upstream node\n"), progname);
-	primary_conn = establish_db_connection_by_params(keywords, values, true);
+	upstream_conn = establish_db_connection_by_params(keywords, values, true);
 
 	/* Verify that upstream node is a supported server version */
 	log_info(_("%s connected to upstream node, checking its state\n"), progname);
-	server_version_num = check_server_version(primary_conn, "master", true, NULL);
+	server_version_num = check_server_version(upstream_conn, "master", true, NULL);
 
-	check_upstream_config(primary_conn, server_version_num, true);
+	check_upstream_config(upstream_conn, server_version_num, true);
 
-	if(get_cluster_size(primary_conn, cluster_size) == false)
+	if(get_cluster_size(upstream_conn, cluster_size) == false)
 		exit(ERR_DB_QUERY);
 
 	log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
@@ -1016,10 +1016,10 @@ do_standby_clone(void)
 	{
 		TablespaceListCell *cell;
 
-		if(get_server_version(primary_conn, NULL) < 90400)
+		if(get_server_version(upstream_conn, NULL) < 90400)
 		{
 			log_err(_("In PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
-			PQfinish(primary_conn);
+			PQfinish(upstream_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -1030,12 +1030,12 @@ do_standby_clone(void)
 							  "  FROM pg_tablespace "
 							  "WHERE pg_tablespace_location(oid) = '%s'",
 							  cell->old_dir);
-			res = PQexec(primary_conn, sqlquery);
+			res = PQexec(upstream_conn, sqlquery);
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
 			{
-				log_err(_("Unable to execute tablespace query: %s\n"), PQerrorMessage(primary_conn));
+				log_err(_("Unable to execute tablespace query: %s\n"), PQerrorMessage(upstream_conn));
 				PQclear(res);
-				PQfinish(primary_conn);
+				PQfinish(upstream_conn);
 				exit(ERR_BAD_CONFIG);
 			}
 
@@ -1043,7 +1043,7 @@ do_standby_clone(void)
 			{
 				log_err(_("No tablespace matching path '%s' found\n"), cell->old_dir);
 				PQclear(res);
-				PQfinish(primary_conn);
+				PQfinish(upstream_conn);
 				exit(ERR_BAD_CONFIG);
 			}
 		}
@@ -1072,13 +1072,13 @@ do_standby_clone(void)
 					  "  ORDER BY 1 ");
 
 	log_debug(_("standby clone: %s\n"), sqlquery);
-	res = PQexec(primary_conn, sqlquery);
+	res = PQexec(upstream_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("Can't get info about data directory and configuration files: %s\n"),
-				PQerrorMessage(primary_conn));
+				PQerrorMessage(upstream_conn));
 		PQclear(res);
-		PQfinish(primary_conn);
+		PQfinish(upstream_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1087,7 +1087,7 @@ do_standby_clone(void)
 	{
 		log_err("%s: STANDBY CLONE should be run by a SUPERUSER\n", progname);
 		PQclear(res);
-		PQfinish(primary_conn);
+		PQfinish(upstream_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1187,13 +1187,13 @@ do_standby_clone(void)
 		 * From pg 9.1 default is to wait for a sync standby to ack, avoid that by
 		 * turning off sync rep for this session
 		 */
-		if(set_config_bool(primary_conn, "synchronous_commit", false) == false)
+		if(set_config_bool(upstream_conn, "synchronous_commit", false) == false)
 		{
-			PQfinish(primary_conn);
+			PQfinish(upstream_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if(start_backup(primary_conn, first_wal_segment) == false)
+		if(start_backup(upstream_conn, first_wal_segment) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
 			retval = ERR_BAD_BASEBACKUP;
@@ -1228,12 +1228,12 @@ do_standby_clone(void)
 						  "   FROM pg_tablespace "
 						  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
 
-		res = PQexec(primary_conn, sqlquery);
+		res = PQexec(upstream_conn, sqlquery);
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
-			log_err(_("Unable to execute tablespace query: %s\n"), PQerrorMessage(primary_conn));
+			log_err(_("Unable to execute tablespace query: %s\n"), PQerrorMessage(upstream_conn));
 			PQclear(res);
-			PQfinish(primary_conn);
+			PQfinish(upstream_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -1450,7 +1450,7 @@ stop_backup:
 	if(runtime_options.rsync_only)
 	{
 		log_notice(_("Notifying master about backup completion...\n"));
-		if(stop_backup(primary_conn, last_wal_segment) == false)
+		if(stop_backup(upstream_conn, last_wal_segment) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
 			retval = ERR_BAD_BASEBACKUP;
@@ -1463,7 +1463,7 @@ stop_backup:
 		log_err(_("Unable to take a base backup of the master server\n"));
 		log_warning(_("The destination directory (%s) will need to be cleaned up manually\n"),
 				local_data_directory);
-		PQfinish(primary_conn);
+		PQfinish(upstream_conn);
 		exit(retval);
 	}
 
@@ -1477,9 +1477,9 @@ stop_backup:
 	 */
 	if(options.use_replication_slots)
 	{
-		if(create_replication_slot(primary_conn, repmgr_slot_name) == false)
+		if(create_replication_slot(upstream_conn, repmgr_slot_name) == false)
 		{
-			PQfinish(primary_conn);
+			PQfinish(upstream_conn);
 			exit(ERR_DB_QUERY);
 		}
 	}
@@ -1523,7 +1523,7 @@ stop_backup:
 					  _("; --force: %s"),
 					  runtime_options.force ? "Y" : "N");
 
-	record_created = create_event_record(primary_conn,
+	record_created = create_event_record(upstream_conn,
 										 options.node,
 										 "standby_clone",
 										 true,
@@ -1531,11 +1531,11 @@ stop_backup:
 	//destroyPQExpBuffer(&event_details);
 	if(record_created == false)
 	{
-		PQfinish(primary_conn);
+		PQfinish(upstream_conn);
 		exit(ERR_DB_QUERY);
 	}
 
-	PQfinish(primary_conn);
+	PQfinish(upstream_conn);
 	exit(retval);
 }
 
