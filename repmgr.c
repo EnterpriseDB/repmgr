@@ -1661,7 +1661,7 @@ do_standby_promote(void)
 		PQExpBufferData details;
 		initPQExpBuffer(&details);
 		appendPQExpBuffer(&details,
-						  "Node %i was successfully be promoted to master",
+						  "Node %i was successfully promoted to master",
 						  options.node);
 
 		log_notice(_("%s: STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"),
