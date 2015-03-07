@@ -1533,7 +1533,7 @@ stop_backup:
 	record_created = log_event(upstream_conn,
 										 true,
 										 event_details.data);
-	//destroyPQExpBuffer(&event_details);
+
 	if(record_created == false)
 	{
 		PQfinish(upstream_conn);
