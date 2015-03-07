@@ -185,6 +185,10 @@ trim(char *s)
 	char	   *s1 = s,
 			   *s2 = &s[strlen(s) - 1];
 
+	/* If string is empty, no action needed */
+	if(s2 < s1)
+		return s;
+
 	/* Trim and delimit right side */
 	while ((isspace(*s2)) && (s2 >= s1))
 		--s2;
