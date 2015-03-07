@@ -140,6 +140,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 	/* Read next line */
 	while ((s = fgets(buff, sizeof buff, fp)) != NULL)
 	{
+		bool known_parameter = true;
+
 		/* Skip blank lines and comments */
 		if (buff[0] == '\n' || buff[0] == '#')
 			continue;
@@ -213,7 +215,22 @@ parse_config(const char *config_file, t_configuration_options *options)
 		else if (strcmp(name, "tablespace_mapping") == 0)
 			tablespace_list_append(options, value);
 		else
+		{
+			known_parameter = false;
 			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
+		}
+
+		/*
+		 * Raise an error if a known parameter is provided with an empty value.
+		 * Currently there's no reason why empty parameters are needed; if
+		 * we want to accept those, we'd need to add stricter default checking,
+		 * as currently e.g. an empty `node` value will be converted to '0'.
+		 */
+		if(known_parameter == true && !strlen(value)) {
+			log_err(_("No value provided for parameter '%s'. Check the configuration file.\n"), name);
+			exit(ERR_BAD_CONFIG);
+		}
+
 	}
 
 	/* Close file */
