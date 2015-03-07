@@ -109,6 +109,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	/* Initialize */
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
 	options->node = -1;
+	options->upstream_node = NO_UPSTREAM_NODE;
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	options->failover = MANUAL_FAILOVER;
 	options->priority = 0;
