@@ -58,7 +58,11 @@ parse_config(const char *config_file, t_configuration_options *options)
 	if (config_file[0])
 	{
 		struct stat config;
-		if(stat(config_file, &config) != 0)
+
+		strncpy(config_file_buf, config_file, MAXLEN);
+		canonicalize_path(config_file_buf);
+
+		if(stat(config_file_buf, &config) != 0)
 		{
 			log_err(_("Provided configuration file '%s' not found: %s\n"),
 					config_file,
@@ -66,7 +70,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 				);
 			exit(ERR_BAD_CONFIG);
 		}
-		strncpy(config_file_buf, config_file, MAXLEN);
+
 		config_file_provided = true;
 	}
 
