@@ -218,6 +218,17 @@ main(int argc, char **argv)
 		}
 	}
 
+	/*
+	 * Read the configuration file: repmgr.conf
+	 */
+	parse_config(config_file, &local_options);
+	if (local_options.node == -1)
+	{
+		log_err(_("Node information is missing. "
+				  "Check the configuration file, or provide one if you have not done so.\n"));
+		terminate(ERR_BAD_CONFIG);
+	}
+
 	if (daemonize)
 	{
 		do_daemonize();
@@ -231,17 +242,6 @@ main(int argc, char **argv)
 #ifndef WIN32
 	setup_event_handlers();
 #endif
-
-	/*
-	 * Read the configuration file: repmgr.conf
-	 */
-	parse_config(config_file, &local_options);
-	if (local_options.node == -1)
-	{
-		log_err(_("Node information is missing. "
-				  "Check the configuration file, or provide one if you have not done so.\n"));
-		terminate(ERR_BAD_CONFIG);
-	}
 
 	fd = freopen("/dev/null", "r", stdin);
 	if (fd == NULL)
