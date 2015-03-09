@@ -760,7 +760,7 @@ do_master_register(void)
 	record_created = create_node_record(conn,
 										"master register",
 										options.node,
-										"primary",
+										"master",
 										NO_UPSTREAM_NODE,
 										options.cluster_name,
 										options.node_name,
@@ -2461,7 +2461,7 @@ create_schema(PGconn *conn)
 	sqlquery_snprintf(sqlquery,
 					  "CREATE TABLE %s.repl_nodes (     "
 					  "  id               INTEGER PRIMARY KEY, "
-					  "  type             TEXT    NOT NULL CHECK (type IN('primary','standby','witness')), "
+					  "  type             TEXT    NOT NULL CHECK (type IN('master','standby','witness')), "
 					  "  upstream_node_id INTEGER NULL REFERENCES %s.repl_nodes (id), "
 					  "  cluster          TEXT    NOT NULL, "
 					  "  name             TEXT    NOT NULL, "
@@ -2555,29 +2555,6 @@ create_schema(PGconn *conn)
 		exit(ERR_BAD_CONFIG);
 	}
 	PQclear(res);
-
-	/* repl_events */
-	sqlquery_snprintf(sqlquery,
-					  "CREATE TABLE %s.repl_events (     "
-					  "  node_id          INTEGER NOT NULL, "
-					  "  event            TEXT NOT NULL, "
-					  "  successful       BOOLEAN NOT NULL DEFAULT TRUE, "
-					  "  event_timestamp  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, "
-					  "  details          TEXT NULL "
-					  " ) ",
-					  get_repmgr_schema_quoted(conn));
-
-	log_debug(_("master register: %s\n"), sqlquery);
-	res = PQexec(conn, sqlquery);
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		log_err(_("unable to create table '%s.repl_events': %s\n"),
-				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
-	PQclear(res);
-
 
 	/*
 	 * XXX Here we MUST try to load the repmgr_function.sql not hardcode it

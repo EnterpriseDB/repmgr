@@ -210,11 +210,11 @@ get_primary_node_id(PGconn *conn, char *cluster)
 	int			retval;
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT id               "
-					  "  FROM %s.repl_nodes    "
-					  " WHERE cluster = '%s'   "
-					  "   AND type = 'primary' "
-					  "   AND active IS TRUE   ",
+					  "SELECT id              "
+					  "  FROM %s.repl_nodes   "
+					  " WHERE cluster = '%s'  "
+					  "   AND type = 'master' "
+					  "   AND active IS TRUE  ",
 					  get_repmgr_schema_quoted(conn),
 					  cluster);
 
@@ -440,7 +440,7 @@ get_primary_connection(PGconn *standby_conn, char *cluster,
 					  "    SELECT n.conninfo, n.name, n.id "
 					  "      FROM %s.repl_nodes n "
 					  "     WHERE n.cluster = '%s' "
-					  "       AND n.type = 'primary' ",
+					  "       AND n.type = 'master' ",
 					  get_repmgr_schema_quoted(standby_conn),
 					  cluster);
 

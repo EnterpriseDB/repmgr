@@ -814,7 +814,7 @@ standby_monitor(void)
 	sprintf(sqlquery,
 			"SELECT id "
 			"  FROM %s.repl_nodes "
-			" WHERE type = 'primary' "
+			" WHERE type = 'master' "
 			"   AND active IS TRUE ",
 			get_repmgr_schema_quoted(my_local_conn));
 
@@ -1492,9 +1492,9 @@ do_upstream_standby_failover(t_node_info upstream_node)
 			 * provide an option to either try and find the current primary and/or
 			 * a strategy to connect to a different upstream node
 			 */
-			if(strcmp(PQgetvalue(res, 0, 4), "primary") == 0)
+			if(strcmp(PQgetvalue(res, 0, 4), "master") == 0)
 			{
-				log_err(_("unable to find active upstream node\n"));
+				log_err(_("unable to find active master node\n"));
 				PQclear(res);
 				return false;
 			}
@@ -1613,7 +1613,7 @@ set_local_node_failed(void)
 	sqlquery_snprintf(sqlquery,
 					  "SELECT id, conninfo "
 					  "  FROM %s.repl_nodes "
-					  " WHERE type = 'primary' "
+					  " WHERE type = 'master' "
 					  "   AND active IS TRUE ",
 					  get_repmgr_schema_quoted(primary_conn));
 
@@ -2110,7 +2110,7 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 static t_server_type
 parse_node_type(const char *type)
 {
-	if(strcmp(type, "primary") == 0)
+	if(strcmp(type, "master") == 0)
 	{
 		return PRIMARY;
 	}
@@ -2174,7 +2174,7 @@ update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_n
 
 	sqlquery_snprintf(sqlquery,
 					  "  UPDATE %s.repl_nodes "
-					  "     SET type = 'primary', "
+					  "     SET type = 'master', "
 					  "         upstream_node_id = NULL "
 					  "   WHERE cluster = '%s' "
 					  "     AND id = %i ",
