@@ -74,8 +74,10 @@ static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static void write_primary_conninfo(char *line);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
+static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
+
 static char *make_pg_path(char *file);
 static bool log_event(PGconn *standby_conn, bool success, char *details);
 
@@ -802,19 +804,11 @@ do_standby_register(void)
 	PGconn	   *master_conn;
 	int			ret;
 
-	char		master_version[MAXVERSIONSTR];
-	int			master_version_num = 0;
-
-	char		standby_version[MAXVERSIONSTR];
-	int			standby_version_num = 0;
 
 	bool		record_created;
 
 	log_info(_("connecting to standby database\n"));
 	conn = establish_db_connection(options.conninfo, true);
-
-	/* Verify that standby is a supported server version */
-	standby_version_num = check_server_version(conn, "standby", true, standby_version);
 
 	/* Check we are a standby */
 	ret = is_standby(conn);
@@ -846,25 +840,11 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Verify that master is a supported server version */
-	log_info(_("connected to master, checking its state\n"));
-	master_version_num = check_server_version(conn, "master", false, master_version);
-	if(master_version_num < 0)
-	{
-		PQfinish(conn);
-		PQfinish(master_conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	/* master and standby version should match */
-	if ((master_version_num / 100) != (standby_version_num / 100))
-	{
-		PQfinish(conn);
-		PQfinish(master_conn);
-		log_err(_("PostgreSQL versions on master (%s) and standby (%s) must match.\n"),
-				master_version, standby_version);
-		exit(ERR_BAD_CONFIG);
-	}
+	/*
+	 * Verify that standby and master are supported and compatible server
+	 * versions
+	 */
+	check_master_standby_version_match(conn, master_conn);
 
 	/* Now register the standby */
 	log_info(_("registering the standby\n"));
@@ -1726,12 +1706,6 @@ do_standby_follow(void)
 				retval;
 	char		data_dir[MAXLEN];
 
-	char		master_version[MAXVERSIONSTR];
-	int			master_version_num = 0;
-
-	char		standby_version[MAXVERSIONSTR];
-	int			standby_version_num = 0;
-
 	bool        success;
 
 
@@ -1739,9 +1713,6 @@ do_standby_follow(void)
 	log_info(_("connecting to standby database\n"));
 	conn = establish_db_connection(options.conninfo, true);
 	log_info(_("connected to standby, checking its state\n"));
-
-	/* Verify that standby is a supported server version */
-	standby_version_num = check_server_version(conn, "standby", true, standby_version);
 
 	/* Check we are in a standby node */
 	retval = is_standby(conn);
@@ -1791,25 +1762,11 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Verify that master is a supported server version */
-	log_info(_("connected to master, checking its state\n"));
-	master_version_num = check_server_version(conn, "master", false, master_version);
-	if(master_version_num < 0)
-	{
-		PQfinish(conn);
-		PQfinish(master_conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	/* master and standby version should match */
-	if ((master_version_num / 100) != (standby_version_num / 100))
-	{
-		PQfinish(conn);
-		PQfinish(master_conn);
-		log_err(_("PostgreSQL versions on master (%s) and standby (%s) must match.\n"),
-				master_version, standby_version);
-		exit(ERR_BAD_CONFIG);
-	}
+	/*
+	 * Verify that standby and master are supported and compatible server
+	 * versions
+	 */
+	check_master_standby_version_match(conn, master_conn);
 
 	/*
 	 * set the host and masterport variables with the master ones before
@@ -2049,7 +2006,7 @@ do_witness_create(void)
 	}
 
 	/* check if we need to create a user */
-	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
+	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres") != 0)
         {
 		/* create required user; needs to be superuser to create untrusted language function in c */
 		sprintf(script, "%s -p %s --superuser --login -U %s %s",
@@ -2074,7 +2031,7 @@ do_witness_create(void)
 	}
 
 	/* check if we need to create a database */
-	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
+	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres") != 0 && runtime_options.localport[0])
 	{
 		/* create required db */
 		sprintf(script, "%s -p %s -U %s --owner=%s %s",
@@ -2210,7 +2167,7 @@ do_witness_create(void)
 	}
 
 	/* drop superuser powers if needed */
-	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
+	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres") != 0)
 	{
 		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", runtime_options.username);
 		log_info(_("revoking superuser status on user %s: %s.\n"),
@@ -2983,6 +2940,46 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 	}
 
 	return server_version_num;
+}
+
+
+/*
+ * check_master_standby_version_match()
+ *
+ * Check server versions of supplied connections are compatible for
+ * replication purposes.
+ *
+ * Exits on error.
+ */
+static void
+check_master_standby_version_match(PGconn *conn, PGconn *master_conn)
+{
+	char		standby_version[MAXVERSIONSTR];
+	int			standby_version_num = 0;
+
+	char		master_version[MAXVERSIONSTR];
+	int			master_version_num = 0;
+
+	standby_version_num = check_server_version(conn, "standby", true, standby_version);
+
+	/* Verify that master is a supported server version */
+	master_version_num = check_server_version(conn, "master", false, master_version);
+	if(master_version_num < 0)
+	{
+		PQfinish(conn);
+		PQfinish(master_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* master and standby version should match */
+	if ((master_version_num / 100) != (standby_version_num / 100))
+	{
+		PQfinish(conn);
+		PQfinish(master_conn);
+		log_err(_("PostgreSQL versions on master (%s) and standby (%s) must match.\n"),
+				master_version, standby_version);
+		exit(ERR_BAD_CONFIG);
+	}
 }
 
 
