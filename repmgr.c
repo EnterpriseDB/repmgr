@@ -2020,18 +2020,17 @@ help(const char *progname)
 	printf(_("  --rsync-only                        use only rsync to make the initial base backup\n"));
 	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
-	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
-	printf(_("another node and then exits.\n\n"));
+	printf(_("\n%s performs the following node management tasks:\n\n"), progname);
 	printf(_("COMMANDS:\n"));
 	printf(_(" master register         - registers the master in a cluster\n"));
+	printf(_(" standby clone [node]    - creates a new standby\n"));
 	printf(_(" standby register        - registers a standby in a cluster\n"));
-	printf(_(" standby clone [node]    - allows creation of a new standby\n"));
-	printf(_(" standby promote         - allows manual promotion of a specific standby into\n" \
-	"                           a new master in the event of a failover\n"));
-	printf(_(" standby follow          - allows the standby to re-point itself to a new\n" \
-			 "                           master\n"));
-	printf(_(" cluster show            - print node information\n"));
-	printf(_(" cluster cleanup         - cleans monitor's history\n"));
+	printf(_(" standby promote         - promotes a specific standby to master\n"));
+	printf(_(" standby follow          - makes standby follow a new master\n"));
+	printf(_(" cluster show            - displays information about cluster nodes\n"));
+	printf(_(" cluster cleanup         - prunes or truncates monitoring history\n" \
+			 "                           (monitoring history creation requires repmgrd\n" \
+			 "                           with --monitoring-history option)\n"));
 }
 
 
