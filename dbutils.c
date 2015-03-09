@@ -39,14 +39,14 @@ establish_db_connection(const char *conninfo, const bool exit_on_error)
 	strcpy(connection_string, conninfo);
 	strcat(connection_string, " fallback_application_name='repmgr'");
 
-	log_debug(_("Connecting to: '%s'\n"), connection_string);
+	log_debug(_("connecting to: '%s'\n"), connection_string);
 
 	conn = PQconnectdb(connection_string);
 
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
-		log_err(_("Connection to database failed: %s\n"),
+		log_err(_("connection to database failed: %s\n"),
 				PQerrorMessage(conn));
 
 		if (exit_on_error)
@@ -69,7 +69,7 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
-		log_err(_("Connection to database failed: %s\n"),
+		log_err(_("connection to database failed: %s\n"),
 				PQerrorMessage(conn));
 		if (exit_on_error)
 		{
@@ -253,7 +253,7 @@ get_server_version(PGconn *conn, char *server_version)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Unable to determine server version number:\n%s"),
+		log_err(_("unable to determine server version number:\n%s"),
 				PQerrorMessage(conn));
 		PQclear(res);
 		return -1;
@@ -344,7 +344,7 @@ get_cluster_size(PGconn *conn, char *size)
 	res = PQexec(conn, sqlquery);
 	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Get cluster size PQexec failed: %s"),
+		log_err(_("get_cluster_size(): PQexec failed: %s"),
 				PQerrorMessage(conn));
 
 		PQclear(res);
@@ -450,7 +450,7 @@ get_primary_connection(PGconn *standby_conn, char *cluster,
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Unable to get conninfo for primary server: %s\n"),
+		log_err(_("unable to get conninfo for master server: %s\n"),
 				PQerrorMessage(standby_conn));
 		PQclear(res);
 		return NULL;
@@ -458,7 +458,7 @@ get_primary_connection(PGconn *standby_conn, char *cluster,
 
 	if(!PQntuples(res))
 	{
-		log_notice(_("No primary server record found"));
+		log_notice(_("no master server record found"));
 		PQclear(res);
 		return NULL;
 	}
@@ -475,7 +475,7 @@ get_primary_connection(PGconn *standby_conn, char *cluster,
 
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		log_err(_("Unable to connect to primary node: %s\n"),
+		log_err(_("unable to connect to master node: %s\n"),
 				PQerrorMessage(primary_conn));
 		return NULL;
 	}
@@ -526,7 +526,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Unable to get conninfo for upstream server: %s\n"),
+		log_err(_("unable to get conninfo for upstream server: %s\n"),
 				PQerrorMessage(standby_conn));
 		PQclear(res);
 		return NULL;
@@ -534,7 +534,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 	if(!PQntuples(res))
 	{
-		log_notice(_("No upstream server record found"));
+		log_notice(_("no record found for upstream server"));
 		PQclear(res);
 		return NULL;
 	}
@@ -551,7 +551,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
-		log_err(_("Unable to connect to upstream node: %s\n"),
+		log_err(_("unable to connect to upstream node: %s\n"),
 				PQerrorMessage(upstream_conn));
 		return NULL;
 	}
@@ -606,7 +606,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't get nodes info: %s\n"),
+		log_err(_("unable to retrieve node records: %s\n"),
 				PQerrorMessage(standby_conn));
 		PQclear(res1);
 		return NULL;
@@ -633,7 +633,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 
 		if (PQresultStatus(res2) != PGRES_TUPLES_OK)
 		{
-			log_err(_("Can't get recovery state from this node: %s\n"),
+			log_err(_("unable to retrieve recovery state from this node: %s\n"),
 					PQerrorMessage(master_conn));
 			PQclear(res2);
 			PQfinish(master_conn);
@@ -814,7 +814,7 @@ create_replication_slot(PGconn *conn, char *slot_name)
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Unable to create slot '%s' on the primary node: %s\n"),
+		log_err(_("unable to create slot '%s' on the primary node: %s\n"),
 				slot_name,
 				PQerrorMessage(conn));
 		PQclear(res);
@@ -842,7 +842,7 @@ start_backup(PGconn *conn, char *first_wal_segment)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't start backup: %s\n"), PQerrorMessage(conn));
+		log_err(_("unable to start backup: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
@@ -873,7 +873,7 @@ stop_backup(PGconn *conn, char *last_wal_segment)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't stop backup: %s\n"), PQerrorMessage(conn));
+		log_err(_("unable to stop backup: %s\n"), PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
@@ -908,7 +908,7 @@ set_config_bool(PGconn *conn, const char *config_param, bool state)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err("Unable to set '%s': %s\n", config_param, PQerrorMessage(conn));
+		log_err("unable to set '%s': %s\n", config_param, PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}

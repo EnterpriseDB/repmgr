@@ -100,11 +100,11 @@ parse_config(const char *config_file, t_configuration_options *options)
 	{
 		if(config_file_provided)
 		{
-			log_err(_("Unable to open provided configuration file '%s' - terminating\n"), config_file_buf);
+			log_err(_("unable to open provided configuration file '%s' - terminating\n"), config_file_buf);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		log_notice(_("No configuration file provided and default file '%s' not found - "
+		log_notice(_("no configuration file provided and default file '%s' not found - "
 					 "continuing with default values\n"),
 				   DEFAULT_CONFIG_FILE);
 		return false;
@@ -182,7 +182,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 				options->failover = AUTOMATIC_FAILOVER;
 			else
 			{
-				log_warning(_("value for failover option is incorrect, it should be automatic or manual. Defaulting to manual.\n"));
+				log_warning(_("Value for failover option is incorrect, it should be 'automatic' or 'manual'. Defaulting to manual.\n"));
 				options->failover = MANUAL_FAILOVER;
 			}
 		}
@@ -345,30 +345,30 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	/*
 	 * Re-read the configuration file: repmgr.conf
 	 */
-	log_info(_("Reloading configuration file and updating repmgr tables\n"));
+	log_info(_("reloading configuration file and updating repmgr tables\n"));
 
 	parse_config(config_file, &new_options);
 	if (new_options.node == -1)
 	{
-		log_warning(_("Cannot load new configuration, will keep current one.\n"));
+		log_warning(_("unable to load new configuration, retaining current configuration.\n"));
 		return false;
 	}
 
 	if (strcmp(new_options.cluster_name, orig_options->cluster_name) != 0)
 	{
-		log_warning(_("Cannot change cluster name, will keep current configuration.\n"));
+		log_warning(_("unable to change cluster name, retaining current configuration.\n"));
 		return false;
 	}
 
 	if (new_options.node != orig_options->node)
 	{
-		log_warning(_("Cannot change node number, will keep current configuration.\n"));
+		log_warning(_("unable to change node ID, retaining current configuration.\n"));
 		return false;
 	}
 
 	if (strcmp(new_options.node_name, orig_options->node_name) != 0)
 	{
-		log_warning(_("Cannot change standby name, will keep current configuration.\n"));
+		log_warning(_("unable to change standby name, keeping current configuration .\n"));
 		return false;
 	}
 
@@ -380,19 +380,19 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 
 	if (new_options.master_response_timeout <= 0)
 	{
-		log_warning(_("New value for master_response_timeout is not valid. Should be greater than zero.\n"));
+		log_warning(_("New value for 'master_response_timeout' is not valid. Should be greater than zero.\n"));
 		return false;
 	}
 
 	if (new_options.reconnect_attempts < 0)
 	{
-		log_warning(_("New value for reconnect_attempts is not valid. Should be greater or equal than zero.\n"));
+		log_warning(_("New value for 'reconnect_attempts' is not valid. Should be greater or equal than zero.\n"));
 		return false;
 	}
 
 	if (new_options.reconnect_intvl < 0)
 	{
-		log_warning(_("New value for reconnect_interval is not valid. Should be greater or equal than zero.\n"));
+		log_warning(_("New value for 'reconnect_interva'l is not valid. Should be greater or equal than zero.\n"));
 		return false;
 	}
 
@@ -402,7 +402,7 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 		conn = establish_db_connection(new_options.conninfo, false);
 		if (!conn || (PQstatus(conn) != CONNECTION_OK))
 		{
-			log_warning(_("conninfo string is not valid, will keep current configuration.\n"));
+			log_warning(_("'conninfo' string is not valid, retaining current configuration.\n"));
 			return false;
 		}
 		PQfinish(conn);
@@ -557,7 +557,7 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	}
 	else
 	{
-		log_debug(_("reload_config(): configuration has not changed"));
+		log_debug(_("reload_config(): configuration has not changed\n"));
 	}
 
 	return config_changed;
@@ -582,7 +582,7 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 	cell = (TablespaceListCell *) malloc(sizeof(TablespaceListCell));
 	if(cell == NULL)
 	{
-		log_err(_("Unable to allocate memory. Terminating.\n"));
+		log_err(_("unable to allocate memory. Terminating.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 

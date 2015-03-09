@@ -98,7 +98,7 @@ create_dir(char *dir)
 	if (mkdir_p(dir, 0700) == 0)
 		return true;
 
-	log_err(_("Could not create directory \"%s\": %s\n"),
+	log_err(_("unable to create directory \"%s\": %s\n"),
 			dir, strerror(errno));
 
 	return false;
@@ -255,7 +255,7 @@ create_pg_dir(char *dir, bool force)
 
 			if (!create_dir(dir))
 			{
-				log_err(_("couldn't create directory \"%s\"...\n"),
+				log_err(_("unable to create directory \"%s\"...\n"),
 						dir);
 				return false;
 			}
@@ -267,7 +267,7 @@ create_pg_dir(char *dir, bool force)
 
 			if (!set_dir_permissions(dir))
 			{
-				log_err(_("could not change permissions of directory \"%s\": %s\n"),
+				log_err(_("unable to change permissions of directory \"%s\": %s\n"),
 						dir, strerror(errno));
 				return false;
 			}
