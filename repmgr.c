@@ -583,9 +583,10 @@ do_cluster_show(void)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		// ZZZ
-		log_err(_("can't get nodes information, have you registered them?\n%s\n"),
+		log_err(_("Unable to retrieve node information from the database\n%s\n"),
 				PQerrorMessage(conn));
+		log_notice(_("HINT: Please check that all nodes have been registered\n"));
+
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
