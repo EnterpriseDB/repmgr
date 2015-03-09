@@ -2991,7 +2991,9 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
  *
  * Perform sanity check on upstream server configuration
  *
- * TODO: check replication connection is possble
+ * TODO:
+ *  - check replication connection is possble
+ *  - check user is qualified to perform base backup
  */
 
 static bool
@@ -2999,16 +3001,40 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 {
 	int			i;
 	bool		config_ok = true;
+	char	   *wal_error_message = NULL;
+	/* Check that WAL level is set correctly */
 
-	/* XXX check user is qualified to perform base backup  */
+	if(server_version_num < 90300)
+	{
+		i = guc_set(conn, "wal_level", "=", "hot_standby");
+		wal_error_message = "needs parameter 'wal_level' to be set to 'hot_standby'";
+	}
+	else
+	{
+		char *levels[] = {
+			"hot_standby",
+			"logical",
+		};
 
-	/* And check if it is well configured */
-	i = guc_set(conn, "wal_level", "=", "hot_standby");
+		int j = 0;
+		wal_error_message = "needs parameter 'wal_level' to be set to 'hot_standby' or 'logical'";
+
+		for(; j < 2; j++)
+		{
+			i = guc_set(conn, "wal_level", "=", levels[j]);
+			if(i)
+			{
+				break;
+			}
+		}
+	}
+
 	if (i == 0 || i == -1)
 	{
 		if (i == 0)
-			log_err(_("%s needs parameter 'wal_level' to be set to 'hot_standby'\n"),
-					progname);
+			log_err(_("%s %s\n"),
+					progname,
+					wal_error_message);
 		if(exit_on_error == true)
 		{
 			PQfinish(conn);
