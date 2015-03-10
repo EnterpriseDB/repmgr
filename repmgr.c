@@ -148,7 +148,7 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c, targ;
 	int			action = NO_ACTION;
-	bool 		check_master_config = false;
+	bool 		check_upstream_config = false;
 	bool 		wal_keep_segments_used = false;
 	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
@@ -259,7 +259,7 @@ main(int argc, char **argv)
 				runtime_options.initdb_no_pwprompt = true;
 				break;
 			case 2:
-				check_master_config = true;
+				check_upstream_config = true;
 				break;
 			case 3:
 				runtime_options.rsync_only = true;
@@ -282,7 +282,7 @@ main(int argc, char **argv)
 	}
 
 
-	if(check_master_config == true)
+	if(check_upstream_config == true)
 	{
 		do_check_upstream_config();
 		exit(SUCCESS);
