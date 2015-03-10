@@ -1124,7 +1124,6 @@ do_standby_clone(void)
 
 	/* Check the local data directory can be used */
 
-	/* ZZZ maybe check tablespace, xlog dirs too */
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
 		log_err(_("unable to use directory %s ...\nUse --force option to force\n"),

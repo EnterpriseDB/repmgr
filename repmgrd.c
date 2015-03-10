@@ -20,9 +20,6 @@
  *
  */
 
-
-/* ZZZ - remove superfluous debugging output */
-
 #include <signal.h>
 
 #include <sys/types.h>
@@ -295,7 +292,6 @@ main(int argc, char **argv)
 	 */
 	do
 	{
-		log_debug("main loop...\n"); // ZZZ
 		/*
 		 * Set my server mode, establish a connection to primary and start
 		 * monitor
@@ -333,7 +329,6 @@ main(int argc, char **argv)
 				 */
 				do
 				{
-					log_debug("primary check loop...\n"); // ZZZ
 					if (check_connection(primary_conn, "master"))
 					{
 						/*
@@ -426,11 +421,12 @@ main(int argc, char **argv)
 					log_debug("standby check loop...\n");
 
 					if (node_info.type == WITNESS)
+					{
 						witness_monitor();
+					}
 					else if (node_info.type == STANDBY)
 					{
 						standby_monitor();
-						log_debug(_("returned from standby_monitor()\n")); // ZZZ
 					}
 					sleep(local_options.monitor_interval_secs);
 
@@ -458,8 +454,6 @@ main(int argc, char **argv)
 				log_err(_("unrecognized mode for node %d\n"),
 						local_options.node);
 		}
-
-		log_debug(_("end of main loop\n")); // ZZZ
 
 		failover_done = false;
 
@@ -607,7 +601,6 @@ witness_monitor(void)
 	 * Execute the query asynchronously, but don't check for a result. We will
 	 * check the result next time we pause for a monitor step.
 	 */
-	log_debug("witness_monitor: %s\n", sqlquery); // ZZZ
 	if (PQsendQuery(primary_conn, sqlquery) == 0)
 		log_warning(_("query could not be sent to master: %s\n"),
 					PQerrorMessage(primary_conn));
@@ -651,7 +644,6 @@ standby_monitor(void)
 	 * no point in doing much else anyway
 	 */
 
-	log_debug("checking local node connection...\n"); // ZZZ
 	if (!check_connection(my_local_conn, "standby"))
 	{
 		set_local_node_failed();
@@ -760,7 +752,6 @@ standby_monitor(void)
 	/* Check if we still are a standby, we could have been promoted */
 	do
 	{
-		log_debug("standby_monitor() - checking if still standby\n"); // ZZZ
 		ret = is_standby(my_local_conn);
 
 		switch (ret)
@@ -1144,7 +1135,6 @@ do_primary_failover(void)
 	/* Wait for each node to come up and report a valid LSN */
 	for (i = 0; i < total_nodes; i++)
 	{
-		log_debug(_("is_ready check for node %i\n"), nodes[i].node_id); // ZZZ
 		/*
 		 * ensure witness server is marked as ready, and skip
 		 * LSN check
@@ -1418,8 +1408,6 @@ do_primary_failover(void)
 		PQfinish(new_primary_conn);
 	}
 
-    log_debug("failover done\n"); // ZZZ
-
 	/* to force it to re-calculate mode and master node */
 	// ^ ZZZ check that behaviour ^
 	failover_done = true;
@@ -1447,14 +1435,15 @@ do_upstream_standby_failover(t_node_info upstream_node)
 	log_debug(_("do_upstream_standby_failover(): performing failover for node %i\n"),
               node_info.node_id);
 
+	/*
+	 * Verify that we can still talk to the cluster primary even though
+	 * node upstream is not available
+	 */
 	if (!check_connection(primary_conn, "master"))
 	{
-		log_err(_("do_upstream_standby_failover(): Unable to connect to last known primary node\n"));
+		log_err(_("do_upstream_standby_failover(): Unable to connect to last known master node\n"));
 		return false;
 	}
-
-	// ZZZ temporary
-	sleep(10);
 
 	while(1)
 	{
@@ -1511,6 +1500,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 		}
 
 		PQclear(res);
+		sleep(local_options.reconnect_intvl);
 	}
 
 	/* Close the connection to this server */
@@ -1521,7 +1511,6 @@ do_upstream_standby_failover(t_node_info upstream_node)
 	r = system(local_options.follow_command);
 	if (r != 0)
 	{
-		// ZZZ fail
 		log_err(_("follow command failed. You could check and try it manually.\n"));
 		terminate(ERR_BAD_CONFIG);
 	}
