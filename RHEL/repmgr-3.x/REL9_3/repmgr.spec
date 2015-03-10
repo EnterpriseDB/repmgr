@@ -1,7 +1,7 @@
 Summary: repmgr
 Name: repmgr
-Version: 3.0rc
-Release: 3
+Version: 3.0rc1
+Release: 1
 License: GPLv3
 Group: System Environment/Daemons
 URL: http://repmgr.org
