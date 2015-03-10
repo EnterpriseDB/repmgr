@@ -2967,7 +2967,7 @@ error_list_append(char *error_message)
 {
 	ErrorListCell *cell;
 
-	cell = (ErrorListCell *) malloc(sizeof(ErrorListCell));
+	cell = (ErrorListCell *) pg_malloc0(sizeof(ErrorListCell));
 
 	if(cell == NULL)
 	{

@@ -579,7 +579,7 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 	char	   *dst_ptr;
 	const char *arg_ptr;
 
-	cell = (TablespaceListCell *) malloc(sizeof(TablespaceListCell));
+	cell = (TablespaceListCell *) pg_malloc0(sizeof(TablespaceListCell));
 	if(cell == NULL)
 	{
 		log_err(_("unable to allocate memory. Terminating.\n"));
