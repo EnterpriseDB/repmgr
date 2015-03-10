@@ -1,11 +1,11 @@
 Summary: repmgr
 Name: repmgr
-Version: 2.0
-Release: 2
+Version: 3.0rc
+Release: 3
 License: GPLv3
 Group: System Environment/Daemons
 URL: http://repmgr.org
-Packager: Nathan Van Overloop <nathan.van.overloop@nexperteam.be>
+Packager: Ian Barwick <ian@2ndquadrant.com>
 Vendor: 2ndQuadrant Limited
 Distribution: centos
 Source0: %{name}-%{version}.tar.gz
@@ -50,6 +50,8 @@ export PATH=$PATH:/usr/pgsql-9.3/bin/
 %attr(0644,root,root)/etc/repmgr/repmgr.conf.sample
 
 %changelog
+* Tue Mar 10 2015 Ian Barwick ian@2ndquadrant.com>
+- build for repmgr 3.0
 * Thu Jun 05 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.2
 - fix witness creation to create db and user if needed
 * Fri Apr 04 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.1
