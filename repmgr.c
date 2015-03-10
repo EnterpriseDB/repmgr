@@ -116,7 +116,7 @@ static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
 
 /* Collate command line errors here for friendlier reporting */
-static ErrorList cli_errors;
+static ErrorList cli_errors = { NULL, NULL };
 
 int
 main(int argc, char **argv)
