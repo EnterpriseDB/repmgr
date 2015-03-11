@@ -351,9 +351,10 @@ its port if is different from the default one.
     Provide the `-D/--data-dir` option to specify the destination data
     directory; if not, the same directory path as on the source server
     will be used. By default, `pg_basebackup` will be used to copy data
-    from the master or upstream node but this can only be used for new
-    installations. To update an existing but 'stale' data directory,
-    `rsync` must be used by specifying `--rsync-only`. In this case,
+    from the master or upstream node but this can only be used for
+    bootstrapping new installations. To update an existing but 'stale'
+    data directory (for example belonging to a failed master), `rsync`
+    must be used by specifying `--rsync-only`. In this case,
     password-less SSH connections between servers are required.
 
 
