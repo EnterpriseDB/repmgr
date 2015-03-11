@@ -28,7 +28,11 @@ General
 
 - How many replication slots should I define in `max_replication_slots`?
 
-  ...
+  Normally at least same number as the number of standbys which will connect
+  to the node. Note that changes to  `max_replication_slots` require a server
+  restart to take effect, and as there is no particular penalty for unused
+  replication slots, setting a higher figure will make adding new nodes
+  easier.
 
 
 `repmgr`
