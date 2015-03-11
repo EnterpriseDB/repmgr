@@ -1638,7 +1638,7 @@ do_standby_follow(void)
 
 	if (master_conn == NULL)
 	{
-		log_err(_("there isn't a master to follow in this cluster\n"));
+		log_err(_("unable to determine new master node\n"));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
