@@ -293,7 +293,22 @@ connect to, e.g.:
 Replication slots
 -----------------
 
-...
+Replication slots were introduced with PostgreSQL 9.4 and enable standbys to
+notify the master of their WAL consumption, ensuring that the master will
+not remove any WAL files until they have been received by all standbys.
+This mitigates the requirement to manage WAL file retention using
+`wal_keep_segments` etc., with the caveat that if a standby fails, no WAL
+files will be removed until the standby's replication slot is deleted.
+
+To enable replication slots, set the boolean parameter `use_replication_slots`
+in `repmgr.conf`:
+
+    use_replication_slots=1
+
+`repmgr` will automatically generate an appropriate slot name, which is
+stored in the `repl_nodes` table.
+
+http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
 
 Reference
 ---------
