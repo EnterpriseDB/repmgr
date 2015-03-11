@@ -62,7 +62,6 @@ if `repmgr` is meant to copy PostgreSQL configuration files located outside
 of the main data directory, pg_basebackup will not be able to copy these,
 and `rsync` will be used.
 
-
 Installation
 ------------
 
@@ -82,7 +81,6 @@ Installation
    `repmgr` can be built easily using PGXS:
 
        sudo make USE_PGXS=1 install
-
 
 Configuration
 -------------
@@ -122,8 +120,6 @@ The database can in principle be any database, including the default `postgres`
 one, however it's probably advisable to create a dedicated database for `repmgr`
 usage. Both user and database will be created by `repmgr`.
 
-ZZZ possible to create for existing servers?
-
 
 ### repmgr configuration
 
@@ -148,11 +144,14 @@ minimal configuration:
 
 Note that the configuration file should *not* be stored inside the PostgreSQL
 data directory. The configuration file can be specified with the
-`-f, --config-file=PATH` option and can have any arbitrary name. If no
+`-f, --config-file=PATH` option and can have any arbitrary name.`repmgr`
+will fail with an error if it does not find the specified file. If no
 configuration file is specified, `repmgr` will search for `repmgr.conf`
-in the current working directory.
+in the current working directory; if no file is found it will continue
+with default values.
 
-Each node configuration needs to be registered using the `repmgr` command line
+The master node must be registered first using `repmgr master register`,
+and each standby needs to be registered using `repmgr standby register`
 tool; this inserts details about each node into the control database.
 
 Example replication setup
@@ -161,11 +160,60 @@ Example replication setup
 See the QUICKSTART.md file for an annotated example setup.
 
 
-Monitoring
-----------
+Failover
+--------
+
+To promote a standby to master, on the standby execute e.g.:
+
+    repmgr -f $HOME/repmgr/repmgr.conf --verbose standby promote
+
+`repmgr` will attempt to connect to the current master to verify that it
+is not available (if it is, `repmgr` will not promote the standby).
+
+Other standby servers need to be told to follow the new master with e.g.:
+
+    repmgr -f $HOME/repmgr/repmgr.conf --verbose standby follow
+
+See file `autofailover_quick_setup.rst` for details on setting up
+automated failover.
+
+
+Converting a failed master to a standby
+---------------------------------------
+
+Often it's desirable to bring a failed master back into replication
+as a standby. First, ensure that the master's PostgreSQL server is
+no longer running; then use `repmgr standby clone` to re-sync its
+data directory with the current master, e.g.:
+
+    repmgr -f $HOME/repmgr/repmgr.conf \
+      --force --rsync-only \
+      -h node2 -d repmgr_db -U repmgr_usr --verbose \
+      standby clone
+
+Here it's essential to use the command line options `--force`, to
+ensure `repmgr` will re-use the existing data directory, and
+`--rsync-only`, which causes `repmgr` to use `rsync` rather than
+`pg_basebackup`, as the latter can only be used to clone a fresh
+standby.
+
+The node can then be restarted.
+
+The node will then need to be re-registered with `repmgr`; again
+the `--force` option is required to update the existing record:
+
+     repmgr -f $HOME/repmgr/repmgr.conf
+       --force \
+       standby register
+
+
+
+Replication management with repmgrd
+-----------------------------------
 
 `repmgrd` is a management and monitoring daemon which runs on standby nodes
-and which and can automate remote actions. It can be started simply with e.g.:
+and which can automate actions such as failover and updating standbys to
+follow the new master.`repmgrd`   can be started simply with e.g.:
 
     repmgrd -f $HOME/repmgr/repmgr.conf --verbose > $HOME/repmgr/repmgr.log 2>&1
 
@@ -173,42 +221,41 @@ or alternatively:
 
     repmgrd -f $HOME/repmgr/repmgr.conf --verbose --monitoring-history > $HOME/repmgr/repmgrd.log 2>&1
 
-which will track advance or lag of the replication in every standby in the
-`repl_monitor` table.
+which will track replication advance or lag on all registerd standbys.
 
-Example log output:
+For permanent operation, we recommend using the options `-d/--daemonize` to
+detach the `repmgrd` process, and `-p/--pid-file` to write the process PID
+to a file.
 
-    [2014-07-04 11:55:17] [INFO] repmgrd Connecting to database 'host=localhost user=repmgr_usr dbname=repmgr_db'
-    [2014-07-04 11:55:17] [INFO] repmgrd Connected to database, checking its state
-    [2014-07-04 11:55:17] [INFO] repmgrd Connecting to primary for cluster 'test'
-    [2014-07-04 11:55:17] [INFO] finding node list for cluster 'test'
-    [2014-07-04 11:55:17] [INFO] checking role of cluster node 'host=repmgr_node1 user=repmgr_usr dbname=repmgr_db'
-    [2014-07-04 11:55:17] [INFO] repmgrd Checking cluster configuration with schema 'repmgr_test'
-    [2014-07-04 11:55:17] [INFO] repmgrd Checking node 2 in cluster 'test'
-    [2014-07-04 11:55:17] [INFO] Reloading configuration file and updating repmgr tables
-    [2014-07-04 11:55:17] [INFO] repmgrd Starting continuous standby node monitoring
+Example log output (at default log level):
+
+    [2015-03-11 13:15:40] [INFO] checking cluster configuration with schema 'repmgr_test'
+    [2015-03-11 13:15:40] [INFO] checking node 2 in cluster 'test'
+    [2015-03-11 13:15:40] [INFO] reloading configuration file and updating repmgr tables
+    [2015-03-11 13:15:40] [INFO] starting continuous standby node monitoring
 
 
-Failover
---------
-
-To promote a standby to master, on the standby execute e.g.:
-
-    repmgr -f  $HOME/repmgr/repmgr.conf --verbose standby promote
-
-`repmgr` will attempt to connect to the current master to verify that it
-is not available (if it is, `repmgr` will not promote the standby).
-
-Other standby servers need to be told to follow the new master with:
-
-    repmgr -f  $HOME/repmgr/repmgr.conf --verbose standby follow
-
-See file `autofailover_quick_setup.rst` for details on setting up
-automated failover.
+Monitoring
+----------
 
 
-repmgr database schema
-----------------------
+
+Cascading standbys
+------------------
+
+
+Replication slots
+-----------------
+
+
+
+Reference
+---------
+
+### repmgr commands
+
+
+### repmgr database schema
 
 `repmgr` creates a small schema for its own use in the database specified in
 each node's conninfo configuration parameter. This database can in principle
@@ -225,6 +272,25 @@ The schema contains two tables:
 
 and one view, `repl_status`, which summarizes the latest monitoring information
 for each node.
+
+### Error codes
+
+`repmgr` or `repmgrd` will return one of the following error codes on program
+exit:
+
+* SUCCESS (0)             Program ran successfully.
+* ERR_BAD_CONFIG (1)      Configuration file could not be parsed or was invalid
+* ERR_BAD_RSYNC (2)       An rsync call made by the program returned an error
+* ERR_NO_RESTART (4)      An attempt to restart a PostgreSQL instance failed
+* ERR_DB_CON (6)          Error when trying to connect to a database
+* ERR_DB_QUERY (7)        Error while executing a database query
+* ERR_PROMOTED (8)        Exiting program because the node has been promoted to master
+* ERR_BAD_PASSWORD (9)    Password used to connect to a database was rejected
+* ERR_STR_OVERFLOW (10)   String overflow error
+* ERR_FAILOVER_FAIL (11)  Error encountered during failover (repmgrd only)
+* ERR_BAD_SSH (12)        Error when connecting to remote host via SSH
+* ERR_SYS_FAILURE (13)    Error when forking (repmgrd only)
+* ERR_BAD_BASEBACKUP (14) Error when executing pg_basebackup
 
 
 Support and Assistance
@@ -269,4 +335,3 @@ Further reading
 * http://blog.2ndquadrant.com/announcing-repmgr-2-0/
 * http://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
 * http://blog.2ndquadrant.com/easier_postgresql_90_clusters/
-
