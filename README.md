@@ -318,9 +318,92 @@ Further reading:
 Reference
 ---------
 
-### repmgr commands
+### repmgr command reference
 
-...
+Not all of these commands need the ``repmgr.conf`` file, but they need to be able to
+connect to the remote and local databases.
+
+You can teach it which is the remote database by using the -h parameter or
+as a last parameter in standby clone and standby follow. If you need to specify
+a port different then the default 5432 you can specify a -p parameter.
+Standby is always considered as localhost and a second -p parameter will indicate
+its port if is different from the default one.
+
+* `master register`
+
+  * Registers a master in a cluster. This command needs to be executed before any
+    standby nodes are registered.
+
+* `standby register`
+
+  * Registers a standby with `repmgr`. This command needs to be executed to enable
+    promote/follow operations and to allow `repmgrd` to work with the node.
+    An existing standby can be registered using this command.
+
+* `standby clone [node to be cloned]`
+
+  * Clones a new standby node from the data directory of the master (or
+    an upstream cascading standby) using `pg_basebackup` or `rsync`.
+    Additionally it will create the `recovery.conf` file required to
+    start the server as a standby. This command does not require
+    `repmgr.conf` to be provided.
+
+    Provide the `-D/--data-dir` option to specify the destination data
+    directory; if not, the same directory path as on the source server
+    will be used. By default, `pg_basebackup` will be used to copy data
+    from the master or upstream node but this can only be used for new
+    installations. To update an existing but 'stale' data directory,
+    `rsync` must be used by specifying `--rsync-only`. In this case,
+    password-less SSH connections between servers are required.
+
+
+* standby promote
+
+  * Promotes a standby to a master if the current master has failed. It
+    requires a valid `repmgr.conf` file for the standby, either specified
+    with `-f/--config-file` or located in the current working directory;
+    no additional arguments are required.
+
+    If the standby promotion succeeds, the server will not need to be
+    restarted. However any other standbys will need to follow the new server,
+    by using `standby follow` (see below); if `repmgrd` is active, it will
+    handle this.
+
+    This command will not function if the current master is still running.
+
+* standby follow
+
+    * Allows the standby to base itself to the new primary passed as a
+      parameter.  This needs to be executed on the same directory where the
+      ``repmgr.conf`` is in the standby, or you can use the ``-f`` option
+      to indicate where the ``repmgr.conf`` is at.  Example:
+
+        ./repmgr standby follow
+
+* cluster show
+
+    * Shows the role (standby/master) and connection string for all nodes configured
+      in the cluster or "FAILED" if the node doesn't respond. This allow us to know
+      which nodes are alive and which one needs attention and to have a notion of the
+      structure of clusters we just have access to.  Example:
+
+        ./repmgr cluster show
+
+* cluster cleanup
+
+    * Cleans the monitor's history from repmgr tables. This avoids the repl_monitor table
+      to grow excesivelly which in turns affects repl_status view performance, also
+      keeps controlled the space in disk used by repmgr. This command can be used manually
+      or in a cron to make it periodically.
+      There is also a --keep-history (-k) option to indicate how many days of history we
+      want to keep, so the command will clean up history older than "keep-history" days. Example::
+
+        ./repmgr cluster cleanup -k 2
+
+### repmgr configuration file
+
+See `repmgr.conf.sample` for an example configuratio file with available
+configuration settings annotated.
 
 ### repmgr database schema
 
