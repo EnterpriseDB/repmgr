@@ -308,7 +308,12 @@ in `repmgr.conf`:
 `repmgr` will automatically generate an appropriate slot name, which is
 stored in the `repl_nodes` table.
 
-http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
+Note that `repmgr` will fail with an error if this option is specified when
+working with PostgreSQL 9.3.
+
+Further reading:
+ * http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
+ * http://blog.2ndquadrant.com/postgresql-9-4-slots/
 
 Reference
 ---------
