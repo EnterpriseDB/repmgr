@@ -12,7 +12,10 @@ Source0: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
 %description
-repmgr for centos6
+repmgr is a utility suite which greatly simplifies
+the process of setting up and managing replication
+using streaming replication within a cluster of
+PostgreSQL servers.
 
 %prep
 %setup
