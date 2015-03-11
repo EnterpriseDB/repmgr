@@ -20,12 +20,12 @@ versions please continue use the 2.x branch.
 
 New features in `repmgr 3` include:
 
-* uses pg_basebackup to clone servers
-* Supports timeline following, meaning a standby does not have to be
+* use pg_basebackup to clone servers
+* supportsfor timeline following, meaning a standby does not have to be
   restarted after being promoted to master
-* supports cascading replication
-* supports tablespace remapping (in PostgreSQL 9.3 via rsync only)
-* enables use of replication slots (PostgreSQL 9.4 and later)
+* support for cascading replication
+* support for tablespace remapping (in PostgreSQL 9.3 via rsync only)
+* replication slot support (PostgreSQL 9.4 and later)
 * usability improvements, including better logging and error reporting
 
 Conceptual Overview
@@ -235,25 +235,72 @@ Example log output (at default log level):
     [2015-03-11 13:15:40] [INFO] starting continuous standby node monitoring
 
 
+Witness server
+--------------
+
+Note that by default the witness server will run on port 5499, to facilitate
+easier setup of the witness server instance on an existing replication cluster
+server running a standby or master node.
+
 Monitoring
 ----------
 
+When `repmgrd` is running with the option `-m/--monitoring-history`, it will
+constantly write node status information to the `repl_monitor` table, which can
+be queried easily using the view `repl_status`:
+
+    repmgr_db=# SELECT * FROM repmgr_test.repl_status;
+    -[ RECORD 1 ]-------------+-----------------------------
+    primary_node              | 1
+    standby_node              | 2
+    standby_name              | node2
+    node_type                 | standby
+    active                    | t
+    last_monitor_time         | 2015-03-11 14:02:34.51713+09
+    last_wal_primary_location | 0/3012AF0
+    last_wal_standby_location | 0/3012AF0
+    replication_lag           | 0 bytes
+    replication_time_lag      | 00:00:03.463085
+    apply_lag                 | 0 bytes
+    communication_time_lag    | 00:00:00.955385
 
 
-Cascading standbys
-------------------
 
+Cascading replication
+---------------------
+
+Cascading replication - where a standby can connect to an upstream node and not
+the master server itself - was introduced in PostgreSQL 9.2. `repmgr` and
+`repmgrd` support cascading replication by keeping track of the relationship
+between standby servers - each node record is stored with the node id of its
+upstream ("parent") server (except of course the master server).
+
+In a failover situation where the master node fails and a top-level standby
+is promoted, a standby connected to another standby will not be affected
+and continue working as normal (even if the upstream standby it's connected
+to becomes the master node). If however the node's direct upstream fails,
+the "cascaded standby" will attempt to reconnect to that node's parent.
+
+To configure standby servers for cascading replication, add the parameter
+`upstream_node` to `repmgr.conf` and set it to the id of the node it should
+connect to, e.g.:
+
+    cluster=test
+    node=2
+    node_name=node2
+    upstream_node=1
 
 Replication slots
 -----------------
 
-
+...
 
 Reference
 ---------
 
 ### repmgr commands
 
+...
 
 ### repmgr database schema
 
