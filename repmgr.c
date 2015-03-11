@@ -1834,7 +1834,7 @@ do_witness_create(void)
 	sprintf(script, "%s %s -w -D %s start",
 			make_pg_path("pg_ctl"),
 			options.pgctl_options, runtime_options.dest_dir);
-	log_info(_("starting witness server: %s"), script);
+	log_info(_("starting witness server: %s\n"), script);
 	r = system(script);
 	if (r != 0)
 	{
