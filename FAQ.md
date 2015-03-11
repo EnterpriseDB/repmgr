@@ -26,13 +26,10 @@ General
   (However this does mean that if a standby is no longer connected to the
   master, the master will retain WAL files indefinitely).
 
-- What's the difference between the `repl_status` view and `repl_events`
-  table?
+- How many replication slots should I define in `max_replication_slots`?
 
-  The `repl_status` view shows the latest node status as reported by
-  `repmgrd` and is useful for monitoring current lag.
-  `repl_events` is a record of significant events which have
-  taken place, such as a node being registered or a failover event.
+  ...
+
 
 `repmgr`
 --------
