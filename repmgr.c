@@ -1798,10 +1798,7 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * default port for the witness is 5499, but user can provide a different
-	 * one
-	 */
+
 	xsnprintf(buf, sizeof(buf), "%s/postgresql.conf", runtime_options.dest_dir);
 	pg_conf = fopen(buf, "a");
 	if (pg_conf == NULL)
@@ -1816,8 +1813,15 @@ do_witness_create(void)
 	xsnprintf(buf, sizeof(buf), "\n#Configuration added by %s\n", progname);
 	fputs(buf, pg_conf);
 
+	/*
+	 * If not specified by the user, the default port for the witness server
+	 * is 5499; this is intended to support running the witness server as
+	 * a separate instance on a normal node server, rather than on its own
+	 * dedicated server.
+	 */
 	if (!runtime_options.localport[0])
 		strncpy(runtime_options.localport, "5499", MAXLEN);
+
 	xsnprintf(buf, sizeof(buf), "port = %s\n", runtime_options.localport);
 	fputs(buf, pg_conf);
 
