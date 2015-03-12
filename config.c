@@ -243,13 +243,13 @@ parse_config(const char *config_file, t_configuration_options *options)
 	/* Check config settings */
 	if (*options->cluster_name == '\0')
 	{
-		log_err(_("Cluster name is missing. Check the configuration file.\n"));
+		log_err(_("Cluster name was not found. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (options->node == -1)
 	{
-		log_err(_("Node information is missing. Check the configuration file.\n"));
+		log_err(_("Node id was not found. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
