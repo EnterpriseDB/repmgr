@@ -593,7 +593,7 @@ do_cluster_show(void)
 	}
 	PQfinish(conn);
 
-	printf("Role      | Connection String \n");
+	printf("Role      | Connection String\n");
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		conn = establish_db_connection(PQgetvalue(res, i, 0), false);

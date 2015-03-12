@@ -50,7 +50,7 @@ Supported Releases
 the same PostgreSQL major version, and preferably should be running the same
 minor version.
 
-PostgreSQL versions 9.0 ~ 9.2 are supporeted by `repmgr` version 2.
+PostgreSQL versions 9.0 ~ 9.2 are supported by `repmgr` version 2.
 
 Requirements
 ------------
@@ -264,8 +264,6 @@ be queried easily using the view `repl_status`:
     apply_lag                 | 0 bytes
     communication_time_lag    | 00:00:00.955385
 
-
-
 Cascading replication
 ---------------------
 
@@ -315,6 +313,8 @@ Further reading:
  * http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
  * http://blog.2ndquadrant.com/postgresql-9-4-slots/
 
+---------------------------------------
+
 Reference
 ---------
 
@@ -331,22 +331,23 @@ its port if is different from the default one.
 
 * `master register`
 
-  * Registers a master in a cluster. This command needs to be executed before any
+    Registers a master in a cluster. This command needs to be executed before any
     standby nodes are registered.
 
 * `standby register`
 
-  * Registers a standby with `repmgr`. This command needs to be executed to enable
+    Registers a standby with `repmgr`. This command needs to be executed to enable
     promote/follow operations and to allow `repmgrd` to work with the node.
     An existing standby can be registered using this command.
 
 * `standby clone [node to be cloned]`
 
-  * Clones a new standby node from the data directory of the master (or
+    Clones a new standby node from the data directory of the master (or
     an upstream cascading standby) using `pg_basebackup` or `rsync`.
     Additionally it will create the `recovery.conf` file required to
     start the server as a standby. This command does not require
-    `repmgr.conf` to be provided.
+    `repmgr.conf` to be provided, but does require connection details
+    of the master or upstream server as command line parameters.
 
     Provide the `-D/--data-dir` option to specify the destination data
     directory; if not, the same directory path as on the source server
@@ -360,10 +361,10 @@ its port if is different from the default one.
 
 * standby promote
 
-  * Promotes a standby to a master if the current master has failed. It
-    requires a valid `repmgr.conf` file for the standby, either specified
-    with `-f/--config-file` or located in the current working directory;
-    no additional arguments are required.
+    Promotes a standby to a master if the current master has failed. This
+    command requires a valid `repmgr.conf` file for the standby, either
+    specified explicitly  with `-f/--config-file` or located in the current
+    working directory; no additional arguments are required.
 
     If the standby promotion succeeds, the server will not need to be
     restarted. However any other standbys will need to follow the new server,
@@ -374,42 +375,55 @@ its port if is different from the default one.
 
 * standby follow
 
-    * Allows the standby to base itself to the new primary passed as a
-      parameter.  This needs to be executed on the same directory where the
-      ``repmgr.conf`` is in the standby, or you can use the ``-f`` option
-      to indicate where the ``repmgr.conf`` is at.  Example:
+    Attaches the standby to a new master. This command requires a valid
+    `repmgr.conf` file for the standby, either specified explicitly with
+    `-f/--config-file` or located in the current working directory; no
+    additional arguments are required.
 
-        ./repmgr standby follow
+    This command will force a restart of the standby server. It can only be used
+    to attach a standby to a new master node.
 
 * cluster show
 
-    * Shows the role (standby/master) and connection string for all nodes configured
-      in the cluster or "FAILED" if the node doesn't respond. This allow us to know
-      which nodes are alive and which one needs attention and to have a notion of the
-      structure of clusters we just have access to.  Example:
+    Displays information about each node in the replication cluster. This
+    command polls each registered server and shows its role (master / standby /
+    witness) or "FAILED" if the node doesn't respond. It polls each server
+    directly and can be run on any node in the cluster; this is also useful
+    when analyzing connectivity from a particular node.
 
-        ./repmgr cluster show
+    This command requires a valid `repmgr.conf` file for the node on which it is
+    executed, either specified explicitly with `-f/--config-file` or located in
+    the current working directory; no additional arguments are required.
+
+    Example:
+
+        repmgr -f /path/to/repmgr.conf cluster show
+        Role      | Connection String
+        * master  | host=node1 dbname=repmgr_db user=repmgr_usr
+          standby | host=node2 dbname=repmgr_db user=repmgr_usr
+          standby | host=node3 dbname=repmgr_db user=repmgr_usr
+
 
 * cluster cleanup
 
-    * Cleans the monitor's history from repmgr tables. This avoids the repl_monitor table
-      to grow excesivelly which in turns affects repl_status view performance, also
-      keeps controlled the space in disk used by repmgr. This command can be used manually
-      or in a cron to make it periodically.
-      There is also a --keep-history (-k) option to indicate how many days of history we
-      want to keep, so the command will clean up history older than "keep-history" days. Example::
+    Purges monitoring history from the `repl_monitor` table to prevent excessive
+    table growth. Use the `-k/--keep-history` to specify the number of days of
+    monitoring history to retain. This command can be used manually or as a
+    cronjob.
 
-        ./repmgr cluster cleanup -k 2
+    This command requires a valid `repmgr.conf` file for the node on which it is
+    executed, either specified explicitly with `-f/--config-file` or located in
+    the current working directory; no additional arguments are required.
 
 ### repmgr configuration file
 
-See `repmgr.conf.sample` for an example configuratio file with available
+See `repmgr.conf.sample` for an example configuration file with available
 configuration settings annotated.
 
 ### repmgr database schema
 
 `repmgr` creates a small schema for its own use in the database specified in
-each node's conninfo configuration parameter. This database can in principle
+each node's `conninfo` configuration parameter. This database can in principle
 be any database. The schema name is the global `cluster` name prefixed
 with `repmgr_`, so for the example setup above the schema name is
 `repmgr_test`.
@@ -419,10 +433,13 @@ The schema contains two tables:
 * `repl_nodes`
   stores information about all registered servers in the cluster
 * `repl_monitor`
-  stores monitoring information about each node (generated by `repmgrd`
+  stores monitoring information about each node (generated by `repmgrd` with
+  `-m/--monitoring-history` option enabled)
 
-and one view, `repl_status`, which summarizes the latest monitoring information
-for each node.
+and one view:
+* `repl_status`
+  summarizes the latest monitoring information for each node (generated by `repmgrd` with
+  `-m/--monitoring-history` option enabled)
 
 ### Error codes
 
@@ -449,12 +466,14 @@ Support and Assistance
 
 2ndQuadrant provides 24x7 production support for repmgr, including
 configuration assistance, installation verification and training for
-running a robust replication cluster.
+running a robust replication cluster. For further details see:
+
+* http://2ndquadrant.com/en/support/
 
 There is a mailing list/forum to discuss contributions or issues
 http://groups.google.com/group/repmgr
 
-#repmgr is registered in freenode IRC
+The IRC channel #repmgr is registered with freenode.
 
 Further information is available at http://www.repmgr.org/
 
@@ -462,21 +481,21 @@ We'd love to hear from you about how you use repmgr. Case studies and
 news are always welcome. Send us an email at info@2ndQuadrant.com, or
 send a postcard to
 
-repmgr
-c/o 2ndQuadrant
-7200 The Quorum
-Oxford Business Park North
-Oxford
-OX4 2JZ
-United Kingdom
+    repmgr
+    c/o 2ndQuadrant
+    7200 The Quorum
+    Oxford Business Park North
+    Oxford
+    OX4 2JZ
+    United Kingdom
 
 Thanks from the repmgr core team.
 
-Ian Barwick
-Jaime Casanova
-Abhijit Menon-Sen
-Simon Riggs
-Cedric Villemain
+* Ian Barwick
+* Jaime Casanova
+* Abhijit Menon-Sen
+* Simon Riggs
+* Cedric Villemain
 
 
 
