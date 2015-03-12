@@ -68,12 +68,10 @@ Installation
 `repmgr` must be installed on each PostgreSQL server node.
 
 * Packages
-  - RPM packages for RedHat-based distributions are available from PGDG
+  - PGDG publishes RPM packages for RedHat-based distributions
   - Debian/Ubuntu provide .deb packages.
-
-  It is also possible to build .deb and .rpm packages directly from the
-  `repmgr` source. The `debian` and `RHEL` directories contain the
-  necessary files.
+  - The files under the `debian` and `RHEL` directories can be used to
+    build .deb and .rpm packages directly from the `repmgr` source code.
 
 * Source installation
   - `git clone https://github.com/2ndQuadrant/repmgr`
