@@ -151,9 +151,10 @@ The `cluster` name must be the same on all nodes. The `node` (an
 integer) and `node_name` must be unique to each node.
 
 The `conninfo` string must point to repmgr's database *on this node*.
-The host must be a name that all the nodes in the cluster can resolve
-(not `localhost`!). All nodes must use the same username and database
-name, but other parameters, such as the port, can vary between nodes.
+The host must be an IP or a name that all the nodes in the cluster can
+resolve (not `localhost`!). All nodes must use the same username and
+database name, but other parameters, such as the port, can vary between
+nodes.
 
 Your `repmgr.conf` should not be stored inside the PostgreSQL data
 directory. We recommend `/etc/repmgr/repmgr.conf`, but you can place it
