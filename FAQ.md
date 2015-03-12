@@ -58,7 +58,7 @@ General
   Yes - execute `repmgr` with the `--check-upstream-config` option, and it
   will let you know which items in `postgresql.conf` need to be modified.
 
-- Even though I specified custom `rsync` options, `rempgr` appends
+- Even though I specified custom `rsync` options, `repmgr` appends
   the `--checksum` - why?
 
   When syncing a stale data directory from an active server, it's
@@ -66,12 +66,12 @@ General
   just timestamp and size, to ensure that all changed files are
   copied and prevent corruption.
 
-- How can I prevent `rempgr` from copying `postgresql.conf` and
+- How can I prevent `repmgr` from copying `postgresql.conf` and
   `pg_hba.conf` from the PostgreSQL configuration directory in `/etc`?
 
   Include the option `ignore_external_config_files=1` in `repmgr.conf`
 
-- How can I prevent `rempgr` from copying local configuration files
+- How can I prevent `repmgr` from copying local configuration files
   in the data directory?
 
   If you're updating an existing but stale data directory which

@@ -487,7 +487,7 @@ witness_monitor(void)
 	 * Check if master is available; if not, assume failover situation
 	 * and try to determine new master. There may be a delay between detection
 	 * of a missing master and promotion of a standby by that standby's
-	 * rempgrd, so we'll loop for a while before giving up.
+	 * repmgrd, so we'll loop for a while before giving up.
 	 */
 	connection_ok = check_connection(primary_conn, "master");
 
