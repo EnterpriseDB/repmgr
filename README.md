@@ -28,6 +28,18 @@ New features in `repmgr 3` include:
 * replication slot support (PostgreSQL 9.4 and later)
 * usability improvements, including better logging and error reporting
 
+Upgrading from repmgr 2
+-----------------------
+
+`repmgr 3` is largely compatible with `repmgr 2`; the only step required
+to upgrade is to update the `repl_nodes` table to the definition needed
+by `repmgr 3`. See the file `sql/repmgr2_repmgr3.sql` for details on how
+to do this.
+
+`repmgrd` must *not* be running while `repl_nodes` is being updated.
+
+Existing `repmgr.conf` files can be retained as-is.
+
 Conceptual Overview
 -------------------
 
