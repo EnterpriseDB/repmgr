@@ -76,13 +76,10 @@ Installation
   necessary files.
 
 * Source installation
-  - `repmgr` source code is available at
-    https://github.com/2ndQuadrant/repmgr
-  - tar.gz files can be downloaded from
+  - `git clone https://github.com/2ndQuadrant/repmgr`
+  - Or download tar.gz files from
     https://github.com/2ndQuadrant/repmgr/releases
-  - To install from source, just run:
-
-    sudo make USE_PGXS=1 install
+  - To install from source, just run `sudo make USE_PGXS=1 install`
 
 Configuration
 -------------
