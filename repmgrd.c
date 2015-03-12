@@ -1324,11 +1324,6 @@ do_primary_failover(void)
 		{
 			log_err(_("promote command failed. You could check and try it manually.\n"));
 
-			/*
-			 * At this point there's no valid primary we can write to,
-			 * so can't add an entry to the event table.
-			 */
-
 			terminate(ERR_DB_QUERY);
 		}
 
