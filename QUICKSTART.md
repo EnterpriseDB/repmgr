@@ -31,6 +31,7 @@ Master setup
 	```
 
   Restart the PostgreSQL server after making these changes.
+
 2. Create the `repmgr` configuration file:
 
         $ cat /path/to/repmgr/node1/repmgr.conf
