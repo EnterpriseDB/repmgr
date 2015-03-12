@@ -29,7 +29,7 @@ To get started, each PostgreSQL node in your cluster must have a
 using `repmgr standby register`. A new standby server can be created
 using `repmgr standby clone` followed by `repmgr standby register`.
 
-See the "QUICKSTART.md" file for examples of how to use these commands.
+See the `QUICKSTART.md` file for examples of how to use these commands.
 
 Once the cluster is in operation, run `repmgr cluster show` to see the
 status of the registered primary and standby nodes. Any standby can be
@@ -42,8 +42,8 @@ configuration file) on all your nodes. Replication status information is
 stored in a custom schema along with information about registered nodes.
 You also need `repmgrd` to configure automatic failover in your cluster.
 
-See the "FAILOVER.md" file for an explanation of how to set up automatic
-failover.
+See the `FAILOVER.rst` file for an explanation of how to set up
+automatic failover.
 
 Requirements
 ------------
@@ -60,7 +60,7 @@ nodes in order to clone standby servers using `rsync`. `repmgr 3` can
 use `pg_basebackup` instead in most circumstances; ssh is not needed.
 
 You will need to use rsync only if your PostgreSQL configuration files
-are outside your data directory (as on Debian). See the "SSH-RSYNC.md"
+are outside your data directory (as on Debian). See the `SSH-RSYNC.md`
 file for details on configuring password-less SSH between your nodes.
 
 Installation
@@ -71,7 +71,7 @@ Installation
 * Packages
   - PGDG publishes RPM packages for RedHat-based distributions
   - Debian/Ubuntu provide .deb packages.
-  - See "PACKAGES.md" for details on building .deb and .rpm packages
+  - See `PACKAGES.md` for details on building .deb and .rpm packages
     from the `repmgr` source code.
 
 * Source installation
@@ -92,7 +92,7 @@ Configuration
 By default, `repmgr` uses PostgreSQL's built-in replication protocol to
 clone a primary and create a standby server. If your configuration files
 live outside your data directory, however, you will still need to set up
-password-less SSH so that rsync can be used. See the "SSH-RSYNC.md" file
+password-less SSH so that rsync can be used. See the `SSH-RSYNC.md` file
 for details.
 
 ### PostgreSQL configuration
@@ -177,7 +177,7 @@ and standby servers must be registered using `repmgr standby register`;
 this inserts details about each node into the control database. Use
 `repmgr cluster show` to see the result.
 
-See the "QUICKSTART.md" file for examples of how to use these commands.
+See the `QUICKSTART.md` file for examples of how to use these commands.
 
 Failover
 --------
@@ -193,8 +193,7 @@ Other standby servers need to be told to follow the new master with e.g.:
 
     repmgr -f $HOME/repmgr/repmgr.conf --verbose standby follow
 
-See file `autofailover_quick_setup.rst` for details on setting up
-automated failover.
+See file `FAILOVER.rst` for details on setting up automated failover.
 
 
 Converting a failed master to a standby
