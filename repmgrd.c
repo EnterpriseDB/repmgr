@@ -319,22 +319,19 @@ main(int argc, char **argv)
 				log_info(_("starting continuous primary connection check\n"));
 
 				/*
-				 * Check that primary is still alive, and standbies are
-				 * sending info
+                                 * Check that primary is still alive.
+                                 * XXX We should also check that the
+                                 * standby servers are sending info
 				 */
 
 				/*
 				 * Every local_options.monitor_interval_secs seconds, do
-				 * master checks XXX Check that standbies are sending info
+				 * master checks
 				 */
 				do
 				{
 					if (check_connection(primary_conn, "master"))
 					{
-						/*
-						 * CheckActiveStandbiesConnections();
-						 * CheckInactiveStandbies();
-						 */
 						sleep(local_options.monitor_interval_secs);
 					}
 					else
