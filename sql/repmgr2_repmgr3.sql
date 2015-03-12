@@ -11,7 +11,7 @@
 
 /*
  * Set the search path to the name of the schema used by
- * your rempgr installation
+ * your repmgr installation
  * (this should be "repmgr_" + the cluster name defined in
  * 'repmgr.conf')
  */
