@@ -20,8 +20,8 @@ versions please continue use the 2.x branch.
 
 New features in `repmgr 3` include:
 
-* use pg_basebackup to clone servers
-* supportsfor timeline following, meaning a standby does not have to be
+* using `pg_basebackup` to clone servers
+* support for timeline following, meaning a standby does not have to be
   restarted after being promoted to master
 * support for cascading replication
 * support for tablespace remapping (in PostgreSQL 9.3 via rsync only)
@@ -105,12 +105,12 @@ settings:
     wal_keep_segments = 5000       # in logfile segments, 16MB each; 0 disables
     hot_standby = on               # "on" allows queries during recovery
 
-Note that `repmgr` expects a default of 5000 wal_keep_segments, although this
+Note that `repmgr` expects a default of 5000 `wal_keep_segments`, although this
 value can be overridden when executing the `repmgr` client.
 
 From PostgreSQL 9.4, replication slots are available, which remove the
 requirement to retain a fixed number of WAL logfile segments. See
-'repmgr configuration' for details.
+"repmgr configuration" for details.
 
 Additionally, `repmgr` requires a dedicated PostgreSQL superuser account
 and a database in which to store monitoring and replication data. The `repmgr`
