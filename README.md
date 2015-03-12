@@ -41,6 +41,24 @@ You also need `repmgrd` to configure automatic failover in your cluster.
 See the "FAILOVER.md" file for an explanation of how to set up automatic
 failover.
 
+Requirements
+------------
+
+`repmgr` is developed and tested on Linux, but it should work on any
+UNIX-like system which PostgreSQL itself supports.
+
+All nodes must be running the same major version of PostgreSQL, and we
+recommend that they also run the same minor version. This version of
+`repmgr` (v3) supports PostgreSQL 9.3 and 9.4.
+
+Earlier versions of `repmgr` required password-less SSH access between
+nodes in order to clone standby servers using `rsync`. `repmgr 3` can
+use `pg_basebackup` instead in most circumstances; ssh is not needed.
+
+You will need to use rsync only if your PostgreSQL configuration files
+are outside your data directory (as on Debian). See the "SSH-RSYNC.md"
+file for details on configuring password-less SSH between your nodes.
+
 Repmgr 3 Features
 -----------------
 
@@ -70,25 +88,6 @@ to do this.
 `repmgrd` must *not* be running while `repl_nodes` is being updated.
 
 Existing `repmgr.conf` files can be retained as-is.
-
-Supported Releases
-------------------
-
-`repmgr` works with PostgreSQL 9.3 and later. All server nodes must be running
-the same PostgreSQL major version, and preferably should be running the same
-minor version.
-
-PostgreSQL versions 9.0 ~ 9.2 are supported by `repmgr` version 2.
-
-Requirements
-------------
-
-`repmgr` will work on any Linux or UNIX-like environment capable of running
-PostgreSQL. `rsync` and password-less SSH connections between servers are
-only required if `rsync` is to be used to clone standby servers. Also,
-if `repmgr` is meant to copy PostgreSQL configuration files located outside
-of the main data directory, pg_basebackup will not be able to copy these,
-and `rsync` will be used.
 
 Installation
 ------------
