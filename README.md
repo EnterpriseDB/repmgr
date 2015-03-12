@@ -89,39 +89,54 @@ Configuration
 
 ### Server configuration
 
-By default, `repmgr` uses PostgreSQL's build-in replication protocol
-for communicating with remote servers, e.g. when cloning a primary.
-However, password-less SSH logins may need to be enable for the database
-system user (typically `postgres`) between all server nodes if you
-wish `repmgr` to copy configuration files not located in
+By default, `repmgr` uses PostgreSQL's built-in replication protocol to
+clone a primary and create a standby server. If your configuration files
+live outside your data directory, however, you will still need to set up
+password-less SSH so that rsync can be used. See the "SSH-RSYNC.md" file
+for details.
 
 ### PostgreSQL configuration
 
-PostgreSQL node needs to be configured for replication with the following
-settings:
+The primary server needs to be configured for replication with the
+following settings in `postgresql.conf`:
 
-    wal_level = 'hot_standby'      # minimal, archive, hot_standby, or logical
-    archive_mode = on              # allows archiving to be done
-    archive_command = 'cd .'       # command to use to archive a logfile segment
-    max_wal_senders = 10           # max number of walsender processes
-    wal_keep_segments = 5000       # in logfile segments, 16MB each; 0 disables
-    hot_standby = on               # "on" allows queries during recovery
+    # Allow read-only queries on standby servers. The number of WAL
+    # senders should be larger than the number of standby servers.
 
-Note that `repmgr` expects a default of 5000 `wal_keep_segments`, although this
-value can be overridden when executing the `repmgr` client.
+    hot_standby = on
+    wal_level = 'hot_standby'
+    max_wal_senders = 10
 
-From PostgreSQL 9.4, replication slots are available, which remove the
-requirement to retain a fixed number of WAL logfile segments. See
-"repmgr configuration" for details.
+    # How much WAL to retain on the primary to allow a temporarily
+    # disconnected standby to catch up again. The larger this is, the
+    # longer the standby can be disconnected.
 
-Additionally, `repmgr` requires a dedicated PostgreSQL superuser account
-and a database in which to store monitoring and replication data. The `repmgr`
-user account will also be used for replication connections from the standby,
-so a separate replication user with the `REPLICATION` privilege is not required.
-The database can in principle be any database, including the default `postgres`
-one, however it's probably advisable to create a dedicated database for `repmgr`
-usage. Both user and database will be created by `repmgr`.
+    wal_keep_segments = 5000
 
+    # Enable archiving, but leave it unconfigured (so that it can be
+    # configured without a restart later). Recommended, not required.
+
+    archive_mode = on
+    archive_command = 'cd .'
+
+    # You can also set additional replication parameters here, such as
+    # hot_standby_feedback or synchronous_standby_names.
+
+PostgreSQL 9.4 makes it possible to use replication slots, which means
+the value of wal_keep_segments need no longer be set. With 9.3, `repmgr`
+expects it to be set to at least 5000 (= 80GB of WAL) by default, though
+this can be overriden with the `-w N` argument.
+
+A dedicated PostgreSQL superuser account and a database in which to
+store monitoring and replication data are required. Create them by
+running the following commands:
+
+    createuser -s repmgr
+    createdb repmgr -O repmgr
+
+We recommend using the name `repmgr` for both, but you can use whatever
+name you like. `repmgr` will create the schema and objects it needs when
+it connects to the server.
 
 ### repmgr configuration
 
@@ -155,12 +170,6 @@ with default values.
 The master node must be registered first using `repmgr master register`,
 and each standby needs to be registered using `repmgr standby register`
 tool; this inserts details about each node into the control database.
-
-Example replication setup
--------------------------
-
-See the QUICKSTART.md file for an annotated example setup.
-
 
 Failover
 --------
