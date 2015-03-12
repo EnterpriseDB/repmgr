@@ -8,8 +8,11 @@ replication, and perform administrative tasks such as failover or manual
 switchover operations.
 
 This document covers `repmgr 3`, which supports PostgreSQL 9.4 and 9.3.
+This version can use `pg_basebackup` to clone standby servers, supports
+replication slots and cascading replication, doesn't require a restart
+after promotion, and has many usability improvements.
 
-For earlier PostgreSQL 9.x versions, please continue to use `repmgr 2`.
+Please continue to use `repmgr 2` with earlier PostgreSQL 9.x versions.
 For a list of changes since `repmgr 2` and instructions on upgrading to
 `repmgr 3`, see the "Upgrading from repmgr 2" section below.
 
@@ -59,55 +62,27 @@ You will need to use rsync only if your PostgreSQL configuration files
 are outside your data directory (as on Debian). See the "SSH-RSYNC.md"
 file for details on configuring password-less SSH between your nodes.
 
-Repmgr 3 Features
------------------
-
-`repmgr 3` takes advantage of features introduced in PostgreSQL 9.3 and
-later, including timeline following and replication slots, to make setting
-up and managing replication smoother and easier. For earlier PostgreSQL
-versions please continue use the 2.x branch.
-
-New features in `repmgr 3` include:
-
-* using `pg_basebackup` to clone servers
-* support for timeline following, meaning a standby does not have to be
-  restarted after being promoted to master
-* support for cascading replication
-* support for tablespace remapping (in PostgreSQL 9.3 via rsync only)
-* replication slot support (PostgreSQL 9.4 and later)
-* usability improvements, including better logging and error reporting
-
-Upgrading from repmgr 2
------------------------
-
-`repmgr 3` is largely compatible with `repmgr 2`; the only step required
-to upgrade is to update the `repl_nodes` table to the definition needed
-by `repmgr 3`. See the file `sql/repmgr2_repmgr3.sql` for details on how
-to do this.
-
-`repmgrd` must *not* be running while `repl_nodes` is being updated.
-
-Existing `repmgr.conf` files can be retained as-is.
-
 Installation
 ------------
 
 `repmgr` must be installed on each PostgreSQL server node.
 
 * Packages
- - RPM packages for RedHat-based distributions are available from PGDG
- - Debian/Ubuntu provide .deb packages.
+  - RPM packages for RedHat-based distributions are available from PGDG
+  - Debian/Ubuntu provide .deb packages.
 
-  It is also possible to build .deb packages directly from the `repmgr` source;
-  see README.rst for further details.
+  It is also possible to build .deb and .rpm packages directly from the
+  `repmgr` source. The `debian` and `RHEL` directories contain the
+  necessary files.
 
 * Source installation
- - `repmgr` source code is hosted at github (https://github.com/2ndQuadrant/repmgr);
-   tar.gz files can be downloaded from https://github.com/2ndQuadrant/repmgr/releases .
+  - `repmgr` source code is available at
+    https://github.com/2ndQuadrant/repmgr
+  - tar.gz files can be downloaded from
+    https://github.com/2ndQuadrant/repmgr/releases
+  - To install from source, just run:
 
-   `repmgr` can be built easily using PGXS:
-
-       sudo make USE_PGXS=1 install
+    sudo make USE_PGXS=1 install
 
 Configuration
 -------------
@@ -356,6 +331,18 @@ working with PostgreSQL 9.3.
 Further reading:
  * http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
  * http://blog.2ndquadrant.com/postgresql-9-4-slots/
+
+Upgrading from repmgr 2
+-----------------------
+
+`repmgr 3` is largely compatible with `repmgr 2`; the only step required
+to upgrade is to update the `repl_nodes` table to the definition needed
+by `repmgr 3`. See the file `sql/repmgr2_repmgr3.sql` for details on how
+to do this.
+
+`repmgrd` must *not* be running while `repl_nodes` is being updated.
+
+Existing `repmgr.conf` files can be retained as-is.
 
 ---------------------------------------
 
