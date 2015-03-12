@@ -183,7 +183,7 @@ is_pgup(PGconn *conn, int timeout)
 	failed:
 
 			/*
-			 * we need to retry, because we might just have loose the
+			 * we need to retry, because we might just have lost the
 			 * connection once
 			 */
 			if (twice)
