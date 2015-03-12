@@ -173,7 +173,8 @@ available configuration settings annotated.
 
 The master node must be registered first using `repmgr master register`,
 and standby servers must be registered using `repmgr standby register`;
-this inserts details about each node into the control database.
+this inserts details about each node into the control database. Use
+`repmgr cluster show` to see the result.
 
 See the "QUICKSTART.md" file for examples of how to use these commands.
 
