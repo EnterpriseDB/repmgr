@@ -1,7 +1,7 @@
 repmgr: Replication Manager for PostgreSQL clusters
 ===================================================
 
-`repmgr` is an open-source tool to mananage replication and failover
+`repmgr` is an open-source tool to manage replication and failover
 between multiple PostgreSQL servers. It enhances PostgreSQL's built-in
 hot-standby capabilities with tools to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or manual
@@ -34,7 +34,8 @@ See the "QUICKSTART.md" file for examples of how to use these commands.
 Once the cluster is in operation, run `repmgr cluster show` to see the
 status of the registered primary and standby nodes. Any standby can be
 manually promoted using `repmgr standby promote`. Other standby nodes
-can be told to follow the new master using `repmgr standby follow`.
+can be told to follow the new master using `repmgr standby follow`. We
+show examples of these commands below.
 
 Next, for detailed monitoring, you must run `repmgrd` (with the same
 configuration file) on all your nodes. Replication status information is
@@ -70,14 +71,18 @@ Installation
 * Packages
   - PGDG publishes RPM packages for RedHat-based distributions
   - Debian/Ubuntu provide .deb packages.
-  - The files under the `debian` and `RHEL` directories can be used to
-    build .deb and .rpm packages directly from the `repmgr` source code.
+  - See "PACKAGES.md" for details on building .deb and .rpm packages
+    from the `repmgr` source code.
 
 * Source installation
   - `git clone https://github.com/2ndQuadrant/repmgr`
   - Or download tar.gz files from
     https://github.com/2ndQuadrant/repmgr/releases
-  - To install from source, just run `sudo make USE_PGXS=1 install`
+  - To install from source, run `sudo make USE_PGXS=1 install`
+
+After installation, you should be able to run `repmgr --version` and
+`repmgrd --version`. These binaries should be installed in the same
+directory as other PostgreSQL binaries, such as `psql`.
 
 Configuration
 -------------
