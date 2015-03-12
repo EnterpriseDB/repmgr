@@ -109,7 +109,8 @@ following settings in `postgresql.conf`:
 
     # How much WAL to retain on the primary to allow a temporarily
     # disconnected standby to catch up again. The larger this is, the
-    # longer the standby can be disconnected.
+    # longer the standby can be disconnected. This is needed only in
+    # 9.3; in 9.4, use replication slots instead (see below).
 
     wal_keep_segments = 5000
 
