@@ -136,8 +136,9 @@ running the following commands:
     createdb repmgr -O repmgr
 
 We recommend using the name `repmgr` for both, but you can use whatever
-name you like. `repmgr` will create the schema and objects it needs when
-it connects to the server.
+name you like (and you need to set the names you chose in the `conninfo`
+string in `repmgr.conf`; see below). `repmgr` will create the schema and
+objects it needs when it connects to the server.
 
 ### repmgr configuration
 
