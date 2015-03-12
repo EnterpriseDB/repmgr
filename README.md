@@ -238,9 +238,26 @@ Example log output (at default log level):
 Witness server
 --------------
 
-Note that by default the witness server will run on port 5499, to facilitate
-easier setup of the witness server instance on an existing replication cluster
-server running a standby or master node.
+In a situation caused e.g. by a network interruption between two
+data centres, it's important to avoid a "split-brain" situation where
+both sides of the network assume they are the active segment and the
+side without an active master unilaterally promotes one of its standbys.
+
+To prevent this situation happening, it's essential to ensure that one
+network segment has a "voting majority", so other segments will know
+they're in the minority and not attempt to promote a new master. Where
+an odd number of servers exists, this is not an issue. However, if each
+network has an even number of nodes, it's necessary to provide some way
+of ensuring a majority, which is where the witness server becomes useful.
+
+This is not a fully-fledged standby node and is not integrated into
+replication, but it effectively represents the "casting vote" when
+deciding which network segment has a majority. A witness server can
+be set up using `repmgr witness create` (see below for details) and
+can run on a dedicated server or an existing node. Note that it only
+makes sense to create a witness server in conjunction with running
+`repmgrd`; the witness server will require its own `repmgrd` instance.
+
 
 Monitoring
 ----------
