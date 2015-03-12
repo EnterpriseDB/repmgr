@@ -1,5 +1,5 @@
-repmgr: Replication Manager for PostgreSQL clusters
-===================================================
+repmgr: Replication Manager for PostgreSQL
+==========================================
 
 `repmgr` is an open-source tool to manage replication and failover
 between multiple PostgreSQL servers. It enhances PostgreSQL's built-in
