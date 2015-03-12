@@ -140,36 +140,37 @@ it connects to the server.
 
 ### repmgr configuration
 
-Each PostgreSQL node requires a `repmgr.conf` configuration file containing
-identification and database connection information. This is a sample
-minimal configuration:
+Create a `repmgr.conf` file on each server. Here's a minimal sample:
 
     cluster=test
     node=1
     node_name=node1
-    conninfo='host=repmgr_node1 user=repmgr_usr dbname=repmgr_db'
+    conninfo='host=repmgr_node1 user=repmgr dbname=repmgr'
+
+The `cluster` name must be the same on all nodes. The `node` (an
+integer) and `node_name` must be unique to each node.
+
+The `conninfo` string must point to repmgr's database *on this node*.
+The host must be a name that all the nodes in the cluster can resolve,
+and all nodes must use the same username and database name, but other
+parameters, such as the port, can vary between nodes.
+
+Your `repmgr.conf` should not be stored inside the PostgreSQL data
+directory. We recommend `/etc/repmgr/repmgr.conf`, but you can place it
+anywhere and use the `-f /path/to/repmgr.conf` option to tell `repmgr`
+where it is. If not specified, `repmgr` will search for `repmgr.conf` in
+the current working directory.
+
+If your PostgreSQL binaries (`pg_ctl`, `pg_basebackup`) are not in your
+`PATH`, you can specify an alternate location in `repmgr.conf`:
+
     pg_bindir=/path/to/postgres/bin
-
-* `cluster`: common name for the replication cluster; this must be the same on all nodes
-* `node`: a unique, abitrary integer identifier
-* `name`: a unique, human-readable name
-* `conninfo`: a standard conninfo string enabling repmgr to connect to the
-   control database; user and name must be the same on all nodes, while other
-   parameters such as port may differ. The `host` parameter *must* be a hostname
-   resolvable by all nodes on the cluster.
-* `pg_bindir`: (optional) location of PostgreSQL binaries, if not in the default $PATH
-
-Note that the configuration file should *not* be stored inside the PostgreSQL
-data directory. The configuration file can be specified with the
-`-f, --config-file=PATH` option and can have any arbitrary name.`repmgr`
-will fail with an error if it does not find the specified file. If no
-configuration file is specified, `repmgr` will search for `repmgr.conf`
-in the current working directory; if no file is found it will continue
-with default values.
 
 The master node must be registered first using `repmgr master register`,
 and each standby needs to be registered using `repmgr standby register`
 tool; this inserts details about each node into the control database.
+
+See the "QUICKSTART.md" file for examples of how to use these commands.
 
 Failover
 --------
@@ -199,7 +200,7 @@ data directory with the current master, e.g.:
 
     repmgr -f $HOME/repmgr/repmgr.conf \
       --force --rsync-only \
-      -h node2 -d repmgr_db -U repmgr_usr --verbose \
+      -h node2 -d repmgr -U repmgr --verbose \
       standby clone
 
 Here it's essential to use the command line options `--force`, to
@@ -277,7 +278,7 @@ When `repmgrd` is running with the option `-m/--monitoring-history`, it will
 constantly write node status information to the `repl_monitor` table, which can
 be queried easily using the view `repl_status`:
 
-    repmgr_db=# SELECT * FROM repmgr_test.repl_status;
+    repmgr=# SELECT * FROM repmgr_test.repl_status;
     -[ RECORD 1 ]-------------+-----------------------------
     primary_node              | 1
     standby_node              | 2
@@ -452,9 +453,9 @@ its port if is different from the default one.
 
         repmgr -f /path/to/repmgr.conf cluster show
         Role      | Connection String
-        * master  | host=node1 dbname=repmgr_db user=repmgr_usr
-          standby | host=node2 dbname=repmgr_db user=repmgr_usr
-          standby | host=node3 dbname=repmgr_db user=repmgr_usr
+        * master  | host=node1 dbname=repmgr user=repmgr
+          standby | host=node2 dbname=repmgr user=repmgr
+          standby | host=node3 dbname=repmgr user=repmgr
 
 
 * `cluster cleanup`
