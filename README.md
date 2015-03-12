@@ -1,14 +1,45 @@
 repmgr: Replication Manager for PostgreSQL clusters
 ===================================================
 
-`repmgr` is an open-source tool suite for mananaging replication and failover
-among multiple PostgreSQL server nodes. It enhances PostgreSQL's built-in
-hot-standby capabilities with a set of administration tools for monitoring
-replication, setting up standby servers and performing failover/switchover
-operations.
+`repmgr` is an open-source tool to mananage replication and failover
+between multiple PostgreSQL servers. It enhances PostgreSQL's built-in
+hot-standby capabilities with tools to set up standby servers, monitor
+replication, and perform administrative tasks such as failover or manual
+switchover operations.
 
-This document assumes you are familiar with PostgreSQL replication setup and
-Linux/UNIX system administration.
+This document covers `repmgr 3`, which supports PostgreSQL 9.4 and 9.3.
+
+For earlier PostgreSQL 9.x versions, please continue to use `repmgr 2`.
+For a list of changes since `repmgr 2` and instructions on upgrading to
+`repmgr 3`, see the "Upgrading from repmgr 2" section below.
+
+Overview
+--------
+
+The `repmgr` command-line tool is used to perform administrative tasks,
+and the `repmgrd` daemon is used to optionally monitor replication and
+manage automatic failover.
+
+To get started, each PostgreSQL node in your cluster must have a
+`repmgr.conf` file. The current master node must be registered using
+`repmgr master register`. Existing standby servers can be registered
+using `repmgr standby register`. A new standby server can be created
+using `repmgr standby clone` followed by `repmgr standby register`.
+
+See the "QUICKSTART.md" file for examples of how to use these commands.
+
+Once the cluster is in operation, run `repmgr cluster show` to see the
+status of the registered primary and standby nodes. Any standby can be
+manually promoted using `repmgr standby promote`. Other standby nodes
+can be told to follow the new master using `repmgr standby follow`.
+
+Next, for detailed monitoring, you must run `repmgrd` (with the same
+configuration file) on all your nodes. Replication status information is
+stored in a custom schema along with information about registered nodes.
+You also need `repmgrd` to configure automatic failover in your cluster.
+
+See the "FAILOVER.md" file for an explanation of how to set up automatic
+failover.
 
 Repmgr 3 Features
 -----------------
@@ -39,21 +70,6 @@ to do this.
 `repmgrd` must *not* be running while `repl_nodes` is being updated.
 
 Existing `repmgr.conf` files can be retained as-is.
-
-Conceptual Overview
--------------------
-
-`repmgr` provides two binaries:
-
- - `repmgr`: a command-line client to manage replication and `repmgr`
-   configuration
- - `repmgrd`: an optional daemon process which runs on standby nodes to monitor
-   replication and node status
-
-Each PostgreSQL node requires a `repmgr.conf` configuration file; additionally
-it must be "registered" with the current master node using the `repmgr`
-command-line client. `repmgr` stores information about managed nodes in a
-custom schema on the node's current master database; see below for details.
 
 Supported Releases
 ------------------
