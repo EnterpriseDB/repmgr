@@ -358,8 +358,7 @@ its port if is different from the default one.
     must be used by specifying `--rsync-only`. In this case,
     password-less SSH connections between servers are required.
 
-
-* standby promote
+* `standby promote`
 
     Promotes a standby to a master if the current master has failed. This
     command requires a valid `repmgr.conf` file for the standby, either
@@ -373,7 +372,21 @@ its port if is different from the default one.
 
     This command will not function if the current master is still running.
 
-* standby follow
+* `witness create`
+
+    Creates a witness server as a separate PostgreSQL instance. This instance
+    can be on a separate server or a server running an existing node. The
+    witness server contain a copy of the repmgr metadata tables but will not
+    be set up as a standby; instead it will update its metadata copy each
+    time a failover occurs.
+
+    Note that it only makes sense to create a witness server if `repmgrd`
+    is in use; see section "witness server" above.
+
+    By default the witness server will use port 5499 to facilitate easier setup
+    on a server running an existing node.
+
+* `standby follow`
 
     Attaches the standby to a new master. This command requires a valid
     `repmgr.conf` file for the standby, either specified explicitly with
@@ -383,7 +396,7 @@ its port if is different from the default one.
     This command will force a restart of the standby server. It can only be used
     to attach a standby to a new master node.
 
-* cluster show
+* `cluster show`
 
     Displays information about each node in the replication cluster. This
     command polls each registered server and shows its role (master / standby /
@@ -404,7 +417,7 @@ its port if is different from the default one.
           standby | host=node3 dbname=repmgr_db user=repmgr_usr
 
 
-* cluster cleanup
+* `cluster cleanup`
 
     Purges monitoring history from the `repl_monitor` table to prevent excessive
     table growth. Use the `-k/--keep-history` to specify the number of days of
@@ -496,8 +509,6 @@ Thanks from the repmgr core team.
 * Abhijit Menon-Sen
 * Simon Riggs
 * Cedric Villemain
-
-
 
 Further reading
 ---------------
