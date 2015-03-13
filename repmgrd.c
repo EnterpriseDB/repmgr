@@ -279,12 +279,6 @@ main(int argc, char **argv)
 	/* Retrieve record for this node from the database */
 	node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
 
-	if(node_info.node_id == -1)
-	{
-		log_err(_("node %i is not registered\n"), local_options.node);
-		terminate(ERR_BAD_CONFIG);
-	}
-
 	log_debug("node id is %i, upstream is %i\n", node_info.node_id, node_info.upstream_node_id);
 
 	/*
