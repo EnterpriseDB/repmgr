@@ -952,7 +952,7 @@ do_primary_failover(void)
     /* Store details of the failed node here */
     t_node_info failed_primary = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
 
-	/* initialize to keep compiler quiet */
+	/* Store details of the best candidate for promotion to master here */
 	t_node_info best_candidate = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
 
 	/* get a list of standby nodes, including myself */
@@ -980,7 +980,7 @@ do_primary_failover(void)
 	 * total nodes that are registered
 	 */
 	total_nodes = PQntuples(res);
-	log_debug(_("there are %d nodes registered\n"), total_nodes);
+	log_debug(_("%d active nodes registered\n"), total_nodes);
 
 	/*
 	 * Build an array with the nodes and indicate which ones are visible and
@@ -1099,6 +1099,7 @@ do_primary_failover(void)
 		PQfinish(node_conn);
 
 		/* If position is 0/0, error */
+		/* XXX do we need to terminate ourselves if the queried node has a problem? */
 		if(xlog_recptr == InvalidXLogRecPtr)
 		{
 			log_err(_("InvalidXLogRecPtr detected on standby node %i\n"), nodes[i].node_id);
