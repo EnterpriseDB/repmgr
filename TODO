@@ -16,3 +16,10 @@ Planned feature improvements
   algorithm
 
 * include support for delayed standbys
+
+* Create the repmgr user/database on "master register".
+
+* Use pg_basebackup for the data directory, and ALSO rsync for the
+configuration files.
+
+* Use pg_basebackup -X s
