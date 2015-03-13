@@ -54,6 +54,7 @@ typedef struct s_node_info
 	bool		is_ready;
 	bool		is_visible;
 	char		slot_name[MAXLEN];
+	bool		active;
 }	t_node_info;
 
 
@@ -202,6 +203,7 @@ main(int argc, char **argv)
 	 * Read the configuration file: repmgr.conf
 	 */
 	parse_config(config_file, &local_options);
+
 	if (local_options.node == -1)
 	{
 		log_err(_("Node information is missing. "
@@ -2051,7 +2053,7 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 	t_node_info node_info = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
 
 	sprintf(sqlquery,
-			"SELECT id, upstream_node_id, conninfo, type, slot_name "
+			"SELECT id, upstream_node_id, conninfo, type, slot_name, active "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
 			"   AND id = %i",
@@ -2081,6 +2083,9 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 	strncpy(node_info.conninfo_str, PQgetvalue(res, 0, 2), MAXLEN);
 	node_info.type = parse_node_type(PQgetvalue(res, 0, 3));
 	strncpy(node_info.slot_name, PQgetvalue(res, 0, 4), MAXLEN);
+	node_info.active = (strcmp(PQgetvalue(res, 0, 5), "t") == 0)
+		? true
+		: false;
 
 	PQclear(res);
 
