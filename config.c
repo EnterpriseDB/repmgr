@@ -254,6 +254,18 @@ parse_config(const char *config_file, t_configuration_options *options)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	if (*options->node_name == '\0')
+	{
+		log_err(_("Parameter 'node_name' was not found. Check the configuration file.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (*options->conninfo == '\0')
+	{
+		log_err(_("Parameter 'conninfo' was not found. Check the configuration file.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
 	/* The following checks are for value parameter values */
 	if (options->master_response_timeout <= 0)
 	{
