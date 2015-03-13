@@ -1101,3 +1101,55 @@ delete_node_record(PGconn *conn, int node, char *action)
 	return true;
 }
 
+
+bool
+create_event_record(PGconn *conn, int node_id, char *event, bool successful, char *details)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	int n_node_id = htonl(node_id);
+	char *t_successful = successful ? "TRUE" : "FALSE";
+
+	const char *values[4] = { (char *)&n_node_id,
+							  event,
+							  t_successful,
+							  details
+							};
+
+	int lengths[4] = { sizeof(n_node_id),
+					   0,
+					   0,
+					   0
+				     };
+	int binary[4] = {1, 0, 0, 0};
+
+	sqlquery_snprintf(sqlquery,
+					  " INSERT INTO %s.repl_events ( "
+					  "             node_id, "
+					  "             event, "
+					  "             successful, "
+					  "             details "
+					  "            ) "
+					  "      VALUES ($1, $2, $3, $4) ",
+					  get_repmgr_schema_quoted(conn));
+
+	res = PQexecParams(conn,
+					   sqlquery,
+					   4,
+					   NULL,
+					   values,
+					   lengths,
+					   binary,
+					   0);
+
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_warning(_("Cannot insert event details, %s\n"),
+					PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	return true;
+}

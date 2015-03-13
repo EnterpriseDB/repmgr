@@ -79,6 +79,7 @@ static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_er
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
 
 static char *make_pg_path(char *file);
+static bool log_event(PGconn *standby_conn, bool success, char *details);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -776,6 +777,19 @@ do_master_register(void)
 	}
 
 
+	/* Log the event */
+	record_created = create_event_record(conn,
+										 options.node,
+										 "master_register",
+										 true,
+										 NULL);
+
+	if(record_created == false)
+	{
+		PQfinish(conn);
+		exit(ERR_DB_QUERY);
+	}
+
 	PQfinish(conn);
 
 	log_notice(_("master node correctly registered for cluster %s with id %d (conninfo: %s)\n"),
@@ -869,6 +883,20 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* Log the event */
+	record_created = create_event_record(master_conn,
+										 options.node,
+										 "standby_register",
+										 true,
+										 NULL);
+
+	if(record_created == false)
+	{
+		PQfinish(master_conn);
+		PQfinish(conn);
+		exit(ERR_DB_QUERY);
+	}
+
 	PQfinish(master_conn);
 	PQfinish(conn);
 
@@ -918,6 +946,9 @@ do_standby_clone(void)
 
 	char	   *first_wal_segment = NULL;
 	char	   *last_wal_segment = NULL;
+
+	bool		record_created = FALSE;
+	PQExpBufferData event_details;
 
 	/*
 	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
@@ -1464,8 +1495,56 @@ stop_backup:
 		log_notice(_("for example : /etc/init.d/postgresql start\n"));
 	}
 
+	/* Log the event */
+	initPQExpBuffer(&event_details);
+
+	/* Add details about relevant runtime options used */
+	appendPQExpBuffer(&event_details,
+					  _("Cloned from host '%s', port %s"),
+					  runtime_options.host,
+					  runtime_options.masterport);
+
+	appendPQExpBuffer(&event_details,
+					  _("; backup method: %s"),
+					  runtime_options.rsync_only ? "rsync" : "pg_basebackup");
+
+	appendPQExpBuffer(&event_details,
+					  _("; --force: %s"),
+					  runtime_options.force ? "Y" : "N");
+
+	record_created = log_event(upstream_conn,
+										 true,
+										 event_details.data);
+
+	if(record_created == false)
+	{
+		PQfinish(upstream_conn);
+		exit(ERR_DB_QUERY);
+	}
+
 	PQfinish(upstream_conn);
 	exit(retval);
+}
+
+
+static bool
+log_event(PGconn *standby_conn, bool success, char *details)
+{
+	PGconn *primary_conn;
+	bool    retval;
+
+	primary_conn = get_primary_connection(standby_conn,
+										   options.cluster_name,
+										    NULL, NULL);
+
+	retval = create_event_record(primary_conn,
+								 options.node,
+								 "standby_clone",
+								 success,
+								 details);
+	PQfinish(primary_conn);
+
+	return retval;
 }
 
 
@@ -1487,6 +1566,7 @@ do_standby_promote(void)
 				promote_check_interval = 2;
 	bool		promote_sucess = false;
 	bool        success;
+	bool        record_created;
 
 	/* We need to connect to check configuration */
 	log_info(_("connecting to standby database\n"));
@@ -1568,6 +1648,17 @@ do_standby_promote(void)
 
 	if (promote_sucess == false)
 	{
+		PQExpBufferData details;
+		initPQExpBuffer(&details);
+		appendPQExpBuffer(&details,
+						  "Node %i could not be promoted to master",
+						  options.node);
+
+		record_created = create_event_record(old_master_conn,
+											 options.node,
+											 "standby_promote",
+											 false,
+											 details.data);
 		/* XXX exit with error? */
 		log_err(_(retval == 1 ?
 			  "STANDBY PROMOTE failed, this is still a standby node.\n" :
@@ -1575,12 +1666,28 @@ do_standby_promote(void)
 	}
 	else
 	{
+		PQExpBufferData details;
+		initPQExpBuffer(&details);
+		appendPQExpBuffer(&details,
+						  "Node %i was successfully promoted to master",
+						  options.node);
+
 		log_notice(_("STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"));
+		/* Log the event */
+		record_created = create_event_record(conn,
+											 options.node,
+											 "standby_promote",
+											 true,
+											 details.data);
 	}
 
 	PQfinish(old_master_conn);
 	PQfinish(conn);
 
+	if(record_created == false)
+	{
+		exit(ERR_DB_QUERY);
+	}
 
 	return;
 }
@@ -1746,10 +1853,21 @@ do_witness_create(void)
 	retval = is_standby(masterconn);
 	if (retval)
 	{
-		log_err("%s\n", _(retval == 1 ?
+		PQExpBufferData errmsg;
+		initPQExpBuffer(&errmsg);
+		appendPQExpBuffer(&errmsg,
+						  "%s",
+						  _(retval == 1 ?
 							"provided upstream node is not a master" :
 							"connection to upstream node lost"));
 
+		log_err("%s\n", errmsg.data);
+
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg.data);
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1759,8 +1877,18 @@ do_witness_create(void)
 	r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
 	if (r != 0)
 	{
-		log_err(_("unable to connect to remote host '%s' via SSH\n"), runtime_options.host);
+		PQExpBufferData errmsg;
+		initPQExpBuffer(&errmsg);
+		appendPQExpBuffer(&errmsg,
+						  _("unable to connect to remote host '%s' via SSH"),
+						  runtime_options.host);
+		log_err("%s\n", errmsg.data);
 
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg.data);
 		PQfinish(masterconn);
 		exit(ERR_BAD_SSH);
 	}
@@ -1768,7 +1896,17 @@ do_witness_create(void)
 	/* Check this directory could be used as a PGDATA dir */
 	if (!create_pg_dir(runtime_options.dest_dir, runtime_options.force))
 	{
-		log_err(_("unable to create witness server data directory (\"%s\")\n"), runtime_options.host);
+		PQExpBufferData errmsg;
+		initPQExpBuffer(&errmsg);
+		appendPQExpBuffer(&errmsg,
+						  _("unable to create witness server data directory (\"%s\")"),
+						  runtime_options.host);
+		log_err("%s\n", errmsg.data);
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg.data);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1792,8 +1930,13 @@ do_witness_create(void)
 	r = system(script);
 	if (r != 0)
 	{
-		log_err(_("unable to initialize cluster for witness server\n"));
-
+		char *errmsg = _("unable to initialize cluster for witness server");
+		log_err("%s\n", errmsg);
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg);
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1803,8 +1946,19 @@ do_witness_create(void)
 	pg_conf = fopen(buf, "a");
 	if (pg_conf == NULL)
 	{
-		log_err(_("unable to open \"%s\" to add additional configuration items: %s\n"),
-				buf, strerror(errno));
+		PQExpBufferData errmsg;
+		initPQExpBuffer(&errmsg);
+		appendPQExpBuffer(&errmsg,
+						  _("unable to open \"%s\" to add additional configuration items: %s\n"),
+						  buf,
+						  strerror(errno));
+		log_err("%s\n", errmsg.data);
+
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg.data);
 
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
@@ -1842,7 +1996,14 @@ do_witness_create(void)
 	r = system(script);
 	if (r != 0)
 	{
-		log_err(_("unable to start witness server\n"));
+		char *errmsg = _("unable to start witness server");
+		log_err("%s\n", errmsg);
+
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg);
 
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
@@ -1860,8 +2021,14 @@ do_witness_create(void)
 		r = system(script);
 		if (r != 0)
 		{
-			log_err(_("unable to create user for witness server\n"));
+			char *errmsg = _("unable to create user for witness server");
+			log_err("%s\n", errmsg);
 
+			create_event_record(masterconn,
+								options.node,
+								"witness_create",
+								false,
+								errmsg);
 			PQfinish(masterconn);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -1879,7 +2046,14 @@ do_witness_create(void)
 		r = system(script);
 		if (r != 0)
 		{
-			log_err(_("Unable to create database for witness server\n"));
+			char *errmsg = _("Unable to create database for witness server");
+			log_err("%s\n", errmsg);
+
+			create_event_record(masterconn,
+								options.node,
+								"witness_create",
+								false,
+								errmsg);
 
 			PQfinish(masterconn);
 			exit(ERR_BAD_CONFIG);
@@ -1891,7 +2065,14 @@ do_witness_create(void)
 
 	if (success == false)
 	{
-		log_err(_("unable to retrieve location of pg_hba.conf\n"));
+		char *errmsg = _("unable to retrieve location of pg_hba.conf");
+		log_err("%s\n", errmsg);
+
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg);
 
 		exit(ERR_DB_QUERY);
 	}
@@ -1900,7 +2081,14 @@ do_witness_create(void)
 						  master_hba_file, runtime_options.dest_dir, false, -1);
 	if (r != 0)
 	{
-		log_err(_("unable to copy pg_hba.conf from master\n"));
+		char *errmsg = _("unable to copy pg_hba.conf from master");
+		log_err("%s\n", errmsg);
+
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg);
 
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
@@ -1914,7 +2102,14 @@ do_witness_create(void)
 	r = system(script);
 	if (r != 0)
 	{
-		log_err( _("unable to reload witness server\n"));
+		char *errmsg = _("unable to reload witness server");
+		log_err("%s\n", errmsg);
+
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							errmsg);
 
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
@@ -1935,6 +2130,12 @@ do_witness_create(void)
 
 	if(record_created == false)
 	{
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							"Unable to create witness node record on master");
+
 		PQfinish(masterconn);
 		exit(ERR_DB_QUERY);
 	}
@@ -1946,6 +2147,11 @@ do_witness_create(void)
 
 	if (!create_schema(witnessconn))
 	{
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							_("unable to create schema on witness"));
 		PQfinish(masterconn);
 		PQfinish(witnessconn);
 		exit(ERR_BAD_CONFIG);
@@ -1954,6 +2160,11 @@ do_witness_create(void)
 	/* copy configuration from master, only repl_nodes is needed */
 	if (!copy_configuration(masterconn, witnessconn, options.cluster_name))
 	{
+		create_event_record(masterconn,
+							options.node,
+							"witness_create",
+							false,
+							_("Unable to copy configuration from master"));
 		PQfinish(masterconn);
 		PQfinish(witnessconn);
 		exit(ERR_BAD_CONFIG);
@@ -1977,6 +2188,19 @@ do_witness_create(void)
 			PQfinish(witnessconn);
 			exit(ERR_DB_QUERY);
 		}
+	}
+
+	/* Log the event */
+	record_created = create_event_record(masterconn,
+										 options.node,
+										 "witness_create",
+										 true,
+										 NULL);
+
+	if(record_created == false)
+	{
+		PQfinish(masterconn);
+		exit(ERR_DB_QUERY);
 	}
 
 	PQfinish(masterconn);
@@ -2411,6 +2635,8 @@ create_schema(PGconn *conn)
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
+
+	/* create schema */
 	sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", get_repmgr_schema_quoted(conn));
 	log_debug(_("master register: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
@@ -2422,6 +2648,9 @@ create_schema(PGconn *conn)
 		exit(ERR_BAD_CONFIG);
 	}
 	PQclear(res);
+
+
+	/* create functions */
 
 	/*
 	 * to avoid confusion of the time_lag field and provide a consistent UI we
@@ -2461,7 +2690,9 @@ create_schema(PGconn *conn)
 	PQclear(res);
 
 
-	/* ... the tables */
+	/* Create tables */
+
+	/* CREATE TABLE repl_nodes */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE TABLE %s.repl_nodes (     "
 					  "  id               INTEGER PRIMARY KEY, "
@@ -2487,6 +2718,8 @@ create_schema(PGconn *conn)
 	}
 	PQclear(res);
 
+	/* CREATE TABLE repl_monitor */
+
 	sqlquery_snprintf(sqlquery,
 					  "CREATE TABLE %s.repl_monitor ( "
 					  "  primary_node                   INTEGER NOT NULL, "
@@ -2509,7 +2742,30 @@ create_schema(PGconn *conn)
 	}
 	PQclear(res);
 
-	/* a view */
+	/* CREATE TABLE repl_events */
+
+	sqlquery_snprintf(sqlquery,
+					  "CREATE TABLE %s.repl_events (     "
+					  "  node_id          INTEGER NOT NULL, "
+					  "  event            TEXT NOT NULL, "
+					  "  successful       BOOLEAN NOT NULL DEFAULT TRUE, "
+					  "  event_timestamp  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+					  "  details          TEXT NULL "
+					  " ) ",
+					  get_repmgr_schema_quoted(conn));
+
+	log_debug(_("master register: %s\n"), sqlquery);
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("unable to create table '%s.repl_events': %s\n"),
+				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	PQclear(res);
+
+	/* CREATE VIEW repl_status  */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE VIEW %s.repl_status AS "
 					  "  SELECT m.primary_node, m.standby_node, n.name AS standby_name, "

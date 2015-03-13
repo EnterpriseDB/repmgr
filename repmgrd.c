@@ -154,6 +154,7 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c;
 	bool		daemonize = false;
+	bool        startup_event_logged = false;
 
 	FILE	   *fd;
 
@@ -312,6 +313,17 @@ main(int argc, char **argv)
 					update_registration();
 				}
 
+				/* Log startup event */
+				if(startup_event_logged == false)
+				{
+					create_event_record(primary_conn,
+										local_options.node,
+										"repmgrd_start",
+										true,
+										NULL);
+					startup_event_logged = true;
+				}
+
 				log_info(_("starting continuous primary connection check\n"));
 
 				/*
@@ -394,6 +406,16 @@ main(int argc, char **argv)
 					PQfinish(my_local_conn);
 					my_local_conn = establish_db_connection(local_options.conninfo, true);
 					update_registration();
+				}
+				/* Log startup event */
+				if(startup_event_logged == false)
+				{
+					create_event_record(primary_conn,
+										local_options.node,
+										"repmgrd_start",
+										true,
+										NULL);
+					startup_event_logged = true;
 				}
 
 				/*
@@ -1301,6 +1323,9 @@ do_primary_failover(void)
 	/* if local node is the best candidate, promote it */
 	if (best_candidate.node_id == local_options.node)
 	{
+		PQExpBufferData event_details;
+
+		initPQExpBuffer(&event_details);
 		/* wait */
 		sleep(5);
 
@@ -1329,17 +1354,42 @@ do_primary_failover(void)
 		/* update node information to reflect new status */
 		if(update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id) == false)
 		{
+			appendPQExpBuffer(&event_details,
+							  _("unable to update node record for node %i (promoted to master following failure of node %i)"),
+							  node_info.node_id,
+							  failed_primary.node_id);
+
+			create_event_record(my_local_conn,
+								node_info.node_id,
+								"repmgrd_failover_promote",
+								false,
+								event_details.data);
+
 			terminate(ERR_DB_QUERY);
 		}
 
 		/* update internal record for this node*/
 		node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
+
+		appendPQExpBuffer(&event_details,
+						  _("node %i promoted to master; old master %i marked as failed"),
+						  node_info.node_id,
+						  failed_primary.node_id);
+
+		create_event_record(my_local_conn,
+							node_info.node_id,
+							"repmgrd_failover_promote",
+							true,
+							event_details.data);
+
 	}
     /* local node not promotion candidate - find the new primary */
 	else
 	{
 		PGconn	   *new_primary_conn;
+		PQExpBufferData event_details;
 
+		initPQExpBuffer(&event_details);
 		/* wait */
 		sleep(10);
 
@@ -1367,10 +1417,19 @@ do_primary_failover(void)
 		{
 			if(create_replication_slot(new_primary_conn, node_info.slot_name) == false)
 			{
-				log_err(("Unable to create slot '%s' on the primary node: %s\n"),
-						node_info.slot_name,
-						PQerrorMessage(new_primary_conn)
-					);
+
+				appendPQExpBuffer(&event_details,
+								  _("Unable to create slot '%s' on the primary node: %s"),
+								  node_info.slot_name,
+								  PQerrorMessage(new_primary_conn));
+
+				create_event_record(new_primary_conn,
+									node_info.node_id,
+									"repmgrd_failover_follow",
+									false,
+									event_details.data);
+
+				log_err("%s\n", event_details.data);
 
 				PQfinish(new_primary_conn);
 				terminate(ERR_DB_QUERY);
@@ -1390,13 +1449,35 @@ do_primary_failover(void)
 		/* update node information to reflect new status */
 		if(update_node_record_set_upstream(new_primary_conn, node_info.node_id, best_candidate.node_id) == false)
 		{
+			appendPQExpBuffer(&event_details,
+							  _("Unable to update node record for node %i (following new upstream node %i)"),
+							  node_info.node_id,
+							  best_candidate.node_id);
+
+			create_event_record(new_primary_conn,
+								node_info.node_id,
+								"repmgrd_failover_follow",
+								false,
+								event_details.data);
+
 			terminate(ERR_BAD_CONFIG);
 		}
 
 		/* update internal record for this node*/
 		node_info = get_node_info(new_primary_conn, local_options.cluster_name, local_options.node);
+		appendPQExpBuffer(&event_details,
+						  _("Node %i now following new upstream node %i"),
+						  node_info.node_id,
+						  best_candidate.node_id);
+
+		create_event_record(new_primary_conn,
+							node_info.node_id,
+							"repmgrd_failover_follow",
+							true,
+							event_details.data);
 
 		PQfinish(new_primary_conn);
+		destroyPQExpBuffer(&event_details);
 	}
 
 	/* to force it to re-calculate mode and master node */
