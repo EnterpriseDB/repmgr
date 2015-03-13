@@ -234,40 +234,42 @@ parse_config(const char *config_file, t_configuration_options *options)
 			log_err(_("No value provided for parameter '%s'. Check the configuration file.\n"), name);
 			exit(ERR_BAD_CONFIG);
 		}
-
 	}
 
 	/* Close file */
 	fclose(fp);
 
 	/* Check config settings */
+
+	/* The following checks are for the presence of the parameter */
 	if (*options->cluster_name == '\0')
 	{
-		log_err(_("Cluster name was not found. Check the configuration file.\n"));
+		log_err(_("Parameter 'cluster' was not found. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (options->node == -1)
 	{
-		log_err(_("Node id was not found. Check the configuration file.\n"));
+		log_err(_("Parameter 'node' was not found. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* The following checks are for value parameter values */
 	if (options->master_response_timeout <= 0)
 	{
-		log_err(_("Master response timeout must be greater than zero. Check the configuration file.\n"));
+		log_err(_("'master_response_timeout' must be greater than zero. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (options->reconnect_attempts < 0)
 	{
-		log_err(_("Reconnect attempts must be zero or greater. Check the configuration file.\n"));
+		log_err(_("'reconnect_attempts' must be zero or greater. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (options->reconnect_intvl <= 0)
 	{
-		log_err(_("Reconnect intervals must be zero or greater. Check the configuration file.\n"));
+		log_err(_("'reconnect_intervals' must be zero or greater. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
