@@ -994,6 +994,8 @@ do_primary_failover(void)
 
 		nodes[i].type = parse_node_type(PQgetvalue(res, i, 2));
 
+		/* Copy details of the failed node */
+		/* XXX only node_id is actually used later */
 		if(nodes[i].type == PRIMARY)
 		{
 			failed_primary.node_id = nodes[i].node_id;
@@ -1265,8 +1267,8 @@ do_primary_failover(void)
 		if (!candidate_found)
 		{
 			/*
-			 * start with the first ready node, and then move on to the next
-			 * one
+			 * If no candidate has been found so far, the first visible and ready
+			 * node becomes the best candidate by default
 			 */
 			best_candidate.node_id = nodes[i].node_id;
 			best_candidate.xlog_location = nodes[i].xlog_location;
