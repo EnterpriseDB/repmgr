@@ -14,11 +14,11 @@ Installation
 For convenience, we define:
 
 **node1**
-    is the hostname fully qualified of the Master server, IP 192.168.1.10
+    is the fully qualified domain name of the Master server, IP 192.168.1.10
 **node2**
-    is the hostname fully qualified of the Standby server, IP 192.168.1.11
+    is the fully qualified domain name of the Standby server, IP 192.168.1.11
 **witness**
-    is the hostname fully qualified of the server used as a witness, IP 192.168.1.12
+    is the fully qualified domain name of the server used as a witness, IP 192.168.1.12
 
 **Note:** We don't recommend using names with the status of a server like «masterserver»,
 because it would be confusing once a failover takes place and the Master is
