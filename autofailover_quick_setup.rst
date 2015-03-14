@@ -205,7 +205,7 @@ it can reconnect when needed.
 Start the repmgrd daemons
 -------------------------
 
-Log in to node2 and witness.
+Log in to node2 and witness::
 
   su - postgres
   repmgrd -f /etc/repmgr/repmgr.conf --daemonize -> /var/log/postgresql/repmgr.log 2>&1
