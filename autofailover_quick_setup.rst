@@ -223,7 +223,7 @@ Edit the repmgr.conf of the node to remove from automatic processing and change:
 Then, signal repmgrd daemon::
 
   su - postgres
-  kill -HUP `pidof repmgrd`
+  kill -HUP $(pidof repmgrd)
 
 Usage
 =====
