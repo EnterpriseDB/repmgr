@@ -65,7 +65,7 @@ Install repmgr following the steps in the README file.
 Configure PostreSQL
 -------------------
 
-Log in node1.
+Log in to node1.
 
 Edit the file postgresql.conf and modify the parameters::
 
@@ -116,7 +116,7 @@ Create the ssh-key for the postgres user and copy it to other servers::
 Clone Master
 ------------
 
-Log in node2.
+Log in to node2.
 
 Clone the node1 (the current Master)::
 
@@ -132,7 +132,7 @@ And check everything is fine in the server log.
 Configure repmgr
 ----------------
 
-Log in each server and configure repmgr by editing the file
+Log in to each server and configure repmgr by editing the file
 /etc/repmgr/repmgr.conf::
 
   cluster=my_cluster
@@ -170,14 +170,14 @@ Log in each server and configure repmgr by editing the file
 Register Master and Standby
 ---------------------------
 
-Log in node1.
+Log in to node1.
 
 Register the node as Master::
 
   su - postgres
   repmgr -f /etc/repmgr/repmgr.conf master register
 
-Log in node2. Register it as a standby::
+Log in to node2. Register it as a standby::
 
   su - postgres
   repmgr -f /etc/repmgr/repmgr.conf standby register
@@ -185,7 +185,7 @@ Log in node2. Register it as a standby::
 Initialize witness server
 -------------------------
 
-Log in witness.
+Log in to witness.
 
 Initialize the witness server::
 
@@ -198,7 +198,7 @@ As part of the procees it also ask for the superuser password so it can connect 
 Start the repmgrd daemons
 -------------------------
 
-Log in node2 and witness.
+Log in to node2 and witness.
 
 	su - postgres
 	repmgrd -f /etc/repmgr/repmgr.conf --daemonize -> /var/log/postgresql/repmgr.log 2>&1
