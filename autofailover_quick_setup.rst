@@ -153,7 +153,7 @@ Log in to each server and configure repmgr by editing the file
 **node_name**
     is an identifier for every node.
 **conninfo**
-    is used to connect to the local PostgreSQL server (where the configuration file is) from any node. In the witness server configuration it is needed to add a 'port=5499' to the conninfo.
+    is used to connect to the local PostgreSQL server (where the configuration file is) from any node. In the witness server configuration you need to add a 'port=5499' to the conninfo.
 **master_response_timeout**
     is the maximum amount of time we are going to wait before deciding the master has died and start failover procedure.
 **reconnect_attempts**
