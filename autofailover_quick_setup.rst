@@ -192,8 +192,15 @@ Initialize the witness server::
   su - postgres
   repmgr -d repmgr -U repmgr -h 192.168.1.10 -D $WITNESS_PGDATA -f /etc/repmgr/repmgr.conf witness create
 
-It needs information to connect to the master to copy the configuration of the cluster, also it needs to know where it should initialize it's own $PGDATA.
-As part of the procees it also ask for the superuser password so it can connect when needed.
+The witness server needs the following information from the command
+line:
+
+* Connection details for the current master, to copy the cluster
+  configuration.
+* A location for initializing its own $PGDATA.
+
+It will also ask for the superuser password on the witness database so
+it can reconnect when needed.
 
 Start the repmgrd daemons
 -------------------------
