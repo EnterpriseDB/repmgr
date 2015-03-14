@@ -27,9 +27,9 @@ now on the «standbyserver».
 Summary
 -------
 
-2 PostgreSQL servers are involved in the replication.  Automatic failover need
-to vote to decide what server it should promote, thus an odd number is required
-and a witness-repmgrd is installed in a third server where it uses a PostgreSQL
+2 PostgreSQL servers are involved in the replication.  Automatic failover needs
+a vote to decide what server it should promote, so an odd number is required.
+A witness-repmgrd is installed in a third server where it uses a PostgreSQL
 cluster to communicate with other repmgrd daemons.
 
 1. Install PostgreSQL in all the servers involved (including the server used for
