@@ -20,8 +20,8 @@ For convenience, we define:
 **witness**
     is the hostname fully qualified of the server used for witness, IP 192.168.1.12
 
-**Note:** It is not recommanded to use name defining status of a server like «masterserver»,
-this is a name leading to confusion once a failover take place and the Master is
+**Note:** We don't recommend using names with the status of a server like «masterserver»,
+because it would be confusing once a failover takes place and the Master is
 now on the «standbyserver».
 
 Summary
