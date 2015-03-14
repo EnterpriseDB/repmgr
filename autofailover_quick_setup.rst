@@ -118,7 +118,7 @@ Clone Master
 
 Log in to node2.
 
-Clone the node1 (the current Master)::
+Clone node1 (the current Master)::
 
   su - postgres
   repmgr -d repmgr -U repmgr -h node1 standby clone 
