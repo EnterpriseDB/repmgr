@@ -5,7 +5,7 @@
 Automatic Failover
 ==================
 
-repmgr allows setups for automatic failover when it detects the failure of the master node.
+repmgr allows for automatic failover when it detects the failure of the master node.
 Following is a quick setup for this.
 
 Installation
