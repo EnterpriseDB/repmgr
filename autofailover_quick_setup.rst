@@ -1,6 +1,6 @@
-=====================================================
- PostgreSQL Automatic Fail-Over - User Documentation
-=====================================================
+====================================================
+ PostgreSQL Automatic Failover - User Documentation
+====================================================
 
 Automatic Failover
 ==================
@@ -27,7 +27,7 @@ now on the «standbyserver».
 Summary
 -------
 
-2 PostgreSQL servers are involved in the replication.  Automatic fail-over need
+2 PostgreSQL servers are involved in the replication.  Automatic failover need
 to vote to decide what server it should promote, thus an odd number is required
 and a witness-repmgrd is installed in a third server where it uses a PostgreSQL
 cluster to communicate with other repmgrd daemons.
