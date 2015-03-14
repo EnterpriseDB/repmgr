@@ -9,8 +9,8 @@
 
 ### BEGIN INIT INFO
 # Provides: repmgrd
-# Required-Start:  $local_fs $remote_fs $network $syslog postgresql
-# Required-Stop:     $local_fs $remote_fs $network $syslog postgresql
+# Required-Start:  $local_fs $remote_fs $network $syslog 
+# Required-Stop:     $local_fs $remote_fs $network $syslog 
 # Should-Start:	     $syslog postgresql-9.3
 # Should-Stop: $syslog postgresql-9.3
 # Short-Description: start and stop repmrgd
@@ -28,7 +28,6 @@ prog=repmgrd
 REPMGRD_ENABLED=yes
 REPMGRD_OPTS=
 REPMGRD_USER=postgres
-DAEMONIZE="-d"
 
 # pull in sysconfig settings
 [ -f /etc/sysconfig/repmgrd ] && . /etc/sysconfig/repmgrd
@@ -52,13 +51,19 @@ then
     exit 2
 fi
 
+
 start() {
 	[ "$EUID" != "0" ] && exit 4
         [ "$NETWORKING" = "no" ] && exit 1
-
+	checklockfile
+	if [ "$RETVAL" == "0" ] ; then
+		echo "process is already running."
+		return $RETVAL
+	fi
         # Start daemons.
         echo -n $"Starting $prog: "
-        daemon --user $REPMGRD_USER $prog $DAEMONIZE $REPMGRD_OPTS
+        daemon --user $REPMGRD_USER $prog -d $REPMGRD_OPTS
+	checklockfile
         RETVAL=$?
         echo
         [ $RETVAL -eq 0 ] && touch $LOCKFILE
@@ -74,14 +79,42 @@ stop() {
         [ $RETVAL -eq 0 ] && rm -f $LOCKFILE
         return $RETVAL
 }
-status() {
-        if [ -f "$LOCKFILE" ]; then
-            echo "$prog is running"
-        else
-	    RETVAL=3
-            echo "$prog is stopped"
-        fi
-        return $RETVAL
+
+function status()
+{
+	checklockfile
+	if [ "$RETVAL" -eq "1" ]; then
+		echo "${prog} is stopped"
+	else
+		if [ "$RETVAL" -eq "2" ]; then
+			echo "${prog} (pid ${pid}) is running but lockfile is missing..."
+			RETVAL="0"
+		else
+			echo "${prog} (pid ${pid}) is running..."
+		fi
+	fi
+	return $RETVAL
+}
+
+function checklockfile()
+{
+	pid="$(/usr/bin/pgrep -d , -u ${REPMGRD_USER} ${prog})"
+	/usr/bin/pgrep -d , -u ${REPMGRD_USER} ${prog}
+	if [ -z "$pid" ]; then
+		#process is not running
+		if [ -f "$LOCKFILE" ] ; then
+			rm -f "$LOCKFILE"
+		fi
+		RETVAL="1"
+	else
+		if [ -f "$LOCKFILE" ]; then
+			# The lockfile exists and the process is running
+			RETVAL="0"
+		else
+			#lockfile does not exist and process is running
+			RETVAL="2"
+		fi
+	fi
 }
 
 # See how we were called.

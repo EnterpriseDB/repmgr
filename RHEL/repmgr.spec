@@ -1,7 +1,7 @@
 Summary: repmgr
 Name: repmgr
 Version: 2.0
-Release: 2
+Release: 4
 License: GPLv3
 Group: System Environment/Daemons
 URL: http://repmgr.org 
@@ -50,6 +50,10 @@ export PATH=$PATH:/usr/pgsql-9.3/bin/
 %attr(0644,root,root)/etc/repmgr/repmgr.conf.sample
 
 %changelog
+* Thu Oct 23 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.4
+- improvement in init script: not use pid file anymore
+* Thu Jul 31 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.3
+- improvement in start script
 * Thu Jun 05 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.2
 - fix witness creation to create db and user if needed
 * Fri Apr 04 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.1
