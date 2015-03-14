@@ -72,7 +72,7 @@ Edit the file postgresql.conf and modify the parameters::
   listen_addresses='*'
   wal_level = 'hot_standby'
   archive_mode = on
-  archive_command = 'cd .'	 # we can also use exit 0, anything that
+  archive_command = 'cd .'   # we can also use exit 0, anything that
                              # just does nothing
   max_wal_senders = 10
   wal_keep_segments = 5000   # 80 GB required on pg_xlog
@@ -207,8 +207,8 @@ Start the repmgrd daemons
 
 Log in to node2 and witness.
 
-	su - postgres
-	repmgrd -f /etc/repmgr/repmgr.conf --daemonize -> /var/log/postgresql/repmgr.log 2>&1
+  su - postgres
+  repmgrd -f /etc/repmgr/repmgr.conf --daemonize -> /var/log/postgresql/repmgr.log 2>&1
 
 **Note:** The Master does not need a repmgrd daemon.
 
@@ -218,12 +218,12 @@ Suspend Automatic behavior
 
 Edit the repmgr.conf of the node to remove from automatic processing and change::
 
-	failover=manual
+  failover=manual
 
 Then, signal repmgrd daemon::
 
-	su - postgres
-	kill -HUP `pidof repmgrd`
+  su - postgres
+  kill -HUP `pidof repmgrd`
 
 Usage
 =====
