@@ -18,7 +18,7 @@ For convenience, we define:
 **node2**
     is the hostname fully qualified of the Standby server, IP 192.168.1.11
 **witness**
-    is the hostname fully qualified of the server used for witness, IP 192.168.1.12
+    is the hostname fully qualified of the server used as a witness, IP 192.168.1.12
 
 **Note:** We don't recommend using names with the status of a server like «masterserver»,
 because it would be confusing once a failover takes place and the Master is
@@ -32,16 +32,15 @@ a vote to decide what server it should promote, so an odd number is required.
 A witness-repmgrd is installed in a third server where it uses a PostgreSQL
 cluster to communicate with other repmgrd daemons.
 
-1. Install PostgreSQL in all the servers involved (including the server used for
-   witness)
+1. Install PostgreSQL in all the servers involved (including the witness server)
 
-2. Install repmgr in all the servers involved (including the server used for witness)
+2. Install repmgr in all the servers involved (including the witness server)
 
 3. Configure the Master PostreSQL
 
 4. Clone the Master to the Standby using "repmgr standby clone" command
 
-5. Configure repmgr in all the servers involved (including the server used for witness)
+5. Configure repmgr in all the servers involved (including the witness server)
 
 6. Register Master and Standby nodes
 
