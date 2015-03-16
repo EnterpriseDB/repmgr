@@ -180,13 +180,17 @@ parse_config(const char *config_file, t_configuration_options *options)
 			strncpy(failoverstr, value, MAXLEN);
 
 			if (strcmp(failoverstr, "manual") == 0)
+			{
 				options->failover = MANUAL_FAILOVER;
+			}
 			else if (strcmp(failoverstr, "automatic") == 0)
+			{
 				options->failover = AUTOMATIC_FAILOVER;
+			}
 			else
 			{
-				log_warning(_("Value for failover option is incorrect, it should be 'automatic' or 'manual'. Defaulting to manual.\n"));
-				options->failover = MANUAL_FAILOVER;
+				log_err(_("value for 'failover' must be 'automatic' or 'manual'\n"));
+				exit(ERR_BAD_CONFIG);
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
@@ -394,7 +398,7 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 
 	if (new_options.failover != MANUAL_FAILOVER && new_options.failover != AUTOMATIC_FAILOVER)
 	{
-		log_warning(_("new value for 'failover' must be MANUAL or AUTOMATIC\n"));
+		log_warning(_("new value for 'failover' must be 'automatic' or 'manual'\n"));
 		return false;
 	}
 
