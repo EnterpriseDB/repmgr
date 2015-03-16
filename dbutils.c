@@ -1235,6 +1235,12 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 			{
 				switch (src_ptr[1])
 				{
+					case 'n':
+						/* %n: node id */
+						src_ptr++;
+						snprintf(dst_ptr, end_ptr - dst_ptr, "%i", node_id);
+						dst_ptr += strlen(dst_ptr);
+						break;
 					case 'e':
 						/* %e: event type */
 						src_ptr++;
