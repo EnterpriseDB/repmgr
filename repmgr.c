@@ -1,5 +1,5 @@
 /*
- * repmgr.c - Command interpreter for the repmgr
+ * repmgr.c - Command interpreter for the repmgr package
  * Copyright (C) 2ndQuadrant, 2010-2015
  *
  * This module is a command-line utility to easily setup a cluster of
@@ -53,7 +53,7 @@
 
 #define RECOVERY_FILE "recovery.conf"
 
-#define NO_ACTION		 0		/* Not a real action, just to initialize */
+#define NO_ACTION		 0		/* Dummy default action */
 #define MASTER_REGISTER  1
 #define STANDBY_REGISTER 2
 #define STANDBY_CLONE	 3
