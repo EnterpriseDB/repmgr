@@ -24,6 +24,7 @@
 #include "strutil.h"
 #include "repmgr.h"
 
+static void parse_event_notifications_list(t_configuration_options *options, const char *arg);
 static void tablespace_list_append(t_configuration_options *options, const char *arg);
 
 
@@ -220,6 +221,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 			options->ignore_external_config_files = atoi(value);
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
+		else if (strcmp(name, "event_notifications") == 0)
+			parse_event_notifications_list(options, value);
 		else if (strcmp(name, "tablespace_mapping") == 0)
 			tablespace_list_append(options, value);
 		else
@@ -647,4 +650,70 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 		options->tablespace_mapping.head = cell;
 
 	options->tablespace_mapping.tail = cell;
+}
+
+/*
+ * parse_event_notifications_list()
+ *
+ *
+ */
+
+static void
+parse_event_notifications_list(t_configuration_options *options, const char *arg)
+{
+	const char *arg_ptr;
+	char	    event_type_buf[MAXLEN] = "";
+	char	   *dst_ptr = event_type_buf;
+
+
+	for (arg_ptr = arg; arg_ptr <= (arg + strlen(arg)); arg_ptr++)
+	{
+		/* ignore whitespace */
+		if(*arg_ptr == ' ' || *arg_ptr == '\t')
+		{
+			continue;
+		}
+
+		/*
+		 * comma (or end-of-string) should mark the end of an event type -
+		 * just as long as there was something preceding it
+		 */
+		if((*arg_ptr == ',' || *arg_ptr == '\0') && event_type_buf[0] != '\0')
+		{
+			EventNotificationListCell *cell;
+
+			cell = (EventNotificationListCell *) pg_malloc0(sizeof(EventNotificationListCell));
+
+			if(cell == NULL)
+			{
+				log_err(_("unable to allocate memory. Terminating.\n"));
+				exit(ERR_BAD_CONFIG);
+			}
+
+			strncpy(cell->event_type, event_type_buf, MAXLEN);
+
+			if (options->event_notifications.tail)
+			{
+				options->event_notifications.tail->next = cell;
+			}
+			else
+			{
+				options->event_notifications.head = cell;
+			}
+
+			options->event_notifications.tail = cell;
+
+			memset(event_type_buf, 0, MAXLEN);
+			dst_ptr = event_type_buf;
+		}
+		/* ignore duplicated commas */
+		else if(*arg_ptr == ',')
+		{
+			continue;
+		}
+		else
+		{
+			*dst_ptr++ = *arg_ptr;
+		}
+	}
 }

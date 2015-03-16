@@ -1191,7 +1191,39 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 		const char *src_ptr;
 		char	   *dst_ptr;
 		char	   *end_ptr;
-		int r;
+		int	   	    r;
+
+		/*
+		 * If configuration option 'event_notifications' was provided,
+		 * check if this event is one of the ones listed; if not listed,
+		 * don't execute the notification script.
+		 *
+		 * (If 'event_notifications' was not provided, we assume the script
+		 * should be executed for all events).
+		 */
+		if(options->event_notifications.head != NULL)
+		{
+			EventNotificationListCell *cell;
+			bool notify_ok = false;
+
+			for (cell = options->event_notifications.head; cell; cell = cell->next)
+			{
+				if(strcmp(event, cell->event_type) == 0)
+				{
+					notify_ok = true;
+					break;
+				}
+			}
+
+			/*
+			 * Event type not found in the 'event_notifications' list - return early
+			 */
+			if(notify_ok == false)
+			{
+				log_debug(_("Not executing notification script for event type '%s'\n"), event);
+				return success;
+			}
+		}
 
 		dst_ptr = parsed_command;
 		end_ptr = parsed_command + MAXPGPATH - 1;
