@@ -243,7 +243,6 @@ parse_config(const char *config_file, t_configuration_options *options)
 		}
 	}
 
-	/* Close file */
 	fclose(fp);
 
 	/* Check config settings */
