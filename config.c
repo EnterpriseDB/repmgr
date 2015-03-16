@@ -65,7 +65,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 
 		if(stat(config_file_buf, &config) != 0)
 		{
-			log_err(_("Provided configuration file '%s' not found: %s\n"),
+			log_err(_("provided configuration file '%s' not found: %s\n"),
 					config_file,
 					strerror(errno)
 				);
@@ -101,7 +101,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	{
 		if(config_file_provided)
 		{
-			log_err(_("unable to open provided configuration file '%s' - terminating\n"), config_file_buf);
+			log_err(_("unable to open provided configuration file '%s'; terminating\n"), config_file_buf);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -228,7 +228,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 		else
 		{
 			known_parameter = false;
-			log_warning(_("%s/%s: Unknown name/value pair!\n"), name, value);
+			log_warning(_("%s/%s: unknown name/value pair provided; ignoring\n"), name, value);
 		}
 
 		/*
@@ -238,7 +238,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 		 * as currently e.g. an empty `node` value will be converted to '0'.
 		 */
 		if(known_parameter == true && !strlen(value)) {
-			log_err(_("No value provided for parameter '%s'. Check the configuration file.\n"), name);
+			log_err(_("no value provided for parameter '%s'\n"), name);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -250,44 +250,44 @@ parse_config(const char *config_file, t_configuration_options *options)
 	/* The following checks are for the presence of the parameter */
 	if (*options->cluster_name == '\0')
 	{
-		log_err(_("Parameter 'cluster' was not found. Check the configuration file.\n"));
+		log_err(_("required parameter 'cluster' was not found\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (options->node == -1)
 	{
-		log_err(_("Parameter 'node' was not found. Check the configuration file.\n"));
+		log_err(_("required parameter 'node' was not found\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (*options->node_name == '\0')
 	{
-		log_err(_("Parameter 'node_name' was not found. Check the configuration file.\n"));
+		log_err(_("required parameter 'node_name' was not found\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (*options->conninfo == '\0')
 	{
-		log_err(_("Parameter 'conninfo' was not found. Check the configuration file.\n"));
+		log_err(_("required parameter 'conninfo' was not found\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* The following checks are for valid parameter values */
 	if (options->master_response_timeout <= 0)
 	{
-		log_err(_("'master_response_timeout' must be greater than zero. Check the configuration file.\n"));
+		log_err(_("'master_response_timeout' must be greater than zero\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (options->reconnect_attempts < 0)
 	{
-		log_err(_("'reconnect_attempts' must be zero or greater. Check the configuration file.\n"));
+		log_err(_("'reconnect_attempts' must be zero or greater\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (options->reconnect_intvl < 0)
 	{
-		log_err(_("'reconnect_interval' must be zero or greater. Check the configuration file.\n"));
+		log_err(_("'reconnect_interval' must be zero or greater\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -370,49 +370,49 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	parse_config(config_file, &new_options);
 	if (new_options.node == -1)
 	{
-		log_warning(_("unable to load new configuration, retaining current configuration.\n"));
+		log_warning(_("unable to parse new configuration, retaining current configuration\n"));
 		return false;
 	}
 
 	if (strcmp(new_options.cluster_name, orig_options->cluster_name) != 0)
 	{
-		log_warning(_("unable to change cluster name, retaining current configuration.\n"));
+		log_warning(_("unable to change cluster name, retaining current configuration\n"));
 		return false;
 	}
 
 	if (new_options.node != orig_options->node)
 	{
-		log_warning(_("unable to change node ID, retaining current configuration.\n"));
+		log_warning(_("unable to change node ID, retaining current configuration\n"));
 		return false;
 	}
 
 	if (strcmp(new_options.node_name, orig_options->node_name) != 0)
 	{
-		log_warning(_("unable to change standby name, keeping current configuration .\n"));
+		log_warning(_("unable to change standby name, keeping current configuration\n"));
 		return false;
 	}
 
 	if (new_options.failover != MANUAL_FAILOVER && new_options.failover != AUTOMATIC_FAILOVER)
 	{
-		log_warning(_("New value for failover is not valid. Should be MANUAL or AUTOMATIC.\n"));
+		log_warning(_("new value for 'failover' must be MANUAL or AUTOMATIC\n"));
 		return false;
 	}
 
 	if (new_options.master_response_timeout <= 0)
 	{
-		log_warning(_("New value for 'master_response_timeout' is not valid. Should be greater than zero.\n"));
+		log_warning(_("new value for 'master_response_timeout' must be greater than zero\n"));
 		return false;
 	}
 
 	if (new_options.reconnect_attempts < 0)
 	{
-		log_warning(_("New value for 'reconnect_attempts' is not valid. Should be greater or equal than zero.\n"));
+		log_warning(_("new value for 'reconnect_attempts' must be zero or greater\n"));
 		return false;
 	}
 
 	if (new_options.reconnect_intvl < 0)
 	{
-		log_warning(_("New value for 'reconnect_interva'l is not valid. Should be greater or equal than zero.\n"));
+		log_warning(_("new value for 'reconnect_interval' must be zero or greater\n"));
 		return false;
 	}
 
@@ -422,7 +422,7 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 		conn = establish_db_connection(new_options.conninfo, false);
 		if (!conn || (PQstatus(conn) != CONNECTION_OK))
 		{
-			log_warning(_("'conninfo' string is not valid, retaining current configuration.\n"));
+			log_warning(_("'conninfo' string is not valid, retaining current configuration\n"));
 			return false;
 		}
 		PQfinish(conn);
@@ -602,7 +602,7 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 	cell = (TablespaceListCell *) pg_malloc0(sizeof(TablespaceListCell));
 	if(cell == NULL)
 	{
-		log_err(_("unable to allocate memory. Terminating.\n"));
+		log_err(_("unable to allocate memory; terminating\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -685,7 +685,7 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 
 			if(cell == NULL)
 			{
-				log_err(_("unable to allocate memory. Terminating.\n"));
+				log_err(_("unable to allocate memory; terminating\n"));
 				exit(ERR_BAD_CONFIG);
 			}
 
