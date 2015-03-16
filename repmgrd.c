@@ -317,6 +317,7 @@ main(int argc, char **argv)
 				if(startup_event_logged == false)
 				{
 					create_event_record(primary_conn,
+										&local_options,
 										local_options.node,
 										"repmgrd_start",
 										true,
@@ -411,6 +412,7 @@ main(int argc, char **argv)
 				if(startup_event_logged == false)
 				{
 					create_event_record(primary_conn,
+										&local_options,
 										local_options.node,
 										"repmgrd_start",
 										true,
@@ -1360,6 +1362,7 @@ do_primary_failover(void)
 							  failed_primary.node_id);
 
 			create_event_record(my_local_conn,
+								&local_options,
 								node_info.node_id,
 								"repmgrd_failover_promote",
 								false,
@@ -1377,6 +1380,7 @@ do_primary_failover(void)
 						  failed_primary.node_id);
 
 		create_event_record(my_local_conn,
+							&local_options,
 							node_info.node_id,
 							"repmgrd_failover_promote",
 							true,
@@ -1424,6 +1428,7 @@ do_primary_failover(void)
 								  PQerrorMessage(new_primary_conn));
 
 				create_event_record(new_primary_conn,
+									&local_options,
 									node_info.node_id,
 									"repmgrd_failover_follow",
 									false,
@@ -1455,6 +1460,7 @@ do_primary_failover(void)
 							  best_candidate.node_id);
 
 			create_event_record(new_primary_conn,
+								&local_options,
 								node_info.node_id,
 								"repmgrd_failover_follow",
 								false,
@@ -1471,6 +1477,7 @@ do_primary_failover(void)
 						  best_candidate.node_id);
 
 		create_event_record(new_primary_conn,
+							&local_options,
 							node_info.node_id,
 							"repmgrd_failover_follow",
 							true,

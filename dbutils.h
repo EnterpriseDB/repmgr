@@ -20,8 +20,10 @@
 #ifndef _REPMGR_DBUTILS_H_
 #define _REPMGR_DBUTILS_H_
 
-#include "strutil.h"
 #include "config.h"
+#include "strutil.h"
+
+
 
 PGconn *establish_db_connection(const char *conninfo,
 						const bool exit_on_error);
@@ -64,7 +66,7 @@ bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 bool		copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name);
 bool		create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name);
 bool		delete_node_record(PGconn *conn, int node, char *action);
-bool        create_event_record(PGconn *conn, int node_id, char *event, bool successful, char *details);
+bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
 
 
 #endif

@@ -1060,7 +1060,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_warning(_("Cannot insert node details, %s\n"),
+		log_warning(_("Unable to create node record: %s\n"),
 					PQerrorMessage(conn));
 		PQclear(res);
 		return false;
@@ -1091,7 +1091,7 @@ delete_node_record(PGconn *conn, int node, char *action)
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_warning(_("Cannot delete node details, %s\n"),
+		log_warning(_("Unable to delete node record: %s\n"),
 					PQerrorMessage(conn));
 		PQclear(res);
 		return false;
@@ -1102,11 +1102,24 @@ delete_node_record(PGconn *conn, int node, char *action)
 }
 
 
+/*
+ * create_event_record()
+ *
+ * Insert a record into the events table.
+ *
+ * If configuration parameter `event_notification_command` is set, also
+ * attempt to execute that command.
+ *
+ * Returns true if all operations succeeded, false if one or more failed.
+ */
+
 bool
-create_event_record(PGconn *conn, int node_id, char *event, bool successful, char *details)
+create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
+	char		event_timestamp[MAXLEN] = "";
+	bool		success = true;
 
 	int n_node_id = htonl(node_id);
 	char *t_successful = successful ? "TRUE" : "FALSE";
@@ -1131,7 +1144,8 @@ create_event_record(PGconn *conn, int node_id, char *event, bool successful, cha
 					  "             successful, "
 					  "             details "
 					  "            ) "
-					  "      VALUES ($1, $2, $3, $4) ",
+					  "      VALUES ($1, $2, $3, $4) "
+					  "   RETURNING event_timestamp ",
 					  get_repmgr_schema_quoted(conn));
 
 	res = PQexecParams(conn,
@@ -1143,13 +1157,104 @@ create_event_record(PGconn *conn, int node_id, char *event, bool successful, cha
 					   binary,
 					   0);
 
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_warning(_("Cannot insert event details, %s\n"),
+		time_t now;
+		struct tm ts;
+
+		log_warning(_("Unable to create event record: %s\n"),
 					PQerrorMessage(conn));
-		PQclear(res);
-		return false;
+
+		success = false;
+
+		/*
+		 * If the query fails for whatever reason, generate a
+		 * current timestamp ourselves. This isn't quite the same
+		 * format as PostgreSQL, but is close enough for diagnostic use.
+		 */
+		time(&now);
+		ts = *localtime(&now);
+		strftime(event_timestamp, MAXLEN, "%Y-%m-%d %H:%M:%S%z", &ts);
+	}
+	else
+	{
+		strncpy(event_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+		log_debug(_("Event timestamp is: %s\n"), event_timestamp);
 	}
 
-	return true;
+	PQclear(res);
+
+	/* an event notification command was provided - parse and execute it */
+	if(strlen(options->event_notification_command))
+	{
+		char		parsed_command[MAXPGPATH];
+		const char *src_ptr;
+		char	   *dst_ptr;
+		char	   *end_ptr;
+		int r;
+
+		dst_ptr = parsed_command;
+		end_ptr = parsed_command + MAXPGPATH - 1;
+		*end_ptr = '\0';
+
+		for(src_ptr = options->event_notification_command; *src_ptr; src_ptr++)
+		{
+			if (*src_ptr == '%')
+			{
+				switch (src_ptr[1])
+				{
+					case 'e':
+						/* %e: event type */
+						src_ptr++;
+						strlcpy(dst_ptr, event, end_ptr - dst_ptr);
+						dst_ptr += strlen(dst_ptr);
+						break;
+					case 'd':
+						/* %d: details */
+						src_ptr++;
+						if(details != NULL)
+						{
+							strlcpy(dst_ptr, details, end_ptr - dst_ptr);
+							dst_ptr += strlen(dst_ptr);
+						}
+						break;
+					case 's':
+						/* %s: successful */
+						src_ptr++;
+						strlcpy(dst_ptr, successful ? "1" : "0", end_ptr - dst_ptr);
+						dst_ptr += strlen(dst_ptr);
+						break;
+					case 't':
+						/* %: timestamp */
+						src_ptr++;
+						strlcpy(dst_ptr, event_timestamp, end_ptr - dst_ptr);
+						dst_ptr += strlen(dst_ptr);
+						break;
+					default:
+						/* otherwise treat the % as not special */
+						if (dst_ptr < end_ptr)
+							*dst_ptr++ = *src_ptr;
+						break;
+				}
+			}
+			else
+			{
+				if (dst_ptr < end_ptr)
+					*dst_ptr++ = *src_ptr;
+			}
+		}
+
+		*dst_ptr = '\0';
+
+		log_debug(_("Executing: %s\n"), parsed_command);
+
+		r = system(parsed_command);
+		if (r != 0)
+		{
+			log_warning(_("Unable to execute event notification command\n"));
+			success = false;
+		}
+	}
+
+	return success;
 }

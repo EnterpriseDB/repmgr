@@ -20,8 +20,10 @@
 #ifndef _REPMGR_CONFIG_H_
 #define _REPMGR_CONFIG_H_
 
-#include "repmgr.h"
+#include "postgres_fe.h"
+
 #include "strutil.h"
+
 
 typedef struct TablespaceListCell
 {
@@ -62,10 +64,11 @@ typedef struct
 	int			retry_promote_interval_secs;
 	int			use_replication_slots;
 	int         ignore_external_config_files;
+	char		event_notification_command[MAXLEN];
 	TablespaceList tablespace_mapping;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, 0, {NULL, NULL} }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, 0, "", {NULL, NULL} }
 
 
 bool		parse_config(const char *config_file, t_configuration_options *options);

@@ -779,6 +779,7 @@ do_master_register(void)
 
 	/* Log the event */
 	record_created = create_event_record(conn,
+										 &options,
 										 options.node,
 										 "master_register",
 										 true,
@@ -885,6 +886,7 @@ do_standby_register(void)
 
 	/* Log the event */
 	record_created = create_event_record(master_conn,
+										 &options,
 										 options.node,
 										 "standby_register",
 										 true,
@@ -1538,6 +1540,7 @@ log_event(PGconn *standby_conn, bool success, char *details)
 										    NULL, NULL);
 
 	retval = create_event_record(primary_conn,
+								 &options,
 								 options.node,
 								 "standby_clone",
 								 success,
@@ -1655,6 +1658,7 @@ do_standby_promote(void)
 						  options.node);
 
 		record_created = create_event_record(old_master_conn,
+											 &options,
 											 options.node,
 											 "standby_promote",
 											 false,
@@ -1675,6 +1679,7 @@ do_standby_promote(void)
 		log_notice(_("STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"));
 		/* Log the event */
 		record_created = create_event_record(conn,
+											 &options,
 											 options.node,
 											 "standby_promote",
 											 true,
@@ -1864,6 +1869,7 @@ do_witness_create(void)
 		log_err("%s\n", errmsg.data);
 
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -1885,6 +1891,7 @@ do_witness_create(void)
 		log_err("%s\n", errmsg.data);
 
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -1903,6 +1910,7 @@ do_witness_create(void)
 						  runtime_options.host);
 		log_err("%s\n", errmsg.data);
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -1933,6 +1941,7 @@ do_witness_create(void)
 		char *errmsg = _("unable to initialize cluster for witness server");
 		log_err("%s\n", errmsg);
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -1955,6 +1964,7 @@ do_witness_create(void)
 		log_err("%s\n", errmsg.data);
 
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -2000,6 +2010,7 @@ do_witness_create(void)
 		log_err("%s\n", errmsg);
 
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -2025,6 +2036,7 @@ do_witness_create(void)
 			log_err("%s\n", errmsg);
 
 			create_event_record(masterconn,
+								&options,
 								options.node,
 								"witness_create",
 								false,
@@ -2050,6 +2062,7 @@ do_witness_create(void)
 			log_err("%s\n", errmsg);
 
 			create_event_record(masterconn,
+								&options,
 								options.node,
 								"witness_create",
 								false,
@@ -2069,6 +2082,7 @@ do_witness_create(void)
 		log_err("%s\n", errmsg);
 
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -2085,6 +2099,7 @@ do_witness_create(void)
 		log_err("%s\n", errmsg);
 
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -2106,6 +2121,7 @@ do_witness_create(void)
 		log_err("%s\n", errmsg);
 
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -2131,6 +2147,7 @@ do_witness_create(void)
 	if(record_created == false)
 	{
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -2148,6 +2165,7 @@ do_witness_create(void)
 	if (!create_schema(witnessconn))
 	{
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -2161,6 +2179,7 @@ do_witness_create(void)
 	if (!copy_configuration(masterconn, witnessconn, options.cluster_name))
 	{
 		create_event_record(masterconn,
+							&options,
 							options.node,
 							"witness_create",
 							false,
@@ -2192,6 +2211,7 @@ do_witness_create(void)
 
 	/* Log the event */
 	record_created = create_event_record(masterconn,
+										 &options,
 										 options.node,
 										 "witness_create",
 										 true,

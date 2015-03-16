@@ -110,7 +110,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 		return false;
 	}
 
-	/* Initialize */
+	/* Initialize configuration options with sensible defaults */
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
 	options->node = -1;
 	options->upstream_node = NO_UPSTREAM_NODE;
@@ -126,15 +126,17 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->pgctl_options, 0, sizeof(options->pgctl_options));
 	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
 
-	/* if nothing has been provided defaults to 60 */
+	/* default master_response_timeout is 60 seconds */
 	options->master_response_timeout = 60;
 
-	/* it defaults to 6 retries with a time between retries of 10s */
+	/* default to 6 reconnection attempts at intervals of 10 seconds */
 	options->reconnect_attempts = 6;
 	options->reconnect_intvl = 10;
 
 	options->monitor_interval_secs = 2;
 	options->retry_promote_interval_secs = 300;
+
+	memset(options->event_notification_command, 0, sizeof(options->event_notification_command));
 
 	options->tablespace_mapping.head = NULL;
 	options->tablespace_mapping.tail = NULL;
@@ -216,6 +218,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 			options->use_replication_slots = atoi(value);
 		else if (strcmp(name, "ignore_external_config_files") == 0)
 			options->ignore_external_config_files = atoi(value);
+		else if (strcmp(name, "event_notification_command") == 0)
+			strncpy(options->event_notification_command, value, MAXLEN);
 		else if (strcmp(name, "tablespace_mapping") == 0)
 			tablespace_list_append(options, value);
 		else
@@ -266,7 +270,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* The following checks are for value parameter values */
+	/* The following checks are for valid parameter values */
 	if (options->master_response_timeout <= 0)
 	{
 		log_err(_("'master_response_timeout' must be greater than zero. Check the configuration file.\n"));
@@ -279,9 +283,9 @@ parse_config(const char *config_file, t_configuration_options *options)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (options->reconnect_intvl <= 0)
+	if (options->reconnect_intvl < 0)
 	{
-		log_err(_("'reconnect_intervals' must be zero or greater. Check the configuration file.\n"));
+		log_err(_("'reconnect_interval' must be zero or greater. Check the configuration file.\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
