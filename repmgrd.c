@@ -268,11 +268,28 @@ main(int argc, char **argv)
 	server_version_num = get_server_version(my_local_conn, NULL);
 	if(server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
+		PQExpBufferData errmsg;
+		initPQExpBuffer(&errmsg);
+
 		if (server_version_num > 0)
-			log_err(_("%s requires PostgreSQL %s or later\n"),
-					progname,
-					MIN_SUPPORTED_VERSION
-				);
+		{
+			appendPQExpBuffer(&errmsg,
+							  _("%s requires PostgreSQL %s or later"),
+							  progname,
+							  MIN_SUPPORTED_VERSION);
+		}
+		else
+		{
+			appendPQExpBuffer(&errmsg,
+							  _("unable to determine PostgreSQL server version"));
+		}
+		log_err("%s\n", errmsg.data);
+		create_event_record(my_local_conn,
+							&local_options,
+							local_options.node,
+							"repmgrd_shutdown",
+							false,
+							errmsg.data);
 		terminate(ERR_BAD_CONFIG);
 	}
 
@@ -386,7 +403,7 @@ main(int argc, char **argv)
 			case STANDBY:
 
 				/* We need the node id of the primary server as well as a connection to it */
-				log_info(_("connecting to master for cluster '%s'\n"),
+				log_info(_("connecting to master node '%s'\n"),
 						 local_options.cluster_name);
 
 				primary_conn = get_master_connection(my_local_conn,
@@ -395,6 +412,19 @@ main(int argc, char **argv)
 
 				if (primary_conn == NULL)
 				{
+					PQExpBufferData errmsg;
+					initPQExpBuffer(&errmsg);
+
+					appendPQExpBuffer(&errmsg,
+									  _("unable to connect to master node '%s'"),
+									  local_options.cluster_name);
+
+					create_event_record(my_local_conn,
+										&local_options,
+										local_options.node,
+										"repmgrd_shutdown",
+										false,
+										errmsg.data);
 					terminate(ERR_BAD_CONFIG);
 				}
 
@@ -560,10 +590,21 @@ witness_monitor(void)
 
 		if(connection_ok == false)
 		{
-			log_err(_("unable to determine a valid master server, exiting...\n"));
+			PQExpBufferData errmsg;
+			initPQExpBuffer(&errmsg);
+
+			appendPQExpBuffer(&errmsg,
+							  _("unable to determine a valid master node, terminating..."));
+			log_err("%s\n", errmsg.data);
+			create_event_record(my_local_conn,
+								&local_options,
+								local_options.node,
+								"repmgrd_shutdown",
+								false,
+								errmsg.data);
+
 			terminate(ERR_DB_CON);
 		}
-
 	}
 
 	/* Fast path for the case where no history is requested */
@@ -662,9 +703,24 @@ standby_monitor(void)
 
 	if (!check_connection(my_local_conn, "standby"))
 	{
+		PQExpBufferData errmsg;
+
 		set_local_node_failed();
-		log_err(_("failed to connect to local node, terminating!\n"));
-		terminate(1);
+
+		initPQExpBuffer(&errmsg);
+
+		appendPQExpBuffer(&errmsg,
+						  _("failed to connect to local node, node marked as failed and terminating!"));
+
+		log_err("%s\n", errmsg.data);
+
+		create_event_record(my_local_conn,
+							&local_options,
+							local_options.node,
+							"repmgrd_shutdown",
+							false,
+							errmsg.data);
+		terminate(ERR_DB_CON);
 	}
 
 	upstream_conn = get_upstream_connection(my_local_conn,
@@ -724,8 +780,21 @@ standby_monitor(void)
 
 			if (PQstatus(primary_conn) != CONNECTION_OK)
 			{
-				log_err(_("Unable to reconnet to master after %i attempts, terminating...\n"),
-						local_options.reconnect_attempts);
+				PQExpBufferData errmsg;
+				initPQExpBuffer(&errmsg);
+
+				appendPQExpBuffer(&errmsg,
+								  _("Unable to reconnect to master after %i attempts, terminating..."),
+								  local_options.reconnect_attempts);
+				log_err("%s\n", errmsg.data);
+
+				create_event_record(my_local_conn,
+									&local_options,
+									local_options.node,
+									"repmgrd_shutdown",
+									false,
+									errmsg.data);
+
 				terminate(ERR_DB_CON);
 			}
 		}
@@ -755,8 +824,22 @@ standby_monitor(void)
 
 				if(!do_upstream_standby_failover(upstream_node))
 				{
-					log_err(_("unable to reconnect to new upstream node, terminating...\n"));
-					terminate(1);
+					PQExpBufferData errmsg;
+					initPQExpBuffer(&errmsg);
+
+					appendPQExpBuffer(&errmsg,
+									  _("unable to reconnect to new upstream node, terminating...")
+						);
+					log_err("%s\n", errmsg.data);
+
+					create_event_record(my_local_conn,
+										&local_options,
+										local_options.node,
+										"repmgrd_shutdown",
+										false,
+										errmsg.data);
+
+					terminate(ERR_DB_CON);
 				}
             }
 			return;
@@ -1993,8 +2076,21 @@ update_registration(void)
 	res = PQexec(primary_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err(_("Cannot update registration: %s\n"),
-				PQerrorMessage(primary_conn));
+		PQExpBufferData errmsg;
+		initPQExpBuffer(&errmsg);
+
+		appendPQExpBuffer(&errmsg,
+						  _("unable to update registration: %s"),
+						  PQerrorMessage(primary_conn));
+
+		log_err("%s\n", errmsg.data);
+
+		create_event_record(my_local_conn,
+							&local_options,
+							local_options.node,
+							"repmgrd_shutdown",
+							false,
+							errmsg.data);
 		terminate(ERR_DB_CON);
 	}
 	PQclear(res);
@@ -2150,7 +2246,23 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Unable to retrieve record for node %i: %s\n"), node_id, PQerrorMessage(conn));
+		PQExpBufferData errmsg;
+		initPQExpBuffer(&errmsg);
+
+		appendPQExpBuffer(&errmsg,
+						  _("unable to retrieve record for node %i: %s"),
+						  node_id,
+						  PQerrorMessage(conn));
+
+		log_err("%s\n", errmsg.data);
+
+		create_event_record(my_local_conn,
+							&local_options,
+							local_options.node,
+							"repmgrd_shutdown",
+							false,
+							errmsg.data);
+
 		PQclear(res);
 		terminate(ERR_DB_QUERY);
 	}
