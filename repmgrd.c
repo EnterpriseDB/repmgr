@@ -201,16 +201,15 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * Read the configuration file: repmgr.conf
+	 * Parse the configuration file, if provided. If no configuration file
+	 * was provided, or one was but was incomplete, parse_config() will
+	 * abort anyway, with an appropriate message.
+	 *
+	 * XXX it might be desirable to create an event record for this, in
+	 * which case we'll need to refactor parse_config() not to abort,
+	 * and return the error message.
 	 */
 	parse_config(config_file, &local_options);
-
-	if (local_options.node == -1)
-	{
-		log_err(_("Node information is missing. "
-				  "Check the configuration file, or provide one if you have not done so.\n"));
-		terminate(ERR_BAD_CONFIG);
-	}
 
 	if (daemonize)
 	{
@@ -1940,7 +1939,7 @@ terminate(int retval)
 		unlink(pid_file);
 	}
 
-	log_info("Terminating...\n");
+	log_info(_("%s terminating...\n"), progname);
 
 	exit(retval);
 }
