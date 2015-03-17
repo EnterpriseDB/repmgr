@@ -1,4 +1,4 @@
-3.0beta1
+3.0
         Require PostgreSQL 9.3 or later (Ian)
         Use `pg_basebackup` by default (instead of `rsync`) to clone standby servers (Ian)
         Use `pg_ctl promote` to promote a standby to primary
@@ -7,6 +7,8 @@
         "pg_bindir" no longer required as a configuration parameter (Ian)
         Enable replications to be used (PostgreSQL 9.4 and later (Ian)
         Command line option "--check-upstream-config" (Ian)
+        Add event logging table and option to execute an external program when an event occurs (Ian)
+        General usability and logging message improvements (Ian)
         Code consolidation and cleanup (Ian)
 
 2.0.3   2015-??-??
