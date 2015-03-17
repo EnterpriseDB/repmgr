@@ -1,18 +1,119 @@
 ###################################################
-# Replication Manager configuration file
+# Replication Manager sample configuration file
 ###################################################
+
+# Required configuration items
+# ============================
+#
+# repmgr and repmgrd require these items to be configured:
 
 # Cluster name
 cluster=test
 
-# Node ID
+# Node ID and name
+# (Note: we recommend to avoid naming nodes after their initial
+#  replication funcion, as this will cause confusion when e.g.
+#  "standby2" is promoted to master)
 node=2
-node_name=standby2
+node_name=node2
 
-# Connection information
-conninfo='host=192.168.204.104'
-rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
-ssh_options=-o "StrictHostKeyChecking no"
+# Database connection information
+conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
+
+# Optional configuration items
+# ============================
+
+# Replication settings
+# ---------------------
+
+# when using cascading replication and a standby is to be connected to an
+# upstream standby, specify that node's ID with 'upstream_node'. The node
+# must exist before the new standby can be registered. If a standby is
+# to connect directly to a master node, this parameter is not required.
+#
+# upstream_node=1
+
+# physical replication slots - PostgreSQL 9.4 and later only
+# (default: 0)
+#
+# use_replication_slots=0
+
+
+# Logging and monitoring settings
+# -------------------------------
+
+# Log level: possible values are DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG
+# (default: NOTICE)
+loglevel=NOTICE
+
+# Logging facility: possible values are STDERR or - for Syslog integration - one of LOCAL0, LOCAL1, ..., LOCAL7, USER
+# (default: STDERR)
+logfacility=STDERR
+
+# stderr can be redirected to an arbitrary file:
+#
+# logfile='/var/log/repmgr.log'
+
+# event notifications can be passed to an arbitrary external program
+# together with the following parameters:
+#
+#   %n - node ID
+#   %e - event type
+#   %s - success (1 or 0)
+#   %t - timestamp
+#   %d - details
+#
+# the values provided for "%t" and "%d" will probably contain spaces,
+# so should be quoted in the provided command configuration, e.g.:
+#
+# event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
+
+# By default, all notifications will be passed; the notification types
+# can be filtered to explicitly named ones:
+#
+# event_notifications=master_register,standby_register,witness_create
+
+
+# Environment/command settings
+# ----------------------------
+
+# path to PostgreSQL binary directory (location of pg_ctl, pg_basebackup etc.)
+# (if not provided, defaults to system $PATH)
+# pg_bindir=/usr/bin/
+
+# external command options
+
+# rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
+# ssh_options=-o "StrictHostKeyChecking no"
+
+# external command arguments
+
+# pg_ctl_options='-s'
+# pg_basebackup_options='--xlog-method=s'
+
+
+# Standby clone settings
+# ----------------------
+#
+# These settings apply when cloning a standby (`repmgr standby clone`).
+
+# Tablespaces can be remapped from one file system location to another:
+#
+# tablespace_mapping=/path/to/original/tablespace=/path/to/new/tablespace
+
+# Don't copy configuration files located outside the data directory.
+#
+# By default repmgr will attempt to copy postgresql.conf, pg_hba.conf and pg_ident.conf
+# from the master, however this may not be desirable if the files are e.g. maintained
+# by configuration management software.
+#
+# ignore_external_config_files=0
+
+
+# Failover settings (repmgrd)
+# ---------------------------
+#
+# These settings are only applied when repmgrd is running.
 
 # How many seconds we wait for master response before declaring master failure
 master_response_timeout=60
@@ -22,58 +123,20 @@ reconnect_attempts=6
 reconnect_interval=10
 
 # Autofailover options
-failover=manual
+failover=automatic  # one of 'automatic', 'manual'
 priority=-1
 promote_command='repmgr standby promote -f /path/to/repmgr.conf'
 follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
 
-# Log level: possible values are DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG
-# Default: NOTICE
-loglevel=NOTICE
-
-# Logging facility: possible values are STDERR or - for Syslog integration - one of LOCAL0, LOCAL1, ..., LOCAL7, USER
-# Default: STDERR
-logfacility=STDERR
-
-# path to pg_ctl executable
-pg_bindir=/usr/bin/
-
-#
-# you may add command line arguments for pg_ctl
-#
-# pg_ctl_options='-s'
-
-#
-# redirect stderr to a logfile
-#
-# logfile='/var/log/repmgr.log'
-
-#
-# change monitoring interval; default is 2s
+# monitoring interval; default is 2s
 #
 # monitor_interval_secs=2
 
-#
-# change wait time for master; before we bail out and exit when the
-# master disappears, we wait reconnect_attempts * retry_promote_interval_secs seconds;
-# by default this would be half an hour (since sleep_delay default
-# value is 300)
+# change wait time for master; before we bail out and exit when the master
+# disappears, we wait 'reconnect_attempts' * 'retry_promote_interval_secs'
+# seconds; by default this would be half an hour, as 'retry_promote_interval_secs'
+# default value is 300)
 #
 # retry_promote_interval_secs=300
 
-# Command line arguments for pg_basebackup
-#
-# pg_basebackup_options=
 
-# Don't copy configuration files located outside the data directory.
-#
-# ignore_external_config_files=1
-#
-# By default repmgr will attempt to copy postgresql.conf, pg_hba.conf and pg_ident.conf
-# from the master, however this may not be desirable if the files are e.g.maintained
-# by configuration management software.
-
-
-# physical replication slots - PostgreSQL 9.4 and later only
-#
-# use_replication_slots=1

@@ -31,7 +31,6 @@ typedef struct EventNotificationListCell
 	char event_type[MAXLEN];
 } EventNotificationListCell;
 
-
 typedef struct EventNotificationList
 {
 	EventNotificationListCell *head;
