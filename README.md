@@ -301,6 +301,58 @@ be queried easily using the view `repl_status`:
     apply_lag                 | 0 bytes
     communication_time_lag    | 00:00:00.955385
 
+
+Event logging and notifications
+-------------------------------
+
+To help understand what significant events (e.g. failure of a node) happened
+when and for what reason, `rempgr` logs such events into the `repl_events`
+table, e.g.:
+
+    repmgr_db=# SELECT * from repmgr_test.repl_events ;
+     node_id |      event       | successful |        event_timestamp        |                                      details
+    ---------+------------------+------------+-------------------------------+-----------------------------------------------------------------------------------
+           1 | master_register  | t          | 2015-03-16 17:36:21.711796+09 |
+           2 | standby_clone    | t          | 2015-03-16 17:36:31.286934+09 | Cloned from host 'localhost', port 5500; backup method: pg_basebackup; --force: N
+           2 | standby_register | t          | 2015-03-16 17:36:32.391567+09 |
+    (3 rows)
+
+
+Additionally `repmgr` can execute an external program each time an event is
+logged. This program is defined with the configuration variable
+`event_notification_command`; the command string can contain the following
+placeholders, which will be replaced with the same content which is
+written to the `repl_events` table:
+
+    %n - node id
+    %e - event type
+    %s - success (1 or 0)
+    %t - timestamp
+    %d - description
+
+Example:
+
+    event_notification_command=/path/to/some-script %n %e %s "%t" "%d"
+
+By default the program defined with `event_notification_command` will be
+executed for every event; to restrict execution to certain events, list
+these in the parameter `event_notifications`
+
+    event_notifications=master_register,standby_register
+
+Following event types currently exist:
+
+    master_register
+    standby_register
+    standby_clone 
+    standby_promote 
+    witness_create 
+    repmgrd_start
+    repmgrd_failover_promote 
+    repmgrd_failover_follow 
+
+
+
 Cascading replication
 ---------------------
 
