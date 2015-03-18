@@ -3031,8 +3031,8 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	int			i;
 	bool		config_ok = true;
 	char	   *wal_error_message = NULL;
-	/* Check that WAL level is set correctly */
 
+	/* Check that WAL level is set correctly */
 	if(server_version_num < 90300)
 	{
 		i = guc_set(conn, "wal_level", "=", "hot_standby");
@@ -3158,6 +3158,36 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 		config_ok = false;
 	}
+
+
+	/*
+	 * check that 'archive_command' is non empty (however it's not practical to
+	 * check that it's actually valid)
+	 *
+	 * if 'archive_mode' is not on, pg_settings returns '(disabled)' regardless
+	 * of what's in 'archive_command', so until 'archive_mode' is on we can't
+	 * properly check it.
+	 */
+
+	if(guc_set(conn, "archive_mode", "=", "on"))
+	{
+		i = guc_set(conn, "archive_command", "!=", "");
+
+		if (i == 0 || i == -1)
+		{
+			if (i == 0)
+				log_err(_("parameter 'archive_command' must be set to a valid command\n"));
+
+			if(exit_on_error == true)
+			{
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			config_ok = false;
+		}
+	}
+
 
 	i = guc_set(conn, "hot_standby", "=", "on");
 	if (i == 0 || i == -1)
