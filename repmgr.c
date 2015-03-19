@@ -775,20 +775,13 @@ do_master_register(void)
 		exit(ERR_DB_QUERY);
 	}
 
-
 	/* Log the event */
-	record_created = create_event_record(conn,
-										 &options,
-										 options.node,
-										 "master_register",
-										 true,
-										 NULL);
-
-	if(record_created == false)
-	{
-		PQfinish(conn);
-		exit(ERR_DB_QUERY);
-	}
+	create_event_record(conn,
+						&options,
+						options.node,
+						"master_register",
+						true,
+						NULL);
 
 	PQfinish(conn);
 
@@ -889,19 +882,12 @@ do_standby_register(void)
 	}
 
 	/* Log the event */
-	record_created = create_event_record(master_conn,
-										 &options,
-										 options.node,
-										 "standby_register",
-										 true,
-										 NULL);
-
-	if(record_created == false)
-	{
-		PQfinish(master_conn);
-		PQfinish(conn);
-		exit(ERR_DB_QUERY);
-	}
+	create_event_record(master_conn,
+						&options,
+						options.node,
+						"standby_register",
+						true,
+						NULL);
 
 	PQfinish(master_conn);
 	PQfinish(conn);
@@ -1547,7 +1533,6 @@ do_standby_promote(void)
 				promote_check_interval = 2;
 	bool		promote_sucess = false;
 	bool        success;
-	bool        record_created;
 
 	/* We need to connect to check configuration */
 	log_info(_("connecting to standby database\n"));
@@ -1635,12 +1620,12 @@ do_standby_promote(void)
 						  "Node %i could not be promoted to master",
 						  options.node);
 
-		record_created = create_event_record(old_master_conn,
-											 &options,
-											 options.node,
-											 "standby_promote",
-											 false,
-											 details.data);
+		create_event_record(old_master_conn,
+							&options,
+							options.node,
+							"standby_promote",
+							false,
+							details.data);
 		/* XXX exit with error? */
 		log_err(_(retval == 1 ?
 			  "STANDBY PROMOTE failed, this is still a standby node.\n" :
@@ -1656,21 +1641,16 @@ do_standby_promote(void)
 
 		log_notice(_("STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"));
 		/* Log the event */
-		record_created = create_event_record(conn,
-											 &options,
-											 options.node,
-											 "standby_promote",
-											 true,
-											 details.data);
+		create_event_record(conn,
+							&options,
+							options.node,
+							"standby_promote",
+							true,
+							details.data);
 	}
 
 	PQfinish(old_master_conn);
 	PQfinish(conn);
-
-	if(record_created == false)
-	{
-		exit(ERR_DB_QUERY);
-	}
 
 	return;
 }
@@ -2188,18 +2168,12 @@ do_witness_create(void)
 	}
 
 	/* Log the event */
-	record_created = create_event_record(masterconn,
-										 &options,
-										 options.node,
-										 "witness_create",
-										 true,
-										 NULL);
-
-	if(record_created == false)
-	{
-		PQfinish(masterconn);
-		exit(ERR_DB_QUERY);
-	}
+	create_event_record(masterconn,
+						&options,
+						options.node,
+						"witness_create",
+						true,
+						NULL);
 
 	PQfinish(masterconn);
 	PQfinish(witnessconn);
