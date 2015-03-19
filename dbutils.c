@@ -645,7 +645,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 		{
 			PQclear(res2);
 			PQclear(res1);
-			log_debug(_("get_master_connection(): current primary node is %i\n"), node_id);
+			log_debug(_("get_master_connection(): current master node is %i\n"), node_id);
 
 			if(master_id != NULL)
 			{
