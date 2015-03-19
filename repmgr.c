@@ -1148,8 +1148,9 @@ do_standby_clone(void)
 
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
-		log_err(_("unable to use directory %s ...\nUse --force option to force\n"),
+		log_err(_("unable to use directory %s ...\n"),
 				local_data_directory);
+		log_notice(_("HINT: Use -F/--force option to force this directory to be overwritten\n"));
 		r = ERR_BAD_CONFIG;
 		retval = ERR_BAD_CONFIG;
 		goto stop_backup;
