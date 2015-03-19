@@ -1566,7 +1566,7 @@ do_primary_failover(void)
 							event_details.data);
 
 		PQfinish(new_primary_conn);
-		destroyPQExpBuffer(&event_details);
+		termPQExpBuffer(&event_details);
 	}
 
 	/* to force it to re-calculate mode and master node */
