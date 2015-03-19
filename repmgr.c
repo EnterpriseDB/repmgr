@@ -2301,21 +2301,31 @@ create_recovery_file(const char *data_dir)
 		return false;
 	}
 
+	log_debug(_("create_recovery_file(): creating '%s'...\n"), recovery_file_path);
+
 	/* standby_mode = 'on' */
 	maxlen_snprintf(line, "standby_mode = 'on'\n");
 
 	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
 
+	log_debug(_("recovery.conf: %s"), line);
+
 	/* primary_conninfo = '...' */
 	write_primary_conninfo(line);
+
 	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
 
+	log_debug(_("recovery.conf: %s"), line);
+
 	/* recovery_target_timeline = 'latest' */
 	maxlen_snprintf(line, "recovery_target_timeline = 'latest'\n");
+
 	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
+
+	log_debug(_("recovery.conf: %s"), line);
 
 	/* min_recovery_apply_delay = ... (optional) */
 	if(*runtime_options.min_recovery_apply_delay)
@@ -2324,6 +2334,8 @@ create_recovery_file(const char *data_dir)
 						runtime_options.min_recovery_apply_delay);
 		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
+
+		log_debug(_("recovery.conf: %s"), line);
 	}
 
 	/* primary_slot_name = '...' (optional, for 9.4 and later) */
@@ -2333,6 +2345,8 @@ create_recovery_file(const char *data_dir)
 						repmgr_slot_name);
 		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
+
+		log_debug(_("recovery.conf: %s"), line);
 	}
 
 	fclose(recovery_file);
@@ -2924,7 +2938,6 @@ write_primary_conninfo(char *line)
 					appname_buf);
 
 	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conn_buf);
-
 }
 
 
