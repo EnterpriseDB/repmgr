@@ -915,6 +915,7 @@ do_standby_clone(void)
 				retval = SUCCESS;
 
 	int			i;
+	bool		pg_start_backup_executed = false;
 	bool		target_directory_provided = false;
 	bool		config_file_copy_required = false;
 
@@ -1176,6 +1177,13 @@ do_standby_clone(void)
 		}
 
 		/*
+		 * Note that we've successfully executed pg_start_backup(),
+		 * so we know whether or not to execute pg_stop_backup() after
+		 * the 'stop_backup' label
+		 */
+		pg_start_backup_executed = true;
+
+		/*
 		 * 1. copy data directory, omitting directories which should not be
 		 *    copied, or for which copying would serve no purpose.
 		 *
@@ -1423,7 +1431,7 @@ do_standby_clone(void)
 
 stop_backup:
 
-	if(runtime_options.rsync_only)
+	if(runtime_options.rsync_only && pg_start_backup_executed)
 	{
 		log_notice(_("notifying master about backup completion...\n"));
 		if(stop_backup(upstream_conn, last_wal_segment) == false)
