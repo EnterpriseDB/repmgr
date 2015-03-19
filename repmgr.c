@@ -878,6 +878,11 @@ do_standby_register(void)
 
 	if(record_created == false)
 	{
+		if(!runtime_options.force)
+		{
+			log_notice(_("HINT: use option -F/--force to overwrite an existing node record\n"));
+		}
+
 		PQfinish(master_conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
