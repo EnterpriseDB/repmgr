@@ -79,7 +79,6 @@ static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_er
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
 
 static char *make_pg_path(char *file);
-static bool log_event(PGconn *standby_conn, bool success, char *details);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -949,7 +948,6 @@ do_standby_clone(void)
 	char	   *first_wal_segment = NULL;
 	char	   *last_wal_segment = NULL;
 
-	bool		record_created = FALSE;
 	PQExpBufferData event_details;
 
 	/*
@@ -1514,40 +1512,15 @@ stop_backup:
 					  _("; --force: %s"),
 					  runtime_options.force ? "Y" : "N");
 
-	record_created = log_event(upstream_conn,
-										 true,
-										 event_details.data);
-
-	if(record_created == false)
-	{
-		PQfinish(upstream_conn);
-		exit(ERR_DB_QUERY);
-	}
+	create_event_record(upstream_conn,
+						&options,
+						options.node,
+						"standby_clone",
+						true,
+						event_details.data);
 
 	PQfinish(upstream_conn);
 	exit(retval);
-}
-
-
-static bool
-log_event(PGconn *standby_conn, bool success, char *details)
-{
-	PGconn *primary_conn;
-	bool    retval;
-
-	primary_conn = get_primary_connection(standby_conn,
-										   options.cluster_name,
-										    NULL, NULL);
-
-	retval = create_event_record(primary_conn,
-								 &options,
-								 options.node,
-								 "standby_clone",
-								 success,
-								 details);
-	PQfinish(primary_conn);
-
-	return retval;
 }
 
 
