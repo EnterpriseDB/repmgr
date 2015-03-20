@@ -2534,11 +2534,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing MASTER REGISTER."));
+				error_list_append(_("master connection parameters not required when executing MASTER REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing MASTER REGISTER."));
+				error_list_append(_("destination directory not required when executing MASTER REGISTER"));
 			}
 			break;
 		case STANDBY_REGISTER:
@@ -2551,11 +2551,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing STANDBY REGISTER."));
+				error_list_append(_("master connection parameters not required when executing STANDBY REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing STANDBY REGISTER."));
+				error_list_append(_("destination directory not required when executing STANDBY REGISTER"));
 			}
 			break;
 		case STANDBY_PROMOTE:
@@ -2569,11 +2569,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing STANDBY PROMOTE."));
+				error_list_append(_("master connection parameters not required when executing STANDBY PROMOTE"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing STANDBY PROMOTE."));
+				error_list_append(_("destination directory not required when executing STANDBY PROMOTE"));
 			}
 			break;
 		case STANDBY_FOLLOW:
@@ -2587,27 +2587,36 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing STANDBY FOLLOW."));
+				error_list_append(_("master connection parameters not required when executing STANDBY FOLLOW"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing STANDBY FOLLOW."));
+				error_list_append(_("destination directory not required when executing STANDBY FOLLOW"));
 			}
 			break;
 		case STANDBY_CLONE:
 
 			/*
-			 * Previous repmgr versions issued a notice here if a configuration
-			 * file was provided saying it wasn't needed, which was confusing as
-			 * it was needed for the `pg_bindir` parameter.
-			 *
-			 * In any case it's sensible to read the configuration file if available
-			 * for `pg_bindir`, `loglevel` and `use_replication_slots`.
+			 * Explicitly require connection information for standby clone -
+			 * this will be written into `recovery.conf` so it's important to
+			 * specify it explicitly
 			 */
-			if (runtime_options.host == NULL)
+
+			if (strcmp(runtime_options.host, "") == 0)
 			{
-				log_notice(_("master connection parameters required when executing STANDBY CLONE."));
+				error_list_append(_("master hostname (-h/--host) required when executing STANDBY CLONE"));
 			}
+
+			if (strcmp(runtime_options.dbname, "") == 0)
+			{
+				error_list_append(_("master database name (-d/--dbname) required when executing STANDBY CLONE"));
+			}
+
+			if (strcmp(runtime_options.username, "") == 0)
+			{
+				error_list_append(_("master database username (-U/--username) required when executing STANDBY CLONE"));
+			}
+
 			need_a_node = false;
 			break;
 		case WITNESS_CREATE:
