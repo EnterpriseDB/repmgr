@@ -1768,7 +1768,7 @@ do_standby_follow(void)
 
 	/* Finally, restart the service */
 	maxlen_snprintf(script, "%s %s -w -D %s -m fast restart",
-					make_pg_path("pg_ctl"), options.pgctl_options, data_dir);
+					make_pg_path("pg_ctl"), options.pg_ctl_options, data_dir);
 
 	log_notice(_("restarting server using '%s'\n"),
 			   script);
@@ -1897,7 +1897,7 @@ do_witness_create(void)
 
 	sprintf(script, "%s %s -D %s init -o \"%s-U %s\"",
 			make_pg_path("pg_ctl"),
-			options.pgctl_options, runtime_options.dest_dir,
+			options.pg_ctl_options, runtime_options.dest_dir,
 			runtime_options.initdb_no_pwprompt ? "" : "-W ",
 			runtime_options.superuser);
 	log_info(_("initializing cluster for witness: %s.\n"), script);
@@ -1968,7 +1968,7 @@ do_witness_create(void)
 	/* start new instance */
 	sprintf(script, "%s %s -w -D %s start",
 			make_pg_path("pg_ctl"),
-			options.pgctl_options, runtime_options.dest_dir);
+			options.pg_ctl_options, runtime_options.dest_dir);
 	log_info(_("starting witness server: %s\n"), script);
 	r = system(script);
 	if (r != 0)
@@ -2079,7 +2079,7 @@ do_witness_create(void)
 	/* reload to adapt for changed pg_hba.conf */
 	sprintf(script, "%s %s -w -D %s reload",
 			make_pg_path("pg_ctl"),
-			options.pgctl_options, runtime_options.dest_dir);
+			options.pg_ctl_options, runtime_options.dest_dir);
 	log_info(_("reloading witness server configuration: %s"), script);
 	r = system(script);
 	if (r != 0)

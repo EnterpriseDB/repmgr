@@ -124,7 +124,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
-	memset(options->pgctl_options, 0, sizeof(options->pgctl_options));
+	memset(options->pg_ctl_options, 0, sizeof(options->pg_ctl_options));
 	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
 
 	/* default master_response_timeout is 60 seconds */
@@ -210,7 +210,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
-			strncpy(options->pgctl_options, value, MAXLEN);
+			strncpy(options->pg_ctl_options, value, MAXLEN);
 		else if (strcmp(name, "pg_basebackup_options") == 0)
 			strncpy(options->pg_basebackup_options, value, MAXLEN);
 		else if (strcmp(name, "logfile") == 0)
@@ -540,10 +540,10 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 		config_changed = true;
 	}
 
-	/* pgctl_options */
-	if(strcmp(orig_options->pgctl_options, new_options.pgctl_options) != 0)
+	/* pg_ctl_options */
+	if(strcmp(orig_options->pg_ctl_options, new_options.pg_ctl_options) != 0)
 	{
-		strcpy(orig_options->pgctl_options, new_options.pgctl_options);
+		strcpy(orig_options->pg_ctl_options, new_options.pg_ctl_options);
 		config_changed = true;
 	}
 

@@ -69,7 +69,7 @@ typedef struct
 	int			reconnect_attempts;
 	int			reconnect_intvl;
 	char		pg_bindir[MAXLEN];
-	char		pgctl_options[MAXLEN];
+	char		pg_ctl_options[MAXLEN];
 	char		pg_basebackup_options[MAXLEN];
 	char		logfile[MAXLEN];
 	int			monitor_interval_secs;
