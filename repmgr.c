@@ -98,7 +98,7 @@ static void help(const char *progname);
 static const char *progname;
 static const char *keywords[6];
 static const char *values[6];
-static bool		   need_a_node = true;
+static bool		   config_file_required = true;
 
 /* XXX This should be mapped into a command line option */
 bool		require_password = false;
@@ -475,7 +475,7 @@ main(int argc, char **argv)
 	 * Node configuration information is not needed for all actions, with
 	 * STANDBY CLONE being the main exception.
 	 */
-	if (need_a_node)
+	if (config_file_required)
 	{
 		if (options.node == -1)
 		{
@@ -2617,7 +2617,7 @@ check_parameters_for_action(const int action)
 				error_list_append(_("master database username (-U/--username) required when executing STANDBY CLONE"));
 			}
 
-			need_a_node = false;
+			config_file_required = false;
 			break;
 		case WITNESS_CREATE:
 			/* allow all parameters to be supplied */
