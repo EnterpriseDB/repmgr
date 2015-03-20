@@ -8,8 +8,6 @@ Known issues in repmgr
 Planned feature improvements
 ============================
 
-* Timeline increases when promoting a standby
-
 * A better check which standby did receive most of the data
 
 * Make the fact that a standby may be delayed a factor in the voting
