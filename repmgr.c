@@ -2630,6 +2630,14 @@ check_parameters_for_action(const int action)
 			break;
 	}
 
+	if(action != STANDBY_CLONE)
+	{
+		if(runtime_options.rsync_only)
+		{
+			error_list_append(_("--rsync-only can only be used when executing STANDBY CLONE."));
+		}
+	}
+
 	return;
 }
 
