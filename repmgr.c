@@ -142,6 +142,7 @@ main(int argc, char **argv)
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"rsync-only", no_argument, NULL, 3},
+		{"fast-checkpoint", no_argument, NULL, 4},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -263,6 +264,9 @@ main(int argc, char **argv)
 				break;
 			case 3:
 				runtime_options.rsync_only = true;
+				break;
+			case 4:
+				runtime_options.fast_checkpoint = true;
 				break;
 			default:
 			{
@@ -1169,7 +1173,7 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if(start_backup(upstream_conn, first_wal_segment) == false)
+		if(start_backup(upstream_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
 			retval = ERR_BAD_BASEBACKUP;
@@ -1476,7 +1480,6 @@ stop_backup:
 	{
 		log_notice(_("standby clone (using pg_basebackup) complete\n"));
 	}
-
 
 	/*
 	 * XXX It might be nice to provide the following options:
@@ -2226,7 +2229,8 @@ help(const char *progname)
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
 	printf(_("  -r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)\n"));
-	printf(_("  --rsync-only                        use only rsync to make the initial base backup\n"));
+	printf(_("  --rsync-only                        use only rsync to clone a standby\n"));
+	printf(_("  --fast-checkpoint                   force fast checkpoint when cloning a standby\n"));
 	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
 	printf(_("\n%s performs the following node management tasks:\n\n"), progname);
@@ -2476,16 +2480,28 @@ run_basebackup()
 	initPQExpBuffer(&params);
 
 	if(strlen(runtime_options.host))
+	{
 		appendPQExpBuffer(&params, " -h %s", runtime_options.host);
+	}
 
 	if(strlen(runtime_options.masterport))
+	{
 		appendPQExpBuffer(&params, " -p %s", runtime_options.masterport);
+	}
 
 	if(strlen(runtime_options.username))
+	{
 		appendPQExpBuffer(&params, " -U %s", runtime_options.username);
+	}
 
 	if(strlen(runtime_options.dest_dir))
+	{
 		appendPQExpBuffer(&params, " -D %s", runtime_options.dest_dir);
+	}
+
+	if(runtime_options.fast_checkpoint) {
+		appendPQExpBuffer(&params, " -c fast");
+	}
 
 	if(options.tablespace_mapping.head != NULL)
 	{
@@ -2499,15 +2515,14 @@ run_basebackup()
 					"%s -l \"repmgr base backup\" %s %s",
 					make_pg_path("pg_basebackup"),
 					params.data,
-					options.pg_basebackup_options
-		);
+					options.pg_basebackup_options);
 
 	termPQExpBuffer(&params);
 
 	log_info(_("executing: '%s'\n"), script);
 
 	/*
-	 * As of 9.4, pg_basebackup et al only ever return 0 or 1
+	 * As of 9.4, pg_basebackup only ever returns 0 or 1
      */
 
 	r = system(script);
@@ -2517,7 +2532,8 @@ run_basebackup()
 
 
 /*
- * Tries to avoid useless or conflicting parameters
+ * Check for useless or conflicting parameters, and also whether a
+ * configuration file is required.
  */
 static void
 check_parameters_for_action(const int action)
@@ -2634,12 +2650,18 @@ check_parameters_for_action(const int action)
 	{
 		if(runtime_options.rsync_only)
 		{
-			error_list_append(_("--rsync-only can only be used when executing STANDBY CLONE."));
+			error_list_append(_("--rsync-only can only be used when executing STANDBY CLONE"));
+		}
+
+		if(runtime_options.fast_checkpoint)
+		{
+			error_list_append(_("--fast-checkpoint can only be used when executing STANDBY CLONE"));
 		}
 	}
 
 	return;
 }
+
 
 static bool
 create_schema(PGconn *conn)

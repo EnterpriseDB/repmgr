@@ -827,15 +827,15 @@ create_replication_slot(PGconn *conn, char *slot_name)
 
 
 bool
-start_backup(PGconn *conn, char *first_wal_segment)
+start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
-	sqlquery_snprintf(
-					  sqlquery,
-	  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))",
-					  time(NULL));
+	sqlquery_snprintf(sqlquery,
+					  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld', %s))",
+					  time(NULL),
+					  fast_checkpoint ? "TRUE" : "FALSE");
 
 	log_debug(_("standby clone: %s\n"), sqlquery);
 
