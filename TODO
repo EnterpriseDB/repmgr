@@ -21,3 +21,5 @@ Planned feature improvements
 configuration files.
 
 * Use pg_basebackup -X s
+  NOTE: this can be used by including `-X s` in the configuration parameter
+  `pg_basebackup_options`
