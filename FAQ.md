@@ -66,10 +66,11 @@ General
   just timestamp and size, to ensure that all changed files are
   copied and prevent corruption.
 
-- How can I prevent `repmgr` from copying `postgresql.conf` and
-  `pg_hba.conf` from the PostgreSQL configuration directory in `/etc`?
+- When cloning a standby, how can I prevent `repmgr` from copying
+  `postgresql.conf` and `pg_hba.conf` from the PostgreSQL configuration
+  directory in `/etc`?
 
-  Include the option `ignore_external_config_files=1` in `repmgr.conf`
+  Use the command line option `--ignore-external-config-files`
 
 - How can I prevent `repmgr` from copying local configuration files
   in the data directory?

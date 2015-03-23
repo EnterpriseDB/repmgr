@@ -81,7 +81,7 @@ typedef struct
 	bool		initdb_no_pwprompt;
 	bool		rsync_only;
 	bool		fast_checkpoint;
-
+	bool		ignore_external_config_files;
 	char		masterport[MAXLEN];
 	char		localport[MAXLEN];
 
@@ -93,7 +93,7 @@ typedef struct
 	char		min_recovery_apply_delay[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, "", "", 0, "", "" }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, "", "", 0, "", "" }
 
 extern char		repmgr_schema[MAXLEN];
 

@@ -143,6 +143,7 @@ main(int argc, char **argv)
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"rsync-only", no_argument, NULL, 3},
 		{"fast-checkpoint", no_argument, NULL, 4},
+		{"ignore-external-config-files", no_argument, NULL, 5},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -267,6 +268,9 @@ main(int argc, char **argv)
 				break;
 			case 4:
 				runtime_options.fast_checkpoint = true;
+				break;
+			case 5:
+				runtime_options.ignore_external_config_files = true;
 				break;
 			default:
 			{
@@ -1337,7 +1341,7 @@ do_standby_clone(void)
 
 		if(strlen(master_config_file))
 		{
-			if(options.ignore_external_config_files && config_file_outside_pgdata)
+			if(runtime_options.ignore_external_config_files && config_file_outside_pgdata)
 			{
 				log_notice(_("standby clone: not copying master config file '%s'\n"), master_config_file);
 			}
@@ -1358,7 +1362,7 @@ do_standby_clone(void)
 
 		if(strlen(master_hba_file))
 		{
-			if(options.ignore_external_config_files && hba_file_outside_pgdata)
+			if(runtime_options.ignore_external_config_files && hba_file_outside_pgdata)
 			{
 				log_notice(_("standby clone: not copying master config file '%s'\n"), master_hba_file);
 			}
@@ -1379,7 +1383,7 @@ do_standby_clone(void)
 
 		if(strlen(master_ident_file))
 		{
-			if(options.ignore_external_config_files && ident_file_outside_pgdata)
+			if(runtime_options.ignore_external_config_files && ident_file_outside_pgdata)
 			{
 				log_notice(_("standby clone: not copying master config file '%s'\n"), master_ident_file);
 			}
@@ -2231,6 +2235,8 @@ help(const char *progname)
 	printf(_("  -r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)\n"));
 	printf(_("  --rsync-only                        use only rsync to clone a standby\n"));
 	printf(_("  --fast-checkpoint                   force fast checkpoint when cloning a standby\n"));
+	printf(_("  --ignore-external-config-files      don't copy configuration files located outside \n" \
+			 "                                      the data directory when cloning a standby\n"));
 	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
 	printf(_("\n%s performs the following node management tasks:\n\n"), progname);
@@ -2656,6 +2662,11 @@ check_parameters_for_action(const int action)
 		if(runtime_options.fast_checkpoint)
 		{
 			error_list_append(_("--fast-checkpoint can only be used when executing STANDBY CLONE"));
+		}
+
+		if(runtime_options.ignore_external_config_files)
+		{
+			error_list_append(_("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
 		}
 	}
 
