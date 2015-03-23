@@ -136,12 +136,12 @@ main(int argc, char **argv)
 		{"keep-history", required_argument, NULL, 'k'},
 		{"force", no_argument, NULL, 'F'},
 		{"wait", no_argument, NULL, 'W'},
-		{"min-recovery-apply-delay", required_argument, NULL, 'r'},
 		{"verbose", no_argument, NULL, 'v'},
 		{"pg_bindir", required_argument, NULL, 'b'},
+		{"rsync-only", no_argument, NULL, 'r'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
-		{"rsync-only", no_argument, NULL, 3},
+		{"recovery-min-apply-delay", required_argument, NULL, 3},
 		{"fast-checkpoint", no_argument, NULL, 4},
 		{"ignore-external-config-files", no_argument, NULL, 5},
 		{NULL, 0, NULL, 0}
@@ -230,32 +230,14 @@ main(int argc, char **argv)
 			case 'I':
 				runtime_options.ignore_rsync_warn = true;
 				break;
-			case 'r':
-				targ = strtol(optarg, &ptr, 10);
-
-				if(targ < 1)
-				{
-					error_list_append(_("Invalid value provided for '-r/--min-recovery-apply-delay'"));
-					break;
-				}
-				if(ptr && *ptr)
-				{
-					if(strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 &&
-					   strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
-					   strcmp(ptr, "d") != 0)
-					{
-						error_list_append(_("Value provided for '-r/--min-recovery-apply-delay' must be one of ms/s/min/h/d"));
-						break;
-					}
-				}
-
-				strncpy(runtime_options.min_recovery_apply_delay, optarg, MAXLEN);
-				break;
 			case 'v':
 				runtime_options.verbose = true;
 				break;
 			case 'b':
 				strncpy(runtime_options.pg_bindir, optarg, MAXLEN);
+				break;
+			case 'r':
+				runtime_options.rsync_only = true;
 				break;
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
@@ -264,7 +246,25 @@ main(int argc, char **argv)
 				check_upstream_config = true;
 				break;
 			case 3:
-				runtime_options.rsync_only = true;
+				targ = strtol(optarg, &ptr, 10);
+
+				if(targ < 1)
+				{
+					error_list_append(_("Invalid value provided for '-r/--recovery-min-apply-delay'"));
+					break;
+				}
+				if(ptr && *ptr)
+				{
+					if(strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 &&
+					   strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
+					   strcmp(ptr, "d") != 0)
+					{
+						error_list_append(_("Value provided for '-r/--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
+						break;
+					}
+				}
+
+				strncpy(runtime_options.recovery_min_apply_delay, optarg, MAXLEN);
 				break;
 			case 4:
 				runtime_options.fast_checkpoint = true;
@@ -983,6 +983,21 @@ do_standby_clone(void)
 
 	log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
 			 cluster_size);
+
+	/*
+	 * If --recovery-min-apply-delay was passed, check that
+	 * we're connected to PostgreSQL 9.4 or later
+	 */
+
+	if(*runtime_options.recovery_min_apply_delay)
+	{
+		if(get_server_version(upstream_conn, NULL) < 90400)
+		{
+			log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
+			PQfinish(upstream_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
 
 	/*
 	 * Check that tablespaces named in any `tablespace_mapping` configuration
@@ -2232,8 +2247,9 @@ help(const char *progname)
 	printf(_("  -F, --force                         force potentially dangerous operations\n" \
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
-	printf(_("  -r, --min-recovery-apply-delay=VALUE  enable recovery time delay, value has to be a valid time atom (e.g. 5min)\n"));
-	printf(_("  --rsync-only                        use only rsync to clone a standby\n"));
+	printf(_("  -r, --rsync-only                    use only rsync to clone a standby\n"));
+	printf(_("  --recovery-min-apply-delay=VALUE    set recovery_min_apply_delay in recovery.conf\n" \
+ 			 "                                      when cloning a standby (PostgreSQL 9.4 and later)\n"));
 	printf(_("  --fast-checkpoint                   force fast checkpoint when cloning a standby\n"));
 	printf(_("  --ignore-external-config-files      don't copy configuration files located outside \n" \
 			 "                                      the data directory when cloning a standby\n"));
@@ -2298,11 +2314,11 @@ create_recovery_file(const char *data_dir)
 
 	log_debug(_("recovery.conf: %s"), line);
 
-	/* min_recovery_apply_delay = ... (optional) */
-	if(*runtime_options.min_recovery_apply_delay)
+	/* recovery_min_apply_delay = ... (optional) */
+	if(*runtime_options.recovery_min_apply_delay)
 	{
-		maxlen_snprintf(line, "min_recovery_apply_delay = %s\n",
-						runtime_options.min_recovery_apply_delay);
+		maxlen_snprintf(line, "recovery_min_apply_delay = %s\n",
+						runtime_options.recovery_min_apply_delay);
 		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
 
@@ -2667,6 +2683,11 @@ check_parameters_for_action(const int action)
 		if(runtime_options.ignore_external_config_files)
 		{
 			error_list_append(_("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
+		}
+
+		if(*runtime_options.recovery_min_apply_delay)
+		{
+			error_list_append(_("--recovery-min-apply-delay can only be used when executing STANDBY CLONE"));
 		}
 	}
 
