@@ -660,11 +660,11 @@ witness_monitor(void)
 }
 
 
-// ZZZ update description
 /*
- * Insert monitor info, this is basically the time and xlog replayed,
- * applied on standby and current xlog location in master.
- * Also do the math to see how far are we in bytes for being up-to-date
+ * standby_monitor()
+ *
+ * Monitor standby server and handle failover situation. Also insert
+ * monitoring information if configured.
  */
 static void
 standby_monitor(void)
