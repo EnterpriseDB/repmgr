@@ -55,7 +55,7 @@
 
 typedef enum {
     UNKNOWN = 0,
-	PRIMARY,
+	MASTER,
 	STANDBY,
 	WITNESS
 } t_server_type;

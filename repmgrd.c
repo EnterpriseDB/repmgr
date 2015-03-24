@@ -63,10 +63,10 @@ typedef struct s_node_info
 t_configuration_options local_options;
 PGconn	   *my_local_conn = NULL;
 
-/* Primary info */
-t_configuration_options primary_options;
+/* Master info */
+t_configuration_options master_options;
 
-PGconn	   *primary_conn = NULL;
+PGconn	   *master_conn = NULL;
 
 const char *progname;
 
@@ -91,12 +91,12 @@ static void witness_monitor(void);
 static bool check_connection(PGconn *conn, const char *type);
 static bool set_local_node_failed(void);
 
-static bool update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_node_id);
+static bool update_node_record_set_master(PGconn *conn, int this_node_id, int old_master_node_id);
 static bool update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
-static void do_primary_failover(void);
+static void do_master_failover(void);
 static bool do_upstream_standby_failover(t_node_info upstream_node);
 
 static t_node_info get_node_info(PGconn *conn, char *cluster, int node_id);
@@ -124,16 +124,16 @@ static void check_and_create_pid_file(const char *pid_file);
 static void
 close_connections()
 {
-	if (primary_conn != NULL && PQisBusy(primary_conn) == 1)
-		cancel_query(primary_conn, local_options.master_response_timeout);
+	if (master_conn != NULL && PQisBusy(master_conn) == 1)
+		cancel_query(master_conn, local_options.master_response_timeout);
 
 	if (my_local_conn != NULL)
 		PQfinish(my_local_conn);
 
-	if (primary_conn != NULL && primary_conn != my_local_conn)
-		PQfinish(primary_conn);
+	if (master_conn != NULL && master_conn != my_local_conn)
+		PQfinish(master_conn);
 
-	primary_conn = NULL;
+	master_conn = NULL;
 	my_local_conn = NULL;
 }
 
@@ -297,17 +297,17 @@ main(int argc, char **argv)
 	do
 	{
 		/*
-		 * Set my server mode, establish a connection to primary and start
+		 * Set my server mode, establish a connection to master and start
 		 * monitor
 		 */
 
 		switch (node_info.type)
 		{
-			case PRIMARY:
-				primary_options.node = local_options.node;
-				strncpy(primary_options.conninfo, local_options.conninfo,
+			case MASTER:
+				master_options.node = local_options.node;
+				strncpy(master_options.conninfo, local_options.conninfo,
 						MAXLEN);
-				primary_conn = my_local_conn;
+				master_conn = my_local_conn;
 
 				check_cluster_configuration(my_local_conn);
 				check_node_configuration();
@@ -316,14 +316,14 @@ main(int argc, char **argv)
 				{
 					PQfinish(my_local_conn);
 					my_local_conn = establish_db_connection(local_options.conninfo, true);
-					primary_conn = my_local_conn;
+					master_conn = my_local_conn;
 					update_registration();
 				}
 
 				/* Log startup event */
 				if(startup_event_logged == false)
 				{
-					create_event_record(primary_conn,
+					create_event_record(master_conn,
 										&local_options,
 										local_options.node,
 										"repmgrd_start",
@@ -332,10 +332,10 @@ main(int argc, char **argv)
 					startup_event_logged = true;
 				}
 
-				log_info(_("starting continuous primary connection check\n"));
+				log_info(_("starting continuous master connection check\n"));
 
 				/*
-                                 * Check that primary is still alive.
+                                 * Check that master is still alive.
                                  * XXX We should also check that the
                                  * standby servers are sending info
 				 */
@@ -346,7 +346,7 @@ main(int argc, char **argv)
 				 */
 				do
 				{
-					if (check_connection(primary_conn, "master"))
+					if (check_connection(master_conn, "master"))
 					{
 						sleep(local_options.monitor_interval_secs);
 					}
@@ -368,7 +368,7 @@ main(int argc, char **argv)
 						{
 							PQfinish(my_local_conn);
 							my_local_conn = establish_db_connection(local_options.conninfo, true);
-							primary_conn = my_local_conn;
+							master_conn = my_local_conn;
 
 							if (*local_options.logfile)
 							{
@@ -393,15 +393,15 @@ main(int argc, char **argv)
 			case WITNESS:
 			case STANDBY:
 
-				/* We need the node id of the primary server as well as a connection to it */
+				/* We need the node id of the master server as well as a connection to it */
 				log_info(_("connecting to master node '%s'\n"),
 						 local_options.cluster_name);
 
-				primary_conn = get_master_connection(my_local_conn,
+				master_conn = get_master_connection(my_local_conn,
 													 local_options.cluster_name,
-													 &primary_options.node, NULL);
+													 &master_options.node, NULL);
 
-				if (primary_conn == NULL)
+				if (master_conn == NULL)
 				{
 					PQExpBufferData errmsg;
 					initPQExpBuffer(&errmsg);
@@ -434,7 +434,7 @@ main(int argc, char **argv)
 				/* Log startup event */
 				if(startup_event_logged == false)
 				{
-					create_event_record(primary_conn,
+					create_event_record(master_conn,
 										&local_options,
 										local_options.node,
 										"repmgrd_start",
@@ -512,8 +512,8 @@ main(int argc, char **argv)
 /*
  * witness_monitor()
  *
- * Monitors witness server; attempt to find and connect to new primary
- * if existing primary connection is lost
+ * Monitors witness server; attempt to find and connect to new master
+ * if existing master connection is lost
  */
 static void
 witness_monitor(void)
@@ -529,14 +529,14 @@ witness_monitor(void)
 	 * of a missing master and promotion of a standby by that standby's
 	 * repmgrd, so we'll loop for a while before giving up.
 	 */
-	connection_ok = check_connection(primary_conn, "master");
+	connection_ok = check_connection(master_conn, "master");
 
 	if(connection_ok == false)
 	{
 		int			connection_retries;
-		log_debug(_("old primary node ID: %i\n"), primary_options.node);
+		log_debug(_("old master node ID: %i\n"), master_options.node);
 
-		/* We need to wait a while for the new primary to be promoted */
+		/* We need to wait a while for the new master to be promoted */
 		log_info(
 			_("waiting %i seconds for a new master to be promoted...\n"),
 			local_options.master_response_timeout
@@ -552,31 +552,31 @@ witness_monitor(void)
 				connection_retries + 1,
 				local_options.reconnect_attempts
 				);
-			primary_conn = get_master_connection(my_local_conn,
-												 local_options.cluster_name, &primary_options.node, NULL);
+			master_conn = get_master_connection(my_local_conn,
+												 local_options.cluster_name, &master_options.node, NULL);
 
-			if (PQstatus(primary_conn) != CONNECTION_OK)
+			if (PQstatus(master_conn) != CONNECTION_OK)
 			{
 				log_warning(
 					_("unable to determine a valid master server; waiting %i seconds to retry...\n"),
 					local_options.reconnect_intvl
 					);
-				PQfinish(primary_conn);
+				PQfinish(master_conn);
 				sleep(local_options.reconnect_intvl);
 			}
 			else
 			{
-				log_debug(_("new master found with node ID: %i\n"), primary_options.node);
+				log_debug(_("new master found with node ID: %i\n"), master_options.node);
 				connection_ok = true;
 
 				/*
-				 * Update the repl_nodes table from the new primary to reflect the changed
+				 * Update the repl_nodes table from the new master to reflect the changed
 				 * node configuration
 				 *
 				 * XXX it would be neat to be able to handle this with e.g. table-based
 				 * logical replication
 				 */
-				copy_configuration(primary_conn, my_local_conn, local_options.cluster_name);
+				copy_configuration(master_conn, my_local_conn, local_options.cluster_name);
 
 				break;
 			}
@@ -611,9 +611,9 @@ witness_monitor(void)
 	 * Cancel any query that is still being executed, so i can insert the
 	 * current record
 	 */
-	if (!cancel_query(primary_conn, local_options.master_response_timeout))
+	if (!cancel_query(master_conn, local_options.master_response_timeout))
 		return;
-	if (wait_connection_availability(primary_conn,
+	if (wait_connection_availability(master_conn,
 								 local_options.master_response_timeout) != 1)
 		return;
 
@@ -633,20 +633,20 @@ witness_monitor(void)
 	PQclear(res);
 
 	/*
-	 * Build the SQL to execute on primary
+	 * Build the SQL to execute on master
 	 */
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
-					  "           (primary_node, standby_node, "
+					  "           (master_node, standby_node, "
 					  "            last_monitor_time, last_apply_time, "
-					  "            last_wal_primary_location, last_wal_standby_location, "
+					  "            last_wal_master_location, last_wal_standby_location, "
 					  "            replication_lag, apply_lag )"
 					  "      VALUES(%d, %d, "
 					  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
 					  "             pg_current_xlog_location(), NULL, "
 					  "             0, 0) ",
 					  get_repmgr_schema_quoted(my_local_conn),
-					  primary_options.node,
+					  master_options.node,
 					  local_options.node,
 					  monitor_witness_timestamp);
 
@@ -654,16 +654,16 @@ witness_monitor(void)
 	 * Execute the query asynchronously, but don't check for a result. We will
 	 * check the result next time we pause for a monitor step.
 	 */
-	if (PQsendQuery(primary_conn, sqlquery) == 0)
+	if (PQsendQuery(master_conn, sqlquery) == 0)
 		log_warning(_("query could not be sent to master: %s\n"),
-					PQerrorMessage(primary_conn));
+					PQerrorMessage(master_conn));
 }
 
 
 // ZZZ update description
 /*
  * Insert monitor info, this is basically the time and xlog replayed,
- * applied on standby and current xlog location in primary.
+ * applied on standby and current xlog location in master.
  * Also do the math to see how far are we in bytes for being up-to-date
  */
 static void
@@ -671,13 +671,13 @@ standby_monitor(void)
 {
 	PGresult   *res;
 	char		monitor_standby_timestamp[MAXLEN];
-	char		last_wal_primary_location[MAXLEN];
+	char		last_wal_master_location[MAXLEN];
 	char		last_wal_standby_received[MAXLEN];
 	char		last_wal_standby_applied[MAXLEN];
 	char		last_wal_standby_applied_timestamp[MAXLEN];
 	char		sqlquery[QUERY_STR_LEN];
 
-	XLogRecPtr	lsn_primary;
+	XLogRecPtr	lsn_master;
 	XLogRecPtr	lsn_standby_received;
 	XLogRecPtr	lsn_standby_applied;
 
@@ -689,7 +689,7 @@ standby_monitor(void)
 	int			upstream_node_id;
 	t_node_info upstream_node;
 
-	int			active_primary_id;
+	int			active_master_id;
 	const char *type = NULL;
 
 	/*
@@ -710,7 +710,7 @@ standby_monitor(void)
 
 		log_err("%s\n", errmsg.data);
 
-		create_event_record(primary_conn,
+		create_event_record(master_conn,
 							&local_options,
 							local_options.node,
 							"repmgrd_shutdown",
@@ -725,7 +725,7 @@ standby_monitor(void)
 											local_options.node,
 											&upstream_node_id, NULL);
 
-	type = upstream_node_id == primary_options.node
+	type = upstream_node_id == master_options.node
 		? "master"
 		: "upstream";
 
@@ -752,16 +752,16 @@ standby_monitor(void)
 
 			for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 			{
-				primary_conn = get_master_connection(my_local_conn,
-					local_options.cluster_name, &primary_options.node, NULL);
-				if (PQstatus(primary_conn) == CONNECTION_OK)
+				master_conn = get_master_connection(my_local_conn,
+					local_options.cluster_name, &master_options.node, NULL);
+				if (PQstatus(master_conn) == CONNECTION_OK)
 				{
 					/*
 					 * Connected, we can continue the process so break the
 					 * loop
 					 */
 					log_err(_("connected to node %d, continuing monitoring.\n"),
-							primary_options.node);
+							master_options.node);
 					break;
 				}
 				else
@@ -775,7 +775,7 @@ standby_monitor(void)
 				}
 			}
 
-			if (PQstatus(primary_conn) != CONNECTION_OK)
+			if (PQstatus(master_conn) != CONNECTION_OK)
 			{
 				PQExpBufferData errmsg;
 				initPQExpBuffer(&errmsg);
@@ -799,21 +799,21 @@ standby_monitor(void)
 		else if (local_options.failover == AUTOMATIC_FAILOVER)
 		{
 			/*
-			 * When we returns from this function we will have a new primary
-			 * and a new primary_conn
+			 * When we returns from this function we will have a new master
+			 * and a new master_conn
 			 */
 
 			/*
 			 * Failover handling is handled differently depending on whether
-			 * the failed node is the primary or a cascading standby
+			 * the failed node is the master or a cascading standby
 			 */
 			upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
 
-            if(upstream_node.type == PRIMARY)
+            if(upstream_node.type == MASTER)
             {
                 log_debug(_("failure detected on master node (%i); attempting to promote a standby\n"),
                           node_info.upstream_node_id);
-                do_primary_failover();
+                do_master_failover();
             }
             else
             {
@@ -830,7 +830,7 @@ standby_monitor(void)
 
 					log_err("%s\n", errmsg.data);
 
-					create_event_record(primary_conn,
+					create_event_record(master_conn,
 										&local_options,
 										local_options.node,
 										"repmgrd_shutdown",
@@ -893,7 +893,7 @@ standby_monitor(void)
 
 
 	/*
-	 * If original primary has gone away we'll need to get the new one
+	 * If original master has gone away we'll need to get the new one
 	 * from the upstream node to write monitoring information
 	 */
 
@@ -924,19 +924,19 @@ standby_monitor(void)
 		return;
 	}
 
-	active_primary_id = atoi(PQgetvalue(res, 0, 0));
+	active_master_id = atoi(PQgetvalue(res, 0, 0));
 	PQclear(res);
 
-	if(active_primary_id != primary_options.node)
+	if(active_master_id != master_options.node)
 	{
-		log_notice(_("connecting to active master (node %i)...\n"), active_primary_id); \
-		if(primary_conn != NULL)
+		log_notice(_("connecting to active master (node %i)...\n"), active_master_id); \
+		if(master_conn != NULL)
 		{
-			PQfinish(primary_conn);
+			PQfinish(master_conn);
 		}
-		primary_conn = get_master_connection(my_local_conn,
+		master_conn = get_master_connection(my_local_conn,
 											 local_options.cluster_name,
-											 &primary_options.node, NULL);
+											 &master_options.node, NULL);
 
 	}
 
@@ -944,9 +944,9 @@ standby_monitor(void)
 	 * Cancel any query that is still being executed, so i can insert the
 	 * current record
 	 */
-	if (!cancel_query(primary_conn, local_options.master_response_timeout))
+	if (!cancel_query(master_conn, local_options.master_response_timeout))
 		return;
-	if (wait_connection_availability(primary_conn, local_options.master_response_timeout) != 1)
+	if (wait_connection_availability(master_conn, local_options.master_response_timeout) != 1)
 		return;
 
 	/* Get local xlog info */
@@ -969,43 +969,43 @@ standby_monitor(void)
 	strncpy(last_wal_standby_applied_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
 	PQclear(res);
 
-	/* Get primary xlog info */
+	/* Get master xlog info */
 	sqlquery_snprintf(sqlquery, "SELECT pg_current_xlog_location()");
 
-	res = PQexec(primary_conn, sqlquery);
+	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("PQexec failed: %s\n"), PQerrorMessage(primary_conn));
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(master_conn));
 		PQclear(res);
 		return;
 	}
 
-	strncpy(last_wal_primary_location, PQgetvalue(res, 0, 0), MAXLEN);
+	strncpy(last_wal_master_location, PQgetvalue(res, 0, 0), MAXLEN);
 	PQclear(res);
 
 	/* Calculate the lag */
-	lsn_primary = lsn_to_xlogrecptr(last_wal_primary_location, NULL);
+	lsn_master = lsn_to_xlogrecptr(last_wal_master_location, NULL);
 	lsn_standby_received = lsn_to_xlogrecptr(last_wal_standby_received, NULL);
 	lsn_standby_applied = lsn_to_xlogrecptr(last_wal_standby_applied, NULL);
 
 	/*
-	 * Build the SQL to execute on primary
+	 * Build the SQL to execute on master
 	 */
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
-					  "           (primary_node, standby_node, "
+					  "           (master_node, standby_node, "
 					  "            last_monitor_time, last_apply_time, "
-					  "            last_wal_primary_location, last_wal_standby_location, "
+					  "            last_wal_master_location, last_wal_standby_location, "
 					  "            replication_lag, apply_lag ) "
 					  "      VALUES(%d, %d, "
 					  "             '%s'::TIMESTAMP WITH TIME ZONE, '%s'::TIMESTAMP WITH TIME ZONE, "
 					  "             '%s', '%s', "
 					  "             %llu, %llu) ",
-					  get_repmgr_schema_quoted(primary_conn),
-					  primary_options.node, local_options.node,
+					  get_repmgr_schema_quoted(master_conn),
+					  master_options.node, local_options.node,
 					   monitor_standby_timestamp, last_wal_standby_applied_timestamp,
-					  last_wal_primary_location, last_wal_standby_received,
-					  (long long unsigned int)(lsn_primary - lsn_standby_received),
+					  last_wal_master_location, last_wal_standby_received,
+					  (long long unsigned int)(lsn_master - lsn_standby_received),
 					  (long long unsigned int)(lsn_standby_received - lsn_standby_applied));
 
 	/*
@@ -1013,20 +1013,20 @@ standby_monitor(void)
 	 * check the result next time we pause for a monitor step.
 	 */
 	log_debug("standby_monitor: %s\n", sqlquery);
-	if (PQsendQuery(primary_conn, sqlquery) == 0)
-		log_warning(_("query could not be sent to primary. %s\n"),
-					PQerrorMessage(primary_conn));
+	if (PQsendQuery(master_conn, sqlquery) == 0)
+		log_warning(_("query could not be sent to master. %s\n"),
+					PQerrorMessage(master_conn));
 }
 
 
 /*
- * do_primary_failover()
+ * do_master_failover()
  *
- * Handles failover to new cluster primary
+ * Handles failover to new cluster master
  */
 
 static void
-do_primary_failover(void)
+do_master_failover(void)
 {
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
@@ -1054,7 +1054,7 @@ do_primary_failover(void)
 	t_node_info nodes[FAILOVER_NODES_MAX_CHECK];
 
     /* Store details of the failed node here */
-    t_node_info failed_primary = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
+    t_node_info failed_master = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
 
 	/* Store details of the best candidate for promotion to master here */
 	t_node_info best_candidate = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
@@ -1100,11 +1100,11 @@ do_primary_failover(void)
 
 		/* Copy details of the failed node */
 		/* XXX only node_id is actually used later */
-		if(nodes[i].type == PRIMARY)
+		if(nodes[i].type == MASTER)
 		{
-			failed_primary.node_id = nodes[i].node_id;
-			failed_primary.xlog_location = nodes[i].xlog_location;
-			failed_primary.is_ready = nodes[i].is_ready;
+			failed_master.node_id = nodes[i].node_id;
+			failed_master.xlog_location = nodes[i].xlog_location;
+			failed_master.is_ready = nodes[i].is_ready;
 		}
 
 		nodes[i].upstream_node_id = atoi(PQgetvalue(res, i, 3));
@@ -1150,7 +1150,7 @@ do_primary_failover(void)
 	if (visible_nodes < (total_nodes / 2.0))
 	{
 		log_err(_("Unable to reach most of the nodes.\n"
-				  "Let the other standby servers decide which one will be the primary.\n"
+				  "Let the other standby servers decide which one will be the master.\n"
 				  "Manual action will be needed to re-add this node to the cluster.\n"));
 		terminate(ERR_FAILOVER_FAIL);
 	}
@@ -1221,7 +1221,7 @@ do_primary_failover(void)
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("PQexec failed: %s.\nReport an invalid value to not be "
-				  " considered as new primary and exit.\n"),
+				  " considered as new master and exit.\n"),
 				PQerrorMessage(my_local_conn));
 		PQclear(res);
 		sprintf(last_wal_standby_applied, "'%X/%X'", 0, 0);
@@ -1283,7 +1283,7 @@ do_primary_failover(void)
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
 			{
 				log_err(_("PQexec failed: %s.\nReport an invalid value to not"
-						  "be considered as new primary and exit.\n"),
+						  "be considered as new master and exit.\n"),
 						PQerrorMessage(node_conn));
 				PQclear(res);
 				PQfinish(node_conn);
@@ -1357,7 +1357,7 @@ do_primary_failover(void)
 	my_local_conn = NULL;
 
 	/*
-	 * determine which one is the best candidate to promote to primary
+	 * determine which one is the best candidate to promote to master
 	 */
 	for (i = 0; i < total_nodes; i++)
 	{
@@ -1434,12 +1434,12 @@ do_primary_failover(void)
 		my_local_conn = establish_db_connection(local_options.conninfo, true);
 
 		/* update node information to reflect new status */
-		if(update_node_record_set_primary(my_local_conn, node_info.node_id, failed_primary.node_id) == false)
+		if(update_node_record_set_master(my_local_conn, node_info.node_id, failed_master.node_id) == false)
 		{
 			appendPQExpBuffer(&event_details,
 							  _("unable to update node record for node %i (promoted to master following failure of node %i)"),
 							  node_info.node_id,
-							  failed_primary.node_id);
+							  failed_master.node_id);
 
 			log_err("%s\n", event_details.data);
 
@@ -1459,7 +1459,7 @@ do_primary_failover(void)
 		appendPQExpBuffer(&event_details,
 						  _("node %i promoted to master; old master %i marked as failed"),
 						  node_info.node_id,
-						  failed_primary.node_id);
+						  failed_master.node_id);
 
 		/* my_local_conn is now the master */
 		create_event_record(my_local_conn,
@@ -1470,10 +1470,10 @@ do_primary_failover(void)
 							event_details.data);
 
 	}
-    /* local node not promotion candidate - find the new primary */
+    /* local node not promotion candidate - find the new master */
 	else
 	{
-		PGconn	   *new_primary_conn;
+		PGconn	   *new_master_conn;
 		PQExpBufferData event_details;
 
 		initPQExpBuffer(&event_details);
@@ -1481,12 +1481,12 @@ do_primary_failover(void)
 		sleep(10);
 
 		if (verbose)
-			log_info(_("node %d is the best candidate to be the new primary, we should follow it...\n"),
+			log_info(_("node %d is the best candidate to be the new master, we should follow it...\n"),
 					 best_candidate.node_id);
 		log_debug(_("follow command is: \"%s\"\n"), local_options.follow_command);
 
 		/*
-		 * The new primary may some time to be promoted. The follow command
+		 * The new master may some time to be promoted. The follow command
 		 * should take care of that.
 		 */
 		if (log_type == REPMGR_STDERR && *local_options.logfile)
@@ -1496,30 +1496,30 @@ do_primary_failover(void)
 
 		/*
 		 * If 9.4 or later, and replication slots in use, we'll need to create a
-		 * slot on the new primary
+		 * slot on the new master
 		 */
-		new_primary_conn = establish_db_connection(best_candidate.conninfo_str, true);
+		new_master_conn = establish_db_connection(best_candidate.conninfo_str, true);
 
 		if(local_options.use_replication_slots)
 		{
-			if(create_replication_slot(new_primary_conn, node_info.slot_name) == false)
+			if(create_replication_slot(new_master_conn, node_info.slot_name) == false)
 			{
 
 				appendPQExpBuffer(&event_details,
-								  _("Unable to create slot '%s' on the primary node: %s"),
+								  _("Unable to create slot '%s' on the master node: %s"),
 								  node_info.slot_name,
-								  PQerrorMessage(new_primary_conn));
+								  PQerrorMessage(new_master_conn));
 
 				log_err("%s\n", event_details.data);
 
-				create_event_record(new_primary_conn,
+				create_event_record(new_master_conn,
 									&local_options,
 									node_info.node_id,
 									"repmgrd_failover_follow",
 									false,
 									event_details.data);
 
-				PQfinish(new_primary_conn);
+				PQfinish(new_master_conn);
 				terminate(ERR_DB_QUERY);
 			}
 		}
@@ -1535,7 +1535,7 @@ do_primary_failover(void)
 		my_local_conn = establish_db_connection(local_options.conninfo, true);
 
 		/* update node information to reflect new status */
-		if(update_node_record_set_upstream(new_primary_conn, node_info.node_id, best_candidate.node_id) == false)
+		if(update_node_record_set_upstream(new_master_conn, node_info.node_id, best_candidate.node_id) == false)
 		{
 			appendPQExpBuffer(&event_details,
 							  _("Unable to update node record for node %i (following new upstream node %i)"),
@@ -1544,7 +1544,7 @@ do_primary_failover(void)
 
 			log_err("%s\n", event_details.data);
 
-			create_event_record(new_primary_conn,
+			create_event_record(new_master_conn,
 								&local_options,
 								node_info.node_id,
 								"repmgrd_failover_follow",
@@ -1555,20 +1555,20 @@ do_primary_failover(void)
 		}
 
 		/* update internal record for this node*/
-		node_info = get_node_info(new_primary_conn, local_options.cluster_name, local_options.node);
+		node_info = get_node_info(new_master_conn, local_options.cluster_name, local_options.node);
 		appendPQExpBuffer(&event_details,
 						  _("Node %i now following new upstream node %i"),
 						  node_info.node_id,
 						  best_candidate.node_id);
 
-		create_event_record(new_primary_conn,
+		create_event_record(new_master_conn,
 							&local_options,
 							node_info.node_id,
 							"repmgrd_failover_follow",
 							true,
 							event_details.data);
 
-		PQfinish(new_primary_conn);
+		PQfinish(new_master_conn);
 		termPQExpBuffer(&event_details);
 	}
 
@@ -1600,10 +1600,10 @@ do_upstream_standby_failover(t_node_info upstream_node)
               node_info.node_id);
 
 	/*
-	 * Verify that we can still talk to the cluster primary even though
+	 * Verify that we can still talk to the cluster master even though
 	 * node upstream is not available
 	 */
-	if (!check_connection(primary_conn, "master"))
+	if (!check_connection(master_conn, "master"))
 	{
 		log_err(_("do_upstream_standby_failover(): Unable to connect to last known master node\n"));
 		return false;
@@ -1615,14 +1615,14 @@ do_upstream_standby_failover(t_node_info upstream_node)
 						  "SELECT id, active, upstream_node_id, type, conninfo "
 						  "  FROM %s.repl_nodes "
 						  " WHERE id = %i ",
-						  get_repmgr_schema_quoted(primary_conn),
+						  get_repmgr_schema_quoted(master_conn),
 						  upstream_node_id);
 
-		res = PQexec(primary_conn, sqlquery);
+		res = PQexec(master_conn, sqlquery);
 
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
-			log_err(_("unable to query cluster master: %s\n"), PQerrorMessage(primary_conn));
+			log_err(_("unable to query cluster master: %s\n"), PQerrorMessage(master_conn));
 			PQclear(res);
 			return false;
 		}
@@ -1638,11 +1638,11 @@ do_upstream_standby_failover(t_node_info upstream_node)
 		if(strcmp(PQgetvalue(res, 0, 1), "f") == 0)
 		{
 			/*
-			 * Upstream node is an inactive primary, meaning no there are no direct
+			 * Upstream node is an inactive master, meaning no there are no direct
 			 * upstream nodes available to reattach to.
 			 *
 			 * XXX For now we'll simply terminate, however it would make sense to
-			 * provide an option to either try and find the current primary and/or
+			 * provide an option to either try and find the current master and/or
 			 * a strategy to connect to a different upstream node
 			 */
 			if(strcmp(PQgetvalue(res, 0, 4), "master") == 0)
@@ -1679,7 +1679,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 		terminate(ERR_BAD_CONFIG);
 	}
 
-	if(update_node_record_set_upstream(primary_conn, node_info.node_id, upstream_node_id) == false)
+	if(update_node_record_set_upstream(master_conn, node_info.node_id, upstream_node_id) == false)
 	{
 		terminate(ERR_BAD_CONFIG);
 	}
@@ -1739,8 +1739,8 @@ check_connection(PGconn *conn, const char *type)
  * set_local_node_failed()
  *
  * If failure of the local node is detected, attempt to connect
- * to the current primary server (as stored in the global variable
- * `primary_conn`) and update its record to failed.
+ * to the current master server (as stored in the global variable
+ * `master_conn`) and update its record to failed.
  */
 
 static bool
@@ -1748,19 +1748,19 @@ set_local_node_failed(void)
 {
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
-	int			active_primary_node_id = -1;
-	char		primary_conninfo[MAXLEN];
+	int			active_master_node_id = -1;
+	char		master_conninfo[MAXLEN];
 
-	if (!check_connection(primary_conn, "master"))
+	if (!check_connection(master_conn, "master"))
 	{
-		log_err(_("set_local_node_failed(): Unable to connect to last known primary node\n"));
+		log_err(_("set_local_node_failed(): Unable to connect to last known master node\n"));
 		return false;
 	}
 
 	/*
-	 * Check that the node `primary_conn` is connected to is node is still
-	 * primary - it's just about conceivable that it might have become a
-	 * standby of a new primary in the intervening period
+	 * Check that the node `master_conn` is connected to is node is still
+	 * master - it's just about conceivable that it might have become a
+	 * standby of a new master in the intervening period
 	 */
 
 	sqlquery_snprintf(sqlquery,
@@ -1768,13 +1768,13 @@ set_local_node_failed(void)
 					  "  FROM %s.repl_nodes "
 					  " WHERE type = 'master' "
 					  "   AND active IS TRUE ",
-					  get_repmgr_schema_quoted(primary_conn));
+					  get_repmgr_schema_quoted(master_conn));
 
-	res = PQexec(primary_conn, sqlquery);
+	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("unable to obtain record for active master: %s\n"),
-				PQerrorMessage(primary_conn));
+				PQerrorMessage(master_conn));
 
 		return false;
 	}
@@ -1785,18 +1785,18 @@ set_local_node_failed(void)
 		return false;
 	}
 
-	active_primary_node_id = atoi(PQgetvalue(res, 0, 0));
-	strncpy(primary_conninfo, PQgetvalue(res, 0, 1), MAXLEN);
+	active_master_node_id = atoi(PQgetvalue(res, 0, 0));
+	strncpy(master_conninfo, PQgetvalue(res, 0, 1), MAXLEN);
 	PQclear(res);
 
-	if(active_primary_node_id != primary_options.node)
+	if(active_master_node_id != master_options.node)
 	{
 		log_notice(_("current active master is %i; attempting to connect\n"),
-			active_primary_node_id);
-		PQfinish(primary_conn);
-		primary_conn = establish_db_connection(primary_conninfo, false);
+			active_master_node_id);
+		PQfinish(master_conn);
+		master_conn = establish_db_connection(master_conninfo, false);
 
-		if(PQstatus(primary_conn) != CONNECTION_OK)
+		if(PQstatus(master_conn) != CONNECTION_OK)
 		{
 			log_err(_("unable to connect to active master\n"));
 			return false;
@@ -1813,20 +1813,20 @@ set_local_node_failed(void)
 					  "UPDATE %s.repl_nodes "
 					  "   SET active = FALSE "
 					  " WHERE id = %i ",
-					  get_repmgr_schema_quoted(primary_conn),
+					  get_repmgr_schema_quoted(master_conn),
 					  node_info.node_id);
 
-	res = PQexec(primary_conn, sqlquery);
+	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err(_("unable to set local node %i as inactive on primary: %s\n"),
+		log_err(_("unable to set local node %i as inactive on master: %s\n"),
 				node_info.node_id,
-				PQerrorMessage(primary_conn));
+				PQerrorMessage(master_conn));
 
 		return false;
 	}
 
-	log_notice(_("marking this node (%i) as inactive on primary\n"), node_info.node_id);
+	log_notice(_("marking this node (%i) as inactive on master\n"), node_info.node_id);
 	return true;
 }
 
@@ -1852,11 +1852,11 @@ check_cluster_configuration(PGconn *conn)
 	}
 
 	/*
-	 * If there isn't any results then we have not configured a primary node
+	 * If there isn't any results then we have not configured a master node
 	 * yet in repmgr or the connection string is pointing to the wrong
 	 * database.
 	 *
-	 * XXX if we are the primary, should we try to create the tables needed?
+	 * XXX if we are the master, should we try to create the tables needed?
 	 */
 	if (PQntuples(res) == 0)
 	{
@@ -1919,16 +1919,16 @@ check_node_configuration(void)
 						  "INSERT INTO %s.repl_nodes"
 						  "           (id, cluster, name, conninfo, priority, witness) "
 						  "    VALUES (%d, '%s', '%s', '%s', 0, FALSE) ",
-						  get_repmgr_schema_quoted(primary_conn),
+						  get_repmgr_schema_quoted(master_conn),
 						  local_options.node,
 						  local_options.cluster_name,
 						  local_options.node_name,
 						  local_options.conninfo);
 
-		if (!PQexec(primary_conn, sqlquery))
+		if (!PQexec(master_conn, sqlquery))
 		{
 			log_err(_("unable to insert node details, %s\n"),
-					PQerrorMessage(primary_conn));
+					PQerrorMessage(master_conn));
 			terminate(ERR_BAD_CONFIG);
 		}
 	}
@@ -2071,12 +2071,12 @@ update_registration(void)
 					  "   SET conninfo = '%s', "
 					  "       priority = %d "
 					  " WHERE id = %d ",
-					  get_repmgr_schema_quoted(primary_conn),
+					  get_repmgr_schema_quoted(master_conn),
 					  local_options.conninfo,
 					  local_options.priority,
 					  local_options.node);
 
-	res = PQexec(primary_conn, sqlquery);
+	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		PQExpBufferData errmsg;
@@ -2084,7 +2084,7 @@ update_registration(void)
 
 		appendPQExpBuffer(&errmsg,
 						  _("unable to update registration: %s"),
-						  PQerrorMessage(primary_conn));
+						  PQerrorMessage(master_conn));
 
 		log_err("%s\n", errmsg.data);
 
@@ -2297,7 +2297,7 @@ parse_node_type(const char *type)
 {
 	if(strcmp(type, "master") == 0)
 	{
-		return PRIMARY;
+		return MASTER;
 	}
 	else if(strcmp(type, "standby") == 0)
 	{
@@ -2313,12 +2313,12 @@ parse_node_type(const char *type)
 
 
 static bool
-update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_node_id)
+update_node_record_set_master(PGconn *conn, int this_node_id, int old_master_node_id)
 {
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	log_debug(_("Setting failed node %i inactive; marking node %i as primary\n"), old_primary_node_id, this_node_id);
+	log_debug(_("Setting failed node %i inactive; marking node %i as master\n"), old_master_node_id, this_node_id);
 
 	res = PQexec(conn, "BEGIN");
 
@@ -2340,14 +2340,14 @@ update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_n
 					  "     AND id = %i ",
 					  get_repmgr_schema_quoted(conn),
 					  local_options.cluster_name,
-					  old_primary_node_id);
+					  old_master_node_id);
 
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err(_("Unable to set old primary node %i as inactive: %s\n"),
-				old_primary_node_id,
+		log_err(_("Unable to set old master node %i as inactive: %s\n"),
+				old_master_node_id,
 				PQerrorMessage(conn));
 		PQclear(res);
 
@@ -2371,7 +2371,7 @@ update_node_record_set_primary(PGconn *conn, int this_node_id, int old_primary_n
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_err(_("Unable to set current node %i as active primary: %s\n"),
+		log_err(_("Unable to set current node %i as active master: %s\n"),
 				this_node_id,
 				PQerrorMessage(conn));
 		PQclear(res);
