@@ -410,12 +410,15 @@ main(int argc, char **argv)
 									  _("unable to connect to master node '%s'"),
 									  local_options.cluster_name);
 
-					create_event_record(my_local_conn,
+					log_err("%s\n", errmsg.data);
+
+					create_event_record(NULL,
 										&local_options,
 										local_options.node,
 										"repmgrd_shutdown",
 										false,
 										errmsg.data);
+
 					terminate(ERR_BAD_CONFIG);
 				}
 
@@ -586,8 +589,10 @@ witness_monitor(void)
 
 			appendPQExpBuffer(&errmsg,
 							  _("unable to determine a valid master node, terminating..."));
+
 			log_err("%s\n", errmsg.data);
-			create_event_record(my_local_conn,
+
+			create_event_record(NULL,
 								&local_options,
 								local_options.node,
 								"repmgrd_shutdown",
@@ -659,7 +664,7 @@ witness_monitor(void)
 /*
  * Insert monitor info, this is basically the time and xlog replayed,
  * applied on standby and current xlog location in primary.
- * Also do the math to see how far are we in bytes for being uptodate
+ * Also do the math to see how far are we in bytes for being up-to-date
  */
 static void
 standby_monitor(void)
@@ -705,12 +710,13 @@ standby_monitor(void)
 
 		log_err("%s\n", errmsg.data);
 
-		create_event_record(my_local_conn,
+		create_event_record(primary_conn,
 							&local_options,
 							local_options.node,
 							"repmgrd_shutdown",
 							false,
 							errmsg.data);
+
 		terminate(ERR_DB_CON);
 	}
 
@@ -777,9 +783,10 @@ standby_monitor(void)
 				appendPQExpBuffer(&errmsg,
 								  _("Unable to reconnect to master after %i attempts, terminating..."),
 								  local_options.reconnect_attempts);
+
 				log_err("%s\n", errmsg.data);
 
-				create_event_record(my_local_conn,
+				create_event_record(NULL,
 									&local_options,
 									local_options.node,
 									"repmgrd_shutdown",
@@ -819,11 +826,11 @@ standby_monitor(void)
 					initPQExpBuffer(&errmsg);
 
 					appendPQExpBuffer(&errmsg,
-									  _("unable to reconnect to new upstream node, terminating...")
-						);
+									  _("unable to reconnect to new upstream node, terminating..."));
+
 					log_err("%s\n", errmsg.data);
 
-					create_event_record(my_local_conn,
+					create_event_record(primary_conn,
 										&local_options,
 										local_options.node,
 										"repmgrd_shutdown",
@@ -1434,7 +1441,9 @@ do_primary_failover(void)
 							  node_info.node_id,
 							  failed_primary.node_id);
 
-			create_event_record(my_local_conn,
+			log_err("%s\n", event_details.data);
+
+			create_event_record(NULL,
 								&local_options,
 								node_info.node_id,
 								"repmgrd_failover_promote",
@@ -1444,7 +1453,7 @@ do_primary_failover(void)
 			terminate(ERR_DB_QUERY);
 		}
 
-		/* update internal record for this node*/
+		/* update internal record for this node */
 		node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
 
 		appendPQExpBuffer(&event_details,
@@ -1452,6 +1461,7 @@ do_primary_failover(void)
 						  node_info.node_id,
 						  failed_primary.node_id);
 
+		/* my_local_conn is now the master */
 		create_event_record(my_local_conn,
 							&local_options,
 							node_info.node_id,
@@ -1500,14 +1510,14 @@ do_primary_failover(void)
 								  node_info.slot_name,
 								  PQerrorMessage(new_primary_conn));
 
+				log_err("%s\n", event_details.data);
+
 				create_event_record(new_primary_conn,
 									&local_options,
 									node_info.node_id,
 									"repmgrd_failover_follow",
 									false,
 									event_details.data);
-
-				log_err("%s\n", event_details.data);
 
 				PQfinish(new_primary_conn);
 				terminate(ERR_DB_QUERY);
@@ -1531,6 +1541,8 @@ do_primary_failover(void)
 							  _("Unable to update node record for node %i (following new upstream node %i)"),
 							  node_info.node_id,
 							  best_candidate.node_id);
+
+			log_err("%s\n", event_details.data);
 
 			create_event_record(new_primary_conn,
 								&local_options,
@@ -1685,7 +1697,7 @@ check_connection(PGconn *conn, const char *type)
 	int			connection_retries;
 
 	/*
-	 * Check if the master is still available if after
+	 * Check if the node is still available if after
 	 * local_options.reconnect_attempts * local_options.reconnect_intvl
 	 * seconds of retries we cannot reconnect return false
 	 */

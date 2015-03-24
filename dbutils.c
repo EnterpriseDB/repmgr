@@ -1105,12 +1105,18 @@ delete_node_record(PGconn *conn, int node, char *action)
 /*
  * create_event_record()
  *
- * Insert a record into the events table.
+ * If `conn` is not NULL, insert a record into the events table.
  *
  * If configuration parameter `event_notification_command` is set, also
  * attempt to execute that command.
  *
  * Returns true if all operations succeeded, false if one or more failed.
+ *
+ * Note this function may be called with `conn` set to NULL in cases where
+ * the master node is not available and it's therefore not possible to write
+ * an event record. In this case, if `event_notification_command` is set a user-
+ * defined notification to be generated; if not, this function will have
+ * no effect.
  */
 
 bool
@@ -1120,69 +1126,79 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	PGresult   *res;
 	char		event_timestamp[MAXLEN] = "";
 	bool		success = true;
+	struct tm	ts;
 
-	int n_node_id = htonl(node_id);
-	char *t_successful = successful ? "TRUE" : "FALSE";
+	if(conn != NULL)
+	{
+		int n_node_id = htonl(node_id);
+		char *t_successful = successful ? "TRUE" : "FALSE";
 
-	const char *values[4] = { (char *)&n_node_id,
-							  event,
-							  t_successful,
-							  details
-							};
+		const char *values[4] = { (char *)&n_node_id,
+								  event,
+								  t_successful,
+								  details
+					  			};
 
-	int lengths[4] = { sizeof(n_node_id),
-					   0,
-					   0,
-					   0
-				     };
-	int binary[4] = {1, 0, 0, 0};
+		int lengths[4] = { sizeof(n_node_id),
+						   0,
+						   0,
+						   0
+			  			 };
 
-	sqlquery_snprintf(sqlquery,
-					  " INSERT INTO %s.repl_events ( "
-					  "             node_id, "
-					  "             event, "
-					  "             successful, "
-					  "             details "
-					  "            ) "
-					  "      VALUES ($1, $2, $3, $4) "
-					  "   RETURNING event_timestamp ",
-					  get_repmgr_schema_quoted(conn));
+		int binary[4] = {1, 0, 0, 0};
 
-	res = PQexecParams(conn,
-					   sqlquery,
-					   4,
-					   NULL,
-					   values,
-					   lengths,
-					   binary,
-					   0);
+		sqlquery_snprintf(sqlquery,
+						  " INSERT INTO %s.repl_events ( "
+						  "             node_id, "
+						  "             event, "
+						  "             successful, "
+						  "             details "
+						  "            ) "
+						  "      VALUES ($1, $2, $3, $4) "
+						  "   RETURNING event_timestamp ",
+						  get_repmgr_schema_quoted(conn));
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+		res = PQexecParams(conn,
+						   sqlquery,
+						   4,
+						   NULL,
+						   values,
+						   lengths,
+						   binary,
+						   0);
+
+		if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+
+			log_warning(_("Unable to create event record: %s\n"),
+						PQerrorMessage(conn));
+
+			success = false;
+
+		}
+		else
+		{
+			/* Store timestamp to send to the notification command */
+			strncpy(event_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+			log_debug(_("Event timestamp is: %s\n"), event_timestamp);
+		}
+
+		PQclear(res);
+	}
+
+	/*
+	 * If no database connection provided, or the query failed, generate a
+	 * current timestamp ourselves. This isn't quite the same
+	 * format as PostgreSQL, but is close enough for diagnostic use.
+	 */
+	if(!strlen(event_timestamp))
 	{
 		time_t now;
-		struct tm ts;
 
-		log_warning(_("Unable to create event record: %s\n"),
-					PQerrorMessage(conn));
-
-		success = false;
-
-		/*
-		 * If the query fails for whatever reason, generate a
-		 * current timestamp ourselves. This isn't quite the same
-		 * format as PostgreSQL, but is close enough for diagnostic use.
-		 */
 		time(&now);
 		ts = *localtime(&now);
 		strftime(event_timestamp, MAXLEN, "%Y-%m-%d %H:%M:%S%z", &ts);
 	}
-	else
-	{
-		strncpy(event_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
-		log_debug(_("Event timestamp is: %s\n"), event_timestamp);
-	}
-
-	PQclear(res);
 
 	/* an event notification command was provided - parse and execute it */
 	if(strlen(options->event_notification_command))
