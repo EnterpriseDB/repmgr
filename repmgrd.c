@@ -265,31 +265,22 @@ main(int argc, char **argv)
 
 	/* Verify that server is a supported version */
 	log_info(_("connected to database, checking its state\n"));
+
 	server_version_num = get_server_version(my_local_conn, NULL);
+
 	if(server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
-		PQExpBufferData errmsg;
-		initPQExpBuffer(&errmsg);
-
 		if (server_version_num > 0)
 		{
-			appendPQExpBuffer(&errmsg,
-							  _("%s requires PostgreSQL %s or later"),
-							  progname,
-							  MIN_SUPPORTED_VERSION);
+			log_err(_("%s requires PostgreSQL %s or later\n"),
+					progname,
+					MIN_SUPPORTED_VERSION) ;
 		}
 		else
 		{
-			appendPQExpBuffer(&errmsg,
-							  _("unable to determine PostgreSQL server version"));
+			log_err(_("unable to determine PostgreSQL server version\n"));
 		}
-		log_err("%s\n", errmsg.data);
-		create_event_record(my_local_conn,
-							&local_options,
-							local_options.node,
-							"repmgrd_shutdown",
-							false,
-							errmsg.data);
+
 		terminate(ERR_BAD_CONFIG);
 	}
 
