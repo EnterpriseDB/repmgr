@@ -195,15 +195,16 @@ is_pgup(PGconn *conn, int timeout)
 	return true;
 }
 
+
 /*
- * Return the id of the active primary node, or -1 if no
+ * Return the id of the active master node, or -1 if no
  * record available.
  *
  * This reports the value stored in the database only and
  * does not verify whether the node is actually available
  */
 int
-get_primary_node_id(PGconn *conn, char *cluster)
+get_master_node_id(PGconn *conn, char *cluster)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
@@ -221,13 +222,13 @@ get_primary_node_id(PGconn *conn, char *cluster)
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("get_primary_node_id(): query failed\n%s\n"),
+		log_err(_("get_master_node_id(): query failed\n%s\n"),
 				PQerrorMessage(conn));
 		retval = -1;
 	}
 	else if (PQntuples(res) == 0)
 	{
-		log_warning(_("get_primary_node_id(): no active primary found\n"));
+		log_warning(_("get_master_node_id(): no active primary found\n"));
 		retval = -1;
 	}
 	else
@@ -409,81 +410,6 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 }
 
 
-
-/*
- * get_primary_connection()
- *
- * Returns connection to cluster's primary node
- *
- * This assumes that the primary node information in `repl_nodes`
- * is correct. See get_master_connection(), which polls all known
- * servers to find out which one is currently primary.
- */
-PGconn *
-get_primary_connection(PGconn *standby_conn, char *cluster,
-						int *primary_node_id_ptr, char *primary_conninfo_out)
-{
-	PGconn	   *primary_conn = NULL;
-	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN];
-	char		primary_conninfo_stack[MAXCONNINFO];
-	char	   *primary_conninfo = &*primary_conninfo_stack;
-
-	/*
-	 * If the caller wanted to get a copy of the connection info string, sub
-	 * out the local stack pointer for the pointer passed by the caller.
-	 */
-	if (primary_conninfo_out != NULL)
-		primary_conninfo = primary_conninfo_out;
-
-	sqlquery_snprintf(sqlquery,
-					  "    SELECT n.conninfo, n.name, n.id "
-					  "      FROM %s.repl_nodes n "
-					  "     WHERE n.cluster = '%s' "
-					  "       AND n.type = 'master' ",
-					  get_repmgr_schema_quoted(standby_conn),
-					  cluster);
-
-	log_debug("get_primary_connection(): %s\n", sqlquery);
-
-	res = PQexec(standby_conn, sqlquery);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_err(_("unable to get conninfo for master server: %s\n"),
-				PQerrorMessage(standby_conn));
-		PQclear(res);
-		return NULL;
-	}
-
-	if(!PQntuples(res))
-	{
-		log_notice(_("no master server record found"));
-		PQclear(res);
-		return NULL;
-	}
-
-	strncpy(primary_conninfo, PQgetvalue(res, 0, 0), MAXCONNINFO);
-
-	if(primary_node_id_ptr != NULL)
-		*primary_node_id_ptr = atoi(PQgetvalue(res, 0, 1));
-
-	PQclear(res);
-
-	log_debug("conninfo is: '%s'\n", primary_conninfo);
-	primary_conn = establish_db_connection(primary_conninfo, false);
-
-	if (PQstatus(primary_conn) != CONNECTION_OK)
-	{
-		log_err(_("unable to connect to master node: %s\n"),
-				PQerrorMessage(primary_conn));
-		return NULL;
-	}
-
-	return primary_conn;
-}
-
-
 /*
  * get_upstream_connection()
  *
@@ -567,9 +493,6 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
  * NB: If master_conninfo_out may be NULL.	If it is non-null, it is assumed to
  * point to allocated memory of MAXCONNINFO in length, and the master server
  * connection string is placed there.
- *
- * To get the primary node from the metadata (i.e. without polling all servers),
- * use `get_primary_connection()`.
  */
 
 PGconn *
@@ -1015,7 +938,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 		 */
 		if(strcmp(type, "standby") == 0)
 		{
-			int primary_node_id = get_primary_node_id(conn, cluster_name);
+			int primary_node_id = get_master_node_id(conn, cluster_name);
 			maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
 		}
 		else
