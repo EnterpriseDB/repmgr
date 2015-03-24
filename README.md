@@ -306,7 +306,7 @@ Event logging and notifications
 -------------------------------
 
 To help understand what significant events (e.g. failure of a node) happened
-when and for what reason, `rempgr` logs such events into the `repl_events`
+when and for what reason, `repmgr` logs such events into the `repl_events`
 table, e.g.:
 
     repmgr_db=# SELECT * from repmgr_test.repl_events ;
