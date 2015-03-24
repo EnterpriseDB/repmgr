@@ -427,7 +427,7 @@ system you already have superuser access to.
 Clearing the PostgreSQL installation on the Standby
 ---------------------------------------------------
 
-To setup a new streaming replica, startin by removing any PostgreSQL
+To setup a new streaming replica, start by removing any PostgreSQL
 installation on the existing standby nodes.
 
 * Stop any server on "node2" and "node3".  You can confirm the database
