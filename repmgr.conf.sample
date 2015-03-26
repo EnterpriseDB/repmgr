@@ -116,7 +116,7 @@ reconnect_interval=10
 
 # Autofailover options
 failover=automatic  # one of 'automatic', 'manual'
-priority=-1
+priority=100        # a value of zero or less prevents the node being promoted to master
 promote_command='repmgr standby promote -f /path/to/repmgr.conf'
 follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
 

@@ -169,7 +169,7 @@ If your PostgreSQL binaries (`pg_ctl`, `pg_basebackup`) are not in your
 
     pg_bindir=/path/to/postgres/bin
 
-See `repmgr.conf.sample` for an example configuration file with
+See `repmgr.conf.sample` for an example configuration file with all
 available configuration settings annotated.
 
 ### Starting up
@@ -186,14 +186,14 @@ Failover
 
 To promote a standby to master, on the standby execute e.g.:
 
-    repmgr -f $HOME/repmgr/repmgr.conf --verbose standby promote
+    repmgr -f /etc/repmgr/repmgr.conf --verbose standby promote
 
 `repmgr` will attempt to connect to the current master to verify that it
 is not available (if it is, `repmgr` will not promote the standby).
 
 Other standby servers need to be told to follow the new master with e.g.:
 
-    repmgr -f $HOME/repmgr/repmgr.conf --verbose standby follow
+    repmgr -f /etc/repmgr/repmgr.conf --verbose standby follow
 
 See file `FAILOVER.rst` for details on setting up automated failover.
 
@@ -206,7 +206,7 @@ as a standby. First, ensure that the master's PostgreSQL server is
 no longer running; then use `repmgr standby clone` to re-sync its
 data directory with the current master, e.g.:
 
-    repmgr -f $HOME/repmgr/repmgr.conf \
+    repmgr -f /etc/repmgr/repmgr.conf \
       --force --rsync-only \
       -h node2 -d repmgr -U repmgr --verbose \
       standby clone
@@ -222,7 +222,7 @@ The node can then be restarted.
 The node will then need to be re-registered with `repmgr`; again
 the `--force` option is required to update the existing record:
 
-     repmgr -f $HOME/repmgr/repmgr.conf
+     repmgr -f /etc/repmgr/repmgr.conf
        --force \
        standby register
 
@@ -235,13 +235,13 @@ Replication management with repmgrd
 and which can automate actions such as failover and updating standbys to
 follow the new master.`repmgrd`   can be started simply with e.g.:
 
-    repmgrd -f $HOME/repmgr/repmgr.conf --verbose > $HOME/repmgr/repmgr.log 2>&1
+    repmgrd -f /etc/repmgr/repmgr.conf --verbose > $HOME/repmgr/repmgr.log 2>&1
 
 or alternatively:
 
-    repmgrd -f $HOME/repmgr/repmgr.conf --verbose --monitoring-history > $HOME/repmgr/repmgrd.log 2>&1
+    repmgrd -f /etc/repmgr/repmgr.conf --verbose --monitoring-history > $HOME/repmgr/repmgrd.log 2>&1
 
-which will track replication advance or lag on all registerd standbys.
+which will track replication advance or lag on all registered standbys.
 
 For permanent operation, we recommend using the options `-d/--daemonize` to
 detach the `repmgrd` process, and `-p/--pid-file` to write the process PID
@@ -344,12 +344,12 @@ Following event types currently exist:
 
     master_register
     standby_register
-    standby_clone 
-    standby_promote 
-    witness_create 
+    standby_clone
+    standby_promote
+    witness_create
     repmgrd_start
-    repmgrd_failover_promote 
-    repmgrd_failover_follow 
+    repmgrd_failover_promote
+    repmgrd_failover_follow
 
 
 

@@ -117,7 +117,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	options->upstream_node = NO_UPSTREAM_NODE;
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	options->failover = MANUAL_FAILOVER;
-	options->priority = 0;
+	options->priority = DEFAULT_PRIORITY;
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));

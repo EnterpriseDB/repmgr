@@ -1065,7 +1065,8 @@ do_master_failover(void)
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
             "   AND active IS TRUE "
-			" ORDER BY priority, id "
+			"   AND priority > 0 "
+			" ORDER BY priority DESC, id "
 			" LIMIT %i ",
 			get_repmgr_schema_quoted(my_local_conn),
 			local_options.cluster_name,

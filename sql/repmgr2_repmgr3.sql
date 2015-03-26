@@ -44,7 +44,7 @@ INSERT INTO repl_nodes
             cluster,
             name,
             conninfo,
-            priority
+            priority + 100
        FROM repl_nodes2_0;
 
 /*

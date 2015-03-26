@@ -93,3 +93,21 @@ General
   over more than one network segment, a witness server will enable
   better handling of a 'split brain' situation by providing a "casting
   vote" on the preferred network segment.
+
+- How can I prevent a node from ever being promoted to master?
+
+  In `rempgr.conf`, set its priority to a value of 0 or less.
+
+- Does `repmgrd` support delayed standbys?
+
+  `repmgrd` can monitor delayed standbys - those set up with
+  `recovery_min_apply_delay` set to a non-zero value in `recovery.conf` -
+  but as it's not currently possible to directly examine the value
+  applied to the standby, `repmgrd` may not be able to properly evaluate
+  the node as a promotion candidate.
+
+  We recommend that delayed standbys are explicitly excluded from promotion
+  by setting `priority` to 0 in `repmgr.conf`.
+
+  Note that after registering a delayed standby, `repmgrd` will only start
+  once the metadata added in the master node has been replicated.

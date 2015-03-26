@@ -44,13 +44,12 @@
 #define DEFAULT_MASTER_PORT		"5432"
 #define DEFAULT_DBNAME			"postgres"
 #define DEFAULT_REPMGR_SCHEMA_PREFIX	"repmgr_"
-
+#define DEFAULT_PRIORITY		100
 #define FAILOVER_NODES_MAX_CHECK 50
 
 #define MANUAL_FAILOVER		0
 #define AUTOMATIC_FAILOVER	1
 #define NO_UPSTREAM_NODE	-1
-
 
 
 typedef enum {
