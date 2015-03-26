@@ -199,8 +199,9 @@ line:
   configuration.
 * A location for initializing its own $PGDATA.
 
-It will also ask for the superuser password on the witness database so
-it can reconnect when needed.
+repmgr will also ask for the superuser password on the witness database so
+it can reconnect when needed (the command line option --initdb-no-pwprompt
+will set up a password-less superuser).
 
 Start the repmgrd daemons
 -------------------------
@@ -211,7 +212,6 @@ Log in to node2 and witness::
   repmgrd -f /etc/repmgr/repmgr.conf --daemonize -> /var/log/postgresql/repmgr.log 2>&1
 
 **Note:** The Master does not need a repmgrd daemon.
-
 
 Suspend Automatic behavior
 ==========================
