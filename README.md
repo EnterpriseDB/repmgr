@@ -352,7 +352,6 @@ Following event types currently exist:
     repmgrd_failover_follow
 
 
-
 Cascading replication
 ---------------------
 

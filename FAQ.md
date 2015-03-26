@@ -52,6 +52,12 @@ General
 
 - How can a failed master be re-added as a standby?
 
+  This is a two-stage process. First, the failed master's data directory
+  must be re-synced with the current master; secondly the failed master
+  needs to be re-registered as a standby. The section "Converting a failed
+  master to a standby" in the `README.md` file contains more detailed
+  information on this process.
+
 - Is there an easy way to check my master server is correctly configured
   for use with `repmgr`?
 
@@ -80,7 +86,7 @@ General
   with the same file from the master, specify the files in the
   `rsync_options` configuration option, e.g.
 
-     rsync_options=--exclude=postgresql.local.conf
+      rsync_options=--exclude=postgresql.local.conf
 
   This option is only available when using the `--rsync-only` option.
 
