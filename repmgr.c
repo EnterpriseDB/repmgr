@@ -2232,7 +2232,7 @@ help(const char *progname)
 	printf(_("  -p, --port=PORT                     database server port\n"));
 	printf(_("  -U, --username=USERNAME             database user name to connect as\n"));
 	printf(_("\nConfiguration options:\n"));
-	printf(_("  -b. --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
+	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -D, --data-dir=DIR                  local directory where the files will be\n" \
 			 "                                      copied to\n"));
 	printf(_("  -l, --local-port=PORT               standby or witness server local port\n"));
