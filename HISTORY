@@ -11,10 +11,6 @@
         General usability and logging message improvements (Ian)
         Code consolidation and cleanup (Ian)
 
-2.0.3   2015-??-??
-        Add option "--initdb-no-pwprompt" (Ian)
-        Add -S/--superuser option for witness database creation Ian)
-
 2.0.2   2015-02-17
         Add "--checksum" in rsync when using "--force" (Jaime)
         Use createdb/createuser instead of psql (Jaime)
