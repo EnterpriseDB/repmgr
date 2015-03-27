@@ -48,20 +48,21 @@ automatic failover.
 Requirements
 ------------
 
-`repmgr` is developed and tested on Linux, but it should work on any
-UNIX-like system which PostgreSQL itself supports.
+`repmgr` is developed and tested on Linux and OS X, but it should work
+on any UNIX-like system which PostgreSQL itself supports.
 
 All nodes must be running the same major version of PostgreSQL, and we
 recommend that they also run the same minor version. This version of
 `repmgr` (v3) supports PostgreSQL 9.3 and 9.4.
 
-Earlier versions of `repmgr` required password-less SSH access between
+Earlier versions of `repmgr` needed password-less SSH access between
 nodes in order to clone standby servers using `rsync`. `repmgr 3` can
-use `pg_basebackup` instead in most circumstances; ssh is not needed.
+use `pg_basebackup` instead in most circumstances; ssh is not required.
 
 You will need to use rsync only if your PostgreSQL configuration files
-are outside your data directory (as on Debian). See the `SSH-RSYNC.md`
-file for details on configuring password-less SSH between your nodes.
+are outside your data directory (as on Debian) and you wish these to
+be copied by `repmgr`. See the `SSH-RSYNC.md` file for details on
+configuring password-less SSH between your nodes.
 
 Installation
 ------------
@@ -110,7 +111,7 @@ following settings in `postgresql.conf`:
     # How much WAL to retain on the primary to allow a temporarily
     # disconnected standby to catch up again. The larger this is, the
     # longer the standby can be disconnected. This is needed only in
-    # 9.3; in 9.4, use replication slots instead (see below).
+    # 9.3; in 9.4, replication slots can be used instead (see below).
 
     wal_keep_segments = 5000
 

@@ -8,11 +8,11 @@ General
 
 - What's the difference between the repmgr versions?
 
-  repmgr v3 builds on the improved replication facilities added
+  repmgr 3.x builds on the improved replication facilities added
   in PostgreSQL 9.3, as well as improved automated failover support
   via `repmgrd`, and is not compatible with PostgreSQL 9.2 and earlier.
 
-  repmgr v2 supports PostgreSQL 9.0 onwards. While it is compatible
+  repmgr 2.x supports PostgreSQL 9.0 onwards. While it is compatible
   with  PostgreSQL 9.3 and later, we recommend repmgr v3.
 
 - What's the advantage of using replication slots?
@@ -29,7 +29,7 @@ General
 - How many replication slots should I define in `max_replication_slots`?
 
   Normally at least same number as the number of standbys which will connect
-  to the node. Note that changes to  `max_replication_slots` require a server
+  to the node. Note that changes to `max_replication_slots` require a server
   restart to take effect, and as there is no particular penalty for unused
   replication slots, setting a higher figure will make adding new nodes
   easier.
