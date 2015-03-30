@@ -1,4 +1,21 @@
-#default sysconfig file for repmrgd
-#custom overrides can be placed here
+# default settings for repmgrd. This file is source by /bin/sh from
+# /etc/init.d/repmgrd
 
-REPMGRD_OPTS="-f /etc/repmgr/repmgr.conf"
+# disable repmgrd by default so it won't get started upon installation
+# valid values: yes/no
+REPMGRD_ENABLED=no
+
+# Options for repmgrd (required)
+#REPMGRD_OPTS="--verbose -d -f /var/lib/pgsql/repmgr/repmgr.conf"
+
+# User to run repmgrd as
+#REPMGRD_USER=postgres
+
+# repmgrd binary
+#REPMGRD_BIN=/usr/bin/repmgr
+
+# pid file
+#REPMGRD_PIDFILE=/var/lib/pgsql/repmgr/repmgrd.pid
+
+# log file
+#REPMGRD_LOG=/var/lib/pgsql/repmgr/repmgrd.log
