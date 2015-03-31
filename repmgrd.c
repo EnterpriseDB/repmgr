@@ -284,7 +284,7 @@ main(int argc, char **argv)
 		terminate(ERR_BAD_CONFIG);
 	}
 
-	/* Retrieve record for this node from the database */
+	/* Retrieve record for this node from the local database */
 	node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
 
 	log_debug("node id is %i, upstream is %i\n", node_info.node_id, node_info.upstream_node_id);
@@ -335,9 +335,9 @@ main(int argc, char **argv)
 				log_info(_("starting continuous master connection check\n"));
 
 				/*
-                                 * Check that master is still alive.
-                                 * XXX We should also check that the
-                                 * standby servers are sending info
+				 * Check that master is still alive.
+				 * XXX We should also check that the
+				 * standby servers are sending info
 				 */
 
 				/*
@@ -2089,7 +2089,7 @@ update_registration(void)
 
 		log_err("%s\n", errmsg.data);
 
-		create_event_record(my_local_conn,
+		create_event_record(master_conn,
 							&local_options,
 							local_options.node,
 							"repmgrd_shutdown",
@@ -2260,7 +2260,7 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 
 		log_err("%s\n", errmsg.data);
 
-		create_event_record(my_local_conn,
+		create_event_record(NULL,
 							&local_options,
 							local_options.node,
 							"repmgrd_shutdown",
