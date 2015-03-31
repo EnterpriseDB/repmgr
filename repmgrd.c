@@ -287,6 +287,14 @@ main(int argc, char **argv)
 	/* Retrieve record for this node from the local database */
 	node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
 
+	/* No node record found - exit gracefully */
+	if(node_info.node_id == -1)
+	{
+		log_err(_("No metadata record found for this node - terminating\n"));
+		log_notice(_("HINT: was this node registered with 'repmgr (master|standby) register'?\n"));
+		terminate(ERR_BAD_CONFIG);
+	}
+
 	log_debug("node id is %i, upstream is %i\n", node_info.node_id, node_info.upstream_node_id);
 
 	/*
