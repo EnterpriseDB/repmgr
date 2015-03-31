@@ -645,9 +645,9 @@ witness_monitor(void)
 	 */
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
-					  "           (master_node, standby_node, "
+					  "           (primary_node, standby_node, "
 					  "            last_monitor_time, last_apply_time, "
-					  "            last_wal_master_location, last_wal_standby_location, "
+					  "            last_wal_primary_location, last_wal_standby_location, "
 					  "            replication_lag, apply_lag )"
 					  "      VALUES(%d, %d, "
 					  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
@@ -1001,9 +1001,9 @@ standby_monitor(void)
 	 */
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
-					  "           (master_node, standby_node, "
+					  "           (primary_node, standby_node, "
 					  "            last_monitor_time, last_apply_time, "
-					  "            last_wal_master_location, last_wal_standby_location, "
+					  "            last_wal_primary_location, last_wal_standby_location, "
 					  "            replication_lag, apply_lag ) "
 					  "      VALUES(%d, %d, "
 					  "             '%s'::TIMESTAMP WITH TIME ZONE, '%s'::TIMESTAMP WITH TIME ZONE, "
