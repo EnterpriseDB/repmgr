@@ -71,7 +71,10 @@ Standby setup
         [2015-03-03 18:18:23] [NOTICE] HINT: You can now start your postgresql server
         [2015-03-03 18:18:23] [NOTICE] for example : pg_ctl -D  /path/to/standby/data start
 
-  Note that at this point it does not matter if the `repmgr.conf` file is not found.
+  Note that the `repmgr.conf` file is not required when cloning a standby.
+  However we recommend providing a valid `repmgr.conf` if you wish to use
+  replication slots, or want `repmgr` to log the clone event to the
+  `repl_events` table.
 
   This will clone the PostgreSQL database files from the master, including its
   `postgresql.conf` and `pg_hba.conf` files, and additionally automatically create
