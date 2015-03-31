@@ -197,7 +197,7 @@ is_pgup(PGconn *conn, int timeout)
 
 
 /*
- * Return the id of the active master node, or -1 if no
+ * Return the id of the active master node, or NODE_NOT_FOUND if no
  * record available.
  *
  * This reports the value stored in the database only and
@@ -224,12 +224,12 @@ get_master_node_id(PGconn *conn, char *cluster)
 	{
 		log_err(_("get_master_node_id(): query failed\n%s\n"),
 				PQerrorMessage(conn));
-		retval = -1;
+		retval = NODE_NOT_FOUND;
 	}
 	else if (PQntuples(res) == 0)
 	{
 		log_warning(_("get_master_node_id(): no active primary found\n"));
-		retval = -1;
+		retval = NODE_NOT_FOUND;
 	}
 	else
 	{
@@ -511,7 +511,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 
 	if(master_id != NULL)
 	{
-		*master_id = -1;
+		*master_id = NODE_NOT_FOUND;
 	}
 
 	/* find all nodes belonging to this cluster */

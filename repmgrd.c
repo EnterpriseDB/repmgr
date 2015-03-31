@@ -288,7 +288,7 @@ main(int argc, char **argv)
 	node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
 
 	/* No node record found - exit gracefully */
-	if(node_info.node_id == -1)
+	if(node_info.node_id == NODE_NOT_FOUND)
 	{
 		log_err(_("No metadata record found for this node - terminating\n"));
 		log_notice(_("HINT: was this node registered with 'repmgr (master|standby) register'?\n"));
@@ -1757,7 +1757,7 @@ set_local_node_failed(void)
 {
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
-	int			active_master_node_id = -1;
+	int			active_master_node_id = NODE_NOT_FOUND;
 	char		master_conninfo[MAXLEN];
 
 	if (!check_connection(master_conn, "master"))
@@ -2242,7 +2242,7 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
-	t_node_info node_info = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
+	t_node_info node_info = { NODE_NOT_FOUND, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
 
 	sprintf(sqlquery,
 			"SELECT id, upstream_node_id, conninfo, type, slot_name, active "
@@ -2282,7 +2282,7 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 	if (!PQntuples(res)) {
 		log_warning(_("No record found record for node %i\n"), node_id);
 		PQclear(res);
-		node_info.node_id = -1;
+		node_info.node_id = NODE_NOT_FOUND;
 		return node_info;
 	}
 

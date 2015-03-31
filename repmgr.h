@@ -49,6 +49,7 @@
 
 #define MANUAL_FAILOVER		0
 #define AUTOMATIC_FAILOVER	1
+#define NODE_NOT_FOUND      -1
 #define NO_UPSTREAM_NODE	-1
 
 

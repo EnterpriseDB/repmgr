@@ -485,7 +485,7 @@ main(int argc, char **argv)
 	 */
 	if (config_file_required)
 	{
-		if (options.node == -1)
+		if (options.node == NODE_NOT_FOUND)
 		{
 			if(config_file_parsed == true)
 			{
@@ -2700,7 +2700,6 @@ create_schema(PGconn *conn)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
-
 
 	/* create schema */
 	sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", get_repmgr_schema_quoted(conn));
