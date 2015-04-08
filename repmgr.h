@@ -61,6 +61,7 @@ typedef struct
 	bool		force;
 	bool		wait_for_master;
 	bool		ignore_rsync_warn;
+	bool		fast_checkpoint;
 
 	char		masterport[MAXLEN];
 	char		localport[MAXLEN];
@@ -69,6 +70,6 @@ typedef struct
 	int			keep_history;
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, "", "", 0 }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, "", "", 0 }
 
 #endif

@@ -110,6 +110,7 @@ main(int argc, char **argv)
 		{"wait", no_argument, NULL, 'W'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
 		{"verbose", no_argument, NULL, 'v'},
+		{"fast-checkpoint", no_argument, NULL, 'X'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -134,7 +135,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:FWIv", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:D:l:f:R:w:k:FWIvX", long_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -186,6 +187,9 @@ main(int argc, char **argv)
 				break;
 			case 'v':
 				runtime_options.verbose = true;
+				break;
+			case 'X':
+				runtime_options.fast_checkpoint = true;
 				break;
 			default:
 				usage();
@@ -1106,8 +1110,9 @@ do_standby_clone(void)
 	 */
 	sqlquery_snprintf(
 					  sqlquery,
-	  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld'))",
-					  time(NULL));
+	  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld', '%c'))",
+					  time(NULL),
+					  runtime_options.fast_checkpoint ? 't' : 'f');
 	log_debug(_("standby clone: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1944,6 +1949,7 @@ help(const char *progname)
 	printf(_("  -F, --force                         force potentially dangerous operations\n" \
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
+	printf(_("  -X, --fast-checkpoint               force immediate checkpoint when cloning\n"));
 
 	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
 	printf(_("another node and then exits.\n\n"));
