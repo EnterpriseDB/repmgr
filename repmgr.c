@@ -1346,7 +1346,7 @@ do_standby_clone(void)
 	{
 		log_notice(_("copying configuration files from master\n"));
 		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
-		if (r != 0)
+		if (r != 0 && !(runtime_options.ignore_external_config_files && config_file_outside_pgdata))
 		{
 			log_err(_("aborting, remote host %s is not reachable.\n"),
 					runtime_options.host);
