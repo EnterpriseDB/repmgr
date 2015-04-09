@@ -1,4 +1,7 @@
-3.0
+3.0.1   ???
+        Prevent rempgrd from looping infinitely if node was not registered (Ian)
+
+3.0     2015-03-27
         Require PostgreSQL 9.3 or later (Ian)
         Use `pg_basebackup` by default (instead of `rsync`) to clone standby servers (Ian)
         Use `pg_ctl promote` to promote a standby to primary
