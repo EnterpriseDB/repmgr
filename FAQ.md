@@ -90,6 +90,16 @@ General
 
   This option is only available when using the `--rsync-only` option.
 
+- How can I make the witness server use a particular port?
+
+  By default the witness server is configured to use port 5499; this
+  is intended to support running the witness server as  a separate
+  instance on a normal node server, rather than on its own dedicated server.
+
+  To specify a port for the witness server, supply the port number to
+  repmgr with the `-l/--local-port` command line option.
+
+
 `repmgrd`
 ---------
 
