@@ -98,7 +98,7 @@ packages installed::
 
   sudo apt-get install libxslt-dev libxml2-dev libpam-dev libedit-dev
 
-If your using Debian packages for PostgreSQL and are building repmgr with the
+If you're using Debian packages for PostgreSQL and are building repmgr with the
 USE_PGXS option you also need to install the corresponding development package::
 
   sudo apt-get install postgresql-server-dev-9.0
