@@ -5,6 +5,8 @@ Known issues in repmgr
   the database server using the ``pg_ctl`` command may accidentally
   terminate after their associated ssh session ends.
 
+* PGPASSFILE may not be passed to pg_basebackup
+
 Planned feature improvements
 ============================
 
