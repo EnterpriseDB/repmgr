@@ -99,6 +99,13 @@ General
   To specify a port for the witness server, supply the port number to
   repmgr with the `-l/--local-port` command line option.
 
+- Do I need to include `shared_preload_libraries = 'repmgr_funcs'`
+  in `postgresql.conf` if I'm not using `repmgrd`?
+
+  No, the `repmgr_funcs` library is only needed when running `repmgrd`.
+  If you later decide to run `repmgrd`, you just need to add
+  `shared_preload_libraries = 'repmgr_funcs'` and restart PostgreSQL.
+
 
 `repmgrd`
 ---------
