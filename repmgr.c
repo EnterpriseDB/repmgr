@@ -925,7 +925,7 @@ do_standby_clone(void)
 	int			i;
 	bool		pg_start_backup_executed = false;
 	bool		target_directory_provided = false;
-	bool		config_file_copy_required = false;
+	bool		external_config_file_copy_required = false;
 
 	char		master_data_directory[MAXFILENAME];
 	char		local_data_directory[MAXFILENAME];
@@ -1101,7 +1101,7 @@ do_standby_clone(void)
 			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
 				config_file_outside_pgdata = true;
-				config_file_copy_required = true;
+				external_config_file_copy_required = true;
 				strncpy(master_config_file, PQgetvalue(res, i, 1), MAXFILENAME);
 			}
 		}
@@ -1110,7 +1110,7 @@ do_standby_clone(void)
 			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
 				hba_file_outside_pgdata  = true;
-				config_file_copy_required = true;
+				external_config_file_copy_required = true;
 				strncpy(master_hba_file, PQgetvalue(res, i, 1), MAXFILENAME);
 			}
 		}
@@ -1119,13 +1119,14 @@ do_standby_clone(void)
 			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
 				ident_file_outside_pgdata = true;
-				config_file_copy_required = true;
+				external_config_file_copy_required = true;
 				strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXFILENAME);
 			}
 		}
 		else
 			log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
 	}
+
 	PQclear(res);
 
 	/*
@@ -1316,12 +1317,6 @@ do_standby_clone(void)
 		}
 
 		PQclear(res);
-
-		/*
-		 * With rsync we'll need to explicitly copy configuration files in any
-		 * case
-		 */
-		config_file_copy_required = true;
 	}
 	else
 	{
@@ -1335,18 +1330,18 @@ do_standby_clone(void)
 	}
 
 	/*
-	 * If configuration files were not in the data directory, we need to copy
-	 * them via SSH
+	 * If configuration files were not inside the data directory, we;ll need to
+	 * copy them via SSH (unless `--ignore-external-config-files` was provided)
 	 *
 	 * TODO: add option to place these files in the same location on the
 	 * standby server as on the primary?
 	 */
 
-	if(config_file_copy_required == true)
+	if(external_config_file_copy_required && !runtime_options.ignore_external_config_files)
 	{
 		log_notice(_("copying configuration files from master\n"));
 		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
-		if (r != 0 && !(runtime_options.ignore_external_config_files && config_file_outside_pgdata))
+		if (r != 0)
 		{
 			log_err(_("aborting, remote host %s is not reachable.\n"),
 					runtime_options.host);
@@ -1354,101 +1349,80 @@ do_standby_clone(void)
 			goto stop_backup;
 		}
 
-		if(strlen(master_config_file))
+		if(config_file_outside_pgdata)
 		{
-			if(runtime_options.ignore_external_config_files && config_file_outside_pgdata)
-			{
-				log_notice(_("standby clone: not copying master config file '%s'\n"), master_config_file);
-			}
-			else
-			{
-				log_info(_("standby clone: master config file '%s'\n"), master_config_file);
-				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-									  master_config_file, local_config_file, false, server_version_num);
-				if (r != 0)
-				{
-					log_warning(_("standby clone: failed copying master config file '%s'\n"),
-								master_config_file);
-					retval = ERR_BAD_SSH;
-					goto stop_backup;
-				}
-			}
-		}
-
-		if(strlen(master_hba_file))
-		{
-			if(runtime_options.ignore_external_config_files && hba_file_outside_pgdata)
-			{
-				log_notice(_("standby clone: not copying master config file '%s'\n"), master_hba_file);
-			}
-			else
-			{
-				log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
-				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-									  master_hba_file, local_hba_file, false, server_version_num);
-				if (r != 0)
-				{
-					log_warning(_("standby clone: failed copying master hba file '%s'\n"),
-								master_hba_file);
-					retval = ERR_BAD_SSH;
-					goto stop_backup;
-				}
-			}
-		}
-
-		if(strlen(master_ident_file))
-		{
-			if(runtime_options.ignore_external_config_files && ident_file_outside_pgdata)
-			{
-				log_notice(_("standby clone: not copying master config file '%s'\n"), master_ident_file);
-			}
-			else
-			{
-				log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
-				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-									  master_ident_file, local_ident_file, false, server_version_num);
-				if (r != 0)
-				{
-					log_warning(_("standby clone: failed copying master ident file '%s'\n"),
-								master_ident_file);
-					retval = ERR_BAD_SSH;
-					goto stop_backup;
-				}
-			}
-		}
-
-		/*
-		 * When using rsync, copy pg_control file last, emulating the base backup
-		 * protocol.
-		 */
-		if(runtime_options.rsync_only)
-		{
-			maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
-
-			log_info(_("standby clone: local control file '%s'\n"),
-					 local_control_file);
-
-			if (!create_dir(local_control_file))
-			{
-				log_err(_("couldn't create directory %s ...\n"),
-						local_control_file);
-				goto stop_backup;
-			}
-
-			maxlen_snprintf(master_control_file, "%s/global/pg_control",
-							master_data_directory);
-			log_info(_("standby clone: master control file '%s'\n"),
-				 master_control_file);
+			log_info(_("standby clone: master config file '%s'\n"), master_config_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_control_file, local_control_file,
-								  false, server_version_num);
+								  master_config_file, local_config_file, false, server_version_num);
 			if (r != 0)
 			{
-				log_warning(_("standby clone: failed copying master control file '%s'\n"),
-							master_control_file);
+				log_err(_("standby clone: failed copying master config file '%s'\n"),
+						master_config_file);
 				retval = ERR_BAD_SSH;
 				goto stop_backup;
 			}
+		}
+
+		if(hba_file_outside_pgdata)
+		{
+			log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
+			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+								  master_hba_file, local_hba_file, false, server_version_num);
+			if (r != 0)
+			{
+				log_err(_("standby clone: failed copying master hba file '%s'\n"),
+						master_hba_file);
+				retval = ERR_BAD_SSH;
+				goto stop_backup;
+			}
+		}
+
+		if(ident_file_outside_pgdata)
+		{
+			log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
+			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+								  master_ident_file, local_ident_file, false, server_version_num);
+			if (r != 0)
+			{
+				log_err(_("standby clone: failed copying master ident file '%s'\n"),
+						master_ident_file);
+				retval = ERR_BAD_SSH;
+				goto stop_backup;
+			}
+		}
+	}
+
+	/*
+	 * When using rsync, copy pg_control file last, emulating the base backup
+	 * protocol.
+	 */
+	if(runtime_options.rsync_only)
+	{
+		maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
+
+		log_info(_("standby clone: local control file '%s'\n"),
+				 local_control_file);
+
+		if (!create_dir(local_control_file))
+		{
+			log_err(_("couldn't create directory %s ...\n"),
+					local_control_file);
+			goto stop_backup;
+		}
+
+		maxlen_snprintf(master_control_file, "%s/global/pg_control",
+						master_data_directory);
+		log_info(_("standby clone: master control file '%s'\n"),
+				 master_control_file);
+		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+							  master_control_file, local_control_file,
+							  false, server_version_num);
+		if (r != 0)
+		{
+			log_warning(_("standby clone: failed copying master control file '%s'\n"),
+						master_control_file);
+			retval = ERR_BAD_SSH;
+			goto stop_backup;
 		}
 	}
 
@@ -2440,7 +2414,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	 */
 	if (is_directory)
 	{
-		/* Files we don't want */
+		/* Files which we don't want */
 		appendPQExpBuffer(&rsync_flags, "%s",
 						  " --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control");
 
@@ -2454,11 +2428,11 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 							  " --exclude=postgresql.auto.conf.tmp");
 		}
 
-		/* Temporary files we don't want, if they exist */
+		/* Temporary files which we don't want, if they exist */
 		appendPQExpBuffer(&rsync_flags, " --exclude=%s*",
 						  PG_TEMP_FILE_PREFIX);
 
-		/* Directories we don't want */
+		/* Directories which we don't want */
 		appendPQExpBuffer(&rsync_flags, "%s",
 						  " --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_stat_tmp/*");
 
