@@ -7,8 +7,11 @@
 #
 # repmgr and repmgrd require these items to be configured:
 
-# Cluster name
-cluster=test
+# Cluster name - this will be used by repmgr to generate its internal
+# schema (pattern: "repmgr_{cluster}"); while this name will be quoted
+# to preserve case, we recommend using lower case and avoiding whitespace
+# to facilitate easier querying of the repmgr views and tables.
+cluster=example_cluster
 
 # Node ID and name
 # (Note: we recommend to avoid naming nodes after their initial
