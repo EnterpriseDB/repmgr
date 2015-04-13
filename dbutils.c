@@ -728,6 +728,49 @@ create_replication_slot(PGconn *conn, char *slot_name)
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
+	/*
+	 * Check whether slot exists already; if it exists and is active, that
+	 * means another active standby is using it, which creates an error situation;
+	 * if not we can reuse it as-is
+	 */
+
+	sqlquery_snprintf(sqlquery,
+					  "SELECT active, slot_type "
+                      "  FROM pg_replication_slots "
+					  " WHERE slot_name = '%s' ",
+					  slot_name);
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("unable to query pg_replication_slots: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	if(PQntuples(res))
+	{
+		if(strcmp(PQgetvalue(res, 0, 1), "physical") != 0)
+		{
+			log_err(_("Slot '%s' exists and is not a physical slot\n"),
+					slot_name);
+			PQclear(res);
+		}
+		if(strcmp(PQgetvalue(res, 0, 0), "f") == 0)
+		{
+			PQclear(res);
+			log_debug(_("Replication slot '%s' exists but is inactive; reusing\n"),
+						slot_name);
+
+			return true;
+		}
+		PQclear(res);
+		log_err(_("Slot '%s' already exists as an active slot\n"),
+				slot_name);
+		return false;
+	}
+
 	sqlquery_snprintf(sqlquery,
 					  "SELECT * FROM pg_create_physical_replication_slot('%s')",
 					  slot_name);
