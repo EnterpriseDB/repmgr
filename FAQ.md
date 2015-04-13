@@ -119,7 +119,7 @@ General
 
 - How can I prevent a node from ever being promoted to master?
 
-  In `rempgr.conf`, set its priority to a value of 0 or less.
+  In `repmgr.conf`, set its priority to a value of 0 or less.
 
 - Does `repmgrd` support delayed standbys?
 
