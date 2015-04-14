@@ -1536,8 +1536,9 @@ do_standby_promote(void)
 	int			i,
 				promote_check_timeout  = 60,
 				promote_check_interval = 2;
-	bool		promote_sucess = false;
+	bool		promote_success = false;
 	bool        success;
+	PQExpBufferData details;
 
 	/* We need to connect to check configuration */
 	log_info(_("connecting to standby database\n"));
@@ -1611,13 +1612,13 @@ do_standby_promote(void)
 		retval = is_standby(conn);
 		if(!retval)
 		{
-			promote_sucess = true;
+			promote_success = true;
 			break;
 		}
 		sleep(promote_check_interval);
 	}
 
-	if (promote_sucess == false)
+	if (promote_success == false)
 	{
 		log_err(_(retval == 1 ?
 			  "STANDBY PROMOTE failed, this is still a standby node.\n" :
@@ -1625,7 +1626,6 @@ do_standby_promote(void)
 		exit(ERR_FAILOVER_FAIL);
 	}
 
-	PQExpBufferData details;
 	initPQExpBuffer(&details);
 	appendPQExpBuffer(&details,
 					  "Node %i was successfully promoted to master",
