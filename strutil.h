@@ -31,6 +31,7 @@
 #define MAXCONNINFO		1024
 
 
+#if (PG_VERSION_NUM >= 90100)
 extern int
 xsnprintf(char *str, size_t size, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
@@ -42,5 +43,18 @@ __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 extern int
 maxlen_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
+#else
+extern int
+xsnprintf(char *str, size_t size, const char *format,...)
+__attribute__((format(printf, 3, 4)));
+
+extern int
+sqlquery_snprintf(char *str, const char *format,...)
+__attribute__((format(printf, 2, 3)));
+
+extern int
+maxlen_snprintf(char *str, const char *format,...)
+__attribute__((format(printf, 2, 3)));
+#endif
 
 #endif   /* _STRUTIL_H_ */

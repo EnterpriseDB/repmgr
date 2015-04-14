@@ -25,9 +25,15 @@
 #include "log.h"
 #include "strutil.h"
 
+#if (PG_VERSION_NUM >= 90100)
 static int
 xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 0)));
+#else
+static int
+xvsnprintf(char *str, size_t size, const char *format, va_list ap)
+__attribute__((format(printf, 3, 0)));
+#endif
 
 static int
 xvsnprintf(char *str, size_t size, const char *format, va_list ap)
