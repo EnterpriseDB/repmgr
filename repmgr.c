@@ -1619,42 +1619,28 @@ do_standby_promote(void)
 
 	if (promote_sucess == false)
 	{
-		PQExpBufferData details;
-		initPQExpBuffer(&details);
-		appendPQExpBuffer(&details,
-						  "Node %i could not be promoted to master",
-						  options.node);
-
-		create_event_record(old_master_conn,
-							&options,
-							options.node,
-							"standby_promote",
-							false,
-							details.data);
-		/* XXX exit with error? */
 		log_err(_(retval == 1 ?
 			  "STANDBY PROMOTE failed, this is still a standby node.\n" :
 				  "connection to node lost!\n"));
-	}
-	else
-	{
-		PQExpBufferData details;
-		initPQExpBuffer(&details);
-		appendPQExpBuffer(&details,
-						  "Node %i was successfully promoted to master",
-						  options.node);
-
-		log_notice(_("STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"));
-		/* Log the event */
-		create_event_record(conn,
-							&options,
-							options.node,
-							"standby_promote",
-							true,
-							details.data);
+		exit(ERR_FAILOVER_FAIL);
 	}
 
-	PQfinish(old_master_conn);
+	PQExpBufferData details;
+	initPQExpBuffer(&details);
+	appendPQExpBuffer(&details,
+					  "Node %i was successfully promoted to master",
+					  options.node);
+
+	log_notice(_("STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"));
+
+	/* Log the event */
+	create_event_record(conn,
+						&options,
+						options.node,
+						"standby_promote",
+						true,
+						details.data);
+
 	PQfinish(conn);
 
 	return;
