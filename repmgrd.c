@@ -91,7 +91,6 @@ static void witness_monitor(void);
 static bool check_connection(PGconn *conn, const char *type);
 static bool set_local_node_failed(void);
 
-static bool update_node_record_set_master(PGconn *conn, int this_node_id, int old_master_node_id);
 static bool update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 
 static void update_shared_memory(char *last_wal_standby_applied);
@@ -1442,25 +1441,6 @@ do_master_failover(void)
 		/* and reconnect to the local database */
 		my_local_conn = establish_db_connection(local_options.conninfo, true);
 
-		/* update node information to reflect new status */
-		if(update_node_record_set_master(my_local_conn, node_info.node_id, failed_master.node_id) == false)
-		{
-			appendPQExpBuffer(&event_details,
-							  _("unable to update node record for node %i (promoted to master following failure of node %i)"),
-							  node_info.node_id,
-							  failed_master.node_id);
-
-			log_err("%s\n", event_details.data);
-
-			create_event_record(NULL,
-								&local_options,
-								node_info.node_id,
-								"repmgrd_failover_promote",
-								false,
-								event_details.data);
-
-			terminate(ERR_DB_QUERY);
-		}
 
 		/* update internal record for this node */
 		node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);

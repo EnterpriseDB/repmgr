@@ -77,6 +77,7 @@ static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_pa
 static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
+static bool update_node_record_set_master(PGconn *conn, int this_node_id);
 
 static char *make_pg_path(char *file);
 
@@ -1625,6 +1626,28 @@ do_standby_promote(void)
 				  "connection to node lost!\n"));
 		exit(ERR_FAILOVER_FAIL);
 	}
+
+
+	/* update node information to reflect new status */
+	if(update_node_record_set_master(conn, options.node) == false)
+	{
+		initPQExpBuffer(&details);
+		appendPQExpBuffer(&details,
+						  _("unable to update node record for node %i"),
+						  options.node);
+
+		log_err("%s\n", details.data);
+
+		create_event_record(NULL,
+							&options,
+							options.node,
+							"repmgrd_failover_promote",
+							false,
+							details.data);
+
+		exit(ERR_DB_QUERY);
+	}
+
 
 	initPQExpBuffer(&details);
 	appendPQExpBuffer(&details,
@@ -3230,6 +3253,92 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 }
 
 
+static bool
+update_node_record_set_master(PGconn *conn, int this_node_id)
+{
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+
+	log_debug(_("Setting %i as master and marking existing master as failed\n"), this_node_id);
+
+	res = PQexec(conn, "BEGIN");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to begin transaction: %s\n"),
+				PQerrorMessage(conn));
+
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+
+	sqlquery_snprintf(sqlquery,
+					  "  UPDATE %s.repl_nodes "
+					  "     SET active = FALSE "
+					  "   WHERE cluster = '%s' "
+					  "     AND type = 'master' "
+					  "     AND active IS TRUE ",
+					  get_repmgr_schema_quoted(conn),
+					  options.cluster_name);
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to set old master node as inactive: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		PQexec(conn, "ROLLBACK");
+		return false;
+	}
+
+	PQclear(res);
+
+	sqlquery_snprintf(sqlquery,
+					  "  UPDATE %s.repl_nodes "
+					  "     SET type = 'master', "
+					  "         upstream_node_id = NULL "
+					  "   WHERE cluster = '%s' "
+					  "     AND id = %i ",
+					  get_repmgr_schema_quoted(conn),
+					  options.cluster_name,
+					  this_node_id);
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to set current node %i as active master: %s\n"),
+				this_node_id,
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		PQexec(conn, "ROLLBACK");
+		return false;
+	}
+
+	PQclear(res);
+
+	res = PQexec(conn, "COMMIT");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to set commit transaction: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
 static void
 do_check_upstream_config(void)
 {
@@ -3264,7 +3373,6 @@ do_check_upstream_config(void)
 
 	PQfinish(conn);
 }
-
 
 
 static char *
