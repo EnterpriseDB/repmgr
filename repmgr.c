@@ -904,26 +904,26 @@ do_standby_clone(void)
 	{
 		if (i == 0)
 		{
-		        /* We could be using PG 9.4 with log_level logical, which is good enough for
+			/* We could be using PG 9.4 with log_level logical, which is good enough for
 			   hot standby replication.
-			   We should check if the wal_level is set to that value, in which case we are 
+			   We should check if the wal_level is set to that value, in which case we are
 			   good to proceed.
 			   No need to check if we are in 9.4 first, as the query used in guc_set will just
-			   return zero rows if on < 9.4, and so will work anyway. 
+			   return zero rows if on < 9.4, and so will work anyway.
 			*/
-		        j = guc_set(conn, "wal_level", "=", "logical");
-		        if (j == 0 || j == -1)
+			j = guc_set(conn, "wal_level", "=", "logical");
+			if (j == 0 || j == -1)
 			{
-			        PQfinish(conn);
+				PQfinish(conn);
 				if (j == 0)
-				         log_err(_("%s needs parameter 'wal_level' to be set to at least 'hot_standby'\n"),
-						 progname);
+					log_err(_("%s needs parameter 'wal_level' to be set to at least 'hot_standby'\n"),
+							progname);
 				exit(ERR_BAD_CONFIG);
 			}
 		}
 		else if (i == -1)
 		{
-		        PQfinish(conn);
+			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -1779,7 +1779,7 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-	
+
 	/* check if we need to create a user */
 	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres")!=0 )
         {
@@ -1796,7 +1796,7 @@ do_witness_create(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-		
+
 	/* check if we need to create a database */
 	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres")!=0 && runtime_options.localport[0])
 	{
@@ -1846,7 +1846,7 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-	
+
 	/* reload to adapt for changed pg_hba.conf */
 	sprintf(script, "%s/pg_ctl %s -w -D %s reload", options.pg_bindir,
 			options.pgctl_options, runtime_options.dest_dir);
@@ -1858,8 +1858,8 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-	
-		
+
+
 	/* register ourselves in the master */
 	sqlquery_snprintf(sqlquery, "INSERT INTO %s.repl_nodes(id, cluster, name, conninfo, priority, witness) "
 					  "VALUES (%d, '%s', '%s', '%s', %d, true)",
