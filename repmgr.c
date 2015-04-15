@@ -140,11 +140,11 @@ main(int argc, char **argv)
 		{"verbose", no_argument, NULL, 'v'},
 		{"pg_bindir", required_argument, NULL, 'b'},
 		{"rsync-only", no_argument, NULL, 'r'},
+		{"fast-checkpoint", no_argument, NULL, 'c'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
-		{"fast-checkpoint", no_argument, NULL, 4},
-		{"ignore-external-config-files", no_argument, NULL, 5},
+		{"ignore-external-config-files", no_argument, NULL, 4},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -175,7 +175,7 @@ main(int argc, char **argv)
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvr:b:", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c", long_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -240,6 +240,9 @@ main(int argc, char **argv)
 			case 'r':
 				runtime_options.rsync_only = true;
 				break;
+			case 'c':
+				runtime_options.fast_checkpoint = true;
+				break;
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
 				break;
@@ -268,9 +271,6 @@ main(int argc, char **argv)
 				strncpy(runtime_options.recovery_min_apply_delay, optarg, MAXLEN);
 				break;
 			case 4:
-				runtime_options.fast_checkpoint = true;
-				break;
-			case 5:
 				runtime_options.ignore_external_config_files = true;
 				break;
 			default:
@@ -2225,15 +2225,13 @@ help(const char *progname)
 			 "                                      (default: postgres)\n"));
 	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
 			 "                                      wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
-	printf(_("  -k, --keep-history=VALUE            keeps indicated number of days of\n" \
-			 "                                      history\n"));
-	printf(_("  -F, --force                         force potentially dangerous operations\n" \
-			 "                                      to happen\n"));
+	printf(_("  -k, --keep-history=VALUE            keeps indicated number of days of history\n"));
+	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
 	printf(_("  -r, --rsync-only                    use only rsync to clone a standby\n"));
+	printf(_("  -c, --fast-checkpoint               force fast checkpoint when cloning a standby\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    set recovery_min_apply_delay in recovery.conf\n" \
  			 "                                      when cloning a standby (PostgreSQL 9.4 and later)\n"));
-	printf(_("  --fast-checkpoint                   force fast checkpoint when cloning a standby\n"));
 	printf(_("  --ignore-external-config-files      don't copy configuration files located outside \n" \
 			 "                                      the data directory when cloning a standby\n"));
 	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
