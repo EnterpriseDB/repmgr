@@ -111,7 +111,7 @@ main(int argc, char **argv)
 		{"wait", no_argument, NULL, 'W'},
 		{"ignore-rsync-warning", no_argument, NULL, 'I'},
 		{"verbose", no_argument, NULL, 'v'},
-		{"fast-checkpoint", no_argument, NULL, 'X'},
+		{"fast-checkpoint", no_argument, NULL, 'c'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{NULL, 0, NULL, 0}
 	};
@@ -137,7 +137,7 @@ main(int argc, char **argv)
 	}
 
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvX", long_options,
+	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvc", long_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -193,8 +193,9 @@ main(int argc, char **argv)
 			case 'v':
 				runtime_options.verbose = true;
 				break;
-			case 'X':
+			case 'c':
 				runtime_options.fast_checkpoint = true;
+				break;
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
 				break;
@@ -1117,9 +1118,9 @@ do_standby_clone(void)
 	 */
 	sqlquery_snprintf(
 					  sqlquery,
-	  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld', '%c'))",
+					  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld', %s))",
 					  time(NULL),
-					  runtime_options.fast_checkpoint ? 't' : 'f');
+					  runtime_options.fast_checkpoint ? "TRUE" : "FALSE");
 	log_debug(_("standby clone: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1963,7 +1964,7 @@ help(const char *progname)
 	printf(_("  -F, --force                         force potentially dangerous operations\n" \
 			 "                                      to happen\n"));
 	printf(_("  -W, --wait                          wait for a master to appear\n"));
-	printf(_("  -X, --fast-checkpoint               force immediate checkpoint when cloning\n"));
+	printf(_("  -c, --fast-checkpoint               force fast checkpoint when cloning a standby\n"));
 	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("\n%s performs some tasks like clone a node, promote it or making follow\n"), progname);
 	printf(_("another node and then exits.\n\n"));
