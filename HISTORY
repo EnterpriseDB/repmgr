@@ -1,5 +1,5 @@
 2.0.3   2015-04-16
-        Add -S/--superuser option for witness database creation Ian)
+        Add -S/--superuser option for witness database creation (Ian)
         Add -c/--fast-checkpoint option for cloning (Christoph)
         Add option "--initdb-no-pwprompt" (Ian)
 
