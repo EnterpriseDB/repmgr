@@ -25,7 +25,8 @@
 #include <string.h>
 
 /* NB: postgres_fe must be included BEFORE check_dir */
-#include "postgres_fe.h"
+#include <libpq-fe.h>
+#include <postgres_fe.h>
 #include "check_dir.h"
 
 #include "strutil.h"

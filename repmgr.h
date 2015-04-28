@@ -20,11 +20,9 @@
 #ifndef _REPMGR_H_
 #define _REPMGR_H_
 
-#include "postgres_fe.h"
-#include "libpq-fe.h"
-
-
-#include "getopt_long.h"
+#include <libpq-fe.h>
+#include <postgres_fe.h>
+#include <getopt_long.h>
 
 #include "strutil.h"
 #include "dbutils.h"
