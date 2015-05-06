@@ -911,7 +911,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 	}
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name FROM %s.repl_nodes",
+					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name, active::INT FROM %s.repl_nodes ORDER BY coalesce(upstream_node_id, 0)",
 					  get_repmgr_schema_quoted(masterconn));
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -942,7 +942,8 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 												 atoi(PQgetvalue(res, i, 5)),
 												 strlen(PQgetvalue(res, i, 6))
 													? PQgetvalue(res, i, 6)
-													: NULL
+													: NULL,
+												 atoi(PQgetvalue(res, i, 7))
 												 );
 
 		if (node_record_created == false)
@@ -966,7 +967,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
  * XXX we should pass the record parameters as a struct.
  */
 bool
-create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name)
+create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	char		upstream_node_id[MAXLEN];
@@ -1006,8 +1007,8 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_nodes "
 					  "       (id, type, upstream_node_id, cluster, "
-					  "        name, conninfo, slot_name, priority) "
-					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %s, %i) ",
+					  "        name, conninfo, slot_name, priority, active) "
+					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %s, %i, %s)",
 					  get_repmgr_schema_quoted(conn),
 					  node,
 					  type,
@@ -1016,7 +1017,8 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 					  node_name,
 					  conninfo,
 					  slot_name_buf,
-					  priority);
+					  priority,
+					  active ? "true": "false");
 
 	if(action != NULL)
 	{

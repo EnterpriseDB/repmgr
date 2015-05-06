@@ -776,7 +776,7 @@ do_master_register(void)
 										options.node_name,
 										options.conninfo,
 										options.priority,
-										repmgr_slot_name_ptr);
+										repmgr_slot_name_ptr, true);
 
 	if(record_created == false)
 	{
@@ -874,7 +874,7 @@ do_standby_register(void)
 										options.node_name,
 										options.conninfo,
 										options.priority,
-										repmgr_slot_name_ptr);
+										repmgr_slot_name_ptr, true);
 
 
 
@@ -2114,7 +2114,7 @@ do_witness_create(void)
 										options.node_name,
 										options.conninfo,
 										options.priority,
-										NULL);
+										NULL, true);
 
 	if(record_created == false)
 	{
