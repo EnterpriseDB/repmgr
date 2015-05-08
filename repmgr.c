@@ -2309,7 +2309,7 @@ create_recovery_file(const char *data_dir)
 	/* primary_slot_name = '...' (optional, for fetching WAL from an alternate archive) */
 	if(strlen(options.recovery_restore_command) != 0)
 	{
-		maxlen_snprintf(line, "restore_command = %s\n",
+		maxlen_snprintf(line, "restore_command = '%s'\n",
 						options.recovery_restore_command);
 		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
