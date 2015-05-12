@@ -98,8 +98,8 @@ for details.
 
 ### PostgreSQL configuration
 
-The primary server needs to be configured for replication with the
-following settings in `postgresql.conf`:
+The primary server needs to be configured for replication with settings
+like the followingin `postgresql.conf`:
 
     # Allow read-only queries on standby servers. The number of WAL
     # senders should be larger than the number of standby servers.
@@ -121,8 +121,6 @@ following settings in `postgresql.conf`:
     archive_mode = on
     archive_command = 'cd .'
 
-    # You can also set additional replication parameters here, such as
-    # hot_standby_feedback or synchronous_standby_names.
 
 PostgreSQL 9.4 makes it possible to use replication slots, which means
 the value of wal_keep_segments need no longer be set. With 9.3, `repmgr`

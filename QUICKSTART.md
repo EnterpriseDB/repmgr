@@ -21,7 +21,8 @@ Master setup
 	CREATE DATABASE repmgr_db OWNER repmgr_usr;
 	```
 
-  - configure `postgresql.conf` for replication (see above)
+  - configure `postgresql.conf` for replication (see README.md for sample
+    settings)
 
   - update `pg_hba.conf`, e.g.:
 
