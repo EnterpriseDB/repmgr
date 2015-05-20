@@ -152,6 +152,7 @@ main(int argc, char **argv)
 
 	int			optindex;
 	int			c;
+	int 		r;
 	bool		daemonize = false;
 	bool        startup_event_logged = false;
 
@@ -339,6 +340,14 @@ main(int argc, char **argv)
 					startup_event_logged = true;
 				}
 
+				r = system(local_options.master_startup_command);
+
+				if (r != 0)
+				{
+					log_err(_("Execution of master_startup_command failed. You could check and try it manually.\n"));
+					terminate(ERR_DB_QUERY);
+				}
+
 				log_info(_("starting continuous master connection check\n"));
 
 				/*
@@ -399,6 +408,15 @@ main(int argc, char **argv)
 
 			case WITNESS:
 			case STANDBY:
+
+				//Perform standby_startup before attempting to connect to the master, in case it does some network configuration.
+				r = system(local_options.standby_startup_command);
+
+				if (r != 0)
+				{
+					log_err(_("Execution of standby_startup_command failed. You could check and try it manually.\n"));
+					terminate(ERR_DB_QUERY);
+				}
 
 				/* We need the node id of the master server as well as a connection to it */
 				log_info(_("connecting to master node '%s'\n"),

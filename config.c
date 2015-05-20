@@ -121,6 +121,8 @@ parse_config(const char *config_file, t_configuration_options *options)
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
+	memset(options->master_startup_command, 0, sizeof(options->master_startup_command));
+	memset(options->standby_startup_command, 0, sizeof(options->standby_startup_command));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
@@ -201,6 +203,10 @@ parse_config(const char *config_file, t_configuration_options *options)
 			strncpy(options->promote_command, value, MAXLEN);
 		else if (strcmp(name, "follow_command") == 0)
 			strncpy(options->follow_command, value, MAXLEN);
+		else if (strcmp(name, "master_startup_command") == 0)
+			strncpy(options->master_startup_command, value, MAXLEN);
+		else if (strcmp(name, "standby_startup_command") == 0)
+			strncpy(options->standby_startup_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
 			options->master_response_timeout = atoi(value);
 		else if (strcmp(name, "reconnect_attempts") == 0)
@@ -490,6 +496,20 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	if(strcmp(orig_options->follow_command, new_options.follow_command) != 0)
 	{
 		strcpy(orig_options->follow_command, new_options.follow_command);
+		config_changed = true;
+	}
+
+	/* master_startup_command */
+	if(strcmp(orig_options->master_startup_command, new_options.master_startup_command) != 0)
+	{
+		strcpy(orig_options->master_startup_command, new_options.master_startup_command);
+		config_changed = true;
+	}
+
+	/* standby_startup_command */
+	if(strcmp(orig_options->standby_startup_command, new_options.standby_startup_command) != 0)
+	{
+		strcpy(orig_options->standby_startup_command, new_options.standby_startup_command);
 		config_changed = true;
 	}
 

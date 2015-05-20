@@ -61,6 +61,10 @@ typedef struct
 	char		node_name[MAXLEN];
 	char		promote_command[MAXLEN];
 	char		follow_command[MAXLEN];
+	//This command will be run on startup if the current node is the master.
+	char		master_startup_command[MAXLEN];
+	//This command will be run on startup if the current node is a standby.
+	char		standby_startup_command[MAXLEN];
 	char		loglevel[MAXLEN];
 	char		logfacility[MAXLEN];
 	char		rsync_options[QUERY_STR_LEN];
@@ -80,7 +84,7 @@ typedef struct
 	TablespaceList tablespace_mapping;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
 
 
 bool		parse_config(const char *config_file, t_configuration_options *options);
