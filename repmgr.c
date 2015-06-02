@@ -2478,7 +2478,7 @@ run_basebackup()
 	PQExpBufferData 	params;
 	TablespaceListCell *cell;
 
-	/* Creare pg_basebackup command line options */
+	/* Create pg_basebackup command line options */
 
 	initPQExpBuffer(&params);
 
