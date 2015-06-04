@@ -149,12 +149,16 @@ parse_config(const char *config_file, t_configuration_options *options)
 	{
 		bool known_parameter = true;
 
-		/* Skip blank lines and comments */
-		if (buff[0] == '\n' || buff[0] == '#')
-			continue;
-
 		/* Parse name/value pair from line */
 		parse_line(buff, name, value);
+
+		/* Skip blank lines */
+		if(!strlen(name))
+			continue;
+
+		/* Skip comments */
+		if (name[0] == '#')
+			continue;
 
 		/* Copy into correct entry in parameters struct */
 		if (strcmp(name, "cluster") == 0)
@@ -335,10 +339,21 @@ parse_line(char *buff, char *name, char *value)
 	 */
 	for (; i < MAXLEN; ++i)
 	{
-		if (buff[i] != '=')
-			name[j++] = buff[i];
-		else
+
+		if (buff[i] == '=')
 			break;
+
+		switch(buff[i])
+		{
+			/* Ignore whitespace */
+			case ' ':
+			case '\n':
+			case '\r':
+			case '\t':
+				continue;
+			default:
+				name[j++] = buff[i];
+		}
 	}
 	name[j] = '\0';
 
