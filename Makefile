@@ -74,16 +74,14 @@ PKGLIBDIR = $(shell pg_config --pkglibdir)
 SHAREDIR = $(shell pg_config --sharedir)
 
 deb: repmgrd repmgr
-        mkdir -p ./debian/usr/bin
-        cp repmgrd repmgr ./debian/usr/bin/
-        mkdir -p ./debian$(SHAREDIR)/contrib/
-        cp sql/repmgr_funcs.sql ./debian$(SHAREDIR)/contrib/
-        cp sql/uninstall_repmgr_funcs.sql ./debian$(SHAREDIR)/contrib/
-        mkdir -p ./debian$(PKGLIBDIR)/
-        cp sql/repmgr_funcs.so ./debian$(PKGLIBDIR)/
-        dpkg-deb --build debian
-        mv debian.deb ../postgresql-repmgr-$(PG_VERSION)_$(REPMGR_VERSION).deb
-        rm -rf ./debian/usr
-
-
+	mkdir -p ./debian/usr/bin
+	cp repmgrd repmgr ./debian/usr/bin/
+	mkdir -p ./debian$(SHAREDIR)/contrib/
+	cp sql/repmgr_funcs.sql ./debian$(SHAREDIR)/contrib/
+	cp sql/uninstall_repmgr_funcs.sql ./debian$(SHAREDIR)/contrib/
+	mkdir -p ./debian$(PKGLIBDIR)/
+	cp sql/repmgr_funcs.so ./debian$(PKGLIBDIR)/
+	dpkg-deb --build debian
+	mv debian.deb ../postgresql-repmgr-$(PG_VERSION)_$(REPMGR_VERSION).deb
+	rm -rf ./debian/usr
 
