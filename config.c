@@ -335,7 +335,7 @@ parse_line(char *buff, char *name, char *value)
 	int			j = 0;
 
 	/*
-	 * first we find the name of the parameter
+	 * Extract parameter name, if present
 	 */
 	for (; i < MAXLEN; ++i)
 	{
@@ -358,7 +358,20 @@ parse_line(char *buff, char *name, char *value)
 	name[j] = '\0';
 
 	/*
-	 * Now the value
+	 * Ignore any whitespace following the '=' sign
+	 */
+	for (; i < MAXLEN; ++i)
+	{
+		if (buff[i+1] == ' ')
+			continue;
+		if (buff[i+1] == '\t')
+			continue;
+
+		break;
+	}
+
+	/*
+	 * Extract parameter value
 	 */
 	j = 0;
 	for (++i; i < MAXLEN; ++i)
