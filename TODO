@@ -38,3 +38,7 @@ Planned feature improvements
 
 * make old master node ID available for event notification commands
   (See github issue #80).
+
+* Have pg_basebackup use replication slots, if and when support for
+  this is added; see:
+    http://www.postgresql.org/message-id/555DD2B2.7020000@gmx.net
