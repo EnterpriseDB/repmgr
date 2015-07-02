@@ -123,9 +123,12 @@ like the followingin `postgresql.conf`:
 
 
 PostgreSQL 9.4 makes it possible to use replication slots, which means
-the value of wal_keep_segments need no longer be set. With 9.3, `repmgr`
-expects it to be set to at least 5000 (= 80GB of WAL) by default, though
-this can be overriden with the `-w N` argument.
+the value of `wal_keep_segments` need no longer be set. See section
+"Replication slots" below for more details.
+
+With PostgreSQL 9.3, `repmgr` expects `wal_keep_segments` to be set to
+at least 5000 (= 80GB of WAL) by default, though this can be overriden
+with the `-w N` argument.
 
 A dedicated PostgreSQL superuser account and a database in which to
 store monitoring and replication data are required. Create them by
@@ -395,6 +398,18 @@ stored in the `repl_nodes` table.
 
 Note that `repmgr` will fail with an error if this option is specified when
 working with PostgreSQL 9.3.
+
+Be aware that when initially cloning a standby, you will need to ensure
+that all required WAL files remain available while the cloning is taking
+place. If using the default `pg_basebackup` method, we recommend setting
+`pg_basebackup`'s `--xlog-method` parameter to `stream` like this:
+
+    pg_basebackup_options='--xlog-method=stream'
+
+See the `pg_basebackup` documentation [*] for details. Otherwise you'll need
+to set `wal_keep_segments` to an appropriately high value.
+
+[*] http://www.postgresql.org/docs/current/static/app-pgbasebackup.html
 
 Further reading:
  * http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
