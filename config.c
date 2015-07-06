@@ -266,6 +266,12 @@ parse_config(const char *config_file, t_configuration_options *options)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	if (options->node == 0)
+	{
+		log_err(_("'node' must be an integer > 0\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
 	if (*options->node_name == '\0')
 	{
 		log_err(_("required parameter 'node_name' was not found\n"));
