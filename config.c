@@ -268,7 +268,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 
 	if (options->node == 0)
 	{
-		log_err(_("'node' must be an integer > 0\n"));
+		log_err(_("'node' must be an integer greater than zero\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
