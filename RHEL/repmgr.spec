@@ -4,7 +4,7 @@ Version: 2.0
 Release: 2
 License: GPLv3
 Group: System Environment/Daemons
-URL: http://repmgr.org 
+URL: http://repmgr.org
 Packager: Nathan Van Overloop <nathan.van.overloop@nexperteam.be>
 Vendor: 2ndQuadrant Limited
 Distribution: centos
@@ -32,7 +32,7 @@ export PATH=$PATH:/usr/pgsql-9.3/bin/
 
 %clean
 [ "%{buildroot}" != "/" ] && %{__rm} -rf %{buildroot}
- 
+
 
 %files
 %defattr(-,root,root)
@@ -45,7 +45,7 @@ export PATH=$PATH:/usr/pgsql-9.3/bin/
 /usr/pgsql-9.3/share/contrib/repmgr_funcs.sql
 /usr/pgsql-9.3/share/contrib/uninstall_repmgr.sql
 /usr/pgsql-9.3/share/contrib/uninstall_repmgr_funcs.sql
-%attr(0755,root,root)/etc/init.d/repmgrd 
+%attr(0755,root,root)/etc/init.d/repmgrd
 %attr(0644,root,root)/etc/sysconfig/repmgrd
 %attr(0644,root,root)/etc/repmgr/repmgr.conf.sample
 
@@ -54,4 +54,3 @@ export PATH=$PATH:/usr/pgsql-9.3/bin/
 - fix witness creation to create db and user if needed
 * Fri Apr 04 2014 Nathan Van Overloop <nathan.van.overloop@nexperteam.be> 2.0.1
 - initial build for RHEL6
-
