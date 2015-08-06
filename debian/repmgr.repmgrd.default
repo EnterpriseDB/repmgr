@@ -12,7 +12,7 @@ REPMGRD_ENABLED=no
 #REPMGRD_USER=postgres
 
 # repmgrd binary
-#REPMGR_BIN=/usr/bin/repmgr
+#REPMGRD_BIN=/usr/bin/repmgrd
 
 # pid file
-#REPMGR_PIDFILE=/var/run/repmgrd.pid
+#REPMGRD_PIDFILE=/var/run/repmgrd.pid
