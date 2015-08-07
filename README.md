@@ -121,6 +121,10 @@ like the followingin `postgresql.conf`:
     archive_mode = on
     archive_command = 'cd .'
 
+    # If you plan to use repmgrd, ensure that shared_preload_libraries
+    # is configured to load 'repmgr_funcs'
+
+    shared_preload_libraries = 'repmgr_funcs'
 
 PostgreSQL 9.4 makes it possible to use replication slots, which means
 the value of `wal_keep_segments` need no longer be set. See section
