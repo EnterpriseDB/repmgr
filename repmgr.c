@@ -1689,6 +1689,7 @@ do_standby_follow(void)
 	char		script[MAXLEN];
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
+	int			master_id;
 
 	int			r,
 				retval;
@@ -1727,7 +1728,7 @@ do_standby_follow(void)
 		}
 
 		master_conn = get_master_connection(conn,
-				options.cluster_name, NULL, (char *) &master_conninfo);
+				options.cluster_name, &master_id, (char *) &master_conninfo);
 	}
 	while (master_conn == NULL && runtime_options.wait_for_master);
 
@@ -1794,6 +1795,13 @@ do_standby_follow(void)
 	{
 		log_err(_("unable to restart server\n"));
 		exit(ERR_NO_RESTART);
+	}
+
+	if(update_node_record_set_upstream(master_conn, options.cluster_name,
+									   options.node, master_id) == false)
+	{
+		log_err(_("unable to update upstream node"));
+		exit(ERR_BAD_CONFIG);
 	}
 
 	return;

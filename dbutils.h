@@ -63,6 +63,6 @@ bool		copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_
 bool		create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name);
 bool		delete_node_record(PGconn *conn, int node, char *action);
 bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
-
+bool        update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_id, int new_upstream_node_id);
 
 #endif
