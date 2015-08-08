@@ -1283,3 +1283,36 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 
 	return success;
 }
+
+bool
+update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_id, int new_upstream_node_id)
+{
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+
+	log_debug(_("update_node_record_set_upstream(): Updating node %i's upstream node to %i\n"), this_node_id, new_upstream_node_id);
+
+	sqlquery_snprintf(sqlquery,
+					  "  UPDATE %s.repl_nodes "
+					  "     SET upstream_node_id = %i "
+					  "   WHERE cluster = '%s' "
+					  "     AND id = %i ",
+					  get_repmgr_schema_quoted(conn),
+					  new_upstream_node_id,
+					  cluster_name,
+					  this_node_id);
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to set new upstream node id: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
