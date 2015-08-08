@@ -1771,6 +1771,20 @@ do_standby_follow(void)
 	if (!create_recovery_file(data_dir))
 		exit(ERR_BAD_CONFIG);
 
+	/*
+	 * If replication slots requested, create appropriate slot on the primary;
+	 * create_recovery_file() will already have written `primary_slot_name` into
+	 * `recovery.conf`
+	 */
+	if(options.use_replication_slots)
+	{
+		if(create_replication_slot(master_conn, repmgr_slot_name) == false)
+		{
+			PQfinish(master_conn);
+			exit(ERR_DB_QUERY);
+		}
+	}
+
 	/* Finally, restart the service */
 	maxlen_snprintf(script, "%s %s -w -D %s -m fast restart",
 					make_pg_path("pg_ctl"), options.pg_ctl_options, data_dir);
