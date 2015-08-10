@@ -35,5 +35,6 @@
 #define ERR_BAD_SSH 12
 #define ERR_SYS_FAILURE 13
 #define ERR_BAD_BASEBACKUP 14
+#define ERR_INTERNAL 15
 
 #endif   /* _ERRCODE_H_ */
