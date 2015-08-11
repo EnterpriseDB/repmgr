@@ -1449,6 +1449,24 @@ stop_backup:
 		exit(retval);
 	}
 
+	/*
+	 * Remove existing WAL from the target directory, since
+	 * rsync's --exclude option doesn't do it.
+	 */
+	if (runtime_options.force)
+	{
+		char	script[MAXLEN];
+		maxlen_snprintf(script, "rm -rf %s/pg_xlog/*",
+						local_data_directory);
+		r = system(script);
+		if (r != 0)
+		{
+			log_err(_("unable to empty local WAL directory %s/pg_xlog/\n"),
+					local_data_directory);
+			exit(ERR_BAD_RSYNC);
+		}
+	}
+
 	/* Finally, write the recovery.conf file */
 	create_recovery_file(local_data_directory);
 
