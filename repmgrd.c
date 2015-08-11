@@ -88,7 +88,7 @@ static void check_node_configuration(void);
 
 static void standby_monitor(void);
 static void witness_monitor(void);
-static bool check_connection(PGconn *conn, const char *type);
+static bool check_connection(PGconn **conn, const char *type, const char *conninfo);
 static bool set_local_node_failed(void);
 
 static bool update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
@@ -353,7 +353,7 @@ main(int argc, char **argv)
 				 */
 				do
 				{
-					if (check_connection(master_conn, "master"))
+					if (check_connection(&master_conn, "master", NULL))
 					{
 						sleep(local_options.monitor_interval_secs);
 					}
@@ -536,7 +536,7 @@ witness_monitor(void)
 	 * of a missing master and promotion of a standby by that standby's
 	 * repmgrd, so we'll loop for a while before giving up.
 	 */
-	connection_ok = check_connection(master_conn, "master");
+	connection_ok = check_connection(&master_conn, "master", NULL);
 
 	if(connection_ok == false)
 	{
@@ -693,6 +693,7 @@ standby_monitor(void)
 	bool		did_retry = false;
 
 	PGconn	   *upstream_conn;
+	char		upstream_conninfo[MAXCONNINFO];
 	int			upstream_node_id;
 	t_node_info upstream_node;
 
@@ -704,7 +705,7 @@ standby_monitor(void)
 	 * no point in doing much else anyway
 	 */
 
-	if (!check_connection(my_local_conn, "standby"))
+	if (!check_connection(&my_local_conn, "standby", NULL))
 	{
 		PQExpBufferData errmsg;
 
@@ -730,7 +731,7 @@ standby_monitor(void)
 	upstream_conn = get_upstream_connection(my_local_conn,
 											local_options.cluster_name,
 											local_options.node,
-											&upstream_node_id, NULL);
+											&upstream_node_id, upstream_conninfo);
 
 	type = upstream_node_id == master_options.node
 		? "master"
@@ -742,11 +743,11 @@ standby_monitor(void)
 	 * we cannot reconnect, try to get a new upstream node.
 	 */
 
-	check_connection(upstream_conn, type);	/* this takes up to
-											 * local_options.reconnect_attempts
-											 * local_options.reconnect_intvl seconds
-											 */
-
+	check_connection(&upstream_conn, type, upstream_conninfo);
+	/*
+	 * This takes up to local_options.reconnect_attempts *
+	 * local_options.reconnect_intvl seconds
+	 */
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
@@ -879,7 +880,7 @@ standby_monitor(void)
 				log_err(_("standby node has disappeared, trying to reconnect...\n"));
 				did_retry = true;
 
-				if (!check_connection(my_local_conn, "standby"))
+				if (!check_connection(&my_local_conn, "standby", NULL))
 				{
 					set_local_node_failed();
 					terminate(0);
@@ -944,8 +945,9 @@ standby_monitor(void)
 		master_conn = get_master_connection(my_local_conn,
 											 local_options.cluster_name,
 											 &master_options.node, NULL);
-
 	}
+	if (PQstatus(master_conn) != CONNECTION_OK)
+		PQreset(master_conn);
 
 	/*
 	 * Cancel any query that is still being executed, so i can insert the
@@ -1592,7 +1594,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 	 * Verify that we can still talk to the cluster master even though
 	 * node upstream is not available
 	 */
-	if (!check_connection(master_conn, "master"))
+	if (!check_connection(&master_conn, "master", NULL))
 	{
 		log_err(_("do_upstream_standby_failover(): Unable to connect to last known master node\n"));
 		return false;
@@ -1681,7 +1683,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 
 
 static bool
-check_connection(PGconn *conn, const char *type)
+check_connection(PGconn **conn, const char *type, const char *conninfo)
 {
 	int			connection_retries;
 
@@ -1692,7 +1694,16 @@ check_connection(PGconn *conn, const char *type)
 	 */
 	for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 	{
-		if (!is_pgup(conn, local_options.master_response_timeout))
+		if (*conn == NULL)
+		{
+			if (conninfo == NULL)
+			{
+				log_err("INTERNAL ERROR: *conn == NULL && conninfo == NULL");
+				terminate(ERR_INTERNAL);
+			}
+			*conn = establish_db_connection(conninfo, false);
+		}
+		if (!is_pgup(*conn, local_options.master_response_timeout))
 		{
 			log_warning(_("connection to %s has been lost, trying to recover... %i seconds before failover decision\n"),
 						type,
@@ -1710,9 +1721,9 @@ check_connection(PGconn *conn, const char *type)
 		}
 	}
 
-	if (!is_pgup(conn, local_options.master_response_timeout))
+	if (!is_pgup(*conn, local_options.master_response_timeout))
 	{
-		log_err(_("unable to reconnect to %s after %i seconds...\n"),
+		log_err(_("unable to reconnect to %s (timeout %i seconds)...\n"),
 				type,
 				local_options.master_response_timeout
 			);
@@ -1740,7 +1751,7 @@ set_local_node_failed(void)
 	int			active_master_node_id = NODE_NOT_FOUND;
 	char		master_conninfo[MAXLEN];
 
-	if (!check_connection(master_conn, "master"))
+	if (!check_connection(&master_conn, "master", NULL))
 	{
 		log_err(_("set_local_node_failed(): Unable to connect to last known master node\n"));
 		return false;
