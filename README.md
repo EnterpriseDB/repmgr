@@ -228,7 +228,7 @@ The node can then be restarted.
 The node will then need to be re-registered with `repmgr`; again
 the `--force` option is required to update the existing record:
 
-     repmgr -f /etc/repmgr/repmgr.conf
+     repmgr -f /etc/repmgr/repmgr.conf \
        --force \
        standby register
 
