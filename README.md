@@ -7,7 +7,7 @@ hot-standby capabilities with tools to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or manual
 switchover operations.
 
-This document covers `repmgr 3`, which supports PostgreSQL 9.4 and 9.3.
+This document covers `repmgr 3`, which supports PostgreSQL 9.3 and later.
 This version can use `pg_basebackup` to clone standby servers, supports
 replication slots and cascading replication, doesn't require a restart
 after promotion, and has many usability improvements.
@@ -53,7 +53,7 @@ on any UNIX-like system which PostgreSQL itself supports.
 
 All nodes must be running the same major version of PostgreSQL, and we
 recommend that they also run the same minor version. This version of
-`repmgr` (v3) supports PostgreSQL 9.3 and 9.4.
+`repmgr` (v3) supports PostgreSQL 9.3 and later.
 
 Earlier versions of `repmgr` needed password-less SSH access between
 nodes in order to clone standby servers using `rsync`. `repmgr 3` can
