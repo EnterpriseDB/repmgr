@@ -69,7 +69,7 @@ static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 							  char *local_path, bool is_directory, int server_version_num);
-static int  run_basebackup(void);
+static int  run_basebackup(const char *data_dir);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static void write_primary_conninfo(char *line);
@@ -1321,7 +1321,7 @@ do_standby_clone(void)
 	}
 	else
 	{
-		r = run_basebackup();
+		r = run_basebackup(local_data_directory);
 		if (r != 0)
 		{
 			log_warning(_("standby clone: base backup failed\n"));
@@ -2489,7 +2489,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 
 static int
-run_basebackup()
+run_basebackup(const char *data_dir)
 {
 	char				script[MAXLEN];
 	int					r = 0;
@@ -2499,6 +2499,8 @@ run_basebackup()
 	/* Create pg_basebackup command line options */
 
 	initPQExpBuffer(&params);
+
+	appendPQExpBuffer(&params, " -D %s", data_dir);
 
 	if(strlen(runtime_options.host))
 	{
@@ -2513,11 +2515,6 @@ run_basebackup()
 	if(strlen(runtime_options.username))
 	{
 		appendPQExpBuffer(&params, " -U %s", runtime_options.username);
-	}
-
-	if(strlen(runtime_options.dest_dir))
-	{
-		appendPQExpBuffer(&params, " -D %s", runtime_options.dest_dir);
 	}
 
 	if(runtime_options.fast_checkpoint) {
