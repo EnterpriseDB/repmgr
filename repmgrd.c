@@ -1012,7 +1012,7 @@ standby_monitor(void)
 					  "             %llu, %llu) ",
 					  get_repmgr_schema_quoted(master_conn),
 					  master_options.node, local_options.node,
-					   monitor_standby_timestamp, last_wal_standby_applied_timestamp,
+					  monitor_standby_timestamp, last_wal_standby_applied_timestamp,
 					  last_wal_master_location, last_wal_standby_received,
 					  (long long unsigned int)(lsn_master - lsn_standby_received),
 					  (long long unsigned int)(lsn_standby_received - lsn_standby_applied));
