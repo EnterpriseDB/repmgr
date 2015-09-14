@@ -111,8 +111,8 @@ This concludes the basic `repmgr` setup of master and standby. The records
 created in the `repl_nodes` table should look something like this:
 
         repmgr_db=# SELECT * from repmgr_test.repl_nodes;
-         id |  type   | upstream_node_id | cluster | name  |                     conninfo                    | slot_name | priority | active
-        ----+---------+------------------+---------+-------+-------------------------------------------------+-----------+----------+--------
-          1 | primary |                  | test    | node1 | host=localhost user=repmgr_usr dbname=repmgr_db |           |        0 | t
-          2 | standby |                1 | test    | node2 | host=localhost user=repmgr_usr dbname=repmgr_db |           |        0 | t
+         id |  type   | upstream_node_id | cluster | name  |                      conninfo                      | slot_name | priority | active
+        ----+---------+------------------+---------+-------+----------------------------------------------------+-----------+----------+--------
+          1 | primary |                  | test    | node1 | host=repmgr_node1 user=repmgr_usr dbname=repmgr_db |           |        0 | t
+          2 | standby |                1 | test    | node2 | host=repmgr_node2 user=repmgr_usr dbname=repmgr_db |           |        0 | t
         (2 rows)
