@@ -144,12 +144,32 @@ logger_init(t_configuration_options * opts, const char *ident, const char *level
 	{
 		FILE	   *fd;
 
-		fd = freopen(opts->logfile, "a", stderr);
+		/* Check if we can write to the specified file before redirecting
+		 * stderr - if freopen() fails, stderr output will vanish into
+		 * the ether and the user won't know what's going on.
+		 */
 
+		fd = fopen(opts->logfile, "a");
 		if (fd == NULL)
 		{
-			fprintf(stderr, "error reopening stderr to '%s': %s",
-					opts->logfile, strerror(errno));
+			stderr_log_err(_("Unable to open specified logfile '%s' for writing: %s\n"), opts->logfile, strerror(errno));
+			stderr_log_err(_("Terminating\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+		fclose(fd);
+
+		stderr_log_notice(_("Redirecting logging output to '%s'\n"), opts->logfile);
+		fd = freopen(opts->logfile, "a", stderr);
+
+		/* It's possible freopen() may still fail due to e.g. a race condition;
+		   as it's not feasible to restore stderr after a failed freopen(),
+		   we'll write to stdout as a last resort.
+		 */
+		if (fd == NULL)
+		{
+			printf(_("Unable to open specified logfile %s for writing: %s\n"), opts->logfile, strerror(errno));
+			printf(_("Terminating\n"));
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
