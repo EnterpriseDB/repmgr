@@ -1696,6 +1696,7 @@ do_standby_follow(void)
 	char		script[MAXLEN];
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
+	int			master_id;
 
 	int			r,
 				retval;
@@ -1734,7 +1735,7 @@ do_standby_follow(void)
 		}
 
 		master_conn = get_master_connection(conn,
-				options.cluster_name, NULL, (char *) &master_conninfo);
+				options.cluster_name, &master_id, (char *) &master_conninfo);
 	}
 	while (master_conn == NULL && runtime_options.wait_for_master);
 
@@ -1789,6 +1790,20 @@ do_standby_follow(void)
 	if (!create_recovery_file(data_dir))
 		exit(ERR_BAD_CONFIG);
 
+	/*
+	 * If replication slots requested, create appropriate slot on the primary;
+	 * create_recovery_file() will already have written `primary_slot_name` into
+	 * `recovery.conf`
+	 */
+	if(options.use_replication_slots)
+	{
+		if(create_replication_slot(master_conn, repmgr_slot_name) == false)
+		{
+			PQfinish(master_conn);
+			exit(ERR_DB_QUERY);
+		}
+	}
+
 	/* Finally, restart the service */
 	maxlen_snprintf(script, "%s %s -w -D %s -m fast restart",
 					make_pg_path("pg_ctl"), options.pg_ctl_options, data_dir);
@@ -1801,6 +1816,13 @@ do_standby_follow(void)
 	{
 		log_err(_("unable to restart server\n"));
 		exit(ERR_NO_RESTART);
+	}
+
+	if(update_node_record_set_upstream(master_conn, options.cluster_name,
+									   options.node, master_id) == false)
+	{
+		log_err(_("unable to update upstream node"));
+		exit(ERR_BAD_CONFIG);
 	}
 
 	return;
