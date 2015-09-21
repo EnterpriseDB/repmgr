@@ -147,6 +147,8 @@ main(int argc, char **argv)
 		{"monitoring-history", no_argument, NULL, 'm'},
 		{"daemonize", no_argument, NULL, 'd'},
 		{"pid-file", required_argument, NULL, 'p'},
+		{"help", no_argument, NULL, '?'},
+		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -160,21 +162,7 @@ main(int argc, char **argv)
 	int			server_version_num = 0;
 	progname = get_progname(argv[0]);
 
-	if (argc > 1)
-	{
-		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
-		{
-			help(progname);
-			exit(SUCCESS);
-		}
-		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
-		{
-			printf("%s %s (PostgreSQL %s)\n", progname, REPMGR_VERSION, PG_VERSION);
-			exit(SUCCESS);
-		}
-	}
-
-	while ((c = getopt_long(argc, argv, "f:v:mdp:", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "?Vf:v:mdp:", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -193,6 +181,12 @@ main(int argc, char **argv)
 			case 'p':
 				pid_file = optarg;
 				break;
+			case '?':
+				help(progname);
+				exit(SUCCESS);
+			case 'V':
+				printf("%s %s (PostgreSQL %s)\n", progname, REPMGR_VERSION, PG_VERSION);
+				exit(SUCCESS);
 			default:
 				usage();
 				exit(ERR_BAD_CONFIG);

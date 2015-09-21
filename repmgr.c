@@ -145,6 +145,8 @@ main(int argc, char **argv)
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
 		{"ignore-external-config-files", no_argument, NULL, 4},
+		{"help", no_argument, NULL, '?'},
+		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -158,28 +160,20 @@ main(int argc, char **argv)
 
 	progname = get_progname(argv[0]);
 
-	if (argc > 1)
-	{
-		if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-?") == 0)
-		{
-			help(progname);
-			exit(SUCCESS);
-		}
-		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
-		{
-			printf("%s %s (PostgreSQL %s)\n", progname, REPMGR_VERSION, PG_VERSION);
-			exit(SUCCESS);
-		}
-	}
-
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "d:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c", long_options,
 							&optindex)) != -1)
 	{
 		switch (c)
 		{
+			case '?':
+				help(progname);
+				exit(SUCCESS);
+			case 'V':
+				printf("%s %s (PostgreSQL %s)\n", progname, REPMGR_VERSION, PG_VERSION);
+				exit(SUCCESS);
 			case 'd':
 				strncpy(runtime_options.dbname, optarg, MAXLEN);
 				break;
