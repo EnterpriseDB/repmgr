@@ -2211,16 +2211,18 @@ do_witness_create(void)
 static void
 help(const char *progname)
 {
-	printf(_("\n%s: Replicator manager \n"), progname);
+	printf(_("%s: replication management tool for PostgreSQL\n"), progname);
+	printf(_("\n"));
 	printf(_("Usage:\n"));
-	printf(_(" %s [OPTIONS] master  {register}\n"), progname);
-	printf(_(" %s [OPTIONS] standby {register|clone|promote|follow}\n"),
+	printf(_("  %s [OPTIONS] master  {register}\n"), progname);
+	printf(_("  %s [OPTIONS] standby {register|clone|promote|follow}\n"),
 		   progname);
-	printf(_(" %s [OPTIONS] cluster {show|cleanup}\n"), progname);
-	printf(_("\nGeneral options:\n"));
-	printf(_("  --help                              show this help, then exit\n"));
-	printf(_("  --version                           output version information, then exit\n"));
-	printf(_("  --verbose                           output verbose activity information\n"));
+	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname);
+	printf(_("\n"));
+	printf(_("General options:\n"));
+	printf(_("  -?, --help                          show this help, then exit\n"));
+	printf(_("  -V, --version                       output version information, then exit\n"));
+	printf(_("  -v, --verbose                       output verbose activity information\n"));
 	printf(_("\nConnection options:\n"));
 	printf(_("  -d, --dbname=DBNAME                 database to connect to\n"));
 	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory\n"));

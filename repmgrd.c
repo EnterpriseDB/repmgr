@@ -1971,17 +1971,21 @@ usage(void)
 void
 help(const char *progname)
 {
-	printf(_("Usage: %s [OPTIONS]\n"), progname);
-	printf(_("Replicator manager daemon for PostgreSQL.\n"));
-	printf(_("\nOptions:\n"));
-	printf(_("  --help                    show this help, then exit\n"));
-	printf(_("  --version                 output version information, then exit\n"));
+	printf(_("%s: replication management daemon for PostgreSQL\n"), progname);
+	printf(_("\n"));
+	printf(_("Usage:\n"));
+	printf(_("  %s [OPTIONS]\n"), progname);
+	printf(_("\n"));
+	printf(_("Options:\n"));
+	printf(_("  -?, --help                show this help, then exit\n"));
+	printf(_("  -V, --version             output version information, then exit\n"));
 	printf(_("  -v, --verbose             output verbose activity information\n"));
 	printf(_("  -m, --monitoring-history  track advance or lag of the replication in every standby in repl_monitor\n"));
 	printf(_("  -f, --config-file=PATH    path to the configuration file\n"));
 	printf(_("  -d, --daemonize           detach process from foreground\n"));
 	printf(_("  -p, --pid-file=PATH       write a PID file\n"));
-	printf(_("\n%s monitors a cluster of servers.\n"), progname);
+	printf(_("\n"));
+	printf(_("%s monitors a cluster of servers and optionally performs failover.\n"), progname);
 }
 
 
