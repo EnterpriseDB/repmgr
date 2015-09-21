@@ -419,7 +419,6 @@ main(int argc, char **argv)
 
 	if (runtime_options.verbose && runtime_options.config_file[0])
 	{
-
 		log_notice(_("opening configuration file: %s\n"),
 				   runtime_options.config_file);
 	}
@@ -429,7 +428,7 @@ main(int argc, char **argv)
 	 * however if available we'll parse it anyway for options like 'log_level',
 	 * 'use_replication_slots' etc.
 	 */
-	config_file_parsed = parse_config(runtime_options.config_file, &options);
+	config_file_parsed = load_config(runtime_options.config_file, &options, argv[0]);
 
 	/*
 	 * Initialise pg_bindir - command line parameter will override
@@ -3355,7 +3354,7 @@ do_check_upstream_config(void)
 	bool		config_ok;
 	int			server_version_num;
 
-	parse_config(runtime_options.config_file, &options);
+	parse_config(&options);
 
 	/* Connection parameters for upstream server only */
 	keywords[0] = "host";

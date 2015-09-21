@@ -202,7 +202,7 @@ main(int argc, char **argv)
 	 * which case we'll need to refactor parse_config() not to abort,
 	 * and return the error message.
 	 */
-	parse_config(config_file, &local_options);
+	load_config(config_file, &local_options, argv[0]);
 
 	if (daemonize)
 	{
@@ -313,7 +313,7 @@ main(int argc, char **argv)
 				check_cluster_configuration(my_local_conn);
 				check_node_configuration();
 
-				if (reload_config(config_file, &local_options))
+				if (reload_config(&local_options))
 				{
 					PQfinish(my_local_conn);
 					my_local_conn = establish_db_connection(local_options.conninfo, true);
@@ -362,10 +362,10 @@ main(int argc, char **argv)
 					if (got_SIGHUP)
 					{
 						/*
-						 * if we can reload, then could need to change
+						 * if we can reload the configuration file, then could need to change
 						 * my_local_conn
 						 */
-						if (reload_config(config_file, &local_options))
+						if (reload_config(&local_options))
 						{
 							PQfinish(my_local_conn);
 							my_local_conn = establish_db_connection(local_options.conninfo, true);
@@ -426,7 +426,7 @@ main(int argc, char **argv)
 				check_cluster_configuration(my_local_conn);
 				check_node_configuration();
 
-				if (reload_config(config_file, &local_options))
+				if (reload_config(&local_options))
 				{
 					PQfinish(my_local_conn);
 					my_local_conn = establish_db_connection(local_options.conninfo, true);
@@ -477,7 +477,7 @@ main(int argc, char **argv)
 						 * if we can reload, then could need to change
 						 * my_local_conn
 						 */
-						if (reload_config(config_file, &local_options))
+						if (reload_config(&local_options))
 						{
 							PQfinish(my_local_conn);
 							my_local_conn = establish_db_connection(local_options.conninfo, true);

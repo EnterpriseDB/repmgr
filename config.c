@@ -27,9 +27,11 @@
 static void parse_event_notifications_list(t_configuration_options *options, const char *arg);
 static void tablespace_list_append(t_configuration_options *options, const char *arg);
 
+static char config_file_path[MAXPGPATH];
+static bool config_file_provided = false;
 
 /*
- * parse_config()
+ * load_config()
  *
  * Set default options and overwrite with values from provided configuration
  * file.
@@ -40,30 +42,21 @@ static void tablespace_list_append(t_configuration_options *options, const char 
  * reload_config()
  */
 bool
-parse_config(const char *config_file, t_configuration_options *options)
+load_config(const char *config_file, t_configuration_options *options, char *argv0)
 {
-	char	   *s,
-				buff[MAXLINELENGTH];
-	char		config_file_buf[MAXLEN];
-	char		name[MAXLEN];
-	char		value[MAXLEN];
-	bool 		config_file_provided = false;
-	FILE	   *fp;
-
+	struct stat config;
 	/* Sanity checks */
 
 	/*
 	 * If a configuration file was provided, check it exists, otherwise
-	 * emit an error
+	 * emit an error and terminate
 	 */
 	if (config_file[0])
 	{
-		struct stat config;
+		strncpy(config_file_path, config_file, MAXPGPATH);
+		canonicalize_path(config_file_path);
 
-		strncpy(config_file_buf, config_file, MAXLEN);
-		canonicalize_path(config_file_buf);
-
-		if(stat(config_file_buf, &config) != 0)
+		if(stat(config_file_path, &config) != 0)
 		{
 			log_err(_("provided configuration file '%s' not found: %s\n"),
 					config_file,
@@ -76,16 +69,49 @@ parse_config(const char *config_file, t_configuration_options *options)
 	}
 
 	/*
-	 * If no configuration file was provided, set to a default file
-	 * which `parse_config()` will attempt to read if it exists
+	 * If no configuration file was provided, attempt to find a default file
 	 */
-	else
+	if(config_file_provided == false)
 	{
-		strncpy(config_file_buf, DEFAULT_CONFIG_FILE, MAXLEN);
+		char		my_exec_path[MAXPGPATH];
+		char		etc_path[MAXPGPATH];
+
+		/* First check if one is in the default sysconfdir */
+		if (find_my_exec(argv0, my_exec_path) < 0)
+		{
+			fprintf(stderr, _("%s: could not find own program executable\n"), argv0);
+			exit(EXIT_FAILURE);
+		}
+
+		get_etc_path(my_exec_path, etc_path);
+
+		snprintf(config_file_path, MAXPGPATH, "%s/repmgr.conf", etc_path);
+
+		log_debug(_("Looking for configuration file in %s\n"), etc_path);
+
+		if(stat(config_file_path, &config) != 0)
+		{
+			/* Not found - default to ./repmgr.conf */
+			strncpy(config_file_path, DEFAULT_CONFIG_FILE, MAXPGPATH);
+			canonicalize_path(config_file_path);
+			log_debug(_("Looking for configuration file in %s\n"), config_file_path);
+		}
 	}
 
+	return parse_config(options);
+}
 
-	fp = fopen(config_file_buf, "r");
+
+bool
+parse_config(t_configuration_options *options)
+{
+	FILE	   *fp;
+	char	   *s,
+				buff[MAXLINELENGTH];
+	char		name[MAXLEN];
+	char		value[MAXLEN];
+
+	fp = fopen(config_file_path, "r");
 
 	/*
 	 * Since some commands don't require a config file at all, not having one
@@ -101,7 +127,7 @@ parse_config(const char *config_file, t_configuration_options *options)
 	{
 		if(config_file_provided)
 		{
-			log_err(_("unable to open provided configuration file '%s'; terminating\n"), config_file_buf);
+			log_err(_("unable to open provided configuration file '%s'; terminating\n"), config_file_path);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -394,7 +420,7 @@ parse_line(char *buff, char *name, char *value)
 }
 
 bool
-reload_config(char *config_file, t_configuration_options * orig_options)
+reload_config(t_configuration_options *orig_options)
 {
 	PGconn	   *conn;
 	t_configuration_options new_options;
@@ -405,7 +431,7 @@ reload_config(char *config_file, t_configuration_options * orig_options)
 	 */
 	log_info(_("reloading configuration file and updating repmgr tables\n"));
 
-	parse_config(config_file, &new_options);
+	parse_config(&new_options);
 	if (new_options.node == -1)
 	{
 		log_warning(_("unable to parse new configuration, retaining current configuration\n"));
