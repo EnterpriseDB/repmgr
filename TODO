@@ -22,6 +22,8 @@ Planned feature improvements
 * Use pg_basebackup for the data directory, and ALSO rsync for the
 configuration files.
 
-* Use pg_basebackup -X s
-  NOTE: this can be used by including `-X s` in the configuration parameter
-  `pg_basebackup_options`
+* If no configuration file supplied, search in sensible default locations
+  (currently: current directory and `pg_config --sysconfdir`); if
+  possible this should include the location provided by the package,
+  if installed.
+
