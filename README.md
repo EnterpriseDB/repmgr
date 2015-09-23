@@ -350,6 +350,7 @@ Following event types currently exist:
 
     master_register
     standby_register
+    standby_unregister
     standby_clone
     standby_promote
     witness_create
@@ -457,6 +458,11 @@ its port if is different from the default one.
     Registers a standby with `repmgr`. This command needs to be executed to enable
     promote/follow operations and to allow `repmgrd` to work with the node.
     An existing standby can be registered using this command.
+
+* `standby unregister`
+
+    Unregisters a standby with `repmgr`. This command does not affect the actual
+    replication.
 
 * `standby clone [node to be cloned]`
 
