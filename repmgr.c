@@ -10,6 +10,7 @@
  * MASTER REGISTER
  *
  * STANDBY REGISTER
+ * STANDBY UNREGISTER
  * STANDBY CLONE
  * STANDBY FOLLOW
  * STANDBY PROMOTE
@@ -53,15 +54,16 @@
 
 #define RECOVERY_FILE "recovery.conf"
 
-#define NO_ACTION		 0		/* Dummy default action */
-#define MASTER_REGISTER  1
-#define STANDBY_REGISTER 2
-#define STANDBY_CLONE	 3
-#define STANDBY_PROMOTE  4
-#define STANDBY_FOLLOW	 5
-#define WITNESS_CREATE	 6
-#define CLUSTER_SHOW	 7
-#define CLUSTER_CLEANUP  8
+#define NO_ACTION			0		/* Dummy default action */
+#define MASTER_REGISTER		1
+#define STANDBY_REGISTER	2
+#define STANDBY_UNREGISTER	3
+#define STANDBY_CLONE		4
+#define STANDBY_PROMOTE		5
+#define STANDBY_FOLLOW		6
+#define WITNESS_CREATE		7
+#define CLUSTER_SHOW		8
+#define CLUSTER_CLEANUP		9
 
 
 
@@ -83,6 +85,7 @@ static char *make_pg_path(char *file);
 
 static void do_master_register(void);
 static void do_standby_register(void);
+static void do_standby_unregister(void);
 static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
@@ -293,8 +296,10 @@ main(int argc, char **argv)
 
 	/*
 	 * Now we need to obtain the action, this comes in one of these forms:
-	 * MASTER REGISTER | STANDBY {REGISTER | CLONE [node] | PROMOTE | FOLLOW
-	 * [node]} | WITNESS CREATE CLUSTER {SHOW | CLEANUP}
+	 *   MASTER REGISTER |
+	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node]} |
+	 *   WITNESS CREATE |
+	 *   CLUSTER {SHOW | CLEANUP}
 	 *
 	 * the node part is optional, if we receive it then we shouldn't have
 	 * received a -h option
@@ -327,6 +332,8 @@ main(int argc, char **argv)
 		{
 			if (strcasecmp(server_cmd, "REGISTER") == 0)
 				action = STANDBY_REGISTER;
+			if (strcasecmp(server_cmd, "UNREGISTER") == 0)
+				action = STANDBY_UNREGISTER;
 			else if (strcasecmp(server_cmd, "CLONE") == 0)
 				action = STANDBY_CLONE;
 			else if (strcasecmp(server_cmd, "PROMOTE") == 0)
@@ -534,6 +541,9 @@ main(int argc, char **argv)
 			break;
 		case STANDBY_REGISTER:
 			do_standby_register();
+			break;
+		case STANDBY_UNREGISTER:
+			do_standby_unregister();
 			break;
 		case STANDBY_CLONE:
 			do_standby_clone();
@@ -896,6 +906,85 @@ do_standby_register(void)
 
 	log_info(_("standby registration complete\n"));
 	log_notice(_("standby node correctly registered for cluster %s with id %d (conninfo: %s)\n"),
+			   options.cluster_name, options.node, options.conninfo);
+	return;
+}
+
+
+static void
+do_standby_unregister(void)
+{
+	PGconn	   *conn;
+	PGconn	   *master_conn;
+	int			ret;
+
+	bool		node_record_deleted;
+
+	log_info(_("connecting to standby database\n"));
+	conn = establish_db_connection(options.conninfo, true);
+
+	/* Check we are a standby */
+	ret = is_standby(conn);
+	if (ret == 0 || ret == -1)
+	{
+		log_err(_(ret == 0 ? "this node should be a standby (%s)\n" :
+				"connection to node (%s) lost\n"), options.conninfo);
+
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Check if there is a schema for this cluster */
+	if (check_cluster_schema(conn) == false)
+	{
+		/* schema doesn't exist */
+		log_err(_("schema '%s' doesn't exist.\n"), get_repmgr_schema());
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* check if there is a master in this cluster */
+	log_info(_("connecting to master database\n"));
+	master_conn = get_master_connection(conn, options.cluster_name,
+										NULL, NULL);
+	if (!master_conn)
+	{
+		log_err(_("a master must be defined before configuring a slave\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * Verify that standby and master are supported and compatible server
+	 * versions
+	 */
+	check_master_standby_version_match(conn, master_conn);
+
+	/* Now unregister the standby */
+	log_info(_("unregistering the standby\n"));
+	node_record_deleted = delete_node_record(master_conn,
+										     options.node,
+											 "standby unregister");
+
+	if (node_record_deleted == false)
+	{
+		PQfinish(master_conn);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Log the event */
+	create_event_record(master_conn,
+						&options,
+						options.node,
+						"standby_unregister",
+						true,
+						NULL);
+
+	PQfinish(master_conn);
+	PQfinish(conn);
+
+	log_info(_("standby unregistration complete\n"));
+	log_notice(_("standby node correctly unregistered for cluster %s with id %d (conninfo: %s)\n"),
 			   options.cluster_name, options.node, options.conninfo);
 	return;
 }
@@ -2224,7 +2313,7 @@ help(const char *progname)
 	printf(_("\n"));
 	printf(_("Usage:\n"));
 	printf(_("  %s [OPTIONS] master  {register}\n"), progname);
-	printf(_("  %s [OPTIONS] standby {register|clone|promote|follow}\n"),
+	printf(_("  %s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"),
 		   progname);
 	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname);
 	printf(_("\n"));
@@ -2264,6 +2353,7 @@ help(const char *progname)
 	printf(_(" master register         - registers the master in a cluster\n"));
 	printf(_(" standby clone [node]    - creates a new standby\n"));
 	printf(_(" standby register        - registers a standby in a cluster\n"));
+	printf(_(" standby unregister      - unregisters a standby in a cluster\n"));
 	printf(_(" standby promote         - promotes a specific standby to master\n"));
 	printf(_(" standby follow          - makes standby follow a new master\n"));
 	printf(_(" cluster show            - displays information about cluster nodes\n"));
@@ -2595,6 +2685,23 @@ check_parameters_for_action(const int action)
 			if (runtime_options.dest_dir[0])
 			{
 				error_list_append(_("destination directory not required when executing STANDBY REGISTER"));
+			}
+			break;
+		case STANDBY_UNREGISTER:
+
+			/*
+			 * To unregister a standby we only need the repmgr.conf we don't
+			 * need connection parameters to the master because we can detect
+			 * the master in repl_nodes
+			 */
+			if (runtime_options.host[0] || runtime_options.masterport[0] ||
+				runtime_options.username[0] || runtime_options.dbname[0])
+			{
+				error_list_append(_("master connection parameters not required when executing STANDBY UNREGISTER"));
+			}
+			if (runtime_options.dest_dir[0])
+			{
+				error_list_append(_("destination directory not required when executing STANDBY UNREGISTER"));
 			}
 			break;
 		case STANDBY_PROMOTE:
