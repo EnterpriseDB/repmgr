@@ -1,3 +1,13 @@
+3.0.2   2015-09-
+        Improve handling of --help/--version options; and improve help output (Ian)
+        Improve handling of situation where logfile can't be opened (Ian)
+        Always pass -D/--pgdata option to pg_basebackup (Ian)
+        Bugfix: standby clone --force does not empty pg_xlog (Gianni)
+        Bugfix: autofailover with reconnect_attempts > 1 (Gianni)
+        Bugfix: ignore comments after values (soxwellfb)
+        Bugfix: handle string values in 'node' parameter correctly(Gregory Duchatelet)
+        Allow repmgr to be compiled with a newer libpq (Marco)
+
 3.0.1   2015-04-16
         Prevent repmgrd from looping infinitely if node was not registered (Ian)
         When promoting a standby, have repmgr (not repmgrd) handle metadata updates (Ian)
