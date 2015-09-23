@@ -27,3 +27,7 @@ configuration files.
   possible this should include the location provided by the package,
   if installed.
 
+* repmgrd: if connection to the upstream node fails on startup, optionally
+  retry for a certain period before giving up; this will cover cases when
+  e.g. primary and standby are both starting up, and the standby comes up
+  before the primary. See github issue #80/
