@@ -91,8 +91,6 @@ static void witness_monitor(void);
 static bool check_connection(PGconn **conn, const char *type, const char *conninfo);
 static bool set_local_node_failed(void);
 
-static bool update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
-
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
 static void do_master_failover(void);
@@ -1520,7 +1518,7 @@ do_master_failover(void)
 		my_local_conn = establish_db_connection(local_options.conninfo, true);
 
 		/* update node information to reflect new status */
-		if(update_node_record_set_upstream(new_master_conn, node_info.node_id, best_candidate.node_id) == false)
+		if(update_node_record_set_upstream(new_master_conn, local_options.cluster_name, node_info.node_id, best_candidate.node_id) == false)
 		{
 			appendPQExpBuffer(&event_details,
 							  _("Unable to update node record for node %i (following new upstream node %i)"),
@@ -1664,7 +1662,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 		terminate(ERR_BAD_CONFIG);
 	}
 
-	if(update_node_record_set_upstream(master_conn, node_info.node_id, upstream_node_id) == false)
+	if(update_node_record_set_upstream(master_conn, local_options.cluster_name, node_info.node_id, upstream_node_id) == false)
 	{
 		terminate(ERR_BAD_CONFIG);
 	}
@@ -2307,38 +2305,4 @@ parse_node_type(const char *type)
 	}
 
 	return UNKNOWN;
-}
-
-
-static bool
-update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id)
-{
-	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN];
-
-	log_debug(_("update_node_record_set_upstream(): Updating node %i's upstream node to %i\n"), this_node_id, new_upstream_node_id);
-
-	sqlquery_snprintf(sqlquery,
-					  "  UPDATE %s.repl_nodes "
-					  "     SET upstream_node_id = %i "
-					  "   WHERE cluster = '%s' "
-					  "     AND id = %i ",
-					  get_repmgr_schema_quoted(conn),
-					  new_upstream_node_id,
-					  local_options.cluster_name,
-					  this_node_id);
-	res = PQexec(conn, sqlquery);
-
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		log_err(_("Unable to set new upstream node id: %s\n"),
-				PQerrorMessage(conn));
-		PQclear(res);
-
-		return false;
-	}
-
-	PQclear(res);
-
-	return true;
 }
