@@ -949,7 +949,7 @@ do_standby_unregister(void)
 										NULL, NULL);
 	if (!master_conn)
 	{
-		log_err(_("a master must be defined before configuring a slave\n"));
+		log_err(_("a master must be defined before unregistering a slave\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
