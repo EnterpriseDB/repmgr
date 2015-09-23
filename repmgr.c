@@ -588,9 +588,13 @@ do_cluster_show(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT conninfo, type "
-					  "  FROM %s.repl_nodes ",
-					  get_repmgr_schema_quoted(conn));
+			  "SELECT rn.conninfo, rn.type, rn.name, sq.name"
+			  "  FROM %s.repl_nodes as rn"
+			  "  LEFT JOIN %s.repl_nodes AS sq"
+			  "    ON sq.id=rn.upstream_node_id",
+			  get_repmgr_schema_quoted(conn),
+			  get_repmgr_schema_quoted(conn));
+
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -605,7 +609,7 @@ do_cluster_show(void)
 	}
 	PQfinish(conn);
 
-	printf("Role      | Connection String\n");
+	printf("Role      | Name          | Upstream      | Connection String\n");
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
@@ -619,6 +623,8 @@ do_cluster_show(void)
 			strcpy(node_role, "* master");
 
 		printf("%-10s", node_role);
+		printf("| %-14s", PQgetvalue(res, i, 2));
+		printf("| %-14s", PQgetvalue(res, i, 3));
 		printf("| %s\n", PQgetvalue(res, i, 0));
 
 		PQfinish(conn);
