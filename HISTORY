@@ -7,6 +7,7 @@
         Bugfix: ignore comments after values (soxwellfb)
         Bugfix: handle string values in 'node' parameter correctly(Gregory Duchatelet)
         Allow repmgr to be compiled with a newer libpq (Marco)
+        Bugfix: call update_node_record_set_upstream() for STANDBY FOLLOW (Tomas)
 
 3.0.1   2015-04-16
         Prevent repmgrd from looping infinitely if node was not registered (Ian)

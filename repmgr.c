@@ -1765,7 +1765,6 @@ do_standby_follow(void)
 	strncpy(runtime_options.host, PQhost(master_conn), MAXLEN);
 	strncpy(runtime_options.masterport, PQport(master_conn), MAXLEN);
 	strncpy(runtime_options.username, PQuser(master_conn), MAXLEN);
-	PQfinish(master_conn);
 
 	log_info(_("changing standby's master\n"));
 
@@ -1801,8 +1800,11 @@ do_standby_follow(void)
 									   options.node, master_id) == false)
 	{
 		log_err(_("unable to update upstream node"));
+		PQfinish(master_conn);
+
 		exit(ERR_BAD_CONFIG);
 	}
+	PQfinish(master_conn);
 
 	return;
 }
