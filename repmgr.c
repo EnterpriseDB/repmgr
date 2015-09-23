@@ -2356,6 +2356,7 @@ help(const char *progname)
 	printf(_(" standby unregister      - unregisters a standby in a cluster\n"));
 	printf(_(" standby promote         - promotes a specific standby to master\n"));
 	printf(_(" standby follow          - makes standby follow a new master\n"));
+	printf(_(" witness create          - creates a new witness\n"));
 	printf(_(" cluster show            - displays information about cluster nodes\n"));
 	printf(_(" cluster cleanup         - prunes or truncates monitoring history\n" \
 			 "                           (monitoring history creation requires repmgrd\n" \
