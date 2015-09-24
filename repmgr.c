@@ -728,9 +728,8 @@ do_master_register(void)
 		log_info(_("master register: creating database objects inside the %s schema\n"),
 				 get_repmgr_schema());
 
-
 		begin_transaction(conn);
-		/* ok, create the schema */
+
 		if (!create_schema(conn))
 		{
 			log_err(_("Unable to create repmgr schema - see preceding error message(s); aborting\n"));
@@ -742,24 +741,28 @@ do_master_register(void)
 		commit_transaction(conn);
 	}
 
-
-
 	/* Ensure there isn't any other master already registered */
 	master_conn = get_master_connection(conn,
 										options.cluster_name, NULL, NULL);
-	if (master_conn != NULL)
+
+	if (master_conn != NULL && !runtime_options.force)
 	{
 		PQfinish(master_conn);
-		log_warning(_("there is a master already in cluster %s\n"),
+		log_err(_("there is a master already in cluster %s\n"),
 					options.cluster_name);
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* Delete any existing record for this node if --force set */
 	if (runtime_options.force)
 	{
-		bool node_record_deleted = delete_node_record(conn,
-													  options.node,
-													  "master register");
+		bool node_record_deleted;
+
+		log_notice(_("deleting existing master record with id %i\n"), options.node);
+
+		node_record_deleted = delete_node_record(conn,
+												 options.node,
+												 "master register");
 
 		if (node_record_deleted == false)
 		{
