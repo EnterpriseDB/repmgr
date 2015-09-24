@@ -56,7 +56,7 @@ load_config(const char *config_file, t_configuration_options *options, char *arg
 		strncpy(config_file_path, config_file, MAXPGPATH);
 		canonicalize_path(config_file_path);
 
-		if(stat(config_file_path, &config) != 0)
+		if (stat(config_file_path, &config) != 0)
 		{
 			log_err(_("provided configuration file '%s' not found: %s\n"),
 					config_file,
@@ -71,7 +71,7 @@ load_config(const char *config_file, t_configuration_options *options, char *arg
 	/*
 	 * If no configuration file was provided, attempt to find a default file
 	 */
-	if(config_file_provided == false)
+	if (config_file_provided == false)
 	{
 		char		my_exec_path[MAXPGPATH];
 		char		etc_path[MAXPGPATH];
@@ -89,7 +89,7 @@ load_config(const char *config_file, t_configuration_options *options, char *arg
 
 		log_debug(_("Looking for configuration file in %s\n"), etc_path);
 
-		if(stat(config_file_path, &config) != 0)
+		if (stat(config_file_path, &config) != 0)
 		{
 			/* Not found - default to ./repmgr.conf */
 			strncpy(config_file_path, DEFAULT_CONFIG_FILE, MAXPGPATH);
@@ -125,7 +125,7 @@ parse_config(t_configuration_options *options)
 	 */
 	if (fp == NULL)
 	{
-		if(config_file_provided)
+		if (config_file_provided)
 		{
 			log_err(_("unable to open provided configuration file '%s'; terminating\n"), config_file_path);
 			exit(ERR_BAD_CONFIG);
@@ -179,7 +179,7 @@ parse_config(t_configuration_options *options)
 		parse_line(buff, name, value);
 
 		/* Skip blank lines */
-		if(!strlen(name))
+		if (!strlen(name))
 			continue;
 
 		/* Skip comments */
@@ -269,7 +269,7 @@ parse_config(t_configuration_options *options)
 		 * we want to accept those, we'd need to add stricter default checking,
 		 * as currently e.g. an empty `node` value will be converted to '0'.
 		 */
-		if(known_parameter == true && !strlen(value)) {
+		if (known_parameter == true && !strlen(value)) {
 			log_err(_("no value provided for parameter '%s'\n"), name);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -341,7 +341,7 @@ trim(char *s)
 			   *s2 = &s[strlen(s) - 1];
 
 	/* If string is empty, no action needed */
-	if(s2 < s1)
+	if (s2 < s1)
 		return s;
 
 	/* Trim and delimit right side */
@@ -480,7 +480,7 @@ reload_config(t_configuration_options *orig_options)
 		return false;
 	}
 
-	if(strcmp(orig_options->conninfo, new_options.conninfo) != 0)
+	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
 	{
 		/* Test conninfo string */
 		conn = establish_db_connection(new_options.conninfo, false);
@@ -500,56 +500,56 @@ reload_config(t_configuration_options *orig_options)
 	 */
 
 	/* cluster_name */
-	if(strcmp(orig_options->cluster_name, new_options.cluster_name) != 0)
+	if (strcmp(orig_options->cluster_name, new_options.cluster_name) != 0)
 	{
 		strcpy(orig_options->cluster_name, new_options.cluster_name);
 		config_changed = true;
 	}
 
 	/* conninfo */
-	if(strcmp(orig_options->conninfo, new_options.conninfo) != 0)
+	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
 	{
 		strcpy(orig_options->conninfo, new_options.conninfo);
 		config_changed = true;
 	}
 
 	/* node */
-	if(orig_options->node != new_options.node)
+	if (orig_options->node != new_options.node)
 	{
 		orig_options->node = new_options.node;
 		config_changed = true;
 	}
 
 	/* failover */
-	if(orig_options->failover != new_options.failover)
+	if (orig_options->failover != new_options.failover)
 	{
 		orig_options->failover = new_options.failover;
 		config_changed = true;
 	}
 
 	/* priority */
-	if(orig_options->priority != new_options.priority)
+	if (orig_options->priority != new_options.priority)
 	{
 		orig_options->priority = new_options.priority;
 		config_changed = true;
 	}
 
 	/* node_name */
-	if(strcmp(orig_options->node_name, new_options.node_name) != 0)
+	if (strcmp(orig_options->node_name, new_options.node_name) != 0)
 	{
 		strcpy(orig_options->node_name, new_options.node_name);
 		config_changed = true;
 	}
 
 	/* promote_command */
-	if(strcmp(orig_options->promote_command, new_options.promote_command) != 0)
+	if (strcmp(orig_options->promote_command, new_options.promote_command) != 0)
 	{
 		strcpy(orig_options->promote_command, new_options.promote_command);
 		config_changed = true;
 	}
 
 	/* follow_command */
-	if(strcmp(orig_options->follow_command, new_options.follow_command) != 0)
+	if (strcmp(orig_options->follow_command, new_options.follow_command) != 0)
 	{
 		strcpy(orig_options->follow_command, new_options.follow_command);
 		config_changed = true;
@@ -566,76 +566,76 @@ reload_config(t_configuration_options *orig_options)
 	 */
 
 	/* rsync_options */
-	if(strcmp(orig_options->rsync_options, new_options.rsync_options) != 0)
+	if (strcmp(orig_options->rsync_options, new_options.rsync_options) != 0)
 	{
 		strcpy(orig_options->rsync_options, new_options.rsync_options);
 		config_changed = true;
 	}
 
 	/* ssh_options */
-	if(strcmp(orig_options->ssh_options, new_options.ssh_options) != 0)
+	if (strcmp(orig_options->ssh_options, new_options.ssh_options) != 0)
 	{
 		strcpy(orig_options->ssh_options, new_options.ssh_options);
 		config_changed = true;
 	}
 
 	/* master_response_timeout */
-	if(orig_options->master_response_timeout != new_options.master_response_timeout)
+	if (orig_options->master_response_timeout != new_options.master_response_timeout)
 	{
 		orig_options->master_response_timeout = new_options.master_response_timeout;
 		config_changed = true;
 	}
 
 	/* reconnect_attempts */
-	if(orig_options->reconnect_attempts != new_options.reconnect_attempts)
+	if (orig_options->reconnect_attempts != new_options.reconnect_attempts)
 	{
 		orig_options->reconnect_attempts = new_options.reconnect_attempts;
 		config_changed = true;
 	}
 
 	/* reconnect_intvl */
-	if(orig_options->reconnect_intvl != new_options.reconnect_intvl)
+	if (orig_options->reconnect_intvl != new_options.reconnect_intvl)
 	{
 		orig_options->reconnect_intvl = new_options.reconnect_intvl;
 		config_changed = true;
 	}
 
 	/* pg_ctl_options */
-	if(strcmp(orig_options->pg_ctl_options, new_options.pg_ctl_options) != 0)
+	if (strcmp(orig_options->pg_ctl_options, new_options.pg_ctl_options) != 0)
 	{
 		strcpy(orig_options->pg_ctl_options, new_options.pg_ctl_options);
 		config_changed = true;
 	}
 
 	/* pg_basebackup_options */
-	if(strcmp(orig_options->pg_basebackup_options, new_options.pg_basebackup_options) != 0)
+	if (strcmp(orig_options->pg_basebackup_options, new_options.pg_basebackup_options) != 0)
 	{
 		strcpy(orig_options->pg_basebackup_options, new_options.pg_basebackup_options);
 		config_changed = true;
 	}
 
 	/* monitor_interval_secs */
-	if(orig_options->monitor_interval_secs != new_options.monitor_interval_secs)
+	if (orig_options->monitor_interval_secs != new_options.monitor_interval_secs)
 	{
 		orig_options->monitor_interval_secs = new_options.monitor_interval_secs;
 		config_changed = true;
 	}
 
 	/* retry_promote_interval_secs */
-	if(orig_options->retry_promote_interval_secs != new_options.retry_promote_interval_secs)
+	if (orig_options->retry_promote_interval_secs != new_options.retry_promote_interval_secs)
 	{
 		orig_options->retry_promote_interval_secs = new_options.retry_promote_interval_secs;
 		config_changed = true;
 	}
 
 	/* use_replication_slots */
-	if(orig_options->use_replication_slots != new_options.use_replication_slots)
+	if (orig_options->use_replication_slots != new_options.use_replication_slots)
 	{
 		orig_options->use_replication_slots = new_options.use_replication_slots;
 		config_changed = true;
 	}
 
-	if(config_changed == true)
+	if (config_changed == true)
 	{
 		log_debug(_("reload_config(): configuration has changed\n"));
 	}
@@ -664,7 +664,7 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 	const char *arg_ptr;
 
 	cell = (TablespaceListCell *) pg_malloc0(sizeof(TablespaceListCell));
-	if(cell == NULL)
+	if (cell == NULL)
 	{
 		log_err(_("unable to allocate memory; terminating\n"));
 		exit(ERR_BAD_CONFIG);
@@ -732,7 +732,7 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 	for (arg_ptr = arg; arg_ptr <= (arg + strlen(arg)); arg_ptr++)
 	{
 		/* ignore whitespace */
-		if(*arg_ptr == ' ' || *arg_ptr == '\t')
+		if (*arg_ptr == ' ' || *arg_ptr == '\t')
 		{
 			continue;
 		}
@@ -741,13 +741,13 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 		 * comma (or end-of-string) should mark the end of an event type -
 		 * just as long as there was something preceding it
 		 */
-		if((*arg_ptr == ',' || *arg_ptr == '\0') && event_type_buf[0] != '\0')
+		if ((*arg_ptr == ',' || *arg_ptr == '\0') && event_type_buf[0] != '\0')
 		{
 			EventNotificationListCell *cell;
 
 			cell = (EventNotificationListCell *) pg_malloc0(sizeof(EventNotificationListCell));
 
-			if(cell == NULL)
+			if (cell == NULL)
 			{
 				log_err(_("unable to allocate memory; terminating\n"));
 				exit(ERR_BAD_CONFIG);
@@ -770,7 +770,7 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 			dst_ptr = event_type_buf;
 		}
 		/* ignore duplicated commas */
-		else if(*arg_ptr == ',')
+		else if (*arg_ptr == ',')
 		{
 			continue;
 		}

@@ -326,7 +326,7 @@ get_server_version(PGconn *conn, char *server_version)
 		return -1;
 	}
 
-	if(server_version != NULL)
+	if (server_version != NULL)
 		strcpy(server_version, PQgetvalue(res, 0, 0));
 
 	return atoi(PQgetvalue(res, 0, 0));
@@ -465,7 +465,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 		}
 	}
 
-	if(success == true)
+	if (success == true)
 	{
 		log_debug(_("get_pg_setting(): returned value is '%s'\n"), output);
 	}
@@ -524,7 +524,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 		return NULL;
 	}
 
-	if(!PQntuples(res))
+	if (!PQntuples(res))
 	{
 		log_notice(_("no record found for upstream server"));
 		PQclear(res);
@@ -533,7 +533,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 	strncpy(upstream_conninfo, PQgetvalue(res, 0, 0), MAXCONNINFO);
 
-	if(upstream_node_id_ptr != NULL)
+	if (upstream_node_id_ptr != NULL)
 		*upstream_node_id_ptr = atoi(PQgetvalue(res, 0, 1));
 
 	PQclear(res);
@@ -575,7 +575,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 	int			i,
 				node_id;
 
-	if(master_id != NULL)
+	if (master_id != NULL)
 	{
 		*master_id = NODE_NOT_FOUND;
 	}
@@ -636,7 +636,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 			PQclear(res1);
 			log_debug(_("get_master_connection(): current master node is %i\n"), node_id);
 
-			if(master_id != NULL)
+			if (master_id != NULL)
 			{
 				*master_id = node_id;
 			}
@@ -775,7 +775,7 @@ get_repmgr_schema(void)
 char *
 get_repmgr_schema_quoted(PGconn *conn)
 {
-	if(strcmp(repmgr_schema_quoted, "") == 0)
+	if (strcmp(repmgr_schema_quoted, "") == 0)
 	{
 		char	   *identifier = PQescapeIdentifier(conn, repmgr_schema,
 													strlen(repmgr_schema));
@@ -815,15 +815,15 @@ create_replication_slot(PGconn *conn, char *slot_name)
 		return false;
 	}
 
-	if(PQntuples(res))
+	if (PQntuples(res))
 	{
-		if(strcmp(PQgetvalue(res, 0, 1), "physical") != 0)
+		if (strcmp(PQgetvalue(res, 0, 1), "physical") != 0)
 		{
 			log_err(_("Slot '%s' exists and is not a physical slot\n"),
 					slot_name);
 			PQclear(res);
 		}
-		if(strcmp(PQgetvalue(res, 0, 0), "f") == 0)
+		if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
 		{
 			PQclear(res);
 			log_debug(_("Replication slot '%s' exists but is inactive; reusing\n"),
@@ -1039,13 +1039,13 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 	char		slot_name_buf[MAXLEN];
 	PGresult   *res;
 
-	if(upstream_node == NO_UPSTREAM_NODE)
+	if (upstream_node == NO_UPSTREAM_NODE)
 	{
 		/*
 		 * No explicit upstream node id provided for standby - attempt to
 		 * get primary node id
 		 */
-		if(strcmp(type, "standby") == 0)
+		if (strcmp(type, "standby") == 0)
 		{
 			int primary_node_id = get_master_node_id(conn, cluster_name);
 			maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
@@ -1060,7 +1060,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 		maxlen_snprintf(upstream_node_id, "%i", upstream_node);
 	}
 
-	if(slot_name != NULL && slot_name[0])
+	if (slot_name != NULL && slot_name[0])
 	{
 		maxlen_snprintf(slot_name_buf, "'%s'", slot_name);
 	}
@@ -1084,7 +1084,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 					  slot_name_buf,
 					  priority);
 
-	if(action != NULL)
+	if (action != NULL)
 	{
 		log_debug(_("%s: %s\n"), action, sqlquery);
 	}
@@ -1115,7 +1115,7 @@ delete_node_record(PGconn *conn, int node, char *action)
 					  " WHERE id = %d",
 					  get_repmgr_schema_quoted(conn),
 					  node);
-	if(action != NULL)
+	if (action != NULL)
 	{
 		log_debug(_("%s: %s\n"), action, sqlquery);
 	}
@@ -1165,7 +1165,7 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	   not it means no configuration file was provided, which can happen with
 	   e.g. `repmgr standby clone`, and we won't know which schema to write to.
 	 */
-	if(conn != NULL && strcmp(repmgr_schema, DEFAULT_REPMGR_SCHEMA_PREFIX) != 0)
+	if (conn != NULL && strcmp(repmgr_schema, DEFAULT_REPMGR_SCHEMA_PREFIX) != 0)
 	{
 		int n_node_id = htonl(node_id);
 		char *t_successful = successful ? "TRUE" : "FALSE";
@@ -1228,7 +1228,7 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	 * current timestamp ourselves. This isn't quite the same
 	 * format as PostgreSQL, but is close enough for diagnostic use.
 	 */
-	if(!strlen(event_timestamp))
+	if (!strlen(event_timestamp))
 	{
 		time_t now;
 
@@ -1238,7 +1238,7 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	}
 
 	/* an event notification command was provided - parse and execute it */
-	if(strlen(options->event_notification_command))
+	if (strlen(options->event_notification_command))
 	{
 		char		parsed_command[MAXPGPATH];
 		const char *src_ptr;
@@ -1254,14 +1254,14 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 		 * (If 'event_notifications' was not provided, we assume the script
 		 * should be executed for all events).
 		 */
-		if(options->event_notifications.head != NULL)
+		if (options->event_notifications.head != NULL)
 		{
 			EventNotificationListCell *cell;
 			bool notify_ok = false;
 
 			for (cell = options->event_notifications.head; cell; cell = cell->next)
 			{
-				if(strcmp(event, cell->event_type) == 0)
+				if (strcmp(event, cell->event_type) == 0)
 				{
 					notify_ok = true;
 					break;
@@ -1271,7 +1271,7 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 			/*
 			 * Event type not found in the 'event_notifications' list - return early
 			 */
-			if(notify_ok == false)
+			if (notify_ok == false)
 			{
 				log_debug(_("Not executing notification script for event type '%s'\n"), event);
 				return success;
@@ -1303,7 +1303,7 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 					case 'd':
 						/* %d: details */
 						src_ptr++;
-						if(details != NULL)
+						if (details != NULL)
 						{
 							strlcpy(dst_ptr, details, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);

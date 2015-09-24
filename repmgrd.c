@@ -259,7 +259,7 @@ main(int argc, char **argv)
 
 	server_version_num = get_server_version(my_local_conn, NULL);
 
-	if(server_version_num < MIN_SUPPORTED_VERSION_NUM)
+	if (server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		if (server_version_num > 0)
 		{
@@ -279,7 +279,7 @@ main(int argc, char **argv)
 	node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
 
 	/* No node record found - exit gracefully */
-	if(node_info.node_id == NODE_NOT_FOUND)
+	if (node_info.node_id == NODE_NOT_FOUND)
 	{
 		log_err(_("No metadata record found for this node - terminating\n"));
 		log_notice(_("HINT: was this node registered with 'repmgr (master|standby) register'?\n"));
@@ -320,7 +320,7 @@ main(int argc, char **argv)
 				}
 
 				/* Log startup event */
-				if(startup_event_logged == false)
+				if (startup_event_logged == false)
 				{
 					create_event_record(master_conn,
 										&local_options,
@@ -431,7 +431,7 @@ main(int argc, char **argv)
 					update_registration();
 				}
 				/* Log startup event */
-				if(startup_event_logged == false)
+				if (startup_event_logged == false)
 				{
 					create_event_record(master_conn,
 										&local_options,
@@ -483,7 +483,7 @@ main(int argc, char **argv)
 						}
 						got_SIGHUP = false;
 					}
-					if(failover_done)
+					if (failover_done)
 					{
 						log_debug(_("standby check loop will terminate\n"));
 					}
@@ -530,7 +530,7 @@ witness_monitor(void)
 	 */
 	connection_ok = check_connection(&master_conn, "master", NULL);
 
-	if(connection_ok == false)
+	if (connection_ok == false)
 	{
 		int			connection_retries;
 		log_debug(_("old master node ID: %i\n"), master_options.node);
@@ -581,7 +581,7 @@ witness_monitor(void)
 			}
 		}
 
-		if(connection_ok == false)
+		if (connection_ok == false)
 		{
 			PQExpBufferData errmsg;
 			initPQExpBuffer(&errmsg);
@@ -809,7 +809,7 @@ standby_monitor(void)
 			 */
 			upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
 
-            if(upstream_node.type == MASTER)
+            if (upstream_node.type == MASTER)
             {
                 log_debug(_("failure detected on master node (%i); attempting to promote a standby\n"),
                           node_info.upstream_node_id);
@@ -820,7 +820,7 @@ standby_monitor(void)
                 log_debug(_("failure detected on upstream node %i; attempting to reconnect to new upstream node\n"),
                           node_info.upstream_node_id);
 
-				if(!do_upstream_standby_failover(upstream_node))
+				if (!do_upstream_standby_failover(upstream_node))
 				{
 					PQExpBufferData errmsg;
 					initPQExpBuffer(&errmsg);
@@ -917,7 +917,7 @@ standby_monitor(void)
 		return;
 	}
 
-	if(PQntuples(res) == 0)
+	if (PQntuples(res) == 0)
 	{
 		log_err(_("standby_monitor(): no active master found\n"));
 		PQclear(res);
@@ -927,10 +927,10 @@ standby_monitor(void)
 	active_master_id = atoi(PQgetvalue(res, 0, 0));
 	PQclear(res);
 
-	if(active_master_id != master_options.node)
+	if (active_master_id != master_options.node)
 	{
 		log_notice(_("connecting to active master (node %i)...\n"), active_master_id); \
-		if(master_conn != NULL)
+		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
 		}
@@ -1102,7 +1102,7 @@ do_master_failover(void)
 
 		/* Copy details of the failed node */
 		/* XXX only node_id is actually used later */
-		if(nodes[i].type == MASTER)
+		if (nodes[i].type == MASTER)
 		{
 			failed_master.node_id = nodes[i].node_id;
 			failed_master.xlog_location = nodes[i].xlog_location;
@@ -1208,7 +1208,7 @@ do_master_failover(void)
 
 		/* If position is 0/0, error */
 		/* XXX do we need to terminate ourselves if the queried node has a problem? */
-		if(xlog_recptr == InvalidXLogRecPtr)
+		if (xlog_recptr == InvalidXLogRecPtr)
 		{
 			log_err(_("InvalidXLogRecPtr detected on standby node %i\n"), nodes[i].node_id);
 			terminate(ERR_FAILOVER_FAIL);
@@ -1298,12 +1298,12 @@ do_master_failover(void)
 			 * empty string; otherwise position is 0/0 and we need to continue
 			 * looping until a valid LSN is reported
 			 */
-			if(xlog_recptr == InvalidXLogRecPtr)
+			if (xlog_recptr == InvalidXLogRecPtr)
 			{
-				if(lsn_format_ok == false)
+				if (lsn_format_ok == false)
 				{
 					/* Unable to parse value returned by `repmgr_get_last_standby_location()` */
-					if(*PQgetvalue(res, 0, 0) == '\0')
+					if (*PQgetvalue(res, 0, 0) == '\0')
 					{
 						log_crit(
 							_("unable to obtain LSN from node %i"), nodes[i].node_id
@@ -1483,9 +1483,9 @@ do_master_failover(void)
 		 */
 		new_master_conn = establish_db_connection(best_candidate.conninfo_str, true);
 
-		if(local_options.use_replication_slots)
+		if (local_options.use_replication_slots)
 		{
-			if(create_replication_slot(new_master_conn, node_info.slot_name) == false)
+			if (create_replication_slot(new_master_conn, node_info.slot_name) == false)
 			{
 
 				appendPQExpBuffer(&event_details,
@@ -1518,7 +1518,7 @@ do_master_failover(void)
 		my_local_conn = establish_db_connection(local_options.conninfo, true);
 
 		/* update node information to reflect new status */
-		if(update_node_record_set_upstream(new_master_conn, local_options.cluster_name, node_info.node_id, best_candidate.node_id) == false)
+		if (update_node_record_set_upstream(new_master_conn, local_options.cluster_name, node_info.node_id, best_candidate.node_id) == false)
 		{
 			appendPQExpBuffer(&event_details,
 							  _("Unable to update node record for node %i (following new upstream node %i)"),
@@ -1610,7 +1610,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 			return false;
 		}
 
-		if(PQntuples(res) == 0)
+		if (PQntuples(res) == 0)
 		{
 			log_err(_("no node with id %i found"), upstream_node_id);
 			PQclear(res);
@@ -1618,7 +1618,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 		}
 
 		/* upstream node is inactive */
-		if(strcmp(PQgetvalue(res, 0, 1), "f") == 0)
+		if (strcmp(PQgetvalue(res, 0, 1), "f") == 0)
 		{
 			/*
 			 * Upstream node is an inactive master, meaning no there are no direct
@@ -1628,7 +1628,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 			 * provide an option to either try and find the current master and/or
 			 * a strategy to connect to a different upstream node
 			 */
-			if(strcmp(PQgetvalue(res, 0, 4), "master") == 0)
+			if (strcmp(PQgetvalue(res, 0, 4), "master") == 0)
 			{
 				log_err(_("unable to find active master node\n"));
 				PQclear(res);
@@ -1662,7 +1662,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 		terminate(ERR_BAD_CONFIG);
 	}
 
-	if(update_node_record_set_upstream(master_conn, local_options.cluster_name, node_info.node_id, upstream_node_id) == false)
+	if (update_node_record_set_upstream(master_conn, local_options.cluster_name, node_info.node_id, upstream_node_id) == false)
 	{
 		terminate(ERR_BAD_CONFIG);
 	}
@@ -1771,7 +1771,7 @@ set_local_node_failed(void)
 		return false;
 	}
 
-	if(!PQntuples(res))
+	if (!PQntuples(res))
 	{
 		log_err(_("no active master record found\n"));
 		return false;
@@ -1781,14 +1781,14 @@ set_local_node_failed(void)
 	strncpy(master_conninfo, PQgetvalue(res, 0, 1), MAXLEN);
 	PQclear(res);
 
-	if(active_master_node_id != master_options.node)
+	if (active_master_node_id != master_options.node)
 	{
 		log_notice(_("current active master is %i; attempting to connect\n"),
 			active_master_node_id);
 		PQfinish(master_conn);
 		master_conn = establish_db_connection(master_conninfo, false);
 
-		if(PQstatus(master_conn) != CONNECTION_OK)
+		if (PQstatus(master_conn) != CONNECTION_OK)
 		{
 			log_err(_("unable to connect to active master\n"));
 			return false;
@@ -1946,13 +1946,13 @@ lsn_to_xlogrecptr(char *lsn, bool *format_ok)
 
 	if (sscanf(lsn, "%X/%X", &xlogid, &xrecoff) != 2)
 	{
-		if(format_ok != NULL)
+		if (format_ok != NULL)
 			*format_ok = false;
 		log_err(_("incorrect log location format: %s\n"), lsn);
 		return 0;
 	}
 
-	if(format_ok != NULL)
+	if (format_ok != NULL)
 		*format_ok = true;
 
 	return (((XLogRecPtr) xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
@@ -2280,15 +2280,15 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 static t_server_type
 parse_node_type(const char *type)
 {
-	if(strcmp(type, "master") == 0)
+	if (strcmp(type, "master") == 0)
 	{
 		return MASTER;
 	}
-	else if(strcmp(type, "standby") == 0)
+	else if (strcmp(type, "standby") == 0)
 	{
 		return STANDBY;
 	}
-	else if(strcmp(type, "witness") == 0)
+	else if (strcmp(type, "witness") == 0)
 	{
 		return WITNESS;
 	}

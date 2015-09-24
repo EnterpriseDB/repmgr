@@ -249,14 +249,14 @@ main(int argc, char **argv)
 			case 3:
 				targ = strtol(optarg, &ptr, 10);
 
-				if(targ < 1)
+				if (targ < 1)
 				{
 					error_list_append(_("Invalid value provided for '-r/--recovery-min-apply-delay'"));
 					break;
 				}
-				if(ptr && *ptr)
+				if (ptr && *ptr)
 				{
-					if(strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 &&
+					if (strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 &&
 					   strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
 					   strcmp(ptr, "d") != 0)
 					{
@@ -282,13 +282,13 @@ main(int argc, char **argv)
 	}
 
 	/* Exit here already if errors in command line options found */
-	if(cli_errors.head != NULL)
+	if (cli_errors.head != NULL)
 	{
 		exit_with_errors();
 	}
 
 
-	if(check_upstream_config == true)
+	if (check_upstream_config == true)
 	{
 		do_check_upstream_config();
 		exit(SUCCESS);
@@ -356,7 +356,7 @@ main(int argc, char **argv)
 	}
 
 	if (action == NO_ACTION) {
-		if(server_cmd == NULL)
+		if (server_cmd == NULL)
 		{
 			error_list_append("No server command provided");
 		}
@@ -399,7 +399,7 @@ main(int argc, char **argv)
 	 * Sanity checks for command line parameters completed by now;
 	 * any further errors will be runtime ones
 	 */
-	if(cli_errors.head != NULL)
+	if (cli_errors.head != NULL)
 	{
 		exit_with_errors();
 	}
@@ -441,16 +441,16 @@ main(int argc, char **argv)
 	 * Initialise pg_bindir - command line parameter will override
 	 * any setting in the configuration file
 	 */
-	if(!strlen(runtime_options.pg_bindir))
+	if (!strlen(runtime_options.pg_bindir))
 	{
 		strncpy(runtime_options.pg_bindir, options.pg_bindir, MAXLEN);
 	}
 
 	/* Add trailing slash */
-	if(strlen(runtime_options.pg_bindir))
+	if (strlen(runtime_options.pg_bindir))
 	{
 		int len = strlen(runtime_options.pg_bindir);
-		if(runtime_options.pg_bindir[len - 1] != '/')
+		if (runtime_options.pg_bindir[len - 1] != '/')
 		{
 			maxlen_snprintf(pg_bindir, "%s/", runtime_options.pg_bindir);
 		}
@@ -488,7 +488,7 @@ main(int argc, char **argv)
 	{
 		if (options.node == NODE_NOT_FOUND)
 		{
-			if(config_file_parsed == true)
+			if (config_file_parsed == true)
 			{
 				log_err(_("No node information was found. "
 						  "Check the configuration file.\n"));
@@ -510,7 +510,7 @@ main(int argc, char **argv)
 	 * the version check for 9.4 or later is done in check_upstream_config()
 	 */
 
-	if(options.use_replication_slots && wal_keep_segments_used)
+	if (options.use_replication_slots && wal_keep_segments_used)
 	{
 		log_warning(_("-w/--wal-keep-segments has no effect when replication slots in use\n"));
 	}
@@ -527,7 +527,7 @@ main(int argc, char **argv)
 	 * the name of the slot, but does not imply a slot has been created.
 	 * The version check for 9.4 or later  is done in check_upstream_config()
 	 */
-	if(options.use_replication_slots)
+	if (options.use_replication_slots)
 	{
 		maxlen_snprintf(repmgr_slot_name, "repmgr_slot_%i", options.node);
 		repmgr_slot_name_ptr = repmgr_slot_name;
@@ -723,7 +723,7 @@ do_master_register(void)
 	/* Create schema and associated database objects, if it does not exist */
 	schema_exists = check_cluster_schema(conn);
 
-	if(!schema_exists)
+	if (!schema_exists)
 	{
 		log_info(_("master register: creating database objects inside the %s schema\n"),
 				 get_repmgr_schema());
@@ -800,7 +800,7 @@ do_master_register(void)
 										options.priority,
 										repmgr_slot_name_ptr);
 
-	if(record_created == false)
+	if (record_created == false)
 	{
 		PQfinish(conn);
 		exit(ERR_DB_QUERY);
@@ -900,9 +900,9 @@ do_standby_register(void)
 
 
 
-	if(record_created == false)
+	if (record_created == false)
 	{
-		if(!runtime_options.force)
+		if (!runtime_options.force)
 		{
 			log_notice(_("HINT: use option -F/--force to overwrite an existing node record\n"));
 		}
@@ -1080,7 +1080,7 @@ do_standby_clone(void)
 
 	check_upstream_config(upstream_conn, server_version_num, true);
 
-	if(get_cluster_size(upstream_conn, cluster_size) == false)
+	if (get_cluster_size(upstream_conn, cluster_size) == false)
 		exit(ERR_DB_QUERY);
 
 	log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
@@ -1091,9 +1091,9 @@ do_standby_clone(void)
 	 * we're connected to PostgreSQL 9.4 or later
 	 */
 
-	if(*runtime_options.recovery_min_apply_delay)
+	if (*runtime_options.recovery_min_apply_delay)
 	{
-		if(get_server_version(upstream_conn, NULL) < 90400)
+		if (get_server_version(upstream_conn, NULL) < 90400)
 		{
 			log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
 			PQfinish(upstream_conn);
@@ -1113,11 +1113,11 @@ do_standby_clone(void)
 	 # not set, fail with an error
 	 */
 
-	if(options.tablespace_mapping.head != NULL)
+	if (options.tablespace_mapping.head != NULL)
 	{
 		TablespaceListCell *cell;
 
-		if(get_server_version(upstream_conn, NULL) < 90400)
+		if (get_server_version(upstream_conn, NULL) < 90400)
 		{
 			log_err(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
 			PQfinish(upstream_conn);
@@ -1200,7 +1200,7 @@ do_standby_clone(void)
 		}
 		else if (strcmp(PQgetvalue(res, i, 0), "config_file") == 0)
 		{
-			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
+			if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
 				config_file_outside_pgdata = true;
 				external_config_file_copy_required = true;
@@ -1209,7 +1209,7 @@ do_standby_clone(void)
 		}
 		else if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
 		{
-			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
+			if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
 				hba_file_outside_pgdata  = true;
 				external_config_file_copy_required = true;
@@ -1218,7 +1218,7 @@ do_standby_clone(void)
 		}
 		else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
 		{
-			if(strcmp(PQgetvalue(res, i, 2), "f") == 0)
+			if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
 			{
 				ident_file_outside_pgdata = true;
 				external_config_file_copy_required = true;
@@ -1259,7 +1259,7 @@ do_standby_clone(void)
 	/*
 	 * When using rsync only, we need to check the SSH connection early
 	 */
-	if(runtime_options.rsync_only)
+	if (runtime_options.rsync_only)
 	{
 		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
 		if (r != 0)
@@ -1283,19 +1283,19 @@ do_standby_clone(void)
 		goto stop_backup;
 	}
 
-	if(runtime_options.rsync_only)
+	if (runtime_options.rsync_only)
 	{
 		/*
 		 * From pg 9.1 default is to wait for a sync standby to ack, avoid that by
 		 * turning off sync rep for this session
 		 */
-		if(set_config_bool(upstream_conn, "synchronous_commit", false) == false)
+		if (set_config_bool(upstream_conn, "synchronous_commit", false) == false)
 		{
 			PQfinish(upstream_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if(start_backup(upstream_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
+		if (start_backup(upstream_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
 			retval = ERR_BAD_BASEBACKUP;
@@ -1364,11 +1364,11 @@ do_standby_clone(void)
 
 			/* Check if tablespace path matches one of the provided tablespace mappings */
 
-			if(options.tablespace_mapping.head != NULL)
+			if (options.tablespace_mapping.head != NULL)
 			{
 				for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
 				{
-					if(strcmp( tblspc_dir_src.data, cell->old_dir) == 0)
+					if (strcmp( tblspc_dir_src.data, cell->old_dir) == 0)
 					{
 						mapping_found = true;
 						break;
@@ -1376,7 +1376,7 @@ do_standby_clone(void)
 				}
 			}
 
-			if(mapping_found == true)
+			if (mapping_found == true)
 			{
 				appendPQExpBuffer(&tblspc_dir_dst, "%s", cell->new_dir);
 				log_debug(_("mapping source tablespace '%s' (OID %s) to '%s'\n"),
@@ -1394,7 +1394,7 @@ do_standby_clone(void)
 								  true, server_version_num);
 
 			/* Update symlink in pg_tblspc */
-			if(mapping_found == true)
+			if (mapping_found == true)
 			{
 				PQExpBufferData tblspc_symlink;
 
@@ -1439,7 +1439,7 @@ do_standby_clone(void)
 	 * standby server as on the primary?
 	 */
 
-	if(external_config_file_copy_required && !runtime_options.ignore_external_config_files)
+	if (external_config_file_copy_required && !runtime_options.ignore_external_config_files)
 	{
 		log_notice(_("copying configuration files from master\n"));
 		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
@@ -1451,7 +1451,7 @@ do_standby_clone(void)
 			goto stop_backup;
 		}
 
-		if(config_file_outside_pgdata)
+		if (config_file_outside_pgdata)
 		{
 			log_info(_("standby clone: master config file '%s'\n"), master_config_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
@@ -1465,7 +1465,7 @@ do_standby_clone(void)
 			}
 		}
 
-		if(hba_file_outside_pgdata)
+		if (hba_file_outside_pgdata)
 		{
 			log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
@@ -1479,7 +1479,7 @@ do_standby_clone(void)
 			}
 		}
 
-		if(ident_file_outside_pgdata)
+		if (ident_file_outside_pgdata)
 		{
 			log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
@@ -1498,7 +1498,7 @@ do_standby_clone(void)
 	 * When using rsync, copy pg_control file last, emulating the base backup
 	 * protocol.
 	 */
-	if(runtime_options.rsync_only)
+	if (runtime_options.rsync_only)
 	{
 		maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
 
@@ -1530,10 +1530,10 @@ do_standby_clone(void)
 
 stop_backup:
 
-	if(runtime_options.rsync_only && pg_start_backup_executed)
+	if (runtime_options.rsync_only && pg_start_backup_executed)
 	{
 		log_notice(_("notifying master about backup completion...\n"));
-		if(stop_backup(upstream_conn, last_wal_segment) == false)
+		if (stop_backup(upstream_conn, last_wal_segment) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
 			retval = ERR_BAD_BASEBACKUP;
@@ -1576,16 +1576,16 @@ stop_backup:
 	 * create_recovery_file() will already have written `primary_slot_name` into
 	 * `recovery.conf`
 	 */
-	if(options.use_replication_slots)
+	if (options.use_replication_slots)
 	{
-		if(create_replication_slot(upstream_conn, repmgr_slot_name) == false)
+		if (create_replication_slot(upstream_conn, repmgr_slot_name) == false)
 		{
 			PQfinish(upstream_conn);
 			exit(ERR_DB_QUERY);
 		}
 	}
 
-	if(runtime_options.rsync_only)
+	if (runtime_options.rsync_only)
 	{
 		log_notice(_("standby clone (using rsync) complete\n"));
 	}
@@ -1730,7 +1730,7 @@ do_standby_promote(void)
 	for(i = 0; i < promote_check_timeout; i += promote_check_interval)
 	{
 		retval = is_standby(conn);
-		if(!retval)
+		if (!retval)
 		{
 			promote_success = true;
 			break;
@@ -1748,7 +1748,7 @@ do_standby_promote(void)
 
 
 	/* update node information to reflect new status */
-	if(update_node_record_set_master(conn, options.node) == false)
+	if (update_node_record_set_master(conn, options.node) == false)
 	{
 		initPQExpBuffer(&details);
 		appendPQExpBuffer(&details,
@@ -1904,7 +1904,7 @@ do_standby_follow(void)
 		exit(ERR_NO_RESTART);
 	}
 
-	if(update_node_record_set_upstream(master_conn, options.cluster_name,
+	if (update_node_record_set_upstream(master_conn, options.cluster_name,
 									   options.node, master_id) == false)
 	{
 		log_err(_("unable to update upstream node"));
@@ -2148,7 +2148,7 @@ do_witness_create(void)
 	}
 
 	/* check if we need to create a database */
-	if(runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres") != 0 && runtime_options.localport[0])
+	if (runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres") != 0 && runtime_options.localport[0])
 	{
 		/* create required db */
 		sprintf(script, "%s -p %s -U %s --owner=%s %s",
@@ -2245,7 +2245,7 @@ do_witness_create(void)
 										options.priority,
 										NULL);
 
-	if(record_created == false)
+	if (record_created == false)
 	{
 		create_event_record(masterconn,
 							&options,
@@ -2412,7 +2412,7 @@ create_recovery_file(const char *data_dir)
 	/* standby_mode = 'on' */
 	maxlen_snprintf(line, "standby_mode = 'on'\n");
 
-	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
 
 	log_debug(_("recovery.conf: %s"), line);
@@ -2420,7 +2420,7 @@ create_recovery_file(const char *data_dir)
 	/* primary_conninfo = '...' */
 	write_primary_conninfo(line);
 
-	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
 
 	log_debug(_("recovery.conf: %s"), line);
@@ -2428,28 +2428,28 @@ create_recovery_file(const char *data_dir)
 	/* recovery_target_timeline = 'latest' */
 	maxlen_snprintf(line, "recovery_target_timeline = 'latest'\n");
 
-	if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
 
 	log_debug(_("recovery.conf: %s"), line);
 
 	/* recovery_min_apply_delay = ... (optional) */
-	if(*runtime_options.recovery_min_apply_delay)
+	if (*runtime_options.recovery_min_apply_delay)
 	{
 		maxlen_snprintf(line, "recovery_min_apply_delay = %s\n",
 						runtime_options.recovery_min_apply_delay);
-		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
 
 		log_debug(_("recovery.conf: %s"), line);
 	}
 
 	/* primary_slot_name = '...' (optional, for 9.4 and later) */
-	if(options.use_replication_slots)
+	if (options.use_replication_slots)
 	{
 		maxlen_snprintf(line, "primary_slot_name = %s\n",
 						repmgr_slot_name);
-		if(write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
 
 		log_debug(_("recovery.conf: %s"), line);
@@ -2563,7 +2563,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		appendPQExpBuffer(&rsync_flags, "%s",
 						  " --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control");
 
-		if(server_version_num >= 90400)
+		if (server_version_num >= 90400)
 		{
 			/*
 			 * Ideally we'd use PG_AUTOCONF_FILENAME from utils/guc.h, but
@@ -2581,7 +2581,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		appendPQExpBuffer(&rsync_flags, "%s",
 						  " --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_stat_tmp/*");
 
-		if(server_version_num >= 90400)
+		if (server_version_num >= 90400)
 		{
 			appendPQExpBuffer(&rsync_flags, "%s",
 							  " --exclude=pg_replslot/*");
@@ -2622,26 +2622,26 @@ run_basebackup(const char *data_dir)
 
 	appendPQExpBuffer(&params, " -D %s", data_dir);
 
-	if(strlen(runtime_options.host))
+	if (strlen(runtime_options.host))
 	{
 		appendPQExpBuffer(&params, " -h %s", runtime_options.host);
 	}
 
-	if(strlen(runtime_options.masterport))
+	if (strlen(runtime_options.masterport))
 	{
 		appendPQExpBuffer(&params, " -p %s", runtime_options.masterport);
 	}
 
-	if(strlen(runtime_options.username))
+	if (strlen(runtime_options.username))
 	{
 		appendPQExpBuffer(&params, " -U %s", runtime_options.username);
 	}
 
-	if(runtime_options.fast_checkpoint) {
+	if (runtime_options.fast_checkpoint) {
 		appendPQExpBuffer(&params, " -c fast");
 	}
 
-	if(options.tablespace_mapping.head != NULL)
+	if (options.tablespace_mapping.head != NULL)
 	{
 		for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
 		{
@@ -2801,24 +2801,24 @@ check_parameters_for_action(const int action)
 			break;
 	}
 
-	if(action != STANDBY_CLONE)
+	if (action != STANDBY_CLONE)
 	{
-		if(runtime_options.rsync_only)
+		if (runtime_options.rsync_only)
 		{
 			error_list_append(_("--rsync-only can only be used when executing STANDBY CLONE"));
 		}
 
-		if(runtime_options.fast_checkpoint)
+		if (runtime_options.fast_checkpoint)
 		{
 			error_list_append(_("--fast-checkpoint can only be used when executing STANDBY CLONE"));
 		}
 
-		if(runtime_options.ignore_external_config_files)
+		if (runtime_options.ignore_external_config_files)
 		{
 			error_list_append(_("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
 		}
 
-		if(*runtime_options.recovery_min_apply_delay)
+		if (*runtime_options.recovery_min_apply_delay)
 		{
 			error_list_append(_("--recovery-min-apply-delay can only be used when executing STANDBY CLONE"));
 		}
@@ -2844,7 +2844,7 @@ create_schema(PGconn *conn)
 		log_err(_("unable to create the schema %s: %s\n"),
 				get_repmgr_schema(), PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -2871,7 +2871,7 @@ create_schema(PGconn *conn)
 		log_err(_("unable to create the function repmgr_update_last_updated: %s\n"),
 				PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -2892,7 +2892,7 @@ create_schema(PGconn *conn)
 		log_err(_("unable to create the function repmgr_get_last_updated: %s\n"),
 				PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -2924,7 +2924,7 @@ create_schema(PGconn *conn)
 		log_err(_("unable to create table '%s.repl_nodes': %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -2951,7 +2951,7 @@ create_schema(PGconn *conn)
 		log_err(_("unable to create table '%s.repl_monitor': %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -2977,7 +2977,7 @@ create_schema(PGconn *conn)
 		log_err(_("unable to create table '%s.repl_events': %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -3014,7 +3014,7 @@ create_schema(PGconn *conn)
 		log_err(_("unable to create view %s.repl_status: %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -3034,7 +3034,7 @@ create_schema(PGconn *conn)
 		log_err(_("unable to create index 'idx_repl_status_sort' on '%s.repl_monitor': %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -3058,7 +3058,7 @@ create_schema(PGconn *conn)
 		fprintf(stderr, "Cannot create the function repmgr_update_standby_location: %s\n",
 				PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -3078,7 +3078,7 @@ create_schema(PGconn *conn)
 		fprintf(stderr, "Cannot create the function repmgr_get_last_standby_location: %s\n",
 				PQerrorMessage(conn));
 
-		if(res != NULL)
+		if (res != NULL)
 			PQclear(res);
 
 		return false;
@@ -3162,7 +3162,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 	int			server_version_num = 0;
 
 	server_version_num = get_server_version(conn, server_version_string);
-	if(server_version_num < MIN_SUPPORTED_VERSION_NUM)
+	if (server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		if (server_version_num > 0)
 			log_err(_("%s requires %s to be PostgreSQL %s or later\n"),
@@ -3171,7 +3171,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 					MIN_SUPPORTED_VERSION
 				);
 
-		if(exit_on_error == true)
+		if (exit_on_error == true)
 		{
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
@@ -3205,7 +3205,7 @@ check_master_standby_version_match(PGconn *conn, PGconn *master_conn)
 
 	/* Verify that master is a supported server version */
 	master_version_num = check_server_version(conn, "master", false, master_version);
-	if(master_version_num < 0)
+	if (master_version_num < 0)
 	{
 		PQfinish(conn);
 		PQfinish(master_conn);
@@ -3242,7 +3242,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	char	   *wal_error_message = NULL;
 
 	/* Check that WAL level is set correctly */
-	if(server_version_num < 90300)
+	if (server_version_num < 90300)
 	{
 		i = guc_set(conn, "wal_level", "=", "hot_standby");
 		wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby'");
@@ -3260,7 +3260,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		for(; j < 2; j++)
 		{
 			i = guc_set(conn, "wal_level", "=", levels[j]);
-			if(i)
+			if (i)
 			{
 				break;
 			}
@@ -3273,7 +3273,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			log_err("%s\n",
 					wal_error_message);
 
-		if(exit_on_error == true)
+		if (exit_on_error == true)
 		{
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
@@ -3282,14 +3282,14 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		config_ok = false;
 	}
 
-	if(options.use_replication_slots)
+	if (options.use_replication_slots)
 	{
 		/* Does the server support physical replication slots? */
-		if(server_version_num < 90400)
+		if (server_version_num < 90400)
 		{
 			log_err(_("server version must be 9.4 or later to enable replication slots\n"));
 
-			if(exit_on_error == true)
+			if (exit_on_error == true)
 			{
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
@@ -3308,7 +3308,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 				{
 					log_err(_("parameter 'max_replication_slots' must be set to at least 1 to enable replication slots\n"));
 					log_notice(_("HINT: 'max_replication_slots' should be set to at least the number of expected standbys\n"));
-					if(exit_on_error == true)
+					if (exit_on_error == true)
 					{
 						PQfinish(conn);
 						exit(ERR_BAD_CONFIG);
@@ -3334,7 +3334,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			{
 				log_err(_("parameter 'wal_keep_segments' must be be set to %s or greater (see the '-w' option or edit the postgresql.conf of the upstream server.)\n"),
 						runtime_options.wal_keep_segments);
-				if(server_version_num >= 90400)
+				if (server_version_num >= 90400)
 				{
 					log_notice(_("HINT: in PostgreSQL 9.4 and later, replication slots can be used, which "
 							   "do not require 'wal_keep_segments' to be set to a high value "
@@ -3343,7 +3343,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 				}
 			}
 
-			if(exit_on_error == true)
+			if (exit_on_error == true)
 			{
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
@@ -3359,7 +3359,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		if (i == 0)
 			log_err(_("parameter 'archive_mode' must be set to 'on'\n"));
 
-		if(exit_on_error == true)
+		if (exit_on_error == true)
 		{
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
@@ -3378,7 +3378,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	 * properly check it.
 	 */
 
-	if(guc_set(conn, "archive_mode", "=", "on"))
+	if (guc_set(conn, "archive_mode", "=", "on"))
 	{
 		i = guc_set(conn, "archive_command", "!=", "");
 
@@ -3387,7 +3387,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			if (i == 0)
 				log_err(_("parameter 'archive_command' must be set to a valid command\n"));
 
-			if(exit_on_error == true)
+			if (exit_on_error == true)
 			{
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
@@ -3404,7 +3404,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		if (i == 0)
 			log_err(_("parameter 'hot_standby' must be set to 'on'\n"));
 
-		if(exit_on_error == true)
+		if (exit_on_error == true)
 		{
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
@@ -3422,7 +3422,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			log_notice(_("HINT: 'max_wal_senders' should be set to at least the number of expected standbys\n"));
 		}
 
-		if(exit_on_error == true)
+		if (exit_on_error == true)
 		{
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
@@ -3524,7 +3524,7 @@ do_check_upstream_config(void)
 
 	config_ok = check_upstream_config(conn, server_version_num, false);
 
-	if(config_ok == true)
+	if (config_ok == true)
 	{
 		puts(_("No configuration problems found with the upstream server"));
 	}
@@ -3549,7 +3549,7 @@ error_list_append(char *error_message)
 
 	cell = (ErrorListCell *) pg_malloc0(sizeof(ErrorListCell));
 
-	if(cell == NULL)
+	if (cell == NULL)
 	{
 		log_err(_("unable to allocate memory; terminating.\n"));
 		exit(ERR_BAD_CONFIG);
@@ -3557,7 +3557,7 @@ error_list_append(char *error_message)
 
 	cell->error_message = error_message;
 
-	if(cli_errors.tail)
+	if (cli_errors.tail)
 	{
 		cli_errors.tail->next = cell;
 	}
