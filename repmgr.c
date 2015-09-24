@@ -753,6 +753,12 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* XXX we should check if a node with a different ID is registered as
+	   master, otherwise it would be possible to insert a duplicate record
+	   with --force, which would result in an unwelcome "multi-master" situation
+	*/
+	PQfinish(master_conn);
+
 	/* Delete any existing record for this node if --force set */
 	if (runtime_options.force)
 	{
@@ -766,7 +772,6 @@ do_master_register(void)
 
 		if (node_record_deleted == false)
 		{
-			PQfinish(master_conn);
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
