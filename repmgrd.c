@@ -2226,23 +2226,12 @@ check_and_create_pid_file(const char *pid_file)
 t_node_info
 get_node_info(PGconn *conn, char *cluster, int node_id)
 {
-	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
 	t_node_info node_info = { NODE_NOT_FOUND, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
 
-	sprintf(sqlquery,
-			"SELECT id, upstream_node_id, conninfo, type, slot_name, active "
-			"  FROM %s.repl_nodes "
-			" WHERE cluster = '%s' "
-			"   AND id = %i",
-			get_repmgr_schema_quoted(conn),
-			local_options.cluster_name,
-			node_id);
+	res = get_node_record(conn, cluster, node_id);
 
-	log_debug("get_node_info(): %s\n", sqlquery);
-
-	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		PQExpBufferData errmsg;

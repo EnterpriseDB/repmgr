@@ -753,28 +753,38 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	PQfinish(master_conn);
+
 	/* XXX we should check if a node with a different ID is registered as
 	   master, otherwise it would be possible to insert a duplicate record
 	   with --force, which would result in an unwelcome "multi-master" situation
 	*/
-	PQfinish(master_conn);
 
 	/* Delete any existing record for this node if --force set */
 	if (runtime_options.force)
 	{
+		PGresult *res;
 		bool node_record_deleted;
 
-		log_notice(_("deleting existing master record with id %i\n"), options.node);
+		begin_transaction(conn);
 
-		node_record_deleted = delete_node_record(conn,
-												 options.node,
-												 "master register");
-
-		if (node_record_deleted == false)
+		res = get_node_record(conn, options.cluster_name, options.node);
+		if (PQntuples(res))
 		{
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
+			log_notice(_("deleting existing master record with id %i\n"), options.node);
+
+			node_record_deleted = delete_node_record(conn,
+													 options.node,
+													 "master register");
+			if (node_record_deleted == false)
+			{
+				rollback_transaction(conn);
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
 		}
+
+		commit_transaction(conn);
 	}
 
 

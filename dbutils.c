@@ -1382,3 +1382,23 @@ update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_
 
 	return true;
 }
+
+
+PGresult *
+get_node_record(PGconn *conn, char *cluster, int node_id)
+{
+	char		sqlquery[QUERY_STR_LEN];
+
+	sprintf(sqlquery,
+			"SELECT id, upstream_node_id, conninfo, type, slot_name, active "
+			"  FROM %s.repl_nodes "
+			" WHERE cluster = '%s' "
+			"   AND id = %i",
+			get_repmgr_schema_quoted(conn),
+			cluster,
+			node_id);
+
+	log_debug("get_node_record(): %s\n", sqlquery);
+
+	return PQexec(conn, sqlquery);
+}
