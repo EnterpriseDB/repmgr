@@ -694,6 +694,7 @@ static void
 do_master_register(void)
 {
 	PGconn	   *conn;
+	PGconn	   *master_conn;
 
 	bool		schema_exists = false;
 	int			ret;
@@ -719,55 +720,55 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Check if there is a schema for this cluster */
+	/* Create schema and associated database objects, if it does not exist */
 	schema_exists = check_cluster_schema(conn);
-
-	/* If schema exists and force option not selected, raise an error */
-	if(schema_exists && !runtime_options.force)
-	{
-		log_notice(_("schema '%s' already exists.\n"), get_repmgr_schema());
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
 
 	if(!schema_exists)
 	{
 		log_info(_("master register: creating database objects inside the %s schema\n"),
 				 get_repmgr_schema());
 
+
+		begin_transaction(conn);
 		/* ok, create the schema */
 		if (!create_schema(conn))
-			return;
-	}
-	else
-	{
-		PGconn	   *master_conn;
-
-		/* Ensure there isn't any other master already registered */
-		master_conn = get_master_connection(conn,
-											options.cluster_name, NULL, NULL);
-		if (master_conn != NULL)
 		{
-			PQfinish(master_conn);
-			log_warning(_("there is a master already in cluster %s\n"),
-						options.cluster_name);
+			log_err(_("Unable to create repmgr schema - see preceding error message(s); aborting\n"));
+			rollback_transaction(conn);
+			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if (runtime_options.force)
-		{
-			bool node_record_deleted = delete_node_record(conn,
-														  options.node,
-														  "master register");
+		commit_transaction(conn);
+	}
 
-			if (node_record_deleted == false)
-			{
-				PQfinish(master_conn);
-				PQfinish(conn);
-				exit(ERR_BAD_CONFIG);
-			}
+
+
+	/* Ensure there isn't any other master already registered */
+	master_conn = get_master_connection(conn,
+										options.cluster_name, NULL, NULL);
+	if (master_conn != NULL)
+	{
+		PQfinish(master_conn);
+		log_warning(_("there is a master already in cluster %s\n"),
+					options.cluster_name);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (runtime_options.force)
+	{
+		bool node_record_deleted = delete_node_record(conn,
+													  options.node,
+													  "master register");
+
+		if (node_record_deleted == false)
+		{
+			PQfinish(master_conn);
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
 		}
 	}
+
 
 	/* Now register the master */
 	record_created = create_node_record(conn,
@@ -2244,8 +2245,12 @@ do_witness_create(void)
 
 	log_info(_("starting copy of configuration from master...\n"));
 
+	begin_transaction(witnessconn);
+
+
 	if (!create_schema(witnessconn))
 	{
+		rollback_transaction(witnessconn);
 		create_event_record(masterconn,
 							&options,
 							options.node,
@@ -2256,6 +2261,8 @@ do_witness_create(void)
 		PQfinish(witnessconn);
 		exit(ERR_BAD_CONFIG);
 	}
+
+	commit_transaction(witnessconn);
 
 	/* copy configuration from master, only repl_nodes is needed */
 	if (!copy_configuration(masterconn, witnessconn, options.cluster_name))
@@ -2803,6 +2810,7 @@ check_parameters_for_action(const int action)
 }
 
 
+/* The caller should wrap this function in a transaction */
 static bool
 create_schema(PGconn *conn)
 {
@@ -2817,8 +2825,11 @@ create_schema(PGconn *conn)
 	{
 		log_err(_("unable to create the schema %s: %s\n"),
 				get_repmgr_schema(), PQerrorMessage(conn));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+
+		if(res != NULL)
+			PQclear(res);
+
+		return false;
 	}
 	PQclear(res);
 
@@ -2841,6 +2852,10 @@ create_schema(PGconn *conn)
 	{
 		log_err(_("unable to create the function repmgr_update_last_updated: %s\n"),
 				PQerrorMessage(conn));
+
+		if(res != NULL)
+			PQclear(res);
+
 		return false;
 	}
 	PQclear(res);
@@ -2858,6 +2873,10 @@ create_schema(PGconn *conn)
 	{
 		log_err(_("unable to create the function repmgr_get_last_updated: %s\n"),
 				PQerrorMessage(conn));
+
+		if(res != NULL)
+			PQclear(res);
+
 		return false;
 	}
 	PQclear(res);
@@ -2886,8 +2905,11 @@ create_schema(PGconn *conn)
 	{
 		log_err(_("unable to create table '%s.repl_nodes': %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+
+		if(res != NULL)
+			PQclear(res);
+
+		return false;
 	}
 	PQclear(res);
 
@@ -2910,8 +2932,11 @@ create_schema(PGconn *conn)
 	{
 		log_err(_("unable to create table '%s.repl_monitor': %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+
+		if(res != NULL)
+			PQclear(res);
+
+		return false;
 	}
 	PQclear(res);
 
@@ -2933,8 +2958,11 @@ create_schema(PGconn *conn)
 	{
 		log_err(_("unable to create table '%s.repl_events': %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+
+		if(res != NULL)
+			PQclear(res);
+
+		return false;
 	}
 	PQclear(res);
 
@@ -2967,8 +2995,11 @@ create_schema(PGconn *conn)
 	{
 		log_err(_("unable to create view %s.repl_status: %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+
+		if(res != NULL)
+			PQclear(res);
+
+		return false;
 	}
 	PQclear(res);
 
@@ -2984,8 +3015,11 @@ create_schema(PGconn *conn)
 	{
 		log_err(_("unable to create index 'idx_repl_status_sort' on '%s.repl_monitor': %s\n"),
 				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+
+		if(res != NULL)
+			PQclear(res);
+
+		return false;
 	}
 	PQclear(res);
 
@@ -3005,7 +3039,9 @@ create_schema(PGconn *conn)
 	{
 		fprintf(stderr, "Cannot create the function repmgr_update_standby_location: %s\n",
 				PQerrorMessage(conn));
-		PQclear(res);
+
+		if(res != NULL)
+			PQclear(res);
 
 		return false;
 	}
@@ -3023,7 +3059,10 @@ create_schema(PGconn *conn)
 	{
 		fprintf(stderr, "Cannot create the function repmgr_get_last_standby_location: %s\n",
 				PQerrorMessage(conn));
-		PQclear(res);
+
+		if(res != NULL)
+			PQclear(res);
+
 		return false;
 	}
 	PQclear(res);
@@ -3386,18 +3425,7 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 
 	log_debug(_("Setting %i as master and marking existing master as failed\n"), this_node_id);
 
-	res = PQexec(conn, "BEGIN");
-
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		log_err(_("Unable to begin transaction: %s\n"),
-				PQerrorMessage(conn));
-
-		PQclear(res);
-		return false;
-	}
-
-	PQclear(res);
+	begin_transaction(conn);
 
 	sqlquery_snprintf(sqlquery,
 					  "  UPDATE %s.repl_nodes "
@@ -3416,7 +3444,7 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 				PQerrorMessage(conn));
 		PQclear(res);
 
-		PQexec(conn, "ROLLBACK");
+		rollback_transaction(conn);
 		return false;
 	}
 
@@ -3447,20 +3475,7 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 
 	PQclear(res);
 
-	res = PQexec(conn, "COMMIT");
-
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		log_err(_("Unable to set commit transaction: %s\n"),
-				PQerrorMessage(conn));
-		PQclear(res);
-
-		return false;
-	}
-
-	PQclear(res);
-
-	return true;
+	return commit_transaction(conn);
 }
 
 

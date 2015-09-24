@@ -83,6 +83,72 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 
 
 bool
+begin_transaction(PGconn *conn)
+{
+	PGresult   *res;
+
+	res = PQexec(conn, "BEGIN");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to begin transaction: %s\n"),
+				PQerrorMessage(conn));
+
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
+bool
+commit_transaction(PGconn *conn)
+{
+	PGresult   *res;
+
+	res = PQexec(conn, "COMMIT");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to commit transaction: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
+bool
+rollback_transaction(PGconn *conn)
+{
+	PGresult   *res;
+
+	res = PQexec(conn, "ROLLBACK");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to rollback transaction: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
+bool
 check_cluster_schema(PGconn *conn)
 {
 	PGresult   *res;
