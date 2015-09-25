@@ -1146,8 +1146,8 @@ delete_node_record(PGconn *conn, int node, char *action)
  *
  * Note this function may be called with `conn` set to NULL in cases where
  * the master node is not available and it's therefore not possible to write
- * an event record. In this case, if `event_notification_command` is set a user-
- * defined notification to be generated; if not, this function will have
+ * an event record. In this case, if `event_notification_command` is set, a
+ * user-defined notification to be generated; if not, this function will have
  * no effect.
  */
 
@@ -1160,7 +1160,7 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	bool		success = true;
 	struct tm	ts;
 
-	/* Only attempt to write a record if a connection handle was provided/
+	/* Only attempt to write a record if a connection handle was provided.
 	   Also check that the repmgr schema has been properly intialised - if
 	   not it means no configuration file was provided, which can happen with
 	   e.g. `repmgr standby clone`, and we won't know which schema to write to.
