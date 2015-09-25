@@ -15,10 +15,10 @@
  * STANDBY FOLLOW
  * STANDBY PROMOTE
  *
+ * WITNESS CREATE
+ *
  * CLUSTER SHOW
  * CLUSTER CLEANUP
- *
- * WITNESS CREATE
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2381,6 +2381,7 @@ help(const char *progname)
 	printf(_(" standby unregister      - unregisters a standby in a cluster\n"));
 	printf(_(" standby promote         - promotes a specific standby to master\n"));
 	printf(_(" standby follow          - makes standby follow a new master\n"));
+	printf(_(" witness create          - creates a new witness server\n"));
 	printf(_(" cluster show            - displays information about cluster nodes\n"));
 	printf(_(" cluster cleanup         - prunes or truncates monitoring history\n" \
 			 "                           (monitoring history creation requires repmgrd\n" \
