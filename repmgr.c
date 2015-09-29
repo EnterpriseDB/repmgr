@@ -1117,7 +1117,7 @@ do_standby_clone(void)
 	{
 		TablespaceListCell *cell;
 
-		if (get_server_version(upstream_conn, NULL) < 90400)
+		if (get_server_version(upstream_conn, NULL) < 90400 && !runtime_options.rsync_only)
 		{
 			log_err(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
 			PQfinish(upstream_conn);
