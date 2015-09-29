@@ -1110,7 +1110,7 @@ do_standby_clone(void)
 	 *
 	 * -T/--tablespace-mapping is not available as a pg_basebackup option for
 	 * PostgreSQL 9.3 - we can only handle that with rsync, so if `--rsync-only`
-	 # not set, fail with an error
+	 * not set, fail with an error
 	 */
 
 	if (options.tablespace_mapping.head != NULL)
@@ -1129,7 +1129,7 @@ do_standby_clone(void)
 			sqlquery_snprintf(sqlquery,
 							  "SELECT spcname "
 							  "  FROM pg_tablespace "
-							  "WHERE pg_tablespace_location(oid) = '%s'",
+							  " WHERE pg_tablespace_location(oid) = '%s'",
 							  cell->old_dir);
 			res = PQexec(upstream_conn, sqlquery);
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1368,7 +1368,7 @@ do_standby_clone(void)
 			{
 				for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
 				{
-					if (strcmp( tblspc_dir_src.data, cell->old_dir) == 0)
+					if (strcmp(tblspc_dir_src.data, cell->old_dir) == 0)
 					{
 						mapping_found = true;
 						break;
