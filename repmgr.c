@@ -2010,7 +2010,7 @@ do_witness_create(void)
 	masterconn = establish_db_connection_by_params(keywords, values, true);
 	if (!masterconn)
 	{
-		/* No event logging possible as we can't connect to the master */
+		/* No event logging possible here as we can't connect to the master */
 		log_err(_("unable to connect to master\n"));
 		exit(ERR_DB_CON);
 	}
@@ -2065,7 +2065,7 @@ do_witness_create(void)
 	}
 
 	/* Check this directory could be used as a PGDATA dir */
-	if (!create_pg_dir(runtime_options.dest_dir, runtime_options.force))
+	if (!create_witness_pg_dir(runtime_options.dest_dir, runtime_options.force))
 	{
 		PQExpBufferData errmsg;
 		initPQExpBuffer(&errmsg);

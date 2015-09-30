@@ -26,5 +26,6 @@ bool		create_dir(char *dir);
 bool		set_dir_permissions(char *dir);
 bool		is_pg_dir(char *dir);
 bool		create_pg_dir(char *dir, bool force);
+bool		create_witness_pg_dir(char *dir, bool force);
 
 #endif
