@@ -2297,6 +2297,19 @@ do_witness_create(void)
 
 	/* register ourselves in the master */
 
+	if (runtime_options.force)
+	{
+		bool node_record_deleted = delete_node_record(masterconn,
+													  options.node,
+													  "witness create");
+
+		if (node_record_deleted == false)
+		{
+			PQfinish(masterconn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
 	record_created = create_node_record(masterconn,
 										"witness create",
 										options.node,
