@@ -1146,8 +1146,8 @@ do_master_failover(void)
 			  total_nodes, visible_nodes);
 
 	/*
-	 * am i on the group that should keep alive? if i see less than half of
-	 * total_nodes then i should do nothing
+	 * Am I on the group that should keep alive? If I see less than half of
+	 * total_nodes then I should do nothing
 	 */
 	if (visible_nodes < (total_nodes / 2.0))
 	{
