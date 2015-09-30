@@ -58,7 +58,8 @@
 #define TABLESPACE_MAP "tablespace_map"
 #endif
 
-#define WITNESS_DEFAULT_PORT "5499"
+#define WITNESS_DEFAULT_PORT "5499" /* If this value is ever changed, remember
+									 * to update comments and documentation */
 
 #define NO_ACTION			0		/* Dummy default action */
 #define MASTER_REGISTER		1
