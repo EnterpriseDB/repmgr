@@ -58,6 +58,8 @@
 #define TABLESPACE_MAP "tablespace_map"
 #endif
 
+#define WITNESS_DEFAULT_PORT "5499"
+
 #define NO_ACTION			0		/* Dummy default action */
 #define MASTER_REGISTER		1
 #define STANDBY_REGISTER	2
@@ -2148,7 +2150,7 @@ do_witness_create(void)
 	 * dedicated server.
 	 */
 	if (!runtime_options.localport[0])
-		strncpy(runtime_options.localport, "5499", MAXLEN);
+		strncpy(runtime_options.localport, WITNESS_DEFAULT_PORT, MAXLEN);
 
 	xsnprintf(buf, sizeof(buf), "port = %s\n", runtime_options.localport);
 	fputs(buf, pg_conf);
@@ -2431,7 +2433,7 @@ help(const char *progname)
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -D, --data-dir=DIR                  local directory where the files will be\n" \
 			 "                                      copied to\n"));
-	printf(_("  -l, --local-port=PORT               standby or witness server local port\n"));
+	printf(_("  -l, --local-port=PORT               witness server local port (default: %s)\n"), WITNESS_DEFAULT_PORT);
 	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
 	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
 	printf(_("  -S, --superuser=USERNAME            superuser username for witness database\n" \
@@ -3206,7 +3208,7 @@ write_primary_conninfo(char *line)
 	}
 
 	maxlen_snprintf(conn_buf, "port=%s%s%s%s%s",
-	   (runtime_options.masterport[0]) ? runtime_options.masterport : "5432",
+	   (runtime_options.masterport[0]) ? runtime_options.masterport : DEF_PGPORT_STR,
 					host_buf, user_buf, password_buf,
 					appname_buf);
 
