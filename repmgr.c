@@ -54,6 +54,10 @@
 
 #define RECOVERY_FILE "recovery.conf"
 
+#ifndef TABLESPACE_MAP
+#define TABLESPACE_MAP "tablespace_map"
+#endif
+
 #define NO_ACTION			0		/* Dummy default action */
 #define MASTER_REGISTER		1
 #define STANDBY_REGISTER	2
@@ -1285,6 +1289,15 @@ do_standby_clone(void)
 
 	if (runtime_options.rsync_only)
 	{
+		PQExpBufferData tablespace_map;
+		bool		tablespace_map_rewrite = false;
+
+		/* For 9.5 and greater, create our own tablespace_map file */
+		if (server_version_num >= 90500)
+		{
+			initPQExpBuffer(&tablespace_map);
+		}
+
 		/*
 		 * From pg 9.1 default is to wait for a sync standby to ack, avoid that by
 		 * turning off sync rep for this session
@@ -1359,6 +1372,7 @@ do_standby_clone(void)
 			initPQExpBuffer(&tblspc_dir_dst);
 			initPQExpBuffer(&tblspc_oid);
 
+
 			appendPQExpBuffer(&tblspc_oid, "%s", PQgetvalue(res, i, 0));
 			appendPQExpBuffer(&tblspc_dir_src, "%s", PQgetvalue(res, i, 1));
 
@@ -1393,29 +1407,78 @@ do_standby_clone(void)
 								  tblspc_dir_src.data, tblspc_dir_dst.data,
 								  true, server_version_num);
 
-			/* Update symlink in pg_tblspc */
+
+			/* Update symlinks in pg_tblspc */
 			if (mapping_found == true)
 			{
-				PQExpBufferData tblspc_symlink;
-
-				initPQExpBuffer(&tblspc_symlink);
-				appendPQExpBuffer(&tblspc_symlink, "%s/pg_tblspc/%s",
-								  local_data_directory,
-								  tblspc_oid.data);
-
-				if (unlink(tblspc_symlink.data) < 0 && errno != ENOENT)
+				/* 9.5 and later - create a tablespace_map file */
+				if (server_version_num >= 90500)
 				{
-					log_err(_("unable to remove tablespace symlink %s\n"), tblspc_symlink.data);
-					exit(ERR_BAD_CONFIG);
+					tablespace_map_rewrite = true;
+					appendPQExpBuffer(&tablespace_map,
+									  "%s %s\n",
+									  tblspc_oid.data,
+									  tblspc_dir_dst.data);
 				}
-				if (symlink(tblspc_dir_dst.data, tblspc_symlink.data) < 0)
+				/* Pre-9.5, we have to manipulate the symlinks in pg_tblspc/ ourselves */
+				else
 				{
-					log_err(_("unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dst.data);
-					exit(ERR_BAD_CONFIG);
-				}
+					PQExpBufferData tblspc_symlink;
 
+					initPQExpBuffer(&tblspc_symlink);
+					appendPQExpBuffer(&tblspc_symlink, "%s/pg_tblspc/%s",
+									  local_data_directory,
+									  tblspc_oid.data);
+
+					if (unlink(tblspc_symlink.data) < 0 && errno != ENOENT)
+					{
+						log_err(_("unable to remove tablespace symlink %s\n"), tblspc_symlink.data);
+						exit(ERR_BAD_CONFIG);
+					}
+					if (symlink(tblspc_dir_dst.data, tblspc_symlink.data) < 0)
+					{
+						log_err(_("unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dst.data);
+						exit(ERR_BAD_CONFIG);
+					}
+
+
+				}
 
 			}
+		}
+
+
+		if(server_version_num >= 90500 && tablespace_map_rewrite == true)
+		{
+			PQExpBufferData tablespace_map_filename;
+			FILE	   *tablespace_map_file;
+			initPQExpBuffer(&tablespace_map_filename);
+			appendPQExpBuffer(&tablespace_map_filename, "%s/%s",
+							  local_data_directory,
+							  TABLESPACE_MAP);
+
+			/* Unlink any existing file (it should be there, but we don't care if it isn't) */
+			if (unlink(tablespace_map_filename.data) < 0 && errno != ENOENT)
+			{
+				log_err(_("unable to remove tablespace_map file %s\n"), tablespace_map_filename.data);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			tablespace_map_file = fopen(tablespace_map_filename.data, "w");
+			if (tablespace_map_file == NULL)
+			{
+				log_err(_("unable to create tablespace_map file '%s'\n"), tablespace_map_filename.data);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			if (fputs(tablespace_map.data, tablespace_map_file) == EOF)
+			{
+				log_err(_("unable to write to tablespace_map file '%s'\n"), tablespace_map_filename.data);
+				fclose(tablespace_map_file);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			fclose(tablespace_map_file);
 		}
 
 		PQclear(res);
