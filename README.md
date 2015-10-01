@@ -99,7 +99,7 @@ for details.
 ### PostgreSQL configuration
 
 The primary server needs to be configured for replication with settings
-like the followingin `postgresql.conf`:
+like the following in `postgresql.conf`:
 
     # Allow read-only queries on standby servers. The number of WAL
     # senders should be larger than the number of standby servers.
