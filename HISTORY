@@ -12,6 +12,7 @@
         Update tablespace remapping in --rsync-only mode for 9.5 and later (Ian)
         Deprecate `-l/--local-port` option - the port can be extracted
           from the conninfo string in repmgr.conf (Ian)
+        Add STANDBY UNREGISTE (Vik Fearing)
 
 3.0.1   2015-04-16
         Prevent repmgrd from looping infinitely if node was not registered (Ian)
