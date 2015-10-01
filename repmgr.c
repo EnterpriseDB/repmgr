@@ -139,7 +139,7 @@ main(int argc, char **argv)
 		{"port", required_argument, NULL, 'p'},
 		{"username", required_argument, NULL, 'U'},
 		{"superuser", required_argument, NULL, 'S'},
-		{"dest-dir", required_argument, NULL, 'D'},
+		{"data-dir", required_argument, NULL, 'D'},
 		{"local-port", required_argument, NULL, 'l'},
 		{"config-file", required_argument, NULL, 'f'},
 		{"remote-user", required_argument, NULL, 'R'},
