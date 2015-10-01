@@ -325,6 +325,7 @@ parse_config(t_configuration_options *options)
 		log_err(_("Parameter 'conninfo' is invalid: %s"), conninfo_errmsg);
 		exit(ERR_BAD_CONFIG);
 	}
+	PQconninfoFree(conninfo_options);
 
 	/* The following checks are for valid parameter values */
 	if (options->master_response_timeout <= 0)
