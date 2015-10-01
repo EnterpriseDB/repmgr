@@ -111,6 +111,10 @@ parse_config(t_configuration_options *options)
 	char		name[MAXLEN];
 	char		value[MAXLEN];
 
+	/* For sanity-checking provided conninfo string */
+	PQconninfoOption *conninfo_options;
+	char       *conninfo_errmsg = NULL;
+
 	fp = fopen(config_file_path, "r");
 
 	/*
@@ -307,6 +311,18 @@ parse_config(t_configuration_options *options)
 	if (*options->conninfo == '\0')
 	{
 		log_err(_("required parameter 'conninfo' was not found\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Sanity check the provided conninfo string
+	 *
+	 * NOTE: this verifies the string format and checks for valid options
+	 * but does not sanity check values
+	 */
+	conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
+	if (conninfo_options == NULL)
+	{
+		log_err(_("Parameter 'conninfo' is invalid: %s"), conninfo_errmsg);
 		exit(ERR_BAD_CONFIG);
 	}
 
