@@ -203,8 +203,11 @@ repmgr will also ask for the superuser password on the witness database so
 it can reconnect when needed (the command line option --initdb-no-pwprompt
 will set up a password-less superuser).
 
-By default the witness server will listen on port 5499; this value can be overridden
-with the -l/--local-port option.
+By default the witness server will listen on port 5499; this value can be
+overridden by explicitly providing the port number in the conninfo string
+in repmgr.conf. (Note that it is also possible to specify the port number
+with the -l/--local-port option, however this option is now deprecated and
+will be overridden by a port setting in the conninfo string).
 
 Start the repmgrd daemons
 -------------------------

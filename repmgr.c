@@ -2003,6 +2003,9 @@ do_witness_create(void)
 	bool        success;
 	bool		record_created;
 
+	PQconninfoOption *conninfo_options;
+	PQconninfoOption *conninfo_option;
+
 	/* Connection parameters for master only */
 	keywords[0] = "host";
 	values[0] = runtime_options.host;
@@ -2143,6 +2146,27 @@ do_witness_create(void)
 
 	xsnprintf(buf, sizeof(buf), "\n#Configuration added by %s\n", progname);
 	fputs(buf, pg_conf);
+
+
+	/* Attempt to extract a port number from the provided conninfo string
+	 * This will override any value provided with '-l/--local-port', as it's
+	 * what we'll later try and connect to anyway. '-l/--local-port' should
+	 * be deprecated.
+	 */
+	conninfo_options = PQconninfoParse(options.conninfo, NULL);
+
+	for (conninfo_option = conninfo_options; conninfo_option->keyword != NULL; conninfo_option++)
+	{
+		if (strcmp(conninfo_option->keyword, "port") == 0)
+		{
+			if (conninfo_option->val != NULL && conninfo_option->val[0] != '\0')
+			{
+				strncpy(runtime_options.localport, conninfo_option->val, MAXLEN);
+				break;
+			}
+		}
+	}
+	PQconninfoFree(conninfo_options);
 
 	/*
 	 * If not specified by the user, the default port for the witness server
@@ -2434,11 +2458,12 @@ help(const char *progname)
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -D, --data-dir=DIR                  local directory where the files will be\n" \
 			 "                                      copied to\n"));
-	printf(_("  -l, --local-port=PORT               witness server local port (default: %s)\n"), WITNESS_DEFAULT_PORT);
 	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
 	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
 	printf(_("  -S, --superuser=USERNAME            superuser username for witness database\n" \
 			 "                                      (default: postgres)\n"));
+/* remove this line in the next significant release */
+	printf(_("  -l, --local-port=PORT               (DEPRECATED) witness server local port (default: %s)\n"), WITNESS_DEFAULT_PORT);
 	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
 			 "                                      wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
 	printf(_("  -k, --keep-history=VALUE            keeps indicated number of days of history\n"));
