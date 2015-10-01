@@ -453,6 +453,8 @@ its port if is different from the default one.
     Registers a master in a cluster. This command needs to be executed before any
     standby nodes are registered.
 
+    `primary register` can be used as an alias for `master register`.
+
 * `standby register`
 
     Registers a standby with `repmgr`. This command needs to be executed to enable

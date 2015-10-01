@@ -7,7 +7,7 @@
  *
  * Commands implemented are:
  *
- * MASTER REGISTER
+ * [ MASTER | PRIMARY ] REGISTER
  *
  * STANDBY REGISTER
  * STANDBY UNREGISTER
@@ -316,6 +316,8 @@ main(int argc, char **argv)
 		server_mode = argv[optind++];
 		if (strcasecmp(server_mode, "STANDBY") != 0 &&
 			strcasecmp(server_mode, "MASTER") != 0 &&
+			/* allow PRIMARY as synonym for MASTER */
+			strcasecmp(server_mode, "PRIMARY") != 0 &&
 			strcasecmp(server_mode, "WITNESS") != 0 &&
 			strcasecmp(server_mode, "CLUSTER") != 0)
 		{
@@ -330,7 +332,7 @@ main(int argc, char **argv)
 	{
 		server_cmd = argv[optind++];
 		/* check posibilities for all server modes */
-		if (strcasecmp(server_mode, "MASTER") == 0)
+		if (strcasecmp(server_mode, "MASTER") == 0 || strcasecmp(server_mode, "PRIMARY") == 0 )
 		{
 			if (strcasecmp(server_cmd, "REGISTER") == 0)
 				action = MASTER_REGISTER;
