@@ -10,6 +10,10 @@ Known issues in repmgr
 Planned feature improvements
 ============================
 
+* Use 'primary' instead of 'master' in documentation and log output
+  for consistency with PostgreSQL documentation. See also commit
+  870b0a53b627eeb9aca1fc14cbafe25b5beafe12.
+
 * A better check which standby did receive most of the data
 
 * Make the fact that a standby may be delayed a factor in the voting
@@ -20,7 +24,7 @@ Planned feature improvements
 * Create the repmgr user/database on "master register".
 
 * Use pg_basebackup for the data directory, and ALSO rsync for the
-configuration files.
+  configuration files.
 
 * If no configuration file supplied, search in sensible default locations
   (currently: current directory and `pg_config --sysconfdir`); if
