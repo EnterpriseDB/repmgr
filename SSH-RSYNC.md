@@ -1,12 +1,13 @@
 Set up trusted copy between postgres accounts
 ---------------------------------------------
 
-If you need to use rsync to clone standby servers, the postgres account
-on your master and standby servers must be each able to access the other
+If you need to use `rsync` to clone standby servers, the `postgres` account
+on your primary and standby servers must be each able to access the other
 using SSH without a password.
 
-First generate a ssh key, using an empty passphrase, and copy the resulting
-keys and a maching authorization file to a privledged user on the other system::
+First generate an ssh key, using an empty passphrase, and copy the resulting
+keys and a matching authorization file to a privileged user account on the other
+system:
 
     [postgres@node1]$ ssh-keygen -t rsa
     Generating public/private rsa key pair.
@@ -22,8 +23,8 @@ keys and a maching authorization file to a privledged user on the other system::
     [postgres@node1]$ cd ~/.ssh
     [postgres@node1]$ scp id_rsa.pub id_rsa authorized_keys user@node2:
 
-Login as a user on the other system, and install the files into the postgres
-user's account::
+Login as a user on the other system, and install the files into the `postgres`
+user's account:
 
     [user@node2 ~]$ sudo chown postgres.postgres authorized_keys id_rsa.pub id_rsa
     [user@node2 ~]$ sudo mkdir -p ~postgres/.ssh
