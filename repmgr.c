@@ -2451,35 +2451,44 @@ help(const char *progname)
 	printf(_("  -?, --help                          show this help, then exit\n"));
 	printf(_("  -V, --version                       output version information, then exit\n"));
 	printf(_("  -v, --verbose                       output verbose activity information\n"));
-	printf(_("\nConnection options:\n"));
+	printf(_("\n"));
+	printf(_("Connection options:\n"));
 	printf(_("  -d, --dbname=DBNAME                 database to connect to\n"));
 	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory\n"));
 	printf(_("  -p, --port=PORT                     database server port\n"));
 	printf(_("  -U, --username=USERNAME             database user name to connect as\n"));
-	printf(_("\nConfiguration options:\n"));
+	printf(_("\n"));
+	printf(_("General configuration options:\n"));
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -D, --data-dir=DIR                  local directory where the files will be\n" \
 			 "                                      copied to\n"));
 	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
 	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
-	printf(_("  -S, --superuser=USERNAME            superuser username for witness database\n" \
-			 "                                      (default: postgres)\n"));
-/* remove this line in the next significant release */
-	printf(_("  -l, --local-port=PORT               (DEPRECATED) witness server local port (default: %s)\n"), WITNESS_DEFAULT_PORT);
-	printf(_("  -w, --wal-keep-segments=VALUE       minimum value for the GUC\n" \
-			 "                                      wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
-	printf(_("  -k, --keep-history=VALUE            keeps indicated number of days of history\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
-	printf(_("  -W, --wait                          wait for a master to appear\n"));
-	printf(_("  -r, --rsync-only                    use only rsync to clone a standby\n"));
-	printf(_("  -c, --fast-checkpoint               force fast checkpoint when cloning a standby\n"));
-	printf(_("  --recovery-min-apply-delay=VALUE    set recovery_min_apply_delay in recovery.conf\n" \
- 			 "                                      when cloning a standby (PostgreSQL 9.4 and later)\n"));
-	printf(_("  --ignore-external-config-files      don't copy configuration files located outside \n" \
-			 "                                      the data directory when cloning a standby\n"));
-	printf(_("  --initdb-no-pwprompt                don't require superuser password when running initdb\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
-	printf(_("\n%s performs the following node management tasks:\n\n"), progname);
+	printf(_("\n"));
+	printf(_("Command-specific configuration options:\n"));
+	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
+	printf(_("  -r, --rsync-only                    (standby clone) use only rsync, not pg_basebackup\n"));
+	printf(_("  --recovery-min-apply-delay=VALUE    (standby clone, follow) set recovery_min_apply_delay\n" \
+			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
+	printf(_("  --ignore-external-config-files      (standby clone) don't copy configuration files located\n" \
+			 "                                        outside the data directory when cloning a standby\n"));
+	printf(_("  -w, --wal-keep-segments=VALUE       (standby clone) minimum value for the GUC\n" \
+			 "                                        wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
+	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
+	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history\n"));
+
+
+	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));
+/* remove this line in the next significant release */
+	printf(_("  -l, --local-port=PORT               (witness server) witness server local port, default: %s \n" \
+			 "                                        (DEPRECATED, put port in conninfo)\n"), WITNESS_DEFAULT_PORT);
+	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
+			 "                                        (default: postgres)\n"));
+	printf(_("\n"));
+	printf(_("%s performs the following node management tasks:\n"), progname);
+	printf(_("\n"));
 	printf(_("COMMANDS:\n"));
 	printf(_(" master register         - registers the master in a cluster\n"));
 	printf(_(" standby clone [node]    - creates a new standby\n"));
