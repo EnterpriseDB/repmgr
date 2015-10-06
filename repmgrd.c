@@ -1834,7 +1834,7 @@ check_cluster_configuration(PGconn *conn)
 	sqlquery_snprintf(sqlquery,
 					  "SELECT oid FROM pg_class "
 					  " WHERE oid = '%s.repl_nodes'::regclass ",
-					  get_repmgr_schema());
+			                  get_repmgr_schema_quoted(master_conn));
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
