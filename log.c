@@ -98,7 +98,7 @@ logger_init(t_configuration_options * opts, const char *ident, const char *level
 		if (l > 0)
 			log_level = l;
 		else
-			stderr_log_warning(_("Cannot detect log level %s (use any of DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)\n"), level);
+			stderr_log_warning(_("Invalid log level \"%s\" (available values: DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)\n"), level);
 	}
 
 	if (facility && *facility)
