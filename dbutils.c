@@ -765,6 +765,12 @@ cancel_query(PGconn *conn, int timeout)
 	return true;
 }
 
+
+/* Return the repmgr schema as an unmodified string
+ * This is useful for displaying the schema name in log messages,
+ * however inclusion in SQL statements, get_repmgr_schema_quoted() should
+ * always be used.
+ */
 char *
 get_repmgr_schema(void)
 {
