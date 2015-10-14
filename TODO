@@ -38,3 +38,13 @@ Planned feature improvements
 
 * make old master node ID available for event notification commands
   (See github issue #80).
+
+* use "primary/standby" terminology in place of "master/slave" for consistency
+  with main PostrgreSQL usage
+
+* repmgr standby clone: possibility to use barman instead of performing a new base backup
+
+* possibility to transform a failed master into a new standby with pg_rewind
+
+* "repmgr standby switchover" to promote a standby in a controlled manner 
+   and convert the existing primary into a standby
