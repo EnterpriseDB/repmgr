@@ -1284,7 +1284,7 @@ do_master_failover(void)
 			res = PQexec(node_conn, sqlquery);
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
 			{
-				log_err(_("PQexec failed: %s.\nReport an invalid value to not"
+				log_err(_("PQexec failed: %s.\nReport an invalid value to not "
 						  "be considered as new master and exit.\n"),
 						PQerrorMessage(node_conn));
 				PQclear(res);
