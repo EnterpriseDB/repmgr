@@ -1001,10 +1001,10 @@ standby_monitor(void)
 					  "            last_monitor_time, last_apply_time, "
 					  "            last_wal_primary_location, last_wal_standby_location, "
 					  "            replication_lag, apply_lag ) "
-					  "      VALUES(%d, %d, "
-					  "             '%s'::TIMESTAMP WITH TIME ZONE, '%s'::TIMESTAMP WITH TIME ZONE, "
-					  "             '%s', '%s', "
-					  "             %llu, %llu) ",
+					  "     VALUES(%d, %d, "
+					  "            '%s'::TIMESTAMP WITH TIME ZONE, '%s'::TIMESTAMP WITH TIME ZONE, "
+					  "            '%s', '%s', "
+					  "            %llu, %llu) ",
 					  get_repmgr_schema_quoted(master_conn),
 					  master_options.node, local_options.node,
 					  monitor_standby_timestamp, last_wal_standby_applied_timestamp,
