@@ -7,6 +7,7 @@ Known issues in repmgr
 
 * PGPASSFILE may not be passed to pg_basebackup
 
+
 Planned feature improvements
 ============================
 
@@ -42,3 +43,23 @@ Planned feature improvements
 * Have pg_basebackup use replication slots, if and when support for
   this is added; see:
     http://www.postgresql.org/message-id/555DD2B2.7020000@gmx.net
+
+* use "primary/standby" terminology in place of "master/slave" for consistency
+  with main PostrgreSQL usage
+
+* repmgr standby clone: possibility to use barman instead of performing a new base backup
+
+* possibility to transform a failed master into a new standby with pg_rewind
+
+* "repmgr standby switchover" to promote a standby in a controlled manner
+   and convert the existing primary into a standby
+
+* make repmgrd more robust
+
+Usability improvements
+======================
+
+* repmgrd: on failover, explicitly log which node is now being followed
+
+* debug output: show some repetitive output only if verbose flag set to prevent
+  excessive log growth
