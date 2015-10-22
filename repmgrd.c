@@ -457,7 +457,10 @@ main(int argc, char **argv)
 
 				do
 				{
-					log_debug("standby check loop...\n");
+					if (verbose)
+					{
+						log_debug("standby check loop...\n");
+					}
 
 					if (node_info.type == WITNESS)
 					{
@@ -1013,7 +1016,11 @@ standby_monitor(void)
 	 * Execute the query asynchronously, but don't check for a result. We will
 	 * check the result next time we pause for a monitor step.
 	 */
-	log_debug("standby_monitor: %s\n", sqlquery);
+	if (verbose)
+	{
+		log_debug("standby_monitor:() %s\n", sqlquery);
+	}
+
 	if (PQsendQuery(master_conn, sqlquery) == 0)
 		log_warning(_("query could not be sent to master. %s\n"),
 					PQerrorMessage(master_conn));
@@ -1193,6 +1200,7 @@ do_master_failover(void)
 		{
 			log_info(_("unable to retrieve node's last standby location: %s\n"),
 					 PQerrorMessage(node_conn));
+
 			log_debug(_("connection details: %s\n"), nodes[i].conninfo_str);
 			PQclear(res);
 			PQfinish(node_conn);
@@ -1336,6 +1344,9 @@ do_master_failover(void)
 				PQclear(res);
 
 				/* If position is 0/0, keep checking */
+				/* XXX we should add a timeout here to prevent infinite looping
+				 * if the other node's repmgrd is not up
+				 */
 				continue;
 			}
 
