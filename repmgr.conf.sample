@@ -16,9 +16,9 @@ cluster=example_cluster
 # Node ID and name
 # (Note: we recommend to avoid naming nodes after their initial
 #  replication funcion, as this will cause confusion when e.g.
-#  "standby2" is promoted to master)
-node=2
-node_name=node2
+#  "standby2" is promoted to primary)
+node=2           # a unique integer
+node_name=node2  # an arbitrary (but unique) string
 
 # Database connection information
 conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
@@ -32,7 +32,7 @@ conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
 # when using cascading replication and a standby is to be connected to an
 # upstream standby, specify that node's ID with 'upstream_node'. The node
 # must exist before the new standby can be registered. If a standby is
-# to connect directly to a master node, this parameter is not required.
+# to connect directly to a primary node, this parameter is not required.
 #
 # upstream_node=1
 
@@ -40,7 +40,9 @@ conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
 # (default: 0)
 #
 # use_replication_slots=0
-
+#
+# NOTE: 'max_replication_slots' should be configured for at least the
+# number of standbys which will connect to the primary.
 
 # Logging and monitoring settings
 # -------------------------------
@@ -110,24 +112,27 @@ logfacility=STDERR
 #
 # These settings are only applied when repmgrd is running.
 
-# How many seconds we wait for master response before declaring master failure
+# How many seconds to wait for a response from the primary server before 
+# deciding it has failed
+
 master_response_timeout=60
 
-# How many time we try to reconnect to master before starting failover procedure
+# How many times to try and reconnect to the primary before starting
+# the failover procedure
 reconnect_attempts=6
 reconnect_interval=10
 
 # Autofailover options
 failover=automatic  # one of 'automatic', 'manual'
-priority=100        # a value of zero or less prevents the node being promoted to master
+priority=100        # a value of zero or less prevents the node being promoted to primary
 promote_command='repmgr standby promote -f /path/to/repmgr.conf'
 follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
 
-# monitoring interval; default is 2s
+# monitoring interval in seconds; default is 2
 #
 # monitor_interval_secs=2
 
-# change wait time for master; before we bail out and exit when the master
+# change wait time for primary; before we bail out and exit when the primary
 # disappears, we wait 'reconnect_attempts' * 'retry_promote_interval_secs'
 # seconds; by default this would be half an hour, as 'retry_promote_interval_secs'
 # default value is 300)
