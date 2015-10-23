@@ -1531,7 +1531,6 @@ do_master_failover(void)
 			 * table but we should be able to generate an external notification
 			 * if required.
 			 */
-
 			create_event_record(NULL,
 								&local_options,
 								node_info.node_id,
@@ -1610,6 +1609,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 	char		sqlquery[QUERY_STR_LEN];
 	int			upstream_node_id = node_info.upstream_node_id;
 	int			r;
+	PQExpBufferData event_details;
 
 	log_debug(_("do_upstream_standby_failover(): performing failover for node %i\n"),
               node_info.node_id);
@@ -1686,18 +1686,57 @@ do_upstream_standby_failover(t_node_info upstream_node)
 	PQfinish(my_local_conn);
 	my_local_conn = NULL;
 
+	initPQExpBuffer(&event_details);
+
 	/* Follow new upstream */
 	r = system(local_options.follow_command);
 	if (r != 0)
 	{
-		log_err(_("follow command failed. You could check and try it manually.\n"));
+		appendPQExpBuffer(&event_details,
+						  _("Unable to execute follow command:\n %s"),
+						  local_options.follow_command);
+
+		log_err("%s\n", event_details.data);
+
+		/* It won't be possible to write to the event notification
+		 * table but we should be able to generate an external notification
+		 * if required.
+		 */
+		create_event_record(NULL,
+							&local_options,
+							node_info.node_id,
+							"repmgrd_failover_follow",
+							false,
+							event_details.data);
 		terminate(ERR_BAD_CONFIG);
 	}
 
 	if (update_node_record_set_upstream(master_conn, local_options.cluster_name, node_info.node_id, upstream_node_id) == false)
 	{
+		appendPQExpBuffer(&event_details,
+						  _("Unable to set node %i's new upstream ID to %i"),
+						  node_info.node_id,
+						  upstream_node_id);
+		create_event_record(NULL,
+							&local_options,
+							node_info.node_id,
+							"repmgrd_failover_follow",
+							false,
+							event_details.data);
 		terminate(ERR_BAD_CONFIG);
 	}
+
+	appendPQExpBuffer(&event_details,
+					  _("Node %i is now following upstream node %i"),
+					  node_info.node_id,
+					  upstream_node_id);
+
+	create_event_record(NULL,
+						&local_options,
+						node_info.node_id,
+						"repmgrd_failover_follow",
+						true,
+						event_details.data);
 
 	my_local_conn = establish_db_connection(local_options.conninfo, true);
 
