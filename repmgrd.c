@@ -1600,6 +1600,8 @@ do_master_failover(void)
  * It might be worth providing a selection of reconnection strategies
  * as different behaviour might be desirable in different situations;
  * or maybe the option not to reconnect might be required?
+ *
+ * XXX check this handles replication slots gracefully
  */
 static bool
 do_upstream_standby_failover(t_node_info upstream_node)
