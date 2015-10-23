@@ -1474,10 +1474,8 @@ do_master_failover(void)
 		/* wait */
 		sleep(10);
 
-		if (verbose)
-			log_info(_("node %d is the best candidate to be the new master, we should follow it...\n"),
-					 best_candidate.node_id);
-		log_debug(_("follow command is: \"%s\"\n"), local_options.follow_command);
+		log_info(_("node %d is the best candidate for new master, attempting to follow...\n"),
+				 best_candidate.node_id);
 
 		/*
 		 * The new master may some time to be promoted. The follow command
@@ -1518,10 +1516,29 @@ do_master_failover(void)
 			}
 		}
 
+		log_debug(_("executing follow command: \"%s\"\n"), local_options.follow_command);
+
 		r = system(local_options.follow_command);
 		if (r != 0)
 		{
-			log_err(_("follow command failed. You could check and try it manually.\n"));
+			appendPQExpBuffer(&event_details,
+							  _("Unable to execute follow command:\n %s"),
+							  local_options.follow_command);
+
+			log_err("%s\n", event_details.data);
+
+			/* It won't be possible to write to the event notification
+			 * table but we should be able to generate an external notification
+			 * if required.
+			 */
+
+			create_event_record(NULL,
+								&local_options,
+								node_info.node_id,
+								"repmgrd_failover_follow",
+								false,
+								event_details.data);
+
 			terminate(ERR_BAD_CONFIG);
 		}
 
@@ -1554,6 +1571,8 @@ do_master_failover(void)
 						  _("Node %i now following new upstream node %i"),
 						  node_info.node_id,
 						  best_candidate.node_id);
+
+		log_info("%s\n", event_details.data);
 
 		create_event_record(new_master_conn,
 							&local_options,
