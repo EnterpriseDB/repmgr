@@ -890,7 +890,7 @@ start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint)
 		char	   *first_wal_seg_pq = PQgetvalue(res, 0, 0);
 		size_t		buf_sz = strlen(first_wal_seg_pq);
 
-		first_wal_segment = malloc(buf_sz + 1);
+		first_wal_segment = pg_malloc0(buf_sz + 1);
 		xsnprintf(first_wal_segment, buf_sz + 1, "%s", first_wal_seg_pq);
 	}
 
@@ -921,7 +921,7 @@ stop_backup(PGconn *conn, char *last_wal_segment)
 		char	   *last_wal_seg_pq = PQgetvalue(res, 0, 0);
 		size_t		buf_sz = strlen(last_wal_seg_pq);
 
-		last_wal_segment =  malloc(buf_sz + 1);
+		last_wal_segment = pg_malloc0(buf_sz + 1);
 		xsnprintf(last_wal_segment, buf_sz + 1, "%s", last_wal_seg_pq);
 	}
 
