@@ -106,6 +106,14 @@ General
   If you later decide to run `repmgrd`, you just need to add
   `shared_preload_libraries = 'repmgr_funcs'` and restart PostgreSQL.
 
+- I've provided replication permission for the `repmgr` user in `pg_hba.conf`
+  but `repmgr`/`repmgrd` complains it can't connect to the server... Why?
+
+  `repmgr`/`repmgrd` need to be able to connect to the repmgr database
+  with a normal connection to query metadata. The `replication` connection
+  permission is for PostgreSQL's streaming replication and doesn't
+  necessarily need to be the `repmgr` user.
+
 
 `repmgrd`
 ---------
