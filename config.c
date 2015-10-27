@@ -145,6 +145,7 @@ parse_config(t_configuration_options *options)
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
 	options->node = -1;
 	options->upstream_node = NO_UPSTREAM_NODE;
+	options->use_replication_slots = 0;
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	options->failover = MANUAL_FAILOVER;
 	options->priority = DEFAULT_PRIORITY;
