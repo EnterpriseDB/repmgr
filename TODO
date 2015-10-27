@@ -61,5 +61,9 @@ Usability improvements
 
 * repmgrd: on failover, explicitly log which node is now being followed
 
-* debug output: show some repetitive output only if verbose flag set to prevent
+* repmgr: add explicit --log-level flag, repurpose --verbose flag to
+  show extra detailed/repetitive output only (see item below too)
+
+* debug output: show some repetitive output only if --verbose flag set to prevent
   excessive log growth
+
