@@ -237,6 +237,11 @@ parse_config(t_configuration_options *options)
 			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
 			options->master_response_timeout = atoi(value);
+		/* 'primary_response_timeout' as synonym for 'master_response_timeout' -
+		 * we'll switch terminology in a future release
+		 */
+		else if (strcmp(name, "primary_response_timeout") == 0)
+			options->master_response_timeout = atoi(value);
 		else if (strcmp(name, "reconnect_attempts") == 0)
 			options->reconnect_attempts = atoi(value);
 		else if (strcmp(name, "reconnect_interval") == 0)
