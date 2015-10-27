@@ -96,8 +96,9 @@ General
   is intended to support running the witness server as  a separate
   instance on a normal node server, rather than on its own dedicated server.
 
-  To specify a port for the witness server, supply the port number to
-  repmgr with the `-l/--local-port` command line option.
+  To specify different port for the witness server, supply the port number
+  in the `conninfo` string in `repmgr.conf`
+  (repmgr 3.0.1 and earlier: use the `-l/--local-port` option)
 
 - Do I need to include `shared_preload_libraries = 'repmgr_funcs'`
   in `postgresql.conf` if I'm not using `repmgrd`?
