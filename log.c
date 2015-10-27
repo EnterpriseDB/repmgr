@@ -39,6 +39,13 @@
 
 /* #define REPMGR_DEBUG */
 
+static int	detect_log_level(const char *level);
+static int	detect_log_facility(const char *facility);
+
+int			log_type = REPMGR_STDERR;
+int			log_level = LOG_NOTICE;
+
+
 void
 stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
 {
@@ -62,12 +69,6 @@ stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
 	}
 }
 
-
-static int	detect_log_level(const char *level);
-static int	detect_log_facility(const char *facility);
-
-int			log_type = REPMGR_STDERR;
-int			log_level = LOG_NOTICE;
 
 bool
 logger_init(t_configuration_options * opts, const char *ident, const char *level, const char *facility)
