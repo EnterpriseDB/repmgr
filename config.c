@@ -141,7 +141,10 @@ parse_config(t_configuration_options *options)
 		return false;
 	}
 
-	/* Initialize configuration options with sensible defaults */
+	/* Initialize configuration options with sensible defaults
+	 * note: the default log level is set in log.c and does not need
+	 * to be initialised here
+	 */
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
 	options->node = -1;
 	options->upstream_node = NO_UPSTREAM_NODE;
