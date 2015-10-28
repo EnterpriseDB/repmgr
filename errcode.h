@@ -36,5 +36,6 @@
 #define ERR_SYS_FAILURE 13
 #define ERR_BAD_BASEBACKUP 14
 #define ERR_INTERNAL 15
+#define ERR_MONITORING_FAIL 16
 
 #endif   /* _ERRCODE_H_ */
