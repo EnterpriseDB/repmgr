@@ -407,7 +407,7 @@ main(int argc, char **argv)
 
 					appendPQExpBuffer(&errmsg,
 									  _("unable to connect to master node '%s'"),
-									  local_options.cluster_name);
+									  master_options.node_name);
 
 					log_err("%s\n", errmsg.data);
 
