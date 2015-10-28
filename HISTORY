@@ -1,4 +1,8 @@
-3.0.2   2015-09-
+3.0.3   2015-10-
+        Bugfix: have repmgrd terminate if monitored standby is no longer
+          connected to upstream node (Ian)
+
+3.0.2   2015-10-02
         Improve handling of --help/--version options; and improve help output (Ian)
         Improve handling of situation where logfile can't be opened (Ian)
         Always pass -D/--pgdata option to pg_basebackup (Ian)
