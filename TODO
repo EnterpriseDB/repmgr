@@ -56,6 +56,10 @@ Planned feature improvements
 
 * make repmgrd more robust
 
+* repmgr: when cloning a standby using pg_basebackup and replication slots are
+  requested, activate the replication slot using pg_receivexlog to negate the
+  need to set `wal_keep_segments` just for the initial clone (9.4 and 9.5).
+
 Usability improvements
 ======================
 
