@@ -263,6 +263,20 @@ Example log output (at default log level):
     [2015-03-11 13:15:40] [INFO] reloading configuration file and updating repmgr tables
     [2015-03-11 13:15:40] [INFO] starting continuous standby node monitoring
 
+Note that currently `repmgrd` does not provide logfile rotation. To ensure
+the current logfile does not grow indefinitely, configure your system's `logrotate`
+to do this. Sample configuration to rotate logfiles weekly with retention
+for up to 52 weeks and rotation forced if a file grows beyond 100Mb:
+
+    /var/log/postgresql/repmgr-9.4.log {
+        missingok
+        compress
+        rotate 52
+        maxsize 100M
+        weekly
+        create 0600 postgres postgres
+    }
+
 
 Witness server
 --------------
