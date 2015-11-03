@@ -16,6 +16,9 @@ Please continue to use `repmgr 2` with PostgreSQL 9.2 and earlier.
 For a list of changes since `repmgr 2` and instructions on upgrading to
 `repmgr 3`, see the "Upgrading from repmgr 2" section below.
 
+For a list of frequently asked questions about `repmgr`, please refer
+to the file `FAQ.md`.
+
 Overview
 --------
 
