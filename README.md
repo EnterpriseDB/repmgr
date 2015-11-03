@@ -12,7 +12,7 @@ This version can use `pg_basebackup` to clone standby servers, supports
 replication slots and cascading replication, doesn't require a restart
 after promotion, and has many usability improvements.
 
-Please continue to use `repmgr 2` with earlier PostgreSQL 9.x versions.
+Please continue to use `repmgr 2` with PostgreSQL 9.2 and earlier.
 For a list of changes since `repmgr 2` and instructions on upgrading to
 `repmgr 3`, see the "Upgrading from repmgr 2" section below.
 
