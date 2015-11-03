@@ -143,3 +143,8 @@ General
 
   Note that after registering a delayed standby, `repmgrd` will only start
   once the metadata added in the master node has been replicated.
+
+- How can I get `repmgrd` to rotate its logfile?
+
+  Configure your system's `logrotate` service to do this; see example
+  in README.md
