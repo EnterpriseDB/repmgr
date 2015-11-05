@@ -116,12 +116,12 @@ logfacility=STDERR
 #
 # These settings are only applied when repmgrd is running.
 
-# How many seconds to wait for a response from the primary server before 
+# Number of seconds to wait for a response from the primary server before
 # deciding it has failed
 
 master_response_timeout=60
 
-# How many times to try and reconnect to the primary before starting
+# Number of times to try and reconnect to the primary before starting
 # the failover procedure
 reconnect_attempts=6
 reconnect_interval=10
@@ -142,5 +142,3 @@ follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
 # default value is 300)
 #
 # retry_promote_interval_secs=300
-
-
