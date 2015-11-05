@@ -643,6 +643,7 @@ do_cluster_cleanup(void)
 	PGconn	   *master_conn = NULL;
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
+	int			entries_to_delete = 0;
 
 	/* We need to connect to check configuration */
 	log_info(_("connecting to database\n"));
@@ -660,6 +661,37 @@ do_cluster_cleanup(void)
 	}
 	PQfinish(conn);
 
+	log_debug(_("Number of days of monitoring history to retain: %i\n"), runtime_options.keep_history);
+
+	sqlquery_snprintf(sqlquery,
+					  "SELECT COUNT(*) "
+					  "  FROM %s.repl_monitor "
+					  " WHERE age(now(), last_monitor_time) >= '%d days'::interval ",
+					  get_repmgr_schema_quoted(master_conn),
+					  runtime_options.keep_history);
+
+	res = PQexec(master_conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("cluster cleanup: unable to query number of monitoring records to clean up:\n%s\n"),
+				PQerrorMessage(master_conn));
+		PQclear(res);
+		PQfinish(master_conn);
+		exit(ERR_DB_QUERY);
+	}
+
+	entries_to_delete = atoi(PQgetvalue(res, 0, 0));
+	PQclear(res);
+
+	if(entries_to_delete == 0)
+	{
+		log_info(_("cluster cleanup: no monitoring records to delete\n"));
+		PQfinish(master_conn);
+		return;
+	}
+
+	log_debug(_("cluster cleanup: at least %i monitoring records to delete\n"), entries_to_delete);
+
 	if (runtime_options.keep_history > 0)
 	{
 		sqlquery_snprintf(sqlquery,
@@ -674,6 +706,7 @@ do_cluster_cleanup(void)
 						  "TRUNCATE TABLE %s.repl_monitor",
 						  get_repmgr_schema_quoted(master_conn));
 	}
+
 	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -696,6 +729,15 @@ do_cluster_cleanup(void)
 
 	PQclear(res);
 	PQfinish(master_conn);
+
+	if (runtime_options.keep_history > 0)
+	{
+		log_info(_("cluster cleanup: monitoring older than %i day(s) deleted\n"), runtime_options.keep_history);
+	}
+	else
+	{
+		log_info(_("cluster cleanup: all monitoring records deleted\n"));
+	}
 }
 
 
