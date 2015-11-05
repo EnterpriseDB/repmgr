@@ -732,7 +732,7 @@ do_cluster_cleanup(void)
 
 	if (runtime_options.keep_history > 0)
 	{
-		log_info(_("cluster cleanup: monitoring older than %i day(s) deleted\n"), runtime_options.keep_history);
+		log_info(_("cluster cleanup: monitoring records older than %i day(s) deleted\n"), runtime_options.keep_history);
 	}
 	else
 	{
