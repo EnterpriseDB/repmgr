@@ -176,6 +176,12 @@ main(int argc, char **argv)
 	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c", long_options,
 							&optindex)) != -1)
 	{
+		/*
+		 * NOTE: some integer parameters (e.g. -p/--port) are stored internally
+		 * as strings. We use repmgr_atoi() to check these but discard the
+		 * returned integer; the callback passed to repmgr_atoi() will append the
+		 * error message to the list.
+		 */
 		switch (c)
 		{
 			case '?':
@@ -191,8 +197,10 @@ main(int argc, char **argv)
 				strncpy(runtime_options.host, optarg, MAXLEN);
 				break;
 			case 'p':
-				if (atoi(optarg) > 0)
-					strncpy(runtime_options.masterport, optarg, MAXLEN);
+				repmgr_atoi(optarg, "-p/--port", error_list_append);
+				strncpy(runtime_options.masterport,
+						optarg,
+						MAXLEN);
 				break;
 			case 'U':
 				strncpy(runtime_options.username, optarg, MAXLEN);
@@ -204,8 +212,11 @@ main(int argc, char **argv)
 				strncpy(runtime_options.dest_dir, optarg, MAXFILENAME);
 				break;
 			case 'l':
-				if (atoi(optarg) > 0)
-					strncpy(runtime_options.localport, optarg, MAXLEN);
+				/* -l/--local-port is deprecated */
+				repmgr_atoi(optarg, "-l/--local-port", error_list_append);
+				strncpy(runtime_options.localport,
+						optarg,
+						MAXLEN);
 				break;
 			case 'f':
 				strncpy(runtime_options.config_file, optarg, MAXLEN);
@@ -214,17 +225,14 @@ main(int argc, char **argv)
 				strncpy(runtime_options.remote_user, optarg, MAXLEN);
 				break;
 			case 'w':
-				if (atoi(optarg) > 0)
-				{
-					strncpy(runtime_options.wal_keep_segments, optarg, MAXLEN);
-					wal_keep_segments_used = true;
-				}
+				repmgr_atoi(optarg, "-w/--wal-keep-segments", error_list_append);
+				strncpy(runtime_options.wal_keep_segments,
+						optarg,
+						MAXLEN);
+				wal_keep_segments_used = true;
 				break;
 			case 'k':
-				if (atoi(optarg) > 0)
-					runtime_options.keep_history = atoi(optarg);
-				else
-					runtime_options.keep_history = 0;
+				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", error_list_append);
 				break;
 			case 'F':
 				runtime_options.force = true;
@@ -287,6 +295,7 @@ main(int argc, char **argv)
 			}
 		}
 	}
+
 
 	/* Exit here already if errors in command line options found */
 	if (cli_errors.head != NULL)
@@ -683,7 +692,7 @@ do_cluster_cleanup(void)
 	entries_to_delete = atoi(PQgetvalue(res, 0, 0));
 	PQclear(res);
 
-	if(entries_to_delete == 0)
+	if (entries_to_delete == 0)
 	{
 		log_info(_("cluster cleanup: no monitoring records to delete\n"));
 		PQfinish(master_conn);
@@ -1495,7 +1504,7 @@ do_standby_clone(void)
 		}
 
 
-		if(server_version_num >= 90500 && tablespace_map_rewrite == true)
+		if (server_version_num >= 90500 && tablespace_map_rewrite == true)
 		{
 			PQExpBufferData tablespace_map_filename;
 			FILE	   *tablespace_map_file;
@@ -3713,7 +3722,8 @@ error_list_append(char *error_message)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	cell->error_message = error_message;
+	cell->error_message = pg_malloc0(MAXLEN);
+	strncpy(cell->error_message, error_message, MAXLEN);
 
 	if (cli_errors.tail)
 	{
