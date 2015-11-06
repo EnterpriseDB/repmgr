@@ -198,8 +198,10 @@ parse_config(t_configuration_options *options)
 		if (strcmp(name, "cluster") == 0)
 			strncpy(options->cluster_name, value, MAXLEN);
 		else if (strcmp(name, "node") == 0)
+			// VV
 			options->node = atoi(value);
 		else if (strcmp(name, "upstream_node") == 0)
+			// VV
 			options->upstream_node = atoi(value);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
@@ -232,6 +234,7 @@ parse_config(t_configuration_options *options)
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
+			// VV
 			options->priority = atoi(value);
 		else if (strcmp(name, "node_name") == 0)
 			strncpy(options->node_name, value, MAXLEN);
@@ -240,15 +243,19 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "follow_command") == 0)
 			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
+			// VV
 			options->master_response_timeout = atoi(value);
 		/* 'primary_response_timeout' as synonym for 'master_response_timeout' -
 		 * we'll switch terminology in a future release
 		 */
 		else if (strcmp(name, "primary_response_timeout") == 0)
+			// VV
 			options->master_response_timeout = atoi(value);
 		else if (strcmp(name, "reconnect_attempts") == 0)
+			// VV
 			options->reconnect_attempts = atoi(value);
 		else if (strcmp(name, "reconnect_interval") == 0)
+			// VV
 			options->reconnect_intvl = atoi(value);
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
@@ -259,10 +266,13 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
+			// VV
 			options->monitor_interval_secs = atoi(value);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
+			// VV
 			options->retry_promote_interval_secs = atoi(value);
 		else if (strcmp(name, "use_replication_slots") == 0)
+			// VV
 			options->use_replication_slots = atoi(value);
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
@@ -305,7 +315,7 @@ parse_config(t_configuration_options *options)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (options->node == 0)
+	if (options->node <= 0)
 	{
 		log_err(_("'node' must be an integer greater than zero\n"));
 		exit(ERR_BAD_CONFIG);
@@ -673,6 +683,66 @@ reload_config(t_configuration_options *orig_options)
 	return config_changed;
 }
 
+
+/*
+ * Convert provided string to an integer using strtol;
+ * on error exit
+ */
+int
+repmgr_atoi(const char *value, const char *config_item, void (*error_callback)(char *error_message))
+{
+	char	  *endptr;
+	long	   longval = 0;
+	char	   error_message_buf[MAXLEN] = "";
+
+	/* It's possible that some versions of strtol() don't treat an empty
+	 * string as an error.
+	 */
+
+	if (*value == '\0')
+	{
+		snprintf(error_message_buf,
+				 MAXLEN,
+				 _("No value provided for \"%s\""),
+				 config_item);
+	}
+	else
+	{
+		errno = 0;
+		longval = strtol(value, &endptr, 10);
+
+		if (value == endptr || errno)
+		{
+			snprintf(error_message_buf,
+					 MAXLEN,
+					 _("Invalid value provided for \"%s\": %s"),
+					 config_item, value);
+		}
+	}
+
+	/* Currently there are no values which could be negative */
+	if (longval < 0)
+	{
+		snprintf(error_message_buf,
+				 MAXLEN,
+				 _("\"%s\" cannot be a negative value (provided: %s)"),
+				 config_item, value);
+	}
+
+	/* Error message buffer is set */
+	if (error_message_buf[0] != '\0')
+	{
+		if (error_callback == NULL)
+		{
+			log_err("%s\n", error_message_buf);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		error_callback(error_message_buf);
+	}
+
+	return (int32) longval;
+}
 
 
 /*

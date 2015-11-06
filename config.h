@@ -88,5 +88,8 @@ bool		reload_config(t_configuration_options *orig_options);
 bool		parse_config(t_configuration_options *options);
 void		parse_line(char *buff, char *name, char *value);
 char	   *trim(char *s);
+int			repmgr_atoi(const char *s,
+						const char *config_item,
+						void (*error_callback)(char *error_message));
 
 #endif
