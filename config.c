@@ -166,7 +166,7 @@ parse_config(t_configuration_options *options)
 
 	/* default to 6 reconnection attempts at intervals of 10 seconds */
 	options->reconnect_attempts = 6;
-	options->reconnect_intvl = 10;
+	options->reconnect_interval = 10;
 
 	options->monitor_interval_secs = 2;
 	options->retry_promote_interval_secs = 300;
@@ -249,7 +249,7 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "reconnect_attempts") == 0)
 			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", NULL);
 		else if (strcmp(name, "reconnect_interval") == 0)
-			options->reconnect_intvl = repmgr_atoi(value, "reconnect_interval", NULL);
+			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", NULL);
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
@@ -350,7 +350,7 @@ parse_config(t_configuration_options *options)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (options->reconnect_intvl < 0)
+	if (options->reconnect_interval < 0)
 	{
 		log_err(_("'reconnect_interval' must be zero or greater\n"));
 		exit(ERR_BAD_CONFIG);
@@ -501,7 +501,7 @@ reload_config(t_configuration_options *orig_options)
 		return false;
 	}
 
-	if (new_options.reconnect_intvl < 0)
+	if (new_options.reconnect_interval < 0)
 	{
 		log_warning(_("new value for 'reconnect_interval' must be zero or greater\n"));
 		return false;
@@ -620,10 +620,10 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
-	/* reconnect_intvl */
-	if (orig_options->reconnect_intvl != new_options.reconnect_intvl)
+	/* reconnect_interval */
+	if (orig_options->reconnect_interval != new_options.reconnect_interval)
 	{
-		orig_options->reconnect_intvl = new_options.reconnect_intvl;
+		orig_options->reconnect_interval = new_options.reconnect_interval;
 		config_changed = true;
 	}
 

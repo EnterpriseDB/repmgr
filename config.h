@@ -67,7 +67,7 @@ typedef struct
 	char		ssh_options[QUERY_STR_LEN];
 	int			master_response_timeout;
 	int			reconnect_attempts;
-	int			reconnect_intvl;
+	int			reconnect_interval;
 	char		pg_bindir[MAXLEN];
 	char		pg_ctl_options[MAXLEN];
 	char		pg_basebackup_options[MAXLEN];
