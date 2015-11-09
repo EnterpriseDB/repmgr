@@ -561,10 +561,10 @@ witness_monitor(void)
 			{
 				log_warning(
 					_("unable to determine a valid master server; waiting %i seconds to retry...\n"),
-					local_options.reconnect_intvl
+					local_options.reconnect_interval
 					);
 				PQfinish(master_conn);
-				sleep(local_options.reconnect_intvl);
+				sleep(local_options.reconnect_interval);
 			}
 			else
 			{
@@ -742,7 +742,7 @@ standby_monitor(void)
 	check_connection(&upstream_conn, type, upstream_conninfo);
 	/*
 	 * This takes up to local_options.reconnect_attempts *
-	 * local_options.reconnect_intvl seconds
+	 * local_options.reconnect_interval seconds
 	 */
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
@@ -1720,7 +1720,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 		}
 
 		PQclear(res);
-		sleep(local_options.reconnect_intvl);
+		sleep(local_options.reconnect_interval);
 	}
 
 	/* Close the connection to this server */
@@ -1793,7 +1793,7 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
 
 	/*
 	 * Check if the node is still available if after
-	 * local_options.reconnect_attempts * local_options.reconnect_intvl
+	 * local_options.reconnect_attempts * local_options.reconnect_interval
 	 * seconds of retries we cannot reconnect return false
 	 */
 	for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
@@ -1811,9 +1811,9 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
 		{
 			log_warning(_("connection to %s has been lost, trying to recover... %i seconds before failover decision\n"),
 						type,
-						(local_options.reconnect_intvl * (local_options.reconnect_attempts - connection_retries)));
-			/* wait local_options.reconnect_intvl seconds between retries */
-			sleep(local_options.reconnect_intvl);
+						(local_options.reconnect_interval * (local_options.reconnect_attempts - connection_retries)));
+			/* wait local_options.reconnect_interval seconds between retries */
+			sleep(local_options.reconnect_interval);
 		}
 		else
 		{
