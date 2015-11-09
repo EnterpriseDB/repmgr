@@ -198,11 +198,9 @@ parse_config(t_configuration_options *options)
 		if (strcmp(name, "cluster") == 0)
 			strncpy(options->cluster_name, value, MAXLEN);
 		else if (strcmp(name, "node") == 0)
-			// VV
-			options->node = atoi(value);
+			options->node = repmgr_atoi(value, "node", NULL);
 		else if (strcmp(name, "upstream_node") == 0)
-			// VV
-			options->upstream_node = atoi(value);
+			options->upstream_node = repmgr_atoi(value, "upstream_node", NULL);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
@@ -234,8 +232,7 @@ parse_config(t_configuration_options *options)
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
-			// VV
-			options->priority = atoi(value);
+			options->priority = repmgr_atoi(value, "priority", NULL);
 		else if (strcmp(name, "node_name") == 0)
 			strncpy(options->node_name, value, MAXLEN);
 		else if (strcmp(name, "promote_command") == 0)
@@ -243,20 +240,16 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "follow_command") == 0)
 			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
-			// VV
-			options->master_response_timeout = atoi(value);
+			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", NULL);
 		/* 'primary_response_timeout' as synonym for 'master_response_timeout' -
-		 * we'll switch terminology in a future release
+		 * we'll switch terminology in a future release (3.1?)
 		 */
 		else if (strcmp(name, "primary_response_timeout") == 0)
-			// VV
-			options->master_response_timeout = atoi(value);
+			options->master_response_timeout = repmgr_atoi(value, "primary_response_timeout", NULL);
 		else if (strcmp(name, "reconnect_attempts") == 0)
-			// VV
-			options->reconnect_attempts = atoi(value);
+			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", NULL);
 		else if (strcmp(name, "reconnect_interval") == 0)
-			// VV
-			options->reconnect_intvl = atoi(value);
+			options->reconnect_intvl = repmgr_atoi(value, "reconnect_interval", NULL);
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
@@ -266,14 +259,12 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
-			// VV
-			options->monitor_interval_secs = atoi(value);
+			options->monitor_interval_secs = repmgr_atoi(value, "monitor_interval_secs", NULL);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
-			// VV
-			options->retry_promote_interval_secs = atoi(value);
+			options->retry_promote_interval_secs = repmgr_atoi(value, "retry_promote_interval_secs", NULL);
 		else if (strcmp(name, "use_replication_slots") == 0)
-			// VV
-			options->use_replication_slots = atoi(value);
+			/* XXX we should have a dedicated boolean argument format */
+			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", NULL);
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
 		else if (strcmp(name, "event_notifications") == 0)
@@ -686,7 +677,8 @@ reload_config(t_configuration_options *orig_options)
 
 /*
  * Convert provided string to an integer using strtol;
- * on error exit
+ * on error, if a callback is provided, pass the error message to that,
+ * otherwise exit
  */
 int
 repmgr_atoi(const char *value, const char *config_item, void (*error_callback)(char *error_message))
