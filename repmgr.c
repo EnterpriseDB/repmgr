@@ -101,12 +101,11 @@ static void do_cluster_show(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
 
-static void error_list_append(char *error_message);
 static void exit_with_errors(void);
-static void help(const char *progname);
+static void help(void);
 
 /* Global variables */
-static const char *progname;
+//static const char *progname;
 static const char *keywords[6];
 static const char *values[6];
 static bool		   config_file_required = true;
@@ -127,7 +126,8 @@ static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
 
 /* Collate command line errors here for friendlier reporting */
-static ErrorList cli_errors = { NULL, NULL };
+ErrorList	cli_errors = { NULL, NULL };
+
 
 int
 main(int argc, char **argv)
@@ -168,7 +168,8 @@ main(int argc, char **argv)
 	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
 
-	progname = get_progname(argv[0]);
+	set_progname(argv[0]);
+
 
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
@@ -179,16 +180,16 @@ main(int argc, char **argv)
 		/*
 		 * NOTE: some integer parameters (e.g. -p/--port) are stored internally
 		 * as strings. We use repmgr_atoi() to check these but discard the
-		 * returned integer; the callback passed to repmgr_atoi() will append the
-		 * error message to the list.
+		 * returned integer; repmgr_atoi() will append the error message to the
+		 * provided list.
 		 */
 		switch (c)
 		{
 			case '?':
-				help(progname);
+				help();
 				exit(SUCCESS);
 			case 'V':
-				printf("%s %s (PostgreSQL %s)\n", progname, REPMGR_VERSION, PG_VERSION);
+				printf("%s %s (PostgreSQL %s)\n", progname(), REPMGR_VERSION, PG_VERSION);
 				exit(SUCCESS);
 			case 'd':
 				strncpy(runtime_options.dbname, optarg, MAXLEN);
@@ -197,7 +198,7 @@ main(int argc, char **argv)
 				strncpy(runtime_options.host, optarg, MAXLEN);
 				break;
 			case 'p':
-				repmgr_atoi(optarg, "-p/--port", error_list_append);
+				repmgr_atoi(optarg, "-p/--port", &cli_errors);
 				strncpy(runtime_options.masterport,
 						optarg,
 						MAXLEN);
@@ -213,7 +214,7 @@ main(int argc, char **argv)
 				break;
 			case 'l':
 				/* -l/--local-port is deprecated */
-				repmgr_atoi(optarg, "-l/--local-port", error_list_append);
+				repmgr_atoi(optarg, "-l/--local-port", &cli_errors);
 				strncpy(runtime_options.localport,
 						optarg,
 						MAXLEN);
@@ -225,14 +226,14 @@ main(int argc, char **argv)
 				strncpy(runtime_options.remote_user, optarg, MAXLEN);
 				break;
 			case 'w':
-				repmgr_atoi(optarg, "-w/--wal-keep-segments", error_list_append);
+				repmgr_atoi(optarg, "-w/--wal-keep-segments", &cli_errors);
 				strncpy(runtime_options.wal_keep_segments,
 						optarg,
 						MAXLEN);
 				wal_keep_segments_used = true;
 				break;
 			case 'k':
-				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", error_list_append);
+				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", &cli_errors);
 				break;
 			case 'F':
 				runtime_options.force = true;
@@ -266,7 +267,7 @@ main(int argc, char **argv)
 
 				if (targ < 1)
 				{
-					error_list_append(_("Invalid value provided for '-r/--recovery-min-apply-delay'"));
+					error_list_append(&cli_errors, _("Invalid value provided for '-r/--recovery-min-apply-delay'"));
 					break;
 				}
 				if (ptr && *ptr)
@@ -275,7 +276,7 @@ main(int argc, char **argv)
 					   strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
 					   strcmp(ptr, "d") != 0)
 					{
-						error_list_append(_("Value provided for '-r/--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
+						error_list_append(&cli_errors, _("Value provided for '-r/--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
 						break;
 					}
 				}
@@ -291,7 +292,7 @@ main(int argc, char **argv)
 				initPQExpBuffer(&unknown_option);
 				appendPQExpBuffer(&unknown_option, _("Unknown option '%s'"), argv[optind - 1]);
 
-				error_list_append(unknown_option.data);
+				error_list_append(&cli_errors, unknown_option.data);
 			}
 		}
 	}
@@ -333,7 +334,7 @@ main(int argc, char **argv)
 			PQExpBufferData unknown_mode;
 			initPQExpBuffer(&unknown_mode);
 			appendPQExpBuffer(&unknown_mode, _("Unknown server mode '%s'"), server_mode);
-			error_list_append(unknown_mode.data);
+			error_list_append(&cli_errors, unknown_mode.data);
 		}
 	}
 
@@ -376,14 +377,14 @@ main(int argc, char **argv)
 	if (action == NO_ACTION) {
 		if (server_cmd == NULL)
 		{
-			error_list_append("No server command provided");
+			error_list_append(&cli_errors, "No server command provided");
 		}
 		else
 		{
 			PQExpBufferData unknown_action;
 			initPQExpBuffer(&unknown_action);
 			appendPQExpBuffer(&unknown_action, _("Unknown server command '%s'"), server_cmd);
-			error_list_append(unknown_action.data);
+			error_list_append(&cli_errors, unknown_action.data);
 		}
 	}
 
@@ -394,7 +395,7 @@ main(int argc, char **argv)
 		{
 			if (runtime_options.host[0])
 			{
-				error_list_append(_("Conflicting parameters:  you can't use -h while providing a node separately."));
+				error_list_append(&cli_errors, _("Conflicting parameters:  you can't use -h while providing a node separately."));
 			}
 			else
 			{
@@ -408,7 +409,7 @@ main(int argc, char **argv)
 		PQExpBufferData too_many_args;
 		initPQExpBuffer(&too_many_args);
 		appendPQExpBuffer(&too_many_args, _("too many command-line arguments (first extra is \"%s\")"), argv[optind]);
-		error_list_append(too_many_args.data);
+		error_list_append(&cli_errors, too_many_args.data);
 	}
 
 	check_parameters_for_action(action);
@@ -483,7 +484,7 @@ main(int argc, char **argv)
 	keywords[3] = "dbname";
 	values[3] = runtime_options.dbname;
 	keywords[4] = "application_name";
-	values[4] = (char *) progname;
+	values[4] = (char *) progname();
 	keywords[5] = NULL;
 	values[5] = NULL;
 
@@ -494,7 +495,7 @@ main(int argc, char **argv)
 	 * logging level might be specified at, but it often requires detailed
 	 * logging to troubleshoot problems.
 	 */
-	logger_init(&options, progname, options.loglevel, options.logfacility);
+	logger_init(&options, progname(), options.loglevel, options.logfacility);
 	if (runtime_options.verbose)
 		logger_min_verbose(LOG_INFO);
 
@@ -2197,7 +2198,7 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	xsnprintf(buf, sizeof(buf), "\n#Configuration added by %s\n", progname);
+	xsnprintf(buf, sizeof(buf), "\n#Configuration added by %s\n", progname());
 	fputs(buf, pg_conf);
 
 
@@ -2488,15 +2489,15 @@ do_witness_create(void)
 
 
 static void
-help(const char *progname)
+help(void)
 {
-	printf(_("%s: replication management tool for PostgreSQL\n"), progname);
+	printf(_("%s: replication management tool for PostgreSQL\n"), progname());
 	printf(_("\n"));
 	printf(_("Usage:\n"));
-	printf(_("  %s [OPTIONS] master  {register}\n"), progname);
+	printf(_("  %s [OPTIONS] master  {register}\n"), progname());
 	printf(_("  %s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"),
-		   progname);
-	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname);
+		   progname());
+	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname());
 	printf(_("\n"));
 	printf(_("General options:\n"));
 	printf(_("  -?, --help                          show this help, then exit\n"));
@@ -2538,7 +2539,7 @@ help(const char *progname)
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
 			 "                                        (default: postgres)\n"));
 	printf(_("\n"));
-	printf(_("%s performs the following node management tasks:\n"), progname);
+	printf(_("%s performs the following node management tasks:\n"), progname());
 	printf(_("\n"));
 	printf(_("COMMANDS:\n"));
 	printf(_(" master register         - registers the master in a cluster\n"));
@@ -2855,11 +2856,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing MASTER REGISTER"));
+				error_list_append(&cli_errors, _("master connection parameters not required when executing MASTER REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing MASTER REGISTER"));
+				error_list_append(&cli_errors, _("destination directory not required when executing MASTER REGISTER"));
 			}
 			break;
 		case STANDBY_REGISTER:
@@ -2872,11 +2873,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing STANDBY REGISTER"));
+				error_list_append(&cli_errors, _("master connection parameters not required when executing STANDBY REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing STANDBY REGISTER"));
+				error_list_append(&cli_errors, _("destination directory not required when executing STANDBY REGISTER"));
 			}
 			break;
 		case STANDBY_UNREGISTER:
@@ -2889,11 +2890,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing STANDBY UNREGISTER"));
+				error_list_append(&cli_errors, _("master connection parameters not required when executing STANDBY UNREGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing STANDBY UNREGISTER"));
+				error_list_append(&cli_errors, _("destination directory not required when executing STANDBY UNREGISTER"));
 			}
 			break;
 		case STANDBY_PROMOTE:
@@ -2907,11 +2908,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing STANDBY PROMOTE"));
+				error_list_append(&cli_errors, _("master connection parameters not required when executing STANDBY PROMOTE"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing STANDBY PROMOTE"));
+				error_list_append(&cli_errors, _("destination directory not required when executing STANDBY PROMOTE"));
 			}
 			break;
 		case STANDBY_FOLLOW:
@@ -2925,11 +2926,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(_("master connection parameters not required when executing STANDBY FOLLOW"));
+				error_list_append(&cli_errors, _("master connection parameters not required when executing STANDBY FOLLOW"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(_("destination directory not required when executing STANDBY FOLLOW"));
+				error_list_append(&cli_errors, _("destination directory not required when executing STANDBY FOLLOW"));
 			}
 			break;
 		case STANDBY_CLONE:
@@ -2942,17 +2943,17 @@ check_parameters_for_action(const int action)
 
 			if (strcmp(runtime_options.host, "") == 0)
 			{
-				error_list_append(_("master hostname (-h/--host) required when executing STANDBY CLONE"));
+				error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY CLONE"));
 			}
 
 			if (strcmp(runtime_options.dbname, "") == 0)
 			{
-				error_list_append(_("master database name (-d/--dbname) required when executing STANDBY CLONE"));
+				error_list_append(&cli_errors, _("master database name (-d/--dbname) required when executing STANDBY CLONE"));
 			}
 
 			if (strcmp(runtime_options.username, "") == 0)
 			{
-				error_list_append(_("master database username (-U/--username) required when executing STANDBY CLONE"));
+				error_list_append(&cli_errors, _("master database username (-U/--username) required when executing STANDBY CLONE"));
 			}
 
 			config_file_required = false;
@@ -2972,22 +2973,22 @@ check_parameters_for_action(const int action)
 	{
 		if (runtime_options.rsync_only)
 		{
-			error_list_append(_("--rsync-only can only be used when executing STANDBY CLONE"));
+			error_list_append(&cli_errors, _("--rsync-only can only be used when executing STANDBY CLONE"));
 		}
 
 		if (runtime_options.fast_checkpoint)
 		{
-			error_list_append(_("--fast-checkpoint can only be used when executing STANDBY CLONE"));
+			error_list_append(&cli_errors, _("--fast-checkpoint can only be used when executing STANDBY CLONE"));
 		}
 
 		if (runtime_options.ignore_external_config_files)
 		{
-			error_list_append(_("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
+			error_list_append(&cli_errors, _("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
 		}
 
 		if (*runtime_options.recovery_min_apply_delay)
 		{
-			error_list_append(_("--recovery-min-apply-delay can only be used when executing STANDBY CLONE"));
+			error_list_append(&cli_errors, _("--recovery-min-apply-delay can only be used when executing STANDBY CLONE"));
 		}
 	}
 
@@ -3333,7 +3334,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 	{
 		if (server_version_num > 0)
 			log_err(_("%s requires %s to be PostgreSQL %s or later\n"),
-					progname,
+					progname(),
 					server_type,
 					MIN_SUPPORTED_VERSION
 				);
@@ -3710,47 +3711,19 @@ make_pg_path(char *file)
 
 
 static void
-error_list_append(char *error_message)
-{
-	ErrorListCell *cell;
-
-	cell = (ErrorListCell *) pg_malloc0(sizeof(ErrorListCell));
-
-	if (cell == NULL)
-	{
-		log_err(_("unable to allocate memory; terminating.\n"));
-		exit(ERR_BAD_CONFIG);
-	}
-
-	cell->error_message = pg_malloc0(MAXLEN);
-	strncpy(cell->error_message, error_message, MAXLEN);
-
-	if (cli_errors.tail)
-	{
-		cli_errors.tail->next = cell;
-	}
-	else
-	{
-		cli_errors.head = cell;
-	}
-
-	cli_errors.tail = cell;
-}
-
-
-static void
 exit_with_errors(void)
 {
 	ErrorListCell *cell;
 
-	fprintf(stderr, _("%s: Replication manager \n"), progname);
+	fprintf(stderr, _("%s: following command line errors were encountered.\n"), progname());
 
 	for (cell = cli_errors.head; cell; cell = cell->next)
 	{
-		fprintf(stderr, "[ERROR] %s\n", cell->error_message);
+		fprintf(stderr, "%s\n", cell->error_message);
 	}
 
-	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
+	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
 
 	exit(ERR_BAD_CONFIG);
 }
+

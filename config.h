@@ -82,14 +82,29 @@ typedef struct
 
 #define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
 
+typedef struct ErrorListCell
+{
+	struct ErrorListCell *next;
+	char			     *error_message;
+} ErrorListCell;
+
+typedef struct ErrorList
+{
+	ErrorListCell *head;
+	ErrorListCell *tail;
+} ErrorList;
+
+void set_progname(const char *argv0);
+const char * progname(void);
 
 bool		load_config(const char *config_file, t_configuration_options *options, char *argv0);
 bool		reload_config(t_configuration_options *orig_options);
 bool		parse_config(t_configuration_options *options);
 void		parse_line(char *buff, char *name, char *value);
 char	   *trim(char *s);
+void		error_list_append(ErrorList *error_list, char *error_message);
 int			repmgr_atoi(const char *s,
 						const char *config_item,
-						void (*error_callback)(char *error_message));
+						ErrorList *error_list);
 
 #endif

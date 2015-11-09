@@ -95,16 +95,5 @@ typedef struct
 
 extern char		repmgr_schema[MAXLEN];
 
-typedef struct ErrorListCell
-{
-	struct ErrorListCell *next;
-	char			     *error_message;
-} ErrorListCell;
-
-typedef struct ErrorList
-{
-	ErrorListCell *head;
-	ErrorListCell *tail;
-} ErrorList;
 
 #endif
