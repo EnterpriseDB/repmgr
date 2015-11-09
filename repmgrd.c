@@ -68,8 +68,6 @@ t_configuration_options master_options;
 
 PGconn	   *master_conn = NULL;
 
-const char *progname;
-
 char	   *config_file = DEFAULT_CONFIG_FILE;
 bool		verbose = false;
 bool		monitoring_history = false;
@@ -81,7 +79,7 @@ char	   *pid_file = NULL;
 
 t_configuration_options config = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
-static void help(const char *progname);
+static void help(void);
 static void usage(void);
 static void check_cluster_configuration(PGconn *conn);
 static void check_node_configuration(void);
@@ -158,7 +156,8 @@ main(int argc, char **argv)
 	FILE	   *fd;
 
 	int			server_version_num = 0;
-	progname = get_progname(argv[0]);
+
+	set_progname(argv[0]);
 
 	while ((c = getopt_long(argc, argv, "?Vf:v:mdp:", long_options, &optindex)) != -1)
 	{
@@ -180,10 +179,10 @@ main(int argc, char **argv)
 				pid_file = optarg;
 				break;
 			case '?':
-				help(progname);
+				help();
 				exit(SUCCESS);
 			case 'V':
-				printf("%s %s (PostgreSQL %s)\n", progname, REPMGR_VERSION, PG_VERSION);
+				printf("%s %s (PostgreSQL %s)\n", progname(), REPMGR_VERSION, PG_VERSION);
 				exit(SUCCESS);
 			default:
 				usage();
@@ -230,7 +229,7 @@ main(int argc, char **argv)
 				strerror(errno));
 	}
 
-	logger_init(&local_options, progname, local_options.loglevel,
+	logger_init(&local_options, progname(), local_options.loglevel,
 				local_options.logfacility);
 	if (verbose)
 		logger_min_verbose(LOG_INFO);
@@ -264,7 +263,7 @@ main(int argc, char **argv)
 		if (server_version_num > 0)
 		{
 			log_err(_("%s requires PostgreSQL %s or later\n"),
-					progname,
+					progname(),
 					MIN_SUPPORTED_VERSION) ;
 		}
 		else
@@ -2073,18 +2072,18 @@ lsn_to_xlogrecptr(char *lsn, bool *format_ok)
 void
 usage(void)
 {
-	log_err(_("%s: Replicator manager daemon \n"), progname);
-	log_err(_("Try \"%s --help\" for more information.\n"), progname);
+	log_err(_("%s: Replicator manager daemon \n"), progname());
+	log_err(_("Try \"%s --help\" for more information.\n"), progname());
 }
 
 
 void
-help(const char *progname)
+help(void)
 {
-	printf(_("%s: replication management daemon for PostgreSQL\n"), progname);
+	printf(_("%s: replication management daemon for PostgreSQL\n"), progname());
 	printf(_("\n"));
 	printf(_("Usage:\n"));
-	printf(_("  %s [OPTIONS]\n"), progname);
+	printf(_("  %s [OPTIONS]\n"), progname());
 	printf(_("\n"));
 	printf(_("Options:\n"));
 	printf(_("  -?, --help                show this help, then exit\n"));
@@ -2095,7 +2094,7 @@ help(const char *progname)
 	printf(_("  -d, --daemonize           detach process from foreground\n"));
 	printf(_("  -p, --pid-file=PATH       write a PID file\n"));
 	printf(_("\n"));
-	printf(_("%s monitors a cluster of servers and optionally performs failover.\n"), progname);
+	printf(_("%s monitors a cluster of servers and optionally performs failover.\n"), progname());
 }
 
 
@@ -2133,7 +2132,7 @@ terminate(int retval)
 		unlink(pid_file);
 	}
 
-	log_info(_("%s terminating...\n"), progname);
+	log_info(_("%s terminating...\n"), progname());
 
 	exit(retval);
 }

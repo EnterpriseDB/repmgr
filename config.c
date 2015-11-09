@@ -26,9 +26,24 @@
 
 static void parse_event_notifications_list(t_configuration_options *options, const char *arg);
 static void tablespace_list_append(t_configuration_options *options, const char *arg);
+static void exit_with_errors(ErrorList *config_errors);
 
+const static char *_progname = '\0';
 static char config_file_path[MAXPGPATH];
 static bool config_file_provided = false;
+
+
+void
+set_progname(const char *argv0)
+{
+	_progname = get_progname(argv0);
+}
+
+const char *
+progname(void)
+{
+	return _progname;
+}
 
 /*
  * load_config()
@@ -45,6 +60,7 @@ bool
 load_config(const char *config_file, t_configuration_options *options, char *argv0)
 {
 	struct stat config;
+
 	/* Sanity checks */
 
 	/*
@@ -101,7 +117,13 @@ load_config(const char *config_file, t_configuration_options *options, char *arg
 	return parse_config(options);
 }
 
-
+/*
+ * Parse configuration file; if any errors are encountered,
+ * list them and exit.
+ *
+ * Ensure any default values set here are synced with repmgr.conf.sample
+ * and any other documentation.
+ */
 bool
 parse_config(t_configuration_options *options)
 {
@@ -114,6 +136,9 @@ parse_config(t_configuration_options *options)
 	/* For sanity-checking provided conninfo string */
 	PQconninfoOption *conninfo_options;
 	char       *conninfo_errmsg = NULL;
+
+	/* Collate configuration file errors here for friendlier reporting */
+	static ErrorList config_errors = { NULL, NULL };
 
 	fp = fopen(config_file_path, "r");
 
@@ -177,7 +202,6 @@ parse_config(t_configuration_options *options)
 	options->tablespace_mapping.tail = NULL;
 
 
-
 	/* Read next line */
 	while ((s = fgets(buff, sizeof buff, fp)) != NULL)
 	{
@@ -198,9 +222,9 @@ parse_config(t_configuration_options *options)
 		if (strcmp(name, "cluster") == 0)
 			strncpy(options->cluster_name, value, MAXLEN);
 		else if (strcmp(name, "node") == 0)
-			options->node = repmgr_atoi(value, "node", NULL);
+			options->node = repmgr_atoi(value, "node", &config_errors);
 		else if (strcmp(name, "upstream_node") == 0)
-			options->upstream_node = repmgr_atoi(value, "upstream_node", NULL);
+			options->upstream_node = repmgr_atoi(value, "upstream_node", &config_errors);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
@@ -232,7 +256,7 @@ parse_config(t_configuration_options *options)
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
-			options->priority = repmgr_atoi(value, "priority", NULL);
+			options->priority = repmgr_atoi(value, "priority", &config_errors);
 		else if (strcmp(name, "node_name") == 0)
 			strncpy(options->node_name, value, MAXLEN);
 		else if (strcmp(name, "promote_command") == 0)
@@ -240,16 +264,16 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "follow_command") == 0)
 			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
-			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", NULL);
+			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", &config_errors);
 		/* 'primary_response_timeout' as synonym for 'master_response_timeout' -
 		 * we'll switch terminology in a future release (3.1?)
 		 */
 		else if (strcmp(name, "primary_response_timeout") == 0)
-			options->master_response_timeout = repmgr_atoi(value, "primary_response_timeout", NULL);
+			options->master_response_timeout = repmgr_atoi(value, "primary_response_timeout", &config_errors);
 		else if (strcmp(name, "reconnect_attempts") == 0)
-			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", NULL);
+			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", &config_errors);
 		else if (strcmp(name, "reconnect_interval") == 0)
-			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", NULL);
+			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", &config_errors);
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
@@ -259,12 +283,12 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
-			options->monitor_interval_secs = repmgr_atoi(value, "monitor_interval_secs", NULL);
+			options->monitor_interval_secs = repmgr_atoi(value, "monitor_interval_secs", &config_errors);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
-			options->retry_promote_interval_secs = repmgr_atoi(value, "retry_promote_interval_secs", NULL);
+			options->retry_promote_interval_secs = repmgr_atoi(value, "retry_promote_interval_secs", &config_errors);
 		else if (strcmp(name, "use_replication_slots") == 0)
 			/* XXX we should have a dedicated boolean argument format */
-			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", NULL);
+			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", &config_errors);
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
 		else if (strcmp(name, "event_notifications") == 0)
@@ -284,8 +308,13 @@ parse_config(t_configuration_options *options)
 		 * as currently e.g. an empty `node` value will be converted to '0'.
 		 */
 		if (known_parameter == true && !strlen(value)) {
-			log_err(_("no value provided for parameter '%s'\n"), name);
-			exit(ERR_BAD_CONFIG);
+			char	   error_message_buf[MAXLEN] = "";
+			snprintf(error_message_buf,
+					 MAXLEN,
+					 _("no value provided for parameter \"%s\""),
+					 name);
+
+			error_list_append(&config_errors, error_message_buf);
 		}
 	}
 
@@ -296,66 +325,51 @@ parse_config(t_configuration_options *options)
 	/* The following checks are for the presence of the parameter */
 	if (*options->cluster_name == '\0')
 	{
-		log_err(_("required parameter 'cluster' was not found\n"));
-		exit(ERR_BAD_CONFIG);
+		error_list_append(&config_errors, _("\"cluster\": parameter was not found\n"));
 	}
 
 	if (options->node == -1)
 	{
-		log_err(_("required parameter 'node' was not found\n"));
-		exit(ERR_BAD_CONFIG);
-	}
-
-	if (options->node <= 0)
-	{
-		log_err(_("'node' must be an integer greater than zero\n"));
-		exit(ERR_BAD_CONFIG);
+		error_list_append(&config_errors, _("\"node\": parameter was not found\n"));
 	}
 
 	if (*options->node_name == '\0')
 	{
-		log_err(_("required parameter 'node_name' was not found\n"));
-		exit(ERR_BAD_CONFIG);
+		error_list_append(&config_errors, _("\"node_name\": parameter was not found\n"));
 	}
 
 	if (*options->conninfo == '\0')
 	{
-		log_err(_("required parameter 'conninfo' was not found\n"));
-		exit(ERR_BAD_CONFIG);
+		error_list_append(&config_errors, _("\"conninfo\": parameter was not found\n"));
 	}
-
-	/* Sanity check the provided conninfo string
-	 *
-	 * NOTE: this verifies the string format and checks for valid options
-	 * but does not sanity check values
-	 */
-	conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
-	if (conninfo_options == NULL)
+	else
 	{
-		log_err(_("Parameter 'conninfo' is invalid: %s"), conninfo_errmsg);
-		exit(ERR_BAD_CONFIG);
-	}
-	PQconninfoFree(conninfo_options);
 
-	/* The following checks are for valid parameter values */
-	if (options->master_response_timeout <= 0)
+		/* Sanity check the provided conninfo string
+		 *
+		 * NOTE: this verifies the string format and checks for valid options
+		 * but does not sanity check values
+		 */
+		conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
+		if (conninfo_options == NULL)
+		{
+			char	   error_message_buf[MAXLEN] = "";
+			snprintf(error_message_buf,
+					 MAXLEN,
+					 _("\"conninfo\": %s"),
+					 conninfo_errmsg);
+
+			error_list_append(&config_errors, error_message_buf);
+		}
+
+		PQconninfoFree(conninfo_options);
+	}
+
+	// exit_with_errors here
+	if (config_errors.head != NULL)
 	{
-		log_err(_("'master_response_timeout' must be greater than zero\n"));
-		exit(ERR_BAD_CONFIG);
+		exit_with_errors(&config_errors);
 	}
-
-	if (options->reconnect_attempts < 0)
-	{
-		log_err(_("'reconnect_attempts' must be zero or greater\n"));
-		exit(ERR_BAD_CONFIG);
-	}
-
-	if (options->reconnect_interval < 0)
-	{
-		log_err(_("'reconnect_interval' must be zero or greater\n"));
-		exit(ERR_BAD_CONFIG);
-	}
-
 	return true;
 }
 
@@ -675,13 +689,42 @@ reload_config(t_configuration_options *orig_options)
 }
 
 
+void
+error_list_append(ErrorList *error_list, char *error_message)
+{
+	ErrorListCell *cell;
+
+	cell = (ErrorListCell *) pg_malloc0(sizeof(ErrorListCell));
+
+	if (cell == NULL)
+	{
+		log_err(_("unable to allocate memory; terminating.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	cell->error_message = pg_malloc0(MAXLEN);
+	strncpy(cell->error_message, error_message, MAXLEN);
+
+	if (error_list->tail)
+	{
+		error_list->tail->next = cell;
+	}
+	else
+	{
+		error_list->head = cell;
+	}
+
+	error_list->tail = cell;
+}
+
+
 /*
  * Convert provided string to an integer using strtol;
  * on error, if a callback is provided, pass the error message to that,
  * otherwise exit
  */
 int
-repmgr_atoi(const char *value, const char *config_item, void (*error_callback)(char *error_message))
+repmgr_atoi(const char *value, const char *config_item, ErrorList *error_list)
 {
 	char	  *endptr;
 	long	   longval = 0;
@@ -695,7 +738,7 @@ repmgr_atoi(const char *value, const char *config_item, void (*error_callback)(c
 	{
 		snprintf(error_message_buf,
 				 MAXLEN,
-				 _("No value provided for \"%s\""),
+				 _("no value provided for \"%s\""),
 				 config_item);
 	}
 	else
@@ -707,7 +750,7 @@ repmgr_atoi(const char *value, const char *config_item, void (*error_callback)(c
 		{
 			snprintf(error_message_buf,
 					 MAXLEN,
-					 _("Invalid value provided for \"%s\": %s"),
+					 _("\"%s\": invalid value (provided: \"%s\")"),
 					 config_item, value);
 		}
 	}
@@ -717,20 +760,20 @@ repmgr_atoi(const char *value, const char *config_item, void (*error_callback)(c
 	{
 		snprintf(error_message_buf,
 				 MAXLEN,
-				 _("\"%s\" cannot be a negative value (provided: %s)"),
+				 _("\"%s\" must be zero or greater (provided: %s)"),
 				 config_item, value);
 	}
 
 	/* Error message buffer is set */
 	if (error_message_buf[0] != '\0')
 	{
-		if (error_callback == NULL)
+		if (error_list == NULL)
 		{
 			log_err("%s\n", error_message_buf);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		error_callback(error_message_buf);
+		error_list_append(error_list, error_message_buf);
 	}
 
 	return (int32) longval;
@@ -868,3 +911,21 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 		}
 	}
 }
+
+
+
+static void
+exit_with_errors(ErrorList *config_errors)
+{
+	ErrorListCell *cell;
+
+	log_err(_("%s: following errors were found in the configuration file.\n"), progname());
+
+	for (cell = config_errors->head; cell; cell = cell->next)
+	{
+		log_err("%s\n", cell->error_message);
+	}
+
+	exit(ERR_BAD_CONFIG);
+}
+
