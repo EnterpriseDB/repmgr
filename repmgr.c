@@ -2494,7 +2494,7 @@ help(void)
 	printf(_("%s: replication management tool for PostgreSQL\n"), progname());
 	printf(_("\n"));
 	printf(_("Usage:\n"));
-	printf(_("  %s [OPTIONS] master  {register}\n"), progname());
+	printf(_("  %s [OPTIONS] master  register\n"), progname());
 	printf(_("  %s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"),
 		   progname());
 	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname());
