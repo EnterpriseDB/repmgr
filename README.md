@@ -144,10 +144,14 @@ running the following commands:
     createuser -s repmgr
     createdb repmgr -O repmgr
 
-We recommend using the name `repmgr` for both, but you can use whatever
-name you like (and you need to set the names you chose in the `conninfo`
-string in `repmgr.conf`; see below). `repmgr` will create the schema and
-objects it needs when it connects to the server.
+We recommend using the name `repmgr` for both user and database, but you
+can use whatever name you like (and you need to set the names you chose
+in the `conninfo` string in `repmgr.conf`; see below). We also recommend
+that you set the `repmgr` user's search path to include the `repmgr` schema
+for convenience when querying the metadata tables and views.
+
+The `repmgr` application will create its metadata schema in the `repmgr`
+database when the master server is registered.
 
 ### repmgr configuration
 
