@@ -189,7 +189,7 @@ is_standby(PGconn *conn)
 	PGresult   *res;
 	int			result = 0;
 
-	res = PQexec(conn, "SELECT pg_is_in_recovery()");
+	res = PQexec(conn, "SELECT pg_catalog.pg_is_in_recovery()");
 
 	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -405,7 +405,7 @@ get_cluster_size(PGconn *conn, char *size)
 
 	sqlquery_snprintf(
 					  sqlquery,
-				 "SELECT pg_size_pretty(SUM(pg_database_size(oid))::bigint) "
+				 "SELECT pg_catalog.pg_size_pretty(SUM(pg_catalog.pg_database_size(oid))::bigint) "
 					  "	 FROM pg_database ");
 
 	res = PQexec(conn, sqlquery);
@@ -618,7 +618,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 		 * function closes the connection passed and exits.  This still needs
 		 * to close master_conn first.
 		 */
-		res2 = PQexec(master_conn, "SELECT pg_is_in_recovery()");
+		res2 = PQexec(master_conn, "SELECT pg_catalog.pg_is_in_recovery()");
 
 		if (PQresultStatus(res2) != PGRES_TUPLES_OK)
 		{
@@ -871,7 +871,7 @@ start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint)
 	PGresult   *res;
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT pg_xlogfile_name(pg_start_backup('repmgr_standby_clone_%ld', %s))",
+					  "SELECT pg_catalog.pg_xlogfile_name(pg_catalog.pg_start_backup('repmgr_standby_clone_%ld', %s))",
 					  time(NULL),
 					  fast_checkpoint ? "TRUE" : "FALSE");
 
@@ -906,7 +906,7 @@ stop_backup(PGconn *conn, char *last_wal_segment)
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
-	sqlquery_snprintf(sqlquery, "SELECT pg_xlogfile_name(pg_stop_backup())");
+	sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_xlogfile_name(pg_catalog.pg_stop_backup())");
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
