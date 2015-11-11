@@ -1014,7 +1014,7 @@ standby_monitor(void)
 
 
 	/* Get master xlog info */
-	sqlquery_snprintf(sqlquery, "SELECT pg_current_xlog_location()");
+	sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_xlog_location()");
 
 	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1234,7 +1234,7 @@ do_master_failover(void)
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
-		sqlquery_snprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
+		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_last_xlog_receive_location()");
 		res = PQexec(node_conn, sqlquery);
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
@@ -1266,7 +1266,7 @@ do_master_failover(void)
 	}
 
 	/* last we get info about this node, and update shared memory */
-	sprintf(sqlquery, "SELECT pg_last_xlog_receive_location()");
+	sprintf(sqlquery, "SELECT pg_catalog.pg_last_xlog_receive_location()");
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
