@@ -1075,6 +1075,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 		maxlen_snprintf(slot_name_buf, "%s", "NULL");
 	}
 
+	/* XXX convert to placeholder query */
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_nodes "
 					  "       (id, type, upstream_node_id, cluster, "
