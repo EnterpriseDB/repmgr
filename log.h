@@ -112,11 +112,14 @@ __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 #endif
 
 
+int			detect_log_level(const char *level);
+
 /* Logger initialisation and shutdown */
-bool		logger_shutdown(void);
 
 bool		logger_init(t_configuration_options * opts, const char *ident,
 			const char *level, const char *facility);
+
+bool		logger_shutdown(void);
 
 void		logger_min_verbose(int minimum);
 void		log_hint(const char *fmt, ...);

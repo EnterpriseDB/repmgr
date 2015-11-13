@@ -39,7 +39,6 @@
 
 /* #define REPMGR_DEBUG */
 
-static int	detect_log_level(const char *level);
 static int	detect_log_facility(const char *facility);
 
 int			log_type = REPMGR_STDERR;
@@ -217,7 +216,7 @@ logger_min_verbose(int minimum)
 		log_level = minimum;
 }
 
-static int
+int
 detect_log_level(const char *level)
 {
 	if (!strcmp(level, "DEBUG"))
@@ -247,7 +246,6 @@ detect_log_facility(const char *facility)
 
 	if (!strncmp(facility, "LOCAL", 5) && strlen(facility) == 6)
 	{
-
 		local = atoi(&facility[5]);
 
 		switch (local)
