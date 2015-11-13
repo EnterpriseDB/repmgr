@@ -281,7 +281,7 @@ main(int argc, char **argv)
 	if (node_info.node_id == NODE_NOT_FOUND)
 	{
 		log_err(_("No metadata record found for this node - terminating\n"));
-		log_notice(_("HINT: was this node registered with 'repmgr (master|standby) register'?\n"));
+		log_hint(_("Check that 'repmgr (master|standby) register' was executed for this node\n"));
 		terminate(ERR_BAD_CONFIG);
 	}
 

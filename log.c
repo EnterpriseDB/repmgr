@@ -44,7 +44,7 @@ static int	detect_log_facility(const char *facility);
 
 int			log_type = REPMGR_STDERR;
 int			log_level = LOG_NOTICE;
-
+int			last_log_level = LOG_NOTICE;
 
 void
 stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
@@ -53,6 +53,12 @@ stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
 	struct tm  *tm;
 	char		buff[100];
 	va_list		ap;
+
+	/*
+	 * Store the requested level so that if there's a subsequent
+	 * log_hint(), we can suppress that if appropriate.
+	 */
+	last_log_level = level;
 
 	if (log_level >= level)
 	{
@@ -67,6 +73,16 @@ stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
 
 		fflush(stderr);
 	}
+}
+
+void
+log_hint(const char *fmt, ...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+	stderr_log_with_level("HINT", last_log_level, fmt, ap);
+	va_end(ap);
 }
 
 
