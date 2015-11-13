@@ -112,7 +112,7 @@ logger_init(t_configuration_options * opts, const char *ident, const char *level
 		printf("Assigned level for logger: %d\n", l);
 #endif
 
-		if (l > 0)
+		if (l >= 0)
 			log_level = l;
 		else
 			stderr_log_warning(_("Invalid log level \"%s\" (available values: DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)\n"), level);
@@ -237,7 +237,7 @@ detect_log_level(const char *level)
 	if (!strcmp(level, "EMERG"))
 		return LOG_EMERG;
 
-	return 0;
+	return -1;
 }
 
 int
