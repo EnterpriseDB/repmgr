@@ -1317,8 +1317,6 @@ do_standby_clone(void)
 		strncpy(local_ident_file, master_ident_file, MAXFILENAME);
 	}
 
-	log_notice(_("starting backup...\n"));
-
 	/*
 	 * When using rsync only, we need to check the SSH connection early
 	 */
@@ -1346,6 +1344,12 @@ do_standby_clone(void)
 		goto stop_backup;
 	}
 
+	log_notice(_("starting backup...\n"));
+	if (runtime_options.fast_checkpoint == false)
+	{
+		log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option\n"));
+	}
+
 	if (runtime_options.rsync_only)
 	{
 		PQExpBufferData tablespace_map;
@@ -1358,7 +1362,7 @@ do_standby_clone(void)
 		}
 
 		/*
-		 * From pg 9.1 default is to wait for a sync standby to ack, avoid that by
+		 * From 9.1 default is to wait for a sync standby to ack, avoid that by
 		 * turning off sync rep for this session
 		 */
 		if (set_config_bool(upstream_conn, "synchronous_commit", false) == false)
