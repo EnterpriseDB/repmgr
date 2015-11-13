@@ -495,6 +495,7 @@ main(int argc, char **argv)
 	 * logging level might be specified at, but it often requires detailed
 	 * logging to troubleshoot problems.
 	 */
+
 	logger_init(&options, progname(), options.loglevel, options.logfacility);
 	if (runtime_options.verbose)
 		logger_min_verbose(LOG_INFO);
@@ -616,7 +617,7 @@ do_cluster_show(void)
 	{
 		log_err(_("Unable to retrieve node information from the database\n%s\n"),
 				PQerrorMessage(conn));
-		log_notice(_("HINT: Please check that all nodes have been registered\n"));
+		log_hint(_("Please check that all nodes have been registered\n"));
 
 		PQclear(res);
 		PQfinish(conn);
@@ -965,9 +966,10 @@ do_standby_register(void)
 	{
 		if (!runtime_options.force)
 		{
-			log_notice(_("HINT: use option -F/--force to overwrite an existing node record\n"));
+			log_hint(_("use option -F/--force to overwrite an existing node record\n"));
 		}
 
+		// XXX log registration failure?
 		PQfinish(master_conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
@@ -1338,7 +1340,7 @@ do_standby_clone(void)
 	{
 		log_err(_("unable to use directory %s ...\n"),
 				local_data_directory);
-		log_notice(_("HINT: Use -F/--force option to force this directory to be overwritten\n"));
+		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
 		r = ERR_BAD_CONFIG;
 		retval = ERR_BAD_CONFIG;
 		goto stop_backup;
@@ -1720,10 +1722,10 @@ stop_backup:
 	 * - provide a custom pg_ctl command
 	 */
 
-	log_notice(_("HINT: you can now start your PostgreSQL server\n"));
+	log_notice(_("you can now start your PostgreSQL server\n"));
 	if (target_directory_provided)
 	{
-		log_notice(_("for example : pg_ctl -D %s start\n"),
+		log_hint(_("for example : pg_ctl -D %s start\n"),
 				   local_data_directory);
 	}
 	else
@@ -3475,7 +3477,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 				if (i == 0)
 				{
 					log_err(_("parameter 'max_replication_slots' must be set to at least 1 to enable replication slots\n"));
-					log_notice(_("HINT: 'max_replication_slots' should be set to at least the number of expected standbys\n"));
+					log_hint(_("'max_replication_slots' should be set to at least the number of expected standbys\n"));
 					if (exit_on_error == true)
 					{
 						PQfinish(conn);
@@ -3504,7 +3506,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 						runtime_options.wal_keep_segments);
 				if (server_version_num >= 90400)
 				{
-					log_notice(_("HINT: in PostgreSQL 9.4 and later, replication slots can be used, which "
+					log_hint(_("in PostgreSQL 9.4 and later, replication slots can be used, which "
 							   "do not require 'wal_keep_segments' to be set to a high value "
 							   "(set parameter 'use_replication_slots' in the configuration file to enable)\n"
 								 ));
@@ -3587,7 +3589,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		if (i == 0)
 		{
 			log_err(_("parameter 'max_wal_senders' must be set to be at least 1\n"));
-			log_notice(_("HINT: 'max_wal_senders' should be set to at least the number of expected standbys\n"));
+			log_hint(_("'max_wal_senders' should be set to at least the number of expected standbys\n"));
 		}
 
 		if (exit_on_error == true)
