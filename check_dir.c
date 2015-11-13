@@ -320,10 +320,10 @@ _create_pg_dir(char *dir, bool force, bool for_witness)
 			}
 			else if (pg_dir && !force)
 			{
-				log_warning(_("\nThis looks like a PostgreSQL directory.\n"
-							  "If you are sure you want to clone here, "
-							  "please check there is no PostgreSQL server "
-							  "running and use the --force option\n"));
+				log_hint(_("This looks like a PostgreSQL directory.\n"
+							"If you are sure you want to clone here, "
+							"please check there is no PostgreSQL server "
+							"running and use the -F/--force option\n"));
 				return false;
 			}
 
