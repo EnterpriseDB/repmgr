@@ -217,7 +217,7 @@ logger_min_verbose(int minimum)
 		log_level = minimum;
 }
 
-int
+static int
 detect_log_level(const char *level)
 {
 	if (!strcmp(level, "DEBUG"))
@@ -240,7 +240,7 @@ detect_log_level(const char *level)
 	return -1;
 }
 
-int
+static int
 detect_log_facility(const char *facility)
 {
 	int			local = 0;
