@@ -151,6 +151,7 @@ main(int argc, char **argv)
 		{"pg_bindir", required_argument, NULL, 'b'},
 		{"rsync-only", no_argument, NULL, 'r'},
 		{"fast-checkpoint", no_argument, NULL, 'c'},
+		{"log-level", required_argument, NULL, 'L'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
@@ -174,7 +175,7 @@ main(int argc, char **argv)
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c:L:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -256,6 +257,22 @@ main(int argc, char **argv)
 			case 'c':
 				runtime_options.fast_checkpoint = true;
 				break;
+			case 'L':
+			{
+				int detected_log_level = detect_log_level(optarg);
+				if (detected_log_level != -1)
+				{
+					strncpy(runtime_options.loglevel, optarg, MAXLEN);
+				}
+				else
+				{
+					PQExpBufferData invalid_log_level;
+					initPQExpBuffer(&invalid_log_level);
+					appendPQExpBuffer(&invalid_log_level, _("Invalid log level \"%s\" provided"), optarg);
+					error_list_append(&cli_errors, invalid_log_level.data);
+				}
+				break;
+			}
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
 				break;
@@ -495,6 +512,12 @@ main(int argc, char **argv)
 	 * logging level might be specified at, but it often requires detailed
 	 * logging to troubleshoot problems.
 	 */
+
+	/* Command-line parameter -L/--log-level overrides any setting in config file*/
+	if(*runtime_options.loglevel != '\0')
+	{
+		strncpy(options.loglevel, runtime_options.loglevel, MAXLEN);
+	}
 
 	logger_init(&options, progname(), options.loglevel, options.logfacility);
 	if (runtime_options.verbose)
@@ -2524,6 +2547,7 @@ help(void)
 	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
+	printf(_("  -L, --log-level                     set log level (overrides configuration file)\n"));
 	printf(_("\n"));
 	printf(_("Command-specific configuration options:\n"));
 	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
