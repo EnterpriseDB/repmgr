@@ -588,7 +588,6 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 {
 	PGconn	   *master_conn = NULL;
 	PGresult   *res1;
-	PGresult   *res2;
 	char		sqlquery[QUERY_STR_LEN];
 	char		master_conninfo_stack[MAXCONNINFO];
 	char	   *master_conninfo = &*master_conninfo_stack;
@@ -626,6 +625,8 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 
 	for (i = 0; i < PQntuples(res1); i++)
 	{
+		int is_node_standby;
+
 		/* initialize with the values of the current node being processed */
 		node_id = atoi(PQgetvalue(res1, i, 0));
 		strncpy(master_conninfo, PQgetvalue(res1, i, 1), MAXCONNINFO);
@@ -637,26 +638,19 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 		if (PQstatus(master_conn) != CONNECTION_OK)
 			continue;
 
-		/*
-		 * Can't use the is_standby() function here because on error that
-		 * function closes the connection passed and exits.  This still needs
-		 * to close master_conn first.
-		 */
-		res2 = PQexec(master_conn, "SELECT pg_catalog.pg_is_in_recovery()");
+		is_node_standby = is_standby(master_conn);
 
-		if (PQresultStatus(res2) != PGRES_TUPLES_OK)
+		if (is_node_standby == -1)
 		{
 			log_err(_("unable to retrieve recovery state from this node: %s\n"),
 					PQerrorMessage(master_conn));
-			PQclear(res2);
 			PQfinish(master_conn);
 			continue;
 		}
 
-		/* if false, this is the master */
-		if (strcmp(PQgetvalue(res2, 0, 0), "f") == 0)
+		/* if is_standby() returns 0, queried node is the master */
+		if (is_node_standby == 0)
 		{
-			PQclear(res2);
 			PQclear(res1);
 			log_debug(_("get_master_connection(): current master node is %i\n"), node_id);
 
@@ -667,12 +661,10 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 
 			return master_conn;
 		}
-		else
-		{
-			/* if it is a standby, clear info */
-			PQclear(res2);
-			PQfinish(master_conn);
-		}
+
+
+		/* if it is a standby, clear connection info and continue*/
+		PQfinish(master_conn);
 	}
 
 	/*
