@@ -232,7 +232,7 @@ main(int argc, char **argv)
 	logger_init(&local_options, progname(), local_options.loglevel,
 				local_options.logfacility);
 	if (verbose)
-		logger_min_verbose(LOG_INFO);
+		logger_set_verbose();
 
 	if (log_type == REPMGR_SYSLOG)
 	{
@@ -246,6 +246,7 @@ main(int argc, char **argv)
 	}
 
 	/* Initialise the repmgr schema name */
+	/* XXX check this handles quoting properly */
 	maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 			 local_options.cluster_name);
 
@@ -456,10 +457,7 @@ main(int argc, char **argv)
 
 				do
 				{
-					if (verbose)
-					{
-						log_debug("standby check loop...\n");
-					}
+					log_verbose(LOG_DEBUG, "standby check loop...\n");
 
 					if (node_info.type == WITNESS)
 					{
@@ -469,6 +467,7 @@ main(int argc, char **argv)
 					{
 						standby_monitor();
 					}
+
 					sleep(local_options.monitor_interval_secs);
 
 					if (got_SIGHUP)
@@ -1056,10 +1055,7 @@ standby_monitor(void)
 	 * Execute the query asynchronously, but don't check for a result. We will
 	 * check the result next time we pause for a monitor step.
 	 */
-	if (verbose)
-	{
-		log_debug("standby_monitor:() %s\n", sqlquery);
-	}
+	log_verbose(LOG_DEBUG, "standby_monitor:() %s\n", sqlquery);
 
 	if (PQsendQuery(master_conn, sqlquery) == 0)
 		log_warning(_("query could not be sent to master. %s\n"),
@@ -1464,8 +1460,7 @@ do_master_failover(void)
 		/* wait */
 		sleep(5);
 
-		if (verbose)
-			log_info(_("this node is the best candidate to be the new master, promoting...\n"));
+		log_notice(_("this node is the best candidate to be the new master, promoting...\n"));
 
 		log_debug(_("promote command is: \"%s\"\n"),
 				  local_options.promote_command);

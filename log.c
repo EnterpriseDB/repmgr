@@ -44,6 +44,8 @@ static int	detect_log_facility(const char *facility);
 int			log_type = REPMGR_STDERR;
 int			log_level = LOG_NOTICE;
 int			last_log_level = LOG_NOTICE;
+int			verbose_logging = false;
+int			terse_logging = false;
 
 void
 stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
@@ -79,11 +81,55 @@ log_hint(const char *fmt, ...)
 {
 	va_list		ap;
 
-	va_start(ap, fmt);
-	stderr_log_with_level("HINT", last_log_level, fmt, ap);
-	va_end(ap);
+	if (terse_logging == false)
+	{
+		va_start(ap, fmt);
+		stderr_log_with_level("HINT", last_log_level, fmt, ap);
+		va_end(ap);
+	}
 }
 
+
+void
+log_verbose(int level, const char *fmt, ...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+
+	if (verbose_logging == true)
+	{
+		switch(level)
+		{
+			case LOG_EMERG:
+				log_emerg(fmt, ap);
+				break;
+			case LOG_ALERT:
+				log_alert(fmt, ap);
+				break;
+			case LOG_CRIT:
+				log_crit(fmt, ap);
+				break;
+			case LOG_ERR:
+				log_err(fmt, ap);
+				break;
+			case LOG_WARNING:
+				log_warning(fmt, ap);
+				break;
+			case LOG_NOTICE:
+				log_notice(fmt, ap);
+				break;
+			case LOG_INFO:
+				log_info(fmt, ap);
+				break;
+			case LOG_DEBUG:
+				log_debug(fmt, ap);
+				break;
+		}
+	}
+
+	va_end(ap);
+}
 
 bool
 logger_init(t_configuration_options * opts, const char *ident, const char *level, const char *facility)
@@ -205,15 +251,23 @@ logger_shutdown(void)
 }
 
 /*
- * Set a minimum logging level.  Intended for command line verbosity
- * options, which might increase requested logging over what's specified
- * in the regular configuration file.
+ * Indicated whether extra-verbose logging is required. This will
+ * generate a lot of output, particularly debug logging, and should
+ * not be permanently enabled in production.
+ *
+ * NOTE: in previous repmgr versions, this option forced the log
+ * level to INFO.
  */
 void
-logger_min_verbose(int minimum)
+logger_set_verbose(void)
 {
-	if (log_level < minimum)
-		log_level = minimum;
+	verbose_logging = true;
+}
+
+
+void logger_set_terse(void)
+{
+	terse_logging = true;
 }
 
 int

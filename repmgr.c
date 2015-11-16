@@ -451,7 +451,7 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * If no primary port (-p, --port) provided, explicitly set the
+	 * If no primary port (-p/--port) provided, explicitly set the
 	 * default PostgreSQL port.
 	 */
 	if (!runtime_options.masterport[0])
@@ -460,6 +460,13 @@ main(int argc, char **argv)
 	}
 
 
+	/*
+	 * The logger is not yet set up as some configuration can be included
+	 * in the configuration file; however if verbosity requested, we'll
+	 * display the name of the configuration file we're attempting to open
+	 * for the user's convenience as we might be opening the default
+	 * ./repmgr.conf.
+	 */
 	if (runtime_options.verbose && runtime_options.config_file[0])
 	{
 		log_notice(_("opening configuration file: %s\n"),
@@ -521,7 +528,8 @@ main(int argc, char **argv)
 
 	logger_init(&options, progname(), options.loglevel, options.logfacility);
 	if (runtime_options.verbose)
-		logger_min_verbose(LOG_INFO);
+		logger_set_verbose();
+
 
 	/*
 	 * Node configuration information is not needed for all actions, with
@@ -2531,7 +2539,11 @@ help(void)
 	printf(_("General options:\n"));
 	printf(_("  -?, --help                          show this help, then exit\n"));
 	printf(_("  -V, --version                       output version information, then exit\n"));
-	printf(_("  -v, --verbose                       output verbose activity information\n"));
+	printf(_("\n"));
+	printf(_("Logging options:\n"));
+	printf(_("  -L, --log-level                     set log level (overrides configuration file)\n"));
+	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
+	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("\n"));
 	printf(_("Connection options:\n"));
 	printf(_("  -d, --dbname=DBNAME                 database to connect to\n"));
@@ -2547,7 +2559,6 @@ help(void)
 	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
-	printf(_("  -L, --log-level                     set log level (overrides configuration file)\n"));
 	printf(_("\n"));
 	printf(_("Command-specific configuration options:\n"));
 	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
