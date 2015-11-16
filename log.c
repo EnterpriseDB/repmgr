@@ -40,6 +40,7 @@
 /* #define REPMGR_DEBUG */
 
 static int	detect_log_facility(const char *facility);
+static void _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_list ap);
 
 int			log_type = REPMGR_STDERR;
 int			log_level = LOG_NOTICE;
@@ -50,10 +51,19 @@ int			terse_logging = false;
 void
 stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
 {
+	va_list		arglist;
+
+	va_start(arglist, fmt);
+	_stderr_log_with_level(level_name, level, fmt, arglist);
+	va_end(arglist);
+}
+
+static void
+_stderr_log_with_level(const char *level_name, int level, const char *fmt, va_list ap)
+{
 	time_t		t;
 	struct tm  *tm;
 	char		buff[100];
-	va_list		ap;
 
 	/*
 	 * Store the requested level so that if there's a subsequent
@@ -68,9 +78,7 @@ stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
 		strftime(buff, 100, "[%Y-%m-%d %H:%M:%S]", tm);
 		fprintf(stderr, "%s [%s] ", buff, level_name);
 
-		va_start(ap, fmt);
 		vfprintf(stderr, fmt, ap);
-		va_end(ap);
 
 		fflush(stderr);
 	}
@@ -84,7 +92,7 @@ log_hint(const char *fmt, ...)
 	if (terse_logging == false)
 	{
 		va_start(ap, fmt);
-		stderr_log_with_level("HINT", last_log_level, fmt, ap);
+		_stderr_log_with_level("HINT", last_log_level, fmt, ap);
 		va_end(ap);
 	}
 }
@@ -102,34 +110,35 @@ log_verbose(int level, const char *fmt, ...)
 		switch(level)
 		{
 			case LOG_EMERG:
-				log_emerg(fmt, ap);
+				_stderr_log_with_level("EMERG", level, fmt, ap);
 				break;
 			case LOG_ALERT:
-				log_alert(fmt, ap);
+				_stderr_log_with_level("ALERT", level, fmt, ap);
 				break;
 			case LOG_CRIT:
-				log_crit(fmt, ap);
+				_stderr_log_with_level("CRIT", level, fmt, ap);
 				break;
 			case LOG_ERR:
-				log_err(fmt, ap);
+				_stderr_log_with_level("ERR", level, fmt, ap);
 				break;
 			case LOG_WARNING:
-				log_warning(fmt, ap);
+				_stderr_log_with_level("WARNING", level, fmt, ap);
 				break;
 			case LOG_NOTICE:
-				log_notice(fmt, ap);
+				_stderr_log_with_level("NOTICE", level, fmt, ap);
 				break;
 			case LOG_INFO:
-				log_info(fmt, ap);
+				_stderr_log_with_level("INFO", level, fmt, ap);
 				break;
 			case LOG_DEBUG:
-				log_debug(fmt, ap);
+				_stderr_log_with_level("DEBUG", level, fmt, ap);
 				break;
 		}
 	}
 
 	va_end(ap);
 }
+
 
 bool
 logger_init(t_configuration_options * opts, const char *ident, const char *level, const char *facility)
