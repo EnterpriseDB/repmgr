@@ -121,8 +121,11 @@ bool		logger_init(t_configuration_options * opts, const char *ident,
 
 bool		logger_shutdown(void);
 
-void		logger_min_verbose(int minimum);
+void		logger_set_verbose(void);
+void		logger_set_terse(void);
+
 void		log_hint(const char *fmt, ...);
+void		log_verbose(int level, const char *fmt, ...);
 
 extern int	log_type;
 extern int	log_level;
