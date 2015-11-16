@@ -87,6 +87,8 @@ begin_transaction(PGconn *conn)
 {
 	PGresult   *res;
 
+	log_verbose(LOG_DEBUG, "begin_transaction()");
+
 	res = PQexec(conn, "BEGIN");
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -109,6 +111,8 @@ commit_transaction(PGconn *conn)
 {
 	PGresult   *res;
 
+	log_verbose(LOG_DEBUG, "commit_transaction()");
+
 	res = PQexec(conn, "COMMIT");
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -130,6 +134,8 @@ bool
 rollback_transaction(PGconn *conn)
 {
 	PGresult   *res;
+
+	log_verbose(LOG_DEBUG, "rollback_transaction()");
 
 	res = PQexec(conn, "ROLLBACK");
 
@@ -158,7 +164,8 @@ check_cluster_schema(PGconn *conn)
 					  "SELECT 1 FROM pg_namespace WHERE nspname = '%s'",
 					  get_repmgr_schema());
 
-	log_debug(_("check_cluster_schema(): %s\n"), sqlquery);
+	log_verbose(LOG_DEBUG, "check_cluster_schema(): %s\n", sqlquery);
+
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -188,17 +195,22 @@ is_standby(PGconn *conn)
 {
 	PGresult   *res;
 	int			result = 0;
+	char	   *sqlquery = "SELECT pg_catalog.pg_is_in_recovery()";
 
-	res = PQexec(conn, "SELECT pg_catalog.pg_is_in_recovery()");
+	log_verbose(LOG_DEBUG, "is_standby(): %s\n", sqlquery);
+
+	res = PQexec(conn, sqlquery);
 
 	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("Can't query server mode: %s"),
+		log_err(_("Unable to query server mode: %s\n"),
 				PQerrorMessage(conn));
 		result = -1;
 	}
 	else if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
+	{
 		result = 1;
+	}
 
 	PQclear(res);
 	return result;
@@ -285,6 +297,8 @@ get_master_node_id(PGconn *conn, char *cluster)
 					  get_repmgr_schema_quoted(conn),
 					  cluster);
 
+	log_verbose(LOG_DEBUG, "get_master_node_id():\n%s\n", sqlquery);
+
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -341,14 +355,17 @@ guc_set(PGconn *conn, const char *parameter, const char *op,
 	char		sqlquery[QUERY_STR_LEN];
 	int			retval = 1;
 
-	sqlquery_snprintf(sqlquery, "SELECT true FROM pg_settings "
+	sqlquery_snprintf(sqlquery,
+					  "SELECT true FROM pg_settings "
 					  " WHERE name = '%s' AND setting %s '%s'",
 					  parameter, op, value);
+
+	log_verbose(LOG_DEBUG, "guc_set():\n%s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("GUC setting check PQexec failed: %s"),
+		log_err(_("guc_set(): unable to execute query\n%s\n"),
 				PQerrorMessage(conn));
 		retval = -1;
 	}
@@ -379,10 +396,12 @@ guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 					  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
 					  parameter, datatype, op, value, datatype);
 
+	log_verbose(LOG_DEBUG, "guc_set_typed():n%s\n", sqlquery);
+
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("GUC setting check PQexec failed: %s"),
+		log_err(_("guc_set_typed(): unable to execute query\n%s\n"),
 				PQerrorMessage(conn));
 		retval = -1;
 	}
@@ -403,15 +422,16 @@ get_cluster_size(PGconn *conn, char *size)
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	sqlquery_snprintf(
-					  sqlquery,
-				 "SELECT pg_catalog.pg_size_pretty(SUM(pg_catalog.pg_database_size(oid))::bigint) "
+	sqlquery_snprintf(sqlquery,
+					  "SELECT pg_catalog.pg_size_pretty(SUM(pg_catalog.pg_database_size(oid))::bigint) "
 					  "	 FROM pg_database ");
+
+	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("get_cluster_size(): PQexec failed: %s"),
+		log_err(_("get_cluster_size(): unable to execute query\n%s\n"),
 				PQerrorMessage(conn));
 
 		PQclear(res);
@@ -439,7 +459,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 					  " FROM pg_settings WHERE name = '%s'",
 					  setting);
 
-	log_debug(_("get_pg_setting(): %s\n"), sqlquery);
+	log_verbose(LOG_DEBUG, "get_pg_setting(): %s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 
@@ -461,13 +481,14 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 		}
 		else
 		{
-			log_err(_("unknown parameter: %s"), PQgetvalue(res, i, 0));
+			/* XXX highly unlikely this would ever happen */
+			log_err(_("get_pg_setting(): unknown parameter \"%s\""), PQgetvalue(res, i, 0));
 		}
 	}
 
 	if (success == true)
 	{
-		log_debug(_("get_pg_setting(): returned value is '%s'\n"), output);
+		log_debug(_("get_pg_setting(): returned value is \"%s\"\n"), output);
 	}
 
 	PQclear(res);
@@ -512,13 +533,13 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 					  cluster,
 					  node_id);
 
-	log_debug("get_upstream_connection(): %s\n", sqlquery);
+	log_verbose(LOG_DEBUG, "get_upstream_connection():\n%s\n", sqlquery);
 
 	res = PQexec(standby_conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("unable to get conninfo for upstream server: %s\n"),
+		log_err(_("unable to get conninfo for upstream server\n%s\n"),
 				PQerrorMessage(standby_conn));
 		PQclear(res);
 		return NULL;
@@ -538,7 +559,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 	PQclear(res);
 
-	log_debug("conninfo is: '%s'\n", upstream_conninfo);
+	log_verbose(LOG_DEBUG, "get_upstream_connection(): conninfo is \"%s\"\n", upstream_conninfo);
 	upstream_conn = establish_db_connection(upstream_conninfo, false);
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
@@ -592,6 +613,8 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 					  get_repmgr_schema_quoted(standby_conn),
 					  cluster);
 
+	log_verbose(LOG_DEBUG, "get_master_connection():\n%s\n", sqlquery);
+
 	res1 = PQexec(standby_conn, sqlquery);
 	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
 	{
@@ -606,8 +629,9 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 		/* initialize with the values of the current node being processed */
 		node_id = atoi(PQgetvalue(res1, i, 0));
 		strncpy(master_conninfo, PQgetvalue(res1, i, 1), MAXCONNINFO);
-		log_info(_("checking role of cluster node '%i'\n"),
-				 node_id);
+		log_verbose(LOG_INFO,
+					_("checking role of cluster node '%i'\n"),
+					node_id);
 		master_conn = establish_db_connection(master_conninfo, false);
 
 		if (PQstatus(master_conn) != CONNECTION_OK)
@@ -687,7 +711,7 @@ wait_connection_availability(PGconn *conn, long long timeout)
 	{
 		if (PQconsumeInput(conn) == 0)
 		{
-			log_warning(_("wait_connection_availability: could not receive data from connection. %s\n"),
+			log_warning(_("wait_connection_availability(): could not receive data from connection. %s\n"),
 						PQerrorMessage(conn));
 			return 0;
 		}
@@ -714,7 +738,7 @@ wait_connection_availability(PGconn *conn, long long timeout)
 		if (select(sock, &read_set, NULL, NULL, &tmout) == -1)
 		{
 			log_warning(
-						_("wait_connection_availability: select() returned with error: %s"),
+						_("wait_connection_availability(): select() returned with error\n%s\n"),
 						strerror(errno));
 			return -1;
 		}
@@ -730,7 +754,7 @@ wait_connection_availability(PGconn *conn, long long timeout)
 		return 1;
 	}
 
-	log_warning(_("wait_connection_availability: timeout reached"));
+	log_warning(_("wait_connection_availability(): timeout reached"));
 	return -1;
 }
 
@@ -812,6 +836,8 @@ create_replication_slot(PGconn *conn, char *slot_name)
 					  " WHERE slot_name = '%s' ",
 					  slot_name);
 
+	log_verbose(LOG_DEBUG, "create_replication_slot():\n%s\n", sqlquery);
+
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -832,8 +858,8 @@ create_replication_slot(PGconn *conn, char *slot_name)
 		if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
 		{
 			PQclear(res);
-			log_debug(_("Replication slot '%s' exists but is inactive; reusing\n"),
-						slot_name);
+			log_debug("Replication slot '%s' exists but is inactive; reusing\n",
+					  slot_name);
 
 			return true;
 		}
@@ -848,6 +874,7 @@ create_replication_slot(PGconn *conn, char *slot_name)
 					  slot_name);
 
 	log_debug(_("create_replication_slot(): Creating slot '%s' on primary\n"), slot_name);
+	log_verbose(LOG_DEBUG, "create_replication_slot():\n%s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -875,7 +902,7 @@ start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint)
 					  time(NULL),
 					  fast_checkpoint ? "TRUE" : "FALSE");
 
-	log_debug(_("standby clone: %s\n"), sqlquery);
+	log_verbose(LOG_DEBUG, "start_backup():\n%s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -942,6 +969,8 @@ set_config_bool(PGconn *conn, const char *config_param, bool state)
 					  config_param,
 					  state ? "TRUE" : "FALSE");
 
+	log_verbose(LOG_DEBUG, "set_config_bool():\n%s\n", sqlquery);
+
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -973,11 +1002,13 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 	int			i;
 
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", get_repmgr_schema_quoted(witnessconn));
-	log_debug("copy_configuration: %s\n", sqlquery);
+
+	log_verbose(LOG_DEBUG, "copy_configuration():\n%s\n", sqlquery);
+
 	res = PQexec(witnessconn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		fprintf(stderr, "Cannot clean node details in the witness, %s\n",
+		log_err(_("Unable to truncate witness servers's repl_nodes table:\n%s\n"),
 				PQerrorMessage(witnessconn));
 		return false;
 	}
@@ -985,10 +1016,13 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 	sqlquery_snprintf(sqlquery,
 					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name FROM %s.repl_nodes",
 					  get_repmgr_schema_quoted(masterconn));
+
+	log_verbose(LOG_DEBUG, "copy_configuration():\n%s\n", sqlquery);
+
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Can't get configuration from master: %s\n",
+		log_err("Unable to retrieve node records from master:\n%s\n",
 				PQerrorMessage(masterconn));
 		PQclear(res);
 		return false;
@@ -997,9 +1031,11 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		bool node_record_created;
-		char *witness = PQgetvalue(res, i, 4);
 
-		log_debug(_("copy_configuration(): %s\n"), witness);
+		log_verbose(LOG_DEBUG,
+					"copy_configuration(): writing node record for node %s (id: %s)\n",
+					PQgetvalue(res, i, 4),
+					PQgetvalue(res, i, 0));
 
 		node_record_created = create_node_record(witnessconn,
 												 "copy_configuration",
@@ -1019,7 +1055,9 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 
 		if (node_record_created == false)
 		{
-			fprintf(stderr, "Unable to copy node record to witness database: %s\n",
+			PQclear(res);
+
+			log_err("Unable to copy node record to witness database\n%s\n",
 					PQerrorMessage(witnessconn));
 			return false;
 		}
@@ -1091,16 +1129,18 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 					  slot_name_buf,
 					  priority);
 
+	log_verbose(LOG_DEBUG, "create_node_record(): %s\n", sqlquery);
+
 	if (action != NULL)
 	{
-		log_debug(_("%s: %s\n"), action, sqlquery);
+		log_verbose(LOG_DEBUG, "create_node_record(): action is \"%s\"\n", action);
 	}
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_warning(_("Unable to create node record: %s\n"),
-					PQerrorMessage(conn));
+		log_err(_("Unable to create node record\n%s\n"),
+				PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
@@ -1122,15 +1162,18 @@ delete_node_record(PGconn *conn, int node, char *action)
 					  " WHERE id = %d",
 					  get_repmgr_schema_quoted(conn),
 					  node);
+
+	log_verbose(LOG_DEBUG, "delete_node_record(): %s\n", sqlquery);
+
 	if (action != NULL)
 	{
-		log_debug(_("%s: %s\n"), action, sqlquery);
+		log_verbose(LOG_DEBUG, "create_node_record(): action is \"%s\"\n", action);
 	}
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_warning(_("Unable to delete node record: %s\n"),
+		log_err(_("Unable to delete node record: %s\n"),
 					PQerrorMessage(conn));
 		PQclear(res);
 		return false;
@@ -1202,6 +1245,8 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 						  "   RETURNING event_timestamp ",
 						  get_repmgr_schema_quoted(conn));
 
+		log_verbose(LOG_DEBUG, "create_event_record():\n%s\n", sqlquery);
+
 		res = PQexecParams(conn,
 						   sqlquery,
 						   4,
@@ -1213,7 +1258,6 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 
 		if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
-
 			log_warning(_("Unable to create event record: %s\n"),
 						PQerrorMessage(conn));
 
@@ -1224,7 +1268,7 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 		{
 			/* Store timestamp to send to the notification command */
 			strncpy(event_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
-			log_debug(_("Event timestamp is: %s\n"), event_timestamp);
+			log_verbose(LOG_DEBUG, "create_event_record(): Event timestamp is \"%s\"\n", event_timestamp);
 		}
 
 		PQclear(res);
@@ -1344,12 +1388,13 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 
 		*dst_ptr = '\0';
 
-		log_debug(_("Executing: %s\n"), parsed_command);
+		log_debug("create_event_record(): executing\n%s\n", parsed_command);
 
 		r = system(parsed_command);
 		if (r != 0)
 		{
 			log_warning(_("Unable to execute event notification command\n"));
+			log_info(_("Parsed event notification command was:\n%s\n"), parsed_command);
 			success = false;
 		}
 	}
@@ -1374,6 +1419,9 @@ update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_
 					  new_upstream_node_id,
 					  cluster_name,
 					  this_node_id);
+
+	log_verbose(LOG_DEBUG, "update_node_record_set_upstream():\n%s\n", sqlquery);
+
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -1405,7 +1453,7 @@ get_node_record(PGconn *conn, char *cluster, int node_id)
 			cluster,
 			node_id);
 
-	log_debug("get_node_record(): %s\n", sqlquery);
+	log_verbose(LOG_DEBUG, "get_node_record():\n%s\n", sqlquery);
 
 	return PQexec(conn, sqlquery);
 }
