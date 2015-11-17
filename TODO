@@ -58,12 +58,6 @@ Usability improvements
 
 * repmgrd: on failover, explicitly log which node is now being followed
 
-* repmgr: add explicit --log-level flag, repurpose --verbose flag to
-  show extra detailed/repetitive output only (see item below too)
-
-* debug output: show some repetitive output only if --verbose flag set to prevent
-  excessive log growth
-
 * repmgr: add interrupt handler, so that if the program is interrupted
   while running a backup, an attempt can be made to execute pg_stop_backup()
   on the primary, to prevent an orphaned backup state existing.
