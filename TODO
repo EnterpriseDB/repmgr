@@ -61,3 +61,7 @@ Usability improvements
 * repmgr: add interrupt handler, so that if the program is interrupted
   while running a backup, an attempt can be made to execute pg_stop_backup()
   on the primary, to prevent an orphaned backup state existing.
+
+* repmgr: when parsing command line arguments in check_parameters_for_action(),
+  don't error out on parameters which aren't relevant for the particular
+  action; instead collate into a list of warnings
