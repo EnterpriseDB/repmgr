@@ -574,23 +574,26 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 
 /*
- * get a connection to master by reading repl_nodes, creating a connection
- * to each node (one at a time) and finding if it is a master or a standby
+ * Read the node list from the local node and attempt to connect to each node
+ * in turn to definitely establish if it's the cluster primary.
  *
- * NB: If master_conninfo_out may be NULL.	If it is non-null, it is assumed to
- * point to allocated memory of MAXCONNINFO in length, and the master server
- * connection string is placed there.
+ * The node list is returned in the order which makes it likely that the
+ * current primary will be returned first, reducing the number of speculative
+ * connections which need to be made to other nodes.
+ *
+ * If master_conninfo_out points to allocated memory of MAXCONNINFO in length,
+ * the primary server's conninfo string will be copied there.
  */
 
 PGconn *
 get_master_connection(PGconn *standby_conn, char *cluster,
 					  int *master_id, char *master_conninfo_out)
 {
-	PGconn	   *master_conn = NULL;
-	PGresult   *res1;
+	PGconn	   *remote_conn = NULL;
+	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
-	char		master_conninfo_stack[MAXCONNINFO];
-	char	   *master_conninfo = &*master_conninfo_stack;
+	char		remote_conninfo_stack[MAXCONNINFO];
+	char	   *remote_conninfo = &*remote_conninfo_stack;
 
 	int			i,
 				node_id;
@@ -610,50 +613,51 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 					  "    FROM %s.repl_nodes "
 					  "   WHERE cluster = '%s' "
 					  "     AND type != 'witness' "
-					  "ORDER BY type_priority, priority, active, id",
+					  "ORDER BY active DESC, type_priority, priority, id",
 					  get_repmgr_schema_quoted(standby_conn),
 					  cluster);
 
 	log_verbose(LOG_DEBUG, "get_master_connection():\n%s\n", sqlquery);
 
-	res1 = PQexec(standby_conn, sqlquery);
-	if (PQresultStatus(res1) != PGRES_TUPLES_OK)
+	res = PQexec(standby_conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("unable to retrieve node records: %s\n"),
 				PQerrorMessage(standby_conn));
-		PQclear(res1);
+		PQclear(res);
 		return NULL;
 	}
 
-	for (i = 0; i < PQntuples(res1); i++)
+	for (i = 0; i < PQntuples(res); i++)
 	{
 		int is_node_standby;
 
 		/* initialize with the values of the current node being processed */
-		node_id = atoi(PQgetvalue(res1, i, 0));
-		strncpy(master_conninfo, PQgetvalue(res1, i, 1), MAXCONNINFO);
+		node_id = atoi(PQgetvalue(res, i, 0));
+		strncpy(remote_conninfo, PQgetvalue(res, i, 1), MAXCONNINFO);
 		log_verbose(LOG_INFO,
 					_("checking role of cluster node '%i'\n"),
 					node_id);
-		master_conn = establish_db_connection(master_conninfo, false);
+		remote_conn = establish_db_connection(remote_conninfo, false);
 
-		if (PQstatus(master_conn) != CONNECTION_OK)
+		if (PQstatus(remote_conn) != CONNECTION_OK)
 			continue;
 
-		is_node_standby = is_standby(master_conn);
+		is_node_standby = is_standby(remote_conn);
 
 		if (is_node_standby == -1)
 		{
-			log_err(_("unable to retrieve recovery state from this node: %s\n"),
-					PQerrorMessage(master_conn));
-			PQfinish(master_conn);
+			log_err(_("unable to retrieve recovery state from node %i:\n%s\n"),
+					node_id,
+					PQerrorMessage(remote_conn));
+			PQfinish(remote_conn);
 			continue;
 		}
 
 		/* if is_standby() returns 0, queried node is the master */
 		if (is_node_standby == 0)
 		{
-			PQclear(res1);
+			PQclear(res);
 			log_debug(_("get_master_connection(): current master node is %i\n"), node_id);
 
 			if (master_id != NULL)
@@ -661,12 +665,12 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 				*master_id = node_id;
 			}
 
-			return master_conn;
+			return remote_conn;
 		}
 
 
 		/* if it is a standby, clear connection info and continue*/
-		PQfinish(master_conn);
+		PQfinish(remote_conn);
 	}
 
 	/*
@@ -677,7 +681,7 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 	 * Probably we will need to check the error to know if we need to start
 	 * failover procedure or just fix some situation on the standby.
 	 */
-	PQclear(res1);
+	PQclear(res);
 	return NULL;
 }
 
