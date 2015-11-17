@@ -601,14 +601,16 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 	}
 
 	/* find all nodes belonging to this cluster */
-	log_info(_("finding node list for cluster '%s'\n"),
+	log_info(_("retrieving node list for cluster '%s'\n"),
 			 cluster);
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT id, conninfo "
-					  "  FROM %s.repl_nodes "
-					  " WHERE cluster = '%s' "
-					  "   AND type != 'witness' ",
+					  "  SELECT id, conninfo, "
+                      "         CASE WHEN type = 'master' THEN 1 ELSE 2 END AS type_priority"
+					  "    FROM %s.repl_nodes "
+					  "   WHERE cluster = '%s' "
+					  "     AND type != 'witness' "
+					  "ORDER BY type_priority, priority, active, id",
 					  get_repmgr_schema_quoted(standby_conn),
 					  cluster);
 
