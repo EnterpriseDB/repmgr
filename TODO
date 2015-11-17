@@ -65,3 +65,6 @@ Usability improvements
 * repmgr: when parsing command line arguments in check_parameters_for_action(),
   don't error out on parameters which aren't relevant for the particular
   action; instead collate into a list of warnings
+
+* repmgr: when unregistering a node, delete any entries in the repl_monitoring
+  table.
