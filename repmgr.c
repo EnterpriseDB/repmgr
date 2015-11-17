@@ -521,7 +521,7 @@ main(int argc, char **argv)
 	 */
 
 	/* Command-line parameter -L/--log-level overrides any setting in config file*/
-	if(*runtime_options.loglevel != '\0')
+	if (*runtime_options.loglevel != '\0')
 	{
 		strncpy(options.loglevel, runtime_options.loglevel, MAXLEN);
 	}
