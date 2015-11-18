@@ -1550,27 +1550,9 @@ do_master_failover(void)
 		/* and reconnect to the local database */
 		my_local_conn = establish_db_connection(local_options.conninfo, true);
 
-		/* update node information to reflect new status */
-		if (update_node_record_set_upstream(new_master_conn, local_options.cluster_name, node_info.node_id, best_candidate.node_id) == false)
-		{
-			appendPQExpBuffer(&event_details,
-							  _("Unable to update node record for node %i (following new upstream node %i)"),
-							  node_info.node_id,
-							  best_candidate.node_id);
-
-			log_err("%s\n", event_details.data);
-
-			create_event_record(new_master_conn,
-								&local_options,
-								node_info.node_id,
-								"repmgrd_failover_follow",
-								false,
-								event_details.data);
-
-			terminate(ERR_BAD_CONFIG);
-		}
-
 		/* update internal record for this node*/
+		new_master_conn = establish_db_connection(best_candidate.conninfo_str, true);
+
 		node_info = get_node_info(new_master_conn, local_options.cluster_name, local_options.node);
 		appendPQExpBuffer(&event_details,
 						  _("Node %i now following new upstream node %i"),
