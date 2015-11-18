@@ -1521,35 +1521,6 @@ do_master_failover(void)
 			fflush(stderr);
 		}
 
-		/*
-		 * If 9.4 or later, and replication slots in use, we'll need to create a
-		 * slot on the new master
-		 */
-		new_master_conn = establish_db_connection(best_candidate.conninfo_str, true);
-
-		if (local_options.use_replication_slots)
-		{
-			if (create_replication_slot(new_master_conn, node_info.slot_name) == false)
-			{
-
-				appendPQExpBuffer(&event_details,
-								  _("Unable to create slot '%s' on the master node: %s"),
-								  node_info.slot_name,
-								  PQerrorMessage(new_master_conn));
-
-				log_err("%s\n", event_details.data);
-
-				create_event_record(new_master_conn,
-									&local_options,
-									node_info.node_id,
-									"repmgrd_failover_follow",
-									false,
-									event_details.data);
-
-				PQfinish(new_master_conn);
-				terminate(ERR_DB_QUERY);
-			}
-		}
 
 		log_debug(_("executing follow command: \"%s\"\n"), local_options.follow_command);
 

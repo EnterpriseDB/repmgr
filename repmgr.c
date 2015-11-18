@@ -582,6 +582,7 @@ main(int argc, char **argv)
 	{
 		maxlen_snprintf(repmgr_slot_name, "repmgr_slot_%i", options.node);
 		repmgr_slot_name_ptr = repmgr_slot_name;
+		log_verbose(LOG_DEBUG, "slot name initialised as: %s\n", repmgr_slot_name);
 	}
 
 
@@ -2030,6 +2031,39 @@ do_standby_follow(void)
 	strncpy(runtime_options.host, PQhost(master_conn), MAXLEN);
 	strncpy(runtime_options.masterport, PQport(master_conn), MAXLEN);
 	strncpy(runtime_options.username, PQuser(master_conn), MAXLEN);
+
+	/*
+	 * If 9.4 or later, and replication slots in use, we'll need to create a
+	 * slot on the new master
+	 */
+
+	if (options.use_replication_slots)
+	{
+		if (create_replication_slot(master_conn, repmgr_slot_name) == false)
+		{
+			PQExpBufferData event_details;
+			initPQExpBuffer(&event_details);
+
+			appendPQExpBuffer(&event_details,
+							  _("Unable to create slot '%s' on the master node: %s"),
+							  repmgr_slot_name,
+							  PQerrorMessage(master_conn));
+
+			log_err("%s\n", event_details.data);
+
+			create_event_record(master_conn,
+								&options,
+								options.node,
+								"repmgr_follow",
+								false,
+								event_details.data);
+
+			PQfinish(conn);
+			PQfinish(master_conn);
+			exit(ERR_DB_QUERY);
+		}
+	}
+
 
 	log_info(_("changing standby's master\n"));
 
