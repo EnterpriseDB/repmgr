@@ -3650,7 +3650,7 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	log_debug(_("Setting %i as master and marking existing master as failed\n"), this_node_id);
+	log_debug(_("setting node %i as master and marking existing master as failed\n"), this_node_id);
 
 	begin_transaction(conn);
 

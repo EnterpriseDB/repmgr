@@ -87,7 +87,7 @@ begin_transaction(PGconn *conn)
 {
 	PGresult   *res;
 
-	log_verbose(LOG_DEBUG, "begin_transaction()");
+	log_verbose(LOG_DEBUG, "begin_transaction()\n");
 
 	res = PQexec(conn, "BEGIN");
 
@@ -111,7 +111,7 @@ commit_transaction(PGconn *conn)
 {
 	PGresult   *res;
 
-	log_verbose(LOG_DEBUG, "commit_transaction()");
+	log_verbose(LOG_DEBUG, "commit_transaction()\n");
 
 	res = PQexec(conn, "COMMIT");
 
@@ -135,7 +135,7 @@ rollback_transaction(PGconn *conn)
 {
 	PGresult   *res;
 
-	log_verbose(LOG_DEBUG, "rollback_transaction()");
+	log_verbose(LOG_DEBUG, "rollback_transaction()\n");
 
 	res = PQexec(conn, "ROLLBACK");
 
