@@ -248,8 +248,8 @@ logger_init(t_configuration_options * opts, const char *ident)
 	}
 
 	return true;
-
 }
+
 
 bool
 logger_shutdown(void)

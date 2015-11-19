@@ -68,7 +68,7 @@ t_configuration_options master_options;
 
 PGconn	   *master_conn = NULL;
 
-char	   *config_file = DEFAULT_CONFIG_FILE;
+char	   *config_file = "";
 bool		verbose = false;
 bool		monitoring_history = false;
 t_node_info node_info;
@@ -199,7 +199,7 @@ main(int argc, char **argv)
 	 * which case we'll need to refactor parse_config() not to abort,
 	 * and return the error message.
 	 */
-	load_config(config_file, &local_options, argv[0]);
+	load_config(config_file, verbose, &local_options, argv[0]);
 
 	if (daemonize)
 	{

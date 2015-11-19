@@ -24,6 +24,7 @@
 
 #include "strutil.h"
 
+#define CONFIG_FILE_NAME	"repmgr.conf"
 
 typedef struct EventNotificationListCell
 {
@@ -97,7 +98,7 @@ typedef struct ErrorList
 void set_progname(const char *argv0);
 const char * progname(void);
 
-bool		load_config(const char *config_file, t_configuration_options *options, char *argv0);
+bool		load_config(const char *config_file, bool verbose, t_configuration_options *options, char *argv0);
 bool		reload_config(t_configuration_options *orig_options);
 bool		parse_config(t_configuration_options *options);
 void		parse_line(char *buff, char *name, char *value);

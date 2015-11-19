@@ -30,8 +30,7 @@ Planned feature improvements
 * If no configuration file supplied, search in sensible default locations
   (currently: current directory and `pg_config --sysconfdir`); if
   possible this should include the location provided by the package,
-  if installed. Also check /etc/repmgr.conf as a likely standard
-  location.
+  if installed.
 
 * repmgrd: if connection to the upstream node fails on startup, optionally
   retry for a certain period before giving up; this will cover cases when
