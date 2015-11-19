@@ -102,6 +102,7 @@ static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
 
 static void exit_with_errors(void);
+static void print_error_list(ErrorList *error_list, int log_level);
 static void help(void);
 
 /* Global variables */
@@ -125,8 +126,9 @@ static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
 
-/* Collate command line errors here for friendlier reporting */
+/* Collate command line errors and warnings here for friendlier reporting */
 ErrorList	cli_errors = { NULL, NULL };
+ErrorList	cli_warnings = { NULL, NULL };
 
 
 int
@@ -438,6 +440,11 @@ main(int argc, char **argv)
 	if (cli_errors.head != NULL)
 	{
 		exit_with_errors();
+	}
+
+	if (cli_warnings.head != NULL)
+	{
+		print_error_list(&cli_warnings, LOG_WARNING);
 	}
 
 	if (!runtime_options.dbname[0])
@@ -2931,11 +2938,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(&cli_errors, _("master connection parameters not required when executing MASTER REGISTER"));
+				error_list_append(&cli_warnings, _("master connection parameters not required when executing MASTER REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_errors, _("destination directory not required when executing MASTER REGISTER"));
+				error_list_append(&cli_warnings, _("destination directory not required when executing MASTER REGISTER"));
 			}
 			break;
 		case STANDBY_REGISTER:
@@ -2948,11 +2955,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(&cli_errors, _("master connection parameters not required when executing STANDBY REGISTER"));
+				error_list_append(&cli_warnings _("master connection parameters not required when executing STANDBY REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_errors, _("destination directory not required when executing STANDBY REGISTER"));
+				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY REGISTER"));
 			}
 			break;
 		case STANDBY_UNREGISTER:
@@ -2965,11 +2972,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(&cli_errors, _("master connection parameters not required when executing STANDBY UNREGISTER"));
+				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY UNREGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_errors, _("destination directory not required when executing STANDBY UNREGISTER"));
+				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY UNREGISTER"));
 			}
 			break;
 		case STANDBY_PROMOTE:
@@ -2983,11 +2990,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(&cli_errors, _("master connection parameters not required when executing STANDBY PROMOTE"));
+				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY PROMOTE"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_errors, _("destination directory not required when executing STANDBY PROMOTE"));
+				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY PROMOTE"));
 			}
 			break;
 		case STANDBY_FOLLOW:
@@ -3001,11 +3008,11 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(&cli_errors, _("master connection parameters not required when executing STANDBY FOLLOW"));
+				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY FOLLOW"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_errors, _("destination directory not required when executing STANDBY FOLLOW"));
+				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY FOLLOW"));
 			}
 			break;
 		case STANDBY_CLONE:
@@ -3044,26 +3051,32 @@ check_parameters_for_action(const int action)
 			break;
 	}
 
+	/* Warn about parameters which apply to STANDBY CLONE only */
 	if (action != STANDBY_CLONE)
 	{
-		if (runtime_options.rsync_only)
-		{
-			error_list_append(&cli_errors, _("--rsync-only can only be used when executing STANDBY CLONE"));
-		}
-
 		if (runtime_options.fast_checkpoint)
 		{
-			error_list_append(&cli_errors, _("--fast-checkpoint can only be used when executing STANDBY CLONE"));
+			error_list_append(&cli_warnings, _("-c/--fast-checkpoint can only be used when executing STANDBY CLONE"));
 		}
 
 		if (runtime_options.ignore_external_config_files)
 		{
-			error_list_append(&cli_errors, _("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
+			error_list_append(&cli_warnings, _("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
 		}
 
 		if (*runtime_options.recovery_min_apply_delay)
 		{
-			error_list_append(&cli_errors, _("--recovery-min-apply-delay can only be used when executing STANDBY CLONE"));
+			error_list_append(&cli_warnings, _("--recovery-min-apply-delay can only be used when executing STANDBY CLONE"));
+		}
+
+		if (runtime_options.rsync_only)
+		{
+			error_list_append(&cli_warnings, _("-r/--rsync-only can only be used when executing STANDBY CLONE"));
+		}
+
+		if (runtime_options.wal_keep_segments)
+		{
+			error_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
 		}
 	}
 
@@ -3788,17 +3801,33 @@ make_pg_path(char *file)
 static void
 exit_with_errors(void)
 {
-	ErrorListCell *cell;
-
 	fprintf(stderr, _("%s: following command line errors were encountered.\n"), progname());
 
-	for (cell = cli_errors.head; cell; cell = cell->next)
-	{
-		fprintf(stderr, "%s\n", cell->error_message);
-	}
+	print_error_list(&cli_errors, LOG_ERR);
 
 	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
 
 	exit(ERR_BAD_CONFIG);
 }
 
+
+static void
+print_error_list(ErrorList *error_list, int log_level)
+{
+	ErrorListCell *cell;
+
+	for (cell = error_list->head; cell; cell = cell->next)
+	{
+		switch(log_level)
+		{
+			/* Currently we only need errors and warnings */
+			case LOG_ERR:
+				log_err("%s\n",  cell->error_message);
+				break;
+			case LOG_WARNING:
+				log_warning("%s\n",  cell->error_message);
+				break;
+		}
+
+	}
+}
