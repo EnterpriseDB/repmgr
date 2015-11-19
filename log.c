@@ -260,7 +260,7 @@ logger_shutdown(void)
 }
 
 /*
- * Indicated whether extra-verbose logging is required. This will
+ * Indicate whether extra-verbose logging is required. This will
  * generate a lot of output, particularly debug logging, and should
  * not be permanently enabled in production.
  *
@@ -274,10 +274,17 @@ logger_set_verbose(void)
 }
 
 
+/*
+ * Indicate whether some non-critical log messages can be omitted.
+ * Currently this includes warnings about irrelevant command line
+ * options and hints.
+ */
+
 void logger_set_terse(void)
 {
 	terse_logging = true;
 }
+
 
 int
 detect_log_level(const char *level)
