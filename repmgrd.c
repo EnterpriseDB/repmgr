@@ -229,8 +229,7 @@ main(int argc, char **argv)
 				strerror(errno));
 	}
 
-	logger_init(&local_options, progname(), local_options.loglevel,
-				local_options.logfacility);
+	logger_init(&local_options, progname());
 	if (verbose)
 		logger_set_verbose();
 

@@ -141,8 +141,11 @@ log_verbose(int level, const char *fmt, ...)
 
 
 bool
-logger_init(t_configuration_options * opts, const char *ident, const char *level, const char *facility)
+logger_init(t_configuration_options * opts, const char *ident)
 {
+	char	   *level = opts->loglevel;
+	char	   *facility = opts->logfacility;
+
 	int			l;
 	int			f;
 
