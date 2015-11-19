@@ -56,8 +56,6 @@ Planned feature improvements
 Usability improvements
 ======================
 
-* repmgrd: on failover, explicitly log which node is now being followed
-
 * repmgr: add interrupt handler, so that if the program is interrupted
   while running a backup, an attempt can be made to execute pg_stop_backup()
   on the primary, to prevent an orphaned backup state existing.
