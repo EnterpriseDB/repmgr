@@ -36,7 +36,6 @@
 #define MAXFILENAME		1024
 #define ERRBUFF_SIZE	512
 
-#define DEFAULT_CONFIG_FILE		"./repmgr.conf"
 #define DEFAULT_WAL_KEEP_SEGMENTS	"5000"
 #define DEFAULT_DEST_DIR		"."
 #define DEFAULT_MASTER_PORT		"5432"

@@ -469,26 +469,15 @@ main(int argc, char **argv)
 		strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
 	}
 
-
-	/*
-	 * The logger is not yet set up as some configuration can be included
-	 * in the configuration file; however if verbosity requested, we'll
-	 * display the name of the configuration file we're attempting to open
-	 * for the user's convenience as we might be opening the default
-	 * ./repmgr.conf.
-	 */
-	if (runtime_options.verbose && runtime_options.config_file[0])
-	{
-		log_notice(_("opening configuration file: %s\n"),
-				   runtime_options.config_file);
-	}
-
 	/*
 	 * The configuration file is not required for some actions (e.g. 'standby clone'),
 	 * however if available we'll parse it anyway for options like 'log_level',
 	 * 'use_replication_slots' etc.
 	 */
-	config_file_parsed = load_config(runtime_options.config_file, &options, argv[0]);
+	config_file_parsed = load_config(runtime_options.config_file,
+									 runtime_options.verbose,
+									 &options,
+									 argv[0]);
 
 	/*
 	 * Initialise pg_bindir - command line parameter will override
@@ -1363,7 +1352,7 @@ do_standby_clone(void)
 		strncpy(local_ident_file, master_ident_file, MAXFILENAME);
 
 		log_notice(_("setting data directory to: %s\n"), local_data_directory);
-		log_hint(_("use -D/--data-dir to explicitly specify a data directory"));
+		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
 	}
 
 	/*

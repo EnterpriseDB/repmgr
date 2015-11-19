@@ -31,6 +31,7 @@ static void exit_with_errors(ErrorList *config_errors);
 const static char *_progname = '\0';
 static char config_file_path[MAXPGPATH];
 static bool config_file_provided = false;
+static bool config_file_found = false;
 
 
 void
@@ -55,67 +56,129 @@ progname(void)
  *
  * Any configuration options changed in this function must also be changed in
  * reload_config()
+ *
+ * NOTE: this function is called before the logger is set up, so we need
+ * to handle the verbose option ourselves; also the default log level is NOTICE,
+ * so we can't use DEBUG.
  */
 bool
-load_config(const char *config_file, t_configuration_options *options, char *argv0)
+load_config(const char *config_file, bool verbose, t_configuration_options *options, char *argv0)
 {
-	struct stat config;
-
-	/* Sanity checks */
+	struct stat stat_config;
 
 	/*
 	 * If a configuration file was provided, check it exists, otherwise
-	 * emit an error and terminate
+	 * emit an error and terminate. We assume that if a user explicitly
+	 * provides a configuration file, they'll want to make sure it's
+	 * used and not fall back to any of the defaults.
 	 */
 	if (config_file[0])
 	{
 		strncpy(config_file_path, config_file, MAXPGPATH);
 		canonicalize_path(config_file_path);
 
-		if (stat(config_file_path, &config) != 0)
+		if (stat(config_file_path, &stat_config) != 0)
 		{
-			log_err(_("provided configuration file '%s' not found: %s\n"),
+			log_err(_("provided configuration file \"%s\" not found: %s\n"),
 					config_file,
 					strerror(errno)
 				);
 			exit(ERR_BAD_CONFIG);
 		}
 
+		if (verbose == true)
+		{
+			log_notice(_("using configuration file \"%s\"\n"), config_file);
+		}
+
 		config_file_provided = true;
+		config_file_found = true;
 	}
 
 	/*
 	 * If no configuration file was provided, attempt to find a default file
+	 * in this order:
+	 *  - current directory
+	 *  - /etc/repmgr.conf
+	 *  - default sysconfdir
+	 *
+	 * here we just check for the existence of the file; parse_config()
+	 * will handle read errors etc.
 	 */
 	if (config_file_provided == false)
 	{
 		char		my_exec_path[MAXPGPATH];
-		char		etc_path[MAXPGPATH];
+		char		sysconf_etc_path[MAXPGPATH];
 
-		/* First check if one is in the default sysconfdir */
+		/* 1. "./repmgr.conf" */
+		if (verbose == true)
+		{
+			log_notice(_("looking for configuration file in current directory\n"));
+		}
+
+		snprintf(config_file_path, MAXPGPATH, "./%s", CONFIG_FILE_NAME);
+		canonicalize_path(config_file_path);
+
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+		/* 2. "/etc/repmgr.conf" */
+		if (verbose == true)
+		{
+			log_notice(_("looking for configuration file in /etc\n"));
+		}
+
+		snprintf(config_file_path, MAXPGPATH, "/etc/%s", CONFIG_FILE_NAME);
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+		/* 3. default sysconfdir */
 		if (find_my_exec(argv0, my_exec_path) < 0)
 		{
 			fprintf(stderr, _("%s: could not find own program executable\n"), argv0);
 			exit(EXIT_FAILURE);
 		}
 
-		get_etc_path(my_exec_path, etc_path);
+		get_etc_path(my_exec_path, sysconf_etc_path);
 
-		snprintf(config_file_path, MAXPGPATH, "%s/repmgr.conf", etc_path);
-
-		log_debug(_("Looking for configuration file in %s\n"), etc_path);
-
-		if (stat(config_file_path, &config) != 0)
+		if (verbose == true)
 		{
-			/* Not found - default to ./repmgr.conf */
-			strncpy(config_file_path, DEFAULT_CONFIG_FILE, MAXPGPATH);
-			canonicalize_path(config_file_path);
-			log_debug(_("Looking for configuration file in %s\n"), config_file_path);
+			log_notice(_("looking for configuration file in %s"), sysconf_etc_path);
+		}
+
+		snprintf(config_file_path, MAXPGPATH, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);
+		if (stat(config_file_path, &stat_config) == 0)
+		{
+			config_file_found = true;
+			goto end_search;
+		}
+
+	end_search:
+		if (config_file_found == true)
+		{
+			if (verbose == true)
+			{
+				log_notice(_("configuration file found at: %s\n"), config_file_path);
+			}
+		}
+		else
+		{
+			if (verbose == true)
+			{
+				log_notice(_("no configuration file provided or found\n"));
+			}
 		}
 	}
 
 	return parse_config(options);
 }
+
 
 /*
  * Parse configuration file; if any errors are encountered,
@@ -129,7 +192,7 @@ parse_config(t_configuration_options *options)
 {
 	FILE	   *fp;
 	char	   *s,
-				buff[MAXLINELENGTH];
+				buf[MAXLINELENGTH];
 	char		name[MAXLEN];
 	char		value[MAXLEN];
 
@@ -139,32 +202,6 @@ parse_config(t_configuration_options *options)
 
 	/* Collate configuration file errors here for friendlier reporting */
 	static ErrorList config_errors = { NULL, NULL };
-
-	fp = fopen(config_file_path, "r");
-
-	/*
-	 * Since some commands don't require a config file at all, not having one
-	 * isn't necessarily a problem.
-	 *
-	 * If the user explictly provided a configuration file and we can't
-	 * read it we'll raise an error.
-	 *
-	 * If no configuration file was provided, we'll try and read the default\
-	 * file if it exists and is readable, but won't worry if it's not.
-	 */
-	if (fp == NULL)
-	{
-		if (config_file_provided)
-		{
-			log_err(_("unable to open provided configuration file '%s'; terminating\n"), config_file_path);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		log_notice(_("no configuration file provided and default file '%s' not found - "
-					 "continuing with default values\n"),
-				   DEFAULT_CONFIG_FILE);
-		return false;
-	}
 
 	/* Initialize configuration options with sensible defaults
 	 * note: the default log level is set in log.c and does not need
@@ -201,14 +238,45 @@ parse_config(t_configuration_options *options)
 	options->tablespace_mapping.head = NULL;
 	options->tablespace_mapping.tail = NULL;
 
+	/*
+	 * If no configuration file available (user didn't specify and none found
+	 * in the default locations), return with default values
+	 */
+	if (config_file_found == false)
+	{
+		log_notice(_("no configuration file provided and no default file found - "
+					 "continuing with default values\n"));
+		return true;
+	}
 
-	/* Read next line */
-	while ((s = fgets(buff, sizeof buff, fp)) != NULL)
+	fp = fopen(config_file_path, "r");
+
+	/*
+	 * A configuration file has been found, either provided by the user
+	 * or found in one of the default locations. If we can't open it,
+	 * fail with an error.
+	 */
+	if (fp == NULL)
+	{
+		if (config_file_provided)
+		{
+			log_err(_("unable to open provided configuration file \"%s\"; terminating\n"), config_file_path);
+		}
+		else
+		{
+			log_err(_("unable to open default configuration file  \"%s\"; terminating\n"), config_file_path);
+		}
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Read file */
+	while ((s = fgets(buf, sizeof buf, fp)) != NULL)
 	{
 		bool known_parameter = true;
 
 		/* Parse name/value pair from line */
-		parse_line(buff, name, value);
+		parse_line(buf, name, value);
 
 		/* Skip blank lines */
 		if (!strlen(name))
@@ -251,8 +319,7 @@ parse_config(t_configuration_options *options)
 			}
 			else
 			{
-				log_err(_("value for 'failover' must be 'automatic' or 'manual'\n"));
-				exit(ERR_BAD_CONFIG);
+				error_list_append(&config_errors,_("value for 'failover' must be 'automatic' or 'manual'\n"));
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
@@ -347,7 +414,7 @@ parse_config(t_configuration_options *options)
 
 		/* Sanity check the provided conninfo string
 		 *
-		 * NOTE: this verifies the string format and checks for valid options
+		 * NOTE: PQconninfoParse() verifies the string format and checks for valid options
 		 * but does not sanity check values
 		 */
 		conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
@@ -365,11 +432,11 @@ parse_config(t_configuration_options *options)
 		PQconninfoFree(conninfo_options);
 	}
 
-	// exit_with_errors here
 	if (config_errors.head != NULL)
 	{
 		exit_with_errors(&config_errors);
 	}
+
 	return true;
 }
 
@@ -402,7 +469,7 @@ trim(char *s)
 }
 
 void
-parse_line(char *buff, char *name, char *value)
+parse_line(char *buf, char *name, char *value)
 {
 	int			i = 0;
 	int			j = 0;
@@ -413,10 +480,10 @@ parse_line(char *buff, char *name, char *value)
 	for (; i < MAXLEN; ++i)
 	{
 
-		if (buff[i] == '=')
+		if (buf[i] == '=')
 			break;
 
-		switch(buff[i])
+		switch(buf[i])
 		{
 			/* Ignore whitespace */
 			case ' ':
@@ -425,7 +492,7 @@ parse_line(char *buff, char *name, char *value)
 			case '\t':
 				continue;
 			default:
-				name[j++] = buff[i];
+				name[j++] = buf[i];
 		}
 	}
 	name[j] = '\0';
@@ -435,9 +502,9 @@ parse_line(char *buff, char *name, char *value)
 	 */
 	for (; i < MAXLEN; ++i)
 	{
-		if (buff[i+1] == ' ')
+		if (buf[i+1] == ' ')
 			continue;
-		if (buff[i+1] == '\t')
+		if (buf[i+1] == '\t')
 			continue;
 
 		break;
@@ -448,12 +515,12 @@ parse_line(char *buff, char *name, char *value)
 	 */
 	j = 0;
 	for (++i; i < MAXLEN; ++i)
-		if (buff[i] == '\'')
+		if (buf[i] == '\'')
 			continue;
-		else if (buff[i] == '#')
+		else if (buf[i] == '#')
 			break;
-		else if (buff[i] != '\n')
-			value[j++] = buff[i];
+		else if (buf[i] != '\n')
+			value[j++] = buf[i];
 		else
 			break;
 	value[j] = '\0';
