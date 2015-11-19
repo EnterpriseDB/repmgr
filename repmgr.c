@@ -154,6 +154,7 @@ main(int argc, char **argv)
 		{"rsync-only", no_argument, NULL, 'r'},
 		{"fast-checkpoint", no_argument, NULL, 'c'},
 		{"log-level", required_argument, NULL, 'L'},
+		{"terse", required_argument, NULL, 't'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
@@ -177,7 +178,7 @@ main(int argc, char **argv)
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c:L:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c:L:t", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -275,6 +276,8 @@ main(int argc, char **argv)
 				}
 				break;
 			}
+			case 't':
+				runtime_options.terse = true;
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
 				break;
@@ -442,7 +445,7 @@ main(int argc, char **argv)
 		exit_with_errors();
 	}
 
-	if (cli_warnings.head != NULL)
+	if (cli_warnings.head != NULL && runtime_options.terse == false)
 	{
 		print_error_list(&cli_warnings, LOG_WARNING);
 	}
@@ -534,8 +537,12 @@ main(int argc, char **argv)
 	}
 
 	logger_init(&options, progname(), options.loglevel, options.logfacility);
+
 	if (runtime_options.verbose)
 		logger_set_verbose();
+
+	if (runtime_options.terse)
+		logger_set_terse();
 
 
 	/*
@@ -1354,6 +1361,9 @@ do_standby_clone(void)
 		strncpy(local_config_file, master_config_file, MAXFILENAME);
 		strncpy(local_hba_file, master_hba_file, MAXFILENAME);
 		strncpy(local_ident_file, master_ident_file, MAXFILENAME);
+
+		log_notice(_("setting data directory to: %s\n"), local_data_directory);
+		log_hint(_("use -D/--data-dir to explicitly specify a data directory"));
 	}
 
 	/*
@@ -2955,7 +2965,7 @@ check_parameters_for_action(const int action)
 			if (runtime_options.host[0] || runtime_options.masterport[0] ||
 				runtime_options.username[0] || runtime_options.dbname[0])
 			{
-				error_list_append(&cli_warnings _("master connection parameters not required when executing STANDBY REGISTER"));
+				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
