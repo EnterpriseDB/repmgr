@@ -536,7 +536,7 @@ main(int argc, char **argv)
 		strncpy(options.loglevel, runtime_options.loglevel, MAXLEN);
 	}
 
-	logger_init(&options, progname(), options.loglevel, options.logfacility);
+	logger_init(&options, progname());
 
 	if (runtime_options.verbose)
 		logger_set_verbose();
