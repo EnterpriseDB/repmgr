@@ -277,6 +277,7 @@ main(int argc, char **argv)
 			}
 			case 't':
 				runtime_options.terse = true;
+				break;
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
 				break;
