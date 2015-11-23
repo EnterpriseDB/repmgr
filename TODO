@@ -62,3 +62,7 @@ Usability improvements
 
 * repmgr: when unregistering a node, delete any entries in the repl_monitoring
   table.
+
+* repmgr: remove warning about reindexing hash tables; possibly replace
+  with an (optional?) check for the existance of any hash indexes
+  and warn if any found ("hash indexes detected - good luck with that...")
