@@ -805,7 +805,7 @@ do_master_register(void)
 	check_server_version(conn, "master", true, NULL);
 
 	/* Check we are a master */
-	log_info(_("connected to master, checking its state\n"));
+	log_verbose(LOG_INFO, _("connected to master, checking its state\n"));
 	ret = is_standby(conn);
 
 	if (ret)
@@ -1173,7 +1173,7 @@ do_standby_clone(void)
 	upstream_conn = establish_db_connection_by_params(keywords, values, true);
 
 	/* Verify that upstream node is a supported server version */
-	log_info(_("connected to upstream node, checking its state\n"));
+	log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
 	server_version_num = check_server_version(upstream_conn, "master", true, NULL);
 
 	check_upstream_config(upstream_conn, server_version_num, true);
@@ -1829,7 +1829,7 @@ do_standby_promote(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Verify that standby is a supported server version */
-	log_info(_("connected to standby, checking its state\n"));
+	log_verbose(LOG_INFO, _("connected to standby, checking its state\n"));
 
 	check_server_version(conn, "standby", true, NULL);
 
@@ -1976,7 +1976,7 @@ do_standby_follow(void)
 	/* We need to connect to check configuration */
 	log_info(_("connecting to standby database\n"));
 	conn = establish_db_connection(options.conninfo, true);
-	log_info(_("connected to standby, checking its state\n"));
+	log_verbose(LOG_INFO, _("connected to standby, checking its state\n"));
 
 	/* Check we are in a standby node */
 	retval = is_standby(conn);
@@ -3777,7 +3777,7 @@ do_check_upstream_config(void)
 	conn = establish_db_connection_by_params(keywords, values, true);
 
 	/* Verify that upstream server is a supported server version */
-	log_info(_("connected to upstream server, checking its state\n"));
+	log_verbose(LOG_INFO, _("connected to upstream server, checking its state\n"));
 	server_version_num = check_server_version(conn, "upstream server", false, NULL);
 
 	config_ok = check_upstream_config(conn, server_version_num, false);
