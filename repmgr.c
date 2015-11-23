@@ -106,7 +106,6 @@ static void print_error_list(ErrorList *error_list, int log_level);
 static void help(void);
 
 /* Global variables */
-//static const char *progname;
 static const char *keywords[6];
 static const char *values[6];
 static bool		   config_file_required = true;
