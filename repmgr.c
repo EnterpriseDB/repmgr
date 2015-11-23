@@ -1924,7 +1924,7 @@ do_standby_promote(void)
 		create_event_record(NULL,
 							&options,
 							options.node,
-							"repmgrd_failover_promote",
+							"standby_promote",
 							false,
 							details.data);
 
@@ -1937,7 +1937,10 @@ do_standby_promote(void)
 					  "Node %i was successfully promoted to master",
 					  options.node);
 
-	log_notice(_("STANDBY PROMOTE successful.  You should REINDEX any hash indexes you have.\n"));
+	log_notice(_("STANDBY PROMOTE successful\n"));
+
+	/* XXX this is probably misleading */
+	log_hint(_("You should REINDEX any hash indexes you have.\n"));
 
 	/* Log the event */
 	create_event_record(conn,
