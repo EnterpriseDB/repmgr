@@ -1939,9 +1939,6 @@ do_standby_promote(void)
 
 	log_notice(_("STANDBY PROMOTE successful\n"));
 
-	/* XXX this is probably misleading */
-	log_hint(_("You should REINDEX any hash indexes you have.\n"));
-
 	/* Log the event */
 	create_event_record(conn,
 						&options,
