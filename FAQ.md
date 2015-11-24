@@ -34,6 +34,11 @@ General
   replication slots, setting a higher figure will make adding new nodes
   easier.
 
+- Does `repmgr` support hash indexes?
+
+  No. Hash indexes and replication do not mix well and their use is
+  explicitly discouraged; see:
+    http://www.postgresql.org/docs/current/interactive/sql-createindex.html#AEN74175
 
 `repmgr`
 --------
