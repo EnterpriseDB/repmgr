@@ -445,7 +445,6 @@ get_cluster_size(PGconn *conn, char *size)
 }
 
 
-
 bool
 get_pg_setting(PGconn *conn, const char *setting, char *output)
 {
@@ -488,12 +487,54 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 
 	if (success == true)
 	{
-		log_debug(_("get_pg_setting(): returned value is \"%s\"\n"), output);
+		log_verbose(LOG_DEBUG, _("get_pg_setting(): returned value is \"%s\"\n"), output);
 	}
 
 	PQclear(res);
 
 	return success;
+}
+
+
+/*
+ * get_conninfo_value()
+ *
+ * Extract the value represented by 'keyword' in 'conninfo' and copy
+ * it to the 'output' buffer.
+ *
+ * Returns true on success, or false on failure (conninfo string could
+ * not be parsed, or provided keyword not found).
+ */
+
+bool
+get_conninfo_value(const char *conninfo, const char *keyword, char *output)
+{
+	PQconninfoOption *conninfo_options;
+	PQconninfoOption *conninfo_option;
+
+	conninfo_options = PQconninfoParse(conninfo, NULL);
+
+	if (conninfo_options == false)
+	{
+		log_err(_("Unable to parse provided conninfo string \"%s\""), conninfo);
+		return false;
+	}
+
+	for (conninfo_option = conninfo_options; conninfo_option->keyword != NULL; conninfo_option++)
+	{
+		if (strcmp(conninfo_option->keyword, keyword) == 0)
+		{
+			if (conninfo_option->val != NULL && conninfo_option->val[0] != '\0')
+			{
+				strncpy(output, conninfo_option->val, MAXLEN);
+				break;
+			}
+		}
+	}
+
+	PQconninfoFree(conninfo_options);
+
+	return true;
 }
 
 
@@ -597,6 +638,13 @@ get_master_connection(PGconn *standby_conn, char *cluster,
 
 	int			i,
 				node_id;
+
+	/*
+	 * If the caller wanted to get a copy of the connection info string, sub
+	 * out the local stack pointer for the pointer passed by the caller.
+	 */
+	if (master_conninfo_out != NULL)
+		remote_conninfo = master_conninfo_out;
 
 	if (master_id != NULL)
 	{
@@ -819,8 +867,10 @@ get_repmgr_schema_quoted(PGconn *conn)
 bool
 create_replication_slot(PGconn *conn, char *slot_name)
 {
-	char		sqlquery[QUERY_STR_LEN];
-	PGresult   *res;
+	char				sqlquery[QUERY_STR_LEN];
+	int					query_res;
+	PGresult  		   *res;
+	t_replication_slot  slot_info;
 
 	/*
 	 * Check whether slot exists already; if it exists and is active, that
@@ -828,40 +878,25 @@ create_replication_slot(PGconn *conn, char *slot_name)
 	 * if not we can reuse it as-is
 	 */
 
-	sqlquery_snprintf(sqlquery,
-					  "SELECT active, slot_type "
-                      "  FROM pg_replication_slots "
-					  " WHERE slot_name = '%s' ",
-					  slot_name);
+	query_res = get_slot_record(conn, slot_name, &slot_info);
 
-	log_verbose(LOG_DEBUG, "create_replication_slot():\n%s\n", sqlquery);
-
-	res = PQexec(conn, sqlquery);
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (query_res)
 	{
-		log_err(_("unable to query pg_replication_slots: %s\n"),
-				PQerrorMessage(conn));
-		PQclear(res);
-		return false;
-	}
-
-	if (PQntuples(res))
-	{
-		if (strcmp(PQgetvalue(res, 0, 1), "physical") != 0)
+		if (strcmp(slot_info.slot_type, "physical") != 0)
 		{
 			log_err(_("Slot '%s' exists and is not a physical slot\n"),
 					slot_name);
-			PQclear(res);
+			return false;
 		}
-		if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
+
+		if (slot_info.active == false)
 		{
-			PQclear(res);
 			log_debug("Replication slot '%s' exists but is inactive; reusing\n",
 					  slot_name);
 
 			return true;
 		}
-		PQclear(res);
+
 		log_err(_("Slot '%s' already exists as an active slot\n"),
 				slot_name);
 		return false;
@@ -885,6 +920,73 @@ create_replication_slot(PGconn *conn, char *slot_name)
 	}
 
 	PQclear(res);
+	return true;
+}
+
+
+int
+get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(sqlquery,
+					  "SELECT slot_name, slot_type, active "
+                      "  FROM pg_replication_slots "
+					  " WHERE slot_name = '%s' ",
+					  slot_name);
+
+	log_verbose(LOG_DEBUG, "get_slot_record():\n%s\n", sqlquery);
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("unable to query pg_replication_slots: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+		return -1;
+	}
+
+	if (!PQntuples(res))
+	{
+		return 0;
+	}
+
+	strncpy(record->slot_name, PQgetvalue(res, 0, 0), MAXLEN);
+	strncpy(record->slot_type, PQgetvalue(res, 0, 1), MAXLEN);
+	record->active = (strcmp(PQgetvalue(res, 0, 2), "t") == 0)
+		? true
+		: false;
+
+	PQclear(res);
+
+	return 1;
+}
+
+bool
+drop_replication_slot(PGconn *conn, char *slot_name)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+	sqlquery_snprintf(sqlquery,
+					  "SELECT pg_drop_replication_slot('%s')",
+					  slot_name);
+
+	log_verbose(LOG_DEBUG, "drop_replication_slot():\n%s\n", sqlquery);
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("unable to drop replication slot \"%s\":\n %s\n"),
+				slot_name,
+				PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	log_verbose(LOG_DEBUG, "replication slot \"%s\" successfully dropped\n",
+				slot_name);
+
 	return true;
 }
 
@@ -1400,6 +1502,51 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	return success;
 }
 
+
+/*
+ * Update node record following change of status
+ * (e.g. inactive primary converted to standby)
+ */
+bool
+update_node_record_status(PGconn *conn, char *cluster_name, int this_node_id, char *type, int upstream_node_id, bool active)
+{
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+
+	sqlquery_snprintf(sqlquery,
+					  "  UPDATE %s.repl_nodes "
+					  "     SET type = '%s', "
+					  "         upstream_node_id = %i, "
+					  "         active = %s "
+					  "   WHERE cluster = '%s' "
+					  "     AND id = %i ",
+					  get_repmgr_schema_quoted(conn),
+					  type,
+					  upstream_node_id,
+					  active ? "TRUE" : "FALSE",
+					  cluster_name,
+					  this_node_id);
+
+	log_verbose(LOG_DEBUG, "update_node_record_status():\n%s\n", sqlquery);
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to update node record: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+
+}
+
+
 bool
 update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_id, int new_upstream_node_id)
 {
@@ -1437,21 +1584,106 @@ update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_
 }
 
 
-PGresult *
-get_node_record(PGconn *conn, char *cluster, int node_id)
+int
+get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info)
 {
 	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+	int         ntuples;
 
-	sprintf(sqlquery,
-			"SELECT id, upstream_node_id, conninfo, type, slot_name, active "
-			"  FROM %s.repl_nodes "
-			" WHERE cluster = '%s' "
-			"   AND id = %i",
-			get_repmgr_schema_quoted(conn),
-			cluster,
-			node_id);
+	sqlquery_snprintf(
+		sqlquery,
+		"SELECT id, type, upstream_node_id, name, conninfo, slot_name, priority, active"
+		"  FROM %s.repl_nodes "
+		" WHERE cluster = '%s' "
+		"   AND id = %i",
+		get_repmgr_schema_quoted(conn),
+		cluster,
+		node_id);
 
 	log_verbose(LOG_DEBUG, "get_node_record():\n%s\n", sqlquery);
 
-	return PQexec(conn, sqlquery);
+	res = PQexec(conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		return -1;
+	}
+
+	ntuples = PQntuples(res);
+
+	if (ntuples == 0)
+	{
+		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %i\n", node_id);
+		return 0;
+	}
+
+	node_info->node_id = atoi(PQgetvalue(res, 0, 0));
+	node_info->type = parse_node_type(PQgetvalue(res, 0, 1));
+	node_info->upstream_node_id = atoi(PQgetvalue(res, 0, 2));
+	strncpy(node_info->name, PQgetvalue(res, 0, 3), MAXLEN);
+	strncpy(node_info->conninfo_str, PQgetvalue(res, 0, 4), MAXLEN);
+	strncpy(node_info->slot_name, PQgetvalue(res, 0, 5), MAXLEN);
+	node_info->priority = atoi(PQgetvalue(res, 0, 6));
+	node_info->active = (strcmp(PQgetvalue(res, 0, 7), "t") == 0)
+		? true
+		: false;
+
+	PQclear(res);
+
+	return ntuples;
+}
+
+
+int
+get_node_replication_state(PGconn *conn, char *node_name, char *output)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult *	res;
+
+	sqlquery_snprintf(
+		sqlquery,
+		" SELECT state "
+		"   FROM pg_catalog.pg_stat_replication"
+        "  WHERE application_name = '%s'",
+		node_name
+		);
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		PQclear(res);
+		return -1;
+	}
+
+	if (PQntuples(res) == 0)
+	{
+		PQclear(res);
+		return 0;
+	}
+
+	strncpy(output, PQgetvalue(res, 0, 0), MAXLEN);
+	PQclear(res);
+
+	return true;
+
+}
+
+t_server_type
+parse_node_type(const char *type)
+{
+	if (strcmp(type, "master") == 0)
+	{
+		return MASTER;
+	}
+	else if (strcmp(type, "standby") == 0)
+	{
+		return STANDBY;
+	}
+	else if (strcmp(type, "witness") == 0)
+	{
+		return WITNESS;
+	}
+
+	return UNKNOWN;
 }

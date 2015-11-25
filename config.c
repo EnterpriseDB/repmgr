@@ -31,7 +31,7 @@ static void exit_with_errors(ErrorList *config_errors);
 const static char *_progname = '\0';
 static char config_file_path[MAXPGPATH];
 static bool config_file_provided = false;
-static bool config_file_found = false;
+bool config_file_found = false;
 
 
 void
@@ -149,7 +149,7 @@ load_config(const char *config_file, bool verbose, t_configuration_options *opti
 
 		if (verbose == true)
 		{
-			log_notice(_("looking for configuration file in %s"), sysconf_etc_path);
+			log_notice(_("looking for configuration file in %s\n"), sysconf_etc_path);
 		}
 
 		snprintf(config_file_path, MAXPGPATH, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);

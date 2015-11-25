@@ -79,7 +79,6 @@ static void do_master_failover(void);
 static bool do_upstream_standby_failover(t_node_info upstream_node);
 
 static t_node_info get_node_info(PGconn *conn, char *cluster, int node_id);
-static t_server_type parse_node_type(const char *type);
 static XLogRecPtr lsn_to_xlogrecptr(char *lsn, bool *format_ok);
 
 /*
@@ -2268,13 +2267,13 @@ check_and_create_pid_file(const char *pid_file)
 t_node_info
 get_node_info(PGconn *conn, char *cluster, int node_id)
 {
-	PGresult   *res;
+	int res;
 
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
-	res = get_node_record(conn, cluster, node_id);
+	res = get_node_record(conn, cluster, node_id, &node_info);
 
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (res == -1)
 	{
 		PQExpBufferData errmsg;
 		initPQExpBuffer(&errmsg);
@@ -2293,47 +2292,16 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 							false,
 							errmsg.data);
 
-		PQclear(res);
+		PQfinish(conn);
 		terminate(ERR_DB_QUERY);
 	}
 
-	if (!PQntuples(res)) {
+	if (res == 0)
+	{
 		log_warning(_("No record found record for node %i\n"), node_id);
-		PQclear(res);
-		node_info.node_id = NODE_NOT_FOUND;
-		return node_info;
 	}
-
-	node_info.node_id = atoi(PQgetvalue(res, 0, 0));
-	node_info.upstream_node_id = atoi(PQgetvalue(res, 0, 1));
-	strncpy(node_info.conninfo_str, PQgetvalue(res, 0, 2), MAXLEN);
-	node_info.type = parse_node_type(PQgetvalue(res, 0, 3));
-	strncpy(node_info.slot_name, PQgetvalue(res, 0, 4), MAXLEN);
-	node_info.active = (strcmp(PQgetvalue(res, 0, 5), "t") == 0)
-		? true
-		: false;
-
-	PQclear(res);
 
 	return node_info;
 }
 
 
-static t_server_type
-parse_node_type(const char *type)
-{
-	if (strcmp(type, "master") == 0)
-	{
-		return MASTER;
-	}
-	else if (strcmp(type, "standby") == 0)
-	{
-		return STANDBY;
-	}
-	else if (strcmp(type, "witness") == 0)
-	{
-		return WITNESS;
-	}
-
-	return UNKNOWN;
-}

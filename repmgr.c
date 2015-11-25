@@ -14,6 +14,7 @@
  * STANDBY CLONE
  * STANDBY FOLLOW
  * STANDBY PROMOTE
+ * STANDBY SWITCHOVER
  *
  * WITNESS CREATE
  *
@@ -68,9 +69,10 @@
 #define STANDBY_CLONE		4
 #define STANDBY_PROMOTE		5
 #define STANDBY_FOLLOW		6
-#define WITNESS_CREATE		7
-#define CLUSTER_SHOW		8
-#define CLUSTER_CLEANUP		9
+#define STANDBY_SWITCHOVER  7
+#define WITNESS_CREATE		8
+#define CLUSTER_SHOW		9
+#define CLUSTER_CLEANUP		10
 
 
 
@@ -96,6 +98,7 @@ static void do_standby_unregister(void);
 static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
+static void do_standby_switchover(void);
 static void do_witness_create(void);
 static void do_cluster_show(void);
 static void do_cluster_cleanup(void);
@@ -105,6 +108,9 @@ static void exit_with_errors(void);
 static void print_error_list(ErrorList *error_list, int log_level);
 static void help(void);
 
+static bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
+static void format_db_cli_params(const char *conninfo, char *output);
+
 /* Global variables */
 static const char *keywords[6];
 static const char *values[6];
@@ -113,6 +119,8 @@ static bool		   config_file_required = true;
 /* Initialization of runtime options */
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
+
+bool 	 	 wal_keep_segments_used = false;
 
 static char *server_mode = NULL;
 static char *server_cmd = NULL;
@@ -151,6 +159,8 @@ main(int argc, char **argv)
 		{"fast-checkpoint", no_argument, NULL, 'c'},
 		{"log-level", required_argument, NULL, 'L'},
 		{"terse", required_argument, NULL, 't'},
+		{"mode", required_argument, NULL, 'm'},
+		{"remote-config-file", required_argument, NULL, 'C'},
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
@@ -164,7 +174,6 @@ main(int argc, char **argv)
 	int			c, targ;
 	int			action = NO_ACTION;
 	bool 		check_upstream_config = false;
-	bool 		wal_keep_segments_used = false;
 	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
 
@@ -174,7 +183,7 @@ main(int argc, char **argv)
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c:L:t", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:c:L:tm:C:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -269,11 +278,35 @@ main(int argc, char **argv)
 					initPQExpBuffer(&invalid_log_level);
 					appendPQExpBuffer(&invalid_log_level, _("Invalid log level \"%s\" provided"), optarg);
 					error_list_append(&cli_errors, invalid_log_level.data);
+					termPQExpBuffer(&invalid_log_level);
+
 				}
 				break;
 			}
 			case 't':
 				runtime_options.terse = true;
+				break;
+			case 'm':
+			{
+				if (strcmp(optarg, "smart") == 0 ||
+					strcmp(optarg, "fast") == 0 ||
+					strcmp(optarg, "immediate") == 0
+					)
+				{
+					strncpy(runtime_options.pg_ctl_mode, optarg, MAXLEN);
+				}
+				else
+				{
+					PQExpBufferData invalid_mode;
+					initPQExpBuffer(&invalid_mode);
+					appendPQExpBuffer(&invalid_mode, _("Invalid pg_ctl shutdown mode \"%s\" provided"), optarg);
+					error_list_append(&cli_errors, invalid_mode.data);
+					termPQExpBuffer(&invalid_mode);
+				}
+			}
+			break;
+			case 'C':
+				strncpy(runtime_options.remote_config_file, optarg, MAXLEN);
 				break;
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
@@ -305,6 +338,7 @@ main(int argc, char **argv)
 			case 4:
 				runtime_options.ignore_external_config_files = true;
 				break;
+
 			default:
 			{
 				PQExpBufferData unknown_option;
@@ -333,7 +367,7 @@ main(int argc, char **argv)
 	/*
 	 * Now we need to obtain the action, this comes in one of these forms:
 	 *   MASTER REGISTER |
-	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node]} |
+	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER} |
 	 *   WITNESS CREATE |
 	 *   CLUSTER {SHOW | CLEANUP}
 	 *
@@ -378,6 +412,8 @@ main(int argc, char **argv)
 				action = STANDBY_PROMOTE;
 			else if (strcasecmp(server_cmd, "FOLLOW") == 0)
 				action = STANDBY_FOLLOW;
+			else if (strcasecmp(server_cmd, "SWITCHOVER") == 0)
+				action = STANDBY_SWITCHOVER;
 		}
 		else if (strcasecmp(server_mode, "CLUSTER") == 0)
 		{
@@ -476,6 +512,13 @@ main(int argc, char **argv)
 									 &options,
 									 argv[0]);
 
+	/* Some configuration file items can be overriden by command line options */
+	/* Command-line parameter -L/--log-level overrides any setting in config file*/
+	if (*runtime_options.loglevel != '\0')
+	{
+		strncpy(options.loglevel, runtime_options.loglevel, MAXLEN);
+	}
+
 	/*
 	 * Initialise pg_bindir - command line parameter will override
 	 * any setting in the configuration file
@@ -515,12 +558,6 @@ main(int argc, char **argv)
 	 * logging level might be specified at, but it often requires detailed
 	 * logging to troubleshoot problems.
 	 */
-
-	/* Command-line parameter -L/--log-level overrides any setting in config file*/
-	if (*runtime_options.loglevel != '\0')
-	{
-		strncpy(options.loglevel, runtime_options.loglevel, MAXLEN);
-	}
 
 	logger_init(&options, progname());
 
@@ -585,7 +622,6 @@ main(int argc, char **argv)
 		log_verbose(LOG_DEBUG, "slot name initialised as: %s\n", repmgr_slot_name);
 	}
 
-
 	switch (action)
 	{
 		case MASTER_REGISTER:
@@ -605,6 +641,9 @@ main(int argc, char **argv)
 			break;
 		case STANDBY_FOLLOW:
 			do_standby_follow();
+			break;
+		case STANDBY_SWITCHOVER:
+			do_standby_switchover();
 			break;
 		case WITNESS_CREATE:
 			do_witness_create();
@@ -871,11 +910,12 @@ do_master_register(void)
 	/* Delete any existing record for this node if --force set */
 	if (runtime_options.force)
 	{
-		PGresult *res;
 		bool node_record_deleted;
+		t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
-		res = get_node_record(conn, options.cluster_name, options.node);
-		if (PQntuples(res))
+		begin_transaction(conn);
+
+		if (get_node_record(conn, options.cluster_name, options.node, &node_info))
 		{
 			log_notice(_("deleting existing master record with id %i\n"), options.node);
 
@@ -889,7 +929,6 @@ do_master_register(void)
 				exit(ERR_BAD_CONFIG);
 			}
 		}
-
 	}
 
 
@@ -1178,6 +1217,8 @@ do_standby_clone(void)
 	values[0] = runtime_options.host;
 	keywords[1] = "port";
 	values[1] = runtime_options.masterport;
+
+	/* XXX provide user too? */
 
 	/* Connect to check configuration */
 	log_info(_("connecting to upstream node\n"));
@@ -1979,6 +2020,17 @@ do_standby_promote(void)
 }
 
 
+/*
+ * Follow a new primary.
+ *
+ * This function has two "modes":
+ *  1) no primary info provided - determine primary from standby metadata
+ *  2) primary info provided - use that info to connect to the primary.
+ *
+ * (2) is mainly for when a node has been stopped as part of a switchover
+ * and needs to be started with recovery.conf correctly configured.
+ */
+
 static void
 do_standby_follow(void)
 {
@@ -1987,55 +2039,97 @@ do_standby_follow(void)
 	char		script[MAXLEN];
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
-	int			master_id;
+	int			master_id = 0;
 
 	int			r,
 				retval;
-	char		data_dir[MAXLEN];
+	char		data_dir[MAXFILENAME];
 
 	bool        success;
 
+	log_debug("do_standby_follow()\n");
 
-	/* We need to connect to check configuration */
-	log_info(_("connecting to standby database\n"));
-	conn = establish_db_connection(options.conninfo, true);
-	log_verbose(LOG_INFO, _("connected to standby, checking its state\n"));
-
-	/* Check we are in a standby node */
-	retval = is_standby(conn);
-	if (retval == 0 || retval == -1)
-	{
-		log_err(_(retval == 0 ? "this command should be executed on a standby node\n" :
-				  "connection to node lost!\n"));
-
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
 
 	/*
-	 * we also need to check if there is any master in the cluster or wait for
-	 * one to appear if we have set the wait option
+	 * If -h/--host wasn't provided, attempt to connect to standby
+	 * to determine primary, and carry out some other checks while we're
+	 * at it.
 	 */
-	log_info(_("discovering new master...\n"));
-
-	do
+	if ( *runtime_options.host == '\0')
 	{
-		if (!is_pgup(conn, options.master_response_timeout))
+		/* We need to connect to check configuration */
+		log_info(_("connecting to standby database\n"));
+		conn = establish_db_connection(options.conninfo, true);
+		log_verbose(LOG_INFO, _("connected to standby, checking its state\n"));
+
+		/* Check we are in a standby node */
+		retval = is_standby(conn);
+		if (retval == 0 || retval == -1)
 		{
-			conn = establish_db_connection(options.conninfo, true);
+			log_err(_(retval == 0 ? "this command should be executed on a standby node\n" :
+					  "connection to node lost!\n"));
+
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
 		}
 
-		master_conn = get_master_connection(conn,
-				options.cluster_name, &master_id, (char *) &master_conninfo);
-	}
-	while (master_conn == NULL && runtime_options.wait_for_master);
+		/* Get the data directory full path */
+		success = get_pg_setting(conn, "data_directory", data_dir);
 
-	if (master_conn == NULL)
-	{
-		log_err(_("unable to determine new master node\n"));
+		if (success == false)
+		{
+			log_err(_("unable to determine data directory\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/*
+		 * we also need to check if there is any master in the cluster or wait for
+		 * one to appear if we have set the wait option
+		 */
+		log_info(_("discovering new master...\n"));
+
+		do
+		{
+			if (!is_pgup(conn, options.master_response_timeout))
+			{
+				conn = establish_db_connection(options.conninfo, true);
+			}
+
+			master_conn = get_master_connection(conn,
+												options.cluster_name, &master_id, (char *) &master_conninfo);
+		}
+		while (master_conn == NULL && runtime_options.wait_for_master);
+
+		if (master_conn == NULL)
+		{
+			log_err(_("unable to determine new master node\n"));
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/*
+		 * Verify that standby and master are supported and compatible server
+		 * versions
+		 */
+		check_master_standby_version_match(conn, master_conn);
+
 		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
 	}
+	/* primary server info explictly provided - attempt to connect to that */
+	else
+	{
+		keywords[0] = "host";
+		values[0] = runtime_options.host;
+		keywords[1] = "port";
+		values[1] = runtime_options.masterport;
+
+		master_conn = establish_db_connection_by_params(keywords, values, true);
+
+		master_id = get_master_node_id(master_conn, options.cluster_name);
+
+		strncpy(data_dir, runtime_options.dest_dir, MAXFILENAME);
+	}
+
 
 	/* Check we are going to point to a master */
 	retval = is_standby(master_conn);
@@ -2044,16 +2138,10 @@ do_standby_follow(void)
 		log_err(_(retval == 1 ? "the node to follow should be a master\n" :
 				  "connection to node lost!\n"));
 
-		PQfinish(conn);
 		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * Verify that standby and master are supported and compatible server
-	 * versions
-	 */
-	check_master_standby_version_match(conn, master_conn);
 
 	/*
 	 * set the host and masterport variables with the master ones before
@@ -2090,24 +2178,13 @@ do_standby_follow(void)
 								false,
 								event_details.data);
 
-			PQfinish(conn);
 			PQfinish(master_conn);
 			exit(ERR_DB_QUERY);
 		}
 	}
 
-
+	/* XXX add more detail! */
 	log_info(_("changing standby's master\n"));
-
-	/* Get the data directory full path */
-	success = get_pg_setting(conn, "data_directory", data_dir);
-	PQfinish(conn);
-
-	if (success == false)
-	{
-		log_err(_("unable to determine data directory\n"));
-		exit(ERR_BAD_CONFIG);
-	}
 
 	/* write the recovery.conf file */
 	if (!create_recovery_file(data_dir))
@@ -2127,16 +2204,513 @@ do_standby_follow(void)
 		exit(ERR_NO_RESTART);
 	}
 
-	if (update_node_record_set_upstream(master_conn, options.cluster_name,
-									   options.node, master_id) == false)
+	/*
+	 * It's possible this node was an inactive primary - update the
+	 * relevant fields to ensure it's marked as an active standby
+	 */
+	if (update_node_record_status(master_conn,
+								  options.cluster_name,
+								  options.node,
+								  "standby",
+								  master_id,
+								  true) == false)
 	{
-		log_err(_("unable to update upstream node"));
+		log_err(_("unable to update upstream node\n"));
 		PQfinish(master_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
 	PQfinish(master_conn);
 
+	return;
+}
+
+
+/*
+ * Perform a switchover by:
+ *  - stopping current primary node
+ *  - promoting this standby node to primary
+ *  - forcing previous primary node to follow this node
+ *
+ * Caveats:
+ *  - repmgrd must not be running, otherwise it may
+ *    attempt a failover
+ *    (TODO: find some way of notifying repmgrd of planned
+ *     activity like this)
+ *  - currently only set up for two-node operation; any other
+ *    standbys will probably become downstream cascaded standbys
+ *    of the old primary once it's restarted
+ *  - as we're executing repmgr remotely (on the old primary),
+ *    we'll need the location of its configuration file; this
+ *    can be provided explicitly with -C/--remote-config-file,
+ *    otherwise repmgr will look in default locations on the
+ *    remote server
+ *  - this does not yet support "rewinding" stopped nodes
+ *    which will be unable to catch up with the primary
+ *
+ * TODO:
+ *  - update help, docs
+ *  - make connection test timeouts/intervals configurable (see below)
+ */
+
+static void
+do_standby_switchover(void)
+{
+	PGconn	   *local_conn;
+	PGconn	   *remote_conn;
+
+	/* the remote server is the primary which will be demoted */
+	char	    remote_conninfo[MAXCONNINFO] = "";
+	char	    remote_host[MAXLEN];
+	char        remote_data_directory[MAXLEN];
+	int         remote_node_id;
+	// make configurable?
+	int         remote_reconnection_max_attempts = 10;
+	char        remote_node_replication_state[MAXLEN] = "";
+	int			i,
+				r = 0;
+
+	char	    command[MAXLEN];
+	PQExpBufferData command_output;
+
+	char	    repmgr_db_cli_params[MAXLEN] = "";
+	int	        query_result;
+	t_node_info remote_node_record;
+	bool	    connection_success;
+
+	log_notice(_("switching current node %i to master server and demoting current master to standby...\n"), options.node);
+
+	local_conn = establish_db_connection(options.conninfo, true);
+
+	/* Check that this is a standby */
+
+	if (!is_standby(local_conn))
+	{
+		log_err(_("switchover must be executed from the standby node to be promoted\n"));
+		PQfinish(local_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * TODO: check that standby's upstream node is the primary
+	 * (it's probably not feasible to switch over to a cascaded standby)
+	 */
+
+	/* Check that primary is available */
+	remote_conn = get_master_connection(local_conn, options.cluster_name, &remote_node_id, remote_conninfo);
+
+	if (remote_conn == NULL)
+	{
+		log_err(_("unable to connect to current master node\n"));
+		log_hint(_("check that the cluster is correctly configured and this standby is registered\n"));
+		PQfinish(local_conn);
+		exit(ERR_DB_CON);
+	}
+
+	/*
+	 * Check that we can connect by SSH to the remote (current primary) server,
+	 * and read its data directory
+	 *
+	 * TODO: check we can read contents of PG_VERSION??
+	 * -> assuming the remote user/directory is set up correctly,
+	 * we should only be able to see the file as the PostgreSQL
+	 * user, so it should be readable anyway
+	 */
+
+	get_conninfo_value(remote_conninfo, "host", remote_host);
+
+	r = test_ssh_connection(remote_host, runtime_options.remote_user);
+
+	if (r != 0)
+	{
+		log_err(_("unable to connect via ssh to host %s, user %s\n"), remote_host, runtime_options.remote_user);
+	}
+
+	if (get_pg_setting(remote_conn, "data_directory", remote_data_directory) == false)
+	{
+		log_err(_("unable to retrieve master's data directory location\n"));
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+		exit(ERR_DB_CON);
+	}
+
+	log_debug("primary's data directory is: %s\n", remote_data_directory);
+
+	maxlen_snprintf(command,
+					"ls %s/PG_VERSION >/dev/null 2>&1 && echo 1 || echo 0",
+					remote_data_directory);
+	initPQExpBuffer(&command_output);
+
+	// XXX handle failure
+	(void)remote_command(
+		remote_host,
+		runtime_options.remote_user,
+		command,
+		&command_output);
+
+	if (*command_output.data == '1')
+	{
+		log_verbose(LOG_DEBUG, "PG_VERSION found in %s\n", remote_data_directory);
+	}
+	else if (*command_output.data == '0')
+	{
+		log_err(_("%s is not a PostgreSQL data directory or is not accessible to user %s\n"), remote_data_directory, runtime_options.remote_user);
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	else
+	{
+		log_err(_("Unexpected output from remote command:\n%s\n"), command_output.data);
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	termPQExpBuffer(&command_output);
+
+	PQfinish(remote_conn);
+	PQfinish(local_conn);
+
+	/* Determine the remote's configuration file location */
+
+	/* Remote configuration file provided - check it exists */
+	if (runtime_options.remote_config_file[0])
+	{
+		log_verbose(LOG_INFO, _("looking for file \"%s\" on remote server \"%s\"\n"),
+					runtime_options.remote_config_file,
+					remote_host);
+
+		maxlen_snprintf(command,
+						"ls -1 %s >/dev/null 2>&1 && echo 1 || echo 0",
+						runtime_options.remote_config_file);
+
+		initPQExpBuffer(&command_output);
+
+		// XXX handle failure
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			command,
+			&command_output);
+
+		if (*command_output.data == '0')
+		{
+			log_err(_("unable to find the specified repmgr configuration file on remote server\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		termPQExpBuffer(&command_output);
+
+		log_verbose(LOG_INFO, _("remote configuration file \"%s\" found on remote server\n"),
+					runtime_options.remote_config_file);
+
+		termPQExpBuffer(&command_output);
+	}
+	/*
+	 * No remote configuration file provided - check some default locations:
+	 *  - path of configuration file for this repmgr
+	 *  - /etc/repmgr.conf
+	 */
+	else
+	{
+		int		    i;
+		bool		config_file_found = false;
+
+		const char *config_paths[] = {
+			runtime_options.config_file,
+			"/etc/repmgr.conf",
+			NULL
+		};
+
+		log_verbose(LOG_INFO, _("no remote configuration file provided - checking default locations\n"));
+
+		for(i = 0; config_paths[i] && config_file_found == false; ++i)
+		{
+			log_verbose(LOG_INFO, _("checking \"%s\"\n"), config_paths[i]);
+
+			maxlen_snprintf(command,
+							"ls -1 %s >/dev/null 2>&1 && echo 1 || echo 0",
+							config_paths[i]);
+
+			initPQExpBuffer(&command_output);
+
+			(void)remote_command(
+				remote_host,
+				runtime_options.remote_user,
+				command,
+				&command_output);
+
+			if (*command_output.data == '1')
+			{
+				strncpy(runtime_options.remote_config_file, config_paths[i], MAXLEN);
+				log_verbose(LOG_INFO, _("configuration file \"%s\" found on remote server\n"),
+							runtime_options.remote_config_file);
+				config_file_found = true;
+			}
+
+			termPQExpBuffer(&command_output);
+		}
+
+		if (config_file_found == false)
+		{
+			log_err(_("no remote configuration file supplied or found in a default location - terminating\n"));
+			log_hint(_("specify the remote configuration file with -C/--remote-config-file\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/*
+	 * Stop the remote primary
+	 *
+	 * We'll issue the pg_ctl command but not force it not to wait; we'll check
+	 * the connection from here - and error out if no shutdown is detected
+	 * after a certain time.
+	 *
+	 * XXX currently we assume the same Postgres binary path on the primary
+	 * as configured on the local standby; we may need to add a command
+	 * line option to provide an explicit path (--remote-pg-bindir)?
+	 */
+
+	/*
+	 * TODO
+	 * - notify repmgrd instances that this is a controlled
+	 *   event so they don't initiate failover
+	 * - optional "immediate" shutdown?
+	 *    -> use -F/--force?
+	 */
+
+	maxlen_snprintf(command,
+					"%s/pg_ctl -D %s -m %s -W stop >/dev/null 2>&1 && echo 1 || echo 0",
+					pg_bindir,
+					remote_data_directory,
+					runtime_options.pg_ctl_mode);
+
+	initPQExpBuffer(&command_output);
+
+	// XXX handle failure
+
+	(void)remote_command(
+		remote_host,
+		runtime_options.remote_user,
+		command,
+		&command_output);
+
+	termPQExpBuffer(&command_output);
+
+	connection_success = false;
+
+	/* loop for timeout waiting for current primary to stop */
+
+	for(i = 0; i < remote_reconnection_max_attempts; i++)
+	{
+		/* Check whether primary is available */
+
+		remote_conn = establish_db_connection(remote_conninfo, false); /* don't fail on error */
+
+		/* XXX failure to connect doesn't mean the server is necessarily
+		 * completely stopped - we need to better detect the reason for
+		 * connection failure ("server not listening" vs "shutting down")
+		 *
+		 * -> check is_pgup()
+		 */
+		if (PQstatus(remote_conn) != CONNECTION_OK)
+		{
+			connection_success = true;
+
+			log_notice(_("current primary has been stopped"));
+			break;
+		}
+		PQfinish(remote_conn);
+
+		// configurable?
+		sleep(1);
+		i++;
+	}
+
+	if (connection_success == false)
+	{
+		log_err(_("primary server did not shut down\n"));
+		log_hint(_("check the primary server status before performing any further actions"));
+		exit(ERR_FAILOVER_FAIL);
+	}
+
+	/* promote this standby */
+
+	do_standby_promote();
+
+	/*
+	 * TODO: optionally have any other downstream nodes from old primary
+	 * follow new primary? Currently they'll just latch onto the old
+	 * primary as cascaded standbys.
+	 */
+
+	/* restore old primary */
+
+	/* TODO: additional check old primary is shut down */
+
+	format_db_cli_params(options.conninfo, repmgr_db_cli_params);
+	maxlen_snprintf(command,
+					"%s/repmgr -D %s -f %s %s standby follow",
+					pg_bindir,
+					remote_data_directory,
+					runtime_options.remote_config_file,
+					repmgr_db_cli_params
+					);
+
+	log_debug("Executing:\n%s\n", command);
+
+	initPQExpBuffer(&command_output);
+
+	// XXX handle failure
+
+	(void)remote_command(
+		remote_host,
+		runtime_options.remote_user,
+		command,
+		&command_output);
+
+	termPQExpBuffer(&command_output);
+
+
+	/* verify that new standby is connected and replicating */
+
+	connection_success = false;
+
+	for(i = 0; i < remote_reconnection_max_attempts; i++)
+	{
+		/* Check whether primary is available */
+
+		remote_conn = establish_db_connection(remote_conninfo, false); /* don't fail on error */
+
+		if (PQstatus(remote_conn) == CONNECTION_OK)
+		{
+			log_debug("connected to new standby (old primary)\n");
+			if (is_standby(remote_conn) == 0)
+			{
+				log_err(_("new standby (old primary) is not a standby\n"));
+				exit(ERR_FAILOVER_FAIL);
+			}
+			connection_success = true;
+			break;
+		}
+		PQfinish(remote_conn);
+
+		// configurable?
+		sleep(1);
+		i++;
+	}
+
+	if (connection_success == false)
+	{
+		log_err(_("unable to connect to new standby (old primary)\n"));
+		exit(ERR_FAILOVER_FAIL);
+	}
+
+	log_debug("new standby is in recovery\n");
+
+	/* Check for entry in pg_stat_replication */
+
+	local_conn = establish_db_connection(options.conninfo, true);
+	query_result = get_node_record(local_conn, options.cluster_name, remote_node_id, &remote_node_record);
+
+	if (query_result < 1)
+	{
+		// XXX error message
+		PQfinish(local_conn);
+
+		exit(ERR_DB_QUERY);
+	}
+
+	log_debug("remote node name is \"%s\"\n", remote_node_record.name);
+
+	query_result = get_node_replication_state(local_conn, remote_node_record.name, remote_node_replication_state);
+	if (query_result == -1)
+	{
+		log_err(_("unable to retrieve replication status for node %i\n"), remote_node_id);
+		PQfinish(local_conn);
+
+		// errcode?
+		exit(ERR_DB_QUERY);
+	}
+
+	if (query_result == 0)
+	{
+		log_err(_("node %i not replicating\n"), remote_node_id);
+	}
+	else
+	{
+		/* XXX other valid values? */
+		if (strcmp(remote_node_replication_state, "streaming") == 0 ||
+			strcmp(remote_node_replication_state, "catchup")  == 0)
+		{
+			log_verbose(LOG_INFO, _("node %i is replicating in state \"%s\"\n"), remote_node_id, remote_node_replication_state);
+		}
+		else
+		{
+			log_err(_("node %i replication state is  \"%s\"\n"), remote_node_id, remote_node_replication_state);
+			PQfinish(local_conn);
+			// errcode?
+			exit(ERR_DB_QUERY);
+		}
+	}
+
+	/*
+	 * If replication slots are in use, and an inactive one for this node
+	 * (a former standby) exists on the remote node (a former primary),
+	 * drop it.
+	 */
+
+	if (options.use_replication_slots)
+	{
+		t_node_info local_node_record;
+
+		query_result = get_node_record(local_conn, options.cluster_name, options.node, &local_node_record);
+
+		remote_conn = establish_db_connection(remote_conninfo, false);
+
+		if (PQstatus(remote_conn) != CONNECTION_OK)
+		{
+			log_warning(_("unable to connect to former primary to clean up replication slots \n"));
+		}
+		else
+		{
+			t_replication_slot  slot_info;
+			int					query_res;
+
+			query_res = get_slot_record(remote_conn, local_node_record.slot_name, &slot_info);
+
+			if (query_res)
+			{
+				if (slot_info.active == false)
+				{
+					if (drop_replication_slot(remote_conn, local_node_record.slot_name) == true)
+					{
+						log_notice(_("replication slot \"%s\" deleted on former master\n"), local_node_record.slot_name);
+					}
+					else
+					{
+						log_err(_("unable to delete replication slot \"%s\" on former master\n"), local_node_record.slot_name);
+					}
+				}
+				/* if active replication slot exists, call Houston as we have a problem */
+				else
+				{
+					log_err(_("replication slot \"%s\" is still active on former master\n"), local_node_record.slot_name);
+				}
+			}
+		}
+
+		PQfinish(remote_conn);
+	}
+
+	/* TODO: verify this node's record was updated correctly */
+
+	PQfinish(local_conn);
+
+	log_info(_("switchover was successful\n"));
 	return;
 }
 
@@ -2159,9 +2733,6 @@ do_witness_create(void)
 	char		master_hba_file[MAXLEN];
 	bool        success;
 	bool		record_created;
-
-	PQconninfoOption *conninfo_options;
-	PQconninfoOption *conninfo_option;
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
@@ -2310,20 +2881,8 @@ do_witness_create(void)
 	 * what we'll later try and connect to anyway. '-l/--local-port' should
 	 * be deprecated.
 	 */
-	conninfo_options = PQconninfoParse(options.conninfo, NULL);
 
-	for (conninfo_option = conninfo_options; conninfo_option->keyword != NULL; conninfo_option++)
-	{
-		if (strcmp(conninfo_option->keyword, "port") == 0)
-		{
-			if (conninfo_option->val != NULL && conninfo_option->val[0] != '\0')
-			{
-				strncpy(runtime_options.localport, conninfo_option->val, MAXLEN);
-				break;
-			}
-		}
-	}
-	PQconninfoFree(conninfo_options);
+	get_conninfo_value(options.conninfo, "port", runtime_options.localport);
 
 	/*
 	 * If not specified by the user, the default port for the witness server
@@ -2598,7 +3157,7 @@ help(void)
 	printf(_("\n"));
 	printf(_("Usage:\n"));
 	printf(_("  %s [OPTIONS] master  register\n"), progname());
-	printf(_("  %s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"),
+	printf(_("  %s [OPTIONS] standby {register|unregister|clone|promote|follow|switchover}\n"),
 		   progname());
 	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname());
 	printf(_("\n"));
@@ -2636,6 +3195,7 @@ help(void)
 	printf(_("  -w, --wal-keep-segments=VALUE       (standby clone) minimum value for the GUC\n" \
 			 "                                        wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
+	printf(_("  -m, --mode                          (standby switchover) shutdown mode (smart|fast|immediate)\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history\n"));
 
 
@@ -2771,14 +3331,14 @@ test_ssh_connection(char *host, char *remote_user)
 	for(i = 0; truebin_paths[i] && r != 0; ++i)
 	{
 		if (!remote_user[0])
-			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s",
+			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s 2>/dev/null",
 							options.ssh_options, host, truebin_paths[i]);
 		else
-			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s",
+			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s 2>/dev/null",
 							options.ssh_options, host, remote_user,
 							truebin_paths[i]);
 
-		log_debug(_("command is: %s\n"), script);
+		log_verbose(LOG_DEBUG, _("test_ssh_connection(): executing %s\n"), script);
 		r = system(script);
 	}
 
@@ -3022,24 +3582,30 @@ check_parameters_for_action(const int action)
 				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY PROMOTE"));
 			}
 			break;
+
 		case STANDBY_FOLLOW:
 
 			/*
 			 * To make a standby follow a master we only need the repmgr.conf
 			 * we don't want connection parameters to the new master because
-			 * we will try to detect the master in repl_nodes if we can't find
+			 * we will try to detect the master in repl_nodes; if we can't find
 			 * it then the follow action will be cancelled
 			 */
-			if (runtime_options.host[0] || runtime_options.masterport[0] ||
-				runtime_options.username[0] || runtime_options.dbname[0])
+
+			if (runtime_options.host[0] || runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY FOLLOW"));
-			}
-			if (runtime_options.dest_dir[0])
-			{
-				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY FOLLOW"));
+				if (!runtime_options.host[0])
+				{
+					error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY FOLLOW with -D/--data-dir option"));
+				}
+
+				if (!runtime_options.dest_dir[0])
+				{
+					error_list_append(&cli_errors, _("local data directory (-D/--data-dir) required when executing STANDBY FOLLOW with -h/--host option"));
+				}
 			}
 			break;
+
 		case STANDBY_CLONE:
 
 			/*
@@ -3064,6 +3630,9 @@ check_parameters_for_action(const int action)
 			}
 
 			config_file_required = false;
+			break;
+		case STANDBY_SWITCHOVER:
+			/* allow all parameters to be supplied */
 			break;
 		case WITNESS_CREATE:
 			/* allow all parameters to be supplied */
@@ -3099,9 +3668,9 @@ check_parameters_for_action(const int action)
 			error_list_append(&cli_warnings, _("-r/--rsync-only can only be used when executing STANDBY CLONE"));
 		}
 
-		if (runtime_options.wal_keep_segments)
+		if (wal_keep_segments_used)
 		{
-			error_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
+			error_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE %i"));
 		}
 	}
 
@@ -3850,4 +4419,105 @@ print_error_list(ErrorList *error_list, int log_level)
 		}
 
 	}
+}
+
+
+/*
+ * Execute a command via ssh on the remote host.
+ *
+ * TODO: implement SSH calls using libssh2.
+ */
+static bool
+remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf)
+{
+	FILE *fp;
+	char ssh_command[MAXLEN];
+	PQExpBufferData ssh_host;
+
+	char output[MAXLEN];
+
+	initPQExpBuffer(&ssh_host);
+
+	if (*user != '\0')
+	{
+		appendPQExpBuffer(&ssh_host, "%s@", user);
+	}
+
+	appendPQExpBuffer(&ssh_host, "%s",host);
+
+	maxlen_snprintf(ssh_command,
+					"ssh -o Batchmode=yes %s %s",
+					ssh_host.data,
+					command);
+
+	termPQExpBuffer(&ssh_host);
+
+	log_debug("remote_command(): %s\n", ssh_command);
+
+	fp = popen(ssh_command, "r");
+
+	if (fp == NULL)
+	{
+		log_err(_("unable to execute remote command:\n%s\n"), ssh_command);
+		return false;
+	}
+
+	// TODO: better error handling
+	while (fgets(output, MAXLEN, fp) != NULL)
+	{
+		appendPQExpBuffer(outputbuf, "%s", output);
+	}
+
+	pclose(fp);
+
+	log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
+
+	return true;
+}
+
+
+/*
+ * Extract values from provided conninfo string and return
+ * formatted as command-line parameters suitable for passing to repmgr
+ */
+static void
+format_db_cli_params(const char *conninfo, char *output)
+{
+	PQExpBufferData buf;
+	char host[MAXLEN] = "";
+	char port[MAXLEN] = "";
+	char dbname[MAXLEN] = "";
+	char user[MAXLEN] = "";
+
+	initPQExpBuffer(&buf);
+
+	get_conninfo_value(conninfo, "host", host);
+	get_conninfo_value(conninfo, "port", port);
+	get_conninfo_value(conninfo, "dbname", dbname);
+	get_conninfo_value(conninfo, "user", user);
+
+	if (host[0])
+	{
+		appendPQExpBuffer(&buf, "-h %s ", host);
+	}
+
+	if (port[0])
+	{
+		appendPQExpBuffer(&buf, "-p %s ", port);
+	}
+
+	if (dbname[0])
+	{
+		appendPQExpBuffer(&buf, "-d %s ", dbname);
+	}
+
+	if (user[0])
+	{
+		appendPQExpBuffer(&buf, "-U %s ", user);
+	}
+
+	strncpy(output, buf.data, MAXLEN);
+
+	termPQExpBuffer(&buf);
+
 }

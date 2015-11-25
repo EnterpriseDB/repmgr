@@ -52,6 +52,18 @@ typedef struct s_node_info
 }	t_node_info;
 
 
+/*
+ * Struct to store replication slot information
+ */
+
+typedef struct s_replication_slot
+{
+	char slot_name[MAXLEN];
+    char slot_type[MAXLEN];
+	bool active;
+}   t_replication_slot;
+
+
 #define T_NODE_INFO_INITIALIZER { \
   NODE_NOT_FOUND, \
   NO_UPSTREAM_NODE, \
@@ -86,7 +98,7 @@ int			guc_set(PGconn *conn, const char *parameter, const char *op,
 			const char *value);
 int			guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 			  const char *value, const char *datatype);
-
+bool		get_conninfo_value(const char *conninfo, const char *keyword, char *output);
 PGconn     *get_upstream_connection(PGconn *standby_conn, char *cluster,
 									int node_id,
 									int *upstream_node_id_ptr,
@@ -99,15 +111,19 @@ bool		cancel_query(PGconn *conn, int timeout);
 char       *get_repmgr_schema(void);
 char       *get_repmgr_schema_quoted(PGconn *conn);
 bool		create_replication_slot(PGconn *conn, char *slot_name);
-
+int			get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
+bool		drop_replication_slot(PGconn *conn, char *slot_name);
 bool		start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint);
 bool		stop_backup(PGconn *conn, char *last_wal_segment);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 bool		copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name);
 bool		create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name);
 bool		delete_node_record(PGconn *conn, int node, char *action);
-bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
+int			get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info);
+bool        update_node_record_status(PGconn *conn, char *cluster_name, int this_node_id, char *type, int upstream_node_id, bool active);
 bool        update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_id, int new_upstream_node_id);
-PGresult *	get_node_record(PGconn *conn, char *cluster, int node_id);
+bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
 
+int   	    get_node_replication_state(PGconn *conn, char *node_name, char *output);
+t_server_type parse_node_type(const char *type);
 #endif

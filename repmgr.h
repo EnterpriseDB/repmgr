@@ -73,21 +73,30 @@ typedef struct
 	bool		rsync_only;
 	bool		fast_checkpoint;
 	bool		ignore_external_config_files;
+	char		pg_ctl_mode[MAXLEN];
 	char		masterport[MAXLEN];
-	char		localport[MAXLEN];
+	/*
+	 * configuration file parameters which can be overridden on the
+	 * command line
+	 */
 	char		loglevel[MAXLEN];
 
+	/* parameter used by STANDBY SWITCHOVER */
+	char		remote_config_file[MAXLEN];
 	/* parameter used by CLUSTER CLEANUP */
 	int			keep_history;
 
 	char		pg_bindir[MAXLEN];
 
 	char		recovery_min_apply_delay[MAXLEN];
+
+	/* deprecated command line option */
+	char		localport[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, "", "", "", 0, "", "" }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, "smart", "", "", "", 0, "", "", "" }
 
 extern char		repmgr_schema[MAXLEN];
-
+extern bool		config_file_found;
 
 #endif
