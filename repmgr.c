@@ -2249,7 +2249,7 @@ do_standby_follow(void)
  *    which will be unable to catch up with the primary
  *
  * TODO:
- *  - update help, docs
+ *  - update docs
  *  - make connection test timeouts/intervals configurable (see below)
  */
 
@@ -3196,6 +3196,8 @@ help(void)
 			 "                                        wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
 	printf(_("  -m, --mode                          (standby switchover) shutdown mode (smart|fast|immediate)\n"));
+	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \
+			 "                                        the current master\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history\n"));
 
 
@@ -3209,17 +3211,18 @@ help(void)
 	printf(_("%s performs the following node management tasks:\n"), progname());
 	printf(_("\n"));
 	printf(_("COMMANDS:\n"));
-	printf(_(" master register         - registers the master in a cluster\n"));
-	printf(_(" standby clone [node]    - creates a new standby\n"));
-	printf(_(" standby register        - registers a standby in a cluster\n"));
-	printf(_(" standby unregister      - unregisters a standby in a cluster\n"));
-	printf(_(" standby promote         - promotes a specific standby to master\n"));
-	printf(_(" standby follow          - makes standby follow a new master\n"));
-	printf(_(" witness create          - creates a new witness server\n"));
-	printf(_(" cluster show            - displays information about cluster nodes\n"));
-	printf(_(" cluster cleanup         - prunes or truncates monitoring history\n" \
-			 "                           (monitoring history creation requires repmgrd\n" \
-			 "                           with --monitoring-history option)\n"));
+	printf(_(" master  register      - registers the master in a cluster\n"));
+	printf(_(" standby clone [node]  - creates a new standby\n"));
+	printf(_(" standby register      - registers a standby in a cluster\n"));
+	printf(_(" standby unregister    - unregisters a standby in a cluster\n"));
+	printf(_(" standby promote       - promotes a specific standby to master\n"));
+	printf(_(" standby follow        - makes standby follow a new master\n"));
+	printf(_(" standby switchover    - switch this standby with the current master\n"));
+	printf(_(" witness create        - creates a new witness server\n"));
+	printf(_(" cluster show          - displays information about cluster nodes\n"));
+	printf(_(" cluster cleanup       - prunes or truncates monitoring history\n" \
+			 "                         (monitoring history creation requires repmgrd\n" \
+			 "                         with --monitoring-history option)\n"));
 }
 
 
