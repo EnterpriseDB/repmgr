@@ -50,13 +50,6 @@
 #define NO_UPSTREAM_NODE	-1
 
 
-typedef enum {
-    UNKNOWN = 0,
-	MASTER,
-	STANDBY,
-	WITNESS
-} t_server_type;
-
 
 
 /* Run time options type */
