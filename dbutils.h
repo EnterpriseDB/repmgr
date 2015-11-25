@@ -20,10 +20,51 @@
 #ifndef _REPMGR_DBUTILS_H_
 #define _REPMGR_DBUTILS_H_
 
+#include "access/xlogdefs.h"
+
 #include "config.h"
 #include "strutil.h"
 
 
+typedef enum {
+	UNKNOWN = 0,
+	MASTER,
+	STANDBY,
+	WITNESS
+} t_server_type;
+
+/*
+ * Struct to store node information
+ */
+typedef struct s_node_info
+{
+	int			  node_id;
+	int			  upstream_node_id;
+	t_server_type type;
+	char		  name[MAXLEN];
+	char		  conninfo_str[MAXLEN];
+	char		  slot_name[MAXLEN];
+	int			  priority;
+	bool		  active;
+	bool		  is_ready;
+	bool		  is_visible;
+	XLogRecPtr	  xlog_location;
+}	t_node_info;
+
+
+#define T_NODE_INFO_INITIALIZER { \
+  NODE_NOT_FOUND, \
+  NO_UPSTREAM_NODE, \
+  UNKNOWN, \
+  "", \
+  "", \
+  "", \
+  DEFAULT_PRIORITY, \
+  true, \
+  false, \
+  false, \
+  InvalidXLogRecPtr \
+}
 
 PGconn *establish_db_connection(const char *conninfo,
 						const bool exit_on_error);

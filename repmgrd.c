@@ -41,22 +41,6 @@
 #include "access/xlogdefs.h"
 #include "pqexpbuffer.h"
 
-/*
- * Struct to store node information
- */
-typedef struct s_node_info
-{
-	int			node_id;
-    int			upstream_node_id;
-	char		conninfo_str[MAXLEN];
-	XLogRecPtr	xlog_location;
-    t_server_type type;
-	bool		is_ready;
-	bool		is_visible;
-	char		slot_name[MAXLEN];
-	bool		active;
-}	t_node_info;
-
 
 
 /* Local info */
@@ -1097,10 +1081,10 @@ do_master_failover(void)
 	t_node_info nodes[FAILOVER_NODES_MAX_CHECK];
 
     /* Store details of the failed node here */
-    t_node_info failed_master = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
+    t_node_info failed_master = T_NODE_INFO_INITIALIZER;
 
 	/* Store details of the best candidate for promotion to master here */
-	t_node_info best_candidate = {-1, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
+	t_node_info best_candidate = T_NODE_INFO_INITIALIZER;
 
 	/* get a list of standby nodes, including myself */
 	sprintf(sqlquery,
@@ -2286,7 +2270,7 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 {
 	PGresult   *res;
 
-	t_node_info node_info = { NODE_NOT_FOUND, NO_UPSTREAM_NODE, "", InvalidXLogRecPtr, UNKNOWN, false, false};
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
 	res = get_node_record(conn, cluster, node_id);
 
