@@ -121,8 +121,9 @@ logfacility=STDERR
 
 master_response_timeout=60
 
-# Number of times to try and reconnect to the primary before starting
-# the failover procedure
+# Number of attempts at what interval (in seconds) to try and
+# connect to  a server to establish its status (e.g. master
+# during failover)
 reconnect_attempts=6
 reconnect_interval=10
 
