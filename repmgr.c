@@ -110,9 +110,6 @@ static const char *keywords[6];
 static const char *values[6];
 static bool		   config_file_required = true;
 
-/* XXX This should be mapped into a command line option */
-bool		require_password = false;
-
 /* Initialization of runtime options */
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
@@ -3361,11 +3358,6 @@ write_primary_conninfo(char *line)
 	if (password != NULL)
 	{
 		maxlen_snprintf(password_buf, " password=%s", password);
-	}
-	else if (require_password)
-	{
-		log_err(_("password required but none provided and PGPASSWORD not set\n"));
-		exit(ERR_BAD_PASSWORD);
 	}
 
 	if (runtime_options.host[0])
