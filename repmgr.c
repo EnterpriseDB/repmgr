@@ -1399,6 +1399,20 @@ do_standby_clone(void)
 		log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option\n"));
 	}
 
+	/*
+         * If replication slots requested, create appropriate slot on
+         * the primary; this must be done before pg_start_backup() is
+         * issued, either by us or by pg_basebackup.
+	 */
+	if (options.use_replication_slots)
+	{
+		if (create_replication_slot(upstream_conn, repmgr_slot_name) == false)
+		{
+			PQfinish(upstream_conn);
+			exit(ERR_DB_QUERY);
+		}
+	}
+
 	if (runtime_options.rsync_only)
 	{
 		PQExpBufferData tablespace_map;
@@ -1745,20 +1759,6 @@ stop_backup:
 
 	/* Finally, write the recovery.conf file */
 	create_recovery_file(local_data_directory);
-
-	/*
-	 * If replication slots requested, create appropriate slot on the primary;
-	 * create_recovery_file() will already have written `primary_slot_name` into
-	 * `recovery.conf`
-	 */
-	if (options.use_replication_slots)
-	{
-		if (create_replication_slot(upstream_conn, repmgr_slot_name) == false)
-		{
-			PQfinish(upstream_conn);
-			exit(ERR_DB_QUERY);
-		}
-	}
 
 	if (runtime_options.rsync_only)
 	{
