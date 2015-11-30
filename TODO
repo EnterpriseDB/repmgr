@@ -70,6 +70,8 @@ Usability improvements
 * repmgr: when unregistering a node, delete any entries in the repl_monitoring
   table.
 
-* repmgr: remove warning about reindexing hash tables; possibly replace
-  with an (optional?) check for the existance of any hash indexes
-  and warn if any found ("hash indexes detected - good luck with that...")
+* repmgr: for "standby unregister", accept connection parameters for the
+  primary and perform metadata updates (and slot removal) directly on
+  the primary, to allow a shutdown standby to be unregistered
+  (currently the standby must still be running, which means the replication
+  slot can't be dropped).
