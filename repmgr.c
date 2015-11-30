@@ -1747,9 +1747,16 @@ stop_backup:
 	/* If the backup failed then exit */
 	if (r != 0)
 	{
+		/* If a replication slot was previously created, drop it */
+		if (options.use_replication_slots)
+		{
+			drop_replication_slot(upstream_conn, repmgr_slot_name);
+		}
+
 		log_err(_("unable to take a base backup of the master server\n"));
 		log_warning(_("destination directory (%s) may need to be cleaned up manually\n"),
 				local_data_directory);
+
 		PQfinish(upstream_conn);
 		exit(retval);
 	}
