@@ -1393,16 +1393,10 @@ do_standby_clone(void)
 		goto stop_backup;
 	}
 
-	log_notice(_("starting backup...\n"));
-	if (runtime_options.fast_checkpoint == false)
-	{
-		log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option\n"));
-	}
-
 	/*
-         * If replication slots requested, create appropriate slot on
-         * the primary; this must be done before pg_start_backup() is
-         * issued, either by us or by pg_basebackup.
+	 * If replication slots requested, create appropriate slot on
+	 * the primary; this must be done before pg_start_backup() is
+	 * issued, either by us or by pg_basebackup.
 	 */
 	if (options.use_replication_slots)
 	{
@@ -1411,6 +1405,12 @@ do_standby_clone(void)
 			PQfinish(upstream_conn);
 			exit(ERR_DB_QUERY);
 		}
+	}
+
+	log_notice(_("starting backup...\n"));
+	if (runtime_options.fast_checkpoint == false)
+	{
+		log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option\n"));
 	}
 
 	if (runtime_options.rsync_only)
