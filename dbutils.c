@@ -888,6 +888,33 @@ create_replication_slot(PGconn *conn, char *slot_name)
 	return true;
 }
 
+bool
+drop_replication_slot(PGconn *conn, char *slot_name)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+	sqlquery_snprintf(sqlquery,
+					  "SELECT pg_drop_replication_slot('%s')",
+					  slot_name);
+
+	log_verbose(LOG_DEBUG, "drop_replication_slot():\n%s\n", sqlquery);
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("unable to drop replication slot \"%s\":\n %s\n"),
+				slot_name,
+				PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	log_verbose(LOG_DEBUG, "replication slot \"%s\" successfully dropped\n",
+				slot_name);
+
+	return true;
+}
+
 
 bool
 start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint)
