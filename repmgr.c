@@ -1761,19 +1761,46 @@ stop_backup:
 		exit(retval);
 	}
 
+
 	/*
-	 * Remove existing WAL from the target directory, since
-	 * rsync's --exclude option doesn't do it.
+	 * Clean up any $PGDATA subdirectories which may contain
+	 * files which won't be removed by rsync and which could
+	 * be stale or are otherwise not required
 	 */
-	if (runtime_options.force)
+	if (runtime_options.rsync_only && runtime_options.force)
 	{
 		char	script[MAXLEN];
+
+		/*
+		 * Remove any existing WAL from the target directory, since
+		 * rsync's --exclude option doesn't do it.
+		 */
 		maxlen_snprintf(script, "rm -rf %s/pg_xlog/*",
 						local_data_directory);
 		r = system(script);
 		if (r != 0)
 		{
 			log_err(_("unable to empty local WAL directory %s/pg_xlog/\n"),
+					local_data_directory);
+			exit(ERR_BAD_RSYNC);
+		}
+
+		/*
+		 * Remove any replication slot directories; this matches the
+		 * behaviour a base backup, which would result in an empty
+		 * pg_replslot directory.
+		 *
+		 * NOTE: watch out for any changes in the replication
+		 * slot directory name (as of 9.4: "pg_replslot") and
+		 * functionality of replication slots
+		 */
+
+		maxlen_snprintf(script, "rm -rf %s/pg_replslot/*",
+						local_data_directory);
+		r = system(script);
+		if (r != 0)
+		{
+			log_err(_("unable to empty replication slot directory %s/pg_replslot/\n"),
 					local_data_directory);
 			exit(ERR_BAD_RSYNC);
 		}
