@@ -1430,8 +1430,9 @@ do_standby_clone(void)
 		 */
 		if (set_config_bool(upstream_conn, "synchronous_commit", false) == false)
 		{
-			PQfinish(upstream_conn);
-			exit(ERR_BAD_CONFIG);
+			r = ERR_BAD_CONFIG;
+			retval = ERR_BAD_CONFIG;
+			goto stop_backup;
 		}
 
 		if (start_backup(upstream_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
@@ -1477,13 +1478,16 @@ do_standby_clone(void)
 						  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
 
 		res = PQexec(upstream_conn, sqlquery);
+
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
 			log_err(_("unable to execute tablespace query: %s\n"),
 					PQerrorMessage(upstream_conn));
+
 			PQclear(res);
-			PQfinish(upstream_conn);
-			exit(ERR_BAD_CONFIG);
+
+			r = retval = ERR_DB_QUERY;
+			goto stop_backup;
 		}
 
 		for (i = 0; i < PQntuples(res); i++)
@@ -1559,20 +1563,27 @@ do_standby_clone(void)
 					if (unlink(tblspc_symlink.data) < 0 && errno != ENOENT)
 					{
 						log_err(_("unable to remove tablespace symlink %s\n"), tblspc_symlink.data);
-						exit(ERR_BAD_CONFIG);
+
+						PQclear(res);
+
+						r = retval = ERR_BAD_BASEBACKUP;
+						goto stop_backup;
 					}
+
 					if (symlink(tblspc_dir_dst.data, tblspc_symlink.data) < 0)
 					{
 						log_err(_("unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dst.data);
-						exit(ERR_BAD_CONFIG);
+
+						PQclear(res);
+
+						r = retval = ERR_BAD_BASEBACKUP;
+						goto stop_backup;
 					}
-
-
 				}
-
 			}
 		}
 
+		PQclear(res);
 
 		if (server_version_num >= 90500 && tablespace_map_rewrite == true)
 		{
@@ -1587,27 +1598,30 @@ do_standby_clone(void)
 			if (unlink(tablespace_map_filename.data) < 0 && errno != ENOENT)
 			{
 				log_err(_("unable to remove tablespace_map file %s\n"), tablespace_map_filename.data);
-				exit(ERR_BAD_CONFIG);
+
+				r = retval = ERR_BAD_BASEBACKUP;
+				goto stop_backup;
 			}
 
 			tablespace_map_file = fopen(tablespace_map_filename.data, "w");
 			if (tablespace_map_file == NULL)
 			{
 				log_err(_("unable to create tablespace_map file '%s'\n"), tablespace_map_filename.data);
-				exit(ERR_BAD_CONFIG);
+
+				r = retval = ERR_BAD_BASEBACKUP;
+				goto stop_backup;
 			}
 
 			if (fputs(tablespace_map.data, tablespace_map_file) == EOF)
 			{
 				log_err(_("unable to write to tablespace_map file '%s'\n"), tablespace_map_filename.data);
-				fclose(tablespace_map_file);
-				exit(ERR_BAD_CONFIG);
+
+				r = retval = ERR_BAD_BASEBACKUP;
+				goto stop_backup;
 			}
 
 			fclose(tablespace_map_file);
 		}
-
-		PQclear(res);
 	}
 	else
 	{
@@ -1615,6 +1629,7 @@ do_standby_clone(void)
 		if (r != 0)
 		{
 			log_warning(_("standby clone: base backup failed\n"));
+
 			retval = ERR_BAD_BASEBACKUP;
 			goto stop_backup;
 		}
@@ -1783,7 +1798,7 @@ stop_backup:
 	}
 	else
 	{
-		log_notice(_("for example : /etc/init.d/postgresql start\n"));
+		log_hint(_("for example : /etc/init.d/postgresql start\n"));
 	}
 
 	/* Log the event */
