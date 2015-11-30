@@ -1833,14 +1833,17 @@ stop_backup:
 		 * functionality of replication slots
 		 */
 
-		maxlen_snprintf(script, "rm -rf %s/pg_replslot/*",
-						local_data_directory);
-		r = system(script);
-		if (r != 0)
+		if (server_version_num >= 90400)
 		{
-			log_err(_("unable to empty replication slot directory %s/pg_replslot/\n"),
-					local_data_directory);
-			exit(ERR_BAD_RSYNC);
+			maxlen_snprintf(script, "rm -rf %s/pg_replslot/*",
+							local_data_directory);
+			r = system(script);
+			if (r != 0)
+			{
+				log_err(_("unable to empty replication slot directory %s/pg_replslot/\n"),
+						local_data_directory);
+				exit(ERR_BAD_RSYNC);
+			}
 		}
 	}
 
