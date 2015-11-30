@@ -1,6 +1,17 @@
-3.0.3   2015-10-
+3.0.3   2015-11-30
         Bugfix: have repmgrd terminate if monitored standby is no longer
           connected to upstream node (Ian)
+        Create replication slot if required before base backup is run (Abhijit)
+        standy clone: when using rsync, clean up "pg_replslot" directory (Ian)
+        Improve --help output (Ian)
+        Improve config file parsing (Ian)
+        Various logging output improvements, including explicit HINTS (Ian)
+        Add --log-level to explicitly set log level on command line (Ian)
+        Repurpose --verbose to display extra log output (Ian)
+        Add --terse to hide hints and other non-critical output (Ian)
+        Reference internal functions with explicit catalog path (Ian)
+        When following a new primary, have repmgr (not repmgrd) create the new slot (Ian)
+        Add /etc/repmgr.conf as a default configuration file location (Ian)
 
 3.0.2   2015-10-02
         Improve handling of --help/--version options; and improve help output (Ian)
