@@ -71,7 +71,7 @@ static void check_node_configuration(void);
 static void standby_monitor(void);
 static void witness_monitor(void);
 static bool check_connection(PGconn **conn, const char *type, const char *conninfo);
-static bool set_local_node_failed(void);
+static bool set_local_node_status(void);
 
 static void update_shared_memory(char *last_wal_standby_applied);
 static void update_registration(void);
@@ -685,7 +685,7 @@ standby_monitor(void)
 	{
 		PQExpBufferData errmsg;
 
-		set_local_node_failed();
+		set_local_node_status();
 
 		initPQExpBuffer(&errmsg);
 
@@ -845,10 +845,13 @@ standby_monitor(void)
 				 * will require manual resolution as there's no way of determing
 				 * which master is the correct one.
 				 *
+				 * We should log a message so the user knows of the situation at hand.
+				 *
 				 * XXX check if the original master is still active and display a
 				 * warning
 				 */
-				log_err(_("It seems like we have been promoted, so exit from monitoring...\n"));
+				log_err(_("It seems this server was promoted manually (not by repmgr) so you might by in the presence of a split-brain.\n"));
+				log_err(_("Check your cluster and manually fix any anomaly.\n"));
 				terminate(1);
 				break;
 
@@ -858,11 +861,25 @@ standby_monitor(void)
 
 				if (!check_connection(&my_local_conn, "standby", NULL))
 				{
-					set_local_node_failed();
-					terminate(0);
+					set_local_node_status();
+					/* 
+					 * Let's continue checking, and if the postgres server on the
+					 * standby comes back up, we will activate it again
+					 */
+					continue;
 				}
 
 				break;
+		        case 1:
+			       /*
+				* There's a possible situation where the standby went down for some reason
+				* (maintanence for example) and is now up and maybe connected once again to
+				* the stream. If we set the local standby node as failed and it's now running
+				* and receiving replication data, we should re-enable it.
+				*/
+			       set_local_node_status();
+			       break;
+		  
 		}
 	} while (ret == -1);
 
@@ -1769,7 +1786,7 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
 
 
 /*
- * set_local_node_failed()
+ * set_local_node_status()
  *
  * If failure of the local node is detected, attempt to connect
  * to the current master server (as stored in the global variable
@@ -1777,16 +1794,16 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
  */
 
 static bool
-set_local_node_failed(void)
+set_local_node_status(void)
 {
-	PGresult   *res;
+        PGresult       *res;
 	char		sqlquery[QUERY_STR_LEN];
-	int			active_master_node_id = NODE_NOT_FOUND;
+	int		active_master_node_id = NODE_NOT_FOUND;
 	char		master_conninfo[MAXLEN];
 
 	if (!check_connection(&master_conn, "master", NULL))
 	{
-		log_err(_("set_local_node_failed(): Unable to connect to last known master node\n"));
+		log_err(_("set_local_node_status(): Unable to connect to last known master node\n"));
 		return false;
 	}
 
@@ -1840,17 +1857,16 @@ set_local_node_failed(void)
 
 
 	/*
-	 * Attempt to set own record as inactive
+	 * Attempt to set the active record to the correct value.
+	 * First
 	 */
-	sqlquery_snprintf(sqlquery,
-					  "UPDATE %s.repl_nodes "
-					  "   SET active = FALSE "
-					  " WHERE id = %i ",
-					  get_repmgr_schema_quoted(master_conn),
-					  node_info.node_id);
-
-	res = PQexec(master_conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	  
+	if (!update_node_record_status(master_conn,
+					    local_options.cluster_name,
+					    node_info.node_id,
+					    "standby",
+					    node_info.upstream_node_id,
+					    is_standby(my_local_conn)==1))
 	{
 		log_err(_("unable to set local node %i as inactive on master: %s\n"),
 				node_info.node_id,
