@@ -691,18 +691,12 @@ standby_monitor(void)
 		initPQExpBuffer(&errmsg);
 
 		appendPQExpBuffer(&errmsg,
-						  _("failed to connect to local node, node marked as failed and terminating!"));
+						  _("failed to connect to local node, node marked as failed!"));
 
 		log_err("%s\n", errmsg.data);
 
-		create_event_record(master_conn,
-							&local_options,
-							local_options.node,
-							"repmgrd_shutdown",
-							false,
-							errmsg.data);
-
-		terminate(ERR_DB_CON);
+		//terminate(ERR_DB_CON);
+		goto continue_monitoring_standby;
 	}
 
 	upstream_conn = get_upstream_connection(my_local_conn,
@@ -831,6 +825,7 @@ standby_monitor(void)
 
 	PQfinish(upstream_conn);
 
+ continue_monitoring_standby:
 	/* Check if we still are a standby, we could have been promoted */
 	do
 	{
