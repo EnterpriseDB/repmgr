@@ -862,26 +862,23 @@ standby_monitor(void)
 					 * Let's continue checking, and if the postgres server on the
 					 * standby comes back up, we will activate it again
 					 */
-					continue;
 				}
 
 				break;
-		        case 1:
-			       /*
-				* There's a possible situation where the standby went down for some reason
-				* (maintanence for example) and is now up and maybe connected once again to
-				* the stream. If we set the local standby node as failed and it's now running
-				* and receiving replication data, we should re-enable it.
-				*/
-			       set_local_node_status();
-			       break;
 		  
 		}
 	} while (ret == -1);
 
 	if (did_retry)
 	{
-		log_info(_("standby connection recovered!\n"));
+	        /*
+		 * There's a possible situation where the standby went down for some reason
+		 * (maintanence for example) and is now up and maybe connected once again to
+		 * the stream. If we set the local standby node as failed and it's now running
+		 * and receiving replication data, we should activate it again.
+		 */
+	        set_local_node_status();
+	        log_info(_("standby connection recovered!\n"));
 	}
 
 	/* Fast path for the case where no history is requested */
