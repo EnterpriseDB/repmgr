@@ -658,7 +658,6 @@ standby_monitor(void)
 	char		last_wal_standby_received[MAXLEN];
 	char		last_wal_standby_applied[MAXLEN];
 	char		last_wal_standby_applied_timestamp[MAXLEN];
-	bool        last_wal_standby_received_gte_applied;
 	char		sqlquery[QUERY_STR_LEN];
 
 	XLogRecPtr	lsn_master;
@@ -947,8 +946,7 @@ standby_monitor(void)
 	/* Get local xlog info */
 	sqlquery_snprintf(sqlquery,
 					  "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-					  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp(), "
-					  "pg_last_xlog_receive_location() >= pg_last_xlog_replay_location()");
+					  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp()");
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -964,44 +962,7 @@ standby_monitor(void)
 	strncpy(last_wal_standby_applied, PQgetvalue(res, 0, 2), MAXLEN);
 	strncpy(last_wal_standby_applied_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
 
-	last_wal_standby_received_gte_applied =	(strcmp(PQgetvalue(res, 0, 4), "t") == 0)
-		? true
-		: false;
-
 	PQclear(res);
-
-	/*
-	 * Check that last WAL received is greater or equal to last WAL applied
-	 *
-	 * This situation can occur when the standby is no longer connected to
-	 * the upstream node; in this case repmgrd should terminate itself
-	 * as the node may no longer be capable of being promoted or following
-	 * a new upstream node
-	 *
-	 * XXX check if we should (optionally) adopt other strategies to handle
-	 * this situation
-	 */
-	if(last_wal_standby_received_gte_applied == false)
-	{
-		PQExpBufferData errmsg;
-		initPQExpBuffer(&errmsg);
-
-		appendPQExpBuffer(&errmsg,
-						  /* XXX improve message */
-						  _("This node is no longer connected to its upstream node - terminating"));
-
-		log_crit("%s\n", errmsg.data);
-
-		create_event_record(master_conn,
-							&local_options,
-							local_options.node,
-							"repmgrd_monitor",
-							false,
-							errmsg.data);
-
-		// XXX use better code
-		terminate(ERR_MONITORING_FAIL);
-	}
 
 
 	/* Get master xlog info */
