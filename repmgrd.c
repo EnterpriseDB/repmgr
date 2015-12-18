@@ -1334,7 +1334,7 @@ do_master_failover(void)
 						log_crit(
 							_("unable to obtain LSN from node %i"), nodes[i].node_id
 							);
-						log_info(
+						log_hint(
 							_("please check that 'shared_preload_libraries=repmgr_funcs' is set in postgresql.conf\n")
 							);
 
