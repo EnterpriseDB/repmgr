@@ -679,10 +679,8 @@ do_cluster_show(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-			  "SELECT rn.conninfo, rn.type, rn.name, sq.name"
-			  "  FROM %s.repl_nodes as rn"
-			  "  LEFT JOIN %s.repl_nodes AS sq"
-			  "    ON sq.id=rn.upstream_node_id",
+			  "SELECT conninfo, type, name, upstream_node_name"
+			  "  FROM %s.repl_show_nodes",
 			  get_repmgr_schema_quoted(conn),
 			  get_repmgr_schema_quoted(conn));
 
@@ -3911,6 +3909,7 @@ create_schema(PGconn *conn)
 	}
 	PQclear(res);
 
+	
 	/* an index to improve performance of the view */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE INDEX idx_repl_status_sort "
@@ -3930,6 +3929,35 @@ create_schema(PGconn *conn)
 		return false;
 	}
 	PQclear(res);
+
+
+	/* CREATE VIEW repl_status  */
+	sqlquery_snprintf(sqlquery,
+					  "CREATE VIEW %s.repl_show_nodes AS "
+			                  "SELECT rn.id, rn.conninfo, rn.type, rn.name, rn.cluster,"
+			                  "  rn.priority, rn.active, sq.name AS upstream_node_name"
+			                  "  FROM %s.repl_nodes as rn"
+			                  "  LEFT JOIN %s.repl_nodes AS sq"
+			                  "    ON sq.id=rn.upstream_node_id",
+			  get_repmgr_schema_quoted(conn),
+			  get_repmgr_schema_quoted(conn),
+			  get_repmgr_schema_quoted(conn));
+
+	log_debug(_("master register: %s\n"), sqlquery);
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("unable to create view %s.repl_show_nodes: %s\n"),
+				get_repmgr_schema_quoted(conn), PQerrorMessage(conn));
+
+		if (res != NULL)
+			PQclear(res);
+
+		return false;
+	}
+	PQclear(res);
+
 
 	/*
 	 * XXX Here we MUST try to load the repmgr_function.sql not hardcode it
