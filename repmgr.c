@@ -673,6 +673,7 @@ do_cluster_show(void)
 	char		sqlquery[QUERY_STR_LEN];
 	char		node_role[MAXLEN];
 	int			i;
+	int			name_length, upstream_length = 0;
 
 	/* We need to connect to check configuration */
 	log_info(_("connecting to database\n"));
@@ -700,7 +701,16 @@ do_cluster_show(void)
 	}
 	PQfinish(conn);
 
-	printf("Role      | Name          | Upstream      | Connection String\n");
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		int name_length_cur = strlen(PQgetvalue(res, i, 2));
+		if (name_length_cur > name_length)
+			name_length = name_length_cur;
+		int upstream_length_cur = strlen(PQgetvalue(res, i, 3));
+		if (upstream_length_cur > upstream_length)
+			upstream_length = upstream_length_cur;
+	}
+	printf("Role      | %-*s | %-*s | Connection String\n", name_length, "Name", upstream_length, "Upstream");
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
@@ -714,8 +724,8 @@ do_cluster_show(void)
 			strcpy(node_role, "* master");
 
 		printf("%-10s", node_role);
-		printf("| %-14s", PQgetvalue(res, i, 2));
-		printf("| %-14s", PQgetvalue(res, i, 3));
+		printf("| %-*s ", name_length, PQgetvalue(res, i, 2));
+		printf("| %-*s ", upstream_length, PQgetvalue(res, i, 3));
 		printf("| %s\n", PQgetvalue(res, i, 0));
 
 		PQfinish(conn);
