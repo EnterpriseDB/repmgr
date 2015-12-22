@@ -59,3 +59,12 @@ WHERE (standby_node, last_monitor_time) IN (SELECT standby_node, MAX(last_monito
 ALTER VIEW repl_status OWNER TO repmgr;
 
 CREATE INDEX idx_repl_status_sort ON repl_monitor(last_monitor_time, standby_node);
+
+/*
+ * This view shows the list of nodes with the information of which one is the upstream
+ * in each case (when appliable)
+ */
+CREATE VIEW repl_show_nodes AS 
+SELECT rn.id, rn.conninfo, rn.type, rn.name, rn.cluster,
+	rn.priority, rn.active, sq.name AS upstream_node_name
+FROM repl_nodes as rn LEFT JOIN repl_nodes AS sq ON sq.id=rn.upstream_node_id;
