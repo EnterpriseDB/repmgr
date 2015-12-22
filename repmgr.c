@@ -681,7 +681,6 @@ do_cluster_show(void)
 	sqlquery_snprintf(sqlquery,
 			  "SELECT conninfo, type, name, upstream_node_name"
 			  "  FROM %s.repl_show_nodes",
-			  get_repmgr_schema_quoted(conn),
 			  get_repmgr_schema_quoted(conn));
 
 	res = PQexec(conn, sqlquery);
@@ -3909,7 +3908,7 @@ create_schema(PGconn *conn)
 	}
 	PQclear(res);
 
-	
+
 	/* an index to improve performance of the view */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE INDEX idx_repl_status_sort "
@@ -3931,7 +3930,7 @@ create_schema(PGconn *conn)
 	PQclear(res);
 
 
-	/* CREATE VIEW repl_status  */
+	/* CREATE VIEW repl_show_nodes  */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE VIEW %s.repl_show_nodes AS "
 			                  "SELECT rn.id, rn.conninfo, rn.type, rn.name, rn.cluster,"
