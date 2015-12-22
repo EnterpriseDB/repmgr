@@ -673,6 +673,11 @@ do_cluster_show(void)
 	char		sqlquery[QUERY_STR_LEN];
 	char		node_role[MAXLEN];
 	int			i;
+	char		name_header[MAXLEN];
+	char		upstream_header[MAXLEN];
+	int			name_length,
+				upstream_length,
+				conninfo_length = 0;
 
 	/* We need to connect to check configuration */
 	log_info(_("connecting to database\n"));
@@ -697,7 +702,51 @@ do_cluster_show(void)
 	}
 	PQfinish(conn);
 
-	printf("Role      | Name          | Upstream      | Connection String\n");
+	/* Format header nicely */
+
+	strncpy(name_header, _("Name"), MAXLEN);
+	strncpy(upstream_header, _("Upstream"), MAXLEN);
+
+	/*
+	 * XXX if repmgr is ever localized into non-ASCII locales,
+	 * use pg_wcssize() or similar to establish printed column length
+	 */
+	name_length = strlen(name_header);
+	upstream_length = strlen(upstream_header);
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		int conninfo_length_cur, name_length_cur, upstream_length_cur;
+
+		conninfo_length_cur = strlen(PQgetvalue(res, i, 0));
+		if (conninfo_length_cur > conninfo_length)
+			conninfo_length = conninfo_length_cur;
+
+		name_length_cur	= strlen(PQgetvalue(res, i, 2));
+		if (name_length_cur > name_length)
+			name_length = name_length_cur;
+
+		upstream_length_cur = strlen(PQgetvalue(res, i, 3));
+		if (upstream_length_cur > upstream_length)
+			upstream_length = upstream_length_cur;
+	}
+
+	printf("Role      | %-*s | %-*s | Connection String\n", name_length, name_header, upstream_length, upstream_header);
+	printf("----------+-");
+
+	for (i = 0; i < name_length; i++)
+		printf("-");
+
+	printf("-|-");
+	for (i = 0; i < upstream_length; i++)
+		printf("-");
+
+	printf("-|-");
+	for (i = 0; i < conninfo_length; i++)
+		printf("-");
+
+	printf("\n");
+
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
@@ -711,8 +760,8 @@ do_cluster_show(void)
 			strcpy(node_role, "* master");
 
 		printf("%-10s", node_role);
-		printf("| %-14s", PQgetvalue(res, i, 2));
-		printf("| %-14s", PQgetvalue(res, i, 3));
+		printf("| %-*s ", name_length, PQgetvalue(res, i, 2));
+		printf("| %-*s ", upstream_length, PQgetvalue(res, i, 3));
 		printf("| %s\n", PQgetvalue(res, i, 0));
 
 		PQfinish(conn);
