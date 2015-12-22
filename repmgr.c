@@ -4262,7 +4262,6 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	 * of what's in 'archive_command', so until 'archive_mode' is on we can't
 	 * properly check it.
 	 */
-
 	if (guc_set(conn, "archive_mode", "=", "on"))
 	{
 		i = guc_set(conn, "archive_command", "!=", "");
@@ -4283,6 +4282,11 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	}
 
 
+	/*
+	 * Check that 'hot_standby' is on. This isn't strictly necessary
+	 * for the primary server, however the assumption is that configuration
+	 * should be consistent for all servers in a cluster.
+	 */
 	i = guc_set(conn, "hot_standby", "=", "on");
 	if (i == 0 || i == -1)
 	{
