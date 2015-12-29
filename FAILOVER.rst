@@ -93,7 +93,6 @@ Create the user and database to manage replication::
   su - postgres
   createuser -s repmgr
   createdb -O repmgr repmgr
-  psql -f /usr/share/postgresql/9.0/contrib/repmgr_funcs.sql repmgr
 
 Restart the PostgreSQL server::
 
@@ -121,7 +120,7 @@ Log in to node2.
 Clone node1 (the current Master)::
 
   su - postgres
-  repmgr -d repmgr -U repmgr -h node1 standby clone 
+  repmgr -d repmgr -U repmgr -h node1 standby clone
 
 Start the PostgreSQL server::
 
@@ -172,10 +171,12 @@ Register Master and Standby
 
 Log in to node1.
 
-Register the node as Master::
+Register the node as master::
 
   su - postgres
   repmgr -f /etc/repmgr/repmgr.conf master register
+
+This will also create the repmgr schema and functions.
 
 Log in to node2. Register it as a standby::
 
