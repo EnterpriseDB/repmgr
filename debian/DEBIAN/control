@@ -4,6 +4,6 @@ Section: database
 Priority: optional
 Architecture: all
 Depends: rsync, postgresql-9.3 | postgresql-9.4
-Maintainer: Jaime Casanova <jaime@2ndQuadrant.com>
+Maintainer: Self built package <user@localhost>
 Description: PostgreSQL replication setup, magament and monitoring
  has two main executables
