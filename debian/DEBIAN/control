@@ -1,5 +1,5 @@
 Package: repmgr-auto
-Version: v3.0.1
+Version: 3.0.1
 Section: database
 Priority: optional
 Architecture: all
