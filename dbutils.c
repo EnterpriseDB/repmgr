@@ -1427,6 +1427,50 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	return success;
 }
 
+/*
+ * Update node record following change of status
+ * (e.g. inactive primary converted to standby)
+ */
+bool
+update_node_record_status(PGconn *conn, char *cluster_name, int this_node_id, char *type, int upstream_node_id, bool active)
+{
+	PGresult   *res;
+	char            sqlquery[QUERY_STR_LEN];
+
+	sqlquery_snprintf(sqlquery,
+					  "  UPDATE %s.repl_nodes "
+					  "     SET type = '%s', "
+					  "         upstream_node_id = %i, "
+					  "         active = %s "
+					  "   WHERE cluster = '%s' "
+					  "     AND id = %i ",
+					  get_repmgr_schema_quoted(conn),
+					  type,
+					  upstream_node_id,
+					  active ? "TRUE" : "FALSE",
+					  cluster_name,
+					  this_node_id);
+
+	log_verbose(LOG_DEBUG, "update_node_record_status():\n%s\n", sqlquery);
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to update node record: %s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+
+}
+
+
 bool
 update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_id, int new_upstream_node_id)
 {
