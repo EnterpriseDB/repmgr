@@ -695,7 +695,6 @@ standby_monitor(void)
 
 		log_err("%s\n", errmsg.data);
 
-		//terminate(ERR_DB_CON);
 		goto continue_monitoring_standby;
 	}
 
@@ -858,22 +857,21 @@ standby_monitor(void)
 				if (!check_connection(&my_local_conn, "standby", NULL))
 				{
 					set_local_node_status();
-					/* 
+					/*
 					 * Let's continue checking, and if the postgres server on the
 					 * standby comes back up, we will activate it again
 					 */
 				}
 
 				break;
-		  
 		}
 	} while (ret == -1);
 
 	if (did_retry)
 	{
-	        /*
+		/*
 		 * There's a possible situation where the standby went down for some reason
-		 * (maintanence for example) and is now up and maybe connected once again to
+		 * (maintenance for example) and is now up and maybe connected once again to
 		 * the stream. If we set the local standby node as failed and it's now running
 		 * and receiving replication data, we should activate it again.
 		 */
@@ -1833,7 +1831,7 @@ set_local_node_status(void)
 	 * Attempt to set the active record to the correct value.
 	 * First
 	 */
-	  
+
 	if (!update_node_record_status(master_conn,
 					    local_options.cluster_name,
 					    node_info.node_id,
