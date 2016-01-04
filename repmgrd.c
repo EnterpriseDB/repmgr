@@ -658,6 +658,7 @@ standby_monitor(void)
 	char		last_wal_standby_received[MAXLEN];
 	char		last_wal_standby_applied[MAXLEN];
 	char		last_wal_standby_applied_timestamp[MAXLEN];
+	bool		last_wal_standby_received_gte_replayed;
 	char		sqlquery[QUERY_STR_LEN];
 
 	XLogRecPtr	lsn_master;
@@ -824,7 +825,7 @@ standby_monitor(void)
 
 	PQfinish(upstream_conn);
 
- continue_monitoring_standby:
+  continue_monitoring_standby:
 	/* Check if we still are a standby, we could have been promoted */
 	do
 	{
@@ -883,7 +884,6 @@ standby_monitor(void)
 	/* Fast path for the case where no history is requested */
 	if (!monitoring_history)
 		return;
-
 
 	/*
 	 * If original master has gone away we'll need to get the new one
@@ -946,7 +946,8 @@ standby_monitor(void)
 	/* Get local xlog info */
 	sqlquery_snprintf(sqlquery,
 					  "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-					  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp()");
+					  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp(), "
+					  "pg_last_xlog_receive_location() >= pg_last_xlog_replay_location()");
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -961,9 +962,27 @@ standby_monitor(void)
 	strncpy(last_wal_standby_received, PQgetvalue(res, 0, 1), MAXLEN);
 	strncpy(last_wal_standby_applied, PQgetvalue(res, 0, 2), MAXLEN);
 	strncpy(last_wal_standby_applied_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
+	last_wal_standby_received_gte_replayed = (strcmp(PQgetvalue(res, 0, 4), "t") == 0)
+		? true
+		: false;
 
 	PQclear(res);
 
+	/*
+	 * In the unusual event of a standby becoming disconnected from the primary,
+	 * while this repmgrd remains connected to the primary,  subtracting
+	 * "lsn_standby_applied" from "lsn_standby_received" and coercing to
+	 * (long long unsigned int) will result in a meaningless, very large
+	 * value which will overflow a BIGINT column and spew error messages into the
+	 * PostgreSQL log. In the absence of a better strategy, skip attempting
+	 * to insert a monitoring record.
+	 */
+	if (last_wal_standby_received_gte_replayed == false)
+	{
+		log_verbose(LOG_WARNING,
+					"Invalid replication_lag value calculated - is this standby connected to its upstream?\n");
+		return;
+	}
 
 	/* Get master xlog info */
 	sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_xlog_location()");
