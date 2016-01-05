@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-# Copyright (c) 2ndQuadrant, 2010-2015
+# Copyright (c) 2ndQuadrant, 2010-2016
 #
 
 MODULE_big = repmgr_funcs
