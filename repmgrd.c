@@ -142,7 +142,7 @@ main(int argc, char **argv)
 
 	set_progname(argv[0]);
 
-	while ((c = getopt_long(argc, argv, "?Vf:v:mdp:", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "?Vf:vmdp:", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
