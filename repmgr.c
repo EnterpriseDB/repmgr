@@ -174,7 +174,7 @@ main(int argc, char **argv)
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:r:cL:t", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:rcL:t", long_options,
 							&optindex)) != -1)
 	{
 		/*
