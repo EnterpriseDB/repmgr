@@ -113,6 +113,8 @@ static bool		   config_file_required = true;
 /* Initialization of runtime options */
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
+static bool 		wal_keep_segments_used = false;
+
 
 static char *server_mode = NULL;
 static char *server_cmd = NULL;
@@ -164,7 +166,6 @@ main(int argc, char **argv)
 	int			c, targ;
 	int			action = NO_ACTION;
 	bool 		check_upstream_config = false;
-	bool 		wal_keep_segments_used = false;
 	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
 
@@ -3136,7 +3137,7 @@ check_parameters_for_action(const int action)
 			error_list_append(&cli_warnings, _("-r/--rsync-only can only be used when executing STANDBY CLONE"));
 		}
 
-		if (runtime_options.wal_keep_segments)
+		if (wal_keep_segments_used)
 		{
 			error_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
 		}
