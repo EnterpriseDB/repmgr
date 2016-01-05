@@ -1,6 +1,6 @@
 /*
  * strutil.h
- * Copyright (C) 2ndQuadrant, 2010-2015
+ * Copyright (C) 2ndQuadrant, 2010-2016
  *
  *
  * This program is free software: you can redistribute it and/or modify

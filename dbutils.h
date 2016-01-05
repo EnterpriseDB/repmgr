@@ -1,6 +1,6 @@
 /*
  * dbutils.h
- * Copyright (c) 2ndQuadrant, 2010-2015
+ * Copyright (c) 2ndQuadrant, 2010-2016
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
