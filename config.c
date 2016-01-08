@@ -244,7 +244,7 @@ parse_config(t_configuration_options *options)
 	 */
 	if (config_file_found == false)
 	{
-		log_notice(_("no configuration file provided and no default file found - "
+		log_verbose(LOG_NOTICE, _("no configuration file provided and no default file found - "
 					 "continuing with default values\n"));
 		return true;
 	}

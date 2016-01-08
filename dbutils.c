@@ -308,7 +308,7 @@ get_master_node_id(PGconn *conn, char *cluster)
 	}
 	else if (PQntuples(res) == 0)
 	{
-		log_warning(_("get_master_node_id(): no active primary found\n"));
+		log_verbose(LOG_WARNING, _("get_master_node_id(): no active primary found\n"));
 		retval = NODE_NOT_FOUND;
 	}
 	else
