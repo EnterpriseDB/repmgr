@@ -1,5 +1,8 @@
-3.1dev  2015-11-
-        Add "repmgr switchover" command (Ian; note: still WIP)
+3.1.0   2016-01-
+        Add "repmgr switchover" command (Ian)
+
+3.0.4   2016-01-
+        Remove requirement for 'archive_mode' to be enabled (Ian)
 
 3.0.3   2016-01-04
         Create replication slot if required before base backup is run (Abhijit)
