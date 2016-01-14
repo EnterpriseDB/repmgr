@@ -3717,7 +3717,10 @@ check_parameters_for_action(const int action)
 			{
 				error_list_append(&cli_errors, _("master database username (-U/--username) required when executing STANDBY CLONE"));
 			}
-
+			if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
+			{
+				error_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using  -r/--rsync-only  "));
+			}
 			config_file_required = false;
 			break;
 		case STANDBY_SWITCHOVER:
