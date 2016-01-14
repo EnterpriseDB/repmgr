@@ -3667,31 +3667,18 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		}
 	}
 
-	i = guc_set(conn, "archive_mode", "=", "on");
-	if (i == 0 || i == -1)
-	{
-		if (i == 0)
-			log_err(_("parameter 'archive_mode' must be set to 'on'\n"));
-
-		if (exit_on_error == true)
-		{
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		config_ok = false;
-	}
-
 
 	/*
-	 * check that 'archive_command' is non empty (however it's not practical to
-	 * check that it's actually valid)
+	 * If archive_mode is enabled, check that 'archive_command' is non empty
+	 * (however it's not practical to check that it actually represents a valid
+	 * command).
 	 *
-	 * if 'archive_mode' is not on, pg_settings returns '(disabled)' regardless
-	 * of what's in 'archive_command', so until 'archive_mode' is on we can't
-	 * properly check it.
+	 * From PostgreSQL 9.5, archive_mode can be one of 'off', 'on' or 'always'
+	 * so for ease of backwards compatibility, rather than explicitly check for an
+	 * enabled mode, check that it's not "off".
 	 */
-	if (guc_set(conn, "archive_mode", "=", "on"))
+
+	if (guc_set(conn, "archive_mode", "!=", "off"))
 	{
 		i = guc_set(conn, "archive_command", "!=", "");
 
@@ -3713,9 +3700,11 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 	/*
 	 * Check that 'hot_standby' is on. This isn't strictly necessary
-	 * for the primary server, however the assumption is that configuration
-	 * should be consistent for all servers in a cluster.
+	 * for the primary server, however the assumption is that we'll be
+	 * cloning standbys and thus copying the primary configuration;
+	 * this way the standby will be correctly configured by default.
 	 */
+
 	i = guc_set(conn, "hot_standby", "=", "on");
 	if (i == 0 || i == -1)
 	{
