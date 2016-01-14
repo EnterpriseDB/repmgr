@@ -120,6 +120,14 @@ General
   permission is for PostgreSQL's streaming replication and doesn't
   necessarily need to be the `repmgr` user.
 
+- When cloning a standby, why do I need to provide the connection parameters
+  for the primary server on the command line, not in the configuration file?
+
+  Cloning a standby is a one-time action; the role of the server being cloned
+  from could change, so fixing it in the configuration file would create
+  confusion. If `repmgr` needs to establish a connection to the primary
+  server, it can retrieve this from the `repl_nodes` table or if necessary
+  scan the replication cluster until it locates the active primary.
 
 `repmgrd`
 ---------
