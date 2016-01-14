@@ -146,6 +146,7 @@ main(int argc, char **argv)
 		{"username", required_argument, NULL, 'U'},
 		{"superuser", required_argument, NULL, 'S'},
 		{"data-dir", required_argument, NULL, 'D'},
+		/* -l/--local-port is deprecated */
 		{"local-port", required_argument, NULL, 'l'},
 		{"config-file", required_argument, NULL, 'f'},
 		{"remote-user", required_argument, NULL, 'R'},
@@ -3285,9 +3286,6 @@ help(void)
 
 
 	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));
-/* remove this line in the next significant release */
-	printf(_("  -l, --local-port=PORT               (witness server) witness server local port, default: %s \n" \
-			 "                                        (DEPRECATED, put port in conninfo)\n"), WITNESS_DEFAULT_PORT);
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
 			 "                                        (default: postgres)\n"));
 	printf(_("\n"));
