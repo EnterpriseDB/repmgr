@@ -1498,10 +1498,15 @@ do_standby_clone(void)
 		}
 	}
 
-	log_notice(_("starting backup...\n"));
-	if (runtime_options.fast_checkpoint == false)
+	if (runtime_options.rsync_only)
 	{
-		log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option\n"));
+		log_notice(_("starting backup (using rsync)...\n"));
+	}
+	else
+	{
+		log_notice(_("starting backup (using pg_basebackup)...\n"));
+		if (runtime_options.fast_checkpoint == false)
+			log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option\n"));
 	}
 
 	if (runtime_options.rsync_only)
