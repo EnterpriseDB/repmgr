@@ -2288,7 +2288,7 @@ do_standby_follow(void)
 			create_event_record(master_conn,
 								&options,
 								options.node,
-								"repmgr_follow",
+								"standby_follow",
 								false,
 								event_details.data);
 
@@ -2334,6 +2334,8 @@ do_standby_follow(void)
 
 		exit(ERR_BAD_CONFIG);
 	}
+
+	/* XXX add event record - possible move from repmgrd? */
 	PQfinish(master_conn);
 
 	return;
