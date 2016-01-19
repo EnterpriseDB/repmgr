@@ -1637,7 +1637,7 @@ do_standby_clone(void)
 	}
 
 	/*
-	 * If configuration files were not inside the data directory, we;ll need to
+	 * If configuration files were not inside the data directory, we'll need to
 	 * copy them via SSH (unless `--ignore-external-config-files` was provided)
 	 *
 	 * TODO: add option to place these files in the same location on the
