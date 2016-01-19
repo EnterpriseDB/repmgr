@@ -53,6 +53,9 @@ Planned feature improvements
   requested, activate the replication slot using pg_receivexlog to negate the
   need to set `wal_keep_segments` just for the initial clone (9.4 and 9.5).
 
+* Take into account the fact that a standby can obtain WAL from an archive,
+  so even if direct streaming replication is interrupted, it may be up-to-date
+
 Usability improvements
 ======================
 
