@@ -29,8 +29,9 @@
 char repmgr_schema[MAXLEN] = "";
 char repmgr_schema_quoted[MAXLEN] = "";
 
+
 PGconn *
-establish_db_connection(const char *conninfo, const bool exit_on_error)
+_establish_db_connection(const char *conninfo, const bool exit_on_error, const bool log_notice)
 {
 	/* Make a connection to the database */
 	PGconn	   *conn = NULL;
@@ -46,8 +47,16 @@ establish_db_connection(const char *conninfo, const bool exit_on_error)
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
-		log_err(_("connection to database failed: %s\n"),
-				PQerrorMessage(conn));
+		if (log_notice)
+		{
+			log_notice(_("connection to database failed: %s\n"),
+					PQerrorMessage(conn));
+		}
+		else
+		{
+			log_err(_("connection to database failed: %s\n"),
+					PQerrorMessage(conn));
+		}
 
 		if (exit_on_error)
 		{
@@ -58,6 +67,19 @@ establish_db_connection(const char *conninfo, const bool exit_on_error)
 
 	return conn;
 }
+
+PGconn *
+establish_db_connection(const char *conninfo, const bool exit_on_error)
+{
+	return _establish_db_connection(conninfo, exit_on_error, false);
+}
+
+PGconn *
+test_db_connection(const char *conninfo, const bool exit_on_error)
+{
+	return _establish_db_connection(conninfo, exit_on_error, true);
+}
+
 
 PGconn *
 establish_db_connection_by_params(const char *keywords[], const char *values[],
