@@ -1212,6 +1212,7 @@ do_standby_unregister(void)
 static void
 do_standby_clone(void)
 {
+	PGconn	   *primary_conn = NULL;
 	PGconn	   *upstream_conn;
 	PGresult   *res;
 
@@ -1285,6 +1286,23 @@ do_standby_clone(void)
 
 	log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
 			 cluster_size);
+
+	/*
+	 * If the upstream node is a standby, try to connect to the primary too so we
+	 * can write an event record
+	 */
+	if (is_standby(upstream_conn))
+	{
+		if (strlen(options.cluster_name))
+		{
+			primary_conn = get_master_connection(upstream_conn, options.cluster_name,
+												 NULL, NULL);
+		}
+	}
+	else
+	{
+		primary_conn = upstream_conn;
+	}
 
 	/*
 	 * If --recovery-min-apply-delay was passed, check that
@@ -1934,29 +1952,33 @@ stop_backup:
 		log_hint(_("for example : /etc/init.d/postgresql start\n"));
 	}
 
-	/* Log the event */
-	initPQExpBuffer(&event_details);
+	/* Log the event - if we could connect to the primary */
 
-	/* Add details about relevant runtime options used */
-	appendPQExpBuffer(&event_details,
-					  _("Cloned from host '%s', port %s"),
-					  runtime_options.host,
-					  runtime_options.masterport);
+	if (primary_conn != NULL)
+	{
+		initPQExpBuffer(&event_details);
 
-	appendPQExpBuffer(&event_details,
-					  _("; backup method: %s"),
-					  runtime_options.rsync_only ? "rsync" : "pg_basebackup");
+		/* Add details about relevant runtime options used */
+		appendPQExpBuffer(&event_details,
+						  _("Cloned from host '%s', port %s"),
+						  runtime_options.host,
+						  runtime_options.masterport);
 
-	appendPQExpBuffer(&event_details,
-					  _("; --force: %s"),
-					  runtime_options.force ? "Y" : "N");
+		appendPQExpBuffer(&event_details,
+						  _("; backup method: %s"),
+						  runtime_options.rsync_only ? "rsync" : "pg_basebackup");
 
-	create_event_record(upstream_conn,
-						&options,
-						options.node,
-						"standby_clone",
-						true,
-						event_details.data);
+		appendPQExpBuffer(&event_details,
+						  _("; --force: %s"),
+						  runtime_options.force ? "Y" : "N");
+
+		create_event_record(primary_conn,
+							&options,
+							options.node,
+							"standby_clone",
+							true,
+							event_details.data);
+	}
 
 	PQfinish(upstream_conn);
 	exit(retval);
