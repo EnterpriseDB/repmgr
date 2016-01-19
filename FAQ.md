@@ -129,6 +129,14 @@ General
   server, it can retrieve this from the `repl_nodes` table or if necessary
   scan the replication cluster until it locates the active primary.
 
+- Why is there no foreign key on the `node_id` column in the `repl_events`
+  table?
+
+  Under some circumstances event notifications can be generated for servers
+  which have not yet been registered; it's also useful to retain a record
+  of events which includes servers removed from the replication cluster
+  which no longer have an entry in the `repl_nodes` table.
+
 `repmgrd`
 ---------
 
