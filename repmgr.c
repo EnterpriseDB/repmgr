@@ -2678,18 +2678,24 @@ do_standby_switchover(void)
 
 			/* TODO: check file actually exists on remote */
 		}
+		else
+		{
+			use_pg_rewind = false;
+		}
 	}
 
 
 	/*
-	 * SANITY CHECKS completed
+	 * Sanity checks completed - prepare for the switchover
 	 */
 
-
 	/*
-	 * When using pg_rewind (the preferable option), we need to
-	 * archive any configuration files in the remote server's
-	 * data directory as they'll be overwritten by pg_rewind
+	 * When using pg_rewind (the preferable option, and default from 9.5
+	 * onwards), we need to archive any configuration files in the remote
+	 * server's data directory as they'll be overwritten by pg_rewind
+	 *
+	 * Possible todo item: enable the archive location to be specified
+	 * by the user
 	 */
 	if (use_pg_rewind == true)
 	{
@@ -2870,8 +2876,51 @@ do_standby_switchover(void)
 
 		termPQExpBuffer(&command_output);
 		termPQExpBuffer(&recovery_done_remove);
+
+
+
+	}
+	else
+	{
+		/*
+		 * For 9.3/9.4, if pg_rewind is not available on the remote server,
+		 * we'll need to force a reclone of the standby sing rsync - this may
+		 * take some time on larger databases, so use with care!
+		 *
+		 * Note that following this clone we'll be using `repmgr standby follow`
+		 * to start the server - that will mean recovery.conf will be created
+		 * for a second time, but as this is a workaround for the absence
+		 * of pg_rewind. It's preferable to have `repmgr standby follow` start
+		 * the remote database as it can access the remote config file
+		 * directly.
+		 */
+
+		format_db_cli_params(options.conninfo, repmgr_db_cli_params);
+		maxlen_snprintf(command,
+						"%s/repmgr -D %s -f %s %s --rsync-only --force --ignore-external-config-files standby clone",
+						pg_bindir,
+						remote_data_directory,
+						runtime_options.remote_config_file,
+						repmgr_db_cli_params
+			);
+
+		log_debug("Executing:\n%s\n", command);
+
+		initPQExpBuffer(&command_output);
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			command,
+			&command_output);
+
+		termPQExpBuffer(&command_output);
 	}
 
+	/*
+	 * Execute `repmgr standby follow` to create recovery.conf and start
+	 * the remote server
+	 */
 	format_db_cli_params(options.conninfo, repmgr_db_cli_params);
 	maxlen_snprintf(command,
 					"%s/repmgr -D %s -f %s %s standby follow",
@@ -2884,8 +2933,6 @@ do_standby_switchover(void)
 	log_debug("Executing:\n%s\n", command);
 
 	initPQExpBuffer(&command_output);
-
-	// XXX handle failure
 
 	(void)remote_command(
 		remote_host,
