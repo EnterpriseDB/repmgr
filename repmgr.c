@@ -2749,6 +2749,7 @@ do_standby_switchover(void)
 
 	if (use_pg_rewind == true)
 	{
+		PQExpBufferData recovery_done_remove;
 
 		/* Execute pg_rewind */
 		maxlen_snprintf(command,
@@ -2789,7 +2790,26 @@ do_standby_switchover(void)
 
 		termPQExpBuffer(&command_output);
 
-		/* XXX remove any recovery.done file copied in by pg_rewind */
+		/* remove any recovery.done file copied in by pg_rewind */
+
+		initPQExpBuffer(&recovery_done_remove);
+
+		appendPQExpBuffer(&recovery_done_remove,
+						  "test -e %s/recovery.done && rm -f %s/recovery.done",
+						  remote_data_directory,
+						  remote_data_directory);
+		initPQExpBuffer(&command_output);
+
+		// XXX handle failure
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			recovery_done_remove.data,
+			&command_output);
+
+		termPQExpBuffer(&command_output);
+		termPQExpBuffer(&recovery_done_remove);
 	}
 
 	format_db_cli_params(options.conninfo, repmgr_db_cli_params);
