@@ -3361,11 +3361,11 @@ do_witness_create(void)
 	if (!runtime_options.superuser[0])
 		strncpy(runtime_options.superuser, "postgres", MAXLEN);
 
-	sprintf(script, "%s %s -D %s init -o \"%s-U %s\"",
-			make_pg_path("pg_ctl"),
-			options.pg_ctl_options, runtime_options.dest_dir,
-			runtime_options.initdb_no_pwprompt ? "" : "-W ",
-			runtime_options.superuser);
+	maxlen_snprintf(script, "%s %s -D %s init -o \"%s-U %s\"",
+				   make_pg_path("pg_ctl"),
+				   options.pg_ctl_options, runtime_options.dest_dir,
+				   runtime_options.initdb_no_pwprompt ? "" : "-W ",
+				   runtime_options.superuser);
 	log_info(_("initializing cluster for witness: %s.\n"), script);
 
 	r = system(script);
@@ -3441,9 +3441,9 @@ do_witness_create(void)
 
 
 	/* start new instance */
-	sprintf(script, "%s %s -w -D %s start",
-			make_pg_path("pg_ctl"),
-			options.pg_ctl_options, runtime_options.dest_dir);
+	maxlen_snprintf(script, "%s %s -w -D %s start",
+					make_pg_path("pg_ctl"),
+					options.pg_ctl_options, runtime_options.dest_dir);
 	log_info(_("starting witness server: %s\n"), script);
 	r = system(script);
 	if (r != 0)
@@ -3464,11 +3464,11 @@ do_witness_create(void)
 
 	/* check if we need to create a user */
 	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres") != 0)
-        {
+	{
 		/* create required user; needs to be superuser to create untrusted language function in c */
-		sprintf(script, "%s -p %s --superuser --login -U %s %s",
-				make_pg_path("createuser"),
-				runtime_options.localport, runtime_options.superuser, runtime_options.username);
+		maxlen_snprintf(script, "%s -p %s --superuser --login -U %s %s",
+						make_pg_path("createuser"),
+						runtime_options.localport, runtime_options.superuser, runtime_options.username);
 		log_info(_("creating user for witness db: %s.\n"), script);
 
 		r = system(script);
@@ -3492,9 +3492,9 @@ do_witness_create(void)
 	if (runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres") != 0 && runtime_options.localport[0])
 	{
 		/* create required db */
-		sprintf(script, "%s -p %s -U %s --owner=%s %s",
-				make_pg_path("createdb"),
-				runtime_options.localport, runtime_options.superuser, runtime_options.username, runtime_options.dbname);
+		maxlen_snprintf(script, "%s -p %s -U %s --owner=%s %s",
+						make_pg_path("createdb"),
+						runtime_options.localport, runtime_options.superuser, runtime_options.username, runtime_options.dbname);
 		log_info("creating database for witness db: %s.\n", script);
 
 		r = system(script);
@@ -3552,9 +3552,9 @@ do_witness_create(void)
 	}
 
 	/* reload to adapt for changed pg_hba.conf */
-	sprintf(script, "%s %s -w -D %s reload",
-			make_pg_path("pg_ctl"),
-			options.pg_ctl_options, runtime_options.dest_dir);
+	maxlen_snprintf(script, "%s %s -w -D %s reload",
+					make_pg_path("pg_ctl"),
+					options.pg_ctl_options, runtime_options.dest_dir);
 	log_info(_("reloading witness server configuration: %s"), script);
 	r = system(script);
 	if (r != 0)
