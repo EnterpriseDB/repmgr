@@ -3733,9 +3733,9 @@ do_help(void)
 	printf(_("  -m, --mode                          (standby switchover) shutdown mode (smart|fast|immediate)\n"));
 	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \
 			 "                                        the current master\n"));
+	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
+			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history\n"));
-
-
 	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
 			 "                                        (default: postgres)\n"));
