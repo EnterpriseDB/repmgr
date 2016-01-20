@@ -113,10 +113,10 @@ static void do_witness_create(void);
 static void do_cluster_show(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
+static void do_help(void);
 
 static void exit_with_errors(void);
 static void print_error_list(ErrorList *error_list, int log_level);
-static void help(void);
 
 static bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
 static void format_db_cli_params(const char *conninfo, char *output);
@@ -210,7 +210,7 @@ main(int argc, char **argv)
 		switch (c)
 		{
 			case '?':
-				help();
+				do_help();
 				exit(SUCCESS);
 			case 'V':
 				printf("%s %s (PostgreSQL %s)\n", progname(), REPMGR_VERSION, PG_VERSION);
@@ -3686,7 +3686,7 @@ do_witness_create(void)
 
 
 static void
-help(void)
+do_help(void)
 {
 	printf(_("%s: replication management tool for PostgreSQL\n"), progname());
 	printf(_("\n"));
