@@ -83,6 +83,8 @@ typedef struct
 
 	/* parameter used by STANDBY SWITCHOVER */
 	char		remote_config_file[MAXLEN];
+	/* parameter used by STANDBY {ARCHIVE_CONFIG | RESTORE_CONFIG} */
+	char		config_archive_dir[MAXLEN];
 	/* parameter used by CLUSTER CLEANUP */
 	int			keep_history;
 
@@ -94,7 +96,7 @@ typedef struct
 	char		localport[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, "smart", "", "", "", 0, "", "", "" }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, "smart", "", "", "", "", 0, "", "", "" }
 
 extern char		repmgr_schema[MAXLEN];
 extern bool		config_file_found;

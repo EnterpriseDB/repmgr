@@ -21,6 +21,10 @@
  * CLUSTER SHOW
  * CLUSTER CLEANUP
  *
+ * For internal use:
+ * STANDBY ARCHIVE-CONFIG
+ * STANDBY RESTORE-CONFIG
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -38,8 +42,11 @@
 
 #include "repmgr.h"
 
+#include <sys/types.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -70,10 +77,11 @@
 #define STANDBY_PROMOTE		5
 #define STANDBY_FOLLOW		6
 #define STANDBY_SWITCHOVER  7
-#define WITNESS_CREATE		8
-#define CLUSTER_SHOW		9
-#define CLUSTER_CLEANUP		10
-
+#define STANDBY_ARCHIVE_CONFIG 8
+#define STANDBY_RESTORE_CONFIG 9
+#define WITNESS_CREATE		   10
+#define CLUSTER_SHOW		   11
+#define CLUSTER_CLEANUP		   12
 
 
 static bool create_recovery_file(const char *data_dir);
@@ -99,6 +107,8 @@ static void do_standby_clone(void);
 static void do_standby_promote(void);
 static void do_standby_follow(void);
 static void do_standby_switchover(void);
+static void do_standby_archive_config(void);
+static void do_standby_restore_config(void);
 static void do_witness_create(void);
 static void do_cluster_show(void);
 static void do_cluster_cleanup(void);
@@ -110,6 +120,7 @@ static void help(void);
 
 static bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
 static void format_db_cli_params(const char *conninfo, char *output);
+static bool copy_file(const char *old_filename, const char *new_filename);
 
 /* Global variables */
 static const char *keywords[6];
@@ -166,6 +177,7 @@ main(int argc, char **argv)
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
 		{"ignore-external-config-files", no_argument, NULL, 4},
+		{"config-archive-dir", required_argument, NULL, 5},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
@@ -339,6 +351,9 @@ main(int argc, char **argv)
 			case 4:
 				runtime_options.ignore_external_config_files = true;
 				break;
+			case 5:
+				strncpy(runtime_options.config_archive_dir, optarg, MAXLEN);
+				break;
 
 			default:
 			{
@@ -367,8 +382,8 @@ main(int argc, char **argv)
 
 	/*
 	 * Now we need to obtain the action, this comes in one of these forms:
-	 *   MASTER REGISTER |
-	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER} |
+	 *   { MASTER | PRIMARY } REGISTER |
+	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
 	 *   WITNESS CREATE |
 	 *   CLUSTER {SHOW | CLEANUP}
 	 *
@@ -415,6 +430,10 @@ main(int argc, char **argv)
 				action = STANDBY_FOLLOW;
 			else if (strcasecmp(server_cmd, "SWITCHOVER") == 0)
 				action = STANDBY_SWITCHOVER;
+			else if (strcasecmp(server_cmd, "ARCHIVE-CONFIG") == 0)
+				action = STANDBY_ARCHIVE_CONFIG;
+			else if (strcasecmp(server_cmd, "RESTORE-CONFIG") == 0)
+				action = STANDBY_RESTORE_CONFIG;
 		}
 		else if (strcasecmp(server_mode, "CLUSTER") == 0)
 		{
@@ -645,6 +664,12 @@ main(int argc, char **argv)
 			break;
 		case STANDBY_SWITCHOVER:
 			do_standby_switchover();
+			break;
+		case STANDBY_ARCHIVE_CONFIG:
+			do_standby_archive_config();
+			break;
+		case STANDBY_RESTORE_CONFIG:
+			do_standby_restore_config();
 			break;
 		case WITNESS_CREATE:
 			do_witness_create();
@@ -2163,7 +2188,6 @@ do_standby_follow(void)
 
 	log_debug("do_standby_follow()\n");
 
-
 	/*
 	 * If -h/--host wasn't provided, attempt to connect to standby
 	 * to determine primary, and carry out some other checks while we're
@@ -2374,6 +2398,8 @@ do_standby_switchover(void)
 {
 	PGconn	   *local_conn;
 	PGconn	   *remote_conn;
+	int			server_version_num;
+	bool		use_pg_rewind;
 
 	/* the remote server is the primary which will be demoted */
 	char	    remote_conninfo[MAXCONNINFO] = "";
@@ -2381,6 +2407,7 @@ do_standby_switchover(void)
 	char        remote_data_directory[MAXLEN];
 	int         remote_node_id;
 	char        remote_node_replication_state[MAXLEN] = "";
+	char        remote_archive_config_dir[MAXLEN];
 	int			i,
 				r = 0;
 
@@ -2406,6 +2433,8 @@ do_standby_switchover(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	server_version_num = check_server_version(local_conn, "master", true, NULL);
+
 	/*
 	 * TODO: check that standby's upstream node is the primary
 	 * (it's probably not feasible to switch over to a cascaded standby)
@@ -2422,6 +2451,19 @@ do_standby_switchover(void)
 		exit(ERR_DB_CON);
 	}
 
+	/* Get the remote's node record */
+	query_result = get_node_record(remote_conn, options.cluster_name, remote_node_id, &remote_node_record);
+
+	if (query_result < 1)
+	{
+		log_err(_("unable to retrieve node record for node %i\n"), remote_node_id);
+
+		PQfinish(local_conn);
+
+		exit(ERR_DB_QUERY);
+	}
+
+	log_debug("remote node name is \"%s\"\n", remote_node_record.name);
 	/*
 	 * Check that we can connect by SSH to the remote (current primary) server,
 	 * and read its data directory
@@ -2449,7 +2491,7 @@ do_standby_switchover(void)
 		exit(ERR_DB_CON);
 	}
 
-	log_debug("primary's data directory is: %s\n", remote_data_directory);
+	log_debug("master's data directory is: %s\n", remote_data_directory);
 
 	maxlen_snprintf(command,
 					"ls %s/PG_VERSION >/dev/null 2>&1 && echo 1 || echo 0",
@@ -2576,6 +2618,46 @@ do_standby_switchover(void)
 		}
 	}
 
+
+	if (server_version_num >= 90500)
+	{
+		use_pg_rewind = true;
+	}
+	// elseif (server_version_num < 90500) && --pg_rewind supplied
+	//  - check found
+
+	/*
+	 * When using pg_rewind (the preferable option), we need to
+	 * archive any configuration files in the remote server's
+	 * data directory as they'll be overwritten by pg_rewind
+	 */
+	if (use_pg_rewind == true)
+	{
+		maxlen_snprintf(remote_archive_config_dir,
+						"/tmp/repmgr-%s-archive",
+						remote_node_record.name);
+
+		log_verbose(LOG_DEBUG, "remote_archive_config_dir: %s\n", remote_archive_config_dir);
+
+		maxlen_snprintf(command,
+						"%s/repmgr standby archive-config -f %s --config-archive-dir=%s",
+						pg_bindir,
+						runtime_options.remote_config_file,
+						remote_archive_config_dir);
+
+		log_debug("Executing:\n%s\n", command);
+
+		initPQExpBuffer(&command_output);
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			command,
+			&command_output);
+
+		termPQExpBuffer(&command_output);
+	}
+
 	/*
 	 * Stop the remote primary
 	 *
@@ -2622,7 +2704,7 @@ do_standby_switchover(void)
 	{
 		/* Check whether primary is available */
 
-		remote_conn = establish_db_connection(remote_conninfo, false); /* don't fail on error */
+		remote_conn = test_db_connection(remote_conninfo, false); /* don't fail on error */
 
 		/* XXX failure to connect doesn't mean the server is necessarily
 		 * completely stopped - we need to better detect the reason for
@@ -2634,7 +2716,7 @@ do_standby_switchover(void)
 		{
 			connection_success = true;
 
-			log_notice(_("current primary has been stopped"));
+			log_notice(_("current master has been stopped"));
 			break;
 		}
 		PQfinish(remote_conn);
@@ -2646,8 +2728,8 @@ do_standby_switchover(void)
 
 	if (connection_success == false)
 	{
-		log_err(_("primary server did not shut down\n"));
-		log_hint(_("check the primary server status before performing any further actions"));
+		log_err(_("master server did not shut down\n"));
+		log_hint(_("check the master server status before performing any further actions"));
 		exit(ERR_FAILOVER_FAIL);
 	}
 
@@ -2665,6 +2747,51 @@ do_standby_switchover(void)
 
 	/* TODO: additional check old primary is shut down */
 
+	if (use_pg_rewind == true)
+	{
+
+		/* Execute pg_rewind */
+		maxlen_snprintf(command,
+						"%s/pg_rewind -D %s --source-server=\\'%s\\'",
+						pg_bindir,
+						remote_data_directory,
+						options.conninfo);
+		log_debug("Executing:\n%s\n", command);
+
+		initPQExpBuffer(&command_output);
+
+		// XXX handle failure
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			command,
+			&command_output);
+
+		termPQExpBuffer(&command_output);
+
+		/* Restore any previously archived config files */
+		maxlen_snprintf(command,
+						"%s/repmgr standby restore-config -D %s --config-archive-dir=%s",
+						pg_bindir,
+						remote_data_directory,
+						remote_archive_config_dir);
+
+		initPQExpBuffer(&command_output);
+
+		// XXX handle failure
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			command,
+			&command_output);
+
+		termPQExpBuffer(&command_output);
+
+		/* XXX remove any recovery.done file copied in by pg_rewind */
+	}
+
 	format_db_cli_params(options.conninfo, repmgr_db_cli_params);
 	maxlen_snprintf(command,
 					"%s/repmgr -D %s -f %s %s standby follow",
@@ -2672,7 +2799,7 @@ do_standby_switchover(void)
 					remote_data_directory,
 					runtime_options.remote_config_file,
 					repmgr_db_cli_params
-					);
+		);
 
 	log_debug("Executing:\n%s\n", command);
 
@@ -2688,7 +2815,6 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&command_output);
 
-
 	/* verify that new standby is connected and replicating */
 
 	connection_success = false;
@@ -2697,14 +2823,14 @@ do_standby_switchover(void)
 	{
 		/* Check whether primary is available */
 
-		remote_conn = establish_db_connection(remote_conninfo, false); /* don't fail on error */
+		remote_conn = test_db_connection(remote_conninfo, false); /* don't fail on error */
 
 		if (PQstatus(remote_conn) == CONNECTION_OK)
 		{
-			log_debug("connected to new standby (old primary)\n");
+			log_debug("connected to new standby (old master)\n");
 			if (is_standby(remote_conn) == 0)
 			{
-				log_err(_("new standby (old primary) is not a standby\n"));
+				log_err(_("new standby (old master) is not a standby\n"));
 				exit(ERR_FAILOVER_FAIL);
 			}
 			connection_success = true;
@@ -2718,7 +2844,7 @@ do_standby_switchover(void)
 
 	if (connection_success == false)
 	{
-		log_err(_("unable to connect to new standby (old primary)\n"));
+		log_err(_("unable to connect to new standby (old master)\n"));
 		exit(ERR_FAILOVER_FAIL);
 	}
 
@@ -2727,17 +2853,7 @@ do_standby_switchover(void)
 	/* Check for entry in pg_stat_replication */
 
 	local_conn = establish_db_connection(options.conninfo, true);
-	query_result = get_node_record(local_conn, options.cluster_name, remote_node_id, &remote_node_record);
 
-	if (query_result < 1)
-	{
-		// XXX error message
-		PQfinish(local_conn);
-
-		exit(ERR_DB_QUERY);
-	}
-
-	log_debug("remote node name is \"%s\"\n", remote_node_record.name);
 
 	query_result = get_node_replication_state(local_conn, remote_node_record.name, remote_node_replication_state);
 	if (query_result == -1)
@@ -2756,6 +2872,7 @@ do_standby_switchover(void)
 	else
 	{
 		/* XXX other valid values? */
+		/* XXX we should poll for a while in case the node takes time to connect to the primary */
 		if (strcmp(remote_node_replication_state, "streaming") == 0 ||
 			strcmp(remote_node_replication_state, "catchup")  == 0)
 		{
@@ -2786,7 +2903,7 @@ do_standby_switchover(void)
 
 		if (PQstatus(remote_conn) != CONNECTION_OK)
 		{
-			log_warning(_("unable to connect to former primary to clean up replication slots \n"));
+			log_warning(_("unable to connect to former master to clean up replication slots \n"));
 		}
 		else
 		{
@@ -2824,6 +2941,184 @@ do_standby_switchover(void)
 	PQfinish(local_conn);
 
 	log_info(_("switchover was successful\n"));
+	return;
+}
+
+
+/*
+ * Intended mainly for "internal" use by `standby switchover`, which
+ * calls this on the target server to archive any configuration files
+ * in the data directory, which may be overwritten by an operation
+ * like pg_rewind
+ */
+static void
+do_standby_archive_config(void)
+{
+	PGconn	   *local_conn = NULL;
+	char		sqlquery[QUERY_STR_LEN];
+	PGresult   *res;
+	int			i, copied_count = 0;
+
+	if (mkdir(runtime_options.config_archive_dir, S_IRWXU) != 0 && errno != EEXIST)
+	{
+		log_err(_("unable to create temporary directory\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	// XXX check if directory is directory and we own it
+	// XXX delete any files in dir in case it existed already
+
+	local_conn = establish_db_connection(options.conninfo, true);
+
+	/*
+	 * Detect which config files are actually inside the data directory;
+	 * this query will include any settings from included files too
+	 */
+	sqlquery_snprintf(sqlquery,
+					  "WITH files AS ( "
+					  "  WITH dd AS ( "
+					  "    SELECT setting "
+					  "     FROM pg_settings "
+					  "    WHERE name = 'data_directory') "
+					  " SELECT distinct(sourcefile) AS config_file"
+					  "   FROM dd, pg_settings ps "
+					  "  WHERE ps.sourcefile IS NOT NULL "
+					  "    AND ps.sourcefile ~ ('^' || dd.setting) "
+					  "     UNION "
+					  "  SELECT ps.setting  AS config_file"
+					  "    FROM dd, pg_settings ps "
+					  "   WHERE ps.name IN ( 'config_file', 'hba_file', 'ident_file') "
+					  "     AND ps.setting ~ ('^' || dd.setting) "
+					  ") "
+					  "  SELECT config_file, "
+					  "         regexp_replace(config_file, '^.*\\/','') AS filename "
+					  "    FROM files "
+					  "ORDER BY config_file");
+
+	log_verbose(LOG_DEBUG, "do_standby_archive_config(): %s\n", sqlquery);
+
+	res = PQexec(local_conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("unable to query config file locations\n"));
+		PQclear(res);
+		PQfinish(local_conn);
+		exit(ERR_DB_QUERY);
+	}
+
+	/* Copy any configuration files to the specified directory */
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		PQExpBufferData buf;
+
+		initPQExpBuffer(&buf);
+		appendPQExpBuffer(&buf, "%s/%s",
+						  runtime_options.config_archive_dir, PQgetvalue(res, i, 1));
+
+		log_verbose(LOG_DEBUG, "Copying %s to %s/\n", PQgetvalue(res, i, 0), buf.data);
+		/* XXX check result */
+		copy_file(PQgetvalue(res, i, 0), buf.data);
+
+		termPQExpBuffer(&buf);
+
+		copied_count++;
+	}
+
+	PQclear(res);
+
+	PQfinish(local_conn);
+
+	log_notice(_("%i files copied to %s\n"), copied_count, runtime_options.config_archive_dir);
+}
+
+/*
+ * Intended mainly for "internal" use by `standby switchover`, which
+ * calls this on the target server to restore any configuration files
+ * to the data directory, which may have been overwritten by an operation
+ * like pg_rewind
+ *
+ * Not designed to be called if the instance is running, but does
+ * not currently check.
+ *
+ * Requires -D/--data-dir and --config_archive_dir
+ *
+ * Removes --config_archive_dir after successful copy
+ */
+static void
+do_standby_restore_config(void)
+{
+	DIR			  *arcdir;
+	struct dirent *arcdir_ent;
+	int			   copied_count = 0;
+	bool		   copy_ok = true;
+
+	arcdir = opendir(runtime_options.config_archive_dir);
+	if (arcdir == NULL)
+	{
+		log_err(_("Unable to open directory '%s'\n"), runtime_options.config_archive_dir);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	while ((arcdir_ent = readdir(arcdir)) != NULL) {
+		PQExpBufferData src_file;
+		PQExpBufferData dst_file;
+
+		if (arcdir_ent->d_type != DT_REG)
+		{
+			continue;
+		}
+		initPQExpBuffer(&src_file);
+		initPQExpBuffer(&dst_file);
+
+		appendPQExpBuffer(&src_file, "%s/%s",
+						  runtime_options.config_archive_dir, arcdir_ent->d_name);
+
+		appendPQExpBuffer(&dst_file, "%s/%s",
+						  runtime_options.dest_dir, arcdir_ent->d_name);
+
+		log_verbose(LOG_DEBUG, "Copying %s to %s\n", src_file.data, dst_file.data);
+
+		/* XXX check result */
+
+		if (copy_file(src_file.data, dst_file.data) == false)
+		{
+			copy_ok = false;
+			log_warning(_("Unable to copy %s from %s\n"), arcdir_ent->d_name, runtime_options.config_archive_dir);
+		}
+		else
+		{
+			unlink(src_file.data);
+			copied_count++;
+		}
+
+		termPQExpBuffer(&src_file);
+		termPQExpBuffer(&dst_file);
+	}
+
+	closedir(arcdir);
+
+
+	if (copy_ok == false)
+	{
+		log_err(_("Unable to copy all files from %s\n"), runtime_options.config_archive_dir);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_notice(_("%i files copied to %s\n"), copied_count, runtime_options.dest_dir);
+
+	/*
+	 * Finally, delete directory - it should be empty unless it's been interfered
+	 * with for some reason, in which case manual attention is required
+	 */
+
+	if (rmdir(runtime_options.config_archive_dir) != 0 && errno != EEXIST)
+	{
+		log_err(_("Unable to delete %s\n"), runtime_options.config_archive_dir);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_verbose(LOG_NOTICE, "Directory %s deleted\n", runtime_options.config_archive_dir);
+
 	return;
 }
 
@@ -3743,12 +4038,31 @@ check_parameters_for_action(const int action)
 			}
 			if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
 			{
-				error_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using  -r/--rsync-only  "));
+				error_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using -r/--rsync-only  "));
 			}
 			config_file_required = false;
 			break;
 		case STANDBY_SWITCHOVER:
 			/* allow all parameters to be supplied */
+			break;
+		case STANDBY_ARCHIVE_CONFIG:
+			if (strcmp(runtime_options.config_archive_dir, "") == 0)
+			{
+				error_list_append(&cli_errors, _("--config-archive-dir required when executing STANDBY ARCHIVE_CONFIG"));
+			}
+			break;
+		case STANDBY_RESTORE_CONFIG:
+			if (strcmp(runtime_options.config_archive_dir, "") == 0)
+			{
+				error_list_append(&cli_errors, _("--config-archive-dir required when executing STANDBY RESTORE_CONFIG"));
+			}
+
+			if (strcmp(runtime_options.dest_dir, "") == 0)
+			{
+				error_list_append(&cli_errors, _("-D/--data-dir required when executing STANDBY RESTORE_CONFIG"));
+			}
+
+			config_file_required = false;
 			break;
 		case WITNESS_CREATE:
 			/* allow all parameters to be supplied */
@@ -4659,4 +4973,43 @@ format_db_cli_params(const char *conninfo, char *output)
 
 	termPQExpBuffer(&buf);
 
+}
+
+bool copy_file(const char *old_filename, const char *new_filename)
+{
+	FILE  *ptr_old, *ptr_new;
+	int  a;
+
+	ptr_old = fopen(old_filename, "r");
+	ptr_new = fopen(new_filename, "w");
+
+	if (ptr_old == NULL)
+		return false;
+
+	if (ptr_new == NULL)
+	{
+		fclose(ptr_old);
+		return false;
+	}
+
+	chmod(new_filename, S_IRUSR | S_IWUSR);
+
+	while(1)
+	{
+		a = fgetc(ptr_old);
+
+		if (!feof(ptr_old))
+		{
+			fputc(a, ptr_new);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	fclose(ptr_new);
+	fclose(ptr_old);
+
+	return true;
 }
