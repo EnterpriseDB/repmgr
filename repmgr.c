@@ -141,6 +141,7 @@ static char  pg_bindir[MAXLEN] = "";
 static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
+static char  default_db[MAXLEN] = "";
 
 /* Collate command line errors and warnings here for friendlier reporting */
 ErrorList	cli_errors = { NULL, NULL };
@@ -194,6 +195,21 @@ main(int argc, char **argv)
 
 	set_progname(argv[0]);
 
+	/* Initialise some defaults */
+
+	if (getenv("PGDATABASE"))
+	{
+		strncpy(default_db, getenv("PGDATABASE"), MAXLEN);
+	}
+	else if (getenv("PGUSER"))
+	{
+		strncpy(default_db, getenv("PGUSER"), MAXLEN);
+	}
+
+	if (!strlen(default_db))
+	{
+		strncpy(default_db, DEFAULT_DBNAME, MAXLEN);
+	}
 
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
@@ -514,12 +530,7 @@ main(int argc, char **argv)
 
 	if (!runtime_options.dbname[0])
 	{
-		if (getenv("PGDATABASE"))
-			strncpy(runtime_options.dbname, getenv("PGDATABASE"), MAXLEN);
-		else if (getenv("PGUSER"))
-			strncpy(runtime_options.dbname, getenv("PGUSER"), MAXLEN);
-		else
-			strncpy(runtime_options.dbname, DEFAULT_DBNAME, MAXLEN);
+		strncpy(runtime_options.dbname, default_db, MAXLEN);
 	}
 
 	/*
@@ -528,7 +539,7 @@ main(int argc, char **argv)
 	 */
 	if (!runtime_options.masterport[0])
 	{
-		strncpy(runtime_options.masterport, DEFAULT_MASTER_PORT, MAXLEN);
+		strncpy(runtime_options.masterport, DEF_PGPORT_STR, MAXLEN);
 	}
 
 	/*
@@ -3706,10 +3717,16 @@ do_help(void)
 	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("\n"));
 	printf(_("Connection options:\n"));
-	printf(_("  -d, --dbname=DBNAME                 database to connect to\n"));
+	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: %s)\n"), default_db);
+
 	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory\n"));
-	printf(_("  -p, --port=PORT                     database server port\n"));
-	printf(_("  -U, --username=USERNAME             database user name to connect as\n"));
+	printf(_("  -p, --port=PORT                     database server port (default: %s)\n"), DEF_PGPORT_STR);
+	printf(_("  -U, --username=USERNAME             database user name to connect as"));
+	if (getenv("PGUSER"))
+	{
+		printf(_(" (default: %s)"), getenv("PGUSER"));
+	}
+	printf("\n");
 	printf(_("\n"));
 	printf(_("General configuration options:\n"));
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
@@ -5114,7 +5131,8 @@ format_db_cli_params(const char *conninfo, char *output)
 
 }
 
-bool copy_file(const char *old_filename, const char *new_filename)
+bool
+copy_file(const char *old_filename, const char *new_filename)
 {
 	FILE  *ptr_old, *ptr_new;
 	int  a;
@@ -5152,3 +5170,4 @@ bool copy_file(const char *old_filename, const char *new_filename)
 
 	return true;
 }
+
