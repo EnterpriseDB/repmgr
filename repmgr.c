@@ -3886,6 +3886,9 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		appendPQExpBuffer(&rsync_flags, "%s",
 						  " --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control");
 
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  " --exclude=recovery.conf --exclude=recovery.done");
+
 		if (server_version_num >= 90400)
 		{
 			/*
