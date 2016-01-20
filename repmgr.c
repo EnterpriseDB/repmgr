@@ -3717,14 +3717,14 @@ do_help(void)
 	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("\n"));
 	printf(_("Connection options:\n"));
-	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: %s)\n"), default_db);
+	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: \"%s\")\n"), default_db);
 
 	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory\n"));
-	printf(_("  -p, --port=PORT                     database server port (default: %s)\n"), DEF_PGPORT_STR);
+	printf(_("  -p, --port=PORT                     database server port (default: \"%s\")\n"), DEF_PGPORT_STR);
 	printf(_("  -U, --username=USERNAME             database user name to connect as"));
 	if (getenv("PGUSER"))
 	{
-		printf(_(" (default: %s)"), getenv("PGUSER"));
+		printf(_(" (default: \"%s\")"), getenv("PGUSER"));
 	}
 	printf("\n");
 	printf(_("\n"));
