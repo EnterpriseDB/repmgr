@@ -132,6 +132,7 @@ t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 bool 	 	 wal_keep_segments_used = false;
+bool 	 	 pg_rewind_supplied = false;
 
 static char *server_mode = NULL;
 static char *server_cmd = NULL;
@@ -178,6 +179,7 @@ main(int argc, char **argv)
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
 		{"ignore-external-config-files", no_argument, NULL, 4},
 		{"config-archive-dir", required_argument, NULL, 5},
+		{"pg_rewind", optional_argument, NULL, 6},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
@@ -353,6 +355,13 @@ main(int argc, char **argv)
 				break;
 			case 5:
 				strncpy(runtime_options.config_archive_dir, optarg, MAXLEN);
+				break;
+			case 6:
+				if (optarg != NULL)
+				{
+					strncpy(runtime_options.pg_rewind, optarg, MAXFILENAME);
+				}
+				pg_rewind_supplied = true;
 				break;
 
 			default:
@@ -2408,6 +2417,7 @@ do_standby_switchover(void)
 	int         remote_node_id;
 	char        remote_node_replication_state[MAXLEN] = "";
 	char        remote_archive_config_dir[MAXLEN];
+	char	    remote_pg_rewind[MAXLEN];
 	int			i,
 				r = 0;
 
@@ -2418,6 +2428,14 @@ do_standby_switchover(void)
 	int	        query_result;
 	t_node_info remote_node_record;
 	bool	    connection_success;
+
+
+	/*
+	 * SANITY CHECKS
+	 *
+	 * We'll be doing a bunch of operations on the remote server (primary
+	 * to be demoted) - careful checks needed before proceding.
+	 */
 
 	log_notice(_("switching current node %i to master server and demoting current master to standby...\n"), options.node);
 
@@ -2434,6 +2452,15 @@ do_standby_switchover(void)
 	}
 
 	server_version_num = check_server_version(local_conn, "master", true, NULL);
+
+	/*
+	 * Add a friendly notice if --pg_rewind supplied for 9.5 and later - we'll
+	 * be ignoring it anyway
+	 */
+	if (pg_rewind_supplied == true && server_version_num >= 90500)
+	{
+		log_notice(_("--pg_rewind not required for PostgreSQL 9.5 and later\n"));
+	}
 
 	/*
 	 * TODO: check that standby's upstream node is the primary
@@ -2621,10 +2648,43 @@ do_standby_switchover(void)
 
 	if (server_version_num >= 90500)
 	{
+		/* 9.5 and later have pg_rewind built-in - always use that */
 		use_pg_rewind = true;
+		maxlen_snprintf(remote_pg_rewind,
+						"%s/pg_rewind",
+						pg_bindir);
 	}
-	// elseif (server_version_num < 90500) && --pg_rewind supplied
-	//  - check found
+	else
+	{
+		/* 9.3/9.4 - user can use separately-compiled pg_rewind */
+		if (pg_rewind_supplied == true)
+		{
+			use_pg_rewind = true;
+
+			/* User has specified pg_rewind path */
+			if (strlen(runtime_options.pg_rewind))
+			{
+				maxlen_snprintf(remote_pg_rewind,
+								"%s",
+								runtime_options.pg_rewind);
+			}
+			/* No path supplied - assume in normal bindir */
+			else
+			{
+				maxlen_snprintf(remote_pg_rewind,
+								"%s/pg_rewind",
+								pg_bindir);
+			}
+
+			/* TODO: check file actually exists on remote */
+		}
+	}
+
+
+	/*
+	 * SANITY CHECKS completed
+	 */
+
 
 	/*
 	 * When using pg_rewind (the preferable option), we need to
@@ -4058,7 +4118,7 @@ check_parameters_for_action(const int action)
 			}
 			if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
 			{
-				error_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using -r/--rsync-only  "));
+				error_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using -r/--rsync-only"));
 			}
 			config_file_required = false;
 			break;
@@ -4120,7 +4180,16 @@ check_parameters_for_action(const int action)
 
 		if (wal_keep_segments_used)
 		{
-			error_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE %i"));
+			error_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
+		}
+	}
+
+    /* Warn about parameters which apply to STANDBY SWITCHOVER only */
+	if (action != STANDBY_SWITCHOVER)
+	{
+		if (pg_rewind_supplied == true)
+		{
+			error_list_append(&cli_warnings, _("--pg_rewind can only be used when executing STANDBY SWITCHOVER"));
 		}
 	}
 
