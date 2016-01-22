@@ -132,6 +132,7 @@ t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 bool 	 	 wal_keep_segments_used = false;
+bool 	 	 connection_param_provided = false;
 bool 	 	 pg_rewind_supplied = false;
 
 static char *server_mode = NULL;
@@ -141,7 +142,6 @@ static char  pg_bindir[MAXLEN] = "";
 static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
-static char  default_db[MAXLEN] = "";
 
 /* Collate command line errors and warnings here for friendlier reporting */
 ErrorList	cli_errors = { NULL, NULL };
@@ -192,24 +192,47 @@ main(int argc, char **argv)
 	bool 		check_upstream_config = false;
 	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
+	const char *env;
 
 	set_progname(argv[0]);
 
 	/* Initialise some defaults */
 
-	if (getenv("PGDATABASE"))
+	/* set default user */
+	env = getenv("PGUSER");
+	if (!env)
 	{
-		strncpy(default_db, getenv("PGDATABASE"), MAXLEN);
+		struct passwd *pw = NULL;
+		pw = getpwuid(geteuid());
+		if (pw)
+		{
+			env = pw->pw_name;
+		}
+		else
+		{
+			fprintf(stderr, "could not get current user name: %s\n", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
 	}
-	else if (getenv("PGUSER"))
+	strncpy(runtime_options.username, env, MAXLEN);
+
+	/* set default database */
+	env = getenv("PGDATABASE");
+	if (!env)
 	{
-		strncpy(default_db, getenv("PGUSER"), MAXLEN);
+		env = runtime_options.username;
+	}
+	strncpy(runtime_options.dbname, env, MAXLEN);
+
+	/* set default port */
+
+	env = getenv("PGPORT");
+	if (!env)
+	{
+		env = DEF_PGPORT_STR;
 	}
 
-	if (!strlen(default_db))
-	{
-		strncpy(default_db, DEFAULT_DBNAME, MAXLEN);
-	}
+	strncpy(runtime_options.masterport, env, MAXLEN);
 
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
@@ -233,18 +256,22 @@ main(int argc, char **argv)
 				exit(SUCCESS);
 			case 'd':
 				strncpy(runtime_options.dbname, optarg, MAXLEN);
+				connection_param_provided = true;
 				break;
 			case 'h':
 				strncpy(runtime_options.host, optarg, MAXLEN);
+				connection_param_provided = true;
 				break;
 			case 'p':
 				repmgr_atoi(optarg, "-p/--port", &cli_errors);
 				strncpy(runtime_options.masterport,
 						optarg,
 						MAXLEN);
+				connection_param_provided = true;
 				break;
 			case 'U':
 				strncpy(runtime_options.username, optarg, MAXLEN);
+				connection_param_provided = true;
 				break;
 			case 'S':
 				strncpy(runtime_options.superuser, optarg, MAXLEN);
@@ -526,20 +553,6 @@ main(int argc, char **argv)
 	if (cli_warnings.head != NULL && runtime_options.terse == false)
 	{
 		print_error_list(&cli_warnings, LOG_WARNING);
-	}
-
-	if (!runtime_options.dbname[0])
-	{
-		strncpy(runtime_options.dbname, default_db, MAXLEN);
-	}
-
-	/*
-	 * If no primary port (-p/--port) provided, explicitly set the
-	 * default PostgreSQL port.
-	 */
-	if (!runtime_options.masterport[0])
-	{
-		strncpy(runtime_options.masterport, DEF_PGPORT_STR, MAXLEN);
 	}
 
 	/*
@@ -3699,6 +3712,8 @@ do_witness_create(void)
 static void
 do_help(void)
 {
+	const char *host;
+
 	printf(_("%s: replication management tool for PostgreSQL\n"), progname());
 	printf(_("\n"));
 	printf(_("Usage:\n"));
@@ -3717,16 +3732,11 @@ do_help(void)
 	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("\n"));
 	printf(_("Connection options:\n"));
-	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: \"%s\")\n"), default_db);
-
-	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory\n"));
-	printf(_("  -p, --port=PORT                     database server port (default: \"%s\")\n"), DEF_PGPORT_STR);
-	printf(_("  -U, --username=USERNAME             database user name to connect as"));
-	if (getenv("PGUSER"))
-	{
-		printf(_(" (default: \"%s\")"), getenv("PGUSER"));
-	}
-	printf("\n");
+	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: \"%s\")\n"), runtime_options.dbname);
+	host = getenv("PGHOST");
+	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory (default: \"%s\")\n"), host ? host : _("local socket"));
+	printf(_("  -p, --port=PORT                     database server port (default: \"%s\")\n"), runtime_options.masterport);
+	printf(_("  -U, --username=USERNAME             database user name to connect as (default: \"%s\")\n"), runtime_options.username);
 	printf(_("\n"));
 	printf(_("General configuration options:\n"));
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
@@ -4075,8 +4085,7 @@ check_parameters_for_action(const int action)
 			 * parameters are at least useless and could be confusing so
 			 * reject them
 			 */
-			if (runtime_options.host[0] || runtime_options.masterport[0] ||
-				runtime_options.username[0] || runtime_options.dbname[0])
+			if (connection_param_provided)
 			{
 				error_list_append(&cli_warnings, _("master connection parameters not required when executing MASTER REGISTER"));
 			}
@@ -4092,8 +4101,7 @@ check_parameters_for_action(const int action)
 			 * need connection parameters to the master because we can detect
 			 * the master in repl_nodes
 			 */
-			if (runtime_options.host[0] || runtime_options.masterport[0] ||
-				runtime_options.username[0] || runtime_options.dbname[0])
+			if (connection_param_provided)
 			{
 				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY REGISTER"));
 			}
@@ -4109,8 +4117,7 @@ check_parameters_for_action(const int action)
 			 * need connection parameters to the master because we can detect
 			 * the master in repl_nodes
 			 */
-			if (runtime_options.host[0] || runtime_options.masterport[0] ||
-				runtime_options.username[0] || runtime_options.dbname[0])
+			if (connection_param_provided)
 			{
 				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY UNREGISTER"));
 			}
@@ -4127,8 +4134,7 @@ check_parameters_for_action(const int action)
 			 * detect the master in repl_nodes if we can't find it then the
 			 * promote action will be cancelled
 			 */
-			if (runtime_options.host[0] || runtime_options.masterport[0] ||
-				runtime_options.username[0] || runtime_options.dbname[0])
+			if (connection_param_provided)
 			{
 				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY PROMOTE"));
 			}
@@ -4174,15 +4180,6 @@ check_parameters_for_action(const int action)
 				error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY CLONE"));
 			}
 
-			if (strcmp(runtime_options.dbname, "") == 0)
-			{
-				error_list_append(&cli_errors, _("master database name (-d/--dbname) required when executing STANDBY CLONE"));
-			}
-
-			if (strcmp(runtime_options.username, "") == 0)
-			{
-				error_list_append(&cli_errors, _("master database username (-U/--username) required when executing STANDBY CLONE"));
-			}
 			if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
 			{
 				error_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using -r/--rsync-only"));
