@@ -2,6 +2,10 @@
 # Replication Manager sample configuration file
 ###################################################
 
+# Some configuration items will be set with a default value; this
+# is noted for each item. Where no default value is shown, the
+# parameter will be treated as empty or false.
+
 # Required configuration items
 # ============================
 #
@@ -37,14 +41,12 @@ conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
 # upstream standby, specify that node's ID with 'upstream_node'. The node
 # must exist before the new standby can be registered. If a standby is
 # to connect directly to a primary node, this parameter is not required.
-#
-# upstream_node=1
+upstream_node=1
 
-# physical replication slots - PostgreSQL 9.4 and later only
+# use physical replication slots - PostgreSQL 9.4 and later only
 # (default: 0)
-#
-# use_replication_slots=0
-#
+use_replication_slots=0
+
 # NOTE: 'max_replication_slots' should be configured for at least the
 # number of standbys which will connect to the primary.
 
@@ -61,7 +63,7 @@ logfacility=STDERR
 
 # stderr can be redirected to an arbitrary file:
 #
-# logfile='/var/log/repmgr.log'
+logfile='/var/log/repmgr/repmgr.log'
 
 # event notifications can be passed to an arbitrary external program
 # together with the following parameters:
@@ -75,12 +77,12 @@ logfacility=STDERR
 # the values provided for "%t" and "%d" will probably contain spaces,
 # so should be quoted in the provided command configuration, e.g.:
 #
-# event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
+event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
 
 # By default, all notifications will be passed; the notification types
 # can be filtered to explicitly named ones:
 #
-# event_notifications=master_register,standby_register,witness_create
+event_notifications=master_register,standby_register,witness_create
 
 
 # Environment/command settings
@@ -88,17 +90,17 @@ logfacility=STDERR
 
 # path to PostgreSQL binary directory (location of pg_ctl, pg_basebackup etc.)
 # (if not provided, defaults to system $PATH)
-# pg_bindir=/usr/bin/
+pg_bindir=/usr/bin/
 
 # external command options
 
-# rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
-# ssh_options=-o "StrictHostKeyChecking no"
+rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
+ssh_options=-o "StrictHostKeyChecking no"
 
-# external command arguments
+# external command arguments. Values shown are examples.
 
-# pg_ctl_options='-s'
-# pg_basebackup_options='--xlog-method=s'
+pg_ctl_options='-s'
+pg_basebackup_options='--xlog-method=s'
 
 
 # Standby clone settings
@@ -114,10 +116,11 @@ logfacility=STDERR
 # Failover settings (repmgrd)
 # ---------------------------
 #
-# These settings are only applied when repmgrd is running.
+# These settings are only applied when repmgrd is running. Values shown
+# are defaults.
 
 # Number of seconds to wait for a response from the primary server before
-# deciding it has failed
+# deciding it has failed.
 
 master_response_timeout=60
 
@@ -128,18 +131,18 @@ reconnect_attempts=6
 reconnect_interval=10
 
 # Autofailover options
-failover=automatic  # one of 'automatic', 'manual'
+failover=manual     # one of 'automatic', 'manual'
+                    # (default: manual)
 priority=100        # a value of zero or less prevents the node being promoted to primary
+                    # (default: 100)
 promote_command='repmgr standby promote -f /path/to/repmgr.conf'
 follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
 
 # monitoring interval in seconds; default is 2
-#
-# monitor_interval_secs=2
+monitor_interval_secs=2
 
 # change wait time for primary; before we bail out and exit when the primary
 # disappears, we wait 'reconnect_attempts' * 'retry_promote_interval_secs'
 # seconds; by default this would be half an hour, as 'retry_promote_interval_secs'
 # default value is 300)
-#
-# retry_promote_interval_secs=300
+retry_promote_interval_secs=300
