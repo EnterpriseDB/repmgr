@@ -3727,7 +3727,7 @@ do_help(void)
 	printf(_("  -V, --version                       output version information, then exit\n"));
 	printf(_("\n"));
 	printf(_("Logging options:\n"));
-	printf(_("  -L, --log-level                     set log level (overrides configuration file)\n"));
+	printf(_("  -L, --log-level                     set log level (overrides configuration file; default: NOTICE)\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
 	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("\n"));
