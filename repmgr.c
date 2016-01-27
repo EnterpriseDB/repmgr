@@ -2173,7 +2173,7 @@ do_standby_promote(void)
 
 	initPQExpBuffer(&details);
 	appendPQExpBuffer(&details,
-					  "Node %i was successfully promoted to master",
+					  "node %i was successfully promoted to master",
 					  options.node);
 
 	log_notice(_("STANDBY PROMOTE successful\n"));
@@ -2548,7 +2548,6 @@ do_standby_switchover(void)
 					remote_data_directory);
 	initPQExpBuffer(&command_output);
 
-	// XXX handle failure
 	(void)remote_command(
 		remote_host,
 		runtime_options.remote_user,
@@ -2576,8 +2575,69 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&command_output);
 
-	PQfinish(remote_conn);
+
+	if (server_version_num >= 90500)
+	{
+		/* 9.5 and later have pg_rewind built-in - always use that */
+		use_pg_rewind = true;
+		maxlen_snprintf(remote_pg_rewind,
+						"%s/pg_rewind",
+						pg_bindir);
+	}
+	else
+	{
+		/* 9.3/9.4 - user can use separately-compiled pg_rewind */
+		if (pg_rewind_supplied == true)
+		{
+			use_pg_rewind = true;
+
+			/* User has specified pg_rewind path */
+			if (strlen(runtime_options.pg_rewind))
+			{
+				maxlen_snprintf(remote_pg_rewind,
+								"%s",
+								runtime_options.pg_rewind);
+			}
+			/* No path supplied - assume in normal bindir */
+			else
+			{
+				maxlen_snprintf(remote_pg_rewind,
+								"%s/pg_rewind",
+								pg_bindir);
+			}
+		}
+		else
+		{
+			use_pg_rewind = false;
+		}
+	}
+
+	/* check pg_rewind actually exists on remote */
+	if (use_pg_rewind == true)
+	{
+		maxlen_snprintf(command,
+						"ls -1 %s >/dev/null 2>&1 && echo 1 || echo 0",
+						remote_pg_rewind);
+
+		log_notice("%s",command);
+		initPQExpBuffer(&command_output);
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			command,
+			&command_output);
+
+		if (*command_output.data == '0')
+		{
+			log_err(_("unable to find pg_rewind on the remote server\n"));
+			log_err(_("expected location is: %s\n"), remote_pg_rewind);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
 	PQfinish(local_conn);
+	PQfinish(remote_conn);
 
 	/* Determine the remote's configuration file location */
 
@@ -2593,8 +2653,6 @@ do_standby_switchover(void)
 						runtime_options.remote_config_file);
 
 		initPQExpBuffer(&command_output);
-
-		// XXX handle failure
 
 		(void)remote_command(
 			remote_host,
@@ -2668,44 +2726,6 @@ do_standby_switchover(void)
 		}
 	}
 
-
-	if (server_version_num >= 90500)
-	{
-		/* 9.5 and later have pg_rewind built-in - always use that */
-		use_pg_rewind = true;
-		maxlen_snprintf(remote_pg_rewind,
-						"%s/pg_rewind",
-						pg_bindir);
-	}
-	else
-	{
-		/* 9.3/9.4 - user can use separately-compiled pg_rewind */
-		if (pg_rewind_supplied == true)
-		{
-			use_pg_rewind = true;
-
-			/* User has specified pg_rewind path */
-			if (strlen(runtime_options.pg_rewind))
-			{
-				maxlen_snprintf(remote_pg_rewind,
-								"%s",
-								runtime_options.pg_rewind);
-			}
-			/* No path supplied - assume in normal bindir */
-			else
-			{
-				maxlen_snprintf(remote_pg_rewind,
-								"%s/pg_rewind",
-								pg_bindir);
-			}
-
-			/* TODO: check file actually exists on remote */
-		}
-		else
-		{
-			use_pg_rewind = false;
-		}
-	}
 
 
 	/*
