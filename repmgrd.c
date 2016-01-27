@@ -1478,7 +1478,7 @@ do_master_failover(void)
 		/* wait */
 		sleep(10);
 
-		log_info(_("node %d is the best candidate for new master, attempting to follow...\n"),
+		log_notice(_("node %d is the best candidate for new master, attempting to follow...\n"),
 				 best_candidate.node_id);
 
 		/*
@@ -1524,11 +1524,11 @@ do_master_failover(void)
 
 		node_info = get_node_info(new_master_conn, local_options.cluster_name, local_options.node);
 		appendPQExpBuffer(&event_details,
-						  _("Node %i now following new upstream node %i"),
+						  _("node %i now following new upstream node %i"),
 						  node_info.node_id,
 						  best_candidate.node_id);
 
-		log_info("%s\n", event_details.data);
+		log_notice("%s\n", event_details.data);
 
 		create_event_record(new_master_conn,
 							&local_options,
