@@ -2418,12 +2418,11 @@ do_standby_follow(void)
  *    can be provided explicitly with -C/--remote-config-file,
  *    otherwise repmgr will look in default locations on the
  *    remote server
- *  - this does not yet support "rewinding" stopped nodes
- *    which will be unable to catch up with the primary
  *
  * TODO:
  *  - update docs
  *  - make connection test timeouts/intervals configurable (see below)
+ *  - check that server configured for pg_rewind (checksums or wal_log_hints)
  */
 
 static void
@@ -2806,7 +2805,7 @@ do_standby_switchover(void)
 		{
 			connection_success = true;
 
-			log_notice(_("current master has been stopped"));
+			log_notice(_("current master has been stopped\n"));
 			break;
 		}
 		PQfinish(remote_conn);
@@ -2847,7 +2846,9 @@ do_standby_switchover(void)
 						pg_bindir,
 						remote_data_directory,
 						options.conninfo);
-		log_debug("Executing:\n%s\n", command);
+
+		log_notice("Executing pg_rewind on old master server\n");
+		log_debug("pg_rewind command is:\n%s\n", command);
 
 		initPQExpBuffer(&command_output);
 
@@ -3027,7 +3028,7 @@ do_standby_switchover(void)
 		if (strcmp(remote_node_replication_state, "streaming") == 0 ||
 			strcmp(remote_node_replication_state, "catchup")  == 0)
 		{
-			log_verbose(LOG_INFO, _("node %i is replicating in state \"%s\"\n"), remote_node_id, remote_node_replication_state);
+			log_verbose(LOG_NOTICE, _("node %i is replicating in state \"%s\"\n"), remote_node_id, remote_node_replication_state);
 		}
 		else
 		{
@@ -3091,7 +3092,7 @@ do_standby_switchover(void)
 
 	PQfinish(local_conn);
 
-	log_info(_("switchover was successful\n"));
+	log_notice(_("switchover was successful\n"));
 	return;
 }
 
@@ -3762,7 +3763,7 @@ do_help(void)
 			 "                                        the current master\n"));
 	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
 			 "                                        optionally providing a path to the binary\n"));
-	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history\n"));
+	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));
 	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
 			 "                                        (default: postgres)\n"));
