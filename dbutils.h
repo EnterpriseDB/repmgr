@@ -129,6 +129,7 @@ bool        update_node_record_status(PGconn *conn, char *cluster_name, int this
 bool        update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_id, int new_upstream_node_id);
 bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
 
-int   	    get_node_replication_state(PGconn *conn, char *node_name, char *output);
+int		    get_node_replication_state(PGconn *conn, char *node_name, char *output);
 t_server_type parse_node_type(const char *type);
+int			get_data_checksum_version(const char *data_directory);
 #endif

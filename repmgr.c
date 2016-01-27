@@ -337,7 +337,6 @@ main(int argc, char **argv)
 					appendPQExpBuffer(&invalid_log_level, _("Invalid log level \"%s\" provided"), optarg);
 					error_list_append(&cli_errors, invalid_log_level.data);
 					termPQExpBuffer(&invalid_log_level);
-
 				}
 				break;
 			}
@@ -2514,6 +2513,7 @@ do_standby_switchover(void)
 	}
 
 	log_debug("remote node name is \"%s\"\n", remote_node_record.name);
+
 	/*
 	 * Check that we can connect by SSH to the remote (current primary) server,
 	 * and read its data directory
@@ -2523,7 +2523,6 @@ do_standby_switchover(void)
 	 * we should only be able to see the file as the PostgreSQL
 	 * user, so it should be readable anyway
 	 */
-
 	get_conninfo_value(remote_conninfo, "host", remote_host);
 
 	r = test_ssh_connection(remote_host, runtime_options.remote_user);
@@ -2612,14 +2611,17 @@ do_standby_switchover(void)
 		}
 	}
 
-	/* check pg_rewind actually exists on remote */
+	/* Sanity checks so we're sure pg_rewind can be used */
 	if (use_pg_rewind == true)
 	{
+		bool wal_log_hints = false;
+
+		/* check pg_rewind actually exists on remote */
+
 		maxlen_snprintf(command,
 						"ls -1 %s >/dev/null 2>&1 && echo 1 || echo 0",
 						remote_pg_rewind);
 
-		log_notice("%s",command);
 		initPQExpBuffer(&command_output);
 
 		(void)remote_command(
@@ -2633,6 +2635,52 @@ do_standby_switchover(void)
 			log_err(_("unable to find pg_rewind on the remote server\n"));
 			log_err(_("expected location is: %s\n"), remote_pg_rewind);
 			exit(ERR_BAD_CONFIG);
+		}
+
+		/* check that server is appropriately configured */
+
+		/*
+		 * "full_page_writes" must be enabled in any case
+		 */
+
+		if (guc_set(remote_conn, "full_page_writes", "=", "off"))
+		{
+			log_err(_("\"full_page_writes\" must be set to \"on\""));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/*
+		 * Check whether wal_log_hints is on - if so we're fine and don't need
+		 * to check for checksums
+		 */
+
+		wal_log_hints = guc_set(remote_conn, "wal_log_hints", "=", "on");
+
+		if (wal_log_hints == false)
+		{
+			char local_data_directory[MAXLEN];
+			int  data_checksum_version;
+
+			/*
+			 * check the *local* server's control data for the date checksum
+			 * version - much easier than doing it on the remote server
+			 */
+
+			if (get_pg_setting(local_conn, "data_directory", local_data_directory) == false)
+			{
+				log_err(_("unable to retrieve standby's data directory location\n"));
+				PQfinish(remote_conn);
+				PQfinish(local_conn);
+				exit(ERR_DB_CON);
+			}
+
+			data_checksum_version = get_data_checksum_version(local_data_directory);
+
+			if (data_checksum_version == 0)
+			{
+				log_err(_("pg_rewind cannot be used - data checksums are not enabled for this cluster and \"wal_log_hints\" is \"off\"\n"));
+				exit(ERR_BAD_CONFIG);
+			}
 		}
 	}
 

@@ -26,6 +26,8 @@
 #include "strutil.h"
 #include "log.h"
 
+#include "catalog/pg_control.h"
+
 char repmgr_schema[MAXLEN] = "";
 char repmgr_schema_quoted[MAXLEN] = "";
 
@@ -1708,4 +1710,33 @@ parse_node_type(const char *type)
 	}
 
 	return UNKNOWN;
+}
+
+
+int
+get_data_checksum_version(const char *data_directory)
+{
+	ControlFileData control_file;
+	int				fd;
+	char			control_file_path[MAXPGPATH];
+
+	snprintf(control_file_path, MAXPGPATH, "%s/global/pg_control", data_directory);
+	if ((fd = open(control_file_path, O_RDONLY | PG_BINARY, 0)) == -1)
+	{
+		log_err(_("Unable to open control file \"%s\" for reading: %s\n"),
+				control_file_path, strerror(errno));
+		return -1;
+	}
+
+	if (read(fd, &control_file, sizeof(ControlFileData)) != sizeof(ControlFileData))
+	{
+		log_err(_("could not read file \"%s\": %s\n"),
+				control_file_path, strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+	close(fd);
+
+	return (int)control_file.data_checksum_version;
 }
