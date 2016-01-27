@@ -1684,7 +1684,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 	}
 
 	appendPQExpBuffer(&event_details,
-					  _("Node %i is now following upstream node %i"),
+					  _("node %i is now following upstream node %i"),
 					  node_info.node_id,
 					  upstream_node_id);
 
