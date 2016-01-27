@@ -106,6 +106,7 @@ char	   *trim(char *s);
 void		error_list_append(ErrorList *error_list, char *error_message);
 int			repmgr_atoi(const char *s,
 						const char *config_item,
-						ErrorList *error_list);
+						ErrorList *error_list,
+						bool allow_negative);
 
 #endif

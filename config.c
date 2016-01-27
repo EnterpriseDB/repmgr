@@ -198,10 +198,12 @@ parse_config(t_configuration_options *options)
 
 	/* For sanity-checking provided conninfo string */
 	PQconninfoOption *conninfo_options;
-	char       *conninfo_errmsg = NULL;
+	char	   *conninfo_errmsg = NULL;
 
 	/* Collate configuration file errors here for friendlier reporting */
 	static ErrorList config_errors = { NULL, NULL };
+
+	bool		node_found = false;
 
 	/* Initialize configuration options with sensible defaults
 	 * note: the default log level is set in log.c and does not need
@@ -290,9 +292,12 @@ parse_config(t_configuration_options *options)
 		if (strcmp(name, "cluster") == 0)
 			strncpy(options->cluster_name, value, MAXLEN);
 		else if (strcmp(name, "node") == 0)
-			options->node = repmgr_atoi(value, "node", &config_errors);
+		{
+			options->node = repmgr_atoi(value, "node", &config_errors, false);
+			node_found = true;
+		}
 		else if (strcmp(name, "upstream_node") == 0)
-			options->upstream_node = repmgr_atoi(value, "upstream_node", &config_errors);
+			options->upstream_node = repmgr_atoi(value, "upstream_node", &config_errors, false);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
@@ -323,7 +328,7 @@ parse_config(t_configuration_options *options)
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
-			options->priority = repmgr_atoi(value, "priority", &config_errors);
+			options->priority = repmgr_atoi(value, "priority", &config_errors, true);
 		else if (strcmp(name, "node_name") == 0)
 			strncpy(options->node_name, value, MAXLEN);
 		else if (strcmp(name, "promote_command") == 0)
@@ -331,16 +336,16 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "follow_command") == 0)
 			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
-			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", &config_errors);
+			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", &config_errors, false);
 		/* 'primary_response_timeout' as synonym for 'master_response_timeout' -
 		 * we'll switch terminology in a future release (3.1?)
 		 */
 		else if (strcmp(name, "primary_response_timeout") == 0)
-			options->master_response_timeout = repmgr_atoi(value, "primary_response_timeout", &config_errors);
+			options->master_response_timeout = repmgr_atoi(value, "primary_response_timeout", &config_errors, false);
 		else if (strcmp(name, "reconnect_attempts") == 0)
-			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", &config_errors);
+			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", &config_errors, false);
 		else if (strcmp(name, "reconnect_interval") == 0)
-			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", &config_errors);
+			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", &config_errors, false);
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
@@ -350,12 +355,12 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
-			options->monitor_interval_secs = repmgr_atoi(value, "monitor_interval_secs", &config_errors);
+			options->monitor_interval_secs = repmgr_atoi(value, "monitor_interval_secs", &config_errors, false);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
-			options->retry_promote_interval_secs = repmgr_atoi(value, "retry_promote_interval_secs", &config_errors);
+			options->retry_promote_interval_secs = repmgr_atoi(value, "retry_promote_interval_secs", &config_errors, false);
 		else if (strcmp(name, "use_replication_slots") == 0)
 			/* XXX we should have a dedicated boolean argument format */
-			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", &config_errors);
+			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", &config_errors, false);
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
 		else if (strcmp(name, "event_notifications") == 0)
@@ -387,29 +392,17 @@ parse_config(t_configuration_options *options)
 
 	fclose(fp);
 
-	/* Check config settings */
 
-	/* The following checks are for the presence of the parameter */
-	if (*options->cluster_name == '\0')
+	if (node_found == false)
 	{
-		error_list_append(&config_errors, _("\"cluster\": parameter was not found\n"));
+		error_list_append(&config_errors, _("\"node\": parameter was not found"));
+	}
+	else if (options->node == 0)
+	{
+		error_list_append(&config_errors, _("\"node\": must be greater than zero"));
 	}
 
-	if (options->node == -1)
-	{
-		error_list_append(&config_errors, _("\"node\": parameter was not found\n"));
-	}
-
-	if (*options->node_name == '\0')
-	{
-		error_list_append(&config_errors, _("\"node_name\": parameter was not found\n"));
-	}
-
-	if (*options->conninfo == '\0')
-	{
-		error_list_append(&config_errors, _("\"conninfo\": parameter was not found\n"));
-	}
-	else
+	if (strlen(options->conninfo))
 	{
 
 		/* Sanity check the provided conninfo string
@@ -791,7 +784,7 @@ error_list_append(ErrorList *error_list, char *error_message)
  * otherwise exit
  */
 int
-repmgr_atoi(const char *value, const char *config_item, ErrorList *error_list)
+repmgr_atoi(const char *value, const char *config_item, ErrorList *error_list, bool allow_negative)
 {
 	char	  *endptr;
 	long	   longval = 0;
@@ -822,8 +815,8 @@ repmgr_atoi(const char *value, const char *config_item, ErrorList *error_list)
 		}
 	}
 
-	/* Currently there are no values which could be negative */
-	if (longval < 0)
+	/* Disallow negative values for most parameters */
+	if (allow_negative == false && longval < 0)
 	{
 		snprintf(error_message_buf,
 				 MAXLEN,

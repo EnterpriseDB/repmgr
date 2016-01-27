@@ -263,7 +263,7 @@ main(int argc, char **argv)
 				connection_param_provided = true;
 				break;
 			case 'p':
-				repmgr_atoi(optarg, "-p/--port", &cli_errors);
+				repmgr_atoi(optarg, "-p/--port", &cli_errors, false);
 				strncpy(runtime_options.masterport,
 						optarg,
 						MAXLEN);
@@ -281,7 +281,7 @@ main(int argc, char **argv)
 				break;
 			case 'l':
 				/* -l/--local-port is deprecated */
-				repmgr_atoi(optarg, "-l/--local-port", &cli_errors);
+				repmgr_atoi(optarg, "-l/--local-port", &cli_errors, false);
 				strncpy(runtime_options.localport,
 						optarg,
 						MAXLEN);
@@ -293,14 +293,14 @@ main(int argc, char **argv)
 				strncpy(runtime_options.remote_user, optarg, MAXLEN);
 				break;
 			case 'w':
-				repmgr_atoi(optarg, "-w/--wal-keep-segments", &cli_errors);
+				repmgr_atoi(optarg, "-w/--wal-keep-segments", &cli_errors, false);
 				strncpy(runtime_options.wal_keep_segments,
 						optarg,
 						MAXLEN);
 				wal_keep_segments_used = true;
 				break;
 			case 'k':
-				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", &cli_errors);
+				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", &cli_errors, false);
 				break;
 			case 'F':
 				runtime_options.force = true;
