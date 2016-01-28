@@ -1,8 +1,9 @@
 3.1.0   2016-01-
-        Add "repmgr switchover" command (Ian)
-
-3.0.4   2016-01-
+        Add "repmgr standby switchover" command (Ian)
+        Revised README file (Ian)
         Remove requirement for 'archive_mode' to be enabled (Ian)
+        Improve -?/--help output, showing default values if relevant (Ian)
+        Various bugfixes to command line/configuration parameter handling (Ian)
 
 3.0.3   2016-01-04
         Create replication slot if required before base backup is run (Abhijit)
