@@ -1163,7 +1163,7 @@ do_standby_register(void)
 			log_hint(_("use option -F/--force to overwrite an existing node record\n"));
 		}
 
-		// XXX log registration failure?
+		/* XXX log registration failure? */
 		PQfinish(master_conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
@@ -2419,9 +2419,7 @@ do_standby_follow(void)
  *    remote server
  *
  * TODO:
- *  - update docs
  *  - make connection test timeouts/intervals configurable (see below)
- *  - check that server configured for pg_rewind (checksums or wal_log_hints)
  */
 
 static void
@@ -3102,7 +3100,6 @@ do_standby_switchover(void)
 		{
 			log_err(_("node %i replication state is  \"%s\"\n"), remote_node_id, remote_node_replication_state);
 			PQfinish(local_conn);
-			// errcode?
 			exit(ERR_DB_QUERY);
 		}
 	}
@@ -5137,7 +5134,7 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 		return false;
 	}
 
-	// TODO: better error handling
+	/* TODO: better error handling */
 	while (fgets(output, MAXLEN, fp) != NULL)
 	{
 		appendPQExpBuffer(outputbuf, "%s", output);
