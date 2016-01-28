@@ -542,6 +542,23 @@ When cloning a standby, `repmgr` will automatically generate an appropriate
 slot name, which is stored in the `repl_nodes` table, and create the slot
 on the master:
 
+    repmgr=# SELECT * from repl_nodes ORDER BY id;
+     id |  type   | upstream_node_id | cluster | name  |                 conninfo                 |   slot_name   | priority | active
+    ----+---------+------------------+---------+-------+------------------------------------------+---------------+----------+--------
+      1 | master  |                  | test    | node1 | host=localhost dbname=repmgr user=repmgr | repmgr_slot_1 |      100 | t
+      2 | standby |                1 | test    | node2 | host=localhost dbname=repmgr user=repmgr | repmgr_slot_2 |      100 | t
+      3 | standby |                1 | test    | node3 | host=localhost dbname=repmgr user=repmgr | repmgr_slot_3 |      100 | t
+
+    repmgr=# SELECT * FROM pg_replication_slots ;
+       slot_name   | plugin | slot_type | datoid | database | active | active_pid | xmin | catalog_xmin | restart_lsn
+    ---------------+--------+-----------+--------+----------+--------+------------+------+--------------+-------------
+     repmgr_slot_3 |        | physical  |        |          | t      |      26060 |      |              | 0/50028F0
+     repmgr_slot_2 |        | physical  |        |          | t      |      26079 |      |              | 0/50028F0
+    (2 rows)
+
+Note that a slot name will be created by default for the master but not
+actually used unless the master is converted to a standby using e.g.
+`repmgr standby switchover`.
 
 Be aware that when initially cloning a standby, you will need to ensure
 that all required WAL files remain available while the cloning is taking
