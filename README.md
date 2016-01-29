@@ -217,9 +217,13 @@ It is assumed PostgreSQL is installed on both servers in the cluster,
 `rsync` is available and password-less SSH connections are possible between
 both servers.
 
-    *TIP*: for testing `repmgr`, it's possible to use multiple PostgreSQL
-    instances running on different ports on the same computer, with
-    password-less SSH access to `localhost` enabled.
+* * *
+
+> *TIP*: for testing `repmgr`, it's possible to use multiple PostgreSQL
+> instances running on different ports on the same computer, with
+> password-less SSH access to `localhost` enabled.
+
+* * *
 
 ### PostgreSQL configuration
 
@@ -249,10 +253,14 @@ The following replication settings must be included in `postgresql.conf`:
     hot_standby = on
 
 
-    *TIP*: rather than editing these settings in the default `postgresql.conf`
-    file, create a separate file such as `postgresql.replication.conf` and
-    include it from the end of the main configuration file with:
-    `include 'postgresql.replication.conf'`
+* * *
+
+> *TIP*: rather than editing these settings in the default `postgresql.conf`
+> file, create a separate file such as `postgresql.replication.conf` and
+> include it from the end of the main configuration file with:
+> `include 'postgresql.replication.conf'`
+
+* * *
 
 Create a dedicated PostgreSQL superuser account and a database for
 the `repmgr` metadata, e.g.
