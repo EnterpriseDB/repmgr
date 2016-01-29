@@ -373,12 +373,16 @@ files will be copied.
 Make any adjustments to the PostgreSQL configuration files now, then start the
 standby server.
 
-*NOTE*: `repmgr standby clone` does not require `repmgr.conf`, however we
-recommend providing this as `repmgr` will set the `application_name` parameter
-in `recovery.conf` as value provided in `node_name`, making it easier to identify
-the node in `pg_stat_replication`. It's also possible to provide some advanced
-options for controlling the standby cloning process; see next section for
-details.
+* * *
+
+> *NOTE*: `repmgr standby clone` does not require `repmgr.conf`, however we
+> recommend providing this as `repmgr` will set the `application_name` parameter
+> in `recovery.conf` as value provided in `node_name`, making it easier to identify
+> the node in `pg_stat_replication`. It's also possible to provide some advanced
+> options for controlling the standby cloning process; see next section for
+> details.
+
+***
 
 ### Verify replication is functioning
 
@@ -440,8 +444,8 @@ over the cloning process may be necessary.
 
 By default, `pg_basebackup` performs a checkpoint before beginning the backup
 process. However, a normal checkpoint may take some time to complete;
-a fast checkpoint can be forced with `repmgr`'s  `-c/--fast-checkpoint`
-option. This may impact performance of the server being cloned from
+a fast checkpoint can be forced with the `-c/--fast-checkpoint` option.
+However this may impact performance of the server being cloned from
 so should be used with care.
 
 Further options can be passed to the `pg_basebackup` utility via
@@ -466,7 +470,7 @@ to be compared, meaning this method is not necessarily faster than making a
 fresh clone with `pg_basebackup`.
 
 
-### Dealing with configuration files
+### Dealing with PostgreSQL configuration files
 
 By default, `repmgr` will attempt to copy the standard configuration files
 (`postgresql.conf`, `pg_hba.conf` and `pg_ident.conf`) even if they are located
@@ -520,7 +524,7 @@ for the existing standby) and register it:
     [2016-01-08 13:44:52] [NOTICE] you can now start your PostgreSQL server
     [2016-01-08 13:44:52] [HINT] for example : pg_ctl -D /path/to/node_3/data start
 
-    $ repmgr -f node_3/repmgr.conf standby register
+    $ repmgr -f /etc/repmgr.conf standby register
     [2016-01-08 14:04:32] [NOTICE] standby node correctly registered for cluster test with id 3 (conninfo: host=repmgr_node3 dbname=repmgr user=repmgr)
 
 After starting the standby, the `repl_nodes` table will look like this:
@@ -538,7 +542,7 @@ Using replication slots with repmgr
 -----------------------------------
 
 Replication slots were introduced with PostgreSQL 9.4 and are designed to ensure
-that any standby connected to the master using replication slot will always
+that any standby connected to the master using a replication slot will always
 be able to retrieve the required WAL files. This removes the need to manually
 manage WAL file retention by estimating the number of WAL files that need to
 be maintained on the master using `wal_keep_segments`. Do however be aware
@@ -596,7 +600,7 @@ Promoting a standby server with repmgr
 --------------------------------------
 
 If a master server fails or needs to be removed from the replication cluster,
-a new master server must be designated to ensure the cluster continues
+a new master server must be designated, to ensure the cluster continues
 working correctly. This can be done with `repmgr standby promote`, which promotes
 the standby on the current server to master
 
@@ -663,7 +667,7 @@ Following a new master server with repmgr
 
 Following the failure or removal of the replication cluster's existing master
 server, `repmgr standby follow` can be used to make 'orphaned' standbys
-follow the new master.
+follow the new master and catch up to its current state.
 
 To demonstrate this, assuming a replication cluster in the same state as the
 end of the preceding section ("Promoting a standby server with repmgr"),
@@ -687,9 +691,9 @@ updated to reflect this:
     (3 rows)
 
 
-Note that  `repmgr standby follow` can akso be used to detach a standby from its
-current upstream server and follow another upstream server, including the
-master.
+Note that with cascading replication, `repmgr standby follow` can also be
+used to detach a standby from its current upstream server and follow another
+upstream server, including the master.
 
 
 Performing a switchover with repmgr
@@ -709,16 +713,20 @@ is supported by the `repmgr standby switchover` command.
 also performs actions on another server, for which reason both passwordless
 SSH access and the path of `repmgr.conf` on that server.
 
-    *NOTE* `repmgr standby switchover` performs a relatively complex series
-    of operations on two servers, and should therefore be performed after
-    careful preparation and with adequate attention. In particular you should
-    be confident that your network environment is stable and reliable.
+* * *
 
-    We recommend running `repmgr standby switchover`  at the most verbose
-    logging level (`--log-level DEBUG --verbose`) and capturing all output
-    to assist troubleshooting any problems.
+> *NOTE* `repmgr standby switchover` performs a relatively complex series
+> of operations on two servers, and should therefore be performed after
+> careful preparation and with adequate attention. In particular you should
+> be confident that your network environment is stable and reliable.
+>
+> We recommend running `repmgr standby switchover`  at the most verbose
+> logging level (`--log-level DEBUG --verbose`) and capturing all output
+> to assist troubleshooting any problems.
+>
+> Please also read carefully the list of caveats below.
 
-    Please read carefully the list of caveats below.
+* * *
 
 To demonstrate switchover, we will assume a replication cluster running on
 PostgreSQL 9.5 or later with a master (`node1`) and a standby (`node2`);
@@ -729,7 +737,7 @@ and in its simplest form looks like this:
 
    repmgr -f /etc/repmgr.conf -C /etc/repmgr.conf standby switchover
 
-`-f /etc/repmgr.conf` is, as usual the local repmgr node's configuration file.
+`-f /etc/repmgr.conf` is, as usual the local `repmgr` node's configuration file.
 `-C /etc/repmgr.conf` is the path to the configuration file on the current
 master, which is required to execute `repmgr` remotely on that server;
 if it is not provided with `-C`, `repmgr` will check the same path as on the
@@ -1078,13 +1086,13 @@ or script which can take further action, e.g. send email notifications.
 This is done by setting the `event_notification_command` parameter in
 `repmgr.conf`.
 
-This parameter accepts the following format placehikders:
+This parameter accepts the following format placeholders:
 
-   %n - node ID
-   %e - event type
-   %s - success (1 or 0)
-   %t - timestamp
-   %d - details
+     %n - node ID
+     %e - event type
+     %s - success (1 or 0)
+     %t - timestamp
+     %d - details
 
 The values provided for "%t" and "%d" will probably contain spaces,
 so should be quoted in the provided command configuration, e.g.:
@@ -1098,23 +1106,24 @@ can be filtered to explicitly named ones:
 
 The following event types are available:
 
-  * master_register
-  * standby_register
-  * standby_unregister
-  * standby_clone
-  * standby_promote
-  * standby_follow
-  * standby_switchover
-  * witness_create
-  * witness_create
-  * repmgrd_start
-  * repmgrd_shutdown
-  * repmgrd_failover_promote
-  * repmgrd_failover_follow
+  * `master_register`
+  * `standby_register`
+  * `standby_unregister`
+  * `standby_clone`
+  * `standby_promote`
+  * `standby_follow`
+  * `standby_switchover`
+  * `witness_create`
+  * `witness_create`
+  * `repmgrd_start`
+  * `repmgrd_shutdown`
+  * `repmgrd_failover_promote`
+  * `repmgrd_failover_follow`
 
 Note that under some circumstances (e.g. no replication cluster master could
 be located), it will not be possible to write an entry into the `repl_events`
 table, in which case `event_notification_command` can serve as a fallback.
+
 
 Upgrading repmgr
 ----------------
