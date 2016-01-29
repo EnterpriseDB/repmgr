@@ -4,8 +4,8 @@ repmgr: Replication Manager for PostgreSQL
 `repmgr` is a suite of open-source tools to manage replication and failover
 within a cluster of PostgreSQL servers. It enhances PostgreSQL's built-in
 replication capabilities with utilities to set up standby servers, monitor
-replication, and perform administrative tasks such as failover or manual
-switchover operations.
+replication, and perform administrative tasks such as failover or switchover
+operations.
 
 
 Overview
@@ -55,7 +55,7 @@ of PostgreSQL servers connected by streaming replication.
 
 - `node`
 
-A `node` is a server within a network cluster.
+A `node` is a server within a replication cluster.
 
 - `upstream node`
 
@@ -64,9 +64,9 @@ the case of cascading replication, another standby.
 
 - `failover`
 
-If a master server fails, generally it's desirable to promote a suitable
-standby as the new master. The `repmgrd` daemon supports automatic failover
-in this kind of case.
+This is the action which occurs if a master server fails and a suitable standby
+is  promoted as the new master. The `repmgrd` daemon supports automatic failover
+to minimise downtime.
 
 - `switchover`
 
@@ -137,7 +137,7 @@ The `repmgr` tools must be installed on each server in the replication cluster.
 
 A dedicated system user for `repmgr` is *not* required; as many `repmgr` and
 `repmgrd` actions require direct access to the PostgreSQL data directory,
-it is usually executed by the `postgres` user.
+it should executed by the `postgres` user.
 
 Additionally, we recommend installing `rsync` and enabling passwordless
 `ssh` connectivity between all servers in the replication cluster.
@@ -177,17 +177,18 @@ infrastructure, e.g.:
 
     sudo make USE_PGXS=1 install
 
-`repmgr` can be built in any environment suitable for building PostgreSQL itself.
+`repmgr` can be built from source in any environment suitable for building
+PostgreSQL itself.
 
 
 ### Configuration
 
-`repmgr` and `repmgrd` use a common configuration file, usually named
+`repmgr` and `repmgrd` use a common configuration file, by default called
 `repmgr.conf` (although any name can be used if explicitly specified).
 At the very least, `repmgr.conf` must contain the connection parameters
 for the local `repmgr` database.
 
-The configuration file will be looked for in the following locations:
+The configuration file will be searched for in the following locations:
 
 - a configuration file specified by the `-f/--config-file` command line option
 - `repmgr.conf` in the local directory
@@ -196,12 +197,12 @@ The configuration file will be looked for in the following locations:
 
 Note that if a file is explicitly specified with `-f/--config-file`, an error will
 be raised if it is not found or not readable and no attempt will be made to check
-default locations.
+default locations; this is to prevent `repmgr` reading the wrong file.
 
 For a full list of annotated configuration items, see the file `repmgr.conf.sample`.
 
-These parameters in the configuration file can be overridden with command line
-options:
+The following parameters in the configuration file can be overridden with
+command line options:
 
 - `-L/--log-level`
 - `-b/--pg_bindir`
@@ -247,6 +248,11 @@ The following replication settings must be included in `postgresql.conf`:
 
     hot_standby = on
 
+
+    *TIP*: rather than editing these settings in the default `postgresql.conf`
+    file, create a separate file such as `postgresql.replication.conf` and
+    include it from the end of the main configuration file with:
+    `include 'postgresql.replication.conf'`
 
 Create a dedicated PostgreSQL superuser account and a database for
 the `repmgr` metadata, e.g.
@@ -352,11 +358,12 @@ Clone the standby with:
 
 This will clone the PostgreSQL data directory files from the master using
 PostgreSQL's pg_basebackup utility. A `recovery.conf` file containing the
-correct parameters to start streaming from the master server will
-be created automatically, and unless otherwise the `postgresql.conf` and `pg_hba.conf`
+correct parameters to start streaming from the master server will be created
+automatically, and unless otherwise the `postgresql.conf` and `pg_hba.conf`
 files will be copied.
 
-Make any adjustments to the configuration files now, then start the standby server.
+Make any adjustments to the PostgreSQL configuration files now, then start the
+standby server.
 
 *NOTE*: `repmgr standby clone` does not require `repmgr.conf`, however we
 recommend providing this as `repmgr` will set the `application_name` parameter
@@ -396,7 +403,7 @@ Register the standby server with:
     repmgr -f /etc/repmgr.conf standby register
     [2016-01-08 11:13:16] [NOTICE] standby node correctly registered for cluster test with id 2 (conninfo: host=repmgr_node2 user=repmgr dbname=repmgr)
 
-Connect to the standby servers' `repmgr` database and check the `repl_nodes`
+Connect to the standby server's `repmgr` database and check the `repl_nodes`
 table:
 
     repmgr=# SELECT * FROM repmgr_test.repl_nodes ORDER BY id;
@@ -410,8 +417,8 @@ The standby server now has a copy of records for all servers in the replication
 cluster. Note that the relationship between master and standby is explicitly
 defined via the `upstream_node_id` value, which shows here that the standby's
 upstream server is the replication cluster master. While of limited use
-in a simple 2-level master/standby replication cluster, this information is
-required to effectively manage cascading replication (see below).
+in a simple master/standby replication cluster, this information is required
+to effectively manage cascading replication (see below).
 
 
 Advanced options for cloning a standby
@@ -423,8 +430,8 @@ over the cloning process may be necessary.
 
 ### pg_basebackup options when cloning a standby
 
-By default, `pg_basebackup` performs a checkpoint before beginning the
-backup process. However, a normal checkpoint may take some time to complete;
+By default, `pg_basebackup` performs a checkpoint before beginning the backup
+process. However, a normal checkpoint may take some time to complete;
 a fast checkpoint can be forced with `repmgr`'s  `-c/--fast-checkpoint`
 option. This may impact performance of the server being cloned from
 so should be used with care.
