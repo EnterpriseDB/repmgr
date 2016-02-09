@@ -67,7 +67,7 @@ typedef struct
 	bool		force;
 	bool		wait_for_master;
 	bool		ignore_rsync_warn;
-	bool		initdb_no_pwprompt;
+	bool		witness_pwprompt;
 	bool		rsync_only;
 	bool		fast_checkpoint;
 	bool		ignore_external_config_files;
@@ -91,11 +91,12 @@ typedef struct
 
 	char		recovery_min_apply_delay[MAXLEN];
 
-	/* deprecated command line option */
+	/* deprecated command line options */
 	char		localport[MAXLEN];
+	bool		initdb_no_pwprompt;
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, "smart", "", "", "", "", "", 0, "", "", "" }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, "smart", "", "", "", "", "", 0, "", "", "", false }
 
 extern char		repmgr_schema[MAXLEN];
 extern bool		config_file_found;

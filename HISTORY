@@ -1,4 +1,7 @@
-3.1.0   2016-01-
+3.1.1   2016-02-
+        Add '-P/--pwprompt' option for "repmgr create witness" (Ian)
+
+3.1.0   2016-02-01
         Add "repmgr standby switchover" command (Ian)
         Revised README file (Ian)
         Remove requirement for 'archive_mode' to be enabled (Ian)
