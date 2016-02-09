@@ -175,12 +175,14 @@ main(int argc, char **argv)
 		{"terse", required_argument, NULL, 't'},
 		{"mode", required_argument, NULL, 'm'},
 		{"remote-config-file", required_argument, NULL, 'C'},
+		/* deprecated from 3.2; replaced with -P/----pwprompt */
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
 		{"ignore-external-config-files", no_argument, NULL, 4},
 		{"config-archive-dir", required_argument, NULL, 5},
 		{"pg_rewind", optional_argument, NULL, 6},
+		{"pwprompt", optional_argument, NULL, 7},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
@@ -404,6 +406,9 @@ main(int argc, char **argv)
 					strncpy(runtime_options.pg_rewind, optarg, MAXFILENAME);
 				}
 				pg_rewind_supplied = true;
+				break;
+			case 7:
+				runtime_options.witness_pwprompt = true;
 				break;
 
 			default:
@@ -3454,7 +3459,7 @@ do_witness_create(void)
 	maxlen_snprintf(script, "%s %s -D %s init -o \"%s-U %s\"",
 				   make_pg_path("pg_ctl"),
 				   options.pg_ctl_options, runtime_options.dest_dir,
-				   runtime_options.initdb_no_pwprompt ? "" : "-W ",
+				   runtime_options.witness_pwprompt ? "-W " : "",
 				   runtime_options.superuser);
 	log_info(_("initializing cluster for witness: %s.\n"), script);
 
@@ -3555,10 +3560,13 @@ do_witness_create(void)
 	/* check if we need to create a user */
 	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres") != 0)
 	{
-		/* create required user; needs to be superuser to create untrusted language function in c */
-		maxlen_snprintf(script, "%s -p %s --superuser --login -U %s %s",
+		/* create required user; needs to be superuser to create untrusted language function in C */
+		maxlen_snprintf(script, "%s -p %s --superuser --login %s-U %s %s",
 						make_pg_path("createuser"),
-						runtime_options.localport, runtime_options.superuser, runtime_options.username);
+						runtime_options.localport,
+						runtime_options.witness_pwprompt ? "-P " : "",
+						runtime_options.superuser,
+						runtime_options.username);
 		log_info(_("creating user for witness db: %s.\n"), script);
 
 		r = system(script);
@@ -3829,7 +3837,8 @@ do_help(void)
 	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
 			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));
-	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));
+/*	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));*/
+	printf(_("  -P, --pwprompt                      (witness server) prompt for password when creating users\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
 			 "                                        (default: postgres)\n"));
 	printf(_("\n"));
@@ -4275,6 +4284,11 @@ check_parameters_for_action(const int action)
 			config_file_required = false;
 			break;
 		case WITNESS_CREATE:
+			/* Require data directory */
+			if (strcmp(runtime_options.dest_dir, "") == 0)
+			{
+				error_list_append(&cli_errors, _("-D/--data-dir required when executing WITNESS CREATE"));
+			}
 			/* allow all parameters to be supplied */
 			break;
 		case CLUSTER_SHOW:
