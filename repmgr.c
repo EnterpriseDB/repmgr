@@ -3363,12 +3363,21 @@ do_witness_create(void)
 	char		master_hba_file[MAXLEN];
 	bool        success;
 	bool		record_created;
+	char		repmgr_user[MAXLEN];
+	char		repmgr_db[MAXLEN];
 
 	/* Connection parameters for master only */
 	keywords[0] = "host";
 	values[0] = runtime_options.host;
 	keywords[1] = "port";
 	values[1] = runtime_options.masterport;
+
+	/*
+	 * Extract the repmgr user and database names from the conninfo string
+	 * provided in repmgr.conf
+	 */
+	get_conninfo_value(options.conninfo, "user", repmgr_user);
+	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
 
 	/* We need to connect to check configuration and copy it */
 	masterconn = establish_db_connection_by_params(keywords, values, true);
@@ -3505,8 +3514,8 @@ do_witness_create(void)
 	xsnprintf(buf, sizeof(buf), "\n#Configuration added by %s\n", progname());
 	fputs(buf, pg_conf);
 
-
-	/* Attempt to extract a port number from the provided conninfo string
+	/*
+	 * Attempt to extract a port number from the provided conninfo string.
 	 * This will override any value provided with '-l/--local-port', as it's
 	 * what we'll later try and connect to anyway. '-l/--local-port' should
 	 * be deprecated.
@@ -3557,16 +3566,18 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
 	/* check if we need to create a user */
-	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres") != 0)
+	if (strcmp(repmgr_user, "postgres") != 0)
 	{
-		/* create required user; needs to be superuser to create untrusted language function in C */
+		/* create required user; needs to be superuser to create untrusted
+		 * language function in C */
 		maxlen_snprintf(script, "%s -p %s --superuser --login %s-U %s %s",
 						make_pg_path("createuser"),
 						runtime_options.localport,
 						runtime_options.witness_pwprompt ? "-P " : "",
 						runtime_options.superuser,
-						runtime_options.username);
+						repmgr_user);
 		log_info(_("creating user for witness db: %s.\n"), script);
 
 		r = system(script);
@@ -3592,7 +3603,10 @@ do_witness_create(void)
 		/* create required db */
 		maxlen_snprintf(script, "%s -p %s -U %s --owner=%s %s",
 						make_pg_path("createdb"),
-						runtime_options.localport, runtime_options.superuser, runtime_options.username, runtime_options.dbname);
+						runtime_options.localport,
+						runtime_options.superuser,
+						repmgr_user,
+						repmgr_db);
 		log_info("creating database for witness db: %s.\n", script);
 
 		r = system(script);
@@ -3749,18 +3763,18 @@ do_witness_create(void)
 	}
 
 	/* drop superuser powers if needed */
-	if (runtime_options.username[0] && runtime_options.localport[0] && strcmp(runtime_options.username,"postgres") != 0)
+	if (strcmp(repmgr_user, "postgres") != 0)
 	{
-		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", runtime_options.username);
+		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", repmgr_user);
 		log_info(_("revoking superuser status on user %s: %s.\n"),
-				   runtime_options.username, sqlquery);
+				   repmgr_user, sqlquery);
 
 		log_debug(_("witness create: %s\n"), sqlquery);
 		res = PQexec(witnessconn, sqlquery);
 		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
 			log_err(_("unable to alter user privileges for user %s: %s\n"),
-					runtime_options.username,
+					repmgr_user,
 					PQerrorMessage(witnessconn));
 			PQfinish(masterconn);
 			PQfinish(witnessconn);
