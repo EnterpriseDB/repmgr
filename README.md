@@ -1042,7 +1042,6 @@ makes sense to create a witness server in conjunction with running
 `repmgrd`; the witness server will require its own `repmgrd` instance.
 
 
-
 repmgrd and cascading replication
 ---------------------------------
 
@@ -1249,8 +1248,21 @@ which contains connection details for the local database.
     Note that it only makes sense to create a witness server if `repmgrd`
     is in use; see section "witness server" above.
 
+    This command requires a `repmgr.conf` file containing a valid conninfo
+    string for the server to be created, as well as the other minimum required
+    parameters detailed in the section `repmgr configuration file` above.
+
     By default the witness server will use port 5499 to facilitate easier setup
-    on a server running an existing node.
+    on a server running an existing node. To use a different port, supply
+    this explicitly in the `repmgr.conf` conninfo string.
+
+    This command also requires the location of the witness server's data
+    directory to be provided (`-D/--datadir`) as well as valid connection
+    parameters for the master server.
+
+    By default this command will create a superuser and a repmgr user.
+    The `repmgr` user name will be extracted from the `conninfo` string
+    in `repmgr.conf`.
 
 * `cluster show`
 
