@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include <string.h>
 
 
 #include "repmgr.h"
@@ -502,6 +502,7 @@ witness_monitor(void)
 {
 	char		monitor_witness_timestamp[MAXLEN];
 	PGresult   *res;
+	PGresult   *res_master;
 	char		sqlquery[QUERY_STR_LEN];
 	bool        connection_ok;
 
@@ -584,6 +585,38 @@ witness_monitor(void)
 			terminate(ERR_DB_CON);
 		}
 	}
+	/*
+	 * Compair repl_nodes content between local and master conn.
+	 */
+	sqlquery_snprintf(sqlquery, "SELECT md5(array_to_string(array("
+								"			SELECT repl_nodes::TEXT FROM %s.repl_nodes ORDER BY id"
+								"		), ','))",
+								get_repmgr_schema_quoted(my_local_conn));
+	res = PQexec(my_local_conn, sqlquery);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(my_local_conn));
+		PQclear(res);
+		/* if there is any error just let it be and retry in next loop */
+		return;
+	}
+	res_master = PQexec(master_conn, sqlquery);
+	if (PQresultStatus(res_master) != PGRES_TUPLES_OK)
+	{
+		log_err(_("PQexec failed: %s\n"), PQerrorMessage(master_conn));
+		PQclear(res_master);
+		/* if there is any error just let it be and retry in next loop */
+		return;
+	}
+
+	if (strncmp((char *) PQgetvalue(res, 0, 0), (char*) PQgetvalue(res_master, 0, 0), 32) != 0)
+	{
+		log_warning(_("Local and master %s.repl_nodes tables content differ, syncing it from master.\n"), get_repmgr_schema_quoted(my_local_conn));
+		copy_configuration(master_conn, my_local_conn, local_options.cluster_name);
+	} else
+		log_debug(_("Local and master %s.repl_nodes tables content are identical.\n"), get_repmgr_schema_quoted(my_local_conn));
+	PQclear(res);
+	PQclear(res_master);
 
 	/* Fast path for the case where no history is requested */
 	if (!monitoring_history)

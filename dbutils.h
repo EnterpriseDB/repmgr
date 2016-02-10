@@ -122,7 +122,7 @@ bool		start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint);
 bool		stop_backup(PGconn *conn, char *last_wal_segment);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 bool		copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name);
-bool		create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name);
+bool		create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active);
 bool		delete_node_record(PGconn *conn, int node, char *action);
 int			get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info);
 bool        update_node_record_status(PGconn *conn, char *cluster_name, int this_node_id, char *type, int upstream_node_id, bool active);
