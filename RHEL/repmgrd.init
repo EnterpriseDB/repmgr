@@ -10,7 +10,7 @@ INITD=/etc/rc.d/init.d
 . $INITD/functions
 
 # Get function listing for cross-distribution logic.
-TYPESET=`typeset -f|grep "declare"`
+TYPESET=$(typeset -f|grep "declare")
 
 # Get network config.
 . /etc/sysconfig/network
@@ -23,111 +23,109 @@ REPMGRD_OPTS=
 REPMGRD_USER=postgres
 REPMGRD_BIN=/usr/pgsql-9.3/bin/repmgrd
 REPMGRD_PIDFILE=/var/run/repmgrd.pid
-REPMGRD_LOCK=/var/lock/subsys/${NAME}
+REPMGRD_LOCK="/var/lock/subsys/${NAME}"
 REPMGRD_LOG=/var/lib/pgsql/9.3/data/pg_log/repmgrd.log
+REPMGRD_SYSCONFIG="/etc/sysconfig/${NAME}"
 
 # Read configuration variable file if it is present
-[ -r /etc/sysconfig/$NAME ] && . /etc/sysconfig/$NAME
+[ -r "$REPMGRD_SYSCONFIG" ] && . "$REPMGRD_SYSCONFIG"
 
 # For SELinux we need to use 'runuser' not 'su'
-if [ -x /sbin/runuser ]
-then
-    SU=runuser
+if [ -x /sbin/runuser ]; then
+  SU=runuser
 else
-    SU=su
+  SU=su
 fi
 
-test -x $REPMGRD_BIN || exit 0
+if [ -x $REPMGRD_BIN ]; then
+  echo "Not starting ${NAME}, $REPMGRD_BIN missing or not executable"
+  exit 1
+fi
 
 case "$REPMGRD_ENABLED" in
-    [Yy]*)
-	break
-	;;
-    *)
-	exit 0
-	;;
+  [Yy]*)
+    ;;
+  *)
+    exit 0
+    ;;
 esac
 
-
-if [ -z "${REPMGRD_OPTS}" ]
-then
-    echo "Not starting ${NAME}, REPMGRD_OPTS not set in /etc/sysconfig/${NAME}"
-    exit 0
+if [ -z "${REPMGRD_OPTS}" ]; then
+  echo "Not starting ${NAME}, REPMGRD_OPTS not set in $REPMGRD_SYSCONFIG"
+  exit 0
 fi
 
-start()
-{
-    REPMGRD_START=$"Starting ${NAME} service: "
+start() {
+REPMGRD_START=$"Starting ${NAME} service: "
 
-    # Make sure startup-time log file is valid
-    if [ ! -e "${REPMGRD_LOG}" -a ! -h "${REPMGRD_LOG}" ]
-    then
-        touch "${REPMGRD_LOG}" || exit 1
-        chown ${REPMGRD_USER}:postgres "${REPMGRD_LOG}"
-        chmod go-rwx "${REPMGRD_LOG}"
-        [ -x /sbin/restorecon ] && /sbin/restorecon "${REPMGRD_LOG}"
-    fi
+  # Make sure startup-time log file is valid
+  if [ ! -e "${REPMGRD_LOG}" -a ! -h "${REPMGRD_LOG}" ]; then
+    touch "${REPMGRD_LOG}" || exit 1
+    chown ${REPMGRD_USER}:postgres "${REPMGRD_LOG}"
+    chmod go-rw "${REPMGRD_LOG}"
+    [ -x /sbin/restorecon ] && /sbin/restorecon "${REPMGRD_LOG}"
+  fi
 
-    echo -n "${REPMGRD_START}"
-    $SU -l $REPMGRD_USER -c "${REPMGRD_BIN} ${REPMGRD_OPTS} -p ${REPMGRD_PIDFILE} &" >> "${REPMGRD_LOG}" 2>&1 < /dev/null
-    sleep 2
-    pid=`head -n 1 "${REPMGRD_PIDFILE}" 2>/dev/null`
-    if [ "x${pid}" != "x" ]
-    then
-        success "${REPMGRD_START}"
-        touch "${REPMGRD_LOCK}"
-        echo $pid > "${REPMGRD_PIDFILE}"
-        echo
-    else
-        failure "${REPMGRD_START}"
-        echo
-        script_result=1
-    fi
-}
-
-stop()
-{
-    echo -n $"Stopping ${NAME} service: "
-    if [ -e "${REPMGRD_LOCK}" ]
-    then
-        killproc ${NAME}
-        ret=$? 
-        if [ $ret -eq 0 ]
-        then
-            echo_success
-            rm -f "${REPMGRD_PIDFILE}"
-            rm -f "${REPMGRD_LOCK}"
-        else
-            echo_failure
-            script_result=1
-        fi
-    else
-        # not running; per LSB standards this is "ok"   
-        echo_success
-    fi
+  echo -n "${REPMGRD_START}"
+  $SU -l $REPMGRD_USER -c "${REPMGRD_BIN} ${REPMGRD_OPTS} -p ${REPMGRD_PIDFILE} &" >> "${REPMGRD_LOG}" 2>&1 < /dev/null
+  sleep 2
+  pid=$(head -n 1 "${REPMGRD_PIDFILE}" 2>/dev/null)
+  if [ "x${pid}" != "x" ]; then
+    success "${REPMGRD_START}"
+    touch "${REPMGRD_LOCK}"
+    echo $pid > "${REPMGRD_PIDFILE}"
     echo
+  else
+    failure "${REPMGRD_START}"
+    echo
+    return 1
+  fi
+  return 0
 }
 
+stop() {
+  echo -n $"Stopping ${NAME} service: "
+  if [ -e "${REPMGRD_LOCK}" ]; then
+    killproc ${NAME}
+    ret=$? 
+    if [ $ret -eq 0 ]; then
+      echo_success
+      rm -f "${REPMGRD_PIDFILE}"
+      rm -f "${REPMGRD_LOCK}"
+    else
+      echo_failure
+      return 1
+    fi
+  else
+    # not running; per LSB standards this is "ok"   
+    echo_success
+  fi
+  echo
+  return 0
+}
 
 # See how we were called.
 case "$1" in
   start)
-        start
-        ;;
+    start
+    script_result=$?
+    ;;
   stop)
-        stop
-        ;;
+    stop
+    script_result=$?
+    ;;
   status)
-        status -p $REPMGRD_PIDFILE $NAME
-        script_result=$?
-        ;;
+    status -p $REPMGRD_PIDFILE $NAME
+    script_result=$?
+    ;;
   restart)
-        stop
-	start
-        ;;
+    stop
+    start
+    script_result=$?
+    ;;
   *)
-        echo $"Usage: $0 {start|stop|status|restart}"
-        exit 2
+    echo $"Usage: $0 {start|stop|status|restart}"
+    exit 2
 esac
 
 exit $script_result
