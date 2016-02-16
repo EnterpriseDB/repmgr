@@ -751,6 +751,8 @@ do_cluster_show(void)
 			  "  FROM %s.repl_show_nodes",
 			  get_repmgr_schema_quoted(conn));
 
+	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
+
 	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -3632,7 +3634,7 @@ do_witness_create(void)
 
 	if (success == false)
 	{
-		char *errmsg = _("unable to retrieve location of pg_hba.conf");
+		char *errmsg = _("Unable to retrieve location of pg_hba.conf");
 		log_err("%s\n", errmsg);
 
 		create_event_record(masterconn,
@@ -3649,7 +3651,7 @@ do_witness_create(void)
 						  master_hba_file, runtime_options.dest_dir, false, -1);
 	if (r != 0)
 	{
-		char *errmsg = _("unable to copy pg_hba.conf from master");
+		char *errmsg = _("Unable to copy pg_hba.conf from master");
 		log_err("%s\n", errmsg);
 
 		create_event_record(masterconn,
@@ -3663,7 +3665,7 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* reload to adapt for changed pg_hba.conf */
+	/* reload witness server to activate the copied pg_hba.conf */
 	maxlen_snprintf(script, "%s %s -w -D %s reload",
 					make_pg_path("pg_ctl"),
 					options.pg_ctl_options, runtime_options.dest_dir);
@@ -3685,7 +3687,81 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* register ourselves in the master */
+	/* establish a connection to the witness, and create the schema */
+	witnessconn = establish_db_connection(options.conninfo, false);
+
+	if (PQstatus(witnessconn) != CONNECTION_OK)
+	{
+		create_event_record(masterconn,
+							&options,
+							options.node,
+							"witness_create",
+							false,
+							_("Unable to connect to witness servetr"));
+		PQfinish(masterconn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_info(_("starting copy of configuration from master...\n"));
+
+	begin_transaction(witnessconn);
+
+
+	if (!create_schema(witnessconn))
+	{
+		rollback_transaction(witnessconn);
+		create_event_record(masterconn,
+							&options,
+							options.node,
+							"witness_create",
+							false,
+							_("Unable to create schema on witness"));
+		PQfinish(masterconn);
+		PQfinish(witnessconn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	commit_transaction(witnessconn);
+
+	/* copy configuration from master, only repl_nodes is needed */
+	if (!copy_configuration(masterconn, witnessconn, options.cluster_name))
+	{
+		create_event_record(masterconn,
+							&options,
+							options.node,
+							"witness_create",
+							false,
+							_("Unable to copy configuration from master"));
+		PQfinish(masterconn);
+		PQfinish(witnessconn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* drop superuser powers if needed */
+	if (strcmp(repmgr_user, "postgres") != 0)
+	{
+		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", repmgr_user);
+		log_info(_("revoking superuser status on user %s: %s.\n"),
+				   repmgr_user, sqlquery);
+
+		log_debug(_("witness create: %s\n"), sqlquery);
+		res = PQexec(witnessconn, sqlquery);
+		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+		{
+			log_err(_("Unable to alter user privileges for user %s: %s\n"),
+					repmgr_user,
+					PQerrorMessage(witnessconn));
+			PQfinish(masterconn);
+			PQfinish(witnessconn);
+			exit(ERR_DB_QUERY);
+		}
+	}
+
+	/* Finished with the witness server */
+
+	PQfinish(witnessconn);
+
+	/* Finally, register ourselves with the master */
 
 	if (runtime_options.force)
 	{
@@ -3724,64 +3800,6 @@ do_witness_create(void)
 		exit(ERR_DB_QUERY);
 	}
 
-	/* establish a connection to the witness, and create the schema */
-	witnessconn = establish_db_connection(options.conninfo, true);
-
-	log_info(_("starting copy of configuration from master...\n"));
-
-	begin_transaction(witnessconn);
-
-
-	if (!create_schema(witnessconn))
-	{
-		rollback_transaction(witnessconn);
-		create_event_record(masterconn,
-							&options,
-							options.node,
-							"witness_create",
-							false,
-							_("unable to create schema on witness"));
-		PQfinish(masterconn);
-		PQfinish(witnessconn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	commit_transaction(witnessconn);
-
-	/* copy configuration from master, only repl_nodes is needed */
-	if (!copy_configuration(masterconn, witnessconn, options.cluster_name))
-	{
-		create_event_record(masterconn,
-							&options,
-							options.node,
-							"witness_create",
-							false,
-							_("Unable to copy configuration from master"));
-		PQfinish(masterconn);
-		PQfinish(witnessconn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	/* drop superuser powers if needed */
-	if (strcmp(repmgr_user, "postgres") != 0)
-	{
-		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", repmgr_user);
-		log_info(_("revoking superuser status on user %s: %s.\n"),
-				   repmgr_user, sqlquery);
-
-		log_debug(_("witness create: %s\n"), sqlquery);
-		res = PQexec(witnessconn, sqlquery);
-		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
-		{
-			log_err(_("unable to alter user privileges for user %s: %s\n"),
-					repmgr_user,
-					PQerrorMessage(witnessconn));
-			PQfinish(masterconn);
-			PQfinish(witnessconn);
-			exit(ERR_DB_QUERY);
-		}
-	}
-
 	/* Log the event */
 	create_event_record(masterconn,
 						&options,
@@ -3791,7 +3809,6 @@ do_witness_create(void)
 						NULL);
 
 	PQfinish(masterconn);
-	PQfinish(witnessconn);
 
 	log_notice(_("configuration has been successfully copied to the witness\n"));
 }
