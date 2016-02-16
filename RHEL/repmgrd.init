@@ -1,133 +1,133 @@
 #!/bin/sh
 #
-# chkconfig: - 75 16
-# description: Enable repmgrd replication management and monitoring daemon for PostgreSQL
-# processname: repmgrd
-# pidfile="/var/run/${NAME}.pid"
+# repmgrd     Start repmgrd daemon
+#
+# chkconfig: - 64 36
+# description: repmgrd is a replication manager, and failover management tool for PostgreSQL
+
+## BEGIN INIT INFO
+# Provides: repmgrd
+# Required-Start: $local_fs $remote_fs $network $syslog $named
+# Required-Stop: $local_fs $remote_fs $network $syslog $named
+# Should-Start: postgresql-9.4
+# Short-Description: Start repmgrd daemon
+# Description: repmgrd is replication manager, and failover management tool
+### END INIT INFO
 
 # Source function library.
-INITD=/etc/rc.d/init.d
-. $INITD/functions
+. /etc/rc.d/init.d/functions
 
-# Get function listing for cross-distribution logic.
-TYPESET=`typeset -f|grep "declare"`
+# Find the name of the script
+NAME=$(basename $0)
+if [ ${NAME:0:1} = "S" -o ${NAME:0:1} = "K" ]; then
+  NAME=${NAME:3}
+fi
 
-# Get network config.
+exec=/usr/pgsql-9.4/bin/repmgrd
+user=repmgr
+prog=repmgrd
+pidfile=/var/run/repmgr/repmgrd-9.4.pid
+lockfile=/var/lock/subsys/$prog
+REPMGRDCONF=/etc/repmgr/9.4/repmgr.conf
+REPMGRDLOG=/var/log/repmgr/repmgrd-9.4.log
+
+# Get config.
 . /etc/sysconfig/network
 
-DESC="PostgreSQL replication management and monitoring daemon"
-NAME=repmgrd
+# Check that networking is up.
+[ "${NETWORKING}" = "no" ] && exit 6
 
-REPMGRD_ENABLED=no
-REPMGRD_OPTS=
-REPMGRD_USER=postgres
-REPMGRD_BIN=/usr/pgsql-9.3/bin/repmgrd
-REPMGRD_PIDFILE=/var/run/repmgrd.pid
-REPMGRD_LOCK=/var/lock/subsys/${NAME}
-REPMGRD_LOG=/var/lib/pgsql/9.3/data/pg_log/repmgrd.log
+start() {
+  [ -x $exec ] || exit 5
+  [ -f "$REPMGRDCONF" ] || exit 6
+  echo -n "Starting $prog: "
 
-# Read configuration variable file if it is present
-[ -r /etc/sysconfig/$NAME ] && . /etc/sysconfig/$NAME
+  # Make sure startup-time log file is valid
+  if [ ! -e "$REPMGRDLOG" -a ! -h "$REPMGRDLOG" ]; then
+    touch "$REPMGRDLOG" || exit 1
+    chown $user: "$REPMGRDLOG"
+    chmod go-rw "$REPMGRDLOG"
+    [ -x /usr/bin/chcon ] && /usr/bin/chcon -u system_u -r object_r -t postgresql_log_t "$REPMGRDLOG" 2>/dev/null
+  fi
 
-# For SELinux we need to use 'runuser' not 'su'
-if [ -x /sbin/runuser ]
-then
-    SU=runuser
-else
-    SU=su
-fi
+  mkdir -p $(dirname $pidfile)
+  chown $user: $(dirname $pidfile)
 
-test -x $REPMGRD_BIN || exit 0
-
-case "$REPMGRD_ENABLED" in
-    [Yy]*)
-	break
-	;;
-    *)
-	exit 0
-	;;
-esac
-
-
-if [ -z "${REPMGRD_OPTS}" ]
-then
-    echo "Not starting ${NAME}, REPMGRD_OPTS not set in /etc/sysconfig/${NAME}"
-    exit 0
-fi
-
-start()
-{
-    REPMGRD_START=$"Starting ${NAME} service: "
-
-    # Make sure startup-time log file is valid
-    if [ ! -e "${REPMGRD_LOG}" -a ! -h "${REPMGRD_LOG}" ]
-    then
-        touch "${REPMGRD_LOG}" || exit 1
-        chown ${REPMGRD_USER}:postgres "${REPMGRD_LOG}"
-        chmod go-rwx "${REPMGRD_LOG}"
-        [ -x /sbin/restorecon ] && /sbin/restorecon "${REPMGRD_LOG}"
-    fi
-
-    echo -n "${REPMGRD_START}"
-    $SU -l $REPMGRD_USER -c "${REPMGRD_BIN} ${REPMGRD_OPTS} -p ${REPMGRD_PIDFILE} &" >> "${REPMGRD_LOG}" 2>&1 < /dev/null
-    sleep 2
-    pid=`head -n 1 "${REPMGRD_PIDFILE}" 2>/dev/null`
-    if [ "x${pid}" != "x" ]
-    then
-        success "${REPMGRD_START}"
-        touch "${REPMGRD_LOCK}"
-        echo $pid > "${REPMGRD_PIDFILE}"
-        echo
-    else
-        failure "${REPMGRD_START}"
-        echo
-        script_result=1
-    fi
+  su -l $user -c "$exec -f $REPMGRDCONF -p $pidfile -d --monitoring-history --verbose ->> $REPMGRDLOG 2>&1" $user
+  retval=$?
+  [ $retval -eq 0 ] && success
+  echo
+  [ $retval -eq 0 ] && touch $lockfile
+  return $retval
 }
 
-stop()
-{
-    echo -n $"Stopping ${NAME} service: "
-    if [ -e "${REPMGRD_LOCK}" ]
-    then
-        killproc ${NAME}
-        ret=$? 
-        if [ $ret -eq 0 ]
-        then
-            echo_success
-            rm -f "${REPMGRD_PIDFILE}"
-            rm -f "${REPMGRD_LOCK}"
-        else
-            echo_failure
-            script_result=1
-        fi
-    else
-        # not running; per LSB standards this is "ok"   
-        echo_success
-    fi
-    echo
+stop() {
+  echo -n "Stopping $prog: "
+  killproc -p $pidfile $prog -TERM
+  retval=$?
+  echo
+  [ $retval -eq 0 ] && rm -f $lockfile
+  return $retval
 }
 
+restart() {
+  if rh_status_q; then
+    stop
+    start
+  else
+    start
+  fi
+}
 
-# See how we were called.
+reload() {
+  echo -n "Reloading $prog: "
+  kill -HUP $(cat $pidfile)
+  retval=$?
+  echo
+  return $retval
+}
+
+rh_status() {
+  if [ -f $pidfile ] && [  $(ps hp $(cat $pidfile)|wc -l) -eq 1 ]; then
+    pid=$(cat $pidfile)
+    echo "Process repmgrd exists (PID $pid)"
+    return 0
+  else
+    return 1
+  fi
+}
+
+rh_status_q() {
+  rh_status >/dev/null 2>&1
+}
+
 case "$1" in
   start)
-        start
-        ;;
+    rh_status_q && exit 0
+    start
+    ;;
   stop)
-        stop
-        ;;
-  status)
-        status -p $REPMGRD_PIDFILE $NAME
-        script_result=$?
-        ;;
+    rh_status_q || exit 0
+    stop
+    ;;
   restart)
-        stop
-	start
-        ;;
+    restart
+    ;;
+  reload|force-reload)
+    rh_status_q || exit 7
+    reload
+    ;;
+  condrestart|try-restart)
+    rh_status_q || exit 0
+    restart
+    ;;
+  status)
+    status -p $pidfile repmgr-9.4
+    ;;
   *)
-        echo $"Usage: $0 {start|stop|status|restart}"
-        exit 2
+    echo $"Usage: $0 {start|stop|restart|reload|force-reload|condrestart|try-restart|status}"
+    exit 2
 esac
 
-exit $script_result
+exit $?
+
