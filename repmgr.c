@@ -3715,10 +3715,10 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
 	log_info(_("starting copy of configuration from master...\n"));
 
 	begin_transaction(witnessconn);
-
 
 	if (!create_schema(witnessconn))
 	{
@@ -3736,45 +3736,11 @@ do_witness_create(void)
 
 	commit_transaction(witnessconn);
 
-	/* copy configuration from master, only repl_nodes is needed */
-	if (!copy_configuration(masterconn, witnessconn, options.cluster_name))
-	{
-		create_event_record(masterconn,
-							&options,
-							options.node,
-							"witness_create",
-							false,
-							_("Unable to copy configuration from master"));
-		PQfinish(masterconn);
-		PQfinish(witnessconn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	/* drop superuser powers if needed */
-	if (strcmp(repmgr_user, "postgres") != 0)
-	{
-		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", repmgr_user);
-		log_info(_("revoking superuser status on user %s: %s.\n"),
-				   repmgr_user, sqlquery);
-
-		log_debug(_("witness create: %s\n"), sqlquery);
-		res = PQexec(witnessconn, sqlquery);
-		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
-		{
-			log_err(_("Unable to alter user privileges for user %s: %s\n"),
-					repmgr_user,
-					PQerrorMessage(witnessconn));
-			PQfinish(masterconn);
-			PQfinish(witnessconn);
-			exit(ERR_DB_QUERY);
-		}
-	}
-
-	/* Finished with the witness server */
-
-	PQfinish(witnessconn);
-
-	/* Finally, register ourselves with the master */
+	/*
+	 * Register new witness server on the primary
+	 * Do this as late as possible to avoid having to delete
+	 * the record if the server creation fails
+	 */
 
 	if (runtime_options.force)
 	{
@@ -3812,6 +3778,54 @@ do_witness_create(void)
 		PQfinish(masterconn);
 		exit(ERR_DB_QUERY);
 	}
+
+
+	/* copy configuration from master, only repl_nodes is needed */
+	if (!copy_configuration(masterconn, witnessconn, options.cluster_name))
+	{
+		create_event_record(masterconn,
+							&options,
+							options.node,
+							"witness_create",
+							false,
+							_("Unable to copy configuration from master"));
+
+		/*
+		 * delete previously created witness node record
+		 * XXX maybe set inactive?
+		 */
+		delete_node_record(masterconn,
+						   options.node,
+						   "witness create");
+
+		PQfinish(masterconn);
+		PQfinish(witnessconn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* drop superuser powers if needed */
+	if (strcmp(repmgr_user, "postgres") != 0)
+	{
+		sqlquery_snprintf(sqlquery, "ALTER ROLE %s NOSUPERUSER", repmgr_user);
+		log_info(_("revoking superuser status on user %s: %s.\n"),
+				   repmgr_user, sqlquery);
+
+		log_debug(_("witness create: %s\n"), sqlquery);
+		res = PQexec(witnessconn, sqlquery);
+		if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+		{
+			log_err(_("Unable to alter user privileges for user %s: %s\n"),
+					repmgr_user,
+					PQerrorMessage(witnessconn));
+			PQfinish(masterconn);
+			PQfinish(witnessconn);
+			exit(ERR_DB_QUERY);
+		}
+	}
+
+	/* Finished with the witness server */
+
+	PQfinish(witnessconn);
 
 	/* Log the event */
 	create_event_record(masterconn,
