@@ -33,10 +33,14 @@ provides a single read/write master server and one or more read-only standbys
 containing near-real time copies of the master server's database.
 
 For a multi-master replication solution, please see 2ndQuadrant's BDR
-(bi-directional replication) extension. For selective replication, e.g.
-of individual tables or databases from one server to another, please
-see 2ndQuadrant's pglogical extension.
+(bi-directional replication) extension.
 
+http://2ndquadrant.com/en-us/resources/bdr/
+
+For selective replication, e.g. of individual tables or databases from one server
+to another, please see 2ndQuadrant's pglogical extension.
+
+http://2ndquadrant.com/en-us/resources/pglogical/
 
 ### Concepts
 
@@ -117,8 +121,8 @@ views:
 The `repmgr` metadata schema can be stored in an existing database or in its own
 dedicated database.
 
-A dedicated superuser is required to own the meta-database as well as carry out
-administrative actions.
+A dedicated database superuser is required to own the meta-database as well as carry
+out administrative actions.
 
 Installation
 ------------
@@ -128,7 +132,9 @@ Installation
 `repmgr` is developed and tested on Linux and OS X, but should work on any
 UNIX-like system supported by PostgreSQL itself.
 
-`repmgr` supports PostgreSQL from version 9.3.
+Current versions of `repmgr` support PostgreSQL from version 9.3. If you are
+interested in using `repmgr` on earlier versions of PostgreSQL you can download
+version 2.1 which supports PostgreSQL from version 9.1.
 
 All servers in the replication cluster must be running the same major version of
 PostgreSQL, and we recommend that they also run the same minor version.
@@ -137,7 +143,7 @@ The `repmgr` tools must be installed on each server in the replication cluster.
 
 A dedicated system user for `repmgr` is *not* required; as many `repmgr` and
 `repmgrd` actions require direct access to the PostgreSQL data directory,
-it should executed by the `postgres` user.
+it should be executed by the `postgres` user.
 
 Additionally, we recommend installing `rsync` and enabling passwordless
 `ssh` connectivity between all servers in the replication cluster.
@@ -364,11 +370,11 @@ Clone the standby with:
     [2016-01-07 17:21:28] [NOTICE] you can now start your PostgreSQL server
     [2016-01-07 17:21:28] [HINT] for example : pg_ctl -D /path/to/node2/data/ start
 
-This will clone the PostgreSQL data directory files from the master using
-PostgreSQL's pg_basebackup utility. A `recovery.conf` file containing the
-correct parameters to start streaming from the master server will be created
+This will clone the PostgreSQL data directory files from the master at repmgr_node1
+using PostgreSQL's pg_basebackup utility. A `recovery.conf` file containing the
+correct parameters to start streaming from this master server will be created
 automatically, and unless otherwise the `postgresql.conf` and `pg_hba.conf`
-files will be copied.
+files will be copied from the master.
 
 Make any adjustments to the PostgreSQL configuration files now, then start the
 standby server.
@@ -702,16 +708,16 @@ Performing a switchover with repmgr
 A typical use-case for replication is a combination of master and standby
 server, with the standby serving as a backup which can easily be activated
 in case of a problem with the master. Such an unplanned failover would
-normally be handled by promoting the standby, after which appropriate action
-taken to restore the old master.
+normally be handled by promoting the standby, after which an appropriate
+action must be taken to restore the old master.
 
 In some cases however it's desirable to promote the standby in a planned
 way, e.g. so maintenance can be performed on the master; this kind of switchover
 is supported by the `repmgr standby switchover` command.
 
 `repmgr standby switchover` differs from other `repmgr` actions in that it
-also performs actions on another server, for which reason both passwordless
-SSH access and the path of `repmgr.conf` on that server.
+also performs actions on another server, for which reason you must provide
+both passwordless SSH access and the path of `repmgr.conf` on that server.
 
 * * *
 
