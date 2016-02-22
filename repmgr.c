@@ -198,6 +198,19 @@ main(int argc, char **argv)
 
 	set_progname(argv[0]);
 
+	/* Disallow running as root to prevent directory ownership problems */
+	if (geteuid() == 0)
+	{
+		fprintf(stderr,
+				_("%s: cannot be run as root\n"
+				  "Please log in (using, e.g., \"su\") as the "
+				  "(unprivileged) user that owns\n"
+				  "the data directory.\n"
+				),
+				progname());
+		exit(1);
+	}
+
 	/* Initialise some defaults */
 
 	/* set default user */
@@ -212,7 +225,7 @@ main(int argc, char **argv)
 		}
 		else
 		{
-			fprintf(stderr, "could not get current user name: %s\n", strerror(errno));
+			fprintf(stderr, _("could not get current user name: %s\n"), strerror(errno));
 			exit(ERR_BAD_CONFIG);
 		}
 	}
