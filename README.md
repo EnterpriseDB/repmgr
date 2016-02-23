@@ -113,8 +113,8 @@ tables:
   - `repl_monitor`: historical standby monitoring information written by `repmgrd`
 
 views:
-  - `repl_show_nodes`: based on the `repl_nodes` showing name of the server's
-    upstream node
+  - `repl_show_nodes`: based on the table `repl_nodes`, additionally showing the
+     name of the server's  upstream node
   - `repl_status`: when `repmgrd`'s monitoring is enabled, shows current monitoring
     status for each node
 
@@ -192,7 +192,8 @@ PostgreSQL itself.
 `repmgr` and `repmgrd` use a common configuration file, by default called
 `repmgr.conf` (although any name can be used if explicitly specified).
 At the very least, `repmgr.conf` must contain the connection parameters
-for the local `repmgr` database.
+for the local `repmgr` database; see `repmgr configuration file` below
+for more details.
 
 The configuration file will be searched for in the following locations:
 
@@ -383,12 +384,12 @@ standby server.
 
 > *NOTE*: `repmgr standby clone` does not require `repmgr.conf`, however we
 > recommend providing this as `repmgr` will set the `application_name` parameter
-> in `recovery.conf` as value provided in `node_name`, making it easier to identify
-> the node in `pg_stat_replication`. It's also possible to provide some advanced
-> options for controlling the standby cloning process; see next section for
-> details.
+> in `recovery.conf` as the value provided in `node_name`, making it easier to
+> identify the node in `pg_stat_replication`. It's also possible to provide some
+> advanced options for controlling the standby cloning process; see next section
+> for details.
 
-***
+* * *
 
 ### Verify replication is functioning
 
@@ -431,20 +432,20 @@ table:
       2 | standby |                1 | test    | node2 | host=repmgr_node2 dbname=repmgr user=repmgr |           |      100 | t
     (2 rows)
 
-The standby server now has a copy of records for all servers in the replication
-cluster. Note that the relationship between master and standby is explicitly
-defined via the `upstream_node_id` value, which shows here that the standby's
-upstream server is the replication cluster master. While of limited use
-in a simple master/standby replication cluster, this information is required
+The standby server now has a copy of the records for all servers in the
+replication cluster. Note that the relationship between master and standby is
+explicitly defined via the `upstream_node_id` value, which shows here that the
+standby's upstream server is the replication cluster master. While of limited
+use in a simple master/standby replication cluster, this information is required
 to effectively manage cascading replication (see below).
 
 
 Advanced options for cloning a standby
 --------------------------------------
 
-The above section demonstrates the simplest possible way to clone
-a standby server. Depending on your situation, finer-grained control
-over the cloning process may be necessary.
+The above section demonstrates the simplest possible way to cloneb a standby
+server. Depending on your circumstances, finer-grained controlover the cloning
+process may be necessary.
 
 ### pg_basebackup options when cloning a standby
 
@@ -455,8 +456,8 @@ However this may impact performance of the server being cloned from
 so should be used with care.
 
 Further options can be passed to the `pg_basebackup` utility via
-the `pg_basebackup_options` in `repmgr.conf`. See the PostgreSQL
-documentation for more details:
+the setting `pg_basebackup_options` in `repmgr.conf`. See the PostgreSQL
+documentation for more details of available options:
   http://www.postgresql.org/docs/current/static/app-pgbasebackup.html
 
 ### Using rsync to clone a standby
@@ -480,7 +481,7 @@ fresh clone with `pg_basebackup`.
 
 By default, `repmgr` will attempt to copy the standard configuration files
 (`postgresql.conf`, `pg_hba.conf` and `pg_ident.conf`) even if they are located
-outside of the data directory (though note currently they will be copied
+outside of the data directory (though currently they will be copied
 into the standby's data directory). To prevent this happening, when executing
 `repmgr standby clone` provide the `--ignore-external-config-files` option.
 
@@ -1164,7 +1165,7 @@ configuration file is located if `-f/--config-file` is not supplied.
 ### repmgr commands
 
 The `repmgr` command line tool accepts commands for specific servers in the
-replication in the format "`server type` `action`", or for the entire
+replication in the format "`server_type` `action`", or for the entire
 replication cluster in the format "`cluster` `action`". Each command is
 described below.
 
@@ -1252,7 +1253,7 @@ which contains connection details for the local database.
     time a failover occurs.
 
     Note that it only makes sense to create a witness server if `repmgrd`
-    is in use; see section "witness server" above.
+    is in use; see section "Using a witness server" above.
 
     This command requires a `repmgr.conf` file containing a valid conninfo
     string for the server to be created, as well as the other minimum required
@@ -1274,7 +1275,7 @@ which contains connection details for the local database.
 
     Displays information about each active node in the replication cluster. This
     command polls each registered server and shows its role (master / standby /
-    witness) or "FAILED" if the node doesn't respond. It polls each server
+    witness) or `FAILED` if the node doesn't respond. It polls each server
     directly and can be run on any node in the cluster; this is also useful
     when analyzing connectivity from a particular node.
 
