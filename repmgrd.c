@@ -393,8 +393,8 @@ main(int argc, char **argv)
 						 local_options.cluster_name);
 
 				master_conn = get_master_connection(my_local_conn,
-													 local_options.cluster_name,
-													 &master_options.node, NULL);
+													local_options.cluster_name,
+													&master_options.node, NULL);
 
 				if (master_conn == NULL)
 				{
@@ -402,8 +402,7 @@ main(int argc, char **argv)
 					initPQExpBuffer(&errmsg);
 
 					appendPQExpBuffer(&errmsg,
-									  _("unable to connect to master node '%s'"),
-									  master_options.node_name);
+									  _("unable to connect to master node"));
 
 					log_err("%s\n", errmsg.data);
 
