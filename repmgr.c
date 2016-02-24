@@ -175,7 +175,7 @@ main(int argc, char **argv)
 		{"terse", required_argument, NULL, 't'},
 		{"mode", required_argument, NULL, 'm'},
 		{"remote-config-file", required_argument, NULL, 'C'},
-		/* deprecated from 3.2; replaced with -P/----pwprompt */
+		/* deprecated from 3.2; replaced with -P/--pwprompt */
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
 		{"recovery-min-apply-delay", required_argument, NULL, 3},
