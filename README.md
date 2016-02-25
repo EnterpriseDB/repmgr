@@ -876,6 +876,10 @@ be set in `repmgr.conf`:
 
 (See `repmgr.conf.sample` for further `repmgrd`-specific settings).
 
+Additionally, `postgresql.conf` must contain the following line:
+
+    shared_preload_libraries = 'repmgr_funcs'
+
 When `failover` is set to `automatic`, upon detecting failure of the current
 master, `repmgrd` will execute one of `promote_command` or `follow_command`,
 depending on whether the current server is becoming the new master or
