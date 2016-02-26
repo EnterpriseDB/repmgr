@@ -3286,6 +3286,7 @@ do_standby_restore_config(void)
 {
 	DIR			  *arcdir;
 	struct dirent *arcdir_ent;
+	struct stat	   arcdir_statbuf;
 	int			   copied_count = 0;
 	bool		   copy_ok = true;
 
@@ -3300,7 +3301,7 @@ do_standby_restore_config(void)
 		PQExpBufferData src_file;
 		PQExpBufferData dst_file;
 
-		if (arcdir_ent->d_type != DT_REG)
+		if (stat(arcdir_ent->d_name, &arcdir_statbuf) == -1 || !S_ISDIR(arcdir_statbuf.st_mode))
 		{
 			continue;
 		}
