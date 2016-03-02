@@ -1952,7 +1952,6 @@ stop_backup:
 		exit(retval);
 	}
 
-
 	/*
 	 * Clean up any $PGDATA subdirectories which may contain
 	 * files which won't be removed by rsync and which could
@@ -2013,9 +2012,9 @@ stop_backup:
 	}
 
 	/*
-	 * XXX It might be nice to provide the following options:
-	 * - have repmgr start the daemon automatically
-	 * - provide a custom pg_ctl command
+	 * XXX It might be nice to provide an options to have repmgr start
+	 * the PostgreSQL server automatically (e.g. with a custom pg_ctl
+	 * command)
 	 */
 
 	log_notice(_("you can now start your PostgreSQL server\n"));
@@ -2029,7 +2028,28 @@ stop_backup:
 		log_hint(_("for example : /etc/init.d/postgresql start\n"));
 	}
 
-	/* Log the event - if we could connect to the primary */
+
+	/*
+	 * XXX forgetting to (re) register the standby is a frequent cause
+	 * of error; we should consider having repmgr automatically
+	 * register the standby, either by default with an option
+	 * "--no-register", or an option "--register".
+	 *
+	 * Note that "repmgr standby register" requires the standby to
+	 * be running - if not, and we just update the node record,
+	 * we'd have an incorrect representation of the replication cluster.
+	 * Best combined with an automatic start of the server (see note
+	 * above)
+	 */
+
+	/*
+	 * XXX detect whether a record exists for this node already, and
+	 * add a hint about using the -F/--force.
+	 */
+
+	log_hint(_("After starting the server, you need to register this standby with \"repmgr standby register\""));
+
+	/* Log the event - if we can connect to the primary */
 
 	if (primary_conn != NULL)
 	{
