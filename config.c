@@ -224,6 +224,7 @@ parse_config(t_configuration_options *options)
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	memset(options->pg_ctl_options, 0, sizeof(options->pg_ctl_options));
 	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
+	memset(options->recovery_restore_command, 0, sizeof(options->recovery_restore_command));
 
 	/* default master_response_timeout is 60 seconds */
 	options->master_response_timeout = 60;
@@ -363,6 +364,8 @@ parse_config(t_configuration_options *options)
 			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", &config_errors, false);
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
+		else if (strcmp(name, "recovery_restore_command") == 0)
+			strncpy(options->recovery_restore_command, value, MAXLEN);
 		else if (strcmp(name, "event_notifications") == 0)
 			parse_event_notifications_list(options, value);
 		else if (strcmp(name, "tablespace_mapping") == 0)
@@ -656,6 +659,12 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
+	/* recovery_restore_command */
+	if(strcmp(orig_options->recovery_restore_command, new_options.recovery_restore_command) != 0)
+	{
+		strcpy(orig_options->recovery_restore_command, new_options.recovery_restore_command);
+		config_changed = true;
+	}
 	/*
 	 * XXX These ones can change with a simple SIGHUP?
 	 *
