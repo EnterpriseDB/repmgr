@@ -19,17 +19,17 @@ cluster=example_cluster
 
 # Node ID and name
 # (Note: we recommend to avoid naming nodes after their initial
-#  replication funcion, as this will cause confusion when e.g.
+#  replication function, as this will cause confusion when e.g.
 #  "standby2" is promoted to primary)
-node=2           # a unique integer
-node_name=node2  # an arbitrary (but unique) string; we recommend using
+node=1           # a unique integer
+node_name=node1  # an arbitrary (but unique) string; we recommend using
                  # the server's hostname or another identifier unambiguously
                  # associated with the server to avoid confusion
 
 # Database connection information as a conninfo string
 # This must be accessible to all servers in the cluster; for details see:
 #   http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
-conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
+conninfo='host=node1.example.com dbname=repmgr user=repmgr port=5432'
 
 # Optional configuration items
 # ============================
@@ -77,12 +77,12 @@ logfile='/var/log/repmgr/repmgr.log'
 # the values provided for "%t" and "%d" will probably contain spaces,
 # so should be quoted in the provided command configuration, e.g.:
 #
-event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
+#event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
 
 # By default, all notifications will be passed; the notification types
 # can be filtered to explicitly named ones:
 #
-event_notifications=master_register,standby_register,witness_create
+#event_notifications=master_register,standby_register,witness_create
 
 
 # Environment/command settings
