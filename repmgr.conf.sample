@@ -101,6 +101,29 @@
 # (if not provided, defaults to system $PATH)
 #pg_bindir=/usr/bin/
 
+# service control commands
+#
+# repmgr provides options to to override the default pg_ctl commands
+# used to stop, start  and restart the PostgreSQL cluster
+#
+# NOTE: These commands must be runnable on remote nodes as well for switchover
+# to function correctly.
+#
+# If you use sudo, the user repmgr runs as (usually 'postgres')  must have
+# passwordless sudo access to execute the command
+#
+# For example, to use systemd, you may use the following configuration:
+#
+#    # this is required when running sudo over ssh without -t:
+#    Defaults:postgres !requiretty
+#    postgres ALL = NOPASSWD: /usr/bin/systemctl stop postgresql-9.5, \
+#       /usr/bin/systemctl start postgresql-9.5, \
+#       /usr/bin/systemctl restart postgresql-9.5
+#
+# start_command = systemctl start postgresql-9.5
+# stop_command = systemctl stop postgresql-9.5
+# restart_command = systemctl restart postgresql-9.5
+
 # external command options
 
 #rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
