@@ -274,7 +274,14 @@ main(int argc, char **argv)
 	/* Retrieve record for this node from the local database */
 	node_info = get_node_info(my_local_conn, local_options.cluster_name, local_options.node);
 
-	/* No node record found - exit gracefully */
+	/*
+	 * No node record found - exit gracefully
+	 *
+	 * Note: it's highly unlikely this situation will occur when starting
+	 * repmgrd on a witness, unless someone goes to the trouble of
+	 * deleting the node record from the previously copied table.
+	 */
+
 	if (node_info.node_id == NODE_NOT_FOUND)
 	{
 		log_err(_("No metadata record found for this node - terminating\n"));
