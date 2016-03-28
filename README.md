@@ -284,11 +284,11 @@ similar to the following:
 
     local   replication   repmgr                              trust
     host    replication   repmgr      127.0.0.1/32            trust
-    host    replication   repmgr      192.168.1.0/32          trust
+    host    replication   repmgr      192.168.1.0/24          trust
 
     local   repmgr        repmgr                              trust
     host    repmgr        repmgr      127.0.0.1/32            trust
-    host    repmgr        repmgr      192.168.1.0/32          trust
+    host    repmgr        repmgr      192.168.1.0/24          trust
 
 Adjust according to your network environment and authentication requirements.
 
