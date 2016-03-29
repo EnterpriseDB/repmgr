@@ -75,13 +75,14 @@ typedef struct
 	char		logfile[MAXLEN];
 	int			monitor_interval_secs;
 	int			retry_promote_interval_secs;
+	int			witness_repl_nodes_sync_interval_secs;
 	int			use_replication_slots;
 	char		event_notification_command[MAXLEN];
 	EventNotificationList event_notifications;
 	TablespaceList tablespace_mapping;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
 
 typedef struct ErrorListCell
 {

@@ -146,3 +146,6 @@ monitor_interval_secs=2
 # seconds; by default this would be half an hour, as 'retry_promote_interval_secs'
 # default value is 300)
 retry_promote_interval_secs=300
+
+# Number of seconds after which the witness server resyncs the repl_nodes table
+witness_repl_nodes_sync_interval_secs=15
