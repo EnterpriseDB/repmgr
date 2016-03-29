@@ -1138,7 +1138,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 	}
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name FROM %s.repl_nodes",
+					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name, active FROM %s.repl_nodes",
 					  get_repmgr_schema_quoted(masterconn));
 
 	log_verbose(LOG_DEBUG, "copy_configuration():\n%s\n", sqlquery);
@@ -1158,7 +1158,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 
 		log_verbose(LOG_DEBUG,
 					"copy_configuration(): writing node record for node %s (id: %s)\n",
-					PQgetvalue(res, i, 4),
+					PQgetvalue(res, i, 3),
 					PQgetvalue(res, i, 0));
 
 		node_record_created = create_node_record(witnessconn,
@@ -1174,7 +1174,10 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 												 atoi(PQgetvalue(res, i, 5)),
 												 strlen(PQgetvalue(res, i, 6))
 													? PQgetvalue(res, i, 6)
-													: NULL
+												    : NULL,
+												 (strcmp(PQgetvalue(res, i, 7), "t") == 0)
+												 	? true
+												 	: false
 												 );
 
 		if (node_record_created == false)
@@ -1200,7 +1203,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
  * XXX we should pass the record parameters as a struct.
  */
 bool
-create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name)
+create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	char		upstream_node_id[MAXLEN];
@@ -1241,8 +1244,8 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_nodes "
 					  "       (id, type, upstream_node_id, cluster, "
-					  "        name, conninfo, slot_name, priority) "
-					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %s, %i) ",
+					  "        name, conninfo, slot_name, priority, active) "
+					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %s, %i, %s) ",
 					  get_repmgr_schema_quoted(conn),
 					  node,
 					  type,
@@ -1251,7 +1254,8 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 					  node_name,
 					  conninfo,
 					  slot_name_buf,
-					  priority);
+					  priority,
+					  active == true ? "TRUE" : "FALSE");
 
 	log_verbose(LOG_DEBUG, "create_node_record(): %s\n", sqlquery);
 
@@ -1291,7 +1295,7 @@ delete_node_record(PGconn *conn, int node, char *action)
 
 	if (action != NULL)
 	{
-		log_verbose(LOG_DEBUG, "create_node_record(): action is \"%s\"\n", action);
+		log_verbose(LOG_DEBUG, "delete_node_record(): action is \"%s\"\n", action);
 	}
 
 	res = PQexec(conn, sqlquery);

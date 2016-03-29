@@ -298,9 +298,12 @@ main(int argc, char **argv)
 	 */
 	do
 	{
+		/* Timer for repl_nodes synchronisation interval */
+		int sync_repl_nodes_elapsed = 0;
+
 		/*
 		 * Set my server mode, establish a connection to master and start
-		 * monitor
+		 * monitoring
 		 */
 
 		switch (node_info.type)
@@ -472,6 +475,24 @@ main(int argc, char **argv)
 
 					sleep(local_options.monitor_interval_secs);
 
+					/*
+					 * On a witness node, regularly resync the repl_nodes table
+					 * to keep up with any changes on the primary
+					 *
+					 * TODO: only resync the table if changes actually detected
+					 */
+					if (node_info.type == WITNESS)
+					{
+						sync_repl_nodes_elapsed += local_options.monitor_interval_secs;
+						log_debug(_("%i - %i \n"), sync_repl_nodes_elapsed, local_options.witness_repl_nodes_sync_interval_secs);
+						if(sync_repl_nodes_elapsed >= local_options.witness_repl_nodes_sync_interval_secs)
+						{
+							log_debug(_("Resyncing repl_nodes table\n"));
+							copy_configuration(master_conn, my_local_conn, local_options.cluster_name);
+							sync_repl_nodes_elapsed = 0;
+						}
+					}
+
 					if (got_SIGHUP)
 					{
 						/*
@@ -486,6 +507,7 @@ main(int argc, char **argv)
 						}
 						got_SIGHUP = false;
 					}
+
 					if (failover_done)
 					{
 						log_debug(_("standby check loop will terminate\n"));
@@ -1954,6 +1976,8 @@ check_node_configuration(void)
 		/* Adding the node */
 		log_info(_("adding node %d to cluster '%s'\n"),
 				 local_options.node, local_options.cluster_name);
+
+		/* XXX use create_node_record() */
 		sqlquery_snprintf(sqlquery,
 						  "INSERT INTO %s.repl_nodes"
 						  "           (id, cluster, name, conninfo, priority, witness) "

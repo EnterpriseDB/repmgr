@@ -235,6 +235,9 @@ parse_config(t_configuration_options *options)
 	options->monitor_interval_secs = 2;
 	options->retry_promote_interval_secs = 300;
 
+	/* default to resyncing repl_nodes table every 30 seconds on the witness server */
+	options->witness_repl_nodes_sync_interval_secs = 30;
+
 	memset(options->event_notification_command, 0, sizeof(options->event_notification_command));
 
 	options->tablespace_mapping.head = NULL;
@@ -358,6 +361,8 @@ parse_config(t_configuration_options *options)
 			options->monitor_interval_secs = repmgr_atoi(value, "monitor_interval_secs", &config_errors, false);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
 			options->retry_promote_interval_secs = repmgr_atoi(value, "retry_promote_interval_secs", &config_errors, false);
+		else if (strcmp(name, "witness_repl_nodes_sync_interval_secs") == 0)
+			options->witness_repl_nodes_sync_interval_secs = repmgr_atoi(value, "witness_repl_nodes_sync_interval_secs", &config_errors, false);
 		else if (strcmp(name, "use_replication_slots") == 0)
 			/* XXX we should have a dedicated boolean argument format */
 			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", &config_errors, false);
