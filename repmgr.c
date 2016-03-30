@@ -43,7 +43,6 @@
 #include "repmgr.h"
 
 #include <sys/types.h>
-#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -3317,10 +3316,17 @@ do_standby_restore_config(void)
 	}
 
 	while ((arcdir_ent = readdir(arcdir)) != NULL) {
+		struct stat statbuf;
+		char arcdir_ent_path[MAXPGPATH];
 		PQExpBufferData src_file;
 		PQExpBufferData dst_file;
 
-		if (arcdir_ent->d_type != DT_REG)
+		snprintf(arcdir_ent_path, MAXPGPATH,
+				 "%s/%s",
+				 runtime_options.config_archive_dir,
+				 arcdir_ent->d_name);
+
+		if (stat(arcdir_ent_path, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
 		{
 			continue;
 		}
