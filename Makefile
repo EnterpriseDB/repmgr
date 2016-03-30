@@ -5,20 +5,25 @@
 repmgrd_OBJS = dbutils.o config.o repmgrd.o log.o strutil.o
 repmgr_OBJS = dbutils.o check_dir.o config.o repmgr.o log.o strutil.o
 
+HEADERS = $(wildcard *.h)
+
 DATA = repmgr.sql uninstall_repmgr.sql
 
 PG_CPPFLAGS = -I$(libpq_srcdir)
-PG_LIBS = $(libpq_pgport)
+PG_LIBS     = $(libpq_pgport)
 
-all:  repmgrd repmgr
+$(repmgr_OBJS): $(HEADERS)
+$(repmgr_OBJS): $(HEADERS)
+
+all: repmgrd repmgr
 	$(MAKE) -C sql
 
 repmgrd: $(repmgrd_OBJS)
-	$(CC) $(CFLAGS) $(repmgrd_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o repmgrd
+	$(CC) -o repmgrd $(CFLAGS) $(repmgrd_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS)
 	$(MAKE) -C sql
 
 repmgr: $(repmgr_OBJS)
-	$(CC) $(CFLAGS) $(repmgr_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o repmgr
+	$(CC) -o repmgr $(CFLAGS) $(repmgr_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS)
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
