@@ -2874,8 +2874,8 @@ do_standby_switchover(void)
 	 */
 
 	maxlen_snprintf(command,
-					"%s/pg_ctl -D %s -m %s -W stop >/dev/null 2>&1 && echo 1 || echo 0",
-					pg_bindir,
+					"%s -D %s -m %s -W stop >/dev/null 2>&1 && echo 1 || echo 0",
+					make_pg_path("pg_ctl"),
 					remote_data_directory,
 					runtime_options.pg_ctl_mode);
 
