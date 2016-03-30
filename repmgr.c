@@ -121,6 +121,8 @@ static bool remote_command(const char *host, const char *user, const char *comma
 static void format_db_cli_params(const char *conninfo, char *output);
 static bool copy_file(const char *old_filename, const char *new_filename);
 
+static void read_backup_label(const char *local_data_directory, struct BackupLabel *backup_label);
+
 /* Global variables */
 static const char *keywords[6];
 static const char *values[6];
@@ -141,6 +143,8 @@ static char  pg_bindir[MAXLEN] = "";
 static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
+
+static struct BackupLabel backup_label;
 
 /* Collate command line errors and warnings here for friendlier reporting */
 ErrorList	cli_errors = { NULL, NULL };
@@ -1951,6 +1955,8 @@ stop_backup:
 		exit(retval);
 	}
 
+	read_backup_label(local_data_directory, &backup_label);
+
 	/*
 	 * Clean up any $PGDATA subdirectories which may contain
 	 * files which won't be removed by rsync and which could
@@ -1979,12 +1985,17 @@ stop_backup:
 		 * behaviour a base backup, which would result in an empty
 		 * pg_replslot directory.
 		 *
+		 * If the backup label contains a nonzero
+		 * 'MIN FAILOVER SLOT LSN' entry we retain the slots and let
+		 * the server clean them up instead, matching pg_basebackup's
+		 * behaviour when failover slots are enabled.
+		 *
 		 * NOTE: watch out for any changes in the replication
 		 * slot directory name (as of 9.4: "pg_replslot") and
 		 * functionality of replication slots
 		 */
-
-		if (server_version_num >= 90400)
+		if (server_version_num >= 90400 &&
+				backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
 		{
 			maxlen_snprintf(script, "rm -rf %s/pg_replslot/*",
 							local_data_directory);
@@ -2080,6 +2091,150 @@ stop_backup:
 	exit(retval);
 }
 
+static bool
+parse_lsn(XLogRecPtr *ptr, const char *str)
+{
+	uint32 high, low;
+
+	if (sscanf(str, "%x/%x", &high, &low) != 2)
+		return false;
+
+	*ptr = (((XLogRecPtr)high) << 32) + (XLogRecPtr)low;
+
+	return true;
+}
+
+static XLogRecPtr
+parse_label_lsn(const char *label_key, const char *label_value)
+{
+	XLogRecPtr ptr;
+
+	if (!parse_lsn(&ptr, label_value))
+	{
+		log_err(_("Couldn't parse backup label entry \"%s: %s\" as lsn"),
+				label_key, label_value);
+
+		exit(ERR_BAD_BACKUP_LABEL);
+	}
+
+	return ptr;
+}
+
+/*======================================
+ * Read entries of interest from the backup label.
+ *
+ * Sample backup label:
+ *
+ *		START WAL LOCATION: 0/6000028 (file 000000010000000000000006)
+ *		CHECKPOINT LOCATION: 0/6000060
+ *		BACKUP METHOD: streamed
+ *		BACKUP FROM: master
+ *		START TIME: 2016-03-30 12:18:12 AWST
+ *		LABEL: pg_basebackup base backup
+ *		MIN FAILOVER SLOT LSN: 0/5000000
+ *
+ *======================================
+ */
+static void
+read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label)
+{
+	char label_path[MAXFILENAME];
+	FILE *label_file;
+	int  nmatches = 0;
+	char label_key[MAXLEN];
+	char label_value[MAXLEN];
+
+	out_backup_label->start_wal_location = InvalidXLogRecPtr;
+	out_backup_label->checkpoint_location = InvalidXLogRecPtr;
+	out_backup_label->backup_from[0] = '\0';
+	out_backup_label->backup_method[0] = '\0';
+	out_backup_label->start_time[0] = '\0';
+	out_backup_label->label[0] = '\0';
+	out_backup_label->min_failover_slot_lsn = InvalidXLogRecPtr;
+
+	maxlen_snprintf(label_path, "%s/backup_label", local_data_directory);
+
+	label_file = fopen(label_path, "r");
+	if (label_file == NULL)
+	{
+		log_err(_("could not open backup label file %s: %s"),
+				label_path, strerror(errno));
+		exit(ERR_BAD_BACKUP_LABEL);
+	}
+
+	log_info(_("standby clone: backup label file '%s'\n"),
+			 label_path);
+
+	do
+	{
+		char newline;
+
+		/*
+		 * Scan a line, including newline char.
+		 *
+		 * See http://stackoverflow.com/a/8097776/398670
+		 */
+		nmatches = fscanf(label_file, "%" MAXLEN_STR "s: %" MAXLEN_STR "[^\n]%c",
+				&label_key[0], &label_value[0], &newline);
+
+		if (nmatches != 3)
+			break;
+
+		if (newline != '\n')
+		{
+			log_err(_("standby clone: line too long in backup label file. Line begins \"%s: %s\""),
+					label_key, label_value);
+			exit(ERR_BAD_BACKUP_LABEL);
+		}
+
+		log_debug("standby clone: got backup label entry \"%s: %s\"",
+				label_key, label_value);
+
+		if (strcmp(label_key, "START WAL LOCATION") == 0)
+		{
+			out_backup_label->start_wal_location =
+				parse_label_lsn(&label_key[0], &label_value[0]);
+		}
+		else if (strcmp(label_key, "CHECKPOINT LOCATION") == 0)
+		{
+			out_backup_label->checkpoint_location =
+				parse_label_lsn(&label_key[0], &label_value[0]);
+		}
+		else if (strcmp(label_key, "BACKUP METHOD") == 0)
+		{
+			(void) strncpy(out_backup_label->backup_method, label_value, MAXLEN);
+			out_backup_label->backup_method[MAXLEN-1] = '\0';
+		}
+		else if (strcmp(label_key, "BACKUP FROM") == 0)
+		{
+			(void) strncpy(out_backup_label->backup_from, label_value, MAXLEN);
+			out_backup_label->backup_from[MAXLEN-1] = '\0';
+		}
+		else if (strcmp(label_key, "START TIME") == 0)
+		{
+			(void) strncpy(out_backup_label->start_time, label_value, MAXLEN);
+			out_backup_label->start_time[MAXLEN-1] = '\0';
+		}
+		else if (strcmp(label_key, "LABEL") == 0)
+		{
+			(void) strncpy(out_backup_label->label, label_value, MAXLEN);
+			out_backup_label->label[MAXLEN-1] = '\0';
+		}
+		else if (strcmp(label_key, "MIN FAILOVER SLOT LSN") == 0)
+		{
+			out_backup_label->min_failover_slot_lsn =
+				parse_label_lsn(&label_key[0], &label_value[0]);
+		}
+		else
+		{
+			log_info("standby clone: ignored unrecognised backup label entry \"%s: %s\"",
+					label_key, label_value);
+		}
+	}
+	while (!feof(label_file));
+
+	(void) fclose(label_file);
+}
 
 static void
 do_standby_promote(void)

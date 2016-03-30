@@ -24,12 +24,17 @@
 #include <stdlib.h>
 #include "errcode.h"
 
+
 #define QUERY_STR_LEN	8192
 #define MAXLEN			1024
 #define MAXLINELENGTH	4096
 #define MAXVERSIONSTR	16
 #define MAXCONNINFO		1024
 
+/* Why? http://stackoverflow.com/a/5459929/398670 */
+#define STR(x) CppAsString(x)
+
+#define MAXLEN_STR STR(MAXLEN)
 
 extern int
 xsnprintf(char *str, size_t size, const char *format,...)
