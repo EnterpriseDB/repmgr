@@ -97,6 +97,17 @@ typedef struct
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, "smart", "", "", "", "", "", 0, "", "", "", false }
 
+struct BackupLabel
+{
+	XLogRecPtr start_wal_location;
+	XLogRecPtr checkpoint_location;
+	char backup_from[MAXLEN];
+	char backup_method[MAXLEN];
+	char start_time[MAXLEN];
+	char label[MAXLEN];
+	XLogRecPtr min_failover_slot_lsn;
+};
+
 extern char		repmgr_schema[MAXLEN];
 extern bool		config_file_found;
 
