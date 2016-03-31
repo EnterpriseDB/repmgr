@@ -1,4 +1,8 @@
-3.1.1   2016-02-
+3.1.2   2016-04-
+        Fix pg_ctl path generation in do_standby_switchover() (Ian)
+        Regularly sync witness server repl_nodes table (Ian)
+
+3.1.1   2016-02-24
         Add '-P/--pwprompt' option for "repmgr create witness" (Ian)
         Prevent repmgr/repmgrd running as root (Ian)
 
