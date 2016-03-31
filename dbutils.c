@@ -1111,7 +1111,7 @@ set_config_bool(PGconn *conn, const char *config_param, bool state)
 
 
 /*
- * copy_configuration()
+ * witness_copy_node_records()
  *
  * Copy records in master's `repl_nodes` table to witness database
  *
@@ -1119,7 +1119,7 @@ set_config_bool(PGconn *conn, const char *config_param, bool state)
  * `repmgrd` after a failover event occurs
  */
 bool
-copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
+witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 {
 	char		sqlquery[MAXLEN];
 	PGresult   *res;
@@ -1127,7 +1127,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", get_repmgr_schema_quoted(witnessconn));
 
-	log_verbose(LOG_DEBUG, "copy_configuration():\n%s\n", sqlquery);
+	log_verbose(LOG_DEBUG, "witness_copy_node_records():\n%s\n", sqlquery);
 
 	res = PQexec(witnessconn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -1141,7 +1141,7 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name, active FROM %s.repl_nodes",
 					  get_repmgr_schema_quoted(masterconn));
 
-	log_verbose(LOG_DEBUG, "copy_configuration():\n%s\n", sqlquery);
+	log_verbose(LOG_DEBUG, "witness_copy_node_records():\n%s\n", sqlquery);
 
 	res = PQexec(masterconn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1157,12 +1157,12 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 		bool node_record_created;
 
 		log_verbose(LOG_DEBUG,
-					"copy_configuration(): writing node record for node %s (id: %s)\n",
+					"witness_copy_node_records(): writing node record for node %s (id: %s)\n",
 					PQgetvalue(res, i, 3),
 					PQgetvalue(res, i, 0));
 
 		node_record_created = create_node_record(witnessconn,
-												 "copy_configuration",
+												 "witness_copy_node_records",
 												 atoi(PQgetvalue(res, i, 0)),
 												 PQgetvalue(res, i, 1),
 												 strlen(PQgetvalue(res, i, 2))

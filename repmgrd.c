@@ -488,7 +488,7 @@ main(int argc, char **argv)
 						if(sync_repl_nodes_elapsed >= local_options.witness_repl_nodes_sync_interval_secs)
 						{
 							log_debug(_("Resyncing repl_nodes table\n"));
-							copy_configuration(master_conn, my_local_conn, local_options.cluster_name);
+							witness_copy_node_records(master_conn, my_local_conn, local_options.cluster_name);
 							sync_repl_nodes_elapsed = 0;
 						}
 					}
@@ -600,7 +600,7 @@ witness_monitor(void)
 				 * XXX it would be neat to be able to handle this with e.g. table-based
 				 * logical replication
 				 */
-				copy_configuration(master_conn, my_local_conn, local_options.cluster_name);
+				witness_copy_node_records(master_conn, my_local_conn, local_options.cluster_name);
 
 				break;
 			}
