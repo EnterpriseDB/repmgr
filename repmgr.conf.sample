@@ -37,10 +37,11 @@ conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
 # Replication settings
 # ---------------------
 
-# when using cascading replication and a standby is to be connected to an
-# upstream standby, specify that node's ID with 'upstream_node'. The node
-# must exist before the new standby can be registered. If a standby is
-# to connect directly to a primary node, this parameter is not required.
+# When using cascading replication, a standby can connect to another
+# upstream standby node which is specified by setting 'upstream_node'.
+# In that case, the upstream node must exist before the new standby
+# can be registered. If 'upstream_node' is unset, then the standby
+# will connect to the primary node.
 upstream_node=1
 
 # use physical replication slots - PostgreSQL 9.4 and later only
