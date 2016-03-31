@@ -33,7 +33,6 @@
 #define MIN_SUPPORTED_VERSION_NUM	90300
 
 #include "config.h"
-#define MAXFILENAME		1024
 #define ERRBUFF_SIZE	512
 
 #define DEFAULT_WAL_KEEP_SEGMENTS	"5000"
@@ -57,8 +56,8 @@ typedef struct
 	char		dbname[MAXLEN];
 	char		host[MAXLEN];
 	char		username[MAXLEN];
-	char		dest_dir[MAXFILENAME];
-	char		config_file[MAXFILENAME];
+	char		dest_dir[MAXPGPATH];
+	char		config_file[MAXPGPATH];
 	char		remote_user[MAXLEN];
 	char		superuser[MAXLEN];
 	char		wal_keep_segments[MAXLEN];
@@ -81,7 +80,7 @@ typedef struct
 
 	/* parameter used by STANDBY SWITCHOVER */
 	char		remote_config_file[MAXLEN];
-	char		pg_rewind[MAXFILENAME];
+	char		pg_rewind[MAXPGPATH];
 	/* parameter used by STANDBY {ARCHIVE_CONFIG | RESTORE_CONFIG} */
 	char		config_archive_dir[MAXLEN];
 	/* parameter used by CLUSTER CLEANUP */

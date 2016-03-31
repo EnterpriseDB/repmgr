@@ -291,7 +291,7 @@ main(int argc, char **argv)
 				strncpy(runtime_options.superuser, optarg, MAXLEN);
 				break;
 			case 'D':
-				strncpy(runtime_options.dest_dir, optarg, MAXFILENAME);
+				strncpy(runtime_options.dest_dir, optarg, MAXPGPATH);
 				break;
 			case 'l':
 				/* -l/--local-port is deprecated */
@@ -415,7 +415,7 @@ main(int argc, char **argv)
 			case 6:
 				if (optarg != NULL)
 				{
-					strncpy(runtime_options.pg_rewind, optarg, MAXFILENAME);
+					strncpy(runtime_options.pg_rewind, optarg, MAXPGPATH);
 				}
 				pg_rewind_supplied = true;
 				break;
@@ -1306,23 +1306,23 @@ do_standby_clone(void)
 	bool		target_directory_provided = false;
 	bool		external_config_file_copy_required = false;
 
-	char		master_data_directory[MAXFILENAME];
-	char		local_data_directory[MAXFILENAME];
+	char		master_data_directory[MAXPGPATH];
+	char		local_data_directory[MAXPGPATH];
 
-	char		master_config_file[MAXFILENAME] = "";
-	char		local_config_file[MAXFILENAME] = "";
+	char		master_config_file[MAXPGPATH] = "";
+	char		local_config_file[MAXPGPATH] = "";
 	bool		config_file_outside_pgdata = false;
 
-	char		master_hba_file[MAXFILENAME] = "";
-	char		local_hba_file[MAXFILENAME] = "";
+	char		master_hba_file[MAXPGPATH] = "";
+	char		local_hba_file[MAXPGPATH] = "";
 	bool		hba_file_outside_pgdata = false;
 
-	char		master_ident_file[MAXFILENAME] = "";
-	char		local_ident_file[MAXFILENAME] = "";
+	char		master_ident_file[MAXPGPATH] = "";
+	char		local_ident_file[MAXPGPATH] = "";
 	bool		ident_file_outside_pgdata = false;
 
-	char		master_control_file[MAXFILENAME] = "";
-	char		local_control_file[MAXFILENAME] = "";
+	char		master_control_file[MAXPGPATH] = "";
+	char		local_control_file[MAXPGPATH] = "";
 
 	char	   *first_wal_segment = NULL;
 	char	   *last_wal_segment = NULL;
@@ -1490,7 +1490,7 @@ do_standby_clone(void)
 	{
 		if (strcmp(PQgetvalue(res, i, 0), "data_directory") == 0)
 		{
-			strncpy(master_data_directory, PQgetvalue(res, i, 1), MAXFILENAME);
+			strncpy(master_data_directory, PQgetvalue(res, i, 1), MAXPGPATH);
 		}
 		else if (strcmp(PQgetvalue(res, i, 0), "config_file") == 0)
 		{
@@ -1498,7 +1498,7 @@ do_standby_clone(void)
 			{
 				config_file_outside_pgdata = true;
 				external_config_file_copy_required = true;
-				strncpy(master_config_file, PQgetvalue(res, i, 1), MAXFILENAME);
+				strncpy(master_config_file, PQgetvalue(res, i, 1), MAXPGPATH);
 			}
 		}
 		else if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
@@ -1507,7 +1507,7 @@ do_standby_clone(void)
 			{
 				hba_file_outside_pgdata  = true;
 				external_config_file_copy_required = true;
-				strncpy(master_hba_file, PQgetvalue(res, i, 1), MAXFILENAME);
+				strncpy(master_hba_file, PQgetvalue(res, i, 1), MAXPGPATH);
 			}
 		}
 		else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
@@ -1516,7 +1516,7 @@ do_standby_clone(void)
 			{
 				ident_file_outside_pgdata = true;
 				external_config_file_copy_required = true;
-				strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXFILENAME);
+				strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXPGPATH);
 			}
 		}
 		else
@@ -1532,20 +1532,20 @@ do_standby_clone(void)
 	 */
 	if (target_directory_provided)
 	{
-		strncpy(local_data_directory, runtime_options.dest_dir, MAXFILENAME);
-		strncpy(local_config_file, runtime_options.dest_dir, MAXFILENAME);
-		strncpy(local_hba_file, runtime_options.dest_dir, MAXFILENAME);
-		strncpy(local_ident_file, runtime_options.dest_dir, MAXFILENAME);
+		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_config_file, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_hba_file, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_ident_file, runtime_options.dest_dir, MAXPGPATH);
 	}
 	/*
 	 * Otherwise use the same data directory as on the remote host
 	 */
 	else
 	{
-		strncpy(local_data_directory, master_data_directory, MAXFILENAME);
-		strncpy(local_config_file, master_config_file, MAXFILENAME);
-		strncpy(local_hba_file, master_hba_file, MAXFILENAME);
-		strncpy(local_ident_file, master_ident_file, MAXFILENAME);
+		strncpy(local_data_directory, master_data_directory, MAXPGPATH);
+		strncpy(local_config_file, master_config_file, MAXPGPATH);
+		strncpy(local_hba_file, master_hba_file, MAXPGPATH);
+		strncpy(local_ident_file, master_ident_file, MAXPGPATH);
 
 		log_notice(_("setting data directory to: %s\n"), local_data_directory);
 		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
@@ -2253,7 +2253,7 @@ do_standby_follow(void)
 
 	int			r,
 				retval;
-	char		data_dir[MAXFILENAME];
+	char		data_dir[MAXPGPATH];
 
 	bool        success;
 
@@ -2336,7 +2336,7 @@ do_standby_follow(void)
 
 		master_id = get_master_node_id(master_conn, options.cluster_name);
 
-		strncpy(data_dir, runtime_options.dest_dir, MAXFILENAME);
+		strncpy(data_dir, runtime_options.dest_dir, MAXPGPATH);
 	}
 
 
