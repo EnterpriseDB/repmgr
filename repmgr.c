@@ -3808,7 +3808,7 @@ do_witness_create(void)
 
 
 	/* copy configuration from master, only repl_nodes is needed */
-	if (!copy_configuration(masterconn, witnessconn, options.cluster_name))
+	if (!witness_copy_node_records(masterconn, witnessconn, options.cluster_name))
 	{
 		create_event_record(masterconn,
 							&options,
