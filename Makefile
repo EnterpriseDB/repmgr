@@ -12,9 +12,6 @@ DATA = repmgr.sql uninstall_repmgr.sql
 PG_CPPFLAGS = -I$(libpq_srcdir)
 PG_LIBS     = $(libpq_pgport)
 
-$(repmgr_OBJS): $(HEADERS)
-$(repmgr_OBJS): $(HEADERS)
-
 all: repmgrd repmgr
 	$(MAKE) -C sql
 
