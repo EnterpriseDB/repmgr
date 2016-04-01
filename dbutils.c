@@ -1125,6 +1125,8 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 	PGresult   *res;
 	int			i;
 
+	begin_transaction(witnessconn);
+
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", get_repmgr_schema_quoted(witnessconn));
 
 	log_verbose(LOG_DEBUG, "copy_configuration():\n%s\n", sqlquery);
@@ -1149,6 +1151,8 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 		log_err("Unable to retrieve node records from master:\n%s\n",
 				PQerrorMessage(masterconn));
 		PQclear(res);
+		rollback_transaction(witnessconn);
+
 		return false;
 	}
 
@@ -1186,10 +1190,14 @@ copy_configuration(PGconn *masterconn, PGconn *witnessconn, char *cluster_name)
 
 			log_err("Unable to copy node record to witness database\n%s\n",
 					PQerrorMessage(witnessconn));
+			rollback_transaction(witnessconn);
+
 			return false;
 		}
 	}
 	PQclear(res);
+
+	commit_transaction(witnessconn);
 
 	return true;
 }
