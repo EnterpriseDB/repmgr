@@ -484,7 +484,7 @@ main(int argc, char **argv)
 					if (node_info.type == WITNESS)
 					{
 						sync_repl_nodes_elapsed += local_options.monitor_interval_secs;
-						log_debug(_("%i - %i \n"), sync_repl_nodes_elapsed, local_options.witness_repl_nodes_sync_interval_secs);
+						log_debug(_("seconds since last node record sync: %i (sync interval: %i)\n"), sync_repl_nodes_elapsed, local_options.witness_repl_nodes_sync_interval_secs);
 						if(sync_repl_nodes_elapsed >= local_options.witness_repl_nodes_sync_interval_secs)
 						{
 							log_debug(_("Resyncing repl_nodes table\n"));
