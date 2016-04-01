@@ -4505,7 +4505,7 @@ create_schema(PGconn *conn)
 					  "CREATE TABLE %s.repl_nodes (     "
 					  "  id               INTEGER PRIMARY KEY, "
 					  "  type             TEXT    NOT NULL CHECK (type IN('master','standby','witness')), "
-					  "  upstream_node_id INTEGER NULL REFERENCES %s.repl_nodes (id), "
+					  "  upstream_node_id INTEGER NULL REFERENCES %s.repl_nodes (id) DEFERRABLE, "
 					  "  cluster          TEXT    NOT NULL, "
 					  "  name             TEXT    NOT NULL, "
 					  "  conninfo         TEXT    NOT NULL, "
