@@ -1127,6 +1127,21 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
 
 	begin_transaction(witnessconn);
 
+	/* Defer constraints */
+	sqlquery_snprintf(sqlquery, "SET CONSTRAINTS ALL DEFERRED;");
+	log_verbose(LOG_DEBUG, "witness_copy_node_records():\n%s\n", sqlquery);
+
+	res = PQexec(witnessconn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to defer constraints:\n%s\n"),
+				PQerrorMessage(witnessconn));
+		rollback_transaction(witnessconn);
+
+		return false;
+	}
+
+	/* Truncate existing records */
 	sqlquery_snprintf(sqlquery, "TRUNCATE TABLE %s.repl_nodes", get_repmgr_schema_quoted(witnessconn));
 
 	log_verbose(LOG_DEBUG, "witness_copy_node_records():\n%s\n", sqlquery);
@@ -1136,9 +1151,12 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
 	{
 		log_err(_("Unable to truncate witness servers's repl_nodes table:\n%s\n"),
 				PQerrorMessage(witnessconn));
+		rollback_transaction(witnessconn);
+
 		return false;
 	}
 
+	/* Get current records from primary */
 	sqlquery_snprintf(sqlquery,
 					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name, active FROM %s.repl_nodes",
 					  get_repmgr_schema_quoted(masterconn));
@@ -1156,6 +1174,7 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
 		return false;
 	}
 
+	/* Insert primary records into witness table */
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		bool node_record_created;
@@ -1197,6 +1216,7 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
 	}
 	PQclear(res);
 
+	/* And finished */
 	commit_transaction(witnessconn);
 
 	return true;
