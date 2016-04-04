@@ -4880,6 +4880,10 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			NULL,
 		};
 
+		/*
+		 * Note that in 9.6+, "hot_standby" and "archive" are accepted as aliases
+		 * for "replica", but current_setting() will of course always return "replica"
+		 */
 		char *levels_96plus[] = {
 			"replica",
 			"logical",
