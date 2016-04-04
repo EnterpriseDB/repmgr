@@ -4872,22 +4872,41 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	}
 	else
 	{
-		char *levels[] = {
+		char *levels_pre96[] = {
 			"hot_standby",
 			"logical",
+			NULL,
 		};
 
-		int j = 0;
-		wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby' or 'logical'");
+		char *levels_96plus[] = {
+			"replica",
+			"logical",
+			NULL,
+		};
 
-		for(; j < 2; j++)
+		char **levels;
+		int j = 0;
+
+		if (server_version_num < 90500)
+		{
+			levels = (char **)levels_pre96;
+			wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby' or 'logical'");
+		}
+		else
+		{
+			levels = (char **)levels_96plus;
+			wal_error_message = _("parameter 'wal_level' must be set to 'replica' or 'logical'");
+		}
+
+		do
 		{
 			i = guc_set(conn, "wal_level", "=", levels[j]);
 			if (i)
 			{
 				break;
 			}
-		}
+			j++;
+		} while (levels[j] != NULL);
 	}
 
 	if (i == 0 || i == -1)
