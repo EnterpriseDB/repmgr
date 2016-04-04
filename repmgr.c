@@ -2158,7 +2158,7 @@ parse_label_lsn(const char *label_key, const char *label_value)
 static void
 read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label)
 {
-	char label_path[MAXFILENAME];
+	char label_path[MAXPGPATH];
 	FILE *label_file;
 	int  nmatches = 0;
 	char label_key[MAXLEN];
