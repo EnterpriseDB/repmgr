@@ -115,7 +115,7 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 bool		cancel_query(PGconn *conn, int timeout);
 char       *get_repmgr_schema(void);
 char       *get_repmgr_schema_quoted(PGconn *conn);
-bool		create_replication_slot(PGconn *conn, char *slot_name);
+bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num);
 int			get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 bool		drop_replication_slot(PGconn *conn, char *slot_name);
 bool		start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint);
@@ -133,3 +133,4 @@ int		    get_node_replication_state(PGconn *conn, char *node_name, char *output)
 t_server_type parse_node_type(const char *type);
 int			get_data_checksum_version(const char *data_directory);
 #endif
+

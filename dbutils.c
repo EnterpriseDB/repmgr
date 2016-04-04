@@ -889,7 +889,7 @@ get_repmgr_schema_quoted(PGconn *conn)
 
 
 bool
-create_replication_slot(PGconn *conn, char *slot_name)
+create_replication_slot(PGconn *conn, char *slot_name, int server_version_num)
 {
 	char				sqlquery[QUERY_STR_LEN];
 	int					query_res;
@@ -926,9 +926,19 @@ create_replication_slot(PGconn *conn, char *slot_name)
 		return false;
 	}
 
-	sqlquery_snprintf(sqlquery,
-					  "SELECT * FROM pg_create_physical_replication_slot('%s')",
-					  slot_name);
+	/* In 9.6 and later, reserve the LSN straight away */
+	if (server_version_num >= 90600)
+	{
+		sqlquery_snprintf(sqlquery,
+						  "SELECT * FROM pg_create_physical_replication_slot('%s', TRUE)",
+						  slot_name);
+	}
+	else
+	{
+		sqlquery_snprintf(sqlquery,
+						  "SELECT * FROM pg_create_physical_replication_slot('%s')",
+						  slot_name);
+	}
 
 	log_debug(_("create_replication_slot(): Creating slot '%s' on primary\n"), slot_name);
 	log_verbose(LOG_DEBUG, "create_replication_slot():\n%s\n", sqlquery);

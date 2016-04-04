@@ -1589,7 +1589,7 @@ do_standby_clone(void)
 	 */
 	if (options.use_replication_slots)
 	{
-		if (create_replication_slot(upstream_conn, repmgr_slot_name) == false)
+		if (create_replication_slot(upstream_conn, repmgr_slot_name, server_version_num) == false)
 		{
 			PQfinish(upstream_conn);
 			exit(ERR_DB_QUERY);
@@ -2550,7 +2550,9 @@ do_standby_follow(void)
 
 	if (options.use_replication_slots)
 	{
-		if (create_replication_slot(master_conn, repmgr_slot_name) == false)
+ 		int	server_version_num = get_server_version(master_conn, NULL);
+
+		if (create_replication_slot(master_conn, repmgr_slot_name, server_version_num) == false)
 		{
 			PQExpBufferData event_details;
 			initPQExpBuffer(&event_details);
