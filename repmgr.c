@@ -161,6 +161,8 @@ main(int argc, char **argv)
 		{"username", required_argument, NULL, 'U'},
 		{"superuser", required_argument, NULL, 'S'},
 		{"data-dir", required_argument, NULL, 'D'},
+		/* alias for -D/--data-dir, following pg_ctl usage */
+		{"pgdata", required_argument, NULL, 'D'},
 		/* -l/--local-port is deprecated */
 		{"local-port", required_argument, NULL, 'l'},
 		{"config-file", required_argument, NULL, 'f'},
