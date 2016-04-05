@@ -100,6 +100,7 @@ typedef struct
 struct BackupLabel
 {
 	XLogRecPtr start_wal_location;
+	char start_wal_file[MAXLEN];
 	XLogRecPtr checkpoint_location;
 	char backup_from[MAXLEN];
 	char backup_method[MAXLEN];
