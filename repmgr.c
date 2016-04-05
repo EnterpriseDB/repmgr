@@ -1657,7 +1657,13 @@ do_standby_clone(void)
 		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 							  master_data_directory, local_data_directory,
 							  true, server_version_num);
-		if (r != 0)
+		/*
+		  Exit code 0 means no error, but we want to ignore exit code 24 as well
+		  as rsync returns that code on "Partial transfer due to vanished source files".
+		  It's quite common for this to happen on the data directory, particularly
+		  with long running rsync on a busy server.
+		*/
+		if (r != 0 && r != 24)
 		{
 			log_warning(_("standby clone: failed copying master data directory '%s'\n"),
 						master_data_directory);
