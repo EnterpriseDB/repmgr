@@ -121,7 +121,7 @@ static bool remote_command(const char *host, const char *user, const char *comma
 static void format_db_cli_params(const char *conninfo, char *output);
 static bool copy_file(const char *old_filename, const char *new_filename);
 
-static void read_backup_label(const char *local_data_directory, struct BackupLabel *backup_label);
+static void read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
 /* Global variables */
 static const char *keywords[6];
@@ -144,12 +144,11 @@ static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
 
-static struct BackupLabel backup_label;
-
 /* Collate command line errors and warnings here for friendlier reporting */
 ErrorList	cli_errors = { NULL, NULL };
 ErrorList	cli_warnings = { NULL, NULL };
 
+static	struct BackupLabel backup_label;
 
 int
 main(int argc, char **argv)
@@ -1335,6 +1334,7 @@ do_standby_clone(void)
 
 	PQExpBufferData event_details;
 
+
 	/*
 	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
 	 * directory (otherwise repmgr will default to the same directory as on the
@@ -1672,6 +1672,12 @@ do_standby_clone(void)
 			goto stop_backup;
 		}
 
+		/* Read backup label copied from primary */
+		/* XXX ensure this function does not exit on error as we'd need to stop the backup */
+		read_backup_label(local_data_directory, &backup_label);
+
+		printf("Label: %s; file: %s\n", backup_label.label, backup_label.start_wal_file);
+
 		/* Handle tablespaces */
 
 		sqlquery_snprintf(sqlquery,
@@ -1975,35 +1981,38 @@ stop_backup:
 		exit(retval);
 	}
 
-	read_backup_label(local_data_directory, &backup_label);
-
 	/*
 	 * Clean up any $PGDATA subdirectories which may contain
 	 * files which won't be removed by rsync and which could
 	 * be stale or are otherwise not required
 	 */
-	if (runtime_options.rsync_only && runtime_options.force)
+	if (runtime_options.rsync_only)
 	{
 		char	script[MAXLEN];
+		char	label_path[MAXPGPATH];
 
-		/*
-		 * Remove any existing WAL from the target directory, since
-		 * rsync's --exclude option doesn't do it.
-		 */
-		maxlen_snprintf(script, "rm -rf %s/pg_xlog/*",
-						local_data_directory);
-		r = system(script);
-		if (r != 0)
+		if (runtime_options.force)
 		{
-			log_err(_("unable to empty local WAL directory %s/pg_xlog/\n"),
-					local_data_directory);
-			exit(ERR_BAD_RSYNC);
+			/*
+			 * Remove any existing WAL from the target directory, since
+			 * rsync's --exclude option doesn't do it.
+			 */
+			maxlen_snprintf(script, "rm -rf %s/pg_xlog/*",
+							local_data_directory);
+			r = system(script);
+			if (r != 0)
+			{
+				log_err(_("unable to empty local WAL directory %s/pg_xlog/\n"),
+						local_data_directory);
+				exit(ERR_BAD_RSYNC);
+			}
 		}
 
 		/*
-		 * Remove any replication slot directories; this matches the
-		 * behaviour a base backup, which would result in an empty
-		 * pg_replslot directory.
+		 * Remove any existing replication slot directories from previous use
+		 * of this data directory; this matches the behaviour of a fresh
+		 * pg_basebackup, which would usually result in an empty pg_replslot
+		 * directory.
 		 *
 		 * If the backup label contains a nonzero
 		 * 'MIN FAILOVER SLOT LSN' entry we retain the slots and let
@@ -2019,6 +2028,8 @@ stop_backup:
 		{
 			maxlen_snprintf(script, "rm -rf %s/pg_replslot/*",
 							local_data_directory);
+
+			log_debug("deleting pg_replslot directory contents\n");
 			r = system(script);
 			if (r != 0)
 			{
@@ -2026,6 +2037,13 @@ stop_backup:
 						local_data_directory);
 				exit(ERR_BAD_RSYNC);
 			}
+		}
+
+		/* delete the backup label file copied from the primary */
+		maxlen_snprintf(label_path, "%s/backup_label", local_data_directory);
+		if (0 && unlink(label_path) < 0 && errno != ENOENT)
+		{
+			log_warning(_("unable to delete backup label file %s\n"), label_path);
 		}
 	}
 
@@ -2143,7 +2161,7 @@ parse_label_lsn(const char *label_key, const char *label_value)
 /*======================================
  * Read entries of interest from the backup label.
  *
- * Sample backup label:
+ * Sample backup label (with failover slots):
  *
  *		START WAL LOCATION: 0/6000028 (file 000000010000000000000006)
  *		CHECKPOINT LOCATION: 0/6000060
@@ -2161,10 +2179,11 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 	char label_path[MAXPGPATH];
 	FILE *label_file;
 	int  nmatches = 0;
-	char label_key[MAXLEN];
-	char label_value[MAXLEN];
+
+	char line[MAXLEN];
 
 	out_backup_label->start_wal_location = InvalidXLogRecPtr;
+	out_backup_label->start_wal_file[0] = '\0';
 	out_backup_label->checkpoint_location = InvalidXLogRecPtr;
 	out_backup_label->backup_from[0] = '\0';
 	out_backup_label->backup_method[0] = '\0';
@@ -2177,43 +2196,52 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 	label_file = fopen(label_path, "r");
 	if (label_file == NULL)
 	{
-		log_err(_("could not open backup label file %s: %s"),
+		log_err(_("read_backup_label: could not open backup label file %s: %s"),
 				label_path, strerror(errno));
 		exit(ERR_BAD_BACKUP_LABEL);
 	}
 
-	log_info(_("standby clone: backup label file '%s'\n"),
+	log_info(_("read_backup_label: parsing backup label file '%s'\n"),
 			 label_path);
 
-	do
+	while(fgets(line, sizeof line, label_file) != NULL)
 	{
+		char label_key[MAXLEN];
+		char label_value[MAXLEN];
 		char newline;
 
-		/*
-		 * Scan a line, including newline char.
-		 *
-		 * See http://stackoverflow.com/a/8097776/398670
-		 */
-		nmatches = fscanf(label_file, "%" MAXLEN_STR "s: %" MAXLEN_STR "[^\n]%c",
-				&label_key[0], &label_value[0], &newline);
+		nmatches = sscanf(line, "%" MAXLEN_STR "[^:]: %" MAXLEN_STR "[^\n]%c",
+						  label_key, label_value, &newline);
 
 		if (nmatches != 3)
 			break;
 
 		if (newline != '\n')
 		{
-			log_err(_("standby clone: line too long in backup label file. Line begins \"%s: %s\""),
+			log_err(_("read_backup_label: line too long in backup label file. Line begins \"%s: %s\""),
 					label_key, label_value);
 			exit(ERR_BAD_BACKUP_LABEL);
 		}
 
-		log_debug("standby clone: got backup label entry \"%s: %s\"",
+		log_debug("standby clone: got backup label entry \"%s: %s\"\n",
 				label_key, label_value);
 
 		if (strcmp(label_key, "START WAL LOCATION") == 0)
 		{
+			char start_wal_location[MAXLEN];
+			char wal_filename[MAXLEN];
+
+			nmatches = sscanf(label_value, "%" MAXLEN_STR "s (file %" MAXLEN_STR "[^)]", start_wal_location, wal_filename);
+			if (nmatches != 2)
+			{
+				log_err(_("read_backup_label: unable to parse \"START WAL LOCATION\" in backup label\n"));
+				exit(ERR_BAD_BACKUP_LABEL);
+			}
 			out_backup_label->start_wal_location =
-				parse_label_lsn(&label_key[0], &label_value[0]);
+				parse_label_lsn(&label_key[0], start_wal_location);
+
+			(void) strncpy(out_backup_label->start_wal_file, wal_filename, MAXLEN);
+			out_backup_label->start_wal_file[MAXLEN-1] = '\0';
 		}
 		else if (strcmp(label_key, "CHECKPOINT LOCATION") == 0)
 		{
@@ -2247,11 +2275,10 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 		}
 		else
 		{
-			log_info("standby clone: ignored unrecognised backup label entry \"%s: %s\"",
+			log_info("read_backup_label: ignored unrecognised backup label entry \"%s: %s\"",
 					label_key, label_value);
 		}
 	}
-	while (!feof(label_file));
 
 	(void) fclose(label_file);
 }
@@ -4246,6 +4273,7 @@ test_ssh_connection(char *host, char *remote_user)
 	return r;
 }
 
+
 static int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
 				  char *local_path, bool is_directory, int server_version_num)
@@ -4290,6 +4318,9 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	 * See function 'sendDir()' in 'src/backend/replication/basebackup.c' -
 	 * we're basically simulating what pg_basebackup does, but with rsync rather
 	 * than the BASEBACKUP replication protocol command.
+	 *
+	 * *However* currently we'll always copy the contents of the 'pg_replslot'
+	 * directory and delete later if appropriate.
 	 */
 	if (is_directory)
 	{
@@ -4317,12 +4348,6 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 		/* Directories which we don't want */
 		appendPQExpBuffer(&rsync_flags, "%s",
 						  " --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_stat_tmp/*");
-
-		if (server_version_num >= 90400)
-		{
-			appendPQExpBuffer(&rsync_flags, "%s",
-							  " --exclude=pg_replslot/*");
-		}
 
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
 						rsync_flags.data, host_string, remote_path, local_path);
