@@ -1735,6 +1735,18 @@ do_standby_clone(void)
 								  tblspc_dir_src.data, tblspc_dir_dst.data,
 								  true, server_version_num);
 
+			/*
+			  Exit code 0 means no error, but we want to ignore exit code 24 as well
+			  as rsync returns that code on "Partial transfer due to vanished source files".
+			  It's quite common for this to happen on the data directory, particularly
+			  with long running rsync on a busy server.
+			*/
+			if (r != 0 && r != 24)
+			{
+			       log_warning(_("standby clone: failed copying tablespace directory '%s'\n"),
+					            tblspc_dir_src.data);
+			       goto stop_backup;
+			}
 
 			/* Update symlinks in pg_tblspc */
 			if (mapping_found == true)
