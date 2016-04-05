@@ -2,15 +2,16 @@
 # Makefile
 # Copyright (c) 2ndQuadrant, 2010-2016
 
+HEADERS = $(wildcard *.h)
+
 repmgrd_OBJS = dbutils.o config.o repmgrd.o log.o strutil.o
 repmgr_OBJS = dbutils.o check_dir.o config.o repmgr.o log.o strutil.o
-
-HEADERS = $(wildcard *.h)
 
 DATA = repmgr.sql uninstall_repmgr.sql
 
 PG_CPPFLAGS = -I$(libpq_srcdir)
 PG_LIBS     = $(libpq_pgport)
+
 
 all: repmgrd repmgr
 	$(MAKE) -C sql
@@ -21,6 +22,12 @@ repmgrd: $(repmgrd_OBJS)
 
 repmgr: $(repmgr_OBJS)
 	$(CC) -o repmgr $(CFLAGS) $(repmgr_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS)
+
+# Make all objects depend on all include files. This is a bit of a
+# shotgun approach, but the codebase is small enough that a complete rebuild
+# is very fast anyway.
+$(repmgr_OBJS): $(HEADERS)
+$(repmgrd_OBJS): $(HEADERS)
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config
@@ -33,8 +40,8 @@ include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
-# XXX: Try to use PROGRAM construct (see pgxs.mk) someday. Right now
-# is overriding pgxs install.
+# XXX: This overrides the pgxs install target - we're building two binaries,
+# which is not supported by pgxs.mk's PROGRAM construct.
 install: install_prog install_ext
 
 install_prog:
@@ -44,6 +51,12 @@ install_prog:
 
 install_ext:
 	$(MAKE) -C sql install
+
+# Distribution-specific package building targets
+# ----------------------------------------------
+#
+# XXX we recommend using the PGDG-supplied packages where possible;
+# see README.md for details.
 
 install_rhel:
 	mkdir -p '$(DESTDIR)/etc/init.d/'
