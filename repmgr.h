@@ -32,7 +32,6 @@
 #define MIN_SUPPORTED_VERSION		"9.3"
 #define MIN_SUPPORTED_VERSION_NUM	90300
 
-#include "config.h"
 #define ERRBUFF_SIZE	512
 
 #define DEFAULT_WAL_KEEP_SEGMENTS	"5000"
