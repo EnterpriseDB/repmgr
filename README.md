@@ -259,6 +259,20 @@ The following replication settings must be included in `postgresql.conf`:
 
     hot_standby = on
 
+    # If archive_mode is enabled, check that 'archive_command' is non empty
+    # (however it's not practical to check that it actually represents a valid
+    # command).
+    # 
+    # From PostgreSQL 9.5, archive_mode can be one of 'off', 'on' or 'always'
+    # so for ease of backwards compatibility, rather than explicitly check for an
+    # enabled mode, check that it's not "off".
+    archive_mode = on
+
+    # Set archive command to a script or application that will safetly store
+    # you WALs in a secure place. /bin/true is an example of a command that
+    # ignores archiving. Use something more sensible.
+    archive_command = '/bin/true'
+
 
 * * *
 
