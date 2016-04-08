@@ -696,15 +696,15 @@ standby_monitor(void)
 	PGresult   *res;
 	char		monitor_standby_timestamp[MAXLEN];
 	char		last_wal_master_location[MAXLEN];
-	char		last_wal_standby_received[MAXLEN];
-	char		last_wal_standby_applied[MAXLEN];
-	char		last_wal_standby_applied_timestamp[MAXLEN];
-	bool		last_wal_standby_received_gte_replayed;
+	char		last_xlog_receive_location[MAXLEN];
+	char		last_xlog_replay_location[MAXLEN];
+	char		last_xact_replay_timestamp[MAXLEN];
+	bool		last_xlog_receive_location_gte_replayed;
 	char		sqlquery[QUERY_STR_LEN];
 
-	XLogRecPtr	lsn_master;
-	XLogRecPtr	lsn_standby_received;
-	XLogRecPtr	lsn_standby_applied;
+	XLogRecPtr	lsn_master_current_xlog_location;
+	XLogRecPtr	lsn_last_xlog_receive_location;
+	XLogRecPtr	lsn_last_xlog_replay_location;
 
 	int			connection_retries,
 				ret;
@@ -999,10 +999,10 @@ standby_monitor(void)
 	}
 
 	strncpy(monitor_standby_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
-	strncpy(last_wal_standby_received, PQgetvalue(res, 0, 1), MAXLEN);
-	strncpy(last_wal_standby_applied, PQgetvalue(res, 0, 2), MAXLEN);
-	strncpy(last_wal_standby_applied_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
-	last_wal_standby_received_gte_replayed = (strcmp(PQgetvalue(res, 0, 4), "t") == 0)
+	strncpy(last_xlog_receive_location, PQgetvalue(res, 0, 1), MAXLEN);
+	strncpy(last_xlog_replay_location, PQgetvalue(res, 0, 2), MAXLEN);
+	strncpy(last_xact_replay_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
+	last_xlog_receive_location_gte_replayed = (strcmp(PQgetvalue(res, 0, 4), "t") == 0)
 		? true
 		: false;
 
@@ -1011,13 +1011,13 @@ standby_monitor(void)
 	/*
 	 * In the unusual event of a standby becoming disconnected from the primary,
 	 * while this repmgrd remains connected to the primary,  subtracting
-	 * "lsn_standby_applied" from "lsn_standby_received" and coercing to
+	 * "last_xlog_replay_location" from "lsn_last_xlog_receive_location" and coercing to
 	 * (long long unsigned int) will result in a meaningless, very large
 	 * value which will overflow a BIGINT column and spew error messages into the
 	 * PostgreSQL log. In the absence of a better strategy, skip attempting
 	 * to insert a monitoring record.
 	 */
-	if (last_wal_standby_received_gte_replayed == false)
+	if (last_xlog_receive_location_gte_replayed == false)
 	{
 		log_verbose(LOG_WARNING,
 					"Invalid replication_lag value calculated - is this standby connected to its upstream?\n");
@@ -1039,29 +1039,40 @@ standby_monitor(void)
 	PQclear(res);
 
 	/* Calculate the lag */
-	lsn_master = lsn_to_xlogrecptr(last_wal_master_location, NULL);
-	lsn_standby_received = lsn_to_xlogrecptr(last_wal_standby_received, NULL);
-	lsn_standby_applied = lsn_to_xlogrecptr(last_wal_standby_applied, NULL);
+	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_master_location, NULL);
+	lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
+	lsn_last_xlog_replay_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
 
 	/*
 	 * Build the SQL to execute on master
 	 */
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_monitor "
-					  "           (primary_node, standby_node, "
-					  "            last_monitor_time, last_apply_time, "
-					  "            last_wal_primary_location, last_wal_standby_location, "
-					  "            replication_lag, apply_lag ) "
-					  "     VALUES(%d, %d, "
-					  "            '%s'::TIMESTAMP WITH TIME ZONE, '%s'::TIMESTAMP WITH TIME ZONE, "
-					  "            '%s', '%s', "
-					  "            %llu, %llu) ",
+					  "           (primary_node, "
+					  "            standby_node, "
+					  "            last_monitor_time, "
+					  "            last_apply_time, "
+					  "            last_wal_primary_location, "
+					  "            last_wal_standby_location, "
+					  "            replication_lag, "
+					  "            apply_lag ) "
+					  "     VALUES(%d, "
+					  "            %d, "
+					  "            '%s'::TIMESTAMP WITH TIME ZONE, "
+					  "            '%s'::TIMESTAMP WITH TIME ZONE, "
+					  "            '%s', "
+					  "            '%s', "
+					  "            %llu, "
+					  "            %llu) ",
 					  get_repmgr_schema_quoted(master_conn),
-					  master_options.node, local_options.node,
-					  monitor_standby_timestamp, last_wal_standby_applied_timestamp,
-					  last_wal_master_location, last_wal_standby_received,
-					  (long long unsigned int)(lsn_master - lsn_standby_received),
-					  (long long unsigned int)(lsn_standby_received - lsn_standby_applied));
+					  master_options.node,
+					  local_options.node,
+					  monitor_standby_timestamp,
+					  last_xact_replay_timestamp,
+					  last_wal_master_location,
+					  last_xlog_receive_location,
+					  (long long unsigned int)(lsn_master_current_xlog_location - lsn_last_xlog_receive_location),
+					  (long long unsigned int)(lsn_last_xlog_receive_location - lsn_last_xlog_replay_location));
 
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We will
@@ -1099,7 +1110,7 @@ do_master_failover(void)
 	XLogRecPtr	xlog_recptr;
 	bool		lsn_format_ok;
 
-	char		last_wal_standby_applied[MAXLEN];
+	char		last_xlog_replay_location[MAXLEN];
 
 	PGconn	   *node_conn = NULL;
 
@@ -1282,8 +1293,8 @@ do_master_failover(void)
 				  " considered as new master and exit.\n"),
 				PQerrorMessage(my_local_conn));
 		PQclear(res);
-		sprintf(last_wal_standby_applied, "'%X/%X'", 0, 0);
-		update_shared_memory(last_wal_standby_applied);
+		sprintf(last_xlog_replay_location, "'%X/%X'", 0, 0);
+		update_shared_memory(last_xlog_replay_location);
 		terminate(ERR_DB_QUERY);
 	}
 	/* write last location in shared memory */
@@ -2158,7 +2169,7 @@ terminate(int retval)
 
 
 static void
-update_shared_memory(char *last_wal_standby_applied)
+update_shared_memory(char *last_xlog_replay_location)
 {
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
@@ -2166,7 +2177,7 @@ update_shared_memory(char *last_wal_standby_applied)
 	sprintf(sqlquery,
 			"SELECT %s.repmgr_update_standby_location('%s')",
 			get_repmgr_schema_quoted(my_local_conn),
-			last_wal_standby_applied);
+			last_xlog_replay_location);
 
 	/* If an error happens, just inform about that and continue */
 	res = PQexec(my_local_conn, sqlquery);
