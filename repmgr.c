@@ -2075,7 +2075,7 @@ stop_backup:
 	 * add a hint about using the -F/--force.
 	 */
 
-	log_hint(_("After starting the server, you need to register this standby with \"repmgr standby register\""));
+	log_hint(_("After starting the server, you need to register this standby with \"repmgr standby register\"\n"));
 
 	/* Log the event - if we can connect to the primary */
 
