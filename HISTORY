@@ -5,6 +5,7 @@
         (Experimental) ensure repmgr handles failover slots when copying
           in rsync mode (Craig, Ian)
         rsync mode handling fixes (Martín)
+        Enable repmgr to compile against 9.6devel (Ian)
 
 3.1.1   2016-02-24
         Add '-P/--pwprompt' option for "repmgr create witness" (Ian)
