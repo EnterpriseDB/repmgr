@@ -5069,7 +5069,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		char **levels;
 		int j = 0;
 
-		if (server_version_num < 90500)
+		if (server_version_num < 90600)
 		{
 			levels = (char **)levels_pre96;
 			wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby' or 'logical'");
