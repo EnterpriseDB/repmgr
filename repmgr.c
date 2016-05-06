@@ -1665,7 +1665,7 @@ do_standby_clone(void)
 		  It's quite common for this to happen on the data directory, particularly
 		  with long running rsync on a busy server.
 		*/
-		if (r != 0 && r != 24)
+		if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
 		{
 			log_warning(_("standby clone: failed copying master data directory '%s'\n"),
 						master_data_directory);
@@ -1751,7 +1751,7 @@ do_standby_clone(void)
 			  It's quite common for this to happen on the data directory, particularly
 			  with long running rsync on a busy server.
 			*/
-			if (r != 0 && r != 24)
+			if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
 			{
 			       log_warning(_("standby clone: failed copying tablespace directory '%s'\n"),
 					            tblspc_dir_src.data);
