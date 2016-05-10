@@ -1497,8 +1497,6 @@ do_master_failover(void)
 		r = system(local_options.promote_command);
 		if (r != 0)
 		{
-			int master_node_id;
-
 			/*
 			 * Check whether the primary reappeared, which will have caused the
 			 * promote command to fail
@@ -1507,6 +1505,8 @@ do_master_failover(void)
 
 			if (my_local_conn != NULL)
 			{
+				int master_node_id;
+
 				master_conn = get_master_connection(my_local_conn,
 													local_options.cluster_name,
 													&master_node_id, NULL);
@@ -1557,8 +1557,37 @@ do_master_failover(void)
 		PQExpBufferData event_details;
 
 		initPQExpBuffer(&event_details);
+
 		/* wait */
 		sleep(10);
+
+		/*
+		 * Check whether the primary reappeared while we were waiting, so we
+		 * don't end up following the promotion candidate
+		 */
+		my_local_conn = establish_db_connection(local_options.conninfo, false);
+		if (my_local_conn != NULL)
+		{
+		int master_node_id;
+
+			master_conn = get_master_connection(my_local_conn,
+												local_options.cluster_name,
+												&master_node_id, NULL);
+
+			if (master_conn != NULL && master_node_id == failed_master.node_id)
+			{
+				log_notice(_("Original master reappeared - no action taken\n"));
+
+				PQfinish(master_conn);
+				/* no failover occurred but we'll want to restart connections */
+				failover_done = true;
+				return;
+			}
+
+			PQfinish(my_local_conn);
+		}
+
+		/* XXX double-check the promotion candidate did become the new primary */
 
 		log_notice(_("node %d is the best candidate for new master, attempting to follow...\n"),
 				 best_candidate.node_id);
