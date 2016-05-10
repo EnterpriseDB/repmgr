@@ -1462,6 +1462,8 @@ do_master_failover(void)
 		terminate(ERR_FAILOVER_FAIL);
 	}
 
+	log_debug("best candidate node id is %i\n", best_candidate.node_id);
+
 	/* if local node is the best candidate, promote it */
 	if (best_candidate.node_id == local_options.node)
 	{
@@ -1473,7 +1475,7 @@ do_master_failover(void)
 
 		log_notice(_("this node is the best candidate to be the new master, promoting...\n"));
 
-		log_debug(_("promote command is: \"%s\"\n"),
+		log_debug("promote command is: \"%s\"\n",
 				  local_options.promote_command);
 
 		if (log_type == REPMGR_STDERR && *local_options.logfile)
@@ -1484,6 +1486,33 @@ do_master_failover(void)
 		r = system(local_options.promote_command);
 		if (r != 0)
 		{
+			int master_node_id;
+
+			/*
+			 * Check whether the primary reappeared, which will have caused the
+			 * promote command to fail
+			 */
+			my_local_conn = establish_db_connection(local_options.conninfo, false);
+
+			if (my_local_conn != NULL)
+			{
+				master_conn = get_master_connection(my_local_conn,
+													local_options.cluster_name,
+													&master_node_id, NULL);
+
+				if (master_conn != NULL && master_node_id == failed_master.node_id)
+				{
+					log_notice(_("Original master reappeared before this standby was promoted - no action taken\n"));
+
+					PQfinish(master_conn);
+					/* no failover occurred but we'll want to restart connections */
+					failover_done = true;
+					return;
+				}
+
+				PQfinish(my_local_conn);
+			}
+
 			log_err(_("promote command failed. You could check and try it manually.\n"));
 
 			terminate(ERR_DB_QUERY);
