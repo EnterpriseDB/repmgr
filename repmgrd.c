@@ -716,7 +716,7 @@ standby_monitor(void)
 	t_node_info upstream_node;
 
 	int			active_master_id;
-	const char *type = NULL;
+	const char *upstream_node_type = NULL;
 
 	/*
 	 * Verify that the local node is still available - if not there's
@@ -744,7 +744,7 @@ standby_monitor(void)
 											local_options.node,
 											&upstream_node_id, upstream_conninfo);
 
-	type = upstream_node_id == master_options.node
+	upstream_node_type = (upstream_node_id == master_options.node)
 		? "master"
 		: "upstream";
 
@@ -754,7 +754,7 @@ standby_monitor(void)
 	 * we cannot reconnect, try to get a new upstream node.
 	 */
 
-	check_connection(&upstream_conn, type, upstream_conninfo);
+	check_connection(&upstream_conn, upstream_node_type, upstream_conninfo);
 	/*
 	 * This takes up to local_options.reconnect_attempts *
 	 * local_options.reconnect_interval seconds
@@ -767,7 +767,7 @@ standby_monitor(void)
 
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
-			log_err(_("Unable to reconnect to %s. Now checking if another node has been promoted.\n"), type);
+			log_err(_("Unable to reconnect to %s. Now checking if another node has been promoted.\n"), upstream_node_type);
 
 			for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 			{
