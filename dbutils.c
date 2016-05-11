@@ -604,7 +604,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("unable to get conninfo for upstream server\n%s\n"),
+		log_err(_("error when attempting to find upstream server\n%s\n"),
 				PQerrorMessage(standby_conn));
 		PQclear(res);
 		return NULL;
@@ -612,15 +612,42 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 	if (!PQntuples(res))
 	{
-		log_notice(_("no record found for upstream server\n"));
 		PQclear(res);
-		return NULL;
+		log_debug("no record found for upstream server\n");
+
+		sqlquery_snprintf(sqlquery,
+						  "    SELECT un.conninfo, un.name, un.id "
+						  "      FROM %s.repl_nodes un "
+						  "     WHERE un.cluster = '%s' "
+						  "       AND un.type='master' "
+						  "       AND un.active IS TRUE",
+						  get_repmgr_schema_quoted(standby_conn),
+						  cluster);
+		res = PQexec(standby_conn, sqlquery);
+
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_err(_("error when attempting to find active master server\n%s\n"),
+					PQerrorMessage(standby_conn));
+			PQclear(res);
+			return NULL;
+		}
+
+		if (!PQntuples(res))
+		{
+			PQclear(res);
+			log_notice(_("no record found for active master server\n"));
+
+			return NULL;
+		}
+
+		log_debug("record found for active master server\n");
 	}
 
 	strncpy(upstream_conninfo, PQgetvalue(res, 0, 0), MAXCONNINFO);
 
 	if (upstream_node_id_ptr != NULL)
-		*upstream_node_id_ptr = atoi(PQgetvalue(res, 0, 1));
+		*upstream_node_id_ptr = atoi(PQgetvalue(res, 0, 2));
 
 	PQclear(res);
 
