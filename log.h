@@ -25,7 +25,7 @@
 #define REPMGR_SYSLOG 1
 #define REPMGR_STDERR 2
 
-void
+extern void
 stderr_log_with_level(const char *level_name, int level, const char *fmt,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 
@@ -123,8 +123,10 @@ bool		logger_shutdown(void);
 void		logger_set_verbose(void);
 void		logger_set_terse(void);
 
-void		log_hint(const char *fmt, ...);
-void		log_verbose(int level, const char *fmt, ...);
+void		log_hint(const char *fmt, ...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 1, 2)));
+void		log_verbose(int level, const char *fmt, ...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
 extern int	log_type;
 extern int	log_level;
