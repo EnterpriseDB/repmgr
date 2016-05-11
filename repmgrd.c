@@ -742,7 +742,8 @@ standby_monitor(void)
 	upstream_conn = get_upstream_connection(my_local_conn,
 											local_options.cluster_name,
 											local_options.node,
-											&upstream_node_id, upstream_conninfo);
+											&upstream_node_id,
+											upstream_conninfo);
 
 	upstream_node_type = (upstream_node_id == master_options.node)
 		? "master"
@@ -826,7 +827,7 @@ standby_monitor(void)
 			 * Failover handling is handled differently depending on whether
 			 * the failed node is the master or a cascading standby
 			 */
-			upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
+			upstream_node = get_node_info(my_local_conn, local_options.cluster_name, upstream_node_id);
 
             if (upstream_node.type == MASTER)
             {
@@ -929,7 +930,7 @@ standby_monitor(void)
 	 * from the upstream node to write monitoring information
 	 */
 
-	upstream_node = get_node_info(my_local_conn, local_options.cluster_name, node_info.upstream_node_id);
+	upstream_node = get_node_info(my_local_conn, local_options.cluster_name, upstream_node_id);
 
 	sprintf(sqlquery,
 			"SELECT id "
@@ -2397,7 +2398,7 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 
 	if (res == 0)
 	{
-		log_warning(_("No record found record for node %i\n"), node_id);
+		log_warning(_("No record found for node %i\n"), node_id);
 	}
 
 	return node_info;
