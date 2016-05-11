@@ -1332,6 +1332,8 @@ do_standby_clone(void)
 	char	   *first_wal_segment = NULL;
 	char	   *last_wal_segment = NULL;
 
+	char       xlog_dir[MAXLEN] = "";
+
 	PQExpBufferData event_details;
 
 
@@ -1997,15 +1999,16 @@ stop_backup:
 			 * Remove any existing WAL from the target directory, since
 			 * rsync's --exclude option doesn't do it.
 			 */
-			maxlen_snprintf(script, "rm -rf %s/pg_xlog/*",
-							local_data_directory);
-			r = system(script);
-			if (r != 0)
+
+		        maxlen_snprintf(xlog_dir, "%s/pg_xlog/", local_data_directory);
+
+			if (!rmtree(xlog_dir, false))
 			{
-				log_err(_("unable to empty local WAL directory %s/pg_xlog/\n"),
-						local_data_directory);
+				log_err(_("unable to empty local WAL directory %s\n"),
+						xlog_dir);
 				exit(ERR_BAD_RSYNC);
 			}
+
 		}
 
 		/*

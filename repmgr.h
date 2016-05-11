@@ -28,6 +28,7 @@
 #include "dbutils.h"
 #include "errcode.h"
 #include "config.h"
+#include "dirmod.h"
 
 #define MIN_SUPPORTED_VERSION		"9.3"
 #define MIN_SUPPORTED_VERSION_NUM	90300
