@@ -1412,9 +1412,6 @@ do_master_failover(void)
 		PQfinish(node_conn);
 	}
 
-	/* Close the connection to this server */
-	PQfinish(my_local_conn);
-	my_local_conn = NULL;
 
 	/*
 	 * determine which one is the best candidate to promote to master
@@ -1468,6 +1465,10 @@ do_master_failover(void)
 	if (best_candidate.node_id == local_options.node)
 	{
 		PQExpBufferData event_details;
+
+		/* Close the connection to this server */
+		PQfinish(my_local_conn);
+		my_local_conn = NULL;
 
 		initPQExpBuffer(&event_details);
 		/* wait */
@@ -1544,6 +1545,7 @@ do_master_failover(void)
 	{
 		PGconn	   *new_master_conn;
 		PQExpBufferData event_details;
+		int master_node_id;
 
 		initPQExpBuffer(&event_details);
 
@@ -1554,27 +1556,22 @@ do_master_failover(void)
 		 * Check whether the primary reappeared while we were waiting, so we
 		 * don't end up following the promotion candidate
 		 */
-		my_local_conn = establish_db_connection(local_options.conninfo, false);
-		if (my_local_conn != NULL)
+
+		master_conn = get_master_connection(my_local_conn,
+											local_options.cluster_name,
+											&master_node_id, NULL);
+
+		if (master_conn != NULL && master_node_id == failed_master.node_id)
 		{
-		int master_node_id;
+			log_notice(_("Original master reappeared - no action taken\n"));
 
-			master_conn = get_master_connection(my_local_conn,
-												local_options.cluster_name,
-												&master_node_id, NULL);
-
-			if (master_conn != NULL && master_node_id == failed_master.node_id)
-			{
-				log_notice(_("Original master reappeared - no action taken\n"));
-
-				PQfinish(master_conn);
-				/* no failover occurred but we'll want to restart connections */
-				failover_done = true;
-				return;
-			}
-
-			PQfinish(my_local_conn);
+			PQfinish(master_conn);
+			/* no failover occurred but we'll want to restart connections */
+			failover_done = true;
+			return;
 		}
+
+		PQfinish(my_local_conn);
 
 		/* XXX double-check the promotion candidate did become the new primary */
 
@@ -1590,6 +1587,9 @@ do_master_failover(void)
 			fflush(stderr);
 		}
 
+		/* Close the connection to this server */
+		PQfinish(my_local_conn);
+		my_local_conn = NULL;
 
 		log_debug(_("executing follow command: \"%s\"\n"), local_options.follow_command);
 
