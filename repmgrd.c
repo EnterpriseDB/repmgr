@@ -1712,7 +1712,7 @@ do_upstream_standby_failover(t_node_info upstream_node)
 
 		if (PQntuples(res) == 0)
 		{
-			log_err(_("no node with id %i found"), upstream_node_id);
+			log_err(_("no node with id %i found\n"), upstream_node_id);
 			PQclear(res);
 			return false;
 		}

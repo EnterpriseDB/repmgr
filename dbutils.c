@@ -612,7 +612,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 
 	if (!PQntuples(res))
 	{
-		log_notice(_("no record found for upstream server"));
+		log_notice(_("no record found for upstream server\n"));
 		PQclear(res);
 		return NULL;
 	}
