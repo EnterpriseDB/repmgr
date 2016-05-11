@@ -40,7 +40,8 @@
 /* #define REPMGR_DEBUG */
 
 static int	detect_log_facility(const char *facility);
-static void _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_list ap);
+static void _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_list ap)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 0)));
 
 int			log_type = REPMGR_STDERR;
 int			log_level = LOG_NOTICE;
@@ -48,7 +49,7 @@ int			last_log_level = LOG_NOTICE;
 int			verbose_logging = false;
 int			terse_logging = false;
 
-void
+extern void
 stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
 {
 	va_list		arglist;
