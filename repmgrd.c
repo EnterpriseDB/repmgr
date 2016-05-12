@@ -718,6 +718,7 @@ standby_monitor(void)
 	int			active_master_id;
 	const char *upstream_node_type = NULL;
 
+	bool		receiving_streamed_wal = true;
 	/*
 	 * Verify that the local node is still available - if not there's
 	 * no point in doing much else anyway
@@ -1002,9 +1003,23 @@ standby_monitor(void)
 	strncpy(last_xlog_receive_location, PQgetvalue(res, 0, 1), MAXLEN);
 	strncpy(last_xlog_replay_location, PQgetvalue(res, 0, 2), MAXLEN);
 	strncpy(last_xact_replay_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
+
 	last_xlog_receive_location_gte_replayed = (strcmp(PQgetvalue(res, 0, 4), "t") == 0)
 		? true
 		: false;
+
+	/*
+	 * If pg_last_xlog_receive_location is NULL, this means we're in archive
+	 * recovery and will need to calculate lag based on pg_last_xlog_replay_location
+	 */
+
+	/*
+	 * Replayed WAL is greater than received streamed WAL
+	 */
+	if (PQgetisnull(res, 0, 1))
+	{
+		receiving_streamed_wal = false;
+	}
 
 	PQclear(res);
 
@@ -1017,11 +1032,10 @@ standby_monitor(void)
 	 * PostgreSQL log. In the absence of a better strategy, skip attempting
 	 * to insert a monitoring record.
 	 */
-	if (last_xlog_receive_location_gte_replayed == false)
+	if (receiving_streamed_wal == true && last_xlog_receive_location_gte_replayed == false)
 	{
 		log_verbose(LOG_WARNING,
-					"Invalid replication_lag value calculated - is this standby connected to its upstream?\n");
-		return;
+					"Replayed WAL newer than received WAL - is this standby connected to its upstream?\n");
 	}
 
 	/* Get master xlog info */
@@ -1040,8 +1054,17 @@ standby_monitor(void)
 
 	/* Calculate the lag */
 	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_master_location, NULL);
-	lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
+
 	lsn_last_xlog_replay_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
+
+	if (last_xlog_receive_location_gte_replayed == false)
+	{
+		lsn_last_xlog_receive_location = lsn_last_xlog_replay_location;
+	}
+	else
+	{
+		lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
+	}
 
 	/*
 	 * Build the SQL to execute on master
