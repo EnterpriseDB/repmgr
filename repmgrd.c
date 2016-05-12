@@ -1572,7 +1572,10 @@ do_master_failover(void)
 			return;
 		}
 
+
+		/* Close the connection to this server */
 		PQfinish(my_local_conn);
+		my_local_conn = NULL;
 
 		/* XXX double-check the promotion candidate did become the new primary */
 
@@ -1588,9 +1591,6 @@ do_master_failover(void)
 			fflush(stderr);
 		}
 
-		/* Close the connection to this server */
-		PQfinish(my_local_conn);
-		my_local_conn = NULL;
 
 		log_debug(_("executing follow command: \"%s\"\n"), local_options.follow_command);
 
