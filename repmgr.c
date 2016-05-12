@@ -5067,7 +5067,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	char	   *wal_error_message = NULL;
 
 	/* Check that WAL level is set correctly */
-	if (server_version_num < 90300)
+	if (server_version_num < 90400)
 	{
 		i = guc_set(conn, "wal_level", "=", "hot_standby");
 		wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby'");
