@@ -587,7 +587,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 		upstream_conninfo = upstream_conninfo_out;
 
 	sqlquery_snprintf(sqlquery,
-					  "    SELECT un.conninfo, un.name, un.id "
+					  "    SELECT un.conninfo, un.id "
 					  "      FROM %s.repl_nodes un "
 					  "INNER JOIN %s.repl_nodes n "
 					  "        ON (un.id = n.upstream_node_id AND un.cluster = n.cluster)"
@@ -616,7 +616,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 		log_debug("no record found for upstream server\n");
 
 		sqlquery_snprintf(sqlquery,
-						  "    SELECT un.conninfo, un.name, un.id "
+						  "    SELECT un.conninfo, un.id "
 						  "      FROM %s.repl_nodes un "
 						  "     WHERE un.cluster = '%s' "
 						  "       AND un.type='master' "
@@ -647,7 +647,7 @@ get_upstream_connection(PGconn *standby_conn, char *cluster, int node_id,
 	strncpy(upstream_conninfo, PQgetvalue(res, 0, 0), MAXCONNINFO);
 
 	if (upstream_node_id_ptr != NULL)
-		*upstream_node_id_ptr = atoi(PQgetvalue(res, 0, 2));
+		*upstream_node_id_ptr = atoi(PQgetvalue(res, 0, 1));
 
 	PQclear(res);
 
