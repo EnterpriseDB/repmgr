@@ -749,10 +749,9 @@ standby_monitor(void)
 		? "master"
 		: "upstream";
 
-	// ZZZ "5 minutes"?
 	/*
-	 * Check if the upstream node is still available, if after 5 minutes of retries
-	 * we cannot reconnect, try to get a new upstream node.
+	 * Check that the upstream node is still available
+	 * If not, initiate failover process
 	 */
 
 	check_connection(&upstream_conn, upstream_node_type, upstream_conninfo);
@@ -819,11 +818,9 @@ standby_monitor(void)
 		else if (local_options.failover == AUTOMATIC_FAILOVER)
 		{
 			/*
-			 * When we returns from this function we will have a new master
+			 * When we return from this function we will have a new master
 			 * and a new master_conn
-			 */
-
-			/*
+			 *
 			 * Failover handling is handled differently depending on whether
 			 * the failed node is the master or a cascading standby
 			 */
@@ -1878,7 +1875,7 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
 static bool
 set_local_node_status(void)
 {
-        PGresult       *res;
+	PGresult       *res;
 	char		sqlquery[QUERY_STR_LEN];
 	int		active_master_node_id = NODE_NOT_FOUND;
 	char		master_conninfo[MAXLEN];
