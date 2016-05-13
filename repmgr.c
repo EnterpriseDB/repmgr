@@ -4414,6 +4414,18 @@ run_basebackup(const char *data_dir)
 		}
 	}
 
+	/*
+	 * To ensure we have all the WALs needed during basebackup execution we stream
+	 * them as the backup is taking place.
+	 * Not necessary if on 9.6 if we have replication slots set in repmgr.conf
+	 * (starting at 9.6 there is an option, which we use, to reserve the LSN at
+	 * creation time)
+	 */
+	if (server_version_num < 90600 || !options.use_replication_slots)
+	{
+	        appendPQExpBuffer(&params, " -X stream");
+	}
+
 	maxlen_snprintf(script,
 					"%s -l \"repmgr base backup\" %s %s",
 					make_pg_path("pg_basebackup"),
@@ -4426,7 +4438,7 @@ run_basebackup(const char *data_dir)
 
 	/*
 	 * As of 9.4, pg_basebackup only ever returns 0 or 1
-     */
+	 */
 
 	r = system(script);
 
