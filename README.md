@@ -1002,8 +1002,11 @@ Monitoring
 ----------
 
 When `repmgrd` is running with the option `-m/--monitoring-history`, it will
-constantly write node status information to the `repl_monitor` table, which can
-be queried easily using the view `repl_status`:
+constantly write standby node status information to the `repl_monitor` table,
+providing a near-real time overview of replication status on all nodes
+in the cluster.
+
+The view `repl_status` shows the most recent state for each node, e.g.:
 
     repmgr=# SELECT * FROM repmgr_test.repl_status;
     -[ RECORD 1 ]-------------+-----------------------------
@@ -1027,6 +1030,10 @@ As this can generate a large amount of monitoring data in the `repl_monitor`
 table , it's advisable to regularly purge historical data with
 `repmgr cluster cleanup`; use the `-k/--keep-history` to specify how
 many day's worth of data should be retained.
+
+Note that when a standby node is not streaming directly from its upstream
+node, i.e. recovering WAL from an archive, `apply_lag` will always
+appear as `0 bytes`.
 
 
 Using a witness server with repmgrd
