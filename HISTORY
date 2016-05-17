@@ -1,3 +1,12 @@
+3.1.3   2016-05-17
+        repmgrd: enable monitoring when a standby is catching up by
+          replaying archived WAL (Ian)
+        repmgrd: when upstream_node_id is NULL, assume upstream node
+          to be current master (Ian)
+        repmgrd: check for reappearance of the master node if standby
+          promotion fails (Ian)
+        improve handling of rsync failure conditions (Martín)
+
 3.1.2   2016-04-12
         Fix pg_ctl path generation in do_standby_switchover() (Ian)
         Regularly sync witness server repl_nodes table (Ian)
