@@ -87,7 +87,7 @@ static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 							  char *local_path, bool is_directory, int server_version_num);
-static int  run_basebackup(const char *data_dir);
+static int  run_basebackup(const char *data_dir, int server_version);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static void write_primary_conninfo(char *line);
@@ -1847,7 +1847,7 @@ do_standby_clone(void)
 	}
 	else
 	{
-		r = run_basebackup(local_data_directory);
+	        r = run_basebackup(local_data_directory, get_server_version(upstream_conn, NULL));
 		if (r != 0)
 		{
 			log_warning(_("standby clone: base backup failed\n"));
@@ -4374,12 +4374,12 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 
 static int
-run_basebackup(const char *data_dir)
+run_basebackup(const char *data_dir, int server_version)
 {
 	char				script[MAXLEN];
 	int					r = 0;
 	PQExpBufferData 	params;
-	TablespaceListCell *cell;
+	TablespaceListCell      *cell;
 
 	/* Create pg_basebackup command line options */
 
@@ -4421,9 +4421,19 @@ run_basebackup(const char *data_dir)
 	 * (starting at 9.6 there is an option, which we use, to reserve the LSN at
 	 * creation time)
 	 */
-	if (server_version_num < 90600 || !options.use_replication_slots)
+	if (server_version < 90600 || !options.use_replication_slots)
 	{
-	        appendPQExpBuffer(&params, " -X stream");
+	        /*
+		 * We're going to check first if the user set the xlog method in the repmgr.conf
+		 * file. We don't want to have conflits with pg_basebackup due to specifying the
+		 * method twice.
+		 */
+	        const char xlog_short[4] = "-X ";
+		const char xlog_long[14] = "--xlog-method";
+		if (strstr(options.pg_basebackup_options, xlog_short) == NULL && strstr(options.pg_basebackup_options, xlog_long) == NULL )
+		{
+	                appendPQExpBuffer(&params, " -X stream");
+		}
 	}
 
 	maxlen_snprintf(script,
