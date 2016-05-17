@@ -420,7 +420,7 @@ guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 					  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
 					  parameter, datatype, op, value, datatype);
 
-	log_verbose(LOG_DEBUG, "guc_set_typed():n%s\n", sqlquery);
+	log_verbose(LOG_DEBUG, "guc_set_typed():\n%s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
