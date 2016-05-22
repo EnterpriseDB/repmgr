@@ -28,7 +28,7 @@ static void parse_event_notifications_list(t_configuration_options *options, con
 static void tablespace_list_append(t_configuration_options *options, const char *arg);
 static void exit_with_errors(ErrorList *config_errors);
 
-const static char *_progname = '\0';
+const static char *_progname = NULL;
 static char config_file_path[MAXPGPATH];
 static bool config_file_provided = false;
 bool config_file_found = false;
