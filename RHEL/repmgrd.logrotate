@@ -1,0 +1,14 @@
+/var/log/repmgr/repmgr.log {
+	missingok
+	copytruncate
+	compress
+	notifempty
+	sharedscripts
+	create 0640 postgres postgres
+	nodateext
+	weekly
+	rotate 8
+	postrotate
+	      /bin/kill -HUP `cat /var/run/repmgr/repmgrd.pid  2>/dev/null` 2> /dev/null || true
+	endscript
+}

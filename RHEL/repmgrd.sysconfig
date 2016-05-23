@@ -15,7 +15,7 @@ REPMGRD_ENABLED=no
 #REPMGRD_BIN=/usr/bin/repmgrd
 
 # pid file
-#REPMGRD_PIDFILE=/var/lib/pgsql/repmgr/repmgrd.pid
+#REPMGRD_PIDFILE=/var/run/repmgr/repmgrd.pid
 
 # log file
-#REPMGRD_LOG=/var/lib/pgsql/repmgr/repmgrd.log
+#REPMGRD_LOG=/var/log/repmgr/repmgrd.log
