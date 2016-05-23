@@ -1195,7 +1195,7 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
 
 	/* Get current records from primary */
 	sqlquery_snprintf(sqlquery,
-					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name, active FROM %s.repl_nodes",
+					  "SELECT id, type, upstream_node_id, name, conninfo, ssh_command, priority, slot_name, active FROM %s.repl_nodes",
 					  get_repmgr_schema_quoted(masterconn));
 
 	log_verbose(LOG_DEBUG, "witness_copy_node_records():\n%s\n", sqlquery);
@@ -1231,11 +1231,12 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
 												 cluster_name,
 												 PQgetvalue(res, i, 3),
 												 PQgetvalue(res, i, 4),
-												 atoi(PQgetvalue(res, i, 5)),
-												 strlen(PQgetvalue(res, i, 6))
-													? PQgetvalue(res, i, 6)
+												 PQgetvalue(res, i, 5),
+												 atoi(PQgetvalue(res, i, 6)),
+												 strlen(PQgetvalue(res, i, 7))
+													? PQgetvalue(res, i, 7)
 												    : NULL,
-												 (strcmp(PQgetvalue(res, i, 7), "t") == 0)
+												 (strcmp(PQgetvalue(res, i, 8), "t") == 0)
 												 	? true
 												 	: false
 												 );
@@ -1268,7 +1269,7 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
  * XXX we should pass the record parameters as a struct.
  */
 bool
-create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active)
+create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, char *ssh_hostname, int priority, char *slot_name, bool active)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	char		upstream_node_id[MAXLEN];
@@ -1309,8 +1310,9 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 	sqlquery_snprintf(sqlquery,
 					  "INSERT INTO %s.repl_nodes "
 					  "       (id, type, upstream_node_id, cluster, "
-					  "        name, conninfo, slot_name, priority, active) "
-					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', %s, %i, %s) ",
+					  "        name, conninfo, ssh_hostname, slot_name, "
+					  "        priority, active) "
+					  "VALUES (%i, '%s', %s, '%s', '%s', '%s', '%s', %s, %i, %s) ",
 					  get_repmgr_schema_quoted(conn),
 					  node,
 					  type,
@@ -1318,6 +1320,7 @@ create_node_record(PGconn *conn, char *action, int node, char *type, int upstrea
 					  cluster_name,
 					  node_name,
 					  conninfo,
+					  ssh_hostname,
 					  slot_name_buf,
 					  priority,
 					  active == true ? "TRUE" : "FALSE");
@@ -1686,7 +1689,8 @@ get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info
 
 	sqlquery_snprintf(
 		sqlquery,
-		"SELECT id, type, upstream_node_id, name, conninfo, slot_name, priority, active"
+		"SELECT id, type, upstream_node_id, name, conninfo, ssh_hostname, "
+		"       slot_name, priority, active"
 		"  FROM %s.repl_nodes "
 		" WHERE cluster = '%s' "
 		"   AND id = %i",
@@ -1715,9 +1719,10 @@ get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info
 	node_info->upstream_node_id = atoi(PQgetvalue(res, 0, 2));
 	strncpy(node_info->name, PQgetvalue(res, 0, 3), MAXLEN);
 	strncpy(node_info->conninfo_str, PQgetvalue(res, 0, 4), MAXLEN);
-	strncpy(node_info->slot_name, PQgetvalue(res, 0, 5), MAXLEN);
-	node_info->priority = atoi(PQgetvalue(res, 0, 6));
-	node_info->active = (strcmp(PQgetvalue(res, 0, 7), "t") == 0)
+	strncpy(node_info->ssh_hostname_str, PQgetvalue(res, 0, 5), MAXLEN);
+	strncpy(node_info->slot_name, PQgetvalue(res, 0, 6), MAXLEN);
+	node_info->priority = atoi(PQgetvalue(res, 0, 7));
+	node_info->active = (strcmp(PQgetvalue(res, 0, 8), "t") == 0)
 		? true
 		: false;
 
