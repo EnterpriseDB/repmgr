@@ -899,7 +899,7 @@ do_cluster_matrix(void)
 
 	sqlquery_snprintf(sqlquery,
 			  "SELECT conninfo, ssh_hostname, type, name, upstream_node_name, id"
-			  "  FROM %s.repl_show_nodes",
+			  "  FROM %s.repl_show_nodes ORDER BY id",
 			  get_repmgr_schema_quoted(conn));
 
 	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
