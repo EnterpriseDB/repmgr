@@ -19,6 +19,7 @@
  *
  * WITNESS CREATE
  *
+ * CLUSTER DIAGNOSE
  * CLUSTER MATRIX
  * CLUSTER SHOW
  * CLUSTER CLEANUP
@@ -84,6 +85,7 @@
 #define CLUSTER_SHOW		   11
 #define CLUSTER_CLEANUP		   12
 #define CLUSTER_MATRIX		   13
+#define CLUSTER_DIAGNOSE	   14
 
 static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
@@ -113,6 +115,7 @@ static void do_standby_restore_config(void);
 static void do_witness_create(void);
 static void do_cluster_show(void);
 static void do_cluster_matrix(void);
+static void do_cluster_diagnose(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
 static void do_help(void);
@@ -121,6 +124,7 @@ static void exit_with_errors(void);
 static void print_error_list(ErrorList *error_list, int log_level);
 
 static bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
+static bool local_command(const char *command, PQExpBufferData *outputbuf);
 static void format_db_cli_params(const char *conninfo, char *output);
 static bool copy_file(const char *old_filename, const char *new_filename);
 
@@ -521,6 +525,8 @@ main(int argc, char **argv)
 				action = CLUSTER_SHOW;
 			else if (strcasecmp(server_cmd, "CLEANUP") == 0)
 				action = CLUSTER_CLEANUP;
+			else if (strcasecmp(server_cmd, "DIAGNOSE") == 0)
+				action = CLUSTER_DIAGNOSE;
 			else if (strcasecmp(server_cmd, "MATRIX") == 0)
 				action = CLUSTER_MATRIX;
 		}
@@ -736,6 +742,9 @@ main(int argc, char **argv)
 			break;
 		case WITNESS_CREATE:
 			do_witness_create();
+			break;
+		case CLUSTER_DIAGNOSE:
+			do_cluster_diagnose();
 			break;
 		case CLUSTER_MATRIX:
 			do_cluster_matrix();
@@ -1041,6 +1050,178 @@ do_cluster_matrix(void)
 			}
 			printf("\n");
 		}
+	}
+
+	PQclear(res);
+}
+
+static void
+do_cluster_diagnose(void)
+{
+	PGconn	   *conn;
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+	int			i, j, k;
+	const char *node_header = "Name";
+	int			name_length = strlen(node_header);
+
+	int			x, y, z, u, v;
+	int			n = 0; /* number of nodes */
+	int		   *cube;
+	char	   *p;
+	char		c;
+
+	char		command[MAXLEN];
+	PQExpBufferData command_output;
+
+	/* We need to connect to get the list of nodes */
+	log_info(_("connecting to database\n"));
+	conn = establish_db_connection(options.conninfo, true);
+
+	sqlquery_snprintf(sqlquery,
+			  "SELECT conninfo, ssh_hostname, type, name, upstream_node_name, id"
+			  "	 FROM %s.repl_show_nodes ORDER BY id",
+			  get_repmgr_schema_quoted(conn));
+
+	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Unable to retrieve node information from the database\n%s\n"),
+				PQerrorMessage(conn));
+		log_hint(_("Please check that all nodes have been registered\n"));
+
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	PQfinish(conn);
+
+	/*
+	 * Allocate an empty cube matrix
+	 *
+	 * -2 == NULL
+	 * -1 == Error
+	 *	0 == OK
+	 */
+	n = PQntuples(res);
+	cube = (int *) pg_malloc(sizeof(int) * n * n * n);
+	for (i = 0; i < n * n * n; i++)
+		cube[i] = -2;
+
+	/*
+	 * Find the maximum length of a node name
+	 */
+	for (i = 0; i < n; i++)
+	{
+		int name_length_cur;
+
+		name_length_cur	= strlen(PQgetvalue(res, i, 3));
+		if (name_length_cur > name_length)
+			name_length = name_length_cur;
+	}
+
+	for (i = 0; i < n; i++)
+	{
+		maxlen_snprintf(command,
+						"repmgr cluster matrix --csv");
+
+		initPQExpBuffer(&command_output);
+
+		if (i + 1 == options.node)
+		{
+			(void)local_command(
+				command,
+				&command_output);
+		}
+		else
+		{
+			(void)remote_command(
+				PQgetvalue(res, i, 1),
+				"postgres",
+				command,
+				&command_output);
+		}
+
+		p = command_output.data;
+
+		for (j = 0; j < n * n; j++)
+		{
+			if (sscanf(p, "%d,%d,%d", &x, &y, &z) != 3)
+			{
+				fprintf(stderr, _("cannot parse --csv output: %s\n"), p);
+				PQfinish(conn);
+				exit(ERR_INTERNAL);
+			}
+			cube[i * n * n + (x - 1) * n + (y - 1)] =
+				(z == -1) ? -1 : 0;
+			while (*p && (*p != '\n'))
+				p++;
+			if (*p == '\n')
+				p++;
+		}
+	}
+
+	printf("%*s | Id ", name_length, node_header);
+	for (i = 0; i < n; i++)
+		printf("| %2d ", i+1);
+	printf("\n");
+
+	for (i = 0; i < name_length; i++)
+		printf("-");
+	printf("-+----");
+	for (i = 0; i < n; i++)
+		printf("+----");
+	printf("\n");
+
+	for (i = 0; i < n; i++)
+	{
+		printf("%*s | %2d ", name_length,
+			   PQgetvalue(res, i, 3), i + 1);
+		for (j = 0; j < n; j++)
+		{
+			u = cube[i * n + j];
+			for (k = 1; k < n; k++)
+			{
+				/*
+				 * The value of entry (i,j) is equal to the
+				 * maximum value of all the (i,j,k). Indeed:
+				 *
+				 * - if one of the (i,j,k) is 0 (node up), then 0
+				 *	 (the node is up);
+				 *
+				 * - if the (i,j,k) are either -1 (down) or -2
+				 *	 (unknown), then -1 (the node is down);
+				 *
+				 * - if all the (i,j,k) are -2 (unknown), then -2
+				 *	 (the node is in an unknown state).
+				 */
+
+				v = cube[k * n * n + i * n + j];
+
+				if (v > u) u = v;
+			}
+
+			switch (u)
+			{
+			case -2:
+				c = '?';
+				break;
+			case -1:
+				c = 'x';
+				break;
+			case 0:
+				c = '*';
+				break;
+			default:
+				exit(ERR_INTERNAL);
+			}
+
+			printf("|  %c ", c);
+		}
+		printf("\n");
 	}
 
 	PQclear(res);
@@ -5740,6 +5921,37 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	pclose(fp);
 
 	log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
+
+	return true;
+}
+
+
+/*
+ * Execute a command locally.
+ */
+static bool
+local_command(const char *command, PQExpBufferData *outputbuf)
+{
+	FILE *fp;
+	char output[MAXLEN];
+
+	fp = popen(command, "r");
+
+	if (fp == NULL)
+	{
+		log_err(_("unable to execute local command:\n%s\n"), command);
+		return false;
+	}
+
+	/* TODO: better error handling */
+	while (fgets(output, MAXLEN, fp) != NULL)
+	{
+		appendPQExpBuffer(outputbuf, "%s", output);
+	}
+
+	pclose(fp);
+
+	log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
 
 	return true;
 }
