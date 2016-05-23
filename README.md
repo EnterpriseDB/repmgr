@@ -1601,6 +1601,61 @@ which contains connection details for the local database.
     The first column is the node's ID, and the second column represents the
     node's status (0 = master, 1 = standby, -1 = failed).
 
+* `cluster matrix`
+
+    Displays connection information for each pair of nodes in the
+    replication cluster. This command polls each registered server and
+    asks it to connect to each other node.
+
+    This command requires a valid `repmgr.conf` file on each node,
+    with the optional `ssh_hostname` parameter set.
+
+    Example 1 (all nodes up):
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  *
+         node2 |  2 |  * |  * |  *
+         node3 |  3 |  * |  * |  *
+
+    Example 2 (node1 and node2 up, node3 down):
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  x
+         node2 |  2 |  * |  * |  x
+         node3 |  3 |  ? |  ? |  ?
+
+	Each row corresponds to one server, and indicates the result of
+	testing an outbound connection from that server.
+
+	Since node3 is down, all the entries in its row are filled with
+	"?", meaning that there we cannot test outbound connections.
+
+	The other two nodes are up; the corresponding rows have "x" in the
+	column corresponding to node3, meaning that inbound connections to
+	that node have failed, and "*" in the columns corresponding to
+	node1 and node2, meaning that inbound connections to these nodes
+	have succeeded.
+
+    Example 3 (all nodes up, firewall dropping packets originating
+               from node2 and directed to port 5432 on node3)
+
+	After a long wait (same as before plus two timeouts, by default
+    one minute each), you will see the following output:
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  *
+         node2 |  2 |  * |  * |  x
+         node3 |  3 |  * |  * |  *
+
 * `cluster cleanup`
 
     Purges monitoring history from the `repl_monitor` table to prevent excessive

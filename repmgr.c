@@ -21,6 +21,7 @@
  * WITNESS REGISTER
  * WITNESS UNREGISTER
  *
+ * CLUSTER MATRIX
  * CLUSTER SHOW
  * CLUSTER CLEANUP
  *
@@ -88,7 +89,7 @@
 #define WITNESS_UNREGISTER     12
 #define CLUSTER_SHOW		   13
 #define CLUSTER_CLEANUP		   14
-
+#define CLUSTER_MATRIX		   15
 
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
@@ -130,6 +131,7 @@ static void do_witness_register(PGconn *masterconn);
 static void do_witness_unregister(void);
 
 static void do_cluster_show(void);
+static void do_cluster_matrix(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
 static void do_help(void);
@@ -704,6 +706,8 @@ main(int argc, char **argv)
 				action = CLUSTER_SHOW;
 			else if (strcasecmp(server_cmd, "CLEANUP") == 0)
 				action = CLUSTER_CLEANUP;
+			else if (strcasecmp(server_cmd, "MATRIX") == 0)
+				action = CLUSTER_MATRIX;
 		}
 		else if (strcasecmp(server_mode, "WITNESS") == 0)
 		{
@@ -939,6 +943,9 @@ main(int argc, char **argv)
 		case WITNESS_UNREGISTER:
 			do_witness_unregister();
 			break;
+		case CLUSTER_MATRIX:
+			do_cluster_matrix();
+			break;
 		case CLUSTER_SHOW:
 			do_cluster_show();
 			break;
@@ -1059,8 +1066,7 @@ do_cluster_show(void)
 		if (runtime_options.csv_mode)
 		{
 			int connection_status =
-				(PQstatus(conn) == CONNECTION_OK) ?
-				(is_standby(conn) ? 1 : 0) : -1;
+				(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
 			printf("%s,%d\n", PQgetvalue(res, i, 4), connection_status);
 		}
 		else
@@ -1071,6 +1077,177 @@ do_cluster_show(void)
 			printf("| %s\n", PQgetvalue(res, i, 0));
 		}
 		PQfinish(conn);
+	}
+
+	PQclear(res);
+}
+
+static void
+do_cluster_matrix(void)
+{
+	PGconn	   *conn;
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+	int			i, j;
+	const char *node_header = "Name";
+	int			name_length = strlen(node_header);
+
+	int         x, y;
+	int         n = 0; /* number of nodes */
+	int        *matrix;
+	char       *p;
+
+	char	    command[MAXLEN];
+	PQExpBufferData command_output;
+
+	/* We need to connect to get the list of nodes */
+	log_info(_("connecting to database\n"));
+	conn = establish_db_connection(options.conninfo, true);
+
+	sqlquery_snprintf(sqlquery,
+			  "SELECT conninfo, ssh_hostname, type, name, upstream_node_name, id"
+			  "  FROM %s.repl_show_nodes",
+			  get_repmgr_schema_quoted(conn));
+
+	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Unable to retrieve node information from the database\n%s\n"),
+				PQerrorMessage(conn));
+		log_hint(_("Please check that all nodes have been registered\n"));
+
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	PQfinish(conn);
+
+	/*
+	 * Allocate an empty matrix
+	 *
+	 * -2 == NULL
+	 * -1 == Error
+	 *  0 == OK
+	 */
+	n = PQntuples(res);
+	matrix = (int *) pg_malloc(sizeof(int) * n * n);
+	for (i = 0; i < n * n; i++)
+		matrix[i] = -2;
+
+	/*
+	 * Find the maximum length of a node name
+	 */
+	for (i = 0; i < n; i++)
+	{
+		int name_length_cur;
+
+		name_length_cur	= strlen(PQgetvalue(res, i, 3));
+		if (name_length_cur > name_length)
+			name_length = name_length_cur;
+	}
+
+	for (i = 0; i < n; i++)
+	{
+		int connection_status;
+
+		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
+
+		connection_status =
+			(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
+
+		matrix[(options.node - 1) * n + i] =
+			connection_status;
+
+		if (connection_status)
+			continue;
+
+		if (i + 1 == options.node)
+			continue;
+
+		maxlen_snprintf(command,
+						"repmgr cluster show --csv");
+
+		initPQExpBuffer(&command_output);
+
+		(void)remote_command(
+			PQgetvalue(res, i, 1),
+			"postgres",
+			command,
+			&command_output);
+
+		p = command_output.data;
+
+		for (j = 0; j < n; j++)
+		{
+			if (sscanf(p, "%d,%d", &x, &y) != 2)
+			{
+				fprintf(stderr, _("cannot parse --csv output: %s\n"), p);
+				PQfinish(conn);
+				exit(ERR_INTERNAL);
+			}
+			matrix[i * n + (x - 1)] =
+				(y == -1) ? -1 : 0;
+			while (*p && (*p != '\n'))
+				p++;
+			if (*p == '\n')
+				p++;
+		}
+
+		PQfinish(conn);
+	}
+
+	if (runtime_options.csv_mode)
+	{
+		for (i = 0; i < n; i++)
+			for (j = 0; j < n; j++)
+				printf("%d,%d,%d\n",
+					   i + 1, j + 1,
+					   matrix[i * n + j]);
+	}
+	else
+	{
+		char c;
+
+		printf("%*s | Id ", name_length, node_header);
+		for (i = 0; i < n; i++)
+			printf("| %2d ", i+1);
+		printf("\n");
+
+		for (i = 0; i < name_length; i++)
+			printf("-");
+		printf("-+----");
+		for (i = 0; i < n; i++)
+			printf("+----");
+		printf("\n");
+
+		for (i = 0; i < n; i++)
+		{
+			printf("%*s | %2d ", name_length,
+				   PQgetvalue(res, i, 3), i + 1);
+			for (j = 0; j < n; j++)
+			{
+				switch (matrix[i * n + j])
+				{
+				case -2:
+					c = '?';
+					break;
+				case -1:
+					c = 'x';
+					break;
+				case 0:
+					c = '*';
+					break;
+				default:
+					exit(ERR_INTERNAL);
+				}
+
+				printf("|  %c ", c);
+			}
+			printf("\n");
+		}
 	}
 
 	PQclear(res);
@@ -1298,6 +1475,7 @@ do_master_register(void)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
+										options.ssh_hostname,
 										options.priority,
 										repmgr_slot_name_ptr,
 										true);
@@ -1423,6 +1601,7 @@ do_standby_register(void)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
+										options.ssh_hostname,
 										options.priority,
 										repmgr_slot_name_ptr,
 										true);
@@ -5354,6 +5533,7 @@ do_witness_register(PGconn *masterconn)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
+										options.ssh_hostname,
 										options.priority,
 										NULL,
 										true);
@@ -5583,7 +5763,8 @@ do_help(void)
 	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
 			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));
-	printf(_("  --csv                               (cluster show) output in CSV mode (0 = master, 1 = standby, -1 = down)\n"));
+	printf(_("  --csv                               (cluster show, cluster matrix) output in CSV mode:\n" \
+			 "                                        0 = OK, -1 = down, -2 = unknown\n"));
 	printf(_("  -P, --pwprompt                      (witness server) prompt for password when creating users\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
 			 "                                        (default: postgres)\n"));
@@ -5602,6 +5783,7 @@ do_help(void)
 	printf(_(" witness register      - registers a witness server\n"));
 	printf(_(" witness unregister    - unregisters a witness server\n"));
 	printf(_(" cluster show          - displays information about cluster nodes\n"));
+	printf(_(" cluster matrix        - displays the cluster's connection matrix\n"));
 	printf(_(" cluster cleanup       - prunes or truncates monitoring history\n" \
 			 "                         (monitoring history creation requires repmgrd\n" \
 			 "                         with --monitoring-history option)\n"));
@@ -6252,12 +6434,12 @@ check_parameters_for_action(const int action)
 		}
 	}
 
-	/* Warn about parameters which apply to CLUSTER SHOW only */
-	if (action != CLUSTER_SHOW)
+    /* Warn about parameters which apply only to CLUSTER SHOW and CLUSTER MATRIX */
+	if (action != CLUSTER_SHOW && action != CLUSTER_MATRIX)
 	{
 		if (runtime_options.csv_mode)
 		{
-			item_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW"));
+			item_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW or CLUSTER MATRIX"));
 		}
 	}
 
@@ -6349,6 +6531,7 @@ create_schema(PGconn *conn)
 					  "  cluster          TEXT    NOT NULL, "
 					  "  name             TEXT    NOT NULL, "
 					  "  conninfo         TEXT    NOT NULL, "
+					  "  ssh_hostname     TEXT    NULL, "
 					  "  slot_name        TEXT    NULL, "
 					  "  priority         INTEGER NOT NULL, "
 					  "  active           BOOLEAN NOT NULL DEFAULT TRUE )",
@@ -6484,7 +6667,8 @@ create_schema(PGconn *conn)
 	/* CREATE VIEW repl_show_nodes  */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE VIEW %s.repl_show_nodes AS "
-			                  "SELECT rn.id, rn.conninfo, rn.type, rn.name, rn.cluster,"
+			                  "SELECT rn.id, rn.conninfo, rn.ssh_hostname, "
+					          "  rn.type, rn.name, rn.cluster,"
 			                  "  rn.priority, rn.active, sq.name AS upstream_node_name"
 			                  "  FROM %s.repl_nodes as rn"
 			                  "  LEFT JOIN %s.repl_nodes AS sq"
