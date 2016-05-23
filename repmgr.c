@@ -187,6 +187,7 @@ main(int argc, char **argv)
 		{"config-archive-dir", required_argument, NULL, 5},
 		{"pg_rewind", optional_argument, NULL, 6},
 		{"pwprompt", optional_argument, NULL, 7},
+		{"csv", no_argument, NULL, 8},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
@@ -426,6 +427,9 @@ main(int argc, char **argv)
 				break;
 			case 7:
 				runtime_options.witness_pwprompt = true;
+				break;
+			case 8:
+				runtime_options.csv_mode = true;
 				break;
 
 			default:
@@ -764,7 +768,7 @@ do_cluster_show(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-			  "SELECT conninfo, type, name, upstream_node_name"
+			  "SELECT conninfo, type, name, upstream_node_name, id"
 			  "  FROM %s.repl_show_nodes",
 			  get_repmgr_schema_quoted(conn));
 
@@ -813,21 +817,24 @@ do_cluster_show(void)
 			upstream_length = upstream_length_cur;
 	}
 
-	printf("Role      | %-*s | %-*s | Connection String\n", name_length, name_header, upstream_length, upstream_header);
-	printf("----------+-");
+	if (! runtime_options.csv_mode)
+	{
+		printf("Role      | %-*s | %-*s | Connection String\n", name_length, name_header, upstream_length, upstream_header);
+		printf("----------+-");
 
-	for (i = 0; i < name_length; i++)
-		printf("-");
+		for (i = 0; i < name_length; i++)
+			printf("-");
 
-	printf("-|-");
-	for (i = 0; i < upstream_length; i++)
-		printf("-");
+		printf("-|-");
+		for (i = 0; i < upstream_length; i++)
+			printf("-");
 
-	printf("-|-");
-	for (i = 0; i < conninfo_length; i++)
-		printf("-");
+		printf("-|-");
+		for (i = 0; i < conninfo_length; i++)
+			printf("-");
 
-	printf("\n");
+		printf("\n");
+	}
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
@@ -841,11 +848,20 @@ do_cluster_show(void)
 		else
 			strcpy(node_role, "* master");
 
-		printf("%-10s", node_role);
-		printf("| %-*s ", name_length, PQgetvalue(res, i, 2));
-		printf("| %-*s ", upstream_length, PQgetvalue(res, i, 3));
-		printf("| %s\n", PQgetvalue(res, i, 0));
-
+		if (runtime_options.csv_mode)
+		{
+			int connection_status =
+				(PQstatus(conn) == CONNECTION_OK) ?
+				(is_standby(conn) ? 1 : 0) : -1;
+			printf("%s,%d\n", PQgetvalue(res, i, 4), connection_status);
+		}
+		else
+		{
+			printf("%-10s", node_role);
+			printf("| %-*s ", name_length, PQgetvalue(res, i, 2));
+			printf("| %-*s ", upstream_length, PQgetvalue(res, i, 3));
+			printf("| %s\n", PQgetvalue(res, i, 0));
+		}
 		PQfinish(conn);
 	}
 
@@ -4129,6 +4145,7 @@ do_help(void)
 	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
 			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));
+	printf(_("  --csv                               (cluster show) output in CSV mode (0 = master, 1 = standby, -1 = down)\n"));
 /*	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));*/
 	printf(_("  -P, --pwprompt                      (witness server) prompt for password when creating users\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
@@ -4655,6 +4672,15 @@ check_parameters_for_action(const int action)
 		if (pg_rewind_supplied == true)
 		{
 			error_list_append(&cli_warnings, _("--pg_rewind can only be used when executing STANDBY SWITCHOVER"));
+		}
+	}
+
+    /* Warn about parameters which apply to CLUSTER SHOW only */
+	if (action != CLUSTER_SHOW)
+	{
+		if (runtime_options.csv_mode)
+		{
+			error_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW"));
 		}
 	}
 
