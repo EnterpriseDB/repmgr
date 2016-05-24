@@ -1694,8 +1694,6 @@ do_standby_clone(void)
 		/* XXX ensure this function does not exit on error as we'd need to stop the backup */
 		read_backup_label(local_data_directory, &backup_label);
 
-		printf("Label: %s; file: %s\n", backup_label.label, backup_label.start_wal_file);
-
 		/* Handle tablespaces */
 
 		sqlquery_snprintf(sqlquery,
@@ -2016,7 +2014,7 @@ stop_backup:
 			 * rsync's --exclude option doesn't do it.
 			 */
 
-		        maxlen_snprintf(xlog_dir, "%s/pg_xlog/", local_data_directory);
+			maxlen_snprintf(xlog_dir, "%s/pg_xlog/", local_data_directory);
 
 			if (!rmtree(xlog_dir, false))
 			{
@@ -2043,7 +2041,7 @@ stop_backup:
 		 * functionality of replication slots
 		 */
 		if (server_version_num >= 90400 &&
-				backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
+			backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
 		{
 			maxlen_snprintf(script, "rm -rf %s/pg_replslot/*",
 							local_data_directory);
@@ -2300,6 +2298,8 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 	}
 
 	(void) fclose(label_file);
+
+	log_debug(_("read_backup_label: label is %s; start wal file is %s\n"), out_backup_label->label, out_backup_label->start_wal_file);
 }
 
 static void
