@@ -121,7 +121,7 @@ static bool remote_command(const char *host, const char *user, const char *comma
 static void format_db_cli_params(const char *conninfo, char *output);
 static bool copy_file(const char *old_filename, const char *new_filename);
 
-static void read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
+static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
 /* Global variables */
 static const char *keywords[6];
@@ -1691,8 +1691,11 @@ do_standby_clone(void)
 		}
 
 		/* Read backup label copied from primary */
-		/* XXX ensure this function does not exit on error as we'd need to stop the backup */
-		read_backup_label(local_data_directory, &backup_label);
+		if (read_backup_label(local_data_directory, &backup_label) == false)
+		{
+			r = retval = ERR_BAD_BACKUP_LABEL;
+			goto stop_backup;
+		}
 
 		/* Handle tablespaces */
 
@@ -2168,8 +2171,7 @@ parse_label_lsn(const char *label_key, const char *label_value)
 	{
 		log_err(_("Couldn't parse backup label entry \"%s: %s\" as lsn"),
 				label_key, label_value);
-
-		exit(ERR_BAD_BACKUP_LABEL);
+		return InvalidXLogRecPtr;
 	}
 
 	return ptr;
@@ -2190,7 +2192,7 @@ parse_label_lsn(const char *label_key, const char *label_value)
  *
  *======================================
  */
-static void
+static bool
 read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label)
 {
 	char label_path[MAXPGPATH];
@@ -2215,7 +2217,7 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 	{
 		log_err(_("read_backup_label: could not open backup label file %s: %s"),
 				label_path, strerror(errno));
-		exit(ERR_BAD_BACKUP_LABEL);
+		return false;
 	}
 
 	log_info(_("read_backup_label: parsing backup label file '%s'\n"),
@@ -2237,7 +2239,7 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 		{
 			log_err(_("read_backup_label: line too long in backup label file. Line begins \"%s: %s\""),
 					label_key, label_value);
-			exit(ERR_BAD_BACKUP_LABEL);
+			return false;
 		}
 
 		log_debug("standby clone: got backup label entry \"%s: %s\"\n",
@@ -2249,13 +2251,18 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 			char wal_filename[MAXLEN];
 
 			nmatches = sscanf(label_value, "%" MAXLEN_STR "s (file %" MAXLEN_STR "[^)]", start_wal_location, wal_filename);
+
 			if (nmatches != 2)
 			{
 				log_err(_("read_backup_label: unable to parse \"START WAL LOCATION\" in backup label\n"));
-				exit(ERR_BAD_BACKUP_LABEL);
+				return false;
 			}
+
 			out_backup_label->start_wal_location =
 				parse_label_lsn(&label_key[0], start_wal_location);
+
+			if (out_backup_label->start_wal_location == InvalidXLogRecPtr)
+				return false;
 
 			(void) strncpy(out_backup_label->start_wal_file, wal_filename, MAXLEN);
 			out_backup_label->start_wal_file[MAXLEN-1] = '\0';
@@ -2264,6 +2271,9 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 		{
 			out_backup_label->checkpoint_location =
 				parse_label_lsn(&label_key[0], &label_value[0]);
+
+			if (out_backup_label->checkpoint_location == InvalidXLogRecPtr)
+				return false;
 		}
 		else if (strcmp(label_key, "BACKUP METHOD") == 0)
 		{
@@ -2289,6 +2299,9 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 		{
 			out_backup_label->min_failover_slot_lsn =
 				parse_label_lsn(&label_key[0], &label_value[0]);
+
+			if (out_backup_label->min_failover_slot_lsn == InvalidXLogRecPtr)
+				return false;
 		}
 		else
 		{
@@ -2300,6 +2313,8 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 	(void) fclose(label_file);
 
 	log_debug(_("read_backup_label: label is %s; start wal file is %s\n"), out_backup_label->label, out_backup_label->start_wal_file);
+
+	return true;
 }
 
 static void
