@@ -98,6 +98,22 @@ typedef struct ErrorList
 	ErrorListCell *tail;
 } ErrorList;
 
+typedef struct TablespaceDataListCell
+{
+	struct TablespaceDataListCell *next;
+	char	   *name;
+	char	   *oid;
+	char	   *location;
+	/* optional payload */
+	FILE       *f;
+} TablespaceDataListCell;
+
+typedef struct TablespaceDataList
+{
+	TablespaceDataListCell *head;
+	TablespaceDataListCell *tail;
+} TablespaceDataList;
+
 void set_progname(const char *argv0);
 const char * progname(void);
 
