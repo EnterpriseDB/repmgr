@@ -1777,7 +1777,12 @@ do_standby_clone(void)
 			       goto stop_backup;
 			}
 
-			/* Update symlinks in pg_tblspc */
+			/*
+			 * If valid tablespace mappings were provided, arrange for the affected
+			 * tablespaces to be remapped
+			 * (if no tablespace mappings were provided, non-default tablespaces
+			 * will be copied as-is by pg_basebackup or rsync)
+			 */
 			if (mapping_found == true)
 			{
 				/* 9.5 and later - create a tablespace_map file */
