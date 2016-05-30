@@ -1697,7 +1697,7 @@ do_standby_clone(void)
 			goto stop_backup;
 		}
 
-		/* Handle tablespaces */
+		/* Copy tablespaces and, if required, remap to a new location */
 
 		sqlquery_snprintf(sqlquery,
 						  " SELECT oid, pg_tablespace_location(oid) AS spclocation "
@@ -1734,7 +1734,6 @@ do_standby_clone(void)
 			appendPQExpBuffer(&tblspc_dir_src, "%s", PQgetvalue(res, i, 1));
 
 			/* Check if tablespace path matches one of the provided tablespace mappings */
-
 			if (options.tablespace_mapping.head != NULL)
 			{
 				for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
@@ -1778,14 +1777,14 @@ do_standby_clone(void)
 			}
 
 			/*
-			 * If valid tablespace mappings were provided, arrange for the affected
-			 * tablespaces to be remapped
-			 * (if no tablespace mappings were provided, non-default tablespaces
-			 * will be copied as-is by pg_basebackup or rsync)
+			 * If a valid mapping was provide for this tablespace, arrange for it to
+			 * be remapped
+			 * (if no tablespace mappings was provided, the link will be copied as-is
+			 * by pg_basebackup or rsync and no action is required)
 			 */
 			if (mapping_found == true)
 			{
-				/* 9.5 and later - create a tablespace_map file */
+				/* 9.5 and later - append to the tablespace_map file */
 				if (server_version_num >= 90500)
 				{
 					tablespace_map_rewrite = true;
@@ -1829,6 +1828,13 @@ do_standby_clone(void)
 
 		PQclear(res);
 
+		/*
+		 * For 9.5 and later, if tablespace remapping was requested, we'll need
+		 * to rewrite the tablespace map file ourselves.
+		 * The tablespace map file is read on startup and any links created by
+		 * the backend; we could do this ourselves like for pre-9.5 servers, but
+		 * it's better to rely on functionality the backend provides.
+		 */
 		if (server_version_num >= 90500 && tablespace_map_rewrite == true)
 		{
 			PQExpBufferData tablespace_map_filename;
@@ -1841,7 +1847,9 @@ do_standby_clone(void)
 			/* Unlink any existing file (it should be there, but we don't care if it isn't) */
 			if (unlink(tablespace_map_filename.data) < 0 && errno != ENOENT)
 			{
-				log_err(_("unable to remove tablespace_map file %s\n"), tablespace_map_filename.data);
+				log_err(_("unable to remove tablespace_map file %s: %s\n"),
+						tablespace_map_filename.data,
+						strerror(errno));
 
 				r = retval = ERR_BAD_BASEBACKUP;
 				goto stop_backup;
