@@ -4264,7 +4264,7 @@ create_recovery_file(const char *data_dir)
 		log_debug(_("recovery.conf: %s"), line);
 	}
 
-	/* If pg_restore_command is set, we use it as restore_cmmand in recovery.conf */
+	/* If pg_restore_command is set, we use it as restore_command in recovery.conf */
 	if (strcmp(options.pg_restore_command, "") != 0)
 	{
 		maxlen_snprintf(line, "restore_command = '%s'\n",
