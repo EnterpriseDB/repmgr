@@ -375,7 +375,7 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "tablespace_mapping") == 0)
 			tablespace_list_append(options, value);
 		else if (strcmp(name, "pg_restore_command") == 0)
-		        strncpy(options->pg_restore_command, value, MAXLEN);
+			strncpy(options->pg_restore_command, value, MAXLEN);
 		else
 		{
 			known_parameter = false;
