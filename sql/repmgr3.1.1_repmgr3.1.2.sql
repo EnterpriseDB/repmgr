@@ -27,5 +27,6 @@
 
 BEGIN;
 
-ALTER TABLE repl_nodes ALTER CONSTRAINT repl_nodes_upstream_node_id_fkey DEFERRABLE;
+ALTER TABLE repl_nodes DROP CONSTRAINT repl_nodes_upstream_node_id_fkey,
+      ADD CONSTRAINT repl_nodes_upstream_node_id_fkey FOREIGN KEY (upstream_node_id) REFERENCES repl_nodes(id) DEFERRABLE;
 COMMIT;
