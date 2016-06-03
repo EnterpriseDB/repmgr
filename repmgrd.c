@@ -827,37 +827,37 @@ standby_monitor(void)
 			 */
 			upstream_node = get_node_info(my_local_conn, local_options.cluster_name, upstream_node_id);
 
-            if (upstream_node.type == MASTER)
-            {
-                log_debug(_("failure detected on master node (%i); attempting to promote a standby\n"),
-                          node_info.upstream_node_id);
-                do_master_failover();
-            }
-            else
-            {
-                log_debug(_("failure detected on upstream node %i; attempting to reconnect to new upstream node\n"),
-                          node_info.upstream_node_id);
+			if (upstream_node.type == MASTER)
+			{
+			        log_debug(_("failure detected on master node (%i); attempting to promote a standby\n"),
+					  node_info.upstream_node_id);
+				do_master_failover();
+			}
+			else
+			{
+			        log_debug(_("failure detected on upstream node %i; attempting to reconnect to new upstream node\n"),
+					  node_info.upstream_node_id);
 
-				if (!do_upstream_standby_failover(upstream_node))
-				{
-					PQExpBufferData errmsg;
+			        if (!do_upstream_standby_failover(upstream_node))
+			        {
+				        PQExpBufferData errmsg;
 					initPQExpBuffer(&errmsg);
 
 					appendPQExpBuffer(&errmsg,
-									  _("unable to reconnect to new upstream node, terminating..."));
+							  _("unable to reconnect to new upstream node, terminating..."));
 
 					log_err("%s\n", errmsg.data);
 
 					create_event_record(master_conn,
-										&local_options,
-										local_options.node,
-										"repmgrd_shutdown",
-										false,
-										errmsg.data);
+							    &local_options,
+							    local_options.node,
+							    "repmgrd_shutdown",
+							    false,
+							    errmsg.data);
 
 					terminate(ERR_DB_CON);
 				}
-            }
+			}
 			return;
 		}
 	}
