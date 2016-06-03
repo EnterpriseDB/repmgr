@@ -1140,8 +1140,8 @@ do_master_failover(void)
 	 */
 	t_node_info nodes[FAILOVER_NODES_MAX_CHECK];
 
-    /* Store details of the failed node here */
-    t_node_info failed_master = T_NODE_INFO_INITIALIZER;
+	/* Store details of the failed node here */
+	t_node_info failed_master = T_NODE_INFO_INITIALIZER;
 
 	/* Store details of the best candidate for promotion to master here */
 	t_node_info best_candidate = T_NODE_INFO_INITIALIZER;
@@ -1151,7 +1151,7 @@ do_master_failover(void)
 			"SELECT id, conninfo, type, upstream_node_id "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
-            "   AND active IS TRUE "
+		        "   AND active IS TRUE "
 			"   AND priority > 0 "
 			" ORDER BY priority DESC, id "
 			" LIMIT %i ",
