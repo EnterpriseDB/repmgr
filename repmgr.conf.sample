@@ -19,7 +19,7 @@
 
 # Node ID and name
 # (Note: we recommend to avoid naming nodes after their initial
-#  replication funcion, as this will cause confusion when e.g.
+#  replication function, as this will cause confusion when e.g.
 #  "standby2" is promoted to primary)
 #node=2           # a unique integer
 #node_name=node2  # an arbitrary (but unique) string; we recommend using
