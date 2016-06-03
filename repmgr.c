@@ -1,3 +1,4 @@
+
 /*
  * repmgr.c - Command interpreter for the repmgr package
  * Copyright (C) 2ndQuadrant, 2010-2016
@@ -4477,16 +4478,16 @@ run_basebackup(const char *data_dir, int server_version)
 	 */
 	if (server_version < 90600 || !options.use_replication_slots)
 	{
-	        /*
+		/*
 		 * We're going to check first if the user set the xlog method in the repmgr.conf
-		 * file. We don't want to have conflits with pg_basebackup due to specifying the
+		 * file. We don't want to have conflicts with pg_basebackup due to specifying the
 		 * method twice.
 		 */
-	        const char xlog_short[4] = "-X ";
+		const char xlog_short[4] = "-X ";
 		const char xlog_long[14] = "--xlog-method";
 		if (strstr(options.pg_basebackup_options, xlog_short) == NULL && strstr(options.pg_basebackup_options, xlog_long) == NULL )
 		{
-	                appendPQExpBuffer(&params, " -X stream");
+			appendPQExpBuffer(&params, " -X stream");
 		}
 	}
 
