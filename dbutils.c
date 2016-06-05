@@ -538,7 +538,7 @@ get_conninfo_value(const char *conninfo, const char *keyword, char *output)
 
 	conninfo_options = PQconninfoParse(conninfo, NULL);
 
-	if (conninfo_options == false)
+	if (conninfo_options == NULL)
 	{
 		log_err(_("Unable to parse provided conninfo string \"%s\""), conninfo);
 		return false;
