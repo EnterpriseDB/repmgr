@@ -1412,7 +1412,7 @@ do_standby_clone(void)
 
 	if (*runtime_options.recovery_min_apply_delay)
 	{
-		if (get_server_version(upstream_conn, NULL) < 90400)
+		if (server_version_num < 90400)
 		{
 			log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
 			PQfinish(upstream_conn);
@@ -1436,7 +1436,7 @@ do_standby_clone(void)
 	{
 		TablespaceListCell *cell;
 
-		if (get_server_version(upstream_conn, NULL) < 90400 && !runtime_options.rsync_only)
+		if (server_version_num < 90400 && !runtime_options.rsync_only)
 		{
 			log_err(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
 			PQfinish(upstream_conn);
@@ -1878,7 +1878,7 @@ do_standby_clone(void)
 	}
 	else
 	{
-	        r = run_basebackup(local_data_directory, get_server_version(upstream_conn, NULL));
+		r = run_basebackup(local_data_directory, server_version_num);
 		if (r != 0)
 		{
 			log_warning(_("standby clone: base backup failed\n"));
