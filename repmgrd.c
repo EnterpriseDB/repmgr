@@ -667,7 +667,7 @@ witness_monitor(void)
 					  "            replication_lag, apply_lag )"
 					  "      VALUES(%d, %d, "
 					  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
-					  "             pg_current_xlog_location(), NULL, "
+					  "             pg_catalog.pg_current_xlog_location(), NULL, "
 					  "             0, 0) ",
 					  get_repmgr_schema_quoted(my_local_conn),
 					  master_options.node,
@@ -983,9 +983,11 @@ standby_monitor(void)
 
 	/* Get local xlog info */
 	sqlquery_snprintf(sqlquery,
-					  "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-					  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp(), "
-					  "pg_last_xlog_receive_location() >= pg_last_xlog_replay_location()");
+					  "SELECT CURRENT_TIMESTAMP, "
+					  "pg_catalog.pg_last_xlog_receive_location(), "
+					  "pg_catalog.pg_last_xlog_replay_location(), "
+					  "pg_catalog.pg_last_xact_replay_timestamp(), "
+					  "pg_catalog.pg_last_xlog_receive_location() >= pg_catalog.pg_last_xlog_replay_location()");
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1991,7 +1993,7 @@ check_cluster_configuration(PGconn *conn)
 	log_info(_("checking cluster configuration with schema '%s'\n"), get_repmgr_schema());
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT oid FROM pg_class "
+					  "SELECT oid FROM pg_catalog.pg_class "
 					  " WHERE oid = '%s.repl_nodes'::regclass ",
 			                  get_repmgr_schema_quoted(master_conn));
 	res = PQexec(conn, sqlquery);
