@@ -215,6 +215,7 @@ parse_config(t_configuration_options *options)
 	options->use_replication_slots = 0;
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->ssh_hostname, 0, sizeof(options->ssh_hostname));
+	memset(options->barman_server, 0, sizeof(options->barman_server));
 	options->failover = MANUAL_FAILOVER;
 	options->priority = DEFAULT_PRIORITY;
 	memset(options->node_name, 0, sizeof(options->node_name));
@@ -307,6 +308,8 @@ parse_config(t_configuration_options *options)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "ssh_hostname") == 0)
 			strncpy(options->ssh_hostname, value, MAXLEN);
+		else if (strcmp(name, "barman_server") == 0)
+			strncpy(options->barman_server, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
 			strncpy(options->rsync_options, value, QUERY_STR_LEN);
 		else if (strcmp(name, "ssh_options") == 0)
@@ -638,6 +641,13 @@ reload_config(t_configuration_options *orig_options)
 	if (strcmp(orig_options->ssh_hostname, new_options.ssh_hostname) != 0)
 	{
 		strcpy(orig_options->ssh_hostname, new_options.ssh_hostname);
+		config_changed = true;
+	}
+
+	/* barman_server */
+	if (strcmp(orig_options->barman_server, new_options.barman_server) != 0)
+	{
+		strcpy(orig_options->barman_server, new_options.barman_server);
 		config_changed = true;
 	}
 
