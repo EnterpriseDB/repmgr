@@ -517,7 +517,7 @@ ensure that:
 - the `barman_server` setting in `repmgr.conf` is set to the SSH
   hostname of the Barman server;
 - the `pg_restore_command` setting in `repmgr.conf` is configured to
-  use a copy of the `barman-wal-restore` script shipped with Barman
+  use a copy of the `barman-wal-restore.py` script shipped with Barman
   (see below);
 - the Barman catalogue includes at least one valid backup for this
   server.
@@ -532,7 +532,7 @@ ensure that:
 > corresponding to the value of `barman_server` in `repmgr.conf`. See
 > the "Host" section in `man 5 ssh_config` for more details.
 
-`barman-wal-restore` is a short shell script provided by the Barman
+`barman-wal-restore.py` is a Python script provided by the Barman
 development team, which must be copied in a location accessible to
 `repmgr`, and marked as executable; `pg_restore_command` must then be
 set as follows:
@@ -540,16 +540,16 @@ set as follows:
     <script> <Barman hostname> <cluster_name> %f %p 
 
 For instance, suppose that we have installed Barman on the `barmansrv`
-host, and that we have placed a copy of `barman-wal-restore` into the
-`/usr/local/bin` directory. First, we ensure that the script is
+host, and that we have placed a copy of `barman-wal-restore.py` into
+the `/usr/local/bin` directory. First, we ensure that the script is
 executable:
 
-    sudo chmod +x /usr/local/bin/barman-wal-restore
+    sudo chmod +x /usr/local/bin/barman-wal-restore.py
 
 Then we check that `repmgr.conf` includes the following lines:
 
 	barman_server=barmansrv
-	pg_restore_command=/usr/local/bin/barman-wal-restore barmansrv test %f %p
+	pg_restore_command=/usr/local/bin/barman-wal-restore.py barmansrv test %f %p
 
 Now we can clone a standby using the Barman server:
 
@@ -560,6 +560,10 @@ Now we can clone a standby using the Barman server:
     [2016-06-12 20:08:36] [NOTICE] you can now start your PostgreSQL server
     [2016-06-12 20:08:36] [HINT] for example : pg_ctl -D 9.5/data start
     [2016-06-12 20:08:36] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
+
+> *NOTE*: `barman-wal-restore.py` supports command line switches to
+> control parallelism (`--parallel=N`) and compression (`--bzip2`,
+> `--gzip`).
 
 ### Dealing with PostgreSQL configuration files
 
