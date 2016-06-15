@@ -695,7 +695,7 @@ standby_monitor(void)
 {
 	PGresult   *res;
 	char		monitor_standby_timestamp[MAXLEN];
-	char		last_wal_master_location[MAXLEN];
+	char		last_wal_primary_location[MAXLEN];
 	char		last_xlog_receive_location[MAXLEN];
 	char		last_xlog_replay_location[MAXLEN];
 	char		last_xact_replay_timestamp[MAXLEN];
@@ -1048,17 +1048,23 @@ standby_monitor(void)
 		return;
 	}
 
-	strncpy(last_wal_master_location, PQgetvalue(res, 0, 0), MAXLEN);
+	strncpy(last_wal_primary_location, PQgetvalue(res, 0, 0), MAXLEN);
 	PQclear(res);
 
 	/* Calculate the lag */
-	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_master_location, NULL);
+	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_primary_location, NULL);
 
 	lsn_last_xlog_replay_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
 
 	if (last_xlog_receive_location_gte_replayed == false)
 	{
+		/*
+		 * We're not receiving streaming WAL - in this case the receive location
+		 * equals the last replayed location
+		 */
+
 		lsn_last_xlog_receive_location = lsn_last_xlog_replay_location;
+		strncpy(last_xlog_receive_location, last_xlog_replay_location, MAXLEN);
 	}
 	else
 	{
@@ -1091,7 +1097,7 @@ standby_monitor(void)
 					  local_options.node,
 					  monitor_standby_timestamp,
 					  last_xact_replay_timestamp,
-					  last_wal_master_location,
+					  last_wal_primary_location,
 					  last_xlog_receive_location,
 					  (long long unsigned int)(lsn_master_current_xlog_location - lsn_last_xlog_receive_location),
 					  (long long unsigned int)(lsn_last_xlog_receive_location - lsn_last_xlog_replay_location));
