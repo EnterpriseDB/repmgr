@@ -72,7 +72,7 @@ typedef struct
 	char		pg_bindir[MAXLEN];
 	char		pg_ctl_options[MAXLEN];
 	char		pg_basebackup_options[MAXLEN];
-        char            pg_restore_command[MAXLEN];
+	char		restore_command[MAXLEN];
 	char		logfile[MAXLEN];
 	int			monitor_interval_secs;
 	int			retry_promote_interval_secs;

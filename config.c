@@ -224,7 +224,7 @@ parse_config(t_configuration_options *options)
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	memset(options->pg_ctl_options, 0, sizeof(options->pg_ctl_options));
 	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
-	memset(options->pg_restore_command, 0, sizeof(options->pg_restore_command));
+	memset(options->restore_command, 0, sizeof(options->restore_command));
 
 	/* default master_response_timeout is 60 seconds */
 	options->master_response_timeout = 60;
@@ -374,8 +374,8 @@ parse_config(t_configuration_options *options)
 			parse_event_notifications_list(options, value);
 		else if (strcmp(name, "tablespace_mapping") == 0)
 			tablespace_list_append(options, value);
-		else if (strcmp(name, "pg_restore_command") == 0)
-			strncpy(options->pg_restore_command, value, MAXLEN);
+		else if (strcmp(name, "restore_command") == 0)
+			strncpy(options->restore_command, value, MAXLEN);
 		else
 		{
 			known_parameter = false;

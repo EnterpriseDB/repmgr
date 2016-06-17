@@ -116,7 +116,7 @@
 # You can specify a restore_command to be used in the recovery.conf that
 # will be placed in the cloned standby
 #
-# pg_restore_command = cp /path/to/archived/wals/%f %p
+# restore_command = cp /path/to/archived/wals/%f %p
 
 # Failover settings (repmgrd)
 # ---------------------------
