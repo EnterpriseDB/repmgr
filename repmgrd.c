@@ -1040,7 +1040,12 @@ standby_monitor(void)
 					"Replayed WAL newer than received WAL - is this standby connected to its upstream?\n");
 	}
 
-	/* Get master xlog info */
+	/*
+	 * Get master xlog position
+	 *
+	 * TODO: investigate whether pg_current_xlog_insert_location() would be a better
+	 * choice; see: https://github.com/2ndQuadrant/repmgr/issues/189
+	 */
 	sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_xlog_location()");
 
 	res = PQexec(master_conn, sqlquery);
