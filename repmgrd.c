@@ -706,6 +706,9 @@ standby_monitor(void)
 	XLogRecPtr	lsn_last_xlog_receive_location;
 	XLogRecPtr	lsn_last_xlog_replay_location;
 
+	long long unsigned int replication_lag;
+	long long unsigned int apply_lag;
+
 	int			connection_retries,
 				ret;
 	bool		did_retry = false;
@@ -1051,24 +1054,39 @@ standby_monitor(void)
 	strncpy(last_wal_primary_location, PQgetvalue(res, 0, 0), MAXLEN);
 	PQclear(res);
 
-	/* Calculate the lag */
+
 	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_primary_location, NULL);
-
 	lsn_last_xlog_replay_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
+	lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
 
+
+	/* Calculate apply lag */
 	if (last_xlog_receive_location_gte_replayed == false)
 	{
 		/*
 		 * We're not receiving streaming WAL - in this case the receive location
 		 * equals the last replayed location
 		 */
-
-		lsn_last_xlog_receive_location = lsn_last_xlog_replay_location;
+		apply_lag = 0;
 		strncpy(last_xlog_receive_location, last_xlog_replay_location, MAXLEN);
 	}
 	else
 	{
-		lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
+		apply_lag = (long long unsigned int)lsn_last_xlog_receive_location - lsn_last_xlog_replay_location;
+	}
+
+	/* Calculate replication lag */
+	if (lsn_master_current_xlog_location >= lsn_last_xlog_receive_location)
+	{
+		replication_lag = (long long unsigned int)(lsn_master_current_xlog_location - lsn_last_xlog_receive_location);
+	}
+	else
+	{
+		/* This should never happen, but in case it does set lag to zero */
+		log_warning("Master xlog (%s) location appears less than standby receive location (%s)\n",
+					last_wal_primary_location,
+					last_xlog_receive_location);
+		replication_lag = 0;
 	}
 
 	/*
@@ -1099,8 +1117,8 @@ standby_monitor(void)
 					  last_xact_replay_timestamp,
 					  last_wal_primary_location,
 					  last_xlog_receive_location,
-					  (long long unsigned int)(lsn_master_current_xlog_location - lsn_last_xlog_receive_location),
-					  (long long unsigned int)(lsn_last_xlog_receive_location - lsn_last_xlog_replay_location));
+					  replication_lag,
+					  apply_lag);
 
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We will
