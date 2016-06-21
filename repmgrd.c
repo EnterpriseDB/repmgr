@@ -832,18 +832,18 @@ standby_monitor(void)
 
 			if (upstream_node.type == MASTER)
 			{
-			        log_debug(_("failure detected on master node (%i); attempting to promote a standby\n"),
-					  node_info.upstream_node_id);
+				log_debug(_("failure detected on master node (%i); attempting to promote a standby\n"),
+						  node_info.upstream_node_id);
 				do_master_failover();
 			}
 			else
 			{
-			        log_debug(_("failure detected on upstream node %i; attempting to reconnect to new upstream node\n"),
-					  node_info.upstream_node_id);
+				log_debug(_("failure detected on upstream node %i; attempting to reconnect to new upstream node\n"),
+						  node_info.upstream_node_id);
 
-			        if (!do_upstream_standby_failover(upstream_node))
-			        {
-				        PQExpBufferData errmsg;
+				if (!do_upstream_standby_failover(upstream_node))
+				{
+					PQExpBufferData errmsg;
 					initPQExpBuffer(&errmsg);
 
 					appendPQExpBuffer(&errmsg,
@@ -2024,8 +2024,10 @@ check_cluster_configuration(PGconn *conn)
 	sqlquery_snprintf(sqlquery,
 					  "SELECT oid FROM pg_catalog.pg_class "
 					  " WHERE oid = '%s.repl_nodes'::regclass ",
-			                  get_repmgr_schema_quoted(master_conn));
+					  get_repmgr_schema_quoted(master_conn));
+
 	res = PQexec(conn, sqlquery);
+
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("PQexec failed: %s\n"), PQerrorMessage(conn));
