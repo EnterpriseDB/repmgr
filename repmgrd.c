@@ -1195,7 +1195,6 @@ do_master_failover(void)
 	{
 		log_err(_("unable to retrieve node records: %s\n"), PQerrorMessage(my_local_conn));
 		PQclear(res);
-		PQfinish(my_local_conn);
 		terminate(ERR_DB_QUERY);
 	}
 
@@ -1569,12 +1568,12 @@ do_master_failover(void)
 					log_notice(_("Original master reappeared before this standby was promoted - no action taken\n"));
 
 					PQfinish(master_conn);
+					master_conn = NULL;
+
 					/* no failover occurred but we'll want to restart connections */
 					failover_done = true;
 					return;
 				}
-
-				PQfinish(my_local_conn);
 			}
 
 			log_err(_("promote command failed. You could check and try it manually.\n"));
@@ -2446,6 +2445,8 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 							errmsg.data);
 
 		PQfinish(conn);
+		conn = NULL;
+
 		terminate(ERR_DB_QUERY);
 	}
 
