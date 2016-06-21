@@ -43,6 +43,7 @@ typedef struct s_node_info
 	t_server_type type;
 	char		  name[MAXLEN];
 	char		  conninfo_str[MAXLEN];
+	char		  ssh_hostname_str[MAXLEN];
 	char		  slot_name[MAXLEN];
 	int			  priority;
 	bool		  active;
@@ -68,6 +69,7 @@ typedef struct s_replication_slot
   NODE_NOT_FOUND, \
   NO_UPSTREAM_NODE, \
   UNKNOWN, \
+  "", \
   "", \
   "", \
   "", \
@@ -122,7 +124,7 @@ bool		start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint);
 bool		stop_backup(PGconn *conn, char *last_wal_segment);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 bool		witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster_name);
-bool		create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active);
+bool		create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, char *ssh_hostname, int priority, char *slot_name, bool active);
 bool		delete_node_record(PGconn *conn, int node, char *action);
 int			get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info);
 bool        update_node_record_status(PGconn *conn, char *cluster_name, int this_node_id, char *type, int upstream_node_id, bool active);

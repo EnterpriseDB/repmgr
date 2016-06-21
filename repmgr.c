@@ -19,6 +19,8 @@
  *
  * WITNESS CREATE
  *
+ * CLUSTER DIAGNOSE
+ * CLUSTER MATRIX
  * CLUSTER SHOW
  * CLUSTER CLEANUP
  *
@@ -82,7 +84,8 @@
 #define WITNESS_CREATE		   10
 #define CLUSTER_SHOW		   11
 #define CLUSTER_CLEANUP		   12
-
+#define CLUSTER_MATRIX		   13
+#define CLUSTER_DIAGNOSE	   14
 
 static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
@@ -97,6 +100,12 @@ static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
 static bool update_node_record_set_master(PGconn *conn, int this_node_id);
+static void tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location);
+static int  get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list);
+static int  get_tablespace_data_barman(char *, TablespaceDataList *);
+
+static char *string_skip_prefix(const char *prefix, char *string);
+static char *string_remove_trailing_newlines(char *string);
 
 static char *make_pg_path(char *file);
 
@@ -111,6 +120,8 @@ static void do_standby_archive_config(void);
 static void do_standby_restore_config(void);
 static void do_witness_create(void);
 static void do_cluster_show(void);
+static void do_cluster_matrix(void);
+static void do_cluster_diagnose(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
 static void do_help(void);
@@ -119,6 +130,7 @@ static void exit_with_errors(void);
 static void print_error_list(ErrorList *error_list, int log_level);
 
 static bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
+static bool local_command(const char *command, PQExpBufferData *outputbuf);
 static void format_db_cli_params(const char *conninfo, char *output);
 static bool copy_file(const char *old_filename, const char *new_filename);
 
@@ -189,6 +201,7 @@ main(int argc, char **argv)
 		{"pg_rewind", optional_argument, NULL, 6},
 		{"pwprompt", optional_argument, NULL, 7},
 		{"csv", no_argument, NULL, 8},
+		{"without-barman", no_argument, NULL, 9},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
@@ -432,6 +445,9 @@ main(int argc, char **argv)
 			case 8:
 				runtime_options.csv_mode = true;
 				break;
+			case 9:
+				runtime_options.without_barman = true;
+				break;
 
 			default:
 			{
@@ -519,6 +535,10 @@ main(int argc, char **argv)
 				action = CLUSTER_SHOW;
 			else if (strcasecmp(server_cmd, "CLEANUP") == 0)
 				action = CLUSTER_CLEANUP;
+			else if (strcasecmp(server_cmd, "DIAGNOSE") == 0)
+				action = CLUSTER_DIAGNOSE;
+			else if (strcasecmp(server_cmd, "MATRIX") == 0)
+				action = CLUSTER_MATRIX;
 		}
 		else if (strcasecmp(server_mode, "WITNESS") == 0)
 		{
@@ -682,6 +702,18 @@ main(int argc, char **argv)
 		log_warning(_("-w/--wal-keep-segments has no effect when replication slots in use\n"));
 	}
 
+	/*
+	 * STANDBY CLONE in Barman mode is incompatible with
+	 * `use_replication_slots`.
+	 */
+
+	if (action == STANDBY_CLONE &&
+		! runtime_options.without_barman
+		&& strcmp(options.barman_server, "") == 0)
+		{
+			log_err(_("STANDBY CLONE in Barman mode is incompatible with configuration option \"use_replication_slots\""));
+		}
+
 	/* Initialise the repmgr schema name */
 	maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 			 options.cluster_name);
@@ -732,6 +764,12 @@ main(int argc, char **argv)
 			break;
 		case WITNESS_CREATE:
 			do_witness_create();
+			break;
+		case CLUSTER_DIAGNOSE:
+			do_cluster_diagnose();
+			break;
+		case CLUSTER_MATRIX:
+			do_cluster_matrix();
 			break;
 		case CLUSTER_SHOW:
 			do_cluster_show();
@@ -852,8 +890,7 @@ do_cluster_show(void)
 		if (runtime_options.csv_mode)
 		{
 			int connection_status =
-				(PQstatus(conn) == CONNECTION_OK) ?
-				(is_standby(conn) ? 1 : 0) : -1;
+				(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
 			printf("%s,%d\n", PQgetvalue(res, i, 4), connection_status);
 		}
 		else
@@ -864,6 +901,349 @@ do_cluster_show(void)
 			printf("| %s\n", PQgetvalue(res, i, 0));
 		}
 		PQfinish(conn);
+	}
+
+	PQclear(res);
+}
+
+static void
+do_cluster_matrix(void)
+{
+	PGconn	   *conn;
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+	int			i, j;
+	const char *node_header = "Name";
+	int			name_length = strlen(node_header);
+
+	int         x, y;
+	int         n = 0; /* number of nodes */
+	int        *matrix;
+	char       *p;
+
+	char	    command[MAXLEN];
+	PQExpBufferData command_output;
+
+	/* We need to connect to get the list of nodes */
+	log_info(_("connecting to database\n"));
+	conn = establish_db_connection(options.conninfo, true);
+
+	sqlquery_snprintf(sqlquery,
+			  "SELECT conninfo, ssh_hostname, type, name, upstream_node_name, id"
+			  "  FROM %s.repl_show_nodes ORDER BY id",
+			  get_repmgr_schema_quoted(conn));
+
+	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Unable to retrieve node information from the database\n%s\n"),
+				PQerrorMessage(conn));
+		log_hint(_("Please check that all nodes have been registered\n"));
+
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	PQfinish(conn);
+
+	/*
+	 * Allocate an empty matrix
+	 *
+	 * -2 == NULL
+	 * -1 == Error
+	 *  0 == OK
+	 */
+	n = PQntuples(res);
+	matrix = (int *) pg_malloc(sizeof(int) * n * n);
+	for (i = 0; i < n * n; i++)
+		matrix[i] = -2;
+
+	/*
+	 * Find the maximum length of a node name
+	 */
+	for (i = 0; i < n; i++)
+	{
+		int name_length_cur;
+
+		name_length_cur	= strlen(PQgetvalue(res, i, 3));
+		if (name_length_cur > name_length)
+			name_length = name_length_cur;
+	}
+
+	for (i = 0; i < n; i++)
+	{
+		int connection_status;
+
+		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
+
+		connection_status =
+			(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
+
+		matrix[(options.node - 1) * n + i] =
+			connection_status;
+
+		if (connection_status)
+			continue;
+
+		if (i + 1 == options.node)
+			continue;
+
+		maxlen_snprintf(command,
+						"repmgr cluster show --csv");
+
+		initPQExpBuffer(&command_output);
+
+		(void)remote_command(
+			PQgetvalue(res, i, 1),
+			"postgres",
+			command,
+			&command_output);
+
+		p = command_output.data;
+
+		for (j = 0; j < n; j++)
+		{
+			if (sscanf(p, "%d,%d", &x, &y) != 2)
+			{
+				fprintf(stderr, _("cannot parse --csv output: %s\n"), p);
+				PQfinish(conn);
+				exit(ERR_INTERNAL);
+			}
+			matrix[i * n + (x - 1)] =
+				(y == -1) ? -1 : 0;
+			while (*p && (*p != '\n'))
+				p++;
+			if (*p == '\n')
+				p++;
+		}
+
+		PQfinish(conn);
+	}
+
+	if (runtime_options.csv_mode)
+	{
+		for (i = 0; i < n; i++)
+			for (j = 0; j < n; j++)
+				printf("%d,%d,%d\n",
+					   i + 1, j + 1,
+					   matrix[i * n + j]);
+	}
+	else
+	{
+		char c;
+
+		printf("%*s | Id ", name_length, node_header);
+		for (i = 0; i < n; i++)
+			printf("| %2d ", i+1);
+		printf("\n");
+
+		for (i = 0; i < name_length; i++)
+			printf("-");
+		printf("-+----");
+		for (i = 0; i < n; i++)
+			printf("+----");
+		printf("\n");
+
+		for (i = 0; i < n; i++)
+		{
+			printf("%*s | %2d ", name_length,
+				   PQgetvalue(res, i, 3), i + 1);
+			for (j = 0; j < n; j++)
+			{
+				switch (matrix[i * n + j])
+				{
+				case -2:
+					c = '?';
+					break;
+				case -1:
+					c = 'x';
+					break;
+				case 0:
+					c = '*';
+					break;
+				default:
+					exit(ERR_INTERNAL);
+				}
+
+				printf("|  %c ", c);
+			}
+			printf("\n");
+		}
+	}
+
+	PQclear(res);
+}
+
+static void
+do_cluster_diagnose(void)
+{
+	PGconn	   *conn;
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+	int			i, j, k;
+	const char *node_header = "Name";
+	int			name_length = strlen(node_header);
+
+	int			x, y, z, u, v;
+	int			n = 0; /* number of nodes */
+	int		   *cube;
+	char	   *p;
+	char		c;
+
+	char		command[MAXLEN];
+	PQExpBufferData command_output;
+
+	/* We need to connect to get the list of nodes */
+	log_info(_("connecting to database\n"));
+	conn = establish_db_connection(options.conninfo, true);
+
+	sqlquery_snprintf(sqlquery,
+			  "SELECT conninfo, ssh_hostname, type, name, upstream_node_name, id"
+			  "	 FROM %s.repl_show_nodes ORDER BY id",
+			  get_repmgr_schema_quoted(conn));
+
+	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_err(_("Unable to retrieve node information from the database\n%s\n"),
+				PQerrorMessage(conn));
+		log_hint(_("Please check that all nodes have been registered\n"));
+
+		PQclear(res);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+	PQfinish(conn);
+
+	/*
+	 * Allocate an empty cube matrix
+	 *
+	 * -2 == NULL
+	 * -1 == Error
+	 *	0 == OK
+	 */
+	n = PQntuples(res);
+	cube = (int *) pg_malloc(sizeof(int) * n * n * n);
+	for (i = 0; i < n * n * n; i++)
+		cube[i] = -2;
+
+	/*
+	 * Find the maximum length of a node name
+	 */
+	for (i = 0; i < n; i++)
+	{
+		int name_length_cur;
+
+		name_length_cur	= strlen(PQgetvalue(res, i, 3));
+		if (name_length_cur > name_length)
+			name_length = name_length_cur;
+	}
+
+	for (i = 0; i < n; i++)
+	{
+		maxlen_snprintf(command,
+						"repmgr cluster matrix --csv");
+
+		initPQExpBuffer(&command_output);
+
+		if (i + 1 == options.node)
+		{
+			(void)local_command(
+				command,
+				&command_output);
+		}
+		else
+		{
+			(void)remote_command(
+				PQgetvalue(res, i, 1),
+				"postgres",
+				command,
+				&command_output);
+		}
+
+		p = command_output.data;
+
+		for (j = 0; j < n * n; j++)
+		{
+			if (sscanf(p, "%d,%d,%d", &x, &y, &z) != 3)
+			{
+				fprintf(stderr, _("cannot parse --csv output: %s\n"), p);
+				PQfinish(conn);
+				exit(ERR_INTERNAL);
+			}
+			cube[i * n * n + (x - 1) * n + (y - 1)] =
+				(z == -1) ? -1 : 0;
+			while (*p && (*p != '\n'))
+				p++;
+			if (*p == '\n')
+				p++;
+		}
+	}
+
+	printf("%*s | Id ", name_length, node_header);
+	for (i = 0; i < n; i++)
+		printf("| %2d ", i+1);
+	printf("\n");
+
+	for (i = 0; i < name_length; i++)
+		printf("-");
+	printf("-+----");
+	for (i = 0; i < n; i++)
+		printf("+----");
+	printf("\n");
+
+	for (i = 0; i < n; i++)
+	{
+		printf("%*s | %2d ", name_length,
+			   PQgetvalue(res, i, 3), i + 1);
+		for (j = 0; j < n; j++)
+		{
+			u = cube[i * n + j];
+			for (k = 1; k < n; k++)
+			{
+				/*
+				 * The value of entry (i,j) is equal to the
+				 * maximum value of all the (i,j,k). Indeed:
+				 *
+				 * - if one of the (i,j,k) is 0 (node up), then 0
+				 *	 (the node is up);
+				 *
+				 * - if the (i,j,k) are either -1 (down) or -2
+				 *	 (unknown), then -1 (the node is down);
+				 *
+				 * - if all the (i,j,k) are -2 (unknown), then -2
+				 *	 (the node is in an unknown state).
+				 */
+
+				v = cube[k * n * n + i * n + j];
+
+				if (v > u) u = v;
+			}
+
+			switch (u)
+			{
+			case -2:
+				c = '?';
+				break;
+			case -1:
+				c = 'x';
+				break;
+			case 0:
+				c = '*';
+				break;
+			default:
+				exit(ERR_INTERNAL);
+			}
+
+			printf("|  %c ", c);
+		}
+		printf("\n");
 	}
 
 	PQclear(res);
@@ -1091,6 +1471,7 @@ do_master_register(void)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
+										options.ssh_hostname,
 										options.priority,
 										repmgr_slot_name_ptr,
 										true);
@@ -1193,6 +1574,7 @@ do_standby_register(void)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
+										options.ssh_hostname,
 										options.priority,
 										repmgr_slot_name_ptr,
 										true);
@@ -1306,17 +1688,168 @@ do_standby_unregister(void)
 	return;
 }
 
+void
+tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location)
+{
+	TablespaceDataListCell *cell;
+
+	cell = (TablespaceDataListCell *) pg_malloc0(sizeof(TablespaceDataListCell));
+
+	if (cell == NULL)
+	{
+		log_err(_("unable to allocate memory; terminating.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	cell->oid      = pg_malloc(1 + strlen(oid     ));
+	cell->name     = pg_malloc(1 + strlen(name    ));
+	cell->location = pg_malloc(1 + strlen(location));
+
+	strncpy(cell->oid     , oid     , 1 + strlen(oid     ));
+	strncpy(cell->name    , name    , 1 + strlen(name    ));
+	strncpy(cell->location, location, 1 + strlen(location));
+
+	if (list->tail)
+		list->tail->next = cell;
+	else
+		list->head = cell;
+
+	list->tail = cell;
+}
+
+int
+get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
+{
+	int i, retval;
+	char sqlquery[QUERY_STR_LEN];
+	PGresult *res;
+
+	sqlquery_snprintf(sqlquery,
+					  " SELECT spcname, oid, pg_tablespace_location(oid) AS spclocation "
+					  "   FROM pg_tablespace "
+					  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
+
+	res = PQexec(upstream_conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_err(_("unable to execute tablespace query: %s\n"),
+					PQerrorMessage(upstream_conn));
+
+			PQclear(res);
+
+			return retval;
+		}
+
+	for (i = 0; i < PQntuples(res); i++)
+		tablespace_data_append(list, PQgetvalue(res, i, 0), PQgetvalue(res, i, 1),
+							   PQgetvalue(res, i, 2));
+
+	PQclear(res);
+	return retval;
+}
+
+char *
+string_skip_prefix(const char *prefix, char *string)
+{
+	int n;
+
+	n = strlen(prefix);
+
+	if (strncmp(prefix, string, n))
+		return NULL;
+	else
+		return string + n;
+}
+
+char *
+string_remove_trailing_newlines(char *string)
+{
+	int n;
+
+	n = strlen(string) - 1;
+
+	while (n >= 0 && string[n] == '\n')
+		string[n] = 0;
+
+	return string;
+}
+
+int
+get_tablespace_data_barman
+( char *tablespace_data_barman,
+  TablespaceDataList *tablespace_list)
+{
+	/*
+	 * Example:
+	 * [('main', 24674, '/var/lib/postgresql/tablespaces/9.5/main'), ('alt', 24678, '/var/lib/postgresql/tablespaces/9.5/alt')]
+	 */
+
+	char name[MAXLEN];
+	char oid[MAXLEN];
+	char location[MAXPGPATH];
+	char *p = tablespace_data_barman;
+	int i;
+
+	tablespace_list->head = NULL;
+	tablespace_list->tail = NULL;
+
+	p = string_skip_prefix("[", p);
+
+	while (*p == '(')
+	{
+		p = string_skip_prefix("('", p);
+		if (p == NULL) return -1;
+
+		i = strcspn(p, "'");
+		strncpy(name, p, i);
+		name[i] = 0;
+
+		p = string_skip_prefix("', ", p + i);
+		if (p == NULL) return -1;
+
+		i = strcspn(p, ",");
+		strncpy(oid, p, i);
+		oid[i] = 0;
+
+		p = string_skip_prefix(", '", p + i);
+		if (p == NULL) return -1;
+
+		i = strcspn(p, "'");
+		strncpy(location, p, i);
+		location[i] = 0;
+
+		p = string_skip_prefix("')", p + i);
+		if (p == NULL) return -1;
+
+		tablespace_data_append (tablespace_list, name, oid, location);
+
+		if (*p == ']')
+			break;
+
+		p = string_skip_prefix(", ", p);
+		if (p == NULL) return -1;
+	}
+
+	return SUCCESS;
+}
 
 static void
 do_standby_clone(void)
 {
 	PGconn	   *primary_conn = NULL;
-	PGconn	   *upstream_conn;
+	PGconn	   *upstream_conn = NULL;
 	PGresult   *res;
+
+	enum {
+		barman,
+		rsync,
+		pg_basebackup
+	}			mode;
 
 	char		sqlquery[QUERY_STR_LEN];
 
-	int			server_version_num;
+	int			server_version_num = -1;
 
 	char		cluster_size[MAXLEN];
 
@@ -1330,6 +1863,8 @@ do_standby_clone(void)
 
 	char		master_data_directory[MAXPGPATH];
 	char		local_data_directory[MAXPGPATH];
+
+	char		local_repmgr_directory[MAXPGPATH];
 
 	char		master_config_file[MAXPGPATH] = "";
 	char		local_config_file[MAXPGPATH] = "";
@@ -1353,6 +1888,15 @@ do_standby_clone(void)
 
 	PQExpBufferData event_details;
 
+	/*
+	 * Detecting the appropriate mode
+	 */
+	if (runtime_options.rsync_only)
+		mode = rsync;
+	else if (strcmp(options.barman_server, "") != 0 && ! runtime_options.without_barman)
+		mode = barman;
+	else
+		mode = pg_basebackup;
 
 	/*
 	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
@@ -1366,7 +1910,10 @@ do_standby_clone(void)
 				   runtime_options.dest_dir);
 	}
 
-	/* Connection parameters for master only */
+	if (mode != barman)
+		{
+
+    /* Connection parameters for master only */
 	keywords[0] = "host";
 	values[0] = runtime_options.host;
 	keywords[1] = "port";
@@ -1550,6 +2097,8 @@ do_standby_clone(void)
 
 	PQclear(res);
 
+	}
+
 	/*
 	 * target directory (-D/--pgdata) provided - use that as new data directory
 	 * (useful when executing backup on local machine only or creating the backup
@@ -1561,6 +2110,12 @@ do_standby_clone(void)
 		strncpy(local_config_file, runtime_options.dest_dir, MAXPGPATH);
 		strncpy(local_hba_file, runtime_options.dest_dir, MAXPGPATH);
 		strncpy(local_ident_file, runtime_options.dest_dir, MAXPGPATH);
+	}
+	else if (mode == barman)
+	{
+		log_err(_("Barman mode requires a destination directory\n"));
+		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
+		exit(ERR_BAD_CONFIG);
 	}
 	/*
 	 * Otherwise use the same data directory as on the remote host
@@ -1577,9 +2132,9 @@ do_standby_clone(void)
 	}
 
 	/*
-	 * When using rsync only, we need to check the SSH connection early
+	 * In rsync mode, we need to check the SSH connection early
 	 */
-	if (runtime_options.rsync_only)
+	if (mode == rsync)
 	{
 		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
 		if (r != 0)
@@ -1607,8 +2162,11 @@ do_standby_clone(void)
 	 * If replication slots requested, create appropriate slot on
 	 * the primary; this must be done before pg_start_backup() is
 	 * issued, either by us or by pg_basebackup.
+	 *
+	 * Replication slots are not supported (and not very useful
+	 * anyway) in Barman mode.
 	 */
-	if (options.use_replication_slots)
+	if (mode != barman && options.use_replication_slots)
 	{
 		if (create_replication_slot(upstream_conn, repmgr_slot_name, server_version_num) == false)
 		{
@@ -1617,22 +2175,324 @@ do_standby_clone(void)
 		}
 	}
 
-	if (runtime_options.rsync_only)
+	if (mode == rsync)
 	{
 		log_notice(_("starting backup (using rsync)...\n"));
 	}
-	else
+	else if (mode == barman)
+	{
+		log_notice(_("getting backup from Barman...\n"));
+	}
+	else if (mode == pg_basebackup)
 	{
 		log_notice(_("starting backup (using pg_basebackup)...\n"));
 		if (runtime_options.fast_checkpoint == false)
 			log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option\n"));
 	}
 
-	if (runtime_options.rsync_only)
+	if (mode == barman || mode == rsync)
 	{
+		char		command[MAXLEN];
+		char		filename[MAXLEN];
+		char		buf[MAXLEN];
+		char		backup_directory[MAXLEN];
+		char        backup_id[MAXLEN] = "";
+		char        datadir_list_filename[MAXLEN];
+		char       *p, *q;
+		PQExpBufferData command_output;
+		TablespaceDataList tablespace_list = { NULL, NULL };
+		TablespaceDataListCell *cell_t;
+
 		PQExpBufferData tablespace_map;
 		bool		tablespace_map_rewrite = false;
 
+		if (mode == barman)
+	{
+		bool		command_ok;
+		/*
+		 * Check that there is at least one valid backup
+		 */
+
+		maxlen_snprintf(command, "ssh %s barman show-backup %s latest > /dev/null",
+						options.barman_server,
+						options.cluster_name);
+		command_ok = local_command(command, NULL);
+		if (command_ok == false)
+		{
+			log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
+					options.barman_server);
+			log_hint(_("Refer to the Barman documentation for more information\n"));
+			exit(ERR_INTERNAL);
+		}
+
+		/*
+		 * Locate Barman's backup directory
+		 */
+
+		maxlen_snprintf(command, "ssh %s barman show-server %s | grep 'backup_directory'",
+						options.barman_server,
+						options.cluster_name);
+
+		initPQExpBuffer(&command_output);
+		(void)local_command(
+			command,
+			&command_output);
+
+		p = string_skip_prefix("\tbackup_directory: ", command_output.data);
+		if (p == NULL)
+		{
+			log_err("Unexpected output from Barman: %s\n",
+					command_output.data);
+			exit(ERR_INTERNAL);
+		}
+
+		strncpy(backup_directory, p, MAXLEN);
+		string_remove_trailing_newlines(backup_directory);
+
+		termPQExpBuffer(&command_output);
+
+		/*
+		 * Create the local repmgr subdirectory
+		 */
+
+		maxlen_snprintf(local_repmgr_directory, "%s/repmgr",   local_data_directory  );
+		maxlen_snprintf(datadir_list_filename,  "%s/data.txt", local_repmgr_directory);
+
+		if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
+		{
+			log_err(_("unable to use directory %s ...\n"),
+					local_repmgr_directory);
+			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+			r = ERR_BAD_CONFIG;
+			retval = ERR_BAD_CONFIG;
+			goto stop_backup;
+		}
+
+		/*
+		 * Read the list of backup files into a local file. In the
+		 * process:
+		 *
+		 * - determine the backup ID;
+		 * - check, and remove, the prefix;
+		 * - detect tablespaces;
+		 * - filter files in one list per tablespace;
+		 */
+
+		{
+			FILE *fi; /* input stream */
+			FILE *fd; /* output for data.txt */
+			char prefix[MAXLEN];
+			char output[MAXLEN];
+			int n;
+
+			maxlen_snprintf(command, "ssh %s barman list-files --target=data %s latest",
+							options.barman_server,
+							options.cluster_name);
+
+			fi = popen(command, "r");
+			if (fi == NULL)
+			{
+				log_err("Cannot launch command: %s\n", command);
+				exit(ERR_INTERNAL);
+			}
+
+			fd = fopen(datadir_list_filename, "w");
+			if (fd == NULL)
+			{
+				log_err("Cannot open file: %s\n", datadir_list_filename);
+				exit(ERR_INTERNAL);
+			}
+
+			maxlen_snprintf(prefix, "%s/base/", backup_directory);
+			while (fgets(output, MAXLEN, fi) != NULL)
+			{
+				/*
+				 * Remove prefix
+				 */
+				p = string_skip_prefix(prefix, output);
+				if (p == NULL)
+				{
+					log_err("Unexpected output from \"barman list-files\": %s\n",
+							output);
+					exit(ERR_INTERNAL);
+				}
+
+				/*
+				 * Remove and note backup ID; copy backup.info
+				 */
+				if (! strcmp(backup_id, ""))
+				{
+					FILE *fi2;
+
+					n = strcspn(p, "/");
+
+					strncpy(backup_id, p, n);
+
+					strncat(prefix,backup_id,MAXLEN-1);
+					strncat(prefix,"/",MAXLEN-1);
+					p = string_skip_prefix(backup_id, p);
+					p = string_skip_prefix("/", p);
+
+					/*
+					 * Copy backup.info
+					 */
+					maxlen_snprintf(command,
+									"rsync -a %s:%s/base/%s/backup.info %s",
+									options.barman_server,
+									backup_directory,
+									backup_id,
+									local_repmgr_directory);
+					(void)local_command(
+						command,
+						&command_output);
+
+					/*
+					 * Get tablespace data
+					 */
+					maxlen_snprintf(filename, "%s/backup.info",
+									local_repmgr_directory);
+					fi2 = fopen(filename, "r");
+					if (fi2 == NULL)
+					{
+						log_err("Cannot open file: %s\n", filename);
+						exit(ERR_INTERNAL);
+					}
+					while (fgets(buf, MAXLEN, fi2) != NULL)
+					{
+						q = string_skip_prefix("tablespaces=", buf);
+						if (q != NULL)
+						{
+							get_tablespace_data_barman
+								(q, &tablespace_list);
+						}
+						q = string_skip_prefix("version=", buf);
+						if (q != NULL)
+						{
+							server_version_num = strtol(q, NULL, 10);
+						}
+					}
+					fclose(fi2);
+					unlink(filename);
+
+					continue;
+				}
+
+				/*
+				 * Skip backup.info
+				 */
+				if (string_skip_prefix("backup.info", p))
+					continue;
+
+				/*
+				 * Filter data directory files
+				 */
+				if ((q = string_skip_prefix("data/", p)) != NULL)
+				{
+					fputs(q, fd);
+					continue;
+				}
+
+				/*
+				 * Filter other files (i.e. tablespaces)
+				 */
+				for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
+				{
+					if ((q = string_skip_prefix(cell_t->oid, p)) != NULL && *q == '/')
+					{
+						if (cell_t->f == NULL)
+						{
+							maxlen_snprintf(filename, "%s/%s.txt", local_repmgr_directory, cell_t->oid);
+							cell_t->f = fopen(filename, "w");
+							if (cell_t->f == NULL)
+							{
+								log_err("Cannot open file: %s\n", filename);
+								exit(ERR_INTERNAL);
+							}
+						}
+						fputs(q + 1, cell_t->f);
+						break;
+					}
+				}
+			}
+
+			fclose(fd);
+
+			pclose(fi);
+		}
+
+		/* For 9.5 and greater, create our own tablespace_map file */
+		if (server_version_num >= 90500)
+		{
+			initPQExpBuffer(&tablespace_map);
+		}
+
+		/*
+		 * As of Barman version 1.6.1, the file structure of a backup
+		 * is as follows:
+		 *
+		 * base/ - base backup
+		 * wals/ - WAL files associated to the backup
+		 *
+		 * base/<ID> - backup files
+		 *
+		 *   here ID has the standard timestamp form yyyymmddThhmmss
+		 *
+		 * base/<ID>/backup.info - backup metadata, in text format
+		 * base/<ID>/data        - data directory
+		 * base/<ID>/<OID>       - tablespace with the given oid
+		 */
+
+		/*
+		 * Copy all backup files from the Barman server
+		 */
+
+		maxlen_snprintf(command,
+						"rsync --progress -a --files-from=%s %s:%s/base/%s/data %s",
+						datadir_list_filename,
+						options.barman_server,
+						backup_directory,
+						backup_id,
+						local_data_directory);
+		(void)local_command(
+			command,
+			&command_output);
+		unlink(datadir_list_filename);
+
+		/*
+		 * We must create some PGDATA subdirectories because they are
+		 * not included in the Barman backup.
+		 */
+		{
+			const char* const dirs[] = {
+				/* Only from 9.5 */
+				"pg_commit_ts",
+				/* Only from 9.4 */
+				"pg_dynshmem", "pg_logical",
+				/* Already in 9.3 */
+				"pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
+				"pg_twophase", "pg_xlog", 0
+			};
+			const int vers[] = {
+				90500,
+				90400, 90400,
+				0, 0, 0, 0, 0,
+				0, 0, 0
+			};
+			for (i = 0; dirs[i]; i++)
+			{
+				if (vers[i] > 0 && server_version_num < vers[i])
+					continue;
+				maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
+				if(mkdir(filename, S_IRWXU) != 0 && errno != EEXIST)
+				{
+					log_err(_("unable to create the %s directory\n"), dirs[i]);
+					exit(ERR_INTERNAL);
+				}
+			}
+		}
+	}
+    else if (mode == rsync)
+	{
 		/* For 9.5 and greater, create our own tablespace_map file */
 		if (server_version_num >= 90500)
 		{
@@ -1699,47 +2559,22 @@ do_standby_clone(void)
 		}
 
 		/* Copy tablespaces and, if required, remap to a new location */
+		retval = get_tablespace_data(upstream_conn, &tablespace_list);
+		if(retval != SUCCESS) goto stop_backup;
+	}
 
-		sqlquery_snprintf(sqlquery,
-						  " SELECT oid, pg_tablespace_location(oid) AS spclocation "
-						  "   FROM pg_tablespace "
-						  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
-
-		res = PQexec(upstream_conn, sqlquery);
-
-		if (PQresultStatus(res) != PGRES_TUPLES_OK)
-		{
-			log_err(_("unable to execute tablespace query: %s\n"),
-					PQerrorMessage(upstream_conn));
-
-			PQclear(res);
-
-			r = retval = ERR_DB_QUERY;
-			goto stop_backup;
-		}
-
-		for (i = 0; i < PQntuples(res); i++)
+		for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
 		{
 			bool mapping_found = false;
-			PQExpBufferData tblspc_dir_src;
-			PQExpBufferData tblspc_dir_dst;
-			PQExpBufferData tblspc_oid;
 			TablespaceListCell *cell;
-
-			initPQExpBuffer(&tblspc_dir_src);
-			initPQExpBuffer(&tblspc_dir_dst);
-			initPQExpBuffer(&tblspc_oid);
-
-
-			appendPQExpBuffer(&tblspc_oid, "%s", PQgetvalue(res, i, 0));
-			appendPQExpBuffer(&tblspc_dir_src, "%s", PQgetvalue(res, i, 1));
+			char *tblspc_dir_dest;
 
 			/* Check if tablespace path matches one of the provided tablespace mappings */
 			if (options.tablespace_mapping.head != NULL)
 			{
 				for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
 				{
-					if (strcmp(tblspc_dir_src.data, cell->old_dir) == 0)
+					if (strcmp(cell_t->location, cell->old_dir) == 0)
 					{
 						mapping_found = true;
 						break;
@@ -1749,19 +2584,50 @@ do_standby_clone(void)
 
 			if (mapping_found == true)
 			{
-				appendPQExpBuffer(&tblspc_dir_dst, "%s", cell->new_dir);
+				tblspc_dir_dest = cell->new_dir;
 				log_debug(_("mapping source tablespace '%s' (OID %s) to '%s'\n"),
-						  tblspc_dir_src.data, tblspc_oid.data, tblspc_dir_dst.data);
+						  cell_t->location, cell_t->oid, tblspc_dir_dest);
 			}
 			else
 			{
-				appendPQExpBuffer(&tblspc_dir_dst, "%s",  tblspc_dir_src.data);
+				tblspc_dir_dest = cell_t->location;
 			}
 
+			/*
+			 * Tablespace file copy
+			 */
 
+			if (mode == barman)
+		{
+			create_pg_dir(cell_t->location, false);
+
+			if (cell_t->f != NULL) /* cell_t->f == NULL iff the tablespace is empty */
+			{
+				maxlen_snprintf(command,
+								"rsync --progress -a --files-from=%s/%s.txt %s:%s/base/%s/%s %s",
+								local_repmgr_directory,
+								cell_t->oid,
+								options.barman_server,
+								backup_directory,
+								backup_id,
+								cell_t->oid,
+								tblspc_dir_dest);
+				(void)local_command(
+					command,
+					&command_output);
+				fclose(cell_t->f);
+				maxlen_snprintf(filename,
+								"%s/%s.txt",
+								local_repmgr_directory,
+								cell_t->oid);
+				unlink(filename);
+			}
+		}
+		else if (mode == rsync)
+		{
 			/* Copy tablespace directory */
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  tblspc_dir_src.data, tblspc_dir_dst.data,
+								  cell_t->location, tblspc_dir_dest,
 								  true, server_version_num);
 
 			/*
@@ -1773,9 +2639,10 @@ do_standby_clone(void)
 			if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
 			{
 			       log_warning(_("standby clone: failed copying tablespace directory '%s'\n"),
-					            tblspc_dir_src.data);
+					            cell_t->location);
 			       goto stop_backup;
 			}
+		}
 
 			/*
 			 * If a valid mapping was provide for this tablespace, arrange for it to
@@ -1783,7 +2650,7 @@ do_standby_clone(void)
 			 * (if no tablespace mappings was provided, the link will be copied as-is
 			 * by pg_basebackup or rsync and no action is required)
 			 */
-			if (mapping_found == true)
+			if (mapping_found == true || mode == barman)
 			{
 				/* 9.5 and later - append to the tablespace_map file */
 				if (server_version_num >= 90500)
@@ -1791,8 +2658,8 @@ do_standby_clone(void)
 					tablespace_map_rewrite = true;
 					appendPQExpBuffer(&tablespace_map,
 									  "%s %s\n",
-									  tblspc_oid.data,
-									  tblspc_dir_dst.data);
+									  cell_t->oid,
+									  tblspc_dir_dest);
 				}
 				/* Pre-9.5, we have to manipulate the symlinks in pg_tblspc/ ourselves */
 				else
@@ -1802,23 +2669,19 @@ do_standby_clone(void)
 					initPQExpBuffer(&tblspc_symlink);
 					appendPQExpBuffer(&tblspc_symlink, "%s/pg_tblspc/%s",
 									  local_data_directory,
-									  tblspc_oid.data);
+									  cell_t->oid);
 
 					if (unlink(tblspc_symlink.data) < 0 && errno != ENOENT)
 					{
 						log_err(_("unable to remove tablespace symlink %s\n"), tblspc_symlink.data);
 
-						PQclear(res);
-
 						r = retval = ERR_BAD_BASEBACKUP;
 						goto stop_backup;
 					}
 
-					if (symlink(tblspc_dir_dst.data, tblspc_symlink.data) < 0)
+					if (symlink(tblspc_dir_dest, tblspc_symlink.data) < 0)
 					{
-						log_err(_("unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dst.data);
-
-						PQclear(res);
+						log_err(_("unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dest);
 
 						r = retval = ERR_BAD_BASEBACKUP;
 						goto stop_backup;
@@ -1827,8 +2690,6 @@ do_standby_clone(void)
 			}
 		}
 
-		PQclear(res);
-
 		/*
 		 * For 9.5 and later, if tablespace remapping was requested, we'll need
 		 * to rewrite the tablespace map file ourselves.
@@ -1836,6 +2697,7 @@ do_standby_clone(void)
 		 * the backend; we could do this ourselves like for pre-9.5 servers, but
 		 * it's better to rely on functionality the backend provides.
 		 */
+
 		if (server_version_num >= 90500 && tablespace_map_rewrite == true)
 		{
 			PQExpBufferData tablespace_map_filename;
@@ -1896,7 +2758,9 @@ do_standby_clone(void)
 	 * standby server as on the primary?
 	 */
 
-	if (external_config_file_copy_required && !runtime_options.ignore_external_config_files)
+	if (mode != barman &&
+		external_config_file_copy_required &&
+		!runtime_options.ignore_external_config_files)
 	{
 		log_notice(_("copying configuration files from master\n"));
 		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
@@ -1955,7 +2819,7 @@ do_standby_clone(void)
 	 * When using rsync, copy pg_control file last, emulating the base backup
 	 * protocol.
 	 */
-	if (runtime_options.rsync_only)
+	if (mode == rsync)
 	{
 		maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
 
@@ -1987,7 +2851,7 @@ do_standby_clone(void)
 
 stop_backup:
 
-	if (runtime_options.rsync_only && pg_start_backup_executed)
+	if (mode == rsync && pg_start_backup_executed)
 	{
 		log_notice(_("notifying master about backup completion...\n"));
 		if (stop_backup(upstream_conn, last_wal_segment) == false)
@@ -2019,7 +2883,7 @@ stop_backup:
 	 * files which won't be removed by rsync and which could
 	 * be stale or are otherwise not required
 	 */
-	if (runtime_options.rsync_only)
+	if (mode == rsync)
 	{
 		char	script[MAXLEN];
 		char	label_path[MAXPGPATH];
@@ -2084,13 +2948,18 @@ stop_backup:
 	/* Finally, write the recovery.conf file */
 	create_recovery_file(local_data_directory);
 
-	if (runtime_options.rsync_only)
+	/* In Barman mode, remove local_repmgr_directory */
+	if (mode == barman)
+		rmdir(local_repmgr_directory);
+
+	switch(mode)
 	{
+	case rsync:
 		log_notice(_("standby clone (using rsync) complete\n"));
-	}
-	else
-	{
+	case pg_basebackup:
 		log_notice(_("standby clone (using pg_basebackup) complete\n"));
+	case barman:
+		log_notice(_("standby clone (from Barman) complete\n"));
 	}
 
 	/*
@@ -4041,6 +4910,7 @@ do_witness_create(void)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
+										options.ssh_hostname,
 										options.priority,
 										NULL,
 										true);
@@ -4161,6 +5031,7 @@ do_help(void)
 	printf(_("Command-specific configuration options:\n"));
 	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
 	printf(_("  -r, --rsync-only                    (standby clone) use only rsync, not pg_basebackup\n"));
+	printf(_("  --without-barman                    (standby clone) do not use Barman even if configured\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    (standby clone, follow) set recovery_min_apply_delay\n" \
 			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
 	printf(_("  --ignore-external-config-files      (standby clone) don't copy configuration files located\n" \
@@ -4174,7 +5045,8 @@ do_help(void)
 	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
 			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));
-	printf(_("  --csv                               (cluster show) output in CSV mode (0 = master, 1 = standby, -1 = down)\n"));
+	printf(_("  --csv                               (cluster show, cluster matrix) output in CSV mode:\n" \
+			 "                                        0 = OK, -1 = down, -2 = unknown\n"));
 /*	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));*/
 	printf(_("  -P, --pwprompt                      (witness server) prompt for password when creating users\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
@@ -4192,6 +5064,7 @@ do_help(void)
 	printf(_(" standby switchover    - switch this standby with the current master\n"));
 	printf(_(" witness create        - creates a new witness server\n"));
 	printf(_(" cluster show          - displays information about cluster nodes\n"));
+	printf(_(" cluster matrix        - displays the cluster's connection matrix\n"));
 	printf(_(" cluster cleanup       - prunes or truncates monitoring history\n" \
 			 "                         (monitoring history creation requires repmgrd\n" \
 			 "                         with --monitoring-history option)\n"));
@@ -4704,12 +5577,12 @@ check_parameters_for_action(const int action)
 		}
 	}
 
-    /* Warn about parameters which apply to CLUSTER SHOW only */
-	if (action != CLUSTER_SHOW)
+    /* Warn about parameters which apply only to CLUSTER SHOW and CLUSTER MATRIX */
+	if (action != CLUSTER_SHOW && action != CLUSTER_MATRIX)
 	{
 		if (runtime_options.csv_mode)
 		{
-			error_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW"));
+			error_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW or CLUSTER MATRIX"));
 		}
 	}
 
@@ -4800,6 +5673,7 @@ create_schema(PGconn *conn)
 					  "  cluster          TEXT    NOT NULL, "
 					  "  name             TEXT    NOT NULL, "
 					  "  conninfo         TEXT    NOT NULL, "
+					  "  ssh_hostname     TEXT    NULL, "
 					  "  slot_name        TEXT    NULL, "
 					  "  priority         INTEGER NOT NULL, "
 					  "  active           BOOLEAN NOT NULL DEFAULT TRUE )",
@@ -4935,7 +5809,8 @@ create_schema(PGconn *conn)
 	/* CREATE VIEW repl_show_nodes  */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE VIEW %s.repl_show_nodes AS "
-			                  "SELECT rn.id, rn.conninfo, rn.type, rn.name, rn.cluster,"
+			                  "SELECT rn.id, rn.conninfo, rn.ssh_hostname, "
+					          "  rn.type, rn.name, rn.cluster,"
 			                  "  rn.priority, rn.active, sq.name AS upstream_node_name"
 			                  "  FROM %s.repl_nodes as rn"
 			                  "  LEFT JOIN %s.repl_nodes AS sq"
@@ -5258,10 +6133,10 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 	}
 	/*
-	 * physical replication slots not available or not requested -
+	 * physical replication slots not available or not requested, and Barman mode not used -
 	 * ensure some reasonably high value set for `wal_keep_segments`
 	 */
-	else
+	else if (! runtime_options.without_barman && strcmp(options.barman_server, "") == 0)
 	{
 		i = guc_set_typed(conn, "wal_keep_segments", ">=",
 						  runtime_options.wal_keep_segments, "integer");
@@ -5558,6 +6433,47 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
 
 	return true;
+}
+
+
+/*
+ * Execute a command locally. If outputbuf == NULL, discard the
+ * output.
+ */
+static bool
+local_command(const char *command, PQExpBufferData *outputbuf)
+{
+	FILE *fp;
+	char output[MAXLEN];
+	int retval;
+
+	if (outputbuf == NULL)
+	{
+		retval = system(command);
+		return (retval == 0) ? true : false;
+	}
+	else
+	{
+		fp = popen(command, "r");
+
+		if (fp == NULL)
+		{
+			log_err(_("unable to execute local command:\n%s\n"), command);
+			return false;
+		}
+
+		/* TODO: better error handling */
+		while (fgets(output, MAXLEN, fp) != NULL)
+		{
+			appendPQExpBuffer(outputbuf, "%s", output);
+		}
+
+		pclose(fp);
+
+		log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
+
+		return true;
+	}
 }
 
 

@@ -71,6 +71,7 @@ typedef struct
 	bool		fast_checkpoint;
 	bool		ignore_external_config_files;
 	bool		csv_mode;
+	bool		without_barman;
 	char		pg_ctl_mode[MAXLEN];
 	char		masterport[MAXLEN];
 	/*
@@ -96,7 +97,7 @@ typedef struct
 	bool		initdb_no_pwprompt;
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "smart", "", "", "", "", "", 0, "", "", "", false }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, "smart", "", "", "", "", "", 0, "", "", "", false }
 
 struct BackupLabel
 {

@@ -57,6 +57,8 @@ typedef struct
 	int			node;
 	int         upstream_node;
 	char		conninfo[MAXLEN];
+	char		ssh_hostname[MAXLEN];
+	char		barman_server[MAXLEN];
 	int			failover;
 	int			priority;
 	char		node_name[MAXLEN];
@@ -83,7 +85,7 @@ typedef struct
 	TablespaceList tablespace_mapping;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", "", "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
 
 typedef struct ErrorListCell
 {
@@ -96,6 +98,22 @@ typedef struct ErrorList
 	ErrorListCell *head;
 	ErrorListCell *tail;
 } ErrorList;
+
+typedef struct TablespaceDataListCell
+{
+	struct TablespaceDataListCell *next;
+	char	   *name;
+	char	   *oid;
+	char	   *location;
+	/* optional payload */
+	FILE       *f;
+} TablespaceDataListCell;
+
+typedef struct TablespaceDataList
+{
+	TablespaceDataListCell *head;
+	TablespaceDataListCell *tail;
+} TablespaceDataList;
 
 void set_progname(const char *argv0);
 const char * progname(void);
