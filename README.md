@@ -1549,8 +1549,8 @@ which contains connection details for the local database.
     These commands display connection information for each pair of
     nodes in the replication cluster.
 
-    - `cluster matrix` polls each registered server and asks it to
-      connect to each other node;
+    - `cluster matrix` runs a `cluster show` on each node and arranges
+      the results in a matrix, recording success or failure;
 
 	- `cluster diagnose` runs a `cluster matrix` on each node and
       combines the results in a single matrix.
