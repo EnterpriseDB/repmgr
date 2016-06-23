@@ -399,7 +399,7 @@ main(int argc, char **argv)
 			case STANDBY:
 
 				/* We need the node id of the master server as well as a connection to it */
-				log_info(_("connecting to master node '%s'\n"),
+				log_info(_("connecting to master node of cluster '%s'\n"),
 						 local_options.cluster_name);
 
 				master_conn = get_master_connection(my_local_conn,
