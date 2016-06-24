@@ -219,6 +219,9 @@ parse_config(t_configuration_options *options)
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
+	memset(options->stop_command, 0, sizeof(options->stop_command));
+	memset(options->start_command, 0, sizeof(options->start_command));
+	memset(options->restart_command, 0, sizeof(options->restart_command));
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
@@ -339,6 +342,12 @@ parse_config(t_configuration_options *options)
 			strncpy(options->promote_command, value, MAXLEN);
 		else if (strcmp(name, "follow_command") == 0)
 			strncpy(options->follow_command, value, MAXLEN);
+		else if (strcmp(name, "stop_command") == 0)
+			strncpy(options->stop_command, value, MAXLEN);
+		else if (strcmp(name, "start_command") == 0)
+			strncpy(options->start_command, value, MAXLEN);
+		else if (strcmp(name, "restart_command") == 0)
+			strncpy(options->restart_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
 			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", &config_errors, false);
 		/*
