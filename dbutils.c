@@ -31,6 +31,7 @@
 char repmgr_schema[MAXLEN] = "";
 char repmgr_schema_quoted[MAXLEN] = "";
 
+static int _get_node_record(PGconn *conn, char *cluster, char *sqlquery, t_node_info *node_info);
 
 PGconn *
 _establish_db_connection(const char *conninfo, const bool exit_on_error, const bool log_notice)
@@ -1681,8 +1682,7 @@ int
 get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info)
 {
 	char		sqlquery[QUERY_STR_LEN];
-	PGresult   *res;
-	int         ntuples;
+	int		    result;
 
 	sqlquery_snprintf(
 		sqlquery,
@@ -1696,6 +1696,49 @@ get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info
 
 	log_verbose(LOG_DEBUG, "get_node_record():\n%s\n", sqlquery);
 
+	result = _get_node_record(conn, cluster, sqlquery, node_info);
+
+	if (result == 0)
+	{
+		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %i\n", node_id);
+	}
+
+	return result;
+}
+
+int
+get_node_record_by_name(PGconn *conn, char *cluster, const char *node_name, t_node_info *node_info)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	int result;
+
+	sqlquery_snprintf(
+		sqlquery,
+		"SELECT id, type, upstream_node_id, name, conninfo, slot_name, priority, active"
+		"  FROM %s.repl_nodes "
+		" WHERE cluster = '%s' "
+		"   AND node_name = %s",
+		get_repmgr_schema_quoted(conn),
+		cluster,
+		node_name);
+
+	result = _get_node_record(conn, cluster, sqlquery, node_info);
+
+	if (result == 0)
+	{
+		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %s\n", node_name);
+	}
+
+	return result;
+}
+
+
+static int
+_get_node_record(PGconn *conn, char *cluster, char *sqlquery, t_node_info *node_info)
+{
+	int         ntuples;
+	PGresult   *res;
+
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -1706,7 +1749,6 @@ get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info
 
 	if (ntuples == 0)
 	{
-		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %i\n", node_id);
 		return 0;
 	}
 
@@ -1725,6 +1767,9 @@ get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info
 
 	return ntuples;
 }
+
+
+
 
 
 int

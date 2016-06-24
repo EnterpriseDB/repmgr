@@ -1127,8 +1127,9 @@ do_standby_register(void)
 	PGconn	   *master_conn;
 	int			ret;
 
-
 	bool		record_created;
+	t_node_info node_record;
+	int			node_result;
 
 	log_info(_("connecting to standby database\n"));
 	conn = establish_db_connection(options.conninfo, true);
@@ -1179,6 +1180,28 @@ do_standby_register(void)
 
 		if (node_record_deleted == false)
 		{
+			PQfinish(master_conn);
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/*
+	 * Check that an active node with the same node_name doesn't exist already
+	 */
+
+	node_result = get_node_record_by_name(master_conn,
+										  options.cluster_name,
+										  options.node_name,
+										  &node_record);
+
+	if (node_result)
+	{
+		if (node_record.active == true)
+		{
+			log_err(_("Node %i exists already with node_name \"%s\""),
+					  node_record.node_id,
+					  options.node_name);
 			PQfinish(master_conn);
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);

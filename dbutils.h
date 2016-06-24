@@ -125,6 +125,7 @@ bool		witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *c
 bool		create_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active);
 bool		delete_node_record(PGconn *conn, int node, char *action);
 int			get_node_record(PGconn *conn, char *cluster, int node_id, t_node_info *node_info);
+int			get_node_record_by_name(PGconn *conn, char *cluster, const char *node_name, t_node_info *node_info);
 bool        update_node_record_status(PGconn *conn, char *cluster_name, int this_node_id, char *type, int upstream_node_id, bool active);
 bool        update_node_record_set_upstream(PGconn *conn, char *cluster_name, int this_node_id, int new_upstream_node_id);
 bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
