@@ -32,6 +32,12 @@
 #   https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
 #
 #conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
+#
+# If repmgrd is in use, consider explicitly setting `connect_timeout` in the
+# conninfo string to determine the length of time which elapses before
+# a network connection attempt is abandoned; for details see:
+#
+#   https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
 
 # Optional configuration items
 # ============================

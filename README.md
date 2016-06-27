@@ -237,14 +237,18 @@ both servers.
 On the master server, a PostgreSQL instance must be initialised and running.
 The following replication settings must be included in `postgresql.conf`:
 
+
+    # Enable replication connections; set this figure to at least one more
+    # than the number of standbys which will connect to this server
+    # (note that repmgr will execute `pg_basebackup` in WAL streaming mode,
+    # which requires two free WAL senders)
+
+    max_wal_senders = 10
+
     # Ensure WAL files contain enough information to enable read-only queries
     # on the standby
 
     wal_level = 'hot_standby'
-
-    # Enable up to 10 replication connections
-
-    max_wal_senders = 10
 
     # How much WAL to retain on the master to allow a temporarily
     # disconnected standby to catch up again. The larger this is, the
@@ -259,16 +263,10 @@ The following replication settings must be included in `postgresql.conf`:
 
     hot_standby = on
 
-    # If archive_mode is enabled, check that 'archive_command' is non empty
-    # (however it's not practical to check that it actually represents a valid
-    # command).
-    # 
-    # From PostgreSQL 9.5, archive_mode can be one of 'off', 'on' or 'always'
-    # so for ease of backwards compatibility, rather than explicitly check for an
-    # enabled mode, check that it's not "off".
+    # Enable WAL file archiving
     archive_mode = on
 
-    # Set archive command to a script or application that will safetly store
+    # Set archive command to a script or application that will safely store
     # you WALs in a secure place. /bin/true is an example of a command that
     # ignores archiving. Use something more sensible.
     archive_command = '/bin/true'
@@ -874,8 +872,8 @@ Adjust schema and node ID accordingly. A future `repmgr` release
 will make it possible to unregister failed standbys.
 
 
-Automatic failover with repmgrd
--------------------------------
+Automatic failover with `repmgrd`
+---------------------------------
 
 `repmgrd` is a management and monitoring daemon which runs on standby nodes
 and which can automate actions such as failover and updating standbys to
@@ -995,8 +993,8 @@ during the failover:
     (3 rows)
 
 
-repmgrd log rotation
---------------------
+`repmgrd` log rotation
+----------------------
 
 Note that currently `repmgrd` does not provide logfile rotation. To ensure
 the current logfile does not grow indefinitely, configure your system's `logrotate`
@@ -1012,8 +1010,29 @@ for up to 52 weeks and rotation forced if a file grows beyond 100Mb:
         create 0600 postgres postgres
     }
 
-Monitoring
-----------
+
+`repmgrd` and PostgreSQL connection settings
+--------------------------------------------
+
+In addition to the `repmgr` configuration settings, parameters in the
+`conninfo` string influence how `repmgr` makes a network connection to
+PostgreSQL. In particular, if another server in the replication cluster
+is unreachable at network level, system network settings will influence
+the length of time it takes to determine that the connection is not possible.
+
+In particular explicitly setting a parameter for `connect_timeout` should
+be considered; the effective minimum value of `2` (seconds) will ensure
+that a connection failure at network level is reported as soon as possible,
+otherwise dependeing on the system settings (e.g. `tcp_syn_retries` in Linux)
+a delay of a minute or more is possible.
+
+For further details on `conninfo` network connection parameters, see:
+
+  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS
+
+
+Monitoring with `repmgrd`
+-------------------------
 
 When `repmgrd` is running with the option `-m/--monitoring-history`, it will
 constantly write standby node status information to the `repl_monitor` table,
