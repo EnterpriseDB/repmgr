@@ -28,7 +28,9 @@
 
 # Database connection information as a conninfo string
 # This must be accessible to all servers in the cluster; for details see:
-#   http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+#
+#   https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+#
 #conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
 
 # Optional configuration items

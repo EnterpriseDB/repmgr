@@ -48,7 +48,7 @@ This guide assumes that you are familiar with PostgreSQL administration and
 streaming replication concepts. For further details on streaming
 replication, see this link:
 
-  http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION
+  https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION
 
 The following terms are used throughout the `repmgr` documentation.
 
@@ -472,7 +472,7 @@ so should be used with care.
 Further options can be passed to the `pg_basebackup` utility via
 the setting `pg_basebackup_options` in `repmgr.conf`. See the PostgreSQL
 documentation for more details of available options:
-  http://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+  https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
 
 ### Using rsync to clone a standby
 
@@ -608,13 +608,13 @@ place. If using the default `pg_basebackup` method, we recommend setting
     pg_basebackup_options='--xlog-method=stream'
 
 See the `pg_basebackup` documentation for details:
-    http://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+    https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
 
 Otherwise it's necessary to set `wal_keep_segments` to an appropriately high
 value.
 
 Further information on replication slots in the PostgreSQL documentation:
-    http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
+    https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
 
 
 Promoting a standby server with repmgr
@@ -816,7 +816,7 @@ should have been updated to reflect this:
 - `pg_rewind` *requires* that either `wal_log_hints` is enabled, or that
    data checksums were enabled when the cluster was initialized. See the
   `pg_rewind` documentation for details:
-     http://www.postgresql.org/docs/current/static/app-pgrewind.html
+     https://www.postgresql.org/docs/current/static/app-pgrewind.html
 - `repmgrd` should not be running when a switchover is carried out, otherwise
   the `repmgrd` may try and promote a standby by itself.
 - Any other standbys attached to the old master will need to be manually
