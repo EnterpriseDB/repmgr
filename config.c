@@ -240,6 +240,8 @@ parse_config(t_configuration_options *options)
 	options->witness_repl_nodes_sync_interval_secs = 30;
 
 	memset(options->event_notification_command, 0, sizeof(options->event_notification_command));
+	options->event_notifications.head = NULL;
+	options->event_notifications.tail = NULL;
 
 	options->tablespace_mapping.head = NULL;
 	options->tablespace_mapping.tail = NULL;

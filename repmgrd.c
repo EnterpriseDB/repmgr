@@ -44,11 +44,11 @@
 
 
 /* Local info */
-t_configuration_options local_options;
+t_configuration_options local_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 PGconn	   *my_local_conn = NULL;
 
 /* Master info */
-t_configuration_options master_options;
+t_configuration_options master_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 PGconn	   *master_conn = NULL;
 
@@ -60,8 +60,6 @@ t_node_info node_info;
 bool		failover_done = false;
 
 char	   *pid_file = NULL;
-
-t_configuration_options config = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static void help(void);
 static void usage(void);
