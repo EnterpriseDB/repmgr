@@ -2784,7 +2784,7 @@ do_standby_switchover(void)
 		log_err(_("switchover must be executed from the standby node to be promoted\n"));
 		PQfinish(local_conn);
 
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	server_version_num = check_server_version(local_conn, "master", true, NULL);
@@ -3201,7 +3201,7 @@ do_standby_switchover(void)
 	{
 		log_err(_("master server did not shut down\n"));
 		log_hint(_("check the master server status before performing any further actions"));
-		exit(ERR_FAILOVER_FAIL);
+		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	/* promote this standby */
@@ -3365,7 +3365,7 @@ do_standby_switchover(void)
 			if (is_standby(remote_conn) == 0)
 			{
 				log_err(_("new standby (old master) is not a standby\n"));
-				exit(ERR_FAILOVER_FAIL);
+				exit(ERR_SWITCHOVER_FAIL);
 			}
 			connection_success = true;
 			break;
@@ -3379,7 +3379,7 @@ do_standby_switchover(void)
 	if (connection_success == false)
 	{
 		log_err(_("unable to connect to new standby (old master)\n"));
-		exit(ERR_FAILOVER_FAIL);
+		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	log_debug("new standby is in recovery\n");
@@ -3388,15 +3388,14 @@ do_standby_switchover(void)
 
 	local_conn = establish_db_connection(options.conninfo, true);
 
-
 	query_result = get_node_replication_state(local_conn, remote_node_record.name, remote_node_replication_state);
+
 	if (query_result == -1)
 	{
 		log_err(_("unable to retrieve replication status for node %i\n"), remote_node_id);
 		PQfinish(local_conn);
 
-		// errcode?
-		exit(ERR_DB_QUERY);
+		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	if (query_result == 0)
@@ -3405,7 +3404,6 @@ do_standby_switchover(void)
 	}
 	else
 	{
-		/* XXX other valid values? */
 		/* XXX we should poll for a while in case the node takes time to connect to the primary */
 		if (strcmp(remote_node_replication_state, "streaming") == 0 ||
 			strcmp(remote_node_replication_state, "catchup")  == 0)
@@ -3414,9 +3412,16 @@ do_standby_switchover(void)
 		}
 		else
 		{
-			log_err(_("node %i replication state is  \"%s\"\n"), remote_node_id, remote_node_replication_state);
+			/*
+			 * Other possible replication states are:
+			 *  - startup
+			 *  - backup
+			 *  - UNKNOWN
+			 */
+			log_err(_("node %i has unexpected replication state \"%s\"\n"),
+					remote_node_id, remote_node_replication_state);
 			PQfinish(local_conn);
-			exit(ERR_DB_QUERY);
+			exit(ERR_SWITCHOVER_FAIL);
 		}
 	}
 
