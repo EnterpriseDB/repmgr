@@ -2734,6 +2734,8 @@ do_standby_follow(void)
  *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
+ *  - add command line option --remote_pg_bindir or similar to
+ *    optionally handle cases where the remote pg_bindir is different
  */
 
 static void
@@ -2892,8 +2894,8 @@ do_standby_switchover(void)
 		/* 9.5 and later have pg_rewind built-in - always use that */
 		use_pg_rewind = true;
 		maxlen_snprintf(remote_pg_rewind,
-						"%s/pg_rewind",
-						pg_bindir);
+						"%s",
+						make_pg_path("pg_rewind"));
 	}
 	else
 	{
@@ -2913,8 +2915,8 @@ do_standby_switchover(void)
 			else
 			{
 				maxlen_snprintf(remote_pg_rewind,
-								"%s/pg_rewind",
-								pg_bindir);
+								"%s",
+								make_pg_path("pg_rewind"));
 			}
 		}
 		else
@@ -3109,8 +3111,8 @@ do_standby_switchover(void)
 		log_verbose(LOG_DEBUG, "remote_archive_config_dir: %s\n", remote_archive_config_dir);
 
 		maxlen_snprintf(command,
-						"%s/repmgr standby archive-config -f %s --config-archive-dir=%s",
-						pg_bindir,
+						"%s standby archive-config -f %s --config-archive-dir=%s",
+						make_pg_path("repmgr"),
 						runtime_options.remote_config_file,
 						remote_archive_config_dir);
 
@@ -3222,8 +3224,8 @@ do_standby_switchover(void)
 
 		/* Execute pg_rewind */
 		maxlen_snprintf(command,
-						"%s/pg_rewind -D %s --source-server=\\'%s\\'",
-						pg_bindir,
+						"%s -D %s --source-server=\\'%s\\'",
+						remote_pg_rewind,
 						remote_data_directory,
 						options.conninfo);
 
@@ -3244,8 +3246,8 @@ do_standby_switchover(void)
 
 		/* Restore any previously archived config files */
 		maxlen_snprintf(command,
-						"%s/repmgr standby restore-config -D %s --config-archive-dir=%s",
-						pg_bindir,
+						"%s standby restore-config -D %s --config-archive-dir=%s",
+						make_pg_path("repmgr"),
 						remote_data_directory,
 						remote_archive_config_dir);
 
@@ -3302,8 +3304,8 @@ do_standby_switchover(void)
 
 		format_db_cli_params(options.conninfo, repmgr_db_cli_params);
 		maxlen_snprintf(command,
-						"%s/repmgr -D %s -f %s %s --rsync-only --force --ignore-external-config-files standby clone",
-						pg_bindir,
+						"%s -D %s -f %s %s --rsync-only --force --ignore-external-config-files standby clone",
+						make_pg_path("repmgr"),
 						remote_data_directory,
 						runtime_options.remote_config_file,
 						repmgr_db_cli_params
@@ -3328,8 +3330,8 @@ do_standby_switchover(void)
 	 */
 	format_db_cli_params(options.conninfo, repmgr_db_cli_params);
 	maxlen_snprintf(command,
-					"%s/repmgr -D %s -f %s %s standby follow",
-					pg_bindir,
+					"%s -D %s -f %s %s standby follow",
+					make_pg_path("repmgr"),
 					remote_data_directory,
 					runtime_options.remote_config_file,
 					repmgr_db_cli_params
