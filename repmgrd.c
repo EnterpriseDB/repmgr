@@ -460,15 +460,15 @@ main(int argc, char **argv)
 
 				do
 				{
-					log_verbose(LOG_DEBUG, "standby check loop...\n");
-
-					if (node_info.type == WITNESS)
+					if (node_info.type == STANDBY)
 					{
-						witness_monitor();
-					}
-					else if (node_info.type == STANDBY)
-					{
+						log_verbose(LOG_DEBUG, "standby check loop...\n");
 						standby_monitor();
+					}
+					else if (node_info.type == WITNESS)
+					{
+						log_verbose(LOG_DEBUG, "witness check loop...\n");
+						witness_monitor();
 					}
 
 					sleep(local_options.monitor_interval_secs);
