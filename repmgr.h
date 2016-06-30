@@ -71,7 +71,6 @@ typedef struct
 	bool		fast_checkpoint;
 	bool		ignore_external_config_files;
 	bool		csv_mode;
-	char		pg_ctl_mode[MAXLEN];
 	char		masterport[MAXLEN];
 	/*
 	 * configuration file parameters which can be overridden on the
@@ -83,6 +82,7 @@ typedef struct
 	char		remote_config_file[MAXLEN];
 	char		remote_pg_bindir[MAXLEN];
 	char		pg_rewind[MAXPGPATH];
+	char		pg_ctl_mode[MAXLEN];
 	/* parameter used by STANDBY {ARCHIVE_CONFIG | RESTORE_CONFIG} */
 	char		config_archive_dir[MAXLEN];
 	/* parameter used by CLUSTER CLEANUP */
@@ -97,7 +97,7 @@ typedef struct
 	bool		initdb_no_pwprompt;
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "smart", "", "", "", "", "", "", 0, "", "", "", false }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "", "fast", "", 0, "", "", "", false }
 
 struct BackupLabel
 {

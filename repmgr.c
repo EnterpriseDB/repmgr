@@ -4220,7 +4220,7 @@ do_help(void)
 	printf(_("  -w, --wal-keep-segments=VALUE       (standby clone) minimum value for the GUC\n" \
 			 "                                        wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
-	printf(_("  -m, --mode                          (standby switchover) shutdown mode (smart|fast|immediate)\n"));
+	printf(_("  -m, --mode                          (standby switchover) shutdown mode (\"fast\" - default, \"smart\" or \"immediate\")\n"));
 	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \
 			 "                                        the current master\n"));
 	printf(_("  -B, --remote-pg_bindir              (standby switchover) path to PostgreSQL binaries on\n" \
