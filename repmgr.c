@@ -3195,27 +3195,22 @@ do_standby_switchover(void)
 	{
 		/* Check whether primary is available */
 
-		remote_conn = test_db_connection(remote_conninfo, false); /* don't fail on error */
+		PGPing ping_res = PQping(remote_conninfo);
 
-		/*
-		 * If we're unable to connect, keep PQping-ing the server until it
-		 * finally goes away
-		 */
-		if (PQstatus(remote_conn) != CONNECTION_OK)
+		/* database server could not be contacted */
+		if (ping_res == PQPING_NO_RESPONSE)
 		{
-			PGPing ping_res = PQping(remote_conninfo);
+			/*
+			 * XXX here we should directly access the server and check that the
+			 * pidfile has gone away so we can be sure the server is actually
+			 * shut down and the PQPING_NO_RESPONSE is not due to other issues
+			 * such as coincidental network failure.
+			 */
+			shutdown_success = true;
 
-			/* database server could not be contacted */
-			if (ping_res == PQPING_NO_RESPONSE)
-			{
-				/* XXX we should double-check access to the physical server here */
-				shutdown_success = true;
-
-				log_notice(_("current master has been stopped\n"));
-				break;
-			}
+			log_notice(_("current master has been stopped\n"));
+			break;
 		}
-		PQfinish(remote_conn);
 
 		/* XXX make configurable? */
 		sleep(options.reconnect_interval);
