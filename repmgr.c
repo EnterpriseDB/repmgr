@@ -2769,8 +2769,8 @@ do_standby_switchover(void)
 	char	    repmgr_db_cli_params[MAXLEN] = "";
 	int	        query_result;
 	t_node_info remote_node_record;
-	bool	    connection_success;
-
+	bool		connection_success,
+				shutdown_success;
 
 	/*
 	 * If --remote_pg_bindir supplied, use that to build the path on the
@@ -3187,37 +3187,42 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&command_output);
 
-	connection_success = false;
+	shutdown_success = false;
 
 	/* loop for timeout waiting for current primary to stop */
 
-	for(i = 0; i < options.reconnect_attempts; i++)
+	for (i = 0; i < options.reconnect_attempts; i++)
 	{
 		/* Check whether primary is available */
 
 		remote_conn = test_db_connection(remote_conninfo, false); /* don't fail on error */
 
-		/* XXX failure to connect doesn't mean the server is necessarily
-		 * completely stopped - we need to better detect the reason for
-		 * connection failure ("server not listening" vs "shutting down")
-		 *
-		 * -> check is_pgup()
+		/*
+		 * If we're unable to connect, keep PQping-ing the server until it
+		 * finally goes away
 		 */
 		if (PQstatus(remote_conn) != CONNECTION_OK)
 		{
-			connection_success = true;
+			PGPing ping_res = PQping(remote_conninfo);
 
-			log_notice(_("current master has been stopped\n"));
-			break;
+			/* database server could not be contacted */
+			if (ping_res == PQPING_NO_RESPONSE)
+			{
+				/* XXX we should double-check access to the physical server here */
+				shutdown_success = true;
+
+				log_notice(_("current master has been stopped\n"));
+				break;
+			}
 		}
 		PQfinish(remote_conn);
 
-		// configurable?
+		/* XXX make configurable? */
 		sleep(options.reconnect_interval);
 		i++;
 	}
 
-	if (connection_success == false)
+	if (shutdown_success == false)
 	{
 		log_err(_("master server did not shut down\n"));
 		log_hint(_("check the master server status before performing any further actions"));
