@@ -2751,7 +2751,7 @@ do_standby_switchover(void)
 	int			server_version_num;
 	bool		use_pg_rewind;
 
-	/* the remote server is the primary which will be demoted */
+	/* the remote server is the primary to be demoted */
 	char	    remote_conninfo[MAXCONNINFO] = "";
 	char	    remote_host[MAXLEN];
 	char        remote_data_directory[MAXLEN];
@@ -3200,16 +3200,38 @@ do_standby_switchover(void)
 		/* database server could not be contacted */
 		if (ping_res == PQPING_NO_RESPONSE)
 		{
+			bool command_success;
+
 			/*
-			 * XXX here we should directly access the server and check that the
+			 * directly access the server and check that the
 			 * pidfile has gone away so we can be sure the server is actually
 			 * shut down and the PQPING_NO_RESPONSE is not due to other issues
 			 * such as coincidental network failure.
 			 */
-			shutdown_success = true;
+			initPQExpBuffer(&command_output);
 
-			log_notice(_("current master has been stopped\n"));
-			break;
+			maxlen_snprintf(command,
+					"ls %s/postmaster.pid >/dev/null 2>&1 && echo 1 || echo 0",
+					remote_data_directory);
+
+			command_success = remote_command(
+				remote_host,
+				runtime_options.remote_user,
+				command,
+				&command_output);
+
+			if (command_success == true && *command_output.data == '0')
+			{
+				shutdown_success = true;
+
+				log_notice(_("current master has been stopped\n"));
+
+				termPQExpBuffer(&command_output);
+
+				break;
+			}
+
+			termPQExpBuffer(&command_output);
 		}
 
 		/* XXX make configurable? */
