@@ -739,7 +739,7 @@ both passwordless SSH access and the path of `repmgr.conf` on that server.
 > careful preparation and with adequate attention. In particular you should
 > be confident that your network environment is stable and reliable.
 >
-> We recommend running `repmgr standby switchover`  at the most verbose
+> We recommend running `repmgr standby switchover` at the most verbose
 > logging level (`--log-level DEBUG --verbose`) and capturing all output
 > to assist troubleshooting any problems.
 >
@@ -805,7 +805,7 @@ should have been updated to reflect this:
 
 ### Caveats
 
-- the functionality provided `repmgr standby switchover` is primarily aimed
+- The functionality provided `repmgr standby switchover` is primarily aimed
   at a two-server master/standby replication cluster and currently does
   not support additional standbys.
 - `repmgr standby switchover` is designed to use the `pg_rewind` utility,
@@ -819,6 +819,11 @@ should have been updated to reflect this:
   the `repmgrd` may try and promote a standby by itself.
 - Any other standbys attached to the old master will need to be manually
   instructed to point to the new master (e.g. with `repmgr standby follow`).
+- You must ensure that following a server start using `pg_ctl`, log output
+  is not send to STDERR (the default behaviour). If logging is not configured,
+  We recommend setting `logging_collector=on` in `postgresql.conf` and
+  providing an explicit `-l/--log` setting in `repmgr.conf`'s `pg_ctl_options`
+  parameter.
 
 We hope to remove some of these restrictions in future versions of `repmgr`.
 
