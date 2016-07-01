@@ -53,6 +53,9 @@ Planned feature improvements
   requested, activate the replication slot using pg_receivexlog to negate the
   need to set `wal_keep_segments` just for the initial clone (9.4 and 9.5).
 
+* repmgr: enable "standby follow" to point a standby at another standby, not
+  just the replication cluster master (see GitHub #130)
+
 
 Usability improvements
 ======================

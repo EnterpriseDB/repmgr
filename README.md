@@ -711,8 +711,9 @@ updated to reflect this:
 
 
 Note that with cascading replication, `repmgr standby follow` can also be
-used to detach a standby from its current upstream server and follow another
-upstream server, including the master.
+used to detach a standby from its current upstream server and follow the
+master. However it's currently not possible to have it follow another standby;
+we hope to improve this in a future release.
 
 
 Performing a switchover with repmgr
