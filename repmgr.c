@@ -83,14 +83,14 @@
 #define CLUSTER_CLEANUP		   12
 
 
-static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 							  char *local_path, bool is_directory, int server_version_num);
 static int  run_basebackup(const char *data_dir, int server_version);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
-static void write_primary_conninfo(char *line);
+static bool create_recovery_file(const char *data_dir, PGconn *primary_conn);
+static void write_primary_conninfo(char *line, PGconn *primary_conn);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
@@ -2101,7 +2101,7 @@ stop_backup:
 	}
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file(local_data_directory);
+	create_recovery_file(local_data_directory, primary_conn);
 
 	if (runtime_options.rsync_only)
 	{
@@ -2626,6 +2626,7 @@ do_standby_follow(void)
 	 * closing the connection because we will need them to recreate the
 	 * recovery.conf file
 	 */
+	// ZZZ not any more?
 	strncpy(runtime_options.host, PQhost(master_conn), MAXLEN);
 	strncpy(runtime_options.masterport, PQport(master_conn), MAXLEN);
 	strncpy(runtime_options.username, PQuser(master_conn), MAXLEN);
@@ -2667,7 +2668,7 @@ do_standby_follow(void)
 	log_info(_("changing standby's master\n"));
 
 	/* write the recovery.conf file */
-	if (!create_recovery_file(data_dir))
+	if (!create_recovery_file(data_dir, master_conn))
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
@@ -4269,7 +4270,7 @@ do_help(void)
  * Creates a recovery file for a standby.
  */
 static bool
-create_recovery_file(const char *data_dir)
+create_recovery_file(const char *data_dir, PGconn *primary_conn)
 {
 	FILE	   *recovery_file;
 	char		recovery_file_path[MAXLEN];
@@ -4295,7 +4296,7 @@ create_recovery_file(const char *data_dir)
 	log_debug(_("recovery.conf: %s"), line);
 
 	/* primary_conninfo = '...' */
-	write_primary_conninfo(line);
+	write_primary_conninfo(line, primary_conn);
 
 	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
@@ -5078,43 +5079,44 @@ create_schema(PGconn *conn)
 /* This function uses global variables to determine connection settings. Special
  * usage of the PGPASSWORD variable is handled, but strongly discouraged */
 static void
-write_primary_conninfo(char *line)
+write_primary_conninfo(char *line, PGconn *primary_conn)
 {
-	char		host_buf[MAXLEN] = "";
-	char		conn_buf[MAXLEN] = "";
-	char		user_buf[MAXLEN] = "";
-	char		appname_buf[MAXLEN] = "";
-	char		password_buf[MAXLEN] = "";
+	PQconninfoOption *connOptions;
+	PQconninfoOption *option;
+	PQExpBufferData conninfo_buf;
+	bool application_name_provided = false;
 
-	/* Environment variable for password (UGLY, please use .pgpass!) */
-	const char *password = getenv("PGPASSWORD");
+	connOptions = PQconninfo(primary_conn);
 
-	if (password != NULL)
+	initPQExpBuffer(&conninfo_buf);
+
+	for (option = connOptions; option && option->keyword; option++)
 	{
-		maxlen_snprintf(password_buf, " password=%s", password);
+		/*
+		 * Skip empty settings and ones which don't make any sense in
+		 * recovery.conf
+		 */
+		if (strcmp(option->keyword, "dbname") == 0 ||
+		    strcmp(option->keyword, "replication") == 0 ||
+		    (option->val == NULL) ||
+		    (option->val != NULL && option->val[0] == '\0'))
+			continue;
+
+		if (conninfo_buf.len != 0)
+			appendPQExpBufferChar(&conninfo_buf, ' ');
+
+		if (strcmp(option->keyword, "application_name") == 0)
+			application_name_provided = true;
+
+		/* XXX escape option->val */
+		appendPQExpBuffer(&conninfo_buf, "%s=%s", option->keyword, option->val);
 	}
 
-	if (runtime_options.host[0])
-	{
-		maxlen_snprintf(host_buf, " host=%s", runtime_options.host);
-	}
+	/* `application_name` not provided - default to repmgr node name */
+	if (application_name_provided == false)
+		appendPQExpBuffer(&conninfo_buf, "application_name=%s", options.node_name);
 
-	if (runtime_options.username[0])
-	{
-		maxlen_snprintf(user_buf, " user=%s", runtime_options.username);
-	}
-
-	if (options.node_name[0])
-	{
-		maxlen_snprintf(appname_buf, " application_name=%s", options.node_name);
-	}
-
-	maxlen_snprintf(conn_buf, "port=%s%s%s%s%s",
-	   (runtime_options.masterport[0]) ? runtime_options.masterport : DEF_PGPORT_STR,
-					host_buf, user_buf, password_buf,
-					appname_buf);
-
-	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conn_buf);
+	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conninfo_buf.data);
 }
 
 
