@@ -78,9 +78,8 @@ typedef struct
 	 */
 	char		loglevel[MAXLEN];
 
-	/* parameters used by STANDBY SWITCHOVER */
+	/* parameter used by STANDBY SWITCHOVER */
 	char		remote_config_file[MAXLEN];
-	char		remote_pg_bindir[MAXLEN];
 	char		pg_rewind[MAXPGPATH];
 	char		pg_ctl_mode[MAXLEN];
 	/* parameter used by STANDBY {ARCHIVE_CONFIG | RESTORE_CONFIG} */
@@ -97,7 +96,7 @@ typedef struct
 	bool		initdb_no_pwprompt;
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "", "fast", "", 0, "", "", "", false }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, "", "", "", false }
 
 struct BackupLabel
 {

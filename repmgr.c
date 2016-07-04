@@ -99,7 +99,6 @@ static bool check_upstream_config(PGconn *conn, int server_version_num, bool exi
 static bool update_node_record_set_master(PGconn *conn, int this_node_id);
 
 static char *make_pg_path(char *file);
-static char *make_path(char *path, char *file);
 
 static void do_master_register(void);
 static void do_standby_register(void);
@@ -181,7 +180,6 @@ main(int argc, char **argv)
 		{"terse", required_argument, NULL, 't'},
 		{"mode", required_argument, NULL, 'm'},
 		{"remote-config-file", required_argument, NULL, 'C'},
-		{"remote-pg_bindir", required_argument, NULL, 'B'},
 		/* deprecated from 3.2; replaced with -P/--pwprompt */
 		{"initdb-no-pwprompt", no_argument, NULL, 1},
 		{"check-upstream-config", no_argument, NULL, 2},
@@ -384,12 +382,9 @@ main(int argc, char **argv)
 					termPQExpBuffer(&invalid_mode);
 				}
 			}
-				break;
+			break;
 			case 'C':
 				strncpy(runtime_options.remote_config_file, optarg, MAXLEN);
-				break;
-			case 'B':
-				strncpy(runtime_options.remote_pg_bindir, optarg, MAXLEN);
 				break;
 			case 1:
 				runtime_options.initdb_no_pwprompt = true;
@@ -2739,7 +2734,7 @@ do_standby_follow(void)
  *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
- *  - add command line option --remote-pg_bindir or similar to
+ *  - add command line option --remote_pg_bindir or similar to
  *    optionally handle cases where the remote pg_bindir is different
  */
 
@@ -2756,8 +2751,7 @@ do_standby_switchover(void)
 	char	    remote_host[MAXLEN];
 	char        remote_data_directory[MAXLEN];
 	int         remote_node_id;
-	char	    remote_node_replication_state[MAXLEN] = "";
-	char	    remote_pg_bindir[MAXLEN] = "";
+	char        remote_node_replication_state[MAXLEN] = "";
 	char        remote_archive_config_dir[MAXLEN];
 	char	    remote_pg_rewind[MAXLEN];
 	int			i,
@@ -2771,20 +2765,6 @@ do_standby_switchover(void)
 	t_node_info remote_node_record;
 	bool		connection_success,
 				shutdown_success;
-
-	/*
-	 * If --remote_pg_bindir supplied, use that to build the path on the
-	 * remote host; if not default to whatever value is set in pg_bindir
-	 */
-
-	if (strlen(runtime_options.remote_pg_bindir))
-	{
-		strncpy(remote_pg_bindir, runtime_options.remote_pg_bindir, MAXLEN);
-	}
-	else
-	{
-		strncpy(remote_pg_bindir, pg_bindir, MAXLEN);
-	}
 
 	/*
 	 * SANITY CHECKS
@@ -2915,7 +2895,7 @@ do_standby_switchover(void)
 		use_pg_rewind = true;
 		maxlen_snprintf(remote_pg_rewind,
 						"%s",
-						make_path(remote_pg_bindir, "pg_rewind"));
+						make_pg_path("pg_rewind"));
 	}
 	else
 	{
@@ -2936,7 +2916,7 @@ do_standby_switchover(void)
 			{
 				maxlen_snprintf(remote_pg_rewind,
 								"%s",
-								make_path(remote_pg_bindir, "pg_rewind"));
+								make_pg_path("pg_rewind"));
 			}
 		}
 		else
@@ -3132,7 +3112,7 @@ do_standby_switchover(void)
 
 		maxlen_snprintf(command,
 						"%s standby archive-config -f %s --config-archive-dir=%s",
-						make_path(remote_pg_bindir, "repmgr"),
+						make_pg_path("repmgr"),
 						runtime_options.remote_config_file,
 						remote_archive_config_dir);
 
@@ -3171,7 +3151,7 @@ do_standby_switchover(void)
 
 	maxlen_snprintf(command,
 					"%s -D %s -m %s -W stop >/dev/null 2>&1 && echo 1 || echo 0",
-					make_path(remote_pg_bindir, "pg_ctl"),
+					make_pg_path("pg_ctl"),
 					remote_data_directory,
 					runtime_options.pg_ctl_mode);
 
@@ -3289,7 +3269,7 @@ do_standby_switchover(void)
 		/* Restore any previously archived config files */
 		maxlen_snprintf(command,
 						"%s standby restore-config -D %s --config-archive-dir=%s",
-						make_path(remote_pg_bindir, "repmgr"),
+						make_pg_path("repmgr"),
 						remote_data_directory,
 						remote_archive_config_dir);
 
@@ -3347,7 +3327,7 @@ do_standby_switchover(void)
 		format_db_cli_params(options.conninfo, repmgr_db_cli_params);
 		maxlen_snprintf(command,
 						"%s -D %s -f %s %s --rsync-only --force --ignore-external-config-files standby clone",
-						make_path(remote_pg_bindir, "repmgr"),
+						make_pg_path("repmgr"),
 						remote_data_directory,
 						runtime_options.remote_config_file,
 						repmgr_db_cli_params
@@ -3373,7 +3353,7 @@ do_standby_switchover(void)
 	format_db_cli_params(options.conninfo, repmgr_db_cli_params);
 	maxlen_snprintf(command,
 					"%s -D %s -f %s %s standby follow",
-					make_path(remote_pg_bindir, "repmgr"),
+					make_pg_path("repmgr"),
 					remote_data_directory,
 					runtime_options.remote_config_file,
 					repmgr_db_cli_params
@@ -3397,15 +3377,13 @@ do_standby_switchover(void)
 
 	for(i = 0; i < options.reconnect_attempts; i++)
 	{
-		/* Check whether new standby available */
+		/* Check whether primary is available */
 
 		remote_conn = test_db_connection(remote_conninfo, false); /* don't fail on error */
 
 		if (PQstatus(remote_conn) == CONNECTION_OK)
 		{
 			log_debug("connected to new standby (old master)\n");
-
-			/* make sure it's actually a standby */
 			if (is_standby(remote_conn) == 0)
 			{
 				log_err(_("new standby (old master) is not a standby\n"));
@@ -4245,8 +4223,6 @@ do_help(void)
 	printf(_("  -m, --mode                          (standby switchover) shutdown mode (\"fast\" - default, \"smart\" or \"immediate\")\n"));
 	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \
 			 "                                        the current master\n"));
-	printf(_("  -B, --remote-pg_bindir              (standby switchover) path to PostgreSQL binaries on\n" \
-			 "                                        the current master\n"));
 	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
 			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));
@@ -4786,14 +4762,6 @@ check_parameters_for_action(const int action)
 		if (runtime_options.csv_mode)
 		{
 			error_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW"));
-		}
-	}
-
-	if (action != STANDBY_SWITCHOVER)
-	{
-		if (strlen(runtime_options.remote_pg_bindir))
-		{
-			error_list_append(&cli_warnings, _("--remote-pg_bindir an only be used when executing STANDBY_SWITCHOVER"));
 		}
 	}
 
@@ -5550,17 +5518,11 @@ do_check_upstream_config(void)
 static char *
 make_pg_path(char *file)
 {
-	return make_path(pg_bindir, file);
-}
-
-
-static char *
-make_path(char *path, char *file)
-{
-	maxlen_snprintf(path_buf, "%s%s", path, file);
+	maxlen_snprintf(path_buf, "%s%s", pg_bindir, file);
 
 	return path_buf;
 }
+
 
 static void
 exit_with_errors(void)
