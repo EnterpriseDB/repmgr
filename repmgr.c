@@ -2799,11 +2799,14 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
-	if (*options.restart_command) {
+	if (*options.restart_command)
+	{
 		maxlen_snprintf(script, "%s", options.restart_command);
-	} else {
+	}
+	else
+	{
 		maxlen_snprintf(script, "%s %s -w -D %s -m fast restart",
-				make_pg_path("pg_ctl"), options.pg_ctl_options, data_dir);
+				        make_pg_path("pg_ctl"), options.pg_ctl_options, data_dir);
 	}
 	log_notice(_("restarting server using '%s'\n"),
 			   script);
@@ -3282,10 +3285,13 @@ do_standby_switchover(void)
 	 *    -> use -F/--force?
 	 */
 
-	if (*options.stop_command) {
+	if (*options.stop_command)
+	{
 		maxlen_snprintf(command, "%s", options.stop_command);
-	} else {
-	maxlen_snprintf(command,
+	}
+	else
+	{
+	        maxlen_snprintf(command,
 					"%s -D %s -m %s -W stop >/dev/null 2>&1 && echo 1 || echo 0",
 					make_pg_path("pg_ctl"),
 					remote_data_directory,
@@ -4050,12 +4056,15 @@ do_witness_create(void)
 
 
 	/* start new instance */
-	if (*options.start_command) {
+	if (*options.start_command)
+	{
 		maxlen_snprintf(script, "%s", options.start_command);
-	} else {
+	}
+	else
+	{
 		maxlen_snprintf(script, "%s %s -w -D %s start",
-				make_pg_path("pg_ctl"),
-				options.pg_ctl_options, runtime_options.dest_dir);
+				        make_pg_path("pg_ctl"),
+				        options.pg_ctl_options, runtime_options.dest_dir);
 	}
 	log_info(_("starting witness server: %s\n"), script);
 	r = system(script);
