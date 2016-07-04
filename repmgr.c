@@ -124,6 +124,8 @@ static bool copy_file(const char *old_filename, const char *new_filename);
 static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
 /* Global variables */
+static PQconninfoOption *opts = NULL;
+
 static const char *keywords[6];
 static const char *values[6];
 static bool		   config_file_required = true;
@@ -199,7 +201,9 @@ main(int argc, char **argv)
 	bool 		check_upstream_config = false;
 	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
-	const char *env;
+
+	PQconninfoOption *defs = NULL;
+	PQconninfoOption *def;
 
 	set_progname(argv[0]);
 
@@ -216,43 +220,39 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	/* Initialise some defaults */
+	/*
+	 * Set default values for any parameters not provided
+	 */
 
-	/* set default user */
-	env = getenv("PGUSER");
-	if (!env)
+	defs = PQconndefaults();
+	for (def = defs; def->keyword; def++)
 	{
-		struct passwd *pw = NULL;
-		pw = getpwuid(geteuid());
-		if (pw)
+		if (strcmp(def->keyword, "host") == 0 &&
+			(def->val != NULL && def->val[0] != '\0'))
 		{
-			env = pw->pw_name;
+			strncpy(runtime_options.host, def->val, MAXLEN);
 		}
-		else
+		else if (strcmp(def->keyword, "hostaddr") == 0 &&
+			(def->val != NULL && def->val[0] != '\0'))
 		{
-			fprintf(stderr, _("could not get current user name: %s\n"), strerror(errno));
-			exit(ERR_BAD_CONFIG);
+			strncpy(runtime_options.host, def->val, MAXLEN);
+		}
+		else if (strcmp(def->keyword, "port") == 0 &&
+				 (def->val != NULL && def->val[0] != '\0'))
+		{
+			strncpy(runtime_options.masterport, def->val, MAXLEN);
+		}
+		else if (strcmp(def->keyword, "dbname") == 0 &&
+				 (def->val != NULL && def->val[0] != '\0'))
+		{
+			strncpy(runtime_options.dbname, def->val, MAXLEN);
+		}
+		else if (strcmp(def->keyword, "user") == 0 &&
+				 (def->val != NULL && def->val[0] != '\0'))
+		{
+			strncpy(runtime_options.username, def->val, MAXLEN);
 		}
 	}
-	strncpy(runtime_options.username, env, MAXLEN);
-
-	/* set default database */
-	env = getenv("PGDATABASE");
-	if (!env)
-	{
-		env = runtime_options.username;
-	}
-	strncpy(runtime_options.dbname, env, MAXLEN);
-
-	/* set default port */
-
-	env = getenv("PGPORT");
-	if (!env)
-	{
-		env = DEF_PGPORT_STR;
-	}
-
-	strncpy(runtime_options.masterport, env, MAXLEN);
 
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
@@ -443,12 +443,64 @@ main(int argc, char **argv)
 		}
 	}
 
+	/*
+	 * If -d/--dbname appears to be a conninfo string, validate by attempting
+	 * to parse it (and if successful, store the result so we can check for the
+	 * presence of required parameters)
+	 */
+	if (runtime_options.dbname &&
+		(strncmp(runtime_options.dbname, "postgresql://", 13) == 0 ||
+		 strncmp(runtime_options.dbname, "postgres://", 11) == 0 ||
+		 strchr(runtime_options.dbname, '=') != NULL))
+	{
+		char	   *errmsg = NULL;
+
+		opts = PQconninfoParse(runtime_options.dbname, &errmsg);
+
+		if (opts == NULL)
+		{
+			PQExpBufferData conninfo_error;
+			initPQExpBuffer(&conninfo_error);
+			appendPQExpBuffer(&conninfo_error, _("error parsing conninfo:\n%s"), errmsg);
+			error_list_append(&cli_errors, conninfo_error.data);
+
+			termPQExpBuffer(&conninfo_error);
+			free(errmsg);
+		}
+		else
+		{
+			/*
+			 * Set runtime_options.(host|port|username) values, if provided, to prevent these
+			 * being overwritten by the defaults
+			 */
+			PQconninfoOption *opt;
+			for (opt = opts; opt->keyword != NULL; opt++)
+			{
+				if (strcmp(opt->keyword, "host") == 0 &&
+					(opt->val != NULL && opt->val[0] != '\0'))
+				{
+					strncpy(runtime_options.host, opt->val, MAXLEN);
+				}
+				else if (strcmp(opt->keyword, "port") == 0 &&
+					(opt->val != NULL && opt->val[0] != '\0'))
+				{
+					strncpy(runtime_options.masterport, opt->val, MAXLEN);
+				}
+				else if (strcmp(opt->keyword, "user") == 0 &&
+					(opt->val != NULL && opt->val[0] != '\0'))
+				{
+					strncpy(runtime_options.username, opt->val, MAXLEN);
+				}
+			}
+		}
+	}
 
 	/* Exit here already if errors in command line options found */
 	if (cli_errors.head != NULL)
 	{
 		exit_with_errors();
 	}
+
 
 
 	if (check_upstream_config == true)
@@ -2620,17 +2672,6 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-
-	/*
-	 * set the host and masterport variables with the master ones before
-	 * closing the connection because we will need them to recreate the
-	 * recovery.conf file
-	 */
-	// ZZZ not any more?
-	strncpy(runtime_options.host, PQhost(master_conn), MAXLEN);
-	strncpy(runtime_options.masterport, PQport(master_conn), MAXLEN);
-	strncpy(runtime_options.username, PQuser(master_conn), MAXLEN);
-
 	/*
 	 * If 9.4 or later, and replication slots in use, we'll need to create a
 	 * slot on the new master
@@ -4191,8 +4232,6 @@ do_witness_create(void)
 static void
 do_help(void)
 {
-	const char *host;
-
 	printf(_("%s: replication management tool for PostgreSQL\n"), progname());
 	printf(_("\n"));
 	printf(_("Usage:\n"));
@@ -4212,8 +4251,7 @@ do_help(void)
 	printf(_("\n"));
 	printf(_("Connection options:\n"));
 	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: \"%s\")\n"), runtime_options.dbname);
-	host = getenv("PGHOST");
-	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory (default: \"%s\")\n"), host ? host : _("local socket"));
+	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory (default: \"%s\")\n"), runtime_options.host[0] == '\0' ? _("local socket") : runtime_options.host);
 	printf(_("  -p, --port=PORT                     database server port (default: \"%s\")\n"), runtime_options.masterport);
 	printf(_("  -U, --username=USERNAME             database user name to connect as (default: \"%s\")\n"), runtime_options.username);
 	printf(_("\n"));
@@ -4510,11 +4548,25 @@ run_basebackup(const char *data_dir, int server_version)
 
 	appendPQExpBuffer(&params, " -D %s", data_dir);
 
+	if (opts != NULL && strlen(runtime_options.dbname))
+	{
+		appendPQExpBuffer(&params, " -d '%s'", runtime_options.dbname);
+	}
+
 	if (strlen(runtime_options.host))
 	{
 		appendPQExpBuffer(&params, " -h %s", runtime_options.host);
 	}
 
+	/*
+	 * XXX -p and -U will be duplicated if provided in conninfo string
+	 * but not as explict repmgr command line parameters, e.g.:
+	 *
+	 * pg_basebackup -l "repmgr base backup" -d 'host=localhost port=5501 dbname=repmgr user=repmgr' -p 5501 -U repmgr -X stream
+	 *
+	 * this is ugly but harmless; we should fix it some time
+	 *
+	 */
 	if (strlen(runtime_options.masterport))
 	{
 		appendPQExpBuffer(&params, " -p %s", runtime_options.masterport);
@@ -4687,7 +4739,23 @@ check_parameters_for_action(const int action)
 
 			if (strcmp(runtime_options.host, "") == 0)
 			{
-				error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY CLONE"));
+				bool conninfo_host_provided = false;
+				PQconninfoOption *opt;
+				for (opt = opts; opt->keyword != NULL; opt++)
+				{
+					if (strcmp(opt->keyword, "host") == 0 ||
+						strcmp(opt->keyword, "hostaddr") == 0)
+					{
+						if (opt->val != NULL && opt->val[0] != '\0')
+						{
+							conninfo_host_provided = true;
+							break;
+						}
+					}
+				}
+
+				if (conninfo_host_provided == false)
+					error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY CLONE"));
 			}
 
 			if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
@@ -4699,12 +4767,14 @@ check_parameters_for_action(const int action)
 		case STANDBY_SWITCHOVER:
 			/* allow all parameters to be supplied */
 			break;
+
 		case STANDBY_ARCHIVE_CONFIG:
 			if (strcmp(runtime_options.config_archive_dir, "") == 0)
 			{
 				error_list_append(&cli_errors, _("--config-archive-dir required when executing STANDBY ARCHIVE_CONFIG"));
 			}
 			break;
+
 		case STANDBY_RESTORE_CONFIG:
 			if (strcmp(runtime_options.config_archive_dir, "") == 0)
 			{
@@ -4718,6 +4788,7 @@ check_parameters_for_action(const int action)
 
 			config_file_required = false;
 			break;
+
 		case WITNESS_CREATE:
 			/* Require data directory */
 			if (strcmp(runtime_options.dest_dir, "") == 0)
@@ -4726,9 +4797,11 @@ check_parameters_for_action(const int action)
 			}
 			/* allow all parameters to be supplied */
 			break;
+
 		case CLUSTER_SHOW:
 			/* allow all parameters to be supplied */
 			break;
+
 		case CLUSTER_CLEANUP:
 			/* allow all parameters to be supplied */
 			break;
@@ -5076,8 +5149,6 @@ create_schema(PGconn *conn)
 }
 
 
-/* This function uses global variables to determine connection settings. Special
- * usage of the PGPASSWORD variable is handled, but strongly discouraged */
 static void
 write_primary_conninfo(char *line, PGconn *primary_conn)
 {
