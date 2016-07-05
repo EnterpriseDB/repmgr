@@ -113,6 +113,7 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 
 static char *string_skip_prefix(const char *prefix, char *string);
 static char *string_remove_trailing_newlines(char *string);
+static int  build_cluster_matrix(int **matrix, char **node_names, int *name_length);
 
 static char *make_pg_path(char *file);
 static char *make_barman_ssh_command(void);
@@ -1106,19 +1107,16 @@ do_cluster_show(void)
 	PQclear(res);
 }
 
-static void
-do_cluster_matrix(void)
+static int
+build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 {
 	PGconn	   *conn;
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 	int			i, j;
-	const char *node_header = "Name";
-	int			name_length = strlen(node_header);
+	int			n;
 
 	int         x, y;
-	int         n = 0; /* number of nodes */
-	int        *matrix;
 	char       *p;
 
 	char	    command[MAXLEN];
@@ -1157,9 +1155,9 @@ do_cluster_matrix(void)
 	 *  0 == OK
 	 */
 	n = PQntuples(res);
-	matrix = (int *) pg_malloc(sizeof(int) * n * n);
+	*matrix = (int *) pg_malloc(sizeof(int) * n * n);
 	for (i = 0; i < n * n; i++)
-		matrix[i] = -2;
+		(*matrix)[i] = -2;
 
 	/*
 	 * Find the maximum length of a node name
@@ -1169,9 +1167,26 @@ do_cluster_matrix(void)
 		int name_length_cur;
 
 		name_length_cur	= strlen(PQgetvalue(res, i, 2));
-		if (name_length_cur > name_length)
-			name_length = name_length_cur;
+		if (name_length_cur > *name_length)
+			*name_length = name_length_cur;
 	}
+
+	/*
+	 * Save node names into an array
+	 */
+
+	*node_names = (char *) pg_malloc((*name_length + 1) * n);
+
+	for (i = 0; i < n; i++)
+	{
+		strncpy(*node_names + i * (*name_length + 1),
+				PQgetvalue(res, i, 3),
+				strlen(PQgetvalue(res, i, 3)) + 1);
+	}
+
+	/*
+	 * Build the connection matrix
+	 */
 
 	for (i = 0; i < n; i++)
 	{
@@ -1192,7 +1207,7 @@ do_cluster_matrix(void)
 		connection_status =
 			(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
 
-		matrix[(options.node - 1) * n + i] =
+		(*matrix)[(options.node - 1) * n + i] =
 			connection_status;
 
 		if (connection_status)
@@ -1225,7 +1240,7 @@ do_cluster_matrix(void)
 				PQfinish(conn);
 				exit(ERR_INTERNAL);
 			}
-			matrix[i * n + (x - 1)] =
+			(*matrix)[i * n + (x - 1)] =
 				(y == -1) ? -1 : 0;
 			while (*p && (*p != '\n'))
 				p++;
@@ -1235,6 +1250,23 @@ do_cluster_matrix(void)
 
 		PQfinish(conn);
 	}
+
+	PQclear(res);
+
+	return n;
+}
+
+static void
+do_cluster_matrix()
+{
+	int			i, j;
+	int			n;
+	char	   *node_names;
+	int		   *matrix;
+	const char *node_header = "Name";
+	int			name_length = strlen(node_header);
+
+	n = build_cluster_matrix(&matrix, &node_names, &name_length);
 
 	if (runtime_options.csv_mode)
 	{
@@ -1263,7 +1295,7 @@ do_cluster_matrix(void)
 		for (i = 0; i < n; i++)
 		{
 			printf("%*s | %2d ", name_length,
-				   PQgetvalue(res, i, 2), i + 1);
+				   node_names + (name_length + 1) * i, i + 1);
 			for (j = 0; j < n; j++)
 			{
 				switch (matrix[i * n + j])
@@ -1286,8 +1318,6 @@ do_cluster_matrix(void)
 			printf("\n");
 		}
 	}
-
-	PQclear(res);
 }
 
 static void
