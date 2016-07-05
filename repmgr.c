@@ -114,6 +114,7 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 static char *string_skip_prefix(const char *prefix, char *string);
 static char *string_remove_trailing_newlines(char *string);
 static int  build_cluster_matrix(int **matrix, char **node_names, int *name_length);
+static int  build_cluster_diagnose(int **cube, char **node_names, int *name_length);
 
 static char *make_pg_path(char *file);
 static char *make_barman_ssh_command(void);
@@ -1320,21 +1321,17 @@ do_cluster_matrix()
 	}
 }
 
-static void
-do_cluster_diagnose(void)
+static int
+build_cluster_diagnose(int **cube, char **node_names, int *name_length)
 {
 	PGconn	   *conn;
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
-	int			i, j, k;
-	const char *node_header = "Name";
-	int			name_length = strlen(node_header);
+	int			i, j;
 
-	int			x, y, z, u, v;
+	int			x, y, z;
 	int			n = 0; /* number of nodes */
-	int		   *cube;
 	char	   *p;
-	char		c;
 
 	char		command[MAXLEN];
 	PQExpBufferData command_output;
@@ -1372,9 +1369,9 @@ do_cluster_diagnose(void)
 	 *	0 == OK
 	 */
 	n = PQntuples(res);
-	cube = (int *) pg_malloc(sizeof(int) * n * n * n);
+	*cube = (int *) pg_malloc(sizeof(int) * n * n * n);
 	for (i = 0; i < n * n * n; i++)
-		cube[i] = -2;
+		(*cube)[i] = -2;
 
 	/*
 	 * Find the maximum length of a node name
@@ -1384,9 +1381,26 @@ do_cluster_diagnose(void)
 		int name_length_cur;
 
 		name_length_cur	= strlen(PQgetvalue(res, i, 3));
-		if (name_length_cur > name_length)
-			name_length = name_length_cur;
+		if (name_length_cur > *name_length)
+			*name_length = name_length_cur;
 	}
+
+	/*
+	 * Save node names into an array
+	 */
+
+	*node_names = (char *) pg_malloc((*name_length + 1) * n);
+
+	for (i = 0; i < n; i++)
+	{
+		strncpy(*node_names + i * (*name_length + 1),
+				PQgetvalue(res, i, 3),
+				strlen(PQgetvalue(res, i, 3)) + 1);
+	}
+
+	/*
+	 * Build the connection cube
+	 */
 
 	for (i = 0; i < n; i++)
 	{
@@ -1420,7 +1434,7 @@ do_cluster_diagnose(void)
 				PQfinish(conn);
 				exit(ERR_INTERNAL);
 			}
-			cube[i * n * n + (x - 1) * n + (y - 1)] =
+			(*cube)[i * n * n + (x - 1) * n + (y - 1)] =
 				(z == -1) ? -1 : 0;
 			while (*p && (*p != '\n'))
 				p++;
@@ -1428,6 +1442,24 @@ do_cluster_diagnose(void)
 				p++;
 		}
 	}
+
+	PQclear(res);
+
+	return n;
+}
+
+static void
+do_cluster_diagnose(void)
+{
+	int			i, j, k, u, v;
+	int			n;
+	char		c;
+	char	   *node_names;
+	int		   *cube;
+	const char *node_header = "Name";
+	int			name_length = strlen(node_header);
+
+	n = build_cluster_diagnose(&cube, &node_names, &name_length);
 
 	printf("%*s | Id ", name_length, node_header);
 	for (i = 0; i < n; i++)
@@ -1444,7 +1476,7 @@ do_cluster_diagnose(void)
 	for (i = 0; i < n; i++)
 	{
 		printf("%*s | %2d ", name_length,
-			   PQgetvalue(res, i, 3), i + 1);
+			   node_names + (name_length + 1) * i, i + 1);
 		for (j = 0; j < n; j++)
 		{
 			u = cube[i * n + j];
@@ -1488,8 +1520,6 @@ do_cluster_diagnose(void)
 		}
 		printf("\n");
 	}
-
-	PQclear(res);
 }
 
 static void
