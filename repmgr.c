@@ -1198,7 +1198,7 @@ do_standby_register(void)
 	{
 		if (node_record.active == true)
 		{
-			log_err(_("Node %i exists already with node_name \"%s\""),
+			log_err(_("Node %i exists already with node_name \"%s\"\n"),
 					  node_record.node_id,
 					  options.node_name);
 			PQfinish(master_conn);

@@ -1717,10 +1717,12 @@ get_node_record_by_name(PGconn *conn, char *cluster, const char *node_name, t_no
 		"SELECT id, type, upstream_node_id, name, conninfo, slot_name, priority, active"
 		"  FROM %s.repl_nodes "
 		" WHERE cluster = '%s' "
-		"   AND node_name = %s",
+		"   AND name = '%s'",
 		get_repmgr_schema_quoted(conn),
 		cluster,
 		node_name);
+
+	log_verbose(LOG_DEBUG, "get_node_record_by_name():\n%s\n", sqlquery);
 
 	result = _get_node_record(conn, cluster, sqlquery, node_info);
 
