@@ -254,6 +254,15 @@ main(int argc, char **argv)
 		}
 	}
 
+	/*
+	 * Though libpq will default to the username as dbname, PQconndefaults()
+	 * doesn't return this
+	 */
+	if (runtime_options.dbname[0] == '\0')
+	{
+		strncpy(runtime_options.dbname, runtime_options.username, MAXLEN);
+	}
+
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
@@ -470,13 +479,17 @@ main(int argc, char **argv)
 		else
 		{
 			/*
-			 * Set runtime_options.(host|port|username) values, if provided, to prevent these
-			 * being overwritten by the defaults
+			 * Set runtime_options.(host|port|username) values
 			 */
 			PQconninfoOption *opt;
 			for (opt = opts; opt->keyword != NULL; opt++)
 			{
 				if (strcmp(opt->keyword, "host") == 0 &&
+					(opt->val != NULL && opt->val[0] != '\0'))
+				{
+					strncpy(runtime_options.host, opt->val, MAXLEN);
+				}
+				if (strcmp(opt->keyword, "hostaddr") == 0 &&
 					(opt->val != NULL && opt->val[0] != '\0'))
 				{
 					strncpy(runtime_options.host, opt->val, MAXLEN);
@@ -500,8 +513,6 @@ main(int argc, char **argv)
 	{
 		exit_with_errors();
 	}
-
-
 
 	if (check_upstream_config == true)
 	{
@@ -4232,7 +4243,10 @@ do_help(void)
 	printf(_("\n"));
 	printf(_("Connection options:\n"));
 	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: \"%s\")\n"), runtime_options.dbname);
-	printf(_("  -h, --host=HOSTNAME                 database server host or socket directory (default: \"%s\")\n"), runtime_options.host[0] == '\0' ? _("local socket") : runtime_options.host);
+	printf(_("  -h, --host=HOSTNAME                 database server host"));
+	if (runtime_options.host[0] != '\0')
+		printf(_(" (default: \"%s\")"), runtime_options.host);
+	printf(_("\n"));
 	printf(_("  -p, --port=PORT                     database server port (default: \"%s\")\n"), runtime_options.masterport);
 	printf(_("  -U, --username=USERNAME             database user name to connect as (default: \"%s\")\n"), runtime_options.username);
 	printf(_("\n"));
@@ -4720,23 +4734,7 @@ check_parameters_for_action(const int action)
 
 			if (strcmp(runtime_options.host, "") == 0)
 			{
-				bool conninfo_host_provided = false;
-				PQconninfoOption *opt;
-				for (opt = opts; opt->keyword != NULL; opt++)
-				{
-					if (strcmp(opt->keyword, "host") == 0 ||
-						strcmp(opt->keyword, "hostaddr") == 0)
-					{
-						if (opt->val != NULL && opt->val[0] != '\0')
-						{
-							conninfo_host_provided = true;
-							break;
-						}
-					}
-				}
-
-				if (conninfo_host_provided == false)
-					error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY CLONE"));
+				error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY CLONE"));
 			}
 
 			if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
