@@ -1,4 +1,3 @@
-
 /*
  * repmgr.c - Command interpreter for the repmgr package
  * Copyright (C) 2ndQuadrant, 2010-2016
@@ -1128,7 +1127,7 @@ do_standby_register(void)
 	int			ret;
 
 	bool		record_created;
-	t_node_info node_record;
+	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	int			node_result;
 
 	log_info(_("connecting to standby database\n"));
@@ -2762,7 +2761,7 @@ do_standby_switchover(void)
 
 	char	    repmgr_db_cli_params[MAXLEN] = "";
 	int	        query_result;
-	t_node_info remote_node_record;
+	t_node_info remote_node_record = T_NODE_INFO_INITIALIZER;
 	bool		connection_success,
 				shutdown_success;
 
@@ -3455,7 +3454,7 @@ do_standby_switchover(void)
 
 	if (options.use_replication_slots)
 	{
-		t_node_info local_node_record;
+		t_node_info local_node_record  = T_NODE_INFO_INITIALIZER;
 
 		query_result = get_node_record(local_conn, options.cluster_name, options.node, &local_node_record);
 

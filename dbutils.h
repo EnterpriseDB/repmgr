@@ -52,18 +52,6 @@ typedef struct s_node_info
 }	t_node_info;
 
 
-/*
- * Struct to store replication slot information
- */
-
-typedef struct s_replication_slot
-{
-	char slot_name[MAXLEN];
-    char slot_type[MAXLEN];
-	bool active;
-}   t_replication_slot;
-
-
 #define T_NODE_INFO_INITIALIZER { \
   NODE_NOT_FOUND, \
   NO_UPSTREAM_NODE, \
@@ -77,6 +65,19 @@ typedef struct s_replication_slot
   false, \
   InvalidXLogRecPtr \
 }
+
+/*
+ * Struct to store replication slot information
+ */
+
+typedef struct s_replication_slot
+{
+	char slot_name[MAXLEN];
+    char slot_type[MAXLEN];
+	bool active;
+}   t_replication_slot;
+
+
 
 PGconn *_establish_db_connection(const char *conninfo,
 								 const bool exit_on_error,
