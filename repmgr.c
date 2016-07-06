@@ -768,9 +768,9 @@ do_cluster_show(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-			  "SELECT conninfo, type, name, upstream_node_name, id"
-			  "  FROM %s.repl_show_nodes",
-			  get_repmgr_schema_quoted(conn));
+					  "SELECT conninfo, type, name, upstream_node_name, id"
+					  "  FROM %s.repl_show_nodes",
+					  get_repmgr_schema_quoted(conn));
 
 	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
 
@@ -1370,8 +1370,6 @@ do_standby_clone(void)
 
 	char	   *first_wal_segment = NULL;
 	char	   *last_wal_segment = NULL;
-
-	char       xlog_dir[MAXLEN] = "";
 
 	PQExpBufferData event_details;
 
@@ -2043,8 +2041,8 @@ stop_backup:
 	 */
 	if (runtime_options.rsync_only)
 	{
-		char	script[MAXLEN];
 		char	label_path[MAXPGPATH];
+		char	dirpath[MAXLEN] = "";
 
 		if (runtime_options.force)
 		{
@@ -2053,15 +2051,14 @@ stop_backup:
 			 * rsync's --exclude option doesn't do it.
 			 */
 
-			maxlen_snprintf(xlog_dir, "%s/pg_xlog/", local_data_directory);
+			maxlen_snprintf(dirpath, "%s/pg_xlog/", local_data_directory);
 
-			if (!rmtree(xlog_dir, false))
+			if (!rmtree(dirpath, false))
 			{
 				log_err(_("unable to empty local WAL directory %s\n"),
-						xlog_dir);
+						dirpath);
 				exit(ERR_BAD_RSYNC);
 			}
-
 		}
 
 		/*
@@ -2082,15 +2079,15 @@ stop_backup:
 		if (server_version_num >= 90400 &&
 			backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
 		{
-			maxlen_snprintf(script, "rm -rf %s/pg_replslot/*",
+			maxlen_snprintf(dirpath, "%s/pg_replslot/*",
 							local_data_directory);
 
 			log_debug("deleting pg_replslot directory contents\n");
-			r = system(script);
-			if (r != 0)
+
+			if (!rmtree(dirpath, false))
 			{
-				log_err(_("unable to empty replication slot directory %s/pg_replslot/\n"),
-						local_data_directory);
+				log_err(_("unable to empty replication slot directory %s\n"),
+						dirpath);
 				exit(ERR_BAD_RSYNC);
 			}
 		}
