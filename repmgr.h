@@ -28,6 +28,7 @@
 #include "dbutils.h"
 #include "errcode.h"
 #include "config.h"
+#include "dirmod.h"
 
 #define MIN_SUPPORTED_VERSION		"9.3"
 #define MIN_SUPPORTED_VERSION_NUM	90300
@@ -69,7 +70,7 @@ typedef struct
 	bool		rsync_only;
 	bool		fast_checkpoint;
 	bool		ignore_external_config_files;
-	char		pg_ctl_mode[MAXLEN];
+	bool		csv_mode;
 	char		masterport[MAXLEN];
 	/*
 	 * configuration file parameters which can be overridden on the
@@ -80,6 +81,7 @@ typedef struct
 	/* parameter used by STANDBY SWITCHOVER */
 	char		remote_config_file[MAXLEN];
 	char		pg_rewind[MAXPGPATH];
+	char		pg_ctl_mode[MAXLEN];
 	/* parameter used by STANDBY {ARCHIVE_CONFIG | RESTORE_CONFIG} */
 	char		config_archive_dir[MAXLEN];
 	/* parameter used by CLUSTER CLEANUP */
@@ -94,7 +96,7 @@ typedef struct
 	bool		initdb_no_pwprompt;
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, "smart", "", "", "", "", "", 0, "", "", "", false }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, "", "", "", false }
 
 struct BackupLabel
 {

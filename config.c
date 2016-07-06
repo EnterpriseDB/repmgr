@@ -28,7 +28,7 @@ static void parse_event_notifications_list(t_configuration_options *options, con
 static void tablespace_list_append(t_configuration_options *options, const char *arg);
 static void exit_with_errors(ErrorList *config_errors);
 
-const static char *_progname = '\0';
+const static char *_progname = NULL;
 static char config_file_path[MAXPGPATH];
 static bool config_file_provided = false;
 bool config_file_found = false;
@@ -224,6 +224,7 @@ parse_config(t_configuration_options *options)
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	memset(options->pg_ctl_options, 0, sizeof(options->pg_ctl_options));
 	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
+	memset(options->restore_command, 0, sizeof(options->restore_command));
 
 	/* default master_response_timeout is 60 seconds */
 	options->master_response_timeout = 60;
@@ -239,6 +240,8 @@ parse_config(t_configuration_options *options)
 	options->witness_repl_nodes_sync_interval_secs = 30;
 
 	memset(options->event_notification_command, 0, sizeof(options->event_notification_command));
+	options->event_notifications.head = NULL;
+	options->event_notifications.tail = NULL;
 
 	options->tablespace_mapping.head = NULL;
 	options->tablespace_mapping.tail = NULL;
@@ -340,7 +343,8 @@ parse_config(t_configuration_options *options)
 			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
 			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", &config_errors, false);
-		/* 'primary_response_timeout' as synonym for 'master_response_timeout' -
+		/*
+		 * 'primary_response_timeout' as synonym for 'master_response_timeout' -
 		 * we'll switch terminology in a future release (3.1?)
 		 */
 		else if (strcmp(name, "primary_response_timeout") == 0)
@@ -372,6 +376,8 @@ parse_config(t_configuration_options *options)
 			parse_event_notifications_list(options, value);
 		else if (strcmp(name, "tablespace_mapping") == 0)
 			tablespace_list_append(options, value);
+		else if (strcmp(name, "restore_command") == 0)
+			strncpy(options->restore_command, value, MAXLEN);
 		else
 		{
 			known_parameter = false;

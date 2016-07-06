@@ -63,6 +63,15 @@ UPDATE repl_nodes SET type = 'master' WHERE id = $master_id;
 
 -- UPDATE repl_nodes SET active = FALSE WHERE id IN (...);
 
+/* There's also an event table which we need to create */
+CREATE TABLE repl_events (
+  node_id          INTEGER NOT NULL,
+  event            TEXT NOT NULL,
+  successful       BOOLEAN NOT NULL DEFAULT TRUE,
+  event_timestamp  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  details          TEXT NULL
+);
+
 /* When you're sure of your changes, commit them */
 
 -- COMMIT;

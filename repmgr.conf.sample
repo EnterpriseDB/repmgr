@@ -19,7 +19,7 @@
 
 # Node ID and name
 # (Note: we recommend to avoid naming nodes after their initial
-#  replication funcion, as this will cause confusion when e.g.
+#  replication function, as this will cause confusion when e.g.
 #  "standby2" is promoted to primary)
 #node=2           # a unique integer
 #node_name=node2  # an arbitrary (but unique) string; we recommend using
@@ -28,8 +28,16 @@
 
 # Database connection information as a conninfo string
 # This must be accessible to all servers in the cluster; for details see:
-#   http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+#
+#   https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+#
 #conninfo='host=192.168.204.104 dbname=repmgr_db user=repmgr_usr'
+#
+# If repmgrd is in use, consider explicitly setting `connect_timeout` in the
+# conninfo string to determine the length of time which elapses before
+# a network connection attempt is abandoned; for details see:
+#
+#   https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
 
 # Optional configuration items
 # ============================
@@ -113,6 +121,10 @@
 #
 # tablespace_mapping=/path/to/original/tablespace=/path/to/new/tablespace
 
+# You can specify a restore_command to be used in the recovery.conf that
+# will be placed in the cloned standby
+#
+# restore_command = cp /path/to/archived/wals/%f %p
 
 # Failover settings (repmgrd)
 # ---------------------------

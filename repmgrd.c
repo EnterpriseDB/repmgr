@@ -44,11 +44,11 @@
 
 
 /* Local info */
-t_configuration_options local_options;
+t_configuration_options local_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 PGconn	   *my_local_conn = NULL;
 
 /* Master info */
-t_configuration_options master_options;
+t_configuration_options master_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 PGconn	   *master_conn = NULL;
 
@@ -60,8 +60,6 @@ t_node_info node_info;
 bool		failover_done = false;
 
 char	   *pid_file = NULL;
-
-t_configuration_options config = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static void help(void);
 static void usage(void);
@@ -399,7 +397,7 @@ main(int argc, char **argv)
 			case STANDBY:
 
 				/* We need the node id of the master server as well as a connection to it */
-				log_info(_("connecting to master node '%s'\n"),
+				log_info(_("connecting to master node of cluster '%s'\n"),
 						 local_options.cluster_name);
 
 				master_conn = get_master_connection(my_local_conn,
@@ -462,15 +460,15 @@ main(int argc, char **argv)
 
 				do
 				{
-					log_verbose(LOG_DEBUG, "standby check loop...\n");
-
-					if (node_info.type == WITNESS)
+					if (node_info.type == STANDBY)
 					{
-						witness_monitor();
-					}
-					else if (node_info.type == STANDBY)
-					{
+						log_verbose(LOG_DEBUG, "standby check loop...\n");
 						standby_monitor();
+					}
+					else if (node_info.type == WITNESS)
+					{
+						log_verbose(LOG_DEBUG, "witness check loop...\n");
+						witness_monitor();
 					}
 
 					sleep(local_options.monitor_interval_secs);
@@ -667,7 +665,7 @@ witness_monitor(void)
 					  "            replication_lag, apply_lag )"
 					  "      VALUES(%d, %d, "
 					  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
-					  "             pg_current_xlog_location(), NULL, "
+					  "             pg_catalog.pg_current_xlog_location(), NULL, "
 					  "             0, 0) ",
 					  get_repmgr_schema_quoted(my_local_conn),
 					  master_options.node,
@@ -695,7 +693,7 @@ standby_monitor(void)
 {
 	PGresult   *res;
 	char		monitor_standby_timestamp[MAXLEN];
-	char		last_wal_master_location[MAXLEN];
+	char		last_wal_primary_location[MAXLEN];
 	char		last_xlog_receive_location[MAXLEN];
 	char		last_xlog_replay_location[MAXLEN];
 	char		last_xact_replay_timestamp[MAXLEN];
@@ -705,6 +703,9 @@ standby_monitor(void)
 	XLogRecPtr	lsn_master_current_xlog_location;
 	XLogRecPtr	lsn_last_xlog_receive_location;
 	XLogRecPtr	lsn_last_xlog_replay_location;
+
+	long long unsigned int replication_lag;
+	long long unsigned int apply_lag;
 
 	int			connection_retries,
 				ret;
@@ -750,10 +751,9 @@ standby_monitor(void)
 		? "master"
 		: "upstream";
 
-	// ZZZ "5 minutes"?
 	/*
-	 * Check if the upstream node is still available, if after 5 minutes of retries
-	 * we cannot reconnect, try to get a new upstream node.
+	 * Check that the upstream node is still available
+	 * If not, initiate failover process
 	 */
 
 	check_connection(&upstream_conn, upstream_node_type, upstream_conninfo);
@@ -820,26 +820,24 @@ standby_monitor(void)
 		else if (local_options.failover == AUTOMATIC_FAILOVER)
 		{
 			/*
-			 * When we returns from this function we will have a new master
+			 * When we return from this function we will have a new master
 			 * and a new master_conn
-			 */
-
-			/*
+			 *
 			 * Failover handling is handled differently depending on whether
 			 * the failed node is the master or a cascading standby
 			 */
 			upstream_node = get_node_info(my_local_conn, local_options.cluster_name, upstream_node_id);
 
-            if (upstream_node.type == MASTER)
-            {
-                log_debug(_("failure detected on master node (%i); attempting to promote a standby\n"),
-                          node_info.upstream_node_id);
-                do_master_failover();
-            }
-            else
-            {
-                log_debug(_("failure detected on upstream node %i; attempting to reconnect to new upstream node\n"),
-                          node_info.upstream_node_id);
+			if (upstream_node.type == MASTER)
+			{
+				log_debug(_("failure detected on master node (%i); attempting to promote a standby\n"),
+						  node_info.upstream_node_id);
+				do_master_failover();
+			}
+			else
+			{
+				log_debug(_("failure detected on upstream node %i; attempting to reconnect to new upstream node\n"),
+						  node_info.upstream_node_id);
 
 				if (!do_upstream_standby_failover(upstream_node))
 				{
@@ -847,20 +845,20 @@ standby_monitor(void)
 					initPQExpBuffer(&errmsg);
 
 					appendPQExpBuffer(&errmsg,
-									  _("unable to reconnect to new upstream node, terminating..."));
+							  _("unable to reconnect to new upstream node, terminating..."));
 
 					log_err("%s\n", errmsg.data);
 
 					create_event_record(master_conn,
-										&local_options,
-										local_options.node,
-										"repmgrd_shutdown",
-										false,
-										errmsg.data);
+							    &local_options,
+							    local_options.node,
+							    "repmgrd_shutdown",
+							    false,
+							    errmsg.data);
 
 					terminate(ERR_DB_CON);
 				}
-            }
+			}
 			return;
 		}
 	}
@@ -963,7 +961,7 @@ standby_monitor(void)
 
 	if (active_master_id != master_options.node)
 	{
-		log_notice(_("connecting to active master (node %i)...\n"), active_master_id); \
+		log_notice(_("connecting to active master (node %i)...\n"), active_master_id);
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
@@ -986,9 +984,11 @@ standby_monitor(void)
 
 	/* Get local xlog info */
 	sqlquery_snprintf(sqlquery,
-					  "SELECT CURRENT_TIMESTAMP, pg_last_xlog_receive_location(), "
-					  "pg_last_xlog_replay_location(), pg_last_xact_replay_timestamp(), "
-					  "pg_last_xlog_receive_location() >= pg_last_xlog_replay_location()");
+					  "SELECT CURRENT_TIMESTAMP, "
+					  "pg_catalog.pg_last_xlog_receive_location(), "
+					  "pg_catalog.pg_last_xlog_replay_location(), "
+					  "pg_catalog.pg_last_xact_replay_timestamp(), "
+					  "pg_catalog.pg_last_xlog_receive_location() >= pg_catalog.pg_last_xlog_replay_location()");
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1038,7 +1038,12 @@ standby_monitor(void)
 					"Replayed WAL newer than received WAL - is this standby connected to its upstream?\n");
 	}
 
-	/* Get master xlog info */
+	/*
+	 * Get master xlog position
+	 *
+	 * TODO: investigate whether pg_current_xlog_insert_location() would be a better
+	 * choice; see: https://github.com/2ndQuadrant/repmgr/issues/189
+	 */
 	sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_xlog_location()");
 
 	res = PQexec(master_conn, sqlquery);
@@ -1049,21 +1054,41 @@ standby_monitor(void)
 		return;
 	}
 
-	strncpy(last_wal_master_location, PQgetvalue(res, 0, 0), MAXLEN);
+	strncpy(last_wal_primary_location, PQgetvalue(res, 0, 0), MAXLEN);
 	PQclear(res);
 
-	/* Calculate the lag */
-	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_master_location, NULL);
-
+	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_primary_location, NULL);
 	lsn_last_xlog_replay_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
 
+	/* Calculate apply lag */
 	if (last_xlog_receive_location_gte_replayed == false)
 	{
-		lsn_last_xlog_receive_location = lsn_last_xlog_replay_location;
+		/*
+		 * We're not receiving streaming WAL - in this case the receive location
+		 * equals the last replayed location
+		 */
+		apply_lag = 0;
+		strncpy(last_xlog_receive_location, last_xlog_replay_location, MAXLEN);
+		lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
 	}
 	else
 	{
+		apply_lag = (long long unsigned int)lsn_last_xlog_receive_location - lsn_last_xlog_replay_location;
 		lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
+	}
+
+	/* Calculate replication lag */
+	if (lsn_master_current_xlog_location >= lsn_last_xlog_receive_location)
+	{
+		replication_lag = (long long unsigned int)(lsn_master_current_xlog_location - lsn_last_xlog_receive_location);
+	}
+	else
+	{
+		/* This should never happen, but in case it does set lag to zero */
+		log_warning("Master xlog (%s) location appears less than standby receive location (%s)\n",
+					last_wal_primary_location,
+					last_xlog_receive_location);
+		replication_lag = 0;
 	}
 
 	/*
@@ -1092,11 +1117,10 @@ standby_monitor(void)
 					  local_options.node,
 					  monitor_standby_timestamp,
 					  last_xact_replay_timestamp,
-					  last_wal_master_location,
+					  last_wal_primary_location,
 					  last_xlog_receive_location,
-					  (long long unsigned int)(lsn_master_current_xlog_location - lsn_last_xlog_receive_location),
-					  (long long unsigned int)(lsn_last_xlog_receive_location - lsn_last_xlog_replay_location));
-
+					  replication_lag,
+					  apply_lag);
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We will
 	 * check the result next time we pause for a monitor step.
@@ -1143,8 +1167,8 @@ do_master_failover(void)
 	 */
 	t_node_info nodes[FAILOVER_NODES_MAX_CHECK];
 
-    /* Store details of the failed node here */
-    t_node_info failed_master = T_NODE_INFO_INITIALIZER;
+	/* Store details of the failed node here */
+	t_node_info failed_master = T_NODE_INFO_INITIALIZER;
 
 	/* Store details of the best candidate for promotion to master here */
 	t_node_info best_candidate = T_NODE_INFO_INITIALIZER;
@@ -1154,7 +1178,7 @@ do_master_failover(void)
 			"SELECT id, conninfo, type, upstream_node_id "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
-            "   AND active IS TRUE "
+		        "   AND active IS TRUE "
 			"   AND priority > 0 "
 			" ORDER BY priority DESC, id "
 			" LIMIT %i ",
@@ -1167,7 +1191,6 @@ do_master_failover(void)
 	{
 		log_err(_("unable to retrieve node records: %s\n"), PQerrorMessage(my_local_conn));
 		PQclear(res);
-		PQfinish(my_local_conn);
 		terminate(ERR_DB_QUERY);
 	}
 
@@ -1541,12 +1564,12 @@ do_master_failover(void)
 					log_notice(_("Original master reappeared before this standby was promoted - no action taken\n"));
 
 					PQfinish(master_conn);
+					master_conn = NULL;
+
 					/* no failover occurred but we'll want to restart connections */
 					failover_done = true;
 					return;
 				}
-
-				PQfinish(my_local_conn);
 			}
 
 			log_err(_("promote command failed. You could check and try it manually.\n"));
@@ -1901,7 +1924,7 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
 static bool
 set_local_node_status(void)
 {
-        PGresult       *res;
+	PGresult       *res;
 	char		sqlquery[QUERY_STR_LEN];
 	int		active_master_node_id = NODE_NOT_FOUND;
 	char		master_conninfo[MAXLEN];
@@ -1994,10 +2017,12 @@ check_cluster_configuration(PGconn *conn)
 	log_info(_("checking cluster configuration with schema '%s'\n"), get_repmgr_schema());
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT oid FROM pg_class "
+					  "SELECT oid FROM pg_catalog.pg_class "
 					  " WHERE oid = '%s.repl_nodes'::regclass ",
-			                  get_repmgr_schema_quoted(master_conn));
+					  get_repmgr_schema_quoted(master_conn));
+
 	res = PQexec(conn, sqlquery);
+
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_err(_("PQexec failed: %s\n"), PQerrorMessage(conn));
@@ -2416,6 +2441,8 @@ get_node_info(PGconn *conn, char *cluster, int node_id)
 							errmsg.data);
 
 		PQfinish(conn);
+		conn = NULL;
+
 		terminate(ERR_DB_QUERY);
 	}
 

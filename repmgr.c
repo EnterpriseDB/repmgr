@@ -87,7 +87,7 @@ static bool create_recovery_file(const char *data_dir);
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 							  char *local_path, bool is_directory, int server_version_num);
-static int  run_basebackup(const char *data_dir);
+static int  run_basebackup(const char *data_dir, int server_version);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static void write_primary_conninfo(char *line);
@@ -121,7 +121,7 @@ static bool remote_command(const char *host, const char *user, const char *comma
 static void format_db_cli_params(const char *conninfo, char *output);
 static bool copy_file(const char *old_filename, const char *new_filename);
 
-static void read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
+static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
 /* Global variables */
 static const char *keywords[6];
@@ -187,6 +187,7 @@ main(int argc, char **argv)
 		{"config-archive-dir", required_argument, NULL, 5},
 		{"pg_rewind", optional_argument, NULL, 6},
 		{"pwprompt", optional_argument, NULL, 7},
+		{"csv", no_argument, NULL, 8},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
@@ -426,6 +427,9 @@ main(int argc, char **argv)
 				break;
 			case 7:
 				runtime_options.witness_pwprompt = true;
+				break;
+			case 8:
+				runtime_options.csv_mode = true;
 				break;
 
 			default:
@@ -764,9 +768,9 @@ do_cluster_show(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-			  "SELECT conninfo, type, name, upstream_node_name"
-			  "  FROM %s.repl_show_nodes",
-			  get_repmgr_schema_quoted(conn));
+					  "SELECT conninfo, type, name, upstream_node_name, id"
+					  "  FROM %s.repl_show_nodes",
+					  get_repmgr_schema_quoted(conn));
 
 	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
 
@@ -813,21 +817,24 @@ do_cluster_show(void)
 			upstream_length = upstream_length_cur;
 	}
 
-	printf("Role      | %-*s | %-*s | Connection String\n", name_length, name_header, upstream_length, upstream_header);
-	printf("----------+-");
+	if (! runtime_options.csv_mode)
+	{
+		printf("Role      | %-*s | %-*s | Connection String\n", name_length, name_header, upstream_length, upstream_header);
+		printf("----------+-");
 
-	for (i = 0; i < name_length; i++)
-		printf("-");
+		for (i = 0; i < name_length; i++)
+			printf("-");
 
-	printf("-|-");
-	for (i = 0; i < upstream_length; i++)
-		printf("-");
+		printf("-|-");
+		for (i = 0; i < upstream_length; i++)
+			printf("-");
 
-	printf("-|-");
-	for (i = 0; i < conninfo_length; i++)
-		printf("-");
+		printf("-|-");
+		for (i = 0; i < conninfo_length; i++)
+			printf("-");
 
-	printf("\n");
+		printf("\n");
+	}
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
@@ -841,11 +848,20 @@ do_cluster_show(void)
 		else
 			strcpy(node_role, "* master");
 
-		printf("%-10s", node_role);
-		printf("| %-*s ", name_length, PQgetvalue(res, i, 2));
-		printf("| %-*s ", upstream_length, PQgetvalue(res, i, 3));
-		printf("| %s\n", PQgetvalue(res, i, 0));
-
+		if (runtime_options.csv_mode)
+		{
+			int connection_status =
+				(PQstatus(conn) == CONNECTION_OK) ?
+				(is_standby(conn) ? 1 : 0) : -1;
+			printf("%s,%d\n", PQgetvalue(res, i, 4), connection_status);
+		}
+		else
+		{
+			printf("%-10s", node_role);
+			printf("| %-*s ", name_length, PQgetvalue(res, i, 2));
+			printf("| %-*s ", upstream_length, PQgetvalue(res, i, 3));
+			printf("| %s\n", PQgetvalue(res, i, 0));
+		}
 		PQfinish(conn);
 	}
 
@@ -1110,8 +1126,9 @@ do_standby_register(void)
 	PGconn	   *master_conn;
 	int			ret;
 
-
 	bool		record_created;
+	t_node_info node_record = T_NODE_INFO_INITIALIZER;
+	int			node_result;
 
 	log_info(_("connecting to standby database\n"));
 	conn = establish_db_connection(options.conninfo, true);
@@ -1162,6 +1179,28 @@ do_standby_register(void)
 
 		if (node_record_deleted == false)
 		{
+			PQfinish(master_conn);
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/*
+	 * Check that an active node with the same node_name doesn't exist already
+	 */
+
+	node_result = get_node_record_by_name(master_conn,
+										  options.cluster_name,
+										  options.node_name,
+										  &node_record);
+
+	if (node_result)
+	{
+		if (node_record.active == true)
+		{
+			log_err(_("Node %i exists already with node_name \"%s\"\n"),
+					  node_record.node_id,
+					  options.node_name);
 			PQfinish(master_conn);
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
@@ -1393,7 +1432,7 @@ do_standby_clone(void)
 
 	if (*runtime_options.recovery_min_apply_delay)
 	{
-		if (get_server_version(upstream_conn, NULL) < 90400)
+		if (server_version_num < 90400)
 		{
 			log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
 			PQfinish(upstream_conn);
@@ -1417,7 +1456,7 @@ do_standby_clone(void)
 	{
 		TablespaceListCell *cell;
 
-		if (get_server_version(upstream_conn, NULL) < 90400 && !runtime_options.rsync_only)
+		if (server_version_num < 90400 && !runtime_options.rsync_only)
 		{
 			log_err(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
 			PQfinish(upstream_conn);
@@ -1673,12 +1712,13 @@ do_standby_clone(void)
 		}
 
 		/* Read backup label copied from primary */
-		/* XXX ensure this function does not exit on error as we'd need to stop the backup */
-		read_backup_label(local_data_directory, &backup_label);
+		if (read_backup_label(local_data_directory, &backup_label) == false)
+		{
+			r = retval = ERR_BAD_BACKUP_LABEL;
+			goto stop_backup;
+		}
 
-		printf("Label: %s; file: %s\n", backup_label.label, backup_label.start_wal_file);
-
-		/* Handle tablespaces */
+		/* Copy tablespaces and, if required, remap to a new location */
 
 		sqlquery_snprintf(sqlquery,
 						  " SELECT oid, pg_tablespace_location(oid) AS spclocation "
@@ -1715,7 +1755,6 @@ do_standby_clone(void)
 			appendPQExpBuffer(&tblspc_dir_src, "%s", PQgetvalue(res, i, 1));
 
 			/* Check if tablespace path matches one of the provided tablespace mappings */
-
 			if (options.tablespace_mapping.head != NULL)
 			{
 				for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
@@ -1758,10 +1797,15 @@ do_standby_clone(void)
 			       goto stop_backup;
 			}
 
-			/* Update symlinks in pg_tblspc */
+			/*
+			 * If a valid mapping was provide for this tablespace, arrange for it to
+			 * be remapped
+			 * (if no tablespace mappings was provided, the link will be copied as-is
+			 * by pg_basebackup or rsync and no action is required)
+			 */
 			if (mapping_found == true)
 			{
-				/* 9.5 and later - create a tablespace_map file */
+				/* 9.5 and later - append to the tablespace_map file */
 				if (server_version_num >= 90500)
 				{
 					tablespace_map_rewrite = true;
@@ -1805,6 +1849,13 @@ do_standby_clone(void)
 
 		PQclear(res);
 
+		/*
+		 * For 9.5 and later, if tablespace remapping was requested, we'll need
+		 * to rewrite the tablespace map file ourselves.
+		 * The tablespace map file is read on startup and any links created by
+		 * the backend; we could do this ourselves like for pre-9.5 servers, but
+		 * it's better to rely on functionality the backend provides.
+		 */
 		if (server_version_num >= 90500 && tablespace_map_rewrite == true)
 		{
 			PQExpBufferData tablespace_map_filename;
@@ -1817,7 +1868,9 @@ do_standby_clone(void)
 			/* Unlink any existing file (it should be there, but we don't care if it isn't) */
 			if (unlink(tablespace_map_filename.data) < 0 && errno != ENOENT)
 			{
-				log_err(_("unable to remove tablespace_map file %s\n"), tablespace_map_filename.data);
+				log_err(_("unable to remove tablespace_map file %s: %s\n"),
+						tablespace_map_filename.data,
+						strerror(errno));
 
 				r = retval = ERR_BAD_BASEBACKUP;
 				goto stop_backup;
@@ -1845,7 +1898,7 @@ do_standby_clone(void)
 	}
 	else
 	{
-		r = run_basebackup(local_data_directory);
+		r = run_basebackup(local_data_directory, server_version_num);
 		if (r != 0)
 		{
 			log_warning(_("standby clone: base backup failed\n"));
@@ -1988,8 +2041,8 @@ stop_backup:
 	 */
 	if (runtime_options.rsync_only)
 	{
-		char	script[MAXLEN];
 		char	label_path[MAXPGPATH];
+		char	dirpath[MAXLEN] = "";
 
 		if (runtime_options.force)
 		{
@@ -1997,13 +2050,13 @@ stop_backup:
 			 * Remove any existing WAL from the target directory, since
 			 * rsync's --exclude option doesn't do it.
 			 */
-			maxlen_snprintf(script, "rm -rf %s/pg_xlog/*",
-							local_data_directory);
-			r = system(script);
-			if (r != 0)
+
+			maxlen_snprintf(dirpath, "%s/pg_xlog/", local_data_directory);
+
+			if (!rmtree(dirpath, false))
 			{
-				log_err(_("unable to empty local WAL directory %s/pg_xlog/\n"),
-						local_data_directory);
+				log_err(_("unable to empty local WAL directory %s\n"),
+						dirpath);
 				exit(ERR_BAD_RSYNC);
 			}
 		}
@@ -2024,17 +2077,17 @@ stop_backup:
 		 * functionality of replication slots
 		 */
 		if (server_version_num >= 90400 &&
-				backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
+			backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
 		{
-			maxlen_snprintf(script, "rm -rf %s/pg_replslot/*",
+			maxlen_snprintf(dirpath, "%s/pg_replslot/*",
 							local_data_directory);
 
 			log_debug("deleting pg_replslot directory contents\n");
-			r = system(script);
-			if (r != 0)
+
+			if (!rmtree(dirpath, false))
 			{
-				log_err(_("unable to empty replication slot directory %s/pg_replslot/\n"),
-						local_data_directory);
+				log_err(_("unable to empty replication slot directory %s\n"),
+						dirpath);
 				exit(ERR_BAD_RSYNC);
 			}
 		}
@@ -2151,8 +2204,7 @@ parse_label_lsn(const char *label_key, const char *label_value)
 	{
 		log_err(_("Couldn't parse backup label entry \"%s: %s\" as lsn"),
 				label_key, label_value);
-
-		exit(ERR_BAD_BACKUP_LABEL);
+		return InvalidXLogRecPtr;
 	}
 
 	return ptr;
@@ -2173,7 +2225,7 @@ parse_label_lsn(const char *label_key, const char *label_value)
  *
  *======================================
  */
-static void
+static bool
 read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label)
 {
 	char label_path[MAXPGPATH];
@@ -2198,7 +2250,7 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 	{
 		log_err(_("read_backup_label: could not open backup label file %s: %s"),
 				label_path, strerror(errno));
-		exit(ERR_BAD_BACKUP_LABEL);
+		return false;
 	}
 
 	log_info(_("read_backup_label: parsing backup label file '%s'\n"),
@@ -2220,7 +2272,7 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 		{
 			log_err(_("read_backup_label: line too long in backup label file. Line begins \"%s: %s\""),
 					label_key, label_value);
-			exit(ERR_BAD_BACKUP_LABEL);
+			return false;
 		}
 
 		log_debug("standby clone: got backup label entry \"%s: %s\"\n",
@@ -2232,13 +2284,18 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 			char wal_filename[MAXLEN];
 
 			nmatches = sscanf(label_value, "%" MAXLEN_STR "s (file %" MAXLEN_STR "[^)]", start_wal_location, wal_filename);
+
 			if (nmatches != 2)
 			{
 				log_err(_("read_backup_label: unable to parse \"START WAL LOCATION\" in backup label\n"));
-				exit(ERR_BAD_BACKUP_LABEL);
+				return false;
 			}
+
 			out_backup_label->start_wal_location =
 				parse_label_lsn(&label_key[0], start_wal_location);
+
+			if (out_backup_label->start_wal_location == InvalidXLogRecPtr)
+				return false;
 
 			(void) strncpy(out_backup_label->start_wal_file, wal_filename, MAXLEN);
 			out_backup_label->start_wal_file[MAXLEN-1] = '\0';
@@ -2247,6 +2304,9 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 		{
 			out_backup_label->checkpoint_location =
 				parse_label_lsn(&label_key[0], &label_value[0]);
+
+			if (out_backup_label->checkpoint_location == InvalidXLogRecPtr)
+				return false;
 		}
 		else if (strcmp(label_key, "BACKUP METHOD") == 0)
 		{
@@ -2272,6 +2332,9 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 		{
 			out_backup_label->min_failover_slot_lsn =
 				parse_label_lsn(&label_key[0], &label_value[0]);
+
+			if (out_backup_label->min_failover_slot_lsn == InvalidXLogRecPtr)
+				return false;
 		}
 		else
 		{
@@ -2281,6 +2344,10 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 	}
 
 	(void) fclose(label_file);
+
+	log_debug(_("read_backup_label: label is %s; start wal file is %s\n"), out_backup_label->label, out_backup_label->start_wal_file);
+
+	return true;
 }
 
 static void
@@ -2663,6 +2730,8 @@ do_standby_follow(void)
  *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
+ *  - add command line option --remote_pg_bindir or similar to
+ *    optionally handle cases where the remote pg_bindir is different
  */
 
 static void
@@ -2673,7 +2742,7 @@ do_standby_switchover(void)
 	int			server_version_num;
 	bool		use_pg_rewind;
 
-	/* the remote server is the primary which will be demoted */
+	/* the remote server is the primary to be demoted */
 	char	    remote_conninfo[MAXCONNINFO] = "";
 	char	    remote_host[MAXLEN];
 	char        remote_data_directory[MAXLEN];
@@ -2689,9 +2758,9 @@ do_standby_switchover(void)
 
 	char	    repmgr_db_cli_params[MAXLEN] = "";
 	int	        query_result;
-	t_node_info remote_node_record;
-	bool	    connection_success;
-
+	t_node_info remote_node_record = T_NODE_INFO_INITIALIZER;
+	bool		connection_success,
+				shutdown_success;
 
 	/*
 	 * SANITY CHECKS
@@ -2711,7 +2780,7 @@ do_standby_switchover(void)
 		log_err(_("switchover must be executed from the standby node to be promoted\n"));
 		PQfinish(local_conn);
 
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	server_version_num = check_server_version(local_conn, "master", true, NULL);
@@ -2821,8 +2890,8 @@ do_standby_switchover(void)
 		/* 9.5 and later have pg_rewind built-in - always use that */
 		use_pg_rewind = true;
 		maxlen_snprintf(remote_pg_rewind,
-						"%s/pg_rewind",
-						pg_bindir);
+						"%s",
+						make_pg_path("pg_rewind"));
 	}
 	else
 	{
@@ -2842,8 +2911,8 @@ do_standby_switchover(void)
 			else
 			{
 				maxlen_snprintf(remote_pg_rewind,
-								"%s/pg_rewind",
-								pg_bindir);
+								"%s",
+								make_pg_path("pg_rewind"));
 			}
 		}
 		else
@@ -3038,8 +3107,8 @@ do_standby_switchover(void)
 		log_verbose(LOG_DEBUG, "remote_archive_config_dir: %s\n", remote_archive_config_dir);
 
 		maxlen_snprintf(command,
-						"%s/repmgr standby archive-config -f %s --config-archive-dir=%s",
-						pg_bindir,
+						"%s standby archive-config -f %s --config-archive-dir=%s",
+						make_pg_path("repmgr"),
 						runtime_options.remote_config_file,
 						remote_archive_config_dir);
 
@@ -3094,41 +3163,63 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&command_output);
 
-	connection_success = false;
+	shutdown_success = false;
 
 	/* loop for timeout waiting for current primary to stop */
 
-	for(i = 0; i < options.reconnect_attempts; i++)
+	for (i = 0; i < options.reconnect_attempts; i++)
 	{
 		/* Check whether primary is available */
 
-		remote_conn = test_db_connection(remote_conninfo, false); /* don't fail on error */
+		PGPing ping_res = PQping(remote_conninfo);
 
-		/* XXX failure to connect doesn't mean the server is necessarily
-		 * completely stopped - we need to better detect the reason for
-		 * connection failure ("server not listening" vs "shutting down")
-		 *
-		 * -> check is_pgup()
-		 */
-		if (PQstatus(remote_conn) != CONNECTION_OK)
+		/* database server could not be contacted */
+		if (ping_res == PQPING_NO_RESPONSE)
 		{
-			connection_success = true;
+			bool command_success;
 
-			log_notice(_("current master has been stopped\n"));
-			break;
+			/*
+			 * directly access the server and check that the
+			 * pidfile has gone away so we can be sure the server is actually
+			 * shut down and the PQPING_NO_RESPONSE is not due to other issues
+			 * such as coincidental network failure.
+			 */
+			initPQExpBuffer(&command_output);
+
+			maxlen_snprintf(command,
+					"ls %s/postmaster.pid >/dev/null 2>&1 && echo 1 || echo 0",
+					remote_data_directory);
+
+			command_success = remote_command(
+				remote_host,
+				runtime_options.remote_user,
+				command,
+				&command_output);
+
+			if (command_success == true && *command_output.data == '0')
+			{
+				shutdown_success = true;
+
+				log_notice(_("current master has been stopped\n"));
+
+				termPQExpBuffer(&command_output);
+
+				break;
+			}
+
+			termPQExpBuffer(&command_output);
 		}
-		PQfinish(remote_conn);
 
-		// configurable?
+		/* XXX make configurable? */
 		sleep(options.reconnect_interval);
 		i++;
 	}
 
-	if (connection_success == false)
+	if (shutdown_success == false)
 	{
 		log_err(_("master server did not shut down\n"));
 		log_hint(_("check the master server status before performing any further actions"));
-		exit(ERR_FAILOVER_FAIL);
+		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	/* promote this standby */
@@ -3151,8 +3242,8 @@ do_standby_switchover(void)
 
 		/* Execute pg_rewind */
 		maxlen_snprintf(command,
-						"%s/pg_rewind -D %s --source-server=\\'%s\\'",
-						pg_bindir,
+						"%s -D %s --source-server=\\'%s\\'",
+						remote_pg_rewind,
 						remote_data_directory,
 						options.conninfo);
 
@@ -3173,8 +3264,8 @@ do_standby_switchover(void)
 
 		/* Restore any previously archived config files */
 		maxlen_snprintf(command,
-						"%s/repmgr standby restore-config -D %s --config-archive-dir=%s",
-						pg_bindir,
+						"%s standby restore-config -D %s --config-archive-dir=%s",
+						make_pg_path("repmgr"),
 						remote_data_directory,
 						remote_archive_config_dir);
 
@@ -3231,8 +3322,8 @@ do_standby_switchover(void)
 
 		format_db_cli_params(options.conninfo, repmgr_db_cli_params);
 		maxlen_snprintf(command,
-						"%s/repmgr -D %s -f %s %s --rsync-only --force --ignore-external-config-files standby clone",
-						pg_bindir,
+						"%s -D %s -f %s %s --rsync-only --force --ignore-external-config-files standby clone",
+						make_pg_path("repmgr"),
 						remote_data_directory,
 						runtime_options.remote_config_file,
 						repmgr_db_cli_params
@@ -3257,8 +3348,8 @@ do_standby_switchover(void)
 	 */
 	format_db_cli_params(options.conninfo, repmgr_db_cli_params);
 	maxlen_snprintf(command,
-					"%s/repmgr -D %s -f %s %s standby follow",
-					pg_bindir,
+					"%s -D %s -f %s %s standby follow",
+					make_pg_path("repmgr"),
 					remote_data_directory,
 					runtime_options.remote_config_file,
 					repmgr_db_cli_params
@@ -3292,7 +3383,7 @@ do_standby_switchover(void)
 			if (is_standby(remote_conn) == 0)
 			{
 				log_err(_("new standby (old master) is not a standby\n"));
-				exit(ERR_FAILOVER_FAIL);
+				exit(ERR_SWITCHOVER_FAIL);
 			}
 			connection_success = true;
 			break;
@@ -3306,7 +3397,7 @@ do_standby_switchover(void)
 	if (connection_success == false)
 	{
 		log_err(_("unable to connect to new standby (old master)\n"));
-		exit(ERR_FAILOVER_FAIL);
+		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	log_debug("new standby is in recovery\n");
@@ -3315,15 +3406,14 @@ do_standby_switchover(void)
 
 	local_conn = establish_db_connection(options.conninfo, true);
 
-
 	query_result = get_node_replication_state(local_conn, remote_node_record.name, remote_node_replication_state);
+
 	if (query_result == -1)
 	{
 		log_err(_("unable to retrieve replication status for node %i\n"), remote_node_id);
 		PQfinish(local_conn);
 
-		// errcode?
-		exit(ERR_DB_QUERY);
+		exit(ERR_SWITCHOVER_FAIL);
 	}
 
 	if (query_result == 0)
@@ -3332,7 +3422,6 @@ do_standby_switchover(void)
 	}
 	else
 	{
-		/* XXX other valid values? */
 		/* XXX we should poll for a while in case the node takes time to connect to the primary */
 		if (strcmp(remote_node_replication_state, "streaming") == 0 ||
 			strcmp(remote_node_replication_state, "catchup")  == 0)
@@ -3341,9 +3430,16 @@ do_standby_switchover(void)
 		}
 		else
 		{
-			log_err(_("node %i replication state is  \"%s\"\n"), remote_node_id, remote_node_replication_state);
+			/*
+			 * Other possible replication states are:
+			 *  - startup
+			 *  - backup
+			 *  - UNKNOWN
+			 */
+			log_err(_("node %i has unexpected replication state \"%s\"\n"),
+					remote_node_id, remote_node_replication_state);
 			PQfinish(local_conn);
-			exit(ERR_DB_QUERY);
+			exit(ERR_SWITCHOVER_FAIL);
 		}
 	}
 
@@ -3355,7 +3451,7 @@ do_standby_switchover(void)
 
 	if (options.use_replication_slots)
 	{
-		t_node_info local_node_record;
+		t_node_info local_node_record  = T_NODE_INFO_INITIALIZER;
 
 		query_result = get_node_record(local_conn, options.cluster_name, options.node, &local_node_record);
 
@@ -4120,12 +4216,13 @@ do_help(void)
 	printf(_("  -w, --wal-keep-segments=VALUE       (standby clone) minimum value for the GUC\n" \
 			 "                                        wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
-	printf(_("  -m, --mode                          (standby switchover) shutdown mode (smart|fast|immediate)\n"));
+	printf(_("  -m, --mode                          (standby switchover) shutdown mode (\"fast\" - default, \"smart\" or \"immediate\")\n"));
 	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \
 			 "                                        the current master\n"));
 	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
 			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));
+	printf(_("  --csv                               (cluster show) output in CSV mode (0 = master, 1 = standby, -1 = down)\n"));
 /*	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));*/
 	printf(_("  -P, --pwprompt                      (witness server) prompt for password when creating users\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
@@ -4216,6 +4313,15 @@ create_recovery_file(const char *data_dir)
 		log_debug(_("recovery.conf: %s"), line);
 	}
 
+	/* If restore_command is set, we use it as restore_command in recovery.conf */
+	if (strcmp(options.restore_command, "") != 0)
+	{
+		maxlen_snprintf(line, "restore_command = '%s'\n",
+						options.restore_command);
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		        return false;
+		log_debug(_("recovery.conf: %s"), line);
+	}
 	fclose(recovery_file);
 
 	return true;
@@ -4371,12 +4477,12 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 
 static int
-run_basebackup(const char *data_dir)
+run_basebackup(const char *data_dir, int server_version)
 {
 	char				script[MAXLEN];
 	int					r = 0;
 	PQExpBufferData 	params;
-	TablespaceListCell *cell;
+	TablespaceListCell      *cell;
 
 	/* Create pg_basebackup command line options */
 
@@ -4411,6 +4517,28 @@ run_basebackup(const char *data_dir)
 		}
 	}
 
+	/*
+	 * To ensure we have all the WALs needed during basebackup execution we stream
+	 * them as the backup is taking place.
+	 * Not necessary if on 9.6 if we have replication slots set in repmgr.conf
+	 * (starting at 9.6 there is an option, which we use, to reserve the LSN at
+	 * creation time)
+	 */
+	if (server_version < 90600 || !options.use_replication_slots)
+	{
+		/*
+		 * We're going to check first if the user set the xlog method in the repmgr.conf
+		 * file. We don't want to have conflicts with pg_basebackup due to specifying the
+		 * method twice.
+		 */
+		const char xlog_short[4] = "-X ";
+		const char xlog_long[14] = "--xlog-method";
+		if (strstr(options.pg_basebackup_options, xlog_short) == NULL && strstr(options.pg_basebackup_options, xlog_long) == NULL )
+		{
+			appendPQExpBuffer(&params, " -X stream");
+		}
+	}
+
 	maxlen_snprintf(script,
 					"%s -l \"repmgr base backup\" %s %s",
 					make_pg_path("pg_basebackup"),
@@ -4423,7 +4551,7 @@ run_basebackup(const char *data_dir)
 
 	/*
 	 * As of 9.4, pg_basebackup only ever returns 0 or 1
-     */
+	 */
 
 	r = system(script);
 
@@ -4621,6 +4749,15 @@ check_parameters_for_action(const int action)
 		if (pg_rewind_supplied == true)
 		{
 			error_list_append(&cli_warnings, _("--pg_rewind can only be used when executing STANDBY SWITCHOVER"));
+		}
+	}
+
+    /* Warn about parameters which apply to CLUSTER SHOW only */
+	if (action != CLUSTER_SHOW)
+	{
+		if (runtime_options.csv_mode)
+		{
+			error_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW"));
 		}
 	}
 
@@ -5080,6 +5217,10 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			NULL,
 		};
 
+		/*
+		 * Note that in 9.6+, "hot_standby" and "archive" are accepted as aliases
+		 * for "replica", but current_setting() will of course always return "replica"
+		 */
 		char *levels_96plus[] = {
 			"replica",
 			"logical",

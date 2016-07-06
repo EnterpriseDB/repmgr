@@ -48,7 +48,7 @@ This guide assumes that you are familiar with PostgreSQL administration and
 streaming replication concepts. For further details on streaming
 replication, see this link:
 
-  http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION
+  https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION
 
 The following terms are used throughout the `repmgr` documentation.
 
@@ -237,14 +237,18 @@ both servers.
 On the master server, a PostgreSQL instance must be initialised and running.
 The following replication settings must be included in `postgresql.conf`:
 
+
+    # Enable replication connections; set this figure to at least one more
+    # than the number of standbys which will connect to this server
+    # (note that repmgr will execute `pg_basebackup` in WAL streaming mode,
+    # which requires two free WAL senders)
+
+    max_wal_senders = 10
+
     # Ensure WAL files contain enough information to enable read-only queries
     # on the standby
 
     wal_level = 'hot_standby'
-
-    # Enable up to 10 replication connections
-
-    max_wal_senders = 10
 
     # How much WAL to retain on the master to allow a temporarily
     # disconnected standby to catch up again. The larger this is, the
@@ -258,6 +262,14 @@ The following replication settings must be included in `postgresql.conf`:
     # it anyway)
 
     hot_standby = on
+
+    # Enable WAL file archiving
+    archive_mode = on
+
+    # Set archive command to a script or application that will safely store
+    # you WALs in a secure place. /bin/true is an example of a command that
+    # ignores archiving. Use something more sensible.
+    archive_command = '/bin/true'
 
 
 * * *
@@ -458,7 +470,11 @@ so should be used with care.
 Further options can be passed to the `pg_basebackup` utility via
 the setting `pg_basebackup_options` in `repmgr.conf`. See the PostgreSQL
 documentation for more details of available options:
+<<<<<<< HEAD
   http://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+=======
+  https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+>>>>>>> 72f9b0145afab1060dd1202c8f8937653c8b2e39
 
 ### Using rsync to clone a standby
 
@@ -594,13 +610,13 @@ place. If using the default `pg_basebackup` method, we recommend setting
     pg_basebackup_options='--xlog-method=stream'
 
 See the `pg_basebackup` documentation for details:
-    http://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+    https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
 
 Otherwise it's necessary to set `wal_keep_segments` to an appropriately high
 value.
 
 Further information on replication slots in the PostgreSQL documentation:
-    http://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
+    https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
 
 
 Promoting a standby server with repmgr
@@ -699,8 +715,9 @@ updated to reflect this:
 
 
 Note that with cascading replication, `repmgr standby follow` can also be
-used to detach a standby from its current upstream server and follow another
-upstream server, including the master.
+used to detach a standby from its current upstream server and follow the
+master. However it's currently not possible to have it follow another standby;
+we hope to improve this in a future release.
 
 
 Performing a switchover with repmgr
@@ -727,7 +744,7 @@ both passwordless SSH access and the path of `repmgr.conf` on that server.
 > careful preparation and with adequate attention. In particular you should
 > be confident that your network environment is stable and reliable.
 >
-> We recommend running `repmgr standby switchover`  at the most verbose
+> We recommend running `repmgr standby switchover` at the most verbose
 > logging level (`--log-level DEBUG --verbose`) and capturing all output
 > to assist troubleshooting any problems.
 >
@@ -793,7 +810,7 @@ should have been updated to reflect this:
 
 ### Caveats
 
-- the functionality provided `repmgr standby switchover` is primarily aimed
+- The functionality provided `repmgr standby switchover` is primarily aimed
   at a two-server master/standby replication cluster and currently does
   not support additional standbys.
 - `repmgr standby switchover` is designed to use the `pg_rewind` utility,
@@ -802,11 +819,16 @@ should have been updated to reflect this:
 - `pg_rewind` *requires* that either `wal_log_hints` is enabled, or that
    data checksums were enabled when the cluster was initialized. See the
   `pg_rewind` documentation for details:
-     http://www.postgresql.org/docs/current/static/app-pgrewind.html
+     https://www.postgresql.org/docs/current/static/app-pgrewind.html
 - `repmgrd` should not be running when a switchover is carried out, otherwise
   the `repmgrd` may try and promote a standby by itself.
 - Any other standbys attached to the old master will need to be manually
   instructed to point to the new master (e.g. with `repmgr standby follow`).
+- You must ensure that following a server start using `pg_ctl`, log output
+  is not send to STDERR (the default behaviour). If logging is not configured,
+  We recommend setting `logging_collector=on` in `postgresql.conf` and
+  providing an explicit `-l/--log` setting in `repmgr.conf`'s `pg_ctl_options`
+  parameter.
 
 We hope to remove some of these restrictions in future versions of `repmgr`.
 
@@ -860,8 +882,8 @@ Adjust schema and node ID accordingly. A future `repmgr` release
 will make it possible to unregister failed standbys.
 
 
-Automatic failover with repmgrd
--------------------------------
+Automatic failover with `repmgrd`
+---------------------------------
 
 `repmgrd` is a management and monitoring daemon which runs on standby nodes
 and which can automate actions such as failover and updating standbys to
@@ -981,8 +1003,8 @@ during the failover:
     (3 rows)
 
 
-repmgrd log rotation
---------------------
+`repmgrd` log rotation
+----------------------
 
 Note that currently `repmgrd` does not provide logfile rotation. To ensure
 the current logfile does not grow indefinitely, configure your system's `logrotate`
@@ -998,8 +1020,29 @@ for up to 52 weeks and rotation forced if a file grows beyond 100Mb:
         create 0600 postgres postgres
     }
 
-Monitoring
-----------
+
+`repmgrd` and PostgreSQL connection settings
+--------------------------------------------
+
+In addition to the `repmgr` configuration settings, parameters in the
+`conninfo` string influence how `repmgr` makes a network connection to
+PostgreSQL. In particular, if another server in the replication cluster
+is unreachable at network level, system network settings will influence
+the length of time it takes to determine that the connection is not possible.
+
+In particular explicitly setting a parameter for `connect_timeout` should
+be considered; the effective minimum value of `2` (seconds) will ensure
+that a connection failure at network level is reported as soon as possible,
+otherwise dependeing on the system settings (e.g. `tcp_syn_retries` in Linux)
+a delay of a minute or more is possible.
+
+For further details on `conninfo` network connection parameters, see:
+
+  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS
+
+
+Monitoring with `repmgrd`
+-------------------------
 
 When `repmgrd` is running with the option `-m/--monitoring-history`, it will
 constantly write standby node status information to the `repl_monitor` table,

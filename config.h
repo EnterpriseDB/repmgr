@@ -72,6 +72,7 @@ typedef struct
 	char		pg_bindir[MAXLEN];
 	char		pg_ctl_options[MAXLEN];
 	char		pg_basebackup_options[MAXLEN];
+	char		restore_command[MAXLEN];
 	char		logfile[MAXLEN];
 	int			monitor_interval_secs;
 	int			retry_promote_interval_secs;
@@ -82,7 +83,11 @@ typedef struct
 	TablespaceList tablespace_mapping;
 }	t_configuration_options;
 
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
+/*
+ * The following will initialize the structure with a minimal set of options;
+ * actual defaults are set in parse_config() before parsing the configuration file
+ */
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, { NULL, NULL } }
 
 typedef struct ErrorListCell
 {
