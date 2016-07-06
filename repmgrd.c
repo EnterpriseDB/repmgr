@@ -961,7 +961,7 @@ standby_monitor(void)
 
 	if (active_master_id != master_options.node)
 	{
-		log_notice(_("connecting to active master (node %i)...\n"), active_master_id); \
+		log_notice(_("connecting to active master (node %i)...\n"), active_master_id);
 		if (master_conn != NULL)
 		{
 			PQfinish(master_conn);
@@ -1057,11 +1057,8 @@ standby_monitor(void)
 	strncpy(last_wal_primary_location, PQgetvalue(res, 0, 0), MAXLEN);
 	PQclear(res);
 
-
 	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_primary_location, NULL);
 	lsn_last_xlog_replay_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
-	lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
-
 
 	/* Calculate apply lag */
 	if (last_xlog_receive_location_gte_replayed == false)
@@ -1072,10 +1069,12 @@ standby_monitor(void)
 		 */
 		apply_lag = 0;
 		strncpy(last_xlog_receive_location, last_xlog_replay_location, MAXLEN);
+		lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
 	}
 	else
 	{
 		apply_lag = (long long unsigned int)lsn_last_xlog_receive_location - lsn_last_xlog_replay_location;
+		lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
 	}
 
 	/* Calculate replication lag */
