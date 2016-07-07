@@ -2079,7 +2079,7 @@ stop_backup:
 		if (server_version_num >= 90400 &&
 			backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
 		{
-			maxlen_snprintf(dirpath, "%s/pg_replslot/*",
+			maxlen_snprintf(dirpath, "%s/pg_replslot/",
 							local_data_directory);
 
 			log_debug("deleting pg_replslot directory contents\n");
