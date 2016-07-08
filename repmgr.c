@@ -123,11 +123,15 @@ static bool copy_file(const char *old_filename, const char *new_filename);
 
 static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
+static void param_set(const char *param, const char *value);
+
 /* Global variables */
 static PQconninfoOption *opts = NULL;
 
-static const char *keywords[6];
-static const char *values[6];
+static int param_count = 0;
+static char **param_keywords;
+static char **param_values;
+
 static bool		   config_file_required = true;
 
 /* Initialization of runtime options */
@@ -136,6 +140,7 @@ t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 bool 	 	 wal_keep_segments_used = false;
 bool 	 	 connection_param_provided = false;
+bool 	 	 host_param_provided = false;
 bool 	 	 pg_rewind_supplied = false;
 
 static char *server_mode = NULL;
@@ -220,13 +225,36 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
+
+	param_count = 0;
+	defs = PQconndefaults();
+
+	/* Count maximum number of parameters */
+	for (def = defs; def->keyword; def++)
+		param_count ++;
+
+	/* Initialize our internal parameter list */
+	param_keywords = pg_malloc0(sizeof(char *) * (param_count + 1));
+	param_values = pg_malloc0(sizeof(char *) * (param_count + 1));
+
+	for (c = 0; c <= param_count; c++)
+	{
+		param_keywords[c] = NULL;
+		param_values[c] = NULL;
+	}
+
 	/*
-	 * Set default values for any parameters not provided
+	 * Pre-set any defaults, which can be overwritten if matching
+	 * command line parameters are provided
 	 */
 
-	defs = PQconndefaults();
 	for (def = defs; def->keyword; def++)
 	{
+		if (def->val != NULL && def->val[0] != '\0')
+		{
+			param_set(def->keyword, def->val);
+		}
+
 		if (strcmp(def->keyword, "host") == 0 &&
 			(def->val != NULL && def->val[0] != '\0'))
 		{
@@ -253,6 +281,9 @@ main(int argc, char **argv)
 			strncpy(runtime_options.username, def->val, MAXLEN);
 		}
 	}
+
+	PQconninfoFree(defs);
+
 
 	/*
 	 * Though libpq will default to the username as dbname, PQconndefaults()
@@ -285,14 +316,18 @@ main(int argc, char **argv)
 				exit(SUCCESS);
 			case 'd':
 				strncpy(runtime_options.dbname, optarg, MAXLEN);
+				/* we'll set the dbname parameter below  if we detect it's not a conninfo string */
 				connection_param_provided = true;
 				break;
 			case 'h':
 				strncpy(runtime_options.host, optarg, MAXLEN);
+				param_set("host", optarg);
 				connection_param_provided = true;
+				host_param_provided = true;
 				break;
 			case 'p':
 				repmgr_atoi(optarg, "-p/--port", &cli_errors, false);
+				param_set("port", optarg);
 				strncpy(runtime_options.masterport,
 						optarg,
 						MAXLEN);
@@ -300,6 +335,7 @@ main(int argc, char **argv)
 				break;
 			case 'U':
 				strncpy(runtime_options.username, optarg, MAXLEN);
+				param_set("user", optarg);
 				connection_param_provided = true;
 				break;
 			case 'S':
@@ -454,59 +490,75 @@ main(int argc, char **argv)
 
 	/*
 	 * If -d/--dbname appears to be a conninfo string, validate by attempting
-	 * to parse it (and if successful, store the result so we can check for the
-	 * presence of required parameters)
+	 * to parse it (and if successful, store the parsed parameters)
 	 */
-	if (runtime_options.dbname &&
-		(strncmp(runtime_options.dbname, "postgresql://", 13) == 0 ||
-		 strncmp(runtime_options.dbname, "postgres://", 11) == 0 ||
-		 strchr(runtime_options.dbname, '=') != NULL))
+	if (runtime_options.dbname)
 	{
-		char	   *errmsg = NULL;
-
-		opts = PQconninfoParse(runtime_options.dbname, &errmsg);
-
-		if (opts == NULL)
+		if(strncmp(runtime_options.dbname, "postgresql://", 13) == 0 ||
+		   strncmp(runtime_options.dbname, "postgres://", 11) == 0 ||
+		   strchr(runtime_options.dbname, '=') != NULL)
 		{
-			PQExpBufferData conninfo_error;
-			initPQExpBuffer(&conninfo_error);
-			appendPQExpBuffer(&conninfo_error, _("error parsing conninfo:\n%s"), errmsg);
-			error_list_append(&cli_errors, conninfo_error.data);
+			char	   *errmsg = NULL;
 
-			termPQExpBuffer(&conninfo_error);
-			free(errmsg);
-		}
-		else
-		{
-			/*
-			 * Set runtime_options.(host|port|username) values
-			 */
-			PQconninfoOption *opt;
-			for (opt = opts; opt->keyword != NULL; opt++)
+			opts = PQconninfoParse(runtime_options.dbname, &errmsg);
+
+			if (opts == NULL)
 			{
-				if (strcmp(opt->keyword, "host") == 0 &&
-					(opt->val != NULL && opt->val[0] != '\0'))
+				PQExpBufferData conninfo_error;
+				initPQExpBuffer(&conninfo_error);
+				appendPQExpBuffer(&conninfo_error, _("error parsing conninfo:\n%s"), errmsg);
+				error_list_append(&cli_errors, conninfo_error.data);
+
+				termPQExpBuffer(&conninfo_error);
+				free(errmsg);
+			}
+			else
+			{
+				/*
+				 * Store any parameters provided in the conninfo string in our
+				 * internal array; also overwrite any options set in
+				 * runtime_options.(host|port|username), as the conninfo
+				 * settings take priority
+				 */
+				PQconninfoOption *opt;
+				for (opt = opts; opt->keyword != NULL; opt++)
 				{
-					strncpy(runtime_options.host, opt->val, MAXLEN);
-				}
-				if (strcmp(opt->keyword, "hostaddr") == 0 &&
-					(opt->val != NULL && opt->val[0] != '\0'))
-				{
-					strncpy(runtime_options.host, opt->val, MAXLEN);
-				}
-				else if (strcmp(opt->keyword, "port") == 0 &&
-					(opt->val != NULL && opt->val[0] != '\0'))
-				{
-					strncpy(runtime_options.masterport, opt->val, MAXLEN);
-				}
-				else if (strcmp(opt->keyword, "user") == 0 &&
-					(opt->val != NULL && opt->val[0] != '\0'))
-				{
-					strncpy(runtime_options.username, opt->val, MAXLEN);
+					if (opt->val != NULL && opt->val[0] != '\0')
+					{
+						param_set(opt->keyword, opt->val);
+					}
+
+					if (strcmp(opt->keyword, "host") == 0 &&
+						(opt->val != NULL && opt->val[0] != '\0'))
+					{
+						strncpy(runtime_options.host, opt->val, MAXLEN);
+						host_param_provided = true;
+					}
+					if (strcmp(opt->keyword, "hostaddr") == 0 &&
+						(opt->val != NULL && opt->val[0] != '\0'))
+					{
+						strncpy(runtime_options.host, opt->val, MAXLEN);
+						host_param_provided = true;
+					}
+					else if (strcmp(opt->keyword, "port") == 0 &&
+							 (opt->val != NULL && opt->val[0] != '\0'))
+					{
+						strncpy(runtime_options.masterport, opt->val, MAXLEN);
+					}
+					else if (strcmp(opt->keyword, "user") == 0 &&
+							 (opt->val != NULL && opt->val[0] != '\0'))
+					{
+						strncpy(runtime_options.username, opt->val, MAXLEN);
+					}
 				}
 			}
 		}
+		else
+		{
+			param_set("dbname", runtime_options.dbname);
+		}
 	}
+
 
 	/* Exit here already if errors in command line options found */
 	if (cli_errors.head != NULL)
@@ -683,14 +735,14 @@ main(int argc, char **argv)
 		}
 	}
 
-	keywords[2] = "user";
+/*	keywords[2] = "user";
 	values[2] = (runtime_options.username[0]) ? runtime_options.username : NULL;
 	keywords[3] = "dbname";
 	values[3] = runtime_options.dbname;
 	keywords[4] = "application_name";
 	values[4] = (char *) progname();
 	keywords[5] = NULL;
-	values[5] = NULL;
+	values[5] = NULL;*/
 
 	/*
 	 * Initialize the logger.  If verbose command line parameter was input,
@@ -1449,15 +1501,11 @@ do_standby_clone(void)
 				   runtime_options.dest_dir);
 	}
 
-	/* Connection parameters for master only */
-	keywords[0] = "host";
-	values[0] = runtime_options.host;
-	keywords[1] = "port";
-	values[1] = runtime_options.masterport;
+	param_set("application_name", options.node_name);
 
 	/* Connect to check configuration */
 	log_info(_("connecting to upstream node\n"));
-	upstream_conn = establish_db_connection_by_params(keywords, values, true);
+	upstream_conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
 
 	/* Verify that upstream node is a supported server version */
 	log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
@@ -2164,7 +2212,7 @@ stop_backup:
 	}
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file(local_data_directory, primary_conn);
+	create_recovery_file(local_data_directory, upstream_conn);
 
 	if (runtime_options.rsync_only)
 	{
@@ -2596,7 +2644,7 @@ do_standby_follow(void)
 	 * to determine primary, and carry out some other checks while we're
 	 * at it.
 	 */
-	if ( *runtime_options.host == '\0')
+	if (host_param_provided == false)
 	{
 		/* We need to connect to check configuration */
 		log_info(_("connecting to standby database\n"));
@@ -2659,12 +2707,7 @@ do_standby_follow(void)
 	/* primary server info explictly provided - attempt to connect to that */
 	else
 	{
-		keywords[0] = "host";
-		values[0] = runtime_options.host;
-		keywords[1] = "port";
-		values[1] = runtime_options.masterport;
-
-		master_conn = establish_db_connection_by_params(keywords, values, true);
+		master_conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
 
 		master_id = get_master_node_id(master_conn, options.cluster_name);
 
@@ -3772,12 +3815,6 @@ do_witness_create(void)
 	char		repmgr_user[MAXLEN];
 	char		repmgr_db[MAXLEN];
 
-	/* Connection parameters for master only */
-	keywords[0] = "host";
-	values[0] = runtime_options.host;
-	keywords[1] = "port";
-	values[1] = runtime_options.masterport;
-
 	/*
 	 * Extract the repmgr user and database names from the conninfo string
 	 * provided in repmgr.conf
@@ -3786,7 +3823,8 @@ do_witness_create(void)
 	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
 
 	/* We need to connect to check configuration and copy it */
-	masterconn = establish_db_connection_by_params(keywords, values, true);
+	masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+
 	if (!masterconn)
 	{
 		/* No event logging possible here as we can't connect to the master */
@@ -4736,7 +4774,7 @@ check_parameters_for_action(const int action)
 					error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY FOLLOW with -D/--data-dir option"));
 				}
 
-				if (!runtime_options.dest_dir[0])
+				if (host_param_provided && !runtime_options.dest_dir[0])
 				{
 					error_list_append(&cli_errors, _("local data directory (-D/--data-dir) required when executing STANDBY FOLLOW with -h/--host option"));
 				}
@@ -5574,17 +5612,11 @@ do_check_upstream_config(void)
 
 	parse_config(&options);
 
-	/* Connection parameters for upstream server only */
-	keywords[0] = "host";
-	values[0] = runtime_options.host;
-	keywords[1] = "port";
-	values[1] = runtime_options.masterport;
-	keywords[2] = "dbname";
-	values[2] = runtime_options.dbname;
-
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("connecting to upstream server\n"));
-	conn = establish_db_connection_by_params(keywords, values, true);
+
+	conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+
 
 	/* Verify that upstream server is a supported server version */
 	log_verbose(LOG_INFO, _("connected to upstream server, checking its state\n"));
@@ -5783,5 +5815,36 @@ copy_file(const char *old_filename, const char *new_filename)
 	fclose(ptr_old);
 
 	return true;
+}
+
+static void
+param_set(const char *param, const char *value)
+{
+	int c;
+	int value_len = strlen(value) + 1;
+
+	// scan array for param
+	for (c = 0; c <= param_count && param_keywords[c] != NULL; c++)
+	{
+		if (strcmp(param_keywords[c], param) == 0)
+		{
+			if (param_values[c] != NULL)
+				pfree(param_values[c]);
+
+			param_values[c] = pg_malloc(value_len);
+			strncpy(param_values[c], value, value_len);
+			return;
+		}
+	}
+
+	if (c < param_count)
+	{
+		int param_len = strlen(param) + 1;
+		param_keywords[c] = pg_malloc(param_len);
+		param_values[c] = pg_malloc(value_len);
+
+		strncpy(param_keywords[c], param, param_len);
+		strncpy(param_values[c], value, value_len);
+	}
 }
 
