@@ -5183,7 +5183,7 @@ write_primary_conninfo(char *line, PGconn *primary_conn)
 
 	/* `application_name` not provided - default to repmgr node name */
 	if (application_name_provided == false)
-		appendPQExpBuffer(&conninfo_buf, "application_name=%s", options.node_name);
+		appendPQExpBuffer(&conninfo_buf, " application_name=%s", options.node_name);
 
 	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conninfo_buf.data);
 }
