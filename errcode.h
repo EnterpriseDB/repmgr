@@ -29,7 +29,6 @@
 #define ERR_DB_CON 6
 #define ERR_DB_QUERY 7
 #define ERR_PROMOTED 8
-#define ERR_BAD_PASSWORD 9
 #define ERR_STR_OVERFLOW 10
 #define ERR_FAILOVER_FAIL 11
 #define ERR_BAD_SSH 12
