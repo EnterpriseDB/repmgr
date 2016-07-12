@@ -5804,7 +5804,9 @@ param_set(const char *param, const char *value)
 	int c;
 	int value_len = strlen(value) + 1;
 
-	// scan array for param
+	/*
+	 * Scan array to see if the parameter is already set - if so replace it
+	 */
 	for (c = 0; c <= param_count && param_keywords[c] != NULL; c++)
 	{
 		if (strcmp(param_keywords[c], param) == 0)
@@ -5812,20 +5814,29 @@ param_set(const char *param, const char *value)
 			if (param_values[c] != NULL)
 				pfree(param_values[c]);
 
-			param_values[c] = pg_malloc(value_len);
+			param_values[c] = pg_malloc0(value_len);
 			strncpy(param_values[c], value, value_len);
 			return;
 		}
 	}
 
+	/*
+	 * Parameter not in array - add it and its associated value
+	 */
 	if (c < param_count)
 	{
 		int param_len = strlen(param) + 1;
-		param_keywords[c] = pg_malloc(param_len);
-		param_values[c] = pg_malloc(value_len);
+		param_keywords[c] = pg_malloc0(param_len);
+		param_values[c] = pg_malloc0(value_len);
 
 		strncpy(param_keywords[c], param, param_len);
 		strncpy(param_values[c], value, value_len);
 	}
+
+	/*
+	 * It's theoretically possible a parameter couldn't be added as
+	 * the array is full, but it's highly improbable so we won't
+	 * handle it at the moment.
+	 */
 }
 
