@@ -1408,7 +1408,6 @@ exit:
 * ERR_DB_CON (6)            Error when trying to connect to a database
 * ERR_DB_QUERY (7)          Error while executing a database query
 * ERR_PROMOTED (8)          Exiting program because the node has been promoted to master
-* ERR_BAD_PASSWORD (9)      Password used to connect to a database was rejected
 * ERR_STR_OVERFLOW (10)     String overflow error
 * ERR_FAILOVER_FAIL (11)    Error encountered during failover (repmgrd only)
 * ERR_BAD_SSH (12)          Error when connecting to remote host via SSH (repmgr only)
