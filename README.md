@@ -215,6 +215,34 @@ command line options:
 - `-b/--pg_bindir`
 
 
+### Command line options and environment variables
+
+For some commands, e.g. `repmgr standby clone`, database connection parameters
+need to be provided. Like other PostgreSQL utilities, following standard
+parameters can be used:
+
+- `-d/--dbname=DBNAME`
+- `-h/--host=HOSTNAME`
+- `-p/--port=PORT`
+- `-U/--username=USERNAME`
+
+If `-d/--dbname` contains an `=` sign or starts with a valid URI prefix (`postgresql://`
+or `postgres://`), it is treated as a conninfo string. See the PostgreSQL
+documentation for further details:
+
+  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+
+Note that if a `conninfo` string is provided, values set in this will override any
+provided as individual parameters. For example, with `-d 'host=foo' --host bar`, `foo`
+will be chosen over `bar`.
+
+Like other PostgreSQL utilities, `repmgr` will default to any values set in environment
+variables if explicit command line parameters are not provided. See the PostgreSQL
+documentation for further details:
+
+  https://www.postgresql.org/docs/current/static/libpq-envars.html
+
+
 Setting up a simple replication cluster with repmgr
 ---------------------------------------------------
 
@@ -492,7 +520,6 @@ and destination server as the contents of files existing on both servers need
 to be compared, meaning this method is not necessarily faster than making a
 fresh clone with `pg_basebackup`.
 
-
 ### Dealing with PostgreSQL configuration files
 
 By default, `repmgr` will attempt to copy the standard configuration files
@@ -506,6 +533,21 @@ not to transfer is possible by configuring `rsync_options` in `repmgr.conf`,
 which enables any valid `rsync` options to be passed to that command, e.g.:
 
     rsync_options='--exclude=postgresql.local.conf'
+
+### Controlling `primary_conninfo` in `recovery.conf`
+
+`repmgr` will create the `primary_conninfo` setting in `recovery.conf` based
+on the connection parameters provided to `repmgr standby clone` and PostgreSQL's
+standard connection defaults, including any environment variables set on the
+local node.
+
+To include specific connection parameters other than the standard host, port,
+username and database values (e.g. `sslmode`), include these in a `conninfo`-style
+tring passed to `repmgr` with `-d/--dbname` (see above for details), and/or set
+appropriate environment variables.
+
+Note that PostgreSQL will always set explicit defaults for `sslmode` and
+`sslcompression`.
 
 
 Setting up cascading replication with repmgr
