@@ -1401,20 +1401,23 @@ which contains connection details for the local database.
 `repmgr` or `repmgrd` will return one of the following error codes on program
 exit:
 
-* SUCCESS (0)              Program ran successfully.
-* ERR_BAD_CONFIG (1)       Configuration file could not be parsed or was invalid
-* ERR_BAD_RSYNC (2)        An rsync call made by the program returned an error
-* ERR_NO_RESTART (4)       An attempt to restart a PostgreSQL instance failed
-* ERR_DB_CON (6)           Error when trying to connect to a database
-* ERR_DB_QUERY (7)         Error while executing a database query
-* ERR_PROMOTED (8)         Exiting program because the node has been promoted to master
-* ERR_BAD_PASSWORD (9)     Password used to connect to a database was rejected
-* ERR_STR_OVERFLOW (10)    String overflow error
-* ERR_FAILOVER_FAIL (11)   Error encountered during failover (repmgrd only)
-* ERR_BAD_SSH (12)         Error when connecting to remote host via SSH
-* ERR_SYS_FAILURE (13)     Error when forking (repmgrd only)
-* ERR_BAD_BASEBACKUP (14)  Error when executing pg_basebackup
-* ERR_MONITORING_FAIL (16) Unrecoverable error encountered during monitoring (repmgrd only)
+* SUCCESS (0)               Program ran successfully.
+* ERR_BAD_CONFIG (1)        Configuration file could not be parsed or was invalid
+* ERR_BAD_RSYNC (2)         An rsync call made by the program returned an error (repmgr only)
+* ERR_NO_RESTART (4)        An attempt to restart a PostgreSQL instance failed
+* ERR_DB_CON (6)            Error when trying to connect to a database
+* ERR_DB_QUERY (7)          Error while executing a database query
+* ERR_PROMOTED (8)          Exiting program because the node has been promoted to master
+* ERR_BAD_PASSWORD (9)      Password used to connect to a database was rejected
+* ERR_STR_OVERFLOW (10)     String overflow error
+* ERR_FAILOVER_FAIL (11)    Error encountered during failover (repmgrd only)
+* ERR_BAD_SSH (12)          Error when connecting to remote host via SSH (repmgr only)
+* ERR_SYS_FAILURE (13)      Error when forking (repmgrd only)
+* ERR_BAD_BASEBACKUP (14)   Error when executing pg_basebackup (repmgr only)
+* ERR_MONITORING_FAIL (16)  Unrecoverable error encountered during monitoring (repmgrd only)
+* ERR_BAD_BACKUP_LABEL (17) Corrupt or unreadable backup label encountered (repmgr only)
+* ERR_SWITCHOVER_FAIL (18)  Error encountered during switchover (repmgr only)
+
 
 Support and Assistance
 ----------------------
