@@ -155,8 +155,14 @@ system.
 
 - RedHat/CentOS: RPM packages for `repmgr` are available via Yum through
   the PostgreSQL Global Development Group RPM repository ( http://yum.postgresql.org/ ).
-  You need to follow the instructions for your distribution (RedHat, CentOS,
+  Follow the instructions for your distribution (RedHat, CentOS,
   Fedora, etc.) and architecture as detailed at yum.postgresql.org.
+
+  2ndQuadrant also provides its own RPM packages which are made available
+  at the same time as each `repmgr` release, as it can take some days for
+  them to become available via the main PGDG repository. See here for details:
+
+     http://repmgr.org/yum-repository.html
 
 - Debian/Ubuntu: the most recent `repmgr` packages are available from the
   PostgreSQL Community APT repository ( http://apt.postgresql.org/ ).
