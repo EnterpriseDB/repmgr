@@ -103,7 +103,8 @@ static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
 static bool update_node_record_set_master(PGconn *conn, int this_node_id);
-static int  get_tablespace_data(PGconn *upstream_conn, int*, int**, PQExpBufferData**);
+static void tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location);
+static int  get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list);
 
 static char *make_pg_path(char *file);
 
@@ -1500,18 +1501,44 @@ do_standby_unregister(void)
 	return;
 }
 
+void
+tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location)
+{
+	TablespaceDataListCell *cell;
+
+	cell = (TablespaceDataListCell *) pg_malloc0(sizeof(TablespaceDataListCell));
+
+	if (cell == NULL)
+	{
+		log_err(_("unable to allocate memory; terminating.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	cell->oid      = pg_malloc(1 + strlen(oid     ));
+	cell->name     = pg_malloc(1 + strlen(name    ));
+	cell->location = pg_malloc(1 + strlen(location));
+
+	strncpy(cell->oid     , oid     , 1 + strlen(oid     ));
+	strncpy(cell->name    , name    , 1 + strlen(name    ));
+	strncpy(cell->location, location, 1 + strlen(location));
+
+	if (list->tail)
+		list->tail->next = cell;
+	else
+		list->head = cell;
+
+	list->tail = cell;
+}
+
 int
-get_tablespace_data(PGconn *upstream_conn,
-					int *tablespace_count,
-					int **tablespace_oids,
-					PQExpBufferData **tablespace_locs)
+get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 {
 	int i, retval;
 	char sqlquery[QUERY_STR_LEN];
 	PGresult *res;
 
 	sqlquery_snprintf(sqlquery,
-					  " SELECT oid, pg_tablespace_location(oid) AS spclocation "
+					  " SELECT spcname, oid, pg_tablespace_location(oid) AS spclocation "
 					  "   FROM pg_tablespace "
 					  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
 
@@ -1527,16 +1554,9 @@ get_tablespace_data(PGconn *upstream_conn,
 			return retval;
 		}
 
-	*tablespace_count = PQntuples(res);
-	*tablespace_oids = pg_malloc(*tablespace_count * sizeof(int));
-	*tablespace_locs = pg_malloc(*tablespace_count * sizeof(PQExpBufferData));
-	for (i = 0; i < *tablespace_count; i++)
-		{
-			initPQExpBuffer(*tablespace_locs + i);
-			*tablespace_oids[i] = strtol(PQgetvalue(res, i, 0), NULL, 10);
-			appendPQExpBuffer(*tablespace_locs + i,
-							  "%s", PQgetvalue(res, i, 1));
-		}
+	for (i = 0; i < PQntuples(res); i++)
+		tablespace_data_append(list, PQgetvalue(res, i, 0), PQgetvalue(res, i, 1),
+							   PQgetvalue(res, i, 2));
 
 	PQclear(res);
 	return retval;
@@ -1861,9 +1881,8 @@ do_standby_clone(void)
 	{
 		PQExpBufferData tablespace_map;
 		bool		tablespace_map_rewrite = false;
-		int				 tablespace_count;
-		int				*tablespace_oids;
-		PQExpBufferData *tablespace_locs;
+		TablespaceDataList tablespace_list = { NULL, NULL };
+		TablespaceDataListCell *cell_t;
 
 		/* For 9.5 and greater, create our own tablespace_map file */
 		if (server_version_num >= 90500)
@@ -1931,34 +1950,21 @@ do_standby_clone(void)
 		}
 
 		/* Copy tablespaces and, if required, remap to a new location */
-		retval = get_tablespace_data(upstream_conn,
-									 &tablespace_count,
-									 &tablespace_oids,
-									 &tablespace_locs);
+		retval = get_tablespace_data(upstream_conn, &tablespace_list);
 		if(retval != SUCCESS) goto stop_backup;
 
-		for (i = 0; i < tablespace_count; i++)
+		for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
 		{
 			bool mapping_found = false;
-			PQExpBufferData tblspc_dir_src;
-			PQExpBufferData tblspc_dir_dst;
-			PQExpBufferData tblspc_oid;
 			TablespaceListCell *cell;
-
-			initPQExpBuffer(&tblspc_dir_src);
-			initPQExpBuffer(&tblspc_dir_dst);
-			initPQExpBuffer(&tblspc_oid);
-
-
-			appendPQExpBuffer(&tblspc_oid, "%d", tablespace_oids[i]);
-			appendPQExpBuffer(&tblspc_dir_src, "%s", tablespace_locs[i].data);
+			char *tblspc_dir_dest;
 
 			/* Check if tablespace path matches one of the provided tablespace mappings */
 			if (options.tablespace_mapping.head != NULL)
 			{
 				for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
 				{
-					if (strcmp(tblspc_dir_src.data, cell->old_dir) == 0)
+					if (strcmp(cell_t->location, cell->old_dir) == 0)
 					{
 						mapping_found = true;
 						break;
@@ -1968,19 +1974,19 @@ do_standby_clone(void)
 
 			if (mapping_found == true)
 			{
-				appendPQExpBuffer(&tblspc_dir_dst, "%s", cell->new_dir);
+				tblspc_dir_dest = cell->new_dir;
 				log_debug(_("mapping source tablespace '%s' (OID %s) to '%s'\n"),
-						  tblspc_dir_src.data, tblspc_oid.data, tblspc_dir_dst.data);
+						  cell_t->location, cell_t->oid, tblspc_dir_dest);
 			}
 			else
 			{
-				appendPQExpBuffer(&tblspc_dir_dst, "%s",  tblspc_dir_src.data);
+				tblspc_dir_dest = cell_t->location;
 			}
 
 
 			/* Copy tablespace directory */
 			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  tblspc_dir_src.data, tblspc_dir_dst.data,
+								  cell_t->location, tblspc_dir_dest,
 								  true, server_version_num);
 
 			/*
@@ -1992,7 +1998,7 @@ do_standby_clone(void)
 			if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
 			{
 			       log_warning(_("standby clone: failed copying tablespace directory '%s'\n"),
-					            tblspc_dir_src.data);
+					            cell_t->location);
 			       goto stop_backup;
 			}
 
@@ -2010,8 +2016,8 @@ do_standby_clone(void)
 					tablespace_map_rewrite = true;
 					appendPQExpBuffer(&tablespace_map,
 									  "%s %s\n",
-									  tblspc_oid.data,
-									  tblspc_dir_dst.data);
+									  cell_t->oid,
+									  tblspc_dir_dest);
 				}
 				/* Pre-9.5, we have to manipulate the symlinks in pg_tblspc/ ourselves */
 				else
@@ -2021,7 +2027,7 @@ do_standby_clone(void)
 					initPQExpBuffer(&tblspc_symlink);
 					appendPQExpBuffer(&tblspc_symlink, "%s/pg_tblspc/%s",
 									  local_data_directory,
-									  tblspc_oid.data);
+									  cell_t->oid);
 
 					if (unlink(tblspc_symlink.data) < 0 && errno != ENOENT)
 					{
@@ -2031,9 +2037,9 @@ do_standby_clone(void)
 						goto stop_backup;
 					}
 
-					if (symlink(tblspc_dir_dst.data, tblspc_symlink.data) < 0)
+					if (symlink(tblspc_dir_dest, tblspc_symlink.data) < 0)
 					{
-						log_err(_("unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dst.data);
+						log_err(_("unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dest);
 
 						r = retval = ERR_BAD_BASEBACKUP;
 						goto stop_backup;
