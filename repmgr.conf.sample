@@ -100,6 +100,9 @@
 # path to PostgreSQL binary directory (location of pg_ctl, pg_basebackup etc.)
 # (if not provided, defaults to system $PATH)
 #pg_bindir=/usr/bin/
+#
+# Debian/Ubuntu users: you will probably need to set this to the directory
+# where `pg_ctl` is located, e.g. /usr/lib/postgresql/9.5/bin/
 
 # service control commands
 #

@@ -375,6 +375,16 @@ to include this schema name, e.g.
 
     ALTER USER repmgr SET search_path TO repmgr_test, "$user", public;
 
+* * *
+
+> *TIP*: for Debian-based distributions we recommend explictly setting
+> `pg_bindir` to the directory where `pg_ctl` and other binaries not in
+> the standard path are located. For PostgreSQL 9.5 this would be
+> `/usr/lib/postgresql/9.5/bin/`.
+
+* * *
+
+
 ### Initialise the master server
 
 To enable `repmgr` to support a replication cluster, the master node must
