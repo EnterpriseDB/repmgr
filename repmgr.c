@@ -130,6 +130,7 @@ static void exit_with_errors(void);
 static void print_error_list(ItemList *error_list, int log_level);
 
 static bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
+static bool local_command(const char *command, PQExpBufferData *outputbuf);
 static void format_db_cli_params(const char *conninfo, char *output);
 static bool copy_file(const char *old_filename, const char *new_filename);
 
@@ -5965,6 +5966,37 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	pclose(fp);
 
 	log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
+
+	return true;
+}
+
+
+/*
+ * Execute a command locally.
+ */
+static bool
+local_command(const char *command, PQExpBufferData *outputbuf)
+{
+	FILE *fp;
+	char output[MAXLEN];
+
+	fp = popen(command, "r");
+
+	if (fp == NULL)
+	{
+		log_err(_("unable to execute local command:\n%s\n"), command);
+		return false;
+	}
+
+	/* TODO: better error handling */
+	while (fgets(output, MAXLEN, fp) != NULL)
+	{
+		appendPQExpBuffer(outputbuf, "%s", output);
+	}
+
+	pclose(fp);
+
+	log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
 
 	return true;
 }
