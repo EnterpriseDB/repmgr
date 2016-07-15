@@ -103,6 +103,7 @@ static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
 static bool update_node_record_set_master(PGconn *conn, int this_node_id);
+static int  get_tablespace_data(PGconn *upstream_conn, int*, int**, PQExpBufferData**);
 
 static char *make_pg_path(char *file);
 
@@ -1499,6 +1500,47 @@ do_standby_unregister(void)
 	return;
 }
 
+int
+get_tablespace_data(PGconn *upstream_conn,
+					int *tablespace_count,
+					int **tablespace_oids,
+					PQExpBufferData **tablespace_locs)
+{
+	int i, retval;
+	char sqlquery[QUERY_STR_LEN];
+	PGresult *res;
+
+	sqlquery_snprintf(sqlquery,
+					  " SELECT oid, pg_tablespace_location(oid) AS spclocation "
+					  "   FROM pg_tablespace "
+					  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
+
+	res = PQexec(upstream_conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_err(_("unable to execute tablespace query: %s\n"),
+					PQerrorMessage(upstream_conn));
+
+			PQclear(res);
+
+			return retval;
+		}
+
+	*tablespace_count = PQntuples(res);
+	*tablespace_oids = pg_malloc(*tablespace_count * sizeof(int));
+	*tablespace_locs = pg_malloc(*tablespace_count * sizeof(PQExpBufferData));
+	for (i = 0; i < *tablespace_count; i++)
+		{
+			initPQExpBuffer(*tablespace_locs + i);
+			*tablespace_oids[i] = strtol(PQgetvalue(res, i, 0), NULL, 10);
+			appendPQExpBuffer(*tablespace_locs + i,
+							  "%s", PQgetvalue(res, i, 1));
+		}
+
+	PQclear(res);
+	return retval;
+}
 
 static void
 do_standby_clone(void)
@@ -1819,6 +1861,9 @@ do_standby_clone(void)
 	{
 		PQExpBufferData tablespace_map;
 		bool		tablespace_map_rewrite = false;
+		int				 tablespace_count;
+		int				*tablespace_oids;
+		PQExpBufferData *tablespace_locs;
 
 		/* For 9.5 and greater, create our own tablespace_map file */
 		if (server_version_num >= 90500)
@@ -1886,26 +1931,13 @@ do_standby_clone(void)
 		}
 
 		/* Copy tablespaces and, if required, remap to a new location */
+		retval = get_tablespace_data(upstream_conn,
+									 &tablespace_count,
+									 &tablespace_oids,
+									 &tablespace_locs);
+		if(retval != SUCCESS) goto stop_backup;
 
-		sqlquery_snprintf(sqlquery,
-						  " SELECT oid, pg_tablespace_location(oid) AS spclocation "
-						  "   FROM pg_tablespace "
-						  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
-
-		res = PQexec(upstream_conn, sqlquery);
-
-		if (PQresultStatus(res) != PGRES_TUPLES_OK)
-		{
-			log_err(_("unable to execute tablespace query: %s\n"),
-					PQerrorMessage(upstream_conn));
-
-			PQclear(res);
-
-			r = retval = ERR_DB_QUERY;
-			goto stop_backup;
-		}
-
-		for (i = 0; i < PQntuples(res); i++)
+		for (i = 0; i < tablespace_count; i++)
 		{
 			bool mapping_found = false;
 			PQExpBufferData tblspc_dir_src;
@@ -1918,8 +1950,8 @@ do_standby_clone(void)
 			initPQExpBuffer(&tblspc_oid);
 
 
-			appendPQExpBuffer(&tblspc_oid, "%s", PQgetvalue(res, i, 0));
-			appendPQExpBuffer(&tblspc_dir_src, "%s", PQgetvalue(res, i, 1));
+			appendPQExpBuffer(&tblspc_oid, "%d", tablespace_oids[i]);
+			appendPQExpBuffer(&tblspc_dir_src, "%s", tablespace_locs[i].data);
 
 			/* Check if tablespace path matches one of the provided tablespace mappings */
 			if (options.tablespace_mapping.head != NULL)
@@ -1995,8 +2027,6 @@ do_standby_clone(void)
 					{
 						log_err(_("unable to remove tablespace symlink %s\n"), tblspc_symlink.data);
 
-						PQclear(res);
-
 						r = retval = ERR_BAD_BASEBACKUP;
 						goto stop_backup;
 					}
@@ -2005,16 +2035,12 @@ do_standby_clone(void)
 					{
 						log_err(_("unable to create tablespace symlink from %s to %s\n"), tblspc_symlink.data, tblspc_dir_dst.data);
 
-						PQclear(res);
-
 						r = retval = ERR_BAD_BASEBACKUP;
 						goto stop_backup;
 					}
 				}
 			}
 		}
-
-		PQclear(res);
 
 		/*
 		 * For 9.5 and later, if tablespace remapping was requested, we'll need
@@ -2023,6 +2049,7 @@ do_standby_clone(void)
 		 * the backend; we could do this ourselves like for pre-9.5 servers, but
 		 * it's better to rely on functionality the backend provides.
 		 */
+
 		if (server_version_num >= 90500 && tablespace_map_rewrite == true)
 		{
 			PQExpBufferData tablespace_map_filename;
