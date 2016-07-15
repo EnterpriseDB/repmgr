@@ -139,6 +139,7 @@ t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 bool 	 	 wal_keep_segments_used = false;
+bool 	 	 conninfo_provided = false;
 bool 	 	 connection_param_provided = false;
 bool 	 	 host_param_provided = false;
 bool 	 	 pg_rewind_supplied = false;
@@ -500,6 +501,8 @@ main(int argc, char **argv)
 		{
 			char	   *errmsg = NULL;
 
+			conninfo_provided = true;
+
 			opts = PQconninfoParse(runtime_options.dbname, &errmsg);
 
 			if (opts == NULL)
@@ -655,18 +658,24 @@ main(int argc, char **argv)
 		}
 	}
 
-	/* For some actions we still can receive a last argument */
+	/* STANDBY CLONE historically accepts the upstream hostname as an additional argument */
 	if (action == STANDBY_CLONE)
 	{
 		if (optind < argc)
 		{
 			if (runtime_options.host[0])
 			{
-				error_list_append(&cli_errors, _("Conflicting parameters:  you can't use -h while providing a node separately."));
+				PQExpBufferData additional_host_arg;
+				initPQExpBuffer(&additional_host_arg);
+				appendPQExpBuffer(&additional_host_arg,
+								  _("Conflicting parameters:  you can't use %s while providing a node separately."),
+								  conninfo_provided == true ? "host=" : "-h/--host");
+				error_list_append(&cli_errors, additional_host_arg.data);
 			}
 			else
 			{
 				strncpy(runtime_options.host, argv[optind++], MAXLEN);
+				param_set("host", runtime_options.host);
 			}
 		}
 	}
