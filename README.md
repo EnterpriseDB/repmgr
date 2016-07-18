@@ -148,6 +148,15 @@ it should be executed by the `postgres` user.
 Additionally, we recommend installing `rsync` and enabling passwordless
 `ssh` connectivity between all servers in the replication cluster.
 
+* * *
+
+> *TIP*: We recommend using a session multiplexer utility such as `screen` or
+> `tmux` when performing long-running actions (such as cloning a database)
+> on a remote server - this will ensure the `repmgr` action won't be prematurely
+> terminated if your `ssh` session to the server is interrupted or closed.
+
+* * *
+
 ### Packages
 
 We recommend installing `repmgr` using the available packages for your
