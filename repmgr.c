@@ -283,6 +283,20 @@ main(int argc, char **argv)
 
 	PQconninfoFree(defs);
 
+	/* set default user for -R/--remote-user */
+
+	{
+		struct passwd *pw = NULL;
+
+		pw = getpwuid(geteuid());
+		if (pw == NULL)
+		{
+			fprintf(stderr, _("could not get current user name: %s\n"), strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		strncpy(runtime_options.username, pw->pw_name, MAXLEN);
+	}
 
 	/*
 	 * Though libpq will default to the username as dbname, PQconndefaults()
@@ -4323,7 +4337,7 @@ do_help(void)
 	printf(_("  -D, --data-dir=DIR                  local directory where the files will be\n" \
 			 "                                      copied to\n"));
 	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
-	printf(_("  -R, --remote-user=USERNAME          database server username for rsync\n"));
+	printf(_("  -R, --remote-user=USERNAME          database server username for rsync (default: \"%s\")\n"), runtime_options.username);
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
 	printf(_("\n"));
