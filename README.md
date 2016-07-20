@@ -905,7 +905,7 @@ will have diverged slightly following the shutdown of the old master.
 
 The utility `pg_rewind` provides an efficient way of doing this, however
 is not included in the core PostgreSQL distribution for versions 9.3 and 9.4.
-Hoever, `pg_rewind` is available separately for these versions and we
+However, `pg_rewind` is available separately for these versions and we
 strongly recommend its installation. To use it with versions 9.3 and 9.4,
 provide the command line option `--pg_rewind`, optionally with the
 path to the `pg_rewind` binary location if not installed in the PostgreSQL
@@ -913,6 +913,10 @@ path to the `pg_rewind` binary location if not installed in the PostgreSQL
 
 `pg_rewind` for versions 9.3 and 9.4 can be obtained from:
   https://github.com/vmware/pg_rewind
+
+Note that building this version of `pg_rewind` requires the PostgreSQL source
+code. Also, PostgreSQL 9.3 does not provide `wal_log_hints`, meaning data
+checksums must have been enabled when the database was initialized.
 
 If `pg_rewind` is not available, as a fallback `repmgr` will use `repmgr
 standby clone` to resynchronise the old master's data directory using
