@@ -530,7 +530,7 @@ ensure that:
   `cluster_name` setting in `repmgr.conf`;
 - the `barman_server` setting in `repmgr.conf` is set to the SSH
   hostname of the Barman server;
-- the `pg_restore_command` setting in `repmgr.conf` is configured to
+- the `restore_command` setting in `repmgr.conf` is configured to
   use a copy of the `barman-wal-restore.py` script shipped with Barman
   (see below);
 - the Barman catalogue includes at least one valid backup for this
@@ -548,8 +548,8 @@ ensure that:
 
 `barman-wal-restore.py` is a Python script provided by the Barman
 development team, which must be copied in a location accessible to
-`repmgr`, and marked as executable; `pg_restore_command` must then be
-set as follows:
+`repmgr`, and marked as executable; `restore_command` must then be
+set in `repmgr.conf` as follows:
 
     <script> <Barman hostname> <cluster_name> %f %p 
 
@@ -563,7 +563,7 @@ executable:
 Then we check that `repmgr.conf` includes the following lines:
 
 	barman_server=barmansrv
-	pg_restore_command=/usr/local/bin/barman-wal-restore.py barmansrv test %f %p
+	restore_command=/usr/local/bin/barman-wal-restore.py barmansrv test %f %p
 
 Now we can clone a standby using the Barman server:
 
