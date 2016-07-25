@@ -4640,7 +4640,7 @@ run_basebackup(const char *data_dir, int server_version)
 	 * Connection parameters not passed to repmgr as conninfo string - provide
 	 * them individually to pg_basebackup (-d/--dbname not required)
 	 */
-	if (conninfo_provided == false)
+	else
 	{
 		if (strlen(runtime_options.host))
 		{
@@ -4673,11 +4673,11 @@ run_basebackup(const char *data_dir, int server_version)
 	/*
 	 * To ensure we have all the WALs needed during basebackup execution we stream
 	 * them as the backup is taking place.
-	 * Not necessary if on 9.6 if we have replication slots set in repmgr.conf
-	 * (starting at 9.6 there is an option, which we use, to reserve the LSN at
-	 * creation time)
+	 *
+	 * From 9.6, if replication slots are in use, we'll have previously
+	 * created a slot with reserved LSN, and will stream from that slot to avoid
+	 * WAL buildup on the master using the -S/--slot, which requires -X/--xlog-method=stream
 	 */
-	if (server_version < 90600 || !options.use_replication_slots)
 	{
 		/*
 		 * We're going to check first if the user set the xlog method in the repmgr.conf
@@ -4689,6 +4689,24 @@ run_basebackup(const char *data_dir, int server_version)
 		if (strstr(options.pg_basebackup_options, xlog_short) == NULL && strstr(options.pg_basebackup_options, xlog_long) == NULL )
 		{
 			appendPQExpBuffer(&params, " -X stream");
+		}
+	}
+
+	/*
+	 * From 9.6, pg_basebackup accepts -S/--slot, which forces WAL streaming to use
+	 * the specified replication slot. If replication slot usage is specified, the
+	 * slot will already have been created
+	 *
+	 * XXX verify that -X/--xlog-method is set to "stream"
+	 */
+	if (server_version >= 90600 && options.use_replication_slots)
+	{
+		const char slot_short[4] = "-S ";
+		const char slot_long[7] = "--slot";
+
+		if (strstr(options.pg_basebackup_options, slot_short) == NULL && strstr(options.pg_basebackup_options, slot_long) == NULL )
+		{
+			appendPQExpBuffer(&params, " -S %s", repmgr_slot_name_ptr);
 		}
 	}
 
