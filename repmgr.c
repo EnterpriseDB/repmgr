@@ -4623,33 +4623,37 @@ run_basebackup(const char *data_dir, int server_version)
 
 	appendPQExpBuffer(&params, " -D %s", data_dir);
 
-	if (opts != NULL && strlen(runtime_options.dbname))
+	/*
+	 * conninfo string provided - pass it to pg_basebackup as the -d option
+	 * (pg_basebackup doesn't require or want a database name, but for
+	 * consistency with other applications accepts a conninfo string
+	 * under -d/--dbname)
+	 */
+	if (conninfo_provided == true)
 	{
 		appendPQExpBuffer(&params, " -d '%s'", runtime_options.dbname);
 	}
 
-	if (strlen(runtime_options.host))
-	{
-		appendPQExpBuffer(&params, " -h %s", runtime_options.host);
-	}
-
 	/*
-	 * XXX -p and -U will be duplicated if provided in conninfo string
-	 * but not as explict repmgr command line parameters, e.g.:
-	 *
-	 * pg_basebackup -l "repmgr base backup" -d 'host=localhost port=5501 dbname=repmgr user=repmgr' -p 5501 -U repmgr -X stream
-	 *
-	 * this is ugly but harmless; we should fix it some time
-	 *
+	 * Connection parameters not passed to repmgr as conninfo string - provide
+	 * them individually to pg_basebackup (-d/--dbname not required)
 	 */
-	if (strlen(runtime_options.masterport))
+	if (conninfo_provided == false)
 	{
-		appendPQExpBuffer(&params, " -p %s", runtime_options.masterport);
-	}
+		if (strlen(runtime_options.host))
+		{
+			appendPQExpBuffer(&params, " -h %s", runtime_options.host);
+		}
 
-	if (strlen(runtime_options.username))
-	{
-		appendPQExpBuffer(&params, " -U %s", runtime_options.username);
+		if (strlen(runtime_options.masterport))
+		{
+			appendPQExpBuffer(&params, " -p %s", runtime_options.masterport);
+		}
+
+		if (strlen(runtime_options.username))
+		{
+			appendPQExpBuffer(&params, " -U %s", runtime_options.username);
+		}
 	}
 
 	if (runtime_options.fast_checkpoint) {
