@@ -59,7 +59,9 @@
 #include "strutil.h"
 #include "version.h"
 
-#define RECOVERY_FILE "recovery.conf"
+#ifndef RECOVERY_COMMAND_FILE
+#define RECOVERY_COMMAND_FILE "recovery.conf"
+#endif
 
 #ifndef TABLESPACE_MAP
 #define TABLESPACE_MAP "tablespace_map"
@@ -4347,7 +4349,7 @@ create_recovery_file(const char *data_dir, PGconn *primary_conn)
 	char		recovery_file_path[MAXLEN];
 	char		line[MAXLEN];
 
-	maxlen_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_FILE);
+	maxlen_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_COMMAND_FILE);
 
 	recovery_file = fopen(recovery_file_path, "w");
 	if (recovery_file == NULL)
