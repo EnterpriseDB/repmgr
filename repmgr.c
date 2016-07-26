@@ -1687,7 +1687,7 @@ do_standby_clone(void)
 	char		cluster_size[MAXLEN];
 
 	int			r = 0,
-				retval = SUCCESS;
+		retval = SUCCESS;
 
 	int			i;
 	bool		pg_start_backup_executed = false;
@@ -1742,187 +1742,187 @@ do_standby_clone(void)
 	}
 
 	if (mode != barman)
-		{
-
-	param_set("application_name", options.node_name);
-
-	/* Connect to check configuration */
-	log_info(_("connecting to upstream node\n"));
-	upstream_conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
-
-	/* Verify that upstream node is a supported server version */
-	log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
-	server_version_num = check_server_version(upstream_conn, "master", true, NULL);
-
-	check_upstream_config(upstream_conn, server_version_num, true);
-
-	if (get_cluster_size(upstream_conn, cluster_size) == false)
-		exit(ERR_DB_QUERY);
-
-	log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
-			 cluster_size);
-
-	/*
-	 * If the upstream node is a standby, try to connect to the primary too so we
-	 * can write an event record
-	 */
-	if (is_standby(upstream_conn))
 	{
-		if (strlen(options.cluster_name))
+
+		param_set("application_name", options.node_name);
+
+		/* Connect to check configuration */
+		log_info(_("connecting to upstream node\n"));
+		upstream_conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+
+		/* Verify that upstream node is a supported server version */
+		log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
+		server_version_num = check_server_version(upstream_conn, "master", true, NULL);
+
+		check_upstream_config(upstream_conn, server_version_num, true);
+
+		if (get_cluster_size(upstream_conn, cluster_size) == false)
+			exit(ERR_DB_QUERY);
+
+		log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
+				 cluster_size);
+
+		/*
+		 * If the upstream node is a standby, try to connect to the primary too so we
+		 * can write an event record
+		 */
+		if (is_standby(upstream_conn))
 		{
-			primary_conn = get_master_connection(upstream_conn, options.cluster_name,
-												 NULL, NULL);
-		}
-	}
-	else
-	{
-		primary_conn = upstream_conn;
-	}
-
-	/*
-	 * If --recovery-min-apply-delay was passed, check that
-	 * we're connected to PostgreSQL 9.4 or later
-	 */
-
-	if (*runtime_options.recovery_min_apply_delay)
-	{
-		if (server_version_num < 90400)
-		{
-			log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
-			PQfinish(upstream_conn);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
-
-	/*
-	 * Check that tablespaces named in any `tablespace_mapping` configuration
-	 * file parameters exist.
-	 *
-	 * pg_basebackup doesn't verify mappings, so any errors will not be caught.
-	 * We'll do that here as a value-added service.
-	 *
-	 * -T/--tablespace-mapping is not available as a pg_basebackup option for
-	 * PostgreSQL 9.3 - we can only handle that with rsync, so if `--rsync-only`
-	 * not set, fail with an error
-	 */
-
-	if (options.tablespace_mapping.head != NULL)
-	{
-		TablespaceListCell *cell;
-
-		if (server_version_num < 90400 && !runtime_options.rsync_only)
-		{
-			log_err(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
-			PQfinish(upstream_conn);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
-		{
-			sqlquery_snprintf(sqlquery,
-							  "SELECT spcname "
-							  "  FROM pg_tablespace "
-							  " WHERE pg_tablespace_location(oid) = '%s'",
-							  cell->old_dir);
-			res = PQexec(upstream_conn, sqlquery);
-			if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			if (strlen(options.cluster_name))
 			{
-				log_err(_("unable to execute tablespace query: %s\n"), PQerrorMessage(upstream_conn));
-				PQclear(res);
-				PQfinish(upstream_conn);
-				exit(ERR_BAD_CONFIG);
-			}
-
-			if (PQntuples(res) == 0)
-			{
-				log_err(_("no tablespace matching path '%s' found\n"), cell->old_dir);
-				PQclear(res);
-				PQfinish(upstream_conn);
-				exit(ERR_BAD_CONFIG);
-			}
-		}
-	}
-
-	/*
-	 * Obtain data directory and configuration file locations
-	 * We'll check to see whether the configuration files are in the data
-	 * directory - if not we'll have to copy them via SSH
-	 *
-	 * XXX: if configuration files are symlinks to targets outside the data
-	 * directory, they won't be copied by pg_basebackup, but we can't tell
-	 * this from the below query; we'll probably need to add a check for their
-	 * presence and if missing force copy by SSH
-	 */
-	sqlquery_snprintf(sqlquery,
-					  "  WITH dd AS ( "
-					  "    SELECT setting "
-					  "      FROM pg_settings "
-					  "     WHERE name = 'data_directory' "
-					  "  ) "
-					  "    SELECT ps.name, ps.setting, "
-					  "           ps.setting ~ ('^' || dd.setting) AS in_data_dir "
-					  "      FROM dd, pg_settings ps "
-					  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file') "
-					  "  ORDER BY 1 ");
-
-	log_debug(_("standby clone: %s\n"), sqlquery);
-	res = PQexec(upstream_conn, sqlquery);
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_err(_("can't get info about data directory and configuration files: %s\n"),
-				PQerrorMessage(upstream_conn));
-		PQclear(res);
-		PQfinish(upstream_conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	/* We need all 4 parameters, and they can be retrieved only by superusers */
-	if (PQntuples(res) != 4)
-	{
-		log_err("STANDBY CLONE should be run by a SUPERUSER\n");
-		PQclear(res);
-		PQfinish(upstream_conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		if (strcmp(PQgetvalue(res, i, 0), "data_directory") == 0)
-		{
-			strncpy(master_data_directory, PQgetvalue(res, i, 1), MAXPGPATH);
-		}
-		else if (strcmp(PQgetvalue(res, i, 0), "config_file") == 0)
-		{
-			if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
-			{
-				config_file_outside_pgdata = true;
-				external_config_file_copy_required = true;
-				strncpy(master_config_file, PQgetvalue(res, i, 1), MAXPGPATH);
-			}
-		}
-		else if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
-		{
-			if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
-			{
-				hba_file_outside_pgdata  = true;
-				external_config_file_copy_required = true;
-				strncpy(master_hba_file, PQgetvalue(res, i, 1), MAXPGPATH);
-			}
-		}
-		else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
-		{
-			if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
-			{
-				ident_file_outside_pgdata = true;
-				external_config_file_copy_required = true;
-				strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXPGPATH);
+				primary_conn = get_master_connection(upstream_conn, options.cluster_name,
+													 NULL, NULL);
 			}
 		}
 		else
-			log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
-	}
+		{
+			primary_conn = upstream_conn;
+		}
 
-	PQclear(res);
+		/*
+		 * If --recovery-min-apply-delay was passed, check that
+		 * we're connected to PostgreSQL 9.4 or later
+		 */
+
+		if (*runtime_options.recovery_min_apply_delay)
+		{
+			if (server_version_num < 90400)
+			{
+				log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
+				PQfinish(upstream_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+
+		/*
+		 * Check that tablespaces named in any `tablespace_mapping` configuration
+		 * file parameters exist.
+		 *
+		 * pg_basebackup doesn't verify mappings, so any errors will not be caught.
+		 * We'll do that here as a value-added service.
+		 *
+		 * -T/--tablespace-mapping is not available as a pg_basebackup option for
+		 * PostgreSQL 9.3 - we can only handle that with rsync, so if `--rsync-only`
+		 * not set, fail with an error
+		 */
+
+		if (options.tablespace_mapping.head != NULL)
+		{
+			TablespaceListCell *cell;
+
+			if (server_version_num < 90400 && !runtime_options.rsync_only)
+			{
+				log_err(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
+				PQfinish(upstream_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			for (cell = options.tablespace_mapping.head; cell; cell = cell->next)
+			{
+				sqlquery_snprintf(sqlquery,
+								  "SELECT spcname "
+								  "  FROM pg_tablespace "
+								  " WHERE pg_tablespace_location(oid) = '%s'",
+								  cell->old_dir);
+				res = PQexec(upstream_conn, sqlquery);
+				if (PQresultStatus(res) != PGRES_TUPLES_OK)
+				{
+					log_err(_("unable to execute tablespace query: %s\n"), PQerrorMessage(upstream_conn));
+					PQclear(res);
+					PQfinish(upstream_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				if (PQntuples(res) == 0)
+				{
+					log_err(_("no tablespace matching path '%s' found\n"), cell->old_dir);
+					PQclear(res);
+					PQfinish(upstream_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+		}
+
+		/*
+		 * Obtain data directory and configuration file locations
+		 * We'll check to see whether the configuration files are in the data
+		 * directory - if not we'll have to copy them via SSH
+		 *
+		 * XXX: if configuration files are symlinks to targets outside the data
+		 * directory, they won't be copied by pg_basebackup, but we can't tell
+		 * this from the below query; we'll probably need to add a check for their
+		 * presence and if missing force copy by SSH
+		 */
+		sqlquery_snprintf(sqlquery,
+						  "  WITH dd AS ( "
+						  "    SELECT setting "
+						  "      FROM pg_settings "
+						  "     WHERE name = 'data_directory' "
+						  "  ) "
+						  "    SELECT ps.name, ps.setting, "
+						  "           ps.setting ~ ('^' || dd.setting) AS in_data_dir "
+						  "      FROM dd, pg_settings ps "
+						  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file') "
+						  "  ORDER BY 1 ");
+
+		log_debug(_("standby clone: %s\n"), sqlquery);
+		res = PQexec(upstream_conn, sqlquery);
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_err(_("can't get info about data directory and configuration files: %s\n"),
+					PQerrorMessage(upstream_conn));
+			PQclear(res);
+			PQfinish(upstream_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/* We need all 4 parameters, and they can be retrieved only by superusers */
+		if (PQntuples(res) != 4)
+		{
+			log_err("STANDBY CLONE should be run by a SUPERUSER\n");
+			PQclear(res);
+			PQfinish(upstream_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		for (i = 0; i < PQntuples(res); i++)
+		{
+			if (strcmp(PQgetvalue(res, i, 0), "data_directory") == 0)
+			{
+				strncpy(master_data_directory, PQgetvalue(res, i, 1), MAXPGPATH);
+			}
+			else if (strcmp(PQgetvalue(res, i, 0), "config_file") == 0)
+			{
+				if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
+				{
+					config_file_outside_pgdata = true;
+					external_config_file_copy_required = true;
+					strncpy(master_config_file, PQgetvalue(res, i, 1), MAXPGPATH);
+				}
+			}
+			else if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
+			{
+				if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
+				{
+					hba_file_outside_pgdata  = true;
+					external_config_file_copy_required = true;
+					strncpy(master_hba_file, PQgetvalue(res, i, 1), MAXPGPATH);
+				}
+			}
+			else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
+			{
+				if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
+				{
+					ident_file_outside_pgdata = true;
+					external_config_file_copy_required = true;
+					strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXPGPATH);
+				}
+			}
+			else
+				log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
+		}
+
+		PQclear(res);
 
 	}
 
@@ -2034,361 +2034,361 @@ do_standby_clone(void)
 		bool		tablespace_map_rewrite = false;
 
 		if (mode == barman)
-	{
-		bool		command_ok;
-		/*
-		 * Check that there is at least one valid backup
-		 */
-
-		maxlen_snprintf(command, "ssh %s barman show-backup %s latest > /dev/null",
-						options.barman_server,
-						options.cluster_name);
-		command_ok = local_command(command, NULL);
-		if (command_ok == false)
 		{
-			log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
-					options.barman_server);
-			log_hint(_("Refer to the Barman documentation for more information\n"));
-			exit(ERR_INTERNAL);
-		}
+			bool		command_ok;
+			/*
+			 * Check that there is at least one valid backup
+			 */
 
-		/*
-		 * Locate Barman's backup directory
-		 */
+			maxlen_snprintf(command, "ssh %s barman show-backup %s latest > /dev/null",
+							options.barman_server,
+							options.cluster_name);
+			command_ok = local_command(command, NULL);
+			if (command_ok == false)
+			{
+				log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
+						options.barman_server);
+				log_hint(_("Refer to the Barman documentation for more information\n"));
+				exit(ERR_INTERNAL);
+			}
 
-		maxlen_snprintf(command, "ssh %s barman show-server %s | grep 'backup_directory'",
-						options.barman_server,
-						options.cluster_name);
+			/*
+			 * Locate Barman's backup directory
+			 */
 
-		initPQExpBuffer(&command_output);
-		(void)local_command(
-			command,
-			&command_output);
-
-		p = string_skip_prefix("\tbackup_directory: ", command_output.data);
-		if (p == NULL)
-		{
-			log_err("Unexpected output from Barman: %s\n",
-					command_output.data);
-			exit(ERR_INTERNAL);
-		}
-
-		strncpy(backup_directory, p, MAXLEN);
-		string_remove_trailing_newlines(backup_directory);
-
-		termPQExpBuffer(&command_output);
-
-		/*
-		 * Create the local repmgr subdirectory
-		 */
-
-		maxlen_snprintf(local_repmgr_directory, "%s/repmgr",   local_data_directory  );
-		maxlen_snprintf(datadir_list_filename,  "%s/data.txt", local_repmgr_directory);
-
-		if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
-		{
-			log_err(_("unable to use directory %s ...\n"),
-					local_repmgr_directory);
-			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
-			r = ERR_BAD_CONFIG;
-			retval = ERR_BAD_CONFIG;
-			goto stop_backup;
-		}
-
-		/*
-		 * Read the list of backup files into a local file. In the
-		 * process:
-		 *
-		 * - determine the backup ID;
-		 * - check, and remove, the prefix;
-		 * - detect tablespaces;
-		 * - filter files in one list per tablespace;
-		 */
-
-		{
-			FILE *fi; /* input stream */
-			FILE *fd; /* output for data.txt */
-			char prefix[MAXLEN];
-			char output[MAXLEN];
-			int n;
-
-			maxlen_snprintf(command, "ssh %s barman list-files --target=data %s latest",
+			maxlen_snprintf(command, "ssh %s barman show-server %s | grep 'backup_directory'",
 							options.barman_server,
 							options.cluster_name);
 
-			fi = popen(command, "r");
-			if (fi == NULL)
+			initPQExpBuffer(&command_output);
+			(void)local_command(
+				command,
+				&command_output);
+
+			p = string_skip_prefix("\tbackup_directory: ", command_output.data);
+			if (p == NULL)
 			{
-				log_err("Cannot launch command: %s\n", command);
+				log_err("Unexpected output from Barman: %s\n",
+						command_output.data);
 				exit(ERR_INTERNAL);
 			}
 
-			fd = fopen(datadir_list_filename, "w");
-			if (fd == NULL)
+			strncpy(backup_directory, p, MAXLEN);
+			string_remove_trailing_newlines(backup_directory);
+
+			termPQExpBuffer(&command_output);
+
+			/*
+			 * Create the local repmgr subdirectory
+			 */
+
+			maxlen_snprintf(local_repmgr_directory, "%s/repmgr",   local_data_directory  );
+			maxlen_snprintf(datadir_list_filename,  "%s/data.txt", local_repmgr_directory);
+
+			if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
 			{
-				log_err("Cannot open file: %s\n", datadir_list_filename);
-				exit(ERR_INTERNAL);
+				log_err(_("unable to use directory %s ...\n"),
+						local_repmgr_directory);
+				log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+				r = ERR_BAD_CONFIG;
+				retval = ERR_BAD_CONFIG;
+				goto stop_backup;
 			}
 
-			maxlen_snprintf(prefix, "%s/base/", backup_directory);
-			while (fgets(output, MAXLEN, fi) != NULL)
+			/*
+			 * Read the list of backup files into a local file. In the
+			 * process:
+			 *
+			 * - determine the backup ID;
+			 * - check, and remove, the prefix;
+			 * - detect tablespaces;
+			 * - filter files in one list per tablespace;
+			 */
+
 			{
-				/*
-				 * Remove prefix
-				 */
-				p = string_skip_prefix(prefix, output);
-				if (p == NULL)
+				FILE *fi; /* input stream */
+				FILE *fd; /* output for data.txt */
+				char prefix[MAXLEN];
+				char output[MAXLEN];
+				int n;
+
+				maxlen_snprintf(command, "ssh %s barman list-files --target=data %s latest",
+								options.barman_server,
+								options.cluster_name);
+
+				fi = popen(command, "r");
+				if (fi == NULL)
 				{
-					log_err("Unexpected output from \"barman list-files\": %s\n",
-							output);
+					log_err("Cannot launch command: %s\n", command);
 					exit(ERR_INTERNAL);
 				}
 
-				/*
-				 * Remove and note backup ID; copy backup.info
-				 */
-				if (! strcmp(backup_id, ""))
+				fd = fopen(datadir_list_filename, "w");
+				if (fd == NULL)
 				{
-					FILE *fi2;
+					log_err("Cannot open file: %s\n", datadir_list_filename);
+					exit(ERR_INTERNAL);
+				}
 
-					n = strcspn(p, "/");
-
-					strncpy(backup_id, p, n);
-
-					strncat(prefix,backup_id,MAXLEN-1);
-					strncat(prefix,"/",MAXLEN-1);
-					p = string_skip_prefix(backup_id, p);
-					p = string_skip_prefix("/", p);
-
+				maxlen_snprintf(prefix, "%s/base/", backup_directory);
+				while (fgets(output, MAXLEN, fi) != NULL)
+				{
 					/*
-					 * Copy backup.info
+					 * Remove prefix
 					 */
-					maxlen_snprintf(command,
-									"rsync -a %s:%s/base/%s/backup.info %s",
-									options.barman_server,
-									backup_directory,
-									backup_id,
-									local_repmgr_directory);
-					(void)local_command(
-						command,
-						&command_output);
-
-					/*
-					 * Get tablespace data
-					 */
-					maxlen_snprintf(filename, "%s/backup.info",
-									local_repmgr_directory);
-					fi2 = fopen(filename, "r");
-					if (fi2 == NULL)
+					p = string_skip_prefix(prefix, output);
+					if (p == NULL)
 					{
-						log_err("Cannot open file: %s\n", filename);
+						log_err("Unexpected output from \"barman list-files\": %s\n",
+								output);
 						exit(ERR_INTERNAL);
 					}
-					while (fgets(buf, MAXLEN, fi2) != NULL)
+
+					/*
+					 * Remove and note backup ID; copy backup.info
+					 */
+					if (! strcmp(backup_id, ""))
 					{
-						q = string_skip_prefix("tablespaces=", buf);
-						if (q != NULL)
+						FILE *fi2;
+
+						n = strcspn(p, "/");
+
+						strncpy(backup_id, p, n);
+
+						strncat(prefix,backup_id,MAXLEN-1);
+						strncat(prefix,"/",MAXLEN-1);
+						p = string_skip_prefix(backup_id, p);
+						p = string_skip_prefix("/", p);
+
+						/*
+						 * Copy backup.info
+						 */
+						maxlen_snprintf(command,
+										"rsync -a %s:%s/base/%s/backup.info %s",
+										options.barman_server,
+										backup_directory,
+										backup_id,
+										local_repmgr_directory);
+						(void)local_command(
+							command,
+							&command_output);
+
+						/*
+						 * Get tablespace data
+						 */
+						maxlen_snprintf(filename, "%s/backup.info",
+										local_repmgr_directory);
+						fi2 = fopen(filename, "r");
+						if (fi2 == NULL)
 						{
-							get_tablespace_data_barman
-								(q, &tablespace_list);
+							log_err("Cannot open file: %s\n", filename);
+							exit(ERR_INTERNAL);
 						}
-						q = string_skip_prefix("version=", buf);
-						if (q != NULL)
+						while (fgets(buf, MAXLEN, fi2) != NULL)
 						{
-							server_version_num = strtol(q, NULL, 10);
-						}
-					}
-					fclose(fi2);
-					unlink(filename);
-
-					continue;
-				}
-
-				/*
-				 * Skip backup.info
-				 */
-				if (string_skip_prefix("backup.info", p))
-					continue;
-
-				/*
-				 * Filter data directory files
-				 */
-				if ((q = string_skip_prefix("data/", p)) != NULL)
-				{
-					fputs(q, fd);
-					continue;
-				}
-
-				/*
-				 * Filter other files (i.e. tablespaces)
-				 */
-				for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
-				{
-					if ((q = string_skip_prefix(cell_t->oid, p)) != NULL && *q == '/')
-					{
-						if (cell_t->f == NULL)
-						{
-							maxlen_snprintf(filename, "%s/%s.txt", local_repmgr_directory, cell_t->oid);
-							cell_t->f = fopen(filename, "w");
-							if (cell_t->f == NULL)
+							q = string_skip_prefix("tablespaces=", buf);
+							if (q != NULL)
 							{
-								log_err("Cannot open file: %s\n", filename);
-								exit(ERR_INTERNAL);
+								get_tablespace_data_barman
+									(q, &tablespace_list);
+							}
+							q = string_skip_prefix("version=", buf);
+							if (q != NULL)
+							{
+								server_version_num = strtol(q, NULL, 10);
 							}
 						}
-						fputs(q + 1, cell_t->f);
-						break;
+						fclose(fi2);
+						unlink(filename);
+
+						continue;
+					}
+
+					/*
+					 * Skip backup.info
+					 */
+					if (string_skip_prefix("backup.info", p))
+						continue;
+
+					/*
+					 * Filter data directory files
+					 */
+					if ((q = string_skip_prefix("data/", p)) != NULL)
+					{
+						fputs(q, fd);
+						continue;
+					}
+
+					/*
+					 * Filter other files (i.e. tablespaces)
+					 */
+					for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
+					{
+						if ((q = string_skip_prefix(cell_t->oid, p)) != NULL && *q == '/')
+						{
+							if (cell_t->f == NULL)
+							{
+								maxlen_snprintf(filename, "%s/%s.txt", local_repmgr_directory, cell_t->oid);
+								cell_t->f = fopen(filename, "w");
+								if (cell_t->f == NULL)
+								{
+									log_err("Cannot open file: %s\n", filename);
+									exit(ERR_INTERNAL);
+								}
+							}
+							fputs(q + 1, cell_t->f);
+							break;
+						}
+					}
+				}
+
+				fclose(fd);
+
+				pclose(fi);
+			}
+
+			/* For 9.5 and greater, create our own tablespace_map file */
+			if (server_version_num >= 90500)
+			{
+				initPQExpBuffer(&tablespace_map);
+			}
+
+			/*
+			 * As of Barman version 1.6.1, the file structure of a backup
+			 * is as follows:
+			 *
+			 * base/ - base backup
+			 * wals/ - WAL files associated to the backup
+			 *
+			 * base/<ID> - backup files
+			 *
+			 *   here ID has the standard timestamp form yyyymmddThhmmss
+			 *
+			 * base/<ID>/backup.info - backup metadata, in text format
+			 * base/<ID>/data        - data directory
+			 * base/<ID>/<OID>       - tablespace with the given oid
+			 */
+
+			/*
+			 * Copy all backup files from the Barman server
+			 */
+
+			maxlen_snprintf(command,
+							"rsync --progress -a --files-from=%s %s:%s/base/%s/data %s",
+							datadir_list_filename,
+							options.barman_server,
+							backup_directory,
+							backup_id,
+							local_data_directory);
+			(void)local_command(
+				command,
+				&command_output);
+			unlink(datadir_list_filename);
+
+			/*
+			 * We must create some PGDATA subdirectories because they are
+			 * not included in the Barman backup.
+			 */
+			{
+				const char* const dirs[] = {
+					/* Only from 9.5 */
+					"pg_commit_ts",
+					/* Only from 9.4 */
+					"pg_dynshmem", "pg_logical",
+					/* Already in 9.3 */
+					"pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
+					"pg_twophase", "pg_xlog", 0
+				};
+				const int vers[] = {
+					90500,
+					90400, 90400,
+					0, 0, 0, 0, 0,
+					0, 0, 0
+				};
+				for (i = 0; dirs[i]; i++)
+				{
+					if (vers[i] > 0 && server_version_num < vers[i])
+						continue;
+					maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
+					if(mkdir(filename, S_IRWXU) != 0 && errno != EEXIST)
+					{
+						log_err(_("unable to create the %s directory\n"), dirs[i]);
+						exit(ERR_INTERNAL);
 					}
 				}
 			}
-
-			fclose(fd);
-
-			pclose(fi);
 		}
-
-		/* For 9.5 and greater, create our own tablespace_map file */
-		if (server_version_num >= 90500)
+		else if (mode == rsync)
 		{
-			initPQExpBuffer(&tablespace_map);
-		}
-
-		/*
-		 * As of Barman version 1.6.1, the file structure of a backup
-		 * is as follows:
-		 *
-		 * base/ - base backup
-		 * wals/ - WAL files associated to the backup
-		 *
-		 * base/<ID> - backup files
-		 *
-		 *   here ID has the standard timestamp form yyyymmddThhmmss
-		 *
-		 * base/<ID>/backup.info - backup metadata, in text format
-		 * base/<ID>/data        - data directory
-		 * base/<ID>/<OID>       - tablespace with the given oid
-		 */
-
-		/*
-		 * Copy all backup files from the Barman server
-		 */
-
-		maxlen_snprintf(command,
-						"rsync --progress -a --files-from=%s %s:%s/base/%s/data %s",
-						datadir_list_filename,
-						options.barman_server,
-						backup_directory,
-						backup_id,
-						local_data_directory);
-		(void)local_command(
-			command,
-			&command_output);
-		unlink(datadir_list_filename);
-
-		/*
-		 * We must create some PGDATA subdirectories because they are
-		 * not included in the Barman backup.
-		 */
-		{
-			const char* const dirs[] = {
-				/* Only from 9.5 */
-				"pg_commit_ts",
-				/* Only from 9.4 */
-				"pg_dynshmem", "pg_logical",
-				/* Already in 9.3 */
-				"pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
-				"pg_twophase", "pg_xlog", 0
-			};
-			const int vers[] = {
-				90500,
-				90400, 90400,
-				0, 0, 0, 0, 0,
-				0, 0, 0
-			};
-			for (i = 0; dirs[i]; i++)
+			/* For 9.5 and greater, create our own tablespace_map file */
+			if (server_version_num >= 90500)
 			{
-				if (vers[i] > 0 && server_version_num < vers[i])
-					continue;
-				maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
-				if(mkdir(filename, S_IRWXU) != 0 && errno != EEXIST)
-				{
-					log_err(_("unable to create the %s directory\n"), dirs[i]);
-					exit(ERR_INTERNAL);
-				}
+				initPQExpBuffer(&tablespace_map);
 			}
+
+			/*
+			 * From 9.1 default is to wait for a sync standby to ack, avoid that by
+			 * turning off sync rep for this session
+			 */
+			if (set_config_bool(upstream_conn, "synchronous_commit", false) == false)
+			{
+				r = ERR_BAD_CONFIG;
+				retval = ERR_BAD_CONFIG;
+				goto stop_backup;
+			}
+
+			if (start_backup(upstream_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
+			{
+				r = ERR_BAD_BASEBACKUP;
+				retval = ERR_BAD_BASEBACKUP;
+				goto stop_backup;
+			}
+
+			/*
+			 * Note that we've successfully executed pg_start_backup(),
+			 * so we know whether or not to execute pg_stop_backup() after
+			 * the 'stop_backup' label
+			 */
+			pg_start_backup_executed = true;
+
+			/*
+			 * 1. copy data directory, omitting directories which should not be
+			 *    copied, or for which copying would serve no purpose.
+			 *
+			 * 2. copy pg_control file
+			 */
+
+
+			/* Copy the data directory */
+			log_info(_("standby clone: master data directory '%s'\n"),
+					 master_data_directory);
+			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+								  master_data_directory, local_data_directory,
+								  true, server_version_num);
+			/*
+			  Exit code 0 means no error, but we want to ignore exit code 24 as well
+			  as rsync returns that code on "Partial transfer due to vanished source files".
+			  It's quite common for this to happen on the data directory, particularly
+			  with long running rsync on a busy server.
+			*/
+			if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
+			{
+				log_warning(_("standby clone: failed copying master data directory '%s'\n"),
+							master_data_directory);
+				goto stop_backup;
+			}
+
+			/* Read backup label copied from primary */
+			if (read_backup_label(local_data_directory, &backup_label) == false)
+			{
+				r = retval = ERR_BAD_BACKUP_LABEL;
+				goto stop_backup;
+			}
+
+			/* Copy tablespaces and, if required, remap to a new location */
+			retval = get_tablespace_data(upstream_conn, &tablespace_list);
+			if(retval != SUCCESS) goto stop_backup;
 		}
-	}
-    else if (mode == rsync)
-	{
-		/* For 9.5 and greater, create our own tablespace_map file */
-		if (server_version_num >= 90500)
-		{
-			initPQExpBuffer(&tablespace_map);
-		}
-
-		/*
-		 * From 9.1 default is to wait for a sync standby to ack, avoid that by
-		 * turning off sync rep for this session
-		 */
-		if (set_config_bool(upstream_conn, "synchronous_commit", false) == false)
-		{
-			r = ERR_BAD_CONFIG;
-			retval = ERR_BAD_CONFIG;
-			goto stop_backup;
-		}
-
-		if (start_backup(upstream_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
-		{
-			r = ERR_BAD_BASEBACKUP;
-			retval = ERR_BAD_BASEBACKUP;
-			goto stop_backup;
-		}
-
-		/*
-		 * Note that we've successfully executed pg_start_backup(),
-		 * so we know whether or not to execute pg_stop_backup() after
-		 * the 'stop_backup' label
-		 */
-		pg_start_backup_executed = true;
-
-		/*
-		 * 1. copy data directory, omitting directories which should not be
-		 *    copied, or for which copying would serve no purpose.
-		 *
-		 * 2. copy pg_control file
-		 */
-
-
-		/* Copy the data directory */
-		log_info(_("standby clone: master data directory '%s'\n"),
-				 master_data_directory);
-		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-							  master_data_directory, local_data_directory,
-							  true, server_version_num);
-		/*
-		  Exit code 0 means no error, but we want to ignore exit code 24 as well
-		  as rsync returns that code on "Partial transfer due to vanished source files".
-		  It's quite common for this to happen on the data directory, particularly
-		  with long running rsync on a busy server.
-		*/
-		if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
-		{
-			log_warning(_("standby clone: failed copying master data directory '%s'\n"),
-						master_data_directory);
-			goto stop_backup;
-		}
-
-		/* Read backup label copied from primary */
-		if (read_backup_label(local_data_directory, &backup_label) == false)
-		{
-			r = retval = ERR_BAD_BACKUP_LABEL;
-			goto stop_backup;
-		}
-
-		/* Copy tablespaces and, if required, remap to a new location */
-		retval = get_tablespace_data(upstream_conn, &tablespace_list);
-		if(retval != SUCCESS) goto stop_backup;
-	}
 
 		for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
 		{
@@ -2425,51 +2425,51 @@ do_standby_clone(void)
 			 */
 
 			if (mode == barman)
-		{
-			create_pg_dir(cell_t->location, false);
-
-			if (cell_t->f != NULL) /* cell_t->f == NULL iff the tablespace is empty */
 			{
-				maxlen_snprintf(command,
-								"rsync --progress -a --files-from=%s/%s.txt %s:%s/base/%s/%s %s",
-								local_repmgr_directory,
-								cell_t->oid,
-								options.barman_server,
-								backup_directory,
-								backup_id,
-								cell_t->oid,
-								tblspc_dir_dest);
-				(void)local_command(
-					command,
-					&command_output);
-				fclose(cell_t->f);
-				maxlen_snprintf(filename,
-								"%s/%s.txt",
-								local_repmgr_directory,
-								cell_t->oid);
-				unlink(filename);
+				create_pg_dir(cell_t->location, false);
+
+				if (cell_t->f != NULL) /* cell_t->f == NULL iff the tablespace is empty */
+				{
+					maxlen_snprintf(command,
+									"rsync --progress -a --files-from=%s/%s.txt %s:%s/base/%s/%s %s",
+									local_repmgr_directory,
+									cell_t->oid,
+									options.barman_server,
+									backup_directory,
+									backup_id,
+									cell_t->oid,
+									tblspc_dir_dest);
+					(void)local_command(
+						command,
+						&command_output);
+					fclose(cell_t->f);
+					maxlen_snprintf(filename,
+									"%s/%s.txt",
+									local_repmgr_directory,
+									cell_t->oid);
+					unlink(filename);
+				}
 			}
-		}
-		else if (mode == rsync)
-		{
-			/* Copy tablespace directory */
-			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  cell_t->location, tblspc_dir_dest,
-								  true, server_version_num);
-
-			/*
-			  Exit code 0 means no error, but we want to ignore exit code 24 as well
-			  as rsync returns that code on "Partial transfer due to vanished source files".
-			  It's quite common for this to happen on the data directory, particularly
-			  with long running rsync on a busy server.
-			*/
-			if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
+			else if (mode == rsync)
 			{
-			       log_warning(_("standby clone: failed copying tablespace directory '%s'\n"),
+				/* Copy tablespace directory */
+				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+									  cell_t->location, tblspc_dir_dest,
+									  true, server_version_num);
+
+				/*
+				  Exit code 0 means no error, but we want to ignore exit code 24 as well
+				  as rsync returns that code on "Partial transfer due to vanished source files".
+				  It's quite common for this to happen on the data directory, particularly
+				  with long running rsync on a busy server.
+				*/
+				if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
+				{
+					log_warning(_("standby clone: failed copying tablespace directory '%s'\n"),
 					            cell_t->location);
-			       goto stop_backup;
+					goto stop_backup;
+				}
 			}
-		}
 
 			/*
 			 * If a valid mapping was provide for this tablespace, arrange for it to
@@ -2699,7 +2699,7 @@ stop_backup:
 
 		log_err(_("unable to take a base backup of the master server\n"));
 		log_warning(_("destination directory (%s) may need to be cleaned up manually\n"),
-				local_data_directory);
+					local_data_directory);
 
 		PQfinish(upstream_conn);
 		exit(retval);
@@ -2780,12 +2780,12 @@ stop_backup:
 
 	switch(mode)
 	{
-	case rsync:
-		log_notice(_("standby clone (using rsync) complete\n"));
-	case pg_basebackup:
-		log_notice(_("standby clone (using pg_basebackup) complete\n"));
-	case barman:
-		log_notice(_("standby clone (from Barman) complete\n"));
+		case rsync:
+			log_notice(_("standby clone (using rsync) complete\n"));
+		case pg_basebackup:
+			log_notice(_("standby clone (using pg_basebackup) complete\n"));
+		case barman:
+			log_notice(_("standby clone (from Barman) complete\n"));
 	}
 
 	/*
@@ -2798,7 +2798,7 @@ stop_backup:
 	if (target_directory_provided)
 	{
 		log_hint(_("for example : pg_ctl -D %s start\n"),
-				   local_data_directory);
+				 local_data_directory);
 	}
 	else
 	{
