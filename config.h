@@ -1,5 +1,6 @@
 /*
  * config.h
+ *
  * Copyright (c) 2ndQuadrant, 2010-2016
  *
  * This program is free software: you can redistribute it and/or modify
@@ -92,17 +93,17 @@ typedef struct
  */
 #define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, {NULL, NULL} }
 
-typedef struct ErrorListCell
+typedef struct ItemListCell
 {
-	struct ErrorListCell *next;
-	char			     *error_message;
-} ErrorListCell;
+	struct ItemListCell *next;
+	char			    *string;
+} ItemListCell;
 
-typedef struct ErrorList
+typedef struct ItemList
 {
-	ErrorListCell *head;
-	ErrorListCell *tail;
-} ErrorList;
+	ItemListCell *head;
+	ItemListCell *tail;
+} ItemList;
 
 void set_progname(const char *argv0);
 const char * progname(void);
@@ -112,10 +113,10 @@ bool		reload_config(t_configuration_options *orig_options);
 bool		parse_config(t_configuration_options *options);
 void		parse_line(char *buff, char *name, char *value);
 char	   *trim(char *s);
-void		error_list_append(ErrorList *error_list, char *error_message);
+void		item_list_append(ItemList *item_list, char *error_message);
 int			repmgr_atoi(const char *s,
 						const char *config_item,
-						ErrorList *error_list,
+						ItemList *error_list,
 						bool allow_negative);
-
+extern bool		config_file_found;
 #endif

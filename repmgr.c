@@ -1,5 +1,6 @@
 /*
  * repmgr.c - Command interpreter for the repmgr package
+ *
  * Copyright (C) 2ndQuadrant, 2010-2016
  *
  * This module is a command-line utility to easily setup a cluster of
@@ -117,7 +118,7 @@ static void do_check_upstream_config(void);
 static void do_help(void);
 
 static void exit_with_errors(void);
-static void print_error_list(ErrorList *error_list, int log_level);
+static void print_error_list(ItemList *error_list, int log_level);
 
 static bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
 static void format_db_cli_params(const char *conninfo, char *output);
@@ -126,6 +127,7 @@ static bool copy_file(const char *old_filename, const char *new_filename);
 static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
 static void param_set(const char *param, const char *value);
+static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
 
 /* Global variables */
 static PQconninfoOption *opts = NULL;
@@ -155,8 +157,8 @@ static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
 
 /* Collate command line errors and warnings here for friendlier reporting */
-ErrorList	cli_errors = { NULL, NULL };
-ErrorList	cli_warnings = { NULL, NULL };
+ItemList	cli_errors = { NULL, NULL };
+ItemList	cli_warnings = { NULL, NULL };
 
 static	struct BackupLabel backup_label;
 
@@ -227,7 +229,6 @@ main(int argc, char **argv)
 				progname());
 		exit(1);
 	}
-
 
 	param_count = 0;
 	defs = PQconndefaults();
@@ -417,7 +418,7 @@ main(int argc, char **argv)
 					PQExpBufferData invalid_log_level;
 					initPQExpBuffer(&invalid_log_level);
 					appendPQExpBuffer(&invalid_log_level, _("Invalid log level \"%s\" provided"), optarg);
-					error_list_append(&cli_errors, invalid_log_level.data);
+					item_list_append(&cli_errors, invalid_log_level.data);
 					termPQExpBuffer(&invalid_log_level);
 				}
 				break;
@@ -439,7 +440,7 @@ main(int argc, char **argv)
 					PQExpBufferData invalid_mode;
 					initPQExpBuffer(&invalid_mode);
 					appendPQExpBuffer(&invalid_mode, _("Invalid pg_ctl shutdown mode \"%s\" provided"), optarg);
-					error_list_append(&cli_errors, invalid_mode.data);
+					item_list_append(&cli_errors, invalid_mode.data);
 					termPQExpBuffer(&invalid_mode);
 				}
 			}
@@ -458,7 +459,7 @@ main(int argc, char **argv)
 
 				if (targ < 1)
 				{
-					error_list_append(&cli_errors, _("Invalid value provided for '-r/--recovery-min-apply-delay'"));
+					item_list_append(&cli_errors, _("Invalid value provided for '-r/--recovery-min-apply-delay'"));
 					break;
 				}
 				if (ptr && *ptr)
@@ -467,7 +468,7 @@ main(int argc, char **argv)
 					   strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
 					   strcmp(ptr, "d") != 0)
 					{
-						error_list_append(&cli_errors, _("Value provided for '-r/--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
+						item_list_append(&cli_errors, _("Value provided for '-r/--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
 						break;
 					}
 				}
@@ -500,7 +501,7 @@ main(int argc, char **argv)
 				initPQExpBuffer(&unknown_option);
 				appendPQExpBuffer(&unknown_option, _("Unknown option '%s'"), argv[optind - 1]);
 
-				error_list_append(&cli_errors, unknown_option.data);
+				item_list_append(&cli_errors, unknown_option.data);
 			}
 		}
 	}
@@ -526,7 +527,7 @@ main(int argc, char **argv)
 				PQExpBufferData conninfo_error;
 				initPQExpBuffer(&conninfo_error);
 				appendPQExpBuffer(&conninfo_error, _("error parsing conninfo:\n%s"), errmsg);
-				error_list_append(&cli_errors, conninfo_error.data);
+				item_list_append(&cli_errors, conninfo_error.data);
 
 				termPQExpBuffer(&conninfo_error);
 				free(errmsg);
@@ -614,7 +615,7 @@ main(int argc, char **argv)
 			PQExpBufferData unknown_mode;
 			initPQExpBuffer(&unknown_mode);
 			appendPQExpBuffer(&unknown_mode, _("Unknown server mode '%s'"), server_mode);
-			error_list_append(&cli_errors, unknown_mode.data);
+			item_list_append(&cli_errors, unknown_mode.data);
 		}
 	}
 
@@ -663,14 +664,14 @@ main(int argc, char **argv)
 	if (action == NO_ACTION) {
 		if (server_cmd == NULL)
 		{
-			error_list_append(&cli_errors, "No server command provided");
+			item_list_append(&cli_errors, "No server command provided");
 		}
 		else
 		{
 			PQExpBufferData unknown_action;
 			initPQExpBuffer(&unknown_action);
 			appendPQExpBuffer(&unknown_action, _("Unknown server command '%s'"), server_cmd);
-			error_list_append(&cli_errors, unknown_action.data);
+			item_list_append(&cli_errors, unknown_action.data);
 		}
 	}
 
@@ -686,7 +687,7 @@ main(int argc, char **argv)
 				appendPQExpBuffer(&additional_host_arg,
 								  _("Conflicting parameters:  you can't use %s while providing a node separately."),
 								  conninfo_provided == true ? "host=" : "-h/--host");
-				error_list_append(&cli_errors, additional_host_arg.data);
+				item_list_append(&cli_errors, additional_host_arg.data);
 			}
 			else
 			{
@@ -701,7 +702,7 @@ main(int argc, char **argv)
 		PQExpBufferData too_many_args;
 		initPQExpBuffer(&too_many_args);
 		appendPQExpBuffer(&too_many_args, _("too many command-line arguments (first extra is \"%s\")"), argv[optind]);
-		error_list_append(&cli_errors, too_many_args.data);
+		item_list_append(&cli_errors, too_many_args.data);
 	}
 
 	check_parameters_for_action(action);
@@ -4614,10 +4615,17 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 static int
 run_basebackup(const char *data_dir, int server_version)
 {
-	char				script[MAXLEN];
-	int					r = 0;
-	PQExpBufferData 	params;
-	TablespaceListCell      *cell;
+	char				  script[MAXLEN];
+	int					  r = 0;
+	PQExpBufferData 	  params;
+	TablespaceListCell   *cell;
+	t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
+
+	/*
+	 * Parse the pg_basebackup_options provided in repmgr.conf - we'll want
+	 * to check later whether certain options were set by the user
+	 */
+	parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options);
 
 	/* Create pg_basebackup command line options */
 
@@ -4678,33 +4686,39 @@ run_basebackup(const char *data_dir, int server_version)
 	 * created a slot with reserved LSN, and will stream from that slot to avoid
 	 * WAL buildup on the master using the -S/--slot, which requires -X/--xlog-method=stream
 	 */
+	if (!strlen(backup_options.xlog_method))
 	{
-		/*
-		 * We're going to check first if the user set the xlog method in the repmgr.conf
-		 * file. We don't want to have conflicts with pg_basebackup due to specifying the
-		 * method twice.
-		 */
-		const char xlog_short[4] = "-X ";
-		const char xlog_long[14] = "--xlog-method";
-		if (strstr(options.pg_basebackup_options, xlog_short) == NULL && strstr(options.pg_basebackup_options, xlog_long) == NULL )
-		{
-			appendPQExpBuffer(&params, " -X stream");
-		}
+		appendPQExpBuffer(&params, " -X stream");
 	}
 
 	/*
 	 * From 9.6, pg_basebackup accepts -S/--slot, which forces WAL streaming to use
 	 * the specified replication slot. If replication slot usage is specified, the
-	 * slot will already have been created
+	 * slot will already have been created.
 	 *
-	 * XXX verify that -X/--xlog-method is set to "stream"
+	 * NOTE: currently there's no way of disabling the --slot option while using
+	 *   --xlog-method=stream - it's hard to imagine a use case for this, so no
+	 *   provision has been made for doing it.
+	 *
+	 * NOTE:
+	 *   It's possible to set 'pg_basebackup_options' with an invalid combination
+	 *   of values for --xlog-method and --slot - we're not checking that, just that
+	 *   we're not overriding any user-supplied values
 	 */
 	if (server_version >= 90600 && options.use_replication_slots)
 	{
-		const char slot_short[4] = "-S ";
-		const char slot_long[7] = "--slot";
+		bool slot_add = true;
 
-		if (strstr(options.pg_basebackup_options, slot_short) == NULL && strstr(options.pg_basebackup_options, slot_long) == NULL )
+		/*
+		 * Check whether 'pg_basebackup_options' in repmgr.conf has the --slot option set,
+		 * or if --xlog-method is set to a value other than "stream" (in which case we can't
+		 * use --slot).
+		 */
+		if(strlen(backup_options.slot) || strcmp(backup_options.xlog_method, "stream") != 0) {
+			slot_add = false;
+		}
+
+		if (slot_add == true)
 		{
 			appendPQExpBuffer(&params, " -S %s", repmgr_slot_name_ptr);
 		}
@@ -4748,11 +4762,11 @@ check_parameters_for_action(const int action)
 			 */
 			if (connection_param_provided)
 			{
-				error_list_append(&cli_warnings, _("master connection parameters not required when executing MASTER REGISTER"));
+				item_list_append(&cli_warnings, _("master connection parameters not required when executing MASTER REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_warnings, _("destination directory not required when executing MASTER REGISTER"));
+				item_list_append(&cli_warnings, _("destination directory not required when executing MASTER REGISTER"));
 			}
 			break;
 		case STANDBY_REGISTER:
@@ -4764,11 +4778,11 @@ check_parameters_for_action(const int action)
 			 */
 			if (connection_param_provided)
 			{
-				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY REGISTER"));
+				item_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY REGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY REGISTER"));
+				item_list_append(&cli_warnings, _("destination directory not required when executing STANDBY REGISTER"));
 			}
 			break;
 		case STANDBY_UNREGISTER:
@@ -4780,11 +4794,11 @@ check_parameters_for_action(const int action)
 			 */
 			if (connection_param_provided)
 			{
-				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY UNREGISTER"));
+				item_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY UNREGISTER"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY UNREGISTER"));
+				item_list_append(&cli_warnings, _("destination directory not required when executing STANDBY UNREGISTER"));
 			}
 			break;
 		case STANDBY_PROMOTE:
@@ -4797,11 +4811,11 @@ check_parameters_for_action(const int action)
 			 */
 			if (connection_param_provided)
 			{
-				error_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY PROMOTE"));
+				item_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY PROMOTE"));
 			}
 			if (runtime_options.dest_dir[0])
 			{
-				error_list_append(&cli_warnings, _("destination directory not required when executing STANDBY PROMOTE"));
+				item_list_append(&cli_warnings, _("destination directory not required when executing STANDBY PROMOTE"));
 			}
 			break;
 
@@ -4818,12 +4832,12 @@ check_parameters_for_action(const int action)
 			{
 				if (!runtime_options.host[0])
 				{
-					error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY FOLLOW with -D/--data-dir option"));
+					item_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY FOLLOW with -D/--data-dir option"));
 				}
 
 				if (host_param_provided && !runtime_options.dest_dir[0])
 				{
-					error_list_append(&cli_errors, _("local data directory (-D/--data-dir) required when executing STANDBY FOLLOW with -h/--host option"));
+					item_list_append(&cli_errors, _("local data directory (-D/--data-dir) required when executing STANDBY FOLLOW with -h/--host option"));
 				}
 			}
 			break;
@@ -4838,12 +4852,12 @@ check_parameters_for_action(const int action)
 
 			if (strcmp(runtime_options.host, "") == 0)
 			{
-				error_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY CLONE"));
+				item_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY CLONE"));
 			}
 
 			if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
 			{
-				error_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using -r/--rsync-only"));
+				item_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using -r/--rsync-only"));
 			}
 			config_file_required = false;
 			break;
@@ -4854,19 +4868,19 @@ check_parameters_for_action(const int action)
 		case STANDBY_ARCHIVE_CONFIG:
 			if (strcmp(runtime_options.config_archive_dir, "") == 0)
 			{
-				error_list_append(&cli_errors, _("--config-archive-dir required when executing STANDBY ARCHIVE_CONFIG"));
+				item_list_append(&cli_errors, _("--config-archive-dir required when executing STANDBY ARCHIVE_CONFIG"));
 			}
 			break;
 
 		case STANDBY_RESTORE_CONFIG:
 			if (strcmp(runtime_options.config_archive_dir, "") == 0)
 			{
-				error_list_append(&cli_errors, _("--config-archive-dir required when executing STANDBY RESTORE_CONFIG"));
+				item_list_append(&cli_errors, _("--config-archive-dir required when executing STANDBY RESTORE_CONFIG"));
 			}
 
 			if (strcmp(runtime_options.dest_dir, "") == 0)
 			{
-				error_list_append(&cli_errors, _("-D/--data-dir required when executing STANDBY RESTORE_CONFIG"));
+				item_list_append(&cli_errors, _("-D/--data-dir required when executing STANDBY RESTORE_CONFIG"));
 			}
 
 			config_file_required = false;
@@ -4876,7 +4890,7 @@ check_parameters_for_action(const int action)
 			/* Require data directory */
 			if (strcmp(runtime_options.dest_dir, "") == 0)
 			{
-				error_list_append(&cli_errors, _("-D/--data-dir required when executing WITNESS CREATE"));
+				item_list_append(&cli_errors, _("-D/--data-dir required when executing WITNESS CREATE"));
 			}
 			/* allow all parameters to be supplied */
 			break;
@@ -4895,27 +4909,27 @@ check_parameters_for_action(const int action)
 	{
 		if (runtime_options.fast_checkpoint)
 		{
-			error_list_append(&cli_warnings, _("-c/--fast-checkpoint can only be used when executing STANDBY CLONE"));
+			item_list_append(&cli_warnings, _("-c/--fast-checkpoint can only be used when executing STANDBY CLONE"));
 		}
 
 		if (runtime_options.ignore_external_config_files)
 		{
-			error_list_append(&cli_warnings, _("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
+			item_list_append(&cli_warnings, _("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
 		}
 
 		if (*runtime_options.recovery_min_apply_delay)
 		{
-			error_list_append(&cli_warnings, _("--recovery-min-apply-delay can only be used when executing STANDBY CLONE"));
+			item_list_append(&cli_warnings, _("--recovery-min-apply-delay can only be used when executing STANDBY CLONE"));
 		}
 
 		if (runtime_options.rsync_only)
 		{
-			error_list_append(&cli_warnings, _("-r/--rsync-only can only be used when executing STANDBY CLONE"));
+			item_list_append(&cli_warnings, _("-r/--rsync-only can only be used when executing STANDBY CLONE"));
 		}
 
 		if (wal_keep_segments_used)
 		{
-			error_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
+			item_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
 		}
 	}
 
@@ -4924,7 +4938,7 @@ check_parameters_for_action(const int action)
 	{
 		if (pg_rewind_supplied == true)
 		{
-			error_list_append(&cli_warnings, _("--pg_rewind can only be used when executing STANDBY SWITCHOVER"));
+			item_list_append(&cli_warnings, _("--pg_rewind can only be used when executing STANDBY SWITCHOVER"));
 		}
 	}
 
@@ -4933,7 +4947,7 @@ check_parameters_for_action(const int action)
 	{
 		if (runtime_options.csv_mode)
 		{
-			error_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW"));
+			item_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW"));
 		}
 	}
 
@@ -5703,9 +5717,9 @@ exit_with_errors(void)
 
 
 static void
-print_error_list(ErrorList *error_list, int log_level)
+print_error_list(ItemList *error_list, int log_level)
 {
-	ErrorListCell *cell;
+	ItemListCell *cell;
 
 	for (cell = error_list->head; cell; cell = cell->next)
 	{
@@ -5713,10 +5727,10 @@ print_error_list(ErrorList *error_list, int log_level)
 		{
 			/* Currently we only need errors and warnings */
 			case LOG_ERR:
-				log_err("%s\n",  cell->error_message);
+				log_err("%s\n",  cell->string);
 				break;
 			case LOG_WARNING:
-				log_warning("%s\n",  cell->error_message);
+				log_warning("%s\n",  cell->string);
 				break;
 		}
 
@@ -5906,3 +5920,88 @@ param_set(const char *param, const char *value)
 	 */
 }
 
+
+static void
+parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options)
+{
+	int   options_len = strlen(pg_basebackup_options) + 1;
+	char *options_string = pg_malloc(options_len);
+
+	char *options_string_ptr = options_string;
+	/*
+	 * Add parsed options to this list, then copy to an array
+	 * to pass to getopt
+	 */
+	static ItemList option_argv = { NULL, NULL };
+
+	char *argv_item;
+	int c, argc_item = 1;
+
+	char **argv_array;
+	ItemListCell *cell;
+
+	int			optindex = 0;
+
+	static struct option long_options[] =
+	{
+		{"slot", required_argument, NULL, 'S'},
+		{"xlog-method", required_argument, NULL, 'X'},
+		{NULL, 0, NULL, 0}
+	};
+
+	/* Don't attempt to tokenise an empty string */
+	if (!strlen(pg_basebackup_options))
+		return;
+
+	/*
+	 * Copy the string before operating on it with strtok()
+	 */
+	strncpy(options_string, pg_basebackup_options, options_len);
+
+	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
+	{
+		item_list_append(&option_argv, argv_item);
+
+		argc_item++;
+
+		if (options_string_ptr != NULL)
+			options_string_ptr = NULL;
+	}
+
+	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
+
+	/* Copy a dummy program name to the start of the array */
+	argv_array[0] = pg_malloc0(1);
+	strncpy(argv_array[0], "", 4);
+
+	c = 1;
+
+	for (cell = option_argv.head; cell; cell = cell->next)
+	{
+		int argv_len = strlen(cell->string) + 1;
+
+		argv_array[c] = pg_malloc0(argv_len);
+
+		strncpy(argv_array[c], cell->string, argv_len);
+
+		c++;
+	}
+
+	argv_array[c] = NULL;
+
+	while ((c = getopt_long(argc_item, argv_array, "S:X:", long_options,
+							&optindex)) != -1)
+	{
+		switch (c)
+		{
+			case 'S':
+				strncpy(backup_options->slot, optarg, MAXLEN);
+				break;
+			case 'X':
+				strncpy(backup_options->xlog_method, optarg, MAXLEN);
+				break;
+		}
+	}
+
+	return;
+}

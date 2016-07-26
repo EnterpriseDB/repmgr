@@ -52,7 +52,6 @@
 /* Run time options type */
 typedef struct
 {
-
 	char		dbname[MAXLEN];
 	char		host[MAXLEN];
 	char		username[MAXLEN];
@@ -110,7 +109,13 @@ struct BackupLabel
 	XLogRecPtr min_failover_slot_lsn;
 };
 
-extern char		repmgr_schema[MAXLEN];
-extern bool		config_file_found;
+
+typedef struct
+{
+	char		slot[MAXLEN];
+	char		xlog_method[MAXLEN];
+} t_basebackup_options;
+
+#define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "" }
 
 #endif

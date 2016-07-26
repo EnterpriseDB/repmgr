@@ -1,5 +1,6 @@
 /*
  * config.c - Functions to parse the config file
+ *
  * Copyright (C) 2ndQuadrant, 2010-2016
  *
  * This program is free software: you can redistribute it and/or modify
@@ -26,7 +27,7 @@
 
 static void parse_event_notifications_list(t_configuration_options *options, const char *arg);
 static void tablespace_list_append(t_configuration_options *options, const char *arg);
-static void exit_with_errors(ErrorList *config_errors);
+static void exit_with_errors(ItemList *config_errors);
 
 const static char *_progname = NULL;
 static char config_file_path[MAXPGPATH];
@@ -201,7 +202,7 @@ parse_config(t_configuration_options *options)
 	char	   *conninfo_errmsg = NULL;
 
 	/* Collate configuration file errors here for friendlier reporting */
-	static ErrorList config_errors = { NULL, NULL };
+	static ItemList config_errors = { NULL, NULL };
 
 	bool		node_found = false;
 
@@ -333,7 +334,7 @@ parse_config(t_configuration_options *options)
 			}
 			else
 			{
-				error_list_append(&config_errors,_("value for 'failover' must be 'automatic' or 'manual'\n"));
+				item_list_append(&config_errors,_("value for 'failover' must be 'automatic' or 'manual'\n"));
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
@@ -406,7 +407,7 @@ parse_config(t_configuration_options *options)
 					 _("no value provided for parameter \"%s\""),
 					 name);
 
-			error_list_append(&config_errors, error_message_buf);
+			item_list_append(&config_errors, error_message_buf);
 		}
 	}
 
@@ -415,11 +416,11 @@ parse_config(t_configuration_options *options)
 
 	if (node_found == false)
 	{
-		error_list_append(&config_errors, _("\"node\": parameter was not found"));
+		item_list_append(&config_errors, _("\"node\": parameter was not found"));
 	}
 	else if (options->node == 0)
 	{
-		error_list_append(&config_errors, _("\"node\": must be greater than zero"));
+		item_list_append(&config_errors, _("\"node\": must be greater than zero"));
 	}
 
 	if (strlen(options->conninfo))
@@ -439,7 +440,7 @@ parse_config(t_configuration_options *options)
 					 _("\"conninfo\": %s"),
 					 conninfo_errmsg);
 
-			error_list_append(&config_errors, error_message_buf);
+			item_list_append(&config_errors, error_message_buf);
 		}
 
 		PQconninfoFree(conninfo_options);
@@ -770,11 +771,11 @@ reload_config(t_configuration_options *orig_options)
 
 
 void
-error_list_append(ErrorList *error_list, char *error_message)
+item_list_append(ItemList *item_list, char *error_message)
 {
-	ErrorListCell *cell;
+	ItemListCell *cell;
 
-	cell = (ErrorListCell *) pg_malloc0(sizeof(ErrorListCell));
+	cell = (ItemListCell *) pg_malloc0(sizeof(ItemListCell));
 
 	if (cell == NULL)
 	{
@@ -782,19 +783,19 @@ error_list_append(ErrorList *error_list, char *error_message)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	cell->error_message = pg_malloc0(MAXLEN);
-	strncpy(cell->error_message, error_message, MAXLEN);
+	cell->string = pg_malloc0(MAXLEN);
+	strncpy(cell->string, error_message, MAXLEN);
 
-	if (error_list->tail)
+	if (item_list->tail)
 	{
-		error_list->tail->next = cell;
+		item_list->tail->next = cell;
 	}
 	else
 	{
-		error_list->head = cell;
+		item_list->head = cell;
 	}
 
-	error_list->tail = cell;
+	item_list->tail = cell;
 }
 
 
@@ -804,7 +805,7 @@ error_list_append(ErrorList *error_list, char *error_message)
  * otherwise exit
  */
 int
-repmgr_atoi(const char *value, const char *config_item, ErrorList *error_list, bool allow_negative)
+repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, bool allow_negative)
 {
 	char	  *endptr;
 	long	   longval = 0;
@@ -853,7 +854,7 @@ repmgr_atoi(const char *value, const char *config_item, ErrorList *error_list, b
 			exit(ERR_BAD_CONFIG);
 		}
 
-		error_list_append(error_list, error_message_buf);
+		item_list_append(error_list, error_message_buf);
 	}
 
 	return (int32) longval;
@@ -995,15 +996,15 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 
 
 static void
-exit_with_errors(ErrorList *config_errors)
+exit_with_errors(ItemList *config_errors)
 {
-	ErrorListCell *cell;
+	ItemListCell *cell;
 
 	log_err(_("%s: following errors were found in the configuration file.\n"), progname());
 
 	for (cell = config_errors->head; cell; cell = cell->next)
 	{
-		log_err("%s\n", cell->error_message);
+		log_err("%s\n", cell->string);
 	}
 
 	exit(ERR_BAD_CONFIG);

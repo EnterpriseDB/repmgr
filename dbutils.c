@@ -1,5 +1,6 @@
 /*
  * dbutils.c - Database connection/management functions
+ *
  * Copyright (C) 2ndQuadrant, 2010-2016
  *
  * This program is free software: you can redistribute it and/or modify

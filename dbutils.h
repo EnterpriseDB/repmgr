@@ -1,5 +1,6 @@
 /*
  * dbutils.h
+ *
  * Copyright (c) 2ndQuadrant, 2010-2016
  *
  * This program is free software: you can redistribute it and/or modify
@@ -77,7 +78,7 @@ typedef struct s_replication_slot
 	bool active;
 }   t_replication_slot;
 
-
+extern char		repmgr_schema[MAXLEN];
 
 PGconn *_establish_db_connection(const char *conninfo,
 								 const bool exit_on_error,
