@@ -130,21 +130,21 @@ static void param_set(const char *param, const char *value);
 /* Global variables */
 static PQconninfoOption *opts = NULL;
 
-static int param_count = 0;
-static char **param_keywords;
-static char **param_values;
+static int   param_count = 0;
+static char  **param_keywords;
+static char  **param_values;
 
-static bool		   config_file_required = true;
+static bool	config_file_required = true;
 
 /* Initialization of runtime options */
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
-bool 	 	 wal_keep_segments_used = false;
-bool 	 	 conninfo_provided = false;
-bool 	 	 connection_param_provided = false;
-bool 	 	 host_param_provided = false;
-bool 	 	 pg_rewind_supplied = false;
+static bool  wal_keep_segments_used = false;
+static bool  conninfo_provided = false;
+static bool  connection_param_provided = false;
+static bool  host_param_provided = false;
+static bool  pg_rewind_supplied = false;
 
 static char *server_mode = NULL;
 static char *server_cmd = NULL;
