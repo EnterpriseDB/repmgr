@@ -978,7 +978,7 @@ actions happening, but we strongly recommend executing `repmgr` directly.
 
 `repmgrd` can be started simply with e.g.:
 
-    repmgrd -f /etc/repmgr.conf --verbose > $HOME/repmgr/repmgr.log 2>&1
+    repmgrd -f /etc/repmgr.conf --verbose >> $HOME/repmgr/repmgr.log 2>&1
 
 For permanent operation, we recommend using the options `-d/--daemonize` to
 detach the `repmgrd` process, and `-p/--pid-file` to write the process PID
@@ -1000,7 +1000,7 @@ table looks like this:
 
 
 Start `repmgrd` on each standby and verify that it's running by examining
-the log output, which at default log level will look like this:
+the log output, which at log level INFO will look like this:
 
     [2016-01-05 13:15:40] [INFO] checking cluster configuration with schema 'repmgr_test'
     [2016-01-05 13:15:40] [INFO] checking node 2 in cluster 'test'
