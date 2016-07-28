@@ -898,6 +898,20 @@ main(int argc, char **argv)
 		log_verbose(LOG_DEBUG, "slot name initialised as: %s\n", repmgr_slot_name);
 	}
 
+	if (action == CLUSTER_MATRIX && (! strlen(options.ssh_hostname)))
+	{
+		log_err(_("CLUSTER MATRIX requires ssh_hostname.\n"
+				  "Please ensure ssh_hostname is set in the configuration file.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (action == CLUSTER_DIAGNOSE && (! strlen(options.ssh_hostname)))
+	{
+		log_err(_("CLUSTER DIAGNOSE requires ssh_hostname.\n"
+				  "Please ensure ssh_hostname is set in the configuration file.\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
 	switch (action)
 	{
 		case MASTER_REGISTER:
