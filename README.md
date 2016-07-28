@@ -537,8 +537,10 @@ ensure that:
   server.
 
 > *NOTE*: Barman support is automatically enabled if `barman_server`
-> is set. Normally this is a good practice; however, the command line
-> option `--without-barman` can be used to disable it.
+> is set. Normally it is a good practice to use Barman, for instance
+> when fetching a base backup while cloning a standby; in any case,
+> Barman mode can be disabled using the `--without-barman` command
+> line option.
 
 > *NOTE*: if you have a non-default SSH configuration on the Barman
 > server, e.g. using a port other than 22, then you can set those
