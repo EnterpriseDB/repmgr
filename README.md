@@ -1081,7 +1081,7 @@ the length of time it takes to determine that the connection is not possible.
 In particular explicitly setting a parameter for `connect_timeout` should
 be considered; the effective minimum value of `2` (seconds) will ensure
 that a connection failure at network level is reported as soon as possible,
-otherwise dependeing on the system settings (e.g. `tcp_syn_retries` in Linux)
+otherwise depending on the system settings (e.g. `tcp_syn_retries` in Linux)
 a delay of a minute or more is possible.
 
 For further details on `conninfo` network connection parameters, see:

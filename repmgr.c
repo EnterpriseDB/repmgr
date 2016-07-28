@@ -737,15 +737,6 @@ main(int argc, char **argv)
 		}
 	}
 
-/*	keywords[2] = "user";
-	values[2] = (runtime_options.username[0]) ? runtime_options.username : NULL;
-	keywords[3] = "dbname";
-	values[3] = runtime_options.dbname;
-	keywords[4] = "application_name";
-	values[4] = (char *) progname();
-	keywords[5] = NULL;
-	values[5] = NULL;*/
-
 	/*
 	 * Initialize the logger.  If verbose command line parameter was input,
 	 * make sure that the log level is at least INFO.  This is mainly useful
