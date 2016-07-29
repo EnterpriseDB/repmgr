@@ -18,6 +18,7 @@
  * STANDBY SWITCHOVER
  *
  * WITNESS CREATE
+ * WITNESS UNREGISTER
  *
  * CLUSTER SHOW
  * CLUSTER CLEANUP
@@ -82,8 +83,9 @@
 #define STANDBY_ARCHIVE_CONFIG 8
 #define STANDBY_RESTORE_CONFIG 9
 #define WITNESS_CREATE		   10
-#define CLUSTER_SHOW		   11
-#define CLUSTER_CLEANUP		   12
+#define WITNESS_UNREGISTER     11
+#define CLUSTER_SHOW		   12
+#define CLUSTER_CLEANUP		   13
 
 
 static int	test_ssh_connection(char *host, char *remote_user);
@@ -112,6 +114,7 @@ static void do_standby_switchover(void);
 static void do_standby_archive_config(void);
 static void do_standby_restore_config(void);
 static void do_witness_create(void);
+static void do_witness_unregister(void);
 static void do_cluster_show(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
@@ -596,7 +599,7 @@ main(int argc, char **argv)
 	 * Now we need to obtain the action, this comes in one of these forms:
 	 *   { MASTER | PRIMARY } REGISTER |
 	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
-	 *   WITNESS CREATE |
+	 *   WITNESS { CREATE | UNREGISTER } |
 	 *   CLUSTER {SHOW | CLEANUP}
 	 *
 	 * the node part is optional, if we receive it then we shouldn't have
@@ -658,6 +661,9 @@ main(int argc, char **argv)
 		{
 			if (strcasecmp(server_cmd, "CREATE") == 0)
 				action = WITNESS_CREATE;
+			if (strcasecmp(server_cmd, "UNREGISTER") == 0)
+				action = WITNESS_UNREGISTER;
+
 		}
 	}
 
@@ -863,6 +869,9 @@ main(int argc, char **argv)
 			break;
 		case WITNESS_CREATE:
 			do_witness_create();
+			break;
+		case WITNESS_UNREGISTER:
+			do_witness_unregister();
 			break;
 		case CLUSTER_SHOW:
 			do_cluster_show();
@@ -4292,6 +4301,82 @@ do_witness_create(void)
 	PQfinish(masterconn);
 
 	log_notice(_("configuration has been successfully copied to the witness\n"));
+}
+
+static void
+do_witness_unregister(void)
+{
+	PGconn	   *conn;
+	PGconn	   *master_conn;
+	int			ret;
+
+	bool		node_record_deleted;
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
+
+	log_info(_("connecting to witness database\n"));
+	conn = establish_db_connection(options.conninfo, true);
+
+	/* Check if there is a schema for this cluster */
+	if (check_cluster_schema(conn) == false)
+	{
+		/* schema doesn't exist */
+		log_err(_("schema '%s' doesn't exist.\n"), get_repmgr_schema());
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* check if there is a master in this cluster */
+	log_info(_("connecting to master server\n"));
+	master_conn = get_master_connection(conn, options.cluster_name,
+										NULL, NULL);
+	if (!master_conn)
+	{
+		log_err(_("Unable to connect to master server\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Check node exists and is really a witness */
+
+	if (!get_node_record(master_conn, options.cluster_name, options.node, &node_info))
+	{
+		log_err(_("No record found for node %i\n"), options.node);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (node_info.type != WITNESS)
+	{
+		log_err(_("Node %i is not a witness server\n"), options.node);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_info(_("unregistering the witness server\n"));
+	node_record_deleted = delete_node_record(master_conn,
+										     options.node,
+											 "witness unregister");
+
+	if (node_record_deleted == false)
+	{
+		PQfinish(master_conn);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Log the event */
+	create_event_record(master_conn,
+						&options,
+						options.node,
+						"witness_unregister",
+						true,
+						NULL);
+
+	PQfinish(master_conn);
+	PQfinish(conn);
+
+	log_info(_("witness unregistration complete\n"));
+	log_notice(_("witness node correctly unregistered for cluster %s with id %d (conninfo: %s)\n"),
+			   options.cluster_name, options.node, options.conninfo);
+
+	return;
 }
 
 
