@@ -82,11 +82,12 @@ extern char		repmgr_schema[MAXLEN];
 
 PGconn *_establish_db_connection(const char *conninfo,
 								 const bool exit_on_error,
-								 const bool log_notice);
+								 const bool log_notice,
+								 const bool verbose_only);
 PGconn *establish_db_connection(const char *conninfo,
 								const bool exit_on_error);
-PGconn *test_db_connection(const char *conninfo,
-						   const bool exit_on_error);
+PGconn *establish_db_connection_quiet(const char *conninfo);
+PGconn *test_db_connection(const char *conninfo);
 PGconn *establish_db_connection_by_params(const char *keywords[],
 								  const char *values[],
 								  const bool exit_on_error);

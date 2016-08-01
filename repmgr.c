@@ -895,7 +895,7 @@ do_cluster_show(void)
 				upstream_length,
 				conninfo_length = 0;
 
-	/* We need to connect to check configuration */
+	/* Connect to local database to obtain cluster connection data */
 	log_info(_("connecting to database\n"));
 	conn = establish_db_connection(options.conninfo, true);
 
@@ -970,7 +970,8 @@ do_cluster_show(void)
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
+		conn = establish_db_connection_quiet(PQgetvalue(res, i, 0));
+
 		if (PQstatus(conn) != CONNECTION_OK)
 			strcpy(node_role, "  FAILED");
 		else if (strcmp(PQgetvalue(res, i, 1), "witness") == 0)
@@ -3499,8 +3500,7 @@ do_standby_switchover(void)
 	for(i = 0; i < options.reconnect_attempts; i++)
 	{
 		/* Check whether primary is available */
-
-		remote_conn = test_db_connection(remote_conninfo, false); /* don't fail on error */
+		remote_conn = test_db_connection(remote_conninfo);
 
 		if (PQstatus(remote_conn) == CONNECTION_OK)
 		{

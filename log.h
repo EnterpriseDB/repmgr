@@ -130,5 +130,7 @@ __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
 extern int	log_type;
 extern int	log_level;
+extern int	verbose_logging;
+extern int	terse_logging;
 
-#endif
+#endif /* _REPMGR_LOG_H_ */

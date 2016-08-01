@@ -1401,17 +1401,20 @@ which contains connection details for the local database.
     when analyzing connectivity from a particular node.
 
     This command requires a valid `repmgr.conf` file to be provided; no
-    additional arguments are required.
+    additional arguments are needed.
 
     Example:
 
         $ repmgr -f /etc/repmgr.conf cluster show
 
         Role      | Name  | Upstream | Connection String
-        ----------+-------|----------|--------------------------------------------
-        * master  | node1 |          | host=repmgr_node1 dbname=repmgr user=repmgr
-          standby | node2 | node1    | host=repmgr_node1 dbname=repmgr user=repmgr
-          standby | node3 | node2    | host=repmgr_node1 dbname=repmgr user=repmgr
+        ----------+-------|----------|----------------------------------------
+        * master  | node1 |          | host=db_node1 dbname=repmgr user=repmgr
+          standby | node2 | node1    | host=db_node2 dbname=repmgr user=repmgr
+          standby | node3 | node2    | host=db_node3 dbname=repmgr user=repmgr
+
+    To show database connection errors when polling nodes, run the command in
+    `--verbose` mode.
 
 * `cluster cleanup`
 
