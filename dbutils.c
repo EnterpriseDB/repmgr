@@ -34,7 +34,7 @@ char repmgr_schema_quoted[MAXLEN] = "";
 static int _get_node_record(PGconn *conn, char *cluster, char *sqlquery, t_node_info *node_info);
 
 PGconn *
-_establish_db_connection(const char *conninfo, const bool exit_on_error, const bool log_notice)
+_establish_db_connection(const char *conninfo, const bool exit_on_error, const bool log_notice, const bool verbose_only)
 {
 	/* Make a connection to the database */
 	PGconn	   *conn = NULL;
@@ -50,15 +50,23 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
-		if (log_notice)
+		bool emit_log = true;
+
+		if (verbose_only == true && verbose_logging == false)
+			emit_log = false;
+
+		if (emit_log)
 		{
-			log_notice(_("connection to database failed: %s\n"),
-					PQerrorMessage(conn));
-		}
-		else
-		{
-			log_err(_("connection to database failed: %s\n"),
-					PQerrorMessage(conn));
+			if (log_notice)
+			{
+				log_notice(_("connection to database failed: %s\n"),
+						   PQerrorMessage(conn));
+			}
+			else
+			{
+				log_err(_("connection to database failed: %s\n"),
+						PQerrorMessage(conn));
+			}
 		}
 
 		if (exit_on_error)
@@ -71,16 +79,35 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 	return conn;
 }
 
+
+/*
+ * Establish a database connection, optionally exit on error
+ */
 PGconn *
 establish_db_connection(const char *conninfo, const bool exit_on_error)
 {
-	return _establish_db_connection(conninfo, exit_on_error, false);
+	return _establish_db_connection(conninfo, exit_on_error, false, false);
 }
 
+/*
+ * Attempt to establish a database connection, never exit on error, only
+ * output error messages if --verbose option used
+ */
 PGconn *
-test_db_connection(const char *conninfo, const bool exit_on_error)
+establish_db_connection_quiet(const char *conninfo)
 {
-	return _establish_db_connection(conninfo, exit_on_error, true);
+	return _establish_db_connection(conninfo, false, false, true);
+}
+
+/*
+ * Attempt to establish a database connection, never exit on error,
+ * output connection error messages as NOTICE (useful when connection
+ * failure is expected)
+ */
+PGconn *
+test_db_connection(const char *conninfo)
+{
+	return _establish_db_connection(conninfo, false, true, false);
 }
 
 
