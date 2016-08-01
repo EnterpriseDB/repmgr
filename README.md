@@ -1397,6 +1397,18 @@ which contains connection details for the local database.
     To show database connection errors when polling nodes, run the command in
     `--verbose` mode.
 
+    The `cluster show` command now accepts the optional parameter `--csv`, which
+    outputs the replication cluster's status in a simple CSV format, suitable for
+    parsing by scripts:
+
+        $ repmgr -f /etc/repmgr.conf cluster show --csv
+        1,-1
+        2,0
+        3,1
+
+    The first column is the node's ID, and the second column represents the
+    node's status (0 = master, 1 = standby, -1 = failed).
+
 * `cluster cleanup`
 
     Purges monitoring history from the `repl_monitor` table to prevent excessive
@@ -1475,5 +1487,6 @@ Thanks from the repmgr core team.
 Further reading
 ---------------
 
+* http://blog.2ndquadrant.com/improvements-in-repmgr-3-1-4/
 * http://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
 * http://blog.2ndquadrant.com/easier_postgresql_90_clusters/
