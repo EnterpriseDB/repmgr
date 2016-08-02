@@ -4470,11 +4470,12 @@ do_help(void)
 	printf(_(" master  register      - registers the master in a cluster\n"));
 	printf(_(" standby clone [node]  - creates a new standby\n"));
 	printf(_(" standby register      - registers a standby in a cluster\n"));
-	printf(_(" standby unregister    - unregisters a standby in a cluster\n"));
+	printf(_(" standby unregister    - unregisters a standby\n"));
 	printf(_(" standby promote       - promotes a specific standby to master\n"));
 	printf(_(" standby follow        - makes standby follow a new master\n"));
 	printf(_(" standby switchover    - switch this standby with the current master\n"));
 	printf(_(" witness create        - creates a new witness server\n"));
+	printf(_(" witness unregister    - unregisters a witness server\n"));
 	printf(_(" cluster show          - displays information about cluster nodes\n"));
 	printf(_(" cluster cleanup       - prunes or truncates monitoring history\n" \
 			 "                         (monitoring history creation requires repmgrd\n" \
