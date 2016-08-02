@@ -47,6 +47,15 @@
 #define NO_UPSTREAM_NODE	-1
 #define UNKNOWN_NODE_ID     -1
 
+#define OPT_HELP                         1
+#define OPT_CHECK_UPSTREAM_CONFIG        2
+#define OPT_RECOVERY_MIN_APPLY_DELAY     3
+#define OPT_IGNORE_EXTERNAL_CONFIG_FILES 4
+#define OPT_CONFIG_ARCHIVE_DIR           5
+#define OPT_PG_REWIND                    6
+#define OPT_PWPROMPT                     7
+#define OPT_CSV                          8
+
 
 
 /* Run time options type */
@@ -89,13 +98,9 @@ typedef struct
 	char		pg_bindir[MAXLEN];
 
 	char		recovery_min_apply_delay[MAXLEN];
-
-	/* deprecated command line options */
-	char		localport[MAXLEN];
-	bool		initdb_no_pwprompt;
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, "", "", "", false }
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, "", ""}
 
 struct BackupLabel
 {
