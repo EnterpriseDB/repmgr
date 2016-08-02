@@ -55,7 +55,7 @@
 #define OPT_PG_REWIND                    6
 #define OPT_PWPROMPT                     7
 #define OPT_CSV                          8
-
+#define OPT_NODE                         9
 
 
 /* Run time options type */
@@ -94,13 +94,15 @@ typedef struct
 	char		config_archive_dir[MAXLEN];
 	/* parameter used by CLUSTER CLEANUP */
 	int			keep_history;
+	/* paramater used by {STANDBY|WITNESS} UNREGISTER */
+	int			node;
 
 	char		pg_bindir[MAXLEN];
 
 	char		recovery_min_apply_delay[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, "", ""}
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, 0, "", ""}
 
 struct BackupLabel
 {

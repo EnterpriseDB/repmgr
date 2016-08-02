@@ -200,6 +200,7 @@ main(int argc, char **argv)
 		{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
 		{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
 		{"csv", no_argument, NULL, OPT_CSV},
+		{"node", required_argument, NULL, OPT_NODE},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
 	};
@@ -494,6 +495,10 @@ main(int argc, char **argv)
 			case OPT_CSV:
 				runtime_options.csv_mode = true;
 				break;
+			case OPT_NODE:
+				runtime_options.node = repmgr_atoi(optarg, "--node", &cli_errors, false);
+				break;
+
 			default:
 		unknown_option:
 			{
@@ -1394,15 +1399,17 @@ do_standby_unregister(void)
 {
 	PGconn	   *conn;
 	PGconn	   *master_conn;
-	int			ret;
+
+	int 		target_node_id;
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
 	bool		node_record_deleted;
 
-	log_info(_("connecting to standby database\n"));
+	log_info(_("connecting to database\n"));
 	conn = establish_db_connection(options.conninfo, true);
 
 	/* Check we are a standby */
-	ret = is_standby(conn);
+/*	ret = is_standby(conn);
 	if (ret == 0 || ret == -1)
 	{
 		log_err(_(ret == 0 ? "this node should be a standby (%s)\n" :
@@ -1410,7 +1417,7 @@ do_standby_unregister(void)
 
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
-	}
+		}*/
 
 	/* Check if there is a schema for this cluster */
 	if (check_cluster_schema(conn) == false)
@@ -1431,16 +1438,29 @@ do_standby_unregister(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * Verify that standby and master are supported and compatible server
-	 * versions
-	 */
-	check_master_standby_version_match(conn, master_conn);
+	if (runtime_options.node)
+		target_node_id = runtime_options.node;
+	else
+		target_node_id = options.node;
+
+	/* Check node exists and is really a standby */
+
+	if (!get_node_record(master_conn, options.cluster_name, target_node_id, &node_info))
+	{
+		log_err(_("No record found for node %i\n"), target_node_id);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (node_info.type != STANDBY)
+	{
+		log_err(_("Node %i is not a standby server\n"), target_node_id);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/* Now unregister the standby */
 	log_info(_("unregistering the standby\n"));
 	node_record_deleted = delete_node_record(master_conn,
-										     options.node,
+										     target_node_id,
 											 "standby unregister");
 
 	if (node_record_deleted == false)
@@ -1453,7 +1473,7 @@ do_standby_unregister(void)
 	/* Log the event */
 	create_event_record(master_conn,
 						&options,
-						options.node,
+						target_node_id,
 						"standby_unregister",
 						true,
 						NULL);
@@ -1463,7 +1483,7 @@ do_standby_unregister(void)
 
 	log_info(_("standby unregistration complete\n"));
 	log_notice(_("standby node correctly unregistered for cluster %s with id %d (conninfo: %s)\n"),
-			   options.cluster_name, options.node, options.conninfo);
+			   options.cluster_name, target_node_id, options.conninfo);
 	return;
 }
 
@@ -4304,10 +4324,12 @@ do_witness_unregister(void)
 {
 	PGconn	   *conn;
 	PGconn	   *master_conn;
-	int			ret;
+
+	int 		target_node_id;
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
 	bool		node_record_deleted;
-	t_node_info node_info = T_NODE_INFO_INITIALIZER;
+
 
 	log_info(_("connecting to witness database\n"));
 	conn = establish_db_connection(options.conninfo, true);
@@ -4331,23 +4353,28 @@ do_witness_unregister(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	if (runtime_options.node)
+		target_node_id = runtime_options.node;
+	else
+		target_node_id = options.node;
+
 	/* Check node exists and is really a witness */
 
-	if (!get_node_record(master_conn, options.cluster_name, options.node, &node_info))
+	if (!get_node_record(master_conn, options.cluster_name, target_node_id, &node_info))
 	{
-		log_err(_("No record found for node %i\n"), options.node);
+		log_err(_("No record found for node %i\n"), target_node_id);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (node_info.type != WITNESS)
 	{
-		log_err(_("Node %i is not a witness server\n"), options.node);
+		log_err(_("Node %i is not a witness server\n"), target_node_id);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	log_info(_("unregistering the witness server\n"));
 	node_record_deleted = delete_node_record(master_conn,
-										     options.node,
+										     target_node_id,
 											 "witness unregister");
 
 	if (node_record_deleted == false)
@@ -4360,7 +4387,7 @@ do_witness_unregister(void)
 	/* Log the event */
 	create_event_record(master_conn,
 						&options,
-						options.node,
+						target_node_id,
 						"witness_unregister",
 						true,
 						NULL);
@@ -4370,7 +4397,7 @@ do_witness_unregister(void)
 
 	log_info(_("witness unregistration complete\n"));
 	log_notice(_("witness node correctly unregistered for cluster %s with id %d (conninfo: %s)\n"),
-			   options.cluster_name, options.node, options.conninfo);
+			   options.cluster_name, target_node_id, options.conninfo);
 
 	return;
 }
@@ -4842,6 +4869,7 @@ check_parameters_for_action(const int action)
 				item_list_append(&cli_warnings, _("destination directory not required when executing MASTER REGISTER"));
 			}
 			break;
+
 		case STANDBY_REGISTER:
 
 			/*
@@ -4858,6 +4886,7 @@ check_parameters_for_action(const int action)
 				item_list_append(&cli_warnings, _("destination directory not required when executing STANDBY REGISTER"));
 			}
 			break;
+
 		case STANDBY_UNREGISTER:
 
 			/*
@@ -4874,6 +4903,7 @@ check_parameters_for_action(const int action)
 				item_list_append(&cli_warnings, _("destination directory not required when executing STANDBY UNREGISTER"));
 			}
 			break;
+
 		case STANDBY_PROMOTE:
 
 			/*
@@ -5015,6 +5045,14 @@ check_parameters_for_action(const int action)
 		}
 	}
 
+	if (action != WITNESS_UNREGISTER)
+	{
+		if (runtime_options.node)
+		{
+			item_list_append(&cli_warnings, _("--node can only be supplied when executing WITNESS UNREGISTER"));
+		}
+	}
+
     /* Warn about parameters which apply to CLUSTER SHOW only */
 	if (action != CLUSTER_SHOW)
 	{
@@ -5023,6 +5061,7 @@ check_parameters_for_action(const int action)
 			item_list_append(&cli_warnings, _("--csv can only be used when executing CLUSTER SHOW"));
 		}
 	}
+
 
 	return;
 }

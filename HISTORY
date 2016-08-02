@@ -3,6 +3,9 @@
           unless `--verbose` supplied (Ian)
         repmgr: remove deprecated command line options --initdb-no-pwprompt and
            -l/--local-port (Ian)
+        repmgr: add command `witness unregister`
+        repmgr: enable `standby unregister` / `witness unregister` to be
+          executed for a node which is not running
 
 3.1.4   2016-07-12
         repmgr: new configuration option for setting "restore_command"

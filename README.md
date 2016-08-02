@@ -940,13 +940,13 @@ recorded in the `repl_events` table.
 Note that this command will not stop the server itself or remove
 it from the replication cluster.
 
-If the standby is not running, the standby record must be manually
-removed from the `repl_nodes` table with e.g.:
+If the standby is not running, the command can be executed on another
+node by providing the id of the node to be unregistered using
+the command line parameter `--node`, e.g. executing the following
+command on the master server will unregister the standby with
+id 3:
 
-    DELETE FROM repmgr_test.repl_nodes WHERE id = 3;
-
-Adjust schema and node ID accordingly. A future `repmgr` release
-will make it possible to unregister failed standbys.
+    repmgr standby unregister -f /etc/repmgr.conf --node=3
 
 
 Automatic failover with `repmgrd`
