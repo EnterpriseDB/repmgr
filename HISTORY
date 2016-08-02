@@ -1,3 +1,9 @@
+3.2     2016-
+        repmgr: suppress connection error display in `repmgr cluster show`
+          unless `--verbose` supplied (Ian)
+        repmgr: remove deprecated command line options --initdb-no-pwprompt and
+           -l/--local-port (Ian)
+
 3.1.5   2016-08-
         repmgrd: in a failover situation, prevent endless looping when
           attempting to establish the status of a node with

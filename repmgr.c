@@ -172,8 +172,6 @@ main(int argc, char **argv)
 		{"data-dir", required_argument, NULL, 'D'},
 		/* alias for -D/--data-dir, following pg_ctl usage */
 		{"pgdata", required_argument, NULL, 'D'},
-		/* -l/--local-port is deprecated */
-		{"local-port", required_argument, NULL, 'l'},
 		{"config-file", required_argument, NULL, 'f'},
 		{"remote-user", required_argument, NULL, 'R'},
 		{"wal-keep-segments", required_argument, NULL, 'w'},
@@ -188,16 +186,14 @@ main(int argc, char **argv)
 		{"terse", required_argument, NULL, 't'},
 		{"mode", required_argument, NULL, 'm'},
 		{"remote-config-file", required_argument, NULL, 'C'},
-		/* deprecated from 3.2; replaced with -P/--pwprompt */
-		{"initdb-no-pwprompt", no_argument, NULL, 1},
-		{"check-upstream-config", no_argument, NULL, 2},
-		{"recovery-min-apply-delay", required_argument, NULL, 3},
-		{"ignore-external-config-files", no_argument, NULL, 4},
-		{"config-archive-dir", required_argument, NULL, 5},
-		{"pg_rewind", optional_argument, NULL, 6},
-		{"pwprompt", optional_argument, NULL, 7},
-		{"csv", no_argument, NULL, 8},
-		{"help", no_argument, NULL, '?'},
+		{"help", no_argument, NULL, OPT_HELP},
+		{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
+		{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
+		{"ignore-external-config-files", no_argument, NULL, OPT_IGNORE_EXTERNAL_CONFIG_FILES},
+		{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
+		{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
+		{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
+		{"csv", no_argument, NULL, OPT_CSV},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
 	};
@@ -299,7 +295,7 @@ main(int argc, char **argv)
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:l:f:R:w:k:FWIvb:rcL:tm:C:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -311,6 +307,17 @@ main(int argc, char **argv)
 		switch (c)
 		{
 			case '?':
+				/* Actual help option given */
+				if (strcmp(argv[optind - 1], "-?") == 0)
+				{
+					do_help();
+					exit(SUCCESS);
+				}
+				/* unknown option reported by getopt */
+				else
+					goto unknown_option;
+				break;
+			case OPT_HELP:
 				do_help();
 				exit(SUCCESS);
 			case 'V':
@@ -345,13 +352,6 @@ main(int argc, char **argv)
 				break;
 			case 'D':
 				strncpy(runtime_options.dest_dir, optarg, MAXPGPATH);
-				break;
-			case 'l':
-				/* -l/--local-port is deprecated */
-				repmgr_atoi(optarg, "-l/--local-port", &cli_errors, false);
-				strncpy(runtime_options.localport,
-						optarg,
-						MAXLEN);
 				break;
 			case 'f':
 				strncpy(runtime_options.config_file, optarg, MAXLEN);
@@ -432,18 +432,15 @@ main(int argc, char **argv)
 			case 'C':
 				strncpy(runtime_options.remote_config_file, optarg, MAXLEN);
 				break;
-			case 1:
-				runtime_options.initdb_no_pwprompt = true;
-				break;
-			case 2:
+			case OPT_CHECK_UPSTREAM_CONFIG:
 				check_upstream_config = true;
 				break;
-			case 3:
+			case OPT_RECOVERY_MIN_APPLY_DELAY:
 				targ = strtol(optarg, &ptr, 10);
 
 				if (targ < 1)
 				{
-					error_list_append(&cli_errors, _("Invalid value provided for '-r/--recovery-min-apply-delay'"));
+					error_list_append(&cli_errors, _("Invalid value provided for '--recovery-min-apply-delay'"));
 					break;
 				}
 				if (ptr && *ptr)
@@ -452,34 +449,34 @@ main(int argc, char **argv)
 					   strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
 					   strcmp(ptr, "d") != 0)
 					{
-						error_list_append(&cli_errors, _("Value provided for '-r/--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
+						error_list_append(&cli_errors, _("Value provided for '--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
 						break;
 					}
 				}
 
 				strncpy(runtime_options.recovery_min_apply_delay, optarg, MAXLEN);
 				break;
-			case 4:
+			case OPT_IGNORE_EXTERNAL_CONFIG_FILES:
 				runtime_options.ignore_external_config_files = true;
 				break;
-			case 5:
+			case OPT_CONFIG_ARCHIVE_DIR:
 				strncpy(runtime_options.config_archive_dir, optarg, MAXLEN);
 				break;
-			case 6:
+			case OPT_PG_REWIND:
 				if (optarg != NULL)
 				{
 					strncpy(runtime_options.pg_rewind, optarg, MAXPGPATH);
 				}
 				pg_rewind_supplied = true;
 				break;
-			case 7:
+			case OPT_PWPROMPT:
 				runtime_options.witness_pwprompt = true;
 				break;
-			case 8:
+			case OPT_CSV:
 				runtime_options.csv_mode = true;
 				break;
-
 			default:
+		unknown_option:
 			{
 				PQExpBufferData unknown_option;
 				initPQExpBuffer(&unknown_option);
@@ -3824,6 +3821,8 @@ do_witness_create(void)
 	char		master_hba_file[MAXLEN];
 	bool        success;
 	bool		record_created;
+
+	char		witness_port[MAXLEN];
 	char		repmgr_user[MAXLEN];
 	char		repmgr_db[MAXLEN];
 
@@ -3972,12 +3971,9 @@ do_witness_create(void)
 
 	/*
 	 * Attempt to extract a port number from the provided conninfo string.
-	 * This will override any value provided with '-l/--local-port', as it's
-	 * what we'll later try and connect to anyway. '-l/--local-port' should
-	 * be deprecated.
 	 */
 
-	get_conninfo_value(options.conninfo, "port", runtime_options.localport);
+	get_conninfo_value(options.conninfo, "port", witness_port);
 
 	/*
 	 * If not specified by the user, the default port for the witness server
@@ -3985,10 +3981,10 @@ do_witness_create(void)
 	 * a separate instance on a normal node server, rather than on its own
 	 * dedicated server.
 	 */
-	if (!runtime_options.localport[0])
-		strncpy(runtime_options.localport, WITNESS_DEFAULT_PORT, MAXLEN);
+	if (!witness_port[0])
+		strncpy(witness_port, WITNESS_DEFAULT_PORT, MAXLEN);
 
-	xsnprintf(buf, sizeof(buf), "port = %s\n", runtime_options.localport);
+	xsnprintf(buf, sizeof(buf), "port = %s\n", witness_port);
 	fputs(buf, pg_conf);
 
 	xsnprintf(buf, sizeof(buf), "shared_preload_libraries = 'repmgr_funcs'\n");
@@ -4030,7 +4026,7 @@ do_witness_create(void)
 		 * language function in C */
 		maxlen_snprintf(script, "%s -p %s --superuser --login %s-U %s %s",
 						make_pg_path("createuser"),
-						runtime_options.localport,
+						witness_port,
 						runtime_options.witness_pwprompt ? "-P " : "",
 						runtime_options.superuser,
 						repmgr_user);
@@ -4054,12 +4050,12 @@ do_witness_create(void)
 	}
 
 	/* check if we need to create a database */
-	if (runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres") != 0 && runtime_options.localport[0])
+	if (runtime_options.dbname[0] && strcmp(runtime_options.dbname,"postgres") != 0 && witness_port[0])
 	{
 		/* create required db */
 		maxlen_snprintf(script, "%s -p %s -U %s --owner=%s %s",
 						make_pg_path("createdb"),
-						runtime_options.localport,
+						witness_port,
 						runtime_options.superuser,
 						repmgr_user,
 						repmgr_db);
@@ -4292,6 +4288,7 @@ do_help(void)
 	printf(_("  %s [OPTIONS] master  register\n"), progname());
 	printf(_("  %s [OPTIONS] standby {register|unregister|clone|promote|follow|switchover}\n"),
 		   progname());
+	printf(_("  %s [OPTIONS] witness {create|unregister}\n"), progname());
 	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname());
 	printf(_("\n"));
 	printf(_("General options:\n"));
