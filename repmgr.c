@@ -105,6 +105,7 @@ static bool update_node_record_set_master(PGconn *conn, int this_node_id);
 static char *make_pg_path(char *file);
 
 static void do_master_register(void);
+
 static void do_standby_register(void);
 static void do_standby_unregister(void);
 static void do_standby_clone(void);
@@ -113,8 +114,11 @@ static void do_standby_follow(void);
 static void do_standby_switchover(void);
 static void do_standby_archive_config(void);
 static void do_standby_restore_config(void);
+
 static void do_witness_create(void);
+static void do_witness_register(PGconn *masterconn);
 static void do_witness_unregister(void);
+
 static void do_cluster_show(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
@@ -3841,9 +3845,6 @@ static void
 do_witness_create(void)
 {
 	PGconn	   *masterconn;
-	PGconn	   *witnessconn;
-	PGresult   *res;
-	char		sqlquery[QUERY_STR_LEN];
 
 	char		script[MAXLEN];
 	char		buf[MAXLEN];
@@ -3854,7 +3855,6 @@ do_witness_create(void)
 
 	char		master_hba_file[MAXLEN];
 	bool        success;
-	bool		record_created;
 
 	char		witness_port[MAXLEN];
 	char		repmgr_user[MAXLEN];
@@ -4178,6 +4178,43 @@ do_witness_create(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* Let do_witness_register() handle the rest */
+	do_witness_register(masterconn);
+}
+
+
+static void
+do_witness_register(PGconn *masterconn)
+{
+	PGconn	   *witnessconn;
+	PGresult   *res;
+	char		sqlquery[QUERY_STR_LEN];
+
+	char		repmgr_user[MAXLEN];
+	char		repmgr_db[MAXLEN];
+
+	bool		record_created;
+
+	/*
+	 * Extract the repmgr user and database names from the conninfo string
+	 * provided in repmgr.conf
+	 */
+	get_conninfo_value(options.conninfo, "user", repmgr_user);
+	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
+
+	/* masterconn will only be set when called from do_witness_create() */
+	if (masterconn == NULL)
+	{
+		masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+
+		if (!masterconn)
+		{
+			/* No event logging possible here as we can't connect to the master */
+			log_err(_("unable to connect to master\n"));
+			exit(ERR_DB_CON);
+		}
+	}
+
 	/* establish a connection to the witness, and create the schema */
 	witnessconn = establish_db_connection(options.conninfo, false);
 
@@ -4188,11 +4225,10 @@ do_witness_create(void)
 							options.node,
 							"witness_create",
 							false,
-							_("Unable to connect to witness servetr"));
+							_("Unable to connect to witness server"));
 		PQfinish(masterconn);
 		exit(ERR_BAD_CONFIG);
 	}
-
 
 	log_info(_("starting copy of configuration from master...\n"));
 
