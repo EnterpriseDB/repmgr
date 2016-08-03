@@ -18,6 +18,7 @@
  * STANDBY SWITCHOVER
  *
  * WITNESS CREATE
+ * WITNESS REGISTER
  * WITNESS UNREGISTER
  *
  * CLUSTER SHOW
@@ -83,9 +84,10 @@
 #define STANDBY_ARCHIVE_CONFIG 8
 #define STANDBY_RESTORE_CONFIG 9
 #define WITNESS_CREATE		   10
-#define WITNESS_UNREGISTER     11
-#define CLUSTER_SHOW		   12
-#define CLUSTER_CLEANUP		   13
+#define WITNESS_REGISTER       11
+#define WITNESS_UNREGISTER     12
+#define CLUSTER_SHOW		   13
+#define CLUSTER_CLEANUP		   14
 
 
 static int	test_ssh_connection(char *host, char *remote_user);
@@ -134,6 +136,7 @@ static bool copy_file(const char *old_filename, const char *new_filename);
 static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
 static void param_set(const char *param, const char *value);
+
 static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
 
 /* Global variables */
@@ -605,7 +608,7 @@ main(int argc, char **argv)
 	 * Now we need to obtain the action, this comes in one of these forms:
 	 *   { MASTER | PRIMARY } REGISTER |
 	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
-	 *   WITNESS { CREATE | UNREGISTER } |
+	 *   WITNESS { CREATE | REGISTER | UNREGISTER } |
 	 *   CLUSTER {SHOW | CLEANUP}
 	 *
 	 * the node part is optional, if we receive it then we shouldn't have
@@ -667,9 +670,10 @@ main(int argc, char **argv)
 		{
 			if (strcasecmp(server_cmd, "CREATE") == 0)
 				action = WITNESS_CREATE;
-			if (strcasecmp(server_cmd, "UNREGISTER") == 0)
+			else if (strcasecmp(server_cmd, "REGISTER") == 0)
+				action = WITNESS_REGISTER;
+			else if (strcasecmp(server_cmd, "UNREGISTER") == 0)
 				action = WITNESS_UNREGISTER;
-
 		}
 	}
 
@@ -875,6 +879,9 @@ main(int argc, char **argv)
 			break;
 		case WITNESS_CREATE:
 			do_witness_create();
+			break;
+		case WITNESS_REGISTER:
+			do_witness_register(NULL);
 			break;
 		case WITNESS_UNREGISTER:
 			do_witness_unregister();
@@ -3867,10 +3874,13 @@ do_witness_create(void)
 	get_conninfo_value(options.conninfo, "user", repmgr_user);
 	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
 
-	/* We need to connect to check configuration and copy it */
-	masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+	param_set("user", repmgr_user);
+	param_set("dbname", repmgr_db);
 
-	if (!masterconn)
+	/* We need to connect to check configuration and copy it */
+	masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, false);
+
+	if (PQstatus(masterconn) != CONNECTION_OK)
 	{
 		/* No event logging possible here as we can't connect to the master */
 		log_err(_("unable to connect to master\n"));
@@ -4202,12 +4212,15 @@ do_witness_register(PGconn *masterconn)
 	get_conninfo_value(options.conninfo, "user", repmgr_user);
 	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
 
+	param_set("user", repmgr_user);
+	param_set("dbname", repmgr_db);
+
 	/* masterconn will only be set when called from do_witness_create() */
 	if (masterconn == NULL)
 	{
-		masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+		masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, false);
 
-		if (!masterconn)
+		if (PQstatus(masterconn) != CONNECTION_OK)
 		{
 			/* No event logging possible here as we can't connect to the master */
 			log_err(_("unable to connect to master\n"));
@@ -6034,7 +6047,7 @@ param_set(const char *param, const char *value)
 	int value_len = strlen(value) + 1;
 
 	/*
-	 * Scan array to see if the parameter is already set - if so replace it
+	 * Scan array to see if the parameter is already set - if not, replace it
 	 */
 	for (c = 0; c <= param_count && param_keywords[c] != NULL; c++)
 	{
@@ -6045,6 +6058,7 @@ param_set(const char *param, const char *value)
 
 			param_values[c] = pg_malloc0(value_len);
 			strncpy(param_values[c], value, value_len);
+
 			return;
 		}
 	}
