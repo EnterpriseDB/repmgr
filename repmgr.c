@@ -1040,7 +1040,7 @@ do_cluster_cleanup(void)
 	log_info(_("connecting to master database\n"));
 	master_conn = get_master_connection(conn, options.cluster_name,
 										NULL, NULL);
-	if (!master_conn)
+	if (master_conn == NULL)
 	{
 		log_err(_("cluster cleanup: cannot connect to master\n"));
 		PQfinish(conn);
@@ -1312,7 +1312,7 @@ do_standby_register(void)
 	log_info(_("connecting to master database\n"));
 	master_conn = get_master_connection(conn, options.cluster_name,
 										NULL, NULL);
-	if (!master_conn)
+	if (master_conn == NULL)
 	{
 		log_err(_("a master must be defined before configuring a standby\n"));
 		exit(ERR_BAD_CONFIG);
@@ -1443,7 +1443,7 @@ do_standby_unregister(void)
 	log_info(_("connecting to master database\n"));
 	master_conn = get_master_connection(conn, options.cluster_name,
 										NULL, NULL);
-	if (!master_conn)
+	if (master_conn == NULL)
 	{
 		log_err(_("a master must be defined before unregistering a standby\n"));
 		exit(ERR_BAD_CONFIG);
@@ -4383,6 +4383,12 @@ do_witness_unregister(void)
 	log_info(_("connecting to witness database\n"));
 	conn = establish_db_connection(options.conninfo, true);
 
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		log_err(_("unable to connect to witness server\n"));
+		exit(ERR_DB_CON);
+	}
+
 	/* Check if there is a schema for this cluster */
 	if (check_cluster_schema(conn) == false)
 	{
@@ -4396,7 +4402,7 @@ do_witness_unregister(void)
 	log_info(_("connecting to master server\n"));
 	master_conn = get_master_connection(conn, options.cluster_name,
 										NULL, NULL);
-	if (!master_conn)
+	if (master_conn == NULL)
 	{
 		log_err(_("Unable to connect to master server\n"));
 		exit(ERR_BAD_CONFIG);
