@@ -3453,7 +3453,7 @@ do_standby_switchover(void)
 		remote_host,
 		runtime_options.remote_user,
 		command,
-		&command_output);
+		NULL);
 
 	termPQExpBuffer(&command_output);
 
@@ -5691,15 +5691,18 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 		return false;
 	}
 
-	/* TODO: better error handling */
-	while (fgets(output, MAXLEN, fp) != NULL)
+	if (outputbuf != NULL)
 	{
-		appendPQExpBuffer(outputbuf, "%s", output);
+		/* TODO: better error handling */
+		while (fgets(output, MAXLEN, fp) != NULL)
+		{
+			appendPQExpBuffer(outputbuf, "%s", output);
+		}
 	}
-
 	pclose(fp);
 
-	log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
+	if (outputbuf != NULL)
+		log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
 
 	return true;
 }
