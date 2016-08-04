@@ -4204,7 +4204,7 @@ do_witness_register(PGconn *masterconn)
 	char		repmgr_db[MAXLEN];
 
 	bool		record_created;
-	bool		event_is_register = true;
+	bool		event_is_register = false;
 	char		event_type[MAXLEN];
 
 	/*
@@ -4220,7 +4220,7 @@ do_witness_register(PGconn *masterconn)
 	/* masterconn will only be set when called from do_witness_create() */
 	if (masterconn == NULL)
 	{
-		event_is_register = false;
+		event_is_register = true;
 
 		masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, false);
 
@@ -4880,7 +4880,7 @@ run_basebackup(const char *data_dir, int server_version)
 		 * or if --xlog-method is set to a value other than "stream" (in which case we can't
 		 * use --slot).
 		 */
-		if(strlen(backup_options.slot) || strcmp(backup_options.xlog_method, "stream") != 0) {
+		if(strlen(backup_options.slot) || (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)) {
 			slot_add = false;
 		}
 
@@ -6132,11 +6132,10 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	if (!strlen(pg_basebackup_options))
 		return;
 
-	/*
-	 * Copy the string before operating on it with strtok()
-	 */
+	/* Copy the string before operating on it with strtok() */
 	strncpy(options_string, pg_basebackup_options, options_len);
 
+	/* Extract arguments into a list and keep a count of the total */
 	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
 	{
 		item_list_append(&option_argv, argv_item);
@@ -6147,14 +6146,21 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 			options_string_ptr = NULL;
 	}
 
+	/*
+	 * Array of argument values to pass to getopt_long - this will need to
+	 * include an empty string as the first value (normally this would be
+	 * the program name)
+	 */
 	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
 
-	/* Copy a dummy program name to the start of the array */
+	/* Insert a blank dummy program name at the start of the array */
 	argv_array[0] = pg_malloc0(1);
-	strncpy(argv_array[0], "", 4);
 
 	c = 1;
 
+	/*
+	 * Copy the previously extracted arguments from our list to the array
+	 */
 	for (cell = option_argv.head; cell; cell = cell->next)
 	{
 		int argv_len = strlen(cell->string) + 1;
@@ -6167,6 +6173,9 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	}
 
 	argv_array[c] = NULL;
+
+	/* Reset getopt's optind variable */
+	optind = 0;
 
 	while ((c = getopt_long(argc_item, argv_array, "S:X:", long_options,
 							&optindex)) != -1)
