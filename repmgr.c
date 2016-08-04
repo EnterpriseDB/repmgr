@@ -4204,6 +4204,8 @@ do_witness_register(PGconn *masterconn)
 	char		repmgr_db[MAXLEN];
 
 	bool		record_created;
+	bool		event_is_register = true;
+	char		event_type[MAXLEN];
 
 	/*
 	 * Extract the repmgr user and database names from the conninfo string
@@ -4218,6 +4220,8 @@ do_witness_register(PGconn *masterconn)
 	/* masterconn will only be set when called from do_witness_create() */
 	if (masterconn == NULL)
 	{
+		event_is_register = false;
+
 		masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, false);
 
 		if (PQstatus(masterconn) != CONNECTION_OK)
@@ -4228,6 +4232,12 @@ do_witness_register(PGconn *masterconn)
 		}
 	}
 
+	/* set the event type based on how we were called */
+	if (event_is_register == true)
+		strcpy(event_type, "witness_register");
+	else
+		strcpy(event_type, "witness_create");
+
 	/* establish a connection to the witness, and create the schema */
 	witnessconn = establish_db_connection(options.conninfo, false);
 
@@ -4236,7 +4246,7 @@ do_witness_register(PGconn *masterconn)
 		create_event_record(masterconn,
 							&options,
 							options.node,
-							"witness_create",
+							event_type,
 							false,
 							_("Unable to connect to witness server"));
 		PQfinish(masterconn);
@@ -4253,7 +4263,7 @@ do_witness_register(PGconn *masterconn)
 		create_event_record(masterconn,
 							&options,
 							options.node,
-							"witness_create",
+							event_type,
 							false,
 							_("Unable to create schema on witness"));
 		PQfinish(masterconn);
@@ -4299,7 +4309,7 @@ do_witness_register(PGconn *masterconn)
 		create_event_record(masterconn,
 							&options,
 							options.node,
-							"witness_create",
+							event_type,
 							false,
 							"Unable to create witness node record on master");
 
@@ -4314,7 +4324,7 @@ do_witness_register(PGconn *masterconn)
 		create_event_record(masterconn,
 							&options,
 							options.node,
-							"witness_create",
+							event_type,
 							false,
 							_("Unable to copy configuration from master"));
 
@@ -4359,7 +4369,7 @@ do_witness_register(PGconn *masterconn)
 	create_event_record(masterconn,
 						&options,
 						options.node,
-						"witness_create",
+						event_type,
 						true,
 						NULL);
 
@@ -4467,7 +4477,7 @@ do_help(void)
 	printf(_("  %s [OPTIONS] master  register\n"), progname());
 	printf(_("  %s [OPTIONS] standby {register|unregister|clone|promote|follow|switchover}\n"),
 		   progname());
-	printf(_("  %s [OPTIONS] witness {create|unregister}\n"), progname());
+	printf(_("  %s [OPTIONS] witness {create|register|unregister}\n"), progname());
 	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname());
 	printf(_("\n"));
 	printf(_("General options:\n"));
@@ -4514,7 +4524,6 @@ do_help(void)
 			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));
 	printf(_("  --csv                               (cluster show) output in CSV mode (0 = master, 1 = standby, -1 = down)\n"));
-/*	printf(_("  --initdb-no-pwprompt                (witness server) no superuser password prompt during initdb\n"));*/
 	printf(_("  -P, --pwprompt                      (witness server) prompt for password when creating users\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
 			 "                                        (default: postgres)\n"));
@@ -4530,6 +4539,7 @@ do_help(void)
 	printf(_(" standby follow        - makes standby follow a new master\n"));
 	printf(_(" standby switchover    - switch this standby with the current master\n"));
 	printf(_(" witness create        - creates a new witness server\n"));
+	printf(_(" witness register      - registers a witness server\n"));
 	printf(_(" witness unregister    - unregisters a witness server\n"));
 	printf(_(" cluster show          - displays information about cluster nodes\n"));
 	printf(_(" cluster cleanup       - prunes or truncates monitoring history\n" \

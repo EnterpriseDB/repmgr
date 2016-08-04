@@ -1170,6 +1170,8 @@ makes sense to create a witness server in conjunction with running
 `repmgrd`; the witness server will require its own `repmgrd` instance.
 
 
+
+
 repmgrd and cascading replication
 ---------------------------------
 
@@ -1241,7 +1243,8 @@ The following event types are available:
   * `standby_follow`
   * `standby_switchover`
   * `witness_create`
-  * `witness_create`
+  * `witness_register`
+  * `witness_unregister`
   * `repmgrd_start`
   * `repmgrd_shutdown`
   * `repmgrd_failover_promote`
@@ -1386,11 +1389,25 @@ which contains connection details for the local database.
 
     This command also requires the location of the witness server's data
     directory to be provided (`-D/--datadir`) as well as valid connection
-    parameters for the master server.
+    parameters for the master server. If not explicitly provided,
+    database and user names will be extracted from the `conninfo` string in
+    `repmgr.conf`.
 
     By default this command will create a superuser and a repmgr user.
     The `repmgr` user name will be extracted from the `conninfo` string
     in `repmgr.conf`.
+
+* `witness register`
+
+    This will set up the witness server configuration, including the witness
+    server's copy of the `repmgr` meta database, on a running PostgreSQL
+    instance and register the witness server with the master. It requires
+    the same command line options as `witness create`.
+
+* `witness unregister`
+
+    Removes the entry for a witness server from the `repl_nodes` table. This
+    command will not shut down the witness server or remove its data directory.
 
 * `cluster show`
 
