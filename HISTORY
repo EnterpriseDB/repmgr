@@ -5,6 +5,7 @@
         repmgrd: improve handling of failover events on standbys with
           `failover=manual`, and create a new event notification
           for this, `standby_disconnect_manual` (Ian)
+        improve "repmgr-auto" Debian package (Gianni)
 
 3.1.4   2016-07-12
         repmgr: new configuration option for setting "restore_command"
