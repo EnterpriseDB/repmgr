@@ -2859,6 +2859,13 @@ do_standby_follow(void)
 	}
 
 	/* XXX add event record - possible move from repmgrd? */
+	create_event_record(master_conn,
+						&options,
+						options.node,
+						"standby_follow",
+						true,
+						NULL);
+
 	PQfinish(master_conn);
 
 	return;
@@ -3572,9 +3579,20 @@ do_standby_switchover(void)
 
 	if (query_result == -1)
 	{
-		log_err(_("unable to retrieve replication status for node %i\n"), remote_node_id);
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
+		appendPQExpBuffer(&event_details,
+						  _("unable to retrieve replication status for node %i"),
+						  remote_node_id);
+		log_err("%s\n", event_details.data);
+		create_event_record(local_conn,
+							&options,
+							options.node,
+							"standby_switchover",
+							false,
+							event_details.data);
+		termPQExpBuffer(&event_details);
 		PQfinish(local_conn);
-
 		exit(ERR_SWITCHOVER_FAIL);
 	}
 
@@ -3598,8 +3616,19 @@ do_standby_switchover(void)
 			 *  - backup
 			 *  - UNKNOWN
 			 */
-			log_err(_("node %i has unexpected replication state \"%s\"\n"),
-					remote_node_id, remote_node_replication_state);
+			PQExpBufferData event_details;
+			initPQExpBuffer(&event_details);
+			appendPQExpBuffer(&event_details,
+							  _("node %i has unexpected replication state \"%s\""),
+							  remote_node_id, remote_node_replication_state);
+			log_err("%s\n", event_details.data);
+			create_event_record(local_conn,
+								&options,
+								options.node,
+								"standby_switchover",
+								false,
+								event_details.data);
+			termPQExpBuffer(&event_details);
 			PQfinish(local_conn);
 			exit(ERR_SWITCHOVER_FAIL);
 		}
@@ -3655,6 +3684,13 @@ do_standby_switchover(void)
 	}
 
 	/* TODO: verify this node's record was updated correctly */
+
+	create_event_record(local_conn,
+						&options,
+						options.node,
+						"standby_switchover",
+						true,
+						NULL);
 
 	PQfinish(local_conn);
 
