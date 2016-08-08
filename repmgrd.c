@@ -42,7 +42,10 @@
 #include "access/xlogdefs.h"
 #include "pqexpbuffer.h"
 
+/* Message strings passed in repmgrSharedState->location */
 
+#define PASSIVE_NODE "PASSIVE_NODE"
+#define LSN_QUERY_ERROR "LSN_QUERY_ERROR"
 
 /* Local info */
 t_configuration_options local_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
@@ -772,6 +775,13 @@ standby_monitor(void)
 		{
 			log_err(_("Unable to reconnect to %s. Now checking if another node has been promoted.\n"), upstream_node_type);
 
+			/*
+			 * Set the location string in shared memory to indicate to other
+			 * repmgrd instances that we're *not* a promotion candidate
+			 */
+
+			update_shared_memory(PASSIVE_NODE);
+
 			for (connection_retries = 0; connection_retries < local_options.reconnect_attempts; connection_retries++)
 			{
 				master_conn = get_master_connection(my_local_conn,
@@ -788,6 +798,10 @@ standby_monitor(void)
 				}
 				else
 				{
+					/*
+					 * XXX this is the only place where `retry_promote_interval_secs`
+					 * is used - this parameter should be renamed or possibly be replaced
+					 */
 					log_err(
 					    _("no new master found, waiting %i seconds before retry...\n"),
 					    local_options.retry_promote_interval_secs
@@ -817,6 +831,9 @@ standby_monitor(void)
 
 				terminate(ERR_DB_CON);
 			}
+
+			/*
+			 */
 		}
 		else if (local_options.failover == AUTOMATIC_FAILOVER)
 		{
@@ -1159,8 +1176,6 @@ do_master_failover(void)
 	XLogRecPtr	xlog_recptr;
 	bool		lsn_format_ok;
 
-	char		last_xlog_replay_location[MAXLEN];
-
 	PGconn	   *node_conn = NULL;
 
 	/*
@@ -1341,8 +1356,8 @@ do_master_failover(void)
 				  " considered as new master and exit.\n"),
 				PQerrorMessage(my_local_conn));
 		PQclear(res);
-		sprintf(last_xlog_replay_location, "'%X/%X'", 0, 0);
-		update_shared_memory(last_xlog_replay_location);
+
+		update_shared_memory(LSN_QUERY_ERROR);
 		terminate(ERR_DB_QUERY);
 	}
 	/* write last location in shared memory */
@@ -1392,6 +1407,7 @@ do_master_failover(void)
 
 		while (!nodes[i].is_ready)
 		{
+			char location_value[MAXLEN];
 
 			sqlquery_snprintf(sqlquery,
 							  "SELECT %s.repmgr_get_last_standby_location()",
@@ -1407,7 +1423,11 @@ do_master_failover(void)
 				terminate(ERR_DB_QUERY);
 			}
 
-			xlog_recptr = lsn_to_xlogrecptr(PQgetvalue(res, 0, 0), &lsn_format_ok);
+			/* Copy the returned value as we'll need to reference it a few times */
+			strncpy(location_value, PQgetvalue(res, 0, 0), MAXLEN);
+			PQclear(res);
+
+			xlog_recptr = lsn_to_xlogrecptr(location_value, &lsn_format_ok);
 
 			/* If position reported as "invalid", check for format error or
 			 * empty string; otherwise position is 0/0 and we need to continue
@@ -1415,10 +1435,36 @@ do_master_failover(void)
 			 */
 			if (xlog_recptr == InvalidXLogRecPtr)
 			{
+				bool continue_loop = true;
+
 				if (lsn_format_ok == false)
 				{
+
+					/*
+					 * The node is indicating it is not a promotion candidate -
+					 * in this case we can store its invalid LSN to ensure it
+					 * can't be a promotion candidate when comparing locations
+					 */
+					if (strcmp(location_value, PASSIVE_NODE) == 0)
+					{
+						log_debug("node %i is passive mode\n", nodes[i].node_id);
+						log_info(_("node %i will not be considered for promotion\n"), nodes[i].node_id);
+						nodes[i].xlog_location = InvalidXLogRecPtr;
+						continue_loop = false;
+					}
+					/*
+					 * This should probably never happen but if it does, rule the
+					 * node out as a promotion candidate
+					 */
+					else if (strcmp(location_value, LSN_QUERY_ERROR) == 0)
+					{
+						log_warning(_("node %i is unable to update its shared memory and will not be considered for promotion\n"), nodes[i].node_id);
+						nodes[i].xlog_location = InvalidXLogRecPtr;
+						continue_loop = false;
+					}
+
 					/* Unable to parse value returned by `repmgr_get_last_standby_location()` */
-					if (*PQgetvalue(res, 0, 0) == '\0')
+					else if (*location_value == '\0')
 					{
 						log_crit(
 							_("unable to obtain LSN from node %i"), nodes[i].node_id
@@ -1427,8 +1473,8 @@ do_master_failover(void)
 							_("please check that 'shared_preload_libraries=repmgr_funcs' is set in postgresql.conf\n")
 							);
 
-						PQclear(res);
 						PQfinish(node_conn);
+						/* XXX shouldn't we just ignore this node? */
 						exit(ERR_BAD_CONFIG);
 					}
 
@@ -1436,25 +1482,29 @@ do_master_failover(void)
 					 * Very unlikely to happen; in the absence of any better
 					 * strategy keep checking
 					 */
-					log_warning(_("unable to parse LSN \"%s\"\n"),
-								PQgetvalue(res, 0, 0));
+					else {
+						log_warning(_("unable to parse LSN \"%s\"\n"),
+									location_value);
+					}
 				}
 				else
 				{
 					log_debug(
 						_("invalid LSN returned from node %i: '%s'\n"),
 						nodes[i].node_id,
-						PQgetvalue(res, 0, 0)
-						);
+						location_value);
 				}
 
-				PQclear(res);
-
-				/* If position is 0/0, keep checking */
-				/* XXX we should add a timeout here to prevent infinite looping
+				/*
+				 * If the node is still reporting an InvalidXLogRecPtr, it means
+				 * its repmgrd hasn't yet had time to update it (either with a valid
+				 * XLogRecPtr or a message) so we continue looping.
+				 *
+				 * XXX we should add a timeout here to prevent infinite looping
 				 * if the other node's repmgrd is not up
 				 */
-				continue;
+				if (continue_loop == true)
+					continue;
 			}
 
 			if (nodes[i].xlog_location < xlog_recptr)
@@ -1462,8 +1512,7 @@ do_master_failover(void)
 				nodes[i].xlog_location = xlog_recptr;
 			}
 
-			log_debug(_("LSN of node %i is: %s\n"), nodes[i].node_id, PQgetvalue(res, 0, 0));
-			PQclear(res);
+			log_debug(_("LSN of node %i is: %s\n"), nodes[i].node_id, location_value);
 
 			ready_nodes++;
 			nodes[i].is_ready = true;
@@ -2139,7 +2188,7 @@ lsn_to_xlogrecptr(char *lsn, bool *format_ok)
 	{
 		if (format_ok != NULL)
 			*format_ok = false;
-		log_err(_("incorrect log location format: %s\n"), lsn);
+		log_warning(_("incorrect log location format: %s\n"), lsn);
 		return 0;
 	}
 
