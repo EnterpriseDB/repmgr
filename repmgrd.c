@@ -124,7 +124,7 @@ main(int argc, char **argv)
 		{"monitoring-history", no_argument, NULL, 'm'},
 		{"daemonize", no_argument, NULL, 'd'},
 		{"pid-file", required_argument, NULL, 'p'},
-		{"help", no_argument, NULL, '?'},
+		{"help", no_argument, NULL, OPT_HELP},
 		{"version", no_argument, NULL, 'V'},
 		{NULL, 0, NULL, 0}
 	};
@@ -158,6 +158,23 @@ main(int argc, char **argv)
 	{
 		switch (c)
 		{
+			case '?':
+				/* Actual help option given */
+				if (strcmp(argv[optind - 1], "-?") == 0)
+				{
+					help();
+					exit(SUCCESS);
+				}
+				/* unknown option reported by getopt */
+				else
+					goto unknown_option;
+				break;
+			case OPT_HELP:
+				help();
+				exit(SUCCESS);
+			case 'V':
+				printf("%s %s (PostgreSQL %s)\n", progname(), REPMGR_VERSION, PG_VERSION);
+				exit(SUCCESS);
 			case 'f':
 				config_file = optarg;
 				break;
@@ -173,13 +190,9 @@ main(int argc, char **argv)
 			case 'p':
 				pid_file = optarg;
 				break;
-			case '?':
-				help();
-				exit(SUCCESS);
-			case 'V':
-				printf("%s %s (PostgreSQL %s)\n", progname(), REPMGR_VERSION, PG_VERSION);
-				exit(SUCCESS);
+
 			default:
+		unknown_option:
 				usage();
 				exit(ERR_BAD_CONFIG);
 		}
