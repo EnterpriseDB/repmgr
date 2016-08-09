@@ -6,7 +6,6 @@
           executed for a node which is not running (Ian)
         repmgr: remove deprecated command line options --initdb-no-pwprompt and
            -l/--local-port (Ian)
-        improve "repmgr-auto" Debian package (Gianni)
 
 3.1.5   2016-08-
         repmgrd: in a failover situation, prevent endless looping when
@@ -15,6 +14,7 @@
         repmgrd: improve handling of failover events on standbys with
           `failover=manual`, and create a new event notification
           for this, `standby_disconnect_manual` (Ian)
+        improve "repmgr-auto" Debian package (Gianni)
 
 3.1.4   2016-07-12
         repmgr: new configuration option for setting "restore_command"
