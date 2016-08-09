@@ -144,10 +144,18 @@
 #reconnect_interval=10
 
 # Autofailover options
-#failover=manual    # one of 'automatic', 'manual'
-                    # (default: manual)
-#priority=100       # a value of zero or less prevents the node being promoted to primary
+#failover=manual    # one of 'automatic', 'manual' (default: manual)
+                    # defines the action to take in the event of upstream failure
+                    #
+                    # 'automatic': repmgrd will automatically attempt to promote the
+                    #    node or follow the new upstream node
+                    # 'manual': repmgrd will take no action and the mode will require
+                    #    manual attention to reattach it to replication
+
+#priority=100       # indicate a preferred priorty for promoting nodes
+                    # a value of zero or less prevents the node being promoted to primary
                     # (default: 100)
+
 #promote_command='repmgr standby promote -f /path/to/repmgr.conf'
 #follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
 

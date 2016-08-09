@@ -4,8 +4,11 @@
 
 3.1.5   2016-08-
         repmgrd: in a failover situation, prevent endless looping when
-        attempting to establish the status of a node with
-        `failover=manual` (Ian)
+          attempting to establish the status of a node with
+          `failover=manual` (Ian)
+        repmgrd: improve handling of failover events on standbys with
+          `failover=manual`, and create a new event notification
+          for this, `standby_disconnect_manual` (Ian)
 
 3.1.4   2016-07-12
         repmgr: new configuration option for setting "restore_command"

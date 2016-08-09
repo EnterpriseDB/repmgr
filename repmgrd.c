@@ -62,6 +62,13 @@ t_node_info node_info;
 
 bool		failover_done = false;
 
+/*
+ * when `failover=manual`, and the upstream server has gone away,
+ * this flag is set to indicate we should connect to whatever the
+ * current master is to update monitoring information
+ */
+bool		manual_mode_upstream_disconnected = false;
+
 char	   *pid_file = NULL;
 
 static void help(void);
@@ -449,6 +456,7 @@ main(int argc, char **argv)
 					my_local_conn = establish_db_connection(local_options.conninfo, true);
 					update_registration();
 				}
+
 				/* Log startup event */
 				if (startup_event_logged == false)
 				{
@@ -736,6 +744,8 @@ standby_monitor(void)
 	const char *upstream_node_type = NULL;
 
 	bool		receiving_streamed_wal = true;
+
+
 	/*
 	 * Verify that the local node is still available - if not there's
 	 * no point in doing much else anyway
@@ -757,15 +767,32 @@ standby_monitor(void)
 		goto continue_monitoring_standby;
 	}
 
-	upstream_conn = get_upstream_connection(my_local_conn,
-											local_options.cluster_name,
-											local_options.node,
-											&upstream_node_id,
-											upstream_conninfo);
+	/*
+	 * Standby has `failover` set to manual and is disconnected from
+	 * replication following a prior upstream node failure - we'll
+	 * find the master to be able to write monitoring information, if
+	 * required
+	 */
+	if (manual_mode_upstream_disconnected == true)
+	{
+		upstream_conn = get_master_connection(my_local_conn,
+												local_options.cluster_name,
+												&upstream_node_id,
+												upstream_conninfo);
+		upstream_node_type = "master";
+	}
+	else
+	{
+		upstream_conn = get_upstream_connection(my_local_conn,
+												local_options.cluster_name,
+												local_options.node,
+												&upstream_node_id,
+												upstream_conninfo);
 
-	upstream_node_type = (upstream_node_id == master_options.node)
-		? "master"
-		: "upstream";
+		upstream_node_type = (upstream_node_id == master_options.node)
+			? "master"
+			: "upstream";
+	}
 
 	/*
 	 * Check that the upstream node is still available
@@ -780,16 +807,27 @@ standby_monitor(void)
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
+		int previous_master_node_id = master_options.node;
+
 		PQfinish(upstream_conn);
 		upstream_conn = NULL;
 
+		/*
+		 * When `failover=manual`, no actual failover will be performed, instead
+		 * the following happens:
+		 *  - find the new master
+		 *  - create an event notification `standby_disconnect_manual`
+		 *  - set a flag to indicate we're disconnected from replication,
+		 */
 		if (local_options.failover == MANUAL_FAILOVER)
 		{
 			log_err(_("Unable to reconnect to %s. Now checking if another node has been promoted.\n"), upstream_node_type);
 
 			/*
 			 * Set the location string in shared memory to indicate to other
-			 * repmgrd instances that we're *not* a promotion candidate
+			 * repmgrd instances that we're *not* a promotion candidate and
+			 * that other repmgrd instance should not expect location updates
+			 * from us
 			 */
 
 			update_shared_memory(PASSIVE_NODE);
@@ -798,13 +836,14 @@ standby_monitor(void)
 			{
 				master_conn = get_master_connection(my_local_conn,
 					local_options.cluster_name, &master_options.node, NULL);
+
 				if (PQstatus(master_conn) == CONNECTION_OK)
 				{
 					/*
 					 * Connected, we can continue the process so break the
 					 * loop
 					 */
-					log_err(_("connected to node %d, continuing monitoring.\n"),
+					log_notice(_("connected to node %d, continuing monitoring.\n"),
 							master_options.node);
 					break;
 				}
@@ -845,7 +884,34 @@ standby_monitor(void)
 			}
 
 			/*
+			 * connected to a master - is it the same as the former upstream?
+			 * if not:
+			 *  - create event standby_disconnect
+			 *  - set global "disconnected_manual_standby"
 			 */
+
+			if (previous_master_node_id != master_options.node)
+			{
+				PQExpBufferData errmsg;
+				initPQExpBuffer(&errmsg);
+
+				appendPQExpBuffer(&errmsg,
+								  _("node %i is in manual failover mode and is now disconnected from replication"),
+								  local_options.node);
+
+				log_verbose(LOG_DEBUG, "old master: %i; current: %i\n", previous_master_node_id, master_options.node);
+
+				manual_mode_upstream_disconnected = true;
+
+				create_event_record(master_conn,
+									&local_options,
+									local_options.node,
+									"standby_disconnect_manual",
+									/* here "true" indicates the action has occurred as expected */
+									true,
+									errmsg.data);
+
+			}
 		}
 		else if (local_options.failover == AUTOMATIC_FAILOVER)
 		{
@@ -946,8 +1012,8 @@ standby_monitor(void)
 		 * the stream. If we set the local standby node as failed and it's now running
 		 * and receiving replication data, we should activate it again.
 		 */
-	        set_local_node_status();
-	        log_info(_("standby connection recovered!\n"));
+		set_local_node_status();
+		log_info(_("standby connection recovered!\n"));
 	}
 
 	/* Fast path for the case where no history is requested */
@@ -959,6 +1025,7 @@ standby_monitor(void)
 	 * from the upstream node to write monitoring information
 	 */
 
+	/* XXX not used? */
 	upstream_node = get_node_info(my_local_conn, local_options.cluster_name, upstream_node_id);
 
 	sprintf(sqlquery,
