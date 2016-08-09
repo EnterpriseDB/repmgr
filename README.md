@@ -1141,9 +1141,16 @@ table , it's advisable to regularly purge historical data with
 `repmgr cluster cleanup`; use the `-k/--keep-history` to specify how
 many day's worth of data should be retained.
 
+It's possible to use `repmgrd` to provide monitoring only for some or all
+nodes by setting `failover = manual` in the node's `repmgr.conf`. In the
+event of the node's upstream failing, no failover action will be taken
+and the node will require manual intervention to be reattached to replication.
+If this occurs, event notification `standby_disconnect_manual` will be
+created.
+
 Note that when a standby node is not streaming directly from its upstream
-node, i.e. recovering WAL from an archive, `apply_lag` will always
-appear as `0 bytes`.
+node, e.g. recovering WAL from an archive, `apply_lag` will always appear as
+`0 bytes`.
 
 
 Using a witness server with repmgrd
@@ -1242,6 +1249,7 @@ The following event types are available:
   * `standby_promote`
   * `standby_follow`
   * `standby_switchover`
+  * `standby_disconnect_manual`
   * `witness_create`
   * `witness_register`
   * `witness_unregister`
