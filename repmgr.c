@@ -2858,7 +2858,6 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* XXX add event record - possible move from repmgrd? */
 	create_event_record(master_conn,
 						&options,
 						options.node,
