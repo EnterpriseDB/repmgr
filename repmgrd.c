@@ -664,7 +664,7 @@ witness_monitor(void)
 								 local_options.master_response_timeout) != 1)
 		return;
 
-	/* Get local xlog info */
+	/* Get timestamp for monitoring update */
 	sqlquery_snprintf(sqlquery, "SELECT CURRENT_TIMESTAMP");
 
 	res = PQexec(my_local_conn, sqlquery);
@@ -1081,12 +1081,19 @@ standby_monitor(void)
 		return;
 
 	/* Get local xlog info */
+
 	sqlquery_snprintf(sqlquery,
-					  "SELECT CURRENT_TIMESTAMP, "
-					  "pg_catalog.pg_last_xlog_receive_location(), "
-					  "pg_catalog.pg_last_xlog_replay_location(), "
-					  "pg_catalog.pg_last_xact_replay_timestamp(), "
-					  "pg_catalog.pg_last_xlog_receive_location() >= pg_catalog.pg_last_xlog_replay_location()");
+					  " SELECT ts, "
+					  "        receive_location, "
+					  "        replay_location, "
+					  "        replay_timestamp, "
+					  "        receive_location >= replay_location "
+					  "   FROM (SELECT CURRENT_TIMESTAMP AS ts, "
+					  "         pg_catalog.pg_last_xlog_receive_location() AS receive_location, "
+					  "         pg_catalog.pg_last_xlog_replay_location()  AS replay_location, "
+					  "         pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp "
+					  "        ) q ");
+
 
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1171,9 +1178,11 @@ standby_monitor(void)
 	}
 	else
 	{
-		apply_lag = (long long unsigned int)lsn_last_xlog_receive_location - lsn_last_xlog_replay_location;
 		lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
+
+		apply_lag = (long long unsigned int)lsn_last_xlog_receive_location - lsn_last_xlog_replay_location;
 	}
+
 
 	/* Calculate replication lag */
 	if (lsn_master_current_xlog_location >= lsn_last_xlog_receive_location)
