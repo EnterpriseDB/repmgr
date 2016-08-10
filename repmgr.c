@@ -3453,15 +3453,11 @@ do_standby_switchover(void)
 
 	log_debug("Executing:\n%s\n", command);
 
-	initPQExpBuffer(&command_output);
-
 	(void)remote_command(
 		remote_host,
 		runtime_options.remote_user,
 		command,
 		NULL);
-
-	termPQExpBuffer(&command_output);
 
 	/* verify that new standby is connected and replicating */
 
@@ -5734,6 +5730,22 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 			appendPQExpBuffer(outputbuf, "%s", output);
 		}
 	}
+	else
+	{
+		/*
+		 * When executed remotely, repmgr commands which execute pg_ctl (particularly
+		 * `repmgr standby follow`) will see the pg_ctl command appear to fail with a
+		 * non-zero return code when the output from the executed pg_ctl command
+		 * has nowhere to go, even though the command actually succeeds. We'll consume an
+		 * arbitrary amount of output and throw it away to work around this.
+		 */
+		int i = 0;
+		while (fgets(output, MAXLEN, fp) != NULL && i < 10)
+		{
+			i++;
+		}
+	}
+
 	pclose(fp);
 
 	if (outputbuf != NULL)
