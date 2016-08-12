@@ -6,18 +6,21 @@
           executed for a node which is not running (Ian)
         repmgr: remove deprecated command line options --initdb-no-pwprompt and
            -l/--local-port (Ian)
+        improve "repmgr-auto" Debian package (Gianni)
 
-3.1.5   2016-08-
+3.1.5   2016-08-12
         repmgrd: in a failover situation, prevent endless looping when
           attempting to establish the status of a node with
           `failover=manual` (Ian)
         repmgrd: improve handling of failover events on standbys with
           `failover=manual`, and create a new event notification
           for this, `standby_disconnect_manual` (Ian)
-        improve "repmgr-auto" Debian package (Gianni)
         repmgr: add further event notifications (Gianni)
         repmgr: when executing `standby switchover`, don't collect remote
-           command output unless required (Gianni)
+          command output unless required (Gianni, Ian)
+        repmgrd: improve standby monitoring query (Ian, based on suggestion
+          from  Álvaro)
+        repmgr: various command line handling improvements (Ian)
 
 3.1.4   2016-07-12
         repmgr: new configuration option for setting "restore_command"
