@@ -639,6 +639,9 @@ To enable `repmgr` to use replication slots, set the boolean parameter
 `use_replication_slots` in `repmgr.conf`:
 
     use_replication_slots=1
+    
+and in `postgresql.conf`, the parameter `max_replication_slots` must be set 
+to at least the number of expected standbys.
 
 Note that `repmgr` will fail with an error if this option is specified when
 working with PostgreSQL 9.3.
@@ -667,8 +670,8 @@ actually used unless the master is converted to a standby using e.g.
 
 Be aware that when initially cloning a standby, you will need to ensure
 that all required WAL files remain available while the cloning is taking
-place. If using the default `pg_basebackup` method, we recommend setting
-`pg_basebackup`'s `--xlog-method` parameter to `stream` like this:
+place. If using the default `pg_basebackup` method, in `repmgr.conf`, we 
+recommend setting `pg_basebackup`'s `--xlog-method` parameter to `stream` like this:
 
     pg_basebackup_options='--xlog-method=stream'
 
