@@ -87,12 +87,10 @@ PG_VERSION = $(shell pg_config --version | cut -d ' ' -f 2 | cut -d '.' -f 1,2)
 REPMGR_VERSION = $(shell grep REPMGR_VERSION version.h | cut -d ' ' -f 3 | cut -d '"' -f 2)
 PKGLIBDIR = $(shell pg_config --pkglibdir)
 SHAREDIR = $(shell pg_config --sharedir)
-PGBINDIR = /usr/lib/postgresql/$(PG_VERSION)/bin
 
 deb: repmgrd repmgr
-	mkdir -p ./debian/usr/bin ./debian$(PGBINDIR)
-	cp repmgrd repmgr ./debian$(PGBINDIR)
-	ln -s ../..$(PGBINDIR)/repmgr ./debian/usr/bin/repmgr
+	mkdir -p ./debian/usr/bin
+	cp repmgrd repmgr ./debian/usr/bin/
 	mkdir -p ./debian$(SHAREDIR)/contrib/
 	cp sql/repmgr_funcs.sql ./debian$(SHAREDIR)/contrib/
 	cp sql/uninstall_repmgr_funcs.sql ./debian$(SHAREDIR)/contrib/
