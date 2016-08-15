@@ -436,14 +436,32 @@ Clone the standby with:
     [2016-01-07 17:21:28] [NOTICE] you can now start your PostgreSQL server
     [2016-01-07 17:21:28] [HINT] for example : pg_ctl -D /path/to/node2/data/ start
 
-This will clone the PostgreSQL data directory files from the master at repmgr_node1
-using PostgreSQL's pg_basebackup utility. A `recovery.conf` file containing the
+This will clone the PostgreSQL data directory files from the master at `repmgr_node1`
+using PostgreSQL's `pg_basebackup` utility. A `recovery.conf` file containing the
 correct parameters to start streaming from this master server will be created
-automatically, and unless otherwise the `postgresql.conf` and `pg_hba.conf`
+automatically, and unless otherwise specified, the `postgresql.conf` and `pg_hba.conf`
 files will be copied from the master.
 
-Make any adjustments to the PostgreSQL configuration files now, then start the
-standby server.
+Be aware that when initially cloning a standby, you will need to ensure
+that all required WAL files remain available while the cloning is taking
+place. To ensure this happens when using the default `pg_basebackup` method,
+`repmgr` will set `pg_basebackup`'s `--xlog-method` parameter to `stream`,
+which will ensure all WAL files generated during the cloning process are
+streamed in parallel with the main backup. Note that this requires two
+replication connections to be available.
+
+To override this behaviour, in `repmgr.conf` set `pg_basebackup`'s
+`--xlog-method` parameter to `fetch`:
+
+    pg_basebackup_options='--xlog-method=fetch'
+
+and ensure that `wal_keep_segments` is set to an appropriately high value.
+See the `pg_basebackup` documentation for details:
+
+    https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+
+Make any adjustments to the standby's PostgreSQL configuration files now,
+then start the server.
 
 * * *
 
@@ -639,12 +657,13 @@ To enable `repmgr` to use replication slots, set the boolean parameter
 `use_replication_slots` in `repmgr.conf`:
 
     use_replication_slots=1
-    
-and in `postgresql.conf`, the parameter `max_replication_slots` must be set 
-to at least the number of expected standbys.
 
 Note that `repmgr` will fail with an error if this option is specified when
 working with PostgreSQL 9.3.
+
+Replication slots must be enabled in `postgresql.conf` by setting the parameter
+`max_replication_slots` to at least the number of expected standbys (changes
+to this parameter require a server restart).
 
 When cloning a standby, `repmgr` will automatically generate an appropriate
 slot name, which is stored in the `repl_nodes` table, and create the slot
@@ -668,18 +687,6 @@ Note that a slot name will be created by default for the master but not
 actually used unless the master is converted to a standby using e.g.
 `repmgr standby switchover`.
 
-Be aware that when initially cloning a standby, you will need to ensure
-that all required WAL files remain available while the cloning is taking
-place. If using the default `pg_basebackup` method, in `repmgr.conf`, we 
-recommend setting `pg_basebackup`'s `--xlog-method` parameter to `stream` like this:
-
-    pg_basebackup_options='--xlog-method=stream'
-
-See the `pg_basebackup` documentation for details:
-    https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
-
-Otherwise it's necessary to set `wal_keep_segments` to an appropriately high
-value.
 
 Further information on replication slots in the PostgreSQL documentation:
     https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
@@ -1178,8 +1185,6 @@ be set up using `repmgr witness create` (see below for details) and
 can run on a dedicated server or an existing node. Note that it only
 makes sense to create a witness server in conjunction with running
 `repmgrd`; the witness server will require its own `repmgrd` instance.
-
-
 
 
 repmgrd and cascading replication
