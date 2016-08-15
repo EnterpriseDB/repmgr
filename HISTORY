@@ -8,7 +8,7 @@
            -l/--local-port (Ian)
         improve "repmgr-auto" Debian package (Gianni)
 
-3.1.5   2016-08-12
+3.1.5   2016-08-15
         repmgrd: in a failover situation, prevent endless looping when
           attempting to establish the status of a node with
           `failover=manual` (Ian)
