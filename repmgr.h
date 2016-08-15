@@ -55,7 +55,7 @@
 #define OPT_PG_REWIND                    6
 #define OPT_PWPROMPT                     7
 #define OPT_CSV                          8
-
+#define OPT_INITDB_NO_PWPROMPT           9
 
 
 /* Run time options type */
@@ -99,9 +99,12 @@ typedef struct
 	char		pg_bindir[MAXLEN];
 
 	char		recovery_min_apply_delay[MAXLEN];
+
+	/* deprecated command line options */
+	char            localport[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, "", ""}
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, "", "", ""}
 
 struct BackupLabel
 {

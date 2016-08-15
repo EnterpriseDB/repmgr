@@ -196,6 +196,9 @@ main(int argc, char **argv)
 		{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
 		{"csv", no_argument, NULL, OPT_CSV},
 		{"version", no_argument, NULL, 'V'},
+		/* Following options deprecated */
+		{"local-port", required_argument, NULL, 'l'},
+		{"initdb-no-pwprompt", no_argument, NULL, OPT_INITDB_NO_PWPROMPT},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -310,7 +313,7 @@ main(int argc, char **argv)
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:l:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -490,6 +493,21 @@ main(int argc, char **argv)
 			case OPT_CSV:
 				runtime_options.csv_mode = true;
 				break;
+
+			/* deprecated options - output a warning */
+			case 'l':
+				/* -l/--local-port is deprecated */
+				repmgr_atoi(optarg, "-l/--local-port", &cli_errors, false);
+				strncpy(runtime_options.localport,
+						optarg,
+						MAXLEN);
+				error_list_append(&cli_warnings, _("-l/--local-port is deprecated; repmgr will extract the witness port from the conninfo string in repmgr.conf"));
+				break;
+			case OPT_INITDB_NO_PWPROMPT:
+				/* --initdb-no-pwprompt is deprecated */
+				error_list_append(&cli_warnings, _("--initdb-no-pwprompt is deprecated and has no effect; use -P/--pwprompt instead"));
+				break;
+
 			default:
 		unknown_option:
 			{
@@ -3992,8 +4010,14 @@ do_witness_create(void)
 	xsnprintf(buf, sizeof(buf), "\n#Configuration added by %s\n", progname());
 	fputs(buf, pg_conf);
 
+	/* value provided with '-l/--local-port' */
+	strncpy(witness_port, runtime_options.localport, MAXLEN);
+
 	/*
 	 * Attempt to extract a port number from the provided conninfo string.
+	 * This will override any value provided with '-l/--local-port', as it's
+	 * what we'll later try and connect to anyway. '-l/--local-port' should
+	 * be deprecated.
 	 */
 
 	get_conninfo_value(options.conninfo, "port", witness_port);
