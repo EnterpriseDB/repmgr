@@ -209,6 +209,9 @@ main(int argc, char **argv)
 		{"csv", no_argument, NULL, OPT_CSV},
 		{"node", required_argument, NULL, OPT_NODE},
 		{"version", no_argument, NULL, 'V'},
+		/* Following options deprecated */
+		{"local-port", required_argument, NULL, 'l'},
+		{"initdb-no-pwprompt", no_argument, NULL, OPT_INITDB_NO_PWPROMPT},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -322,7 +325,7 @@ main(int argc, char **argv)
 	/* Prevent getopt_long() from printing an error message */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:l:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -504,6 +507,16 @@ main(int argc, char **argv)
 				break;
 			case OPT_NODE:
 				runtime_options.node = repmgr_atoi(optarg, "--node", &cli_errors, false);
+				break;
+
+			/* deprecated options - output a warning */
+			case 'l':
+				/* -l/--local-port is deprecated */
+				item_list_append(&cli_warnings, _("-l/--local-port is deprecated; repmgr will extract the witness port from the conninfo string in repmgr.conf"));
+				break;
+			case OPT_INITDB_NO_PWPROMPT:
+				/* --initdb-no-pwprompt is deprecated */
+				item_list_append(&cli_warnings, _("--initdb-no-pwprompt is deprecated and has no effect; use -P/--pwprompt instead"));
 				break;
 
 			default:

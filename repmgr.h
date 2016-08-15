@@ -56,6 +56,7 @@
 #define OPT_PWPROMPT                     7
 #define OPT_CSV                          8
 #define OPT_NODE                         9
+#define OPT_INITDB_NO_PWPROMPT           10
 
 
 /* Run time options type */
