@@ -799,13 +799,12 @@ standby_monitor(void)
 	/*
 	 * Check that the upstream node is still available
 	 * If not, initiate failover process
-	 */
-
-	check_connection(&upstream_conn, upstream_node_type, upstream_conninfo);
-	/*
+	 *
 	 * This takes up to local_options.reconnect_attempts *
 	 * local_options.reconnect_interval seconds
 	 */
+
+	check_connection(&upstream_conn, upstream_node_type, upstream_conninfo);
 
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
@@ -1330,21 +1329,43 @@ do_master_failover(void)
 		nodes[i].is_visible = false;
 		nodes[i].is_ready = false;
 
-		/* Copy details of the failed master node */
-		/* XXX only node_id is actually used later */
-		if (nodes[i].type == MASTER)
-		{
-			failed_master.node_id = nodes[i].node_id;
-			failed_master.xlog_location = nodes[i].xlog_location;
-			failed_master.is_ready = nodes[i].is_ready;
-		}
-
 		log_debug(_("node=%i conninfo=\"%s\" type=%s\n"),
 				  nodes[i].node_id,
 				  nodes[i].conninfo_str,
 				  node_type);
 
-		/* XXX do we need to try and connect to the master here?  */
+		/* Copy details of the failed master node */
+		if (nodes[i].type == MASTER)
+		{
+			/* XXX only node_id is currently used */
+			failed_master.node_id = nodes[i].node_id;
+
+			/*
+			 * XXX experimental
+			 *
+			 * Currently an attempt is made to connect to the master,
+			 * which is very likely to be a waste of time at this point, as we'll
+			 * have spent the last however many seconds trying to do just that
+			 * in check_connection() before deciding it's gone away.
+			 *
+			 * If the master did come back at this point, the voting algorithm should decide
+			 * it's the "best candidate" anyway and no standby will promote itself or
+			 * attempt to follow* another server.
+			 *
+			 * If we don't try and connect to the master here (and the code generally
+			 * assumes it's failed anyway) but it does come back any time from here
+			 * onwards, promotion will fail and the promotion candidate will
+			 * notice the reappearance.
+			 *
+			 * TLDR version: by skipping the master connection attempt (and the chances
+			 * the master would reappear between the last attempt in check_connection()
+			 * and now are minimal) we can remove useless cycles during the failover process;
+			 * if the master does reappear it will be caught before later anyway.
+			 */
+
+			continue;
+		}
+
 		node_conn = establish_db_connection(nodes[i].conninfo_str, false);
 
 		/* if we can't see the node just skip it */
@@ -1705,6 +1726,8 @@ do_master_failover(void)
 				if (master_conn != NULL && master_node_id == failed_master.node_id)
 				{
 					log_notice(_("Original master reappeared before this standby was promoted - no action taken\n"));
+
+					/* XXX log an event here?  */
 
 					PQfinish(master_conn);
 					master_conn = NULL;
