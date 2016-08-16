@@ -970,8 +970,8 @@ To use `repmgrd` for automatic failover, the following `repmgrd` options must
 be set in `repmgr.conf`:
 
     failover=automatic
-    promote_command='repmgr standby promote -f /etc/repmgr/repmgr.conf'
-    follow_command='repmgr standby follow -f /etc/repmgr/repmgr.conf'
+    promote_command='repmgr standby promote -f /etc/repmgr.conf'
+    follow_command='repmgr standby follow -f /etc/repmgr.conf'
 
 (See `repmgr.conf.sample` for further `repmgrd`-specific settings).
 
