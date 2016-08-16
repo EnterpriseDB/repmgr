@@ -315,8 +315,9 @@ main(int argc, char **argv)
 
 	/*
 	 * MAIN LOOP This loops cycles at startup and once per failover and
-	 * Requisites: - my_local_conn needs to be already setted with an active
-	 * connection - no master connection
+	 * Requisites:
+	 *  - my_local_conn must have an active connection to the monitored node
+	 *  - master_conn must not be open
 	 */
 	do
 	{
@@ -1253,7 +1254,7 @@ do_master_failover(void)
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
 
-	int			total_nodes = 0;
+	int			total_active_nodes = 0;
 	int			visible_nodes = 0;
 	int			ready_nodes = 0;
 
@@ -1284,7 +1285,7 @@ do_master_failover(void)
 			"SELECT id, conninfo, type, upstream_node_id "
 			"  FROM %s.repl_nodes "
 			" WHERE cluster = '%s' "
-		        "   AND active IS TRUE "
+			"   AND active IS TRUE "
 			"   AND priority > 0 "
 			" ORDER BY priority DESC, id "
 			" LIMIT %i ",
@@ -1300,32 +1301,25 @@ do_master_failover(void)
 		terminate(ERR_DB_QUERY);
 	}
 
-	/*
-	 * total nodes that are registered
-	 */
-	total_nodes = PQntuples(res);
-	log_debug(_("%d active nodes registered\n"), total_nodes);
+	total_active_nodes = PQntuples(res);
+	log_debug(_("%d active nodes registered\n"), total_active_nodes);
 
 	/*
 	 * Build an array with the nodes and indicate which ones are visible and
 	 * ready
 	 */
-	for (i = 0; i < total_nodes; i++)
+	for (i = 0; i < total_active_nodes; i++)
 	{
+		char node_type[MAXLEN];
+
+		nodes[i] = (t_node_info) T_NODE_INFO_INITIALIZER;
+
 		nodes[i].node_id = atoi(PQgetvalue(res, i, 0));
 
 		strncpy(nodes[i].conninfo_str, PQgetvalue(res, i, 1), MAXCONNINFO);
+		strncpy(node_type, PQgetvalue(res, i, 2), MAXLEN);
 
-		nodes[i].type = parse_node_type(PQgetvalue(res, i, 2));
-
-		/* Copy details of the failed node */
-		/* XXX only node_id is actually used later */
-		if (nodes[i].type == MASTER)
-		{
-			failed_master.node_id = nodes[i].node_id;
-			failed_master.xlog_location = nodes[i].xlog_location;
-			failed_master.is_ready = nodes[i].is_ready;
-		}
+		nodes[i].type = parse_node_type(node_type);
 
 		nodes[i].upstream_node_id = atoi(PQgetvalue(res, i, 3));
 
@@ -1336,12 +1330,21 @@ do_master_failover(void)
 		nodes[i].is_visible = false;
 		nodes[i].is_ready = false;
 
-		nodes[i].xlog_location = InvalidXLogRecPtr;
+		/* Copy details of the failed master node */
+		/* XXX only node_id is actually used later */
+		if (nodes[i].type == MASTER)
+		{
+			failed_master.node_id = nodes[i].node_id;
+			failed_master.xlog_location = nodes[i].xlog_location;
+			failed_master.is_ready = nodes[i].is_ready;
+		}
 
-		log_debug(_("node=%d conninfo=\"%s\" type=%s\n"),
-				  nodes[i].node_id, nodes[i].conninfo_str,
-				  PQgetvalue(res, i, 2));
+		log_debug(_("node=%i conninfo=\"%s\" type=%s\n"),
+				  nodes[i].node_id,
+				  nodes[i].conninfo_str,
+				  node_type);
 
+		/* XXX do we need to try and connect to the master here?  */
 		node_conn = establish_db_connection(nodes[i].conninfo_str, false);
 
 		/* if we can't see the node just skip it */
@@ -1361,13 +1364,13 @@ do_master_failover(void)
 	PQclear(res);
 
 	log_debug(_("total nodes counted: registered=%d, visible=%d\n"),
-			  total_nodes, visible_nodes);
+			  total_active_nodes, visible_nodes);
 
 	/*
 	 * Am I on the group that should keep alive? If I see less than half of
-	 * total_nodes then I should do nothing
+	 * total_active_nodes then I should do nothing
 	 */
-	if (visible_nodes < (total_nodes / 2.0))
+	if (visible_nodes < (total_active_nodes / 2.0))
 	{
 		log_err(_("Unable to reach most of the nodes.\n"
 				  "Let the other standby servers decide which one will be the master.\n"
@@ -1376,7 +1379,7 @@ do_master_failover(void)
 	}
 
 	/* Query all available nodes to determine readiness and LSN */
-	for (i = 0; i < total_nodes; i++)
+	for (i = 0; i < total_active_nodes; i++)
 	{
 		log_debug("checking node %i...\n", nodes[i].node_id);
 
@@ -1454,7 +1457,7 @@ do_master_failover(void)
 	PQclear(res);
 
 	/* Wait for each node to come up and report a valid LSN */
-	for (i = 0; i < total_nodes; i++)
+	for (i = 0; i < total_active_nodes; i++)
 	{
 		/*
 		 * ensure witness server is marked as ready, and skip
@@ -1614,7 +1617,7 @@ do_master_failover(void)
 	/*
 	 * determine which one is the best candidate to promote to master
 	 */
-	for (i = 0; i < total_nodes; i++)
+	for (i = 0; i < total_active_nodes; i++)
 	{
 		/* witness server can never be a candidate */
 		if (nodes[i].type == WITNESS)
@@ -1839,8 +1842,10 @@ do_master_failover(void)
 		termPQExpBuffer(&event_details);
 	}
 
-	/* to force it to re-calculate mode and master node */
-	// ^ ZZZ check that behaviour ^
+	/*
+	 * setting "failover_done" to true will cause the node's monitoring loop
+	 * to restart in the appropriate mode for the node's (possibly new) role
+	 */
 	failover_done = true;
 }
 
