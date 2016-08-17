@@ -47,6 +47,7 @@
 #define NO_UPSTREAM_NODE	-1
 #define UNKNOWN_NODE_ID     -1
 
+/* command line options without short versions */
 #define OPT_HELP                         1
 #define OPT_CHECK_UPSTREAM_CONFIG        2
 #define OPT_RECOVERY_MIN_APPLY_DELAY     3
@@ -56,7 +57,9 @@
 #define OPT_PWPROMPT                     7
 #define OPT_CSV                          8
 #define OPT_NODE                         9
-#define OPT_INITDB_NO_PWPROMPT           10
+
+/* deprecated command line options */
+#define OPT_INITDB_NO_PWPROMPT           999
 
 
 /* Run time options type */
