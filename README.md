@@ -522,6 +522,78 @@ standby's upstream server is the replication cluster master. While of limited
 use in a simple master/standby replication cluster, this information is required
 to effectively manage cascading replication (see below).
 
+### Using Barman to clone a standby
+
+`repmgr standby clone` also supports Barman, the Backup and
+Replication manager (http://www.pgbarman.org/), as a provider of both
+base backups and WAL files.
+
+Barman support provides the following advantages:
+
+- the primary node does not need to perform a new backup every time a
+  new standby is cloned;
+- a standby node can be disconnected for longer periods without losing
+  the ability to catch up, and without causing accumulation of WAL
+  files on the primary node;
+- therefore, `repmgr` does not need to use replication slots, and the
+  primary node does not need to set `wal_keep_segments`.
+
+> *NOTE*: In view of the above, Barman support is incompatible with
+> the `use_replication_slots` setting in `repmgr.conf`.
+
+In order to enable Barman support for `repmgr standby clone`, you must
+ensure that:
+
+- the name of the server configured in Barman is equal to the
+  `cluster_name` setting in `repmgr.conf`;
+- the `barman_server` setting in `repmgr.conf` is set to the SSH
+  hostname of the Barman server;
+- the `restore_command` setting in `repmgr.conf` is configured to
+  use a copy of the `barman-wal-restore.py` script shipped with Barman
+  (see below);
+- the Barman catalogue includes at least one valid backup for this
+  server.
+
+> *NOTE*: Barman support is automatically enabled if `barman_server`
+> is set. Normally it is a good practice to use Barman, for instance
+> when fetching a base backup while cloning a standby; in any case,
+> Barman mode can be disabled using the `--without-barman` command
+> line option.
+
+> *NOTE*: if you have a non-default SSH configuration on the Barman
+> server, e.g. using a port other than 22, then you can set those
+> parameters in a dedicated Host section in `~/.ssh/config`
+> corresponding to the value of `barman_server` in `repmgr.conf`. See
+> the "Host" section in `man 5 ssh_config` for more details.
+
+`barman-wal-restore.py` is a Python script provided by the Barman
+development team, which must be copied in a location accessible to
+`repmgr`, and marked as executable; `restore_command` must then be
+set in `repmgr.conf` as follows:
+
+    <script> <Barman hostname> <cluster_name> %f %p 
+
+For instance, suppose that we have installed Barman on the `barmansrv`
+host, and that we have placed a copy of `barman-wal-restore.py` into
+the `/usr/local/bin` directory. First, we ensure that the script is
+executable:
+
+    sudo chmod +x /usr/local/bin/barman-wal-restore.py
+
+Then we check that `repmgr.conf` includes the following lines:
+
+	barman_server=barmansrv
+	restore_command=/usr/local/bin/barman-wal-restore.py barmansrv test %f %p
+
+Now we can clone a standby using the Barman server:
+
+    $ repmgr -h node1 -D 9.5/main -f /etc/repmgr.conf standby clone
+    [2016-06-12 20:08:35] [NOTICE] destination directory '9.5/main' provided
+    [2016-06-12 20:08:35] [NOTICE] getting backup from Barman...
+    [2016-06-12 20:08:36] [NOTICE] standby clone (from Barman) complete
+    [2016-06-12 20:08:36] [NOTICE] you can now start your PostgreSQL server
+    [2016-06-12 20:08:36] [HINT] for example : pg_ctl -D 9.5/data start
+    [2016-06-12 20:08:36] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
 
 Advanced options for cloning a standby
 --------------------------------------
@@ -558,6 +630,10 @@ the required files are copied. This results in additional I/O on both source
 and destination server as the contents of files existing on both servers need
 to be compared, meaning this method is not necessarily faster than making a
 fresh clone with `pg_basebackup`.
+
+> *NOTE*: `barman-wal-restore.py` supports command line switches to
+> control parallelism (`--parallel=N`) and compression (`--bzip2`,
+> `--gzip`).
 
 ### Dealing with PostgreSQL configuration files
 
