@@ -5179,8 +5179,10 @@ create_recovery_file(const char *data_dir, PGconn *primary_conn, const char *con
 		{
 			case NO_UPSTREAM_NODE:
 				maxlen_snprintf(where_condition, "type='master'");
+				break;
 			default:
 				maxlen_snprintf(where_condition, "id=%d", options.upstream_node);
+				break;
 		}
 
 		initPQExpBuffer(&command_output);
