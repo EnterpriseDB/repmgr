@@ -216,6 +216,7 @@ parse_config(t_configuration_options *options)
 	options->use_replication_slots = 0;
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->barman_server, 0, sizeof(options->barman_server));
+	memset(options->barman_config, 0, sizeof(options->barman_config));
 	options->failover = MANUAL_FAILOVER;
 	options->priority = DEFAULT_PRIORITY;
 	memset(options->node_name, 0, sizeof(options->node_name));
@@ -313,6 +314,8 @@ parse_config(t_configuration_options *options)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "barman_server") == 0)
 			strncpy(options->barman_server, value, MAXLEN);
+		else if (strcmp(name, "barman_config") == 0)
+			strncpy(options->barman_config, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
 			strncpy(options->rsync_options, value, QUERY_STR_LEN);
 		else if (strcmp(name, "ssh_options") == 0)

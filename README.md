@@ -571,7 +571,7 @@ development team, which must be copied in a location accessible to
 `repmgr`, and marked as executable; `restore_command` must then be
 set in `repmgr.conf` as follows:
 
-    <script> <Barman hostname> <cluster_name> %f %p 
+    <script> <Barman hostname> <cluster_name> %f %p
 
 For instance, suppose that we have installed Barman on the `barmansrv`
 host, and that we have placed a copy of `barman-wal-restore.py` into
@@ -585,6 +585,11 @@ Then we check that `repmgr.conf` includes the following lines:
 	barman_server=barmansrv
 	restore_command=/usr/local/bin/barman-wal-restore.py barmansrv test %f %p
 
+To use a non-default Barman configuration file on the Barman server,
+specify this in `repmgr.conf` with `barman_config`:
+
+    barman_config=/path/to/barman.conf
+
 Now we can clone a standby using the Barman server:
 
     $ repmgr -h node1 -D 9.5/main -f /etc/repmgr.conf standby clone
@@ -594,6 +599,8 @@ Now we can clone a standby using the Barman server:
     [2016-06-12 20:08:36] [NOTICE] you can now start your PostgreSQL server
     [2016-06-12 20:08:36] [HINT] for example : pg_ctl -D 9.5/data start
     [2016-06-12 20:08:36] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
+
+
 
 Advanced options for cloning a standby
 --------------------------------------

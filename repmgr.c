@@ -111,6 +111,7 @@ static char *string_skip_prefix(const char *prefix, char *string);
 static char *string_remove_trailing_newlines(char *string);
 
 static char *make_pg_path(char *file);
+static char *make_barman_ssh_command(void);
 
 static void do_master_register(void);
 
@@ -137,6 +138,7 @@ static void print_error_list(ItemList *error_list, int log_level);
 
 static bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
 static bool local_command(const char *command, PQExpBufferData *outputbuf);
+
 static void format_db_cli_params(const char *conninfo, char *output);
 static bool copy_file(const char *old_filename, const char *new_filename);
 
@@ -172,6 +174,7 @@ static char  pg_bindir[MAXLEN] = "";
 static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
+static char  barman_command_buf[MAXLEN] = "";
 
 /* Collate command line errors and warnings here for friendlier reporting */
 ItemList	cli_errors = { NULL, NULL };
@@ -2054,8 +2057,8 @@ do_standby_clone(void)
 			 * Check that there is at least one valid backup
 			 */
 
-			maxlen_snprintf(command, "ssh %s barman show-backup %s latest > /dev/null",
-							options.barman_server,
+			maxlen_snprintf(command, "%s show-backup %s latest > /dev/null",
+							make_barman_ssh_command(),
 							options.cluster_name);
 			command_ok = local_command(command, NULL);
 			if (command_ok == false)
@@ -2070,8 +2073,8 @@ do_standby_clone(void)
 			 * Locate Barman's backup directory
 			 */
 
-			maxlen_snprintf(command, "ssh %s barman show-server %s | grep 'backup_directory'",
-							options.barman_server,
+			maxlen_snprintf(command, "%s show-server %s | grep 'backup_directory'",
+							make_barman_ssh_command(),
 							options.cluster_name);
 
 			initPQExpBuffer(&command_output);
@@ -2126,8 +2129,8 @@ do_standby_clone(void)
 				char output[MAXLEN];
 				int n;
 
-				maxlen_snprintf(command, "ssh %s barman list-files --target=data %s latest",
-								options.barman_server,
+				maxlen_snprintf(command, "%s list-files --target=data %s latest",
+								make_barman_ssh_command(),
 								options.cluster_name);
 
 				fi = popen(command, "r");
@@ -6435,6 +6438,26 @@ make_pg_path(char *file)
 
 	return path_buf;
 }
+
+
+static char *
+make_barman_ssh_command(void)
+{
+	static char config_opt[MAXLEN] = "";
+
+	if(strlen(options.barman_config))
+		maxlen_snprintf(config_opt,
+						" --config=%s",
+						options.barman_config);
+
+	maxlen_snprintf(barman_command_buf,
+					"ssh %s barman%s",
+					options.barman_server,
+					config_opt);
+
+	return barman_command_buf;
+}
+
 
 
 static void
