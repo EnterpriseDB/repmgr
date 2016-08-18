@@ -863,9 +863,11 @@ main(int argc, char **argv)
 
 	if (action == STANDBY_CLONE &&
 		! runtime_options.without_barman
-		&& strcmp(options.barman_server, "") == 0)
+		&& strcmp(options.barman_server, "") != 0
+		&& options.use_replication_slots)
 		{
 			log_err(_("STANDBY CLONE in Barman mode is incompatible with configuration option \"use_replication_slots\""));
+			exit(ERR_BAD_CONFIG);
 		}
 
 	/* Initialise the repmgr schema name */
