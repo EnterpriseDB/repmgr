@@ -5172,16 +5172,27 @@ create_recovery_file(const char *data_dir, PGconn *primary_conn, const char *con
 	if (primary_conn == NULL)
 	{
 		char buf[MAXLEN];
+		char where_condition[MAXLEN];
 		PQExpBufferData command_output;
+
+		switch(options.upstream_node)
+		{
+			case NO_UPSTREAM_NODE:
+				maxlen_snprintf(where_condition, "type='master'");
+			default:
+				maxlen_snprintf(where_condition, "id=%d", options.upstream_node);
+		}
 
 		initPQExpBuffer(&command_output);
 		maxlen_snprintf(buf,
 						"ssh %s \"psql -Aqt \\\"%s\\\" -c \\\""
 						" SELECT conninfo"
 						" FROM repmgr_%s.repl_nodes"
-						" WHERE type='master'"
+						" WHERE %s"
 						" AND active"
-						"\\\"\"", options.barman_server, conninfo_on_barman, options.cluster_name);
+						"\\\"\"",
+						options.barman_server, conninfo_on_barman,
+						options.cluster_name, where_condition);
 		(void)local_command(buf, &command_output);
 		maxlen_snprintf(buf, "%s", command_output.data);
 		string_remove_trailing_newlines(buf);
