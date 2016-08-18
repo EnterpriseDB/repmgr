@@ -96,7 +96,7 @@ static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 static int  run_basebackup(const char *data_dir, int server_version);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
-static bool create_recovery_file(const char *data_dir, PGconn *primary_conn);
+static bool create_recovery_file(const char *data_dir, PGconn *primary_conn, const char *barmans_conninfo);
 static void write_primary_conninfo(char *line, PGconn *primary_conn);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
@@ -106,6 +106,7 @@ static bool update_node_record_set_master(PGconn *conn, int this_node_id);
 static void tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location);
 static int  get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list);
 static int  get_tablespace_data_barman(char *, TablespaceDataList *);
+static void get_barman_property(char *dst, char *name, char *local_repmgr_directory);
 
 static char *string_skip_prefix(const char *prefix, char *string);
 static char *string_remove_trailing_newlines(char *string);
@@ -1686,6 +1687,36 @@ get_tablespace_data_barman
 	return SUCCESS;
 }
 
+void
+get_barman_property(char *dst, char *name, char *local_repmgr_directory)
+{
+	PQExpBufferData command_output;
+	char buf[MAXLEN];
+	char command[MAXLEN];
+	char *p;
+
+	initPQExpBuffer(&command_output);
+
+	maxlen_snprintf(command,
+					"grep \"^\t%s:\" %s/show-server.txt",
+					name, local_repmgr_directory);
+	(void)local_command(command, &command_output);
+
+	maxlen_snprintf(buf, "\t%s: ", name);
+	p = string_skip_prefix(buf, command_output.data);
+	if (p == NULL)
+	{
+		log_err("Unexpected output from Barman: %s\n",
+				command_output.data);
+		exit(ERR_INTERNAL);
+	}
+
+	strncpy(dst, p, MAXLEN);
+	string_remove_trailing_newlines(dst);
+
+	termPQExpBuffer(&command_output);
+}
+
 static void
 do_standby_clone(void)
 {
@@ -2072,32 +2103,6 @@ do_standby_clone(void)
 			}
 
 			/*
-			 * Locate Barman's backup directory
-			 */
-
-			maxlen_snprintf(command, "%s show-server %s | grep 'backup_directory'",
-							make_barman_ssh_command(),
-							options.cluster_name);
-
-			initPQExpBuffer(&command_output);
-			(void)local_command(
-				command,
-				&command_output);
-
-			p = string_skip_prefix("\tbackup_directory: ", command_output.data);
-			if (p == NULL)
-			{
-				log_err("Unexpected output from Barman: %s\n",
-						command_output.data);
-				exit(ERR_INTERNAL);
-			}
-
-			strncpy(backup_directory, p, MAXLEN);
-			string_remove_trailing_newlines(backup_directory);
-
-			termPQExpBuffer(&command_output);
-
-			/*
 			 * Create the local repmgr subdirectory
 			 */
 
@@ -2113,6 +2118,22 @@ do_standby_clone(void)
 				retval = ERR_BAD_CONFIG;
 				goto stop_backup;
 			}
+
+			/*
+			 * Fetch server parameters from Barman
+			 */
+
+			maxlen_snprintf(command, "%s show-server %s > %s/show-server.txt",
+							make_barman_ssh_command(),
+							options.cluster_name,
+							local_repmgr_directory);
+			(void)local_command(command, NULL);
+
+			/*
+			 * Locate Barman's backup directory
+			 */
+
+			get_barman_property(backup_directory, "backup_directory", local_repmgr_directory);
 
 			/*
 			 * Read the list of backup files into a local file. In the
@@ -2791,11 +2812,21 @@ stop_backup:
 	}
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file(local_data_directory, upstream_conn);
-
-	/* In Barman mode, remove local_repmgr_directory */
 	if (mode == barman)
+	{
+		char conninfo_on_barman[MAXLEN];
+
+		get_barman_property(conninfo_on_barman, "conninfo", local_repmgr_directory);
+
+		create_recovery_file(local_data_directory, upstream_conn, conninfo_on_barman);
+
+		/* In Barman mode, remove local_repmgr_directory */
 		rmdir(local_repmgr_directory);
+	}
+	else
+	{
+		create_recovery_file(local_data_directory, upstream_conn, NULL);
+	}
 
 	switch(mode)
 	{
@@ -3347,7 +3378,7 @@ do_standby_follow(void)
 	log_info(_("changing standby's master\n"));
 
 	/* write the recovery.conf file */
-	if (!create_recovery_file(data_dir, master_conn))
+	if (!create_recovery_file(data_dir, master_conn, NULL))
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
@@ -5113,7 +5144,7 @@ do_help(void)
  * Creates a recovery file for a standby.
  */
 static bool
-create_recovery_file(const char *data_dir, PGconn *primary_conn)
+create_recovery_file(const char *data_dir, PGconn *primary_conn, const char *conninfo_on_barman)
 {
 	FILE	   *recovery_file;
 	char		recovery_file_path[MAXLEN];
@@ -5138,8 +5169,29 @@ create_recovery_file(const char *data_dir, PGconn *primary_conn)
 
 	log_debug(_("recovery.conf: %s"), line);
 
-	/* primary_conninfo = '...' */
-	write_primary_conninfo(line, primary_conn);
+	if (primary_conn == NULL)
+	{
+		char buf[MAXLEN];
+		PQExpBufferData command_output;
+
+		initPQExpBuffer(&command_output);
+		maxlen_snprintf(buf,
+						"ssh %s \"psql -Aqt \\\"%s\\\" -c \\\""
+						" SELECT conninfo"
+						" FROM repmgr_%s.repl_nodes"
+						" WHERE type='master'"
+						" AND active"
+						"\\\"\"", options.barman_server, conninfo_on_barman, options.cluster_name);
+		(void)local_command(buf, &command_output);
+		maxlen_snprintf(buf, "%s", command_output.data);
+		string_remove_trailing_newlines(buf);
+		maxlen_snprintf(line, "primary_conninfo = '%s'\n", buf);
+	}
+	else
+	{
+		/* primary_conninfo = '...' */
+		write_primary_conninfo(line, primary_conn);
+	}
 
 	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
