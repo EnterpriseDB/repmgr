@@ -6519,7 +6519,8 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	appendPQExpBuffer(&ssh_host, "%s",host);
 
 	maxlen_snprintf(ssh_command,
-					"ssh -o Batchmode=yes %s %s",
+					"ssh -o Batchmode=yes %s %s %s",
+					options.ssh_options,
 					ssh_host.data,
 					command);
 
