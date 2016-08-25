@@ -442,6 +442,14 @@ correct parameters to start streaming from this master server will be created
 automatically, and unless otherwise specified, the `postgresql.conf` and `pg_hba.conf`
 files will be copied from the master.
 
+* * *
+
+> *TIP*: if configuration files such as `postgresql.conf` are not copied from the
+> master by `repmgr standby clone`, you'll need to ensure the standby is correctly
+> configured for replication.
+
+* * *
+
 Be aware that when initially cloning a standby, you will need to ensure
 that all required WAL files remain available while the cloning is taking
 place. To ensure this happens when using the default `pg_basebackup` method,
