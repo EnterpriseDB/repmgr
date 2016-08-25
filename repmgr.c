@@ -1079,7 +1079,7 @@ do_cluster_cleanup(void)
 	log_info(_("connecting to master database\n"));
 	master_conn = get_master_connection(conn, options.cluster_name,
 										NULL, NULL);
-	if (master_conn == NULL)
+	if (PQstatus(master_conn) != CONNECTION_OK)
 	{
 		log_err(_("cluster cleanup: cannot connect to master\n"));
 		PQfinish(conn);
@@ -1351,7 +1351,7 @@ do_standby_register(void)
 	log_info(_("connecting to master database\n"));
 	master_conn = get_master_connection(conn, options.cluster_name,
 										NULL, NULL);
-	if (master_conn == NULL)
+	if (PQstatus(master_conn) != CONNECTION_OK)
 	{
 		log_err(_("a master must be defined before configuring a standby\n"));
 		exit(ERR_BAD_CONFIG);
@@ -1482,7 +1482,7 @@ do_standby_unregister(void)
 	log_info(_("connecting to master database\n"));
 	master_conn = get_master_connection(conn, options.cluster_name,
 										NULL, NULL);
-	if (master_conn == NULL)
+	if (PQstatus(master_conn) != CONNECTION_OK)
 	{
 		log_err(_("a master must be defined before unregistering a standby\n"));
 		exit(ERR_BAD_CONFIG);
@@ -3269,9 +3269,9 @@ do_standby_follow(void)
 			master_conn = get_master_connection(conn,
 												options.cluster_name, &master_id, (char *) &master_conninfo);
 		}
-		while (master_conn == NULL && runtime_options.wait_for_master);
+		while (PQstatus(master_conn) != CONNECTION_OK && runtime_options.wait_for_master);
 
-		if (master_conn == NULL)
+		if (PQstatus(master_conn) != CONNECTION_OK)
 		{
 			log_err(_("unable to determine new master node\n"));
 			PQfinish(conn);
@@ -3492,7 +3492,7 @@ do_standby_switchover(void)
 	/* Check that primary is available */
 	remote_conn = get_master_connection(local_conn, options.cluster_name, &remote_node_id, remote_conninfo);
 
-	if (remote_conn == NULL)
+	if (PQstatus(remote_conn) != CONNECTION_OK)
 	{
 		log_err(_("unable to connect to current master node\n"));
 		log_hint(_("check that the cluster is correctly configured and this standby is registered\n"));
@@ -4776,7 +4776,7 @@ do_witness_register(PGconn *masterconn)
 	param_set("dbname", repmgr_db);
 
 	/* masterconn will only be set when called from do_witness_create() */
-	if (masterconn == NULL)
+	if (PQstatus(masterconn) != CONNECTION_OK)
 	{
 		event_is_register = true;
 
@@ -4970,7 +4970,7 @@ do_witness_unregister(void)
 	log_info(_("connecting to master server\n"));
 	master_conn = get_master_connection(conn, options.cluster_name,
 										NULL, NULL);
-	if (master_conn == NULL)
+	if (PQstatus(master_conn) != CONNECTION_OK)
 	{
 		log_err(_("Unable to connect to master server\n"));
 		exit(ERR_BAD_CONFIG);

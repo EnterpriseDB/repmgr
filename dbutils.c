@@ -1484,7 +1484,6 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 						PQerrorMessage(conn));
 
 			success = false;
-
 		}
 		else
 		{

@@ -111,17 +111,15 @@ static void check_and_create_pid_file(const char *pid_file);
 static void
 close_connections()
 {
-	if (master_conn != NULL && PQisBusy(master_conn) == 1)
+	if (PQstatus(master_conn) == CONNECTION_OK && PQisBusy(master_conn) == 1)
 		cancel_query(master_conn, local_options.master_response_timeout);
 
-	if (my_local_conn != NULL)
+
+	if (PQstatus(my_local_conn) == CONNECTION_OK)
 		PQfinish(my_local_conn);
 
-	if (master_conn != NULL && master_conn != my_local_conn)
+	if (PQstatus(master_conn) == CONNECTION_OK)
 		PQfinish(master_conn);
-
-	master_conn = NULL;
-	my_local_conn = NULL;
 }
 
 
@@ -429,7 +427,7 @@ main(int argc, char **argv)
 													local_options.cluster_name,
 													&master_options.node, NULL);
 
-				if (master_conn == NULL)
+				if (PQstatus(master_conn) != CONNECTION_OK)
 				{
 					PQExpBufferData errmsg;
 					initPQExpBuffer(&errmsg);
@@ -2013,7 +2011,7 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
 		{
 			if (conninfo == NULL)
 			{
-				log_err("INTERNAL ERROR: *conn == NULL && conninfo == NULL");
+				log_err("INTERNAL ERROR: *conn == NULL && conninfo == NULL\n");
 				terminate(ERR_INTERNAL);
 			}
 			*conn = establish_db_connection(conninfo, false);
