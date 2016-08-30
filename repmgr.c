@@ -1769,6 +1769,21 @@ do_standby_clone(void)
 		mode = pg_basebackup;
 
 	/*
+	 * In rsync mode, we need to check the SSH connection early
+	 */
+	if (mode == rsync)
+	{
+		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+		if (r != 0)
+		{
+			log_err(_("aborting, remote host %s is not reachable.\n"),
+					runtime_options.host);
+			exit(ERR_BAD_SSH);
+		}
+	}
+
+
+	/*
 	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
 	 * directory (otherwise repmgr will default to the same directory as on the
 	 * source host)
@@ -1780,8 +1795,53 @@ do_standby_clone(void)
 				   runtime_options.dest_dir);
 	}
 
+	// XXX merge above
+
+	/*
+	 * target directory (-D/--pgdata) provided - use that as new data directory
+	 * (useful when executing backup on local machine only or creating the backup
+	 * in a different local directory when backup source is a remote host)
+	 */
+	if (target_directory_provided)
+	{
+		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_config_file, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_hba_file, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_ident_file, runtime_options.dest_dir, MAXPGPATH);
+	}
+	else if (mode == barman)
+	{
+		log_err(_("Barman mode requires a destination directory\n"));
+		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+	/*
+	 * Otherwise use the same data directory as on the remote host
+	 */
+	else
+	{
+		strncpy(local_data_directory, master_data_directory, MAXPGPATH);
+		strncpy(local_config_file, master_config_file, MAXPGPATH);
+		strncpy(local_hba_file, master_hba_file, MAXPGPATH);
+		strncpy(local_ident_file, master_ident_file, MAXPGPATH);
+
+		log_notice(_("setting data directory to: %s\n"), local_data_directory);
+		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
+	}
+
+	/* Check the local data directory can be used */
+
+	if (!create_pg_dir(local_data_directory, runtime_options.force))
+	{
+		log_err(_("unable to use directory %s ...\n"),
+				local_data_directory);
+		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+
 	// XXX set this to "repmgr ?
-	param_set(&source_conninfo, "application_name", options.node_name);
+	//param_set(&source_conninfo, "application_name", options.node_name);
 
 	/* Attempt to connect to the upstream server to verify its configuration */
 	log_info(_("connecting to upstream node\n"));
@@ -1883,6 +1943,17 @@ do_standby_clone(void)
 		// - get barman connstr
 		// - parse to list (no set defaults)
 		// - set dbname to the one provided by the user
+
+		char conninfo_on_barman[MAXLEN];
+
+		/*
+		 * We don't have an upstream connection - attempt to connect
+		 * to the upstream via the barman server to fetch the upstream's conninfo
+		 */
+		get_barman_property(conninfo_on_barman, "conninfo", local_repmgr_directory);
+
+		create_recovery_file(local_data_directory, &upstream_conninfo, conninfo_on_barman);
+
 		/*char buf[MAXLEN];
 		char where_condition[MAXLEN];
 		PQExpBufferData command_output;
@@ -2124,65 +2195,6 @@ do_standby_clone(void)
 
 		PQclear(res);
 
-	}
-
-	/*
-	 * target directory (-D/--pgdata) provided - use that as new data directory
-	 * (useful when executing backup on local machine only or creating the backup
-	 * in a different local directory when backup source is a remote host)
-	 */
-	if (target_directory_provided)
-	{
-		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_config_file, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_hba_file, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_ident_file, runtime_options.dest_dir, MAXPGPATH);
-	}
-	else if (mode == barman)
-	{
-		log_err(_("Barman mode requires a destination directory\n"));
-		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
-		exit(ERR_BAD_CONFIG);
-	}
-	/*
-	 * Otherwise use the same data directory as on the remote host
-	 */
-	else
-	{
-		strncpy(local_data_directory, master_data_directory, MAXPGPATH);
-		strncpy(local_config_file, master_config_file, MAXPGPATH);
-		strncpy(local_hba_file, master_hba_file, MAXPGPATH);
-		strncpy(local_ident_file, master_ident_file, MAXPGPATH);
-
-		log_notice(_("setting data directory to: %s\n"), local_data_directory);
-		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
-	}
-
-	/*
-	 * In rsync mode, we need to check the SSH connection early
-	 */
-	if (mode == rsync)
-	{
-		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
-		if (r != 0)
-		{
-			log_err(_("aborting, remote host %s is not reachable.\n"),
-					runtime_options.host);
-			retval = ERR_BAD_SSH;
-			goto stop_backup;
-		}
-	}
-
-	/* Check the local data directory can be used */
-
-	if (!create_pg_dir(local_data_directory, runtime_options.force))
-	{
-		log_err(_("unable to use directory %s ...\n"),
-				local_data_directory);
-		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
-		r = ERR_BAD_CONFIG;
-		retval = ERR_BAD_CONFIG;
-		goto stop_backup;
 	}
 
 	/*
@@ -2962,24 +2974,18 @@ stop_backup:
 	}
 
 	/* Finally, write the recovery.conf file */
+
+	create_recovery_file(local_data_directory, &upstream_conninfo, NULL);
+
 	if (mode == barman && source_conn == NULL)
 	{
-		char conninfo_on_barman[MAXLEN];
-
-		/*
-		 * We don't have an upstream connection - attempt to connect
-		 * to the upstream via the barman server to fetch the upstream's conninfo
-		 */
-		get_barman_property(conninfo_on_barman, "conninfo", local_repmgr_directory);
-
-		create_recovery_file(local_data_directory, &upstream_conninfo, conninfo_on_barman);
 
 		/* In Barman mode, remove local_repmgr_directory */
 		rmdir(local_repmgr_directory);
 	}
 	else
 	{
-		create_recovery_file(local_data_directory, &upstream_conninfo, NULL);
+		
 	}
 
 	switch(mode)
