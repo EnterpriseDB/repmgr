@@ -131,4 +131,11 @@ typedef struct
 
 #define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "" }
 
+typedef struct
+{
+	int    size;
+	char **keywords;
+	char **values;
+} t_conninfo_param_list;
+
 #endif

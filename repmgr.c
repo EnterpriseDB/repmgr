@@ -145,16 +145,20 @@ static bool copy_file(const char *old_filename, const char *new_filename);
 
 static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
-static void param_set(const char *param, const char *value);
+static void initialize_conninfo_params(t_conninfo_param_list *param_list);
+static void param_set_new(t_conninfo_param_list *param_list, const char *param, const char *value);
 
 static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
 
 /* Global variables */
 static PQconninfoOption *opts = NULL;
 
-static int   param_count = 0;
-static char  **param_keywords;
-static char  **param_values;
+/* conninfo params for the node we're cloning from */
+t_conninfo_param_list source_conninfo;
+
+/* conninfo params for the actual upstream node (which might be different) */
+t_conninfo_param_list upstream_conninfo;
+
 
 static bool	config_file_required = true;
 
@@ -234,9 +238,6 @@ main(int argc, char **argv)
 	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
 
-	PQconninfoOption *defs = NULL;
-	PQconninfoOption *def;
-
 	set_progname(argv[0]);
 
 	/* Disallow running as root to prevent directory ownership problems */
@@ -252,63 +253,41 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	param_count = 0;
-	defs = PQconndefaults();
-
-	/* Count maximum number of parameters */
-	for (def = defs; def->keyword; def++)
-		param_count ++;
-
-	/* Initialize our internal parameter list */
-	param_keywords = pg_malloc0(sizeof(char *) * (param_count + 1));
-	param_values = pg_malloc0(sizeof(char *) * (param_count + 1));
-
-	for (c = 0; c <= param_count; c++)
-	{
-		param_keywords[c] = NULL;
-		param_values[c] = NULL;
-	}
+	initialize_conninfo_params(&source_conninfo);
 
 	/*
 	 * Pre-set any defaults, which can be overwritten if matching
 	 * command line parameters are provided
 	 */
 
-	for (def = defs; def->keyword; def++)
+	for (c = 0; c < source_conninfo.size && source_conninfo.keywords[c]; c++)
 	{
-		if (def->val != NULL && def->val[0] != '\0')
+		if (strcmp(source_conninfo.keywords[c], "host") == 0 &&
+			(source_conninfo.values[c] != NULL))
 		{
-			param_set(def->keyword, def->val);
+			strncpy(runtime_options.host, source_conninfo.values[c], MAXLEN);
 		}
-
-		if (strcmp(def->keyword, "host") == 0 &&
-			(def->val != NULL && def->val[0] != '\0'))
+		else if (strcmp(source_conninfo.keywords[c], "hostaddr") == 0 &&
+				(source_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.host, def->val, MAXLEN);
+			strncpy(runtime_options.host, source_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(def->keyword, "hostaddr") == 0 &&
-			(def->val != NULL && def->val[0] != '\0'))
+		else if (strcmp(source_conninfo.keywords[c], "port") == 0 &&
+				 (source_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.host, def->val, MAXLEN);
+			strncpy(runtime_options.masterport, source_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(def->keyword, "port") == 0 &&
-				 (def->val != NULL && def->val[0] != '\0'))
+		else if (strcmp(source_conninfo.keywords[c], "dbname") == 0 &&
+				 (source_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.masterport, def->val, MAXLEN);
+			strncpy(runtime_options.dbname, source_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(def->keyword, "dbname") == 0 &&
-				 (def->val != NULL && def->val[0] != '\0'))
+		else if (strcmp(source_conninfo.keywords[c], "user") == 0 &&
+				 (source_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.dbname, def->val, MAXLEN);
-		}
-		else if (strcmp(def->keyword, "user") == 0 &&
-				 (def->val != NULL && def->val[0] != '\0'))
-		{
-			strncpy(runtime_options.username, def->val, MAXLEN);
+			strncpy(runtime_options.username, source_conninfo.values[c], MAXLEN);
 		}
 	}
-
-	PQconninfoFree(defs);
 
 	/* set default user for -R/--remote-user */
 
@@ -372,13 +351,13 @@ main(int argc, char **argv)
 				break;
 			case 'h':
 				strncpy(runtime_options.host, optarg, MAXLEN);
-				param_set("host", optarg);
+				param_set_new(&source_conninfo, "host", optarg);
 				connection_param_provided = true;
 				host_param_provided = true;
 				break;
 			case 'p':
 				repmgr_atoi(optarg, "-p/--port", &cli_errors, false);
-				param_set("port", optarg);
+				param_set_new(&source_conninfo, "port", optarg);
 				strncpy(runtime_options.masterport,
 						optarg,
 						MAXLEN);
@@ -386,7 +365,7 @@ main(int argc, char **argv)
 				break;
 			case 'U':
 				strncpy(runtime_options.username, optarg, MAXLEN);
-				param_set("user", optarg);
+				param_set_new(&source_conninfo, "user", optarg);
 				connection_param_provided = true;
 				break;
 			case 'S':
@@ -585,7 +564,7 @@ main(int argc, char **argv)
 				{
 					if (opt->val != NULL && opt->val[0] != '\0')
 					{
-						param_set(opt->keyword, opt->val);
+						param_set_new(&source_conninfo, opt->keyword, opt->val);
 					}
 
 					if (strcmp(opt->keyword, "host") == 0 &&
@@ -615,7 +594,7 @@ main(int argc, char **argv)
 		}
 		else
 		{
-			param_set("dbname", runtime_options.dbname);
+			param_set_new(&source_conninfo, "dbname", runtime_options.dbname);
 		}
 	}
 
@@ -736,7 +715,7 @@ main(int argc, char **argv)
 			else
 			{
 				strncpy(runtime_options.host, argv[optind++], MAXLEN);
-				param_set("host", runtime_options.host);
+				param_set_new(&source_conninfo, "host", runtime_options.host);
 			}
 		}
 	}
@@ -1791,15 +1770,29 @@ do_standby_clone(void)
 				   runtime_options.dest_dir);
 	}
 
-	if (mode != barman)
+
+	param_set_new(&source_conninfo, "application_name", options.node_name);
+
+	/* Attempt to connect to the upstream server to verify its configuration */
+	log_info(_("connecting to upstream node\n"));
+	upstream_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
+
+	/*
+	 * Unless in barman mode, exit with an error;
+	 * establish_db_connection_by_params() will have already logged an error message
+	 */
+	if (mode != barman && PQstatus(upstream_conn) != CONNECTION_OK)
 	{
+		PQfinish(upstream_conn);
+		exit(ERR_DB_CON);
+	}
 
-		param_set("application_name", options.node_name);
-
-		/* Connect to check configuration */
-		log_info(_("connecting to upstream node\n"));
-		upstream_conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
-
+	/*
+	 * If a connection was established, perform some sanity checks on the
+	 * provided upstream connection
+	 */
+	if (PQstatus(upstream_conn) == CONNECTION_OK)
+	{
 		/* Verify that upstream node is a supported server version */
 		log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
 		server_version_num = check_server_version(upstream_conn, "master", true, NULL);
@@ -1811,6 +1804,20 @@ do_standby_clone(void)
 
 		log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
 				 cluster_size);
+
+		/*
+		 * If --recovery-min-apply-delay was passed, check that
+		 * we're connected to PostgreSQL 9.4 or later
+		 */
+		if (*runtime_options.recovery_min_apply_delay)
+		{
+			if (server_version_num < 90400)
+			{
+				log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
+				PQfinish(upstream_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
 
 		/*
 		 * If the upstream node is a standby, try to connect to the primary too so we
@@ -1828,22 +1835,29 @@ do_standby_clone(void)
 		{
 			primary_conn = upstream_conn;
 		}
+	}
 
-		/*
-		 * If --recovery-min-apply-delay was passed, check that
-		 * we're connected to PostgreSQL 9.4 or later
-		 */
+	// now set up conninfo params for the actual upstream, as we may be cloning from a different node
+	// if upstream conn
+	//   get upstream node rec directly
+	// else
+	//   attempt to get upstream node rec via Barman
 
-		if (*runtime_options.recovery_min_apply_delay)
-		{
-			if (server_version_num < 90400)
-			{
-				log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
-				PQfinish(upstream_conn);
-				exit(ERR_BAD_CONFIG);
-			}
-		}
+	// if no upstream node rec
+	//   if not --force
+	//     exit with error
+	//   else
+	//     copy upstream_conn params to recovery primary_conninfo params
+	// else
+	//   parse returned conninfo to recovery primary_conninfo params
+	//
+	// finally, set application name
 
+	// !! make write_primary_conninfo() use recovery primary_conninfo params,
+	// !! don't pass the connection
+
+	if (mode != barman)
+	{
 		/*
 		 * Check that tablespaces named in any `tablespace_mapping` configuration
 		 * file parameters exist.
@@ -2812,10 +2826,14 @@ stop_backup:
 	}
 
 	/* Finally, write the recovery.conf file */
-	if (mode == barman)
+	if (mode == barman && upstream_conn == NULL)
 	{
 		char conninfo_on_barman[MAXLEN];
 
+		/*
+		 * We don't have an upstream connection - attempt to connect
+		 * to the upstream via the barman server to fetch the upstream's conninfo
+		 */
 		get_barman_property(conninfo_on_barman, "conninfo", local_repmgr_directory);
 
 		create_recovery_file(local_data_directory, upstream_conn, conninfo_on_barman);
@@ -3322,7 +3340,7 @@ do_standby_follow(void)
 	/* primary server info explictly provided - attempt to connect to that */
 	else
 	{
-		master_conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+		master_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, true);
 
 		master_id = get_master_node_id(master_conn, options.cluster_name);
 
@@ -4465,11 +4483,11 @@ do_witness_create(void)
 	get_conninfo_value(options.conninfo, "user", repmgr_user);
 	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
 
-	param_set("user", repmgr_user);
-	param_set("dbname", repmgr_db);
+	param_set_new(&source_conninfo, "user", repmgr_user);
+	param_set_new(&source_conninfo, "dbname", repmgr_db);
 
 	/* We need to connect to check configuration and copy it */
-	masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, false);
+	masterconn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
 
 	if (PQstatus(masterconn) != CONNECTION_OK)
 	{
@@ -4805,15 +4823,15 @@ do_witness_register(PGconn *masterconn)
 	get_conninfo_value(options.conninfo, "user", repmgr_user);
 	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
 
-	param_set("user", repmgr_user);
-	param_set("dbname", repmgr_db);
+	param_set_new(&source_conninfo, "user", repmgr_user);
+	param_set_new(&source_conninfo, "dbname", repmgr_db);
 
 	/* masterconn will only be set when called from do_witness_create() */
 	if (PQstatus(masterconn) != CONNECTION_OK)
 	{
 		event_is_register = true;
 
-		masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, false);
+		masterconn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
 
 		if (PQstatus(masterconn) != CONNECTION_OK)
 		{
@@ -6480,7 +6498,7 @@ do_check_upstream_config(void)
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("connecting to upstream server\n"));
 
-	conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+	conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, true);
 
 
 	/* Verify that upstream server is a supported server version */
@@ -6763,8 +6781,48 @@ copy_file(const char *old_filename, const char *new_filename)
 	return true;
 }
 
+
+
+
 static void
-param_set(const char *param, const char *value)
+initialize_conninfo_params(t_conninfo_param_list *param_list)
+{
+	PQconninfoOption *defs = NULL;
+	PQconninfoOption *def;
+	int c;
+
+	defs = PQconndefaults();
+	param_list->size = 0;
+
+	/* Count maximum number of parameters */
+	for (def = defs; def->keyword; def++)
+		param_list->size ++;
+
+	/* Initialize our internal parameter list */
+	param_list->keywords = pg_malloc0(sizeof(char *) * (param_list->size + 1));
+	param_list->values = pg_malloc0(sizeof(char *) * (param_list->size + 1));
+
+	for (c = 0; c <= param_list->size; c++)
+	{
+		param_list->keywords[c] = NULL;
+		param_list->values[c] = NULL;
+	}
+
+	/* Pre-set any defaults */
+
+	for (def = defs; def->keyword; def++)
+	{
+		if (def->val != NULL && def->val[0] != '\0')
+		{
+			param_set_new(param_list, def->keyword, def->val);
+		}
+	}
+
+}
+
+
+static void
+param_set_new(t_conninfo_param_list *param_list, const char *param, const char *value)
 {
 	int c;
 	int value_len = strlen(value) + 1;
@@ -6772,15 +6830,15 @@ param_set(const char *param, const char *value)
 	/*
 	 * Scan array to see if the parameter is already set - if not, replace it
 	 */
-	for (c = 0; c <= param_count && param_keywords[c] != NULL; c++)
+	for (c = 0; c <= param_list->size && param_list->keywords[c] != NULL; c++)
 	{
-		if (strcmp(param_keywords[c], param) == 0)
+		if (strcmp(param_list->keywords[c], param) == 0)
 		{
-			if (param_values[c] != NULL)
-				pfree(param_values[c]);
+			if (param_list->values[c] != NULL)
+				pfree(param_list->values[c]);
 
-			param_values[c] = pg_malloc0(value_len);
-			strncpy(param_values[c], value, value_len);
+			param_list->values[c] = pg_malloc0(value_len);
+			strncpy(param_list->values[c], value, value_len);
 
 			return;
 		}
@@ -6789,14 +6847,14 @@ param_set(const char *param, const char *value)
 	/*
 	 * Parameter not in array - add it and its associated value
 	 */
-	if (c < param_count)
+	if (c < param_list->size)
 	{
 		int param_len = strlen(param) + 1;
-		param_keywords[c] = pg_malloc0(param_len);
-		param_values[c] = pg_malloc0(value_len);
+		param_list->keywords[c] = pg_malloc0(param_len);
+		param_list->values[c] = pg_malloc0(value_len);
 
-		strncpy(param_keywords[c], param, param_len);
-		strncpy(param_values[c], value, value_len);
+		strncpy(param_list->keywords[c], param, param_len);
+		strncpy(param_list->values[c], value, value_len);
 	}
 
 	/*
@@ -6805,6 +6863,7 @@ param_set(const char *param, const char *value)
 	 * handle it at the moment.
 	 */
 }
+
 
 
 static void
