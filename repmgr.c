@@ -1555,7 +1555,7 @@ tablespace_data_append(TablespaceDataList *list, const char *name, const char *o
 int
 get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 {
-	int i, retval;
+	int i;
 	char sqlquery[QUERY_STR_LEN];
 	PGresult *res;
 
@@ -1573,7 +1573,7 @@ get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 
 			PQclear(res);
 
-			return retval;
+			return ERR_DB_QUERY;
 		}
 
 	for (i = 0; i < PQntuples(res); i++)
@@ -1581,7 +1581,7 @@ get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 							   PQgetvalue(res, i, 2));
 
 	PQclear(res);
-	return retval;
+	return SUCCESS;
 }
 
 char *
