@@ -1708,7 +1708,7 @@ do_standby_clone(void)
 
 	char		upstream_conninfo_str[MAXLEN];
 	bool		upstream_record_found = false;
-	int		    upstream_node_id;
+	int		    upstream_node_id = UNKNOWN_NODE_ID;
 
 
 	char        datadir_list_filename[MAXLEN];
@@ -2012,32 +2012,16 @@ do_standby_clone(void)
 		 * name with the repmgr one (they could well be different) and remotely execute
 		 * psql.
 		 */
-
-<<<<<<< HEAD
-		create_recovery_file(local_data_directory, &upstream_conninfo, conninfo_on_barman);
-
-		/*char buf[MAXLEN];
-		char where_condition[MAXLEN];
-		PQExpBufferData command_output;
-
-		switch(options.upstream_node)
-		{
-			case NO_UPSTREAM_NODE:
-				maxlen_snprintf(where_condition, "type='master'");
-				break;
-			default:
-				maxlen_snprintf(where_condition, "id=%d", options.upstream_node);
-				break;
-		}
-
-=======
+		char buf[MAXLEN];
 		char barman_conninfo_str[MAXLEN];
 		t_conninfo_param_list barman_conninfo;
 		char *errmsg = NULL;
 		bool parse_success;
+		char where_condition[MAXLEN];
 		PQExpBufferData command_output;
+		PQExpBufferData repmgr_conninfo_buf;
 
-		char buf[MAXLEN];
+		int c;
 
 		// XXX barman also returns "streaming_conninfo" - what's the difference?
 		get_barman_property(barman_conninfo_str, "conninfo", local_repmgr_directory);
@@ -2054,24 +2038,38 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		/* Overwrite database name */
-		param_set(&barman_conninfo, "database", runtime_options.dbname);
+		/* Overwrite database name in the parsed parameter list */
+		param_set(&barman_conninfo, "dbname", runtime_options.dbname);
 
+		/* Rebuild the Barman conninfo string */
+
+		initPQExpBuffer(&repmgr_conninfo_buf);
+
+		for (c = 0; c < barman_conninfo.size && barman_conninfo.keywords[c] != NULL; c++)
 		{
-			int c;
-			printf("conninfo str: %s; size: %i\n", barman_conninfo_str, barman_conninfo.size);
-			for (c = 0; c < barman_conninfo.size && barman_conninfo.keywords[c] != NULL; c++)
-			{
-				printf("%s: %s\n", barman_conninfo.keywords[c], barman_conninfo.values[c]);
-			}
-			//
+			printf("%s: %s\n", barman_conninfo.keywords[c], barman_conninfo.values[c]);
+			if (repmgr_conninfo_buf.len != 0)
+				appendPQExpBufferChar(&repmgr_conninfo_buf, ' ');
+
+			/* XXX escape option->values */
+			appendPQExpBuffer(&repmgr_conninfo_buf, "%s=%s",
+							  barman_conninfo.keywords[c],
+							  barman_conninfo.values[c]);
 		}
 
+		log_verbose(LOG_DEBUG,
+					"repmgr database conninfo string on barman server: %s\n",
+					repmgr_conninfo_buf.data);
 
-		if (options.upstream_node == NO_UPSTREAM_NODE)
-			upstream_node_id = get_master_node_id(source_conn, options.cluster_name);
-		else
-			upstream_node_id = options.upstream_node;
+		switch(options.upstream_node)
+		{
+			case NO_UPSTREAM_NODE:
+				maxlen_snprintf(where_condition, "type='master'");
+				break;
+			default:
+				maxlen_snprintf(where_condition, "id=%d", options.upstream_node);
+				break;
+		}
 
 		initPQExpBuffer(&command_output);
 		maxlen_snprintf(buf,
@@ -2080,12 +2078,22 @@ do_standby_clone(void)
 						" FROM repmgr_%s.repl_nodes"
 						" WHERE %s"
 						" AND active"
-						"\\\"\"", options.barman_server, conninfo_on_barman,
+						"\\\"\"", options.barman_server, repmgr_conninfo_buf.data,
 						options.cluster_name, where_condition);
+
+		termPQExpBuffer(&repmgr_conninfo_buf);
+
+		// XXX check success
 		(void)local_command(buf, &command_output);
-		maxlen_snprintf(buf, "%s", command_output.data);
-		string_remove_trailing_newlines(buf);
-		maxlen_snprintf(line, "primary_conninfo = '%s'\n", buf);
+		maxlen_snprintf(upstream_conninfo_str, "%s", command_output.data);
+		string_remove_trailing_newlines(upstream_conninfo_str);
+
+		upstream_record_found = true;
+		log_verbose(LOG_DEBUG,
+					"upstream node conninfo string extracted via barman server: %s\n",
+					upstream_conninfo_str);
+
+		termPQExpBuffer(&command_output);
 	}
 
 	printf("upstream found? %c\n", upstream_record_found == true ? 'y' : 'n');
@@ -2126,7 +2134,7 @@ do_standby_clone(void)
 		//     exit with error
 		if (!runtime_options.force)
 		{
-			log_err(_("No record found for upstream node with id %i\n"), upstream_node_id);
+			log_err(_("No record found for upstream node\n"));
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -2149,8 +2157,9 @@ do_standby_clone(void)
 		parse_success = parse_conninfo_string(upstream_conninfo_str, &upstream_conninfo, errmsg);
 		if (parse_success == false)
 		{
-			log_err(_("Unable to parse conninfo string \"%s\" for upstream node %i:\n%s\n"),
-					upstream_conninfo_str, upstream_node_id, errmsg);
+			log_err(_("Unable to parse conninfo string \"%s\" for upstream node:\n%s\n"),
+					upstream_conninfo_str, errmsg);
+
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
