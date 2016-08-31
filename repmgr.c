@@ -3027,7 +3027,7 @@ stop_backup:
 	if (mode == barman)
 	{
 		/* In Barman mode, remove local_repmgr_directory */
-		rmdir(local_repmgr_directory);
+		rmtree(local_repmgr_directory, true);
 	}
 
 	switch(mode)
