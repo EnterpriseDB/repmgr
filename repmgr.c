@@ -1866,7 +1866,7 @@ do_standby_clone(void)
 		if (command_ok == false)
 		{
 			log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
-					options.barman_server);
+					options.cluster_name);
 			log_hint(_("Refer to the Barman documentation for more information\n"));
 
 			exit(ERR_BARMAN);
