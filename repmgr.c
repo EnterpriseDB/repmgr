@@ -1792,35 +1792,34 @@ do_standby_clone(void)
 
 	/*
 	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
-	 * directory (otherwise repmgr will default to the same directory as on the
-	 * source host)
+	 * directory (otherwise repmgr will default to using the same directory
+	 * path as on the source host)
 	 */
+
 	if (runtime_options.dest_dir[0])
 	{
 		target_directory_provided = true;
 		log_notice(_("destination directory '%s' provided\n"),
 				   runtime_options.dest_dir);
 	}
-
-	// XXX merge above
+	else if (mode == barman)
+	{
+		log_err(_("Barman mode requires a destination directory\n"));
+		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/*
 	 * target directory (-D/--pgdata) provided - use that as new data directory
 	 * (useful when executing backup on local machine only or creating the backup
 	 * in a different local directory when backup source is a remote host)
 	 */
-	if (target_directory_provided)
+	if (target_directory_provided == true)
 	{
 		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
 		strncpy(local_config_file, runtime_options.dest_dir, MAXPGPATH);
 		strncpy(local_hba_file, runtime_options.dest_dir, MAXPGPATH);
 		strncpy(local_ident_file, runtime_options.dest_dir, MAXPGPATH);
-	}
-	else if (mode == barman)
-	{
-		log_err(_("Barman mode requires a destination directory\n"));
-		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
-		exit(ERR_BAD_CONFIG);
 	}
 	/*
 	 * Otherwise use the same data directory as on the remote host
@@ -1890,21 +1889,25 @@ do_standby_clone(void)
 		/*
 		 * Fetch server parameters from Barman
 		 */
+		log_info(_("Connecting to Barman server to fetch server parameters\n"));
 
 		maxlen_snprintf(command, "%s show-server %s > %s/show-server.txt",
 						make_barman_ssh_command(),
 						options.cluster_name,
 						local_repmgr_directory);
-		(void)local_command(command, NULL);
 
-		// XXX check success
+		command_ok = local_command(command, NULL);
+
+		if (command_ok == false)
+		{
+			log_err(_("Unable to fetch server parameters from Barman server\n"));
+
+			// ERR_BARMAN
+			exit(ERR_INTERNAL);
+		}
 	}
 
-
-	// XXX set this to "repmgr ?
-	//param_set(&source_conninfo, "application_name", options.node_name);
-
-
+	/* By default attempt to connect to the upstream server */
 	if (runtime_options.no_upstream_connection == false)
 	{
 		/* Attempt to connect to the upstream server to verify its configuration */
@@ -1916,92 +1919,107 @@ do_standby_clone(void)
 		 * Unless in barman mode, exit with an error;
 		 * establish_db_connection_by_params() will have already logged an error message
 		 */
-		if (mode != barman && PQstatus(source_conn) != CONNECTION_OK)
+		if (PQstatus(source_conn) != CONNECTION_OK)
 		{
-			PQfinish(source_conn);
-			exit(ERR_DB_CON);
-		}
-	}
-
-	// XXX insert into above if()
-	/*
-	 * If a connection was established, perform some sanity checks on the
-	 * provided upstream connection
-	 */
-	if (PQstatus(source_conn) == CONNECTION_OK)
-	{
-		/* Verify that upstream node is a supported server version */
-		log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
-		server_version_num = check_server_version(source_conn, "master", true, NULL);
-
-		check_upstream_config(source_conn, server_version_num, true);
-
-		if (get_cluster_size(source_conn, cluster_size) == false)
-			exit(ERR_DB_QUERY);
-
-		log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
-				 cluster_size);
-
-		/*
-		 * If --recovery-min-apply-delay was passed, check that
-		 * we're connected to PostgreSQL 9.4 or later
-		 */
-		if (*runtime_options.recovery_min_apply_delay)
-		{
-			if (server_version_num < 90400)
+			if (mode != barman)
 			{
-				log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
 				PQfinish(source_conn);
-				exit(ERR_BAD_CONFIG);
+				exit(ERR_DB_CON);
 			}
 		}
-
-		/*
-		 * If the upstream node is a standby, try to connect to the primary too so we
-		 * can write an event record
-		 */
-		if (is_standby(source_conn))
+		else
 		{
-			if (strlen(options.cluster_name))
+			/*
+			 * If a connection was established, perform some sanity checks on the
+			 * provided upstream connection
+			 */
+			PQconninfoOption *connOptions;
+			PQconninfoOption *option;
+
+			t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+			int query_result;
+
+			/* Verify that upstream node is a supported server version */
+			log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
+			server_version_num = check_server_version(source_conn, "master", true, NULL);
+
+			check_upstream_config(source_conn, server_version_num, true);
+
+			if (get_cluster_size(source_conn, cluster_size) == false)
+				exit(ERR_DB_QUERY);
+
+			log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
+					 cluster_size);
+
+			/*
+			 * If --recovery-min-apply-delay was passed, check that
+			 * we're connected to PostgreSQL 9.4 or later
+			 */
+			if (*runtime_options.recovery_min_apply_delay)
 			{
-				primary_conn = get_master_connection(source_conn, options.cluster_name,
-													 NULL, NULL);
+				if (server_version_num < 90400)
+				{
+					log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
+					PQfinish(source_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+
+			/*
+			 * If the upstream node is a standby, try to connect to the primary too so we
+			 * can write an event record
+			 */
+			if (is_standby(source_conn))
+			{
+				if (strlen(options.cluster_name))
+				{
+					primary_conn = get_master_connection(source_conn, options.cluster_name,
+														 NULL, NULL);
+				}
+			}
+			else
+			{
+				primary_conn = source_conn;
+			}
+
+			/*
+			 * Copy the source connection so that we have some default values,
+			 * particularly stuff like passwords extracted from PGPASSFILE;
+			 * these will be overridden from the upstream conninfo, if provided
+			 */
+
+			connOptions = PQconninfo(source_conn);
+			for (option = connOptions; option && option->keyword; option++)
+			{
+				/* Ignore non-set or blank parameter values*/
+				if((option->val == NULL) ||
+				   (option->val != NULL && option->val[0] == '\0'))
+					continue;
+
+				param_set(&upstream_conninfo, option->keyword, option->val);
+			}
+
+			// now set up conninfo params for the actual upstream, as we may be cloning from a different node
+			// if upstream conn
+			//   get upstream node rec directly
+
+
+			if (options.upstream_node == NO_UPSTREAM_NODE)
+				upstream_node_id = get_master_node_id(source_conn, options.cluster_name);
+			else
+				upstream_node_id = options.upstream_node;
+
+			query_result = get_node_record(source_conn, options.cluster_name, upstream_node_id, &upstream_node_record);
+
+			if (query_result)
+			{
+				upstream_record_found = true;
+				strncpy(upstream_conninfo_str, upstream_node_record.conninfo_str, MAXLEN);
 			}
 		}
-		else
-		{
-			primary_conn = source_conn;
-		}
 	}
 
-	// now set up conninfo params for the actual upstream, as we may be cloning from a different node
-	// if upstream conn
-	//   get upstream node rec directly
-
-
-
-
-
-	// XXX merge with previous if()
-	if (PQstatus(source_conn) == CONNECTION_OK)
-	{
-		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
-		int query_result;
-
-		if (options.upstream_node == NO_UPSTREAM_NODE)
-			upstream_node_id = get_master_node_id(source_conn, options.cluster_name);
-		else
-			upstream_node_id = options.upstream_node;
-
-		query_result = get_node_record(source_conn, options.cluster_name, upstream_node_id, &upstream_node_record);
-
-		if (query_result)
-		{
-			upstream_record_found = true;
-			strncpy(upstream_conninfo_str, upstream_node_record.conninfo_str, MAXLEN);
-		}
-	}
-	else if (mode == barman)
+	if (mode == barman && PQstatus(source_conn) != CONNECTION_OK)
 	{
 		/*
 		 * Here we don't have a connection to the upstream node, and are executing
@@ -2023,7 +2041,7 @@ do_standby_clone(void)
 
 		int c;
 
-		// XXX barman also returns "streaming_conninfo" - what's the difference?
+		/* XXX barman also returns "streaming_conninfo" - what's the difference? */
 		get_barman_property(barman_conninfo_str, "conninfo", local_repmgr_directory);
 
 		initialize_conninfo_params(&barman_conninfo, false);
@@ -2047,7 +2065,6 @@ do_standby_clone(void)
 
 		for (c = 0; c < barman_conninfo.size && barman_conninfo.keywords[c] != NULL; c++)
 		{
-			printf("%s: %s\n", barman_conninfo.keywords[c], barman_conninfo.values[c]);
 			if (repmgr_conninfo_buf.len != 0)
 				appendPQExpBufferChar(&repmgr_conninfo_buf, ' ');
 
@@ -2099,60 +2116,14 @@ do_standby_clone(void)
 	printf("upstream found? %c\n", upstream_record_found == true ? 'y' : 'n');
 	initialize_conninfo_params(&upstream_conninfo, true);
 
-	/*
-	 * Copy the source connection so that we have some default values,
-	 * particularly stuff like passwords extracted from PGPASSFILE;
-	 * these will be overridden from the upstream conninfo, if provided
-	 */
-	// XXX merge with previous if()
-	if (PQstatus(source_conn) == CONNECTION_OK)
-	{
-		PQconninfoOption *connOptions;
-		PQconninfoOption *option;
 
-		connOptions = PQconninfo(source_conn);
-		for (option = connOptions; option && option->keyword; option++)
-		{
-			/* Ignore non-set or blank parameter values*/
-			if((option->val == NULL) ||
-			   (option->val != NULL && option->val[0] == '\0'))
-				continue;
-
-			param_set(&upstream_conninfo, option->keyword, option->val);
-		}
-	}
-
-	/*
-	 * If no upstream node record found, we'll abort with an error here, unless
-	 * --force is used, in which case we'll use the conninfo parameters
-	 * from source_conn, and if that's not available, using those provided
-	 * on the command line (and assume the user knows what they're doing).
-	 */
-	if (upstream_record_found == false)
-	{
-		//   if not --force
-		//     exit with error
-		if (!runtime_options.force)
-		{
-			log_err(_("No record found for upstream node\n"));
-			PQfinish(source_conn);
-			exit(ERR_BAD_CONFIG);
-		}
-		//     copy upstream_conn params to recovery primary_conninfo params
-		if (PQstatus(source_conn) != CONNECTION_OK)
-		{
-			// copy command line options ???
-		}
-
-	}
-	else
+	if (upstream_record_found == true)
 	{
 		/*  parse returned upstream conninfo string to recovery primary_conninfo params*/
-
 		char	   *errmsg = NULL;
 		bool	    parse_success;
 
-		printf("upstr conn: %s\n", upstream_conninfo_str);
+		log_verbose(LOG_DEBUG, "parsing upstream conninfo string \"%s\"\n", upstream_conninfo_str);
 
 		parse_success = parse_conninfo_string(upstream_conninfo_str, &upstream_conninfo, errmsg);
 		if (parse_success == false)
@@ -2164,7 +2135,39 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
+	else
+	{
+		/*
+		 * If no upstream node record found, we'll abort with an error here,
+		 * unless -F/--force is used, in which case we'll use the parameters
+		 * provided on the command line (and assume the user knows what they're
+		 * doing).
+		 */
 
+		if (!runtime_options.force)
+		{
+			log_err(_("No record found for upstream node\n"));
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (strlen(runtime_options.host))
+		{
+			param_set(&upstream_conninfo, "host", runtime_options.host);
+		}
+		if (strlen(runtime_options.masterport))
+		{
+			param_set(&upstream_conninfo, "port", runtime_options.masterport);
+		}
+		if (strlen(runtime_options.dbname))
+		{
+			param_set(&upstream_conninfo, "dbname", runtime_options.dbname);
+		}
+		if (strlen(runtime_options.username))
+		{
+			param_set(&upstream_conninfo, "user", runtime_options.username);
+		}
+	}
 
 	if (mode != barman)
 	{
@@ -2297,7 +2300,6 @@ do_standby_clone(void)
 		}
 
 		PQclear(res);
-
 	}
 
 	/*
