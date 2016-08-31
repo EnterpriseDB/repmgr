@@ -96,7 +96,7 @@ static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 static int  run_basebackup(const char *data_dir, int server_version);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
-static bool create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conninfo, const char *barmans_conninfo);
+static bool create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conninfo);
 static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
@@ -148,6 +148,7 @@ static bool read_backup_label(const char *local_data_directory, struct BackupLab
 static void initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults);
 static void param_set(t_conninfo_param_list *param_list, const char *param, const char *value);
 static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg);
+static void conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
 static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
 
 /* Global variables */
@@ -1847,7 +1848,7 @@ do_standby_clone(void)
 
 	initialize_conninfo_params(&upstream_conninfo, true);
 
-	/* Sanity check barman connection and installation, */
+	/* Sanity-check barman connection and installation */
 	if (mode == barman)
 	{
 		char		command[MAXLEN];
@@ -1933,9 +1934,6 @@ do_standby_clone(void)
 			 * If a connection was established, perform some sanity checks on the
 			 * provided upstream connection
 			 */
-			PQconninfoOption *connOptions;
-			PQconninfoOption *option;
-
 			t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 			int query_result;
 
@@ -1987,17 +1985,7 @@ do_standby_clone(void)
 			 * particularly stuff like passwords extracted from PGPASSFILE;
 			 * these will be overridden from the upstream conninfo, if provided
 			 */
-
-			connOptions = PQconninfo(source_conn);
-			for (option = connOptions; option && option->keyword; option++)
-			{
-				/* Ignore non-set or blank parameter values*/
-				if((option->val == NULL) ||
-				   (option->val != NULL && option->val[0] == '\0'))
-					continue;
-
-				param_set(&upstream_conninfo, option->keyword, option->val);
-			}
+			conn_to_param_list(source_conn, &upstream_conninfo);
 
 			// now set up conninfo params for the actual upstream, as we may be cloning from a different node
 			// if upstream conn
@@ -3034,17 +3022,12 @@ stop_backup:
 
 	/* Finally, write the recovery.conf file */
 
-	create_recovery_file(local_data_directory, &upstream_conninfo, NULL);
+	create_recovery_file(local_data_directory, &upstream_conninfo);
 
-	if (mode == barman && source_conn == NULL)
+	if (mode == barman)
 	{
-
 		/* In Barman mode, remove local_repmgr_directory */
 		rmdir(local_repmgr_directory);
-	}
-	else
-	{
-
 	}
 
 	switch(mode)
@@ -3476,6 +3459,7 @@ do_standby_follow(void)
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
 	int			master_id = 0;
+	t_conninfo_param_list upstream_conninfo;
 
 	int			r,
 				retval;
@@ -3609,8 +3593,11 @@ do_standby_follow(void)
 	log_info(_("changing standby's master\n"));
 
 	/* write the recovery.conf file */
-//	if (!create_recovery_file(data_dir, master_conn, NULL))
-//		exit(ERR_BAD_CONFIG);
+	initialize_conninfo_params(&upstream_conninfo, false);
+	conn_to_param_list(master_conn, &upstream_conninfo);
+
+	if (!create_recovery_file(data_dir, &upstream_conninfo))
+		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
 	if (*options.restart_command)
@@ -5290,8 +5277,6 @@ do_witness_unregister(void)
 }
 
 
-	// XXX + --no-upstream-connection
-
 static void
 do_help(void)
 {
@@ -5375,10 +5360,10 @@ do_help(void)
 
 
 /*
- * Creates a recovery file for a standby.
+ * Creates a recovery.conf file for a standby
  */
 static bool
-create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conninfo, const char *conninfo_on_barman)
+create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conninfo)
 {
 	FILE	   *recovery_file;
 	char		recovery_file_path[MAXLEN];
@@ -7057,6 +7042,7 @@ param_set(t_conninfo_param_list *param_list, const char *param, const char *valu
 	 */
 }
 
+
 static bool
 parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg)
 {
@@ -7079,6 +7065,25 @@ parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_lis
 	}
 
 	return true;
+}
+
+
+static void
+conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
+{
+	PQconninfoOption *connOptions;
+	PQconninfoOption *option;
+
+	connOptions = PQconninfo(conn);
+	for (option = connOptions; option && option->keyword; option++)
+	{
+		/* Ignore non-set or blank parameter values*/
+		if((option->val == NULL) ||
+		   (option->val != NULL && option->val[0] == '\0'))
+			continue;
+
+		param_set(param_list, option->keyword, option->val);
+	}
 }
 
 
