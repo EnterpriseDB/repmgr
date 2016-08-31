@@ -1845,6 +1845,8 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	initialize_conninfo_params(&upstream_conninfo, true);
+
 	/* Sanity check barman connection and installation, */
 	if (mode == barman)
 	{
@@ -1863,7 +1865,7 @@ do_standby_clone(void)
 		if (command_ok == false)
 		{
 			log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
-					options.cluster_name);
+					options.barman_server);
 			log_hint(_("Refer to the Barman documentation for more information\n"));
 
 			// ERR_BARMAN
@@ -2114,7 +2116,6 @@ do_standby_clone(void)
 	}
 
 	printf("upstream found? %c\n", upstream_record_found == true ? 'y' : 'n');
-	initialize_conninfo_params(&upstream_conninfo, true);
 
 
 	if (upstream_record_found == true)
@@ -3046,7 +3047,7 @@ stop_backup:
 	}
 	else
 	{
-		
+
 	}
 
 	switch(mode)
@@ -5336,6 +5337,7 @@ do_help(void)
 	printf(_("Command-specific configuration options:\n"));
 	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
 	printf(_("  -r, --rsync-only                    (standby clone) use only rsync, not pg_basebackup\n"));
+	printf(_("  --no-upstream-connection            (standby clone) when using Barman, do not connect to upstream node\n"));
 	printf(_("  --without-barman                    (standby clone) do not use Barman even if configured\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    (standby clone, follow) set recovery_min_apply_delay\n" \
 			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
@@ -5855,6 +5857,13 @@ check_parameters_for_action(const int action)
 			{
 				item_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using -r/--rsync-only"));
 			}
+
+			if (runtime_options.no_upstream_connection == true &&
+				(strcmp(options.barman_server, "") == 0 || runtime_options.without_barman == true))
+			{
+				item_list_append(&cli_warnings, _("--no-upstream-connection only effective in Barman mode"));
+			}
+
 			config_file_required = false;
 			break;
 		case STANDBY_SWITCHOVER:
@@ -5926,6 +5935,11 @@ check_parameters_for_action(const int action)
 		if (wal_keep_segments_used)
 		{
 			item_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
+		}
+
+		if (runtime_options.no_upstream_connection == true)
+		{
+			item_list_append(&cli_warnings, _("--no-upstream-connection can only be used when executing STANDBY CLONE in Barman mode"));
 		}
 	}
 
