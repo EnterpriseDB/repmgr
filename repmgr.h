@@ -58,6 +58,7 @@
 #define OPT_CSV                          8
 #define OPT_NODE                         9
 #define OPT_WITHOUT_BARMAN               10
+#define OPT_NO_UPSTREAM_CONNECTION       11
 
 /* deprecated command line options */
 #define OPT_INITDB_NO_PWPROMPT           999
@@ -85,6 +86,7 @@ typedef struct
 	bool		ignore_external_config_files;
 	bool		csv_mode;
 	bool		without_barman;
+	bool		no_upstream_connection;
 	char		masterport[MAXLEN];
 	/*
 	 * configuration file parameters which can be overridden on the
@@ -108,7 +110,7 @@ typedef struct
 	char		recovery_min_apply_delay[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, 0, "", ""}
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, 0, "", ""}
 
 struct BackupLabel
 {

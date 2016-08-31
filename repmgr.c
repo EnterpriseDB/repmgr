@@ -147,7 +147,7 @@ static bool read_backup_label(const char *local_data_directory, struct BackupLab
 
 static void initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults);
 static void param_set(t_conninfo_param_list *param_list, const char *param, const char *value);
-
+static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg);
 static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
 
 /* Global variables */
@@ -223,6 +223,7 @@ main(int argc, char **argv)
 		{"csv", no_argument, NULL, OPT_CSV},
 		{"node", required_argument, NULL, OPT_NODE},
 		{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
+		{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 		{"version", no_argument, NULL, 'V'},
 		/* Following options deprecated */
 		{"local-port", required_argument, NULL, 'l'},
@@ -500,6 +501,9 @@ main(int argc, char **argv)
 				break;
 			case OPT_WITHOUT_BARMAN:
 				runtime_options.without_barman = true;
+				break;
+			case OPT_NO_UPSTREAM_CONNECTION:
+				runtime_options.no_upstream_connection = true;
 				break;
 
 			/* deprecated options - output a warning */
@@ -1706,6 +1710,9 @@ do_standby_clone(void)
 	bool		upstream_record_found = false;
 	int		    upstream_node_id;
 
+
+	char        datadir_list_filename[MAXLEN];
+
 	/*
 	 * conninfo params for the actual upstream node (which might be different
 	 * to the node we're cloning from)
@@ -1839,24 +1846,84 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* Sanity check barman connection and installation, */
+	if (mode == barman)
+	{
+		char		command[MAXLEN];
+		bool		command_ok;
+		/*
+		 * Check that there is at least one valid backup
+		 */
+
+		log_info(_("Connecting to Barman server to verify backup for %s\n"), options.cluster_name);
+
+		maxlen_snprintf(command, "%s show-backup %s latest > /dev/null",
+						make_barman_ssh_command(),
+						options.cluster_name);
+		command_ok = local_command(command, NULL);
+		if (command_ok == false)
+		{
+			log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
+					options.cluster_name);
+			log_hint(_("Refer to the Barman documentation for more information\n"));
+
+			// ERR_BARMAN
+			exit(ERR_INTERNAL);
+		}
+
+		/*
+		 * Create the local repmgr subdirectory
+		 */
+
+		maxlen_snprintf(local_repmgr_directory, "%s/repmgr",   local_data_directory  );
+		maxlen_snprintf(datadir_list_filename,  "%s/data.txt", local_repmgr_directory);
+
+		if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
+		{
+			log_err(_("unable to use directory %s ...\n"),
+					local_repmgr_directory);
+			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/*
+		 * Fetch server parameters from Barman
+		 */
+
+		maxlen_snprintf(command, "%s show-server %s > %s/show-server.txt",
+						make_barman_ssh_command(),
+						options.cluster_name,
+						local_repmgr_directory);
+		(void)local_command(command, NULL);
+
+		// XXX check success
+	}
+
 
 	// XXX set this to "repmgr ?
 	//param_set(&source_conninfo, "application_name", options.node_name);
 
-	/* Attempt to connect to the upstream server to verify its configuration */
-	log_info(_("connecting to upstream node\n"));
-	source_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
 
-	/*
-	 * Unless in barman mode, exit with an error;
-	 * establish_db_connection_by_params() will have already logged an error message
-	 */
-	if (mode != barman && PQstatus(source_conn) != CONNECTION_OK)
+	if (runtime_options.no_upstream_connection == false)
 	{
-		PQfinish(source_conn);
-		exit(ERR_DB_CON);
+		/* Attempt to connect to the upstream server to verify its configuration */
+		log_info(_("connecting to upstream node\n"));
+
+		source_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
+
+		/*
+		 * Unless in barman mode, exit with an error;
+		 * establish_db_connection_by_params() will have already logged an error message
+		 */
+		if (mode != barman && PQstatus(source_conn) != CONNECTION_OK)
+		{
+			PQfinish(source_conn);
+			exit(ERR_DB_CON);
+		}
 	}
 
+	// XXX insert into above if()
 	/*
 	 * If a connection was established, perform some sanity checks on the
 	 * provided upstream connection
@@ -1906,20 +1973,12 @@ do_standby_clone(void)
 			primary_conn = source_conn;
 		}
 	}
-	// XXX + --no-upstream-connection
 
 	// now set up conninfo params for the actual upstream, as we may be cloning from a different node
 	// if upstream conn
 	//   get upstream node rec directly
 
-	if (options.upstream_node == NO_UPSTREAM_NODE)
-	{
-		upstream_node_id = get_master_node_id(source_conn, options.cluster_name);
-	}
-	else
-	{
-		upstream_node_id = options.upstream_node;
-	}
+
 
 
 
@@ -1929,6 +1988,11 @@ do_standby_clone(void)
 		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 		int query_result;
 
+		if (options.upstream_node == NO_UPSTREAM_NODE)
+			upstream_node_id = get_master_node_id(source_conn, options.cluster_name);
+		else
+			upstream_node_id = options.upstream_node;
+
 		query_result = get_node_record(source_conn, options.cluster_name, upstream_node_id, &upstream_node_record);
 
 		if (query_result)
@@ -1937,21 +2001,19 @@ do_standby_clone(void)
 			strncpy(upstream_conninfo_str, upstream_node_record.conninfo_str, MAXLEN);
 		}
 	}
-	else
+	else if (mode == barman)
 	{
-		// attempt to get upstream node rec via Barman:
-		// - get barman connstr
-		// - parse to list (no set defaults)
-		// - set dbname to the one provided by the user
-
-		char conninfo_on_barman[MAXLEN];
-
 		/*
-		 * We don't have an upstream connection - attempt to connect
-		 * to the upstream via the barman server to fetch the upstream's conninfo
+		 * Here we don't have a connection to the upstream node, and are executing
+		 * in Barman mode - we can try and connect via the Barman server to extract
+		 * the upstream node's conninfo string.
+		 *
+		 * To do this we need to extract Barman's conninfo string, replace the database
+		 * name with the repmgr one (they could well be different) and remotely execute
+		 * psql.
 		 */
-		get_barman_property(conninfo_on_barman, "conninfo", local_repmgr_directory);
 
+<<<<<<< HEAD
 		create_recovery_file(local_data_directory, &upstream_conninfo, conninfo_on_barman);
 
 		/*char buf[MAXLEN];
@@ -1968,6 +2030,49 @@ do_standby_clone(void)
 				break;
 		}
 
+=======
+		char barman_conninfo_str[MAXLEN];
+		t_conninfo_param_list barman_conninfo;
+		char *errmsg = NULL;
+		bool parse_success;
+		PQExpBufferData command_output;
+
+		char buf[MAXLEN];
+
+		// XXX barman also returns "streaming_conninfo" - what's the difference?
+		get_barman_property(barman_conninfo_str, "conninfo", local_repmgr_directory);
+
+		initialize_conninfo_params(&barman_conninfo, false);
+
+		parse_success = parse_conninfo_string(barman_conninfo_str, &barman_conninfo, errmsg);
+
+		if(parse_success == false)
+		{
+			log_err(_("Unable to parse barman conninfo string \"%s\":\n%s\n"),
+					barman_conninfo_str, errmsg);
+			// ERR_BARMAN
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/* Overwrite database name */
+		param_set(&barman_conninfo, "database", runtime_options.dbname);
+
+		{
+			int c;
+			printf("conninfo str: %s; size: %i\n", barman_conninfo_str, barman_conninfo.size);
+			for (c = 0; c < barman_conninfo.size && barman_conninfo.keywords[c] != NULL; c++)
+			{
+				printf("%s: %s\n", barman_conninfo.keywords[c], barman_conninfo.values[c]);
+			}
+			//
+		}
+
+
+		if (options.upstream_node == NO_UPSTREAM_NODE)
+			upstream_node_id = get_master_node_id(source_conn, options.cluster_name);
+		else
+			upstream_node_id = options.upstream_node;
+
 		initPQExpBuffer(&command_output);
 		maxlen_snprintf(buf,
 						"ssh %s \"psql -Aqt \\\"%s\\\" -c \\\""
@@ -1980,7 +2085,7 @@ do_standby_clone(void)
 		(void)local_command(buf, &command_output);
 		maxlen_snprintf(buf, "%s", command_output.data);
 		string_remove_trailing_newlines(buf);
-		maxlen_snprintf(line, "primary_conninfo = '%s'\n", buf);*/
+		maxlen_snprintf(line, "primary_conninfo = '%s'\n", buf);
 	}
 
 	printf("upstream found? %c\n", upstream_record_found == true ? 'y' : 'n');
@@ -2036,29 +2141,18 @@ do_standby_clone(void)
 	{
 		/*  parse returned upstream conninfo string to recovery primary_conninfo params*/
 
-		PQconninfoOption *connOptions;
-		PQconninfoOption *option;
 		char	   *errmsg = NULL;
-
-		connOptions = PQconninfoParse(upstream_conninfo_str, &errmsg);
+		bool	    parse_success;
 
 		printf("upstr conn: %s\n", upstream_conninfo_str);
-		if (connOptions == NULL)
+
+		parse_success = parse_conninfo_string(upstream_conninfo_str, &upstream_conninfo, errmsg);
+		if (parse_success == false)
 		{
-			log_err(_("Unable to parse conninfo string \"%s\" for upstream node %i\n"),
-					upstream_conninfo_str, upstream_node_id);
+			log_err(_("Unable to parse conninfo string \"%s\" for upstream node %i:\n%s\n"),
+					upstream_conninfo_str, upstream_node_id, errmsg);
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
-		}
-
-		for (option = connOptions; option && option->keyword; option++)
-		{
-			/* Ignore non-set or blank parameter values*/
-			if((option->val == NULL) ||
-			   (option->val != NULL && option->val[0] == '\0'))
-				continue;
-
-			param_set(&upstream_conninfo, option->keyword, option->val);
 		}
 	}
 
@@ -2236,7 +2330,6 @@ do_standby_clone(void)
 		char		buf[MAXLEN];
 		char		backup_directory[MAXLEN];
 		char        backup_id[MAXLEN] = "";
-		char        datadir_list_filename[MAXLEN];
 		char       *p, *q;
 		PQExpBufferData command_output;
 		TablespaceDataList tablespace_list = { NULL, NULL };
@@ -2247,49 +2340,6 @@ do_standby_clone(void)
 
 		if (mode == barman)
 		{
-			bool		command_ok;
-			/*
-			 * Check that there is at least one valid backup
-			 */
-
-			maxlen_snprintf(command, "%s show-backup %s latest > /dev/null",
-							make_barman_ssh_command(),
-							options.cluster_name);
-			command_ok = local_command(command, NULL);
-			if (command_ok == false)
-			{
-				log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
-						options.barman_server);
-				log_hint(_("Refer to the Barman documentation for more information\n"));
-				exit(ERR_INTERNAL);
-			}
-
-			/*
-			 * Create the local repmgr subdirectory
-			 */
-
-			maxlen_snprintf(local_repmgr_directory, "%s/repmgr",   local_data_directory  );
-			maxlen_snprintf(datadir_list_filename,  "%s/data.txt", local_repmgr_directory);
-
-			if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
-			{
-				log_err(_("unable to use directory %s ...\n"),
-						local_repmgr_directory);
-				log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
-				r = ERR_BAD_CONFIG;
-				retval = ERR_BAD_CONFIG;
-				goto stop_backup;
-			}
-
-			/*
-			 * Fetch server parameters from Barman
-			 */
-
-			maxlen_snprintf(command, "%s show-server %s > %s/show-server.txt",
-							make_barman_ssh_command(),
-							options.cluster_name,
-							local_repmgr_directory);
-			(void)local_command(command, NULL);
 
 			/*
 			 * Locate Barman's backup directory
@@ -5231,6 +5281,8 @@ do_witness_unregister(void)
 }
 
 
+	// XXX + --no-upstream-connection
+
 static void
 do_help(void)
 {
@@ -6983,6 +7035,29 @@ param_set(t_conninfo_param_list *param_list, const char *param, const char *valu
 	 */
 }
 
+static bool
+parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg)
+{
+	PQconninfoOption *connOptions;
+	PQconninfoOption *option;
+
+	connOptions = PQconninfoParse(conninfo_str, &errmsg);
+
+	if (connOptions == NULL)
+		return false;
+
+	for (option = connOptions; option && option->keyword; option++)
+	{
+		/* Ignore non-set or blank parameter values*/
+		if((option->val == NULL) ||
+		   (option->val != NULL && option->val[0] == '\0'))
+			continue;
+
+		param_set(param_list, option->keyword, option->val);
+	}
+
+	return true;
+}
 
 
 static void
