@@ -1584,6 +1584,7 @@ exit:
 * ERR_MONITORING_FAIL (16)  Unrecoverable error encountered during monitoring (repmgrd only)
 * ERR_BAD_BACKUP_LABEL (17) Corrupt or unreadable backup label encountered (repmgr only)
 * ERR_SWITCHOVER_FAIL (18)  Error encountered during switchover (repmgr only)
+* ERR_BARMAN (19)           Unrecoverable error while accessing the barman server (repmgr only)
 
 
 Support and Assistance

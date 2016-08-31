@@ -38,5 +38,6 @@
 #define ERR_MONITORING_FAIL 16
 #define ERR_BAD_BACKUP_LABEL 17
 #define ERR_SWITCHOVER_FAIL 18
+#define ERR_BARMAN 19
 
 #endif   /* _ERRCODE_H_ */

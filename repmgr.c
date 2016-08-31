@@ -1868,8 +1868,7 @@ do_standby_clone(void)
 					options.barman_server);
 			log_hint(_("Refer to the Barman documentation for more information\n"));
 
-			// ERR_BARMAN
-			exit(ERR_INTERNAL);
+			exit(ERR_BARMAN);
 		}
 
 		/*
@@ -1904,8 +1903,7 @@ do_standby_clone(void)
 		{
 			log_err(_("Unable to fetch server parameters from Barman server\n"));
 
-			// ERR_BARMAN
-			exit(ERR_INTERNAL);
+			exit(ERR_BARMAN);
 		}
 	}
 
@@ -2054,8 +2052,7 @@ do_standby_clone(void)
 		{
 			log_err(_("Unable to parse barman conninfo string \"%s\":\n%s\n"),
 					barman_conninfo_str, errmsg);
-			// ERR_BARMAN
-			exit(ERR_BAD_CONFIG);
+			exit(ERR_BARMAN);
 		}
 
 		/* Overwrite database name in the parsed parameter list */
@@ -2384,7 +2381,7 @@ do_standby_clone(void)
 				if (fi == NULL)
 				{
 					log_err("Cannot launch command: %s\n", command);
-					exit(ERR_INTERNAL);
+					exit(ERR_BARMAN);
 				}
 
 				fd = fopen(datadir_list_filename, "w");
@@ -2405,7 +2402,7 @@ do_standby_clone(void)
 					{
 						log_err("Unexpected output from \"barman list-files\": %s\n",
 								output);
-						exit(ERR_INTERNAL);
+						exit(ERR_BARMAN);
 					}
 
 					/*
