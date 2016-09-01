@@ -6875,7 +6875,10 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 
 		pclose(fp);
 
-		log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
+		if (outputbuf->data != NULL)
+			log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
+		else
+			log_verbose(LOG_DEBUG, "local_command(): no output returned\n");
 
 		return true;
 	}
