@@ -1846,7 +1846,35 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/*
+	 * Initialise list of conninfo parameters which will later be used
+	 * to create the `primary_conninfo` string in recovery.conf .
+	 *
+	 * We'll initialise it with the default values as seen by libpq,
+	 * and overwrite them with the host settings specified on the command
+	 * line. As it's possible the standby will be cloned from a node different
+	 * to its intended upstream, we'll later attempt to fetch the
+	 * upstream node record and overwrite the values set here with
+	 * those from the upstream node record.
+	 */
 	initialize_conninfo_params(&upstream_conninfo, true);
+
+	if (strlen(runtime_options.host))
+	{
+		param_set(&upstream_conninfo, "host", runtime_options.host);
+	}
+	if (strlen(runtime_options.masterport))
+	{
+		param_set(&upstream_conninfo, "port", runtime_options.masterport);
+	}
+	if (strlen(runtime_options.dbname))
+	{
+		param_set(&upstream_conninfo, "dbname", runtime_options.dbname);
+	}
+	if (strlen(runtime_options.username))
+	{
+		param_set(&upstream_conninfo, "user", runtime_options.username);
+	}
 
 	/* Sanity-check barman connection and installation */
 	if (mode == barman)
@@ -1987,11 +2015,9 @@ do_standby_clone(void)
 			 */
 			conn_to_param_list(source_conn, &upstream_conninfo);
 
-			// now set up conninfo params for the actual upstream, as we may be cloning from a different node
-			// if upstream conn
-			//   get upstream node rec directly
-
-
+			/*
+			 * Attempt to find the upstream node record
+			 */
 			if (options.upstream_node == NO_UPSTREAM_NODE)
 				upstream_node_id = get_master_node_id(source_conn, options.cluster_name);
 			else
@@ -2018,18 +2044,18 @@ do_standby_clone(void)
 		 * name with the repmgr one (they could well be different) and remotely execute
 		 * psql.
 		 */
-		char buf[MAXLEN];
-		char barman_conninfo_str[MAXLEN];
+		char		    buf[MAXLEN];
+		char		    barman_conninfo_str[MAXLEN];
 		t_conninfo_param_list barman_conninfo;
-		char *errmsg = NULL;
-		bool parse_success;
-		char where_condition[MAXLEN];
+		char		   *errmsg = NULL;
+		bool		    parse_success,
+					    command_success;
+		char		    where_condition[MAXLEN];
 		PQExpBufferData command_output;
 		PQExpBufferData repmgr_conninfo_buf;
 
 		int c;
 
-		/* XXX barman also returns "streaming_conninfo" - what's the difference? */
 		get_barman_property(barman_conninfo_str, "conninfo", local_repmgr_directory);
 
 		initialize_conninfo_params(&barman_conninfo, false);
@@ -2047,7 +2073,6 @@ do_standby_clone(void)
 		param_set(&barman_conninfo, "dbname", runtime_options.dbname);
 
 		/* Rebuild the Barman conninfo string */
-
 		initPQExpBuffer(&repmgr_conninfo_buf);
 
 		for (c = 0; c < barman_conninfo.size && barman_conninfo.keywords[c] != NULL; c++)
@@ -2087,8 +2112,13 @@ do_standby_clone(void)
 
 		termPQExpBuffer(&repmgr_conninfo_buf);
 
-		// XXX check success
-		(void)local_command(buf, &command_output);
+		command_success = local_command(buf, &command_output);
+
+		if (command_success == false)
+		{
+			log_err(_("Unable to execute database query via Barman server\n"));
+			exit(ERR_BARMAN);
+		}
 		maxlen_snprintf(upstream_conninfo_str, "%s", command_output.data);
 		string_remove_trailing_newlines(upstream_conninfo_str);
 
@@ -2099,9 +2129,6 @@ do_standby_clone(void)
 
 		termPQExpBuffer(&command_output);
 	}
-
-	printf("upstream found? %c\n", upstream_record_found == true ? 'y' : 'n');
-
 
 	if (upstream_record_found == true)
 	{
@@ -2137,22 +2164,6 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if (strlen(runtime_options.host))
-		{
-			param_set(&upstream_conninfo, "host", runtime_options.host);
-		}
-		if (strlen(runtime_options.masterport))
-		{
-			param_set(&upstream_conninfo, "port", runtime_options.masterport);
-		}
-		if (strlen(runtime_options.dbname))
-		{
-			param_set(&upstream_conninfo, "dbname", runtime_options.dbname);
-		}
-		if (strlen(runtime_options.username))
-		{
-			param_set(&upstream_conninfo, "user", runtime_options.username);
-		}
 	}
 
 	if (mode != barman)
