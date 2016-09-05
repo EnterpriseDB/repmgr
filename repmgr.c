@@ -96,8 +96,8 @@ static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 static int  run_basebackup(const char *data_dir, int server_version);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
-static bool create_recovery_file(const char *data_dir, PGconn *primary_conn);
-static void write_primary_conninfo(char *line, PGconn *primary_conn);
+static bool create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conninfo);
+static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
@@ -106,6 +106,7 @@ static bool update_node_record_set_master(PGconn *conn, int this_node_id);
 static void tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location);
 static int  get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list);
 static int  get_tablespace_data_barman(char *, TablespaceDataList *);
+static void get_barman_property(char *dst, char *name, char *local_repmgr_directory);
 
 static char *string_skip_prefix(const char *prefix, char *string);
 static char *string_remove_trailing_newlines(char *string);
@@ -144,16 +145,20 @@ static bool copy_file(const char *old_filename, const char *new_filename);
 
 static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
-static void param_set(const char *param, const char *value);
-
+static void initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults);
+static void param_set(t_conninfo_param_list *param_list, const char *param, const char *value);
+static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg);
+static void conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
 static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
 
 /* Global variables */
 static PQconninfoOption *opts = NULL;
 
-static int   param_count = 0;
-static char  **param_keywords;
-static char  **param_values;
+/* conninfo params for the node we're cloning from */
+t_conninfo_param_list source_conninfo;
+
+
+
 
 static bool	config_file_required = true;
 
@@ -219,6 +224,7 @@ main(int argc, char **argv)
 		{"csv", no_argument, NULL, OPT_CSV},
 		{"node", required_argument, NULL, OPT_NODE},
 		{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
+		{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 		{"version", no_argument, NULL, 'V'},
 		/* Following options deprecated */
 		{"local-port", required_argument, NULL, 'l'},
@@ -232,9 +238,6 @@ main(int argc, char **argv)
 	bool 		check_upstream_config = false;
 	bool 		config_file_parsed = false;
 	char 	   *ptr = NULL;
-
-	PQconninfoOption *defs = NULL;
-	PQconninfoOption *def;
 
 	set_progname(argv[0]);
 
@@ -251,63 +254,41 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	param_count = 0;
-	defs = PQconndefaults();
-
-	/* Count maximum number of parameters */
-	for (def = defs; def->keyword; def++)
-		param_count ++;
-
-	/* Initialize our internal parameter list */
-	param_keywords = pg_malloc0(sizeof(char *) * (param_count + 1));
-	param_values = pg_malloc0(sizeof(char *) * (param_count + 1));
-
-	for (c = 0; c <= param_count; c++)
-	{
-		param_keywords[c] = NULL;
-		param_values[c] = NULL;
-	}
+	initialize_conninfo_params(&source_conninfo, true);
 
 	/*
-	 * Pre-set any defaults, which can be overwritten if matching
+	 * Pre-set any defaults , which can be overwritten if matching
 	 * command line parameters are provided
 	 */
 
-	for (def = defs; def->keyword; def++)
+	for (c = 0; c < source_conninfo.size && source_conninfo.keywords[c]; c++)
 	{
-		if (def->val != NULL && def->val[0] != '\0')
+		if (strcmp(source_conninfo.keywords[c], "host") == 0 &&
+			(source_conninfo.values[c] != NULL))
 		{
-			param_set(def->keyword, def->val);
+			strncpy(runtime_options.host, source_conninfo.values[c], MAXLEN);
 		}
-
-		if (strcmp(def->keyword, "host") == 0 &&
-			(def->val != NULL && def->val[0] != '\0'))
+		else if (strcmp(source_conninfo.keywords[c], "hostaddr") == 0 &&
+				(source_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.host, def->val, MAXLEN);
+			strncpy(runtime_options.host, source_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(def->keyword, "hostaddr") == 0 &&
-			(def->val != NULL && def->val[0] != '\0'))
+		else if (strcmp(source_conninfo.keywords[c], "port") == 0 &&
+				 (source_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.host, def->val, MAXLEN);
+			strncpy(runtime_options.masterport, source_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(def->keyword, "port") == 0 &&
-				 (def->val != NULL && def->val[0] != '\0'))
+		else if (strcmp(source_conninfo.keywords[c], "dbname") == 0 &&
+				 (source_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.masterport, def->val, MAXLEN);
+			strncpy(runtime_options.dbname, source_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(def->keyword, "dbname") == 0 &&
-				 (def->val != NULL && def->val[0] != '\0'))
+		else if (strcmp(source_conninfo.keywords[c], "user") == 0 &&
+				 (source_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.dbname, def->val, MAXLEN);
-		}
-		else if (strcmp(def->keyword, "user") == 0 &&
-				 (def->val != NULL && def->val[0] != '\0'))
-		{
-			strncpy(runtime_options.username, def->val, MAXLEN);
+			strncpy(runtime_options.username, source_conninfo.values[c], MAXLEN);
 		}
 	}
-
-	PQconninfoFree(defs);
 
 	/* set default user for -R/--remote-user */
 
@@ -371,13 +352,13 @@ main(int argc, char **argv)
 				break;
 			case 'h':
 				strncpy(runtime_options.host, optarg, MAXLEN);
-				param_set("host", optarg);
+				param_set(&source_conninfo, "host", optarg);
 				connection_param_provided = true;
 				host_param_provided = true;
 				break;
 			case 'p':
 				repmgr_atoi(optarg, "-p/--port", &cli_errors, false);
-				param_set("port", optarg);
+				param_set(&source_conninfo, "port", optarg);
 				strncpy(runtime_options.masterport,
 						optarg,
 						MAXLEN);
@@ -385,7 +366,7 @@ main(int argc, char **argv)
 				break;
 			case 'U':
 				strncpy(runtime_options.username, optarg, MAXLEN);
-				param_set("user", optarg);
+				param_set(&source_conninfo, "user", optarg);
 				connection_param_provided = true;
 				break;
 			case 'S':
@@ -522,6 +503,9 @@ main(int argc, char **argv)
 			case OPT_WITHOUT_BARMAN:
 				runtime_options.without_barman = true;
 				break;
+			case OPT_NO_UPSTREAM_CONNECTION:
+				runtime_options.no_upstream_connection = true;
+				break;
 
 			/* deprecated options - output a warning */
 			case 'l':
@@ -584,7 +568,7 @@ main(int argc, char **argv)
 				{
 					if (opt->val != NULL && opt->val[0] != '\0')
 					{
-						param_set(opt->keyword, opt->val);
+						param_set(&source_conninfo, opt->keyword, opt->val);
 					}
 
 					if (strcmp(opt->keyword, "host") == 0 &&
@@ -614,7 +598,7 @@ main(int argc, char **argv)
 		}
 		else
 		{
-			param_set("dbname", runtime_options.dbname);
+			param_set(&source_conninfo, "dbname", runtime_options.dbname);
 		}
 	}
 
@@ -735,7 +719,7 @@ main(int argc, char **argv)
 			else
 			{
 				strncpy(runtime_options.host, argv[optind++], MAXLEN);
-				param_set("host", runtime_options.host);
+				param_set(&source_conninfo, "host", runtime_options.host);
 			}
 		}
 	}
@@ -1571,7 +1555,7 @@ tablespace_data_append(TablespaceDataList *list, const char *name, const char *o
 int
 get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 {
-	int i, retval;
+	int i;
 	char sqlquery[QUERY_STR_LEN];
 	PGresult *res;
 
@@ -1589,7 +1573,7 @@ get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 
 			PQclear(res);
 
-			return retval;
+			return ERR_DB_QUERY;
 		}
 
 	for (i = 0; i < PQntuples(res); i++)
@@ -1597,7 +1581,7 @@ get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 							   PQgetvalue(res, i, 2));
 
 	PQclear(res);
-	return retval;
+	return SUCCESS;
 }
 
 char *
@@ -1686,12 +1670,55 @@ get_tablespace_data_barman
 	return SUCCESS;
 }
 
+void
+get_barman_property(char *dst, char *name, char *local_repmgr_directory)
+{
+	PQExpBufferData command_output;
+	char buf[MAXLEN];
+	char command[MAXLEN];
+	char *p;
+
+	initPQExpBuffer(&command_output);
+
+	maxlen_snprintf(command,
+					"grep \"^\t%s:\" %s/show-server.txt",
+					name, local_repmgr_directory);
+	(void)local_command(command, &command_output);
+
+	maxlen_snprintf(buf, "\t%s: ", name);
+	p = string_skip_prefix(buf, command_output.data);
+	if (p == NULL)
+	{
+		log_err("Unexpected output from Barman: %s\n",
+				command_output.data);
+		exit(ERR_INTERNAL);
+	}
+
+	strncpy(dst, p, MAXLEN);
+	string_remove_trailing_newlines(dst);
+
+	termPQExpBuffer(&command_output);
+}
+
 static void
 do_standby_clone(void)
 {
 	PGconn	   *primary_conn = NULL;
-	PGconn	   *upstream_conn = NULL;
+	PGconn	   *source_conn = NULL;
 	PGresult   *res;
+
+	char		upstream_conninfo_str[MAXLEN];
+	bool		upstream_record_found = false;
+	int		    upstream_node_id = UNKNOWN_NODE_ID;
+
+
+	char        datadir_list_filename[MAXLEN];
+
+	/*
+	 * conninfo params for the actual upstream node (which might be different
+	 * to the node we're cloning from)
+	 */
+	t_conninfo_param_list upstream_conninfo;
 
 	enum {
 		barman,
@@ -1738,6 +1765,7 @@ do_standby_clone(void)
 
 	PQExpBufferData event_details;
 
+
 	/*
 	 * Detecting the appropriate mode
 	 */
@@ -1749,70 +1777,397 @@ do_standby_clone(void)
 		mode = pg_basebackup;
 
 	/*
-	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
-	 * directory (otherwise repmgr will default to the same directory as on the
-	 * source host)
+	 * In rsync mode, we need to check the SSH connection early
 	 */
+	if (mode == rsync)
+	{
+		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+		if (r != 0)
+		{
+			log_err(_("aborting, remote host %s is not reachable.\n"),
+					runtime_options.host);
+			exit(ERR_BAD_SSH);
+		}
+	}
+
+
+	/*
+	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
+	 * directory (otherwise repmgr will default to using the same directory
+	 * path as on the source host)
+	 */
+
 	if (runtime_options.dest_dir[0])
 	{
 		target_directory_provided = true;
 		log_notice(_("destination directory '%s' provided\n"),
 				   runtime_options.dest_dir);
 	}
-
-	if (mode != barman)
+	else if (mode == barman)
 	{
+		log_err(_("Barman mode requires a destination directory\n"));
+		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
+		exit(ERR_BAD_CONFIG);
+	}
 
-		param_set("application_name", options.node_name);
+	/*
+	 * target directory (-D/--pgdata) provided - use that as new data directory
+	 * (useful when executing backup on local machine only or creating the backup
+	 * in a different local directory when backup source is a remote host)
+	 */
+	if (target_directory_provided == true)
+	{
+		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_config_file, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_hba_file, runtime_options.dest_dir, MAXPGPATH);
+		strncpy(local_ident_file, runtime_options.dest_dir, MAXPGPATH);
+	}
+	/*
+	 * Otherwise use the same data directory as on the remote host
+	 */
+	else
+	{
+		strncpy(local_data_directory, master_data_directory, MAXPGPATH);
+		strncpy(local_config_file, master_config_file, MAXPGPATH);
+		strncpy(local_hba_file, master_hba_file, MAXPGPATH);
+		strncpy(local_ident_file, master_ident_file, MAXPGPATH);
 
-		/* Connect to check configuration */
-		log_info(_("connecting to upstream node\n"));
-		upstream_conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+		log_notice(_("setting data directory to: %s\n"), local_data_directory);
+		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
+	}
 
-		/* Verify that upstream node is a supported server version */
-		log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
-		server_version_num = check_server_version(upstream_conn, "master", true, NULL);
+	/* Check the local data directory can be used */
 
-		check_upstream_config(upstream_conn, server_version_num, true);
+	if (!create_pg_dir(local_data_directory, runtime_options.force))
+	{
+		log_err(_("unable to use directory %s ...\n"),
+				local_data_directory);
+		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+		exit(ERR_BAD_CONFIG);
+	}
 
-		if (get_cluster_size(upstream_conn, cluster_size) == false)
-			exit(ERR_DB_QUERY);
+	/*
+	 * Initialise list of conninfo parameters which will later be used
+	 * to create the `primary_conninfo` string in recovery.conf .
+	 *
+	 * We'll initialise it with the default values as seen by libpq,
+	 * and overwrite them with the host settings specified on the command
+	 * line. As it's possible the standby will be cloned from a node different
+	 * to its intended upstream, we'll later attempt to fetch the
+	 * upstream node record and overwrite the values set here with
+	 * those from the upstream node record.
+	 */
+	initialize_conninfo_params(&upstream_conninfo, true);
 
-		log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
-				 cluster_size);
+	if (strlen(runtime_options.host))
+	{
+		param_set(&upstream_conninfo, "host", runtime_options.host);
+	}
+	if (strlen(runtime_options.masterport))
+	{
+		param_set(&upstream_conninfo, "port", runtime_options.masterport);
+	}
+	if (strlen(runtime_options.dbname))
+	{
+		param_set(&upstream_conninfo, "dbname", runtime_options.dbname);
+	}
+	if (strlen(runtime_options.username))
+	{
+		param_set(&upstream_conninfo, "user", runtime_options.username);
+	}
+
+	/* Sanity-check barman connection and installation */
+	if (mode == barman)
+	{
+		char		command[MAXLEN];
+		bool		command_ok;
+		/*
+		 * Check that there is at least one valid backup
+		 */
+
+		log_info(_("Connecting to Barman server to verify backup for %s\n"), options.cluster_name);
+
+		maxlen_snprintf(command, "%s show-backup %s latest > /dev/null",
+						make_barman_ssh_command(),
+						options.cluster_name);
+		command_ok = local_command(command, NULL);
+		if (command_ok == false)
+		{
+			log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
+					options.cluster_name);
+			log_hint(_("Refer to the Barman documentation for more information\n"));
+
+			exit(ERR_BARMAN);
+		}
 
 		/*
-		 * If the upstream node is a standby, try to connect to the primary too so we
-		 * can write an event record
+		 * Create the local repmgr subdirectory
 		 */
-		if (is_standby(upstream_conn))
+
+		maxlen_snprintf(local_repmgr_directory, "%s/repmgr",   local_data_directory  );
+		maxlen_snprintf(datadir_list_filename,  "%s/data.txt", local_repmgr_directory);
+
+		if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
 		{
-			if (strlen(options.cluster_name))
+			log_err(_("unable to use directory %s ...\n"),
+					local_repmgr_directory);
+			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/*
+		 * Fetch server parameters from Barman
+		 */
+		log_info(_("Connecting to Barman server to fetch server parameters\n"));
+
+		maxlen_snprintf(command, "%s show-server %s > %s/show-server.txt",
+						make_barman_ssh_command(),
+						options.cluster_name,
+						local_repmgr_directory);
+
+		command_ok = local_command(command, NULL);
+
+		if (command_ok == false)
+		{
+			log_err(_("Unable to fetch server parameters from Barman server\n"));
+
+			exit(ERR_BARMAN);
+		}
+	}
+
+	/* By default attempt to connect to the upstream server */
+	if (runtime_options.no_upstream_connection == false)
+	{
+		/* Attempt to connect to the upstream server to verify its configuration */
+		log_info(_("connecting to upstream node\n"));
+
+		source_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
+
+		/*
+		 * Unless in barman mode, exit with an error;
+		 * establish_db_connection_by_params() will have already logged an error message
+		 */
+		if (PQstatus(source_conn) != CONNECTION_OK)
+		{
+			if (mode != barman)
 			{
-				primary_conn = get_master_connection(upstream_conn, options.cluster_name,
-													 NULL, NULL);
+				PQfinish(source_conn);
+				exit(ERR_DB_CON);
 			}
 		}
 		else
 		{
-			primary_conn = upstream_conn;
-		}
+			/*
+			 * If a connection was established, perform some sanity checks on the
+			 * provided upstream connection
+			 */
+			t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+			int query_result;
 
-		/*
-		 * If --recovery-min-apply-delay was passed, check that
-		 * we're connected to PostgreSQL 9.4 or later
-		 */
+			/* Verify that upstream node is a supported server version */
+			log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
+			server_version_num = check_server_version(source_conn, "master", true, NULL);
 
-		if (*runtime_options.recovery_min_apply_delay)
-		{
-			if (server_version_num < 90400)
+			check_upstream_config(source_conn, server_version_num, true);
+
+			if (get_cluster_size(source_conn, cluster_size) == false)
+				exit(ERR_DB_QUERY);
+
+			log_info(_("Successfully connected to upstream node. Current installation size is %s\n"),
+					 cluster_size);
+
+			/*
+			 * If --recovery-min-apply-delay was passed, check that
+			 * we're connected to PostgreSQL 9.4 or later
+			 */
+			if (*runtime_options.recovery_min_apply_delay)
 			{
-				log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
-				PQfinish(upstream_conn);
-				exit(ERR_BAD_CONFIG);
+				if (server_version_num < 90400)
+				{
+					log_err(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
+					PQfinish(source_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+
+			/*
+			 * If the upstream node is a standby, try to connect to the primary too so we
+			 * can write an event record
+			 */
+			if (is_standby(source_conn))
+			{
+				if (strlen(options.cluster_name))
+				{
+					primary_conn = get_master_connection(source_conn, options.cluster_name,
+														 NULL, NULL);
+				}
+			}
+			else
+			{
+				primary_conn = source_conn;
+			}
+
+			/*
+			 * Copy the source connection so that we have some default values,
+			 * particularly stuff like passwords extracted from PGPASSFILE;
+			 * these will be overridden from the upstream conninfo, if provided
+			 */
+			conn_to_param_list(source_conn, &upstream_conninfo);
+
+			/*
+			 * Attempt to find the upstream node record
+			 */
+			if (options.upstream_node == NO_UPSTREAM_NODE)
+				upstream_node_id = get_master_node_id(source_conn, options.cluster_name);
+			else
+				upstream_node_id = options.upstream_node;
+
+			query_result = get_node_record(source_conn, options.cluster_name, upstream_node_id, &upstream_node_record);
+
+			if (query_result)
+			{
+				upstream_record_found = true;
+				strncpy(upstream_conninfo_str, upstream_node_record.conninfo_str, MAXLEN);
 			}
 		}
+	}
 
+	if (mode == barman && PQstatus(source_conn) != CONNECTION_OK)
+	{
+		/*
+		 * Here we don't have a connection to the upstream node, and are executing
+		 * in Barman mode - we can try and connect via the Barman server to extract
+		 * the upstream node's conninfo string.
+		 *
+		 * To do this we need to extract Barman's conninfo string, replace the database
+		 * name with the repmgr one (they could well be different) and remotely execute
+		 * psql.
+		 */
+		char		    buf[MAXLEN];
+		char		    barman_conninfo_str[MAXLEN];
+		t_conninfo_param_list barman_conninfo;
+		char		   *errmsg = NULL;
+		bool		    parse_success,
+					    command_success;
+		char		    where_condition[MAXLEN];
+		PQExpBufferData command_output;
+		PQExpBufferData repmgr_conninfo_buf;
+
+		int c;
+
+		get_barman_property(barman_conninfo_str, "conninfo", local_repmgr_directory);
+
+		initialize_conninfo_params(&barman_conninfo, false);
+
+		parse_success = parse_conninfo_string(barman_conninfo_str, &barman_conninfo, errmsg);
+
+		if(parse_success == false)
+		{
+			log_err(_("Unable to parse barman conninfo string \"%s\":\n%s\n"),
+					barman_conninfo_str, errmsg);
+			exit(ERR_BARMAN);
+		}
+
+		/* Overwrite database name in the parsed parameter list */
+		param_set(&barman_conninfo, "dbname", runtime_options.dbname);
+
+		/* Rebuild the Barman conninfo string */
+		initPQExpBuffer(&repmgr_conninfo_buf);
+
+		for (c = 0; c < barman_conninfo.size && barman_conninfo.keywords[c] != NULL; c++)
+		{
+			if (repmgr_conninfo_buf.len != 0)
+				appendPQExpBufferChar(&repmgr_conninfo_buf, ' ');
+
+			/* XXX escape option->values */
+			appendPQExpBuffer(&repmgr_conninfo_buf, "%s=%s",
+							  barman_conninfo.keywords[c],
+							  barman_conninfo.values[c]);
+		}
+
+		log_verbose(LOG_DEBUG,
+					"repmgr database conninfo string on barman server: %s\n",
+					repmgr_conninfo_buf.data);
+
+		switch(options.upstream_node)
+		{
+			case NO_UPSTREAM_NODE:
+				maxlen_snprintf(where_condition, "type='master'");
+				break;
+			default:
+				maxlen_snprintf(where_condition, "id=%d", options.upstream_node);
+				break;
+		}
+
+		initPQExpBuffer(&command_output);
+		maxlen_snprintf(buf,
+						"ssh %s \"psql -Aqt \\\"%s\\\" -c \\\""
+						" SELECT conninfo"
+						" FROM repmgr_%s.repl_nodes"
+						" WHERE %s"
+						" AND active"
+						"\\\"\"", options.barman_server, repmgr_conninfo_buf.data,
+						options.cluster_name, where_condition);
+
+		termPQExpBuffer(&repmgr_conninfo_buf);
+
+		command_success = local_command(buf, &command_output);
+
+		if (command_success == false)
+		{
+			log_err(_("Unable to execute database query via Barman server\n"));
+			exit(ERR_BARMAN);
+		}
+		maxlen_snprintf(upstream_conninfo_str, "%s", command_output.data);
+		string_remove_trailing_newlines(upstream_conninfo_str);
+
+		upstream_record_found = true;
+		log_verbose(LOG_DEBUG,
+					"upstream node conninfo string extracted via barman server: %s\n",
+					upstream_conninfo_str);
+
+		termPQExpBuffer(&command_output);
+	}
+
+	if (upstream_record_found == true)
+	{
+		/*  parse returned upstream conninfo string to recovery primary_conninfo params*/
+		char	   *errmsg = NULL;
+		bool	    parse_success;
+
+		log_verbose(LOG_DEBUG, "parsing upstream conninfo string \"%s\"\n", upstream_conninfo_str);
+
+		parse_success = parse_conninfo_string(upstream_conninfo_str, &upstream_conninfo, errmsg);
+		if (parse_success == false)
+		{
+			log_err(_("Unable to parse conninfo string \"%s\" for upstream node:\n%s\n"),
+					upstream_conninfo_str, errmsg);
+
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+	else
+	{
+		/*
+		 * If no upstream node record found, we'll abort with an error here,
+		 * unless -F/--force is used, in which case we'll use the parameters
+		 * provided on the command line (and assume the user knows what they're
+		 * doing).
+		 */
+
+		if (!runtime_options.force)
+		{
+			log_err(_("No record found for upstream node\n"));
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+	}
+
+	if (mode != barman)
+	{
 		/*
 		 * Check that tablespaces named in any `tablespace_mapping` configuration
 		 * file parameters exist.
@@ -1832,7 +2187,7 @@ do_standby_clone(void)
 			if (server_version_num < 90400 && !runtime_options.rsync_only)
 			{
 				log_err(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only\n"));
-				PQfinish(upstream_conn);
+				PQfinish(source_conn);
 				exit(ERR_BAD_CONFIG);
 			}
 
@@ -1843,12 +2198,12 @@ do_standby_clone(void)
 								  "  FROM pg_tablespace "
 								  " WHERE pg_tablespace_location(oid) = '%s'",
 								  cell->old_dir);
-				res = PQexec(upstream_conn, sqlquery);
+				res = PQexec(source_conn, sqlquery);
 				if (PQresultStatus(res) != PGRES_TUPLES_OK)
 				{
-					log_err(_("unable to execute tablespace query: %s\n"), PQerrorMessage(upstream_conn));
+					log_err(_("unable to execute tablespace query: %s\n"), PQerrorMessage(source_conn));
 					PQclear(res);
-					PQfinish(upstream_conn);
+					PQfinish(source_conn);
 					exit(ERR_BAD_CONFIG);
 				}
 
@@ -1856,7 +2211,7 @@ do_standby_clone(void)
 				{
 					log_err(_("no tablespace matching path '%s' found\n"), cell->old_dir);
 					PQclear(res);
-					PQfinish(upstream_conn);
+					PQfinish(source_conn);
 					exit(ERR_BAD_CONFIG);
 				}
 			}
@@ -1885,13 +2240,13 @@ do_standby_clone(void)
 						  "  ORDER BY 1 ");
 
 		log_debug(_("standby clone: %s\n"), sqlquery);
-		res = PQexec(upstream_conn, sqlquery);
+		res = PQexec(source_conn, sqlquery);
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
 			log_err(_("can't get info about data directory and configuration files: %s\n"),
-					PQerrorMessage(upstream_conn));
+					PQerrorMessage(source_conn));
 			PQclear(res);
-			PQfinish(upstream_conn);
+			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -1900,7 +2255,7 @@ do_standby_clone(void)
 		{
 			log_err("STANDBY CLONE should be run by a SUPERUSER\n");
 			PQclear(res);
-			PQfinish(upstream_conn);
+			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -1942,66 +2297,6 @@ do_standby_clone(void)
 		}
 
 		PQclear(res);
-
-	}
-
-	/*
-	 * target directory (-D/--pgdata) provided - use that as new data directory
-	 * (useful when executing backup on local machine only or creating the backup
-	 * in a different local directory when backup source is a remote host)
-	 */
-	if (target_directory_provided)
-	{
-		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_config_file, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_hba_file, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_ident_file, runtime_options.dest_dir, MAXPGPATH);
-	}
-	else if (mode == barman)
-	{
-		log_err(_("Barman mode requires a destination directory\n"));
-		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
-		exit(ERR_BAD_CONFIG);
-	}
-	/*
-	 * Otherwise use the same data directory as on the remote host
-	 */
-	else
-	{
-		strncpy(local_data_directory, master_data_directory, MAXPGPATH);
-		strncpy(local_config_file, master_config_file, MAXPGPATH);
-		strncpy(local_hba_file, master_hba_file, MAXPGPATH);
-		strncpy(local_ident_file, master_ident_file, MAXPGPATH);
-
-		log_notice(_("setting data directory to: %s\n"), local_data_directory);
-		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
-	}
-
-	/*
-	 * In rsync mode, we need to check the SSH connection early
-	 */
-	if (mode == rsync)
-	{
-		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
-		if (r != 0)
-		{
-			log_err(_("aborting, remote host %s is not reachable.\n"),
-					runtime_options.host);
-			retval = ERR_BAD_SSH;
-			goto stop_backup;
-		}
-	}
-
-	/* Check the local data directory can be used */
-
-	if (!create_pg_dir(local_data_directory, runtime_options.force))
-	{
-		log_err(_("unable to use directory %s ...\n"),
-				local_data_directory);
-		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
-		r = ERR_BAD_CONFIG;
-		retval = ERR_BAD_CONFIG;
-		goto stop_backup;
 	}
 
 	/*
@@ -2014,9 +2309,9 @@ do_standby_clone(void)
 	 */
 	if (mode != barman && options.use_replication_slots)
 	{
-		if (create_replication_slot(upstream_conn, repmgr_slot_name, server_version_num) == false)
+		if (create_replication_slot(source_conn, repmgr_slot_name, server_version_num) == false)
 		{
-			PQfinish(upstream_conn);
+			PQfinish(source_conn);
 			exit(ERR_DB_QUERY);
 		}
 	}
@@ -2043,7 +2338,6 @@ do_standby_clone(void)
 		char		buf[MAXLEN];
 		char		backup_directory[MAXLEN];
 		char        backup_id[MAXLEN] = "";
-		char        datadir_list_filename[MAXLEN];
 		char       *p, *q;
 		PQExpBufferData command_output;
 		TablespaceDataList tablespace_list = { NULL, NULL };
@@ -2054,65 +2348,12 @@ do_standby_clone(void)
 
 		if (mode == barman)
 		{
-			bool		command_ok;
-			/*
-			 * Check that there is at least one valid backup
-			 */
-
-			maxlen_snprintf(command, "%s show-backup %s latest > /dev/null",
-							make_barman_ssh_command(),
-							options.cluster_name);
-			command_ok = local_command(command, NULL);
-			if (command_ok == false)
-			{
-				log_err(_("No valid backup for server %s was found in the Barman catalogue\n"),
-						options.barman_server);
-				log_hint(_("Refer to the Barman documentation for more information\n"));
-				exit(ERR_INTERNAL);
-			}
 
 			/*
 			 * Locate Barman's backup directory
 			 */
 
-			maxlen_snprintf(command, "%s show-server %s | grep 'backup_directory'",
-							make_barman_ssh_command(),
-							options.cluster_name);
-
-			initPQExpBuffer(&command_output);
-			(void)local_command(
-				command,
-				&command_output);
-
-			p = string_skip_prefix("\tbackup_directory: ", command_output.data);
-			if (p == NULL)
-			{
-				log_err("Unexpected output from Barman: %s\n",
-						command_output.data);
-				exit(ERR_INTERNAL);
-			}
-
-			strncpy(backup_directory, p, MAXLEN);
-			string_remove_trailing_newlines(backup_directory);
-
-			termPQExpBuffer(&command_output);
-
-			/*
-			 * Create the local repmgr subdirectory
-			 */
-
-			maxlen_snprintf(local_repmgr_directory, "%s/repmgr",   local_data_directory  );
-			maxlen_snprintf(datadir_list_filename,  "%s/data.txt", local_repmgr_directory);
-
-			if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
-			{
-				log_err(_("unable to use directory %s ...\n"),
-						local_repmgr_directory);
-				log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
-				r = ERR_BAD_CONFIG;
-				retval = ERR_BAD_CONFIG;
-				goto stop_backup;
-			}
+			get_barman_property(backup_directory, "backup_directory", local_repmgr_directory);
 
 			/*
 			 * Read the list of backup files into a local file. In the
@@ -2139,7 +2380,7 @@ do_standby_clone(void)
 				if (fi == NULL)
 				{
 					log_err("Cannot launch command: %s\n", command);
-					exit(ERR_INTERNAL);
+					exit(ERR_BARMAN);
 				}
 
 				fd = fopen(datadir_list_filename, "w");
@@ -2160,7 +2401,7 @@ do_standby_clone(void)
 					{
 						log_err("Unexpected output from \"barman list-files\": %s\n",
 								output);
-						exit(ERR_INTERNAL);
+						exit(ERR_BARMAN);
 					}
 
 					/*
@@ -2349,14 +2590,14 @@ do_standby_clone(void)
 			 * From 9.1 default is to wait for a sync standby to ack, avoid that by
 			 * turning off sync rep for this session
 			 */
-			if (set_config_bool(upstream_conn, "synchronous_commit", false) == false)
+			if (set_config_bool(source_conn, "synchronous_commit", false) == false)
 			{
 				r = ERR_BAD_CONFIG;
 				retval = ERR_BAD_CONFIG;
 				goto stop_backup;
 			}
 
-			if (start_backup(upstream_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
+			if (start_backup(source_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
 			{
 				r = ERR_BAD_BASEBACKUP;
 				retval = ERR_BAD_BASEBACKUP;
@@ -2405,7 +2646,7 @@ do_standby_clone(void)
 			}
 
 			/* Copy tablespaces and, if required, remap to a new location */
-			retval = get_tablespace_data(upstream_conn, &tablespace_list);
+			retval = get_tablespace_data(source_conn, &tablespace_list);
 			if(retval != SUCCESS) goto stop_backup;
 		}
 
@@ -2700,7 +2941,7 @@ stop_backup:
 	if (mode == rsync && pg_start_backup_executed)
 	{
 		log_notice(_("notifying master about backup completion...\n"));
-		if (stop_backup(upstream_conn, last_wal_segment) == false)
+		if (stop_backup(source_conn, last_wal_segment) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
 			retval = ERR_BAD_BASEBACKUP;
@@ -2713,14 +2954,14 @@ stop_backup:
 		/* If a replication slot was previously created, drop it */
 		if (options.use_replication_slots)
 		{
-			drop_replication_slot(upstream_conn, repmgr_slot_name);
+			drop_replication_slot(source_conn, repmgr_slot_name);
 		}
 
 		log_err(_("unable to take a base backup of the master server\n"));
 		log_warning(_("destination directory (%s) may need to be cleaned up manually\n"),
 					local_data_directory);
 
-		PQfinish(upstream_conn);
+		PQfinish(source_conn);
 		exit(retval);
 	}
 
@@ -2791,11 +3032,14 @@ stop_backup:
 	}
 
 	/* Finally, write the recovery.conf file */
-	create_recovery_file(local_data_directory, upstream_conn);
 
-	/* In Barman mode, remove local_repmgr_directory */
+	create_recovery_file(local_data_directory, &upstream_conninfo);
+
 	if (mode == barman)
-		rmdir(local_repmgr_directory);
+	{
+		/* In Barman mode, remove local_repmgr_directory */
+		rmtree(local_repmgr_directory, true);
+	}
 
 	switch(mode)
 	{
@@ -2858,8 +3102,20 @@ stop_backup:
 						  runtime_options.masterport);
 
 		appendPQExpBuffer(&event_details,
-						  _("; backup method: %s"),
-						  runtime_options.rsync_only ? "rsync" : "pg_basebackup");
+						  _("; backup method: "));
+
+		switch(mode)
+		{
+			case rsync:
+				appendPQExpBuffer(&event_details, "rsync");
+				break;
+			case pg_basebackup:
+				appendPQExpBuffer(&event_details, "pg_basebackup");
+				break;
+			case barman:
+				appendPQExpBuffer(&event_details, "barman");
+				break;
+		}
 
 		appendPQExpBuffer(&event_details,
 						  _("; --force: %s"),
@@ -2873,7 +3129,7 @@ stop_backup:
 							event_details.data);
 	}
 
-	PQfinish(upstream_conn);
+	PQfinish(source_conn);
 	exit(retval);
 }
 
@@ -3214,6 +3470,7 @@ do_standby_follow(void)
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
 	int			master_id = 0;
+	t_conninfo_param_list upstream_conninfo;
 
 	int			r,
 				retval;
@@ -3291,7 +3548,7 @@ do_standby_follow(void)
 	/* primary server info explictly provided - attempt to connect to that */
 	else
 	{
-		master_conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+		master_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, true);
 
 		master_id = get_master_node_id(master_conn, options.cluster_name);
 
@@ -3347,7 +3604,10 @@ do_standby_follow(void)
 	log_info(_("changing standby's master\n"));
 
 	/* write the recovery.conf file */
-	if (!create_recovery_file(data_dir, master_conn))
+	initialize_conninfo_params(&upstream_conninfo, false);
+	conn_to_param_list(master_conn, &upstream_conninfo);
+
+	if (!create_recovery_file(data_dir, &upstream_conninfo))
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
@@ -4434,11 +4694,11 @@ do_witness_create(void)
 	get_conninfo_value(options.conninfo, "user", repmgr_user);
 	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
 
-	param_set("user", repmgr_user);
-	param_set("dbname", repmgr_db);
+	param_set(&source_conninfo, "user", repmgr_user);
+	param_set(&source_conninfo, "dbname", repmgr_db);
 
 	/* We need to connect to check configuration and copy it */
-	masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, false);
+	masterconn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
 
 	if (PQstatus(masterconn) != CONNECTION_OK)
 	{
@@ -4774,15 +5034,15 @@ do_witness_register(PGconn *masterconn)
 	get_conninfo_value(options.conninfo, "user", repmgr_user);
 	get_conninfo_value(options.conninfo, "dbname", repmgr_db);
 
-	param_set("user", repmgr_user);
-	param_set("dbname", repmgr_db);
+	param_set(&source_conninfo, "user", repmgr_user);
+	param_set(&source_conninfo, "dbname", repmgr_db);
 
 	/* masterconn will only be set when called from do_witness_create() */
 	if (PQstatus(masterconn) != CONNECTION_OK)
 	{
 		event_is_register = true;
 
-		masterconn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, false);
+		masterconn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
 
 		if (PQstatus(masterconn) != CONNECTION_OK)
 		{
@@ -5070,6 +5330,7 @@ do_help(void)
 	printf(_("Command-specific configuration options:\n"));
 	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
 	printf(_("  -r, --rsync-only                    (standby clone) use only rsync, not pg_basebackup\n"));
+	printf(_("  --no-upstream-connection            (standby clone) when using Barman, do not connect to upstream node\n"));
 	printf(_("  --without-barman                    (standby clone) do not use Barman even if configured\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    (standby clone, follow) set recovery_min_apply_delay\n" \
 			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
@@ -5110,10 +5371,10 @@ do_help(void)
 
 
 /*
- * Creates a recovery file for a standby.
+ * Creates a recovery.conf file for a standby
  */
 static bool
-create_recovery_file(const char *data_dir, PGconn *primary_conn)
+create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conninfo)
 {
 	FILE	   *recovery_file;
 	char		recovery_file_path[MAXLEN];
@@ -5139,7 +5400,7 @@ create_recovery_file(const char *data_dir, PGconn *primary_conn)
 	log_debug(_("recovery.conf: %s"), line);
 
 	/* primary_conninfo = '...' */
-	write_primary_conninfo(line, primary_conn);
+	write_primary_conninfo(line, upstream_conninfo);
 
 	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
@@ -5589,6 +5850,13 @@ check_parameters_for_action(const int action)
 			{
 				item_list_append(&cli_warnings, _("-c/--fast-checkpoint has no effect when using -r/--rsync-only"));
 			}
+
+			if (runtime_options.no_upstream_connection == true &&
+				(strcmp(options.barman_server, "") == 0 || runtime_options.without_barman == true))
+			{
+				item_list_append(&cli_warnings, _("--no-upstream-connection only effective in Barman mode"));
+			}
+
 			config_file_required = false;
 			break;
 		case STANDBY_SWITCHOVER:
@@ -5660,6 +5928,11 @@ check_parameters_for_action(const int action)
 		if (wal_keep_segments_used)
 		{
 			item_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
+		}
+
+		if (runtime_options.no_upstream_connection == true)
+		{
+			item_list_append(&cli_warnings, _("--no-upstream-connection can only be used when executing STANDBY CLONE in Barman mode"));
 		}
 	}
 
@@ -5986,37 +6259,34 @@ create_schema(PGconn *conn)
 
 
 static void
-write_primary_conninfo(char *line, PGconn *primary_conn)
+write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 {
-	PQconninfoOption *connOptions;
-	PQconninfoOption *option;
 	PQExpBufferData conninfo_buf;
 	bool application_name_provided = false;
-
-	connOptions = PQconninfo(primary_conn);
+	int c;
 
 	initPQExpBuffer(&conninfo_buf);
 
-	for (option = connOptions; option && option->keyword; option++)
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
 	{
 		/*
 		 * Skip empty settings and ones which don't make any sense in
 		 * recovery.conf
 		 */
-		if (strcmp(option->keyword, "dbname") == 0 ||
-		    strcmp(option->keyword, "replication") == 0 ||
-		    (option->val == NULL) ||
-		    (option->val != NULL && option->val[0] == '\0'))
+		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
+		    strcmp(param_list->keywords[c], "replication") == 0 ||
+		    (param_list->values[c] == NULL) ||
+		    (param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
 			continue;
 
 		if (conninfo_buf.len != 0)
 			appendPQExpBufferChar(&conninfo_buf, ' ');
 
-		if (strcmp(option->keyword, "application_name") == 0)
+		if (strcmp(param_list->keywords[c], "application_name") == 0)
 			application_name_provided = true;
 
-		/* XXX escape option->val */
-		appendPQExpBuffer(&conninfo_buf, "%s=%s", option->keyword, option->val);
+		/* XXX escape option->values */
+		appendPQExpBuffer(&conninfo_buf, "%s=%s", param_list->keywords[c], param_list->values[c]);
 	}
 
 	/* `application_name` not provided - default to repmgr node name */
@@ -6415,7 +6685,7 @@ do_check_upstream_config(void)
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("connecting to upstream server\n"));
 
-	conn = establish_db_connection_by_params((const char**)param_keywords, (const char**)param_values, true);
+	conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, true);
 
 
 	/* Verify that upstream server is a supported server version */
@@ -6605,7 +6875,10 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 
 		pclose(fp);
 
-		log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
+		if (outputbuf->data != NULL)
+			log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
+		else
+			log_verbose(LOG_DEBUG, "local_command(): no output returned\n");
 
 		return true;
 	}
@@ -6698,8 +6971,50 @@ copy_file(const char *old_filename, const char *new_filename)
 	return true;
 }
 
+
+
+
 static void
-param_set(const char *param, const char *value)
+initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults)
+{
+	PQconninfoOption *defs = NULL;
+	PQconninfoOption *def;
+	int c;
+
+	defs = PQconndefaults();
+	param_list->size = 0;
+
+	/* Count maximum number of parameters */
+	for (def = defs; def->keyword; def++)
+		param_list->size ++;
+
+	/* Initialize our internal parameter list */
+	param_list->keywords = pg_malloc0(sizeof(char *) * (param_list->size + 1));
+	param_list->values = pg_malloc0(sizeof(char *) * (param_list->size + 1));
+
+	for (c = 0; c <= param_list->size; c++)
+	{
+		param_list->keywords[c] = NULL;
+		param_list->values[c] = NULL;
+	}
+
+	if (set_defaults == true)
+	{
+		/* Pre-set any defaults */
+
+		for (def = defs; def->keyword; def++)
+		{
+			if (def->val != NULL && def->val[0] != '\0')
+			{
+				param_set(param_list, def->keyword, def->val);
+			}
+		}
+	}
+}
+
+
+static void
+param_set(t_conninfo_param_list *param_list, const char *param, const char *value)
 {
 	int c;
 	int value_len = strlen(value) + 1;
@@ -6707,15 +7022,15 @@ param_set(const char *param, const char *value)
 	/*
 	 * Scan array to see if the parameter is already set - if not, replace it
 	 */
-	for (c = 0; c <= param_count && param_keywords[c] != NULL; c++)
+	for (c = 0; c <= param_list->size && param_list->keywords[c] != NULL; c++)
 	{
-		if (strcmp(param_keywords[c], param) == 0)
+		if (strcmp(param_list->keywords[c], param) == 0)
 		{
-			if (param_values[c] != NULL)
-				pfree(param_values[c]);
+			if (param_list->values[c] != NULL)
+				pfree(param_list->values[c]);
 
-			param_values[c] = pg_malloc0(value_len);
-			strncpy(param_values[c], value, value_len);
+			param_list->values[c] = pg_malloc0(value_len);
+			strncpy(param_list->values[c], value, value_len);
 
 			return;
 		}
@@ -6724,14 +7039,14 @@ param_set(const char *param, const char *value)
 	/*
 	 * Parameter not in array - add it and its associated value
 	 */
-	if (c < param_count)
+	if (c < param_list->size)
 	{
 		int param_len = strlen(param) + 1;
-		param_keywords[c] = pg_malloc0(param_len);
-		param_values[c] = pg_malloc0(value_len);
+		param_list->keywords[c] = pg_malloc0(param_len);
+		param_list->values[c] = pg_malloc0(value_len);
 
-		strncpy(param_keywords[c], param, param_len);
-		strncpy(param_values[c], value, value_len);
+		strncpy(param_list->keywords[c], param, param_len);
+		strncpy(param_list->values[c], value, value_len);
 	}
 
 	/*
@@ -6739,6 +7054,50 @@ param_set(const char *param, const char *value)
 	 * the array is full, but it's highly improbable so we won't
 	 * handle it at the moment.
 	 */
+}
+
+
+static bool
+parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg)
+{
+	PQconninfoOption *connOptions;
+	PQconninfoOption *option;
+
+	connOptions = PQconninfoParse(conninfo_str, &errmsg);
+
+	if (connOptions == NULL)
+		return false;
+
+	for (option = connOptions; option && option->keyword; option++)
+	{
+		/* Ignore non-set or blank parameter values*/
+		if((option->val == NULL) ||
+		   (option->val != NULL && option->val[0] == '\0'))
+			continue;
+
+		param_set(param_list, option->keyword, option->val);
+	}
+
+	return true;
+}
+
+
+static void
+conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
+{
+	PQconninfoOption *connOptions;
+	PQconninfoOption *option;
+
+	connOptions = PQconninfo(conn);
+	for (option = connOptions; option && option->keyword; option++)
+	{
+		/* Ignore non-set or blank parameter values*/
+		if((option->val == NULL) ||
+		   (option->val != NULL && option->val[0] == '\0'))
+			continue;
+
+		param_set(param_list, option->keyword, option->val);
+	}
 }
 
 
