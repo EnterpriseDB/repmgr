@@ -5379,10 +5379,15 @@ create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conni
 	FILE	   *recovery_file;
 	char		recovery_file_path[MAXLEN];
 	char		line[MAXLEN];
+	mode_t		um;
 
 	maxlen_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_COMMAND_FILE);
 
+	/* Set umask to 0600 */
+	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
 	recovery_file = fopen(recovery_file_path, "w");
+	umask(um);
+
 	if (recovery_file == NULL)
 	{
 		log_err(_("unable to create recovery.conf file at '%s'\n"), recovery_file_path);
