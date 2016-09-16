@@ -613,7 +613,7 @@ Now we can clone a standby using the Barman server:
 Advanced options for cloning a standby
 --------------------------------------
 
-The above section demonstrates the simplest possible way to cloneb a standby
+The above section demonstrates the simplest possible way to clone a standby
 server. Depending on your circumstances, finer-grained controlover the cloning
 process may be necessary.
 
