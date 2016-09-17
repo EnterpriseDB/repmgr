@@ -614,8 +614,8 @@ Advanced options for cloning a standby
 --------------------------------------
 
 The above section demonstrates the simplest possible way to clone a standby
-server. Depending on your circumstances, finer-grained controlover the cloning
-process may be necessary.
+server. Depending on your circumstances, finer-grained control over the
+cloning process may be necessary.
 
 ### pg_basebackup options when cloning a standby
 
@@ -990,7 +990,7 @@ should have been updated to reflect this:
   instructed to point to the new master (e.g. with `repmgr standby follow`).
 - You must ensure that following a server start using `pg_ctl`, log output
   is not send to STDERR (the default behaviour). If logging is not configured,
-  We recommend setting `logging_collector=on` in `postgresql.conf` and
+  we recommend setting `logging_collector=on` in `postgresql.conf` and
   providing an explicit `-l/--log` setting in `repmgr.conf`'s `pg_ctl_options`
   parameter.
 
