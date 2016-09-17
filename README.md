@@ -978,7 +978,7 @@ should have been updated to reflect this:
   at a two-server master/standby replication cluster and currently does
   not support additional standbys.
 - `repmgr standby switchover` is designed to use the `pg_rewind` utility,
-  standard in 9.5 and later and available for seperately in 9.3 and 9.4
+  standard in 9.5 and later and available for separately in 9.3 and 9.4
   (see note below)
 - `pg_rewind` *requires* that either `wal_log_hints` is enabled, or that
    data checksums were enabled when the cluster was initialized. See the
