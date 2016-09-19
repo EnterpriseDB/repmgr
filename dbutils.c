@@ -214,7 +214,7 @@ check_cluster_schema(PGconn *conn)
 	char		sqlquery[QUERY_STR_LEN];
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT 1 FROM pg_namespace WHERE nspname = '%s'",
+					  "SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = '%s'",
 					  get_repmgr_schema());
 
 	log_verbose(LOG_DEBUG, "check_cluster_schema(): %s\n", sqlquery);
@@ -409,7 +409,7 @@ guc_set(PGconn *conn, const char *parameter, const char *op,
 	int			retval = 1;
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT true FROM pg_settings "
+					  "SELECT true FROM pg_catalog.pg_settings "
 					  " WHERE name = '%s' AND setting %s '%s'",
 					  parameter, op, value);
 
@@ -445,7 +445,7 @@ guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 	int			retval = 1;
 
 	sqlquery_snprintf(sqlquery,
-					  "SELECT true FROM pg_settings "
+					  "SELECT true FROM pg_catalog.pg_settings "
 					  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
 					  parameter, datatype, op, value, datatype);
 
@@ -477,7 +477,7 @@ get_cluster_size(PGconn *conn, char *size)
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT pg_catalog.pg_size_pretty(SUM(pg_catalog.pg_database_size(oid))::bigint) "
-					  "	 FROM pg_database ");
+					  "	 FROM pg_catalog.pg_database ");
 
 	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s\n", sqlquery);
 
@@ -508,7 +508,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT name, setting "
-					  " FROM pg_settings WHERE name = '%s'",
+					  "  FROM pg_catalog.pg_settings WHERE name = '%s'",
 					  setting);
 
 	log_verbose(LOG_DEBUG, "get_pg_setting(): %s\n", sqlquery);
@@ -986,13 +986,13 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num)
 	if (server_version_num >= 90600)
 	{
 		sqlquery_snprintf(sqlquery,
-						  "SELECT * FROM pg_create_physical_replication_slot('%s', TRUE)",
+						  "SELECT * FROM pg_catalog.pg_create_physical_replication_slot('%s', TRUE)",
 						  slot_name);
 	}
 	else
 	{
 		sqlquery_snprintf(sqlquery,
-						  "SELECT * FROM pg_create_physical_replication_slot('%s')",
+						  "SELECT * FROM pg_catalog.pg_create_physical_replication_slot('%s')",
 						  slot_name);
 	}
 
@@ -1022,7 +1022,7 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT slot_name, slot_type, active "
-                      "  FROM pg_replication_slots "
+                      "  FROM pg_catalog.pg_replication_slots "
 					  " WHERE slot_name = '%s' ",
 					  slot_name);
 

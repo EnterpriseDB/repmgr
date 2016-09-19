@@ -1561,7 +1561,7 @@ get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 
 	sqlquery_snprintf(sqlquery,
 					  " SELECT spcname, oid, pg_tablespace_location(oid) AS spclocation "
-					  "   FROM pg_tablespace "
+					  "   FROM pg_catalog.pg_tablespace "
 					  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
 
 	res = PQexec(upstream_conn, sqlquery);
@@ -2195,7 +2195,7 @@ do_standby_clone(void)
 			{
 				sqlquery_snprintf(sqlquery,
 								  "SELECT spcname "
-								  "  FROM pg_tablespace "
+								  "  FROM pg_catalog.pg_tablespace "
 								  " WHERE pg_tablespace_location(oid) = '%s'",
 								  cell->old_dir);
 				res = PQexec(source_conn, sqlquery);
@@ -2230,7 +2230,7 @@ do_standby_clone(void)
 		sqlquery_snprintf(sqlquery,
 						  "  WITH dd AS ( "
 						  "    SELECT setting "
-						  "      FROM pg_settings "
+						  "      FROM pg_catalog.pg_settings "
 						  "     WHERE name = 'data_directory' "
 						  "  ) "
 						  "    SELECT ps.name, ps.setting, "
@@ -4516,15 +4516,15 @@ do_standby_archive_config(void)
 					  "WITH files AS ( "
 					  "  WITH dd AS ( "
 					  "    SELECT setting "
-					  "     FROM pg_settings "
+					  "     FROM pg_catalog.pg_settings "
 					  "    WHERE name = 'data_directory') "
 					  " SELECT distinct(sourcefile) AS config_file"
-					  "   FROM dd, pg_settings ps "
+					  "   FROM dd, pg_catalog.pg_settings ps "
 					  "  WHERE ps.sourcefile IS NOT NULL "
 					  "    AND ps.sourcefile ~ ('^' || dd.setting) "
 					  "     UNION "
 					  "  SELECT ps.setting  AS config_file"
-					  "    FROM dd, pg_settings ps "
+					  "    FROM dd, pg_catalog.pg_settings ps "
 					  "   WHERE ps.name IN ( 'config_file', 'hba_file', 'ident_file') "
 					  "     AND ps.setting ~ ('^' || dd.setting) "
 					  ") "
