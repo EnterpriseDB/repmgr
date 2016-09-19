@@ -4003,6 +4003,13 @@ do_standby_switchover(void)
 
 		for(i = 0; config_paths[i] && config_file_found == false; ++i)
 		{
+			/*
+			 * Don't attempt to check for an empty filename - this might be the case
+			 * if no local configuration file was found.
+			 */
+			if (!strlen(config_paths[i]))
+				continue;
+
 			log_verbose(LOG_INFO, _("checking \"%s\"\n"), config_paths[i]);
 
 			maxlen_snprintf(command,
