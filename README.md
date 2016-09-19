@@ -7,6 +7,8 @@ replication capabilities with utilities to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or switchover
 operations.
 
+The current `repmgr` version, 3.1.5, supports all PostgreSQL versions from
+9.3, including the upcoming 9.6.
 
 Overview
 --------
