@@ -3697,7 +3697,7 @@ do_standby_switchover(void)
 	/* the remote server is the primary to be demoted */
 	char	    remote_conninfo[MAXCONNINFO] = "";
 	char	    remote_host[MAXLEN];
-	char        remote_data_directory[MAXLEN];
+	char        remote_data_directory[MAXPGPATH] = "";
 	int         remote_node_id;
 	char        remote_node_replication_state[MAXLEN] = "";
 	char        remote_archive_config_dir[MAXLEN];

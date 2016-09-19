@@ -504,7 +504,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 	int			i;
-	bool        success = true;
+	bool        success = false;
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT name, setting "
