@@ -22,6 +22,7 @@
 #define _STRUTIL_H_
 
 #include <stdlib.h>
+#include "pqexpbuffer.h"
 #include "errcode.h"
 
 
@@ -48,4 +49,6 @@ extern int
 maxlen_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
+extern void
+appendShellString(PQExpBuffer buf, const char *str);
 #endif   /* _STRUTIL_H_ */

@@ -54,7 +54,7 @@
 #include <unistd.h>
 
 #include "storage/fd.h"         /* for PG_TEMP_FILE_PREFIX */
-#include "pqexpbuffer.h"
+
 
 #include "log.h"
 #include "config.h"
@@ -3709,6 +3709,8 @@ do_standby_switchover(void)
 	char	    remote_conninfo[MAXCONNINFO] = "";
 	char	    remote_host[MAXLEN];
 	char        remote_data_directory[MAXPGPATH] = "";
+	char        remote_path[MAXPGPATH] = "";
+
 	int         remote_node_id;
 	char        remote_node_replication_state[MAXLEN] = "";
 	char        remote_archive_config_dir[MAXLEN];
@@ -3716,7 +3718,7 @@ do_standby_switchover(void)
 	int			i,
 				r = 0;
 
-	char	    command[MAXLEN];
+	PQExpBufferData remote_command_str;
 	PQExpBufferData command_output;
 
 	char	    repmgr_db_cli_params[MAXLEN] = "";
@@ -3815,16 +3817,24 @@ do_standby_switchover(void)
 
 	log_debug("master's data directory is: %s\n", remote_data_directory);
 
-	maxlen_snprintf(command,
-					"ls %s/PG_VERSION >/dev/null 2>&1 && echo 1 || echo 0",
+	maxlen_snprintf(remote_path,
+					"%s/PG_VERSION",
 					remote_data_directory);
+
+	initPQExpBuffer(&remote_command_str);
+	appendPQExpBuffer(&remote_command_str, "ls ");
+	appendShellString(&remote_command_str, remote_path);
+	appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
+
 	initPQExpBuffer(&command_output);
 
 	(void)remote_command(
 		remote_host,
 		runtime_options.remote_user,
-		command,
+		remote_command_str.data,
 		&command_output);
+
+	termPQExpBuffer(&remote_command_str);
 
 	if (*command_output.data == '1')
 	{
@@ -3891,17 +3901,21 @@ do_standby_switchover(void)
 
 		/* check pg_rewind actually exists on remote */
 
-		maxlen_snprintf(command,
-						"ls -1 %s >/dev/null 2>&1 && echo 1 || echo 0",
-						remote_pg_rewind);
+		initPQExpBuffer(&remote_command_str);
+
+		appendPQExpBuffer(&remote_command_str, "ls ");
+		appendShellString(&remote_command_str, remote_pg_rewind);
+		appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
 
 		initPQExpBuffer(&command_output);
 
 		(void)remote_command(
 			remote_host,
 			runtime_options.remote_user,
-			command,
+			remote_command_str.data,
 			&command_output);
+
+		termPQExpBuffer(&remote_command_str);
 
 		if (*command_output.data == '0')
 		{
@@ -3969,17 +3983,21 @@ do_standby_switchover(void)
 					runtime_options.remote_config_file,
 					remote_host);
 
-		maxlen_snprintf(command,
-						"ls -1 %s >/dev/null 2>&1 && echo 1 || echo 0",
-						runtime_options.remote_config_file);
+		initPQExpBuffer(&remote_command_str);
+		appendPQExpBuffer(&remote_command_str, "ls ");
+
+		appendShellString(&remote_command_str, runtime_options.remote_config_file);
+		appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
 
 		initPQExpBuffer(&command_output);
 
 		(void)remote_command(
 			remote_host,
 			runtime_options.remote_user,
-			command,
+			remote_command_str.data,
 			&command_output);
+
+		termPQExpBuffer(&remote_command_str);
 
 		if (*command_output.data == '0')
 		{
@@ -3987,7 +4005,7 @@ do_standby_switchover(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		termPQExpBuffer(&command_output);
+
 
 		log_verbose(LOG_INFO, _("remote configuration file \"%s\" found on remote server\n"),
 					runtime_options.remote_config_file);
@@ -4023,17 +4041,21 @@ do_standby_switchover(void)
 
 			log_verbose(LOG_INFO, _("checking \"%s\"\n"), config_paths[i]);
 
-			maxlen_snprintf(command,
-							"ls -1 %s >/dev/null 2>&1 && echo 1 || echo 0",
-							config_paths[i]);
+			initPQExpBuffer(&remote_command_str);
+			appendPQExpBuffer(&remote_command_str, "ls ");
+
+			appendShellString(&remote_command_str, config_paths[i]);
+			appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
 
 			initPQExpBuffer(&command_output);
 
 			(void)remote_command(
 				remote_host,
 				runtime_options.remote_user,
-				command,
+				remote_command_str.data,
 				&command_output);
+
+			termPQExpBuffer(&remote_command_str);
 
 			if (*command_output.data == '1')
 			{
@@ -4076,23 +4098,27 @@ do_standby_switchover(void)
 
 		log_verbose(LOG_DEBUG, "remote_archive_config_dir: %s\n", remote_archive_config_dir);
 
-		maxlen_snprintf(command,
-						"%s standby archive-config -f %s --config-archive-dir=%s",
-						make_pg_path("repmgr"),
-						runtime_options.remote_config_file,
-						remote_archive_config_dir);
+		initPQExpBuffer(&remote_command_str);
+		appendPQExpBuffer(&remote_command_str,
+						  "%s standby archive-config -f ",
+						  make_pg_path("repmgr"));
+		appendShellString(&remote_command_str,	runtime_options.remote_config_file);
+		appendPQExpBuffer(&remote_command_str,
+						  " --config-archive-dir=");
+		appendShellString(&remote_command_str, remote_archive_config_dir);
 
-		log_debug("Executing:\n%s\n", command);
+		log_debug("Executing:\n%s\n", remote_command_str.data);
 
 		initPQExpBuffer(&command_output);
 
 		(void)remote_command(
 			remote_host,
 			runtime_options.remote_user,
-			command,
+			remote_command_str.data,
 			&command_output);
 
 		termPQExpBuffer(&command_output);
+		termPQExpBuffer(&remote_command_str);
 	}
 
 	/*
@@ -4111,22 +4137,25 @@ do_standby_switchover(void)
 	 * TODO
 	 * - notify repmgrd instances that this is a controlled
 	 *   event so they don't initiate failover
-	 * - optional "immediate" shutdown?
-	 *    -> use -F/--force?
 	 */
+
+	initPQExpBuffer(&remote_command_str);
 
 	if (*options.stop_command)
 	{
-		maxlen_snprintf(command, "%s", options.stop_command);
+		appendPQExpBuffer(&remote_command_str, "%s", options.stop_command);
 	}
 	else
 	{
-	        maxlen_snprintf(command,
-					"%s -D %s -m %s -W stop >/dev/null 2>&1 && echo 1 || echo 0",
-					make_pg_path("pg_ctl"),
-					remote_data_directory,
-					runtime_options.pg_ctl_mode);
+		appendPQExpBuffer(&remote_command_str,
+						  "%s -D ",
+						  make_pg_path("pg_ctl"));
+		appendShellString(&remote_command_str, remote_data_directory);
+		appendPQExpBuffer(&remote_command_str,
+						  " -m %s -W stop >/dev/null 2>&1 && echo 1 || echo 0",
+						  runtime_options.pg_ctl_mode);
 	}
+
 	initPQExpBuffer(&command_output);
 
 	// XXX handle failure
@@ -4134,10 +4163,11 @@ do_standby_switchover(void)
 	(void)remote_command(
 		remote_host,
 		runtime_options.remote_user,
-		command,
+		remote_command_str.data,
 		&command_output);
 
 	termPQExpBuffer(&command_output);
+	termPQExpBuffer(&remote_command_str);
 
 	shutdown_success = false;
 
@@ -4153,24 +4183,32 @@ do_standby_switchover(void)
 		if (ping_res == PQPING_NO_RESPONSE)
 		{
 			bool command_success;
-
 			/*
 			 * directly access the server and check that the
 			 * pidfile has gone away so we can be sure the server is actually
 			 * shut down and the PQPING_NO_RESPONSE is not due to other issues
 			 * such as coincidental network failure.
 			 */
-			initPQExpBuffer(&command_output);
 
-			maxlen_snprintf(command,
-					"ls %s/postmaster.pid >/dev/null 2>&1 && echo 1 || echo 0",
-					remote_data_directory);
+			maxlen_snprintf(remote_path,
+							"%s/postmaster.pid",
+							remote_data_directory);
+
+			initPQExpBuffer(&remote_command_str);
+
+			appendPQExpBuffer(&remote_command_str, "ls ");
+			appendShellString(&remote_command_str, remote_path);
+			appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
+
+			initPQExpBuffer(&command_output);
 
 			command_success = remote_command(
 				remote_host,
 				runtime_options.remote_user,
-				command,
+				remote_command_str.data,
 				&command_output);
+
+			termPQExpBuffer(&remote_command_str);
 
 			if (command_success == true && *command_output.data == '0')
 			{
@@ -4214,17 +4252,17 @@ do_standby_switchover(void)
 
 	if (use_pg_rewind == true)
 	{
-		PQExpBufferData recovery_done_remove;
-
 		/* Execute pg_rewind */
-		maxlen_snprintf(command,
-						"%s -D %s --source-server=\\'%s\\'",
-						remote_pg_rewind,
-						remote_data_directory,
-						options.conninfo);
+
+		initPQExpBuffer(&remote_command_str);
+
+		appendShellString(&remote_command_str, remote_pg_rewind);
+		appendPQExpBuffer(&remote_command_str, " -D ");
+		appendShellString(&remote_command_str, remote_data_directory);
+		appendPQExpBuffer(&remote_command_str, " --source-server=\\'%s\\'", options.conninfo);
 
 		log_notice("Executing pg_rewind on old master server\n");
-		log_debug("pg_rewind command is:\n%s\n", command);
+		log_debug("pg_rewind command is:\n%s\n", remote_command_str.data);
 
 		initPQExpBuffer(&command_output);
 
@@ -4233,17 +4271,22 @@ do_standby_switchover(void)
 		(void)remote_command(
 			remote_host,
 			runtime_options.remote_user,
-			command,
+			remote_command_str.data,
 			&command_output);
 
 		termPQExpBuffer(&command_output);
+		termPQExpBuffer(&remote_command_str);
 
 		/* Restore any previously archived config files */
-		maxlen_snprintf(command,
-						"%s standby restore-config -D %s --config-archive-dir=%s",
-						make_pg_path("repmgr"),
-						remote_data_directory,
-						remote_archive_config_dir);
+		initPQExpBuffer(&remote_command_str);
+
+		appendPQExpBuffer(&remote_command_str,
+						  "%s standby restore-config -D ",
+						  make_pg_path("repmgr"));
+		appendShellString(&remote_command_str, remote_data_directory);
+		appendPQExpBuffer(&remote_command_str,
+						  "  --config-archive-dir=");
+		appendShellString(&remote_command_str, remote_archive_config_dir);
 
 		initPQExpBuffer(&command_output);
 
@@ -4252,19 +4295,23 @@ do_standby_switchover(void)
 		(void)remote_command(
 			remote_host,
 			runtime_options.remote_user,
-			command,
+			remote_command_str.data,
 			&command_output);
 
 		termPQExpBuffer(&command_output);
+		termPQExpBuffer(&remote_command_str);
 
 		/* remove any recovery.done file copied in by pg_rewind */
+		initPQExpBuffer(&remote_command_str);
+		maxlen_snprintf(remote_path,
+						"%s/recovery.done",
+						remote_data_directory);
 
-		initPQExpBuffer(&recovery_done_remove);
+		appendPQExpBuffer(&remote_command_str, "test -e ");
+		appendShellString(&remote_command_str, remote_path);
+		appendPQExpBuffer(&remote_command_str, " && rm -f ");
+		appendShellString(&remote_command_str, remote_path);
 
-		appendPQExpBuffer(&recovery_done_remove,
-						  "test -e %s/recovery.done && rm -f %s/recovery.done",
-						  remote_data_directory,
-						  remote_data_directory);
 		initPQExpBuffer(&command_output);
 
 		// XXX handle failure
@@ -4272,14 +4319,11 @@ do_standby_switchover(void)
 		(void)remote_command(
 			remote_host,
 			runtime_options.remote_user,
-			recovery_done_remove.data,
+			remote_command_str.data,
 			&command_output);
 
 		termPQExpBuffer(&command_output);
-		termPQExpBuffer(&recovery_done_remove);
-
-
-
+		termPQExpBuffer(&remote_command_str);
 	}
 	else
 	{
@@ -4294,28 +4338,36 @@ do_standby_switchover(void)
 		 * of pg_rewind. It's preferable to have `repmgr standby follow` start
 		 * the remote database as it can access the remote config file
 		 * directly.
+		 *
+		 * XXX will not work if runtime_options.remote_config_file is empty!
 		 */
 
-		format_db_cli_params(options.conninfo, repmgr_db_cli_params);
-		maxlen_snprintf(command,
-						"%s -D %s -f %s %s --rsync-only --force --ignore-external-config-files standby clone",
-						make_pg_path("repmgr"),
-						remote_data_directory,
-						runtime_options.remote_config_file,
-						repmgr_db_cli_params
-			);
+		initPQExpBuffer(&remote_command_str);
 
-		log_debug("Executing:\n%s\n", command);
+		format_db_cli_params(options.conninfo, repmgr_db_cli_params);
+
+		appendPQExpBuffer(&remote_command_str,
+						  "%s -D ",
+						  make_pg_path("repmgr"));
+		appendShellString(&remote_command_str, remote_data_directory);
+		appendPQExpBuffer(&remote_command_str, " -f ");
+		appendShellString(&remote_command_str, runtime_options.remote_config_file);
+		appendPQExpBuffer(&remote_command_str,
+						 " %s --rsync-only --force --ignore-external-config-files standby clone",
+						 repmgr_db_cli_params);
+
+		log_debug("Executing:\n%s\n", remote_command_str.data);
 
 		initPQExpBuffer(&command_output);
 
 		(void)remote_command(
 			remote_host,
 			runtime_options.remote_user,
-			command,
+			remote_command_str.data,
 			&command_output);
 
 		termPQExpBuffer(&command_output);
+		termPQExpBuffer(&remote_command_str);
 	}
 
 	/*
@@ -4323,21 +4375,27 @@ do_standby_switchover(void)
 	 * the remote server
 	 */
 	format_db_cli_params(options.conninfo, repmgr_db_cli_params);
-	maxlen_snprintf(command,
-					"%s -D %s -f %s %s standby follow",
-					make_pg_path("repmgr"),
-					remote_data_directory,
-					runtime_options.remote_config_file,
-					repmgr_db_cli_params
-		);
 
-	log_debug("Executing:\n%s\n", command);
+	initPQExpBuffer(&remote_command_str);
+	appendPQExpBuffer(&remote_command_str,
+					  "%s -D ",
+					  make_pg_path("repmgr"));
+	appendShellString(&remote_command_str, remote_data_directory);
+	appendPQExpBuffer(&remote_command_str, " -f ");
+	appendShellString(&remote_command_str, runtime_options.remote_config_file);
+	appendPQExpBuffer(&remote_command_str,
+					  " %s standby follow",
+					  repmgr_db_cli_params);
+
+	log_debug("Executing:\n%s\n", remote_command_str.data);
 
 	(void)remote_command(
 		remote_host,
 		runtime_options.remote_user,
-		command,
+		remote_command_str.data,
 		NULL);
+
+	termPQExpBuffer(&remote_command_str);
 
 	/* verify that new standby is connected and replicating */
 

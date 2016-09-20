@@ -23,6 +23,7 @@
 #include <libpq-fe.h>
 #include <postgres_fe.h>
 #include <getopt_long.h>
+#include "pqexpbuffer.h"
 
 #include "strutil.h"
 #include "dbutils.h"
