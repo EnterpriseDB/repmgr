@@ -145,10 +145,17 @@ The `repmgr` tools must be installed on each server in the replication cluster.
 
 A dedicated system user for `repmgr` is *not* required; as many `repmgr` and
 `repmgrd` actions require direct access to the PostgreSQL data directory,
-it should be executed by the `postgres` user.
+these commands should be executed by the `postgres` user.
 
-Additionally, we recommend installing `rsync` and enabling passwordless
-`ssh` connectivity between all servers in the replication cluster.
+Passwordless `ssh` connectivity between all servers in the replication cluster
+is not required, but is necessary in the following cases:
+
+* if you need `repmgr` to copy configuration files from outside the PostgreSQL
+  data directory
+* to perform switchover operations
+* when using `rsync` to clone a standby
+
+In these cases `rsync` is required on all servers too.
 
 * * *
 

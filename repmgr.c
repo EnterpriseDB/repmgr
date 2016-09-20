@@ -4329,7 +4329,7 @@ do_standby_switchover(void)
 	{
 		/*
 		 * For 9.3/9.4, if pg_rewind is not available on the remote server,
-		 * we'll need to force a reclone of the standby sing rsync - this may
+		 * we'll need to force a reclone of the standby using rsync - this may
 		 * take some time on larger databases, so use with care!
 		 *
 		 * Note that following this clone we'll be using `repmgr standby follow`
