@@ -2309,11 +2309,25 @@ do_standby_clone(void)
 	 */
 	if (mode != barman && options.use_replication_slots)
 	{
-		if (create_replication_slot(source_conn, repmgr_slot_name, server_version_num) == false)
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
+
+		if (create_replication_slot(source_conn, repmgr_slot_name, server_version_num, &event_details) == false)
 		{
+			log_err("%s\n", event_details.data);
+
+			create_event_record(primary_conn,
+								&options,
+								options.node,
+								"standby_clone",
+								false,
+								event_details.data);
+
 			PQfinish(source_conn);
 			exit(ERR_DB_QUERY);
 		}
+
+		termPQExpBuffer(&event_details);
 	}
 
 	if (mode == rsync)
@@ -3576,16 +3590,11 @@ do_standby_follow(void)
 	{
  		int	server_version_num = get_server_version(master_conn, NULL);
 
-		if (create_replication_slot(master_conn, repmgr_slot_name, server_version_num) == false)
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
+
+		if (create_replication_slot(master_conn, repmgr_slot_name, server_version_num, &event_details) == false)
 		{
-			PQExpBufferData event_details;
-			initPQExpBuffer(&event_details);
-
-			appendPQExpBuffer(&event_details,
-							  _("Unable to create slot '%s' on the master node: %s"),
-							  repmgr_slot_name,
-							  PQerrorMessage(master_conn));
-
 			log_err("%s\n", event_details.data);
 
 			create_event_record(master_conn,
@@ -3598,6 +3607,8 @@ do_standby_follow(void)
 			PQfinish(master_conn);
 			exit(ERR_DB_QUERY);
 		}
+
+		termPQExpBuffer(&event_details);
 	}
 
 	/* XXX add more detail! */

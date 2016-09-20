@@ -22,6 +22,7 @@
 #define _REPMGR_DBUTILS_H_
 
 #include "access/xlogdefs.h"
+#include "pqexpbuffer.h"
 
 #include "config.h"
 #include "strutil.h"
@@ -118,7 +119,7 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 bool		cancel_query(PGconn *conn, int timeout);
 char       *get_repmgr_schema(void);
 char       *get_repmgr_schema_quoted(PGconn *conn);
-bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num);
+bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);
 int			get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 bool		drop_replication_slot(PGconn *conn, char *slot_name);
 bool		start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint);

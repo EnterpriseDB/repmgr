@@ -945,7 +945,7 @@ get_repmgr_schema_quoted(PGconn *conn)
 
 
 bool
-create_replication_slot(PGconn *conn, char *slot_name, int server_version_num)
+create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg)
 {
 	char				sqlquery[QUERY_STR_LEN];
 	int					query_res;
@@ -964,8 +964,9 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num)
 	{
 		if (strcmp(slot_info.slot_type, "physical") != 0)
 		{
-			log_err(_("Slot '%s' exists and is not a physical slot\n"),
-					slot_name);
+			appendPQExpBuffer(error_msg,
+							  _("Slot '%s' exists and is not a physical slot\n"),
+							  slot_name);
 			return false;
 		}
 
@@ -977,8 +978,9 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num)
 			return true;
 		}
 
-		log_err(_("Slot '%s' already exists as an active slot\n"),
-				slot_name);
+		appendPQExpBuffer(error_msg,
+						  _("Slot '%s' already exists as an active slot\n"),
+						  slot_name);
 		return false;
 	}
 
@@ -996,15 +998,16 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num)
 						  slot_name);
 	}
 
-	log_debug(_("create_replication_slot(): Creating slot '%s' on primary\n"), slot_name);
+	log_debug(_("create_replication_slot(): Creating slot '%s' on master\n"), slot_name);
 	log_verbose(LOG_DEBUG, "create_replication_slot():\n%s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_err(_("unable to create slot '%s' on the primary node: %s\n"),
-				slot_name,
-				PQerrorMessage(conn));
+		appendPQExpBuffer(error_msg,
+						  _("unable to create slot '%s' on the master node: %s\n"),
+						  slot_name,
+						  PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
