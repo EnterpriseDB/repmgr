@@ -287,7 +287,7 @@ both servers.
 ### PostgreSQL configuration
 
 On the master server, a PostgreSQL instance must be initialised and running.
-The following replication settings must be included in `postgresql.conf`:
+The following replication settings may need to be adjusted:
 
 
     # Enable replication connections; set this figure to at least one more
@@ -301,13 +301,6 @@ The following replication settings must be included in `postgresql.conf`:
     # on the standby
 
     wal_level = 'hot_standby'
-
-    # How much WAL to retain on the master to allow a temporarily
-    # disconnected standby to catch up again. The larger this is, the
-    # longer the standby can be disconnected. This is needed only in
-    # 9.3; from 9.4, replication slots can be used instead (see below).
-
-    wal_keep_segments = 5000
 
     # Enable read-only queries on a standby
     # (Note: this will be ignored on a master but we recommend including
@@ -323,6 +316,14 @@ The following replication settings must be included in `postgresql.conf`:
     # ignores archiving. Use something more sensible.
     archive_command = '/bin/true'
 
+    # If cloning using rsync, or you have configured `pg_basebackup_options`
+    # in `repmgr.conf` to include the setting `--xlog-method=fetch`, *and*
+    # you have not set `restore_command` in `repmgr.conf`to fetch WAL files
+    # from another source such as Barman, you'll need to set `wal_keep_segments`
+    # to a high enough value to ensure that all WAL files generated while
+    # the standby is being cloned are retained until the standby starts up.
+
+    # wal_keep_segments = 5000
 
 * * *
 

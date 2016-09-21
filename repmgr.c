@@ -6478,7 +6478,17 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	int			i;
 	bool		config_ok = true;
 	char	   *wal_error_message = NULL;
+	t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
+	bool		xlog_stream = true;
 
+	/*
+	 * Parse `pg_basebackup_options`, if set, to detect whether --xlog-method
+	 * has been set to something other than `stream` (i.e. `fetch`), as
+	 * this will influence some checks
+	 */
+	parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options);
+	if (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)
+		xlog_stream = false;
 	/* Check that WAL level is set correctly */
 	if (server_version_num < 90400)
 	{
@@ -6582,35 +6592,66 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 	}
 	/*
-	 * physical replication slots not available or not requested, and Barman mode not used -
-	 * ensure some reasonably high value set for `wal_keep_segments`
+	 * physical replication slots not available or not requested - check if
+	 * there are any circumstances where `wal_keep_segments` should be set
 	 */
 	else if (! runtime_options.without_barman && strcmp(options.barman_server, "") == 0)
 	{
-		i = guc_set_typed(conn, "wal_keep_segments", ">=",
-						  runtime_options.wal_keep_segments, "integer");
-		if (i == 0 || i == -1)
+		bool check_wal_keep_segments = false;
+		char min_wal_keep_segments[MAXLEN] = "1";
+
+		/*
+		 * -w/--wal-keep-segments was supplied - check against that value
+		 */
+		if (wal_keep_segments_used == true)
 		{
-			if (i == 0)
+			check_wal_keep_segments = true;
+			strncpy(min_wal_keep_segments, runtime_options.wal_keep_segments, MAXLEN);
+		}
+
+		/*
+		 * A non-zero `wal_keep_segments` value will almost certainly be required
+		 * if rsync mode is being used, or pg_basebackup with --xlog-method=fetch,
+		 * *and* no restore command has been specified
+		 */
+		else if ( (runtime_options.rsync_only == true || xlog_stream == false)
+			 && strcmp(options.restore_command, "") == 0)
+		{
+			check_wal_keep_segments = true;
+		}
+
+		if (check_wal_keep_segments == true)
+		{
+			i = guc_set_typed(conn, "wal_keep_segments", ">=", min_wal_keep_segments, "integer");
+
+			if (i == 0 || i == -1)
 			{
-				log_err(_("parameter 'wal_keep_segments' must be be set to %s or greater (see the '-w' option or edit the postgresql.conf of the upstream server.)\n"),
-						runtime_options.wal_keep_segments);
-				if (server_version_num >= 90400)
+				if (i == 0)
 				{
-					log_hint(_("in PostgreSQL 9.4 and later, replication slots can be used, which "
-							   "do not require 'wal_keep_segments' to be set to a high value "
-							   "(set parameter 'use_replication_slots' in the configuration file to enable)\n"
+					log_err(_("parameter 'wal_keep_segments' on the upstream server must be be set to %s or greater\n"),
+							min_wal_keep_segments);
+					log_hint(_("Choose a value sufficiently high enough to retain enough WAL "
+							   "until the standby has been cloned and started.\n "
+							   "Alternatively set up WAL archiving using e.g. PgBarman and configure "
+							   "'restore_command' in repmgr.conf to fetch WALs from there.\n"
 								 ));
+					if (server_version_num >= 90400)
+					{
+						log_hint(_("In PostgreSQL 9.4 and later, replication slots can be used, which "
+								   "do not require 'wal_keep_segments' to be set "
+								   "(set parameter 'use_replication_slots' in repmgr.conf to enable)\n"
+									 ));
+					}
 				}
-			}
 
-			if (exit_on_error == true)
-			{
-				PQfinish(conn);
-				exit(ERR_BAD_CONFIG);
-			}
+				if (exit_on_error == true)
+				{
+					PQfinish(conn);
+					exit(ERR_BAD_CONFIG);
+				}
 
-			config_ok = false;
+				config_ok = false;
+			}
 		}
 	}
 
@@ -6687,17 +6728,13 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 	if (!runtime_options.rsync_only)
 	{
-		t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
-		PGconn	  **connections;
-		bool		xlog_stream = true;
-		int			i;
 
+		PGconn	  **connections;
+		int			i;
 		int			min_replication_connections = 1,
 					possible_replication_connections = 0;
 
 		t_conninfo_param_list repl_conninfo;
-
-		parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options);
 
 		/* Make a copy of the connection parameter arrays, and append "replication" */
 
@@ -6715,8 +6752,6 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		 * --xlog-method set by user to something other than "stream" (should be "fetch",
 		 * but we're just checking it's not "stream")
 		 */
-		if (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)
-			xlog_stream = false;
 
 		if (xlog_stream == true)
 			min_replication_connections += 1;
@@ -6750,7 +6785,6 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			config_ok = false;
 			log_err(_("unable to establish necessary replication connections\n"));
 			log_hint(_("increase 'max_wal_senders' by at least %i\n"), min_replication_connections - possible_replication_connections);
-
 
 			if (exit_on_error == true)
 			{
