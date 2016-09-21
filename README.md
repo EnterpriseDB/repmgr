@@ -384,6 +384,14 @@ least the following parameters:
      `repmgr` needs to know the connection details to complete the setup
      process).
 
+* * *
+
+> *TIP*: do not set `application_name` explicitely in your conninfo;
+> you do not need to set it at all, because `repmgr` will set it
+> automatically to `node_name`.
+
+* * *
+
 `repmgr.conf` should not be stored inside the PostgreSQL data directory,
 as it could be overwritten when setting up or reinitialising the PostgreSQL
 server. See section `Configuration` above for further details about `repmgr.conf`.
