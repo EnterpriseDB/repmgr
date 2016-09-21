@@ -6,6 +6,8 @@
           executed for a node which is not running (Ian)
         repmgr: remove deprecated command line options --initdb-no-pwprompt and
            -l/--local-port (Ian)
+        repmgr: before cloning with pg_basebackup, check that sufficient free
+           walsenders are available (Ian)
         improve "repmgr-auto" Debian package (Gianni)
 
 3.1.5   2016-08-15

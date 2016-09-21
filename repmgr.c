@@ -6667,10 +6667,6 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		config_ok = false;
 	}
 
-	/*
-	 * work out how many replication connections we'll be making (1 or 2)
-	 */
-
 	i = guc_set_typed(conn, "max_wal_senders", ">", "0", "integer");
 	if (i == 0 || i == -1)
 	{
