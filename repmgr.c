@@ -5544,6 +5544,47 @@ write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *li
 }
 
 
+static void
+write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
+{
+	PQExpBufferData conninfo_buf;
+	bool application_name_provided = false;
+	int c;
+
+	initPQExpBuffer(&conninfo_buf);
+
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
+	{
+		/*
+		 * Skip empty settings and ones which don't make any sense in
+		 * recovery.conf
+		 */
+		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
+		    strcmp(param_list->keywords[c], "replication") == 0 ||
+		    (param_list->values[c] == NULL) ||
+		    (param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
+			continue;
+
+		if (conninfo_buf.len != 0)
+			appendPQExpBufferChar(&conninfo_buf, ' ');
+
+		if (strcmp(param_list->keywords[c], "application_name") == 0)
+			application_name_provided = true;
+
+		/* XXX escape option->values */
+		appendPQExpBuffer(&conninfo_buf, "%s=%s", param_list->keywords[c], param_list->values[c]);
+	}
+
+	/* `application_name` not provided - default to repmgr node name */
+	if (application_name_provided == false)
+		appendPQExpBuffer(&conninfo_buf, " application_name=%s", options.node_name);
+
+	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conninfo_buf.data);
+
+	termPQExpBuffer(&conninfo_buf);
+}
+
+
 static int
 test_ssh_connection(char *host, char *remote_user)
 {
@@ -6333,45 +6374,6 @@ create_schema(PGconn *conn)
 	PQclear(res);
 
 	return true;
-}
-
-
-static void
-write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
-{
-	PQExpBufferData conninfo_buf;
-	bool application_name_provided = false;
-	int c;
-
-	initPQExpBuffer(&conninfo_buf);
-
-	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
-	{
-		/*
-		 * Skip empty settings and ones which don't make any sense in
-		 * recovery.conf
-		 */
-		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
-		    strcmp(param_list->keywords[c], "replication") == 0 ||
-		    (param_list->values[c] == NULL) ||
-		    (param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
-			continue;
-
-		if (conninfo_buf.len != 0)
-			appendPQExpBufferChar(&conninfo_buf, ' ');
-
-		if (strcmp(param_list->keywords[c], "application_name") == 0)
-			application_name_provided = true;
-
-		/* XXX escape option->values */
-		appendPQExpBuffer(&conninfo_buf, "%s=%s", param_list->keywords[c], param_list->values[c]);
-	}
-
-	/* `application_name` not provided - default to repmgr node name */
-	if (application_name_provided == false)
-		appendPQExpBuffer(&conninfo_buf, " application_name=%s", options.node_name);
-
-	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conninfo_buf.data);
 }
 
 
