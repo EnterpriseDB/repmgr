@@ -5618,7 +5618,7 @@ test_ssh_connection(char *host, char *remote_user)
 	}
 
 	if (r != 0)
-		log_info(_("unable to connect to remote host (%s)\n"), host);
+		log_info(_("unable to connect to remote host (%s) via SSH.\n"), host);
 	return r;
 }
 
