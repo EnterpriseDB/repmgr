@@ -147,6 +147,7 @@ static bool read_backup_label(const char *local_data_directory, struct BackupLab
 
 static void initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults);
 static void param_set(t_conninfo_param_list *param_list, const char *param, const char *value);
+static char *param_get(t_conninfo_param_list *param_list, const char *param);
 static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg);
 static void conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
 static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
@@ -3480,13 +3481,18 @@ do_standby_follow(void)
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
 	int			master_id = 0;
-	t_conninfo_param_list recovery_conninfo;
 
 	int			r,
 				retval;
 	char		data_dir[MAXPGPATH];
 
 	bool        success;
+
+	t_conninfo_param_list recovery_conninfo;
+	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
+	int         query_result;
+	char	   *errmsg = NULL;
+	bool        parse_success;
 
 	log_debug("do_standby_follow()\n");
 
@@ -3607,12 +3613,49 @@ do_standby_follow(void)
 		termPQExpBuffer(&event_details);
 	}
 
-	/* XXX add more detail! */
-	log_info(_("changing standby's master\n"));
-
-	/* write the recovery.conf file */
+	/* Initialise connection parameters to write as `primary_conninfo` */
 	initialize_conninfo_params(&recovery_conninfo, false);
 	conn_to_param_list(master_conn, &recovery_conninfo);
+
+	/* Set the default application name to this node's name */
+	param_set(&recovery_conninfo, "application_name", options.node_name);
+
+	/* Fetch our node record so we can write application_name, if set */
+	query_result = get_node_record(master_conn,
+								   options.cluster_name,
+								   options.node,
+								   &local_node_record);
+
+	if (query_result != 1)
+	{
+		/* this shouldn't happen, but if it does we'll plough on regardless */
+		log_warning(_("unable to retrieve record for node %i\n"),
+					options.node);
+	}
+	else
+	{
+		t_conninfo_param_list local_node_conninfo;
+
+		initialize_conninfo_params(&local_node_conninfo, false);
+
+		parse_success = parse_conninfo_string(local_node_record.conninfo_str, &local_node_conninfo, errmsg);
+
+		if(parse_success == false)
+		{
+			/* this shouldn't happen, but if it does we'll plough on regardless */
+			log_warning(_("unable to parse conninfo string \"%s\":\n%s\n"),
+					local_node_record.conninfo_str, errmsg);
+		}
+		else
+		{
+			char *application_name = param_get(&local_node_conninfo, "application_name");
+
+			if (application_name != NULL && strlen(application_name))
+				param_set(&recovery_conninfo, "application_name", application_name);
+		}
+	}
+
+	log_info(_("changing standby's master to node %i\n"), master_id);
 
 	if (!create_recovery_file(data_dir, &recovery_conninfo))
 		exit(ERR_BAD_CONFIG);
@@ -3627,6 +3670,8 @@ do_standby_follow(void)
 		maxlen_snprintf(script, "%s %s -w -D %s -m fast restart",
 				        make_pg_path("pg_ctl"), options.pg_ctl_options, data_dir);
 	}
+
+
 	log_notice(_("restarting server using '%s'\n"),
 			   script);
 
@@ -7240,6 +7285,26 @@ param_set(t_conninfo_param_list *param_list, const char *param, const char *valu
 	 * the array is full, but it's highly improbable so we won't
 	 * handle it at the moment.
 	 */
+}
+
+
+static char *
+param_get(t_conninfo_param_list *param_list, const char *param)
+{
+	int c;
+
+	for (c = 0; c <= param_list->size && param_list->keywords[c] != NULL; c++)
+	{
+		if (strcmp(param_list->keywords[c], param) == 0)
+		{
+			if (param_list->values[c] != NULL)
+				return param_list->values[c];
+            else
+                return NULL;
+		}
+	}
+
+	return NULL;
 }
 
 
