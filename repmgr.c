@@ -96,7 +96,7 @@ static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 static int  run_basebackup(const char *data_dir, int server_version);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
-static bool create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conninfo);
+static bool create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo);
 static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
@@ -1704,18 +1704,17 @@ do_standby_clone(void)
 	PGconn	   *source_conn = NULL;
 	PGresult   *res;
 
-	char		upstream_conninfo_str[MAXLEN];
+	/*
+	 * conninfo params for the actual upstream node (which might be different
+	 * to the node we're cloning from) to write to recovery.conf
+	 */
+	t_conninfo_param_list recovery_conninfo;
+	char		recovery_conninfo_str[MAXLEN];
 	bool		upstream_record_found = false;
 	int		    upstream_node_id = UNKNOWN_NODE_ID;
 
-
 	char        datadir_list_filename[MAXLEN];
 
-	/*
-	 * conninfo params for the actual upstream node (which might be different
-	 * to the node we're cloning from)
-	 */
-	t_conninfo_param_list upstream_conninfo;
 
 	enum {
 		barman,
@@ -1854,23 +1853,23 @@ do_standby_clone(void)
 	 * upstream node record and overwrite the values set here with
 	 * those from the upstream node record.
 	 */
-	initialize_conninfo_params(&upstream_conninfo, true);
+	initialize_conninfo_params(&recovery_conninfo, true);
 
 	if (strlen(runtime_options.host))
 	{
-		param_set(&upstream_conninfo, "host", runtime_options.host);
+		param_set(&recovery_conninfo, "host", runtime_options.host);
 	}
 	if (strlen(runtime_options.masterport))
 	{
-		param_set(&upstream_conninfo, "port", runtime_options.masterport);
+		param_set(&recovery_conninfo, "port", runtime_options.masterport);
 	}
 	if (strlen(runtime_options.dbname))
 	{
-		param_set(&upstream_conninfo, "dbname", runtime_options.dbname);
+		param_set(&recovery_conninfo, "dbname", runtime_options.dbname);
 	}
 	if (strlen(runtime_options.username))
 	{
-		param_set(&upstream_conninfo, "user", runtime_options.username);
+		param_set(&recovery_conninfo, "user", runtime_options.username);
 	}
 
 	/* Sanity-check barman connection and installation */
@@ -2010,7 +2009,7 @@ do_standby_clone(void)
 			 * particularly stuff like passwords extracted from PGPASSFILE;
 			 * these will be overridden from the upstream conninfo, if provided
 			 */
-			conn_to_param_list(source_conn, &upstream_conninfo);
+			conn_to_param_list(source_conn, &recovery_conninfo);
 
 			/*
 			 * Attempt to find the upstream node record
@@ -2025,7 +2024,7 @@ do_standby_clone(void)
 			if (query_result)
 			{
 				upstream_record_found = true;
-				strncpy(upstream_conninfo_str, upstream_node_record.conninfo_str, MAXLEN);
+				strncpy(recovery_conninfo_str, upstream_node_record.conninfo_str, MAXLEN);
 			}
 		}
 	}
@@ -2116,13 +2115,13 @@ do_standby_clone(void)
 			log_err(_("Unable to execute database query via Barman server\n"));
 			exit(ERR_BARMAN);
 		}
-		maxlen_snprintf(upstream_conninfo_str, "%s", command_output.data);
-		string_remove_trailing_newlines(upstream_conninfo_str);
+		maxlen_snprintf(recovery_conninfo_str, "%s", command_output.data);
+		string_remove_trailing_newlines(recovery_conninfo_str);
 
 		upstream_record_found = true;
 		log_verbose(LOG_DEBUG,
 					"upstream node conninfo string extracted via barman server: %s\n",
-					upstream_conninfo_str);
+					recovery_conninfo_str);
 
 		termPQExpBuffer(&command_output);
 	}
@@ -2133,13 +2132,13 @@ do_standby_clone(void)
 		char	   *errmsg = NULL;
 		bool	    parse_success;
 
-		log_verbose(LOG_DEBUG, "parsing upstream conninfo string \"%s\"\n", upstream_conninfo_str);
+		log_verbose(LOG_DEBUG, "parsing upstream conninfo string \"%s\"\n", recovery_conninfo_str);
 
-		parse_success = parse_conninfo_string(upstream_conninfo_str, &upstream_conninfo, errmsg);
+		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, errmsg);
 		if (parse_success == false)
 		{
 			log_err(_("Unable to parse conninfo string \"%s\" for upstream node:\n%s\n"),
-					upstream_conninfo_str, errmsg);
+					recovery_conninfo_str, errmsg);
 
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
@@ -3044,7 +3043,7 @@ stop_backup:
 
 	/* Finally, write the recovery.conf file */
 
-	create_recovery_file(local_data_directory, &upstream_conninfo);
+	create_recovery_file(local_data_directory, &recovery_conninfo);
 
 	if (mode == barman)
 	{
@@ -3481,7 +3480,7 @@ do_standby_follow(void)
 	char		master_conninfo[MAXLEN];
 	PGconn	   *master_conn;
 	int			master_id = 0;
-	t_conninfo_param_list upstream_conninfo;
+	t_conninfo_param_list recovery_conninfo;
 
 	int			r,
 				retval;
@@ -3612,10 +3611,10 @@ do_standby_follow(void)
 	log_info(_("changing standby's master\n"));
 
 	/* write the recovery.conf file */
-	initialize_conninfo_params(&upstream_conninfo, false);
-	conn_to_param_list(master_conn, &upstream_conninfo);
+	initialize_conninfo_params(&recovery_conninfo, false);
+	conn_to_param_list(master_conn, &recovery_conninfo);
 
-	if (!create_recovery_file(data_dir, &upstream_conninfo))
+	if (!create_recovery_file(data_dir, &recovery_conninfo))
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
@@ -5447,7 +5446,7 @@ do_help(void)
  * Creates a recovery.conf file for a standby
  */
 static bool
-create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conninfo)
+create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo)
 {
 	FILE	   *recovery_file;
 	char		recovery_file_path[MAXLEN];
@@ -5478,7 +5477,7 @@ create_recovery_file(const char *data_dir, t_conninfo_param_list *upstream_conni
 	log_debug(_("recovery.conf: %s"), line);
 
 	/* primary_conninfo = '...' */
-	write_primary_conninfo(line, upstream_conninfo);
+	write_primary_conninfo(line, recovery_conninfo);
 
 	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
