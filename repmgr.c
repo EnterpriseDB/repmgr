@@ -146,9 +146,10 @@ static bool copy_file(const char *old_filename, const char *new_filename);
 static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
 
 static void initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults);
+static void copy_conninfo_params(t_conninfo_param_list *dest_list, t_conninfo_param_list *source_list);
 static void param_set(t_conninfo_param_list *param_list, const char *param, const char *value);
 static char *param_get(t_conninfo_param_list *param_list, const char *param);
-static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg);
+static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_application_name);
 static void conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
 static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
 
@@ -533,7 +534,7 @@ main(int argc, char **argv)
 	 */
 	if (runtime_options.dbname)
 	{
-		if(strncmp(runtime_options.dbname, "postgresql://", 13) == 0 ||
+		if (strncmp(runtime_options.dbname, "postgresql://", 13) == 0 ||
 		   strncmp(runtime_options.dbname, "postgres://", 11) == 0 ||
 		   strchr(runtime_options.dbname, '=') != NULL)
 		{
@@ -1852,25 +1853,33 @@ do_standby_clone(void)
 	 * line. As it's possible the standby will be cloned from a node different
 	 * to its intended upstream, we'll later attempt to fetch the
 	 * upstream node record and overwrite the values set here with
-	 * those from the upstream node record.
+	 * those from the upstream node record (excluding that record's
+	 * application_name)
 	 */
 	initialize_conninfo_params(&recovery_conninfo, true);
 
-	if (strlen(runtime_options.host))
+	copy_conninfo_params(&recovery_conninfo, &source_conninfo);
+
+	/* Set the default application name to this node's name */
+	param_set(&recovery_conninfo, "application_name", options.node_name);
+
+	/*
+	 * If application_name is set in repmgr.conf's conninfo parameter, use
+	 * this value (if the source host was provided as a conninfo string, any
+	 * application_name values set there will be overridden; we assume the only
+	 * reason to pass an application_name via the command line is in the
+	 * rare corner case where a user wishes to clone a server without
+	 * providing repmgr.conf)
+	 */
+	if (strlen(options.conninfo))
 	{
-		param_set(&recovery_conninfo, "host", runtime_options.host);
-	}
-	if (strlen(runtime_options.masterport))
-	{
-		param_set(&recovery_conninfo, "port", runtime_options.masterport);
-	}
-	if (strlen(runtime_options.dbname))
-	{
-		param_set(&recovery_conninfo, "dbname", runtime_options.dbname);
-	}
-	if (strlen(runtime_options.username))
-	{
-		param_set(&recovery_conninfo, "user", runtime_options.username);
+		char application_name[MAXLEN] = "";
+
+		get_conninfo_value(options.conninfo, "application_name", application_name);
+		if (strlen(application_name))
+		{
+			param_set(&recovery_conninfo, "application_name", application_name);
+		}
 	}
 
 	/* Sanity-check barman connection and installation */
@@ -2008,7 +2017,7 @@ do_standby_clone(void)
 			/*
 			 * Copy the source connection so that we have some default values,
 			 * particularly stuff like passwords extracted from PGPASSFILE;
-			 * these will be overridden from the upstream conninfo, if provided
+			 * these will be overridden from the upstream conninfo, if provided.
 			 */
 			conn_to_param_list(source_conn, &recovery_conninfo);
 
@@ -2057,9 +2066,10 @@ do_standby_clone(void)
 
 		initialize_conninfo_params(&barman_conninfo, false);
 
-		parse_success = parse_conninfo_string(barman_conninfo_str, &barman_conninfo, errmsg);
+		/* parse_conninfo_string() here will remove the upstream's `application_name`, if set */
+		parse_success = parse_conninfo_string(barman_conninfo_str, &barman_conninfo, errmsg, true);
 
-		if(parse_success == false)
+		if (parse_success == false)
 		{
 			log_err(_("Unable to parse barman conninfo string \"%s\":\n%s\n"),
 					barman_conninfo_str, errmsg);
@@ -2135,7 +2145,9 @@ do_standby_clone(void)
 
 		log_verbose(LOG_DEBUG, "parsing upstream conninfo string \"%s\"\n", recovery_conninfo_str);
 
-		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, errmsg);
+		/* parse_conninfo_string() here will remove the upstream's `application_name`, if set */
+
+		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, errmsg, true);
 		if (parse_success == false)
 		{
 			log_err(_("Unable to parse conninfo string \"%s\" for upstream node:\n%s\n"),
@@ -2581,7 +2593,7 @@ do_standby_clone(void)
 					if (vers[i] > 0 && server_version_num < vers[i])
 						continue;
 					maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
-					if(mkdir(filename, S_IRWXU) != 0 && errno != EEXIST)
+					if (mkdir(filename, S_IRWXU) != 0 && errno != EEXIST)
 					{
 						log_err(_("unable to create the %s directory\n"), dirs[i]);
 						exit(ERR_INTERNAL);
@@ -2658,7 +2670,7 @@ do_standby_clone(void)
 
 			/* Copy tablespaces and, if required, remap to a new location */
 			retval = get_tablespace_data(source_conn, &tablespace_list);
-			if(retval != SUCCESS) goto stop_backup;
+			if (retval != SUCCESS) goto stop_backup;
 		}
 
 		for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
@@ -3399,7 +3411,7 @@ do_standby_promote(void)
 	log_info(_("reconnecting to promoted server\n"));
 	conn = establish_db_connection(options.conninfo, true);
 
-	for(i = 0; i < promote_check_timeout; i += promote_check_interval)
+	for (i = 0; i < promote_check_timeout; i += promote_check_interval)
 	{
 		retval = is_standby(conn);
 		if (!retval)
@@ -3638,9 +3650,9 @@ do_standby_follow(void)
 
 		initialize_conninfo_params(&local_node_conninfo, false);
 
-		parse_success = parse_conninfo_string(local_node_record.conninfo_str, &local_node_conninfo, errmsg);
+		parse_success = parse_conninfo_string(local_node_record.conninfo_str, &local_node_conninfo, errmsg, false);
 
-		if(parse_success == false)
+		if (parse_success == false)
 		{
 			/* this shouldn't happen, but if it does we'll plough on regardless */
 			log_warning(_("unable to parse conninfo string \"%s\":\n%s\n"),
@@ -4046,8 +4058,6 @@ do_standby_switchover(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-
-
 		log_verbose(LOG_INFO, _("remote configuration file \"%s\" found on remote server\n"),
 					runtime_options.remote_config_file);
 
@@ -4071,7 +4081,7 @@ do_standby_switchover(void)
 
 		log_verbose(LOG_INFO, _("no remote configuration file provided - checking default locations\n"));
 
-		for(i = 0; config_paths[i] && config_file_found == false; ++i)
+		for (i = 0; config_paths[i] && config_file_found == false; ++i)
 		{
 			/*
 			 * Don't attempt to check for an empty filename - this might be the case
@@ -4442,7 +4452,7 @@ do_standby_switchover(void)
 
 	connection_success = false;
 
-	for(i = 0; i < options.reconnect_attempts; i++)
+	for (i = 0; i < options.reconnect_attempts; i++)
 	{
 		/* Check whether primary is available */
 		remote_conn = test_db_connection(remote_conninfo);
@@ -5621,7 +5631,12 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 
 	/* `application_name` not provided - default to repmgr node name */
 	if (application_name_provided == false)
-		appendPQExpBuffer(&conninfo_buf, " application_name=%s", options.node_name);
+	{
+		if (strlen(options.node_name))
+			appendPQExpBuffer(&conninfo_buf, " application_name=%s", options.node_name);
+		else
+			appendPQExpBuffer(&conninfo_buf, " application_name=repmgr");
+	}
 
 	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conninfo_buf.data);
 
@@ -5647,7 +5662,7 @@ test_ssh_connection(char *host, char *remote_user)
 	};
 
 	/* Check if we have ssh connectivity to host before trying to rsync */
-	for(i = 0; truebin_paths[i] && r != 0; ++i)
+	for (i = 0; truebin_paths[i] && r != 0; ++i)
 	{
 		if (!remote_user[0])
 			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s 2>/dev/null",
@@ -5865,7 +5880,7 @@ run_basebackup(const char *data_dir, int server_version)
 		 * or if --xlog-method is set to a value other than "stream" (in which case we can't
 		 * use --slot).
 		 */
-		if(strlen(backup_options.slot) || (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)) {
+		if (strlen(backup_options.slot) || (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)) {
 			slot_add = false;
 		}
 
@@ -6950,7 +6965,7 @@ make_barman_ssh_command(void)
 {
 	static char config_opt[MAXLEN] = "";
 
-	if(strlen(options.barman_config))
+	if (strlen(options.barman_config))
 		maxlen_snprintf(config_opt,
 						" --config=%s",
 						options.barman_config);
@@ -7223,7 +7238,7 @@ initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults)
 	param_list->keywords = pg_malloc0(sizeof(char *) * (param_list->size + 1));
 	param_list->values = pg_malloc0(sizeof(char *) * (param_list->size + 1));
 
-	for (c = 0; c <= param_list->size; c++)
+	for (c = 0; c < param_list->size; c++)
 	{
 		param_list->keywords[c] = NULL;
 		param_list->values[c] = NULL;
@@ -7245,6 +7260,19 @@ initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults)
 
 
 static void
+copy_conninfo_params(t_conninfo_param_list *dest_list, t_conninfo_param_list *source_list)
+{
+	int c;
+	for (c = 0; c < source_list->size && source_list->keywords[c] != NULL; c++)
+	{
+		if (source_list->values[c] != NULL && source_list->values[c][0] != '\0')
+		{
+			param_set(dest_list, source_list->keywords[c], source_list->values[c]);
+		}
+	}
+}
+
+static void
 param_set(t_conninfo_param_list *param_list, const char *param, const char *value)
 {
 	int c;
@@ -7253,7 +7281,7 @@ param_set(t_conninfo_param_list *param_list, const char *param, const char *valu
 	/*
 	 * Scan array to see if the parameter is already set - if not, replace it
 	 */
-	for (c = 0; c <= param_list->size && param_list->keywords[c] != NULL; c++)
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
 	{
 		if (strcmp(param_list->keywords[c], param) == 0)
 		{
@@ -7293,11 +7321,11 @@ param_get(t_conninfo_param_list *param_list, const char *param)
 {
 	int c;
 
-	for (c = 0; c <= param_list->size && param_list->keywords[c] != NULL; c++)
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
 	{
 		if (strcmp(param_list->keywords[c], param) == 0)
 		{
-			if (param_list->values[c] != NULL)
+			if (param_list->values[c] != NULL && param_list->values[c][0] != '\0')
 				return param_list->values[c];
             else
                 return NULL;
@@ -7314,7 +7342,7 @@ param_get(t_conninfo_param_list *param_list, const char *param)
  * See conn_to_param_list() to do the same for a PQconn
  */
 static bool
-parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg)
+parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_application_name)
 {
 	PQconninfoOption *connOptions;
 	PQconninfoOption *option;
@@ -7327,8 +7355,12 @@ parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_lis
 	for (option = connOptions; option && option->keyword; option++)
 	{
 		/* Ignore non-set or blank parameter values*/
-		if((option->val == NULL) ||
+		if ((option->val == NULL) ||
 		   (option->val != NULL && option->val[0] == '\0'))
+			continue;
+
+		/* Ignore application_name */
+		if (ignore_application_name == true && strcmp(option->keyword, "application_name") == 0)
 			continue;
 
 		param_set(param_list, option->keyword, option->val);
@@ -7353,7 +7385,7 @@ conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
 	for (option = connOptions; option && option->keyword; option++)
 	{
 		/* Ignore non-set or blank parameter values*/
-		if((option->val == NULL) ||
+		if ((option->val == NULL) ||
 		   (option->val != NULL && option->val[0] == '\0'))
 			continue;
 
