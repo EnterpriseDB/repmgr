@@ -1443,17 +1443,6 @@ do_standby_unregister(void)
 	log_info(_("connecting to database\n"));
 	conn = establish_db_connection(options.conninfo, true);
 
-	/* Check we are a standby */
-/*	ret = is_standby(conn);
-	if (ret == 0 || ret == -1)
-	{
-		log_err(_(ret == 0 ? "this node should be a standby (%s)\n" :
-				"connection to node (%s) lost\n"), options.conninfo);
-
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-		}*/
-
 	/* Check if there is a schema for this cluster */
 	if (check_cluster_schema(conn) == false)
 	{
