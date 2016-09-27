@@ -217,6 +217,7 @@ parse_config(t_configuration_options *options)
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->barman_server, 0, sizeof(options->barman_server));
 	memset(options->barman_config, 0, sizeof(options->barman_config));
+	memset(options->ssh_hostname, 0, sizeof(options->ssh_hostname));
 	options->failover = MANUAL_FAILOVER;
 	options->priority = DEFAULT_PRIORITY;
 	memset(options->node_name, 0, sizeof(options->node_name));
@@ -316,6 +317,8 @@ parse_config(t_configuration_options *options)
 			strncpy(options->barman_server, value, MAXLEN);
 		else if (strcmp(name, "barman_config") == 0)
 			strncpy(options->barman_config, value, MAXLEN);
+		else if (strcmp(name, "ssh_hostname") == 0)
+			strncpy(options->ssh_hostname, value, MAXLEN);
 		else if (strcmp(name, "rsync_options") == 0)
 			strncpy(options->rsync_options, value, QUERY_STR_LEN);
 		else if (strcmp(name, "ssh_options") == 0)
@@ -451,6 +454,10 @@ parse_config(t_configuration_options *options)
 
 		PQconninfoFree(conninfo_options);
 	}
+
+	/*
+	 * TODO: Sanity check ssh_hostname
+	 */
 
 	if (config_errors.head != NULL)
 	{
@@ -621,6 +628,10 @@ reload_config(t_configuration_options *orig_options)
 	}
 
 	/*
+	 * TODO: Sanity check the new ssh_hostname
+	 */
+
+	/*
 	 * No configuration problems detected - copy any changed values
 	 *
 	 * NB: keep these in the same order as in config.h to make it easier
@@ -645,6 +656,13 @@ reload_config(t_configuration_options *orig_options)
 	if (strcmp(orig_options->barman_server, new_options.barman_server) != 0)
 	{
 		strcpy(orig_options->barman_server, new_options.barman_server);
+		config_changed = true;
+	}
+
+	/* ssh_hostname */
+	if (strcmp(orig_options->ssh_hostname, new_options.ssh_hostname) != 0)
+	{
+		strcpy(orig_options->ssh_hostname, new_options.ssh_hostname);
 		config_changed = true;
 	}
 

@@ -1570,6 +1570,96 @@ which contains connection details for the local database.
     The first column is the node's ID, and the second column represents the
     node's status (0 = master, 1 = standby, -1 = failed).
 
+* `cluster matrix` and `cluster diagnose`
+
+    These commands display connection information for each pair of
+    nodes in the replication cluster.
+
+    - `cluster matrix` runs a `cluster show` on each node and arranges
+      the results in a matrix, recording success or failure;
+
+	- `cluster diagnose` runs a `cluster matrix` on each node and
+      combines the results in a single matrix.
+
+    These command require a valid `repmgr.conf` file on each node, and
+    the optional `ssh_hostname` parameter must be set.
+
+
+    Example 1 (all nodes up):
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  *
+         node2 |  2 |  * |  * |  *
+         node3 |  3 |  * |  * |  *
+
+    Here `cluster matrix` is sufficient to establish the state of each
+    possible connection.
+
+
+    Example 2 (node1 and node2 up, node3 down):
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  x
+         node2 |  2 |  * |  * |  x
+         node3 |  3 |  ? |  ? |  ?
+
+	Each row corresponds to one server, and indicates the result of
+	testing an outbound connection from that server.
+
+	Since node3 is down, all the entries in its row are filled with
+	"?", meaning that there we cannot test outbound connections.
+
+	The other two nodes are up; the corresponding rows have "x" in the
+	column corresponding to node3, meaning that inbound connections to
+	that node have failed, and "*" in the columns corresponding to
+	node1 and node2, meaning that inbound connections to these nodes
+	have succeeded.
+
+	In this case, `cluster diagnose` gives the same result as `cluster
+    matrix`, because from any functioning node we can observe the same
+    state: node1 and node2 are up, node3 is down.
+
+
+    Example 3 (all nodes up, firewall dropping packets originating
+               from node1 and directed to port 5432 on node3)
+
+	Running `cluster matrix` from node1 gives the following output,
+    after a long wait (two timeouts, by default one minute each):
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  x
+         node2 |  2 |  * |  * |  *
+         node3 |  3 |  ? |  ? |  ?
+
+	The matrix tells us that we cannot connect from node1 to node3,
+	and that (therefore) we don't know the state of any outbound
+	connection from node3.
+
+	In this case, the `cluster diagnose` command is more informative:
+
+        $ repmgr -f /etc/repmgr.conf cluster diagnose
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  x
+         node2 |  2 |  * |  * |  *
+         node3 |  3 |  * |  * |  *
+
+	What happened is that `cluster diagnose` merged its own `cluster
+    matrix` with the `cluster matrix` output from node2; the latter is
+    able to connect to node3 and therefore determine the state of
+    outbound connections from that node.
+
+
 * `cluster cleanup`
 
     Purges monitoring history from the `repl_monitor` table to prevent excessive
