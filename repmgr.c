@@ -153,6 +153,9 @@ static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_lis
 static void conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
 static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
 
+static void config_file_list_init(t_configfile_list *list, int max_size);
+static void config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir);
+
 /* Global variables */
 static PQconninfoOption *opts = NULL;
 
@@ -216,7 +219,6 @@ main(int argc, char **argv)
 		{"help", no_argument, NULL, OPT_HELP},
 		{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 		{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
-		{"ignore-external-config-files", no_argument, NULL, OPT_IGNORE_EXTERNAL_CONFIG_FILES},
 		{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
 		{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
 		{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
@@ -224,10 +226,12 @@ main(int argc, char **argv)
 		{"node", required_argument, NULL, OPT_NODE},
 		{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 		{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
+		{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 		{"version", no_argument, NULL, 'V'},
 		/* Following options deprecated */
 		{"local-port", required_argument, NULL, 'l'},
 		{"initdb-no-pwprompt", no_argument, NULL, OPT_INITDB_NO_PWPROMPT},
+		{"ignore-external-config-files", no_argument, NULL, OPT_IGNORE_EXTERNAL_CONFIG_FILES},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -477,8 +481,23 @@ main(int argc, char **argv)
 
 				strncpy(runtime_options.recovery_min_apply_delay, optarg, MAXLEN);
 				break;
-			case OPT_IGNORE_EXTERNAL_CONFIG_FILES:
-				runtime_options.ignore_external_config_files = true;
+			case OPT_COPY_EXTERNAL_CONFIG_FILES:
+				runtime_options.copy_external_config_files = true;
+				if (optarg != NULL)
+				{
+					if (strcmp(optarg, "samepath") == 0)
+					{
+						runtime_options.copy_external_config_files_destination = CONFIG_FILE_SAMEPATH;
+					}
+					else if (strcmp(optarg, "pgdata") == 0)
+					{
+						runtime_options.copy_external_config_files_destination = CONFIG_FILE_PGDATA;
+					}
+					else
+					{
+						item_list_append(&cli_errors, _("Value provided for '--copy-external-config-files' must be 'samepath' or 'pgdata'"));
+					}
+				}
 				break;
 			case OPT_CONFIG_ARCHIVE_DIR:
 				strncpy(runtime_options.config_archive_dir, optarg, MAXLEN);
@@ -514,6 +533,9 @@ main(int argc, char **argv)
 			case OPT_INITDB_NO_PWPROMPT:
 				/* --initdb-no-pwprompt is deprecated */
 				item_list_append(&cli_warnings, _("--initdb-no-pwprompt is deprecated and has no effect; use -P/--pwprompt instead"));
+				break;
+			case OPT_IGNORE_EXTERNAL_CONFIG_FILES:
+				item_list_append(&cli_warnings, _("--ignore-external-config-files is deprecated and has no effect; use --copy-external-config-file instead"));
 				break;
 
 			default:
@@ -1725,24 +1747,11 @@ do_standby_clone(void)
 	int			i;
 	bool		pg_start_backup_executed = false;
 	bool		target_directory_provided = false;
-	bool		external_config_file_copy_required = false;
 
 	char		master_data_directory[MAXPGPATH];
 	char		local_data_directory[MAXPGPATH];
 
 	char		local_repmgr_directory[MAXPGPATH];
-
-	char		master_config_file[MAXPGPATH] = "";
-	char		local_config_file[MAXPGPATH] = "";
-	bool		config_file_outside_pgdata = false;
-
-	char		master_hba_file[MAXPGPATH] = "";
-	char		local_hba_file[MAXPGPATH] = "";
-	bool		hba_file_outside_pgdata = false;
-
-	char		master_ident_file[MAXPGPATH] = "";
-	char		local_ident_file[MAXPGPATH] = "";
-	bool		ident_file_outside_pgdata = false;
 
 	char		master_control_file[MAXPGPATH] = "";
 	char		local_control_file[MAXPGPATH] = "";
@@ -1751,7 +1760,7 @@ do_standby_clone(void)
 	char	   *last_wal_segment = NULL;
 
 	PQExpBufferData event_details;
-
+	t_configfile_list config_files = T_CONFIGFILE_LIST_INITIALIZER;
 
 	/*
 	 * Detecting the appropriate mode
@@ -1805,9 +1814,6 @@ do_standby_clone(void)
 	if (target_directory_provided == true)
 	{
 		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_config_file, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_hba_file, runtime_options.dest_dir, MAXPGPATH);
-		strncpy(local_ident_file, runtime_options.dest_dir, MAXPGPATH);
 	}
 	/*
 	 * Otherwise use the same data directory as on the remote host
@@ -1815,9 +1821,6 @@ do_standby_clone(void)
 	else
 	{
 		strncpy(local_data_directory, master_data_directory, MAXPGPATH);
-		strncpy(local_config_file, master_config_file, MAXPGPATH);
-		strncpy(local_hba_file, master_hba_file, MAXPGPATH);
-		strncpy(local_ident_file, master_ident_file, MAXPGPATH);
 
 		log_notice(_("setting data directory to: %s\n"), local_data_directory);
 		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
@@ -1931,7 +1934,7 @@ do_standby_clone(void)
 		}
 	}
 
-	/* By default attempt to connect to the upstream server */
+	/* By default attempt to connect to the source server */
 	if (runtime_options.no_upstream_connection == false)
 	{
 		/* Attempt to connect to the upstream server to verify its configuration */
@@ -2161,7 +2164,6 @@ do_standby_clone(void)
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
-
 	}
 
 	if (mode != barman)
@@ -2215,43 +2217,89 @@ do_standby_clone(void)
 			}
 		}
 
+
+		if (get_pg_setting(source_conn, "data_directory", master_data_directory) == false)
+		{
+			log_err(_("Unable to retrieve upstream node's data directory\n"));
+			log_hint(_("STANDBY CLONE must be run as a database superuser"));
+			exit(ERR_BAD_CONFIG);
+		}
+
 		/*
-		 * Obtain data directory and configuration file locations
+		 * Obtain configuration file locations
 		 * We'll check to see whether the configuration files are in the data
-		 * directory - if not we'll have to copy them via SSH
+		 * directory - if not we'll have to copy them via SSH, if copying
+		 * requested.
 		 *
 		 * XXX: if configuration files are symlinks to targets outside the data
 		 * directory, they won't be copied by pg_basebackup, but we can't tell
 		 * this from the below query; we'll probably need to add a check for their
 		 * presence and if missing force copy by SSH
 		 */
+
 		sqlquery_snprintf(sqlquery,
 						  "  WITH dd AS ( "
-						  "    SELECT setting "
+						  "    SELECT setting AS data_directory"
 						  "      FROM pg_catalog.pg_settings "
 						  "     WHERE name = 'data_directory' "
 						  "  ) "
-						  "    SELECT ps.name, ps.setting, "
-						  "           ps.setting ~ ('^' || dd.setting) AS in_data_dir "
-						  "      FROM dd, pg_settings ps "
-						  "     WHERE ps.name IN ('data_directory', 'config_file', 'hba_file', 'ident_file') "
+						  "    SELECT DISTINCT(sourcefile), "
+						  "           regexp_replace(sourcefile, '^.*\\/', '') AS filename, "
+						  "           sourcefile ~ ('^' || dd.data_directory) AS in_data_dir "
+						  "      FROM dd, pg_catalog.pg_settings ps "
+						  "     WHERE sourcefile IS NOT NULL "
 						  "  ORDER BY 1 ");
 
 		log_debug(_("standby clone: %s\n"), sqlquery);
 		res = PQexec(source_conn, sqlquery);
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
-			log_err(_("can't get info about data directory and configuration files: %s\n"),
+			log_err(_("unable to retrieve configuration file locations: %s\n"),
 					PQerrorMessage(source_conn));
 			PQclear(res);
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		/* We need all 4 parameters, and they can be retrieved only by superusers */
-		if (PQntuples(res) != 4)
+		/*
+		 * allocate memory for config file array - number of rows returned from
+		 * above query + 2 for pg_hba.conf, pg_ident.conf
+		 */
+
+		config_file_list_init(&config_files, PQntuples(res) + 2);
+
+		for (i = 0; i < PQntuples(res); i++)
 		{
-			log_err("STANDBY CLONE should be run by a SUPERUSER\n");
+			config_file_list_add(&config_files,
+								 PQgetvalue(res, i, 0),
+								 PQgetvalue(res, i, 1),
+								 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
+
+			printf("file; %s\n", PQgetvalue(res, i, 0));
+		}
+
+		PQclear(res);
+
+		/* Fetch locations of pg_hba.conf and pg_ident.conf */
+		sqlquery_snprintf(sqlquery,
+						  "  WITH dd AS ( "
+						  "    SELECT setting AS data_directory"
+						  "      FROM pg_catalog.pg_settings "
+						  "     WHERE name = 'data_directory' "
+						  "  ) "
+						  "    SELECT ps.setting, "
+						  "           regexp_replace(setting, '^.*\\/', '') AS filename, "
+						  "           ps.setting ~ ('^' || dd.data_directory) AS in_data_dir "
+						  "      FROM dd, pg_catalog.pg_settings ps "
+						  "     WHERE ps.name IN ('hba_file', 'ident_file') "
+						  "  ORDER BY 1 ");
+
+		log_debug(_("standby clone: %s\n"), sqlquery);
+		res = PQexec(source_conn, sqlquery);
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_err(_("unable to retrieve configuration file locations: %s\n"),
+					PQerrorMessage(source_conn));
 			PQclear(res);
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
@@ -2259,39 +2307,10 @@ do_standby_clone(void)
 
 		for (i = 0; i < PQntuples(res); i++)
 		{
-			if (strcmp(PQgetvalue(res, i, 0), "data_directory") == 0)
-			{
-				strncpy(master_data_directory, PQgetvalue(res, i, 1), MAXPGPATH);
-			}
-			else if (strcmp(PQgetvalue(res, i, 0), "config_file") == 0)
-			{
-				if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
-				{
-					config_file_outside_pgdata = true;
-					external_config_file_copy_required = true;
-					strncpy(master_config_file, PQgetvalue(res, i, 1), MAXPGPATH);
-				}
-			}
-			else if (strcmp(PQgetvalue(res, i, 0), "hba_file") == 0)
-			{
-				if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
-				{
-					hba_file_outside_pgdata  = true;
-					external_config_file_copy_required = true;
-					strncpy(master_hba_file, PQgetvalue(res, i, 1), MAXPGPATH);
-				}
-			}
-			else if (strcmp(PQgetvalue(res, i, 0), "ident_file") == 0)
-			{
-				if (strcmp(PQgetvalue(res, i, 2), "f") == 0)
-				{
-					ident_file_outside_pgdata = true;
-					external_config_file_copy_required = true;
-					strncpy(master_ident_file, PQgetvalue(res, i, 1), MAXPGPATH);
-				}
-			}
-			else
-				log_warning(_("unknown parameter: %s\n"), PQgetvalue(res, i, 0));
+			config_file_list_add(&config_files,
+								 PQgetvalue(res, i, 0),
+								 PQgetvalue(res, i, 1),
+								 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
 		}
 
 		PQclear(res);
@@ -2849,67 +2868,67 @@ do_standby_clone(void)
 		}
 	}
 
-	/*
-	 * If configuration files were not inside the data directory, we'll need to
-	 * copy them via SSH (unless `--ignore-external-config-files` was provided)
-	 *
-	 * TODO: add option to place these files in the same location on the
-	 * standby server as on the primary?
-	 */
 
-	if (mode != barman &&
-		external_config_file_copy_required &&
-		!runtime_options.ignore_external_config_files)
+	/*
+	 * If `--copy-external-config-files` was provided, copy any configuration
+	 * files detected to the appropriate location. Any errors encountered
+	 * will not be treated as fatal.
+	 */
+	if (runtime_options.copy_external_config_files && upstream_record_found)
 	{
-		log_notice(_("copying configuration files from master\n"));
-		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+		int i;
+		t_configfile_info *file;
+
+		char *host;
+
+		/* get host from upstream record */
+		host = param_get(&recovery_conninfo, "host");
+
+		if (host == NULL)
+			host = runtime_options.host;
+
+		log_verbose(LOG_DEBUG, "host for config file is: %s\n", host);
+		log_notice(_("copying external configuration files from upstream node\n"));
+
+		r = test_ssh_connection(host, runtime_options.remote_user);
 		if (r != 0)
 		{
-			log_err(_("aborting, remote host %s is not reachable.\n"),
-					runtime_options.host);
-			retval = ERR_BAD_SSH;
-			goto stop_backup;
+			log_err(_("remote host %s is not reachable via SSH - unable to copy external configuration files\n"),
+					   host);
 		}
-
-		if (config_file_outside_pgdata)
+		else
 		{
-			log_info(_("standby clone: master config file '%s'\n"), master_config_file);
-			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_config_file, local_config_file, false, server_version_num);
-			if (r != 0)
+			for (i = 0; i < config_files.entries; i++)
 			{
-				log_err(_("standby clone: failed copying master config file '%s'\n"),
-						master_config_file);
-				retval = ERR_BAD_SSH;
-				goto stop_backup;
-			}
-		}
+				char dest_path[MAXPGPATH];
+				file = config_files.files[i];
 
-		if (hba_file_outside_pgdata)
-		{
-			log_info(_("standby clone: master hba file '%s'\n"), master_hba_file);
-			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_hba_file, local_hba_file, false, server_version_num);
-			if (r != 0)
-			{
-				log_err(_("standby clone: failed copying master hba file '%s'\n"),
-						master_hba_file);
-				retval = ERR_BAD_SSH;
-				goto stop_backup;
-			}
-		}
+				/*
+				 * Skip files in the data directory - these will be copied during
+				 * the main backup
+				 */
+				if (file->in_data_directory == true)
+					continue;
 
-		if (ident_file_outside_pgdata)
-		{
-			log_info(_("standby clone: master ident file '%s'\n"), master_ident_file);
-			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  master_ident_file, local_ident_file, false, server_version_num);
-			if (r != 0)
-			{
-				log_err(_("standby clone: failed copying master ident file '%s'\n"),
-						master_ident_file);
-				retval = ERR_BAD_SSH;
-				goto stop_backup;
+				if (runtime_options.copy_external_config_files_destination == CONFIG_FILE_SAMEPATH)
+				{
+					strncpy(dest_path, file->filepath, MAXPGPATH);
+				}
+				else
+				{
+					snprintf(dest_path, MAXPGPATH,
+							 "%s/%s",
+							 local_data_directory,
+							 file->filename);
+				}
+
+				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+									  file->filepath, dest_path, false, server_version_num);
+				if (r != 0)
+				{
+					log_err(_("standby clone: unable to copying config file '%s'\n"),
+							file->filename);
+				}
 			}
 		}
 	}
@@ -3037,6 +3056,7 @@ stop_backup:
 
 		/* delete the backup label file copied from the primary */
 		maxlen_snprintf(label_path, "%s/backup_label", local_data_directory);
+		// XXX!
 		if (0 && unlink(label_path) < 0 && errno != ENOENT)
 		{
 			log_warning(_("unable to delete backup label file %s\n"), label_path);
@@ -5450,9 +5470,11 @@ do_help(void)
 	printf(_("  --without-barman                    (standby clone) do not use Barman even if configured\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    (standby clone, follow) set recovery_min_apply_delay\n" \
 			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
-	printf(_("  --ignore-external-config-files      (standby clone) don't copy configuration files located\n" \
-			 "                                        outside the data directory when cloning a standby\n"));
-	printf(_("  -w, --wal-keep-segments=VALUE       (standby clone) minimum value for the GUC\n" \
+	printf(_("  --copy-external-config-files[={samepath|pgdata}]\n" \
+			 "                                      (standby clone) copy configuration files located outside the \n" \
+			 "                                        data directory to the same path on the standby (default) or to the\n" \
+			 "                                        PostgreSQL data directory\n"));
+	printf(_("  -w, --wal-keep-segments             (standby clone) minimum value for the GUC\n" \
 			 "                                        wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
 	printf(_("  -m, --mode                          (standby switchover) shutdown mode (\"fast\" - default, \"smart\" or \"immediate\")\n"));
@@ -6077,9 +6099,9 @@ check_parameters_for_action(const int action)
 			item_list_append(&cli_warnings, _("-c/--fast-checkpoint can only be used when executing STANDBY CLONE"));
 		}
 
-		if (runtime_options.ignore_external_config_files)
+		if (runtime_options.copy_external_config_files)
 		{
-			item_list_append(&cli_warnings, _("--ignore-external-config-files can only be used when executing STANDBY CLONE"));
+			item_list_append(&cli_warnings, _("--copy-external-config-files can only be used when executing STANDBY CLONE"));
 		}
 
 		if (*runtime_options.recovery_min_apply_delay)
@@ -7404,6 +7426,7 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 
 	int			optindex = 0;
 
+	/* We're only interested in these options */
 	static struct option long_options[] =
 	{
 		{"slot", required_argument, NULL, 'S'},
@@ -7475,4 +7498,33 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	}
 
 	return;
+}
+
+static void
+config_file_list_init(t_configfile_list *list, int max_size)
+{
+	list->size = max_size;
+	list->entries = 0;
+	list->files = pg_malloc0(sizeof(t_configfile_info *) * max_size);
+}
+
+
+static void
+config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir)
+{
+	/* Failsafe to prevent entries being added beyond the end */
+	if (list->entries == list->size)
+		return;
+
+	list->files[list->entries] = pg_malloc0(sizeof(t_configfile_info));
+
+
+	strncpy(list->files[list->entries]->filepath, file, MAXPGPATH);
+	canonicalize_path(list->files[list->entries]->filepath);
+
+
+	strncpy(list->files[list->entries]->filename, filename, MAXPGPATH);
+	list->files[list->entries]->in_data_directory = in_data_dir;
+
+	list->entries ++;
 }

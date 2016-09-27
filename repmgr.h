@@ -52,7 +52,7 @@
 #define OPT_HELP                         1
 #define OPT_CHECK_UPSTREAM_CONFIG        2
 #define OPT_RECOVERY_MIN_APPLY_DELAY     3
-#define OPT_IGNORE_EXTERNAL_CONFIG_FILES 4
+#define OPT_COPY_EXTERNAL_CONFIG_FILES   4
 #define OPT_CONFIG_ARCHIVE_DIR           5
 #define OPT_PG_REWIND                    6
 #define OPT_PWPROMPT                     7
@@ -63,6 +63,10 @@
 
 /* deprecated command line options */
 #define OPT_INITDB_NO_PWPROMPT           999
+#define OPT_IGNORE_EXTERNAL_CONFIG_FILES 998
+
+#define CONFIG_FILE_SAMEPATH 1
+#define CONFIG_FILE_PGDATA 2
 
 
 /* Run time options type */
@@ -84,10 +88,11 @@ typedef struct
 	bool		witness_pwprompt;
 	bool		rsync_only;
 	bool		fast_checkpoint;
-	bool		ignore_external_config_files;
 	bool		csv_mode;
 	bool		without_barman;
 	bool		no_upstream_connection;
+	bool		copy_external_config_files;
+	int			copy_external_config_files_destination;
 	char		masterport[MAXLEN];
 	/*
 	 * configuration file parameters which can be overridden on the
@@ -103,7 +108,7 @@ typedef struct
 	char		config_archive_dir[MAXLEN];
 	/* parameter used by CLUSTER CLEANUP */
 	int			keep_history;
-	/* paramater used by {STANDBY|WITNESS} UNREGISTER */
+	/* parameter used by {STANDBY|WITNESS} UNREGISTER */
 	int			node;
 
 	char		pg_bindir[MAXLEN];
@@ -111,7 +116,7 @@ typedef struct
 	char		recovery_min_apply_delay[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, false, "", "", "", "", "fast", "", 0, 0, "", ""}
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, false, CONFIG_FILE_SAMEPATH, "", "", "", "", "fast", "", 0, 0, "", ""}
 
 struct BackupLabel
 {
@@ -141,4 +146,20 @@ typedef struct
 	char **values;
 } t_conninfo_param_list;
 
+typedef struct
+{
+	char filepath[MAXPGPATH];
+	char filename[MAXPGPATH];
+	bool in_data_directory;
+} t_configfile_info;
+
+
+typedef struct
+{
+	int    size;
+	int    entries;
+	t_configfile_info **files;
+} t_configfile_list;
+
+#define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
 #endif
