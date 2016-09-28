@@ -42,12 +42,6 @@
 # Optional configuration items
 # ============================
 
-# SSH connection information
-# We recommend using the "postgres" user, so it is enough to indicate the hostname.
-# If extra parameters such as port, etc. are needed, they can be
-# specified in the .ssh/config file.
-#ssh_hostname='192.168.204.104'
-
 # Replication settings
 # ---------------------
 

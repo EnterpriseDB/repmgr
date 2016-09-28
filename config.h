@@ -60,7 +60,6 @@ typedef struct
 	char		conninfo[MAXLEN];
 	char		barman_server[MAXLEN];
 	char		barman_config[MAXLEN];
-	char		ssh_hostname[MAXLEN];
 	int			failover;
 	int			priority;
 	char		node_name[MAXLEN];
@@ -94,7 +93,7 @@ typedef struct
  * The following will initialize the structure with a minimal set of options;
  * actual defaults are set in parse_config() before parsing the configuration file
  */
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", "", "", "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, { NULL, NULL } }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", "", "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, { NULL, NULL } }
 
 typedef struct ItemListCell
 {

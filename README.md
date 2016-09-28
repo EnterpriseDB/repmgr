@@ -1607,8 +1607,7 @@ which contains connection details for the local database.
     replication cluster. This command polls each registered server and
     asks it to connect to each other node.
 
-    This command requires a valid `repmgr.conf` file on each node,
-    with the optional `ssh_hostname` parameter set.
+    This command requires a valid `repmgr.conf` file on each node.
 
     Example 1 (all nodes up):
 

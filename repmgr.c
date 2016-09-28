@@ -1105,7 +1105,7 @@ do_cluster_matrix(void)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-			  "SELECT conninfo, ssh_hostname, type, name, upstream_node_name, id"
+			  "SELECT conninfo, type, name, upstream_node_name, id"
 			  "  FROM %s.repl_show_nodes",
 			  get_repmgr_schema_quoted(conn));
 
@@ -1144,7 +1144,7 @@ do_cluster_matrix(void)
 	{
 		int name_length_cur;
 
-		name_length_cur	= strlen(PQgetvalue(res, i, 3));
+		name_length_cur	= strlen(PQgetvalue(res, i, 2));
 		if (name_length_cur > name_length)
 			name_length = name_length_cur;
 	}
@@ -1152,6 +1152,11 @@ do_cluster_matrix(void)
 	for (i = 0; i < n; i++)
 	{
 		int connection_status;
+		t_conninfo_param_list remote_conninfo;
+		char *host;
+
+		initialize_conninfo_params(&remote_conninfo, false);
+		host = param_get(&remote_conninfo, "host");
 
 		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
 
@@ -1173,7 +1178,7 @@ do_cluster_matrix(void)
 		initPQExpBuffer(&command_output);
 
 		(void)remote_command(
-			PQgetvalue(res, i, 1),
+			host,
 			"postgres",
 			command,
 			&command_output);
@@ -1226,7 +1231,7 @@ do_cluster_matrix(void)
 		for (i = 0; i < n; i++)
 		{
 			printf("%*s | %2d ", name_length,
-				   PQgetvalue(res, i, 3), i + 1);
+				   PQgetvalue(res, i, 2), i + 1);
 			for (j = 0; j < n; j++)
 			{
 				switch (matrix[i * n + j])
@@ -1475,7 +1480,6 @@ do_master_register(void)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
-										options.ssh_hostname,
 										options.priority,
 										repmgr_slot_name_ptr,
 										true);
@@ -1601,7 +1605,6 @@ do_standby_register(void)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
-										options.ssh_hostname,
 										options.priority,
 										repmgr_slot_name_ptr,
 										true);
@@ -5533,7 +5536,6 @@ do_witness_register(PGconn *masterconn)
 										options.cluster_name,
 										options.node_name,
 										options.conninfo,
-										options.ssh_hostname,
 										options.priority,
 										NULL,
 										true);
@@ -6531,7 +6533,6 @@ create_schema(PGconn *conn)
 					  "  cluster          TEXT    NOT NULL, "
 					  "  name             TEXT    NOT NULL, "
 					  "  conninfo         TEXT    NOT NULL, "
-					  "  ssh_hostname     TEXT    NULL, "
 					  "  slot_name        TEXT    NULL, "
 					  "  priority         INTEGER NOT NULL, "
 					  "  active           BOOLEAN NOT NULL DEFAULT TRUE )",
@@ -6667,7 +6668,7 @@ create_schema(PGconn *conn)
 	/* CREATE VIEW repl_show_nodes  */
 	sqlquery_snprintf(sqlquery,
 					  "CREATE VIEW %s.repl_show_nodes AS "
-			                  "SELECT rn.id, rn.conninfo, rn.ssh_hostname, "
+			                  "SELECT rn.id, rn.conninfo, "
 					          "  rn.type, rn.name, rn.cluster,"
 			                  "  rn.priority, rn.active, sq.name AS upstream_node_name"
 			                  "  FROM %s.repl_nodes as rn"
