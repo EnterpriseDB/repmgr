@@ -5571,6 +5571,8 @@ do_help(void)
 			 "                                        PostgreSQL data directory\n"));
 	printf(_("  -w, --wal-keep-segments             (standby clone) minimum value for the GUC\n" \
 			 "                                        wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
+	printf(_("  --wait-sync[=VALUE]                 (standby register) wait for the node record to synchronise to the\n"\
+			 "                                        standby (optional timeout in seconds)\n"));
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
 	printf(_("  -m, --mode                          (standby switchover) shutdown mode (\"fast\" - default, \"smart\" or \"immediate\")\n"));
 	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \

@@ -540,6 +540,18 @@ standby's upstream server is the replication cluster master. While of limited
 use in a simple master/standby replication cluster, this information is required
 to effectively manage cascading replication (see below).
 
+* * *
+
+> *TIP*: depending on your environment and workload, it may take some time for
+> the standby's node record to propagate from the master to the standby. Some
+> actions (such as starting `repmgrd`) require that the standby's node record
+> is present and up-to-date to function correctly - by providing the option
+> `--wait-sync` to the `repmgr standby register` command, `repmgr` will wait
+> until the record is synchronised before exiting. An optional timeout (in
+> seconds) can be added to this option (e.g. `--wait-sync=60`).
+
+* * *
+
 ### Using Barman to clone a standby
 
 `repmgr standby clone` also supports Barman, the Backup and
