@@ -61,6 +61,7 @@
 #define OPT_WITHOUT_BARMAN               10
 #define OPT_NO_UPSTREAM_CONNECTION       11
 #define OPT_REGISTER_WAIT                12
+#define OPT_CLUSTER                      13
 
 /* deprecated command line options */
 #define OPT_INITDB_NO_PWPROMPT           999

@@ -184,6 +184,7 @@ static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 static char  path_buf[MAXLEN] = "";
 static char  barman_command_buf[MAXLEN] = "";
+static char  repmgr_cluster[MAXLEN] = "";
 
 /* Collate command line errors and warnings here for friendlier reporting */
 ItemList	cli_errors = { NULL, NULL };
@@ -221,7 +222,6 @@ main(int argc, char **argv)
 		{"help", no_argument, NULL, OPT_HELP},
 		{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 		{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
-		{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
 		{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
 		{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
 		{"csv", no_argument, NULL, OPT_CSV},
@@ -231,6 +231,9 @@ main(int argc, char **argv)
 		{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 		{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
 		{"version", no_argument, NULL, 'V'},
+		/* Following options for internal use */
+		{"cluster", required_argument, NULL, OPT_CLUSTER},
+		{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
 		/* Following options deprecated */
 		{"local-port", required_argument, NULL, 'l'},
 		{"initdb-no-pwprompt", no_argument, NULL, OPT_INITDB_NO_PWPROMPT},
@@ -502,9 +505,7 @@ main(int argc, char **argv)
 					}
 				}
 				break;
-			case OPT_CONFIG_ARCHIVE_DIR:
-				strncpy(runtime_options.config_archive_dir, optarg, MAXLEN);
-				break;
+
 			case OPT_PG_REWIND:
 				if (optarg != NULL)
 				{
@@ -533,6 +534,12 @@ main(int argc, char **argv)
 				{
 					runtime_options.wait_register_sync_seconds = repmgr_atoi(optarg, "--wait-sync", &cli_errors, false);
 				}
+				break;
+			case OPT_CONFIG_ARCHIVE_DIR:
+				strncpy(runtime_options.config_archive_dir, optarg, MAXLEN);
+				break;
+			case OPT_CLUSTER:
+				strncpy(repmgr_cluster, optarg, MAXLEN);
 				break;
 			/* deprecated options - output a warning */
 			case 'l':
@@ -887,8 +894,12 @@ main(int argc, char **argv)
 		}
 
 	/* Initialise the repmgr schema name */
-	maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
-			 options.cluster_name);
+	if (strlen(repmgr_cluster))
+		maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
+						repmgr_cluster);
+	else
+		maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
+						options.cluster_name);
 
 	/*
 	 * Initialise slot name, if required (9.4 and later)
@@ -979,7 +990,12 @@ do_cluster_show(void)
 
 	/* Connect to local database to obtain cluster connection data */
 	log_info(_("connecting to database\n"));
-	conn = establish_db_connection(options.conninfo, true);
+
+	if (strlen(options.conninfo))
+		conn = establish_db_connection(options.conninfo, true);
+	else
+		conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
+												 (const char**)source_conninfo.values, true);
 
 	sqlquery_snprintf(sqlquery,
 					  "SELECT conninfo, type, name, upstream_node_name, id"
@@ -1156,6 +1172,11 @@ do_cluster_matrix(void)
 		char *host;
 
 		initialize_conninfo_params(&remote_conninfo, false);
+		parse_conninfo_string(PQgetvalue(res, i, 0),
+							  &remote_conninfo,
+							  NULL,
+							  false);
+
 		host = param_get(&remote_conninfo, "host");
 
 		conn = establish_db_connection(PQgetvalue(res, i, 0), false);
@@ -1173,13 +1194,16 @@ do_cluster_matrix(void)
 			continue;
 
 		maxlen_snprintf(command,
-						"repmgr cluster show --csv");
+						"\"%s -d '%s' --cluster '%s' cluster show --csv\"",
+						make_pg_path("repmgr"),
+						PQgetvalue(res, i, 0),
+						options.cluster_name);
 
 		initPQExpBuffer(&command_output);
 
 		(void)remote_command(
 			host,
-			"postgres",
+			runtime_options.remote_user,
 			command,
 			&command_output);
 
@@ -6367,6 +6391,8 @@ check_parameters_for_action(const int action)
 			break;
 
 		case CLUSTER_SHOW:
+			/* host parameters can be supplied */
+			config_file_required = false;
 			/* allow all parameters to be supplied */
 			break;
 
