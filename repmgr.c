@@ -2369,8 +2369,6 @@ do_standby_clone(void)
 								 PQgetvalue(res, i, 0),
 								 PQgetvalue(res, i, 1),
 								 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
-
-			printf("file; %s\n", PQgetvalue(res, i, 0));
 		}
 
 		PQclear(res);
@@ -6940,7 +6938,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		if (xlog_stream == true)
 			min_replication_connections += 1;
 
-		log_verbose(LOG_NOTICE, "checking for available walsenders (%i required)\n", min_replication_connections);
+		log_verbose(LOG_NOTICE, "checking for available walsenders on upstream node (%i required)\n", min_replication_connections);
 
 		connections = pg_malloc0(sizeof(PGconn *) * min_replication_connections);
 
@@ -6976,6 +6974,8 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 				exit(ERR_BAD_CONFIG);
 			}
 		}
+
+		log_verbose(LOG_INFO, "sufficient walsenders available on upstream node (%i required)\n", min_replication_connections);
 	}
 
 	return config_ok;
