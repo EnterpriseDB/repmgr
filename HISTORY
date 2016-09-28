@@ -11,7 +11,9 @@
         improve "repmgr-auto" Debian package (Gianni)
         repmgr: add option `--wait-sync` for `standby register` which causes
            repmgr to wait for the registered node record to synchronise to
-           the standby
+           the standby (Ian)
+        repmgr: add option `--copy-external-config-files` for files outside
+           of the data directory (Ian)
 
 3.1.5   2016-08-15
         repmgrd: in a failover situation, prevent endless looping when

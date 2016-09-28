@@ -449,14 +449,33 @@ Clone the standby with:
 This will clone the PostgreSQL data directory files from the master at `repmgr_node1`
 using PostgreSQL's `pg_basebackup` utility. A `recovery.conf` file containing the
 correct parameters to start streaming from this master server will be created
-automatically, and unless otherwise specified, the `postgresql.conf` and `pg_hba.conf`
-files will be copied from the master.
+automatically.
+
+Note that by default, any configuration files in the master's data directory will be
+copied to the standby. Typically these will be `postgresql.conf`, `postgresql.auto.conf`,
+`pg_hba.conf` and `pg_ident.conf`. These may require modification before the standby
+is started so it functions as desired.
+
+In some cases (e.g. on Debian or Ubuntu Linux installations), PostgreSQL's
+configuration files are located outside of the data directory and will
+not be copied by default. `repmgr` can copy these files, either to the same
+location on the standby server (provided appropriate directory and file permissions
+are available), or into the standby's data directory. This requires passwordless
+SSH access to the master server. Add the option `--copy-external-config-files`
+to the `repmgr standby clone` command; by default files will be copied to
+the same path as on the upstream server. To have them placed in the standby's
+data directory, specify `--copy-external-config-files=pgdata`, but note that
+any include directives in the copied files may need to be updated.
+
+*Caveat*: when copying external configuration files: `repmgr` will only be able
+to detect files which contain active settings. If a file is referenced by
+an include directive but is empty, only contains comments or contains
+settings which have not been activated, the file will not be copied.
 
 * * *
 
-> *TIP*: if configuration files such as `postgresql.conf` are not copied from the
-> master by `repmgr standby clone`, you'll need to ensure the standby is correctly
-> configured for replication.
+> *TIP*: for reliable configuration file management we recommend using a configuration
+> management tool such as Ansible, Chef, Puppet or Salt.
 
 * * *
 
@@ -1549,8 +1568,8 @@ which contains connection details for the local database.
 * `cluster show`
 
     Displays information about each active node in the replication cluster. This
-    command polls each registered server and shows its role (master / standby /
-    witness) or `FAILED` if the node doesn't respond. It polls each server
+    command polls each registered server and shows its role (`master` / `standby` /
+    `witness`) or `FAILED` if the node doesn't respond. It polls each server
     directly and can be run on any node in the cluster; this is also useful
     when analyzing connectivity from a particular node.
 
