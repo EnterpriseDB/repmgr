@@ -60,6 +60,7 @@
 #define OPT_NODE                         9
 #define OPT_WITHOUT_BARMAN               10
 #define OPT_NO_UPSTREAM_CONNECTION       11
+#define OPT_REGISTER_WAIT                12
 
 /* deprecated command line options */
 #define OPT_INITDB_NO_PWPROMPT           999
@@ -93,6 +94,8 @@ typedef struct
 	bool		no_upstream_connection;
 	bool		copy_external_config_files;
 	int			copy_external_config_files_destination;
+	bool		wait_register_sync;
+	int			wait_register_sync_seconds;
 	char		masterport[MAXLEN];
 	/*
 	 * configuration file parameters which can be overridden on the
@@ -116,7 +119,7 @@ typedef struct
 	char		recovery_min_apply_delay[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, false, CONFIG_FILE_SAMEPATH, "", "", "", "", "fast", "", 0, 0, "", ""}
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, false, CONFIG_FILE_SAMEPATH, false, 0, "", "", "", "", "fast", "", 0, 0, "", ""}
 
 struct BackupLabel
 {

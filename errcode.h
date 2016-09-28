@@ -39,5 +39,7 @@
 #define ERR_BAD_BACKUP_LABEL 17
 #define ERR_SWITCHOVER_FAIL 18
 #define ERR_BARMAN 19
+#define ERR_REGISTRATION_SYNC 20
+
 
 #endif   /* _ERRCODE_H_ */

@@ -227,6 +227,7 @@ main(int argc, char **argv)
 		{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 		{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 		{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
+		{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
 		{"version", no_argument, NULL, 'V'},
 		/* Following options deprecated */
 		{"local-port", required_argument, NULL, 'l'},
@@ -524,7 +525,13 @@ main(int argc, char **argv)
 			case OPT_NO_UPSTREAM_CONNECTION:
 				runtime_options.no_upstream_connection = true;
 				break;
-
+			case OPT_REGISTER_WAIT:
+				runtime_options.wait_register_sync = true;
+				if (optarg != NULL)
+				{
+					runtime_options.wait_register_sync_seconds = repmgr_atoi(optarg, "--wait-sync", &cli_errors, false);
+				}
+				break;
 			/* deprecated options - output a warning */
 			case 'l':
 				/* -l/--local-port is deprecated */
@@ -1440,6 +1447,94 @@ do_standby_register(void)
 						"standby_register",
 						true,
 						NULL);
+
+	/* if --wait-sync option set, wait for the records to synchronise */
+
+	if (runtime_options.wait_register_sync)
+	{
+		bool sync_ok = false;
+		int timer = 0;
+		int node_record_result;
+		t_node_info node_record_on_master = T_NODE_INFO_INITIALIZER;
+		t_node_info node_record_on_standby = T_NODE_INFO_INITIALIZER;
+
+		node_record_result = get_node_record(master_conn,
+											 options.cluster_name,
+											 options.node,
+											 &node_record_on_master);
+
+		if (node_record_result != 1)
+		{
+			log_err(_("unable to retrieve node record from master\n"));
+			PQfinish(master_conn);
+			PQfinish(conn);
+			exit(ERR_REGISTRATION_SYNC);
+		}
+
+		for (;;)
+		{
+			bool records_match = true;
+
+			if (runtime_options.wait_register_sync_seconds && runtime_options.wait_register_sync_seconds == timer)
+				break;
+
+			// XXX check result
+			node_record_result = get_node_record(conn,
+												 options.cluster_name,
+												 options.node,
+												 &node_record_on_standby);
+
+			if (node_record_result == 0)
+			{
+				/* no record available yet on standby*/
+				records_match = false;
+			}
+			else if (node_record_result == 1)
+			{
+				/* compare relevant fields */
+				if (node_record_on_standby.upstream_node_id != node_record_on_master.upstream_node_id)
+					records_match = false;
+
+				if (node_record_on_standby.type != node_record_on_master.type)
+					records_match = false;
+
+				if (node_record_on_standby.priority != node_record_on_master.priority)
+					records_match = false;
+
+				if (node_record_on_standby.active != node_record_on_master.active)
+					records_match = false;
+
+				if (strcmp(node_record_on_standby.name, node_record_on_master.name) != 0)
+					records_match = false;
+
+				if (strcmp(node_record_on_standby.conninfo_str, node_record_on_master.conninfo_str) != 0)
+					records_match = false;
+
+				if (strcmp(node_record_on_standby.slot_name, node_record_on_master.slot_name) != 0)
+					records_match = false;
+
+				if (records_match == true)
+				{
+					sync_ok = true;
+					break;
+				}
+			}
+
+			sleep(1);
+			timer ++;
+		}
+
+		if (sync_ok == false)
+		{
+			log_err(_("node record was not synchronised after %i seconds\n"),
+					runtime_options.wait_register_sync_seconds);
+			PQfinish(master_conn);
+			PQfinish(conn);
+			exit(ERR_REGISTRATION_SYNC);
+		}
+
+		log_info(_("node record on standby synchronised from master\n"));
+	}
 
 	PQfinish(master_conn);
 	PQfinish(conn);
@@ -6125,7 +6220,16 @@ check_parameters_for_action(const int action)
 		}
 	}
 
-    /* Warn about parameters which apply to STANDBY SWITCHOVER only */
+	/* Warn about parameters which apply to STANDBY REGISTER only */
+	if (action != STANDBY_REGISTER)
+	{
+		if (runtime_options.wait_register_sync)
+		{
+			item_list_append(&cli_warnings, _("--wait-sync can only be used when executing STANDBY REGISTER"));
+		}
+	}
+
+	/* Warn about parameters which apply to STANDBY SWITCHOVER only */
 	if (action != STANDBY_SWITCHOVER)
 	{
 		if (pg_rewind_supplied == true)
@@ -6134,6 +6238,7 @@ check_parameters_for_action(const int action)
 		}
 	}
 
+	/* Warn about parameters which apply to WITNESS UNREGISTER only */
 	if (action != WITNESS_UNREGISTER)
 	{
 		if (runtime_options.node)
@@ -6142,7 +6247,7 @@ check_parameters_for_action(const int action)
 		}
 	}
 
-    /* Warn about parameters which apply to CLUSTER SHOW only */
+	/* Warn about parameters which apply to CLUSTER SHOW only */
 	if (action != CLUSTER_SHOW)
 	{
 		if (runtime_options.csv_mode)
