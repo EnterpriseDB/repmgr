@@ -151,6 +151,9 @@ General
 
   In `repmgr.conf`, set its priority to a value of 0 or less.
 
+  Additionally, if `failover` is set to `manual`, the node will never
+  be considered as a promotion candidate.
+
 - Does `repmgrd` support delayed standbys?
 
   `repmgrd` can monitor delayed standbys - those set up with
@@ -169,3 +172,11 @@ General
 
   Configure your system's `logrotate` service to do this; see example
   in README.md
+
+- I've recloned a failed master as a standby, but `repmgrd` refuses to start?
+
+  Check you registered the standby after recloning. If unregistered the standby
+  cannot be considered as a promotion candidate even if `failover` is set to
+  `automatic`, which is probably not what you want. `repmgrd` will start if
+  `failover` is set to `manual` so the node's replication status can still
+  be monitored, if desired.

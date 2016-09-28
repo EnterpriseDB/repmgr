@@ -311,6 +311,41 @@ main(int argc, char **argv)
 
 	log_debug("node id is %i, upstream is %i\n", node_info.node_id, node_info.upstream_node_id);
 
+    /*
+     * Check if node record is active - if not, and `failover=automatic`, the node
+     * won't be considered as a promotion candidate; this often happens when
+     * a failed primary is recloned and the node was not re-registered, giving
+     * the impression failover capability is there when it's not. In this case
+     * abort with an error and a hint about registering.
+     *
+     * If `failover=manual`, repmgrd can continue to passively monitor the node, but
+     * we should nevertheless issue a warning and the same hint.
+     */
+
+    if (node_info.active == false)
+    {
+        char *hint = "Check that 'repmgr (master|standby) register' was executed for this node";
+
+        switch (local_options.failover)
+        {
+            case AUTOMATIC_FAILOVER:
+                log_err(_("This node is marked as inactive and cannot be used for failover\n"));
+                log_hint(_("%s\n"), hint);
+                terminate(ERR_BAD_CONFIG);
+
+            case MANUAL_FAILOVER:
+                log_warning(_("This node is marked as inactive and will be passively monitored only\n"));
+                log_hint(_("%s\n"), hint);
+                break;
+
+            default:
+                /* This should never happen */
+                log_err(_("Unknown failover mode %i\n"), local_options.failover);
+                terminate(ERR_BAD_CONFIG);
+        }
+
+    }
+
 	/*
 	 * MAIN LOOP This loops cycles at startup and once per failover and
 	 * Requisites:
