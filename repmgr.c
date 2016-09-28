@@ -3172,10 +3172,15 @@ stop_backup:
 	{
 		case rsync:
 			log_notice(_("standby clone (using rsync) complete\n"));
+			break;
+
 		case pg_basebackup:
 			log_notice(_("standby clone (using pg_basebackup) complete\n"));
+			break;
+
 		case barman:
 			log_notice(_("standby clone (from Barman) complete\n"));
+			break;
 	}
 
 	/*
