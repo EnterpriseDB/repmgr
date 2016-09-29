@@ -120,7 +120,7 @@ typedef struct
 	char		recovery_min_apply_delay[MAXLEN];
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, false, CONFIG_FILE_SAMEPATH, false, 0, "", "", "", "", "fast", "", 0, 0, "", ""}
+#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, false, CONFIG_FILE_SAMEPATH, false, 0, "", "", "", "", "fast", "", 0, UNKNOWN_NODE_ID, "", ""}
 
 struct BackupLabel
 {

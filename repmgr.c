@@ -662,7 +662,7 @@ main(int argc, char **argv)
 	 *   { MASTER | PRIMARY } REGISTER |
 	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
 	 *   WITNESS { CREATE | REGISTER | UNREGISTER } |
-	 *   CLUSTER {SHOW | CLEANUP}
+	 *   CLUSTER { DIAGNOSE | MATRIX | SHOW | CLEANUP}
 	 *
 	 * the node part is optional, if we receive it then we shouldn't have
 	 * received a -h option
@@ -902,6 +902,7 @@ main(int argc, char **argv)
 
 	/* Initialise the repmgr schema name */
 	if (strlen(repmgr_cluster))
+		/* --cluster parameter provided */
 		maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 						repmgr_cluster);
 	else
@@ -1117,22 +1118,34 @@ build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 	int			i, j;
 	int			n;
 
-	int         x, y;
-	char       *p;
+	int			x, y;
 
-	char	    command[MAXLEN];
+	int			local_node_id;
+
+	PQExpBufferData command;
 	PQExpBufferData command_output;
 
 	/* We need to connect to get the list of nodes */
 	log_info(_("connecting to database\n"));
-	conn = establish_db_connection(options.conninfo, true);
+
+	if (strlen(options.conninfo))
+	{
+		conn = establish_db_connection(options.conninfo, true);
+		local_node_id = options.node;
+	}
+	else
+	{
+		conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
+												 (const char**)source_conninfo.values, true);
+		local_node_id = runtime_options.node;
+	}
 
 	sqlquery_snprintf(sqlquery,
-			  "SELECT conninfo, type, name, upstream_node_name, id"
+			  "SELECT conninfo, type, name, upstream_node_name, id, cluster"
 			  "  FROM %s.repl_show_nodes ORDER BY id",
 			  get_repmgr_schema_quoted(conn));
 
-	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
+	log_verbose(LOG_DEBUG, "build_cluster_matrix(): \n%s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 
@@ -1181,8 +1194,8 @@ build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 	for (i = 0; i < n; i++)
 	{
 		strncpy(*node_names + i * (*name_length + 1),
-				PQgetvalue(res, i, 3),
-				strlen(PQgetvalue(res, i, 3)) + 1);
+				PQgetvalue(res, i, 2),
+				strlen(PQgetvalue(res, i, 2)) + 1);
 	}
 
 	/*
@@ -1193,7 +1206,7 @@ build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 	{
 		int connection_status;
 		t_conninfo_param_list remote_conninfo;
-		char *host;
+		char *host, *p;
 
 		initialize_conninfo_params(&remote_conninfo, false);
 		parse_conninfo_string(PQgetvalue(res, i, 0),
@@ -1208,30 +1221,45 @@ build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 		connection_status =
 			(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
 
-		(*matrix)[(options.node - 1) * n + i] =
+		(*matrix)[(local_node_id - 1) * n + i] =
 			connection_status;
 
 		if (connection_status)
 			continue;
 
-		if (i + 1 == options.node)
+		if (i + 1 == local_node_id)
 			continue;
 
-		maxlen_snprintf(command,
-						"\"%s -d '%s' --cluster '%s' cluster show --csv\"",
-						make_pg_path("repmgr"),
-						PQgetvalue(res, i, 0),
-						options.cluster_name);
+		initPQExpBuffer(&command);
+		appendPQExpBuffer(&command,
+						  "\"%s -d '%s' --cluster '%s' ",
+						  make_pg_path("repmgr"),
+						  PQgetvalue(res, i, 0),
+						  PQgetvalue(res, i, 5));
+
+
+		if (strlen(pg_bindir))
+			// XXX escape path!
+			appendPQExpBuffer(&command,
+							  "--pg_bindir=%s ",
+							  pg_bindir);
+
+		appendPQExpBuffer(&command,
+						  " cluster show --csv\"");
+
+		log_verbose(LOG_DEBUG, "build_cluster_matrix(): executing\n%s\n", command.data);
 
 		initPQExpBuffer(&command_output);
 
 		(void)remote_command(
 			host,
 			runtime_options.remote_user,
-			command,
+			command.data,
 			&command_output);
 
 		p = command_output.data;
+
+		termPQExpBuffer(&command);
 
 		for (j = 0; j < n; j++)
 		{
@@ -1331,9 +1359,8 @@ build_cluster_diagnose(int **cube, char **node_names, int *name_length)
 
 	int			x, y, z;
 	int			n = 0; /* number of nodes */
-	char	   *p;
 
-	char		command[MAXLEN];
+	PQExpBufferData command;
 	PQExpBufferData command_output;
 
 	/* We need to connect to get the list of nodes */
@@ -1341,11 +1368,11 @@ build_cluster_diagnose(int **cube, char **node_names, int *name_length)
 	conn = establish_db_connection(options.conninfo, true);
 
 	sqlquery_snprintf(sqlquery,
-			  "SELECT conninfo, ssh_hostname, type, name, upstream_node_name, id"
+			  "SELECT conninfo, type, name, upstream_node_name, id"
 			  "	 FROM %s.repl_show_nodes ORDER BY id",
 			  get_repmgr_schema_quoted(conn));
 
-	log_verbose(LOG_DEBUG, "do_cluster_show(): \n%s\n",sqlquery );
+	log_verbose(LOG_DEBUG, "build_cluster_diagnose(): \n%s\n",sqlquery );
 
 	res = PQexec(conn, sqlquery);
 
@@ -1380,7 +1407,7 @@ build_cluster_diagnose(int **cube, char **node_names, int *name_length)
 	{
 		int name_length_cur;
 
-		name_length_cur	= strlen(PQgetvalue(res, i, 3));
+		name_length_cur	= strlen(PQgetvalue(res, i, 2));
 		if (name_length_cur > *name_length)
 			*name_length = name_length_cur;
 	}
@@ -1394,8 +1421,8 @@ build_cluster_diagnose(int **cube, char **node_names, int *name_length)
 	for (i = 0; i < n; i++)
 	{
 		strncpy(*node_names + i * (*name_length + 1),
-				PQgetvalue(res, i, 3),
-				strlen(PQgetvalue(res, i, 3)) + 1);
+				PQgetvalue(res, i, 2),
+				strlen(PQgetvalue(res, i, 2)) + 1);
 	}
 
 	/*
@@ -1404,26 +1431,68 @@ build_cluster_diagnose(int **cube, char **node_names, int *name_length)
 
 	for (i = 0; i < n; i++)
 	{
-		maxlen_snprintf(command,
-						"repmgr cluster matrix --csv");
+		char	   *p;
+		int remote_node_id;
+
+		remote_node_id = atoi(PQgetvalue(res, i, 4));
+
+		initPQExpBuffer(&command);
+
+		appendPQExpBuffer(&command,
+						  "%s -d '%s' --cluster '%s' --node=%i ",
+						  make_pg_path("repmgr"),
+						  PQgetvalue(res, i, 0),
+						  options.cluster_name,
+						  remote_node_id);
+
+
+		if (strlen(pg_bindir))
+			// XXX escape path!
+			appendPQExpBuffer(&command,
+							  "--pg_bindir=%s ",
+							  pg_bindir);
+
+		appendPQExpBuffer(&command,
+						  "cluster matrix --csv");
 
 		initPQExpBuffer(&command_output);
 
 		if (i + 1 == options.node)
 		{
 			(void)local_command(
-				command,
+				command.data,
 				&command_output);
 		}
 		else
 		{
-			(void)remote_command(
-				PQgetvalue(res, i, 1),
-				"postgres",
-				command,
-				&command_output);
-		}
+			t_conninfo_param_list remote_conninfo;
+			char *host;
+			PQExpBufferData quoted_command;
 
+			initPQExpBuffer(&quoted_command);
+			appendPQExpBuffer(&quoted_command,
+							  "\"%s\"",
+							  command.data);
+
+			initialize_conninfo_params(&remote_conninfo, false);
+			parse_conninfo_string(PQgetvalue(res, i, 0),
+								  &remote_conninfo,
+								  NULL,
+								  false);
+
+			host = param_get(&remote_conninfo, "host");
+
+			log_verbose(LOG_DEBUG, "build_cluster_diagnose(): executing\n%s\n", quoted_command.data);
+
+			(void)remote_command(
+				host,
+				runtime_options.remote_user,
+				quoted_command.data,
+				&command_output);
+
+			termPQExpBuffer(&quoted_command);
+		}
+		termPQExpBuffer(&command);
 		p = command_output.data;
 
 		for (j = 0; j < n * n; j++)
@@ -2025,7 +2094,7 @@ do_standby_unregister(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (runtime_options.node)
+	if (runtime_options.node != UNKNOWN_NODE_ID)
 		target_node_id = runtime_options.node;
 	else
 		target_node_id = options.node;
@@ -5918,7 +5987,7 @@ do_witness_unregister(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (runtime_options.node)
+	if (runtime_options.node != UNKNOWN_NODE_ID)
 		target_node_id = runtime_options.node;
 	else
 		target_node_id = options.node;
@@ -6596,6 +6665,7 @@ check_parameters_for_action(const int action)
 
 			config_file_required = false;
 			break;
+
 		case STANDBY_SWITCHOVER:
 			/* allow all parameters to be supplied */
 			break;
@@ -6630,10 +6700,18 @@ check_parameters_for_action(const int action)
 			/* allow all parameters to be supplied */
 			break;
 
-		case CLUSTER_SHOW:
-			/* host parameters can be supplied */
+		case CLUSTER_MATRIX:
+			/* config file not required if database connection parameters and cluster name supplied */
 			config_file_required = false;
-			/* allow all parameters to be supplied */
+
+			if (strlen(repmgr_cluster) && runtime_options.node == UNKNOWN_NODE_ID)
+				item_list_append(&cli_errors, _("--node required when executing CLUSTER MATRIX with --cluster"));
+
+			break;
+
+		case CLUSTER_SHOW:
+			/* config file not required if database connection parameters and cluster name supplied */
+			config_file_required = false;
 			break;
 
 		case CLUSTER_CLEANUP:
@@ -6694,11 +6772,11 @@ check_parameters_for_action(const int action)
 	}
 
 	/* Warn about parameters which apply to WITNESS UNREGISTER only */
-	if (action != WITNESS_UNREGISTER)
+	if (action != WITNESS_UNREGISTER && action != STANDBY_UNREGISTER && action != CLUSTER_MATRIX)
 	{
-		if (runtime_options.node)
+		if (runtime_options.node != UNKNOWN_NODE_ID)
 		{
-			item_list_append(&cli_warnings, _("--node can only be supplied when executing WITNESS UNREGISTER"));
+			item_list_append(&cli_warnings, _("--node not required with this action"));
 		}
 	}
 
