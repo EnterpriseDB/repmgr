@@ -165,5 +165,32 @@ typedef struct
 	t_configfile_info **files;
 } t_configfile_list;
 
+
+typedef struct
+{
+	int node_id;
+	int node_status;
+} t_node_status_rec;
+
+typedef struct
+{
+	int node_id;
+	char node_name[MAXLEN];
+	t_node_status_rec **node_status_list;
+} t_node_status_matrix_rec;
+
+typedef struct
+{
+	int length;
+	t_node_status_matrix_rec **matrix_list;
+} t_node_status_matrix;
+
+typedef struct
+{
+	int node_id;
+	t_node_status_matrix **node_matrix;
+} t_node_status_cube;
+
+
 #define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
 #endif

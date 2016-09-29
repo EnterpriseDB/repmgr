@@ -113,7 +113,7 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 
 static char *string_skip_prefix(const char *prefix, char *string);
 static char *string_remove_trailing_newlines(char *string);
-static int  build_cluster_matrix(int **matrix, char **node_names, int *name_length);
+static int build_cluster_matrix(t_node_status_matrix *matrix, int *name_length);
 static int  build_cluster_diagnose(int **cube, char **node_names, int *name_length);
 
 static char *make_pg_path(char *file);
@@ -162,6 +162,8 @@ static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_bas
 
 static void config_file_list_init(t_configfile_list *list, int max_size);
 static void config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir);
+
+static void matrix_set_node_status(t_node_status_matrix *matrix, int node_id, int connection_node_id, int connection_status);
 
 /* Global variables */
 static PQconninfoOption *opts = NULL;
@@ -1109,17 +1111,42 @@ do_cluster_show(void)
 	PQclear(res);
 }
 
+
+static void
+matrix_set_node_status(t_node_status_matrix *matrix, int node_id, int connection_node_id, int connection_status)
+{
+	int i, j;
+//	printf("matrix_set_node_status() %i %i %i\n", node_id, connection_node_id, connection_status);
+
+	for (i = 0; i < matrix->length; i++)
+	{
+//		printf("xx %i\n", i);
+
+		if (matrix->matrix_list[i]->node_id == node_id)
+		{
+			for (j = 0; j < matrix->length; j++)
+			{
+//XS				printf(" xx %i\n", j);
+
+				if (matrix->matrix_list[i]->node_status_list[j]->node_id == connection_node_id)
+				{
+					matrix->matrix_list[i]->node_status_list[j]->node_status = connection_status;
+					break;
+				}
+			}
+			break;
+		}
+	}
+}
+
 static int
-build_cluster_matrix(int **matrix, char **node_names, int *name_length)
+build_cluster_matrix(t_node_status_matrix *matrix, int *name_length)
 {
 	PGconn	   *conn;
 	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
-	int			i, j;
 	int			n;
-
-	int			x, y;
-
+	int			i, j;
 	int			local_node_id;
 
 	PQExpBufferData command;
@@ -1164,49 +1191,53 @@ build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 	/*
 	 * Allocate an empty matrix
 	 *
-	 * -2 == NULL
-	 * -1 == Error
-	 *  0 == OK
+	 * -2 == NULL  ?
+	 * -1 == Error x
+	 *  0 == OK    *
 	 */
 	n = PQntuples(res);
-	*matrix = (int *) pg_malloc(sizeof(int) * n * n);
-	for (i = 0; i < n * n; i++)
-		(*matrix)[i] = -2;
 
-	/*
-	 * Find the maximum length of a node name
-	 */
+	matrix->length = n;
+
+	matrix->matrix_list = (t_node_status_matrix_rec **) pg_malloc0(sizeof(t_node_status_matrix_rec) * n);
+
+
+	/* Initialise matrix structure for each node */
 	for (i = 0; i < n; i++)
 	{
 		int name_length_cur;
 
-		name_length_cur	= strlen(PQgetvalue(res, i, 2));
+		matrix->matrix_list[i] = (t_node_status_matrix_rec *) pg_malloc0(sizeof(t_node_status_matrix_rec));
+
+		matrix->matrix_list[i]->node_id = atoi(PQgetvalue(res, i, 4));
+		strncpy(matrix->matrix_list[i]->node_name, PQgetvalue(res, i, 2), MAXLEN);
+
+		/*
+		 * Find the maximum length of a node name
+		 */
+		name_length_cur	= strlen(matrix->matrix_list[i]->node_name);
 		if (name_length_cur > *name_length)
 			*name_length = name_length_cur;
+
+		matrix->matrix_list[i]->node_status_list = (t_node_status_rec **) pg_malloc0(sizeof(t_node_status_rec) * n);
+
+		for (j = 0; j < n; j++)
+		{
+			matrix->matrix_list[i]->node_status_list[j] = (t_node_status_rec *) pg_malloc0(sizeof(t_node_status_rec));
+			matrix->matrix_list[i]->node_status_list[j]->node_id = atoi(PQgetvalue(res, j, 4));
+			matrix->matrix_list[i]->node_status_list[j]->node_status = -2;  /* default unknown */
+		}
 	}
 
-	/*
-	 * Save node names into an array
-	 */
-
-	*node_names = (char *) pg_malloc((*name_length + 1) * n);
-
-	for (i = 0; i < n; i++)
-	{
-		strncpy(*node_names + i * (*name_length + 1),
-				PQgetvalue(res, i, 2),
-				strlen(PQgetvalue(res, i, 2)) + 1);
-	}
-
-	/*
-	 * Build the connection matrix
-	 */
+	/* Fetch `repmgr cluster show --csv` output for each node */
 
 	for (i = 0; i < n; i++)
 	{
 		int connection_status;
 		t_conninfo_param_list remote_conninfo;
 		char *host, *p;
+		int connection_node_id = atoi(PQgetvalue(res, i, 4));
+		int			x, y;
 
 		initialize_conninfo_params(&remote_conninfo, false);
 		parse_conninfo_string(PQgetvalue(res, i, 0),
@@ -1221,16 +1252,27 @@ build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 		connection_status =
 			(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
 
-		(*matrix)[(local_node_id - 1) * n + i] =
-			connection_status;
+
+		matrix_set_node_status(matrix,
+							   local_node_id,
+							   connection_node_id,
+							   connection_status);
+
 
 		if (connection_status)
 			continue;
 
-		if (i + 1 == local_node_id)
+		/* We don't need to issue `cluster show --csv` for the local node */
+		if (connection_node_id == local_node_id)
 			continue;
 
 		initPQExpBuffer(&command);
+
+		/*
+		 * We'll pass cluster name and database connection string to the remote
+		 * repmgr - those are the only values it needs to work, and saves us
+		 * making assumptions about the location of repmgr.conf
+		 */
 		appendPQExpBuffer(&command,
 						  "\"%s -d '%s' --cluster '%s' ",
 						  make_pg_path("repmgr"),
@@ -1269,8 +1311,12 @@ build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 				PQfinish(conn);
 				exit(ERR_INTERNAL);
 			}
-			(*matrix)[i * n + (x - 1)] =
-				(y == -1) ? -1 : 0;
+
+			matrix_set_node_status(matrix,
+								   connection_node_id,
+								   x,
+								   (y == -1) ? -1 : 0 );
+
 			while (*p && (*p != '\n'))
 				p++;
 			if (*p == '\n')
@@ -1285,25 +1331,30 @@ build_cluster_matrix(int **matrix, char **node_names, int *name_length)
 	return n;
 }
 
+
+
 static void
 do_cluster_matrix()
 {
 	int			i, j;
 	int			n;
-	char	   *node_names;
-	int		   *matrix;
 	const char *node_header = "Name";
 	int			name_length = strlen(node_header);
 
-	n = build_cluster_matrix(&matrix, &node_names, &name_length);
+	t_node_status_matrix *matrix_new = (t_node_status_matrix *) pg_malloc(sizeof(t_node_status_matrix));
+
+	n = build_cluster_matrix(matrix_new, &name_length);
 
 	if (runtime_options.csv_mode)
 	{
+
 		for (i = 0; i < n; i++)
 			for (j = 0; j < n; j++)
 				printf("%d,%d,%d\n",
-					   i + 1, j + 1,
-					   matrix[i * n + j]);
+					   matrix_new->matrix_list[i]->node_id,
+					   matrix_new->matrix_list[i]->node_status_list[j]->node_id,
+					   matrix_new->matrix_list[i]->node_status_list[j]->node_status);
+
 	}
 	else
 	{
@@ -1311,7 +1362,7 @@ do_cluster_matrix()
 
 		printf("%*s | Id ", name_length, node_header);
 		for (i = 0; i < n; i++)
-			printf("| %2d ", i+1);
+			printf("| %2d ", matrix_new->matrix_list[i]->node_id);
 		printf("\n");
 
 		for (i = 0; i < name_length; i++)
@@ -1324,10 +1375,12 @@ do_cluster_matrix()
 		for (i = 0; i < n; i++)
 		{
 			printf("%*s | %2d ", name_length,
-				   node_names + (name_length + 1) * i, i + 1);
+				   matrix_new->matrix_list[i]->node_name,
+				   matrix_new->matrix_list[i]->node_id);
 			for (j = 0; j < n; j++)
 			{
-				switch (matrix[i * n + j])
+				//switch (matrix[i * n + j])
+				switch (matrix_new->matrix_list[i]->node_status_list[j]->node_status)
 				{
 				case -2:
 					c = '?';
