@@ -165,6 +165,8 @@ typedef struct
 	t_configfile_info **files;
 } t_configfile_list;
 
+#define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
+
 
 typedef struct
 {
@@ -172,6 +174,8 @@ typedef struct
 	int node_status;
 } t_node_status_rec;
 
+// for each node, list of statuses for other nodes
+// output of "cluster show"
 typedef struct
 {
 	int node_id;
@@ -179,18 +183,22 @@ typedef struct
 	t_node_status_rec **node_status_list;
 } t_node_status_matrix_rec;
 
-typedef struct
-{
-	int length;
-	t_node_status_matrix_rec **matrix_list;
-} t_node_status_matrix;
 
+
+// points to the output of "cluster matrix" on each node
 typedef struct
 {
 	int node_id;
-	t_node_status_matrix **node_matrix;
+	char node_name[MAXLEN];
+	t_node_status_matrix_rec **matrix_list_rec;
 } t_node_status_cube;
 
 
-#define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
+// not really needed
+typedef struct
+{
+	int length;
+	t_node_status_matrix_rec **matrix_rec_list;
+} t_node_status_matrix;
+
 #endif
