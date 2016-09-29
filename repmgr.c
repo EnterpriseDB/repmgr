@@ -1500,7 +1500,6 @@ build_cluster_diagnose(int **cube, char **node_names, int *name_length)
 			if (sscanf(p, "%d,%d,%d", &x, &y, &z) != 3)
 			{
 				fprintf(stderr, _("cannot parse --csv output: %s\n"), p);
-				PQfinish(conn);
 				exit(ERR_INTERNAL);
 			}
 			(*cube)[i * n * n + (x - 1) * n + (y - 1)] =
