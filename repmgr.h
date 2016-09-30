@@ -174,31 +174,20 @@ typedef struct
 	int node_status;
 } t_node_status_rec;
 
-// for each node, list of statuses for other nodes
-// output of "cluster show"
 typedef struct
 {
 	int node_id;
 	char node_name[MAXLEN];
 	t_node_status_rec **node_status_list;
-} t_node_status_matrix_rec;
+} t_node_matrix_rec;
 
-
-
-// points to the output of "cluster matrix" on each node
 typedef struct
 {
 	int node_id;
 	char node_name[MAXLEN];
-	t_node_status_matrix_rec **matrix_list_rec;
+	t_node_matrix_rec **matrix_list_rec;
 } t_node_status_cube;
 
 
-// not really needed
-typedef struct
-{
-	int length;
-	t_node_status_matrix_rec **matrix_rec_list;
-} t_node_status_matrix;
 
 #endif

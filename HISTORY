@@ -1,5 +1,6 @@
 3.2     2016-
         repmgr: add support for cloning from a Barman backup (Gianni)
+        repmhr: add commands `standby matrix` and `standby diagnose` (Gianni)
         repmgr: suppress connection error display in `repmgr cluster show`
           unless `--verbose` supplied (Ian)
         repmgr: add commands `witness register` and `witness unregister` (Ian)

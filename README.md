@@ -152,8 +152,9 @@ is not required, but is necessary in the following cases:
 
 * if you need `repmgr` to copy configuration files from outside the PostgreSQL
   data directory
-* to perform switchover operations
 * when using `rsync` to clone a standby
+* to perform switchover operations
+* when executing `repmgr cluster matrix` and `repmgr cluster diagnose`
 
 In these cases `rsync` is required on all servers too.
 
@@ -631,8 +632,8 @@ executable:
 
 Then we check that `repmgr.conf` includes the following lines:
 
-	barman_server=barmansrv
-	restore_command=/usr/local/bin/barman-wal-restore.py barmansrv test %f %p
+    barman_server=barmansrv
+    restore_command=/usr/local/bin/barman-wal-restore.py barmansrv test %f %p
 
 To use a non-default Barman configuration file on the Barman server,
 specify this in `repmgr.conf` with `barman_config`:
@@ -1609,11 +1610,12 @@ which contains connection details for the local database.
     - `cluster matrix` runs a `cluster show` on each node and arranges
       the results in a matrix, recording success or failure;
 
-	- `cluster diagnose` runs a `cluster matrix` on each node and
+    - `cluster diagnose` runs a `cluster matrix` on each node and
       combines the results in a single matrix.
 
-    These commands require a valid `repmgr.conf` file on each node, and
-    the optional `ssh_hostname` parameter must be set.
+    These commands require a valid `repmgr.conf` file on each node.
+    Additionally password-less `ssh` connections are required between
+    all nodes.
 
     Example 1 (all nodes up):
 
@@ -1629,7 +1631,7 @@ which contains connection details for the local database.
     possible connection.
 
 
-    Example 2 (node1 and node2 up, node3 down):
+    Example 2 (node1 and `node2` up, `node3` down):
 
         $ repmgr -f /etc/repmgr.conf cluster matrix
 
@@ -1639,28 +1641,26 @@ which contains connection details for the local database.
          node2 |  2 |  * |  * |  x
          node3 |  3 |  ? |  ? |  ?
 
-	Each row corresponds to one server, and indicates the result of
-	testing an outbound connection from that server.
+    Each row corresponds to one server, and indicates the result of
+    testing an outbound connection from that server.
 
-	Since node3 is down, all the entries in its row are filled with
-	"?", meaning that there we cannot test outbound connections.
+    Since `node3` is down, all the entries in its row are filled with
+    "?", meaning that there we cannot test outbound connections.
 
-	The other two nodes are up; the corresponding rows have "x" in the
-	column corresponding to node3, meaning that inbound connections to
-	that node have failed, and "*" in the columns corresponding to
-	node1 and node2, meaning that inbound connections to these nodes
-	have succeeded.
+    The other two nodes are up; the corresponding rows have "x" in the
+    column corresponding to node3, meaning that inbound connections to
+    that node have failed, and "*" in the columns corresponding to
+    node1 and node2, meaning that inbound connections to these nodes
+    have succeeded.
 
-	In this case, `cluster diagnose` gives the same result as `cluster
+    In this case, `cluster diagnose` gives the same result as `cluster
     matrix`, because from any functioning node we can observe the same
-    state: node1 and node2 are up, node3 is down.
-
+    state: `node1` and `node2` are up, `node3` is down.
 
     Example 3 (all nodes up, firewall dropping packets originating
-               from node1 and directed to port 5432 on node3)
+               from `node1` and directed to port 5432 on node3)
 
-	Running `cluster matrix` from node1 gives the following output,
-    after a long wait (two timeouts, by default one minute each):
+    Running `cluster matrix` from `node1` gives the following output:
 
         $ repmgr -f /etc/repmgr.conf cluster matrix
 
@@ -1670,11 +1670,17 @@ which contains connection details for the local database.
          node2 |  2 |  * |  * |  *
          node3 |  3 |  ? |  ? |  ?
 
-	The matrix tells us that we cannot connect from node1 to node3,
-	and that (therefore) we don't know the state of any outbound
-	connection from node3.
+    (Note this may take some time depending on the `connect_timeout`
+    setting in the registered node `conninfo` strings; default is 1
+    minute which means without modification the above command would
+    take around 2 minutes to run; see comment elsewhere about setting
+    `connect_timeout`)
 
-	In this case, the `cluster diagnose` command is more informative:
+    The matrix tells us that we cannot connect from `node1` to `node3`,
+    and that (therefore) we don't know the state of any outbound
+    connection from node3.
+
+    In this case, the `cluster diagnose` command is more informative:
 
         $ repmgr -f /etc/repmgr.conf cluster diagnose
 
@@ -1684,9 +1690,9 @@ which contains connection details for the local database.
          node2 |  2 |  * |  * |  *
          node3 |  3 |  * |  * |  *
 
-	What happened is that `cluster diagnose` merged its own `cluster
-    matrix` with the `cluster matrix` output from node2; the latter is
-    able to connect to node3 and therefore determine the state of
+    What happened is that `cluster diagnose` merged its own `cluster
+    matrix` with the `cluster matrix` output from `node2`; the latter is
+    able to connect to `node3` and therefore determine the state of
     outbound connections from that node.
 
 
@@ -1724,7 +1730,7 @@ exit:
 * ERR_BAD_BACKUP_LABEL (17)  Corrupt or unreadable backup label encountered (repmgr only)
 * ERR_SWITCHOVER_FAIL (18)   Error encountered during switchover (repmgr only)
 * ERR_BARMAN (19)            Unrecoverable error while accessing the barman server (repmgr only)
-* ERR_REGISTRATION_SYNC (20) After registering a standby, local node record was no
+* ERR_REGISTRATION_SYNC (20) After registering a standby, local node record was not
                                 syncrhonised (repmgr only, with --wait option)
 
 Support and Assistance

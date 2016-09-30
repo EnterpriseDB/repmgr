@@ -137,6 +137,7 @@ General
   of events which includes servers removed from the replication cluster
   which no longer have an entry in the `repl_nodes` table.
 
+
 `repmgrd`
 ---------
 
