@@ -1636,7 +1636,7 @@ which contains connection details for the local database.
         3,1
 
     The first column is the node's ID, and the second column represents the
-    node's status (0 = master, 1 = standby, -1 = failed).
+    node's status (0 = available, -1 = failed).
 
 * `cluster matrix` and `cluster crosscheck`
 
