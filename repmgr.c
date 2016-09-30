@@ -5875,7 +5875,7 @@ do_witness_create(void)
 						options.pg_ctl_options, runtime_options.dest_dir);
 	}
 
-	log_info(_("reloading witness server configuration: %s"), script);
+	log_info(_("reloading witness server configuration: %s\n"), script);
 	r = system(script);
 	if (r != 0)
 	{
@@ -6939,7 +6939,7 @@ create_schema(PGconn *conn)
 
 	/* create schema */
 	sqlquery_snprintf(sqlquery, "CREATE SCHEMA %s", get_repmgr_schema_quoted(conn));
-	log_debug(_("master register: %s\n"), sqlquery);
+	log_debug(_("create_schema: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -7019,7 +7019,7 @@ create_schema(PGconn *conn)
 					  get_repmgr_schema_quoted(conn),
 					  get_repmgr_schema_quoted(conn));
 
-	log_debug(_("master register: %s\n"), sqlquery);
+	log_debug(_("create_schema: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -7046,7 +7046,7 @@ create_schema(PGconn *conn)
 					  "  replication_lag                BIGINT NOT NULL, "
 					  "  apply_lag                      BIGINT NOT NULL) ",
 					  get_repmgr_schema_quoted(conn));
-	log_debug(_("master register: %s\n"), sqlquery);
+	log_debug(_("create_schema: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -7072,7 +7072,7 @@ create_schema(PGconn *conn)
 					  " ) ",
 					  get_repmgr_schema_quoted(conn));
 
-	log_debug(_("master register: %s\n"), sqlquery);
+	log_debug(_("create_schema: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -7108,7 +7108,7 @@ create_schema(PGconn *conn)
 					  get_repmgr_schema_quoted(conn),
 					  get_repmgr_schema_quoted(conn),
 					  get_repmgr_schema_quoted(conn));
-	log_debug(_("master register: %s\n"), sqlquery);
+	log_debug(_("create_schema: %s\n"), sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -7130,7 +7130,7 @@ create_schema(PGconn *conn)
 					  "    ON %s.repl_monitor (last_monitor_time, standby_node) ",
 					  get_repmgr_schema_quoted(conn));
 
-	log_debug(_("master register: %s\n"), sqlquery);
+	log_debug(_("create_schema: %s\n"), sqlquery);
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -7158,7 +7158,7 @@ create_schema(PGconn *conn)
 			  get_repmgr_schema_quoted(conn),
 			  get_repmgr_schema_quoted(conn));
 
-	log_debug(_("master register: %s\n"), sqlquery);
+	log_debug(_("create_schema: %s\n"), sqlquery);
 
 	res = PQexec(conn, sqlquery);
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)

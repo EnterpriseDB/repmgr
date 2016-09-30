@@ -1227,7 +1227,8 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
 
 	/* Get current records from primary */
 	sqlquery_snprintf(sqlquery,
-					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name, active FROM %s.repl_nodes",
+					  "SELECT id, type, upstream_node_id, name, conninfo, priority, slot_name, active "
+					  "  FROM %s.repl_nodes",
 					  get_repmgr_schema_quoted(masterconn));
 
 	log_verbose(LOG_DEBUG, "witness_copy_node_records():\n%s\n", sqlquery);
@@ -1263,11 +1264,11 @@ witness_copy_node_records(PGconn *masterconn, PGconn *witnessconn, char *cluster
 												 cluster_name,
 												 PQgetvalue(res, i, 3),
 												 PQgetvalue(res, i, 4),
-												 atoi(PQgetvalue(res, i, 6)),
-												 strlen(PQgetvalue(res, i, 7))
-													? PQgetvalue(res, i, 7)
+												 atoi(PQgetvalue(res, i, 5)),
+												 strlen(PQgetvalue(res, i, 6))
+													? PQgetvalue(res, i, 6)
 												    : NULL,
-												 (strcmp(PQgetvalue(res, i, 8), "t") == 0)
+												 (strcmp(PQgetvalue(res, i, 7), "t") == 0)
 												 	? true
 												 	: false
 												 );
