@@ -106,8 +106,8 @@
 
 # service control commands
 #
-# repmgr provides options to to override the default pg_ctl commands
-# used to stop, start  and restart the PostgreSQL cluster
+# repmgr provides options to override the default pg_ctl commands
+# used to stop, start, restart, reload and promote the PostgreSQL cluster
 #
 # NOTE: These commands must be runnable on remote nodes as well for switchover
 # to function correctly.
@@ -123,9 +123,11 @@
 #       /usr/bin/systemctl start postgresql-9.5, \
 #       /usr/bin/systemctl restart postgresql-9.5
 #
-# start_command = systemctl start postgresql-9.5
-# stop_command = systemctl stop postgresql-9.5
-# restart_command = systemctl restart postgresql-9.5
+# service_start_command = systemctl start postgresql-9.5
+# service_stop_command = systemctl stop postgresql-9.5
+# service_restart_command = systemctl restart postgresql-9.5
+# service_reload_command = pg_ctlcluster 9.5 main reload
+# service_promote_command = pg_ctlcluster 9.5 main promote
 
 # external command options
 

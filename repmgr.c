@@ -21,7 +21,7 @@
  * WITNESS REGISTER
  * WITNESS UNREGISTER
  *
- * CLUSTER DIAGNOSE
+ * CLUSTER CROSSCHECK
  * CLUSTER MATRIX
  * CLUSTER SHOW
  * CLUSTER CLEANUP
@@ -91,7 +91,7 @@
 #define CLUSTER_SHOW		   13
 #define CLUSTER_CLEANUP		   14
 #define CLUSTER_MATRIX		   15
-#define CLUSTER_DIAGNOSE	   16
+#define CLUSTER_CROSSCHECK	   16
 
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
@@ -114,7 +114,7 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 static char *string_skip_prefix(const char *prefix, char *string);
 static char *string_remove_trailing_newlines(char *string);
 static int  build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length);
-static int  build_cluster_diagnose(t_node_status_cube ***cube_dest, int *name_length);
+static int  build_cluster_crosscheck(t_node_status_cube ***cube_dest, int *name_length);
 
 static char *make_pg_path(char *file);
 static char *make_barman_ssh_command(void);
@@ -136,7 +136,7 @@ static void do_witness_unregister(void);
 
 static void do_cluster_show(void);
 static void do_cluster_matrix(void);
-static void do_cluster_diagnose(void);
+static void do_cluster_crosscheck(void);
 static void do_cluster_cleanup(void);
 static void do_check_upstream_config(void);
 static void do_help(void);
@@ -665,7 +665,7 @@ main(int argc, char **argv)
 	 *   { MASTER | PRIMARY } REGISTER |
 	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
 	 *   WITNESS { CREATE | REGISTER | UNREGISTER } |
-	 *   CLUSTER { DIAGNOSE | MATRIX | SHOW | CLEANUP}
+	 *   CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP}
 	 *
 	 * the node part is optional, if we receive it then we shouldn't have
 	 * received a -h option
@@ -721,8 +721,8 @@ main(int argc, char **argv)
 				action = CLUSTER_SHOW;
 			else if (strcasecmp(server_cmd, "CLEANUP") == 0)
 				action = CLUSTER_CLEANUP;
-			else if (strcasecmp(server_cmd, "DIAGNOSE") == 0)
-				action = CLUSTER_DIAGNOSE;
+			else if (strcasecmp(server_cmd, "CROSSCHECK") == 0)
+				action = CLUSTER_CROSSCHECK;
 			else if (strcasecmp(server_cmd, "MATRIX") == 0)
 				action = CLUSTER_MATRIX;
 		}
@@ -965,8 +965,8 @@ main(int argc, char **argv)
 		case WITNESS_UNREGISTER:
 			do_witness_unregister();
 			break;
-		case CLUSTER_DIAGNOSE:
-			do_cluster_diagnose();
+		case CLUSTER_CROSSCHECK:
+			do_cluster_crosscheck();
 			break;
 		case CLUSTER_MATRIX:
 			do_cluster_matrix();
@@ -1435,7 +1435,7 @@ cube_set_node_status(t_node_status_cube **cube, int n, int execute_node_id, int 
 
 
 static int
-build_cluster_diagnose(t_node_status_cube ***dest_cube, int *name_length)
+build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 {
 	PGconn	   *conn;
 	PGresult   *res;
@@ -1455,7 +1455,7 @@ build_cluster_diagnose(t_node_status_cube ***dest_cube, int *name_length)
 			  "	 FROM %s.repl_show_nodes ORDER BY id",
 			  get_repmgr_schema_quoted(conn));
 
-	log_verbose(LOG_DEBUG, "build_cluster_diagnose(): \n%s\n",sqlquery );
+	log_verbose(LOG_DEBUG, "build_cluster_crosscheck(): \n%s\n",sqlquery );
 
 	res = PQexec(conn, sqlquery);
 
@@ -1582,7 +1582,7 @@ build_cluster_diagnose(t_node_status_cube ***dest_cube, int *name_length)
 
 			host = param_get(&remote_conninfo, "host");
 
-			log_verbose(LOG_DEBUG, "build_cluster_diagnose(): executing\n%s\n", quoted_command.data);
+			log_verbose(LOG_DEBUG, "build_cluster_crosscheck(): executing\n%s\n", quoted_command.data);
 
 			(void)remote_command(
 				host,
@@ -1633,7 +1633,7 @@ build_cluster_diagnose(t_node_status_cube ***dest_cube, int *name_length)
 
 
 static void
-do_cluster_diagnose(void)
+do_cluster_crosscheck(void)
 {
 	int			i, n;
 	char		c;
@@ -1642,7 +1642,7 @@ do_cluster_diagnose(void)
 
 	t_node_status_cube **cube;
 
-	n = build_cluster_diagnose(&cube, &name_length);
+	n = build_cluster_crosscheck(&cube, &name_length);
 
 	printf("%*s | Id ", name_length, node_header);
 	for (i = 0; i < n; i++)
@@ -4138,8 +4138,17 @@ do_standby_promote(void)
 	 * can't be sure when or if the promotion completes.
 	 * For now we'll poll the server until the default timeout (60 seconds)
 	 */
-	maxlen_snprintf(script, "%s -D %s promote",
-					make_pg_path("pg_ctl"), data_dir);
+
+	if (*options.service_promote_command)
+	{
+		maxlen_snprintf(script, "%s", options.service_promote_command);
+	}
+	else
+	{
+		maxlen_snprintf(script, "%s -D %s promote",
+						make_pg_path("pg_ctl"), data_dir);
+	}
+
 	log_notice(_("promoting server using '%s'\n"),
 			   script);
 
@@ -4417,9 +4426,9 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 
 	/* Finally, restart the service */
-	if (*options.restart_command)
+	if (*options.service_restart_command)
 	{
-		maxlen_snprintf(script, "%s", options.restart_command);
+		maxlen_snprintf(script, "%s", options.service_restart_command);
 	}
 	else
 	{
@@ -4922,10 +4931,6 @@ do_standby_switchover(void)
 	 * We'll issue the pg_ctl command but not force it not to wait; we'll check
 	 * the connection from here - and error out if no shutdown is detected
 	 * after a certain time.
-	 *
-	 * XXX currently we assume the same Postgres binary path on the primary
-	 * as configured on the local standby; we may need to add a command
-	 * line option to provide an explicit path (--remote-pg-bindir)?
 	 */
 
 	/*
@@ -4936,9 +4941,9 @@ do_standby_switchover(void)
 
 	initPQExpBuffer(&remote_command_str);
 
-	if (*options.stop_command)
+	if (*options.service_stop_command)
 	{
-		appendPQExpBuffer(&remote_command_str, "%s", options.stop_command);
+		appendPQExpBuffer(&remote_command_str, "%s", options.service_stop_command);
 	}
 	else
 	{
@@ -5655,6 +5660,7 @@ do_witness_create(void)
 	if (!runtime_options.superuser[0])
 		strncpy(runtime_options.superuser, "postgres", MAXLEN);
 
+	/* TODO: possibly allow the user to override this with a custom command? */
 	maxlen_snprintf(script, "%s %s -D %s init -o \"%s-U %s\"",
 				   make_pg_path("pg_ctl"),
 				   options.pg_ctl_options, runtime_options.dest_dir,
@@ -5732,9 +5738,9 @@ do_witness_create(void)
 
 
 	/* start new instance */
-	if (*options.start_command)
+	if (*options.service_start_command)
 	{
-		maxlen_snprintf(script, "%s", options.start_command);
+		maxlen_snprintf(script, "%s", options.service_start_command);
 	}
 	else
 	{
@@ -5858,9 +5864,17 @@ do_witness_create(void)
 	}
 
 	/* reload witness server to activate the copied pg_hba.conf */
-	maxlen_snprintf(script, "%s %s -w -D %s reload",
-					make_pg_path("pg_ctl"),
-					options.pg_ctl_options, runtime_options.dest_dir);
+	if (*options.service_reload_command)
+	{
+		maxlen_snprintf(script, "%s", options.service_reload_command);
+	}
+	else
+	{
+		maxlen_snprintf(script, "%s %s -w -D %s reload",
+						make_pg_path("pg_ctl"),
+						options.pg_ctl_options, runtime_options.dest_dir);
+	}
+
 	log_info(_("reloading witness server configuration: %s"), script);
 	r = system(script);
 	if (r != 0)
@@ -6169,7 +6183,7 @@ do_help(void)
 	printf(_("  %s [OPTIONS] standby {register|unregister|clone|promote|follow|switchover}\n"),
 		   progname());
 	printf(_("  %s [OPTIONS] witness {create|register|unregister}\n"), progname());
-	printf(_("  %s [OPTIONS] cluster {show|cleanup}\n"), progname());
+	printf(_("  %s [OPTIONS] cluster {show|matrix|crosscheck|cleanup}\n"), progname());
 	printf(_("\n"));
 	printf(_("General options:\n"));
 	printf(_("  -?, --help                          show this help, then exit\n"));

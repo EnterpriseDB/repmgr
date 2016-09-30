@@ -154,7 +154,7 @@ is not required, but is necessary in the following cases:
   data directory
 * when using `rsync` to clone a standby
 * to perform switchover operations
-* when executing `repmgr cluster matrix` and `repmgr cluster diagnose`
+* when executing `repmgr cluster matrix` and `repmgr cluster crosscheck`
 
 In these cases `rsync` is required on all servers too.
 
@@ -475,8 +475,8 @@ settings which have not been activated, the file will not be copied.
 
 * * *
 
-> *TIP*: for reliable configuration file management we recommend using a configuration
-> management tool such as Ansible, Chef, Puppet or Salt.
+> *TIP*: for reliable configuration file management we recommend using a
+> configuration management tool such as Ansible, Chef, Puppet or Salt.
 
 * * *
 
@@ -1423,6 +1423,42 @@ In general `repmgr` can be upgraded as-is without any further action required,
 however feature releases may require the `repmgr` database to be upgraded.
 An SQL script will be provided - please check the release notes for details.
 
+
+Distribution-specific configuration
+-----------------------------------
+
+`repmgr` is largely OS-agnostic and can be run on any UNIX-like environment
+including various Linux distributions, Solaris, macOS and the various BSDs.
+
+However, often OS-specific configuration is required, particularly when
+dealing with system service management (e.g. stopping and starting the
+PostgreSQL server), file paths and configuration file locations.
+
+### PostgreSQL server control
+
+By default, `repmgr` will use PostgreSQL's standard `pg_ctl` utility to control
+a running PostgreSQL server. However it may be better to use the operating
+system's service management system, e.g. `systemd`. To specify which service
+control commands are used, the following `repmgr.conf` configuration settings
+are available:
+
+    service_start_command
+    service_stop_command
+    service_restart_command
+    service_reload_command
+    service_promote_command
+
+See `repmgr.conf.sample` for further details.
+
+### Binary directory
+
+Some PostgreSQL system packages, such as those provided for Debian/Ubuntu, like
+to hide some PostgreSQL utility programs outside of the default path. To ensure
+`repmgr` finds all required executables, explicitly set `pg_bindir` to the
+appropriate location, e.g. for PostgreSQL 9.6 on Debian/Ubuntu this would be
+`/usr/lib/postgresql/9.6/bin/`.
+
+
 Reference
 ---------
 
@@ -1602,7 +1638,7 @@ which contains connection details for the local database.
     The first column is the node's ID, and the second column represents the
     node's status (0 = master, 1 = standby, -1 = failed).
 
-* `cluster matrix` and `cluster diagnose`
+* `cluster matrix` and `cluster crosscheck`
 
     These commands display connection information for each pair of
     nodes in the replication cluster.
@@ -1610,8 +1646,9 @@ which contains connection details for the local database.
     - `cluster matrix` runs a `cluster show` on each node and arranges
       the results in a matrix, recording success or failure;
 
-    - `cluster diagnose` runs a `cluster matrix` on each node and
-      combines the results in a single matrix.
+    - `cluster crosscheck` runs a `cluster matrix` on each node and
+      combines the results in a single matrix, providing a full
+      overview of connections between all databases in the cluster.
 
     These commands require a valid `repmgr.conf` file on each node.
     Additionally password-less `ssh` connections are required between
@@ -1653,7 +1690,7 @@ which contains connection details for the local database.
     node1 and node2, meaning that inbound connections to these nodes
     have succeeded.
 
-    In this case, `cluster diagnose` gives the same result as `cluster
+    In this case, `cluster crosscheck` gives the same result as `cluster
     matrix`, because from any functioning node we can observe the same
     state: `node1` and `node2` are up, `node3` is down.
 
@@ -1680,9 +1717,9 @@ which contains connection details for the local database.
     and that (therefore) we don't know the state of any outbound
     connection from node3.
 
-    In this case, the `cluster diagnose` command is more informative:
+    In this case, the `cluster crosscheck` command is more informative:
 
-        $ repmgr -f /etc/repmgr.conf cluster diagnose
+        $ repmgr -f /etc/repmgr.conf cluster crosscheck
 
         Name   | Id |  1 |  2 |  3
         -------+----+----+----+----
@@ -1690,7 +1727,7 @@ which contains connection details for the local database.
          node2 |  2 |  * |  * |  *
          node3 |  3 |  * |  * |  *
 
-    What happened is that `cluster diagnose` merged its own `cluster
+    What happened is that `cluster crosscheck` merged its own `cluster
     matrix` with the `cluster matrix` output from `node2`; the latter is
     able to connect to `node3` and therefore determine the state of
     outbound connections from that node.
