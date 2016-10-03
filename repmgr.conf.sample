@@ -160,6 +160,9 @@
 # These settings are only applied when repmgrd is running. Values shown
 # are defaults.
 
+# monitoring interval in seconds; default is 2
+#monitor_interval_secs=2
+
 # Number of seconds to wait for a response from the primary server before
 # deciding it has failed.
 
@@ -186,9 +189,6 @@
 
 #promote_command='repmgr standby promote -f /path/to/repmgr.conf'
 #follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
-
-# monitoring interval in seconds; default is 2
-#monitor_interval_secs=2
 
 # change wait time for primary; before we bail out and exit when the primary
 # disappears, we wait 'reconnect_attempts' * 'retry_promote_interval_secs'
