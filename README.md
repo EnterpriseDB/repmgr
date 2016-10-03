@@ -599,8 +599,8 @@ ensure that:
 - the `barman_server` setting in `repmgr.conf` is set to the SSH
   hostname of the Barman server;
 - the `restore_command` setting in `repmgr.conf` is configured to
-  use a copy of the `barman-wal-restore.py` script shipped with Barman
-  (see below);
+  use a copy of the `barman-wal-restore` script shipped with the
+  `barman-cli package` (see below);
 - the Barman catalogue includes at least one valid backup for this
   server.
 
@@ -616,26 +616,24 @@ ensure that:
 > corresponding to the value of `barman_server` in `repmgr.conf`. See
 > the "Host" section in `man 5 ssh_config` for more details.
 
-`barman-wal-restore.py` is a Python script provided by the Barman
-development team, which must be copied in a location accessible to
-`repmgr`, and marked as executable; `restore_command` must then be
-set in `repmgr.conf` as follows:
+`barman-wal-restore` is a Python script provided by the Barman
+development team as part of the `barman-cli` package (Barman 2.0
+and later; for Barman 1.x the script is provided separately as
+`barman-wal-restore.py`).
+
+`restore_command` must then be set in `repmgr.conf` as follows:
 
     <script> <Barman hostname> <cluster_name> %f %p
 
 For instance, suppose that we have installed Barman on the `barmansrv`
-host, and that we have placed a copy of `barman-wal-restore.py` into
-the `/usr/local/bin` directory. First, we ensure that the script is
-executable:
-
-    sudo chmod +x /usr/local/bin/barman-wal-restore.py
-
-Then we check that `repmgr.conf` includes the following lines:
+host, and that `barman-wal-restore` is located as an executable at
+`/usr/bin/barman-wal-restore`;  `repmgr.conf` should include the following
+lines:
 
     barman_server=barmansrv
-    restore_command=/usr/local/bin/barman-wal-restore.py barmansrv test %f %p
+    restore_command=/usr/bin/barman-wal-restore barmansrv test %f %p
 
-To use a non-default Barman configuration file on the Barman server,
+NOTE: to use a non-default Barman configuration file on the Barman server,
 specify this in `repmgr.conf` with `barman_config`:
 
     barman_config=/path/to/barman.conf
@@ -688,7 +686,7 @@ and destination server as the contents of files existing on both servers need
 to be compared, meaning this method is not necessarily faster than making a
 fresh clone with `pg_basebackup`.
 
-> *NOTE*: `barman-wal-restore.py` supports command line switches to
+> *NOTE*: `barman-wal-restore` supports command line switches to
 > control parallelism (`--parallel=N`) and compression (`--bzip2`,
 > `--gzip`).
 
