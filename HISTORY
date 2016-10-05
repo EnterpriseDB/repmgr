@@ -1,4 +1,4 @@
-3.2     2016-
+3.2     2016-10-05
         repmgr: add support for cloning from a Barman backup (Gianni)
         repmgr: add commands `standby matrix` and `standby crosscheck` (Gianni)
         repmgr: suppress connection error display in `repmgr cluster show`
@@ -16,8 +16,14 @@
         repmgr: add option `--copy-external-config-files` for files outside
            of the data directory (Ian)
         repmgr: add configuration options to override the default pg_ctl
-           commands (Jarkko Oranen)
+           commands (Jarkko Oranen, Ian)
+        repmgr: only require `wal_keep_segments` to be set in certain corner
+           cases (Ian)
+        repmgr: better support cloning from a node other than the one to
+           stream from (Ian)
+        repmgrd: don't start if node is inactive and failover=automatic (Ian)
         packaging: improve "repmgr-auto" Debian package (Gianni)
+
 
 3.1.5   2016-08-15
         repmgrd: in a failover situation, prevent endless looping when
