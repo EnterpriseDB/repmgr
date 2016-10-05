@@ -580,13 +580,13 @@ base backups and WAL files.
 
 Barman support provides the following advantages:
 
-- the primary node does not need to perform a new backup every time a
+- the master node does not need to perform a new backup every time a
   new standby is cloned;
 - a standby node can be disconnected for longer periods without losing
   the ability to catch up, and without causing accumulation of WAL
-  files on the primary node;
+  files on the master node;
 - therefore, `repmgr` does not need to use replication slots, and the
-  primary node does not need to set `wal_keep_segments`.
+  master node does not need to set `wal_keep_segments`.
 
 > *NOTE*: In view of the above, Barman support is incompatible with
 > the `use_replication_slots` setting in `repmgr.conf`.
@@ -1741,6 +1741,21 @@ which contains connection details for the local database.
     This command requires a valid `repmgr.conf` file for the node on which it is
     executed, either specified explicitly with `-f/--config-file` or located in
     the current working directory; no additional arguments are required.
+
+
+### Further documentation
+
+As well as this README, the `repmgr` source contains following additional
+documentation files:
+
+* FAQ.md - frequently asked questions
+* CONTRIBUTING.md - how to contribute to `repmgr`
+* PACKAGES.md - details on building packages
+* SSH-RSYNC.md - how to set up passwordless SSH between nodes
+* docs/repmgrd-failover-mechanism.md - how repmgrd picks which node to promote
+* docs/repmgrd-node-fencing.md - how to "fence" a failed master node
+
+
 
 
 ### Error codes
