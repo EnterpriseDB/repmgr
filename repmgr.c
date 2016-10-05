@@ -6254,7 +6254,10 @@ do_help(void)
 	printf(_(" witness register      - registers a witness server\n"));
 	printf(_(" witness unregister    - unregisters a witness server\n"));
 	printf(_(" cluster show          - displays information about cluster nodes\n"));
-	printf(_(" cluster matrix        - displays the cluster's connection matrix\n"));
+	printf(_(" cluster matrix        - displays the cluster's connection matrix\n" \
+	         "                           as seen from the current node\n"));
+	printf(_(" cluster crosscheck    - displays the cluster's connection matrix\n" \
+	         "                           as seen from all nodes\n"));
 	printf(_(" cluster cleanup       - prunes or truncates monitoring history\n" \
 			 "                         (monitoring history creation requires repmgrd\n" \
 			 "                         with --monitoring-history option)\n"));
