@@ -7,7 +7,7 @@ replication capabilities with utilities to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or switchover
 operations.
 
-The current `repmgr` version, 3.1.5, supports all PostgreSQL versions from
+The current `repmgr` version, 3.2, supports all PostgreSQL versions from
 9.3, including the upcoming 9.6.
 
 Overview
@@ -689,20 +689,6 @@ fresh clone with `pg_basebackup`.
 > *NOTE*: `barman-wal-restore` supports command line switches to
 > control parallelism (`--parallel=N`) and compression (`--bzip2`,
 > `--gzip`).
-
-### Dealing with PostgreSQL configuration files
-
-By default, `repmgr` will attempt to copy the standard configuration files
-(`postgresql.conf`, `pg_hba.conf` and `pg_ident.conf`) even if they are located
-outside of the data directory (though currently they will be copied
-into the standby's data directory). To prevent this happening, when executing
-`repmgr standby clone` provide the `--ignore-external-config-files` option.
-
-If using `rsync` to clone a standby, additional control over which files
-not to transfer is possible by configuring `rsync_options` in `repmgr.conf`,
-which enables any valid `rsync` options to be passed to that command, e.g.:
-
-    rsync_options='--exclude=postgresql.local.conf'
 
 ### Controlling `primary_conninfo` in `recovery.conf`
 
