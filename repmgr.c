@@ -6119,7 +6119,7 @@ do_witness_unregister(void)
 										NULL, NULL);
 	if (PQstatus(master_conn) != CONNECTION_OK)
 	{
-		log_err(_("Unable to connect to master server\n"));
+		log_err(_("unable to connect to master server\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
