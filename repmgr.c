@@ -2512,7 +2512,7 @@ do_standby_clone(void)
 		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
 		if (r != 0)
 		{
-			log_err(_("aborting, remote host %s is not reachable.\n"),
+			log_err(_("aborting, remote host %s is not reachable via SSH.\n"),
 					runtime_options.host);
 			exit(ERR_BAD_SSH);
 		}
@@ -4610,7 +4610,7 @@ do_standby_switchover(void)
 
 	if (r != 0)
 	{
-		log_err(_("unable to connect via ssh to host %s, user %s\n"), remote_host, runtime_options.remote_user);
+		log_err(_("unable to connect via SSH to host %s, user %s\n"), remote_host, runtime_options.remote_user);
 	}
 
 	if (get_pg_setting(remote_conn, "data_directory", remote_data_directory) == false)
