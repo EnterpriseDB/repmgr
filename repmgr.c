@@ -3315,14 +3315,14 @@ do_standby_clone(void)
 					/* Only from 9.5 */
 					"pg_commit_ts",
 					/* Only from 9.4 */
-					"pg_dynshmem", "pg_logical", "pg_replslot",
+					"pg_dynshmem", "pg_logical", "pg_logical/snapshot", "pg_logical/mappings", "pg_replslot",
 					/* Already in 9.3 */
 					"pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
 					"pg_twophase", "pg_xlog", 0
 				};
 				const int vers[] = {
 					90500,
-					90400, 90400, 90400,
+					90400, 90400, 90400, 90400, 90400,
 					0, 0, 0, 0, 0,
 					0, 0, 0
 				};
