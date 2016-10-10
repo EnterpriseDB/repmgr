@@ -8,7 +8,7 @@ replication, and perform administrative tasks such as failover or switchover
 operations.
 
 The current `repmgr` version, 3.2, supports all PostgreSQL versions from
-9.3, including the upcoming 9.6.
+9.3 to 9.6.
 
 Overview
 --------
@@ -600,7 +600,7 @@ ensure that:
   hostname of the Barman server;
 - the `restore_command` setting in `repmgr.conf` is configured to
   use a copy of the `barman-wal-restore` script shipped with the
-  `barman-cli package` (see below);
+  `barman-cli` package (see below);
 - the Barman catalogue includes at least one valid backup for this
   server.
 
