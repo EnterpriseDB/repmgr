@@ -15,12 +15,12 @@
            the standby (Ian)
         repmgr: add option `--copy-external-config-files` for files outside
            of the data directory (Ian)
-        repmgr: add configuration options to override the default pg_ctl
-           commands (Jarkko Oranen, Ian)
         repmgr: only require `wal_keep_segments` to be set in certain corner
            cases (Ian)
         repmgr: better support cloning from a node other than the one to
            stream from (Ian)
+        repmgrd: add configuration options to override the default pg_ctl
+           commands (Jarkko Oranen, Ian)
         repmgrd: don't start if node is inactive and failover=automatic (Ian)
         packaging: improve "repmgr-auto" Debian package (Gianni)
 
