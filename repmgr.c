@@ -1646,7 +1646,7 @@ do_cluster_crosscheck(void)
 
 	printf("%*s | Id ", name_length, node_header);
 	for (i = 0; i < n; i++)
-		printf("| %2d ", i+1);
+		printf("| %2d ", cube[i]->node_id);
 	printf("\n");
 
 	for (i = 0; i < name_length; i++)
