@@ -178,12 +178,6 @@ static bool	config_file_required = true;
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
-static bool  wal_keep_segments_used = false;
-static bool  conninfo_provided = false;
-static bool  connection_param_provided = false;
-static bool  host_param_provided = false;
-static bool  pg_rewind_supplied = false;
-
 static char *server_mode = NULL;
 static char *server_cmd = NULL;
 
@@ -365,13 +359,13 @@ main(int argc, char **argv)
 			case 'd':
 				strncpy(runtime_options.dbname, optarg, MAXLEN);
 				/* we'll set the dbname parameter below  if we detect it's not a conninfo string */
-				connection_param_provided = true;
+				runtime_options.connection_param_provided = true;
 				break;
 			case 'h':
 				strncpy(runtime_options.host, optarg, MAXLEN);
 				param_set(&source_conninfo, "host", optarg);
-				connection_param_provided = true;
-				host_param_provided = true;
+				runtime_options.connection_param_provided = true;
+				runtime_options.host_param_provided = true;
 				break;
 			case 'p':
 				repmgr_atoi(optarg, "-p/--port", &cli_errors, false);
@@ -379,12 +373,12 @@ main(int argc, char **argv)
 				strncpy(runtime_options.masterport,
 						optarg,
 						MAXLEN);
-				connection_param_provided = true;
+				runtime_options.connection_param_provided = true;
 				break;
 			case 'U':
 				strncpy(runtime_options.username, optarg, MAXLEN);
 				param_set(&source_conninfo, "user", optarg);
-				connection_param_provided = true;
+				runtime_options.connection_param_provided = true;
 				break;
 			case 'S':
 				strncpy(runtime_options.superuser, optarg, MAXLEN);
@@ -403,7 +397,7 @@ main(int argc, char **argv)
 				strncpy(runtime_options.wal_keep_segments,
 						optarg,
 						MAXLEN);
-				wal_keep_segments_used = true;
+				runtime_options.wal_keep_segments_used = true;
 				break;
 			case 'k':
 				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", &cli_errors, false);
@@ -519,7 +513,7 @@ main(int argc, char **argv)
 				{
 					strncpy(runtime_options.pg_rewind, optarg, MAXPGPATH);
 				}
-				pg_rewind_supplied = true;
+				runtime_options.pg_rewind_supplied = true;
 				break;
 			case OPT_PWPROMPT:
 				runtime_options.witness_pwprompt = true;
@@ -586,7 +580,7 @@ main(int argc, char **argv)
 		{
 			char	   *errmsg = NULL;
 
-			conninfo_provided = true;
+			runtime_options.conninfo_provided = true;
 
 			opts = PQconninfoParse(runtime_options.dbname, &errmsg);
 
@@ -620,13 +614,13 @@ main(int argc, char **argv)
 						(opt->val != NULL && opt->val[0] != '\0'))
 					{
 						strncpy(runtime_options.host, opt->val, MAXLEN);
-						host_param_provided = true;
+						runtime_options.host_param_provided = true;
 					}
 					if (strcmp(opt->keyword, "hostaddr") == 0 &&
 						(opt->val != NULL && opt->val[0] != '\0'))
 					{
 						strncpy(runtime_options.host, opt->val, MAXLEN);
-						host_param_provided = true;
+						runtime_options.host_param_provided = true;
 					}
 					else if (strcmp(opt->keyword, "port") == 0 &&
 							 (opt->val != NULL && opt->val[0] != '\0'))
@@ -762,7 +756,7 @@ main(int argc, char **argv)
 				initPQExpBuffer(&additional_host_arg);
 				appendPQExpBuffer(&additional_host_arg,
 								  _("Conflicting parameters:  you can't use %s while providing a node separately."),
-								  conninfo_provided == true ? "host=" : "-h/--host");
+								  runtime_options.conninfo_provided == true ? "host=" : "-h/--host");
 				item_list_append(&cli_errors, additional_host_arg.data);
 			}
 			else
@@ -884,7 +878,7 @@ main(int argc, char **argv)
 	 * the version check for 9.4 or later is done in check_upstream_config()
 	 */
 
-	if (options.use_replication_slots && wal_keep_segments_used)
+	if (options.use_replication_slots && runtime_options.wal_keep_segments_used)
 	{
 		log_warning(_("-w/--wal-keep-segments has no effect when replication slots in use\n"));
 	}
@@ -4268,7 +4262,7 @@ do_standby_follow(void)
 	 * to determine primary, and carry out some other checks while we're
 	 * at it.
 	 */
-	if (host_param_provided == false)
+	if (runtime_options.host_param_provided == false)
 	{
 		/* We need to connect to check configuration */
 		log_info(_("connecting to standby database\n"));
@@ -4562,7 +4556,7 @@ do_standby_switchover(void)
 	 * Add a friendly notice if --pg_rewind supplied for 9.5 and later - we'll
 	 * be ignoring it anyway
 	 */
-	if (pg_rewind_supplied == true && server_version_num >= 90500)
+	if (runtime_options.pg_rewind_supplied == true && server_version_num >= 90500)
 	{
 		log_notice(_("--pg_rewind not required for PostgreSQL 9.5 and later\n"));
 	}
@@ -4677,7 +4671,7 @@ do_standby_switchover(void)
 	else
 	{
 		/* 9.3/9.4 - user can use separately-compiled pg_rewind */
-		if (pg_rewind_supplied == true)
+		if (runtime_options.pg_rewind_supplied == true)
 		{
 			use_pg_rewind = true;
 
@@ -6574,7 +6568,7 @@ run_basebackup(const char *data_dir, int server_version)
 	 * consistency with other applications accepts a conninfo string
 	 * under -d/--dbname)
 	 */
-	if (conninfo_provided == true)
+	if (runtime_options.conninfo_provided == true)
 	{
 		appendPQExpBuffer(&params, " -d '%s'", runtime_options.dbname);
 	}
@@ -6695,7 +6689,7 @@ check_parameters_for_action(const int action)
 			 * parameters are at least useless and could be confusing so
 			 * reject them
 			 */
-			if (connection_param_provided)
+			if (runtime_options.connection_param_provided)
 			{
 				item_list_append(&cli_warnings, _("master connection parameters not required when executing MASTER REGISTER"));
 			}
@@ -6712,7 +6706,7 @@ check_parameters_for_action(const int action)
 			 * need connection parameters to the master because we can detect
 			 * the master in repl_nodes
 			 */
-			if (connection_param_provided)
+			if (runtime_options.connection_param_provided)
 			{
 				item_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY REGISTER"));
 			}
@@ -6729,7 +6723,7 @@ check_parameters_for_action(const int action)
 			 * need connection parameters to the master because we can detect
 			 * the master in repl_nodes
 			 */
-			if (connection_param_provided)
+			if (runtime_options.connection_param_provided)
 			{
 				item_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY UNREGISTER"));
 			}
@@ -6747,7 +6741,7 @@ check_parameters_for_action(const int action)
 			 * detect the master in repl_nodes if we can't find it then the
 			 * promote action will be cancelled
 			 */
-			if (connection_param_provided)
+			if (runtime_options.connection_param_provided)
 			{
 				item_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY PROMOTE"));
 			}
@@ -6773,7 +6767,7 @@ check_parameters_for_action(const int action)
 					item_list_append(&cli_errors, _("master hostname (-h/--host) required when executing STANDBY FOLLOW with -D/--data-dir option"));
 				}
 
-				if (host_param_provided && !runtime_options.dest_dir[0])
+				if (runtime_options.host_param_provided && !runtime_options.dest_dir[0])
 				{
 					item_list_append(&cli_errors, _("local data directory (-D/--data-dir) required when executing STANDBY FOLLOW with -h/--host option"));
 				}
@@ -6883,7 +6877,7 @@ check_parameters_for_action(const int action)
 			item_list_append(&cli_warnings, _("-r/--rsync-only can only be used when executing STANDBY CLONE"));
 		}
 
-		if (wal_keep_segments_used)
+		if (runtime_options.wal_keep_segments_used)
 		{
 			item_list_append(&cli_warnings, _("-w/--wal-keep-segments can only be used when executing STANDBY CLONE"));
 		}
@@ -6906,7 +6900,7 @@ check_parameters_for_action(const int action)
 	/* Warn about parameters which apply to STANDBY SWITCHOVER only */
 	if (action != STANDBY_SWITCHOVER)
 	{
-		if (pg_rewind_supplied == true)
+		if (runtime_options.pg_rewind_supplied == true)
 		{
 			item_list_append(&cli_warnings, _("--pg_rewind can only be used when executing STANDBY SWITCHOVER"));
 		}
@@ -7455,7 +7449,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		/*
 		 * -w/--wal-keep-segments was supplied - check against that value
 		 */
-		if (wal_keep_segments_used == true)
+		if (runtime_options.wal_keep_segments_used == true)
 		{
 			check_wal_keep_segments = true;
 			strncpy(min_wal_keep_segments, runtime_options.wal_keep_segments, MAXLEN);
