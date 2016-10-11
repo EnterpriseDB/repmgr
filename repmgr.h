@@ -64,9 +64,10 @@
 #define OPT_CLUSTER                      13
 
 /* deprecated command line options */
-#define OPT_INITDB_NO_PWPROMPT           999
-#define OPT_IGNORE_EXTERNAL_CONFIG_FILES 998
+#define OPT_INITDB_NO_PWPROMPT           998
+#define OPT_IGNORE_EXTERNAL_CONFIG_FILES 999
 
+/* values for --copy-external-config-files */
 #define CONFIG_FILE_SAMEPATH 1
 #define CONFIG_FILE_PGDATA 2
 
@@ -74,53 +75,94 @@
 /* Run time options type */
 typedef struct
 {
+	/* general repmgr options */
+	char		config_file[MAXPGPATH];
+	bool		verbose;
+	bool		terse;
+	bool		force;
+
+	/* options which override setting in repmgr.conf */
+	char		loglevel[MAXLEN];
+	char		pg_bindir[MAXLEN];
+
+	/* connection parameters */
 	char		dbname[MAXLEN];
 	char		host[MAXLEN];
 	char		username[MAXLEN];
 	char		dest_dir[MAXPGPATH];
-	char		config_file[MAXPGPATH];
 	char		remote_user[MAXLEN];
 	char		superuser[MAXLEN];
+	char		masterport[MAXLEN];
+	bool		conninfo_provided;
+	bool		connection_param_provided;
+	bool		host_param_provided;
+
+	/* standby clone parameters */
+	bool		wal_keep_segments_used;
 	char		wal_keep_segments[MAXLEN];
-	bool		verbose;
-	bool		terse;
-	bool		force;
-	bool		wait_for_master;
 	bool		ignore_rsync_warn;
-	bool		witness_pwprompt;
 	bool		rsync_only;
 	bool		fast_checkpoint;
-	bool		csv_mode;
 	bool		without_barman;
 	bool		no_upstream_connection;
 	bool		copy_external_config_files;
 	int			copy_external_config_files_destination;
 	bool		wait_register_sync;
 	int			wait_register_sync_seconds;
-	char		masterport[MAXLEN];
-	/*
-	 * configuration file parameters which can be overridden on the
-	 * command line
-	 */
-	char		loglevel[MAXLEN];
-
-	/* parameter used by STANDBY SWITCHOVER */
-	char		remote_config_file[MAXLEN];
-	char		pg_rewind[MAXPGPATH];
-	char		pg_ctl_mode[MAXLEN];
-	/* parameter used by STANDBY {ARCHIVE_CONFIG | RESTORE_CONFIG} */
-	char		config_archive_dir[MAXLEN];
-	/* parameter used by CLUSTER CLEANUP */
-	int			keep_history;
-	/* parameter used by {STANDBY|WITNESS} UNREGISTER */
-	int			node;
-
-	char		pg_bindir[MAXLEN];
 
 	char		recovery_min_apply_delay[MAXLEN];
+
+	/* witness create parameters */
+	bool		witness_pwprompt;
+
+	/* standby follow parameters */
+	bool		wait_for_master;
+
+	/* cluster {show|matrix|crosscheck} parameters */
+	bool		csv_mode;
+
+	/* cluster cleanup parameters */
+	int			keep_history;
+
+	/* standby switchover parameters */
+	char		remote_config_file[MAXLEN];
+	bool		pg_rewind_supplied;
+	char		pg_rewind[MAXPGPATH];
+	char		pg_ctl_mode[MAXLEN];
+
+	/* standby {archive_config | restore_config} parameters  */
+	char		config_archive_dir[MAXLEN];
+
+	/* {standby|witness} unregister parameters */
+	int			node;
+
 }	t_runtime_options;
 
-#define T_RUNTIME_OPTIONS_INITIALIZER { "", "", "", "", "", "", "", DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, false, false, false, false, false, false, CONFIG_FILE_SAMEPATH, false, 0, "", "", "", "", "fast", "", 0, UNKNOWN_NODE_ID, "", ""}
+#define T_RUNTIME_OPTIONS_INITIALIZER { \
+		/* general repmgr options */	\
+		"", false, false, false,		\
+		/* options which override setting in repmgr.conf */ \
+		"", "",                         \
+		/* connection parameters */		\
+		"", "", "", "", "", "", "", 	\
+		false, false, false,		    \
+		/* standby clone parameters */  \
+		false, DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, \
+		CONFIG_FILE_SAMEPATH, false, 0, "", \
+		/* witness create parameters */ \
+		false,                          \
+		/* standby follow parameters */ \
+		false,                          \
+		/* cluster {show|matrix|crosscheck} parameters */ \
+		false,                          \
+		/* cluster cleanup parameters */ \
+		0,                              \
+		/* standby switchover parameters */ \
+		"", false, "", "fast",          \
+		/* standby {archive_config | restore_config} parameters  */ \
+		"",                             \
+		/* {standby|witness} unregister parameters */ \
+		UNKNOWN_NODE_ID }
 
 struct BackupLabel
 {
