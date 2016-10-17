@@ -2516,9 +2516,14 @@ do_standby_clone(void)
 	/*
 	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
 	 * directory (otherwise repmgr will default to using the same directory
-	 * path as on the source host)
+	 * path as on the source host).
+	 *
+	 * Note that barman mode requires -D/--pgdata.
+	 *
+	 * If -D/--pgdata is not supplied, and we're not cloning from barman,
+	 * the source host's data directory will be fetched later, after
+	 * we've connected to it.
 	 */
-
 	if (runtime_options.dest_dir[0])
 	{
 		target_directory_provided = true;
@@ -2541,26 +2546,7 @@ do_standby_clone(void)
 	{
 		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
 	}
-	/*
-	 * Otherwise use the same data directory as on the remote host
-	 */
-	else
-	{
-		strncpy(local_data_directory, master_data_directory, MAXPGPATH);
 
-		log_notice(_("setting data directory to: %s\n"), local_data_directory);
-		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
-	}
-
-	/* Check the local data directory can be used */
-
-	if (!create_pg_dir(local_data_directory, runtime_options.force))
-	{
-		log_err(_("unable to use directory %s ...\n"),
-				local_data_directory);
-		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
-		exit(ERR_BAD_CONFIG);
-	}
 
 	/*
 	 * Initialise list of conninfo parameters which will later be used
@@ -2633,7 +2619,7 @@ do_standby_clone(void)
 
 		if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
 		{
-			log_err(_("unable to use directory %s ...\n"),
+			log_err(_("unable to use directory \"%s\" ...\n"),
 					local_repmgr_directory);
 			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
 
@@ -2730,6 +2716,28 @@ do_standby_clone(void)
 			else
 			{
 				primary_conn = source_conn;
+			}
+
+
+			/* Fetch the source's data directory */
+			if (get_pg_setting(source_conn, "data_directory", master_data_directory) == false)
+			{
+				log_err(_("Unable to retrieve upstream node's data directory\n"));
+				log_hint(_("STANDBY CLONE must be run as a database superuser"));
+				PQfinish(source_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			/*
+			 * If no target directory was explicitly provided, we'll default to
+			 * the same directory as on the source host.
+			 */
+			if (target_directory_provided == false)
+			{
+				strncpy(local_data_directory, master_data_directory, MAXPGPATH);
+
+				log_notice(_("setting data directory to: \"%s\"\n"), local_data_directory);
+				log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
 			}
 
 			/*
@@ -2892,6 +2900,17 @@ do_standby_clone(void)
 		}
 	}
 
+
+	/* Check the destination data directory can be used */
+
+	if (!create_pg_dir(local_data_directory, runtime_options.force))
+	{
+		log_err(_("unable to use directory %s ...\n"),
+				local_data_directory);
+		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
 	if (mode != barman)
 	{
 		/*
@@ -2941,14 +2960,6 @@ do_standby_clone(void)
 					exit(ERR_BAD_CONFIG);
 				}
 			}
-		}
-
-
-		if (get_pg_setting(source_conn, "data_directory", master_data_directory) == false)
-		{
-			log_err(_("Unable to retrieve upstream node's data directory\n"));
-			log_hint(_("STANDBY CLONE must be run as a database superuser"));
-			exit(ERR_BAD_CONFIG);
 		}
 
 		/*
