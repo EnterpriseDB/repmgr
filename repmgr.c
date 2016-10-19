@@ -898,6 +898,7 @@ main(int argc, char **argv)
 		}
 
 	/* Initialise the repmgr schema name */
+
 	if (strlen(repmgr_cluster))
 		/* --cluster parameter provided */
 		maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
@@ -905,6 +906,16 @@ main(int argc, char **argv)
 	else
 		maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 						options.cluster_name);
+
+	/*
+	 * If no value for the repmgr_schema provided, continue only under duress.
+	 */
+	if (strcmp(repmgr_schema, DEFAULT_REPMGR_SCHEMA_PREFIX) == 0 && !runtime_options.force)
+	{
+		log_err(_("unable to determine cluster name - please provide a valid configuration file with -c/--config-file\n"));
+		log_hint(_("Use -F/--force to continue anyway\n"));
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/*
 	 * Initialise slot name, if required (9.4 and later)
