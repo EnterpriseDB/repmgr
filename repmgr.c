@@ -2730,6 +2730,27 @@ do_standby_clone(void)
 			}
 
 
+
+			/*
+			 * Sanity-check that the master node has a repmgr schema - if not
+			 * present, fail with an error (unless -F/--force is used)
+			 */
+
+			if (check_cluster_schema(primary_conn) == false)
+			{
+				if (!runtime_options.force)
+				{
+					/* schema doesn't exist */
+					log_err(_("expected repmgr schema '%s' not found on master server\n"), get_repmgr_schema());
+					log_hint(_("check that the master server was correctly registered\n"));
+					PQfinish(source_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				log_warning(_("expected repmgr schema '%s' not found on master server\n"), get_repmgr_schema());
+			}
+
+
 			/* Fetch the source's data directory */
 			if (get_pg_setting(source_conn, "data_directory", master_data_directory) == false)
 			{
@@ -2750,6 +2771,8 @@ do_standby_clone(void)
 				log_notice(_("setting data directory to: \"%s\"\n"), local_data_directory);
 				log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
 			}
+
+
 
 			/*
 			 * Copy the source connection so that we have some default values,
@@ -6105,6 +6128,7 @@ do_witness_register(PGconn *masterconn)
 
 	log_notice(_("configuration has been successfully copied to the witness\n"));
 }
+
 
 static void
 do_witness_unregister(void)
