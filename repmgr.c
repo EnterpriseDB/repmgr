@@ -3666,7 +3666,7 @@ do_standby_clone(void)
 									  file->filepath, dest_path, false, server_version_num);
 				if (r != 0)
 				{
-					log_err(_("standby clone: unable to copying config file '%s'\n"),
+					log_err(_("standby clone: unable to copy config file '%s'\n"),
 							file->filename);
 				}
 			}
@@ -4836,7 +4836,7 @@ do_standby_switchover(void)
 	else
 	{
 		int		    i;
-		bool		config_file_found = false;
+		bool		remote_config_file_found = false;
 
 		const char *config_paths[] = {
 			runtime_options.config_file,
@@ -4846,7 +4846,7 @@ do_standby_switchover(void)
 
 		log_verbose(LOG_INFO, _("no remote configuration file provided - checking default locations\n"));
 
-		for (i = 0; config_paths[i] && config_file_found == false; ++i)
+		for (i = 0; config_paths[i] && remote_config_file_found == false; ++i)
 		{
 			/*
 			 * Don't attempt to check for an empty filename - this might be the case
@@ -4878,13 +4878,13 @@ do_standby_switchover(void)
 				strncpy(runtime_options.remote_config_file, config_paths[i], MAXLEN);
 				log_verbose(LOG_INFO, _("configuration file \"%s\" found on remote server\n"),
 							runtime_options.remote_config_file);
-				config_file_found = true;
+				remote_config_file_found = true;
 			}
 
 			termPQExpBuffer(&command_output);
 		}
 
-		if (config_file_found == false)
+		if (remote_config_file_found == false)
 		{
 			log_err(_("no remote configuration file supplied or found in a default location - terminating\n"));
 			log_hint(_("specify the remote configuration file with -C/--remote-config-file\n"));
