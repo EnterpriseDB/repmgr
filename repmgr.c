@@ -7327,10 +7327,10 @@ check_master_standby_version_match(PGconn *conn, PGconn *master_conn)
 /*
  * check_upstream_config()
  *
- * Perform sanity check on upstream server configuration
+ * Perform sanity check on upstream server configuration before starting cloning
+ * process
  *
  * TODO:
- *  - check replication connection is possble
  *  - check user is qualified to perform base backup
  */
 
@@ -7343,14 +7343,33 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
 	bool		xlog_stream = true;
 
+	enum {
+		barman,
+		rsync,
+		pg_basebackup
+	}			mode;
+
+
+	/*
+	 * Detecting the intended cloning mode
+	 */
+	if (runtime_options.rsync_only)
+		mode = rsync;
+	else if (strcmp(options.barman_server, "") != 0 && ! runtime_options.without_barman)
+		mode = barman;
+	else
+		mode = pg_basebackup;
+
 	/*
 	 * Parse `pg_basebackup_options`, if set, to detect whether --xlog-method
 	 * has been set to something other than `stream` (i.e. `fetch`), as
 	 * this will influence some checks
 	 */
+
 	parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options);
 	if (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)
 		xlog_stream = false;
+
 	/* Check that WAL level is set correctly */
 	if (server_version_num < 90400)
 	{
@@ -7457,7 +7476,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	 * physical replication slots not available or not requested - check if
 	 * there are any circumstances where `wal_keep_segments` should be set
 	 */
-	else if (! runtime_options.without_barman && strcmp(options.barman_server, "") == 0)
+	else if (mode != barman)
 	{
 		bool check_wal_keep_segments = false;
 		char min_wal_keep_segments[MAXLEN] = "1";
@@ -7588,7 +7607,12 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		config_ok = false;
 	}
 
-	if (!runtime_options.rsync_only)
+	/*
+	 * If using pg_basebackup, ensure sufficient replication connections can be made.
+	 * There's no guarantee they'll still be available by the time pg_basebackup
+	 * is executed, but there's nothing we can do about that.
+	 */
+	if (mode == pg_basebackup)
 	{
 
 		PGconn	  **connections;
@@ -7608,11 +7632,6 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 		/*
 		 * work out how many replication connections are required (1 or 2)
-		 */
-
-		/*
-		 * --xlog-method set by user to something other than "stream" (should be "fetch",
-		 * but we're just checking it's not "stream")
 		 */
 
 		if (xlog_stream == true)
