@@ -2901,18 +2901,23 @@ do_standby_clone(void)
 	}
 
 
-	/* Check the destination data directory can be used */
-
-	if (!create_pg_dir(local_data_directory, runtime_options.force))
-	{
-		log_err(_("unable to use directory %s ...\n"),
-				local_data_directory);
-		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
-		exit(ERR_BAD_CONFIG);
-	}
 
 	if (mode != barman)
 	{
+
+		/*
+		 * Check the destination data directory can be used
+		 * (in Barman mode, this directory will already have been created)
+		 */
+
+		if (!create_pg_dir(local_data_directory, runtime_options.force))
+		{
+			log_err(_("unable to use directory %s ...\n"),
+					local_data_directory);
+			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+
 		/*
 		 * Check that tablespaces named in any `tablespace_mapping` configuration
 		 * file parameters exist.
