@@ -898,6 +898,7 @@ main(int argc, char **argv)
 		}
 
 	/* Initialise the repmgr schema name */
+
 	if (strlen(repmgr_cluster))
 		/* --cluster parameter provided */
 		maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
@@ -905,6 +906,16 @@ main(int argc, char **argv)
 	else
 		maxlen_snprintf(repmgr_schema, "%s%s", DEFAULT_REPMGR_SCHEMA_PREFIX,
 						options.cluster_name);
+
+	/*
+	 * If no value for the repmgr_schema provided, continue only under duress.
+	 */
+	if (strcmp(repmgr_schema, DEFAULT_REPMGR_SCHEMA_PREFIX) == 0 && !runtime_options.force)
+	{
+		log_err(_("unable to determine cluster name - please provide a valid configuration file with -c/--config-file\n"));
+		log_hint(_("Use -F/--force to continue anyway\n"));
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/*
 	 * Initialise slot name, if required (9.4 and later)
@@ -1640,7 +1651,7 @@ do_cluster_crosscheck(void)
 
 	printf("%*s | Id ", name_length, node_header);
 	for (i = 0; i < n; i++)
-		printf("| %2d ", i+1);
+		printf("| %2d ", cube[i]->node_id);
 	printf("\n");
 
 	for (i = 0; i < name_length; i++)
@@ -2516,9 +2527,14 @@ do_standby_clone(void)
 	/*
 	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
 	 * directory (otherwise repmgr will default to using the same directory
-	 * path as on the source host)
+	 * path as on the source host).
+	 *
+	 * Note that barman mode requires -D/--pgdata.
+	 *
+	 * If -D/--pgdata is not supplied, and we're not cloning from barman,
+	 * the source host's data directory will be fetched later, after
+	 * we've connected to it.
 	 */
-
 	if (runtime_options.dest_dir[0])
 	{
 		target_directory_provided = true;
@@ -2541,26 +2557,7 @@ do_standby_clone(void)
 	{
 		strncpy(local_data_directory, runtime_options.dest_dir, MAXPGPATH);
 	}
-	/*
-	 * Otherwise use the same data directory as on the remote host
-	 */
-	else
-	{
-		strncpy(local_data_directory, master_data_directory, MAXPGPATH);
 
-		log_notice(_("setting data directory to: %s\n"), local_data_directory);
-		log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
-	}
-
-	/* Check the local data directory can be used */
-
-	if (!create_pg_dir(local_data_directory, runtime_options.force))
-	{
-		log_err(_("unable to use directory %s ...\n"),
-				local_data_directory);
-		log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
-		exit(ERR_BAD_CONFIG);
-	}
 
 	/*
 	 * Initialise list of conninfo parameters which will later be used
@@ -2633,7 +2630,7 @@ do_standby_clone(void)
 
 		if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
 		{
-			log_err(_("unable to use directory %s ...\n"),
+			log_err(_("unable to use directory \"%s\" ...\n"),
 					local_repmgr_directory);
 			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
 
@@ -2731,6 +2728,51 @@ do_standby_clone(void)
 			{
 				primary_conn = source_conn;
 			}
+
+
+
+			/*
+			 * Sanity-check that the master node has a repmgr schema - if not
+			 * present, fail with an error (unless -F/--force is used)
+			 */
+
+			if (check_cluster_schema(primary_conn) == false)
+			{
+				if (!runtime_options.force)
+				{
+					/* schema doesn't exist */
+					log_err(_("expected repmgr schema '%s' not found on master server\n"), get_repmgr_schema());
+					log_hint(_("check that the master server was correctly registered\n"));
+					PQfinish(source_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				log_warning(_("expected repmgr schema '%s' not found on master server\n"), get_repmgr_schema());
+			}
+
+
+			/* Fetch the source's data directory */
+			if (get_pg_setting(source_conn, "data_directory", master_data_directory) == false)
+			{
+				log_err(_("Unable to retrieve upstream node's data directory\n"));
+				log_hint(_("STANDBY CLONE must be run as a database superuser"));
+				PQfinish(source_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			/*
+			 * If no target directory was explicitly provided, we'll default to
+			 * the same directory as on the source host.
+			 */
+			if (target_directory_provided == false)
+			{
+				strncpy(local_data_directory, master_data_directory, MAXPGPATH);
+
+				log_notice(_("setting data directory to: \"%s\"\n"), local_data_directory);
+				log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
+			}
+
+
 
 			/*
 			 * Copy the source connection so that we have some default values,
@@ -2892,8 +2934,24 @@ do_standby_clone(void)
 		}
 	}
 
+
+
 	if (mode != barman)
 	{
+
+		/*
+		 * Check the destination data directory can be used
+		 * (in Barman mode, this directory will already have been created)
+		 */
+
+		if (!create_pg_dir(local_data_directory, runtime_options.force))
+		{
+			log_err(_("unable to use directory %s ...\n"),
+					local_data_directory);
+			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+
 		/*
 		 * Check that tablespaces named in any `tablespace_mapping` configuration
 		 * file parameters exist.
@@ -2941,14 +2999,6 @@ do_standby_clone(void)
 					exit(ERR_BAD_CONFIG);
 				}
 			}
-		}
-
-
-		if (get_pg_setting(source_conn, "data_directory", master_data_directory) == false)
-		{
-			log_err(_("Unable to retrieve upstream node's data directory\n"));
-			log_hint(_("STANDBY CLONE must be run as a database superuser"));
-			exit(ERR_BAD_CONFIG);
 		}
 
 		/*
@@ -3650,7 +3700,7 @@ do_standby_clone(void)
 									  file->filepath, dest_path, false, server_version_num);
 				if (r != 0)
 				{
-					log_err(_("standby clone: unable to copying config file '%s'\n"),
+					log_err(_("standby clone: unable to copy config file '%s'\n"),
 							file->filename);
 				}
 			}
@@ -4820,7 +4870,7 @@ do_standby_switchover(void)
 	else
 	{
 		int		    i;
-		bool		config_file_found = false;
+		bool		remote_config_file_found = false;
 
 		const char *config_paths[] = {
 			runtime_options.config_file,
@@ -4830,7 +4880,7 @@ do_standby_switchover(void)
 
 		log_verbose(LOG_INFO, _("no remote configuration file provided - checking default locations\n"));
 
-		for (i = 0; config_paths[i] && config_file_found == false; ++i)
+		for (i = 0; config_paths[i] && remote_config_file_found == false; ++i)
 		{
 			/*
 			 * Don't attempt to check for an empty filename - this might be the case
@@ -4862,13 +4912,13 @@ do_standby_switchover(void)
 				strncpy(runtime_options.remote_config_file, config_paths[i], MAXLEN);
 				log_verbose(LOG_INFO, _("configuration file \"%s\" found on remote server\n"),
 							runtime_options.remote_config_file);
-				config_file_found = true;
+				remote_config_file_found = true;
 			}
 
 			termPQExpBuffer(&command_output);
 		}
 
-		if (config_file_found == false)
+		if (remote_config_file_found == false)
 		{
 			log_err(_("no remote configuration file supplied or found in a default location - terminating\n"));
 			log_hint(_("specify the remote configuration file with -C/--remote-config-file\n"));
@@ -6078,6 +6128,7 @@ do_witness_register(PGconn *masterconn)
 
 	log_notice(_("configuration has been successfully copied to the witness\n"));
 }
+
 
 static void
 do_witness_unregister(void)
@@ -7311,10 +7362,10 @@ check_master_standby_version_match(PGconn *conn, PGconn *master_conn)
 /*
  * check_upstream_config()
  *
- * Perform sanity check on upstream server configuration
+ * Perform sanity check on upstream server configuration before starting cloning
+ * process
  *
  * TODO:
- *  - check replication connection is possble
  *  - check user is qualified to perform base backup
  */
 
@@ -7327,14 +7378,33 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
 	bool		xlog_stream = true;
 
+	enum {
+		barman,
+		rsync,
+		pg_basebackup
+	}			mode;
+
+
+	/*
+	 * Detecting the intended cloning mode
+	 */
+	if (runtime_options.rsync_only)
+		mode = rsync;
+	else if (strcmp(options.barman_server, "") != 0 && ! runtime_options.without_barman)
+		mode = barman;
+	else
+		mode = pg_basebackup;
+
 	/*
 	 * Parse `pg_basebackup_options`, if set, to detect whether --xlog-method
 	 * has been set to something other than `stream` (i.e. `fetch`), as
 	 * this will influence some checks
 	 */
+
 	parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options);
 	if (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)
 		xlog_stream = false;
+
 	/* Check that WAL level is set correctly */
 	if (server_version_num < 90400)
 	{
@@ -7441,7 +7511,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	 * physical replication slots not available or not requested - check if
 	 * there are any circumstances where `wal_keep_segments` should be set
 	 */
-	else if (! runtime_options.without_barman && strcmp(options.barman_server, "") == 0)
+	else if (mode != barman)
 	{
 		bool check_wal_keep_segments = false;
 		char min_wal_keep_segments[MAXLEN] = "1";
@@ -7572,7 +7642,12 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		config_ok = false;
 	}
 
-	if (!runtime_options.rsync_only)
+	/*
+	 * If using pg_basebackup, ensure sufficient replication connections can be made.
+	 * There's no guarantee they'll still be available by the time pg_basebackup
+	 * is executed, but there's nothing we can do about that.
+	 */
+	if (mode == pg_basebackup)
 	{
 
 		PGconn	  **connections;
@@ -7592,11 +7667,6 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 		/*
 		 * work out how many replication connections are required (1 or 2)
-		 */
-
-		/*
-		 * --xlog-method set by user to something other than "stream" (should be "fetch",
-		 * but we're just checking it's not "stream")
 		 */
 
 		if (xlog_stream == true)

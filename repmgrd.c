@@ -647,7 +647,7 @@ witness_monitor(void)
 			}
 			else
 			{
-				log_debug(_("new master found with node ID: %i\n"), master_options.node);
+				log_info(_("new master found with node ID: %i\n"), master_options.node);
 				connection_ok = true;
 
 				/*
