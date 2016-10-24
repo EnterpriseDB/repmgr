@@ -1,3 +1,12 @@
+3.2.1   2016-10-24
+        repmgr: require a valid repmgr cluster name unless -F/--force
+          supplied (Ian)
+        repmgr: check master server is registered with repmgr before
+          cloning (Ian)
+        repmgr: ensure data directory defaults to that of the source node (Ian)
+        repmgr: various fixes to Barman cloning mode (Gianni, Ian)
+        repmgr: fix `repmgr cluster crosscheck` output (Ian)
+
 3.2     2016-10-05
         repmgr: add support for cloning from a Barman backup (Gianni)
         repmgr: add commands `standby matrix` and `standby crosscheck` (Gianni)
