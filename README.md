@@ -121,7 +121,8 @@ views:
     status for each node
 
 The `repmgr` metadata schema can be stored in an existing database or in its own
-dedicated database.
+dedicated database. Note that the `repmgr` metadata schema cannot reside on a database
+server which is not part of the replication cluster managed by `repmgr`.
 
 A dedicated database superuser is required to own the meta-database as well as carry
 out administrative actions.
@@ -1072,8 +1073,9 @@ This will remove the standby record from `repmgr`'s internal metadata
 table (`repl_nodes`). A `standby_unregister` event notification will be
 recorded in the `repl_events` table.
 
-Note that this command will not stop the server itself or remove
-it from the replication cluster.
+Note that this command will not stop the server itself or remove it from
+the replication cluster. Note that if the standby was using a replication
+slot, this will not be removed.
 
 If the standby is not running, the command can be executed on another
 node by providing the id of the node to be unregistered using
