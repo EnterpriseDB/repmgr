@@ -1407,7 +1407,9 @@ functionality will be included in a feature release (e.g. 3.0.x to 3.1.x).
 
 In general `repmgr` can be upgraded as-is without any further action required,
 however feature releases may require the `repmgr` database to be upgraded.
-An SQL script will be provided - please check the release notes for details.
+An SQL script will be provided - please check the release notes for details:
+
+  http://repmgr.org/release-notes-3.2.1.html#UPGRADING
 
 
 Distribution-specific configuration
