@@ -6133,7 +6133,7 @@ do_witness_register(PGconn *masterconn)
 static void
 do_witness_unregister(void)
 {
-	PGconn	   *conn;
+	PGconn	   *witness_conn;
 	PGconn	   *master_conn;
 
 	int 		target_node_id;
@@ -6143,30 +6143,31 @@ do_witness_unregister(void)
 
 
 	log_info(_("connecting to witness database\n"));
-	conn = establish_db_connection(options.conninfo, true);
+	witness_conn = establish_db_connection(options.conninfo, true);
 
-	if (PQstatus(conn) != CONNECTION_OK)
+	if (PQstatus(witness_conn) != CONNECTION_OK)
 	{
 		log_err(_("unable to connect to witness server\n"));
 		exit(ERR_DB_CON);
 	}
 
 	/* Check if there is a schema for this cluster */
-	if (check_cluster_schema(conn) == false)
+	if (check_cluster_schema(witness_conn) == false)
 	{
 		/* schema doesn't exist */
 		log_err(_("schema '%s' doesn't exist.\n"), get_repmgr_schema());
-		PQfinish(conn);
+		PQfinish(witness_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* check if there is a master in this cluster */
 	log_info(_("connecting to master server\n"));
-	master_conn = get_master_connection(conn, options.cluster_name,
+	master_conn = get_master_connection(witness_conn, options.cluster_name,
 										NULL, NULL);
 	if (PQstatus(master_conn) != CONNECTION_OK)
 	{
 		log_err(_("unable to connect to master server\n"));
+		PQfinish(witness_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -6180,12 +6181,16 @@ do_witness_unregister(void)
 	if (!get_node_record(master_conn, options.cluster_name, target_node_id, &node_info))
 	{
 		log_err(_("No record found for node %i\n"), target_node_id);
+		PQfinish(witness_conn);
+		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (node_info.type != WITNESS)
 	{
 		log_err(_("Node %i is not a witness server\n"), target_node_id);
+		PQfinish(witness_conn);
+		PQfinish(master_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -6197,8 +6202,25 @@ do_witness_unregister(void)
 	if (node_record_deleted == false)
 	{
 		PQfinish(master_conn);
-		PQfinish(conn);
+		PQfinish(witness_conn);
 		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * Delete node record on witness server too, if it exists.
+	 * As the witness server is not part of replication, if the node record continues
+	 * to exist, running `repmgr cluster show` on the witness node would erroneously
+	 * show the witness server as still registered.
+	 */
+	if (get_node_record(witness_conn, options.cluster_name, target_node_id, &node_info))
+	{
+		/*
+		 * We don't really care at this point if the node record couldn't be
+		 * deleted
+		 */
+		node_record_deleted = delete_node_record(witness_conn,
+												 target_node_id,
+												 "witness unregister");
 	}
 
 	/* Log the event */
@@ -6210,7 +6232,7 @@ do_witness_unregister(void)
 						NULL);
 
 	PQfinish(master_conn);
-	PQfinish(conn);
+	PQfinish(witness_conn);
 
 	log_info(_("witness unregistration complete\n"));
 	log_notice(_("witness node correctly unregistered for cluster %s with id %d (conninfo: %s)\n"),
