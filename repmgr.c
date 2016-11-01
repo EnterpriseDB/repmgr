@@ -7833,14 +7833,10 @@ do_check_upstream_config(void)
 	bool		config_ok;
 	int			server_version_num;
 
-	/* sanity-check local node configuration file */
-	parse_config(&options);
-
 	/* We need to connect to check configuration and start a backup */
 	log_info(_("connecting to upstream server\n"));
 
 	conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, true);
-
 
 	/* Verify that upstream server is a supported server version */
 	log_verbose(LOG_INFO, _("connected to upstream server, checking its state\n"));
