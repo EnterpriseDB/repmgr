@@ -588,7 +588,7 @@ parse_line(char *buf, char *name, char *value)
  * - node_name
  *
  * extract with something like:
- *   grep local_options\\. repmgrd.c | perl -n -e '/local_options\.([\w_]+)/ && print qq|$1\n|;' | sort | uniq
+ *	 grep local_options\\. repmgrd.c | perl -n -e '/local_options\.([\w_]+)/ && print qq|$1\n|;' | sort | uniq
 
  */
 bool
@@ -597,13 +597,14 @@ reload_config(t_configuration_options *orig_options)
 	PGconn	   *conn;
 	t_configuration_options new_options;
 	bool	  config_changed = false;
+	bool	  log_config_changed = false;
 
 	static ItemList config_errors = { NULL, NULL };
 
 	/*
 	 * Re-read the configuration file: repmgr.conf
 	 */
-	log_info(_("reloading configuration file and applying changed values\n"));
+	log_info(_("reloading configuration file\n"));
 
 	_parse_config(&new_options, &config_errors);
 
@@ -724,22 +725,45 @@ reload_config(t_configuration_options *orig_options)
 	}
 
 	/*
-	 * XXX These ones can change with a simple SIGHUP?
-	 *
-	 * strcpy (orig_options->loglevel, new_options.loglevel); strcpy
-	 * (orig_options->logfacility, new_options.logfacility);
-	 *
-	 * logger_shutdown(); XXX do we have progname here ? logger_init(progname,
-	 * orig_options.loglevel, orig_options.logfacility);
+	 * Handle changes to logging configuration
 	 */
+	if (strcmp(orig_options->logfacility, new_options.logfacility) != 0)
+	{
+		strcpy(orig_options->logfacility, new_options.logfacility);
+		log_config_changed = true;
+	}
+
+	if (strcmp(orig_options->logfile, new_options.logfile) != 0)
+	{
+		strcpy(orig_options->logfile, new_options.logfile);
+		log_config_changed = true;
+	}
+
+
+	if (strcmp(orig_options->loglevel, new_options.loglevel) != 0)
+	{
+		strcpy(orig_options->loglevel, new_options.loglevel);
+		log_config_changed = true;
+	}
+
+	if (log_config_changed == true)
+	{
+		log_notice(_("restarting logging with changed parameters\n"));
+		logger_shutdown();
+		logger_init(orig_options, progname());
+	}
 
 	if (config_changed == true)
 	{
-		log_debug(_("reload_config(): configuration has changed\n"));
+		log_notice(_("configuration file reloaded with changed parameters\n"));
 	}
-	else
+	/*
+	 * if logging configuration changed, don't say the configuration didn't
+	 * change, as it clearly has.
+	 */
+	else if (log_config_changed == false)
 	{
-		log_debug(_("reload_config(): configuration has not changed\n"));
+		log_info(_("configuration has not changed\n"));
 	}
 
 	return config_changed;
