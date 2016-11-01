@@ -97,7 +97,7 @@ typedef struct
  * The following will initialize the structure with a minimal set of options;
  * actual defaults are set in parse_config() before parsing the configuration file
  */
-#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", -1, NO_UPSTREAM_NODE, "", "", "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, { NULL, NULL } }
+#define T_CONFIGURATION_OPTIONS_INITIALIZER { "", UNKNOWN_NODE_ID, NO_UPSTREAM_NODE, "", "", "", MANUAL_FAILOVER, -1, "", "", "", "", "", "", "", "", "", "", "", "", -1, -1, -1, "", "", "", "", "", 0, 0, 0, 0, "", { NULL, NULL }, { NULL, NULL } }
 
 typedef struct ItemListCell
 {
@@ -131,8 +131,11 @@ void set_progname(const char *argv0);
 const char * progname(void);
 
 bool		load_config(const char *config_file, bool verbose, t_configuration_options *options, char *argv0);
-bool		reload_config(t_configuration_options *orig_options);
+
+void		_parse_config(t_configuration_options *options, ItemList *error_list);
 bool		parse_config(t_configuration_options *options);
+bool		reload_config(t_configuration_options *orig_options);
+
 void		parse_line(char *buff, char *name, char *value);
 char	   *trim(char *s);
 void		item_list_append(ItemList *item_list, char *error_message);

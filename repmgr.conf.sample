@@ -74,6 +74,12 @@
 #
 #logfile='/var/log/repmgr/repmgr.log'
 
+# By default only repmgrd log output will be written to a file,
+# if defined in "logfile"
+# enable this to restore old behaviour where output from the repmgr
+# client will be written to the logfile too
+#log_repmgr_to_file = 0
+
 # event notifications can be passed to an arbitrary external program
 # together with the following parameters:
 #

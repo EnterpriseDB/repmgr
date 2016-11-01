@@ -10,11 +10,11 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.	 If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -55,8 +55,8 @@ progname(void)
  *
  * Returns true if a configuration file could be parsed, otherwise false.
  *
- * Any configuration options changed in this function must also be changed in
- * reload_config()
+ * Any *repmgrd-specific* configuration options added/changed in this function must also be
+ * added/changed in reload_config()
  *
  * NOTE: this function is called before the logger is set up, so we need
  * to handle the verbose option ourselves; also the default log level is NOTICE,
@@ -99,9 +99,9 @@ load_config(const char *config_file, bool verbose, t_configuration_options *opti
 	/*
 	 * If no configuration file was provided, attempt to find a default file
 	 * in this order:
-	 *  - current directory
-	 *  - /etc/repmgr.conf
-	 *  - default sysconfdir
+	 *	- current directory
+	 *	- /etc/repmgr.conf
+	 *	- default sysconfdir
 	 *
 	 * here we just check for the existence of the file; parse_config()
 	 * will handle read errors etc.
@@ -181,6 +181,23 @@ load_config(const char *config_file, bool verbose, t_configuration_options *opti
 }
 
 
+bool
+parse_config(t_configuration_options *options)
+{
+	/* Collate configuration file errors here for friendlier reporting */
+	static ItemList config_errors = { NULL, NULL };
+
+	_parse_config(options, &config_errors);
+
+	if (config_errors.head != NULL)
+	{
+		exit_with_errors(&config_errors);
+	}
+
+	return true;
+}
+
+
 /*
  * Parse configuration file; if any errors are encountered,
  * list them and exit.
@@ -188,8 +205,8 @@ load_config(const char *config_file, bool verbose, t_configuration_options *opti
  * Ensure any default values set here are synced with repmgr.conf.sample
  * and any other documentation.
  */
-bool
-parse_config(t_configuration_options *options)
+void
+_parse_config(t_configuration_options *options, ItemList *error_list)
 {
 	FILE	   *fp;
 	char	   *s,
@@ -201,9 +218,6 @@ parse_config(t_configuration_options *options)
 	PQconninfoOption *conninfo_options;
 	char	   *conninfo_errmsg = NULL;
 
-	/* Collate configuration file errors here for friendlier reporting */
-	static ItemList config_errors = { NULL, NULL };
-
 	bool		node_found = false;
 
 	/* Initialize configuration options with sensible defaults
@@ -211,7 +225,7 @@ parse_config(t_configuration_options *options)
 	 * to be initialised here
 	 */
 	memset(options->cluster_name, 0, sizeof(options->cluster_name));
-	options->node = -1;
+	options->node = UNKNOWN_NODE_ID;
 	options->upstream_node = NO_UPSTREAM_NODE;
 	options->use_replication_slots = 0;
 	memset(options->conninfo, 0, sizeof(options->conninfo));
@@ -262,7 +276,7 @@ parse_config(t_configuration_options *options)
 	{
 		log_verbose(LOG_NOTICE, _("no configuration file provided and no default file found - "
 					 "continuing with default values\n"));
-		return true;
+		return;
 	}
 
 	fp = fopen(config_file_path, "r");
@@ -307,11 +321,11 @@ parse_config(t_configuration_options *options)
 			strncpy(options->cluster_name, value, MAXLEN);
 		else if (strcmp(name, "node") == 0)
 		{
-			options->node = repmgr_atoi(value, "node", &config_errors, false);
+			options->node = repmgr_atoi(value, "node", error_list, false);
 			node_found = true;
 		}
 		else if (strcmp(name, "upstream_node") == 0)
-			options->upstream_node = repmgr_atoi(value, "upstream_node", &config_errors, false);
+			options->upstream_node = repmgr_atoi(value, "upstream_node", error_list, false);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "barman_server") == 0)
@@ -342,11 +356,11 @@ parse_config(t_configuration_options *options)
 			}
 			else
 			{
-				item_list_append(&config_errors,_("value for 'failover' must be 'automatic' or 'manual'\n"));
+				item_list_append(error_list, _("value for 'failover' must be 'automatic' or 'manual'\n"));
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
-			options->priority = repmgr_atoi(value, "priority", &config_errors, true);
+			options->priority = repmgr_atoi(value, "priority", error_list, true);
 		else if (strcmp(name, "node_name") == 0)
 			strncpy(options->node_name, value, MAXLEN);
 		else if (strcmp(name, "promote_command") == 0)
@@ -364,17 +378,17 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "service_promote_command") == 0)
 			strncpy(options->service_promote_command, value, MAXLEN);
 		else if (strcmp(name, "master_response_timeout") == 0)
-			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", &config_errors, false);
+			options->master_response_timeout = repmgr_atoi(value, "master_response_timeout", error_list, false);
 		/*
 		 * 'primary_response_timeout' as synonym for 'master_response_timeout' -
 		 * we'll switch terminology in a future release (3.1?)
 		 */
 		else if (strcmp(name, "primary_response_timeout") == 0)
-			options->master_response_timeout = repmgr_atoi(value, "primary_response_timeout", &config_errors, false);
+			options->master_response_timeout = repmgr_atoi(value, "primary_response_timeout", error_list, false);
 		else if (strcmp(name, "reconnect_attempts") == 0)
-			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", &config_errors, false);
+			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", error_list, false);
 		else if (strcmp(name, "reconnect_interval") == 0)
-			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", &config_errors, false);
+			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", error_list, false);
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "pg_ctl_options") == 0)
@@ -384,14 +398,14 @@ parse_config(t_configuration_options *options)
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
-			options->monitor_interval_secs = repmgr_atoi(value, "monitor_interval_secs", &config_errors, false);
+			options->monitor_interval_secs = repmgr_atoi(value, "monitor_interval_secs", error_list, false);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
-			options->retry_promote_interval_secs = repmgr_atoi(value, "retry_promote_interval_secs", &config_errors, false);
+			options->retry_promote_interval_secs = repmgr_atoi(value, "retry_promote_interval_secs", error_list, false);
 		else if (strcmp(name, "witness_repl_nodes_sync_interval_secs") == 0)
-			options->witness_repl_nodes_sync_interval_secs = repmgr_atoi(value, "witness_repl_nodes_sync_interval_secs", &config_errors, false);
+			options->witness_repl_nodes_sync_interval_secs = repmgr_atoi(value, "witness_repl_nodes_sync_interval_secs", error_list, false);
 		else if (strcmp(name, "use_replication_slots") == 0)
 			/* XXX we should have a dedicated boolean argument format */
-			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", &config_errors, false);
+			options->use_replication_slots = repmgr_atoi(value, "use_replication_slots", error_list, false);
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
 		else if (strcmp(name, "event_notifications") == 0)
@@ -419,7 +433,7 @@ parse_config(t_configuration_options *options)
 					 _("no value provided for parameter \"%s\""),
 					 name);
 
-			item_list_append(&config_errors, error_message_buf);
+			item_list_append(error_list, error_message_buf);
 		}
 	}
 
@@ -428,11 +442,11 @@ parse_config(t_configuration_options *options)
 
 	if (node_found == false)
 	{
-		item_list_append(&config_errors, _("\"node\": parameter was not found"));
+		item_list_append(error_list, _("\"node\": parameter was not found"));
 	}
 	else if (options->node == 0)
 	{
-		item_list_append(&config_errors, _("\"node\": must be greater than zero"));
+		item_list_append(error_list, _("\"node\": must be greater than zero"));
 	}
 
 	if (strlen(options->conninfo))
@@ -452,18 +466,11 @@ parse_config(t_configuration_options *options)
 					 _("\"conninfo\": %s"),
 					 conninfo_errmsg);
 
-			item_list_append(&config_errors, error_message_buf);
+			item_list_append(error_list, error_message_buf);
 		}
 
 		PQconninfoFree(conninfo_options);
 	}
-
-	if (config_errors.head != NULL)
-	{
-		exit_with_errors(&config_errors);
-	}
-
-	return true;
 }
 
 
@@ -553,6 +560,14 @@ parse_line(char *buf, char *name, char *value)
 	trim(value);
 }
 
+
+/*
+ * reload_config()
+ *
+ * This is only called by repmgrd after receiving a SIGHUP or when a monitoring
+ * loop is started up; it therefore only needs to reload values required
+ * by repmgrd
+ */
 bool
 reload_config(t_configuration_options *orig_options)
 {
@@ -560,63 +575,45 @@ reload_config(t_configuration_options *orig_options)
 	t_configuration_options new_options;
 	bool	  config_changed = false;
 
+	static ItemList config_errors = { NULL, NULL };
+
 	/*
 	 * Re-read the configuration file: repmgr.conf
 	 */
-	log_info(_("reloading configuration file and updating repmgr tables\n"));
+	log_info(_("reloading configuration file and applying changed values\n"));
 
-	parse_config(&new_options);
-	if (new_options.node == -1)
+	_parse_config(&new_options, &config_errors);
+
+	if (config_errors.head != NULL)
 	{
+		/* XXX dump errors to log */
 		log_warning(_("unable to parse new configuration, retaining current configuration\n"));
 		return false;
 	}
 
+	/* The following options cannot be changed */
 	if (strcmp(new_options.cluster_name, orig_options->cluster_name) != 0)
 	{
-		log_warning(_("unable to change cluster name, retaining current configuration\n"));
+		log_warning(_("cluster_name cannot be changed, retaining current configuration\n"));
 		return false;
 	}
 
 	if (new_options.node != orig_options->node)
 	{
-		log_warning(_("unable to change node ID, retaining current configuration\n"));
+		log_warning(_("node ID cannot be changed, retaining current configuration\n"));
 		return false;
 	}
 
 	if (strcmp(new_options.node_name, orig_options->node_name) != 0)
 	{
-		log_warning(_("unable to change standby name, keeping current configuration\n"));
+		log_warning(_("node_name cannot be changed, keeping current configuration\n"));
 		return false;
 	}
 
-	if (new_options.failover != MANUAL_FAILOVER && new_options.failover != AUTOMATIC_FAILOVER)
-	{
-		log_warning(_("new value for 'failover' must be 'automatic' or 'manual'\n"));
-		return false;
-	}
-
-	if (new_options.master_response_timeout <= 0)
-	{
-		log_warning(_("new value for 'master_response_timeout' must be greater than zero\n"));
-		return false;
-	}
-
-	if (new_options.reconnect_attempts < 0)
-	{
-		log_warning(_("new value for 'reconnect_attempts' must be zero or greater\n"));
-		return false;
-	}
-
-	if (new_options.reconnect_interval < 0)
-	{
-		log_warning(_("new value for 'reconnect_interval' must be zero or greater\n"));
-		return false;
-	}
 
 	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
 	{
-		/* Test conninfo string */
+		/* Test conninfo string works*/
 		conn = establish_db_connection(new_options.conninfo, false);
 		if (!conn || (PQstatus(conn) != CONNECTION_OK))
 		{
@@ -633,34 +630,6 @@ reload_config(t_configuration_options *orig_options)
 	 * to manage them
 	 */
 
-	/* cluster_name */
-	if (strcmp(orig_options->cluster_name, new_options.cluster_name) != 0)
-	{
-		strcpy(orig_options->cluster_name, new_options.cluster_name);
-		config_changed = true;
-	}
-
-	/* conninfo */
-	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
-	{
-		strcpy(orig_options->conninfo, new_options.conninfo);
-		config_changed = true;
-	}
-
-	/* barman_server */
-	if (strcmp(orig_options->barman_server, new_options.barman_server) != 0)
-	{
-		strcpy(orig_options->barman_server, new_options.barman_server);
-		config_changed = true;
-	}
-
-	/* node */
-	if (orig_options->node != new_options.node)
-	{
-		orig_options->node = new_options.node;
-		config_changed = true;
-	}
-
 	/* failover */
 	if (orig_options->failover != new_options.failover)
 	{
@@ -672,13 +641,6 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->priority != new_options.priority)
 	{
 		orig_options->priority = new_options.priority;
-		config_changed = true;
-	}
-
-	/* node_name */
-	if (strcmp(orig_options->node_name, new_options.node_name) != 0)
-	{
-		strcpy(orig_options->node_name, new_options.node_name);
 		config_changed = true;
 	}
 
@@ -706,20 +668,6 @@ reload_config(t_configuration_options *orig_options)
 	 * orig_options.loglevel, orig_options.logfacility);
 	 */
 
-	/* rsync_options */
-	if (strcmp(orig_options->rsync_options, new_options.rsync_options) != 0)
-	{
-		strcpy(orig_options->rsync_options, new_options.rsync_options);
-		config_changed = true;
-	}
-
-	/* ssh_options */
-	if (strcmp(orig_options->ssh_options, new_options.ssh_options) != 0)
-	{
-		strcpy(orig_options->ssh_options, new_options.ssh_options);
-		config_changed = true;
-	}
-
 	/* master_response_timeout */
 	if (orig_options->master_response_timeout != new_options.master_response_timeout)
 	{
@@ -741,19 +689,6 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
-	/* pg_ctl_options */
-	if (strcmp(orig_options->pg_ctl_options, new_options.pg_ctl_options) != 0)
-	{
-		strcpy(orig_options->pg_ctl_options, new_options.pg_ctl_options);
-		config_changed = true;
-	}
-
-	/* pg_basebackup_options */
-	if (strcmp(orig_options->pg_basebackup_options, new_options.pg_basebackup_options) != 0)
-	{
-		strcpy(orig_options->pg_basebackup_options, new_options.pg_basebackup_options);
-		config_changed = true;
-	}
 
 	/* monitor_interval_secs */
 	if (orig_options->monitor_interval_secs != new_options.monitor_interval_secs)
@@ -769,12 +704,6 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
-	/* use_replication_slots */
-	if (orig_options->use_replication_slots != new_options.use_replication_slots)
-	{
-		orig_options->use_replication_slots = new_options.use_replication_slots;
-		config_changed = true;
-	}
 
 	if (config_changed == true)
 	{
@@ -956,7 +885,7 @@ static void
 parse_event_notifications_list(t_configuration_options *options, const char *arg)
 {
 	const char *arg_ptr;
-	char	    event_type_buf[MAXLEN] = "";
+	char		event_type_buf[MAXLEN] = "";
 	char	   *dst_ptr = event_type_buf;
 
 

@@ -236,9 +236,10 @@ logger_init(t_configuration_options *opts, const char *ident)
 		stderr_log_notice(_("Redirecting logging output to '%s'\n"), opts->logfile);
 		fd = freopen(opts->logfile, "a", stderr);
 
-		/* It's possible freopen() may still fail due to e.g. a race condition;
-		   as it's not feasible to restore stderr after a failed freopen(),
-		   we'll write to stdout as a last resort.
+		/*
+		 * It's possible freopen() may still fail due to e.g. a race condition;
+		 * as it's not feasible to restore stderr after a failed freopen(),
+		 * we'll write to stdout as a last resort.
 		 */
 		if (fd == NULL)
 		{

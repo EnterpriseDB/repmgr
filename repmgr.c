@@ -7833,6 +7833,7 @@ do_check_upstream_config(void)
 	bool		config_ok;
 	int			server_version_num;
 
+	/* sanity-check local node configuration file */
 	parse_config(&options);
 
 	/* We need to connect to check configuration and start a backup */
