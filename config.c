@@ -565,8 +565,31 @@ parse_line(char *buf, char *name, char *value)
  * reload_config()
  *
  * This is only called by repmgrd after receiving a SIGHUP or when a monitoring
- * loop is started up; it therefore only needs to reload values required
- * by repmgrd
+ * loop is started up; it therefore only needs to reload options required
+ * by repmgrd, which are as follows:
+ *
+ * changeable options:
+ * - failover
+ * - follow_command
+ * - master_response_timeout
+ * - monitor_interval_secs
+ * - priority
+ * - promote_command
+ * - reconnect_attempts
+ * - reconnect_interval
+ * - retry_promote_interval_secs
+ * - witness_repl_nodes_sync_interval_secs
+ *
+ * non-changeable options:
+ * - cluster_name
+ * - conninfo
+ * - logfile
+ * - node
+ * - node_name
+ *
+ * extract with something like:
+ *   grep local_options\\. repmgrd.c | perl -n -e '/local_options\.([\w_]+)/ && print qq|$1\n|;' | sort | uniq
+
  */
 bool
 reload_config(t_configuration_options *orig_options)
@@ -610,7 +633,6 @@ reload_config(t_configuration_options *orig_options)
 		return false;
 	}
 
-
 	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
 	{
 		/* Test conninfo string works*/
@@ -637,6 +659,27 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
+	/* follow_command */
+	if (strcmp(orig_options->follow_command, new_options.follow_command) != 0)
+	{
+		strcpy(orig_options->follow_command, new_options.follow_command);
+		config_changed = true;
+	}
+
+	/* master_response_timeout */
+	if (orig_options->master_response_timeout != new_options.master_response_timeout)
+	{
+		orig_options->master_response_timeout = new_options.master_response_timeout;
+		config_changed = true;
+	}
+
+	/* monitor_interval_secs */
+	if (orig_options->monitor_interval_secs != new_options.monitor_interval_secs)
+	{
+		orig_options->monitor_interval_secs = new_options.monitor_interval_secs;
+		config_changed = true;
+	}
+
 	/* priority */
 	if (orig_options->priority != new_options.priority)
 	{
@@ -648,30 +691,6 @@ reload_config(t_configuration_options *orig_options)
 	if (strcmp(orig_options->promote_command, new_options.promote_command) != 0)
 	{
 		strcpy(orig_options->promote_command, new_options.promote_command);
-		config_changed = true;
-	}
-
-	/* follow_command */
-	if (strcmp(orig_options->follow_command, new_options.follow_command) != 0)
-	{
-		strcpy(orig_options->follow_command, new_options.follow_command);
-		config_changed = true;
-	}
-
-	/*
-	 * XXX These ones can change with a simple SIGHUP?
-	 *
-	 * strcpy (orig_options->loglevel, new_options.loglevel); strcpy
-	 * (orig_options->logfacility, new_options.logfacility);
-	 *
-	 * logger_shutdown(); XXX do we have progname here ? logger_init(progname,
-	 * orig_options.loglevel, orig_options.logfacility);
-	 */
-
-	/* master_response_timeout */
-	if (orig_options->master_response_timeout != new_options.master_response_timeout)
-	{
-		orig_options->master_response_timeout = new_options.master_response_timeout;
 		config_changed = true;
 	}
 
@@ -689,14 +708,6 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
-
-	/* monitor_interval_secs */
-	if (orig_options->monitor_interval_secs != new_options.monitor_interval_secs)
-	{
-		orig_options->monitor_interval_secs = new_options.monitor_interval_secs;
-		config_changed = true;
-	}
-
 	/* retry_promote_interval_secs */
 	if (orig_options->retry_promote_interval_secs != new_options.retry_promote_interval_secs)
 	{
@@ -704,6 +715,23 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
+
+	/* witness_repl_nodes_sync_interval_secs */
+	if (orig_options->witness_repl_nodes_sync_interval_secs != new_options.witness_repl_nodes_sync_interval_secs)
+	{
+		orig_options->witness_repl_nodes_sync_interval_secs = new_options.witness_repl_nodes_sync_interval_secs;
+		config_changed = true;
+	}
+
+	/*
+	 * XXX These ones can change with a simple SIGHUP?
+	 *
+	 * strcpy (orig_options->loglevel, new_options.loglevel); strcpy
+	 * (orig_options->logfacility, new_options.logfacility);
+	 *
+	 * logger_shutdown(); XXX do we have progname here ? logger_init(progname,
+	 * orig_options.loglevel, orig_options.logfacility);
+	 */
 
 	if (config_changed == true)
 	{
