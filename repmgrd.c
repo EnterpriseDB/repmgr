@@ -1513,7 +1513,6 @@ do_master_failover(void)
 		 */
 		if (PQstatus(node_conn) != CONNECTION_OK)
 		{
-			/* XXX */
 			log_info(_("At this point, it could be some race conditions "
 					   "that are acceptable, assume the node is restarting "
 					   "and starting failover procedure\n"));

@@ -4180,8 +4180,8 @@ do_standby_promote(void)
 	/*
 	 * Promote standby to master.
 	 *
-	 * `pg_ctl promote` returns immediately and has no -w option, so we
-	 * can't be sure when or if the promotion completes.
+	 * `pg_ctl promote` returns immediately and (prior to 10.0) has no -w option
+	 * so we can't be sure when or if the promotion completes.
 	 * For now we'll poll the server until the default timeout (60 seconds)
 	 */
 
@@ -5275,69 +5275,95 @@ do_standby_switchover(void)
 		exit(ERR_SWITCHOVER_FAIL);
 	}
 
+	/* A connection was made and it was determined the standby is in recovery */
 	log_debug("new standby is in recovery\n");
 
-	/* Check for entry in pg_stat_replication */
+	/* Check for entry in the new master's pg_stat_replication */
 
-	local_conn = establish_db_connection(options.conninfo, true);
-
-	query_result = get_node_replication_state(local_conn, remote_node_record.name, remote_node_replication_state);
-
-	if (query_result == -1)
 	{
+		int			i,
+			replication_check_timeout  = 60,
+			replication_check_interval = 2;
+		bool replication_connection_ok = false;
 		PQExpBufferData event_details;
-		initPQExpBuffer(&event_details);
-		appendPQExpBuffer(&event_details,
-						  _("unable to retrieve replication status for node %i"),
-						  remote_node_id);
-		log_err("%s\n", event_details.data);
-		create_event_record(local_conn,
-							&options,
-							options.node,
-							"standby_switchover",
-							false,
-							event_details.data);
-		termPQExpBuffer(&event_details);
-		PQfinish(local_conn);
-		exit(ERR_SWITCHOVER_FAIL);
-	}
 
-	if (query_result == 0)
-	{
-		log_err(_("node %i not replicating\n"), remote_node_id);
-	}
-	else
-	{
-		/* XXX we should poll for a while in case the node takes time to connect to the primary */
-		if (strcmp(remote_node_replication_state, "streaming") == 0 ||
-			strcmp(remote_node_replication_state, "catchup")  == 0)
+		initPQExpBuffer(&event_details);
+
+		local_conn = establish_db_connection(options.conninfo, true);
+
+		i = 0;
+		for (;;)
 		{
-			log_verbose(LOG_NOTICE, _("node %i is replicating in state \"%s\"\n"), remote_node_id, remote_node_replication_state);
-		}
-		else
-		{
-			/*
-			 * Other possible replication states are:
-			 *  - startup
-			 *  - backup
-			 *  - UNKNOWN
-			 */
-			PQExpBufferData event_details;
+			query_result = get_node_replication_state(local_conn, remote_node_record.name, remote_node_replication_state);
+
+			if (query_result == -1)
+			{
+				appendPQExpBuffer(&event_details,
+								  _("unable to retrieve replication status for node %i"),
+								  remote_node_id);
+				log_warning("%s\n", event_details.data);
+			}
+			else if (query_result == 0)
+			{
+				log_warning(_("pg_stat_replication record for node %i not yet found\n"), remote_node_id);
+			}
+			else
+			{
+				if (strcmp(remote_node_replication_state, "streaming") == 0 ||
+					strcmp(remote_node_replication_state, "catchup")  == 0)
+				{
+					log_verbose(LOG_NOTICE, _("node %i is replicating in state \"%s\"\n"), remote_node_id, remote_node_replication_state);
+					replication_connection_ok = true;
+					break;
+				}
+				else if (strcmp(remote_node_replication_state, "startup") == 0)
+				{
+					log_verbose(LOG_NOTICE, _("node %i is starting up replication\n"), remote_node_id);
+				}
+				else
+				{
+					/*
+					 * Other possible replication states are:
+					 *  - backup
+					 *  - UNKNOWN
+					 */
+					appendPQExpBuffer(&event_details,
+									  _("node %i has unexpected replication state \"%s\""),
+									  remote_node_id, remote_node_replication_state);
+					log_warning("%s\n", event_details.data);
+				}
+			}
+
+			if (i >= replication_check_timeout)
+				break;
+
+			sleep(replication_check_interval);
+
+			i += replication_check_interval;
+
+			/* Reinitialise the string buffer */
+			termPQExpBuffer(&event_details);
 			initPQExpBuffer(&event_details);
-			appendPQExpBuffer(&event_details,
-							  _("node %i has unexpected replication state \"%s\""),
-							  remote_node_id, remote_node_replication_state);
-			log_err("%s\n", event_details.data);
+		}
+
+		/*
+		 * We were unable to establish that the new standby had a pg_stat_replication
+		 * record within the timeout period, so fail with whatever error message
+		 * was placed in the string buffer.
+		 */
+		if (replication_connection_ok == false)
+		{
 			create_event_record(local_conn,
 								&options,
 								options.node,
 								"standby_switchover",
 								false,
 								event_details.data);
-			termPQExpBuffer(&event_details);
 			PQfinish(local_conn);
 			exit(ERR_SWITCHOVER_FAIL);
 		}
+
+		termPQExpBuffer(&event_details);
 	}
 
 	/*
