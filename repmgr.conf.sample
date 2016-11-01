@@ -163,9 +163,8 @@
 # monitoring interval in seconds; default is 2
 #monitor_interval_secs=2
 
-# Number of seconds to wait for a response from the primary server before
-# deciding it has failed.
-
+# Maximum number of seconds to wait for a response from the primary server
+# before deciding it has failed.
 #master_response_timeout=60
 
 # Number of attempts at what interval (in seconds) to try and

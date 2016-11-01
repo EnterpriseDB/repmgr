@@ -279,7 +279,6 @@ is_pgup(PGconn *conn, int timeout)
 	/* Check the connection status twice in case it changes after reset */
 	bool		twice = false;
 
-	/* Check the connection status twice in case it changes after reset */
 	for (;;)
 	{
 		if (PQstatus(conn) != CONNECTION_OK)
