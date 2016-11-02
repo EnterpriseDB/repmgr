@@ -654,8 +654,8 @@ witness_monitor(void)
 				 * Update the repl_nodes table from the new master to reflect the changed
 				 * node configuration
 				 *
-				 * XXX it would be neat to be able to handle this with e.g. table-based
-				 * logical replication
+				 * It would be neat to be able to handle this with e.g. table-based
+				 * logical replication if available in core
 				 */
 				witness_copy_node_records(master_conn, my_local_conn, local_options.cluster_name);
 
@@ -1014,8 +1014,8 @@ standby_monitor(void)
 				 *
 				 * We should log a message so the user knows of the situation at hand.
 				 *
-				 * XXX check if the original master is still active and display a
-				 * warning
+				 * XXX check if the original master is still active and display a warning
+				 * XXX add event notification
 				 */
 				log_err(_("It seems this server was promoted manually (not by repmgr) so you might by in the presence of a split-brain.\n"));
 				log_err(_("Check your cluster and manually fix any anomaly.\n"));

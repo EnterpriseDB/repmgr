@@ -571,6 +571,9 @@ parse_line(char *buf, char *name, char *value)
  * changeable options:
  * - failover
  * - follow_command
+ * - logfacility
+ * - logfile
+ * - loglevel
  * - master_response_timeout
  * - monitor_interval_secs
  * - priority
@@ -583,7 +586,6 @@ parse_line(char *buf, char *name, char *value)
  * non-changeable options:
  * - cluster_name
  * - conninfo
- * - logfile
  * - node
  * - node_name
  *
@@ -595,7 +597,7 @@ bool
 reload_config(t_configuration_options *orig_options)
 {
 	PGconn	   *conn;
-	t_configuration_options new_options;
+	t_configuration_options new_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 	bool	  config_changed = false;
 	bool	  log_config_changed = false;
 
