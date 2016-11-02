@@ -774,7 +774,6 @@ standby_monitor(void)
 	PGconn	   *upstream_conn;
 	char		upstream_conninfo[MAXCONNINFO];
 	int			upstream_node_id;
-	t_node_info upstream_node;
 
 	int			active_master_id;
 	const char *upstream_node_type = NULL;
@@ -956,6 +955,8 @@ standby_monitor(void)
 			 * Failover handling is handled differently depending on whether
 			 * the failed node is the master or a cascading standby
 			 */
+			t_node_info upstream_node;
+
 			upstream_node = get_node_info(my_local_conn, local_options.cluster_name, upstream_node_id);
 
 			if (upstream_node.type == MASTER)
@@ -1058,9 +1059,6 @@ standby_monitor(void)
 	 * If original master has gone away we'll need to get the new one
 	 * from the upstream node to write monitoring information
 	 */
-
-	/* XXX not used? */
-	upstream_node = get_node_info(my_local_conn, local_options.cluster_name, upstream_node_id);
 
 	sprintf(sqlquery,
 			"SELECT id "
