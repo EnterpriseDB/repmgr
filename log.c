@@ -142,7 +142,7 @@ log_verbose(int level, const char *fmt, ...)
 
 
 bool
-logger_init(t_configuration_options *opts, const char *ident)
+logger_init(t_configuration_options *opts, const char *ident, bool stderr_only)
 {
 	char	   *level = opts->loglevel;
 	char	   *facility = opts->logfacility;
@@ -175,6 +175,13 @@ logger_init(t_configuration_options *opts, const char *ident)
 		else
 			stderr_log_warning(_("Invalid log level \"%s\" (available values: DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)\n"), level);
 	}
+
+	/*
+	 * STDERR only logging requested - finish here without setting up any further
+	 * logging facility.
+	 */
+	if (stderr_only == true)
+		return true;
 
 	if (facility && *facility)
 	{

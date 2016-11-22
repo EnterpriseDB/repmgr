@@ -832,14 +832,12 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * Initialize the logger.  If verbose command line parameter was input,
-	 * make sure that the log level is at least INFO.  This is mainly useful
-	 * for STANDBY CLONE.  That doesn't require a configuration file where a
-	 * logging level might be specified at, but it often requires detailed
-	 * logging to troubleshoot problems.
+	 * Initialize the logger. We'll request STDERR logging only to ensure the
+	 * repmgr command never has its output diverted to a logging facility,
+	 * which makes little sense for a command line program.
 	 */
 
-	logger_init(&options, progname());
+	logger_init(&options, progname(), true);
 
 	if (runtime_options.verbose)
 		logger_set_verbose();

@@ -752,7 +752,7 @@ reload_config(t_configuration_options *orig_options)
 	{
 		log_notice(_("restarting logging with changed parameters\n"));
 		logger_shutdown();
-		logger_init(orig_options, progname());
+		logger_init(orig_options, progname(), false);
 	}
 
 	if (config_changed == true)

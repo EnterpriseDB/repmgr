@@ -246,7 +246,8 @@ main(int argc, char **argv)
 				strerror(errno));
 	}
 
-	logger_init(&local_options, progname());
+	logger_init(&local_options, progname(), false);
+
 	if (verbose)
 		logger_set_verbose();
 
