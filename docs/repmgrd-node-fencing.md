@@ -22,15 +22,14 @@ of this document).
 
 * * *
 
-In a failover situation, `repmgrd` promotes a standby to master by
-executing the command defined in `promote_command`. Normally this
-would be something like:
+In a failover situation, `repmgrd` promotes a standby to master by executing
+the command defined in `promote_command`. Normally this would be something like:
 
     repmgr standby promote -f /etc/repmgr.conf
 
-By wrapping this in a custom script which adjusts the `pgbouncer`
-configuration on all nodes, it's possible to fence the failed master
-and redirect write connections to the new master.
+By wrapping this in a custom script which adjusts the `pgbouncer` configuration
+on all nodes, it's possible to fence the failed master and redirect write
+connections to the new master.
 
 The script consists of three sections:
 
@@ -38,20 +37,19 @@ The script consists of three sections:
 * the promotion command itself
 * commands to reconfigure and restart `pgbouncer` on all nodes
 
-Note that it requires password-less SSH access between all nodes to be
-able to update the `pgbouncer` configuration files.
+Note that it requires password-less SSH access between all nodes to be able to
+update the `pgbouncer` configuration files.
 
-For the purposes of this demonstration, we'll assume there are 3 nodes
-(master and two standbys), with `pgbouncer` listening on port 6432
-handling connections to a database called `appdb`. The `postgres`
-system user must have write access to the `pgbouncer` configuration
-file on all nodes, assumed to be at `/etc/pgbouncer.ini`.
+For the purposes of this demonstration, we'll assume there are 3 nodes (master
+and two standbys), with `pgbouncer` listening on port 6432 handling connections
+to a database called `appdb`.  The `postgres` system user must have write
+access to the `pgbouncer` configuration files on all nodes. We'll assume
+there's a main `pgbouncer` configuration file, `/etc/pgbouncer.ini`, which uses
+the `%include` directive (available from PgBouncer 1.6) to include a separate
+configuration file, `/etc/pgbouncer.database.ini`, which will be modified by
+`repmgr`.
 
-The script also requires a template file containing global `pgbouncer`
-configuration, which should looks something like this (adjust
-settings appropriately for your environment):
-
-`/var/lib/postgres/repmgr/pgbouncer.ini.template`
+`/etc/pgbouncer.ini` should look something like this:
 
     [pgbouncer]
 
@@ -79,6 +77,8 @@ settings appropriately for your environment):
     log_connections = 1
     log_disconnections = 1
     log_pooler_errors = 1
+
+    %include /etc/pgbouncer.database.ini
 
 The actual script is as follows; adjust the configurable items as appropriate:
 
