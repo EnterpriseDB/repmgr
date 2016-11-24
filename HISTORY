@@ -1,4 +1,4 @@
-3.2.2   2016-11-23
+3.2.2   2016-
         repmgr: always log to STDERR even if log facility defined (Ian)
 
 3.2.1   2016-10-24
