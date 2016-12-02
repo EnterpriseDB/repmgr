@@ -3354,6 +3354,8 @@ do_standby_clone(void)
 			 */
 			{
 				const char* const dirs[] = {
+					/* Only from 10 */
+					"pg_wal",
 					/* Only from 9.5 */
 					"pg_commit_ts",
 					/* Only from 9.4 */
@@ -3363,15 +3365,22 @@ do_standby_clone(void)
 					"pg_twophase", "pg_xlog", 0
 				};
 				const int vers[] = {
+					100000,
 					90500,
 					90400, 90400, 90400, 90400, 90400,
 					0, 0, 0, 0, 0,
-					0, 0, 0
+					0, -100000, 0
 				};
 				for (i = 0; dirs[i]; i++)
 				{
+					/* directory exists in newer versions than this server - skip */
 					if (vers[i] > 0 && server_version_num < vers[i])
 						continue;
+
+					/* directory existed in earlier versions than this server but has been removed/renamed - skip */
+					if (vers[1] < 0 && server_version_num >= abs(vers[i]))
+						continue;
+
 					maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
 					if (mkdir(filename, S_IRWXU) != 0 && errno != EEXIST)
 					{
@@ -3785,7 +3794,14 @@ stop_backup:
 			 * rsync's --exclude option doesn't do it.
 			 */
 
-			maxlen_snprintf(dirpath, "%s/pg_xlog/", local_data_directory);
+			if (server_version_num >= 100000)
+			{
+				maxlen_snprintf(dirpath, "%s/pg_wal/", local_data_directory);
+			}
+			else
+			{
+				maxlen_snprintf(dirpath, "%s/pg_xlog/", local_data_directory);
+			}
 
 			if (!rmtree(dirpath, false))
 			{
@@ -6614,8 +6630,20 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 						  PG_TEMP_FILE_PREFIX);
 
 		/* Directories which we don't want */
+
+		if (server_version_num >= 100000)
+		{
+			appendPQExpBuffer(&rsync_flags, "%s",
+							  " --exclude=pg_wal/*");
+		}
+		else
+		{
+			appendPQExpBuffer(&rsync_flags, "%s",
+							  " --exclude=pg_xlog/*");
+		}
+
 		appendPQExpBuffer(&rsync_flags, "%s",
-						  " --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_stat_tmp/*");
+						  " --exclude=pg_log/* --exclude=pg_stat_tmp/*");
 
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
 						rsync_flags.data, host_string, remote_path, local_path);
