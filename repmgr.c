@@ -233,6 +233,7 @@ main(int argc, char **argv)
 		{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 		{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
 		{"log-to-file", no_argument, NULL, OPT_LOG_TO_FILE},
+		{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
 		{"version", no_argument, NULL, 'V'},
 		/* Following options for internal use */
 		{"cluster", required_argument, NULL, OPT_CLUSTER},
@@ -524,6 +525,9 @@ main(int argc, char **argv)
 			case OPT_NO_UPSTREAM_CONNECTION:
 				runtime_options.no_upstream_connection = true;
 				break;
+			case OPT_UPSTREAM_CONNINFO:
+				strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
+				break;
 			case OPT_REGISTER_WAIT:
 				runtime_options.wait_register_sync = true;
 				if (optarg != NULL)
@@ -772,6 +776,30 @@ main(int argc, char **argv)
 	}
 
 	check_parameters_for_action(action);
+
+
+	/*
+	 * if --upstream-conninfo was set and can be used (i.e. we're doing STANDBY CLONE)
+	 * perform a sanity check on the conninfo params
+	 */
+	if (action == STANDBY_CLONE && *runtime_options.upstream_conninfo)
+	{
+		PQconninfoOption *opts;
+		char	   *errmsg = NULL;
+
+		opts = PQconninfoParse(runtime_options.upstream_conninfo, &errmsg);
+
+		if (opts == NULL)
+		{
+			PQExpBufferData conninfo_error;
+			initPQExpBuffer(&conninfo_error);
+			appendPQExpBuffer(&conninfo_error, _("error parsing conninfo:\n%s"), errmsg);
+			item_list_append(&cli_errors, conninfo_error.data);
+
+			termPQExpBuffer(&conninfo_error);
+			free(errmsg);
+		}
+	}
 
 	/*
 	 * Sanity checks for command line parameters completed by now;
@@ -2650,6 +2678,15 @@ do_standby_clone(void)
 			exit(ERR_BARMAN);
 		}
 	}
+
+	/*
+	 * --upstream-conninfo supplied, which we interpret to imply
+	 * --no-upstream-connection as well - the use case for this option is when
+	 * the upstream is not available, so no point in checking for it.
+	 */
+
+	if (*runtime_options.upstream_conninfo)
+		runtime_options.no_upstream_connection = false;
 
 	/* By default attempt to connect to the source server */
 	if (runtime_options.no_upstream_connection == false)
@@ -6322,6 +6359,8 @@ do_help(void)
 	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
 	printf(_("  -r, --rsync-only                    (standby clone) use only rsync, not pg_basebackup\n"));
 	printf(_("  --no-upstream-connection            (standby clone) when using Barman, do not connect to upstream node\n"));
+	printf(_("  --upstream-conninfo                 (standby clone) 'primary_conninfo' value to write in recovery.conf\n" \
+			 "                                        when the intended upstream server does not yet exist\n"));
 	printf(_("  --without-barman                    (standby clone) do not use Barman even if configured\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    (standby clone, follow) set recovery_min_apply_delay\n" \
 			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
@@ -6405,7 +6444,23 @@ create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conni
 	log_debug(_("recovery.conf: %s"), line);
 
 	/* primary_conninfo = '...' */
-	write_primary_conninfo(line, recovery_conninfo);
+
+	/*
+	 * the user specified --upstream-conninfo string - copy that
+	 */
+	if (strlen(runtime_options.upstream_conninfo))
+	{
+		maxlen_snprintf(line, "primary_conninfo = '%s'\n",
+						runtime_options.upstream_conninfo);
+	}
+	/*
+	 * otherwise use the conninfo inferred from the upstream connection
+	 * and/or node record
+	 */
+	else
+	{
+		write_primary_conninfo(line, recovery_conninfo);
+	}
 
 	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
@@ -7007,6 +7062,11 @@ check_parameters_for_action(const int action)
 		if (runtime_options.no_upstream_connection == true)
 		{
 			item_list_append(&cli_warnings, _("--no-upstream-connection can only be used when executing STANDBY CLONE in Barman mode"));
+		}
+
+		if (*runtime_options.upstream_conninfo)
+		{
+			item_list_append(&cli_warnings, _("--upstream-conninfo can only be used when executing STANDBY CLONE"));
 		}
 	}
 
