@@ -230,15 +230,29 @@ The configuration file will be searched for in the following locations:
 
 Note that if a file is explicitly specified with `-f/--config-file`, an error will
 be raised if it is not found or not readable and no attempt will be made to check
-default locations; this is to prevent `repmgr` reading the wrong file.
+default locations; this is to prevent `repmgr` unexpectedly reading the wrong file.
 
 For a full list of annotated configuration items, see the file `repmgr.conf.sample`.
 
 The following parameters in the configuration file can be overridden with
 command line options:
 
-- `-L/--log-level`
-- `-b/--pg_bindir`
+- `log_level` with `-L/--log-level`
+- `pg_bindir` with `-b/--pg_bindir`
+
+
+### Logging
+
+By default `repmgr` and `repmgrd` will log directly to `STDERR`. For `repmgrd` we
+recommend capturing output in a logfile or using your system's log facility;
+see `repmgr.conf.sample` for details.
+
+As a command line utility, `repmgr` will normally log directly to the console -
+this is a change in behaviour from previous versions, where it would always
+log to the same location as `repmgrd`. However in some circumstances, e.g. when
+`repmgr` is executed by `repmgrd` during a failover event, it makes sense to
+capture `repmgr`'s log output - this can be done by supplying the command-line
+option `--log-to-file` to `repmgr`.
 
 
 ### Command line options and environment variables
@@ -413,7 +427,7 @@ be registered with `repmgr`, which creates the `repmgr` database and adds
 a metadata record for the server:
 
     $ repmgr -f repmgr.conf master register
-    [2016-01-07 16:56:46] [NOTICE] master node correctly registered for cluster test with id 1 (conninfo: host=repmgr_node1 user=repmgr dbname=repmgr)
+    NOTICE: master node correctly registered for cluster test with id 1 (conninfo: host=repmgr_node1 user=repmgr dbname=repmgr)
 
 The metadata record looks like this:
 
@@ -440,13 +454,13 @@ the values `node`, `node_name` and `conninfo` adjusted accordingly, e.g.:
 Clone the standby with:
 
     $ repmgr -h repmgr_node1 -U repmgr -d repmgr -D /path/to/node2/data/ -f /etc/repmgr.conf standby clone
-    [2016-01-07 17:21:26] [NOTICE] destination directory '/path/to/node2/data/' provided
-    [2016-01-07 17:21:26] [NOTICE] starting backup...
-    [2016-01-07 17:21:26] [HINT] this may take some time; consider using the -c/--fast-checkpoint option
+    NOTICE: destination directory '/path/to/node2/data/' provided
+    NOTICE: starting backup...
+    HINT: this may take some time; consider using the -c/--fast-checkpoint option
     NOTICE:  pg_stop_backup complete, all required WAL segments have been archived
-    [2016-01-07 17:21:28] [NOTICE] standby clone (using pg_basebackup) complete
-    [2016-01-07 17:21:28] [NOTICE] you can now start your PostgreSQL server
-    [2016-01-07 17:21:28] [HINT] for example : pg_ctl -D /path/to/node2/data/ start
+    NOTICE: standby clone (using pg_basebackup) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example : pg_ctl -D /path/to/node2/data/ start
 
 This will clone the PostgreSQL data directory files from the master at `repmgr_node1`
 using PostgreSQL's `pg_basebackup` utility. A `recovery.conf` file containing the
@@ -541,8 +555,8 @@ Connect to the master server and execute:
 
 Register the standby server with:
 
-    repmgr -f /etc/repmgr.conf standby register
-    [2016-01-08 11:13:16] [NOTICE] standby node correctly registered for cluster test with id 2 (conninfo: host=repmgr_node2 user=repmgr dbname=repmgr)
+    $ repmgr -f /etc/repmgr.conf standby register
+    NOTICE: standby node correctly registered for cluster test with id 2 (conninfo: host=repmgr_node2 user=repmgr dbname=repmgr)
 
 Connect to the standby server's `repmgr` database and check the `repl_nodes`
 table:
@@ -642,12 +656,12 @@ specify this in `repmgr.conf` with `barman_config`:
 Now we can clone a standby using the Barman server:
 
     $ repmgr -h node1 -D 9.5/main -f /etc/repmgr.conf standby clone
-    [2016-06-12 20:08:35] [NOTICE] destination directory '9.5/main' provided
-    [2016-06-12 20:08:35] [NOTICE] getting backup from Barman...
-    [2016-06-12 20:08:36] [NOTICE] standby clone (from Barman) complete
-    [2016-06-12 20:08:36] [NOTICE] you can now start your PostgreSQL server
-    [2016-06-12 20:08:36] [HINT] for example : pg_ctl -D 9.5/data start
-    [2016-06-12 20:08:36] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
+    NOTICE: destination directory '9.5/main' provided
+    NOTICE: getting backup from Barman...
+    NOTICE: standby clone (from Barman) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example : pg_ctl -D 9.5/data start
+    HINT: After starting the server, you need to register this standby with "repmgr standby register"
 
 
 
@@ -747,15 +761,15 @@ created standby. Clone this standby (using the connection parameters
 for the existing standby) and register it:
 
     $ repmgr -h repmgr_node2 -U repmgr -d repmgr -D /path/to/node3/data/ -f /etc/repmgr.conf standby clone
-    [2016-01-08 13:44:52] [NOTICE] destination directory 'node_3/data/' provided
-    [2016-01-08 13:44:52] [NOTICE] starting backup (using pg_basebackup)...
-    [2016-01-08 13:44:52] [HINT] this may take some time; consider using the -c/--fast-checkpoint option
-    [2016-01-08 13:44:52] [NOTICE] standby clone (using pg_basebackup) complete
-    [2016-01-08 13:44:52] [NOTICE] you can now start your PostgreSQL server
-    [2016-01-08 13:44:52] [HINT] for example : pg_ctl -D /path/to/node_3/data start
+    NOTICE: destination directory 'node_3/data/' provided
+    NOTICE: starting backup (using pg_basebackup)...
+    HINT: this may take some time; consider using the -c/--fast-checkpoint option
+    NOTICE: standby clone (using pg_basebackup) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example : pg_ctl -D /path/to/node_3/data start
 
     $ repmgr -f /etc/repmgr.conf standby register
-    [2016-01-08 14:04:32] [NOTICE] standby node correctly registered for cluster test with id 3 (conninfo: host=repmgr_node3 dbname=repmgr user=repmgr)
+    NOTICE: standby node correctly registered for cluster test with id 3 (conninfo: host=repmgr_node3 dbname=repmgr user=repmgr)
 
 After starting the standby, the `repl_nodes` table will look like this:
 
@@ -852,19 +866,19 @@ Promote the first standby with:
 
 This will produce output similar to the following:
 
-    [2016-01-08 16:07:31] [ERROR] connection to database failed: could not connect to server: Connection refused
+    ERROR: connection to database failed: could not connect to server: Connection refused
             Is the server running on host "repmgr_node1" (192.161.2.1) and accepting
             TCP/IP connections on port 5432?
     could not connect to server: Connection refused
             Is the server running on host "repmgr_node1" (192.161.2.1) and accepting
             TCP/IP connections on port 5432?
 
-    [2016-01-08 16:07:31] [NOTICE] promoting standby
-    [2016-01-08 16:07:31] [NOTICE] promoting server using '/usr/bin/postgres/pg_ctl -D /path/to/node_2/data promote'
+    NOTICE: promoting standby
+    NOTICE: promoting server using '/usr/bin/postgres/pg_ctl -D /path/to/node_2/data promote'
     server promoting
-    [2016-01-08 16:07:33] [NOTICE] STANDBY PROMOTE successful
+    NOTICE: STANDBY PROMOTE successful
 
-Note: the first `[ERROR]` is `repmgr` attempting to connect to the current
+Note: the first `ERROR` is `repmgr` attempting to connect to the current
 master to verify that it has failed. If a valid master is found, `repmgr`
 will refuse to promote a standby.
 
@@ -896,7 +910,7 @@ end of the preceding section ("Promoting a standby server with repmgr"),
 execute this:
 
     $ repmgr -f /etc/repmgr.conf -D /path/to/node_3/data/ -h repmgr_node2 -U repmgr -d repmgr standby follow
-    [2016-01-08 16:57:06] [NOTICE] restarting server using '/usr/bin/postgres/pg_ctl -D /path/to/node_3/data/ -w -m fast restart'
+    NOTICE: restarting server using '/usr/bin/postgres/pg_ctl -D /path/to/node_3/data/ -w -m fast restart'
     waiting for server to shut down.... done
     server stopped
     waiting for server to start.... done
@@ -968,26 +982,26 @@ local server, as well as the normal default locations. `repmgr` will check
 this file can be found before performing any further actions.
 
     $ repmgr -f /etc/repmgr.conf -C /etc/repmgr.conf standby switchover -v
-    [2016-01-27 16:38:33] [NOTICE] using configuration file "/etc/repmgr.conf"
-    [2016-01-27 16:38:33] [NOTICE] switching current node 2 to master server and demoting current master to standby...
-    [2016-01-27 16:38:34] [NOTICE] 5 files copied to /tmp/repmgr-node1-archive
-    [2016-01-27 16:38:34] [NOTICE] connection to database failed: FATAL:  the database system is shutting down
+    NOTICE: using configuration file "/etc/repmgr.conf"
+    NOTICE: switching current node 2 to master server and demoting current master to standby...
+    NOTICE: 5 files copied to /tmp/repmgr-node1-archive
+    NOTICE: connection to database failed: FATAL:  the database system is shutting down
 
-    [2016-01-27 16:38:34] [NOTICE] current master has been stopped
-    [2016-01-27 16:38:34] [ERROR] connection to database failed: FATAL:  the database system is shutting down
+    NOTICE: current master has been stopped
+    ERROR: connection to database failed: FATAL:  the database system is shutting down
 
-    [2016-01-27 16:38:34] [NOTICE] promoting standby
-    [2016-01-27 16:38:34] [NOTICE] promoting server using '/usr/local/bin/pg_ctl -D /var/lib/postgresql/9.5/node_2/data promote'
+    NOTICE: promoting standby
+    NOTICE: promoting server using '/usr/local/bin/pg_ctl -D /var/lib/postgresql/9.5/node_2/data promote'
     server promoting
-    [2016-01-27 16:38:36] [NOTICE] STANDBY PROMOTE successful
-    [2016-01-27 16:38:36] [NOTICE] Executing pg_rewind on old master server
-    [2016-01-27 16:38:36] [NOTICE] 5 files copied to /var/lib/postgresql/9.5/data
-    [2016-01-27 16:38:36] [NOTICE] restarting server using '/usr/local/bin/pg_ctl -w -D /var/lib/postgresql/9.5/node_1/data -m fast restart'
+    NOTICE: STANDBY PROMOTE successful
+    NOTICE: Executing pg_rewind on old master server
+    NOTICE: 5 files copied to /var/lib/postgresql/9.5/data
+    NOTICE: restarting server using '/usr/local/bin/pg_ctl -w -D /var/lib/postgresql/9.5/node_1/data -m fast restart'
     pg_ctl: PID file "/var/lib/postgresql/9.5/node_1/data/postmaster.pid" does not exist
     Is server running?
     starting server anyway
-    [2016-01-27 16:38:37] [NOTICE] node 1 is replicating in state "streaming"
-    [2016-01-27 16:38:37] [NOTICE] switchover was successful
+    NOTICE: node 1 is replicating in state "streaming"
+    NOTICE: switchover was successful
 
 Messages containing the line `connection to database failed: FATAL: the database
 system is shutting down` are not errors - `repmgr` is polling the old master database
@@ -1093,18 +1107,23 @@ Automatic failover with `repmgrd`
 and which can automate actions such as failover and updating standbys to
 follow the new master.
 
-To use `repmgrd` for automatic failover, the following `repmgrd` options must
-be set in `repmgr.conf`:
-
-    failover=automatic
-    promote_command='repmgr standby promote -f /etc/repmgr.conf'
-    follow_command='repmgr standby follow -f /etc/repmgr.conf'
-
-(See `repmgr.conf.sample` for further `repmgrd`-specific settings).
-
-Additionally, `postgresql.conf` must contain the following line:
+To use `repmgrd` for automatic failover, `postgresql.conf` must contain the
+following line:
 
     shared_preload_libraries = 'repmgr_funcs'
+
+(changing this setting requires a restart of PostgreSQL).
+
+Additionally the following `repmgrd` options must be set in `repmgr.conf`:
+
+    failover=automatic
+    promote_command='repmgr standby promote -f /etc/repmgr.conf --log-to-file'
+    follow_command='repmgr standby follow -f /etc/repmgr.conf --log-to-file'
+
+Note that the `--log-to-file` option will cause `repmgr` output to be logged to
+the destination configured to receive  log output `repmgrd`.
+See `repmgr.conf.sample` for further `repmgrd`-specific settings
+
 
 When `failover` is set to `automatic`, upon detecting failure of the current
 master, `repmgrd` will execute one of `promote_command` or `follow_command`,
@@ -1526,7 +1545,7 @@ which contains connection details for the local database.
     by using `standby follow` (see below); if `repmgrd` is active, it will
     handle this.
 
-    This command will not function if the current master is still running.
+    This command will fail with an error if the current master is still running.
 
 * `standby switchover`
 

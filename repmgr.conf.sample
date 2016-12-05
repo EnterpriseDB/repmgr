@@ -66,6 +66,12 @@
 # (default: NOTICE)
 #loglevel=NOTICE
 
+# Note that logging facility settings will only apply to `repmgrd` by default;
+# `repmgr` will always write to STDERR unless the switch `--log-to-file` is
+# supplied, in which case it will log to the same destination as `repmgrd`.
+# This is mainly intended for those cases when `repmgr` is executed directly
+# by `repmgrd`.
+
 # Logging facility: possible values are STDERR or - for Syslog integration - one of LOCAL0, LOCAL1, ..., LOCAL7, USER
 # (default: STDERR)
 #logfacility=STDERR

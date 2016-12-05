@@ -62,6 +62,7 @@
 #define OPT_NO_UPSTREAM_CONNECTION       11
 #define OPT_REGISTER_WAIT                12
 #define OPT_CLUSTER                      13
+#define OPT_LOG_TO_FILE                  14
 
 /* deprecated command line options */
 #define OPT_INITDB_NO_PWPROMPT           998
@@ -80,10 +81,11 @@ typedef struct
 	bool		verbose;
 	bool		terse;
 	bool		force;
+	char		pg_bindir[MAXLEN]; /* overrides setting in repmgr.conf */
 
-	/* options which override setting in repmgr.conf */
-	char		loglevel[MAXLEN];
-	char		pg_bindir[MAXLEN];
+	/* logging parameters */
+	char		loglevel[MAXLEN];  /* overrides setting in repmgr.conf */
+	bool		log_to_file;
 
 	/* connection parameters */
 	char		dbname[MAXLEN];
@@ -140,9 +142,9 @@ typedef struct
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
 		/* general repmgr options */	\
-		"", false, false, false,		\
-		/* options which override setting in repmgr.conf */ \
-		"", "",                         \
+		"", false, false, false, "",	\
+		/* logging parameters */ \
+		"", false,                      \
 		/* connection parameters */		\
 		"", "", "", "", "", "", "", 	\
 		false, false, false,		    \

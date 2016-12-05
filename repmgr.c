@@ -232,6 +232,7 @@ main(int argc, char **argv)
 		{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 		{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 		{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
+		{"log-to-file", no_argument, NULL, OPT_LOG_TO_FILE},
 		{"version", no_argument, NULL, 'V'},
 		/* Following options for internal use */
 		{"cluster", required_argument, NULL, OPT_CLUSTER},
@@ -543,6 +544,10 @@ main(int argc, char **argv)
 				{
 					runtime_options.wait_register_sync_seconds = repmgr_atoi(optarg, "--wait-sync", &cli_errors, false);
 				}
+				break;
+			case OPT_LOG_TO_FILE:
+				runtime_options.log_to_file = true;
+				logger_output_mode = OM_DAEMON;
 				break;
 			case OPT_CONFIG_ARCHIVE_DIR:
 				strncpy(runtime_options.config_archive_dir, optarg, MAXLEN);
@@ -6307,6 +6312,7 @@ do_help(void)
 	printf(_("\n"));
 	printf(_("Logging options:\n"));
 	printf(_("  -L, --log-level                     set log level (overrides configuration file; default: NOTICE)\n"));
+	printf(_("  --log-to-file                       log to file (or logging facility) defined in repmgr.conf\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
 	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("\n"));
