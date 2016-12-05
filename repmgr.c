@@ -333,9 +333,6 @@ main(int argc, char **argv)
 		strncpy(runtime_options.dbname, runtime_options.username, MAXLEN);
 	}
 
-	/* Prevent getopt_long() from printing an error message */
-	opterr = 0;
-
 	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:l:", long_options,
 							&optindex)) != -1)
 	{
@@ -347,17 +344,6 @@ main(int argc, char **argv)
 		 */
 		switch (c)
 		{
-			case '?':
-				/* Actual help option given */
-				if (strcmp(argv[optind - 1], "-?") == 0)
-				{
-					do_help();
-					exit(SUCCESS);
-				}
-				/* unknown option reported by getopt */
-				else
-					goto unknown_option;
-				break;
 			case OPT_HELP:
 				do_help();
 				exit(SUCCESS);
@@ -567,16 +553,14 @@ main(int argc, char **argv)
 			case OPT_IGNORE_EXTERNAL_CONFIG_FILES:
 				item_list_append(&cli_warnings, _("--ignore-external-config-files is deprecated and has no effect; use --copy-external-config-file instead"));
 				break;
-
-			default:
-		unknown_option:
-			{
-				PQExpBufferData unknown_option;
-				initPQExpBuffer(&unknown_option);
-				appendPQExpBuffer(&unknown_option, _("Unknown option '%s'"), argv[optind - 1]);
-
-				item_list_append(&cli_errors, unknown_option.data);
-			}
+			case '?':
+				/* Actual help option given */
+				if (strcmp(argv[optind - 1], "-?") == 0)
+				{
+					do_help();
+					exit(SUCCESS);
+				}
+				break;
 		}
 	}
 
