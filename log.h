@@ -25,6 +25,9 @@
 #define REPMGR_SYSLOG 1
 #define REPMGR_STDERR 2
 
+#define OM_COMMAND_LINE 1
+#define OM_DAEMON       2
+
 extern void
 stderr_log_with_level(const char *level_name, int level, const char *fmt,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
@@ -116,7 +119,7 @@ int			detect_log_level(const char *level);
 
 /* Logger initialisation and shutdown */
 
-bool		logger_init(t_configuration_options * opts, const char *ident, bool stderr_only);
+bool		logger_init(t_configuration_options * opts, const char *ident);
 
 bool		logger_shutdown(void);
 
@@ -132,5 +135,6 @@ extern int	log_type;
 extern int	log_level;
 extern int	verbose_logging;
 extern int	terse_logging;
+extern int	logger_output_mode;
 
 #endif /* _REPMGR_LOG_H_ */

@@ -265,6 +265,13 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
+	/*
+	 * Tell the logger we're a command-line program - this will
+	 * ensure any output logged before the logger is initialized
+	 * will be formatted correctly
+	 */
+	logger_output_mode = OM_COMMAND_LINE;
+
 	initialize_conninfo_params(&source_conninfo, true);
 
 	/*
@@ -837,7 +844,7 @@ main(int argc, char **argv)
 	 * which makes little sense for a command line program.
 	 */
 
-	logger_init(&options, progname(), true);
+	logger_init(&options, progname());
 
 	if (runtime_options.verbose)
 		logger_set_verbose();

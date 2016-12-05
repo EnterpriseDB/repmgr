@@ -48,6 +48,11 @@ int			log_level = LOG_NOTICE;
 int			last_log_level = LOG_NOTICE;
 int			verbose_logging = false;
 int			terse_logging = false;
+/*
+ * Global variable to be set by the main application to ensure any log output
+ * emitted before logger_init is called, is output in the correct format
+ */
+int			logger_output_mode = OM_DAEMON;
 
 extern void
 stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
@@ -62,9 +67,7 @@ stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
 static void
 _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_list ap)
 {
-	time_t		t;
-	struct tm  *tm;
-	char		buff[100];
+	char		buf[100];
 
 	/*
 	 * Store the requested level so that if there's a subsequent
@@ -74,10 +77,21 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 
 	if (log_level >= level)
 	{
-		time(&t);
-		tm = localtime(&t);
-		strftime(buff, 100, "[%Y-%m-%d %H:%M:%S]", tm);
-		fprintf(stderr, "%s [%s] ", buff, level_name);
+
+		/* Format log line prefix with timestamp if in daemon mode */
+		if (logger_output_mode == OM_DAEMON)
+		{
+			time_t		t;
+			struct tm  *tm;
+			time(&t);
+			tm = localtime(&t);
+			strftime(buf, 100, "[%Y-%m-%d %H:%M:%S]", tm);
+			fprintf(stderr, "%s [%s] ", buf, level_name);
+		}
+		else
+		{
+			fprintf(stderr, "%s: ", level_name);
+		}
 
 		vfprintf(stderr, fmt, ap);
 
@@ -142,7 +156,7 @@ log_verbose(int level, const char *fmt, ...)
 
 
 bool
-logger_init(t_configuration_options *opts, const char *ident, bool stderr_only)
+logger_init(t_configuration_options *opts, const char *ident)
 {
 	char	   *level = opts->loglevel;
 	char	   *facility = opts->logfacility;
@@ -180,7 +194,7 @@ logger_init(t_configuration_options *opts, const char *ident, bool stderr_only)
 	 * STDERR only logging requested - finish here without setting up any further
 	 * logging facility.
 	 */
-	if (stderr_only == true)
+	if (logger_output_mode == OM_COMMAND_LINE)
 		return true;
 
 	if (facility && *facility)

@@ -207,6 +207,13 @@ main(int argc, char **argv)
 		}
 	}
 
+
+	/*
+	 * Tell the logger we're a daemon - this will ensure any output logged
+	 * before the logger is initialized will be formatted correctly
+	 */
+	logger_output_mode = OM_DAEMON;
+
 	/*
 	 * Parse the configuration file, if provided. If no configuration file
 	 * was provided, or one was but was incomplete, parse_config() will
@@ -246,7 +253,7 @@ main(int argc, char **argv)
 				strerror(errno));
 	}
 
-	logger_init(&local_options, progname(), false);
+	logger_init(&local_options, progname());
 
 	if (verbose)
 		logger_set_verbose();
