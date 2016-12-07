@@ -241,6 +241,7 @@ main(int argc, char **argv)
 		{"local-port", required_argument, NULL, 'l'},
 		{"initdb-no-pwprompt", no_argument, NULL, OPT_INITDB_NO_PWPROMPT},
 		{"ignore-external-config-files", no_argument, NULL, OPT_IGNORE_EXTERNAL_CONFIG_FILES},
+		{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -523,6 +524,9 @@ main(int argc, char **argv)
 				break;
 			case OPT_NO_UPSTREAM_CONNECTION:
 				runtime_options.no_upstream_connection = true;
+				break;
+			case OPT_NO_CONNINFO_PASSWORD:
+				runtime_options.no_conninfo_password = true;
 				break;
 			case OPT_REGISTER_WAIT:
 				runtime_options.wait_register_sync = true;
@@ -6322,6 +6326,7 @@ do_help(void)
 	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
 	printf(_("  -r, --rsync-only                    (standby clone) use only rsync, not pg_basebackup\n"));
 	printf(_("  --no-upstream-connection            (standby clone) when using Barman, do not connect to upstream node\n"));
+	printf(_("  --no-conninfo-password              (standby clone) do not write passwords into primary_conninfo\n"));
 	printf(_("  --without-barman                    (standby clone) do not use Barman even if configured\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    (standby clone, follow) set recovery_min_apply_delay\n" \
 			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
@@ -6488,6 +6493,8 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 		 */
 		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
 		    strcmp(param_list->keywords[c], "replication") == 0 ||
+			(runtime_options.no_conninfo_password &&
+			 strcmp(param_list->keywords[c], "password") == 0) ||
 		    (param_list->values[c] == NULL) ||
 		    (param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
 			continue;
