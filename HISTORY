@@ -1,8 +1,10 @@
-3.2.2   2016-12-
+3.3     2016-12-
         repmgr: always log to STDERR even if log facility defined (Ian)
         repmgr: add --log-to-file to log repmgr output to the defined
           log facility (Ian)
         repmgr: improve handling of command line parameter errors (Ian)
+        repmgr: add option --upstream-conninfo to explicitly set
+          'primary_conninfo' in recovery.conf (Ian)
 
 3.2.1   2016-10-24
         repmgr: require a valid repmgr cluster name unless -F/--force
