@@ -6982,6 +6982,11 @@ check_parameters_for_action(const int action)
 				item_list_append(&cli_warnings, _("--no-upstream-connection only effective in Barman mode"));
 			}
 
+			if (*runtime_options.upstream_conninfo && runtime_options.no_conninfo_password == true)
+			{
+				item_list_append(&cli_warnings, _("--no-conninfo-password ineffective when specifying --upstream-conninfo"));
+			}
+
 			config_file_required = false;
 			break;
 
@@ -7074,6 +7079,11 @@ check_parameters_for_action(const int action)
 		if (*runtime_options.upstream_conninfo)
 		{
 			item_list_append(&cli_warnings, _("--upstream-conninfo can only be used when executing STANDBY CLONE"));
+		}
+
+		if (runtime_options.no_conninfo_password == true)
+		{
+			item_list_append(&cli_warnings, _("--no-conninfo-password can only be used when executing STANDBY CLONE"));
 		}
 	}
 
