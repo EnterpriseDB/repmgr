@@ -64,6 +64,7 @@
 #define OPT_CLUSTER                      13
 #define OPT_LOG_TO_FILE                  14
 #define OPT_UPSTREAM_CONNINFO            15
+#define OPT_NO_CONNINFO_PASSWORD         16
 
 /* deprecated command line options */
 #define OPT_INITDB_NO_PWPROMPT           998
@@ -108,6 +109,7 @@ typedef struct
 	bool		fast_checkpoint;
 	bool		without_barman;
 	bool		no_upstream_connection;
+	bool		no_conninfo_password;
 	bool		copy_external_config_files;
 	int			copy_external_config_files_destination;
 	bool		wait_register_sync;
@@ -152,7 +154,7 @@ typedef struct
 		false, false, false,		    \
 		/* standby clone parameters */  \
 		false, DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, \
-		CONFIG_FILE_SAMEPATH, false, 0, "", "",						\
+		false, CONFIG_FILE_SAMEPATH, false, 0, "", "", \
 		/* witness create parameters */ \
 		false,                          \
 		/* standby follow parameters */ \
