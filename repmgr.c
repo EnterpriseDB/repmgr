@@ -2007,32 +2007,59 @@ do_standby_register(void)
 	int			node_result;
 
 	log_info(_("connecting to standby database\n"));
-	conn = establish_db_connection(options.conninfo, true);
+	conn = establish_db_connection(options.conninfo, false);
 
-	/* Check we are a standby */
-	ret = is_standby(conn);
-	if (ret == 0 || ret == -1)
+	if (PQstatus(conn) != CONNECTION_OK)
 	{
-		log_err(_(ret == 0 ? "this node should be a standby (%s)\n" :
-				"connection to node (%s) lost\n"), options.conninfo);
-
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+		if (!runtime_options.force)
+		{
+			log_err(_("unable to connect to local node %i (\"%s\")\n"),
+					options.node,
+					options.node_name);
+			log_hint(_("use option -F/--force to register a standby which is not running"));
+			if (PQstatus(conn) == CONNECTION_OK)
+				PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 
-	/* Check if there is a schema for this cluster */
-	if (check_cluster_schema(conn) == false)
+
+	if (PQstatus(conn) == CONNECTION_OK)
 	{
-		/* schema doesn't exist */
-		log_err(_("schema '%s' doesn't exist.\n"), get_repmgr_schema());
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+		/* Check we are a standby */
+		ret = is_standby(conn);
+
+		if (ret == 0 || ret == -1)
+		{
+			log_err(_(ret == 0 ? "this node should be a standby (%s)\n" :
+					  "connection to node (%s) lost\n"), options.conninfo);
+
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 
 	/* check if there is a master in this cluster */
 	log_info(_("connecting to master database\n"));
-	master_conn = get_master_connection(conn, options.cluster_name,
-										NULL, NULL);
+
+	/* Normal case - we can connect to the local node */
+	if (PQstatus(conn) == CONNECTION_OK)
+	{
+		master_conn = get_master_connection(conn, options.cluster_name,
+											NULL, NULL);
+	}
+	/* User is forcing a registration and must have supplied master connection info */
+	else
+	{
+		master_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
+														(const char**)source_conninfo.values,
+														false);
+	}
+
+	/*
+	 * no amount of --force will make it possible to register the standby
+	 * without a master server to connect to
+	 */
 	if (PQstatus(master_conn) != CONNECTION_OK)
 	{
 		log_err(_("a master must be defined before configuring a standby\n"));
@@ -2042,8 +2069,12 @@ do_standby_register(void)
 	/*
 	 * Verify that standby and master are supported and compatible server
 	 * versions
+	 * TODO: if connection not OK, extract standby's $PG_DATA/PG_VERSION
 	 */
-	check_master_standby_version_match(conn, master_conn);
+	if (PQstatus(conn) == CONNECTION_OK)
+	{
+		check_master_standby_version_match(conn, master_conn);
+	}
 
 	/* Now register the standby */
 	log_info(_("registering the standby\n"));
@@ -2056,7 +2087,8 @@ do_standby_register(void)
 		if (node_record_deleted == false)
 		{
 			PQfinish(master_conn);
-			PQfinish(conn);
+			if (PQstatus(conn) == CONNECTION_OK)
+				PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -2078,10 +2110,95 @@ do_standby_register(void)
 					  node_record.node_id,
 					  options.node_name);
 			PQfinish(master_conn);
-			PQfinish(conn);
+			if (PQstatus(conn) == CONNECTION_OK)
+				PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
+
+	/*
+	 * If an upstream node is defined, check if that node exists and is active
+	 * If it doesn't exist, and --force set, create a minimal inactive record
+	 */
+
+	if (options.upstream_node != NO_UPSTREAM_NODE)
+	{
+		node_result = get_node_record(master_conn,
+									  options.cluster_name,
+									  options.upstream_node,
+									  &node_record);
+
+		if (!node_result)
+		{
+			if (!runtime_options.force)
+			{
+				log_err(_("no record found for upstream node %i\n"),
+						options.upstream_node);
+				/* footgun alert - only do this if you know what you're doing */
+				log_hint(_("use option -F/--force to create a dummy upstream record"));
+				PQfinish(master_conn);
+				if (PQstatus(conn) == CONNECTION_OK)
+					PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			/* */
+			log_notice(_("creating placeholder record for upstream node %i\n"),
+					   options.upstream_node);
+
+			record_created = create_node_record(master_conn,
+												"standby register",
+												options.upstream_node,
+												"standby",
+												NO_UPSTREAM_NODE,
+												options.cluster_name,
+												"",
+												runtime_options.upstream_conninfo,
+												DEFAULT_PRIORITY,
+												NULL,
+												false);
+
+			/*
+			 * It's possible, in the kind of scenario this functionality is intended
+			 * to support, that there's a race condition where the node's actual
+			 * record gets inserted, causing the insert of the placeholder record
+			 * to fail. If this is the case, we don't worry about this insert failing;
+			 * if not we bail out.
+			 *
+			 * TODO: teach create_node_record() to use ON CONFLICT DO NOTHING for
+			 * 9.5 and later.
+			 */
+			if (record_created == false)
+			{
+				node_result = get_node_record(master_conn,
+											  options.cluster_name,
+											  options.upstream_node,
+											  &node_record);
+				if (!node_result)
+				{
+					log_err(_("unable to create placeholder record for upstream node %i\n"),
+							options.upstream_node);
+					PQfinish(master_conn);
+					if (PQstatus(conn) == CONNECTION_OK)
+						PQfinish(conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				log_info(_("a record for upstream node %i was already created\n"),
+						   options.upstream_node);
+			}
+
+		}
+		else if (node_record.active == false)
+		{
+			/*
+			 * TODO:
+			 *   - emit warning if --force specified
+			 *   - else exit with error
+			 */
+		}
+	}
+
 
 	record_created = create_node_record(master_conn,
 										"standby register",
@@ -2104,7 +2221,9 @@ do_standby_register(void)
 
 		/* XXX log registration failure? */
 		PQfinish(master_conn);
-		PQfinish(conn);
+
+		if (PQstatus(conn) == CONNECTION_OK)
+			PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -2118,7 +2237,7 @@ do_standby_register(void)
 
 	/* if --wait-sync option set, wait for the records to synchronise */
 
-	if (runtime_options.wait_register_sync)
+	if (PQstatus(conn) == CONNECTION_OK && runtime_options.wait_register_sync)
 	{
 		bool sync_ok = false;
 		int timer = 0;
@@ -2146,7 +2265,6 @@ do_standby_register(void)
 			if (runtime_options.wait_register_sync_seconds && runtime_options.wait_register_sync_seconds == timer)
 				break;
 
-			// XXX check result
 			node_record_result = get_node_record(conn,
 												 options.cluster_name,
 												 options.node,
@@ -2205,7 +2323,9 @@ do_standby_register(void)
 	}
 
 	PQfinish(master_conn);
-	PQfinish(conn);
+
+	if (PQstatus(conn) == CONNECTION_OK)
+		PQfinish(conn);
 
 	log_info(_("standby registration complete\n"));
 	log_notice(_("standby node correctly registered for cluster %s with id %d (conninfo: %s)\n"),
@@ -2698,7 +2818,9 @@ do_standby_clone(void)
 		/* Attempt to connect to the upstream server to verify its configuration */
 		log_info(_("connecting to upstream node\n"));
 
-		source_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords, (const char**)source_conninfo.values, false);
+		source_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
+														(const char**)source_conninfo.values,
+														false);
 
 		/*
 		 * Unless in barman mode, exit with an error;
