@@ -2024,7 +2024,9 @@ do_standby_register(void)
 
 		if (!runtime_options.connection_param_provided)
 		{
-			log_err(_("unable to connect to local node %i (\"%s\") and no master connection parameters provided\n"));
+			log_err(_("unable to connect to local node %i (\"%s\") and no master connection parameters provided\n"),
+					options.node,
+					options.node_name);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
