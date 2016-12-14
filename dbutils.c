@@ -1628,6 +1628,89 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 }
 
 
+bool
+update_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active)
+{
+	char		sqlquery[QUERY_STR_LEN];
+	char		upstream_node_id[MAXLEN];
+	char		slot_name_buf[MAXLEN];
+	PGresult   *res;
+
+	/* XXX this segment copied from create_node_record() */
+	if (upstream_node == NO_UPSTREAM_NODE)
+	{
+		/*
+		 * No explicit upstream node id provided for standby - attempt to
+		 * get primary node id
+		 */
+		if (strcmp(type, "standby") == 0)
+		{
+			int primary_node_id = get_master_node_id(conn, cluster_name);
+			maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
+		}
+		else
+		{
+			maxlen_snprintf(upstream_node_id, "%s", "NULL");
+		}
+	}
+	else
+	{
+		maxlen_snprintf(upstream_node_id, "%i", upstream_node);
+	}
+
+	if (slot_name != NULL && slot_name[0])
+	{
+		maxlen_snprintf(slot_name_buf, "'%s'", slot_name);
+	}
+	else
+	{
+		maxlen_snprintf(slot_name_buf, "%s", "NULL");
+	}
+
+	/* XXX convert to placeholder query */
+	sqlquery_snprintf(sqlquery,
+					  "UPDATE %s.repl_nodes SET "
+					  "       type = '%s', "
+					  "       upstream_node_id = %s, "
+					  "       cluster = '%s', "
+					  "       name = '%s', "
+					  "       conninfo = '%s', "
+					  "       slot_name = %s, "
+					  "       priority = %i, "
+					  "       active = %s "
+					  " WHERE id = %i ",
+					  get_repmgr_schema_quoted(conn),
+					  type,
+					  upstream_node_id,
+					  cluster_name,
+					  node_name,
+					  conninfo,
+					  slot_name_buf,
+					  priority,
+					  active == true ? "TRUE" : "FALSE",
+					  node);
+
+	log_verbose(LOG_DEBUG, "update_node_record(): %s\n", sqlquery);
+
+	if (action != NULL)
+	{
+		log_verbose(LOG_DEBUG, "update_node_record(): action is \"%s\"\n", action);
+	}
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to update node record\n%s\n"),
+				PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
 /*
  * Update node record following change of status
  * (e.g. inactive primary converted to standby)

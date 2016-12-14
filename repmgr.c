@@ -2078,20 +2078,6 @@ do_standby_register(void)
 
 	/* Now register the standby */
 	log_info(_("registering the standby\n"));
-	if (runtime_options.force)
-	{
-		bool node_record_deleted = delete_node_record(master_conn,
-													  options.node,
-													  "standby register");
-
-		if (node_record_deleted == false)
-		{
-			PQfinish(master_conn);
-			if (PQstatus(conn) == CONNECTION_OK)
-				PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
 
 	/*
 	 * Check that an active node with the same node_name doesn't exist already
@@ -2142,7 +2128,6 @@ do_standby_register(void)
 				exit(ERR_BAD_CONFIG);
 			}
 
-			/* */
 			log_notice(_("creating placeholder record for upstream node %i\n"),
 					   options.upstream_node);
 
@@ -2192,34 +2177,91 @@ do_standby_register(void)
 		else if (node_record.active == false)
 		{
 			/*
-			 * TODO:
-			 *   - emit warning if --force specified
-			 *   - else exit with error
+			 * upstream node is inactive and --force not supplied - refuse to register
 			 */
+			if (!runtime_options.force)
+			{
+				log_err(_("record for upstream node %i is marked as inactive\n"),
+							options.upstream_node);
+				log_hint(_("use option -F/--force to register a standby with an inactive upstream node\n"));
+				PQfinish(master_conn);
+				if (PQstatus(conn) == CONNECTION_OK)
+					PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			/*
+			 * user is using the --force - notify about the potential footgun
+			 */
+			log_notice(_("registering node %i with inactive upstream node %i\n"),
+					   options.node,
+					   options.upstream_node);
 		}
 	}
 
 
-	record_created = create_node_record(master_conn,
-										"standby register",
-										options.node,
-										"standby",
-										options.upstream_node,
-										options.cluster_name,
-										options.node_name,
-										options.conninfo,
-										options.priority,
-										repmgr_slot_name_ptr,
-										true);
+	/* Check if node record exists */
+
+	node_result = get_node_record(master_conn,
+								  options.cluster_name,
+								  options.node,
+								  &node_record);
+
+	if (node_result && !runtime_options.force)
+	{
+		log_err(_("node %i is already registered\n"),
+				options.node);
+		log_hint(_("use option -F/--force to overwrite an existing node record\n"));
+		PQfinish(master_conn);
+		if (PQstatus(conn) == CONNECTION_OK)
+			PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * node record exists - update it
+	 * (at this point we have already established that -F/--force is in use)
+	 */
+	if (node_result)
+	{
+		record_created = update_node_record(master_conn,
+											"standby register",
+											options.node,
+											"standby",
+											options.upstream_node,
+											options.cluster_name,
+											options.node_name,
+											options.conninfo,
+											options.priority,
+											repmgr_slot_name_ptr,
+											true);
+	}
+	else
+	{
+		record_created = create_node_record(master_conn,
+											"standby register",
+											options.node,
+											"standby",
+											options.upstream_node,
+											options.cluster_name,
+											options.node_name,
+											options.conninfo,
+											options.priority,
+											repmgr_slot_name_ptr,
+											true);
+	}
 
 	if (record_created == false)
 	{
-		if (!runtime_options.force)
-		{
-			log_hint(_("use option -F/--force to overwrite an existing node record\n"));
-		}
+		/* XXX add event description */
 
-		/* XXX log registration failure? */
+		create_event_record(master_conn,
+							&options,
+							options.node,
+							"standby_register",
+							false,
+							NULL);
+
 		PQfinish(master_conn);
 
 		if (PQstatus(conn) == CONNECTION_OK)
