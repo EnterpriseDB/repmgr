@@ -2007,7 +2007,7 @@ do_standby_register(void)
 	int			node_result;
 
 	log_info(_("connecting to standby database\n"));
-	conn = establish_db_connection(options.conninfo, false);
+	conn = establish_db_connection_quiet(options.conninfo);
 
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
@@ -2016,9 +2016,15 @@ do_standby_register(void)
 			log_err(_("unable to connect to local node %i (\"%s\")\n"),
 					options.node,
 					options.node_name);
-			log_hint(_("use option -F/--force to register a standby which is not running"));
+			log_hint(_("use option -F/--force to register a standby which is not running\n"));
 			if (PQstatus(conn) == CONNECTION_OK)
 				PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (!runtime_options.connection_param_provided)
+		{
+			log_err(_("unable to connect to local node %i (\"%s\") and no master connection parameters provided\n"));
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -2062,7 +2068,8 @@ do_standby_register(void)
 	 */
 	if (PQstatus(master_conn) != CONNECTION_OK)
 	{
-		log_err(_("a master must be defined before configuring a standby\n"));
+		log_err(_("unable to connect to the master database\n"));
+		log_hint(_("a master must be defined before configuring a standby\n"));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -7050,11 +7057,15 @@ check_parameters_for_action(const int action)
 		case STANDBY_REGISTER:
 
 			/*
-			 * To register a standby we only need the repmgr.conf we don't
-			 * need connection parameters to the master because we can detect
-			 * the master in repl_nodes
+			 * To register a standby we only need the repmgr.conf; usually
+			 * we don't need connection parameters to the master because we
+			 * can detect the master in repl_nodes. However in certain cases
+			 * it may be desirable to register a standby which hasn't yet
+			 * been started, which requires the use of --force *and* provision
+			 * of the master connection string, in which case we don't need the
+			 * warning.
 			 */
-			if (runtime_options.connection_param_provided)
+			if (runtime_options.connection_param_provided && runtime_options.force == false)
 			{
 				item_list_append(&cli_warnings, _("master connection parameters not required when executing STANDBY REGISTER"));
 			}
