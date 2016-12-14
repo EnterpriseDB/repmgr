@@ -4664,6 +4664,13 @@ do_standby_follow(void)
 	/* Set the default application name to this node's name */
 	param_set(&recovery_conninfo, "application_name", options.node_name);
 
+	/* If --replication-user was set, use that value for the primary_conninfo user */
+	if (*runtime_options.replication_user)
+	{
+		param_set(&recovery_conninfo, "user", runtime_options.replication_user);
+	}
+
+
 	/* Fetch our node record so we can write application_name, if set */
 	query_result = get_node_record(master_conn,
 								   options.cluster_name,
@@ -6564,6 +6571,7 @@ do_help(void)
 			 "                                        standby (optional timeout in seconds)\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    (standby follow) set recovery_min_apply_delay\n" \
 			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
+	printf(_("  --replication-user                  (standby follow) username to set in 'primary_conninfo' in recovery.conf\\n"));
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
 	printf(_("  -m, --mode                          (standby switchover) shutdown mode (\"fast\" - default, \"smart\" or \"immediate\")\n"));
 	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \
@@ -7281,10 +7289,13 @@ check_parameters_for_action(const int action)
 		{
 			item_list_append(&cli_warnings, _("--no-conninfo-password can only be used when executing STANDBY CLONE"));
 		}
+	}
 
+	if (action != STANDBY_CLONE && action != STANDBY_FOLLOW)
+	{
 		if (*runtime_options.replication_user)
 		{
-			item_list_append(&cli_warnings, _("--replication-user can only be used when executing STANDBY CLONE"));
+			item_list_append(&cli_warnings, _("--replication-user can only be used when executing STANDBY CLONE or STANDBY FOLLOW"));
 		}
 	}
 
