@@ -234,6 +234,7 @@ main(int argc, char **argv)
 		{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
 		{"log-to-file", no_argument, NULL, OPT_LOG_TO_FILE},
 		{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
+		{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
 		{"version", no_argument, NULL, 'V'},
 		/* Following options for internal use */
 		{"cluster", required_argument, NULL, OPT_CLUSTER},
@@ -549,13 +550,14 @@ main(int argc, char **argv)
 			case OPT_CLUSTER:
 				strncpy(repmgr_cluster, optarg, MAXLEN);
 				break;
+			case OPT_REPLICATION_USER:
+				strncpy(runtime_options.replication_user, optarg, MAXLEN);
+				break;
 			/* deprecated options - output a warning */
 			case 'l':
-				/* -l/--local-port is deprecated */
 				item_list_append(&cli_warnings, _("-l/--local-port is deprecated; repmgr will extract the witness port from the conninfo string in repmgr.conf"));
 				break;
 			case OPT_INITDB_NO_PWPROMPT:
-				/* --initdb-no-pwprompt is deprecated */
 				item_list_append(&cli_warnings, _("--initdb-no-pwprompt is deprecated and has no effect; use -P/--pwprompt instead"));
 				break;
 			case OPT_IGNORE_EXTERNAL_CONFIG_FILES:
@@ -672,7 +674,7 @@ main(int argc, char **argv)
 	{
 		server_mode = argv[optind++];
 		if (strcasecmp(server_mode, "STANDBY") != 0 &&
-			strcasecmp(server_mode, "MASTER") != 0 &&
+			strcasecmp(server_mode, "MASTER")  != 0 &&
 			/* allow PRIMARY as synonym for MASTER */
 			strcasecmp(server_mode, "PRIMARY") != 0 &&
 			strcasecmp(server_mode, "WITNESS") != 0 &&
@@ -2775,6 +2777,7 @@ do_standby_clone(void)
 	/* Set the default application name to this node's name */
 	param_set(&recovery_conninfo, "application_name", options.node_name);
 
+
 	/*
 	 * If application_name is set in repmgr.conf's conninfo parameter, use
 	 * this value (if the source host was provided as a conninfo string, any
@@ -3143,6 +3146,11 @@ do_standby_clone(void)
 	}
 
 
+	/* If --replication-user was set, use that value for the primary_conninfo user */
+	if (*runtime_options.replication_user)
+	{
+		param_set(&recovery_conninfo, "user", runtime_options.replication_user);
+	}
 
 	if (mode != barman)
 	{
@@ -4060,6 +4068,7 @@ stop_backup:
 			log_warning(_("unable to delete backup label file %s\n"), label_path);
 		}
 	}
+
 
 	/* Finally, write the recovery.conf file */
 
@@ -6532,24 +6541,29 @@ do_help(void)
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
 	printf(_("  --check-upstream-config             verify upstream server configuration\n"));
 	printf(_("\n"));
-	printf(_("Command-specific configuration options:\n"));
-	printf(_("  -c, --fast-checkpoint               (standby clone) force fast checkpoint\n"));
-	printf(_("  -r, --rsync-only                    (standby clone) use only rsync, not pg_basebackup\n"));
-	printf(_("  --no-upstream-connection            (standby clone) when using Barman, do not connect to upstream node\n"));
-	printf(_("  --upstream-conninfo                 (standby clone) 'primary_conninfo' value to write in recovery.conf\n" \
-			 "                                        when the intended upstream server does not yet exist\n"));
-	printf(_("  --no-conninfo-password              (standby clone) do not write passwords into primary_conninfo\n"));
-	printf(_("  --without-barman                    (standby clone) do not use Barman even if configured\n"));
-	printf(_("  --recovery-min-apply-delay=VALUE    (standby clone, follow) set recovery_min_apply_delay\n" \
-			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
+	printf(_("STANDBY CLONE configuration options:\n"));
+	printf(_("  -c, --fast-checkpoint               force fast checkpoint\n"));
 	printf(_("  --copy-external-config-files[={samepath|pgdata}]\n" \
-			 "                                      (standby clone) copy configuration files located outside the \n" \
+			 "                                      copy configuration files located outside the \n" \
 			 "                                        data directory to the same path on the standby (default) or to the\n" \
 			 "                                        PostgreSQL data directory\n"));
-	printf(_("  -w, --wal-keep-segments             (standby clone) minimum value for the GUC\n" \
-			 "                                        wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
+	printf(_("  --no-conninfo-password              do not write passwords into primary_conninfo\n"));
+	printf(_("  --no-upstream-connection            when using Barman, do not connect to upstream node\n"));
+	printf(_("  -r, --rsync-only                    use only rsync, not pg_basebackup\n"));
+	printf(_("  --upstream-conninfo                 'primary_conninfo' value to write in recovery.conf\n" \
+			 "                                        when the intended upstream server does not yet exist\n"));
+	printf(_("  --recovery-min-apply-delay=VALUE    set recovery_min_apply_delay in recovery.conf (PostgreSQL 9.4 and later)\n"));
+	printf(_("  --replication-user                  username to set in 'primary_conninfo' in recovery.conf\\n"));
+	printf(_("  --without-barman                    do not use Barman even if configured\n"));
+	printf(_("  -w, --wal-keep-segments             minimum value for the GUC wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
+
+	printf(_("\n"));
+	printf(_("Other command-specific configuration options:\n"));
+
 	printf(_("  --wait-sync[=VALUE]                 (standby register) wait for the node record to synchronise to the\n"\
 			 "                                        standby (optional timeout in seconds)\n"));
+	printf(_("  --recovery-min-apply-delay=VALUE    (standby follow) set recovery_min_apply_delay\n" \
+			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
 	printf(_("  -m, --mode                          (standby switchover) shutdown mode (\"fast\" - default, \"smart\" or \"immediate\")\n"));
 	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \
@@ -7164,6 +7178,11 @@ check_parameters_for_action(const int action)
 				item_list_append(&cli_warnings, _("--no-conninfo-password ineffective when specifying --upstream-conninfo"));
 			}
 
+			if (*runtime_options.upstream_conninfo && *runtime_options.replication_user)
+			{
+				item_list_append(&cli_warnings, _("--replication-user ineffective when specifying --upstream-conninfo"));
+			}
+
 			config_file_required = false;
 			break;
 
@@ -7261,6 +7280,11 @@ check_parameters_for_action(const int action)
 		if (runtime_options.no_conninfo_password == true)
 		{
 			item_list_append(&cli_warnings, _("--no-conninfo-password can only be used when executing STANDBY CLONE"));
+		}
+
+		if (*runtime_options.replication_user)
+		{
+			item_list_append(&cli_warnings, _("--replication-user can only be used when executing STANDBY CLONE"));
 		}
 	}
 

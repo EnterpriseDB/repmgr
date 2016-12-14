@@ -65,6 +65,7 @@
 #define OPT_LOG_TO_FILE                  14
 #define OPT_UPSTREAM_CONNINFO            15
 #define OPT_NO_CONNINFO_PASSWORD         16
+#define OPT_REPLICATION_USER             17
 
 /* deprecated command line options */
 #define OPT_INITDB_NO_PWPROMPT           998
@@ -115,6 +116,7 @@ typedef struct
 	bool		wait_register_sync;
 	int			wait_register_sync_seconds;
 	char		upstream_conninfo[MAXLEN];
+	char		replication_user[MAXLEN];
 
 	char		recovery_min_apply_delay[MAXLEN];
 
@@ -154,7 +156,7 @@ typedef struct
 		false, false, false,		    \
 		/* standby clone parameters */  \
 		false, DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, \
-		false, CONFIG_FILE_SAMEPATH, false, 0, "", "", \
+		false, CONFIG_FILE_SAMEPATH, false, 0, "", "", "", \
 		/* witness create parameters */ \
 		false,                          \
 		/* standby follow parameters */ \
