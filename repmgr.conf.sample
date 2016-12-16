@@ -116,6 +116,10 @@
 # Debian/Ubuntu users: you will probably need to set this to the directory
 # where `pg_ctl` is located, e.g. /usr/lib/postgresql/9.5/bin/
 
+# remote command prefix to add before the remote command name
+# for example to enable Software Collection on Redhat before running a remote command
+#remote_command_prefix=scl enable rh-postgresql95 --
+
 # service control commands
 #
 # repmgr provides options to override the default pg_ctl commands

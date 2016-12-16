@@ -66,6 +66,7 @@
 #define OPT_UPSTREAM_CONNINFO            15
 #define OPT_NO_CONNINFO_PASSWORD         16
 #define OPT_REPLICATION_USER             17
+#define OPT_REMOTE_COMMAND_PREFIX		 18
 
 /* deprecated command line options */
 #define OPT_INITDB_NO_PWPROMPT           998
@@ -144,6 +145,9 @@ typedef struct
 	/* {standby|witness} unregister parameters */
 	int			node;
 
+	/* Remote command prefix*/ 
+	char		remote_command_prefix[MAXLEN];
+
 }	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
@@ -170,7 +174,9 @@ typedef struct
 		/* standby {archive_config | restore_config} parameters  */ \
 		"",                             \
 		/* {standby|witness} unregister parameters */ \
-		UNKNOWN_NODE_ID }
+		UNKNOWN_NODE_ID, \
+		/* Remote command prefix*/ \
+		"" }
 
 struct BackupLabel
 {

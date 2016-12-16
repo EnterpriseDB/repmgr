@@ -268,6 +268,9 @@ _parse_config(t_configuration_options *options, ItemList *error_list)
 	options->tablespace_mapping.head = NULL;
 	options->tablespace_mapping.tail = NULL;
 
+	/* Remote command prefix */ 
+	memset(options->remote_command_prefix, 0, sizeof(options->remote_command_prefix));
+
 	/*
 	 * If no configuration file available (user didn't specify and none found
 	 * in the default locations), return with default values
@@ -414,6 +417,9 @@ _parse_config(t_configuration_options *options, ItemList *error_list)
 			tablespace_list_append(options, value);
 		else if (strcmp(name, "restore_command") == 0)
 			strncpy(options->restore_command, value, MAXLEN);
+		/* Remote command prefix */
+		else if (strcmp(name, "remote_command_prefix") == 0)
+			strncpy(options->remote_command_prefix, value, MAXLEN);
 		else
 		{
 			known_parameter = false;
@@ -582,6 +588,7 @@ parse_line(char *buf, char *name, char *value)
  * - reconnect_interval
  * - retry_promote_interval_secs
  * - witness_repl_nodes_sync_interval_secs
+ * - remote_command_prefix
  *
  * non-changeable options:
  * - cluster_name
@@ -746,6 +753,13 @@ reload_config(t_configuration_options *orig_options)
 	{
 		strcpy(orig_options->loglevel, new_options.loglevel);
 		log_config_changed = true;
+	}
+
+	/* remote_command_prefix */
+	if (strcmp(orig_options->remote_command_prefix, new_options.remote_command_prefix) != 0)
+	{
+		strcpy(orig_options->remote_command_prefix, new_options.remote_command_prefix);
+		config_changed = true;
 	}
 
 	if (log_config_changed == true)

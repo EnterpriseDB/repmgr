@@ -244,6 +244,8 @@ main(int argc, char **argv)
 		{"initdb-no-pwprompt", no_argument, NULL, OPT_INITDB_NO_PWPROMPT},
 		{"ignore-external-config-files", no_argument, NULL, OPT_IGNORE_EXTERNAL_CONFIG_FILES},
 		{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
+		/* Remote command prefix */
+		{"remote-command-prefix", optional_argument, NULL, 'C'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -8253,9 +8255,10 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	appendPQExpBuffer(&ssh_host, "%s",host);
 
 	maxlen_snprintf(ssh_command,
-					"ssh -o Batchmode=yes %s %s %s",
+					"ssh -o Batchmode=yes %s %s %s %s",
 					options.ssh_options,
 					ssh_host.data,
+					options.remote_command_prefix,
 					command);
 
 	termPQExpBuffer(&ssh_host);
