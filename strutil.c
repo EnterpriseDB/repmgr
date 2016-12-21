@@ -118,3 +118,21 @@ appendShellString(PQExpBuffer buf, const char *str)
 
 	appendPQExpBufferChar(buf, '\'');
 }
+
+
+/*
+ * Escape a string for use as a parameter in recovery.conf
+ * Caller must free returned value
+ */
+char *
+escape_recovery_conf_value(const char *src)
+{
+	char	   *result = escape_single_quotes_ascii(src);
+
+	if (!result)
+	{
+		fprintf(stderr, _("%s: out of memory\n"), progname());
+		exit(ERR_INTERNAL);
+	}
+	return result;
+}

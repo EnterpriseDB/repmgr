@@ -57,12 +57,18 @@
 
 #include "storage/fd.h"         /* for PG_TEMP_FILE_PREFIX */
 
-
 #include "log.h"
 #include "config.h"
 #include "check_dir.h"
 #include "strutil.h"
 #include "version.h"
+
+#if (PG_VERSION_NUM < 90600)
+#include "escape.h"
+#else
+#include "fe_utils/string_utils.h"
+#include "postgres_fe.h"
+#endif
 
 #ifndef RECOVERY_COMMAND_FILE
 #define RECOVERY_COMMAND_FILE "recovery.conf"
@@ -6611,6 +6617,9 @@ do_help(void)
 
 /*
  * Creates a recovery.conf file for a standby
+ *
+ * A database connection pointer is required for escaping primary_conninfo
+ * parameters. When cloning from Barman and --no-upstream-conne ) this might not be
  */
 static bool
 create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo)
@@ -6650,8 +6659,10 @@ create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conni
 	 */
 	if (strlen(runtime_options.upstream_conninfo))
 	{
+		char *escaped = escape_recovery_conf_value(runtime_options.upstream_conninfo);
 		maxlen_snprintf(line, "primary_conninfo = '%s'\n",
-						runtime_options.upstream_conninfo);
+						escaped);
+		free(escaped);
 	}
 	/*
 	 * otherwise use the conninfo inferred from the upstream connection
@@ -6732,6 +6743,7 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 	PQExpBufferData conninfo_buf;
 	bool application_name_provided = false;
 	int c;
+	char *escaped;
 
 	initPQExpBuffer(&conninfo_buf);
 
@@ -6755,20 +6767,28 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 		if (strcmp(param_list->keywords[c], "application_name") == 0)
 			application_name_provided = true;
 
-		/* XXX escape option->values */
-		appendPQExpBuffer(&conninfo_buf, "%s=%s", param_list->keywords[c], param_list->values[c]);
+		appendPQExpBuffer(&conninfo_buf, "%s=", param_list->keywords[c]);
+		appendConnStrVal(&conninfo_buf, param_list->values[c]);
 	}
 
 	/* `application_name` not provided - default to repmgr node name */
 	if (application_name_provided == false)
 	{
 		if (strlen(options.node_name))
-			appendPQExpBuffer(&conninfo_buf, " application_name=%s", options.node_name);
+		{
+			appendPQExpBuffer(&conninfo_buf, " application_name=");
+		    appendConnStrVal(&conninfo_buf, options.node_name);
+		}
 		else
+		{
 			appendPQExpBuffer(&conninfo_buf, " application_name=repmgr");
+		}
 	}
+	escaped = escape_recovery_conf_value(conninfo_buf.data);
 
-	maxlen_snprintf(line, "primary_conninfo = '%s'\n", conninfo_buf.data);
+	maxlen_snprintf(line, "primary_conninfo = '%s'\n", escaped);
+
+	free(escaped);
 
 	termPQExpBuffer(&conninfo_buf);
 }
