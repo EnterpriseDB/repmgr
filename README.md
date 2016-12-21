@@ -587,6 +587,21 @@ to effectively manage cascading replication (see below).
 
 * * *
 
+Under some circumstances you may wish to register a standby which is not
+yet running; this can be the case when using provisioning tools to create
+a complex replication cluster. In this case, by using the `-F/--force`
+option and providing the connection parameters to the master server,
+the standby can be registered.
+
+Similarly, with cascading replication it may be necessary to register
+a standby whose upstream node has not yet been registered - in this case,
+using `-F/--force` will result in the creation of an inactive placeholder
+record for the upstream node, which will however later need to be registered
+with the `-F/--force` option too.
+
+When used with `standby register`, care should be taken that use of the
+`-F/--force` option does not result in an incorrectly configured cluster.
+
 ### Using Barman to clone a standby
 
 `repmgr standby clone` also supports Barman, the Backup and
@@ -655,7 +670,7 @@ specify this in `repmgr.conf` with `barman_config`:
 
 Now we can clone a standby using the Barman server:
 
-    $ repmgr -h node1 -D 9.5/main -f /etc/repmgr.conf standby clone
+    $ repmgr -h node1 -d repmgr -D 9.5/main -f /etc/repmgr.conf standby clone
     NOTICE: destination directory '9.5/main' provided
     NOTICE: getting backup from Barman...
     NOTICE: standby clone (from Barman) complete
@@ -781,6 +796,15 @@ After starting the standby, the `repl_nodes` table will look like this:
       3 | standby |                2 | test    | node3 | host=repmgr_node3 dbname=repmgr user=repmgr |           |      100 | t
     (3 rows)
 
+* * *
+
+> *TIP*: under some circumstances when setting up a cascading replication
+> cluster, you may wish to clone a downstream standby whose upstream node
+> does not yet exist. In this case you can clone from the master (or
+> another upstream node) and provide the parameter `--upstream-conninfo`
+> to explictly set the upstream's `primary_conninfo` string in `recovery.conf`.
+
+* * *
 
 Using replication slots with repmgr
 -----------------------------------
@@ -1836,6 +1860,7 @@ Thanks from the repmgr core team.
 Further reading
 ---------------
 
+* http://blog.2ndquadrant.com/repmgr-3-2-is-here-barman-support-brand-new-high-availability-features/
 * http://blog.2ndquadrant.com/improvements-in-repmgr-3-1-4/
 * http://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
 * http://blog.2ndquadrant.com/easier_postgresql_90_clusters/
