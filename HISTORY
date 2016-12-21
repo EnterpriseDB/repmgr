@@ -5,6 +5,11 @@
         repmgr: improve handling of command line parameter errors (Ian)
         repmgr: add option --upstream-conninfo to explicitly set
           'primary_conninfo' in recovery.conf (Ian)
+        repmgr: enable a standby to be registered which isn't running (Ian)
+        repmgr: enable `standby register --force` to update a node record
+          with cascaded downstream node records (Ian)
+        repmgr: add option `--no-conninfo-password` (Abhijit, Ian)
+        repmgr: add initial support for PostgreSQL 10.0 (Ian)
 
 3.2.1   2016-10-24
         repmgr: require a valid repmgr cluster name unless -F/--force
