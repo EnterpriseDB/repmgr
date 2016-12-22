@@ -10,6 +10,7 @@
           with cascaded downstream node records (Ian)
         repmgr: add option `--no-conninfo-password` (Abhijit, Ian)
         repmgr: add initial support for PostgreSQL 10.0 (Ian)
+        repmgr: escape values in primary_conninfo if needed (Ian)
 
 3.2.1   2016-10-24
         repmgr: require a valid repmgr cluster name unless -F/--force

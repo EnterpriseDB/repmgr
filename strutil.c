@@ -90,37 +90,6 @@ maxlen_snprintf(char *str, const char *format,...)
 
 
 /*
- * Adapted from: src/fe_utils/string_utils.c
- *
- * Function not publicly available before PostgreSQL 9.6.
- */
-void
-appendShellString(PQExpBuffer buf, const char *str)
-{
-	const char *p;
-
-	appendPQExpBufferChar(buf, '\'');
-	for (p = str; *p; p++)
-	{
-		if (*p == '\n' || *p == '\r')
-		{
-			fprintf(stderr,
-					_("shell command argument contains a newline or carriage return: \"%s\"\n"),
-					str);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		if (*p == '\'')
-			appendPQExpBufferStr(buf, "'\"'\"'");
-		else
-			appendPQExpBufferChar(buf, *p);
-	}
-
-	appendPQExpBufferChar(buf, '\'');
-}
-
-
-/*
  * Escape a string for use as a parameter in recovery.conf
  * Caller must free returned value
  */

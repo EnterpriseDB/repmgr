@@ -1,7 +1,8 @@
 /*
  *
- * escape.c
- *	  parameter escaping functions
+ * compat.c
+ *	  Provide backports of various functions not publicly
+ *    exposed before PostgreSQL 9.6
  *
  * Copyright (C) 2ndQuadrant, 2010-2016
  *
@@ -26,7 +27,7 @@
 #if (PG_VERSION_NUM < 90600)
 
 #include "repmgr.h"
-#include "escape.h"
+#include "compat.h"
 
 /*
  * Append the given string to the buffer, with suitable quoting for passing
@@ -75,5 +76,36 @@ appendConnStrVal(PQExpBuffer buf, const char *str)
 	else
 		appendPQExpBufferStr(buf, str);
 }
+
+/*
+ * Adapted from: src/fe_utils/string_utils.c
+ *
+ * Function not publicly available before PostgreSQL 9.6.
+ */
+void
+appendShellString(PQExpBuffer buf, const char *str)
+{
+	const char *p;
+
+	appendPQExpBufferChar(buf, '\'');
+	for (p = str; *p; p++)
+	{
+		if (*p == '\n' || *p == '\r')
+		{
+			fprintf(stderr,
+					_("shell command argument contains a newline or carriage return: \"%s\"\n"),
+					str);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (*p == '\'')
+			appendPQExpBufferStr(buf, "'\"'\"'");
+		else
+			appendPQExpBufferChar(buf, *p);
+	}
+
+	appendPQExpBufferChar(buf, '\'');
+}
+
 
 #endif

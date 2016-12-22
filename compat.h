@@ -1,5 +1,5 @@
 /*
- * escape.h
+ * compat.h
  * Copyright (c) 2ndQuadrant, 2010-2016
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,10 +17,13 @@
  *
  */
 
-#ifndef _ESCAPE_H_
-#define _ESCAPE_H_
+#ifndef _COMPAT_H_
+#define _COMPAT_H_
 
 extern void
 appendConnStrVal(PQExpBuffer buf, const char *str);
+
+extern void
+appendShellString(PQExpBuffer buf, const char *str);
 
 #endif

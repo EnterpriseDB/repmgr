@@ -64,7 +64,7 @@
 #include "version.h"
 
 #if (PG_VERSION_NUM < 90600)
-#include "escape.h"
+#include "compat.h"
 #else
 #include "fe_utils/string_utils.h"
 #include "postgres_fe.h"
