@@ -3064,10 +3064,10 @@ do_standby_clone(void)
 			if (repmgr_conninfo_buf.len != 0)
 				appendPQExpBufferChar(&repmgr_conninfo_buf, ' ');
 
-			/* XXX escape option->values */
-			appendPQExpBuffer(&repmgr_conninfo_buf, "%s=%s",
-							  barman_conninfo.keywords[c],
-							  barman_conninfo.values[c]);
+			appendPQExpBuffer(&repmgr_conninfo_buf, "%s=",
+							  barman_conninfo.keywords[c]);
+			appendConnStrVal(&repmgr_conninfo_buf,
+							 barman_conninfo.values[c]);
 		}
 
 		log_verbose(LOG_DEBUG,
