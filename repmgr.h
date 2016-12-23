@@ -113,12 +113,14 @@ typedef struct
 	bool		no_conninfo_password;
 	bool		copy_external_config_files;
 	int			copy_external_config_files_destination;
-	bool		wait_register_sync;
-	int			wait_register_sync_seconds;
 	char		upstream_conninfo[MAXLEN];
 	char		replication_user[MAXLEN];
 
 	char		recovery_min_apply_delay[MAXLEN];
+
+	/* standby register paarameters */
+	bool		wait_register_sync;
+	int			wait_register_sync_seconds;
 
 	/* witness create parameters */
 	bool		witness_pwprompt;
@@ -156,7 +158,9 @@ typedef struct
 		false, false, false,		    \
 		/* standby clone parameters */  \
 		false, DEFAULT_WAL_KEEP_SEGMENTS, false, false, false, false, false, false, \
-		false, CONFIG_FILE_SAMEPATH, false, 0, "", "", "", \
+		false, CONFIG_FILE_SAMEPATH, "", "", "", \
+		/* standby register paarameters */ \
+	    false, 0,							 \
 		/* witness create parameters */ \
 		false,                          \
 		/* standby follow parameters */ \
