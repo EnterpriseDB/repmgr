@@ -2296,7 +2296,9 @@ do_standby_register(void)
 
 	/* if --wait-sync option set, wait for the records to synchronise */
 
-	if (PQstatus(conn) == CONNECTION_OK && runtime_options.wait_register_sync)
+	if (PQstatus(conn) == CONNECTION_OK &&
+		runtime_options.wait_register_sync == true &&
+		runtime_options.wait_register_sync_seconds > 0)
 	{
 		bool sync_ok = false;
 		int timer = 0;
