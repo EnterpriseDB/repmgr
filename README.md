@@ -247,7 +247,7 @@ By default `repmgr` and `repmgrd` will log directly to `STDERR`. For `repmgrd`
 we recommend capturing output in a logfile or using your system's log facility;
 see `repmgr.conf.sample` for details.
 
-As a command line utility, `repmgr` will directly to the console by default
+As a command line utility, `repmgr` will log directly to the console by default
 (this is a change in behaviour from versions before 3.3, where it would always
 log to the same location as `repmgrd`). However in some circumstances, such as
 when `repmgr` is executed by `repmgrd` during a failover event, it makes sense to
