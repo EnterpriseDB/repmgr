@@ -6569,7 +6569,7 @@ do_help(void)
 	printf(_("  --upstream-conninfo                 'primary_conninfo' value to write in recovery.conf\n" \
 			 "                                        when the intended upstream server does not yet exist\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    set recovery_min_apply_delay in recovery.conf (PostgreSQL 9.4 and later)\n"));
-	printf(_("  --replication-user                  username to set in 'primary_conninfo' in recovery.conf\\n"));
+	printf(_("  --replication-user                  username to set in 'primary_conninfo' in recovery.conf\n"));
 	printf(_("  --without-barman                    do not use Barman even if configured\n"));
 	printf(_("  -w, --wal-keep-segments             minimum value for the GUC wal_keep_segments (default: %s)\n"), DEFAULT_WAL_KEEP_SEGMENTS);
 
@@ -6580,11 +6580,10 @@ do_help(void)
 			 "                                        standby (optional timeout in seconds)\n"));
 	printf(_("  --recovery-min-apply-delay=VALUE    (standby follow) set recovery_min_apply_delay\n" \
 			 "                                        in recovery.conf (PostgreSQL 9.4 and later)\n"));
-	printf(_("  --replication-user                  (standby follow) username to set in 'primary_conninfo' in recovery.conf\\n"));
+	printf(_("  --replication-user                  (standby follow) username to set in 'primary_conninfo' in recovery.conf\n"));
 	printf(_("  -W, --wait                          (standby follow) wait for a master to appear\n"));
 	printf(_("  -m, --mode                          (standby switchover) shutdown mode (\"fast\" - default, \"smart\" or \"immediate\")\n"));
-	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on\n" \
-			 "                                        the current master\n"));
+	printf(_("  -C, --remote-config-file            (standby switchover) path to the configuration file on the current master\n"));
 	printf(_("  --pg_rewind[=VALUE]                 (standby switchover) 9.3/9.4 only - use pg_rewind if available,\n" \
 			 "                                        optionally providing a path to the binary\n"));
 	printf(_("  -k, --keep-history=VALUE            (cluster cleanup) retain indicated number of days of history (default: 0)\n"));

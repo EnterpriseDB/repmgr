@@ -243,14 +243,14 @@ command line options:
 
 ### Logging
 
-By default `repmgr` and `repmgrd` will log directly to `STDERR`. For `repmgrd` we
-recommend capturing output in a logfile or using your system's log facility;
+By default `repmgr` and `repmgrd` will log directly to `STDERR`. For `repmgrd`
+we recommend capturing output in a logfile or using your system's log facility;
 see `repmgr.conf.sample` for details.
 
-As a command line utility, `repmgr` will normally log directly to the console -
-this is a change in behaviour from previous versions, where it would always
-log to the same location as `repmgrd`. However in some circumstances, e.g. when
-`repmgr` is executed by `repmgrd` during a failover event, it makes sense to
+As a command line utility, `repmgr` will directly to the console by default
+(this is a change in behaviour from versions before 3.3, where it would always
+log to the same location as `repmgrd`). However in some circumstances, such as
+when `repmgr` is executed by `repmgrd` during a failover event, it makes sense to
 capture `repmgr`'s log output - this can be done by supplying the command-line
 option `--log-to-file` to `repmgr`.
 
@@ -289,14 +289,14 @@ Setting up a simple replication cluster with repmgr
 The following section will describe how to set up a basic replication cluster
 with a master and a standby server using the `repmgr` command line tool.
 It is assumed PostgreSQL is installed on both servers in the cluster,
-`rsync` is available and password-less SSH connections are possible between
+`rsync` is available and passwordless SSH connections are possible between
 both servers.
 
 * * *
 
 > *TIP*: for testing `repmgr`, it's possible to use multiple PostgreSQL
 > instances running on different ports on the same computer, with
-> password-less SSH access to `localhost` enabled.
+> passwordless SSH access to `localhost` enabled.
 
 * * *
 
@@ -736,12 +736,21 @@ string passed to `repmgr` with `-d/--dbname` (see above for details), and/or set
 appropriate environment variables.
 
 Note that PostgreSQL will always set explicit defaults for `sslmode` and
-`sslcompression`.
+`sslcompression` (and from PostgreSQL 10.0 also `target_session_attrs`).
 
 If `application_name` is set in the standby's `conninfo` parameter in
 `repmgr.conf`, this value will be appended to `primary_conninfo`, otherwise
 `repmgr` will set `application_name` to the same value as the `node_name`
 parameter.
+
+By default `repmgr` assumes the user who owns the `repmgr` metadatabase will
+also be the replication user; a different replication user can be specified
+with `--replication-user`.
+
+If the upstream server requires a password, and this was provided via
+`PGPASSWORD`, `.pgpass` etc., by default `repmgr` will include this in
+`primary_conninfo`. Use the command line option `--no-conninfo-password` to
+suppress this.
 
 
 Setting up cascading replication with repmgr
@@ -1555,7 +1564,7 @@ which contains connection details for the local database.
     bootstrapping new installations. To update an existing but 'stale'
     data directory (for example belonging to a failed master), `rsync`
     must be used by specifying `--rsync-only`. In this case,
-    password-less SSH connections between servers are required.
+    passwordless SSH connections between servers are required.
 
 * `standby promote`
 
@@ -1575,7 +1584,7 @@ which contains connection details for the local database.
 
     Promotes a standby to master and demotes the existing master to a standby.
     This command must be run on the standby to be promoted, and requires a
-    password-less SSH connection to the current master. Additionally the
+    passwordless SSH connection to the current master. Additionally the
     location of the master's `repmgr.conf` file must be provided with
     `-C/--remote-config-file`.
 
@@ -1682,7 +1691,7 @@ which contains connection details for the local database.
       overview of connections between all databases in the cluster.
 
     These commands require a valid `repmgr.conf` file on each node.
-    Additionally password-less `ssh` connections are required between
+    Additionally passwordless `ssh` connections are required between
     all nodes.
 
     Example 1 (all nodes up):
