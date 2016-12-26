@@ -6990,7 +6990,11 @@ run_basebackup(const char *data_dir, int server_version)
 			appendPQExpBuffer(&params, " -p %s", runtime_options.masterport);
 		}
 
-		if (strlen(runtime_options.username))
+		if (strlen(runtime_options.replication_user))
+		{
+			appendPQExpBuffer(&params, " -U %s", runtime_options.replication_user);
+		}
+		else if (strlen(runtime_options.username))
 		{
 			appendPQExpBuffer(&params, " -U %s", runtime_options.username);
 		}
@@ -8046,6 +8050,9 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		conn_to_param_list(conn, &repl_conninfo);
 
 		param_set(&repl_conninfo, "replication", "1");
+
+		if (*runtime_options.replication_user)
+			param_set(&repl_conninfo, "user", runtime_options.replication_user);
 
 		/*
 		 * work out how many replication connections are required (1 or 2)
