@@ -1841,7 +1841,15 @@ do_cluster_cleanup(void)
 	sqlquery_snprintf(sqlquery, "VACUUM %s.repl_monitor", get_repmgr_schema_quoted(master_conn));
 	res = PQexec(master_conn, sqlquery);
 
-	/* XXX There is any need to check this VACUUM happens without problems? */
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		/*
+		 * Unlikely to happen and not a problem per-se, but we'll issue a warning
+		 * just in case
+		 */
+		log_warning(_("Unable to vacuum table %s.repl_monitor"), get_repmgr_schema_quoted(master_conn));
+	}
+
 
 	PQclear(res);
 	PQfinish(master_conn);
@@ -2519,17 +2527,19 @@ get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
 	res = PQexec(upstream_conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-		{
-			log_err(_("unable to execute tablespace query: %s\n"),
-					PQerrorMessage(upstream_conn));
+	{
+		log_err(_("unable to execute tablespace query: %s\n"),
+				PQerrorMessage(upstream_conn));
 
-			PQclear(res);
+		PQclear(res);
 
-			return ERR_DB_QUERY;
-		}
+		return ERR_DB_QUERY;
+	}
 
 	for (i = 0; i < PQntuples(res); i++)
-		tablespace_data_append(list, PQgetvalue(res, i, 0), PQgetvalue(res, i, 1),
+		tablespace_data_append(list,
+							   PQgetvalue(res, i, 0),
+							   PQgetvalue(res, i, 1),
 							   PQgetvalue(res, i, 2));
 
 	PQclear(res);

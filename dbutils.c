@@ -1436,10 +1436,11 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	bool		success = true;
 	struct tm	ts;
 
-	/* Only attempt to write a record if a connection handle was provided.
-	   Also check that the repmgr schema has been properly intialised - if
-	   not it means no configuration file was provided, which can happen with
-	   e.g. `repmgr standby clone`, and we won't know which schema to write to.
+	/*
+	 * Only attempt to write a record if a connection handle was provided.
+	 * Also check that the repmgr schema has been properly initialised - if
+	 * not it means no configuration file was provided, which can happen with
+	 * e.g. `repmgr standby clone`, and we won't know which schema to write to.
 	 */
 	if (conn != NULL && strcmp(repmgr_schema, DEFAULT_REPMGR_SCHEMA_PREFIX) != 0)
 	{
