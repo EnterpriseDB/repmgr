@@ -1847,7 +1847,7 @@ do_cluster_cleanup(void)
 		 * Unlikely to happen and not a problem per-se, but we'll issue a warning
 		 * just in case
 		 */
-		log_warning(_("Unable to vacuum table %s.repl_monitor"), get_repmgr_schema_quoted(master_conn));
+		log_warning(_("unable to vacuum table %s.repl_monitor\n"), get_repmgr_schema_quoted(master_conn));
 	}
 
 
@@ -4020,7 +4020,6 @@ stop_backup:
 	 */
 	if (mode == rsync)
 	{
-		char	label_path[MAXPGPATH];
 		char	dirpath[MAXLEN] = "";
 
 		if (runtime_options.force)
@@ -4076,14 +4075,6 @@ stop_backup:
 						dirpath);
 				exit(ERR_BAD_RSYNC);
 			}
-		}
-
-		/* delete the backup label file copied from the primary */
-		maxlen_snprintf(label_path, "%s/backup_label", local_data_directory);
-		// XXX!
-		if (0 && unlink(label_path) < 0 && errno != ENOENT)
-		{
-			log_warning(_("unable to delete backup label file %s\n"), label_path);
 		}
 	}
 
