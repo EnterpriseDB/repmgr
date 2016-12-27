@@ -2091,18 +2091,21 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
 /*
  * set_local_node_status()
  *
- * If failure of the local node is detected, attempt to connect
- * to the current master server (as stored in the global variable
- * `master_conn`) and update its record to failed.
+ * Attempt to connect to the current master server (as stored in the global
+ * variable `master_conn`) and set the local node's status to the result
+ * of `is_standby(my_local_conn)`. Normally this will be used to mark
+ * a node as failed, but in some circumstances we may be marking it
+ * as recovered.
  */
 
 static bool
 set_local_node_status(void)
 {
-	PGresult       *res;
+	PGresult   *res;
 	char		sqlquery[QUERY_STR_LEN];
-	int		active_master_node_id = NODE_NOT_FOUND;
+	int			active_master_node_id = NODE_NOT_FOUND;
 	char		master_conninfo[MAXLEN];
+	bool		local_node_status;
 
 	if (!check_connection(&master_conn, "master", NULL))
 	{
@@ -2161,24 +2164,29 @@ set_local_node_status(void)
 
 	/*
 	 * Attempt to set the active record to the correct value.
-	 * First
 	 */
+
+	local_node_status = (is_standby(my_local_conn) == 1);
 
 	if (!update_node_record_status(master_conn,
 					    local_options.cluster_name,
 					    node_info.node_id,
 					    "standby",
 					    node_info.upstream_node_id,
-					    is_standby(my_local_conn)==1))
+					    local_node_status))
 	{
-		log_err(_("unable to set local node %i as inactive on master: %s\n"),
+		log_err(_("unable to set local node %i as %s on master: %s\n"),
 				node_info.node_id,
+				local_node_status == false ? "inactive" : "active",
 				PQerrorMessage(master_conn));
 
 		return false;
 	}
 
-	log_notice(_("marking this node (%i) as inactive on master\n"), node_info.node_id);
+	log_notice(_("marking this node (%i) as %s on master\n"),
+			   node_info.node_id,
+			   local_node_status == false ? "inactive" : "active");
+
 	return true;
 }
 
