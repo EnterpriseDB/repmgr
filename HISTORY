@@ -1,4 +1,4 @@
-3.3     2016-12-
+3.3     2016-12-27
         repmgr: always log to STDERR even if log facility defined (Ian)
         repmgr: add --log-to-file to log repmgr output to the defined
           log facility (Ian)
