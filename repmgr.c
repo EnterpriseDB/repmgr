@@ -946,7 +946,7 @@ main(int argc, char **argv)
 	 */
 	if (strcmp(repmgr_schema, DEFAULT_REPMGR_SCHEMA_PREFIX) == 0 && !runtime_options.force)
 	{
-		log_err(_("unable to determine cluster name - please provide a valid configuration file with -c/--config-file\n"));
+		log_err(_("unable to determine cluster name - please provide a valid configuration file with -f/--config-file\n"));
 		log_hint(_("Use -F/--force to continue anyway\n"));
 		exit(ERR_BAD_CONFIG);
 	}
