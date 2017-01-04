@@ -62,13 +62,7 @@
 #include "check_dir.h"
 #include "strutil.h"
 #include "version.h"
-
-#if (PG_VERSION_NUM < 90600)
 #include "compat.h"
-#else
-#include "fe_utils/string_utils.h"
-#include "postgres_fe.h"
-#endif
 
 #ifndef RECOVERY_COMMAND_FILE
 #define RECOVERY_COMMAND_FILE "recovery.conf"

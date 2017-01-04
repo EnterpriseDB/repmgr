@@ -1,8 +1,10 @@
 /*
  *
  * compat.c
- *	  Provide backports of various functions not publicly
- *    exposed before PostgreSQL 9.6
+ *	  Provides a couple of useful string utility functions adapted
+ *	  from the backend code, which are not publicly exposed. They're
+ *	  unlikely to change but it would be worth keeping an eye on them
+ *	  for any fixes/improvements
  *
  * Copyright (C) 2ndQuadrant, 2010-2016
  *
@@ -24,8 +26,6 @@
  *
  */
 
-#if (PG_VERSION_NUM < 90600)
-
 #include "repmgr.h"
 #include "compat.h"
 
@@ -34,8 +34,8 @@
  * the string as a value, in a keyword/pair value in a libpq connection
  * string
  *
- * This function is copied from src/bin/pg_dump/dumputils.c
- * as it is only publicly exposed from 9.6
+ * This function is adapted from src/fe_utils/string_utils.c (before 9.6
+ * located in: src/bin/pg_dump/dumputils.c)
  */
 void
 appendConnStrVal(PQExpBuffer buf, const char *str)
@@ -79,8 +79,6 @@ appendConnStrVal(PQExpBuffer buf, const char *str)
 
 /*
  * Adapted from: src/fe_utils/string_utils.c
- *
- * Function not publicly available before PostgreSQL 9.6.
  */
 void
 appendShellString(PQExpBuffer buf, const char *str)
@@ -107,5 +105,3 @@ appendShellString(PQExpBuffer buf, const char *str)
 	appendPQExpBufferChar(buf, '\'');
 }
 
-
-#endif
