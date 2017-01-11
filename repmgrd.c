@@ -2339,7 +2339,7 @@ lsn_to_xlogrecptr(char *lsn, bool *format_ok)
 	if (format_ok != NULL)
 		*format_ok = true;
 
-	return (((XLogRecPtr) xlogid * 16 * 1024 * 1024 * 255) + xrecoff);
+	return (XLogRecPtr) ((uint64) xlogid) << 32 | (uint64) xrecoff;
 }
 
 void
