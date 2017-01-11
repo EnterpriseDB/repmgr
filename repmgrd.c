@@ -1187,10 +1187,22 @@ standby_monitor(void)
 	PQclear(res);
 
 	lsn_master_current_xlog_location = lsn_to_xlogrecptr(last_wal_primary_location, NULL);
-	lsn_last_xlog_replay_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
 	lsn_last_xlog_receive_location = lsn_to_xlogrecptr(last_xlog_receive_location, NULL);
+	lsn_last_xlog_replay_location = lsn_to_xlogrecptr(last_xlog_replay_location, NULL);
 
-	apply_lag = (long long unsigned int)lsn_last_xlog_receive_location - lsn_last_xlog_replay_location;
+	if (lsn_last_xlog_receive_location >= lsn_last_xlog_replay_location)
+	{
+		apply_lag = (long long unsigned int)lsn_last_xlog_receive_location - lsn_last_xlog_replay_location;
+	}
+	else
+	{
+		/* This should never happen, but in case it does set apply lag to zero */
+		log_warning("Standby receive (%s) location appears less than standby replay location (%s)\n",
+					last_xlog_receive_location,
+					last_xlog_replay_location);
+		apply_lag = 0;
+	}
+
 
 	/* Calculate replication lag */
 	if (lsn_master_current_xlog_location >= lsn_last_xlog_receive_location)
@@ -1199,7 +1211,7 @@ standby_monitor(void)
 	}
 	else
 	{
-		/* This should never happen, but in case it does set lag to zero */
+		/* This should never happen, but in case it does set replication lag to zero */
 		log_warning("Master xlog (%s) location appears less than standby receive location (%s)\n",
 					last_wal_primary_location,
 					last_xlog_receive_location);
