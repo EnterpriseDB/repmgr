@@ -2345,7 +2345,7 @@ lsn_to_xlogrecptr(char *lsn, bool *format_ok)
 void
 usage(void)
 {
-	log_err(_("%s: Replicator manager daemon \n"), progname());
+	log_err(_("%s: replication management daemon for PostgreSQL\n"), progname());
 	log_err(_("Try \"%s --help\" for more information.\n"), progname());
 }
 
