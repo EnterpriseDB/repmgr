@@ -1,6 +1,8 @@
 3.3.1   2017-01-
-        repmgrd: revent invalid apply lag value being written to the
+        repmgrd: prevent invalid apply lag value being written to the
           monitoring table (Ian)
+        repmgrd: fix error in XLogRecPtr conversion when calculating
+          monitoring statistics (Ian)
 
 3.3     2016-12-27
         repmgr: always log to STDERR even if log facility defined (Ian)
