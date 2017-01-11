@@ -1,7 +1,7 @@
 /*
  * repmgrd.c - Replication manager daemon
  *
- * Copyright (C) 2ndQuadrant, 2010-2016
+ * Copyright (c) 2ndQuadrant, 2010-2017
  *
  * This module connects to the nodes of a replication cluster and monitors
  * how far are they from master

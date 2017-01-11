@@ -1,6 +1,6 @@
 /*
  * uninstall_repmgr_funcs.sql
- * Copyright (c) 2ndQuadrant, 2010-2016
+ * Copyright (c) 2ndQuadrant, 2010-2017
  *
  */
 

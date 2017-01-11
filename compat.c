@@ -6,7 +6,7 @@
  *	  unlikely to change but it would be worth keeping an eye on them
  *	  for any fixes/improvements
  *
- * Copyright (C) 2ndQuadrant, 2010-2016
+ * Copyright (c) 2ndQuadrant, 2010-2017
  *
  * Portions Copyright (c) 1996-2013, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California

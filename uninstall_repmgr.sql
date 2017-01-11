@@ -1,7 +1,7 @@
 /*
  * uninstall_repmgr.sql
  *
- * Copyright (C) 2ndQuadrant, 2010-2016
+ * Copyright (c) 2ndQuadrant, 2010-2017
  *
  */
 
