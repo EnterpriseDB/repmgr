@@ -3608,7 +3608,7 @@ do_standby_clone(void)
 						continue;
 
 					/* directory existed in earlier versions than this server but has been removed/renamed - skip */
-					if (vers[1] < 0 && server_version_num >= abs(vers[i]))
+					if (vers[i] < 0 && server_version_num >= abs(vers[i]))
 						continue;
 
 					maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
