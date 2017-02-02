@@ -5482,7 +5482,7 @@ do_standby_switchover(void)
 		remote_host,
 		runtime_options.remote_user,
 		remote_command_str.data,
-		NULL);
+		&command_output);
 
 	termPQExpBuffer(&remote_command_str);
 
@@ -8356,6 +8356,10 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 		while (fgets(output, MAXLEN, fp) != NULL)
 		{
 			appendPQExpBuffer(outputbuf, "%s", output);
+			 if(!feof(fp))
+                        {
+                                break;
+                        }
 		}
 
 		pclose(fp);
