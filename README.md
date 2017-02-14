@@ -1158,10 +1158,9 @@ Additionally the following `repmgrd` options must be set in `repmgr.conf`:
     promote_command='repmgr standby promote -f /etc/repmgr.conf --log-to-file'
     follow_command='repmgr standby follow -f /etc/repmgr.conf --log-to-file'
 
-Note that the `--log-to-file` option will cause `repmgr` output to be logged to
-the destination configured to receive  log output `repmgrd`.
+Note that the `--log-to-file` option will cause `repmgr`'s output to be logged to
+the destination configured to receive log output for `repmgrd`.
 See `repmgr.conf.sample` for further `repmgrd`-specific settings
-
 
 When `failover` is set to `automatic`, upon detecting failure of the current
 master, `repmgrd` will execute one of `promote_command` or `follow_command`,
