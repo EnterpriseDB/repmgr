@@ -96,7 +96,7 @@
 static int	test_ssh_connection(char *host, char *remote_user);
 static int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 							  char *local_path, bool is_directory, int server_version_num);
-static int  run_basebackup(const char *data_dir, int server_version);
+static int  run_basebackup(const char *data_dir, int server_version_num);
 static void check_parameters_for_action(const int action);
 static bool create_schema(PGconn *conn);
 static bool create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo);
@@ -158,7 +158,7 @@ static void param_set(t_conninfo_param_list *param_list, const char *param, cons
 static char *param_get(t_conninfo_param_list *param_list, const char *param);
 static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_application_name);
 static void conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
-static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options);
+static void parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num);
 
 static void config_file_list_init(t_configfile_list *list, int max_size);
 static void config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir);
@@ -6937,7 +6937,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 
 static int
-run_basebackup(const char *data_dir, int server_version)
+run_basebackup(const char *data_dir, int server_version_num)
 {
 	char				  script[MAXLEN];
 	int					  r = 0;
@@ -6949,7 +6949,7 @@ run_basebackup(const char *data_dir, int server_version)
 	 * Parse the pg_basebackup_options provided in repmgr.conf - we'll want
 	 * to check later whether certain options were set by the user
 	 */
-	parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options);
+	parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options, server_version_num);
 
 	/* Create pg_basebackup command line options */
 
@@ -7013,6 +7013,7 @@ run_basebackup(const char *data_dir, int server_version)
 	 * From 9.6, if replication slots are in use, we'll have previously
 	 * created a slot with reserved LSN, and will stream from that slot to avoid
 	 * WAL buildup on the master using the -S/--slot, which requires -X/--xlog-method=stream
+	 * (from 10, -X/--wal-method=stream)
 	 */
 	if (!strlen(backup_options.xlog_method))
 	{
@@ -7030,17 +7031,17 @@ run_basebackup(const char *data_dir, int server_version)
 	 *
 	 * NOTE:
 	 *   It's possible to set 'pg_basebackup_options' with an invalid combination
-	 *   of values for --xlog-method and --slot - we're not checking that, just that
+	 *   of values for --wal-method (--xlog-method) and --slot - we're not checking that, just that
 	 *   we're not overriding any user-supplied values
 	 */
-	if (server_version >= 90600 && options.use_replication_slots)
+	if (server_version_num >= 90600 && options.use_replication_slots)
 	{
 		bool slot_add = true;
 
 		/*
 		 * Check whether 'pg_basebackup_options' in repmgr.conf has the --slot option set,
-		 * or if --xlog-method is set to a value other than "stream" (in which case we can't
-		 * use --slot).
+		 * or if --wal-method (--xlog-method) is set to a value other than "stream"
+		 * (in which case we can't use --slot).
 		 */
 		if (strlen(backup_options.slot) || (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)) {
 			slot_add = false;
@@ -7668,7 +7669,7 @@ create_schema(PGconn *conn)
  *   to perform additional cleanup
  *
  * char *server_version_string
- *   passed to get_server_version(), which will place the human-readble
+ *   passed to get_server_version(), which will place the human-readable
  *   server version string there (e.g. "9.4.0")
  */
 static int
@@ -7781,7 +7782,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	 * this will influence some checks
 	 */
 
-	parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options);
+	parse_pg_basebackup_options(options.pg_basebackup_options, &backup_options, server_version_num);
 	if (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)
 		xlog_stream = false;
 
@@ -8632,7 +8633,7 @@ conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
 
 
 static void
-parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options)
+parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num)
 {
 	int   options_len = strlen(pg_basebackup_options) + 1;
 	char *options_string = pg_malloc(options_len);
@@ -8652,17 +8653,32 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 
 	int			optindex = 0;
 
+	struct option *long_options;
+
 	/* We're only interested in these options */
-	static struct option long_options[] =
+	static struct option long_options_9[] =
 	{
 		{"slot", required_argument, NULL, 'S'},
 		{"xlog-method", required_argument, NULL, 'X'},
 		{NULL, 0, NULL, 0}
 	};
 
+	/* From PostgreSQL 10, --xlog-method is renamed --wal-method */
+	static struct option long_options_10[] =
+	{
+		{"slot", required_argument, NULL, 'S'},
+		{"wal-method", required_argument, NULL, 'X'},
+		{NULL, 0, NULL, 0}
+	};
+
 	/* Don't attempt to tokenise an empty string */
 	if (!strlen(pg_basebackup_options))
 		return;
+
+	if (server_version_num >= 100000)
+		long_options = long_options_10;
+	else
+		long_options = long_options_9;
 
 	/* Copy the string before operating on it with strtok() */
 	strncpy(options_string, pg_basebackup_options, options_len);
