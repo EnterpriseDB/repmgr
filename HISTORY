@@ -1,4 +1,4 @@
-3.3.2   2017-05-18
+3.3.2   2017-05-22
         repmgr: ensure --replication-user option is honoured when passing database
           connection parameters as a conninfo string (Ian)
         repmgr: improve detection of pg_rewind on remote server (Ian)
@@ -8,7 +8,7 @@
         repmgr: add missing `-P` option (Ian)
         repmgrd: monitoring statistic reporting fixes (Ian)
 
-3.3.1   2017-03-
+3.3.1   2017-03-13
         repmgrd: prevent invalid apply lag value being written to the
           monitoring table (Ian)
         repmgrd: fix error in XLogRecPtr conversion when calculating
