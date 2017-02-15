@@ -145,6 +145,13 @@
 #pg_ctl_options='-s'
 #pg_basebackup_options='--xlog-method=s'
 
+# This is the host name of the barman server, which is used for connecting over
+# to the barman server (passwordless ssh keys should be in place)
+#barman_server='backup_server'
+# If you are placing the barman.conf file in a non-standard path, or using
+# a name other than barman.conf, use this parameter to specify the path and
+# name of the barman configuration file.
+#barman_config='/path/to/barman.conf'
 
 # Standby clone settings
 # ----------------------
