@@ -333,10 +333,11 @@ The following replication settings may need to be adjusted:
     archive_command = '/bin/true'
 
     # If cloning using rsync, or you have configured `pg_basebackup_options`
-    # in `repmgr.conf` to include the setting `--xlog-method=fetch`, *and*
-    # you have not set `restore_command` in `repmgr.conf`to fetch WAL files
-    # from another source such as Barman, you'll need to set `wal_keep_segments`
-    # to a high enough value to ensure that all WAL files generated while
+    # in `repmgr.conf` to include the setting `--xlog-method=fetch` (from
+    # PostgreSQL 10 `--wal-method=fetch`), *and* you have not set
+    # `restore_command` in `repmgr.conf`to fetch WAL files from another
+    # source such as Barman, you'll need to set `wal_keep_segments` to a
+    # high enough value to ensure that all WAL files generated while
     # the standby is being cloned are retained until the standby starts up.
 
     # wal_keep_segments = 5000
@@ -501,7 +502,8 @@ place. To ensure this happens when using the default `pg_basebackup` method,
 `repmgr` will set `pg_basebackup`'s `--xlog-method` parameter to `stream`,
 which will ensure all WAL files generated during the cloning process are
 streamed in parallel with the main backup. Note that this requires two
-replication connections to be available.
+replication connections to be available (`repmgr` will verify sufficient
+connections are available before attempting to clonse).
 
 To override this behaviour, in `repmgr.conf` set `pg_basebackup`'s
 `--xlog-method` parameter to `fetch`:
@@ -512,6 +514,9 @@ and ensure that `wal_keep_segments` is set to an appropriately high value.
 See the `pg_basebackup` documentation for details:
 
     https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+
+> *NOTE*: From PostgreSQL 10, `pg_basebackup`'s `--xlog-method` parameter
+> has been renamed to `--wal-method`.
 
 Make any adjustments to the standby's PostgreSQL configuration files now,
 then start the server.

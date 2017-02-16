@@ -143,7 +143,7 @@
 # external command arguments. Values shown are examples.
 
 #pg_ctl_options='-s'
-#pg_basebackup_options='--xlog-method=s'
+#pg_basebackup_options='--label=repmgr_backup'
 
 # This is the host name of the barman server, which is used for connecting over
 # to the barman server (passwordless ssh keys should be in place)
