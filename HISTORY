@@ -3,6 +3,8 @@
           monitoring table (Ian)
         repmgrd: fix error in XLogRecPtr conversion when calculating
           monitoring statistics (Ian)
+        repmgr: if replication slots in use, where possible delete slot on old
+          upstream node after following new upstream (Ian)
 
 3.3     2016-12-27
         repmgr: always log to STDERR even if log facility defined (Ian)
