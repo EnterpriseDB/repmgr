@@ -1,10 +1,11 @@
-3.3.1   2017-01-
+3.3.1   2017-03-
         repmgrd: prevent invalid apply lag value being written to the
           monitoring table (Ian)
         repmgrd: fix error in XLogRecPtr conversion when calculating
           monitoring statistics (Ian)
         repmgr: if replication slots in use, where possible delete slot on old
           upstream node after following new upstream (Ian)
+        repmgr: improve logging of rsync actions (Ian)
 
 3.3     2016-12-27
         repmgr: always log to STDERR even if log facility defined (Ian)

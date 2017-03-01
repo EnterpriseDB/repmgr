@@ -3670,15 +3670,16 @@ do_standby_clone(void)
 								  master_data_directory, local_data_directory,
 								  true, server_version_num);
 			/*
-			  Exit code 0 means no error, but we want to ignore exit code 24 as well
-			  as rsync returns that code on "Partial transfer due to vanished source files".
-			  It's quite common for this to happen on the data directory, particularly
-			  with long running rsync on a busy server.
-			*/
-			if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
+			 * Exit code 0 means no error, but we want to ignore exit code 24 as well
+			 * as rsync returns that code on "Partial transfer due to vanished source files".
+			 * It's quite common for this to happen on the data directory, particularly
+			 * with long running rsync on a busy server.
+			 */
+			if (WIFEXITED(r) && WEXITSTATUS(r) && WEXITSTATUS(r) != 24)
 			{
-				log_warning(_("standby clone: failed copying master data directory '%s'\n"),
+				log_err(_("standby clone: failed copying master data directory '%s'\n"),
 							master_data_directory);
+				r = retval = ERR_BAD_RSYNC;
 				goto stop_backup;
 			}
 
@@ -3762,15 +3763,16 @@ do_standby_clone(void)
 									  true, server_version_num);
 
 				/*
-				  Exit code 0 means no error, but we want to ignore exit code 24 as well
-				  as rsync returns that code on "Partial transfer due to vanished source files".
-				  It's quite common for this to happen on the data directory, particularly
-				  with long running rsync on a busy server.
-				*/
-				if (!WIFEXITED(r) && WEXITSTATUS(r) != 24)
+				 * Exit code 0 means no error, but we want to ignore exit code 24 as well
+				 * as rsync returns that code on "Partial transfer due to vanished source files".
+				 * It's quite common for this to happen on the data directory, particularly
+				 * with long running rsync on a busy server.
+				 */
+				if (WIFEXITED(r) && WEXITSTATUS(r) && WEXITSTATUS(r) != 24)
 				{
-					log_warning(_("standby clone: failed copying tablespace directory '%s'\n"),
-					            cell_t->location);
+					log_err(_("standby clone: failed copying tablespace directory '%s'\n"),
+							cell_t->location);
+					r = retval = ERR_BAD_RSYNC;
 					goto stop_backup;
 				}
 			}
@@ -3778,7 +3780,7 @@ do_standby_clone(void)
 			/*
 			 * If a valid mapping was provide for this tablespace, arrange for it to
 			 * be remapped
-			 * (if no tablespace mappings was provided, the link will be copied as-is
+			 * (if no tablespace mapping was provided, the link will be copied as-is
 			 * by pg_basebackup or rsync and no action is required)
 			 */
 			if (mapping_found == true || mode == barman)
@@ -3937,7 +3939,7 @@ do_standby_clone(void)
 
 				r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 									  file->filepath, dest_path, false, server_version_num);
-				if (r != 0)
+				if (WEXITSTATUS(r))
 				{
 					log_err(_("standby clone: unable to copy config file '%s'\n"),
 							file->filename);
@@ -3971,7 +3973,7 @@ do_standby_clone(void)
 		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 							  master_control_file, local_control_file,
 							  false, server_version_num);
-		if (r != 0)
+		if (WEXITSTATUS(r))
 		{
 			log_warning(_("standby clone: failed copying master control file '%s'\n"),
 						master_control_file);
@@ -6198,7 +6200,7 @@ do_witness_create(void)
 
 	r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 						  master_hba_file, runtime_options.dest_dir, false, -1);
-	if (r != 0)
+	if (WEXITSTATUS(r))
 	{
 		char *errmsg = _("Unable to copy pg_hba.conf from master");
 		log_err("%s\n", errmsg);
@@ -6964,9 +6966,11 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	r = system(script);
 
-	if (r != 0)
-		log_err(_("unable to rsync from remote host (%s:%s)\n"),
-				host_string, remote_path);
+	log_debug("copy_remote_files(): r = %i; WIFEXITED: %i; WEXITSTATUS: %i\n", r, WIFEXITED(r), WEXITSTATUS(r));
+
+	/* exit code 24 indicates vanished files, which isn't a problem for us */
+	if (WEXITSTATUS(r) && WEXITSTATUS(r) != 24)
+		log_verbose(LOG_WARNING, "copy_remote_files(): rsync returned unexpected exit status %i \n", WEXITSTATUS(r));
 
 	return r;
 }
