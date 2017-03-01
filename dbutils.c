@@ -1084,15 +1084,25 @@ drop_replication_slot(PGconn *conn, char *slot_name)
 
 
 bool
-start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint)
+start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint, int server_version_num)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
-	sqlquery_snprintf(sqlquery,
-					  "SELECT pg_catalog.pg_xlogfile_name(pg_catalog.pg_start_backup('repmgr_standby_clone_%ld', %s))",
-					  time(NULL),
-					  fast_checkpoint ? "TRUE" : "FALSE");
+	if (server_version_num >= 100000)
+	{
+		sqlquery_snprintf(sqlquery,
+						  "SELECT pg_catalog.pg_walfile_name(pg_catalog.pg_start_backup('repmgr_standby_clone_%ld', %s))",
+						  time(NULL),
+						  fast_checkpoint ? "TRUE" : "FALSE");
+	}
+	else
+	{
+		sqlquery_snprintf(sqlquery,
+						  "SELECT pg_catalog.pg_xlogfile_name(pg_catalog.pg_start_backup('repmgr_standby_clone_%ld', %s))",
+						  time(NULL),
+						  fast_checkpoint ? "TRUE" : "FALSE");
+	}
 
 	log_verbose(LOG_DEBUG, "start_backup():\n%s\n", sqlquery);
 
@@ -1120,12 +1130,19 @@ start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint)
 
 
 bool
-stop_backup(PGconn *conn, char *last_wal_segment)
+stop_backup(PGconn *conn, char *last_wal_segment, int server_version_num)
 {
 	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
 
-	sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_xlogfile_name(pg_catalog.pg_stop_backup())");
+	if (server_version_num >= 100000)
+	{
+		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_walfile_name(pg_catalog.pg_stop_backup())");
+	}
+	else
+	{
+		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_xlogfile_name(pg_catalog.pg_stop_backup())");
+	}
 
 	res = PQexec(conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)

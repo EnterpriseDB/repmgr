@@ -3641,7 +3641,7 @@ do_standby_clone(void)
 				goto stop_backup;
 			}
 
-			if (start_backup(source_conn, first_wal_segment, runtime_options.fast_checkpoint) == false)
+			if (start_backup(source_conn, first_wal_segment, runtime_options.fast_checkpoint, server_version_num) == false)
 			{
 				r = ERR_BAD_BASEBACKUP;
 				retval = ERR_BAD_BASEBACKUP;
@@ -3985,7 +3985,7 @@ stop_backup:
 	if (mode == rsync && pg_start_backup_executed)
 	{
 		log_notice(_("notifying master about backup completion...\n"));
-		if (stop_backup(source_conn, last_wal_segment) == false)
+		if (stop_backup(source_conn, last_wal_segment, server_version_num) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
 			retval = ERR_BAD_BASEBACKUP;
