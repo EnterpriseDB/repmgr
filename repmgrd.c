@@ -71,6 +71,7 @@ bool		failover_done = false;
 bool		manual_mode_upstream_disconnected = false;
 
 char	   *pid_file = NULL;
+int			server_version_num = 0;
 
 static void help(void);
 static void usage(void);
@@ -144,8 +145,6 @@ main(int argc, char **argv)
 	bool        startup_event_logged = false;
 
 	FILE	   *fd;
-
-	int			server_version_num = 0;
 
 	set_progname(argv[0]);
 
@@ -724,20 +723,40 @@ witness_monitor(void)
 	/*
 	 * Build the SQL to execute on master
 	 */
-	sqlquery_snprintf(sqlquery,
-					  "INSERT INTO %s.repl_monitor "
-					  "           (primary_node, standby_node, "
-					  "            last_monitor_time, last_apply_time, "
-					  "            last_wal_primary_location, last_wal_standby_location, "
-					  "            replication_lag, apply_lag )"
-					  "      VALUES(%d, %d, "
-					  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
-					  "             pg_catalog.pg_current_xlog_location(), NULL, "
-					  "             0, 0) ",
-					  get_repmgr_schema_quoted(my_local_conn),
-					  master_options.node,
-					  local_options.node,
-					  monitor_witness_timestamp);
+	if (server_version_num >= 100000)
+	{
+		sqlquery_snprintf(sqlquery,
+						  "INSERT INTO %s.repl_monitor "
+						  "           (primary_node, standby_node, "
+						  "            last_monitor_time, last_apply_time, "
+						  "            last_wal_primary_location, last_wal_standby_location, "
+						  "            replication_lag, apply_lag )"
+						  "      VALUES(%d, %d, "
+						  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
+						  "             pg_catalog.pg_current_wal_location(), NULL, "
+						  "             0, 0) ",
+						  get_repmgr_schema_quoted(my_local_conn),
+						  master_options.node,
+						  local_options.node,
+						  monitor_witness_timestamp);
+	}
+	else
+	{
+		sqlquery_snprintf(sqlquery,
+						  "INSERT INTO %s.repl_monitor "
+						  "           (primary_node, standby_node, "
+						  "            last_monitor_time, last_apply_time, "
+						  "            last_wal_primary_location, last_wal_standby_location, "
+						  "            replication_lag, apply_lag )"
+						  "      VALUES(%d, %d, "
+						  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
+						  "             pg_catalog.pg_current_xlog_location(), NULL, "
+						  "             0, 0) ",
+						  get_repmgr_schema_quoted(my_local_conn),
+						  master_options.node,
+						  local_options.node,
+						  monitor_witness_timestamp);
+	}
 
 	/*
 	 * Execute the query asynchronously, but don't check for a result. We will
@@ -1125,21 +1144,42 @@ standby_monitor(void)
 	 * If receive_location is less than replay location, we were streaming WAL but are
 	 *   somehow disconnected and evidently in archive recovery
 	 */
-	sqlquery_snprintf(sqlquery,
-					  " SELECT ts, "
-					  "        CASE WHEN (receive_location IS NULL OR receive_location < replay_location) "
-					  "          THEN replay_location "
-					  "          ELSE receive_location"
-					  "        END AS receive_location,"
-					  "        replay_location, "
-					  "        replay_timestamp, "
-					  "        COALESCE(receive_location, '0/0') >= replay_location AS receiving_streamed_wal "
-					  "   FROM (SELECT CURRENT_TIMESTAMP AS ts, "
-					  "         pg_catalog.pg_last_xlog_receive_location() AS receive_location, "
-					  "         pg_catalog.pg_last_xlog_replay_location()  AS replay_location, "
-					  "         pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp "
-					  "        ) q ");
 
+	if (server_version_num >= 100000)
+	{
+		sqlquery_snprintf(sqlquery,
+						  " SELECT ts, "
+						  "        CASE WHEN (receive_location IS NULL OR receive_location < replay_location) "
+						  "          THEN replay_location "
+						  "          ELSE receive_location"
+						  "        END AS receive_location,"
+						  "        replay_location, "
+						  "        replay_timestamp, "
+						  "        COALESCE(receive_location, '0/0') >= replay_location AS receiving_streamed_wal "
+						  "   FROM (SELECT CURRENT_TIMESTAMP AS ts, "
+						  "         pg_catalog.pg_last_wal_receive_location()  AS receive_location, "
+						  "         pg_catalog.pg_last_wal_replay_location()   AS replay_location, "
+						  "         pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp "
+						  "        ) q ");
+
+	}
+	else
+	{
+		sqlquery_snprintf(sqlquery,
+						  " SELECT ts, "
+						  "        CASE WHEN (receive_location IS NULL OR receive_location < replay_location) "
+						  "          THEN replay_location "
+						  "          ELSE receive_location"
+						  "        END AS receive_location,"
+						  "        replay_location, "
+						  "        replay_timestamp, "
+						  "        COALESCE(receive_location, '0/0') >= replay_location AS receiving_streamed_wal "
+						  "   FROM (SELECT CURRENT_TIMESTAMP AS ts, "
+						  "         pg_catalog.pg_last_xlog_receive_location() AS receive_location, "
+						  "         pg_catalog.pg_last_xlog_replay_location()  AS replay_location, "
+						  "         pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp "
+						  "        ) q ");
+	}
 
 
 	res = PQexec(my_local_conn, sqlquery);
@@ -1173,7 +1213,11 @@ standby_monitor(void)
 	 * TODO: investigate whether pg_current_xlog_insert_location() would be a better
 	 * choice; see: https://github.com/2ndQuadrant/repmgr/issues/189
 	 */
-	sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_xlog_location()");
+
+	if (server_version_num >= 100000)
+		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_wal_location()");
+	else
+		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_xlog_location()");
 
 	res = PQexec(master_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
