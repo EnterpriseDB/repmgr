@@ -192,9 +192,10 @@ typedef struct
 {
 	char		slot[MAXLEN];
 	char		xlog_method[MAXLEN];
+	bool		no_slot; /* from PostgreSQL 10 */
 } t_basebackup_options;
 
-#define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "" }
+#define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "", false }
 
 typedef struct
 {
