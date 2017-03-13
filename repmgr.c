@@ -4778,18 +4778,27 @@ do_standby_follow(void)
 
 		PQfinish(conn);
 
-		conn = establish_db_connection_quiet(upstream_node_record.conninfo_str);
-		if (PQstatus(conn) != CONNECTION_OK)
+
+		if (upstream_query_result != 1)
 		{
-			log_info("unable to connect to old upstream node %i to remove replication slot\n",
-					 original_upstream_node_id);
-			log_hint("if reusing this node, you should manually remove any inactive replication slots\n");
+			log_warning(_("unable to retrieve node record for old upstream node %i"),
+						original_upstream_node_id);
 		}
 		else
 		{
-			drop_replication_slot_if_exists(conn,
-											original_upstream_node_id,
-											local_node_record.slot_name);
+			conn = establish_db_connection_quiet(upstream_node_record.conninfo_str);
+			if (PQstatus(conn) != CONNECTION_OK)
+			{
+				log_info(_("unable to connect to old upstream node %i to remove replication slot\n"),
+						 original_upstream_node_id);
+				log_hint(_("if reusing this node, you should manually remove any inactive replication slots\n"));
+			}
+			else
+			{
+				drop_replication_slot_if_exists(conn,
+												original_upstream_node_id,
+												local_node_record.slot_name);
+			}
 		}
 	}
 
