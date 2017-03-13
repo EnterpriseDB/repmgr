@@ -1889,7 +1889,16 @@ _get_node_record(PGconn *conn, char *cluster, char *sqlquery, t_node_info *node_
 
 	node_info->node_id = atoi(PQgetvalue(res, 0, 0));
 	node_info->type = parse_node_type(PQgetvalue(res, 0, 1));
-	node_info->upstream_node_id = atoi(PQgetvalue(res, 0, 2));
+
+	if (PQgetisnull(res, 0, 2))
+	{
+		node_info->upstream_node_id = NO_UPSTREAM_NODE;
+	}
+	else
+	{
+		node_info->upstream_node_id = atoi(PQgetvalue(res, 0, 2));
+	}
+
 	strncpy(node_info->name, PQgetvalue(res, 0, 3), MAXLEN);
 	strncpy(node_info->conninfo_str, PQgetvalue(res, 0, 4), MAXLEN);
 	strncpy(node_info->slot_name, PQgetvalue(res, 0, 5), MAXLEN);
