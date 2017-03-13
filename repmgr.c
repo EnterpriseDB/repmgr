@@ -4758,10 +4758,13 @@ do_standby_follow(void)
 	 * (a former standby) exists on the former upstream, drop it.
 	 */
 
-	if (options.use_replication_slots)
+	if (options.use_replication_slots && original_upstream_node_id != UNKNOWN_NODE_ID)
 	{
 		t_node_info upstream_node_record  = T_NODE_INFO_INITIALIZER;
 		int			upstream_query_result;
+
+		log_verbose(LOG_INFO, "attempting to remove replication slot from old upstream node %i\n",
+					original_upstream_node_id);
 
 		/* XXX should we poll for server restart? */
 		conn = establish_db_connection(options.conninfo, true);
@@ -4773,16 +4776,15 @@ do_standby_follow(void)
 
 		PQfinish(conn);
 
-		conn = establish_db_connection(upstream_node_record.conninfo_str, false);
+		conn = establish_db_connection_quiet(upstream_node_record.conninfo_str);
 		if (PQstatus(conn) != CONNECTION_OK)
 		{
-			log_warning("unable to connect to old upstream node %i to remove replication slot\n",
-						original_upstream_node_id);
+			log_info("unable to connect to old upstream node %i to remove replication slot\n",
+					 original_upstream_node_id);
+			log_hint("if reusing this node, you should manually remove any inactive replication slots\n");
 		}
 		else
 		{
-			log_debug("attempting to remove replication slot from old upstream node %i\n",
-					  original_upstream_node_id);
 			drop_replication_slot_if_exists(conn,
 											original_upstream_node_id,
 											local_node_record.slot_name);
@@ -4805,6 +4807,8 @@ do_standby_follow(void)
 
 		exit(ERR_BAD_CONFIG);
 	}
+
+	log_notice(_("STANDBY FOLLOW successful\n"));
 
 	create_event_record(master_conn,
 						&options,
