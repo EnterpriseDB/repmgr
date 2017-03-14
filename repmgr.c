@@ -758,7 +758,7 @@ main(int argc, char **argv)
 	{
 		if (optind < argc)
 		{
-			if (runtime_options.host[0])
+			if (runtime_options.host_param_provided == true)
 			{
 				PQExpBufferData additional_host_arg;
 				initPQExpBuffer(&additional_host_arg);
