@@ -33,6 +33,7 @@ char repmgr_schema[MAXLEN] = "";
 char repmgr_schema_quoted[MAXLEN] = "";
 
 static int _get_node_record(PGconn *conn, char *cluster, char *sqlquery, t_node_info *node_info);
+static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
 
 PGconn *
 _establish_db_connection(const char *conninfo, const bool exit_on_error, const bool log_notice, const bool verbose_only)
@@ -1150,18 +1151,11 @@ stop_backup(PGconn *conn, char *last_wal_segment)
 }
 
 
+
 bool
-set_config_bool(PGconn *conn, const char *config_param, bool state)
+_set_config(PGconn *conn, const char *config_param, const char *sqlquery)
 {
-	char		sqlquery[QUERY_STR_LEN];
 	PGresult   *res;
-
-	sqlquery_snprintf(sqlquery,
-					  "SET %s TO %s",
-					  config_param,
-					  state ? "TRUE" : "FALSE");
-
-	log_verbose(LOG_DEBUG, "set_config_bool():\n%s\n", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 
@@ -1175,6 +1169,36 @@ set_config_bool(PGconn *conn, const char *config_param, bool state)
 	PQclear(res);
 
 	return true;
+}
+
+bool
+set_config(PGconn *conn, const char *config_param,  const char *config_value)
+{
+	char		sqlquery[QUERY_STR_LEN];
+
+	sqlquery_snprintf(sqlquery,
+					  "SET %s TO '%s'",
+					  config_param,
+					  config_value);
+
+	log_verbose(LOG_DEBUG, "set_config():\n%s\n", sqlquery);
+
+	return _set_config(conn, config_param, sqlquery);
+}
+
+bool
+set_config_bool(PGconn *conn, const char *config_param, bool state)
+{
+	char		sqlquery[QUERY_STR_LEN];
+
+	sqlquery_snprintf(sqlquery,
+					  "SET %s TO %s",
+					  config_param,
+					  state ? "TRUE" : "FALSE");
+
+	log_verbose(LOG_DEBUG, "set_config_bool():\n%s\n", sqlquery);
+
+	return _set_config(conn, config_param, sqlquery);
 }
 
 
