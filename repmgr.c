@@ -2954,8 +2954,6 @@ do_standby_clone(void)
 				primary_conn = source_conn;
 			}
 
-
-
 			/*
 			 * Sanity-check that the master node has a repmgr schema - if not
 			 * present, fail with an error (unless -F/--force is used)
@@ -2974,7 +2972,6 @@ do_standby_clone(void)
 
 				log_warning(_("expected repmgr schema '%s' not found on master server\n"), get_repmgr_schema());
 			}
-
 
 			/* Fetch the source's data directory */
 			if (get_pg_setting(source_conn, "data_directory", master_data_directory) == false)
@@ -2996,8 +2993,6 @@ do_standby_clone(void)
 				log_notice(_("setting data directory to: \"%s\"\n"), local_data_directory);
 				log_hint(_("use -D/--data-dir to explicitly specify a data directory\n"));
 			}
-
-
 
 			/*
 			 * Copy the source connection so that we have some default values,
@@ -3583,6 +3578,9 @@ do_standby_clone(void)
 			/*
 			 * We must create some PGDATA subdirectories because they are
 			 * not included in the Barman backup.
+			 *
+			 * See class RsyncBackupExecutor in the Barman source (barman/backup_executor.py)
+			 * for a definitive list of excluded directories.
 			 */
 			{
 				const char* const dirs[] = {
@@ -3593,14 +3591,14 @@ do_standby_clone(void)
 					/* Only from 9.4 */
 					"pg_dynshmem", "pg_logical", "pg_logical/snapshots", "pg_logical/mappings", "pg_replslot",
 					/* Already in 9.3 */
-					"pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
+					"pg_notify", "pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
 					"pg_twophase", "pg_xlog", 0
 				};
 				const int vers[] = {
 					100000,
 					90500,
 					90400, 90400, 90400, 90400, 90400,
-					0, 0, 0, 0, 0,
+					0, 0, 0, 0, 0, 0,
 					0, -100000, 0
 				};
 				for (i = 0; dirs[i]; i++)
