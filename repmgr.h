@@ -124,6 +124,7 @@ typedef struct
 
 	/* witness create parameters */
 	bool		witness_pwprompt;
+	char		secret_sauce[MAXLEN];
 
 	/* standby follow parameters */
 	bool		wait_for_master;
@@ -162,7 +163,7 @@ typedef struct
 		/* standby register paarameters */ \
 	    false, 0,							 \
 		/* witness create parameters */ \
-		false,                          \
+		false, "",                      \
 		/* standby follow parameters */ \
 		false,                          \
 		/* cluster {show|matrix|crosscheck} parameters */ \

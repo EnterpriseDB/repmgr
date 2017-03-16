@@ -246,6 +246,7 @@ main(int argc, char **argv)
 		{"initdb-no-pwprompt", no_argument, NULL, OPT_INITDB_NO_PWPROMPT},
 		{"ignore-external-config-files", no_argument, NULL, OPT_IGNORE_EXTERNAL_CONFIG_FILES},
 		{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
+		{"secret-sauce", required_argument, NULL, 'Y'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -338,7 +339,7 @@ main(int argc, char **argv)
 		strncpy(runtime_options.dbname, runtime_options.username, MAXLEN);
 	}
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:l:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:l:Y:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -564,6 +565,9 @@ main(int argc, char **argv)
 				break;
 			case OPT_IGNORE_EXTERNAL_CONFIG_FILES:
 				item_list_append(&cli_warnings, _("--ignore-external-config-files is deprecated and has no effect; use --copy-external-config-file instead"));
+				break;
+			case 'Y':
+				strncpy(runtime_options.secret_sauce, optarg, MAXLEN);
 				break;
 			case '?':
 				/* Actual help option given */
@@ -6096,6 +6100,33 @@ do_witness_create(void)
 	xsnprintf(buf, sizeof(buf), "listen_addresses = '*'\n");
 	fputs(buf, pg_conf);
 
+	if (runtime_options.secret_sauce[0])
+	{
+		FILE *ss;
+		int a;
+
+		ss = fopen(runtime_options.secret_sauce, "r");
+		if (ss == NULL)
+		{
+			log_err("Cannot open file: %s\n", runtime_options.secret_sauce);
+			exit(ERR_INTERNAL);
+		}
+
+		while(1)
+		{
+			a = fgetc(ss);
+
+			if (!feof(ss))
+			{
+				fputc(a, pg_conf);
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
 	fclose(pg_conf);
 
 
@@ -6633,6 +6664,8 @@ do_help(void)
 	printf(_("  -P, --pwprompt                      (witness server) prompt for password when creating users\n"));
 	printf(_("  -S, --superuser=USERNAME            (witness server) superuser username for witness database\n" \
 			 "                                        (default: postgres)\n"));
+	printf(_("  -Y, --secret-sauce=RECIPE           (witness server) path to configuration settings to \n" \
+			 "                                        append to postgresql.conf\n"));
 	printf(_("\n"));
 	printf(_("%s performs the following node management tasks:\n"), progname());
 	printf(_("\n"));
