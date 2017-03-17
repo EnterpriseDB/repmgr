@@ -90,9 +90,8 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 	 * set "synchronous_commit" to "local" in case synchronous replication is in use
 	 */
 
-	if (set_config(conn, "synchronous_commit", "local") == false)
+	else if (set_config(conn, "synchronous_commit", "local") == false)
 	{
-
 		if (exit_on_error)
 		{
 			PQfinish(conn);
@@ -157,25 +156,26 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 			exit(ERR_DB_CON);
 		}
 	}
-
-
-	/*
-	 * set "synchronous_commit" to "local" in case synchronous replication is in
-	 * use (provided this is not a replication connection)
-	 */
-
-	for (i = 0; keywords[i]; i++)
+	else
 	{
-		if (strcmp(keywords[i], "replication") == 0)
-			replication_connection = true;
-	}
+		/*
+		 * set "synchronous_commit" to "local" in case synchronous replication is in
+		 * use (provided this is not a replication connection)
+		 */
 
-	if (replication_connection == false && set_config(conn, "synchronous_commit", "local") == false)
-	{
-		if (exit_on_error)
+		for (i = 0; keywords[i]; i++)
 		{
-			PQfinish(conn);
-			exit(ERR_DB_CON);
+			if (strcmp(keywords[i], "replication") == 0)
+				replication_connection = true;
+		}
+
+		if (replication_connection == false && set_config(conn, "synchronous_commit", "local") == false)
+		{
+			if (exit_on_error)
+			{
+				PQfinish(conn);
+				exit(ERR_DB_CON);
+			}
 		}
 	}
 
