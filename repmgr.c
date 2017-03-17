@@ -3022,18 +3022,6 @@ do_standby_clone(void)
 				strncpy(recovery_conninfo_str, upstream_node_record.conninfo_str, MAXLEN);
 			}
 		}
-
-		/* Finally, set `synchronous_commit` to `local` to avoid problems
-		 * if synchronous commit is in use.
-		 */
-
-		if (primary_conn != NULL && PQstatus(primary_conn) == CONNECTION_OK)
-		{
-			if (set_config(primary_conn, "synchronous_commit", "local") == false)
-			{
-				exit(ERR_DB_QUERY);
-			}
-		}
 	}
 
 	if (mode == barman && PQstatus(source_conn) != CONNECTION_OK)
@@ -4857,8 +4845,6 @@ do_standby_follow(void)
  *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
- *  - add command line option --remote_pg_bindir or similar to
- *    optionally handle cases where the remote pg_bindir is different
  */
 
 static void
@@ -5592,6 +5578,8 @@ do_standby_switchover(void)
 
 	/* Check for entry in the new master's pg_stat_replication */
 
+	local_conn = establish_db_connection(options.conninfo, true);
+
 	{
 		int			i,
 			replication_check_timeout  = 60,
@@ -5600,8 +5588,6 @@ do_standby_switchover(void)
 		PQExpBufferData event_details;
 
 		initPQExpBuffer(&event_details);
-
-		local_conn = establish_db_connection(options.conninfo, true);
 
 		i = 0;
 		for (;;)

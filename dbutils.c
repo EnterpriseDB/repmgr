@@ -35,6 +35,14 @@ char repmgr_schema_quoted[MAXLEN] = "";
 static int _get_node_record(PGconn *conn, char *cluster, char *sqlquery, t_node_info *node_info);
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
 
+/*
+ * _establish_db_connection()
+ *
+ * Connect to a database using a conninfo string.
+ *
+ * NOTE: *do not* use this for replication connections; use establish_db_connection_by_params() instead.
+ */
+
 PGconn *
 _establish_db_connection(const char *conninfo, const bool exit_on_error, const bool log_notice, const bool verbose_only)
 {
@@ -70,6 +78,20 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 						PQerrorMessage(conn));
 			}
 		}
+
+		if (exit_on_error)
+		{
+			PQfinish(conn);
+			exit(ERR_DB_CON);
+		}
+	}
+
+	/*
+	 * set "synchronous_commit" to "local" in case synchronous replication is in use
+	 */
+
+	if (set_config(conn, "synchronous_commit", "local") == false)
+	{
 
 		if (exit_on_error)
 		{
@@ -117,14 +139,39 @@ PGconn *
 establish_db_connection_by_params(const char *keywords[], const char *values[],
 								  const bool exit_on_error)
 {
-	/* Make a connection to the database */
-	PGconn	   *conn = PQconnectdbParams(keywords, values, true);
+	PGconn	   *conn;
+	bool	    replication_connection = false;
+	int	   	    i;
+
+	/* Connect to the database using the provided parameters */
+	conn = PQconnectdbParams(keywords, values, true);
 
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
 		log_err(_("connection to database failed: %s\n"),
 				PQerrorMessage(conn));
+		if (exit_on_error)
+		{
+			PQfinish(conn);
+			exit(ERR_DB_CON);
+		}
+	}
+
+
+	/*
+	 * set "synchronous_commit" to "local" in case synchronous replication is in
+	 * use (provided this is not a replication connection)
+	 */
+
+	for (i = 0; keywords[i]; i++)
+	{
+		if (strcmp(keywords[i], "replication") == 0)
+			replication_connection = true;
+	}
+
+	if (replication_connection == false && set_config(conn, "synchronous_commit", "local") == false)
+	{
 		if (exit_on_error)
 		{
 			PQfinish(conn);
