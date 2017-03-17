@@ -2842,11 +2842,18 @@ do_standby_clone(void)
 		maxlen_snprintf(local_repmgr_directory, "%s/repmgr",   local_data_directory  );
 		maxlen_snprintf(datadir_list_filename,  "%s/data.txt", local_repmgr_directory);
 
+		if (!create_pg_dir(local_data_directory, runtime_options.force))
+		{
+			log_err(_("unable to use directory %s ...\n"),
+					local_data_directory);
+			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
+			exit(ERR_BAD_CONFIG);
+		}
+
 		if (!create_pg_dir(local_repmgr_directory, runtime_options.force))
 		{
-			log_err(_("unable to use directory \"%s\" ...\n"),
+			log_err(_("unable to create directory \"%s\" ...\n"),
 					local_repmgr_directory);
-			log_hint(_("use -F/--force option to force this directory to be overwritten\n"));
 
 			exit(ERR_BAD_CONFIG);
 		}
