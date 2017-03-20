@@ -391,7 +391,8 @@ least the following parameters:
 
 - `cluster`: an arbitrary name for the replication cluster; this must be identical
      on all nodes
-- `node`: a unique integer identifying the node
+- `node`: a unique integer identifying the node; note this must be a positive
+     32 bit signed integer between 1 and 2147483647
 - `node_name`: a unique string identifying the node; we recommend a name
      specific to the server (e.g. 'server_1'); avoid names indicating the
      current replication role like 'master' or 'standby' as the server's
