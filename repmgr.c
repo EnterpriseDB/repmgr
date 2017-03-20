@@ -1873,6 +1873,7 @@ do_master_register(void)
 	int		    primary_node_id = UNKNOWN_NODE_ID;
 
 	bool		record_created;
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
 	conn = establish_db_connection(options.conninfo, true);
 
@@ -1945,42 +1946,54 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Delete any existing record for this node if --force set */
-	if (runtime_options.force)
-	{
-		bool node_record_deleted;
-		t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
-		begin_transaction(conn);
-
-		if (get_node_record(conn, options.cluster_name, options.node, &node_info))
-		{
-			log_notice(_("deleting existing master record with id %i\n"), options.node);
-
-			node_record_deleted = delete_node_record(conn,
-													 options.node,
-													 "master register");
-			if (node_record_deleted == false)
-			{
-				rollback_transaction(conn);
-				PQfinish(conn);
-				exit(ERR_BAD_CONFIG);
-			}
-		}
 	}
 
-	/* Now register the master */
-	record_created = create_node_record(conn,
-										"master register",
-										options.node,
-										"master",
-										NO_UPSTREAM_NODE,
-										options.cluster_name,
-										options.node_name,
-										options.conninfo,
-										options.priority,
-										repmgr_slot_name_ptr,
-										true);
+	begin_transaction(conn);
+
+	/*
+	 * Check whether there's an existing record for this node, and
+	 * update it if --force set
+	 */
+	if (get_node_record(conn, options.cluster_name, options.node, &node_info))
+	{
+		if (!runtime_options.force)
+		{
+			log_err(_("this node is already registered\n"));
+			log_hint(_("use -F/--force to overwrite the existing node record\n"));
+			rollback_transaction(conn);
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		record_created = update_node_record(conn,
+											"master register",
+											options.node,
+											"master",
+											NO_UPSTREAM_NODE,
+											options.cluster_name,
+											options.node_name,
+											options.conninfo,
+											options.priority,
+											repmgr_slot_name_ptr,
+											true);
+
+	}
+	else
+	{
+		/* Now register the master */
+		record_created = create_node_record(conn,
+											"master register",
+											options.node,
+											"master",
+											NO_UPSTREAM_NODE,
+											options.cluster_name,
+											options.node_name,
+											options.conninfo,
+											options.priority,
+											repmgr_slot_name_ptr,
+											true);
+	}
 
 	if (record_created == false)
 	{
