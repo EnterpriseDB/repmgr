@@ -7,6 +7,9 @@
           upstream node after following new upstream (Ian)
         repmgr: improve logging of rsync actions (Ian)
         repmgr: improve `standby clone` when synchronous replication in use (Ian)
+        repmgr: stricter checking of allowed node id values
+        repmgr: enable `master register --force` when there is a foreign key
+          dependency from a standby node (Ian)
 
 3.3     2016-12-27
         repmgr: always log to STDERR even if log facility defined (Ian)
