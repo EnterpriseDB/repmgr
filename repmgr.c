@@ -1946,9 +1946,6 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-
-	}
-
 	begin_transaction(conn);
 
 	/*

@@ -448,6 +448,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list)
 	{
 		item_list_append(error_list, _("\"node\": must be greater than zero"));
 	}
+	else if (options->node < 0)
+	{
+		item_list_append(error_list, _("\"node\": must be a positive signed 32 bit integer, i.e. 2147483647 or less"));
+	}
 
 	if (strlen(options->conninfo))
 	{
