@@ -4764,7 +4764,7 @@ do_standby_follow(void)
 	 * (a former standby) exists on the former upstream, drop it.
 	 */
 
-	if (options.use_replication_slots && original_upstream_node_id != UNKNOWN_NODE_ID)
+	if (options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
 	{
 		t_node_info upstream_node_record  = T_NODE_INFO_INITIALIZER;
 		int			upstream_query_result;
