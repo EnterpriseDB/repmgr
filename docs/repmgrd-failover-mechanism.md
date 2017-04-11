@@ -53,7 +53,7 @@ will be carried out:
   e.g. if a replication cluster is spread over multiple data centres, a split-brain
   situation does not occur if there is a network failure between datacentres. Note
   that if nodes are split evenly between data centres, a witness server can be
-  used to establish the "majority" daat centre.
+  used to establish the "majority" data centre.
 
 * `repmgrd` polls all visible servers and waits for each node to return a valid LSN;
   it updates the LSN previously  stored for this node if it has increased since
