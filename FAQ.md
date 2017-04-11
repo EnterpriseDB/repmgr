@@ -150,7 +150,7 @@ General
 
 - How can I prevent a node from ever being promoted to master?
 
-  In `repmgr.conf`, set its priority to a value of 0 or less.
+  In `repmgr.conf`, set its priority to a value of 0.
 
   Additionally, if `failover` is set to `manual`, the node will never
   be considered as a promotion candidate.
