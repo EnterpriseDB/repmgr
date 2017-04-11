@@ -504,7 +504,7 @@ place. To ensure this happens when using the default `pg_basebackup` method,
 which will ensure all WAL files generated during the cloning process are
 streamed in parallel with the main backup. Note that this requires two
 replication connections to be available (`repmgr` will verify sufficient
-connections are available before attempting to clonse).
+connections are available before attempting to clone).
 
 To override this behaviour, in `repmgr.conf` set `pg_basebackup`'s
 `--xlog-method` parameter to `fetch`:
