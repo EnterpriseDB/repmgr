@@ -220,7 +220,7 @@ main(int argc, char **argv)
 		{"rsync-only", no_argument, NULL, 'r'},
 		{"fast-checkpoint", no_argument, NULL, 'c'},
 		{"log-level", required_argument, NULL, 'L'},
-		{"terse", required_argument, NULL, 't'},
+		{"terse", no_argument, NULL, 't'},
 		{"mode", required_argument, NULL, 'm'},
 		{"remote-config-file", required_argument, NULL, 'C'},
 		{"help", no_argument, NULL, OPT_HELP},
@@ -876,7 +876,6 @@ main(int argc, char **argv)
 
 	if (runtime_options.terse)
 		logger_set_terse();
-
 
 	/*
 	 * Node configuration information is not needed for all actions, with
