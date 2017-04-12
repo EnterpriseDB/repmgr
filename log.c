@@ -71,7 +71,7 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 
 	/*
 	 * Store the requested level so that if there's a subsequent
-	 * log_hint(), we can suppress that if appropriate.
+	 * log_hint() or log_detail(), we can suppress that if appropriate.
 	 */
 	last_log_level = level;
 
@@ -108,6 +108,20 @@ log_hint(const char *fmt, ...)
 	{
 		va_start(ap, fmt);
 		_stderr_log_with_level("HINT", last_log_level, fmt, ap);
+		va_end(ap);
+	}
+}
+
+
+void
+log_detail(const char *fmt, ...)
+{
+	va_list		ap;
+
+	if (terse_logging == false)
+	{
+		va_start(ap, fmt);
+		_stderr_log_with_level("DETAIL", last_log_level, fmt, ap);
 		va_end(ap);
 	}
 }

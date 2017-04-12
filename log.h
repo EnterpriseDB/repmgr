@@ -126,6 +126,8 @@ bool		logger_shutdown(void);
 void		logger_set_verbose(void);
 void		logger_set_terse(void);
 
+void		log_detail(const char *fmt, ...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 1, 2)));
 void		log_hint(const char *fmt, ...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 1, 2)));
 void		log_verbose(int level, const char *fmt, ...)
