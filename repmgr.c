@@ -5067,7 +5067,11 @@ do_standby_switchover(void)
 
 		initPQExpBuffer(&remote_command_str);
 
-		appendPQExpBuffer(&remote_command_str, "ls ");
+		if (strcmp(remote_pg_rewind, "pg_rewind") == 0)
+			appendPQExpBuffer(&remote_command_str, "which ");
+		else
+			appendPQExpBuffer(&remote_command_str, "ls ");
+
 		appendShellString(&remote_command_str, remote_pg_rewind);
 		appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
 
@@ -5084,7 +5088,11 @@ do_standby_switchover(void)
 		if (*command_output.data == '0')
 		{
 			log_err(_("unable to find pg_rewind on the remote server\n"));
-			log_err(_("expected location is: %s\n"), remote_pg_rewind);
+			if (strcmp(remote_pg_rewind, "pg_rewind") == 0)
+				log_hint(_("set pg_bindir in repmgr.conf or provide with -b/--pg_bindir\n"));
+			else
+				log_detail(_("expected location is: %s\n"), remote_pg_rewind);
+
 			exit(ERR_BAD_CONFIG);
 		}
 
