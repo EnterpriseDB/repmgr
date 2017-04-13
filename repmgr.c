@@ -5264,7 +5264,7 @@ do_standby_switchover(void)
 		appendPQExpBuffer(&remote_command_str,
 						  "%s standby archive-config -f ",
 						  make_pg_path("repmgr"));
-		appendShellString(&remote_command_str,	runtime_options.remote_config_file);
+		appendShellString(&remote_command_str, runtime_options.remote_config_file);
 		appendPQExpBuffer(&remote_command_str,
 						  " --config-archive-dir=");
 		appendShellString(&remote_command_str, remote_archive_config_dir);
@@ -5438,12 +5438,22 @@ do_standby_switchover(void)
 		/* Restore any previously archived config files */
 		initPQExpBuffer(&remote_command_str);
 
+		/* --force */
 		appendPQExpBuffer(&remote_command_str,
 						  "%s standby restore-config -D ",
 						  make_pg_path("repmgr"));
 		appendShellString(&remote_command_str, remote_data_directory);
+
+		/*
+		 * append pass the configuration file to prevent spurious errors
+		 * about missing cluster_name
+		 */
 		appendPQExpBuffer(&remote_command_str,
-						  "  --config-archive-dir=");
+						  " -f ");
+		appendShellString(&remote_command_str, runtime_options.remote_config_file);
+
+		appendPQExpBuffer(&remote_command_str,
+						  " --config-archive-dir=");
 		appendShellString(&remote_command_str, remote_archive_config_dir);
 
 		initPQExpBuffer(&command_output);
@@ -5897,11 +5907,13 @@ do_standby_restore_config(void)
 
 	if (rmdir(runtime_options.config_archive_dir) != 0 && errno != EEXIST)
 	{
-		log_err(_("Unable to delete %s\n"), runtime_options.config_archive_dir);
-		exit(ERR_BAD_CONFIG);
+		log_warning(_("unable to delete %s\n"), runtime_options.config_archive_dir);
+		log_detail(_("directory may need to be manually removed\n"));
 	}
-
-	log_verbose(LOG_NOTICE, "Directory %s deleted\n", runtime_options.config_archive_dir);
+	else
+	{
+		log_verbose(LOG_NOTICE, "directory %s deleted\n", runtime_options.config_archive_dir);
+	}
 
 	return;
 }
