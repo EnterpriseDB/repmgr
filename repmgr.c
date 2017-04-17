@@ -1898,7 +1898,7 @@ do_master_register(void)
 
 	if (!schema_exists)
 	{
-		log_info(_("master register: creating database objects inside the %s schema\n"),
+		log_info(_("master register: creating database objects inside the '%s' schema\n"),
 				 get_repmgr_schema());
 
 		begin_transaction(conn);
@@ -1944,8 +1944,6 @@ do_master_register(void)
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
-
-	begin_transaction(conn);
 
 	/*
 	 * Check whether there's an existing record for this node, and
@@ -2010,7 +2008,7 @@ do_master_register(void)
 
 	PQfinish(conn);
 
-	log_notice(_("master node correctly registered for cluster %s with id %d (conninfo: %s)\n"),
+	log_notice(_("master node correctly registered for cluster '%s' with id %d (conninfo: %s)\n"),
 			   options.cluster_name, options.node, options.conninfo);
 	return;
 }
