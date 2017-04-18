@@ -1,0 +1,51 @@
+# -*-makefile-*-
+# Makefile.in
+# @configure_input@
+
+repmgr_subdir = .
+repmgr_top_builddir = .
+
+MODULE_big = repmgr
+
+EXTENSION = repmgr
+
+# Hacky workaround to install the binaries
+SCRIPTS_built = repmgr
+
+
+# When in development add -Werror
+PG_CPPFLAGS = -std=gnu89 -I$(libpq_srcdir) -Wall -Wmissing-prototypes -Wmissing-declarations $(EXTRA_CFLAGS)
+SHLIB_LINK = $(libpq)
+
+OBJS = \
+	repmgr.o
+
+include Makefile.global
+
+$(info Building against PostgreSQL $(MAJORVERSION))
+
+REPMGR_CLIENT_OBJS = repmgr-client.o
+
+repmgr: $(REPMGR_CLIENT_OBJS)
+	$(CC) $(CFLAGS) $(REPMGR_CLIENT_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
+
+
+# Ensure Makefiles are up-to-date (should we move this to Makefile.global?)
+Makefile: Makefile.in config.status configure
+	./config.status $@
+
+Makefile.global: Makefile.global.in config.status configure
+	./config.status $@
+
+clean: additional-clean
+
+maintainer-clean: additional-maintainer-clean
+
+additional-clean:
+	rm -f repmgr-client.o
+
+maintainer-additional-clean: clean
+	rm -f configure
+	rm -f config.status config.log
+	rm -f Makefile
+	@rm -rf autom4te.cache/

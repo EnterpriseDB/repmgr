@@ -31,7 +31,7 @@ lib*.pc
 
 # configure output
 /Makefile
-/run_tests
+/Makefile.global
 /config.log
 /config.status
 
