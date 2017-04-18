@@ -718,7 +718,7 @@ witness_monitor(void)
 		return;
 	}
 
-	strcpy(monitor_witness_timestamp, PQgetvalue(res, 0, 0));
+	strncpy(monitor_witness_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
 	PQclear(res);
 
 	/*
@@ -1151,9 +1151,9 @@ standby_monitor(void)
 		return;
 	}
 
-	strncpy(monitor_standby_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+	strncpy(monitor_standby_timestamp,  PQgetvalue(res, 0, 0), MAXLEN);
 	strncpy(last_xlog_receive_location, PQgetvalue(res, 0, 1), MAXLEN);
-	strncpy(last_xlog_replay_location, PQgetvalue(res, 0, 2), MAXLEN);
+	strncpy(last_xlog_replay_location,  PQgetvalue(res, 0, 2), MAXLEN);
 	strncpy(last_xact_replay_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
 
 	receiving_streamed_wal = (strcmp(PQgetvalue(res, 0, 4), "t") == 0)
@@ -1256,8 +1256,23 @@ standby_monitor(void)
 	log_verbose(LOG_DEBUG, "standby_monitor:() %s\n", sqlquery);
 
 	if (PQsendQuery(master_conn, sqlquery) == 0)
-		log_warning(_("query could not be sent to master. %s\n"),
+	{
+		log_warning(_("query could not be sent to master: %s\n"),
 					PQerrorMessage(master_conn));
+	}
+	else
+	{
+		sqlquery_snprintf(sqlquery,
+						  "SELECT %s.repmgr_update_last_updated();",
+						  get_repmgr_schema_quoted(my_local_conn));
+		res = PQexec(my_local_conn, sqlquery);
+
+		/* not critical if the above query fails*/
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			log_warning(_("unable to set last_updated: %s\n"), PQerrorMessage(my_local_conn));
+
+		PQclear(res);
+	}
 }
 
 
