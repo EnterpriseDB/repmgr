@@ -10,7 +10,7 @@ MODULE_big = repmgr
 EXTENSION = repmgr
 
 # Hacky workaround to install the binaries
-SCRIPTS_built = repmgr
+SCRIPTS_built = repmgr4 repmgrd4
 
 
 # When in development add -Werror
@@ -25,9 +25,13 @@ include Makefile.global
 $(info Building against PostgreSQL $(MAJORVERSION))
 
 REPMGR_CLIENT_OBJS = repmgr-client.o
+REPMGRD_OBJS = repmgrd.o
 
-repmgr: $(REPMGR_CLIENT_OBJS)
+repmgr4: $(REPMGR_CLIENT_OBJS)
 	$(CC) $(CFLAGS) $(REPMGR_CLIENT_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
+
+repmgrd4: $(REPMGRD_OBJS)
+	$(CC) $(CFLAGS) $(REPMGRD_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
 
 # Ensure Makefiles are up-to-date (should we move this to Makefile.global?)
@@ -43,6 +47,7 @@ maintainer-clean: additional-maintainer-clean
 
 additional-clean:
 	rm -f repmgr-client.o
+	rm -f repmgrd.o
 
 maintainer-additional-clean: clean
 	rm -f configure

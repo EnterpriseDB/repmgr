@@ -37,3 +37,7 @@ lib*.pc
 
 # other
 /.lineno
+
+# generated binaries
+repmgr4
+repmgrd4
