@@ -15,21 +15,34 @@ if test -z "$PG_CONFIG"; then
 fi
 
 pgac_pg_config_version=$($PG_CONFIG --version 2>/dev/null)
-version_num=$(echo "$pgac_pg_config_version"|
-              $SED -e 's/^PostgreSQL \([[0-9]]*\)\.\([[0-9]]*\)\([[a-zA-Z0-9.]]*\)$/\1.\2/')
 
-if test -z "$version_num"; then
-  AC_MSG_ERROR([could not detect the PostgreSQL version, wrong or broken pg_config?])
-fi
+major_version_num=$(echo "$pgac_pg_config_version"|
+              $SED -e 's/^PostgreSQL \([[0-9]]\{1,2\}\).*$/\1/')
 
-version_num_int=$(echo "$version_num"|
-              $SED -e 's/^\([[0-9]]*\)\.\([[0-9]]*\)$/\1\2/')
+if test "$major_version_num" -lt '10'; then
+    version_num=$(echo "$pgac_pg_config_version"|
+                $SED -e 's/^PostgreSQL \([[0-9]]*\)\.\([[0-9]]*\)\([[a-zA-Z0-9.]]*\)$/\1.\2/')
 
-if test "$version_num_int" -lt '93'; then
-   AC_MSG_ERROR([repmgr is not compatible with detected PostgreSQL version: $version_num])
+    if test -z "$version_num"; then
+        AC_MSG_ERROR([could not detect the PostgreSQL version, wrong or broken pg_config?])
+    fi
+
+    version_num_int=$(echo "$version_num"|
+                    $SED -e 's/^\([[0-9]]*\)\.\([[0-9]]*\)$/\1\2/')
+
+    if test "$version_num_int" -lt '93'; then
+        AC_MSG_ERROR([repmgr is not compatible with detected PostgreSQL version: $version_num])
+    fi
 else
-   AC_MSG_NOTICE([building against PostgreSQL $version_num])
+    version_num=$(echo "$pgac_pg_config_version"|
+                $SED -e 's/^PostgreSQL \(.\+\)$/\1/')
+
+    if test -z "$version_num"; then
+        AC_MSG_ERROR([could not detect the PostgreSQL version, wrong or broken pg_config?])
+    fi
 fi
+
+AC_MSG_NOTICE([building against PostgreSQL $version_num])
 
 # add includedir to prerequisites, so tests for headers can succeed
 CPPFLAGS="-I$($PG_CONFIG --includedir-server) $CFLAGS"
