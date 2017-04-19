@@ -13,11 +13,11 @@
 #include <pqexpbuffer.h>
 
 #include "repmgr_version.h"
+#include "errcode.h"
 #include "strutil.h"
+#include "config.h"
 
 #define MIN_SUPPORTED_VERSION		"9.3"
 #define MIN_SUPPORTED_VERSION_NUM	90300
 
-// to errcodes.h
-#define SUCCESS 0
 #endif

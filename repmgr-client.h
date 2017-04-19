@@ -3,12 +3,11 @@
  * Copyright (c) 2ndQuadrant, 2010-2017
  */
 
-#include <getopt_long.h>
-
-#include "config.h"
-
 #ifndef _REPMGR_CLIENT_H_
 #define _REPMGR_CLIENT_H_
+
+#include <getopt_long.h>
+#include "log.h"
 
 #ifndef RECOVERY_COMMAND_FILE
 #define RECOVERY_COMMAND_FILE "recovery.conf"
@@ -116,5 +115,8 @@ typedef struct
 		""}
 
 static void do_help(void);
+
+static void exit_with_errors(void);
+static void print_error_list(ItemList *error_list, int log_level);
 
 #endif
