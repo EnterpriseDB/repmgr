@@ -9,6 +9,8 @@ MODULE_big = repmgr
 
 EXTENSION = repmgr
 
+DATA = repmgr--4.0.sql
+
 # Hacky workaround to install the binaries
 SCRIPTS_built = repmgr4 repmgrd4
 
