@@ -12,6 +12,9 @@
 #include <postgres_fe.h>
 #include <pqexpbuffer.h>
 
+#include "repmgr_version.h"
+#include "strutil.h"
+
 #define MIN_SUPPORTED_VERSION		"9.3"
 #define MIN_SUPPORTED_VERSION_NUM	90300
 

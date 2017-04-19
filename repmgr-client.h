@@ -104,6 +104,17 @@ static struct option long_options[] =
 	{NULL, 0, NULL, 0}
 };
 
+
+typedef struct
+{
+	/* general repmgr options */
+	char		config_file[MAXPGPATH];
+} 	t_runtime_options;
+
+#define T_RUNTIME_OPTIONS_INITIALIZER { \
+		/* general repmgr options */	\
+		""}
+
 static void do_help(void);
 
 #endif

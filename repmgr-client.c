@@ -11,6 +11,9 @@
 #include "repmgr.h"
 #include "repmgr-client.h"
 
+/* global configuration structures */
+t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
+
 int
 main(int argc, char **argv)
 {
@@ -31,10 +34,13 @@ main(int argc, char **argv)
 		 */
 		switch (c)
 		{
+            /*
+             * Options which cause repmgr to exit in this block;
+             * these are the only ones which can be executed as root user
+             */
 			case OPT_HELP:
 				do_help();
 				exit(SUCCESS);
-
 			case '?':
 				/* Actual help option given */
 				if (strcmp(argv[optind - 1], "-?") == 0)
@@ -43,10 +49,32 @@ main(int argc, char **argv)
 					exit(SUCCESS);
 				}
 				break;
-
+			case 'V':
+				printf("%s %s\n", progname(), REPMGR_VERSION);
+				exit(SUCCESS);
+            /* general options */
+			case 'f':
+				strncpy(runtime_options.config_file, optarg, MAXLEN);
+				break;
 		}
 	}
 
+	/*
+     * Disallow further running as root to prevent directory ownership problems.
+     * We check this here to give the root user a chance to execute --help/--version
+     * options.
+     */
+	if (geteuid() == 0)
+	{
+		fprintf(stderr,
+				_("%s: cannot be run as root\n"
+				  "Please log in (using, e.g., \"su\") as the "
+				  "(unprivileged) user that owns "
+				  "the data directory.\n"
+				),
+				progname());
+		exit(1);
+	}
 	return SUCCESS;
 }
 
@@ -56,6 +84,15 @@ do_help(void)
 {
 	printf(_("%s: replication management tool for PostgreSQL\n"), progname());
 	printf(_("\n"));
+
+    /* add a big friendly warning if root is executing "repmgr --help" */
+	if (geteuid() == 0)
+	{
+        printf(_("  **************************************************\n"));
+        printf(_("  *** repmgr must be executed by a non-superuser ***\n"));
+        printf(_("  **************************************************\n"));
+        puts("");
+    }
 	printf(_("Usage:\n"));
 
 }
