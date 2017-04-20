@@ -12,8 +12,11 @@
  *
  */
 
+#include <unistd.h>
+
 #include "repmgr.h"
 #include "repmgr-client.h"
+
 
 /* global configuration structures */
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;

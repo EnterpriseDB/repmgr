@@ -118,9 +118,9 @@ typedef struct
 		/* log settings */ \
 		"", "", "", \
 		/* standby clone settings */ \
-		false, "", "", "", { NULL, NULL }, \
+		false, "", "", "", "", { NULL, NULL },	\
 		/* repmgrd settings */ \
-		MANUAL_FAILOVER, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false \
+		MANUAL_FAILOVER, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false, \
 		/* witness settings */ \
 		30, \
 		/* service settings */ \
