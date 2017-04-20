@@ -6,6 +6,10 @@
  * This module is a command-line utility to easily setup a cluster of
  * hot standby servers for an HA environment
  *
+ * Commands implemented are:
+ *
+ * [ MASTER | PRIMARY ] REGISTER
+ *
  */
 
 #include "repmgr.h"
@@ -13,6 +17,7 @@
 
 /* global configuration structures */
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
+t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 /* Collate command line errors and warnings here for friendlier reporting */
 ItemList	cli_errors = { NULL, NULL };
@@ -22,7 +27,7 @@ int
 main(int argc, char **argv)
 {
 	int			optindex;
-	int			c, targ;
+	int			c;
 
     char	   *repmgr_node_type = NULL;
     char	   *repmgr_action = NULL;
@@ -30,17 +35,20 @@ main(int argc, char **argv)
 	int			action = NO_ACTION;
     char	   *dummy_action = "";
 
+	bool 		config_file_parsed = false;
+
+
 	set_progname(argv[0]);
 
 	/*
 	 * Tell the logger we're a command-line program - this will
 	 * ensure any output logged before the logger is initialized
-	 * will be formatted correctly
+	 * will be formatted correctly. Can be overriden with "--log-to-file".
 	 */
 	logger_output_mode = OM_COMMAND_LINE;
 
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vf:vtFb:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -55,7 +63,7 @@ main(int argc, char **argv)
              * Options which cause repmgr to exit in this block;
              * these are the only ones which can be executed as root user
              */
-			case OPT_HELP:
+			case OPT_HELP: /* --help */
 				do_help();
 				exit(SUCCESS);
 			case '?':
@@ -69,10 +77,60 @@ main(int argc, char **argv)
 			case 'V':
 				printf("%s %s\n", progname(), REPMGR_VERSION);
 				exit(SUCCESS);
-            /* general options */
+
+			/* general configuration options
+             * ----------------------------- */
+
+			/* -f/--config-file */
 			case 'f':
 				strncpy(runtime_options.config_file, optarg, MAXLEN);
 				break;
+			/* -F/--force */
+			case 'F':
+				runtime_options.force = true;
+				break;
+			/* -b/--pg_bindir */
+			case 'b':
+				strncpy(runtime_options.pg_bindir, optarg, MAXLEN);
+				break;
+
+			/* logging options
+             * --------------- */
+
+			/* -L/--log-level */
+			case 'L':
+			{
+				int detected_log_level = detect_log_level(optarg);
+				if (detected_log_level != -1)
+				{
+					strncpy(runtime_options.loglevel, optarg, MAXLEN);
+				}
+				else
+				{
+					PQExpBufferData invalid_log_level;
+					initPQExpBuffer(&invalid_log_level);
+					appendPQExpBuffer(&invalid_log_level, _("Invalid log level \"%s\" provided"), optarg);
+					item_list_append(&cli_errors, invalid_log_level.data);
+					termPQExpBuffer(&invalid_log_level);
+				}
+				break;
+			}
+
+			/* --log-to-file */
+			case OPT_LOG_TO_FILE:
+				runtime_options.log_to_file = true;
+				logger_output_mode = OM_DAEMON;
+				break;
+			/* --terse */
+			case 't':
+				runtime_options.terse = true;
+				break;
+			/* --verbose */
+            case 'v':
+				runtime_options.verbose = true;
+				break;
+
+
 		}
 	}
 
@@ -179,6 +237,33 @@ main(int argc, char **argv)
 		exit_with_errors();
 	}
 
+
+	/*
+	 * The configuration file is not required for some actions (e.g. 'standby clone'),
+	 * however if available we'll parse it anyway for options like 'log_level',
+	 * 'use_replication_slots' etc.
+	 */
+	config_file_parsed = load_config(runtime_options.config_file,
+									 runtime_options.verbose,
+									 &config_file_options,
+									 argv[0]);
+	/*
+	 * Initialize the logger. We've previously requested STDERR logging only
+     * to ensure the repmgr command doesn't have its output diverted to a logging
+     * facility (which usually doesn't make sense for a command line program).
+     *
+     * If required (e.g. when calling repmgr from repmgrd), this behaviour can be
+     * overridden with "--log-to-file".
+	 */
+
+	logger_init(&config_file_options, progname());
+
+	if (runtime_options.verbose)
+		logger_set_verbose();
+
+	if (runtime_options.terse)
+		logger_set_terse();
+
 	return SUCCESS;
 }
 
@@ -206,7 +291,17 @@ do_help(void)
 	printf(_("  -V, --version                       output version information, then exit\n"));
     puts("");
 	printf(_("General configuration options:\n"));
+	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
+	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
+    puts("");
+	printf(_("Logging options:\n"));
+	printf(_("  -L, --log-level                     set log level (overrides configuration file; default: NOTICE)\n"));
+	printf(_("  --log-to-file                       log to file (or logging facility) defined in repmgr.conf\n"));
+	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
+	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
+	printf(_("\n"));
+
     puts("");
 }
 

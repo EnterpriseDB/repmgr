@@ -20,4 +20,8 @@
 #define MIN_SUPPORTED_VERSION		"9.3"
 #define MIN_SUPPORTED_VERSION_NUM	90300
 
+#define NODE_NOT_FOUND      -1
+#define NO_UPSTREAM_NODE	-1
+#define UNKNOWN_NODE_ID     -1
+
 #endif

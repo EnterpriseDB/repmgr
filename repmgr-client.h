@@ -61,26 +61,32 @@
 
 static struct option long_options[] =
 {
+/* general options */
 	{"version", no_argument, NULL, 'V'},
 	{"help", no_argument, NULL, OPT_HELP},
+/* general configuration options */
+	{"config-file", required_argument, NULL, 'f'},
+	{"force", no_argument, NULL, 'F'},
+	{"pg_bindir", required_argument, NULL, 'b'},
+
+/* logging options */
+	{"log-level", required_argument, NULL, 'L'},
+	{"log-to-file", no_argument, NULL, OPT_LOG_TO_FILE},
+	{"terse", required_argument, NULL, 't'},
+	{"verbose", no_argument, NULL, 'v'},
+
 	{"dbname", required_argument, NULL, 'd'},
 	{"host", required_argument, NULL, 'h'},
 	{"port", required_argument, NULL, 'p'},
 	{"username", required_argument, NULL, 'U'},
 	{"superuser", required_argument, NULL, 'S'},
 	{"pgdata", required_argument, NULL, 'D'},
-	{"config-file", required_argument, NULL, 'f'},
 	{"remote-user", required_argument, NULL, 'R'},
 	{"wal-keep-segments", required_argument, NULL, 'w'},
 	{"keep-history", required_argument, NULL, 'k'},
-	{"force", no_argument, NULL, 'F'},
 	{"wait", no_argument, NULL, 'W'},
-	{"verbose", no_argument, NULL, 'v'},
-	{"pg_bindir", required_argument, NULL, 'b'},
 	{"rsync-only", no_argument, NULL, 'r'},
 	{"fast-checkpoint", no_argument, NULL, 'c'},
-	{"log-level", required_argument, NULL, 'L'},
-	{"terse", required_argument, NULL, 't'},
 	{"mode", required_argument, NULL, 'm'},
 	{"remote-config-file", required_argument, NULL, 'C'},
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
@@ -93,7 +99,6 @@ static struct option long_options[] =
 	{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
-	{"log-to-file", no_argument, NULL, OPT_LOG_TO_FILE},
 	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
 	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
@@ -106,13 +111,24 @@ static struct option long_options[] =
 
 typedef struct
 {
-	/* general repmgr options */
+	/* general configuration options */
 	char		config_file[MAXPGPATH];
+	bool		force;
+	char		pg_bindir[MAXLEN]; /* overrides setting in repmgr.conf */
+    /* logging options */
+	char		loglevel[MAXLEN];  /* overrides setting in repmgr.conf */
+	bool		log_to_file;
+	bool		terse;
+	bool		verbose;
+
+
 } 	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
-		/* general repmgr options */	\
-		""}
+		/* general configuration options */	\
+		"", false, "", \
+		/* logging options */ \
+		"", false, false, false}
 
 static void do_help(void);
 

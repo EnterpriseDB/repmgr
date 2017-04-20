@@ -10,6 +10,9 @@
 #include "config.h"
 
 const static char *_progname = NULL;
+static void	_parse_config(t_configuration_options *options, ItemList *error_list);
+static void	exit_with_errors(ItemList *config_errors);
+
 
 void
 set_progname(const char *argv0)
@@ -21,6 +24,47 @@ const char *
 progname(void)
 {
 	return _progname;
+}
+
+bool
+load_config(const char *config_file, bool verbose, t_configuration_options *options, char *argv0)
+{
+    return true;
+}
+
+bool
+parse_config(t_configuration_options *options)
+{
+	/* Collate configuration file errors here for friendlier reporting */
+	static ItemList config_errors = { NULL, NULL };
+
+	_parse_config(options, &config_errors);
+
+	if (config_errors.head != NULL)
+	{
+		exit_with_errors(&config_errors);
+	}
+
+	return true;
+}
+
+static void
+_parse_config(t_configuration_options *options, ItemList *error_list)
+{
+
+}
+
+
+bool
+reload_config(t_configuration_options *orig_options)
+{
+    return true;
+}
+
+
+static void
+exit_with_errors(ItemList *config_errors)
+{
 }
 
 void
