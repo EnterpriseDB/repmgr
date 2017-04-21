@@ -25,4 +25,7 @@ extern int
 maxlen_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
-#endif
+extern char *
+escape_recovery_conf_value(const char *src);
+
+#endif   /* _STRUTIL_H_ */
