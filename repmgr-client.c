@@ -436,8 +436,8 @@ static void
 do_master_register(void)
 {
 	PGconn	   *conn = NULL;
-
-
+	PGconn	   *master_conn = NULL;
+	int			current_master_id = UNKNOWN_NODE_ID;
 	int			ret;
 
 	log_info(_("connecting to master database..."));
@@ -464,6 +464,44 @@ do_master_register(void)
 	/* create the repmgr extension if it doesn't already exist */
 	if (!create_repmgr_extension(conn))
 	{
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Ensure there isn't another active master already registered */
+	master_conn = get_master_connection(conn, &current_master_id, NULL);
+
+	if (master_conn != NULL)
+	{
+		if (current_master_id != config_file_options.node_id)
+		{
+			/* it's impossible to add a second master to a streaming replication cluster */
+			log_error(_("there is already an active registered master (node ID: %i) in this cluster"), current_master_id);
+			PQfinish(master_conn);
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/* we've probably connected to ourselves */
+		PQfinish(master_conn);
+	}
+
+
+	begin_transaction(conn);
+
+	/*
+	 * Check if a node with a different ID is registered as master. This shouldn't
+	 * happen but could do if an existing master was shut down without being
+	 * unregistered.
+	*/
+
+	current_master_id = get_master_node_id(conn);
+	if (current_master_id != NODE_NOT_FOUND && current_master_id != config_file_options.node_id)
+	{
+		log_error(_("another node with id %i is already registered as master"), current_master_id);
+		// attempt to connect, add info/hint depending if active...
+		log_info(_("a streaming replication cluster can have only one master node"));
+		rollback_transaction(conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}

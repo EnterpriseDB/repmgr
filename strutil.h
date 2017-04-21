@@ -8,6 +8,10 @@
 
 #define MAXLEN			1024
 #define MAX_QUERY_LEN	8192
+
+/* same as defined in src/include/replication/walreceiver.h */
+#define MAXCONNINFO		1024
+
 /* Why? http://stackoverflow.com/a/5459929/398670 */
 #define STR(x) CppAsString(x)
 
