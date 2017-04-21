@@ -26,6 +26,11 @@ t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZE
 ItemList	cli_errors = { NULL, NULL };
 ItemList	cli_warnings = { NULL, NULL };
 
+static bool	config_file_required = true;
+
+static char  repmgr_slot_name[MAXLEN] = "";
+static char *repmgr_slot_name_ptr = NULL;
+
 int
 main(int argc, char **argv)
 {
@@ -267,7 +272,86 @@ main(int argc, char **argv)
 	if (runtime_options.terse)
 		logger_set_terse();
 
+	/*
+	 * Node configuration information is not needed for all actions, with
+	 * STANDBY CLONE being the main exception.
+	 */
+	if (config_file_required)
+	{
+		/*
+		 * if a configuration file was provided, the configuration file parser
+		 * will already have errored out if no valid node_id found
+		 */
+		if (config_file_options.node_id == NODE_NOT_FOUND)
+		{
+			log_error(_("no node information was found - "
+						"please supply a configuration file"));
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/*
+	 * Initialise slot name, if required (9.4 and later)
+	 *
+	 * NOTE: the slot name will be defined for each record, including
+	 * the master; the `slot_name` column in `repl_nodes` defines
+	 * the name of the slot, but does not imply a slot has been created.
+	 * The version check for 9.4 or later  is done in check_upstream_config()
+	 */
+	if (config_file_options.use_replication_slots)
+	{
+		maxlen_snprintf(repmgr_slot_name, "repmgr_slot_%i", config_file_options.node_id);
+		repmgr_slot_name_ptr = repmgr_slot_name;
+		log_verbose(LOG_DEBUG, "slot name initialised as: %s", repmgr_slot_name);
+	}
+
+	switch (action)
+	{
+		case MASTER_REGISTER:
+			do_master_register();
+			break;
+		default:
+			/* An action will have been determined by this point  */
+			break;
+	}
+
 	return SUCCESS;
+}
+
+
+
+static void
+exit_with_errors(void)
+{
+	fprintf(stderr, _("The following command line errors were encountered:\n"));
+
+	print_error_list(&cli_errors, LOG_ERR);
+
+	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
+
+	exit(ERR_BAD_CONFIG);
+}
+
+
+static void
+print_error_list(ItemList *error_list, int log_level)
+{
+	ItemListCell *cell;
+
+	for (cell = error_list->head; cell; cell = cell->next)
+	{
+        fprintf(stderr, "  ");
+		switch(log_level)
+		{
+			/* Currently we only need errors and warnings */
+            case LOG_ERROR:
+				log_error("%s", cell->string);
+				break;
+			case LOG_WARNING:
+				log_warning("%s", cell->string);
+				break;
+		}
+	}
 }
 
 
@@ -303,41 +387,66 @@ do_help(void)
 	printf(_("  --log-to-file                       log to file (or logging facility) defined in repmgr.conf\n"));
 	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
-	printf(_("\n"));
 
     puts("");
 }
 
+
 static void
-exit_with_errors(void)
+do_master_register(void)
 {
-	fprintf(stderr, _("The following command line errors were encountered:\n"));
+	PGconn	   *conn;
 
-	print_error_list(&cli_errors, LOG_ERR);
+	log_info(_("connecting to master database..."));
 
-	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
+	// XXX if con fails, have this print offending conninfo!
+	conn = establish_db_connection(config_file_options.conninfo, true);
 
-	exit(ERR_BAD_CONFIG);
+	check_server_version(conn, "master", true, NULL);
 }
 
-
-static void
-print_error_list(ItemList *error_list, int log_level)
+/**
+ * check_server_version()
+ *
+ * Verify that the server is MIN_SUPPORTED_VERSION_NUM or later
+ *
+ * PGconn *conn:
+ *   the connection to check
+ *
+ * char *server_type:
+ *   either "master" or "standby"; used to format error message
+ *
+ * bool exit_on_error:
+ *   exit if reported server version is too low; optional to enable some callers
+ *   to perform additional cleanup
+ *
+ * char *server_version_string
+ *   passed to get_server_version(), which will place the human-readable
+ *   server version string there (e.g. "9.4.0")
+ */
+static int
+check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string)
 {
-	ItemListCell *cell;
+	int			server_version_num = 0;
 
-	for (cell = error_list->head; cell; cell = cell->next)
+	server_version_num = get_server_version(conn, server_version_string);
+	if (server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
-        fprintf(stderr, "  ");
-		switch(log_level)
+		if (server_version_num > 0)
+			log_error(_("%s requires %s to be PostgreSQL %s or later"),
+					  progname(),
+					  server_type,
+					  MIN_SUPPORTED_VERSION
+				);
+
+		if (exit_on_error == true)
 		{
-			/* Currently we only need errors and warnings */
-            case LOG_ERROR:
-				log_error("%s", cell->string);
-				break;
-			case LOG_WARNING:
-				log_warning("%s", cell->string);
-				break;
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
 		}
+
+		return -1;
 	}
+
+	return server_version_num;
 }

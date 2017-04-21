@@ -182,8 +182,7 @@ parse_config(t_configuration_options *options)
 		log_warning(_("the following problems were found in the configuration file:"));
 		for (cell = config_warnings.head; cell; cell = cell->next)
 		{
-			fprintf(stderr, "  ");
-			log_warning("%s", cell->string);
+			fprintf(stderr, "  %s\n", cell->string);
 		}
 	}
 
@@ -327,6 +326,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->node_id = repmgr_atoi(value, name, error_list, 1);
 			node_id_found = true;
 		}
+		else if (strcmp(name, "node_name") == 0)
+			strncpy(options->node_name, value, MAXLEN);
 		else if (strcmp(name, "upstream_node_id") == 0)
 			options->upstream_node_id = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "conninfo") == 0)

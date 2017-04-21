@@ -131,8 +131,10 @@ typedef struct
 		"", false, false, false}
 
 static void do_help(void);
+static void do_master_register(void);
 
 static void exit_with_errors(void);
 static void print_error_list(ItemList *error_list, int log_level);
+static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 
 #endif
