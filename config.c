@@ -83,7 +83,7 @@ load_config(const char *config_file, bool verbose, t_configuration_options *opti
 	 * will handle read errors etc.
 	 *
 	 * XXX modify this section so package maintainers can provide a patch
-	 *     specifying location of a distribution-specific configuration file
+	 *	   specifying location of a distribution-specific configuration file
 	 */
 	if (config_file_provided == false)
 	{
@@ -169,23 +169,23 @@ parse_config(t_configuration_options *options)
 
 	_parse_config(options, &config_errors, &config_warnings);
 
-    /* errors found - exit after printing details, and any warnings */
+	/* errors found - exit after printing details, and any warnings */
 	if (config_errors.head != NULL)
 	{
 		exit_with_errors(&config_errors, &config_warnings);
 	}
 
-    if (config_warnings.head != NULL)
-    {
-        ItemListCell *cell;
+	if (config_warnings.head != NULL)
+	{
+		ItemListCell *cell;
 
-        log_warning(_("the following problems were found in the configuration file:"));
-        for (cell = config_warnings.head; cell; cell = cell->next)
-        {
-            fprintf(stderr, "  ");
-            log_warning("%s", cell->string);
-        }
-    }
+		log_warning(_("the following problems were found in the configuration file:"));
+		for (cell = config_warnings.head; cell; cell = cell->next)
+		{
+			fprintf(stderr, "  ");
+			log_warning("%s", cell->string);
+		}
+	}
 
 	return true;
 }
@@ -200,10 +200,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	char		name[MAXLEN];
 	char		value[MAXLEN];
 
-	/* For sanity-checking provided conninfo string */
-	PQconninfoOption *conninfo_options;
-	char	   *conninfo_errmsg = NULL;
-
 	bool		node_id_found = false;
 
 	/* Initialize configuration options with sensible defaults */
@@ -214,7 +210,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
-    options->replication_type = REPLICATION_TYPE_PHYSICAL;
+	options->replication_type = REPLICATION_TYPE_PHYSICAL;
 
 	/*
 	 * log settings
@@ -281,12 +277,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	if (config_file_found == false)
 	{
 		log_verbose(LOG_NOTICE,
-                    _("no configuration file provided and no default file found - "
+					_("no configuration file provided and no default file found - "
 					 "continuing with default values"));
 		return;
 	}
 
-    fp = fopen(config_file_path, "r");
+	fp = fopen(config_file_path, "r");
 
 	/*
 	 * A configuration file has been found, either provided by the user
@@ -298,12 +294,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		if (config_file_provided)
 		{
 			log_error(_("unable to open provided configuration file \"%s\"; terminating"),
-                      config_file_path);
+					  config_file_path);
 		}
 		else
 		{
-			log_error(_("unable to open default configuration file  \"%s\"; terminating"),
-                    config_file_path);
+			log_error(_("unable to open default configuration file	\"%s\"; terminating"),
+					config_file_path);
 		}
 
 		exit(ERR_BAD_CONFIG);
@@ -337,7 +333,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
-        else if (strcmp(name, "replication_type") == 0)
+		else if (strcmp(name, "replication_type") == 0)
 		{
 			if (strcmp(value, "physical") == 0)
 				options->replication_type = REPLICATION_TYPE_PHYSICAL;
@@ -347,7 +343,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 				item_list_append(error_list, _("value for 'replication_type' must be 'physical' or 'bdr'"));
 		}
 
-        /* log settings */
+		/* log settings */
 		else if (strcmp(name, "logfile") == 0)
 			strncpy(options->logfile, value, MAXLEN);
 		else if (strcmp(name, "loglevel") == 0)
@@ -355,7 +351,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "logfacility") == 0)
 			strncpy(options->logfacility, value, MAXLEN);
 
-        /* standby clone settings */
+		/* standby clone settings */
 		else if (strcmp(name, "use_replication_slots") == 0)
 			options->use_replication_slots = parse_bool(value, name, error_list);
 		else if (strcmp(name, "rsync_options") == 0)
@@ -369,7 +365,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "restore_command") == 0)
 			strncpy(options->restore_command, value, MAXLEN);
 
-        /* repmgrd settings */
+		/* repmgrd settings */
 		else if (strcmp(name, "failover_mode") == 0)
 		{
 			if (strcmp(value, "manual") == 0)
@@ -390,7 +386,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "promote_command") == 0)
 			strncpy(options->promote_command, value, MAXLEN);
 		else if (strcmp(name, "follow_command") == 0)
-            strncpy(options->follow_command, value, MAXLEN);
+			strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "reconnect_attempts") == 0)
 			options->reconnect_attempts = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "reconnect_interval") == 0)
@@ -399,14 +395,14 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->monitor_interval_secs = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
 			options->retry_promote_interval_secs = repmgr_atoi(value, name, error_list, 1);
-        else if (strcmp(name, "monitoring_history") == 0)
-            options->monitoring_history = parse_bool(value, name, error_list);
+		else if (strcmp(name, "monitoring_history") == 0)
+			options->monitoring_history = parse_bool(value, name, error_list);
 
-        /* witness settings */
+		/* witness settings */
 		else if (strcmp(name, "witness_repl_nodes_sync_interval_secs") == 0)
 			options->witness_repl_nodes_sync_interval_secs = repmgr_atoi(value, name, error_list, 1);
 
-        /* service settings */
+		/* service settings */
 		else if (strcmp(name, "pg_ctl_options") == 0)
 			strncpy(options->pg_ctl_options, value, MAXLEN);
 		else if (strcmp(name, "service_stop_command") == 0)
@@ -420,13 +416,13 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "service_promote_command") == 0)
 			strncpy(options->service_promote_command, value, MAXLEN);
 
-        /* event notification settings */
+		/* event notification settings */
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
 		else if (strcmp(name, "event_notifications") == 0)
 			parse_event_notifications_list(options, value);
 
-        /* bdr settings */
+		/* bdr settings */
 		else if (strcmp(name, "bdr_monitoring_mode") == 0)
 		{
 			if (strncmp(value, "local", MAXLEN) == 0)
@@ -443,37 +439,37 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			}
 		}
 
-        /* barman settings */
+		/* barman settings */
 		else if (strcmp(name, "barman_server") == 0)
 			strncpy(options->barman_server, value, MAXLEN);
 		else if (strcmp(name, "barman_config") == 0)
 			strncpy(options->barman_config, value, MAXLEN);
 
-        /* Following parameters have been deprecated or renamed from 3.x - issue a warning */
+		/* Following parameters have been deprecated or renamed from 3.x - issue a warning */
 		else if (strcmp(name, "cluster") == 0)
-        {
-            item_list_append(warning_list,
-                             _("parameter \"cluster\" is deprecated and will be ignored"));
-            known_parameter = false;
-        }
+		{
+			item_list_append(warning_list,
+							 _("parameter \"cluster\" is deprecated and will be ignored"));
+			known_parameter = false;
+		}
 		else if (strcmp(name, "failover") == 0)
-        {
-            item_list_append(warning_list,
-                             _("parameter \"failover\" has been renamed 'failover_mode'"));
-            known_parameter = false;
-        }
-        else if (strcmp(name, "node") == 0)
-        {
-            item_list_append(warning_list,
-                             _("parameter \"node\" has been renamed 'node_id'"));
-            known_parameter = false;
-        }
+		{
+			item_list_append(warning_list,
+							 _("parameter \"failover\" has been renamed 'failover_mode'"));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "node") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"node\" has been renamed 'node_id'"));
+			known_parameter = false;
+		}
 		else if (strcmp(name, "upstream_node") == 0)
-        {
-            item_list_append(warning_list,
-                             _("parameter \"upstream_node\" has been renamed 'upstream_node_id'"));
-            known_parameter = false;
-        }
+		{
+			item_list_append(warning_list,
+							 _("parameter \"upstream_node\" has been renamed 'upstream_node_id'"));
+			known_parameter = false;
+		}
 		else
 		{
 			known_parameter = false;
@@ -494,39 +490,44 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 			item_list_append(error_list, error_message_buf);
 		}
-    }
+	}
 
 
-    /* check required parameters */
+	/* check required parameters */
 	if (node_id_found == false)
 	{
 		item_list_append(error_list, _("\"node_id\": required parameter was not found"));
 	}
 
-    if (!strlen(options->node_name))
-    {
+	if (!strlen(options->node_name))
+	{
 		item_list_append(error_list, _("\"node_name\": required parameter was not found"));
-    }
+	}
 
-    if (!strlen(options->conninfo))
-    {
+	if (!strlen(options->conninfo))
+	{
 		item_list_append(error_list, _("\"conninfo\": required parameter was not found"));
-    }
-    else
+	}
+	else
 	{
 		/* Sanity check the provided conninfo string
 		 *
 		 * NOTE: PQconninfoParse() verifies the string format and checks for valid options
 		 * but does not sanity check values
 		 */
+
+		PQconninfoOption *conninfo_options;
+		char	   *conninfo_errmsg = NULL;
+
 		conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
 		if (conninfo_options == NULL)
 		{
 			char	   error_message_buf[MAXLEN] = "";
 			snprintf(error_message_buf,
 					 MAXLEN,
-					 _("\"conninfo\": %s"),
-					 conninfo_errmsg);
+					 _("\"conninfo\": %s	(provided: \"%s\")"),
+					 conninfo_errmsg,
+					 options->conninfo);
 
 			item_list_append(error_list, error_message_buf);
 		}
@@ -625,30 +626,31 @@ trim(char *s)
 bool
 reload_config(t_configuration_options *orig_options)
 {
-    return true;
+	return true;
 }
 
 
 static void
 exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
 {
-    ItemListCell *cell;
+	ItemListCell *cell;
 
 	log_error(_("following errors were found in the configuration file:"));
 
 	for (cell = config_errors->head; cell; cell = cell->next)
 	{
-        fprintf(stderr, "  %s\n", cell->string);
+		fprintf(stderr, "  %s\n", cell->string);
 	}
 
-    if (config_warnings->head != NULL)
-    {
-        log_warning(_("the following problems were also found in the configuration file:"));
-        for (cell = config_warnings->head; cell; cell = cell->next)
-        {
-            fprintf(stderr, "  %s\n", cell->string);
-        }
-    }
+	if (config_warnings->head != NULL)
+	{
+		puts("");
+		log_warning(_("the following problems were also found in the configuration file:"));
+		for (cell = config_warnings->head; cell; cell = cell->next)
+		{
+			fprintf(stderr, "  %s\n", cell->string);
+		}
+	}
 	exit(ERR_BAD_CONFIG);
 }
 
