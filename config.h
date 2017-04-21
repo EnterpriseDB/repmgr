@@ -150,6 +150,10 @@ void		item_list_append(ItemList *item_list, char *error_message);
 int			repmgr_atoi(const char *s,
 						const char *config_item,
 						ItemList *error_list,
-						bool allow_negative);
+						int minval);
+
+bool		parse_bool(const char *s,
+					   const char *config_item,
+					   ItemList *error_list);
 
 #endif

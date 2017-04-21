@@ -159,6 +159,7 @@ load_config(const char *config_file, bool verbose, t_configuration_options *opti
 	return parse_config(options);
 }
 
+
 bool
 parse_config(t_configuration_options *options)
 {
@@ -188,6 +189,7 @@ parse_config(t_configuration_options *options)
 
 	return true;
 }
+
 
 static void
 _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
@@ -326,11 +328,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		/* Copy into correct entry in parameters struct */
 		if (strcmp(name, "node_id") == 0)
 		{
-			options->node_id = repmgr_atoi(value, name, error_list, false);
+			options->node_id = repmgr_atoi(value, name, error_list, 1);
 			node_id_found = true;
 		}
 		else if (strcmp(name, "upstream_node_id") == 0)
-			options->upstream_node_id = repmgr_atoi(value, name, error_list, false);
+			options->upstream_node_id = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "pg_bindir") == 0)
@@ -342,7 +344,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			else if (strcmp(value, "bdr") == 0)
 				options->replication_type = REPLICATION_TYPE_BDR;
 			else
-				item_list_append(error_list, _("value for 'replication_type' must be 'physical' or 'bdr'\n"));
+				item_list_append(error_list, _("value for 'replication_type' must be 'physical' or 'bdr'"));
 		}
 
         /* log settings */
@@ -355,8 +357,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
         /* standby clone settings */
 		else if (strcmp(name, "use_replication_slots") == 0)
-			/* XXX we should have a dedicated boolean argument format */
-			options->use_replication_slots = repmgr_atoi(value, name, error_list, false);
+			options->use_replication_slots = parse_bool(value, name, error_list);
 		else if (strcmp(name, "rsync_options") == 0)
 			strncpy(options->rsync_options, value, MAXLEN);
 		else if (strcmp(name, "ssh_options") == 0)
@@ -385,26 +386,25 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
-			options->priority = repmgr_atoi(value, name, error_list, true);
+			options->priority = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "promote_command") == 0)
 			strncpy(options->promote_command, value, MAXLEN);
 		else if (strcmp(name, "follow_command") == 0)
             strncpy(options->follow_command, value, MAXLEN);
 		else if (strcmp(name, "reconnect_attempts") == 0)
-			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", error_list, false);
+			options->reconnect_attempts = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "reconnect_interval") == 0)
-			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", error_list, false);
+			options->reconnect_interval = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
-			options->monitor_interval_secs = repmgr_atoi(value, name, error_list, false);
+			options->monitor_interval_secs = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "retry_promote_interval_secs") == 0)
-			options->retry_promote_interval_secs = repmgr_atoi(value, name, error_list, false);
-
+			options->retry_promote_interval_secs = repmgr_atoi(value, name, error_list, 1);
         else if (strcmp(name, "monitoring_history") == 0)
-            /* XXX boolean */
-            options->monitoring_history = repmgr_atoi(value, name, error_list, false);
+            options->monitoring_history = parse_bool(value, name, error_list);
+
         /* witness settings */
 		else if (strcmp(name, "witness_repl_nodes_sync_interval_secs") == 0)
-			options->witness_repl_nodes_sync_interval_secs = repmgr_atoi(value, name, error_list, false);
+			options->witness_repl_nodes_sync_interval_secs = repmgr_atoi(value, name, error_list, 1);
 
         /* service settings */
 		else if (strcmp(name, "pg_ctl_options") == 0)
@@ -453,25 +453,25 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "cluster") == 0)
         {
             item_list_append(warning_list,
-                             _("parameter 'cluster' is deprecated and will be ignored"));
+                             _("parameter \"cluster\" is deprecated and will be ignored"));
             known_parameter = false;
         }
 		else if (strcmp(name, "failover") == 0)
         {
             item_list_append(warning_list,
-                             _("parameter 'failover' has been renamed 'failover_mode'"));
+                             _("parameter \"failover\" has been renamed 'failover_mode'"));
             known_parameter = false;
         }
         else if (strcmp(name, "node") == 0)
         {
             item_list_append(warning_list,
-                             _("parameter 'node' has been renamed 'node_id'"));
+                             _("parameter \"node\" has been renamed 'node_id'"));
             known_parameter = false;
         }
 		else if (strcmp(name, "upstream_node") == 0)
         {
             item_list_append(warning_list,
-                             _("parameter 'upstream_node' has been renamed 'upstream_node_id'"));
+                             _("parameter \"upstream_node\" has been renamed 'upstream_node_id'"));
             known_parameter = false;
         }
 		else
@@ -489,7 +489,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			char	   error_message_buf[MAXLEN] = "";
 			snprintf(error_message_buf,
 					 MAXLEN,
-					 _("no value provided for parameter \"%s\""),
+					 _("\"%s\": no value provided"),
 					 name);
 
 			item_list_append(error_list, error_message_buf);
@@ -500,25 +500,17 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
     /* check required parameters */
 	if (node_id_found == false)
 	{
-		item_list_append(error_list, _("\"node_id\": parameter was not found"));
-	}
-	else if (options->node_id == 0)
-	{
-		item_list_append(error_list, _("\"node_id\": must be greater than zero"));
-	}
-	else if (options->node_id < 0)
-	{
-		item_list_append(error_list, _("\"node_id\": must be a positive signed 32 bit integer, i.e. 2147483647 or less"));
+		item_list_append(error_list, _("\"node_id\": required parameter was not found"));
 	}
 
     if (!strlen(options->node_name))
     {
-		item_list_append(error_list, _("\"node_name\": parameter was not found"));
+		item_list_append(error_list, _("\"node_name\": required parameter was not found"));
     }
 
     if (!strlen(options->conninfo))
     {
-		item_list_append(error_list, _("\"conninfo\": parameter was not found"));
+		item_list_append(error_list, _("\"conninfo\": required parameter was not found"));
     }
     else
 	{
@@ -541,8 +533,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 		PQconninfoFree(conninfo_options);
 	}
-
-
 }
 
 
@@ -644,12 +634,11 @@ exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
 {
     ItemListCell *cell;
 
-	log_error(_("%s: following errors were found in the configuration file:"), progname());
+	log_error(_("following errors were found in the configuration file:"));
 
 	for (cell = config_errors->head; cell; cell = cell->next)
 	{
-        fprintf(stderr, "  ");
-		log_error("%s", cell->string);
+        fprintf(stderr, "  %s\n", cell->string);
 	}
 
     if (config_warnings->head != NULL)
@@ -657,11 +646,12 @@ exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
         log_warning(_("the following problems were also found in the configuration file:"));
         for (cell = config_warnings->head; cell; cell = cell->next)
         {
-            fprintf(stderr, "  ");
-            log_warning("%s", cell->string);
+            fprintf(stderr, "  %s\n", cell->string);
         }
     }
+	exit(ERR_BAD_CONFIG);
 }
+
 
 void
 item_list_append(ItemList *item_list, char *error_message)
@@ -698,22 +688,21 @@ item_list_append(ItemList *item_list, char *error_message)
  * otherwise exit
  */
 int
-repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, bool allow_negative)
+repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, int minval)
 {
 	char	  *endptr;
 	long	   longval = 0;
-	char	   error_message_buf[MAXLEN] = "";
+	PQExpBufferData errors;
+
+	initPQExpBuffer(&errors);
 
 	/* It's possible that some versions of strtol() don't treat an empty
 	 * string as an error.
 	 */
-
 	if (*value == '\0')
 	{
-		snprintf(error_message_buf,
-				 MAXLEN,
-				 _("no value provided for \"%s\""),
-				 config_item);
+		/* don't log here - empty values will be caught later */
+		return 0;
 	}
 	else
 	{
@@ -722,37 +711,92 @@ repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, bo
 
 		if (value == endptr || errno)
 		{
-			snprintf(error_message_buf,
-					 MAXLEN,
-					 _("\"%s\": invalid value (provided: \"%s\")"),
-					 config_item, value);
+			appendPQExpBuffer(&errors,
+							  _("\"%s\": invalid value (provided: \"%s\")"),
+							  config_item, value);
 		}
-	}
-
-	/* Disallow negative values for most parameters */
-	if (allow_negative == false && longval < 0)
-	{
-		snprintf(error_message_buf,
-				 MAXLEN,
-				 _("\"%s\" must be zero or greater (provided: %s)"),
-				 config_item, value);
+		else if ((int32)longval < longval)
+		{
+			appendPQExpBuffer(&errors,
+							  _("\"%s\": must be a positive signed 32 bit integer, i.e. 2147483647 or less (provided: \"%s\")"),
+							  config_item,
+							  value);
+		}
+		else if ((int32)longval < minval)
+			/* Disallow negative values for most parameters */
+		{
+			appendPQExpBuffer(&errors,
+							  _("\"%s\": must be %i or greater (provided: \"%s\")"),
+							  config_item,
+							  minval,
+							  value);
+		}
 	}
 
 	/* Error message buffer is set */
-	if (error_message_buf[0] != '\0')
+	if (errors.data[0] != '\0')
 	{
 		if (error_list == NULL)
 		{
-			log_error("%s", error_message_buf);
+			log_error("%s", errors.data);
+			termPQExpBuffer(&errors);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		item_list_append(error_list, error_message_buf);
+		item_list_append(error_list, errors.data);
+		termPQExpBuffer(&errors);
 	}
 
 	return (int32) longval;
 }
 
+
+/*
+ * Interpret a parameter value as a boolean. Currently accepts:
+ *
+ * - true/false
+ * - 0/1
+ * - on/off
+ *
+ * Returns 'false' if unable to determine the booleanness of the value
+ * and adds an entry to the error list, which will result in the program
+ * erroring out before it proceeds to do anything.
+ *
+ * TODO: make this work like in postgresql.conf
+ */
+bool
+parse_bool(const char *s, const char *config_item, ItemList *error_list)
+{
+	PQExpBufferData errors;
+
+	if (strcmp(s, "0") == 0)
+		return false;
+
+	if (strcmp(s, "1") == 0)
+		return true;
+
+	if (strcmp(s, "false") == 0)
+		return false;
+
+	if (strcmp(s, "true") == 0)
+		return true;
+
+	if (strcmp(s, "off") == 0)
+		return false;
+
+	if (strcmp(s, "on") == 0)
+		return true;
+
+	initPQExpBuffer(&errors);
+
+	appendPQExpBuffer(&errors,
+					  "\"%s\": unable to interpret '%s' as a boolean value",
+					  config_item, s);
+	item_list_append(error_list, errors.data);
+	termPQExpBuffer(&errors);
+
+	return false;
+}
 
 /*
  * Split argument into old_dir and new_dir and append to tablespace mapping
