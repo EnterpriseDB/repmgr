@@ -64,10 +64,14 @@ static struct option long_options[] =
 /* general options */
 	{"version", no_argument, NULL, 'V'},
 	{"help", no_argument, NULL, OPT_HELP},
+
 /* general configuration options */
 	{"config-file", required_argument, NULL, 'f'},
 	{"force", no_argument, NULL, 'F'},
 	{"pg_bindir", required_argument, NULL, 'b'},
+
+/* connection options */
+	{"superuser", required_argument, NULL, 'S'},
 
 /* logging options */
 	{"log-level", required_argument, NULL, 'L'},
@@ -115,11 +119,15 @@ typedef struct
 	char		config_file[MAXPGPATH];
 	bool		force;
 	char		pg_bindir[MAXLEN]; /* overrides setting in repmgr.conf */
+
     /* logging options */
 	char		loglevel[MAXLEN];  /* overrides setting in repmgr.conf */
 	bool		log_to_file;
 	bool		terse;
 	bool		verbose;
+
+	/* connection options */
+	char		superuser[MAXLEN];
 
 
 } 	t_runtime_options;
@@ -128,7 +136,9 @@ typedef struct
 		/* general configuration options */	\
 		"", false, "", \
 		/* logging options */ \
-		"", false, false, false}
+		"", false, false, false, \
+		/* connection options */ \
+		""}
 
 static void do_help(void);
 static void do_master_register(void);
@@ -136,5 +146,6 @@ static void do_master_register(void);
 static void exit_with_errors(void);
 static void print_error_list(ItemList *error_list, int log_level);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
+static bool create_repmgr_extension(PGconn *conn);
 
 #endif

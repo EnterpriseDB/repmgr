@@ -27,6 +27,7 @@ ItemList	cli_errors = { NULL, NULL };
 ItemList	cli_warnings = { NULL, NULL };
 
 static bool	config_file_required = true;
+static char  pg_bindir[MAXLEN] = "";
 
 static char  repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
@@ -56,7 +57,7 @@ main(int argc, char **argv)
 	logger_output_mode = OM_COMMAND_LINE;
 
 
-	while ((c = getopt_long(argc, argv, "?Vf:vtFb:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vf:vtFb:S:L:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -100,6 +101,14 @@ main(int argc, char **argv)
 			/* -b/--pg_bindir */
 			case 'b':
 				strncpy(runtime_options.pg_bindir, optarg, MAXLEN);
+				break;
+
+			/* connection options */
+			/* ------------------ */
+
+			/* -S/--superuser */
+			case 'S':
+				strncpy(runtime_options.superuser, optarg, MAXLEN);
 				break;
 
 			/* logging options
@@ -255,6 +264,37 @@ main(int argc, char **argv)
 									 runtime_options.verbose,
 									 &config_file_options,
 									 argv[0]);
+
+	/* Some configuration file items can be overriden by command line options */
+	/* Command-line parameter -L/--log-level overrides any setting in config file*/
+	if (*runtime_options.loglevel != '\0')
+	{
+		strncpy(config_file_options.loglevel, runtime_options.loglevel, MAXLEN);
+	}
+
+	/*
+	 * Initialise pg_bindir - command line parameter will override
+	 * any setting in the configuration file
+	 */
+	if (!strlen(runtime_options.pg_bindir))
+	{
+		strncpy(runtime_options.pg_bindir, config_file_options.pg_bindir, MAXLEN);
+	}
+
+	/* Add trailing slash */
+	if (strlen(runtime_options.pg_bindir))
+	{
+		int len = strlen(runtime_options.pg_bindir);
+		if (runtime_options.pg_bindir[len - 1] != '/')
+		{
+			maxlen_snprintf(pg_bindir, "%s/", runtime_options.pg_bindir);
+		}
+		else
+		{
+			strncpy(pg_bindir, runtime_options.pg_bindir, MAXLEN);
+		}
+	}
+
 	/*
 	 * Initialize the logger. We've previously requested STDERR logging only
      * to ensure the repmgr command doesn't have its output diverted to a logging
@@ -395,15 +435,192 @@ do_help(void)
 static void
 do_master_register(void)
 {
-	PGconn	   *conn;
+	PGconn	   *conn = NULL;
+
+
+	int			ret;
 
 	log_info(_("connecting to master database..."));
 
 	// XXX if con fails, have this print offending conninfo!
 	conn = establish_db_connection(config_file_options.conninfo, true);
-
+	log_verbose(LOG_INFO, _("connected to server, checking its state"));
+	/* verify that node is running a supported server version */
 	check_server_version(conn, "master", true, NULL);
+
+	/* check that node is actually a master */
+	ret = is_standby(conn);
+	if (ret)
+	{
+		log_error(_(ret == 1 ? "server is in standby mode and cannot be registered as a master" :
+					"connection to node lost!"));
+
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_verbose(LOG_INFO, _("server is not in recovery"));
+
+	/* create the repmgr extension if it doesn't already exist */
+	if (!create_repmgr_extension(conn))
+	{
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 }
+
+
+// this should be the only place where superuser rights required
+static
+bool create_repmgr_extension(PGconn *conn)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res;
+
+	char			 *current_user;
+	const char		 *superuser_status;
+	bool			  is_superuser;
+	PGconn		     *superuser_conn = NULL;
+	PGconn		     *schema_create_conn = NULL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "   SELECT ae.name, e.extname "
+					  "     FROM pg_catalog.pg_available_extensions ae "
+					  "LEFT JOIN pg_catalog.pg_extension e "
+					  "       ON e.extname=ae.name "
+					  "    WHERE ae.name='repmgr' ");
+
+	res = PQexec(conn, query.data);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute extension query:\n   %s"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+	/* 1. Check if extension installed */
+	if (PQgetisnull(res, 0, 1) == 0)
+	{
+		/* TODO: check version */
+		log_info(_("extension \"repmgr\" already installed"));
+		return true;
+	}
+
+	/* 2. If not, check extension available */
+
+	if (PQgetisnull(res, 0, 0) == 1)
+	{
+		log_error(_("\"repmgr\" extension is not available"));
+		return false;
+	}
+
+	PQclear(res);
+	termPQExpBuffer(&query);
+
+	log_notice(_("attempting to install extension \"repmgr\""));
+
+	/* 3. Check if repmgr user is superuser, if not connect as superuser */
+	current_user = PQuser(conn);
+	superuser_status = PQparameterStatus(conn, "is_superuser");
+
+	is_superuser = (strcmp(superuser_status, "on") == 0) ? true : false;
+
+	if (is_superuser == false)
+	{
+		if (runtime_options.superuser[0] == '\0')
+		{
+			log_error(_("\"%s\" is not a superuser and no superuser name supplied"), current_user);
+			log_hint(_("supply a valid superuser name with -S/--superuser"));
+			return false;
+		}
+
+		superuser_conn = establish_db_connection_as_user(config_file_options.conninfo,
+														 runtime_options.superuser,
+														 false);
+
+		if (PQstatus(superuser_conn) != CONNECTION_OK)
+		{
+			log_error(_("unable to establish superuser connection as \"%s\""), runtime_options.superuser);
+			return false;
+		}
+
+		superuser_status = PQparameterStatus(superuser_conn, "is_superuser");
+		if (strcmp(superuser_status, "off") == 0)
+		{
+			log_error(_("\"%s\" is not a superuser"), runtime_options.superuser);
+			PQfinish(superuser_conn);
+			return false;
+		}
+
+		schema_create_conn = superuser_conn;
+	}
+	else
+	{
+		schema_create_conn = conn;
+	}
+
+	/* 4. Create extension */
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "CREATE EXTENSION repmgr");
+
+	res = PQexec(schema_create_conn, query.data);
+
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to create \"repmgr\" extension:\n  %s"),
+				  PQerrorMessage(schema_create_conn));
+		log_hint(_("check that the provided user has sufficient privileges for CREATE EXTENSION"));
+
+		PQclear(res);
+		if (superuser_conn != 0)
+			PQfinish(superuser_conn);
+		return false;
+	}
+
+	PQclear(res);
+
+	/* 5. If not superuser, grant usage */
+	if (is_superuser == false)
+	{
+		initPQExpBuffer(&query);
+
+		appendPQExpBuffer(&query,
+						  "GRANT ALL ON ALL TABLES IN SCHEMA repmgr TO %s",
+						  current_user);
+		res = PQexec(schema_create_conn, query.data);
+
+		termPQExpBuffer(&query);
+
+		if (PQresultStatus(res) != PGRES_COMMAND_OK)
+		{
+			log_error(_("unable to grant usage on \"repmgr\" extension to %s:\n  %s"),
+					  current_user,
+					  PQerrorMessage(schema_create_conn));
+			PQclear(res);
+
+			if (superuser_conn != 0)
+				PQfinish(superuser_conn);
+
+			return false;
+		}
+	}
+
+	if (superuser_conn != 0)
+		PQfinish(superuser_conn);
+
+	log_notice(_("\"repmgr\" extension successfully installed"));
+
+	return true;
+}
+
 
 /**
  * check_server_version()
