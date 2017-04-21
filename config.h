@@ -61,6 +61,7 @@ typedef struct
     char		node_name[MAXLEN];
 	char		conninfo[MAXLEN];
 	char		pg_bindir[MAXLEN];
+	int			replication_type;
 
 	/* log settings */
 	char		loglevel[MAXLEN];
@@ -102,6 +103,9 @@ typedef struct
 	char		event_notification_command[MAXLEN];
 	EventNotificationList event_notifications;
 
+    /* bdr settings */
+    int			bdr_monitoring_mode;
+
 	/* barman settings */
 	char		barman_server[MAXLEN];
 	char		barman_config[MAXLEN];
@@ -114,7 +118,7 @@ typedef struct
 
 #define T_CONFIGURATION_OPTIONS_INITIALIZER { \
 		/* node information */ \
-		UNKNOWN_NODE_ID, NO_UPSTREAM_NODE, "", "", "", \
+		UNKNOWN_NODE_ID, NO_UPSTREAM_NODE, "", "", "", REPLICATION_TYPE_PHYSICAL, \
 		/* log settings */ \
 		"", "", "", \
 		/* standby clone settings */ \
@@ -127,6 +131,8 @@ typedef struct
 		"", "", "", "", "", "", \
 		/* event notification settings */ \
 		"", { NULL, NULL }, \
+		/* bdr settings */ \
+		BDR_MONITORING_LOCAL, \
 		/* barman settings */ \
 		"", "" }
 
@@ -140,5 +146,10 @@ bool		parse_config(t_configuration_options *options);
 bool		reload_config(t_configuration_options *orig_options);
 
 void		item_list_append(ItemList *item_list, char *error_message);
+
+int			repmgr_atoi(const char *s,
+						const char *config_item,
+						ItemList *error_list,
+						bool allow_negative);
 
 #endif

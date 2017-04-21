@@ -15,8 +15,14 @@ static char config_file_path[MAXPGPATH];
 static bool config_file_provided = false;
 bool config_file_found = false;
 
-static void	_parse_config(t_configuration_options *options, ItemList *error_list);
-static void	exit_with_errors(ItemList *config_errors);
+static void	_parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static void	_parse_line(char *buf, char *name, char *value);
+static void	parse_event_notifications_list(t_configuration_options *options, const char *arg);
+static void	tablespace_list_append(t_configuration_options *options, const char *arg);
+
+static char	*trim(char *s);
+
+static void	exit_with_errors(ItemList *config_errors, ItemList *config_warnings);
 
 
 void
@@ -158,19 +164,33 @@ parse_config(t_configuration_options *options)
 {
 	/* Collate configuration file errors here for friendlier reporting */
 	static ItemList config_errors = { NULL, NULL };
+	static ItemList config_warnings = { NULL, NULL };
 
-	_parse_config(options, &config_errors);
+	_parse_config(options, &config_errors, &config_warnings);
 
+    /* errors found - exit after printing details, and any warnings */
 	if (config_errors.head != NULL)
 	{
-		exit_with_errors(&config_errors);
+		exit_with_errors(&config_errors, &config_warnings);
 	}
+
+    if (config_warnings.head != NULL)
+    {
+        ItemListCell *cell;
+
+        log_warning(_("the following problems were found in the configuration file:"));
+        for (cell = config_warnings.head; cell; cell = cell->next)
+        {
+            fprintf(stderr, "  ");
+            log_warning("%s", cell->string);
+        }
+    }
 
 	return true;
 }
 
 static void
-_parse_config(t_configuration_options *options, ItemList *error_list)
+_parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	FILE	   *fp;
 	char	   *s,
@@ -192,6 +212,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list)
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
+    options->replication_type = REPLICATION_TYPE_PHYSICAL;
 
 	/*
 	 * log settings
@@ -250,6 +271,364 @@ _parse_config(t_configuration_options *options, ItemList *error_list)
 	/* barman settings */
 	memset(options->barman_server, 0, sizeof(options->barman_server));
 	memset(options->barman_config, 0, sizeof(options->barman_config));
+
+	/*
+	 * If no configuration file available (user didn't specify and none found
+	 * in the default locations), return with default values
+	 */
+	if (config_file_found == false)
+	{
+		log_verbose(LOG_NOTICE,
+                    _("no configuration file provided and no default file found - "
+					 "continuing with default values"));
+		return;
+	}
+
+    fp = fopen(config_file_path, "r");
+
+	/*
+	 * A configuration file has been found, either provided by the user
+	 * or found in one of the default locations. If we can't open it,
+	 * fail with an error.
+	 */
+	if (fp == NULL)
+	{
+		if (config_file_provided)
+		{
+			log_error(_("unable to open provided configuration file \"%s\"; terminating"),
+                      config_file_path);
+		}
+		else
+		{
+			log_error(_("unable to open default configuration file  \"%s\"; terminating"),
+                    config_file_path);
+		}
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Read file */
+	while ((s = fgets(buf, sizeof buf, fp)) != NULL)
+	{
+		bool known_parameter = true;
+
+		/* Parse name/value pair from line */
+		_parse_line(buf, name, value);
+
+		/* Skip blank lines */
+		if (!strlen(name))
+			continue;
+
+		/* Skip comments */
+		if (name[0] == '#')
+			continue;
+
+		/* Copy into correct entry in parameters struct */
+		if (strcmp(name, "node_id") == 0)
+		{
+			options->node_id = repmgr_atoi(value, name, error_list, false);
+			node_id_found = true;
+		}
+		else if (strcmp(name, "upstream_node_id") == 0)
+			options->upstream_node_id = repmgr_atoi(value, name, error_list, false);
+		else if (strcmp(name, "conninfo") == 0)
+			strncpy(options->conninfo, value, MAXLEN);
+		else if (strcmp(name, "pg_bindir") == 0)
+			strncpy(options->pg_bindir, value, MAXLEN);
+        else if (strcmp(name, "replication_type") == 0)
+		{
+			if (strcmp(value, "physical") == 0)
+				options->replication_type = REPLICATION_TYPE_PHYSICAL;
+			else if (strcmp(value, "bdr") == 0)
+				options->replication_type = REPLICATION_TYPE_BDR;
+			else
+				item_list_append(error_list, _("value for 'replication_type' must be 'physical' or 'bdr'\n"));
+		}
+
+        /* log settings */
+		else if (strcmp(name, "logfile") == 0)
+			strncpy(options->logfile, value, MAXLEN);
+		else if (strcmp(name, "loglevel") == 0)
+			strncpy(options->loglevel, value, MAXLEN);
+		else if (strcmp(name, "logfacility") == 0)
+			strncpy(options->logfacility, value, MAXLEN);
+
+        /* standby clone settings */
+		else if (strcmp(name, "use_replication_slots") == 0)
+			/* XXX we should have a dedicated boolean argument format */
+			options->use_replication_slots = repmgr_atoi(value, name, error_list, false);
+		else if (strcmp(name, "rsync_options") == 0)
+			strncpy(options->rsync_options, value, MAXLEN);
+		else if (strcmp(name, "ssh_options") == 0)
+			strncpy(options->ssh_options, value, MAXLEN);
+		else if (strcmp(name, "pg_basebackup_options") == 0)
+			strncpy(options->pg_basebackup_options, value, MAXLEN);
+		else if (strcmp(name, "tablespace_mapping") == 0)
+			tablespace_list_append(options, value);
+		else if (strcmp(name, "restore_command") == 0)
+			strncpy(options->restore_command, value, MAXLEN);
+
+        /* repmgrd settings */
+		else if (strcmp(name, "failover_mode") == 0)
+		{
+			if (strcmp(value, "manual") == 0)
+			{
+				options->failover_mode = MANUAL_FAILOVER;
+			}
+			else if (strcmp(value, "automatic") == 0)
+			{
+				options->failover_mode = AUTOMATIC_FAILOVER;
+			}
+			else
+			{
+				item_list_append(error_list, _("value for 'failover' must be 'automatic' or 'manual'\n"));
+			}
+		}
+		else if (strcmp(name, "priority") == 0)
+			options->priority = repmgr_atoi(value, name, error_list, true);
+		else if (strcmp(name, "promote_command") == 0)
+			strncpy(options->promote_command, value, MAXLEN);
+		else if (strcmp(name, "follow_command") == 0)
+            strncpy(options->follow_command, value, MAXLEN);
+		else if (strcmp(name, "reconnect_attempts") == 0)
+			options->reconnect_attempts = repmgr_atoi(value, "reconnect_attempts", error_list, false);
+		else if (strcmp(name, "reconnect_interval") == 0)
+			options->reconnect_interval = repmgr_atoi(value, "reconnect_interval", error_list, false);
+		else if (strcmp(name, "monitor_interval_secs") == 0)
+			options->monitor_interval_secs = repmgr_atoi(value, name, error_list, false);
+		else if (strcmp(name, "retry_promote_interval_secs") == 0)
+			options->retry_promote_interval_secs = repmgr_atoi(value, name, error_list, false);
+
+        else if (strcmp(name, "monitoring_history") == 0)
+            /* XXX boolean */
+            options->monitoring_history = repmgr_atoi(value, name, error_list, false);
+        /* witness settings */
+		else if (strcmp(name, "witness_repl_nodes_sync_interval_secs") == 0)
+			options->witness_repl_nodes_sync_interval_secs = repmgr_atoi(value, name, error_list, false);
+
+        /* service settings */
+		else if (strcmp(name, "pg_ctl_options") == 0)
+			strncpy(options->pg_ctl_options, value, MAXLEN);
+		else if (strcmp(name, "service_stop_command") == 0)
+			strncpy(options->service_stop_command, value, MAXLEN);
+		else if (strcmp(name, "service_start_command") == 0)
+			strncpy(options->service_start_command, value, MAXLEN);
+		else if (strcmp(name, "service_restart_command") == 0)
+			strncpy(options->service_restart_command, value, MAXLEN);
+		else if (strcmp(name, "service_reload_command") == 0)
+			strncpy(options->service_reload_command, value, MAXLEN);
+		else if (strcmp(name, "service_promote_command") == 0)
+			strncpy(options->service_promote_command, value, MAXLEN);
+
+        /* event notification settings */
+		else if (strcmp(name, "event_notification_command") == 0)
+			strncpy(options->event_notification_command, value, MAXLEN);
+		else if (strcmp(name, "event_notifications") == 0)
+			parse_event_notifications_list(options, value);
+
+        /* bdr settings */
+		else if (strcmp(name, "bdr_monitoring_mode") == 0)
+		{
+			if (strncmp(value, "local", MAXLEN) == 0)
+			{
+				options->bdr_monitoring_mode = BDR_MONITORING_LOCAL;
+			}
+			else if (strcmp(value, "highest_priority") == 0)
+			{
+				options->bdr_monitoring_mode = BDR_MONITORING_PRIORITY;
+			}
+			else
+			{
+				item_list_append(error_list, _("value for 'bdr_monitoring_mode' must be 'local' or 'highest_priority'\n"));
+			}
+		}
+
+        /* barman settings */
+		else if (strcmp(name, "barman_server") == 0)
+			strncpy(options->barman_server, value, MAXLEN);
+		else if (strcmp(name, "barman_config") == 0)
+			strncpy(options->barman_config, value, MAXLEN);
+
+        /* Following parameters have been deprecated or renamed from 3.x - issue a warning */
+		else if (strcmp(name, "cluster") == 0)
+        {
+            item_list_append(warning_list,
+                             _("parameter 'cluster' is deprecated and will be ignored"));
+            known_parameter = false;
+        }
+		else if (strcmp(name, "failover") == 0)
+        {
+            item_list_append(warning_list,
+                             _("parameter 'failover' has been renamed 'failover_mode'"));
+            known_parameter = false;
+        }
+        else if (strcmp(name, "node") == 0)
+        {
+            item_list_append(warning_list,
+                             _("parameter 'node' has been renamed 'node_id'"));
+            known_parameter = false;
+        }
+		else if (strcmp(name, "upstream_node") == 0)
+        {
+            item_list_append(warning_list,
+                             _("parameter 'upstream_node' has been renamed 'upstream_node_id'"));
+            known_parameter = false;
+        }
+		else
+		{
+			known_parameter = false;
+			log_warning(_("%s/%s: unknown name/value pair provided; ignoring\n"), name, value);
+		}
+		/*
+		 * Raise an error if a known parameter is provided with an empty value.
+		 * Currently there's no reason why empty parameters are needed; if
+		 * we want to accept those, we'd need to add stricter default checking,
+		 * as currently e.g. an empty `node` value will be converted to '0'.
+		 */
+		if (known_parameter == true && !strlen(value)) {
+			char	   error_message_buf[MAXLEN] = "";
+			snprintf(error_message_buf,
+					 MAXLEN,
+					 _("no value provided for parameter \"%s\""),
+					 name);
+
+			item_list_append(error_list, error_message_buf);
+		}
+    }
+
+
+    /* check required parameters */
+	if (node_id_found == false)
+	{
+		item_list_append(error_list, _("\"node_id\": parameter was not found"));
+	}
+	else if (options->node_id == 0)
+	{
+		item_list_append(error_list, _("\"node_id\": must be greater than zero"));
+	}
+	else if (options->node_id < 0)
+	{
+		item_list_append(error_list, _("\"node_id\": must be a positive signed 32 bit integer, i.e. 2147483647 or less"));
+	}
+
+    if (!strlen(options->node_name))
+    {
+		item_list_append(error_list, _("\"node_name\": parameter was not found"));
+    }
+
+    if (!strlen(options->conninfo))
+    {
+		item_list_append(error_list, _("\"conninfo\": parameter was not found"));
+    }
+    else
+	{
+		/* Sanity check the provided conninfo string
+		 *
+		 * NOTE: PQconninfoParse() verifies the string format and checks for valid options
+		 * but does not sanity check values
+		 */
+		conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
+		if (conninfo_options == NULL)
+		{
+			char	   error_message_buf[MAXLEN] = "";
+			snprintf(error_message_buf,
+					 MAXLEN,
+					 _("\"conninfo\": %s"),
+					 conninfo_errmsg);
+
+			item_list_append(error_list, error_message_buf);
+		}
+
+		PQconninfoFree(conninfo_options);
+	}
+
+
+}
+
+
+void
+_parse_line(char *buf, char *name, char *value)
+{
+	int			i = 0;
+	int			j = 0;
+
+	/*
+	 * Extract parameter name, if present
+	 */
+	for (; i < MAXLEN; ++i)
+	{
+		if (buf[i] == '=')
+			break;
+
+		switch(buf[i])
+		{
+			/* Ignore whitespace */
+			case ' ':
+			case '\n':
+			case '\r':
+			case '\t':
+				continue;
+			default:
+				name[j++] = buf[i];
+		}
+	}
+	name[j] = '\0';
+
+	/*
+	 * Ignore any whitespace following the '=' sign
+	 */
+	for (; i < MAXLEN; ++i)
+	{
+		if (buf[i+1] == ' ')
+			continue;
+		if (buf[i+1] == '\t')
+			continue;
+
+		break;
+	}
+
+	/*
+	 * Extract parameter value
+	 */
+	j = 0;
+	for (++i; i < MAXLEN; ++i)
+		if (buf[i] == '\'')
+			continue;
+		else if (buf[i] == '#')
+			break;
+		else if (buf[i] != '\n')
+			value[j++] = buf[i];
+		else
+			break;
+	value[j] = '\0';
+	trim(value);
+}
+
+static char *
+trim(char *s)
+{
+	/* Initialize start, end pointers */
+	char	   *s1 = s,
+			   *s2 = &s[strlen(s) - 1];
+
+	/* If string is empty, no action needed */
+	if (s2 < s1)
+		return s;
+
+	/* Trim and delimit right side */
+	while ((isspace(*s2)) && (s2 >= s1))
+		--s2;
+	*(s2 + 1) = '\0';
+
+	/* Trim left side */
+	while ((isspace(*s1)) && (s1 < s2))
+		++s1;
+
+	/* Copy finished string */
+	memmove(s, s1, s2 - s1);
+	s[s2 - s1 + 1] = '\0';
+
+	return s;
 }
 
 
@@ -261,8 +640,27 @@ reload_config(t_configuration_options *orig_options)
 
 
 static void
-exit_with_errors(ItemList *config_errors)
+exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
 {
+    ItemListCell *cell;
+
+	log_error(_("%s: following errors were found in the configuration file:"), progname());
+
+	for (cell = config_errors->head; cell; cell = cell->next)
+	{
+        fprintf(stderr, "  ");
+		log_error("%s", cell->string);
+	}
+
+    if (config_warnings->head != NULL)
+    {
+        log_warning(_("the following problems were also found in the configuration file:"));
+        for (cell = config_warnings->head; cell; cell = cell->next)
+        {
+            fprintf(stderr, "  ");
+            log_warning("%s", cell->string);
+        }
+    }
 }
 
 void
@@ -274,7 +672,7 @@ item_list_append(ItemList *item_list, char *error_message)
 
 	if (cell == NULL)
 	{
-		//log_err(_("unable to allocate memory; terminating.\n"));
+		log_error(_("unable to allocate memory; terminating."));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -292,3 +690,201 @@ item_list_append(ItemList *item_list, char *error_message)
 
 	item_list->tail = cell;
 }
+
+
+/*
+ * Convert provided string to an integer using strtol;
+ * on error, if a callback is provided, pass the error message to that,
+ * otherwise exit
+ */
+int
+repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, bool allow_negative)
+{
+	char	  *endptr;
+	long	   longval = 0;
+	char	   error_message_buf[MAXLEN] = "";
+
+	/* It's possible that some versions of strtol() don't treat an empty
+	 * string as an error.
+	 */
+
+	if (*value == '\0')
+	{
+		snprintf(error_message_buf,
+				 MAXLEN,
+				 _("no value provided for \"%s\""),
+				 config_item);
+	}
+	else
+	{
+		errno = 0;
+		longval = strtol(value, &endptr, 10);
+
+		if (value == endptr || errno)
+		{
+			snprintf(error_message_buf,
+					 MAXLEN,
+					 _("\"%s\": invalid value (provided: \"%s\")"),
+					 config_item, value);
+		}
+	}
+
+	/* Disallow negative values for most parameters */
+	if (allow_negative == false && longval < 0)
+	{
+		snprintf(error_message_buf,
+				 MAXLEN,
+				 _("\"%s\" must be zero or greater (provided: %s)"),
+				 config_item, value);
+	}
+
+	/* Error message buffer is set */
+	if (error_message_buf[0] != '\0')
+	{
+		if (error_list == NULL)
+		{
+			log_error("%s", error_message_buf);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		item_list_append(error_list, error_message_buf);
+	}
+
+	return (int32) longval;
+}
+
+
+/*
+ * Split argument into old_dir and new_dir and append to tablespace mapping
+ * list.
+ *
+ * Adapted from pg_basebackup.c
+ */
+static void
+tablespace_list_append(t_configuration_options *options, const char *arg)
+{
+	TablespaceListCell *cell;
+	char	   *dst;
+	char	   *dst_ptr;
+	const char *arg_ptr;
+
+	cell = (TablespaceListCell *) pg_malloc0(sizeof(TablespaceListCell));
+	if (cell == NULL)
+	{
+		log_error(_("unable to allocate memory; terminating"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	dst_ptr = dst = cell->old_dir;
+	for (arg_ptr = arg; *arg_ptr; arg_ptr++)
+	{
+		if (dst_ptr - dst >= MAXPGPATH)
+		{
+			log_error(_("directory name too long"));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (*arg_ptr == '\\' && *(arg_ptr + 1) == '=')
+			;					/* skip backslash escaping = */
+		else if (*arg_ptr == '=' && (arg_ptr == arg || *(arg_ptr - 1) != '\\'))
+		{
+			if (*cell->new_dir)
+			{
+				log_error(_("multiple \"=\" signs in tablespace mapping"));
+				exit(ERR_BAD_CONFIG);
+			}
+			else
+			{
+				dst = dst_ptr = cell->new_dir;
+			}
+		}
+		else
+			*dst_ptr++ = *arg_ptr;
+	}
+
+	if (!*cell->old_dir || !*cell->new_dir)
+	{
+		log_error(_("invalid tablespace mapping format \"%s\", must be \"OLDDIR=NEWDIR\""),
+				arg);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	canonicalize_path(cell->old_dir);
+	canonicalize_path(cell->new_dir);
+
+	if (options->tablespace_mapping.tail)
+		options->tablespace_mapping.tail->next = cell;
+	else
+		options->tablespace_mapping.head = cell;
+
+	options->tablespace_mapping.tail = cell;
+}
+
+
+
+/*
+ * parse_event_notifications_list()
+ *
+ *
+ */
+
+static void
+parse_event_notifications_list(t_configuration_options *options, const char *arg)
+{
+	const char *arg_ptr;
+	char		event_type_buf[MAXLEN] = "";
+	char	   *dst_ptr = event_type_buf;
+
+
+	for (arg_ptr = arg; arg_ptr <= (arg + strlen(arg)); arg_ptr++)
+	{
+		/* ignore whitespace */
+		if (*arg_ptr == ' ' || *arg_ptr == '\t')
+		{
+			continue;
+		}
+
+		/*
+		 * comma (or end-of-string) should mark the end of an event type -
+		 * just as long as there was something preceding it
+		 */
+		if ((*arg_ptr == ',' || *arg_ptr == '\0') && event_type_buf[0] != '\0')
+		{
+			EventNotificationListCell *cell;
+
+			cell = (EventNotificationListCell *) pg_malloc0(sizeof(EventNotificationListCell));
+
+			if (cell == NULL)
+			{
+				log_error(_("unable to allocate memory; terminating"));
+				exit(ERR_BAD_CONFIG);
+			}
+
+			strncpy(cell->event_type, event_type_buf, MAXLEN);
+
+			if (options->event_notifications.tail)
+			{
+				options->event_notifications.tail->next = cell;
+			}
+			else
+			{
+				options->event_notifications.head = cell;
+			}
+
+			options->event_notifications.tail = cell;
+
+			memset(event_type_buf, 0, MAXLEN);
+			dst_ptr = event_type_buf;
+		}
+		/* ignore duplicated commas */
+		else if (*arg_ptr == ',')
+		{
+			continue;
+		}
+		else
+		{
+			*dst_ptr++ = *arg_ptr;
+		}
+	}
+}
+
