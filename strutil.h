@@ -28,4 +28,4 @@ __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 extern char *
 escape_recovery_conf_value(const char *src);
 
-#endif   /* _STRUTIL_H_ */
+#endif	 /* _STRUTIL_H_ */

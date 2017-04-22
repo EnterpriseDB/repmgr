@@ -27,37 +27,37 @@
 #define STANDBY_CLONE		4
 #define STANDBY_PROMOTE		5
 #define STANDBY_FOLLOW		6
-#define STANDBY_SWITCHOVER  7
+#define STANDBY_SWITCHOVER	7
 #define STANDBY_ARCHIVE_CONFIG 8
 #define STANDBY_RESTORE_CONFIG 9
 #define WITNESS_CREATE		   10
-#define WITNESS_REGISTER       11
-#define WITNESS_UNREGISTER     12
+#define WITNESS_REGISTER	   11
+#define WITNESS_UNREGISTER	   12
 #define CLUSTER_SHOW		   13
 #define CLUSTER_CLEANUP		   14
 #define CLUSTER_MATRIX		   15
 #define CLUSTER_CROSSCHECK	   16
-#define BDR_REGISTER           17
-#define BDR_UNREGISTER         18
+#define BDR_REGISTER		   17
+#define BDR_UNREGISTER		   18
 
 /* command line options without short versions */
-#define OPT_HELP                         1
-#define OPT_CHECK_UPSTREAM_CONFIG        2
-#define OPT_RECOVERY_MIN_APPLY_DELAY     3
-#define OPT_COPY_EXTERNAL_CONFIG_FILES   4
-#define OPT_CONFIG_ARCHIVE_DIR           5
-#define OPT_PG_REWIND                    6
-#define OPT_PWPROMPT                     7
-#define OPT_CSV                          8
-#define OPT_NODE                         9
-#define OPT_WITHOUT_BARMAN               10
-#define OPT_NO_UPSTREAM_CONNECTION       11
-#define OPT_REGISTER_WAIT                12
-#define OPT_CLUSTER                      13
-#define OPT_LOG_TO_FILE                  14
-#define OPT_UPSTREAM_CONNINFO            15
-#define OPT_NO_CONNINFO_PASSWORD         16
-#define OPT_REPLICATION_USER             17
+#define OPT_HELP						 1
+#define OPT_CHECK_UPSTREAM_CONFIG		 2
+#define OPT_RECOVERY_MIN_APPLY_DELAY	 3
+#define OPT_COPY_EXTERNAL_CONFIG_FILES	 4
+#define OPT_CONFIG_ARCHIVE_DIR			 5
+#define OPT_PG_REWIND					 6
+#define OPT_PWPROMPT					 7
+#define OPT_CSV							 8
+#define OPT_NODE						 9
+#define OPT_WITHOUT_BARMAN				 10
+#define OPT_NO_UPSTREAM_CONNECTION		 11
+#define OPT_REGISTER_WAIT				 12
+#define OPT_CLUSTER						 13
+#define OPT_LOG_TO_FILE					 14
+#define OPT_UPSTREAM_CONNINFO			 15
+#define OPT_NO_CONNINFO_PASSWORD		 16
+#define OPT_REPLICATION_USER			 17
 
 static struct option long_options[] =
 {
@@ -120,7 +120,7 @@ typedef struct
 	bool		force;
 	char		pg_bindir[MAXLEN]; /* overrides setting in repmgr.conf */
 
-    /* logging options */
+	/* logging options */
 	char		loglevel[MAXLEN];  /* overrides setting in repmgr.conf */
 	bool		log_to_file;
 	bool		terse;
@@ -130,7 +130,7 @@ typedef struct
 	char		superuser[MAXLEN];
 
 
-} 	t_runtime_options;
+}	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
 		/* general configuration options */	\

@@ -29,7 +29,7 @@ static bool _set_config(PGconn *conn, const char *config_param, const char *sqlq
  * Connect to a database using a conninfo string.
  *
  * NOTE: *do not* use this for replication connections; instead use:
- *   establish_db_connection_by_params()
+ *	 establish_db_connection_by_params()
  */
 
 static PGconn *
@@ -112,7 +112,7 @@ establish_db_connection_as_user(const char *conninfo,
 {
 	PGconn	   *conn = NULL;
 	t_conninfo_param_list conninfo_params;
-	bool	    parse_success;
+	bool		parse_success;
 	char	   *errmsg = NULL;
 
 	initialize_conninfo_params(&conninfo_params, false);
@@ -121,7 +121,7 @@ establish_db_connection_as_user(const char *conninfo,
 
 	if (parse_success == false)
 	{
-		log_error(_("unable to pass provided conninfo string:\n  %s"), errmsg);
+		log_error(_("unable to pass provided conninfo string:\n	 %s"), errmsg);
 		return NULL;
 	}
 
@@ -140,8 +140,8 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 								  const bool exit_on_error)
 {
 	PGconn	   *conn;
-	bool	    replication_connection = false;
-	int	   	    i;
+	bool		replication_connection = false;
+	int			i;
 
 	/* Connect to the database using the provided parameters */
 	conn = PQconnectdbParams(keywords, values, true);
@@ -149,7 +149,7 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
-		log_error(_("connection to database failed:\n   %s"),
+		log_error(_("connection to database failed:\n	%s"),
 				  PQerrorMessage(conn));
 		if (exit_on_error)
 		{
@@ -295,8 +295,8 @@ param_get(t_conninfo_param_list *param_list, const char *param)
 		{
 			if (param_list->values[c] != NULL && param_list->values[c][0] != '\0')
 				return param_list->values[c];
-            else
-                return NULL;
+			else
+				return NULL;
 		}
 	}
 
@@ -376,7 +376,7 @@ begin_transaction(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("Unable to begin transaction:\n  %s"),
+		log_error(_("Unable to begin transaction:\n	 %s"),
 				  PQerrorMessage(conn));
 
 		PQclear(res);
@@ -424,7 +424,7 @@ rollback_transaction(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("Unable to rollback transaction:\n  %s"),
+		log_error(_("Unable to rollback transaction:\n	%s"),
 				  PQerrorMessage(conn));
 		PQclear(res);
 
@@ -461,7 +461,7 @@ _set_config(PGconn *conn, const char *config_param, const char *sqlquery)
 }
 
 bool
-set_config(PGconn *conn, const char *config_param,  const char *config_value)
+set_config(PGconn *conn, const char *config_param,	const char *config_value)
 {
 	char		sqlquery[MAX_QUERY_LEN];
 
@@ -589,8 +589,8 @@ get_master_connection(PGconn *conn,
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
 					  "  SELECT node_id, conninfo, "
-                      "         CASE WHEN type = 'master' THEN 1 ELSE 2 END AS type_priority"
-					  "    FROM repmgr.nodes "
+					  "         CASE WHEN type = 'master' THEN 1 ELSE 2 END AS type_priority"
+					  "	   FROM repmgr.nodes "
 					  "   WHERE type != 'witness' "
 					  "ORDER BY active DESC, type_priority, priority, node_id");
 
@@ -599,7 +599,7 @@ get_master_connection(PGconn *conn,
 	res = PQexec(conn, query.data);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to retrieve node records:\n  %s"),
+		log_error(_("unable to retrieve node records:\n	 %s"),
 				  PQerrorMessage(conn));
 		PQclear(res);
 		return NULL;
@@ -626,7 +626,7 @@ get_master_connection(PGconn *conn,
 
 		if (is_node_standby == -1)
 		{
-			log_error(_("unable to retrieve recovery state from node %i:\n  %s"),
+			log_error(_("unable to retrieve recovery state from node %i:\n	%s"),
 					  node_id,
 					  PQerrorMessage(remote_conn));
 			PQfinish(remote_conn);
@@ -672,8 +672,8 @@ get_master_node_id(PGconn *conn)
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
-					  "SELECT node_id         "
-					  "  FROM repmgr.nodes    "
+					  "SELECT node_id		  "
+					  "	 FROM repmgr.nodes	  "
 					  " WHERE type = 'master' "
 					  "   AND active IS TRUE  ");
 

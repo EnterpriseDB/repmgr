@@ -27,5 +27,5 @@
 #define ERR_BARMAN 19
 #define ERR_REGISTRATION_SYNC 20
 
-#endif   /* _ERRCODE_H_ */
+#endif	 /* _ERRCODE_H_ */
 

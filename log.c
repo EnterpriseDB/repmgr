@@ -78,7 +78,7 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 		}
 
 		vfprintf(stderr, fmt, ap);
-        fprintf(stderr, "\n");
+		fprintf(stderr, "\n");
 		fflush(stderr);
 	}
 }

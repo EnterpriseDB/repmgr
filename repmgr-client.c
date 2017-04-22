@@ -27,9 +27,9 @@ ItemList	cli_errors = { NULL, NULL };
 ItemList	cli_warnings = { NULL, NULL };
 
 static bool	config_file_required = true;
-static char  pg_bindir[MAXLEN] = "";
+static char	 pg_bindir[MAXLEN] = "";
 
-static char  repmgr_slot_name[MAXLEN] = "";
+static char	 repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 
 int
@@ -38,13 +38,13 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c;
 
-    char	   *repmgr_node_type = NULL;
-    char	   *repmgr_action = NULL;
-    bool		valid_repmgr_node_type_found = true;
+	char	   *repmgr_node_type = NULL;
+	char	   *repmgr_action = NULL;
+	bool		valid_repmgr_node_type_found = true;
 	int			action = NO_ACTION;
-    char	   *dummy_action = "";
+	char	   *dummy_action = "";
 
-	bool 		config_file_parsed = false;
+	bool		config_file_parsed = false;
 
 
 	set_progname(argv[0]);
@@ -68,10 +68,10 @@ main(int argc, char **argv)
 		 */
 		switch (c)
 		{
-            /*
-             * Options which cause repmgr to exit in this block;
-             * these are the only ones which can be executed as root user
-             */
+			/*
+			 * Options which cause repmgr to exit in this block;
+			 * these are the only ones which can be executed as root user
+			 */
 			case OPT_HELP: /* --help */
 				do_help();
 				exit(SUCCESS);
@@ -88,7 +88,7 @@ main(int argc, char **argv)
 				exit(SUCCESS);
 
 			/* general configuration options
-             * ----------------------------- */
+			 * ----------------------------- */
 
 			/* -f/--config-file */
 			case 'f':
@@ -112,7 +112,7 @@ main(int argc, char **argv)
 				break;
 
 			/* logging options
-             * --------------- */
+			 * --------------- */
 
 			/* -L/--log-level */
 			case 'L':
@@ -143,7 +143,7 @@ main(int argc, char **argv)
 				runtime_options.terse = true;
 				break;
 			/* --verbose */
-            case 'v':
+			case 'v':
 				runtime_options.verbose = true;
 				break;
 
@@ -152,10 +152,10 @@ main(int argc, char **argv)
 	}
 
 	/*
-     * Disallow further running as root to prevent directory ownership problems.
-     * We check this here to give the root user a chance to execute --help/--version
-     * options.
-     */
+	 * Disallow further running as root to prevent directory ownership problems.
+	 * We check this here to give the root user a chance to execute --help/--version
+	 * options.
+	 */
 	if (geteuid() == 0)
 	{
 		fprintf(stderr,
@@ -176,73 +176,73 @@ main(int argc, char **argv)
 
 	/*
 	 * Determine the node type and action; following are valid:
-     *
-	 *   { MASTER | PRIMARY } REGISTER |
-	 *   STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
-	 *   WITNESS { CREATE | REGISTER | UNREGISTER } |
-	 *   BDR { REGISTER | UNREGISTER } |
-	 *   CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP }
+	 *
+	 *	 { MASTER | PRIMARY } REGISTER |
+	 *	 STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
+	 *	 WITNESS { CREATE | REGISTER | UNREGISTER } |
+	 *	 BDR { REGISTER | UNREGISTER } |
+	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host optipn
 	 */
 	if (optind < argc)
 	{
 		repmgr_node_type = argv[optind++];
-    }
+	}
 
-    if (optind < argc)
-    {
-        repmgr_action = argv[optind++];
-    }
-    else
-    {
-        repmgr_action = dummy_action;
-    }
+	if (optind < argc)
+	{
+		repmgr_action = argv[optind++];
+	}
+	else
+	{
+		repmgr_action = dummy_action;
+	}
 
-    if (repmgr_node_type != NULL)
-    {
-        if (strcasecmp(repmgr_node_type, "MASTER") == 0 || strcasecmp(repmgr_node_type, "PRIMARY") == 0 )
+	if (repmgr_node_type != NULL)
+	{
+		if (strcasecmp(repmgr_node_type, "MASTER") == 0 || strcasecmp(repmgr_node_type, "PRIMARY") == 0 )
 		{
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = MASTER_REGISTER;
 		}
-        else
-        {
-            valid_repmgr_node_type_found = false;
-        }
-    }
+		else
+		{
+			valid_repmgr_node_type_found = false;
+		}
+	}
 
 	if (action == NO_ACTION)
-    {
-        PQExpBufferData command_error;
-        initPQExpBuffer(&command_error);
+	{
+		PQExpBufferData command_error;
+		initPQExpBuffer(&command_error);
 
-        if (repmgr_node_type == NULL)
-        {
-            appendPQExpBuffer(&command_error,
-                              _("no repmgr command provided"));
-        }
-        else if (valid_repmgr_node_type_found == false && repmgr_action[0] == '\0')
-        {
-            appendPQExpBuffer(&command_error,
-                              _("unknown repmgr node type '%s'"),
-                              repmgr_node_type);
-        }
+		if (repmgr_node_type == NULL)
+		{
+			appendPQExpBuffer(&command_error,
+							  _("no repmgr command provided"));
+		}
+		else if (valid_repmgr_node_type_found == false && repmgr_action[0] == '\0')
+		{
+			appendPQExpBuffer(&command_error,
+							  _("unknown repmgr node type '%s'"),
+							  repmgr_node_type);
+		}
 		else if (repmgr_action[0] == '\0')
 		{
-           appendPQExpBuffer(&command_error,
-                             _("no action provided for node type '%s'"),
-                             repmgr_node_type);
+		   appendPQExpBuffer(&command_error,
+							 _("no action provided for node type '%s'"),
+							 repmgr_node_type);
 		}
 		else
 		{
 			appendPQExpBuffer(&command_error,
-                              _("unknown repmgr action '%s %s'"),
-                              repmgr_node_type,
-                              repmgr_action);
+							  _("unknown repmgr action '%s %s'"),
+							  repmgr_node_type,
+							  repmgr_action);
 		}
 
-        item_list_append(&cli_errors, command_error.data);
+		item_list_append(&cli_errors, command_error.data);
 	}
 
 	/*
@@ -297,11 +297,11 @@ main(int argc, char **argv)
 
 	/*
 	 * Initialize the logger. We've previously requested STDERR logging only
-     * to ensure the repmgr command doesn't have its output diverted to a logging
-     * facility (which usually doesn't make sense for a command line program).
-     *
-     * If required (e.g. when calling repmgr from repmgrd), this behaviour can be
-     * overridden with "--log-to-file".
+	 * to ensure the repmgr command doesn't have its output diverted to a logging
+	 * facility (which usually doesn't make sense for a command line program).
+	 *
+	 * If required (e.g. when calling repmgr from repmgrd), this behaviour can be
+	 * overridden with "--log-to-file".
 	 */
 
 	logger_init(&config_file_options, progname());
@@ -380,11 +380,11 @@ print_error_list(ItemList *error_list, int log_level)
 
 	for (cell = error_list->head; cell; cell = cell->next)
 	{
-        fprintf(stderr, "  ");
+		fprintf(stderr, "  ");
 		switch(log_level)
 		{
 			/* Currently we only need errors and warnings */
-            case LOG_ERROR:
+			case LOG_ERROR:
 				log_error("%s", cell->string);
 				break;
 			case LOG_WARNING:
@@ -399,36 +399,36 @@ static void
 do_help(void)
 {
 	printf(_("%s: replication management tool for PostgreSQL\n"), progname());
-    puts("");
+	puts("");
 
-    /* add a big friendly warning if root is executing "repmgr --help" */
+	/* add a big friendly warning if root is executing "repmgr --help" */
 	if (geteuid() == 0)
 	{
-        printf(_("  **************************************************\n"));
-        printf(_("  *** repmgr must be executed by a non-superuser ***\n"));
-        printf(_("  **************************************************\n"));
-        puts("");
-    }
+		printf(_("	**************************************************\n"));
+		printf(_("	*** repmgr must be executed by a non-superuser ***\n"));
+		printf(_("	**************************************************\n"));
+		puts("");
+	}
 
 	printf(_("Usage:\n"));
-	printf(_("  %s [OPTIONS] master  register\n"), progname());
-    puts("");
+	printf(_("	%s [OPTIONS] master	 register\n"), progname());
+	puts("");
 	printf(_("General options:\n"));
 	printf(_("  -?, --help                          show this help, then exit\n"));
 	printf(_("  -V, --version                       output version information, then exit\n"));
-    puts("");
+	puts("");
 	printf(_("General configuration options:\n"));
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
-    puts("");
+	puts("");
 	printf(_("Logging options:\n"));
 	printf(_("  -L, --log-level                     set log level (overrides configuration file; default: NOTICE)\n"));
 	printf(_("  --log-to-file                       log to file (or logging facility) defined in repmgr.conf\n"));
 	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
 
-    puts("");
+	puts("");
 }
 
 
@@ -506,6 +506,7 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	
 }
 
 
@@ -519,22 +520,22 @@ bool create_repmgr_extension(PGconn *conn)
 	char			 *current_user;
 	const char		 *superuser_status;
 	bool			  is_superuser;
-	PGconn		     *superuser_conn = NULL;
-	PGconn		     *schema_create_conn = NULL;
+	PGconn			 *superuser_conn = NULL;
+	PGconn			 *schema_create_conn = NULL;
 
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "   SELECT ae.name, e.extname "
+					  "	  SELECT ae.name, e.extname "
 					  "     FROM pg_catalog.pg_available_extensions ae "
 					  "LEFT JOIN pg_catalog.pg_extension e "
 					  "       ON e.extname=ae.name "
-					  "    WHERE ae.name='repmgr' ");
+					  "	   WHERE ae.name='repmgr' ");
 
 	res = PQexec(conn, query.data);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute extension query:\n   %s"),
+		log_error(_("unable to execute extension query:\n	%s"),
 				PQerrorMessage(conn));
 		PQclear(res);
 
@@ -639,7 +640,7 @@ bool create_repmgr_extension(PGconn *conn)
 
 		if (PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
-			log_error(_("unable to grant usage on \"repmgr\" extension to %s:\n  %s"),
+			log_error(_("unable to grant usage on \"repmgr\" extension to %s:\n	 %s"),
 					  current_user,
 					  PQerrorMessage(schema_create_conn));
 			PQclear(res);
@@ -666,18 +667,18 @@ bool create_repmgr_extension(PGconn *conn)
  * Verify that the server is MIN_SUPPORTED_VERSION_NUM or later
  *
  * PGconn *conn:
- *   the connection to check
+ *	 the connection to check
  *
  * char *server_type:
- *   either "master" or "standby"; used to format error message
+ *	 either "master" or "standby"; used to format error message
  *
  * bool exit_on_error:
- *   exit if reported server version is too low; optional to enable some callers
- *   to perform additional cleanup
+ *	 exit if reported server version is too low; optional to enable some callers
+ *	 to perform additional cleanup
  *
  * char *server_version_string
- *   passed to get_server_version(), which will place the human-readable
- *   server version string there (e.g. "9.4.0")
+ *	 passed to get_server_version(), which will place the human-readable
+ *	 server version string there (e.g. "9.4.0")
  */
 static int
 check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string)

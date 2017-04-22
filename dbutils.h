@@ -75,7 +75,7 @@ typedef struct s_event_info
 {
 	char		  *node_name;
 	char		  *conninfo_str;
-}   t_event_info;
+}	t_event_info;
 
 #define T_EVENT_INFO_INITIALIZER { \
   NULL, \
@@ -88,7 +88,7 @@ typedef struct s_event_info
  */
 typedef struct
 {
-	int    size;
+	int	   size;
 	char **keywords;
 	char **values;
 } t_conninfo_param_list;
@@ -100,9 +100,9 @@ typedef struct
 typedef struct s_replication_slot
 {
 	char slot_name[MAXLEN];
-    char slot_type[MAXLEN];
+	char slot_type[MAXLEN];
 	bool active;
-}   t_replication_slot;
+}	t_replication_slot;
 
 
 /* connection functions */
@@ -133,7 +133,7 @@ bool		rollback_transaction(PGconn *conn);
 bool		check_cluster_schema(PGconn *conn);
 
 /* GUC manipulation functions */
-bool		set_config(PGconn *conn, const char *config_param,  const char *config_value);
+bool		set_config(PGconn *conn, const char *config_param,	const char *config_value);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 
 /* Server information functions */

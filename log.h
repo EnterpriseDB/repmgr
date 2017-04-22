@@ -12,7 +12,7 @@
 #define REPMGR_STDERR 2
 
 #define OM_COMMAND_LINE 1
-#define OM_DAEMON       2
+#define OM_DAEMON		2
 
 extern void
 stderr_log_with_level(const char *level_name, int level, const char *fmt,...)
