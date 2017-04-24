@@ -969,7 +969,274 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 	}
 
 	PQclear(res);
-	log_info("ok");
+
 	return true;
 }
 
+/* ====================== */
+/* event record functions */
+/* ====================== */
+
+/*
+ * create_event_record()
+ *
+ * If `conn` is not NULL, insert a record into the events table.
+ *
+ * If configuration parameter `event_notification_command` is set, also
+ * attempt to execute that command.
+ *
+ * Returns true if all operations succeeded, false if one or more failed.
+ *
+ * Note this function may be called with `conn` set to NULL in cases where
+ * the master node is not available and it's therefore not possible to write
+ * an event record. In this case, if `event_notification_command` is set, a
+ * user-defined notification to be generated; if not, this function will have
+ * no effect.
+ */
+bool
+create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details)
+{
+	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
+
+	return _create_event_record(conn, options, node_id, event, successful, details, &event_info);
+}
+
+
+/*
+ * create_event_record_extended()
+ *
+ * The caller may need to pass additional parameters to the event notification
+ * command (currently only the conninfo string of another node)
+
+ */
+bool
+create_event_record_extended(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info)
+{
+	return _create_event_record(conn, options, node_id, event, successful, details, event_info);
+}
+
+bool
+_create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+	char		event_timestamp[MAXLEN] = "";
+	bool		success = true;
+
+	/*
+	 * Only attempt to write a record if a connection handle was provided.
+	 * Also check that the repmgr schema has been properly initialised - if
+	 * not it means no configuration file was provided, which can happen with
+	 * e.g. `repmgr standby clone`, and we won't know which schema to write to.
+	 */
+	if (conn != NULL && PQstatus(conn) == CONNECTION_OK)
+	{
+		int n_node_id = htonl(node_id);
+		char *t_successful = successful ? "TRUE" : "FALSE";
+
+		const char *values[4] = { (char *)&n_node_id,
+								  event,
+								  t_successful,
+								  details
+					  			};
+
+		int lengths[4] = { sizeof(n_node_id),
+						   0,
+						   0,
+						   0
+			  			 };
+
+		int binary[4] = {1, 0, 0, 0};
+
+		initPQExpBuffer(&query);
+		appendPQExpBuffer(&query,
+						  " INSERT INTO repmgr.events ( "
+						  "             node_id, "
+						  "             event, "
+						  "             successful, "
+						  "             details "
+						  "            ) "
+						  "      VALUES ($1, $2, $3, $4) "
+						  "   RETURNING event_timestamp ");
+
+		log_verbose(LOG_DEBUG, "create_event_record():\n  %s", query.data);
+
+		res = PQexecParams(conn,
+						   query.data,
+						   4,
+						   NULL,
+						   values,
+						   lengths,
+						   binary,
+						   0);
+
+		termPQExpBuffer(&query);
+
+		if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			/* we don't treat this as an error */
+			log_warning(_("unable to create event record:\n  %s"),
+						PQerrorMessage(conn));
+
+			success = false;
+		}
+		else
+		{
+			/* Store timestamp to send to the notification command */
+			strncpy(event_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+		}
+
+		PQclear(res);
+	}
+
+	/*
+	 * If no database connection provided, or the query failed, generate a
+	 * current timestamp ourselves. This isn't quite the same
+	 * format as PostgreSQL, but is close enough for diagnostic use.
+	 */
+	if (!strlen(event_timestamp))
+	{
+		time_t now;
+		struct tm	ts;
+
+		time(&now);
+		ts = *localtime(&now);
+		strftime(event_timestamp, MAXLEN, "%Y-%m-%d %H:%M:%S%z", &ts);
+	}
+
+	log_verbose(LOG_DEBUG, "create_event_record(): Event timestamp is \"%s\"\n", event_timestamp);
+
+	/* an event notification command was provided - parse and execute it */
+	if (strlen(options->event_notification_command))
+	{
+		char		parsed_command[MAXPGPATH];
+		const char *src_ptr;
+		char	   *dst_ptr;
+		char	   *end_ptr;
+		int	   	    r;
+
+		/*
+		 * If configuration option 'event_notifications' was provided,
+		 * check if this event is one of the ones listed; if not listed,
+		 * don't execute the notification script.
+		 *
+		 * (If 'event_notifications' was not provided, we assume the script
+		 * should be executed for all events).
+		 */
+		if (options->event_notifications.head != NULL)
+		{
+			EventNotificationListCell *cell;
+			bool notify_ok = false;
+
+			for (cell = options->event_notifications.head; cell; cell = cell->next)
+			{
+				if (strcmp(event, cell->event_type) == 0)
+				{
+					notify_ok = true;
+					break;
+				}
+			}
+
+			/*
+			 * Event type not found in the 'event_notifications' list - return early
+			 */
+			if (notify_ok == false)
+			{
+				log_debug(_("Not executing notification script for event type '%s'\n"), event);
+				return success;
+			}
+		}
+
+		dst_ptr = parsed_command;
+		end_ptr = parsed_command + MAXPGPATH - 1;
+		*end_ptr = '\0';
+
+		for(src_ptr = options->event_notification_command; *src_ptr; src_ptr++)
+		{
+			if (*src_ptr == '%')
+			{
+				switch (src_ptr[1])
+				{
+					case 'n':
+						/* %n: node id */
+						src_ptr++;
+						snprintf(dst_ptr, end_ptr - dst_ptr, "%i", node_id);
+						dst_ptr += strlen(dst_ptr);
+						break;
+					case 'a':
+						/* %a: node name */
+						src_ptr++;
+						if (event_info->node_name != NULL)
+						{
+							log_debug("node_name: %s\n", event_info->node_name);
+							strlcpy(dst_ptr, event_info->node_name, end_ptr - dst_ptr);
+							dst_ptr += strlen(dst_ptr);
+						}
+						break;
+					case 'e':
+						/* %e: event type */
+						src_ptr++;
+						strlcpy(dst_ptr, event, end_ptr - dst_ptr);
+						dst_ptr += strlen(dst_ptr);
+						break;
+					case 'd':
+						/* %d: details */
+						src_ptr++;
+						if (details != NULL)
+						{
+							strlcpy(dst_ptr, details, end_ptr - dst_ptr);
+							dst_ptr += strlen(dst_ptr);
+						}
+						break;
+					case 's':
+						/* %s: successful */
+						src_ptr++;
+						strlcpy(dst_ptr, successful ? "1" : "0", end_ptr - dst_ptr);
+						dst_ptr += strlen(dst_ptr);
+						break;
+					case 't':
+						/* %t: timestamp */
+						src_ptr++;
+						strlcpy(dst_ptr, event_timestamp, end_ptr - dst_ptr);
+						dst_ptr += strlen(dst_ptr);
+						break;
+					case 'c':
+						/* %c: conninfo for next available node */
+						src_ptr++;
+						if (event_info->conninfo_str != NULL)
+						{
+							log_debug("conninfo: %s\n", event_info->conninfo_str);
+
+							strlcpy(dst_ptr, event_info->conninfo_str, end_ptr - dst_ptr);
+							dst_ptr += strlen(dst_ptr);
+						}
+						break;
+					default:
+						/* otherwise treat the % as not special */
+						if (dst_ptr < end_ptr)
+							*dst_ptr++ = *src_ptr;
+						break;
+				}
+			}
+			else
+			{
+				if (dst_ptr < end_ptr)
+					*dst_ptr++ = *src_ptr;
+			}
+		}
+
+		*dst_ptr = '\0';
+
+		log_debug("create_event_record(): executing\n%s", parsed_command);
+
+		r = system(parsed_command);
+		if (r != 0)
+		{
+			log_warning(_("unable to execute event notification command"));
+			log_info(_("parsed event notification command was:\n  %s"), parsed_command);
+			success = false;
+		}
+	}
+
+	return success;
+}

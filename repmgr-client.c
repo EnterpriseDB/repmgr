@@ -555,7 +555,31 @@ do_master_register(void)
 											"master register",
 											&node_info);
 
+	/* Log the event */
+	create_event_record(conn,
+						&config_file_options,
+						config_file_options.node_id,
+						"master_register",
+						record_created,
+						NULL);
+
+	if (record_created == false)
+	{
+		rollback_transaction(conn);
+		PQfinish(conn);
+
+		log_notice(_("unable to register master node - see preceding messages"));
+		exit(ERR_DB_QUERY);
+	}
+
 	commit_transaction(conn);
+	PQfinish(conn);
+
+	log_notice(_("master node %s with id %i (conninfo: %s)"),
+			   record_found ? "updated" : "registered",
+			   config_file_options.node_id,
+			   config_file_options.conninfo);
+	return;
 }
 
 
