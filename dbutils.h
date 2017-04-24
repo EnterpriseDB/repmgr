@@ -15,6 +15,8 @@
 #include "config.h"
 #include "strutil.h"
 
+#define NODE_RECORD_NOT_FOUND   0
+#define NODE_RECORD_QUERY_ERROR -1
 
 typedef enum {
 	UNKNOWN = 0,
@@ -32,7 +34,7 @@ typedef struct s_node_info
 	int			  node_id;
 	int			  upstream_node_id;
 	t_server_type type;
-	char		  name[MAXLEN];
+	char		  node_name[MAXLEN];
 	char		  conninfo[MAXLEN];
 	char		  slot_name[MAXLEN];
 	int			  priority;
@@ -136,10 +138,23 @@ bool		check_cluster_schema(PGconn *conn);
 bool		set_config(PGconn *conn, const char *config_param,	const char *config_value);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 
-/* Server information functions */
+/* server information functions */
 int			get_server_version(PGconn *conn, char *server_version);
 int			is_standby(PGconn *conn);
 PGconn	   *get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
 int			get_master_node_id(PGconn *conn);
+
+
+/* result functions */
+bool		atobool(const char *value);
+
+/* node record functions */
+t_server_type parse_node_type(const char *type);
+const char * get_node_type_string(t_server_type type);
+
+int			get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
+bool		create_node_record(PGconn *conn, char *action, t_node_info *node_info);
+bool        update_node_record(PGconn *conn, char *action, t_node_info *node_info);
+
 #endif
 

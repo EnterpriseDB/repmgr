@@ -440,6 +440,10 @@ do_master_register(void)
 	int			current_master_id = UNKNOWN_NODE_ID;
 	int			ret;
 
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
+	int			record_found;
+	bool		record_created;
+
 	log_info(_("connecting to master database..."));
 
 	// XXX if con fails, have this print offending conninfo!
@@ -506,7 +510,50 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	
+	/*
+	 * Check whether there's an existing record for this node, and
+	 * update it if --force set
+	 */
+
+	record_found = get_node_record(conn, config_file_options.node_id, &node_info);
+
+	if (record_found)
+	{
+		if (!runtime_options.force)
+		{
+			log_error(_("this node is already registered"));
+			log_hint(_("use -F/--force to overwrite the existing node record"));
+			rollback_transaction(conn);
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+	else
+	{
+		node_info.node_id = config_file_options.node_id;
+	}
+
+	/* set type to "master", active to "true" and unset upstream_node_id*/
+	node_info.type = MASTER;
+	node_info.upstream_node_id = NO_UPSTREAM_NODE;
+	node_info.active = true;
+
+	/* update node record structure with settings from config file */
+	strncpy(node_info.node_name, config_file_options.node_name, MAXLEN);
+	strncpy(node_info.conninfo, config_file_options.conninfo, MAXLEN);
+	strncpy(node_info.slot_name, repmgr_slot_name_ptr, MAXLEN);
+	node_info.priority = config_file_options.priority;
+
+	if (record_found)
+		record_created = update_node_record(conn,
+											"master register",
+											&node_info);
+	else
+		record_created = create_node_record(conn,
+											"master register",
+											&node_info);
+
+	commit_transaction(conn);
 }
 
 
