@@ -153,8 +153,8 @@ t_server_type parse_node_type(const char *type);
 const char * get_node_type_string(t_server_type type);
 
 int			get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
-bool		create_node_record(PGconn *conn, char *action, t_node_info *node_info);
-bool        update_node_record(PGconn *conn, char *action, t_node_info *node_info);
+bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
+bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 
 #endif
 

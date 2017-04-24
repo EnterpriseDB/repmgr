@@ -22,6 +22,7 @@ static PGconn *_establish_db_connection(const char *conninfo,
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
 static int _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info);
 static void _populate_node_record(PGresult *res, t_node_info *node_info, int row);
+static bool _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info);
 
 /* ==================== */
 /* Connection functions */
@@ -854,112 +855,54 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 }
 
 
+
 bool
-create_node_record(PGconn *conn, char *action, t_node_info *node_info)
+create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info)
 {
-	PQExpBufferData	  query;
-	char			upstream_node_id[MAXLEN];
-	char		slot_name_buf[MAXLEN];
-	PGresult   *res;
+	if (repmgr_action != NULL)
+		log_verbose(LOG_DEBUG, "create_node_record(): action is \"%s\"", repmgr_action);
 
-	if (node_info->upstream_node_id == NO_UPSTREAM_NODE)
-	{
-		/*
-		 * No explicit upstream node id provided for standby - attempt to
-		 * get primary node id
-		 */
-		if (node_info->type == STANDBY)
-		{
-			int primary_node_id = get_master_node_id(conn);
-			maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
-		}
-		else
-		{
-			maxlen_snprintf(upstream_node_id, "%s", "NULL");
-		}
-	}
-	else
-	{
-		maxlen_snprintf(upstream_node_id, "%i", node_info->upstream_node_id);
-	}
-
-	if (node_info->slot_name[0])
-	{
-		maxlen_snprintf(slot_name_buf, "'%s'", node_info->slot_name);
-	}
-	else
-	{
-		maxlen_snprintf(slot_name_buf, "%s", "NULL");
-	}
-
-	/* XXX convert to placeholder query */
-
-	initPQExpBuffer(&query);
-
-	appendPQExpBuffer(&query,
-					  "INSERT INTO repmgr.nodes "
-					  "       (node_id, type, upstream_node_id, "
-					  "        node_name, conninfo, slot_name, "
-					  "        priority, active) "
-					  "VALUES (%i, '%s', %s, '%s', '%s', %s, %i, %s) ",
-					  node_info->node_id,
-					  get_node_type_string(node_info->type),
-					  upstream_node_id,
-					  node_info->node_name,
-					  node_info->conninfo,
-					  slot_name_buf,
-					  node_info->priority,
-					  node_info->active == true ? "TRUE" : "FALSE");
-
-	log_verbose(LOG_DEBUG, "create_node_record(): %s", query.data);
-
-	if (action != NULL)
-	{
-		log_verbose(LOG_DEBUG, "create_node_record(): action is \"%s\"", action);
-	}
-
-	res = PQexec(conn, query.data);
-
-	termPQExpBuffer(&query);
-
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		log_error(_("unable to create node record:\n  %s"),
-				  PQerrorMessage(conn));
-		PQclear(res);
-		return false;
-	}
-
-	PQclear(res);
-
-	return true;
+	return _create_update_node_record(conn, "create", node_info);
 }
 
-
 bool
-update_node_record(PGconn *conn, char *action, t_node_info *node_info)
+update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info)
+{
+	if (repmgr_action != NULL)
+		log_verbose(LOG_DEBUG, "update_node_record(): action is \"%s\"", repmgr_action);
+
+	return _create_update_node_record(conn, "update", node_info);
+}
+
+static bool
+_create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 {
 	PQExpBufferData	query;
+	char			node_id[MAXLEN];
+	char			priority[MAXLEN];
+
 	char			upstream_node_id[MAXLEN];
-	char			slot_name_buf[MAXLEN];
+	char		   *upstream_node_id_ptr = NULL;
+
+	char			slot_name[MAXLEN];
+	char		   *slot_name_ptr = NULL;
+
+	int				param_count = 8;
+	const char	   *param_values[param_count];
+
 	PGresult   	   *res;
 
-	/* XXX this segment copied from create_node_record() */
-	if (node_info->upstream_node_id == NO_UPSTREAM_NODE)
+	maxlen_snprintf(node_id, "%i", node_info->node_id);
+	maxlen_snprintf(priority, "%i", node_info->priority);
+
+	if (node_info->upstream_node_id == NO_UPSTREAM_NODE && node_info->type == STANDBY)
 	{
 		/*
 		 * No explicit upstream node id provided for standby - attempt to
 		 * get primary node id
 		 */
-		if (node_info->type == STANDBY)
-		{
-			int primary_node_id = get_master_node_id(conn);
-			maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
-		}
-		else
-		{
-			maxlen_snprintf(upstream_node_id, "%s", "NULL");
-		}
+		int primary_node_id = get_master_node_id(conn);
+		maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
 	}
 	else
 	{
@@ -967,58 +910,66 @@ update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 	}
 
 	if (node_info->slot_name[0])
-	{
-		maxlen_snprintf(slot_name_buf, "'%s'", node_info->slot_name);
-	}
-	else
-	{
-		maxlen_snprintf(slot_name_buf, "%s", "NULL");
-	}
+		maxlen_snprintf(slot_name, "'%s'", node_info->slot_name);
+
+
+	param_values[0] = get_node_type_string(node_info->type);
+	param_values[1] = upstream_node_id_ptr;
+	param_values[2] = node_info->node_name;
+	param_values[3] = node_info->conninfo;
+	param_values[4] = slot_name_ptr;
+	param_values[5] = priority;
+	param_values[6] = node_info->active == true ? "TRUE" : "FALSE";
+	param_values[7] = node_id;
 
 	initPQExpBuffer(&query);
 
-	/* XXX convert to placeholder query */
-
-	appendPQExpBuffer(&query,
-					  "UPDATE repmgr.nodes SET "
-					  "       type = '%s', "
-					  "       upstream_node_id = %s, "
-					  "       node_name = '%s', "
-					  "       conninfo = '%s', "
-					  "       slot_name = %s, "
-					  "       priority = %i, "
-					  "       active = %s "
-					  " WHERE node_id = %i ",
-					  get_node_type_string(node_info->type),
-					  upstream_node_id,
-					  node_info->node_name,
-					  node_info->conninfo,
-					  slot_name_buf,
-					  node_info->priority,
-					  node_info->active == true ? "TRUE" : "FALSE",
-					  node_info->node_id);
-
-	log_verbose(LOG_DEBUG, "update_node_record(): %s", query.data);
-
-	if (action != NULL)
+	if (strcmp(action, "create") == 0)
 	{
-		log_verbose(LOG_DEBUG, "update_node_record(): action is \"%s\"", action);
+		appendPQExpBuffer(&query,
+						  "INSERT INTO repmgr.nodes "
+						  "       (node_id, type, upstream_node_id, "
+						  "        node_name, conninfo, slot_name, "
+						  "        priority, active) "
+						  "VALUES ($8, $1, $2, $3, $4, $5, $6, $7) ");
+	}
+	else
+	{
+		appendPQExpBuffer(&query,
+						  "UPDATE repmgr.nodes SET "
+						  "       type = $1, "
+						  "       upstream_node_id = $2, "
+						  "       node_name = $3, "
+						  "       conninfo = $4, "
+						  "       slot_name = $5, "
+						  "       priority = $6, "
+						  "       active = $7 "
+						  " WHERE node_id = $8 ");
 	}
 
-	res = PQexec(conn, query.data);
+
+    res = PQexecParams(conn,
+                       query.data,
+                       param_count,
+                       NULL,
+                       param_values,
+                       NULL,
+                       NULL,
+                       0);
 
 	termPQExpBuffer(&query);
 
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to update node record:\n  %s"),
+		log_error(_("unable to %s node record:\n  %s"),
+				  action,
 				  PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
 
 	PQclear(res);
-
+	log_info("ok");
 	return true;
 }
 

@@ -544,6 +544,8 @@ do_master_register(void)
 	strncpy(node_info.slot_name, repmgr_slot_name_ptr, MAXLEN);
 	node_info.priority = config_file_options.priority;
 
+	// XXX if upstream_node_id set, warn that it will be ignored
+
 	if (record_found)
 		record_created = update_node_record(conn,
 											"master register",
