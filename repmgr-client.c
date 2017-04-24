@@ -446,9 +446,9 @@ do_master_register(void)
 
 	log_info(_("connecting to master database..."));
 
-	// XXX if con fails, have this print offending conninfo!
 	conn = establish_db_connection(config_file_options.conninfo, true);
 	log_verbose(LOG_INFO, _("connected to server, checking its state"));
+
 	/* verify that node is running a supported server version */
 	check_server_version(conn, "master", true, NULL);
 
@@ -575,10 +575,9 @@ do_master_register(void)
 	commit_transaction(conn);
 	PQfinish(conn);
 
-	log_notice(_("master node %s with id %i (conninfo: %s)"),
-			   record_found ? "updated" : "registered",
+	log_notice(_("master node record (id: %i) %s"),
 			   config_file_options.node_id,
-			   config_file_options.conninfo);
+			   record_found ? "updated" : "registered");
 	return;
 }
 

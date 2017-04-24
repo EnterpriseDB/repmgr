@@ -72,6 +72,8 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 				log_error(_("connection to database failed: %s"),
 						  PQerrorMessage(conn));
 			}
+			log_detail(_("attempted to connect using:\n  %s"),
+					   connection_string);
 		}
 
 		if (exit_on_error)
