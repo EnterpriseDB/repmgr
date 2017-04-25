@@ -222,12 +222,12 @@ main(int argc, char **argv)
 		{"log-level", required_argument, NULL, 'L'},
 		{"terse", no_argument, NULL, 't'},
 		{"mode", required_argument, NULL, 'm'},
+		{"pwprompt", no_argument, NULL, 'P'},
 		{"remote-config-file", required_argument, NULL, 'C'},
 		{"help", no_argument, NULL, OPT_HELP},
 		{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 		{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
 		{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
-		{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
 		{"csv", no_argument, NULL, OPT_CSV},
 		{"node", required_argument, NULL, OPT_NODE},
 		{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
@@ -338,7 +338,7 @@ main(int argc, char **argv)
 		strncpy(runtime_options.dbname, runtime_options.username, MAXLEN);
 	}
 
-	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:l:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:l:P", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -464,6 +464,9 @@ main(int argc, char **argv)
 			case 'C':
 				strncpy(runtime_options.remote_config_file, optarg, MAXLEN);
 				break;
+			case 'P':
+				runtime_options.witness_pwprompt = true;
+				break;
 			case OPT_CHECK_UPSTREAM_CONFIG:
 				check_upstream_config = true;
 				break;
@@ -513,9 +516,6 @@ main(int argc, char **argv)
 					strncpy(runtime_options.pg_rewind, optarg, MAXPGPATH);
 				}
 				runtime_options.pg_rewind_supplied = true;
-				break;
-			case OPT_PWPROMPT:
-				runtime_options.witness_pwprompt = true;
 				break;
 			case OPT_CSV:
 				runtime_options.csv_mode = true;
