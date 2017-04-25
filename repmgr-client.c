@@ -10,6 +10,7 @@
  *
  * [ MASTER | PRIMARY ] REGISTER
  *
+ * STANDBY CLONE (wip)
  */
 
 #include <unistd.h>
@@ -350,6 +351,9 @@ main(int argc, char **argv)
 		case MASTER_REGISTER:
 			do_master_register();
 			break;
+		case STANDBY_CLONE:
+			do_standby_clone();
+			break;
 		default:
 			/* An action will have been determined by this point  */
 			break;
@@ -581,6 +585,12 @@ do_master_register(void)
 	return;
 }
 
+
+static void
+do_standby_clone(void)
+{
+	puts("standby clone");
+}
 
 // this should be the only place where superuser rights required
 static

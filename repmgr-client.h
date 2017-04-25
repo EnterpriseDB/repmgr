@@ -142,6 +142,7 @@ typedef struct
 
 static void do_help(void);
 static void do_master_register(void);
+static void do_standby_clone(void);
 
 static void exit_with_errors(void);
 static void print_error_list(ItemList *error_list, int log_level);
