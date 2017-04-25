@@ -425,6 +425,7 @@ do_help(void)
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
+	printf(_("  -S, --superuser=USERNAME            superuser to use if repmgr user is not superuser\n"));
 	puts("");
 	printf(_("Logging options:\n"));
 	printf(_("  -L, --log-level                     set log level (overrides configuration file; default: NOTICE)\n"));
@@ -623,7 +624,16 @@ bool create_repmgr_extension(PGconn *conn)
 
 		return false;
 	}
-	/* 1. Check if extension installed */
+
+	/* 1. Check extension is actually available */
+
+	if (PQntuples(res) == 0)
+	{
+		log_error(_("\"repmgr\" extension is not available"));
+		return false;
+	}
+
+	/* 2. Check if extension installed */
 	if (PQgetisnull(res, 0, 1) == 0)
 	{
 		/* TODO: check version */
@@ -631,13 +641,7 @@ bool create_repmgr_extension(PGconn *conn)
 		return true;
 	}
 
-	/* 2. If not, check extension available */
 
-	if (PQgetisnull(res, 0, 0) == 1)
-	{
-		log_error(_("\"repmgr\" extension is not available"));
-		return false;
-	}
 
 	PQclear(res);
 	termPQExpBuffer(&query);
@@ -665,7 +669,8 @@ bool create_repmgr_extension(PGconn *conn)
 
 		if (PQstatus(superuser_conn) != CONNECTION_OK)
 		{
-			log_error(_("unable to establish superuser connection as \"%s\""), runtime_options.superuser);
+			log_error(_("unable to establish superuser connection as \"%s\""),
+					  runtime_options.superuser);
 			return false;
 		}
 
@@ -714,6 +719,26 @@ bool create_repmgr_extension(PGconn *conn)
 		initPQExpBuffer(&query);
 
 		appendPQExpBuffer(&query,
+						  "GRANT USAGE ON SCHEMA repmgr TO %s",
+						  current_user);
+		res = PQexec(schema_create_conn, query.data);
+
+		termPQExpBuffer(&query);
+		if (PQresultStatus(res) != PGRES_COMMAND_OK)
+		{
+			log_error(_("unable to grant usage on \"repmgr\" extension to %s:\n  %s"),
+					  current_user,
+					  PQerrorMessage(schema_create_conn));
+			PQclear(res);
+
+			if (superuser_conn != 0)
+				PQfinish(superuser_conn);
+
+			return false;
+		}
+
+		initPQExpBuffer(&query);
+		appendPQExpBuffer(&query,
 						  "GRANT ALL ON ALL TABLES IN SCHEMA repmgr TO %s",
 						  current_user);
 		res = PQexec(schema_create_conn, query.data);
@@ -722,7 +747,7 @@ bool create_repmgr_extension(PGconn *conn)
 
 		if (PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
-			log_error(_("unable to grant usage on \"repmgr\" extension to %s:\n	 %s"),
+			log_error(_("unable to grant permission on tables on \"repmgr\" extension to %s:\n  %s"),
 					  current_user,
 					  PQerrorMessage(schema_create_conn));
 			PQclear(res);
