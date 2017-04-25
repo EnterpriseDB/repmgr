@@ -51,14 +51,21 @@
 #define OPT_PWPROMPT					 7
 #define OPT_CSV							 8
 #define OPT_NODE						 9
-#define OPT_WITHOUT_BARMAN				 10
-#define OPT_NO_UPSTREAM_CONNECTION		 11
-#define OPT_REGISTER_WAIT				 12
-#define OPT_CLUSTER						 13
-#define OPT_LOG_TO_FILE					 14
-#define OPT_UPSTREAM_CONNINFO			 15
-#define OPT_NO_CONNINFO_PASSWORD		 16
-#define OPT_REPLICATION_USER			 17
+#define OPT_NODE_ID					 	 10
+#define OPT_NODE_NAME				 	 11
+#define OPT_WITHOUT_BARMAN				 12
+#define OPT_NO_UPSTREAM_CONNECTION		 13
+#define OPT_REGISTER_WAIT				 14
+#define OPT_CLUSTER						 15
+#define OPT_LOG_TO_FILE					 16
+#define OPT_UPSTREAM_CONNINFO			 17
+/* XXX deprecate, replace with --use-conninfo-password */
+#define OPT_NO_CONNINFO_PASSWORD		 18
+#define OPT_REPLICATION_USER			 19
+#define OPT_EVENT						 20
+#define OPT_LIMIT						 21
+#define OPT_ALL							 22
+
 
 static struct option long_options[] =
 {
@@ -82,6 +89,11 @@ static struct option long_options[] =
 	{"log-to-file", no_argument, NULL, OPT_LOG_TO_FILE},
 	{"terse", required_argument, NULL, 't'},
 	{"verbose", no_argument, NULL, 'v'},
+
+/* event options */
+	{"event", required_argument, NULL, OPT_EVENT },
+	{"limit", required_argument, NULL, OPT_LIMIT },
+	{"all", no_argument, NULL, OPT_ALL },
 
 /* not yet handled */
 	{"dbname", required_argument, NULL, 'd'},
@@ -122,6 +134,7 @@ typedef struct
 	bool		conninfo_provided;
 	bool		connection_param_provided;
 	bool		host_param_provided;
+	bool		limit_provided;
 
 	/* general configuration options */
 	char		config_file[MAXPGPATH];
@@ -135,21 +148,34 @@ typedef struct
 	bool		verbose;
 
 	/* connection options */
-	char		data_dir[MAXPGPATH];
 	char		superuser[MAXLEN];
 
+	/* node options */
+	int			node_id;
+	char		node_name[MAXLEN];
+	char		data_dir[MAXPGPATH];
+
+	/* event options */
+	char		event[MAXLEN];
+	int			limit;
+	bool		all;
 
 }	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
 		/* configuration metadata */ \
-		false, false, false, \
+		false, false, false, false,	\
 		/* general configuration options */	\
 		"", false, "", \
 		/* logging options */ \
 		"", false, false, false, \
 		/* connection options */ \
-		"", ""}
+		"", \
+		/* node options */ \
+		UNKNOWN_NODE_ID, "", "", \
+		/* event options */ \
+		"", 20, false}
+
 
 static void do_help(void);
 static void do_master_register(void);

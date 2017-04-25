@@ -60,7 +60,7 @@ main(int argc, char **argv)
 	logger_output_mode = OM_COMMAND_LINE;
 
 
-	while ((c = getopt_long(argc, argv, "?Vf:Fb:S:D:L:vt", long_options,
+	while ((c = getopt_long(argc, argv, "?Vf:Fb:S:L:vtD:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -114,11 +114,41 @@ main(int argc, char **argv)
 				strncpy(runtime_options.superuser, optarg, MAXLEN);
 				break;
 
+			/* node options *
+			 * ------------ */
+
+			/* -D/--pgdata/--data-dir */
 			case 'D':
 				strncpy(runtime_options.data_dir, optarg, MAXPGPATH);
 				break;
 
-			/* logging options
+			/* --node-id */
+			case OPT_NODE_ID:
+				runtime_options.node_id = repmgr_atoi(optarg, "--node-id", &cli_errors, false);
+				break;
+
+			/* --node-name */
+			case OPT_NODE_NAME:
+				strncpy(runtime_options.node_name, optarg, MAXLEN);
+				break;
+
+			/* event options *
+			 * ------------- */
+
+			case OPT_EVENT:
+				strncpy(runtime_options.event, optarg, MAXLEN);
+				break;
+
+			case OPT_LIMIT:
+				runtime_options.limit = repmgr_atoi(optarg, "--limit", &cli_errors, false);
+				runtime_options.limit_provided = true;
+				break;
+
+			case OPT_ALL:
+				runtime_options.all = true;
+				break;
+
+			/* logging options *
 			 * --------------- */
 
 			/* -L/--log-level */
@@ -266,6 +296,8 @@ main(int argc, char **argv)
 	}
 
 	check_cli_parameters(action);
+
+	// check runtime_options.node_id/node_name, if still set
 
 	/*
 	 * Sanity checks for command line parameters completed by now;
@@ -462,7 +494,97 @@ check_cli_parameters(const int action)
 		}
 	}
 
+	/*
+	 * --node-id
+	 *
+	 * NOTE: overrides --node-name, if present
+	 */
+	if (runtime_options.node_id != UNKNOWN_NODE_ID)
+	{
+		switch (action)
+		{
+			case STANDBY_UNREGISTER:
+			case WITNESS_UNREGISTER:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--node-id not required when executing %s"),
+										action_name(action));
+				runtime_options.node_id = UNKNOWN_NODE_ID;
+		}
+	}
 
+	if (runtime_options.node_name[0])
+	{
+		switch (action)
+		{
+			case STANDBY_UNREGISTER:
+			case WITNESS_UNREGISTER:
+				if (runtime_options.node_id != UNKNOWN_NODE_ID)
+				{
+					item_list_append(&cli_warnings,
+									 _("--node-id provided, ignoring --node-name"));
+					memset(runtime_options.node_name, 0, sizeof(runtime_options.node_name));
+				}
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--node-name not required when executing %s"),
+										action_name(action));
+				memset(runtime_options.node_name, 0, sizeof(runtime_options.node_name));
+		}
+	}
+
+	if (runtime_options.event[0])
+	{
+		switch (action)
+		{
+			case CLUSTER_EVENT:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--event not required when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if (runtime_options.limit_provided)
+	{
+		switch (action)
+		{
+			case CLUSTER_EVENT:
+				if (runtime_options.limit < 1)
+				{
+					item_list_append_format(&cli_errors,
+											_("value for --limit must be 1 or greater (provided: %i)"),
+											runtime_options.limit);
+				}
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--limit not required when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if (runtime_options.all)
+	{
+		switch (action)
+		{
+			case CLUSTER_EVENT:
+				if (runtime_options.limit_provided == true)
+				{
+					runtime_options.all = false;
+					item_list_append(&cli_warnings,
+									 _("--limit provided, ignoring --all"));
+				}
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--all not required when executing %s"),
+										action_name(action));
+		}
+	}
 }
 
 
@@ -475,6 +597,12 @@ action_name(const int action)
 			return "MASTER REGISTER";
 		case STANDBY_CLONE:
 			return "STANDBY CLONE";
+		case STANDBY_REGISTER:
+			return "STANDBY REGISTER";
+		case STANDBY_UNREGISTER:
+			return "STANDBY UNREGISTER";
+		case WITNESS_UNREGISTER:
+			return "WITNESS UNREGISTER";
 		case CLUSTER_EVENT:
 			return "CLUSTER EVENT";
 	}

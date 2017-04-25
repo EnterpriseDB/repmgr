@@ -631,6 +631,7 @@ reload_config(t_configuration_options *orig_options)
 }
 
 
+/* TODO: don't emit warnings if --terse and no errors */
 static void
 exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
 {
