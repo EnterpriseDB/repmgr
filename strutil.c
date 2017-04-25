@@ -24,8 +24,8 @@ xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 
 	if (retval >= (int) size)
 	{
-		log_error(_("Buffer of size not large enough to format entire string '%s'"),
-				str);
+		log_error(_("buffer of size not large enough to format entire string '%s'"),
+				  str);
 		exit(ERR_STR_OVERFLOW);
 	}
 
@@ -59,6 +59,42 @@ maxlen_snprintf(char *str, const char *format,...)
 	return retval;
 }
 
+
+void
+item_list_append(ItemList *item_list, const char *message)
+{
+	item_list_append_format(item_list, "%s", message);
+}
+
+void
+item_list_append_format(ItemList *item_list, const char *format, ...)
+{
+	ItemListCell *cell;
+	va_list		arglist;
+
+	cell = (ItemListCell *) pg_malloc0(sizeof(ItemListCell));
+
+	if (cell == NULL)
+	{
+		log_error(_("unable to allocate memory; terminating."));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	cell->string = pg_malloc0(MAXLEN);
+
+	va_start(arglist, format);
+
+	(void) xvsnprintf(cell->string, MAXLEN, format, arglist);
+	va_end(arglist);
+
+
+	if (item_list->tail)
+		item_list->tail->next = cell;
+	else
+		item_list->head = cell;
+
+	item_list->tail = cell;
+}
 
 /*
  * Escape a string for use as a parameter in recovery.conf

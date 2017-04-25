@@ -26,18 +26,6 @@ typedef struct EventNotificationList
 } EventNotificationList;
 
 
-typedef struct ItemListCell
-{
-	struct ItemListCell *next;
-	char			    *string;
-} ItemListCell;
-
-typedef struct ItemList
-{
-	ItemListCell *head;
-	ItemListCell *tail;
-} ItemList;
-
 
 typedef struct TablespaceListCell
 {
@@ -145,7 +133,6 @@ bool		load_config(const char *config_file, bool verbose, t_configuration_options
 bool		parse_config(t_configuration_options *options);
 bool		reload_config(t_configuration_options *orig_options);
 
-void		item_list_append(ItemList *item_list, char *error_message);
 
 int			repmgr_atoi(const char *s,
 						const char *config_item,

@@ -11,6 +11,8 @@
  * [ MASTER | PRIMARY ] REGISTER
  *
  * STANDBY CLONE (wip)
+ *
+ * CLUSTER EVENT
  */
 
 #include <unistd.h>
@@ -58,7 +60,7 @@ main(int argc, char **argv)
 	logger_output_mode = OM_COMMAND_LINE;
 
 
-	while ((c = getopt_long(argc, argv, "?Vf:vtFb:S:L:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vf:Fb:S:D:L:vt", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -110,6 +112,10 @@ main(int argc, char **argv)
 			/* -S/--superuser */
 			case 'S':
 				strncpy(runtime_options.superuser, optarg, MAXLEN);
+				break;
+
+			case 'D':
+				strncpy(runtime_options.data_dir, optarg, MAXPGPATH);
 				break;
 
 			/* logging options
@@ -182,7 +188,7 @@ main(int argc, char **argv)
 	 *	 STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
 	 *	 WITNESS { CREATE | REGISTER | UNREGISTER } |
 	 *	 BDR { REGISTER | UNREGISTER } |
-	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP }
+	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP | EVENT }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host optipn
 	 */
@@ -206,6 +212,11 @@ main(int argc, char **argv)
 		{
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = MASTER_REGISTER;
+		}
+		else if(strcasecmp(repmgr_node_type, "CLUSTER") == 0)
+		{
+			if (strcasecmp(repmgr_action, "EVENT") == 0)
+				action = CLUSTER_EVENT;
 		}
 		else
 		{
@@ -246,6 +257,16 @@ main(int argc, char **argv)
 		item_list_append(&cli_errors, command_error.data);
 	}
 
+	if (optind < argc)
+	{
+		PQExpBufferData too_many_args;
+		initPQExpBuffer(&too_many_args);
+		appendPQExpBuffer(&too_many_args, _("too many command-line arguments (first extra is \"%s\")"), argv[optind]);
+		item_list_append(&cli_errors, too_many_args.data);
+	}
+
+	check_cli_parameters(action);
+
 	/*
 	 * Sanity checks for command line parameters completed by now;
 	 * any further errors will be runtime ones
@@ -255,6 +276,15 @@ main(int argc, char **argv)
 		exit_with_errors();
 	}
 
+	/*
+	 * Print any warnings about inappropriate command line options,
+	 * unless -t/--terse set
+	 */
+	if (cli_warnings.head != NULL && runtime_options.terse == false)
+	{
+		log_warning(_("following problems with command line parameters detected:"));
+		print_item_list(&cli_warnings);
+	}
 
 	/*
 	 * The configuration file is not required for some actions (e.g. 'standby clone'),
@@ -354,6 +384,9 @@ main(int argc, char **argv)
 		case STANDBY_CLONE:
 			do_standby_clone();
 			break;
+		case CLUSTER_EVENT:
+			do_cluster_event();
+			break;
 		default:
 			/* An action will have been determined by this point  */
 			break;
@@ -364,12 +397,96 @@ main(int argc, char **argv)
 
 
 
+/*
+ * Check for useless or conflicting parameters, and also whether a
+ * configuration file is required.
+ *
+ * Messages will be added to the command line warning and error lists
+ * as appropriate.
+ *
+ * XXX for each individual actions, check only required actions
+ * for non-required actions check warn if provided
+ */
+
+static void
+check_cli_parameters(const int action)
+{
+	/* ========================================================================
+	 * check all parameters required for an action are provided, and warn
+	 * about ineffective actions
+	 * ========================================================================
+	 */
+	switch (action)
+	{
+		case MASTER_REGISTER:
+			/* no required parameters */
+		case CLUSTER_EVENT:
+			/* no required parameters */
+			break;
+
+	}
+
+	/* ========================================================================
+	 * warn if parameters provided for an action where they're not relevant
+	 * ========================================================================
+	 */
+
+	/* --host etc.*/
+	if (runtime_options.connection_param_provided)
+	{
+		switch (action)
+		{
+			case STANDBY_CLONE:
+			case STANDBY_FOLLOW:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("datqabase connection parameters not required when executing %s"),
+										action_name(action));
+		}
+	}
+
+	/* -D/--data-dir */
+	if (runtime_options.data_dir[0])
+	{
+		switch (action)
+		{
+			case STANDBY_CLONE:
+			case STANDBY_FOLLOW:
+			case STANDBY_RESTORE_CONFIG:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("-D/--pgdata not required when executing %s"),
+										action_name(action));
+		}
+	}
+
+
+}
+
+
+static const char*
+action_name(const int action)
+{
+	switch(action)
+	{
+		case MASTER_REGISTER:
+			return "MASTER REGISTER";
+		case STANDBY_CLONE:
+			return "STANDBY CLONE";
+		case CLUSTER_EVENT:
+			return "CLUSTER EVENT";
+	}
+
+	return "UNKNOWN ACTION";
+}
 static void
 exit_with_errors(void)
 {
 	fprintf(stderr, _("The following command line errors were encountered:\n"));
 
-	print_error_list(&cli_errors, LOG_ERR);
+	print_item_list(&cli_errors);
 
 	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
 
@@ -378,23 +495,13 @@ exit_with_errors(void)
 
 
 static void
-print_error_list(ItemList *error_list, int log_level)
+print_item_list(ItemList *item_list)
 {
 	ItemListCell *cell;
 
-	for (cell = error_list->head; cell; cell = cell->next)
+	for (cell = item_list->head; cell; cell = cell->next)
 	{
-		fprintf(stderr, "  ");
-		switch(log_level)
-		{
-			/* Currently we only need errors and warnings */
-			case LOG_ERROR:
-				log_error("%s", cell->string);
-				break;
-			case LOG_WARNING:
-				log_warning("%s", cell->string);
-				break;
-		}
+		fprintf(stderr, "  %s\n", cell->string);
 	}
 }
 
@@ -593,7 +700,30 @@ do_standby_clone(void)
 	puts("standby clone");
 }
 
-// this should be the only place where superuser rights required
+
+/*
+ * CLUSTER EVENT
+ *
+ * Parameters:
+ *   --limit[=20]
+ *   --all
+ *   --node_[id|name]
+ *   --event
+ *   --event-matching
+ */
+static void
+do_cluster_event(void)
+{
+	puts("cluster event");
+}
+
+
+/*
+ * Create the repmgr extension, and grant access to the repmgr
+ * user if not a superuser.
+ *
+ * Note: this should be the only place where superuser rights are required
+ */
 static
 bool create_repmgr_extension(PGconn *conn)
 {

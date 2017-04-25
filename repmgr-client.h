@@ -37,8 +37,9 @@
 #define CLUSTER_CLEANUP		   14
 #define CLUSTER_MATRIX		   15
 #define CLUSTER_CROSSCHECK	   16
-#define BDR_REGISTER		   17
-#define BDR_UNREGISTER		   18
+#define CLUSTER_EVENT		   17
+#define BDR_REGISTER		   18
+#define BDR_UNREGISTER		   19
 
 /* command line options without short versions */
 #define OPT_HELP						 1
@@ -72,6 +73,9 @@ static struct option long_options[] =
 
 /* connection options */
 	{"superuser", required_argument, NULL, 'S'},
+	{"pgdata", required_argument, NULL, 'D'},
+	/* legacy alias for -D/--pgdata*/
+	{"data-dir", required_argument, NULL, 'D'},
 
 /* logging options */
 	{"log-level", required_argument, NULL, 'L'},
@@ -79,12 +83,11 @@ static struct option long_options[] =
 	{"terse", required_argument, NULL, 't'},
 	{"verbose", no_argument, NULL, 'v'},
 
+/* not yet handled */
 	{"dbname", required_argument, NULL, 'd'},
 	{"host", required_argument, NULL, 'h'},
 	{"port", required_argument, NULL, 'p'},
 	{"username", required_argument, NULL, 'U'},
-	{"superuser", required_argument, NULL, 'S'},
-	{"pgdata", required_argument, NULL, 'D'},
 	{"remote-user", required_argument, NULL, 'R'},
 	{"wal-keep-segments", required_argument, NULL, 'w'},
 	{"keep-history", required_argument, NULL, 'k'},
@@ -115,6 +118,11 @@ static struct option long_options[] =
 
 typedef struct
 {
+	/* configuration metadata */
+	bool		conninfo_provided;
+	bool		connection_param_provided;
+	bool		host_param_provided;
+
 	/* general configuration options */
 	char		config_file[MAXPGPATH];
 	bool		force;
@@ -127,25 +135,34 @@ typedef struct
 	bool		verbose;
 
 	/* connection options */
+	char		data_dir[MAXPGPATH];
 	char		superuser[MAXLEN];
 
 
 }	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
+		/* configuration metadata */ \
+		false, false, false, \
 		/* general configuration options */	\
 		"", false, "", \
 		/* logging options */ \
 		"", false, false, false, \
 		/* connection options */ \
-		""}
+		"", ""}
 
 static void do_help(void);
 static void do_master_register(void);
+
 static void do_standby_clone(void);
 
+static void do_cluster_event(void);
+
+
+static const char *action_name(const int action);
 static void exit_with_errors(void);
-static void print_error_list(ItemList *error_list, int log_level);
+static void print_item_list(ItemList *item_list);
+static void check_cli_parameters(const int action);
 static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 static bool create_repmgr_extension(PGconn *conn);
 

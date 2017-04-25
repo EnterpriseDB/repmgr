@@ -8,3 +8,8 @@ replication, and perform administrative tasks such as failover or switchover
 operations.
 
 `repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
+
+Commands
+--------
+
+repmgr cluster event [--all] [--node-id] [--node-name] [--event] [--event-matching]

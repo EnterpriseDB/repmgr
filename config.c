@@ -656,33 +656,6 @@ exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
 }
 
 
-void
-item_list_append(ItemList *item_list, char *error_message)
-{
-	ItemListCell *cell;
-
-	cell = (ItemListCell *) pg_malloc0(sizeof(ItemListCell));
-
-	if (cell == NULL)
-	{
-		log_error(_("unable to allocate memory; terminating."));
-		exit(ERR_BAD_CONFIG);
-	}
-
-	cell->string = pg_malloc0(MAXLEN);
-	strncpy(cell->string, error_message, MAXLEN);
-
-	if (item_list->tail)
-	{
-		item_list->tail->next = cell;
-	}
-	else
-	{
-		item_list->head = cell;
-	}
-
-	item_list->tail = cell;
-}
 
 
 /*

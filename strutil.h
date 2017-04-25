@@ -17,6 +17,19 @@
 
 #define MAXLEN_STR STR(MAXLEN)
 
+typedef struct ItemListCell
+{
+	struct ItemListCell *next;
+	char			    *string;
+} ItemListCell;
+
+typedef struct ItemList
+{
+	ItemListCell *head;
+	ItemListCell *tail;
+} ItemList;
+
+
 extern int
 sqlquery_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
@@ -25,7 +38,15 @@ extern int
 maxlen_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
+extern void
+item_list_append(ItemList *item_list, const char *message);
+
+extern void
+item_list_append_format(ItemList *item_list, const char *format, ...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
+
 extern char *
 escape_recovery_conf_value(const char *src);
+
 
 #endif	 /* _STRUTIL_H_ */
