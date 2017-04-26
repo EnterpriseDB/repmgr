@@ -61,6 +61,32 @@ maxlen_snprintf(char *str, const char *format,...)
 
 
 void
+append_where_clause(PQExpBufferData *where_clause, const char *format, ...)
+{
+	va_list		arglist;
+	char		stringbuf[MAXLEN];
+
+	va_start(arglist, format);
+	(void) xvsnprintf(stringbuf, MAXLEN, format, arglist);
+	va_end(arglist);
+
+	if(where_clause->data[0] == '\0')
+	{
+		appendPQExpBuffer(where_clause,
+						  " WHERE ");
+	}
+	else
+	{
+		appendPQExpBuffer(where_clause,
+						  " AND ");
+	}
+
+	appendPQExpBuffer(where_clause,
+					  "%s", stringbuf);
+
+}
+
+void
 item_list_append(ItemList *item_list, const char *message)
 {
 	item_list_append_format(item_list, "%s", message);
@@ -111,4 +137,23 @@ escape_recovery_conf_value(const char *src)
 		exit(ERR_INTERNAL);
 	}
 	return result;
+}
+
+char *
+escape_string(PGconn *conn, const char *string)
+{
+	char		*escaped_string;
+	int			error;
+
+	escaped_string = pg_malloc0(MAXLEN);
+
+	(void) PQescapeStringConn(conn, escaped_string, string, MAXLEN, &error);
+
+	if (error)
+	{
+		pfree(escaped_string);
+		return NULL;
+	}
+
+	return escaped_string;
 }

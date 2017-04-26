@@ -29,6 +29,8 @@ $(info Building against PostgreSQL $(MAJORVERSION))
 REPMGR_CLIENT_OBJS = repmgr-client.o config.o log.o strutil.o dbutils.o
 REPMGRD_OBJS = repmgrd.o
 
+$(REPMGR_CLIENT_OBJS): repmgr-client.h
+
 repmgr4: $(REPMGR_CLIENT_OBJS)
 	$(CC) $(CFLAGS) $(REPMGR_CLIENT_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 

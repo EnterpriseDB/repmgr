@@ -710,6 +710,8 @@ get_master_node_id(PGconn *conn)
 	return retval;
 }
 
+
+
 /* ================ */
 /* result functions */
 /* ================ */

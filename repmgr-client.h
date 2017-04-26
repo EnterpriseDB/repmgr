@@ -80,9 +80,14 @@ static struct option long_options[] =
 
 /* connection options */
 	{"superuser", required_argument, NULL, 'S'},
+
+
+/* node options */
 	{"pgdata", required_argument, NULL, 'D'},
 	/* legacy alias for -D/--pgdata*/
 	{"data-dir", required_argument, NULL, 'D'},
+	{"node-id", required_argument, NULL, OPT_NODE_ID},
+	{"node-name", required_argument, NULL, OPT_NODE_NAME},
 
 /* logging options */
 	{"log-level", required_argument, NULL, 'L'},

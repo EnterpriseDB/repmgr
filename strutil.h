@@ -48,5 +48,12 @@ __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 extern char *
 escape_recovery_conf_value(const char *src);
 
+extern char *
+escape_string(PGconn *conn, const char *string);
+
+extern void
+append_where_clause(PQExpBufferData *where_clause, const char *clause, ...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
+
 
 #endif	 /* _STRUTIL_H_ */
