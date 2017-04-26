@@ -129,8 +129,8 @@ typedef struct
 void		set_progname(const char *argv0);
 const char *progname(void);
 
-bool		load_config(const char *config_file, bool verbose, t_configuration_options *options, char *argv0);
-bool		parse_config(t_configuration_options *options);
+bool		load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
+bool		parse_config(t_configuration_options *options, bool terse);
 bool		reload_config(t_configuration_options *orig_options);
 
 

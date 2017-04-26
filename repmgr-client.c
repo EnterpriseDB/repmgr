@@ -325,6 +325,7 @@ main(int argc, char **argv)
 	 */
 	config_file_parsed = load_config(runtime_options.config_file,
 									 runtime_options.verbose,
+									 runtime_options.terse,
 									 &config_file_options,
 									 argv[0]);
 

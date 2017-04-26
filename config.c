@@ -22,7 +22,7 @@ static void	tablespace_list_append(t_configuration_options *options, const char 
 
 static char	*trim(char *s);
 
-static void	exit_with_errors(ItemList *config_errors, ItemList *config_warnings);
+static void	exit_with_errors(ItemList *config_errors, ItemList *config_warnings, bool terse);
 
 
 void
@@ -38,7 +38,7 @@ progname(void)
 }
 
 bool
-load_config(const char *config_file, bool verbose, t_configuration_options *options, char *argv0)
+load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0)
 {
 	struct stat stat_config;
 
@@ -156,12 +156,12 @@ load_config(const char *config_file, bool verbose, t_configuration_options *opti
 		}
 	}
 
-	return parse_config(options);
+	return parse_config(options, terse);
 }
 
 
 bool
-parse_config(t_configuration_options *options)
+parse_config(t_configuration_options *options, bool terse)
 {
 	/* Collate configuration file errors here for friendlier reporting */
 	static ItemList config_errors = { NULL, NULL };
@@ -172,10 +172,10 @@ parse_config(t_configuration_options *options)
 	/* errors found - exit after printing details, and any warnings */
 	if (config_errors.head != NULL)
 	{
-		exit_with_errors(&config_errors, &config_warnings);
+		exit_with_errors(&config_errors, &config_warnings, terse);
 	}
 
-	if (config_warnings.head != NULL)
+	if (terse == false && config_warnings.head != NULL)
 	{
 		ItemListCell *cell;
 
@@ -633,9 +633,10 @@ reload_config(t_configuration_options *orig_options)
 
 /* TODO: don't emit warnings if --terse and no errors */
 static void
-exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
+exit_with_errors(ItemList *config_errors, ItemList *config_warnings, bool terse)
 {
 	ItemListCell *cell;
+
 
 	log_error(_("following errors were found in the configuration file:"));
 
@@ -644,7 +645,7 @@ exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
 		fprintf(stderr, "  %s\n", cell->string);
 	}
 
-	if (config_warnings->head != NULL)
+	if (terse == false && config_warnings->head != NULL)
 	{
 		puts("");
 		log_warning(_("the following problems were also found in the configuration file:"));
@@ -653,6 +654,7 @@ exit_with_errors(ItemList *config_errors, ItemList *config_warnings)
 			fprintf(stderr, "  %s\n", cell->string);
 		}
 	}
+
 	exit(ERR_BAD_CONFIG);
 }
 
