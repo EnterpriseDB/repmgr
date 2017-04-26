@@ -755,6 +755,8 @@ do_master_register(void)
 	int			record_found;
 	bool		record_created;
 
+	PQExpBufferData	  event_description;
+
 	log_info(_("connecting to master database..."));
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
@@ -857,14 +859,40 @@ do_master_register(void)
 
 	// XXX if upstream_node_id set, warn that it will be ignored
 
+	initPQExpBuffer(&event_description);
+
 	if (record_found)
+	{
 		record_created = update_node_record(conn,
 											"master register",
 											&node_info);
+		if (record_created == true)
+		{
+			appendPQExpBuffer(&event_description,
+							  "existing master record updated");
+		}
+		else
+		{
+			appendPQExpBuffer(&event_description,
+							  "error encountered while updating master record:\n%s",
+							  PQerrorMessage(conn));
+		}
+
+	}
 	else
+	{
 		record_created = create_node_record(conn,
 											"master register",
 											&node_info);
+		if (record_created == false)
+		{
+			appendPQExpBuffer(&event_description,
+							  "error encountered while creating master record:\n%s",
+							  PQerrorMessage(conn));
+		}
+
+	}
+
 
 	/* Log the event */
 	create_event_record(conn,
@@ -872,7 +900,7 @@ do_master_register(void)
 						config_file_options.node_id,
 						"master_register",
 						record_created,
-						NULL);
+						event_description.data);
 
 	if (record_created == false)
 	{
@@ -971,7 +999,7 @@ do_cluster_event(void)
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to execute event query:\n  %s"),
-				PQerrorMessage(conn));
+				  PQerrorMessage(conn));
 		PQclear(res);
 		PQfinish(conn);
 		exit(ERR_DB_QUERY);
