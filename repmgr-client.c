@@ -846,6 +846,14 @@ do_master_register(void)
 		node_info.node_id = config_file_options.node_id;
 	}
 
+	/* if upstream_node_id set, warn that it will be ignored */
+	if (config_file_options.upstream_node_id != NO_UPSTREAM_NODE)
+	{
+		log_warning(_("master node %i is configured with \"upstream_node_id\" set to %i"),
+					node_info.node_id,
+					config_file_options.upstream_node_id);
+		log_detail(_("the value set for \"upstream_node_id\" will be ignored"));
+	}
 	/* set type to "master", active to "true" and unset upstream_node_id*/
 	node_info.type = MASTER;
 	node_info.upstream_node_id = NO_UPSTREAM_NODE;
@@ -856,8 +864,6 @@ do_master_register(void)
 	strncpy(node_info.conninfo, config_file_options.conninfo, MAXLEN);
 	strncpy(node_info.slot_name, repmgr_slot_name_ptr, MAXLEN);
 	node_info.priority = config_file_options.priority;
-
-	// XXX if upstream_node_id set, warn that it will be ignored
 
 	initPQExpBuffer(&event_description);
 
@@ -1208,6 +1214,13 @@ bool create_repmgr_extension(PGconn *conn)
 		PQfinish(superuser_conn);
 
 	log_notice(_("\"repmgr\" extension successfully installed"));
+
+	create_event_record(conn,
+						&config_file_options,
+						config_file_options.node_id,
+						"cluster_created",
+						true,
+						NULL);
 
 	return true;
 }
