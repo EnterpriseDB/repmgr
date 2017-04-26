@@ -38,4 +38,15 @@
 #define FAILOVER_NODES_MAX_CHECK 50
 
 
+#ifndef RECOVERY_COMMAND_FILE
+#define RECOVERY_COMMAND_FILE "recovery.conf"
+#endif
+
+#ifndef TABLESPACE_MAP
+#define TABLESPACE_MAP "tablespace_map"
+#endif
+
+#define WITNESS_DEFAULT_PORT "5499" /* If this value is ever changed, remember
+									 * to update comments and documentation */
+
 #endif

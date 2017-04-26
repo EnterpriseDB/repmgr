@@ -9,16 +9,7 @@
 #include <getopt_long.h>
 #include "log.h"
 
-#ifndef RECOVERY_COMMAND_FILE
-#define RECOVERY_COMMAND_FILE "recovery.conf"
-#endif
 
-#ifndef TABLESPACE_MAP
-#define TABLESPACE_MAP "tablespace_map"
-#endif
-
-#define WITNESS_DEFAULT_PORT "5499" /* If this value is ever changed, remember
-									 * to update comments and documentation */
 
 #define NO_ACTION			0		/* Dummy default action */
 #define MASTER_REGISTER		1
@@ -133,39 +124,6 @@ static struct option long_options[] =
 };
 
 
-typedef struct
-{
-	/* configuration metadata */
-	bool		conninfo_provided;
-	bool		connection_param_provided;
-	bool		host_param_provided;
-	bool		limit_provided;
-
-	/* general configuration options */
-	char		config_file[MAXPGPATH];
-	bool		force;
-	char		pg_bindir[MAXLEN]; /* overrides setting in repmgr.conf */
-
-	/* logging options */
-	char		loglevel[MAXLEN];  /* overrides setting in repmgr.conf */
-	bool		log_to_file;
-	bool		terse;
-	bool		verbose;
-
-	/* connection options */
-	char		superuser[MAXLEN];
-
-	/* node options */
-	int			node_id;
-	char		node_name[MAXLEN];
-	char		data_dir[MAXPGPATH];
-
-	/* event options */
-	char		event[MAXLEN];
-	int			limit;
-	bool		all;
-
-}	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
 		/* configuration metadata */ \
@@ -183,18 +141,13 @@ typedef struct
 
 
 static void do_help(void);
-static void do_master_register(void);
 
 static void do_standby_clone(void);
-
-static void do_cluster_event(void);
 
 
 static const char *action_name(const int action);
 static void exit_with_errors(void);
 static void print_item_list(ItemList *item_list);
 static void check_cli_parameters(const int action);
-static int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
-static bool create_repmgr_extension(PGconn *conn);
 
 #endif
