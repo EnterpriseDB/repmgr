@@ -35,6 +35,9 @@ static char	 pg_bindir[MAXLEN] = "";
 static char	 repmgr_slot_name[MAXLEN] = "";
 static char *repmgr_slot_name_ptr = NULL;
 
+static t_node_info target_node_info = T_NODE_INFO_INITIALIZER;
+
+
 int
 main(int argc, char **argv)
 {
@@ -297,8 +300,6 @@ main(int argc, char **argv)
 
 	check_cli_parameters(action);
 
-	// check runtime_options.node_id/node_name, if still set
-
 	/*
 	 * Sanity checks for command line parameters completed by now;
 	 * any further errors will be runtime ones
@@ -392,6 +393,61 @@ main(int argc, char **argv)
 						"please supply a configuration file"));
 			exit(ERR_BAD_CONFIG);
 		}
+	}
+
+	/*
+	 * If a node was specified (by --node-id or --node-name), check it exists
+	 * (and pre-populate a record for later use).
+	 *
+	 * At this point check_cli_parameters() will already have determined
+	 * if provision of these is valid for the action, otherwise it unsets them.
+	 *
+	 * We need to check this much later than other command line parameters
+	 * as we need to wait until the configuration file is parsed and we can
+	 * obtain the conninfo string.
+	 */
+
+	if (runtime_options.node_id != UNKNOWN_NODE_ID || runtime_options.node_name[0] != '\0')
+	{
+		PGconn *conn;
+		int record_found;
+		conn = establish_db_connection(config_file_options.conninfo, true);
+
+		if (runtime_options.node_id != UNKNOWN_NODE_ID)
+		{
+			record_found = get_node_record(conn, runtime_options.node_id, &target_node_info);
+
+			if (!record_found)
+			{
+				log_error(_("node %i (specified with --node-id) not found"),
+						  runtime_options.node_id);
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+		else if (runtime_options.node_name[0] != '\0')
+		{
+			char *escaped = escape_string(conn, runtime_options.node_name);
+			if (escaped == NULL)
+			{
+				log_error(_("unable to escape value provided for --node-name"));
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			record_found = get_node_record_by_name(conn, escaped, &target_node_info);
+
+			pfree(escaped);
+			if (!record_found)
+			{
+				log_error(_("node %s (specified with --node-name) not found"),
+						  runtime_options.node_name);
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+
+		PQfinish(conn);
 	}
 
 	/*
@@ -654,6 +710,7 @@ do_help(void)
 
 	printf(_("Usage:\n"));
 	printf(_("	%s [OPTIONS] master	 register\n"), progname());
+	printf(_("	%s [OPTIONS] cluster event\n"), progname());
 	puts("");
 	printf(_("General options:\n"));
 	printf(_("  -?, --help                          show this help, then exit\n"));
@@ -661,15 +718,26 @@ do_help(void)
 	puts("");
 	printf(_("General configuration options:\n"));
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
-	printf(_("  -f, --config-file=PATH              path to the configuration file\n"));
+	printf(_("  -f, --config-file=PATH              path to the repmgr configuration file\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
+	puts("");
+	printf(_("Connection options:\n"));
 	printf(_("  -S, --superuser=USERNAME            superuser to use if repmgr user is not superuser\n"));
 	puts("");
+	printf(_("Node-specific options:\n"));
+	printf(_("  -D, --pgdata=DIR                    location of the node's data directory \n"));
+	printf(_("  --node-id                           specify a node by id (only available for some operations)\n"));
+	printf(_("  --node-name                         specify a node by name (only available for some operations)\n"));
+
+	puts("");
+
 	printf(_("Logging options:\n"));
 	printf(_("  -L, --log-level                     set log level (overrides configuration file; default: NOTICE)\n"));
 	printf(_("  --log-to-file                       log to file (or logging facility) defined in repmgr.conf\n"));
 	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
+	puts("");
+	printf(_("CLUSTER SHOW options:\n"));
 
 	puts("");
 }

@@ -854,6 +854,32 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %i", node_id);
 	}
 
+	return result;
+}
+
+
+int
+get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info)
+{
+	PQExpBufferData	  query;
+	int 		result;
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+		"SELECT node_id, type, upstream_node_id, node_name, conninfo, slot_name, priority, active"
+		"  FROM repmgr.nodes "
+		" WHERE node_name = '%s' ",
+		node_name);
+
+	log_verbose(LOG_DEBUG, "get_node_record_by_name():\n  %s", query.data);
+
+	result = _get_node_record(conn, query.data, node_info);
+
+	if (result == 0)
+	{
+		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %s",
+					node_name);
+	}
 
 	return result;
 }
