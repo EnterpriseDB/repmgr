@@ -20,20 +20,30 @@
 #include "repmgr.h"
 #include "repmgr-client.h"
 #include "repmgr-client-global.h"
-#include "repmgr-action-cluster.h"
 #include "repmgr-action-master.h"
+#include "repmgr-action-standby.h"
+#include "repmgr-action-cluster.h"
+
+
+/* globally available variables *
+ * ============================ */
 
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
+/* conninfo params for the node we're cloning from */
+t_conninfo_param_list source_conninfo;
 
-
-bool	config_file_required = true;
+bool	 config_file_required = true;
 char	 pg_bindir[MAXLEN] = "";
 
 char	 repmgr_slot_name[MAXLEN] = "";
-char *repmgr_slot_name_ptr = NULL;
+char	*repmgr_slot_name_ptr = NULL;
 
+/*
+ * if --node-id/--node-name provided, place that node's record here
+ * for later use
+ */
 t_node_info target_node_info = T_NODE_INFO_INITIALIZER;
 
 
@@ -114,6 +124,19 @@ main(int argc, char **argv)
 
 			/* connection options */
 			/* ------------------ */
+
+			/* -h/--host */
+			case 'h':
+				strncpy(runtime_options.host, optarg, MAXLEN);
+				param_set(&source_conninfo, "host", optarg);
+				runtime_options.connection_param_provided = true;
+				runtime_options.host_param_provided = true;
+				break;
+
+			/* -R/--remote_user */
+			case 'R':
+				strncpy(runtime_options.remote_user, optarg, MAXLEN);
+				break;
 
 			/* -S/--superuser */
 			case 'S':
@@ -748,12 +771,6 @@ do_help(void)
 
 
 
-static void
-do_standby_clone(void)
-{
-	puts("standby clone");
-}
-
 
 
 
@@ -991,4 +1008,42 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 	}
 
 	return server_version_num;
+}
+
+
+int
+test_ssh_connection(char *host, char *remote_user)
+{
+	char		script[MAXLEN];
+	int			r = 1, i;
+
+	/* On some OS, true is located in a different place than in Linux
+	 * we have to try them all until all alternatives are gone or we
+	 * found `true' because the target OS may differ from the source
+	 * OS
+	 */
+	const char *bin_true_paths[] = {
+		"/bin/true",
+		"/usr/bin/true",
+		NULL
+	};
+
+	for (i = 0; bin_true_paths[i] && r != 0; ++i)
+	{
+		if (!remote_user[0])
+			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s %s 2>/dev/null",
+							config_file_options.ssh_options, host, bin_true_paths[i]);
+		else
+			maxlen_snprintf(script, "ssh -o Batchmode=yes %s %s -l %s %s 2>/dev/null",
+							config_file_options.ssh_options, host, remote_user,
+							bin_true_paths[i]);
+
+		log_verbose(LOG_DEBUG, _("test_ssh_connection(): executing %s"), script);
+		r = system(script);
+	}
+
+	if (r != 0)
+		log_warning(_("unable to connect to remote host '%s' via SSH"), host);
+
+	return r;
 }

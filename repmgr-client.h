@@ -70,8 +70,9 @@ static struct option long_options[] =
 	{"pg_bindir", required_argument, NULL, 'b'},
 
 /* connection options */
+	{"host", required_argument, NULL, 'h'},
+	{"remote-user", required_argument, NULL, 'R'},
 	{"superuser", required_argument, NULL, 'S'},
-
 
 /* node options */
 	{"pgdata", required_argument, NULL, 'D'},
@@ -86,6 +87,10 @@ static struct option long_options[] =
 	{"terse", required_argument, NULL, 't'},
 	{"verbose", no_argument, NULL, 'v'},
 
+/* standby clone options */
+	{"rsync-only", no_argument, NULL, 'r'},
+	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
+
 /* event options */
 	{"event", required_argument, NULL, OPT_EVENT },
 	{"limit", required_argument, NULL, OPT_LIMIT },
@@ -93,10 +98,8 @@ static struct option long_options[] =
 
 /* not yet handled */
 	{"dbname", required_argument, NULL, 'd'},
-	{"host", required_argument, NULL, 'h'},
 	{"port", required_argument, NULL, 'p'},
 	{"username", required_argument, NULL, 'U'},
-	{"remote-user", required_argument, NULL, 'R'},
 	{"wal-keep-segments", required_argument, NULL, 'w'},
 	{"keep-history", required_argument, NULL, 'k'},
 	{"wait", no_argument, NULL, 'W'},
@@ -123,21 +126,6 @@ static struct option long_options[] =
 	{NULL, 0, NULL, 0}
 };
 
-
-
-#define T_RUNTIME_OPTIONS_INITIALIZER { \
-		/* configuration metadata */ \
-		false, false, false, false,	\
-		/* general configuration options */	\
-		"", false, "", \
-		/* logging options */ \
-		"", false, false, false, \
-		/* connection options */ \
-		"", \
-		/* node options */ \
-		UNKNOWN_NODE_ID, "", "", \
-		/* event options */ \
-		"", 20, false}
 
 
 static void do_help(void);
