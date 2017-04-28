@@ -95,6 +95,7 @@ typedef struct
     int			bdr_monitoring_mode;
 
 	/* barman settings */
+	char		barman_host[MAXLEN];
 	char		barman_server[MAXLEN];
 	char		barman_config[MAXLEN];
 }	t_configuration_options;
@@ -122,7 +123,7 @@ typedef struct
 		/* bdr settings */ \
 		BDR_MONITORING_LOCAL, \
 		/* barman settings */ \
-		"", "" }
+		"", "", "" }
 
 
 

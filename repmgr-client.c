@@ -1047,3 +1047,47 @@ test_ssh_connection(char *host, char *remote_user)
 
 	return r;
 }
+
+
+/*
+ * Execute a command locally. If outputbuf == NULL, discard the
+ * output.
+ */
+bool
+local_command(const char *command, PQExpBufferData *outputbuf)
+{
+	FILE *fp;
+	char output[MAXLEN];
+	int retval;
+
+	if (outputbuf == NULL)
+	{
+		retval = system(command);
+		return (retval == 0) ? true : false;
+	}
+	else
+	{
+		fp = popen(command, "r");
+
+		if (fp == NULL)
+		{
+			log_error(_("unable to execute local command:\n%s"), command);
+			return false;
+		}
+
+		/* TODO: better error handling */
+		while (fgets(output, MAXLEN, fp) != NULL)
+		{
+			appendPQExpBuffer(outputbuf, "%s", output);
+		}
+
+		pclose(fp);
+
+		if (outputbuf->data != NULL)
+			log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
+		else
+			log_verbose(LOG_DEBUG, "local_command(): no output returned");
+
+		return true;
+	}
+}

@@ -195,6 +195,48 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 /* =============================== */
 
 
+/*
+ * get_conninfo_value()
+ *
+ * Extract the value represented by 'keyword' in 'conninfo' and copy
+ * it to the 'output' buffer.
+ *
+ * Returns true on success, or false on failure (conninfo string could
+ * not be parsed, or provided keyword not found).
+ */
+
+bool
+get_conninfo_value(const char *conninfo, const char *keyword, char *output)
+{
+	PQconninfoOption *conninfo_options;
+	PQconninfoOption *conninfo_option;
+
+	conninfo_options = PQconninfoParse(conninfo, NULL);
+
+	if (conninfo_options == NULL)
+	{
+		log_error(_("unable to parse provided conninfo string \"%s\""), conninfo);
+		return false;
+	}
+
+	for (conninfo_option = conninfo_options; conninfo_option->keyword != NULL; conninfo_option++)
+	{
+		if (strcmp(conninfo_option->keyword, keyword) == 0)
+		{
+			if (conninfo_option->val != NULL && conninfo_option->val[0] != '\0')
+			{
+				strncpy(output, conninfo_option->val, MAXLEN);
+				break;
+			}
+		}
+	}
+
+	PQconninfoFree(conninfo_options);
+
+	return true;
+}
+
+
 void
 initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults)
 {
@@ -383,7 +425,7 @@ begin_transaction(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("Unable to begin transaction:\n	 %s"),
+		log_error(_("unable to begin transaction:\n	 %s"),
 				  PQerrorMessage(conn));
 
 		PQclear(res);
@@ -407,7 +449,7 @@ commit_transaction(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("Unable to commit transaction:\n  %s"),
+		log_error(_("unable to commit transaction:\n  %s"),
 				  PQerrorMessage(conn));
 		PQclear(res);
 
@@ -431,7 +473,7 @@ rollback_transaction(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("Unable to rollback transaction:\n	%s"),
+		log_error(_("unable to rollback transaction:\n	%s"),
 				  PQerrorMessage(conn));
 		PQclear(res);
 

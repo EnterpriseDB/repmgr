@@ -121,6 +121,8 @@ PGconn *establish_db_connection_by_params(const char *keywords[],
 
 
 /* conninfo manipulation functions */
+bool		get_conninfo_value(const char *conninfo, const char *keyword, char *output);
+
 void		initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults);
 void		copy_conninfo_params(t_conninfo_param_list *dest_list, t_conninfo_param_list *source_list);
 void		conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);

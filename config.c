@@ -441,6 +441,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 
 		/* barman settings */
+		else if (strcmp(name, "barman_host") == 0)
+			strncpy(options->barman_host, value, MAXLEN);
 		else if (strcmp(name, "barman_server") == 0)
 			strncpy(options->barman_server, value, MAXLEN);
 		else if (strcmp(name, "barman_config") == 0)
@@ -534,6 +536,16 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 
 		PQconninfoFree(conninfo_options);
+	}
+
+	/* add warning about changed "barman_" parameter meanings */
+	if (options->barman_server[0] == '\0' && options->barman_server[0] != '\0')
+	{
+		item_list_append(warning_list,
+						 _("use \"barman_host\" for the hostname of the Barman server"));
+		item_list_append(warning_list,
+						 _("use \"barman_server\" for the name of the [server] section in the Barman configururation file"));
+
 	}
 }
 

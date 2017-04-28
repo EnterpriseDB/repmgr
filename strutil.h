@@ -6,6 +6,8 @@
 #ifndef _STRUTIL_H_
 #define _STRUTIL_H_
 
+#include <pqexpbuffer.h>
+
 #define MAXLEN			1024
 #define MAX_QUERY_LEN	8192
 

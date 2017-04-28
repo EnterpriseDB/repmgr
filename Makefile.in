@@ -27,7 +27,7 @@ include Makefile.global
 $(info Building against PostgreSQL $(MAJORVERSION))
 
 REPMGR_CLIENT_OBJS = repmgr-client.o repmgr-action-master.o repmgr-action-standby.o repmgr-action-cluster.o \
-  config.o log.o strutil.o dbutils.o
+  config.o log.o strutil.o dbutils.o dirutil.o
 REPMGRD_OBJS = repmgrd.o
 
 $(REPMGR_CLIENT_OBJS): repmgr-client.h
@@ -52,7 +52,15 @@ maintainer-clean: additional-maintainer-clean
 
 additional-clean:
 	rm -f repmgr-client.o
+	rm -f repmgr-action-cluster.o
+	rm -f repmgr-action-master.o
+	rm -f repmgr-action-standby.o
 	rm -f repmgrd.o
+	rm -f config.o
+	rm -f dbutils.o
+	rm -f dirutil.o
+	rm -f log.o
+	rm -f strutil.o
 
 maintainer-additional-clean: clean
 	rm -f configure

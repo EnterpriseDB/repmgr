@@ -130,7 +130,6 @@ static struct option long_options[] =
 
 static void do_help(void);
 
-static void do_standby_clone(void);
 
 
 static const char *action_name(const int action);
