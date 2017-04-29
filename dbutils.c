@@ -24,6 +24,56 @@ static int _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info
 static void _populate_node_record(PGresult *res, t_node_info *node_info, int row);
 static bool _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info);
 
+/* =================== */
+/* extension functions */
+/* =================== */
+
+t_extension_status
+get_repmgr_extension_status(PGconn *conn)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res;
+
+	/* TODO: check version */
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "	  SELECT ae.name, e.extname "
+					  "     FROM pg_catalog.pg_available_extensions ae "
+					  "LEFT JOIN pg_catalog.pg_extension e "
+					  "       ON e.extname=ae.name "
+					  "	   WHERE ae.name='repmgr' ");
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute extension query:\n	%s"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return REPMGR_UNKNOWN;
+	}
+
+	/* 1. Check extension is actually available */
+
+	if (PQntuples(res) == 0)
+	{
+		return REPMGR_UNAVAILABLE;
+	}
+
+	/* 2. Check if extension installed */
+	if (PQgetisnull(res, 0, 1) == 0)
+	{
+		return REPMGR_INSTALLED;
+	}
+
+	return REPMGR_AVAILABLE;
+}
+
 /* ==================== */
 /* Connection functions */
 /* ==================== */
@@ -539,9 +589,192 @@ set_config_bool(PGconn *conn, const char *config_param, bool state)
 	return _set_config(conn, config_param, sqlquery);
 }
 
+
+int
+guc_set(PGconn *conn, const char *parameter, const char *op,
+		const char *value)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+	int			retval = 1;
+
+	char *escaped_parameter = escape_string(conn, parameter);
+	char *escaped_value     = escape_string(conn, value);
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+					  "SELECT true FROM pg_catalog.pg_settings "
+					  " WHERE name = '%s' AND setting %s '%s'",
+					  escaped_parameter, op, escaped_value);
+
+	log_verbose(LOG_DEBUG, "guc_set():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+	pfree(escaped_parameter);
+	pfree(escaped_value);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("guc_set(): unable to execute query\n%s"),
+				  PQerrorMessage(conn));
+		retval = -1;
+	}
+	else if (PQntuples(res) == 0)
+	{
+		retval = 0;
+	}
+
+	PQclear(res);
+
+	return retval;
+}
+
+/**
+ * Just like guc_set except with an extra parameter containing the name of
+ * the pg datatype so that the comparison can be done properly.
+ */
+int
+guc_set_typed(PGconn *conn, const char *parameter, const char *op,
+			  const char *value, const char *datatype)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+	int			retval = 1;
+
+	char *escaped_parameter = escape_string(conn, parameter);
+	char *escaped_value     = escape_string(conn, value);
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+					  "SELECT true FROM pg_catalog.pg_settings "
+					  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
+					  parameter, datatype, op, value, datatype);
+
+	log_verbose(LOG_DEBUG, "guc_set_typed():\n%s\n", query.data);
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+	pfree(escaped_parameter);
+	pfree(escaped_value);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("guc_set_typed(): unable to execute query\n  %s"),
+				PQerrorMessage(conn));
+		retval = -1;
+	}
+	else if (PQntuples(res) == 0)
+	{
+		retval = 0;
+	}
+
+	PQclear(res);
+
+	return retval;
+}
+
+
+bool
+get_pg_setting(PGconn *conn, const char *setting, char *output)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+	int			i;
+	bool        success = false;
+
+	char *escaped_setting = escape_string(conn, setting);
+
+	if (escaped_setting == NULL)
+	{
+		log_error(_("unable to escape setting '%s'"), setting);
+		return false;
+	}
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+					  "SELECT name, setting "
+					  "  FROM pg_catalog.pg_settings WHERE name = '%s'",
+					  escaped_setting);
+
+	log_verbose(LOG_DEBUG, "get_pg_setting(): %s\n", query.data);
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+	pfree(escaped_setting);
+
+	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("get_pg_setting() - PQexec failed: %s"),
+				PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		if (strcmp(PQgetvalue(res, i, 0), setting) == 0)
+		{
+			strncpy(output, PQgetvalue(res, i, 1), MAXLEN);
+			success = true;
+			break;
+		}
+		else
+		{
+			/* XXX highly unlikely this would ever happen */
+			log_error(_("get_pg_setting(): unknown parameter \"%s\""), PQgetvalue(res, i, 0));
+		}
+	}
+
+	if (success == true)
+	{
+		log_verbose(LOG_DEBUG, _("get_pg_setting(): returned value is \"%s\""), output);
+	}
+
+	PQclear(res);
+
+	return success;
+}
+
+
 /* ============================ */
 /* Server information functions */
 /* ============================ */
+
+
+bool
+get_cluster_size(PGconn *conn, char *size)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+					  "SELECT pg_catalog.pg_size_pretty(SUM(pg_catalog.pg_database_size(oid))::bigint) "
+					  "	 FROM pg_catalog.pg_database ");
+
+	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s\n", query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("get_cluster_size(): unable to execute query\n%s"),
+				  PQerrorMessage(conn));
+
+		PQclear(res);
+		return false;
+	}
+
+	strncpy(size, PQgetvalue(res, 0, 0), MAXLEN);
+
+	PQclear(res);
+	return true;
+}
 
 /*
  * Return the server version number for the connection provided
@@ -635,6 +868,7 @@ get_master_connection(PGconn *conn,
 
 	/* find all registered nodes  */
 	log_info(_("retrieving node list"));
+
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
 					  "  SELECT node_id, conninfo, "

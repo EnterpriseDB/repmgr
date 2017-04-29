@@ -8,6 +8,8 @@
 #ifndef _REPMGR_CONFIG_H_
 #define _REPMGR_CONFIG_H_
 
+#include <getopt_long.h>
+
 #define CONFIG_FILE_NAME	"repmgr.conf"
 #define MAXLINELENGTH		4096
 extern bool		config_file_found;
@@ -127,6 +129,17 @@ typedef struct
 
 
 
+typedef struct
+{
+	char		slot[MAXLEN];
+	char		xlog_method[MAXLEN];
+	bool		no_slot; /* from PostgreSQL 10 */
+} t_basebackup_options;
+
+#define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "", false }
+
+
+
 void		set_progname(const char *argv0);
 const char *progname(void);
 
@@ -143,5 +156,10 @@ int			repmgr_atoi(const char *s,
 bool		parse_bool(const char *s,
 					   const char *config_item,
 					   ItemList *error_list);
+
+bool parse_pg_basebackup_options(const char *pg_basebackup_options,
+								 t_basebackup_options *backup_options,
+								 int server_version_num,
+								 ItemList *error_list);
 
 #endif

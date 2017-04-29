@@ -88,13 +88,18 @@ static struct option long_options[] =
 	{"verbose", no_argument, NULL, 'v'},
 
 /* standby clone options */
+	{"fast-checkpoint", no_argument, NULL, 'c'},
 	{"rsync-only", no_argument, NULL, 'r'},
+	{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
+	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
+	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
+	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 
 /* event options */
+	{"all", no_argument, NULL, OPT_ALL },
 	{"event", required_argument, NULL, OPT_EVENT },
 	{"limit", required_argument, NULL, OPT_LIMIT },
-	{"all", no_argument, NULL, OPT_ALL },
 
 /* not yet handled */
 	{"dbname", required_argument, NULL, 'd'},
@@ -108,17 +113,13 @@ static struct option long_options[] =
 	{"mode", required_argument, NULL, 'm'},
 	{"remote-config-file", required_argument, NULL, 'C'},
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
-	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
 	{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
 	{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
 	{"csv", no_argument, NULL, OPT_CSV},
 	{"node", required_argument, NULL, OPT_NODE},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
-	{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
-	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
-	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 	/* Following options for internal use */
 	{"cluster", required_argument, NULL, OPT_CLUSTER},

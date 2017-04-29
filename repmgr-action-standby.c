@@ -12,7 +12,21 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-standby.h"
 
+static PGconn  *primary_conn = NULL;
+static PGconn  *source_conn = NULL;
+
+
 static char		local_data_directory[MAXPGPATH];
+static bool		local_data_directory_provided = false;
+
+static bool		upstream_record_found = false;
+static int	    upstream_node_id = UNKNOWN_NODE_ID;
+static char		upstream_data_directory[MAXPGPATH];
+
+static t_conninfo_param_list recovery_conninfo;
+static char		recovery_conninfo_str[MAXLEN];
+
+static standy_clone_mode mode;
 
 /* used by barman mode */
 static char		local_repmgr_tmp_directory[MAXPGPATH];
@@ -20,46 +34,22 @@ static char		local_repmgr_tmp_directory[MAXPGPATH];
 
 static void check_barman_config(void);
 static char *make_barman_ssh_command(char *buf);
+static void	check_source_server(void);
 
 
 void
 do_standby_clone(void)
 {
-	PGconn	   *primary_conn = NULL;
-	PGconn	   *source_conn = NULL;
-	PGresult   *res;
-
-	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
-	char		cluster_size[MAXLEN];
 
 	/*
 	 * conninfo params for the actual upstream node (which might be different
 	 * to the node we're cloning from) to write to recovery.conf
 	 */
-	t_conninfo_param_list recovery_conninfo;
-	char		recovery_conninfo_str[MAXLEN];
-	bool		upstream_record_found = false;
-	int		    upstream_node_id = UNKNOWN_NODE_ID;
-
-	char		upstream_data_directory[MAXPGPATH];
-	bool		local_data_directory_provided = false;
-
-	enum {
-		barman,
-		rsync,
-		pg_basebackup
-	}			mode;
-
 
 	/*
 	 * detecting the cloning mode
 	 */
-	if (runtime_options.rsync_only)
-		mode = rsync;
-	else if (strcmp(config_file_options.barman_host, "") != 0 && ! runtime_options.without_barman)
-		mode = barman;
-	else
-		mode = pg_basebackup;
+	mode = get_standby_clone_mode();
 
 	/*
 	 * In rsync mode, we need to check the SSH connection early
@@ -152,6 +142,22 @@ do_standby_clone(void)
 		{
 			param_set(&recovery_conninfo, "application_name", application_name);
 		}
+	}
+
+
+	/*
+	 * --upstream-conninfo supplied, which we interpret to imply
+	 * --no-upstream-connection as well - the use case for this option is when
+	 * the upstream is not available, so no point in checking for it.
+	 */
+
+	if (*runtime_options.upstream_conninfo)
+		runtime_options.no_upstream_connection = false;
+
+	/* By default attempt to connect to the source server */
+	if (runtime_options.no_upstream_connection == false)
+	{
+		check_source_server();
 	}
 
 }
@@ -253,3 +259,152 @@ make_barman_ssh_command(char *buf)
 
 	return buf;
 }
+
+
+static void
+check_source_server()
+{
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
+	char		cluster_size[MAXLEN];
+
+	/* Attempt to connect to the upstream server to verify its configuration */
+	log_info(_("connecting to upstream node\n"));
+
+	source_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
+													(const char**)source_conninfo.values,
+													false);
+
+	/*
+	 * Unless in barman mode, exit with an error;
+	 * establish_db_connection_by_params() will have already logged an error message
+	 */
+	if (PQstatus(source_conn) != CONNECTION_OK)
+	{
+		if (mode != barman)
+		{
+			PQfinish(source_conn);
+			exit(ERR_DB_CON);
+		}
+	}
+	else
+	{
+		/*
+		 * If a connection was established, perform some sanity checks on the
+		 * provided upstream connection
+		 */
+		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+		int query_result;
+		t_extension_status extension_status;
+
+		/* Verify that upstream node is a supported server version */
+		log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
+
+		server_version_num = check_server_version(source_conn, "master", true, NULL);
+
+		check_upstream_config(source_conn, server_version_num, true);
+
+		if (get_cluster_size(source_conn, cluster_size) == false)
+			exit(ERR_DB_QUERY);
+
+		log_info(_("Successfully connected to source node. Current installation size is %s"),
+				 cluster_size);
+
+		/*
+		 * If --recovery-min-apply-delay was passed, check that
+		 * we're connected to PostgreSQL 9.4 or later
+		 */
+		// XXX should this be a config file parameter?
+		if (*runtime_options.recovery_min_apply_delay)
+		{
+			if (server_version_num < 90400)
+			{
+				log_error(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
+				PQfinish(source_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+
+		/*
+		 * If the upstream node is a standby, try to connect to the primary too so we
+		 * can write an event record
+		 */
+		if (is_standby(source_conn))
+		{
+			primary_conn = get_master_connection(source_conn, NULL, NULL);
+
+			// XXX check this worked?
+		}
+		else
+		{
+			primary_conn = source_conn;
+		}
+
+		/*
+		 * Sanity-check that the master node has a repmgr schema - if not
+		 * present, fail with an error unless -F/--force is used (to enable
+		 * repmgr to be used as a standalone clone tool)
+		 */
+
+		extension_status = get_repmgr_extension_status(primary_conn);
+
+		if (extension_status != REPMGR_INSTALLED)
+		{
+			if (!runtime_options.force)
+			{
+				/* schema doesn't exist */
+				log_error(_("repmgr extension not found on upstream server"));
+				log_hint(_("check that the upstream server is part of a repmgr cluster"));
+				PQfinish(source_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			log_warning(_("repmgr extension not found on upstream server"));
+		}
+
+		/* Fetch the source's data directory */
+		if (get_pg_setting(source_conn, "data_directory", upstream_data_directory) == false)
+		{
+			log_error(_("unable to retrieve upstream node's data directory"));
+			log_hint(_("STANDBY CLONE must be run as a database superuser"));
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/*
+		 * If no target directory was explicitly provided, we'll default to
+		 * the same directory as on the source host.
+		 */
+		if (local_data_directory_provided == false)
+		{
+			strncpy(local_data_directory, upstream_data_directory, MAXPGPATH);
+
+			log_notice(_("setting data directory to: \"%s\""), local_data_directory);
+			log_hint(_("use -D/--pgdata to explicitly specify a data directory"));
+		}
+
+		/*
+		 * Copy the source connection so that we have some default values,
+		 * particularly stuff like passwords extracted from PGPASSFILE;
+		 * these will be overridden from the upstream conninfo, if provided.
+		 */
+		conn_to_param_list(source_conn, &recovery_conninfo);
+
+		/*
+		 * Attempt to find the upstream node record
+		 */
+		if (config_file_options.upstream_node_id == NO_UPSTREAM_NODE)
+			upstream_node_id = get_master_node_id(source_conn);
+		else
+			upstream_node_id = config_file_options.upstream_node_id;
+
+		query_result = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
+
+		if (query_result)
+		{
+			upstream_record_found = true;
+			strncpy(recovery_conninfo_str, upstream_node_record.conninfo, MAXLEN);
+		}
+	}
+}
+
+

@@ -26,6 +26,13 @@ typedef enum {
 	BDR
 } t_server_type;
 
+typedef enum {
+	REPMGR_INSTALLED = 0,
+	REPMGR_AVAILABLE,
+	REPMGR_UNAVAILABLE,
+    REPMGR_UNKNOWN
+} t_extension_status;
+
 /*
  * Struct to store node information
  */
@@ -119,6 +126,8 @@ PGconn *establish_db_connection_by_params(const char *keywords[],
 										  const char *values[],
 										  const bool exit_on_error);
 
+/* extension functions */
+t_extension_status get_repmgr_extension_status(PGconn *conn);
 
 /* conninfo manipulation functions */
 bool		get_conninfo_value(const char *conninfo, const char *keyword, char *output);
@@ -139,8 +148,14 @@ bool		check_cluster_schema(PGconn *conn);
 /* GUC manipulation functions */
 bool		set_config(PGconn *conn, const char *config_param,	const char *config_value);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
+int			guc_set(PGconn *conn, const char *parameter, const char *op,
+			const char *value);
+int			guc_set_typed(PGconn *conn, const char *parameter, const char *op,
+			  const char *value, const char *datatype);
+bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 
 /* server information functions */
+bool		get_cluster_size(PGconn *conn, char *size);
 int			get_server_version(PGconn *conn, char *server_version);
 int			is_standby(PGconn *conn);
 PGconn	   *get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out);

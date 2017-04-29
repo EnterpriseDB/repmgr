@@ -15,6 +15,7 @@ typedef struct
 	bool		connection_param_provided;
 	bool		host_param_provided;
 	bool		limit_provided;
+	bool		wal_keep_segments_used;
 
 	/* general configuration options */
 	char		config_file[MAXPGPATH];
@@ -38,19 +39,25 @@ typedef struct
 	char		data_dir[MAXPGPATH];
 
 	/* standby clone options */
+	bool		fast_checkpoint;
 	bool		rsync_only;
+	bool		no_upstream_connection;
+	char		recovery_min_apply_delay[MAXLEN];
+	char		replication_user[MAXLEN];
+	char		upstream_conninfo[MAXLEN];
+	char		wal_keep_segments[MAXLEN];
 	bool		without_barman;
 
 	/* event options */
+	bool		all;
 	char		event[MAXLEN];
 	int			limit;
-	bool		all;
 
 }	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
 		/* configuration metadata */ \
-		false, false, false, false,	\
+		false, false, false, false,	false, 	\
 		/* general configuration options */	\
 		"", false, "", \
 		/* logging options */ \
@@ -60,10 +67,16 @@ typedef struct
 		/* node options */ \
 		UNKNOWN_NODE_ID, "", "", \
 		/* standby clone options */ \
-		false, false, 		\
+		false, false, false, "", "", "", "", false,	\
 		/* event options */ \
-		"", 20, false}
+		false, "", 20 }
 
+
+typedef enum {
+	barman,
+	rsync,
+	pg_basebackup
+}	standy_clone_mode;
 
 
 /* global configuration structures */
@@ -86,6 +99,9 @@ extern int check_server_version(PGconn *conn, char *server_type, bool exit_on_er
 extern bool create_repmgr_extension(PGconn *conn);
 extern int test_ssh_connection(char *host, char *remote_user);
 extern bool local_command(const char *command, PQExpBufferData *outputbuf);
+extern bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
+extern standy_clone_mode get_standby_clone_mode(void);
 
+extern void print_error_list(ItemList *error_list, int log_level);
 
 #endif
