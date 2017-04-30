@@ -67,7 +67,7 @@ do_cluster_event(void)
 					  where_clause.data);
 
 	appendPQExpBuffer(&query,
-					  " ORDER BY timestamp DESC");
+					  " ORDER BY event_timestamp DESC");
 
 	if (runtime_options.all == false && runtime_options.limit > 0)
 	{
