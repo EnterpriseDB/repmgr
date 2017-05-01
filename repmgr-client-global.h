@@ -28,8 +28,13 @@ typedef struct
 	bool		terse;
 	bool		verbose;
 
-	/* connection options */
+	/* standard connection options */
+	char		dbname[MAXLEN];
 	char		host[MAXLEN];
+	char		username[MAXLEN];
+	char		port[MAXLEN];
+
+	/* other connection options */
 	char		remote_user[MAXLEN];
 	char		superuser[MAXLEN];
 
@@ -62,8 +67,10 @@ typedef struct
 		"", false, "", \
 		/* logging options */ \
 		"", false, false, false, \
-		/* connection options */ \
-		"", "", "",			 \
+		/* database connection options */ \
+		"", "", "",	"",				  \
+		/* other connection options */ \
+		"",	"",				  \
 		/* node options */ \
 		UNKNOWN_NODE_ID, "", "", \
 		/* standby clone options */ \

@@ -652,7 +652,7 @@ guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 					  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
 					  parameter, datatype, op, value, datatype);
 
-	log_verbose(LOG_DEBUG, "guc_set_typed():\n%s\n", query.data);
+	log_verbose(LOG_DEBUG, "guc_set_typed():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 

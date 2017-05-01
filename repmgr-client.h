@@ -11,14 +11,14 @@
 
 
 
-#define NO_ACTION			0		/* Dummy default action */
-#define MASTER_REGISTER		1
-#define STANDBY_REGISTER	2
-#define STANDBY_UNREGISTER	3
-#define STANDBY_CLONE		4
-#define STANDBY_PROMOTE		5
-#define STANDBY_FOLLOW		6
-#define STANDBY_SWITCHOVER	7
+#define NO_ACTION			   0	/* Dummy default action */
+#define MASTER_REGISTER		   1
+#define STANDBY_REGISTER	   2
+#define STANDBY_UNREGISTER	   3
+#define STANDBY_CLONE		   4
+#define STANDBY_PROMOTE		   5
+#define STANDBY_FOLLOW		   6
+#define STANDBY_SWITCHOVER	   7
 #define STANDBY_ARCHIVE_CONFIG 8
 #define STANDBY_RESTORE_CONFIG 9
 #define WITNESS_CREATE		   10
@@ -50,7 +50,7 @@
 #define OPT_CLUSTER						 15
 #define OPT_LOG_TO_FILE					 16
 #define OPT_UPSTREAM_CONNINFO			 17
-/* XXX deprecate, replace with --use-conninfo-password */
+/* XXX deprecate, replace with --use-conninfo-password (--use-recovery-conninfo-password) set */
 #define OPT_NO_CONNINFO_PASSWORD		 18
 #define OPT_REPLICATION_USER			 19
 #define OPT_EVENT						 20
@@ -70,9 +70,12 @@ static struct option long_options[] =
 	{"pg_bindir", required_argument, NULL, 'b'},
 
 /* connection options */
+	{"dbname", required_argument, NULL, 'd'},
 	{"host", required_argument, NULL, 'h'},
+	{"port", required_argument, NULL, 'p'},
 	{"remote-user", required_argument, NULL, 'R'},
 	{"superuser", required_argument, NULL, 'S'},
+	{"username", required_argument, NULL, 'U'},
 
 /* node options */
 	{"pgdata", required_argument, NULL, 'D'},
@@ -102,9 +105,6 @@ static struct option long_options[] =
 	{"limit", required_argument, NULL, OPT_LIMIT },
 
 /* not yet handled */
-	{"dbname", required_argument, NULL, 'd'},
-	{"port", required_argument, NULL, 'p'},
-	{"username", required_argument, NULL, 'U'},
 	{"wal-keep-segments", required_argument, NULL, 'w'},
 	{"keep-history", required_argument, NULL, 'k'},
 	{"wait", no_argument, NULL, 'W'},

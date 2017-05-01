@@ -266,9 +266,12 @@ check_source_server()
 {
 	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	char		cluster_size[MAXLEN];
+	t_node_info node_record = T_NODE_INFO_INITIALIZER;
+	int query_result;
+	t_extension_status extension_status;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
-	log_info(_("connecting to upstream node\n"));
+	log_info(_("connecting to upstream node"));
 
 	source_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
 													(const char**)source_conninfo.values,
@@ -280,131 +283,150 @@ check_source_server()
 	 */
 	if (PQstatus(source_conn) != CONNECTION_OK)
 	{
-		if (mode != barman)
+		if (mode == barman)
+		{
+			return;
+		}
+		else
 		{
 			PQfinish(source_conn);
 			exit(ERR_DB_CON);
 		}
 	}
+
+	/*
+	 * If a connection was established, perform some sanity checks on the
+	 * provided upstream connection
+	 */
+
+
+	/* Verify that upstream node is a supported server version */
+	log_verbose(LOG_INFO, _("connected to upstream node, checking its state"));
+
+	server_version_num = check_server_version(source_conn, "master", true, NULL);
+
+	check_upstream_config(source_conn, server_version_num, true);
+
+	if (get_cluster_size(source_conn, cluster_size) == false)
+		exit(ERR_DB_QUERY);
+
+	log_info(_("successfully connected to source node"));
+	log_detail(_("current installation size is %s"),
+			   cluster_size);
+
+	/*
+	 * If --recovery-min-apply-delay was passed, check that
+	 * we're connected to PostgreSQL 9.4 or later
+	 */
+	// XXX should this be a config file parameter?
+	if (*runtime_options.recovery_min_apply_delay)
+	{
+		if (server_version_num < 90400)
+		{
+			log_error(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/*
+	 * If the upstream node is a standby, try to connect to the primary too so we
+	 * can write an event record
+	 */
+	if (is_standby(source_conn))
+	{
+		primary_conn = get_master_connection(source_conn, NULL, NULL);
+
+		// XXX check this worked?
+	}
 	else
 	{
-		/*
-		 * If a connection was established, perform some sanity checks on the
-		 * provided upstream connection
-		 */
-		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
-		int query_result;
-		t_extension_status extension_status;
+		primary_conn = source_conn;
+	}
 
-		/* Verify that upstream node is a supported server version */
-		log_verbose(LOG_INFO, _("connected to upstream node, checking its state\n"));
+	/*
+	 * Sanity-check that the master node has a repmgr schema - if not
+	 * present, fail with an error unless -F/--force is used (to enable
+	 * repmgr to be used as a standalone clone tool)
+	 */
 
-		server_version_num = check_server_version(source_conn, "master", true, NULL);
+	extension_status = get_repmgr_extension_status(primary_conn);
 
-		check_upstream_config(source_conn, server_version_num, true);
-
-		if (get_cluster_size(source_conn, cluster_size) == false)
-			exit(ERR_DB_QUERY);
-
-		log_info(_("Successfully connected to source node. Current installation size is %s"),
-				 cluster_size);
-
-		/*
-		 * If --recovery-min-apply-delay was passed, check that
-		 * we're connected to PostgreSQL 9.4 or later
-		 */
-		// XXX should this be a config file parameter?
-		if (*runtime_options.recovery_min_apply_delay)
+	if (extension_status != REPMGR_INSTALLED)
+	{
+		if (!runtime_options.force)
 		{
-			if (server_version_num < 90400)
-			{
-				log_error(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay\n"));
-				PQfinish(source_conn);
-				exit(ERR_BAD_CONFIG);
-			}
-		}
-
-		/*
-		 * If the upstream node is a standby, try to connect to the primary too so we
-		 * can write an event record
-		 */
-		if (is_standby(source_conn))
-		{
-			primary_conn = get_master_connection(source_conn, NULL, NULL);
-
-			// XXX check this worked?
-		}
-		else
-		{
-			primary_conn = source_conn;
-		}
-
-		/*
-		 * Sanity-check that the master node has a repmgr schema - if not
-		 * present, fail with an error unless -F/--force is used (to enable
-		 * repmgr to be used as a standalone clone tool)
-		 */
-
-		extension_status = get_repmgr_extension_status(primary_conn);
-
-		if (extension_status != REPMGR_INSTALLED)
-		{
-			if (!runtime_options.force)
-			{
-				/* schema doesn't exist */
-				log_error(_("repmgr extension not found on upstream server"));
-				log_hint(_("check that the upstream server is part of a repmgr cluster"));
-				PQfinish(source_conn);
-				exit(ERR_BAD_CONFIG);
-			}
-
-			log_warning(_("repmgr extension not found on upstream server"));
-		}
-
-		/* Fetch the source's data directory */
-		if (get_pg_setting(source_conn, "data_directory", upstream_data_directory) == false)
-		{
-			log_error(_("unable to retrieve upstream node's data directory"));
-			log_hint(_("STANDBY CLONE must be run as a database superuser"));
+			/* schema doesn't exist */
+			log_error(_("repmgr extension not found on upstream server"));
+			log_hint(_("check that the upstream server is part of a repmgr cluster"));
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		/*
-		 * If no target directory was explicitly provided, we'll default to
-		 * the same directory as on the source host.
-		 */
-		if (local_data_directory_provided == false)
-		{
-			strncpy(local_data_directory, upstream_data_directory, MAXPGPATH);
-
-			log_notice(_("setting data directory to: \"%s\""), local_data_directory);
-			log_hint(_("use -D/--pgdata to explicitly specify a data directory"));
-		}
-
-		/*
-		 * Copy the source connection so that we have some default values,
-		 * particularly stuff like passwords extracted from PGPASSFILE;
-		 * these will be overridden from the upstream conninfo, if provided.
-		 */
-		conn_to_param_list(source_conn, &recovery_conninfo);
-
-		/*
-		 * Attempt to find the upstream node record
-		 */
-		if (config_file_options.upstream_node_id == NO_UPSTREAM_NODE)
-			upstream_node_id = get_master_node_id(source_conn);
-		else
-			upstream_node_id = config_file_options.upstream_node_id;
-
-		query_result = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
-
-		if (query_result)
-		{
-			upstream_record_found = true;
-			strncpy(recovery_conninfo_str, upstream_node_record.conninfo, MAXLEN);
-		}
+		log_warning(_("repmgr extension not found on upstream server"));
 	}
+
+	/* Fetch the source's data directory */
+	if (get_pg_setting(source_conn, "data_directory", upstream_data_directory) == false)
+	{
+		log_error(_("unable to retrieve upstream node's data directory"));
+		log_hint(_("STANDBY CLONE must be run as a database superuser"));
+		PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * If no target data directory was explicitly provided, we'll default to
+	 * the source host's data directory.
+	 */
+	if (local_data_directory_provided == false)
+	{
+		strncpy(local_data_directory, upstream_data_directory, MAXPGPATH);
+
+		log_notice(_("setting data directory to: \"%s\""), local_data_directory);
+		log_hint(_("use -D/--pgdata to explicitly specify a data directory"));
+	}
+
+	/*
+	 * Copy the source connection so that we have some default values,
+	 * particularly stuff like passwords extracted from PGPASSFILE;
+	 * these will be overridden from the upstream conninfo, if provided.
+	 *
+	 * XXX only allow passwords if --use-conninfo-password
+	 */
+	conn_to_param_list(source_conn, &recovery_conninfo);
+
+	/*
+	 * Attempt to find the upstream node record
+	 */
+	if (config_file_options.upstream_node_id == NO_UPSTREAM_NODE)
+		upstream_node_id = get_master_node_id(source_conn);
+	else
+		upstream_node_id = config_file_options.upstream_node_id;
+
+	query_result = get_node_record(source_conn, upstream_node_id, &node_record);
+
+	if (query_result)
+	{
+		upstream_record_found = true;
+		strncpy(recovery_conninfo_str, node_record.conninfo, MAXLEN);
+	}
+
+	/*
+	 * check that there's no existing node record with the same name but
+	 * different ID
+	 */
+	query_result = get_node_record_by_name(source_conn, config_file_options.node_name, &node_record);
+
+	if (query_result)
+	{
+		log_error(_("another node (node_id: %i) already exists with node_name \"%s\""),
+				  node_record.node_id,
+				  config_file_options.node_name);
+		PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 }
 
 

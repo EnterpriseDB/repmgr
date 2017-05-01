@@ -74,7 +74,9 @@ main(int argc, char **argv)
 	 */
 	logger_output_mode = OM_COMMAND_LINE;
 
-	while ((c = getopt_long(argc, argv, "?Vf:Fb:S:L:vtD:cr", long_options,
+	initialize_conninfo_params(&source_conninfo, true);
+
+	while ((c = getopt_long(argc, argv, "?Vb:f:Fd:h:p:U:R:S:L:vtD:cr", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -107,21 +109,37 @@ main(int argc, char **argv)
 			/* general configuration options
 			 * ----------------------------- */
 
-			/* -f/--config-file */
-			case 'f':
-				strncpy(runtime_options.config_file, optarg, MAXLEN);
-				break;
-			/* -F/--force */
-			case 'F':
-				runtime_options.force = true;
-				break;
 			/* -b/--pg_bindir */
 			case 'b':
 				strncpy(runtime_options.pg_bindir, optarg, MAXLEN);
 				break;
 
-			/* connection options */
-			/* ------------------ */
+			/* -f/--config-file */
+			case 'f':
+				strncpy(runtime_options.config_file, optarg, MAXLEN);
+				break;
+
+			/* -F/--force */
+			case 'F':
+				runtime_options.force = true;
+				break;
+
+			/* database connection options */
+			/* --------------------------- */
+
+			/*
+			 * These are the standard database connection options; with the
+			 * exception of -d/--dbname (which could be a conninfo string)
+			 * we'll also set these values in "source_conninfo" (overwriting
+			 * preset values from environment variables).
+			 * XXX check this is same as psql
+			 */
+			/* -d/--dbname */
+			case 'd':
+				strncpy(runtime_options.dbname, optarg, MAXLEN);
+				/* dbname will be set in source_conninfo later after checking if it's a conninfo string */
+				runtime_options.connection_param_provided = true;
+				break;
 
 			/* -h/--host */
 			case 'h':
@@ -130,6 +148,25 @@ main(int argc, char **argv)
 				runtime_options.connection_param_provided = true;
 				runtime_options.host_param_provided = true;
 				break;
+
+			case 'p':
+				(void) repmgr_atoi(optarg, "-p/--port", &cli_errors, false);
+				param_set(&source_conninfo, "port", optarg);
+				strncpy(runtime_options.port,
+						optarg,
+						MAXLEN);
+				runtime_options.connection_param_provided = true;
+				break;
+
+			/* -U/--user */
+			case 'U':
+				strncpy(runtime_options.username, optarg, MAXLEN);
+				param_set(&source_conninfo, "user", optarg);
+				runtime_options.connection_param_provided = true;
+				break;
+
+			/* other connection options */
+			/* ------------------------ */
 
 			/* -R/--remote_user */
 			case 'R':
@@ -162,18 +199,22 @@ main(int argc, char **argv)
 			/* standby clone options *
 			 * --------------------- */
 
+			/* -c/--fast-checkpoint */
 			case 'c':
 				runtime_options.fast_checkpoint = true;
 				break;
 
+			/* -r/--rsync-only */
 			case 'r':
 				runtime_options.rsync_only = true;
 				break;
 
+			/* --no-upstream-connection */
 			case OPT_NO_UPSTREAM_CONNECTION:
 				runtime_options.no_upstream_connection = true;
 				break;
 
+			/* --recovery-min-apply-delay */
 			case OPT_RECOVERY_MIN_APPLY_DELAY:
 			{
 				char 	   *ptr = NULL;
@@ -324,6 +365,12 @@ main(int argc, char **argv)
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = MASTER_REGISTER;
 		}
+		else if(strcasecmp(repmgr_node_type, "STANDBY") == 0)
+		{
+			if (strcasecmp(repmgr_action, "CLONE") == 0)
+				action = STANDBY_CLONE;
+		}
+
 		else if(strcasecmp(repmgr_node_type, "CLUSTER") == 0)
 		{
 			if (strcasecmp(repmgr_action, "EVENT") == 0)
