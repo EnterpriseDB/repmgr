@@ -16,6 +16,7 @@
 static PGconn  *primary_conn = NULL;
 static PGconn  *source_conn = NULL;
 
+static int		server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 static char		local_data_directory[MAXPGPATH];
 static bool		local_data_directory_provided = false;
@@ -27,6 +28,8 @@ static char		upstream_data_directory[MAXPGPATH];
 static t_conninfo_param_list recovery_conninfo;
 static char		recovery_conninfo_str[MAXLEN];
 
+static t_configfile_list config_files = T_CONFIGFILE_LIST_INITIALIZER;
+
 static standy_clone_mode mode;
 
 /* used by barman mode */
@@ -36,6 +39,11 @@ static char		local_repmgr_tmp_directory[MAXPGPATH];
 static void check_barman_config(void);
 static void	check_source_server(void);
 static void	check_source_server_via_barman(void);
+
+
+static void initialise_direct_clone(void);
+static void config_file_list_init(t_configfile_list *list, int max_size);
+static void config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir);
 
 static void get_barman_property(char *dst, char *name, char *local_repmgr_directory);
 static char *make_barman_ssh_command(char *buf);
@@ -177,6 +185,57 @@ do_standby_clone(void)
 		 */
 		check_source_server_via_barman();
 	}
+
+	if (upstream_record_found == true)
+	{
+		/*  parse returned upstream conninfo string to recovery primary_conninfo params*/
+		char	   *errmsg = NULL;
+		bool	    parse_success;
+
+		log_verbose(LOG_DEBUG, "parsing upstream conninfo string \"%s\"", recovery_conninfo_str);
+
+		/* parse_conninfo_string() here will remove the upstream's `application_name`, if set */
+
+		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, errmsg, true);
+		if (parse_success == false)
+		{
+			log_error(_("unable to parse conninfo string \"%s\" for upstream node:\n%s"),
+					  recovery_conninfo_str, errmsg);
+
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+	else
+	{
+		/*
+		 * If no upstream node record found, we'll abort with an error here,
+		 * unless -F/--force is used, in which case we'll use the parameters
+		 * provided on the command line (and assume the user knows what they're
+		 * doing).
+		 */
+
+		if (!runtime_options.force)
+		{
+			log_error(_("no record found for upstream node (upstream_node_id: %i)"),
+					  upstream_node_id);
+			log_hint(_("use -F/--force to create \"primary_conninfo\" based on command-line parameters"));
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/* If --replication-user was set, use that value for the primary_conninfo user */
+	if (*runtime_options.replication_user)
+	{
+		param_set(&recovery_conninfo, "user", runtime_options.replication_user);
+	}
+
+	if (mode != barman)
+	{
+		initialise_direct_clone();
+	}
+
 }
 
 
@@ -263,7 +322,6 @@ check_barman_config(void)
 static void
 check_source_server()
 {
-	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	char		cluster_size[MAXLEN];
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	int			query_result;
@@ -476,16 +534,8 @@ check_source_server_via_barman()
 				"repmgr database conninfo string on barman server: %s",
 				repmgr_conninfo_buf.data);
 
-	switch(config_file_options.upstream_node_id)
-	{
-		case NO_UPSTREAM_NODE:
-			// XXX did we get the upstream node ID earlier?
-			maxlen_snprintf(where_condition, "type='master'");
-			break;
-		default:
-			maxlen_snprintf(where_condition, "node_id=%d", config_file_options.upstream_node_id);
-			break;
-	}
+	// XXX check this works in all cases
+	maxlen_snprintf(where_condition, "node_id=%i", upstream_node_id);
 
 	initPQExpBuffer(&command_output);
 	maxlen_snprintf(buf,
@@ -518,6 +568,189 @@ check_source_server_via_barman()
 				recovery_conninfo_str);
 
 	termPQExpBuffer(&command_output);
+}
+
+
+
+/*
+ * In pg_basebackup/rsync modes, configure the target data directory
+ * if necessary, and fetch information about tablespaces and configuration
+ * files.
+ */
+static void
+initialise_direct_clone(void)
+{
+	PGresult *res;
+	int i;
+
+	PQExpBufferData	  query;
+
+	/*
+	 * Check the destination data directory can be used
+	 * (in Barman mode, this directory will already have been created)
+	 */
+
+	if (!create_pg_dir(local_data_directory, runtime_options.force))
+	{
+		log_error(_("unable to use directory %s ..."),
+				  local_data_directory);
+		log_hint(_("use -F/--force to force this directory to be overwritten\n"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * Check that tablespaces named in any `tablespace_mapping` configuration
+	 * file parameters exist.
+	 *
+	 * pg_basebackup doesn't verify mappings, so any errors will not be caught.
+	 * We'll do that here as a value-added service.
+	 *
+	 * -T/--tablespace-mapping is not available as a pg_basebackup option for
+	 * PostgreSQL 9.3 - we can only handle that with rsync, so if `--rsync-only`
+	 * not set, fail with an error
+	 */
+
+	if (config_file_options.tablespace_mapping.head != NULL)
+	{
+		TablespaceListCell *cell;
+
+		if (server_version_num < 90400 && !runtime_options.rsync_only)
+		{
+			log_error(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only"));
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
+		{
+			initPQExpBuffer(&query);
+
+			// XXX escape value
+			appendPQExpBuffer(&query,
+							  "SELECT spcname "
+							  "  FROM pg_catalog.pg_tablespace "
+							  " WHERE pg_tablespace_location(oid) = '%s'",
+							  cell->old_dir);
+			res = PQexec(source_conn, query.data);
+
+			termPQExpBuffer(&query);
+
+			if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			{
+				log_error(_("unable to execute tablespace query:\n  %s"),
+						  PQerrorMessage(source_conn));
+				PQclear(res);
+				PQfinish(source_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			/* TODO: collate errors and output at end of loop */
+			if (PQntuples(res) == 0)
+			{
+				log_error(_("no tablespace matching path '%s' found\n"),
+						  cell->old_dir);
+				PQclear(res);
+				PQfinish(source_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+	}
+
+	/*
+	 * Obtain configuration file locations
+	 * We'll check to see whether the configuration files are in the data
+	 * directory - if not we'll have to copy them via SSH, if copying
+	 * requested.
+	 *
+	 * XXX: if configuration files are symlinks to targets outside the data
+	 * directory, they won't be copied by pg_basebackup, but we can't tell
+	 * this from the below query; we'll probably need to add a check for their
+	 * presence and if missing force copy by SSH
+	 */
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "  WITH dd AS ( "
+					  "    SELECT setting AS data_directory"
+					  "      FROM pg_catalog.pg_settings "
+					  "     WHERE name = 'data_directory' "
+					  "  ) "
+					  "    SELECT DISTINCT(sourcefile), "
+					  "           regexp_replace(sourcefile, '^.*\\/', '') AS filename, "
+					  "           sourcefile ~ ('^' || dd.data_directory) AS in_data_dir "
+					  "      FROM dd, pg_catalog.pg_settings ps "
+					  "     WHERE sourcefile IS NOT NULL "
+					  "  ORDER BY 1 ");
+
+	log_debug("standby clone: %s", query.data);
+	res = PQexec(source_conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to retrieve configuration file locations:\n  %s"),
+				  PQerrorMessage(source_conn));
+		PQclear(res);
+		PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * allocate memory for config file array - number of rows returned from
+	 * above query + 2 for pg_hba.conf, pg_ident.conf
+	 */
+
+	config_file_list_init(&config_files, PQntuples(res) + 2);
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		config_file_list_add(&config_files,
+							 PQgetvalue(res, i, 0),
+							 PQgetvalue(res, i, 1),
+							 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
+	}
+
+	PQclear(res);
+
+	/* Fetch locations of pg_hba.conf and pg_ident.conf */
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "  WITH dd AS ( "
+					  "    SELECT setting AS data_directory"
+					  "      FROM pg_catalog.pg_settings "
+					  "     WHERE name = 'data_directory' "
+					  "  ) "
+					  "    SELECT ps.setting, "
+					  "           regexp_replace(setting, '^.*\\/', '') AS filename, "
+					  "           ps.setting ~ ('^' || dd.data_directory) AS in_data_dir "
+					  "      FROM dd, pg_catalog.pg_settings ps "
+					  "     WHERE ps.name IN ('hba_file', 'ident_file') "
+					  "  ORDER BY 1 ");
+
+	log_debug("standby clone: %s", query.data);
+	res = PQexec(source_conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to retrieve configuration file locations: %s\n"),
+				  PQerrorMessage(source_conn));
+		PQclear(res);
+		PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		config_file_list_add(&config_files,
+							 PQgetvalue(res, i, 0),
+							 PQgetvalue(res, i, 1),
+							 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
+	}
+
+	PQclear(res);
 }
 
 
@@ -570,3 +803,31 @@ get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 	termPQExpBuffer(&command_output);
 }
 
+static void
+config_file_list_init(t_configfile_list *list, int max_size)
+{
+	list->size = max_size;
+	list->entries = 0;
+	list->files = pg_malloc0(sizeof(t_configfile_info *) * max_size);
+}
+
+
+static void
+config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir)
+{
+	/* Failsafe to prevent entries being added beyond the end */
+	if (list->entries == list->size)
+		return;
+
+	list->files[list->entries] = pg_malloc0(sizeof(t_configfile_info));
+
+
+	strncpy(list->files[list->entries]->filepath, file, MAXPGPATH);
+	canonicalize_path(list->files[list->entries]->filepath);
+
+
+	strncpy(list->files[list->entries]->filename, filename, MAXPGPATH);
+	list->files[list->entries]->in_data_directory = in_data_dir;
+
+	list->entries ++;
+}

@@ -8,5 +8,22 @@
 
 extern void do_standby_clone(void);
 
+typedef struct
+{
+	char filepath[MAXPGPATH];
+	char filename[MAXPGPATH];
+	bool in_data_directory;
+} t_configfile_info;
+
+
+typedef struct
+{
+	int    size;
+	int    entries;
+	t_configfile_info **files;
+} t_configfile_list;
+
+#define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
+
 
 #endif

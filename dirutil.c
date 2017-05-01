@@ -261,7 +261,7 @@ _create_pg_dir(char *path, bool force, bool for_witness)
 	{
 		case 0:
 			/* dir not there, must create it */
-			log_info(_("creating directory \"%s\"...\n"), path);
+			log_info(_("creating directory \"%s\"..."), path);
 
 			if (!create_dir(path))
 			{
@@ -272,7 +272,7 @@ _create_pg_dir(char *path, bool force, bool for_witness)
 			break;
 		case 1:
 			/* Present but empty, fix permissions and use it */
-			log_info(_("checking and correcting permissions on existing directory %s ...\n"),
+			log_info(_("checking and correcting permissions on existing directory %s"),
 					 path);
 
 			if (!set_dir_permissions(path))
@@ -284,7 +284,7 @@ _create_pg_dir(char *path, bool force, bool for_witness)
 			break;
 		case 2:
 			/* Present and not empty */
-			log_warning(_("directory \"%s\" exists but is not empty\n"),
+			log_warning(_("directory \"%s\" exists but is not empty"),
 						path);
 
 			pg_dir = is_pg_dir(path);
@@ -315,7 +315,7 @@ _create_pg_dir(char *path, bool force, bool for_witness)
 				log_hint(_("This looks like a PostgreSQL directory.\n"
 							"If you are sure you want to clone here, "
 							"please check there is no PostgreSQL server "
-							"running and use the -F/--force option\n"));
+							"running and use the -F/--force option"));
 				return false;
 			}
 
