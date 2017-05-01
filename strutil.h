@@ -57,5 +57,11 @@ extern void
 append_where_clause(PQExpBufferData *where_clause, const char *clause, ...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
+extern char *
+string_skip_prefix(const char *prefix, char *string);
+
+extern char
+*string_remove_trailing_newlines(char *string);
+
 
 #endif	 /* _STRUTIL_H_ */

@@ -159,3 +159,31 @@ escape_string(PGconn *conn, const char *string)
 
 	return escaped_string;
 }
+
+
+
+char *
+string_skip_prefix(const char *prefix, char *string)
+{
+	int n;
+
+	n = strlen(prefix);
+
+	if (strncmp(prefix, string, n))
+		return NULL;
+	else
+		return string + n;
+}
+
+char *
+string_remove_trailing_newlines(char *string)
+{
+	int n;
+
+	n = strlen(string) - 1;
+
+	while (n >= 0 && string[n] == '\n')
+		string[n] = 0;
+
+	return string;
+}

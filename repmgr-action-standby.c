@@ -8,6 +8,7 @@
 
 #include "repmgr.h"
 #include "dirutil.h"
+#include "compat.h"
 
 #include "repmgr-client-global.h"
 #include "repmgr-action-standby.h"
@@ -33,8 +34,11 @@ static char		local_repmgr_tmp_directory[MAXPGPATH];
 
 
 static void check_barman_config(void);
-static char *make_barman_ssh_command(char *buf);
 static void	check_source_server(void);
+static void	check_source_server_via_barman(void);
+
+static void get_barman_property(char *dst, char *name, char *local_repmgr_directory);
+static char *make_barman_ssh_command(char *buf);
 
 
 void
@@ -152,7 +156,7 @@ do_standby_clone(void)
 	 */
 
 	if (*runtime_options.upstream_conninfo)
-		runtime_options.no_upstream_connection = false;
+		runtime_options.no_upstream_connection = true;
 
 	/* By default attempt to connect to the source server */
 	if (runtime_options.no_upstream_connection == false)
@@ -160,6 +164,19 @@ do_standby_clone(void)
 		check_source_server();
 	}
 
+	if (mode == barman && PQstatus(source_conn) != CONNECTION_OK)
+	{
+		/*
+		 * Here we don't have a connection to the upstream node, and are executing
+		 * in Barman mode - we can try and connect via the Barman server to extract
+		 * the upstream node's conninfo string.
+		 *
+		 * To do this we need to extract Barman's conninfo string, replace the database
+		 * name with the repmgr one (they could well be different) and remotely execute
+		 * psql.
+		 */
+		check_source_server_via_barman();
+	}
 }
 
 
@@ -242,24 +259,6 @@ check_barman_config(void)
 }
 
 
-static char *
-make_barman_ssh_command(char *buf)
-{
-	static char config_opt[MAXLEN] = "";
-
-	if (strlen(config_file_options.barman_config))
-		maxlen_snprintf(config_opt,
-						" --config=%s",
-						config_file_options.barman_config);
-
-	maxlen_snprintf(buf,
-					"ssh %s barman%s",
-					config_file_options.barman_server,
-					config_opt);
-
-	return buf;
-}
-
 
 static void
 check_source_server()
@@ -267,7 +266,7 @@ check_source_server()
 	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	char		cluster_size[MAXLEN];
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
-	int query_result;
+	int			query_result;
 	t_extension_status extension_status;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
@@ -283,15 +282,12 @@ check_source_server()
 	 */
 	if (PQstatus(source_conn) != CONNECTION_OK)
 	{
+		PQfinish(source_conn);
+
 		if (mode == barman)
-		{
 			return;
-		}
 		else
-		{
-			PQfinish(source_conn);
 			exit(ERR_DB_CON);
-		}
 	}
 
 	/*
@@ -301,7 +297,7 @@ check_source_server()
 
 
 	/* Verify that upstream node is a supported server version */
-	log_verbose(LOG_INFO, _("connected to upstream node, checking its state"));
+	log_verbose(LOG_INFO, _("connected to source node, checking its state"));
 
 	server_version_num = check_server_version(source_conn, "master", true, NULL);
 
@@ -357,19 +353,19 @@ check_source_server()
 		if (!runtime_options.force)
 		{
 			/* schema doesn't exist */
-			log_error(_("repmgr extension not found on upstream server"));
+			log_error(_("repmgr extension not found on source node"));
 			log_hint(_("check that the upstream server is part of a repmgr cluster"));
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		log_warning(_("repmgr extension not found on upstream server"));
+		log_warning(_("repmgr extension not found on source node"));
 	}
 
 	/* Fetch the source's data directory */
 	if (get_pg_setting(source_conn, "data_directory", upstream_data_directory) == false)
 	{
-		log_error(_("unable to retrieve upstream node's data directory"));
+		log_error(_("unable to retrieve source node's data directory"));
 		log_hint(_("STANDBY CLONE must be run as a database superuser"));
 		PQfinish(source_conn);
 		exit(ERR_BAD_CONFIG);
@@ -429,4 +425,148 @@ check_source_server()
 
 }
 
+
+static void
+check_source_server_via_barman()
+{
+	char		    buf[MAXLEN];
+	char		    barman_conninfo_str[MAXLEN];
+	t_conninfo_param_list barman_conninfo;
+	char		   *errmsg = NULL;
+	bool		    parse_success,
+				    command_success;
+	char		    where_condition[MAXLEN];
+	PQExpBufferData command_output;
+	PQExpBufferData repmgr_conninfo_buf;
+
+	int c;
+
+	get_barman_property(barman_conninfo_str, "conninfo", local_repmgr_tmp_directory);
+
+	initialize_conninfo_params(&barman_conninfo, false);
+
+	/* parse_conninfo_string() here will remove the upstream's `application_name`, if set */
+	parse_success = parse_conninfo_string(barman_conninfo_str, &barman_conninfo, errmsg, true);
+
+	if (parse_success == false)
+	{
+		log_error(_("Unable to parse barman conninfo string \"%s\":\n%s"),
+				barman_conninfo_str, errmsg);
+		exit(ERR_BARMAN);
+	}
+
+	/* Overwrite database name in the parsed parameter list */
+	param_set(&barman_conninfo, "dbname", runtime_options.dbname);
+
+	/* Rebuild the Barman conninfo string */
+	initPQExpBuffer(&repmgr_conninfo_buf);
+
+	for (c = 0; c < barman_conninfo.size && barman_conninfo.keywords[c] != NULL; c++)
+	{
+		if (repmgr_conninfo_buf.len != 0)
+			appendPQExpBufferChar(&repmgr_conninfo_buf, ' ');
+
+		appendPQExpBuffer(&repmgr_conninfo_buf, "%s=",
+						  barman_conninfo.keywords[c]);
+		appendConnStrVal(&repmgr_conninfo_buf,
+						 barman_conninfo.values[c]);
+	}
+
+	log_verbose(LOG_DEBUG,
+				"repmgr database conninfo string on barman server: %s",
+				repmgr_conninfo_buf.data);
+
+	switch(config_file_options.upstream_node_id)
+	{
+		case NO_UPSTREAM_NODE:
+			// XXX did we get the upstream node ID earlier?
+			maxlen_snprintf(where_condition, "type='master'");
+			break;
+		default:
+			maxlen_snprintf(where_condition, "node_id=%d", config_file_options.upstream_node_id);
+			break;
+	}
+
+	initPQExpBuffer(&command_output);
+	maxlen_snprintf(buf,
+					"ssh %s \"psql -Aqt \\\"%s\\\" -c \\\""
+					" SELECT conninfo"
+					" FROM repmgr.nodes"
+					" WHERE %s"
+					" AND active IS TRUE"
+					"\\\"\"",
+					config_file_options.barman_host,
+					repmgr_conninfo_buf.data,
+					where_condition);
+
+	termPQExpBuffer(&repmgr_conninfo_buf);
+
+	command_success = local_command(buf, &command_output);
+
+	if (command_success == false)
+	{
+		log_error(_("unable to execute database query via Barman server"));
+		exit(ERR_BARMAN);
+	}
+
+	maxlen_snprintf(recovery_conninfo_str, "%s", command_output.data);
+	string_remove_trailing_newlines(recovery_conninfo_str);
+
+	upstream_record_found = true;
+	log_verbose(LOG_DEBUG,
+				"upstream node conninfo string extracted via barman server: %s",
+				recovery_conninfo_str);
+
+	termPQExpBuffer(&command_output);
+}
+
+
+static char *
+make_barman_ssh_command(char *buf)
+{
+	static char config_opt[MAXLEN] = "";
+
+	if (strlen(config_file_options.barman_config))
+		maxlen_snprintf(config_opt,
+						" --config=%s",
+						config_file_options.barman_config);
+
+	maxlen_snprintf(buf,
+					"ssh %s barman%s",
+					config_file_options.barman_server,
+					config_opt);
+
+	return buf;
+}
+
+
+void
+get_barman_property(char *dst, char *name, char *local_repmgr_directory)
+{
+	PQExpBufferData command_output;
+	char buf[MAXLEN];
+	char command[MAXLEN];
+	char *p;
+
+	initPQExpBuffer(&command_output);
+
+	maxlen_snprintf(command,
+					"grep \"^\t%s:\" %s/show-server.txt",
+					name, local_repmgr_tmp_directory);
+	(void)local_command(command, &command_output);
+
+	maxlen_snprintf(buf, "\t%s: ", name);
+	p = string_skip_prefix(buf, command_output.data);
+	if (p == NULL)
+	{
+		log_error("unexpected output from Barman: %s",
+				  command_output.data);
+		exit(ERR_INTERNAL);
+	}
+
+	strncpy(dst, p, MAXLEN);
+	string_remove_trailing_newlines(dst);
+
+	termPQExpBuffer(&command_output);
+}
 
