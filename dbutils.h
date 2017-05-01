@@ -178,7 +178,11 @@ bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_in
 /* event record functions */
 bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
 bool        create_event_record_extended(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
-bool		_create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
+
+/* replication slot functions */
+bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);
+
+int			get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 
 #endif
 

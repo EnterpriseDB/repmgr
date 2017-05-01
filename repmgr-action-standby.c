@@ -751,6 +751,43 @@ initialise_direct_clone(void)
 	}
 
 	PQclear(res);
+
+	/*
+	 * If replication slots requested, create appropriate slot on
+	 * the primary; this must be done before pg_start_backup() is
+	 * issued, either by us or by pg_basebackup.
+	 *
+	 * Replication slots are not supported (and not very useful
+	 * anyway) in Barman mode.
+	 */
+
+	if (config_file_options.use_replication_slots)
+	{
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
+
+		if (create_replication_slot(source_conn, repmgr_slot_name, server_version_num, &event_details) == false)
+		{
+			log_error("%s", event_details.data);
+
+			create_event_record(primary_conn,
+								&config_file_options,
+								config_file_options.node_id,
+								"standby_clone",
+								false,
+								event_details.data);
+
+			PQfinish(source_conn);
+			exit(ERR_DB_QUERY);
+		}
+
+		termPQExpBuffer(&event_details);
+
+		log_notice(_("replication slot '%s' created on upstream node (node_id: %i)"),
+				   repmgr_slot_name,
+				   upstream_node_id);
+	}
+
 }
 
 
