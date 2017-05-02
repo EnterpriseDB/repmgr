@@ -131,7 +131,10 @@ do_master_register(void)
 	/* update node record structure with settings from config file */
 	strncpy(node_info.node_name, config_file_options.node_name, MAXLEN);
 	strncpy(node_info.conninfo, config_file_options.conninfo, MAXLEN);
-	strncpy(node_info.slot_name, repmgr_slot_name_ptr, MAXLEN);
+
+	if (repmgr_slot_name_ptr != NULL)
+		strncpy(node_info.slot_name, repmgr_slot_name_ptr, MAXLEN);
+
 	node_info.priority = config_file_options.priority;
 
 	initPQExpBuffer(&event_description);
@@ -167,7 +170,6 @@ do_master_register(void)
 		}
 
 	}
-
 
 	/* Log the event */
 	create_event_record(conn,
