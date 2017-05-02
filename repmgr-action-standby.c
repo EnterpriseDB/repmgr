@@ -104,6 +104,7 @@ static char *make_barman_ssh_command(char *buf);
 void
 do_standby_clone(void)
 {
+	PQExpBufferData event_details;
 	int r;
 
 	/*
@@ -362,6 +363,92 @@ do_standby_clone(void)
 			log_notice(_("standby clone (from Barman) complete"));
 			break;
 	}
+
+	/*
+	 * XXX It might be nice to provide an options to have repmgr start
+	 * the PostgreSQL server automatically (e.g. with a custom pg_ctl
+	 * command)
+	 */
+
+	log_notice(_("you can now start your PostgreSQL server"));
+
+	if (*config_file_options.service_start_command)
+	{
+		log_hint(_("for example : %s"),
+				 config_file_options.service_start_command);
+	}
+	else if (local_data_directory_provided)
+	{
+		log_hint(_("for example : pg_ctl -D %s start"),
+				 local_data_directory);
+	}
+	else
+	{
+		log_hint(_("for example : /etc/init.d/postgresql start"));
+	}
+
+	/*
+	 * XXX forgetting to (re) register the standby is a frequent cause
+	 * of error; we should consider having repmgr automatically
+	 * register the standby, either by default with an option
+	 * "--no-register", or an option "--register".
+	 *
+	 * Note that "repmgr standby register" requires the standby to
+	 * be running - if not, and we just update the node record,
+	 * we'd have an incorrect representation of the replication cluster.
+	 * Best combined with an automatic start of the server (see note
+	 * above)
+	 */
+
+	/*
+	 * XXX detect whether a record exists for this node already, and
+	 * add a hint about using the -F/--force.
+	 */
+
+	log_hint(_("After starting the server, you need to register this standby with \"repmgr standby register\""));
+
+	/* Log the event */
+
+	initPQExpBuffer(&event_details);
+
+	/* Add details about relevant runtime options used */
+	appendPQExpBuffer(&event_details,
+					  _("Cloned from host '%s', port %s"),
+					  runtime_options.host,
+					  runtime_options.port);
+
+	appendPQExpBuffer(&event_details,
+					  _("; backup method: "));
+
+	switch(mode)
+	{
+		case rsync:
+			appendPQExpBuffer(&event_details, "rsync");
+			break;
+		case pg_basebackup:
+			appendPQExpBuffer(&event_details, "pg_basebackup");
+			break;
+		case barman:
+			appendPQExpBuffer(&event_details, "barman");
+			break;
+	}
+
+	appendPQExpBuffer(&event_details,
+					  _("; --force: %s"),
+					  runtime_options.force ? "Y" : "N");
+
+	create_event_record(primary_conn,
+						&config_file_options,
+						config_file_options.node_id,
+						"standby_clone",
+						true,
+						event_details.data);
+
+	if (PQstatus(primary_conn) == CONNECTION_OK)
+		PQfinish(primary_conn);
+
+	PQfinish(source_conn);
+	exit(r);
 }
 
 
