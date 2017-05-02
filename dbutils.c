@@ -25,55 +25,6 @@ static void _populate_node_record(PGresult *res, t_node_info *node_info, int row
 static bool _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info);
 static bool		_create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
 
-/* =================== */
-/* extension functions */
-/* =================== */
-
-t_extension_status
-get_repmgr_extension_status(PGconn *conn)
-{
-	PQExpBufferData	  query;
-	PGresult		 *res;
-
-	/* TODO: check version */
-
-	initPQExpBuffer(&query);
-
-	appendPQExpBuffer(&query,
-					  "	  SELECT ae.name, e.extname "
-					  "     FROM pg_catalog.pg_available_extensions ae "
-					  "LEFT JOIN pg_catalog.pg_extension e "
-					  "       ON e.extname=ae.name "
-					  "	   WHERE ae.name='repmgr' ");
-
-	res = PQexec(conn, query.data);
-
-	termPQExpBuffer(&query);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_error(_("unable to execute extension query:\n	%s"),
-				PQerrorMessage(conn));
-		PQclear(res);
-
-		return REPMGR_UNKNOWN;
-	}
-
-	/* 1. Check extension is actually available */
-
-	if (PQntuples(res) == 0)
-	{
-		return REPMGR_UNAVAILABLE;
-	}
-
-	/* 2. Check if extension installed */
-	if (PQgetisnull(res, 0, 1) == 0)
-	{
-		return REPMGR_INSTALLED;
-	}
-
-	return REPMGR_AVAILABLE;
-}
 
 /* ==================== */
 /* Connection functions */
@@ -240,6 +191,28 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 
 	return conn;
 }
+
+
+bool
+is_superuser_connection(PGconn *conn, t_connection_user *userinfo)
+{
+	char			 *current_user;
+	const char		 *superuser_status;
+	bool			  is_superuser;
+
+	current_user = PQuser(conn);
+	superuser_status = PQparameterStatus(conn, "is_superuser");
+	is_superuser = (strcmp(superuser_status, "on") == 0) ? true : false;
+
+	if (userinfo != NULL)
+	{
+		strncpy(userinfo->username, current_user, MAXLEN);
+		userinfo->is_superuser = is_superuser;
+	}
+
+	return is_superuser;
+}
+
 
 /* =============================== */
 /* conninfo manipulation functions */
@@ -999,6 +972,58 @@ bool atobool(const char *value)
 		? true
 		: false;
 }
+
+
+/* =================== */
+/* extension functions */
+/* =================== */
+
+t_extension_status
+get_repmgr_extension_status(PGconn *conn)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res;
+
+	/* TODO: check version */
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "	  SELECT ae.name, e.extname "
+					  "     FROM pg_catalog.pg_available_extensions ae "
+					  "LEFT JOIN pg_catalog.pg_extension e "
+					  "       ON e.extname=ae.name "
+					  "	   WHERE ae.name='repmgr' ");
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute extension query:\n	%s"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return REPMGR_UNKNOWN;
+	}
+
+	/* 1. Check extension is actually available */
+
+	if (PQntuples(res) == 0)
+	{
+		return REPMGR_UNAVAILABLE;
+	}
+
+	/* 2. Check if extension installed */
+	if (PQgetisnull(res, 0, 1) == 0)
+	{
+		return REPMGR_INSTALLED;
+	}
+
+	return REPMGR_AVAILABLE;
+}
+
 
 /* ===================== */
 /* Node record functions */
@@ -1811,5 +1836,3 @@ stop_backup(PGconn *conn, char *last_wal_segment, int server_version_num)
 
 	return true;
 }
-
-

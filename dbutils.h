@@ -114,6 +114,12 @@ typedef struct s_replication_slot
 }	t_replication_slot;
 
 
+typedef struct s_connection_user
+{
+	char username[MAXLEN];
+	bool is_superuser;
+}   t_connection_user;
+
 /* connection functions */
 PGconn *establish_db_connection(const char *conninfo,
 								const bool exit_on_error);
@@ -126,8 +132,7 @@ PGconn *establish_db_connection_by_params(const char *keywords[],
 										  const char *values[],
 										  const bool exit_on_error);
 
-/* extension functions */
-t_extension_status get_repmgr_extension_status(PGconn *conn);
+bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);
 
 /* conninfo manipulation functions */
 bool		get_conninfo_value(const char *conninfo, const char *keyword, char *output);
@@ -161,6 +166,8 @@ int			is_standby(PGconn *conn);
 PGconn	   *get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
 int			get_master_node_id(PGconn *conn);
 
+/* extension functions */
+t_extension_status get_repmgr_extension_status(PGconn *conn);
 
 /* result functions */
 bool		atobool(const char *value);

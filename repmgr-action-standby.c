@@ -111,9 +111,6 @@ do_standby_clone(void)
 	 * to the node we're cloning from) to write to recovery.conf
 	 */
 
-	/*
-	 * detecting the cloning mode
-	 */
 	mode = get_standby_clone_mode();
 
 	/*
@@ -131,9 +128,9 @@ do_standby_clone(void)
 	}
 
 	/*
-	 * If dest_dir (-D/--pgdata) was provided, this will become the new data
-	 * directory (otherwise repmgr will default to using the same directory
-	 * path as on the source host).
+	 * If a data directory (-D/--pgdata) was provided, use that, otherwise
+	 * repmgr will default to using the same directory path as on the source
+	 * host.
 	 *
 	 * Note that barman mode requires -D/--pgdata.
 	 *
@@ -144,7 +141,7 @@ do_standby_clone(void)
 	if (runtime_options.data_dir[0])
 	{
 		local_data_directory_provided = true;
-		log_notice(_("destination directory '%s' provided"),
+		log_notice(_("destination directory \"%s\" provided"),
 				   runtime_options.data_dir);
 	}
 	else if (mode == barman)
@@ -449,6 +446,9 @@ check_barman_config(void)
 static void
 check_source_server()
 {
+	PGconn			 *superuser_conn = NULL;
+	PGconn			 *privileged_conn = NULL;
+
 	char		cluster_size[MAXLEN];
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	int			query_result;
@@ -548,13 +548,20 @@ check_source_server()
 	}
 
 	/* Fetch the source's data directory */
-	if (get_pg_setting(source_conn, "data_directory", upstream_data_directory) == false)
+	get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+
+	if (get_pg_setting(privileged_conn, "data_directory", upstream_data_directory) == false)
 	{
 		log_error(_("unable to retrieve source node's data directory"));
 		log_hint(_("STANDBY CLONE must be run as a database superuser"));
 		PQfinish(source_conn);
+		if(superuser_conn != NULL)
+			PQfinish(superuser_conn);
+
 		exit(ERR_BAD_CONFIG);
 	}
+	if(superuser_conn != NULL)
+		PQfinish(superuser_conn);
 
 	/*
 	 * If no target data directory was explicitly provided, we'll default to
@@ -588,8 +595,6 @@ check_source_server()
 	 * Copy the source connection so that we have some default values,
 	 * particularly stuff like passwords extracted from PGPASSFILE;
 	 * these will be overridden from the upstream conninfo, if provided.
-	 *
-	 * XXX only allow passwords if --use-conninfo-password
 	 */
 	conn_to_param_list(source_conn, &recovery_conninfo);
 
@@ -723,10 +728,11 @@ check_source_server_via_barman()
 static void
 initialise_direct_clone(void)
 {
-	PGresult *res;
-	int i;
-
+	PGconn			 *superuser_conn = NULL;
+	PGconn			 *privileged_conn = NULL;
+	PGresult		 *res;
 	PQExpBufferData	  query;
+	int		 		  i;
 
 	/*
 	 * Check the destination data directory can be used
@@ -735,7 +741,7 @@ initialise_direct_clone(void)
 
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
-		log_error(_("unable to use directory %s"),
+		log_error(_("unable to use directory \"%s\""),
 				  local_data_directory);
 		log_hint(_("use -F/--force to force this directory to be overwritten"));
 		exit(ERR_BAD_CONFIG);
@@ -772,7 +778,7 @@ initialise_direct_clone(void)
 			appendPQExpBuffer(&query,
 							  "SELECT spcname "
 							  "  FROM pg_catalog.pg_tablespace "
-							  " WHERE pg_tablespace_location(oid) = '%s'",
+							  " WHERE pg_catalog.pg_tablespace_location(oid) = '%s'",
 							  cell->old_dir);
 			res = PQexec(source_conn, query.data);
 
@@ -801,15 +807,22 @@ initialise_direct_clone(void)
 
 	/*
 	 * Obtain configuration file locations
+	 *
 	 * We'll check to see whether the configuration files are in the data
 	 * directory - if not we'll have to copy them via SSH, if copying
 	 * requested.
+	 *
+	 * This will require superuser permissions, so we'll attempt to connect
+	 * as -S/--superuser (if provided), otherwise check the current connection
+	 * user has superuser rights.
 	 *
 	 * XXX: if configuration files are symlinks to targets outside the data
 	 * directory, they won't be copied by pg_basebackup, but we can't tell
 	 * this from the below query; we'll probably need to add a check for their
 	 * presence and if missing force copy by SSH
 	 */
+
+	get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
 
 	initPQExpBuffer(&query);
 
@@ -820,22 +833,26 @@ initialise_direct_clone(void)
 					  "     WHERE name = 'data_directory' "
 					  "  ) "
 					  "    SELECT DISTINCT(sourcefile), "
-					  "           regexp_replace(sourcefile, '^.*\\/', '') AS filename, "
+					  "           pg_catalog.regexp_replace(sourcefile, '^.*\\/', '') AS filename, "
 					  "           sourcefile ~ ('^' || dd.data_directory) AS in_data_dir "
 					  "      FROM dd, pg_catalog.pg_settings ps "
 					  "     WHERE sourcefile IS NOT NULL "
 					  "  ORDER BY 1 ");
 
 	log_debug("standby clone: %s", query.data);
-	res = PQexec(source_conn, query.data);
+	res = PQexec(privileged_conn, query.data);
 	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to retrieve configuration file locations:\n  %s"),
-				  PQerrorMessage(source_conn));
+				  PQerrorMessage(privileged_conn));
 		PQclear(res);
 		PQfinish(source_conn);
+
+		if (superuser_conn != NULL)
+			PQfinish(superuser_conn);
+
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -873,15 +890,19 @@ initialise_direct_clone(void)
 					  "  ORDER BY 1 ");
 
 	log_debug("standby clone: %s", query.data);
-	res = PQexec(source_conn, query.data);
+	res = PQexec(privileged_conn, query.data);
 	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to retrieve configuration file locations:\n  %s"),
-				  PQerrorMessage(source_conn));
+				  PQerrorMessage(privileged_conn));
 		PQclear(res);
 		PQfinish(source_conn);
+
+		if (superuser_conn != NULL)
+			PQfinish(superuser_conn);
+
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -909,7 +930,7 @@ initialise_direct_clone(void)
 		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
 
-		if (create_replication_slot(source_conn, repmgr_slot_name, server_version_num, &event_details) == false)
+		if (create_replication_slot(privileged_conn, repmgr_slot_name, server_version_num, &event_details) == false)
 		{
 			log_error("%s", event_details.data);
 
@@ -921,15 +942,24 @@ initialise_direct_clone(void)
 								event_details.data);
 
 			PQfinish(source_conn);
+
+			if (superuser_conn != NULL)
+				PQfinish(superuser_conn);
+
 			exit(ERR_DB_QUERY);
 		}
 
 		termPQExpBuffer(&event_details);
 
-		log_notice(_("replication slot '%s' created on upstream node (node_id: %i)"),
+		log_notice(_("replication slot \"%s\" created on upstream node (node_id: %i)"),
 				   repmgr_slot_name,
 				   upstream_node_id);
 	}
+
+	if (superuser_conn != NULL)
+		PQfinish(superuser_conn);
+
+	return;
 }
 
 

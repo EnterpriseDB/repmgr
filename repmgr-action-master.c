@@ -189,8 +189,16 @@ do_master_register(void)
 	commit_transaction(conn);
 	PQfinish(conn);
 
-	log_notice(_("master node record (id: %i) %s"),
-			   config_file_options.node_id,
-			   record_found ? "updated" : "registered");
+	if (record_found)
+	{
+		log_notice(_("master node record (id: %i) updated"),
+				   config_file_options.node_id);
+	}
+	else
+	{
+		log_notice(_("master node record (id: %i) registered"),
+				   config_file_options.node_id);
+	}
+
 	return;
 }

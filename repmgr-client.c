@@ -988,7 +988,7 @@ do_help(void)
  * user if not a superuser.
  *
  * Note:
- *   This should be the only place where superuser rights are required.
+ *   This is one of two places where superuser rights are required.
  *   We should also consider possible scenarious where a non-superuser
  *   has sufficient privileges to install the extension.
  */
@@ -1000,9 +1000,9 @@ create_repmgr_extension(PGconn *conn)
 	PGresult		 *res;
 
 	t_extension_status extension_status;
-	char			 *current_user;
-	const char		 *superuser_status;
-	bool			  is_superuser;
+
+	t_connection_user  userinfo;
+	bool			 is_superuser = false;
 	PGconn			 *superuser_conn = NULL;
 	PGconn			 *schema_create_conn = NULL;
 
@@ -1020,7 +1020,7 @@ create_repmgr_extension(PGconn *conn)
 
 		case REPMGR_INSTALLED:
 			/* TODO: check version */
-			log_info(_("extension \"repmgr\" already installed"));
+			log_info(_("\"repmgr\" extension is already installed"));
 			return true;
 
 		case REPMGR_AVAILABLE:
@@ -1029,48 +1029,11 @@ create_repmgr_extension(PGconn *conn)
 
 	}
 
+	/* 3. Attempt to get a superuser connection */
 
-	/* 3. Check if repmgr user is superuser, if not connect as superuser */
-	current_user = PQuser(conn);
-	superuser_status = PQparameterStatus(conn, "is_superuser");
+	is_superuser = is_superuser_connection(conn, &userinfo);
 
-	is_superuser = (strcmp(superuser_status, "on") == 0) ? true : false;
-
-	if (is_superuser == false)
-	{
-		if (runtime_options.superuser[0] == '\0')
-		{
-			log_error(_("\"%s\" is not a superuser and no superuser name supplied"), current_user);
-			log_hint(_("supply a valid superuser name with -S/--superuser"));
-			return false;
-		}
-
-		superuser_conn = establish_db_connection_as_user(config_file_options.conninfo,
-														 runtime_options.superuser,
-														 false);
-
-		if (PQstatus(superuser_conn) != CONNECTION_OK)
-		{
-			log_error(_("unable to establish superuser connection as \"%s\""),
-					  runtime_options.superuser);
-			return false;
-		}
-
-		/* check provided superuser really is superuser */
-		superuser_status = PQparameterStatus(superuser_conn, "is_superuser");
-		if (strcmp(superuser_status, "off") == 0)
-		{
-			log_error(_("\"%s\" is not a superuser"), runtime_options.superuser);
-			PQfinish(superuser_conn);
-			return false;
-		}
-
-		schema_create_conn = superuser_conn;
-	}
-	else
-	{
-		schema_create_conn = conn;
-	}
+	get_superuser_connection(&conn, &superuser_conn, &schema_create_conn);
 
 	/* 4. Create extension */
 	initPQExpBuffer(&query);
@@ -1089,7 +1052,7 @@ create_repmgr_extension(PGconn *conn)
 		log_hint(_("check that the provided user has sufficient privileges for CREATE EXTENSION"));
 
 		PQclear(res);
-		if (superuser_conn != 0)
+		if (superuser_conn != NULL)
 			PQfinish(superuser_conn);
 		return false;
 	}
@@ -1103,14 +1066,14 @@ create_repmgr_extension(PGconn *conn)
 
 		appendPQExpBuffer(&query,
 						  "GRANT USAGE ON SCHEMA repmgr TO %s",
-						  current_user);
+						  userinfo.username);
 		res = PQexec(schema_create_conn, query.data);
 
 		termPQExpBuffer(&query);
 		if (PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
 			log_error(_("unable to grant usage on \"repmgr\" extension to %s:\n  %s"),
-					  current_user,
+					  userinfo.username,
 					  PQerrorMessage(schema_create_conn));
 			PQclear(res);
 
@@ -1123,7 +1086,7 @@ create_repmgr_extension(PGconn *conn)
 		initPQExpBuffer(&query);
 		appendPQExpBuffer(&query,
 						  "GRANT ALL ON ALL TABLES IN SCHEMA repmgr TO %s",
-						  current_user);
+						  userinfo.username);
 		res = PQexec(schema_create_conn, query.data);
 
 		termPQExpBuffer(&query);
@@ -1131,18 +1094,18 @@ create_repmgr_extension(PGconn *conn)
 		if (PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
 			log_error(_("unable to grant permission on tables on \"repmgr\" extension to %s:\n  %s"),
-					  current_user,
+					  userinfo.username,
 					  PQerrorMessage(schema_create_conn));
 			PQclear(res);
 
-			if (superuser_conn != 0)
+			if (superuser_conn != NULL)
 				PQfinish(superuser_conn);
 
 			return false;
 		}
 	}
 
-	if (superuser_conn != 0)
+	if (superuser_conn != NULL)
 		PQfinish(superuser_conn);
 
 	log_notice(_("\"repmgr\" extension successfully installed"));
@@ -1284,6 +1247,57 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 
 		return true;
 	}
+}
+
+
+void
+get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn)
+{
+	t_connection_user userinfo;
+	bool			  is_superuser;
+
+	is_superuser = is_superuser_connection(*conn, &userinfo);
+
+	if (is_superuser == true)
+	{
+		*privileged_conn = *conn;
+
+		return;
+	}
+
+	// XXX largely duplicatied from create_repmgr_extension()
+	if (runtime_options.superuser[0] == '\0')
+	{
+		log_error(_("\"%s\" is not a superuser and no superuser name supplied"), userinfo.username);
+		log_hint(_("supply a valid superuser name with -S/--superuser"));
+		PQfinish(*conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	*superuser_conn = establish_db_connection_as_user(config_file_options.conninfo,
+													 runtime_options.superuser,
+													 false);
+
+	if (PQstatus(*superuser_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to establish superuser connection as \"%s\""),
+				  runtime_options.superuser);
+
+		PQfinish(*conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* check provided superuser really is superuser */
+	if (!is_superuser_connection(*superuser_conn, NULL))
+	{
+		log_error(_("\"%s\" is not a superuser"), runtime_options.superuser);
+		PQfinish(*superuser_conn);
+		PQfinish(*conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	*privileged_conn = *superuser_conn;
+	return;
 }
 
 

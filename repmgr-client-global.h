@@ -125,4 +125,5 @@ extern char * make_pg_path(char *file);
 
 extern bool create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo);
 
+extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn);
 #endif
