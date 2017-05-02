@@ -17,12 +17,15 @@
 
 #include <unistd.h>
 
+
 #include "repmgr.h"
 #include "repmgr-client.h"
 #include "repmgr-client-global.h"
 #include "repmgr-action-master.h"
 #include "repmgr-action-standby.h"
 #include "repmgr-action-cluster.h"
+
+#include <storage/fd.h>         /* for PG_TEMP_FILE_PREFIX */
 
 
 /* globally available variables *
@@ -39,6 +42,8 @@ char	 pg_bindir[MAXLEN] = "";
 
 char	 repmgr_slot_name[MAXLEN] = "";
 char	*repmgr_slot_name_ptr = NULL;
+
+char  path_buf[MAXLEN] = "";
 
 /*
  * if --node-id/--node-name provided, place that node's record here
@@ -1580,3 +1585,123 @@ get_standby_clone_mode(void)
 
 	return mode;
 }
+
+
+char *
+make_pg_path(char *file)
+{
+	maxlen_snprintf(path_buf, "%s%s", pg_bindir, file);
+
+	return path_buf;
+}
+
+
+int
+copy_remote_files(char *host, char *remote_user, char *remote_path,
+				  char *local_path, bool is_directory, int server_version_num)
+{
+	PQExpBufferData 	rsync_flags;
+	char		script[MAXLEN];
+	char		host_string[MAXLEN];
+	int			r;
+
+	initPQExpBuffer(&rsync_flags);
+
+	if (*config_file_options.rsync_options == '\0')
+	{
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  "--archive --checksum --compress --progress --rsh=ssh");
+	}
+	else
+	{
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  config_file_options.rsync_options);
+	}
+
+	if (runtime_options.force)
+	{
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  " --delete --checksum");
+	}
+
+	if (!remote_user[0])
+	{
+		maxlen_snprintf(host_string, "%s", host);
+	}
+	else
+	{
+		maxlen_snprintf(host_string, "%s@%s", remote_user, host);
+	}
+
+	/*
+	 * When copying the main PGDATA directory, certain files and contents
+	 * of certain directories need to be excluded.
+	 *
+	 * See function 'sendDir()' in 'src/backend/replication/basebackup.c' -
+	 * we're basically simulating what pg_basebackup does, but with rsync rather
+	 * than the BASEBACKUP replication protocol command.
+	 *
+	 * *However* currently we'll always copy the contents of the 'pg_replslot'
+	 * directory and delete later if appropriate.
+	 */
+	if (is_directory)
+	{
+		/* Files which we don't want */
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  " --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control");
+
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  " --exclude=recovery.conf --exclude=recovery.done");
+
+		if (server_version_num >= 90400)
+		{
+			/*
+			 * Ideally we'd use PG_AUTOCONF_FILENAME from utils/guc.h, but
+			 * that has too many dependencies for a mere client program.
+			 */
+			appendPQExpBuffer(&rsync_flags, "%s",
+							  " --exclude=postgresql.auto.conf.tmp");
+		}
+
+		/* Temporary files which we don't want, if they exist */
+		appendPQExpBuffer(&rsync_flags, " --exclude=%s*",
+						  PG_TEMP_FILE_PREFIX);
+
+		/* Directories which we don't want */
+
+		if (server_version_num >= 100000)
+		{
+			appendPQExpBuffer(&rsync_flags, "%s",
+							  " --exclude=pg_wal/*");
+		}
+		else
+		{
+			appendPQExpBuffer(&rsync_flags, "%s",
+							  " --exclude=pg_xlog/*");
+		}
+
+		appendPQExpBuffer(&rsync_flags, "%s",
+						  " --exclude=pg_log/* --exclude=pg_stat_tmp/*");
+
+		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
+						rsync_flags.data, host_string, remote_path, local_path);
+	}
+	else
+	{
+		maxlen_snprintf(script, "rsync %s %s:%s %s",
+						rsync_flags.data, host_string, remote_path, local_path);
+	}
+
+	log_info(_("rsync command line: '%s'"), script);
+
+	r = system(script);
+
+	log_debug("copy_remote_files(): r = %i; WIFEXITED: %i; WEXITSTATUS: %i", r, WIFEXITED(r), WEXITSTATUS(r));
+
+	/* exit code 24 indicates vanished files, which isn't a problem for us */
+	if (WIFEXITED(r) && WEXITSTATUS(r) && WEXITSTATUS(r) != 24)
+		log_verbose(LOG_WARNING, "copy_remote_files(): rsync returned unexpected exit status %i", WEXITSTATUS(r));
+
+	return r;
+}
+

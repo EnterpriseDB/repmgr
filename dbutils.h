@@ -184,5 +184,9 @@ bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_
 
 int			get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 
+/* backup functions */
+bool		start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint, int server_version_num);
+bool		stop_backup(PGconn *conn, char *last_wal_segment, int server_version_num);
+
 #endif
 

@@ -109,6 +109,11 @@ extern bool local_command(const char *command, PQExpBufferData *outputbuf);
 extern bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
 extern standy_clone_mode get_standby_clone_mode(void);
 
+extern int  copy_remote_files(char *host, char *remote_user, char *remote_path,
+							  char *local_path, bool is_directory, int server_version_num);
+
 extern void print_error_list(ItemList *error_list, int log_level);
+
+extern char * make_pg_path(char *file);
 
 #endif

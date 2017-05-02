@@ -1142,6 +1142,7 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 	int 		result;
 
 	initPQExpBuffer(&query);
+
 	appendPQExpBuffer(&query,
 		"SELECT node_id, type, upstream_node_id, node_name, conninfo, slot_name, priority, active"
 		"  FROM repmgr.nodes "
@@ -1151,6 +1152,8 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 	log_verbose(LOG_DEBUG, "get_node_record_by_name():\n  %s", query.data);
 
 	result = _get_node_record(conn, query.data, node_info);
+
+	termPQExpBuffer(&query);
 
 	if (result == 0)
 	{
@@ -1670,3 +1673,105 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 	return 1;
 }
+
+
+/* ================ */
+/* backup functions */
+/* ================ */
+
+// XXX is first_wal_segment actually used anywhere?
+bool
+start_backup(PGconn *conn, char *first_wal_segment, bool fast_checkpoint, int server_version_num)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	if (server_version_num >= 100000)
+	{
+		appendPQExpBuffer(&query,
+						  "SELECT pg_catalog.pg_walfile_name(pg_catalog.pg_start_backup('repmgr_standby_clone_%ld', %s))",
+						  time(NULL),
+						  fast_checkpoint ? "TRUE" : "FALSE");
+	}
+	else
+	{
+		appendPQExpBuffer(&query,
+						  "SELECT pg_catalog.pg_xlogfile_name(pg_catalog.pg_start_backup('repmgr_standby_clone_%ld', %s))",
+						  time(NULL),
+						  fast_checkpoint ? "TRUE" : "FALSE");
+	}
+
+	log_verbose(LOG_DEBUG, "start_backup():\n  %s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to start backup:\n  %s"), PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	if (first_wal_segment != NULL)
+	{
+		char	   *first_wal_seg_pq = PQgetvalue(res, 0, 0);
+		size_t		buf_sz = strlen(first_wal_seg_pq);
+
+		first_wal_segment = pg_malloc0(buf_sz + 1);
+		snprintf(first_wal_segment, buf_sz + 1, "%s", first_wal_seg_pq);
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
+bool
+stop_backup(PGconn *conn, char *last_wal_segment, int server_version_num)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	if (server_version_num >= 100000)
+	{
+		appendPQExpBuffer(&query,
+						  "SELECT pg_catalog.pg_walfile_name(pg_catalog.pg_stop_backup())");
+	}
+	else
+	{
+		appendPQExpBuffer(&query,
+						  "SELECT pg_catalog.pg_xlogfile_name(pg_catalog.pg_stop_backup())");
+	}
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to stop backup:\n  %s"), PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	if (last_wal_segment != NULL)
+	{
+		char	   *last_wal_seg_pq = PQgetvalue(res, 0, 0);
+		size_t		buf_sz = strlen(last_wal_seg_pq);
+
+		last_wal_segment = pg_malloc0(buf_sz + 1);
+		snprintf(last_wal_segment, buf_sz + 1, "%s", last_wal_seg_pq);
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
