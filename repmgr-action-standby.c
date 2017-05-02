@@ -569,6 +569,22 @@ check_source_server()
 	}
 
 	/*
+	 * In the default pg_basebackup mode, we'll cowardly refuse to overwrite
+	 * an existing data directory
+	 */
+	if (mode == pg_basebackup)
+	{
+		if (is_pg_dir(local_data_directory))
+		{
+			log_error(_("target data directory appears to be a PostgreSQL data directory"));
+			log_detail(_("target data directory is \"%s\""), local_data_directory);
+			log_hint(_("ensure the target data directory is empty before running \"STANDBY CLONE\" in pg_basebackup mode"));
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/*
 	 * Copy the source connection so that we have some default values,
 	 * particularly stuff like passwords extracted from PGPASSFILE;
 	 * these will be overridden from the upstream conninfo, if provided.
