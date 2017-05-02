@@ -96,7 +96,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 			log_notice(_("looking for configuration file in current directory"));
 		}
 
-		snprintf(config_file_path, MAXPGPATH, "./%s", CONFIG_FILE_NAME);
+		maxpath_snprintf(config_file_path, "./%s", CONFIG_FILE_NAME);
 		canonicalize_path(config_file_path);
 
 		if (stat(config_file_path, &stat_config) == 0)
@@ -111,7 +111,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 			log_notice(_("looking for configuration file in /etc"));
 		}
 
-		snprintf(config_file_path, MAXPGPATH, "/etc/%s", CONFIG_FILE_NAME);
+		maxpath_snprintf(config_file_path, "/etc/%s", CONFIG_FILE_NAME);
 		if (stat(config_file_path, &stat_config) == 0)
 		{
 			config_file_found = true;
@@ -132,7 +132,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 			log_notice(_("looking for configuration file in %s"), sysconf_etc_path);
 		}
 
-		snprintf(config_file_path, MAXPGPATH, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);
+		maxpath_snprintf(config_file_path, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);
 		if (stat(config_file_path, &stat_config) == 0)
 		{
 			config_file_found = true;
@@ -486,10 +486,9 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		 */
 		if (known_parameter == true && !strlen(value)) {
 			char	   error_message_buf[MAXLEN] = "";
-			snprintf(error_message_buf,
-					 MAXLEN,
-					 _("\"%s\": no value provided"),
-					 name);
+			maxlen_snprintf(error_message_buf,
+							_("\"%s\": no value provided"),
+							name);
 
 			item_list_append(error_list, error_message_buf);
 		}

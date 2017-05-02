@@ -181,7 +181,7 @@ bool        create_event_record_extended(PGconn *conn, t_configuration_options *
 
 /* replication slot functions */
 bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);
-
+bool		drop_replication_slot(PGconn *conn, char *slot_name);
 int			get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 
 /* backup functions */

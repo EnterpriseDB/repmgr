@@ -8,6 +8,10 @@
 
 #include "config.h"
 
+/* values for --copy-external-config-files */
+#define CONFIG_FILE_SAMEPATH 1
+#define CONFIG_FILE_PGDATA 2
+
 typedef struct
 {
 	/* configuration metadata */
@@ -44,12 +48,15 @@ typedef struct
 	char		data_dir[MAXPGPATH];
 
 	/* standby clone options */
+	bool		copy_external_config_files;
+	int			copy_external_config_files_destination;
 	bool		fast_checkpoint;
 	bool		rsync_only;
 	bool		no_upstream_connection;
 	char		recovery_min_apply_delay[MAXLEN];
 	char		replication_user[MAXLEN];
 	char		upstream_conninfo[MAXLEN];
+	bool		use_recovery_conninfo_password;
 	char		wal_keep_segments[MAXLEN];
 	bool		without_barman;
 
@@ -74,7 +81,7 @@ typedef struct
 		/* node options */ \
 		UNKNOWN_NODE_ID, "", "", \
 		/* standby clone options */ \
-		false, false, false, "", "", "", "", false,	\
+		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", false, "", false, \
 		/* event options */ \
 		false, "", 20 }
 
@@ -115,5 +122,7 @@ extern int  copy_remote_files(char *host, char *remote_user, char *remote_path,
 extern void print_error_list(ItemList *error_list, int log_level);
 
 extern char * make_pg_path(char *file);
+
+extern bool create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo);
 
 #endif

@@ -69,6 +69,8 @@ static char	   *last_wal_segment = NULL;
 
 static bool		pg_start_backup_executed = false;
 
+static struct BackupLabel backup_label;
+
 /* used by barman mode */
 static char		local_repmgr_tmp_directory[MAXPGPATH];
 static char		barman_command_buf[MAXLEN] = "";
@@ -82,6 +84,8 @@ static void	check_source_server_via_barman(void);
 static void initialise_direct_clone(void);
 static void config_file_list_init(t_configfile_list *list, int max_size);
 static void config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir);
+static void copy_configuration_files(void);
+static void cleanup_data_directory(void);
 
 static int run_basebackup(void);
 static int run_file_backup(void);
@@ -306,25 +310,62 @@ do_standby_clone(void)
 	if (mode == pg_basebackup)
 	{
 		r = run_basebackup();
-		if (r != 0)
-		{
-			log_warning(_("standby clone: base backup failed"));
-
-			r = ERR_BAD_BASEBACKUP;
-		}
 	}
 	else
 	{
 		r = run_file_backup();
-		if (r != 0)
-		{
-			log_warning(_("standby clone: base backup failed"));
+	}
 
-			r = ERR_BAD_BASEBACKUP;
+
+	/* If the backup failed then exit */
+	if (r != 0)
+	{
+		/* If a replication slot was previously created, drop it */
+		if (config_file_options.use_replication_slots)
+		{
+			drop_replication_slot(source_conn, repmgr_slot_name);
 		}
+
+		log_error(_("unable to take a base backup of the master server"));
+		log_warning(_("data directory (%s) may need to be cleaned up manually"),
+					local_data_directory);
+
+		PQfinish(source_conn);
+		exit(r);
+	}
+
+
+	/*
+	 * If `--copy-external-config-files` was provided, copy any configuration
+	 * files detected to the appropriate location. Any errors encountered
+	 * will not be treated as fatal.
+	 *
+	 * XXX check this won't run in Barman mode
+	 */
+	if (runtime_options.copy_external_config_files && config_files.entries)
+	{
+		copy_configuration_files();
+	}
+
+	/* Write the recovery.conf file */
+
+	create_recovery_file(local_data_directory, &recovery_conninfo);
+
+	switch(mode)
+	{
+		case rsync:
+			log_notice(_("standby clone (using rsync) complete"));
+			break;
+
+		case pg_basebackup:
+			log_notice(_("standby clone (using pg_basebackup) complete"));
+			break;
+
+		case barman:
+			log_notice(_("standby clone (from Barman) complete"));
+			break;
 	}
 }
-
 
 
 void
@@ -678,7 +719,7 @@ initialise_direct_clone(void)
 
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
-		log_error(_("unable to use directory %s ..."),
+		log_error(_("unable to use directory %s"),
 				  local_data_directory);
 		log_hint(_("use -F/--force to force this directory to be overwritten"));
 		exit(ERR_BAD_CONFIG);
@@ -1008,9 +1049,14 @@ run_basebackup(void)
 
 	/*
 	 * As of 9.4, pg_basebackup only ever returns 0 or 1
+	 * XXX check for 10
 	 */
 
 	r = system(script);
+
+	if (r !=0)
+		return r;
+
 
 	return r;
 }
@@ -1036,7 +1082,6 @@ run_file_backup(void)
 
 	char        datadir_list_filename[MAXLEN];
 
-	struct BackupLabel backup_label;
 
 	if (mode == barman)
 	{
@@ -1518,15 +1563,66 @@ run_file_backup(void)
 		fclose(tablespace_map_file);
 	}
 
+
+	/*
+	 * When using rsync, copy pg_control file last, emulating the base backup
+	 * protocol.
+	 */
+	if (mode == rsync)
+	{
+		char		upstream_control_file[MAXPGPATH] = "";
+		char		local_control_file[MAXPGPATH] = "";
+
+		maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
+
+		log_info(_("standby clone: local control file '%s'"),
+				 local_control_file);
+
+		if (!create_dir(local_control_file))
+		{
+			log_error(_("couldn't create directory %s"),
+					local_control_file);
+			goto stop_backup;
+		}
+
+		maxlen_snprintf(upstream_control_file, "%s/global/pg_control",
+						upstream_data_directory);
+		log_debug("standby clone: upstream control file is \"%s\"",
+				 upstream_control_file);
+
+		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+							  upstream_control_file, local_control_file,
+							  false, server_version_num);
+		if (WEXITSTATUS(r))
+		{
+			log_warning(_("standby clone: failed copying upstreamcontrol file \"%s\""),
+						upstream_control_file);
+			r = ERR_BAD_SSH;
+			goto stop_backup;
+		}
+	}
+
 stop_backup:
 
 	if (mode == rsync && pg_start_backup_executed)
 	{
-		log_notice(_("notifying upstream about backup completion...\n"));
+		log_notice(_("notifying upstream about backup completion"));
 		if (stop_backup(source_conn, last_wal_segment, server_version_num) == false)
 		{
 			r = ERR_BAD_BASEBACKUP;
 		}
+	}
+
+
+	/* clean up copied data directory */
+	if (mode == rsync)
+	{
+		cleanup_data_directory();
+	}
+	else if (mode == barman)
+	{
+		/* In Barman mode, remove local_repmgr_directory */
+		rmtree(local_repmgr_tmp_directory, true);
 	}
 
 	return r;
@@ -1545,7 +1641,7 @@ make_barman_ssh_command(char *buf)
 
 	maxlen_snprintf(buf,
 					"ssh %s barman%s",
-					config_file_options.barman_server,
+					config_file_options.barman_host,
 					config_opt);
 
 	return buf;
@@ -1683,6 +1779,67 @@ config_file_list_add(t_configfile_list *list, const char *file, const char *file
 
 	list->entries ++;
 }
+
+static void
+copy_configuration_files(void)
+{
+	int i, r;
+	t_configfile_info *file;
+	char *host;
+
+	/* get host from upstream record */
+	host = param_get(&recovery_conninfo, "host");
+
+	if (host == NULL)
+		host = runtime_options.host;
+
+	log_verbose(LOG_DEBUG, "fetching configuration files from host \"%s\"", host);
+	log_notice(_("copying external configuration files from upstream node"));
+
+	r = test_ssh_connection(host, runtime_options.remote_user);
+	if (r != 0)
+	{
+		log_error(_("remote host %s is not reachable via SSH - unable to copy external configuration files"),
+				  host);
+		return;
+	}
+
+	for (i = 0; i < config_files.entries; i++)
+	{
+		char dest_path[MAXPGPATH];
+		file = config_files.files[i];
+
+		/*
+		 * Skip files in the data directory - these will be copied during
+		 * the main backup
+		 */
+		if (file->in_data_directory == true)
+			continue;
+
+		if (runtime_options.copy_external_config_files_destination == CONFIG_FILE_SAMEPATH)
+		{
+			strncpy(dest_path, file->filepath, MAXPGPATH);
+		}
+		else
+		{
+			snprintf(dest_path, MAXPGPATH,
+					 "%s/%s",
+					 local_data_directory,
+					 file->filename);
+		}
+
+		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
+							  file->filepath, dest_path, false, server_version_num);
+		if (WEXITSTATUS(r))
+		{
+			log_error(_("standby clone: unable to copy config file \"%s\""),
+					  file->filename);
+		}
+	}
+
+	return;
+}
+
 
 
 static int
@@ -1926,4 +2083,64 @@ read_backup_label(const char *local_data_directory, struct BackupLabel *out_back
 			  out_backup_label->label, out_backup_label->start_wal_file);
 
 	return true;
+}
+
+
+static void
+cleanup_data_directory(void)
+{
+	char	dirpath[MAXLEN] = "";
+
+	if (runtime_options.force)
+	{
+		/*
+		 * Remove any WAL files in the target directory which might have
+		 * been left over from previous use of this data directory;
+		 * rsync's --exclude option won't do this.
+		 */
+
+		if (server_version_num >= 100000)
+			maxlen_snprintf(dirpath, "%s/pg_wal/", local_data_directory);
+		else
+			maxlen_snprintf(dirpath, "%s/pg_xlog/", local_data_directory);
+
+		if (!rmtree(dirpath, false))
+		{
+			log_error(_("unable to empty local WAL directory %s"),
+					dirpath);
+			exit(ERR_BAD_RSYNC);
+		}
+	}
+
+	/*
+	 * Remove any existing replication slot directories from previous use
+	 * of this data directory; this matches the behaviour of a fresh
+	 * pg_basebackup, which would usually result in an empty pg_replslot
+	 * directory.
+	 *
+	 * If the backup label contains a nonzero
+	 * 'MIN FAILOVER SLOT LSN' entry we retain the slots and let
+	 * the server clean them up instead, matching pg_basebackup's
+	 * behaviour when failover slots are enabled.
+	 *
+	 * NOTE: watch out for any changes in the replication
+	 * slot directory name (as of 9.4: "pg_replslot") and
+	 * functionality of replication slots
+	 */
+
+	if (server_version_num >= 90400 &&
+		backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
+	{
+		maxlen_snprintf(dirpath, "%s/pg_replslot/",
+						local_data_directory);
+
+		log_debug("deleting pg_replslot directory contents");
+
+		if (!rmtree(dirpath, false))
+		{
+			log_error(_("unable to empty replication slot directory \"%s\""),
+					  dirpath);
+			exit(ERR_BAD_RSYNC);
+		}
+	}
 }

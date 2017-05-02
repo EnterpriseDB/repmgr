@@ -16,9 +16,10 @@
  */
 
 #include <unistd.h>
-
+#include <sys/stat.h>
 
 #include "repmgr.h"
+#include "compat.h"
 #include "repmgr-client.h"
 #include "repmgr-client-global.h"
 #include "repmgr-action-master.h"
@@ -79,7 +80,68 @@ main(int argc, char **argv)
 	 */
 	logger_output_mode = OM_COMMAND_LINE;
 
+	/*
+	 * Initialize and pre-populate conninfo parameters; these will be
+	 * overwritten if matching command line parameters are provided.
+	 *
+	 * Only some actions will need these, but we need to do this before
+	 * the command line is parsed.
+	 */
+
 	initialize_conninfo_params(&source_conninfo, true);
+
+	for (c = 0; c < source_conninfo.size && source_conninfo.keywords[c]; c++)
+	{
+		if (strcmp(source_conninfo.keywords[c], "host") == 0 &&
+			(source_conninfo.values[c] != NULL))
+		{
+			strncpy(runtime_options.host, source_conninfo.values[c], MAXLEN);
+		}
+		else if (strcmp(source_conninfo.keywords[c], "hostaddr") == 0 &&
+				(source_conninfo.values[c] != NULL))
+		{
+			strncpy(runtime_options.host, source_conninfo.values[c], MAXLEN);
+		}
+		else if (strcmp(source_conninfo.keywords[c], "port") == 0 &&
+				 (source_conninfo.values[c] != NULL))
+		{
+			strncpy(runtime_options.port, source_conninfo.values[c], MAXLEN);
+		}
+		else if (strcmp(source_conninfo.keywords[c], "dbname") == 0 &&
+				 (source_conninfo.values[c] != NULL))
+		{
+			strncpy(runtime_options.dbname, source_conninfo.values[c], MAXLEN);
+		}
+		else if (strcmp(source_conninfo.keywords[c], "user") == 0 &&
+				 (source_conninfo.values[c] != NULL))
+		{
+			strncpy(runtime_options.username, source_conninfo.values[c], MAXLEN);
+		}
+	}
+
+	/*
+	 * Though libpq will default to the username as dbname, PQconndefaults()
+	 * doesn't return this
+	 */
+	if (runtime_options.dbname[0] == '\0')
+	{
+		strncpy(runtime_options.dbname, runtime_options.username, MAXLEN);
+	}
+
+
+	/* set default user for -R/--remote-user */
+	{
+		struct passwd *pw = NULL;
+
+		pw = getpwuid(geteuid());
+		if (pw == NULL)
+		{
+			fprintf(stderr, _("could not get current user name: %s\n"), strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		strncpy(runtime_options.username, pw->pw_name, MAXLEN);
+	}
 
 	while ((c = getopt_long(argc, argv, "?Vb:f:Fd:h:p:U:R:S:L:vtD:cr", long_options,
 							&optindex)) != -1)
@@ -209,6 +271,26 @@ main(int argc, char **argv)
 				runtime_options.fast_checkpoint = true;
 				break;
 
+			/* --copy-external-config-files(=[samepath|pgdata]) */
+			case OPT_COPY_EXTERNAL_CONFIG_FILES:
+				runtime_options.copy_external_config_files = true;
+				if (optarg != NULL)
+				{
+					if (strcmp(optarg, "samepath") == 0)
+					{
+						runtime_options.copy_external_config_files_destination = CONFIG_FILE_SAMEPATH;
+					}
+					else if (strcmp(optarg, "pgdata") == 0)
+					{
+						runtime_options.copy_external_config_files_destination = CONFIG_FILE_PGDATA;
+					}
+					else
+					{
+						item_list_append(&cli_errors, _("value provided for '--copy-external-config-files' must be 'samepath' or 'pgdata'"));
+					}
+				}
+				break;
+
 			/* -r/--rsync-only */
 			case 'r':
 				runtime_options.rsync_only = true;
@@ -252,6 +334,10 @@ main(int argc, char **argv)
 
 			case OPT_UPSTREAM_CONNINFO:
 				strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
+				break;
+
+			case OPT_USE_RECOVERY_CONNINFO_PASSWORD:
+				runtime_options.use_recovery_conninfo_password = true;
 				break;
 
 			case OPT_WITHOUT_BARMAN:
@@ -1704,4 +1790,188 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	return r;
 }
+
+
+
+/*
+ * Creates a recovery.conf file for a standby
+ *
+ * A database connection pointer is required for escaping primary_conninfo
+ * parameters. When cloning from Barman and --no-upstream-conne ) this might not be
+ */
+bool
+create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo)
+{
+	FILE	   *recovery_file;
+	char		recovery_file_path[MAXPGPATH];
+	char		line[MAXLEN];
+	mode_t		um;
+
+	maxpath_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_COMMAND_FILE);
+
+	/* Set umask to 0600 */
+	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
+	recovery_file = fopen(recovery_file_path, "w");
+	umask(um);
+
+	if (recovery_file == NULL)
+	{
+		log_error(_("unable to create recovery.conf file at \"%s\""),
+				  recovery_file_path);
+		return false;
+	}
+
+	log_debug("create_recovery_file(): creating \"%s\"...\n",
+			  recovery_file_path);
+
+	/* standby_mode = 'on' */
+	maxlen_snprintf(line, "standby_mode = 'on'\n");
+
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		return false;
+
+	log_debug("recovery.conf: %s", line);
+
+	/* primary_conninfo = '...' */
+
+	/*
+	 * the user specified --upstream-conninfo string - copy that
+	 */
+	if (strlen(runtime_options.upstream_conninfo))
+	{
+		char *escaped = escape_recovery_conf_value(runtime_options.upstream_conninfo);
+		maxlen_snprintf(line, "primary_conninfo = '%s'\n",
+						escaped);
+		free(escaped);
+	}
+	/*
+	 * otherwise use the conninfo inferred from the upstream connection
+	 * and/or node record
+	 */
+	else
+	{
+		write_primary_conninfo(line, recovery_conninfo);
+	}
+
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		return false;
+
+	log_debug("recovery.conf: %s", line);
+
+	/* recovery_target_timeline = 'latest' */
+	maxlen_snprintf(line, "recovery_target_timeline = 'latest'\n");
+
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		return false;
+
+	log_debug("recovery.conf: %s", line);
+
+	/* recovery_min_apply_delay = ... (optional) */
+	if (*runtime_options.recovery_min_apply_delay)
+	{
+		maxlen_snprintf(line, "recovery_min_apply_delay = %s\n",
+						runtime_options.recovery_min_apply_delay);
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+			return false;
+
+		log_debug("recovery.conf: %s", line);
+	}
+
+	/* primary_slot_name = '...' (optional, for 9.4 and later) */
+	if (config_file_options.use_replication_slots)
+	{
+		maxlen_snprintf(line, "primary_slot_name = %s\n",
+						repmgr_slot_name);
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+			return false;
+
+		log_debug("recovery.conf: %s", line);
+	}
+
+	/* If restore_command is set, we use it as restore_command in recovery.conf */
+	if (strcmp(config_file_options.restore_command, "") != 0)
+	{
+		maxlen_snprintf(line, "restore_command = '%s'\n",
+						config_file_options.restore_command);
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		        return false;
+
+		log_debug("recovery.conf: %s", line);
+	}
+	fclose(recovery_file);
+
+	return true;
+}
+
+
+static bool
+write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line)
+{
+	if (fputs(line, recovery_file) == EOF)
+	{
+		log_error(_("unable to write to recovery file at \"%s\""), recovery_file_path);
+		fclose(recovery_file);
+		return false;
+	}
+
+	return true;
+}
+
+
+static void
+write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
+{
+	PQExpBufferData conninfo_buf;
+	bool application_name_provided = false;
+	int c;
+	char *escaped;
+
+	initPQExpBuffer(&conninfo_buf);
+
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
+	{
+		/*
+		 * Skip empty settings and ones which don't make any sense in
+		 * recovery.conf
+		 */
+		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
+		    strcmp(param_list->keywords[c], "replication") == 0 ||
+			(runtime_options.use_recovery_conninfo_password == false &&
+			 strcmp(param_list->keywords[c], "password") == 0) ||
+		    (param_list->values[c] == NULL) ||
+		    (param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
+			continue;
+
+		if (conninfo_buf.len != 0)
+			appendPQExpBufferChar(&conninfo_buf, ' ');
+
+		if (strcmp(param_list->keywords[c], "application_name") == 0)
+			application_name_provided = true;
+
+		appendPQExpBuffer(&conninfo_buf, "%s=", param_list->keywords[c]);
+		appendConnStrVal(&conninfo_buf, param_list->values[c]);
+	}
+
+	/* `application_name` not provided - default to repmgr node name */
+	if (application_name_provided == false)
+	{
+		if (strlen(config_file_options.node_name))
+		{
+			appendPQExpBuffer(&conninfo_buf, " application_name=");
+		    appendConnStrVal(&conninfo_buf, config_file_options.node_name);
+		}
+		else
+		{
+			appendPQExpBuffer(&conninfo_buf, " application_name=repmgr");
+		}
+	}
+	escaped = escape_recovery_conf_value(conninfo_buf.data);
+
+	maxlen_snprintf(line, "primary_conninfo = '%s'\n", escaped);
+
+	free(escaped);
+
+	termPQExpBuffer(&conninfo_buf);
+}
+
 

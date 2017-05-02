@@ -26,7 +26,7 @@ xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 
 	if (retval >= (int) size)
 	{
-		log_error(_("buffer of size not large enough to format entire string '%s'"),
+		log_error(_("buffer of specified size not large enough to format entire string '%s'"),
 				  str);
 		exit(ERR_STR_OVERFLOW);
 	}
@@ -61,6 +61,18 @@ maxlen_snprintf(char *str, const char *format,...)
 	return retval;
 }
 
+int
+maxpath_snprintf(char *str, const char *format,...)
+{
+	va_list		arglist;
+	int			retval;
+
+	va_start(arglist, format);
+	retval = xvsnprintf(str, MAXPGPATH, format, arglist);
+	va_end(arglist);
+
+	return retval;
+}
 
 void
 append_where_clause(PQExpBufferData *where_clause, const char *format, ...)

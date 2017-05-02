@@ -1633,6 +1633,41 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 	return true;
 }
 
+
+bool
+drop_replication_slot(PGconn *conn, char *slot_name)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT pg_drop_replication_slot('%s')",
+					  slot_name);
+
+	log_verbose(LOG_DEBUG, "drop_replication_slot():\n  %s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to drop replication slot \"%s\":\n  %s"),
+				  slot_name,
+				  PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	log_verbose(LOG_DEBUG, "replication slot \"%s\" successfully dropped",
+				slot_name);
+
+	return true;
+}
+
+
 int
 get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 {
@@ -1650,6 +1685,9 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 	log_verbose(LOG_DEBUG, "get_slot_record():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to query pg_replication_slots:\n  %s"),

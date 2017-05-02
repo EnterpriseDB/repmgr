@@ -33,29 +33,31 @@
 #define BDR_UNREGISTER		   19
 
 /* command line options without short versions */
-#define OPT_HELP						 1
-#define OPT_CHECK_UPSTREAM_CONFIG		 2
-#define OPT_RECOVERY_MIN_APPLY_DELAY	 3
-#define OPT_COPY_EXTERNAL_CONFIG_FILES	 4
-#define OPT_CONFIG_ARCHIVE_DIR			 5
-#define OPT_PG_REWIND					 6
-#define OPT_PWPROMPT					 7
-#define OPT_CSV							 8
-#define OPT_NODE						 9
-#define OPT_NODE_ID					 	 10
-#define OPT_NODE_NAME				 	 11
-#define OPT_WITHOUT_BARMAN				 12
-#define OPT_NO_UPSTREAM_CONNECTION		 13
-#define OPT_REGISTER_WAIT				 14
-#define OPT_CLUSTER						 15
-#define OPT_LOG_TO_FILE					 16
-#define OPT_UPSTREAM_CONNINFO			 17
-/* XXX deprecate, replace with --use-conninfo-password (--use-recovery-conninfo-password) set */
-#define OPT_NO_CONNINFO_PASSWORD		 18
-#define OPT_REPLICATION_USER			 19
-#define OPT_EVENT						 20
-#define OPT_LIMIT						 21
-#define OPT_ALL							 22
+#define OPT_HELP						   1
+#define OPT_CHECK_UPSTREAM_CONFIG		   2
+#define OPT_RECOVERY_MIN_APPLY_DELAY	   3
+#define OPT_COPY_EXTERNAL_CONFIG_FILES	   4
+#define OPT_CONFIG_ARCHIVE_DIR			   5
+#define OPT_PG_REWIND					   6
+#define OPT_PWPROMPT					   7
+#define OPT_CSV							   8
+#define OPT_NODE						   9
+#define OPT_NODE_ID					 	   10
+#define OPT_NODE_NAME				 	   11
+#define OPT_WITHOUT_BARMAN				   12
+#define OPT_NO_UPSTREAM_CONNECTION		   13
+#define OPT_REGISTER_WAIT				   14
+#define OPT_CLUSTER						   15
+#define OPT_LOG_TO_FILE					   16
+#define OPT_UPSTREAM_CONNINFO			   17
+/* replaces --no-conninfo-password */
+#define OPT_USE_RECOVERY_CONNINFO_PASSWORD 18
+#define OPT_REPLICATION_USER			   19
+#define OPT_EVENT						   20
+#define OPT_LIMIT						   21
+#define OPT_ALL							   22
+/* deprecated since 3.3 */
+#define OPT_NO_CONNINFO_PASSWORD		   999
 
 
 static struct option long_options[] =
@@ -91,18 +93,23 @@ static struct option long_options[] =
 	{"verbose", no_argument, NULL, 'v'},
 
 /* standby clone options */
+	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"fast-checkpoint", no_argument, NULL, 'c'},
 	{"rsync-only", no_argument, NULL, 'r'},
 	{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
 	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
 	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
+	{"use-recovery-conninfo-password", no_argument, NULL, OPT_USE_RECOVERY_CONNINFO_PASSWORD},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 
 /* event options */
 	{"all", no_argument, NULL, OPT_ALL },
 	{"event", required_argument, NULL, OPT_EVENT },
 	{"limit", required_argument, NULL, OPT_LIMIT },
+
+/* deprecated */
+	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 
 /* not yet handled */
 	{"wal-keep-segments", required_argument, NULL, 'w'},
@@ -120,10 +127,10 @@ static struct option long_options[] =
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
-	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 	/* Following options for internal use */
 	{"cluster", required_argument, NULL, OPT_CLUSTER},
 	{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
+
 	{NULL, 0, NULL, 0}
 };
 
@@ -137,5 +144,8 @@ static const char *action_name(const int action);
 static void exit_with_errors(void);
 static void print_item_list(ItemList *item_list);
 static void check_cli_parameters(const int action);
+
+static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
+static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 
 #endif

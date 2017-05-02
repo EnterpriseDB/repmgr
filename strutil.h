@@ -40,6 +40,10 @@ extern int
 maxlen_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
+extern int
+maxpath_snprintf(char *str, const char *format,...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
+
 extern void
 item_list_append(ItemList *item_list, const char *message);
 
