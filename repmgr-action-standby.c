@@ -73,8 +73,8 @@ static struct BackupLabel backup_label;
 
 /* used by barman mode */
 static char		local_repmgr_tmp_directory[MAXPGPATH];
+static char		datadir_list_filename[MAXLEN];
 static char		barman_command_buf[MAXLEN] = "";
-
 
 static void check_barman_config(void);
 static void	check_source_server(void);
@@ -152,14 +152,6 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Sanity-check barman connection and installation */
-	if (mode == barman)
-	{
-		/* this will exit with ERR_BARMAN if problems found */
-		check_barman_config();
-	}
-
-
 	/*
 	 * target directory (-D/--pgdata) provided - use that as new data directory
 	 * (useful when executing backup on local machine only or creating the backup
@@ -169,6 +161,14 @@ do_standby_clone(void)
 	{
 		strncpy(local_data_directory, runtime_options.data_dir, MAXPGPATH);
 	}
+
+	/* Sanity-check barman connection and installation */
+	if (mode == barman)
+	{
+		/* this will exit with ERR_BARMAN if problems found */
+		check_barman_config();
+	}
+
 
 	/*
 	 * Initialise list of conninfo parameters which will later be used
@@ -405,7 +405,7 @@ do_standby_clone(void)
 	 * add a hint about using the -F/--force.
 	 */
 
-	log_hint(_("After starting the server, you need to register this standby with \"repmgr standby register\""));
+	log_hint(_("after starting the server, you need to register this standby with \"repmgr standby register\""));
 
 	/* Log the event */
 
@@ -447,7 +447,8 @@ do_standby_clone(void)
 	if (PQstatus(primary_conn) == CONNECTION_OK)
 		PQfinish(primary_conn);
 
-	PQfinish(source_conn);
+	if (PQstatus(source_conn) == CONNECTION_OK)
+		PQfinish(source_conn);
 	exit(r);
 }
 
@@ -455,8 +456,6 @@ do_standby_clone(void)
 void
 check_barman_config(void)
 {
-	char		datadir_list_filename[MAXLEN];
-
 	char		command[MAXLEN];
 	bool		command_ok;
 
@@ -481,15 +480,6 @@ check_barman_config(void)
 		exit(ERR_BARMAN);
 	}
 
-	/*
-	 * Create the local repmgr subdirectory
-	 */
-
-	maxlen_snprintf(local_repmgr_tmp_directory,
-					"%s/repmgr",  local_data_directory);
-
-	maxlen_snprintf(datadir_list_filename,
-					"%s/data.txt", local_repmgr_tmp_directory);
 
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
@@ -498,6 +488,17 @@ check_barman_config(void)
 		log_hint(_("use -F/--force option to force this directory to be overwritten"));
 			exit(ERR_BAD_CONFIG);
 	}
+
+
+	/*
+	 * Create the local repmgr subdirectory
+	 */
+
+	maxlen_snprintf(local_repmgr_tmp_directory,
+					"%s/repmgr", local_data_directory);
+
+	maxlen_snprintf(datadir_list_filename,
+					"%s/data.txt", local_repmgr_tmp_directory);
 
 	if (!create_pg_dir(local_repmgr_tmp_directory, runtime_options.force))
 	{
@@ -1213,7 +1214,6 @@ run_file_backup(void)
 	PQExpBufferData tablespace_map;
 	bool		tablespace_map_rewrite = false;
 
-	char        datadir_list_filename[MAXLEN];
 
 
 	if (mode == barman)
