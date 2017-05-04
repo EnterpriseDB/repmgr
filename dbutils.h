@@ -143,6 +143,7 @@ void		conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
 void		param_set(t_conninfo_param_list *param_list, const char *param, const char *value);
 char	   *param_get(t_conninfo_param_list *param_list, const char *param);
 bool		parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_application_name);
+char	   *param_list_to_string(t_conninfo_param_list *param_list);
 
 /* transaction functions */
 bool		begin_transaction(PGconn *conn);

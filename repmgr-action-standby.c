@@ -1100,8 +1100,22 @@ run_basebackup(void)
 	 */
 	if (runtime_options.conninfo_provided == true)
 	{
-		// XXX need to override user with runtime_options.replication_user!
-		appendPQExpBuffer(&params, " -d '%s'", runtime_options.dbname);
+		t_conninfo_param_list conninfo;
+		char *conninfo_str;
+
+		initialize_conninfo_params(&conninfo, false);
+
+		/* string will already have been parsed */
+		(void) parse_conninfo_string(runtime_options.dbname, &conninfo, NULL, false);
+
+		if (*runtime_options.replication_user)
+			param_set(&conninfo, "user", runtime_options.replication_user);
+
+		conninfo_str = param_list_to_string(&conninfo);
+
+		appendPQExpBuffer(&params, " -d '%s'", conninfo_str);
+
+		pfree(conninfo_str);
 	}
 
 	/*

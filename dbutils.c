@@ -424,13 +424,51 @@ conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
 	connOptions = PQconninfo(conn);
 	for (option = connOptions; option && option->keyword; option++)
 	{
-		/* Ignore non-set or blank parameter values*/
+		/* Ignore non-set or blank parameter values */
 		if ((option->val == NULL) ||
 		   (option->val != NULL && option->val[0] == '\0'))
 			continue;
 
 		param_set(param_list, option->keyword, option->val);
 	}
+}
+
+
+/*
+ * Converts param list to string; caller must free returned pointer
+ */
+char *
+param_list_to_string(t_conninfo_param_list *param_list)
+{
+	int c;
+	PQExpBufferData conninfo_buf;
+	char *conninfo_str;
+	int len;
+
+	initPQExpBuffer(&conninfo_buf);
+
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
+	{
+		if (param_list->values[c] != NULL && param_list->values[c][0] != '\0')
+		{
+			if (c > 0)
+				appendPQExpBufferChar(&conninfo_buf, ' ');
+
+			appendPQExpBuffer(&conninfo_buf,
+							  "%s=%s",
+							  param_list->keywords[c],
+							  param_list->values[c]);
+		}
+	}
+
+	len = strlen(conninfo_buf.data) + 1;
+	conninfo_str = pg_malloc0(len);
+
+	strncpy(conninfo_str, conninfo_buf.data, len);
+
+	termPQExpBuffer(&conninfo_buf);
+
+	return conninfo_str;
 }
 
 
