@@ -746,36 +746,45 @@ repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, in
  * Interpret a parameter value as a boolean. Currently accepts:
  *
  * - true/false
- * - 0/1
+ * - 1/0
  * - on/off
- *
+ * - yes/no
+
  * Returns 'false' if unable to determine the booleanness of the value
  * and adds an entry to the error list, which will result in the program
  * erroring out before it proceeds to do anything.
  *
- * TODO: make this work like in postgresql.conf
+ * TODO: accept "any unambiguous prefix of one of these" as per postgresql.conf:
+ *
+ *   https://www.postgresql.org/docs/current/static/config-setting.html
  */
 bool
 parse_bool(const char *s, const char *config_item, ItemList *error_list)
 {
 	PQExpBufferData errors;
 
-	if (strcmp(s, "0") == 0)
+	if (strcasecmp(s, "0") == 0)
 		return false;
 
-	if (strcmp(s, "1") == 0)
+	if (strcasecmp(s, "1") == 0)
 		return true;
 
-	if (strcmp(s, "false") == 0)
+	if (strcasecmp(s, "false") == 0)
 		return false;
 
-	if (strcmp(s, "true") == 0)
+	if (strcasecmp(s, "true") == 0)
 		return true;
 
-	if (strcmp(s, "off") == 0)
+	if (strcasecmp(s, "off") == 0)
 		return false;
 
-	if (strcmp(s, "on") == 0)
+	if (strcasecmp(s, "on") == 0)
+		return true;
+
+	if (strcasecmp(s, "no") == 0)
+		return false;
+
+	if (strcasecmp(s, "yes") == 0)
 		return true;
 
 	initPQExpBuffer(&errors);
