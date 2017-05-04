@@ -402,6 +402,80 @@ main(int argc, char **argv)
 	}
 
 	/*
+	 * If -d/--dbname appears to be a conninfo string, validate by attempting
+	 * to parse it (and if successful, store the parsed parameters)
+	 */
+	if (runtime_options.dbname)
+	{
+		if (strncmp(runtime_options.dbname, "postgresql://", 13) == 0 ||
+		   strncmp(runtime_options.dbname, "postgres://", 11) == 0 ||
+		   strchr(runtime_options.dbname, '=') != NULL)
+		{
+			char	   *errmsg = NULL;
+			PQconninfoOption *opts;
+
+			runtime_options.conninfo_provided = true;
+
+			opts = PQconninfoParse(runtime_options.dbname, &errmsg);
+
+			if (opts == NULL)
+			{
+				PQExpBufferData conninfo_error;
+				initPQExpBuffer(&conninfo_error);
+				appendPQExpBuffer(&conninfo_error, _("error parsing conninfo:\n%s"), errmsg);
+				item_list_append(&cli_errors, conninfo_error.data);
+
+				termPQExpBuffer(&conninfo_error);
+				free(errmsg);
+			}
+			else
+			{
+				/*
+				 * Store any parameters provided in the conninfo string in our
+				 * internal array; also overwrite any options set in
+				 * runtime_options.(host|port|username), as the conninfo
+				 * settings take priority
+				 */
+				PQconninfoOption *opt;
+				for (opt = opts; opt->keyword != NULL; opt++)
+				{
+					if (opt->val != NULL && opt->val[0] != '\0')
+					{
+						param_set(&source_conninfo, opt->keyword, opt->val);
+					}
+
+					if (strcmp(opt->keyword, "host") == 0 &&
+						(opt->val != NULL && opt->val[0] != '\0'))
+					{
+						strncpy(runtime_options.host, opt->val, MAXLEN);
+						runtime_options.host_param_provided = true;
+					}
+					if (strcmp(opt->keyword, "hostaddr") == 0 &&
+						(opt->val != NULL && opt->val[0] != '\0'))
+					{
+						strncpy(runtime_options.host, opt->val, MAXLEN);
+						runtime_options.host_param_provided = true;
+					}
+					else if (strcmp(opt->keyword, "port") == 0 &&
+							 (opt->val != NULL && opt->val[0] != '\0'))
+					{
+						strncpy(runtime_options.port, opt->val, MAXLEN);
+					}
+					else if (strcmp(opt->keyword, "user") == 0 &&
+							 (opt->val != NULL && opt->val[0] != '\0'))
+					{
+						strncpy(runtime_options.username, opt->val, MAXLEN);
+					}
+				}
+			}
+		}
+		else
+		{
+			param_set(&source_conninfo, "dbname", runtime_options.dbname);
+		}
+	}
+
+	/*
 	 * Disallow further running as root to prevent directory ownership problems.
 	 * We check this here to give the root user a chance to execute --help/--version
 	 * options.
@@ -725,6 +799,80 @@ check_cli_parameters(const int action)
 	{
 		case MASTER_REGISTER:
 			/* no required parameters */
+			break;
+		case STANDBY_CLONE:
+		{
+			standy_clone_mode mode = get_standby_clone_mode();
+
+			config_file_required = false;
+
+			if (mode == barman)
+			{
+				if (runtime_options.copy_external_config_files)
+				{
+					item_list_append(&cli_warnings,
+									 _("--copy-external-config-files ineffective in Barman mode"));
+				}
+
+				if (runtime_options.fast_checkpoint)
+				{
+					item_list_append(&cli_warnings,
+									 _("-c/--fast-checkpoint has no effect in Barman mode"));
+				}
+
+				if (runtime_options.rsync_only)
+				{
+					item_list_append(&cli_warnings,
+									 _("-r/--rsync-only has no effect in Barman mode"));
+				}
+
+			}
+			else
+			{
+				if (!runtime_options.host_param_provided)
+				{
+					item_list_append_format(&cli_errors,
+											_("host name for the source node must be provided when executing %s"),
+											action_name(action));
+				}
+
+				if (!runtime_options.connection_param_provided)
+				{
+					item_list_append_format(&cli_errors,
+											_("database connection parameters for the source node must be provided when executing %s"),
+											action_name(action));
+				}
+
+				if (*runtime_options.upstream_conninfo)
+				{
+					if (runtime_options.use_recovery_conninfo_password == true)
+					{
+						item_list_append(&cli_warnings,
+										 _("--use-recovery-conninfo-password ineffective when specifying --upstream-conninfo"));
+					}
+
+					if (*runtime_options.replication_user)
+					{
+						item_list_append(&cli_warnings,
+										 _("--replication-user ineffective when specifying --upstream-conninfo"));
+					}
+				}
+
+				if (runtime_options.no_upstream_connection == true)
+				{
+					item_list_append(&cli_warnings,
+									 _("--no-upstream-connection only effective in Barman mode"));
+				}
+
+				if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
+				{
+					item_list_append(&cli_warnings,
+									 _("-c/--fast-checkpoint has no effect when using -r/--rsync-only"));
+				}
+
+			}
+		}
+			break;
 		case CLUSTER_EVENT:
 			/* no required parameters */
 			break;
@@ -746,7 +894,7 @@ check_cli_parameters(const int action)
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
-										_("datqabase connection parameters not required when executing %s"),
+										_("database connection parameters not required when executing %s"),
 										action_name(action));
 		}
 	}

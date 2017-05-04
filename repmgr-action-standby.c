@@ -534,12 +534,12 @@ check_barman_config(void)
 static void
 check_source_server()
 {
-	PGconn			 *superuser_conn = NULL;
-	PGconn			 *privileged_conn = NULL;
+	PGconn			  *superuser_conn = NULL;
+	PGconn			  *privileged_conn = NULL;
 
-	char		cluster_size[MAXLEN];
-	t_node_info node_record = T_NODE_INFO_INITIALIZER;
-	int			query_result;
+	char			   cluster_size[MAXLEN];
+	t_node_info		   node_record = T_NODE_INFO_INITIALIZER;
+	int				   query_result;
 	t_extension_status extension_status;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
@@ -625,8 +625,25 @@ check_source_server()
 	{
 		if (!runtime_options.force)
 		{
+			if (extension_status == REPMGR_UNKNOWN)
+			{
+				PQfinish(source_conn);
+				exit(ERR_DB_QUERY);
+			}
+
 			/* schema doesn't exist */
 			log_error(_("repmgr extension not found on source node"));
+
+			if (extension_status == REPMGR_AVAILABLE)
+			{
+				log_detail(_("repmgr extension is available but not installed in database \"%s\""),
+						   param_get(&source_conninfo, "dbname"));
+			}
+			else if (extension_status == REPMGR_UNAVAILABLE)
+			{
+				log_detail(_("repmgr extension is not available on the upstream server"));
+			}
+
 			log_hint(_("check that the upstream server is part of a repmgr cluster"));
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
