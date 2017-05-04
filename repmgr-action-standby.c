@@ -1100,6 +1100,7 @@ run_basebackup(void)
 	 */
 	if (runtime_options.conninfo_provided == true)
 	{
+		// XXX need to override user with runtime_options.replication_user!
 		appendPQExpBuffer(&params, " -d '%s'", runtime_options.dbname);
 	}
 

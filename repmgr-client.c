@@ -1802,6 +1802,13 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		if (possible_replication_connections < min_replication_connections)
 		{
 			config_ok = false;
+
+			/*
+			 * XXX at this point we could check current_setting('max_wal_senders) - COUNT(*) FROM pg_stat_replication;
+			 * if >= min_replication_connections we could infer possible authentication error.
+			 *
+			 * Alternatively call PQconnectStart() and poll for presence/absence of CONNECTION_AUTH_OK ?
+			 */
 			log_error(_("unable to establish necessary replication connections"));
 			log_hint(_("increase 'max_wal_senders' by at least %i"), min_replication_connections - possible_replication_connections);
 
