@@ -158,6 +158,8 @@ static void param_set(t_conninfo_param_list *param_list, const char *param, cons
 static char *param_get(t_conninfo_param_list *param_list, const char *param);
 static bool parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_application_name);
 static void conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
+static char *param_list_to_string(t_conninfo_param_list *param_list);
+
 static bool parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num, ItemList *error_list);
 
 static void config_file_list_init(t_configfile_list *list, int max_size);
@@ -7033,7 +7035,22 @@ run_basebackup(const char *data_dir, int server_version_num)
 	 */
 	if (runtime_options.conninfo_provided == true)
 	{
-		appendPQExpBuffer(&params, " -d '%s'", runtime_options.dbname);
+		t_conninfo_param_list conninfo;
+		char *conninfo_str;
+
+		initialize_conninfo_params(&conninfo, false);
+
+		/* string will already have been parsed */
+		(void) parse_conninfo_string(runtime_options.dbname, &conninfo, NULL, false);
+
+		if (*runtime_options.replication_user)
+			param_set(&conninfo, "user", runtime_options.replication_user);
+
+		conninfo_str = param_list_to_string(&conninfo);
+
+		appendPQExpBuffer(&params, " -d '%s'", conninfo_str);
+
+		pfree(conninfo_str);
 	}
 
 	/*
@@ -8717,6 +8734,43 @@ conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
 		param_set(param_list, option->keyword, option->val);
 	}
 }
+
+
+static char *
+param_list_to_string(t_conninfo_param_list *param_list)
+{
+	int c;
+	PQExpBufferData conninfo_buf;
+	char *conninfo_str;
+	int len;
+
+	initPQExpBuffer(&conninfo_buf);
+
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
+	{
+		if (param_list->values[c] != NULL && param_list->values[c][0] != '\0')
+		{
+			if (c > 0)
+				appendPQExpBufferChar(&conninfo_buf, ' ');
+
+			appendPQExpBuffer(&conninfo_buf,
+							  "%s=%s",
+							  param_list->keywords[c],
+							  param_list->values[c]);
+		}
+	}
+
+	len = strlen(conninfo_buf.data) + 1;
+	conninfo_str = pg_malloc0(len);
+
+	strncpy(conninfo_str, conninfo_buf.data, len);
+
+	termPQExpBuffer(&conninfo_buf);
+
+	return conninfo_str;
+}
+
+
 
 
 static bool
