@@ -96,6 +96,7 @@ static struct option long_options[] =
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"fast-checkpoint", no_argument, NULL, 'c'},
 	{"rsync-only", no_argument, NULL, 'r'},
+	{"wal-keep-segments", required_argument, NULL, 'w'},
 	{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
 	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
@@ -115,7 +116,6 @@ static struct option long_options[] =
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 
 /* not yet handled */
-	{"wal-keep-segments", required_argument, NULL, 'w'},
 	{"keep-history", required_argument, NULL, 'k'},
 	{"wait", no_argument, NULL, 'W'},
 	{"rsync-only", no_argument, NULL, 'r'},

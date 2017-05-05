@@ -216,6 +216,10 @@ do_standby_clone(void)
 	 * the upstream is not available, so no point in checking for it.
 	 *
 	 * XXX not sure of the logic here (and yes I did think this up)
+	 *  - we'll need the source connection in any case, just won't connect
+	 *    to the "upstream_conninfo" server. We'd probably need to
+	 *    to override "no_upstream_connection" if connection params
+	 *    actually provided.
 	 */
 
 	if (*runtime_options.upstream_conninfo)

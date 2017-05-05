@@ -297,6 +297,15 @@ main(int argc, char **argv)
 				runtime_options.rsync_only = true;
 				break;
 
+			/* -w/--wal-keep-segments */
+			case 'w':
+				repmgr_atoi(optarg, "-w/--wal-keep-segments", &cli_errors, false);
+				strncpy(runtime_options.wal_keep_segments,
+						optarg,
+						MAXLEN);
+				runtime_options.wal_keep_segments_used = true;
+				break;
+
 			/* --no-upstream-connection */
 			case OPT_NO_UPSTREAM_CONNECTION:
 				runtime_options.no_upstream_connection = true;
@@ -310,7 +319,7 @@ main(int argc, char **argv)
 
 				if (targ < 1)
 				{
-					item_list_append(&cli_errors, _("Invalid value provided for '--recovery-min-apply-delay'"));
+					item_list_append(&cli_errors, _("invalid value provided for '--recovery-min-apply-delay'"));
 					break;
 				}
 				if (ptr && *ptr)
@@ -320,7 +329,7 @@ main(int argc, char **argv)
 					   strcmp(ptr, "d") != 0)
 					{
 						item_list_append(&cli_errors,
-										 _("Value provided for '--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
+										 _("value provided for '--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
 						break;
 					}
 				}
