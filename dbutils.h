@@ -123,7 +123,7 @@ typedef struct s_connection_user
 /* connection functions */
 PGconn *establish_db_connection(const char *conninfo,
 								const bool exit_on_error);
-
+PGconn *establish_db_connection_quiet(const char *conninfo);
 PGconn *establish_db_connection_as_user(const char *conninfo,
 										const char *user,
 										const bool exit_on_error);

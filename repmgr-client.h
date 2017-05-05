@@ -103,6 +103,9 @@ static struct option long_options[] =
 	{"use-recovery-conninfo-password", no_argument, NULL, OPT_USE_RECOVERY_CONNINFO_PASSWORD},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 
+/* standby register options */
+	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
+
 /* event options */
 	{"all", no_argument, NULL, OPT_ALL },
 	{"event", required_argument, NULL, OPT_EVENT },

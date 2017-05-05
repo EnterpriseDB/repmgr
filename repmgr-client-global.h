@@ -60,6 +60,10 @@ typedef struct
 	char		wal_keep_segments[MAXLEN];
 	bool		without_barman;
 
+	/* standby register options */
+	bool		wait_register_sync;
+	int			wait_register_sync_seconds;
+
 	/* event options */
 	bool		all;
 	char		event[MAXLEN];
@@ -82,6 +86,8 @@ typedef struct
 		UNKNOWN_NODE_ID, "", "", \
 		/* standby clone options */ \
 		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", false, "", false, \
+		/* standby register options */ \
+		false, 0, \
 		/* event options */ \
 		false, "", 20 }
 

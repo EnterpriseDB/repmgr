@@ -7,6 +7,7 @@
 #define _REPMGR_ACTION_STANDBY_H_
 
 extern void do_standby_clone(void);
+extern void do_standby_register(void);
 
 typedef struct
 {

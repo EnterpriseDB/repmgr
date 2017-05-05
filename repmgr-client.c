@@ -10,7 +10,8 @@
  *
  * [ MASTER | PRIMARY ] REGISTER
  *
- * STANDBY CLONE (wip)
+ * STANDBY CLONE
+ * STANDBY REGISTER (wip)
  *
  * CLUSTER EVENT
  */
@@ -344,6 +345,18 @@ main(int argc, char **argv)
 				runtime_options.without_barman = true;
 				break;
 
+			/* standby register options *
+			 * --------------------- */
+
+			case OPT_REGISTER_WAIT:
+				runtime_options.wait_register_sync = true;
+				if (optarg != NULL)
+				{
+					runtime_options.wait_register_sync_seconds = repmgr_atoi(optarg, "--wait-sync", &cli_errors, false);
+				}
+				break;
+
+
 			/* event options *
 			 * ------------- */
 
@@ -534,6 +547,8 @@ main(int argc, char **argv)
 		{
 			if (strcasecmp(repmgr_action, "CLONE") == 0)
 				action = STANDBY_CLONE;
+			else if(strcasecmp(repmgr_action, "REGISTER") == 0)
+				action = STANDBY_REGISTER;
 		}
 
 		else if(strcasecmp(repmgr_node_type, "CLUSTER") == 0)
@@ -760,12 +775,18 @@ main(int argc, char **argv)
 		case MASTER_REGISTER:
 			do_master_register();
 			break;
+
 		case STANDBY_CLONE:
 			do_standby_clone();
 			break;
+		case STANDBY_REGISTER:
+			do_standby_register();
+			break;
+
 		case CLUSTER_EVENT:
 			do_cluster_event();
 			break;
+
 		default:
 			/* An action will have been determined by this point  */
 			break;

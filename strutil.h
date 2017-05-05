@@ -10,6 +10,7 @@
 
 #define MAXLEN			1024
 #define MAX_QUERY_LEN	8192
+#define MAXVERSIONSTR	16
 
 /* same as defined in src/include/replication/walreceiver.h */
 #define MAXCONNINFO		1024

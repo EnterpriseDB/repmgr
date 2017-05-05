@@ -113,6 +113,15 @@ establish_db_connection(const char *conninfo, const bool exit_on_error)
 	return _establish_db_connection(conninfo, exit_on_error, false, false);
 }
 
+/*
+ * Attempt to establish a database connection, never exit on error, only
+ * output error messages if --verbose option used
+ */
+PGconn *
+establish_db_connection_quiet(const char *conninfo)
+{
+	return _establish_db_connection(conninfo, false, false, true);
+}
 
 PGconn *
 establish_db_connection_as_user(const char *conninfo,
@@ -571,34 +580,37 @@ _set_config(PGconn *conn, const char *config_param, const char *sqlquery)
 	return true;
 }
 
+
 bool
 set_config(PGconn *conn, const char *config_param,	const char *config_value)
 {
-	char		sqlquery[MAX_QUERY_LEN];
+	PQExpBufferData	  query;
 
-	sqlquery_snprintf(sqlquery,
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
 					  "SET %s TO '%s'",
 					  config_param,
 					  config_value);
 
-	log_verbose(LOG_DEBUG, "set_config():\n%s", sqlquery);
+	log_verbose(LOG_DEBUG, "set_config():\n  %s", query.data);
 
-	return _set_config(conn, config_param, sqlquery);
+	return _set_config(conn, config_param, query.data);
 }
 
 bool
 set_config_bool(PGconn *conn, const char *config_param, bool state)
 {
-	char		sqlquery[MAX_QUERY_LEN];
+	PQExpBufferData	  query;
 
-	sqlquery_snprintf(sqlquery,
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
 					  "SET %s TO %s",
 					  config_param,
 					  state ? "TRUE" : "FALSE");
 
-	log_verbose(LOG_DEBUG, "set_config_bool():\n%s\n", sqlquery);
+	log_verbose(LOG_DEBUG, "set_config_bool():\n  %s", query.data);
 
-	return _set_config(conn, config_param, sqlquery);
+	return _set_config(conn, config_param, query.data);
 }
 
 
@@ -1276,14 +1288,16 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 		 */
 		int primary_node_id = get_master_node_id(conn);
 		maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
+		upstream_node_id_ptr = upstream_node_id;
 	}
-	else
+	else if (node_info->upstream_node_id != NO_UPSTREAM_NODE)
 	{
 		maxlen_snprintf(upstream_node_id, "%i", node_info->upstream_node_id);
+		upstream_node_id_ptr = upstream_node_id;
 	}
 
 	if (node_info->slot_name[0])
-		maxlen_snprintf(slot_name, "'%s'", node_info->slot_name);
+		maxlen_snprintf(slot_name, "%s", node_info->slot_name);
 
 
 	param_values[0] = get_node_type_string(node_info->type);
