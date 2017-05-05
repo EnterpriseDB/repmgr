@@ -595,6 +595,29 @@ main(int argc, char **argv)
 		item_list_append(&cli_errors, command_error.data);
 	}
 
+	/* STANDBY CLONE historically accepts the upstream hostname as an additional argument */
+	if (action == STANDBY_CLONE)
+	{
+		if (optind < argc)
+		{
+			if (runtime_options.host_param_provided == true)
+			{
+				PQExpBufferData additional_host_arg;
+				initPQExpBuffer(&additional_host_arg);
+				appendPQExpBuffer(&additional_host_arg,
+								  _("host name provided both with %s and as an extra parameter"),
+								  runtime_options.conninfo_provided == true ? "host=" : "-h/--host");
+				item_list_append(&cli_errors, additional_host_arg.data);
+			}
+			else
+			{
+				strncpy(runtime_options.host, argv[optind++], MAXLEN);
+				param_set(&source_conninfo, "host", runtime_options.host);
+				runtime_options.host_param_provided = true;
+			}
+		}
+	}
+
 	if (optind < argc)
 	{
 		PQExpBufferData too_many_args;
