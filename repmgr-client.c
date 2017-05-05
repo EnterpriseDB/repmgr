@@ -907,13 +907,6 @@ check_cli_parameters(const int action)
 					item_list_append(&cli_warnings,
 									 _("--no-upstream-connection only effective in Barman mode"));
 				}
-
-				if (runtime_options.fast_checkpoint && runtime_options.rsync_only)
-				{
-					item_list_append(&cli_warnings,
-									 _("-c/--fast-checkpoint has no effect when using -r/--rsync-only"));
-				}
-
 			}
 		}
 			break;

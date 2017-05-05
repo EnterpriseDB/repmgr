@@ -293,10 +293,6 @@ do_standby_clone(void)
 			break;
 		case pg_basebackup:
 			log_notice(_("starting backup (using pg_basebackup)..."));
-			if (runtime_options.fast_checkpoint == false)
-			{
-				log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option"));
-			}
 			break;
 		case barman:
 			log_notice(_("getting backup from Barman..."));
@@ -304,6 +300,14 @@ do_standby_clone(void)
 		default:
 			/* should never reach here */
 			log_error(_("unknown clone mode"));
+	}
+
+	if (mode == pg_basebackup || mode == rsync)
+	{
+		if (runtime_options.fast_checkpoint == false)
+		{
+			log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option"));
+		}
 	}
 
 	if (mode == pg_basebackup)
