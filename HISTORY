@@ -1,3 +1,7 @@
+3.3.2   2017-05-
+        repmgr: ensure --replication-user option is honoured when passing database
+          connection parameters as a conninfo string (Ian)
+
 3.3.1   2017-03-
         repmgrd: prevent invalid apply lag value being written to the
           monitoring table (Ian)
