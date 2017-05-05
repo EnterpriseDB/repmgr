@@ -117,7 +117,7 @@ typedef struct
 
 	char		recovery_min_apply_delay[MAXLEN];
 
-	/* standby register paarameters */
+	/* standby register parameters */
 	bool		wait_register_sync;
 	int			wait_register_sync_seconds;
 
