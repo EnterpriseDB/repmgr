@@ -187,6 +187,9 @@ do_standby_clone(void)
 
 	copy_conninfo_params(&recovery_conninfo, &source_conninfo);
 
+	/* Set the default application name to this node's name */
+	param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
+
 	/*
 	 * If application_name is set in repmgr.conf's conninfo parameter, use
 	 * this value (if the source host was provided as a conninfo string, any
@@ -211,10 +214,12 @@ do_standby_clone(void)
 	 * --upstream-conninfo supplied, which we interpret to imply
 	 * --no-upstream-connection as well - the use case for this option is when
 	 * the upstream is not available, so no point in checking for it.
+	 *
+	 * XXX not sure of the logic here (and yes I did think this up)
 	 */
 
 	if (*runtime_options.upstream_conninfo)
-		runtime_options.no_upstream_connection = true;
+		runtime_options.no_upstream_connection = false;
 
 	/* By default attempt to connect to the source server */
 	if (runtime_options.no_upstream_connection == false)

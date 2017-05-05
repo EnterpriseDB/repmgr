@@ -1441,6 +1441,12 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 	t_connection_user userinfo;
 	bool			  is_superuser;
 
+	/* this should never happen */
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		log_error(_("no database connection available"));
+		exit(ERR_INTERNAL);
+	}
 	is_superuser = is_superuser_connection(*conn, &userinfo);
 
 	if (is_superuser == true)
