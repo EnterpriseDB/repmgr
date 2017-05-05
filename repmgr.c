@@ -2151,7 +2151,7 @@ do_standby_register(void)
 				log_err(_("no record found for upstream node %i\n"),
 						options.upstream_node);
 				/* footgun alert - only do this if you know what you're doing */
-				log_hint(_("use option -F/--force to create a dummy upstream record"));
+				log_hint(_("use option -F/--force to create a dummy upstream record\n"));
 				PQfinish(master_conn);
 				if (PQstatus(conn) == CONNECTION_OK)
 					PQfinish(conn);
