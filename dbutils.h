@@ -132,6 +132,8 @@ PGconn *establish_db_connection_by_params(const char *keywords[],
 										  const char *values[],
 										  const bool exit_on_error);
 
+PGconn	   *get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
+
 bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);
 
 /* conninfo manipulation functions */
@@ -164,7 +166,6 @@ bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 bool		get_cluster_size(PGconn *conn, char *size);
 int			get_server_version(PGconn *conn, char *server_version);
 int			is_standby(PGconn *conn);
-PGconn	   *get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
 int			get_master_node_id(PGconn *conn);
 
 /* extension functions */
@@ -182,6 +183,7 @@ int			get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
+bool		delete_node_record(PGconn *conn, int node);
 
 /* event record functions */
 bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);

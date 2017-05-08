@@ -8,6 +8,7 @@
 
 extern void do_standby_clone(void);
 extern void do_standby_register(void);
+extern void do_standby_unregister(void);
 
 typedef struct
 {

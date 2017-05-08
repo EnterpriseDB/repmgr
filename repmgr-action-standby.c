@@ -930,6 +930,88 @@ do_standby_register(void)
 }
 
 
+void
+do_standby_unregister(void)
+{
+	PGconn	   *conn;
+	PGconn	   *master_conn;
+
+	int 		target_node_id;
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
+
+	bool		node_record_deleted;
+
+	log_info(_("connecting to local standby"));
+	conn = establish_db_connection(config_file_options.conninfo, true);
+
+	/* check if there is a master in this cluster */
+	log_info(_("connecting to master database"));
+
+	master_conn = get_master_connection(conn, NULL, NULL);
+
+	if (PQstatus(master_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to connect to master server"));
+		log_detail("%s", PQerrorMessage(conn));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * if --node-id was specified, unregister that node rather than the
+	 * current one - this enables inactive nodes to be unregistered.
+	 */
+	if (runtime_options.node_id != UNKNOWN_NODE_ID)
+		target_node_id = runtime_options.node_id;
+	else
+		target_node_id = config_file_options.node_id;
+
+	/* Check node exists and is really a standby */
+
+	if (!get_node_record(master_conn, target_node_id, &node_info))
+	{
+		log_error(_("no record found for node %i"), target_node_id);
+		PQfinish(master_conn);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (node_info.type != STANDBY)
+	{
+		log_error(_("node %i is not a standby server"), target_node_id);
+		PQfinish(master_conn);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Now unregister the standby */
+	log_notice(_("unregistering node %i"), target_node_id);
+	node_record_deleted = delete_node_record(master_conn,
+										     target_node_id);
+
+	if (node_record_deleted == false)
+	{
+		PQfinish(master_conn);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Log the event */
+	create_event_record(master_conn,
+						&config_file_options,
+						target_node_id,
+						"standby_unregister",
+						true,
+						NULL);
+
+	PQfinish(master_conn);
+	PQfinish(conn);
+
+	log_info(_("standby unregistration complete"));
+
+	return;
+
+}
+
 static void
 check_source_server()
 {

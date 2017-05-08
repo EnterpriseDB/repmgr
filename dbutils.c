@@ -1360,6 +1360,37 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 	return true;
 }
 
+
+bool
+delete_node_record(PGconn *conn, int node)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "DELETE FROM repmgr.nodes "
+					  " WHERE node_id = %d",
+					  node);
+
+	log_verbose(LOG_DEBUG, "delete_node_record():\n  %s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to delete node record:\n  %s"),
+					PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+	return true;
+
+}
+
 /* ====================== */
 /* event record functions */
 /* ====================== */

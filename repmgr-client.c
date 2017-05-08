@@ -11,7 +11,8 @@
  * [ MASTER | PRIMARY ] REGISTER
  *
  * STANDBY CLONE
- * STANDBY REGISTER (wip)
+ * STANDBY REGISTER
+ * STANDBY UNREGISTER (wip)
  *
  * CLUSTER EVENT
  */
@@ -558,6 +559,8 @@ main(int argc, char **argv)
 				action = STANDBY_CLONE;
 			else if(strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = STANDBY_REGISTER;
+			else if(strcasecmp(repmgr_action, "UNREGISTER") == 0)
+				action = STANDBY_UNREGISTER;
 		}
 
 		else if(strcasecmp(repmgr_node_type, "CLUSTER") == 0)
@@ -813,6 +816,9 @@ main(int argc, char **argv)
 			break;
 		case STANDBY_REGISTER:
 			do_standby_register();
+			break;
+		case STANDBY_UNREGISTER:
+			do_standby_unregister();
 			break;
 
 		case CLUSTER_EVENT:
