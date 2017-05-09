@@ -1,5 +1,5 @@
 /*
- * repmgr.c - Command interpreter for the repmgr package
+ * repmgr-client.c - Command interpreter for the repmgr package
  *
  * Copyright (c) 2ndQuadrant, 2010-2017
  *
@@ -561,6 +561,16 @@ main(int argc, char **argv)
 				action = STANDBY_REGISTER;
 			else if(strcasecmp(repmgr_action, "UNREGISTER") == 0)
 				action = STANDBY_UNREGISTER;
+			else if (strcasecmp(repmgr_action, "PROMOTE") == 0)
+				action = STANDBY_PROMOTE;
+			else if (strcasecmp(repmgr_action, "FOLLOW") == 0)
+				action = STANDBY_FOLLOW;
+			else if (strcasecmp(repmgr_action, "SWITCHOVER") == 0)
+				action = STANDBY_SWITCHOVER;
+			else if (strcasecmp(repmgr_action, "ARCHIVE-CONFIG") == 0)
+				action = STANDBY_ARCHIVE_CONFIG;
+			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
+				action = STANDBY_RESTORE_CONFIG;
 		}
 
 		else if(strcasecmp(repmgr_node_type, "CLUSTER") == 0)
@@ -819,6 +829,21 @@ main(int argc, char **argv)
 			break;
 		case STANDBY_UNREGISTER:
 			do_standby_unregister();
+			break;
+		case STANDBY_PROMOTE:
+			do_standby_promote();
+			break;
+		case STANDBY_FOLLOW:
+			do_standby_follow();
+			break;
+		case STANDBY_SWITCHOVER:
+			do_standby_switchover();
+			break;
+		case STANDBY_ARCHIVE_CONFIG:
+			do_standby_archive_config();
+			break;
+		case STANDBY_RESTORE_CONFIG:
+			do_standby_restore_config();
 			break;
 
 		case CLUSTER_EVENT:

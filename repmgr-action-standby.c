@@ -1009,8 +1009,40 @@ do_standby_unregister(void)
 	log_info(_("standby unregistration complete"));
 
 	return;
-
 }
+
+
+void
+do_standby_promote(void)
+{
+	return;
+}
+
+void
+do_standby_follow(void)
+{
+	return;
+}
+
+void
+do_standby_switchover(void)
+{
+	return;
+}
+
+
+void
+do_standby_archive_config(void)
+{
+	return;
+}
+
+void
+do_standby_restore_config(void)
+{
+	return;
+}
+
 
 static void
 check_source_server()
