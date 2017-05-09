@@ -352,7 +352,8 @@ do_standby_clone(void)
 	 * files detected to the appropriate location. Any errors encountered
 	 * will not be treated as fatal.
 	 *
-	 * XXX check this won't run in Barman mode
+	 * This won't run in Barman mode as "config_files" is only populated in
+	 * "initialise_direct_clone()", which isn't called in Barman mode.
 	 */
 	if (runtime_options.copy_external_config_files && config_files.entries)
 	{
@@ -1390,17 +1391,19 @@ initialise_direct_clone(void)
 
 		for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
 		{
+			char *old_dir_escaped     = escape_string(source_conn, cell->old_dir);
+
 			initPQExpBuffer(&query);
 
-			// XXX escape value
 			appendPQExpBuffer(&query,
 							  "SELECT spcname "
 							  "  FROM pg_catalog.pg_tablespace "
 							  " WHERE pg_catalog.pg_tablespace_location(oid) = '%s'",
-							  cell->old_dir);
+							  old_dir_escaped);
 			res = PQexec(source_conn, query.data);
 
 			termPQExpBuffer(&query);
+			pfree(old_dir_escaped);
 
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
 			{
@@ -1728,7 +1731,6 @@ run_basebackup(void)
 
 	/*
 	 * As of 9.4, pg_basebackup only ever returns 0 or 1
-	 * XXX check for 10
 	 */
 
 	r = system(script);
