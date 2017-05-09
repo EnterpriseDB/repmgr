@@ -330,7 +330,7 @@ do_standby_clone(void)
 
 
 	/* If the backup failed then exit */
-	if (r != 0)
+	if (r != SUCCESS)
 	{
 		/* If a replication slot was previously created, drop it */
 		if (config_file_options.use_replication_slots)
@@ -1553,7 +1553,7 @@ static int
 run_basebackup(void)
 {
 	char				  script[MAXLEN];
-	int					  r = 0;
+	int					  r = SUCCESS;
 	PQExpBufferData 	  params;
 	TablespaceListCell   *cell;
 	t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
@@ -1701,18 +1701,17 @@ run_basebackup(void)
 
 	r = system(script);
 
-	if (r !=0)
-		return r;
+	if (r != 0)
+		return ERR_BAD_BASEBACKUP;
 
-
-	return r;
+	return SUCCESS;
 }
 
 
 static int
 run_file_backup(void)
 {
-	int r = 0, i;
+	int r = SUCCESS, i;
 
 	char		command[MAXLEN];
 	char		filename[MAXLEN];
@@ -1727,11 +1726,8 @@ run_file_backup(void)
 	PQExpBufferData tablespace_map;
 	bool		tablespace_map_rewrite = false;
 
-
-
 	if (mode == barman)
 	{
-
 		/*
 		 * Locate Barman's backup directory
 		 */
