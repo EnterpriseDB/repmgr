@@ -81,7 +81,7 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 		if (exit_on_error)
 		{
 			PQfinish(conn);
-			exit(ERR_DB_CON);
+			exit(ERR_DB_CONN);
 		}
 	}
 
@@ -96,7 +96,7 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 		if (exit_on_error)
 		{
 			PQfinish(conn);
-			exit(ERR_DB_CON);
+			exit(ERR_DB_CONN);
 		}
 	}
 
@@ -172,7 +172,7 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 		if (exit_on_error)
 		{
 			PQfinish(conn);
-			exit(ERR_DB_CON);
+			exit(ERR_DB_CONN);
 		}
 	}
 	else
@@ -193,7 +193,7 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 			if (exit_on_error)
 			{
 				PQfinish(conn);
-				exit(ERR_DB_CON);
+				exit(ERR_DB_CONN);
 			}
 		}
 	}
@@ -1359,6 +1359,69 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 
 	return true;
 }
+
+bool
+update_node_record_set_master(PGconn *conn, int this_node_id)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	log_debug(_("setting node %i as master and marking existing master as failed"),
+			  this_node_id);
+
+	begin_transaction(conn);
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "  UPDATE repmgr.repl_nodes "
+					  "     SET active = FALSE "
+					  "   WHERE type = 'master' "
+					  "     AND active IS TRUE ");
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to set old master node as inactive:\n  %s"),
+				  PQerrorMessage(conn));
+		PQclear(res);
+
+		rollback_transaction(conn);
+		return false;
+	}
+
+	PQclear(res);
+	termPQExpBuffer(&query);
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "  UPDATE repmgr.nodes"
+					  "     SET type = 'master', "
+					  "         upstream_node_id = NULL "
+					  "   WHERE node_id = %i ",
+					  this_node_id);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to set current node %i as active master:\n  %s"),
+				this_node_id,
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		rollback_transaction(conn);
+		return false;
+	}
+
+	PQclear(res);
+
+	return commit_transaction(conn);
+}
+
 
 
 bool

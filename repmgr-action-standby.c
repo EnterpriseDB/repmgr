@@ -258,7 +258,7 @@ do_standby_clone(void)
 		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, errmsg, true);
 		if (parse_success == false)
 		{
-			log_error(_("unable to parse conninfo string \"%s\" for upstream node:\n%s"),
+			log_error(_("unable to parse conninfo string \"%s\" for upstream node:\n  %s"),
 					  recovery_conninfo_str, errmsg);
 
 			PQfinish(source_conn);
@@ -1016,6 +1016,172 @@ do_standby_unregister(void)
 void
 do_standby_promote(void)
 {
+	PGconn	   *conn;
+	PGconn	   *current_master_conn;
+
+	char		script[MAXLEN];
+
+
+	int			r,
+				retval;
+	char		data_dir[MAXLEN];
+
+	int			i,
+				promote_check_timeout  = 60,
+				promote_check_interval = 2;
+	bool		promote_success = false;
+	bool        success;
+	PQExpBufferData details;
+
+	log_info(_("connecting to standby database"));
+	conn = establish_db_connection(config_file_options.conninfo, true);
+
+	log_verbose(LOG_INFO, _("connected to standby, checking its state"));
+
+	/* Verify that standby is a supported server version */
+	check_server_version(conn, "standby", true, NULL);
+
+	/* Check we are in a standby node */
+	retval = is_standby(conn);
+
+	switch (retval)
+	{
+		case 0:
+			log_error(_("STANDBY PROMOTE can only be executed on a standby node"));
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		case -1:
+			log_error(_("connection to node lost"));
+			PQfinish(conn);
+			exit(ERR_DB_CONN);
+	}
+
+
+	/* we also need to check if there isn't any master already */
+	current_master_conn = get_master_connection(conn, NULL, NULL);
+
+	if (PQstatus(current_master_conn) == CONNECTION_OK)
+	{
+		log_error(_("this cluster already has an active master server"));
+		// say which one as detail
+		PQfinish(current_master_conn);
+		PQfinish(conn);
+		exit(ERR_PROMOTION_FAIL);
+	}
+
+
+	/* Get the data directory */
+	// XXX do we need a superuser check?
+	success = get_pg_setting(conn, "data_directory", data_dir);
+	PQfinish(conn);
+
+	if (success == false)
+	{
+		log_error(_("unable to determine data directory"));
+		exit(ERR_PROMOTION_FAIL);
+	}
+
+	log_notice(_("promoting standby"));
+
+	/*
+	 * Promote standby to master.
+	 *
+	 * `pg_ctl promote` returns immediately and (prior to 10.0) has no -w option
+	 * so we can't be sure when or if the promotion completes.
+	 * For now we'll poll the server until the default timeout (60 seconds)
+	 */
+
+	if (*config_file_options.service_promote_command)
+	{
+		maxlen_snprintf(script, "%s", config_file_options.service_promote_command);
+	}
+	else
+	{
+		maxlen_snprintf(script, "%s -D %s promote",
+						make_pg_path("pg_ctl"), data_dir);
+	}
+
+	log_notice(_("promoting server using '%s'"),
+			   script);
+
+	r = system(script);
+	if (r != 0)
+	{
+		log_error(_("unable to promote server from standby to master"));
+		exit(ERR_PROMOTION_FAIL);
+	}
+
+	/* reconnect to check we got promoted */
+
+	log_info(_("reconnecting to promoted server"));
+	conn = establish_db_connection(config_file_options.conninfo, true);
+
+	for (i = 0; i < promote_check_timeout; i += promote_check_interval)
+	{
+		retval = is_standby(conn);
+		if (!retval)
+		{
+			promote_success = true;
+			break;
+		}
+		sleep(promote_check_interval);
+	}
+
+	if (promote_success == false)
+	{
+		switch (retval)
+		{
+			case 1:
+				log_error(_("STANDBY PROMOTE failed, node is still a standby"));
+				PQfinish(conn);
+				exit(ERR_PROMOTION_FAIL);
+			default:
+				log_error(_("connection to node lost"));
+				PQfinish(conn);
+				exit(ERR_DB_CONN);
+		}
+	}
+
+
+	/* update node information to reflect new status */
+	if (update_node_record_set_master(conn, config_file_options.node_id) == false)
+	{
+		initPQExpBuffer(&details);
+		appendPQExpBuffer(&details,
+						  _("unable to update node record for node %i"),
+						  config_file_options.node_id);
+
+		log_error("%s", details.data);
+
+		create_event_record(NULL,
+							&config_file_options,
+							config_file_options.node_id,
+							"standby_promote",
+							false,
+							details.data);
+
+		exit(ERR_DB_QUERY);
+	}
+
+
+	initPQExpBuffer(&details);
+	appendPQExpBuffer(&details,
+					  _("node %i was successfully promoted to master"),
+					  config_file_options.node_id);
+
+	log_notice(_("STANDBY PROMOTE successful"));
+	log_detail("%s", details.data);
+
+	/* Log the event */
+	create_event_record(conn,
+						&config_file_options,
+						config_file_options.node_id,
+						"standby_promote",
+						true,
+						details.data);
+
+	PQfinish(conn);
+
 	return;
 }
 
@@ -1074,7 +1240,7 @@ check_source_server()
 		if (mode == barman)
 			return;
 		else
-			exit(ERR_DB_CON);
+			exit(ERR_DB_CONN);
 	}
 
 	/*

@@ -185,6 +185,8 @@ bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_in
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		delete_node_record(PGconn *conn, int node);
 
+bool		update_node_record_set_master(PGconn *conn, int this_node_id);
+
 /* event record functions */
 bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
 bool        create_event_record_extended(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
