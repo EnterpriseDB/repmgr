@@ -11,6 +11,7 @@
 #include "repmgr.h"
 #include "dirutil.h"
 #include "compat.h"
+#include "controldata.h"
 
 #include "repmgr-client-global.h"
 #include "repmgr-action-standby.h"
@@ -148,15 +149,21 @@ do_standby_clone(void)
 	}
 	else if (mode == barman)
 	{
+		/* XXX in Barman mode it's still possible to connect to the upstream,
+		 * so only fail if that's not available.
+		 */
 		log_error(_("Barman mode requires a data directory"));
 		log_hint(_("use -D/--pgdata to explicitly specify a data directory"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
-	 * target directory (-D/--pgdata) provided - use that as new data directory
+	 * Target directory (-D/--pgdata) provided - use that as new data directory
 	 * (useful when executing backup on local machine only or creating the backup
 	 * in a different local directory when backup source is a remote host)
+	 *
+	 * Note: if no directory provided, check_source_server() will later set
+	 * local_data_directory from the upstream configuration.
 	 */
 	if (local_data_directory_provided == true)
 	{
@@ -244,6 +251,23 @@ do_standby_clone(void)
 		 */
 		check_source_server_via_barman();
 	}
+
+	/*
+	 * by this point we should know the target data directory - check
+	 * there's no running Pg instance
+	 */
+	if (is_pg_dir(local_data_directory))
+	{
+		DBState state = get_db_state(local_data_directory);
+
+		if (state != DB_SHUTDOWNED && state != DB_SHUTDOWNED_IN_RECOVERY)
+		{
+			log_error(_("target data directory appears to contain an active PostgreSQL instance"));
+			log_detail(_("instance state is %s"), describe_db_state(state));
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
 
 	if (upstream_record_found == true)
 	{

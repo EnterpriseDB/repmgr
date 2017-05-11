@@ -138,7 +138,7 @@ do_master_register(void)
 	node_info.priority = config_file_options.priority;
 
 	initPQExpBuffer(&event_description);
-	puts("here");
+
 	if (record_found)
 	{
 		record_created = update_node_record(conn,
