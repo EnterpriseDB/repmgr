@@ -2073,7 +2073,7 @@ create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conni
 		return false;
 	}
 
-	log_debug("create_recovery_file(): creating \"%s\"...\n",
+	log_debug("create_recovery_file(): creating \"%s\"...",
 			  recovery_file_path);
 
 	/* standby_mode = 'on' */

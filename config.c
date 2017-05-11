@@ -476,7 +476,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else
 		{
 			known_parameter = false;
-			log_warning(_("%s/%s: unknown name/value pair provided; ignoring\n"), name, value);
+			log_warning(_("%s/%s: unknown name/value pair provided; ignoring"), name, value);
 		}
 		/*
 		 * Raise an error if a known parameter is provided with an empty value.
