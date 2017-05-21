@@ -1,4 +1,5 @@
 3.3.2   2017-05-22
+        Add support for PostgreSQL 10 (Ian)
         repmgr: ensure --replication-user option is honoured when passing database
           connection parameters as a conninfo string (Ian)
         repmgr: improve detection of pg_rewind on remote server (Ian)
