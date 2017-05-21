@@ -30,17 +30,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-
-
 #include "repmgr.h"
-#include "config.h"
 #include "log.h"
-#include "strutil.h"
 #include "version.h"
-
-/* Required PostgreSQL headers */
-#include "access/xlogdefs.h"
-#include "pqexpbuffer.h"
 
 /* Message strings passed in repmgrSharedState->location */
 
