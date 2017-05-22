@@ -1,0 +1,24 @@
+select * from repmgr_update_standby_location('');
+ repmgr_update_standby_location 
+--------------------------------
+ f
+(1 row)
+
+select * from repmgr_get_last_standby_location();
+ repmgr_get_last_standby_location 
+----------------------------------
+ 
+(1 row)
+
+select * from repmgr_update_last_updated();
+ repmgr_update_last_updated 
+----------------------------
+ 
+(1 row)
+
+select * from repmgr_get_last_updated();
+ repmgr_get_last_updated 
+-------------------------
+ 
+(1 row)
+

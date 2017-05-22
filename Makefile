@@ -8,6 +8,7 @@ repmgrd_OBJS = dbutils.o config.o repmgrd.o log.o strutil.o
 repmgr_OBJS = dbutils.o check_dir.o config.o repmgr.o log.o strutil.o dirmod.o compat.o
 
 DATA = repmgr.sql uninstall_repmgr.sql
+REGRESS = repmgr_funcs repmgr_test
 
 PG_CPPFLAGS = -I$(libpq_srcdir)
 PG_LIBS     = $(libpq_pgport)
