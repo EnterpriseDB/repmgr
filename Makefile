@@ -18,11 +18,11 @@ all: repmgrd repmgr
 	$(MAKE) -C sql
 
 repmgrd: $(repmgrd_OBJS)
-	$(CC) -o repmgrd $(CFLAGS) $(repmgrd_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS)
+	$(CC) -o repmgrd $(CFLAGS) $(repmgrd_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX)
 	$(MAKE) -C sql
 
 repmgr: $(repmgr_OBJS)
-	$(CC) -o repmgr $(CFLAGS) $(repmgr_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS)
+	$(CC) -o repmgr $(CFLAGS) $(repmgr_OBJS) $(PG_LIBS) $(LDFLAGS) $(LDFLAGS_EX)
 
 # Make all objects depend on all include files. This is a bit of a
 # shotgun approach, but the codebase is small enough that a complete rebuild
