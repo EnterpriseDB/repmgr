@@ -725,7 +725,7 @@ witness_monitor(void)
 						  "            replication_lag, apply_lag )"
 						  "      VALUES(%d, %d, "
 						  "             '%s'::TIMESTAMP WITH TIME ZONE, NULL, "
-						  "             pg_catalog.pg_current_wal_location(), NULL, "
+						  "             pg_catalog.pg_current_wal_lsn(), NULL, "
 						  "             0, 0) ",
 						  get_repmgr_schema_quoted(my_local_conn),
 						  master_options.node,
@@ -1207,7 +1207,7 @@ standby_monitor(void)
 	 */
 
 	if (server_version_num >= 100000)
-		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_wal_location()");
+		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_wal_lsn()");
 	else
 		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_current_xlog_location()");
 
