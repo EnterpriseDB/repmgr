@@ -1149,8 +1149,8 @@ standby_monitor(void)
 						  "        replay_timestamp, "
 						  "        COALESCE(receive_location, '0/0') >= replay_location AS receiving_streamed_wal "
 						  "   FROM (SELECT CURRENT_TIMESTAMP AS ts, "
-						  "         pg_catalog.pg_last_wal_receive_location()  AS receive_location, "
-						  "         pg_catalog.pg_last_wal_replay_location()   AS replay_location, "
+						  "         pg_catalog.pg_last_wal_receive_lsn()  AS receive_location, "
+						  "         pg_catalog.pg_last_wal_replay_lsn()   AS replay_location, "
 						  "         pg_catalog.pg_last_xact_replay_timestamp() AS replay_timestamp "
 						  "        ) q ");
 
@@ -1500,7 +1500,11 @@ do_master_failover(void)
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
-		sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_last_xlog_receive_location()");
+		if (server_version_num >= 100000)
+			sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
+		else
+			sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_last_xlog_receive_location()");
+
 		res = PQexec(node_conn, sqlquery);
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
@@ -1532,7 +1536,12 @@ do_master_failover(void)
 	}
 
 	/* last we get info about this node, and update shared memory */
-	sprintf(sqlquery, "SELECT pg_catalog.pg_last_xlog_receive_location()");
+
+	if (server_version_num >= 100000)
+		sprintf(sqlquery, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
+	else
+		sprintf(sqlquery, "SELECT pg_catalog.pg_last_xlog_receive_location()");
+
 	res = PQexec(my_local_conn, sqlquery);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
