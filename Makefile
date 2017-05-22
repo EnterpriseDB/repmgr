@@ -10,7 +10,7 @@ repmgr_OBJS = dbutils.o check_dir.o config.o repmgr.o log.o strutil.o dirmod.o c
 DATA = repmgr.sql uninstall_repmgr.sql
 REGRESS = repmgr_funcs repmgr_test
 
-PG_CPPFLAGS = -I$(libpq_srcdir)
+PG_CPPFLAGS = -I$(includedir_internal) -I$(libpq_srcdir)
 PG_LIBS     = $(libpq_pgport)
 
 
