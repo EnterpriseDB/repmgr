@@ -1,10 +1,10 @@
-3.3.2   2017-05-22
+3.3.2   2017-06-01
         Add support for PostgreSQL 10 (Ian)
         repmgr: ensure --replication-user option is honoured when passing database
           connection parameters as a conninfo string (Ian)
         repmgr: improve detection of pg_rewind on remote server (Ian)
         repmgr: add DETAIL log output for additional clarification of error messages (Ian)
-        repmgr: suppress various spurious error messages in `standby follow` anbd
+        repmgr: suppress various spurious error messages in `standby follow` and
           `standby switchover` (Ian)
         repmgr: add missing `-P` option (Ian)
         repmgrd: monitoring statistic reporting fixes (Ian)
