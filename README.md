@@ -1072,8 +1072,9 @@ should have been updated to reflect this:
    data checksums were enabled when the cluster was initialized. See the
   `pg_rewind` documentation for details:
      https://www.postgresql.org/docs/current/static/app-pgrewind.html
-- `repmgrd` should not be running when a switchover is carried out, otherwise
-  the `repmgrd` may try and promote a standby by itself.
+- `repmgrd` should not be running with setting `failover=automatic` in
+  `repmgr.conf` when a switchover is carried out, otherwise the `repmgrd`
+  may try and promote a standby by itself.
 - Any other standbys attached to the old master will need to be manually
   instructed to point to the new master (e.g. with `repmgr standby follow`).
 - You must ensure that following a server start using `pg_ctl`, log output
