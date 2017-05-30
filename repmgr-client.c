@@ -172,6 +172,10 @@ main(int argc, char **argv)
 				}
 				break;
 			case 'V':
+				/*
+				 * in contrast to repmgr3 and earlier, we only display the repmgr version
+				 * as it's not specific to a particular PostgreSQL version
+				 */
 				printf("%s %s\n", progname(), REPMGR_VERSION);
 				exit(SUCCESS);
 
@@ -553,13 +557,13 @@ main(int argc, char **argv)
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = MASTER_REGISTER;
 		}
-		else if(strcasecmp(repmgr_node_type, "STANDBY") == 0)
+		else if (strcasecmp(repmgr_node_type, "STANDBY") == 0)
 		{
 			if (strcasecmp(repmgr_action, "CLONE") == 0)
 				action = STANDBY_CLONE;
-			else if(strcasecmp(repmgr_action, "REGISTER") == 0)
+			else if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = STANDBY_REGISTER;
-			else if(strcasecmp(repmgr_action, "UNREGISTER") == 0)
+			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
 				action = STANDBY_UNREGISTER;
 			else if (strcasecmp(repmgr_action, "PROMOTE") == 0)
 				action = STANDBY_PROMOTE;
@@ -573,7 +577,7 @@ main(int argc, char **argv)
 				action = STANDBY_RESTORE_CONFIG;
 		}
 
-		else if(strcasecmp(repmgr_node_type, "CLUSTER") == 0)
+		else if (strcasecmp(repmgr_node_type, "CLUSTER") == 0)
 		{
 			if (strcasecmp(repmgr_action, "EVENT") == 0)
 				action = CLUSTER_EVENT;

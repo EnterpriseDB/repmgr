@@ -1374,7 +1374,7 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "  UPDATE repmgr.repl_nodes "
+					  "  UPDATE repmgr.nodes "
 					  "     SET active = FALSE "
 					  "   WHERE type = 'master' "
 					  "     AND active IS TRUE ");
