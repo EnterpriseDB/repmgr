@@ -9,7 +9,7 @@
         repmgr: add missing `-P` option (Ian)
         repmgrd: monitoring statistic reporting fixes (Ian)
 
-3.3.1   2017-03-
+3.3.1   2017-03-13
         repmgrd: prevent invalid apply lag value being written to the
           monitoring table (Ian)
         repmgrd: fix error in XLogRecPtr conversion when calculating
