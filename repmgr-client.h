@@ -95,7 +95,6 @@ static struct option long_options[] =
 /* standby clone options */
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"fast-checkpoint", no_argument, NULL, 'c'},
-	{"rsync-only", no_argument, NULL, 'r'},
 	{"wal-keep-segments", required_argument, NULL, 'w'},
 	{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
@@ -118,8 +117,6 @@ static struct option long_options[] =
 /* not yet handled */
 	{"keep-history", required_argument, NULL, 'k'},
 	{"wait", no_argument, NULL, 'W'},
-	{"rsync-only", no_argument, NULL, 'r'},
-	{"fast-checkpoint", no_argument, NULL, 'c'},
 	{"mode", required_argument, NULL, 'm'},
 	{"remote-config-file", required_argument, NULL, 'C'},
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},

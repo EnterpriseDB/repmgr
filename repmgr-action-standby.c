@@ -33,17 +33,6 @@ typedef struct TablespaceDataList
 	TablespaceDataListCell *tail;
 } TablespaceDataList;
 
-struct BackupLabel
-{
-	XLogRecPtr start_wal_location;
-	char start_wal_file[MAXLEN];
-	XLogRecPtr checkpoint_location;
-	char backup_from[MAXLEN];
-	char backup_method[MAXLEN];
-	char start_time[MAXLEN];
-	char label[MAXLEN];
-	XLogRecPtr min_failover_slot_lsn;
-};
 
 static PGconn  *primary_conn = NULL;
 static PGconn  *source_conn = NULL;
@@ -64,14 +53,6 @@ static t_configfile_list config_files = T_CONFIGFILE_LIST_INITIALIZER;
 
 static standy_clone_mode mode;
 
-// XXX these aren't actually used after being set... remove if no purpose can be found
-static char	   *first_wal_segment = NULL;
-static char	   *last_wal_segment = NULL;
-
-static bool		pg_start_backup_executed = false;
-
-static struct BackupLabel backup_label;
-
 /* used by barman mode */
 static char		local_repmgr_tmp_directory[MAXPGPATH];
 static char		datadir_list_filename[MAXLEN];
@@ -87,15 +68,10 @@ static void initialise_direct_clone(void);
 static void config_file_list_init(t_configfile_list *list, int max_size);
 static void config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir);
 static void copy_configuration_files(void);
-static void cleanup_data_directory(void);
 
 static int run_basebackup(void);
 static int run_file_backup(void);
-static bool read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label);
-static void parse_lsn(XLogRecPtr *ptr, const char *str);
-static XLogRecPtr parse_label_lsn(const char *label_key, const char *label_value);
 
-static int get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list);
 static void tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location);
 
 static void get_barman_property(char *dst, char *name, char *local_repmgr_directory);
@@ -115,20 +91,6 @@ do_standby_clone(void)
 	 */
 
 	mode = get_standby_clone_mode();
-
-	/*
-	 * In rsync mode, we need to check the SSH connection early
-	 */
-	if (mode == rsync)
-	{
-		r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
-		if (r != 0)
-		{
-			log_error(_("remote host %s is not reachable via SSH"),
-					  runtime_options.host);
-			exit(ERR_BAD_SSH);
-		}
-	}
 
 	/*
 	 * If a data directory (-D/--pgdata) was provided, use that, otherwise
@@ -321,21 +283,18 @@ do_standby_clone(void)
 
 	switch (mode)
 	{
-		case rsync:
-			log_notice(_("starting backup (using rsync)..."));
-			break;
 		case pg_basebackup:
 			log_notice(_("starting backup (using pg_basebackup)..."));
 			break;
 		case barman:
-			log_notice(_("getting backup from Barman..."));
+			log_notice(_("retrieving backup from Barman..."));
 			break;
 		default:
 			/* should never reach here */
 			log_error(_("unknown clone mode"));
 	}
 
-	if (mode == pg_basebackup || mode == rsync)
+	if (mode == pg_basebackup)
 	{
 		if (runtime_options.fast_checkpoint == false)
 		{
@@ -390,10 +349,6 @@ do_standby_clone(void)
 
 	switch(mode)
 	{
-		case rsync:
-			log_notice(_("standby clone (using rsync) complete"));
-			break;
-
 		case pg_basebackup:
 			log_notice(_("standby clone (using pg_basebackup) complete"));
 			break;
@@ -461,9 +416,6 @@ do_standby_clone(void)
 
 	switch(mode)
 	{
-		case rsync:
-			appendPQExpBuffer(&event_details, "rsync");
-			break;
 		case pg_basebackup:
 			appendPQExpBuffer(&event_details, "pg_basebackup");
 			break;
@@ -1530,7 +1482,7 @@ check_source_server_via_barman()
 
 
 /*
- * In pg_basebackup/rsync modes, configure the target data directory
+ * In pg_basebackup modes, configure the target data directory
  * if necessary, and fetch information about tablespaces and configuration
  * files.
  */
@@ -1563,18 +1515,15 @@ initialise_direct_clone(void)
 	 * pg_basebackup doesn't verify mappings, so any errors will not be caught.
 	 * We'll do that here as a value-added service.
 	 *
-	 * -T/--tablespace-mapping is not available as a pg_basebackup option for
-	 * PostgreSQL 9.3 - we can only handle that with rsync, so if `--rsync-only`
-	 * not set, fail with an error
 	 */
 
 	if (config_file_options.tablespace_mapping.head != NULL)
 	{
 		TablespaceListCell *cell;
 
-		if (server_version_num < 90400 && !runtime_options.rsync_only)
+		if (server_version_num < 90400)
 		{
-			log_error(_("in PostgreSQL 9.3, tablespace mapping can only be used in conjunction with --rsync-only"));
+			log_error(_("tablespace mapping is not supported for PostgreSQL 9.3"));
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -2193,65 +2142,7 @@ run_file_backup(void)
 			}
 		}
 	}
-	else if (mode == rsync)
-	{
-		/* For 9.5 and greater, create our own tablespace_map file */
-		if (server_version_num >= 90500)
-		{
-			initPQExpBuffer(&tablespace_map);
-		}
 
-		if (start_backup(source_conn, first_wal_segment, runtime_options.fast_checkpoint, server_version_num) == false)
-		{
-			r = ERR_BAD_BASEBACKUP;
-			goto stop_backup;
-		}
-
-		/*
-		 * Note that we've successfully executed pg_start_backup(),
-		 * so we know whether or not to execute pg_stop_backup() after
-		 * the 'stop_backup' label
-		 */
-		pg_start_backup_executed = true;
-
-		/*
-		 * 1. copy data directory, omitting directories which should not be
-		 *    copied, or for which copying would serve no purpose.
-		 *
-		 * 2. copy pg_control file
-		 */
-
-		/* Copy the data directory */
-		log_info(_("standby clone: upstream data directory is '%s'"),
-				 upstream_data_directory);
-		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-							  upstream_data_directory, local_data_directory,
-							  true, server_version_num);
-		/*
-		 * Exit code 0 means no error, but we want to ignore exit code 24 as well
-		 * as rsync returns that code on "Partial transfer due to vanished source files".
-		 * It's quite common for this to happen on the data directory, particularly
-		 * with long running rsync on a busy server.
-		 */
-		if (WIFEXITED(r) && WEXITSTATUS(r) && WEXITSTATUS(r) != 24)
-		{
-			log_error(_("standby clone: failed copying upstream data directory '%s'"),
-					upstream_data_directory);
-			r = ERR_BAD_RSYNC;
-			goto stop_backup;
-		}
-
-		/* Read backup label copied from primary */
-		if (read_backup_label(local_data_directory, &backup_label) == false)
-		{
-			r = ERR_BAD_BACKUP_LABEL;
-			goto stop_backup;
-		}
-
-		/* Copy tablespaces and, if required, remap to a new location */
-		r = get_tablespace_data(source_conn, &tablespace_list);
-		if (r != SUCCESS) goto stop_backup;
-	}
 
 	for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
 	{
@@ -2313,33 +2204,13 @@ run_file_backup(void)
 				unlink(filename);
 			}
 		}
-		else if (mode == rsync)
-		{
-			/* Copy tablespace directory */
-			r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-								  cell_t->location, tblspc_dir_dest,
-								  true, server_version_num);
 
-			/*
-			 * Exit code 0 means no error, but we want to ignore exit code 24 as well
-			 * as rsync returns that code on "Partial transfer due to vanished source files".
-			 * It's quite common for this to happen on the data directory, particularly
-			 * with long running rsync on a busy server.
-			 */
-			if (WIFEXITED(r) && WEXITSTATUS(r) && WEXITSTATUS(r) != 24)
-			{
-				log_error(_("standby clone: failed copying tablespace directory '%s'"),
-						cell_t->location);
-				r  = ERR_BAD_RSYNC;
-				goto stop_backup;
-			}
-		}
 
 		/*
 		 * If a valid mapping was provide for this tablespace, arrange for it to
 		 * be remapped
 		 * (if no tablespace mapping was provided, the link will be copied as-is
-		 * by pg_basebackup or rsync and no action is required)
+		 * by pg_basebackup and no action is required)
 		 */
 		if (mapping_found == true || mode == barman)
 		{
@@ -2430,62 +2301,10 @@ run_file_backup(void)
 	}
 
 
-	/*
-	 * When using rsync, copy pg_control file last, emulating the base backup
-	 * protocol.
-	 */
-	if (mode == rsync)
-	{
-		char		upstream_control_file[MAXPGPATH] = "";
-		char		local_control_file[MAXPGPATH] = "";
-
-		maxlen_snprintf(local_control_file, "%s/global", local_data_directory);
-
-		log_info(_("standby clone: local control file '%s'"),
-				 local_control_file);
-
-		if (!create_dir(local_control_file))
-		{
-			log_error(_("couldn't create directory %s"),
-					local_control_file);
-			goto stop_backup;
-		}
-
-		maxlen_snprintf(upstream_control_file, "%s/global/pg_control",
-						upstream_data_directory);
-		log_debug("standby clone: upstream control file is \"%s\"",
-				 upstream_control_file);
-
-		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-							  upstream_control_file, local_control_file,
-							  false, server_version_num);
-		if (WEXITSTATUS(r))
-		{
-			log_warning(_("standby clone: failed copying upstreamcontrol file \"%s\""),
-						upstream_control_file);
-			r = ERR_BAD_SSH;
-			goto stop_backup;
-		}
-	}
 
 stop_backup:
 
-	if (mode == rsync && pg_start_backup_executed)
-	{
-		log_notice(_("notifying upstream about backup completion"));
-		if (stop_backup(source_conn, last_wal_segment, server_version_num) == false)
-		{
-			r = ERR_BAD_BASEBACKUP;
-		}
-	}
-
-
-	/* clean up copied data directory */
-	if (mode == rsync)
-	{
-		cleanup_data_directory();
-	}
-	else if (mode == barman)
+	if (mode == barman)
 	{
 		/* In Barman mode, remove local_repmgr_directory */
 		rmtree(local_repmgr_tmp_directory, true);
@@ -2707,45 +2526,6 @@ copy_configuration_files(void)
 }
 
 
-
-static int
-get_tablespace_data(PGconn *upstream_conn, TablespaceDataList *list)
-{
-	PQExpBufferData	  query;
-	PGresult *res;
-	int i;
-
-	initPQExpBuffer(&query);
-
-	appendPQExpBuffer(&query,
-					  " SELECT spcname, oid, pg_catalog.pg_tablespace_location(oid) AS spclocation "
-					  "   FROM pg_catalog.pg_tablespace "
-					  "  WHERE spcname NOT IN ('pg_default', 'pg_global')");
-
-	res = PQexec(upstream_conn, query.data);
-
-	termPQExpBuffer(&query);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_error(_("unable to execute tablespace query:\n  %s"),
-				  PQerrorMessage(upstream_conn));
-
-		PQclear(res);
-
-		return ERR_DB_QUERY;
-	}
-
-	for (i = 0; i < PQntuples(res); i++)
-		tablespace_data_append(list,
-							   PQgetvalue(res, i, 0),
-							   PQgetvalue(res, i, 1),
-							   PQgetvalue(res, i, 2));
-
-	PQclear(res);
-	return SUCCESS;
-}
-
 static void
 tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location)
 {
@@ -2775,241 +2555,6 @@ tablespace_data_append(TablespaceDataList *list, const char *name, const char *o
 	list->tail = cell;
 }
 
-
-
-static void
-parse_lsn(XLogRecPtr *ptr, const char *str)
-{
-	uint32 high, low;
-
-	if (sscanf(str, "%x/%x", &high, &low) != 2)
-		return;
-
-	*ptr = (((XLogRecPtr)high) << 32) + (XLogRecPtr)low;
-
-	return;
-}
-
-
-static XLogRecPtr
-parse_label_lsn(const char *label_key, const char *label_value)
-{
-	XLogRecPtr ptr = InvalidXLogRecPtr;
-
-	parse_lsn(&ptr, label_value);
-
-	/* parse_lsn() will not modify ptr if it can't parse the label value */
-	if (ptr == InvalidXLogRecPtr)
-	{
-		log_error(_("couldn't parse backup label entry \"%s: %s\" as lsn"),
-				  label_key, label_value);
-	}
-
-	return ptr;
-}
-
-
-
-/*======================================
- * Read entries of interest from the backup label.
- *
- * Sample backup label (with failover slots):
- *
- *		START WAL LOCATION: 0/6000028 (file 000000010000000000000006)
- *		CHECKPOINT LOCATION: 0/6000060
- *		BACKUP METHOD: streamed
- *		BACKUP FROM: master
- *		START TIME: 2016-03-30 12:18:12 AWST
- *		LABEL: pg_basebackup base backup
- *		MIN FAILOVER SLOT LSN: 0/5000000
- *
- *======================================
- */
-static bool
-read_backup_label(const char *local_data_directory, struct BackupLabel *out_backup_label)
-{
-	char label_path[MAXPGPATH];
-	FILE *label_file;
-	int  nmatches = 0;
-
-	char line[MAXLEN];
-
-	out_backup_label->start_wal_location = InvalidXLogRecPtr;
-	out_backup_label->start_wal_file[0] = '\0';
-	out_backup_label->checkpoint_location = InvalidXLogRecPtr;
-	out_backup_label->backup_from[0] = '\0';
-	out_backup_label->backup_method[0] = '\0';
-	out_backup_label->start_time[0] = '\0';
-	out_backup_label->label[0] = '\0';
-	out_backup_label->min_failover_slot_lsn = InvalidXLogRecPtr;
-
-	maxlen_snprintf(label_path, "%s/backup_label", local_data_directory);
-
-	label_file = fopen(label_path, "r");
-	if (label_file == NULL)
-	{
-		log_error(_("read_backup_label: could not open backup label file %s: %s"),
-				label_path, strerror(errno));
-		return false;
-	}
-
-	log_info(_("read_backup_label: parsing backup label file '%s'"),
-			 label_path);
-
-	while(fgets(line, sizeof line, label_file) != NULL)
-	{
-		char label_key[MAXLEN];
-		char label_value[MAXLEN];
-		char newline;
-
-		nmatches = sscanf(line, "%" MAXLEN_STR "[^:]: %" MAXLEN_STR "[^\n]%c",
-						  label_key, label_value, &newline);
-
-		if (nmatches != 3)
-			break;
-
-		if (newline != '\n')
-		{
-			log_error(_("read_backup_label: line too long in backup label file. Line begins \"%s: %s\""),
-					  label_key, label_value);
-			return false;
-		}
-
-		log_verbose(LOG_DEBUG, "standby clone: got backup label entry \"%s: %s\"",
-					label_key, label_value);
-
-		if (strcmp(label_key, "START WAL LOCATION") == 0)
-		{
-			char start_wal_location[MAXLEN];
-			char wal_filename[MAXLEN];
-
-			nmatches = sscanf(label_value, "%" MAXLEN_STR "s (file %" MAXLEN_STR "[^)]", start_wal_location, wal_filename);
-
-			if (nmatches != 2)
-			{
-				log_error(_("read_backup_label: unable to parse \"START WAL LOCATION\" in backup label"));
-				return false;
-			}
-
-			out_backup_label->start_wal_location =
-				parse_label_lsn(&label_key[0], start_wal_location);
-
-			if (out_backup_label->start_wal_location == InvalidXLogRecPtr)
-				return false;
-
-			(void) strncpy(out_backup_label->start_wal_file, wal_filename, MAXLEN);
-			out_backup_label->start_wal_file[MAXLEN-1] = '\0';
-		}
-		else if (strcmp(label_key, "CHECKPOINT LOCATION") == 0)
-		{
-			out_backup_label->checkpoint_location =
-				parse_label_lsn(&label_key[0], &label_value[0]);
-
-			if (out_backup_label->checkpoint_location == InvalidXLogRecPtr)
-				return false;
-		}
-		else if (strcmp(label_key, "BACKUP METHOD") == 0)
-		{
-			(void) strncpy(out_backup_label->backup_method, label_value, MAXLEN);
-			out_backup_label->backup_method[MAXLEN-1] = '\0';
-		}
-		else if (strcmp(label_key, "BACKUP FROM") == 0)
-		{
-			(void) strncpy(out_backup_label->backup_from, label_value, MAXLEN);
-			out_backup_label->backup_from[MAXLEN-1] = '\0';
-		}
-		else if (strcmp(label_key, "START TIME") == 0)
-		{
-			(void) strncpy(out_backup_label->start_time, label_value, MAXLEN);
-			out_backup_label->start_time[MAXLEN-1] = '\0';
-		}
-		else if (strcmp(label_key, "LABEL") == 0)
-		{
-			(void) strncpy(out_backup_label->label, label_value, MAXLEN);
-			out_backup_label->label[MAXLEN-1] = '\0';
-		}
-		else if (strcmp(label_key, "MIN FAILOVER SLOT LSN") == 0)
-		{
-			out_backup_label->min_failover_slot_lsn =
-				parse_label_lsn(&label_key[0], &label_value[0]);
-
-			if (out_backup_label->min_failover_slot_lsn == InvalidXLogRecPtr)
-				return false;
-		}
-		else
-		{
-			log_info("read_backup_label: ignored unrecognised backup label entry \"%s: %s\"",
-					label_key, label_value);
-		}
-	}
-
-	(void) fclose(label_file);
-
-	log_debug("read_backup_label: label is %s; start wal file is %s",
-			  out_backup_label->label, out_backup_label->start_wal_file);
-
-	return true;
-}
-
-
-static void
-cleanup_data_directory(void)
-{
-	char	dirpath[MAXLEN] = "";
-
-	if (runtime_options.force)
-	{
-		/*
-		 * Remove any WAL files in the target directory which might have
-		 * been left over from previous use of this data directory;
-		 * rsync's --exclude option won't do this.
-		 */
-
-		if (server_version_num >= 100000)
-			maxlen_snprintf(dirpath, "%s/pg_wal/", local_data_directory);
-		else
-			maxlen_snprintf(dirpath, "%s/pg_xlog/", local_data_directory);
-
-		if (!rmtree(dirpath, false))
-		{
-			log_error(_("unable to empty local WAL directory %s"),
-					dirpath);
-			exit(ERR_BAD_RSYNC);
-		}
-	}
-
-	/*
-	 * Remove any existing replication slot directories from previous use
-	 * of this data directory; this matches the behaviour of a fresh
-	 * pg_basebackup, which would usually result in an empty pg_replslot
-	 * directory.
-	 *
-	 * If the backup label contains a nonzero
-	 * 'MIN FAILOVER SLOT LSN' entry we retain the slots and let
-	 * the server clean them up instead, matching pg_basebackup's
-	 * behaviour when failover slots are enabled.
-	 *
-	 * NOTE: watch out for any changes in the replication
-	 * slot directory name (as of 9.4: "pg_replslot") and
-	 * functionality of replication slots
-	 */
-
-	if (server_version_num >= 90400 &&
-		backup_label.min_failover_slot_lsn == InvalidXLogRecPtr)
-	{
-		maxlen_snprintf(dirpath, "%s/pg_replslot/",
-						local_data_directory);
-
-		log_debug("deleting pg_replslot directory contents");
-
-		if (!rmtree(dirpath, false))
-		{
-			log_error(_("unable to empty replication slot directory \"%s\""),
-					  dirpath);
-			exit(ERR_BAD_RSYNC);
-		}
-	}
-}
 
 
 /*

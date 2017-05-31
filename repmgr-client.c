@@ -297,11 +297,6 @@ main(int argc, char **argv)
 				}
 				break;
 
-			/* -r/--rsync-only */
-			case 'r':
-				runtime_options.rsync_only = true;
-				break;
-
 			/* -w/--wal-keep-segments */
 			case 'w':
 				repmgr_atoi(optarg, "-w/--wal-keep-segments", &cli_errors, false);
@@ -908,11 +903,6 @@ check_cli_parameters(const int action)
 									 _("-c/--fast-checkpoint has no effect in Barman mode"));
 				}
 
-				if (runtime_options.rsync_only)
-				{
-					item_list_append(&cli_warnings,
-									 _("-r/--rsync-only has no effect in Barman mode"));
-				}
 
 			}
 			else
@@ -1713,10 +1703,10 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 		/*
 		 * A non-zero `wal_keep_segments` value will almost certainly be required
-		 * if rsync mode is being used, or pg_basebackup with --xlog-method=fetch,
+		 * if pg_basebackup is being used with --xlog-method=fetch,
 		 * *and* no restore command has been specified
 		 */
-		else if ( (runtime_options.rsync_only == true || xlog_stream == false)
+		else if (xlog_stream == false
 			 && strcmp(config_file_options.restore_command, "") == 0)
 		{
 			check_wal_keep_segments = true;
@@ -1918,9 +1908,7 @@ get_standby_clone_mode(void)
 {
 	standy_clone_mode mode;
 
-	if (runtime_options.rsync_only)
-		mode = rsync;
-	else if (strcmp(config_file_options.barman_host, "") != 0 && ! runtime_options.without_barman)
+	if (strcmp(config_file_options.barman_host, "") != 0 && ! runtime_options.without_barman)
 		mode = barman;
 	else
 		mode = pg_basebackup;

@@ -94,7 +94,6 @@ typedef struct
 
 typedef enum {
 	barman,
-	rsync,
 	pg_basebackup
 }	standy_clone_mode;
 
