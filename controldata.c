@@ -11,7 +11,6 @@
 #include <fcntl.h>
 
 #include "postgres_fe.h"
-#include "port/pg_crc32c.h"
 
 #include "repmgr.h"
 #include "controldata.h"
@@ -62,8 +61,8 @@ describe_db_state(DBState state)
 
 
 /*
- * we maintain our own version of get_controlfile() as we don't care if
- * the file isn't readable
+ * we maintain our own version of get_controlfile() as we need cross-version
+ * compatibility, and also don't care if the file isn't readable.
  */
 static ControlFileInfo *
 get_controlfile(char *DataDir)
@@ -71,7 +70,6 @@ get_controlfile(char *DataDir)
 	ControlFileInfo *control_file_info;
 	int			fd;
 	char		ControlFilePath[MAXPGPATH];
-	pg_crc32c	crc;
 
 	control_file_info = palloc0(sizeof(ControlFileInfo));
 	control_file_info->control_file_processed = false;
