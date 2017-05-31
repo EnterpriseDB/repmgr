@@ -192,7 +192,7 @@
                     #
                     # 'automatic': repmgrd will automatically attempt to promote the
                     #    node or follow the new upstream node
-                    # 'manual': repmgrd will take no action and the mode will require
+                    # 'manual': repmgrd will take no action and the node will require
                     #    manual attention to reattach it to replication
 
 #priority=100       # indicate a preferred priorty for promoting nodes
