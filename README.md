@@ -345,9 +345,11 @@ The following replication settings may need to be adjusted:
 * * *
 
 > *TIP*: rather than editing these settings in the default `postgresql.conf`
-> file, create a separate file such as `postgresql.replication.conf` and
+> file, you can create a separate file such as `postgresql.replication.conf` and
 > include it from the end of the main configuration file with:
-> `include 'postgresql.replication.conf'`
+> `include 'postgresql.replication.conf'`. (But don't do this if you are on
+> Debian or Ubuntu, as [`standby clone` currently fails to clone the included
+> configuration file in this case](https://github.com/2ndQuadrant/repmgr/issues/226).)
 
 * * *
 
