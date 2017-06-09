@@ -825,14 +825,16 @@ get_server_version(PGconn *conn, char *server_version)
 	return atoi(PQgetvalue(res, 0, 0));
 }
 
-int
-is_standby(PGconn *conn)
+
+t_recovery_type
+get_recovery_type(PGconn *conn)
 {
 	PGresult   *res;
-	int			result = 0;
+	t_recovery_type recovery_type = RECTYPE_MASTER;
+
 	char	   *sqlquery = "SELECT pg_catalog.pg_is_in_recovery()";
 
-	log_verbose(LOG_DEBUG, "is_standby(): %s", sqlquery);
+	log_verbose(LOG_DEBUG, "get_recovery_type(): %s", sqlquery);
 
 	res = PQexec(conn, sqlquery);
 
@@ -840,15 +842,15 @@ is_standby(PGconn *conn)
 	{
 		log_error(_("unable to determine if server is in recovery:\n  %s"),
 				PQerrorMessage(conn));
-		result = -1;
+		recovery_type = RECTYPE_UNKNOWN;
 	}
 	else if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
 	{
-		result = 1;
+		recovery_type = RECTYPE_STANDBY;
 	}
 
 	PQclear(res);
-	return result;
+	return recovery_type;
 }
 
 /*
@@ -916,7 +918,7 @@ get_master_connection(PGconn *conn,
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		int is_node_standby;
+		t_recovery_type recovery_type;
 
 		/* initialize with the values of the current node being processed */
 		node_id = atoi(PQgetvalue(res, i, 0));
@@ -929,9 +931,9 @@ get_master_connection(PGconn *conn,
 		if (PQstatus(remote_conn) != CONNECTION_OK)
 			continue;
 
-		is_node_standby = is_standby(remote_conn);
+		recovery_type = get_recovery_type(remote_conn);
 
-		if (is_node_standby == -1)
+		if (recovery_type == RECTYPE_UNKNOWN)
 		{
 			log_error(_("unable to retrieve recovery state from node %i:\n	%s"),
 					  node_id,
@@ -940,8 +942,7 @@ get_master_connection(PGconn *conn,
 			continue;
 		}
 
-		/* if is_standby() returns 0, queried node is the master */
-		if (is_node_standby == 0)
+		if (recovery_type == RECTYPE_MASTER)
 		{
 			PQclear(res);
 			log_debug(_("get_master_connection(): current master node is %i"), node_id);

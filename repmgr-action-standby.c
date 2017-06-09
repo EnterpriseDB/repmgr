@@ -525,7 +525,6 @@ do_standby_register(void)
 {
 	PGconn	   *conn;
 	PGconn	   *master_conn;
-	int			ret;
 
 	bool		record_created;
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
@@ -560,15 +559,24 @@ do_standby_register(void)
 
 	if (PQstatus(conn) == CONNECTION_OK)
 	{
-		ret = is_standby(conn);
+		t_recovery_type recovery_type = get_recovery_type(conn);
 
-		if (ret == 0 || ret == -1)
+		if (recovery_type != RECTYPE_STANDBY)
 		{
-			log_error(_(ret == 0 ? "this node should be a standby (%s)" :
-						"connection to node (%s) lost"), config_file_options.conninfo);
-
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
+			if (recovery_type == RECTYPE_MASTER)
+			{
+				log_error(_("this node should be a standby (%s)"),
+						  config_file_options.conninfo);
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+			else
+			{
+				log_error(_("connection to node (%s) lost"),
+						  config_file_options.conninfo);
+				PQfinish(conn);
+				exit(ERR_DB_CONN);
+			}
 		}
 	}
 
@@ -997,9 +1005,8 @@ do_standby_promote(void)
 
 	char		script[MAXLEN];
 
-
-	int			r,
-				retval;
+	t_recovery_type recovery_type;
+	int			r;
 	char		data_dir[MAXLEN];
 
 	int			i,
@@ -1018,18 +1025,22 @@ do_standby_promote(void)
 	check_server_version(conn, "standby", true, NULL);
 
 	/* Check we are in a standby node */
-	retval = is_standby(conn);
+	recovery_type = get_recovery_type(conn);
 
-	switch (retval)
+	if (recovery_type != RECTYPE_STANDBY)
 	{
-		case 0:
+		if (recovery_type == RECTYPE_MASTER)
+		{
 			log_error(_("STANDBY PROMOTE can only be executed on a standby node"));
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
-		case -1:
+		}
+		else
+		{
 			log_error(_("connection to node lost"));
 			PQfinish(conn);
 			exit(ERR_DB_CONN);
+		}
 	}
 
 
@@ -1094,8 +1105,9 @@ do_standby_promote(void)
 
 	for (i = 0; i < promote_check_timeout; i += promote_check_interval)
 	{
-		retval = is_standby(conn);
-		if (!retval)
+
+		recovery_type = get_recovery_type(conn);
+		if (recovery_type == RECTYPE_MASTER)
 		{
 			promote_success = true;
 			break;
@@ -1105,16 +1117,17 @@ do_standby_promote(void)
 
 	if (promote_success == false)
 	{
-		switch (retval)
+		if (recovery_type == RECTYPE_STANDBY)
 		{
-			case 1:
-				log_error(_("STANDBY PROMOTE failed, node is still a standby"));
-				PQfinish(conn);
-				exit(ERR_PROMOTION_FAIL);
-			default:
-				log_error(_("connection to node lost"));
-				PQfinish(conn);
-				exit(ERR_DB_CONN);
+			log_error(_("STANDBY PROMOTE failed, node is still a standby"));
+			PQfinish(conn);
+			exit(ERR_PROMOTION_FAIL);
+		}
+		else
+		{
+			log_error(_("connection to node lost"));
+			PQfinish(conn);
+			exit(ERR_DB_CONN);
 		}
 	}
 
@@ -1258,7 +1271,7 @@ check_source_server()
 	 * If the upstream node is a standby, try to connect to the primary too so we
 	 * can write an event record
 	 */
-	if (is_standby(source_conn))
+	if (get_recovery_type(source_conn) == RECTYPE_STANDBY)
 	{
 		primary_conn = get_master_connection(source_conn, NULL, NULL);
 

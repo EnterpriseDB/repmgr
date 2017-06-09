@@ -33,6 +33,12 @@ typedef enum {
     REPMGR_UNKNOWN
 } t_extension_status;
 
+typedef enum {
+	RECTYPE_UNKNOWN = 0,
+	RECTYPE_MASTER,
+	RECTYPE_STANDBY
+} t_recovery_type;
+
 /*
  * Struct to store node information
  */
@@ -165,7 +171,7 @@ bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 /* server information functions */
 bool		get_cluster_size(PGconn *conn, char *size);
 int			get_server_version(PGconn *conn, char *server_version);
-int			is_standby(PGconn *conn);
+t_recovery_type get_recovery_type(PGconn *conn);
 int			get_master_node_id(PGconn *conn);
 
 /* extension functions */

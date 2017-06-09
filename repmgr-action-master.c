@@ -18,8 +18,7 @@ do_master_register(void)
 	PGconn	   *conn = NULL;
 	PGconn	   *master_conn = NULL;
 	int			current_master_id = UNKNOWN_NODE_ID;
-	int			ret;
-
+	t_recovery_type recovery_type;
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 	int			record_found;
 	bool		record_created;
@@ -35,14 +34,22 @@ do_master_register(void)
 	check_server_version(conn, "master", true, NULL);
 
 	/* check that node is actually a master */
-	ret = is_standby(conn);
-	if (ret)
-	{
-		log_error(_(ret == 1 ? "server is in standby mode and cannot be registered as a master" :
-					"connection to node lost!"));
+	recovery_type = get_recovery_type(conn);
 
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+	if (recovery_type != RECTYPE_STANDBY)
+	{
+		if (recovery_type == RECTYPE_MASTER)
+		{
+			log_error(_("server is in standby mode and cannot be registered as a master"));
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+		else
+		{
+			log_error(_("connection to node lost"));
+			PQfinish(conn);
+			exit(ERR_DB_CONN);
+		}
 	}
 
 	log_verbose(LOG_INFO, _("server is not in recovery"));
@@ -204,3 +211,4 @@ do_master_register(void)
 
 	return;
 }
+
