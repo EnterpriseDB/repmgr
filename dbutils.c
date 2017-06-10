@@ -123,6 +123,26 @@ establish_db_connection_quiet(const char *conninfo)
 	return _establish_db_connection(conninfo, false, false, true);
 }
 
+
+PGconn
+*establish_master_db_connection(PGconn *conn,
+								const bool exit_on_error)
+{
+	t_node_info  master_node_info = T_NODE_INFO_INITIALIZER;
+	bool master_record_found;
+
+	master_record_found = get_master_node_record(conn, &master_node_info);
+
+	if (master_record_found == false)
+	{
+		return NULL;
+	}
+
+	return establish_db_connection(master_node_info.conninfo,
+								   exit_on_error);
+}
+
+
 PGconn *
 establish_db_connection_as_user(const char *conninfo,
 								const char *user,
@@ -151,6 +171,8 @@ establish_db_connection_as_user(const char *conninfo,
 
 	return conn;
 }
+
+
 
 
 PGconn *
@@ -1241,6 +1263,19 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 }
 
 
+bool
+get_master_node_record(PGconn *conn, t_node_info *node_info)
+{
+	int master_node_id = get_master_node_id(conn);
+
+	if (master_node_id == UNKNOWN_NODE_ID)
+	{
+		return false;
+	}
+
+	return get_node_record(conn, master_node_id, node_info);
+}
+
 
 bool
 create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info)
@@ -1250,6 +1285,7 @@ create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info)
 
 	return _create_update_node_record(conn, "create", node_info);
 }
+
 
 bool
 update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info)

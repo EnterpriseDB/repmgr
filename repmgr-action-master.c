@@ -36,9 +36,9 @@ do_master_register(void)
 	/* check that node is actually a master */
 	recovery_type = get_recovery_type(conn);
 
-	if (recovery_type != RECTYPE_STANDBY)
+	if (recovery_type != RECTYPE_MASTER)
 	{
-		if (recovery_type == RECTYPE_MASTER)
+		if (recovery_type == RECTYPE_STANDBY)
 		{
 			log_error(_("server is in standby mode and cannot be registered as a master"));
 			PQfinish(conn);
@@ -215,60 +215,175 @@ do_master_register(void)
 void
 do_master_unregister(void)
 {
+	PGconn	    *master_conn = NULL;
 	PGconn	    *local_conn = NULL;
 	t_node_info  local_node_info = T_NODE_INFO_INITIALIZER;
-
-	t_node_info *node_info;
 	bool	     record_found;
 
-	/* Get local node record  */
-	local_conn = establish_db_connection(config_file_options.conninfo, true);
-	record_found = get_node_record(local_conn, config_file_options.node_id, &local_node_info);
+	t_node_info *target_node_info_ptr;
+	PGconn	    *target_node_conn = NULL;
 
+	/* We must be able to connect to the local node */
+	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	/* From which we obtain a connection to the master node */
+	master_conn = establish_master_db_connection(local_conn, true);
+
+	/* Local connection no longer required */
+	PQfinish(local_conn);
+
+	/* Get local node record  */
+	record_found = get_node_record(master_conn, config_file_options.node_id, &local_node_info);
+
+	// XXX add function get_local_node_record() which aborts as below
 	if (record_found == FALSE)
 	{
 		log_error(_("unable to retrieve record for local node"));
 		log_detail(_("local node id is  %i"), config_file_options.node_id);
 		log_hint(_("check this node was correctly registered"));
 
-		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
-	PQfinish(local_conn);
-
-	/*
-	 * If node was explicitly specified (and it's not the local node),
-	 * can we connect to that?
-	 */
-	if (target_node_info.node_id == config_file_options.node_id)
+	/* Target node is local node? */
+	if (target_node_info.node_id == UNKNOWN_NODE_ID
+	 || target_node_info.node_id == config_file_options.node_id)
 	{
-		node_info = &local_node_info;
+		target_node_info_ptr = &local_node_info;
 	}
+	/* Target node is explicitly specified, and is not local node */
 	else
 	{
-		PGconn	   *target_node_conn = NULL;
+		target_node_info_ptr = &target_node_info;
+	}
 
-		target_node_conn = establish_db_connection_quiet(target_node_info.conninfo);
 
-		if (PQstatus(target_node_conn) == CONNECTION_OK)
+
+	target_node_conn = establish_db_connection_quiet(target_node_info_ptr->conninfo);
+
+	/* If node not reachable, check that the record is for a master node */
+	if (PQstatus(target_node_conn) != CONNECTION_OK)
+	{
+		if (target_node_info_ptr->type != MASTER)
 		{
-			t_recovery_type recovery_type = get_recovery_type(target_node_conn);
-
-			// check if active master
-			if (recovery_type != RECTYPE_MASTER)
+			log_error(_("node %s (id: %i) is not a master, unable to unregister"),
+					  target_node_info_ptr->node_name,
+					  target_node_info_ptr->node_id);
+			if (target_node_info_ptr->type == STANDBY)
 			{
-				log_error(_("sd"));
+				log_hint(_("the node can be unregistered with \"repmgr standby unregister\""));
+			}
+
+			PQfinish(master_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+	/* If we can connect to the node, perform some sanity checks on it */
+	else
+	{
+		t_recovery_type recovery_type = get_recovery_type(target_node_conn);
+
+		/* Node appears to be a standby */
+		if (recovery_type == RECTYPE_STANDBY)
+		{
+			/*
+			 * If --F/--force not set, hint that it might be appropriate to
+			 * register the node as a standby rather than unregister as master
+			 */
+			if (!runtime_options.force)
+			{
+				log_error(_("node %s (id: %i) is a standby, unable to unregister"),
+						  target_node_info_ptr->node_name,
+						  target_node_info_ptr->node_id);
+				log_hint(_("the node can be registered as a standby with \"repmgr standby register --force\""));
+				log_hint(_("use \"repmgr master unregister --force\" to remove this node's metadata entirely"));
+
+				PQfinish(target_node_conn);
+				PQfinish(master_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+		else if (recovery_type == RECTYPE_MASTER)
+		{
+			t_node_info  master_node_info = T_NODE_INFO_INITIALIZER;
+			bool master_record_found;
+
+			master_record_found = get_master_node_record(local_conn, &master_node_info);
+
+			if (master_record_found == false)
+			{
+				log_error(_("node %s (id: %i) is a master node, but no master node record found"),
+						  target_node_info_ptr->node_name,
+						  target_node_info_ptr->node_id);
+				log_hint(_("register this node as master with \"repmgr master register --force\""));
+				PQfinish(target_node_conn);
+				PQfinish(master_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+			/* This appears to be the cluster master - cowardly refuse
+			 * to delete the record
+			 */
+			if (master_node_info.node_id == target_node_info_ptr->node_id)
+			{
+				log_error(_("node %s (id: %i) is the current master node, unable to unregister"),
+						  target_node_info_ptr->node_name,
+						  target_node_info_ptr->node_id);
+
+				if (master_node_info.active == true)
+				{
+					log_hint(_("node is marked as inactive, activate with \"repmgr master register --force\""));
+				}
+				PQfinish(target_node_conn);
+				PQfinish(master_conn);
+				exit(ERR_BAD_CONFIG);
 			}
 		}
 
-		node_info = &target_node_info;
+		/* We don't need the target node connection any more */
+		PQfinish(target_node_conn);
 	}
-	// XXX can be executed on other node
 
-	// must fail on active master
+	if (target_node_info_ptr->active == true)
+	{
+		if (!runtime_options.force)
+		{
+			log_error(_("node %s (id: %i) is marked as active, unable to unregister"),
+					  target_node_info_ptr->node_name,
+					  target_node_info_ptr->node_id);
+			log_hint(_("run \"repmgr master unregister --force\" to unregister this node"));
+			PQfinish(master_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
 
-	// can we connect to node?
-	// -> is master?
+	// check if any records point to this record, detail: each, hint: follow or unregister
 
+	if (runtime_options.dry_run == true)
+	{
+		log_notice(_("node %s (id: %i) would now be unregistered"),
+				   target_node_info_ptr->node_name,
+				   target_node_info_ptr->node_id);
+		log_hint(_("run the same command without the --dry-run option to unregister this node"));
+	}
+	else
+	{
+		bool delete_success = delete_node_record(master_conn,
+												 target_node_info_ptr->node_id);
+
+		if (delete_success == false)
+		{
+			log_error(_("unable to unregister node %s (id: %i)"),
+					  target_node_info_ptr->node_name,
+					  target_node_info_ptr->node_id);
+			PQfinish(master_conn);
+			exit(ERR_DB_QUERY);
+		}
+
+		log_info(_("node %s (id: %i) was successfully unregistered"),
+				 target_node_info_ptr->node_name,
+				 target_node_info_ptr->node_id);
+	}
+
+	PQfinish(master_conn);
+	return;
 }

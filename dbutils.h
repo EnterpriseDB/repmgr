@@ -137,6 +137,8 @@ PGconn *establish_db_connection_as_user(const char *conninfo,
 PGconn *establish_db_connection_by_params(const char *keywords[],
 										  const char *values[],
 										  const bool exit_on_error);
+PGconn *establish_master_db_connection(PGconn *conn,
+									   const bool exit_on_error);
 
 PGconn	   *get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
 
@@ -186,6 +188,7 @@ const char * get_node_type_string(t_server_type type);
 
 int			get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 int			get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
+bool		get_master_node_record(PGconn *conn, t_node_info *node_info);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);

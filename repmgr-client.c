@@ -9,6 +9,7 @@
  * Commands implemented are:
  *
  * [ MASTER | PRIMARY ] REGISTER
+ * [ MASTER | PRIMARY ] UNREGISTER
  *
  * STANDBY CLONE
  * STANDBY REGISTER
@@ -190,6 +191,11 @@ main(int argc, char **argv)
 			/* -f/--config-file */
 			case 'f':
 				strncpy(runtime_options.config_file, optarg, MAXLEN);
+				break;
+
+			/* --dry-run */
+			case OPT_DRY_RUN:
+				runtime_options.dry_run = true;
 				break;
 
 			/* -F/--force */
@@ -551,6 +557,8 @@ main(int argc, char **argv)
 		{
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = MASTER_REGISTER;
+			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
+				action = MASTER_UNREGISTER;
 		}
 		else if (strcasecmp(repmgr_node_type, "STANDBY") == 0)
 		{
@@ -773,6 +781,7 @@ main(int argc, char **argv)
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
 			}
+			printf("xXX %s\n", target_node_info.node_name);
 		}
 		else if (runtime_options.node_name[0] != '\0')
 		{
@@ -818,6 +827,9 @@ main(int argc, char **argv)
 	{
 		case MASTER_REGISTER:
 			do_master_register();
+			break;
+		case MASTER_UNREGISTER:
+			do_master_unregister();
 			break;
 
 		case STANDBY_CLONE:
@@ -995,6 +1007,7 @@ check_cli_parameters(const int action)
 	{
 		switch (action)
 		{
+			case MASTER_UNREGISTER:
 			case STANDBY_UNREGISTER:
 			case WITNESS_UNREGISTER:
 			case CLUSTER_EVENT:
@@ -1167,6 +1180,7 @@ do_help(void)
 
 	printf(_("Usage:\n"));
 	printf(_("	%s [OPTIONS] master	 register\n"), progname());
+	printf(_("	%s [OPTIONS] master	 unregister\n"), progname());
 	printf(_("	%s [OPTIONS] cluster event\n"), progname());
 	puts("");
 	printf(_("General options:\n"));
@@ -1490,7 +1504,7 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 		return;
 	}
 
-	// XXX largely duplicatied from create_repmgr_extension()
+	// XXX largely duplicated from create_repmgr_extension()
 	if (runtime_options.superuser[0] == '\0')
 	{
 		log_error(_("\"%s\" is not a superuser and no superuser name supplied"), userinfo.username);

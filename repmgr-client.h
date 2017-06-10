@@ -13,24 +13,25 @@
 
 #define NO_ACTION			   0	/* Dummy default action */
 #define MASTER_REGISTER		   1
-#define STANDBY_REGISTER	   2
-#define STANDBY_UNREGISTER	   3
-#define STANDBY_CLONE		   4
-#define STANDBY_PROMOTE		   5
-#define STANDBY_FOLLOW		   6
-#define STANDBY_SWITCHOVER	   7
-#define STANDBY_ARCHIVE_CONFIG 8
-#define STANDBY_RESTORE_CONFIG 9
-#define WITNESS_CREATE		   10
-#define WITNESS_REGISTER	   11
-#define WITNESS_UNREGISTER	   12
-#define CLUSTER_SHOW		   13
-#define CLUSTER_CLEANUP		   14
-#define CLUSTER_MATRIX		   15
-#define CLUSTER_CROSSCHECK	   16
-#define CLUSTER_EVENT		   17
-#define BDR_REGISTER		   18
-#define BDR_UNREGISTER		   19
+#define MASTER_UNREGISTER	   2
+#define STANDBY_REGISTER	   3
+#define STANDBY_UNREGISTER	   4
+#define STANDBY_CLONE		   5
+#define STANDBY_PROMOTE		   6
+#define STANDBY_FOLLOW		   7
+#define STANDBY_SWITCHOVER	   8
+#define STANDBY_ARCHIVE_CONFIG 9
+#define STANDBY_RESTORE_CONFIG 10
+#define WITNESS_CREATE		   11
+#define WITNESS_REGISTER	   12
+#define WITNESS_UNREGISTER	   13
+#define CLUSTER_SHOW		   14
+#define CLUSTER_CLEANUP		   15
+#define CLUSTER_MATRIX		   16
+#define CLUSTER_CROSSCHECK	   17
+#define CLUSTER_EVENT		   18
+#define BDR_REGISTER		   19
+#define BDR_UNREGISTER		   20
 
 /* command line options without short versions */
 #define OPT_HELP						   1
@@ -56,6 +57,7 @@
 #define OPT_EVENT						   20
 #define OPT_LIMIT						   21
 #define OPT_ALL							   22
+#define OPT_DRY_RUN						   23
 /* deprecated since 3.3 */
 #define OPT_NO_CONNINFO_PASSWORD		   999
 
@@ -68,6 +70,7 @@ static struct option long_options[] =
 
 /* general configuration options */
 	{"config-file", required_argument, NULL, 'f'},
+	{"dry-run", no_argument, NULL, OPT_DRY_RUN},
 	{"force", no_argument, NULL, 'F'},
 	{"pg_bindir", required_argument, NULL, 'b'},
 
