@@ -212,3 +212,63 @@ do_master_register(void)
 	return;
 }
 
+void
+do_master_unregister(void)
+{
+	PGconn	    *local_conn = NULL;
+	t_node_info  local_node_info = T_NODE_INFO_INITIALIZER;
+
+	t_node_info *node_info;
+	bool	     record_found;
+
+	/* Get local node record  */
+	local_conn = establish_db_connection(config_file_options.conninfo, true);
+	record_found = get_node_record(local_conn, config_file_options.node_id, &local_node_info);
+
+	if (record_found == FALSE)
+	{
+		log_error(_("unable to retrieve record for local node"));
+		log_detail(_("local node id is  %i"), config_file_options.node_id);
+		log_hint(_("check this node was correctly registered"));
+
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	PQfinish(local_conn);
+
+	/*
+	 * If node was explicitly specified (and it's not the local node),
+	 * can we connect to that?
+	 */
+	if (target_node_info.node_id == config_file_options.node_id)
+	{
+		node_info = &local_node_info;
+	}
+	else
+	{
+		PGconn	   *target_node_conn = NULL;
+
+		target_node_conn = establish_db_connection_quiet(target_node_info.conninfo);
+
+		if (PQstatus(target_node_conn) == CONNECTION_OK)
+		{
+			t_recovery_type recovery_type = get_recovery_type(target_node_conn);
+
+			// check if active master
+			if (recovery_type != RECTYPE_MASTER)
+			{
+				log_error(_("sd"));
+			}
+		}
+
+		node_info = &target_node_info;
+	}
+	// XXX can be executed on other node
+
+	// must fail on active master
+
+	// can we connect to node?
+	// -> is master?
+
+}

@@ -7,6 +7,6 @@
 #define _REPMGR_ACTION_MASTER_H_
 
 extern void do_master_register(void);
-
+extern void do_master_unregister(void);
 
 #endif
