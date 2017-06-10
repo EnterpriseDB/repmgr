@@ -298,9 +298,10 @@ _create_pg_dir(char *path, bool force, bool for_witness)
 				 * repmgr metadata, so in --force mode we can simply overwrite the
 				 * directory.
 				 *
-				 * For non-witness servers, we'll leave the data in place, both to reduce
-				 * the risk of unintentional data loss and to make it possible for the
-				 * data directory to be brought up-to-date with rsync.
+				 * For non-witness servers, we'll leave the data in place, to reduce
+				 * the risk of unintentional data loss
+				 *
+				 * TODO: check DB state, if not running overwrite
 				 */
 				if (for_witness)
 				{
