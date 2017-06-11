@@ -13,7 +13,8 @@
  *
  * STANDBY CLONE
  * STANDBY REGISTER
- * STANDBY UNREGISTER (wip)
+ * STANDBY UNREGISTER
+ * STANDBY PROMOTE
  *
  * CLUSTER EVENT
  */
@@ -1180,10 +1181,16 @@ do_help(void)
 	}
 
 	printf(_("Usage:\n"));
-	printf(_("	%s [OPTIONS] master	 register\n"), progname());
-	printf(_("	%s [OPTIONS] master	 unregister\n"), progname());
+	printf(_("	%s [OPTIONS] master  register\n"), progname());
+	printf(_("	%s [OPTIONS] master  unregister\n"), progname());
+	printf(_("	%s [OPTIONS] standby clone\n"), progname());
+	printf(_("	%s [OPTIONS] standby register\n"), progname());
+	printf(_("	%s [OPTIONS] standby unregister\n"), progname());
+	printf(_("	%s [OPTIONS] standby promote\n"), progname());
 	printf(_("	%s [OPTIONS] cluster event\n"), progname());
+
 	puts("");
+
 	printf(_("General options:\n"));
 	printf(_("  -?, --help                          show this help, then exit\n"));
 	printf(_("  -V, --version                       output version information, then exit\n"));
@@ -1193,9 +1200,12 @@ do_help(void)
 	printf(_("  -f, --config-file=PATH              path to the repmgr configuration file\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
 	puts("");
+
 	printf(_("Connection options:\n"));
 	printf(_("  -S, --superuser=USERNAME            superuser to use if repmgr user is not superuser\n"));
+
 	puts("");
+
 	printf(_("Node-specific options:\n"));
 	printf(_("  -D, --pgdata=DIR                    location of the node's data directory \n"));
 	printf(_("  --node-id                           specify a node by id (only available for some operations)\n"));
@@ -1204,12 +1214,18 @@ do_help(void)
 	puts("");
 
 	printf(_("Logging options:\n"));
+	printf(_("  --dry-run                           show what would happen for action, but don't execute it\n"));
 	printf(_("  -L, --log-level                     set log level (overrides configuration file; default: NOTICE)\n"));
 	printf(_("  --log-to-file                       log to file (or logging facility) defined in repmgr.conf\n"));
-	printf(_("  -t, --terse                         don't display hints and other non-critical output\n"));
+	printf(_("  -t, --terse                         don't display detail, hints and other non-critical output\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
+
 	puts("");
+
 	printf(_("CLUSTER SHOW options:\n"));
+	printf(_("  --limit                             maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
+	printf(_("  --all                               display all events (overrides --limit)\n"));
+	printf(_("  --event                             filter specific event\n"));
 
 	puts("");
 }

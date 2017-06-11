@@ -12,6 +12,9 @@
 #define CONFIG_FILE_SAMEPATH 1
 #define CONFIG_FILE_PGDATA 2
 
+/* default value for "cluster event --limit"*/
+#define CLUSTER_EVENT_LIMIT 20
+
 typedef struct
 {
 	/* configuration metadata */
@@ -90,7 +93,7 @@ typedef struct
 		/* standby register options */ \
 		false, 0, \
 		/* event options */ \
-		false, "", 20 }
+		false, "", CLUSTER_EVENT_LIMIT }
 
 
 typedef enum {
