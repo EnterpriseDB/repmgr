@@ -407,7 +407,7 @@ do_standby_clone(void)
 
 	/* Add details about relevant runtime options used */
 	appendPQExpBuffer(&event_details,
-					  _("Cloned from host '%s', port %s"),
+					  _("cloned from host '%s', port %s"),
 					  runtime_options.host,
 					  runtime_options.port);
 
@@ -1177,12 +1177,15 @@ do_standby_promote(void)
 void
 do_standby_follow(void)
 {
+	puts("not implemented");
+
 	return;
 }
 
 void
 do_standby_switchover(void)
 {
+	puts("not implemented");
 	return;
 }
 

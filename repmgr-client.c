@@ -768,6 +768,8 @@ main(int argc, char **argv)
 	{
 		PGconn *conn;
 		int record_found;
+
+		log_verbose(LOG_DEBUG, "connecting to local node to retrieve record for node specified with --node-id or --node-name");
 		conn = establish_db_connection(config_file_options.conninfo, true);
 
 		if (runtime_options.node_id != UNKNOWN_NODE_ID)
@@ -781,7 +783,6 @@ main(int argc, char **argv)
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
 			}
-			printf("xXX %s\n", target_node_info.node_name);
 		}
 		else if (runtime_options.node_name[0] != '\0')
 		{

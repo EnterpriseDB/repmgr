@@ -188,6 +188,7 @@ const char * get_node_type_string(t_server_type type);
 
 int			get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 int			get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
+bool		get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 bool		get_master_node_record(PGconn *conn, t_node_info *node_info);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);

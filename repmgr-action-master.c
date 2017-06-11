@@ -218,7 +218,6 @@ do_master_unregister(void)
 	PGconn	    *master_conn = NULL;
 	PGconn	    *local_conn = NULL;
 	t_node_info  local_node_info = T_NODE_INFO_INITIALIZER;
-	bool	     record_found;
 
 	t_node_info *target_node_info_ptr;
 	PGconn	    *target_node_conn = NULL;
@@ -226,24 +225,35 @@ do_master_unregister(void)
 	/* We must be able to connect to the local node */
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
-	/* From which we obtain a connection to the master node */
-	master_conn = establish_master_db_connection(local_conn, true);
+	/* Get local node record */
+	get_local_node_record(local_conn, config_file_options.node_id, &local_node_info);
+
+	/* Obtain a connection to the master node */
+	master_conn = establish_master_db_connection(local_conn, false);
+
+	if (PQstatus(master_conn) != CONNECTION_OK)
+	{
+		t_node_info master_node_info;
+
+		log_error(_("unable to connect to master server"));
+
+		if (get_master_node_record(local_conn, &master_node_info))
+		{
+			log_detail(_("current master registered as node %s (id: %i, conninfo: \"%s\")"),
+					   master_node_info.node_name,
+					   master_node_info.node_id,
+					   master_node_info.conninfo);
+		}
+
+		log_hint(_("you may need to promote this standby or ask it to look for a new master to follow"));
+		PQfinish(local_conn);
+		exit(ERR_DB_CONN);
+	}
+
 
 	/* Local connection no longer required */
 	PQfinish(local_conn);
 
-	/* Get local node record  */
-	record_found = get_node_record(master_conn, config_file_options.node_id, &local_node_info);
-
-	// XXX add function get_local_node_record() which aborts as below
-	if (record_found == FALSE)
-	{
-		log_error(_("unable to retrieve record for local node"));
-		log_detail(_("local node id is  %i"), config_file_options.node_id);
-		log_hint(_("check this node was correctly registered"));
-
-		exit(ERR_BAD_CONFIG);
-	}
 
 	/* Target node is local node? */
 	if (target_node_info.node_id == UNKNOWN_NODE_ID
@@ -308,7 +318,7 @@ do_master_unregister(void)
 			t_node_info  master_node_info = T_NODE_INFO_INITIALIZER;
 			bool master_record_found;
 
-			master_record_found = get_master_node_record(local_conn, &master_node_info);
+			master_record_found = get_master_node_record(master_conn, &master_node_info);
 
 			if (master_record_found == false)
 			{
@@ -356,7 +366,7 @@ do_master_unregister(void)
 		}
 	}
 
-	// check if any records point to this record, detail: each, hint: follow or unregister
+	// check if any records point to this record, detail: each, hint: follow or unregister standby(s)
 
 	if (runtime_options.dry_run == true)
 	{
@@ -367,6 +377,7 @@ do_master_unregister(void)
 	}
 	else
 	{
+		PQExpBufferData event_details;
 		bool delete_success = delete_node_record(master_conn,
 												 target_node_info_ptr->node_id);
 
@@ -378,6 +389,28 @@ do_master_unregister(void)
 			PQfinish(master_conn);
 			exit(ERR_DB_QUERY);
 		}
+
+		initPQExpBuffer(&event_details);
+		appendPQExpBuffer(&event_details,
+						  _("node %s (id: %i) unregistered"),
+						  target_node_info_ptr->node_name,
+						  target_node_info_ptr->node_id);
+
+		if (target_node_info_ptr->node_id != config_file_options.node_id)
+		{
+			appendPQExpBuffer(&event_details,
+							  _(" from node %s (id: %i)"),
+							  config_file_options.node_name,
+							  config_file_options.node_id);
+		}
+
+		create_event_record(master_conn,
+							&config_file_options,
+							config_file_options.node_id,
+							"master_unregister",
+							true,
+							event_details.data);
+		termPQExpBuffer(&event_details);
 
 		log_info(_("node %s (id: %i) was successfully unregistered"),
 				 target_node_info_ptr->node_name,

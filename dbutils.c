@@ -1277,6 +1277,32 @@ get_master_node_record(PGconn *conn, t_node_info *node_info)
 }
 
 
+/*
+ * Get the local node record; if this fails, exit. Many operations
+ * depend on this being available, so we'll centralize the check
+ * and failure messages here.
+ */
+bool
+get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info)
+{
+	bool	     record_found;
+
+	record_found = get_node_record(conn, node_id, node_info);
+
+	if (record_found == false)
+	{
+		log_error(_("unable to retrieve record for local node"));
+		log_detail(_("local node id is  %i"), node_id);
+		log_hint(_("check this node was correctly registered"));
+
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	return record_found;
+}
+
+
 bool
 create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info)
 {
