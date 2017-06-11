@@ -12,6 +12,12 @@
 #include "repmgr-action-master.h"
 
 
+/*
+ * do_master_register()
+ *
+ * Event(s):
+ *  - master_register
+ */
 void
 do_master_register(void)
 {
@@ -178,6 +184,15 @@ do_master_register(void)
 
 	}
 
+	if (record_created == false)
+	{
+		rollback_transaction(conn);
+	}
+	else
+	{
+		commit_transaction(conn);
+	}
+
 	/* Log the event */
 	create_event_record(conn,
 						&config_file_options,
@@ -186,17 +201,14 @@ do_master_register(void)
 						record_created,
 						event_description.data);
 
+
+	PQfinish(conn);
+
 	if (record_created == false)
 	{
-		rollback_transaction(conn);
-		PQfinish(conn);
-
 		log_notice(_("unable to register master node - see preceding messages"));
 		exit(ERR_DB_QUERY);
 	}
-
-	commit_transaction(conn);
-	PQfinish(conn);
 
 	if (record_found)
 	{
@@ -211,6 +223,14 @@ do_master_register(void)
 
 	return;
 }
+
+
+/*
+ * do_master_unregister()
+ *
+ * Event(s):
+ *  - master_unregister
+ */
 
 void
 do_master_unregister(void)
