@@ -79,6 +79,13 @@ static int  get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
 
+/*
+ * do_standby_clone()
+ *
+ * Event(s):
+ *  - standby_clone
+ */
+
 void
 do_standby_clone(void)
 {
@@ -440,6 +447,7 @@ do_standby_clone(void)
 
 	if (PQstatus(source_conn) == CONNECTION_OK)
 		PQfinish(source_conn);
+
 	exit(r);
 }
 
@@ -519,6 +527,14 @@ check_barman_config(void)
 	}
 
 }
+
+
+/*
+ * do_standby_register()
+ *
+ * Event(s):
+ *  - standby_register
+ */
 
 void
 do_standby_register(void)
@@ -915,6 +931,12 @@ do_standby_register(void)
 }
 
 
+/*
+ * do_standby_unregister()
+ *
+ * Event(s):
+ *  - standby_unregister
+ */
 void
 do_standby_unregister(void)
 {
@@ -997,6 +1019,12 @@ do_standby_unregister(void)
 }
 
 
+/*
+ * do_standby_promote()
+ *
+ * Event(s):
+ *  - standby_promote
+ */
 void
 do_standby_promote(void)
 {
@@ -1498,9 +1526,14 @@ check_source_server_via_barman()
 
 
 /*
- * In pg_basebackup modes, configure the target data directory
+ * initialise_direct_clone()
+ *
+ * In pg_basebackup mode, configure the target data directory
  * if necessary, and fetch information about tablespaces and configuration
  * files.
+ *
+ * Event(s):
+ * - standby_clone
  */
 static void
 initialise_direct_clone(void)
