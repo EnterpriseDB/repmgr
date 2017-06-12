@@ -242,13 +242,18 @@ do_master_unregister(void)
 	t_node_info *target_node_info_ptr;
 	PGconn	    *target_node_conn = NULL;
 
+	NodeInfoList downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
+
 	/* We must be able to connect to the local node */
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	/* Get local node record */
 	get_local_node_record(local_conn, config_file_options.node_id, &local_node_info);
 
-	/* Obtain a connection to the master node */
+	/*
+	 * Obtain a connection to the current master node - if this isn't possible,
+	 * abort as we won't be able to update the "nodes" table anyway.
+	 */
 	master_conn = establish_master_db_connection(local_conn, false);
 
 	if (PQstatus(master_conn) != CONNECTION_OK)
@@ -270,7 +275,6 @@ do_master_unregister(void)
 		exit(ERR_DB_CONN);
 	}
 
-
 	/* Local connection no longer required */
 	PQfinish(local_conn);
 
@@ -287,7 +291,47 @@ do_master_unregister(void)
 		target_node_info_ptr = &target_node_info;
 	}
 
+	/*
+	 * Check for downstream nodes - if any still defined, we won't be able to
+	 * delete the node record due to foreign key constraints.
+	 */
+	get_downstream_node_records(master_conn, target_node_info_ptr->node_id, &downstream_nodes);
 
+	if (downstream_nodes.node_count > 0)
+	{
+		NodeInfoListCell *cell;
+		PQExpBufferData   detail;
+
+		if (downstream_nodes.node_count == 1)
+		{
+			log_error(_("%i other node still has this node as its upstream node"),
+					  downstream_nodes.node_count);
+		}
+		else
+		{
+			log_error(_("%i other nodes still have this node as their upstream node"),
+					  downstream_nodes.node_count);
+		}
+
+		log_hint(_("ensure these nodes are following the current master with \"repmgr standby follow\""));
+
+		initPQExpBuffer(&detail);
+
+		for (cell = downstream_nodes.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(&detail,
+							  "  %s (id: %i)\n",
+							  cell->node_info->node_name,
+							  cell->node_info->node_id);
+		}
+
+		log_detail(_("the affected node(s) are:\n%s"), detail.data);
+
+		termPQExpBuffer(&detail);
+		PQfinish(master_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
 
 	target_node_conn = establish_db_connection_quiet(target_node_info_ptr->conninfo);
 

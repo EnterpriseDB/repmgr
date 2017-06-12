@@ -20,10 +20,10 @@ static PGconn *_establish_db_connection(const char *conninfo,
 										const bool verbose_only);
 
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
-static int _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info);
+static int  _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info);
 static void _populate_node_record(PGresult *res, t_node_info *node_info, int row);
 static bool _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info);
-static bool		_create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
+static bool	_create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
 
 
 /* ==================== */
@@ -1300,6 +1300,58 @@ get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 	}
 
 	return record_found;
+}
+
+
+void
+get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *node_list)
+{
+	PQExpBufferData	query;
+	PGresult	   *result;
+	int				i;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, slot_name, priority, active"
+					  "    FROM repmgr.nodes "
+					  "   WHERE upstream_node_id = %i "
+					  "ORDER BY node_id ",
+					  node_id);
+
+	log_verbose(LOG_DEBUG, "get_node_records_by_priority():\n%s", query.data);
+
+	result = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	node_list->head = NULL;
+	node_list->tail = NULL;
+	node_list->node_count = 0;
+
+	if (PQresultStatus(result) != PGRES_TUPLES_OK)
+	{
+		return;
+	}
+
+	for (i = 0; i < PQntuples(result); i++)
+	{
+		NodeInfoListCell *cell;
+		cell = (NodeInfoListCell *) pg_malloc0(sizeof(NodeInfoListCell));
+
+		cell->node_info = pg_malloc0(sizeof(t_node_info));
+
+		_populate_node_record(result, cell->node_info, i);
+
+		if (node_list->tail)
+			node_list->tail->next = cell;
+		else
+			node_list->head = cell;
+
+		node_list->tail = cell;
+		node_list->node_count++;
+	}
+
+	return;
 }
 
 

@@ -73,6 +73,7 @@ typedef struct s_node_info
 }
 
 
+/* structs to store a list of node records */
 typedef struct NodeInfoListCell
 {
 	struct NodeInfoListCell *next;
@@ -83,8 +84,14 @@ typedef struct NodeInfoList
 {
 	NodeInfoListCell *head;
 	NodeInfoListCell *tail;
+	int				  node_count;
 } NodeInfoList;
 
+#define T_NODE_INFO_LIST_INITIALIZER { \
+	NULL, \
+	NULL, \
+	0 \
+}
 
 typedef struct s_event_info
 {
@@ -125,6 +132,8 @@ typedef struct s_connection_user
 	char username[MAXLEN];
 	bool is_superuser;
 }   t_connection_user;
+
+
 
 /* connection functions */
 PGconn *establish_db_connection(const char *conninfo,
@@ -190,6 +199,7 @@ int			get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 int			get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
 bool		get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 bool		get_master_node_record(PGconn *conn, t_node_info *node_info);
+void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
