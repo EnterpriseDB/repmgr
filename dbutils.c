@@ -438,6 +438,8 @@ parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_lis
 		param_set(param_list, option->keyword, option->val);
 	}
 
+	PQconninfoFree(connOptions);
+
 	return true;
 }
 
