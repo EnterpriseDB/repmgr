@@ -28,7 +28,7 @@ $(info Building against PostgreSQL $(MAJORVERSION))
 
 REPMGR_CLIENT_OBJS = repmgr-client.o repmgr-action-master.o repmgr-action-standby.o repmgr-action-cluster.o \
   config.o log.o strutil.o dbutils.o dirutil.o compat.o controldata.o
-REPMGRD_OBJS = repmgrd.o
+REPMGRD_OBJS = repmgrd.o config.o log.o dbutils.o strutil.o
 
 $(REPMGR_CLIENT_OBJS): repmgr-client.h
 

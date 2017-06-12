@@ -1194,7 +1194,9 @@ do_help(void)
 	printf(_("General options:\n"));
 	printf(_("  -?, --help                          show this help, then exit\n"));
 	printf(_("  -V, --version                       output version information, then exit\n"));
+
 	puts("");
+
 	printf(_("General configuration options:\n"));
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -f, --config-file=PATH              path to the repmgr configuration file\n"));
