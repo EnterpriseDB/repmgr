@@ -1726,9 +1726,8 @@ initialise_direct_clone(void)
 	PQclear(res);
 
 	/*
-	 * If replication slots requested, create appropriate slot on
-	 * the primary; this must be done before pg_start_backup() is
-	 * issued, either by us or by pg_basebackup.
+	 * If replication slots requested, create appropriate slot on the
+	 * primary; this must be done before pg_basebackup is called.
 	 *
 	 * Replication slots are not supported (and not very useful
 	 * anyway) in Barman mode.
