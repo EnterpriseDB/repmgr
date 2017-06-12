@@ -180,8 +180,6 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 								  const bool exit_on_error)
 {
 	PGconn	   *conn;
-	bool		replication_connection = false;
-	int			i;
 
 	/* Connect to the database using the provided parameters */
 	conn = PQconnectdbParams(keywords, values, true);
@@ -199,6 +197,9 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 	}
 	else
 	{
+		bool		replication_connection = false;
+		int			i;
+
 		/*
 		 * set "synchronous_commit" to "local" in case synchronous replication is in
 		 * use (provided this is not a replication connection)
@@ -487,6 +488,7 @@ param_list_to_string(t_conninfo_param_list *param_list)
 			if (c > 0)
 				appendPQExpBufferChar(&conninfo_buf, ' ');
 
+			/* XXX escape value */
 			appendPQExpBuffer(&conninfo_buf,
 							  "%s=%s",
 							  param_list->keywords[c],
