@@ -34,7 +34,7 @@ typedef struct TablespaceDataList
 } TablespaceDataList;
 
 
-static PGconn  *primary_conn = NULL;
+static PGconn  *master_conn = NULL;
 static PGconn  *source_conn = NULL;
 
 static int		server_version_num = UNKNOWN_SERVER_VERSION_NUM;
@@ -402,11 +402,27 @@ do_standby_clone(void)
 	 */
 
 	/*
-	 * XXX detect whether a record exists for this node already, and
-	 * add a hint about using the -F/--force.
+	 * Check for an existing node record, and output the appropriate
+	 * command for registering or re-registering.
 	 */
+	{
+		t_node_info node_record = T_NODE_INFO_INITIALIZER;
+		int			node_result;
 
-	log_hint(_("after starting the server, you need to register this standby with \"repmgr standby register\""));
+		node_result = get_node_record(master_conn,
+									  config_file_options.node_id,
+									  &node_record);
+		if (node_result)
+		{
+			log_hint(_("after starting the server, you need to re-register this standby with \"repmgr standby register --force\" to overwrite the existing node record"));
+		}
+		else
+		{
+			log_hint(_("after starting the server, you need to register this standby with \"repmgr standby register\""));
+
+		}
+	}
+
 
 	/* Log the event */
 
@@ -435,15 +451,15 @@ do_standby_clone(void)
 					  _("; --force: %s"),
 					  runtime_options.force ? "Y" : "N");
 
-	create_event_record(primary_conn,
+	create_event_record(master_conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"standby_clone",
 						true,
 						event_details.data);
 
-	if (PQstatus(primary_conn) == CONNECTION_OK)
-		PQfinish(primary_conn);
+	if (PQstatus(master_conn) == CONNECTION_OK)
+		PQfinish(master_conn);
 
 	if (PQstatus(source_conn) == CONNECTION_OK)
 		PQfinish(source_conn);
@@ -647,7 +663,7 @@ do_standby_register(void)
 
 	if (node_result)
 	{
-		if (node_record.active == true)
+		if (node_record.active == true && node_record.node_id != config_file_options.node_id)
 		{
 			log_error(_("node %i exists already with node_name \"%s\""),
 					  node_record.node_id,
@@ -1304,13 +1320,13 @@ check_source_server()
 	 */
 	if (get_recovery_type(source_conn) == RECTYPE_STANDBY)
 	{
-		primary_conn = get_master_connection(source_conn, NULL, NULL);
+		master_conn = get_master_connection(source_conn, NULL, NULL);
 
 		// XXX check this worked?
 	}
 	else
 	{
-		primary_conn = source_conn;
+		master_conn = source_conn;
 	}
 
 	/*
@@ -1319,7 +1335,7 @@ check_source_server()
 	 * repmgr to be used as a standalone clone tool)
 	 */
 
-	extension_status = get_repmgr_extension_status(primary_conn);
+	extension_status = get_repmgr_extension_status(master_conn);
 
 	if (extension_status != REPMGR_INSTALLED)
 	{
@@ -1425,7 +1441,7 @@ check_source_server()
 	 */
 	query_result = get_node_record_by_name(source_conn, config_file_options.node_name, &node_record);
 
-	if (query_result)
+	if (query_result && node_record.node_id != config_file_options.node_id)
 	{
 		log_error(_("another node (node_id: %i) already exists with node_name \"%s\""),
 				  node_record.node_id,
@@ -1742,7 +1758,7 @@ initialise_direct_clone(void)
 		{
 			log_error("%s", event_details.data);
 
-			create_event_record(primary_conn,
+			create_event_record(master_conn,
 								&config_file_options,
 								config_file_options.node_id,
 								"standby_clone",
