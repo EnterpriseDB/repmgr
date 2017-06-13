@@ -67,7 +67,7 @@ do_master_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Ensure there isn't another active master already registered */
+	/* Ensure there isn't another registered node which is master */
 	master_conn = get_master_connection(conn, &current_master_id, NULL);
 
 	if (master_conn != NULL)
@@ -89,17 +89,15 @@ do_master_register(void)
 	begin_transaction(conn);
 
 	/*
-	 * Check if a node with a different ID is registered as master. This shouldn't
-	 * happen but could do if an existing master was shut down without being
-	 * unregistered.
+	 * Check for an active master node record with a different ID. This shouldn't
+	 * happen, but could do if an existing master was shut down without being unregistered.
 	*/
-
 	current_master_id = get_master_node_id(conn);
 	if (current_master_id != NODE_NOT_FOUND && current_master_id != config_file_options.node_id)
 	{
 		log_error(_("another node with id %i is already registered as master"), current_master_id);
-		// attempt to connect, add info/hint depending if active...
-		log_info(_("a streaming replication cluster can have only one master node"));
+		log_detail(_("a streaming replication cluster can have only one master node"));
+
 		rollback_transaction(conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
@@ -429,8 +427,6 @@ do_master_unregister(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-
-	// check if any records point to this record, detail: each, hint: follow or unregister standby(s)
 
 	if (runtime_options.dry_run == true)
 	{
