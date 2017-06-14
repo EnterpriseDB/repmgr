@@ -48,6 +48,7 @@ static char		upstream_data_directory[MAXPGPATH];
 
 static t_conninfo_param_list recovery_conninfo;
 static char		recovery_conninfo_str[MAXLEN];
+static char		upstream_repluser[MAXLEN];
 
 static t_configfile_list config_files = T_CONFIGFILE_LIST_INITIALIZER;
 
@@ -257,6 +258,9 @@ do_standby_clone(void)
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
+
+		/* Write the replication user from the node's upstream record */
+		param_set(&recovery_conninfo, "user", upstream_repluser);
 	}
 	else
 	{
@@ -275,12 +279,6 @@ do_standby_clone(void)
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
-	}
-
-	/* If --replication-user was set, use that value for the primary_conninfo user */
-	if (*runtime_options.replication_user)
-	{
-		param_set(&recovery_conninfo, "user", runtime_options.replication_user);
 	}
 
 	if (mode != barman)
@@ -800,6 +798,17 @@ do_standby_register(void)
 
 	strncpy(node_record.node_name, config_file_options.node_name, MAXLEN);
 	strncpy(node_record.conninfo, config_file_options.conninfo, MAXLEN);
+
+	if (config_file_options.replication_user[0] != '\0')
+	{
+		/* Replication user explicitly provided */
+		strncpy(node_record.repluser, config_file_options.replication_user, MAXLEN);
+	}
+	else
+	{
+		(void)get_conninfo_value(config_file_options.conninfo, "user", node_record.repluser);
+	}
+
 
 	if (repmgr_slot_name_ptr != NULL)
 		strncpy(node_record.slot_name, repmgr_slot_name_ptr, MAXLEN);
@@ -1433,6 +1442,7 @@ check_source_server()
 	{
 		upstream_record_found = true;
 		strncpy(recovery_conninfo_str, node_record.conninfo, MAXLEN);
+		strncpy(upstream_repluser, node_record.repluser, MAXLEN);
 	}
 
 	/*

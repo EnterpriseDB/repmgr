@@ -156,6 +156,15 @@ do_master_register(void)
 	strncpy(node_info.node_name, config_file_options.node_name, MAXLEN);
 	strncpy(node_info.conninfo, config_file_options.conninfo, MAXLEN);
 
+	if (config_file_options.replication_user[0] != '\0')
+	{
+		strncpy(node_info.repluser, config_file_options.replication_user, MAXLEN);
+	}
+	else
+	{
+		(void)get_conninfo_value(config_file_options.conninfo, "user", node_info.repluser);
+	}
+
 	if (repmgr_slot_name_ptr != NULL)
 		strncpy(node_info.slot_name, repmgr_slot_name_ptr, MAXLEN);
 

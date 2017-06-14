@@ -49,6 +49,7 @@ typedef struct s_node_info
 	t_server_type type;
 	char		  node_name[MAXLEN];
 	char		  conninfo[MAXLEN];
+	char		  repluser[MAXLEN];
 	char		  slot_name[MAXLEN];
 	int			  priority;
 	bool		  active;
@@ -62,6 +63,7 @@ typedef struct s_node_info
   NODE_NOT_FOUND, \
   NO_UPSTREAM_NODE, \
   UNKNOWN, \
+  "", \
   "", \
   "", \
   "", \

@@ -225,6 +225,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->use_replication_slots = false;
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
+	memset(options->replication_user, 0, sizeof(options->replication_user));
 	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
 	memset(options->restore_command, 0, sizeof(options->restore_command));
 	options->tablespace_mapping.head = NULL;
@@ -332,6 +333,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->upstream_node_id = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
+		else if (strcmp(name, "replication_user") == 0)
+			strncpy(options->replication_user, value, MAXLEN);
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "replication_type") == 0)

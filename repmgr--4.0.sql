@@ -10,6 +10,7 @@ CREATE TABLE nodes (
 
   priority         INT     NOT NULL DEFAULT 100,
   conninfo         TEXT    NOT NULL,
+  repluser         TEXT    NOT NULL,
   slot_name        TEXT    NULL
 );
 

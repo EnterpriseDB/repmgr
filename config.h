@@ -48,8 +48,9 @@ typedef struct
 	/* node information */
     int			node_id;
 	int			upstream_node_id;
-    char		node_name[MAXLEN];
+	char		node_name[MAXLEN];
 	char		conninfo[MAXLEN];
+	char		replication_user[MAXLEN];
 	char		pg_bindir[MAXLEN];
 	int			replication_type;
 
@@ -109,7 +110,7 @@ typedef struct
 
 #define T_CONFIGURATION_OPTIONS_INITIALIZER { \
 		/* node information */ \
-		UNKNOWN_NODE_ID, NO_UPSTREAM_NODE, "", "", "", REPLICATION_TYPE_PHYSICAL, \
+		UNKNOWN_NODE_ID, NO_UPSTREAM_NODE, "", "", "", "", REPLICATION_TYPE_PHYSICAL, \
 		/* log settings */ \
 		"", "", "", \
 		/* standby clone settings */ \

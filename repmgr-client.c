@@ -427,6 +427,10 @@ main(int argc, char **argv)
 				runtime_options.verbose = true;
 				break;
 
+			/* options deprecated since 3.3 *
+			 * ---------------------------- */
+
+
 		}
 	}
 
