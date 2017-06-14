@@ -1263,7 +1263,7 @@ create_repmgr_extension(PGconn *conn)
 	switch(extension_status)
 	{
 		case REPMGR_UNKNOWN:
-			log_error(_("unable to determine status of repmgr extension"));
+			log_error(_("unable to determine status of \"repmgr\" extension"));
 			return false;
 
 		case REPMGR_UNAVAILABLE:
@@ -1276,9 +1276,15 @@ create_repmgr_extension(PGconn *conn)
 			return true;
 
 		case REPMGR_AVAILABLE:
-			log_notice(_("attempting to install extension \"repmgr\""));
+			if (runtime_options.dry_run == true)
+			{
+				log_notice(_("would now attempt to install extension \"repmgr\""));
+			}
+			else
+			{
+				log_notice(_("attempting to install extension \"repmgr\""));
+			}
 			break;
-
 	}
 
 	/* 3. Attempt to get a superuser connection */
@@ -1286,6 +1292,9 @@ create_repmgr_extension(PGconn *conn)
 	is_superuser = is_superuser_connection(conn, &userinfo);
 
 	get_superuser_connection(&conn, &superuser_conn, &schema_create_conn);
+
+	if (runtime_options.dry_run == true)
+		return true;
 
 	/* 4. Create extension */
 	initPQExpBuffer(&query);
