@@ -204,6 +204,11 @@ main(int argc, char **argv)
 				runtime_options.force = true;
 				break;
 
+			/* -W/--wait */
+			case 'W':
+				runtime_options.wait = true;
+				break;
+
 			/* database connection options */
 			/* --------------------------- */
 

@@ -73,6 +73,7 @@ static struct option long_options[] =
 	{"dry-run", no_argument, NULL, OPT_DRY_RUN},
 	{"force", no_argument, NULL, 'F'},
 	{"pg_bindir", required_argument, NULL, 'b'},
+	{"wait", no_argument, NULL, 'W'},
 
 /* connection options */
 	{"dbname", required_argument, NULL, 'd'},
@@ -119,7 +120,6 @@ static struct option long_options[] =
 
 /* not yet handled */
 	{"keep-history", required_argument, NULL, 'k'},
-	{"wait", no_argument, NULL, 'W'},
 	{"mode", required_argument, NULL, 'm'},
 	{"remote-config-file", required_argument, NULL, 'C'},
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},

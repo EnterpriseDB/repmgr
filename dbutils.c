@@ -950,7 +950,7 @@ get_master_connection(PGconn *conn,
 		node_id = atoi(PQgetvalue(res, i, 0));
 		strncpy(remote_conninfo, PQgetvalue(res, i, 1), MAXCONNINFO);
 		log_verbose(LOG_INFO,
-					_("checking role of cluster node '%i'"),
+					_("checking role of node '%i'"),
 					node_id);
 		remote_conn = establish_db_connection(remote_conninfo, false);
 

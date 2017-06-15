@@ -63,7 +63,7 @@ static void check_barman_config(void);
 static void	check_source_server(void);
 static void	check_source_server_via_barman(void);
 static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
-
+static void check_recovery_type(PGconn *conn);
 
 static void initialise_direct_clone(void);
 static void config_file_list_init(t_configfile_list *list, int max_size);
@@ -589,25 +589,7 @@ do_standby_register(void)
 
 	if (PQstatus(conn) == CONNECTION_OK)
 	{
-		t_recovery_type recovery_type = get_recovery_type(conn);
-
-		if (recovery_type != RECTYPE_STANDBY)
-		{
-			if (recovery_type == RECTYPE_MASTER)
-			{
-				log_error(_("this node should be a standby (%s)"),
-						  config_file_options.conninfo);
-				PQfinish(conn);
-				exit(ERR_BAD_CONFIG);
-			}
-			else
-			{
-				log_error(_("connection to node (%s) lost"),
-						  config_file_options.conninfo);
-				PQfinish(conn);
-				exit(ERR_DB_CONN);
-			}
-		}
+		check_recovery_type(conn);
 	}
 
 	/* check if there is a master in this cluster */
@@ -1227,10 +1209,82 @@ do_standby_promote(void)
 	return;
 }
 
+
+/*
+ * Follow a new primary.
+ *
+ * This function has two "modes":
+ *  1) no primary info provided - determine primary from standby metadata
+ *  2) primary info provided - use that info to connect to the primary.
+ *
+ * (2) is mainly for when a node has been stopped as part of a switchover
+ * and needs to be started with recovery.conf correctly configured.
+ */
+
 void
 do_standby_follow(void)
 {
-	puts("not implemented");
+	PGconn	   *local_conn;
+	char		data_dir[MAXPGPATH];
+
+	log_verbose(LOG_DEBUG, "do_standby_follow()");
+
+	/*
+	 * If -h/--host wasn't provided, attempt to connect to standby
+	 * to determine primary, and carry out some other checks while we're
+	 * at it.
+	 */
+	if (runtime_options.host_param_provided == false)
+	{
+		bool	    success;
+		PGconn	   *master_conn = NULL;
+		char		master_conninfo[MAXLEN];
+		int			master_id = UNKNOWN_NODE_ID;
+		int	    	timer;
+
+		local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+		log_verbose(LOG_INFO, _("connected to local node"));
+
+		check_recovery_type(local_conn);
+
+		success = get_pg_setting(local_conn, "data_directory", data_dir);
+
+		if (success == false)
+		{
+			log_error(_("unable to determine data directory"));
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/*
+		 * Attempt to connect to master.
+		 *
+		 * If --wait provided, loop for up `master_response_timeout`
+		 * seconds before giving up
+		 */
+
+		for (timer = 0; timer < config_file_options.master_response_timeout; timer++)
+		{
+			master_conn = get_master_connection(local_conn,
+											    &master_id,
+												(char *) &master_conninfo);
+
+			if (PQstatus(master_conn) == CONNECTION_OK || runtime_options.wait == false)
+			{
+				break;
+			}
+		}
+
+		if (PQstatus(master_conn) != CONNECTION_OK)
+		{
+			log_error(_("unable to determine master node"));
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		puts("OK");
+	}
 
 	return;
 }
@@ -2667,5 +2721,30 @@ check_master_standby_version_match(PGconn *conn, PGconn *master_conn)
 		log_error(_("PostgreSQL versions on master (%s) and standby (%s) must match"),
 				  master_version, standby_version);
 		exit(ERR_BAD_CONFIG);
+	}
+}
+
+
+static void
+check_recovery_type(PGconn *conn)
+{
+	t_recovery_type recovery_type = get_recovery_type(conn);
+
+	if (recovery_type != RECTYPE_STANDBY)
+	{
+		if (recovery_type == RECTYPE_MASTER)
+		{
+			log_error(_("this node should be a standby (%s)"),
+					  config_file_options.conninfo);
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+		else
+		{
+			log_error(_("connection to node (%s) lost"),
+					  config_file_options.conninfo);
+			PQfinish(conn);
+			exit(ERR_DB_CONN);
+		}
 	}
 }

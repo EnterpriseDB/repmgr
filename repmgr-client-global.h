@@ -29,6 +29,7 @@ typedef struct
 	bool		dry_run;
 	bool		force;
 	char		pg_bindir[MAXLEN]; /* overrides setting in repmgr.conf */
+	bool		wait;
 
 	/* logging options */
 	char		loglevel[MAXLEN];  /* overrides setting in repmgr.conf */
@@ -79,7 +80,7 @@ typedef struct
 		/* configuration metadata */ \
 		false, false, false, false,	false, 	\
 		/* general configuration options */	\
-		"", false, false, "",			\
+		"", false, false, "", false,	\
 		/* logging options */ \
 		"", false, false, false, \
 		/* database connection options */ \
