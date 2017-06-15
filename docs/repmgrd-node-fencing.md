@@ -31,14 +31,14 @@ By wrapping this in a custom script which adjusts the `pgbouncer` configuration
 on all nodes, it's possible to fence the failed master and redirect write
 connections to the new master.
 
-The script consists of three sections:
+The script consists of two sections:
 
-* commands to pause `pgbouncer` on all nodes
 * the promotion command itself
-* commands to reconfigure and restart `pgbouncer` on all nodes
+* commands to reconfigure `pgbouncer` on all nodes
 
-Note that it requires password-less SSH access between all nodes to be able to
-update the `pgbouncer` configuration files.
+Note that it requires password-less SSH access from the `repmgr` nodes
+to all the `pgbouncer` nodes to be able to update the `pgbouncer`
+configuration files.
 
 For the purposes of this demonstration, we'll assume there are 3 nodes (master
 and two standbys), with `pgbouncer` listening on port 6432 handling connections
@@ -99,17 +99,11 @@ The actual script is as follows; adjust the configurable items as appropriate:
     REPMGR_USER="repmgr"
     REPMGR_SCHEMA="repmgr_test"
 
-    # 1. Pause running pgbouncer instances
-    for HOST in $PGBOUNCER_HOSTS
-    do
-        psql -t -c "pause" -h $HOST -p $PGBOUNCER_PORT -U postgres pgbouncer
-    done
-
-    # 2. Promote this node from standby to master
+    # 1. Promote this node from standby to master
 
     repmgr standby promote -f /etc/repmgr.conf
 
-    # 3. Reconfigure pgbouncer instances
+    # 2. Reconfigure pgbouncer instances
 
     PGBOUNCER_DATABASE_INI_NEW="/tmp/pgbouncer.database.ini"
 
@@ -131,7 +125,6 @@ The actual script is as follows; adjust the configurable items as appropriate:
         rsync $PGBOUNCER_DATABASE_INI_NEW $HOST:$PGBOUNCER_DATABASE_INI
 
         psql -tc "reload" -h $HOST -p $PGBOUNCER_PORT -U postgres pgbouncer
-        psql -tc "resume" -h $HOST -p $PGBOUNCER_PORT -U postgres pgbouncer
 
     done
 
