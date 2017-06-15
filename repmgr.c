@@ -2120,7 +2120,7 @@ do_standby_register(void)
 
 	if (node_result)
 	{
-		if (node_record.active == true)
+		if (node_record.active == true && node_record.node_id != options.node)
 		{
 			log_err(_("Node %i exists already with node_name \"%s\"\n"),
 					  node_record.node_id,
