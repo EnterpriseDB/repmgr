@@ -1450,7 +1450,7 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 						  "       node_name = $3, "
 						  "       conninfo = $4, "
 						  "       repluser = $5, "
-						  "       slot_name = $7, "
+						  "       slot_name = $6, "
 						  "       priority = $7, "
 						  "       active = $8 "
 						  " WHERE node_id = $9 ");
