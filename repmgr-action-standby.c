@@ -1411,7 +1411,7 @@ check_source_server()
 	 */
 	if (mode == pg_basebackup)
 	{
-		if (is_pg_dir(local_data_directory))
+		if (is_pg_dir(local_data_directory) && runtime_options.force != true)
 		{
 			log_error(_("target data directory appears to be a PostgreSQL data directory"));
 			log_detail(_("target data directory is \"%s\""), local_data_directory);
