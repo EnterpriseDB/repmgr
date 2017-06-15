@@ -1,3 +1,6 @@
+3.3.3   2017-06
+        repmgr: fix `standby register --force` when updating existing node record (Ian)
+
 3.3.2   2017-06-01
         Add support for PostgreSQL 10 (Ian)
         repmgr: ensure --replication-user option is honoured when passing database
