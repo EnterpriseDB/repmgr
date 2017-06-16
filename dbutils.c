@@ -1545,6 +1545,49 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 }
 
 
+/*
+ * Update node record following change of status
+ * (e.g. inactive primary converted to standby)
+ */
+bool
+update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "  UPDATE repmgr.nodes "
+					  "     SET type = '%s', "
+					  "         upstream_node_id = %i, "
+					  "         active = %s "
+					  "   WHERE node_id = %i ",
+					  type,
+					  upstream_node_id,
+					  active ? "TRUE" : "FALSE",
+					  this_node_id);
+
+	log_verbose(LOG_DEBUG, "update_node_record_status():\n  %s", query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to update node record:\n  %s"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
 
 bool
 delete_node_record(PGconn *conn, int node)
@@ -1906,7 +1949,7 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 						  slot_name);
 	}
 
-	log_debug(_("create_replication_slot(): Creating slot '%s' on upstream"), slot_name);
+	log_debug(_("create_replication_slot(): creating slot '%s' on upstream"), slot_name);
 	log_verbose(LOG_DEBUG, "create_replication_slot():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
@@ -1915,7 +1958,7 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		appendPQExpBuffer(error_msg,
-						  _("unable to create slot '%s' on the master node: %s\n"),
+						  _("unable to create slot '%s' on the upstream node: %s\n"),
 						  slot_name,
 						  PQerrorMessage(conn));
 		PQclear(res);
