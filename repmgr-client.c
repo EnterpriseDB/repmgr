@@ -204,6 +204,11 @@ main(int argc, char **argv)
 				runtime_options.force = true;
 				break;
 
+			/* --replication-user (master/standby register only) */
+			case OPT_REPLICATION_USER:
+				strncpy(runtime_options.replication_user, optarg, MAXLEN);
+				break;
+
 			/* -W/--wait */
 			case 'W':
 				runtime_options.wait = true;
@@ -349,10 +354,6 @@ main(int argc, char **argv)
 				strncpy(runtime_options.recovery_min_apply_delay, optarg, MAXLEN);
 				break;
 			}
-
-			case OPT_REPLICATION_USER:
-				strncpy(runtime_options.replication_user, optarg, MAXLEN);
-				break;
 
 			case OPT_UPSTREAM_CONNINFO:
 				strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
@@ -1062,6 +1063,25 @@ check_cli_parameters(const int action)
 			default:
 				item_list_append_format(&cli_warnings,
 										_("--event not required when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if (runtime_options.replication_user[0])
+	{
+		switch (action)
+		{
+			case MASTER_REGISTER:
+			case STANDBY_REGISTER:
+				break;
+			case STANDBY_CLONE:
+			case STANDBY_FOLLOW:
+				item_list_append_format(&cli_warnings,
+										_("--replication-user ignored when executing %s)"),
+										action_name(action));
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--replication-user not required when executing %s"),
 										action_name(action));
 		}
 	}
