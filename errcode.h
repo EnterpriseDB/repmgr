@@ -11,6 +11,7 @@
 #define SUCCESS 0
 #define ERR_BAD_CONFIG 1
 #define ERR_BAD_RSYNC 2
+#define ERR_BAD_PIDFILE 3
 #define ERR_NO_RESTART 4
 #define ERR_DB_CONN 6
 #define ERR_DB_QUERY 7
