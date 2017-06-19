@@ -176,8 +176,8 @@
 # monitoring interval in seconds; default is 2
 #monitor_interval_secs=2
 
-# Maximum number of seconds to wait for a response from the primary server
-# before deciding it has failed.
+# Maximum number of seconds to wait for a response from the master server
+# before aborting a connection attempt
 #master_response_timeout=60
 
 # Number of attempts at what interval (in seconds) to try and
@@ -202,10 +202,11 @@
 #promote_command='repmgr standby promote -f /path/to/repmgr.conf'
 #follow_command='repmgr standby follow -f /path/to/repmgr.conf -W'
 
-# change wait time for primary; before we bail out and exit when the primary
-# disappears, we wait 'reconnect_attempts' * 'retry_promote_interval_secs'
-# seconds; by default this would be half an hour, as 'retry_promote_interval_secs'
-# default value is 300)
+# In *manual* failover mode, the interval for a standby to wait between attempts
+# to reconnect to a master server. The standby will make `reconnect_attempts` before
+# giving up, meaning the total elapsed period before this occurs will default
+# to 30 minutes (default value for `retry_promote_interval_secs` of 300 seconds *
+# default value for `reconnect_attempts` of 6 seconds).
 #retry_promote_interval_secs=300
 
 # Number of seconds after which the witness server resyncs the repl_nodes table
