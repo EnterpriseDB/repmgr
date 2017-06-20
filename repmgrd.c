@@ -8,11 +8,11 @@
 #include "config.h"
 
 #include <stdio.h>
-
+#include <signal.h>
 #include <sys/stat.h>
 
 
-#define OPT_HELP						   1
+#define OPT_HELP	1
 
 static char	   *config_file = NULL;
 static bool		verbose = false;
@@ -22,11 +22,29 @@ static bool		daemonize = false;
 t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 static t_node_info local_node_info;
+static PGconn	   *local_conn = NULL;
+
+static PGconn	   *master_conn = NULL;
+
+/*
+ * Record receipt SIGHUP; will cause configuration file to be reread at the
+ * appropriate point in the main loop.
+ */
+static volatile sig_atomic_t got_SIGHUP = false;
 
 static void show_help(void);
 static void show_usage(void);
 static void daemonize_process(void);
 static void check_and_create_pid_file(const char *pid_file);
+
+#ifndef WIN32
+static void setup_event_handlers(void);
+static void handle_sighup(SIGNAL_ARGS);
+static void handle_sigint(SIGNAL_ARGS);
+#endif
+
+static void close_connections();
+static void terminate(int retval);
 
 int
 main(int argc, char **argv)
@@ -171,6 +189,10 @@ main(int argc, char **argv)
 		check_and_create_pid_file(pid_file);
 	}
 
+#ifndef WIN32
+	setup_event_handlers();
+#endif
+
 	while(1) {
 		sleep(1);
 	}
@@ -306,6 +328,30 @@ check_and_create_pid_file(const char *pid_file)
 }
 
 
+#ifndef WIN32
+static void
+handle_sigint(SIGNAL_ARGS)
+{
+	terminate(SUCCESS);
+}
+
+/* SIGHUP: set flag to re-read config file at next convenient time */
+static void
+handle_sighup(SIGNAL_ARGS)
+{
+	got_SIGHUP = true;
+}
+
+static void
+setup_event_handlers(void)
+{
+	pqsignal(SIGHUP, handle_sighup);
+	pqsignal(SIGINT, handle_sigint);
+	pqsignal(SIGTERM, handle_sigint);
+}
+#endif
+
+
 void
 show_usage(void)
 {
@@ -345,3 +391,35 @@ show_help(void)
 	printf(_("%s monitors a cluster of servers and optionally performs failover.\n"), progname());
 }
 
+
+static void
+close_connections()
+{
+	if (PQstatus(master_conn) == CONNECTION_OK)
+	{
+		/* cancel any pending queries to the master */
+		if (PQisBusy(master_conn) == 1)
+			cancel_query(master_conn, config_file_options.master_response_timeout);
+		PQfinish(master_conn);
+	}
+
+	if (PQstatus(local_conn) == CONNECTION_OK)
+		PQfinish(local_conn);
+}
+
+
+static void
+terminate(int retval)
+{
+	close_connections();
+	logger_shutdown();
+
+	if (pid_file)
+	{
+		unlink(pid_file);
+	}
+
+	log_info(_("%s terminating...\n"), progname());
+
+	exit(retval);
+}

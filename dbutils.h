@@ -219,5 +219,9 @@ bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_
 bool		drop_replication_slot(PGconn *conn, char *slot_name);
 int			get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 
+/* asynchronous query functions */
+bool		cancel_query(PGconn *conn, int timeout);
+int			wait_connection_availability(PGconn *conn, long long timeout);
+
 #endif
 

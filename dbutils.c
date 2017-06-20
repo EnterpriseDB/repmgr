@@ -2049,3 +2049,107 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 }
 
 
+/* asynchronous query functions */
+
+bool
+cancel_query(PGconn *conn, int timeout)
+{
+	char		errbuf[ERRBUFF_SIZE];
+	PGcancel   *pgcancel;
+
+	if (wait_connection_availability(conn, timeout) != 1)
+		return false;
+
+	pgcancel = PQgetCancel(conn);
+
+	if (pgcancel == NULL)
+		return false;
+
+	/*
+	 * PQcancel can only return 0 if socket()/connect()/send() fails, in any
+	 * of those cases we can assume something bad happened to the connection
+	 */
+	if (PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
+	{
+		log_warning(_("Can't stop current query: %s\n"), errbuf);
+		PQfreeCancel(pgcancel);
+		return false;
+	}
+
+	PQfreeCancel(pgcancel);
+
+	return true;
+}
+
+
+/*
+ * Wait until current query finishes, ignoring any results.
+ * Usually this will be an async query or query cancellation.
+ *
+ * Returns 1 for success; 0 if any error ocurred; -1 if timeout reached.
+ */
+int
+wait_connection_availability(PGconn *conn, long long timeout)
+{
+	PGresult   *res;
+	fd_set		read_set;
+	int			sock = PQsocket(conn);
+	struct timeval tmout,
+				before,
+				after;
+	struct timezone tz;
+
+	/* recalc to microseconds */
+	timeout *= 1000000;
+
+	while (timeout > 0)
+	{
+		if (PQconsumeInput(conn) == 0)
+		{
+			log_warning(_("wait_connection_availability(): could not receive data from connection. %s\n"),
+						PQerrorMessage(conn));
+			return 0;
+		}
+
+		if (PQisBusy(conn) == 0)
+		{
+			do
+			{
+				res = PQgetResult(conn);
+				PQclear(res);
+			} while (res != NULL);
+
+			break;
+		}
+
+		tmout.tv_sec = 0;
+		tmout.tv_usec = 250000;
+
+		FD_ZERO(&read_set);
+		FD_SET(sock, &read_set);
+
+		gettimeofday(&before, &tz);
+		if (select(sock, &read_set, NULL, NULL, &tmout) == -1)
+		{
+			log_warning(
+						_("wait_connection_availability(): select() returned with error:\n  %s"),
+						strerror(errno));
+			return -1;
+		}
+
+		gettimeofday(&after, &tz);
+
+		timeout -= (after.tv_sec * 1000000 + after.tv_usec) -
+			(before.tv_sec * 1000000 + before.tv_usec);
+	}
+
+
+	if (timeout >= 0)
+	{
+		return 1;
+	}
+
+	log_warning(_("wait_connection_availability(): timeout reached"));
+	return -1;
+}
+

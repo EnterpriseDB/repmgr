@@ -47,6 +47,8 @@
 #define TABLESPACE_MAP "tablespace_map"
 #endif
 
+#define ERRBUFF_SIZE 512
+
 #define WITNESS_DEFAULT_PORT "5499" /* If this value is ever changed, remember
 									 * to update comments and documentation */
 
