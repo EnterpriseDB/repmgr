@@ -1262,8 +1262,6 @@ do_help(void)
 }
 
 
-
-
 /*
  * Create the repmgr extension, and grant access for the repmgr
  * user if not a superuser.

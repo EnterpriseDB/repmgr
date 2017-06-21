@@ -1050,8 +1050,10 @@ do_standby_promote(void)
 				promote_check_timeout  = 60,
 				promote_check_interval = 2;
 	bool		promote_success = false;
-	bool        success;
+	bool		success;
 	PQExpBufferData details;
+
+	int			existing_master_id = UNKNOWN_NODE_ID;
 
 	log_info(_("connecting to standby database"));
 	conn = establish_db_connection(config_file_options.conninfo, true);
@@ -1082,12 +1084,23 @@ do_standby_promote(void)
 
 
 	/* we also need to check if there isn't any master already */
-	current_master_conn = get_master_connection(conn, NULL, NULL);
+	current_master_conn = get_master_connection(conn, &existing_master_id, NULL);
 
 	if (PQstatus(current_master_conn) == CONNECTION_OK)
 	{
 		log_error(_("this cluster already has an active master server"));
-		// say which one as detail
+
+		if (existing_master_id != UNKNOWN_NODE_ID)
+		{
+			t_node_info master_rec;
+
+			get_node_record(conn, existing_master_id, &master_rec);
+
+			log_detail(_("current master is %s (node_id: %i)"),
+					   master_rec.node_name,
+					   existing_master_id);
+		}
+
 		PQfinish(current_master_conn);
 		PQfinish(conn);
 		exit(ERR_PROMOTION_FAIL);
