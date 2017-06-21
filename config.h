@@ -14,6 +14,10 @@
 #define MAXLINELENGTH		4096
 extern bool		config_file_found;
 
+typedef enum {
+	FAILOVER_MANUAL,
+	FAILOVER_AUTOMATIC
+}	failover_mode_opt;
 
 typedef struct EventNotificationListCell
 {
@@ -68,7 +72,7 @@ typedef struct
 	TablespaceList tablespace_mapping;
 
 	/* repmgrd settings */
-	int			failover_mode;
+	failover_mode_opt		failover_mode;
 	int			priority;
 	char		promote_command[MAXLEN];
 	char		follow_command[MAXLEN];
@@ -116,7 +120,7 @@ typedef struct
 		/* standby clone settings */ \
 		false, "", "", "", "", { NULL, NULL },	\
 		/* repmgrd settings */ \
-		MANUAL_FAILOVER, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false, \
+		FAILOVER_MANUAL, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false, \
 		/* witness settings */ \
 		30, \
 		/* service settings */ \

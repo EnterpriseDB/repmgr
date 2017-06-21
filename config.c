@@ -233,7 +233,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 	/* repmgrd settings
 	 * ---------------- */
-	options->failover_mode = MANUAL_FAILOVER;
+	options->failover_mode = FAILOVER_MANUAL;
 	options->priority = DEFAULT_PRIORITY;
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
@@ -374,15 +374,16 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		{
 			if (strcmp(value, "manual") == 0)
 			{
-				options->failover_mode = MANUAL_FAILOVER;
+				options->failover_mode = FAILOVER_MANUAL;
 			}
 			else if (strcmp(value, "automatic") == 0)
 			{
-				options->failover_mode = AUTOMATIC_FAILOVER;
+				options->failover_mode = FAILOVER_MANUAL;
 			}
 			else
 			{
-				item_list_append(error_list, _("value for 'failover' must be 'automatic' or 'manual'\n"));
+				item_list_append(error_list,
+								 _("value for \"failover\" must be \"automatic\" or \"manual\"\n"));
 			}
 		}
 		else if (strcmp(name, "priority") == 0)
@@ -461,19 +462,19 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "failover") == 0)
 		{
 			item_list_append(warning_list,
-							 _("parameter \"failover\" has been renamed 'failover_mode'"));
+							 _("parameter \"failover\" has been renamed to \"failover_mode\""));
 			known_parameter = false;
 		}
 		else if (strcmp(name, "node") == 0)
 		{
 			item_list_append(warning_list,
-							 _("parameter \"node\" has been renamed 'node_id'"));
+							 _("parameter \"node\" has been renamed to \"node_id\""));
 			known_parameter = false;
 		}
 		else if (strcmp(name, "upstream_node") == 0)
 		{
 			item_list_append(warning_list,
-							 _("parameter \"upstream_node\" has been renamed 'upstream_node_id'"));
+							 _("parameter \"upstream_node\" has been renamed to \"upstream_node_id\""));
 			known_parameter = false;
 		}
 		else
