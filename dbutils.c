@@ -19,6 +19,8 @@ static PGconn *_establish_db_connection(const char *conninfo,
 										const bool log_notice,
 										const bool verbose_only);
 
+static PGconn  *_get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out, bool quiet);
+
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
 static int  _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info);
 static void _populate_node_record(PGresult *res, t_node_info *node_info, int row);
@@ -892,8 +894,8 @@ get_recovery_type(PGconn *conn)
  */
 
 PGconn *
-get_master_connection(PGconn *conn,
-					  int *master_id, char *master_conninfo_out)
+_get_master_connection(PGconn *conn,
+					  int *master_id, char *master_conninfo_out, bool quiet)
 {
 	PQExpBufferData	  query;
 
@@ -952,7 +954,15 @@ get_master_connection(PGconn *conn,
 		log_verbose(LOG_INFO,
 					_("checking role of node '%i'"),
 					node_id);
-		remote_conn = establish_db_connection(remote_conninfo, false);
+
+		if (quiet)
+		{
+			remote_conn = establish_db_connection_quiet(remote_conninfo);
+		}
+		else
+		{
+			remote_conn = establish_db_connection(remote_conninfo, false);
+		}
 
 		if (PQstatus(remote_conn) != CONNECTION_OK)
 			continue;
@@ -988,7 +998,21 @@ get_master_connection(PGconn *conn,
 	return NULL;
 }
 
+PGconn *
+get_master_connection(PGconn *conn,
+					  int *master_id, char *master_conninfo_out)
+{
+	return _get_master_connection(conn, master_id, master_conninfo_out, false);
+}
 
+
+
+PGconn *
+get_master_connection_quiet(PGconn *conn,
+							int *master_id, char *master_conninfo_out)
+{
+	return _get_master_connection(conn, master_id, master_conninfo_out, true);
+}
 
 /*
  * Return the id of the active master node, or NODE_NOT_FOUND if no

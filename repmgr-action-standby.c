@@ -1084,7 +1084,7 @@ do_standby_promote(void)
 
 
 	/* we also need to check if there isn't any master already */
-	current_master_conn = get_master_connection(conn, &existing_master_id, NULL);
+	current_master_conn = get_master_connection_quiet(conn, &existing_master_id, NULL);
 
 	if (PQstatus(current_master_conn) == CONNECTION_OK)
 	{

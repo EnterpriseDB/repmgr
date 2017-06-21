@@ -152,6 +152,7 @@ PGconn *establish_master_db_connection(PGconn *conn,
 									   const bool exit_on_error);
 
 PGconn	   *get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
+PGconn	   *get_master_connection_quiet(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
 
 bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);
 
