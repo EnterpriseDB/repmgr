@@ -22,7 +22,7 @@ static void	tablespace_list_append(t_configuration_options *options, const char 
 
 static char	*trim(char *s);
 
-static void	exit_with_errors(ItemList *config_errors, ItemList *config_warnings, bool terse);
+static void	exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings, bool terse);
 
 
 void
@@ -172,7 +172,7 @@ parse_config(t_configuration_options *options, bool terse)
 	/* errors found - exit after printing details, and any warnings */
 	if (config_errors.head != NULL)
 	{
-		exit_with_errors(&config_errors, &config_warnings, terse);
+		exit_with_config_file_errors(&config_errors, &config_warnings, terse);
 	}
 
 	if (terse == false && config_warnings.head != NULL)
@@ -649,7 +649,7 @@ reload_config(t_configuration_options *orig_options)
 
 /* TODO: don't emit warnings if --terse and no errors */
 static void
-exit_with_errors(ItemList *config_errors, ItemList *config_warnings, bool terse)
+exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings, bool terse)
 {
 	ItemListCell *cell;
 
@@ -672,6 +672,30 @@ exit_with_errors(ItemList *config_errors, ItemList *config_warnings, bool terse)
 	}
 
 	exit(ERR_BAD_CONFIG);
+}
+
+
+void
+exit_with_cli_errors(ItemList *error_list)
+{
+	fprintf(stderr, _("The following command line errors were encountered:\n"));
+
+	print_item_list(error_list);
+
+	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
+
+	exit(ERR_BAD_CONFIG);
+}
+
+void
+print_item_list(ItemList *item_list)
+{
+	ItemListCell *cell;
+
+	for (cell = item_list->head; cell; cell = cell->next)
+	{
+		fprintf(stderr, "  %s\n", cell->string);
+	}
 }
 
 

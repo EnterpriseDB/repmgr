@@ -167,4 +167,7 @@ bool parse_pg_basebackup_options(const char *pg_basebackup_options,
 								 int server_version_num,
 								 ItemList *error_list);
 
+/* called by repmgr-client and repmgrd */
+void exit_with_cli_errors(ItemList *error_list);
+void print_item_list(ItemList *item_list);
 #endif

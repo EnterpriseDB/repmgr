@@ -26,6 +26,9 @@ static PGconn	   *local_conn = NULL;
 
 static PGconn	   *master_conn = NULL;
 
+/* Collate command line errors here for friendlier reporting */
+static ItemList	cli_errors = { NULL, NULL };
+
 /*
  * Record receipt SIGHUP; will cause configuration file to be reread at the
  * appropriate point in the main loop.
@@ -51,6 +54,7 @@ main(int argc, char **argv)
 {
 	int			optindex;
 	int			c;
+	char		log_level[MAXLEN] = "";
 	bool		monitoring_history = false;
 
 	static struct option long_options[] =
@@ -67,6 +71,7 @@ main(int argc, char **argv)
 		{"pid-file", required_argument, NULL, 'p'},
 
 /* logging options */
+		{"log-level", required_argument, NULL, 'L'},
 		{"verbose", no_argument, NULL, 'v'},
 
 /* legacy options */
@@ -89,7 +94,7 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt_long(argc, argv, "?Vf:vdp:m", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "?Vf:L:vdp:m", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -137,6 +142,24 @@ main(int argc, char **argv)
 
 			/* logging options */
 
+			/* -L/--log-level */
+			case 'L':
+			{
+				int detected_log_level = detect_log_level(optarg);
+				if (detected_log_level != -1)
+				{
+					strncpy(log_level, optarg, MAXLEN);
+				}
+				else
+				{
+					PQExpBufferData invalid_log_level;
+					initPQExpBuffer(&invalid_log_level);
+					appendPQExpBuffer(&invalid_log_level, _("invalid log level \"%s\" provided"), optarg);
+					item_list_append(&cli_errors, invalid_log_level.data);
+					termPQExpBuffer(&invalid_log_level);
+				}
+				break;
+			}
 			case 'v':
 				verbose = true;
 				break;
@@ -152,6 +175,19 @@ main(int argc, char **argv)
 				show_usage();
 				exit(ERR_BAD_CONFIG);
 		}
+	}
+
+	/* Exit here already if errors in command line options found */
+	if (cli_errors.head != NULL)
+	{
+		exit_with_cli_errors(&cli_errors);
+	}
+
+	/* Some configuration file items can be overriden by command line options */
+	/* Command-line parameter -L/--log-level overrides any setting in config file*/
+	if (*log_level != '\0')
+	{
+		strncpy(config_file_options.loglevel, log_level, MAXLEN);
 	}
 
 	/*
@@ -207,7 +243,7 @@ static void
 daemonize_process(void)
 {
 	char	   *ptr,
-				path[MAXLEN];
+				path[MAXPGPATH];
 	pid_t		pid = fork();
 	int			ret;
 
@@ -218,7 +254,8 @@ daemonize_process(void)
 			exit(ERR_SYS_FAILURE);
 			break;
 
-		case 0:			/* child process */
+		case 0:
+			/* create independent session ID */
 			pid = setsid();
 			if (pid == (pid_t) -1)
 			{
@@ -229,20 +266,22 @@ daemonize_process(void)
 			/* ensure that we are no longer able to open a terminal */
 			pid = fork();
 
-			if (pid == -1)		/* error case */
+			/* error case */
+			if (pid == -1)
 			{
 				log_error(_("error in fork():\n  %s"), strerror(errno));
 				exit(ERR_SYS_FAILURE);
 			}
 
-			if (pid != 0)		/* parent process */
+			/* parent process */
+			if (pid != 0)
 			{
 				exit(0);
 			}
 
-			/* a child just flows along */
+			/* child process */
 
-			memset(path, 0, MAXLEN);
+			memset(path, 0, MAXPGPATH);
 
 			for (ptr = config_file + strlen(config_file); ptr > config_file; --ptr)
 			{
@@ -257,6 +296,7 @@ daemonize_process(void)
 				*path = '/';
 			}
 
+			log_info("dir now %s", path);
 			ret = chdir(path);
 			if (ret != 0)
 			{

@@ -58,8 +58,8 @@ t_node_info target_node_info = T_NODE_INFO_INITIALIZER;
 
 
 /* Collate command line errors and warnings here for friendlier reporting */
-ItemList	cli_errors = { NULL, NULL };
-ItemList	cli_warnings = { NULL, NULL };
+static ItemList	cli_errors = { NULL, NULL };
+static ItemList	cli_warnings = { NULL, NULL };
 
 int
 main(int argc, char **argv)
@@ -410,7 +410,7 @@ main(int argc, char **argv)
 				{
 					PQExpBufferData invalid_log_level;
 					initPQExpBuffer(&invalid_log_level);
-					appendPQExpBuffer(&invalid_log_level, _("Invalid log level \"%s\" provided"), optarg);
+					appendPQExpBuffer(&invalid_log_level, _("invalid log level \"%s\" provided"), optarg);
 					item_list_append(&cli_errors, invalid_log_level.data);
 					termPQExpBuffer(&invalid_log_level);
 				}
@@ -534,7 +534,7 @@ main(int argc, char **argv)
 	/* Exit here already if errors in command line options found */
 	if (cli_errors.head != NULL)
 	{
-		exit_with_errors();
+		exit_with_cli_errors(&cli_errors);
 	}
 
 	/*
@@ -674,7 +674,7 @@ main(int argc, char **argv)
 	 */
 	if (cli_errors.head != NULL)
 	{
-		exit_with_errors();
+		exit_with_cli_errors(&cli_errors);
 	}
 
 	/*
@@ -1146,30 +1146,6 @@ action_name(const int action)
 	}
 
 	return "UNKNOWN ACTION";
-}
-
-static void
-exit_with_errors(void)
-{
-	fprintf(stderr, _("The following command line errors were encountered:\n"));
-
-	print_item_list(&cli_errors);
-
-	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
-
-	exit(ERR_BAD_CONFIG);
-}
-
-
-static void
-print_item_list(ItemList *item_list)
-{
-	ItemListCell *cell;
-
-	for (cell = item_list->head; cell; cell = cell->next)
-	{
-		fprintf(stderr, "  %s\n", cell->string);
-	}
 }
 
 

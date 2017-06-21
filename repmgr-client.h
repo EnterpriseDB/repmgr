@@ -144,8 +144,7 @@ static void do_help(void);
 
 
 static const char *action_name(const int action);
-static void exit_with_errors(void);
-static void print_item_list(ItemList *item_list);
+
 static void check_cli_parameters(const int action);
 
 static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
