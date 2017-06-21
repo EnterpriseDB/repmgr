@@ -1083,7 +1083,7 @@ do_standby_promote(void)
 	}
 
 
-	/* we also need to check if there isn't any master already */
+	/* check that there's no existing master */
 	current_master_conn = get_master_connection_quiet(conn, &existing_master_id, NULL);
 
 	if (PQstatus(current_master_conn) == CONNECTION_OK)
@@ -1291,9 +1291,9 @@ do_standby_follow(void)
 
 		for (timer = 0; timer < config_file_options.master_response_timeout; timer++)
 		{
-			master_conn = get_master_connection(local_conn,
-											    &master_id,
-												NULL);
+			master_conn = get_master_connection_quiet(local_conn,
+													  &master_id,
+													  NULL);
 
 			if (PQstatus(master_conn) == CONNECTION_OK || runtime_options.wait == false)
 			{
@@ -1433,10 +1433,6 @@ do_standby_follow(void)
 		{
 			original_upstream_node_id = master_id;
 		}
-	}
-	{
-		char *list = param_list_to_string(&recovery_conninfo);
-		printf("recovery: %s\n", list);
 	}
 
 	log_info(_("changing standby's master to node %i"), master_id);
