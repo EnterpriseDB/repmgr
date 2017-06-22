@@ -9,6 +9,18 @@ operations.
 
 `repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
 
+Supports PostgreSQL 9.3 and later.
+
+Building from source
+--------------------
+
+Simply:
+
+    ./configure && make install
+
+Ensure `pg_config` for the target PostgreSQL version is in `$PATH`.
+
+
 Commands
 --------
 
@@ -29,7 +41,10 @@ Currently available:
 Backwards compatibility
 -----------------------
 
-`repmgr` is now implemented as a PostgreSQL extension.
+See also: doc/changes-in-repmgr4.md
+
+`repmgr` is now implemented as a PostgreSQL extension. NOTE: no need to
+install the extension, this will be done automatically by `repmgr master register`.
 
 Metadata tables have been revised and are not backwards-compatible
 with 3.x. (however future DDL updates will be easier as they can be
