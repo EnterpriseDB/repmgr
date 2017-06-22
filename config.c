@@ -177,13 +177,9 @@ parse_config(t_configuration_options *options, bool terse)
 
 	if (terse == false && config_warnings.head != NULL)
 	{
-		ItemListCell *cell;
-
 		log_warning(_("the following problems were found in the configuration file:"));
-		for (cell = config_warnings.head; cell; cell = cell->next)
-		{
-			fprintf(stderr, "  %s\n", cell->string);
-		}
+
+		print_item_list(&config_warnings);
 	}
 
 	return true;
@@ -651,24 +647,16 @@ reload_config(t_configuration_options *orig_options)
 static void
 exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings, bool terse)
 {
-	ItemListCell *cell;
-
-
 	log_error(_("following errors were found in the configuration file:"));
 
-	for (cell = config_errors->head; cell; cell = cell->next)
-	{
-		fprintf(stderr, "  %s\n", cell->string);
-	}
+	print_item_list(config_errors);
 
 	if (terse == false && config_warnings->head != NULL)
 	{
 		puts("");
 		log_warning(_("the following problems were also found in the configuration file:"));
-		for (cell = config_warnings->head; cell; cell = cell->next)
-		{
-			fprintf(stderr, "  %s\n", cell->string);
-		}
+
+		print_item_list(config_warnings);
 	}
 
 	exit(ERR_BAD_CONFIG);
