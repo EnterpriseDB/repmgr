@@ -54,8 +54,8 @@ main(int argc, char **argv)
 {
 	int			optindex;
 	int			c;
-	char		log_level[MAXLEN] = "";
-	bool		monitoring_history = false;
+	char		cli_loglevel[MAXLEN] = "";
+	bool		cli_monitoring_history = false;
 
 	static struct option long_options[] =
 	{
@@ -145,10 +145,10 @@ main(int argc, char **argv)
 			/* -L/--log-level */
 			case 'L':
 			{
-				int detected_log_level = detect_log_level(optarg);
-				if (detected_log_level != -1)
+				int detected_cli_loglevel = detect_log_level(optarg);
+				if (detected_cli_loglevel != -1)
 				{
-					strncpy(log_level, optarg, MAXLEN);
+					strncpy(cli_loglevel, optarg, MAXLEN);
 				}
 				else
 				{
@@ -167,7 +167,7 @@ main(int argc, char **argv)
 			/* legacy options */
 
 			case 'm':
-				monitoring_history = true;
+				cli_monitoring_history = true;
 				break;
 
 			default:
@@ -181,13 +181,6 @@ main(int argc, char **argv)
 	if (cli_errors.head != NULL)
 	{
 		exit_with_cli_errors(&cli_errors);
-	}
-
-	/* Some configuration file items can be overriden by command line options */
-	/* Command-line parameter -L/--log-level overrides any setting in config file*/
-	if (*log_level != '\0')
-	{
-		strncpy(config_file_options.loglevel, log_level, MAXLEN);
 	}
 
 	/*
@@ -204,13 +197,21 @@ main(int argc, char **argv)
 	 */
 	load_config(config_file, verbose, false, &config_file_options, argv[0]);
 
+
+	/* Some configuration file items can be overriden by command line options */
+	/* Command-line parameter -L/--log-level overrides any setting in config file*/
+	if (*cli_loglevel != '\0')
+	{
+		strncpy(config_file_options.loglevel, cli_loglevel, MAXLEN);
+	}
+
 	/*
 	 * -m/--monitoring-history, if provided, will override repmgr.conf's
 	 * monitoring_history; this is for backwards compatibility as it's
 	 * possible this may be baked into various startup scripts.
 	 */
 
-	if (monitoring_history == true)
+	if (cli_monitoring_history == true)
 	{
 		config_file_options.monitoring_history = true;
 	}
