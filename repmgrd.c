@@ -21,7 +21,7 @@ static bool		daemonize = false;
 
 t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
-static t_node_info local_node_info;
+static t_node_info local_node_info = T_NODE_INFO_INITIALIZER;
 static PGconn	   *local_conn = NULL;
 
 static PGconn	   *master_conn = NULL;
@@ -39,6 +39,10 @@ static void show_help(void);
 static void show_usage(void);
 static void daemonize_process(void);
 static void check_and_create_pid_file(const char *pid_file);
+
+static void start_monitoring(void);
+static void monitor_streaming_master(void);
+static void monitor_streaming_standby(void);
 
 #ifndef WIN32
 static void setup_event_handlers(void);
@@ -189,7 +193,6 @@ main(int argc, char **argv)
 	 */
 	logger_output_mode = OM_DAEMON;
 
-
 	/*
 	 * Parse the configuration file, if provided. If no configuration file
 	 * was provided, or one was but was incomplete, parse_config() will
@@ -216,6 +219,73 @@ main(int argc, char **argv)
 		config_file_options.monitoring_history = true;
 	}
 
+	logger_init(&config_file_options, progname());
+
+	if (verbose)
+		logger_set_verbose();
+
+	log_info(_("connecting to database '%s'"),
+			 config_file_options.conninfo);
+
+	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	/*
+	 * sanity checks
+	 *
+	 * Note: previous repmgr versions checked the PostgreSQL version at this point,
+	 * but we'll skip that and assume the presence of a node record means we're
+	 * dealing with a supported installation.
+	 */
+
+	/* Retrieve record for this node from the local database */
+	(void) get_node_record(local_conn, config_file_options.node_id, &local_node_info);
+
+	if (local_node_info.node_id == NODE_NOT_FOUND)
+	{
+		log_error(_("no metadata record found for this node - terminating"));
+		log_hint(_("Check that 'repmgr (master|standby) register' was executed for this node"));
+
+		PQfinish(local_conn);
+		terminate(ERR_BAD_CONFIG);
+	}
+
+	log_debug("node id is %i, upstream is %i",
+			  local_node_info.node_id,
+			  local_node_info.upstream_node_id);
+
+    /*
+     * Check if node record is active - if not, and `failover_mode=automatic`, the node
+     * won't be considered as a promotion candidate; this often happens when
+     * a failed primary is recloned and the node was not re-registered, giving
+     * the impression failover capability is there when it's not. In this case
+     * abort with an error and a hint about registering.
+     *
+     * If `failover_mode=manual`, repmgrd can continue to passively monitor the node, but
+     * we should nevertheless issue a warning and the same hint.
+     */
+
+    if (local_node_info.active == false)
+    {
+        char *hint = "Check that 'repmgr (master|standby) register' was executed for this node";
+
+        switch (config_file_options.failover_mode)
+        {
+			/* "failover_mode" is an enum, all values should be covered here */
+
+            case FAILOVER_AUTOMATIC:
+                log_error(_("this node is marked as inactive and cannot be used as a failover target"));
+                log_hint(_("%s"), hint);
+				PQfinish(local_conn);
+                terminate(ERR_BAD_CONFIG);
+
+            case FAILOVER_MANUAL:
+                log_warning(_("this node is marked as inactive and will be passively monitored only"));
+                log_hint(_("%s"), hint);
+                break;
+        }
+    }
+
+
 	if (daemonize == true)
 	{
 		daemonize_process();
@@ -230,15 +300,65 @@ main(int argc, char **argv)
 	setup_event_handlers();
 #endif
 
-	while(1) {
-		sleep(1);
-	}
+
+
+	start_monitoring();
+
 	/* shut down logging system */
 	logger_shutdown();
 
 	return SUCCESS;
 }
 
+
+static void
+start_monitoring(void)
+{
+
+	log_notice(_("starting monitoring of node %s (ID: %i"),
+			   local_node_info.node_name,
+			   local_node_info.node_id);
+
+	while(true)
+	{
+		switch (local_node_info.type)
+		{
+			case MASTER:
+				monitor_streaming_master();
+				break;
+			case STANDBY:
+				monitor_streaming_standby();
+				break;
+			case WITNESS:
+				/* not handled */
+				return;
+			case UNKNOWN:
+				/* should never happen */
+				break;
+		}
+
+	}
+}
+
+
+static void
+monitor_streaming_master(void)
+{
+	while (true)
+	{
+		sleep(1);
+	}
+}
+
+
+static void
+monitor_streaming_standby(void)
+{
+	while (true)
+	{
+		sleep(1);
+	}
+}
 
 static void
 daemonize_process(void)

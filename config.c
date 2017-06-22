@@ -374,7 +374,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			}
 			else if (strcmp(value, "automatic") == 0)
 			{
-				options->failover_mode = FAILOVER_MANUAL;
+				options->failover_mode = FAILOVER_AUTOMATIC;
 			}
 			else
 			{
