@@ -979,7 +979,7 @@ check_cli_parameters(const int action)
 				if (runtime_options.data_dir[0] == '\0')
 				{
 					item_list_append_format(&cli_errors,
-											_("-D/--data-dir required when providing connection parameters for \"standby follow\""));
+											_("-D/--pgdata required when providing connection parameters for \"standby follow\""));
 				}
 			}
 
@@ -1010,7 +1010,7 @@ check_cli_parameters(const int action)
 		}
 	}
 
-	/* -D/--data-dir */
+	/* -D/--pgdata */
 	if (runtime_options.data_dir[0])
 	{
 		switch (action)

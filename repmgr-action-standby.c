@@ -1498,7 +1498,6 @@ do_standby_follow(void)
 
 		PQfinish(local_conn);
 
-
 		if (upstream_query_result != 1)
 		{
 			log_warning(_("unable to retrieve node record for old upstream node %i"),
