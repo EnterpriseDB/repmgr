@@ -1435,7 +1435,8 @@ do_standby_follow(void)
 		}
 	}
 
-	log_info(_("changing standby's master to node %i"), master_id);
+	log_info(_("changing node %i's master to node %i"),
+			 config_file_options.node_id, master_id);
 
 	if (!create_recovery_file(data_dir, &recovery_conninfo))
 	{

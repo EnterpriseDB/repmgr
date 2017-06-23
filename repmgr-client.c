@@ -968,6 +968,22 @@ check_cli_parameters(const int action)
 			}
 		}
 			break;
+		case STANDBY_FOLLOW:
+		{
+			/*
+			 * if `repmgr standby follow` executed with host params, ensure data
+			 * directory was provided
+			 */
+			if (runtime_options.host_param_provided == true)
+			{
+				if (runtime_options.data_dir[0] == '\0')
+				{
+					item_list_append_format(&cli_errors,
+											_("-D/--data-dir required when providing connection parameters for \"standby follow\""));
+				}
+			}
+
+		}
 		case CLUSTER_EVENT:
 			/* no required parameters */
 			break;
