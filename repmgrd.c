@@ -63,6 +63,8 @@ main(int argc, char **argv)
 
 	RecordStatus record_status;
 
+	FILE	   *fd;
+
 	static struct option long_options[] =
 	{
 /* general options */
@@ -221,10 +223,37 @@ main(int argc, char **argv)
 		config_file_options.monitoring_history = true;
 	}
 
+
+	fd = freopen("/dev/null", "r", stdin);
+	if (fd == NULL)
+	{
+		fprintf(stderr, "error reopening stdin to \"/dev/null\":\n  %s\n",
+				strerror(errno));
+	}
+
+	fd = freopen("/dev/null", "w", stdout);
+	if (fd == NULL)
+	{
+		fprintf(stderr, "error reopening stdout to \"/dev/null\":\n  %s\n",
+				strerror(errno));
+	}
+
 	logger_init(&config_file_options, progname());
 
 	if (verbose)
 		logger_set_verbose();
+
+	if (log_type == REPMGR_SYSLOG)
+	{
+		fd = freopen("/dev/null", "w", stderr);
+
+		if (fd == NULL)
+		{
+			fprintf(stderr, "error reopening stderr to \"/dev/null\":\n  %s\n",
+					strerror(errno));
+		}
+	}
+
 
 	log_info(_("connecting to database \"%s\""),
 			 config_file_options.conninfo);
@@ -333,6 +362,8 @@ main(int argc, char **argv)
 #ifndef WIN32
 	setup_event_handlers();
 #endif
+
+
 
 	start_monitoring();
 
