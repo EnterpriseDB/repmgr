@@ -685,8 +685,8 @@ do_standby_register(void)
 		RecordStatus upstream_record_status;
 
 		upstream_record_status = get_node_record(primary_conn,
-											   config_file_options.upstream_node_id,
-											   &node_record);
+												 config_file_options.upstream_node_id,
+												 &node_record);
 
 		if (upstream_record_status != RECORD_FOUND)
 		{

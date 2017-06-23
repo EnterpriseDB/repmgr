@@ -29,6 +29,8 @@ static PGconn	   *primary_conn = NULL;
 /* Collate command line errors here for friendlier reporting */
 static ItemList	cli_errors = { NULL, NULL };
 
+static bool        startup_event_logged = false;
+
 /*
  * Record receipt SIGHUP; will cause configuration file to be reread at the
  * appropriate point in the main loop.
@@ -363,8 +365,6 @@ main(int argc, char **argv)
 	setup_event_handlers();
 #endif
 
-
-
 	start_monitoring();
 
 	logger_shutdown();
@@ -377,7 +377,7 @@ static void
 start_monitoring(void)
 {
 
-	log_notice(_("starting monitoring of node %s (ID: %i"),
+	log_notice(_("starting monitoring of node %s (ID: %i)"),
 			   local_node_info.node_name,
 			   local_node_info.node_id);
 
@@ -405,8 +405,25 @@ start_monitoring(void)
 static void
 monitor_streaming_primary(void)
 {
+	/* Log startup event */
+	if (startup_event_logged == false)
+	{
+		create_event_record(local_conn,
+							&config_file_options,
+							config_file_options.node_id,
+							"repmgrd_start",
+							true,
+							NULL);
+		startup_event_logged = true;
+
+		// XXX add more detail
+		log_notice(_("monitoring cluster master"));
+
+	}
+
 	while (true)
 	{
+
 		sleep(1);
 	}
 }
@@ -478,7 +495,7 @@ daemonize_process(void)
 				*path = '/';
 			}
 
-			log_info("dir now %s", path);
+			log_debug("dir now %s", path);
 			ret = chdir(path);
 			if (ret != 0)
 			{
