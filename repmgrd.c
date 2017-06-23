@@ -226,7 +226,7 @@ main(int argc, char **argv)
 	if (verbose)
 		logger_set_verbose();
 
-	log_info(_("connecting to database '%s'"),
+	log_info(_("connecting to database \"%s\""),
 			 config_file_options.conninfo);
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
@@ -291,6 +291,35 @@ main(int argc, char **argv)
     }
 
 
+	if (config_file_options.failover_mode == FAILOVER_AUTOMATIC)
+	{
+		/*
+		 * check that promote/follow commands are defined, otherwise repmgrd
+		 * won't be able to perform any useful action
+		 */
+
+		bool required_param_missing = false;
+
+		if (config_file_options.promote_command[0] == '\0'
+			&& config_file_options.service_promote_command[0] == '\0')
+		{
+			log_error(_("either \"promote_command\" or \"service_promote_command\" must be defined in the configuration file"));
+			required_param_missing = true;
+		}
+		if (config_file_options.follow_command[0] == '\0')
+		{
+			log_error(_("\"follow_command\" must be defined in the configuration file"));
+			required_param_missing = true;
+		}
+
+		if (required_param_missing == true)
+		{
+			log_hint(_("add the missing configuration parameter(s) and start repmgrd again"));
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
 	if (daemonize == true)
 	{
 		daemonize_process();
@@ -305,11 +334,8 @@ main(int argc, char **argv)
 	setup_event_handlers();
 #endif
 
-
-
 	start_monitoring();
 
-	/* shut down logging system */
 	logger_shutdown();
 
 	return SUCCESS;
@@ -341,7 +367,6 @@ start_monitoring(void)
 				/* should never happen */
 				break;
 		}
-
 	}
 }
 
