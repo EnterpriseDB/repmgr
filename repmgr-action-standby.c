@@ -410,8 +410,8 @@ do_standby_clone(void)
 		RecordStatus record_status;
 
 		record_status = get_node_record(primary_conn,
-									  config_file_options.node_id,
-									  &node_record);
+										config_file_options.node_id,
+										&node_record);
 
 		if (record_status == RECORD_FOUND)
 		{
@@ -660,9 +660,9 @@ do_standby_register(void)
 
 	/* Check if node record exists */
 
-	record_status= get_node_record(primary_conn,
-								   config_file_options.node_id,
-								   &node_record);
+	record_status = get_node_record(primary_conn,
+									config_file_options.node_id,
+									&node_record);
 
 	if (record_status == RECORD_FOUND && !runtime_options.force)
 	{
