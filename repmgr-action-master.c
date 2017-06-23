@@ -24,7 +24,7 @@ do_master_register(void)
 	PGconn	   *conn = NULL;
 	PGconn	   *master_conn = NULL;
 	int			current_master_id = UNKNOWN_NODE_ID;
-	t_recovery_type recovery_type;
+	RecoveryType recovery_type;
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status;
 
@@ -377,7 +377,7 @@ do_master_unregister(void)
 	else
 	{
 		bool can_unregister = true;
-		t_recovery_type recovery_type = get_recovery_type(target_node_conn);
+		RecoveryType recovery_type = get_recovery_type(target_node_conn);
 
 		/* Node appears to be a standby */
 		if (recovery_type == RECTYPE_STANDBY)

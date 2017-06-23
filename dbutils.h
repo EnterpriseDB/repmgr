@@ -28,13 +28,13 @@ typedef enum {
 	REPMGR_AVAILABLE,
 	REPMGR_UNAVAILABLE,
     REPMGR_UNKNOWN
-} t_extension_status;
+} ExtensionStatus;
 
 typedef enum {
 	RECTYPE_UNKNOWN = 0,
 	RECTYPE_MASTER,
 	RECTYPE_STANDBY
-} t_recovery_type;
+} RecoveryType;
 
 typedef enum {
 	RECORD_ERROR = -1,
@@ -188,11 +188,11 @@ bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 /* server information functions */
 bool		get_cluster_size(PGconn *conn, char *size);
 int			get_server_version(PGconn *conn, char *server_version);
-t_recovery_type get_recovery_type(PGconn *conn);
+RecoveryType get_recovery_type(PGconn *conn);
 int			get_master_node_id(PGconn *conn);
 
 /* extension functions */
-t_extension_status get_repmgr_extension_status(PGconn *conn);
+ExtensionStatus get_repmgr_extension_status(PGconn *conn);
 
 /* result functions */
 bool		atobool(const char *value);

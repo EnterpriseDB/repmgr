@@ -854,11 +854,11 @@ get_server_version(PGconn *conn, char *server_version)
 }
 
 
-t_recovery_type
+RecoveryType
 get_recovery_type(PGconn *conn)
 {
 	PGresult   *res;
-	t_recovery_type recovery_type = RECTYPE_MASTER;
+	RecoveryType recovery_type = RECTYPE_MASTER;
 
 	char	   *sqlquery = "SELECT pg_catalog.pg_is_in_recovery()";
 
@@ -946,7 +946,7 @@ _get_master_connection(PGconn *conn,
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		t_recovery_type recovery_type;
+		RecoveryType recovery_type;
 
 		/* initialize with the values of the current node being processed */
 		node_id = atoi(PQgetvalue(res, i, 0));
@@ -1079,7 +1079,7 @@ bool atobool(const char *value)
 /* extension functions */
 /* =================== */
 
-t_extension_status
+ExtensionStatus
 get_repmgr_extension_status(PGconn *conn)
 {
 	PQExpBufferData	  query;

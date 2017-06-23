@@ -239,7 +239,7 @@ main(int argc, char **argv)
 	 * means we're dealing with a supported installation.
 	 *
 	 * The absence of a node record will also indicate that either the node
-	 * or repmgr has note been properly configured.
+	 * or repmgr has not been properly configured.
 	 */
 
 	/* Retrieve record for this node from the local database */

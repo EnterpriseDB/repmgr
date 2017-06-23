@@ -1042,7 +1042,7 @@ do_standby_promote(void)
 
 	char		script[MAXLEN];
 
-	t_recovery_type recovery_type;
+	RecoveryType recovery_type;
 	int			r;
 	char		data_dir[MAXLEN];
 
@@ -1584,7 +1584,7 @@ check_source_server()
 	char			   cluster_size[MAXLEN];
 	t_node_info		   node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus	   record_status;
-	t_extension_status extension_status;
+	ExtensionStatus	   extension_status;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
 	log_info(_("connecting to upstream node"));
@@ -2993,7 +2993,7 @@ check_master_standby_version_match(PGconn *conn, PGconn *master_conn)
 static void
 check_recovery_type(PGconn *conn)
 {
-	t_recovery_type recovery_type = get_recovery_type(conn);
+	RecoveryType recovery_type = get_recovery_type(conn);
 
 	if (recovery_type != RECTYPE_STANDBY)
 	{

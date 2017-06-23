@@ -1276,7 +1276,7 @@ create_repmgr_extension(PGconn *conn)
 	PQExpBufferData	  query;
 	PGresult		 *res;
 
-	t_extension_status extension_status;
+	ExtensionStatus	 extension_status;
 
 	t_connection_user  userinfo;
 	bool			 is_superuser = false;
