@@ -1,7 +1,7 @@
 /*
- * repmgr-action-cluster.c
+ * repmgr-action-primary.c
  *
- * Implements master actions for the repmgr command line utility
+ * Implements primary actions for the repmgr command line utility
  *
  * Copyright (c) 2ndQuadrant, 2010-2017
  */
@@ -9,21 +9,21 @@
 #include "repmgr.h"
 
 #include "repmgr-client-global.h"
-#include "repmgr-action-master.h"
+#include "repmgr-action-primary.h"
 
 
 /*
- * do_master_register()
+ * do_primary_register()
  *
  * Event(s):
- *  - master_register
+ *  - primary_register
  */
 void
-do_master_register(void)
+do_primary_register(void)
 {
 	PGconn	   *conn = NULL;
-	PGconn	   *master_conn = NULL;
-	int			current_master_id = UNKNOWN_NODE_ID;
+	PGconn	   *primary_conn = NULL;
+	int			current_primary_id = UNKNOWN_NODE_ID;
 	RecoveryType recovery_type;
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status;
@@ -32,22 +32,22 @@ do_master_register(void)
 
 	PQExpBufferData	  event_description;
 
-	log_info(_("connecting to master database..."));
+	log_info(_("connecting to primary database..."));
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 	log_verbose(LOG_INFO, _("connected to server, checking its state"));
 
 	/* verify that node is running a supported server version */
-	check_server_version(conn, "master", true, NULL);
+	check_server_version(conn, "primary", true, NULL);
 
-	/* check that node is actually a master */
+	/* check that node is actually a primary */
 	recovery_type = get_recovery_type(conn);
 
-	if (recovery_type != RECTYPE_MASTER)
+	if (recovery_type != RECTYPE_PRIMARY)
 	{
 		if (recovery_type == RECTYPE_STANDBY)
 		{
-			log_error(_("server is in standby mode and cannot be registered as a master"));
+			log_error(_("server is in standby mode and cannot be registered as a primary"));
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -80,36 +80,36 @@ do_master_register(void)
 	}
 
 
-	/* Ensure there isn't another registered node which is master */
-	master_conn = get_master_connection(conn, &current_master_id, NULL);
+	/* Ensure there isn't another registered node which is primary */
+	primary_conn = get_primary_connection(conn, &current_primary_id, NULL);
 
-	if (master_conn != NULL)
+	if (primary_conn != NULL)
 	{
-		if (current_master_id != config_file_options.node_id)
+		if (current_primary_id != config_file_options.node_id)
 		{
-			/* it's impossible to add a second master to a streaming replication cluster */
-			log_error(_("there is already an active registered master (node ID: %i) in this cluster"), current_master_id);
-			PQfinish(master_conn);
+			/* it's impossible to add a second primary to a streaming replication cluster */
+			log_error(_("there is already an active registered primary (node ID: %i) in this cluster"), current_primary_id);
+			PQfinish(primary_conn);
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
 		/* we've probably connected to ourselves */
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 	}
 
 
 	begin_transaction(conn);
 
 	/*
-	 * Check for an active master node record with a different ID. This shouldn't
-	 * happen, but could do if an existing master was shut down without being unregistered.
+	 * Check for an active primary node record with a different ID. This shouldn't
+	 * happen, but could do if an existing primary was shut down without being unregistered.
 	*/
-	current_master_id = get_master_node_id(conn);
-	if (current_master_id != NODE_NOT_FOUND && current_master_id != config_file_options.node_id)
+	current_primary_id = get_primary_node_id(conn);
+	if (current_primary_id != NODE_NOT_FOUND && current_primary_id != config_file_options.node_id)
 	{
-		log_error(_("another node with id %i is already registered as master"), current_master_id);
-		log_detail(_("a streaming replication cluster can have only one master node"));
+		log_error(_("another node with id %i is already registered as primary"), current_primary_id);
+		log_detail(_("a streaming replication cluster can have only one primary node"));
 
 		rollback_transaction(conn);
 		PQfinish(conn);
@@ -142,14 +142,14 @@ do_master_register(void)
 	/* if upstream_node_id set, warn that it will be ignored */
 	if (config_file_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
-		log_warning(_("master node %i is configured with \"upstream_node_id\" set to %i"),
+		log_warning(_("primary node %i is configured with \"upstream_node_id\" set to %i"),
 					node_info.node_id,
 					config_file_options.upstream_node_id);
 		log_detail(_("the value set for \"upstream_node_id\" will be ignored"));
 	}
 
-	/* set type to "master", active to "true" and unset upstream_node_id*/
-	node_info.type = MASTER;
+	/* set type to "primary", active to "true" and unset upstream_node_id*/
+	node_info.type = PRIMARY;
 	node_info.upstream_node_id = NO_UPSTREAM_NODE;
 	node_info.active = true;
 
@@ -176,17 +176,17 @@ do_master_register(void)
 	if (record_status == RECORD_FOUND)
 	{
 		record_created = update_node_record(conn,
-											"master register",
+											"primary register",
 											&node_info);
 		if (record_created == true)
 		{
 			appendPQExpBuffer(&event_description,
-							  "existing master record updated");
+							  "existing primary record updated");
 		}
 		else
 		{
 			appendPQExpBuffer(&event_description,
-							  "error encountered while updating master record:\n%s",
+							  "error encountered while updating primary record:\n%s",
 							  PQerrorMessage(conn));
 		}
 
@@ -194,12 +194,12 @@ do_master_register(void)
 	else
 	{
 		record_created = create_node_record(conn,
-											"master register",
+											"primary register",
 											&node_info);
 		if (record_created == false)
 		{
 			appendPQExpBuffer(&event_description,
-							  "error encountered while creating master record:\n%s",
+							  "error encountered while creating primary record:\n%s",
 							  PQerrorMessage(conn));
 		}
 
@@ -218,7 +218,7 @@ do_master_register(void)
 	create_event_record(conn,
 						&config_file_options,
 						config_file_options.node_id,
-						"master_register",
+						"primary_register",
 						record_created,
 						event_description.data);
 
@@ -227,18 +227,18 @@ do_master_register(void)
 
 	if (record_created == false)
 	{
-		log_notice(_("unable to register master node - see preceding messages"));
+		log_notice(_("unable to register primary node - see preceding messages"));
 		exit(ERR_DB_QUERY);
 	}
 
 	if (record_status == RECORD_FOUND)
 	{
-		log_notice(_("master node record (id: %i) updated"),
+		log_notice(_("primary node record (id: %i) updated"),
 				   config_file_options.node_id);
 	}
 	else
 	{
-		log_notice(_("master node record (id: %i) registered"),
+		log_notice(_("primary node record (id: %i) registered"),
 				   config_file_options.node_id);
 	}
 
@@ -247,16 +247,16 @@ do_master_register(void)
 
 
 /*
- * do_master_unregister()
+ * do_primary_unregister()
  *
  * Event(s):
- *  - master_unregister
+ *  - primary_unregister
  */
 
 void
-do_master_unregister(void)
+do_primary_unregister(void)
 {
-	PGconn	    *master_conn = NULL;
+	PGconn	    *primary_conn = NULL;
 	PGconn	    *local_conn = NULL;
 	t_node_info  local_node_info = T_NODE_INFO_INITIALIZER;
 
@@ -272,26 +272,26 @@ do_master_unregister(void)
 	get_local_node_record(local_conn, config_file_options.node_id, &local_node_info);
 
 	/*
-	 * Obtain a connection to the current master node - if this isn't possible,
+	 * Obtain a connection to the current primary node - if this isn't possible,
 	 * abort as we won't be able to update the "nodes" table anyway.
 	 */
-	master_conn = establish_master_db_connection(local_conn, false);
+	primary_conn = establish_primary_db_connection(local_conn, false);
 
-	if (PQstatus(master_conn) != CONNECTION_OK)
+	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		t_node_info master_node_info;
+		t_node_info primary_node_info;
 
-		log_error(_("unable to connect to master server"));
+		log_error(_("unable to connect to primary server"));
 
-		if (get_master_node_record(local_conn, &master_node_info))
+		if (get_primary_node_record(local_conn, &primary_node_info))
 		{
-			log_detail(_("current master registered as node %s (id: %i, conninfo: \"%s\")"),
-					   master_node_info.node_name,
-					   master_node_info.node_id,
-					   master_node_info.conninfo);
+			log_detail(_("current primary registered as node %s (id: %i, conninfo: \"%s\")"),
+					   primary_node_info.node_name,
+					   primary_node_info.node_id,
+					   primary_node_info.conninfo);
 		}
 
-		log_hint(_("you may need to promote this standby or ask it to look for a new master to follow"));
+		log_hint(_("you may need to promote this standby or ask it to look for a new primary to follow"));
 		PQfinish(local_conn);
 		exit(ERR_DB_CONN);
 	}
@@ -316,7 +316,7 @@ do_master_unregister(void)
 	 * Check for downstream nodes - if any still defined, we won't be able to
 	 * delete the node record due to foreign key constraints.
 	 */
-	get_downstream_node_records(master_conn, target_node_info_ptr->node_id, &downstream_nodes);
+	get_downstream_node_records(primary_conn, target_node_info_ptr->node_id, &downstream_nodes);
 
 	if (downstream_nodes.node_count > 0)
 	{
@@ -334,7 +334,7 @@ do_master_unregister(void)
 					  downstream_nodes.node_count);
 		}
 
-		log_hint(_("ensure these nodes are following the current master with \"repmgr standby follow\""));
+		log_hint(_("ensure these nodes are following the current primary with \"repmgr standby follow\""));
 
 		initPQExpBuffer(&detail);
 
@@ -349,19 +349,19 @@ do_master_unregister(void)
 		log_detail(_("the affected node(s) are:\n%s"), detail.data);
 
 		termPQExpBuffer(&detail);
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
 
 	target_node_conn = establish_db_connection_quiet(target_node_info_ptr->conninfo);
 
-	/* If node not reachable, check that the record is for a master node */
+	/* If node not reachable, check that the record is for a primary node */
 	if (PQstatus(target_node_conn) != CONNECTION_OK)
 	{
-		if (target_node_info_ptr->type != MASTER)
+		if (target_node_info_ptr->type != PRIMARY)
 		{
-			log_error(_("node %s (id: %i) is not a master, unable to unregister"),
+			log_error(_("node %s (id: %i) is not a primary, unable to unregister"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
 			if (target_node_info_ptr->type == STANDBY)
@@ -369,7 +369,7 @@ do_master_unregister(void)
 				log_hint(_("the node can be unregistered with \"repmgr standby unregister\""));
 			}
 
-			PQfinish(master_conn);
+			PQfinish(primary_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -382,9 +382,9 @@ do_master_unregister(void)
 		/* Node appears to be a standby */
 		if (recovery_type == RECTYPE_STANDBY)
 		{
-			/* We'll refuse to do anything unless the node record shows it as a master */
+			/* We'll refuse to do anything unless the node record shows it as a primary */
 
-			if (target_node_info_ptr->type != MASTER)
+			if (target_node_info_ptr->type != PRIMARY)
 			{
 				log_error(_("node %s (id: %i) is a %s, unable to unregister"),
 						  target_node_info_ptr->node_name,
@@ -394,7 +394,7 @@ do_master_unregister(void)
 			}
 			/*
 			 * If --F/--force not set, hint that it might be appropriate to
-			 * register the node as a standby rather than unregister as master
+			 * register the node as a standby rather than unregister as primary
 			 */
 			else if (!runtime_options.force)
 			{
@@ -402,7 +402,7 @@ do_master_unregister(void)
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 				log_hint(_("the node can be registered as a standby with \"repmgr standby register --force\""));
-				log_hint(_("use \"repmgr master unregister --force\" to remove this node's metadata entirely"));
+				log_hint(_("use \"repmgr primary unregister --force\" to remove this node's metadata entirely"));
 				can_unregister = false;
 			}
 
@@ -410,42 +410,42 @@ do_master_unregister(void)
 			if (can_unregister == false)
 			{
 				PQfinish(target_node_conn);
-				PQfinish(master_conn);
+				PQfinish(primary_conn);
 				exit(ERR_BAD_CONFIG);
 			}
 		}
-		else if (recovery_type == RECTYPE_MASTER)
+		else if (recovery_type == RECTYPE_PRIMARY)
 		{
-			t_node_info  master_node_info = T_NODE_INFO_INITIALIZER;
-			bool master_record_found;
+			t_node_info  primary_node_info = T_NODE_INFO_INITIALIZER;
+			bool primary_record_found;
 
-			master_record_found = get_master_node_record(master_conn, &master_node_info);
+			primary_record_found = get_primary_node_record(primary_conn, &primary_node_info);
 
-			if (master_record_found == false)
+			if (primary_record_found == false)
 			{
-				log_error(_("node %s (id: %i) is a master node, but no master node record found"),
+				log_error(_("node %s (id: %i) is a primary node, but no primary node record found"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
-				log_hint(_("register this node as master with \"repmgr master register --force\""));
+				log_hint(_("register this node as primary with \"repmgr primary register --force\""));
 				PQfinish(target_node_conn);
-				PQfinish(master_conn);
+				PQfinish(primary_conn);
 				exit(ERR_BAD_CONFIG);
 			}
-			/* This appears to be the cluster master - cowardly refuse
+			/* This appears to be the cluster primary - cowardly refuse
 			 * to delete the record
 			 */
-			if (master_node_info.node_id == target_node_info_ptr->node_id)
+			if (primary_node_info.node_id == target_node_info_ptr->node_id)
 			{
-				log_error(_("node %s (id: %i) is the current master node, unable to unregister"),
+				log_error(_("node %s (id: %i) is the current primary node, unable to unregister"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 
-				if (master_node_info.active == false)
+				if (primary_node_info.active == false)
 				{
-					log_hint(_("node is marked as inactive, activate with \"repmgr master register --force\""));
+					log_hint(_("node is marked as inactive, activate with \"repmgr primary register --force\""));
 				}
 				PQfinish(target_node_conn);
-				PQfinish(master_conn);
+				PQfinish(primary_conn);
 				exit(ERR_BAD_CONFIG);
 			}
 		}
@@ -461,8 +461,8 @@ do_master_unregister(void)
 			log_error(_("node %s (id: %i) is marked as active, unable to unregister"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
-			log_hint(_("run \"repmgr master unregister --force\" to unregister this node"));
-			PQfinish(master_conn);
+			log_hint(_("run \"repmgr primary unregister --force\" to unregister this node"));
+			PQfinish(primary_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -477,7 +477,7 @@ do_master_unregister(void)
 	else
 	{
 		PQExpBufferData event_details;
-		bool delete_success = delete_node_record(master_conn,
+		bool delete_success = delete_node_record(primary_conn,
 												 target_node_info_ptr->node_id);
 
 		if (delete_success == false)
@@ -485,7 +485,7 @@ do_master_unregister(void)
 			log_error(_("unable to unregister node %s (id: %i)"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
-			PQfinish(master_conn);
+			PQfinish(primary_conn);
 			exit(ERR_DB_QUERY);
 		}
 
@@ -503,10 +503,10 @@ do_master_unregister(void)
 							  config_file_options.node_id);
 		}
 
-		create_event_record(master_conn,
+		create_event_record(primary_conn,
 							&config_file_options,
 							config_file_options.node_id,
-							"master_unregister",
+							"primary_unregister",
 							true,
 							event_details.data);
 		termPQExpBuffer(&event_details);
@@ -516,6 +516,6 @@ do_master_unregister(void)
 				 target_node_info_ptr->node_id);
 	}
 
-	PQfinish(master_conn);
+	PQfinish(primary_conn);
 	return;
 }

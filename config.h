@@ -77,7 +77,7 @@ typedef struct
 	char		promote_command[MAXLEN];
 	char		follow_command[MAXLEN];
 	int			monitor_interval_secs;
-	int			master_response_timeout;
+	int			primary_response_timeout;
 	int			reconnect_attempts;
 	int			reconnect_interval;
 	int			retry_promote_interval_secs;

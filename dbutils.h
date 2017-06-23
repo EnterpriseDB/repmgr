@@ -17,7 +17,7 @@
 
 typedef enum {
 	UNKNOWN = 0,
-	MASTER,
+	PRIMARY,
 	STANDBY,
 	WITNESS,
 	BDR
@@ -32,7 +32,7 @@ typedef enum {
 
 typedef enum {
 	RECTYPE_UNKNOWN = 0,
-	RECTYPE_MASTER,
+	RECTYPE_PRIMARY,
 	RECTYPE_STANDBY
 } RecoveryType;
 
@@ -151,11 +151,11 @@ PGconn *establish_db_connection_as_user(const char *conninfo,
 PGconn *establish_db_connection_by_params(const char *keywords[],
 										  const char *values[],
 										  const bool exit_on_error);
-PGconn *establish_master_db_connection(PGconn *conn,
+PGconn *establish_primary_db_connection(PGconn *conn,
 									   const bool exit_on_error);
 
-PGconn	   *get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
-PGconn	   *get_master_connection_quiet(PGconn *standby_conn, int *master_id, char *master_conninfo_out);
+PGconn	   *get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
+PGconn	   *get_primary_connection_quiet(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 
 bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);
 
@@ -189,7 +189,7 @@ bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 bool		get_cluster_size(PGconn *conn, char *size);
 int			get_server_version(PGconn *conn, char *server_version);
 RecoveryType get_recovery_type(PGconn *conn);
-int			get_master_node_id(PGconn *conn);
+int			get_primary_node_id(PGconn *conn);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);
@@ -204,14 +204,14 @@ const char * get_node_type_string(t_server_type type);
 RecordStatus get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 RecordStatus get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
 bool		get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info);
-bool		get_master_node_record(PGconn *conn, t_node_info *node_info);
+bool		get_primary_node_record(PGconn *conn, t_node_info *node_info);
 void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		delete_node_record(PGconn *conn, int node);
 
-bool		update_node_record_set_master(PGconn *conn, int this_node_id);
+bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
 bool        update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
 
 /* event record functions */

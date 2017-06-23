@@ -10,7 +10,8 @@ operations.
 `repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
 
 
-Supports PostgreSQL 9.3 and later.
+Supports PostgreSQL 9.6 and later; support for 9.3 will be dropped, 9.4/9.5
+may be supported if feasible.
 
 Building from source
 --------------------
@@ -27,8 +28,8 @@ Commands
 
 Currently available:
 
-    repmgr master register
-    repmgr master unregister
+    repmgr primary register
+    repmgr primary unregister
 
     repmgr standby clone
     repmgr standby register
@@ -45,7 +46,7 @@ Backwards compatibility
 See also: doc/changes-in-repmgr4.md
 
 `repmgr` is now implemented as a PostgreSQL extension. NOTE: no need to
-install the extension, this will be done automatically by `repmgr master register`.
+install the extension, this will be done automatically by `repmgr primary register`.
 
 Metadata tables have been revised and are not backwards-compatible
 with 3.x. (however future DDL updates will be easier as they can be

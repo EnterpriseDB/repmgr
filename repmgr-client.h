@@ -12,8 +12,8 @@
 
 
 #define NO_ACTION			   0	/* Dummy default action */
-#define MASTER_REGISTER		   1
-#define MASTER_UNREGISTER	   2
+#define PRIMARY_REGISTER	   1
+#define PRIMARY_UNREGISTER	   2
 #define STANDBY_REGISTER	   3
 #define STANDBY_UNREGISTER	   4
 #define STANDBY_CLONE		   5

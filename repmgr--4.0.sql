@@ -6,7 +6,7 @@ CREATE TABLE nodes (
   upstream_node_id INTEGER NULL REFERENCES nodes (node_id) DEFERRABLE,
   active           BOOLEAN NOT NULL DEFAULT TRUE,
   node_name        TEXT    NOT NULL,
-  type             TEXT    NOT NULL CHECK (type IN('master','standby','witness','bdr')),
+  type             TEXT    NOT NULL CHECK (type IN('primary','standby','witness','bdr')),
 
   priority         INT     NOT NULL DEFAULT 100,
   conninfo         TEXT    NOT NULL,

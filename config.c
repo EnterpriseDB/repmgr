@@ -234,7 +234,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	options->monitor_interval_secs = 2;
-	options->master_response_timeout = 60;
+	options->primary_response_timeout = 60;
 	/* default to 6 reconnection attempts at intervals of 10 seconds */
 	options->reconnect_attempts = 6;
 	options->reconnect_interval = 10;

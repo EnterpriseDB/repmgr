@@ -8,8 +8,8 @@
  *
  * Commands implemented are:
  *
- * [ MASTER | PRIMARY ] REGISTER
- * [ MASTER | PRIMARY ] UNREGISTER
+ * [ PRIMARY | MASTER ] REGISTER
+ * [ PRIMARY | MASTER ] UNREGISTER
  *
  * STANDBY CLONE
  * STANDBY REGISTER
@@ -26,7 +26,7 @@
 #include "compat.h"
 #include "repmgr-client.h"
 #include "repmgr-client-global.h"
-#include "repmgr-action-master.h"
+#include "repmgr-action-primary.h"
 #include "repmgr-action-standby.h"
 #include "repmgr-action-cluster.h"
 
@@ -204,7 +204,7 @@ main(int argc, char **argv)
 				runtime_options.force = true;
 				break;
 
-			/* --replication-user (master/standby register only) */
+			/* --replication-user (primary/standby register only) */
 			case OPT_REPLICATION_USER:
 				strncpy(runtime_options.replication_user, optarg, MAXLEN);
 				break;
@@ -546,7 +546,7 @@ main(int argc, char **argv)
 	/*
 	 * Determine the node type and action; following are valid:
 	 *
-	 *	 { MASTER | PRIMARY } REGISTER |
+	 *	 { PRIMARY | MASTER } REGISTER |
 	 *	 STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
 	 *	 WITNESS { CREATE | REGISTER | UNREGISTER } |
 	 *	 BDR { REGISTER | UNREGISTER } |
@@ -570,12 +570,12 @@ main(int argc, char **argv)
 
 	if (repmgr_node_type != NULL)
 	{
-		if (strcasecmp(repmgr_node_type, "MASTER") == 0 || strcasecmp(repmgr_node_type, "PRIMARY") == 0 )
+		if (strcasecmp(repmgr_node_type, "PRIMARY") == 0 || strcasecmp(repmgr_node_type, "MASTER") == 0 )
 		{
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
-				action = MASTER_REGISTER;
+				action = PRIMARY_REGISTER;
 			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
-				action = MASTER_UNREGISTER;
+				action = PRIMARY_UNREGISTER;
 		}
 		else if (strcasecmp(repmgr_node_type, "STANDBY") == 0)
 		{
@@ -784,16 +784,16 @@ main(int argc, char **argv)
 	if (runtime_options.node_id != UNKNOWN_NODE_ID || runtime_options.node_name[0] != '\0')
 	{
 		PGconn *conn;
-		int record_found;
+		RecordStatus record_status;
 
 		log_verbose(LOG_DEBUG, "connecting to local node to retrieve record for node specified with --node-id or --node-name");
 		conn = establish_db_connection(config_file_options.conninfo, true);
 
 		if (runtime_options.node_id != UNKNOWN_NODE_ID)
 		{
-			record_found = get_node_record(conn, runtime_options.node_id, &target_node_info);
+			record_status = get_node_record(conn, runtime_options.node_id, &target_node_info);
 
-			if (!record_found)
+			if (record_status != RECORD_FOUND)
 			{
 				log_error(_("node %i (specified with --node-id) not found"),
 						  runtime_options.node_id);
@@ -811,10 +811,10 @@ main(int argc, char **argv)
 				exit(ERR_BAD_CONFIG);
 			}
 
-			record_found = get_node_record_by_name(conn, escaped, &target_node_info);
+			record_status = get_node_record_by_name(conn, escaped, &target_node_info);
 
 			pfree(escaped);
-			if (!record_found)
+			if (record_status != RECORD_FOUND)
 			{
 				log_error(_("node %s (specified with --node-name) not found"),
 						  runtime_options.node_name);
@@ -830,7 +830,7 @@ main(int argc, char **argv)
 	 * Initialise slot name, if required (9.4 and later)
 	 *
 	 * NOTE: the slot name will be defined for each record, including
-	 * the master; the `slot_name` column in `repl_nodes` defines
+	 * the primary; the `slot_name` column in `repl_nodes` defines
 	 * the name of the slot, but does not imply a slot has been created.
 	 * The version check for 9.4 or later  is done in check_upstream_config()
 	 */
@@ -843,11 +843,11 @@ main(int argc, char **argv)
 
 	switch (action)
 	{
-		case MASTER_REGISTER:
-			do_master_register();
+		case PRIMARY_REGISTER:
+			do_primary_register();
 			break;
-		case MASTER_UNREGISTER:
-			do_master_unregister();
+		case PRIMARY_UNREGISTER:
+			do_primary_unregister();
 			break;
 
 		case STANDBY_CLONE:
@@ -910,7 +910,7 @@ check_cli_parameters(const int action)
 	 */
 	switch (action)
 	{
-		case MASTER_REGISTER:
+		case PRIMARY_REGISTER:
 			/* no required parameters */
 			break;
 		case STANDBY_CLONE:
@@ -1041,7 +1041,7 @@ check_cli_parameters(const int action)
 	{
 		switch (action)
 		{
-			case MASTER_UNREGISTER:
+			case PRIMARY_UNREGISTER:
 			case STANDBY_UNREGISTER:
 			case WITNESS_UNREGISTER:
 			case CLUSTER_EVENT:
@@ -1093,7 +1093,7 @@ check_cli_parameters(const int action)
 	{
 		switch (action)
 		{
-			case MASTER_REGISTER:
+			case PRIMARY_REGISTER:
 			case STANDBY_REGISTER:
 				break;
 			case STANDBY_CLONE:
@@ -1153,8 +1153,8 @@ action_name(const int action)
 {
 	switch(action)
 	{
-		case MASTER_REGISTER:
-			return "MASTER REGISTER";
+		case PRIMARY_REGISTER:
+			return "PRIMARY REGISTER";
 		case STANDBY_CLONE:
 			return "STANDBY CLONE";
 		case STANDBY_REGISTER:
@@ -1208,8 +1208,8 @@ do_help(void)
 	}
 
 	printf(_("Usage:\n"));
-	printf(_("	%s [OPTIONS] master  register\n"), progname());
-	printf(_("	%s [OPTIONS] master  unregister\n"), progname());
+	printf(_("	%s [OPTIONS] primary  register\n"), progname());
+	printf(_("	%s [OPTIONS] primary  unregister\n"), progname());
 	printf(_("	%s [OPTIONS] standby clone\n"), progname());
 	printf(_("	%s [OPTIONS] standby register\n"), progname());
 	printf(_("	%s [OPTIONS] standby unregister\n"), progname());
@@ -1416,7 +1416,7 @@ create_repmgr_extension(PGconn *conn)
  *	 the connection to check
  *
  * char *server_type:
- *	 either "master" or "standby"; used to format error message
+ *	 either "primary" or "standby"; used to format error message
  *
  * bool exit_on_error:
  *	 exit if reported server version is too low; optional to enable some callers

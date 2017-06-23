@@ -19,7 +19,7 @@ static PGconn *_establish_db_connection(const char *conninfo,
 										const bool log_notice,
 										const bool verbose_only);
 
-static PGconn  *_get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out, bool quiet);
+static PGconn  *_get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out, bool quiet);
 
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
 static RecordStatus _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info);
@@ -127,20 +127,20 @@ establish_db_connection_quiet(const char *conninfo)
 
 
 PGconn
-*establish_master_db_connection(PGconn *conn,
+*establish_primary_db_connection(PGconn *conn,
 								const bool exit_on_error)
 {
-	t_node_info  master_node_info = T_NODE_INFO_INITIALIZER;
-	bool master_record_found;
+	t_node_info  primary_node_info = T_NODE_INFO_INITIALIZER;
+	bool primary_record_found;
 
-	master_record_found = get_master_node_record(conn, &master_node_info);
+	primary_record_found = get_primary_node_record(conn, &primary_node_info);
 
-	if (master_record_found == false)
+	if (primary_record_found == false)
 	{
 		return NULL;
 	}
 
-	return establish_db_connection(master_node_info.conninfo,
+	return establish_db_connection(primary_node_info.conninfo,
 								   exit_on_error);
 }
 
@@ -858,7 +858,7 @@ RecoveryType
 get_recovery_type(PGconn *conn)
 {
 	PGresult   *res;
-	RecoveryType recovery_type = RECTYPE_MASTER;
+	RecoveryType recovery_type = RECTYPE_PRIMARY;
 
 	char	   *sqlquery = "SELECT pg_catalog.pg_is_in_recovery()";
 
@@ -889,13 +889,13 @@ get_recovery_type(PGconn *conn)
  * current primary will be returned first, reducing the number of speculative
  * connections which need to be made to other nodes.
  *
- * If master_conninfo_out points to allocated memory of MAXCONNINFO in length,
+ * If primary_conninfo_out points to allocated memory of MAXCONNINFO in length,
  * the primary server's conninfo string will be copied there.
  */
 
 PGconn *
-_get_master_connection(PGconn *conn,
-					  int *master_id, char *master_conninfo_out, bool quiet)
+_get_primary_connection(PGconn *conn,
+					  int *primary_id, char *primary_conninfo_out, bool quiet)
 {
 	PQExpBufferData	  query;
 
@@ -912,12 +912,12 @@ _get_master_connection(PGconn *conn,
 	 * If the caller wanted to get a copy of the connection info string, sub
 	 * out the local stack pointer for the pointer passed by the caller.
 	 */
-	if (master_conninfo_out != NULL)
-		remote_conninfo = master_conninfo_out;
+	if (primary_conninfo_out != NULL)
+		remote_conninfo = primary_conninfo_out;
 
-	if (master_id != NULL)
+	if (primary_id != NULL)
 	{
-		*master_id = NODE_NOT_FOUND;
+		*primary_id = NODE_NOT_FOUND;
 	}
 
 	/* find all registered nodes  */
@@ -926,12 +926,12 @@ _get_master_connection(PGconn *conn,
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
 					  "  SELECT node_id, conninfo, "
-					  "         CASE WHEN type = 'master' THEN 1 ELSE 2 END AS type_priority"
+					  "         CASE WHEN type = 'primary' THEN 1 ELSE 2 END AS type_priority"
 					  "	   FROM repmgr.nodes "
 					  "   WHERE type != 'witness' "
 					  "ORDER BY active DESC, type_priority, priority, node_id");
 
-	log_verbose(LOG_DEBUG, "get_master_connection():\n%s", query.data);
+	log_verbose(LOG_DEBUG, "get_primary_connection():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -978,14 +978,14 @@ _get_master_connection(PGconn *conn,
 			continue;
 		}
 
-		if (recovery_type == RECTYPE_MASTER)
+		if (recovery_type == RECTYPE_PRIMARY)
 		{
 			PQclear(res);
-			log_debug(_("get_master_connection(): current master node is %i"), node_id);
+			log_debug(_("get_primary_connection(): current primary node is %i"), node_id);
 
-			if (master_id != NULL)
+			if (primary_id != NULL)
 			{
-				*master_id = node_id;
+				*primary_id = node_id;
 			}
 
 			return remote_conn;
@@ -999,30 +999,30 @@ _get_master_connection(PGconn *conn,
 }
 
 PGconn *
-get_master_connection(PGconn *conn,
-					  int *master_id, char *master_conninfo_out)
+get_primary_connection(PGconn *conn,
+					  int *primary_id, char *primary_conninfo_out)
 {
-	return _get_master_connection(conn, master_id, master_conninfo_out, false);
+	return _get_primary_connection(conn, primary_id, primary_conninfo_out, false);
 }
 
 
 
 PGconn *
-get_master_connection_quiet(PGconn *conn,
-							int *master_id, char *master_conninfo_out)
+get_primary_connection_quiet(PGconn *conn,
+							int *primary_id, char *primary_conninfo_out)
 {
-	return _get_master_connection(conn, master_id, master_conninfo_out, true);
+	return _get_primary_connection(conn, primary_id, primary_conninfo_out, true);
 }
 
 /*
- * Return the id of the active master node, or NODE_NOT_FOUND if no
+ * Return the id of the active primary node, or NODE_NOT_FOUND if no
  * record available.
  *
  * This reports the value stored in the database only and
  * does not verify whether the node is actually available
  */
 int
-get_master_node_id(PGconn *conn)
+get_primary_node_id(PGconn *conn)
 {
 	PQExpBufferData	  query;
 	PGresult   *res;
@@ -1032,10 +1032,10 @@ get_master_node_id(PGconn *conn)
 	appendPQExpBuffer(&query,
 					  "SELECT node_id		  "
 					  "	 FROM repmgr.nodes	  "
-					  " WHERE type = 'master' "
+					  " WHERE type = 'primary' "
 					  "   AND active IS TRUE  ");
 
-	log_verbose(LOG_DEBUG, "get_master_node_id():\n%s", query.data);
+	log_verbose(LOG_DEBUG, "get_primary_node_id():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 
@@ -1043,13 +1043,13 @@ get_master_node_id(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("get_master_node_id(): query failed\n  %s"),
+		log_error(_("get_primary_node_id(): query failed\n  %s"),
 				  PQerrorMessage(conn));
 		retval = NODE_NOT_FOUND;
 	}
 	else if (PQntuples(res) == 0)
 	{
-		log_verbose(LOG_WARNING, _("get_master_node_id(): no active primary found\n"));
+		log_verbose(LOG_WARNING, _("get_primary_node_id(): no active primary found\n"));
 		retval = NODE_NOT_FOUND;
 	}
 	else
@@ -1193,9 +1193,9 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 t_server_type
 parse_node_type(const char *type)
 {
-	if (strcmp(type, "master") == 0)
+	if (strcmp(type, "primary") == 0)
 	{
-		return MASTER;
+		return PRIMARY;
 	}
 	else if (strcmp(type, "standby") == 0)
 	{
@@ -1218,8 +1218,8 @@ get_node_type_string(t_server_type type)
 {
 	switch(type)
 	{
-		case MASTER:
-			return "master";
+		case PRIMARY:
+			return "primary";
 		case STANDBY:
 			return "standby";
 		case WITNESS:
@@ -1266,7 +1266,7 @@ RecordStatus
 get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info)
 {
 	PQExpBufferData	  query;
-	RecordStatus	  result;
+	RecordStatus	  record_status;
 
 	initPQExpBuffer(&query);
 
@@ -1278,31 +1278,31 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 
 	log_verbose(LOG_DEBUG, "get_node_record_by_name():\n  %s", query.data);
 
-	result = _get_node_record(conn, query.data, node_info);
+	record_status = _get_node_record(conn, query.data, node_info);
 
 	termPQExpBuffer(&query);
 
-	if (result == 0)
+	if (record_status == RECORD_NOT_FOUND)
 	{
 		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %s",
 					node_name);
 	}
 
-	return result;
+	return record_status;
 }
 
 
 bool
-get_master_node_record(PGconn *conn, t_node_info *node_info)
+get_primary_node_record(PGconn *conn, t_node_info *node_info)
 {
-	int master_node_id = get_master_node_id(conn);
+	int primary_node_id = get_primary_node_id(conn);
 
-	if (master_node_id == UNKNOWN_NODE_ID)
+	if (primary_node_id == UNKNOWN_NODE_ID)
 	{
 		return false;
 	}
 
-	return get_node_record(conn, master_node_id, node_info);
+	return get_node_record(conn, primary_node_id, node_info);
 }
 
 
@@ -1430,7 +1430,7 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 		 * No explicit upstream node id provided for standby - attempt to
 		 * get primary node id
 		 */
-		int primary_node_id = get_master_node_id(conn);
+		int primary_node_id = get_primary_node_id(conn);
 		maxlen_snprintf(upstream_node_id, "%i", primary_node_id);
 		upstream_node_id_ptr = upstream_node_id;
 	}
@@ -1507,12 +1507,12 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 }
 
 bool
-update_node_record_set_master(PGconn *conn, int this_node_id)
+update_node_record_set_primary(PGconn *conn, int this_node_id)
 {
 	PQExpBufferData	  query;
 	PGresult   *res;
 
-	log_debug(_("setting node %i as master and marking existing master as failed"),
+	log_debug(_("setting node %i as primary and marking existing primary as failed"),
 			  this_node_id);
 
 	begin_transaction(conn);
@@ -1522,14 +1522,14 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 	appendPQExpBuffer(&query,
 					  "  UPDATE repmgr.nodes "
 					  "     SET active = FALSE "
-					  "   WHERE type = 'master' "
+					  "   WHERE type = 'primary' "
 					  "     AND active IS TRUE ");
 
 	res = PQexec(conn, query.data);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to set old master node as inactive:\n  %s"),
+		log_error(_("unable to set old primary node as inactive:\n  %s"),
 				  PQerrorMessage(conn));
 		PQclear(res);
 
@@ -1544,7 +1544,7 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 
 	appendPQExpBuffer(&query,
 					  "  UPDATE repmgr.nodes"
-					  "     SET type = 'master', "
+					  "     SET type = 'primary', "
 					  "         upstream_node_id = NULL "
 					  "   WHERE node_id = %i ",
 					  this_node_id);
@@ -1554,7 +1554,7 @@ update_node_record_set_master(PGconn *conn, int this_node_id)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to set current node %i as active master:\n  %s"),
+		log_error(_("unable to set current node %i as active primary:\n  %s"),
 				this_node_id,
 				PQerrorMessage(conn));
 		PQclear(res);
@@ -1658,7 +1658,7 @@ delete_node_record(PGconn *conn, int node)
  * Returns true if all operations succeeded, false if one or more failed.
  *
  * Note this function may be called with `conn` set to NULL in cases where
- * the master node is not available and it's therefore not possible to write
+ * the primary node is not available and it's therefore not possible to write
  * an event record. In this case, if `event_notification_command` is set, a
  * user-defined notification to be generated; if not, this function will have
  * no effect.
@@ -2028,7 +2028,7 @@ drop_replication_slot(PGconn *conn, char *slot_name)
 }
 
 
-int
+RecordStatus
 get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 {
 	PQExpBufferData	  query;
@@ -2053,12 +2053,12 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 		log_error(_("unable to query pg_replication_slots:\n  %s"),
 				PQerrorMessage(conn));
 		PQclear(res);
-		return -1;
+		return RECORD_ERROR;
 	}
 
 	if (!PQntuples(res))
 	{
-		return 0;
+		return RECORD_NOT_FOUND;
 	}
 
 	strncpy(record->slot_name, PQgetvalue(res, 0, 0), MAXLEN);
@@ -2069,7 +2069,7 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 	PQclear(res);
 
-	return 1;
+	return RECORD_FOUND;
 }
 
 

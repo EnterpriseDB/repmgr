@@ -34,7 +34,7 @@ typedef struct TablespaceDataList
 } TablespaceDataList;
 
 
-static PGconn  *master_conn = NULL;
+static PGconn  *primary_conn = NULL;
 static PGconn  *source_conn = NULL;
 
 static int		server_version_num = UNKNOWN_SERVER_VERSION_NUM;
@@ -62,7 +62,7 @@ static char		barman_command_buf[MAXLEN] = "";
 static void check_barman_config(void);
 static void	check_source_server(void);
 static void	check_source_server_via_barman(void);
-static void check_master_standby_version_match(PGconn *conn, PGconn *master_conn);
+static void check_primary_standby_version_match(PGconn *conn, PGconn *primary_conn);
 static void check_recovery_type(PGconn *conn);
 
 static void initialise_direct_clone(void);
@@ -328,7 +328,7 @@ do_standby_clone(void)
 			drop_replication_slot(source_conn, repmgr_slot_name);
 		}
 
-		log_error(_("unable to take a base backup of the master server"));
+		log_error(_("unable to take a base backup of the primary server"));
 		log_warning(_("data directory (%s) may need to be cleaned up manually"),
 					local_data_directory);
 
@@ -407,12 +407,13 @@ do_standby_clone(void)
 	 */
 	{
 		t_node_info node_record = T_NODE_INFO_INITIALIZER;
-		int			node_result;
+		RecordStatus record_status;
 
-		node_result = get_node_record(master_conn,
+		record_status = get_node_record(primary_conn,
 									  config_file_options.node_id,
 									  &node_record);
-		if (node_result)
+
+		if (record_status == RECORD_FOUND)
 		{
 			log_hint(_("after starting the server, you need to re-register this standby with \"repmgr standby register --force\" to overwrite the existing node record"));
 		}
@@ -451,15 +452,15 @@ do_standby_clone(void)
 					  _("; --force: %s"),
 					  runtime_options.force ? "Y" : "N");
 
-	create_event_record(master_conn,
+	create_event_record(primary_conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"standby_clone",
 						true,
 						event_details.data);
 
-	if (PQstatus(master_conn) == CONNECTION_OK)
-		PQfinish(master_conn);
+	if (PQstatus(primary_conn) == CONNECTION_OK)
+		PQfinish(primary_conn);
 
 	if (PQstatus(source_conn) == CONNECTION_OK)
 		PQfinish(source_conn);
@@ -556,11 +557,11 @@ void
 do_standby_register(void)
 {
 	PGconn	   *conn;
-	PGconn	   *master_conn;
+	PGconn	   *primary_conn;
 
 	bool		record_created;
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
-	int			node_result;
+	RecordStatus record_status;
 
 	log_info(_("connecting to standby database"));
 	conn = establish_db_connection_quiet(config_file_options.conninfo);
@@ -574,14 +575,14 @@ do_standby_register(void)
 					  config_file_options.node_name);
 			log_detail(_("%s"),
 					   PQerrorMessage(conn));
-			log_hint(_("to register a standby which is not running, provide master connection parameters and use option -F/--force"));
+			log_hint(_("to register a standby which is not running, provide primary connection parameters and use option -F/--force"));
 
 			exit(ERR_BAD_CONFIG);
 		}
 
 		if (!runtime_options.connection_param_provided)
 		{
-			log_error(_("unable to connect to local node %i (\"%s\") and no master connection parameters provided"),
+			log_error(_("unable to connect to local node %i (\"%s\") and no primary connection parameters provided"),
 					config_file_options.node_id,
 					config_file_options.node_name);
 			exit(ERR_BAD_CONFIG);
@@ -594,18 +595,18 @@ do_standby_register(void)
 		check_recovery_type(conn);
 	}
 
-	/* check if there is a master in this cluster */
-	log_info(_("connecting to master database"));
+	/* check if there is a primary in this cluster */
+	log_info(_("connecting to primary database"));
 
 	/* Normal case - we can connect to the local node */
 	if (PQstatus(conn) == CONNECTION_OK)
 	{
-		master_conn = get_master_connection(conn, NULL, NULL);
+		primary_conn = get_primary_connection(conn, NULL, NULL);
 	}
-	/* User is forcing a registration and must have supplied master connection info */
+	/* User is forcing a registration and must have supplied primary connection info */
 	else
 	{
-		master_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
+		primary_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
 														(const char**)source_conninfo.values,
 														false);
 	}
@@ -613,17 +614,17 @@ do_standby_register(void)
 
 	/*
 	 * no amount of --force will make it possible to register the standby
-	 * without a master server to connect to
+	 * without a primary server to connect to
 	 */
-	if (PQstatus(master_conn) != CONNECTION_OK)
+	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		log_error(_("unable to connect to the master database"));
-		log_hint(_("a master must be configured before registering a standby"));
+		log_error(_("unable to connect to the primary database"));
+		log_hint(_("a primary must be configured before registering a standby"));
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
-	 * Verify that standby and master are supported and compatible server
+	 * Verify that standby and primary are supported and compatible server
 	 * versions
 	 *
 	 * If the user is registering an inactive standby, we'll trust they know
@@ -631,7 +632,7 @@ do_standby_register(void)
 	 */
 	if (PQstatus(conn) == CONNECTION_OK)
 	{
-		check_master_standby_version_match(conn, master_conn);
+		check_primary_standby_version_match(conn, primary_conn);
 	}
 
 
@@ -639,18 +640,18 @@ do_standby_register(void)
 	 * Check that an active node with the same node_name doesn't exist already
 	 */
 
-	node_result = get_node_record_by_name(master_conn,
-										  config_file_options.node_name,
-										  &node_record);
+	record_status = get_node_record_by_name(primary_conn,
+											config_file_options.node_name,
+											&node_record);
 
-	if (node_result)
+	if (record_status == RECORD_FOUND)
 	{
 		if (node_record.active == true && node_record.node_id != config_file_options.node_id)
 		{
 			log_error(_("node %i exists already with node_name \"%s\""),
 					  node_record.node_id,
 					  config_file_options.node_name);
-			PQfinish(master_conn);
+			PQfinish(primary_conn);
 			if (PQstatus(conn) == CONNECTION_OK)
 				PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
@@ -659,16 +660,16 @@ do_standby_register(void)
 
 	/* Check if node record exists */
 
-	node_result = get_node_record(master_conn,
-								  config_file_options.node_id,
-								  &node_record);
+	record_status= get_node_record(primary_conn,
+								   config_file_options.node_id,
+								   &node_record);
 
-	if (node_result && !runtime_options.force)
+	if (record_status == RECORD_FOUND && !runtime_options.force)
 	{
 		log_error(_("node %i is already registered"),
 				  config_file_options.node_id);
 		log_hint(_("use option -F/--force to overwrite an existing node record"));
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 		if (PQstatus(conn) == CONNECTION_OK)
 			PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
@@ -681,13 +682,13 @@ do_standby_register(void)
 
 	if (config_file_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
-		int upstream_node_result;
+		RecordStatus upstream_record_status;
 
-		upstream_node_result = get_node_record(master_conn,
-									  config_file_options.upstream_node_id,
-									  &node_record);
+		upstream_record_status = get_node_record(primary_conn,
+											   config_file_options.upstream_node_id,
+											   &node_record);
 
-		if (!upstream_node_result)
+		if (upstream_record_status != RECORD_FOUND)
 		{
 			t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 
@@ -697,7 +698,7 @@ do_standby_register(void)
 						  config_file_options.upstream_node_id);
 				/* footgun alert - only do this if you know what you're doing */
 				log_hint(_("use option -F/--force to create a dummy upstream record"));
-				PQfinish(master_conn);
+				PQfinish(primary_conn);
 				if (PQstatus(conn) == CONNECTION_OK)
 					PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
@@ -712,7 +713,7 @@ do_standby_register(void)
 			strncpy(upstream_node_record.conninfo, runtime_options.upstream_conninfo, MAXLEN);
 			upstream_node_record.active = false;
 
-			record_created = create_node_record(master_conn,
+			record_created = create_node_record(primary_conn,
 												"standby register",
 												&upstream_node_record);
 
@@ -728,14 +729,14 @@ do_standby_register(void)
 			 */
 			if (record_created == false)
 			{
-				upstream_node_result = get_node_record(master_conn,
-													   config_file_options.upstream_node_id,
-													   &node_record);
-				if (!upstream_node_result)
+				upstream_record_status = get_node_record(primary_conn,
+														 config_file_options.upstream_node_id,
+														 &node_record);
+				if (upstream_record_status != RECORD_FOUND)
 				{
 					log_error(_("unable to create placeholder record for upstream node %i"),
 							  config_file_options.upstream_node_id);
-					PQfinish(master_conn);
+					PQfinish(primary_conn);
 					if (PQstatus(conn) == CONNECTION_OK)
 						PQfinish(conn);
 					exit(ERR_BAD_CONFIG);
@@ -756,7 +757,7 @@ do_standby_register(void)
 				log_error(_("record for upstream node %i is marked as inactive"),
 						  config_file_options.upstream_node_id);
 				log_hint(_("use option -F/--force to register a standby with an inactive upstream node"));
-				PQfinish(master_conn);
+				PQfinish(primary_conn);
 				if (PQstatus(conn) == CONNECTION_OK)
 					PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
@@ -801,15 +802,15 @@ do_standby_register(void)
 	 * node record exists - update it
 	 * (at this point we have already established that -F/--force is in use)
 	 */
-	if (node_result)
+	if (record_status == RECORD_FOUND)
 	{
-		record_created = update_node_record(master_conn,
+		record_created = update_node_record(primary_conn,
 											"standby register",
 											&node_record);
 	}
 	else
 	{
-		record_created = create_node_record(master_conn,
+		record_created = create_node_record(primary_conn,
 											"standby register",
 											&node_record);
 	}
@@ -818,14 +819,14 @@ do_standby_register(void)
 	{
 		/* XXX add event description */
 
-		create_event_record(master_conn,
+		create_event_record(primary_conn,
 							&config_file_options,
 							config_file_options.node_id,
 							"standby_register",
 							false,
 							NULL);
 
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 
 		if (PQstatus(conn) == CONNECTION_OK)
 			PQfinish(conn);
@@ -833,7 +834,7 @@ do_standby_register(void)
 	}
 
 	/* Log the event */
-	create_event_record(master_conn,
+	create_event_record(primary_conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"standby_register",
@@ -848,18 +849,18 @@ do_standby_register(void)
 	{
 		bool sync_ok = false;
 		int timer = 0;
-		int node_record_result;
-		t_node_info node_record_on_master = T_NODE_INFO_INITIALIZER;
+		RecordStatus node_record_status;
+		t_node_info node_record_on_primary = T_NODE_INFO_INITIALIZER;
 		t_node_info node_record_on_standby = T_NODE_INFO_INITIALIZER;
 
-		node_record_result = get_node_record(master_conn,
+		node_record_status = get_node_record(primary_conn,
 											 config_file_options.node_id,
-											 &node_record_on_master);
+											 &node_record_on_primary);
 
-		if (node_record_result != 1)
+		if (node_record_status != RECORD_FOUND)
 		{
-			log_error(_("unable to retrieve node record from master"));
-			PQfinish(master_conn);
+			log_error(_("unable to retrieve node record from primary"));
+			PQfinish(primary_conn);
 			PQfinish(conn);
 			exit(ERR_REGISTRATION_SYNC);
 		}
@@ -871,37 +872,37 @@ do_standby_register(void)
 			if (runtime_options.wait_register_sync_seconds && runtime_options.wait_register_sync_seconds == timer)
 				break;
 
-			node_record_result = get_node_record(conn,
+			node_record_status = get_node_record(conn,
 												 config_file_options.node_id,
 												 &node_record_on_standby);
 
-			if (node_record_result == 0)
+			if (node_record_status == RECORD_NOT_FOUND)
 			{
 				/* no record available yet on standby*/
 				records_match = false;
 			}
-			else if (node_record_result == 1)
+			else if (node_record_status == RECORD_FOUND)
 			{
 				/* compare relevant fields */
-				if (node_record_on_standby.upstream_node_id != node_record_on_master.upstream_node_id)
+				if (node_record_on_standby.upstream_node_id != node_record_on_primary.upstream_node_id)
 					records_match = false;
 
-				if (node_record_on_standby.type != node_record_on_master.type)
+				if (node_record_on_standby.type != node_record_on_primary.type)
 					records_match = false;
 
-				if (node_record_on_standby.priority != node_record_on_master.priority)
+				if (node_record_on_standby.priority != node_record_on_primary.priority)
 					records_match = false;
 
-				if (node_record_on_standby.active != node_record_on_master.active)
+				if (node_record_on_standby.active != node_record_on_primary.active)
 					records_match = false;
 
-				if (strcmp(node_record_on_standby.node_name, node_record_on_master.node_name) != 0)
+				if (strcmp(node_record_on_standby.node_name, node_record_on_primary.node_name) != 0)
 					records_match = false;
 
-				if (strcmp(node_record_on_standby.conninfo, node_record_on_master.conninfo) != 0)
+				if (strcmp(node_record_on_standby.conninfo, node_record_on_primary.conninfo) != 0)
 					records_match = false;
 
-				if (strcmp(node_record_on_standby.slot_name, node_record_on_master.slot_name) != 0)
+				if (strcmp(node_record_on_standby.slot_name, node_record_on_primary.slot_name) != 0)
 					records_match = false;
 
 				if (records_match == true)
@@ -919,16 +920,16 @@ do_standby_register(void)
 		{
 			log_error(_("node record was not synchronised after %i seconds"),
 					  runtime_options.wait_register_sync_seconds);
-			PQfinish(master_conn);
+			PQfinish(primary_conn);
 			PQfinish(conn);
 			exit(ERR_REGISTRATION_SYNC);
 		}
 
-		log_info(_("node record on standby synchronised from master"));
+		log_info(_("node record on standby synchronised from primary"));
 	}
 
 
-	PQfinish(master_conn);
+	PQfinish(primary_conn);
 
 	if (PQstatus(conn) == CONNECTION_OK)
 		PQfinish(conn);
@@ -950,7 +951,7 @@ void
 do_standby_unregister(void)
 {
 	PGconn	   *conn;
-	PGconn	   *master_conn;
+	PGconn	   *primary_conn;
 
 	int 		target_node_id;
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
@@ -960,14 +961,14 @@ do_standby_unregister(void)
 	log_info(_("connecting to local standby"));
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
-	/* check if there is a master in this cluster */
-	log_info(_("connecting to master database"));
+	/* check if there is a primary in this cluster */
+	log_info(_("connecting to primary database"));
 
-	master_conn = get_master_connection(conn, NULL, NULL);
+	primary_conn = get_primary_connection(conn, NULL, NULL);
 
-	if (PQstatus(master_conn) != CONNECTION_OK)
+	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		log_error(_("unable to connect to master server"));
+		log_error(_("unable to connect to primary server"));
 		log_detail("%s", PQerrorMessage(conn));
 		exit(ERR_BAD_CONFIG);
 	}
@@ -983,10 +984,10 @@ do_standby_unregister(void)
 
 	/* Check node exists and is really a standby */
 
-	if (!get_node_record(master_conn, target_node_id, &node_info))
+	if (get_node_record(primary_conn, target_node_id, &node_info) != RECORD_FOUND)
 	{
 		log_error(_("no record found for node %i"), target_node_id);
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -994,32 +995,32 @@ do_standby_unregister(void)
 	if (node_info.type != STANDBY)
 	{
 		log_error(_("node %i is not a standby server"), target_node_id);
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Now unregister the standby */
 	log_notice(_("unregistering node %i"), target_node_id);
-	node_record_deleted = delete_node_record(master_conn,
+	node_record_deleted = delete_node_record(primary_conn,
 										     target_node_id);
 
 	if (node_record_deleted == false)
 	{
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Log the event */
-	create_event_record(master_conn,
+	create_event_record(primary_conn,
 						&config_file_options,
 						target_node_id,
 						"standby_unregister",
 						true,
 						NULL);
 
-	PQfinish(master_conn);
+	PQfinish(primary_conn);
 	PQfinish(conn);
 
 	log_info(_("standby unregistration complete"));
@@ -1038,7 +1039,7 @@ void
 do_standby_promote(void)
 {
 	PGconn	   *conn;
-	PGconn	   *current_master_conn;
+	PGconn	   *current_primary_conn;
 
 	char		script[MAXLEN];
 
@@ -1053,7 +1054,7 @@ do_standby_promote(void)
 	bool		success;
 	PQExpBufferData details;
 
-	int			existing_master_id = UNKNOWN_NODE_ID;
+	int			existing_primary_id = UNKNOWN_NODE_ID;
 
 	log_info(_("connecting to standby database"));
 	conn = establish_db_connection(config_file_options.conninfo, true);
@@ -1068,7 +1069,7 @@ do_standby_promote(void)
 
 	if (recovery_type != RECTYPE_STANDBY)
 	{
-		if (recovery_type == RECTYPE_MASTER)
+		if (recovery_type == RECTYPE_PRIMARY)
 		{
 			log_error(_("STANDBY PROMOTE can only be executed on a standby node"));
 			PQfinish(conn);
@@ -1083,25 +1084,25 @@ do_standby_promote(void)
 	}
 
 
-	/* check that there's no existing master */
-	current_master_conn = get_master_connection_quiet(conn, &existing_master_id, NULL);
+	/* check that there's no existing primary */
+	current_primary_conn = get_primary_connection_quiet(conn, &existing_primary_id, NULL);
 
-	if (PQstatus(current_master_conn) == CONNECTION_OK)
+	if (PQstatus(current_primary_conn) == CONNECTION_OK)
 	{
-		log_error(_("this cluster already has an active master server"));
+		log_error(_("this cluster already has an active primary server"));
 
-		if (existing_master_id != UNKNOWN_NODE_ID)
+		if (existing_primary_id != UNKNOWN_NODE_ID)
 		{
-			t_node_info master_rec;
+			t_node_info primary_rec;
 
-			get_node_record(conn, existing_master_id, &master_rec);
+			get_node_record(conn, existing_primary_id, &primary_rec);
 
-			log_detail(_("current master is %s (node_id: %i)"),
-					   master_rec.node_name,
-					   existing_master_id);
+			log_detail(_("current primary is %s (node_id: %i)"),
+					   primary_rec.node_name,
+					   existing_primary_id);
 		}
 
-		PQfinish(current_master_conn);
+		PQfinish(current_primary_conn);
 		PQfinish(conn);
 		exit(ERR_PROMOTION_FAIL);
 	}
@@ -1121,7 +1122,7 @@ do_standby_promote(void)
 	log_notice(_("promoting standby"));
 
 	/*
-	 * Promote standby to master.
+	 * Promote standby to primary.
 	 *
 	 * `pg_ctl promote` returns immediately and (prior to 10.0) has no -w option
 	 * so we can't be sure when or if the promotion completes.
@@ -1144,7 +1145,7 @@ do_standby_promote(void)
 	r = system(script);
 	if (r != 0)
 	{
-		log_error(_("unable to promote server from standby to master"));
+		log_error(_("unable to promote server from standby to primary"));
 		exit(ERR_PROMOTION_FAIL);
 	}
 
@@ -1157,7 +1158,7 @@ do_standby_promote(void)
 	{
 
 		recovery_type = get_recovery_type(conn);
-		if (recovery_type == RECTYPE_MASTER)
+		if (recovery_type == RECTYPE_PRIMARY)
 		{
 			promote_success = true;
 			break;
@@ -1183,7 +1184,7 @@ do_standby_promote(void)
 
 
 	/* update node information to reflect new status */
-	if (update_node_record_set_master(conn, config_file_options.node_id) == false)
+	if (update_node_record_set_primary(conn, config_file_options.node_id) == false)
 	{
 		initPQExpBuffer(&details);
 		appendPQExpBuffer(&details,
@@ -1205,7 +1206,7 @@ do_standby_promote(void)
 
 	initPQExpBuffer(&details);
 	appendPQExpBuffer(&details,
-					  _("node %i was successfully promoted to master"),
+					  _("node %i was successfully promoted to primary"),
 					  config_file_options.node_id);
 
 	log_notice(_("STANDBY PROMOTE successful"));
@@ -1243,9 +1244,9 @@ do_standby_follow(void)
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	int			original_upstream_node_id = UNKNOWN_NODE_ID;
 
-	PGconn	   *master_conn = NULL;
-	int			master_id = UNKNOWN_NODE_ID;
-	t_node_info master_node_record = T_NODE_INFO_INITIALIZER;
+	PGconn	   *primary_conn = NULL;
+	int			primary_id = UNKNOWN_NODE_ID;
+	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 
 	char		data_dir[MAXPGPATH];
 	t_conninfo_param_list recovery_conninfo;
@@ -1285,32 +1286,32 @@ do_standby_follow(void)
 		}
 
 		/*
-		 * Attempt to connect to master.
+		 * Attempt to connect to primary.
 		 *
-		 * If --wait provided, loop for up `master_response_timeout`
+		 * If --wait provided, loop for up `primary_response_timeout`
 		 * seconds before giving up
 		 */
 
-		for (timer = 0; timer < config_file_options.master_response_timeout; timer++)
+		for (timer = 0; timer < config_file_options.primary_response_timeout; timer++)
 		{
-			master_conn = get_master_connection_quiet(local_conn,
-													  &master_id,
-													  NULL);
+			primary_conn = get_primary_connection_quiet(local_conn,
+														&primary_id,
+														NULL);
 
-			if (PQstatus(master_conn) == CONNECTION_OK || runtime_options.wait == false)
+			if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
 			{
 				break;
 			}
 		}
 
-		if (PQstatus(master_conn) != CONNECTION_OK)
+		if (PQstatus(primary_conn) != CONNECTION_OK)
 		{
-			log_error(_("unable to determine master node"));
+			log_error(_("unable to determine primary node"));
 			PQfinish(local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
-		check_master_standby_version_match(local_conn, master_conn);
+		check_primary_standby_version_match(local_conn, primary_conn);
 
 		PQfinish(local_conn);
 	}
@@ -1321,20 +1322,20 @@ do_standby_follow(void)
 	 */
 	else
 	{
-		master_conn = establish_db_connection_by_params(
+		primary_conn = establish_db_connection_by_params(
 			(const char**)source_conninfo.keywords,
 			(const char**)source_conninfo.values,
 			true);
 
-		master_id = get_master_node_id(master_conn);
+		primary_id = get_primary_node_id(primary_conn);
 		strncpy(data_dir, runtime_options.data_dir, MAXPGPATH);
 	}
 
-	if (get_recovery_type(master_conn) != RECTYPE_MASTER)
+	if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
 	{
-		log_error(_("the node to follow is not a master"));
+		log_error(_("the node to follow is not a primary"));
 		// XXX log detail
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1342,55 +1343,55 @@ do_standby_follow(void)
 
 	/*
 	 * If 9.4 or later, and replication slots in use, we'll need to create a
-	 * slot on the new master
+	 * slot on the new primary
 	 */
 
 	if (config_file_options.use_replication_slots)
 	{
- 		int	server_version_num = get_server_version(master_conn, NULL);
+ 		int	server_version_num = get_server_version(primary_conn, NULL);
 
 		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
 
-		if (create_replication_slot(master_conn, repmgr_slot_name, server_version_num, &event_details) == false)
+		if (create_replication_slot(primary_conn, repmgr_slot_name, server_version_num, &event_details) == false)
 		{
 			log_error("%s", event_details.data);
 
-			create_event_record(master_conn,
+			create_event_record(primary_conn,
 								&config_file_options,
 								config_file_options.node_id,
 								"standby_follow",
 								false,
 								event_details.data);
 
-			PQfinish(master_conn);
+			PQfinish(primary_conn);
 			exit(ERR_DB_QUERY);
 		}
 
 		termPQExpBuffer(&event_details);
 	}
 
-	get_node_record(master_conn, master_id, &master_node_record);
+	get_node_record(primary_conn, primary_id, &primary_node_record);
 
 	/* Initialise connection parameters to write as `primary_conninfo` */
 	initialize_conninfo_params(&recovery_conninfo, false);
 
-	/* We ignore any application_name set in the master's conninfo */
-	parse_conninfo_string(master_node_record.conninfo, &recovery_conninfo, errmsg, true);
+	/* We ignore any application_name set in the primary's conninfo */
+	parse_conninfo_string(primary_node_record.conninfo, &recovery_conninfo, errmsg, true);
 
 
 	/* Set the default application name to this node's name */
 	param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
 
-	/* Set the replication user from the master node record */
-	param_set(&recovery_conninfo, "user", master_node_record.repluser);
+	/* Set the replication user from the primary node record */
+	param_set(&recovery_conninfo, "user", primary_node_record.repluser);
 
 	/*
 	 * Fetch our node record so we can write application_name, if set,
 	 * and to get the upstream node ID, which we'll need to know if
 	 * replication slots are in use and we want to delete the old slot.
 	 */
-	record_status = get_node_record(master_conn,
+	record_status = get_node_record(primary_conn,
 									  config_file_options.node_id,
 									  &local_node_record);
 
@@ -1433,16 +1434,16 @@ do_standby_follow(void)
 		}
 		else
 		{
-			original_upstream_node_id = master_id;
+			original_upstream_node_id = primary_id;
 		}
 	}
 
-	log_info(_("changing node %i's master to node %i"),
-			 config_file_options.node_id, master_id);
+	log_info(_("changing node %i's primary to node %i"),
+			 config_file_options.node_id, primary_id);
 
 	if (!create_recovery_file(data_dir, &recovery_conninfo))
 	{
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1471,7 +1472,7 @@ do_standby_follow(void)
 	if (r != 0)
 	{
 		log_error(_("unable to restart server"));
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 		exit(ERR_NO_RESTART);
 	}
 
@@ -1480,7 +1481,7 @@ do_standby_follow(void)
 	 * If replication slots are in use, and an inactive one for this node
 	 * exists on the former upstream, drop it.
 	 *
-	 * XXX check if former upstream is current master?
+	 * XXX check if former upstream is current primary?
 	 */
 
 	if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
@@ -1528,28 +1529,28 @@ do_standby_follow(void)
 	 * It's possible this node was an inactive primary - update the
 	 * relevant fields to ensure it's marked as an active standby
 	 */
-	if (update_node_record_status(master_conn,
+	if (update_node_record_status(primary_conn,
 								  config_file_options.node_id,
 								  "standby",
-								  master_id,
+								  primary_id,
 								  true) == false)
 	{
 		log_error(_("unable to update upstream node"));
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
 
 	log_notice(_("STANDBY FOLLOW successful"));
 
-	create_event_record(master_conn,
+	create_event_record(primary_conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"standby_follow",
 						true,
 						NULL);
 
-	PQfinish(master_conn);
+	PQfinish(primary_conn);
 
 	return;
 }
@@ -1616,7 +1617,7 @@ check_source_server()
 	/* Verify that upstream node is a supported server version */
 	log_verbose(LOG_INFO, _("connected to source node, checking its state"));
 
-	server_version_num = check_server_version(source_conn, "master", true, NULL);
+	server_version_num = check_server_version(source_conn, "primary", true, NULL);
 
 	check_upstream_config(source_conn, server_version_num, true);
 
@@ -1648,22 +1649,22 @@ check_source_server()
 	 */
 	if (get_recovery_type(source_conn) == RECTYPE_STANDBY)
 	{
-		master_conn = get_master_connection(source_conn, NULL, NULL);
+		primary_conn = get_primary_connection(source_conn, NULL, NULL);
 
 		// XXX check this worked?
 	}
 	else
 	{
-		master_conn = source_conn;
+		primary_conn = source_conn;
 	}
 
 	/*
-	 * Sanity-check that the master node has a repmgr schema - if not
+	 * Sanity-check that the primary node has a repmgr schema - if not
 	 * present, fail with an error unless -F/--force is used (to enable
 	 * repmgr to be used as a standalone clone tool)
 	 */
 
-	extension_status = get_repmgr_extension_status(master_conn);
+	extension_status = get_repmgr_extension_status(primary_conn);
 
 	if (extension_status != REPMGR_INSTALLED)
 	{
@@ -1751,7 +1752,7 @@ check_source_server()
 	 * Attempt to find the upstream node record
 	 */
 	if (config_file_options.upstream_node_id == NO_UPSTREAM_NODE)
-		upstream_node_id = get_master_node_id(source_conn);
+		upstream_node_id = get_primary_node_id(source_conn);
 	else
 		upstream_node_id = config_file_options.upstream_node_id;
 
@@ -2087,7 +2088,7 @@ initialise_direct_clone(void)
 		{
 			log_error("%s", event_details.data);
 
-			create_event_record(master_conn,
+			create_event_record(primary_conn,
 								&config_file_options,
 								config_file_options.node_id,
 								"standby_clone",
@@ -2210,7 +2211,7 @@ run_basebackup(void)
 	 *
 	 * From 9.6, if replication slots are in use, we'll have previously
 	 * created a slot with reserved LSN, and will stream from that slot to avoid
-	 * WAL buildup on the master using the -S/--slot, which requires -X/--xlog-method=stream
+	 * WAL buildup on the primary using the -S/--slot, which requires -X/--xlog-method=stream
 	 * (from 10, -X/--wal-method=stream)
 	 */
 	if (!strlen(backup_options.xlog_method))
@@ -2951,7 +2952,7 @@ tablespace_data_append(TablespaceDataList *list, const char *name, const char *o
 
 
 /*
- * check_master_standby_version_match()
+ * check_primary_standby_version_match()
  *
  * Check server versions of supplied connections are compatible for
  * replication purposes.
@@ -2959,32 +2960,32 @@ tablespace_data_append(TablespaceDataList *list, const char *name, const char *o
  * Exits on error.
  */
 static void
-check_master_standby_version_match(PGconn *conn, PGconn *master_conn)
+check_primary_standby_version_match(PGconn *conn, PGconn *primary_conn)
 {
 	char		standby_version[MAXVERSIONSTR];
 	int			standby_version_num = 0;
 
-	char		master_version[MAXVERSIONSTR];
-	int			master_version_num = 0;
+	char		primary_version[MAXVERSIONSTR];
+	int			primary_version_num = 0;
 
 	standby_version_num = check_server_version(conn, "standby", true, standby_version);
 
-	/* Verify that master is a supported server version */
-	master_version_num = check_server_version(conn, "master", false, master_version);
-	if (master_version_num < 0)
+	/* Verify that primary is a supported server version */
+	primary_version_num = check_server_version(conn, "primary", false, primary_version);
+	if (primary_version_num < 0)
 	{
 		PQfinish(conn);
-		PQfinish(master_conn);
+		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* master and standby version should match */
-	if ((master_version_num / 100) != (standby_version_num / 100))
+	/* primary and standby version should match */
+	if ((primary_version_num / 100) != (standby_version_num / 100))
 	{
 		PQfinish(conn);
-		PQfinish(master_conn);
-		log_error(_("PostgreSQL versions on master (%s) and standby (%s) must match"),
-				  master_version, standby_version);
+		PQfinish(primary_conn);
+		log_error(_("PostgreSQL versions on primary (%s) and standby (%s) must match"),
+				  primary_version, standby_version);
 		exit(ERR_BAD_CONFIG);
 	}
 }
@@ -2997,7 +2998,7 @@ check_recovery_type(PGconn *conn)
 
 	if (recovery_type != RECTYPE_STANDBY)
 	{
-		if (recovery_type == RECTYPE_MASTER)
+		if (recovery_type == RECTYPE_PRIMARY)
 		{
 			log_error(_("this node should be a standby (%s)"),
 					  config_file_options.conninfo);

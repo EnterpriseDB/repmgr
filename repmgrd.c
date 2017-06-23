@@ -24,7 +24,7 @@ t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZE
 static t_node_info local_node_info = T_NODE_INFO_INITIALIZER;
 static PGconn	   *local_conn = NULL;
 
-static PGconn	   *master_conn = NULL;
+static PGconn	   *primary_conn = NULL;
 
 /* Collate command line errors here for friendlier reporting */
 static ItemList	cli_errors = { NULL, NULL };
@@ -41,7 +41,7 @@ static void daemonize_process(void);
 static void check_and_create_pid_file(const char *pid_file);
 
 static void start_monitoring(void);
-static void monitor_streaming_master(void);
+static void monitor_streaming_primary(void);
 static void monitor_streaming_standby(void);
 
 #ifndef WIN32
@@ -248,7 +248,7 @@ main(int argc, char **argv)
 	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("no metadata record found for this node - terminating"));
-		log_hint(_("Check that 'repmgr (master|standby) register' was executed for this node"));
+		log_hint(_("Check that 'repmgr (primary|standby) register' was executed for this node"));
 
 		PQfinish(local_conn);
 		terminate(ERR_BAD_CONFIG);
@@ -271,7 +271,7 @@ main(int argc, char **argv)
 
     if (local_node_info.active == false)
     {
-        char *hint = "Check that 'repmgr (master|standby) register' was executed for this node";
+        char *hint = "Check that 'repmgr (primary|standby) register' was executed for this node";
 
         switch (config_file_options.failover_mode)
         {
@@ -354,8 +354,8 @@ start_monitoring(void)
 	{
 		switch (local_node_info.type)
 		{
-			case MASTER:
-				monitor_streaming_master();
+			case PRIMARY:
+				monitor_streaming_primary();
 				break;
 			case STANDBY:
 				monitor_streaming_standby();
@@ -372,7 +372,7 @@ start_monitoring(void)
 
 
 static void
-monitor_streaming_master(void)
+monitor_streaming_primary(void)
 {
 	while (true)
 	{
@@ -586,12 +586,12 @@ show_help(void)
 static void
 close_connections()
 {
-	if (PQstatus(master_conn) == CONNECTION_OK)
+	if (PQstatus(primary_conn) == CONNECTION_OK)
 	{
-		/* cancel any pending queries to the master */
-		if (PQisBusy(master_conn) == 1)
-			cancel_query(master_conn, config_file_options.master_response_timeout);
-		PQfinish(master_conn);
+		/* cancel any pending queries to the primary */
+		if (PQisBusy(primary_conn) == 1)
+			cancel_query(primary_conn, config_file_options.primary_response_timeout);
+		PQfinish(primary_conn);
 	}
 
 	if (PQstatus(local_conn) == CONNECTION_OK)
