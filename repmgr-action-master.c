@@ -375,23 +375,39 @@ do_master_unregister(void)
 	/* If we can connect to the node, perform some sanity checks on it */
 	else
 	{
+		bool can_unregister = true;
 		t_recovery_type recovery_type = get_recovery_type(target_node_conn);
 
 		/* Node appears to be a standby */
 		if (recovery_type == RECTYPE_STANDBY)
 		{
+			/* We'll refuse to do anything unless the node record shows it as a master */
+
+			if (target_node_info_ptr->type != MASTER)
+			{
+				log_error(_("node %s (id: %i) is a %s, unable to unregister"),
+						  target_node_info_ptr->node_name,
+						  target_node_info_ptr->node_id,
+						  get_node_type_string(target_node_info_ptr->type));
+				can_unregister = false;
+			}
 			/*
 			 * If --F/--force not set, hint that it might be appropriate to
 			 * register the node as a standby rather than unregister as master
 			 */
-			if (!runtime_options.force)
+			else if (!runtime_options.force)
 			{
-				log_error(_("node %s (id: %i) is a standby, unable to unregister"),
+				log_error(_("node %s (id: %i) is running as a standby, unable to unregister"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 				log_hint(_("the node can be registered as a standby with \"repmgr standby register --force\""));
 				log_hint(_("use \"repmgr master unregister --force\" to remove this node's metadata entirely"));
+				can_unregister = false;
+			}
 
+
+			if (can_unregister == false)
+			{
 				PQfinish(target_node_conn);
 				PQfinish(master_conn);
 				exit(ERR_BAD_CONFIG);
@@ -423,7 +439,7 @@ do_master_unregister(void)
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 
-				if (master_node_info.active == true)
+				if (master_node_info.active == false)
 				{
 					log_hint(_("node is marked as inactive, activate with \"repmgr master register --force\""));
 				}

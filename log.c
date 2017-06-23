@@ -21,7 +21,7 @@
 #define DEFAULT_SYSLOG_FACILITY LOG_LOCAL0
 #endif
 
-#define REPMGR_DEBUG
+/* #define REPMGR_DEBUG */
 
 static int	detect_log_facility(const char *facility);
 static void _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_list ap)
