@@ -1157,7 +1157,7 @@ _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info)
 
 	PQclear(res);
 
-	return ntuples;
+	return RECORD_FOUND;
 }
 
 
