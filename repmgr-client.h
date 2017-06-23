@@ -59,6 +59,7 @@
 #define OPT_ALL							   22
 #define OPT_DRY_RUN						   23
 /* deprecated since 3.3 */
+#define OPT_DATA_DIR					   998
 #define OPT_NO_CONNINFO_PASSWORD		   999
 
 
@@ -85,8 +86,6 @@ static struct option long_options[] =
 
 /* node options */
 	{"pgdata", required_argument, NULL, 'D'},
-	/* legacy alias for -D/--pgdata*/
-	{"data-dir", required_argument, NULL, 'D'},
 	{"node-id", required_argument, NULL, OPT_NODE_ID},
 	{"node-name", required_argument, NULL, OPT_NODE_NAME},
 
@@ -117,6 +116,8 @@ static struct option long_options[] =
 
 /* deprecated */
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
+	/* legacy alias for -D/--pgdata*/
+	{"data-dir", required_argument, NULL, OPT_DATA_DIR},
 
 /* not yet handled */
 	{"keep-history", required_argument, NULL, 'k'},

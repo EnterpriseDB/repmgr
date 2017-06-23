@@ -435,8 +435,14 @@ main(int argc, char **argv)
 
 			/* options deprecated since 3.3 *
 			 * ---------------------------- */
-
-
+			case OPT_DATA_DIR:
+				item_list_append(&cli_warnings,
+								 _("--data-dir is deprecated; use -D/--pgdata instead"));
+				break;
+			case OPT_NO_CONNINFO_PASSWORD:
+				item_list_append(&cli_warnings,
+								 _("--no-conninfo-password is deprecated; pasuse --use-recovery-conninfo-password to explicitly set a password"));
+				break;
 		}
 	}
 
