@@ -1250,7 +1250,9 @@ do_standby_follow(void)
 	char		data_dir[MAXPGPATH];
 	t_conninfo_param_list recovery_conninfo;
 	char	   *errmsg = NULL;
-	int			query_result;
+
+	RecordStatus record_status;
+
 	char		restart_command[MAXLEN];
 	int			r;
 
@@ -1388,11 +1390,11 @@ do_standby_follow(void)
 	 * and to get the upstream node ID, which we'll need to know if
 	 * replication slots are in use and we want to delete the old slot.
 	 */
-	query_result = get_node_record(master_conn,
-								   config_file_options.node_id,
-								   &local_node_record);
+	record_status = get_node_record(master_conn,
+									  config_file_options.node_id,
+									  &local_node_record);
 
-	if (query_result != 1)
+	if (record_status != RECORD_FOUND)
 	{
 		/* this shouldn't happen, but if it does we'll plough on regardless */
 		log_warning(_("unable to retrieve record for node %i"),
@@ -1484,7 +1486,7 @@ do_standby_follow(void)
 	if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
 	{
 		t_node_info upstream_node_record  = T_NODE_INFO_INITIALIZER;
-		int			upstream_query_result;
+		RecordStatus upstream_record_status;
 
 		log_verbose(LOG_INFO, "attempting to remove replication slot from old upstream node %i",
 					original_upstream_node_id);
@@ -1492,13 +1494,13 @@ do_standby_follow(void)
 		/* XXX should we poll for server restart? */
 		local_conn = establish_db_connection(config_file_options.conninfo, true);
 
-		upstream_query_result = get_node_record(local_conn,
-												original_upstream_node_id,
-												&upstream_node_record);
+		upstream_record_status = get_node_record(local_conn,
+												   original_upstream_node_id,
+												   &upstream_node_record);
 
 		PQfinish(local_conn);
 
-		if (upstream_query_result != 1)
+		if (upstream_record_status != RECORD_FOUND)
 		{
 			log_warning(_("unable to retrieve node record for old upstream node %i"),
 						original_upstream_node_id);
@@ -1581,7 +1583,7 @@ check_source_server()
 
 	char			   cluster_size[MAXLEN];
 	t_node_info		   node_record = T_NODE_INFO_INITIALIZER;
-	int				   query_result;
+	RecordStatus	   record_status;
 	t_extension_status extension_status;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
@@ -1753,9 +1755,9 @@ check_source_server()
 	else
 		upstream_node_id = config_file_options.upstream_node_id;
 
-	query_result = get_node_record(source_conn, upstream_node_id, &node_record);
+	record_status = get_node_record(source_conn, upstream_node_id, &node_record);
 
-	if (query_result)
+	if (record_status == RECORD_FOUND)
 	{
 		upstream_record_found = true;
 		strncpy(recovery_conninfo_str, node_record.conninfo, MAXLEN);
@@ -1766,9 +1768,9 @@ check_source_server()
 	 * check that there's no existing node record with the same name but
 	 * different ID
 	 */
-	query_result = get_node_record_by_name(source_conn, config_file_options.node_name, &node_record);
+	record_status = get_node_record_by_name(source_conn, config_file_options.node_name, &node_record);
 
-	if (query_result && node_record.node_id != config_file_options.node_id)
+	if (record_status == RECORD_FOUND && node_record.node_id != config_file_options.node_id)
 	{
 		log_error(_("another node (node_id: %i) already exists with node_name \"%s\""),
 				  node_record.node_id,
@@ -3017,11 +3019,11 @@ static void
 drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 {
 	t_replication_slot  slot_info;
-	int					query_res;
+	int					record_status;
 
-	query_res = get_slot_record(conn,slot_name, &slot_info);
+	record_status = get_slot_record(conn,slot_name, &slot_info);
 
-	if (query_res)
+	if (record_status == RECORD_FOUND)
 	{
 		if (slot_info.active == false)
 		{

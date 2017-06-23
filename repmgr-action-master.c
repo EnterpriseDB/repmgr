@@ -26,7 +26,8 @@ do_master_register(void)
 	int			current_master_id = UNKNOWN_NODE_ID;
 	t_recovery_type recovery_type;
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
-	int			record_found;
+	RecordStatus record_status;
+
 	bool		record_created;
 
 	PQExpBufferData	  event_description;
@@ -120,9 +121,9 @@ do_master_register(void)
 	 * update it if --force set
 	 */
 
-	record_found = get_node_record(conn, config_file_options.node_id, &node_info);
+	record_status = get_node_record(conn, config_file_options.node_id, &node_info);
 
-	if (record_found)
+	if (record_status == RECORD_FOUND)
 	{
 		if (!runtime_options.force)
 		{
@@ -172,7 +173,7 @@ do_master_register(void)
 
 	initPQExpBuffer(&event_description);
 
-	if (record_found)
+	if (record_status == RECORD_FOUND)
 	{
 		record_created = update_node_record(conn,
 											"master register",
@@ -230,7 +231,7 @@ do_master_register(void)
 		exit(ERR_DB_QUERY);
 	}
 
-	if (record_found)
+	if (record_status == RECORD_FOUND)
 	{
 		log_notice(_("master node record (id: %i) updated"),
 				   config_file_options.node_id);

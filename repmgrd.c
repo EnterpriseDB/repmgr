@@ -61,6 +61,8 @@ main(int argc, char **argv)
 	char		cli_loglevel[MAXLEN] = "";
 	bool		cli_monitoring_history = false;
 
+	RecordStatus record_status;
+
 	static struct option long_options[] =
 	{
 /* general options */
@@ -232,15 +234,18 @@ main(int argc, char **argv)
 	/*
 	 * sanity checks
 	 *
-	 * Note: previous repmgr versions checked the PostgreSQL version at this point,
-	 * but we'll skip that and assume the presence of a node record means we're
-	 * dealing with a supported installation.
+	 * Note: previous repmgr versions checked the PostgreSQL version at this
+	 * point, but we'll skip that and assume the presence of a node record
+	 * means we're dealing with a supported installation.
+	 *
+	 * The absence of a node record will also indicate that either the node
+	 * or repmgr has note been properly configured.
 	 */
 
 	/* Retrieve record for this node from the local database */
-	(void) get_node_record(local_conn, config_file_options.node_id, &local_node_info);
+	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_info);
 
-	if (local_node_info.node_id == NODE_NOT_FOUND)
+	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("no metadata record found for this node - terminating"));
 		log_hint(_("Check that 'repmgr (master|standby) register' was executed for this node"));

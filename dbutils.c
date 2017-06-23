@@ -22,7 +22,7 @@ static PGconn *_establish_db_connection(const char *conninfo,
 static PGconn  *_get_master_connection(PGconn *standby_conn, int *master_id, char *master_conninfo_out, bool quiet);
 
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
-static int  _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info);
+static RecordStatus _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info);
 static void _populate_node_record(PGresult *res, t_node_info *node_info, int row);
 static bool _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info);
 static bool	_create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
@@ -1131,7 +1131,7 @@ get_repmgr_extension_status(PGconn *conn)
 /* ===================== */
 
 
-static int
+static RecordStatus
 _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info)
 {
 	int         ntuples;
@@ -1142,7 +1142,7 @@ _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info)
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		PQclear(res);
-		return NODE_RECORD_QUERY_ERROR;
+		return RECORD_ERROR;
 	}
 
 	ntuples = PQntuples(res);
@@ -1150,7 +1150,7 @@ _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info)
 	if (ntuples == 0)
 	{
 		PQclear(res);
-		return NODE_RECORD_NOT_FOUND;
+		return RECORD_NOT_FOUND;
 	}
 
 	_populate_node_record(res, node_info, 0);
@@ -1235,11 +1235,11 @@ get_node_type_string(t_server_type type)
 }
 
 
-int
+RecordStatus
 get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 {
 	PQExpBufferData	  query;
-	int		    result;
+	RecordStatus	  result;
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
@@ -1253,7 +1253,7 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 	result = _get_node_record(conn, query.data, node_info);
 	termPQExpBuffer(&query);
 
-	if (result == NODE_RECORD_NOT_FOUND)
+	if (result == RECORD_NOT_FOUND)
 	{
 		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %i", node_id);
 	}
@@ -1262,11 +1262,11 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 }
 
 
-int
+RecordStatus
 get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info)
 {
 	PQExpBufferData	  query;
-	int 		result;
+	RecordStatus	  result;
 
 	initPQExpBuffer(&query);
 
@@ -1314,11 +1314,11 @@ get_master_node_record(PGconn *conn, t_node_info *node_info)
 bool
 get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 {
-	bool	     record_found;
+	RecordStatus	     record_status;
 
-	record_found = get_node_record(conn, node_id, node_info);
+	record_status = get_node_record(conn, node_id, node_info);
 
-	if (record_found == false)
+	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("unable to retrieve record for local node"));
 		log_detail(_("local node id is  %i"), node_id);
@@ -1328,7 +1328,7 @@ get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	return record_found;
+	return true;
 }
 
 
@@ -1920,7 +1920,7 @@ bool
 create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg)
 {
 	PQExpBufferData		query;
-	int					query_res;
+	RecordStatus		record_status;
 	PGresult  		   *res;
 	t_replication_slot  slot_info;
 
@@ -1930,9 +1930,9 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 	 * if not we can reuse it as-is
 	 */
 
-	query_res = get_slot_record(conn, slot_name, &slot_info);
+	record_status = get_slot_record(conn, slot_name, &slot_info);
 
-	if (query_res)
+	if (record_status == RECORD_FOUND)
 	{
 		if (strcmp(slot_info.slot_type, "physical") != 0)
 		{

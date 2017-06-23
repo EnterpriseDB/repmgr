@@ -15,9 +15,6 @@
 #include "config.h"
 #include "strutil.h"
 
-#define NODE_RECORD_NOT_FOUND   0
-#define NODE_RECORD_QUERY_ERROR -1
-
 typedef enum {
 	UNKNOWN = 0,
 	MASTER,
@@ -38,6 +35,12 @@ typedef enum {
 	RECTYPE_MASTER,
 	RECTYPE_STANDBY
 } t_recovery_type;
+
+typedef enum {
+	RECORD_ERROR = -1,
+	RECORD_FOUND,
+	RECORD_NOT_FOUND
+} RecordStatus;
 
 /*
  * Struct to store node information
@@ -198,8 +201,8 @@ bool		atobool(const char *value);
 t_server_type parse_node_type(const char *type);
 const char * get_node_type_string(t_server_type type);
 
-int			get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
-int			get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
+RecordStatus get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
+RecordStatus get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
 bool		get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 bool		get_master_node_record(PGconn *conn, t_node_info *node_info);
 void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
@@ -218,7 +221,7 @@ bool        create_event_record_extended(PGconn *conn, t_configuration_options *
 /* replication slot functions */
 bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);
 bool		drop_replication_slot(PGconn *conn, char *slot_name);
-int			get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
+RecordStatus get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 
 /* asynchronous query functions */
 bool		cancel_query(PGconn *conn, int timeout);
