@@ -1649,12 +1649,6 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		xlog_stream = false;
 
 	/* Check that WAL level is set correctly */
-	if (server_version_num < 90400)
-	{
-		i = guc_set(conn, "wal_level", "=", "hot_standby");
-		wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby'");
-	}
-	else
 	{
 		char *levels_pre96[] = {
 			"hot_standby",
@@ -1700,8 +1694,9 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	if (i == 0 || i == -1)
 	{
 		if (i == 0)
-			log_error("%s",
-					  wal_error_message);
+		{
+			log_error("%s", wal_error_message);
+		}
 
 		if (exit_on_error == true)
 		{
@@ -1714,41 +1709,23 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 	if (config_file_options.use_replication_slots)
 	{
-		/* Does the server support physical replication slots? */
-		if (server_version_num < 90400)
+		i = guc_set_typed(conn, "max_replication_slots", ">",
+						  "0", "integer");
+		if (i == 0 || i == -1)
 		{
-			log_error(_("server version must be 9.4 or later to enable replication slots"));
-
-			if (exit_on_error == true)
+			if (i == 0)
 			{
-				PQfinish(conn);
-				exit(ERR_BAD_CONFIG);
-			}
-
-			config_ok = false;
-		}
-		/* Server is 9.4 or greater - non-zero `max_replication_slots` required */
-		else
-		{
-			i = guc_set_typed(conn, "max_replication_slots", ">",
-							  "0", "integer");
-			if (i == 0 || i == -1)
-			{
-				if (i == 0)
+				log_error(_("parameter \"max_replication_slots\" must be set to at least 1 to enable replication slots"));
+				log_hint(_("\"max_replication_slots\" should be set to at least the number of expected standbys"));
+				if (exit_on_error == true)
 				{
-					log_error(_("parameter 'max_replication_slots' must be set to at least 1 to enable replication slots"));
-					log_hint(_("'max_replication_slots' should be set to at least the number of expected standbys"));
-					if (exit_on_error == true)
-					{
-						PQfinish(conn);
-						exit(ERR_BAD_CONFIG);
-					}
-
-					config_ok = false;
+					PQfinish(conn);
+					exit(ERR_BAD_CONFIG);
 				}
+
+				config_ok = false;
 			}
 		}
-
 	}
 	/*
 	 * physical replication slots not available or not requested - check if
@@ -1856,7 +1833,9 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	if (i == 0 || i == -1)
 	{
 		if (i == 0)
+		{
 			log_error(_("parameter 'hot_standby' must be set to 'on'"));
+		}
 
 		if (exit_on_error == true)
 		{

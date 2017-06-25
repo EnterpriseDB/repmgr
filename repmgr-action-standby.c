@@ -1629,21 +1629,6 @@ check_source_server()
 			   cluster_size);
 
 	/*
-	 * If --recovery-min-apply-delay was passed, check that
-	 * we're connected to PostgreSQL 9.4 or later
-	 */
-	// XXX should this be a config file parameter?
-	if (*runtime_options.recovery_min_apply_delay)
-	{
-		if (server_version_num < 90400)
-		{
-			log_error(_("PostgreSQL 9.4 or greater required for --recovery-min-apply-delay"));
-			PQfinish(source_conn);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
-
-	/*
 	 * If the upstream node is a standby, try to connect to the primary too so we
 	 * can write an event record
 	 */
@@ -1915,13 +1900,6 @@ initialise_direct_clone(void)
 	if (config_file_options.tablespace_mapping.head != NULL)
 	{
 		TablespaceListCell *cell;
-
-		if (server_version_num < 90400)
-		{
-			log_error(_("tablespace mapping is not supported for PostgreSQL 9.3"));
-			PQfinish(source_conn);
-			exit(ERR_BAD_CONFIG);
-		}
 
 		for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
 		{

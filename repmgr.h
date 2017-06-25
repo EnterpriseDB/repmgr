@@ -19,8 +19,8 @@
 #include "dbutils.h"
 #include "log.h"
 
-#define MIN_SUPPORTED_VERSION		"9.3"
-#define MIN_SUPPORTED_VERSION_NUM	90300
+#define MIN_SUPPORTED_VERSION		"9.4"
+#define MIN_SUPPORTED_VERSION_NUM	90400
 #define UNKNOWN_SERVER_VERSION_NUM -1
 
 #define NODE_NOT_FOUND		-1

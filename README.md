@@ -10,7 +10,7 @@ operations.
 `repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
 
 
-Supports PostgreSQL 9.6 and later; support for 9.3 will be dropped, 9.4/9.5
+Supports PostgreSQL 9.6 and later; support for 9.3 has been dropped, 9.4/9.5
 may be supported if feasible.
 
 Building from source
