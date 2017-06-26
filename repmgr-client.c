@@ -281,6 +281,14 @@ main(int argc, char **argv)
 				strncpy(runtime_options.node_name, optarg, MAXLEN);
 				break;
 
+			/* standby options *
+			 * --------------- */
+
+			/* --upstream-node-id */
+			case OPT_UPSTREAM_NODE_ID:
+				runtime_options.upstream_node_id = repmgr_atoi(optarg, "--upstream-node-id", &cli_errors, false);
+				break;
+
 			/* standby clone options *
 			 * --------------------- */
 
@@ -311,7 +319,7 @@ main(int argc, char **argv)
 
 			/* -w/--wal-keep-segments */
 			case 'w':
-				repmgr_atoi(optarg, "-w/--wal-keep-segments", &cli_errors, false);
+				(void) repmgr_atoi(optarg, "-w/--wal-keep-segments", &cli_errors, false);
 				strncpy(runtime_options.wal_keep_segments,
 						optarg,
 						MAXLEN);
@@ -352,10 +360,6 @@ main(int argc, char **argv)
 
 			case OPT_UPSTREAM_CONNINFO:
 				strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
-				break;
-
-			case OPT_UPSTREAM_NODE_ID:
-				//strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
 				break;
 
 			case OPT_USE_RECOVERY_CONNINFO_PASSWORD:
@@ -1072,6 +1076,20 @@ check_cli_parameters(const int action)
 										_("--node-name not required when executing %s"),
 										action_name(action));
 				memset(runtime_options.node_name, 0, sizeof(runtime_options.node_name));
+		}
+	}
+
+	if (runtime_options.upstream_node_id != UNKNOWN_NODE_ID)
+	{
+		switch (action)
+		{
+			case STANDBY_CLONE:
+			case STANDBY_REGISTER:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--upstream-node-id will be ignored when executing %s"),
+										action_name(action));
 		}
 	}
 
