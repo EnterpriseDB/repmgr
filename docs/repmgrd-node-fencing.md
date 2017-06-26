@@ -49,6 +49,14 @@ the `%include` directive (available from PgBouncer 1.6) to include a separate
 configuration file, `/etc/pgbouncer.database.ini`, which will be modified by
 `repmgr`.
 
+* * *
+
+> *NOTE*: in this self-contained demonstration, `pgbouncer` is running on the
+> database servers, however in a production environment it will make more
+> sense to run `pgbouncer` on either separate nodes or the application server.
+
+* * *
+
 `/etc/pgbouncer.ini` should look something like this:
 
     [pgbouncer]
