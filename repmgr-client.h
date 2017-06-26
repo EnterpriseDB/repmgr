@@ -58,6 +58,7 @@
 #define OPT_LIMIT						   21
 #define OPT_ALL							   22
 #define OPT_DRY_RUN						   23
+#define OPT_UPSTREAM_NODE_ID			   24
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR					   998
 #define OPT_NO_CONNINFO_PASSWORD		   999
@@ -103,6 +104,7 @@ static struct option long_options[] =
 	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
 	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
 	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
+	{"upstream-node-id", required_argument, NULL, OPT_UPSTREAM_NODE_ID},
 	{"use-recovery-conninfo-password", no_argument, NULL, OPT_USE_RECOVERY_CONNINFO_PASSWORD},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 

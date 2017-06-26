@@ -205,7 +205,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 	/* node information */
 	options->node_id = UNKNOWN_NODE_ID;
-	options->upstream_node_id = NO_UPSTREAM_NODE;
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
@@ -335,8 +334,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 		else if (strcmp(name, "node_name") == 0)
 			strncpy(options->node_name, value, MAXLEN);
-		else if (strcmp(name, "upstream_node_id") == 0)
-			options->upstream_node_id = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "replication_user") == 0)
@@ -486,7 +483,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "upstream_node") == 0)
 		{
 			item_list_append(warning_list,
-							 _("parameter \"upstream_node\" has been renamed to \"upstream_node_id\""));
+							 _("parameter \"upstream_node\" has been removed; use \"--upstream-node-id\" when cloning a standby"));
 			known_parameter = false;
 		}
 		else if (strcmp(name, "loglevel") == 0)

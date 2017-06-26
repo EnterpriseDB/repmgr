@@ -5,9 +5,15 @@ New command line options
 - `--dry-run`: repmgr will attempt to perform the action as far as possible
    without making any changes to the database
 
+- `--upstream-node-id`: use to specify the upstream node the standby will
+  connect later stream from, when cloning a standby. This replaces the configuration
+  file parameter `upstream_node`, as the upstream node is set when the standby
+  is initially cloned, but can change over the lifetime of an installation (due
+  to failovers, switchovers etc.) so it's pointless/confusing keeping the original
+  value around in the config file.
+
 Changed command line options
 ----------------------------
-
 
 ### repmgr
 

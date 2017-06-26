@@ -139,15 +139,6 @@ do_primary_register(void)
 		node_info.node_id = config_file_options.node_id;
 	}
 
-	/* if upstream_node_id set, warn that it will be ignored */
-	if (config_file_options.upstream_node_id != NO_UPSTREAM_NODE)
-	{
-		log_warning(_("primary node %i is configured with \"upstream_node_id\" set to %i"),
-					node_info.node_id,
-					config_file_options.upstream_node_id);
-		log_detail(_("the value set for \"upstream_node_id\" will be ignored"));
-	}
-
 	/* set type to "primary", active to "true" and unset upstream_node_id*/
 	node_info.type = PRIMARY;
 	node_info.upstream_node_id = NO_UPSTREAM_NODE;

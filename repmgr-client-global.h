@@ -61,6 +61,7 @@ typedef struct
 	char		recovery_min_apply_delay[MAXLEN];
 	char		replication_user[MAXLEN];
 	char		upstream_conninfo[MAXLEN];
+	int			upstream_node_id;
 	bool		use_recovery_conninfo_password;
 	char		wal_keep_segments[MAXLEN];
 	bool		without_barman;
@@ -90,7 +91,7 @@ typedef struct
 		/* node options */ \
 		UNKNOWN_NODE_ID, "", "", \
 		/* standby clone options */ \
-		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", false, "", false, \
+		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", NO_UPSTREAM_NODE, false, "", false, \
 		/* standby register options */ \
 		false, 0, \
 		/* event options */ \

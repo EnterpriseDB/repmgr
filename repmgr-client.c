@@ -354,6 +354,10 @@ main(int argc, char **argv)
 				strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
 				break;
 
+			case OPT_UPSTREAM_NODE_ID:
+				//strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
+				break;
+
 			case OPT_USE_RECOVERY_CONNINFO_PASSWORD:
 				runtime_options.use_recovery_conninfo_password = true;
 				break;

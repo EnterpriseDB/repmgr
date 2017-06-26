@@ -680,12 +680,12 @@ do_standby_register(void)
 	 * If it doesn't exist, and --force set, create a minimal inactive record
 	 */
 
-	if (config_file_options.upstream_node_id != NO_UPSTREAM_NODE)
+	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
 		RecordStatus upstream_record_status;
 
 		upstream_record_status = get_node_record(primary_conn,
-												 config_file_options.upstream_node_id,
+												 runtime_options.upstream_node_id,
 												 &node_record);
 
 		if (upstream_record_status != RECORD_FOUND)
@@ -695,7 +695,7 @@ do_standby_register(void)
 			if (!runtime_options.force)
 			{
 				log_error(_("no record found for upstream node %i"),
-						  config_file_options.upstream_node_id);
+						  runtime_options.upstream_node_id);
 				/* footgun alert - only do this if you know what you're doing */
 				log_hint(_("use option -F/--force to create a dummy upstream record"));
 				PQfinish(primary_conn);
@@ -705,9 +705,9 @@ do_standby_register(void)
 			}
 
 			log_notice(_("creating placeholder record for upstream node %i"),
-					   config_file_options.upstream_node_id);
+					   runtime_options.upstream_node_id);
 
-			upstream_node_record.node_id = config_file_options.upstream_node_id;
+			upstream_node_record.node_id = runtime_options.upstream_node_id;
 			upstream_node_record.type = STANDBY;
 			upstream_node_record.upstream_node_id = NO_UPSTREAM_NODE;
 			strncpy(upstream_node_record.conninfo, runtime_options.upstream_conninfo, MAXLEN);
@@ -730,12 +730,12 @@ do_standby_register(void)
 			if (record_created == false)
 			{
 				upstream_record_status = get_node_record(primary_conn,
-														 config_file_options.upstream_node_id,
+														 runtime_options.upstream_node_id,
 														 &node_record);
 				if (upstream_record_status != RECORD_FOUND)
 				{
 					log_error(_("unable to create placeholder record for upstream node %i"),
-							  config_file_options.upstream_node_id);
+							  runtime_options.upstream_node_id);
 					PQfinish(primary_conn);
 					if (PQstatus(conn) == CONNECTION_OK)
 						PQfinish(conn);
@@ -743,7 +743,7 @@ do_standby_register(void)
 				}
 
 				log_info(_("a record for upstream node %i was already created"),
-						 config_file_options.upstream_node_id);
+						 runtime_options.upstream_node_id);
 			}
 
 		}
@@ -755,7 +755,7 @@ do_standby_register(void)
 			if (!runtime_options.force)
 			{
 				log_error(_("record for upstream node %i is marked as inactive"),
-						  config_file_options.upstream_node_id);
+						  runtime_options.upstream_node_id);
 				log_hint(_("use option -F/--force to register a standby with an inactive upstream node"));
 				PQfinish(primary_conn);
 				if (PQstatus(conn) == CONNECTION_OK)
@@ -768,7 +768,7 @@ do_standby_register(void)
 			 */
 			log_notice(_("registering node %i with inactive upstream node %i"),
 					   config_file_options.node_id,
-					   config_file_options.upstream_node_id);
+					   runtime_options.upstream_node_id);
 		}
 	}
 
@@ -777,7 +777,7 @@ do_standby_register(void)
 
 	node_record.node_id = config_file_options.node_id;
 	node_record.type = STANDBY;
-	node_record.upstream_node_id = config_file_options.upstream_node_id;
+	node_record.upstream_node_id = runtime_options.upstream_node_id;
 	node_record.priority = config_file_options.priority;
 	node_record.active = true;
 
@@ -1736,10 +1736,10 @@ check_source_server()
 	/*
 	 * Attempt to find the upstream node record
 	 */
-	if (config_file_options.upstream_node_id == NO_UPSTREAM_NODE)
+	if (runtime_options.upstream_node_id == NO_UPSTREAM_NODE)
 		upstream_node_id = get_primary_node_id(source_conn);
 	else
-		upstream_node_id = config_file_options.upstream_node_id;
+		upstream_node_id = runtime_options.upstream_node_id;
 
 	record_status = get_node_record(source_conn, upstream_node_id, &node_record);
 
