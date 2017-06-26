@@ -85,6 +85,8 @@ static void check_and_create_pid_file(const char *pid_file);
 static void start_monitoring(void);
 static void monitor_streaming_primary(void);
 static void monitor_streaming_standby(void);
+static void monitor_bdr(void);
+
 
 #ifndef WIN32
 static void setup_event_handlers(void);
@@ -461,6 +463,9 @@ start_monitoring(void)
 				return;
 			case WITNESS:
 				/* not handled */
+				return;
+			case BDR:
+				monitor_bdr();
 				return;
 			case UNKNOWN:
 				/* should never happen */
