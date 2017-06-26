@@ -2177,3 +2177,15 @@ wait_connection_availability(PGconn *conn, long long timeout)
 	return -1;
 }
 
+/* node availability functions */
+
+bool
+is_server_available(const char *conninfo)
+{
+	PGPing status = PQping(conninfo);
+
+	if (status == PQPING_OK)
+		return true;
+
+	return false;
+}

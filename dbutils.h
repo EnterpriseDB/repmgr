@@ -42,6 +42,9 @@ typedef enum {
 	RECORD_NOT_FOUND
 } RecordStatus;
 
+
+
+
 /*
  * Struct to store node information
  */
@@ -226,6 +229,10 @@ RecordStatus get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *
 /* asynchronous query functions */
 bool		cancel_query(PGconn *conn, int timeout);
 int			wait_connection_availability(PGconn *conn, long long timeout);
+
+/* node availability functions */
+bool		is_server_available(const char *conninfo);
+
 
 #endif
 
