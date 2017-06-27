@@ -34,3 +34,6 @@ CREATE VIEW show_nodes AS
 LEFT JOIN nodes un
        ON un.node_id = n.upstream_node_id;
 
+CREATE FUNCTION request_vote(int) RETURNS boolean
+AS '$libdir/repmgr', 'request_vote'
+LANGUAGE C STRICT;

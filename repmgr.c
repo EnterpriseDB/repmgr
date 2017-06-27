@@ -28,6 +28,9 @@ PG_MODULE_MAGIC;
 void		_PG_init(void);
 void		_PG_fini(void);
 
+Datum		request_vote(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(request_vote);
+
 /*
  * Module load callback
  */
@@ -43,4 +46,15 @@ void
 _PG_fini(void)
 {
 	elog(INFO, "repmgr fini");
+}
+
+
+Datum
+request_vote(PG_FUNCTION_ARGS)
+{
+	uint32 node_id = PG_GETARG_INT32(0);
+
+	elog(INFO, "id is %i", node_id);
+
+	PG_RETURN_BOOL(true);
 }

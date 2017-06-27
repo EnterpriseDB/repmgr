@@ -59,6 +59,7 @@ typedef struct s_node_info
 	char		  slot_name[MAXLEN];
 	int			  priority;
 	bool		  active;
+	/* used during failover to track node status */
 	bool		  is_ready;
 	bool		  is_visible;
 	XLogRecPtr	  xlog_location;
