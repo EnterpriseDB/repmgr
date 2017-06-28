@@ -428,6 +428,8 @@ int
 get_server_version(PGconn *conn, char *server_version)
 {
 	PGresult   *res;
+	int         server_version_num;
+
 	res = PQexec(conn,
 				 "SELECT current_setting('server_version_num'), "
 				 "       current_setting('server_version')");
@@ -441,9 +443,12 @@ get_server_version(PGconn *conn, char *server_version)
 	}
 
 	if (server_version != NULL)
-		strcpy(server_version, PQgetvalue(res, 0, 0));
+		strcpy(server_version, PQgetvalue(res, 0, 1));
 
-	return atoi(PQgetvalue(res, 0, 0));
+	server_version_num = atoi(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+	return server_version_num;
 }
 
 
