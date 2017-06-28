@@ -599,7 +599,7 @@ do_election(void)
 		cell->node_info->is_visible = false;
 
 		// XXX handle witness-barman
-		cell->node_info->conn = establish_db_connection(local_node_info.conninfo, false);
+		cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
@@ -628,12 +628,13 @@ do_election(void)
 
 	for (cell = standby_nodes.head; cell; cell = cell->next)
 	{
+		log_debug("checking node %i...", cell->node_info->node_id);
 		/* ignore unreachable nodes */
 		if (cell->node_info->is_visible == false)
 			continue;
 		votes_for_me += request_vote(cell->node_info->conn,
-									 local_node_info.node_id,
-									 local_node_info.priority,
+									 &local_node_info,
+									 cell->node_info,
 									 last_wal_receive_lsn);
 
 		PQfinish(cell->node_info->conn);

@@ -165,12 +165,14 @@ request_vote(PG_FUNCTION_ARGS)
 	initStringInfo(&query);
 	appendStringInfo(
 		&query,
-		"SELECT '%X/%X'::pg_lsn - pg_catalog.pg_last_wal_receive_lsn()::pg_lsn",
+		"SELECT ('%X/%X'::pg_lsn - pg_catalog.pg_last_wal_receive_lsn()::pg_lsn)::INT",
 		(uint32) (requesting_node_last_lsn >> 32),
 		(uint32) requesting_node_last_lsn);
 
-	ret = SPI_execute(query.data, false, 0);
+	elog(INFO, "query: %s", query.data);
+	ret = SPI_execute(query.data, true, 0);
 
+	// xxx handle errors
 	lsn_diff = DatumGetInt32(SPI_getbinval(SPI_tuptable->vals[0],
 										   SPI_tuptable->tupdesc,
 										   1, &isnull));

@@ -2288,7 +2288,8 @@ get_voting_status(PGconn *conn)
 	return voting_status;
 }
 
-int	request_vote(PGconn *conn, int this_node_id, int this_node_priority, XLogRecPtr last_wal_receive_lsn)
+int
+request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, XLogRecPtr last_wal_receive_lsn)
 {
 	PQExpBufferData	  query;
 	PGresult   *res;
@@ -2298,7 +2299,7 @@ int	request_vote(PGconn *conn, int this_node_id, int this_node_priority, XLogRec
 
 	appendPQExpBuffer(&query,
 					  "SELECT repmgr.request_vote(%i, '%X/%X'::pg_lsn)",
-					  this_node_id,
+					  this_node->node_id,
 					  (uint32) (last_wal_receive_lsn >> 32),
 					  (uint32) last_wal_receive_lsn);
 
@@ -2311,7 +2312,41 @@ int	request_vote(PGconn *conn, int this_node_id, int this_node_priority, XLogRec
 	log_debug("XXX lsn_diff %i", lsn_diff);
 
 	PQclear(res);
-	return lsn_diff;
+
+	/* we're ahead */
+	if (lsn_diff > 0)
+	{
+		log_debug("this node is ahead");
+		return 1;
+	}
+
+	/* other node is ahead */
+	if (lsn_diff < 0)
+	{
+		log_debug("other node is ahead");
+		return 0;
+	}
+
+	/* tiebreak */
+
+	/* we're higher priority */
+	if (this_node->priority > other_node->priority)
+	{
+		log_debug("this node has higher priority");
+		return 1;
+	}
+
+	/* still tiebreak - decide by node_id */
+	if (this_node->node_id < other_node->node_id)
+	{
+		log_debug("this node has lower id");
+		return 1;
+	}
+	log_debug("other node wins");
+
+
+	/* we lose */
+	return 0;
 }
 
 
