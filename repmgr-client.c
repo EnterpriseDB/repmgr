@@ -90,6 +90,10 @@ main(int argc, char **argv)
 	 *
 	 * Only some actions will need these, but we need to do this before
 	 * the command line is parsed.
+	 *
+	 * Note: PQconndefaults() does not provide a default value for
+	 * "dbname", but if none is provided will default to "username"
+	 * when the connection is made.
 	 */
 
 	initialize_conninfo_params(&source_conninfo, true);
@@ -121,15 +125,6 @@ main(int argc, char **argv)
 		{
 			strncpy(runtime_options.username, source_conninfo.values[c], MAXLEN);
 		}
-	}
-
-	/*
-	 * Though libpq will default to the username as dbname, PQconndefaults()
-	 * doesn't return this
-	 */
-	if (runtime_options.dbname[0] == '\0')
-	{
-		strncpy(runtime_options.dbname, runtime_options.username, MAXLEN);
 	}
 
 
