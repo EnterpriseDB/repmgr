@@ -34,11 +34,15 @@ CREATE VIEW show_nodes AS
 LEFT JOIN nodes un
        ON un.node_id = n.upstream_node_id;
 
-CREATE FUNCTION request_vote(int) RETURNS boolean
-AS '$libdir/repmgr', 'request_vote'
-LANGUAGE C STRICT;
+/* repmgrd functions */
+
+CREATE FUNCTION request_vote(INT, pg_lsn)
+  RETURNS INT
+  AS '$libdir/repmgr', 'request_vote'
+  LANGUAGE C STRICT;
 
 
-CREATE FUNCTION get_voting_status() RETURNS int
-AS '$libdir/repmgr', 'get_voting_status'
-LANGUAGE C STRICT;
+CREATE FUNCTION get_voting_status()
+  RETURNS INT
+  AS '$libdir/repmgr', 'get_voting_status'
+  LANGUAGE C STRICT;

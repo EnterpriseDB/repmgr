@@ -2292,14 +2292,13 @@ int	request_vote(PGconn *conn, int this_node_id, int this_node_priority, XLogRec
 {
 	PQExpBufferData	  query;
 	PGresult   *res;
-	int vote;
+	int lsn_diff;
 
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT repmgr.request_vote(%i, %i, '%X/%X'::pg_lsn)",
+					  "SELECT repmgr.request_vote(%i, '%X/%X'::pg_lsn)",
 					  this_node_id,
-					  this_node_priority,
 					  (uint32) (last_wal_receive_lsn >> 32),
 					  (uint32) last_wal_receive_lsn);
 
@@ -2307,10 +2306,12 @@ int	request_vote(PGconn *conn, int this_node_id, int this_node_priority, XLogRec
 
 	termPQExpBuffer(&query);
 
-	vote = (strcmp(PQgetvalue(res, 0, 0), "t") == 0) ? 1 : 0;
+	lsn_diff = atoi(PQgetvalue(res, 0, 0));
+
+	log_debug("XXX lsn_diff %i", lsn_diff);
 
 	PQclear(res);
-	return vote;
+	return lsn_diff;
 }
 
 

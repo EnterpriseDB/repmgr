@@ -18,7 +18,15 @@
 #include "storage/shmem.h"
 #include "storage/spin.h"
 #include "utils/builtins.h"
+#include "utils/pg_lsn.h"
 #include "utils/timestamp.h"
+
+#include "executor/spi.h"
+#include "lib/stringinfo.h"
+#include "access/xact.h"
+#include "utils/snapmgr.h"
+#include "pgstat.h"
+
 
 #include "voting.h"
 
@@ -137,11 +145,42 @@ repmgr_shmem_startup(void)
 Datum
 request_vote(PG_FUNCTION_ARGS)
 {
-	uint32 node_id = PG_GETARG_INT32(0);
+	/* node_id used for logging purposes */
+	int requesting_node_id = PG_GETARG_INT32(0);
+	XLogRecPtr requesting_node_last_lsn = PG_GETARG_LSN(1);
+	StringInfoData	query;
 
-	elog(INFO, "id is %i", node_id);
+	int		ret;
+	bool	isnull;
 
-	PG_RETURN_BOOL(true);
+	int lsn_diff;
+
+	elog(INFO, "id is %i, lsn: %X/%X",
+		 requesting_node_id,
+		 (uint32) (requesting_node_last_lsn >> 32),
+		 (uint32) requesting_node_last_lsn);
+
+	SPI_connect();
+
+	initStringInfo(&query);
+	appendStringInfo(
+		&query,
+		"SELECT '%X/%X'::pg_lsn - pg_catalog.pg_last_wal_receive_lsn()::pg_lsn",
+		(uint32) (requesting_node_last_lsn >> 32),
+		(uint32) requesting_node_last_lsn);
+
+	ret = SPI_execute(query.data, false, 0);
+
+	lsn_diff = DatumGetInt32(SPI_getbinval(SPI_tuptable->vals[0],
+										   SPI_tuptable->tupdesc,
+										   1, &isnull));
+
+	elog(INFO, "XXX diff is %i",
+		 lsn_diff);
+
+   	SPI_finish();
+
+	PG_RETURN_INT32(lsn_diff);
 }
 
 

@@ -483,8 +483,8 @@ monitor_streaming_standby(void)
 	// check result
 	(void) get_node_record(local_conn, local_node_info.upstream_node_id, &upstream_node_info);
 
-	// check result, fail if not up (must start on running node)
-	upstream_conn = establish_db_connection(config_file_options.conninfo, false);
+	// handle failure - do we want to loop here?
+	upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
 	// fix for cascaded standbys
 	primary_conn = upstream_conn;
@@ -635,7 +635,12 @@ do_election(void)
 									 local_node_info.node_id,
 									 local_node_info.priority,
 									 last_wal_receive_lsn);
+
+		PQfinish(cell->node_info->conn);
+		cell->node_info->conn = NULL;
 	}
+
+	log_notice(_("%i of of %i votes"), votes_for_me, visible_nodes);
 
 	return VS_VOTE_WON;
 }
