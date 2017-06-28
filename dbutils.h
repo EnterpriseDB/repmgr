@@ -247,6 +247,7 @@ bool		is_server_available(const char *conninfo);
 /* node voting functions */
 NodeVotingStatus get_voting_status(PGconn *conn);
 int	request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, XLogRecPtr last_wal_receive_lsn);
+void set_voting_status_initiated(PGconn *conn);
 
 
 /* replication status functions */

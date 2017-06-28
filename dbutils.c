@@ -2307,6 +2307,13 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, XLog
 
 	termPQExpBuffer(&query);
 
+	// check for NULL
+	if (PQgetisnull(res, 0, 0))
+	{
+		log_debug("XXX NULL returned by repmgr.request_vote()");
+		return 0;
+	}
+
 	lsn_diff = atoi(PQgetvalue(res, 0, 0));
 
 	log_debug("XXX lsn_diff %i", lsn_diff);
@@ -2337,16 +2344,23 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, XLog
 	}
 
 	/* still tiebreak - decide by node_id */
-	if (this_node->node_id < other_node->node_id)
-	{
-		log_debug("this node has lower id");
-		return 1;
-	}
-	log_debug("other node wins");
+
+	// we're the candidate, so we win
+	log_debug("win by default");
+	return 1;
+
+}
 
 
-	/* we lose */
-	return 0;
+void
+set_voting_status_initiated(PGconn *conn)
+{
+	PGresult		   *res;
+
+	res = PQexec(conn, "SELECT repmgr.set_voting_status_initiated()");
+
+	PQclear(res);
+	return;
 }
 
 

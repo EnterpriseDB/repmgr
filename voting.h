@@ -10,7 +10,8 @@ typedef enum {
 	VS_NO_VOTE,
 	VS_VOTE_REQUEST_RECEIVED,
 	VS_VOTE_INITIATED,
-	VS_VOTE_WON
+	VS_VOTE_WON,
+	VS_VOTE_LOST
 } NodeVotingStatus;
 
 #endif /* _VOTING_H_ */

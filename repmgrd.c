@@ -6,7 +6,9 @@
 
 #include <stdio.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include "repmgr.h"
 #include "config.h"
@@ -102,6 +104,8 @@ main(int argc, char **argv)
 	};
 
 	set_progname(argv[0]);
+
+    srand ( time(NULL) );
 
 	/* Disallow running as root */
 	if (geteuid() == 0)
@@ -530,7 +534,32 @@ monitor_streaming_standby(void)
 				/* still down after reconnect attempt(s) - */
 				if (upstream_node_status == NODE_STATUS_DOWN)
 				{
-					do_election();
+					NodeVotingStatus voting_status = do_election();
+
+					switch(voting_status)
+					{
+						case VS_NO_VOTE:
+							log_info("NO VOTE");
+							break;
+						case VS_VOTE_REQUEST_RECEIVED:
+							log_info("VOTE REQUEST RECEIVED");
+							break;
+						case VS_VOTE_INITIATED:
+							log_info("VOTE REQUEST INITIATED");
+							break;
+
+						case VS_VOTE_WON:
+							log_info("VOTE REQUEST WON");
+							break;
+						case VS_VOTE_LOST:
+							log_info("VOTE REQUEST LOST");
+							break;
+
+						case VS_UNKNOWN:
+							log_info("VOTE REQUEST UNKNOWN");
+							break;
+					}
+
 					// begin voting process
 
 					// if VS_PROMOTION_CANDIDATE
@@ -551,9 +580,8 @@ monitor_streaming_standby(void)
 static NodeVotingStatus
 do_election(void)
 {
-	int total_eligible_nodes = 0;
-	/* current node votes for itself by default */
-	int votes_for_me = 1;
+//	int total_eligible_nodes = 0;
+	int votes_for_me = 0;
 
 	/* we're visible */
 	int visible_nodes = 1;
@@ -568,14 +596,26 @@ do_election(void)
 	NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell;
 
+	long unsigned rand_wait = (long) ((rand() % 50) + 10) * 10000;
+
+	log_debug("do_election(): sleeping %li", rand_wait);
+
+	pg_usleep(rand_wait);
+
+
 	voting_status = get_voting_status(local_conn);
 	log_debug("do_election(): node voting status is %i", (int)voting_status);
 
 	if (voting_status == VS_VOTE_REQUEST_RECEIVED)
 	{
+		log_debug("vote request already received, not candidate");
 		/* we've already been requested to vote, so can't become a candidate */
 		return voting_status;
 	}
+
+	// XXX should we mark ourselves as candidate?
+	//  -> so any further vote requests are rejected?
+	set_voting_status_initiated(local_conn);
 
 	/* get all active nodes attached to primary, excluding self */
 	// XXX include barman node in results
@@ -612,15 +652,25 @@ do_election(void)
 
 	// XXX check if > 50% visible
 
-	/* check if we've been asked to vote again */
-	// XXX do that
+	/* check again if we've been asked to vote */
 
-	// XXX should we mark ourselves as candidate?
-	//  -> so any further vote requests are rejected?
+if (0)
+{
+	voting_status = get_voting_status(local_conn);
+	log_debug("do_election(): node voting status is %i", (int)voting_status);
 
+
+	if (voting_status == VS_VOTE_REQUEST_RECEIVED)
+	{
+		/* we've already been requested to vote, so can't become a candidate */
+		return voting_status;
+	}
+}
+
+	/* current node votes for itself by default */
+	votes_for_me += 1;
 
 	/* get our lsn*/
-
 	last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
 
 	log_debug("LAST receive lsn = %X/%X", (uint32) (last_wal_receive_lsn >> 32), (uint32) last_wal_receive_lsn);
@@ -643,7 +693,10 @@ do_election(void)
 
 	log_notice(_("%i of of %i votes"), votes_for_me, visible_nodes);
 
-	return VS_VOTE_WON;
+	if (votes_for_me == visible_nodes)
+		return VS_VOTE_WON;
+
+	return VS_VOTE_LOST;
 }
 
 static void
@@ -846,7 +899,7 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 	int i;
 
 	// XXX make this all configurable
-	int max_attempts = 15;
+	int max_attempts = 10;
 
 	for (i = 0; i < max_attempts; i++)
 	{

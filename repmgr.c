@@ -64,6 +64,8 @@ PG_FUNCTION_INFO_V1(request_vote);
 Datum		get_voting_status(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_voting_status);
 
+Datum		set_voting_status_initiated(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(set_voting_status_initiated);
 
 /*
  * Module load callback
@@ -155,6 +157,16 @@ request_vote(PG_FUNCTION_ARGS)
 
 	int lsn_diff;
 
+	NodeVotingStatus voting_status;
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	voting_status = shared_state->voting_status;
+	LWLockRelease(shared_state->lock);
+
+	/* this node has initiated voting or already responded to another node */
+	if (voting_status != VS_NO_VOTE)
+		PG_RETURN_NULL();
+
 	elog(INFO, "id is %i, lsn: %X/%X",
 		 requesting_node_id,
 		 (uint32) (requesting_node_last_lsn >> 32),
@@ -182,6 +194,11 @@ request_vote(PG_FUNCTION_ARGS)
 
    	SPI_finish();
 
+	/* indicate this node has responded to a vote request */
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
+	LWLockRelease(shared_state->lock);
+
 	PG_RETURN_INT32(lsn_diff);
 }
 
@@ -197,4 +214,14 @@ get_voting_status(PG_FUNCTION_ARGS)
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_INT32(voting_status);
+}
+
+Datum
+set_voting_status_initiated(PG_FUNCTION_ARGS)
+{
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	shared_state->voting_status = VS_VOTE_INITIATED;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_VOID();
 }

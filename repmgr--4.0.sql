@@ -46,3 +46,8 @@ CREATE FUNCTION get_voting_status()
   RETURNS INT
   AS '$libdir/repmgr', 'get_voting_status'
   LANGUAGE C STRICT;
+
+CREATE FUNCTION set_voting_status_initiated()
+  RETURNS VOID
+  AS '$libdir/repmgr', 'set_voting_status_initiated'
+  LANGUAGE C STRICT;
