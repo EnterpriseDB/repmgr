@@ -283,7 +283,11 @@ main(int argc, char **argv)
 
 	/*
 	 * Pre-set any defaults , which can be overwritten if matching
-	 * command line parameters are provided
+	 * command line parameters are provided.
+	 *
+	 * Note: PQconndefaults() does not provide a default value for
+	 * "dbname", but if none is provided will default to "username"
+	 * when the connection is made.
 	 */
 
 	for (c = 0; c < source_conninfo.size && source_conninfo.keywords[c]; c++)
@@ -316,7 +320,6 @@ main(int argc, char **argv)
 	}
 
 	/* set default user for -R/--remote-user */
-
 	{
 		struct passwd *pw = NULL;
 
@@ -328,15 +331,6 @@ main(int argc, char **argv)
 		}
 
 		strncpy(runtime_options.username, pw->pw_name, MAXLEN);
-	}
-
-	/*
-	 * Though libpq will default to the username as dbname, PQconndefaults()
-	 * doesn't return this
-	 */
-	if (runtime_options.dbname[0] == '\0')
-	{
-		strncpy(runtime_options.dbname, runtime_options.username, MAXLEN);
 	}
 
 	while ((c = getopt_long(argc, argv, "?Vd:h:p:U:S:D:f:R:w:k:FWIvb:rcL:tm:C:l:P", long_options,
