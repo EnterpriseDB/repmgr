@@ -4,13 +4,13 @@
  * Copyright (c) 2ndQuadrant, 2010-2017
  */
 
-#include "repmgr.h"
-#include "config.h"
-
 #include <stdio.h>
 #include <signal.h>
 #include <sys/stat.h>
 
+#include "repmgr.h"
+#include "config.h"
+#include "voting.h"
 
 #define OPT_HELP	1
 
@@ -31,7 +31,9 @@ t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZE
 static t_node_info local_node_info = T_NODE_INFO_INITIALIZER;
 static PGconn	   *local_conn = NULL;
 
-static PGconn	   *primary_conn = NULL;
+static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
+static PGconn *upstream_conn = NULL;
+static PGconn *primary_conn = NULL;
 
 /* Collate command line errors here for friendlier reporting */
 static ItemList	cli_errors = { NULL, NULL };
@@ -58,6 +60,9 @@ static void setup_event_handlers(void);
 static void handle_sighup(SIGNAL_ARGS);
 static void handle_sigint(SIGNAL_ARGS);
 #endif
+
+static PGconn *try_reconnect(const char *conninfo, NodeStatus *node_status);
+static NodeVotingStatus do_election(void);
 
 static void close_connections();
 static void terminate(int retval);
@@ -267,6 +272,7 @@ main(int argc, char **argv)
 	log_info(_("connecting to database \"%s\""),
 			 config_file_options.conninfo);
 
+	/* abort if local node not available at startup */
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	/*
@@ -383,7 +389,6 @@ main(int argc, char **argv)
 static void
 start_monitoring(void)
 {
-
 	log_notice(_("starting monitoring of node \"%s\" (ID: %i)"),
 			   local_node_info.node_name,
 			   local_node_info.node_id);
@@ -428,7 +433,6 @@ monitor_streaming_primary(void)
 		log_notice(_("monitoring cluster primary \"%s\" (node ID: %i)"),
 				   local_node_info.node_name,
 				   local_node_info.node_id);
-
 	}
 
 	while (true)
@@ -436,47 +440,30 @@ monitor_streaming_primary(void)
 		// cache node list here, refresh at `node_list_refresh_interval`
 		if (is_server_available(local_node_info.conninfo) == false)
 		{
+			/* node is down, we were expecting it to be up */
 			if (node_status == NODE_STATUS_UP)
 			{
-				int i;
-
-				int max_attempts = 30;
+				// log disconnect event
+				log_warning(_("unable to connect to local node"));
 
 				node_status = NODE_STATUS_UNKNOWN;
 
-				log_warning(_("unable to connect to local node"));
-
 				PQfinish(local_conn);
-				for (i = 0; i < max_attempts; i++)
+
+				local_conn = try_reconnect(local_node_info.conninfo, &node_status);
+
+				if (node_status == NODE_STATUS_UP)
 				{
-					log_info(_("checking state of local node, %i of %i attempts"), i, max_attempts);
-					if (is_server_available(local_node_info.conninfo) == true)
-					{
-						log_notice(_("local node has recovered, reconnecting"));
-
-						local_conn = establish_db_connection(local_node_info.conninfo, true);
-
-						if (PQstatus(local_conn) == CONNECTION_OK)
-						{
-							// log reconnect event
-							node_status = NODE_STATUS_UP;
-
-							goto loop;
-						}
-
-						PQfinish(local_conn);
-						log_notice(_("unable to reconnect to local node"));
-					}
-					sleep(1);
+					// log reconnect event, details
+					log_notice(_("reconnected to local node"));
+					goto loop;
 				}
-
-				log_warning(_("unable to reconnect to local node after %i attempts"), max_attempts);
-				node_status = NODE_STATUS_DOWN;
 			}
 
 			if (node_status == NODE_STATUS_DOWN)
 			{
 				// attempt to find another node from cached list
+				// loop, if starts up check status, switch monitoring mode
 			}
 		}
 
@@ -490,15 +477,167 @@ monitor_streaming_primary(void)
 static void
 monitor_streaming_standby(void)
 {
-	t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
+
+	NodeStatus upstream_node_status = NODE_STATUS_UP;
 
 	// check result
 	(void) get_node_record(local_conn, local_node_info.upstream_node_id, &upstream_node_info);
 
+	// check result, fail if not up (must start on running node)
+	upstream_conn = establish_db_connection(config_file_options.conninfo, false);
+
+	// fix for cascaded standbys
+	primary_conn = upstream_conn;
+
+	/* Log startup event */
+	if (startup_event_logged == false)
+	{
+		create_event_record(upstream_conn,
+							&config_file_options,
+							config_file_options.node_id,
+							"repmgrd_start",
+							true,
+							NULL);
+		startup_event_logged = true;
+
+		log_notice(_("monitoring node \"%s\" (node ID: %i)"),
+				   upstream_node_info.node_name,
+				   upstream_node_info.node_id);
+	}
+
+
 	while (true)
 	{
+		if (is_server_available(upstream_node_info.conninfo) == false)
+		{
+			/* upstream node is down, we were expecting it to be up */
+			if (upstream_node_status == NODE_STATUS_UP)
+			{
+				// log disconnect event
+				log_warning(_("unable to connect to upstream node"));
+				upstream_node_status = NODE_STATUS_UNKNOWN;
+
+				PQfinish(upstream_conn);
+				upstream_conn = try_reconnect(upstream_node_info.conninfo, &upstream_node_status);
+
+				if (upstream_node_status == NODE_STATUS_UP)
+				{
+					// log reconnect event
+					log_notice(_("reconnected to upstream node"));
+					goto loop;
+				}
+
+				/* still down after reconnect attempt(s) - */
+				if (upstream_node_status == NODE_STATUS_DOWN)
+				{
+					do_election();
+					// begin voting process
+
+					// if VS_PROMOTION_CANDIDATE
+					//   promote self, notify nodes
+
+					// else if VS_VOTE_REQUEST_RECEIVED, look for new primary and follow if necessary
+				}
+
+			}
+		}
+
+	loop:
 		sleep(1);
 	}
+}
+
+
+static NodeVotingStatus
+do_election(void)
+{
+	int total_eligible_nodes = 0;
+	/* current node votes for itself by default */
+	int votes_for_me = 1;
+
+	/* we're visible */
+	int visible_nodes = 1;
+
+	XLogRecPtr last_wal_receive_lsn = InvalidXLogRecPtr;
+
+	// get voting status from shared memory
+	// should be "VS_NO_VOTE" or "VS_VOTE_REQUEST_RECEIVED"
+	// if VS_NO_VOTE, initiate voting process
+	NodeVotingStatus voting_status;
+
+	NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
+	NodeInfoListCell *cell;
+
+	voting_status = get_voting_status(local_conn);
+	log_debug("do_election(): node voting status is %i", (int)voting_status);
+
+	if (voting_status == VS_VOTE_REQUEST_RECEIVED)
+	{
+		/* we've already been requested to vote, so can't become a candidate */
+		return voting_status;
+	}
+
+	/* get all active nodes attached to primary, excluding self */
+	// XXX include barman node in results
+
+	get_active_sibling_node_records(local_conn,
+									local_node_info.node_id,
+									upstream_node_info.node_id,
+									&standby_nodes);
+
+	/* no other standbys - win by default */
+
+	if (standby_nodes.node_count == 0)
+	{
+		log_debug("no other nodes - we win by default");
+		return VS_VOTE_WON;
+	}
+
+	for (cell = standby_nodes.head; cell; cell = cell->next)
+	{
+		/* assume the worst case */
+		cell->node_info->is_visible = false;
+
+		// XXX handle witness-barman
+		cell->node_info->conn = establish_db_connection(local_node_info.conninfo, false);
+
+		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
+		{
+			continue;
+		}
+
+		cell->node_info->is_visible = true;
+		visible_nodes ++;
+	}
+
+	// XXX check if > 50% visible
+
+	/* check if we've been asked to vote again */
+	// XXX do that
+
+	// XXX should we mark ourselves as candidate?
+	//  -> so any further vote requests are rejected?
+
+
+	/* get our lsn*/
+
+	last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
+
+	log_debug("LAST receive lsn = %X/%X", (uint32) (last_wal_receive_lsn >> 32), (uint32) last_wal_receive_lsn);
+	/* request vote */
+
+	for (cell = standby_nodes.head; cell; cell = cell->next)
+	{
+		/* ignore unreachable nodes */
+		if (cell->node_info->is_visible == false)
+			continue;
+		votes_for_me += request_vote(cell->node_info->conn,
+									 local_node_info.node_id,
+									 local_node_info.priority,
+									 last_wal_receive_lsn);
+	}
+
+	return VS_VOTE_WON;
 }
 
 static void
@@ -691,6 +830,44 @@ show_help(void)
 	puts("");
 
 	printf(_("%s monitors a cluster of servers and optionally performs failover.\n"), progname());
+}
+
+static PGconn *
+try_reconnect(const char *conninfo, NodeStatus *node_status)
+{
+	PGconn *conn;
+
+	int i;
+
+	// XXX make this all configurable
+	int max_attempts = 15;
+
+	for (i = 0; i < max_attempts; i++)
+	{
+		log_info(_("checking state of node, %i of %i attempts"), i, max_attempts);
+		if (is_server_available(conninfo) == true)
+		{
+			log_notice(_("node has recovered, reconnecting"));
+
+			// XXX how to handle case where node is reachable
+			// but connection denied due to connection exhaustion
+			conn = establish_db_connection(conninfo, false);
+			if (PQstatus(conn) == CONNECTION_OK)
+			{
+				*node_status = NODE_STATUS_UP;
+				return conn;
+			}
+
+			PQfinish(conn);
+			log_notice(_("unable to reconnect to node"));
+		}
+		sleep(1);
+	}
+
+
+	log_warning(_("unable to reconnect to node after %i attempts"), max_attempts);
+	*node_status = NODE_STATUS_DOWN;
+	return NULL;
 }
 
 

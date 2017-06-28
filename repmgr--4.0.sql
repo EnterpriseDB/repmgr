@@ -37,3 +37,8 @@ LEFT JOIN nodes un
 CREATE FUNCTION request_vote(int) RETURNS boolean
 AS '$libdir/repmgr', 'request_vote'
 LANGUAGE C STRICT;
+
+
+CREATE FUNCTION get_voting_status() RETURNS int
+AS '$libdir/repmgr', 'get_voting_status'
+LANGUAGE C STRICT;

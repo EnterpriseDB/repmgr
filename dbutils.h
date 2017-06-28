@@ -14,6 +14,7 @@
 
 #include "config.h"
 #include "strutil.h"
+#include "voting.h"
 
 typedef enum {
 	UNKNOWN = 0,
@@ -63,6 +64,7 @@ typedef struct s_node_info
 	bool		  is_ready;
 	bool		  is_visible;
 	XLogRecPtr	  xlog_location;
+	PGconn		 *conn;
 }	t_node_info;
 
 
@@ -78,7 +80,8 @@ typedef struct s_node_info
   true, \
   false, \
   false, \
-  InvalidXLogRecPtr \
+  InvalidXLogRecPtr, \
+  NULL \
 }
 
 
@@ -142,6 +145,9 @@ typedef struct s_connection_user
 	bool is_superuser;
 }   t_connection_user;
 
+/* utility functions */
+
+XLogRecPtr parse_lsn(const char *str);
 
 
 /* connection functions */
@@ -210,6 +216,7 @@ RecordStatus get_node_record_by_name(PGconn *conn, const char *node_name, t_node
 bool		get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 bool		get_primary_node_record(PGconn *conn, t_node_info *node_info);
 void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
+void		get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id, NodeInfoList *node_list);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
@@ -217,6 +224,8 @@ bool		delete_node_record(PGconn *conn, int node);
 
 bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
 bool        update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
+
+
 
 /* event record functions */
 bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
@@ -235,5 +244,13 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 bool		is_server_available(const char *conninfo);
 
 
-#endif
+/* node voting functions */
+NodeVotingStatus get_voting_status(PGconn *conn);
+int		    request_vote(PGconn *conn, int this_node_id, int this_node_priority, XLogRecPtr last_wal_receive_lsn);
+
+/* replication status functions */
+
+XLogRecPtr get_last_wal_receive_location(PGconn *conn);
+
+#endif /* dbutils.h */
 

@@ -50,4 +50,4 @@
 #define WITNESS_DEFAULT_PORT "5499" /* If this value is ever changed, remember
 									 * to update comments and documentation */
 
-#endif
+#endif /* _REPMGR_H_ */
