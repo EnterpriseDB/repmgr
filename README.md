@@ -1611,7 +1611,7 @@ which contains connection details for the local database.
 
     Creates a witness server as a separate PostgreSQL instance. This instance
     can be on a separate server or a server running an existing node. The
-    witness server contain a copy of the repmgr metadata tables but will not
+    witness server contains a copy of the repmgr metadata tables but will not
     be set up as a standby; instead it will update its metadata copy each
     time a failover occurs.
 
