@@ -30,6 +30,8 @@
 
 #include "voting.h"
 
+#define UNKNOWN_NODE_ID		-1
+
 #define MAXFNAMELEN		64
 #define TRANCHE_NAME "repmgrd"
 
@@ -46,6 +48,7 @@ typedef struct repmgrdSharedState
 	LWLockId	lock;			/* protects search/modification */
 	NodeState	node_state;
 	NodeVotingStatus voting_status;
+	int candidate_node_id;
 }	repmgrdSharedState;
 
 static repmgrdSharedState *shared_state = NULL;
@@ -67,6 +70,8 @@ PG_FUNCTION_INFO_V1(get_voting_status);
 Datum		set_voting_status_initiated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(set_voting_status_initiated);
 
+Datum other_node_is_candidate(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(other_node_is_candidate);
 /*
  * Module load callback
  */
@@ -130,7 +135,7 @@ repmgr_shmem_startup(void)
 
 	if (!found)
 	{
-		/* First time through ... */
+		/* Initialise shared memory struct */
 #if (PG_VERSION_NUM >= 90600)
 		shared_state->lock = &(GetNamedLWLockTranche(TRANCHE_NAME))->lock;
 #else
@@ -138,6 +143,7 @@ repmgr_shmem_startup(void)
 #endif
 
 		shared_state->voting_status = VS_NO_VOTE;
+		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 	}
 
 	LWLockRelease(AddinShmemInitLock);
@@ -224,4 +230,26 @@ set_voting_status_initiated(PG_FUNCTION_ARGS)
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_VOID();
+}
+
+Datum
+other_node_is_candidate(PG_FUNCTION_ARGS)
+{
+	int  requesting_node_id = PG_GETARG_INT32(0);
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+
+	if (shared_state->candidate_node_id != UNKNOWN_NODE_ID)
+	{
+		elog(INFO, "node %i requesting candidature, but node %i already candidate",
+				  requesting_node_id,
+				  shared_state->candidate_node_id);
+		PG_RETURN_BOOL(false);
+	}
+
+	shared_state->candidate_node_id = requesting_node_id;
+	LWLockRelease(shared_state->lock);
+
+	elog(INFO, "node %i is candidate", requesting_node_id);
+	PG_RETURN_BOOL(true);
 }

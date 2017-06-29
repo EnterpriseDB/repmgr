@@ -2364,6 +2364,32 @@ set_voting_status_initiated(PGconn *conn)
 }
 
 
+bool
+announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	bool retval;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT repmgr.other_node_is_candidate(%i)",
+					  this_node->node_id);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	retval = (strcmp(PQgetvalue(res, 0, 0), "t") == 0)
+		? true
+		: false;
+
+	PQclear(res);
+
+	return retval;
+}
+
 /* ============================ */
 /* replication status functions */
 /* ============================ */

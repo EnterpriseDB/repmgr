@@ -51,3 +51,8 @@ CREATE FUNCTION set_voting_status_initiated()
   RETURNS VOID
   AS '$libdir/repmgr', 'set_voting_status_initiated'
   LANGUAGE C STRICT;
+
+CREATE FUNCTION other_node_is_candidate(INT)
+  RETURNS BOOL
+  AS '$libdir/repmgr', 'other_node_is_candidate'
+  LANGUAGE C STRICT;

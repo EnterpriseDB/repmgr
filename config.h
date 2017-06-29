@@ -158,9 +158,6 @@ int			repmgr_atoi(const char *s,
 						ItemList *error_list,
 						int minval);
 
-bool		parse_bool(const char *s,
-					   const char *config_item,
-					   ItemList *error_list);
 
 bool parse_pg_basebackup_options(const char *pg_basebackup_options,
 								 t_basebackup_options *backup_options,

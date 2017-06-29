@@ -576,7 +576,8 @@ monitor_streaming_standby(void)
 	}
 }
 
-
+// store lsndiffs, in the event we're not the best node,
+// i.e. don't get all the votes, we pass the baton to the best node
 static NodeVotingStatus
 do_election(void)
 {
@@ -597,6 +598,8 @@ do_election(void)
 	NodeInfoListCell *cell;
 
 	long unsigned rand_wait = (long) ((rand() % 50) + 10) * 10000;
+
+	bool other_node_is_candidate = false;
 
 	log_debug("do_election(): sleeping %li", rand_wait);
 
@@ -646,8 +649,19 @@ do_election(void)
 			continue;
 		}
 
+		if (announce_candidature(cell->node_info->conn, &local_node_info, cell->node_info) == false)
+		{
+			log_debug("node %i is candidate",  cell->node_info->node_id);
+			other_node_is_candidate = true;
+		}
+
 		cell->node_info->is_visible = true;
 		visible_nodes ++;
+	}
+
+	if (other_node_is_candidate == true)
+	{
+		return VS_NO_VOTE;
 	}
 
 	// XXX check if > 50% visible
