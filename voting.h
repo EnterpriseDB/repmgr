@@ -9,9 +9,7 @@ typedef enum {
 	VS_UNKNOWN = -1,
 	VS_NO_VOTE,
 	VS_VOTE_REQUEST_RECEIVED,
-	VS_VOTE_INITIATED,
-	VS_VOTE_WON,
-	VS_VOTE_LOST
+	VS_VOTE_INITIATED
 } NodeVotingStatus;
 
 #endif /* _VOTING_H_ */

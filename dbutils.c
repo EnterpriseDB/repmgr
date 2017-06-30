@@ -1210,7 +1210,7 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 	/* Set remaining struct fields with default values */
 	node_info->is_ready = false;
 	node_info->is_visible = false;
-	node_info->xlog_location = InvalidXLogRecPtr;
+	node_info->last_wal_receive_lsn = InvalidXLogRecPtr;
 }
 
 
@@ -1676,7 +1676,6 @@ update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstre
 }
 
 
-
 bool
 delete_node_record(PGconn *conn, int node)
 {
@@ -1703,9 +1702,39 @@ delete_node_record(PGconn *conn, int node)
 	}
 
 	PQclear(res);
-	return true;
 
+	return true;
 }
+
+
+
+void
+clear_node_info_list(NodeInfoList *nodes)
+{
+	NodeInfoListCell *cell;
+	NodeInfoListCell *next_cell;
+
+	/* close any open connections */
+	for (cell = nodes->head; cell; cell = cell->next)
+	{
+		if (cell->node_info->conn != NULL)
+		{
+			PQfinish(cell->node_info->conn);
+			cell->node_info->conn = NULL;
+		}
+	}
+
+	cell = nodes->head;
+
+	while (cell != NULL)
+	{
+		next_cell = cell->next;
+		pfree(cell->node_info);
+		pfree(cell);
+		cell = next_cell;
+	}
+}
+
 
 /* ====================== */
 /* event record functions */
@@ -2289,36 +2318,42 @@ get_voting_status(PGconn *conn)
 }
 
 int
-request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, XLogRecPtr last_wal_receive_lsn)
+request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term)
 {
 	PQExpBufferData	  query;
 	PGresult   *res;
 	int lsn_diff;
 
+	other_node->last_wal_receive_lsn = InvalidXLogRecPtr;
+
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT repmgr.request_vote(%i, '%X/%X'::pg_lsn)",
+					  "SELECT repmgr.request_vote(%i, %i)",
+					  this_node->node_id,
+					  electoral_term);
+/*					  "SELECT repmgr.request_vote(%i, '%X/%X'::pg_lsn)",
 					  this_node->node_id,
 					  (uint32) (last_wal_receive_lsn >> 32),
-					  (uint32) last_wal_receive_lsn);
+					  (uint32) last_wal_receive_lsn);*/
 
 	res = PQexec(conn, query.data);
-
 	termPQExpBuffer(&query);
 
-	// check for NULL
+	/* check for NULL */
 	if (PQgetisnull(res, 0, 0))
 	{
 		log_debug("XXX NULL returned by repmgr.request_vote()");
 		return 0;
 	}
 
-	lsn_diff = atoi(PQgetvalue(res, 0, 0));
-
-	log_debug("XXX lsn_diff %i", lsn_diff);
+	other_node->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 0));
 
 	PQclear(res);
+
+	lsn_diff = this_node->last_wal_receive_lsn - other_node->last_wal_receive_lsn;
+
+	log_debug("XXX lsn_diff %i", lsn_diff);
 
 	/* we're ahead */
 	if (lsn_diff > 0)
@@ -2326,6 +2361,7 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, XLog
 		log_debug("this node is ahead");
 		return 1;
 	}
+
 
 	/* other node is ahead */
 	if (lsn_diff < 0)
@@ -2336,36 +2372,38 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, XLog
 
 	/* tiebreak */
 
-	/* we're higher priority */
-	if (this_node->priority > other_node->priority)
+	/* other node is higher priority */
+	if (this_node->priority < other_node->priority)
 	{
-		log_debug("this node has higher priority");
-		return 1;
+		log_debug("other node has higher priority");
+		return 0;
 	}
 
-	/* still tiebreak - decide by node_id */
-
-	// we're the candidate, so we win
+	/* still tiebreak - we're the candidate, so we win */
 	log_debug("win by default");
 	return 1;
 
 }
 
 
-void
+int
 set_voting_status_initiated(PGconn *conn)
 {
 	PGresult		   *res;
+	int		   		   electoral_term;
 
 	res = PQexec(conn, "SELECT repmgr.set_voting_status_initiated()");
 
+	electoral_term = atoi(PQgetvalue(res, 0, 0));
+
 	PQclear(res);
-	return;
+
+	return electoral_term;
 }
 
 
 bool
-announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node)
+announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term)
 {
 	PQExpBufferData	  query;
 	PGresult   *res;
@@ -2375,8 +2413,9 @@ announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_no
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT repmgr.other_node_is_candidate(%i)",
-					  this_node->node_id);
+					  "SELECT repmgr.other_node_is_candidate(%i, %i)",
+					  this_node->node_id,
+					  electoral_term);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);

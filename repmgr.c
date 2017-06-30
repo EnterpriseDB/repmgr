@@ -48,6 +48,7 @@ typedef struct repmgrdSharedState
 	LWLockId	lock;			/* protects search/modification */
 	NodeState	node_state;
 	NodeVotingStatus voting_status;
+	int current_electoral_term;
 	int candidate_node_id;
 }	repmgrdSharedState;
 
@@ -144,6 +145,7 @@ repmgr_shmem_startup(void)
 
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
+		shared_state->current_electoral_term = 0;
 	}
 
 	LWLockRelease(AddinShmemInitLock);
@@ -153,59 +155,63 @@ repmgr_shmem_startup(void)
 Datum
 request_vote(PG_FUNCTION_ARGS)
 {
+	StringInfoData	query;
+	XLogRecPtr our_lsn = InvalidXLogRecPtr;
+
 	/* node_id used for logging purposes */
 	int requesting_node_id = PG_GETARG_INT32(0);
-	XLogRecPtr requesting_node_last_lsn = PG_GETARG_LSN(1);
-	StringInfoData	query;
+	int current_electoral_term = PG_GETARG_INT32(1);
 
 	int		ret;
 	bool	isnull;
 
-	int lsn_diff;
-
-	NodeVotingStatus voting_status;
-
 	LWLockAcquire(shared_state->lock, LW_SHARED);
-	voting_status = shared_state->voting_status;
-	LWLockRelease(shared_state->lock);
+
+	// keep lock until end of function?
 
 	/* this node has initiated voting or already responded to another node */
-	if (voting_status != VS_NO_VOTE)
-		PG_RETURN_NULL();
+	if (shared_state->voting_status != VS_NO_VOTE)
+	{
+		LWLockRelease(shared_state->lock);
 
-	elog(INFO, "id is %i, lsn: %X/%X",
-		 requesting_node_id,
-		 (uint32) (requesting_node_last_lsn >> 32),
-		 (uint32) requesting_node_last_lsn);
+		PG_RETURN_NULL();
+	}
+
+
+	elog(INFO, "requesting node id is %i", requesting_node_id);
 
 	SPI_connect();
 
 	initStringInfo(&query);
 	appendStringInfo(
 		&query,
-		"SELECT ('%X/%X'::pg_lsn - pg_catalog.pg_last_wal_receive_lsn()::pg_lsn)::INT",
-		(uint32) (requesting_node_last_lsn >> 32),
-		(uint32) requesting_node_last_lsn);
+		"SELECT pg_catalog.pg_last_wal_receive_lsn()"
+		);
 
 	elog(INFO, "query: %s", query.data);
 	ret = SPI_execute(query.data, true, 0);
 
 	// xxx handle errors
-	lsn_diff = DatumGetInt32(SPI_getbinval(SPI_tuptable->vals[0],
-										   SPI_tuptable->tupdesc,
-										   1, &isnull));
+	our_lsn = DatumGetLSN(SPI_getbinval(SPI_tuptable->vals[0],
+										SPI_tuptable->tupdesc,
+										1, &isnull));
 
-	elog(INFO, "XXX diff is %i",
-		 lsn_diff);
+
+	elog(INFO, "Our LSN is  %X/%X",
+		 (uint32) (our_lsn >> 32),
+		 (uint32) our_lsn);
 
    	SPI_finish();
 
 	/* indicate this node has responded to a vote request */
-	LWLockAcquire(shared_state->lock, LW_SHARED);
 	shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
+	shared_state->current_electoral_term += 1;
+
 	LWLockRelease(shared_state->lock);
 
-	PG_RETURN_INT32(lsn_diff);
+	// should we free "query" here?
+
+	PG_RETURN_LSN(our_lsn);
 }
 
 
@@ -225,26 +231,35 @@ get_voting_status(PG_FUNCTION_ARGS)
 Datum
 set_voting_status_initiated(PG_FUNCTION_ARGS)
 {
+	int electoral_term;
+
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 	shared_state->voting_status = VS_VOTE_INITIATED;
+	shared_state->current_electoral_term += 1;
+
+	electoral_term = shared_state->current_electoral_term;
 	LWLockRelease(shared_state->lock);
 
-	PG_RETURN_VOID();
+	PG_RETURN_INT32(electoral_term);
 }
 
 Datum
 other_node_is_candidate(PG_FUNCTION_ARGS)
 {
 	int  requesting_node_id = PG_GETARG_INT32(0);
+	int  electoral_term = PG_GETARG_INT32(1);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
-	if (shared_state->candidate_node_id != UNKNOWN_NODE_ID)
+	if (shared_state->current_electoral_term == electoral_term)
 	{
-		elog(INFO, "node %i requesting candidature, but node %i already candidate",
-				  requesting_node_id,
-				  shared_state->candidate_node_id);
-		PG_RETURN_BOOL(false);
+		if (shared_state->candidate_node_id != UNKNOWN_NODE_ID)
+		{
+			elog(INFO, "node %i requesting candidature, but node %i already candidate",
+				 requesting_node_id,
+				 shared_state->candidate_node_id);
+			PG_RETURN_BOOL(false);
+		}
 	}
 
 	shared_state->candidate_node_id = requesting_node_id;

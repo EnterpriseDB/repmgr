@@ -36,11 +36,10 @@ LEFT JOIN nodes un
 
 /* repmgrd functions */
 
-CREATE FUNCTION request_vote(INT, pg_lsn)
-  RETURNS INT
+CREATE FUNCTION request_vote(INT,INT)
+  RETURNS pg_lsn
   AS '$libdir/repmgr', 'request_vote'
   LANGUAGE C STRICT;
-
 
 CREATE FUNCTION get_voting_status()
   RETURNS INT
@@ -48,11 +47,11 @@ CREATE FUNCTION get_voting_status()
   LANGUAGE C STRICT;
 
 CREATE FUNCTION set_voting_status_initiated()
-  RETURNS VOID
+  RETURNS INT
   AS '$libdir/repmgr', 'set_voting_status_initiated'
   LANGUAGE C STRICT;
 
-CREATE FUNCTION other_node_is_candidate(INT)
+CREATE FUNCTION other_node_is_candidate(INT, INT)
   RETURNS BOOL
   AS '$libdir/repmgr', 'other_node_is_candidate'
   LANGUAGE C STRICT;

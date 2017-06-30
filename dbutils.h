@@ -4,8 +4,6 @@
  * Copyright (c) 2ndQuadrant, 2010-2017
  */
 
-
-
 #ifndef _REPMGR_DBUTILS_H_
 #define _REPMGR_DBUTILS_H_
 
@@ -63,7 +61,7 @@ typedef struct s_node_info
 	/* used during failover to track node status */
 	bool		  is_ready;
 	bool		  is_visible;
-	XLogRecPtr	  xlog_location;
+	XLogRecPtr	  last_wal_receive_lsn;
 	PGconn		 *conn;
 }	t_node_info;
 
@@ -225,7 +223,7 @@ bool		delete_node_record(PGconn *conn, int node);
 bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
 bool        update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
 
-
+void        clear_node_info_list(NodeInfoList *nodes);
 
 /* event record functions */
 bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
@@ -246,9 +244,9 @@ bool		is_server_available(const char *conninfo);
 
 /* node voting functions */
 NodeVotingStatus get_voting_status(PGconn *conn);
-int	request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, XLogRecPtr last_wal_receive_lsn);
-void set_voting_status_initiated(PGconn *conn);
-bool announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node);
+int	request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
+int set_voting_status_initiated(PGconn *conn);
+bool announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
 
 /* replication status functions */
 

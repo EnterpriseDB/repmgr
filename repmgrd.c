@@ -22,6 +22,12 @@ typedef enum {
 	NODE_STATUS_DOWN
 } NodeStatus;
 
+typedef enum {
+	ELECTION_NOT_CANDIDATE = -1,
+	ELECTION_WON,
+	ELECTION_LOST
+} ElectionResult;
+
 
 static char	   *config_file = NULL;
 static bool		verbose = false;
@@ -36,6 +42,8 @@ static PGconn	   *local_conn = NULL;
 static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
 static PGconn *upstream_conn = NULL;
 static PGconn *primary_conn = NULL;
+
+static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 /* Collate command line errors here for friendlier reporting */
 static ItemList	cli_errors = { NULL, NULL };
@@ -64,7 +72,9 @@ static void handle_sigint(SIGNAL_ARGS);
 #endif
 
 static PGconn *try_reconnect(const char *conninfo, NodeStatus *node_status);
-static NodeVotingStatus do_election(void);
+static ElectionResult do_election(void);
+static const char *_print_voting_status(NodeVotingStatus voting_status);
+static const char *_print_election_result(ElectionResult result);
 
 static void close_connections();
 static void terminate(int retval);
@@ -534,38 +544,29 @@ monitor_streaming_standby(void)
 				/* still down after reconnect attempt(s) - */
 				if (upstream_node_status == NODE_STATUS_DOWN)
 				{
-					NodeVotingStatus voting_status = do_election();
-
-					switch(voting_status)
-					{
-						case VS_NO_VOTE:
-							log_info("NO VOTE");
-							break;
-						case VS_VOTE_REQUEST_RECEIVED:
-							log_info("VOTE REQUEST RECEIVED");
-							break;
-						case VS_VOTE_INITIATED:
-							log_info("VOTE REQUEST INITIATED");
-							break;
-
-						case VS_VOTE_WON:
-							log_info("VOTE REQUEST WON");
-							break;
-						case VS_VOTE_LOST:
-							log_info("VOTE REQUEST LOST");
-							break;
-
-						case VS_UNKNOWN:
-							log_info("VOTE REQUEST UNKNOWN");
-							break;
-					}
-
 					// begin voting process
 
-					// if VS_PROMOTION_CANDIDATE
+					ElectionResult election_result = do_election();
+
+					log_debug("election result:  %s", _print_election_result(election_result));
+
+					if (election_result == ELECTION_WON)
+					{
+						log_info("I am the winner, will now promote self and inform other nodes");
+					}
+					else if (election_result == ELECTION_LOST)
+					{
+						log_info("I am the candidate but did not get all votes; will now determine the best candidate");
+					}
+					else
+					{
+						log_info("I am a follower and am waiting to be informed by the winner");
+					}
+					// if ELECTION_WON
 					//   promote self, notify nodes
 
-					// else if VS_VOTE_REQUEST_RECEIVED, look for new primary and follow if necessary
+					// else if ELECTION_NOT_CANDIDATE, wait for new primary notification
+					//   --> need timeout in case new primary doesn't come up, then rerun election
 				}
 
 			}
@@ -576,52 +577,103 @@ monitor_streaming_standby(void)
 	}
 }
 
+
+static const char *
+_print_voting_status(NodeVotingStatus voting_status)
+{
+	switch(voting_status)
+	{
+		case VS_NO_VOTE:
+			return "NO VOTE";
+
+		case VS_VOTE_REQUEST_RECEIVED:
+			return "VOTE REQUEST RECEIVED";
+
+		case VS_VOTE_INITIATED:
+			return "VOTE REQUEST INITIATED";
+
+		case VS_UNKNOWN:
+			return "VOTE REQUEST UNKNOWN";
+	}
+
+	return "UNKNOWN VOTE REQUEST STATE";
+}
+
+static const char *
+_print_election_result(ElectionResult result)
+{
+	switch(result)
+	{
+		case ELECTION_NOT_CANDIDATE:
+			return "NOT CANDIDATE";
+
+		case ELECTION_WON:
+			return "WON";
+
+		case ELECTION_LOST:
+			return "LOST";
+	}
+
+	/* should never reach here */
+	return "UNKNOWN";
+}
+
+
+
 // store lsndiffs, in the event we're not the best node,
 // i.e. don't get all the votes, we pass the baton to the best node
-static NodeVotingStatus
+static ElectionResult
 do_election(void)
 {
+	int electoral_term = -1;
+
 //	int total_eligible_nodes = 0;
 	int votes_for_me = 0;
 
 	/* we're visible */
 	int visible_nodes = 1;
 
-	XLogRecPtr last_wal_receive_lsn = InvalidXLogRecPtr;
 
 	// get voting status from shared memory
 	// should be "VS_NO_VOTE" or "VS_VOTE_REQUEST_RECEIVED"
 	// if VS_NO_VOTE, initiate voting process
 	NodeVotingStatus voting_status;
 
-	NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell;
-
-	long unsigned rand_wait = (long) ((rand() % 50) + 10) * 10000;
 
 	bool other_node_is_candidate = false;
 
-	log_debug("do_election(): sleeping %li", rand_wait);
+	/* sleep for a random period of 100 ~ 500 ms
+	 * XXX adjust this downwards if feasible
+	 */
+
+	long unsigned rand_wait = (long) ((rand() % 50) + 10) * 10000;
+
+	log_debug("do_election(): sleeping %lu", rand_wait);
 
 	pg_usleep(rand_wait);
 
+	local_node_info.last_wal_receive_lsn = InvalidXLogRecPtr;
 
+	log_debug("do_election(): executing get_voting_status()");
 	voting_status = get_voting_status(local_conn);
-	log_debug("do_election(): node voting status is %i", (int)voting_status);
+	log_debug("do_election(): node voting status is %s", _print_voting_status(voting_status));
 
 	if (voting_status == VS_VOTE_REQUEST_RECEIVED)
 	{
 		log_debug("vote request already received, not candidate");
 		/* we've already been requested to vote, so can't become a candidate */
-		return voting_status;
+		return ELECTION_NOT_CANDIDATE;
 	}
 
-	// XXX should we mark ourselves as candidate?
-	//  -> so any further vote requests are rejected?
-	set_voting_status_initiated(local_conn);
+	//  mark ourselves as candidate
+	//  -> so any further vote requests are rejected
+	electoral_term = set_voting_status_initiated(local_conn);
 
 	/* get all active nodes attached to primary, excluding self */
 	// XXX include barman node in results
+
+	clear_node_info_list(&standby_nodes);
 
 	get_active_sibling_node_records(local_conn,
 									local_node_info.node_id,
@@ -633,7 +685,7 @@ do_election(void)
 	if (standby_nodes.node_count == 0)
 	{
 		log_debug("no other nodes - we win by default");
-		return VS_VOTE_WON;
+		return ELECTION_WON;
 	}
 
 	for (cell = standby_nodes.head; cell; cell = cell->next)
@@ -649,10 +701,20 @@ do_election(void)
 			continue;
 		}
 
-		if (announce_candidature(cell->node_info->conn, &local_node_info, cell->node_info) == false)
+		/*
+		 * tell the other node we're candidate - if the node has already declared
+		 * itself, we withdraw
+		 *
+		 * XXX check for situations where more than one node could end up as candidate?
+		 */
+		// other node:  if not candidate in this term, reset state (but don't bump term)
+		if (announce_candidature(cell->node_info->conn, &local_node_info, cell->node_info, electoral_term) == false)
 		{
 			log_debug("node %i is candidate",  cell->node_info->node_id);
 			other_node_is_candidate = true;
+
+			/* don't perform any more checks */
+			break;
 		}
 
 		cell->node_info->is_visible = true;
@@ -661,6 +723,10 @@ do_election(void)
 
 	if (other_node_is_candidate == true)
 	{
+		clear_node_info_list(&standby_nodes);
+
+		// XXX do this
+		// unset_voting_status_initiated(local_conn);
 		return VS_NO_VOTE;
 	}
 
@@ -668,26 +734,31 @@ do_election(void)
 
 	/* check again if we've been asked to vote */
 
-if (0)
-{
-	voting_status = get_voting_status(local_conn);
-	log_debug("do_election(): node voting status is %i", (int)voting_status);
-
-
-	if (voting_status == VS_VOTE_REQUEST_RECEIVED)
+	if (0)
 	{
-		/* we've already been requested to vote, so can't become a candidate */
-		return voting_status;
+		voting_status = get_voting_status(local_conn);
+		log_debug("do_election(): node voting status is %i", (int)voting_status);
+
+
+		if (voting_status == VS_VOTE_REQUEST_RECEIVED)
+		{
+			/* we've already been requested to vote, so can't become a candidate */
+			return voting_status;
+		}
 	}
-}
 
 	/* current node votes for itself by default */
+	// XXX check returned LSNs, if one is higher than ours, don't vote for ourselves
+	// either
+
 	votes_for_me += 1;
 
-	/* get our lsn*/
-	last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
+	/* get our lsn */
+	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
 
-	log_debug("LAST receive lsn = %X/%X", (uint32) (last_wal_receive_lsn >> 32), (uint32) last_wal_receive_lsn);
+	log_debug("LAST receive lsn = %X/%X",
+			  (uint32) (local_node_info.last_wal_receive_lsn >> 32),
+			  (uint32)  local_node_info.last_wal_receive_lsn);
 	/* request vote */
 
 	for (cell = standby_nodes.head; cell; cell = cell->next)
@@ -699,7 +770,7 @@ if (0)
 		votes_for_me += request_vote(cell->node_info->conn,
 									 &local_node_info,
 									 cell->node_info,
-									 last_wal_receive_lsn);
+									 electoral_term);
 
 		PQfinish(cell->node_info->conn);
 		cell->node_info->conn = NULL;
@@ -708,9 +779,9 @@ if (0)
 	log_notice(_("%i of of %i votes"), votes_for_me, visible_nodes);
 
 	if (votes_for_me == visible_nodes)
-		return VS_VOTE_WON;
+		return ELECTION_WON;
 
-	return VS_VOTE_LOST;
+	return ELECTION_LOST;
 }
 
 static void
@@ -913,7 +984,7 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 	int i;
 
 	// XXX make this all configurable
-	int max_attempts = 10;
+	int max_attempts = 5;
 
 	for (i = 0; i < max_attempts; i++)
 	{
