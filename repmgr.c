@@ -170,7 +170,8 @@ request_vote(PG_FUNCTION_ARGS)
 	// keep lock until end of function?
 
 	/* this node has initiated voting or already responded to another node */
-	if (shared_state->voting_status != VS_NO_VOTE)
+	if (current_electoral_term  == shared_state->current_electoral_term
+		&& shared_state->voting_status != VS_NO_VOTE)
 	{
 		LWLockRelease(shared_state->lock);
 
@@ -178,7 +179,9 @@ request_vote(PG_FUNCTION_ARGS)
 	}
 
 
-	elog(INFO, "requesting node id is %i", requesting_node_id);
+	elog(INFO, "requesting node id is %i for electoral term %i (our term: %i)",
+		 requesting_node_id, current_electoral_term,
+		 shared_state->current_electoral_term);
 
 	SPI_connect();
 
@@ -205,7 +208,7 @@ request_vote(PG_FUNCTION_ARGS)
 
 	/* indicate this node has responded to a vote request */
 	shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
-	shared_state->current_electoral_term += 1;
+	shared_state->current_electoral_term = current_electoral_term;
 
 	LWLockRelease(shared_state->lock);
 
@@ -239,6 +242,8 @@ set_voting_status_initiated(PG_FUNCTION_ARGS)
 
 	electoral_term = shared_state->current_electoral_term;
 	LWLockRelease(shared_state->lock);
+
+	elog(INFO, "setting voting term to %i", electoral_term);
 
 	PG_RETURN_INT32(electoral_term);
 }
