@@ -2429,6 +2429,60 @@ announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_no
 	return retval;
 }
 
+void
+notify_follow_primary(PGconn *conn, int primary_node_id)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT repmgr.notify_follow_primary(%i)",
+					  primary_node_id);
+
+	// XXX handle failure
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	PQclear(res);
+	return;
+}
+
+
+bool
+get_new_primary(PGconn *conn, int *primary_node_id)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	int new_primary_node_id;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT repmgr.get_new_primary()");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+	// XXX handle error
+
+	new_primary_node_id = atoi(PQgetvalue(res, 0, 0));
+
+	if (new_primary_node_id == UNKNOWN_NODE_ID)
+	{
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+
+	*primary_node_id = new_primary_node_id;
+
+	return true;
+}
+
+
 /* ============================ */
 /* replication status functions */
 /* ============================ */

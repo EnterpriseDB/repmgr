@@ -55,3 +55,13 @@ CREATE FUNCTION other_node_is_candidate(INT, INT)
   RETURNS BOOL
   AS '$libdir/repmgr', 'other_node_is_candidate'
   LANGUAGE C STRICT;
+
+CREATE FUNCTION notify_follow_primary(INT)
+  RETURNS VOID
+  AS '$libdir/repmgr', 'notify_follow_primary'
+  LANGUAGE C STRICT;
+
+CREATE FUNCTION get_new_primary()
+  RETURNS INT
+  AS '$libdir/repmgr', 'get_new_primary'
+  LANGUAGE C STRICT;

@@ -32,7 +32,6 @@
 
 #define UNKNOWN_NODE_ID		-1
 
-#define MAXFNAMELEN		64
 #define TRANCHE_NAME "repmgrd"
 
 PG_MODULE_MAGIC;
@@ -50,6 +49,7 @@ typedef struct repmgrdSharedState
 	NodeVotingStatus voting_status;
 	int current_electoral_term;
 	int candidate_node_id;
+	bool follow_new_primary;
 }	repmgrdSharedState;
 
 static repmgrdSharedState *shared_state = NULL;
@@ -71,8 +71,16 @@ PG_FUNCTION_INFO_V1(get_voting_status);
 Datum		set_voting_status_initiated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(set_voting_status_initiated);
 
-Datum other_node_is_candidate(PG_FUNCTION_ARGS);
+Datum		other_node_is_candidate(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(other_node_is_candidate);
+
+Datum		notify_follow_primary(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(notify_follow_primary);
+
+Datum		get_new_primary(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(get_new_primary);
+
+
 /*
  * Module load callback
  */
@@ -146,6 +154,7 @@ repmgr_shmem_startup(void)
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 		shared_state->current_electoral_term = 0;
+		shared_state->follow_new_primary = false;
 	}
 
 	LWLockRelease(AddinShmemInitLock);
@@ -168,8 +177,9 @@ request_vote(PG_FUNCTION_ARGS)
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	/* this node has initiated voting or already responded to another node */
-	if (current_electoral_term  == shared_state->current_electoral_term
-		&& shared_state->voting_status != VS_NO_VOTE)
+//	if (current_electoral_term  == shared_state->current_electoral_term
+//		&& shared_state->voting_status != VS_NO_VOTE)
+	if (shared_state->voting_status != VS_NO_VOTE)
 	{
 		LWLockRelease(shared_state->lock);
 
@@ -269,4 +279,35 @@ other_node_is_candidate(PG_FUNCTION_ARGS)
 
 	elog(INFO, "node %i is candidate", requesting_node_id);
 	PG_RETURN_BOOL(true);
+}
+
+Datum
+notify_follow_primary(PG_FUNCTION_ARGS)
+{
+	int primary_node_id = PG_GETARG_INT32(0);
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+
+	/* Explicitly set the primary node id */
+	shared_state->candidate_node_id = primary_node_id;
+	shared_state->follow_new_primary = true;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_VOID();
+}
+
+
+Datum
+get_new_primary(PG_FUNCTION_ARGS)
+{
+	int new_primary_node_id = UNKNOWN_NODE_ID;
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+
+	if (shared_state->follow_new_primary == true)
+		new_primary_node_id = shared_state->candidate_node_id;
+
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_INT32(new_primary_node_id);
 }

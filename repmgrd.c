@@ -28,7 +28,8 @@ typedef enum {
 	FAILOVER_STATE_PROMOTED,
 	FAILOVER_STATE_PROMOTION_FAILED,
 	FAILOVER_STATE_PRIMARY_REAPPEARED,
-	FAILOVER_STATE_LOCAL_NODE_FAILURE
+	FAILOVER_STATE_LOCAL_NODE_FAILURE,
+	FAILOVER_STATE_WAITING_NEW_PRIMARY
 	// FOLLOWED_NEW_PRIMARY
 	// FOLLOW_WAIT_TIMEOUT
 } FailoverState;
@@ -90,6 +91,8 @@ static const char *_print_voting_status(NodeVotingStatus voting_status);
 static const char *_print_election_result(ElectionResult result);
 
 static FailoverState promote_self(void);
+static void wait_primary_notification(void);
+static void notify_followers(NodeInfoList *standby_nodes);
 
 static void close_connections();
 static void terminate(int retval);
@@ -579,14 +582,27 @@ monitor_streaming_standby(void)
 						//   --> need timeout in case new primary doesn't come up, then rerun election
 
 						log_info("I am a follower and am waiting to be informed by the winner");
+						failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
 					}
 
 					switch(failover_state)
 					{
 						case FAILOVER_STATE_PROMOTED:
-							// inform nodes
-							// pass control back down and start primary monitoring
-							break;
+							/* inform former siblings that we are Number 1 */
+
+							notify_followers(&standby_nodes);
+							/* we no longer care about our former siblings */
+							clear_node_info_list(&standby_nodes);
+
+							/* pass control back down to start_monitoring() */
+							log_info(_("switching to primary monitoring mode"));
+
+							return;
+						case FAILOVER_STATE_WAITING_NEW_PRIMARY:
+							/* either follow or time out; either way resume monitoring */
+							wait_primary_notification();
+							/* pass control back down to start_monitoring() */
+							return;
 						case FAILOVER_STATE_PROMOTION_FAILED:
 						case FAILOVER_STATE_PRIMARY_REAPPEARED:
 						case FAILOVER_STATE_LOCAL_NODE_FAILURE:
@@ -644,7 +660,7 @@ promote_self(void)
 			// XXX handle this
 			return FAILOVER_STATE_LOCAL_NODE_FAILURE;
 		}
-	}
+}
 
 	if (r != 0)
 	{
@@ -699,6 +715,52 @@ promote_self(void)
 	}
 
 	return FAILOVER_STATE_PROMOTED;
+}
+
+static void
+wait_primary_notification(void)
+{
+	// XXX make this configurable
+	int wait_primary_timeout = 60;
+	int i;
+	int new_primary_id;
+
+	for (i = 0; i < wait_primary_timeout; i++)
+	{
+		if (get_new_primary(local_conn, &new_primary_id) == true)
+		{
+			log_debug("XXX new primary is %i", new_primary_id);
+			//return;
+		}
+		sleep(1);
+	}
+}
+
+
+static void
+notify_followers(NodeInfoList *standby_nodes)
+{
+	NodeInfoListCell *cell;
+
+	for (cell = standby_nodes->head; cell; cell = cell->next)
+	{
+		log_debug("intending to notify %i... ", cell->node_info->node_id);
+		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
+		{
+			log_debug("connection to  %i lost... ", cell->node_info->node_id);
+
+			cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
+		}
+
+		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
+		{
+			log_debug("unable to reconnect to  %i ... ", cell->node_info->node_id);
+
+			continue;
+		}
+		log_debug("notifying node %i to follow new primary", cell->node_info->node_id);
+		notify_follow_primary(cell->node_info->conn, local_node_info.node_id);
+	}
 }
 
 
