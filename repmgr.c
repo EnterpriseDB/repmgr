@@ -167,8 +167,6 @@ request_vote(PG_FUNCTION_ARGS)
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
-	// keep lock until end of function?
-
 	/* this node has initiated voting or already responded to another node */
 	if (current_electoral_term  == shared_state->current_electoral_term
 		&& shared_state->voting_status != VS_NO_VOTE)
@@ -188,19 +186,18 @@ request_vote(PG_FUNCTION_ARGS)
 	initStringInfo(&query);
 	appendStringInfo(
 		&query,
-		"SELECT pg_catalog.pg_last_wal_receive_lsn()"
-		);
+		"SELECT pg_catalog.pg_last_wal_receive_lsn()");
 
 	elog(INFO, "query: %s", query.data);
 	ret = SPI_execute(query.data, true, 0);
 
-	// xxx handle errors
+	// XXX handle errors
 	our_lsn = DatumGetLSN(SPI_getbinval(SPI_tuptable->vals[0],
 										SPI_tuptable->tupdesc,
 										1, &isnull));
 
 
-	elog(INFO, "Our LSN is  %X/%X",
+	elog(INFO, "Our LSN is %X/%X",
 		 (uint32) (our_lsn >> 32),
 		 (uint32) our_lsn);
 

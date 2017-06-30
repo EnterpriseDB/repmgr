@@ -43,6 +43,7 @@ static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
 static PGconn *upstream_conn = NULL;
 static PGconn *primary_conn = NULL;
 
+
 static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 /* Collate command line errors here for friendlier reporting */
@@ -75,6 +76,8 @@ static PGconn *try_reconnect(const char *conninfo, NodeStatus *node_status);
 static ElectionResult do_election(void);
 static const char *_print_voting_status(NodeVotingStatus voting_status);
 static const char *_print_election_result(ElectionResult result);
+
+static void promote_self(void);
 
 static void close_connections();
 static void terminate(int retval);
@@ -306,7 +309,7 @@ main(int argc, char **argv)
 	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("no metadata record found for this node - terminating"));
-		log_hint(_("Check that 'repmgr (primary|standby) register' was executed for this node"));
+		log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
 
 		PQfinish(local_conn);
 		terminate(ERR_BAD_CONFIG);
@@ -348,7 +351,6 @@ main(int argc, char **argv)
         }
     }
 
-
 	if (config_file_options.failover_mode == FAILOVER_AUTOMATIC)
 	{
 		/*
@@ -377,6 +379,7 @@ main(int argc, char **argv)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
+
 
 	if (daemonize == true)
 	{
@@ -491,7 +494,6 @@ monitor_streaming_primary(void)
 static void
 monitor_streaming_standby(void)
 {
-
 	NodeStatus upstream_node_status = NODE_STATUS_UP;
 
 	// check result
@@ -544,7 +546,7 @@ monitor_streaming_standby(void)
 				/* still down after reconnect attempt(s) - */
 				if (upstream_node_status == NODE_STATUS_DOWN)
 				{
-					// begin voting process
+					/* attempt to initiate voting process */
 
 					ElectionResult election_result = do_election();
 
@@ -552,7 +554,9 @@ monitor_streaming_standby(void)
 
 					if (election_result == ELECTION_WON)
 					{
-						log_info("I am the winner, will now promote self and inform other nodes");
+						log_notice("I am the winner, will now promote self and inform other nodes");
+
+						promote_self();
 					}
 					else if (election_result == ELECTION_LOST)
 					{
@@ -560,13 +564,10 @@ monitor_streaming_standby(void)
 					}
 					else
 					{
+						//   --> need timeout in case new primary doesn't come up, then rerun election
+
 						log_info("I am a follower and am waiting to be informed by the winner");
 					}
-					// if ELECTION_WON
-					//   promote self, notify nodes
-
-					// else if ELECTION_NOT_CANDIDATE, wait for new primary notification
-					//   --> need timeout in case new primary doesn't come up, then rerun election
 				}
 
 			}
@@ -574,6 +575,100 @@ monitor_streaming_standby(void)
 
 	loop:
 		sleep(1);
+	}
+}
+
+static void
+promote_self(void)
+{
+	char *promote_command;
+	int r;
+
+	/* Store details of the failed node here */
+	t_node_info failed_primary = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status;
+
+	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
+	// XXX check success
+
+	/* the presence of either of these commands has been established already */
+	if (config_file_options.service_promote_command[0] != '\0')
+		promote_command = config_file_options.service_promote_command;
+	else
+		promote_command = config_file_options.promote_command;
+
+	log_debug("promote command is:\n  \"%s\"",
+			  promote_command);
+
+	if (log_type == REPMGR_STDERR && *config_file_options.logfile)
+	{
+		fflush(stderr);
+	}
+
+	r = system(promote_command);
+
+	/* connection should stay up, but check just in case */
+	if(PQstatus(local_conn) != CONNECTION_OK)
+	{
+		local_conn = establish_db_connection(local_node_info.conninfo, true);
+
+		/* assume node failed */
+		if(PQstatus(local_conn) != CONNECTION_OK)
+		{
+			log_error(_("unable to reconnect to local node"));
+			// XXX handle this
+			return;
+		}
+	}
+
+	if (r != 0)
+	{
+		int primary_node_id;
+
+		primary_conn = get_primary_connection(local_conn,
+											  &primary_node_id, NULL);
+
+		if (primary_conn != NULL && primary_node_id == failed_primary.node_id)
+		{
+			log_notice(_("original primary reappeared before this standby was promoted - no action taken"));
+
+			/* XXX log an event here?  */
+
+			PQfinish(primary_conn);
+			primary_conn = NULL;
+
+			// XXX handle this!
+			// -> we'll need to let the other nodes know too....
+			/* no failover occurred but we'll want to restart connections */
+			//failover_done = true;
+			return;
+		}
+
+		// handle this
+		//  -> check if somehow primary; otherwise go for new election?
+		log_error(_("promote command failed"));
+	}
+	else
+	{
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
+
+		/* update own internal node record */
+		record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
+
+		// XXX we're assuming the promote command updated metadata
+		appendPQExpBuffer(&event_details,
+						  _("node %i promoted to primary; old primary %i marked as failed"),
+						  local_node_info.node_id,
+						  failed_primary.node_id);
+		/* my_local_conn is now the master */
+		create_event_record(local_conn,
+							&config_file_options,
+							local_node_info.node_id,
+							"repmgrd_failover_promote",
+							true,
+							event_details.data);
+		termPQExpBuffer(&event_details);
 	}
 }
 
