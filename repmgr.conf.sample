@@ -1,0 +1,210 @@
+###################################################
+# repmgr sample configuration file
+###################################################
+
+# Some configuration items will be set with a default value; this
+# is noted for each item. Where no default value is shown, the
+# parameter will be treated as empty or false.
+
+# =============================================================================
+# Required configuration items
+# =============================================================================
+#
+# repmgr and repmgrd require the following items to be configured.
+
+
+#node_id=1                              # A unique integer greater than zero
+#node_name=''                           # An arbitrary (but unique) string; we recommend
+                                        # using the server's hostname or another identifier
+                                        # unambiguously associated with the server to avoid
+                                        # confusion. Avoid choosing names which reflect the
+                                        # node's current role, e.g. "primary" or "standby1",
+                                        # as roles can change and it will be confusing if
+                                        # the current primary is called "standby1".
+
+#conninfo=''                            # Database connection information as a conninfo string.
+                                        # All servers in the cluster must be able to connect to
+                                        # the local node using this string.
+                                        #
+                                        # For details on conninfo strings, see:
+                                        #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+                                        # If repmgrd is in use, consider explicitly setting
+                                        # "connect_timeout" in the conninfo string to determine
+                                        # the length of time which elapses before a network
+                                        # connection attempt is abandoned; for details see:
+                                        #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
+
+
+# =============================================================================
+
+# Optional configuration items
+# =============================================================================
+
+#------------------------------------------------------------------------------
+# Replication settings
+#------------------------------------------------------------------------------
+
+
+#upstream_node_id=1                     # When using cascading replication, a standby
+                                        # can connect to another upstream standby node
+                                        # which is specified by setting 'upstream_node_id'.
+                                        # In that case, the upstream node must exist
+                                        # before the new standby can be registered. If
+                                        # 'upstream_node_id' is not set, then the standby
+                                        # will connect directly to the primary node.
+
+
+#use_replication_slots=no               # whether to use physical replication slots
+                                        # NOTE: when using replication slots,
+                                        # 'max_replication_slots' should be configured for
+                                        # at least the number of standbys which will connect
+                                        # to the primary.
+
+#------------------------------------------------------------------------------
+# Logging settings
+#------------------------------------------------------------------------------
+#
+# Note that logging facility settings will only apply to `repmgrd` by default;
+# `repmgr` will always write to STDERR unless the switch `--log-to-file` is
+# supplied, in which case it will log to the same destination as `repmgrd`.
+# This is mainly intended for those cases when `repmgr` is executed directly
+# by `repmgrd`.
+
+#loglevel=NOTICE                         # Log level: possible values are DEBUG, INFO, NOTICE,
+                                         # WARNING, ERROR, ALERT, CRIT or EMERG
+
+#logfacility=STDERR                      # Logging facility: possible values are STDERR or - for
+                                         # Syslog integration - one of LOCAL0, LOCAL1, ..., LOCAL7, USER
+
+#logfile=''                              # stderr can be redirected to an arbitrary file:
+
+#------------------------------------------------------------------------------
+# Event notification settings
+#------------------------------------------------------------------------------
+
+# event notifications can be passed to an arbitrary external program
+# together with the following parameters:
+#
+#   %n - node ID
+#   %e - event type
+#   %s - success (1 or 0)
+#   %t - timestamp
+#   %d - details
+#
+# the values provided for "%t" and "%d" will probably contain spaces,
+# so should be quoted in the provided command configuration, e.g.:
+#
+#   event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
+#
+# By default, all notifications will be passed; the notification types
+# can be filtered to explicitly named ones, e.g.:
+#
+#   event_notifications=master_register,standby_register,witness_create
+
+#event_notification_command=''           # An external program or script which
+                                         # can be executed by the user under which
+                                         # repmgr/repmgrd are run.
+
+#event_notifications=''                  # A commas-separated list of notification
+                                         # types
+
+#------------------------------------------------------------------------------
+# Environment/command settings
+#------------------------------------------------------------------------------
+
+#pg_bindir=''                            # Path to PostgreSQL binary directory (location
+                                         # of pg_ctl, pg_basebackup etc.). Only needed
+                                         # if these files are not in the system $PATH.
+                                         #
+                                         # Debian/Ubuntu users: you will probably need to
+                                         # set this to the directory where `pg_ctl` is located,
+                                         # e.g. /usr/lib/postgresql/9.6/bin/
+
+
+#------------------------------------------------------------------------------
+# external command options
+#------------------------------------------------------------------------------
+#
+# Options which can be passed to external commands invoked by repmgr/repmgrd.
+#
+# Examples:
+#
+#   pg_ctl_options='-s'
+#   pg_basebackup_options='--label=repmgr_backup
+#   rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
+#   ssh_options=-o "StrictHostKeyChecking no"
+
+pg_ctl_options=''                         # Options to append to "pg_ctl"
+pg_basebackup_options=''                  # Options to append to "pg_basebackup"
+rsync_options=''                          # Options to append to "rsync"
+ssh_options=''                            # Options to append to "ssh"
+
+
+
+
+#------------------------------------------------------------------------------
+# Standby clone settings
+#------------------------------------------------------------------------------
+#
+# These settings apply when cloning a standby ("repmgr standby clone").
+#
+# Examples:
+#
+#   tablespace_mapping=/path/to/original/tablespace=/path/to/new/tablespace
+#   restore_command = 'cp /path/to/archived/wals/%f %p'
+
+#tablespace_mapping=''                   # Tablespaces can be remapped from one
+                                         # file system location to another
+
+#restore_command=''                      # This will be placed in the recovery.conf
+                                         # file generated by repmgr
+
+
+#------------------------------------------------------------------------------
+# Barman options
+#------------------------------------------------------------------------------
+
+#barman_server=''                       # The barman configuration section
+#barman_host=''                         # The host name of the barman server
+#barman_config=''                       # The Barman configuration file on the
+                                        # Barman server (needed if the file is
+                                        # in a non-standard location)
+
+#------------------------------------------------------------------------------
+# Failover settings (repmgrd)
+#------------------------------------------------------------------------------
+#
+# These settings are only applied when repmgrd is running. Values shown
+# are defaults.
+
+#monitoring_history=no
+
+
+#------------------------------------------------------------------------------
+# service control commands
+#------------------------------------------------------------------------------
+#
+# repmgr provides options to override the default pg_ctl commands
+# used to stop, start, restart, reload and promote the PostgreSQL cluster
+#
+# NOTE: These commands must be runnable on remote nodes as well for switchover
+# to function correctly.
+#
+# If you use sudo, the user repmgr runs as (usually 'postgres')  must have
+# passwordless sudo access to execute the command.
+#
+# For example, to use systemd, you may use the following configuration:
+#
+#    # this is required when running sudo over ssh without -t:
+#    Defaults:postgres !requiretty
+#    postgres ALL = NOPASSWD: /usr/bin/systemctl stop postgresql-9.6, \
+#       /usr/bin/systemctl start postgresql-9.6, \
+#       /usr/bin/systemctl restart postgresql-9.6
+#
+
+#service_start_command = ''
+#service_stop_command = ''
+#service_restart_command = ''
+#service_reload_command = ''
+#service_promote_command = ''            # Note: this overrides any value contained
+                                         # in the setting "promote_command"
