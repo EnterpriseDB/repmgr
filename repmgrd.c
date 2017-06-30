@@ -22,6 +22,18 @@ typedef enum {
 	NODE_STATUS_DOWN
 } NodeStatus;
 
+
+typedef enum {
+	FAILOVER_STATE_UNKNOWN = -1,
+	FAILOVER_STATE_PROMOTED,
+	FAILOVER_STATE_PROMOTION_FAILED,
+	FAILOVER_STATE_PRIMARY_REAPPEARED,
+	FAILOVER_STATE_LOCAL_NODE_FAILURE
+	// FOLLOWED_NEW_PRIMARY
+	// FOLLOW_WAIT_TIMEOUT
+} FailoverState;
+
+
 typedef enum {
 	ELECTION_NOT_CANDIDATE = -1,
 	ELECTION_WON,
@@ -77,7 +89,7 @@ static ElectionResult do_election(void);
 static const char *_print_voting_status(NodeVotingStatus voting_status);
 static const char *_print_election_result(ElectionResult result);
 
-static void promote_self(void);
+static FailoverState promote_self(void);
 
 static void close_connections();
 static void terminate(int retval);
@@ -547,8 +559,8 @@ monitor_streaming_standby(void)
 				if (upstream_node_status == NODE_STATUS_DOWN)
 				{
 					/* attempt to initiate voting process */
-
 					ElectionResult election_result = do_election();
+					FailoverState failover_state = FAILOVER_STATE_UNKNOWN;
 
 					log_debug("election result:  %s", _print_election_result(election_result));
 
@@ -556,7 +568,7 @@ monitor_streaming_standby(void)
 					{
 						log_notice("I am the winner, will now promote self and inform other nodes");
 
-						promote_self();
+						failover_state = promote_self();
 					}
 					else if (election_result == ELECTION_LOST)
 					{
@@ -568,6 +580,19 @@ monitor_streaming_standby(void)
 
 						log_info("I am a follower and am waiting to be informed by the winner");
 					}
+
+					switch(failover_state)
+					{
+						case FAILOVER_STATE_PROMOTED:
+							// inform nodes
+							// pass control back down and start primary monitoring
+							break;
+						case FAILOVER_STATE_PROMOTION_FAILED:
+						case FAILOVER_STATE_PRIMARY_REAPPEARED:
+						case FAILOVER_STATE_LOCAL_NODE_FAILURE:
+						case FAILOVER_STATE_UNKNOWN:
+							break;
+					}
 				}
 
 			}
@@ -578,7 +603,7 @@ monitor_streaming_standby(void)
 	}
 }
 
-static void
+static FailoverState
 promote_self(void)
 {
 	char *promote_command;
@@ -617,7 +642,7 @@ promote_self(void)
 		{
 			log_error(_("unable to reconnect to local node"));
 			// XXX handle this
-			return;
+			return FAILOVER_STATE_LOCAL_NODE_FAILURE;
 		}
 	}
 
@@ -641,14 +666,16 @@ promote_self(void)
 			// -> we'll need to let the other nodes know too....
 			/* no failover occurred but we'll want to restart connections */
 			//failover_done = true;
-			return;
+			return FAILOVER_STATE_PRIMARY_REAPPEARED;
 		}
 
 		// handle this
 		//  -> check if somehow primary; otherwise go for new election?
 		log_error(_("promote command failed"));
+		return FAILOVER_STATE_PROMOTION_FAILED;
 	}
-	else
+
+
 	{
 		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
@@ -670,6 +697,8 @@ promote_self(void)
 							event_details.data);
 		termPQExpBuffer(&event_details);
 	}
+
+	return FAILOVER_STATE_PROMOTED;
 }
 
 
