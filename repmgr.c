@@ -80,6 +80,8 @@ PG_FUNCTION_INFO_V1(notify_follow_primary);
 Datum		get_new_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_new_primary);
 
+//Datum		set_new_primary(PG_FUNCTION_ARGS);
+//PG_FUNCTION_INFO_V1(set_new_primary);
 
 /*
  * Module load callback
@@ -285,6 +287,8 @@ Datum
 notify_follow_primary(PG_FUNCTION_ARGS)
 {
 	int primary_node_id = PG_GETARG_INT32(0);
+
+	elog(INFO, "received notification to follow node %i", primary_node_id);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 

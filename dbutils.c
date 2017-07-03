@@ -2353,12 +2353,12 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int 
 
 	lsn_diff = this_node->last_wal_receive_lsn - other_node->last_wal_receive_lsn;
 
-	log_debug("XXX lsn_diff %i", lsn_diff);
+	log_debug("lsn_diff %i", lsn_diff);
 
 	/* we're ahead */
 	if (lsn_diff > 0)
 	{
-		log_debug("this node is ahead");
+		log_debug("local node is ahead");
 		return 1;
 	}
 
@@ -2435,15 +2435,23 @@ notify_follow_primary(PGconn *conn, int primary_node_id)
 	PQExpBufferData	  query;
 	PGresult   *res;
 
+
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
 					  "SELECT repmgr.notify_follow_primary(%i)",
 					  primary_node_id);
+	log_verbose(LOG_DEBUG, "notify_follow_primary():\n  %s", query.data);
 
 	// XXX handle failure
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute repmgr.notify_follow_primary():\n  %s"),
+				PQerrorMessage(conn));
+	}
 
 	PQclear(res);
 	return;

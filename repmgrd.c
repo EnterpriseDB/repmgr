@@ -70,8 +70,8 @@ static ItemList	cli_errors = { NULL, NULL };
 static bool        startup_event_logged = false;
 
 /*
- * Record receipt SIGHUP; will cause configuration file to be reread at the
- * appropriate point in the main loop.
+ * Record receipt of SIGHUP; will cause configuration file to be reread
+ * at the appropriate point in the main loop.
  */
 static volatile sig_atomic_t got_SIGHUP = false;
 
@@ -97,6 +97,8 @@ static const char *_print_election_result(ElectionResult result);
 
 static FailoverState promote_self(void);
 static void notify_followers(NodeInfoList *standby_nodes);
+
+static t_node_info *poll_best_candidate(NodeInfoList *standby_nodes);
 
 static bool wait_primary_notification(int *new_primary_id);
 static FailoverState follow_new_primary(int new_primary_id);
@@ -614,23 +616,73 @@ monitor_streaming_standby(void)
 					}
 					else if (election_result == ELECTION_LOST)
 					{
+						t_node_info *best_candidate;
+
 						log_info("I am the candidate but did not get all votes; will now determine the best candidate");
-						
+
+						best_candidate = poll_best_candidate(&standby_nodes);
+
+						/* this can occur in a tie-break situation, after we establish this node has priority*/
+						if (best_candidate->node_id == local_node_info.node_id)
+						{
+							log_notice("I am the best candidate, will now promote self and inform other nodes");
+
+							failover_state = promote_self();
+						}
+						else
+						{
+							PGconn *candidate_conn = NULL;
+
+							log_info("node %i is the best candidate, waiting for it to confirm so I can follow it",
+									 best_candidate->node_id);
+
+							// notify candidate
+
+							// XXX check result
+							candidate_conn = establish_db_connection(best_candidate->conninfo, false);
+
+							notify_follow_primary(candidate_conn, best_candidate->node_id);
+
+							PQfinish(candidate_conn);
+							// we'll wait for the candidate to get back to us
+							failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
+						}
 					}
 					else
+					{
+						log_info("I am a follower and am waiting to be informed by the winner");
+						failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
+					}
+
+
+					if (failover_state == FAILOVER_STATE_WAITING_NEW_PRIMARY)
 					{
 						int new_primary_id;
 
 						//   --> need timeout in case new primary doesn't come up, then rerun election
 
-						log_info("I am a follower and am waiting to be informed by the winner");
-						failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
-
 						/* either follow or time out; either way resume monitoring */
 						if (wait_primary_notification(&new_primary_id) == true)
 						{
-							failover_state = follow_new_primary(new_primary_id);
+							// if new_primary_id is self, promote
+							if (new_primary_id == local_node_info.node_id)
+							{
+								log_notice("looks like I'm the promotion candidate, promoting");
 
+								failover_state = promote_self();
+
+								/* reset node list */
+								clear_node_info_list(&standby_nodes);
+								get_active_sibling_node_records(local_conn,
+																local_node_info.node_id,
+																upstream_node_info.node_id,
+																&standby_nodes);
+
+							}
+							else
+							{
+								failover_state = follow_new_primary(new_primary_id);
+							}
 						}
 						else
 						{
@@ -653,6 +705,7 @@ monitor_streaming_standby(void)
 							failover_state = FAILOVER_STATE_NONE;
 							return;
 						case FAILOVER_STATE_PROMOTION_FAILED:
+							log_debug("failover state is FAILED");
 							break;
 						case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
 							log_info(_("resuming standby monitoring mode"));
@@ -666,6 +719,8 @@ monitor_streaming_standby(void)
 						case FAILOVER_STATE_PRIMARY_REAPPEARED:
 						case FAILOVER_STATE_LOCAL_NODE_FAILURE:
 						case FAILOVER_STATE_UNKNOWN:
+						case FAILOVER_STATE_NONE:
+							log_debug("failover state is %i", failover_state);
 							break;
 					}
 				}
@@ -684,6 +739,7 @@ monitor_streaming_standby(void)
 			INSTR_TIME_SET_CURRENT(log_status_interval_current);
 			INSTR_TIME_SUBTRACT(log_status_interval_current, log_status_interval_start);
 			log_status_interval_elapsed = INSTR_TIME_GET_DOUBLE(log_status_interval_current);
+
 			if ((int) log_status_interval_elapsed >= config_file_options.log_status_interval)
 			{
 				log_info(_("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i)"),
@@ -801,6 +857,7 @@ notify_followers(NodeInfoList *standby_nodes)
 {
 	NodeInfoListCell *cell;
 
+	log_debug("notify_followers()");
 	for (cell = standby_nodes->head; cell; cell = cell->next)
 	{
 		log_debug("intending to notify %i... ", cell->node_info->node_id);
@@ -823,6 +880,46 @@ notify_followers(NodeInfoList *standby_nodes)
 }
 
 
+static t_node_info *
+poll_best_candidate(NodeInfoList *standby_nodes)
+{
+	NodeInfoListCell *cell;
+	t_node_info *best_candidate = &local_node_info;
+
+	/*
+	 * we need to definitively decide the best candidate, as in some corner
+	 * cases we could end up with two candidate nodes, so they should each
+	 * come to the same conclusion
+	 */
+	for (cell = standby_nodes->head; cell; cell = cell->next)
+	{
+		if (cell->node_info->last_wal_receive_lsn > best_candidate->last_wal_receive_lsn)
+		{
+			log_debug("node %i has higher LSN, now best candidate", cell->node_info->node_id);
+			best_candidate = cell->node_info;
+		}
+		else if (cell->node_info->last_wal_receive_lsn == best_candidate->last_wal_receive_lsn)
+		{
+			if (cell->node_info->priority > best_candidate->priority)
+			{
+				log_debug("node %i has higher priority, now best candidate", cell->node_info->node_id);
+				best_candidate = cell->node_info;
+			}
+		}
+		/* if all else fails, we decide by node_id */
+		else if (cell->node_info->node_id < best_candidate->node_id)
+		{
+			log_debug("node %i has lower node_id, now best candidate", cell->node_info->node_id);
+			best_candidate = cell->node_info;
+		}
+	}
+
+	log_info(_("best candidate is %i"), best_candidate->node_id);
+
+	return best_candidate;
+}
+
+
 static bool
 wait_primary_notification(int *new_primary_id)
 {
@@ -835,7 +932,7 @@ wait_primary_notification(int *new_primary_id)
 		if (get_new_primary(local_conn, new_primary_id) == true)
 		{
 			log_debug("new primary is %i; elapsed: %i",
-					  *new_primary_id, wait_primary_timeout);
+					  *new_primary_id, i);
 			return true;
 		}
 		sleep(1);
@@ -1081,7 +1178,8 @@ do_election(void)
 
 		// XXX do this
 		// unset_voting_status_initiated(local_conn);
-		return VS_NO_VOTE;
+		log_debug("other node is candidate, returning NOT CANDIDATE XXX unset own status");
+		return ELECTION_NOT_CANDIDATE;
 	}
 
 	// XXX check if > 50% visible
@@ -1137,6 +1235,7 @@ do_election(void)
 
 	return ELECTION_LOST;
 }
+
 
 static void
 daemonize_process(void)
