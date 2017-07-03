@@ -1733,6 +1733,8 @@ clear_node_info_list(NodeInfoList *nodes)
 		pfree(cell);
 		cell = next_cell;
 	}
+
+	nodes->node_count = 0;
 }
 
 
