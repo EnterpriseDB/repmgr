@@ -1103,6 +1103,7 @@ do_election(void)
 	NodeInfoListCell *cell;
 
 	bool other_node_is_candidate = false;
+	bool other_node_is_ahead = false;
 
 	/* sleep for a random period of 100 ~ 500 ms
 	 * XXX adjust this downwards if feasible
@@ -1194,34 +1195,14 @@ do_election(void)
 
 	// XXX check if > 50% visible
 
-	/* check again if we've been asked to vote */
-
-	if (0)
-	{
-		voting_status = get_voting_status(local_conn);
-		log_debug("do_election(): node voting status is %i", (int)voting_status);
-
-
-		if (voting_status == VS_VOTE_REQUEST_RECEIVED)
-		{
-			/* we've already been requested to vote, so can't become a candidate */
-			return voting_status;
-		}
-	}
-
-	/* current node votes for itself by default */
-	// XXX check returned LSNs, if one is higher than ours, don't vote for ourselves
-	// either
-
-	votes_for_me += 1;
-
 	/* get our lsn */
 	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
 
 	log_debug("LAST receive lsn = %X/%X",
 			  (uint32) (local_node_info.last_wal_receive_lsn >> 32),
 			  (uint32)  local_node_info.last_wal_receive_lsn);
-	/* request vote */
+
+	/* request vote from each node */
 
 	for (cell = standby_nodes.head; cell; cell = cell->next)
 	{
@@ -1234,8 +1215,19 @@ do_election(void)
 									 cell->node_info,
 									 electoral_term);
 
+		if (cell->node_info->last_wal_receive_lsn > local_node_info.last_wal_receive_lsn)
+		{
+			/* register if another node is ahead of us */
+			other_node_is_ahead = true;
+		}
 		PQfinish(cell->node_info->conn);
 		cell->node_info->conn = NULL;
+	}
+
+	/* vote for myself, but only if I believe no-one else is ahead */
+	if (other_node_is_ahead == false)
+	{
+		votes_for_me += 1;
 	}
 
 	log_notice(_("%i of of %i votes"), votes_for_me, visible_nodes);
