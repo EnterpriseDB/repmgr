@@ -217,7 +217,9 @@ main(int argc, char **argv)
 				{
 					PQExpBufferData invalid_log_level;
 					initPQExpBuffer(&invalid_log_level);
-					appendPQExpBuffer(&invalid_log_level, _("invalid log level \"%s\" provided"), optarg);
+					appendPQExpBuffer(&invalid_log_level,
+									  _("invalid log level \"%s\" provided"),
+									  optarg);
 					item_list_append(&cli_errors, invalid_log_level.data);
 					termPQExpBuffer(&invalid_log_level);
 				}
@@ -488,25 +490,66 @@ monitor_streaming_primary(void)
 	{
 
 		// cache node list here, refresh at `node_list_refresh_interval`
+		// also return reason for inavailability so we can log it
 		if (is_server_available(local_node_info.conninfo) == false)
 		{
 
 			/* node is down, we were expecting it to be up */
 			if (node_status == NODE_STATUS_UP)
 			{
-				// log disconnect event
-				log_warning(_("unable to connect to local node"));
+				PQExpBufferData event_details;
+				instr_time	local_node_unreachable_start;
+
+				INSTR_TIME_SET_CURRENT(local_node_unreachable_start);
+
+
+				initPQExpBuffer(&event_details);
+
+				appendPQExpBuffer(&event_details,
+								  _("unable to connect to local node"));
+
+				log_warning(event_details.data);
 
 				node_status = NODE_STATUS_UNKNOWN;
 
 				PQfinish(local_conn);
 
+				/* */
+				create_event_record(NULL,
+									&config_file_options,
+									config_file_options.node_id,
+									"repmgrd_local_disconnect",
+									true,
+									event_details.data);
+
+				termPQExpBuffer(&event_details);
+
 				local_conn = try_reconnect(local_node_info.conninfo, &node_status);
 
 				if (node_status == NODE_STATUS_UP)
 				{
-					// log reconnect event, details
-					log_notice(_("reconnected to local node"));
+					double		local_node_unreachable_elapsed = 0;
+					instr_time	local_node_unreachable_current;
+
+					INSTR_TIME_SET_CURRENT(local_node_unreachable_current);
+					INSTR_TIME_SUBTRACT(local_node_unreachable_current, local_node_unreachable_start);
+					local_node_unreachable_elapsed = INSTR_TIME_GET_DOUBLE(local_node_unreachable_current);
+
+					initPQExpBuffer(&event_details);
+
+					appendPQExpBuffer(&event_details,
+									  _("reconnected to local node after %i seconds"),
+									  (int)local_node_unreachable_elapsed);
+					log_notice(event_details.data);
+
+					create_event_record(local_conn,
+										&config_file_options,
+										config_file_options.node_id,
+										"repmgrd_local_reconnect",
+										true,
+										event_details.data);
+					termPQExpBuffer(&event_details);
+
 					goto loop;
 				}
 			}
@@ -966,6 +1009,7 @@ follow_new_primary(int new_primary_id)
 	t_node_info failed_primary = T_NODE_INFO_INITIALIZER;
 	t_node_info new_primary = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status;
+	bool new_primary_ok = false;
 
 	// XXX check success
 	record_status = get_node_record(local_conn, new_primary_id, &new_primary);
@@ -989,30 +1033,56 @@ follow_new_primary(int new_primary_id)
 	PQfinish(local_conn);
 	local_conn = NULL;
 
+	primary_conn = establish_db_connection(new_primary.conninfo, false);
+
+	if (PQstatus(primary_conn) == CONNECTION_OK)
+	{
+		RecoveryType primary_recovery_type = get_recovery_type(primary_conn);
+		if (primary_recovery_type == RECTYPE_PRIMARY)
+		{
+			new_primary_ok = true;
+		}
+		else
+		{
+			log_warning(_("new primary is not in recovery"));
+			PQfinish(primary_conn);
+		}
+	}
+
+
+	if (new_primary_ok == false)
+	{
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+	// XXX check new primary is reachable and is not in recovery here
 	r = system(config_file_options.follow_command);
 
 	if (r != 0)
 	{
+		PGconn *old_primary_conn;
 		/*
-		 * If the follow action failed, check the previous primary has not
-		 * reappeared - unlikely we won't reach here until informed by the
-		 * new primary.
+		 * The follow action could still fail due to the original primary reappearing
+		 * before the candidate could promote itself ("repmgr standby follow" will
+		 * refuse to promote another node if the primary is available). However
+		 * the new primary will only instruct use to follow it after it's successfully
+		 * promoted itself, so that very likely won't be the reason for the failure.
+		 *
 		 *
 		 * TODO: check the new primary too - we could have a split-brain
 		 * situation where the old primary reappeared just after the new
 		 * one promoted itself.
 		 */
-		primary_conn = establish_db_connection(failed_primary.conninfo, false);
+		old_primary_conn = establish_db_connection(failed_primary.conninfo, false);
 
-		if (PQstatus(primary_conn) == CONNECTION_OK)
+		if (PQstatus(old_primary_conn) == CONNECTION_OK)
 		{
 			// XXX add event notifications
-			RecoveryType upstream_recovery_type = get_recovery_type(primary_conn);
-			PQfinish(primary_conn);
+			RecoveryType upstream_recovery_type = get_recovery_type(old_primary_conn);
+			PQfinish(old_primary_conn);
 
 			if (upstream_recovery_type == RECTYPE_PRIMARY)
 			{
-				log_notice(_("original primary reappeared before this standby was promoted - no action taken"));
+				log_notice(_("original primary reappeared - no action taken"));
 				return FAILOVER_STATE_PRIMARY_REAPPEARED;
 			}
 		}
@@ -1020,21 +1090,35 @@ follow_new_primary(int new_primary_id)
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
-	// XXX check success
-	primary_conn = establish_db_connection(new_primary.conninfo, false);
-
-	// XXX check success
 
 	/*
 	 * refresh local copy of local and primary node records - we get these
 	 * directly from the primary to ensure they're the current version
 	 */
+
+	// XXX check success
+
 	record_status = get_node_record(primary_conn, new_primary_id, &upstream_node_info);
 	record_status = get_node_record(primary_conn, local_node_info.node_id, &local_node_info);
 
 	local_conn = establish_db_connection(local_node_info.conninfo, false);
+	initPQExpBuffer(&event_details);
+	appendPQExpBuffer(&event_details,
+					  _("node %i now following new upstream node %i"),
+					  local_node_info.node_id,
+					  upstream_node_info.node_id);
 
-	// XXX log event
+	log_notice("%s\n", event_details.data);
+
+	create_event_record(primary_conn,
+						&config_file_options,
+						local_node_info.node_id,
+						"repmgrd_failover_follow",
+						true,
+						event_details.data);
+
+	termPQExpBuffer(&event_details);
+
 	return FAILOVER_STATE_FOLLOWED_NEW_PRIMARY;
 }
 
@@ -1081,8 +1165,7 @@ _print_election_result(ElectionResult result)
 
 
 
-// store lsndiffs, in the event we're not the best node,
-// i.e. don't get all the votes, we pass the baton to the best node
+
 static ElectionResult
 do_election(void)
 {
@@ -1095,9 +1178,11 @@ do_election(void)
 	int visible_nodes = 1;
 
 
-	// get voting status from shared memory
-	// should be "VS_NO_VOTE" or "VS_VOTE_REQUEST_RECEIVED"
-	// if VS_NO_VOTE, initiate voting process
+	/*
+	 * get voting status from shared memory - should be one of "VS_NO_VOTE"
+	 * or "VS_VOTE_REQUEST_RECEIVED". If VS_NO_VOTE, we declare ourselves as
+	 * candidate and initiate the voting process.
+	 */
 	NodeVotingStatus voting_status;
 
 	NodeInfoListCell *cell;
@@ -1128,8 +1213,12 @@ do_election(void)
 		return ELECTION_NOT_CANDIDATE;
 	}
 
-	//  mark ourselves as candidate
-	//  -> so any further vote requests are rejected
+	/*
+	 * Here we mark ourselves as candidate, so any further vote requests
+	 * are rejected. However it's possible another node has done the
+	 * same thing, so when announcing ourselves as candidate to the other
+	 * nodes, we'll check for that and withdraw our candidature.
+	 */
 	electoral_term = set_voting_status_initiated(local_conn);
 
 	/* get all active nodes attached to primary, excluding self */
@@ -1168,8 +1257,13 @@ do_election(void)
 		 * itself, we withdraw
 		 *
 		 * XXX check for situations where more than one node could end up as candidate?
+		 *
+		 * XXX note it's possible some nodes accepted our candidature before we
+		 * found out about the other candidate, check what happens in that situation
+		 *  -> other node will have info from all the nodes, even if not the vote,
+		 *     so it should be able to determine the best node anyway
 		 */
-		// other node:  if not candidate in this term, reset state (but don't bump term)
+
 		if (announce_candidature(cell->node_info->conn, &local_node_info, cell->node_info, electoral_term) == false)
 		{
 			log_debug("node %i is candidate",  cell->node_info->node_id);
