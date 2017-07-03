@@ -620,6 +620,14 @@ monitor_streaming_standby(void)
 
 						log_info("I am the candidate but did not get all votes; will now determine the best candidate");
 
+
+						/* reset node list */
+						clear_node_info_list(&standby_nodes);
+						get_active_sibling_node_records(local_conn,
+														local_node_info.node_id,
+														upstream_node_info.node_id,
+														&standby_nodes);
+
 						best_candidate = poll_best_candidate(&standby_nodes);
 
 						/* this can occur in a tie-break situation, after we establish this node has priority*/
@@ -885,6 +893,8 @@ poll_best_candidate(NodeInfoList *standby_nodes)
 {
 	NodeInfoListCell *cell;
 	t_node_info *best_candidate = &local_node_info;
+
+	// XXX ensure standby_nodes is set correctly
 
 	/*
 	 * we need to definitively decide the best candidate, as in some corner
