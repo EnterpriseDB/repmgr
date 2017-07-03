@@ -27,12 +27,15 @@ typedef enum {
 
 typedef enum {
 	FAILOVER_STATE_UNKNOWN = -1,
+	FAILOVER_STATE_NONE,
 	FAILOVER_STATE_PROMOTED,
 	FAILOVER_STATE_PROMOTION_FAILED,
 	FAILOVER_STATE_PRIMARY_REAPPEARED,
 	FAILOVER_STATE_LOCAL_NODE_FAILURE,
-	FAILOVER_STATE_WAITING_NEW_PRIMARY
-	// FOLLOWED_NEW_PRIMARY
+	FAILOVER_STATE_WAITING_NEW_PRIMARY,
+	FAILOVER_STATE_NO_NEW_PRIMARY,
+	FAILOVER_STATE_FOLLOWED_NEW_PRIMARY,
+	FAILOVER_STATE_FOLLOW_FAIL
 	// FOLLOW_WAIT_TIMEOUT
 } FailoverState;
 
@@ -58,6 +61,7 @@ static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
 static PGconn *upstream_conn = NULL;
 static PGconn *primary_conn = NULL;
 
+FailoverState failover_state = FAILOVER_STATE_UNKNOWN;
 
 static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
@@ -93,8 +97,10 @@ static const char *_print_voting_status(NodeVotingStatus voting_status);
 static const char *_print_election_result(ElectionResult result);
 
 static FailoverState promote_self(void);
-static void wait_primary_notification(void);
 static void notify_followers(NodeInfoList *standby_nodes);
+
+static bool wait_primary_notification(int *new_primary_id);
+static FailoverState follow_new_primary(int new_primary_id);
 
 static void close_connections();
 static void terminate(int retval);
@@ -427,6 +433,8 @@ start_monitoring(void)
 			   local_node_info.node_name,
 			   local_node_info.node_id);
 
+	failover_state = FAILOVER_STATE_NONE;
+
 	while(true)
 	{
 		switch (local_node_info.type)
@@ -437,6 +445,9 @@ start_monitoring(void)
 			case STANDBY:
 				monitor_streaming_standby();
 				break;
+			case BDR:
+				/* not yet handled */
+				return;
 			case WITNESS:
 				/* not handled */
 				return;
@@ -594,9 +605,9 @@ monitor_streaming_standby(void)
 				{
 					/* attempt to initiate voting process */
 					ElectionResult election_result = do_election();
-					FailoverState failover_state = FAILOVER_STATE_UNKNOWN;
+					failover_state = FAILOVER_STATE_UNKNOWN;
 
-					log_debug("election result:  %s", _print_election_result(election_result));
+					log_debug("election result: %s", _print_election_result(election_result));
 
 					if (election_result == ELECTION_WON)
 					{
@@ -610,10 +621,23 @@ monitor_streaming_standby(void)
 					}
 					else
 					{
+						int new_primary_id;
+
 						//   --> need timeout in case new primary doesn't come up, then rerun election
 
 						log_info("I am a follower and am waiting to be informed by the winner");
 						failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
+
+						/* either follow or time out; either way resume monitoring */
+						if (wait_primary_notification(&new_primary_id) == true)
+						{
+							failover_state = follow_new_primary(new_primary_id);
+
+						}
+						else
+						{
+							failover_state = FAILOVER_STATE_NO_NEW_PRIMARY;
+						}
 					}
 
 					switch(failover_state)
@@ -628,13 +652,19 @@ monitor_streaming_standby(void)
 							/* pass control back down to start_monitoring() */
 							log_info(_("switching to primary monitoring mode"));
 
-							return;
-						case FAILOVER_STATE_WAITING_NEW_PRIMARY:
-							/* either follow or time out; either way resume monitoring */
-							wait_primary_notification();
-							/* pass control back down to start_monitoring() */
+							failover_state = FAILOVER_STATE_NONE;
 							return;
 						case FAILOVER_STATE_PROMOTION_FAILED:
+							break;
+						case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
+							log_info(_("resuming standby monitoring mode"));
+							failover_state = FAILOVER_STATE_NONE;
+							break;
+						case FAILOVER_STATE_NO_NEW_PRIMARY:
+						case FAILOVER_STATE_WAITING_NEW_PRIMARY:
+							/* pass control back down to start_monitoring() */
+							// -> should kick off new election
+							return;
 						case FAILOVER_STATE_PRIMARY_REAPPEARED:
 						case FAILOVER_STATE_LOCAL_NODE_FAILURE:
 						case FAILOVER_STATE_UNKNOWN:
@@ -671,6 +701,7 @@ monitor_streaming_standby(void)
 static FailoverState
 promote_self(void)
 {
+	PQExpBufferData event_details;
 	char *promote_command;
 	int r;
 
@@ -678,8 +709,8 @@ promote_self(void)
 	t_node_info failed_primary = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status;
 
-	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
 	// XXX check success
+	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
 
 	/* the presence of either of these commands has been established already */
 	if (config_file_options.service_promote_command[0] != '\0')
@@ -709,7 +740,7 @@ promote_self(void)
 			// XXX handle this
 			return FAILOVER_STATE_LOCAL_NODE_FAILURE;
 		}
-}
+	}
 
 	if (r != 0)
 	{
@@ -718,7 +749,7 @@ promote_self(void)
 		primary_conn = get_primary_connection(local_conn,
 											  &primary_node_id, NULL);
 
-		if (primary_conn != NULL && primary_node_id == failed_primary.node_id)
+		if (PQstatus(primary_conn) == CONNECTION_OK && primary_node_id == failed_primary.node_id)
 		{
 			log_notice(_("original primary reappeared before this standby was promoted - no action taken"));
 
@@ -741,48 +772,26 @@ promote_self(void)
 	}
 
 
-	{
-		PQExpBufferData event_details;
-		initPQExpBuffer(&event_details);
+	initPQExpBuffer(&event_details);
 
-		/* update own internal node record */
-		record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
+	/* update own internal node record */
+	record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
 
-		// XXX we're assuming the promote command updated metadata
-		appendPQExpBuffer(&event_details,
-						  _("node %i promoted to primary; old primary %i marked as failed"),
-						  local_node_info.node_id,
-						  failed_primary.node_id);
-		/* my_local_conn is now the master */
-		create_event_record(local_conn,
-							&config_file_options,
-							local_node_info.node_id,
-							"repmgrd_failover_promote",
-							true,
-							event_details.data);
-		termPQExpBuffer(&event_details);
-	}
+	// XXX we're assuming the promote command updated metadata
+	appendPQExpBuffer(&event_details,
+					  _("node %i promoted to primary; old primary %i marked as failed"),
+					  local_node_info.node_id,
+					  failed_primary.node_id);
+	/* my_local_conn is now the master */
+	create_event_record(local_conn,
+						&config_file_options,
+						local_node_info.node_id,
+						"repmgrd_failover_promote",
+						true,
+						event_details.data);
+	termPQExpBuffer(&event_details);
 
 	return FAILOVER_STATE_PROMOTED;
-}
-
-static void
-wait_primary_notification(void)
-{
-	// XXX make this configurable
-	int wait_primary_timeout = 60;
-	int i;
-	int new_primary_id;
-
-	for (i = 0; i < wait_primary_timeout; i++)
-	{
-		if (get_new_primary(local_conn, &new_primary_id) == true)
-		{
-			log_debug("XXX new primary is %i", new_primary_id);
-			//return;
-		}
-		sleep(1);
-	}
 }
 
 
@@ -810,6 +819,115 @@ notify_followers(NodeInfoList *standby_nodes)
 		log_debug("notifying node %i to follow new primary", cell->node_info->node_id);
 		notify_follow_primary(cell->node_info->conn, local_node_info.node_id);
 	}
+}
+
+
+static bool
+wait_primary_notification(int *new_primary_id)
+{
+	// XXX make this configurable
+	int wait_primary_timeout = 60;
+	int i;
+
+	for (i = 0; i < wait_primary_timeout; i++)
+	{
+		if (get_new_primary(local_conn, new_primary_id) == true)
+		{
+			log_debug("new primary is %i; elapsed: %i",
+					  *new_primary_id, wait_primary_timeout);
+			return true;
+		}
+		sleep(1);
+	}
+
+
+	log_warning(_("no notifcation received from new primary after %i seconds"),
+				wait_primary_timeout);
+
+	return false;
+}
+
+
+static FailoverState
+follow_new_primary(int new_primary_id)
+{
+	PQExpBufferData event_details;
+	int r;
+
+	/* Store details of the failed node here */
+	t_node_info failed_primary = T_NODE_INFO_INITIALIZER;
+	t_node_info new_primary = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status;
+
+	// XXX check success
+	record_status = get_node_record(local_conn, new_primary_id, &new_primary);
+
+	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
+
+	// XXX check if new_primary_id == failed_primary.node_id?
+
+	if (log_type == REPMGR_STDERR && *config_file_options.log_file)
+	{
+		fflush(stderr);
+	}
+
+	log_debug(_("standby follow command is:\n  \"%s\""),
+			  config_file_options.follow_command);
+
+	/*
+	 * disconnect from local node, as follow operation will result in
+	 * a server restart
+	 */
+	PQfinish(local_conn);
+	local_conn = NULL;
+
+	r = system(config_file_options.follow_command);
+
+	if (r != 0)
+	{
+		/*
+		 * If the follow action failed, check the previous primary has not
+		 * reappeared - unlikely we won't reach here until informed by the
+		 * new primary.
+		 *
+		 * TODO: check the new primary too - we could have a split-brain
+		 * situation where the old primary reappeared just after the new
+		 * one promoted itself.
+		 */
+		primary_conn = establish_db_connection(failed_primary.conninfo, false);
+
+		if (PQstatus(primary_conn) == CONNECTION_OK)
+		{
+			// XXX add event notifications
+			RecoveryType upstream_recovery_type = get_recovery_type(primary_conn);
+			PQfinish(primary_conn);
+
+			if (upstream_recovery_type == RECTYPE_PRIMARY)
+			{
+				log_notice(_("original primary reappeared before this standby was promoted - no action taken"));
+				return FAILOVER_STATE_PRIMARY_REAPPEARED;
+			}
+		}
+
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+
+	// XXX check success
+	primary_conn = establish_db_connection(new_primary.conninfo, false);
+
+	// XXX check success
+
+	/*
+	 * refresh local copy of local and primary node records - we get these
+	 * directly from the primary to ensure they're the current version
+	 */
+	record_status = get_node_record(primary_conn, new_primary_id, &upstream_node_info);
+	record_status = get_node_record(primary_conn, local_node_info.node_id, &local_node_info);
+
+	local_conn = establish_db_connection(local_node_info.conninfo, false);
+
+	// XXX log event
+	return FAILOVER_STATE_FOLLOWED_NEW_PRIMARY;
 }
 
 
