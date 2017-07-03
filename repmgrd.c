@@ -36,7 +36,6 @@ typedef enum {
 	FAILOVER_STATE_NO_NEW_PRIMARY,
 	FAILOVER_STATE_FOLLOWED_NEW_PRIMARY,
 	FAILOVER_STATE_FOLLOW_FAIL
-	// FOLLOW_WAIT_TIMEOUT
 } FailoverState;
 
 
@@ -485,8 +484,6 @@ monitor_streaming_primary(void)
 
 	while (true)
 	{
-		double		log_status_interval_elapsed = 0;
-		instr_time	log_status_interval_current;
 
 		// cache node list here, refresh at `node_list_refresh_interval`
 		if (is_server_available(local_node_info.conninfo) == false)
@@ -523,6 +520,9 @@ monitor_streaming_primary(void)
 		/* emit "still alive" log message at regular intervals, if requested */
 		if (config_file_options.log_status_interval > 0)
 		{
+			double		log_status_interval_elapsed = 0;
+			instr_time	log_status_interval_current;
+
 			INSTR_TIME_SET_CURRENT(log_status_interval_current);
 			INSTR_TIME_SUBTRACT(log_status_interval_current, log_status_interval_start);
 			log_status_interval_elapsed = INSTR_TIME_GET_DOUBLE(log_status_interval_current);
@@ -577,9 +577,6 @@ monitor_streaming_standby(void)
 
 	while (true)
 	{
-		double		log_status_interval_elapsed = 0;
-		instr_time	log_status_interval_current;
-
 		if (is_server_available(upstream_node_info.conninfo) == false)
 		{
 
@@ -618,6 +615,7 @@ monitor_streaming_standby(void)
 					else if (election_result == ELECTION_LOST)
 					{
 						log_info("I am the candidate but did not get all votes; will now determine the best candidate");
+						
 					}
 					else
 					{
@@ -680,6 +678,9 @@ monitor_streaming_standby(void)
 		/* emit "still alive" log message at regular intervals, if requested */
 		if (config_file_options.log_status_interval > 0)
 		{
+			double		log_status_interval_elapsed = 0;
+			instr_time	log_status_interval_current;
+
 			INSTR_TIME_SET_CURRENT(log_status_interval_current);
 			INSTR_TIME_SUBTRACT(log_status_interval_current, log_status_interval_start);
 			log_status_interval_elapsed = INSTR_TIME_GET_DOUBLE(log_status_interval_current);
