@@ -32,7 +32,7 @@ typedef struct
 	bool		wait;
 
 	/* logging options */
-	char		loglevel[MAXLEN];  /* overrides setting in repmgr.conf */
+	char		log_level[MAXLEN];  /* overrides setting in repmgr.conf */
 	bool		log_to_file;
 	bool		terse;
 	bool		verbose;

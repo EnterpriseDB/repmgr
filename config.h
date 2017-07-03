@@ -59,9 +59,9 @@ typedef struct
 	int			replication_type;
 
 	/* log settings */
-	char		loglevel[MAXLEN];
-	char		logfacility[MAXLEN];
-	char		logfile[MAXLEN];
+	char		log_level[MAXLEN];
+	char		log_facility[MAXLEN];
+	char		log_file[MAXLEN];
 
 	/* standby clone settings */
 	bool		use_replication_slots;

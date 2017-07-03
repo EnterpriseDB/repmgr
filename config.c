@@ -214,11 +214,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	/*
 	 * log settings
 	 *
-	 * note: the default for "loglevel" is set in log.c and does not need
+	 * note: the default for "log_level" is set in log.c and does not need
 	 * to be initialised here
 	 */
-	memset(options->logfacility, 0, sizeof(options->logfacility));
-	memset(options->logfile, 0, sizeof(options->logfile));
+	memset(options->log_facility, 0, sizeof(options->log_facility));
+	memset(options->log_file, 0, sizeof(options->log_file));
 
 	/* standby clone settings
 	 * ----------------------- */
@@ -348,12 +348,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 
 		/* log settings */
-		else if (strcmp(name, "logfile") == 0)
-			strncpy(options->logfile, value, MAXLEN);
-		else if (strcmp(name, "loglevel") == 0)
-			strncpy(options->loglevel, value, MAXLEN);
-		else if (strcmp(name, "logfacility") == 0)
-			strncpy(options->logfacility, value, MAXLEN);
+		else if (strcmp(name, "log_file") == 0)
+			strncpy(options->log_file, value, MAXLEN);
+		else if (strcmp(name, "log_level") == 0)
+			strncpy(options->log_level, value, MAXLEN);
+		else if (strcmp(name, "log_facility") == 0)
+			strncpy(options->log_facility, value, MAXLEN);
 
 		/* standby clone settings */
 		else if (strcmp(name, "use_replication_slots") == 0)
@@ -475,6 +475,24 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		{
 			item_list_append(warning_list,
 							 _("parameter \"upstream_node\" has been renamed to \"upstream_node_id\""));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "loglevel") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"loglevel\" has been enamed to \"log_level\""));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "logfacility") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"logfacility\" has been enamed to \"log_facility\""));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "logfile") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"logfile\" has been enamed to \"log_file\""));
 			known_parameter = false;
 		}
 		else

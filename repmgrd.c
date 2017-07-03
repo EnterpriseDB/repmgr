@@ -102,7 +102,7 @@ main(int argc, char **argv)
 {
 	int			optindex;
 	int			c;
-	char		cli_loglevel[MAXLEN] = "";
+	char		cli_log_level[MAXLEN] = "";
 	bool		cli_monitoring_history = false;
 
 	RecordStatus record_status;
@@ -199,10 +199,10 @@ main(int argc, char **argv)
 			/* -L/--log-level */
 			case 'L':
 			{
-				int detected_cli_loglevel = detect_log_level(optarg);
-				if (detected_cli_loglevel != -1)
+				int detected_cli_log_level = detect_log_level(optarg);
+				if (detected_cli_log_level != -1)
 				{
-					strncpy(cli_loglevel, optarg, MAXLEN);
+					strncpy(cli_log_level, optarg, MAXLEN);
 				}
 				else
 				{
@@ -253,9 +253,9 @@ main(int argc, char **argv)
 
 	/* Some configuration file items can be overriden by command line options */
 	/* Command-line parameter -L/--log-level overrides any setting in config file*/
-	if (*cli_loglevel != '\0')
+	if (*cli_log_level != '\0')
 	{
-		strncpy(config_file_options.loglevel, cli_loglevel, MAXLEN);
+		strncpy(config_file_options.log_level, cli_log_level, MAXLEN);
 	}
 
 	/*

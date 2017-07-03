@@ -70,13 +70,14 @@
 # This is mainly intended for those cases when `repmgr` is executed directly
 # by `repmgrd`.
 
-#loglevel=NOTICE                         # Log level: possible values are DEBUG, INFO, NOTICE,
+#log_level=INFO                          # Log level: possible values are DEBUG, INFO, NOTICE,
                                          # WARNING, ERROR, ALERT, CRIT or EMERG
 
-#logfacility=STDERR                      # Logging facility: possible values are STDERR or - for
-                                         # Syslog integration - one of LOCAL0, LOCAL1, ..., LOCAL7, USER
+#log_facility=STDERR                     # Logging facility: possible values are STDERR, or for
+                                         # syslog integration, one of LOCAL0, LOCAL1, ..., LOCAL7, USER
 
-#logfile=''                              # stderr can be redirected to an arbitrary file:
+#log_file=''                             # stderr can be redirected to an arbitrary file:
+
 
 #------------------------------------------------------------------------------
 # Event notification settings

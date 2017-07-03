@@ -399,7 +399,7 @@ main(int argc, char **argv)
 				int detected_log_level = detect_log_level(optarg);
 				if (detected_log_level != -1)
 				{
-					strncpy(runtime_options.loglevel, optarg, MAXLEN);
+					strncpy(runtime_options.log_level, optarg, MAXLEN);
 				}
 				else
 				{
@@ -701,9 +701,9 @@ main(int argc, char **argv)
 
 	/* Some configuration file items can be overriden by command line options */
 	/* Command-line parameter -L/--log-level overrides any setting in config file*/
-	if (*runtime_options.loglevel != '\0')
+	if (*runtime_options.log_level != '\0')
 	{
-		strncpy(config_file_options.loglevel, runtime_options.loglevel, MAXLEN);
+		strncpy(config_file_options.log_level, runtime_options.log_level, MAXLEN);
 	}
 
 	/*

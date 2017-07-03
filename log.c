@@ -29,7 +29,7 @@ __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 0)));
 
 int			log_type = REPMGR_STDERR;
 int			log_level = LOG_NOTICE;
-int			last_log_level = LOG_NOTICE;
+int			last_log_level = LOG_INFO;
 int			verbose_logging = false;
 int			terse_logging = false;
 /*
@@ -156,8 +156,8 @@ log_verbose(int level, const char *fmt, ...)
 bool
 logger_init(t_configuration_options *opts, const char *ident)
 {
-	char	   *level = opts->loglevel;
-	char	   *facility = opts->logfacility;
+	char	   *level = opts->log_level;
+	char	   *facility = opts->log_facility;
 
 	int			l;
 	int			f;
@@ -167,7 +167,7 @@ logger_init(t_configuration_options *opts, const char *ident)
 #endif
 
 #ifdef REPMGR_DEBUG
-	printf("Logger initialisation (Level: %s, Facility: %s)\n", level, facility);
+	printf("logger initialisation (Level: %s, Facility: %s)\n", level, facility);
 #endif
 
 	if (!ident)
@@ -179,13 +179,13 @@ logger_init(t_configuration_options *opts, const char *ident)
 	{
 		l = detect_log_level(level);
 #ifdef REPMGR_DEBUG
-		printf("Assigned level for logger: %d\n", l);
+		printf("assigned level for logger: %d\n", l);
 #endif
 
 		if (l >= 0)
 			log_level = l;
 		else
-			stderr_log_warning(_("Invalid log level \"%s\" (available values: DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)\n"), level);
+			stderr_log_warning(_("invalid log level \"%s\" (available values: DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG)\n"), level);
 	}
 
 	/*
@@ -200,19 +200,19 @@ logger_init(t_configuration_options *opts, const char *ident)
 
 		f = detect_log_facility(facility);
 #ifdef REPMGR_DEBUG
-		printf("Assigned facility for logger: %d\n", f);
+		printf("assigned facility for logger: %d\n", f);
 #endif
 
 		if (f == 0)
 		{
 			/* No syslog requested, just stderr */
 #ifdef REPMGR_DEBUG
-			printf(_("Use stderr for logging\n"));
+			printf(_("using stderr for logging\n"));
 #endif
 		}
 		else if (f == -1)
 		{
-			stderr_log_warning(_("Cannot detect log facility %s (use any of LOCAL0, LOCAL1, ..., LOCAL7, USER or STDERR)\n"), facility);
+			stderr_log_warning(_("cannot detect log facility %s (use any of LOCAL0, LOCAL1, ..., LOCAL7, USER or STDERR)\n"), facility);
 		}
 #ifdef HAVE_SYSLOG
 		else
@@ -230,11 +230,11 @@ logger_init(t_configuration_options *opts, const char *ident)
 		setlogmask(LOG_UPTO(log_level));
 		openlog(ident, LOG_CONS | LOG_PID | LOG_NDELAY, syslog_facility);
 
-		stderr_log_notice(_("Setup syslog (level: %s, facility: %s)\n"), level, facility);
+		stderr_log_notice(_("setup syslog (level: %s, facility: %s)\n"), level, facility);
 	}
 #endif
 
-	if (*opts->logfile)
+	if (*opts->log_file)
 	{
 		FILE	   *fd;
 
@@ -243,17 +243,18 @@ logger_init(t_configuration_options *opts, const char *ident)
 		 * the ether and the user won't know what's going on.
 		 */
 
-		fd = fopen(opts->logfile, "a");
+		fd = fopen(opts->log_file, "a");
 		if (fd == NULL)
 		{
-			stderr_log_error(_("Unable to open specified logfile '%s' for writing: %s\n"), opts->logfile, strerror(errno));
+			stderr_log_error(_("unable to open specified log file '%s' for writing: %s\n"),
+							 opts->log_file, strerror(errno));
 			stderr_log_error(_("Terminating\n"));
 			exit(ERR_BAD_CONFIG);
 		}
 		fclose(fd);
 
-		stderr_log_notice(_("Redirecting logging output to '%s'\n"), opts->logfile);
-		fd = freopen(opts->logfile, "a", stderr);
+		stderr_log_notice(_("redirecting logging output to '%s'\n"), opts->log_file);
+		fd = freopen(opts->log_file, "a", stderr);
 
 		/*
 		 * It's possible freopen() may still fail due to e.g. a race condition;
@@ -262,8 +263,8 @@ logger_init(t_configuration_options *opts, const char *ident)
 		 */
 		if (fd == NULL)
 		{
-			printf(_("Unable to open specified logfile %s for writing: %s\n"), opts->logfile, strerror(errno));
-			printf(_("Terminating\n"));
+			printf(_("unable to open specified log file %s for writing: %s\n"), opts->log_file, strerror(errno));
+			printf(_("terminating\n"));
 			exit(ERR_BAD_CONFIG);
 		}
 	}
