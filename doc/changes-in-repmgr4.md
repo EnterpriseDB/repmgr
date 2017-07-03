@@ -37,4 +37,5 @@ Logging changes
   - `logfile` has been renamed to `log_file`
   - `logfacility` has been renamed to `log_facility`
 - default value for `log_level` is `INFO` rather than `NOTICE`.
+- new parameter `log_status_interval`
 

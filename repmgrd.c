@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#include "portability/instr_time.h"
+
 #include "repmgr.h"
 #include "config.h"
 #include "voting.h"
@@ -449,7 +451,8 @@ start_monitoring(void)
 static void
 monitor_streaming_primary(void)
 {
-	NodeStatus node_status = NODE_STATUS_UP;
+	NodeStatus	node_status = NODE_STATUS_UP;
+	instr_time	log_status_interval_start;
 
 	/* Log startup event */
 	if (startup_event_logged == false)
@@ -467,11 +470,17 @@ monitor_streaming_primary(void)
 				   local_node_info.node_id);
 	}
 
+	INSTR_TIME_SET_CURRENT(log_status_interval_start);
+
 	while (true)
 	{
+		double		log_status_interval_elapsed = 0;
+		instr_time	log_status_interval_current;
+
 		// cache node list here, refresh at `node_list_refresh_interval`
 		if (is_server_available(local_node_info.conninfo) == false)
 		{
+
 			/* node is down, we were expecting it to be up */
 			if (node_status == NODE_STATUS_UP)
 			{
@@ -499,8 +508,22 @@ monitor_streaming_primary(void)
 			}
 		}
 
-
 	loop:
+		/* emit "still alive" log message at regular intervals, if requested */
+		if (config_file_options.log_status_interval > 0)
+		{
+			INSTR_TIME_SET_CURRENT(log_status_interval_current);
+			INSTR_TIME_SUBTRACT(log_status_interval_current, log_status_interval_start);
+			log_status_interval_elapsed = INSTR_TIME_GET_DOUBLE(log_status_interval_current);
+
+			if ((int) log_status_interval_elapsed >= config_file_options.log_status_interval)
+			{
+				log_info(_("monitoring primary node \"%s\" (node ID: %i)"),
+						 local_node_info.node_name,
+						 local_node_info.node_id);
+				INSTR_TIME_SET_CURRENT(log_status_interval_start);
+			}
+		}
 		sleep(1);
 	}
 }
@@ -509,7 +532,8 @@ monitor_streaming_primary(void)
 static void
 monitor_streaming_standby(void)
 {
-	NodeStatus upstream_node_status = NODE_STATUS_UP;
+	NodeStatus	upstream_node_status = NODE_STATUS_UP;
+	instr_time	log_status_interval_start;
 
 	// check result
 	(void) get_node_record(local_conn, local_node_info.upstream_node_id, &upstream_node_info);
@@ -531,16 +555,23 @@ monitor_streaming_standby(void)
 							NULL);
 		startup_event_logged = true;
 
-		log_notice(_("monitoring node \"%s\" (node ID: %i)"),
+		log_notice(_("repmgrd on node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i)"),
+				   local_node_info.node_name,
+				   local_node_info.node_id,
 				   upstream_node_info.node_name,
 				   upstream_node_info.node_id);
 	}
 
+	INSTR_TIME_SET_CURRENT(log_status_interval_start);
 
 	while (true)
 	{
+		double		log_status_interval_elapsed = 0;
+		instr_time	log_status_interval_current;
+
 		if (is_server_available(upstream_node_info.conninfo) == false)
 		{
+
 			/* upstream node is down, we were expecting it to be up */
 			if (upstream_node_status == NODE_STATUS_UP)
 			{
@@ -615,6 +646,24 @@ monitor_streaming_standby(void)
 		}
 
 	loop:
+
+		/* emit "still alive" log message at regular intervals, if requested */
+		if (config_file_options.log_status_interval > 0)
+		{
+			INSTR_TIME_SET_CURRENT(log_status_interval_current);
+			INSTR_TIME_SUBTRACT(log_status_interval_current, log_status_interval_start);
+			log_status_interval_elapsed = INSTR_TIME_GET_DOUBLE(log_status_interval_current);
+			if ((int) log_status_interval_elapsed >= config_file_options.log_status_interval)
+			{
+				log_info(_("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i)"),
+						 local_node_info.node_name,
+						 local_node_info.node_id,
+						 upstream_node_info.node_name,
+						 upstream_node_info.node_id);
+
+				INSTR_TIME_SET_CURRENT(log_status_interval_start);
+			}
+		}
 		sleep(1);
 	}
 }
@@ -641,7 +690,7 @@ promote_self(void)
 	log_debug("promote command is:\n  \"%s\"",
 			  promote_command);
 
-	if (log_type == REPMGR_STDERR && *config_file_options.logfile)
+	if (log_type == REPMGR_STDERR && *config_file_options.log_file)
 	{
 		fflush(stderr);
 	}

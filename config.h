@@ -62,6 +62,7 @@ typedef struct
 	char		log_level[MAXLEN];
 	char		log_facility[MAXLEN];
 	char		log_file[MAXLEN];
+	int			log_status_interval;
 
 	/* standby clone settings */
 	bool		use_replication_slots;
@@ -116,7 +117,7 @@ typedef struct
 		/* node information */ \
 		UNKNOWN_NODE_ID, NO_UPSTREAM_NODE, "", "", "", "", REPLICATION_TYPE_PHYSICAL, \
 		/* log settings */ \
-		"", "", "", \
+		"", "", "", DEFAULT_LOG_STATUS_INTERVAL,	\
 		/* standby clone settings */ \
 		false, "", "", "", "", { NULL, NULL },	\
 		/* repmgrd settings */ \

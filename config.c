@@ -219,6 +219,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	 */
 	memset(options->log_facility, 0, sizeof(options->log_facility));
 	memset(options->log_file, 0, sizeof(options->log_file));
+	options->log_status_interval = DEFAULT_LOG_STATUS_INTERVAL;
 
 	/* standby clone settings
 	 * ----------------------- */
@@ -354,6 +355,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->log_level, value, MAXLEN);
 		else if (strcmp(name, "log_facility") == 0)
 			strncpy(options->log_facility, value, MAXLEN);
+		else if (strcmp(name, "log_status_interval") == 0)
+			options->log_status_interval = repmgr_atoi(value, name, error_list, 0);
 
 		/* standby clone settings */
 		else if (strcmp(name, "use_replication_slots") == 0)

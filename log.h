@@ -14,6 +14,8 @@
 #define OM_COMMAND_LINE 1
 #define OM_DAEMON		2
 
+#define DEFAULT_LOG_STATUS_INTERVAL 300
+
 extern void
 stderr_log_with_level(const char *level_name, int level, const char *fmt,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
