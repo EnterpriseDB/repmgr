@@ -28,6 +28,7 @@ Changed command line options
   configuration file option `monitoring_history`. This enables the
   setting to be changed without having to modify system service files.
 
+
 Removed configuration file options
 ----------------------------------
 

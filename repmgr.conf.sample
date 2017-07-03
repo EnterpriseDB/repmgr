@@ -78,7 +78,6 @@
 
 #log_file=''                             # stderr can be redirected to an arbitrary file:
 #log_status_interval=300                 # interval (in seconds) for repmgrd to log a message confirming
-                                         # its current status; setting to 0 disables this message
 
 #------------------------------------------------------------------------------
 # Event notification settings
