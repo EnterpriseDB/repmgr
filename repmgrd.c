@@ -1421,7 +1421,7 @@ do_master_failover(void)
 			 *
 			 * If the master did come back at this point, the voting algorithm should decide
 			 * it's the "best candidate" anyway and no standby will promote itself or
-			 * attempt to follow* another server.
+			 * attempt to follow another server.
 			 *
 			 * If we don't try and connect to the master here (and the code generally
 			 * assumes it's failed anyway) but it does come back any time from here
@@ -2070,6 +2070,9 @@ do_upstream_standby_failover(t_node_info upstream_node)
 							"repmgrd_failover_follow",
 							false,
 							event_details.data);
+
+		termPQExpBuffer(&event_details);
+
 		terminate(ERR_BAD_CONFIG);
 	}
 
@@ -2085,6 +2088,9 @@ do_upstream_standby_failover(t_node_info upstream_node)
 							"repmgrd_failover_follow",
 							false,
 							event_details.data);
+
+		termPQExpBuffer(&event_details);
+
 		terminate(ERR_BAD_CONFIG);
 	}
 
@@ -2099,6 +2105,8 @@ do_upstream_standby_failover(t_node_info upstream_node)
 						"repmgrd_failover_follow",
 						true,
 						event_details.data);
+
+	termPQExpBuffer(&event_details);
 
 	my_local_conn = establish_db_connection(local_options.conninfo, true);
 
