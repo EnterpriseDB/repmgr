@@ -600,11 +600,49 @@ monitor_streaming_primary(void)
 static void
 monitor_streaming_standby(void)
 {
+	RecordStatus record_status;
 	NodeStatus	upstream_node_status = NODE_STATUS_UP;
 	instr_time	log_status_interval_start;
 
-	// check result
-	(void) get_node_record(local_conn, local_node_info.upstream_node_id, &upstream_node_info);
+	/*
+	 * If no upstream node id is specified in the metadata, we'll try
+	 * and determine the current cluster primary in the assumption we
+	 * should connect to that by default.
+	 */
+	if (local_node_info.upstream_node_id == UNKNOWN_NODE_ID)
+	{
+		local_node_info.upstream_node_id = get_primary_node_id(local_conn);
+
+		/*
+		 * Terminate if there doesn't appear to be an active cluster primary.
+		 * There could be one or more nodes marked as inactive primaries, and one
+		 * of them could actually be a primary, but we can't sensibly monitor
+		 * in that state.
+		 */
+		if (local_node_info.upstream_node_id == NODE_NOT_FOUND)
+		{
+			// XXX check if there's an inactive record(s) and log detail/hint
+			log_error(_("unable to determine an active primary for this cluster, terminating"));
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &upstream_node_info);
+
+	/*
+	 * Terminate if we can't find the record for the node we're supposed
+	 * to monitor. This is a "fix-the-config" situation, not a lot else we
+	 * can do.
+	 */
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve record for upstream node (ID: %i), terminating"),
+					local_node_info.upstream_node_id);
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 
 	// handle failure - do we want to loop here?
 	upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
