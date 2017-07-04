@@ -876,6 +876,39 @@ monitor_streaming_standby(void)
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
 			}
 		}
+
+		/*
+		 * handle local node failure
+		 *
+		 * currently we'll just check the connection, and try to reconnect
+		 *
+		 * TODO: add timeout, after which we run in degraded state
+		 */
+		if (is_server_available(local_node_info.conninfo) == false)
+		{
+			log_warning(_("connection to local node %i lost"), local_node_info.node_id);
+
+			if (local_conn != NULL)
+			{
+				PQfinish(local_conn);
+				local_conn = NULL;
+			}
+		}
+
+		if (PQstatus(local_conn) != CONNECTION_OK)
+		{
+			log_info(_("attempting to reconnect"));
+			local_conn = establish_db_connection(config_file_options.conninfo, false);
+
+			if (PQstatus(local_conn) != CONNECTION_OK)
+			{
+				log_warning(_("reconnection failed"));
+			}
+			else
+			{
+				log_info(_("reconnected"));
+			}
+		}
 		sleep(1);
 	}
 }
