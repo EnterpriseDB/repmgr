@@ -458,9 +458,6 @@ start_monitoring(void)
 			case STANDBY:
 				monitor_streaming_standby();
 				break;
-			case BDR:
-				/* not yet handled */
-				return;
 			case WITNESS:
 				/* not handled */
 				return;
@@ -1709,6 +1706,16 @@ reset_node_voting_status(void)
 		return;
 	}
 	reset_voting_status(local_conn);
+}
+
+
+static void
+monitor_bdr(void)
+{
+	while (true)
+	{
+		sleep(1);
+	}
 }
 
 
