@@ -93,6 +93,10 @@ static void handle_sigint(SIGNAL_ARGS);
 #endif
 
 static PGconn *try_reconnect(const char *conninfo, NodeStatus *node_status);
+
+static bool do_primary_failover(void);
+static bool do_upstream_standby_failover(void);
+
 static ElectionResult do_election(void);
 static const char *_print_voting_status(NodeVotingStatus voting_status);
 static const char *_print_election_result(ElectionResult result);
@@ -699,192 +703,25 @@ monitor_streaming_standby(void)
 					goto loop;
 				}
 
-				/* still down after reconnect attempt(s) - */
+				/* still down after reconnect attempt(s) */
 				if (upstream_node_status == NODE_STATUS_DOWN)
 				{
-					/* attempt to initiate voting process */
-					ElectionResult election_result = do_election();
+					bool failover_done = false;
 
-					/* XXX add pre-event notification here */
-					failover_state = FAILOVER_STATE_UNKNOWN;
-
-					log_debug("election result: %s", _print_election_result(election_result));
-
-					if (election_result == ELECTION_WON)
+					if (upstream_node_info.type == PRIMARY)
 					{
-						log_notice("I am the winner, will now promote self and inform other nodes");
-
-						failover_state = promote_self();
+						failover_done = do_primary_failover();
 					}
-					else if (election_result == ELECTION_LOST)
+					else if (upstream_node_info.type == STANDBY)
 					{
-						t_node_info *best_candidate;
-
-						log_info("I am the candidate but did not get all votes; will now determine the best candidate");
-
-
-						/* reset node list */
-						clear_node_info_list(&standby_nodes);
-						get_active_sibling_node_records(local_conn,
-														local_node_info.node_id,
-														upstream_node_info.node_id,
-														&standby_nodes);
-
-						best_candidate = poll_best_candidate(&standby_nodes);
-
-						/*
-						 * this can occur in a tie-break situation, where this node establishes
-						 * it is the best candidate
-						 */
-						if (best_candidate->node_id == local_node_info.node_id)
-						{
-							log_notice("I am the best candidate, will now promote self and inform other nodes");
-
-							failover_state = promote_self();
-						}
-						else
-						{
-							PGconn *candidate_conn = NULL;
-
-							log_info("node %i is the best candidate, waiting for it to confirm so I can follow it",
-									 best_candidate->node_id);
-
-							/* notify the best candidate so it */
-
-							candidate_conn = establish_db_connection(best_candidate->conninfo, false);
-
-							if (PQstatus(candidate_conn) == CONNECTION_OK)
-							{
-								notify_follow_primary(candidate_conn, best_candidate->node_id);
-
-								/*  we'll wait for the candidate to get back to us */
-								failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
-							}
-							else
-							{
-								log_error(_("unable to connect to candidate node (ID: %i)"), best_candidate->node_id);
-								failover_state = FAILOVER_STATE_NODE_NOTIFICATION_ERROR;
-							}
-							PQfinish(candidate_conn);
-						}
-					}
-					else
-					{
-						log_info(_("follower node awaiting notification from the candidate node"));
-						failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
+						failover_done = do_upstream_standby_failover();
 					}
 
+					// it's possible it will make sense to return in
+					// all cases to restart monitoring
+					if (failover_done == true)
+						return;
 
-					/*
-					 * node has decided it is a follower, so will await notification
-					 * from the candidate that it has promoted itself and can be followed
-					 */
-					if (failover_state == FAILOVER_STATE_WAITING_NEW_PRIMARY)
-					{
-						int new_primary_id;
-
-						//   --> need timeout in case new primary doesn't come up, then rerun election
-
-						/* either follow or time out; either way resume monitoring */
-						if (wait_primary_notification(&new_primary_id) == true)
-						{
-							/* if primary has reappeared, no action needed */
-							if (new_primary_id == upstream_node_info.node_id)
-							{
-								failover_state = FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY;
-							}
-							/* if new_primary_id is self, promote */
-							else if (new_primary_id == local_node_info.node_id)
-							{
-								log_notice(_("this node is promotion candidate, promoting"));
-
-								failover_state = promote_self();
-
-								/* reset node list */
-								clear_node_info_list(&standby_nodes);
-								get_active_sibling_node_records(local_conn,
-																local_node_info.node_id,
-																upstream_node_info.node_id,
-																&standby_nodes);
-
-							}
-							else
-							{
-								failover_state = follow_new_primary(new_primary_id);
-							}
-						}
-						else
-						{
-							failover_state = FAILOVER_STATE_NO_NEW_PRIMARY;
-						}
-					}
-
-					switch(failover_state)
-					{
-						case FAILOVER_STATE_PROMOTED:
-							log_debug("failover state is PROMOTED");
-
-							/* notify former siblings that they should now follow this node */
-							notify_followers(&standby_nodes, local_node_info.node_id);
-
-							/* we no longer care about our former siblings */
-							clear_node_info_list(&standby_nodes);
-
-							/* pass control back down to start_monitoring() */
-							log_info(_("switching to primary monitoring mode"));
-
-							failover_state = FAILOVER_STATE_NONE;
-							return;
-
-						case FAILOVER_STATE_PRIMARY_REAPPEARED:
-							log_debug("failover state is PRIMARY_REAPPEARED");
-
-							/* notify siblings that they should resume following the original primary */
-							notify_followers(&standby_nodes, upstream_node_info.node_id);
-
-							/* we no longer care about our former siblings */
-							clear_node_info_list(&standby_nodes);
-
-							/* pass control back down to start_monitoring() */
-							log_info(_("resuming standby monitoring mode"));
-							log_detail(_("original primary \"%s\" (node ID: %i) reappeared"),
-									   upstream_node_info.node_name, upstream_node_info.node_id);
-
-							failover_state = FAILOVER_STATE_NONE;
-							return;
-
-						case FAILOVER_STATE_PROMOTION_FAILED:
-							log_debug("failover state is PROMOTION FAILED");
-							break;
-
-						case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
-							log_info(_("resuming standby monitoring mode"));
-							log_detail(_("following new primary \"%s\" (node id: %i)"),
-										 upstream_node_info.node_name, upstream_node_info.node_id);
-							failover_state = FAILOVER_STATE_NONE;
-
-							return;
-
-						case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
-							log_info(_("resuming standby monitoring mode"));
-							log_detail(_("following original primary \"%s\" (node id: %i)"),
-										 upstream_node_info.node_name, upstream_node_info.node_id);
-							failover_state = FAILOVER_STATE_NONE;
-
-							return;
-
-						case FAILOVER_STATE_NO_NEW_PRIMARY:
-						case FAILOVER_STATE_WAITING_NEW_PRIMARY:
-							/* pass control back down to start_monitoring() */
-							// -> should kick off new election
-							return;
-
-						case FAILOVER_STATE_LOCAL_NODE_FAILURE:
-						case FAILOVER_STATE_UNKNOWN:
-						case FAILOVER_STATE_NONE:
-							log_debug("failover state is %i", failover_state);
-							break;
-					}
 				}
 
 			}
@@ -950,6 +787,207 @@ monitor_streaming_standby(void)
 		sleep(1);
 	}
 }
+
+
+static bool
+do_primary_failover(void)
+{
+	/* attempt to initiate voting process */
+	ElectionResult election_result = do_election();
+
+	/* XXX add pre-event notification here */
+	failover_state = FAILOVER_STATE_UNKNOWN;
+
+	log_debug("election result: %s", _print_election_result(election_result));
+
+	if (election_result == ELECTION_WON)
+	{
+		log_notice("I am the winner, will now promote self and inform other nodes");
+
+		failover_state = promote_self();
+	}
+	else if (election_result == ELECTION_LOST)
+	{
+		t_node_info *best_candidate;
+
+		log_info("I am the candidate but did not get all votes; will now determine the best candidate");
+
+
+		/* reset node list */
+		clear_node_info_list(&standby_nodes);
+		get_active_sibling_node_records(local_conn,
+										local_node_info.node_id,
+										upstream_node_info.node_id,
+										&standby_nodes);
+
+		best_candidate = poll_best_candidate(&standby_nodes);
+
+		/*
+		 * this can occur in a tie-break situation, where this node establishes
+		 * it is the best candidate
+		 */
+		if (best_candidate->node_id == local_node_info.node_id)
+		{
+			log_notice("I am the best candidate, will now promote self and inform other nodes");
+
+			failover_state = promote_self();
+		}
+		else
+		{
+			PGconn *candidate_conn = NULL;
+
+			log_info("node %i is the best candidate, waiting for it to confirm so I can follow it",
+					 best_candidate->node_id);
+
+			/* notify the best candidate so it */
+
+			candidate_conn = establish_db_connection(best_candidate->conninfo, false);
+
+			if (PQstatus(candidate_conn) == CONNECTION_OK)
+			{
+				notify_follow_primary(candidate_conn, best_candidate->node_id);
+
+				/*  we'll wait for the candidate to get back to us */
+				failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
+			}
+			else
+			{
+				log_error(_("unable to connect to candidate node (ID: %i)"), best_candidate->node_id);
+				failover_state = FAILOVER_STATE_NODE_NOTIFICATION_ERROR;
+			}
+			PQfinish(candidate_conn);
+		}
+	}
+	else
+	{
+		log_info(_("follower node awaiting notification from the candidate node"));
+		failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
+	}
+
+
+	/*
+	 * node has decided it is a follower, so will await notification
+	 * from the candidate that it has promoted itself and can be followed
+	 */
+	if (failover_state == FAILOVER_STATE_WAITING_NEW_PRIMARY)
+	{
+		int new_primary_id;
+
+		//   --> need timeout in case new primary doesn't come up, then rerun election
+
+		/* either follow or time out; either way resume monitoring */
+		if (wait_primary_notification(&new_primary_id) == true)
+		{
+			/* if primary has reappeared, no action needed */
+			if (new_primary_id == upstream_node_info.node_id)
+			{
+				failover_state = FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY;
+			}
+			/* if new_primary_id is self, promote */
+			else if (new_primary_id == local_node_info.node_id)
+			{
+				log_notice(_("this node is promotion candidate, promoting"));
+
+				failover_state = promote_self();
+
+				/* reset node list */
+				clear_node_info_list(&standby_nodes);
+				get_active_sibling_node_records(local_conn,
+												local_node_info.node_id,
+												upstream_node_info.node_id,
+												&standby_nodes);
+
+			}
+			else
+			{
+				failover_state = follow_new_primary(new_primary_id);
+			}
+		}
+		else
+		{
+			failover_state = FAILOVER_STATE_NO_NEW_PRIMARY;
+		}
+	}
+
+	switch(failover_state)
+	{
+		case FAILOVER_STATE_PROMOTED:
+			log_debug("failover state is PROMOTED");
+
+			/* notify former siblings that they should now follow this node */
+			notify_followers(&standby_nodes, local_node_info.node_id);
+
+			/* we no longer care about our former siblings */
+			clear_node_info_list(&standby_nodes);
+
+			/* pass control back down to start_monitoring() */
+			log_info(_("switching to primary monitoring mode"));
+
+			failover_state = FAILOVER_STATE_NONE;
+			return true;
+
+		case FAILOVER_STATE_PRIMARY_REAPPEARED:
+			log_debug("failover state is PRIMARY_REAPPEARED");
+
+			/* notify siblings that they should resume following the original primary */
+			notify_followers(&standby_nodes, upstream_node_info.node_id);
+
+			/* we no longer care about our former siblings */
+			clear_node_info_list(&standby_nodes);
+
+			/* pass control back down to start_monitoring() */
+			log_info(_("resuming standby monitoring mode"));
+			log_detail(_("original primary \"%s\" (node ID: %i) reappeared"),
+					   upstream_node_info.node_name, upstream_node_info.node_id);
+
+			failover_state = FAILOVER_STATE_NONE;
+			return true;
+
+
+		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
+			log_info(_("resuming standby monitoring mode"));
+			log_detail(_("following new primary \"%s\" (node id: %i)"),
+					   upstream_node_info.node_name, upstream_node_info.node_id);
+			failover_state = FAILOVER_STATE_NONE;
+
+			return true;
+
+		case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
+			log_info(_("resuming standby monitoring mode"));
+			log_detail(_("following original primary \"%s\" (node id: %i)"),
+					   upstream_node_info.node_name, upstream_node_info.node_id);
+			failover_state = FAILOVER_STATE_NONE;
+
+			return true;
+
+		case FAILOVER_STATE_PROMOTION_FAILED:
+			log_debug("failover state is PROMOTION FAILED");
+			return false;
+		case FAILOVER_STATE_NO_NEW_PRIMARY:
+		case FAILOVER_STATE_WAITING_NEW_PRIMARY:
+			/* pass control back down to start_monitoring() */
+			// -> should kick off new election
+			return false;
+
+		case FAILOVER_STATE_LOCAL_NODE_FAILURE:
+		case FAILOVER_STATE_UNKNOWN:
+		case FAILOVER_STATE_NONE:
+			log_debug("failover state is %i", failover_state);
+			return false;
+	}
+
+	// should never reach here
+	return false;
+}
+
+
+static bool
+do_upstream_standby_failover(void)
+{
+	// not implemented yet
+	return false;
+}
+
 
 static FailoverState
 promote_self(void)
