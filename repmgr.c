@@ -80,8 +80,8 @@ PG_FUNCTION_INFO_V1(notify_follow_primary);
 Datum		get_new_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_new_primary);
 
-//Datum		set_new_primary(PG_FUNCTION_ARGS);
-//PG_FUNCTION_INFO_V1(set_new_primary);
+Datum		reset_voting_status(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(reset_voting_status);
 
 /*
  * Module load callback
@@ -153,9 +153,9 @@ repmgr_shmem_startup(void)
 		shared_state->lock = LWLockAssign();
 #endif
 
+		shared_state->current_electoral_term = 0;
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
-		shared_state->current_electoral_term = 0;
 		shared_state->follow_new_primary = false;
 	}
 
@@ -314,4 +314,19 @@ get_new_primary(PG_FUNCTION_ARGS)
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_INT32(new_primary_node_id);
+}
+
+
+Datum
+reset_voting_status(PG_FUNCTION_ARGS)
+{
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+
+	shared_state->voting_status = VS_NO_VOTE;
+	shared_state->candidate_node_id = UNKNOWN_NODE_ID;
+	shared_state->follow_new_primary = false;
+
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_VOID();
 }

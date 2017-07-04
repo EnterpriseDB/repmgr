@@ -268,8 +268,13 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->event_notifications.tail = NULL;
 
 	/* barman settings */
+	/* --------------- */
 	memset(options->barman_server, 0, sizeof(options->barman_server));
 	memset(options->barman_config, 0, sizeof(options->barman_config));
+
+	/* undocumented test settings */
+	/* -------------------------- */
+	options->promote_delay = 0;
 
 	/*
 	 * If no configuration file available (user didn't specify and none found
@@ -454,6 +459,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->barman_server, value, MAXLEN);
 		else if (strcmp(name, "barman_config") == 0)
 			strncpy(options->barman_config, value, MAXLEN);
+
+		/* undocumented test settings */
+		else if (strcmp(name, "promote_delay") == 0)
+			options->promote_delay = repmgr_atoi(value, name, error_list, 1);
 
 		/* Following parameters have been deprecated or renamed from 3.x - issue a warning */
 		else if (strcmp(name, "cluster") == 0)

@@ -106,6 +106,9 @@ typedef struct
 	char		barman_host[MAXLEN];
 	char		barman_server[MAXLEN];
 	char		barman_config[MAXLEN];
+
+	/* undocumented test settings */
+	int			promote_delay;
 }	t_configuration_options;
 
 /*
@@ -131,7 +134,10 @@ typedef struct
 		/* bdr settings */ \
 		BDR_MONITORING_LOCAL, \
 		/* barman settings */ \
-		"", "", "" }
+		"", "", "",	 \
+		/* undocumented test settings */ \
+		0 \
+ }
 
 
 

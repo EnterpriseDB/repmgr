@@ -249,6 +249,7 @@ int set_voting_status_initiated(PGconn *conn);
 bool announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
 void notify_follow_primary(PGconn *conn, int primary_node_id);
 bool get_new_primary(PGconn *conn, int *primary_node_id);
+void reset_voting_status(PGconn *conn);
 
 /* replication status functions */
 

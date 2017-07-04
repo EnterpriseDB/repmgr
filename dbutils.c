@@ -1714,6 +1714,8 @@ clear_node_info_list(NodeInfoList *nodes)
 	NodeInfoListCell *cell;
 	NodeInfoListCell *next_cell;
 
+	log_debug("clear_node_info_list() - closing open connections");
+
 	/* close any open connections */
 	for (cell = nodes->head; cell; cell = cell->next)
 	{
@@ -1724,6 +1726,8 @@ clear_node_info_list(NodeInfoList *nodes)
 		}
 	}
 
+	log_debug("clear_node_info_list() - unlinking");
+
 	cell = nodes->head;
 
 	while (cell != NULL)
@@ -1733,7 +1737,8 @@ clear_node_info_list(NodeInfoList *nodes)
 		pfree(cell);
 		cell = next_cell;
 	}
-
+	nodes->head = NULL;
+	nodes->tail = NULL;
 	nodes->node_count = 0;
 }
 
@@ -2490,6 +2495,32 @@ get_new_primary(PGconn *conn, int *primary_node_id)
 	*primary_node_id = new_primary_node_id;
 
 	return true;
+}
+
+
+void
+reset_voting_status(PGconn *conn)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT repmgr.reset_voting_status()");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	// COMMAND_OK?
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute repmgr..reset_voting_status():\n  %s"),
+				PQerrorMessage(conn));
+	}
+
+	PQclear(res);
+	return;
 }
 
 

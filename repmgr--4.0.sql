@@ -65,3 +65,8 @@ CREATE FUNCTION get_new_primary()
   RETURNS INT
   AS '$libdir/repmgr', 'get_new_primary'
   LANGUAGE C STRICT;
+
+CREATE FUNCTION reset_voting_status()
+  RETURNS VOID
+  AS '$libdir/repmgr', 'reset_voting_status'
+  LANGUAGE C STRICT;
