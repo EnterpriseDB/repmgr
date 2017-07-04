@@ -160,7 +160,7 @@ PGconn *establish_db_connection_by_params(const char *keywords[],
 										  const char *values[],
 										  const bool exit_on_error);
 PGconn *establish_primary_db_connection(PGconn *conn,
-									   const bool exit_on_error);
+										const bool exit_on_error);
 
 PGconn	   *get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 PGconn	   *get_primary_connection_quiet(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
@@ -221,6 +221,7 @@ bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_in
 bool		delete_node_record(PGconn *conn, int node);
 
 bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
+bool        update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 bool        update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
 
 void        clear_node_info_list(NodeInfoList *nodes);

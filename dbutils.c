@@ -1632,6 +1632,42 @@ update_node_record_set_primary(PGconn *conn, int this_node_id)
 	return commit_transaction(conn);
 }
 
+bool
+update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	log_debug(_("update_node_record_set_upstream(): Updating node %i's upstream node to %i"),
+			  this_node_id, new_upstream_node_id);
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "  UPDATE repmgr.nodes "
+					  "     SET upstream_node_id = %i "
+					  "   WHERE id = %i ",
+					  new_upstream_node_id,
+					  this_node_id);
+
+	log_verbose(LOG_DEBUG, "update_node_record_set_upstream():\n%s\n", query.data);
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to set new upstream node id:\n  %s"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
 
 /*
  * Update node record following change of status

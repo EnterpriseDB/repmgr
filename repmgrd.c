@@ -651,8 +651,15 @@ monitor_streaming_standby(void)
 	// handle failure - do we want to loop here?
 	upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
-	// fix for cascaded standbys
-	primary_conn = upstream_conn;
+	if (upstream_node_info.type == STANDBY)
+	{
+		// XXX check result
+		primary_conn = establish_primary_db_connection(local_conn, false);
+	}
+	else
+	{
+		primary_conn = upstream_conn;
+	}
 
 	/* Log startup event */
 	if (startup_event_logged == false)
@@ -980,12 +987,145 @@ do_primary_failover(void)
 	return false;
 }
 
-
+/*
+ * do_upstream_standby_failover()
+ *
+ * Attach cascaded standby to primary
+ *
+ * Currently we will try to attach to the cluster primary, as "repmgr
+ * standby follow" doesn't support attaching to another node.
+ *
+ * If this becomes supported, it might be worth providing a selection
+ * of reconnection strategies as different behaviour might be desirable
+ * in different situations;
+ * or maybe the option not to reconnect might be required?
+ *
+ * XXX check this handles replication slots gracefully
+ */
 static bool
 do_upstream_standby_failover(void)
 {
-	// not implemented yet
-	return false;
+	PQExpBufferData event_details;
+	t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status;
+	int r;
+
+	// check status
+	record_status = get_primary_node_record(local_conn, &primary_node_info);
+
+	/*
+	 * Verify that we can still talk to the cluster primary, even though
+	 * the node's upstream is not available
+	 */
+
+	// consolidate below code
+	if (is_server_available(primary_node_info.conninfo) == false)
+	{
+		log_warning(_("connection to primary %i lost"), primary_node_info.node_id);
+
+		if (primary_conn != NULL)
+		{
+			PQfinish(primary_conn);
+			primary_conn = NULL;
+		}
+	}
+
+	if (PQstatus(primary_conn) != CONNECTION_OK)
+	{
+		log_info(_("attempting to reconnect"));
+		primary_conn = establish_db_connection(primary_node_info.conninfo, false);
+
+		if (PQstatus(primary_conn) != CONNECTION_OK)
+		{
+			log_warning(_("reconnection failed"));
+		}
+		else
+		{
+			log_info(_("reconnected"));
+		}
+	}
+
+	/* grandparent upstream is inactive  */
+	if (primary_node_info.active == false)
+	{
+		// XXX
+	}
+
+	/* Close the connection to this server */
+	PQfinish(local_conn);
+	local_conn = NULL;
+
+	initPQExpBuffer(&event_details);
+
+	log_debug(_("standby follow command is:\n  \"%s\""),
+			  config_file_options.follow_command);
+
+	r = system(config_file_options.follow_command);
+
+	if (r != 0)
+	{
+		appendPQExpBuffer(&event_details,
+						  _("unable to execute follow command:\n %s"),
+						  config_file_options.follow_command);
+
+		log_error("%s", event_details.data);
+
+		/* It may not possible to write to the event notification
+		 * table but we should be able to generate an external notification
+		 * if required.
+		 */
+		create_event_record(primary_conn,
+							&config_file_options,
+							local_node_info.node_id,
+							"repmgrd_failover_follow",
+							false,
+							event_details.data);
+
+		termPQExpBuffer(&event_details);
+	}
+
+	if (update_node_record_set_upstream(primary_conn,
+										local_node_info.node_id,
+										primary_node_info.node_id) == false)
+	{
+		appendPQExpBuffer(&event_details,
+						  _("unable to set node %i's new upstream ID to %i"),
+						  local_node_info.node_id,
+						  primary_node_info.node_id);
+
+		log_error("%s", event_details.data);
+
+		create_event_record(NULL,
+							&config_file_options,
+							local_node_info.node_id,
+							"repmgrd_failover_follow",
+							false,
+							event_details.data);
+
+		termPQExpBuffer(&event_details);
+
+		terminate(ERR_BAD_CONFIG);
+	}
+
+	appendPQExpBuffer(&event_details,
+					  _("node %i is now following primary node %i"),
+					  local_node_info.node_id,
+					  primary_node_info.node_id);
+
+	log_notice("%s", event_details.data);
+
+	create_event_record(primary_conn,
+						&config_file_options,
+						local_node_info.node_id,
+						"repmgrd_failover_follow",
+						true,
+						event_details.data);
+
+	termPQExpBuffer(&event_details);
+
+	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	return true;
 }
 
 
@@ -1049,10 +1189,10 @@ promote_self(void)
 	{
 		int primary_node_id;
 
-		primary_conn = get_primary_connection(local_conn,
+		upstream_conn = get_primary_connection(local_conn,
 											  &primary_node_id, NULL);
 
-		if (PQstatus(primary_conn) == CONNECTION_OK && primary_node_id == failed_primary.node_id)
+		if (PQstatus(upstream_conn) == CONNECTION_OK && primary_node_id == failed_primary.node_id)
 		{
 			log_notice(_("original primary (id: %i) reappeared before this standby was promoted - no action taken"),
 					   failed_primary.node_id);
@@ -1063,7 +1203,7 @@ promote_self(void)
 							  failed_primary.node_name,
 							  failed_primary.node_id);
 
-			create_event_record(primary_conn,
+			create_event_record(upstream_conn,
 								&config_file_options,
 								local_node_info.node_id,
 								"repmgrd_failover_abort",
@@ -1072,7 +1212,6 @@ promote_self(void)
 
 			termPQExpBuffer(&event_details);
 
-			//PQfinish(primary_conn);
 			//primary_conn = NULL;
 
 			// XXX handle this!
@@ -1254,11 +1393,11 @@ follow_new_primary(int new_primary_id)
 	PQfinish(local_conn);
 	local_conn = NULL;
 
-	primary_conn = establish_db_connection(new_primary.conninfo, false);
+	upstream_conn = establish_db_connection(new_primary.conninfo, false);
 
-	if (PQstatus(primary_conn) == CONNECTION_OK)
+	if (PQstatus(upstream_conn) == CONNECTION_OK)
 	{
-		RecoveryType primary_recovery_type = get_recovery_type(primary_conn);
+		RecoveryType primary_recovery_type = get_recovery_type(upstream_conn);
 		if (primary_recovery_type == RECTYPE_PRIMARY)
 		{
 			new_primary_ok = true;
@@ -1266,7 +1405,7 @@ follow_new_primary(int new_primary_id)
 		else
 		{
 			log_warning(_("new primary is not in recovery"));
-			PQfinish(primary_conn);
+			PQfinish(upstream_conn);
 		}
 	}
 
@@ -1319,8 +1458,8 @@ follow_new_primary(int new_primary_id)
 
 	// XXX check success
 
-	record_status = get_node_record(primary_conn, new_primary_id, &upstream_node_info);
-	record_status = get_node_record(primary_conn, local_node_info.node_id, &local_node_info);
+	record_status = get_node_record(upstream_conn, new_primary_id, &upstream_node_info);
+	record_status = get_node_record(upstream_conn, local_node_info.node_id, &local_node_info);
 
 	local_conn = establish_db_connection(local_node_info.conninfo, false);
 	initPQExpBuffer(&event_details);
@@ -1331,7 +1470,7 @@ follow_new_primary(int new_primary_id)
 
 	log_notice("%s\n", event_details.data);
 
-	create_event_record(primary_conn,
+	create_event_record(upstream_conn,
 						&config_file_options,
 						local_node_info.node_id,
 						"repmgrd_failover_follow",
@@ -1808,10 +1947,20 @@ close_connections()
 		if (PQisBusy(primary_conn) == 1)
 			cancel_query(primary_conn, config_file_options.primary_response_timeout);
 		PQfinish(primary_conn);
+		primary_conn = NULL;
+	}
+
+	if (upstream_conn != NULL && PQstatus(upstream_conn) == CONNECTION_OK)
+	{
+		PQfinish(upstream_conn);
+		upstream_conn = NULL;
 	}
 
 	if (PQstatus(local_conn) == CONNECTION_OK)
+	{
 		PQfinish(local_conn);
+		local_conn = NULL;
+	}
 }
 
 
