@@ -337,7 +337,13 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "replication_user") == 0)
-			strncpy(options->replication_user, value, MAXLEN);
+		{
+			if (strlen(value) < NAMEDATALEN)
+				strncpy(options->replication_user, value, NAMEDATALEN);
+			else
+				item_list_append(error_list,
+								 _( "value for \"replication_user\" must contain fewer than " STR(NAMEDATALEN) " characters"));
+		}
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXLEN);
 		else if (strcmp(name, "replication_type") == 0)
@@ -347,7 +353,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			else if (strcmp(value, "bdr") == 0)
 				options->replication_type = REPLICATION_TYPE_BDR;
 			else
-				item_list_append(error_list, _("value for 'replication_type' must be 'physical' or 'bdr'"));
+				item_list_append(error_list, _("value for \"replication_type\" must be \"physical\" or \"bdr\""));
 		}
 
 		/* log settings */

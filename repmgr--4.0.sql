@@ -2,16 +2,15 @@
 \echo Use "CREATE EXTENSION repmgr" to load this file. \quit
 
 CREATE TABLE nodes (
-  node_id          INTEGER PRIMARY KEY,
-  upstream_node_id INTEGER NULL REFERENCES nodes (node_id) DEFERRABLE,
-  active           BOOLEAN NOT NULL DEFAULT TRUE,
-  node_name        TEXT    NOT NULL,
-  type             TEXT    NOT NULL CHECK (type IN('primary','standby','witness','bdr')),
-
-  priority         INT     NOT NULL DEFAULT 100,
-  conninfo         TEXT    NOT NULL,
-  repluser         TEXT    NOT NULL,
-  slot_name        TEXT    NULL
+  node_id          INTEGER     PRIMARY KEY,
+  upstream_node_id INTEGER     NULL REFERENCES nodes (node_id) DEFERRABLE,
+  active           BOOLEAN     NOT NULL DEFAULT TRUE,
+  node_name        TEXT        NOT NULL,
+  type             TEXT        NOT NULL CHECK (type IN('primary','standby','witness','bdr')),
+  priority         INT         NOT NULL DEFAULT 100,
+  conninfo         TEXT        NOT NULL,
+  repluser         VARCHAR(63) NOT NULL,
+  slot_name        TEXT        NULL
 );
 
 CREATE TABLE events (

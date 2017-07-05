@@ -53,7 +53,7 @@ typedef struct
     int			node_id;
 	char		node_name[MAXLEN];
 	char		conninfo[MAXLEN];
-	char		replication_user[MAXLEN];
+	char		replication_user[NAMEDATALEN];
 	char		pg_bindir[MAXLEN];
 	int			replication_type;
 

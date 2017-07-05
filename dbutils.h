@@ -54,7 +54,7 @@ typedef struct s_node_info
 	t_server_type type;
 	char		  node_name[MAXLEN];
 	char		  conninfo[MAXLEN];
-	char		  repluser[MAXLEN];
+	char		  repluser[NAMEDATALEN];
 	char		  slot_name[MAXLEN];
 	int			  priority;
 	bool		  active;
