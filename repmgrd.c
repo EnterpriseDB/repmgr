@@ -721,7 +721,7 @@ monitor_streaming_standby(void)
 				upstream_node_status = NODE_STATUS_UNKNOWN;
 
 				appendPQExpBuffer(&event_details,
-								  _("unable to connect to upstream node %s (node ID: %i)"),
+								  _("unable to connect to upstream node \"%s\" (node ID: %i)"),
 								  upstream_node_info.node_name, upstream_node_info.node_id);
 
 				if (upstream_node_info.type == STANDBY)

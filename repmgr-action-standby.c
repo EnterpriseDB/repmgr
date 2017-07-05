@@ -1257,6 +1257,7 @@ do_standby_follow(void)
 	char		restart_command[MAXLEN];
 	int			r;
 
+	PQExpBufferData event_details;
 
 	log_verbose(LOG_DEBUG, "do_standby_follow()");
 
@@ -1350,7 +1351,6 @@ do_standby_follow(void)
 	{
  		int	server_version_num = get_server_version(primary_conn, NULL);
 
-		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
 
 		if (create_replication_slot(primary_conn, repmgr_slot_name, server_version_num, &event_details) == false)
@@ -1543,12 +1543,21 @@ do_standby_follow(void)
 
 	log_notice(_("STANDBY FOLLOW successful"));
 
+	initPQExpBuffer(&event_details);
+	appendPQExpBuffer(&event_details,
+					  _("node %i is now attached to node %i"),
+					  config_file_options.node_id, primary_id);
+
 	create_event_notification(primary_conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"standby_follow",
-						true,
-						NULL);
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "standby_follow",
+							  true,
+							  event_details.data);
+
+	log_detail("%s", event_details.data);
+
+	termPQExpBuffer(&event_details);
 
 	PQfinish(primary_conn);
 
