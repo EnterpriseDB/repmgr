@@ -221,14 +221,15 @@ bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_in
 bool		delete_node_record(PGconn *conn, int node);
 
 bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
-bool        update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
-bool        update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
+bool		update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
+bool		update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
 
-void        clear_node_info_list(NodeInfoList *nodes);
+void		clear_node_info_list(NodeInfoList *nodes);
 
-/* event record functions */
-bool        create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
-bool        create_event_record_extended(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
+/* event functions */
+bool		create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
+bool		create_event_notification(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
+bool		create_event_notification_extended(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
 
 /* replication slot functions */
 bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);

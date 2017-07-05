@@ -1413,7 +1413,7 @@ create_repmgr_extension(PGconn *conn)
 
 	log_notice(_("\"repmgr\" extension successfully installed"));
 
-	create_event_record(conn,
+	create_event_notification(conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"cluster_created",

@@ -489,7 +489,7 @@ monitor_streaming_primary(void)
 						  local_node_info.node_name,
 						  local_node_info.node_id);
 
-		create_event_record(local_conn,
+		create_event_notification(local_conn,
 							&config_file_options,
 							config_file_options.node_id,
 							"repmgrd_start",
@@ -533,7 +533,7 @@ monitor_streaming_primary(void)
 				PQfinish(local_conn);
 
 				/* */
-				create_event_record(NULL,
+				create_event_notification(NULL,
 									&config_file_options,
 									config_file_options.node_id,
 									"repmgrd_local_disconnect",
@@ -560,7 +560,7 @@ monitor_streaming_primary(void)
 									  (int)local_node_unreachable_elapsed);
 					log_notice("%s", event_details.data);
 
-					create_event_record(local_conn,
+					create_event_notification(local_conn,
 										&config_file_options,
 										config_file_options.node_id,
 										"repmgrd_local_reconnect",
@@ -674,7 +674,7 @@ monitor_streaming_standby(void)
 						  upstream_node_info.node_name,
 						  upstream_node_info.node_id);
 
-		create_event_record(upstream_conn,
+		create_event_notification(upstream_conn,
 							&config_file_options,
 							config_file_options.node_id,
 							"repmgrd_start",
@@ -1076,7 +1076,7 @@ do_upstream_standby_failover(void)
 		 * table but we should be able to generate an external notification
 		 * if required.
 		 */
-		create_event_record(primary_conn,
+		create_event_notification(primary_conn,
 							&config_file_options,
 							local_node_info.node_id,
 							"repmgrd_failover_follow",
@@ -1097,7 +1097,7 @@ do_upstream_standby_failover(void)
 
 		log_error("%s", event_details.data);
 
-		create_event_record(NULL,
+		create_event_notification(NULL,
 							&config_file_options,
 							local_node_info.node_id,
 							"repmgrd_failover_follow",
@@ -1116,7 +1116,7 @@ do_upstream_standby_failover(void)
 
 	log_notice("%s", event_details.data);
 
-	create_event_record(primary_conn,
+	create_event_notification(primary_conn,
 						&config_file_options,
 						local_node_info.node_id,
 						"repmgrd_failover_follow",
@@ -1205,7 +1205,7 @@ promote_self(void)
 							  failed_primary.node_name,
 							  failed_primary.node_id);
 
-			create_event_record(upstream_conn,
+			create_event_notification(upstream_conn,
 								&config_file_options,
 								local_node_info.node_id,
 								"repmgrd_failover_abort",
@@ -1244,7 +1244,7 @@ promote_self(void)
 					  failed_primary.node_id);
 
 	/* local_conn is now the primary connection */
-	create_event_record(local_conn,
+	create_event_notification(local_conn,
 						&config_file_options,
 						local_node_info.node_id,
 						"repmgrd_failover_promote",
@@ -1472,7 +1472,7 @@ follow_new_primary(int new_primary_id)
 
 	log_notice("%s\n", event_details.data);
 
-	create_event_record(upstream_conn,
+	create_event_notification(upstream_conn,
 						&config_file_options,
 						local_node_info.node_id,
 						"repmgrd_failover_follow",

@@ -28,7 +28,7 @@ static void _populate_node_record(PGresult *res, t_node_info *node_info, int row
 static void _populate_node_records(PGresult *res, NodeInfoList *node_list);
 
 static bool _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info);
-static bool	_create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
+static bool	_create_event(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info, bool send_notification);
 
 /* ================= */
 /* utility functions */
@@ -1783,46 +1783,65 @@ clear_node_info_list(NodeInfoList *nodes)
 /* event record functions */
 /* ====================== */
 
+
 /*
  * create_event_record()
  *
+ * Create a record in the "events" table, but don't execute the
+ * "event_notification_command".
+ */
+
+bool
+create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details)
+{
+	/* create dummy t_event_info */
+	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
+
+	return _create_event(conn, options, node_id, event, successful, details, &event_info, false);
+}
+
+/*
+ * create_event_notification()
+ *
  * If `conn` is not NULL, insert a record into the events table.
  *
- * If configuration parameter `event_notification_command` is set, also
+ * If configuration parameter "event_notification_command" is set, also
  * attempt to execute that command.
  *
  * Returns true if all operations succeeded, false if one or more failed.
  *
- * Note this function may be called with `conn` set to NULL in cases where
+ * Note this function may be called with "conn" set to NULL in cases where
  * the primary node is not available and it's therefore not possible to write
  * an event record. In this case, if `event_notification_command` is set, a
  * user-defined notification to be generated; if not, this function will have
  * no effect.
  */
 bool
-create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details)
+create_event_notification(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details)
 {
+	/* create dummy t_event_info */
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
-	return _create_event_record(conn, options, node_id, event, successful, details, &event_info);
+	return _create_event(conn, options, node_id, event, successful, details, &event_info, true);
 }
 
 
 /*
- * create_event_record_extended()
+ * create_event_notification_extended()
  *
  * The caller may need to pass additional parameters to the event notification
  * command (currently only the conninfo string of another node)
 
  */
 bool
-create_event_record_extended(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info)
+create_event_notification_extended(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info)
 {
-	return _create_event_record(conn, options, node_id, event, successful, details, event_info);
+	return _create_event(conn, options, node_id, event, successful, details, event_info, true);
 }
 
+
 static bool
-_create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info)
+_create_event(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info, bool send_notification)
 {
 	PQExpBufferData	  query;
 	PGresult   *res;
@@ -1865,7 +1884,7 @@ _create_event_record(PGconn *conn, t_configuration_options *options, int node_id
 						  "      VALUES ($1, $2, $3, $4) "
 						  "   RETURNING event_timestamp ");
 
-		log_verbose(LOG_DEBUG, "create_event_record():\n  %s", query.data);
+		log_verbose(LOG_DEBUG, "_create_event():\n  %s", query.data);
 
 		res = PQexecParams(conn,
 						   query.data,
@@ -1910,10 +1929,10 @@ _create_event_record(PGconn *conn, t_configuration_options *options, int node_id
 		strftime(event_timestamp, MAXLEN, "%Y-%m-%d %H:%M:%S%z", &ts);
 	}
 
-	log_verbose(LOG_DEBUG, "create_event_record(): Event timestamp is \"%s\"\n", event_timestamp);
+	log_verbose(LOG_DEBUG, "_create_event(): Event timestamp is \"%s\"", event_timestamp);
 
 	/* an event notification command was provided - parse and execute it */
-	if (strlen(options->event_notification_command))
+	if (send_notification == true && strlen(options->event_notification_command))
 	{
 		char		parsed_command[MAXPGPATH];
 		const char *src_ptr;
@@ -1974,7 +1993,7 @@ _create_event_record(PGconn *conn, t_configuration_options *options, int node_id
 						src_ptr++;
 						if (event_info->node_name != NULL)
 						{
-							log_debug("node_name: %s\n", event_info->node_name);
+							log_verbose(LOG_DEBUG, "node_name: %s\n", event_info->node_name);
 							strlcpy(dst_ptr, event_info->node_name, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
 						}
@@ -2033,7 +2052,7 @@ _create_event_record(PGconn *conn, t_configuration_options *options, int node_id
 
 		*dst_ptr = '\0';
 
-		log_debug("create_event_record(): executing\n%s", parsed_command);
+		log_debug("_create_event(): executing\n%s", parsed_command);
 
 		r = system(parsed_command);
 		if (r != 0)

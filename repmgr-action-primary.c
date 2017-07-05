@@ -206,7 +206,7 @@ do_primary_register(void)
 	}
 
 	/* Log the event */
-	create_event_record(conn,
+	create_event_notification(conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"primary_register",
@@ -494,7 +494,7 @@ do_primary_unregister(void)
 							  config_file_options.node_id);
 		}
 
-		create_event_record(primary_conn,
+		create_event_notification(primary_conn,
 							&config_file_options,
 							config_file_options.node_id,
 							"primary_unregister",

@@ -452,7 +452,7 @@ do_standby_clone(void)
 					  _("; --force: %s"),
 					  runtime_options.force ? "Y" : "N");
 
-	create_event_record(primary_conn,
+	create_event_notification(primary_conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"standby_clone",
@@ -819,7 +819,7 @@ do_standby_register(void)
 	{
 		/* XXX add event description */
 
-		create_event_record(primary_conn,
+		create_event_notification(primary_conn,
 							&config_file_options,
 							config_file_options.node_id,
 							"standby_register",
@@ -834,7 +834,7 @@ do_standby_register(void)
 	}
 
 	/* Log the event */
-	create_event_record(primary_conn,
+	create_event_notification(primary_conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"standby_register",
@@ -1013,7 +1013,7 @@ do_standby_unregister(void)
 	}
 
 	/* Log the event */
-	create_event_record(primary_conn,
+	create_event_notification(primary_conn,
 						&config_file_options,
 						target_node_id,
 						"standby_unregister",
@@ -1193,7 +1193,7 @@ do_standby_promote(void)
 
 		log_error("%s", details.data);
 
-		create_event_record(NULL,
+		create_event_notification(NULL,
 							&config_file_options,
 							config_file_options.node_id,
 							"standby_promote",
@@ -1213,7 +1213,7 @@ do_standby_promote(void)
 	log_detail("%s", details.data);
 
 	/* Log the event */
-	create_event_record(conn,
+	create_event_notification(conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"standby_promote",
@@ -1357,7 +1357,7 @@ do_standby_follow(void)
 		{
 			log_error("%s", event_details.data);
 
-			create_event_record(primary_conn,
+			create_event_notification(primary_conn,
 								&config_file_options,
 								config_file_options.node_id,
 								"standby_follow",
@@ -1543,7 +1543,7 @@ do_standby_follow(void)
 
 	log_notice(_("STANDBY FOLLOW successful"));
 
-	create_event_record(primary_conn,
+	create_event_notification(primary_conn,
 						&config_file_options,
 						config_file_options.node_id,
 						"standby_follow",
@@ -2066,7 +2066,7 @@ initialise_direct_clone(void)
 		{
 			log_error("%s", event_details.data);
 
-			create_event_record(primary_conn,
+			create_event_notification(primary_conn,
 								&config_file_options,
 								config_file_options.node_id,
 								"standby_clone",
