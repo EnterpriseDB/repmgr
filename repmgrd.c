@@ -258,6 +258,7 @@ main(int argc, char **argv)
 		exit_with_cli_errors(&cli_errors);
 	}
 
+	startup_event_logged = false;
 	/*
 	 * Tell the logger we're a daemon - this will ensure any output logged
 	 * before the logger is initialized will be formatted correctly
@@ -490,11 +491,11 @@ monitor_streaming_primary(void)
 						  local_node_info.node_id);
 
 		create_event_notification(local_conn,
-							&config_file_options,
-							config_file_options.node_id,
-							"repmgrd_start",
-							true,
-							event_details.data);
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "repmgrd_start",
+								  true,
+								  event_details.data);
 
 		startup_event_logged = true;
 
@@ -532,13 +533,18 @@ monitor_streaming_primary(void)
 
 				PQfinish(local_conn);
 
-				/* */
+				/*
+				 * as we're monitoring the primary, no point in trying to write
+				 * the event to the database
+				 *
+				 * XXX possible pre-action event
+				 */
 				create_event_notification(NULL,
-									&config_file_options,
-									config_file_options.node_id,
-									"repmgrd_local_disconnect",
-									true,
-									event_details.data);
+										  &config_file_options,
+										  config_file_options.node_id,
+										  "repmgrd_local_disconnect",
+										  true,
+										  event_details.data);
 
 				termPQExpBuffer(&event_details);
 
@@ -610,6 +616,8 @@ monitor_streaming_standby(void)
 	NodeStatus	upstream_node_status = NODE_STATUS_UP;
 	instr_time	log_status_interval_start;
 
+	log_debug("monitor_streaming_standby()");
+
 	/*
 	 * If no upstream node id is specified in the metadata, we'll try
 	 * and determine the current cluster primary in the assumption we
@@ -646,17 +654,26 @@ monitor_streaming_standby(void)
 		log_error(_("unable to retrieve record for upstream node (ID: %i), terminating"),
 					local_node_info.upstream_node_id);
 		PQfinish(local_conn);
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_DB_CONN);
 	}
 
+	log_debug("connecting to upstream node %i: \"%s\"", upstream_node_info.node_id, upstream_node_info.conninfo);
 
 	// handle failure - do we want to loop here?
 	upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
 	if (upstream_node_info.type == STANDBY)
 	{
-		// XXX check result
+		// XXX check result, we'll require primary connection for now
+		// poss. later add limited connection mode
 		primary_conn = establish_primary_db_connection(local_conn, false);
+
+		if (PQstatus(primary_conn) != CONNECTION_OK)
+		{
+			log_error(_("unable to connect to primary node"));
+			log_hint(_("ensure the primary node is reachable from this node"));
+			exit(ERR_DB_CONN);
+		}
 	}
 	else
 	{
@@ -674,12 +691,12 @@ monitor_streaming_standby(void)
 						  upstream_node_info.node_name,
 						  upstream_node_info.node_id);
 
-		create_event_notification(upstream_conn,
-							&config_file_options,
-							config_file_options.node_id,
-							"repmgrd_start",
-							true,
-							event_details.data);
+		create_event_notification(primary_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "repmgrd_start",
+								  true,
+								  event_details.data);
 
 		startup_event_logged = true;
 
@@ -698,9 +715,28 @@ monitor_streaming_standby(void)
 			/* upstream node is down, we were expecting it to be up */
 			if (upstream_node_status == NODE_STATUS_UP)
 			{
-				// log disconnect event
-				log_warning(_("unable to connect to upstream node"));
+				PQExpBufferData event_details;
+				initPQExpBuffer(&event_details);
+
 				upstream_node_status = NODE_STATUS_UNKNOWN;
+
+				appendPQExpBuffer(&event_details,
+								  _("unable to connect to upstream node %s (node ID: %i)"),
+								  upstream_node_info.node_name, upstream_node_info.node_id);
+
+				if (upstream_node_info.type == STANDBY)
+				{
+					/* XXX possible pre-action event */
+					create_event_record(primary_conn,
+										&config_file_options,
+										config_file_options.node_id,
+										"repmgrd_upstream_disconnect",
+										true,
+										event_details.data);
+				}
+
+				log_warning("%s", event_details.data);
+				termPQExpBuffer(&event_details);
 
 				PQfinish(upstream_conn);
 				upstream_conn = try_reconnect(upstream_node_info.conninfo, &upstream_node_status);
@@ -1012,6 +1048,9 @@ do_upstream_standby_failover(void)
 	RecordStatus record_status;
 	int r;
 
+	PQfinish(upstream_conn);
+	upstream_conn = NULL;
+
 	// check status
 	record_status = get_primary_node_record(local_conn, &primary_node_info);
 
@@ -1109,6 +1148,14 @@ do_upstream_standby_failover(void)
 		terminate(ERR_BAD_CONFIG);
 	}
 
+	/* update own internal node record */
+	record_status = get_node_record(primary_conn, local_node_info.node_id, &local_node_info);
+
+	PQfinish(primary_conn);
+	primary_conn = NULL;
+
+
+
 	appendPQExpBuffer(&event_details,
 					  _("node %i is now following primary node %i"),
 					  local_node_info.node_id,
@@ -1117,11 +1164,11 @@ do_upstream_standby_failover(void)
 	log_notice("%s", event_details.data);
 
 	create_event_notification(primary_conn,
-						&config_file_options,
-						local_node_info.node_id,
-						"repmgrd_failover_follow",
-						true,
-						event_details.data);
+							  &config_file_options,
+							  local_node_info.node_id,
+							  "repmgrd_failover_follow",
+							  true,
+							  event_details.data);
 
 	termPQExpBuffer(&event_details);
 
