@@ -1319,6 +1319,8 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 bool
 get_primary_node_record(PGconn *conn, t_node_info *node_info)
 {
+	RecordStatus record_status;
+
 	int primary_node_id = get_primary_node_id(conn);
 
 	if (primary_node_id == UNKNOWN_NODE_ID)
@@ -1326,7 +1328,9 @@ get_primary_node_record(PGconn *conn, t_node_info *node_info)
 		return false;
 	}
 
-	return get_node_record(conn, primary_node_id, node_info);
+	record_status = get_node_record(conn, primary_node_id, node_info);
+
+	return record_status == RECORD_FOUND ? true : false;
 }
 
 
@@ -1646,7 +1650,7 @@ update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream
 	appendPQExpBuffer(&query,
 					  "  UPDATE repmgr.nodes "
 					  "     SET upstream_node_id = %i "
-					  "   WHERE id = %i ",
+					  "   WHERE node_id = %i ",
 					  new_upstream_node_id,
 					  this_node_id);
 
