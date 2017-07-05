@@ -662,11 +662,14 @@ monitor_streaming_standby(void)
 	// handle failure - do we want to loop here?
 	upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
+	/* refresh upstream node record from upstream node, so it's as up-to-date as possible */
+	record_status = get_node_record(upstream_conn, upstream_node_info.node_id, &upstream_node_info);
+
 	if (upstream_node_info.type == STANDBY)
 	{
 		// XXX check result, we'll require primary connection for now
 		// poss. later add limited connection mode
-		primary_conn = establish_primary_db_connection(local_conn, false);
+		primary_conn = establish_primary_db_connection(upstream_conn, false);
 
 		if (PQstatus(primary_conn) != CONNECTION_OK)
 		{
@@ -674,6 +677,8 @@ monitor_streaming_standby(void)
 			log_hint(_("ensure the primary node is reachable from this node"));
 			exit(ERR_DB_CONN);
 		}
+
+		log_verbose(LOG_DEBUG, "connected to primary");
 	}
 	else
 	{
