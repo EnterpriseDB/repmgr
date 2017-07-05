@@ -22,6 +22,7 @@ Changed command line options
   The value (defaults to the user in the conninfo string) will be stored in
   the repmgr metadata for use by  standby clone/follow..
 
+
 ### repmgrd
 
 - `--monitoring-history` is deprecated and has been replaced by the

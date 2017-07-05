@@ -235,6 +235,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	 * ---------------- */
 	options->failover_mode = FAILOVER_MANUAL;
 	options->priority = DEFAULT_PRIORITY;
+	memset(options->location, 0, sizeof(options->location));
+	strncpy(options->location, DEFAULT_LOCATION, MAXLEN);
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	options->monitor_interval_secs = 2;
@@ -399,6 +401,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 		else if (strcmp(name, "priority") == 0)
 			options->priority = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "location") == 0)
+			strncpy(options->location, value, MAXLEN);
 		else if (strcmp(name, "promote_command") == 0)
 			strncpy(options->promote_command, value, MAXLEN);
 		else if (strcmp(name, "follow_command") == 0)

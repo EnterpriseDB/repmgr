@@ -150,7 +150,7 @@ do_primary_register(void)
 
 	if (config_file_options.replication_user[0] != '\0')
 	{
-		strncpy(node_info.repluser, config_file_options.replication_user, MAXLEN);
+		strncpy(node_info.repluser, config_file_options.replication_user, NAMEDATALEN);
 	}
 	else
 	{
@@ -160,6 +160,7 @@ do_primary_register(void)
 	if (repmgr_slot_name_ptr != NULL)
 		strncpy(node_info.slot_name, repmgr_slot_name_ptr, MAXLEN);
 
+	strncpy(node_info.location, config_file_options.location, MAXLEN);
 	node_info.priority = config_file_options.priority;
 
 	initPQExpBuffer(&event_description);

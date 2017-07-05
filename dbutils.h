@@ -55,9 +55,10 @@ typedef struct s_node_info
 	char		  node_name[MAXLEN];
 	char		  conninfo[MAXLEN];
 	char		  repluser[NAMEDATALEN];
-	char		  slot_name[MAXLEN];
+	char		  location[MAXLEN];
 	int			  priority;
 	bool		  active;
+	char		  slot_name[MAXLEN];
 	/* used during failover to track node status */
 	bool		  is_ready;
 	bool		  is_visible;
@@ -73,9 +74,10 @@ typedef struct s_node_info
   "", \
   "", \
   "", \
-  "", \
+  DEFAULT_LOCATION, \
   DEFAULT_PRIORITY, \
   true, \
+  "", \
   false, \
   false, \
   InvalidXLogRecPtr, \

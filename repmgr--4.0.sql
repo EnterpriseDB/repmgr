@@ -7,6 +7,7 @@ CREATE TABLE nodes (
   active           BOOLEAN     NOT NULL DEFAULT TRUE,
   node_name        TEXT        NOT NULL,
   type             TEXT        NOT NULL CHECK (type IN('primary','standby','witness','bdr')),
+  location         TEXT        NOT NULL DEFAULT 'default',
   priority         INT         NOT NULL DEFAULT 100,
   conninfo         TEXT        NOT NULL,
   repluser         VARCHAR(63) NOT NULL,

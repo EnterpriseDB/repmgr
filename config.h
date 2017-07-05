@@ -73,6 +73,7 @@ typedef struct
 
 	/* repmgrd settings */
 	failover_mode_opt		failover_mode;
+	char		location[MAXLEN];
 	int			priority;
 	char		promote_command[MAXLEN];
 	char		follow_command[MAXLEN];
@@ -123,7 +124,7 @@ typedef struct
 		/* standby clone settings */ \
 		false, "", "", "", "", { NULL, NULL },	\
 		/* repmgrd settings */ \
-		FAILOVER_MANUAL, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false, \
+		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false, \
 		/* witness settings */ \
 		30, \
 		/* service settings */ \

@@ -1204,8 +1204,9 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 	strncpy(node_info->conninfo, PQgetvalue(res, row, 4), MAXLEN);
 	strncpy(node_info->repluser, PQgetvalue(res, row, 5), MAXLEN);
 	strncpy(node_info->slot_name, PQgetvalue(res, row, 6), MAXLEN);
-	node_info->priority = atoi(PQgetvalue(res, row, 7));
-	node_info->active = atobool(PQgetvalue(res, row, 8));
+	strncpy(node_info->location, PQgetvalue(res, row, 7), MAXLEN);
+	node_info->priority = atoi(PQgetvalue(res, row, 8));
+	node_info->active = atobool(PQgetvalue(res, row, 9));
 
 	/* Set remaining struct fields with default values */
 	node_info->is_ready = false;
@@ -1267,7 +1268,7 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
-					  "SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, priority, active"
+					  "SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
 					  "  FROM repmgr.nodes "
 					  " WHERE node_id = %i",
 					  node_id);
@@ -1295,7 +1296,7 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-		"SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, priority, active"
+		"SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
 		"  FROM repmgr.nodes "
 		" WHERE node_name = '%s' ",
 		node_name);
@@ -1405,7 +1406,7 @@ get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *node_list)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, priority, active"
+					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
 					  "    FROM repmgr.nodes "
 					  "   WHERE upstream_node_id = %i "
 					  "ORDER BY node_id ",
@@ -1432,7 +1433,7 @@ get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id,
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, priority, active"
+					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
 					  "    FROM repmgr.nodes "
 					  "   WHERE upstream_node_id = %i "
 					  "     AND node_id != %i "
@@ -1484,7 +1485,7 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 	char			slot_name[MAXLEN];
 	char		   *slot_name_ptr = NULL;
 
-	int				param_count = 9;
+	int				param_count = 10;
 	const char	   *param_values[param_count];
 
 	PGresult   	   *res;
@@ -1518,9 +1519,10 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 	param_values[3] = node_info->conninfo;
 	param_values[4] = node_info->repluser;
 	param_values[5] = slot_name_ptr;
-	param_values[6] = priority;
-	param_values[7] = node_info->active == true ? "TRUE" : "FALSE";
-	param_values[8] = node_id;
+	param_values[6] = node_info->location;
+	param_values[7] = priority;
+	param_values[8] = node_info->active == true ? "TRUE" : "FALSE";
+	param_values[9] = node_id;
 
 	initPQExpBuffer(&query);
 
@@ -1530,8 +1532,8 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 						  "INSERT INTO repmgr.nodes "
 						  "       (node_id, type, upstream_node_id, "
 						  "        node_name, conninfo, repluser, slot_name, "
-						  "        priority, active) "
-						  "VALUES ($9, $1, $2, $3, $4, $5, $6, $7, $8) ");
+						  "        location, priority, active) "
+						  "VALUES ($10, $1, $2, $3, $4, $5, $6, $7, $8, $9) ");
 	}
 	else
 	{
@@ -1543,9 +1545,10 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 						  "       conninfo = $4, "
 						  "       repluser = $5, "
 						  "       slot_name = $6, "
-						  "       priority = $7, "
-						  "       active = $8 "
-						  " WHERE node_id = $9 ");
+						  "       location = $7, "
+						  "       priority = $8, "
+						  "       active = $9 "
+						  " WHERE node_id = $10 ");
 	}
 
 

@@ -781,13 +781,17 @@ do_standby_register(void)
 	node_record.priority = config_file_options.priority;
 	node_record.active = true;
 
+	strncpy(node_record.location, config_file_options.location, MAXLEN);
+
+	printf("XXX %s %s\n", node_record.location, config_file_options.location);
+
 	strncpy(node_record.node_name, config_file_options.node_name, MAXLEN);
 	strncpy(node_record.conninfo, config_file_options.conninfo, MAXLEN);
 
 	if (config_file_options.replication_user[0] != '\0')
 	{
 		/* Replication user explicitly provided */
-		strncpy(node_record.repluser, config_file_options.replication_user, MAXLEN);
+		strncpy(node_record.repluser, config_file_options.replication_user, NAMEDATALEN);
 	}
 	else
 	{
@@ -820,11 +824,11 @@ do_standby_register(void)
 		/* XXX add event description */
 
 		create_event_notification(primary_conn,
-							&config_file_options,
-							config_file_options.node_id,
-							"standby_register",
-							false,
-							NULL);
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "standby_register",
+								  false,
+								  NULL);
 
 		PQfinish(primary_conn);
 
@@ -835,11 +839,11 @@ do_standby_register(void)
 
 	/* Log the event */
 	create_event_notification(primary_conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"standby_register",
-						true,
-						NULL);
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "standby_register",
+							  true,
+							  NULL);
 
 	/* if --wait-sync option set, wait for the records to synchronise */
 
