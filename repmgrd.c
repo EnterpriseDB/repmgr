@@ -1125,6 +1125,9 @@ do_upstream_standby_failover(void)
 		termPQExpBuffer(&event_details);
 	}
 
+	/* reconnect to local node */
+	local_conn = establish_db_connection(config_file_options.conninfo, false);
+
 	if (update_node_record_set_upstream(primary_conn,
 										local_node_info.node_id,
 										primary_node_info.node_id) == false)
@@ -1147,13 +1150,8 @@ do_upstream_standby_failover(void)
 
 		terminate(ERR_BAD_CONFIG);
 	}
-
 	/* update own internal node record */
-	record_status = get_node_record(primary_conn, local_node_info.node_id, &local_node_info);
-
-	PQfinish(primary_conn);
-	primary_conn = NULL;
-
+    record_status = get_node_record(primary_conn, local_node_info.node_id, &local_node_info);
 
 
 	appendPQExpBuffer(&event_details,
@@ -1172,7 +1170,10 @@ do_upstream_standby_failover(void)
 
 	termPQExpBuffer(&event_details);
 
-	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	PQfinish(primary_conn);
+	primary_conn = NULL;
+
 
 	return true;
 }
