@@ -246,6 +246,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->reconnect_interval = 10;
 	options->retry_promote_interval_secs = 300;
 	options->monitoring_history = false;  /* new in 4.0, replaces --monitoring-history */
+	options->degraded_monitoring_timeout = -1;
 
 	/* witness settings
 	 * ---------------- */
@@ -417,6 +418,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->retry_promote_interval_secs = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "monitoring_history") == 0)
 			options->monitoring_history = parse_bool(value, name, error_list);
+		else if (strcmp(name, "degraded_monitoring_timeout") == 0)
+			options->degraded_monitoring_timeout = repmgr_atoi(value, name, error_list, 1);
 
 		/* witness settings */
 		else if (strcmp(name, "witness_repl_nodes_sync_interval_secs") == 0)

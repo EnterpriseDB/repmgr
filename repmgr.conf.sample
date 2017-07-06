@@ -180,6 +180,10 @@ ssh_options=''                            # Options to append to "ssh"
 
 #monitoring_history=no
 
+#degraded_monitoring_timeout=-1         # Interval (in seconds) after which repmgrd
+                                        # will terminate if the server being monitored
+                                        # is no longer available. -1 (default)
+                                        # disables completely.
 
 #------------------------------------------------------------------------------
 # service control commands

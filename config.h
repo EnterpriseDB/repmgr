@@ -83,6 +83,7 @@ typedef struct
 	int			reconnect_interval;
 	int			retry_promote_interval_secs;
 	bool		monitoring_history;
+	int			degraded_monitoring_timeout;
 
 	/* witness settings */
 	int			witness_repl_nodes_sync_interval_secs;
@@ -124,7 +125,7 @@ typedef struct
 		/* standby clone settings */ \
 		false, "", "", "", "", { NULL, NULL },	\
 		/* repmgrd settings */ \
-		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false, \
+		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false, -1, \
 		/* witness settings */ \
 		30, \
 		/* service settings */ \

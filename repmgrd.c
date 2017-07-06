@@ -75,7 +75,10 @@ static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 static ItemList	cli_errors = { NULL, NULL };
 
 static bool        startup_event_logged = false;
+
 static MonitoringState monitoring_state = MS_NORMAL;
+static instr_time	degraded_monitoring_start;
+
 /*
  * Record receipt of SIGHUP; will cause configuration file to be reread
  * at the appropriate point in the main loop.
@@ -118,6 +121,9 @@ static bool wait_primary_notification(int *new_primary_id);
 static FailoverState follow_new_primary(int new_primary_id);
 
 static void reset_node_voting_status(void);
+
+static int calculate_elapsed(instr_time start_time);
+
 
 static void close_connections();
 static void terminate(int retval);
@@ -484,11 +490,11 @@ monitor_streaming_primary(void)
 {
 	NodeStatus	node_status = NODE_STATUS_UP;
 	instr_time	log_status_interval_start;
+	PQExpBufferData event_details;
 
 	/* Log startup event */
 	if (startup_event_logged == false)
 	{
-		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
@@ -558,18 +564,13 @@ monitor_streaming_primary(void)
 
 				if (node_status == NODE_STATUS_UP)
 				{
-					double		local_node_unreachable_elapsed = 0;
-					instr_time	local_node_unreachable_current;
-
-					INSTR_TIME_SET_CURRENT(local_node_unreachable_current);
-					INSTR_TIME_SUBTRACT(local_node_unreachable_current, local_node_unreachable_start);
-					local_node_unreachable_elapsed = INSTR_TIME_GET_DOUBLE(local_node_unreachable_current);
+					int		local_node_unreachable_elapsed = calculate_elapsed(local_node_unreachable_start);
 
 					initPQExpBuffer(&event_details);
 
 					appendPQExpBuffer(&event_details,
 									  _("reconnected to local node after %i seconds"),
-									  (int)local_node_unreachable_elapsed);
+									  local_node_unreachable_elapsed);
 					log_notice("%s", event_details.data);
 
 					create_event_notification(local_conn,
@@ -582,31 +583,94 @@ monitor_streaming_primary(void)
 
 					goto loop;
 				}
+				monitoring_state = MS_DEGRADED;
+				INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
 			}
 
-			if (node_status == NODE_STATUS_DOWN)
-			{
-				// attempt to find another node from cached list
-				// loop, if starts up check status, switch monitoring mode
-			}
 		}
 
+
+		if (monitoring_state == MS_DEGRADED)
+		{
+			int		degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
+
+			if (config_file_options.degraded_monitoring_timeout > 0
+				&& degraded_monitoring_elapsed > config_file_options.degraded_monitoring_timeout)
+			{
+				initPQExpBuffer(&event_details);
+
+				appendPQExpBuffer(&event_details,
+								  _("degraded monitoring timeout (%i seconds) exceeded, terminating"),
+								  degraded_monitoring_elapsed);
+
+				log_notice("%s", event_details.data);
+
+				create_event_notification(NULL,
+										  &config_file_options,
+										  config_file_options.node_id,
+										  "repmgrd_terminate",
+										  true,
+										  event_details.data);
+
+				termPQExpBuffer(&event_details);
+				terminate(ERR_MONITORING_TIMEOUT);
+			}
+
+			log_debug("monitoring node in degraded state for %i seconds", degraded_monitoring_elapsed);
+
+			if (is_server_available(local_node_info.conninfo) == true)
+			{
+				local_conn = establish_db_connection(local_node_info.conninfo, false);
+
+				if (PQstatus(local_conn) == CONNECTION_OK)
+				{
+					node_status = NODE_STATUS_UP;
+					monitoring_state = MS_NORMAL;
+
+					initPQExpBuffer(&event_details);
+
+					appendPQExpBuffer(&event_details,
+									  _("reconnected to primary node after %i seconds, resuming monitoring"),
+									  degraded_monitoring_elapsed);
+
+					create_event_notification(local_conn,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_local_reconnect",
+											  true,
+											  event_details.data);
+
+					log_notice("%s", event_details.data);
+					termPQExpBuffer(&event_details);
+
+					goto loop;
+				}
+			}
+
+
+			// possibly attempt to find another node from cached list
+			// check if there's a new primary - if so add hook for fencing?
+			// loop, if starts up check status, switch monitoring mode
+		}
 	loop:
 		/* emit "still alive" log message at regular intervals, if requested */
 		if (config_file_options.log_status_interval > 0)
 		{
-			double		log_status_interval_elapsed = 0;
-			instr_time	log_status_interval_current;
+			int		log_status_interval_elapsed = calculate_elapsed(log_status_interval_start);
 
-			INSTR_TIME_SET_CURRENT(log_status_interval_current);
-			INSTR_TIME_SUBTRACT(log_status_interval_current, log_status_interval_start);
-			log_status_interval_elapsed = INSTR_TIME_GET_DOUBLE(log_status_interval_current);
-
-			if ((int) log_status_interval_elapsed >= config_file_options.log_status_interval)
+			if (log_status_interval_elapsed >= config_file_options.log_status_interval)
 			{
-				log_info(_("monitoring primary node \"%s\" (node ID: %i)"),
+				log_info(_("monitoring primary node \"%s\" (node ID: %i) in %s state"),
 						 local_node_info.node_name,
-						 local_node_info.node_id);
+						 local_node_info.node_id,
+						 _print_monitoring_state(monitoring_state));
+
+				if (monitoring_state == MS_DEGRADED)
+				{
+					log_detail(_("waiting primary to reappear"));
+				}
+
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
 			}
 		}
@@ -621,6 +685,7 @@ monitor_streaming_standby(void)
 	RecordStatus record_status;
 	NodeStatus	upstream_node_status = NODE_STATUS_UP;
 	instr_time	log_status_interval_start;
+	PQExpBufferData event_details;
 
 	log_debug("monitor_streaming_standby()");
 
@@ -665,8 +730,21 @@ monitor_streaming_standby(void)
 
 	log_debug("connecting to upstream node %i: \"%s\"", upstream_node_info.node_id, upstream_node_info.conninfo);
 
-	// handle failure - do we want to loop here?
 	upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
+
+	/*
+	 * Upstream node must be running.
+	 *
+	 * We could possibly have repmgrd skip to degraded monitoring mode until it
+	 * comes up, but there doesn't seem to be much point in doint that.
+	 */
+	if (PQstatus(upstream_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable connect to upstream node (ID: %i), terminating"),
+				  local_node_info.upstream_node_id);
+		PQfinish(local_conn);
+		exit(ERR_DB_CONN);
+	}
 
 	/* refresh upstream node record from upstream node, so it's as up-to-date as possible */
 	record_status = get_node_record(upstream_conn, upstream_node_info.node_id, &upstream_node_info);
@@ -730,7 +808,9 @@ monitor_streaming_standby(void)
 			/* upstream node is down, we were expecting it to be up */
 			if (upstream_node_status == NODE_STATUS_UP)
 			{
-				PQExpBufferData event_details;
+				instr_time	upstream_node_unreachable_start;
+
+				INSTR_TIME_SET_CURRENT(upstream_node_unreachable_start);
 
 				initPQExpBuffer(&event_details);
 
@@ -759,8 +839,23 @@ monitor_streaming_standby(void)
 
 				if (upstream_node_status == NODE_STATUS_UP)
 				{
-					// log reconnect event
-					log_notice(_("reconnected to upstream node"));
+					int		upstream_node_unreachable_elapsed = calculate_elapsed(upstream_node_unreachable_start);
+
+					initPQExpBuffer(&event_details);
+
+					appendPQExpBuffer(&event_details,
+									  _("reconnected to upstream node after %i seconds"),
+									  upstream_node_unreachable_elapsed);
+					log_notice("%s", event_details.data);
+
+					create_event_notification(local_conn,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_upstream_reconnect",
+											  true,
+											  event_details.data);
+					termPQExpBuffer(&event_details);
+
 					goto loop;
 				}
 
@@ -788,21 +883,55 @@ monitor_streaming_standby(void)
 
 		if (monitoring_state == MS_DEGRADED)
 		{
-			log_debug("degraded...");
+			int		degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
+
+			log_debug("monitoring node in degraded state for %i seconds", degraded_monitoring_elapsed);
 
 			if (is_server_available(upstream_node_info.conninfo) == true)
 			{
-				upstream_conn =  establish_db_connection(upstream_node_info.conninfo, false);
+				upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
 				{
+					// XXX check here if upstream is still primary
 					upstream_node_status = NODE_STATUS_UP;
 					monitoring_state = MS_NORMAL;
-					// log event
-					log_notice(_("reconnected to upstream node"));
+
+					if (upstream_node_info.type == PRIMARY)
+					{
+						primary_conn = upstream_conn;
+					}
+					else
+					{
+
+						if (primary_conn == NULL ||PQstatus(primary_conn) != CONNECTION_OK)
+						{
+							primary_conn = establish_primary_db_connection(upstream_conn, false);
+						}
+					}
+
+					initPQExpBuffer(&event_details);
+
+					appendPQExpBuffer(&event_details,
+									  _("reconnected to upstream node %i after %i seconds, resuming monitoring"),
+									  upstream_node_info.node_id,
+									  degraded_monitoring_elapsed);
+
+					create_event_notification(primary_conn,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_upstream_reconnect",
+											  true,
+											  event_details.data);
+
+					log_notice("%s", event_details.data);
+					termPQExpBuffer(&event_details);
+
 					goto loop;
 				}
 			}
+
+			// XXX scan other nodes to see if any has become primary
 		}
 
 	loop:
@@ -810,14 +939,9 @@ monitor_streaming_standby(void)
 		/* emit "still alive" log message at regular intervals, if requested */
 		if (config_file_options.log_status_interval > 0)
 		{
-			double		log_status_interval_elapsed = 0;
-			instr_time	log_status_interval_current;
+			int		log_status_interval_elapsed = calculate_elapsed(log_status_interval_start);
 
-			INSTR_TIME_SET_CURRENT(log_status_interval_current);
-			INSTR_TIME_SUBTRACT(log_status_interval_current, log_status_interval_start);
-			log_status_interval_elapsed = INSTR_TIME_GET_DOUBLE(log_status_interval_current);
-
-			if ((int) log_status_interval_elapsed >= config_file_options.log_status_interval)
+			if (log_status_interval_elapsed >= config_file_options.log_status_interval)
 			{
 				log_info(_("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i) in %s state"),
 						 local_node_info.node_name,
@@ -825,6 +949,11 @@ monitor_streaming_standby(void)
 						 upstream_node_info.node_name,
 						 upstream_node_info.node_id,
 						 _print_monitoring_state(monitoring_state));
+
+				if (monitoring_state == MS_DEGRADED)
+				{
+					log_detail(_("waiting for upstream or another primary to reappear"));
+				}
 
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
 			}
@@ -893,7 +1022,7 @@ do_primary_failover(void)
 	{
 		t_node_info *best_candidate;
 
-		log_info("I am the candidate but did not get all votes; will now determine the best candidate");
+		log_info(_("I am the candidate but did not get all votes; will now determine the best candidate"));
 
 
 		/* reset node list */
@@ -1779,7 +1908,9 @@ do_election(void)
 		log_notice(_("no nodes from the primary location \"%s\" visible - assuming network split"),
 				   upstream_node_info.location);
 		log_detail(_("node will enter degraded monitoring state waiting for reconnect"));
+
 		monitoring_state = MS_DEGRADED;
+		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
 		reset_node_voting_status();
 
@@ -1790,7 +1921,7 @@ do_election(void)
 	/* get our lsn */
 	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
 
-	log_debug("LAST receive lsn = %X/%X",
+	log_debug("last receive lsn = %X/%X",
 			  (uint32) (local_node_info.last_wal_receive_lsn >> 32),
 			  (uint32)  local_node_info.last_wal_receive_lsn);
 
@@ -1822,7 +1953,7 @@ do_election(void)
 		votes_for_me += 1;
 	}
 
-	log_notice(_("%i of of %i votes"), votes_for_me, visible_nodes);
+	log_debug(_("%i of of %i votes"), votes_for_me, visible_nodes);
 
 	if (votes_for_me == visible_nodes)
 		return ELECTION_WON;
@@ -2112,6 +2243,19 @@ close_connections()
 }
 
 
+static int
+calculate_elapsed(instr_time start_time)
+{
+	instr_time	current_time;
+
+	INSTR_TIME_SET_CURRENT(current_time);
+
+	INSTR_TIME_SUBTRACT(current_time, start_time);
+
+	return (int)INSTR_TIME_GET_DOUBLE(current_time);
+}
+
+
 static void
 terminate(int retval)
 {
@@ -2123,7 +2267,7 @@ terminate(int retval)
 		unlink(pid_file);
 	}
 
-	log_info(_("%s terminating...\n"), progname());
+	log_info(_("%s terminating..."), progname());
 
 	exit(retval);
 }
