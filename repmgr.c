@@ -3382,7 +3382,7 @@ do_standby_clone(void)
 		char		command[MAXLEN];
 		char		filename[MAXLEN];
 		char		buf[MAXLEN];
-		char		backup_directory[MAXLEN];
+		char		basebackups_directory[MAXLEN];
 		char        backup_id[MAXLEN] = "";
 		char       *p, *q;
 		PQExpBufferData command_output;
@@ -3396,10 +3396,10 @@ do_standby_clone(void)
 		{
 
 			/*
-			 * Locate Barman's backup directory
+			 * Locate Barman's base backups directory
 			 */
 
-			get_barman_property(backup_directory, "backup_directory", local_repmgr_directory);
+			get_barman_property(basebackups_directory, "basebackups_directory", local_repmgr_directory);
 
 			/*
 			 * Read the list of backup files into a local file. In the
@@ -3436,7 +3436,6 @@ do_standby_clone(void)
 					exit(ERR_INTERNAL);
 				}
 
-				maxlen_snprintf(prefix, "%s/base/", backup_directory);
 				while (fgets(output, MAXLEN, fi) != NULL)
 				{
 					/*
@@ -3470,9 +3469,9 @@ do_standby_clone(void)
 						 * Copy backup.info
 						 */
 						maxlen_snprintf(command,
-										"rsync -a %s:%s/base/%s/backup.info %s",
+										"rsync -a %s:%s/%s/backup.info %s",
 										options.barman_server,
-										backup_directory,
+										basebackups_directory,
 										backup_id,
 										local_repmgr_directory);
 						(void)local_command(
@@ -3580,10 +3579,10 @@ do_standby_clone(void)
 			 */
 
 			maxlen_snprintf(command,
-							"rsync --progress -a --files-from=%s %s:%s/base/%s/data %s",
+							"rsync --progress -a --files-from=%s %s:%s/%s/data %s",
 							datadir_list_filename,
 							options.barman_server,
-							backup_directory,
+							basebackups_directory,
 							backup_id,
 							local_data_directory);
 			(void)local_command(
@@ -3739,11 +3738,11 @@ do_standby_clone(void)
 				if (cell_t->f != NULL) /* cell_t->f == NULL iff the tablespace is empty */
 				{
 					maxlen_snprintf(command,
-									"rsync --progress -a --files-from=%s/%s.txt %s:%s/base/%s/%s %s",
+									"rsync --progress -a --files-from=%s/%s.txt %s:%s/%s/%s %s",
 									local_repmgr_directory,
 									cell_t->oid,
 									options.barman_server,
-									backup_directory,
+									basebackups_directory,
 									backup_id,
 									cell_t->oid,
 									tblspc_dir_dest);
