@@ -44,9 +44,14 @@ typedef enum {
 typedef enum {
 	ELECTION_NOT_CANDIDATE = -1,
 	ELECTION_WON,
-	ELECTION_LOST
+	ELECTION_LOST,
+	ELECTION_CANCELLED
 } ElectionResult;
 
+typedef enum {
+	MS_NORMAL = 0,
+	MS_DEGRADED = 1
+} MonitoringState;
 
 static char	   *config_file = NULL;
 static bool		verbose = false;
@@ -70,7 +75,7 @@ static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 static ItemList	cli_errors = { NULL, NULL };
 
 static bool        startup_event_logged = false;
-
+static MonitoringState monitoring_state = MS_NORMAL;
 /*
  * Record receipt of SIGHUP; will cause configuration file to be reread
  * at the appropriate point in the main loop.
@@ -102,6 +107,7 @@ static bool do_upstream_standby_failover(void);
 static ElectionResult do_election(void);
 static const char *_print_voting_status(NodeVotingStatus voting_status);
 static const char *_print_election_result(ElectionResult result);
+static const char *_print_monitoring_state(MonitoringState monitoring_state);
 
 static FailoverState promote_self(void);
 static void notify_followers(NodeInfoList *standby_nodes, int follow_node_id);
@@ -667,8 +673,11 @@ monitor_streaming_standby(void)
 
 	if (upstream_node_info.type == STANDBY)
 	{
-		// XXX check result, we'll require primary connection for now
-		// poss. later add limited connection mode
+		/*
+		 * Currently cascaded standbys need to be able to connect to the primary.
+		 * We could possibly add a limited connection mode for cases where this isn't
+		 * possible.
+		 */
 		primary_conn = establish_primary_db_connection(upstream_conn, false);
 
 		if (PQstatus(primary_conn) != CONNECTION_OK)
@@ -710,6 +719,7 @@ monitor_streaming_standby(void)
 		termPQExpBuffer(&event_details);
 	}
 
+	monitoring_state = MS_NORMAL;
 	INSTR_TIME_SET_CURRENT(log_status_interval_start);
 
 	while (true)
@@ -721,6 +731,7 @@ monitor_streaming_standby(void)
 			if (upstream_node_status == NODE_STATUS_UP)
 			{
 				PQExpBufferData event_details;
+
 				initPQExpBuffer(&event_details);
 
 				upstream_node_status = NODE_STATUS_UNKNOWN;
@@ -771,9 +782,26 @@ monitor_streaming_standby(void)
 					// all cases to restart monitoring
 					if (failover_done == true)
 						return;
-
 				}
+			}
+		}
 
+		if (monitoring_state == MS_DEGRADED)
+		{
+			log_debug("degraded...");
+
+			if (is_server_available(upstream_node_info.conninfo) == true)
+			{
+				upstream_conn =  establish_db_connection(upstream_node_info.conninfo, false);
+
+				if (PQstatus(upstream_conn) == CONNECTION_OK)
+				{
+					upstream_node_status = NODE_STATUS_UP;
+					monitoring_state = MS_NORMAL;
+					// log event
+					log_notice(_("reconnected to upstream node"));
+					goto loop;
+				}
 			}
 		}
 
@@ -791,13 +819,13 @@ monitor_streaming_standby(void)
 
 			if ((int) log_status_interval_elapsed >= config_file_options.log_status_interval)
 			{
-				log_info(_("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i)"),
+				log_info(_("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i) in %s state"),
 						 local_node_info.node_name,
 						 local_node_info.node_id,
 						 upstream_node_info.node_name,
-						 upstream_node_info.node_id);
+						 upstream_node_info.node_id,
+						 _print_monitoring_state(monitoring_state));
 
-				//log_debug(
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
 			}
 		}
@@ -850,7 +878,12 @@ do_primary_failover(void)
 
 	log_debug("election result: %s", _print_election_result(election_result));
 
-	if (election_result == ELECTION_WON)
+	if (election_result == ELECTION_CANCELLED)
+	{
+		log_notice(_("election cancelled"));
+		return false;
+	}
+	else if (election_result == ELECTION_WON)
 	{
 		log_notice("I am the winner, will now promote self and inform other nodes");
 
@@ -1572,6 +1605,25 @@ _print_election_result(ElectionResult result)
 
 		case ELECTION_LOST:
 			return "LOST";
+
+		case ELECTION_CANCELLED:
+			return "CANCELLED";
+	}
+
+	/* should never reach here */
+	return "UNKNOWN";
+}
+
+static const char *
+_print_monitoring_state(MonitoringState monitoring_state)
+{
+	switch(monitoring_state)
+	{
+		case MS_NORMAL:
+			return "normal";
+
+		case MS_DEGRADED:
+			return "degraded";
 	}
 
 	/* should never reach here */
@@ -1580,18 +1632,15 @@ _print_election_result(ElectionResult result)
 
 
 
-
 static ElectionResult
 do_election(void)
 {
 	int electoral_term = -1;
 
-//	int total_eligible_nodes = 0;
 	int votes_for_me = 0;
 
 	/* we're visible */
 	int visible_nodes = 1;
-
 
 	/*
 	 * get voting status from shared memory - should be one of "VS_NO_VOTE"
@@ -1605,13 +1654,25 @@ do_election(void)
 	bool other_node_is_candidate = false;
 	bool other_node_is_ahead = false;
 
-	/* sleep for a random period of 100 ~ 500 ms
-	 * XXX adjust this downwards if feasible
+	/*
+	 * Check if at least one server in the primary's location is visible;
+	 * if not we'll assume a network split between this node and the primary
+	 * location, and not promote any standby.
+	 *
+	 * NOTE: this function is only ever called by standbys attached to the current
+	 * (unreachable) primary, so "upstream_node_info" will always contain the
+	 * primary node record.
+	 */
+	bool primary_location_seen = false;
+
+	/*
+	 * sleep for a random period of 100 ~ 350 ms
 	 */
 
-	long unsigned rand_wait = (long) ((rand() % 50) + 10) * 10000;
+	long unsigned rand_wait = (long) ((rand() % 35) + 10) * 10000;
 
 	log_debug("do_election(): sleeping %lu", rand_wait);
+	log_debug("do_election(): primary location is %s", upstream_node_info.location);
 
 	pg_usleep(rand_wait);
 
@@ -1623,8 +1684,8 @@ do_election(void)
 
 	if (voting_status == VS_VOTE_REQUEST_RECEIVED)
 	{
-		log_debug("vote request already received, not candidate");
 		/* we've already been requested to vote, so can't become a candidate */
+		log_debug("vote request already received, not candidate");
 		return ELECTION_NOT_CANDIDATE;
 	}
 
@@ -1684,8 +1745,20 @@ do_election(void)
 			log_debug("node %i is candidate",  cell->node_info->node_id);
 			other_node_is_candidate = true;
 
-			/* don't perform any more checks */
+			/* don't notify any further standbys */
 			break;
+		}
+
+		/*
+		 * see if the node is in the primary's location (but skip the check
+		 * if we've seen
+		 */
+		if (primary_location_seen == false)
+		{
+			if (strncmp(cell->node_info->location, upstream_node_info.location, MAXLEN) == 0)
+			{
+				primary_location_seen = true;
+			}
 		}
 
 		cell->node_info->is_visible = true;
@@ -1696,13 +1769,23 @@ do_election(void)
 	{
 		clear_node_info_list(&standby_nodes);
 
-		// XXX do this
-		// unset_voting_status_initiated(local_conn);
-		log_debug("other node is candidate, returning NOT CANDIDATE XXX unset own status");
+		reset_node_voting_status();
+		log_debug("other node is candidate, returning NOT CANDIDATE");
 		return ELECTION_NOT_CANDIDATE;
 	}
 
-	// XXX check if > 50% visible
+	if (primary_location_seen == false)
+	{
+		log_notice(_("no nodes from the primary location \"%s\" visible - assuming network split"),
+				   upstream_node_info.location);
+		log_detail(_("node will enter degraded monitoring state waiting for reconnect"));
+		monitoring_state = MS_DEGRADED;
+
+		reset_node_voting_status();
+
+		return ELECTION_CANCELLED;
+	}
+
 
 	/* get our lsn */
 	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
