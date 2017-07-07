@@ -2274,9 +2274,9 @@ run_file_backup(void)
 	char		command[MAXLEN];
 	char		filename[MAXLEN];
 	char		buf[MAXLEN];
-	char		backup_directory[MAXLEN];
-	char        backup_id[MAXLEN] = "";
-	char       *p, *q;
+	char		basebackups_directory[MAXLEN];
+	char		backup_id[MAXLEN] = "";
+	char		*p, *q;
 	PQExpBufferData command_output;
 	TablespaceDataList tablespace_list = { NULL, NULL };
 	TablespaceDataListCell *cell_t;
@@ -2287,10 +2287,10 @@ run_file_backup(void)
 	if (mode == barman)
 	{
 		/*
-		 * Locate Barman's backup directory
+		 * Locate Barman's base backups directory
 		 */
 
-		get_barman_property(backup_directory, "backup_directory", local_repmgr_tmp_directory);
+		get_barman_property(basebackups_directory, "basebackups_directory", local_repmgr_tmp_directory);
 
 		/*
 		 * Read the list of backup files into a local file. In the
@@ -2313,6 +2313,8 @@ run_file_backup(void)
 							make_barman_ssh_command(barman_command_buf),
 							config_file_options.barman_server);
 
+			log_verbose(LOG_DEBUG, "executing:\n  %s\n", command);
+
 			fi = popen(command, "r");
 			if (fi == NULL)
 			{
@@ -2324,10 +2326,11 @@ run_file_backup(void)
 			if (fd == NULL)
 			{
 				log_error("cannot open file: %s", datadir_list_filename);
-				exit(ERR_INTERNAL);
+				exit(ERR_BARMAN);
 			}
 
-			maxlen_snprintf(prefix, "%s/base/", backup_directory);
+			maxlen_snprintf(prefix, "%s/", basebackups_directory);
+
 			while (fgets(output, MAXLEN, fi) != NULL)
 			{
 				/*
@@ -2361,9 +2364,9 @@ run_file_backup(void)
 					 * Copy backup.info
 					 */
 					maxlen_snprintf(command,
-									"rsync -a %s:%s/base/%s/backup.info %s",
+									"rsync -a %s:%s/%s/backup.info %s",
 									config_file_options.barman_host,
-									backup_directory,
+									basebackups_directory,
 									backup_id,
 									local_repmgr_tmp_directory);
 					(void)local_command(
@@ -2469,10 +2472,10 @@ run_file_backup(void)
 		 * Copy all backup files from the Barman server
 		 */
 		maxlen_snprintf(command,
-						"rsync --progress -a --files-from=%s %s:%s/base/%s/data %s",
+						"rsync --progress -a --files-from=%s %s:%s/%s/data %s",
 						datadir_list_filename,
 						config_file_options.barman_host,
-						backup_directory,
+						basebackups_directory,
 						backup_id,
 						local_data_directory);
 
@@ -2574,7 +2577,7 @@ run_file_backup(void)
 								local_repmgr_tmp_directory,
 								cell_t->oid,
 								config_file_options.barman_host,
-								backup_directory,
+								basebackups_directory,
 								backup_id,
 								cell_t->oid,
 								tblspc_dir_dest);
