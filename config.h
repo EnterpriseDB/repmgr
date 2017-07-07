@@ -125,7 +125,12 @@ typedef struct
 		/* standby clone settings */ \
 		false, "", "", "", "", { NULL, NULL },	\
 		/* repmgrd settings */ \
-		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", 2, 60, 6, 10, 300, false, -1, \
+		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", \
+		DEFAULT_STATS_REPORTING_INTERVAL, \
+		60,	\
+		DEFAULT_RECONNECTION_ATTEMPTS, \
+        DEFAULT_RECONNECTION_INTERVAL, \
+        300, false, -1, \
 		/* witness settings */ \
 		30, \
 		/* service settings */ \

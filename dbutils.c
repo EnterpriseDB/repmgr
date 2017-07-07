@@ -1202,7 +1202,7 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 
 	strncpy(node_info->node_name, PQgetvalue(res, row, 3), MAXLEN);
 	strncpy(node_info->conninfo, PQgetvalue(res, row, 4), MAXLEN);
-	strncpy(node_info->repluser, PQgetvalue(res, row, 5), MAXLEN);
+	strncpy(node_info->repluser, PQgetvalue(res, row, 5), NAMEDATALEN);
 	strncpy(node_info->slot_name, PQgetvalue(res, row, 6), MAXLEN);
 	strncpy(node_info->location, PQgetvalue(res, row, 7), MAXLEN);
 	node_info->priority = atoi(PQgetvalue(res, row, 8));

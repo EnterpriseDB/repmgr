@@ -48,7 +48,7 @@ static char		upstream_data_directory[MAXPGPATH];
 
 static t_conninfo_param_list recovery_conninfo;
 static char		recovery_conninfo_str[MAXLEN];
-static char		upstream_repluser[MAXLEN];
+static char		upstream_repluser[NAMEDATALEN];
 
 static t_configfile_list config_files = T_CONFIGFILE_LIST_INITIALIZER;
 
@@ -1755,12 +1755,11 @@ check_source_server()
 		upstream_node_id = runtime_options.upstream_node_id;
 
 	record_status = get_node_record(source_conn, upstream_node_id, &node_record);
-
 	if (record_status == RECORD_FOUND)
 	{
 		upstream_record_found = true;
 		strncpy(recovery_conninfo_str, node_record.conninfo, MAXLEN);
-		strncpy(upstream_repluser, node_record.repluser, MAXLEN);
+		strncpy(upstream_repluser, node_record.repluser, NAMEDATALEN);
 	}
 
 	/*

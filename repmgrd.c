@@ -583,9 +583,9 @@ monitor_streaming_primary(void)
 
 					goto loop;
 				}
+
 				monitoring_state = MS_DEGRADED;
 				INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
-
 			}
 
 		}
@@ -894,6 +894,10 @@ monitor_streaming_standby(void)
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
 				{
 					// XXX check here if upstream is still primary
+					// -> will be a problem if another node was promoted in the meantime
+					// and upstream is now former primary
+					// XXX scan other nodes to see if any has become primary
+
 					upstream_node_status = NODE_STATUS_UP;
 					monitoring_state = MS_NORMAL;
 
@@ -930,8 +934,9 @@ monitor_streaming_standby(void)
 					goto loop;
 				}
 			}
+			// unable to connect to former primary - check if another node has
+			// been promoted
 
-			// XXX scan other nodes to see if any has become primary
 		}
 
 	loop:
@@ -1218,9 +1223,13 @@ do_upstream_standby_failover(void)
 	PQfinish(upstream_conn);
 	upstream_conn = NULL;
 
-	// check status
 	record_status = get_primary_node_record(local_conn, &primary_node_info);
 
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve primary node record"));
+		return false;
+	}
 	/*
 	 * Verify that we can still talk to the cluster primary, even though
 	 * the node's upstream is not available
@@ -2185,8 +2194,7 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 
 	int i;
 
-	// XXX make this all configurable
-	int max_attempts = 5;
+	int max_attempts = config_file_options.reconnect_attempts;
 
 	for (i = 0; i < max_attempts; i++)
 	{
@@ -2207,7 +2215,9 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 			PQfinish(conn);
 			log_notice(_("unable to reconnect to node"));
 		}
-		sleep(1);
+		log_info(_("sleeping %i seconds until next reconnection_attempt"),
+				 config_file_options.reconnect_interval);
+		sleep(config_file_options.reconnect_interval);
 	}
 
 

@@ -239,11 +239,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	strncpy(options->location, DEFAULT_LOCATION, MAXLEN);
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
-	options->monitor_interval_secs = 2;
+	options->monitor_interval_secs = DEFAULT_STATS_REPORTING_INTERVAL;
 	options->primary_response_timeout = 60;
 	/* default to 6 reconnection attempts at intervals of 10 seconds */
-	options->reconnect_attempts = 6;
-	options->reconnect_interval = 10;
+	options->reconnect_attempts = DEFAULT_RECONNECTION_ATTEMPTS;
+	options->reconnect_interval = DEFAULT_RECONNECTION_INTERVAL;
 	options->retry_promote_interval_secs = 300;
 	options->monitoring_history = false;  /* new in 4.0, replaces --monitoring-history */
 	options->degraded_monitoring_timeout = -1;
