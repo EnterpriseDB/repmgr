@@ -3377,8 +3377,8 @@ do_standby_clone(void)
 		char		filename[MAXLEN];
 		char		buf[MAXLEN];
 		char		basebackups_directory[MAXLEN];
-		char        backup_id[MAXLEN] = "";
-		char       *p, *q;
+		char		backup_id[MAXLEN] = "";
+		char	   *p, *q;
 		PQExpBufferData command_output;
 		TablespaceDataList tablespace_list = { NULL, NULL };
 		TablespaceDataListCell *cell_t;
@@ -3416,6 +3416,8 @@ do_standby_clone(void)
 								make_barman_ssh_command(),
 								options.cluster_name);
 
+				log_verbose(LOG_DEBUG, "executing:\n  %s\n", command);
+
 				fi = popen(command, "r");
 				if (fi == NULL)
 				{
@@ -3429,6 +3431,8 @@ do_standby_clone(void)
 					log_err("Cannot open file: %s\n", datadir_list_filename);
 					exit(ERR_INTERNAL);
 				}
+
+				maxlen_snprintf(prefix, "%s/", basebackups_directory);
 
 				while (fgets(output, MAXLEN, fi) != NULL)
 				{
@@ -3458,6 +3462,8 @@ do_standby_clone(void)
 						strncat(prefix,"/",MAXLEN-1);
 						p = string_skip_prefix(backup_id, p);
 						p = string_skip_prefix("/", p);
+
+						log_debug("Barman backup_id is: %s\n", backup_id);
 
 						/*
 						 * Copy backup.info
