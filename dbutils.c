@@ -1430,6 +1430,8 @@ get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id,
 	PQExpBufferData	query;
 	PGresult   *res;
 
+	clear_node_info_list(node_list);
+
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,

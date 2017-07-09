@@ -934,8 +934,11 @@ monitor_streaming_standby(void)
 					goto loop;
 				}
 			}
-			// unable to connect to former primary - check if another node has
-			// been promoted
+			else
+			{
+				// unable to connect to former primary - check if another node has
+				// been promoted
+			}
 
 		}
 
@@ -1031,7 +1034,6 @@ do_primary_failover(void)
 
 
 		/* reset node list */
-		clear_node_info_list(&standby_nodes);
 		get_active_sibling_node_records(local_conn,
 										local_node_info.node_id,
 										upstream_node_info.node_id,
@@ -1107,8 +1109,6 @@ do_primary_failover(void)
 
 				failover_state = promote_self();
 
-				/* reset node list */
-				clear_node_info_list(&standby_nodes);
 				get_active_sibling_node_records(local_conn,
 												local_node_info.node_id,
 												upstream_node_info.node_id,
@@ -1837,8 +1837,6 @@ do_election(void)
 
 	/* get all active nodes attached to primary, excluding self */
 	// XXX include barman node in results
-
-	clear_node_info_list(&standby_nodes);
 
 	get_active_sibling_node_records(local_conn,
 									local_node_info.node_id,
