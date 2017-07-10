@@ -1204,7 +1204,7 @@ do_primary_failover(void)
 			return false;
 	}
 
-	// should never reach here
+	/* should never reach here */
 	return false;
 }
 
@@ -1889,8 +1889,20 @@ do_election(void)
 
 	if (standby_nodes.node_count == 0)
 	{
-		log_debug("no other nodes - we win by default");
-		return ELECTION_WON;
+		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
+		{
+			log_debug("no other nodes - we win by default");
+			return ELECTION_WON;
+		}
+		else
+		{
+			log_debug("no other nodes, but primary and standby locations differ");
+
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
+			return ELECTION_NOT_CANDIDATE;
+		}
 	}
 
 	for (cell = standby_nodes.head; cell; cell = cell->next)
