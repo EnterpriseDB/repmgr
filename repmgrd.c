@@ -885,7 +885,9 @@ monitor_streaming_standby(void)
 		{
 			int		degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
 
-			log_debug("monitoring node in degraded state for %i seconds", degraded_monitoring_elapsed);
+			log_debug("monitoring node %i in degraded state for %i seconds",
+					  upstream_node_info.node_id,
+					  degraded_monitoring_elapsed);
 
 			if (is_server_available(upstream_node_info.conninfo) == true)
 			{
@@ -908,7 +910,7 @@ monitor_streaming_standby(void)
 					else
 					{
 
-						if (primary_conn == NULL ||PQstatus(primary_conn) != CONNECTION_OK)
+						if (primary_conn == NULL || PQstatus(primary_conn) != CONNECTION_OK)
 						{
 							primary_conn = establish_primary_db_connection(upstream_conn, false);
 						}
@@ -1180,12 +1182,24 @@ do_primary_failover(void)
 		case FAILOVER_STATE_PROMOTION_FAILED:
 			log_debug("failover state is PROMOTION FAILED");
 			return false;
+
+		case FAILOVER_STATE_FOLLOW_FAIL:
+			/*
+			 * for whatever reason we were unable to follow the new primary -
+			 * continue monitoring in degraded state
+			 */
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
+			return false;
+
 		case FAILOVER_STATE_NO_NEW_PRIMARY:
 		case FAILOVER_STATE_WAITING_NEW_PRIMARY:
 			/* pass control back down to start_monitoring() */
 			// -> should kick off new election
 			return false;
 
+		case FAILOVER_STATE_NODE_NOTIFICATION_ERROR:
 		case FAILOVER_STATE_LOCAL_NODE_FAILURE:
 		case FAILOVER_STATE_UNKNOWN:
 		case FAILOVER_STATE_NONE:
@@ -1378,8 +1392,14 @@ promote_self(void)
 		sleep(config_file_options.promote_delay);
 	}
 
-	// XXX check success
 	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve metadata record for failed upstream (ID: %i)"),
+				  local_node_info.upstream_node_id);
+		return FAILOVER_STATE_PROMOTION_FAILED;
+	}
 
 	/* the presence of either of these commands has been established already */
 	if (config_file_options.service_promote_command[0] != '\0')
@@ -1597,10 +1617,23 @@ follow_new_primary(int new_primary_id)
 	RecordStatus record_status;
 	bool new_primary_ok = false;
 
-	// XXX check success
 	record_status = get_node_record(local_conn, new_primary_id, &new_primary);
 
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve metadata record for upstream node (ID: %i)"),
+				  new_primary_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+
 	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve metadata record for failed primary (ID: %i)"),
+					local_node_info.upstream_node_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
 
 	// XXX check if new_primary_id == failed_primary.node_id?
 
@@ -1611,13 +1644,6 @@ follow_new_primary(int new_primary_id)
 
 	log_debug(_("standby follow command is:\n  \"%s\""),
 			  config_file_options.follow_command);
-
-	/*
-	 * disconnect from local node, as follow operation will result in
-	 * a server restart
-	 */
-	PQfinish(local_conn);
-	local_conn = NULL;
 
 	upstream_conn = establish_db_connection(new_primary.conninfo, false);
 
@@ -1635,12 +1661,20 @@ follow_new_primary(int new_primary_id)
 		}
 	}
 
-
 	if (new_primary_ok == false)
 	{
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
-	// XXX check new primary is reachable and is not in recovery here
+
+	/*
+	 * disconnect from local node, as follow operation will result in
+	 * a server restart
+	 */
+
+	PQfinish(local_conn);
+	local_conn = NULL;
+
+	/* execute the follow command */
 	r = system(config_file_options.follow_command);
 
 	if (r != 0)
@@ -1682,10 +1716,23 @@ follow_new_primary(int new_primary_id)
 	 * directly from the primary to ensure they're the current version
 	 */
 
-	// XXX check success
-
 	record_status = get_node_record(upstream_conn, new_primary_id, &upstream_node_info);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve metadata record found for node %i"),
+				  new_primary_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+
 	record_status = get_node_record(upstream_conn, local_node_info.node_id, &local_node_info);
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve metadata record found for node %i"),
+				  local_node_info.node_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+
 
 	local_conn = establish_db_connection(local_node_info.conninfo, false);
 	initPQExpBuffer(&event_details);
@@ -1836,8 +1883,6 @@ do_election(void)
 	electoral_term = set_voting_status_initiated(local_conn);
 
 	/* get all active nodes attached to primary, excluding self */
-	// XXX include barman node in results
-
 	get_active_sibling_node_records(local_conn,
 									local_node_info.node_id,
 									upstream_node_info.node_id,
@@ -1856,7 +1901,6 @@ do_election(void)
 		/* assume the worst case */
 		cell->node_info->is_visible = false;
 
-		// XXX handle witness-barman
 		cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
@@ -2201,8 +2245,12 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 		{
 			log_notice(_("node has recovered, reconnecting"));
 
-			// XXX how to handle case where node is reachable
-			// but connection denied due to connection exhaustion
+			/*
+			 * XXX we should also handle the case where node is pingable
+			 * but connection denied due to connection exhaustion
+			 *  - fall back to degraded monitoring?
+			 *  - make that configurable
+			 */
 			conn = establish_db_connection(conninfo, false);
 			if (PQstatus(conn) == CONNECTION_OK)
 			{
@@ -2213,7 +2261,7 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 			PQfinish(conn);
 			log_notice(_("unable to reconnect to node"));
 		}
-		log_info(_("sleeping %i seconds until next reconnection_attempt"),
+		log_info(_("sleeping %i seconds until next reconnection attempt"),
 				 config_file_options.reconnect_interval);
 		sleep(config_file_options.reconnect_interval);
 	}

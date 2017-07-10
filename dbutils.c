@@ -952,7 +952,7 @@ _get_primary_connection(PGconn *conn,
 					  "  SELECT node_id, conninfo, "
 					  "         CASE WHEN type = 'primary' THEN 1 ELSE 2 END AS type_priority"
 					  "	   FROM repmgr.nodes "
-					  "   WHERE type != 'witness' "
+					  "   WHERE active IS TRUE "
 					  "ORDER BY active DESC, type_priority, priority, node_id");
 
 	log_verbose(LOG_DEBUG, "get_primary_connection():\n%s", query.data);
@@ -1030,13 +1030,13 @@ get_primary_connection(PGconn *conn,
 }
 
 
-
 PGconn *
 get_primary_connection_quiet(PGconn *conn,
 							int *primary_id, char *primary_conninfo_out)
 {
 	return _get_primary_connection(conn, primary_id, primary_conninfo_out, true);
 }
+
 
 /*
  * Return the id of the active primary node, or NODE_NOT_FOUND if no
