@@ -551,7 +551,6 @@ main(int argc, char **argv)
 	 *
 	 *	 { PRIMARY | MASTER } REGISTER |
 	 *	 STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
-	 *	 WITNESS { CREATE | REGISTER | UNREGISTER } |
 	 *	 BDR { REGISTER | UNREGISTER } |
 	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP | EVENT }
 	 *
@@ -1046,7 +1045,6 @@ check_cli_parameters(const int action)
 		{
 			case PRIMARY_UNREGISTER:
 			case STANDBY_UNREGISTER:
-			case WITNESS_UNREGISTER:
 			case CLUSTER_EVENT:
 				break;
 			default:
@@ -1062,7 +1060,6 @@ check_cli_parameters(const int action)
 		switch (action)
 		{
 			case STANDBY_UNREGISTER:
-			case WITNESS_UNREGISTER:
 			case CLUSTER_EVENT:
 				if (runtime_options.node_id != UNKNOWN_NODE_ID)
 				{
@@ -1178,8 +1175,6 @@ action_name(const int action)
 			return "STANDBY REGISTER";
 		case STANDBY_UNREGISTER:
 			return "STANDBY UNREGISTER";
-		case WITNESS_UNREGISTER:
-			return "WITNESS UNREGISTER";
 		case CLUSTER_EVENT:
 			return "CLUSTER EVENT";
 	}

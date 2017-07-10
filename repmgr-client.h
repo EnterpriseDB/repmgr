@@ -22,16 +22,13 @@
 #define STANDBY_SWITCHOVER	   8
 #define STANDBY_ARCHIVE_CONFIG 9
 #define STANDBY_RESTORE_CONFIG 10
-#define WITNESS_CREATE		   11
-#define WITNESS_REGISTER	   12
-#define WITNESS_UNREGISTER	   13
-#define CLUSTER_SHOW		   14
-#define CLUSTER_CLEANUP		   15
-#define CLUSTER_MATRIX		   16
-#define CLUSTER_CROSSCHECK	   17
-#define CLUSTER_EVENT		   18
-#define BDR_REGISTER		   19
-#define BDR_UNREGISTER		   20
+#define CLUSTER_SHOW		   11
+#define CLUSTER_CLEANUP		   12
+#define CLUSTER_MATRIX		   13
+#define CLUSTER_CROSSCHECK	   14
+#define CLUSTER_EVENT		   15
+#define BDR_REGISTER		   16
+#define BDR_UNREGISTER		   17
 
 /* command line options without short versions */
 #define OPT_HELP						   1

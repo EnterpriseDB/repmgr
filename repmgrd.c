@@ -471,9 +471,6 @@ start_monitoring(void)
 			case STANDBY:
 				monitor_streaming_standby();
 				break;
-			case WITNESS:
-				/* not handled */
-				return;
 			case BDR:
 				monitor_bdr();
 				return;

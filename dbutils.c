@@ -1226,10 +1226,6 @@ parse_node_type(const char *type)
 	{
 		return STANDBY;
 	}
-	else if (strcmp(type, "witness") == 0)
-	{
-		return WITNESS;
-	}
 	else if (strcmp(type, "bdr") == 0)
 	{
 		return BDR;
@@ -1247,8 +1243,6 @@ get_node_type_string(t_server_type type)
 			return "primary";
 		case STANDBY:
 			return "standby";
-		case WITNESS:
-			return "witness";
 		case BDR:
 			return "bdr";
 		/* this should never happen */

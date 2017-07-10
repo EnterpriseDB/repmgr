@@ -85,9 +85,6 @@ typedef struct
 	bool		monitoring_history;
 	int			degraded_monitoring_timeout;
 
-	/* witness settings */
-	int			witness_repl_nodes_sync_interval_secs;
-
 	/* service settings */
 	char		pg_ctl_options[MAXLEN];
 	char		service_stop_command[MAXLEN];
@@ -131,8 +128,6 @@ typedef struct
 		DEFAULT_RECONNECTION_ATTEMPTS, \
         DEFAULT_RECONNECTION_INTERVAL, \
         300, false, -1, \
-		/* witness settings */ \
-		30, \
 		/* service settings */ \
 		"", "", "", "", "", "", \
 		/* event notification settings */ \

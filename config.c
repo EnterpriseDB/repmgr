@@ -248,12 +248,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->monitoring_history = false;  /* new in 4.0, replaces --monitoring-history */
 	options->degraded_monitoring_timeout = -1;
 
-	/* witness settings
-	 * ---------------- */
-
-	/* default to resyncing repl_nodes table every 30 seconds on the witness server */
-	options->witness_repl_nodes_sync_interval_secs = 30;
-
 	/* service settings
 	 * ---------------- */
 	memset(options->pg_ctl_options, 0, sizeof(options->pg_ctl_options));
@@ -420,10 +414,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->monitoring_history = parse_bool(value, name, error_list);
 		else if (strcmp(name, "degraded_monitoring_timeout") == 0)
 			options->degraded_monitoring_timeout = repmgr_atoi(value, name, error_list, 1);
-
-		/* witness settings */
-		else if (strcmp(name, "witness_repl_nodes_sync_interval_secs") == 0)
-			options->witness_repl_nodes_sync_interval_secs = repmgr_atoi(value, name, error_list, 1);
 
 		/* service settings */
 		else if (strcmp(name, "pg_ctl_options") == 0)

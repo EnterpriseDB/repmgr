@@ -22,8 +22,6 @@
 #include "strutil.h"
 #include "log.h"
 
-
-static bool _create_pg_dir(char *dir, bool force, bool for_witness);
 static int unlink_dir_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf);
 
 
@@ -241,19 +239,6 @@ is_pg_dir(char *path)
 bool
 create_pg_dir(char *path, bool force)
 {
-	return _create_pg_dir(path, force, false);
-}
-
-bool
-create_witness_pg_dir(char *path, bool force)
-{
-	return _create_pg_dir(path, force, true);
-}
-
-
-static bool
-_create_pg_dir(char *path, bool force, bool for_witness)
-{
 	bool		pg_dir = false;
 
 	/* Check this directory could be used as a PGDATA dir */
@@ -277,7 +262,7 @@ _create_pg_dir(char *path, bool force, bool for_witness)
 
 			if (!set_dir_permissions(path))
 			{
-				log_error(_("unable to change permissions of directory \"%s\": %s"),
+				log_error(_("unable to change permissions of directory \"%s\":\n  %s"),
 						path, strerror(errno));
 				return false;
 			}
@@ -289,21 +274,11 @@ _create_pg_dir(char *path, bool force, bool for_witness)
 
 			pg_dir = is_pg_dir(path);
 
-
 			if (pg_dir && force)
 			{
+				/* TODO: check DB state, if not running overwrite */
 
-				/*
-				 * The witness server does not store any data other than a copy of the
-				 * repmgr metadata, so in --force mode we can simply overwrite the
-				 * directory.
-				 *
-				 * For non-witness servers, we'll leave the data in place, to reduce
-				 * the risk of unintentional data loss
-				 *
-				 * TODO: check DB state, if not running overwrite
-				 */
-				if (for_witness)
+				if (false)
 				{
 					log_notice(_("deleting existing data directory \"%s\""), path);
 					nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);

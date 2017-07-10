@@ -100,7 +100,7 @@
 # By default, all notifications will be passed; the notification types
 # can be filtered to explicitly named ones, e.g.:
 #
-#   event_notifications=master_register,standby_register,witness_create
+#   event_notifications=master_register,standby_register
 
 #event_notification_command=''           # An external program or script which
                                          # can be executed by the user under which

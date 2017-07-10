@@ -14,6 +14,5 @@ extern int		check_dir(char *path);
 extern bool		create_dir(char *path);
 extern bool		is_pg_dir(char *path);
 extern bool		create_pg_dir(char *path, bool force);
-extern bool		create_witness_pg_dir(char *path, bool force);
 
 #endif

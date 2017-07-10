@@ -52,7 +52,4 @@
 
 #define ERRBUFF_SIZE 512
 
-#define WITNESS_DEFAULT_PORT "5499" /* If this value is ever changed, remember
-									 * to update comments and documentation */
-
 #endif /* _REPMGR_H_ */
