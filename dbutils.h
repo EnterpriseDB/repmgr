@@ -212,18 +212,24 @@ const char * get_node_type_string(t_server_type type);
 
 RecordStatus get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 RecordStatus get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
+t_node_info *get_node_record_pointer(PGconn *conn, int node_id);
+
 bool		get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 bool		get_primary_node_record(PGconn *conn, t_node_info *node_info);
+
 void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
 void		get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id, NodeInfoList *node_list);
+void		get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		delete_node_record(PGconn *conn, int node);
 
+bool		update_node_record_set_active(PGconn *conn, int this_node_id, bool active);
 bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
 bool		update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 bool		update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
+bool		update_node_record_conn_priority(PGconn *conn, t_configuration_options *options);
 
 void		clear_node_info_list(NodeInfoList *nodes);
 

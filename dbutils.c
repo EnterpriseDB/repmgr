@@ -1134,7 +1134,6 @@ get_repmgr_extension_status(PGconn *conn)
 	}
 
 	/* 1. Check extension is actually available */
-
 	if (PQntuples(res) == 0)
 	{
 		return REPMGR_UNAVAILABLE;
@@ -1234,6 +1233,7 @@ parse_node_type(const char *type)
 	return UNKNOWN;
 }
 
+
 const char *
 get_node_type_string(t_server_type type)
 {
@@ -1308,6 +1308,24 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 	}
 
 	return record_status;
+}
+
+
+t_node_info *
+get_node_record_pointer(PGconn *conn, int node_id)
+{
+	t_node_info *node_info = pg_malloc0(sizeof(t_node_info));
+	RecordStatus record_status;
+
+	record_status = get_node_record(conn, node_id, node_info);
+
+	if (record_status != RECORD_FOUND)
+	{
+		pfree(node_info);
+		return NULL;
+	}
+
+	return node_info;
 }
 
 
@@ -1444,10 +1462,41 @@ get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id,
 
 	termPQExpBuffer(&query);
 
+	/* res cleared by this function */
 	_populate_node_records(res, node_list);
 
 	return;
 }
+
+
+void
+get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list)
+{
+	PQExpBufferData	query;
+	PGresult   *res;
+
+	clear_node_info_list(node_list);
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
+		"    FROM repmgr.nodes "
+		"ORDER BY priority DESC, node_name ");
+
+	log_verbose(LOG_DEBUG, "get_node_records_by_priority():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+
+	/* res cleared by this function */
+	_populate_node_records(res, node_list);
+
+	return;
+}
+
 
 bool
 create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info)
@@ -1573,6 +1622,41 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 	return true;
 }
 
+
+bool
+update_node_record_set_active(PGconn *conn, int this_node_id, bool active)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"UPDATE repmgr.nodes SET active = %s "
+		" WHERE id = %i",
+		active == true ? "TRUE" : "FALSE",
+		this_node_id);
+
+	log_verbose(LOG_DEBUG, "update_node_record_set_active():\n  %s", query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to update node record:\n  %s"),
+				  PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
 bool
 update_node_record_set_primary(PGconn *conn, int this_node_id)
 {
@@ -1593,6 +1677,7 @@ update_node_record_set_primary(PGconn *conn, int this_node_id)
 					  "     AND active IS TRUE ");
 
 	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
@@ -1605,7 +1690,6 @@ update_node_record_set_primary(PGconn *conn, int this_node_id)
 	}
 
 	PQclear(res);
-	termPQExpBuffer(&query);
 
 	initPQExpBuffer(&query);
 
@@ -1711,6 +1795,43 @@ update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstre
 
 	PQclear(res);
 
+	return true;
+}
+
+
+/*
+ * Update node record's "conninfo" and "priority" fields. Called by repmgrd
+ * following a configuration file reload.
+ */
+bool
+update_node_record_conn_priority(PGconn *conn, t_configuration_options *options)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"UPDATE repmgr.nodes "
+		"   SET conninfo = '%s', "
+		"       priority = %d "
+		" WHERE id = %d ",
+		options->conninfo,
+		options->priority,
+		options->node_id);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
 	return true;
 }
 
