@@ -258,5 +258,12 @@ void reset_voting_status(PGconn *conn);
 
 XLogRecPtr get_last_wal_receive_location(PGconn *conn);
 
+/* BDR functions */
+
+bool		is_bdr_db(PGconn *conn);
+bool		is_bdr_repmgr(PGconn *conn);
+bool		is_table_in_bdr_replication_set(PGconn *conn, char *tablename, char *set);
+bool		add_table_to_bdr_replication_set(PGconn *conn, char *tablename, char *set);
+
 #endif /* dbutils.h */
 

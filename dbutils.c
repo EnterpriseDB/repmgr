@@ -2603,3 +2603,140 @@ get_last_wal_receive_location(PGconn *conn)
 
 	return ptr;
 }
+
+/* ============= */
+/* BDR functions */
+/* ============= */
+
+bool
+is_bdr_db(PGconn *conn)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res;
+	bool			  is_bdr_db;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"SELECT COUNT(*) FROM pg_catalog.pg_namespace WHERE nspname='bdr'");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
+	{
+		is_bdr_db = false;
+	}
+	else
+	{
+		is_bdr_db = atoi(PQgetvalue(res, 0, 0)) == 1 ? true : false;
+	}
+
+	PQclear(res);
+
+	return is_bdr_db;
+}
+
+
+bool
+is_bdr_repmgr(PGconn *conn)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+	int		non_bdr_nodes;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"SELECT COUNT(*)"
+		"  FROM repmgr.nodes"
+		" WHERE type != 'bdr' ");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
+	{
+		PQclear(res);
+		return false;
+	}
+
+	non_bdr_nodes = atoi(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+
+	return (non_bdr_nodes == 0) ? true : false;
+}
+
+
+bool
+is_table_in_bdr_replication_set(PGconn *conn, char *tablename, char *set)
+{
+	PQExpBufferData		query;
+	PGresult			*res;
+	bool				in_replication_set;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"SELECT COUNT(*) "
+		"  FROM UNNEST(bdr.table_get_replication_sets('repmgr.%s')) AS repset "
+		" WHERE repset='%s' ",
+		tablename,
+		set);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
+	{
+		in_replication_set = false;
+	}
+	else
+	{
+		in_replication_set = atoi(PQgetvalue(res, 0, 0)) == 1 ? true : false;
+	}
+
+	PQclear(res);
+
+	return in_replication_set;
+}
+
+
+
+bool
+add_table_to_bdr_replication_set(PGconn *conn, char *tablename, char *set)
+{
+	PQExpBufferData		query;
+	PGresult			*res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"SELECT bdr.table_set_replication_sets('repmgr.%s', '{%s}')",
+		tablename,
+		set);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to add table 'repmgr.%s' to replication set '%s':\n  %s"),
+				  tablename,
+				  set,
+				  PQerrorMessage(conn));
+
+		if (res != NULL)
+			PQclear(res);
+
+		return false;
+	}
+	PQclear(res);
+
+	return true;
+}
