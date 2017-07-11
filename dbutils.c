@@ -47,6 +47,33 @@ parse_lsn(const char *str)
 }
 
 
+/*
+ * Wrap query with appropriate DDL function, if required.
+ */
+void
+wrap_ddl_query(PQExpBufferData *query_buf, int replication_type, const char *fmt, ...)
+{
+	va_list		arglist;
+	char		buf[MAXLEN];
+
+	if (replication_type == REPLICATION_TYPE_BDR)
+	{
+		appendPQExpBuffer(query_buf, "SELECT bdr.bdr_replicate_ddl_command($repmgr$");
+	}
+
+	va_start(arglist, fmt);
+	vsnprintf(buf, MAXLEN, fmt, arglist);
+	va_end(arglist);
+
+	appendPQExpBuffer(query_buf, "%s", buf);
+
+	if (replication_type == REPLICATION_TYPE_BDR)
+	{
+		appendPQExpBuffer(query_buf, "$repmgr$)");
+	}
+}
+
+
 /* ==================== */
 /* Connection functions */
 /* ==================== */
@@ -1517,6 +1544,7 @@ update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info)
 	return _create_update_node_record(conn, "update", node_info);
 }
 
+
 static bool
 _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 {
@@ -2793,7 +2821,7 @@ is_bdr_repmgr(PGconn *conn)
 
 
 bool
-is_table_in_bdr_replication_set(PGconn *conn, char *tablename, char *set)
+is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set)
 {
 	PQExpBufferData		query;
 	PGresult			*res;
@@ -2829,10 +2857,10 @@ is_table_in_bdr_replication_set(PGconn *conn, char *tablename, char *set)
 
 
 bool
-add_table_to_bdr_replication_set(PGconn *conn, char *tablename, char *set)
+add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set)
 {
 	PQExpBufferData		query;
-	PGresult			*res;
+	PGresult		   *res;
 
 	initPQExpBuffer(&query);
 
@@ -2860,4 +2888,81 @@ add_table_to_bdr_replication_set(PGconn *conn, char *tablename, char *set)
 	PQclear(res);
 
 	return true;
+}
+
+
+bool
+bdr_node_exists(PGconn *conn, const char *node_name)
+{
+	PQExpBufferData		query;
+	PGresult		   *res;
+	bool				node_exists;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"SELECT COUNT(*)"
+		"  FROM bdr.bdr_nodes"
+		" WHERE node_name = '%s'",
+		node_name);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		node_exists = false;
+	}
+	else
+	{
+		node_exists = atoi(PQgetvalue(res, 0, 0)) == 1 ? true : false;
+	}
+
+	PQclear(res);
+
+	return node_exists;
+}
+
+
+void
+add_extension_tables_to_bdr_replication_set(PGconn *conn)
+{
+	PQExpBufferData		query;
+	PGresult		   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"    SELECT c.relname "
+		"      FROM pg_class c "
+        "INNER JOIN pg_namespace n "
+		"        ON c.relnamespace = n.oid "
+		"     WHERE n.nspname = 'repmgr' "
+		"       AND c.relkind = 'r' ");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		//
+	}
+	else
+	{
+		int i;
+
+		for (i = 0; i < PQntuples(res); i++)
+		{
+			add_table_to_bdr_replication_set(
+				conn,
+				PQgetvalue(res, i, 0),
+				"repmgr");
+		}
+	}
+
+	PQclear(res);
+
+	return;
 }

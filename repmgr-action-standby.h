@@ -33,4 +33,4 @@ typedef struct
 #define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
 
 
-#endif
+#endif /* _REPMGR_ACTION_STANDBY_H_ */

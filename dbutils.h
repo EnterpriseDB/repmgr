@@ -148,6 +148,8 @@ typedef struct s_connection_user
 
 XLogRecPtr parse_lsn(const char *str);
 
+extern void wrap_ddl_query(PQExpBufferData *query_buf, int replication_type, const char *fmt, ...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 
 /* connection functions */
 PGconn *establish_db_connection(const char *conninfo,
@@ -268,8 +270,10 @@ XLogRecPtr get_last_wal_receive_location(PGconn *conn);
 
 bool		is_bdr_db(PGconn *conn);
 bool		is_bdr_repmgr(PGconn *conn);
-bool		is_table_in_bdr_replication_set(PGconn *conn, char *tablename, char *set);
-bool		add_table_to_bdr_replication_set(PGconn *conn, char *tablename, char *set);
+bool		is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
+bool		add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
+bool		bdr_node_exists(PGconn *conn, const char *node_name);
+void		add_extension_tables_to_bdr_replication_set(PGconn *conn);
 
 #endif /* dbutils.h */
 

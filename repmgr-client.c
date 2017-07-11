@@ -28,6 +28,8 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-primary.h"
 #include "repmgr-action-standby.h"
+#include "repmgr-action-bdr.h"
+
 #include "repmgr-action-cluster.h"
 
 #include <storage/fd.h>         /* for PG_TEMP_FILE_PREFIX */
@@ -579,6 +581,7 @@ main(int argc, char **argv)
 			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
 				action = PRIMARY_UNREGISTER;
 		}
+
 		else if (strcasecmp(repmgr_node_type, "STANDBY") == 0)
 		{
 			if (strcasecmp(repmgr_action, "CLONE") == 0)
@@ -597,6 +600,14 @@ main(int argc, char **argv)
 				action = STANDBY_ARCHIVE_CONFIG;
 			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
 				action = STANDBY_RESTORE_CONFIG;
+		}
+
+		else if (strcasecmp(repmgr_node_type, "BDR") == 0)
+		{
+			if (strcasecmp(repmgr_action, "REGISTER") == 0)
+				action = BDR_REGISTER;
+			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
+				action = BDR_UNREGISTER;
 		}
 
 		else if (strcasecmp(repmgr_node_type, "CLUSTER") == 0)
@@ -845,6 +856,7 @@ main(int argc, char **argv)
 
 	switch (action)
 	{
+		/* PRIMARY */
 		case PRIMARY_REGISTER:
 			do_primary_register();
 			break;
@@ -852,6 +864,7 @@ main(int argc, char **argv)
 			do_primary_unregister();
 			break;
 
+		/* STANDBY */
 		case STANDBY_CLONE:
 			do_standby_clone();
 			break;
@@ -877,6 +890,15 @@ main(int argc, char **argv)
 			do_standby_restore_config();
 			break;
 
+		/* BDR */
+		case BDR_REGISTER:
+			do_bdr_register();
+			break;
+		case BDR_UNREGISTER:
+			do_bdr_unregister();
+			break;
+
+		/* CLUSTER */
 		case CLUSTER_EVENT:
 			do_cluster_event();
 			break;
@@ -1336,14 +1358,14 @@ create_repmgr_extension(PGconn *conn)
 	/* 4. Create extension */
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "CREATE EXTENSION repmgr");
+	wrap_ddl_query(&query, config_file_options.replication_type,
+				   "CREATE EXTENSION repmgr");
 
 	res = PQexec(schema_create_conn, query.data);
 
 	termPQExpBuffer(&query);
 
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	if ((PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK))
 	{
 		log_error(_("unable to create \"repmgr\" extension:\n  %s"),
 				  PQerrorMessage(schema_create_conn));
@@ -1357,14 +1379,21 @@ create_repmgr_extension(PGconn *conn)
 
 	PQclear(res);
 
+	/* For BDR, we'll need to add the repmgr extension tables to a replication set */
+	if (config_file_options.replication_type == REPLICATION_TYPE_BDR)
+	{
+		add_extension_tables_to_bdr_replication_set(conn);
+	}
+
 	/* 5. If not superuser, grant usage */
 	if (is_superuser == false)
 	{
 		initPQExpBuffer(&query);
 
-		appendPQExpBuffer(&query,
-						  "GRANT USAGE ON SCHEMA repmgr TO %s",
-						  userinfo.username);
+		wrap_ddl_query(&query, config_file_options.replication_type,
+					   "GRANT USAGE ON SCHEMA repmgr TO %s",
+					   userinfo.username);
+
 		res = PQexec(schema_create_conn, query.data);
 
 		termPQExpBuffer(&query);
@@ -1382,9 +1411,10 @@ create_repmgr_extension(PGconn *conn)
 		}
 
 		initPQExpBuffer(&query);
-		appendPQExpBuffer(&query,
-						  "GRANT ALL ON ALL TABLES IN SCHEMA repmgr TO %s",
-						  userinfo.username);
+		wrap_ddl_query(&query, config_file_options.replication_type,
+					   "GRANT ALL ON ALL TABLES IN SCHEMA repmgr TO %s",
+					   userinfo.username);
+
 		res = PQexec(schema_create_conn, query.data);
 
 		termPQExpBuffer(&query);
