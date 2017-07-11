@@ -144,6 +144,27 @@ typedef struct s_connection_user
 	bool is_superuser;
 }   t_connection_user;
 
+
+typedef struct s_bdr_node_info
+{
+	char		  node_sysid[MAXLEN];
+	uint32 		  node_timeline;
+	uint32		  node_dboid;
+	char		  node_status;
+	char		  node_name[MAXLEN];
+	char		  node_local_dsn[MAXLEN];
+	char		  node_init_from_dsn[MAXLEN];
+	bool		  read_only;
+	uint32		  node_seq_id;
+} t_bdr_node_info;
+
+
+#define T_BDR_NODE_INFO_INITIALIZER { \
+	"", InvalidOid, InvalidOid, \
+	'?', "", "", "", \
+    false, -1 \
+}
+
 /* utility functions */
 
 XLogRecPtr parse_lsn(const char *str);
@@ -267,13 +288,14 @@ void reset_voting_status(PGconn *conn);
 XLogRecPtr get_last_wal_receive_location(PGconn *conn);
 
 /* BDR functions */
+RecordStatus get_bdr_init_node_record(PGconn *conn, t_bdr_node_info *node_info);
+bool		 is_bdr_db(PGconn *conn);
+bool		 is_bdr_repmgr(PGconn *conn);
+bool		 is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
+bool		 add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
+void		 add_extension_tables_to_bdr_replication_set(PGconn *conn);
 
-bool		is_bdr_db(PGconn *conn);
-bool		is_bdr_repmgr(PGconn *conn);
-bool		is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
-bool		add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
-bool		bdr_node_exists(PGconn *conn, const char *node_name);
-void		add_extension_tables_to_bdr_replication_set(PGconn *conn);
+bool		 bdr_node_exists(PGconn *conn, const char *node_name);
 
 #endif /* dbutils.h */
 

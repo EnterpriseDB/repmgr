@@ -1379,12 +1379,6 @@ create_repmgr_extension(PGconn *conn)
 
 	PQclear(res);
 
-	/* For BDR, we'll need to add the repmgr extension tables to a replication set */
-	if (config_file_options.replication_type == REPLICATION_TYPE_BDR)
-	{
-		add_extension_tables_to_bdr_replication_set(conn);
-	}
-
 	/* 5. If not superuser, grant usage */
 	if (is_superuser == false)
 	{

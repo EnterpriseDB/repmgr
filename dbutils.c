@@ -2966,3 +2966,50 @@ add_extension_tables_to_bdr_replication_set(PGconn *conn)
 
 	return;
 }
+
+
+RecordStatus
+get_bdr_init_node_record(PGconn *conn, t_bdr_node_info *node_info)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		" SELECT node_sysid, "
+		"        node_timeline, "
+		"        node_dboid, "
+		"        node_status, "
+		"        node_name, "
+		"        node_local_dsn, "
+		"        node_init_from_dsn, "
+		"        node_read_only, "
+		"        node_seq_id "
+		"   FROM bdr.bdr_nodes "
+		"  WHERE node_init_from_dsn IS NULL "
+		);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		//
+	}
+	else
+	{
+		strncpy(node_info->node_sysid, PQgetvalue(res, 0, 0), MAXLEN);
+		node_info->node_timeline = atoi(PQgetvalue(res, 0, 1));
+		node_info->node_dboid = atoi(PQgetvalue(res, 0, 2));
+		// node_status 3
+		strncpy(node_info->node_name, PQgetvalue(res, 0, 4), MAXLEN);
+		strncpy(node_info->node_local_dsn, PQgetvalue(res, 0, 5), MAXLEN);
+		strncpy(node_info->node_init_from_dsn, PQgetvalue(res, 0, 6), MAXLEN);
+	}
+
+	PQclear(res);
+	return RECORD_FOUND;
+}
+

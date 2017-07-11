@@ -68,11 +68,11 @@ do_bdr_register(void)
 			log_error(_("repmgr metadatabase contains records for non-BDR nodes"));
 			exit(ERR_BAD_CONFIG);
 		}
+
 	}
 	else
 	{
-		//log_info(_("bdr register: creating database objects inside the %s schema"),
-		//			 get_repmgr_schema());
+		log_info(_("creating repmgr extension"));
 
 		begin_transaction(conn);
 
@@ -86,6 +86,31 @@ do_bdr_register(void)
 
 		commit_transaction(conn);
 	}
+
+	// any other BDR nodes - if so connect to one where "node_init_from_dsn" is null,
+	// and copy repmgr.nodes
+	// (we'll assume all other nodes are up-to-date)
+	// don't copy other tables...
+	{
+		PGconn *init_node;
+		RecordStatus bdr_record_status;
+		t_bdr_node_info bdr_init_node_info = T_BDR_NODE_INFO_INITIALIZER;
+
+		bdr_record_status = get_bdr_init_node_record(conn, &bdr_init_node_info);
+
+		if (bdr_record_status == RECORD_FOUND)
+		{
+			if (strncmp(node_info.node_name, bdr_init_node_info.node_name, MAXLEN) != 0)
+			{
+				init_node = establish_db_connection_quiet(bdr_init_node_info.node_init_from_dsn);
+				
+			}
+		}
+
+	}
+
+	/* Add the repmgr extension tables to a replication set */
+	add_extension_tables_to_bdr_replication_set(conn);
 
 	/* check for a matching BDR node */
 	{
@@ -217,5 +242,100 @@ do_bdr_register(void)
 void
 do_bdr_unregister(void)
 {
+	PGconn	   	   *conn;
+    ExtensionStatus extension_status;
+	int 			target_node_id;
+	t_node_info		node_info = T_NODE_INFO_INITIALIZER;
+	RecordStatus	record_status;
+	bool			node_record_deleted;
+	PQExpBufferData event_details;
+
+	/* sanity-check configuration for BDR-compatability */
+
+	if (config_file_options.replication_type != REPLICATION_TYPE_BDR)
+	{
+		log_error(_("cannot run BDR UNREGISTER on a non-BDR node"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	conn = establish_db_connection(config_file_options.conninfo, true);
+
+	if (!is_bdr_db(conn))
+	{
+		/* TODO: name database */
+		log_error(_("database is not BDR-enabled"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	extension_status = get_repmgr_extension_status(conn);
+	if (extension_status != REPMGR_INSTALLED)
+	{
+		log_error(_("repmgr is not installed on this database"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (!is_bdr_repmgr(conn))
+	{
+		log_error(_("repmgr metadatabase contains records for non-BDR nodes"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&event_details);
+	if (runtime_options.node_id != UNKNOWN_NODE_ID)
+		target_node_id = runtime_options.node_id;
+	else
+		target_node_id = config_file_options.node_id;
+
+
+	/* Check node exists and is really a BDR node */
+	record_status = get_node_record(conn, target_node_id, &node_info);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("no record found for node %i"), target_node_id);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	// BDR node
+
+	begin_transaction(conn);
+
+	log_info(_("unregistering node %i"), target_node_id);
+
+	node_record_deleted = delete_node_record(conn, target_node_id);
+
+	if (node_record_deleted == false)
+	{
+		appendPQExpBuffer(&event_details,
+						  "unable to delete node record for node \"%s\" (ID: %i)",
+						  node_info.node_name,
+						  target_node_id);
+	}
+	else
+	{
+		appendPQExpBuffer(&event_details,
+						  "node record deleted for node \"%s\" (ID: %i)",
+						  node_info.node_name,
+						  target_node_id);
+	}
+	commit_transaction(conn);
+
+	/* Log the event */
+	create_event_notification(
+		conn,
+		&config_file_options,
+		config_file_options.node_id,
+		"bdr_unregister",
+		true,
+		event_details.data);
+
+	PQfinish(conn);
+
+	log_notice(_("bdr node \"%s\" (ID: %i) successfully unregistered"),
+			   node_info.node_name, target_node_id);
+
+	termPQExpBuffer(&event_details);
+
 	return;
 }
