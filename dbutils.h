@@ -240,6 +240,7 @@ t_node_info *get_node_record_pointer(PGconn *conn, int node_id);
 bool		get_local_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 bool		get_primary_node_record(PGconn *conn, t_node_info *node_info);
 
+void		get_all_node_records(PGconn *conn, NodeInfoList *node_list);
 void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
 void		get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id, NodeInfoList *node_list);
 void		get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list);

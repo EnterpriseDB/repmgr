@@ -1437,6 +1437,30 @@ void _populate_node_records(PGresult *res, NodeInfoList *node_list)
 
 
 void
+get_all_node_records(PGconn *conn, NodeInfoList *node_list)
+{
+	PQExpBufferData	query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
+					  "    FROM repmgr.nodes "
+					  "ORDER BY node_id ");
+
+	log_verbose(LOG_DEBUG, "get_all_node_records():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+
+	_populate_node_records(res, node_list);
+
+	return;
+}
+
+void
 get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *node_list)
 {
 	PQExpBufferData	query;
@@ -2996,7 +3020,8 @@ get_bdr_init_node_record(PGconn *conn, t_bdr_node_info *node_info)
 
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		//
+		PQclear(res);
+		return RECORD_NOT_FOUND;
 	}
 	else
 	{

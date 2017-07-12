@@ -87,26 +87,52 @@ do_bdr_register(void)
 		commit_transaction(conn);
 	}
 
-	// any other BDR nodes - if so connect to one where "node_init_from_dsn" is null,
-	// and copy repmgr.nodes
-	// (we'll assume all other nodes are up-to-date)
-	// don't copy other tables...
+	/*
+	 * before adding the extension tables to the replication set,
+	 * if any other BDR nodes exist, populate repmgr.nodes with a copy
+	 * of existing entries
+	 *
+	 * currently we won't copy the contents of any other tables
+	 *
+	 */
 	{
-		PGconn *init_node;
-		RecordStatus bdr_record_status;
-		t_bdr_node_info bdr_init_node_info = T_BDR_NODE_INFO_INITIALIZER;
+		NodeInfoList local_node_records = T_NODE_INFO_LIST_INITIALIZER;
+		get_all_node_records(conn, &local_node_records);
 
-		bdr_record_status = get_bdr_init_node_record(conn, &bdr_init_node_info);
-
-		if (bdr_record_status == RECORD_FOUND)
+		if (local_node_records.node_count == 0)
 		{
+			/* XXX get all BDR node records */
+			RecordStatus bdr_record_status;
+			t_bdr_node_info bdr_init_node_info = T_BDR_NODE_INFO_INITIALIZER;
+
+			bdr_record_status = get_bdr_init_node_record(conn, &bdr_init_node_info);
+
+			if (bdr_record_status != RECORD_FOUND)
+			{
+				/* XXX don't assume the original node will still be part of the cluster */
+				log_error(_("unable to retrieve record for originating node"));
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
 			if (strncmp(node_info.node_name, bdr_init_node_info.node_name, MAXLEN) != 0)
 			{
-				init_node = establish_db_connection_quiet(bdr_init_node_info.node_init_from_dsn);
-				
+				/* */
+				PGconn *init_node_conn;
+				NodeInfoList existing_nodes = T_NODE_INFO_LIST_INITIALIZER;
+				NodeInfoListCell *cell;
+
+				init_node_conn = establish_db_connection_quiet(bdr_init_node_info.node_local_dsn);
+
+				/* XXX check repmgr schema exists */
+				get_all_node_records(init_node_conn, &existing_nodes);
+
+				for (cell = existing_nodes.head; cell; cell = cell->next)
+				{
+					create_node_record(conn, "bdr register", cell->node_info);
+				}
 			}
 		}
-
 	}
 
 	/* Add the repmgr extension tables to a replication set */
