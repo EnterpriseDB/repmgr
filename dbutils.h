@@ -84,7 +84,7 @@ typedef struct s_node_info
 }
 
 
-/* structs to store a list of node records */
+/* structs to store a list of repmgr node records */
 typedef struct NodeInfoListCell
 {
 	struct NodeInfoListCell *next;
@@ -163,6 +163,27 @@ typedef struct s_bdr_node_info
 	"", InvalidOid, InvalidOid, \
 	'?', "", "", "", \
     false, -1 \
+}
+
+
+/* structs to store a list of BDR node records */
+typedef struct BdrNodeInfoListCell
+{
+	struct BdrNodeInfoListCell *next;
+	t_bdr_node_info *node_info;
+} BdrNodeInfoListCell;
+
+typedef struct BdrNodeInfoList
+{
+	BdrNodeInfoListCell *head;
+	BdrNodeInfoListCell *tail;
+	int				  node_count;
+} BdrNodeInfoList;
+
+#define T_BDR_NODE_INFO_LIST_INITIALIZER { \
+	NULL, \
+	NULL, \
+	0 \
 }
 
 /* utility functions */
@@ -277,19 +298,18 @@ bool		is_server_available(const char *conninfo);
 
 /* node voting functions */
 NodeVotingStatus get_voting_status(PGconn *conn);
-int	request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
-int set_voting_status_initiated(PGconn *conn);
-bool announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
-void notify_follow_primary(PGconn *conn, int primary_node_id);
-bool get_new_primary(PGconn *conn, int *primary_node_id);
-void reset_voting_status(PGconn *conn);
+int		 		 request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
+int		 		 set_voting_status_initiated(PGconn *conn);
+bool		 	 announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
+void		 	 notify_follow_primary(PGconn *conn, int primary_node_id);
+bool		 	 get_new_primary(PGconn *conn, int *primary_node_id);
+void		 	 reset_voting_status(PGconn *conn);
 
 /* replication status functions */
-
 XLogRecPtr get_last_wal_receive_location(PGconn *conn);
 
 /* BDR functions */
-RecordStatus get_bdr_init_node_record(PGconn *conn, t_bdr_node_info *node_info);
+void		 get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);
 bool		 is_bdr_db(PGconn *conn);
 bool		 is_bdr_repmgr(PGconn *conn);
 bool		 is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);

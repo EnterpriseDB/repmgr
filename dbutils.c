@@ -30,6 +30,10 @@ static void _populate_node_records(PGresult *res, NodeInfoList *node_list);
 static bool _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info);
 static bool	_create_event(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info, bool send_notification);
 
+static void _populate_bdr_node_record(PGresult *res, t_bdr_node_info *node_info, int row);
+static void _populate_bdr_node_records(PGresult *res, BdrNodeInfoList *node_list);
+
+
 /* ================= */
 /* utility functions */
 /* ================= */
@@ -1457,6 +1461,8 @@ get_all_node_records(PGconn *conn, NodeInfoList *node_list)
 
 	_populate_node_records(res, node_list);
 
+	PQclear(res);
+
 	return;
 }
 
@@ -1482,6 +1488,8 @@ get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *node_list)
 	termPQExpBuffer(&query);
 
 	_populate_node_records(res, node_list);
+
+	PQclear(res);
 
 	return;
 }
@@ -1513,8 +1521,9 @@ get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id,
 
 	termPQExpBuffer(&query);
 
-	/* res cleared by this function */
 	_populate_node_records(res, node_list);
+
+	PQclear(res);
 
 	return;
 }
@@ -1542,8 +1551,9 @@ get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list)
 
 	termPQExpBuffer(&query);
 
-	/* res cleared by this function */
 	_populate_node_records(res, node_list);
+
+	PQclear(res);
 
 	return;
 }
@@ -2991,9 +3001,8 @@ add_extension_tables_to_bdr_replication_set(PGconn *conn)
 	return;
 }
 
-
-RecordStatus
-get_bdr_init_node_record(PGconn *conn, t_bdr_node_info *node_info)
+void
+get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list)
 {
 	PQExpBufferData	  query;
 	PGresult		 *res;
@@ -3002,39 +3011,79 @@ get_bdr_init_node_record(PGconn *conn, t_bdr_node_info *node_info)
 
 	appendPQExpBuffer(
 		&query,
-		" SELECT node_sysid, "
-		"        node_timeline, "
-		"        node_dboid, "
-		"        node_status, "
-		"        node_name, "
-		"        node_local_dsn, "
-		"        node_init_from_dsn, "
-		"        node_read_only, "
-		"        node_seq_id "
-		"   FROM bdr.bdr_nodes "
-		"  WHERE node_init_from_dsn IS NULL "
-		);
+		"  SELECT node_sysid, "
+		"         node_timeline, "
+		"         node_dboid, "
+		"         node_status, "
+		"         node_name, "
+		"         node_local_dsn, "
+		"         node_init_from_dsn, "
+		"         node_read_only, "
+		"         node_seq_id "
+		"    FROM bdr.bdr_nodes "
+		"ORDER BY node_seq_id ");
+
+	log_verbose(LOG_DEBUG, "get_all_node_records():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		PQclear(res);
-		return RECORD_NOT_FOUND;
-	}
-	else
-	{
-		strncpy(node_info->node_sysid, PQgetvalue(res, 0, 0), MAXLEN);
-		node_info->node_timeline = atoi(PQgetvalue(res, 0, 1));
-		node_info->node_dboid = atoi(PQgetvalue(res, 0, 2));
-		// node_status 3
-		strncpy(node_info->node_name, PQgetvalue(res, 0, 4), MAXLEN);
-		strncpy(node_info->node_local_dsn, PQgetvalue(res, 0, 5), MAXLEN);
-		strncpy(node_info->node_init_from_dsn, PQgetvalue(res, 0, 6), MAXLEN);
-	}
+	_populate_bdr_node_records(res, node_list);
 
 	PQclear(res);
-	return RECORD_FOUND;
+	return;
 }
+
+
+static
+void _populate_bdr_node_records(PGresult *res, BdrNodeInfoList *node_list)
+{
+	int				i;
+
+	node_list->head = NULL;
+	node_list->tail = NULL;
+	node_list->node_count = 0;
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		return;
+	}
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		BdrNodeInfoListCell *cell;
+		cell = (BdrNodeInfoListCell *) pg_malloc0(sizeof(BdrNodeInfoListCell));
+
+		cell->node_info = pg_malloc0(sizeof(t_bdr_node_info));
+
+		_populate_bdr_node_record(res, cell->node_info, i);
+
+		if (node_list->tail)
+			node_list->tail->next = cell;
+		else
+			node_list->head = cell;
+
+		node_list->tail = cell;
+		node_list->node_count++;
+	}
+
+	return;
+}
+
+
+static void
+_populate_bdr_node_record(PGresult *res, t_bdr_node_info *node_info, int row)
+{
+	char buf[MAXLEN];
+
+	strncpy(node_info->node_sysid, PQgetvalue(res, row, 0), MAXLEN);
+	node_info->node_timeline = atoi(PQgetvalue(res, row, 1));
+	node_info->node_dboid = atoi(PQgetvalue(res, row, 2));
+	strncpy(buf, PQgetvalue(res, row, 3), MAXLEN);
+	node_info->node_status = buf[0];
+	strncpy(node_info->node_name, PQgetvalue(res, row, 4), MAXLEN);
+	strncpy(node_info->node_local_dsn, PQgetvalue(res, row, 5), MAXLEN);
+	strncpy(node_info->node_init_from_dsn, PQgetvalue(res, row, 6), MAXLEN);
+}
+
 
