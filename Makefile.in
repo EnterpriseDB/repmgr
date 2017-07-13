@@ -29,7 +29,7 @@ $(info Building against PostgreSQL $(MAJORVERSION))
 REPMGR_CLIENT_OBJS = repmgr-client.o \
   repmgr-action-primary.o repmgr-action-standby.o repmgr-action-bdr.o repmgr-action-cluster.o \
   config.o log.o strutil.o dbutils.o dirutil.o compat.o controldata.o
-REPMGRD_OBJS = repmgrd.o config.o log.o dbutils.o strutil.o
+REPMGRD_OBJS = repmgrd.o repmgrd-physical.o repmgrd-bdr.o config.o log.o dbutils.o strutil.o
 
 $(REPMGR_CLIENT_OBJS): repmgr-client.h
 
@@ -58,6 +58,8 @@ additional-clean:
 	rm -f repmgr-action-bdr.o
 	rm -f repmgr-action-cluster.o
 	rm -f repmgrd.o
+	rm -f repmgrd-physical.o
+	rm -f repmgrd-bdr.o
 	rm -f compat.o
 	rm -f config.o
 	rm -f controldata.o
