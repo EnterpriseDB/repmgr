@@ -2802,7 +2802,7 @@ is_bdr_db(PGconn *conn)
 
 	appendPQExpBuffer(
 		&query,
-		"SELECT COUNT(*) FROM pg_catalog.pg_namespace WHERE nspname='bdr'");
+		"SELECT COUNT(*) FROM pg_catalog.pg_extension WHERE extname='bdr'");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
