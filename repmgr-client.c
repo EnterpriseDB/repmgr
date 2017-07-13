@@ -1242,12 +1242,14 @@ do_help(void)
 	}
 
 	printf(_("Usage:\n"));
-	printf(_("	%s [OPTIONS] primary  register\n"), progname());
-	printf(_("	%s [OPTIONS] primary  unregister\n"), progname());
+	printf(_("	%s [OPTIONS] primary register\n"), progname());
+	printf(_("	%s [OPTIONS] primary unregister\n"), progname());
 	printf(_("	%s [OPTIONS] standby clone\n"), progname());
 	printf(_("	%s [OPTIONS] standby register\n"), progname());
 	printf(_("	%s [OPTIONS] standby unregister\n"), progname());
 	printf(_("	%s [OPTIONS] standby promote\n"), progname());
+	printf(_("	%s [OPTIONS] bdr     register\n"), progname());
+	printf(_("	%s [OPTIONS] bdr     unregister\n"), progname());
 	printf(_("	%s [OPTIONS] cluster event\n"), progname());
 
 	puts("");

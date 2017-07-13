@@ -22,6 +22,7 @@ void
 do_bdr_register(void)
 {
 	PGconn	   	   *conn = NULL;
+	BdrNodeInfoList bdr_nodes = T_BDR_NODE_INFO_LIST_INITIALIZER;
     ExtensionStatus extension_status;
 	t_node_info		node_info = T_NODE_INFO_INITIALIZER;
 	RecordStatus	record_status;
@@ -45,6 +46,25 @@ do_bdr_register(void)
 	{
 		log_error(_("database \"%s\" is not BDR-enabled"), dbname);
 		log_hint(_("when using repmgr with BDR, the repmgr schema must be stored in the BDR database"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Check that there are at most 2 BDR nodes */
+	get_all_bdr_node_records(conn, &bdr_nodes);
+
+	if (bdr_nodes.node_count == 0)
+	{
+		log_error(_("database \"%s\" is BDR-enabled but no BDR nodes were found"), dbname);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (bdr_nodes.node_count > 2)
+	{
+		log_error(_("repmgr can only support BDR clusters with 2 nodes"));
+		log_detail(_("this BDR cluster has %i nodes"), bdr_nodes.node_count);
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -54,11 +74,9 @@ do_bdr_register(void)
 	if (extension_status == REPMGR_UNKNOWN)
 	{
 		log_error(_("unable to determine status of \"repmgr\" extension in database \"%s\""),
-				  dbname
-);
+				  dbname);
 		PQfinish(conn);
 	}
-
 
 	if (extension_status == REPMGR_UNAVAILABLE)
 	{
@@ -73,7 +91,6 @@ do_bdr_register(void)
 			log_error(_("repmgr metadatabase contains records for non-BDR nodes"));
 			exit(ERR_BAD_CONFIG);
 		}
-
 	}
 	else
 	{
