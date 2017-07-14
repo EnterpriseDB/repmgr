@@ -2775,8 +2775,15 @@ get_last_wal_receive_location(PGconn *conn)
 	PGresult		   *res;
 	XLogRecPtr		    ptr = InvalidXLogRecPtr;
 
-	// pre-10 !!!
-	res = PQexec(conn, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
+
+	if (server_version_num >= 100000)
+	{
+		res = PQexec(conn, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
+	}
+	else
+	{
+		res = PQexec(conn, "SELECT pg_catalog.pg_last_xlog_receive_location()");
+	}
 
 	if (PQresultStatus(res) == PGRES_TUPLES_OK)
 	{

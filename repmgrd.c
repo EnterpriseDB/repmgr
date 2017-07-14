@@ -37,6 +37,7 @@ PGconn	   *local_conn = NULL;
 /* Collate command line errors here for friendlier reporting */
 static ItemList	cli_errors = { NULL, NULL };
 
+int			server_version_num = 0;
 bool        startup_event_logged = false;
 
 MonitoringState monitoring_state = MS_NORMAL;
@@ -285,6 +286,12 @@ main(int argc, char **argv)
 
 	/* abort if local node not available at startup */
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	/*
+	 * store the server version number - we'll need this to generate
+	 * version-dependent queries etc.
+	 */
+	server_version_num = get_server_version(local_conn, NULL);
 
 	/*
 	 * sanity checks
