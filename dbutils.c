@@ -2756,8 +2756,8 @@ reset_voting_status(PGconn *conn)
 	// COMMAND_OK?
 	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute repmgr..reset_voting_status():\n  %s"),
-				PQerrorMessage(conn));
+		log_error(_("unable to execute repmgr.reset_voting_status():\n  %s"),
+				  PQerrorMessage(conn));
 	}
 
 	PQclear(res);
@@ -2775,6 +2775,7 @@ get_last_wal_receive_location(PGconn *conn)
 	PGresult		   *res;
 	XLogRecPtr		    ptr = InvalidXLogRecPtr;
 
+	// pre-10 !!!
 	res = PQexec(conn, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
 
 	if (PQresultStatus(res) == PGRES_TUPLES_OK)
@@ -2819,6 +2820,41 @@ is_bdr_db(PGconn *conn)
 	PQclear(res);
 
 	return is_bdr_db;
+}
+
+
+bool
+is_active_bdr_node(PGconn *conn, const char *node_name)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res;
+	bool			  is_active_bdr_node;
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(
+		&query,
+		"    SELECT COALESCE(s.active, TRUE) AS active"
+		"      FROM bdr.bdr_nodes n "
+        " LEFT JOIN pg_replication_slots s "
+		"        ON slot_name=bdr.bdr_format_slot_name(n.node_sysid, n.node_timeline, n.node_dboid, (SELECT oid FROM pg_database WHERE datname = current_database())) "
+		"     WHERE node_name='%s' ",
+		node_name);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
+	{
+		is_active_bdr_node = false;
+	}
+	else
+	{
+		is_active_bdr_node = atoi(PQgetvalue(res, 0, 0)) == 1 ? true : false;
+	}
+
+	PQclear(res);
+
+	return is_active_bdr_node;
 }
 
 
@@ -3032,6 +3068,57 @@ get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list)
 
 	PQclear(res);
 	return;
+}
+
+RecordStatus
+get_bdr_node_record_by_name(PGconn *conn, const char *node_name, t_bdr_node_info *node_info)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"  SELECT node_sysid, "
+		"         node_timeline, "
+		"         node_dboid, "
+		"         node_status, "
+		"         node_name, "
+		"         node_local_dsn, "
+		"         node_init_from_dsn, "
+		"         node_read_only, "
+		"         node_seq_id "
+		"    FROM bdr.bdr_nodes "
+		"   WHERE node_name = '%s'",
+		node_name);
+
+	log_verbose(LOG_DEBUG, "get_bdr_node_record_by_name():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to retrieve BDR node record for \"%s\":\n  %s"),
+				  node_name,
+				  PQerrorMessage(conn));
+
+		PQclear(res);
+		return RECORD_ERROR;
+	}
+
+	if (PQntuples(res) == 0)
+	{
+		PQclear(res);
+		return RECORD_NOT_FOUND;
+	}
+
+	_populate_bdr_node_record(res, node_info, 0);
+
+	PQclear(res);
+
+	return RECORD_FOUND;
 }
 
 

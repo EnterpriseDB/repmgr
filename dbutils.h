@@ -310,7 +310,9 @@ XLogRecPtr get_last_wal_receive_location(PGconn *conn);
 
 /* BDR functions */
 void		 get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);
+RecordStatus get_bdr_node_record_by_name(PGconn *conn, const char *node_name, t_bdr_node_info *node_info);
 bool		 is_bdr_db(PGconn *conn);
+bool		 is_active_bdr_node(PGconn *conn, const char *node_name);
 bool		 is_bdr_repmgr(PGconn *conn);
 bool		 is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
 bool		 add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);

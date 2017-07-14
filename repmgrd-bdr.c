@@ -24,11 +24,12 @@ do_bdr_node_check(void)
 void
 monitor_bdr(void)
 {
-	NodeInfoList  nodes = T_NODE_INFO_LIST_INITIALIZER;
-	PGconn		 *monitoring_conn = NULL;
-	t_node_info	 *monitored_node = NULL;
-	RecordStatus  record_status;
+	NodeInfoList    nodes = T_NODE_INFO_LIST_INITIALIZER;
+	PGconn		   *monitoring_conn = NULL;
+	t_node_info	   *monitored_node = NULL;
+	t_bdr_node_info bdr_node_info = T_BDR_NODE_INFO_INITIALIZER;
 
+	RecordStatus  record_status;
 	bool failover_done = false;
 
 	/* sanity check local database */
@@ -72,6 +73,16 @@ monitor_bdr(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	record_status = get_bdr_node_record_by_name(local_conn, local_node_info.node_name, &bdr_node_info);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve BDR record for node %s, terminating"),
+				  local_node_info.node_name);
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 	/* Retrieve record for this node from the local database */
 	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_info);
 
@@ -88,11 +99,20 @@ monitor_bdr(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
 	if (local_node_info.active == false)
 	{
 		log_error(_("local node (ID: %i) is marked as inactive in repmgr"),
 				  local_node_info.node_id);
 		log_hint(_("if the node has been reactivated, run \"repmgr bdr register --force\" and restart repmgrd"));
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (is_active_bdr_node(local_conn, local_node_info.node_name))
+	{
+		log_error(_("BDR node %s is not active, terminating"),
+				  local_node_info.node_name);
 		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
