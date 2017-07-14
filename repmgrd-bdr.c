@@ -15,6 +15,7 @@
 static volatile sig_atomic_t got_SIGHUP = false;
 
 static void do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node);
+static void do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node);
 
 
 void
@@ -126,7 +127,7 @@ monitor_bdr(void)
 						NULL);
 
 	/*
-	 * retrieve list of all nodes - we'll need these if the DB connection goes away,
+	 * retrieve list of all nodes - we'll need these if the DB connection goes away
 	 */
 	get_all_node_records(local_conn, &nodes);
 
@@ -142,6 +143,12 @@ monitor_bdr(void)
 
 		for (cell = nodes.head; cell; cell = cell->next)
 		{
+			if (config_file_options.bdr_local_monitoring_only == true
+				&& cell->node_info->node_id != local_node_info.node_id)
+			{
+				continue;
+			}
+
 			if (cell->node_info->node_id == local_node_info.node_id)
 			{
 				log_debug("checking local node %i in %s state",
@@ -174,7 +181,7 @@ monitor_bdr(void)
 					if (is_server_available(cell->node_info->conninfo) == true)
 					{
 						log_notice(_("monitored node %i has recovered"),  cell->node_info->node_id);
-						// do_bdr_recovery()
+						do_bdr_recovery(&nodes, cell->node_info);
 					}
 
 				}
@@ -228,13 +235,10 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 {
 	PGconn	   *next_node_conn = NULL;
 	NodeInfoListCell *cell;
-//	bool	    failover_success = false;
 	PQExpBufferData event_details;
 	RecordStatus  record_status;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 	t_node_info target_node  = T_NODE_INFO_INITIALIZER;
-
-	initPQExpBuffer(&event_details);
 
 	monitored_node->monitoring_state = MS_DEGRADED;
 	INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
@@ -267,31 +271,25 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	/* shouldn't happen, and if it does, it means everything is down */
 	if (next_node_conn == NULL)
 	{
-		appendPQExpBuffer(&event_details,
-						  _("no other available node found"));
-
-		log_error("%s", event_details.data);
+		log_error(_("no other available node found"));
 
 		/* no other nodes found - continue degraded monitoring */
 		return;
 	}
 
-
-	// call: repmgr.am_bdr_failover_handler(node_id)
 	if (am_bdr_failover_handler(next_node_conn, local_node_info.node_id) == false)
 	{
-		log_debug("XXX am not failover handler");
 		PQfinish(next_node_conn);
 		log_debug("other node's repmgrd is handling failover");
 		return;
 	}
 
-	log_debug("YYYam the failover handler");
+	log_debug("this node is the failover handler");
 
 	// check here that the node hasn't come back up...
 	log_info(_("connecting to target node %s"), target_node.node_name);
 
-//	failover_success = true;
+	initPQExpBuffer(&event_details);
 
 	event_info.conninfo_str = target_node.conninfo;
 	event_info.node_name = target_node.node_name;
@@ -322,7 +320,7 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	create_event_notification_extended(
 		next_node_conn,
 		&config_file_options,
-		config_file_options.node_id,
+		monitored_node->node_id,
 		"bdr_failover",
 		true,
 		event_details.data,
@@ -332,6 +330,103 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	unset_bdr_failover_handler(next_node_conn);
 
-	/* local monitoring mode - there's no new node to monitor */
+	return;
+}
+
+static void
+do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
+{
+	PGconn *recovered_node_conn;
+	PQExpBufferData event_details;
+	t_bdr_node_info bdr_record;
+	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
+	int i;
+	bool node_recovered = false;
+
+	recovered_node_conn = establish_db_connection(monitored_node->conninfo, false);
+
+	if (PQstatus(recovered_node_conn) != CONNECTION_OK)
+	{
+		PQfinish(recovered_node_conn);
+		return;
+	}
+
+	if (am_bdr_failover_handler(recovered_node_conn, local_node_info.node_id) == false)
+	{
+		PQfinish(recovered_node_conn);
+		log_debug("other node's repmgrd is handling recovery");
+		return;
+	}
+
+	// bdr_recovery_timeout
+	for (i = 0; i < 30; i++)
+	{
+		RecordStatus record_status = get_bdr_node_record_by_name(
+			recovered_node_conn,
+			monitored_node->node_name,
+			&bdr_record);
+
+		if (record_status == RECORD_FOUND && bdr_record.node_status == 'r')
+		{
+			node_recovered = true;
+			break;
+		}
+
+		sleep(1);
+		continue;
+	}
+
+	if (node_recovered == false)
+	{
+		log_warning(_("node did not come up"));
+		PQfinish(recovered_node_conn);
+		return;
+	}
+
+
+	// XXX check other node is attached to this one so we
+	// don't end up monitoring a parted node
+
+
+	// note elapsed
+	initPQExpBuffer(&event_details);
+	appendPQExpBuffer(&event_details,
+					  _("node '%s' (ID: %i) has recovered"),
+					  monitored_node->node_name,
+					  monitored_node->node_id);
+
+	monitored_node->monitoring_state = MS_NORMAL;
+
+	if (config_file_options.bdr_active_node_recovery == true)
+	{
+		event_info.conninfo_str = monitored_node->conninfo;
+		event_info.node_name = monitored_node->node_name;
+
+		create_event_notification_extended(
+			recovered_node_conn,
+			&config_file_options,
+			config_file_options.node_id,
+			"bdr_recovery",
+			true,
+			event_details.data,
+			&event_info);
+	}
+	else
+	{
+		create_event_record(
+			recovered_node_conn,
+			&config_file_options,
+			config_file_options.node_id,
+			"bdr_recovery",
+			true,
+			event_details.data);
+	}
+
+	termPQExpBuffer(&event_details);
+
+	unset_bdr_failover_handler(recovered_node_conn);
+
+	PQfinish(recovered_node_conn);
+
 	return;
 }

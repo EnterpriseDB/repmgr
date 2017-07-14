@@ -248,6 +248,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->monitoring_history = false;  /* new in 4.0, replaces --monitoring-history */
 	options->degraded_monitoring_timeout = -1;
 
+	/* BDR settings
+	 * ------------ */
+	options->bdr_local_monitoring_only = false;
+	options->bdr_active_node_recovery = false;
+
 	/* service settings
 	 * ---------------- */
 	memset(options->pg_ctl_options, 0, sizeof(options->pg_ctl_options));
@@ -414,6 +419,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->monitoring_history = parse_bool(value, name, error_list);
 		else if (strcmp(name, "degraded_monitoring_timeout") == 0)
 			options->degraded_monitoring_timeout = repmgr_atoi(value, name, error_list, 1);
+
+		/* BDR settings */
+		else if (strcmp(name, "bdr_local_monitoring_only") == 0)
+			options->bdr_local_monitoring_only = parse_bool(value, name, error_list);
+		else if (strcmp(name, "bdr_active_node_recovery") == 0)
+			options->bdr_active_node_recovery = parse_bool(value, name, error_list);
 
 		/* service settings */
 		else if (strcmp(name, "pg_ctl_options") == 0)

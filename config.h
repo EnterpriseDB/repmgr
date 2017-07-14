@@ -85,6 +85,10 @@ typedef struct
 	bool		monitoring_history;
 	int			degraded_monitoring_timeout;
 
+	/* BDR settings */
+	bool		bdr_local_monitoring_only;
+	bool		bdr_active_node_recovery;
+
 	/* service settings */
 	char		pg_ctl_options[MAXLEN];
 	char		service_stop_command[MAXLEN];
@@ -125,6 +129,8 @@ typedef struct
 		DEFAULT_RECONNECTION_ATTEMPTS, \
         DEFAULT_RECONNECTION_INTERVAL, \
         300, false, -1, \
+		/* BDR settings */ \
+		false, false, \
 		/* service settings */ \
 		"", "", "", "", "", "", \
 		/* event notification settings */ \
