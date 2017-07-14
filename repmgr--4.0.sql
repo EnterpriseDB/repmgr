@@ -70,3 +70,15 @@ CREATE FUNCTION reset_voting_status()
   RETURNS VOID
   AS '$libdir/repmgr', 'reset_voting_status'
   LANGUAGE C STRICT;
+
+
+CREATE FUNCTION am_bdr_failover_handler(INT)
+  RETURNS BOOL
+  AS '$libdir/repmgr', 'am_bdr_failover_handler'
+  LANGUAGE C STRICT;
+
+
+CREATE FUNCTION unset_bdr_failover_handler()
+  RETURNS VOID
+  AS '$libdir/repmgr', 'unset_bdr_failover_handler'
+  LANGUAGE C STRICT;

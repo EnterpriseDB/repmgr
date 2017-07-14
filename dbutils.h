@@ -9,6 +9,7 @@
 
 #include "access/xlogdefs.h"
 #include "pqexpbuffer.h"
+#include "portability/instr_time.h"
 
 #include "config.h"
 #include "strutil.h"
@@ -40,8 +41,10 @@ typedef enum {
 	RECORD_NOT_FOUND
 } RecordStatus;
 
-
-
+typedef enum {
+	MS_NORMAL = 0,
+	MS_DEGRADED = 1
+} MonitoringState;
 
 /*
  * Struct to store node information
@@ -62,6 +65,7 @@ typedef struct s_node_info
 	bool		  is_ready;
 	bool		  is_visible;
 	XLogRecPtr	  last_wal_receive_lsn;
+	MonitoringState monitoring_state;
 	PGconn		 *conn;
 }	t_node_info;
 
@@ -80,6 +84,7 @@ typedef struct s_node_info
   false, \
   false, \
   InvalidXLogRecPtr, \
+  MS_NORMAL, \
   NULL \
 }
 
@@ -323,5 +328,7 @@ void		 add_extension_tables_to_bdr_replication_set(PGconn *conn);
 
 bool		 bdr_node_exists(PGconn *conn, const char *node_name);
 
+bool		 am_bdr_failover_handler(PGconn *conn, int node_id);
+void		 unset_bdr_failover_handler(PGconn *conn);
 #endif /* dbutils.h */
 

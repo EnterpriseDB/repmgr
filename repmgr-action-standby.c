@@ -37,8 +37,6 @@ typedef struct TablespaceDataList
 static PGconn  *primary_conn = NULL;
 static PGconn  *source_conn = NULL;
 
-static int		server_version_num = UNKNOWN_SERVER_VERSION_NUM;
-
 static char		local_data_directory[MAXPGPATH];
 static bool		local_data_directory_provided = false;
 

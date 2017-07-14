@@ -47,7 +47,6 @@ static PGconn *primary_conn = NULL;
 static ElectionResult do_election(void);
 static const char *_print_voting_status(NodeVotingStatus voting_status);
 static const char *_print_election_result(ElectionResult result);
-static const char *_print_monitoring_state(MonitoringState monitoring_state);
 
 static FailoverState promote_self(void);
 static void notify_followers(NodeInfoList *standby_nodes, int follow_node_id);
@@ -315,7 +314,7 @@ monitor_streaming_primary(void)
 				log_info(_("monitoring primary node \"%s\" (node ID: %i) in %s state"),
 						 local_node_info.node_name,
 						 local_node_info.node_id,
-						 _print_monitoring_state(monitoring_state));
+						 print_monitoring_state(monitoring_state));
 
 				if (monitoring_state == MS_DEGRADED)
 				{
@@ -617,7 +616,7 @@ monitor_streaming_standby(void)
 						 local_node_info.node_id,
 						 upstream_node_info.node_name,
 						 upstream_node_info.node_id,
-						 _print_monitoring_state(monitoring_state));
+						 print_monitoring_state(monitoring_state));
 
 				if (monitoring_state == MS_DEGRADED)
 				{
@@ -1453,22 +1452,6 @@ _print_election_result(ElectionResult result)
 
 		case ELECTION_CANCELLED:
 			return "CANCELLED";
-	}
-
-	/* should never reach here */
-	return "UNKNOWN";
-}
-
-static const char *
-_print_monitoring_state(MonitoringState monitoring_state)
-{
-	switch(monitoring_state)
-	{
-		case MS_NORMAL:
-			return "normal";
-
-		case MS_DEGRADED:
-			return "degraded";
 	}
 
 	/* should never reach here */

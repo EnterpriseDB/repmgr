@@ -16,7 +16,7 @@
 
 
 /* mainly for use by repmgrd */
-int			server_version_num = 0;
+int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 
 static PGconn *_establish_db_connection(const char *conninfo,
@@ -1247,6 +1247,7 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 	node_info->is_ready = false;
 	node_info->is_visible = false;
 	node_info->last_wal_receive_lsn = InvalidXLogRecPtr;
+	node_info->monitoring_state = MS_NORMAL;
 }
 
 
@@ -3135,7 +3136,7 @@ void _populate_bdr_node_records(PGresult *res, BdrNodeInfoList *node_list)
 {
 	int				i;
 
-	clear_node_info_list(node_list);
+	clear_node_info_list((NodeInfoList *)node_list);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -3180,3 +3181,37 @@ _populate_bdr_node_record(PGresult *res, t_bdr_node_info *node_info, int row)
 }
 
 
+bool
+am_bdr_failover_handler(PGconn *conn, int node_id)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res;
+	bool		  	  am_handler;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"SELECT repmgr.am_bdr_failover_handler(%i)",
+		node_id);
+
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	am_handler = (strcmp(PQgetvalue(res, 0, 0), "t") == 0) ? true : false;
+
+	PQclear(res);
+
+	return am_handler;
+}
+
+void
+unset_bdr_failover_handler(PGconn *conn)
+{
+	PGresult		 *res;
+	res = PQexec(conn, "SELECT repmgr.unset_bdr_failover_handler()");
+
+	PQclear(res);
+	return;
+}

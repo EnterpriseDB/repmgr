@@ -665,6 +665,23 @@ calculate_elapsed(instr_time start_time)
 }
 
 
+const char *
+print_monitoring_state(MonitoringState monitoring_state)
+{
+	switch(monitoring_state)
+	{
+		case MS_NORMAL:
+			return "normal";
+
+		case MS_DEGRADED:
+			return "degraded";
+	}
+
+	/* should never reach here */
+	return "UNKNOWN";
+}
+
+
 static void
 close_connections()
 {
@@ -694,3 +711,5 @@ terminate(int retval)
 
 	exit(retval);
 }
+
+

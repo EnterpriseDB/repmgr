@@ -45,11 +45,14 @@ typedef enum {
 typedef struct repmgrdSharedState
 {
 	LWLockId	lock;			/* protects search/modification */
+	/* streaming failover */
 	NodeState	node_state;
 	NodeVotingStatus voting_status;
 	int current_electoral_term;
 	int candidate_node_id;
 	bool follow_new_primary;
+	/* BDR failover */
+    int bdr_failover_handler;
 }	repmgrdSharedState;
 
 static repmgrdSharedState *shared_state = NULL;
@@ -82,6 +85,13 @@ PG_FUNCTION_INFO_V1(get_new_primary);
 
 Datum		reset_voting_status(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(reset_voting_status);
+
+Datum		am_bdr_failover_handler(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(am_bdr_failover_handler);
+
+Datum		unset_bdr_failover_handler(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(unset_bdr_failover_handler);
+
 
 /*
  * Module load callback
@@ -157,6 +167,7 @@ repmgr_shmem_startup(void)
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 		shared_state->follow_new_primary = false;
+		shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
 	}
 
 	LWLockRelease(AddinShmemInitLock);
@@ -326,6 +337,41 @@ reset_voting_status(PG_FUNCTION_ARGS)
 	shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 	shared_state->follow_new_primary = false;
 
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_VOID();
+}
+
+
+Datum
+am_bdr_failover_handler(PG_FUNCTION_ARGS)
+{
+	int node_id = PG_GETARG_INT32(0);
+	bool am_handler = false;
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+
+	if (shared_state->bdr_failover_handler == UNKNOWN_NODE_ID)
+	{
+		shared_state->bdr_failover_handler = node_id;
+		am_handler = true;
+	}
+	else if (shared_state->bdr_failover_handler == node_id)
+	{
+		am_handler = true;
+	}
+
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_BOOL(am_handler);
+}
+
+
+Datum
+unset_bdr_failover_handler(PG_FUNCTION_ARGS)
+{
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_VOID();

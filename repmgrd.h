@@ -15,10 +15,6 @@ typedef enum {
 	NODE_STATUS_DOWN
 } NodeStatus;
 
-typedef enum {
-	MS_NORMAL = 0,
-	MS_DEGRADED = 1
-} MonitoringState;
 
 extern MonitoringState monitoring_state;
 extern instr_time	degraded_monitoring_start;
@@ -31,6 +27,8 @@ extern bool			startup_event_logged;
 PGconn *try_reconnect(const char *conninfo, NodeStatus *node_status);
 
 int calculate_elapsed(instr_time start_time);
+const char *print_monitoring_state(MonitoringState monitoring_state);
+
 void update_registration(PGconn *conn);
 void terminate(int retval);
 #endif /* _REPMGRD_H_ */
