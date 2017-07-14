@@ -27,7 +27,6 @@ extern t_configuration_options config_file_options;
 extern t_node_info local_node_info;
 extern PGconn	   *local_conn;
 extern bool			startup_event_logged;
-extern int			server_version_num;
 
 PGconn *try_reconnect(const char *conninfo, NodeStatus *node_status);
 

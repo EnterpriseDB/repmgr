@@ -13,7 +13,7 @@
 # repmgr and repmgrd require the following items to be configured.
 
 
-#node_id=1                              # A unique integer greater than zero
+#node_id=                               # A unique integer greater than zero
 #node_name=''                           # An arbitrary (but unique) string; we recommend
                                         # using the server's hostname or another identifier
                                         # unambiguously associated with the server to avoid
@@ -28,6 +28,7 @@
                                         #
                                         # For details on conninfo strings, see:
                                         #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+                                        #
                                         # If repmgrd is in use, consider explicitly setting
                                         # "connect_timeout" in the conninfo string to determine
                                         # the length of time which elapses before a network
@@ -44,8 +45,9 @@
 # Replication settings
 #------------------------------------------------------------------------------
 
+#replication_type=physical              # Must be one of 'physical' or 'bdr'
 
-#upstream_node_id=1                     # When using cascading replication, a standby
+#upstream_node_id=                      # When using cascading replication, a standby
                                         # can connect to another upstream standby node
                                         # which is specified by setting 'upstream_node_id'.
                                         # In that case, the upstream node must exist

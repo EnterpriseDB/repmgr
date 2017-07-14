@@ -435,23 +435,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "event_notifications") == 0)
 			parse_event_notifications_list(options, value);
 
-		/* bdr settings */
-		else if (strcmp(name, "bdr_monitoring_mode") == 0)
-		{
-			if (strncmp(value, "local", MAXLEN) == 0)
-			{
-				options->bdr_monitoring_mode = BDR_MONITORING_LOCAL;
-			}
-			else if (strcmp(value, "highest_priority") == 0)
-			{
-				options->bdr_monitoring_mode = BDR_MONITORING_PRIORITY;
-			}
-			else
-			{
-				item_list_append(error_list, _("value for 'bdr_monitoring_mode' must be 'local' or 'highest_priority'\n"));
-			}
-		}
-
 		/* barman settings */
 		else if (strcmp(name, "barman_host") == 0)
 			strncpy(options->barman_host, value, MAXLEN);

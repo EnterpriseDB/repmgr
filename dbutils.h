@@ -186,6 +186,9 @@ typedef struct BdrNodeInfoList
 	0 \
 }
 
+
+extern int			server_version_num;
+
 /* utility functions */
 
 XLogRecPtr parse_lsn(const char *str);

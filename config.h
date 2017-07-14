@@ -97,9 +97,6 @@ typedef struct
 	char		event_notification_command[MAXLEN];
 	EventNotificationList event_notifications;
 
-    /* bdr settings */
-    int			bdr_monitoring_mode;
-
 	/* barman settings */
 	char		barman_host[MAXLEN];
 	char		barman_server[MAXLEN];
@@ -132,8 +129,6 @@ typedef struct
 		"", "", "", "", "", "", \
 		/* event notification settings */ \
 		"", { NULL, NULL }, \
-		/* bdr settings */ \
-		BDR_MONITORING_LOCAL, \
 		/* barman settings */ \
 		"", "", "",	 \
 		/* undocumented test settings */ \

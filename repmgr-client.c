@@ -1467,12 +1467,12 @@ create_repmgr_extension(PGconn *conn)
 int
 check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string)
 {
-	int			server_version_num = 0;
+	int			conn_server_version_num = 0;
 
-	server_version_num = get_server_version(conn, server_version_string);
-	if (server_version_num < MIN_SUPPORTED_VERSION_NUM)
+	conn_server_version_num = get_server_version(conn, server_version_string);
+	if (conn_server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
-		if (server_version_num > 0)
+		if (conn_server_version_num > 0)
 			log_error(_("%s requires %s to be PostgreSQL %s or later"),
 					  progname(),
 					  server_type,
@@ -1488,7 +1488,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 		return -1;
 	}
 
-	return server_version_num;
+	return conn_server_version_num;
 }
 
 

@@ -14,6 +14,11 @@
 
 #include "catalog/pg_control.h"
 
+
+/* mainly for use by repmgrd */
+int			server_version_num = 0;
+
+
 static PGconn *_establish_db_connection(const char *conninfo,
 										const bool exit_on_error,
 										const bool log_notice,
@@ -1501,8 +1506,6 @@ get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id,
 	PQExpBufferData	query;
 	PGresult   *res;
 
-	clear_node_info_list(node_list);
-
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
@@ -1534,8 +1537,6 @@ get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list)
 {
 	PQExpBufferData	query;
 	PGresult   *res;
-
-	clear_node_info_list(node_list);
 
 	initPQExpBuffer(&query);
 
@@ -1696,7 +1697,7 @@ update_node_record_set_active(PGconn *conn, int this_node_id, bool active)
 	appendPQExpBuffer(
 		&query,
 		"UPDATE repmgr.nodes SET active = %s "
-		" WHERE id = %i",
+		" WHERE node_id = %i",
 		active == true ? "TRUE" : "FALSE",
 		this_node_id);
 
@@ -1878,7 +1879,7 @@ update_node_record_conn_priority(PGconn *conn, t_configuration_options *options)
 		"UPDATE repmgr.nodes "
 		"   SET conninfo = '%s', "
 		"       priority = %d "
-		" WHERE id = %d ",
+		" WHERE node_id = %d ",
 		options->conninfo,
 		options->priority,
 		options->node_id);
@@ -1929,14 +1930,13 @@ delete_node_record(PGconn *conn, int node)
 }
 
 
-
 void
 clear_node_info_list(NodeInfoList *nodes)
 {
 	NodeInfoListCell *cell;
 	NodeInfoListCell *next_cell;
 
-	log_debug("clear_node_info_list() - closing open connections");
+	log_verbose(LOG_DEBUG, "clear_node_info_list() - closing open connections");
 
 	/* close any open connections */
 	for (cell = nodes->head; cell; cell = cell->next)
@@ -1948,7 +1948,7 @@ clear_node_info_list(NodeInfoList *nodes)
 		}
 	}
 
-	log_debug("clear_node_info_list() - unlinking");
+	log_verbose(LOG_DEBUG, "clear_node_info_list() - unlinking");
 
 	cell = nodes->head;
 
@@ -1959,6 +1959,7 @@ clear_node_info_list(NodeInfoList *nodes)
 		pfree(cell);
 		cell = next_cell;
 	}
+
 	nodes->head = NULL;
 	nodes->tail = NULL;
 	nodes->node_count = 0;
@@ -3134,9 +3135,7 @@ void _populate_bdr_node_records(PGresult *res, BdrNodeInfoList *node_list)
 {
 	int				i;
 
-	node_list->head = NULL;
-	node_list->tail = NULL;
-	node_list->node_count = 0;
+	clear_node_info_list(node_list);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{

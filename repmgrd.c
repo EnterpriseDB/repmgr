@@ -37,7 +37,6 @@ PGconn	   *local_conn = NULL;
 /* Collate command line errors here for friendlier reporting */
 static ItemList	cli_errors = { NULL, NULL };
 
-int			server_version_num = 0;
 bool        startup_event_logged = false;
 
 MonitoringState monitoring_state = MS_NORMAL;
@@ -56,7 +55,6 @@ static void show_help(void);
 static void show_usage(void);
 static void daemonize_process(void);
 static void check_and_create_pid_file(const char *pid_file);
-
 
 static void start_monitoring(void);
 

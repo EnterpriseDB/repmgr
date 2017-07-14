@@ -30,8 +30,6 @@
 #define REPLICATION_TYPE_PHYSICAL 1
 #define REPLICATION_TYPE_BDR	  2
 
-#define BDR_MONITORING_LOCAL	1
-#define BDR_MONITORING_PRIORITY 2
 
 #define DEFAULT_LOCATION                 "default"
 #define DEFAULT_PRIORITY		         100
@@ -51,5 +49,6 @@
 #endif
 
 #define ERRBUFF_SIZE 512
+
 
 #endif /* _REPMGR_H_ */

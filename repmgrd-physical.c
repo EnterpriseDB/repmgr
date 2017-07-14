@@ -325,7 +325,11 @@ monitor_streaming_primary(void)
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
 			}
 		}
-		sleep(1);
+
+		log_verbose(LOG_DEBUG, "sleeping %i seconds (\"monitor_interval_secs\")",
+					config_file_options.monitor_interval_secs);
+
+		sleep(config_file_options.monitor_interval_secs);
 	}
 }
 
