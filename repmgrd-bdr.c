@@ -62,7 +62,7 @@ monitor_bdr(void)
 	}
 
 
-	if (is_table_in_bdr_replication_set(local_conn, "nodes", "repmgr"))
+	if (is_table_in_bdr_replication_set(local_conn, "nodes", "repmgr") == false)
 	{
 		log_error(_("repmgr metadata table 'repmgr.%s' is not in the 'repmgr' replication set"),
 				  "nodes");
