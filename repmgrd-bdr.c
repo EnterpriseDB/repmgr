@@ -32,8 +32,6 @@ monitor_bdr(void)
 	t_bdr_node_info bdr_node_info = T_BDR_NODE_INFO_INITIALIZER;
 	RecordStatus  record_status;
 
-//	t_node_info other_node_info = T_NODE_INFO_INITIALIZER;
-
 	/* sanity check local database */
 	log_info(_("connecting to local database '%s'"),
 			 config_file_options.conninfo);
@@ -138,6 +136,7 @@ monitor_bdr(void)
 	while (true)
 	{
 		NodeInfoListCell *cell;
+
 		/* monitoring loop */
 		log_verbose(LOG_DEBUG, "bdr check loop...");
 
@@ -189,10 +188,6 @@ monitor_bdr(void)
 			}
 		}
 
-		log_verbose(LOG_DEBUG, "sleeping %i seconds (\"monitor_interval_secs\")",
-					config_file_options.monitor_interval_secs);
-		sleep(config_file_options.monitor_interval_secs);
-
 		if (got_SIGHUP)
 		{
 			/*
@@ -208,6 +203,10 @@ monitor_bdr(void)
 
 			got_SIGHUP = false;
 		}
+
+		log_verbose(LOG_DEBUG, "sleeping %i seconds (\"monitor_interval_secs\")",
+					config_file_options.monitor_interval_secs);
+		sleep(config_file_options.monitor_interval_secs);
 
 	}
 
