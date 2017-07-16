@@ -177,6 +177,7 @@ repmgr_shmem_startup(void)
 Datum
 request_vote(PG_FUNCTION_ARGS)
 {
+#ifndef BDR_ONLY
 	StringInfoData	query;
 	XLogRecPtr our_lsn = InvalidXLogRecPtr;
 
@@ -235,6 +236,9 @@ request_vote(PG_FUNCTION_ARGS)
 	// should we free "query" here?
 
 	PG_RETURN_LSN(our_lsn);
+#else
+	PG_RETURN(InvalidOid);
+#endif
 }
 
 
@@ -242,6 +246,7 @@ request_vote(PG_FUNCTION_ARGS)
 Datum
 get_voting_status(PG_FUNCTION_ARGS)
 {
+#ifndef BDR_ONLY
 	NodeVotingStatus voting_status;
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
@@ -249,11 +254,15 @@ get_voting_status(PG_FUNCTION_ARGS)
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_INT32(voting_status);
+#else
+	PG_RETURN_INT32(VS_UNKNOWN);
+#endif
 }
 
 Datum
 set_voting_status_initiated(PG_FUNCTION_ARGS)
 {
+#ifndef BDR_ONLY
 	int electoral_term;
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
@@ -266,11 +275,15 @@ set_voting_status_initiated(PG_FUNCTION_ARGS)
 	elog(INFO, "setting voting term to %i", electoral_term);
 
 	PG_RETURN_INT32(electoral_term);
+#else
+	PG_RETURN_INT32(-1);
+#endif
 }
 
 Datum
 other_node_is_candidate(PG_FUNCTION_ARGS)
 {
+#ifndef BDR_ONLY
 	int  requesting_node_id = PG_GETARG_INT32(0);
 	int  electoral_term = PG_GETARG_INT32(1);
 
@@ -292,11 +305,15 @@ other_node_is_candidate(PG_FUNCTION_ARGS)
 
 	elog(INFO, "node %i is candidate", requesting_node_id);
 	PG_RETURN_BOOL(true);
+#else
+	PG_RETURN_BOOL(false);
+#endif
 }
 
 Datum
 notify_follow_primary(PG_FUNCTION_ARGS)
 {
+#ifndef BDR_ONLY
 	int primary_node_id = PG_GETARG_INT32(0);
 
 	elog(INFO, "received notification to follow node %i", primary_node_id);
@@ -307,7 +324,7 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 	shared_state->candidate_node_id = primary_node_id;
 	shared_state->follow_new_primary = true;
 	LWLockRelease(shared_state->lock);
-
+#endif
 	PG_RETURN_VOID();
 }
 
@@ -317,13 +334,14 @@ get_new_primary(PG_FUNCTION_ARGS)
 {
 	int new_primary_node_id = UNKNOWN_NODE_ID;
 
+#ifndef BDR_ONLY
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	if (shared_state->follow_new_primary == true)
 		new_primary_node_id = shared_state->candidate_node_id;
 
 	LWLockRelease(shared_state->lock);
-
+#endif
 	PG_RETURN_INT32(new_primary_node_id);
 }
 
@@ -331,6 +349,7 @@ get_new_primary(PG_FUNCTION_ARGS)
 Datum
 reset_voting_status(PG_FUNCTION_ARGS)
 {
+#ifndef BDR_ONLY
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	shared_state->voting_status = VS_NO_VOTE;
@@ -338,7 +357,7 @@ reset_voting_status(PG_FUNCTION_ARGS)
 	shared_state->follow_new_primary = false;
 
 	LWLockRelease(shared_state->lock);
-
+#endif
 	PG_RETURN_VOID();
 }
 
