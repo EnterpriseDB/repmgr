@@ -34,6 +34,7 @@ lib*.pc
 /Makefile.global
 /config.log
 /config.status
+/config.h
 
 # other
 /.lineno
