@@ -15,7 +15,7 @@
 #include "repmgr_version.h"
 #include "errcode.h"
 #include "strutil.h"
-#include "config.h"
+#include "configfile.h"
 #include "dbutils.h"
 #include "log.h"
 
@@ -49,6 +49,7 @@
 #endif
 
 #define ERRBUFF_SIZE 512
+
 
 
 #endif /* _REPMGR_H_ */

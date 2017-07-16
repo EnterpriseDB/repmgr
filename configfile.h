@@ -1,5 +1,5 @@
 /*
- * config.h
+ * configfile.h
  *
  * Copyright (c) 2ndQuadrant, 2010-2017
  *

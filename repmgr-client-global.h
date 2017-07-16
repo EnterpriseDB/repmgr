@@ -6,7 +6,7 @@
 #ifndef _REPMGR_CLIENT_GLOBAL_H_
 #define _REPMGR_CLIENT_GLOBAL_H_
 
-#include "config.h"
+#include "configfile.h"
 
 /* values for --copy-external-config-files */
 #define CONFIG_FILE_SAMEPATH 1

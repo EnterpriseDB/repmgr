@@ -10,13 +10,11 @@
 #include <sys/stat.h>
 
 
-
-
 #include "repmgr.h"
 #include "repmgrd.h"
 #include "repmgrd-physical.h"
 #include "repmgrd-bdr.h"
-#include "config.h"
+#include "configfile.h"
 #include "voting.h"
 
 #define OPT_HELP	1

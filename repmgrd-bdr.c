@@ -9,7 +9,7 @@
 #include "repmgr.h"
 #include "repmgrd.h"
 #include "repmgrd-bdr.h"
-#include "config.h"
+#include "configfile.h"
 
 
 static volatile sig_atomic_t got_SIGHUP = false;

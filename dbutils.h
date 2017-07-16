@@ -11,7 +11,7 @@
 #include "pqexpbuffer.h"
 #include "portability/instr_time.h"
 
-#include "config.h"
+#include "configfile.h"
 #include "strutil.h"
 #include "voting.h"
 

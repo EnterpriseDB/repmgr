@@ -7,7 +7,7 @@
 #include <sys/stat.h>			/* for stat() */
 
 #include "repmgr.h"
-#include "config.h"
+#include "configfile.h"
 #include "log.h"
 
 const static char *_progname = NULL;
