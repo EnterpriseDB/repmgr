@@ -35,14 +35,15 @@ typedef enum {
 } ElectionResult;
 
 
+static PGconn *upstream_conn = NULL;
+static PGconn *primary_conn = NULL;
 
+#ifndef BDR_ONLY
 static FailoverState failover_state = FAILOVER_STATE_UNKNOWN;
 
 static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
 static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
-static PGconn *upstream_conn = NULL;
-static PGconn *primary_conn = NULL;
 
 static ElectionResult do_election(void);
 static const char *_print_voting_status(NodeVotingStatus voting_status);
@@ -62,12 +63,13 @@ void close_connections_physical();
 static bool do_primary_failover(void);
 static bool do_upstream_standby_failover(void);
 
-
+#endif
 
 
 void
 do_physical_node_check(void)
 {
+#ifndef BDR_ONLY
     /*
      * Check if node record is active - if not, and `failover_mode=automatic`, the node
      * won't be considered as a promotion candidate; this often happens when
@@ -128,6 +130,7 @@ do_physical_node_check(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
+#endif
 }
 
 
@@ -136,6 +139,7 @@ do_physical_node_check(void)
 void
 monitor_streaming_primary(void)
 {
+#ifndef BDR_ONLY
 	NodeStatus	node_status = NODE_STATUS_UP;
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
@@ -330,12 +334,14 @@ monitor_streaming_primary(void)
 
 		sleep(config_file_options.monitor_interval_secs);
 	}
+#endif
 }
 
 
 void
 monitor_streaming_standby(void)
 {
+#ifndef BDR_ONLY
 	RecordStatus record_status;
 	NodeStatus	upstream_node_status = NODE_STATUS_UP;
 	instr_time	log_status_interval_start;
@@ -661,8 +667,10 @@ monitor_streaming_standby(void)
 		}
 		sleep(1);
 	}
+#endif
 }
 
+#ifndef BDR_ONLY
 static bool
 do_primary_failover(void)
 {
@@ -864,9 +872,11 @@ do_primary_failover(void)
 			return false;
 	}
 
+
 	/* should never reach here */
 	return false;
 }
+
 
 /*
  * do_upstream_standby_failover()
@@ -1682,6 +1692,8 @@ reset_node_voting_status(void)
 }
 
 
+#endif /* #ifndef BDR_ONLY */
+
 void
 close_connections_physical()
 {
@@ -1701,3 +1713,4 @@ close_connections_physical()
 	}
 
 }
+

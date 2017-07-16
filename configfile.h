@@ -5,8 +5,8 @@
  *
  */
 
-#ifndef _REPMGR_CONFIG_H_
-#define _REPMGR_CONFIG_H_
+#ifndef _REPMGR_CONFIGFILE_H_
+#define _REPMGR_CONFIGFILE_H_
 
 #include <getopt_long.h>
 

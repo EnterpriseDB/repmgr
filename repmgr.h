@@ -2,6 +2,12 @@
  * repmgr.h
  * Copyright (c) 2ndQuadrant, 2010-2017
  */
+
+#ifndef _REPMGR_CONFIG_H
+#define _REPMGR_CONFIG_H
+#include <config.h>
+#endif
+
 #ifndef _REPMGR_H_
 #define _REPMGR_H_
 
@@ -11,6 +17,7 @@
 #include <libpq-fe.h>
 #include <postgres_fe.h>
 #include <pqexpbuffer.h>
+
 
 #include "repmgr_version.h"
 #include "errcode.h"

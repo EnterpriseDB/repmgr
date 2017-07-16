@@ -574,6 +574,7 @@ main(int argc, char **argv)
 
 	if (repmgr_node_type != NULL)
 	{
+#ifndef BDR_ONLY
 		if (strcasecmp(repmgr_node_type, "PRIMARY") == 0 || strcasecmp(repmgr_node_type, "MASTER") == 0 )
 		{
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
@@ -601,8 +602,10 @@ main(int argc, char **argv)
 			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
 				action = STANDBY_RESTORE_CONFIG;
 		}
-
 		else if (strcasecmp(repmgr_node_type, "BDR") == 0)
+#else
+		if (strcasecmp(repmgr_node_type, "BDR") == 0)
+#endif
 		{
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = BDR_REGISTER;
@@ -776,8 +779,7 @@ main(int argc, char **argv)
 		 */
 		if (config_file_options.node_id == NODE_NOT_FOUND)
 		{
-			log_error(_("no node information was found - "
-						"please supply a configuration file"));
+			log_error(_("no node information was found - please supply a configuration file"));
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -856,6 +858,7 @@ main(int argc, char **argv)
 
 	switch (action)
 	{
+#ifndef BDR_ONLY
 		/* PRIMARY */
 		case PRIMARY_REGISTER:
 			do_primary_register();
@@ -889,7 +892,21 @@ main(int argc, char **argv)
 		case STANDBY_RESTORE_CONFIG:
 			do_standby_restore_config();
 			break;
+#else
+		/* we won't ever reach here, but stop the compiler complaining */
+		case PRIMARY_REGISTER:
+		case PRIMARY_UNREGISTER:
+		case STANDBY_CLONE:
+		case STANDBY_REGISTER:
+		case STANDBY_UNREGISTER:
+		case STANDBY_PROMOTE:
+		case STANDBY_FOLLOW:
+		case STANDBY_SWITCHOVER:
+		case STANDBY_ARCHIVE_CONFIG:
+		case STANDBY_RESTORE_CONFIG:
+			break;
 
+#endif
 		/* BDR */
 		case BDR_REGISTER:
 			do_bdr_register();
@@ -1242,12 +1259,14 @@ do_help(void)
 	}
 
 	printf(_("Usage:\n"));
+#ifndef BDR_ONLY
 	printf(_("	%s [OPTIONS] primary register\n"), progname());
 	printf(_("	%s [OPTIONS] primary unregister\n"), progname());
 	printf(_("	%s [OPTIONS] standby clone\n"), progname());
 	printf(_("	%s [OPTIONS] standby register\n"), progname());
 	printf(_("	%s [OPTIONS] standby unregister\n"), progname());
 	printf(_("	%s [OPTIONS] standby promote\n"), progname());
+#endif
 	printf(_("	%s [OPTIONS] bdr     register\n"), progname());
 	printf(_("	%s [OPTIONS] bdr     unregister\n"), progname());
 	printf(_("	%s [OPTIONS] cluster event\n"), progname());

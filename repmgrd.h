@@ -3,6 +3,7 @@
  * Copyright (c) 2ndQuadrant, 2010-2017
  */
 
+
 #ifndef _REPMGRD_H_
 #define _REPMGRD_H_
 
