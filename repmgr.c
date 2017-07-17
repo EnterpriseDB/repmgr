@@ -191,15 +191,12 @@ request_vote(PG_FUNCTION_ARGS)
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	/* this node has initiated voting or already responded to another node */
-//	if (current_electoral_term  == shared_state->current_electoral_term
-//		&& shared_state->voting_status != VS_NO_VOTE)
 	if (shared_state->voting_status != VS_NO_VOTE)
 	{
 		LWLockRelease(shared_state->lock);
 
 		PG_RETURN_NULL();
 	}
-
 
 	elog(INFO, "requesting node id is %i for electoral term %i (our term: %i)",
 		 requesting_node_id, current_electoral_term,
@@ -208,14 +205,27 @@ request_vote(PG_FUNCTION_ARGS)
 	SPI_connect();
 
 	initStringInfo(&query);
+
+#if (PG_VERSION_NUM >= 100000)
 	appendStringInfo(
 		&query,
 		"SELECT pg_catalog.pg_last_wal_receive_lsn()");
+#else
+	appendStringInfo(
+		&query,
+		"SELECT pg_catalog.pg_last_xlog_receive_location()");
+#endif
 
 	elog(INFO, "query: %s", query.data);
 	ret = SPI_execute(query.data, true, 0);
 
-	// XXX handle errors
+	if (ret < 0)
+	{
+		SPI_finish();
+		elog(WARNING, "unable to retrieve last received LSN");
+		PG_RETURN_LSN(InvalidOid);
+	}
+
 	our_lsn = DatumGetLSN(SPI_getbinval(SPI_tuptable->vals[0],
 										SPI_tuptable->tupdesc,
 										1, &isnull));
@@ -225,8 +235,6 @@ request_vote(PG_FUNCTION_ARGS)
 		 (uint32) (our_lsn >> 32),
 		 (uint32) our_lsn);
 
-   	SPI_finish();
-
 	/* indicate this node has responded to a vote request */
 	shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
 	shared_state->current_electoral_term = current_electoral_term;
@@ -234,6 +242,7 @@ request_vote(PG_FUNCTION_ARGS)
 	LWLockRelease(shared_state->lock);
 
 	// should we free "query" here?
+	SPI_finish();
 
 	PG_RETURN_LSN(our_lsn);
 #else
