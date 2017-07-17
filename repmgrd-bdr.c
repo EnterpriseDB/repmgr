@@ -290,6 +290,8 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	PQExpBufferData event_details;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 	t_node_info target_node  = T_NODE_INFO_INITIALIZER;
+	t_node_info failed_node  = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status;
 
 	monitored_node->monitoring_state = MS_DEGRADED;
 	INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
@@ -310,9 +312,9 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 
 		if (PQstatus(next_node_conn) == CONNECTION_OK)
 		{
-			RecordStatus record_status = get_node_record(next_node_conn,
-														 cell->node_info->node_id,
-														 &target_node);
+			record_status = get_node_record(next_node_conn,
+											cell->node_info->node_id,
+											&target_node);
 
 			if (record_status == RECORD_FOUND)
 			{
@@ -329,6 +331,23 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 		log_error(_("no other available node found"));
 
 		/* no other nodes found - continue degraded monitoring */
+		return;
+	}
+
+	/*
+	 * check if the node record for the failed node is still marked as active,
+	 * if not it means the other node has done the "failover" already
+	 */
+
+	record_status = get_node_record(next_node_conn,
+									monitored_node->node_id,
+									&failed_node);
+
+	if (record_status == RECORD_FOUND && failed_node.active == false)
+	{
+		PQfinish(next_node_conn);
+		log_notice(_("record for node %i has already been set inactive"),
+				   cell->node_info->node_id);
 		return;
 	}
 
@@ -359,9 +378,6 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 					  monitored_node->node_id,
 					  target_node.node_name,
 					  target_node.node_id);
-
-
-
 
 	/*
 	 * Create an event record

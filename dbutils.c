@@ -1395,7 +1395,7 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 
 	if (record_status == RECORD_NOT_FOUND)
 	{
-		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %s",
+		log_verbose(LOG_DEBUG, "get_node_record_by_name(): no record found for node %s",
 					node_name);
 	}
 
@@ -3250,9 +3250,17 @@ am_bdr_failover_handler(PGconn *conn, int node_id)
 		"SELECT repmgr.am_bdr_failover_handler(%i)",
 		node_id);
 
-
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute function repmgr.am_bdr_failover_handler():\n  %s"),
+				  PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
 
 	am_handler = (strcmp(PQgetvalue(res, 0, 0), "t") == 0) ? true : false;
 
