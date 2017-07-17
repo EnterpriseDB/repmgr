@@ -31,6 +31,8 @@ monitor_bdr(void)
 	NodeInfoList    nodes = T_NODE_INFO_LIST_INITIALIZER;
 	t_bdr_node_info bdr_node_info = T_BDR_NODE_INFO_INITIALIZER;
 	RecordStatus  record_status;
+	NodeInfoListCell *cell;
+	PQExpBufferData event_details;
 
 	/* sanity check local database */
 	log_info(_("connecting to local database '%s'"),
@@ -129,13 +131,18 @@ monitor_bdr(void)
 	 */
 	get_all_node_records(local_conn, &nodes);
 
+	/* we're expecting all (both) nodes to be up */
+	for (cell = nodes.head; cell; cell = cell->next)
+	{
+		cell->node_info->node_status = NODE_STATUS_UP;
+	}
+
 	log_debug("main_loop_bdr() monitoring local node %i", config_file_options.node_id);
 
 	log_info(_("starting continuous bdr node monitoring"));
 
 	while (true)
 	{
-		NodeInfoListCell *cell;
 
 		/* monitoring loop */
 		log_verbose(LOG_DEBUG, "bdr check loop...");
@@ -168,14 +175,53 @@ monitor_bdr(void)
 				{
 					if (is_server_available(cell->node_info->conninfo) == false)
 					{
-						instr_time	upstream_node_unreachable_start;
+						/* node is down, we were expecting it to be up */
+						if (cell->node_info->node_status == NODE_STATUS_UP)
+						{
+							instr_time	node_unreachable_start;
+							INSTR_TIME_SET_CURRENT(node_unreachable_start);
 
-						INSTR_TIME_SET_CURRENT(upstream_node_unreachable_start);
+							cell->node_info->node_status = NODE_STATUS_DOWN;
 
+							if (cell->node_info->conn != NULL)
+							{
+								PQfinish(cell->node_info->conn);
+								cell->node_info->conn = NULL;
+							}
 
-						// XXX improve
-						log_warning("connection problem! to node %i", cell->node_info->node_id);
-						do_bdr_failover(&nodes, cell->node_info);
+							cell->node_info->conn = try_reconnect(cell->node_info);
+
+							/* Node has recovered - log and continue */
+							if (cell->node_info->node_status == NODE_STATUS_UP)
+							{
+								int		node_unreachable_elapsed = calculate_elapsed(node_unreachable_start);
+
+								initPQExpBuffer(&event_details);
+
+								appendPQExpBuffer(&event_details,
+												  _("reconnected to node %i after %i seconds"),
+												  cell->node_info->node_id,
+												  node_unreachable_elapsed);
+								log_notice("%s", event_details.data);
+
+								create_event_notification(cell->node_info->conn,
+														  &config_file_options,
+														  config_file_options.node_id,
+														  "repmgrd_upstream_reconnect",
+														  true,
+														  event_details.data);
+								termPQExpBuffer(&event_details);
+
+								goto loop;
+							}
+
+							/* still down after reconnect attempt(s) */
+							if (cell->node_info->node_status == NODE_STATUS_DOWN)
+							{
+								do_bdr_failover(&nodes, cell->node_info);
+								goto loop;
+							}
+						}
 					}
 				}
 				break;
@@ -192,6 +238,8 @@ monitor_bdr(void)
 				break;
 			}
 		}
+
+	loop:
 
 		if (got_SIGHUP)
 		{

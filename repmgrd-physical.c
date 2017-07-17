@@ -503,6 +503,7 @@ monitor_streaming_standby(void)
 				PQfinish(upstream_conn);
 				upstream_conn = try_reconnect(&upstream_node_info);
 
+				/* Node has recovered - log and continue */
 				if (upstream_node_info.node_status == NODE_STATUS_UP)
 				{
 					int		upstream_node_unreachable_elapsed = calculate_elapsed(upstream_node_unreachable_start);
