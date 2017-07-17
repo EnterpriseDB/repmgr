@@ -68,8 +68,6 @@ typedef struct s_node_info
 	bool		  active;
 	char		  slot_name[MAXLEN];
 	/* used during failover to track node status */
-	bool		  is_ready;
-	bool		  is_visible;
 	XLogRecPtr	  last_wal_receive_lsn;
 	NodeStatus	  node_status;
 	MonitoringState monitoring_state;
@@ -88,8 +86,6 @@ typedef struct s_node_info
 	DEFAULT_PRIORITY, \
 	true, \
 	"", \
-	false, \
-	false, \
 	InvalidXLogRecPtr, \
 	NODE_STATUS_UNKNOWN, \
 	MS_NORMAL, \

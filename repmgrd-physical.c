@@ -145,8 +145,6 @@ monitor_streaming_primary(void)
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
 
-	local_node_info.node_status = NODE_STATUS_UP;
-
 	reset_node_voting_status();
 
 	/* Log startup event */
@@ -174,6 +172,7 @@ monitor_streaming_primary(void)
 	}
 
 	INSTR_TIME_SET_CURRENT(log_status_interval_start);
+	local_node_info.node_status = NODE_STATUS_UP;
 
 	while (true)
 	{
@@ -349,7 +348,6 @@ monitor_streaming_standby(void)
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
 
-	upstream_node_info.node_status = NODE_STATUS_UP;
 	reset_node_voting_status();
 
 	log_debug("monitor_streaming_standby()");
@@ -466,6 +464,7 @@ monitor_streaming_standby(void)
 
 	monitoring_state = MS_NORMAL;
 	INSTR_TIME_SET_CURRENT(log_status_interval_start);
+	upstream_node_info.node_status = NODE_STATUS_UP;
 
 	while (true)
 	{
@@ -1572,7 +1571,7 @@ do_election(void)
 	for (cell = standby_nodes.head; cell; cell = cell->next)
 	{
 		/* assume the worst case */
-		cell->node_info->is_visible = false;
+		cell->node_info->node_status = NODE_STATUS_UNKNOWN;
 
 		cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 
@@ -1614,7 +1613,7 @@ do_election(void)
 			}
 		}
 
-		cell->node_info->is_visible = true;
+		cell->node_info->node_status = NODE_STATUS_UP;
 		visible_nodes ++;
 	}
 
@@ -1655,8 +1654,9 @@ do_election(void)
 	{
 		log_debug("checking node %i...", cell->node_info->node_id);
 		/* ignore unreachable nodes */
-		if (cell->node_info->is_visible == false)
+		if (cell->node_info->node_status != NODE_STATUS_UP)
 			continue;
+
 		votes_for_me += request_vote(cell->node_info->conn,
 									 &local_node_info,
 									 cell->node_info,

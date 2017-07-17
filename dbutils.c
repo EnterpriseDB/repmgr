@@ -1299,10 +1299,10 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 	node_info->active = atobool(PQgetvalue(res, row, 9));
 
 	/* Set remaining struct fields with default values */
-	node_info->is_ready = false;
-	node_info->is_visible = false;
+	node_info->node_status = NODE_STATUS_UNKNOWN;
 	node_info->last_wal_receive_lsn = InvalidXLogRecPtr;
 	node_info->monitoring_state = MS_NORMAL;
+	node_info->conn = NULL;
 }
 
 
