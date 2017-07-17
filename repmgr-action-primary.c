@@ -275,7 +275,7 @@ do_primary_unregister(void)
 
 		log_error(_("unable to connect to primary server"));
 
-		if (get_primary_node_record(local_conn, &primary_node_info))
+		if (get_primary_node_record(local_conn, &primary_node_info) == true)
 		{
 			log_detail(_("current primary registered as node %s (id: %i, conninfo: \"%s\")"),
 					   primary_node_info.node_name,

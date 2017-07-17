@@ -904,9 +904,7 @@ do_upstream_standby_failover(void)
 	PQfinish(upstream_conn);
 	upstream_conn = NULL;
 
-	record_status = get_primary_node_record(local_conn, &primary_node_info);
-
-	if (record_status != RECORD_FOUND)
+	if (get_primary_node_record(local_conn, &primary_node_info) == false)
 	{
 		log_error(_("unable to retrieve primary node record"));
 		return false;
@@ -1007,9 +1005,18 @@ do_upstream_standby_failover(void)
 
 		terminate(ERR_BAD_CONFIG);
 	}
-	/* update own internal node record */
-    record_status = get_node_record(primary_conn, local_node_info.node_id, &local_node_info);
 
+	/* refresh own internal node record */
+	record_status = get_node_record(primary_conn, local_node_info.node_id, &local_node_info);
+
+	/*
+	 * highly improbable this will happen, but in case we're unable to retrieve
+	 * our node record from the primary, update it ourselves, and hope for the best
+	 */
+	if (record_status != RECORD_FOUND)
+	{
+		local_node_info.upstream_node_id = primary_node_info.node_id;
+	}
 
 	appendPQExpBuffer(&event_details,
 					  _("node %i is now following primary node %i"),
@@ -1027,10 +1034,8 @@ do_upstream_standby_failover(void)
 
 	termPQExpBuffer(&event_details);
 
-
 	PQfinish(primary_conn);
 	primary_conn = NULL;
-
 
 	return true;
 }
