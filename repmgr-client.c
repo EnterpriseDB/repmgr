@@ -1964,7 +1964,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		{
 			PGconn *replication_conn;
 
-			replication_conn = establish_db_connection_by_params((const char**)repl_conninfo.keywords, (const char**)repl_conninfo.values, false);
+			replication_conn = establish_db_connection_by_params(&repl_conninfo, false);
 
 			if (PQstatus(replication_conn) == CONNECTION_OK)
 			{

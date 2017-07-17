@@ -604,9 +604,7 @@ do_standby_register(void)
 	/* User is forcing a registration and must have supplied primary connection info */
 	else
 	{
-		primary_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
-														(const char**)source_conninfo.values,
-														false);
+		primary_conn = establish_db_connection_by_params(&source_conninfo, false);
 	}
 
 
@@ -1325,10 +1323,7 @@ do_standby_follow(void)
 	 */
 	else
 	{
-		primary_conn = establish_db_connection_by_params(
-			(const char**)source_conninfo.keywords,
-			(const char**)source_conninfo.values,
-			true);
+		primary_conn = establish_db_connection_by_params(&source_conninfo, true);
 
 		primary_id = get_primary_node_id(primary_conn);
 		strncpy(data_dir, runtime_options.data_dir, MAXPGPATH);
@@ -1601,9 +1596,7 @@ check_source_server()
 	/* Attempt to connect to the upstream server to verify its configuration */
 	log_info(_("connecting to upstream node"));
 
-	source_conn = establish_db_connection_by_params((const char**)source_conninfo.keywords,
-													(const char**)source_conninfo.values,
-													false);
+	source_conn = establish_db_connection_by_params(&source_conninfo, false);
 
 	/*
 	 * Unless in barman mode, exit with an error;

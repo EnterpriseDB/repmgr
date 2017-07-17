@@ -209,8 +209,7 @@ PGconn *establish_db_connection_as_user(const char *conninfo,
 										const char *user,
 										const bool exit_on_error);
 
-PGconn *establish_db_connection_by_params(const char *keywords[],
-										  const char *values[],
+PGconn *establish_db_connection_by_params(t_conninfo_param_list *param_list,
 										  const bool exit_on_error);
 PGconn *establish_primary_db_connection(PGconn *conn,
 										const bool exit_on_error);
@@ -227,6 +226,7 @@ void		initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_def
 void		copy_conninfo_params(t_conninfo_param_list *dest_list, t_conninfo_param_list *source_list);
 void		conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list);
 void		param_set(t_conninfo_param_list *param_list, const char *param, const char *value);
+void		param_set_ine(t_conninfo_param_list *param_list, const char *param, const char *value);
 char	   *param_get(t_conninfo_param_list *param_list, const char *param);
 bool		parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_application_name);
 char	   *param_list_to_string(t_conninfo_param_list *param_list);

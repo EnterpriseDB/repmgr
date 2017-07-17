@@ -100,12 +100,27 @@ static PGconn *
 _establish_db_connection(const char *conninfo, const bool exit_on_error, const bool log_notice, const bool verbose_only)
 {
 	PGconn	   *conn = NULL;
-	char		connection_string[MAXLEN];
+	char	   *connection_string = NULL;
+	char	   *errmsg = NULL;
 
-	strncpy(connection_string, conninfo, MAXLEN);
+	t_conninfo_param_list conninfo_params;
+	bool		parse_success;
 
-	/* TODO: only set if not already present */
-	strcat(connection_string, " fallback_application_name='repmgr'");
+	initialize_conninfo_params(&conninfo_params, false);
+
+	parse_success = parse_conninfo_string(conninfo, &conninfo_params, errmsg, false);
+
+	if (parse_success == false)
+	{
+		log_error(_("unable to pass provided conninfo string:\n	 %s"), errmsg);
+		return NULL;
+	}
+
+	/* set some default values if not explicitly provided */
+	param_set_ine(&conninfo_params, "connect_timeout", "2");
+	param_set_ine(&conninfo_params, "fallback_application_name", "repmgr");
+
+	connection_string = param_list_to_string(&conninfo_params);
 
 	log_debug(_("connecting to: '%s'"), connection_string);
 
@@ -123,12 +138,12 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 		{
 			if (log_notice)
 			{
-				log_notice(_("connection to database failed: %s"),
+				log_notice(_("connection to database failed:\n  %s"),
 						   PQerrorMessage(conn));
 			}
 			else
 			{
-				log_error(_("connection to database failed: %s"),
+				log_error(_("connection to database failed:\n  %s"),
 						  PQerrorMessage(conn));
 			}
 			log_detail(_("attempted to connect using:\n  %s"),
@@ -156,6 +171,8 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 			exit(ERR_DB_CONN);
 		}
 	}
+
+	pfree(connection_string);
 
 	return conn;
 }
@@ -222,9 +239,7 @@ establish_db_connection_as_user(const char *conninfo,
 
 	param_set(&conninfo_params, "user", user);
 
-	conn = establish_db_connection_by_params((const char**)conninfo_params.keywords,
-											 (const char**)conninfo_params.values,
-											 false);
+	conn = establish_db_connection_by_params(&conninfo_params, false);
 
 	return conn;
 }
@@ -233,13 +248,17 @@ establish_db_connection_as_user(const char *conninfo,
 
 
 PGconn *
-establish_db_connection_by_params(const char *keywords[], const char *values[],
+establish_db_connection_by_params(t_conninfo_param_list *param_list,
 								  const bool exit_on_error)
 {
 	PGconn	   *conn;
 
+	/* set some default values if not explicitly provided */
+	param_set_ine(param_list, "connect_timeout", "2");
+	param_set_ine(param_list, "fallback_application_name", "repmgr");
+
 	/* Connect to the database using the provided parameters */
-	conn = PQconnectdbParams(keywords, values, true);
+	conn = PQconnectdbParams((const char**)param_list->keywords, (const char**)param_list->values, true);
 
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
@@ -254,7 +273,7 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 	}
 	else
 	{
-		bool		replication_connection = false;
+		bool		is_replication_connection = false;
 		int			i;
 
 		/*
@@ -262,13 +281,13 @@ establish_db_connection_by_params(const char *keywords[], const char *values[],
 		 * use (provided this is not a replication connection)
 		 */
 
-		for (i = 0; keywords[i]; i++)
+		for (i = 0; param_list->keywords[i]; i++)
 		{
-			if (strcmp(keywords[i], "replication") == 0)
-				replication_connection = true;
+			if (strcmp(param_list->keywords[i], "replication") == 0)
+				is_replication_connection = true;
 		}
 
-		if (replication_connection == false && set_config(conn, "synchronous_commit", "local") == false)
+		if (is_replication_connection == false && set_config(conn, "synchronous_commit", "local") == false)
 		{
 			if (exit_on_error)
 			{
@@ -443,6 +462,42 @@ param_set(t_conninfo_param_list *param_list, const char *param, const char *valu
 	 * the array is full, but it's highly improbable so we won't
 	 * handle it at the moment.
 	 */
+}
+
+
+/*
+ * Like param_set(), but will only set the parameter if it doesn't exist
+ */
+void
+param_set_ine(t_conninfo_param_list *param_list, const char *param, const char *value)
+{
+	int c;
+	int value_len = strlen(value) + 1;
+
+	/*
+	 * Scan array to see if the parameter is already set - if so, do nothing
+	 */
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
+	{
+		if (strcmp(param_list->keywords[c], param) == 0)
+		{
+			/* parameter exists, do nothing */
+			return;
+		}
+	}
+
+	/*
+	 * Parameter not in array - add it and its associated value
+	 */
+	if (c < param_list->size)
+	{
+		int param_len = strlen(param) + 1;
+		param_list->keywords[c] = pg_malloc0(param_len);
+		param_list->values[c] = pg_malloc0(value_len);
+
+		strncpy(param_list->keywords[c], param, param_len);
+		strncpy(param_list->values[c], value, value_len);
+	}
 }
 
 
