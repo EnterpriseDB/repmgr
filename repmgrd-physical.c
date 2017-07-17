@@ -135,14 +135,17 @@ do_physical_node_check(void)
 
 
 
-
+/*
+ * repmgrd running on the primary server
+ */
 void
 monitor_streaming_primary(void)
 {
 #ifndef BDR_ONLY
-	NodeStatus	node_status = NODE_STATUS_UP;
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
+
+	local_node_info.node_status = NODE_STATUS_UP;
 
 	reset_node_voting_status();
 
@@ -181,7 +184,7 @@ monitor_streaming_primary(void)
 		{
 
 			/* node is down, we were expecting it to be up */
-			if (node_status == NODE_STATUS_UP)
+			if (local_node_info.node_status == NODE_STATUS_UP)
 			{
 				PQExpBufferData event_details;
 				instr_time	local_node_unreachable_start;
@@ -195,7 +198,7 @@ monitor_streaming_primary(void)
 
 				log_warning("%s", event_details.data);
 
-				node_status = NODE_STATUS_UNKNOWN;
+				local_node_info.node_status = NODE_STATUS_UNKNOWN;
 
 				PQfinish(local_conn);
 
@@ -214,9 +217,9 @@ monitor_streaming_primary(void)
 
 				termPQExpBuffer(&event_details);
 
-				local_conn = try_reconnect(local_node_info.conninfo, &node_status);
+				local_conn = try_reconnect(&local_node_info);
 
-				if (node_status == NODE_STATUS_UP)
+				if (local_node_info.node_status == NODE_STATUS_UP)
 				{
 					int		local_node_unreachable_elapsed = calculate_elapsed(local_node_unreachable_start);
 
@@ -279,7 +282,7 @@ monitor_streaming_primary(void)
 
 				if (PQstatus(local_conn) == CONNECTION_OK)
 				{
-					node_status = NODE_STATUS_UP;
+					local_node_info.node_status = NODE_STATUS_UP;
 					monitoring_state = MS_NORMAL;
 
 					initPQExpBuffer(&event_details);
@@ -343,10 +346,10 @@ monitor_streaming_standby(void)
 {
 #ifndef BDR_ONLY
 	RecordStatus record_status;
-	NodeStatus	upstream_node_status = NODE_STATUS_UP;
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
 
+	upstream_node_info.node_status = NODE_STATUS_UP;
 	reset_node_voting_status();
 
 	log_debug("monitor_streaming_standby()");
@@ -470,7 +473,7 @@ monitor_streaming_standby(void)
 		{
 
 			/* upstream node is down, we were expecting it to be up */
-			if (upstream_node_status == NODE_STATUS_UP)
+			if (upstream_node_info.node_status == NODE_STATUS_UP)
 			{
 				instr_time	upstream_node_unreachable_start;
 
@@ -478,7 +481,7 @@ monitor_streaming_standby(void)
 
 				initPQExpBuffer(&event_details);
 
-				upstream_node_status = NODE_STATUS_UNKNOWN;
+				upstream_node_info.node_status = NODE_STATUS_UNKNOWN;
 
 				appendPQExpBuffer(&event_details,
 								  _("unable to connect to upstream node \"%s\" (node ID: %i)"),
@@ -499,9 +502,9 @@ monitor_streaming_standby(void)
 				termPQExpBuffer(&event_details);
 
 				PQfinish(upstream_conn);
-				upstream_conn = try_reconnect(upstream_node_info.conninfo, &upstream_node_status);
+				upstream_conn = try_reconnect(&upstream_node_info);
 
-				if (upstream_node_status == NODE_STATUS_UP)
+				if (upstream_node_info.node_status == NODE_STATUS_UP)
 				{
 					int		upstream_node_unreachable_elapsed = calculate_elapsed(upstream_node_unreachable_start);
 
@@ -524,7 +527,7 @@ monitor_streaming_standby(void)
 				}
 
 				/* still down after reconnect attempt(s) */
-				if (upstream_node_status == NODE_STATUS_DOWN)
+				if (upstream_node_info.node_status == NODE_STATUS_DOWN)
 				{
 					bool failover_done = false;
 
@@ -564,7 +567,7 @@ monitor_streaming_standby(void)
 					// and upstream is now former primary
 					// XXX scan other nodes to see if any has become primary
 
-					upstream_node_status = NODE_STATUS_UP;
+					upstream_node_info.node_status = NODE_STATUS_UP;
 					monitoring_state = MS_NORMAL;
 
 					if (upstream_node_info.type == PRIMARY)

@@ -168,6 +168,11 @@ monitor_bdr(void)
 				{
 					if (is_server_available(cell->node_info->conninfo) == false)
 					{
+						instr_time	upstream_node_unreachable_start;
+
+						INSTR_TIME_SET_CURRENT(upstream_node_unreachable_start);
+
+
 						// XXX improve
 						log_warning("connection problem! to node %i", cell->node_info->node_id);
 						do_bdr_failover(&nodes, cell->node_info);
@@ -235,7 +240,6 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	PGconn	   *next_node_conn = NULL;
 	NodeInfoListCell *cell;
 	PQExpBufferData event_details;
-	RecordStatus  record_status;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 	t_node_info target_node  = T_NODE_INFO_INITIALIZER;
 
@@ -258,10 +262,14 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 
 		if (PQstatus(next_node_conn) == CONNECTION_OK)
 		{
-			// XXX check if record returned
-			record_status = get_node_record(next_node_conn, cell->node_info->node_id, &target_node);
+			RecordStatus record_status = get_node_record(next_node_conn,
+														 cell->node_info->node_id,
+														 &target_node);
 
-			break;
+			if (record_status == RECORD_FOUND)
+			{
+				break;
+			}
 		}
 
 		next_node_conn = NULL;
@@ -286,6 +294,7 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	log_debug("this node is the failover handler");
 
 	// check here that the node hasn't come back up...
+
 	log_info(_("connecting to target node %s"), target_node.node_name);
 
 	initPQExpBuffer(&event_details);

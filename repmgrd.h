@@ -10,12 +10,6 @@
 #include <time.h>
 #include "portability/instr_time.h"
 
-typedef enum {
-	NODE_STATUS_UNKNOWN = -1,
-	NODE_STATUS_UP,
-	NODE_STATUS_DOWN
-} NodeStatus;
-
 
 extern MonitoringState monitoring_state;
 extern instr_time	degraded_monitoring_start;
@@ -25,7 +19,7 @@ extern t_node_info local_node_info;
 extern PGconn	   *local_conn;
 extern bool			startup_event_logged;
 
-PGconn *try_reconnect(const char *conninfo, NodeStatus *node_status);
+PGconn *try_reconnect(t_node_info *node_info);
 
 int calculate_elapsed(instr_time start_time);
 const char *print_monitoring_state(MonitoringState monitoring_state);

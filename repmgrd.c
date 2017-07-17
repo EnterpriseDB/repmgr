@@ -63,9 +63,6 @@ static void handle_sighup(SIGNAL_ARGS);
 static void handle_sigint(SIGNAL_ARGS);
 #endif
 
-
-PGconn *try_reconnect(const char *conninfo, NodeStatus *node_status);
-
 int calculate_elapsed(instr_time start_time);
 void update_registration(PGconn *conn);
 void terminate(int retval);
@@ -612,7 +609,7 @@ show_help(void)
 
 
 PGconn *
-try_reconnect(const char *conninfo, NodeStatus *node_status)
+try_reconnect(t_node_info *node_info)
 {
 	PGconn *conn;
 
@@ -623,7 +620,7 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 	for (i = 0; i < max_attempts; i++)
 	{
 		log_info(_("checking state of node, %i of %i attempts"), i, max_attempts);
-		if (is_server_available(conninfo) == true)
+		if (is_server_available(node_info->conninfo) == true)
 		{
 			log_notice(_("node has recovered, reconnecting"));
 
@@ -633,10 +630,10 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 			 *  - fall back to degraded monitoring?
 			 *  - make that configurable
 			 */
-			conn = establish_db_connection(conninfo, false);
+			conn = establish_db_connection(node_info->conninfo, false);
 			if (PQstatus(conn) == CONNECTION_OK)
 			{
-				*node_status = NODE_STATUS_UP;
+				node_info->node_status = NODE_STATUS_UP;
 				return conn;
 			}
 
@@ -650,7 +647,8 @@ try_reconnect(const char *conninfo, NodeStatus *node_status)
 
 
 	log_warning(_("unable to reconnect to node after %i attempts"), max_attempts);
-	*node_status = NODE_STATUS_DOWN;
+	node_info->node_status = NODE_STATUS_DOWN;
+
 	return NULL;
 }
 

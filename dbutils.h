@@ -46,6 +46,12 @@ typedef enum {
 	MS_DEGRADED = 1
 } MonitoringState;
 
+typedef enum {
+	NODE_STATUS_UNKNOWN = -1,
+	NODE_STATUS_UP,
+	NODE_STATUS_DOWN
+} NodeStatus;
+
 /*
  * Struct to store node information
  */
@@ -65,27 +71,29 @@ typedef struct s_node_info
 	bool		  is_ready;
 	bool		  is_visible;
 	XLogRecPtr	  last_wal_receive_lsn;
+	NodeStatus	  node_status;
 	MonitoringState monitoring_state;
 	PGconn		 *conn;
 }	t_node_info;
 
 
 #define T_NODE_INFO_INITIALIZER { \
-  NODE_NOT_FOUND, \
-  NO_UPSTREAM_NODE, \
-  UNKNOWN, \
-  "", \
-  "", \
-  "", \
-  DEFAULT_LOCATION, \
-  DEFAULT_PRIORITY, \
-  true, \
-  "", \
-  false, \
-  false, \
-  InvalidXLogRecPtr, \
-  MS_NORMAL, \
-  NULL \
+	NODE_NOT_FOUND, \
+	NO_UPSTREAM_NODE, \
+	UNKNOWN, \
+	"", \
+	"", \
+	"", \
+	DEFAULT_LOCATION, \
+	DEFAULT_PRIORITY, \
+	true, \
+	"", \
+	false, \
+	false, \
+	InvalidXLogRecPtr, \
+	NODE_STATUS_UNKNOWN, \
+	MS_NORMAL, \
+	NULL \
 }
 
 
