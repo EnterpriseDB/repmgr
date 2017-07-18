@@ -2267,7 +2267,6 @@ run_file_backup(void)
 	char		basebackups_directory[MAXLEN];
 	char		backup_id[MAXLEN] = "";
 	char		*p, *q;
-	PQExpBufferData command_output;
 	TablespaceDataList tablespace_list = { NULL, NULL };
 	TablespaceDataListCell *cell_t;
 
@@ -2361,7 +2360,7 @@ run_file_backup(void)
 									local_repmgr_tmp_directory);
 					(void)local_command(
 						command,
-						&command_output);
+						NULL);
 
 					/*
 					 * Get tablespace data
@@ -2471,7 +2470,7 @@ run_file_backup(void)
 
 		(void)local_command(
 			command,
-			&command_output);
+			NULL);
 
 		unlink(datadir_list_filename);
 
@@ -2573,7 +2572,7 @@ run_file_backup(void)
 								tblspc_dir_dest);
 				(void)local_command(
 					command,
-					&command_output);
+					NULL);
 				fclose(cell_t->f);
 				maxlen_snprintf(filename,
 								"%s/%s.txt",
