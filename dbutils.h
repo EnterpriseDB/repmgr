@@ -52,6 +52,12 @@ typedef enum {
 	NODE_STATUS_DOWN
 } NodeStatus;
 
+typedef enum {
+	VR_VOTE_REFUSED = -1,
+	VR_POSITIVE_VOTE,
+	VR_NEGATIVE_VOTE
+} VoteRequestResult;
+
 /*
  * Struct to store node information
  */
@@ -310,7 +316,7 @@ bool		is_server_available(const char *conninfo);
 
 /* node voting functions */
 NodeVotingStatus get_voting_status(PGconn *conn);
-int		 		 request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
+VoteRequestResult request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
 int		 		 set_voting_status_initiated(PGconn *conn);
 bool		 	 announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
 void		 	 notify_follow_primary(PGconn *conn, int primary_node_id);

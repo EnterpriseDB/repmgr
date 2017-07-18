@@ -680,7 +680,7 @@ do_primary_failover(void)
 	/* attempt to initiate voting process */
 	ElectionResult election_result = do_election();
 
-	/* XXX add pre-event notification here */
+	/* TODO add pre-event notification here */
 	failover_state = FAILOVER_STATE_UNKNOWN;
 
 	log_debug("election result: %s", _print_election_result(election_result));
@@ -702,13 +702,7 @@ do_primary_failover(void)
 
 		log_info(_("I am the candidate but did not get all votes; will now determine the best candidate"));
 
-
-		/* reset node list */
-		get_active_sibling_node_records(local_conn,
-										local_node_info.node_id,
-										upstream_node_info.node_id,
-										&standby_nodes);
-
+		/* standby_nodes is in the state created by do_election() */
 		best_candidate = poll_best_candidate(&standby_nodes);
 
 		/*
@@ -1220,12 +1214,14 @@ poll_best_candidate(NodeInfoList *standby_nodes)
 	NodeInfoListCell *cell;
 	t_node_info *best_candidate = &local_node_info;
 
-	// XXX ensure standby_nodes is set correctly
 
 	/*
 	 * we need to definitively decide the best candidate, as in some corner
 	 * cases we could end up with two candidate nodes, so they should each
-	 * come to the same conclusion
+	 * come to the same conclusion.
+	 *
+	 * XXX check there are no cases where the standby node's LSN is
+	 * not set
 	 */
 	for (cell = standby_nodes->head; cell; cell = cell->next)
 	{
@@ -1248,9 +1244,17 @@ poll_best_candidate(NodeInfoList *standby_nodes)
 			log_debug("node %i has lower node_id, now best candidate", cell->node_info->node_id);
 			best_candidate = cell->node_info;
 		}
+
+		if (cell->node_info->conn != NULL && PQstatus(upstream_conn) == CONNECTION_OK)
+		{
+			PQfinish(cell->node_info->conn);
+			cell->node_info->conn = NULL;
+		}
 	}
 
-	log_info(_("best candidate is %i"), best_candidate->node_id);
+	log_info(_("best candidate is node %s (node ID: %i)"),
+			 best_candidate->node_name,
+			 best_candidate->node_id);
 
 	return best_candidate;
 }
@@ -1653,23 +1657,51 @@ do_election(void)
 
 	for (cell = standby_nodes.head; cell; cell = cell->next)
 	{
+		VoteRequestResult vote_result;
+
 		log_debug("checking node %i...", cell->node_info->node_id);
 		/* ignore unreachable nodes */
 		if (cell->node_info->node_status != NODE_STATUS_UP)
 			continue;
 
-		votes_for_me += request_vote(cell->node_info->conn,
-									 &local_node_info,
-									 cell->node_info,
-									 electoral_term);
+		vote_result = request_vote(cell->node_info->conn,
+								   &local_node_info,
+								   cell->node_info,
+								   electoral_term);
+
+		switch (vote_result)
+		{
+			case VR_VOTE_REFUSED:
+				if (cell->node_info->node_id < local_node_info.node_id)
+				{
+					log_debug(_("node %i refused vote, their ID is lower, yielding"),
+							  cell->node_info->node_id);
+					PQfinish(cell->node_info->conn);
+					cell->node_info->conn = NULL;
+					clear_node_info_list(&standby_nodes);
+
+					reset_node_voting_status();
+					log_debug("other node is candidate, returning NOT CANDIDATE");
+					return ELECTION_NOT_CANDIDATE;
+				}
+
+				log_debug(_("no vote recevied from %i, our ID is lower, not yielding"),
+						  cell->node_info->node_id);
+				break;
+
+			case VR_POSITIVE_VOTE:
+				votes_for_me += 1;
+				break;
+			case VR_NEGATIVE_VOTE:
+				break;
+		}
 
 		if (cell->node_info->last_wal_receive_lsn > local_node_info.last_wal_receive_lsn)
 		{
 			/* register if another node is ahead of us */
 			other_node_is_ahead = true;
 		}
-		PQfinish(cell->node_info->conn);
-		cell->node_info->conn = NULL;
+
 	}
 
 	/* vote for myself, but only if I believe no-one else is ahead */
@@ -1722,4 +1754,3 @@ close_connections_physical()
 	}
 
 }
-

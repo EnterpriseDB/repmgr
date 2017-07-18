@@ -206,13 +206,11 @@ request_vote(PG_FUNCTION_ARGS)
 
 	initStringInfo(&query);
 
-#if (PG_VERSION_NUM >= 100000)
 	appendStringInfo(
 		&query,
+#if (PG_VERSION_NUM >= 100000)
 		"SELECT pg_catalog.pg_last_wal_receive_lsn()");
 #else
-	appendStringInfo(
-		&query,
 		"SELECT pg_catalog.pg_last_xlog_receive_location()");
 #endif
 

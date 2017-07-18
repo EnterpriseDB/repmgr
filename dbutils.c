@@ -2622,7 +2622,8 @@ get_voting_status(PGconn *conn)
 	return voting_status;
 }
 
-int
+
+VoteRequestResult
 request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term)
 {
 	PQExpBufferData	  query;
@@ -2648,8 +2649,36 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int 
 	/* check for NULL */
 	if (PQgetisnull(res, 0, 0))
 	{
-		log_debug("XXX NULL returned by repmgr.request_vote()");
-		return 0;
+		PQclear(res);
+
+		log_debug("NULL returned by repmgr.request_vote()");
+
+		/*
+		 * get the node's last receive location anyway
+		 * TODO: have repmgr.request_vote() return two values
+		 */
+
+		initPQExpBuffer(&query);
+
+		appendPQExpBuffer(
+			&query,
+#if (PG_VERSION_NUM >= 100000)
+			"SELECT pg_catalog.pg_last_wal_receive_lsn()");
+#else
+			"SELECT pg_catalog.pg_last_xlog_receive_location()");
+#endif
+
+		res = PQexec(conn, query.data);
+		termPQExpBuffer(&query);
+
+		if (PQresultStatus(res) == PGRES_TUPLES_OK)
+		{
+			other_node->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 0));
+		}
+
+		PQclear(res);
+
+		return VR_VOTE_REFUSED;
 	}
 
 	other_node->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 0));
@@ -2664,7 +2693,7 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int 
 	if (lsn_diff > 0)
 	{
 		log_debug("local node is ahead");
-		return 1;
+		return VR_POSITIVE_VOTE;
 	}
 
 
@@ -2672,7 +2701,7 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int 
 	if (lsn_diff < 0)
 	{
 		log_debug("other node is ahead");
-		return 0;
+		return VR_NEGATIVE_VOTE;
 	}
 
 	/* tiebreak */
@@ -2681,12 +2710,12 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int 
 	if (this_node->priority < other_node->priority)
 	{
 		log_debug("other node has higher priority");
-		return 0;
+		return VR_NEGATIVE_VOTE;
 	}
 
 	/* still tiebreak - we're the candidate, so we win */
 	log_debug("win by default");
-	return 1;
+	return VR_POSITIVE_VOTE;
 
 }
 
