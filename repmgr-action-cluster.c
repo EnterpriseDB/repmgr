@@ -11,12 +11,17 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-cluster.h"
 
-#define SHOW_HEADER_COUNT 4
+#define SHOW_HEADER_COUNT 6
 
-#define ROLE_HEADER 0
-#define NAME_HEADER 1
-#define UPSTREAM_NAME_HEADER 2
-#define CONNINFO_HEADER 3
+// id,name,role,status,upstream_name,conninfo
+typedef enum {
+	SHOW_ID = 0,
+	SHOW_NAME,
+	SHOW_ROLE,
+	SHOW_STATUS,
+	SHOW_UPSTREAM_NAME,
+	SHOW_CONNINFO
+} ShowHeader;
 
 #define EVENT_HEADER_COUNT 5
 
@@ -64,10 +69,12 @@ do_cluster_show(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	strncpy(headers_show[ROLE_HEADER].title, _("Role"), MAXLEN);
-	strncpy(headers_show[NAME_HEADER].title, _("Name"), MAXLEN);
-	strncpy(headers_show[UPSTREAM_NAME_HEADER].title, _("Upstream"), MAXLEN);
-	strncpy(headers_show[CONNINFO_HEADER].title, _("Connection string"), MAXLEN);
+	strncpy(headers_show[SHOW_ID].title, _("ID"), MAXLEN);
+	strncpy(headers_show[SHOW_NAME].title, _("Name"), MAXLEN);
+	strncpy(headers_show[SHOW_ROLE].title, _("Role"), MAXLEN);
+	strncpy(headers_show[SHOW_STATUS].title, _("Status"), MAXLEN);
+	strncpy(headers_show[SHOW_UPSTREAM_NAME].title, _("Upstream"), MAXLEN);
+	strncpy(headers_show[SHOW_CONNINFO].title, _("Connection string"), MAXLEN);
 
 	/*
 	 * XXX if repmgr is ever localized into non-ASCII locales,
@@ -81,39 +88,129 @@ do_cluster_show(void)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
+		RecoveryType rec_type = RECTYPE_UNKNOWN;
+		PQExpBufferData details;
+
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
-		if (PQstatus(conn) != CONNECTION_OK)
+		if (PQstatus(cell->node_info->conn) == CONNECTION_OK)
 		{
-			strcpy(cell->node_info->details, "   FAILED");
-		}
-		else if (cell->node_info->type == BDR)
-		{
-			strcpy(cell->node_info->details, "      BDR");
+			cell->node_info->node_status = NODE_STATUS_UP;
+
+			if (cell->node_info->type != BDR)
+			{
+				rec_type = get_recovery_type(cell->node_info->conn);
+			}
 		}
 		else
 		{
-			RecoveryType rec_type = get_recovery_type(cell->node_info->conn);
-			switch (rec_type)
-			{
-				case RECTYPE_PRIMARY:
-					strcpy(cell->node_info->details, "* primary");
-					break;
-				case RECTYPE_STANDBY:
-					strcpy(cell->node_info->details, "  standby");
-					break;
-				case RECTYPE_UNKNOWN:
-					strcpy(cell->node_info->details, "  unknown");
-					break;
-			}
+			cell->node_info->node_status = NODE_STATUS_DOWN;
 		}
+
+		initPQExpBuffer(&details);
+
+		/*
+		 * TODO: count nodes marked as "? unreachable" and add a hint about
+		 * the other cluster commands for better determining whether unreachable.
+		 */
+		switch (cell->node_info->type)
+		{
+			case PRIMARY:
+			{
+				/* node is reachable */
+				if (cell->node_info->node_status == NODE_STATUS_UP)
+				{
+					if (cell->node_info->active == true)
+					{
+						switch (rec_type)
+						{
+							case RECTYPE_PRIMARY:
+								appendPQExpBuffer(&details, "* running");
+								break;
+							case RECTYPE_STANDBY:
+								appendPQExpBuffer(&details, "! running as standby");
+								break;
+							case RECTYPE_UNKNOWN:
+								appendPQExpBuffer(&details, "! unknown");
+								break;
+						}
+					}
+					else
+					{
+						if (rec_type == RECTYPE_PRIMARY)
+							appendPQExpBuffer(&details, "! running");
+						else
+							appendPQExpBuffer(&details, "! running as standby");
+					}
+				}
+				else
+				{
+					/* node is unreachable but marked active*/
+					if (cell->node_info->active == true)
+						appendPQExpBuffer(&details, "? unreachable");
+					else
+						appendPQExpBuffer(&details, "- failed");
+				}
+			}
+			break;
+			case STANDBY:
+			{
+				/* node is reachable */
+				if (cell->node_info->node_status == NODE_STATUS_UP)
+				{
+					if (cell->node_info->active == true)
+					{
+						switch (rec_type)
+						{
+							case RECTYPE_STANDBY:
+								appendPQExpBuffer(&details, "  running");
+								break;
+							case RECTYPE_PRIMARY:
+								appendPQExpBuffer(&details, "! running as primary");
+								break;
+							case RECTYPE_UNKNOWN:
+								appendPQExpBuffer(&details, "! unknown");
+								break;
+						}
+					}
+					else
+					{
+						if (rec_type == RECTYPE_STANDBY)
+							appendPQExpBuffer(&details, "! running");
+						else
+							appendPQExpBuffer(&details, "! running as primary");
+					}
+				}
+				else
+				{
+					/* node is unreachable but marked active*/
+					if (cell->node_info->active == true)
+						appendPQExpBuffer(&details, "? unreachable");
+					else
+						appendPQExpBuffer(&details, "- failed");
+				}
+			}
+			break;
+			case BDR:
+			{
+			}
+			break;
+			case UNKNOWN:
+			{
+			}
+			break;
+		}
+
+		strncpy(cell->node_info->details, details.data, MAXLEN);
+		termPQExpBuffer(&details);
 
 		PQfinish(cell->node_info->conn);
 
-		headers_show[ROLE_HEADER].cur_length = strlen(cell->node_info->details);
-		headers_show[NAME_HEADER].cur_length = strlen(cell->node_info->node_name);
-		headers_show[UPSTREAM_NAME_HEADER].cur_length = strlen(cell->node_info->upstream_node_name);
-		headers_show[CONNINFO_HEADER].cur_length = strlen(cell->node_info->conninfo);
+		headers_show[SHOW_ROLE].cur_length = strlen(get_node_type_string(cell->node_info->type));
+		headers_show[SHOW_NAME].cur_length = strlen(cell->node_info->node_name);
+		headers_show[SHOW_STATUS].cur_length = strlen(cell->node_info->details);
+		headers_show[SHOW_UPSTREAM_NAME].cur_length = strlen(cell->node_info->upstream_node_name);
+		headers_show[SHOW_CONNINFO].cur_length = strlen(cell->node_info->conninfo);
 
 		for (i = 0; i < SHOW_HEADER_COUNT; i++)
 		{
@@ -166,10 +263,12 @@ do_cluster_show(void)
 		}
 		else
 		{
-			printf( " %-*s ",  headers_show[ROLE_HEADER].max_length, cell->node_info->details);
-			printf("| %-*s ",  headers_show[NAME_HEADER].max_length, cell->node_info->node_name);
-			printf("| %-*s ",  headers_show[UPSTREAM_NAME_HEADER].max_length , cell->node_info->upstream_node_name);
-			printf("| %-*s\n", headers_show[CONNINFO_HEADER].max_length, cell->node_info->conninfo);
+			printf( " %-*i ",  headers_show[SHOW_ID].max_length, cell->node_info->node_id);
+			printf("| %-*s ",  headers_show[SHOW_NAME].max_length, cell->node_info->node_name);
+			printf("| %-*s ",  headers_show[SHOW_ROLE].max_length, get_node_type_string(cell->node_info->type));
+			printf("| %-*s ",  headers_show[SHOW_STATUS].max_length, cell->node_info->details);
+			printf("| %-*s ",  headers_show[SHOW_UPSTREAM_NAME].max_length , cell->node_info->upstream_node_name);
+			printf("| %-*s\n", headers_show[SHOW_CONNINFO].max_length, cell->node_info->conninfo);
 		}
 	}
 
