@@ -11,12 +11,23 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-cluster.h"
 
-#define HEADER_COUNT 4
+#define SHOW_HEADER_COUNT 4
 
 #define ROLE_HEADER 0
 #define NAME_HEADER 1
 #define UPSTREAM_NAME_HEADER 2
 #define CONNINFO_HEADER 3
+
+#define EVENT_HEADER_COUNT 5
+
+typedef enum {
+	EV_NODE_ID = 0,
+	EV_EVENT,
+	EV_SUCCESS,
+	EV_TIMESTAMP,
+	EV_DETAILS
+} EventHeader;
+
 
 
 struct ColHeader {
@@ -25,8 +36,8 @@ struct ColHeader {
 	int   cur_length;
 };
 
-struct ColHeader headers[HEADER_COUNT];
-
+struct ColHeader headers_show[SHOW_HEADER_COUNT];
+struct ColHeader headers_event[EVENT_HEADER_COUNT];
 
 void
 do_cluster_show(void)
@@ -53,19 +64,19 @@ do_cluster_show(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	strncpy(headers[ROLE_HEADER].title, _("Role"), MAXLEN);
-	strncpy(headers[NAME_HEADER].title, _("Name"), MAXLEN);
-	strncpy(headers[UPSTREAM_NAME_HEADER].title, _("Upstream"), MAXLEN);
-	strncpy(headers[CONNINFO_HEADER].title, _("Connection string"), MAXLEN);
+	strncpy(headers_show[ROLE_HEADER].title, _("Role"), MAXLEN);
+	strncpy(headers_show[NAME_HEADER].title, _("Name"), MAXLEN);
+	strncpy(headers_show[UPSTREAM_NAME_HEADER].title, _("Upstream"), MAXLEN);
+	strncpy(headers_show[CONNINFO_HEADER].title, _("Connection string"), MAXLEN);
 
 	/*
 	 * XXX if repmgr is ever localized into non-ASCII locales,
 	 * use pg_wcssize() or similar to establish printed column length
 	 */
 
-	for (i = 0; i < HEADER_COUNT; i++)
+	for (i = 0; i < SHOW_HEADER_COUNT; i++)
 	{
-		headers[i].max_length = strlen(headers[i].title);
+		headers_show[i].max_length = strlen(headers_show[i].title);
 	}
 
 	for (cell = nodes.head; cell; cell = cell->next)
@@ -99,16 +110,16 @@ do_cluster_show(void)
 
 		PQfinish(cell->node_info->conn);
 
-		headers[ROLE_HEADER].cur_length = strlen(cell->node_info->details);
-		headers[NAME_HEADER].cur_length = strlen(cell->node_info->node_name);
-		headers[UPSTREAM_NAME_HEADER].cur_length = strlen(cell->node_info->upstream_node_name);
-		headers[CONNINFO_HEADER].cur_length = strlen(cell->node_info->conninfo);
+		headers_show[ROLE_HEADER].cur_length = strlen(cell->node_info->details);
+		headers_show[NAME_HEADER].cur_length = strlen(cell->node_info->node_name);
+		headers_show[UPSTREAM_NAME_HEADER].cur_length = strlen(cell->node_info->upstream_node_name);
+		headers_show[CONNINFO_HEADER].cur_length = strlen(cell->node_info->conninfo);
 
-		for (i = 0; i < HEADER_COUNT; i++)
+		for (i = 0; i < SHOW_HEADER_COUNT; i++)
 		{
-			if (headers[i].cur_length > headers[i].max_length)
+			if (headers_show[i].cur_length > headers_show[i].max_length)
 			{
-				headers[i].max_length = headers[i].cur_length;
+				headers_show[i].max_length = headers_show[i].cur_length;
 			}
 		}
 
@@ -116,25 +127,27 @@ do_cluster_show(void)
 
 	if (! runtime_options.csv)
 	{
-		printf(" %-*s | %-*s | %-*s | %-*s\n",
-			   headers[ROLE_HEADER].max_length,
-			   headers[ROLE_HEADER].title,
-			   headers[NAME_HEADER].max_length,
-			   headers[NAME_HEADER].title,
-			   headers[UPSTREAM_NAME_HEADER].max_length,
-			   headers[UPSTREAM_NAME_HEADER].title,
-			   headers[CONNINFO_HEADER].max_length,
-			   headers[CONNINFO_HEADER].title);
+		for (i = 0; i < SHOW_HEADER_COUNT; i++)
+		{
+			if (i == 0)
+				printf(" ");
+			else
+				printf(" | ");
 
+			printf("%-*s",
+				   headers_show[i].max_length,
+				   headers_show[i].title);
+		}
+		printf("\n");
 		printf("-");
 
-		for (i = 0; i < HEADER_COUNT; i++)
+		for (i = 0; i < SHOW_HEADER_COUNT; i++)
 		{
 			int j;
-			for (j = 0; j < headers[i].max_length; j++)
+			for (j = 0; j < headers_show[i].max_length; j++)
 				printf("-");
 
-			if (i < (HEADER_COUNT - 1))
+			if (i < (SHOW_HEADER_COUNT - 1))
 				printf("-+-");
 			else
 				printf("-");
@@ -153,10 +166,10 @@ do_cluster_show(void)
 		}
 		else
 		{
-			printf( " %-*s ",  headers[ROLE_HEADER].max_length, cell->node_info->details);
-			printf("| %-*s ",  headers[NAME_HEADER].max_length, cell->node_info->node_name);
-			printf("| %-*s ",  headers[UPSTREAM_NAME_HEADER].max_length , cell->node_info->upstream_node_name);
-			printf("| %-*s\n", headers[CONNINFO_HEADER].max_length, cell->node_info->conninfo);
+			printf( " %-*s ",  headers_show[ROLE_HEADER].max_length, cell->node_info->details);
+			printf("| %-*s ",  headers_show[NAME_HEADER].max_length, cell->node_info->node_name);
+			printf("| %-*s ",  headers_show[UPSTREAM_NAME_HEADER].max_length , cell->node_info->upstream_node_name);
+			printf("| %-*s\n", headers_show[CONNINFO_HEADER].max_length, cell->node_info->conninfo);
 		}
 	}
 
@@ -173,6 +186,7 @@ do_cluster_show(void)
  *   --node_[id|name]
  *   --event
  */
+
 void
 do_cluster_event(void)
 {
@@ -247,17 +261,75 @@ do_cluster_event(void)
 		return;
 	}
 
-	/* XXX improve formatting */
-	puts("node_id,event,ok,timestamp,details");
-	puts("----------------------------------");
+	strncpy(headers_event[EV_NODE_ID].title, _("Node ID"), MAXLEN);
+	strncpy(headers_event[EV_EVENT].title, _("Event"), MAXLEN);
+	strncpy(headers_event[EV_SUCCESS].title, _("OK"), MAXLEN);
+	strncpy(headers_event[EV_TIMESTAMP].title, _("Timestamp"), MAXLEN);
+	strncpy(headers_event[EV_DETAILS].title, _("Details"), MAXLEN);
+
+	for (i = 0; i < EVENT_HEADER_COUNT; i++)
+	{
+		headers_event[i].max_length = strlen(headers_event[i].title);
+	}
+
 	for(i = 0; i < PQntuples(res); i++)
 	{
-		printf("%s,%s,%s,%s,%s\n",
-			   PQgetvalue(res, i, 0),
-			   PQgetvalue(res, i, 1),
-			   PQgetvalue(res, i, 2),
-			   PQgetvalue(res, i, 3),
-			   PQgetvalue(res, i, 4));
+		int j;
+
+		for (j = 0; j < EVENT_HEADER_COUNT; j++)
+		{
+			headers_event[j].cur_length = strlen(PQgetvalue(res, i, j));
+			if(headers_event[j].cur_length > headers_event[j].max_length)
+			{
+				headers_event[j].max_length = headers_event[j].cur_length;
+			}
+		}
+
+	}
+
+	for (i = 0; i < EVENT_HEADER_COUNT; i++)
+	{
+		if (i == 0)
+			printf(" ");
+		else
+			printf(" | ");
+
+		printf("%-*s",
+			   headers_event[i].max_length,
+			   headers_event[i].title);
+	}
+	printf("\n");
+	printf("-");
+	for (i = 0; i < EVENT_HEADER_COUNT; i++)
+	{
+		int j;
+		for (j = 0; j < headers_event[i].max_length; j++)
+			printf("-");
+
+		if (i < (EVENT_HEADER_COUNT - 1))
+			printf("-+-");
+		else
+			printf("-");
+	}
+
+	printf("\n");
+
+	for(i = 0; i < PQntuples(res); i++)
+	{
+		int j;
+
+		printf(" ");
+		for (j = 0; j < EVENT_HEADER_COUNT; j++)
+		{
+			printf("%-*s",
+				   headers_event[j].max_length,
+				   PQgetvalue(res, i, j));
+
+			if (j < (EVENT_HEADER_COUNT - 1))
+			printf(" | ");
+		}
+
+		printf("\n");
 	}
 
 	PQclear(res);
