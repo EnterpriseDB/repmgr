@@ -93,6 +93,9 @@ static struct option long_options[] =
 	{"terse", required_argument, NULL, 't'},
 	{"verbose", no_argument, NULL, 'v'},
 
+/* output options */
+	{"csv", no_argument, NULL, OPT_CSV},
+
 /* standby clone options */
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"fast-checkpoint", no_argument, NULL, 'c'},
@@ -125,7 +128,7 @@ static struct option long_options[] =
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 	{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
 	{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
-	{"csv", no_argument, NULL, OPT_CSV},
+
 	{"node", required_argument, NULL, OPT_NODE},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},

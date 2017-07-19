@@ -15,6 +15,8 @@
 #include "strutil.h"
 #include "voting.h"
 
+#define REPMGR_NODES_COLUMNS "node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active, '' AS upstream_node_name "
+
 typedef enum {
 	UNKNOWN = 0,
 	PRIMARY,
@@ -67,6 +69,7 @@ typedef struct s_node_info
 	int			  upstream_node_id;
 	t_server_type type;
 	char		  node_name[MAXLEN];
+	char		  upstream_node_name[MAXLEN];
 	char		  conninfo[MAXLEN];
 	char		  repluser[NAMEDATALEN];
 	char		  location[MAXLEN];
@@ -78,6 +81,8 @@ typedef struct s_node_info
 	NodeStatus	  node_status;
 	MonitoringState monitoring_state;
 	PGconn		 *conn;
+	/* for ad-hoc use e.g. when working with a list of nodes */
+    char		  details[MAXLEN];
 }	t_node_info;
 
 
@@ -88,6 +93,7 @@ typedef struct s_node_info
 	"", \
 	"", \
 	"", \
+	"", \
 	DEFAULT_LOCATION, \
 	DEFAULT_PRIORITY, \
 	true, \
@@ -95,7 +101,8 @@ typedef struct s_node_info
 	InvalidXLogRecPtr, \
 	NODE_STATUS_UNKNOWN, \
 	MS_NORMAL, \
-	NULL \
+	NULL, \
+	"" \
 }
 
 
@@ -283,6 +290,7 @@ void		get_all_node_records(PGconn *conn, NodeInfoList *node_list);
 void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
 void		get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id, NodeInfoList *node_list);
 void		get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list);
+void		get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);

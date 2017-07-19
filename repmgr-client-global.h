@@ -37,6 +37,9 @@ typedef struct
 	bool		terse;
 	bool		verbose;
 
+	/* output options */
+	bool		csv;
+
 	/* standard connection options */
 	char		dbname[MAXLEN];
 	char		host[MAXLEN];
@@ -84,6 +87,8 @@ typedef struct
 		"", false, false, "", false,	\
 		/* logging options */ \
 		"", false, false, false, \
+		/* output options */ \
+		false, \
 		/* database connection options */ \
 		"", "", "",	"",				  \
 		/* other connection options */ \

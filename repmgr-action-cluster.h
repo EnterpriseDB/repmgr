@@ -6,6 +6,7 @@
 #ifndef _REPMGR_ACTION_CLUSTER_H_
 #define _REPMGR_ACTION_CLUSTER_H_
 
+extern void do_cluster_show(void);
 extern void do_cluster_event(void);
 
 

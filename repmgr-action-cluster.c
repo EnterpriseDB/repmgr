@@ -11,6 +11,137 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-cluster.h"
 
+
+void
+do_cluster_show(void)
+{
+	PGconn	   *conn;
+	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
+	NodeInfoListCell *cell;
+
+	char		name_header[MAXLEN];
+	char		upstream_header[MAXLEN];
+	int			name_length,
+				upstream_length,
+				conninfo_length = 0;
+
+
+	/* Connect to local database to obtain cluster connection data */
+	log_verbose(LOG_INFO, _("connecting to database\n"));
+
+	if (strlen(config_file_options.conninfo))
+		conn = establish_db_connection(config_file_options.conninfo, true);
+	else
+		conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	get_all_node_records_with_upstream(conn, &nodes);
+
+	if (nodes.node_count == 0)
+	{
+		log_error(_("unable to retrieve any node records"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	strncpy(name_header, _("Name"), MAXLEN);
+	strncpy(upstream_header, _("Upstream"), MAXLEN);
+
+	/*
+	 * XXX if repmgr is ever localized into non-ASCII locales,
+	 * use pg_wcssize() or similar to establish printed column length
+	 */
+	name_length = strlen(name_header);
+	upstream_length = strlen(upstream_header);
+
+	for (cell = nodes.head; cell; cell = cell->next)
+	{
+		int conninfo_length_cur,
+			name_length_cur,
+			upstream_length_cur;
+
+		conninfo_length_cur = strlen(cell->node_info->conninfo);
+		if (conninfo_length_cur > conninfo_length)
+			conninfo_length = conninfo_length_cur;
+
+		name_length_cur	= strlen(cell->node_info->node_name);
+		if (name_length_cur > name_length)
+			name_length = name_length_cur;
+
+		upstream_length_cur = strlen(cell->node_info->upstream_node_name);
+		if (upstream_length_cur > upstream_length)
+			upstream_length = upstream_length_cur;
+
+		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
+
+		if (PQstatus(conn) != CONNECTION_OK)
+		{
+			strcpy(cell->node_info->details, "   FAILED");
+		}
+		else if (cell->node_info->type == BDR)
+		{
+			strcpy(cell->node_info->details, "      BDR");
+		}
+		else
+		{
+			RecoveryType rec_type = get_recovery_type(cell->node_info->conn);
+			switch (rec_type)
+			{
+				case RECTYPE_PRIMARY:
+					strcpy(cell->node_info->details, "* primary");
+					break;
+				case RECTYPE_STANDBY:
+					strcpy(cell->node_info->details, "  standby");
+					break;
+				case RECTYPE_UNKNOWN:
+					strcpy(cell->node_info->details, "  unknown");
+					break;
+			}
+		}
+
+		PQfinish(cell->node_info->conn);
+	}
+
+	if (! runtime_options.csv)
+	{
+		int i;
+		printf(" Role     | %-*s | %-*s | Connection string\n", name_length, name_header, upstream_length, upstream_header);
+		printf("----------+-");
+
+		for (i = 0; i < name_length; i++)
+			printf("-");
+
+		printf("-+-");
+		for (i = 0; i < upstream_length; i++)
+			printf("-");
+
+		printf("-+-");
+		for (i = 0; i < conninfo_length; i++)
+			printf("-");
+
+		printf("\n");
+	}
+
+	for (cell = nodes.head; cell; cell = cell->next)
+	{
+		if (runtime_options.csv)
+		{
+			int connection_status =
+				(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
+			printf("%i,%d\n", cell->node_info->node_id, connection_status);
+		}
+		else
+		{
+			printf("%-10s",   cell->node_info->details);
+			printf("| %-*s ", name_length, cell->node_info->node_name);
+			printf("| %-*s ", upstream_length, cell->node_info->upstream_node_name);
+			printf("| %s\n",  cell->node_info->conninfo);
+		}
+	}
+
+	PQfinish(conn);
+}
+
+
 /*
  * CLUSTER EVENT
  *

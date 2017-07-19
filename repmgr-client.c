@@ -16,6 +16,7 @@
  * STANDBY UNREGISTER
  * STANDBY PROMOTE
  *
+ * CLUSTER SHOW
  * CLUSTER EVENT
  */
 
@@ -438,6 +439,14 @@ main(int argc, char **argv)
 				runtime_options.verbose = true;
 				break;
 
+
+			/* output options */
+			/* -------------- */
+			case OPT_CSV:
+				runtime_options.csv = true;
+				break;
+
+
 			/* options deprecated since 3.3 *
 			 * ---------------------------- */
 			case OPT_DATA_DIR:
@@ -615,7 +624,10 @@ main(int argc, char **argv)
 
 		else if (strcasecmp(repmgr_node_type, "CLUSTER") == 0)
 		{
-			if (strcasecmp(repmgr_action, "EVENT") == 0)
+
+			if (strcasecmp(repmgr_action, "SHOW") == 0)
+				action = CLUSTER_SHOW;
+			else if (strcasecmp(repmgr_action, "EVENT") == 0)
 				action = CLUSTER_EVENT;
 		}
 		else
@@ -916,6 +928,9 @@ main(int argc, char **argv)
 			break;
 
 		/* CLUSTER */
+		case CLUSTER_SHOW:
+			do_cluster_show();
+			break;
 		case CLUSTER_EVENT:
 			do_cluster_event();
 			break;

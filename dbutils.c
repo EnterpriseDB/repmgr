@@ -1298,6 +1298,9 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 	node_info->priority = atoi(PQgetvalue(res, row, 8));
 	node_info->active = atobool(PQgetvalue(res, row, 9));
 
+	/* This won't normally be set */
+	strncpy(node_info->upstream_node_name, PQgetvalue(res, row, 10), MAXLEN);
+
 	/* Set remaining struct fields with default values */
 	node_info->node_status = NODE_STATUS_UNKNOWN;
 	node_info->last_wal_receive_lsn = InvalidXLogRecPtr;
@@ -1354,7 +1357,7 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
-					  "SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
+					  "SELECT " REPMGR_NODES_COLUMNS
 					  "  FROM repmgr.nodes "
 					  " WHERE node_id = %i",
 					  node_id);
@@ -1382,7 +1385,7 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-		"SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
+		"SELECT " REPMGR_NODES_COLUMNS
 		"  FROM repmgr.nodes "
 		" WHERE node_name = '%s' ",
 		node_name);
@@ -1507,10 +1510,11 @@ get_all_node_records(PGconn *conn, NodeInfoList *node_list)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
-					  "    FROM repmgr.nodes "
-					  "ORDER BY node_id ");
+	appendPQExpBuffer(
+		&query,
+		"  SELECT " REPMGR_NODES_COLUMNS
+		"    FROM repmgr.nodes "
+		"ORDER BY node_id ");
 
 	log_verbose(LOG_DEBUG, "get_all_node_records():\n%s", query.data);
 
@@ -1533,12 +1537,13 @@ get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *node_list)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
-					  "    FROM repmgr.nodes "
-					  "   WHERE upstream_node_id = %i "
-					  "ORDER BY node_id ",
-					  node_id);
+	appendPQExpBuffer(
+		&query,
+		"  SELECT " REPMGR_NODES_COLUMNS
+		"    FROM repmgr.nodes "
+		"   WHERE upstream_node_id = %i "
+		"ORDER BY node_id ",
+		node_id);
 
 	log_verbose(LOG_DEBUG, "get_downstream_node_records():\n%s", query.data);
 
@@ -1562,15 +1567,16 @@ get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id,
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
-					  "    FROM repmgr.nodes "
-					  "   WHERE upstream_node_id = %i "
-					  "     AND node_id != %i "
-					  "     AND active IS TRUE "
-					  "ORDER BY node_id ",
-					  upstream_node_id,
-					  node_id);
+	appendPQExpBuffer(
+		&query,
+		"  SELECT " REPMGR_NODES_COLUMNS
+		"    FROM repmgr.nodes "
+		"   WHERE upstream_node_id = %i "
+		"     AND node_id != %i "
+		"     AND active IS TRUE "
+		"ORDER BY node_id ",
+		upstream_node_id,
+		node_id);
 
 	log_verbose(LOG_DEBUG, "get_active_sibling_node_records():\n%s", query.data);
 
@@ -1596,7 +1602,7 @@ get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list)
 
 	appendPQExpBuffer(
 		&query,
-		"  SELECT node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active"
+		"  SELECT " REPMGR_NODES_COLUMNS
 		"    FROM repmgr.nodes "
 		"ORDER BY priority DESC, node_name ");
 
@@ -1612,6 +1618,35 @@ get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list)
 
 	return;
 }
+
+void
+get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
+{
+	PQExpBufferData	query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
+		"           n.slot_name, n.location, n.priority, n.active, un.node_name AS upstream_node_name "
+		"      FROM repmgr.nodes n "
+		" LEFT JOIN nodes un "
+        "        ON un.node_id = n.upstream_node_id"
+		"  ORDER BY n.node_id ");
+
+	log_verbose(LOG_DEBUG, "get_all_node_records_with_upstream():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+
+	_populate_node_records(res, node_list);
+
+	return;
+}
+
 
 
 bool

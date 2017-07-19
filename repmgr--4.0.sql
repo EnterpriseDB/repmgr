@@ -26,6 +26,8 @@ CREATE TABLE events (
 CREATE VIEW show_nodes AS
    SELECT n.node_id,
           n.node_name,
+          n.active,
+          n.upstream_node_id,
           un.node_name AS upstream_node_name,
           n.type,
           n.priority,
