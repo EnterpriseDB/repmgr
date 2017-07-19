@@ -1995,7 +1995,8 @@ clear_node_info_list(NodeInfoList *nodes)
 	/* close any open connections */
 	for (cell = nodes->head; cell; cell = cell->next)
 	{
-		if (cell->node_info->conn != NULL)
+
+		if (PQstatus(cell->node_info->conn) == CONNECTION_OK)
 		{
 			PQfinish(cell->node_info->conn);
 			cell->node_info->conn = NULL;

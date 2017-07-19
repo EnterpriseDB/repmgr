@@ -682,12 +682,14 @@ monitor_streaming_standby(void)
 						{
 							follow_node_id = cell->node_info->node_id;
 							PQfinish(cell->node_info->conn);
+							cell->node_info->conn = NULL;
 							break;
 						}
 						PQfinish(cell->node_info->conn);
+						cell->node_info->conn = NULL;
 					}
 
-					if (follow_node_id != UNKNOWN_NODE_ID)
+					if (follow_node_id != UNKNOWN_NODE_ID && config_file_options.failover_mode == FAILOVER_AUTOMATIC)
 					{
 						follow_new_primary(follow_node_id);
 					}
@@ -705,13 +707,27 @@ monitor_streaming_standby(void)
 
 			if (log_status_interval_elapsed >= config_file_options.log_status_interval)
 			{
-				log_info(_("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i) in %s state"),
-						 local_node_info.node_name,
-						 local_node_info.node_id,
-						 upstream_node_info.node_name,
-						 upstream_node_info.node_id,
-						 print_monitoring_state(monitoring_state));
+				PQExpBufferData monitoring_summary;
+				initPQExpBuffer(&monitoring_summary);
 
+				appendPQExpBuffer(
+					&monitoring_summary,
+					_("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i) in %s state"),
+					local_node_info.node_name,
+					local_node_info.node_id,
+					upstream_node_info.node_name,
+					upstream_node_info.node_id,
+					print_monitoring_state(monitoring_state));
+
+				if (config_file_options.failover_mode == FAILOVER_MANUAL)
+				{
+					appendPQExpBuffer(
+						&monitoring_summary,
+						_(" (automatic failover disabled)"));
+				}
+
+				log_info("%s", monitoring_summary.data);
+				termPQExpBuffer(&monitoring_summary);
 				if (monitoring_state == MS_DEGRADED)
 				{
 					log_detail(_("waiting for upstream or another primary to reappear"));
@@ -835,7 +851,7 @@ do_primary_failover(void)
 		 */
 		if (standby_nodes.node_count == 0)
 		{
-			log_notice(_("no other nodes are available as promotion candidated"));
+			log_notice(_("no other nodes are available as promotion candidate"));
 			log_hint(_("use \"repmgr standby promote\" to manually promote this node"));
 
 			monitoring_state = MS_DEGRADED;
@@ -1382,8 +1398,11 @@ wait_primary_notification(int *new_primary_id)
 	}
 
 
-	log_warning(_("no notifcation received from new primary after %i seconds"),
+	log_warning(_("no notification received from new primary after %i seconds"),
 				wait_primary_timeout);
+
+	monitoring_state = MS_DEGRADED;
+	INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
 	return false;
 }
@@ -1584,7 +1603,10 @@ _print_election_result(ElectionResult result)
 }
 
 
-
+/*
+ * NB: this function sets standby_nodes; caller (do_primary_failover)
+ * expects to be able to read this list
+ */
 static ElectionResult
 do_election(void)
 {
@@ -1629,6 +1651,13 @@ do_election(void)
 									local_node_info.node_id,
 									upstream_node_info.node_id,
 									&standby_nodes);
+
+	if (config_file_options.failover_mode == FAILOVER_MANUAL)
+	{
+		log_notice(_("this node is not configured for automatic failure so will not be considered as promotion candidate"));
+
+		return ELECTION_NOT_CANDIDATE;
+	}
 
 	/* node priority is set to zero - don't ever become a candidate */
 	if (local_node_info.priority <= 0)
@@ -1736,8 +1765,6 @@ do_election(void)
 
 	if (other_node_is_candidate == true)
 	{
-		clear_node_info_list(&standby_nodes);
-
 		reset_node_voting_status();
 		log_debug("other node is candidate, returning NOT CANDIDATE");
 		return ELECTION_NOT_CANDIDATE;
@@ -1790,14 +1817,13 @@ do_election(void)
 							  cell->node_info->node_id);
 					PQfinish(cell->node_info->conn);
 					cell->node_info->conn = NULL;
-					clear_node_info_list(&standby_nodes);
 
 					reset_node_voting_status();
 					log_debug("other node is candidate, returning NOT CANDIDATE");
 					return ELECTION_NOT_CANDIDATE;
 				}
 
-				log_debug(_("no vote recevied from %i, our ID is lower, not yielding"),
+				log_debug(_("no vote received from %i, our ID is lower, not yielding"),
 						  cell->node_info->node_id);
 				break;
 
