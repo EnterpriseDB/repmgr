@@ -54,6 +54,8 @@ static void notify_followers(NodeInfoList *standby_nodes, int follow_node_id);
 
 static t_node_info *poll_best_candidate(NodeInfoList *standby_nodes);
 
+static void check_connection(t_node_info *node_info, PGconn *conn);
+
 static bool wait_primary_notification(int *new_primary_id);
 static FailoverState follow_new_primary(int new_primary_id);
 
@@ -744,32 +746,8 @@ monitor_streaming_standby(void)
 		 *
 		 * TODO: add timeout, after which we run in degraded state
 		 */
-		if (is_server_available(local_node_info.conninfo) == false)
-		{
-			log_warning(_("connection to local node %i lost"), local_node_info.node_id);
 
-			if (local_conn != NULL)
-			{
-				PQfinish(local_conn);
-				local_conn = NULL;
-			}
-		}
-
-		if (PQstatus(local_conn) != CONNECTION_OK)
-		{
-			log_info(_("attempting to reconnect"));
-			local_conn = establish_db_connection(config_file_options.conninfo, false);
-
-			if (PQstatus(local_conn) != CONNECTION_OK)
-			{
-				log_warning(_("reconnection failed"));
-			}
-			else
-			{
-				log_info(_("reconnected"));
-			}
-		}
-
+		check_connection(&local_node_info, local_conn);
 
 		sleep(1);
 	}
@@ -1030,32 +1008,8 @@ do_upstream_standby_failover(void)
 	 * the node's upstream is not available
 	 */
 
-	// consolidate below code
-	if (is_server_available(primary_node_info.conninfo) == false)
-	{
-		log_warning(_("connection to primary %i lost"), primary_node_info.node_id);
+	check_connection(&primary_node_info, primary_conn);
 
-		if (primary_conn != NULL)
-		{
-			PQfinish(primary_conn);
-			primary_conn = NULL;
-		}
-	}
-
-	if (PQstatus(primary_conn) != CONNECTION_OK)
-	{
-		log_info(_("attempting to reconnect"));
-		primary_conn = establish_db_connection(primary_node_info.conninfo, false);
-
-		if (PQstatus(primary_conn) != CONNECTION_OK)
-		{
-			log_warning(_("reconnection failed"));
-		}
-		else
-		{
-			log_info(_("reconnected"));
-		}
-	}
 
 	/* grandparent upstream is inactive  */
 	if (primary_node_info.active == false)
@@ -1868,6 +1822,38 @@ reset_node_voting_status(void)
 		return;
 	}
 	reset_voting_status(local_conn);
+}
+
+
+static void
+check_connection(t_node_info *node_info, PGconn *conn)
+{
+		// consolidate below code
+	if (is_server_available(node_info->conninfo) == false)
+	{
+		log_warning(_("connection to node %i lost"), node_info->node_id);
+
+		if (conn != NULL)
+		{
+			PQfinish(conn);
+			conn = NULL;
+		}
+	}
+
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		log_info(_("attempting to reconnect"));
+		conn = establish_db_connection(node_info->conninfo, false);
+
+		if (PQstatus(conn) != CONNECTION_OK)
+		{
+			log_warning(_("reconnection failed"));
+		}
+		else
+		{
+			log_info(_("reconnected"));
+		}
+	}
 }
 
 
