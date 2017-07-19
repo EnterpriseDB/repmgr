@@ -331,7 +331,7 @@ monitor_streaming_primary(void)
 			}
 		}
 
-		log_verbose(LOG_DEBUG, "sleeping %i seconds (\"monitor_interval_secs\")",
+		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
 					config_file_options.monitor_interval_secs);
 
 		sleep(config_file_options.monitor_interval_secs);
@@ -1553,11 +1553,22 @@ do_election(void)
 									upstream_node_info.node_id,
 									&standby_nodes);
 
-	/* no other standbys - win by default */
-
+	/* no other standbys - normally win by default */
 	if (standby_nodes.node_count == 0)
 	{
-		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
+		/* node priority is set to zero - don't promote */
+		if (local_node_info.priority <= 0)
+		{
+			log_notice(_("this node is the only potential candidate, but node priority is %i so will not be promoted automatically"),
+					   local_node_info.priority);
+			log_hint(_("use \"repmgr standby promote\" to manually promote this node"));
+
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
+			return ELECTION_NOT_CANDIDATE;
+		}
+		else if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
 		{
 			log_debug("no other nodes - we win by default");
 			return ELECTION_WON;
