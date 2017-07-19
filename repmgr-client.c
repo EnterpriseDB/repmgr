@@ -629,6 +629,10 @@ main(int argc, char **argv)
 				action = CLUSTER_SHOW;
 			else if (strcasecmp(repmgr_action, "EVENT") == 0)
 				action = CLUSTER_EVENT;
+			/* allow "CLUSTER EVENTS" as synonym for "CLUSTER EVENT" */
+			else if (strcasecmp(repmgr_action, "EVENTS") == 0)
+				action = CLUSTER_EVENT;
+
 		}
 		else
 		{
