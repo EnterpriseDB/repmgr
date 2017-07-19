@@ -270,7 +270,7 @@ bool		atobool(const char *value);
 
 /* node record functions */
 t_server_type parse_node_type(const char *type);
-const char * get_node_type_string(t_server_type type);
+const char  *get_node_type_string(t_server_type type);
 
 RecordStatus get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 RecordStatus get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);

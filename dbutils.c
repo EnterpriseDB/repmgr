@@ -1470,9 +1470,7 @@ void _populate_node_records(PGresult *res, NodeInfoList *node_list)
 {
 	int				i;
 
-	node_list->head = NULL;
-	node_list->tail = NULL;
-	node_list->node_count = 0;
+	clear_node_info_list(node_list);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{

@@ -147,16 +147,17 @@ monitor_streaming_primary(void)
 
 	reset_node_voting_status();
 
+	initPQExpBuffer(&event_details);
+
+	appendPQExpBuffer(&event_details,
+					  _("monitoring cluster primary \"%s\" (node ID: %i)"),
+					  local_node_info.node_name,
+					  local_node_info.node_id);
+
+
 	/* Log startup event */
 	if (startup_event_logged == false)
 	{
-		initPQExpBuffer(&event_details);
-
-		appendPQExpBuffer(&event_details,
-						  _("monitoring cluster primary \"%s\" (node ID: %i)"),
-						  local_node_info.node_name,
-						  local_node_info.node_id);
-
 		create_event_notification(local_conn,
 								  &config_file_options,
 								  config_file_options.node_id,
@@ -165,11 +166,20 @@ monitor_streaming_primary(void)
 								  event_details.data);
 
 		startup_event_logged = true;
-
-		log_notice("%s", event_details.data);
-
-		termPQExpBuffer(&event_details);
 	}
+	else
+	{
+		create_event_notification(local_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "repmgrd_reload",
+								  true,
+								  event_details.data);
+	}
+
+	log_notice("%s", event_details.data);
+
+	termPQExpBuffer(&event_details);
 
 	INSTR_TIME_SET_CURRENT(log_status_interval_start);
 	local_node_info.node_status = NODE_STATUS_UP;
@@ -576,7 +586,6 @@ monitor_streaming_standby(void)
 					}
 					else
 					{
-
 						if (primary_conn == NULL || PQstatus(primary_conn) != CONNECTION_OK)
 						{
 							primary_conn = establish_primary_db_connection(upstream_conn, false);
@@ -605,10 +614,86 @@ monitor_streaming_standby(void)
 			}
 			else
 			{
-				// unable to connect to former primary - check if another node has
-				// been promoted
-			}
+				/*
+				 * unable to connect to former primary - check if another node has
+				 * been promoted
+				 */
 
+				NodeInfoListCell *cell;
+				int follow_node_id = UNKNOWN_NODE_ID;
+
+				/* local node has been promoted */
+				if (get_recovery_type(local_conn) == RECTYPE_PRIMARY)
+				{
+					log_notice(_("local node is primary, checking local node record"));
+
+					/*
+					 * There may be a delay between the node being promoted and the local
+					 * record being updated, so if the node record still shows it as a
+					 * standby, do nothing, we'll catch the update during the next loop.
+					 * (e.g. node was manually
+					 * promoted) we'll do nothing, as the repmgr metadata is now out-of-sync.
+					 * If it does get fixed, we'll catch it here on a future iteration.
+					 */
+
+					/* refresh own internal node record */
+					record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
+
+					if (local_node_info.type == PRIMARY)
+					{
+
+						int		degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
+
+						log_notice(_("resuming monitoring as primary node after %i seconds"),
+								   degraded_monitoring_elapsed);
+
+						/* this will restart monitoring in primary mode */
+						monitoring_state = MS_NORMAL;
+						return;
+					}
+				}
+
+				// get all!
+				get_active_sibling_node_records(local_conn,
+												local_node_info.node_id,
+												local_node_info.upstream_node_id,
+												&standby_nodes);
+
+				if (standby_nodes.node_count > 0)
+				{
+					log_debug("scanning %i node records to detect new primary...", standby_nodes.node_count);
+					for (cell = standby_nodes.head; cell; cell = cell->next)
+					{
+						/* skip local node check, we did that above */
+						if (cell->node_info->node_id == local_node_info.node_id)
+						{
+							continue;
+						}
+
+						cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
+
+						if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
+						{
+							log_debug("unable to connect to %i ... ", cell->node_info->node_id);
+							continue;
+						}
+
+						if (get_recovery_type(cell->node_info->conn) == RECTYPE_PRIMARY)
+						{
+							follow_node_id = cell->node_info->node_id;
+							PQfinish(cell->node_info->conn);
+							break;
+						}
+						PQfinish(cell->node_info->conn);
+					}
+
+					if (follow_node_id != UNKNOWN_NODE_ID)
+					{
+						follow_new_primary(follow_node_id);
+					}
+				}
+
+			}
 		}
 
 	loop:
@@ -668,6 +753,8 @@ monitor_streaming_standby(void)
 				log_info(_("reconnected"));
 			}
 		}
+
+
 		sleep(1);
 	}
 #endif
@@ -743,8 +830,24 @@ do_primary_failover(void)
 	}
 	else
 	{
-		log_info(_("follower node awaiting notification from the candidate node"));
-		failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
+		/*
+		 * Node is not a candidate but no other nodes are available
+		 */
+		if (standby_nodes.node_count == 0)
+		{
+			log_notice(_("no other nodes are available as promotion candidated"));
+			log_hint(_("use \"repmgr standby promote\" to manually promote this node"));
+
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
+			failover_state = FAILOVER_STATE_NO_NEW_PRIMARY;
+		}
+		else
+		{
+			log_info(_("follower node awaiting notification from the candidate node"));
+			failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
+		}
 	}
 
 
@@ -1521,6 +1624,22 @@ do_election(void)
 
 	long unsigned rand_wait = (long) ((rand() % 35) + 10) * 10000;
 
+	/* get all active nodes attached to primary, excluding self */
+	get_active_sibling_node_records(local_conn,
+									local_node_info.node_id,
+									upstream_node_info.node_id,
+									&standby_nodes);
+
+	/* node priority is set to zero - don't ever become a candidate */
+	if (local_node_info.priority <= 0)
+	{
+		log_notice(_("this node's priority is %i so will not be considered as an automatic promotion candidate"),
+				   local_node_info.priority);
+
+		return ELECTION_NOT_CANDIDATE;
+	}
+
+
 	log_debug("do_election(): sleeping %lu", rand_wait);
 	log_debug("do_election(): primary location is %s", upstream_node_info.location);
 
@@ -1547,28 +1666,10 @@ do_election(void)
 	 */
 	electoral_term = set_voting_status_initiated(local_conn);
 
-	/* get all active nodes attached to primary, excluding self */
-	get_active_sibling_node_records(local_conn,
-									local_node_info.node_id,
-									upstream_node_info.node_id,
-									&standby_nodes);
-
 	/* no other standbys - normally win by default */
 	if (standby_nodes.node_count == 0)
 	{
-		/* node priority is set to zero - don't promote */
-		if (local_node_info.priority <= 0)
-		{
-			log_notice(_("this node is the only potential candidate, but node priority is %i so will not be promoted automatically"),
-					   local_node_info.priority);
-			log_hint(_("use \"repmgr standby promote\" to manually promote this node"));
-
-			monitoring_state = MS_DEGRADED;
-			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
-
-			return ELECTION_NOT_CANDIDATE;
-		}
-		else if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
+		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
 		{
 			log_debug("no other nodes - we win by default");
 			return ELECTION_WON;
