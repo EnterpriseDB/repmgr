@@ -11,6 +11,22 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-cluster.h"
 
+#define HEADER_COUNT 4
+
+#define ROLE_HEADER 0
+#define NAME_HEADER 1
+#define UPSTREAM_NAME_HEADER 2
+#define CONNINFO_HEADER 3
+
+
+struct ColHeader {
+	char  title[MAXLEN];
+	int   max_length;
+	int   cur_length;
+};
+
+struct ColHeader headers[HEADER_COUNT];
+
 
 void
 do_cluster_show(void)
@@ -18,13 +34,7 @@ do_cluster_show(void)
 	PGconn	   *conn;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell;
-
-	char		name_header[MAXLEN];
-	char		upstream_header[MAXLEN];
-	int			name_length,
-				upstream_length,
-				conninfo_length = 0;
-
+	int			i;
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database\n"));
@@ -43,34 +53,23 @@ do_cluster_show(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	strncpy(name_header, _("Name"), MAXLEN);
-	strncpy(upstream_header, _("Upstream"), MAXLEN);
+	strncpy(headers[ROLE_HEADER].title, _("Role"), MAXLEN);
+	strncpy(headers[NAME_HEADER].title, _("Name"), MAXLEN);
+	strncpy(headers[UPSTREAM_NAME_HEADER].title, _("Upstream"), MAXLEN);
+	strncpy(headers[CONNINFO_HEADER].title, _("Connection string"), MAXLEN);
 
 	/*
 	 * XXX if repmgr is ever localized into non-ASCII locales,
 	 * use pg_wcssize() or similar to establish printed column length
 	 */
-	name_length = strlen(name_header);
-	upstream_length = strlen(upstream_header);
+
+	for (i = 0; i < HEADER_COUNT; i++)
+	{
+		headers[i].max_length = strlen(headers[i].title);
+	}
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int conninfo_length_cur,
-			name_length_cur,
-			upstream_length_cur;
-
-		conninfo_length_cur = strlen(cell->node_info->conninfo);
-		if (conninfo_length_cur > conninfo_length)
-			conninfo_length = conninfo_length_cur;
-
-		name_length_cur	= strlen(cell->node_info->node_name);
-		if (name_length_cur > name_length)
-			name_length = name_length_cur;
-
-		upstream_length_cur = strlen(cell->node_info->upstream_node_name);
-		if (upstream_length_cur > upstream_length)
-			upstream_length = upstream_length_cur;
-
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
 		if (PQstatus(conn) != CONNECTION_OK)
@@ -99,24 +98,47 @@ do_cluster_show(void)
 		}
 
 		PQfinish(cell->node_info->conn);
+
+		headers[ROLE_HEADER].cur_length = strlen(cell->node_info->details);
+		headers[NAME_HEADER].cur_length = strlen(cell->node_info->node_name);
+		headers[UPSTREAM_NAME_HEADER].cur_length = strlen(cell->node_info->upstream_node_name);
+		headers[CONNINFO_HEADER].cur_length = strlen(cell->node_info->conninfo);
+
+		for (i = 0; i < HEADER_COUNT; i++)
+		{
+			if (headers[i].cur_length > headers[i].max_length)
+			{
+				headers[i].max_length = headers[i].cur_length;
+			}
+		}
+
 	}
 
 	if (! runtime_options.csv)
 	{
-		int i;
-		printf(" Role     | %-*s | %-*s | Connection string\n", name_length, name_header, upstream_length, upstream_header);
-		printf("----------+-");
+		printf(" %-*s | %-*s | %-*s | %-*s\n",
+			   headers[ROLE_HEADER].max_length,
+			   headers[ROLE_HEADER].title,
+			   headers[NAME_HEADER].max_length,
+			   headers[NAME_HEADER].title,
+			   headers[UPSTREAM_NAME_HEADER].max_length,
+			   headers[UPSTREAM_NAME_HEADER].title,
+			   headers[CONNINFO_HEADER].max_length,
+			   headers[CONNINFO_HEADER].title);
 
-		for (i = 0; i < name_length; i++)
-			printf("-");
+		printf("-");
 
-		printf("-+-");
-		for (i = 0; i < upstream_length; i++)
-			printf("-");
+		for (i = 0; i < HEADER_COUNT; i++)
+		{
+			int j;
+			for (j = 0; j < headers[i].max_length; j++)
+				printf("-");
 
-		printf("-+-");
-		for (i = 0; i < conninfo_length; i++)
-			printf("-");
+			if (i < (HEADER_COUNT - 1))
+				printf("-+-");
+			else
+				printf("-");
+		}
 
 		printf("\n");
 	}
@@ -125,16 +147,16 @@ do_cluster_show(void)
 	{
 		if (runtime_options.csv)
 		{
-			int connection_status =
-				(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
+			int connection_status =	(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
+
 			printf("%i,%d\n", cell->node_info->node_id, connection_status);
 		}
 		else
 		{
-			printf("%-10s",   cell->node_info->details);
-			printf("| %-*s ", name_length, cell->node_info->node_name);
-			printf("| %-*s ", upstream_length, cell->node_info->upstream_node_name);
-			printf("| %s\n",  cell->node_info->conninfo);
+			printf( " %-*s ",  headers[ROLE_HEADER].max_length, cell->node_info->details);
+			printf("| %-*s ",  headers[NAME_HEADER].max_length, cell->node_info->node_name);
+			printf("| %-*s ",  headers[UPSTREAM_NAME_HEADER].max_length , cell->node_info->upstream_node_name);
+			printf("| %-*s\n", headers[CONNINFO_HEADER].max_length, cell->node_info->conninfo);
 		}
 	}
 
