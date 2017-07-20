@@ -981,7 +981,7 @@ get_recovery_type(PGconn *conn)
 
 	res = PQexec(conn, sqlquery);
 
-	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to determine if server is in recovery:\n  %s"),
 				PQerrorMessage(conn));

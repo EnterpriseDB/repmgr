@@ -162,7 +162,7 @@ so should be quoted in the provided command configuration, e.g.:
 
     event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
 
-Additionally the following format placeholders are available for the even
+Additionally the following format placeholders are available for the event
 type `bdr_failover`:
 
     %c - conninfo string of the next available node
