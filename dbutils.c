@@ -2920,6 +2920,7 @@ get_last_wal_receive_location(PGconn *conn)
 /* BDR functions */
 /* ============= */
 
+/* possibly use bdr.bdr_is_active_in_db() ? */
 bool
 is_bdr_db(PGconn *conn)
 {
