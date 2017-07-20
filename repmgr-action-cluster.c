@@ -13,7 +13,7 @@
 
 #define SHOW_HEADER_COUNT 6
 
-// id,name,role,status,upstream_name,conninfo
+
 typedef enum {
 	SHOW_ID = 0,
 	SHOW_NAME,
@@ -143,11 +143,13 @@ do_cluster_show(void)
 							appendPQExpBuffer(&details, "! running as standby");
 					}
 				}
+				/* node is unreachable */
 				else
 				{
 					/* node is unreachable but marked active*/
 					if (cell->node_info->active == true)
 						appendPQExpBuffer(&details, "? unreachable");
+					/* node is unreachable and marked as inactive */
 					else
 						appendPQExpBuffer(&details, "- failed");
 				}
@@ -181,6 +183,7 @@ do_cluster_show(void)
 							appendPQExpBuffer(&details, "! running as primary");
 					}
 				}
+				/* node is unreachable */
 				else
 				{
 					/* node is unreachable but marked active*/
@@ -193,6 +196,22 @@ do_cluster_show(void)
 			break;
 			case BDR:
 			{
+				/* node is reachable */
+				if (cell->node_info->node_status == NODE_STATUS_UP)
+				{
+					if (cell->node_info->active == true)
+						appendPQExpBuffer(&details, "* running");
+					else
+						appendPQExpBuffer(&details, "! running");
+				}
+				/* node is unreachable */
+				else
+				{
+					if (cell->node_info->active == true)
+						appendPQExpBuffer(&details, "? unreachable");
+					else
+						appendPQExpBuffer(&details, "- failed");
+				}
 			}
 			break;
 			case UNKNOWN:
