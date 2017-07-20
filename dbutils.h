@@ -32,7 +32,7 @@ typedef enum {
 } ExtensionStatus;
 
 typedef enum {
-	RECTYPE_UNKNOWN = 0,
+	RECTYPE_UNKNOWN = -1,
 	RECTYPE_PRIMARY,
 	RECTYPE_STANDBY
 } RecoveryType;
@@ -79,6 +79,7 @@ typedef struct s_node_info
 	/* used during failover to track node status */
 	XLogRecPtr	  last_wal_receive_lsn;
 	NodeStatus	  node_status;
+	RecoveryType  recovery_type;
 	MonitoringState monitoring_state;
 	PGconn		 *conn;
 	/* for ad-hoc use e.g. when working with a list of nodes */
@@ -100,6 +101,7 @@ typedef struct s_node_info
 	"", \
 	InvalidXLogRecPtr, \
 	NODE_STATUS_UNKNOWN, \
+	RECTYPE_UNKNOWN,  \
 	MS_NORMAL, \
 	NULL, \
 	"" \

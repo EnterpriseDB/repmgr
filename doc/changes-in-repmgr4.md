@@ -1,4 +1,12 @@
 
+Standardisation on `primary`
+----------------------------
+
+To standardise terminolgy, `primary` is used to denote the read/write
+node in a streaming replication cluster. `master` is still accepted
+as a synonym (e.g. `repmgr master register`).
+
+
 New command line options
 ------------------------
 
@@ -28,6 +36,18 @@ Changed command line options
 - `--monitoring-history` is deprecated and has been replaced by the
   configuration file option `monitoring_history`. This enables the
   setting to be changed without having to modify system service files.
+
+Changes to repmgr commands
+--------------------------
+
+
+### `repmgr cluster show`
+
+This now displays the role of each node (e.g. `primary`, `standby`)
+and its status in separate columns.
+
+The `--csv` option now emits a third column indicating the recovery
+status of the node.
 
 
 Removed configuration file options

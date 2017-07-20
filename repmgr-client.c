@@ -1048,6 +1048,10 @@ check_cli_parameters(const int action)
 			}
 
 		}
+		case CLUSTER_SHOW:
+			if (runtime_options.connection_param_provided)
+				config_file_required = false;
+			break;
 		case CLUSTER_EVENT:
 			/* no required parameters */
 			break;
@@ -1066,6 +1070,7 @@ check_cli_parameters(const int action)
 		{
 			case STANDBY_CLONE:
 			case STANDBY_FOLLOW:
+			case CLUSTER_SHOW:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,

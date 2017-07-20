@@ -1303,6 +1303,7 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 
 	/* Set remaining struct fields with default values */
 	node_info->node_status = NODE_STATUS_UNKNOWN;
+	node_info->recovery_type = RECTYPE_UNKNOWN;
 	node_info->last_wal_receive_lsn = InvalidXLogRecPtr;
 	node_info->monitoring_state = MS_NORMAL;
 	node_info->conn = NULL;

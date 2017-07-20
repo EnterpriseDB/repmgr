@@ -23,10 +23,12 @@ Simply:
 Ensure `pg_config` for the target PostgreSQL version is in `$PATH`.
 
 
-Commands
---------
+Reference
+---------
 
-Currently available:
+### repmgr commands
+
+The following commands are available:
 
     repmgr primary register
     repmgr primary unregister
@@ -38,8 +40,62 @@ Currently available:
     repmgr standby follow
 
     repmgr bdr register
+    repmgr bdr unregister
 
+    repmgr cluster show
     repmgr cluster event [--all] [--node-id] [--node-name] [--event] [--event-matching]
+
+
+* `primary register`
+
+    Registers a primary in a streaming replication cluster, and configures
+    it for use with repmgr.  This command needs to be executed before any
+    standby nodes are registered.
+
+    `master register` can be used as an alias for `primary register`.
+
+* `cluster show`
+
+    Displays information about each active node in the replication cluster. This
+    command polls each registered server and shows its role (`master` / `standby` /
+    `bdr`) and status. It polls each server directly and can be run on any node
+    in the cluster; this is also useful when analyzing connectivity from a particular
+    node.
+
+    This command requires either a valid `repmgr.conf` file or a database connection
+    string to one of the registered nodes; no  additional arguments are needed.
+
+    Example:
+
+        $ repmgr -f /etc/repmgr.conf cluster show
+
+         ID | Name  | Role    | Status    | Upstream | Connection string
+        ----+-------+---------+-----------+----------+-----------------------------------------
+         1  | node1 | primary | * running |          | host=db_node1 dbname=repmgr user=repmgr
+         2  | node2 | standby |   running | node1    | host=db_node2 dbname=repmgr user=repmgr
+         3  | node3 | standby |   running | node1    | host=db_node3 dbname=repmgr user=repmgr
+
+    To show database connection errors when polling nodes, run the command in
+    `--verbose` mode.
+
+    The `cluster show` command accepts an optional parameter `--csv`, which
+    outputs the replication cluster's status in a simple CSV format, suitable for
+    parsing by scripts:
+
+        $ repmgr -f /etc/repmgr.conf cluster show --csv
+        1,-1,-1
+        2,0,0
+        3,0,1
+
+    The columns have following meanings:
+
+        - node ID
+        - availability (0 = available, -1 = unavailable)
+        - recovery state (0 = not in recovery, 1 = in recovery, -1 = unknown)
+
+    Note that the availability is tested by connecting from the node where
+    `repmgr cluster show` is executed, and does not necessarily imply the node
+    is down.
 
 
 Backwards compatibility

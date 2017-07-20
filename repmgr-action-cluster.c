@@ -88,7 +88,6 @@ do_cluster_show(void)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		RecoveryType rec_type = RECTYPE_UNKNOWN;
 		PQExpBufferData details;
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
@@ -97,14 +96,12 @@ do_cluster_show(void)
 		{
 			cell->node_info->node_status = NODE_STATUS_UP;
 
-			if (cell->node_info->type != BDR)
-			{
-				rec_type = get_recovery_type(cell->node_info->conn);
-			}
+			cell->node_info->recovery_type = get_recovery_type(cell->node_info->conn);
 		}
 		else
 		{
 			cell->node_info->node_status = NODE_STATUS_DOWN;
+			cell->node_info->recovery_type = RECTYPE_UNKNOWN;
 		}
 
 		initPQExpBuffer(&details);
@@ -122,7 +119,7 @@ do_cluster_show(void)
 				{
 					if (cell->node_info->active == true)
 					{
-						switch (rec_type)
+						switch (cell->node_info->recovery_type)
 						{
 							case RECTYPE_PRIMARY:
 								appendPQExpBuffer(&details, "* running");
@@ -137,7 +134,7 @@ do_cluster_show(void)
 					}
 					else
 					{
-						if (rec_type == RECTYPE_PRIMARY)
+						if (cell->node_info->recovery_type == RECTYPE_PRIMARY)
 							appendPQExpBuffer(&details, "! running");
 						else
 							appendPQExpBuffer(&details, "! running as standby");
@@ -162,7 +159,7 @@ do_cluster_show(void)
 				{
 					if (cell->node_info->active == true)
 					{
-						switch (rec_type)
+						switch (cell->node_info->recovery_type)
 						{
 							case RECTYPE_STANDBY:
 								appendPQExpBuffer(&details, "  running");
@@ -177,7 +174,7 @@ do_cluster_show(void)
 					}
 					else
 					{
-						if (rec_type == RECTYPE_STANDBY)
+						if (cell->node_info->recovery_type == RECTYPE_STANDBY)
 							appendPQExpBuffer(&details, "! running");
 						else
 							appendPQExpBuffer(&details, "! running as primary");
@@ -216,6 +213,8 @@ do_cluster_show(void)
 			break;
 			case UNKNOWN:
 			{
+				/* this should never happen */
+				appendPQExpBuffer(&details, "? unknown node type");
 			}
 			break;
 		}
@@ -277,8 +276,29 @@ do_cluster_show(void)
 		if (runtime_options.csv)
 		{
 			int connection_status =	(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
+			int recovery_type = RECTYPE_UNKNOWN;
 
-			printf("%i,%d\n", cell->node_info->node_id, connection_status);
+			/*
+			 * here we explicitly convert the RecoveryType to integer values to
+			 * avoid implicit dependency on the values in the enum
+			 */
+			switch (cell->node_info->recovery_type)
+			{
+				case RECTYPE_UNKNOWN:
+					recovery_type = -1;
+					break;
+				case RECTYPE_PRIMARY:
+					recovery_type = 0;
+					break;
+				case RECTYPE_STANDBY:
+					recovery_type = 1;
+					break;
+			}
+
+			printf("%i,%i,%i\n",
+				   cell->node_info->node_id,
+				   connection_status,
+				   recovery_type);
 		}
 		else
 		{
