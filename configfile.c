@@ -41,7 +41,7 @@ progname(void)
 	return _progname;
 }
 
-bool
+void
 load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0)
 {
 	struct stat stat_config;
@@ -160,11 +160,13 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		}
 	}
 
-	return parse_config(options, terse);
+	parse_config(options, terse);
+
+	return;
 }
 
 
-bool
+void
 parse_config(t_configuration_options *options, bool terse)
 {
 	/* Collate configuration file errors here for friendlier reporting */
@@ -186,7 +188,7 @@ parse_config(t_configuration_options *options, bool terse)
 		print_item_list(&config_warnings);
 	}
 
-	return true;
+	return;
 }
 
 

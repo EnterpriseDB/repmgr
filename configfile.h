@@ -157,8 +157,8 @@ typedef struct
 void		set_progname(const char *argv0);
 const char *progname(void);
 
-bool		load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
-bool		parse_config(t_configuration_options *options, bool terse);
+void		load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
+void		parse_config(t_configuration_options *options, bool terse);
 bool		reload_config(t_configuration_options *orig_options);
 
 
@@ -176,4 +176,5 @@ bool parse_pg_basebackup_options(const char *pg_basebackup_options,
 /* called by repmgr-client and repmgrd */
 void exit_with_cli_errors(ItemList *error_list);
 void print_item_list(ItemList *item_list);
-#endif
+
+#endif /* _REPMGR_CONFIGFILE_H_ */

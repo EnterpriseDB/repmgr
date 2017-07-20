@@ -76,8 +76,6 @@ main(int argc, char **argv)
 	int			action = NO_ACTION;
 	char	   *dummy_action = "";
 
-	bool		config_file_parsed = false;
-
 	set_progname(argv[0]);
 
 	/*
@@ -730,11 +728,11 @@ main(int argc, char **argv)
 	 * however if available we'll parse it anyway for options like 'log_level',
 	 * 'use_replication_slots' etc.
 	 */
-	config_file_parsed = load_config(runtime_options.config_file,
-									 runtime_options.verbose,
-									 runtime_options.terse,
-									 &config_file_options,
-									 argv[0]);
+	load_config(runtime_options.config_file,
+				runtime_options.verbose,
+				runtime_options.terse,
+				&config_file_options,
+				argv[0]);
 
 	/* Some configuration file items can be overriden by command line options */
 	/* Command-line parameter -L/--log-level overrides any setting in config file*/
@@ -1288,6 +1286,7 @@ do_help(void)
 #endif
 	printf(_("	%s [OPTIONS] bdr     register\n"), progname());
 	printf(_("	%s [OPTIONS] bdr     unregister\n"), progname());
+	printf(_("	%s [OPTIONS] cluster show\n"), progname());
 	printf(_("	%s [OPTIONS] cluster event\n"), progname());
 
 	puts("");
@@ -1396,6 +1395,7 @@ create_repmgr_extension(PGconn *conn)
 		return true;
 
 	/* 4. Create extension */
+
 	initPQExpBuffer(&query);
 
 	wrap_ddl_query(&query, config_file_options.replication_type,
@@ -1631,7 +1631,6 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 		return;
 	}
 
-	// XXX largely duplicated from create_repmgr_extension()
 	if (runtime_options.superuser[0] == '\0')
 	{
 		log_error(_("\"%s\" is not a superuser and no superuser name supplied"), userinfo.username);
