@@ -2920,7 +2920,6 @@ get_last_wal_receive_location(PGconn *conn)
 /* BDR functions */
 /* ============= */
 
-/* possibly use bdr.bdr_is_active_in_db() ? */
 bool
 is_bdr_db(PGconn *conn)
 {
@@ -2947,6 +2946,30 @@ is_bdr_db(PGconn *conn)
 	}
 
 	PQclear(res);
+
+	if (is_bdr_db == false)
+	{
+		log_warning(_("BDR extension is not available for this database"));
+		return is_bdr_db;
+	}
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"SELECT bdr.bdr_is_active_in_db()");
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	is_bdr_db = strcmp(PQgetvalue(res, 0, 0), "t") == 0 ? true : false;
+
+	if (is_bdr_db == false)
+	{
+		log_warning(_("BDR extension available for this database, but the database is not configured for BDR"));
+
+	}
+	PQclear(res);
+
 
 	return is_bdr_db;
 }
