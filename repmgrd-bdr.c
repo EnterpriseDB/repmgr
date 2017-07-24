@@ -457,7 +457,8 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 
 	// XXX check other node is attached to this one so we
-	// don't end up monitoring a parted node
+	// don't end up monitoring a parted node; if not attached,
+	// generate a failed bdr_recovery event
 
 
 	// note elapsed
@@ -475,7 +476,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		event_info.node_name = monitored_node->node_name;
 
 		create_event_notification_extended(
-			recovered_node_conn,
+			local_conn,
 			&config_file_options,
 			config_file_options.node_id,
 			"bdr_recovery",
@@ -486,7 +487,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	else
 	{
 		create_event_record(
-			recovered_node_conn,
+			local_conn,
 			&config_file_options,
 			config_file_options.node_id,
 			"bdr_recovery",
