@@ -19,6 +19,8 @@ SCRIPTS_built = repmgr4 repmgrd4
 PG_CPPFLAGS = -std=gnu89 -I$(libpq_srcdir) -Wall -Wmissing-prototypes -Wmissing-declarations $(EXTRA_CFLAGS)
 SHLIB_LINK = $(libpq)
 
+HEADERS = $(wildcard *.h)
+
 OBJS = \
 	repmgr.o
 
@@ -27,7 +29,7 @@ include Makefile.global
 $(info Building against PostgreSQL $(MAJORVERSION))
 
 REPMGR_CLIENT_OBJS = repmgr-client.o \
-  repmgr-action-primary.o repmgr-action-standby.o repmgr-action-bdr.o repmgr-action-cluster.o \
+  repmgr-action-primary.o repmgr-action-standby.o repmgr-action-bdr.o repmgr-action-cluster.o repmgr-action-node.o \
   configfile.o log.o strutil.o dbutils.o dirutil.o compat.o controldata.o
 REPMGRD_OBJS = repmgrd.o repmgrd-physical.o repmgrd-bdr.o configfile.o log.o dbutils.o strutil.o
 
@@ -39,6 +41,8 @@ repmgr4: $(REPMGR_CLIENT_OBJS)
 repmgrd4: $(REPMGRD_OBJS)
 	$(CC) $(CFLAGS) $(REPMGRD_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
+$(REPMGR_CLIENT_OBJS): $(HEADERS)
+$(REPMGRD_OBJS): $(HEADERS)
 
 # Ensure Makefiles are up-to-date (should we move this to Makefile.global?)
 Makefile: Makefile.in config.status configure
@@ -56,6 +60,7 @@ additional-clean:
 	rm -f repmgr-action-primary.o
 	rm -f repmgr-action-standby.o
 	rm -f repmgr-action-bdr.o
+	rm -f repmgr-action-node.o
 	rm -f repmgr-action-cluster.o
 	rm -f repmgrd.o
 	rm -f repmgrd-physical.o

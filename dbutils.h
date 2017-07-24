@@ -84,6 +84,12 @@ typedef struct s_node_info
 	PGconn		 *conn;
 	/* for ad-hoc use e.g. when working with a list of nodes */
     char		  details[MAXLEN];
+	/* various statistics */
+	int			  max_wal_senders;
+	int			  attached_wal_receivers;
+	int			  max_replication_slots;
+	int			  active_replication_slots;
+	int			  inactive_replication_slots;
 }	t_node_info;
 
 
@@ -104,7 +110,8 @@ typedef struct s_node_info
 	RECTYPE_UNKNOWN,  \
 	MS_NORMAL, \
 	NULL, \
-	"" \
+	"", \
+	-1, -1, -1, -1, -1 \
 }
 
 
@@ -305,6 +312,8 @@ bool		update_node_record_status(PGconn *conn, int this_node_id, char *type, int 
 bool		update_node_record_conn_priority(PGconn *conn, t_configuration_options *options);
 
 void		clear_node_info_list(NodeInfoList *nodes);
+
+void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 
 /* event functions */
 bool		create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);

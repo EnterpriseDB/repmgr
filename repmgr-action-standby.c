@@ -1389,8 +1389,8 @@ do_standby_follow(void)
 	 * replication slots are in use and we want to delete the old slot.
 	 */
 	record_status = get_node_record(primary_conn,
-									  config_file_options.node_id,
-									  &local_node_record);
+									config_file_options.node_id,
+									&local_node_record);
 
 	if (record_status != RECORD_FOUND)
 	{

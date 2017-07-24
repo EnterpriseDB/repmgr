@@ -16,6 +16,9 @@
  * STANDBY UNREGISTER
  * STANDBY PROMOTE
  *
+ * BDR REGISTER
+ * BDR UNREGISTER
+ *
  * CLUSTER SHOW
  * CLUSTER EVENT
  */
@@ -30,6 +33,7 @@
 #include "repmgr-action-primary.h"
 #include "repmgr-action-standby.h"
 #include "repmgr-action-bdr.h"
+#include "repmgr-action-node.h"
 
 #include "repmgr-action-cluster.h"
 
@@ -588,6 +592,10 @@ main(int argc, char **argv)
 				action = PRIMARY_REGISTER;
 			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
 				action = PRIMARY_UNREGISTER;
+			else if (strcasecmp(repmgr_action, "CHECK") == 0)
+				action = NODE_CHECK;
+			else if (strcasecmp(repmgr_action, "STATUS") == 0)
+				action = NODE_STATUS;
 		}
 
 		else if (strcasecmp(repmgr_node_type, "STANDBY") == 0)
@@ -608,6 +616,10 @@ main(int argc, char **argv)
 				action = STANDBY_ARCHIVE_CONFIG;
 			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
 				action = STANDBY_RESTORE_CONFIG;
+			else if (strcasecmp(repmgr_action, "CHECK") == 0)
+				action = NODE_CHECK;
+			else if (strcasecmp(repmgr_action, "STATUS") == 0)
+				action = NODE_STATUS;
 		}
 		else if (strcasecmp(repmgr_node_type, "BDR") == 0)
 #else
@@ -618,6 +630,18 @@ main(int argc, char **argv)
 				action = BDR_REGISTER;
 			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
 				action = BDR_UNREGISTER;
+			else if (strcasecmp(repmgr_action, "CHECK") == 0)
+				action = NODE_CHECK;
+			else if (strcasecmp(repmgr_action, "STATUS") == 0)
+				action = NODE_STATUS;
+		}
+
+		else if (strcasecmp(repmgr_node_type, "NODE") == 0)
+		{
+		    if (strcasecmp(repmgr_action, "CHECK") == 0)
+				action = NODE_CHECK;
+			else if (strcasecmp(repmgr_action, "STATUS") == 0)
+				action = NODE_STATUS;
 		}
 
 		else if (strcasecmp(repmgr_node_type, "CLUSTER") == 0)
@@ -927,6 +951,11 @@ main(int argc, char **argv)
 			break;
 		case BDR_UNREGISTER:
 			do_bdr_unregister();
+			break;
+
+		/* NODE */
+		case NODE_STATUS:
+			do_node_status();
 			break;
 
 		/* CLUSTER */
