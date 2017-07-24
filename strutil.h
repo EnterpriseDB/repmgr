@@ -33,10 +33,6 @@ typedef struct ItemList
 
 
 extern int
-sqlquery_snprintf(char *str, const char *format,...)
-__attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
-
-extern int
 maxlen_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 

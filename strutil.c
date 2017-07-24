@@ -36,19 +36,6 @@ xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 
 
 int
-sqlquery_snprintf(char *str, const char *format,...)
-{
-	va_list		arglist;
-	int			retval;
-
-	va_start(arglist, format);
-	retval = xvsnprintf(str, MAX_QUERY_LEN, format, arglist);
-	va_end(arglist);
-
-	return retval;
-}
-
-int
 maxlen_snprintf(char *str, const char *format,...)
 {
 	va_list		arglist;
