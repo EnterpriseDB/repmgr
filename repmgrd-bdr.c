@@ -230,7 +230,6 @@ monitor_bdr(void)
 					/* degraded monitoring */
 					if (is_server_available(cell->node_info->conninfo) == true)
 					{
-						log_notice(_("monitored node %i has recovered"),  cell->node_info->node_id);
 						do_bdr_recovery(&nodes, cell->node_info);
 					}
 
@@ -470,29 +469,35 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	monitored_node->monitoring_state = MS_NORMAL;
 
-	if (config_file_options.bdr_active_node_recovery == true)
-	{
-		event_info.conninfo_str = monitored_node->conninfo;
-		event_info.node_name = monitored_node->node_name;
+	log_notice("%s", event_details.data);
 
-		create_event_notification_extended(
-			local_conn,
-			&config_file_options,
-			config_file_options.node_id,
-			"bdr_recovery",
-			true,
-			event_details.data,
-			&event_info);
-	}
-	else
+	/* generate the event on the currently active node only */
+	if (monitored_node->node_id != local_node_info.node_id)
 	{
-		create_event_record(
-			local_conn,
-			&config_file_options,
-			config_file_options.node_id,
-			"bdr_recovery",
-			true,
-			event_details.data);
+		if (config_file_options.bdr_active_node_recovery == true)
+		{
+			event_info.conninfo_str = monitored_node->conninfo;
+			event_info.node_name = monitored_node->node_name;
+
+			create_event_notification_extended(
+				local_conn,
+				&config_file_options,
+				config_file_options.node_id,
+				"bdr_recovery",
+				true,
+				event_details.data,
+				&event_info);
+		}
+		else
+		{
+			create_event_record(
+				local_conn,
+				&config_file_options,
+				config_file_options.node_id,
+				"bdr_recovery",
+				true,
+				event_details.data);
+		}
 	}
 
 	termPQExpBuffer(&event_details);
