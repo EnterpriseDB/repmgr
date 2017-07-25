@@ -161,6 +161,7 @@ do_node_status(void)
 
 	if (runtime_options.csv == true)
 	{
+		/* output header */
 		appendPQExpBuffer(
 			&output,
 			"\"Node name\",\"Node ID\",");
@@ -169,22 +170,18 @@ do_node_status(void)
 		{
 			appendPQExpBuffer(
 				&output,
-				"\"%s\"", cell->key);
-
-			if (cell->next)
-			{
-				appendPQExpBuffer(
-					&output,
-					",");
-			}
+				"\"%s\",", cell->key);
 		}
-		appendPQExpBuffer(
-			&output,
-			"\n");
 
+		/* we'll add the raw data as well */
 		appendPQExpBuffer(
 			&output,
-			"%s,%i,",
+			"max_walsenders,occupied_walsenders,max_replication_slots,active_replication_slots,inactive_replaction_slots\n");
+
+		/* output data */
+		appendPQExpBuffer(
+			&output,
+			"\"%s\",%i,",
 			node_info.node_name,
 			node_info.node_id);
 
@@ -192,19 +189,17 @@ do_node_status(void)
 		{
 			appendPQExpBuffer(
 				&output,
-				"\"%s\"", cell->value);
-
-			if (cell->next)
-			{
-				appendPQExpBuffer(
-					&output,
-					",");
-			}
+				"\"%s\",", cell->value);
 		}
+
 		appendPQExpBuffer(
 			&output,
-			"\n");
-
+			"%i,%i,%i,%i,%i\n",
+			node_info.max_wal_senders,
+			node_info.attached_wal_receivers,
+			node_info.max_replication_slots,
+			node_info.active_replication_slots,
+			node_info.inactive_replication_slots);
 	}
 	else
 	{
