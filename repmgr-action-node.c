@@ -159,16 +159,66 @@ do_node_status(void)
 
 	initPQExpBuffer(&output);
 
-	appendPQExpBuffer(
-		&output,
-		"Node \"%s\":\n",
-		node_info.node_name);
-
-	for (cell = node_status.head; cell; cell = cell->next)
+	if (runtime_options.csv == true)
 	{
 		appendPQExpBuffer(
 			&output,
+			"\"Node name\",\"Node ID\",");
+
+		for (cell = node_status.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(
+				&output,
+				"\"%s\"", cell->key);
+
+			if (cell->next)
+			{
+				appendPQExpBuffer(
+					&output,
+					",");
+			}
+		}
+		appendPQExpBuffer(
+			&output,
+			"\n");
+
+		appendPQExpBuffer(
+			&output,
+			"%s,%i,",
+			node_info.node_name,
+			node_info.node_id);
+
+		for (cell = node_status.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(
+				&output,
+				"\"%s\"", cell->value);
+
+			if (cell->next)
+			{
+				appendPQExpBuffer(
+					&output,
+					",");
+			}
+		}
+		appendPQExpBuffer(
+			&output,
+			"\n");
+
+	}
+	else
+	{
+		appendPQExpBuffer(
+			&output,
+			"Node \"%s\":\n",
+			node_info.node_name);
+
+		for (cell = node_status.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(
+				&output,
 			"\t%s: %s\n", cell->key, cell->value);
+		}
 	}
 
 	puts(output.data);
