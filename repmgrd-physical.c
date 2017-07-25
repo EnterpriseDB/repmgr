@@ -749,7 +749,7 @@ monitor_streaming_standby(void)
 
 		check_connection(&local_node_info, local_conn);
 
-		sleep(1);
+		sleep(config_file_options.monitor_interval_secs);
 	}
 #endif
 }
@@ -1336,11 +1336,9 @@ poll_best_candidate(NodeInfoList *standby_nodes)
 static bool
 wait_primary_notification(int *new_primary_id)
 {
-	// XXX make this configurable
-	int wait_primary_timeout = 60;
 	int i;
 
-	for (i = 0; i < wait_primary_timeout; i++)
+	for (i = 0; i < config_file_options.primary_notification_timeout; i++)
 	{
 		if (get_new_primary(local_conn, new_primary_id) == true)
 		{
@@ -1353,7 +1351,7 @@ wait_primary_notification(int *new_primary_id)
 
 
 	log_warning(_("no notification received from new primary after %i seconds"),
-				wait_primary_timeout);
+				config_file_options.primary_notification_timeout);
 
 	monitoring_state = MS_DEGRADED;
 	INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
@@ -1866,7 +1864,7 @@ close_connections_physical()
 	{
 		/* cancel any pending queries to the primary */
 		if (PQisBusy(primary_conn) == 1)
-			cancel_query(primary_conn, config_file_options.primary_response_timeout);
+			cancel_query(primary_conn, config_file_options.async_query_timeout);
 		PQfinish(primary_conn);
 		primary_conn = NULL;
 	}

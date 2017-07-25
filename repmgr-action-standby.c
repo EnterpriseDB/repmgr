@@ -1293,7 +1293,7 @@ do_standby_follow(void)
 		 * seconds before giving up
 		 */
 
-		for (timer = 0; timer < config_file_options.primary_response_timeout; timer++)
+		for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
 		{
 			primary_conn = get_primary_connection_quiet(local_conn,
 														&primary_id,

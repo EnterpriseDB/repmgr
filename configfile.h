@@ -78,12 +78,13 @@ typedef struct
 	char		promote_command[MAXLEN];
 	char		follow_command[MAXLEN];
 	int			monitor_interval_secs;
-	int			primary_response_timeout;
 	int			reconnect_attempts;
 	int			reconnect_interval;
-	int			retry_promote_interval_secs;
 	bool		monitoring_history;
 	int			degraded_monitoring_timeout;
+	int			async_query_timeout;
+	int			primary_notification_timeout;
+	int			primary_follow_timeout;
 
 	/* BDR settings */
 	bool		bdr_local_monitoring_only;
@@ -125,10 +126,12 @@ typedef struct
 		/* repmgrd settings */ \
 		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", \
 		DEFAULT_STATS_REPORTING_INTERVAL, \
-		60,	\
 		DEFAULT_RECONNECTION_ATTEMPTS, \
         DEFAULT_RECONNECTION_INTERVAL, \
-        300, false, -1, \
+        false, -1, \
+		DEFAULT_ASYNC_QUERY_TIMEOUT, \
+		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT,	\
+		DEFAULT_PRIMARY_FOLLOW_TIMEOUT,	\
 		/* BDR settings */ \
 		false, false, \
 		/* service settings */ \

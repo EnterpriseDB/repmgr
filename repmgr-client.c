@@ -1320,6 +1320,7 @@ do_help(void)
 #endif
 	printf(_("	%s [OPTIONS] bdr     register\n"), progname());
 	printf(_("	%s [OPTIONS] bdr     unregister\n"), progname());
+	printf(_("	%s [OPTIONS] node    status\n"), progname());
 	printf(_("	%s [OPTIONS] cluster show\n"), progname());
 	printf(_("	%s [OPTIONS] cluster event\n"), progname());
 

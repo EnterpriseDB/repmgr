@@ -72,14 +72,14 @@
 # This is mainly intended for those cases when `repmgr` is executed directly
 # by `repmgrd`.
 
-#log_level=INFO                          # Log level: possible values are DEBUG, INFO, NOTICE,
-                                         # WARNING, ERROR, ALERT, CRIT or EMERG
+#log_level=INFO                         # Log level: possible values are DEBUG, INFO, NOTICE,
+                                        # WARNING, ERROR, ALERT, CRIT or EMERG
 
-#log_facility=STDERR                     # Logging facility: possible values are STDERR, or for
-                                         # syslog integration, one of LOCAL0, LOCAL1, ..., LOCAL7, USER
+#log_facility=STDERR                    # Logging facility: possible values are STDERR, or for
+                                        # syslog integration, one of LOCAL0, LOCAL1, ..., LOCAL7, USER
 
-#log_file=''                             # stderr can be redirected to an arbitrary file:
-#log_status_interval=300                 # interval (in seconds) for repmgrd to log a status message
+#log_file=''                            # stderr can be redirected to an arbitrary file:
+#log_status_interval=300                # interval (in seconds) for repmgrd to log a status message
 
 
 #------------------------------------------------------------------------------
@@ -105,24 +105,24 @@
 #
 #   event_notifications=master_register,standby_register
 
-#event_notification_command=''           # An external program or script which
-                                         # can be executed by the user under which
-                                         # repmgr/repmgrd are run.
+#event_notification_command=''          # An external program or script which
+                                        # can be executed by the user under which
+                                        # repmgr/repmgrd are run.
 
-#event_notifications=''                  # A commas-separated list of notification
-                                         # types
+#event_notifications=''                 # A commas-separated list of notification
+                                        # types
 
 #------------------------------------------------------------------------------
 # Environment/command settings
 #------------------------------------------------------------------------------
 
-#pg_bindir=''                            # Path to PostgreSQL binary directory (location
-                                         # of pg_ctl, pg_basebackup etc.). Only needed
-                                         # if these files are not in the system $PATH.
-                                         #
-                                         # Debian/Ubuntu users: you will probably need to
-                                         # set this to the directory where `pg_ctl` is located,
-                                         # e.g. /usr/lib/postgresql/9.6/bin/
+#pg_bindir=''                           # Path to PostgreSQL binary directory (location
+                                        # of pg_ctl, pg_basebackup etc.). Only needed
+                                        # if these files are not in the system $PATH.
+                                        #
+                                        # Debian/Ubuntu users: you will probably need to
+                                        # set this to the directory where `pg_ctl` is located,
+                                        # e.g. /usr/lib/postgresql/9.6/bin/
 
 
 #------------------------------------------------------------------------------
@@ -138,10 +138,10 @@
 #   rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
 #   ssh_options=-o "StrictHostKeyChecking no"
 
-pg_ctl_options=''                         # Options to append to "pg_ctl"
-pg_basebackup_options=''                  # Options to append to "pg_basebackup"
-rsync_options=''                          # Options to append to "rsync"
-ssh_options=''                            # Options to append to "ssh"
+pg_ctl_options=''                       # Options to append to "pg_ctl"
+pg_basebackup_options=''                # Options to append to "pg_basebackup"
+rsync_options=''                        # Options to append to "rsync"
+ssh_options=''                          # Options to append to "ssh"
 
 
 
@@ -157,11 +157,21 @@ ssh_options=''                            # Options to append to "ssh"
 #   tablespace_mapping=/path/to/original/tablespace=/path/to/new/tablespace
 #   restore_command = 'cp /path/to/archived/wals/%f %p'
 
-#tablespace_mapping=''                   # Tablespaces can be remapped from one
-                                         # file system location to another
+#tablespace_mapping=''                  # Tablespaces can be remapped from one
+                                        # file system location to another
 
-#restore_command=''                      # This will be placed in the recovery.conf
-                                         # file generated by repmgr
+#restore_command=''                     # This will be placed in the recovery.conf
+                                        # file generated by repmgr
+
+#------------------------------------------------------------------------------
+# Standby follow settings
+#------------------------------------------------------------------------------
+
+# These settings apply when instructing a standby to follow the new primary
+# ("repmgr standby follow").
+
+#primary_follow_timeout=60              # The length of time (in seconds) to wait
+                                        # for the new primary to become available
 
 
 #------------------------------------------------------------------------------
@@ -175,7 +185,7 @@ ssh_options=''                            # Options to append to "ssh"
                                         # in a non-standard location)
 
 #------------------------------------------------------------------------------
-# Failover settings (repmgrd)
+# Failover and monitoring settings (repmgrd)
 #------------------------------------------------------------------------------
 #
 # These settings are only applied when repmgrd is running. Values shown
@@ -183,10 +193,15 @@ ssh_options=''                            # Options to append to "ssh"
 
 #monitoring_history=no
 
+#primary_notification_timeout=60        # Interval (in seconds) which repmgrd on a standby
+                                        # will wait for a notification from the new primary,
+                                        # before falling back to degraded monitoriong
 #degraded_monitoring_timeout=-1         # Interval (in seconds) after which repmgrd
                                         # will terminate if the server being monitored
-                                        # is no longer available. -1 (default)
-                                        # disables completely.
+                                        # is no longer available. -1 (default) disables the
+                                        # timeout completely.
+#async_query_timeout=60                 # Interval (in seconds) which repmgrd will wait before
+                                        # cancelling an asynchronous query.
 
 #------------------------------------------------------------------------------
 # service control commands
@@ -216,3 +231,9 @@ ssh_options=''                            # Options to append to "ssh"
 #service_reload_command = ''
 #service_promote_command = ''            # Note: this overrides any value contained
                                          # in the setting "promote_command"
+
+#------------------------------------------------------------------------------
+# BDR monitoring options
+#------------------------------------------------------------------------------
+
+#bdr_active_node_recovery=false          # 

@@ -242,13 +242,14 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	options->monitor_interval_secs = DEFAULT_STATS_REPORTING_INTERVAL;
-	options->primary_response_timeout = 60;
 	/* default to 6 reconnection attempts at intervals of 10 seconds */
 	options->reconnect_attempts = DEFAULT_RECONNECTION_ATTEMPTS;
 	options->reconnect_interval = DEFAULT_RECONNECTION_INTERVAL;
-	options->retry_promote_interval_secs = 300;
 	options->monitoring_history = false;  /* new in 4.0, replaces --monitoring-history */
 	options->degraded_monitoring_timeout = -1;
+	options->async_query_timeout = DEFAULT_ASYNC_QUERY_TIMEOUT;
+	options->primary_notification_timeout = DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT;
+	options->primary_follow_timeout = DEFAULT_PRIMARY_FOLLOW_TIMEOUT;
 
 	/* BDR settings
 	 * ------------ */
@@ -415,12 +416,16 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->reconnect_interval = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "monitor_interval_secs") == 0)
 			options->monitor_interval_secs = repmgr_atoi(value, name, error_list, 1);
-		else if (strcmp(name, "retry_promote_interval_secs") == 0)
-			options->retry_promote_interval_secs = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "monitoring_history") == 0)
 			options->monitoring_history = parse_bool(value, name, error_list);
 		else if (strcmp(name, "degraded_monitoring_timeout") == 0)
 			options->degraded_monitoring_timeout = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "async_query_timeout") == 0)
+			options->async_query_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "primary_notification_timeout") == 0)
+			options->primary_notification_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "primary_follow_timeout") == 0)
+			options->primary_follow_timeout = repmgr_atoi(value, name, error_list, 0);
 
 		/* BDR settings */
 		else if (strcmp(name, "bdr_local_monitoring_only") == 0)
@@ -488,19 +493,31 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "loglevel") == 0)
 		{
 			item_list_append(warning_list,
-							 _("parameter \"loglevel\" has been enamed to \"log_level\""));
+							 _("parameter \"loglevel\" has been renamed to \"log_level\""));
 			known_parameter = false;
 		}
 		else if (strcmp(name, "logfacility") == 0)
 		{
 			item_list_append(warning_list,
-							 _("parameter \"logfacility\" has been enamed to \"log_facility\""));
+							 _("parameter \"logfacility\" has been renamed to \"log_facility\""));
 			known_parameter = false;
 		}
 		else if (strcmp(name, "logfile") == 0)
 		{
 			item_list_append(warning_list,
-							 _("parameter \"logfile\" has been enamed to \"log_file\""));
+							 _("parameter \"logfile\" has been renamed to \"log_file\""));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "master_reponse_timeout") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"master_reponse_timeout\" has been removed; use \"async_query_timeout\" instead"));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "master_reponse_timeout") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"retry_promote_interval_secs\" has been removed; use \"primary_notification_timeout\" instead"));
 			known_parameter = false;
 		}
 		else
