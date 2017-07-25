@@ -48,6 +48,7 @@ maxlen_snprintf(char *str, const char *format,...)
 	return retval;
 }
 
+
 int
 maxpath_snprintf(char *str, const char *format,...)
 {
@@ -60,6 +61,7 @@ maxpath_snprintf(char *str, const char *format,...)
 
 	return retval;
 }
+
 
 void
 append_where_clause(PQExpBufferData *where_clause, const char *format, ...)
@@ -87,17 +89,19 @@ append_where_clause(PQExpBufferData *where_clause, const char *format, ...)
 
 }
 
+
 void
 item_list_append(ItemList *item_list, const char *message)
 {
 	item_list_append_format(item_list, "%s", message);
 }
 
+
 void
 item_list_append_format(ItemList *item_list, const char *format, ...)
 {
 	ItemListCell *cell;
-	va_list		arglist;
+	va_list		  arglist;
 
 	cell = (ItemListCell *) pg_malloc0(sizeof(ItemListCell));
 
@@ -123,6 +127,58 @@ item_list_append_format(ItemList *item_list, const char *format, ...)
 	item_list->tail = cell;
 }
 
+
+void
+key_value_list_set(KeyValueList *item_list, const char *key, const char *value)
+{
+	key_value_list_set_format(item_list, key, "%s", value);
+	return;
+}
+
+void
+key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value, ...)
+{
+	KeyValueListCell *cell;
+	va_list			  arglist;
+	int			  	  keylen;
+
+	cell = (KeyValueListCell *) pg_malloc0(sizeof(KeyValueListCell));
+
+	if (cell == NULL)
+	{
+		log_error(_("unable to allocate memory; terminating."));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	keylen = strlen(key);
+
+	cell->key = pg_malloc0(keylen + 1);
+	cell->value = pg_malloc0(MAXLEN);
+
+	strncpy(cell->key, key, keylen);
+
+	va_start(arglist, value);
+	(void) xvsnprintf(cell->value, MAXLEN, value, arglist);
+	va_end(arglist);
+
+
+	if (item_list->tail)
+		item_list->tail->next = cell;
+	else
+		item_list->head = cell;
+
+	item_list->tail = cell;
+
+	return;
+}
+
+
+const char *
+key_value_list_get(KeyValueList *item_list, const char *key)
+{
+	return NULL;
+}
+
 /*
  * Escape a string for use as a parameter in recovery.conf
  * Caller must free returned value
@@ -139,6 +195,7 @@ escape_recovery_conf_value(const char *src)
 	}
 	return result;
 }
+
 
 char *
 escape_string(PGconn *conn, const char *string)
@@ -160,7 +217,6 @@ escape_string(PGconn *conn, const char *string)
 }
 
 
-
 char *
 string_skip_prefix(const char *prefix, char *string)
 {
@@ -173,6 +229,7 @@ string_skip_prefix(const char *prefix, char *string)
 	else
 		return string + n;
 }
+
 
 char *
 string_remove_trailing_newlines(char *string)

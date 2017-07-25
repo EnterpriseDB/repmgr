@@ -23,6 +23,9 @@ do_node_status(void)
 	char			cluster_size[MAXLEN];
 	PQExpBufferData	output;
 
+	KeyValueList	node_status = { NULL, NULL };
+	KeyValueListCell *cell;
+
 	ItemList 		warnings = { NULL, NULL };
 	RecoveryType	recovery_type;
 
@@ -53,32 +56,25 @@ do_node_status(void)
 
 	get_node_replication_stats(conn, &node_info);
 
-	initPQExpBuffer(&output);
+	key_value_list_set(
+		&node_status,
+		"PostgreSQL version",
+		server_version);
 
-	appendPQExpBuffer(
-		&output,
-		"Node \"%s\":\n",
-		node_info.node_name);
+	key_value_list_set(
+		&node_status,
+		"Total data size",
+		cluster_size);
 
-	appendPQExpBuffer(
-		&output,
-		"%cPostgreSQL version: %s\n",
-		'\t', server_version);
+	key_value_list_set(
+		&node_status,
+		"Conninfo",
+		node_info.conninfo);
 
-	appendPQExpBuffer(
-		&output,
-		"%cTotal data size: %s\n",
-		'\t', cluster_size);
-
-	appendPQExpBuffer(
-		&output,
-		"%cConninfo: \"%s\"\n",
-		'\t', node_info.conninfo);
-
-	appendPQExpBuffer(
-		&output,
-		"%cRole: \"%s\"\n",
-		'\t', get_node_type_string(node_info.type));
+	key_value_list_set(
+		&node_status,
+		"Role",
+		get_node_type_string(node_info.type));
 
 	switch (node_info.type)
 	{
@@ -106,35 +102,37 @@ do_node_status(void)
 
 	if (node_info.max_wal_senders >= 0)
 	{
-		appendPQExpBuffer(
-			&output,
-			"%cReplication connections: %i (of maximal %i)\n",
-			'\t',
+		key_value_list_set_format(
+			&node_status,
+			"Replication connections",
+			"%i (of maximal %i)",
 			node_info.attached_wal_receivers,
 			node_info.max_wal_senders);
-
 	}
 	else if (node_info.max_wal_senders == 0)
 	{
-		appendPQExpBuffer(
-			&output,
-			"%cReplication connections: disabled\n",
-			'\t');
+		key_value_list_set_format(
+			&node_status,
+			"Replication connections",
+			"disabled");
 	}
 
 	if (node_info.max_replication_slots > 0)
 	{
+		PQExpBufferData	slotinfo;
+		initPQExpBuffer(&slotinfo);
+
 		appendPQExpBuffer(
-			&output,
-			"%cReplication slots: %i (of maximal %i)",
-			'\t',
+			&slotinfo,
+			"%i (of maximal %i)",
 			node_info.active_replication_slots + node_info.inactive_replication_slots,
 			node_info.max_replication_slots);
+
 
 		if (node_info.inactive_replication_slots > 0)
 		{
 			appendPQExpBuffer(
-				&output,
+				&slotinfo,
 				"; %i inactive",
 				node_info.inactive_replication_slots);
 
@@ -143,26 +141,35 @@ do_node_status(void)
 				_("- node has %i inactive replication slots"),
 				node_info.inactive_replication_slots);
 		}
+
+		key_value_list_set(
+			&node_status,
+			"Replication slots",
+			slotinfo.data);
+
+		termPQExpBuffer(&slotinfo);
 	}
 	else if (node_info.max_replication_slots == 0)
 	{
-		appendPQExpBuffer(
-			&output,
-			"%cReplication slots: disabled\n",
-			'\t');
+		key_value_list_set(
+			&node_status,
+			"Replication slots",
+			"disabled");
 	}
 
-/*
-	appendPQExpBuffer(
-		&output,
-		"%c: \"%s\"\n",
-		'\t', );
-	appendPQExpBuffer(
-		&output,
-		"%c: \"%s\"\n",
-		'\t', node_info.);
-*/
+	initPQExpBuffer(&output);
 
+	appendPQExpBuffer(
+		&output,
+		"Node \"%s\":\n",
+		node_info.node_name);
+
+	for (cell = node_status.head; cell; cell = cell->next)
+	{
+		appendPQExpBuffer(
+			&output,
+			"\t%s: %s\n", cell->key, cell->value);
+	}
 
 	puts(output.data);
 

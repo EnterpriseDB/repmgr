@@ -31,6 +31,19 @@ typedef struct ItemList
 	ItemListCell *tail;
 } ItemList;
 
+typedef struct KeyValueListCell
+{
+	struct KeyValueListCell *next;
+	char				    *key;
+	char				    *value;
+} KeyValueListCell;
+
+typedef struct KeyValueList
+{
+	KeyValueListCell *head;
+	KeyValueListCell *tail;
+} KeyValueList;
+
 
 extern int
 maxlen_snprintf(char *str, const char *format,...)
@@ -46,6 +59,17 @@ item_list_append(ItemList *item_list, const char *message);
 extern void
 item_list_append_format(ItemList *item_list, const char *format, ...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
+
+extern void
+key_value_list_set(KeyValueList *item_list, const char *key, const char *value);
+
+extern void
+key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value, ...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
+
+extern const char *
+key_value_list_get(KeyValueList *item_list, const char *key);
+
 
 extern char *
 escape_recovery_conf_value(const char *src);
