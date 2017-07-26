@@ -21,6 +21,8 @@
  *
  * CLUSTER SHOW
  * CLUSTER EVENT
+ * CLUSTER CROSSCHECK
+ * CLUSTER MATRIX
  */
 
 #include <unistd.h>
@@ -46,7 +48,7 @@
 t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
-/* conninfo params for the node we're cloning from */
+/* conninfo params for the node we're operating on */
 t_conninfo_param_list source_conninfo;
 
 bool	 config_file_required = true;
@@ -565,6 +567,7 @@ main(int argc, char **argv)
 	 *	 { PRIMARY | MASTER } REGISTER |
 	 *	 STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
 	 *	 BDR { REGISTER | UNREGISTER } |
+	 *   NODE { STATUS } |
 	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP | EVENT }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host optipn
@@ -654,7 +657,10 @@ main(int argc, char **argv)
 			/* allow "CLUSTER EVENTS" as synonym for "CLUSTER EVENT" */
 			else if (strcasecmp(repmgr_action, "EVENTS") == 0)
 				action = CLUSTER_EVENT;
-
+			else if (strcasecmp(repmgr_action, "CROSSCHECK") == 0)
+				action = CLUSTER_CROSSCHECK;
+			else if (strcasecmp(repmgr_action, "MATRIX") == 0)
+				action = CLUSTER_MATRIX;
 		}
 		else
 		{
@@ -840,7 +846,11 @@ main(int argc, char **argv)
 		RecordStatus record_status;
 
 		log_verbose(LOG_DEBUG, "connecting to local node to retrieve record for node specified with --node-id or --node-name");
-		conn = establish_db_connection(config_file_options.conninfo, true);
+
+		if (strlen(config_file_options.conninfo))
+			conn = establish_db_connection(config_file_options.conninfo, true);
+		else
+			conn = establish_db_connection_by_params(&source_conninfo, true);
 
 		if (runtime_options.node_id != UNKNOWN_NODE_ID)
 		{
@@ -965,6 +975,12 @@ main(int argc, char **argv)
 		case CLUSTER_EVENT:
 			do_cluster_event();
 			break;
+		case CLUSTER_CROSSCHECK:
+			do_cluster_crosscheck();
+			break;
+		case CLUSTER_MATRIX:
+			do_cluster_matrix();
+			break;
 
 		default:
 			/* An action will have been determined by this point  */
@@ -1078,6 +1094,8 @@ check_cli_parameters(const int action)
 
 		}
 		case CLUSTER_SHOW:
+		case CLUSTER_MATRIX:
+		case CLUSTER_CROSSCHECK:
 			if (runtime_options.connection_param_provided)
 				config_file_required = false;
 			break;
@@ -1100,6 +1118,8 @@ check_cli_parameters(const int action)
 			case STANDBY_CLONE:
 			case STANDBY_FOLLOW:
 			case CLUSTER_SHOW:
+			case CLUSTER_MATRIX:
+			case CLUSTER_CROSSCHECK:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
@@ -1136,6 +1156,8 @@ check_cli_parameters(const int action)
 			case PRIMARY_UNREGISTER:
 			case STANDBY_UNREGISTER:
 			case CLUSTER_EVENT:
+			case CLUSTER_MATRIX:
+			case CLUSTER_CROSSCHECK:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
@@ -1259,14 +1281,34 @@ action_name(const int action)
 	{
 		case PRIMARY_REGISTER:
 			return "PRIMARY REGISTER";
+		case PRIMARY_UNREGISTER:
+			return "PRIMARY UNREGISTER";
+
 		case STANDBY_CLONE:
 			return "STANDBY CLONE";
 		case STANDBY_REGISTER:
 			return "STANDBY REGISTER";
 		case STANDBY_UNREGISTER:
 			return "STANDBY UNREGISTER";
+		case STANDBY_PROMOTE:
+			return "STANDBY PROMOTE";
+		case STANDBY_FOLLOW:
+			return "STANDBY FOLLOW";
+
+		case BDR_REGISTER:
+			return "BDR REGISTER"
+;		case BDR_UNREGISTER:
+			return "BDR UNREGISTER";
+
+		case CLUSTER_SHOW:
+			return "CLUSTER SHOW";
 		case CLUSTER_EVENT:
 			return "CLUSTER EVENT";
+		case CLUSTER_MATRIX:
+			return "CLUSTER MATRIX";
+		case CLUSTER_CROSSCHECK:
+			return "CLUSTER CROSSCHECK";
+
 	}
 
 	return "UNKNOWN ACTION";
@@ -2072,7 +2114,7 @@ get_standby_clone_mode(void)
 
 
 char *
-make_pg_path(char *file)
+make_pg_path(const char *file)
 {
 	maxlen_snprintf(path_buf, "%s%s", pg_bindir, file);
 
@@ -2370,6 +2412,80 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 	free(escaped);
 
 	termPQExpBuffer(&conninfo_buf);
+}
+
+
+/*
+ * Execute a command via ssh on the remote host.
+ *
+ * TODO: implement SSH calls using libssh2.
+ */
+bool
+remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf)
+{
+	FILE *fp;
+	char ssh_command[MAXLEN];
+	PQExpBufferData ssh_host;
+
+	char output[MAXLEN];
+
+	initPQExpBuffer(&ssh_host);
+
+	if (*user != '\0')
+	{
+		appendPQExpBuffer(&ssh_host, "%s@", user);
+	}
+
+	appendPQExpBuffer(&ssh_host, "%s",host);
+
+	maxlen_snprintf(ssh_command,
+					"ssh -o Batchmode=yes %s %s %s",
+					config_file_options.ssh_options,
+					ssh_host.data,
+					command);
+
+	termPQExpBuffer(&ssh_host);
+
+	log_debug("remote_command(): %s\n", ssh_command);
+
+	fp = popen(ssh_command, "r");
+
+	if (fp == NULL)
+	{
+		log_error(_("unable to execute remote command:\n  %s"), ssh_command);
+		return false;
+	}
+
+	if (outputbuf != NULL)
+	{
+		/* TODO: better error handling */
+		while (fgets(output, MAXLEN, fp) != NULL)
+		{
+			appendPQExpBuffer(outputbuf, "%s", output);
+		}
+	}
+	else
+	{
+		/*
+		 * When executed remotely, repmgr commands which execute pg_ctl (particularly
+		 * `repmgr standby follow`) will see the pg_ctl command appear to fail with a
+		 * non-zero return code when the output from the executed pg_ctl command
+		 * has nowhere to go, even though the command actually succeeds. We'll consume an
+		 * arbitrary amount of output and throw it away to work around this.
+		 */
+		int i = 0;
+		while (fgets(output, MAXLEN, fp) != NULL && i < 10)
+		{
+			i++;
+		}
+	}
+
+	pclose(fp);
+
+	if (outputbuf != NULL)
+		log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n  %s", outputbuf->data);
+
+	return true;
 }
 
 
