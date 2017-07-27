@@ -86,6 +86,9 @@ do_cluster_show(void)
 	/*
 	 * XXX if repmgr is ever localized into non-ASCII locales,
 	 * use pg_wcssize() or similar to establish printed column length
+	 *
+	 * TODO: skip display of "Upstream" for BDR nodes as it will always
+	 * be empty
 	 */
 
 	for (i = 0; i < SHOW_HEADER_COUNT; i++)
