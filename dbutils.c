@@ -3185,6 +3185,76 @@ bdr_node_exists(PGconn *conn, const char *node_name)
 }
 
 
+ReplSlotStatus
+get_bdr_node_replication_slot_status(PGconn *conn, const char *node_name)
+{
+	PQExpBufferData		query;
+	PGresult		   *res;
+	ReplSlotStatus		status;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		" SELECT s.active "
+		"   FROM pg_catalog.pg_replication_slots s "
+		"  WHERE slot_name = "
+		"    (SELECT bdr.bdr_format_slot_name(node_sysid, node_timeline, node_dboid, datoid) "
+		"   FROM bdr.bdr_nodes "
+		" WHERE node_name = '%s') ",
+		node_name);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		status = SLOT_UNKNOWN;
+	}
+	else
+	{
+		status = (strcmp(PQgetvalue(res, 0, 0), "t") == 0)
+			? SLOT_ACTIVE
+			: SLOT_INACTIVE;
+	}
+
+	PQclear(res);
+
+	return status;
+}
+
+
+void
+get_bdr_other_node_name(PGconn *conn, int node_id, char *node_name)
+{
+	PQExpBufferData		query;
+	PGresult		   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		" SELECT node_name "
+		"   FROM repmgr.nodes "
+        "  WHERE node_id != %i",
+		node_id);
+
+	log_verbose(LOG_DEBUG, "get_bdr_other_node_name():\n  %s", query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if(PQresultStatus(res) == PGRES_TUPLES_OK)
+	{
+		strncpy(node_name, PQgetvalue(res, 0, 0), MAXLEN);
+	}
+
+	PQclear(res);
+
+	return;
+}
+
+
 void
 add_extension_tables_to_bdr_replication_set(PGconn *conn)
 {

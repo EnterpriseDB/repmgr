@@ -224,7 +224,8 @@ do_node_status(void)
 	{
 		log_warning(_("following issue(s) were detected:"));
 		print_item_list(&warnings);
-		log_hint(_("execute \"repmgr node check\" for more details"));
+		/* add this when functionality implemented */
+		/* log_hint(_("execute \"repmgr node check\" for more details")); */
 	}
 
 }

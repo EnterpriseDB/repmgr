@@ -60,6 +60,13 @@ typedef enum {
 	VR_NEGATIVE_VOTE
 } VoteRequestResult;
 
+
+typedef enum {
+	SLOT_UNKNOWN = -1,
+	SLOT_INACTIVE,
+	SLOT_ACTIVE
+} ReplSlotStatus;
+
 /*
  * Struct to store node information
  */
@@ -356,6 +363,8 @@ bool		 add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, con
 void		 add_extension_tables_to_bdr_replication_set(PGconn *conn);
 
 bool		 bdr_node_exists(PGconn *conn, const char *node_name);
+ReplSlotStatus get_bdr_node_replication_slot_status(PGconn *conn, const char *node_name);
+void 		 get_bdr_other_node_name(PGconn *conn, int node_id, char *name_buf);
 
 bool		 am_bdr_failover_handler(PGconn *conn, int node_id);
 void		 unset_bdr_failover_handler(PGconn *conn);

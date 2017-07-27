@@ -1300,6 +1300,9 @@ action_name(const int action)
 ;		case BDR_UNREGISTER:
 			return "BDR UNREGISTER";
 
+		case NODE_STATUS:
+			return "NODE STATUS";
+
 		case CLUSTER_SHOW:
 			return "CLUSTER SHOW";
 		case CLUSTER_EVENT:
@@ -1358,7 +1361,7 @@ do_help(void)
 #endif
 	printf(_("	%s [OPTIONS] bdr     {register|unregister}\n"), progname());
 	printf(_("	%s [OPTIONS] node    status\n"), progname());
-	printf(_("	%s [OPTIONS] cluster {show|matrix|crosscheck|cleanup}\n"), progname());
+	printf(_("	%s [OPTIONS] cluster {show|event|matrix|crosscheck}\n"), progname());
 
 	puts("");
 

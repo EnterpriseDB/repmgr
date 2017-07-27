@@ -416,12 +416,15 @@ static void
 do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 {
 	PGconn *recovered_node_conn;
+	PGconn *slot_check_conn;
+
 	PQExpBufferData event_details;
-	t_bdr_node_info bdr_record;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 	int i;
 	bool node_recovered = false;
 	int		node_recovery_elapsed;
+
+	char node_name[MAXLEN] = "";
 
 	recovered_node_conn = establish_db_connection(monitored_node->conninfo, false);
 
@@ -431,23 +434,30 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		return;
 	}
 
-	if (am_bdr_failover_handler(recovered_node_conn, local_node_info.node_id) == false)
+	/* determine which replication slot to look fore */
+	if (monitored_node->node_id == local_node_info.node_id)
 	{
-		PQfinish(recovered_node_conn);
-		log_debug("other node's repmgrd is handling recovery");
-		return;
+		slot_check_conn = recovered_node_conn;
+		get_bdr_other_node_name(recovered_node_conn, local_node_info.node_id, node_name);
+	}
+	else
+	{
+		slot_check_conn = local_conn;
+		strncpy(node_name, monitored_node->node_name, MAXLEN);
 	}
 
 	for (i = 0; i < config_file_options.bdr_recovery_timeout; i++)
 	{
-		RecordStatus record_status = get_bdr_node_record_by_name(
-			recovered_node_conn,
-			monitored_node->node_name,
-			&bdr_record);
+		ReplSlotStatus slot_status;
 
-		if (record_status == RECORD_FOUND && bdr_record.node_status == 'r')
+		log_debug("checking for state of replication slot for node \"%s\"", node_name);
+
+		slot_status = get_bdr_node_replication_slot_status(
+			slot_check_conn,
+			node_name);
+
+		if (slot_status == SLOT_ACTIVE)
 		{
-			// check pg_stat_replication
 			node_recovered = true;
 			break;
 		}
@@ -456,31 +466,45 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		continue;
 	}
 
+
 	if (node_recovered == false)
 	{
-		log_warning(_("node did not come up"));
+		log_warning(_("no active replication slot for node \"%s\" found after %i seconds"),
+					node_name,
+					config_file_options.bdr_recovery_timeout);
+		log_detail(_("this probably means inter-node BDR connections have not been re-established"));
 		PQfinish(recovered_node_conn);
 		return;
 	}
 
+	log_info(_("active replication slot for node \"%s\" found after %i seconds"),
+			 node_name,
+			 i);
 
-	// XXX check other node is attached to this one so we
-	// don't end up monitoring a parted node; if not attached,
-	// generate a failed bdr_recovery event
+	node_recovery_elapsed = calculate_elapsed(degraded_monitoring_start);
+	monitored_node->monitoring_state = MS_NORMAL;
 
 	initPQExpBuffer(&event_details);
 
-	node_recovery_elapsed = calculate_elapsed(degraded_monitoring_start);
 
 	appendPQExpBuffer(&event_details,
-					  _("node '%s' (ID: %i) has recovered after %i seconds"),
+					  _("node \"%s\" (ID: %i) has recovered after %i seconds"),
 					  monitored_node->node_name,
 					  monitored_node->node_id,
 					  node_recovery_elapsed);
 
-	monitored_node->monitoring_state = MS_NORMAL;
-
 	log_notice("%s", event_details.data);
+
+
+	/* other node will generate the event */
+	if (monitored_node->node_id == local_node_info.node_id)
+	{
+		termPQExpBuffer(&event_details);
+		PQfinish(recovered_node_conn);
+
+		return;
+	}
+
 
 	/* generate the event on the currently active node only */
 	if (monitored_node->node_id != local_node_info.node_id)
@@ -512,8 +536,6 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	}
 
 	termPQExpBuffer(&event_details);
-
-	unset_bdr_failover_handler(recovered_node_conn);
 
 	PQfinish(recovered_node_conn);
 
