@@ -241,7 +241,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	strncpy(options->location, DEFAULT_LOCATION, MAXLEN);
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
-	options->monitor_interval_secs = DEFAULT_STATS_REPORTING_INTERVAL;
+	options->monitor_interval_secs = DEFAULT_MONITORING_INTERVAL;
 	/* default to 6 reconnection attempts at intervals of 10 seconds */
 	options->reconnect_attempts = DEFAULT_RECONNECTION_ATTEMPTS;
 	options->reconnect_interval = DEFAULT_RECONNECTION_INTERVAL;

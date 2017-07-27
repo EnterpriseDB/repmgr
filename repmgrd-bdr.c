@@ -33,6 +33,7 @@ monitor_bdr(void)
 	RecordStatus  record_status;
 	NodeInfoListCell *cell;
 	PQExpBufferData event_details;
+	instr_time	log_status_interval_start;
 
 	/* sanity check local database */
 	log_info(_("connecting to local database '%s'"),
@@ -139,13 +140,13 @@ monitor_bdr(void)
 
 	log_debug("main_loop_bdr() monitoring local node %i", config_file_options.node_id);
 
-	log_info(_("starting continuous bdr node monitoring"));
+	log_info(_("starting continuous BDR node monitoring"));
 
 	while (true)
 	{
 
 		/* monitoring loop */
-		log_verbose(LOG_DEBUG, "bdr check loop...");
+		log_verbose(LOG_DEBUG, "BDR check loop...");
 
 		for (cell = nodes.head; cell; cell = cell->next)
 		{
@@ -189,6 +190,8 @@ monitor_bdr(void)
 								cell->node_info->conn = NULL;
 							}
 
+							log_warning(_("unable to connect to node %s (ID %i)"),
+										cell->node_info->node_name, cell->node_info->node_id);
 							cell->node_info->conn = try_reconnect(cell->node_info);
 
 							/* node has recovered - log and continue */
@@ -240,6 +243,31 @@ monitor_bdr(void)
 
 	loop:
 
+		/* emit "still alive" log message at regular intervals, if requested */
+		if (config_file_options.log_status_interval > 0)
+		{
+			int		log_status_interval_elapsed = calculate_elapsed(log_status_interval_start);
+
+			if (log_status_interval_elapsed >= config_file_options.log_status_interval)
+			{
+				log_info(_("monitoring BDR replication status on node \"%s\" (ID: %i)"),
+						 local_node_info.node_name,
+						 local_node_info.node_id);
+
+				for (cell = nodes.head; cell; cell = cell->next)
+				{
+					if (cell->node_info->monitoring_state == MS_DEGRADED)
+					{
+						log_detail(
+							_("monitoring node \"%s\" (ID: %i) in degraded mode"),
+							cell->node_info->node_name,
+							cell->node_info->node_id);
+					}
+				}
+				INSTR_TIME_SET_CURRENT(log_status_interval_start);
+			}
+		}
+
 		if (got_SIGHUP)
 		{
 			/*
@@ -259,7 +287,6 @@ monitor_bdr(void)
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (\"monitor_interval_secs\")",
 					config_file_options.monitor_interval_secs);
 		sleep(config_file_options.monitor_interval_secs);
-
 	}
 
 	return;
@@ -385,6 +412,8 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	/* update node record on the active node */
 	update_node_record_set_active(next_node_conn, monitored_node->node_id, false);
 
+	log_notice(_("setting node record for node %i to inactive"), monitored_node->node_id);
+
 	appendPQExpBuffer(&event_details,
 					  _("node '%s' (ID: %i) detected as failed; next available node is '%s' (ID: %i)"),
 					  monitored_node->node_name,
@@ -410,6 +439,8 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 		true,
 		event_details.data,
 		&event_info);
+
+	log_info("%s", event_details.data);
 
 	termPQExpBuffer(&event_details);
 

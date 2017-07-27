@@ -647,7 +647,10 @@ try_reconnect(t_node_info *node_info)
 	}
 
 
-	log_warning(_("unable to reconnect to node after %i attempts"), max_attempts);
+	log_warning(_("unable to reconnect to node %i after %i attempts"),
+				node_info->node_id,
+				max_attempts);
+
 	node_info->node_status = NODE_STATUS_DOWN;
 
 	return NULL;

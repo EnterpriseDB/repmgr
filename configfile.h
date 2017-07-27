@@ -125,7 +125,7 @@ typedef struct
 		false, "", "", "", "", { NULL, NULL },	\
 		/* repmgrd settings */ \
 		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", \
-		DEFAULT_STATS_REPORTING_INTERVAL, \
+		DEFAULT_MONITORING_INTERVAL, \
 		DEFAULT_RECONNECTION_ATTEMPTS, \
         DEFAULT_RECONNECTION_INTERVAL, \
         false, -1, \

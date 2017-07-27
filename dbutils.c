@@ -2368,8 +2368,10 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 
 		*dst_ptr = '\0';
 
-		log_debug("_create_event(): executing\n%s", parsed_command);
+		log_info(_("executing notification command for event \"%s\""),
+				 event);
 
+		log_detail(_("command is:\n  %s"), parsed_command);
 		r = system(parsed_command);
 		if (r != 0)
 		{

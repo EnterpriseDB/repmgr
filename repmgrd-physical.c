@@ -336,7 +336,7 @@ monitor_streaming_primary(void)
 
 				if (monitoring_state == MS_DEGRADED)
 				{
-					log_detail(_("waiting primary to reappear"));
+					log_detail(_("waiting for primary to reappear"));
 				}
 
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
