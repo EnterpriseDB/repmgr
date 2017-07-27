@@ -243,6 +243,8 @@ and registered:
            2 | standby_register | t          | 2016-01-08 15:04:50.621292+09 |
     (3 rows)
 
+Alternatively use `repmgr cluster event` to output a list of events.
+
 Additionally, event notifications can be passed to a user-defined program
 or script which can take further action, e.g. send email notifications.
 This is done by setting the `event_notification_command` parameter in
@@ -294,6 +296,6 @@ The following event types are available:
   * `bdr_unregister`
 
 Note that under some circumstances (e.g. no replication cluster master could
-be located), it will not be possible to write an entry into the `repl_events`
+be located), it will not be possible to write an entry into the `repmgr.events`
 table, in which case executing a script via `event_notification_command` can
 serve as a fallback by generating some form of notification.
