@@ -241,7 +241,3 @@ ssh_options=''                          # Options to append to "ssh"
 #bdr_recovery_timeout                    # If a BDR node was offline and has become available
                                          # maximum length of time in seconds to wait for the
                                          # node to reconnect to the cluster
-#bdr_active_node_recovery=false          # If a BDR node was offline and has recovered,
-                                         # provide connection details with the "bdr_recovery"
-                                         # event to enable automatic reconfiguration of the node
-                                         # to accept connections

@@ -207,7 +207,7 @@ monitor_bdr(void)
 								create_event_notification(cell->node_info->conn,
 														  &config_file_options,
 														  config_file_options.node_id,
-														  "repmgrd_bdr_reconnect",
+														  "bdr_reconnect",
 														  true,
 														  event_details.data);
 								termPQExpBuffer(&event_details);
@@ -429,7 +429,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	PQExpBufferData event_details;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 	int i;
-	bool node_recovered = false;
+	bool slot_reactivated = false;
 	int		node_recovery_elapsed;
 
 	char node_name[MAXLEN] = "";
@@ -446,11 +446,40 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
-		log_debug("no local conn");
-		local_conn = establish_db_connection(config_file_options.conninfo, true);
+		log_debug("no local connection - attempting to reconnect ");
+		local_conn = establish_db_connection(config_file_options.conninfo, false);
 	}
 
-	// double-check local conn
+	/*
+	 * still unable to connect - the local node is probably down, so we can't
+	 * check for reconnection
+ 	 */
+	if (PQstatus(local_conn) != CONNECTION_OK)
+	{
+		local_conn = NULL;
+		log_warning(_("unable to reconnect to local node"));
+
+		initPQExpBuffer(&event_details);
+
+		node_recovery_elapsed = calculate_elapsed(degraded_monitoring_start);
+		monitored_node->monitoring_state = MS_NORMAL;
+		monitored_node->node_status = NODE_STATUS_UP;
+
+		appendPQExpBuffer(
+			&event_details,
+			_("node \"%s\" (ID: %i) has become available after %i seconds"),
+			monitored_node->node_name,
+			monitored_node->node_id,
+			node_recovery_elapsed);
+
+		log_notice("%s", event_details.data);
+
+		termPQExpBuffer(&event_details);
+
+		PQfinish(recovered_node_conn);
+
+		return;
+	}
 
 	get_bdr_other_node_name(local_conn, local_node_info.node_id, node_name);
 
@@ -467,15 +496,17 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 		if (slot_status == SLOT_ACTIVE)
 		{
-			node_recovered = true;
+			slot_reactivated = true;
 			break;
 		}
 
 		sleep(1);
 	}
 
+	/* mark node as up */
+	monitored_node->node_status = NODE_STATUS_UP;
 
-	if (node_recovered == false)
+	if (slot_reactivated == false)
 	{
 		log_warning(_("no active replication slot for node \"%s\" found after %i seconds"),
 					node_name,
@@ -491,10 +522,9 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	node_recovery_elapsed = calculate_elapsed(degraded_monitoring_start);
 	monitored_node->monitoring_state = MS_NORMAL;
-	monitored_node->node_status = NODE_STATUS_UP;
+
 
 	initPQExpBuffer(&event_details);
-
 
 	appendPQExpBuffer(&event_details,
 					  _("node \"%s\" (ID: %i) has recovered after %i seconds"),
@@ -518,31 +548,19 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	/* generate the event on the currently active node only */
 	if (monitored_node->node_id != local_node_info.node_id)
 	{
-		if (config_file_options.bdr_active_node_recovery == true)
-		{
-			event_info.conninfo_str = monitored_node->conninfo;
-			event_info.node_name = monitored_node->node_name;
+		event_info.conninfo_str = monitored_node->conninfo;
+		event_info.node_name = monitored_node->node_name;
 
-			create_event_notification_extended(
-				local_conn,
-				&config_file_options,
-				config_file_options.node_id,
-				"bdr_recovery",
-				true,
-				event_details.data,
-				&event_info);
-		}
-		else
-		{
-			create_event_record(
-				local_conn,
-				&config_file_options,
-				config_file_options.node_id,
-				"bdr_recovery",
-				true,
-				event_details.data);
-		}
+		create_event_notification_extended(
+			local_conn,
+			&config_file_options,
+			config_file_options.node_id,
+			"bdr_recovery",
+			true,
+			event_details.data,
+			&event_info);
 	}
+
 
 	update_node_record_set_active(local_conn, monitored_node->node_id, true);
 
