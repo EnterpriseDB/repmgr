@@ -95,7 +95,7 @@ monitor_bdr(void)
 	{
 		log_error(_("unable to retrieve record for local node (ID: %i), terminating"),
 				  local_node_info.node_id);
-		log_hint(_("check that 'repmgr bdr register' was executed for this node"));
+		log_hint(_("check that \"repmgr bdr register\" was executed for this node"));
 		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -191,7 +191,7 @@ monitor_bdr(void)
 
 							cell->node_info->conn = try_reconnect(cell->node_info);
 
-							/* Node has recovered - log and continue */
+							/* node has recovered - log and continue */
 							if (cell->node_info->node_status == NODE_STATUS_UP)
 							{
 								int		node_unreachable_elapsed = calculate_elapsed(node_unreachable_start);
@@ -267,7 +267,7 @@ monitor_bdr(void)
 
 /*
  * do_bdr_failover()
- *0
+ *
  * Here we attempt to perform a BDR "failover".
  *
  * As there's no equivalent of a physical replication failover,
@@ -292,6 +292,7 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	t_node_info failed_node  = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status;
 
+	/* if one of the two nodes is down, cluster will be in a degraded state */
 	monitored_node->monitoring_state = MS_DEGRADED;
 	INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
@@ -305,8 +306,7 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 		if (cell->node_info->node_id == monitored_node->node_id)
 			continue;
 
-		/* XXX skip inactive node? */
-		// reuse local conn if local node is up
+		/* TODO: reuse local conn if local node is up */
 		next_node_conn = establish_db_connection(cell->node_info->conninfo, false);
 
 		if (PQstatus(next_node_conn) == CONNECTION_OK)
@@ -353,22 +353,28 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	if (am_bdr_failover_handler(next_node_conn, local_node_info.node_id) == false)
 	{
 		PQfinish(next_node_conn);
-		log_debug("other node's repmgrd is handling failover");
+		log_notice(_("other node's repmgrd is handling failover"));
 		return;
 	}
 
+
+	/* check here that the node hasn't come back up */
+	if (is_server_available(monitored_node->conninfo) == true)
+	{
+		log_notice(_("node %i has reappeared, aborting failover"),
+				   monitored_node->node_id);
+		monitored_node->monitoring_state = MS_NORMAL;
+		PQfinish(next_node_conn);
+	}
+
 	log_debug("this node is the failover handler");
-
-	// check here that the node hasn't come back up...
-
-	log_info(_("connecting to target node %s"), target_node.node_name);
 
 	initPQExpBuffer(&event_details);
 
 	event_info.conninfo_str = target_node.conninfo;
 	event_info.node_name = target_node.node_name;
 
-	/* update our own record on the other node */
+	/* update node record on the active node */
 	update_node_record_set_active(next_node_conn, monitored_node->node_id, false);
 
 	appendPQExpBuffer(&event_details,
@@ -401,6 +407,8 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	unset_bdr_failover_handler(next_node_conn);
 
+	PQfinish(next_node_conn);
+
 	return;
 }
 
@@ -413,6 +421,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 	int i;
 	bool node_recovered = false;
+	int		node_recovery_elapsed;
 
 	recovered_node_conn = establish_db_connection(monitored_node->conninfo, false);
 
@@ -429,8 +438,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		return;
 	}
 
-	// bdr_recovery_timeout
-	for (i = 0; i < 30; i++)
+	for (i = 0; i < config_file_options.bdr_recovery_timeout; i++)
 	{
 		RecordStatus record_status = get_bdr_node_record_by_name(
 			recovered_node_conn,
@@ -439,6 +447,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 		if (record_status == RECORD_FOUND && bdr_record.node_status == 'r')
 		{
+			// check pg_stat_replication
 			node_recovered = true;
 			break;
 		}
@@ -459,13 +468,15 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	// don't end up monitoring a parted node; if not attached,
 	// generate a failed bdr_recovery event
 
-
-	// note elapsed
 	initPQExpBuffer(&event_details);
+
+	node_recovery_elapsed = calculate_elapsed(degraded_monitoring_start);
+
 	appendPQExpBuffer(&event_details,
-					  _("node '%s' (ID: %i) has recovered"),
+					  _("node '%s' (ID: %i) has recovered after %i seconds"),
 					  monitored_node->node_name,
-					  monitored_node->node_id);
+					  monitored_node->node_id,
+					  node_recovery_elapsed);
 
 	monitored_node->monitoring_state = MS_NORMAL;
 

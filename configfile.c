@@ -255,6 +255,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	 * ------------ */
 	options->bdr_local_monitoring_only = false;
 	options->bdr_active_node_recovery = false;
+	options->bdr_recovery_timeout = DEFAULT_BDR_RECOVERY_TIMEOUT;
 
 	/* service settings
 	 * ---------------- */
@@ -432,6 +433,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->bdr_local_monitoring_only = parse_bool(value, name, error_list);
 		else if (strcmp(name, "bdr_active_node_recovery") == 0)
 			options->bdr_active_node_recovery = parse_bool(value, name, error_list);
+		else if (strcmp(name, "bdr_recovery_timeout") == 0)
+			options->bdr_active_node_recovery = repmgr_atoi(value, name, error_list, 0);
 
 		/* service settings */
 		else if (strcmp(name, "pg_ctl_options") == 0)

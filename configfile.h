@@ -89,6 +89,7 @@ typedef struct
 	/* BDR settings */
 	bool		bdr_local_monitoring_only;
 	bool		bdr_active_node_recovery;
+	bool		bdr_recovery_timeout;
 
 	/* service settings */
 	char		pg_ctl_options[MAXLEN];
@@ -133,7 +134,7 @@ typedef struct
 		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT,	\
 		DEFAULT_PRIMARY_FOLLOW_TIMEOUT,	\
 		/* BDR settings */ \
-		false, false, \
+		false, false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \
 		"", "", "", "", "", "", \
 		/* event notification settings */ \
