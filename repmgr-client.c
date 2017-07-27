@@ -1353,18 +1353,12 @@ do_help(void)
 
 	printf(_("Usage:\n"));
 #ifndef BDR_ONLY
-	printf(_("	%s [OPTIONS] primary register\n"), progname());
-	printf(_("	%s [OPTIONS] primary unregister\n"), progname());
-	printf(_("	%s [OPTIONS] standby clone\n"), progname());
-	printf(_("	%s [OPTIONS] standby register\n"), progname());
-	printf(_("	%s [OPTIONS] standby unregister\n"), progname());
-	printf(_("	%s [OPTIONS] standby promote\n"), progname());
+	printf(_("	%s [OPTIONS] primary {register|unregister}\n"), progname());
+	printf(_("	%s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"), progname());
 #endif
-	printf(_("	%s [OPTIONS] bdr     register\n"), progname());
-	printf(_("	%s [OPTIONS] bdr     unregister\n"), progname());
+	printf(_("	%s [OPTIONS] bdr     {register|unregister}\n"), progname());
 	printf(_("	%s [OPTIONS] node    status\n"), progname());
-	printf(_("	%s [OPTIONS] cluster show\n"), progname());
-	printf(_("	%s [OPTIONS] cluster event\n"), progname());
+	printf(_("	%s [OPTIONS] cluster {show|matrix|crosscheck|cleanup}\n"), progname());
 
 	puts("");
 
