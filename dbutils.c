@@ -3204,6 +3204,8 @@ get_bdr_node_replication_slot_status(PGconn *conn, const char *node_name)
 		" WHERE node_name = '%s') ",
 		node_name);
 
+	log_verbose(LOG_DEBUG, "get_bdr_node_replication_slot_status():\n  %s", query.data);
+
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
@@ -3248,7 +3250,11 @@ get_bdr_other_node_name(PGconn *conn, int node_id, char *node_name)
 	{
 		strncpy(node_name, PQgetvalue(res, 0, 0), MAXLEN);
 	}
-
+	else
+	{
+		log_warning(_("get_bdr_other_node_name(): unable to execute query\n  %s"),
+					PQerrorMessage(conn));
+	}
 	PQclear(res);
 
 	return;

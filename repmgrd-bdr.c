@@ -207,7 +207,7 @@ monitor_bdr(void)
 								create_event_notification(cell->node_info->conn,
 														  &config_file_options,
 														  config_file_options.node_id,
-														  "repmgrd_upstream_reconnect",
+														  "repmgrd_bdr_reconnect",
 														  true,
 														  event_details.data);
 								termPQExpBuffer(&event_details);
@@ -296,6 +296,14 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	monitored_node->monitoring_state = MS_DEGRADED;
 	INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
+	/* terminate local connection if this is the failed node */
+	if (monitored_node->node_id == local_node_info.node_id)
+	{
+		PQfinish(local_conn);
+		local_conn = NULL;
+	}
+
+
 	/* get other node */
 
 	for (cell = nodes->head; cell; cell = cell->next)
@@ -346,7 +354,7 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	{
 		PQfinish(next_node_conn);
 		log_notice(_("record for node %i has already been set inactive"),
-				   cell->node_info->node_id);
+				   failed_node.node_id);
 		return;
 	}
 
@@ -409,6 +417,7 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	PQfinish(next_node_conn);
 
+
 	return;
 }
 
@@ -416,7 +425,6 @@ static void
 do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 {
 	PGconn *recovered_node_conn;
-	PGconn *slot_check_conn;
 
 	PQExpBufferData event_details;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
@@ -426,6 +434,8 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	char node_name[MAXLEN] = "";
 
+	log_debug("handling recovery for monitored node %i", monitored_node->node_id);
+
 	recovered_node_conn = establish_db_connection(monitored_node->conninfo, false);
 
 	if (PQstatus(recovered_node_conn) != CONNECTION_OK)
@@ -434,17 +444,16 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		return;
 	}
 
-	/* determine which replication slot to look fore */
-	if (monitored_node->node_id == local_node_info.node_id)
+	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
-		slot_check_conn = recovered_node_conn;
-		get_bdr_other_node_name(recovered_node_conn, local_node_info.node_id, node_name);
+		log_debug("no local conn");
+		local_conn = establish_db_connection(config_file_options.conninfo, true);
 	}
-	else
-	{
-		slot_check_conn = local_conn;
-		strncpy(node_name, monitored_node->node_name, MAXLEN);
-	}
+
+	// double-check local conn
+
+	get_bdr_other_node_name(local_conn, local_node_info.node_id, node_name);
+
 
 	for (i = 0; i < config_file_options.bdr_recovery_timeout; i++)
 	{
@@ -453,7 +462,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		log_debug("checking for state of replication slot for node \"%s\"", node_name);
 
 		slot_status = get_bdr_node_replication_slot_status(
-			slot_check_conn,
+			local_conn,
 			node_name);
 
 		if (slot_status == SLOT_ACTIVE)
@@ -463,7 +472,6 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		}
 
 		sleep(1);
-		continue;
 	}
 
 
@@ -483,6 +491,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	node_recovery_elapsed = calculate_elapsed(degraded_monitoring_start);
 	monitored_node->monitoring_state = MS_NORMAL;
+	monitored_node->node_status = NODE_STATUS_UP;
 
 	initPQExpBuffer(&event_details);
 
@@ -534,6 +543,8 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 				event_details.data);
 		}
 	}
+
+	update_node_record_set_active(local_conn, monitored_node->node_id, true);
 
 	termPQExpBuffer(&event_details);
 
