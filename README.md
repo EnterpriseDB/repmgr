@@ -9,9 +9,8 @@ operations.
 
 `repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
 
-
-Supports PostgreSQL 9.6 and later; support for 9.3 has been dropped, 9.4/9.5
-may be supported if feasible.
+Supports PostgreSQL 9.5 and later; support for PostgreSQL 9.3 and 9.4 has been
+dropped. To use `repmgr 4` with BDR 2.0, PostgreSQL 9.6 is required.
 
 Building from source
 --------------------
@@ -42,6 +41,8 @@ The following commands are available:
     repmgr bdr register
     repmgr bdr unregister
 
+    repmgr node status
+
     repmgr cluster show
     repmgr cluster event [--all] [--node-id] [--node-name] [--event] [--event-matching]
 
@@ -57,7 +58,7 @@ The following commands are available:
 * `cluster show`
 
     Displays information about each active node in the replication cluster. This
-    command polls each registered server and shows its role (`master` / `standby` /
+    command polls each registered server and shows its role (`primary` / `standby` /
     `bdr`) and status. It polls each server directly and can be run on any node
     in the cluster; this is also useful when analyzing connectivity from a particular
     node.
@@ -98,48 +99,146 @@ The following commands are available:
     is down.
 
 
+* `cluster matrix` and `cluster crosscheck`
+
+    These commands display connection information for each pair of
+    nodes in the replication cluster.
+
+    - `cluster matrix` runs a `cluster show` on each node and arranges
+      the results in a matrix, recording success or failure;
+
+    - `cluster crosscheck` runs a `cluster matrix` on each node and
+      combines the results in a single matrix, providing a full
+      overview of connections between all databases in the cluster.
+
+    These commands require a valid `repmgr.conf` file on each node.
+    Additionally passwordless `ssh` connections are required between
+    all nodes.
+
+    Example 1 (all nodes up):
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  *
+         node2 |  2 |  * |  * |  *
+         node3 |  3 |  * |  * |  *
+
+    Here `cluster matrix` is sufficient to establish the state of each
+    possible connection.
+
+
+    Example 2 (node1 and `node2` up, `node3` down):
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  x
+         node2 |  2 |  * |  * |  x
+         node3 |  3 |  ? |  ? |  ?
+
+    Each row corresponds to one server, and indicates the result of
+    testing an outbound connection from that server.
+
+    Since `node3` is down, all the entries in its row are filled with
+    "?", meaning that there we cannot test outbound connections.
+
+    The other two nodes are up; the corresponding rows have "x" in the
+    column corresponding to node3, meaning that inbound connections to
+    that node have failed, and "*" in the columns corresponding to
+    node1 and node2, meaning that inbound connections to these nodes
+    have succeeded.
+
+    In this case, `cluster crosscheck` gives the same result as `cluster
+    matrix`, because from any functioning node we can observe the same
+    state: `node1` and `node2` are up, `node3` is down.
+
+    Example 3 (all nodes up, firewall dropping packets originating
+               from `node1` and directed to port 5432 on node3)
+
+    Running `cluster matrix` from `node1` gives the following output:
+
+        $ repmgr -f /etc/repmgr.conf cluster matrix
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  x
+         node2 |  2 |  * |  * |  *
+         node3 |  3 |  ? |  ? |  ?
+
+    (Note this may take some time depending on the `connect_timeout`
+    setting in the registered node `conninfo` strings; default is 1
+    minute which means without modification the above command would
+    take around 2 minutes to run; see comment elsewhere about setting
+    `connect_timeout`)
+
+    The matrix tells us that we cannot connect from `node1` to `node3`,
+    and that (therefore) we don't know the state of any outbound
+    connection from node3.
+
+    In this case, the `cluster crosscheck` command is more informative:
+
+        $ repmgr -f /etc/repmgr.conf cluster crosscheck
+
+        Name   | Id |  1 |  2 |  3
+        -------+----+----+----+----
+         node1 |  1 |  * |  * |  x
+         node2 |  2 |  * |  * |  *
+         node3 |  3 |  * |  * |  *
+
+    What happened is that `cluster crosscheck` merged its own `cluster
+    matrix` with the `cluster matrix` output from `node2`; the latter is
+    able to connect to `node3` and therefore determine the state of
+    outbound connections from that node.
+
+
 Backwards compatibility
 -----------------------
 
-See also: doc/changes-in-repmgr4.md
-
-`repmgr` is now implemented as a PostgreSQL extension. NOTE: no need to
-install the extension, this will be done automatically by `repmgr primary register`.
+`repmgr` is now implemented as a PostgreSQL extension, and all database
+objects used by repmgr are stored in a dedicated `repmgr` schema, rather
+than `repmgr_$cluster_name`. Note there is no need to install the extension,
+this will be done automatically by `repmgr primary register`.
 
 Metadata tables have been revised and are not backwards-compatible
-with 3.x. (however future DDL updates will be easier as they can be
-carried out via the ALTER EXTENSION mechanism.
+with repmgr 3.x. (however future DDL updates will be easier as they can be
+carried out via the ALTER EXTENSION mechanism.).
 
-TODO: extension upgrade script for pre-4.0
+An extension upgrade script will be provided for pre-4.0 installations;
+note this will require the existing `repmgr_$cluster_name` schema to
+be renamed to `repmgr` beforehand.
 
 Some configuration items have had their names changed for consistency
 and clarity e.g. `node` => `node_id`. `repmgr` will issue a warning
 about deprecated/altered options.
 
 Some configuration items have been changed to command line options,
-and vice-versa, e.g. to avoid hard-coding things like a node's
-upstream ID which might change.
+and vice-versa, e.g. to avoid hard-coding items such as a a node's
+upstream ID, which might change over time.
 
-TODO: possibly add a config file conversion script/function.
+See file `doc/changes-in-repmgr4.md` for more details.
+
 
 Generating event notifications with repmgr/repmgrd
 --------------------------------------------------
 
 Each time `repmgr` or `repmgrd` perform a significant event, a record
-of that event is written into the `repl_events` table together with
+of that event is written into the `repmgr.events` table together with
 a timestamp, an indication of failure or success, and further details
 if appropriate. This is useful for gaining an overview of events
 affecting the replication cluster. However note that this table has
 advisory character and should be used in combination with the `repmgr`
 and PostgreSQL logs to obtain details of any events.
 
-Example output after a master was registered and a standby cloned
+Example output after a primary was registered and a standby cloned
 and registered:
 
-    repmgr=# SELECT * from repmgr_test.repl_events ;
+    repmgr=# SELECT * from repmgr.events ;
      node_id |      event       | successful |        event_timestamp        |                                       details
     ---------+------------------+------------+-------------------------------+-------------------------------------------------------------------------------------
-           1 | master_register  | t          | 2016-01-08 15:04:39.781733+09 |
+           1 | primary_register  | t          | 2016-01-08 15:04:39.781733+09 |
            2 | standby_clone    | t          | 2016-01-08 15:04:49.530001+09 | Cloned from host 'repmgr_node1', port 5432; backup method: pg_basebackup; --force: N
            2 | standby_register | t          | 2016-01-08 15:04:50.621292+09 |
     (3 rows)
@@ -163,7 +262,7 @@ so should be quoted in the provided command configuration, e.g.:
     event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
 
 Additionally the following format placeholders are available for the event
-type `bdr_failover`:
+type `bdr_failover` and optionally `bdr_recovery`:
 
     %c - conninfo string of the next available node
     %a - name of the next available node
@@ -173,15 +272,28 @@ These should always be quoted.
 By default, all notification type will be passed to the designated script;
 the notification types can be filtered to explicitly named ones:
 
-    event_notifications=master_register,standby_register
+    event_notifications=primary_register,standby_register
 
 The following event types are available:
 
-  ...
+  * `master_register`
+  * `standby_register`
+  * `standby_unregister`
+  * `standby_clone`
+  * `standby_promote`
+  * `standby_follow`
+  * `standby_disconnect_manual`
+  * `repmgrd_start`
+  * `repmgrd_shutdown`
+  * `repmgrd_failover_promote`
+  * `repmgrd_failover_follow`
   * `bdr_failover`
+  * `bdr_reconnect`
+  * `bdr_recovery`
   * `bdr_register`
   * `bdr_unregister`
 
 Note that under some circumstances (e.g. no replication cluster master could
 be located), it will not be possible to write an entry into the `repl_events`
-table, in which case `event_notification_command` can serve as a fallback.
+table, in which case executing a script via `event_notification_command` can
+serve as a fallback by generating some form of notification.
