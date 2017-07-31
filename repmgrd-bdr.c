@@ -514,6 +514,9 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	get_bdr_other_node_name(local_conn, local_node_info.node_id, node_name);
 
+	log_info(_("detected recovery on node %s (ID: %i), checking status"),
+			 monitored_node->node_name,
+			 monitored_node->node_id);
 
 	for (i = 0; i < config_file_options.bdr_recovery_timeout; i++)
 	{
