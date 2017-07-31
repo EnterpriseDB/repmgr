@@ -183,6 +183,7 @@ typedef struct s_connection_user
 }   t_connection_user;
 
 
+/* represents an entry in bdr.bdr_nodes */
 typedef struct s_bdr_node_info
 {
 	char		  node_sysid[MAXLEN];
@@ -195,7 +196,6 @@ typedef struct s_bdr_node_info
 	bool		  read_only;
 	uint32		  node_seq_id;
 } t_bdr_node_info;
-
 
 #define T_BDR_NODE_INFO_INITIALIZER { \
 	"", InvalidOid, InvalidOid, \
@@ -224,8 +224,23 @@ typedef struct BdrNodeInfoList
 	0 \
 }
 
+typedef struct {
+	uint64		last_wal_receive_lsn;
+	uint64		last_wal_replay_lsn;
+	char		replication_lag_time[MAXLEN];
+} ReplInfo;
 
+#define T_REPLINFO_INTIALIZER { \
+	InvalidXLogRecPtr, \
+	InvalidXLogRecPtr, \
+	"" \
+}
 extern int			server_version_num;
+
+/* macros */
+
+#define is_streaming_replication(x) (x == PRIMARY || x == STANDBY)
+#define format_lsn(x) (uint32) (x >> 32), (uint32) x
 
 /* utility functions */
 
@@ -280,10 +295,11 @@ int			guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 
 /* server information functions */
-bool		get_cluster_size(PGconn *conn, char *size);
-int			get_server_version(PGconn *conn, char *server_version);
+bool		 get_cluster_size(PGconn *conn, char *size);
+int		   	 get_server_version(PGconn *conn, char *server_version);
 RecoveryType get_recovery_type(PGconn *conn);
-int			get_primary_node_id(PGconn *conn);
+int			 get_primary_node_id(PGconn *conn);
+bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);

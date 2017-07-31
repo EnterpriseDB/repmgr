@@ -28,11 +28,14 @@ do_node_status(void)
 
 	ItemList 		warnings = { NULL, NULL };
 	RecoveryType	recovery_type;
+	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
 
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
 	else
 		conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	server_version_num = get_server_version(conn, NULL);
 
 	if (runtime_options.node_id != UNKNOWN_NODE_ID)
 		target_node_id = runtime_options.node_id;
@@ -157,6 +160,43 @@ do_node_status(void)
 			"disabled");
 	}
 
+
+	// if standby (and in recovery), show:
+	// upstream
+	// -> check if matches expected; parse recovery.conf for < 9.6 (must be superuser),
+	//   otherwise use pg_stat_wal_receiver
+	// streaming/in archive recovery/disconnected
+	// last received
+	// last replayed
+	// lag if streaming, or if in recovery can compare with upstream
+
+	if (node_info.type == STANDBY)
+	{
+		get_replication_info(conn, &replication_info);
+
+		key_value_list_set_format(
+			&node_status,
+			"Last received LSN",
+			"%X/%X", format_lsn(replication_info.last_wal_receive_lsn));
+
+		key_value_list_set_format(
+			&node_status,
+			"Last replayed LSN",
+			"%X/%X", format_lsn(replication_info.last_wal_replay_lsn));
+	}
+	else
+	{
+		key_value_list_set(
+			&node_status,
+			"Last received LSN",
+			"");
+		key_value_list_set(
+			&node_status,
+			"Last replayed LSN",
+			"");
+
+	}
+
 	initPQExpBuffer(&output);
 
 	if (runtime_options.csv == true)
@@ -176,7 +216,7 @@ do_node_status(void)
 		/* we'll add the raw data as well */
 		appendPQExpBuffer(
 			&output,
-			"max_walsenders,occupied_walsenders,max_replication_slots,active_replication_slots,inactive_replaction_slots\n");
+			"\"max_walsenders\",\"occupied_walsenders\",\"max_replication_slots\",\"active_replication_slots\",\"inactive_replaction_slots\"\n");
 
 		/* output data */
 		appendPQExpBuffer(
@@ -212,7 +252,7 @@ do_node_status(void)
 		{
 			appendPQExpBuffer(
 				&output,
-			"\t%s: %s\n", cell->key, cell->value);
+				"\t%s: %s\n", cell->key, cell->value);
 		}
 	}
 

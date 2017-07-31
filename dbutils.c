@@ -1153,7 +1153,6 @@ get_primary_node_id(PGconn *conn)
 	log_verbose(LOG_DEBUG, "get_primary_node_id():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
-
 	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -1176,6 +1175,65 @@ get_primary_node_id(PGconn *conn)
 	return retval;
 }
 
+
+bool
+get_replication_info(PGconn *conn, ReplInfo *replication_info)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(
+		&query,
+		" SELECT last_wal_receive_lsn, "
+        "        last_wal_replay_lsn, "
+        "        last_xact_replay_timestamp, "
+		"        CASE WHEN (last_wal_receive_lsn = last_wal_replay_lsn) "
+        "          THEN '0 seconds'::INTERVAL "
+        "        ELSE "
+        "          clock_timestamp() - last_xact_replay_timestamp "
+        "        END AS replication_lag_time "
+        "   FROM ( ");
+
+	if (server_version_num >= 100000)
+	{
+		appendPQExpBuffer(
+			&query,
+		    " SELECT pg_last_wal_receive_lsn()       AS last_wal_receive_lsn, "
+            "        pg_last_wal_replay_lsn()        AS last_wal_replay_lsn, "
+			"        pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
+	}
+	else
+	{
+		appendPQExpBuffer(
+			&query,
+		    " SELECT pg_last_xlog_receive_location() AS last_wal_receive_lsn, "
+            "        pg_last_xlog_replay_location()  AS last_wal_replay_lsn, "
+			"        pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
+	}
+
+	appendPQExpBuffer(
+	&query,
+		"          ) q ");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
+	{
+		log_error(_("unable to execute replication info query:\n  %s"),
+				PQerrorMessage(conn));
+		PQclear(res);
+
+		return false;
+	}
+
+	replication_info->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 0));
+	replication_info->last_wal_replay_lsn = parse_lsn(PQgetvalue(res, 0, 1));
+	strncpy(replication_info->replication_lag_time, PQgetvalue(res, 0, 3), MAXLEN);
+
+	return true;
+}
 
 
 /* ================ */
@@ -1217,7 +1275,7 @@ get_repmgr_extension_status(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute extension query:\n	%s"),
+		log_error(_("unable to execute extension query:\n  %s"),
 				PQerrorMessage(conn));
 		PQclear(res);
 
