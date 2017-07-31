@@ -52,7 +52,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 	 * provides a configuration file, they'll want to make sure it's
 	 * used and not fall back to any of the defaults.
 	 */
-	if (config_file[0])
+	if (config_file != NULL && config_file[0] != '\0')
 	{
 		strncpy(config_file_path, config_file, MAXPGPATH);
 		canonicalize_path(config_file_path);
