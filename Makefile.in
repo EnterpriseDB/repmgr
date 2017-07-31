@@ -12,7 +12,7 @@ EXTENSION = repmgr
 DATA = repmgr--4.0.sql
 
 # Hacky workaround to install the binaries
-SCRIPTS_built = repmgr4 repmgrd4
+SCRIPTS_built = repmgr repmgrd
 
 
 # When in development add -Werror
@@ -35,10 +35,10 @@ REPMGRD_OBJS = repmgrd.o repmgrd-physical.o repmgrd-bdr.o configfile.o log.o dbu
 
 $(REPMGR_CLIENT_OBJS): repmgr-client.h
 
-repmgr4: $(REPMGR_CLIENT_OBJS)
+repmgr: $(REPMGR_CLIENT_OBJS)
 	$(CC) $(CFLAGS) $(REPMGR_CLIENT_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
-repmgrd4: $(REPMGRD_OBJS)
+repmgrd: $(REPMGRD_OBJS)
 	$(CC) $(CFLAGS) $(REPMGRD_OBJS) $(libpq_pgport) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
 $(REPMGR_CLIENT_OBJS): $(HEADERS)
