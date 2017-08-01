@@ -26,6 +26,10 @@ General
   (However this does mean that if a standby is no longer connected to the
   master, the master will retain WAL files indefinitely).
 
+  As an alternative to replication slots, consider using Barman as a fallback
+  source of WAL files; this removed the need to worry about WAL retention on
+  the master.
+
 - How many replication slots should I define in `max_replication_slots`?
 
   Normally at least same number as the number of standbys which will connect
