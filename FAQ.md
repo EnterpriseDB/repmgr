@@ -13,7 +13,7 @@ General
   via `repmgrd`, and is not compatible with PostgreSQL 9.2 and earlier.
 
   repmgr 2.x supports PostgreSQL 9.0 onwards. While it is compatible
-  with  PostgreSQL 9.3 and later, we recommend repmgr v3.
+  with PostgreSQL 9.3 and later, we recommend repmgr v3.
 
 - What's the advantage of using replication slots?
 
@@ -36,9 +36,24 @@ General
 
 - Does `repmgr` support hash indexes?
 
-  No. Hash indexes and replication do not mix well and their use is
-  explicitly discouraged; see:
-    https://www.postgresql.org/docs/current/interactive/sql-createindex.html#AEN74175
+  Hash indexes and replication do not mix well and their use is explicitly
+  discouraged; see:
+
+    https://www.postgresql.org/docs/current/interactive/sql-createindex.html#AEN80276
+
+  Note that hash index support has been improved in PostgreSQL 10 and should
+  be safe for use with replication.
+
+- Is `repmgr` tied to a specific PostgreSQL version?
+
+  In theory `repmgr` compiled against PostgreSQL 9.6 can be used with
+  other versions, e.g. 9.5 or 10. However some backend functions
+  used by `repmgrd` are compiled for specific PostgreSQL versions,
+  so e.g. `repmgrd` compiled for 9.6 won't work with 9.5 or earlier.
+
+  We strongly recommend using the `repmgr` package supplied by your
+  OS vendor which matches the installed PostgreSQL version.
+
 
 `repmgr`
 --------
