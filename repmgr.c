@@ -5946,9 +5946,9 @@ do_witness_create(void)
 	char		master_hba_file[MAXLEN];
 	bool        success;
 
-	char		witness_port[MAXLEN];
-	char		repmgr_user[MAXLEN];
-	char		repmgr_db[MAXLEN];
+	char		witness_port[MAXLEN] = "";
+	char		repmgr_user[MAXLEN] = "";
+	char		repmgr_db[MAXLEN] = "";
 
 	/*
 	 * Extract the repmgr user and database names from the conninfo string
