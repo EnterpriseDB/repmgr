@@ -158,7 +158,8 @@
 #
 # These settings apply when cloning a standby (`repmgr standby clone`).
 
-# Tablespaces can be remapped from one file system location to another:
+# Tablespaces can be remapped from one file system location to another
+# (this parameter can be provided multiple times):
 #
 # tablespace_mapping=/path/to/original/tablespace=/path/to/new/tablespace
 
