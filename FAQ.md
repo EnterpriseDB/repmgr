@@ -18,17 +18,17 @@ General
 - What's the advantage of using replication slots?
 
   Replication slots, introduced in PostgreSQL 9.4, ensure that the
-  master server will retain WAL files until they have been consumed
+  primary server will retain WAL files until they have been consumed
   by all standby servers. This makes WAL file management much easier,
   and if used `repmgr` will no longer insist on a fixed number (default: 5000)
   of WAL files being preserved.
 
   (However this does mean that if a standby is no longer connected to the
-  master, the master will retain WAL files indefinitely).
+  primary, the primary will retain WAL files indefinitely).
 
   As an alternative to replication slots, consider using Barman as a fallback
   source of WAL files; this removed the need to worry about WAL retention on
-  the master.
+  the primary.
 
 - How many replication slots should I define in `max_replication_slots`?
 
@@ -65,24 +65,24 @@ General
 - When should I use the --rsync-only option?
 
   By default, `repmgr` uses `pg_basebackup` to clone a standby from
-  a master. However, `pg_basebackup` copies the entire data directory, which
+  a primary. However, `pg_basebackup` copies the entire data directory, which
   can take some time depending on installation size. If you have an
   existing but "stale" standby, `repmgr` can use `rsync` instead,
   which means only changed or added files need to be copied.
 
-- Can I register an existing master/standby?
+- Can I register an existing primary/standby?
 
   Yes, this is no problem.
 
-- How can a failed master be re-added as a standby?
+- How can a failed primary be re-added as a standby?
 
-  This is a two-stage process. First, the failed master's data directory
-  must be re-synced with the current master; secondly the failed master
+  This is a two-stage process. First, the failed primary's data directory
+  must be re-synced with the current primary; secondly the failed primary
   needs to be re-registered as a standby. The section "Converting a failed
-  master to a standby" in the `README.md` file contains more detailed
+  primary to a standby" in the `README.md` file contains more detailed
   information on this process.
 
-- Is there an easy way to check my master server is correctly configured
+- Is there an easy way to check my primary server is correctly configured
   for use with `repmgr`?
 
   Yes - execute `repmgr` with the `--check-upstream-config` option, and it
@@ -107,7 +107,7 @@ General
 
   If you're updating an existing but stale data directory which
   contains e.g. configuration files you don't want to be overwritten
-  with the same file from the master, specify the files in the
+  with the same file from the primary, specify the files in the
   `rsync_options` configuration option, e.g.
 
       rsync_options=--exclude=postgresql.local.conf
@@ -167,7 +167,7 @@ General
   better handling of a 'split brain' situation by providing a "casting
   vote" on the preferred network segment.
 
-- How can I prevent a node from ever being promoted to master?
+- How can I prevent a node from ever being promoted to primary?
 
   In `repmgr.conf`, set its priority to a value of 0 or less.
 
@@ -186,14 +186,14 @@ General
   by setting `priority` to 0 in `repmgr.conf`.
 
   Note that after registering a delayed standby, `repmgrd` will only start
-  once the metadata added in the master node has been replicated.
+  once the metadata added in the primary node has been replicated.
 
 - How can I get `repmgrd` to rotate its logfile?
 
   Configure your system's `logrotate` service to do this; see example
   in README.md
 
-- I've recloned a failed master as a standby, but `repmgrd` refuses to start?
+- I've recloned a failed primary as a standby, but `repmgrd` refuses to start?
 
   Check you registered the standby after recloning. If unregistered the standby
   cannot be considered as a promotion candidate even if `failover` is set to
