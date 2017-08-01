@@ -23,6 +23,12 @@
  * CLUSTER EVENT
  * CLUSTER CROSSCHECK
  * CLUSTER MATRIX
+ *
+ * NODE STATUS
+ *
+ * For internal use:
+ * NODE ARCHIVE-CONFIG
+ * NODE RESTORE-CONFIG
  */
 
 #include <unistd.h>
@@ -450,6 +456,11 @@ main(int argc, char **argv)
 				runtime_options.csv = true;
 				break;
 
+			/* internal options */
+			case OPT_CONFIG_ARCHIVE_DIR:
+				/* TODO: check this is an absolute path */
+				strncpy(runtime_options.config_archive_dir, optarg, MAXPGPATH);
+				break;
 
 			/* options deprecated since 3.3 *
 			 * ---------------------------- */
@@ -615,10 +626,6 @@ main(int argc, char **argv)
 				action = STANDBY_FOLLOW;
 			else if (strcasecmp(repmgr_action, "SWITCHOVER") == 0)
 				action = STANDBY_SWITCHOVER;
-			else if (strcasecmp(repmgr_action, "ARCHIVE-CONFIG") == 0)
-				action = STANDBY_ARCHIVE_CONFIG;
-			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
-				action = STANDBY_RESTORE_CONFIG;
 			else if (strcasecmp(repmgr_action, "CHECK") == 0)
 				action = NODE_CHECK;
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
@@ -645,6 +652,10 @@ main(int argc, char **argv)
 				action = NODE_CHECK;
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
 				action = NODE_STATUS;
+			else if (strcasecmp(repmgr_action, "ARCHIVE-CONFIG") == 0)
+				action = NODE_ARCHIVE_CONFIG;
+			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
+				action = NODE_RESTORE_CONFIG;
 		}
 
 		else if (strcasecmp(repmgr_node_type, "CLUSTER") == 0)
@@ -934,11 +945,7 @@ main(int argc, char **argv)
 		case STANDBY_SWITCHOVER:
 			do_standby_switchover();
 			break;
-		case STANDBY_ARCHIVE_CONFIG:
-			do_standby_archive_config();
-			break;
-		case STANDBY_RESTORE_CONFIG:
-			do_standby_restore_config();
+
 			break;
 #else
 		/* we won't ever reach here, but stop the compiler complaining */
@@ -950,8 +957,6 @@ main(int argc, char **argv)
 		case STANDBY_PROMOTE:
 		case STANDBY_FOLLOW:
 		case STANDBY_SWITCHOVER:
-		case STANDBY_ARCHIVE_CONFIG:
-		case STANDBY_RESTORE_CONFIG:
 			break;
 
 #endif
@@ -967,6 +972,11 @@ main(int argc, char **argv)
 		case NODE_STATUS:
 			do_node_status();
 			break;
+		case NODE_ARCHIVE_CONFIG:
+			do_node_archive_config();
+			break;
+		case NODE_RESTORE_CONFIG:
+			do_node_restore_config();
 
 		/* CLUSTER */
 		case CLUSTER_SHOW:
@@ -1135,7 +1145,6 @@ check_cli_parameters(const int action)
 		{
 			case STANDBY_CLONE:
 			case STANDBY_FOLLOW:
-			case STANDBY_RESTORE_CONFIG:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,

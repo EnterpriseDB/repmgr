@@ -338,6 +338,10 @@ void		clear_node_info_list(NodeInfoList *nodes);
 
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 
+/* PostgreSQL configuration file location functions */
+bool		get_datadir_configuration_files(PGconn *conn, KeyValueList *list);
+
+
 /* event functions */
 bool		create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
 bool		create_event_notification(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);

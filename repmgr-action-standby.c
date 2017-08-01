@@ -1569,19 +1569,6 @@ do_standby_switchover(void)
 }
 
 
-void
-do_standby_archive_config(void)
-{
-	return;
-}
-
-void
-do_standby_restore_config(void)
-{
-	return;
-}
-
-
 static void
 check_source_server()
 {

@@ -20,12 +20,12 @@
 #define STANDBY_PROMOTE		   6
 #define STANDBY_FOLLOW		   7
 #define STANDBY_SWITCHOVER	   8
-#define STANDBY_ARCHIVE_CONFIG 9
-#define STANDBY_RESTORE_CONFIG 10
-#define BDR_REGISTER		   11
-#define BDR_UNREGISTER		   12
-#define NODE_STATUS			   13
-#define NODE_CHECK			   14
+#define BDR_REGISTER		   9
+#define BDR_UNREGISTER		   10
+#define NODE_STATUS			   11
+#define NODE_CHECK			   12
+#define NODE_ARCHIVE_CONFIG    13
+#define NODE_RESTORE_CONFIG    14
 #define CLUSTER_SHOW		   15
 #define CLUSTER_CLEANUP		   16
 #define CLUSTER_MATRIX		   17
@@ -118,6 +118,9 @@ static struct option long_options[] =
 	{"event", required_argument, NULL, OPT_EVENT },
 	{"limit", required_argument, NULL, OPT_LIMIT },
 
+/* Following options for internal use */
+	{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
+
 /* deprecated */
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 	/* legacy alias for -D/--pgdata*/
@@ -135,9 +138,6 @@ static struct option long_options[] =
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
-	/* Following options for internal use */
-	{"cluster", required_argument, NULL, OPT_CLUSTER},
-	{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
 
 	{NULL, 0, NULL, 0}
 };

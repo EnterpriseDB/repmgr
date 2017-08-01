@@ -78,6 +78,8 @@ typedef struct
 	char		event[MAXLEN];
 	int			limit;
 
+	/* following options for internal use */
+	char		config_archive_dir[MAXPGPATH];
 }	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
@@ -100,7 +102,9 @@ typedef struct
 		/* standby register options */ \
 		false, 0, \
 		/* event options */ \
-		false, "", CLUSTER_EVENT_LIMIT }
+		false, "", CLUSTER_EVENT_LIMIT,	\
+		"/tmp" \
+}
 
 
 typedef enum {

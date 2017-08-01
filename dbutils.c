@@ -2078,6 +2078,7 @@ delete_node_record(PGconn *conn, int node)
 	return true;
 }
 
+
 void
 get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 {
@@ -2099,8 +2100,8 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_warning(_("unable to retrieve node replication statistics:\n  %s"),
-					PQerrorMessage(conn));
+		log_warning(_("unable to retrieve node replication statistics"));
+		log_detail("%s", PQerrorMessage(conn));
 		PQclear(res);
 		return;
 	}
@@ -2153,6 +2154,65 @@ clear_node_info_list(NodeInfoList *nodes)
 }
 
 
+/* ================================================ */
+/* PostgreSQL configuration file location functions */
+/* ================================================ */
+
+bool
+get_datadir_configuration_files(PGconn *conn, KeyValueList *list)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+	int i;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"WITH files AS ( "
+		"  WITH dd AS ( "
+		"    SELECT setting "
+		"     FROM pg_catalog.pg_settings "
+		"    WHERE name = 'data_directory') "
+		" SELECT distinct(sourcefile) AS config_file"
+		"   FROM dd, pg_catalog.pg_settings ps "
+		"  WHERE ps.sourcefile IS NOT NULL "
+		"    AND ps.sourcefile ~ ('^' || dd.setting) "
+		"     UNION "
+		"  SELECT ps.setting  AS config_file"
+		"    FROM dd, pg_catalog.pg_settings ps "
+		"   WHERE ps.name IN ( 'config_file', 'hba_file', 'ident_file') "
+		"     AND ps.setting ~ ('^' || dd.setting) "
+		") "
+		"  SELECT config_file, "
+		"         regexp_replace(config_file, '^.*\\/','') AS filename "
+		"    FROM files "
+		"ORDER BY config_file");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to retrieve configuration file information"));
+		log_detail("%s", PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		key_value_list_set(
+			list,
+			PQgetvalue(res, i, 1),
+			PQgetvalue(res, i, 0));
+	}
+
+	PQclear(res);
+	return true;
+}
+
+
 /* ====================== */
 /* event record functions */
 /* ====================== */
@@ -2173,6 +2233,8 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 
 	return _create_event(conn, options, node_id, event, successful, details, &event_info, false);
 }
+
+
 
 /*
  * create_event_notification()

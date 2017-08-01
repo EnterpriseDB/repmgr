@@ -12,8 +12,6 @@ extern void do_standby_unregister(void);
 extern void do_standby_promote(void);
 extern void do_standby_follow(void);
 extern void do_standby_switchover(void);
-extern void do_standby_archive_config(void);
-extern void do_standby_restore_config(void);
 
 typedef struct
 {

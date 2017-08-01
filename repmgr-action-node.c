@@ -6,11 +6,15 @@
  * Copyright (c) 2ndQuadrant, 2010-2017
  */
 
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "repmgr.h"
 
 #include "repmgr-client-global.h"
 #include "repmgr-action-node.h"
+
+static bool copy_file(const char *src_file, const char *dest_file);
 
 void
 do_node_status(void)
@@ -274,4 +278,176 @@ do_node_status(void)
 void
 do_node_check(void)
 {
+}
+
+
+/*
+ * Intended mainly for "internal" use by `standby switchover`, which
+ * calls this on the target server to archive any configuration files
+ * in the data directory, which may be overwritten by an operation
+ * like pg_rewind
+ *
+ * Requires configuration file.
+ */
+void
+do_node_archive_config(void)
+{
+	char archive_dir[MAXPGPATH];
+	struct stat statbuf;
+	struct dirent *arcdir_ent;
+	DIR			  *arcdir;
+
+	PGconn	   *local_conn = NULL;
+	KeyValueList	config_files = { NULL, NULL };
+	KeyValueListCell *cell;
+	int  copied_count = 0;
+
+	snprintf(archive_dir,
+			 MAXPGPATH,
+			 "%s/repmgr-config-archive-%s",
+			 runtime_options.config_archive_dir,
+			 config_file_options.node_name);
+
+	log_verbose(LOG_DEBUG, "using archive directory \"%s\"", archive_dir);
+
+	/* sanity-check directory path */
+	if (stat(archive_dir, &statbuf) == -1)
+	{
+		if (errno != ENOENT)
+		{
+			log_error(_("error encountered when checking archive directory \"%s\""),
+					  archive_dir);
+			log_detail("%s",strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/* attempt to create and open the directory */
+		if (mkdir(archive_dir, S_IRWXU) != 0 && errno != EEXIST)
+		{
+			log_error(_("unable to create temporary archive directory \"%s\""),
+					  archive_dir);
+			log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+
+
+	}
+	else if(!S_ISDIR(statbuf.st_mode))
+    {
+		log_error(_("\"%s\" exists but is not a directory"),
+				  archive_dir);
+		exit(ERR_BAD_CONFIG);
+	}
+
+
+	arcdir = opendir(archive_dir);
+
+	if (arcdir == NULL)
+	{
+		log_error(_("unable to open archive directory \"%s\""),
+				  archive_dir);
+		log_detail("%s", strerror(errno));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * attempt to remove any existing files in the directory
+	 * TODO: collate problem files into list
+	 */
+	while ((arcdir_ent = readdir(arcdir)) != NULL)
+	{
+		char arcdir_ent_path[MAXPGPATH];
+
+		snprintf(arcdir_ent_path, MAXPGPATH,
+				 "%s/%s",
+				 archive_dir,
+				 arcdir_ent->d_name);
+
+
+		if (stat(arcdir_ent_path, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+		{
+			continue;
+		}
+
+
+		if (unlink(arcdir_ent_path) == -1)
+		{
+			log_error(_("unable to create temporary archive directory \"%s\""),
+					  archive_dir);
+			log_detail("%s", strerror(errno));
+			closedir(arcdir);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	closedir(arcdir);
+
+	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	get_datadir_configuration_files(local_conn, &config_files);
+
+	for (cell = config_files.head; cell; cell = cell->next)
+	{
+		char dest_file[MAXPGPATH] = "";
+
+		snprintf(dest_file, MAXPGPATH,
+				 "%s/%s",
+				 archive_dir,
+				 cell->key);
+
+		copy_file(cell->value, dest_file);
+		copied_count++;
+	}
+
+	PQfinish(local_conn);
+
+	log_verbose(LOG_INFO, _("%i files copied to %s"),
+				copied_count, archive_dir);
+}
+
+
+void
+do_node_restore_config(void)
+{
+	return;
+}
+
+static bool
+copy_file(const char *src_file, const char *dest_file)
+{
+	FILE  *ptr_old, *ptr_new;
+	int  a;
+
+	ptr_old = fopen(src_file, "r");
+	ptr_new = fopen(dest_file, "w");
+
+	if (ptr_old == NULL)
+		return false;
+
+	if (ptr_new == NULL)
+	{
+		fclose(ptr_old);
+		return false;
+	}
+
+	chmod(dest_file, S_IRUSR | S_IWUSR);
+
+	while(1)
+	{
+		a = fgetc(ptr_old);
+
+		if (!feof(ptr_old))
+		{
+			fputc(a, ptr_new);
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	fclose(ptr_new);
+	fclose(ptr_old);
+
+	return true;
 }
