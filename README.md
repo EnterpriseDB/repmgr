@@ -1062,7 +1062,7 @@ should have been updated to reflect this:
 
 ### Caveats
 
-- The functionality provided `repmgr standby switchover` is primarily aimed
+- The functionality provided by `repmgr standby switchover` is primarily aimed
   at a two-server master/standby replication cluster and currently does
   not support additional standbys.
 - `repmgr standby switchover` is designed to use the `pg_rewind` utility,
