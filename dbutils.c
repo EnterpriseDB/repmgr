@@ -2793,13 +2793,18 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int 
 
 		initPQExpBuffer(&query);
 
-		appendPQExpBuffer(
-			&query,
-#if (PG_VERSION_NUM >= 100000)
-			"SELECT pg_catalog.pg_last_wal_receive_lsn()");
-#else
-			"SELECT pg_catalog.pg_last_xlog_receive_location()");
-#endif
+		if (server_version_num >= 100000)
+		{
+			appendPQExpBuffer(
+				&query,
+				"SELECT pg_catalog.pg_last_wal_receive_lsn()");
+		}
+		else
+		{
+			appendPQExpBuffer(
+				&query,
+				"SELECT pg_catalog.pg_last_xlog_receive_location()");
+		}
 
 		res = PQexec(conn, query.data);
 		termPQExpBuffer(&query);
