@@ -1086,7 +1086,8 @@ check_cli_parameters(const int action)
 				}
 			}
 		}
-			break;
+		break;
+
 		case STANDBY_FOLLOW:
 		{
 			/*
@@ -1101,8 +1102,20 @@ check_cli_parameters(const int action)
 											_("-D/--pgdata required when providing connection parameters for \"standby follow\""));
 				}
 			}
-
 		}
+		break;
+
+		case NODE_RESTORE_CONFIG:
+		{
+			if (strcmp(runtime_options.data_dir, "") == 0)
+			{
+				item_list_append(&cli_errors, _("-D/--pgdata required when executing NODE RESTORE-CONFIG"));
+			}
+
+			config_file_required = false;
+		}
+		break;
+
 		case CLUSTER_SHOW:
 		case CLUSTER_MATRIX:
 		case CLUSTER_CROSSCHECK:
@@ -1311,6 +1324,12 @@ action_name(const int action)
 
 		case NODE_STATUS:
 			return "NODE STATUS";
+		case NODE_CHECK:
+			return "NODE CHECK";
+		case NODE_ARCHIVE_CONFIG:
+			return "NODE ARCHIVE-CONFIG";
+		case NODE_RESTORE_CONFIG:
+			return "NODE RESTORE-CONFIG";
 
 		case CLUSTER_SHOW:
 			return "CLUSTER SHOW";
@@ -1320,7 +1339,6 @@ action_name(const int action)
 			return "CLUSTER MATRIX";
 		case CLUSTER_CROSSCHECK:
 			return "CLUSTER CROSSCHECK";
-
 	}
 
 	return "UNKNOWN ACTION";

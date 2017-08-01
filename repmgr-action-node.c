@@ -15,6 +15,7 @@
 #include "repmgr-action-node.h"
 
 static bool copy_file(const char *src_file, const char *dest_file);
+static void format_archive_dir(char *archive_dir);
 
 void
 do_node_status(void)
@@ -282,12 +283,12 @@ do_node_check(void)
 
 
 /*
- * Intended mainly for "internal" use by `standby switchover`, which
+ * Intended mainly for "internal" use by `node switchover`, which
  * calls this on the target server to archive any configuration files
  * in the data directory, which may be overwritten by an operation
  * like pg_rewind
  *
- * Requires configuration file.
+ * Requires configuration file, optionally --config_archive_dir
  */
 void
 do_node_archive_config(void)
@@ -302,13 +303,7 @@ do_node_archive_config(void)
 	KeyValueListCell *cell;
 	int  copied_count = 0;
 
-	snprintf(archive_dir,
-			 MAXPGPATH,
-			 "%s/repmgr-config-archive-%s",
-			 runtime_options.config_archive_dir,
-			 config_file_options.node_name);
-
-	log_verbose(LOG_DEBUG, "using archive directory \"%s\"", archive_dir);
+	format_archive_dir(archive_dir);
 
 	/* sanity-check directory path */
 	if (stat(archive_dir, &statbuf) == -1)
@@ -317,7 +312,7 @@ do_node_archive_config(void)
 		{
 			log_error(_("error encountered when checking archive directory \"%s\""),
 					  archive_dir);
-			log_detail("%s",strerror(errno));
+			log_detail("%s", strerror(errno));
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -406,11 +401,119 @@ do_node_archive_config(void)
 }
 
 
+/*
+ * Intended mainly for "internal" use by `standby switchover`, which
+ * calls this on the target server to restore any configuration files
+ * to the data directory, which may have been overwritten by an operation
+ * like pg_rewind
+ *
+ * Not designed to be called if the instance is running, but does
+ * not currently check.
+ *
+ * Requires -D/--pgdata, optionally --config_archive_dir
+ *
+ * Removes --config_archive_dir after successful copy
+ */
+
 void
 do_node_restore_config(void)
 {
+	char archive_dir[MAXPGPATH];
+
+	DIR			  *arcdir;
+	struct dirent *arcdir_ent;
+	int			   copied_count = 0;
+	bool		   copy_ok = true;
+
+	format_archive_dir(archive_dir);
+
+	arcdir = opendir(archive_dir);
+
+	if (arcdir == NULL)
+	{
+		log_error(_("unable to open archive directory \"%s\""),
+				  archive_dir);
+		log_detail("%s", strerror(errno));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	while ((arcdir_ent = readdir(arcdir)) != NULL) {
+		struct stat statbuf;
+		char src_file_path[MAXPGPATH];
+		char dest_file_path[MAXPGPATH];
+
+		snprintf(src_file_path, MAXPGPATH,
+				 "%s/%s",
+				 archive_dir,
+				 arcdir_ent->d_name);
+
+		/* skip non-files */
+		if (stat(src_file_path, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+		{
+			continue;
+		}
+
+		snprintf(dest_file_path, MAXPGPATH,
+				 "%s/%s",
+				 runtime_options.data_dir,
+				 arcdir_ent->d_name);
+
+		log_verbose(LOG_DEBUG, "copying \"%s\" to \"%s\"", src_file_path, dest_file_path);
+
+		if (copy_file(src_file_path, dest_file_path) == false)
+		{
+			copy_ok = false;
+			log_warning(_("unable to copy \"%s\" to \"%s\""),
+						arcdir_ent->d_name, runtime_options.data_dir);
+		}
+		else
+		{
+			unlink(src_file_path);
+			copied_count++;
+		}
+
+	}
+	closedir(arcdir);
+
+
+	if (copy_ok == false)
+	{
+		log_error(_("unable to copy all files from %s"), archive_dir);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_notice(_("%i files copied to %s"), copied_count, runtime_options.data_dir);
+
+	/*
+	 * Finally, delete directory - it should be empty unless it's been interfered
+	 * with for some reason, in which case manual intervention is required
+	 */
+	if (rmdir(archive_dir) != 0 && errno != EEXIST)
+	{
+		log_warning(_("unable to delete %s"), archive_dir);
+		log_detail(_("directory may need to be manually removed"));
+	}
+	else
+	{
+		log_verbose(LOG_NOTICE, "directory %s deleted", archive_dir);
+	}
+
 	return;
 }
+
+
+static void
+format_archive_dir(char *archive_dir)
+{
+	snprintf(archive_dir,
+			 MAXPGPATH,
+			 "%s/repmgr-config-archive-%s",
+			 runtime_options.config_archive_dir,
+			 config_file_options.node_name);
+
+	log_verbose(LOG_DEBUG, "using archive directory \"%s\"", archive_dir);
+}
+
 
 static bool
 copy_file(const char *src_file, const char *dest_file)
