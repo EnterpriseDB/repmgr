@@ -64,8 +64,6 @@ static void check_primary_standby_version_match(PGconn *conn, PGconn *primary_co
 static void check_recovery_type(PGconn *conn);
 
 static void initialise_direct_clone(void);
-static void config_file_list_init(t_configfile_list *list, int max_size);
-static void config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir);
 static void copy_configuration_files(void);
 
 static int run_basebackup(void);
@@ -1861,9 +1859,7 @@ initialise_direct_clone(void)
 {
 	PGconn			 *superuser_conn = NULL;
 	PGconn			 *privileged_conn = NULL;
-	PGresult		 *res;
-	PQExpBufferData	  query;
-	int		 		  i;
+	bool	 		  success;
 
 	/*
 	 * Check the destination data directory can be used
@@ -1890,41 +1886,54 @@ initialise_direct_clone(void)
 	if (config_file_options.tablespace_mapping.head != NULL)
 	{
 		TablespaceListCell *cell;
+		KeyValueList not_found = { NULL, NULL };
+		int total = 0, matched = 0;
 
 		for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
 		{
 			char *old_dir_escaped     = escape_string(source_conn, cell->old_dir);
+			char name[MAXLEN] = "";
 
-			initPQExpBuffer(&query);
-
-			appendPQExpBuffer(&query,
-							  "SELECT spcname "
-							  "  FROM pg_catalog.pg_tablespace "
-							  " WHERE pg_catalog.pg_tablespace_location(oid) = '%s'",
-							  old_dir_escaped);
-			res = PQexec(source_conn, query.data);
-
-			termPQExpBuffer(&query);
+			success = get_tablespace_name_by_location(source_conn, old_dir_escaped, name);
 			pfree(old_dir_escaped);
 
-			if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			if (success == true)
 			{
-				log_error(_("unable to execute tablespace query:\n  %s"),
-						  PQerrorMessage(source_conn));
-				PQclear(res);
-				PQfinish(source_conn);
-				exit(ERR_BAD_CONFIG);
+				matched ++;
+			}
+			else
+			{
+				key_value_list_set(
+					&not_found,
+					cell->old_dir,
+					"");
 			}
 
-			/* TODO: collate errors and output at end of loop */
-			if (PQntuples(res) == 0)
+			total ++;
+		}
+
+		if (not_found.head != NULL)
+		{
+			PQExpBufferData	  detail;
+			KeyValueListCell *kv_cell;
+
+			log_error(_("%i of %i mapped tablespaces not found"),
+					  total - matched, total);
+
+			initPQExpBuffer(&detail);
+
+			for (kv_cell = not_found.head; kv_cell; kv_cell = kv_cell->next)
 			{
-				log_error(_("no tablespace matching path '%s' found"),
-						  cell->old_dir);
-				PQclear(res);
-				PQfinish(source_conn);
-				exit(ERR_BAD_CONFIG);
+				appendPQExpBuffer(
+					&detail,
+					"  %s\n", kv_cell->key);
 			}
+
+			log_detail(_("following tablespaces not found:\n%s"),
+					   detail.data);
+			termPQExpBuffer(&detail);
+
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -1947,30 +1956,11 @@ initialise_direct_clone(void)
 
 	get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
 
-	initPQExpBuffer(&query);
+	success = get_configuration_file_locations(privileged_conn, &config_files);
 
-	appendPQExpBuffer(&query,
-					  "  WITH dd AS ( "
-					  "    SELECT setting AS data_directory"
-					  "      FROM pg_catalog.pg_settings "
-					  "     WHERE name = 'data_directory' "
-					  "  ) "
-					  "    SELECT DISTINCT(sourcefile), "
-					  "           pg_catalog.regexp_replace(sourcefile, '^.*\\/', '') AS filename, "
-					  "           sourcefile ~ ('^' || dd.data_directory) AS in_data_dir "
-					  "      FROM dd, pg_catalog.pg_settings ps "
-					  "     WHERE sourcefile IS NOT NULL "
-					  "  ORDER BY 1 ");
-
-	log_debug("standby clone: %s", query.data);
-	res = PQexec(privileged_conn, query.data);
-	termPQExpBuffer(&query);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (success == false)
 	{
-		log_error(_("unable to retrieve configuration file locations:\n  %s"),
-				  PQerrorMessage(privileged_conn));
-		PQclear(res);
+		log_notice(_("unable to proceed without establishing configuration file locations"));
 		PQfinish(source_conn);
 
 		if (superuser_conn != NULL)
@@ -1979,65 +1969,6 @@ initialise_direct_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * allocate memory for config file array - number of rows returned from
-	 * above query + 2 for pg_hba.conf, pg_ident.conf
-	 */
-
-	config_file_list_init(&config_files, PQntuples(res) + 2);
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		config_file_list_add(&config_files,
-							 PQgetvalue(res, i, 0),
-							 PQgetvalue(res, i, 1),
-							 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
-	}
-
-	PQclear(res);
-
-	/* Fetch locations of pg_hba.conf and pg_ident.conf */
-	initPQExpBuffer(&query);
-
-	appendPQExpBuffer(&query,
-					  "  WITH dd AS ( "
-					  "    SELECT setting AS data_directory"
-					  "      FROM pg_catalog.pg_settings "
-					  "     WHERE name = 'data_directory' "
-					  "  ) "
-					  "    SELECT ps.setting, "
-					  "           regexp_replace(setting, '^.*\\/', '') AS filename, "
-					  "           ps.setting ~ ('^' || dd.data_directory) AS in_data_dir "
-					  "      FROM dd, pg_catalog.pg_settings ps "
-					  "     WHERE ps.name IN ('hba_file', 'ident_file') "
-					  "  ORDER BY 1 ");
-
-	log_debug("standby clone: %s", query.data);
-	res = PQexec(privileged_conn, query.data);
-	termPQExpBuffer(&query);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_error(_("unable to retrieve configuration file locations:\n  %s"),
-				  PQerrorMessage(privileged_conn));
-		PQclear(res);
-		PQfinish(source_conn);
-
-		if (superuser_conn != NULL)
-			PQfinish(superuser_conn);
-
-		exit(ERR_BAD_CONFIG);
-	}
-
-	for (i = 0; i < PQntuples(res); i++)
-	{
-		config_file_list_add(&config_files,
-							 PQgetvalue(res, i, 0),
-							 PQgetvalue(res, i, 1),
-							 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
-	}
-
-	PQclear(res);
 
 	/*
 	 * If replication slots requested, create appropriate slot on the
@@ -2788,46 +2719,6 @@ get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 	termPQExpBuffer(&command_output);
 }
 
-static void
-config_file_list_init(t_configfile_list *list, int max_size)
-{
-	list->size = max_size;
-	list->entries = 0;
-	list->files = pg_malloc0(sizeof(t_configfile_info *) * max_size);
-
-	if (list->files == NULL)
-	{
-		log_error(_("unable to allocate memory; terminating"));
-		exit(ERR_OUT_OF_MEMORY);
-	}
-}
-
-
-static void
-config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir)
-{
-	/* Failsafe to prevent entries being added beyond the end */
-	if (list->entries == list->size)
-		return;
-
-	list->files[list->entries] = pg_malloc0(sizeof(t_configfile_info));
-
-	if (list->files[list->entries] == NULL)
-	{
-		log_error(_("unable to allocate memory; terminating"));
-		exit(ERR_OUT_OF_MEMORY);
-	}
-
-
-	strncpy(list->files[list->entries]->filepath, file, MAXPGPATH);
-	canonicalize_path(list->files[list->entries]->filepath);
-
-
-	strncpy(list->files[list->entries]->filename, filename, MAXPGPATH);
-	list->files[list->entries]->in_data_directory = in_data_dir;
-
-	list->entries ++;
-}
 
 static void
 copy_configuration_files(void)

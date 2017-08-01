@@ -235,6 +235,25 @@ typedef struct {
 	InvalidXLogRecPtr, \
 	"" \
 }
+
+
+typedef struct
+{
+	char filepath[MAXPGPATH];
+	char filename[MAXPGPATH];
+	bool in_data_directory;
+} t_configfile_info;
+
+
+typedef struct
+{
+	int    size;
+	int    entries;
+	t_configfile_info **files;
+} t_configfile_list;
+
+#define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
+
 extern int			server_version_num;
 
 /* macros */
@@ -340,7 +359,9 @@ void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 
 /* PostgreSQL configuration file location functions */
 bool		get_datadir_configuration_files(PGconn *conn, KeyValueList *list);
-
+bool		get_configuration_file_locations(PGconn *conn, t_configfile_list *list);
+void		config_file_list_init(t_configfile_list *list, int max_size);
+void		config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir);
 
 /* event functions */
 bool		create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
@@ -351,6 +372,9 @@ bool		create_event_notification_extended(PGconn *conn, t_configuration_options *
 bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);
 bool		drop_replication_slot(PGconn *conn, char *slot_name);
 RecordStatus get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
+
+/* tablespace functions */
+bool		get_tablespace_name_by_location(PGconn *conn, const char *location, char *name);
 
 /* asynchronous query functions */
 bool		cancel_query(PGconn *conn, int timeout);

@@ -1318,8 +1318,8 @@ action_name(const int action)
 			return "STANDBY FOLLOW";
 
 		case BDR_REGISTER:
-			return "BDR REGISTER"
-;		case BDR_UNREGISTER:
+			return "BDR REGISTER";
+		case BDR_UNREGISTER:
 			return "BDR UNREGISTER";
 
 		case NODE_STATUS:

@@ -13,22 +13,6 @@ extern void do_standby_promote(void);
 extern void do_standby_follow(void);
 extern void do_standby_switchover(void);
 
-typedef struct
-{
-	char filepath[MAXPGPATH];
-	char filename[MAXPGPATH];
-	bool in_data_directory;
-} t_configfile_info;
-
-
-typedef struct
-{
-	int    size;
-	int    entries;
-	t_configfile_info **files;
-} t_configfile_list;
-
-#define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
 
 
 #endif /* _REPMGR_ACTION_STANDBY_H_ */

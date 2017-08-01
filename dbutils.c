@@ -2213,6 +2213,151 @@ get_datadir_configuration_files(PGconn *conn, KeyValueList *list)
 }
 
 
+bool
+get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+	int i;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"  WITH dd AS ( "
+		"    SELECT setting AS data_directory"
+		"      FROM pg_catalog.pg_settings "
+		"     WHERE name = 'data_directory' "
+		"  ) "
+		"    SELECT DISTINCT(sourcefile), "
+		"           pg_catalog.regexp_replace(sourcefile, '^.*\\/', '') AS filename, "
+		"           sourcefile ~ ('^' || dd.data_directory) AS in_data_dir "
+		"      FROM dd, pg_catalog.pg_settings ps "
+		"     WHERE sourcefile IS NOT NULL "
+		"  ORDER BY 1 ");
+
+	log_verbose(LOG_DEBUG, "get_configuration_file_locations():\n  %s",
+				query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to retrieve configuration file locations"));
+		log_detail("%s", PQerrorMessage(conn));
+
+		PQclear(res);
+
+		return false;
+	}
+
+	/*
+	 * allocate memory for config file array - number of rows returned from
+	 * above query + 2 for pg_hba.conf, pg_ident.conf
+	 */
+
+	config_file_list_init(list, PQntuples(res) + 2);
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		config_file_list_add(list,
+							 PQgetvalue(res, i, 0),
+							 PQgetvalue(res, i, 1),
+							 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
+	}
+
+	PQclear(res);
+
+	/* Fetch locations of pg_hba.conf and pg_ident.conf */
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"  WITH dd AS ( "
+		"    SELECT setting AS data_directory"
+		"      FROM pg_catalog.pg_settings "
+		"     WHERE name = 'data_directory' "
+		"  ) "
+		"    SELECT ps.setting, "
+		"           regexp_replace(setting, '^.*\\/', '') AS filename, "
+		"           ps.setting ~ ('^' || dd.data_directory) AS in_data_dir "
+		"      FROM dd, pg_catalog.pg_settings ps "
+		"     WHERE ps.name IN ('hba_file', 'ident_file') "
+		"  ORDER BY 1 ");
+
+
+	log_verbose(LOG_DEBUG, "get_configuration_file_locations():\n  %s",
+				query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to retrieve configuration file locations"));
+		log_detail("%s", PQerrorMessage(conn));
+
+		PQclear(res);
+
+		return false;
+	}
+
+	for (i = 0; i < PQntuples(res); i++)
+	{
+		config_file_list_add(
+			list,
+			PQgetvalue(res, i, 0),
+			PQgetvalue(res, i, 1),
+			strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
+	}
+
+	return true;
+}
+
+
+void
+config_file_list_init(t_configfile_list *list, int max_size)
+{
+	list->size = max_size;
+	list->entries = 0;
+	list->files = pg_malloc0(sizeof(t_configfile_info *) * max_size);
+
+	if (list->files == NULL)
+	{
+		log_error(_("unable to allocate memory; terminating"));
+		exit(ERR_OUT_OF_MEMORY);
+	}
+}
+
+
+void
+config_file_list_add(t_configfile_list *list, const char *file, const char *filename, bool in_data_dir)
+{
+	/* Failsafe to prevent entries being added beyond the end */
+	if (list->entries == list->size)
+		return;
+
+	list->files[list->entries] = pg_malloc0(sizeof(t_configfile_info));
+
+	if (list->files[list->entries] == NULL)
+	{
+		log_error(_("unable to allocate memory; terminating"));
+		exit(ERR_OUT_OF_MEMORY);
+	}
+
+
+	strncpy(list->files[list->entries]->filepath, file, MAXPGPATH);
+	canonicalize_path(list->files[list->entries]->filepath);
+
+
+	strncpy(list->files[list->entries]->filename, filename, MAXPGPATH);
+	list->files[list->entries]->in_data_directory = in_data_dir;
+
+	list->entries ++;
+}
+
+
 /* ====================== */
 /* event record functions */
 /* ====================== */
@@ -2665,6 +2810,49 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 	return RECORD_FOUND;
 }
 
+/* ==================== */
+/* tablespace functions */
+/* ==================== */
+
+bool
+get_tablespace_name_by_location(PGconn *conn, const char *location, char *name)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"SELECT spcname "
+		"  FROM pg_catalog.pg_tablespace "
+		" WHERE pg_catalog.pg_tablespace_location(oid) = '%s'",
+		location);
+
+	log_verbose(LOG_DEBUG, "get_tablespace_name_by_location():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute tablespace query"));
+		log_detail("%s", PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	if (PQntuples(res) == 0)
+	{
+		PQclear(res);
+		return false;
+	}
+
+	strncpy(name, PQgetvalue(res, 0, 0), MAXLEN);
+
+	PQclear(res);
+	return true;
+}
 
 /* ============================ */
 /* asynchronous query functions */
