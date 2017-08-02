@@ -314,21 +314,21 @@ void logger_set_terse(void)
 int
 detect_log_level(const char *level)
 {
-	if (!strcmp(level, "DEBUG"))
+	if (!strcasecmp(level, "DEBUG"))
 		return LOG_DEBUG;
-	if (!strcmp(level, "INFO"))
+	if (!strcasecmp(level, "INFO"))
 		return LOG_INFO;
-	if (!strcmp(level, "NOTICE"))
+	if (!strcasecmp(level, "NOTICE"))
 		return LOG_NOTICE;
-	if (!strcmp(level, "WARNING"))
+	if (!strcasecmp(level, "WARNING"))
 		return LOG_WARNING;
-	if (!strcmp(level, "ERROR"))
+	if (!strcasecmp(level, "ERROR"))
 		return LOG_ERROR;
-	if (!strcmp(level, "ALERT"))
+	if (!strcasecmp(level, "ALERT"))
 		return LOG_ALERT;
-	if (!strcmp(level, "CRIT"))
+	if (!strcasecmp(level, "CRIT"))
 		return LOG_CRIT;
-	if (!strcmp(level, "EMERG"))
+	if (!strcasecmp(level, "EMERG"))
 		return LOG_EMERG;
 
 	return -1;
