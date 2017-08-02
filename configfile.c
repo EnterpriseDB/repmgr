@@ -210,6 +210,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
+	memset(options->pgdata, 0, sizeof(options->pgdata));
 	options->replication_type = REPLICATION_TYPE_PHYSICAL;
 
 	/*
@@ -350,7 +351,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 								 _( "value for \"replication_user\" must contain fewer than " STR(NAMEDATALEN) " characters"));
 		}
 		else if (strcmp(name, "pg_bindir") == 0)
-			strncpy(options->pg_bindir, value, MAXLEN);
+			strncpy(options->pg_bindir, value, MAXPGPATH);
+		else if (strcmp(name, "pgdata") == 0)
+			strncpy(options->pgdata, value, MAXPGPATH);
+
 		else if (strcmp(name, "replication_type") == 0)
 		{
 			if (strcmp(value, "physical") == 0)

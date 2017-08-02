@@ -1282,7 +1282,7 @@ do_standby_follow(void)
 		 * If --wait provided, loop for up `primary_response_timeout`
 		 * seconds before giving up
 		 */
-
+		// XXX ??? primary_follow_timeout
 		for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
 		{
 			primary_conn = get_primary_connection_quiet(local_conn,
@@ -1326,8 +1326,6 @@ do_standby_follow(void)
 		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
-
-
 
 	/*
 	 * If 9.4 or later, and replication slots in use, we'll need to create a

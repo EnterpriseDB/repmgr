@@ -169,6 +169,6 @@ extern bool remote_command(const char *host, const char *user, const char *comma
 
 /* server control functions */
 extern void get_server_action(t_server_action action, char *script, char *data_dir);
-
-
+extern bool data_dir_required_for_action(t_server_action action);
+extern void get_node_data_directory(char *data_dir_buf);
 #endif

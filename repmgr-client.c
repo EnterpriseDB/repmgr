@@ -1185,6 +1185,7 @@ check_cli_parameters(const int action)
 		{
 			case STANDBY_CLONE:
 			case STANDBY_FOLLOW:
+			case NODE_SERVICE:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
@@ -1372,7 +1373,7 @@ action_name(const int action)
 		case NODE_RESTORE_CONFIG:
 			return "NODE RESTORE-CONFIG";
 		case NODE_SERVICE:
-			return "NODE_SERVICE";
+			return "NODE SERVICE";
 
 		case CLUSTER_SHOW:
 			return "CLUSTER SHOW";
@@ -2565,7 +2566,7 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 {
 	PQExpBufferData command;
 
-	if (data_dir == NULL)
+	if (data_dir == NULL || data_dir[0] == '\0')
 		data_dir = "(none provided)";
 
 	switch(action)
@@ -2673,7 +2674,8 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 		{
 			if (config_file_options.service_reload_command[0] != '\0')
 			{
-				maxlen_snprintf(script, "%s", config_file_options.service_reload_command);
+				maxlen_snprintf(script, "%s",
+								config_file_options.service_reload_command);
 			}
 			else
 			{
@@ -2704,7 +2706,8 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 		{
 			if (config_file_options.service_promote_command[0] != '\0')
 			{
-				maxlen_snprintf(script, "%s", config_file_options.service_promote_command);
+				maxlen_snprintf(script, "%s",
+								config_file_options.service_promote_command);
 			}
 			else
 			{
@@ -2737,3 +2740,88 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 	return;
 }
 
+bool
+data_dir_required_for_action(t_server_action action)
+{
+	switch(action)
+	{
+		case ACTION_NONE:
+			return false;
+
+		case ACTION_START:
+			if (config_file_options.service_start_command[0] != '\0')
+			{
+				return false;
+			}
+			return true;
+
+		case ACTION_STOP:
+			if (config_file_options.service_stop_command[0] != '\0')
+			{
+				return false;
+			}
+			return true;
+
+		case ACTION_RESTART:
+			if (config_file_options.service_restart_command[0] != '\0')
+			{
+				return false;
+			}
+			return true;
+
+		case ACTION_RELOAD:
+			if (config_file_options.service_reload_command[0] != '\0')
+			{
+				return false;
+			}
+			return true;
+
+		case ACTION_PROMOTE:
+			if (config_file_options.service_promote_command[0] != '\0')
+			{
+				return false;
+			}
+			return true;
+
+		default:
+			return false;
+	}
+
+	return false;
+}
+
+
+// optionally pass conn?
+void
+get_node_data_directory(char *data_dir_buf)
+{
+	PGconn *conn = NULL;
+	bool success = false;
+
+	if (config_file_options.pgdata[0] != '\0')
+	{
+		strncpy(data_dir_buf, config_file_options.pgdata, MAXPGPATH);
+		return;
+	}
+
+	if (strlen(config_file_options.conninfo))
+		conn = establish_db_connection(config_file_options.conninfo, true);
+	else
+		conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	success = get_pg_setting(conn, "data_directory", data_dir_buf);
+
+	PQfinish(conn);
+
+	if (success == true)
+		return;
+
+	if (runtime_options.data_dir[0] != '\0')
+	{
+		strncpy(data_dir_buf, runtime_options.data_dir, MAXPGPATH);
+		return;
+	}
+
+
+	return;
+}

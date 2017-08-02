@@ -19,7 +19,7 @@ static void format_archive_dir(char *archive_dir);
 static t_server_action parse_server_action(const char *action);
 
 static void _do_node_service_check(void);
-static void _do_node_service_list(void);
+static void _do_node_service_list(t_server_action action);
 
 void
 do_node_status(void)
@@ -292,13 +292,15 @@ do_node_check(void)
 void
 do_node_service(void)
 {
-	t_server_action action = parse_server_action(runtime_options.action);
+	t_server_action action;
+
+	action = parse_server_action(runtime_options.action);
 
 	if (action == ACTION_UNKNOWN)
 	{
 		log_error(_("unknown value \"%s\" provided for parameter --action"),
 				  runtime_options.action);
-		log_hint(_("valid values are \"start\", \"stop\" and \"restart\""));
+		log_hint(_("valid values are \"start\", \"stop\", \"restart\", \"reload\" and \"promote\""));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -312,8 +314,17 @@ do_node_service(void)
 
 	if (runtime_options.list == true)
 	{
-		return _do_node_service_list();
+		return _do_node_service_list(action);
 	}
+
+
+	// do we need data directory?
+	//  - service command defined for action ? -> no
+	//   -> yes
+	//  - pgdata defined in config? OK
+	//
+	//  - connection available?
+	//     -> get data dir OK (superuser connection issue)
 
 
 	// perform action...
@@ -328,12 +339,42 @@ _do_node_service_check(void)
 
 
 static void
-_do_node_service_list(void)
+_do_node_service_list(t_server_action action)
 {
 	char command[MAXLEN] = "";
 
-	char *data_dir = runtime_options.data_dir;
+	char data_dir[MAXPGPATH] = "";
 
+	bool data_dir_required = false;
+
+	/* do we need to provide a data directory for any of the actions? */
+	if (data_dir_required_for_action(ACTION_START))
+		data_dir_required = true;
+
+	if (data_dir_required_for_action(ACTION_STOP))
+		data_dir_required = true;
+
+	if (data_dir_required_for_action(ACTION_RESTART))
+		data_dir_required = true;
+
+	if (data_dir_required_for_action(ACTION_RELOAD))
+		data_dir_required = true;
+
+	if (data_dir_required_for_action(ACTION_PROMOTE))
+		data_dir_required = true;
+
+	if (data_dir_required == true)
+	{
+		get_node_data_directory(data_dir);
+	}
+
+	/* show command for specific action only */
+	if (action != ACTION_NONE)
+	{
+		get_server_action(action, command, data_dir);
+		printf("%s\n", command);
+		return;
+	}
 
 	puts(_("Following commands would be executed for each action:"));
 	puts("");
