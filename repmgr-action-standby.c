@@ -1564,7 +1564,7 @@ do_standby_follow(void)
  *    can be provided explicitly with -C/--remote-config-file,
  *    otherwise repmgr will look in default locations on the
  *    remote server (starting with the same path as the local
- *    configuration file)
+ *    configuration file).
  *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
@@ -1577,6 +1577,7 @@ do_standby_switchover(void)
 	PGconn	   *local_conn;
 	PGconn	   *remote_conn;
 
+<<<<<<< HEAD
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 
@@ -1597,6 +1598,8 @@ do_standby_switchover(void)
 	XLogRecPtr remote_last_checkpoint_lsn = InvalidXLogRecPtr;
 	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
 
+=======
+>>>>>>> Initial switchover code
 	/*
 	 * SANITY CHECKS
 	 *
@@ -1604,6 +1607,7 @@ do_standby_switchover(void)
 	 * to be demoted) - careful checks needed before proceding.
 	 */
 
+<<<<<<< HEAD
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_record);
@@ -2056,6 +2060,23 @@ do_standby_switchover(void)
 	log_detail(_("node \"%s\" is now primary"),
 			   local_node_record.node_name);
 
+=======
+	log_notice(_("switching current node %i to master server and demoting current master to standby...\n"), options.node);
+
+	local_conn = establish_db_connection(options.conninfo, true);
+
+	/* Check that this is a standby */
+
+	if (!is_standby(local_conn))
+	{
+		log_err(_("switchover must be executed from the standby node to be promoted\n"));
+		PQfinish(local_conn);
+
+		exit(ERR_SWITCHOVER_FAIL);
+	}
+
+	puts("not implemented");
+>>>>>>> Initial switchover code
 	return;
 }
 
