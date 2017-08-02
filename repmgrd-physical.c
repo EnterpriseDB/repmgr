@@ -113,10 +113,19 @@ do_physical_node_check(void)
 
 		bool required_param_missing = false;
 
-		if (config_file_options.promote_command[0] == '\0'
-			&& config_file_options.service_promote_command[0] == '\0')
+		if (config_file_options.promote_command[0] == '\0')
 		{
-			log_error(_("either \"promote_command\" or \"service_promote_command\" must be defined in the configuration file"));
+			log_error(_("\"promote_command\" must be defined in the configuration file"));
+
+			if (config_file_options.service_promote_command[0] != '\0')
+			{
+				/*
+				 * if repmgrd executes "service_promote_command" directly, repmgr metadata
+				 * won't get updated
+				 */
+				log_hint(_("\"service_promote_command\" is set, but can only be executed by \"repmgr standby promote\""));
+			}
+
 			required_param_missing = true;
 		}
 		if (config_file_options.follow_command[0] == '\0')
@@ -1143,11 +1152,8 @@ promote_self(void)
 		return FAILOVER_STATE_PROMOTION_FAILED;
 	}
 
-	/* the presence of either of these commands has been established already */
-	if (config_file_options.service_promote_command[0] != '\0')
-		promote_command = config_file_options.service_promote_command;
-	else
-		promote_command = config_file_options.promote_command;
+	/* the presence of either of this command has been established already */
+	promote_command = config_file_options.promote_command;
 
 	log_debug("promote command is:\n  \"%s\"",
 			  promote_command);
