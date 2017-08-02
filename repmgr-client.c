@@ -1091,6 +1091,8 @@ check_cli_parameters(const int action)
 											action_name(action));
 				}
 
+				// XXX if -D/--pgdata provided, and also config_file_options.pgdaga, warn -D/--pgdata will be ignored
+
 				if (*runtime_options.upstream_conninfo)
 				{
 					if (runtime_options.use_recovery_conninfo_password == true)
@@ -1120,6 +1122,7 @@ check_cli_parameters(const int action)
 			/*
 			 * if `repmgr standby follow` executed with host params, ensure data
 			 * directory was provided
+			 * XXX not needed
 			 */
 			if (runtime_options.host_param_provided == true)
 			{
@@ -1129,17 +1132,6 @@ check_cli_parameters(const int action)
 											_("-D/--pgdata required when providing connection parameters for \"standby follow\""));
 				}
 			}
-		}
-		break;
-
-		case NODE_RESTORE_CONFIG:
-		{
-			if (strcmp(runtime_options.data_dir, "") == 0)
-			{
-				item_list_append(&cli_errors, _("-D/--pgdata required when executing NODE RESTORE-CONFIG"));
-			}
-
-			config_file_required = false;
 		}
 		break;
 
@@ -2791,37 +2783,26 @@ data_dir_required_for_action(t_server_action action)
 }
 
 
-// optionally pass conn?
 void
 get_node_data_directory(char *data_dir_buf)
 {
 	PGconn *conn = NULL;
-	bool success = false;
 
+	/*
+	 * the configuration file setting has priority, and will always be
+	 * set when a configuration file was provided
+	 */
 	if (config_file_options.pgdata[0] != '\0')
 	{
 		strncpy(data_dir_buf, config_file_options.pgdata, MAXPGPATH);
 		return;
 	}
 
-	if (strlen(config_file_options.conninfo))
-		conn = establish_db_connection(config_file_options.conninfo, true);
-	else
-		conn = establish_db_connection_by_params(&source_conninfo, true);
-
-	success = get_pg_setting(conn, "data_directory", data_dir_buf);
-
-	PQfinish(conn);
-
-	if (success == true)
-		return;
-
 	if (runtime_options.data_dir[0] != '\0')
 	{
 		strncpy(data_dir_buf, runtime_options.data_dir, MAXPGPATH);
 		return;
 	}
-
 
 	return;
 }

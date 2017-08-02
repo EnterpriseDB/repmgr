@@ -99,17 +99,22 @@ do_standby_clone(void)
 	mode = get_standby_clone_mode();
 
 	/*
-	 * If a data directory (-D/--pgdata) was provided, use that, otherwise
-	 * repmgr will default to using the same directory path as on the source
-	 * host.
+	 * Copy the provided data directory; if a configuration file was provided,
+	 * use the (mandatory) value from that; if -D/--pgdata was provided, use that;
+	 * otherwise repmgr will default to using the same directory path as on the
+	 * source host. The last case will only ever occur when executing "repmgr
+	 * standby clone" with no configuration file.
 	 *
 	 * Note that barman mode requires -D/--pgdata.
 	 *
-	 * If -D/--pgdata is not supplied, and we're not cloning from barman,
+	 * If no data directory is explicitly provided, and we're not cloning from barman,
 	 * the source host's data directory will be fetched later, after
-	 * we've connected to it.
+	 * we've connected to it, in check_source_server().
+	 *
 	 */
-	if (runtime_options.data_dir[0])
+
+	get_node_data_directory(local_data_directory);
+	if (local_data_directory[0] != '\0')
 	{
 		local_data_directory_provided = true;
 		log_notice(_("destination directory \"%s\" provided"),
@@ -123,19 +128,6 @@ do_standby_clone(void)
 		log_error(_("Barman mode requires a data directory"));
 		log_hint(_("use -D/--pgdata to explicitly specify a data directory"));
 		exit(ERR_BAD_CONFIG);
-	}
-
-	/*
-	 * Target directory (-D/--pgdata) provided - use that as new data directory
-	 * (useful when executing backup on local machine only or creating the backup
-	 * in a different local directory when backup source is a remote host)
-	 *
-	 * Note: if no directory provided, check_source_server() will later set
-	 * local_data_directory from the upstream configuration.
-	 */
-	if (local_data_directory_provided == true)
-	{
-		strncpy(local_data_directory, runtime_options.data_dir, MAXPGPATH);
 	}
 
 	/* Sanity-check barman connection and installation */

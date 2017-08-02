@@ -50,13 +50,25 @@ The `--csv` option now emits a third column indicating the recovery
 status of the node.
 
 
-Removed configuration file options
-----------------------------------
+Configuration file changes
+--------------------------
 
-- `upstream_node`: see note about `--upstream-node-id` above.
+### Required settings
 
-Logging changes
----------------
+Following 4 parameters are mandatory:
+
+- node_id
+- node_name
+- conninfo
+- pgdata
+
+
+### Renamed settings
+
+Some settings have been renamed for clarity/consistency
+node -> node_id
+name -> node_name
+
 
 - Following configuration file parameters have been renamed for consistency
   with other parameters (and conform to the pattern used by PostgreSQL itself,
@@ -64,6 +76,13 @@ Logging changes
   - `loglevel` has been renamed to `log_level`
   - `logfile` has been renamed to `log_file`
   - `logfacility` has been renamed to `log_facility`
+
+### Removed settings
+
+- `cluster` has been removed
+- `upstream_node`: see note about `--upstream-node-id` above.
+
+### Logging changes
 - default value for `log_level` is `INFO` rather than `NOTICE`.
 - new parameter `log_status_interval`
 

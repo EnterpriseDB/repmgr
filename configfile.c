@@ -209,8 +209,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->node_id = UNKNOWN_NODE_ID;
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->conninfo, 0, sizeof(options->conninfo));
-	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	memset(options->pgdata, 0, sizeof(options->pgdata));
+	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	options->replication_type = REPLICATION_TYPE_PHYSICAL;
 
 	/*
@@ -342,6 +342,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->node_name, value, MAXLEN);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
+		else if (strcmp(name, "pgdata") == 0)
+			strncpy(options->pgdata, value, MAXPGPATH);
 		else if (strcmp(name, "replication_user") == 0)
 		{
 			if (strlen(value) < NAMEDATALEN)
@@ -352,8 +354,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXPGPATH);
-		else if (strcmp(name, "pgdata") == 0)
-			strncpy(options->pgdata, value, MAXPGPATH);
 
 		else if (strcmp(name, "replication_type") == 0)
 		{
@@ -465,7 +465,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "barman_config") == 0)
 			strncpy(options->barman_config, value, MAXLEN);
 
-		/* undocumented test settings */
+		/* undocumented settings for testing */
 		else if (strcmp(name, "promote_delay") == 0)
 			options->promote_delay = repmgr_atoi(value, name, error_list, 1);
 
@@ -555,6 +555,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	if (!strlen(options->node_name))
 	{
 		item_list_append(error_list, _("\"node_name\": required parameter was not found"));
+	}
+
+	if (!strlen(options->pgdata))
+	{
+		item_list_append(error_list, _("\"pgdata\": required parameter was not found"));
 	}
 
 	if (!strlen(options->conninfo))

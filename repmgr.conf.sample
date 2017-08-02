@@ -10,7 +10,7 @@
 # Required configuration items
 # =============================================================================
 #
-# repmgr and repmgrd require the following items to be configured.
+# repmgr and repmgrd require the following items to be explicitly configured.
 
 
 #node_id=                               # A unique integer greater than zero
@@ -35,17 +35,12 @@
                                         # connection attempt is abandoned; for details see:
                                         #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
 
+#pgdata                                 # The node's data directory
 
 # =============================================================================
 
 # Optional configuration items
 # =============================================================================
-#------------------------------------------------------------------------------
-# General settings
-#------------------------------------------------------------------------------
-
-#pgdata                                 # The node's data directory; usually only required
-                                        # if the repmgr user is not a superuser
 
 #------------------------------------------------------------------------------
 # Replication settings

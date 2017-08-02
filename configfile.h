@@ -53,9 +53,9 @@ typedef struct
     int			node_id;
 	char		node_name[MAXLEN];
 	char		conninfo[MAXLEN];
+	char		pgdata[MAXPGPATH];
 	char		replication_user[NAMEDATALEN];
 	char		pg_bindir[MAXPGPATH];
-	char		pgdata[MAXPGPATH];
 	int			replication_type;
 
 	/* log settings */
