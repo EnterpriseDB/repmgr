@@ -3795,3 +3795,4 @@ unset_bdr_failover_handler(PGconn *conn)
 	PQclear(res);
 	return;
 }
+

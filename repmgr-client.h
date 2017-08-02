@@ -24,13 +24,14 @@
 #define BDR_UNREGISTER		   10
 #define NODE_STATUS			   11
 #define NODE_CHECK			   12
-#define NODE_ARCHIVE_CONFIG    13
-#define NODE_RESTORE_CONFIG    14
-#define CLUSTER_SHOW		   15
-#define CLUSTER_CLEANUP		   16
-#define CLUSTER_MATRIX		   17
-#define CLUSTER_CROSSCHECK	   18
-#define CLUSTER_EVENT		   19
+#define NODE_SERVICE		   13
+#define NODE_ARCHIVE_CONFIG    14
+#define NODE_RESTORE_CONFIG    15
+#define CLUSTER_SHOW		   16
+#define CLUSTER_CLEANUP		   17
+#define CLUSTER_MATRIX		   18
+#define CLUSTER_CROSSCHECK	   19
+#define CLUSTER_EVENT		   20
 
 /* command line options without short versions */
 #define OPT_HELP						   1
@@ -58,6 +59,10 @@
 #define OPT_ALL							   22
 #define OPT_DRY_RUN						   23
 #define OPT_UPSTREAM_NODE_ID			   24
+#define OPT_ACTION                         25
+#define OPT_CHECK                          26
+#define OPT_LIST                           27
+
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR					   998
 #define OPT_NO_CONNINFO_PASSWORD		   999
@@ -84,7 +89,7 @@ static struct option long_options[] =
 	{"superuser", required_argument, NULL, 'S'},
 	{"username", required_argument, NULL, 'U'},
 
-/* node options */
+/* general node options */
 	{"pgdata", required_argument, NULL, 'D'},
 	{"node-id", required_argument, NULL, OPT_NODE_ID},
 	{"node-name", required_argument, NULL, OPT_NODE_NAME},
@@ -98,7 +103,7 @@ static struct option long_options[] =
 /* output options */
 	{"csv", no_argument, NULL, OPT_CSV},
 
-/* standby clone options */
+/* "standby clone" options */
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"fast-checkpoint", no_argument, NULL, 'c'},
 	{"wal-keep-segments", required_argument, NULL, 'w'},
@@ -110,10 +115,15 @@ static struct option long_options[] =
 	{"use-recovery-conninfo-password", no_argument, NULL, OPT_USE_RECOVERY_CONNINFO_PASSWORD},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 
-/* standby register options */
+/* "standby register" options */
 	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
 
-/* event options */
+/* "node service" options */
+	{"action", required_argument, NULL, OPT_ACTION},
+	{"check", no_argument, NULL, OPT_CHECK},
+	{"list", no_argument, NULL, OPT_LIST},
+
+/* "cluster event" options */
 	{"all", no_argument, NULL, OPT_ALL },
 	{"event", required_argument, NULL, OPT_EVENT },
 	{"limit", required_argument, NULL, OPT_LIMIT },
@@ -155,4 +165,4 @@ static void check_cli_parameters(const int action);
 static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 
-#endif
+#endif /* _REPMGR_CLIENT_H_ */

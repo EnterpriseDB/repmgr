@@ -369,7 +369,7 @@ do_standby_clone(void)
 
 	log_notice(_("you can now start your PostgreSQL server"));
 
-	if (*config_file_options.service_start_command)
+	if (config_file_options.service_start_command[0] != '\n')
 	{
 		log_hint(_("for example : %s"),
 				 config_file_options.service_start_command);
@@ -498,7 +498,7 @@ check_barman_config(void)
 		log_error(_("unable to use directory %s"),
 				local_data_directory);
 		log_hint(_("use -F/--force option to force this directory to be overwritten"));
-			exit(ERR_BAD_CONFIG);
+		exit(ERR_BAD_CONFIG);
 	}
 
 
@@ -1127,15 +1127,7 @@ do_standby_promote(void)
 	 * For now we'll poll the server until the default timeout (60 seconds)
 	 */
 
-	if (*config_file_options.service_promote_command)
-	{
-		maxlen_snprintf(script, "%s", config_file_options.service_promote_command);
-	}
-	else
-	{
-		maxlen_snprintf(script, "%s -D %s promote",
-						make_pg_path("pg_ctl"), data_dir);
-	}
+	get_server_action(ACTION_PROMOTE, script, data_dir);
 
 	log_notice(_("promoting server using '%s'"),
 			   script);
@@ -1154,8 +1146,8 @@ do_standby_promote(void)
 
 	for (i = 0; i < promote_check_timeout; i += promote_check_interval)
 	{
-
 		recovery_type = get_recovery_type(conn);
+
 		if (recovery_type == RECTYPE_PRIMARY)
 		{
 			promote_success = true;
@@ -1446,19 +1438,8 @@ do_standby_follow(void)
 
 	// XXX here check if service is running!! if not, start
 	//     ensure that problem with pg_ctl output is caught here
-	if (*config_file_options.service_restart_command)
-	{
-		maxlen_snprintf(restart_command, "%s", config_file_options.service_restart_command);
-	}
-	else
-	{
-		maxlen_snprintf(restart_command,
-						"%s %s -w -D %s -m fast restart",
-				        make_pg_path("pg_ctl"),
-						config_file_options.pg_ctl_options,
-						data_dir);
-	}
 
+	get_server_action(ACTION_RESTART, restart_command, data_dir);
 
 	log_notice(_("restarting server using '%s'"),
 			   restart_command);

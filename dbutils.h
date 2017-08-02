@@ -254,6 +254,9 @@ typedef struct
 
 #define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
 
+
+/* global variables */
+
 extern int			server_version_num;
 
 /* macros */
@@ -412,5 +415,6 @@ void 		 get_bdr_other_node_name(PGconn *conn, int node_id, char *name_buf);
 
 bool		 am_bdr_failover_handler(PGconn *conn, int node_id);
 void		 unset_bdr_failover_handler(PGconn *conn);
-#endif /* dbutils.h */
+
+#endif /* _REPMGR_DBUTILS_H_ */
 

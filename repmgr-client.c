@@ -29,6 +29,7 @@
  * For internal use:
  * NODE ARCHIVE-CONFIG
  * NODE RESTORE-CONFIG
+ * NODE SERVICE
  */
 
 #include <unistd.h>
@@ -302,8 +303,8 @@ main(int argc, char **argv)
 				runtime_options.upstream_node_id = repmgr_atoi(optarg, "--upstream-node-id", &cli_errors, false);
 				break;
 
-			/* standby clone options *
-			 * --------------------- */
+			/* "standby clone" options *
+			 * ----------------------- */
 
 			/* -c/--fast-checkpoint */
 			case 'c':
@@ -383,8 +384,8 @@ main(int argc, char **argv)
 				runtime_options.without_barman = true;
 				break;
 
-			/* standby register options *
-			 * --------------------- */
+			/* "standby register" options *
+			 * -------------------------- */
 
 			case OPT_REGISTER_WAIT:
 				runtime_options.wait_register_sync = true;
@@ -394,9 +395,24 @@ main(int argc, char **argv)
 				}
 				break;
 
+			/* "node service" options *
+			 * ---------------------- */
 
-			/* event options *
-			 * ------------- */
+			/* --action (repmgr node service --action) */
+			case OPT_ACTION:
+				strncpy(runtime_options.action, optarg, MAXLEN);
+				break;
+
+			case OPT_LIST:
+				runtime_options.list = true;
+				break;
+
+			case OPT_CHECK:
+				runtime_options.check = true;
+				break;
+
+			/* "cluster event" options *
+			 * ----------------------- */
 
 			case OPT_EVENT:
 				strncpy(runtime_options.event, optarg, MAXLEN);
@@ -410,6 +426,8 @@ main(int argc, char **argv)
 			case OPT_ALL:
 				runtime_options.all = true;
 				break;
+
+
 
 			/* logging options *
 			 * --------------- */
@@ -578,7 +596,7 @@ main(int argc, char **argv)
 	 *	 { PRIMARY | MASTER } REGISTER |
 	 *	 STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
 	 *	 BDR { REGISTER | UNREGISTER } |
-	 *   NODE { STATUS } |
+	 *   NODE { STATUS | ARCHIVE-CONFIG | RESTORE-CONFIG | SERVICE } |
 	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP | EVENT }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host optipn
@@ -656,6 +674,8 @@ main(int argc, char **argv)
 				action = NODE_ARCHIVE_CONFIG;
 			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
 				action = NODE_RESTORE_CONFIG;
+			else if (strcasecmp(repmgr_action, "SERVICE") == 0)
+				action = NODE_SERVICE;
 		}
 
 		else if (strcasecmp(repmgr_node_type, "CLUSTER") == 0)
@@ -972,11 +992,18 @@ main(int argc, char **argv)
 		case NODE_STATUS:
 			do_node_status();
 			break;
+		case NODE_CHECK:
+			do_node_check();
+			break;
 		case NODE_ARCHIVE_CONFIG:
 			do_node_archive_config();
 			break;
 		case NODE_RESTORE_CONFIG:
 			do_node_restore_config();
+			break;
+		case NODE_SERVICE:
+			do_node_service();
+			break;
 
 		/* CLUSTER */
 		case CLUSTER_SHOW:
@@ -1293,6 +1320,20 @@ check_cli_parameters(const int action)
 										action_name(action));
 		}
 	}
+
+	/* repmgr node service --action */
+	if (runtime_options.action)
+	{
+		switch (action)
+		{
+			case NODE_SERVICE:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--action not required when executing %s"),
+										action_name(action));
+		}
+	}
 }
 
 
@@ -1330,6 +1371,8 @@ action_name(const int action)
 			return "NODE ARCHIVE-CONFIG";
 		case NODE_RESTORE_CONFIG:
 			return "NODE RESTORE-CONFIG";
+		case NODE_SERVICE:
+			return "NODE_SERVICE";
 
 		case CLUSTER_SHOW:
 			return "CLUSTER SHOW";
@@ -2512,4 +2555,185 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	return true;
 }
 
+
+/* ======================== */
+/* server control functions */
+/* ======================== */
+
+void
+get_server_action(t_server_action action, char *script, char *data_dir)
+{
+	PQExpBufferData command;
+
+	if (data_dir == NULL)
+		data_dir = "(none provided)";
+
+	switch(action)
+	{
+		case ACTION_NONE:
+			script[0] = '\0';
+			return;
+
+		case ACTION_START:
+		{
+			if (config_file_options.service_start_command[0] != '\0')
+			{
+				maxlen_snprintf(script, "%s",
+								config_file_options.service_start_command);
+			}
+			else
+			{
+				initPQExpBuffer(&command);
+
+				appendPQExpBuffer(
+					&command,
+					"%s %s -w -D ",
+					make_pg_path("pg_ctl"),
+					config_file_options.pg_ctl_options);
+
+				appendShellString(
+					&command,
+					data_dir);
+
+				appendPQExpBuffer(
+					&command,
+					" start");
+
+				strncpy(script, command.data, MAXLEN);
+
+				termPQExpBuffer(&command);
+			}
+
+			return;
+		}
+
+		case ACTION_STOP:
+		{
+			if (config_file_options.service_stop_command[0] != '\0')
+			{
+				maxlen_snprintf(script, "%s",
+								config_file_options.service_stop_command);
+			}
+			else
+			{
+				initPQExpBuffer(&command);
+				appendPQExpBuffer(
+					&command,
+					"%s %s -D ",
+					make_pg_path("pg_ctl"),
+					config_file_options.pg_ctl_options);
+
+				appendShellString(
+					&command,
+					data_dir);
+
+				appendPQExpBuffer(
+					&command,
+					" -m fast -W stop");
+
+				strncpy(script, command.data, MAXLEN);
+
+				termPQExpBuffer(&command);
+			}
+			return;
+		}
+
+		case ACTION_RESTART:
+		{
+			if (config_file_options.service_restart_command[0] != '\0')
+			{
+				maxlen_snprintf(script, "%s",
+								config_file_options.service_restart_command);
+			}
+			else
+			{
+				initPQExpBuffer(&command);
+				appendPQExpBuffer(
+					&command,
+					"%s %s -w -D ",
+					make_pg_path("pg_ctl"),
+					config_file_options.pg_ctl_options);
+
+				appendShellString(
+					&command,
+					data_dir);
+
+				appendPQExpBuffer(
+					&command,
+					" restart");
+
+				strncpy(script, command.data, MAXLEN);
+
+				termPQExpBuffer(&command);
+			}
+			return;
+		}
+
+		case ACTION_RELOAD:
+		{
+			if (config_file_options.service_reload_command[0] != '\0')
+			{
+				maxlen_snprintf(script, "%s", config_file_options.service_reload_command);
+			}
+			else
+			{
+				initPQExpBuffer(&command);
+				appendPQExpBuffer(
+					&command,
+					"%s %s -w -D ",
+					make_pg_path("pg_ctl"),
+					config_file_options.pg_ctl_options);
+
+				appendShellString(
+					&command,
+					data_dir);
+
+				appendPQExpBuffer(
+					&command,
+					" reload");
+
+				strncpy(script, command.data, MAXLEN);
+
+				termPQExpBuffer(&command);
+
+			}
+			return;
+		}
+
+		case ACTION_PROMOTE:
+		{
+			if (config_file_options.service_promote_command[0] != '\0')
+			{
+				maxlen_snprintf(script, "%s", config_file_options.service_promote_command);
+			}
+			else
+			{
+				initPQExpBuffer(&command);
+				appendPQExpBuffer(
+					&command,
+					"%s %s -w -D ",
+					make_pg_path("pg_ctl"),
+					config_file_options.pg_ctl_options);
+
+				appendShellString(
+					&command,
+					data_dir);
+
+				appendPQExpBuffer(
+					&command,
+					" promote");
+
+				strncpy(script, command.data, MAXLEN);
+
+				termPQExpBuffer(&command);
+			}
+			return;
+		}
+
+		default:
+			return;
+	}
+
+	return;
+}
 

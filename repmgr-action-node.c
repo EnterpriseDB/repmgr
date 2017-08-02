@@ -16,6 +16,10 @@
 
 static bool copy_file(const char *src_file, const char *dest_file);
 static void format_archive_dir(char *archive_dir);
+static t_server_action parse_server_action(const char *action);
+
+static void _do_node_service_check(void);
+static void _do_node_service_list(void);
 
 void
 do_node_status(void)
@@ -279,6 +283,103 @@ do_node_status(void)
 void
 do_node_check(void)
 {
+}
+
+
+// --action=...
+// --check
+// --list -> list what would be executed for each action, filter to --action
+void
+do_node_service(void)
+{
+	t_server_action action = parse_server_action(runtime_options.action);
+
+	if (action == ACTION_UNKNOWN)
+	{
+		log_error(_("unknown value \"%s\" provided for parameter --action"),
+				  runtime_options.action);
+		log_hint(_("valid values are \"start\", \"stop\" and \"restart\""));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (runtime_options.check == true)
+	{
+		if (action != ACTION_NONE)
+			log_warning(_("--action not required for --check"));
+
+		return _do_node_service_check();
+	}
+
+	if (runtime_options.list == true)
+	{
+		return _do_node_service_list();
+	}
+
+
+	// perform action...
+	// --dry-run: print only
+}
+
+
+static void
+_do_node_service_check(void)
+{
+}
+
+
+static void
+_do_node_service_list(void)
+{
+	char command[MAXLEN] = "";
+
+	char *data_dir = runtime_options.data_dir;
+
+
+	puts(_("Following commands would be executed for each action:"));
+	puts("");
+
+	get_server_action(ACTION_START, command, data_dir);
+	printf("    start: \"%s\"\n", command);
+
+	get_server_action(ACTION_STOP, command, data_dir);
+	printf("     stop: \"%s\"\n", command);
+
+	get_server_action(ACTION_RESTART, command, data_dir);
+	printf("  restart: \"%s\"\n", command);
+
+	get_server_action(ACTION_RELOAD, command, data_dir);
+	printf("   reload: \"%s\"\n", command);
+
+	get_server_action(ACTION_PROMOTE, command, data_dir);
+	printf("  promote: \"%s\"\n", command);
+
+	puts("");
+
+}
+
+
+static t_server_action
+parse_server_action(const char *action_name)
+{
+	if (action_name[0] == '\0')
+		return ACTION_NONE;
+
+	if (strcasecmp(action_name, "start") == 0)
+		return ACTION_START;
+
+	if (strcasecmp(action_name, "stop") == 0)
+		return ACTION_STOP;
+
+	if (strcasecmp(action_name, "restart") == 0)
+		return ACTION_RESTART;
+
+	if (strcasecmp(action_name, "reload") == 0)
+		return ACTION_RELOAD;
+
+	if (strcasecmp(action_name, "promote") == 0)
+		return ACTION_PROMOTE;
+
+	return ACTION_UNKNOWN;
 }
 
 

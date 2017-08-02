@@ -50,12 +50,12 @@ typedef struct
 	char		remote_user[MAXLEN];
 	char		superuser[MAXLEN];
 
-	/* node options */
+	/* general node options */
 	int			node_id;
 	char		node_name[MAXLEN];
 	char		data_dir[MAXPGPATH];
 
-	/* standby clone options */
+	/* "standby clone" options */
 	bool		copy_external_config_files;
 	int			copy_external_config_files_destination;
 	bool		fast_checkpoint;
@@ -69,11 +69,16 @@ typedef struct
 	char		wal_keep_segments[MAXLEN];
 	bool		without_barman;
 
-	/* standby register options */
+	/* "standby register" options */
 	bool		wait_register_sync;
 	int			wait_register_sync_seconds;
 
-	/* event options */
+	/* "node service" options */
+	char		action[MAXLEN];
+	bool		check;
+	bool		list;
+
+	/* "cluster event" options */
 	bool		all;
 	char		event[MAXLEN];
 	int			limit;
@@ -97,11 +102,13 @@ typedef struct
 		"",	"",				  \
 		/* node options */ \
 		UNKNOWN_NODE_ID, "", "", \
-		/* standby clone options */ \
+		/* "standby clone" options */ \
 		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", NO_UPSTREAM_NODE, false, "", false, \
-		/* standby register options */ \
+		/* "standby register" options */ \
 		false, 0, \
-		/* event options */ \
+		/* "node service" options */ \
+		"", false, false, \
+		/* "cluster event" options */ \
 		false, "", CLUSTER_EVENT_LIMIT,	\
 		"/tmp" \
 }
@@ -111,6 +118,17 @@ typedef enum {
 	barman,
 	pg_basebackup
 }	standy_clone_mode;
+
+typedef enum {
+	ACTION_UNKNOWN = -1,
+	ACTION_NONE,
+	ACTION_START,
+	ACTION_STOP,
+	ACTION_RESTART,
+	ACTION_RELOAD,
+	ACTION_PROMOTE
+} t_server_action;
+
 
 
 /* global configuration structures */
@@ -148,5 +166,9 @@ extern bool create_recovery_file(const char *data_dir, t_conninfo_param_list *re
 extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn);
 
 extern bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
+
+/* server control functions */
+extern void get_server_action(t_server_action action, char *script, char *data_dir);
+
 
 #endif
