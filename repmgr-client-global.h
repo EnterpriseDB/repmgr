@@ -187,4 +187,5 @@ extern void make_remote_repmgr_path(PQExpBufferData *outputbuf);
 extern void get_server_action(t_server_action action, char *script, char *data_dir);
 extern bool data_dir_required_for_action(t_server_action action);
 extern void get_node_data_directory(char *data_dir_buf);
-#endif
+
+#endif /* _REPMGR_CLIENT_GLOBAL_H_ */

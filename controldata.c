@@ -15,10 +15,10 @@
 #include "repmgr.h"
 #include "controldata.h"
 
-static ControlFileInfo *get_controlfile(char *DataDir);
+static ControlFileInfo *get_controlfile(const char *DataDir);
 
 DBState
-get_db_state(char *data_directory)
+get_db_state(const char *data_directory)
 {
 	ControlFileInfo *control_file_info;
 	DBState state;
@@ -37,8 +37,8 @@ get_db_state(char *data_directory)
 }
 
 
-XLogRecPtr
-get_latest_checkpoint_location(char *data_directory)
+extern XLogRecPtr
+get_latest_checkpoint_location(const char *data_directory)
 {
 	ControlFileInfo *control_file_info;
 	XLogRecPtr checkPoint;
@@ -54,6 +54,30 @@ get_latest_checkpoint_location(char *data_directory)
 	pfree(control_file_info);
 
 	return checkPoint;
+}
+
+
+int
+get_data_checksum_version(const char *data_directory)
+{
+	ControlFileInfo *control_file_info;
+	int data_checksum_version;
+
+	control_file_info = get_controlfile(data_directory);
+
+	if (control_file_info->control_file_processed == false)
+	{
+		data_checksum_version = -1;
+	}
+	else
+	{
+		data_checksum_version = (int)control_file_info->control_file->data_checksum_version;
+	}
+
+	pfree(control_file_info->control_file);
+	pfree(control_file_info);
+
+	return data_checksum_version;
 }
 
 
@@ -86,7 +110,7 @@ describe_db_state(DBState state)
  * compatibility, and also don't care if the file isn't readable.
  */
 static ControlFileInfo *
-get_controlfile(char *DataDir)
+get_controlfile(const char *DataDir)
 {
 	ControlFileInfo *control_file_info;
 	int			fd;

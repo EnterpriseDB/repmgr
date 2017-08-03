@@ -322,6 +322,7 @@ int		   	 get_server_version(PGconn *conn, char *server_version);
 RecoveryType get_recovery_type(PGconn *conn);
 int			 get_primary_node_id(PGconn *conn);
 bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
+bool		 can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);

@@ -1563,7 +1563,8 @@ do_standby_follow(void)
  *    we'll need the location of its configuration file; this
  *    can be provided explicitly with -C/--remote-config-file,
  *    otherwise repmgr will look in default locations on the
- *    remote server
+ *    remote server (starting with the same path as the local
+ *    configuration file)
  *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
@@ -1694,6 +1695,31 @@ do_standby_switchover(void)
 	}
 
 	log_verbose(LOG_DEBUG, "remote node name is \"%s\"", remote_node_record.node_name);
+
+
+	/*
+	 * If --force-rewind specified, check pg_rewind can be used
+	 */
+
+	if (runtime_options.force_rewind == true)
+	{
+		PQExpBufferData reason;
+
+		initPQExpBuffer(&reason);
+
+		if (can_use_pg_rewind(remote_conn, config_file_options.data_directory, &reason) == false)
+		{
+			log_error(_("--force-rewind specified but pg_rewind cannot be used"));
+			log_detail("%s", reason.data);
+			termPQExpBuffer(&reason);
+			PQfinish(local_conn);
+			PQfinish(remote_conn);
+
+			exit(ERR_BAD_CONFIG);
+		}
+
+		termPQExpBuffer(&reason);
+	}
 
 	PQfinish(local_conn);
 	PQfinish(remote_conn);
