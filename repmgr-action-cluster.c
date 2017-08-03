@@ -524,19 +524,19 @@ do_cluster_crosscheck(void)
 			int max_node_status = -2;
 			int node_ix;
 
-				/*
-				 * The value of entry (i,j) is equal to the
-				 * maximum value of all the (i,j,k). Indeed:
-				 *
-				 * - if one of the (i,j,k) is 0 (node up), then 0
-				 *	 (the node is up);
-				 *
-				 * - if the (i,j,k) are either -1 (down) or -2
-				 *	 (unknown), then -1 (the node is down);
-				 *
-				 * - if all the (i,j,k) are -2 (unknown), then -2
-				 *	 (the node is in an unknown state).
-				 */
+			/*
+			 * The value of entry (i,j) is equal to the
+			 * maximum value of all the (i,j,k). Indeed:
+			 *
+			 * - if one of the (i,j,k) is 0 (node up), then 0
+			 *	 (the node is up);
+			 *
+			 * - if the (i,j,k) are either -1 (down) or -2
+			 *	 (unknown), then -1 (the node is down);
+			 *
+			 * - if all the (i,j,k) are -2 (unknown), then -2
+			 *	 (the node is in an unknown state).
+			 */
 
 			for(node_ix = 0; node_ix < n; node_ix ++)
 			{
