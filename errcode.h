@@ -13,6 +13,7 @@
 #define ERR_BAD_RSYNC 2
 #define ERR_BAD_PIDFILE 3
 #define ERR_NO_RESTART 4
+#define ERR_LOCAL_COMMAND 5
 #define ERR_DB_CONN 6
 #define ERR_DB_QUERY 7
 #define ERR_PROMOTION_FAIL 8

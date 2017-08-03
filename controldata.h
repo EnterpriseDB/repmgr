@@ -24,4 +24,7 @@ get_db_state(char *data_directory);
 extern const char *
 describe_db_state(DBState state);
 
+extern XLogRecPtr
+get_latest_checkpoint_location(char *data_directory);
+
 #endif /* _CONTROLDATA_H_ */

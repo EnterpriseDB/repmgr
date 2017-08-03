@@ -73,10 +73,19 @@ typedef struct
 	bool		wait_register_sync;
 	int			wait_register_sync_seconds;
 
+	/* "standby switchover" options */
+	char		remote_config_file[MAXPGPATH];
+	bool		always_promote;
+	bool		force_rewind;
+
+	/* "node status" options */
+	bool		is_shutdown;
+
 	/* "node service" options */
 	char		action[MAXLEN];
 	bool		check;
-	bool		list;
+	bool		list_actions;
+	bool		checkpoint;
 
 	/* "cluster event" options */
 	bool		all;
@@ -99,15 +108,20 @@ typedef struct
 		/* database connection options */ \
 		"", "", "",	"",				  \
 		/* other connection options */ \
-		"",	"",				  \
+		"",	"",  \
 		/* node options */ \
 		UNKNOWN_NODE_ID, "", "", \
 		/* "standby clone" options */ \
-		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", NO_UPSTREAM_NODE, false, "", false, \
+		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", \
+		NO_UPSTREAM_NODE, false, "", false,						 \
 		/* "standby register" options */ \
 		false, 0, \
+		/* "standby switchover" options */ \
+		"", false, false,  \
+		/* "node status" options */ \
+		false, \
 		/* "node service" options */ \
-		"", false, false, \
+		"", false, false, false,  \
 		/* "cluster event" options */ \
 		false, "", CLUSTER_EVENT_LIMIT,	\
 		"/tmp" \
@@ -166,6 +180,8 @@ extern bool create_recovery_file(const char *data_dir, t_conninfo_param_list *re
 extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn);
 
 extern bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
+
+extern void make_remote_repmgr_path(PQExpBufferData *outputbuf);
 
 /* server control functions */
 extern void get_server_action(t_server_action action, char *script, char *data_dir);

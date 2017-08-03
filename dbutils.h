@@ -326,8 +326,11 @@ bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);
 
+/* node management functions */
+void		 checkpoint(PGconn *conn);
+
 /* result functions */
-bool		atobool(const char *value);
+bool		 atobool(const char *value);
 
 /* node record functions */
 t_server_type parse_node_type(const char *type);

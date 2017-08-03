@@ -77,6 +77,7 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 static int  get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
+static NodeStatus parse_node_status_is_shutdown(const char *node_status_output, XLogRecPtr *checkPoint);
 
 /*
  * do_standby_clone()
@@ -1305,10 +1306,23 @@ do_standby_follow(void)
 	 */
 	else
 	{
+		if (config_file_options.data_directory[0] == '\0')
+		{
+			if (runtime_options.data_dir[0] == '\0')
+			{
+				log_error(_("-D/--pgdata required when providing connection parameters for \"standby follow\""));
+				exit(ERR_BAD_CONFIG);
+			}
+			strncpy(data_dir, runtime_options.data_dir, MAXPGPATH);
+		}
+		else
+		{
+			strncpy(data_dir, config_file_options.data_directory, MAXPGPATH);
+		}
+
 		primary_conn = establish_db_connection_by_params(&source_conninfo, true);
 
 		primary_id = get_primary_node_id(primary_conn);
-		strncpy(data_dir, runtime_options.data_dir, MAXPGPATH);
 	}
 
 	if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
@@ -1530,10 +1544,478 @@ do_standby_follow(void)
 	return;
 }
 
+
+/*
+ * Perform a switchover by:
+ *  - stopping current primary node
+ *  - promoting this standby node to primary
+ *  - forcing previous primary node to follow this node
+ *
+ * Caveats:
+ *  - repmgrd must not be running, otherwise it may
+ *    attempt a failover
+ *    (TODO: find some way of notifying repmgrd of planned
+ *     activity like this)
+ *  - currently only set up for two-node operation; any other
+ *    standbys will probably become downstream cascaded standbys
+ *    of the old primary once it's restarted
+ *  - as we're executing repmgr remotely (on the old primary),
+ *    we'll need the location of its configuration file; this
+ *    can be provided explicitly with -C/--remote-config-file,
+ *    otherwise repmgr will look in default locations on the
+ *    remote server
+ *
+ * TODO:
+ *  - make connection test timeouts/intervals configurable (see below)
+ */
+
+
 void
 do_standby_switchover(void)
 {
-	puts("not implemented");
+	PGconn	   *local_conn;
+	PGconn	   *remote_conn;
+
+	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
+
+
+	/* the remote server is the primary to be demoted */
+	char	    remote_conninfo[MAXCONNINFO] = "";
+	char	    remote_host[MAXLEN] = "";
+	int         remote_node_id;
+	t_node_info remote_node_record = T_NODE_INFO_INITIALIZER;
+
+	RecordStatus	   record_status;
+	RecoveryType	recovery_type;
+	PQExpBufferData remote_command_str;
+	PQExpBufferData command_output;
+
+	int r, i;
+
+	bool		shutdown_success = false;
+	XLogRecPtr remote_last_checkpoint_lsn = InvalidXLogRecPtr;
+	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
+
+	/*
+	 * SANITY CHECKS
+	 *
+	 * We'll be doing a bunch of operations on the remote server (primary
+	 * to be demoted) - careful checks needed before proceding.
+	 */
+
+	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_record);
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve node record for node %i"),
+				  config_file_options.node_id);
+
+		PQfinish(local_conn);
+		exit(ERR_DB_QUERY);
+	}
+
+	if (!is_streaming_replication(local_node_record.type))
+	{
+		log_error(_("switchover can only performed with streaming replication"));
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_notice(_("checking switchover on node \"%s\" (ID: %i) in --dry-run mode"),
+				   local_node_record.node_name,
+				   local_node_record.node_id);
+	}
+	else
+	{
+		log_notice(_("executing switchover on node \"%s\" (ID: %i)"),
+				   local_node_record.node_name,
+				   local_node_record.node_id);
+	}
+
+	/* Check that this is a standby */
+	recovery_type = get_recovery_type(local_conn);
+	if (recovery_type != RECTYPE_STANDBY)
+	{
+		log_error(_("switchover must be executed from the standby node to be promoted"));
+		if (recovery_type == RECTYPE_PRIMARY)
+		{
+			log_detail(_("this node (ID: %i) is the primary"),
+					   local_node_record.node_id);
+		}
+		PQfinish(local_conn);
+
+		exit(ERR_SWITCHOVER_FAIL);
+	}
+
+	/* check remote server connection and retrieve its record */
+	remote_conn = get_primary_connection(local_conn, &remote_node_id, remote_conninfo);
+
+	if (PQstatus(remote_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to connect to current primary node"));
+		log_hint(_("check that the cluster is correctly configured and this standby is registered"));
+		PQfinish(local_conn);
+		exit(ERR_DB_CONN);
+	}
+
+	record_status = get_node_record(remote_conn, remote_node_id, &remote_node_record);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve node record for node %i"),
+				  remote_node_id);
+
+		PQfinish(local_conn);
+		PQfinish(remote_conn);
+
+		exit(ERR_DB_QUERY);
+	}
+
+	/*
+	 * Check this standby is attached to the demotion candidate
+	 * TODO:
+	 *  - check standby is attached to demotion candidate
+	 *    (compare primary_conninfo from recovery.conf)
+	 */
+
+	if (local_node_record.upstream_node_id != remote_node_record.node_id)
+	{
+		log_error(_("local node %i is not a downstream of demotion candidate primary %i"),
+				  local_node_record.upstream_node_id,
+				  remote_node_record.node_id);
+
+		PQfinish(local_conn);
+		PQfinish(remote_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	log_verbose(LOG_DEBUG, "remote node name is \"%s\"", remote_node_record.node_name);
+
+	PQfinish(local_conn);
+	PQfinish(remote_conn);
+
+	/*
+	 * Check that we can connect by SSH to the remote (current primary) server
+	 */
+	get_conninfo_value(remote_conninfo, "host", remote_host);
+
+	r = test_ssh_connection(remote_host, runtime_options.remote_user);
+
+	if (r != 0)
+	{
+		log_error(_("unable to connect via SSH to host \"%s\", user \"%s\""),
+				  remote_host, runtime_options.remote_user);
+		exit(ERR_BAD_CONFIG);
+	}
+
+
+	/* Determine the remote's configuration file location */
+	/* -------------------------------------------------- */
+
+	/* Remote configuration file provided - check it exists */
+	/* TODO have remote node verify config file  "node status --config-file */
+	if (runtime_options.remote_config_file[0])
+
+	{
+		log_verbose(LOG_INFO, _("looking for file \"%s\" on remote server \"%s\""),
+					runtime_options.remote_config_file,
+					remote_host);
+
+		initPQExpBuffer(&remote_command_str);
+		appendPQExpBuffer(&remote_command_str, "ls ");
+
+		appendShellString(&remote_command_str, runtime_options.remote_config_file);
+		appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
+
+		initPQExpBuffer(&command_output);
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			remote_command_str.data,
+			&command_output);
+
+		termPQExpBuffer(&remote_command_str);
+
+		if (*command_output.data == '0')
+		{
+			log_error(_("unable to find the specified repmgr configuration file on remote server"));
+			log_detail(_("remote configuration file is \"%s\""),
+					   runtime_options.remote_config_file);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		log_verbose(LOG_INFO, _("remote configuration file \"%s\" found on remote server"),
+					runtime_options.remote_config_file);
+
+		termPQExpBuffer(&command_output);
+	}
+	/*
+	 * No remote configuration file provided - check some default locations:
+	 *  - path of configuration file for this repmgr
+	 *  - /etc/repmgr.conf
+	 */
+	else
+	{
+		int		    i;
+		bool		remote_config_file_found = false;
+
+		const char *config_paths[] = {
+			runtime_options.config_file,
+			"/etc/repmgr.conf",
+			NULL
+		};
+
+		log_verbose(LOG_INFO, _("no remote configuration file provided - checking default locations"));
+
+		for (i = 0; config_paths[i] && remote_config_file_found == false; ++i)
+		{
+			/*
+			 * Don't attempt to check for an empty filename - this might be the case
+			 * if no local configuration file was found.
+			 */
+			if (!strlen(config_paths[i]))
+				continue;
+
+			log_verbose(LOG_INFO, _("checking \"%s\"\n"), config_paths[i]);
+
+			initPQExpBuffer(&remote_command_str);
+			appendPQExpBuffer(&remote_command_str, "ls ");
+
+			appendShellString(&remote_command_str, config_paths[i]);
+			appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
+
+			initPQExpBuffer(&command_output);
+
+			(void)remote_command(
+				remote_host,
+				runtime_options.remote_user,
+				remote_command_str.data,
+				&command_output);
+
+			termPQExpBuffer(&remote_command_str);
+
+			if (*command_output.data == '1')
+			{
+				strncpy(runtime_options.remote_config_file, config_paths[i], MAXLEN);
+				log_verbose(LOG_INFO, _("configuration file \"%s\" found on remote server"),
+							runtime_options.remote_config_file);
+				remote_config_file_found = true;
+			}
+
+			termPQExpBuffer(&command_output);
+		}
+
+		if (remote_config_file_found == false)
+		{
+			log_error(_("no remote configuration file supplied or found in a default location - terminating"));
+			log_hint(_("specify the remote configuration file with -C/--remote-config-file"));
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+
+	/*
+	 * Sanity checks completed - prepare for the switchover
+	 */
+
+	log_detail(_("local node \"%s\" (ID: %i) will be promoted to primary; "
+				 "current primary \"%s\" (ID: %i) will be demoted to standby"),
+			   local_node_record.node_name,
+			   local_node_record.node_id,
+			   remote_node_record.node_name,
+			   remote_node_record.node_id);
+
+	/*
+	 * Stop the remote primary
+	 *
+	 * We'll issue the pg_ctl command but not force it not to wait; we'll check
+	 * the connection from here - and error out if no shutdown is detected
+	 * after a certain time.
+	 */
+
+	// TODO: check remote node for archive status etc.
+
+	initPQExpBuffer(&remote_command_str);
+	initPQExpBuffer(&command_output);
+
+	make_remote_repmgr_path(&remote_command_str);
+
+
+	if (runtime_options.dry_run == true)
+	{
+		appendPQExpBuffer(&remote_command_str,
+						  "node service --terse -LERROR --list-actions --action=stop");
+
+	}
+	else
+	{
+		appendPQExpBuffer(&remote_command_str,
+						  "node service --action=stop --checkpoint");
+	}
+
+	// XXX handle failure
+
+	(void)remote_command(
+		remote_host,
+		runtime_options.remote_user,
+		remote_command_str.data,
+		&command_output);
+
+
+	termPQExpBuffer(&remote_command_str);
+
+
+	/*
+	 * --dry-run ends here with display of command which would be used to
+	 * shut down the remote server
+	 */
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("following shutdown command would be run on node \"%s\":\n  \"%s\""),
+				 remote_node_record.node_name,
+				 command_output.data);
+		termPQExpBuffer(&command_output);
+		return;
+	}
+
+	termPQExpBuffer(&command_output);
+	shutdown_success = false;
+
+	/* loop for timeout waiting for current primary to stop */
+
+	for (i = 0; i < config_file_options.reconnect_attempts; i++)
+	{
+		/* Check whether primary is available */
+		PGPing ping_res;
+
+		log_info(_("checking primary status; %i of %i attempts"),
+				 i + 1, config_file_options.reconnect_attempts);
+		ping_res = PQping(remote_conninfo);
+
+
+		/* database server could not be contacted */
+		if (ping_res == PQPING_NO_RESPONSE ||PQPING_NO_ATTEMPT)
+		{
+			bool command_success;
+
+			/*
+			 * remote server can't be contacted at protocol level - that
+			 * doesn't necessarily mean it's shut down, so we'll ask
+			 * its repmgr to check at data directory level, and if shut down
+			 * also return the last checkpoint LSN.
+			 */
+
+			initPQExpBuffer(&remote_command_str);
+			make_remote_repmgr_path(&remote_command_str);
+			appendPQExpBuffer(&remote_command_str,
+							  "node status --is-shutdown");
+
+			initPQExpBuffer(&command_output);
+
+			command_success = remote_command(
+				remote_host,
+				runtime_options.remote_user,
+				remote_command_str.data,
+				&command_output);
+
+			termPQExpBuffer(&remote_command_str);
+
+			if (command_success == true)
+			{
+				NodeStatus status = parse_node_status_is_shutdown(command_output.data, &remote_last_checkpoint_lsn);
+
+				if (status == NODE_STATUS_DOWN && remote_last_checkpoint_lsn != InvalidXLogRecPtr)
+				{
+					shutdown_success = true;
+					log_notice(_("current primary has been shut down at location %X/%X"),
+							   format_lsn(remote_last_checkpoint_lsn));
+					termPQExpBuffer(&command_output);
+
+					break;
+				}
+			}
+
+			termPQExpBuffer(&command_output);
+		}
+
+		/* XXX make configurable? */
+		sleep(config_file_options.reconnect_interval);
+		i++;
+	}
+
+	if (shutdown_success == false)
+	{
+		log_error(_("shutdown of the primary server could not be confirmed"));
+		log_hint(_("check the primary server status before performing any further actions"));
+		exit(ERR_SWITCHOVER_FAIL);
+	}
+
+
+	local_conn = establish_db_connection(config_file_options.conninfo, false);
+
+	if (PQstatus(local_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to reestablish connection to local node \"%s\""),
+				  local_node_record.node_name);
+		exit(ERR_DB_CONN);
+	}
+
+	get_replication_info(local_conn, &replication_info);
+
+	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
+	{
+		log_warning(_("local node \"%s\" is behind shutdown primary \"%s\""),
+					local_node_record.node_name,
+					remote_node_record.node_name);
+		log_detail(_("local node last receive LSN is %X/%X, primary shutdown checkpoint LSN is %X/%X"),
+				   format_lsn(replication_info.last_wal_receive_lsn),
+				   format_lsn(remote_last_checkpoint_lsn));
+
+		if (runtime_options.always_promote == false)
+		{
+			log_notice(_("aborting switchover"));
+			log_hint(_("use --always-promote to force promotion of standby"));
+			PQfinish(local_conn);
+			exit(ERR_SWITCHOVER_FAIL);
+		}
+	}
+
+	/* promote standby */
+
+	// XXX need stripped-down version which skips the sanity checks etc
+	do_standby_promote();
+
+	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
+	{
+		// if --force-rewind was supplied, do that now, otherwise exit
+	}
+
+	/*
+	 * Execute `repmgr standby follow` to create recovery.conf and start
+	 * the remote server
+	 *
+	 * XXX replace with "node rejoin"
+	 */
+	initPQExpBuffer(&remote_command_str);
+	make_remote_repmgr_path(&remote_command_str);
+	appendPQExpBuffer(&remote_command_str,
+					  " -d \\'%s\\' standby follow",
+					  local_node_record.conninfo);
+	log_debug("executing:\n  \"%s\"", remote_command_str.data);
+	(void)remote_command(
+		remote_host,
+		runtime_options.remote_user,
+		remote_command_str.data,
+		NULL);
+
+	termPQExpBuffer(&remote_command_str);
+
+
 	return;
 }
 
@@ -2708,6 +3190,7 @@ copy_configuration_files(void)
 	log_notice(_("copying external configuration files from upstream node"));
 
 	r = test_ssh_connection(host, runtime_options.remote_user);
+
 	if (r != 0)
 	{
 		log_error(_("remote host %s is not reachable via SSH - unable to copy external configuration files"),
@@ -2875,4 +3358,127 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 			log_warning(_("replication slot \"%s\" is still active on node %i"), slot_name, node_id);
 		}
 	}
+}
+
+
+
+static NodeStatus
+parse_node_status_is_shutdown(const char *node_status_output, XLogRecPtr *checkPoint)
+{
+	int   options_len = 0;
+	char *options_string = NULL;
+	char *options_string_ptr = NULL;
+	NodeStatus node_status = NODE_STATUS_UNKNOWN;
+
+	/*
+	 * Add parsed options to this list, then copy to an array
+	 * to pass to getopt
+	 */
+	static ItemList option_argv = { NULL, NULL };
+
+	char *argv_item;
+	int c, argc_item = 1;
+
+	char **argv_array;
+	ItemListCell *cell;
+
+	int			optindex = 0;
+
+	/* We're only interested in these options */
+	static struct option long_options[] =
+	{
+		{"last-checkpoint-lsn", required_argument, NULL, 'L'},
+		{"state", required_argument, NULL, 'S'},
+		{NULL, 0, NULL, 0}
+	};
+
+	/* Don't attempt to tokenise an empty string */
+	if (!strlen(node_status_output))
+	{
+		*checkPoint = InvalidXLogRecPtr;
+		return node_status;
+	}
+
+	options_len = strlen(node_status_output) + 1;
+	options_string = pg_malloc(options_len);
+	options_string_ptr = options_string;
+
+	/* Copy the string before operating on it with strtok() */
+	strncpy(options_string, node_status_output, options_len);
+
+	/* Extract arguments into a list and keep a count of the total */
+	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
+	{
+		item_list_append(&option_argv, argv_item);
+
+		argc_item++;
+
+		if (options_string_ptr != NULL)
+			options_string_ptr = NULL;
+	}
+
+	/*
+	 * Array of argument values to pass to getopt_long - this will need to
+	 * include an empty string as the first value (normally this would be
+	 * the program name)
+	 */
+	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
+
+	/* Insert a blank dummy program name at the start of the array */
+	argv_array[0] = pg_malloc0(1);
+
+	c = 1;
+
+	/*
+	 * Copy the previously extracted arguments from our list to the array
+	 */
+	for (cell = option_argv.head; cell; cell = cell->next)
+	{
+		int argv_len = strlen(cell->string) + 1;
+
+		argv_array[c] = pg_malloc0(argv_len);
+
+		strncpy(argv_array[c], cell->string, argv_len);
+
+		c++;
+	}
+
+	argv_array[c] = NULL;
+
+	/* Reset getopt's optind variable */
+	optind = 0;
+
+	/* Prevent getopt from emitting errors */
+	opterr = 0;
+
+	while ((c = getopt_long(argc_item, argv_array, "L:S:", long_options,
+							&optindex)) != -1)
+	{
+		switch (c)
+		{
+			/* --last-checkpoint-lsn */
+			case 'L':
+				*checkPoint = parse_lsn(optarg);
+				break;
+			/* --state */
+			case 'S':
+			{
+				if (strncmp(optarg, "RUNNING", MAXLEN) == 0)
+				{
+					node_status = NODE_STATUS_UP;
+				}
+				else if (strncmp(optarg, "SHUTDOWN", MAXLEN) == 0)
+				{
+					node_status = NODE_STATUS_DOWN;
+				}
+				else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
+				{
+					node_status = NODE_STATUS_UNKNOWN;
+				}
+			}
+			break;
+		}
+	}
+
+	return node_status;
 }

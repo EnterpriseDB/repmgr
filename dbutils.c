@@ -1036,7 +1036,7 @@ _get_primary_connection(PGconn *conn,
 	}
 
 	/* find all registered nodes  */
-	log_info(_("retrieving node list"));
+	log_verbose(LOG_INFO, _("retrieving node list"));
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
@@ -1182,6 +1182,9 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 	PQExpBufferData	  query;
 	PGresult   *res;
 
+	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+		server_version_num = get_server_version(conn, NULL);
+
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(
 		&query,
@@ -1295,6 +1298,28 @@ get_repmgr_extension_status(PGconn *conn)
 	}
 
 	return REPMGR_AVAILABLE;
+}
+
+/* ========================= */
+/* node management functions */
+/* ========================= */
+
+/* assumes superuser connection */
+void
+checkpoint(PGconn *conn)
+{
+	PGresult   *res;
+
+	res = PQexec(conn, "CHECKPOINT");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to execute CHECKPOINT"));
+		log_detail("%s", PQerrorMessage(conn));
+	}
+
+	PQclear(res);
+	return;
 }
 
 
@@ -1819,7 +1844,7 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_error(_("unable to %s node record:\n  %s"),
 				  action,
@@ -1854,7 +1879,7 @@ update_node_record_set_active(PGconn *conn, int this_node_id, bool active)
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_error(_("unable to update node record:\n  %s"),
 				  PQerrorMessage(conn));
@@ -2065,7 +2090,7 @@ delete_node_record(PGconn *conn, int node)
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		log_error(_("unable to delete node record:\n  %s"),
 					PQerrorMessage(conn));
@@ -2478,7 +2503,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 
 		termPQExpBuffer(&query);
 
-		if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
 			/* we don't treat this as an error */
 			log_warning(_("unable to create event record:\n  %s"),
@@ -2717,7 +2742,7 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		appendPQExpBuffer(error_msg,
 						  _("unable to create slot '%s' on the upstream node: %s\n"),
@@ -2750,7 +2775,7 @@ drop_replication_slot(PGconn *conn, char *slot_name)
 
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to drop replication slot \"%s\":\n  %s"),
 				  slot_name,
@@ -2786,7 +2811,7 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to query pg_replication_slots:\n  %s"),
 				PQerrorMessage(conn));
@@ -2991,7 +3016,7 @@ get_voting_status(PGconn *conn)
 
 	res = PQexec(conn, "SELECT repmgr.get_voting_status()");
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to query repmgr.get_voting_status():\n  %s"),
 				PQerrorMessage(conn));
@@ -3169,7 +3194,7 @@ notify_follow_primary(PGconn *conn, int primary_node_id)
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to execute repmgr.notify_follow_primary():\n  %s"),
 				PQerrorMessage(conn));
@@ -3228,7 +3253,7 @@ reset_voting_status(PGconn *conn)
 	termPQExpBuffer(&query);
 
 	// COMMAND_OK?
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to execute repmgr.reset_voting_status():\n  %s"),
 				  PQerrorMessage(conn));
@@ -3448,7 +3473,7 @@ add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to add table 'repmgr.%s' to replication set '%s':\n  %s"),
 				  tablename,
@@ -3485,7 +3510,7 @@ bdr_node_exists(PGconn *conn, const char *node_name)
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		node_exists = false;
 	}
@@ -3524,7 +3549,7 @@ get_bdr_node_replication_slot_status(PGconn *conn, const char *node_name)
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		status = SLOT_UNKNOWN;
 	}
@@ -3596,7 +3621,7 @@ add_extension_tables_to_bdr_replication_set(PGconn *conn)
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		//
 	}
@@ -3679,7 +3704,7 @@ get_bdr_node_record_by_name(PGconn *conn, const char *node_name, t_bdr_node_info
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (!res || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to retrieve BDR node record for \"%s\":\n  %s"),
 				  node_name,

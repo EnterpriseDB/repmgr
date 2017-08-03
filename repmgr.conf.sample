@@ -35,7 +35,10 @@
                                         # connection attempt is abandoned; for details see:
                                         #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
 
-#pgdata                                 # The node's data directory
+#data_directory                         # The node's data directory. This is needed by repmgr
+                                        # when performing operations when the PostgreSQL instance
+                                        # is not running and there's no other way of determining
+                                        # the data directory.
 
 # =============================================================================
 
@@ -139,10 +142,10 @@
 #   rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
 #   ssh_options=-o "StrictHostKeyChecking no"
 
-pg_ctl_options=''                       # Options to append to "pg_ctl"
-pg_basebackup_options=''                # Options to append to "pg_basebackup"
-rsync_options=''                        # Options to append to "rsync"
-ssh_options=''                          # Options to append to "ssh"
+#pg_ctl_options=''                      # Options to append to "pg_ctl"
+#pg_basebackup_options=''               # Options to append to "pg_basebackup"
+#rsync_options=''                       # Options to append to "rsync"
+ssh_options='-q'                        # Options to append to "ssh"
 
 
 

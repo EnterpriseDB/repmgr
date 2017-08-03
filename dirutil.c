@@ -216,21 +216,15 @@ mkdir_p(char *path, mode_t omode)
 bool
 is_pg_dir(char *path)
 {
-	const size_t buf_sz = 8192;
-	char		dirpath[buf_sz];
+	char		dirpath[MAXPGPATH];
 	struct stat sb;
-	int			r;
 
 	/* test pgdata */
-	snprintf(dirpath, buf_sz, "%s/PG_VERSION", path);
+	snprintf(dirpath, MAXPGPATH, "%s/PG_VERSION", path);
 	if (stat(dirpath, &sb) == 0)
 		return true;
 
-	/* test tablespace dir */
-	sprintf(dirpath, "ls %s/PG_*/ -I*", path);
-	r = system(dirpath);
-	if (r == 0)
-		return true;
+	/* TODO: sanity check other files */
 
 	return false;
 }

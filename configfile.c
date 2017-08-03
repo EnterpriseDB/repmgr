@@ -209,7 +209,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->node_id = UNKNOWN_NODE_ID;
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->conninfo, 0, sizeof(options->conninfo));
-	memset(options->pgdata, 0, sizeof(options->pgdata));
+	memset(options->data_directory, 0, sizeof(options->data_directory));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	options->replication_type = REPLICATION_TYPE_PHYSICAL;
 
@@ -228,6 +228,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->use_replication_slots = false;
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
+	strncpy(options->ssh_options, "-q", sizeof(options->ssh_options));
 	memset(options->replication_user, 0, sizeof(options->replication_user));
 	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
 	memset(options->restore_command, 0, sizeof(options->restore_command));
@@ -342,8 +343,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->node_name, value, MAXLEN);
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
-		else if (strcmp(name, "pgdata") == 0)
-			strncpy(options->pgdata, value, MAXPGPATH);
+		else if (strcmp(name, "data_directory") == 0)
+			strncpy(options->data_directory, value, MAXPGPATH);
 		else if (strcmp(name, "replication_user") == 0)
 		{
 			if (strlen(value) < NAMEDATALEN)
@@ -557,9 +558,9 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		item_list_append(error_list, _("\"node_name\": required parameter was not found"));
 	}
 
-	if (!strlen(options->pgdata))
+	if (!strlen(options->data_directory))
 	{
-		item_list_append(error_list, _("\"pgdata\": required parameter was not found"));
+		item_list_append(error_list, _("\"data_directory\": required parameter was not found"));
 	}
 
 	if (!strlen(options->conninfo))
@@ -1008,10 +1009,10 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 bool
 parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num, ItemList *error_list)
 {
-	int   options_len = strlen(pg_basebackup_options) + 1;
-	char *options_string = pg_malloc(options_len);
+	int   options_len = 0;
+	char *options_string = NULL;
+	char *options_string_ptr = NULL;
 
-	char *options_string_ptr = options_string;
 	/*
 	 * Add parsed options to this list, then copy to an array
 	 * to pass to getopt
@@ -1053,6 +1054,10 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	/* Don't attempt to tokenise an empty string */
 	if (!strlen(pg_basebackup_options))
 		return backup_options_ok;
+
+	options_len = strlen(pg_basebackup_options) + 1;
+	options_string = pg_malloc(options_len);
+	options_string_ptr = options_string;
 
 	if (server_version_num >= 100000)
 		long_options = long_options_10;
@@ -1142,6 +1147,9 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 		}
 		backup_options_ok = false;
 	}
+
+	pfree(options_string);
+	pfree(argv_array);
 
 	return backup_options_ok;
 }

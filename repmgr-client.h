@@ -48,21 +48,23 @@
 #define OPT_WITHOUT_BARMAN				   12
 #define OPT_NO_UPSTREAM_CONNECTION		   13
 #define OPT_REGISTER_WAIT				   14
-#define OPT_CLUSTER						   15
-#define OPT_LOG_TO_FILE					   16
-#define OPT_UPSTREAM_CONNINFO			   17
+#define OPT_LOG_TO_FILE					   15
+#define OPT_UPSTREAM_CONNINFO			   16
 /* replaces --no-conninfo-password */
-#define OPT_USE_RECOVERY_CONNINFO_PASSWORD 18
-#define OPT_REPLICATION_USER			   19
-#define OPT_EVENT						   20
-#define OPT_LIMIT						   21
-#define OPT_ALL							   22
-#define OPT_DRY_RUN						   23
-#define OPT_UPSTREAM_NODE_ID			   24
-#define OPT_ACTION                         25
+#define OPT_USE_RECOVERY_CONNINFO_PASSWORD 17
+#define OPT_REPLICATION_USER			   18
+#define OPT_EVENT						   19
+#define OPT_LIMIT						   20
+#define OPT_ALL							   21
+#define OPT_DRY_RUN						   22
+#define OPT_UPSTREAM_NODE_ID			   23
+#define OPT_ACTION                         24
+#define OPT_LIST_ACTIONS                   25
 #define OPT_CHECK                          26
-#define OPT_LIST                           27
-
+#define OPT_CHECKPOINT                     27
+#define OPT_IS_SHUTDOWN                    28
+#define OPT_ALWAYS_PROMOTE                 29
+#define OPT_FORCE_REWIND                   30
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR					   998
 #define OPT_NO_CONNINFO_PASSWORD		   999
@@ -97,7 +99,7 @@ static struct option long_options[] =
 /* logging options */
 	{"log-level", required_argument, NULL, 'L'},
 	{"log-to-file", no_argument, NULL, OPT_LOG_TO_FILE},
-	{"terse", required_argument, NULL, 't'},
+	{"terse", no_argument, NULL, 't'},
 	{"verbose", no_argument, NULL, 'v'},
 
 /* output options */
@@ -118,10 +120,19 @@ static struct option long_options[] =
 /* "standby register" options */
 	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
 
+/* "standby switchover" options */
+	{"remote-config-file", required_argument, NULL, 'C'},
+	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE },
+	{"force-rewind", no_argument, NULL, OPT_FORCE_REWIND },
+
+/* "node status" options */
+	{"is-shutdown", no_argument, NULL, OPT_IS_SHUTDOWN },
+
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},
 	{"check", no_argument, NULL, OPT_CHECK},
-	{"list", no_argument, NULL, OPT_LIST},
+	{"list-actions", no_argument, NULL, OPT_LIST_ACTIONS},
+	{"checkpoint", no_argument, NULL, OPT_CHECKPOINT},
 
 /* "cluster event" options */
 	{"all", no_argument, NULL, OPT_ALL },
@@ -139,7 +150,6 @@ static struct option long_options[] =
 /* not yet handled */
 	{"keep-history", required_argument, NULL, 'k'},
 	{"mode", required_argument, NULL, 'm'},
-	{"remote-config-file", required_argument, NULL, 'C'},
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 	{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
 	{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},

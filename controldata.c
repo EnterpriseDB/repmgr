@@ -36,6 +36,27 @@ get_db_state(char *data_directory)
 	return state;
 }
 
+
+XLogRecPtr
+get_latest_checkpoint_location(char *data_directory)
+{
+	ControlFileInfo *control_file_info;
+	XLogRecPtr checkPoint;
+
+	control_file_info = get_controlfile(data_directory);
+
+	if (control_file_info->control_file_processed == false)
+		return InvalidXLogRecPtr;
+
+	checkPoint = control_file_info->control_file->checkPoint;
+
+	pfree(control_file_info->control_file);
+	pfree(control_file_info);
+
+	return checkPoint;
+}
+
+
 const char *
 describe_db_state(DBState state)
 {
@@ -101,7 +122,6 @@ get_controlfile(char *DataDir)
 	 * against. However we're only interested in the first few fields, which
 	 * should be constant across supported versions
 	 *
-	 * XXX double-check this
 	 */
 
 	return control_file_info;

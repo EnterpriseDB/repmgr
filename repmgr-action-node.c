@@ -10,6 +10,8 @@
 #include <dirent.h>
 
 #include "repmgr.h"
+#include "controldata.h"
+#include "dirutil.h"
 
 #include "repmgr-client-global.h"
 #include "repmgr-action-node.h"
@@ -19,7 +21,8 @@ static void format_archive_dir(char *archive_dir);
 static t_server_action parse_server_action(const char *action);
 
 static void _do_node_service_check(void);
-static void _do_node_service_list(t_server_action action);
+static void _do_node_service_list_actions(t_server_action action);
+static void _do_node_status_is_shutdown(void);
 
 void
 do_node_status(void)
@@ -38,6 +41,12 @@ do_node_status(void)
 	ItemList 		warnings = { NULL, NULL };
 	RecoveryType	recovery_type;
 	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
+
+	if (runtime_options.is_shutdown == true)
+	{
+		return _do_node_status_is_shutdown();
+	}
+
 
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
@@ -59,6 +68,7 @@ do_node_status(void)
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
+
 	(void) get_server_version(conn, server_version);
 
 	if (get_cluster_size(conn, cluster_size) == false)
@@ -279,6 +289,92 @@ do_node_status(void)
 
 }
 
+/*
+ * --status=(RUNNING|SHUTDOWN|UNKNOWN)
+ * --last-checkpoint=...
+ */
+
+static
+void _do_node_status_is_shutdown(void)
+{
+	PGPing status;
+	PQExpBufferData output;
+
+	bool is_shutdown = true;
+	DBState db_state;
+	XLogRecPtr checkPoint;
+
+	initPQExpBuffer(&output);
+
+	appendPQExpBuffer(
+		&output,
+		"--state=");
+
+	/* sanity-check we're dealing with a PostgreSQL directory */
+	if (is_pg_dir(config_file_options.data_directory) == false)
+	{
+		appendPQExpBuffer(&output, "UNKNOWN");
+		printf("%s\n", output.data);
+		termPQExpBuffer(&output);
+		return;
+	}
+
+
+	status = PQping(config_file_options.conninfo);
+
+	switch (status)
+	{
+		case PQPING_OK:
+			appendPQExpBuffer(&output, "RUNNING");
+			is_shutdown = false;
+			break;
+		case PQPING_REJECT:
+			appendPQExpBuffer(&output, "RUNNING");
+			is_shutdown = false;
+			break;
+		case PQPING_NO_ATTEMPT:
+		case PQPING_NO_RESPONSE:
+			/* status not yet clear */
+			break;
+	}
+
+	/* check what pg_controldata says */
+
+	db_state = get_db_state(config_file_options.data_directory);
+
+	if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
+	{
+		appendPQExpBuffer(&output, "RUNNING");
+		is_shutdown = false;
+	}
+
+
+	checkPoint = get_latest_checkpoint_location(config_file_options.data_directory);
+
+	/* unable to read pg_control, don't know what's happening */
+	if (checkPoint == InvalidXLogRecPtr)
+	{
+		appendPQExpBuffer(&output, "UNKNOWN");
+		is_shutdown = false;
+	}
+
+	/* server is running in some state - just output --status */
+	if (is_shutdown == false)
+	{
+		printf("%s\n", output.data);
+		termPQExpBuffer(&output);
+		return;
+	}
+
+	appendPQExpBuffer(&output,
+					  "SHUTDOWN --last-checkpoint-lsn=%X/%X",
+					  format_lsn(checkPoint));
+
+	printf("%s\n", output.data);
+	termPQExpBuffer(&output);
+	return;
+}
+
 
 void
 do_node_check(void)
@@ -289,10 +385,15 @@ do_node_check(void)
 // --action=...
 // --check
 // --list -> list what would be executed for each action, filter to --action
+
+// --checkpoint must be run as superuser - check connection
 void
 do_node_service(void)
 {
-	t_server_action action;
+	t_server_action action = ACTION_UNKNOWN;
+	char data_dir[MAXPGPATH] = "";
+	char command[MAXLEN] = "";
+	PQExpBufferData output;
 
 	action = parse_server_action(runtime_options.action);
 
@@ -312,23 +413,66 @@ do_node_service(void)
 		return _do_node_service_check();
 	}
 
-	if (runtime_options.list == true)
+	if (runtime_options.list_actions == true)
 	{
-		return _do_node_service_list(action);
+		return _do_node_service_list_actions(action);
 	}
 
 
-	// do we need data directory?
-	//  - service command defined for action ? -> no
-	//   -> yes
-	//  - pgdata defined in config? OK
-	//
-	//  - connection available?
-	//     -> get data dir OK (superuser connection issue)
+	if (data_dir_required_for_action(action))
+	{
+		get_node_data_directory(data_dir);
+
+		if (data_dir[0] == '\0')
+		{
+			log_error(_("unable to determine data directory for action"));
+			exit(ERR_BAD_CONFIG);
+		}
+	}
 
 
-	// perform action...
-	// --dry-run: print only
+	if ((action == ACTION_STOP || action == ACTION_RESTART) && runtime_options.checkpoint == true)
+	{
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("a CHECKPOINT would be issued here"));
+		}
+		else
+		{
+			PGconn *conn;
+
+			if (strlen(config_file_options.conninfo))
+				conn = establish_db_connection(config_file_options.conninfo, true);
+			else
+				conn = establish_db_connection_by_params(&source_conninfo, true);
+
+			log_notice(_("issuing CHECKPOINT"));
+
+			// check superuser conn!
+			checkpoint(conn);
+
+			PQfinish(conn);
+		}
+	}
+
+	get_server_action(action, command, data_dir);
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("would execute server command \"%s\""), command);
+		return;
+	}
+
+	log_notice(_("executing server command \"%s\""), command);
+
+	initPQExpBuffer(&output);
+
+	if (local_command(command, &output) == false)
+	{
+		exit(ERR_LOCAL_COMMAND);
+	}
+
+	termPQExpBuffer(&output);
 }
 
 
@@ -339,7 +483,7 @@ _do_node_service_check(void)
 
 
 static void
-_do_node_service_list(t_server_action action)
+_do_node_service_list_actions(t_server_action action)
 {
 	char command[MAXLEN] = "";
 
@@ -642,6 +786,8 @@ do_node_restore_config(void)
 
 	return;
 }
+
+
 
 
 static void

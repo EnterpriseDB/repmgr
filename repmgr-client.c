@@ -15,6 +15,7 @@
  * STANDBY REGISTER
  * STANDBY UNREGISTER
  * STANDBY PROMOTE
+ * STANDBY SWITCHOVER
  *
  * BDR REGISTER
  * BDR UNREGISTER
@@ -156,7 +157,7 @@ main(int argc, char **argv)
 		strncpy(runtime_options.username, pw->pw_name, MAXLEN);
 	}
 
-	while ((c = getopt_long(argc, argv, "?Vb:f:Fd:h:p:U:R:S:L:vtD:cr", long_options,
+	while ((c = getopt_long(argc, argv, "?Vb:f:Fd:h:p:U:R:S:L:vtD:crC:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -320,13 +321,15 @@ main(int argc, char **argv)
 					{
 						runtime_options.copy_external_config_files_destination = CONFIG_FILE_SAMEPATH;
 					}
-					else if (strcmp(optarg, "pgdata") == 0)
+					/* allow "data_directory" as synonym for "pgdata" */
+					else if (strcmp(optarg, "pgdata") == 0 || strcmp(optarg, "data_directory") == 0)
 					{
 						runtime_options.copy_external_config_files_destination = CONFIG_FILE_PGDATA;
 					}
 					else
 					{
-						item_list_append(&cli_errors, _("value provided for '--copy-external-config-files' must be 'samepath' or 'pgdata'"));
+						item_list_append(&cli_errors,
+										 _("value provided for \"--copy-external-config-files\" must be \"samepath\" or \"pgdata\""));
 					}
 				}
 				break;
@@ -395,6 +398,28 @@ main(int argc, char **argv)
 				}
 				break;
 
+			/* "standby switchover" options *
+			 * ---------------------------- */
+
+			case 'C':
+				strncpy(runtime_options.remote_config_file, optarg, MAXPGPATH);
+				break;
+
+			case OPT_ALWAYS_PROMOTE:
+				runtime_options.always_promote = true;
+				break;
+
+			case OPT_FORCE_REWIND:
+				runtime_options.force_rewind = true;
+				break;
+
+			/* "node status" options *
+			 * --------------------- */
+
+			case OPT_IS_SHUTDOWN:
+				runtime_options.is_shutdown = true;
+				break;
+
 			/* "node service" options *
 			 * ---------------------- */
 
@@ -403,12 +428,16 @@ main(int argc, char **argv)
 				strncpy(runtime_options.action, optarg, MAXLEN);
 				break;
 
-			case OPT_LIST:
-				runtime_options.list = true;
+			case OPT_LIST_ACTIONS:
+				runtime_options.list_actions = true;
 				break;
 
 			case OPT_CHECK:
 				runtime_options.check = true;
+				break;
+
+			case OPT_CHECKPOINT:
+				runtime_options.checkpoint = true;
 				break;
 
 			/* "cluster event" options *
@@ -1122,16 +1151,7 @@ check_cli_parameters(const int action)
 			/*
 			 * if `repmgr standby follow` executed with host params, ensure data
 			 * directory was provided
-			 * XXX not needed
 			 */
-			if (runtime_options.host_param_provided == true)
-			{
-				if (runtime_options.data_dir[0] == '\0')
-				{
-					item_list_append_format(&cli_errors,
-											_("-D/--pgdata required when providing connection parameters for \"standby follow\""));
-				}
-			}
 		}
 		break;
 
@@ -1315,7 +1335,7 @@ check_cli_parameters(const int action)
 	}
 
 	/* repmgr node service --action */
-	if (runtime_options.action)
+	if (runtime_options.action[0] != '\0')
 	{
 		switch (action)
 		{
@@ -1323,10 +1343,52 @@ check_cli_parameters(const int action)
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
-										_("--action not required when executing %s"),
+										_("--action will be ignored when executing %s"),
 										action_name(action));
 		}
 	}
+
+	/* repmgr node status --is-shutdown */
+	if (runtime_options.is_shutdown == true)
+	{
+		switch (action)
+		{
+			case NODE_STATUS:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--is-shutdown will be ignored when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if (runtime_options.always_promote == true)
+	{
+		switch (action)
+		{
+			case STANDBY_SWITCHOVER:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+					_("--always-promote will be ignored when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if ( runtime_options.force_rewind == true)
+	{
+		switch (action)
+		{
+			case STANDBY_SWITCHOVER:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+					_("--force-rewind will be ignored when executing %s"),
+										action_name(action));
+		}
+	}
+
+
 }
 
 
@@ -1461,7 +1523,7 @@ do_help(void)
 
 	puts("");
 
-	printf(_("CLUSTER SHOW options:\n"));
+	printf(_("CLUSTER EVENT options:\n"));
 	printf(_("  --limit                             maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
 	printf(_("  --all                               display all events (overrides --limit)\n"));
 	printf(_("  --event                             filter specific event\n"));
@@ -1706,8 +1768,8 @@ test_ssh_connection(char *host, char *remote_user)
 
 
 /*
- * Execute a command locally. If outputbuf == NULL, discard the
- * output.
+ * Execute a command locally. "outputbuf" should either be an
+ * initialised PQexpbuffer, or NULL
  */
 bool
 local_command(const char *command, PQExpBufferData *outputbuf)
@@ -2496,7 +2558,7 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 		appendPQExpBuffer(&ssh_host, "%s@", user);
 	}
 
-	appendPQExpBuffer(&ssh_host, "%s",host);
+	appendPQExpBuffer(&ssh_host, "%s", host);
 
 	maxlen_snprintf(ssh_command,
 					"ssh -o Batchmode=yes %s %s %s",
@@ -2506,7 +2568,7 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 
 	termPQExpBuffer(&ssh_host);
 
-	log_debug("remote_command(): %s\n", ssh_command);
+	log_debug("remote_command():\n  %s", ssh_command);
 
 	fp = popen(ssh_command, "r");
 
@@ -2546,6 +2608,20 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 		log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n  %s", outputbuf->data);
 
 	return true;
+}
+
+
+void
+make_remote_repmgr_path(PQExpBufferData *output_buf)
+{
+	appendPQExpBuffer(output_buf,
+					  "%s ", make_pg_path("repmgr"));
+
+	if (runtime_options.remote_config_file[0] != '\0')
+	{
+		appendPQExpBuffer(output_buf,
+						  "-f %s ", runtime_options.remote_config_file);
+	}
 }
 
 
@@ -2786,15 +2862,13 @@ data_dir_required_for_action(t_server_action action)
 void
 get_node_data_directory(char *data_dir_buf)
 {
-	PGconn *conn = NULL;
-
 	/*
 	 * the configuration file setting has priority, and will always be
 	 * set when a configuration file was provided
 	 */
-	if (config_file_options.pgdata[0] != '\0')
+	if (config_file_options.data_directory[0] != '\0')
 	{
-		strncpy(data_dir_buf, config_file_options.pgdata, MAXPGPATH);
+		strncpy(data_dir_buf, config_file_options.data_directory, MAXPGPATH);
 		return;
 	}
 

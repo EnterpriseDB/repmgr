@@ -299,3 +299,16 @@ Note that under some circumstances (e.g. no replication cluster master could
 be located), it will not be possible to write an entry into the `repmgr.events`
 table, in which case executing a script via `event_notification_command` can
 serve as a fallback by generating some form of notification.
+
+
+Diagnostics
+-----------
+
+    $ repmgr -f /etc/repmgr.conf node service --list-actions
+    Following commands would be executed for each action:
+
+        start: "/usr/bin/pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/pgsql/data' start"
+         stop: "/usr/bin/pg_ctl -l /var/log/postgresql/startup.log -D '/var/lib/pgsql/data' -m fast -W stop"
+      restart: "/usr/bin/pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/pgsql/data' restart"
+       reload: "/usr/bin/pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/pgsql/data' reload"
+      promote: "/usr/bin/pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/pgsql/data' promote"
