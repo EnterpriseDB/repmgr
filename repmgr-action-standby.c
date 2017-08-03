@@ -2015,6 +2015,20 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&remote_command_str);
 
+	/* TODO: verify this node's record was updated correctly */
+
+	create_event_record(local_conn,
+						&config_file_options,
+						config_file_options.node_id,
+						"standby_switchover",
+						true,
+						NULL);
+
+	PQfinish(local_conn);
+
+	log_notice(_("switchover was successful"));
+	log_detail(_("node \"%s\" is now primary"),
+			   local_node_record.node_name);
 
 	return;
 }
