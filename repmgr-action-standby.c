@@ -123,7 +123,7 @@ do_standby_clone(void)
 	{
 		local_data_directory_provided = true;
 		log_notice(_("destination directory \"%s\" provided"),
-				   runtime_options.data_dir);
+				   local_data_directory);
 	}
 	else if (mode == barman)
 	{
