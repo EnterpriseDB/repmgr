@@ -1564,7 +1564,7 @@ do_standby_switchover(void)
 	PGconn	   *local_conn;
 	PGconn	   *remote_conn;
 
-<<<<<<< HEAD
+
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 
@@ -1585,8 +1585,7 @@ do_standby_switchover(void)
 	XLogRecPtr remote_last_checkpoint_lsn = InvalidXLogRecPtr;
 	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
 
-=======
->>>>>>> Initial switchover code
+
 	/*
 	 * SANITY CHECKS
 	 *
@@ -1594,7 +1593,7 @@ do_standby_switchover(void)
 	 * to be demoted) - careful checks needed before proceding.
 	 */
 
-<<<<<<< HEAD
+
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_record);
@@ -2045,7 +2044,7 @@ do_standby_switchover(void)
 
 
 	/* clean up remote node */
-	remote_conn = establish_db_connection(config_file_options.conninfo, false);
+	remote_conn = establish_db_connection(remote_node_record.conninfo, false);
 
 	// check replication status
 	if (PQstatus(remote_conn) != CONNECTION_OK)
@@ -2066,23 +2065,6 @@ do_standby_switchover(void)
 	log_detail(_("node \"%s\" is now primary"),
 			   local_node_record.node_name);
 
-=======
-	log_notice(_("switching current node %i to master server and demoting current master to standby...\n"), options.node);
-
-	local_conn = establish_db_connection(options.conninfo, true);
-
-	/* Check that this is a standby */
-
-	if (!is_standby(local_conn))
-	{
-		log_err(_("switchover must be executed from the standby node to be promoted\n"));
-		PQfinish(local_conn);
-
-		exit(ERR_SWITCHOVER_FAIL);
-	}
-
-	puts("not implemented");
->>>>>>> Initial switchover code
 	return;
 }
 
@@ -3408,7 +3390,12 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 
 	log_verbose(LOG_DEBUG, "attempting to delete slot \"%s\" on node %i",
 				slot_name, node_id);
-	if (record_status == RECORD_FOUND)
+	if (record_status != RECORD_FOUND)
+	{
+		log_info(_("no slot record found for slot \"%s\" on node %i"),
+				 slot_name, node_id);
+	}
+	else
 	{
 		if (slot_info.active == false)
 		{

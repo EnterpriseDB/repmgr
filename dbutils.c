@@ -2876,6 +2876,7 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 	if (!PQntuples(res))
 	{
+		PQclear(res);
 		return RECORD_NOT_FOUND;
 	}
 
