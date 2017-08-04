@@ -2055,9 +2055,12 @@ do_standby_switchover(void)
 	}
 	else
 	{
-		drop_replication_slot_if_exists(remote_conn,
-										remote_node_record.node_id,
-										local_node_record.slot_name);
+		if (config_file_options.use_replication_slots == true)
+		{
+			drop_replication_slot_if_exists(remote_conn,
+											remote_node_record.node_id,
+											local_node_record.slot_name);
+		}
 		/* TODO warn about any inactive replication slots*/
 	}
 
@@ -2480,7 +2483,7 @@ initialise_direct_clone(t_node_info *node_record)
 	 * anyway) in Barman mode.
 	 */
 
-	if (config_file_options.use_replication_slots)
+	if (config_file_options.use_replication_slots == true)
 	{
 		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
