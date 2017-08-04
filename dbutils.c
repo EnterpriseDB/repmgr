@@ -1817,7 +1817,6 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 	char			upstream_node_id[MAXLEN];
 	char		   *upstream_node_id_ptr = NULL;
 
-	char			slot_name[MAXLEN];
 	char		   *slot_name_ptr = NULL;
 
 	int				param_count = 10;
@@ -1844,8 +1843,10 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 		upstream_node_id_ptr = upstream_node_id;
 	}
 
-	if (node_info->slot_name[0])
-		maxlen_snprintf(slot_name, "%s", node_info->slot_name);
+	if (node_info->slot_name[0] != '\0')
+	{
+		slot_name_ptr = node_info->slot_name;
+	}
 
 
 	param_values[0] = get_node_type_string(node_info->type);

@@ -63,11 +63,12 @@ static void	check_source_server_via_barman(void);
 static void check_primary_standby_version_match(PGconn *conn, PGconn *primary_conn);
 static void check_recovery_type(PGconn *conn);
 
-static void initialise_direct_clone(void);
-static void copy_configuration_files(void);
 
-static int run_basebackup(void);
-static int run_file_backup(void);
+static void initialise_direct_clone(t_node_info *node_record);
+static int run_basebackup(t_node_info *node_record);
+static int run_file_backup(t_node_info *node_record);
+
+static void copy_configuration_files(void);
 
 static void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
 
@@ -91,6 +92,9 @@ do_standby_clone(void)
 {
 	PQExpBufferData event_details;
 	int r;
+
+	/* dummy node record */
+	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 
 	/*
 	 * conninfo params for the actual upstream node (which might be different
@@ -138,6 +142,8 @@ do_standby_clone(void)
 		check_barman_config();
 	}
 
+	init_node_record(&node_record);
+	node_record.type = STANDBY;
 
 	/*
 	 * Initialise list of conninfo parameters which will later be used
@@ -274,7 +280,7 @@ do_standby_clone(void)
 
 	if (mode != barman)
 	{
-		initialise_direct_clone();
+		initialise_direct_clone(&node_record);
 	}
 
 	switch (mode)
@@ -300,11 +306,11 @@ do_standby_clone(void)
 
 	if (mode == pg_basebackup)
 	{
-		r = run_basebackup();
+		r = run_basebackup(&node_record);
 	}
 	else
 	{
-		r = run_file_backup();
+		r = run_file_backup(&node_record);
 	}
 
 
@@ -312,9 +318,9 @@ do_standby_clone(void)
 	if (r != SUCCESS)
 	{
 		/* If a replication slot was previously created, drop it */
-		if (config_file_options.use_replication_slots)
+		if (config_file_options.use_replication_slots == true)
 		{
-			drop_replication_slot(source_conn, repmgr_slot_name);
+			drop_replication_slot(source_conn, node_record.slot_name);
 		}
 
 		log_error(_("unable to take a base backup of the primary server"));
@@ -341,7 +347,7 @@ do_standby_clone(void)
 
 	/* Write the recovery.conf file */
 
-	create_recovery_file(local_data_directory, &recovery_conninfo);
+	create_recovery_file(&node_record, &recovery_conninfo, local_data_directory);
 
 	switch(mode)
 	{
@@ -355,26 +361,25 @@ do_standby_clone(void)
 	}
 
 	/*
-	 * XXX It might be nice to provide an options to have repmgr start
-	 * the PostgreSQL server automatically (e.g. with a custom pg_ctl
-	 * command)
+	 * TODO: It might be nice to provide an option to have repmgr start
+	 * the PostgreSQL server automatically
 	 */
 
 	log_notice(_("you can now start your PostgreSQL server"));
 
-	if (config_file_options.service_start_command[0] != '\n')
+	if (config_file_options.service_start_command[0] != '\0')
 	{
-		log_hint(_("for example : %s"),
+		log_hint(_("for example: %s"),
 				 config_file_options.service_start_command);
 	}
 	else if (local_data_directory_provided)
 	{
-		log_hint(_("for example : pg_ctl -D %s start"),
+		log_hint(_("for example: pg_ctl -D %s start"),
 				 local_data_directory);
 	}
 	else
 	{
-		log_hint(_("for example : /etc/init.d/postgresql start"));
+		log_hint(_("for example: /etc/init.d/postgresql start"));
 	}
 
 	/*
@@ -559,10 +564,10 @@ do_standby_register(void)
 	{
 		if (!runtime_options.force)
 		{
-			log_error(_("unable to connect to local node %i (\"%s\"):"),
-					  config_file_options.node_id,
-					  config_file_options.node_name);
-			log_detail(_("%s"),
+			log_error(_("unable to connect to local node \"%s\" (ID: %i)"),
+					  config_file_options.node_name,
+					  config_file_options.node_id);
+			log_detail("%s",
 					   PQerrorMessage(conn));
 			log_hint(_("to register a standby which is not running, provide primary connection parameters and use option -F/--force"));
 
@@ -571,9 +576,9 @@ do_standby_register(void)
 
 		if (!runtime_options.connection_param_provided)
 		{
-			log_error(_("unable to connect to local node %i (\"%s\") and no primary connection parameters provided"),
-					config_file_options.node_id,
-					config_file_options.node_name);
+			log_error(_("unable to connect to local node \"%s\" (ID: %i) and no primary connection parameters provided"),
+					  config_file_options.node_name,
+					  config_file_options.node_id);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -666,7 +671,6 @@ do_standby_register(void)
 	 * If an upstream node is defined, check if that node exists and is active
 	 * If it doesn't exist, and --force set, create a minimal inactive record
 	 */
-
 	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
 		RecordStatus upstream_record_status;
@@ -760,34 +764,13 @@ do_standby_register(void)
 	}
 
 
-	/* populate node record structure */
-
-	node_record.node_id = config_file_options.node_id;
+	/*
+	 * populate node record structure with current values (this will overwrite
+	 * any existing values, which is what we want when updating the record
+	 */
+	init_node_record(&node_record);
 	node_record.type = STANDBY;
-	node_record.upstream_node_id = runtime_options.upstream_node_id;
-	node_record.priority = config_file_options.priority;
-	node_record.active = true;
 
-	strncpy(node_record.location, config_file_options.location, MAXLEN);
-
-	printf("XXX %s %s\n", node_record.location, config_file_options.location);
-
-	strncpy(node_record.node_name, config_file_options.node_name, MAXLEN);
-	strncpy(node_record.conninfo, config_file_options.conninfo, MAXLEN);
-
-	if (config_file_options.replication_user[0] != '\0')
-	{
-		/* Replication user explicitly provided */
-		strncpy(node_record.repluser, config_file_options.replication_user, NAMEDATALEN);
-	}
-	else
-	{
-		(void)get_conninfo_value(config_file_options.conninfo, "user", node_record.repluser);
-	}
-
-
-	if (repmgr_slot_name_ptr != NULL)
-		strncpy(node_record.slot_name, repmgr_slot_name_ptr, MAXLEN);
 
 	/*
 	 * node record exists - update it
@@ -809,7 +792,6 @@ do_standby_register(void)
 	if (record_created == false)
 	{
 		/* XXX add event description */
-
 		create_event_notification(primary_conn,
 								  &config_file_options,
 								  config_file_options.node_id,
@@ -818,6 +800,7 @@ do_standby_register(void)
 								  NULL);
 
 		PQfinish(primary_conn);
+		primary_conn = NULL;
 
 		if (PQstatus(conn) == CONNECTION_OK)
 			PQfinish(conn);
@@ -1333,8 +1316,26 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
 	/*
-	 * If 9.4 or later, and replication slots in use, we'll need to create a
+	 * Fetch our node record so we can write application_name, if set,
+	 * and to get the upstream node ID, which we'll need to know if
+	 * replication slots are in use and we want to delete the old slot.
+	 */
+	record_status = get_node_record(primary_conn,
+									config_file_options.node_id,
+									&local_node_record);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve record for node %i"),
+					config_file_options.node_id);
+		PQfinish(primary_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * If replication slots are in use, we'll need to create a
 	 * slot on the new primary
 	 */
 
@@ -1344,16 +1345,17 @@ do_standby_follow(void)
 
 		initPQExpBuffer(&event_details);
 
-		if (create_replication_slot(primary_conn, repmgr_slot_name, server_version_num, &event_details) == false)
+		if (create_replication_slot(primary_conn, local_node_record.slot_name, server_version_num, &event_details) == false)
 		{
 			log_error("%s", event_details.data);
 
-			create_event_notification(primary_conn,
-								&config_file_options,
-								config_file_options.node_id,
-								"standby_follow",
-								false,
-								event_details.data);
+			create_event_notification(
+				primary_conn,
+				&config_file_options,
+				config_file_options.node_id,
+				"standby_follow",
+				false,
+				event_details.data);
 
 			PQfinish(primary_conn);
 			exit(ERR_DB_QUERY);
@@ -1377,22 +1379,7 @@ do_standby_follow(void)
 	/* Set the replication user from the primary node record */
 	param_set(&recovery_conninfo, "user", primary_node_record.repluser);
 
-	/*
-	 * Fetch our node record so we can write application_name, if set,
-	 * and to get the upstream node ID, which we'll need to know if
-	 * replication slots are in use and we want to delete the old slot.
-	 */
-	record_status = get_node_record(primary_conn,
-									config_file_options.node_id,
-									&local_node_record);
 
-	if (record_status != RECORD_FOUND)
-	{
-		/* this shouldn't happen, but if it does we'll plough on regardless */
-		log_warning(_("unable to retrieve record for node %i"),
-					config_file_options.node_id);
-	}
-	else
 	{
 		t_conninfo_param_list local_node_conninfo;
 		bool parse_success;
@@ -1432,7 +1419,7 @@ do_standby_follow(void)
 	log_info(_("changing node %i's primary to node %i"),
 			 config_file_options.node_id, primary_id);
 
-	if (!create_recovery_file(data_dir, &recovery_conninfo))
+	if (!create_recovery_file(&local_node_record, &recovery_conninfo, data_dir))
 	{
 		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
@@ -2388,7 +2375,7 @@ check_source_server_via_barman()
  * - standby_clone
  */
 static void
-initialise_direct_clone(void)
+initialise_direct_clone(t_node_info *node_record)
 {
 	PGconn			 *superuser_conn = NULL;
 	PGconn			 *privileged_conn = NULL;
@@ -2516,16 +2503,17 @@ initialise_direct_clone(void)
 		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
 
-		if (create_replication_slot(privileged_conn, repmgr_slot_name, server_version_num, &event_details) == false)
+		if (create_replication_slot(privileged_conn, node_record->slot_name, server_version_num, &event_details) == false)
 		{
 			log_error("%s", event_details.data);
 
-			create_event_notification(primary_conn,
-								&config_file_options,
-								config_file_options.node_id,
-								"standby_clone",
-								false,
-								event_details.data);
+			create_event_notification(
+				primary_conn,
+				&config_file_options,
+				config_file_options.node_id,
+				"standby_clone",
+				false,
+				event_details.data);
 
 			PQfinish(source_conn);
 
@@ -2538,7 +2526,7 @@ initialise_direct_clone(void)
 		termPQExpBuffer(&event_details);
 
 		log_notice(_("replication slot \"%s\" created on upstream node (node_id: %i)"),
-				   repmgr_slot_name,
+				   node_record->slot_name,
 				   upstream_node_id);
 	}
 
@@ -2550,7 +2538,7 @@ initialise_direct_clone(void)
 
 
 static int
-run_basebackup(void)
+run_basebackup(t_node_info *node_record)
 {
 	char				  script[MAXLEN];
 	int					  r = SUCCESS;
@@ -2680,7 +2668,7 @@ run_basebackup(void)
 
 		if (slot_add == true)
 		{
-			appendPQExpBuffer(&params, " -S %s", repmgr_slot_name_ptr);
+			appendPQExpBuffer(&params, " -S %s", node_record->slot_name);
 		}
 	}
 
@@ -2708,7 +2696,7 @@ run_basebackup(void)
 
 
 static int
-run_file_backup(void)
+run_file_backup(t_node_info *node_record)
 {
 	int r = SUCCESS, i;
 
@@ -3266,14 +3254,13 @@ copy_configuration_files(void)
 	if (host == NULL)
 		host = runtime_options.host;
 
-	log_verbose(LOG_DEBUG, "fetching configuration files from host \"%s\"", host);
-	log_notice(_("copying external configuration files from upstream node"));
+	log_notice(_("copying external configuration files from upstream node, host \"%s\""), host);
 
 	r = test_ssh_connection(host, runtime_options.remote_user);
 
 	if (r != 0)
 	{
-		log_error(_("remote host %s is not reachable via SSH - unable to copy external configuration files"),
+		log_error(_("remote host \"%s\" is not reachable via SSH - unable to copy external configuration files"),
 				  host);
 		return;
 	}

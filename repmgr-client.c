@@ -62,8 +62,6 @@ t_conninfo_param_list source_conninfo;
 bool	 config_file_required = true;
 char	 pg_bindir[MAXLEN] = "";
 
-char	 repmgr_slot_name[MAXLEN] = "";
-char	*repmgr_slot_name_ptr = NULL;
 
 char  path_buf[MAXLEN] = "";
 
@@ -949,20 +947,6 @@ main(int argc, char **argv)
 		PQfinish(conn);
 	}
 
-	/*
-	 * Initialise slot name, if required (9.4 and later)
-	 *
-	 * NOTE: the slot name will be defined for each record, including
-	 * the primary; the `slot_name` column in `repl_nodes` defines
-	 * the name of the slot, but does not imply a slot has been created.
-	 * The version check for 9.4 or later  is done in check_upstream_config()
-	 */
-	if (config_file_options.use_replication_slots)
-	{
-		maxlen_snprintf(repmgr_slot_name, "repmgr_slot_%i", config_file_options.node_id);
-		repmgr_slot_name_ptr = repmgr_slot_name;
-		log_verbose(LOG_DEBUG, "slot name initialised as: %s", repmgr_slot_name);
-	}
 
 	switch (action)
 	{
@@ -2359,10 +2343,10 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
  * Creates a recovery.conf file for a standby
  *
  * A database connection pointer is required for escaping primary_conninfo
- * parameters. When cloning from Barman and --no-upstream-conne ) this might not be
+ * parameters. When cloning from Barman and --no-upstream-connection ) this might not be
  */
 bool
-create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo)
+create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir)
 {
 	FILE	   *recovery_file;
 	char		recovery_file_path[MAXPGPATH];
@@ -2443,7 +2427,7 @@ create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conni
 	if (config_file_options.use_replication_slots)
 	{
 		maxlen_snprintf(line, "primary_slot_name = %s\n",
-						repmgr_slot_name);
+						node_record->slot_name);
 		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
 
@@ -2879,4 +2863,39 @@ get_node_data_directory(char *data_dir_buf)
 	}
 
 	return;
+}
+
+
+/*
+ * initialise a node record from the provided configuration
+ * parameters
+ */
+void
+init_node_record(t_node_info *node_record)
+{
+	node_record->node_id = config_file_options.node_id;
+	node_record->upstream_node_id = runtime_options.upstream_node_id;
+	node_record->priority = config_file_options.priority;
+	node_record->active = true;
+
+	strncpy(node_record->location, config_file_options.location, MAXLEN);
+
+	strncpy(node_record->node_name, config_file_options.node_name, MAXLEN);
+	strncpy(node_record->conninfo, config_file_options.conninfo, MAXLEN);
+
+	if (config_file_options.replication_user[0] != '\0')
+	{
+		/* Replication user explicitly provided */
+		strncpy(node_record->repluser, config_file_options.replication_user, NAMEDATALEN);
+	}
+	else
+	{
+		/* use the "user" value from "conninfo" */
+		(void)get_conninfo_value(config_file_options.conninfo, "user", node_record->repluser);
+	}
+
+	if (config_file_options.use_replication_slots == true)
+	{
+		maxlen_snprintf(node_record->slot_name, "repmgr_slot_%i", config_file_options.node_id);
+	}
 }

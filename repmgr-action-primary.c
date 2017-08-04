@@ -134,34 +134,12 @@ do_primary_register(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-	else
-	{
-		node_info.node_id = config_file_options.node_id;
-	}
 
-	/* set type to "primary", active to "true" and unset upstream_node_id*/
+	init_node_record(&node_info);
+
+	/* set type to "primary" and unset upstream_node_id */
 	node_info.type = PRIMARY;
 	node_info.upstream_node_id = NO_UPSTREAM_NODE;
-	node_info.active = true;
-
-	/* update node record structure with settings from config file */
-	strncpy(node_info.node_name, config_file_options.node_name, MAXLEN);
-	strncpy(node_info.conninfo, config_file_options.conninfo, MAXLEN);
-
-	if (config_file_options.replication_user[0] != '\0')
-	{
-		strncpy(node_info.repluser, config_file_options.replication_user, NAMEDATALEN);
-	}
-	else
-	{
-		(void)get_conninfo_value(config_file_options.conninfo, "user", node_info.repluser);
-	}
-
-	if (repmgr_slot_name_ptr != NULL)
-		strncpy(node_info.slot_name, repmgr_slot_name_ptr, MAXLEN);
-
-	strncpy(node_info.location, config_file_options.location, MAXLEN);
-	node_info.priority = config_file_options.priority;
 
 	initPQExpBuffer(&event_description);
 

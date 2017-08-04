@@ -155,9 +155,6 @@ t_conninfo_param_list source_conninfo;
 extern bool	 config_file_required;
 extern char	 pg_bindir[MAXLEN];
 
-extern char	 repmgr_slot_name[MAXLEN];
-extern char *repmgr_slot_name_ptr;
-
 extern t_node_info target_node_info;
 
 
@@ -175,7 +172,7 @@ extern void print_error_list(ItemList *error_list, int log_level);
 
 extern char *make_pg_path(const char *file);
 
-extern bool create_recovery_file(const char *data_dir, t_conninfo_param_list *recovery_conninfo);
+extern bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir);
 
 extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn);
 
@@ -187,5 +184,6 @@ extern void make_remote_repmgr_path(PQExpBufferData *outputbuf);
 extern void get_server_action(t_server_action action, char *script, char *data_dir);
 extern bool data_dir_required_for_action(t_server_action action);
 extern void get_node_data_directory(char *data_dir_buf);
+extern void init_node_record(t_node_info *node_record);
 
 #endif /* _REPMGR_CLIENT_GLOBAL_H_ */
