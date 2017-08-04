@@ -2056,6 +2056,25 @@ do_standby_switchover(void)
 
 	PQfinish(local_conn);
 
+
+	/* clean up remote node */
+	remote_conn = establish_db_connection(config_file_options.conninfo, false);
+
+	// check replication status
+	if (PQstatus(remote_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to reestablish connection to remote node \"%s\""),
+				  remote_node_record.node_name);
+		//log_hint(_("")); // depends on replication status
+	}
+	else
+	{
+		drop_replication_slot_if_exists(remote_conn,
+										remote_node_record.node_id,
+										local_node_record.slot_name);
+		/* TODO warn about any inactive replication slots*/
+	}
+
 	log_notice(_("switchover was successful"));
 	log_detail(_("node \"%s\" is now primary"),
 			   local_node_record.node_name);
@@ -3398,8 +3417,10 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 	t_replication_slot  slot_info;
 	int					record_status;
 
-	record_status = get_slot_record(conn,slot_name, &slot_info);
+	record_status = get_slot_record(conn, slot_name, &slot_info);
 
+	log_verbose(LOG_DEBUG, "attempting to delete slot \"%s\" on node %i",
+				slot_name, node_id);
 	if (record_status == RECORD_FOUND)
 	{
 		if (slot_info.active == false)
