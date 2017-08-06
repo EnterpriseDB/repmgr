@@ -631,7 +631,7 @@ In order to enable Barman support for `repmgr standby clone`, you must
 ensure that:
 
 - the name of the server configured in Barman is equal to the
-  `cluster_name` setting in `repmgr.conf`;
+  `cluster` setting in `repmgr.conf`;
 - the `barman_server` setting in `repmgr.conf` is set to the SSH
   hostname of the Barman server;
 - the `restore_command` setting in `repmgr.conf` is configured to
