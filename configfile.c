@@ -390,6 +390,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "restore_command") == 0)
 			strncpy(options->restore_command, value, MAXLEN);
 
+		/* node check settings */
+		else if (strcmp(name, "archiver_lag_warning") == 0)
+			options->archiver_lag_warning = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "archiver_lag_critcial") == 0)
+			options->archiver_lag_critical = repmgr_atoi(value, name, error_list, 1);
+
 		/* repmgrd settings */
 		else if (strcmp(name, "failover_mode") == 0)
 		{
@@ -604,6 +610,15 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 						 _("use \"barman_server\" for the name of the [server] section in the Barman configururation file"));
 
 	}
+
+	/* other sanity checks */
+
+	if (options->archiver_lag_warning >= options->archiver_lag_critical)
+	{
+		item_list_append(error_list,
+						 _("\archiver_lag_critical\" must be greater than  \"archiver_lag_warning\""));
+	}
+
 }
 
 

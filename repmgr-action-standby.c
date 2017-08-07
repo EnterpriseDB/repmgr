@@ -48,6 +48,8 @@ static t_conninfo_param_list recovery_conninfo;
 static char		recovery_conninfo_str[MAXLEN];
 static char		upstream_repluser[NAMEDATALEN];
 
+static int  	source_server_version_num = UNKNOWN_SERVER_VERSION_NUM;
+
 static t_configfile_list config_files = T_CONFIGFILE_LIST_INITIALIZER;
 
 static standy_clone_mode mode;
@@ -79,6 +81,7 @@ static int  get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
 static NodeStatus parse_node_status_is_shutdown(const char *node_status_output, XLogRecPtr *checkPoint);
+static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
 
 /*
  * do_standby_clone()
@@ -1341,11 +1344,14 @@ do_standby_follow(void)
 
 	if (config_file_options.use_replication_slots)
 	{
- 		int	server_version_num = get_server_version(primary_conn, NULL);
+ 		int	primary_server_version_num = get_server_version(primary_conn, NULL);
 
 		initPQExpBuffer(&event_details);
 
-		if (create_replication_slot(primary_conn, local_node_record.slot_name, server_version_num, &event_details) == false)
+		if (create_replication_slot(primary_conn,
+									local_node_record.slot_name,
+									primary_server_version_num,
+									&event_details) == false)
 		{
 			log_error("%s", event_details.data);
 
@@ -1546,12 +1552,6 @@ do_standby_follow(void)
  *  - currently only set up for two-node operation; any other
  *    standbys will probably become downstream cascaded standbys
  *    of the old primary once it's restarted
- *  - as we're executing repmgr remotely (on the old primary),
- *    we'll need the location of its configuration file; this
- *    can be provided explicitly with -C/--remote-config-file,
- *    otherwise repmgr will look in default locations on the
- *    remote server (starting with the same path as the local
- *    configuration file).
  *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
@@ -1711,8 +1711,8 @@ do_standby_switchover(void)
 		termPQExpBuffer(&reason);
 	}
 
-	PQfinish(local_conn);
 	PQfinish(remote_conn);
+	PQfinish(local_conn);
 
 	/*
 	 * Check that we can connect by SSH to the remote (current primary) server
@@ -1727,6 +1727,64 @@ do_standby_switchover(void)
 				  remote_host, runtime_options.remote_user);
 		exit(ERR_BAD_CONFIG);
 	}
+
+	/* check replication status */
+	{
+		bool command_success;
+		int files = 0;
+		int threshold = 0;
+		CheckStatus status;
+
+		initPQExpBuffer(&remote_command_str);
+		make_remote_repmgr_path(&remote_command_str);
+		appendPQExpBuffer(&remote_command_str,
+						  "node check --terse -LERROR --archiver --optformat");
+
+		initPQExpBuffer(&command_output);
+
+		command_success = remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			remote_command_str.data,
+			&command_output);
+
+		termPQExpBuffer(&remote_command_str);
+
+		status = parse_node_check_archiver(command_output.data, &files, &threshold);
+
+		log_debug("%i %i; '%s'", files, threshold, command_output.data);
+		if (status == CHECK_STATUS_CRITICAL)
+		{
+			if (runtime_options.force == false)
+			{
+				log_error(_("number of pending archive files on demotion candidate \"%s\" is critical"),
+						  remote_node_record.node_name);
+				log_detail(_("%i pending archive files (critical threshold: %i)"),
+						   files, threshold);
+				log_hint(_("PostgreSQL will not shut down until all files are archived; use -F/--force to continue anyway"));
+				exit(ERR_SWITCHOVER_FAIL);
+			}
+			else
+			{
+				log_warning(_("number of pending archive files on demotion candidate \"%s\" is critical"),
+						  remote_node_record.node_name);
+				log_detail(_("%i pending archive files (critical threshold: %i)"),
+						   files, threshold);
+				log_notice(_("-F/--force set, continuing with switchover"));
+			}
+
+		}
+		else if (status == CHECK_STATUS_WARNING)
+		{
+			log_warning(_("number of pending archive files on demotion candidate \"%s\" is warning"),
+						  remote_node_record.node_name);
+			log_detail(_("%i pending archive files (warning threshold: %i)"),
+					   files, threshold);
+			log_hint(_("PostgreSQL will not shut down until all files are archived"));
+		}
+	}
+
+
 
 
 	/* Determine the remote's configuration file location */
@@ -1853,8 +1911,6 @@ do_standby_switchover(void)
 	 * the connection from here - and error out if no shutdown is detected
 	 * after a certain time.
 	 */
-
-	// TODO: check remote node for archive status etc.
 
 	initPQExpBuffer(&remote_command_str);
 	initPQExpBuffer(&command_output);
@@ -2111,9 +2167,9 @@ check_source_server()
 	/* Verify that upstream node is a supported server version */
 	log_verbose(LOG_INFO, _("connected to source node, checking its state"));
 
-	server_version_num = check_server_version(source_conn, "primary", true, NULL);
+	source_server_version_num = check_server_version(source_conn, "primary", true, NULL);
 
-	check_upstream_config(source_conn, server_version_num, true);
+	check_upstream_config(source_conn, source_server_version_num, true);
 
 	if (get_cluster_size(source_conn, cluster_size) == false)
 		exit(ERR_DB_QUERY);
@@ -2488,7 +2544,7 @@ initialise_direct_clone(t_node_info *node_record)
 		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
 
-		if (create_replication_slot(privileged_conn, node_record->slot_name, server_version_num, &event_details) == false)
+		if (create_replication_slot(privileged_conn, node_record->slot_name, source_server_version_num, &event_details) == false)
 		{
 			log_error("%s", event_details.data);
 
@@ -3540,4 +3596,145 @@ parse_node_status_is_shutdown(const char *node_status_output, XLogRecPtr *checkP
 	}
 
 	return node_status;
+}
+
+
+
+static CheckStatus
+parse_node_check_archiver(const char *node_check_output, int *files, int *threshold)
+{
+	int   options_len = 0;
+	char *options_string = NULL;
+	char *options_string_ptr = NULL;
+
+	CheckStatus status = CHECK_STATUS_UNKNOWN;
+
+
+	/*
+	 * Add parsed options to this list, then copy to an array
+	 * to pass to getopt
+	 */
+	static ItemList option_argv = { NULL, NULL };
+
+	char *argv_item;
+	int c, argc_item = 1;
+
+	char **argv_array;
+	ItemListCell *cell;
+
+	int			optindex = 0;
+
+	/* We're only interested in these options */
+	static struct option long_options[] =
+	{
+		{"status", required_argument, NULL, 'S'},
+		{"files", required_argument, NULL, 'f'},
+		{"threshold", required_argument, NULL, 't'},
+		{NULL, 0, NULL, 0}
+	};
+
+	*files = 0;
+	*threshold = 0;
+
+	/* Don't attempt to tokenise an empty string */
+	if (!strlen(node_check_output))
+	{
+		return status;
+	}
+
+	options_len = strlen(node_check_output) + 1;
+	options_string = pg_malloc(options_len);
+	options_string_ptr = options_string;
+
+	/* Copy the string before operating on it with strtok() */
+	strncpy(options_string, node_check_output, options_len);
+
+	/* Extract arguments into a list and keep a count of the total */
+	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
+	{
+		item_list_append(&option_argv, argv_item);
+
+		argc_item++;
+
+		if (options_string_ptr != NULL)
+			options_string_ptr = NULL;
+	}
+
+	/*
+	 * Array of argument values to pass to getopt_long - this will need to
+	 * include an empty string as the first value (normally this would be
+	 * the program name)
+	 */
+	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
+
+	/* Insert a blank dummy program name at the start of the array */
+	argv_array[0] = pg_malloc0(1);
+
+	c = 1;
+
+	/*
+	 * Copy the previously extracted arguments from our list to the array
+	 */
+	for (cell = option_argv.head; cell; cell = cell->next)
+	{
+		int argv_len = strlen(cell->string) + 1;
+
+		argv_array[c] = pg_malloc0(argv_len);
+
+		strncpy(argv_array[c], cell->string, argv_len);
+
+		c++;
+	}
+
+	argv_array[c] = NULL;
+
+	/* Reset getopt's optind variable */
+	optind = 0;
+
+	/* Prevent getopt from emitting errors */
+	opterr = 0;
+
+	while ((c = getopt_long(argc_item, argv_array, "f:S:t:", long_options,
+							&optindex)) != -1)
+	{
+		switch (c)
+		{
+			/* --files */
+			case 'f':
+				*files = atoi(optarg);
+				break;
+
+			case 't':
+				*threshold = atoi(optarg);
+				break;
+
+			/* --status */
+			case 'S':
+			{
+				if (strncmp(optarg, "OK", MAXLEN) == 0)
+				{
+					status = CHECK_STATUS_OK;
+				}
+				else if (strncmp(optarg, "WARNING", MAXLEN) == 0)
+				{
+					status = CHECK_STATUS_WARNING;
+				}
+				else if (strncmp(optarg, "CRITICAL", MAXLEN) == 0)
+				{
+					status = CHECK_STATUS_CRITICAL;
+				}
+				else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
+				{
+					status = CHECK_STATUS_UNKNOWN;
+				}
+				else
+				{
+					status = CHECK_STATUS_UNKNOWN;
+				}
+			}
+			break;
+		}
+	}
+
+	return status;
 }

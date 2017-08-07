@@ -12,6 +12,7 @@
 #include "repmgr.h"
 #include "controldata.h"
 #include "dirutil.h"
+#include "dbutils.h"
 
 #include "repmgr-client-global.h"
 #include "repmgr-action-node.h"
@@ -208,17 +209,17 @@ do_node_status(void)
 		key_value_list_set(
 			&node_status,
 			"Last received LSN",
-			"");
+			"(none)");
 		key_value_list_set(
 			&node_status,
 			"Last replayed LSN",
-			"");
+			"(none)");
 
 	}
 
 	initPQExpBuffer(&output);
 
-	if (runtime_options.csv == true)
+	if (runtime_options.output_mode == OM_CSV)
 	{
 		/* output header */
 		appendPQExpBuffer(
@@ -379,8 +380,92 @@ void _do_node_status_is_shutdown(void)
 void
 do_node_check(void)
 {
+	PGconn *conn;
+
+	if (strlen(config_file_options.conninfo))
+		conn = establish_db_connection(config_file_options.conninfo, true);
+	else
+		conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	/* handle specific checks
+	 * ====================== */
+	if (runtime_options.archiver == true)
+	{
+		(void) do_node_check_archiver(conn, runtime_options.output_mode, NULL);
+		PQfinish(conn);
+		return;
+	}
 }
 
+bool
+do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output)
+{
+	bool own_buffer = false;
+	int ready_archive_files = 0;
+	PQExpBufferData buf;
+	bool check_ok = true;
+
+	if (output == NULL)
+	{
+		initPQExpBuffer(&buf);
+		output = &buf;
+		own_buffer = true;
+	}
+
+	ready_archive_files = get_ready_archive_files(conn, config_file_options.data_directory);
+
+	if (ready_archive_files > config_file_options.archiver_lag_critical)
+	{
+		switch (mode)
+		{
+			case OM_OPTFORMAT:
+				appendPQExpBuffer(
+					output,
+					"--status=CRITICAL --files=%i --threshold=%i",
+					ready_archive_files,
+					config_file_options.archiver_lag_critical);
+				break;
+			default:
+				break;
+		}
+	}
+	else if (ready_archive_files > config_file_options.archiver_lag_warning)
+	{
+		switch (mode)
+		{
+			case OM_OPTFORMAT:
+				appendPQExpBuffer(
+					output,
+					"--status=WARNING --files=%i --threshold=%i",
+					ready_archive_files,
+					config_file_options.archiver_lag_warning);
+				break;
+			default:
+				break;
+		}
+	}
+	else
+	{
+		switch (mode)
+		{
+			case OM_OPTFORMAT:
+				appendPQExpBuffer(
+					output,
+					"--status=OK --files=%i",
+					ready_archive_files);
+				break;
+			default:
+				break;
+		}
+	}
+	if (own_buffer == true)
+	{
+		printf("%s\n", buf.data);
+		termPQExpBuffer(&buf);
+	}
+
+	return check_ok;
+}
 
 // --action=...
 // --check
@@ -723,7 +808,8 @@ do_node_restore_config(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	while ((arcdir_ent = readdir(arcdir)) != NULL) {
+	while ((arcdir_ent = readdir(arcdir)) != NULL)
+	{
 		struct stat statbuf;
 		char src_file_path[MAXPGPATH];
 		char dest_file_path[MAXPGPATH];

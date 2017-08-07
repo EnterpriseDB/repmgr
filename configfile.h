@@ -72,6 +72,10 @@ typedef struct
 	char		restore_command[MAXLEN];
 	TablespaceList tablespace_mapping;
 
+	/* node check settings */
+	int			archiver_lag_warning;
+	int			archiver_lag_critical;
+
 	/* repmgrd settings */
 	failover_mode_opt		failover_mode;
 	char		location[MAXLEN];
@@ -124,6 +128,8 @@ typedef struct
 		"", "", "", DEFAULT_LOG_STATUS_INTERVAL,	\
 		/* standby clone settings */ \
 		false, "", "", "", "", { NULL, NULL },	\
+		/* node check settings */ \
+		DEFAULT_ARCHIVER_LAG_WARNING, DEFAULT_ARCHIVER_LAG_CRITICAL, \
 		/* repmgrd settings */ \
 		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", \
 		DEFAULT_MONITORING_INTERVAL, \

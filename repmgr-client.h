@@ -34,40 +34,43 @@
 #define CLUSTER_EVENT		   20
 
 /* command line options without short versions */
-#define OPT_HELP						   1
-#define OPT_CHECK_UPSTREAM_CONFIG		   2
-#define OPT_RECOVERY_MIN_APPLY_DELAY	   3
-#define OPT_COPY_EXTERNAL_CONFIG_FILES	   4
-#define OPT_CONFIG_ARCHIVE_DIR			   5
-#define OPT_PG_REWIND					   6
-#define OPT_PWPROMPT					   7
-#define OPT_CSV							   8
-#define OPT_NODE						   9
-#define OPT_NODE_ID					 	   10
-#define OPT_NODE_NAME				 	   11
-#define OPT_WITHOUT_BARMAN				   12
-#define OPT_NO_UPSTREAM_CONNECTION		   13
-#define OPT_REGISTER_WAIT				   14
-#define OPT_LOG_TO_FILE					   15
-#define OPT_UPSTREAM_CONNINFO			   16
+#define OPT_HELP						   1001
+#define OPT_CHECK_UPSTREAM_CONFIG		   1002
+#define OPT_RECOVERY_MIN_APPLY_DELAY	   1003
+#define OPT_COPY_EXTERNAL_CONFIG_FILES	   1004
+#define OPT_CONFIG_ARCHIVE_DIR			   1005
+#define OPT_PG_REWIND					   1006
+#define OPT_PWPROMPT					   1007
+#define OPT_CSV							   1008
+#define OPT_NODE						   1009
+#define OPT_NODE_ID					 	   1010
+#define OPT_NODE_NAME				 	   1011
+#define OPT_WITHOUT_BARMAN				   1012
+#define OPT_NO_UPSTREAM_CONNECTION		   1013
+#define OPT_REGISTER_WAIT				   1014
+#define OPT_LOG_TO_FILE					   1015
+#define OPT_UPSTREAM_CONNINFO			   1016
 /* replaces --no-conninfo-password */
-#define OPT_USE_RECOVERY_CONNINFO_PASSWORD 17
-#define OPT_REPLICATION_USER			   18
-#define OPT_EVENT						   19
-#define OPT_LIMIT						   20
-#define OPT_ALL							   21
-#define OPT_DRY_RUN						   22
-#define OPT_UPSTREAM_NODE_ID			   23
-#define OPT_ACTION                         24
-#define OPT_LIST_ACTIONS                   25
-#define OPT_CHECK                          26
-#define OPT_CHECKPOINT                     27
-#define OPT_IS_SHUTDOWN                    28
-#define OPT_ALWAYS_PROMOTE                 29
-#define OPT_FORCE_REWIND                   30
+#define OPT_USE_RECOVERY_CONNINFO_PASSWORD 1017
+#define OPT_REPLICATION_USER			   1018
+#define OPT_EVENT						   1019
+#define OPT_LIMIT						   1020
+#define OPT_ALL							   1021
+#define OPT_DRY_RUN						   1022
+#define OPT_UPSTREAM_NODE_ID			   1023
+#define OPT_ACTION                         1024
+#define OPT_LIST_ACTIONS                   1025
+#define OPT_CHECK                          1026
+#define OPT_CHECKPOINT                     1027
+#define OPT_IS_SHUTDOWN                    1028
+#define OPT_ALWAYS_PROMOTE                 1029
+#define OPT_FORCE_REWIND                   1030
+#define OPT_NAGIOS                         1031
+#define OPT_ARCHIVER                       1032
+#define OPT_OPTFORMAT                      1033
 /* deprecated since 3.3 */
-#define OPT_DATA_DIR					   998
-#define OPT_NO_CONNINFO_PASSWORD		   999
+#define OPT_DATA_DIR					    999
+#define OPT_NO_CONNINFO_PASSWORD		    998
 
 
 static struct option long_options[] =
@@ -104,6 +107,8 @@ static struct option long_options[] =
 
 /* output options */
 	{"csv", no_argument, NULL, OPT_CSV},
+	{"nagios", no_argument, NULL, OPT_NAGIOS},
+	{"optformat", no_argument, NULL, OPT_OPTFORMAT},
 
 /* "standby clone" options */
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
@@ -128,6 +133,9 @@ static struct option long_options[] =
 /* "node status" options */
 	{"is-shutdown", no_argument, NULL, OPT_IS_SHUTDOWN },
 
+/* "node check" options */
+	{"archiver", no_argument, NULL, OPT_ARCHIVER },
+
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},
 	{"check", no_argument, NULL, OPT_CHECK},
@@ -146,6 +154,9 @@ static struct option long_options[] =
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 	/* legacy alias for -D/--pgdata*/
 	{"data-dir", required_argument, NULL, OPT_DATA_DIR},
+	/* --node-id */
+	{"node", required_argument, NULL, OPT_NODE},
+
 
 /* not yet handled */
 	{"keep-history", required_argument, NULL, 'k'},
@@ -154,10 +165,6 @@ static struct option long_options[] =
 	{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
 	{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
 
-	{"node", required_argument, NULL, OPT_NODE},
-	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
-	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
-	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
 
 	{NULL, 0, NULL, 0}
 };

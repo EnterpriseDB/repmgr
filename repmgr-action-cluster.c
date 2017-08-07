@@ -250,7 +250,7 @@ do_cluster_show(void)
 
 	}
 
-	if (! runtime_options.csv)
+	if (runtime_options.output_mode == OM_TEXT)
 	{
 		for (i = 0; i < SHOW_HEADER_COUNT; i++)
 		{
@@ -283,7 +283,7 @@ do_cluster_show(void)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		if (runtime_options.csv)
+		if (runtime_options.output_mode == OM_CSV)
 		{
 			int connection_status =	(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
 			int recovery_type = RECTYPE_UNKNOWN;
@@ -580,7 +580,7 @@ do_cluster_matrix()
 
 	n = build_cluster_matrix(&matrix_rec_list, &name_length);
 
-	if (runtime_options.csv == true)
+	if (runtime_options.output_mode == OM_CSV)
 	{
 		for (i = 0; i < n; i++)
 			for (j = 0; j < n; j++)

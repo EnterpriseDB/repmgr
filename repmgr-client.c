@@ -15,6 +15,7 @@
  * STANDBY REGISTER
  * STANDBY UNREGISTER
  * STANDBY PROMOTE
+ * STANDBY FOLLOW
  * STANDBY SWITCHOVER
  *
  * BDR REGISTER
@@ -26,6 +27,7 @@
  * CLUSTER MATRIX
  *
  * NODE STATUS
+ * NODE CHECK
  *
  * For internal use:
  * NODE ARCHIVE-CONFIG
@@ -75,6 +77,7 @@ t_node_info target_node_info = T_NODE_INFO_INITIALIZER;
 /* Collate command line errors and warnings here for friendlier reporting */
 static ItemList	cli_errors = { NULL, NULL };
 static ItemList	cli_warnings = { NULL, NULL };
+
 
 int
 main(int argc, char **argv)
@@ -418,6 +421,12 @@ main(int argc, char **argv)
 				runtime_options.is_shutdown = true;
 				break;
 
+			/* "node check" options *
+			 * --------------------- */
+			case OPT_ARCHIVER:
+				runtime_options.archiver = true;
+				break;
+
 			/* "node service" options *
 			 * ---------------------- */
 
@@ -499,6 +508,14 @@ main(int argc, char **argv)
 			/* -------------- */
 			case OPT_CSV:
 				runtime_options.csv = true;
+				break;
+
+			case OPT_NAGIOS:
+				runtime_options.nagios = true;
+				break;
+
+			case OPT_OPTFORMAT:
+				runtime_options.optformat = true;
 				break;
 
 			/* internal options */
@@ -811,6 +828,22 @@ main(int argc, char **argv)
 		print_item_list(&cli_warnings);
 	}
 
+	/* post-processing following command line parameter checks
+	 * ======================================================= */
+
+	if (runtime_options.csv == true)
+	{
+		runtime_options.output_mode = OM_CSV;
+	}
+	else if (runtime_options.nagios == true)
+	{
+		runtime_options.output_mode = OM_NAGIOS;
+	}
+	else if (runtime_options.optformat == true)
+	{
+		runtime_options.output_mode = OM_OPTFORMAT;
+	}
+
 	/*
 	 * The configuration file is not required for some actions (e.g. 'standby clone'),
 	 * however if available we'll parse it anyway for options like 'log_level',
@@ -821,6 +854,7 @@ main(int argc, char **argv)
 				runtime_options.terse,
 				&config_file_options,
 				argv[0]);
+
 
 	/* Some configuration file items can be overriden by command line options */
 	/* Command-line parameter -L/--log-level overrides any setting in config file*/
@@ -1359,7 +1393,7 @@ check_cli_parameters(const int action)
 		}
 	}
 
-	if ( runtime_options.force_rewind == true)
+	if (runtime_options.force_rewind == true)
 	{
 		switch (action)
 		{
@@ -1372,7 +1406,26 @@ check_cli_parameters(const int action)
 		}
 	}
 
+	/* check only one of --csv, --nagios and --optformat  used */
+	{
+		int used_options = 0;
 
+		if (runtime_options.csv == true)
+			used_options ++;
+
+		if (runtime_options.nagios == true)
+			used_options ++;
+
+		if (runtime_options.optformat == true)
+			used_options ++;
+
+		if (used_options > 1)
+		{
+			/* TODO: list which options were used */
+			item_list_append(&cli_errors,
+							 "only one of --csv, --nagios and --optformat can be used");
+		}
+	}
 }
 
 

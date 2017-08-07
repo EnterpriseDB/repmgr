@@ -8,6 +8,8 @@
 
 extern void do_node_status(void);
 extern void do_node_check(void);
+extern bool do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output);
+
 extern void do_node_archive_config(void);
 extern void do_node_restore_config(void);
 extern void do_node_service(void);

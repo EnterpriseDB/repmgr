@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "repmgr.h"
 #include "dbutils.h"
@@ -1290,6 +1292,87 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 	}
 
 	return can_use;
+}
+
+
+int
+get_ready_archive_files(PGconn *conn, const char *data_directory)
+{
+	char archive_status_dir[MAXPGPATH] = "";
+	struct stat statbuf;
+	struct dirent *arcdir_ent;
+	DIR			  *arcdir;
+
+
+	int ready_count = 0;
+
+	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+		server_version_num = get_server_version(conn, NULL);
+
+	if (server_version_num >= 1000000)
+	{
+		snprintf(archive_status_dir, MAXPGPATH,
+				 "%s/pg_wal/archive_status",
+				 data_directory);
+	}
+	else
+	{
+		snprintf(archive_status_dir, MAXPGPATH,
+				 "%s/pg_xlog/archive_status",
+				 data_directory);
+	}
+
+	/* sanity-check directory path */
+	if (stat(archive_status_dir, &statbuf) == -1)
+	{
+		log_error(_("unable to access archive_status directory \"%s\""),
+				  archive_status_dir);
+		log_detail("%s", strerror(errno));
+		/* XXX magic number*/
+		return -1;
+	}
+
+	arcdir = opendir(archive_status_dir);
+
+	if (arcdir == NULL)
+	{
+		log_error(_("unable to open archive directory \"%s\""),
+				  archive_status_dir);
+		log_detail("%s", strerror(errno));
+		/* XXX magic number*/
+		return -1;
+	}
+
+	while ((arcdir_ent = readdir(arcdir)) != NULL)
+	{
+		struct stat statbuf;
+		char file_path[MAXPGPATH] = "";
+		int  basenamelen;
+
+		snprintf(file_path, MAXPGPATH,
+				 "%s/%s",
+				 archive_status_dir,
+				 arcdir_ent->d_name);
+
+		/* skip non-files */
+		if (stat(file_path, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+		{
+			continue;
+		}
+
+		basenamelen =  (int) strlen(arcdir_ent->d_name) - 6;
+
+		/*
+		 * count anything ending in ".ready"; for a more precise implementation
+		 * see: src/backend/postmaster/pgarch.c
+		 */
+		if (strcmp(arcdir_ent->d_name + basenamelen, ".ready") == 0)
+			ready_count ++;
+	}
+
+	closedir(arcdir);
+
+	return ready_count;
 }
 
 

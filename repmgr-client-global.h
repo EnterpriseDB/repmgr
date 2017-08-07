@@ -15,6 +15,13 @@
 /* default value for "cluster event --limit"*/
 #define CLUSTER_EVENT_LIMIT 20
 
+typedef enum {
+	OM_TEXT,
+	OM_CSV,
+	OM_NAGIOS,
+	OM_OPTFORMAT
+} OutputMode;
+
 typedef struct
 {
 	/* configuration metadata */
@@ -39,6 +46,8 @@ typedef struct
 
 	/* output options */
 	bool		csv;
+	bool		nagios;
+	bool		optformat;
 
 	/* standard connection options */
 	char		dbname[MAXLEN];
@@ -81,6 +90,9 @@ typedef struct
 	/* "node status" options */
 	bool		is_shutdown;
 
+	/* "node check" options */
+	bool		archiver;
+
 	/* "node service" options */
 	char		action[MAXLEN];
 	bool		check;
@@ -94,6 +106,7 @@ typedef struct
 
 	/* following options for internal use */
 	char		config_archive_dir[MAXPGPATH];
+	OutputMode	output_mode;
 }	t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
@@ -104,7 +117,7 @@ typedef struct
 		/* logging options */ \
 		"", false, false, false, \
 		/* output options */ \
-		false, \
+		false, false, false,  \
 		/* database connection options */ \
 		"", "", "",	"",				  \
 		/* other connection options */ \
@@ -120,11 +133,14 @@ typedef struct
 		"", false, false,  \
 		/* "node status" options */ \
 		false, \
+		/* "node check" options */ \
+		false, \
 		/* "node service" options */ \
 		"", false, false, false,  \
 		/* "cluster event" options */ \
 		false, "", CLUSTER_EVENT_LIMIT,	\
-		"/tmp" \
+		/* Following options for internal use */ \
+		"/tmp", OM_TEXT	\
 }
 
 
@@ -143,6 +159,13 @@ typedef enum {
 	ACTION_PROMOTE
 } t_server_action;
 
+
+typedef enum {
+	CHECK_STATUS_OK = 0,
+	CHECK_STATUS_WARNING,
+	CHECK_STATUS_CRITICAL,
+	CHECK_STATUS_UNKNOWN
+} CheckStatus;
 
 
 /* global configuration structures */
