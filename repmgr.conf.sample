@@ -245,6 +245,28 @@ ssh_options='-q'                        # Options to append to "ssh"
 #service_promote_command = ''            # Note: this overrides any value contained
                                          # in the setting "promote_command"
 
+
+#------------------------------------------------------------------------------
+# Status check thresholds
+#------------------------------------------------------------------------------
+
+# Various warning/critical thresholds used by "repmgr node check".
+
+#archiver_lag_warning=16                 # repmgr node check --archiver
+#archiver_lag_critical=128               #
+                                         # Numbers of files pending archiving via PostgreSQL's
+                                         # "archive_command" configuration parameter. If
+                                         # files can't be archived fast enough, or the archive
+                                         # command is failing, the buildup of files can
+                                         # cause various issues, such as server shutdown being
+                                         # delayed until all files are archived, or excessive
+                                         # space being occupied by unarchived files.
+                                         #
+                                         # Note that these values will be checked when executing
+                                         # "repmgr standby switchover" to warn about potential
+                                         # issues with shutting down the demotion candidate.
+
+
 #------------------------------------------------------------------------------
 # BDR monitoring options
 #------------------------------------------------------------------------------
