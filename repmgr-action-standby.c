@@ -59,6 +59,8 @@ static char		local_repmgr_tmp_directory[MAXPGPATH];
 static char		datadir_list_filename[MAXLEN];
 static char		barman_command_buf[MAXLEN] = "";
 
+static void _do_standby_promote_internal(const char *data_dir);
+
 static void check_barman_config(void);
 static void	check_source_server(void);
 static void	check_source_server_via_barman(void);
@@ -1018,19 +1020,12 @@ do_standby_promote(void)
 {
 	PGconn	   *conn;
 	PGconn	   *current_primary_conn;
-
-	char		script[MAXLEN];
+	bool		success;
 
 	RecoveryType recovery_type;
-	int			r;
+
 	char		data_dir[MAXLEN];
 
-	int			i,
-				promote_check_timeout  = 60,
-				promote_check_interval = 2;
-	bool		promote_success = false;
-	bool		success;
-	PQExpBufferData details;
 
 	int			existing_primary_id = UNKNOWN_NODE_ID;
 
@@ -1097,6 +1092,23 @@ do_standby_promote(void)
 		exit(ERR_PROMOTION_FAIL);
 	}
 
+	_do_standby_promote_internal(data_dir);
+}
+
+
+static void
+_do_standby_promote_internal(const char *data_dir)
+{
+	char		script[MAXLEN];
+	int			r;
+	int			i,
+				promote_check_timeout  = 60,
+				promote_check_interval = 2;
+	bool		promote_success = false;
+	PQExpBufferData details;
+	PGconn	   *conn;
+	RecoveryType recovery_type;
+
 	log_notice(_("promoting standby"));
 
 	/*
@@ -1107,7 +1119,7 @@ do_standby_promote(void)
 	 * For now we'll poll the server until the default timeout (60 seconds)
 	 */
 
-	get_server_action(ACTION_PROMOTE, script, data_dir);
+	get_server_action(ACTION_PROMOTE, script, (char *)data_dir);
 
 	log_notice(_("promoting server using '%s'"),
 			   script);
@@ -2142,8 +2154,7 @@ do_standby_switchover(void)
 
 	/* promote standby */
 
-	// XXX need stripped-down version which skips the sanity checks etc
-	do_standby_promote();
+	_do_standby_promote_internal(config_file_options.data_directory);
 
 	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
 	{
