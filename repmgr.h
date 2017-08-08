@@ -49,6 +49,8 @@
 #define DEFAULT_BDR_RECOVERY_TIMEOUT     30  /* seconds */
 #define DEFAULT_ARCHIVER_LAG_WARNING     16  /* WAL files */
 #define DEFAULT_ARCHIVER_LAG_CRITICAL    128 /* WAL files */
+#define	DEFAULT_REPLICATION_LAG_WARNING  300 /* seconds */
+#define DEFAULT_REPLICATION_LAG_CRITICAL 600 /* seconds */
 
 #define FAILOVER_NODES_MAX_CHECK 50
 

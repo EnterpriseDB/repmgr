@@ -92,6 +92,7 @@ typedef struct
 
 	/* "node check" options */
 	bool		archiver;
+	bool		replication_lag;
 
 	/* "node service" options */
 	char		action[MAXLEN];
@@ -134,7 +135,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, \
+		false, false, \
 		/* "node service" options */ \
 		"", false, false, false,  \
 		/* "cluster event" options */ \

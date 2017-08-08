@@ -1309,7 +1309,7 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
 		server_version_num = get_server_version(conn, NULL);
 
-	if (server_version_num >= 1000000)
+	if (server_version_num >= 100000)
 	{
 		snprintf(archive_status_dir, MAXPGPATH,
 				 "%s/pg_wal/archive_status",
@@ -1373,6 +1373,60 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 	closedir(arcdir);
 
 	return ready_count;
+}
+
+
+int
+get_replication_lag_seconds(PGconn *conn)
+{
+	PQExpBufferData	  query;
+	PGresult   *res;
+	int lag_seconds = 0;
+
+	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+		server_version_num = get_server_version(conn, NULL);
+
+	initPQExpBuffer(&query);
+
+	if (server_version_num >= 100000)
+	{
+		appendPQExpBuffer(
+			&query,
+			" SELECT CASE WHEN (pg_catalog.pg_last_wal_receive_lsn() = pg_catalog.pg_last_wal_replay_lsn()) ");
+
+	}
+	else
+	{
+		appendPQExpBuffer(
+			&query,
+			" SELECT CASE WHEN (pg_catalog.pg_last_xlog_receive_location() = pg_catalog.pg_last_xlog_replay_location()) ");
+	}
+
+	appendPQExpBuffer(
+		&query,
+        "          THEN 0 "
+        "        ELSE EXTRACT(epoch FROM (clock_timestamp() - pg_catalog.pg_last_xact_replay_timestamp()))::INT "
+		"          END "
+        "        AS lag_seconds");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	log_verbose(LOG_DEBUG, "get_node_record():\n%s", query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
+	{
+		log_warning("%s", 				PQerrorMessage(conn));
+		PQclear(res);
+
+		/* XXX magic number */
+		return -1;
+	}
+
+	lag_seconds  = atoi(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+	return lag_seconds;
 }
 
 

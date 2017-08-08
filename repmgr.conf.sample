@@ -266,6 +266,12 @@ ssh_options='-q'                        # Options to append to "ssh"
                                          # "repmgr standby switchover" to warn about potential
                                          # issues with shutting down the demotion candidate.
 
+#replication_lag_warning=300             # repmgr node check --replication-lag
+#replication_lag_critical=600            #
+                                         # Note that these values will be checked when executing
+                                         # "repmgr standby switchover" to warn about potential
+                                         # issues with shutting down the demotion candidate.
+
 
 #------------------------------------------------------------------------------
 # BDR monitoring options

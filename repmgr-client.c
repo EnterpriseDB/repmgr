@@ -427,6 +427,10 @@ main(int argc, char **argv)
 				runtime_options.archiver = true;
 				break;
 
+			case OPT_REPLICATION_LAG:
+				runtime_options.replication_lag = true;
+				break;
+
 			/* "node service" options *
 			 * ---------------------- */
 

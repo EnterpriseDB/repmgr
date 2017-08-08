@@ -68,6 +68,7 @@
 #define OPT_NAGIOS                         1031
 #define OPT_ARCHIVER                       1032
 #define OPT_OPTFORMAT                      1033
+#define OPT_REPLICATION_LAG                1034
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR					    999
 #define OPT_NO_CONNINFO_PASSWORD		    998
@@ -135,6 +136,7 @@ static struct option long_options[] =
 
 /* "node check" options */
 	{"archiver", no_argument, NULL, OPT_ARCHIVER },
+	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG },
 
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},

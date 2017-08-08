@@ -395,6 +395,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->archiver_lag_warning = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "archiver_lag_critcial") == 0)
 			options->archiver_lag_critical = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "replication_lag_warning") == 0)
+			options->replication_lag_warning = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "replication_lag_critical") == 0)
+			options->replication_lag_critical = repmgr_atoi(value, name, error_list, 1);
 
 		/* repmgrd settings */
 		else if (strcmp(name, "failover_mode") == 0)
@@ -619,6 +623,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 						 _("\archiver_lag_critical\" must be greater than  \"archiver_lag_warning\""));
 	}
 
+	if( options->replication_lag_warning >= options->replication_lag_critical)
+	{
+		item_list_append(error_list,
+						 _("\replication_lag_critical\" must be greater than  \"replication_lag_warning\""));
+	}
 }
 
 

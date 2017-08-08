@@ -324,6 +324,7 @@ int			 get_primary_node_id(PGconn *conn);
 bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
 bool		 can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
 int 		 get_ready_archive_files(PGconn *conn, const char *data_directory);
+int 		 get_replication_lag_seconds(PGconn *conn);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);
