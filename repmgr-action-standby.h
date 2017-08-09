@@ -11,6 +11,7 @@ extern void do_standby_register(void);
 extern void do_standby_unregister(void);
 extern void do_standby_promote(void);
 extern void do_standby_follow(void);
+extern void do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_record);
 extern void do_standby_switchover(void);
 
 

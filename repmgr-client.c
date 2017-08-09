@@ -1189,6 +1189,14 @@ check_cli_parameters(const int action)
 		}
 		break;
 
+		case NODE_REJOIN:
+			if (runtime_options.upstream_conninfo[0] == '\0')
+			{
+				item_list_append(
+					&cli_errors,
+					"--upstream-conninfo must be provided with NODE REJOIN");
+			}
+			break;
 		case CLUSTER_SHOW:
 		case CLUSTER_MATRIX:
 		case CLUSTER_CROSSCHECK:
@@ -1416,6 +1424,7 @@ check_cli_parameters(const int action)
 		switch (action)
 		{
 			case STANDBY_SWITCHOVER:
+			case NODE_REJOIN:
 				break;
 			default:
 				item_list_append_format(

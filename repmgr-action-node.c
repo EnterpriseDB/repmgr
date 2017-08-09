@@ -17,6 +17,7 @@
 
 #include "repmgr-client-global.h"
 #include "repmgr-action-node.h"
+#include "repmgr-action-standby.h"
 
 static bool copy_file(const char *src_file, const char *dest_file);
 static void format_archive_dir(char *archive_dir);
@@ -916,13 +917,17 @@ parse_server_action(const char *action_name)
 void
 do_node_rejoin(void)
 {
-	PQExpBufferData command;
-	PQExpBufferData command_output;
-	struct stat statbuf;
-	char filebuf[MAXPGPATH];
+	PGconn *upstream_conn = NULL;
+	RecoveryType upstream_recovery_type = RECTYPE_UNKNOWN;
 	DBState db_state;
 	PGPing status;
 	bool is_shutdown = true;
+
+	PQExpBufferData command;
+	PQExpBufferData command_output;
+	struct stat statbuf;
+	char filebuf[MAXPGPATH] = "";
+	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 
 	/* check node is not actually running */
 
@@ -950,74 +955,120 @@ do_node_rejoin(void)
 	{
 		log_error(_("database is still running in state \"%s\""),
 				  describe_db_state(db_state));
+		log_hint(_("\"repmgr node rejoin\" cannot be executed on a running node"));
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* check if cleanly shut down */
 	if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
 	{
-		log_error(_("database is not shut down cleanly, pg_rewind will not be able to run"));
+		log_error(_("database is not shut down cleanly"));
+
+		if (runtime_options.force_rewind == true)
+		{
+			log_detail(_("pg_rewind will not be able to run"));
+		}
+		log_hint(_("database should be restarted and shut down cleanly after crash recovery completes"));
 		exit(ERR_BAD_CONFIG);
 	}
 
-	// XXX check if cleanly shut down, pg_rewind will fail if so
 
+	/* check provided upstream connection */
+	upstream_conn = establish_db_connection(runtime_options.upstream_conninfo, true);
 
-	// XXX we can probably make this an internal function
-	do_node_archive_config();
-
-
-	/* execute pg_rewind */
-	initPQExpBuffer(&command);
-
-	appendPQExpBuffer(
-		&command,
-		"%s -D ",
-		make_pg_path("pg_rewind"));
-
-	appendShellString(
-		&command,
-		config_file_options.data_directory);
-
-	appendPQExpBuffer(
-		&command,
-		" --source-server='%s'",
-		runtime_options.upstream_conninfo);
-
-	log_notice(_("executing pg_rewind"));
-	log_debug("pg_rewind command is:\n  %s",
-			  command.data);
-
-	initPQExpBuffer(&command_output);
-
-	// XXX handle failure
-
-	(void)local_command(
-		command.data,
-		&command_output);
-
-	termPQExpBuffer(&command_output);
-	termPQExpBuffer(&command);
-
-	/* Restore any previously archived config files */
-	do_node_restore_config();
-
-
-	/* remove any recovery.done file copied in by pg_rewind */
-	snprintf(filebuf, MAXPGPATH,
-			 "%s/recovery.done",
-			 config_file_options.data_directory);
-
-	if (stat(filebuf, &statbuf) == 0)
+	if (get_primary_node_record(upstream_conn, &primary_node_record) == false)
 	{
-		log_verbose(LOG_INFO, _("deleting \"recovery.done\""));
+		log_error(_("unable to retrieve primary node record"));
+		PQfinish(upstream_conn);
+	}
 
-		if (unlink(filebuf) == -1)
+	PQfinish(upstream_conn);
+
+	/* connect to registered primary and check it's not in recovery */
+	upstream_conn = establish_db_connection(primary_node_record.conninfo, true);
+
+	upstream_recovery_type = get_recovery_type(upstream_conn);
+
+	if (upstream_recovery_type != RECTYPE_PRIMARY)
+	{
+		log_error(_("primary server is registered node \"%s\" (ID: %i), but server is not a primary"),
+				  primary_node_record.node_name,
+				  primary_node_record.node_id);
+		/* TODO: hint about checking cluster */
+		PQfinish(upstream_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * Forcibly rewind node if requested (this is mainly for use when
+	 * this action is being executed by "repmgr standby switchover")
+	 */
+	if (runtime_options.force_rewind == true)
+	{
+		int ret;
+
+		// XXX we can probably make this an internal function
+		do_node_archive_config();
+
+		/* execute pg_rewind */
+		initPQExpBuffer(&command);
+
+		appendPQExpBuffer(
+			&command,
+			"%s -D ",
+			make_pg_path("pg_rewind"));
+
+		appendShellString(
+			&command,
+			config_file_options.data_directory);
+
+		appendPQExpBuffer(
+			&command,
+			" --source-server='%s'",
+			runtime_options.upstream_conninfo);
+
+		log_notice(_("executing pg_rewind"));
+		log_debug("pg_rewind command is:\n  %s",
+				  command.data);
+
+		initPQExpBuffer(&command_output);
+
+		ret = local_command(
+			command.data,
+			&command_output);
+
+		termPQExpBuffer(&command_output);
+		termPQExpBuffer(&command);
+
+		if (ret != 0)
 		{
-			log_warning(_("unable to delete \"%s\""),
-						filebuf);
-			log_detail("%s", strerror(errno));
+			log_error(_("unable to execute pg_rewind"));
+			log_detail(_("see preceding output for details"));
+			exit(ERR_BAD_CONFIG);
+		}
+		/* Restore any previously archived config files */
+		do_node_restore_config();
+
+		/* remove any recovery.done file copied in by pg_rewind */
+		snprintf(filebuf, MAXPGPATH,
+				 "%s/recovery.done",
+				 config_file_options.data_directory);
+
+		if (stat(filebuf, &statbuf) == 0)
+		{
+			log_verbose(LOG_INFO, _("deleting \"recovery.done\""));
+
+			if (unlink(filebuf) == -1)
+			{
+				log_warning(_("unable to delete \"%s\""),
+							filebuf);
+				log_detail("%s", strerror(errno));
+			}
 		}
 	}
+
+	do_standby_follow_internal(upstream_conn, &primary_node_record);
 
 }
 
