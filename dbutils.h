@@ -72,6 +72,7 @@ typedef enum {
  */
 typedef struct s_node_info
 {
+	/* contents of "repmgr.nodes" */
 	int			  node_id;
 	int			  upstream_node_id;
 	t_server_type type;
@@ -91,6 +92,7 @@ typedef struct s_node_info
 	PGconn		 *conn;
 	/* for ad-hoc use e.g. when working with a list of nodes */
     char		  details[MAXLEN];
+	bool		  reachable;
 	/* various statistics */
 	int			  max_wal_senders;
 	int			  attached_wal_receivers;
@@ -101,6 +103,7 @@ typedef struct s_node_info
 
 
 #define T_NODE_INFO_INITIALIZER { \
+   	/* contents of "repmgr.nodes" */ \
 	NODE_NOT_FOUND, \
 	NO_UPSTREAM_NODE, \
 	UNKNOWN, \
@@ -112,12 +115,15 @@ typedef struct s_node_info
 	DEFAULT_PRIORITY, \
 	true, \
 	"", \
+	/* used during failover to track node status */ \
 	InvalidXLogRecPtr, \
 	NODE_STATUS_UNKNOWN, \
 	RECTYPE_UNKNOWN,  \
 	MS_NORMAL, \
 	NULL, \
-	"", \
+	/* for ad-hoc use e.g. when working with a list of nodes */ \
+	"", true \
+	/* various statistics */ \
 	-1, -1, -1, -1, -1 \
 }
 

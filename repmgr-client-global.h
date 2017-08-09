@@ -86,6 +86,7 @@ typedef struct
 	char		remote_config_file[MAXPGPATH];
 	bool		always_promote;
 	bool		force_rewind;
+	bool		siblings_follow;
 
 	/* "node status" options */
 	bool		is_shutdown;
@@ -134,7 +135,7 @@ typedef struct
 		/* "standby register" options */ \
 		false, 0, \
 		/* "standby switchover" options */ \
-		"", false, false,  \
+		"", false, false, false, \
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \

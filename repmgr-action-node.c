@@ -52,7 +52,6 @@ do_node_status(void)
 		return _do_node_status_is_shutdown();
 	}
 
-
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
 	else
@@ -979,7 +978,9 @@ do_node_rejoin(void)
 
 
 	/* check provided upstream connection */
-	upstream_conn = establish_db_connection(runtime_options.upstream_conninfo, true);
+	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
+
+/* establish_db_connection(runtime_options.upstream_conninfo, true); */
 
 	if (get_primary_node_record(upstream_conn, &primary_node_record) == false)
 	{
@@ -1030,7 +1031,7 @@ do_node_rejoin(void)
 		appendPQExpBuffer(
 			&command,
 			" --source-server='%s'",
-			runtime_options.upstream_conninfo);
+			primary_node_record.conninfo);
 
 		log_notice(_("executing pg_rewind"));
 		log_debug("pg_rewind command is:\n  %s",

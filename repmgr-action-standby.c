@@ -1360,8 +1360,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		}
 	}
 
-
-
 	/* Initialise connection parameters to write as `primary_conninfo` */
 	initialize_conninfo_params(&recovery_conninfo, false);
 
@@ -1540,9 +1538,7 @@ do_standby_switchover(void)
 	PGconn	   *local_conn;
 	PGconn	   *remote_conn;
 
-
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
-
 
 	/* the remote server is the primary to be demoted */
 	char	    remote_conninfo[MAXCONNINFO] = "";
@@ -1550,7 +1546,7 @@ do_standby_switchover(void)
 	int         remote_node_id;
 	t_node_info remote_node_record = T_NODE_INFO_INITIALIZER;
 
-	RecordStatus	   record_status;
+	RecordStatus	record_status;
 	RecoveryType	recovery_type;
 	PQExpBufferData remote_command_str;
 	PQExpBufferData command_output;
@@ -1564,6 +1560,10 @@ do_standby_switchover(void)
 
 	/* store list of configuration files on the demotion candidate */
 	KeyValueList	remote_config_files = { NULL, NULL };
+
+	/* store list of sibling nodes if --siblings-follow specified */
+	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
+	int unreachable_sibling_node_count = 0;
 
 	/*
 	 * SANITY CHECKS
@@ -1847,9 +1847,6 @@ do_standby_switchover(void)
 	}
 
 	PQfinish(remote_conn);
-	PQfinish(local_conn);
-
-
 
 	/* Determine the remote's configuration file location */
 	/* -------------------------------------------------- */
@@ -1884,6 +1881,7 @@ do_standby_switchover(void)
 			log_error(_("unable to find the specified repmgr configuration file on remote server"));
 			log_detail(_("remote configuration file is \"%s\""),
 					   runtime_options.remote_config_file);
+			PQfinish(local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -1952,9 +1950,81 @@ do_standby_switchover(void)
 		{
 			log_error(_("no remote configuration file supplied or found in a default location - terminating"));
 			log_hint(_("specify the remote configuration file with -C/--remote-config-file"));
+			PQfinish(local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
+
+	/*
+	 * If --siblings-follow specified, get list and check they're reachable
+	 */
+
+	if (runtime_options.siblings_follow == true)
+	{
+		char host[MAXLEN] = "";
+		NodeInfoListCell *cell;
+
+		get_active_sibling_node_records(local_conn,
+										local_node_record.node_id,
+										local_node_record.upstream_node_id,
+										&sibling_nodes);
+
+		log_verbose(LOG_INFO, _("%i active sibling nodes found"),
+					sibling_nodes.node_count);
+
+		for (cell = sibling_nodes.head; cell; cell = cell->next)
+		{
+			/* get host from node record */
+			get_conninfo_value(cell->node_info->conninfo, "host", host);
+			r = test_ssh_connection(host, runtime_options.remote_user);
+
+			if (r != 0)
+			{
+				cell->node_info->reachable = false;
+				unreachable_sibling_node_count++;
+			}
+			else
+			{
+				cell->node_info->reachable = true;
+			}
+		}
+
+		if (unreachable_sibling_node_count > 0)
+		{
+			if (runtime_options.force == false)
+			{
+				log_error(_("%i of %i sibling nodes unreachable via SSH:"),
+						  unreachable_sibling_node_count,
+						  sibling_nodes.node_count);
+			}
+			else
+			{
+				log_warning(_("%i of %i sibling nodes unreachable via SSH:"),
+							unreachable_sibling_node_count,
+							sibling_nodes.node_count);
+			}
+
+			for (cell = sibling_nodes.head; cell; cell = cell->next)
+			{
+				if (cell->node_info->reachable == true)
+					continue;
+				log_detail("  %s (ID: %i)",
+						   cell->node_info->node_name,
+						   cell->node_info->node_id);
+			}
+
+			if (runtime_options.force == false)
+			{
+				log_hint(_("use -F/--force to proceed in any case"));
+				PQfinish(local_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+
+			log_detail(_("F/--force specified, proceeding anyway"));
+		}
+	}
+	PQfinish(local_conn);
 
 
 	/*
@@ -2165,7 +2235,7 @@ do_standby_switchover(void)
 	make_remote_repmgr_path(&remote_command_str);
 
 	appendPQExpBuffer(&remote_command_str,
-					  "%s--upstream-conninfo=\\'%s\\' node rejoin",
+					  "%s-d \\'%s\\' node rejoin",
 					  node_rejoin_options.data,
 					  local_node_record.conninfo);
 
@@ -2218,6 +2288,57 @@ do_standby_switchover(void)
 	log_detail(_("node \"%s\" is now primary"),
 			   local_node_record.node_name);
 
+	/*
+	 * If --siblings-follow specified, attempt to make them follow the
+	 * new standby
+	 */
+
+	if (runtime_options.siblings_follow == true)
+	{
+		int failed_follow_count = 0;
+		char host[MAXLEN] = "";
+		NodeInfoListCell *cell;
+		log_notice(_("executing STANDBY FOLLOW on %i of %i siblings"),
+				   sibling_nodes.node_count - unreachable_sibling_node_count,
+				   sibling_nodes.node_count);
+
+		for (cell = sibling_nodes.head; cell; cell = cell->next)
+		{
+			int r = 0;
+			log_debug("XXX %s", cell->node_info->node_name);
+			/* skip nodes previously determined as unreachable */
+			if (cell->node_info->reachable == false)
+			{
+				log_debug(" XXX unreachable!");
+				continue;
+			}
+
+			initPQExpBuffer(&remote_command_str);
+			make_remote_repmgr_path(&remote_command_str);
+
+			appendPQExpBuffer(&remote_command_str,
+							  "standby follow");
+			get_conninfo_value(cell->node_info->conninfo, "host", host);
+			log_debug("executing:\n  \"%s\"", remote_command_str.data);
+			r = remote_command(
+				host,
+				runtime_options.remote_user,
+				remote_command_str.data,
+				NULL);
+			if (r != 0)
+			{
+				log_warning(_("STANDBY FOLLOW failed on node \"%s\""),
+							cell->node_info->node_name);
+				failed_follow_count++;
+			}
+			termPQExpBuffer(&remote_command_str);
+		}
+
+		if (failed_follow_count == 0)
+		{
+			log_info(_("STANDBY FOLLOW"));
+		}
+	}
 	return;
 }
 
@@ -3381,7 +3502,7 @@ copy_configuration_files(void)
 {
 	int i, r;
 	t_configfile_info *file;
-	char *host;
+	char *host = NULL;
 
 	/* get host from upstream record */
 	host = param_get(&recovery_conninfo, "host");

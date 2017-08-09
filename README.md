@@ -37,11 +37,13 @@ The following commands are available:
     repmgr standby unregister
     repmgr standby promote
     repmgr standby follow
+    repmgr standby switchover
 
     repmgr bdr register
     repmgr bdr unregister
 
     repmgr node status
+    repmgr node check
 
     repmgr cluster show
     repmgr cluster event [--all] [--node-id] [--node-name] [--event] [--event-matching]
@@ -54,6 +56,16 @@ The following commands are available:
     standby nodes are registered.
 
     `master register` can be used as an alias for `primary register`.
+
+* `standby switchover`
+
+    ...
+
+    If other standbys (siblings of the promotion candidate) are connected
+    to the demotion candidate, if `--siblings-follow` is specified `repmgr`
+    can instruct these to follow the new primary. Note this can only work
+    if the configuration file on each sibling is the same path as specifed
+    in -f/--config-file or -C/--remote-config-file.
 
 * `cluster show`
 

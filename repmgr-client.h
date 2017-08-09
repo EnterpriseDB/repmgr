@@ -69,6 +69,7 @@
 #define OPT_OPTFORMAT                      1033
 #define OPT_REPLICATION_LAG                1034
 #define OPT_CONFIG_FILES                   1035
+#define OPT_SIBLINGS_FOLLOW                1036
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR					    999
 #define OPT_NO_CONNINFO_PASSWORD		    998
@@ -130,6 +131,7 @@ static struct option long_options[] =
 	{"remote-config-file", required_argument, NULL, 'C'},
 	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE },
 	{"force-rewind", no_argument, NULL, OPT_FORCE_REWIND },
+	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW },
 
 /* "node status" options */
 	{"is-shutdown", no_argument, NULL, OPT_IS_SHUTDOWN },

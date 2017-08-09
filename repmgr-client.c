@@ -401,6 +401,7 @@ main(int argc, char **argv)
 			/* "standby switchover" options *
 			 * ---------------------------- */
 
+			/* -C/--remote-config-file */
 			case 'C':
 				strncpy(runtime_options.remote_config_file, optarg, MAXPGPATH);
 				break;
@@ -411,6 +412,10 @@ main(int argc, char **argv)
 
 			case OPT_FORCE_REWIND:
 				runtime_options.force_rewind = true;
+				break;
+
+			case OPT_SIBLINGS_FOLLOW:
+				runtime_options.siblings_follow = true;
 				break;
 
 			/* "node status" options *
@@ -1178,11 +1183,11 @@ check_cli_parameters(const int action)
 		break;
 
 		case NODE_REJOIN:
-			if (runtime_options.upstream_conninfo[0] == '\0')
+			if (runtime_options.connection_param_provided == false)
 			{
 				item_list_append(
 					&cli_errors,
-					"--upstream-conninfo must be provided with NODE REJOIN");
+					"database connection parameters for an available node must be provided when executing NODE REJOIN");
 			}
 			break;
 		case CLUSTER_SHOW:
