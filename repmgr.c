@@ -2633,6 +2633,7 @@ get_tablespace_data_barman
 	return SUCCESS;
 }
 
+
 void
 get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 {
@@ -5852,7 +5853,8 @@ do_standby_restore_config(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	while ((arcdir_ent = readdir(arcdir)) != NULL) {
+	while ((arcdir_ent = readdir(arcdir)) != NULL)
+	{
 		struct stat statbuf;
 		char arcdir_ent_path[MAXPGPATH];
 		PQExpBufferData src_file;
