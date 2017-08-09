@@ -31,8 +31,6 @@
  *
  * For internal use:
  * NODE REJOIN
- * NODE ARCHIVE-CONFIG
- * NODE RESTORE-CONFIG
  * NODE SERVICE
  */
 
@@ -727,10 +725,6 @@ main(int argc, char **argv)
 				action = NODE_STATUS;
 			else if (strcasecmp(repmgr_action, "REJOIN") == 0)
 				action = NODE_REJOIN;
-			else if (strcasecmp(repmgr_action, "ARCHIVE-CONFIG") == 0)
-				action = NODE_ARCHIVE_CONFIG;
-			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
-				action = NODE_RESTORE_CONFIG;
 			else if (strcasecmp(repmgr_action, "SERVICE") == 0)
 				action = NODE_SERVICE;
 		}
@@ -1057,12 +1051,6 @@ main(int argc, char **argv)
 			break;
 		case NODE_REJOIN:
 			do_node_rejoin();
-			break;
-		case NODE_ARCHIVE_CONFIG:
-			do_node_archive_config();
-			break;
-		case NODE_RESTORE_CONFIG:
-			do_node_restore_config();
 			break;
 		case NODE_SERVICE:
 			do_node_service();
@@ -1505,10 +1493,6 @@ action_name(const int action)
 			return "NODE CHECK";
 		case NODE_REJOIN:
 			return "NODE REJOIN";
-		case NODE_ARCHIVE_CONFIG:
-			return "NODE ARCHIVE-CONFIG";
-		case NODE_RESTORE_CONFIG:
-			return "NODE RESTORE-CONFIG";
 		case NODE_SERVICE:
 			return "NODE SERVICE";
 

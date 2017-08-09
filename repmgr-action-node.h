@@ -12,8 +12,6 @@ extern CheckStatus do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBu
 extern CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *output);
 
 extern void do_node_rejoin(void);
-extern void do_node_archive_config(void);
-extern void do_node_restore_config(void);
 extern void do_node_service(void);
 
 

@@ -26,13 +26,11 @@
 #define NODE_CHECK			   12
 #define NODE_SERVICE		   13
 #define NODE_REJOIN            14
-#define NODE_ARCHIVE_CONFIG    15
-#define NODE_RESTORE_CONFIG    16
-#define CLUSTER_SHOW		   17
-#define CLUSTER_CLEANUP		   18
-#define CLUSTER_MATRIX		   19
-#define CLUSTER_CROSSCHECK	   20
-#define CLUSTER_EVENT		   21
+#define CLUSTER_SHOW		   15
+#define CLUSTER_CLEANUP		   16
+#define CLUSTER_MATRIX		   17
+#define CLUSTER_CROSSCHECK	   18
+#define CLUSTER_EVENT		   19
 
 /* command line options without short versions */
 #define OPT_HELP						   1001

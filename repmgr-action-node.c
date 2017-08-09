@@ -26,6 +26,8 @@ static t_server_action parse_server_action(const char *action);
 static void _do_node_service_check(void);
 static void _do_node_service_list_actions(t_server_action action);
 static void _do_node_status_is_shutdown(void);
+static void _do_node_archive_config(void);
+static void _do_node_restore_config(void);
 
 void
 do_node_status(void)
@@ -1008,8 +1010,7 @@ do_node_rejoin(void)
 	{
 		int ret;
 
-		// XXX we can probably make this an internal function
-		do_node_archive_config();
+		_do_node_archive_config();
 
 		/* execute pg_rewind */
 		initPQExpBuffer(&command);
@@ -1048,7 +1049,7 @@ do_node_rejoin(void)
 			exit(ERR_BAD_CONFIG);
 		}
 		/* Restore any previously archived config files */
-		do_node_restore_config();
+		_do_node_restore_config();
 
 		/* remove any recovery.done file copied in by pg_rewind */
 		snprintf(filebuf, MAXPGPATH,
@@ -1080,8 +1081,8 @@ do_node_rejoin(void)
  *
  * Requires configuration file, optionally --config_archive_dir
  */
-void
-do_node_archive_config(void)
+static void
+_do_node_archive_config(void)
 {
 	char archive_dir[MAXPGPATH];
 	struct stat statbuf;
@@ -1261,8 +1262,8 @@ do_node_archive_config(void)
  * Removes --config_archive_dir after successful copy
  */
 
-void
-do_node_restore_config(void)
+static void
+_do_node_restore_config(void)
 {
 	char archive_dir[MAXPGPATH];
 
