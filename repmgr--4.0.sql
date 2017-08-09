@@ -11,7 +11,8 @@ CREATE TABLE nodes (
   priority         INT         NOT NULL DEFAULT 100,
   conninfo         TEXT        NOT NULL,
   repluser         VARCHAR(63) NOT NULL,
-  slot_name        TEXT        NULL
+  slot_name        TEXT        NULL,
+  config_file      TEXT        NOT NULL
 );
 
 CREATE TABLE events (

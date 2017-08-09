@@ -15,7 +15,7 @@
 #include "strutil.h"
 #include "voting.h"
 
-#define REPMGR_NODES_COLUMNS "node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active, '' AS upstream_node_name "
+#define REPMGR_NODES_COLUMNS "node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active, config_file, '' AS upstream_node_name "
 
 typedef enum {
 	UNKNOWN = 0,
@@ -84,6 +84,7 @@ typedef struct s_node_info
 	int			  priority;
 	bool		  active;
 	char		  slot_name[MAXLEN];
+	char		  config_file[MAXPGPATH];
 	/* used during failover to track node status */
 	XLogRecPtr	  last_wal_receive_lsn;
 	NodeStatus	  node_status;
@@ -114,6 +115,7 @@ typedef struct s_node_info
 	DEFAULT_LOCATION, \
 	DEFAULT_PRIORITY, \
 	true, \
+	"", \
 	"", \
 	/* used during failover to track node status */ \
 	InvalidXLogRecPtr, \

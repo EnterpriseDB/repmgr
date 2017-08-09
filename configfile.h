@@ -13,6 +13,7 @@
 #define CONFIG_FILE_NAME	"repmgr.conf"
 #define MAXLINELENGTH		4096
 extern bool		config_file_found;
+extern char		config_file_path[MAXPGPATH];
 
 typedef enum {
 	FAILOVER_MANUAL,

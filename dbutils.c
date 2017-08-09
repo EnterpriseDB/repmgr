@@ -1637,7 +1637,7 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 					  " WHERE node_id = %i",
 					  node_id);
 
-	log_verbose(LOG_DEBUG, "get_node_record():\n%s", query.data);
+	log_verbose(LOG_DEBUG, "get_node_record():\n  %s", query.data);
 
 	result = _get_node_record(conn, query.data, node_info);
 	termPQExpBuffer(&query);
@@ -1956,7 +1956,7 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 
 	char		   *slot_name_ptr = NULL;
 
-	int				param_count = 10;
+	int				param_count = 11;
 	const char	   *param_values[param_count];
 
 	PGresult   	   *res;
@@ -1995,7 +1995,8 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 	param_values[6] = node_info->location;
 	param_values[7] = priority;
 	param_values[8] = node_info->active == true ? "TRUE" : "FALSE";
-	param_values[9] = node_id;
+	param_values[9] = node_info->config_file;
+	param_values[10] = node_id;
 
 	initPQExpBuffer(&query);
 
@@ -2005,8 +2006,8 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 						  "INSERT INTO repmgr.nodes "
 						  "       (node_id, type, upstream_node_id, "
 						  "        node_name, conninfo, repluser, slot_name, "
-						  "        location, priority, active) "
-						  "VALUES ($10, $1, $2, $3, $4, $5, $6, $7, $8, $9) ");
+						  "        location, priority, active, config_file) "
+						  "VALUES ($11, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ");
 	}
 	else
 	{
@@ -2020,8 +2021,9 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 						  "       slot_name = $6, "
 						  "       location = $7, "
 						  "       priority = $8, "
-						  "       active = $9 "
-						  " WHERE node_id = $10 ");
+						  "       active = $9, "
+						  "       config_file = $10 "
+						  " WHERE node_id = $11 ");
 	}
 
 

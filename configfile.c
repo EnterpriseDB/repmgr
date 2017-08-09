@@ -11,7 +11,7 @@
 #include "log.h"
 
 const static char *_progname = NULL;
-static char config_file_path[MAXPGPATH];
+char config_file_path[MAXPGPATH] = "";
 static bool config_file_provided = false;
 bool config_file_found = false;
 

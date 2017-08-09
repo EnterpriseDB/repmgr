@@ -2971,6 +2971,7 @@ init_node_record(t_node_info *node_record)
 
 	strncpy(node_record->node_name, config_file_options.node_name, MAXLEN);
 	strncpy(node_record->conninfo, config_file_options.conninfo, MAXLEN);
+	strncpy(node_record->config_file, config_file_path, MAXLEN);
 
 	if (config_file_options.replication_user[0] != '\0')
 	{
