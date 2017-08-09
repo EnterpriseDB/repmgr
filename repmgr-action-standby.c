@@ -1226,6 +1226,9 @@ do_standby_follow(void)
 
 	int	    	timer;
 
+	PQExpBufferData follow_output;
+	bool    	success;
+
 	log_verbose(LOG_DEBUG, "do_standby_follow()");
 
 
@@ -1268,7 +1271,38 @@ do_standby_follow(void)
 
 	get_node_record(primary_conn, primary_id, &primary_node_record);
 
-	do_standby_follow_internal(primary_conn, &primary_node_record);
+	initPQExpBuffer(&follow_output);
+
+	success = do_standby_follow_internal(
+		primary_conn,
+		&primary_node_record,
+		&follow_output);
+
+	create_event_notification(
+		primary_conn,
+		&config_file_options,
+		config_file_options.node_id,
+		"standby_follow",
+		success,
+		follow_output.data);
+
+	PQfinish(primary_conn);
+
+	if (success == false)
+	{
+		log_notice(_("STANDBY FOLLOW failed"));
+		log_detail("%s", follow_output.data);
+
+		termPQExpBuffer(&follow_output);
+		exit(ERR_DB_QUERY);
+	}
+
+	log_notice(_("STANDBY FOLLOW successful"));
+	log_detail("%s", follow_output.data);
+
+	termPQExpBuffer(&follow_output);
+
+	return;
 }
 
 
@@ -1276,8 +1310,8 @@ do_standby_follow(void)
  * Perform the actuall "follow" operation; this is executed by
  * "node rejoin" too.
  */
-void
-do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_record)
+bool
+do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_record, PQExpBufferData *output)
 {
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	int			original_upstream_node_id = UNKNOWN_NODE_ID;
@@ -1285,7 +1319,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	int			r;
 
 	RecordStatus record_status;
-	PQExpBufferData event_details;
 	char	   *errmsg = NULL;
 
 
@@ -1315,28 +1348,16 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	{
  		int	primary_server_version_num = get_server_version(primary_conn, NULL);
 
-		initPQExpBuffer(&event_details);
 
 		if (create_replication_slot(primary_conn,
 									local_node_record.slot_name,
 									primary_server_version_num,
-									&event_details) == false)
+									output) == false)
 		{
-			log_error("%s", event_details.data);
+			log_error("%s", output->data);
 
-			create_event_notification(
-				primary_conn,
-				&config_file_options,
-				config_file_options.node_id,
-				"standby_follow",
-				false,
-				event_details.data);
-
-			PQfinish(primary_conn);
-			exit(ERR_DB_QUERY);
+			return false;
 		}
-
-		termPQExpBuffer(&event_details);
 	}
 
 
@@ -1477,34 +1498,19 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 								  primary_node_record->node_id,
 								  true) == false)
 	{
-		log_error(_("unable to update upstream node"));
-		PQfinish(primary_conn);
-
-		exit(ERR_BAD_CONFIG);
+		appendPQExpBuffer(output,
+						  _("unable to update upstream node"));
+		return false;
 	}
 
-	// XXX return to caller
-	log_notice(_("STANDBY FOLLOW successful"));
 
-	initPQExpBuffer(&event_details);
-	appendPQExpBuffer(&event_details,
+	appendPQExpBuffer(output,
 					  _("node %i is now attached to node %i"),
-					  config_file_options.node_id, primary_node_record->node_id);
+					  config_file_options.node_id,
+					  primary_node_record->node_id);
 
-	create_event_notification(primary_conn,
-							  &config_file_options,
-							  config_file_options.node_id,
-							  "standby_follow",
-							  true,
-							  event_details.data);
 
-	log_detail("%s", event_details.data);
-
-	termPQExpBuffer(&event_details);
-
-	PQfinish(primary_conn);
-
-	return;
+	return true;
 }
 
 

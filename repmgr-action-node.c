@@ -927,9 +927,12 @@ do_node_rejoin(void)
 
 	PQExpBufferData command;
 	PQExpBufferData command_output;
+	PQExpBufferData follow_output;
 	struct stat statbuf;
 	char filebuf[MAXPGPATH] = "";
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
+
+	bool success;
 
 	/* check node is not actually running */
 
@@ -1069,8 +1072,36 @@ do_node_rejoin(void)
 		}
 	}
 
-	do_standby_follow_internal(upstream_conn, &primary_node_record);
+	initPQExpBuffer(&follow_output);
 
+	success = do_standby_follow_internal(
+		upstream_conn,
+		&primary_node_record,
+		&follow_output);
+
+	create_event_notification(
+		upstream_conn,
+		&config_file_options,
+		config_file_options.node_id,
+		"node_rejoin",
+		success,
+		follow_output.data);
+
+	PQfinish(upstream_conn);
+
+	if (success == false)
+	{
+		log_notice(_("NODE REJOIN failed"));
+		log_detail("%s", follow_output.data);
+
+		termPQExpBuffer(&follow_output);
+		exit(ERR_DB_QUERY);
+	}
+
+	log_notice(_("NODE REJOIN successful"));
+	log_detail("%s", follow_output.data);
+
+	termPQExpBuffer(&follow_output);
 }
 
 /*
