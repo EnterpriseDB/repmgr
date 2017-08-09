@@ -1598,6 +1598,8 @@ do_standby_switchover(void)
 	XLogRecPtr remote_last_checkpoint_lsn = InvalidXLogRecPtr;
 	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
 
+	/* store list of configuration files on the demotion candidate */
+	KeyValueList	remote_config_files = { NULL, NULL };
 
 	/*
 	 * SANITY CHECKS
@@ -1701,7 +1703,8 @@ do_standby_switchover(void)
 
 
 	/*
-	 * If --force-rewind specified, check pg_rewind can be used
+	 * If --force-rewind specified, check pg_rewind can be used, and pre-emptively
+	 * fetch the list of configuration files which should be archived
 	 */
 
 	if (runtime_options.force_rewind == true)
@@ -1722,6 +1725,8 @@ do_standby_switchover(void)
 		}
 
 		termPQExpBuffer(&reason);
+
+		get_datadir_configuration_files(remote_conn, &remote_config_files);
 	}
 
 
@@ -2153,33 +2158,72 @@ do_standby_switchover(void)
 	}
 
 	/* promote standby */
-
 	_do_standby_promote_internal(config_file_options.data_directory);
 
-	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
+	if (1 || replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
 	{
-		// if --force-rewind was supplied, do that now, otherwise exit
+		KeyValueListCell *cell;
+		bool first_entry = true;
+
+		if (runtime_options.force_rewind == false)
+		{
+			log_error(_("new primary diverges from former primary and --force-rewind not provided"));
+			/* TODO: "repmgr node rejoin" example, when available */
+			log_hint(_("the former primary will need to be restored manually"));
+			PQfinish(local_conn);
+			exit(ERR_SWITCHOVER_FAIL);
+		}
+
+		initPQExpBuffer(&remote_command_str);
+		make_remote_repmgr_path(&remote_command_str);
+		appendPQExpBuffer(&remote_command_str,
+						  "node rejoin --upstream-conninfo='%s'",
+						  local_node_record.conninfo);
+		appendPQExpBuffer(&remote_command_str,
+						  " --config-files=");
+
+		for (cell = remote_config_files.head; cell; cell = cell->next)
+		{
+			if (first_entry == false)
+				appendPQExpBuffer(&remote_command_str, ",");
+			else
+				first_entry = false;
+
+			appendPQExpBuffer(&remote_command_str, "%s", cell->key);
+		}
+
+		log_debug("executing:\n  \"%s\"", remote_command_str.data);
+
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			remote_command_str.data,
+			NULL);
+
+		termPQExpBuffer(&remote_command_str);
 	}
+	else
+	{
+		/*
+		 * Execute `repmgr standby follow` to create recovery.conf and start
+		 * the remote server
+		 *
+		 * XXX replace with "node rejoin"
+		 */
+		initPQExpBuffer(&remote_command_str);
+		make_remote_repmgr_path(&remote_command_str);
+		appendPQExpBuffer(&remote_command_str,
+						  " -d \\'%s\\' standby follow",
+						  local_node_record.conninfo);
+		log_debug("executing:\n  \"%s\"", remote_command_str.data);
+		(void)remote_command(
+			remote_host,
+			runtime_options.remote_user,
+			remote_command_str.data,
+			NULL);
 
-	/*
-	 * Execute `repmgr standby follow` to create recovery.conf and start
-	 * the remote server
-	 *
-	 * XXX replace with "node rejoin"
-	 */
-	initPQExpBuffer(&remote_command_str);
-	make_remote_repmgr_path(&remote_command_str);
-	appendPQExpBuffer(&remote_command_str,
-					  " -d \\'%s\\' standby follow",
-					  local_node_record.conninfo);
-	log_debug("executing:\n  \"%s\"", remote_command_str.data);
-	(void)remote_command(
-		remote_host,
-		runtime_options.remote_user,
-		remote_command_str.data,
-		NULL);
-
-	termPQExpBuffer(&remote_command_str);
+		termPQExpBuffer(&remote_command_str);
+	}
 
 	/* TODO: verify this node's record was updated correctly */
 

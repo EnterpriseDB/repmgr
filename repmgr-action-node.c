@@ -13,6 +13,7 @@
 #include "controldata.h"
 #include "dirutil.h"
 #include "dbutils.h"
+#include "compat.h"
 
 #include "repmgr-client-global.h"
 #include "repmgr-action-node.h"
@@ -903,6 +904,123 @@ parse_server_action(const char *action_name)
 }
 
 
+
+/*
+ * Intended mainly for "internal" use by `node switchover`, which
+ * calls this on the target server to excute pg_rewind on a demoted
+ * primary with a forked (sic) timeline. Does not currently check
+ * whether this is a useful thing to do.
+ *
+ * TODO: make this into a more generally useful function.
+ */
+void
+do_node_rejoin(void)
+{
+	PQExpBufferData command;
+	PQExpBufferData command_output;
+	struct stat statbuf;
+	char filebuf[MAXPGPATH];
+	DBState db_state;
+	PGPing status;
+	bool is_shutdown = true;
+
+	/* check node is not actually running */
+
+	status = PQping(config_file_options.conninfo);
+
+	switch (status)
+	{
+		case PQPING_NO_ATTEMPT:
+			log_error(_("unable to determine status of server"));
+			exit(ERR_BAD_CONFIG);
+		case PQPING_OK:
+			is_shutdown = false;
+			break;
+		case PQPING_REJECT:
+			is_shutdown = false;
+			break;
+		case PQPING_NO_RESPONSE:
+			/* status not yet clear */
+			break;
+	}
+
+	db_state = get_db_state(config_file_options.data_directory);
+
+	if (is_shutdown == false)
+	{
+		log_error(_("database is still running in state \"%s\""),
+				  describe_db_state(db_state));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
+	{
+		log_error(_("database is not shut down cleanly, pg_rewind will not be able to run"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	// XXX check if cleanly shut down, pg_rewind will fail if so
+
+
+	// XXX we can probably make this an internal function
+	do_node_archive_config();
+
+
+	/* execute pg_rewind */
+	initPQExpBuffer(&command);
+
+	appendPQExpBuffer(
+		&command,
+		"%s -D ",
+		make_pg_path("pg_rewind"));
+
+	appendShellString(
+		&command,
+		config_file_options.data_directory);
+
+	appendPQExpBuffer(
+		&command,
+		" --source-server='%s'",
+		runtime_options.upstream_conninfo);
+
+	log_notice(_("executing pg_rewind"));
+	log_debug("pg_rewind command is:\n  %s",
+			  command.data);
+
+	initPQExpBuffer(&command_output);
+
+	// XXX handle failure
+
+	(void)local_command(
+		command.data,
+		&command_output);
+
+	termPQExpBuffer(&command_output);
+	termPQExpBuffer(&command);
+
+	/* Restore any previously archived config files */
+	do_node_restore_config();
+
+
+	/* remove any recovery.done file copied in by pg_rewind */
+	snprintf(filebuf, MAXPGPATH,
+			 "%s/recovery.done",
+			 config_file_options.data_directory);
+
+	if (stat(filebuf, &statbuf) == 0)
+	{
+		log_verbose(LOG_INFO, _("deleting \"recovery.done\""));
+
+		if (unlink(filebuf) == -1)
+		{
+			log_warning(_("unable to delete \"%s\""),
+						filebuf);
+			log_detail("%s", strerror(errno));
+		}
+	}
+
+}
+
 /*
  * Intended mainly for "internal" use by `node switchover`, which
  * calls this on the target server to archive any configuration files
@@ -919,7 +1037,7 @@ do_node_archive_config(void)
 	struct dirent *arcdir_ent;
 	DIR			  *arcdir;
 
-	PGconn	   *local_conn = NULL;
+
 	KeyValueList	config_files = { NULL, NULL };
 	KeyValueListCell *cell;
 	int  copied_count = 0;
@@ -988,8 +1106,8 @@ do_node_archive_config(void)
 
 		if (unlink(arcdir_ent_path) == -1)
 		{
-			log_error(_("unable to create temporary archive directory \"%s\""),
-					  archive_dir);
+			log_error(_("unable to delete file in temporary archive directory"));
+			log_detail(_("file is:  \"%s\""), arcdir_ent_path);
 			log_detail("%s", strerror(errno));
 			closedir(arcdir);
 			exit(ERR_BAD_CONFIG);
@@ -998,9 +1116,57 @@ do_node_archive_config(void)
 
 	closedir(arcdir);
 
-	local_conn = establish_db_connection(config_file_options.conninfo, true);
+	/*
+	 * extract list of config files from --config-files
+	 */
+	{
+		int i = 0, j;
+		int config_file_len = strlen(runtime_options.config_files);
 
-	get_datadir_configuration_files(local_conn, &config_files);
+		char filenamebuf[MAXLEN] = "";
+		char pathbuf[MAXPGPATH] = "";
+
+		for (j = 0; j < config_file_len; j++)
+		{
+			if (runtime_options.config_files[j] == ',')
+			{
+				int filename_len = j - i;
+
+				if (filename_len > MAXLEN)
+					filename_len = MAXLEN - 1;
+
+				strncpy(filenamebuf, runtime_options.config_files + i, filename_len);
+
+				filenamebuf[filename_len] = '\0';
+
+				snprintf(pathbuf, MAXPGPATH,
+						 "%s/%s",
+						 config_file_options.data_directory,
+						 filenamebuf);
+
+				key_value_list_set(
+					&config_files,
+					filenamebuf,
+					pathbuf);
+
+				i = j + 1;
+			}
+		}
+
+		if (i < config_file_len)
+		{
+			strncpy(filenamebuf, runtime_options.config_files + i, config_file_len - i);
+			snprintf(pathbuf, MAXPGPATH,
+					 "%s/%s",
+					 config_file_options.data_directory,
+					 filenamebuf);
+			key_value_list_set(
+				&config_files,
+				filenamebuf,
+				pathbuf);
+		}
+	}
+
 
 	for (cell = config_files.head; cell; cell = cell->next)
 	{
@@ -1010,14 +1176,22 @@ do_node_archive_config(void)
 				 "%s/%s",
 				 archive_dir,
 				 cell->key);
-
-		copy_file(cell->value, dest_file);
-		copied_count++;
+		if (stat(cell->value, &statbuf) == -1)
+		{
+			log_warning(_("specified file \"%s\" not found, skipping"),
+						cell->value);
+		}
+		else
+		{
+			log_verbose(LOG_DEBUG, "copying \"%s\" to \"%s\"",
+						cell->key, dest_file);
+			copy_file(cell->value, dest_file);
+			copied_count++;
+		}
 	}
 
-	PQfinish(local_conn);
 
-	log_verbose(LOG_INFO, _("%i files copied to %s"),
+	log_verbose(LOG_INFO, _("%i files copied to \"%s\""),
 				copied_count, archive_dir);
 }
 
@@ -1077,10 +1251,11 @@ do_node_restore_config(void)
 
 		snprintf(dest_file_path, MAXPGPATH,
 				 "%s/%s",
-				 runtime_options.data_dir,
+				 config_file_options.data_directory,
 				 arcdir_ent->d_name);
 
-		log_verbose(LOG_DEBUG, "copying \"%s\" to \"%s\"", src_file_path, dest_file_path);
+		log_verbose(LOG_DEBUG, "copying \"%s\" to \"%s\"",
+					src_file_path, dest_file_path);
 
 		if (copy_file(src_file_path, dest_file_path) == false)
 		{
@@ -1097,14 +1272,15 @@ do_node_restore_config(void)
 	}
 	closedir(arcdir);
 
+	log_notice(_("%i files copied to %s"),
+			   copied_count,
+			   config_file_options.data_directory);
 
 	if (copy_ok == false)
 	{
-		log_error(_("unable to copy all files from %s"), archive_dir);
+		log_error(_("unable to copy all files from \"%s\""), archive_dir);
 		exit(ERR_BAD_CONFIG);
 	}
-
-	log_notice(_("%i files copied to %s"), copied_count, runtime_options.data_dir);
 
 	/*
 	 * Finally, delete directory - it should be empty unless it's been interfered
@@ -1112,12 +1288,13 @@ do_node_restore_config(void)
 	 */
 	if (rmdir(archive_dir) != 0 && errno != EEXIST)
 	{
-		log_warning(_("unable to delete %s"), archive_dir);
-		log_detail(_("directory may need to be manually removed"));
+		log_warning(_("unable to delete directory \"%s\""), archive_dir);
+		log_detail("%s", strerror(errno));
+		log_hint(_("directory may need to be manually removed"));
 	}
 	else
 	{
-		log_verbose(LOG_NOTICE, "directory %s deleted", archive_dir);
+		log_verbose(LOG_INFO, "directory \"%s\" deleted", archive_dir);
 	}
 
 	return;

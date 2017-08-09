@@ -25,13 +25,14 @@
 #define NODE_STATUS			   11
 #define NODE_CHECK			   12
 #define NODE_SERVICE		   13
-#define NODE_ARCHIVE_CONFIG    14
-#define NODE_RESTORE_CONFIG    15
-#define CLUSTER_SHOW		   16
-#define CLUSTER_CLEANUP		   17
-#define CLUSTER_MATRIX		   18
-#define CLUSTER_CROSSCHECK	   19
-#define CLUSTER_EVENT		   20
+#define NODE_REJOIN            14
+#define NODE_ARCHIVE_CONFIG    15
+#define NODE_RESTORE_CONFIG    16
+#define CLUSTER_SHOW		   17
+#define CLUSTER_CLEANUP		   18
+#define CLUSTER_MATRIX		   19
+#define CLUSTER_CROSSCHECK	   20
+#define CLUSTER_EVENT		   21
 
 /* command line options without short versions */
 #define OPT_HELP						   1001
@@ -69,6 +70,7 @@
 #define OPT_ARCHIVER                       1032
 #define OPT_OPTFORMAT                      1033
 #define OPT_REPLICATION_LAG                1034
+#define OPT_CONFIG_FILES                   1035
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR					    999
 #define OPT_NO_CONNINFO_PASSWORD		    998
@@ -137,6 +139,9 @@ static struct option long_options[] =
 /* "node check" options */
 	{"archiver", no_argument, NULL, OPT_ARCHIVER },
 	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG },
+
+/* "node join" options */
+	{"config-files", required_argument, NULL, OPT_CONFIG_FILES },
 
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},

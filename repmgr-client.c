@@ -30,6 +30,7 @@
  * NODE CHECK
  *
  * For internal use:
+ * NODE REJOIN
  * NODE ARCHIVE-CONFIG
  * NODE RESTORE-CONFIG
  * NODE SERVICE
@@ -431,6 +432,12 @@ main(int argc, char **argv)
 				runtime_options.replication_lag = true;
 				break;
 
+			/* "node join" options *
+			 * ------------------- */
+			case OPT_CONFIG_FILES:
+				strncpy(runtime_options.config_files, optarg, MAXLEN);
+				break;
+
 			/* "node service" options *
 			 * ---------------------- */
 
@@ -644,7 +651,7 @@ main(int argc, char **argv)
 	 *	 { PRIMARY | MASTER } REGISTER |
 	 *	 STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
 	 *	 BDR { REGISTER | UNREGISTER } |
-	 *   NODE { STATUS | ARCHIVE-CONFIG | RESTORE-CONFIG | SERVICE } |
+	 *   NODE { STATUS | CHECK | REJOIN | ARCHIVE-CONFIG | RESTORE-CONFIG | SERVICE } |
 	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP | EVENT }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host optipn
@@ -718,6 +725,8 @@ main(int argc, char **argv)
 				action = NODE_CHECK;
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
 				action = NODE_STATUS;
+			else if (strcasecmp(repmgr_action, "REJOIN") == 0)
+				action = NODE_REJOIN;
 			else if (strcasecmp(repmgr_action, "ARCHIVE-CONFIG") == 0)
 				action = NODE_ARCHIVE_CONFIG;
 			else if (strcasecmp(repmgr_action, "RESTORE-CONFIG") == 0)
@@ -1045,6 +1054,9 @@ main(int argc, char **argv)
 			break;
 		case NODE_CHECK:
 			do_node_check();
+			break;
+		case NODE_REJOIN:
+			do_node_rejoin();
 			break;
 		case NODE_ARCHIVE_CONFIG:
 			do_node_archive_config();
@@ -1378,9 +1390,10 @@ check_cli_parameters(const int action)
 			case NODE_STATUS:
 				break;
 			default:
-				item_list_append_format(&cli_warnings,
-										_("--is-shutdown will be ignored when executing %s"),
-										action_name(action));
+				item_list_append_format(
+					&cli_warnings,
+					_("--is-shutdown will be ignored when executing %s"),
+					action_name(action));
 		}
 	}
 
@@ -1391,9 +1404,10 @@ check_cli_parameters(const int action)
 			case STANDBY_SWITCHOVER:
 				break;
 			default:
-				item_list_append_format(&cli_warnings,
+				item_list_append_format(
+					&cli_warnings,
 					_("--always-promote will be ignored when executing %s"),
-										action_name(action));
+					action_name(action));
 		}
 	}
 
@@ -1404,9 +1418,25 @@ check_cli_parameters(const int action)
 			case STANDBY_SWITCHOVER:
 				break;
 			default:
-				item_list_append_format(&cli_warnings,
+				item_list_append_format(
+					&cli_warnings,
 					_("--force-rewind will be ignored when executing %s"),
-										action_name(action));
+					action_name(action));
+		}
+	}
+
+
+	if (runtime_options.config_files[0] != '\0')
+	{
+		switch (action)
+		{
+			case NODE_REJOIN:
+				break;
+			default:
+				item_list_append_format(
+					&cli_warnings,
+					_("--config-files will be ignored when executing %s"),
+					action_name(action));
 		}
 	}
 
@@ -1426,8 +1456,9 @@ check_cli_parameters(const int action)
 		if (used_options > 1)
 		{
 			/* TODO: list which options were used */
-			item_list_append(&cli_errors,
-							 "only one of --csv, --nagios and --optformat can be used");
+			item_list_append(
+				&cli_errors,
+				"only one of --csv, --nagios and --optformat can be used");
 		}
 	}
 }
@@ -1463,6 +1494,8 @@ action_name(const int action)
 			return "NODE STATUS";
 		case NODE_CHECK:
 			return "NODE CHECK";
+		case NODE_REJOIN:
+			return "NODE REJOIN";
 		case NODE_ARCHIVE_CONFIG:
 			return "NODE ARCHIVE-CONFIG";
 		case NODE_RESTORE_CONFIG:
@@ -2848,6 +2881,7 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 
 	return;
 }
+
 
 bool
 data_dir_required_for_action(t_server_action action)
