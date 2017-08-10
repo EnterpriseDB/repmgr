@@ -99,5 +99,7 @@ string_skip_prefix(const char *prefix, char *string);
 extern char
 *string_remove_trailing_newlines(char *string);
 
+extern char	*trim(char *s);
+
 
 #endif	 /* _STRUTIL_H_ */

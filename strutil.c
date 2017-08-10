@@ -255,3 +255,31 @@ string_remove_trailing_newlines(char *string)
 
 	return string;
 }
+
+
+char *
+trim(char *s)
+{
+	/* Initialize start, end pointers */
+	char	   *s1 = s,
+			   *s2 = &s[strlen(s) - 1];
+
+	/* If string is empty, no action needed */
+	if (s2 < s1)
+		return s;
+
+	/* Trim and delimit right side */
+	while ((isspace(*s2)) && (s2 >= s1))
+		--s2;
+	*(s2 + 1) = '\0';
+
+	/* Trim left side */
+	while ((isspace(*s1)) && (s1 < s2))
+		++s1;
+
+	/* Copy finished string */
+	memmove(s, s1, s2 - s1);
+	s[s2 - s1 + 1] = '\0';
+
+	return s;
+}

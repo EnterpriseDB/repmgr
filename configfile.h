@@ -12,6 +12,9 @@
 
 #define CONFIG_FILE_NAME	"repmgr.conf"
 #define MAXLINELENGTH		4096
+/* magic number for use in t_recovery_conf */
+#define TARGET_TIMELINE_LATEST 0
+
 extern bool		config_file_found;
 extern char		config_file_path[MAXPGPATH];
 
@@ -167,6 +170,55 @@ typedef struct
 #define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "", false }
 
 
+typedef enum {
+	RTA_PAUSE,
+	RTA_PROMOTE,
+	RTA_SHUTDOWN
+} RecoveryTargetAction;
+
+/*
+ * Struct to hold the contents of a parsed recovery.conf file.
+ * We're only really interested in those related to streaming
+ * replication (and also "restore_command") but include the
+ * others for completeness.
+ *
+ * NOTE: "recovery_target" not included as it can only have
+ * one value, "immediate".
+ */
+typedef struct
+{
+	/* archive recovery settings */
+	char restore_command[MAXLEN];
+	char archive_cleanup_command[MAXLEN];
+	char recovery_end_command[MAXLEN];
+	/* recovery target settings */
+	char recovery_target_name[MAXLEN];
+	char recovery_target_time[MAXLEN];
+	char recovery_target_xid[MAXLEN];
+	bool recovery_target_inclusive;
+	int recovery_target_timeline;
+	RecoveryTargetAction recovery_target_action; /* default: RTA_PAUSE */
+	/* standby server settings */
+	bool standby_mode;
+	char primary_conninfo[MAXLEN];
+	char primary_slot_name[MAXLEN];
+	char trigger_file[MAXLEN];
+	int recovery_min_apply_delay;
+} t_recovery_conf;
+
+#define T_RECOVERY_CONF_INITIALIZER { \
+	/* archive recovery settings */ \
+	"", "", "", \
+	/* recovery target settings */ \
+	"", "", "", true, \
+	TARGET_TIMELINE_LATEST, \
+	RTA_PAUSE, \
+	/* standby server settings */ \
+	true, \
+	"", "", "", 0 \
+}
+
+
 
 void		set_progname(const char *argv0);
 const char *progname(void);
@@ -175,6 +227,7 @@ void		load_config(const char *config_file, bool verbose, bool terse, t_configura
 void		parse_config(t_configuration_options *options, bool terse);
 bool		reload_config(t_configuration_options *orig_options);
 
+bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
 
 int			repmgr_atoi(const char *s,
 						const char *config_item,

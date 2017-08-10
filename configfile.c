@@ -24,7 +24,6 @@ static void	_parse_line(char *buf, char *name, char *value);
 static void	parse_event_notifications_list(t_configuration_options *options, const char *arg);
 static void	tablespace_list_append(t_configuration_options *options, const char *arg);
 
-static char	*trim(char *s);
 
 static void	exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings, bool terse);
 
@@ -556,6 +555,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 	}
 
+	fclose(fp);
 
 	/* check required parameters */
 	if (node_id_found == false)
@@ -631,6 +631,103 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 }
 
 
+
+
+bool
+parse_recovery_conf(const char *data_dir, t_recovery_conf *conf)
+{
+	char recovery_conf_path[MAXPGPATH] = "";
+	FILE	   *fp;
+	char	   *s,
+				buf[MAXLINELENGTH];
+	char		name[MAXLEN];
+	char		value[MAXLEN];
+
+	snprintf(recovery_conf_path, MAXPGPATH,
+			 "%s/%s",
+			 data_dir,
+			 RECOVERY_COMMAND_FILE);
+
+	fp = fopen(recovery_conf_path, "r");
+
+	if (fp == NULL)
+	{
+		return false;
+	}
+
+	/* Read file */
+	while ((s = fgets(buf, sizeof buf, fp)) != NULL)
+	{
+
+		/* Parse name/value pair from line */
+		_parse_line(buf, name, value);
+
+		/* Skip blank lines */
+		if (!strlen(name))
+			continue;
+
+		/* Skip comments */
+		if (name[0] == '#')
+			continue;
+
+		/* archive recovery settings */
+		if (strcmp(name, "restore_command") == 0)
+			strncpy(conf->restore_command, value, MAXLEN);
+		else if (strcmp(name, "archive_cleanup_command") == 0)
+			strncpy(conf->archive_cleanup_command, value, MAXLEN);
+		else if (strcmp(name, "recovery_end_command") == 0)
+			strncpy(conf->recovery_end_command, value, MAXLEN);
+		/* recovery target settings */
+		else if (strcmp(name, "recovery_target_name") == 0)
+			strncpy(conf->recovery_target_name, value, MAXLEN);
+		else if (strcmp(name, "recovery_target_time") == 0)
+			strncpy(conf->recovery_target_time, value, MAXLEN);
+		else if (strcmp(name, "recovery_target_xid") == 0)
+			strncpy(conf->recovery_target_xid, value, MAXLEN);
+		else if (strcmp(name, "recovery_target_inclusive") == 0)
+			conf->recovery_target_inclusive = parse_bool(value, NULL, NULL);
+		else if (strcmp(name, "recovery_target_timeline") == 0)
+		{
+			if (strncmp(value, "latest", MAXLEN) == 0)
+			{
+				conf->recovery_target_timeline = TARGET_TIMELINE_LATEST;
+			}
+			else
+			{
+				conf->recovery_target_timeline = atoi(value);
+			}
+		}
+		else if (strcmp(name, "recovery_target_action") == 0)
+		{
+			if (strcmp(value, "pause") == 0)
+				conf->recovery_target_action = RTA_PAUSE;
+			else if (strcmp(value, "promote") == 0)
+				conf->recovery_target_action = RTA_PROMOTE;
+			else if (strcmp(value, "shutdown") == 0)
+				conf->recovery_target_action = RTA_SHUTDOWN;
+		}
+
+		/* standby server settings */
+
+		else if (strcmp(name, "standby_mode") == 0)
+			conf->standby_mode = parse_bool(value, NULL, NULL);
+		else if (strcmp(name, "primary_conninfo") == 0)
+			strncpy(conf->primary_conninfo, value, MAXLEN);
+		else if (strcmp(name, "primary_slot_name") == 0)
+			strncpy(conf->trigger_file, value, MAXLEN);
+		else if (strcmp(name, "trigger_file") == 0)
+			strncpy(conf->trigger_file, value, MAXLEN);
+		/* TODO: parse values */
+		/*else if (strcmp(name, "recovery_min_apply_delay") == 0)
+		  strncpy(conf->, value, MAXLEN);*/
+
+	}
+	fclose(fp);
+
+	return true;
+}
+
+
 void
 _parse_line(char *buf, char *name, char *value)
 {
@@ -689,32 +786,6 @@ _parse_line(char *buf, char *name, char *value)
 	trim(value);
 }
 
-static char *
-trim(char *s)
-{
-	/* Initialize start, end pointers */
-	char	   *s1 = s,
-			   *s2 = &s[strlen(s) - 1];
-
-	/* If string is empty, no action needed */
-	if (s2 < s1)
-		return s;
-
-	/* Trim and delimit right side */
-	while ((isspace(*s2)) && (s2 >= s1))
-		--s2;
-	*(s2 + 1) = '\0';
-
-	/* Trim left side */
-	while ((isspace(*s1)) && (s1 < s2))
-		++s1;
-
-	/* Copy finished string */
-	memmove(s, s1, s2 - s1);
-	s[s2 - s1 + 1] = '\0';
-
-	return s;
-}
 
 
 bool
@@ -884,13 +955,16 @@ parse_bool(const char *s, const char *config_item, ItemList *error_list)
 	if (strcasecmp(s, "yes") == 0)
 		return true;
 
-	initPQExpBuffer(&errors);
+	if (error_list != NULL)
+	{
+		initPQExpBuffer(&errors);
 
-	appendPQExpBuffer(&errors,
-					  "\"%s\": unable to interpret '%s' as a boolean value",
-					  config_item, s);
-	item_list_append(error_list, errors.data);
-	termPQExpBuffer(&errors);
+		appendPQExpBuffer(&errors,
+						  "\"%s\": unable to interpret '%s' as a boolean value",
+						  config_item, s);
+		item_list_append(error_list, errors.data);
+		termPQExpBuffer(&errors);
+	}
 
 	return false;
 }

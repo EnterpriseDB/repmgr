@@ -46,6 +46,10 @@ do_node_status(void)
 	ItemList 		warnings = { NULL, NULL };
 	RecoveryType	recovery_type;
 	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
+	t_recovery_conf recovery_conf = T_RECOVERY_CONF_INITIALIZER;
+
+	char data_dir[MAXPGPATH] = "";
+
 
 	if (runtime_options.is_shutdown == true)
 	{
@@ -56,6 +60,16 @@ do_node_status(void)
 		conn = establish_db_connection(config_file_options.conninfo, true);
 	else
 		conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	if (config_file_options.data_directory[0] != '\0')
+	{
+		strncpy(data_dir, config_file_options.data_directory, MAXPGPATH);
+	}
+	else
+	{
+		/* requires superuser */
+		get_pg_setting(conn, "data_directory", data_dir);
+	}
 
 	server_version_num = get_server_version(conn, NULL);
 
@@ -180,18 +194,7 @@ do_node_status(void)
 	}
 
 	{
-		char data_dir[MAXPGPATH] = "";
 		int ready_files;
-
-		if (config_file_options.data_directory[0] != '\0')
-		{
-			strncpy(data_dir, config_file_options.data_directory, MAXPGPATH);
-		}
-		else
-		{
-			/* requires superuser */
-			get_pg_setting(conn, "data_directory", data_dir);
-		}
 
 		ready_files = get_ready_archive_files(conn, data_dir);
 
@@ -317,6 +320,10 @@ do_node_status(void)
 		key_value_list_set_output_mode(&node_status, "Last replayed LSN", OM_CSV);
 	}
 
+
+	parse_recovery_conf(data_dir, &recovery_conf);
+
+	/* format output */
 	initPQExpBuffer(&output);
 
 	if (runtime_options.output_mode == OM_CSV)
