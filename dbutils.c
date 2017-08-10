@@ -1571,6 +1571,7 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 	strncpy(node_info->location, PQgetvalue(res, row, 7), MAXLEN);
 	node_info->priority = atoi(PQgetvalue(res, row, 8));
 	node_info->active = atobool(PQgetvalue(res, row, 9));
+	strncpy(node_info->config_file, PQgetvalue(res, row, 10), MAXLEN);
 
 	/* This won't normally be set */
 	strncpy(node_info->upstream_node_name, PQgetvalue(res, row, 10), MAXLEN);

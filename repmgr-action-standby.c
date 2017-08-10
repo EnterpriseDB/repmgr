@@ -1648,7 +1648,7 @@ do_standby_switchover(void)
 	 * Check this standby is attached to the demotion candidate
 	 * TODO:
 	 *  - check standby is attached to demotion candidate
-	 *    (compare primary_conninfo from recovery.conf)
+	 *    - check application_name  in pg_stat_replication
 	 */
 
 	if (local_node_record.upstream_node_id != remote_node_record.node_id)
@@ -1725,7 +1725,7 @@ do_standby_switchover(void)
 			bool command_success;
 
 			initPQExpBuffer(&remote_command_str);
-			make_remote_repmgr_path(&remote_command_str);
+			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 			appendPQExpBuffer(&remote_command_str,
 							  "node check --terse -LERROR --archiver --optformat");
 
@@ -1848,112 +1848,6 @@ do_standby_switchover(void)
 
 	PQfinish(remote_conn);
 
-	/* Determine the remote's configuration file location */
-	/* -------------------------------------------------- */
-
-	/* Remote configuration file provided - check it exists */
-	/* TODO have remote node verify config file  "node status --config-file */
-	if (runtime_options.remote_config_file[0])
-
-	{
-		log_verbose(LOG_INFO, _("looking for file \"%s\" on remote server \"%s\""),
-					runtime_options.remote_config_file,
-					remote_host);
-
-		initPQExpBuffer(&remote_command_str);
-		appendPQExpBuffer(&remote_command_str, "ls ");
-
-		appendShellString(&remote_command_str, runtime_options.remote_config_file);
-		appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
-
-		initPQExpBuffer(&command_output);
-
-		(void)remote_command(
-			remote_host,
-			runtime_options.remote_user,
-			remote_command_str.data,
-			&command_output);
-
-		termPQExpBuffer(&remote_command_str);
-
-		if (*command_output.data == '0')
-		{
-			log_error(_("unable to find the specified repmgr configuration file on remote server"));
-			log_detail(_("remote configuration file is \"%s\""),
-					   runtime_options.remote_config_file);
-			PQfinish(local_conn);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		log_verbose(LOG_INFO, _("remote configuration file \"%s\" found on remote server"),
-					runtime_options.remote_config_file);
-
-		termPQExpBuffer(&command_output);
-	}
-	/*
-	 * No remote configuration file provided - check some default locations:
-	 *  - path of configuration file for this repmgr
-	 *  - /etc/repmgr.conf
-	 */
-	else
-	{
-		int		    i;
-		bool		remote_config_file_found = false;
-
-		const char *config_paths[] = {
-			runtime_options.config_file,
-			"/etc/repmgr.conf",
-			NULL
-		};
-
-		log_verbose(LOG_INFO, _("no remote configuration file provided - checking default locations"));
-
-		for (i = 0; config_paths[i] && remote_config_file_found == false; ++i)
-		{
-			/*
-			 * Don't attempt to check for an empty filename - this might be the case
-			 * if no local configuration file was found.
-			 */
-			if (!strlen(config_paths[i]))
-				continue;
-
-			log_verbose(LOG_INFO, _("checking \"%s\"\n"), config_paths[i]);
-
-			initPQExpBuffer(&remote_command_str);
-			appendPQExpBuffer(&remote_command_str, "ls ");
-
-			appendShellString(&remote_command_str, config_paths[i]);
-			appendPQExpBuffer(&remote_command_str, " >/dev/null 2>&1 && echo 1 || echo 0");
-
-			initPQExpBuffer(&command_output);
-
-			(void)remote_command(
-				remote_host,
-				runtime_options.remote_user,
-				remote_command_str.data,
-				&command_output);
-
-			termPQExpBuffer(&remote_command_str);
-
-			if (*command_output.data == '1')
-			{
-				strncpy(runtime_options.remote_config_file, config_paths[i], MAXLEN);
-				log_verbose(LOG_INFO, _("configuration file \"%s\" found on remote server"),
-							runtime_options.remote_config_file);
-				remote_config_file_found = true;
-			}
-
-			termPQExpBuffer(&command_output);
-		}
-
-		if (remote_config_file_found == false)
-		{
-			log_error(_("no remote configuration file supplied or found in a default location - terminating"));
-			log_hint(_("specify the remote configuration file with -C/--remote-config-file"));
-			PQfinish(local_conn);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
 
 	/*
 	 * If --siblings-follow specified, get list and check they're reachable
@@ -2049,7 +1943,7 @@ do_standby_switchover(void)
 	initPQExpBuffer(&remote_command_str);
 	initPQExpBuffer(&command_output);
 
-	make_remote_repmgr_path(&remote_command_str);
+	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 
 
 	if (runtime_options.dry_run == true)
@@ -2117,7 +2011,7 @@ do_standby_switchover(void)
 			 */
 
 			initPQExpBuffer(&remote_command_str);
-			make_remote_repmgr_path(&remote_command_str);
+			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 			appendPQExpBuffer(&remote_command_str,
 							  "node status --is-shutdown");
 
@@ -2232,7 +2126,7 @@ do_standby_switchover(void)
 	}
 
 	initPQExpBuffer(&remote_command_str);
-	make_remote_repmgr_path(&remote_command_str);
+	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 
 	appendPQExpBuffer(&remote_command_str,
 					  "%s-d \\'%s\\' node rejoin",
@@ -2260,7 +2154,6 @@ do_standby_switchover(void)
 						true,
 						NULL);
 
-	PQfinish(local_conn);
 
 
 	/* clean up remote node */
@@ -2305,21 +2198,25 @@ do_standby_switchover(void)
 		for (cell = sibling_nodes.head; cell; cell = cell->next)
 		{
 			int r = 0;
-			log_debug("XXX %s", cell->node_info->node_name);
+			t_node_info sibling_node_record = T_NODE_INFO_INITIALIZER;
+
 			/* skip nodes previously determined as unreachable */
 			if (cell->node_info->reachable == false)
-			{
-				log_debug(" XXX unreachable!");
 				continue;
-			}
+
+
+			record_status = get_node_record(local_conn,
+											cell->node_info->node_id,
+											&sibling_node_record);
 
 			initPQExpBuffer(&remote_command_str);
-			make_remote_repmgr_path(&remote_command_str);
+			make_remote_repmgr_path(&remote_command_str, &sibling_node_record);
 
 			appendPQExpBuffer(&remote_command_str,
 							  "standby follow");
 			get_conninfo_value(cell->node_info->conninfo, "host", host);
 			log_debug("executing:\n  \"%s\"", remote_command_str.data);
+
 			r = remote_command(
 				host,
 				runtime_options.remote_user,
@@ -2339,6 +2236,9 @@ do_standby_switchover(void)
 			log_info(_("STANDBY FOLLOW"));
 		}
 	}
+
+	PQfinish(local_conn);
+
 	return;
 }
 

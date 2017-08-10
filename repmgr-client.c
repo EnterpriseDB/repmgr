@@ -401,11 +401,6 @@ main(int argc, char **argv)
 			/* "standby switchover" options *
 			 * ---------------------------- */
 
-			/* -C/--remote-config-file */
-			case 'C':
-				strncpy(runtime_options.remote_config_file, optarg, MAXPGPATH);
-				break;
-
 			case OPT_ALWAYS_PROMOTE:
 				runtime_options.always_promote = true;
 				break;
@@ -548,6 +543,13 @@ main(int argc, char **argv)
 				item_list_append(&cli_warnings,
 								 _("--no-conninfo-password is deprecated; pasuse --use-recovery-conninfo-password to explicitly set a password"));
 				break;
+			/* -C/--remote-config-file */
+			case 'C':
+				item_list_append(&cli_warnings,
+								 _("--remote-config-file is no longer required"));
+				break;
+
+
 		}
 	}
 
@@ -2684,16 +2686,13 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 
 
 void
-make_remote_repmgr_path(PQExpBufferData *output_buf)
+make_remote_repmgr_path(PQExpBufferData *output_buf, t_node_info *remote_node_record)
 {
 	appendPQExpBuffer(output_buf,
-					  "%s ", make_pg_path("repmgr"));
+					  "%s -f %s ",
+					  make_pg_path("repmgr"),
+					  remote_node_record->config_file);
 
-	if (runtime_options.remote_config_file[0] != '\0')
-	{
-		appendPQExpBuffer(output_buf,
-						  "-f %s ", runtime_options.remote_config_file);
-	}
 }
 
 
