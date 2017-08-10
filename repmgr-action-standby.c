@@ -1994,10 +1994,16 @@ do_standby_switchover(void)
 	 */
 	if (runtime_options.dry_run == true)
 	{
+		char shutdown_command[MAXLEN] = "";
+		strncpy(shutdown_command, command_output.data, MAXLEN);
+
+		termPQExpBuffer(&command_output);
+
+		string_remove_trailing_newlines(shutdown_command);
+
 		log_info(_("following shutdown command would be run on node \"%s\":\n  \"%s\""),
 				 remote_node_record.node_name,
-				 command_output.data);
-		termPQExpBuffer(&command_output);
+				 shutdown_command);
 		return;
 	}
 
