@@ -17,6 +17,8 @@
 
 #define REPMGR_NODES_COLUMNS "node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active, config_file, '' AS upstream_node_name "
 
+#define ERRBUFF_SIZE 512
+
 typedef enum {
 	UNKNOWN = 0,
 	PRIMARY,

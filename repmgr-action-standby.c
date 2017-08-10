@@ -422,7 +422,7 @@ do_standby_clone(void)
 
 		if (record_status == RECORD_FOUND)
 		{
-			log_hint(_("after starting the server, you need to re-register this standby with \"repmgr standby register --force\" to overwrite the existing node record"));
+			log_hint(_("after starting the server, you need to re-register this standby with \"repmgr standby register --force\" to update the existing node record"));
 		}
 		else
 		{

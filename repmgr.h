@@ -28,16 +28,21 @@
 
 #define MIN_SUPPORTED_VERSION		"9.5"
 #define MIN_SUPPORTED_VERSION_NUM	90500
+
+#define REPLICATION_TYPE_PHYSICAL 1
+#define REPLICATION_TYPE_BDR	  2
+
 #define UNKNOWN_SERVER_VERSION_NUM -1
 
 #define NODE_NOT_FOUND		-1
 #define NO_UPSTREAM_NODE	-1
 #define UNKNOWN_NODE_ID		-1
 
-#define REPLICATION_TYPE_PHYSICAL 1
-#define REPLICATION_TYPE_BDR	  2
 
-
+/*
+ * various default values - ensure repmgr.conf.sample is update
+ * if any of these are changed
+ */
 #define DEFAULT_LOCATION                 "default"
 #define DEFAULT_PRIORITY		         100
 #define DEFAULT_RECONNECTION_ATTEMPTS    6   /* seconds */
@@ -52,8 +57,6 @@
 #define	DEFAULT_REPLICATION_LAG_WARNING  300 /* seconds */
 #define DEFAULT_REPLICATION_LAG_CRITICAL 600 /* seconds */
 
-#define FAILOVER_NODES_MAX_CHECK 50
-
 
 #ifndef RECOVERY_COMMAND_FILE
 #define RECOVERY_COMMAND_FILE "recovery.conf"
@@ -63,7 +66,6 @@
 #define TABLESPACE_MAP "tablespace_map"
 #endif
 
-#define ERRBUFF_SIZE 512
 
 
 
