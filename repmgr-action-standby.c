@@ -2197,7 +2197,7 @@ do_standby_switchover(void)
 
 		for (cell = sibling_nodes.head; cell; cell = cell->next)
 		{
-			int r = 0;
+			bool success;
 			t_node_info sibling_node_record = T_NODE_INFO_INITIALIZER;
 
 			/* skip nodes previously determined as unreachable */
@@ -2217,12 +2217,13 @@ do_standby_switchover(void)
 			get_conninfo_value(cell->node_info->conninfo, "host", host);
 			log_debug("executing:\n  \"%s\"", remote_command_str.data);
 
-			r = remote_command(
+			success = remote_command(
 				host,
 				runtime_options.remote_user,
 				remote_command_str.data,
 				NULL);
-			if (r != 0)
+
+			if (success == false)
 			{
 				log_warning(_("STANDBY FOLLOW failed on node \"%s\""),
 							cell->node_info->node_name);
@@ -2233,11 +2234,24 @@ do_standby_switchover(void)
 
 		if (failed_follow_count == 0)
 		{
-			log_info(_("STANDBY FOLLOW"));
+			log_info(_("STANDBY FOLLOW successfully executed on all reachable sibling nodes"));
 		}
+		else
+		{
+			log_warning(_("execution of STANDBY FOLLOW failed on %i sibling nodes"),
+						failed_follow_count);
+		}
+
+		/* TODO: double-check all expected nodes are in pg_stat_replication and
+		 * entries in repmgr.nodes match
+		 */
+
 	}
 
 	PQfinish(local_conn);
+
+	log_notice(_("STANDBY SWITCHOVER is complete"));
+
 
 	return;
 }
