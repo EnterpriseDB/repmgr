@@ -527,9 +527,14 @@ param_get(t_conninfo_param_list *param_list, const char *param)
  * Parse a conninfo string into a t_conninfo_param_list
  *
  * See conn_to_param_list() to do the same for a PQconn
+ *
+ * "ignore_local_params": ignores those parameters specific
+ * to a local installation, i.e. when parsing an upstream
+ * node's conninfo string for inclusion into "primary_conninfo",
+ * don't copy that node's values
  */
 bool
-parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_application_name)
+parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_local_params)
 {
 	PQconninfoOption *connOptions;
 	PQconninfoOption *option;
@@ -541,14 +546,21 @@ parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_lis
 
 	for (option = connOptions; option && option->keyword; option++)
 	{
-		/* Ignore non-set or blank parameter values*/
+		/* Ignore non-set or blank parameter values */
 		if ((option->val == NULL) ||
 		   (option->val != NULL && option->val[0] == '\0'))
 			continue;
 
 		/* Ignore application_name */
-		if (ignore_application_name == true && strcmp(option->keyword, "application_name") == 0)
-			continue;
+		if (ignore_local_params == true)
+		{
+			if (strcmp(option->keyword, "application_name") == 0)
+				continue;
+			if (strcmp(option->keyword, "passfile") == 0)
+				continue;
+			if (strcmp(option->keyword, "servicefile") == 0)
+				continue;
+		}
 
 		param_set(param_list, option->keyword, option->val);
 	}

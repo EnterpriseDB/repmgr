@@ -111,7 +111,7 @@ main(int argc, char **argv)
 	 * when the connection is made.
 	 */
 
-	initialize_conninfo_params(&source_conninfo, true);
+	initialize_conninfo_params(&source_conninfo, false);
 
 	for (c = 0; c < source_conninfo.size && source_conninfo.keywords[c]; c++)
 	{
@@ -2433,7 +2433,8 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
  * Creates a recovery.conf file for a standby
  *
  * A database connection pointer is required for escaping primary_conninfo
- * parameters. When cloning from Barman and --no-upstream-connection ) this might not be
+ * parameters. When cloning from Barman and --no-upstream-connection ) this
+ * might not be available.
  */
 bool
 create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir)
@@ -2572,10 +2573,13 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 		 */
 		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
 		    strcmp(param_list->keywords[c], "replication") == 0 ||
-			(runtime_options.use_recovery_conninfo_password == false &&
-			 strcmp(param_list->keywords[c], "password") == 0) ||
 		    (param_list->values[c] == NULL) ||
 		    (param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
+			continue;
+
+		/* only include "password" if explicitly requested */
+		if (runtime_options.use_recovery_conninfo_password == false &&
+			strcmp(param_list->keywords[c], "password") == 0)
 			continue;
 
 		if (conninfo_buf.len != 0)

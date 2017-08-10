@@ -155,38 +155,41 @@ do_standby_clone(void)
 	 * Initialise list of conninfo parameters which will later be used
 	 * to create the `primary_conninfo` string in recovery.conf .
 	 *
-	 * We'll initialise it with the default values as seen by libpq,
-	 * and overwrite them with the host settings specified on the command
+	 * We'll initialise it with the host settings specified on the command
 	 * line. As it's possible the standby will be cloned from a node different
 	 * to its intended upstream, we'll later attempt to fetch the
 	 * upstream node record and overwrite the values set here with
 	 * those from the upstream node record (excluding that record's
 	 * application_name)
 	 */
-	initialize_conninfo_params(&recovery_conninfo, true);
+	initialize_conninfo_params(&recovery_conninfo, false);
 
 	copy_conninfo_params(&recovery_conninfo, &source_conninfo);
 
-	/* Set the default application name to this node's name */
-	param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
 
-	/*
-	 * If application_name is set in repmgr.conf's conninfo parameter, use
-	 * this value (if the source host was provided as a conninfo string, any
-	 * application_name values set there will be overridden; we assume the only
-	 * reason to pass an application_name via the command line is in the
-	 * rare corner case where a user wishes to clone a server without
-	 * providing repmgr.conf)
-	 */
-	if (strlen(config_file_options.conninfo))
+	/* Set the default application name to this node's name */
+	if (config_file_options.node_id != UNKNOWN_NODE_ID)
 	{
 		char application_name[MAXLEN] = "";
 
+		param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
+
 		get_conninfo_value(config_file_options.conninfo, "application_name", application_name);
-		if (strlen(application_name))
+		if (strlen(application_name) && strncmp(application_name, config_file_options.node_name, MAXLEN) != 0)
 		{
-			param_set(&recovery_conninfo, "application_name", application_name);
+			log_notice(_("\"application_name\" is set in repmgr.conf but will be replaced by the node name"));
 		}
+	}
+	else
+	{
+		/* this will only happen in corner cases where the node is being
+		 * cloned without a configuration file; fall back to "repmgr" if no application_name
+		 * provided
+		 */
+		char *application_name = param_get(&source_conninfo, "application_name");
+
+		if (application_name == NULL)
+			param_set(&recovery_conninfo, "application_name", "repmgr");
 	}
 
 
@@ -204,6 +207,8 @@ do_standby_clone(void)
 
 	if (*runtime_options.upstream_conninfo)
 		runtime_options.no_upstream_connection = false;
+
+
 
 	/* By default attempt to connect to the source server */
 	if (runtime_options.no_upstream_connection == false)
@@ -225,6 +230,7 @@ do_standby_clone(void)
 		check_source_server_via_barman();
 	}
 
+
 	/*
 	 * by this point we should know the target data directory - check
 	 * there's no running Pg instance
@@ -244,7 +250,7 @@ do_standby_clone(void)
 
 	if (upstream_record_found == true)
 	{
-		/*  parse returned upstream conninfo string to recovery primary_conninfo params*/
+		/* parse returned upstream conninfo string to recovery primary_conninfo params*/
 		char	   *errmsg = NULL;
 		bool	    parse_success;
 
@@ -253,6 +259,7 @@ do_standby_clone(void)
 		/* parse_conninfo_string() here will remove the upstream's `application_name`, if set */
 
 		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, errmsg, true);
+
 		if (parse_success == false)
 		{
 			log_error(_("unable to parse conninfo string \"%s\" for upstream node:\n  %s"),
@@ -2404,13 +2411,6 @@ check_source_server()
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-
-	/*
-	 * Copy the source connection so that we have some default values,
-	 * particularly stuff like passwords extracted from PGPASSFILE;
-	 * these will be overridden from the upstream conninfo, if provided.
-	 */
-	conn_to_param_list(source_conn, &recovery_conninfo);
 
 	/*
 	 * Attempt to find the upstream node record
