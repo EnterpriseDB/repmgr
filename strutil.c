@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "repmgr.h"
 #include "log.h"
 #include "strutil.h"
 
@@ -152,6 +153,7 @@ key_value_list_set_format(KeyValueList *item_list, const char *key, const char *
 
 	cell->key = pg_malloc0(keylen + 1);
 	cell->value = pg_malloc0(MAXLEN);
+	cell->output_mode = OM_NOT_SET;
 
 	strncpy(cell->key, key, keylen);
 
@@ -170,6 +172,18 @@ key_value_list_set_format(KeyValueList *item_list, const char *key, const char *
 	return;
 }
 
+
+void
+key_value_list_set_output_mode (KeyValueList *item_list, const char *key, OutputMode mode)
+{
+	KeyValueListCell *cell;
+
+	for (cell = item_list->head; cell; cell = cell->next)
+	{
+		if (strncmp(key, cell->key, MAXLEN) == 0)
+			cell->output_mode = mode;
+	}
+}
 
 const char *
 key_value_list_get(KeyValueList *item_list, const char *key)

@@ -331,10 +331,8 @@ bool		 get_cluster_size(PGconn *conn, char *size);
 int		   	 get_server_version(PGconn *conn, char *server_version);
 RecoveryType get_recovery_type(PGconn *conn);
 int			 get_primary_node_id(PGconn *conn);
-bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
 bool		 can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
 int 		 get_ready_archive_files(PGconn *conn, const char *data_directory);
-int 		 get_replication_lag_seconds(PGconn *conn);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);
@@ -413,7 +411,9 @@ bool		 	 get_new_primary(PGconn *conn, int *primary_node_id);
 void		 	 reset_voting_status(PGconn *conn);
 
 /* replication status functions */
-XLogRecPtr get_last_wal_receive_location(PGconn *conn);
+XLogRecPtr	 get_last_wal_receive_location(PGconn *conn);
+bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
+int 		 get_replication_lag_seconds(PGconn *conn);
 
 /* BDR functions */
 void		 get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);

@@ -68,5 +68,4 @@
 
 
 
-
 #endif /* _REPMGR_H_ */

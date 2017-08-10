@@ -125,6 +125,89 @@ do_node_status(void)
 			break;
 	}
 
+	if (guc_set(conn, "archive_mode", "=", "off"))
+	{
+		key_value_list_set(
+			&node_status,
+			"WAL archiving",
+			"off");
+
+		key_value_list_set(
+			&node_status,
+			"Archive command",
+			"(none)");
+	}
+	else
+	{
+		bool enabled = true;
+		PQExpBufferData archiving_status;
+		char archive_command[MAXLEN] = "";
+
+		initPQExpBuffer(&archiving_status);
+		if (recovery_type == RECTYPE_STANDBY)
+		{
+			if (guc_set(conn, "archive_mode", "=", "on"))
+				enabled = false;
+		}
+
+		if (enabled == true)
+		{
+			appendPQExpBuffer(&archiving_status, "enabled");
+		}
+		else
+		{
+			appendPQExpBuffer(&archiving_status, "disabled");
+		}
+
+		if (enabled == false && recovery_type == RECTYPE_STANDBY)
+		{
+			appendPQExpBuffer(&archiving_status, " (on standbys \"archive_mode\" must be set to \"always\" to be effective)");
+		}
+
+		key_value_list_set(
+			&node_status,
+			"WAL archiving",
+			archiving_status.data);
+
+		termPQExpBuffer(&archiving_status);
+
+		get_pg_setting(conn, "archive_command", archive_command);
+
+		key_value_list_set(
+			&node_status,
+			"Archive command",
+			archive_command);
+	}
+
+	{
+		char data_dir[MAXPGPATH] = "";
+		int ready_files;
+
+		if (config_file_options.data_directory[0] != '\0')
+		{
+			strncpy(data_dir, config_file_options.data_directory, MAXPGPATH);
+		}
+		else
+		{
+			/* requires superuser */
+			get_pg_setting(conn, "data_directory", data_dir);
+		}
+
+		ready_files = get_ready_archive_files(conn, data_dir);
+
+		key_value_list_set_format(
+			&node_status,
+			"WALs pending archiving",
+			"%i pending files",
+			ready_files);
+
+		if (guc_set(conn, "archive_mode", "=", "off"))
+		{
+			key_value_list_set_output_mode(&node_status, "WALs pending archiving", OM_CSV);
+		}
+
+	}
+
 
 	if (node_info.max_wal_senders >= 0)
 	{
@@ -183,7 +266,6 @@ do_node_status(void)
 			"disabled");
 	}
 
-
 	// if standby (and in recovery), show:
 	// upstream
 	// -> check if matches expected; parse recovery.conf for < 9.6 (must be superuser),
@@ -195,6 +277,13 @@ do_node_status(void)
 
 	if (node_info.type == STANDBY)
 	{
+		key_value_list_set_format(
+			&node_status,
+			"Upstream node",
+			"%s (ID: %i)",
+			node_info.node_name,
+			node_info.node_id);
+
 		get_replication_info(conn, &replication_info);
 
 		key_value_list_set_format(
@@ -211,13 +300,21 @@ do_node_status(void)
 	{
 		key_value_list_set(
 			&node_status,
+			"Upstream node",
+			"(none)");
+		key_value_list_set_output_mode(&node_status, "Upstream node", OM_CSV);
+
+		key_value_list_set(
+			&node_status,
 			"Last received LSN",
 			"(none)");
+		key_value_list_set_output_mode(&node_status, "Last received LSN", OM_CSV);
+
 		key_value_list_set(
 			&node_status,
 			"Last replayed LSN",
 			"(none)");
-
+		key_value_list_set_output_mode(&node_status, "Last replayed LSN", OM_CSV);
 	}
 
 	initPQExpBuffer(&output);
@@ -273,9 +370,10 @@ do_node_status(void)
 
 		for (cell = node_status.head; cell; cell = cell->next)
 		{
-			appendPQExpBuffer(
-				&output,
-				"\t%s: %s\n", cell->key, cell->value);
+			if (cell->output_mode == OM_NOT_SET)
+				appendPQExpBuffer(
+					&output,
+					"\t%s: %s\n", cell->key, cell->value);
 		}
 	}
 

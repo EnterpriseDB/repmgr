@@ -19,6 +19,14 @@
 
 #define MAXLEN_STR STR(MAXLEN)
 
+typedef enum {
+	OM_NOT_SET = -1,
+	OM_TEXT,
+	OM_CSV,
+	OM_NAGIOS,
+	OM_OPTFORMAT
+} OutputMode;
+
 typedef struct ItemListCell
 {
 	struct ItemListCell *next;
@@ -36,6 +44,7 @@ typedef struct KeyValueListCell
 	struct KeyValueListCell *next;
 	char				    *key;
 	char				    *value;
+	OutputMode			     output_mode;
 } KeyValueListCell;
 
 typedef struct KeyValueList
@@ -66,6 +75,9 @@ key_value_list_set(KeyValueList *item_list, const char *key, const char *value);
 extern void
 key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value, ...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
+
+extern void
+key_value_list_set_output_mode(KeyValueList *item_list, const char *key, OutputMode mode);
 
 extern const char *
 key_value_list_get(KeyValueList *item_list, const char *key);

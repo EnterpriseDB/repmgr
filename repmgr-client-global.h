@@ -15,13 +15,6 @@
 /* default value for "cluster event --limit"*/
 #define CLUSTER_EVENT_LIMIT 20
 
-typedef enum {
-	OM_TEXT,
-	OM_CSV,
-	OM_NAGIOS,
-	OM_OPTFORMAT
-} OutputMode;
-
 typedef struct
 {
 	/* configuration metadata */
