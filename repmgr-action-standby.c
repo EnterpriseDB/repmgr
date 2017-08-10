@@ -570,6 +570,8 @@ do_standby_register(void)
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status;
 
+	PQExpBufferData details;
+
 	log_info(_("connecting to standby database"));
 	conn = establish_db_connection_quiet(config_file_options.conninfo);
 
@@ -802,16 +804,27 @@ do_standby_register(void)
 											&node_record);
 	}
 
+	initPQExpBuffer(&details);
+
 	if (record_created == false)
 	{
-		/* XXX add event description */
+		appendPQExpBuffer(
+			&details,
+			"standby registration failed");
+
+		if (runtime_options.force == true)
+			appendPQExpBuffer(
+				&details,
+				" (-F/--force option was used)");
+
 		create_event_notification(primary_conn,
 								  &config_file_options,
 								  config_file_options.node_id,
 								  "standby_register",
 								  false,
-								  NULL);
+								  details.data);
 
+		termPQExpBuffer(&details);
 		PQfinish(primary_conn);
 		primary_conn = NULL;
 
@@ -820,13 +833,25 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	appendPQExpBuffer(
+		&details,
+		"standby registration succeeded");
+
+	if (runtime_options.force == true)
+		appendPQExpBuffer(
+			&details,
+			" (-F/--force option was used)");
+
+
 	/* Log the event */
 	create_event_notification(primary_conn,
 							  &config_file_options,
 							  config_file_options.node_id,
 							  "standby_register",
 							  true,
-							  NULL);
+							  details.data);
+
+	termPQExpBuffer(&details);
 
 	/* if --wait-sync option set, wait for the records to synchronise */
 
@@ -1027,12 +1052,8 @@ do_standby_promote(void)
 {
 	PGconn	   *conn;
 	PGconn	   *current_primary_conn;
-	bool		success;
 
 	RecoveryType recovery_type;
-
-	char		data_dir[MAXLEN];
-
 
 	int			existing_primary_id = UNKNOWN_NODE_ID;
 
@@ -1087,19 +1108,9 @@ do_standby_promote(void)
 		exit(ERR_PROMOTION_FAIL);
 	}
 
-
-	/* Get the data directory */
-	// XXX do we need a superuser check?
-	success = get_pg_setting(conn, "data_directory", data_dir);
 	PQfinish(conn);
 
-	if (success == false)
-	{
-		log_error(_("unable to determine data directory"));
-		exit(ERR_PROMOTION_FAIL);
-	}
-
-	_do_standby_promote_internal(data_dir);
+	_do_standby_promote_internal(config_file_options.data_directory);
 }
 
 
