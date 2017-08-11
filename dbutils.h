@@ -264,7 +264,18 @@ typedef struct
 
 #define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
 
+typedef struct
+{
+	char	   systemid[MAXLEN];
+	int		   timeline;
+	XLogRecPtr xlogpos;
+} t_system_identification;
 
+#define T_SYSTEM_IDENTIFICATION_INITIALIZER { \
+    "", \
+    UNKNOWN_TIMELINE_ID, \
+	InvalidXLogRecPtr \
+}
 /* global variables */
 
 extern int			server_version_num;
@@ -333,6 +344,7 @@ RecoveryType get_recovery_type(PGconn *conn);
 int			 get_primary_node_id(PGconn *conn);
 bool		 can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
 int 		 get_ready_archive_files(PGconn *conn, const char *data_directory);
+bool		 identify_system(PGconn *replconn, t_system_identification *identification);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);

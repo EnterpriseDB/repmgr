@@ -96,6 +96,28 @@ do_node_status(void)
 
 	get_node_replication_stats(conn, &node_info);
 
+	/* get system information */
+	{
+		t_conninfo_param_list repl_conninfo;
+		PGconn *replication_conn;
+		t_system_identification sysid = T_SYSTEM_IDENTIFICATION_INITIALIZER;
+		initialize_conninfo_params(&repl_conninfo, false);
+
+		conn_to_param_list(conn, &repl_conninfo);
+
+		param_set(&repl_conninfo, "replication", "1");
+
+		param_set(&repl_conninfo, "user", node_info.repluser);
+
+
+		replication_conn = establish_db_connection_by_params(&repl_conninfo, false);
+		identify_system(replication_conn, &sysid);
+
+		printf("%s\n", sysid.systemid);
+		exit(0);
+
+	}
+
 	key_value_list_set(
 		&node_status,
 		"PostgreSQL version",

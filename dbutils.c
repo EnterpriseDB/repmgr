@@ -1442,6 +1442,28 @@ get_replication_lag_seconds(PGconn *conn)
 }
 
 
+bool
+identify_system(PGconn *replconn, t_system_identification *identification)
+{
+	PGresult		 *res;
+
+	res = PQexec(replconn, "IDENTIFY_SYSTEM;");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
+	{
+		PQclear(res);
+		return false;
+	}
+
+	strncpy(identification->systemid, PQgetvalue(res, 0, 0), MAXLEN);
+	identification->timeline  = atoi(PQgetvalue(res, 0, 1));
+	identification->xlogpos = parse_lsn(PQgetvalue(res, 0, 2));
+
+	PQclear(res);
+	return true;
+}
+
+
 /* ================ */
 /* result functions */
 /* ================ */
