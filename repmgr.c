@@ -8784,52 +8784,28 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	char *options_string = pg_malloc(options_len);
 
 	char *options_string_ptr = options_string;
-	/*
-	 * Add parsed options to this list, then copy to an array
-	 * to pass to getopt
-	 */
-	static ItemList option_argv = { NULL, NULL };
 
-	char *argv_item;
-	int c, argc_item = 1;
-
-	char **argv_array;
-	ItemListCell *cell;
-
-	int			optindex = 0;
-
-	struct option *long_options;
+	char *argv_item, *ptr;
 
 	bool		backup_options_ok = true;
-
-	/* We're only interested in these options */
-	static struct option long_options_9[] =
-	{
-		{"slot", required_argument, NULL, 'S'},
-		{"xlog-method", required_argument, NULL, 'X'},
-		{NULL, 0, NULL, 0}
-	};
 
 	/*
 	 * From PostgreSQL 10, --xlog-method is renamed --wal-method
 	 * and there's also --no-slot, which we'll want to consider.
 	 */
-	static struct option long_options_10[] =
-	{
-		{"slot", required_argument, NULL, 'S'},
-		{"wal-method", required_argument, NULL, 'X'},
-		{"no-slot", no_argument, NULL, 1},
-		{NULL, 0, NULL, 0}
-	};
+	const char xlog_method_9[] = "--xlog-method";
+	const char xlog_method_10[] = "--wal-method";
+	const char *xlog_method;
+
+	if (server_version_num >= 100000)
+		xlog_method = xlog_method_10;
+	else
+		xlog_method = xlog_method_9;
+
 
 	/* Don't attempt to tokenise an empty string */
 	if (!strlen(pg_basebackup_options))
 		return backup_options_ok;
-
-	if (server_version_num >= 100000)
-		long_options = long_options_10;
-	else
-		long_options = long_options_9;
 
 	/* Copy the string before operating on it with strtok() */
 	strncpy(options_string, pg_basebackup_options, options_len);
@@ -8837,72 +8813,42 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	/* Extract arguments into a list and keep a count of the total */
 	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
 	{
-		item_list_append(&option_argv, argv_item);
-
-		argc_item++;
-
-		if (options_string_ptr != NULL)
-			options_string_ptr = NULL;
-	}
-
-	/*
-	 * Array of argument values to pass to getopt_long - this will need to
-	 * include an empty string as the first value (normally this would be
-	 * the program name)
-	 */
-	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
-
-	/* Insert a blank dummy program name at the start of the array */
-	argv_array[0] = pg_malloc0(1);
-
-	c = 1;
-
-	/*
-	 * Copy the previously extracted arguments from our list to the array
-	 */
-	for (cell = option_argv.head; cell; cell = cell->next)
-	{
-		int argv_len = strlen(cell->string) + 1;
-
-		argv_array[c] = pg_malloc0(argv_len);
-
-		strncpy(argv_array[c], cell->string, argv_len);
-
-		c++;
-	}
-
-	argv_array[c] = NULL;
-
-	/* Reset getopt's optind variable */
-	optind = 0;
-
-	/* Prevent getopt from emitting errors */
-	opterr = 0;
-
-	while ((c = getopt_long(argc_item, argv_array, "S:X:", long_options,
-							&optindex)) != -1)
-	{
-		switch (c)
+		options_string_ptr = NULL;
+		if(strcmp(argv_item, "-S") == 0)
 		{
-			case 'S':
-				strncpy(backup_options->slot, optarg, MAXLEN);
-				break;
-			case 'X':
-				strncpy(backup_options->xlog_method, optarg, MAXLEN);
-				break;
-			case 1:
-				backup_options->no_slot = true;
-				break;
-			case '?':
-				if (server_version_num >= 100000 && optopt == 1)
-				{
-					if (error_list != NULL)
-					{
-						item_list_append(error_list, "invalid use of --no-slot");
-					}
-					backup_options_ok = false;
-				}
-				break;
+			strncpy(backup_options->slot, argv_item, MAXLEN);
+		}
+		else if(strncmp(argv_item, "--slot", 6) == 0)
+		{
+			if((ptr = strstr(argv_item, "=")))
+			{
+				strncpy(backup_options->slot, ptr + 1, MAXLEN);
+			}
+			else
+			{
+				ptr = strtok(options_string_ptr, " ");
+				strncpy(backup_options->slot, ptr, MAXLEN);
+			}
+		}
+		else if(strcmp(argv_item, "-X") == 0)
+		{
+			strncpy(backup_options->xlog_method, argv_item, MAXLEN);
+		}
+		else if(strncmp(argv_item, xlog_method, strlen(xlog_method)) == 0)
+		{
+			if((ptr = strstr(argv_item, "=")))
+			{
+				strncpy(backup_options->xlog_method, ptr + 1, MAXLEN);
+			}
+			else
+			{
+				ptr = strtok(options_string_ptr, " ");
+				strncpy(backup_options->xlog_method, ptr, MAXLEN);
+			}
+		}
+		else if(strcmp(argv_item, "--no-slot") == 0)
+		{
+			backup_options->no_slot = true;
 		}
 	}
 
