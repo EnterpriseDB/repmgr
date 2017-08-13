@@ -1455,7 +1455,7 @@ identify_system(PGconn *replconn, t_system_identification *identification)
 		return false;
 	}
 
-	strncpy(identification->systemid, PQgetvalue(res, 0, 0), MAXLEN);
+	identification->system_identifier = atol(PQgetvalue(res, 0, 0));
 	identification->timeline  = atoi(PQgetvalue(res, 0, 1));
 	identification->xlogpos = parse_lsn(PQgetvalue(res, 0, 2));
 

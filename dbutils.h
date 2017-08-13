@@ -266,13 +266,13 @@ typedef struct
 
 typedef struct
 {
-	char	   systemid[MAXLEN];
-	int		   timeline;
+	uint64	   system_identifier;
+	TimeLineID timeline;
 	XLogRecPtr xlogpos;
 } t_system_identification;
 
 #define T_SYSTEM_IDENTIFICATION_INITIALIZER { \
-    "", \
+    UNKNOWN_SYSTEM_IDENTIFIER, \
     UNKNOWN_TIMELINE_ID, \
 	InvalidXLogRecPtr \
 }
