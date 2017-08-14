@@ -623,7 +623,7 @@ main(int argc, char **argv)
 		}
 		else
 		{
-			param_set(&source_conninfo, "dbname", runtime_options.dbname);
+   			param_set(&source_conninfo, "dbname", runtime_options.dbname);
 		}
 	}
 
@@ -641,12 +641,14 @@ main(int argc, char **argv)
 				  "the data directory.\n"
 				),
 				progname());
-		exit(1);
+		free_conninfo_params(&source_conninfo);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Exit here already if errors in command line options found */
 	if (cli_errors.head != NULL)
 	{
+		free_conninfo_params(&source_conninfo);
 		exit_with_cli_errors(&cli_errors);
 	}
 
@@ -829,6 +831,7 @@ main(int argc, char **argv)
 	 */
 	if (cli_errors.head != NULL)
 	{
+		free_conninfo_params(&source_conninfo);
 		exit_with_cli_errors(&cli_errors);
 	}
 
@@ -929,6 +932,8 @@ main(int argc, char **argv)
 		 */
 		if (config_file_options.node_id == NODE_NOT_FOUND)
 		{
+			free_conninfo_params(&source_conninfo);
+
 			log_error(_("no node information was found - please supply a configuration file"));
 			exit(ERR_BAD_CONFIG);
 		}
@@ -967,6 +972,8 @@ main(int argc, char **argv)
 				log_error(_("node %i (specified with --node-id) not found"),
 						  runtime_options.node_id);
 				PQfinish(conn);
+				free_conninfo_params(&source_conninfo);
+
 				exit(ERR_BAD_CONFIG);
 			}
 		}
@@ -977,6 +984,8 @@ main(int argc, char **argv)
 			{
 				log_error(_("unable to escape value provided for --node-name"));
 				PQfinish(conn);
+				free_conninfo_params(&source_conninfo);
+
 				exit(ERR_BAD_CONFIG);
 			}
 
@@ -988,6 +997,8 @@ main(int argc, char **argv)
 				log_error(_("node %s (specified with --node-name) not found"),
 						  runtime_options.node_name);
 				PQfinish(conn);
+				free_conninfo_params(&source_conninfo);
+
 				exit(ERR_BAD_CONFIG);
 			}
 		}
@@ -1081,6 +1092,8 @@ main(int argc, char **argv)
 			/* An action will have been determined by this point  */
 			break;
 	}
+
+	free_conninfo_params(&source_conninfo);
 
 	return SUCCESS;
 }
