@@ -42,7 +42,7 @@ do_bdr_register(void)
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
-	if (!is_bdr_db(conn))
+	if (!is_bdr_db(conn, NULL))
 	{
 		log_error(_("database \"%s\" is not BDR-enabled"), dbname);
 		log_hint(_("when using repmgr with BDR, the repmgr schema must be stored in the BDR database"));
@@ -336,7 +336,7 @@ do_bdr_unregister(void)
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
-	if (!is_bdr_db(conn))
+	if (!is_bdr_db(conn, NULL))
 	{
 		log_error(_("database \"%s\" is not BDR-enabled"), dbname);
 		exit(ERR_BAD_CONFIG);

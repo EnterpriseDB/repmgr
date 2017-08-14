@@ -1038,9 +1038,16 @@ get_recovery_type(PGconn *conn)
 				PQerrorMessage(conn));
 		recovery_type = RECTYPE_UNKNOWN;
 	}
-	else if (PQntuples(res) == 1 && strcmp(PQgetvalue(res, 0, 0), "t") == 0)
+	else if (PQntuples(res) == 1)
 	{
-		recovery_type = RECTYPE_STANDBY;
+		if (strcmp(PQgetvalue(res, 0, 0), "f") == 0)
+		{
+			recovery_type = RECTYPE_PRIMARY;
+		}
+		else
+		{
+			recovery_type = RECTYPE_STANDBY;
+		}
 	}
 
 	PQclear(res);
@@ -1462,16 +1469,20 @@ get_replication_lag_seconds(PGconn *conn)
         "        AS lag_seconds");
 
 	res = PQexec(conn, query.data);
+	log_verbose(LOG_DEBUG, "get_replication_lag_seconds():\n%s", query.data);
 	termPQExpBuffer(&query);
 
-	log_verbose(LOG_DEBUG, "get_node_record():\n%s", query.data);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_warning("%s", 				PQerrorMessage(conn));
+		log_warning("%s", PQerrorMessage(conn));
 		PQclear(res);
 
 		/* XXX magic number */
+		return -1;
+	}
+
+	if (!PQntuples(res))
+	{
 		return -1;
 	}
 
@@ -3576,7 +3587,7 @@ get_last_wal_receive_location(PGconn *conn)
 /* ============= */
 
 bool
-is_bdr_db(PGconn *conn)
+is_bdr_db(PGconn *conn, PQExpBufferData *output)
 {
 	PQExpBufferData	  query;
 	PGresult		 *res = NULL;
@@ -3604,7 +3615,13 @@ is_bdr_db(PGconn *conn)
 
 	if (is_bdr_db == false)
 	{
-		log_warning(_("BDR extension is not available for this database"));
+		const char *warning = _("BDR extension is not available for this database");
+
+		if (output != NULL)
+			appendPQExpBuffer(output, "%s", warning);
+		else
+			log_warning("%s", warning);
+
 		return is_bdr_db;
 	}
 
@@ -3620,11 +3637,15 @@ is_bdr_db(PGconn *conn)
 
 	if (is_bdr_db == false)
 	{
-		log_warning(_("BDR extension available for this database, but the database is not configured for BDR"));
+		const char *warning = _("BDR extension available for this database, but the database is not configured for BDR");
 
+		if (output != NULL)
+			appendPQExpBuffer(output, "%s", warning);
+		else
+			log_warning("%s", warning);
 	}
-	PQclear(res);
 
+	PQclear(res);
 
 	return is_bdr_db;
 }

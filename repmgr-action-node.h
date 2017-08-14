@@ -8,10 +8,6 @@
 
 extern void do_node_status(void);
 extern void do_node_check(void);
-//extern CheckStatus do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output);
-extern CheckStatus do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
-
-extern CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 
 
 extern void do_node_rejoin(void);

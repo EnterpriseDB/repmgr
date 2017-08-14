@@ -86,6 +86,7 @@ typedef struct
 	/* "node check" options */
 	bool		archiver;
 	bool		replication_lag;
+	bool		role;
 
 	/* "node join" options */
 	char		config_files[MAXLEN];
@@ -131,7 +132,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, \
+		false, false, false,   \
 		/* "node join" options */ \
 		"", \
 		/* "node service" options */ \

@@ -430,6 +430,10 @@ main(int argc, char **argv)
 				runtime_options.replication_lag = true;
 				break;
 
+			case OPT_ROLE:
+				runtime_options.role = true;
+				break;
+
 			/* "node join" options *
 			 * ------------------- */
 			case OPT_CONFIG_FILES:

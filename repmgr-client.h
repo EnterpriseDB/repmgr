@@ -70,6 +70,7 @@
 #define OPT_REPLICATION_LAG                1034
 #define OPT_CONFIG_FILES                   1035
 #define OPT_SIBLINGS_FOLLOW                1036
+#define OPT_ROLE                           1037
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR					    999
 #define OPT_NO_CONNINFO_PASSWORD		    998
@@ -139,6 +140,7 @@ static struct option long_options[] =
 /* "node check" options */
 	{"archiver", no_argument, NULL, OPT_ARCHIVER },
 	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG },
+	{"role", no_argument, NULL, OPT_ROLE },
 
 /* "node join" options */
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES },

@@ -29,6 +29,10 @@ static void _do_node_status_is_shutdown(void);
 static void _do_node_archive_config(void);
 static void _do_node_restore_config(void);
 
+static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
+static CheckStatus do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
+static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
+
 
 void
 do_node_status(void)
@@ -547,11 +551,18 @@ do_node_check(void)
 		return;
 	}
 
+	if (runtime_options.role == true)
+	{
+		(void) do_node_check_role(conn, runtime_options.output_mode, &node_info, NULL);
+		PQfinish(conn);
+		return;
+	}
+
 	/* output general overview */
 
 	initPQExpBuffer(&output);
 
-	//(void) do_node_check_role(conn, runtime_options.output_mode, &output);
+	(void) do_node_check_role(conn, runtime_options.output_mode, &node_info, &status_list);
 	(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &status_list);
 	(void) do_node_check_archiver(conn, runtime_options.output_mode, &status_list);
 
@@ -594,7 +605,104 @@ do_node_check(void)
 	PQfinish(conn);
 }
 
-CheckStatus
+
+static CheckStatus
+do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
+{
+
+	CheckStatus status = CHECK_STATUS_OK;
+	PQExpBufferData details;
+	RecoveryType	recovery_type = get_recovery_type(conn);
+
+	if (mode == OM_CSV)
+	{
+		log_error(_("--csv output not provided with --role option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&details);
+
+	switch (node_info->type)
+	{
+		case PRIMARY:
+			if (recovery_type == RECTYPE_STANDBY)
+			{
+				status = CHECK_STATUS_CRITICAL;
+				appendPQExpBuffer(
+					&details,
+					_("node is registered as primary but running as standby"));
+			}
+			break;
+		case STANDBY:
+			if (recovery_type == RECTYPE_PRIMARY)
+			{
+				status = CHECK_STATUS_CRITICAL;
+				appendPQExpBuffer(
+					&details,
+					_("node is registered as standby but running as primary"));
+			}
+			break;
+		case BDR:
+		{
+			PQExpBufferData output;
+
+			initPQExpBuffer(&output);
+			if (is_bdr_db(conn, &output) == false)
+			{
+				status = CHECK_STATUS_CRITICAL;
+				appendPQExpBuffer(
+					&details,
+					"%s", output.data);
+			}
+			termPQExpBuffer(&output);
+
+			if (status == CHECK_STATUS_OK)
+			{
+				if (is_active_bdr_node(conn, node_info->node_name) == false)
+				{
+					status = CHECK_STATUS_CRITICAL;
+					appendPQExpBuffer(
+						&details,
+						_("node is not an active BDR node"));
+				}
+			}
+		}
+		default:
+			break;
+	}
+
+	switch (mode)
+	{
+		case OM_NAGIOS:
+			printf("PG_SERVER_ROLE %s: %s\n",
+				   output_check_status(status),
+				   details.data);
+			break;
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Server role",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
+	}
+
+	termPQExpBuffer(&details);
+	return status;
+
+}
+
+static CheckStatus
 do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
 {
 	int ready_archive_files = 0;
@@ -604,6 +712,7 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 	if (mode == OM_CSV)
 	{
 		log_error(_("--csv output not provided with --archiver option"));
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -748,7 +857,7 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 }
 
 
-CheckStatus
+static CheckStatus
 do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
 {
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
@@ -758,6 +867,7 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *li
 	if (mode == OM_CSV)
 	{
 		log_error(_("--csv output not provided with --replication-lag option"));
+		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
 

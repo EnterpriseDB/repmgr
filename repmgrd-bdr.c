@@ -59,7 +59,7 @@ monitor_bdr(void)
 	 */
 	log_info(_("connected to database, checking for BDR"));
 
-	if (!is_bdr_db(local_conn))
+	if (!is_bdr_db(local_conn, NULL))
 	{
 		log_error(_("database is not BDR-enabled"));
 		exit(ERR_BAD_CONFIG);
