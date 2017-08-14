@@ -70,6 +70,9 @@ item_list_append_format(ItemList *item_list, const char *format, ...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
 extern void
+item_list_free(ItemList *item_list);
+
+extern void
 key_value_list_set(KeyValueList *item_list, const char *key, const char *value);
 
 extern void

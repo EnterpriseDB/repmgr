@@ -54,10 +54,10 @@ static void cube_set_node_status(t_node_status_cube **cube, int n, int node_id, 
 void
 do_cluster_show(void)
 {
-	PGconn	   *conn;
+	PGconn	   *conn = NULL;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
-	NodeInfoListCell *cell;
-	int			i;
+	NodeInfoListCell *cell = NULL;
+	int			i = 0;
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database\n"));
@@ -338,11 +338,11 @@ do_cluster_show(void)
 void
 do_cluster_event(void)
 {
-	PGconn			 *conn;
+	PGconn			 *conn = NULL;
 	PQExpBufferData	  query;
 	PQExpBufferData	  where_clause;
 	PGresult		 *res;
-	int			 	  i;
+	int			 	  i = 0;
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
@@ -490,7 +490,7 @@ do_cluster_event(void)
 void
 do_cluster_crosscheck(void)
 {
-	int			i, n;
+	int			i = 0, n = 0;
 	char		c;
 	const char *node_header = "Name";
 	int			name_length = strlen(node_header);
@@ -522,7 +522,7 @@ do_cluster_crosscheck(void)
 		for (column_node_ix = 0; column_node_ix < n; column_node_ix++)
 		{
 			int max_node_status = -2;
-			int node_ix;
+			int node_ix = 0;
 
 			/*
 			 * The value of entry (i,j) is equal to the
@@ -571,8 +571,8 @@ do_cluster_crosscheck(void)
 void
 do_cluster_matrix()
 {
-	int			i, j;
-	int			n;
+	int			i = 0, j = 0, n = 0;
+
 	const char *node_header = "Name";
 	int			name_length = strlen(node_header);
 
@@ -661,11 +661,11 @@ matrix_set_node_status(t_node_matrix_rec **matrix_rec_list, int n, int node_id, 
 static int
 build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 {
-	PGconn	    *conn;
-	int			 i, j;
-	int			 local_node_id;
+	PGconn	    *conn = NULL;
+	int			 i = 0, j = 0;
+	int			 local_node_id = UNKNOWN_NODE_ID;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
-	NodeInfoListCell *cell;
+	NodeInfoListCell *cell = NULL;
 
 	PQExpBufferData command;
 	PQExpBufferData command_output;
@@ -747,9 +747,9 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int connection_status;
+		int connection_status = 0;
 		t_conninfo_param_list remote_conninfo;
-		char *host, *p;
+		char *host = NULL, *p = NULL;
 		int connection_node_id = cell->node_info->node_id;
 		int			x, y;
 
@@ -854,10 +854,10 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 static int
 build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 {
-	PGconn	   *conn;
+	PGconn	   *conn = NULL;
 	int			h, i, j;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
-	NodeInfoListCell *cell;
+	NodeInfoListCell *cell = NULL;
 
 	t_node_status_cube **cube;
 
@@ -893,8 +893,8 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int name_length_cur;
-		NodeInfoListCell *cell_i;
+		int name_length_cur = 0;
+		NodeInfoListCell *cell_i = NULL;
 
 		cube[h] = (t_node_status_cube *) pg_malloc(sizeof(t_node_status_cube));
 		cube[h]->node_id = cell->node_info->node_id;
@@ -947,11 +947,11 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int remote_node_id;
+		int remote_node_id = UNKNOWN_NODE_ID;
 		PQExpBufferData command;
 		PQExpBufferData command_output;
 
-		char	   *p;
+		char	   *p = NULL;
 
 		remote_node_id = cell->node_info->node_id;
 
@@ -988,7 +988,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 		else
 		{
 			t_conninfo_param_list remote_conninfo;
-			char *host;
+			char *host = NULL;
 			PQExpBufferData quoted_command;
 
 			initPQExpBuffer(&quoted_command);

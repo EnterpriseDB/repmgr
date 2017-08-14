@@ -24,11 +24,11 @@ do_primary_register(void)
 	PGconn	   *conn = NULL;
 	PGconn	   *primary_conn = NULL;
 	int			current_primary_id = UNKNOWN_NODE_ID;
-	RecoveryType recovery_type;
+	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
-	RecordStatus record_status;
+	RecordStatus record_status = RECORD_NOT_FOUND;
 
-	bool		record_created;
+	bool		record_created = false;
 
 	PQExpBufferData	  event_description;
 
@@ -230,7 +230,7 @@ do_primary_unregister(void)
 	PGconn	    *local_conn = NULL;
 	t_node_info  local_node_info = T_NODE_INFO_INITIALIZER;
 
-	t_node_info *target_node_info_ptr;
+	t_node_info *target_node_info_ptr = NULL;
 	PGconn	    *target_node_conn = NULL;
 
 	NodeInfoList downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
@@ -249,7 +249,7 @@ do_primary_unregister(void)
 
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		t_node_info primary_node_info;
+		t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
 
 		log_error(_("unable to connect to primary server"));
 
@@ -290,7 +290,7 @@ do_primary_unregister(void)
 
 	if (downstream_nodes.node_count > 0)
 	{
-		NodeInfoListCell *cell;
+		NodeInfoListCell *cell = NULL;
 		PQExpBufferData   detail;
 
 		if (downstream_nodes.node_count == 1)
@@ -387,7 +387,7 @@ do_primary_unregister(void)
 		else if (recovery_type == RECTYPE_PRIMARY)
 		{
 			t_node_info  primary_node_info = T_NODE_INFO_INITIALIZER;
-			bool primary_record_found;
+			bool primary_record_found = false;
 
 			primary_record_found = get_primary_node_record(primary_conn, &primary_node_info);
 

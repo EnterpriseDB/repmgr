@@ -23,9 +23,9 @@ do_bdr_register(void)
 {
 	PGconn	   	   *conn = NULL;
 	BdrNodeInfoList bdr_nodes = T_BDR_NODE_INFO_LIST_INITIALIZER;
-    ExtensionStatus extension_status;
+    ExtensionStatus extension_status = REPMGR_UNKNOWN;
 	t_node_info		node_info = T_NODE_INFO_INITIALIZER;
-	RecordStatus	record_status;
+	RecordStatus	record_status = RECORD_NOT_FOUND;
 	PQExpBufferData event_details;
 	bool	   	    success = true;
 	char			dbname[MAXLEN];
@@ -137,7 +137,7 @@ do_bdr_register(void)
 		if (local_node_records.node_count == 0)
 		{
 			BdrNodeInfoList bdr_nodes = T_BDR_NODE_INFO_LIST_INITIALIZER;
-			BdrNodeInfoListCell *bdr_cell;
+			BdrNodeInfoListCell *bdr_cell = NULL;
 
 			get_all_bdr_node_records(conn, &bdr_nodes);
 
@@ -152,8 +152,8 @@ do_bdr_register(void)
 			{
 				PGconn *bdr_node_conn = NULL;
 				NodeInfoList existing_nodes = T_NODE_INFO_LIST_INITIALIZER;
-				NodeInfoListCell *cell;
-				ExtensionStatus other_node_extension_status;
+				NodeInfoListCell *cell = NULL;
+				ExtensionStatus other_node_extension_status = REPMGR_UNKNOWN;
 
 				/* skip the local node */
 				if (strncmp(node_info.node_name, bdr_cell->node_info->node_name, MAXLEN) == 0)
@@ -222,7 +222,7 @@ do_bdr_register(void)
 
 	if (record_status == RECORD_FOUND)
 	{
-		bool node_updated;
+		bool node_updated = false;
 		/*
 		 * At this point we will have established there are no non-BDR records,
 		 * so no need to verify the node type
@@ -314,12 +314,12 @@ do_bdr_register(void)
 void
 do_bdr_unregister(void)
 {
-	PGconn	   	   *conn;
-    ExtensionStatus extension_status;
-	int 			target_node_id;
+	PGconn	   	   *conn = NULL;
+    ExtensionStatus extension_status = REPMGR_UNKNOWN;
+	int 			target_node_id = UNKNOWN_NODE_ID;
 	t_node_info		node_info = T_NODE_INFO_INITIALIZER;
-	RecordStatus	record_status;
-	bool			node_record_deleted;
+	RecordStatus	record_status = RECORD_NOT_FOUND;
+	bool			node_record_deleted = false;
 	PQExpBufferData event_details;
 	char			dbname[MAXLEN];
 

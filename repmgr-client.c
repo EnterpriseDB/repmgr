@@ -578,7 +578,7 @@ main(int argc, char **argv)
 				item_list_append(&cli_errors, conninfo_error.data);
 
 				termPQExpBuffer(&conninfo_error);
-				free(errmsg);
+				pfree(errmsg);
 			}
 			else
 			{
@@ -619,6 +619,8 @@ main(int argc, char **argv)
 						strncpy(runtime_options.username, opt->val, MAXLEN);
 					}
 				}
+
+				PQconninfoFree(opts);
 			}
 		}
 		else
@@ -661,7 +663,7 @@ main(int argc, char **argv)
 	 *   NODE { STATUS | CHECK | REJOIN | ARCHIVE-CONFIG | RESTORE-CONFIG | SERVICE } |
 	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP | EVENT }
 	 *
-	 * [node] is an optional hostname, provided instead of the -h/--host optipn
+	 * [node] is an optional hostname, provided instead of the -h/--host option
 	 */
 	if (optind < argc)
 	{
@@ -953,8 +955,8 @@ main(int argc, char **argv)
 
 	if (runtime_options.node_id != UNKNOWN_NODE_ID || runtime_options.node_name[0] != '\0')
 	{
-		PGconn *conn;
-		RecordStatus record_status;
+		PGconn *conn = NULL;
+		RecordStatus record_status = RECORD_NOT_FOUND;
 
 		log_verbose(LOG_DEBUG, "connecting to local node to retrieve record for node specified with --node-id or --node-name");
 
@@ -1533,7 +1535,7 @@ action_name(const int action)
 void
 print_error_list(ItemList *error_list, int log_level)
 {
-	ItemListCell *cell;
+	ItemListCell *cell = NULL;
 
 	for (cell = error_list->head; cell; cell = cell->next)
 	{
@@ -1635,9 +1637,9 @@ create_repmgr_extension(PGconn *conn)
 	PQExpBufferData	  query;
 	PGresult		 *res;
 
-	ExtensionStatus	 extension_status;
+	ExtensionStatus	 extension_status = REPMGR_UNKNOWN;
 
-	t_connection_user  userinfo;
+	t_connection_user  userinfo = T_CONNECTION_USER_INITIALIZER;
 	bool			 is_superuser = false;
 	PGconn			 *superuser_conn = NULL;
 	PGconn			 *schema_create_conn = NULL;
@@ -1791,7 +1793,7 @@ create_repmgr_extension(PGconn *conn)
 int
 check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string)
 {
-	int			conn_server_version_num = 0;
+	int			conn_server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	conn_server_version_num = get_server_version(conn, server_version_string);
 	if (conn_server_version_num < MIN_SUPPORTED_VERSION_NUM)
@@ -1819,7 +1821,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 int
 test_ssh_connection(char *host, char *remote_user)
 {
-	char		script[MAXLEN];
+	char		script[MAXLEN] = "";
 	int			r = 1, i;
 
 	/* On some OS, true is located in a different place than in Linux
@@ -1863,7 +1865,7 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 {
 	FILE *fp;
 	char output[MAXLEN];
-	int retval;
+	int retval = 0;
 
 	if (outputbuf == NULL)
 	{
@@ -1899,8 +1901,8 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 void
 get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn)
 {
-	t_connection_user userinfo;
-	bool			  is_superuser;
+	t_connection_user userinfo = T_CONNECTION_USER_INITIALIZER;
+	bool			  is_superuser = false;
 
 	/* this should never happen */
 	if (PQstatus(*conn) != CONNECTION_OK)
@@ -2123,18 +2125,18 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			{
 				if (i == 0)
 				{
-					log_error(_("parameter 'wal_keep_segments' on the upstream server must be be set to %s or greater"),
+					log_error(_("parameter \"wal_keep_segments\" on the upstream server must be be set to %s or greater"),
 							min_wal_keep_segments);
 					log_hint(_("Choose a value sufficiently high enough to retain enough WAL "
 							   "until the standby has been cloned and started.\n "
 							   "Alternatively set up WAL archiving using e.g. PgBarman and configure "
-							   "'restore_command' in repmgr.conf to fetch WALs from there."
-								 ));
+							   "'restore_command' in repmgr.conf to fetch WALs from there."));
+
 					if (server_version_num >= 90400)
 					{
 						log_hint(_("In PostgreSQL 9.4 and later, replication slots can be used, which "
-								   "do not require 'wal_keep_segments' to be set "
-								   "(set parameter 'use_replication_slots' in repmgr.conf to enable)\n"
+								   "do not require \"wal_keep_segments\" to be set "
+								   "(set parameter \"use_replication_slots\" in repmgr.conf to enable)\n"
 									 ));
 					}
 				}
@@ -2168,7 +2170,7 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 		if (i == 0 || i == -1)
 		{
 			if (i == 0)
-				log_error(_("parameter 'archive_command' must be set to a valid command"));
+				log_error(_("parameter \"archive_command\" must be set to a valid command"));
 
 			if (exit_on_error == true)
 			{
@@ -2210,8 +2212,8 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	{
 		if (i == 0)
 		{
-			log_error(_("parameter 'max_wal_senders' must be set to be at least 1"));
-			log_hint(_("'max_wal_senders' should be set to at least the number of expected standbys"));
+			log_error(_("parameter \"max_wal_senders\" must be set to be at least 1"));
+			log_hint(_("\"max_wal_senders\" should be set to at least the number of expected standbys"));
 		}
 
 		if (exit_on_error == true)
@@ -2295,7 +2297,8 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			 * Alternatively call PQconnectStart() and poll for presence/absence of CONNECTION_AUTH_OK ?
 			 */
 			log_error(_("unable to establish necessary replication connections"));
-			log_hint(_("increase 'max_wal_senders' by at least %i"), min_replication_connections - possible_replication_connections);
+			log_hint(_("increase \"max_wal_senders\" by at least %i"),
+					 min_replication_connections - possible_replication_connections);
 
 			if (exit_on_error == true)
 			{
@@ -2339,9 +2342,9 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 				  char *local_path, bool is_directory, int server_version_num)
 {
 	PQExpBufferData 	rsync_flags;
-	char		script[MAXLEN];
-	char		host_string[MAXLEN];
-	int			r;
+	char		script[MAXLEN] = "";
+	char		host_string[MAXLEN] = "";
+	int			r = 0;
 
 	initPQExpBuffer(&rsync_flags);
 
@@ -2456,8 +2459,8 @@ bool
 create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir)
 {
 	FILE	   *recovery_file;
-	char		recovery_file_path[MAXPGPATH];
-	char		line[MAXLEN];
+	char		recovery_file_path[MAXPGPATH] = "";
+	char		line[MAXLEN] = "";
 	mode_t		um;
 
 	maxpath_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_COMMAND_FILE);
@@ -2577,7 +2580,7 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 	PQExpBufferData conninfo_buf;
 	bool application_name_provided = false;
 	int c;
-	char *escaped;
+	char *escaped = NULL;
 
 	initPQExpBuffer(&conninfo_buf);
 
@@ -2640,10 +2643,10 @@ bool
 remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf)
 {
 	FILE *fp;
-	char ssh_command[MAXLEN];
+	char ssh_command[MAXLEN] = "";
 	PQExpBufferData ssh_host;
 
-	char output[MAXLEN];
+	char output[MAXLEN] = "";
 
 	initPQExpBuffer(&ssh_host);
 

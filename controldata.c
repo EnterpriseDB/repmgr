@@ -20,7 +20,7 @@ static ControlFileInfo *get_controlfile(const char *DataDir);
 uint64
 get_system_identifier(const char *data_directory)
 {
-	ControlFileInfo *control_file_info;
+	ControlFileInfo *control_file_info = T_CONTROLFILEINFO_INITIALIZER;
 	uint64 system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
 
 	control_file_info = get_controlfile(data_directory);
@@ -39,7 +39,7 @@ get_system_identifier(const char *data_directory)
 DBState
 get_db_state(const char *data_directory)
 {
-	ControlFileInfo *control_file_info;
+	ControlFileInfo *control_file_info = T_CONTROLFILEINFO_INITIALIZER;
 	DBState state;
 
 	control_file_info = get_controlfile(data_directory);
@@ -60,8 +60,8 @@ get_db_state(const char *data_directory)
 extern XLogRecPtr
 get_latest_checkpoint_location(const char *data_directory)
 {
-	ControlFileInfo *control_file_info;
-	XLogRecPtr checkPoint;
+	ControlFileInfo *control_file_info = T_CONTROLFILEINFO_INITIALIZER;
+	XLogRecPtr checkPoint = InvalidXLogRecPtr;
 
 	control_file_info = get_controlfile(data_directory);
 
@@ -80,8 +80,8 @@ get_latest_checkpoint_location(const char *data_directory)
 int
 get_data_checksum_version(const char *data_directory)
 {
-	ControlFileInfo *control_file_info;
-	int data_checksum_version;
+	ControlFileInfo *control_file_info = T_CONTROLFILEINFO_INITIALIZER;
+	int data_checksum_version = -1;
 
 	control_file_info = get_controlfile(data_directory);
 
@@ -132,9 +132,9 @@ describe_db_state(DBState state)
 static ControlFileInfo *
 get_controlfile(const char *DataDir)
 {
-	ControlFileInfo *control_file_info;
+	ControlFileInfo *control_file_info = T_CONTROLFILEINFO_INITIALIZER;
 	int			fd;
-	char		ControlFilePath[MAXPGPATH];
+	char		ControlFilePath[MAXPGPATH] = "";
 
 	control_file_info = palloc0(sizeof(ControlFileInfo));
 	control_file_info->control_file_processed = false;

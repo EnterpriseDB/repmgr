@@ -32,7 +32,7 @@ static void _do_node_restore_config(void);
 void
 do_node_status(void)
 {
-	PGconn	   	   *conn;
+	PGconn	   	   *conn = NULL;
 
 	int 			target_node_id = UNKNOWN_NODE_ID;
 	t_node_info 	node_info = T_NODE_INFO_INITIALIZER;
@@ -41,14 +41,15 @@ do_node_status(void)
 	PQExpBufferData	output;
 
 	KeyValueList	node_status = { NULL, NULL };
-	KeyValueListCell *cell;
+	KeyValueListCell *cell = NULL;
 
 	ItemList 		warnings = { NULL, NULL };
-	RecoveryType	recovery_type;
+	RecoveryType	recovery_type = RECTYPE_UNKNOWN;
 	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
 	t_recovery_conf recovery_conf = T_RECOVERY_CONF_INITIALIZER;
 
-	char data_dir[MAXPGPATH] = "";
+	char 	 	 	data_dir[MAXPGPATH] = "";
+
 
 
 	if (runtime_options.is_shutdown == true)
@@ -110,6 +111,18 @@ do_node_status(void)
 		&node_status,
 		"Conninfo",
 		node_info.conninfo);
+
+	if (runtime_options.verbose == true)
+	{
+		uint64 	 	 	local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+
+		local_system_identifier = get_system_identifier(config_file_options.data_directory);
+
+		key_value_list_set_format(
+			&node_status,
+			"System identifier",
+			"%lu", local_system_identifier);
+	}
 
 	key_value_list_set(
 		&node_status,
@@ -291,6 +304,12 @@ do_node_status(void)
 
 		key_value_list_set_format(
 			&node_status,
+			"Replication lag",
+			"%i seconds",
+			replication_info.replication_lag_time);
+
+		key_value_list_set_format(
+			&node_status,
 			"Last received LSN",
 			"%X/%X", format_lsn(replication_info.last_wal_receive_lsn));
 
@@ -306,6 +325,11 @@ do_node_status(void)
 			"Upstream node",
 			"(none)");
 		key_value_list_set_output_mode(&node_status, "Upstream node", OM_CSV);
+
+		key_value_list_set(
+			&node_status,
+			"Replication lag",
+			"n/a");
 
 		key_value_list_set(
 			&node_status,
@@ -397,6 +421,7 @@ do_node_status(void)
 	}
 
 	key_value_list_free(&node_status);
+	item_list_free(&warnings);
 	PQfinish(conn);
 }
 
@@ -413,7 +438,7 @@ void _do_node_status_is_shutdown(void)
 
 	bool is_shutdown = true;
 	DBState db_state;
-	XLogRecPtr checkPoint;
+	XLogRecPtr checkPoint = InvalidXLogRecPtr;
 
 	initPQExpBuffer(&output);
 
@@ -490,7 +515,7 @@ void _do_node_status_is_shutdown(void)
 void
 do_node_check(void)
 {
-	PGconn *conn;
+	PGconn *conn = NULL;
 
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
@@ -513,6 +538,8 @@ do_node_check(void)
 		return;
 	}
 
+
+	PQfinish(conn);
 }
 
 CheckStatus
@@ -675,7 +702,7 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *ou
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
 	bool own_buffer = false;
 	PQExpBufferData buf;
-	int lag_seconds;
+	int lag_seconds = 0;
 
 	if (mode == OM_CSV)
 	{
@@ -884,7 +911,7 @@ do_node_service(void)
 		}
 		else
 		{
-			PGconn *conn;
+			PGconn *conn  = NULL;
 
 			if (strlen(config_file_options.conninfo))
 				conn = establish_db_connection(config_file_options.conninfo, true);
@@ -1038,7 +1065,7 @@ do_node_rejoin(void)
 	char filebuf[MAXPGPATH] = "";
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 
-	bool success;
+	bool success = true;
 
 	/* check node is not actually running */
 
@@ -1087,7 +1114,7 @@ do_node_rejoin(void)
 	/* check provided upstream connection */
 	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
 
-/* establish_db_connection(runtime_options.upstream_conninfo, true); */
+	/* establish_db_connection(runtime_options.upstream_conninfo, true); */
 
 	if (get_primary_node_record(upstream_conn, &primary_node_record) == false)
 	{
@@ -1230,7 +1257,7 @@ _do_node_archive_config(void)
 
 
 	KeyValueList	config_files = { NULL, NULL };
-	KeyValueListCell *cell;
+	KeyValueListCell *cell = NULL;
 	int  copied_count = 0;
 
 	format_archive_dir(archive_dir);
@@ -1281,19 +1308,17 @@ _do_node_archive_config(void)
 	 */
 	while ((arcdir_ent = readdir(arcdir)) != NULL)
 	{
-		char arcdir_ent_path[MAXPGPATH];
+		char arcdir_ent_path[MAXPGPATH] = "";
 
 		snprintf(arcdir_ent_path, MAXPGPATH,
 				 "%s/%s",
 				 archive_dir,
 				 arcdir_ent->d_name);
 
-
 		if (stat(arcdir_ent_path, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
 		{
 			continue;
 		}
-
 
 		if (unlink(arcdir_ent_path) == -1)
 		{
@@ -1311,7 +1336,8 @@ _do_node_archive_config(void)
 	 * extract list of config files from --config-files
 	 */
 	{
-		int i = 0, j;
+		int i = 0;
+		int j = 0;
 		int config_file_len = strlen(runtime_options.config_files);
 
 		char filenamebuf[MAXLEN] = "";
@@ -1404,7 +1430,7 @@ _do_node_archive_config(void)
 static void
 _do_node_restore_config(void)
 {
-	char archive_dir[MAXPGPATH];
+	char archive_dir[MAXPGPATH] = "";
 
 	DIR			  *arcdir;
 	struct dirent *arcdir_ent;
@@ -1511,7 +1537,7 @@ static bool
 copy_file(const char *src_file, const char *dest_file)
 {
 	FILE  *ptr_old, *ptr_new;
-	int  a;
+	int  a = 0;
 
 	ptr_old = fopen(src_file, "r");
 	ptr_new = fopen(dest_file, "w");

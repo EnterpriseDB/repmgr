@@ -90,8 +90,8 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 	 */
 	if (config_file_provided == false)
 	{
-		char		my_exec_path[MAXPGPATH];
-		char		sysconf_etc_path[MAXPGPATH];
+		char		my_exec_path[MAXPGPATH] = "";
+		char		sysconf_etc_path[MAXPGPATH] = "";
 
 		/* 1. "./repmgr.conf" */
 		if (verbose == true)
@@ -195,10 +195,10 @@ static void
 _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	FILE	   *fp;
-	char	   *s,
-				buf[MAXLINELENGTH];
-	char		name[MAXLEN];
-	char		value[MAXLEN];
+	char	   *s = NULL,
+				buf[MAXLINELENGTH] = "";
+	char		name[MAXLEN] = "";
+	char		value[MAXLEN] = "";
 
 	bool		node_id_found = false;
 
@@ -585,7 +585,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		 * but does not sanity check values
 		 */
 
-		PQconninfoOption *conninfo_options;
+		PQconninfoOption *conninfo_options = NULL;
 		char	   *conninfo_errmsg = NULL;
 
 		conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
@@ -638,10 +638,10 @@ parse_recovery_conf(const char *data_dir, t_recovery_conf *conf)
 {
 	char recovery_conf_path[MAXPGPATH] = "";
 	FILE	   *fp;
-	char	   *s,
-				buf[MAXLINELENGTH];
-	char		name[MAXLEN];
-	char		value[MAXLEN];
+	char	   *s = NULL,
+				buf[MAXLINELENGTH] = "";
+	char		name[MAXLEN] = "";
+	char		value[MAXLEN] = "";
 
 	snprintf(recovery_conf_path, MAXPGPATH,
 			 "%s/%s",
@@ -795,13 +795,13 @@ reload_config(t_configuration_options *orig_options)
 }
 
 
-/* TODO: don't emit warnings if --terse and no errors */
 static void
 exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings, bool terse)
 {
 	log_error(_("following errors were found in the configuration file:"));
 
 	print_item_list(config_errors);
+	item_list_free(config_errors);
 
 	if (terse == false && config_warnings->head != NULL)
 	{
@@ -809,6 +809,7 @@ exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings,
 		log_warning(_("the following problems were also found in the configuration file:"));
 
 		print_item_list(config_warnings);
+		item_list_free(config_warnings);
 	}
 
 	exit(ERR_BAD_CONFIG);
@@ -830,7 +831,7 @@ exit_with_cli_errors(ItemList *error_list)
 void
 print_item_list(ItemList *item_list)
 {
-	ItemListCell *cell;
+	ItemListCell *cell = NULL;
 
 	for (cell = item_list->head; cell; cell = cell->next)
 	{
@@ -849,7 +850,7 @@ print_item_list(ItemList *item_list)
 int
 repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, int minval)
 {
-	char	  *endptr;
+	char	  *endptr = NULL;
 	long	   longval = 0;
 	PQExpBufferData errors;
 
@@ -978,10 +979,10 @@ parse_bool(const char *s, const char *config_item, ItemList *error_list)
 static void
 tablespace_list_append(t_configuration_options *options, const char *arg)
 {
-	TablespaceListCell *cell;
-	char	   *dst;
-	char	   *dst_ptr;
-	const char *arg_ptr;
+	TablespaceListCell *cell = NULL;
+	char	   *dst = NULL;
+	char	   *dst_ptr = NULL;
+	const char *arg_ptr = NULL;
 
 	cell = (TablespaceListCell *) pg_malloc0(sizeof(TablespaceListCell));
 	if (cell == NULL)
@@ -1046,7 +1047,7 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 static void
 parse_event_notifications_list(t_configuration_options *options, const char *arg)
 {
-	const char *arg_ptr;
+	const char *arg_ptr = NULL;
 	char		event_type_buf[MAXLEN] = "";
 	char	   *dst_ptr = event_type_buf;
 
@@ -1117,15 +1118,15 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	 */
 	static ItemList option_argv = { NULL, NULL };
 
-	char *argv_item;
+	char *argv_item = NULL;
 	int c, argc_item = 1;
 
-	char **argv_array;
-	ItemListCell *cell;
+	char **argv_array = NULL;
+	ItemListCell *cell = NULL;
 
 	int			optindex = 0;
 
-	struct option *long_options;
+	struct option *long_options = NULL;
 
 	bool		backup_options_ok = true;
 

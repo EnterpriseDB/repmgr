@@ -16,6 +16,7 @@
 #include "voting.h"
 
 #define REPMGR_NODES_COLUMNS "node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active, config_file, '' AS upstream_node_name "
+#define BDR_NODES_COLUMNS "node_sysid, node_timeline, node_dboid, node_status, node_name, node_local_dsn, node_init_from_dsn, node_read_only, node_seq_id"
 
 #define ERRBUFF_SIZE 512
 
@@ -159,8 +160,8 @@ typedef struct s_event_info
 }	t_event_info;
 
 #define T_EVENT_INFO_INITIALIZER { \
-  NULL, \
-  NULL \
+	NULL, \
+ 	NULL \
 }
 
 
@@ -174,6 +175,11 @@ typedef struct
 	char **values;
 } t_conninfo_param_list;
 
+#define T_CONNINFO_PARAM_LIST_INITIALIZER { \
+	0, \
+	NULL, \
+	NULL, \
+}
 
 /*
  * Struct to store replication slot information
@@ -185,12 +191,16 @@ typedef struct s_replication_slot
 	bool active;
 }	t_replication_slot;
 
+#define T_REPLICATION_SLOT_INITIALIZER { "", "", false }
+
 
 typedef struct s_connection_user
 {
 	char username[MAXLEN];
 	bool is_superuser;
 }   t_connection_user;
+
+#define T_CONNECTION_USER_INITIALIZER { "", false }
 
 
 /* represents an entry in bdr.bdr_nodes */
@@ -237,13 +247,13 @@ typedef struct BdrNodeInfoList
 typedef struct {
 	uint64		last_wal_receive_lsn;
 	uint64		last_wal_replay_lsn;
-	char		replication_lag_time[MAXLEN];
+	int			replication_lag_time;
 } ReplInfo;
 
 #define T_REPLINFO_INTIALIZER { \
 	InvalidXLogRecPtr, \
 	InvalidXLogRecPtr, \
-	"" \
+	0 \
 }
 
 
@@ -254,6 +264,7 @@ typedef struct
 	bool in_data_directory;
 } t_configfile_info;
 
+#define T_CONFIGFILE_INFO_INITIALIZER { "", "", false }
 
 typedef struct
 {
@@ -385,8 +396,6 @@ bool		update_node_record_conn_priority(PGconn *conn, t_configuration_options *op
 
 void		clear_node_info_list(NodeInfoList *nodes);
 
-void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
-
 /* PostgreSQL configuration file location functions */
 bool		get_datadir_configuration_files(PGconn *conn, KeyValueList *list);
 bool		get_configuration_file_locations(PGconn *conn, t_configfile_list *list);
@@ -427,6 +436,7 @@ void		 	 reset_voting_status(PGconn *conn);
 XLogRecPtr	 get_last_wal_receive_location(PGconn *conn);
 bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int 		 get_replication_lag_seconds(PGconn *conn);
+void   		 get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 
 /* BDR functions */
 void		 get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);

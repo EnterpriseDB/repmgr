@@ -128,6 +128,24 @@ item_list_append_format(ItemList *item_list, const char *format, ...)
 
 
 void
+item_list_free(ItemList *item_list)
+{
+	ItemListCell *cell;
+	ItemListCell *next_cell;
+
+	cell = item_list->head;
+
+	while (cell != NULL)
+	{
+		next_cell = cell->next;
+		pfree(cell->string);
+		pfree(cell);
+		cell = next_cell;
+	}
+}
+
+
+void
 key_value_list_set(KeyValueList *item_list, const char *key, const char *value)
 {
 	key_value_list_set_format(item_list, key, "%s", value);
@@ -208,7 +226,6 @@ key_value_list_free(KeyValueList *item_list)
 		pfree(cell);
 		cell = next_cell;
 	}
-
 }
 
 

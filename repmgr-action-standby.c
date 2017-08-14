@@ -97,7 +97,7 @@ void
 do_standby_clone(void)
 {
 	PQExpBufferData event_details;
-	int r;
+	int r = 0;
 
 	/* dummy node record */
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
@@ -252,7 +252,7 @@ do_standby_clone(void)
 	{
 		/* parse returned upstream conninfo string to recovery primary_conninfo params*/
 		char	   *errmsg = NULL;
-		bool	    parse_success;
+		bool	    parse_success = false;
 
 		log_verbose(LOG_DEBUG, "parsing upstream conninfo string \"%s\"", recovery_conninfo_str);
 
@@ -414,7 +414,7 @@ do_standby_clone(void)
 	 */
 	{
 		t_node_info node_record = T_NODE_INFO_INITIALIZER;
-		RecordStatus record_status;
+		RecordStatus record_status = RECORD_NOT_FOUND;
 
 		record_status = get_node_record(primary_conn,
 										config_file_options.node_id,
@@ -480,7 +480,7 @@ void
 check_barman_config(void)
 {
 	char		command[MAXLEN];
-	bool		command_ok;
+	bool		command_ok = false;
 
 	/*
 	 * Check that there is at least one valid backup
@@ -563,12 +563,12 @@ check_barman_config(void)
 void
 do_standby_register(void)
 {
-	PGconn	   *conn;
-	PGconn	   *primary_conn;
+	PGconn	   *conn = NULL;
+	PGconn	   *primary_conn = NULL;
 
-	bool		record_created;
+	bool		record_created = false;
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
-	RecordStatus record_status;
+	RecordStatus record_status = RECORD_NOT_FOUND;
 
 	PQExpBufferData details;
 
@@ -688,7 +688,7 @@ do_standby_register(void)
 	 */
 	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
-		RecordStatus upstream_record_status;
+		RecordStatus upstream_record_status = RECORD_NOT_FOUND;
 
 		upstream_record_status = get_node_record(primary_conn,
 												 runtime_options.upstream_node_id,
@@ -861,7 +861,7 @@ do_standby_register(void)
 	{
 		bool sync_ok = false;
 		int timer = 0;
-		RecordStatus node_record_status;
+		RecordStatus node_record_status = RECORD_NOT_FOUND;
 		t_node_info node_record_on_primary = T_NODE_INFO_INITIALIZER;
 		t_node_info node_record_on_standby = T_NODE_INFO_INITIALIZER;
 
@@ -962,13 +962,13 @@ do_standby_register(void)
 void
 do_standby_unregister(void)
 {
-	PGconn	   *conn;
-	PGconn	   *primary_conn;
+	PGconn	   *conn = NULL;
+	PGconn	   *primary_conn = NULL;
 
-	int 		target_node_id;
+	int 		target_node_id = UNKNOWN_NODE_ID;
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
-	bool		node_record_deleted;
+	bool		node_record_deleted = false;
 
 	log_info(_("connecting to local standby"));
 	conn = establish_db_connection(config_file_options.conninfo, true);
@@ -1050,10 +1050,10 @@ do_standby_unregister(void)
 void
 do_standby_promote(void)
 {
-	PGconn	   *conn;
-	PGconn	   *current_primary_conn;
+	PGconn	   *conn = NULL;
+	PGconn	   *current_primary_conn = NULL;
 
-	RecoveryType recovery_type;
+	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 
 	int			existing_primary_id = UNKNOWN_NODE_ID;
 
@@ -1124,8 +1124,8 @@ _do_standby_promote_internal(const char *data_dir)
 				promote_check_interval = 2;
 	bool		promote_success = false;
 	PQExpBufferData details;
-	PGconn	   *conn;
-	RecoveryType recovery_type;
+	PGconn	   *conn = NULL;
+	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 
 	log_notice(_("promoting standby"));
 
@@ -1242,10 +1242,10 @@ do_standby_follow(void)
 	int			primary_id = UNKNOWN_NODE_ID;
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 
-	int	    	timer;
+	int	    	timer = 0;
 
 	PQExpBufferData follow_output;
-	bool    	success;
+	bool    	success = false;
 
 	uint64  	local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
 	t_conninfo_param_list repl_conninfo;
@@ -1377,10 +1377,10 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 {
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	int			original_upstream_node_id = UNKNOWN_NODE_ID;
-	char		restart_command[MAXLEN];
+	char		restart_command[MAXLEN] = "";
 	int			r;
 
-	RecordStatus record_status;
+	RecordStatus record_status = RECORD_NOT_FOUND;
 	char	   *errmsg = NULL;
 
 
@@ -1511,8 +1511,8 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
 	{
 		t_node_info upstream_node_record  = T_NODE_INFO_INITIALIZER;
-		RecordStatus upstream_record_status;
-		PGconn	   *local_conn;
+		RecordStatus upstream_record_status = RECORD_NOT_FOUND;
+		PGconn	   *local_conn = NULL;
 
 		log_verbose(LOG_INFO, "attempting to remove replication slot from old upstream node %i",
 					original_upstream_node_id);
@@ -1599,19 +1599,19 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 void
 do_standby_switchover(void)
 {
-	PGconn	   *local_conn;
-	PGconn	   *remote_conn;
+	PGconn	   *local_conn = NULL;
+	PGconn	   *remote_conn = NULL;
 
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 	/* the remote server is the primary to be demoted */
 	char	    remote_conninfo[MAXCONNINFO] = "";
 	char	    remote_host[MAXLEN] = "";
-	int         remote_node_id;
+	int         remote_node_id = UNKNOWN_NODE_ID;
 	t_node_info remote_node_record = T_NODE_INFO_INITIALIZER;
 
-	RecordStatus	record_status;
-	RecoveryType	recovery_type;
+	RecordStatus	record_status = RECORD_NOT_FOUND;
+	RecoveryType	recovery_type = RECTYPE_UNKNOWN;
 	PQExpBufferData remote_command_str;
 	PQExpBufferData command_output;
 	PQExpBufferData node_rejoin_options;
@@ -1635,7 +1635,6 @@ do_standby_switchover(void)
 	 * We'll be doing a bunch of operations on the remote server (primary
 	 * to be demoted) - careful checks needed before proceding.
 	 */
-
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
@@ -1786,7 +1785,7 @@ do_standby_switchover(void)
 		{
 			int files = 0;
 			int threshold = 0;
-			bool command_success;
+			bool command_success = false;
 
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
@@ -2166,7 +2165,7 @@ do_standby_switchover(void)
 	initPQExpBuffer(&node_rejoin_options);
 	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
 	{
-		KeyValueListCell *cell;
+		KeyValueListCell *cell = NULL;
 		bool first_entry = true;
 
 		if (runtime_options.force_rewind == false)
@@ -2213,8 +2212,6 @@ do_standby_switchover(void)
 	termPQExpBuffer(&remote_command_str);
 	termPQExpBuffer(&node_rejoin_options);
 
-
-
 	/* TODO: verify this node's record was updated correctly */
 
 	create_event_record(local_conn,
@@ -2260,14 +2257,15 @@ do_standby_switchover(void)
 	{
 		int failed_follow_count = 0;
 		char host[MAXLEN] = "";
-		NodeInfoListCell *cell;
+		NodeInfoListCell *cell = NULL;
+
 		log_notice(_("executing STANDBY FOLLOW on %i of %i siblings"),
 				   sibling_nodes.node_count - unreachable_sibling_node_count,
 				   sibling_nodes.node_count);
 
 		for (cell = sibling_nodes.head; cell; cell = cell->next)
 		{
-			bool success;
+			bool success = false;
 			t_node_info sibling_node_record = T_NODE_INFO_INITIALIZER;
 
 			/* skip nodes previously determined as unreachable */
@@ -2335,8 +2333,8 @@ check_source_server()
 
 	char			   cluster_size[MAXLEN];
 	t_node_info		   node_record = T_NODE_INFO_INITIALIZER;
-	RecordStatus	   record_status;
-	ExtensionStatus	   extension_status;
+	RecordStatus	   record_status = RECORD_NOT_FOUND;
+	ExtensionStatus	   extension_status = REPMGR_UNKNOWN;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
 	log_info(_("connecting to upstream node"));
@@ -2512,17 +2510,17 @@ check_source_server()
 static void
 check_source_server_via_barman()
 {
-	char		    buf[MAXLEN];
-	char		    barman_conninfo_str[MAXLEN];
-	t_conninfo_param_list barman_conninfo;
+	char		    buf[MAXLEN] = "";
+	char		    barman_conninfo_str[MAXLEN] = "";
+	t_conninfo_param_list barman_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	char		   *errmsg = NULL;
-	bool		    parse_success,
-				    command_success;
+	bool		    parse_success = false,
+				    command_success = false;
 	char		    where_condition[MAXLEN];
 	PQExpBufferData command_output;
 	PQExpBufferData repmgr_conninfo_buf;
 
-	int c;
+	int c = 0;
 
 	get_barman_property(barman_conninfo_str, "conninfo", local_repmgr_tmp_directory);
 
@@ -2612,7 +2610,7 @@ initialise_direct_clone(t_node_info *node_record)
 {
 	PGconn			 *superuser_conn = NULL;
 	PGconn			 *privileged_conn = NULL;
-	bool	 		  success;
+	bool	 		  success = false;
 
 	/*
 	 * Check the destination data directory can be used
@@ -2638,7 +2636,7 @@ initialise_direct_clone(t_node_info *node_record)
 
 	if (config_file_options.tablespace_mapping.head != NULL)
 	{
-		TablespaceListCell *cell;
+		TablespaceListCell *cell = false;
 		KeyValueList not_found = { NULL, NULL };
 		int total = 0, matched = 0;
 
@@ -2773,10 +2771,10 @@ initialise_direct_clone(t_node_info *node_record)
 static int
 run_basebackup(t_node_info *node_record)
 {
-	char				  script[MAXLEN];
+	char				  script[MAXLEN] = "";
 	int					  r = SUCCESS;
 	PQExpBufferData 	  params;
-	TablespaceListCell   *cell;
+	TablespaceListCell   *cell = NULL;
 	t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
 
 	/*
@@ -2802,8 +2800,8 @@ run_basebackup(t_node_info *node_record)
 	 */
 	if (runtime_options.conninfo_provided == true)
 	{
-		t_conninfo_param_list conninfo;
-		char *conninfo_str;
+		t_conninfo_param_list conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+		char *conninfo_str = NULL;
 
 		initialize_conninfo_params(&conninfo, false);
 
@@ -2933,14 +2931,14 @@ run_file_backup(t_node_info *node_record)
 {
 	int r = SUCCESS, i;
 
-	char		command[MAXLEN];
-	char		filename[MAXLEN];
-	char		buf[MAXLEN];
-	char		basebackups_directory[MAXLEN];
+	char		command[MAXLEN] = "";
+	char		filename[MAXLEN] = "";
+	char		buf[MAXLEN] = "";
+	char		basebackups_directory[MAXLEN] = "";
 	char		backup_id[MAXLEN] = "";
-	char		*p, *q;
+	char		*p = NULL, *q = NULL;
 	TablespaceDataList tablespace_list = { NULL, NULL };
-	TablespaceDataListCell *cell_t;
+	TablespaceDataListCell *cell_t = NULL;
 
 	PQExpBufferData tablespace_map;
 	bool		tablespace_map_rewrite = false;
@@ -2966,9 +2964,9 @@ run_file_backup(t_node_info *node_record)
 		{
 			FILE *fi; /* input stream */
 			FILE *fd; /* output for data.txt */
-			char prefix[MAXLEN];
-			char output[MAXLEN];
-			int n;
+			char prefix[MAXLEN] = "";
+			char output[MAXLEN] = "";
+			int n = 0;
 
 			maxlen_snprintf(command, "%s list-files --target=data %s latest",
 							make_barman_ssh_command(barman_command_buf),
@@ -3196,8 +3194,8 @@ run_file_backup(t_node_info *node_record)
 	for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
 	{
 		bool mapping_found = false;
-		TablespaceListCell *cell;
-		char *tblspc_dir_dest;
+		TablespaceListCell *cell = NULL;
+		char *tblspc_dir_dest = NULL;
 
 		/* Check if tablespace path matches one of the provided tablespace mappings */
 		if (config_file_options.tablespace_mapping.head != NULL)
@@ -3349,8 +3347,6 @@ run_file_backup(t_node_info *node_record)
 		fclose(tablespace_map_file);
 	}
 
-
-
 stop_backup:
 
 	if (mode == barman)
@@ -3392,11 +3388,11 @@ get_tablespace_data_barman
 	 * [('main', 24674, '/var/lib/postgresql/tablespaces/9.5/main'), ('alt', 24678, '/var/lib/postgresql/tablespaces/9.5/alt')]
 	 */
 
-	char name[MAXLEN];
-	char oid[MAXLEN];
-	char location[MAXPGPATH];
+	char name[MAXLEN] = "";
+	char oid[MAXLEN] = "";
+	char location[MAXPGPATH] = "";
 	char *p = tablespace_data_barman;
-	int i;
+	int i = 0;
 
 	tablespace_list->head = NULL;
 	tablespace_list->tail = NULL;
@@ -3447,9 +3443,9 @@ void
 get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 {
 	PQExpBufferData command_output;
-	char buf[MAXLEN];
-	char command[MAXLEN];
-	char *p;
+	char buf[MAXLEN] = "";
+	char command[MAXLEN] = "";
+	char *p = NULL;
 
 	initPQExpBuffer(&command_output);
 
@@ -3478,7 +3474,7 @@ static void
 copy_configuration_files(void)
 {
 	int i, r;
-	t_configfile_info *file;
+	t_configfile_info *file = NULL;
 	char *host = NULL;
 
 	/* get host from upstream record */
@@ -3500,7 +3496,7 @@ copy_configuration_files(void)
 
 	for (i = 0; i < config_files.entries; i++)
 	{
-		char dest_path[MAXPGPATH];
+		char dest_path[MAXPGPATH] = "";
 		file = config_files.files[i];
 
 		/*
@@ -3538,7 +3534,7 @@ copy_configuration_files(void)
 static void
 tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location)
 {
-	TablespaceDataListCell *cell;
+	TablespaceDataListCell *cell = NULL;
 
 	cell = (TablespaceDataListCell *) pg_malloc0(sizeof(TablespaceDataListCell));
 
@@ -3577,11 +3573,11 @@ tablespace_data_append(TablespaceDataList *list, const char *name, const char *o
 static void
 check_primary_standby_version_match(PGconn *conn, PGconn *primary_conn)
 {
-	char		standby_version[MAXVERSIONSTR];
-	int			standby_version_num = 0;
+	char		standby_version[MAXVERSIONSTR] = "";
+	int			standby_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
-	char		primary_version[MAXVERSIONSTR];
-	int			primary_version_num = 0;
+	char		primary_version[MAXVERSIONSTR] = "";
+	int			primary_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	standby_version_num = check_server_version(conn, "standby", true, standby_version);
 
@@ -3634,13 +3630,12 @@ check_recovery_type(PGconn *conn)
 static void
 drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 {
-	t_replication_slot  slot_info;
-	int					record_status;
-
-	record_status = get_slot_record(conn, slot_name, &slot_info);
+	t_replication_slot  slot_info = T_REPLICATION_SLOT_INITIALIZER;
+	RecordStatus		record_status = get_slot_record(conn, slot_name, &slot_info);
 
 	log_verbose(LOG_DEBUG, "attempting to delete slot \"%s\" on node %i",
 				slot_name, node_id);
+
 	if (record_status != RECORD_FOUND)
 	{
 		log_info(_("no slot record found for slot \"%s\" on node %i"),
