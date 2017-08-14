@@ -191,6 +191,27 @@ key_value_list_get(KeyValueList *item_list, const char *key)
 	return NULL;
 }
 
+
+void
+key_value_list_free(KeyValueList *item_list)
+{
+	KeyValueListCell *cell;
+	KeyValueListCell *next_cell;
+
+	cell = item_list->head;
+
+	while (cell != NULL)
+	{
+		next_cell = cell->next;
+		pfree(cell->key);
+		pfree(cell->value);
+		pfree(cell);
+		cell = next_cell;
+	}
+
+}
+
+
 /*
  * Escape a string for use as a parameter in recovery.conf
  * Caller must free returned value

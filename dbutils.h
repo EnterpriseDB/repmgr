@@ -345,7 +345,7 @@ RecoveryType get_recovery_type(PGconn *conn);
 int			 get_primary_node_id(PGconn *conn);
 bool		 can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
 int 		 get_ready_archive_files(PGconn *conn, const char *data_directory);
-bool		 identify_system(PGconn *replconn, t_system_identification *identification);
+bool		 identify_system(PGconn *repl_conn, t_system_identification *identification);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);

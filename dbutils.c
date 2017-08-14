@@ -115,6 +115,7 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 	if (parse_success == false)
 	{
 		log_error(_("unable to pass provided conninfo string:\n	 %s"), errmsg);
+		free_conninfo_params(&conninfo_params);
 		return NULL;
 	}
 
@@ -155,6 +156,7 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 		if (exit_on_error)
 		{
 			PQfinish(conn);
+			free_conninfo_params(&conninfo_params);
 			exit(ERR_DB_CONN);
 		}
 	}
@@ -170,11 +172,13 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 		if (exit_on_error)
 		{
 			PQfinish(conn);
+			free_conninfo_params(&conninfo_params);
 			exit(ERR_DB_CONN);
 		}
 	}
 
 	pfree(connection_string);
+	free_conninfo_params(&conninfo_params);
 
 	return conn;
 }
@@ -1284,6 +1288,8 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 	replication_info->last_wal_replay_lsn = parse_lsn(PQgetvalue(res, 0, 1));
 	strncpy(replication_info->replication_lag_time, PQgetvalue(res, 0, 3), MAXLEN);
 
+	PQclear(res);
+
 	return true;
 }
 
@@ -1478,11 +1484,11 @@ get_replication_lag_seconds(PGconn *conn)
 
 
 bool
-identify_system(PGconn *replconn, t_system_identification *identification)
+identify_system(PGconn *repl_conn, t_system_identification *identification)
 {
 	PGresult		 *res;
 
-	res = PQexec(replconn, "IDENTIFY_SYSTEM;");
+	res = PQexec(repl_conn, "IDENTIFY_SYSTEM;");
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
 	{
@@ -2405,6 +2411,8 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 	node_info->max_replication_slots = atoi(PQgetvalue(res, 0, 2));
 	node_info->active_replication_slots = atoi(PQgetvalue(res, 0, 3));
 	node_info->inactive_replication_slots = atoi(PQgetvalue(res, 0, 4));
+
+	PQclear(res);
 
 	return;
 }

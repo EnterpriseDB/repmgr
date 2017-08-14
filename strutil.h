@@ -82,6 +82,8 @@ key_value_list_set_output_mode(KeyValueList *item_list, const char *key, OutputM
 extern const char *
 key_value_list_get(KeyValueList *item_list, const char *key);
 
+extern void
+key_value_list_free(KeyValueList *item_list);
 
 extern char *
 escape_recovery_conf_value(const char *src);

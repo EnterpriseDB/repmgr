@@ -1247,8 +1247,12 @@ do_standby_follow(void)
 	PQExpBufferData follow_output;
 	bool    	success;
 
-	log_verbose(LOG_DEBUG, "do_standby_follow()");
+	uint64  	local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+	t_conninfo_param_list repl_conninfo;
+	PGconn  	*repl_conn = NULL;
+	t_system_identification primary_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 
+	log_verbose(LOG_DEBUG, "do_standby_follow()");
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
@@ -1263,7 +1267,7 @@ do_standby_follow(void)
 	 * If --wait provided, loop for up `primary_response_timeout`
 	 * seconds before giving up
 	 */
-	// XXX ??? primary_follow_timeout
+
 	for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
 	{
 		primary_conn = get_primary_connection_quiet(local_conn,
@@ -1275,19 +1279,59 @@ do_standby_follow(void)
 			break;
 		}
 	}
+	PQfinish(local_conn);
 
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to determine primary node"));
-		PQfinish(local_conn);
+
 		exit(ERR_BAD_CONFIG);
 	}
 
-	check_primary_standby_version_match(local_conn, primary_conn);
-
-	PQfinish(local_conn);
-
 	get_node_record(primary_conn, primary_id, &primary_node_record);
+
+	/* check replication connection */
+
+	initialize_conninfo_params(&repl_conninfo, false);
+
+	conn_to_param_list(primary_conn, &repl_conninfo);
+
+	param_set(&repl_conninfo, "replication", "1");
+	param_set(&repl_conninfo, "user", primary_node_record.repluser);
+
+	repl_conn = establish_db_connection_by_params(&repl_conninfo, false);
+	if (PQstatus(repl_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to establish a replication connection to the primary node"));
+		PQfinish(primary_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* check system_identifiers match */
+	local_system_identifier = get_system_identifier(config_file_options.data_directory);
+	success = identify_system(repl_conn, &primary_identification);
+
+	if (success == false)
+	{
+		log_error(_("unable to query the primary node's system identification"));
+		PQfinish(primary_conn);
+		PQfinish(repl_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (primary_identification.system_identifier != local_system_identifier)
+	{
+		log_error(_("this node is not part of the primary node's replication cluster"));
+		log_detail(_("this node's system identifier is %lu, primary node's system identifier is %lu"),
+				   local_system_identifier,
+				   primary_identification.system_identifier);
+		PQfinish(primary_conn);
+		PQfinish(repl_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	PQfinish(repl_conn);
+	free_conninfo_params(&repl_conninfo);
 
 	initPQExpBuffer(&follow_output);
 
@@ -1425,6 +1469,8 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		{
 			original_upstream_node_id = primary_node_record->node_id;
 		}
+
+		free_conninfo_params(&local_node_conninfo);
 	}
 
 	log_info(_("changing node %i's primary to node %i"),

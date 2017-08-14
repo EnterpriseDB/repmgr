@@ -17,6 +17,25 @@
 
 static ControlFileInfo *get_controlfile(const char *DataDir);
 
+uint64
+get_system_identifier(const char *data_directory)
+{
+	ControlFileInfo *control_file_info;
+	uint64 system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+
+	control_file_info = get_controlfile(data_directory);
+
+	if (control_file_info->control_file_processed == true)
+		system_identifier = control_file_info->control_file->system_identifier;
+	else
+		system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+
+	pfree(control_file_info->control_file);
+	pfree(control_file_info);
+
+	return system_identifier;
+}
+
 DBState
 get_db_state(const char *data_directory)
 {
@@ -33,6 +52,7 @@ get_db_state(const char *data_directory)
 
 	pfree(control_file_info->control_file);
 	pfree(control_file_info);
+
 	return state;
 }
 
