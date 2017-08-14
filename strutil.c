@@ -130,8 +130,8 @@ item_list_append_format(ItemList *item_list, const char *format, ...)
 void
 item_list_free(ItemList *item_list)
 {
-	ItemListCell *cell;
-	ItemListCell *next_cell;
+	ItemListCell *cell = NULL;
+	ItemListCell *next_cell = NULL;
 
 	cell = item_list->head;
 
@@ -155,9 +155,9 @@ key_value_list_set(KeyValueList *item_list, const char *key, const char *value)
 void
 key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value, ...)
 {
-	KeyValueListCell *cell;
+	KeyValueListCell *cell = NULL;
 	va_list			  arglist;
-	int			  	  keylen;
+	int			  	  keylen = 0;
 
 	cell = (KeyValueListCell *) pg_malloc0(sizeof(KeyValueListCell));
 
@@ -194,7 +194,7 @@ key_value_list_set_format(KeyValueList *item_list, const char *key, const char *
 void
 key_value_list_set_output_mode (KeyValueList *item_list, const char *key, OutputMode mode)
 {
-	KeyValueListCell *cell;
+	KeyValueListCell *cell = NULL;
 
 	for (cell = item_list->head; cell; cell = cell->next)
 	{
@@ -227,6 +227,95 @@ key_value_list_free(KeyValueList *item_list)
 		cell = next_cell;
 	}
 }
+
+
+void
+check_status_list_set(CheckStatusList *list, const char *item, CheckStatus status, const char *details)
+{
+	check_status_list_set_format(list, item, status, "%s", details);
+}
+
+
+void
+check_status_list_set_format(CheckStatusList *list, const char *item, CheckStatus status, const char *details, ...)
+{
+	CheckStatusListCell *cell;
+	va_list			  arglist;
+	int			  	  itemlen;
+
+	cell = (CheckStatusListCell *) pg_malloc0(sizeof(CheckStatusListCell));
+
+	if (cell == NULL)
+	{
+		log_error(_("unable to allocate memory; terminating."));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	itemlen = strlen(item);
+
+	cell->item = pg_malloc0(itemlen + 1);
+	cell->details = pg_malloc0(MAXLEN);
+	cell->status = status;
+
+	strncpy(cell->item, item, itemlen);
+
+	va_start(arglist, details);
+	(void) xvsnprintf(cell->details, MAXLEN, details, arglist);
+	va_end(arglist);
+
+
+	if (list->tail)
+		list->tail->next = cell;
+	else
+		list->head = cell;
+
+	list->tail = cell;
+
+	return;
+
+}
+
+
+void
+check_status_list_free(CheckStatusList *list)
+{
+	CheckStatusListCell *cell = NULL;
+	CheckStatusListCell *next_cell = NULL;
+
+	cell = list->head;
+
+	while (cell != NULL)
+	{
+		next_cell = cell->next;
+		pfree(cell->item);
+		pfree(cell->details);
+		pfree(cell);
+		cell = next_cell;
+	}
+}
+
+
+
+const char *
+output_check_status(CheckStatus status)
+{
+	switch (status)
+	{
+		case CHECK_STATUS_OK:
+			return "OK";
+		case CHECK_STATUS_WARNING:
+			return "WARNING";
+		case CHECK_STATUS_CRITICAL:
+			return "CRITICAL";
+		case CHECK_STATUS_UNKNOWN:
+			return "UNKNOWN";
+	}
+
+	return "UNKNOWN";
+
+}
+
+
 
 
 /*

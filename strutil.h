@@ -19,6 +19,14 @@
 
 #define MAXLEN_STR STR(MAXLEN)
 
+
+typedef enum {
+	CHECK_STATUS_OK = 0,
+	CHECK_STATUS_WARNING,
+	CHECK_STATUS_CRITICAL,
+	CHECK_STATUS_UNKNOWN
+} CheckStatus;
+
 typedef enum {
 	OM_NOT_SET = -1,
 	OM_TEXT,
@@ -54,6 +62,22 @@ typedef struct KeyValueList
 } KeyValueList;
 
 
+typedef struct CheckStatusListCell
+{
+	struct CheckStatusListCell *next;
+	char				       *item;
+	CheckStatus				    status;
+	char				       *details;
+} CheckStatusListCell;
+
+typedef struct CheckStatusList
+{
+	CheckStatusListCell *head;
+	CheckStatusListCell *tail;
+} CheckStatusList;
+
+
+
 extern int
 maxlen_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
@@ -87,6 +111,18 @@ key_value_list_get(KeyValueList *item_list, const char *key);
 
 extern void
 key_value_list_free(KeyValueList *item_list);
+
+extern void
+check_status_list_set(CheckStatusList *list, const char *item, CheckStatus status, const char *details);
+
+extern void
+check_status_list_set_format(CheckStatusList *list, const char *item, CheckStatus status, const char *details, ...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 4, 5)));
+
+extern void
+check_status_list_free(CheckStatusList *list);
+
+extern const char * output_check_status(CheckStatus status);
 
 extern char *
 escape_recovery_conf_value(const char *src);

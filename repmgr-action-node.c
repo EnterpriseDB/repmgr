@@ -29,6 +29,7 @@ static void _do_node_status_is_shutdown(void);
 static void _do_node_archive_config(void);
 static void _do_node_restore_config(void);
 
+
 void
 do_node_status(void)
 {
@@ -282,14 +283,6 @@ do_node_status(void)
 			"disabled");
 	}
 
-	// if standby (and in recovery), show:
-	// upstream
-	// -> check if matches expected; parse recovery.conf for < 9.6 (must be superuser),
-	//   otherwise use pg_stat_wal_receiver
-	// streaming/in archive recovery/disconnected
-	// last received
-	// last replayed
-	// lag if streaming, or if in recovery can compare with upstream
 
 	if (node_info.type == STANDBY)
 	{
@@ -511,16 +504,32 @@ void _do_node_status_is_shutdown(void)
 	return;
 }
 
-
+/*
+ * Configuration file required
+ */
 void
 do_node_check(void)
 {
 	PGconn *conn = NULL;
+	PQExpBufferData output;
+
+	t_node_info 	node_info = T_NODE_INFO_INITIALIZER;
+
+	CheckStatusList status_list = { NULL, NULL };
+	CheckStatusListCell *cell = NULL;
+
 
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
 	else
 		conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	if (get_node_record(conn, config_file_options.node_id, &node_info) != RECORD_FOUND)
+	{
+		log_error(_("no record found for node %i"), config_file_options.node_id);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/* handle specific checks
 	 * ====================== */
@@ -538,17 +547,59 @@ do_node_check(void)
 		return;
 	}
 
+	/* output general overview */
+
+	initPQExpBuffer(&output);
+
+	//(void) do_node_check_role(conn, runtime_options.output_mode, &output);
+	(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &status_list);
+	(void) do_node_check_archiver(conn, runtime_options.output_mode, &status_list);
+
+
+	if (runtime_options.output_mode == OM_CSV)
+	{
+		/* TODO */
+	}
+	else
+	{
+		appendPQExpBuffer(
+			&output,
+			"Node \"%s\":\n",
+			node_info.node_name);
+
+		for (cell = status_list.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(
+				&output,
+				"\t%s: %s",
+				cell->item,
+				output_check_status(cell->status));
+
+			if (strlen(cell->details))
+			{
+				appendPQExpBuffer(
+					&output,
+					" (%s)",
+					cell->details);
+			}
+			appendPQExpBuffer(&output, "\n");
+		}
+	}
+
+
+	printf("%s", output.data);
+	termPQExpBuffer(&output);
+	check_status_list_free(&status_list);
 
 	PQfinish(conn);
 }
 
 CheckStatus
-do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output)
+do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
 {
-	bool own_buffer = false;
 	int ready_archive_files = 0;
-	PQExpBufferData buf;
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
+	PQExpBufferData details;
 
 	if (mode == OM_CSV)
 	{
@@ -556,13 +607,7 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (output == NULL)
-	{
-		initPQExpBuffer(&buf);
-		output = &buf;
-		own_buffer = true;
-	}
-
+	initPQExpBuffer(&details);
 
 	ready_archive_files = get_ready_archive_files(conn, config_file_options.data_directory);
 
@@ -574,24 +619,21 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output)
 		{
 			case OM_OPTFORMAT:
 				appendPQExpBuffer(
-					output,
-					"--status=CRITICAL --files=%i --threshold=%i",
-					ready_archive_files,
-					config_file_options.archiver_lag_critical);
+					&details,
+					"--files=%i --threshold=%i",
+					ready_archive_files, config_file_options.archiver_lag_critical);
 				break;
 			case OM_NAGIOS:
 				appendPQExpBuffer(
-					output,
-					"PG_ARCHIVER CRITICAL: %i pending files (critical: %i)",
-					ready_archive_files,
-					config_file_options.archiver_lag_critical);
+					&details,
+					"%i pending files (critical: %i)",
+					ready_archive_files, config_file_options.archiver_lag_critical);
 				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
-					output,
-					"CRITICAL - %i pending files (threshold: %i)",
-					ready_archive_files,
-					config_file_options.archiver_lag_critical);
+					&details,
+					"%i pending files, threshold: %i",
+					ready_archive_files, config_file_options.archiver_lag_critical);
 				break;
 
 			default:
@@ -606,24 +648,21 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output)
 		{
 			case OM_OPTFORMAT:
 				appendPQExpBuffer(
-					output,
-					"--status=WARNING --files=%i --threshold=%i",
-					ready_archive_files,
-					config_file_options.archiver_lag_warning);
+					&details,
+					"--files=%i --threshold=%i",
+					ready_archive_files, config_file_options.archiver_lag_warning);
 				break;
 			case OM_NAGIOS:
 				appendPQExpBuffer(
-					output,
-					"PG_ARCHIVER WARNING: %i pending files (warning: %i)",
-					ready_archive_files,
-					config_file_options.archiver_lag_warning);
+					&details,
+					"%i pending files (warning: %i)",
+					ready_archive_files, config_file_options.archiver_lag_warning);
 				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
-					output,
-					"WARNING - %i pending files (threshold: %i)",
-					ready_archive_files,
-					config_file_options.archiver_lag_warning);
+					&details,
+					"%i pending files (threshold: %i)",
+					ready_archive_files, config_file_options.archiver_lag_warning);
 				break;
 
 			default:
@@ -637,19 +676,12 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output)
 		switch (mode)
 		{
 			case OM_OPTFORMAT:
-				appendPQExpBuffer(
-					output,
-					"--status=UNKNOWN");
 				break;
 			case OM_NAGIOS:
-				appendPQExpBuffer(
-					output,
-					"PG_ARCHIVER UNKNOWN: unable to check archive_status directory");
-				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
-					output,
-					"UNKNOWN - unable to check archive_status directory");
+					&details,
+					"unable to check archive_status directory");
 				break;
 
 			default:
@@ -664,21 +696,14 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output)
 		{
 			case OM_OPTFORMAT:
 				appendPQExpBuffer(
-					output,
-					"--status=OK --files=%i",
-					ready_archive_files);
+					&details,
+					"--files=%i", ready_archive_files);
 				break;
 			case OM_NAGIOS:
-				appendPQExpBuffer(
-					output,
-					"PG_ARCHIVER OK: %i pending files",
-					ready_archive_files);
-				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
-					output,
-					"OK - %i pending files",
-					ready_archive_files);
+					&details,
+					"%i pending files",	ready_archive_files);
 				break;
 
 			default:
@@ -686,23 +711,49 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, PQExpBufferData *output)
 		}
 	}
 
-	if (own_buffer == true)
+	switch (mode)
 	{
-		printf("%s\n", buf.data);
-		termPQExpBuffer(&buf);
+		case OM_OPTFORMAT:
+		{
+			printf("--status=%s %s\n",
+				   output_check_status(status),
+				   details.data);
+		}
+		break;
+		case OM_NAGIOS:
+			printf("PG_ARCHIVER %s: %s\n",
+				   output_check_status(status),
+				   details.data);
+			break;
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "WAL archiving",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
 	}
 
+	termPQExpBuffer(&details);
 	return status;
 }
 
 
 CheckStatus
-do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *output)
+do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
 {
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
-	bool own_buffer = false;
-	PQExpBufferData buf;
 	int lag_seconds = 0;
+	PQExpBufferData details;
 
 	if (mode == OM_CSV)
 	{
@@ -710,12 +761,7 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *ou
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (output == NULL)
-	{
-		initPQExpBuffer(&buf);
-		output = &buf;
-		own_buffer = true;
-	}
+	initPQExpBuffer(&details);
 
 	lag_seconds = get_replication_lag_seconds(conn);
 
@@ -729,24 +775,21 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *ou
 		{
 			case OM_OPTFORMAT:
 				appendPQExpBuffer(
-					output,
-					"--status=CRITICAL --lag=%i --threshold=%i",
-					lag_seconds,
-					config_file_options.replication_lag_critical);
+					&details,
+					"--lag=%i --threshold=%i",
+					lag_seconds, config_file_options.replication_lag_critical);
 				break;
 			case OM_NAGIOS:
 				appendPQExpBuffer(
-					output,
-					"PG_REPLICATION_LAG CRITICAL: %i seconds (critical: %i)",
-					lag_seconds,
-					config_file_options.replication_lag_critical);
+					&details,
+					"%i seconds (critical: %i)",
+					lag_seconds, config_file_options.replication_lag_critical);
 				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
-					output,
-					"CRITICAL - %i seconds (threshold: %i)",
-					lag_seconds,
-					config_file_options.replication_lag_critical);
+					&details,
+					"%i seconds, threshold: %i)",
+					lag_seconds, config_file_options.replication_lag_critical);
 				break;
 
 			default:
@@ -761,24 +804,21 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *ou
 		{
 			case OM_OPTFORMAT:
 				appendPQExpBuffer(
-					output,
-					"--status=WARNING --lag=%i --threshold=%i",
-					lag_seconds,
-					config_file_options.replication_lag_warning);
+					&details,
+					"--lag=%i --threshold=%i",
+					lag_seconds, config_file_options.replication_lag_warning);
 				break;
 			case OM_NAGIOS:
 				appendPQExpBuffer(
-					output,
-					"PG_REPLICATION_LAG WARNING: %i seconds (warning: %i)",
-					lag_seconds,
-					config_file_options.replication_lag_warning);
+					&details,
+					"%i seconds (warning: %i)",
+					lag_seconds, config_file_options.replication_lag_warning);
 				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
-					output,
-					"WARNING - %i seconds (threshold: %i)",
-					lag_seconds,
-					config_file_options.replication_lag_warning);
+					&details,
+					"%i seconds, threshold: %i)",
+					lag_seconds, config_file_options.replication_lag_warning);
 				break;
 
 			default:
@@ -792,19 +832,12 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *ou
 		switch (mode)
 		{
 			case OM_OPTFORMAT:
-				appendPQExpBuffer(
-					output,
-					"--status=UNKNOWN");
 				break;
 			case OM_NAGIOS:
-				appendPQExpBuffer(
-					output,
-					"PG_REPLICATION_LAG UNKNOWN: unable to query replication lag");
-				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
-					output,
-					"UNKNOWN - unable to query replication lag");
+					&details,
+					"unable to query replication lag");
 				break;
 
 			default:
@@ -819,20 +852,15 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *ou
 		{
 			case OM_OPTFORMAT:
 				appendPQExpBuffer(
-					output,
-					"--status=OK --files=%i",
+					&details,
+					"--lag=%i",
 					lag_seconds);
 				break;
 			case OM_NAGIOS:
-				appendPQExpBuffer(
-					output,
-					"PG_REPLICATION_LAG OK: %i seconds",
-					lag_seconds);
-				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
-					output,
-					"OK - %i seconds",
+					&details,
+					"%i seconds",
 					lag_seconds);
 				break;
 
@@ -841,14 +869,39 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, PQExpBufferData *ou
 		}
 	}
 
-
-
-
-	if (own_buffer == true)
+	switch (mode)
 	{
-		printf("%s\n", buf.data);
-		termPQExpBuffer(&buf);
+		case OM_OPTFORMAT:
+		{
+			printf("--status=%s %s\n",
+				   output_check_status(status),
+				   details.data);
+		}
+		break;
+		case OM_NAGIOS:
+			printf("PG_REPLICATION_LAG %s: %s\n",
+				   output_check_status(status),
+				   details.data);
+			break;
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Replication lag",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
 	}
+
+	termPQExpBuffer(&details);
 
 	return status;
 }
@@ -1572,3 +1625,5 @@ copy_file(const char *src_file, const char *dest_file)
 
 	return true;
 }
+
+

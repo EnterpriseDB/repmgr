@@ -159,13 +159,6 @@ typedef enum {
 } t_server_action;
 
 
-typedef enum {
-	CHECK_STATUS_OK = 0,
-	CHECK_STATUS_WARNING,
-	CHECK_STATUS_CRITICAL,
-	CHECK_STATUS_UNKNOWN
-} CheckStatus;
-
 
 /* global configuration structures */
 extern t_runtime_options runtime_options;
