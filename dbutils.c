@@ -407,7 +407,29 @@ initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults)
 			}
 		}
 	}
+
+	PQconninfoFree(defs);
 }
+
+
+void
+free_conninfo_params(t_conninfo_param_list *param_list)
+{
+	int c;
+
+	for (c = 0; c < param_list->size; c++)
+	{
+		if (param_list->keywords[c] != NULL)
+			pfree(param_list->keywords[c]);
+
+		if (param_list->values[c] != NULL)
+			pfree(param_list->values[c]);
+	}
+
+	pfree(param_list->keywords);
+	pfree(param_list->values);
+}
+
 
 
 void
@@ -591,6 +613,8 @@ conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
 
 		param_set(param_list, option->keyword, option->val);
 	}
+
+	PQconninfoFree(connOptions);
 }
 
 
@@ -737,6 +761,7 @@ bool
 set_config(PGconn *conn, const char *config_param,	const char *config_value)
 {
 	PQExpBufferData	  query;
+	bool			  result;
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
@@ -746,13 +771,18 @@ set_config(PGconn *conn, const char *config_param,	const char *config_value)
 
 	log_verbose(LOG_DEBUG, "set_config():\n  %s", query.data);
 
-	return _set_config(conn, config_param, query.data);
+	result = _set_config(conn, config_param, query.data);
+
+	termPQExpBuffer(&query);
+
+	return result;
 }
 
 bool
 set_config_bool(PGconn *conn, const char *config_param, bool state)
 {
 	PQExpBufferData	  query;
+	bool			  result;
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
@@ -762,7 +792,12 @@ set_config_bool(PGconn *conn, const char *config_param, bool state)
 
 	log_verbose(LOG_DEBUG, "set_config_bool():\n  %s", query.data);
 
-	return _set_config(conn, config_param, query.data);
+
+	result = _set_config(conn, config_param, query.data);
+
+	termPQExpBuffer(&query);
+
+	return result;
 }
 
 
@@ -1485,6 +1520,7 @@ get_repmgr_extension_status(PGconn *conn)
 {
 	PQExpBufferData	  query;
 	PGresult		 *res;
+	ExtensionStatus	  status = REPMGR_UNKNOWN;
 
 	/* TODO: check version */
 
@@ -1505,24 +1541,28 @@ get_repmgr_extension_status(PGconn *conn)
 	{
 		log_error(_("unable to execute extension query:\n  %s"),
 				PQerrorMessage(conn));
-		PQclear(res);
 
-		return REPMGR_UNKNOWN;
+		status = REPMGR_UNKNOWN;
 	}
 
 	/* 1. Check extension is actually available */
-	if (PQntuples(res) == 0)
+	else if (PQntuples(res) == 0)
 	{
-		return REPMGR_UNAVAILABLE;
+		status = REPMGR_UNAVAILABLE;
 	}
 
 	/* 2. Check if extension installed */
-	if (PQgetisnull(res, 0, 1) == 0)
+	else if (PQgetisnull(res, 0, 1) == 0)
 	{
-		return REPMGR_INSTALLED;
+		status = REPMGR_INSTALLED;
 	}
+	else
+	{
+		status = REPMGR_AVAILABLE;
+	}
+	PQclear(res);
 
-	return REPMGR_AVAILABLE;
+	return status;
 }
 
 /* ========================= */
@@ -2565,6 +2605,8 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 			PQgetvalue(res, i, 1),
 			strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
 	}
+
+	PQclear(res);
 
 	return true;
 }

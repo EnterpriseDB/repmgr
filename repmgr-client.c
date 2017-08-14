@@ -2268,6 +2268,9 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 			PQfinish(connections[i]);
 		}
 
+		pfree(connections);
+		free_conninfo_params(&repl_conninfo);
+
 		if (possible_replication_connections < min_replication_connections)
 		{
 			config_ok = false;

@@ -903,9 +903,9 @@ repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, in
 		}
 
 		item_list_append(error_list, errors.data);
-		termPQExpBuffer(&errors);
 	}
 
+	termPQExpBuffer(&errors);
 	return (int32) longval;
 }
 
@@ -1247,6 +1247,12 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	}
 
 	pfree(options_string);
+
+	{
+		int i;
+		for (i = 0; i < argc_item + 2; i ++)
+			pfree(argv_array[i]);
+	}
 	pfree(argv_array);
 
 	return backup_options_ok;

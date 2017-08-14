@@ -113,7 +113,7 @@ do_node_status(void)
 		replication_conn = establish_db_connection_by_params(&repl_conninfo, false);
 		identify_system(replication_conn, &sysid);
 
-		printf("%s\n", sysid.systemid);
+		printf("%lu\n", sysid.system_identifier);
 		exit(0);
 
 	}
