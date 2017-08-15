@@ -696,9 +696,10 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 			}
 			else
 			{
-				printf("%s (%s)\n",
-					   output_check_status(status),
-					   details.data);
+				printf("%s", output_check_status(status));
+				if (strlen(details.data))
+					printf(" (%s)", details.data);
+				puts("");
 			}
 		default:
 			break;
