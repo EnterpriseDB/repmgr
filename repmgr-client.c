@@ -426,6 +426,10 @@ main(int argc, char **argv)
 				runtime_options.archiver = true;
 				break;
 
+			case OPT_DOWNSTREAM:
+				runtime_options.downstream = true;
+				break;
+
 			case OPT_REPLICATION_LAG:
 				runtime_options.replication_lag = true;
 				break;
@@ -3001,7 +3005,7 @@ init_node_record(t_node_info *node_record)
 
 	if (config_file_options.replication_user[0] != '\0')
 	{
-		/* Replication user explicitly provided */
+		/* replication user explicitly provided */
 		strncpy(node_record->repluser, config_file_options.replication_user, NAMEDATALEN);
 	}
 	else

@@ -18,8 +18,6 @@ typedef struct
 	ControlFileData *control_file;
 } ControlFileInfo;
 
-#define T_CONTROLFILEINFO_INITIALIZER { false, NULL }
-
 extern DBState get_db_state(const char *data_directory);
 extern const char * describe_db_state(DBState state);
 extern int get_data_checksum_version(const char *data_directory);

@@ -97,6 +97,7 @@ typedef struct s_node_info
 	/* for ad-hoc use e.g. when working with a list of nodes */
     char		  details[MAXLEN];
 	bool		  reachable;
+	bool		  attached;
 	/* various statistics */
 	int			  max_wal_senders;
 	int			  attached_wal_receivers;
@@ -127,7 +128,7 @@ typedef struct s_node_info
 	MS_NORMAL, \
 	NULL, \
 	/* for ad-hoc use e.g. when working with a list of nodes */ \
-	"", true \
+	"", true, true \
 	/* various statistics */ \
 	-1, -1, -1, -1, -1 \
 }
@@ -437,6 +438,7 @@ XLogRecPtr	 get_last_wal_receive_location(PGconn *conn);
 bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int 		 get_replication_lag_seconds(PGconn *conn);
 void   		 get_node_replication_stats(PGconn *conn, t_node_info *node_info);
+bool		 is_downstream_node_attached(PGconn *conn, char *node_name);
 
 /* BDR functions */
 void		 get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);

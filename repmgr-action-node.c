@@ -32,6 +32,7 @@ static void _do_node_restore_config(void);
 static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
+static CheckStatus do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 
 
 void
@@ -558,6 +559,12 @@ do_node_check(void)
 		return;
 	}
 
+	if (runtime_options.downstream == true)
+	{
+		(void) do_node_check_downstream(conn, runtime_options.output_mode, NULL);
+		PQfinish(conn);
+		return;
+	}
 	/* output general overview */
 
 	initPQExpBuffer(&output);
@@ -565,7 +572,7 @@ do_node_check(void)
 	(void) do_node_check_role(conn, runtime_options.output_mode, &node_info, &status_list);
 	(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &status_list);
 	(void) do_node_check_archiver(conn, runtime_options.output_mode, &status_list);
-
+	(void) do_node_check_downstream(conn, runtime_options.output_mode, &status_list);
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
@@ -1016,6 +1023,103 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *li
 	return status;
 }
 
+/* TODO: ensure only runs on streaming replication nodes */
+static CheckStatus
+do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
+{
+	NodeInfoList 	  downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
+	NodeInfoListCell *cell = NULL;
+	int				  missing_nodes_count = 0;
+	CheckStatus 	  status = CHECK_STATUS_OK;
+	ItemList 		  missing_nodes = { NULL, NULL };
+	PQExpBufferData   details;
+
+	initPQExpBuffer(&details);
+
+	get_downstream_node_records(conn, config_file_options.node_id, &downstream_nodes);
+
+	for (cell = downstream_nodes.head; cell; cell = cell->next)
+	{
+		if (is_downstream_node_attached(conn, cell->node_info->node_name) == false)
+		{
+			missing_nodes_count ++;
+			item_list_append_format(&missing_nodes,
+									"%s (ID: %i)",
+									cell->node_info->node_name,
+									cell->node_info->node_id);
+		}
+	}
+
+	if (missing_nodes_count == 0)
+	{
+		if (downstream_nodes.node_count == 0)
+			appendPQExpBuffer(
+				&details,
+				"this node has no downstream nodes");
+		else
+			appendPQExpBuffer(
+				&details,
+				"%i of %i downstream nodes attached",
+				downstream_nodes.node_count,
+				downstream_nodes.node_count);
+	}
+	else
+	{
+		ItemListCell *missing_cell = NULL;
+		bool first = true;
+		status = CHECK_STATUS_CRITICAL;
+
+		appendPQExpBuffer(
+				&details,
+				"%i of %i downstream nodes not attached (missing: ",
+				missing_nodes_count,
+				downstream_nodes.node_count);
+
+		for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
+		{
+			if (first == false)
+				appendPQExpBuffer(
+					&details,
+					",");
+			else
+				first = false;
+
+			if (first == false)
+				appendPQExpBuffer(
+					&details,
+					"%s", missing_cell->string);
+		}
+	}
+
+	switch (mode)
+	{
+		case OM_NAGIOS:
+			printf("PG_DOWNSTREAM_SERVERS %s: %s\n",
+				   output_check_status(status),
+				   details.data);
+			break;
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Downstream servers",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
+
+	}
+	termPQExpBuffer(&details);
+
+	return status;
+}
 
 // --action=...
 // --check

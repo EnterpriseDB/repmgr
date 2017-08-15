@@ -2426,6 +2426,53 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 }
 
 
+bool
+is_downstream_node_attached(PGconn *conn, char *node_name)
+{
+	PQExpBufferData	 query;
+	PGresult		*res = NULL;
+	int				 c = 0;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		" SELECT COUNT(*) FROM pg_catalog.pg_stat_replication "
+		"  WHERE application_name = '%s'",
+		node_name);
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_verbose(LOG_WARNING, _("unable to query pg_stat_replication"));
+		log_detail("%s", PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	if (PQntuples(res) != 1)
+	{
+		log_verbose(LOG_WARNING, _("unexpected number of tuples (%i) returned"), PQntuples(res));
+		PQclear(res);
+		return false;
+	}
+
+	c = atoi(PQgetvalue(res, 0, 0));
+	PQclear(res);
+
+	if (c == 0)
+	{
+		log_verbose(LOG_WARNING, _("node \"%s\" not found in \"pg_stat_replication\""), node_name);
+		return false;
+	}
+
+	if (c > 1)
+		log_verbose(LOG_WARNING, _("multiple entries with \"application_name\" set to  \"%s\" found in \"pg_stat_replication\""),
+					node_name);
+
+	return true;
+}
 
 void
 clear_node_info_list(NodeInfoList *nodes)
