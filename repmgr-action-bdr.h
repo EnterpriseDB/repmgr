@@ -9,5 +9,7 @@
 extern void do_bdr_register(void);
 extern void do_bdr_unregister(void);
 
+extern void do_bdr_help(void);
+
 
 #endif /* _REPMGR_ACTION_BDR_H_ */

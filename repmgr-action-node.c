@@ -1249,11 +1249,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 	return status;
 }
 
-// --action=...
-// --check
-// --list -> list what would be executed for each action, filter to --action
 
-// --checkpoint must be run as superuser - check connection
 void
 do_node_service(void)
 {
@@ -1966,4 +1962,13 @@ copy_file(const char *src_file, const char *dest_file)
 	fclose(ptr_old);
 
 	return true;
+}
+
+
+void
+do_node_help(void)
+{
+	print_help_header();
+
+
 }

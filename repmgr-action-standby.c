@@ -4065,3 +4065,12 @@ parse_node_check_replication_lag(const char *node_check_output, int *seconds, in
 
 	return status;
 }
+
+
+void
+do_standby_help(void)
+{
+	print_help_header();
+
+
+}

@@ -414,3 +414,12 @@ do_bdr_unregister(void)
 
 	return;
 }
+
+
+void
+do_bdr_help(void)
+{
+	print_help_header();
+
+
+}

@@ -9,4 +9,5 @@
 extern void do_primary_register(void);
 extern void do_primary_unregister(void);
 
+extern void do_primary_help(void);
 #endif

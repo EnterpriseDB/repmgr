@@ -84,11 +84,13 @@ main(int argc, char **argv)
 	int			optindex;
 	int			c;
 
-	char	   *repmgr_node_type = NULL;
+	char	   *repmgr_command = NULL;
 	char	   *repmgr_action = NULL;
-	bool		valid_repmgr_node_type_found = true;
+	bool		valid_repmgr_command_found = true;
 	int			action = NO_ACTION;
 	char	   *dummy_action = "";
+
+	bool	    help_option = false;
 
 	set_progname(argv[0]);
 
@@ -173,8 +175,10 @@ main(int argc, char **argv)
 			 * these are the only ones which can be executed as root user
 			 */
 			case OPT_HELP: /* --help */
-				do_help();
-				exit(SUCCESS);
+				help_option = true;
+				break;
+				//do_help();
+				//exit(SUCCESS);
 			case '?':
 				/* Actual help option given */
 				if (strcmp(argv[optind - 1], "-?") == 0)
@@ -646,7 +650,7 @@ main(int argc, char **argv)
 	 * We check this here to give the root user a chance to execute --help/--version
 	 * options.
 	 */
-	if (geteuid() == 0)
+	if (geteuid() == 0 && help_option == false)
 	{
 		fprintf(stderr,
 				_("%s: cannot be run as root\n"
@@ -679,7 +683,7 @@ main(int argc, char **argv)
 	 */
 	if (optind < argc)
 	{
-		repmgr_node_type = argv[optind++];
+		repmgr_command = argv[optind++];
 	}
 
 	if (optind < argc)
@@ -691,11 +695,17 @@ main(int argc, char **argv)
 		repmgr_action = dummy_action;
 	}
 
-	if (repmgr_node_type != NULL)
+	if (repmgr_command != NULL)
 	{
 #ifndef BDR_ONLY
-		if (strcasecmp(repmgr_node_type, "PRIMARY") == 0 || strcasecmp(repmgr_node_type, "MASTER") == 0 )
+		if (strcasecmp(repmgr_command, "PRIMARY") == 0 || strcasecmp(repmgr_command, "MASTER") == 0 )
 		{
+			if (help_option == true)
+			{
+				do_primary_help();
+				exit(SUCCESS);
+			}
+
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = PRIMARY_REGISTER;
 			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
@@ -706,8 +716,14 @@ main(int argc, char **argv)
 				action = NODE_STATUS;
 		}
 
-		else if (strcasecmp(repmgr_node_type, "STANDBY") == 0)
+		else if (strcasecmp(repmgr_command, "STANDBY") == 0)
 		{
+			if (help_option == true)
+			{
+				do_standby_help();
+				exit(SUCCESS);
+			}
+
 			if (strcasecmp(repmgr_action, "CLONE") == 0)
 				action = STANDBY_CLONE;
 			else if (strcasecmp(repmgr_action, "REGISTER") == 0)
@@ -725,11 +741,17 @@ main(int argc, char **argv)
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
 				action = NODE_STATUS;
 		}
-		else if (strcasecmp(repmgr_node_type, "BDR") == 0)
+		else if (strcasecmp(repmgr_command, "BDR") == 0)
 #else
-		if (strcasecmp(repmgr_node_type, "BDR") == 0)
+		if (strcasecmp(repmgr_command, "BDR") == 0)
 #endif
 		{
+			if (help_option == true)
+			{
+				do_bdr_help();
+				exit(SUCCESS);
+			}
+
 			if (strcasecmp(repmgr_action, "REGISTER") == 0)
 				action = BDR_REGISTER;
 			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
@@ -740,8 +762,14 @@ main(int argc, char **argv)
 				action = NODE_STATUS;
 		}
 
-		else if (strcasecmp(repmgr_node_type, "NODE") == 0)
+		else if (strcasecmp(repmgr_command, "NODE") == 0)
 		{
+			if (help_option == true)
+			{
+				do_node_help();
+				exit(SUCCESS);
+			}
+
 		    if (strcasecmp(repmgr_action, "CHECK") == 0)
 				action = NODE_CHECK;
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
@@ -752,8 +780,13 @@ main(int argc, char **argv)
 				action = NODE_SERVICE;
 		}
 
-		else if (strcasecmp(repmgr_node_type, "CLUSTER") == 0)
+		else if (strcasecmp(repmgr_command, "CLUSTER") == 0)
 		{
+			if (help_option == true)
+			{
+				do_cluster_help();
+				exit(SUCCESS);
+			}
 
 			if (strcasecmp(repmgr_action, "SHOW") == 0)
 				action = CLUSTER_SHOW;
@@ -769,8 +802,14 @@ main(int argc, char **argv)
 		}
 		else
 		{
-			valid_repmgr_node_type_found = false;
+			valid_repmgr_command_found = false;
 		}
+	}
+
+	if (help_option == true)
+	{
+		do_help();
+		exit(SUCCESS);
 	}
 
 	if (action == NO_ACTION)
@@ -778,28 +817,28 @@ main(int argc, char **argv)
 		PQExpBufferData command_error;
 		initPQExpBuffer(&command_error);
 
-		if (repmgr_node_type == NULL)
+		if (repmgr_command == NULL)
 		{
 			appendPQExpBuffer(&command_error,
 							  _("no repmgr command provided"));
 		}
-		else if (valid_repmgr_node_type_found == false && repmgr_action[0] == '\0')
+		else if (valid_repmgr_command_found == false && repmgr_action[0] == '\0')
 		{
 			appendPQExpBuffer(&command_error,
-							  _("unknown repmgr node type '%s'"),
-							  repmgr_node_type);
+							  _("unknown repmgr command '%s'"),
+							  repmgr_command);
 		}
 		else if (repmgr_action[0] == '\0')
 		{
 		   appendPQExpBuffer(&command_error,
-							 _("no action provided for node type '%s'"),
-							 repmgr_node_type);
+							 _("no action provided for command '%s'"),
+							 repmgr_command);
 		}
 		else
 		{
 			appendPQExpBuffer(&command_error,
 							  _("unknown repmgr action '%s %s'"),
-							  repmgr_node_type,
+							  repmgr_command,
 							  repmgr_action);
 		}
 
@@ -1565,8 +1604,8 @@ print_error_list(ItemList *error_list, int log_level)
 }
 
 
-static void
-do_help(void)
+void
+print_help_header(void)
 {
 	printf(_("%s: replication management tool for PostgreSQL\n"), progname());
 	puts("");
@@ -1579,15 +1618,25 @@ do_help(void)
 		printf(_("	**************************************************\n"));
 		puts("");
 	}
+}
+
+static void
+do_help(void)
+{
+	print_help_header();
 
 	printf(_("Usage:\n"));
 #ifndef BDR_ONLY
-	printf(_("	%s [OPTIONS] primary {register|unregister}\n"), progname());
-	printf(_("	%s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"), progname());
+	printf(_("    %s [OPTIONS] primary {register|unregister}\n"), progname());
+	printf(_("    %s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"), progname());
 #endif
-	printf(_("	%s [OPTIONS] bdr     {register|unregister}\n"), progname());
-	printf(_("	%s [OPTIONS] node    status\n"), progname());
-	printf(_("	%s [OPTIONS] cluster {show|event|matrix|crosscheck}\n"), progname());
+	printf(_("    %s [OPTIONS] bdr     {register|unregister}\n"), progname());
+	printf(_("    %s [OPTIONS] node    status\n"), progname());
+	printf(_("    %s [OPTIONS] cluster {show|event|matrix|crosscheck}\n"), progname());
+
+	puts("");
+
+	printf(_("  Execute \"%s {primary|standby|bdr|node|cluster} --help\" to see command-specific options\n"), progname());
 
 	puts("");
 

@@ -489,3 +489,13 @@ do_primary_unregister(void)
 	PQfinish(primary_conn);
 	return;
 }
+
+
+
+void
+do_primary_help(void)
+{
+	print_help_header();
+
+
+}

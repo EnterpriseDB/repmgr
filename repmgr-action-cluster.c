@@ -1083,3 +1083,12 @@ cube_set_node_status(t_node_status_cube **cube, int n, int execute_node_id, int 
 		}
 	}
 }
+
+
+void
+do_cluster_help(void)
+{
+	print_help_header();
+
+
+}

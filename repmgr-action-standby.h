@@ -13,6 +13,8 @@ extern void do_standby_promote(void);
 extern void do_standby_follow(void);
 extern void do_standby_switchover(void);
 
+extern void do_standby_help(void);
+
 extern bool do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_record, PQExpBufferData *output);
 
 
