@@ -29,11 +29,11 @@ static void _do_node_status_is_shutdown(void);
 static void _do_node_archive_config(void);
 static void _do_node_restore_config(void);
 
-static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
-static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 static CheckStatus do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
-
+static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
+static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
+static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 
 void
 do_node_status(void)
@@ -536,6 +536,9 @@ do_node_check(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* add replication statistics to node record */
+	get_node_replication_stats(conn, &node_info);
+
 	/* handle specific checks
 	 * ====================== */
 	if (runtime_options.archiver == true)
@@ -545,9 +548,17 @@ do_node_check(void)
 		return;
 	}
 
+	if (runtime_options.downstream == true)
+	{
+		(void) do_node_check_downstream(conn, runtime_options.output_mode, NULL);
+		PQfinish(conn);
+		return;
+	}
+
+
 	if (runtime_options.replication_lag == true)
 	{
-		(void) do_node_check_replication_lag(conn, runtime_options.output_mode, NULL);
+		(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &node_info, NULL);
 		PQfinish(conn);
 		return;
 	}
@@ -559,20 +570,24 @@ do_node_check(void)
 		return;
 	}
 
-	if (runtime_options.downstream == true)
+	if (runtime_options.slots == true)
 	{
-		(void) do_node_check_downstream(conn, runtime_options.output_mode, NULL);
+		(void) do_node_check_slots(conn, runtime_options.output_mode, &node_info, NULL);
 		PQfinish(conn);
 		return;
 	}
+
+
 	/* output general overview */
 
 	initPQExpBuffer(&output);
 
+	/* order functions are called is also output order */
 	(void) do_node_check_role(conn, runtime_options.output_mode, &node_info, &status_list);
-	(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &status_list);
+	(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &node_info, &status_list);
 	(void) do_node_check_archiver(conn, runtime_options.output_mode, &status_list);
 	(void) do_node_check_downstream(conn, runtime_options.output_mode, &status_list);
+	(void) do_node_check_slots(conn, runtime_options.output_mode, &node_info, &status_list);
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
@@ -640,6 +655,12 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 					&details,
 					_("node is registered as primary but running as standby"));
 			}
+			else
+			{
+				appendPQExpBuffer(
+					&details,
+					_("node is primary"));
+			}
 			break;
 		case STANDBY:
 			if (recovery_type == RECTYPE_PRIMARY)
@@ -648,6 +669,12 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 				appendPQExpBuffer(
 					&details,
 					_("node is registered as standby but running as primary"));
+			}
+			else
+			{
+				appendPQExpBuffer(
+					&details,
+					_("node is standby"));
 			}
 			break;
 		case BDR:
@@ -696,10 +723,9 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 			}
 			else
 			{
-				printf("%s", output_check_status(status));
-				if (strlen(details.data))
-					printf(" (%s)", details.data);
-				puts("");
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
 			}
 		default:
 			break;
@@ -709,6 +735,70 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 	return status;
 
 }
+
+
+static CheckStatus
+do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
+{
+	CheckStatus status = CHECK_STATUS_OK;
+	PQExpBufferData details;
+
+	initPQExpBuffer(&details);
+
+	if (node_info->total_replication_slots == 0)
+	{
+		appendPQExpBuffer(
+			&details,
+			_("node has no replication slots"));
+	}
+	else if (node_info->inactive_replication_slots == 0)
+	{
+		appendPQExpBuffer(
+			&details,
+			_("%i of %i replication slots are active"),
+			node_info->total_replication_slots,
+			node_info->total_replication_slots);
+	}
+	else if (node_info->inactive_replication_slots > 0)
+	{
+		status = CHECK_STATUS_CRITICAL;
+
+		appendPQExpBuffer(
+			&details,
+			_("%i of %i replication slots are inactive"),
+			node_info->inactive_replication_slots,
+			node_info->total_replication_slots);
+	}
+
+	switch (mode)
+	{
+		case OM_NAGIOS:
+			printf("PG_INACTIVE_SLOTS %s: %s\n",
+				   output_check_status(status),
+				   details.data);
+			break;
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Replication slots",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
+	}
+
+	termPQExpBuffer(&details);
+	return status;
+}
+
 
 static CheckStatus
 do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
@@ -866,9 +956,9 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 
 
 static CheckStatus
-do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
+do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
 {
-	CheckStatus status = CHECK_STATUS_UNKNOWN;
+	CheckStatus status = CHECK_STATUS_OK;
 	int lag_seconds = 0;
 	PQExpBufferData details;
 
@@ -881,109 +971,135 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, CheckStatusList *li
 
 	initPQExpBuffer(&details);
 
-	lag_seconds = get_replication_lag_seconds(conn);
-
-	log_debug("lag seconds: %i", lag_seconds);
-
-	if (lag_seconds >= config_file_options.replication_lag_critical)
+	if (node_info->recovery_type == RECTYPE_PRIMARY)
 	{
-		status = CHECK_STATUS_CRITICAL;
-
 		switch (mode)
 		{
 			case OM_OPTFORMAT:
 				appendPQExpBuffer(
 					&details,
-					"--lag=%i --threshold=%i",
-					lag_seconds, config_file_options.replication_lag_critical);
+					"--lag=0");
 				break;
 			case OM_NAGIOS:
 				appendPQExpBuffer(
 					&details,
-					"%i seconds (critical: %i)",
-					lag_seconds, config_file_options.replication_lag_critical);
+					"0 seconds");
 				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
 					&details,
-					"%i seconds, threshold: %i)",
-					lag_seconds, config_file_options.replication_lag_critical);
+					"N/A - node is primary");
 				break;
-
-			default:
-				break;
-		}
-	}
-	else if (lag_seconds > config_file_options.replication_lag_warning)
-	{
-		status = CHECK_STATUS_WARNING;
-
-		switch (mode)
-		{
-			case OM_OPTFORMAT:
-				appendPQExpBuffer(
-					&details,
-					"--lag=%i --threshold=%i",
-					lag_seconds, config_file_options.replication_lag_warning);
-				break;
-			case OM_NAGIOS:
-				appendPQExpBuffer(
-					&details,
-					"%i seconds (warning: %i)",
-					lag_seconds, config_file_options.replication_lag_warning);
-				break;
-			case OM_TEXT:
-				appendPQExpBuffer(
-					&details,
-					"%i seconds, threshold: %i)",
-					lag_seconds, config_file_options.replication_lag_warning);
-				break;
-
-			default:
-				break;
-		}
-	}
-	else if (lag_seconds < 0)
-	{
-		status = CHECK_STATUS_UNKNOWN;
-
-		switch (mode)
-		{
-			case OM_OPTFORMAT:
-				break;
-			case OM_NAGIOS:
-			case OM_TEXT:
-				appendPQExpBuffer(
-					&details,
-					"unable to query replication lag");
-				break;
-
 			default:
 				break;
 		}
 	}
 	else
 	{
-		status = CHECK_STATUS_OK;
+		lag_seconds = get_replication_lag_seconds(conn);
 
-		switch (mode)
+		log_debug("lag seconds: %i", lag_seconds);
+
+		if (lag_seconds >= config_file_options.replication_lag_critical)
 		{
-			case OM_OPTFORMAT:
-				appendPQExpBuffer(
-					&details,
-					"--lag=%i",
-					lag_seconds);
-				break;
-			case OM_NAGIOS:
-			case OM_TEXT:
-				appendPQExpBuffer(
-					&details,
-					"%i seconds",
-					lag_seconds);
-				break;
+			status = CHECK_STATUS_CRITICAL;
 
-			default:
-				break;
+			switch (mode)
+			{
+				case OM_OPTFORMAT:
+					appendPQExpBuffer(
+						&details,
+						"--lag=%i --threshold=%i",
+						lag_seconds, config_file_options.replication_lag_critical);
+					break;
+				case OM_NAGIOS:
+					appendPQExpBuffer(
+						&details,
+						"%i seconds (critical: %i)",
+						lag_seconds, config_file_options.replication_lag_critical);
+					break;
+				case OM_TEXT:
+					appendPQExpBuffer(
+						&details,
+						"%i seconds, threshold: %i)",
+						lag_seconds, config_file_options.replication_lag_critical);
+					break;
+
+				default:
+					break;
+			}
+		}
+		else if (lag_seconds > config_file_options.replication_lag_warning)
+		{
+			status = CHECK_STATUS_WARNING;
+
+			switch (mode)
+			{
+				case OM_OPTFORMAT:
+					appendPQExpBuffer(
+						&details,
+						"--lag=%i --threshold=%i",
+						lag_seconds, config_file_options.replication_lag_warning);
+					break;
+				case OM_NAGIOS:
+					appendPQExpBuffer(
+						&details,
+						"%i seconds (warning: %i)",
+						lag_seconds, config_file_options.replication_lag_warning);
+					break;
+				case OM_TEXT:
+					appendPQExpBuffer(
+						&details,
+						"%i seconds, threshold: %i)",
+						lag_seconds, config_file_options.replication_lag_warning);
+					break;
+
+				default:
+					break;
+			}
+		}
+		else if (lag_seconds < 0)
+		{
+			status = CHECK_STATUS_UNKNOWN;
+
+			switch (mode)
+			{
+				case OM_OPTFORMAT:
+					break;
+				case OM_NAGIOS:
+				case OM_TEXT:
+					appendPQExpBuffer(
+						&details,
+					"unable to query replication lag");
+					break;
+
+				default:
+					break;
+			}
+		}
+		else
+		{
+			status = CHECK_STATUS_OK;
+
+			switch (mode)
+			{
+				case OM_OPTFORMAT:
+					appendPQExpBuffer(
+						&details,
+						"--lag=%i",
+						lag_seconds);
+					break;
+				case OM_NAGIOS:
+				case OM_TEXT:
+					appendPQExpBuffer(
+						&details,
+						"%i seconds",
+						lag_seconds);
+					break;
+
+				default:
+					break;
+			}
 		}
 	}
 
@@ -1072,16 +1188,23 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 
 		appendPQExpBuffer(
 				&details,
-				"%i of %i downstream nodes not attached (missing: ",
+				"%i of %i downstream nodes not attached",
 				missing_nodes_count,
 				downstream_nodes.node_count);
+
+		if (mode == OM_NAGIOS)
+			appendPQExpBuffer(
+				&details, " (missing: ");
+		else
+			appendPQExpBuffer(
+				&details, "; missing: ");
 
 		for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
 		{
 			if (first == false)
 				appendPQExpBuffer(
 					&details,
-					",");
+					", ");
 			else
 				first = false;
 
@@ -1090,6 +1213,10 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 					&details,
 					"%s", missing_cell->string);
 		}
+
+		if (mode == OM_NAGIOS)
+			appendPQExpBufferChar(
+				&details, ')');
 	}
 
 	switch (mode)
@@ -1118,7 +1245,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 
 	}
 	termPQExpBuffer(&details);
-
+	clear_node_info_list(&downstream_nodes);
 	return status;
 }
 
@@ -1840,5 +1967,3 @@ copy_file(const char *src_file, const char *dest_file)
 
 	return true;
 }
-
-

@@ -88,6 +88,7 @@ typedef struct
 	bool		downstream;
 	bool		replication_lag;
 	bool		role;
+	bool		slots;
 
 	/* "node join" options */
 	char		config_files[MAXLEN];
@@ -133,7 +134,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false,\
+		false, false, false, false, false, \
 		/* "node join" options */ \
 		"", \
 		/* "node service" options */ \

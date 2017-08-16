@@ -102,6 +102,7 @@ typedef struct s_node_info
 	int			  max_wal_senders;
 	int			  attached_wal_receivers;
 	int			  max_replication_slots;
+	int			  total_replication_slots;
 	int			  active_replication_slots;
 	int			  inactive_replication_slots;
 }	t_node_info;
@@ -130,7 +131,7 @@ typedef struct s_node_info
 	/* for ad-hoc use e.g. when working with a list of nodes */ \
 	"", true, true \
 	/* various statistics */ \
-	-1, -1, -1, -1, -1 \
+	-1, -1, -1, -1, -1, -1					\
 }
 
 

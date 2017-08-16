@@ -438,6 +438,10 @@ main(int argc, char **argv)
 				runtime_options.role = true;
 				break;
 
+			case OPT_SLOTS:
+				runtime_options.slots = true;
+				break;
+
 			/* "node join" options *
 			 * ------------------- */
 			case OPT_CONFIG_FILES:

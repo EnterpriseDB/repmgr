@@ -10,7 +10,13 @@ operations.
 `repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
 
 Supports PostgreSQL 9.5 and later; support for PostgreSQL 9.3 and 9.4 has been
-dropped. To use `repmgr 4` with BDR 2.0, PostgreSQL 9.6 is required.
+dropped. Please continue to use repmgrd 3.x for those versions.
+
+### BDR support
+
+`repmgr 4` supports monitoring of a two-node BDR 2.0 cluster. PostgreSQL 9.6 is
+required for BDR 2.0. Note that BDR 2.0 is not publicly available; please contact
+2ndQuadrant for details. `repmgr 4` will support future public BDR releases.
 
 Building from source
 --------------------
@@ -66,6 +72,36 @@ The following commands are available:
     can instruct these to follow the new primary. Note this can only work
     if the configuration file on each sibling is the same path as specifed
     in -f/--config-file or -C/--remote-config-file.
+
+* `node status`
+
+* `node check`
+
+    Performs some health checks on a node from a replication perspective.
+
+    Sample output (execute `repmgr node check`):
+
+        Node "node1":
+                Server role: OK (node is primary)
+                Replication lag: OK (N/A - node is primary)
+                WAL archiving: OK (0 pending files)
+                Downstream servers: OK (2 of 2 downstream nodes attached)
+                Replication slots: OK (node has no replication slots)
+
+    Additionally each check can be performed individually by supplying
+    an additional command line parameter, e.g.:
+
+        $ repmgr node check --role
+        OK (node is primary)
+
+    Parameters for individual checks are as follows:
+
+    * `--role`: checks if the node has the expected role
+    * `--replication-lag"`: checks if the node is lagging by more than
+        `replication_lag_warning` or `replication_lag_critical` seconds.
+    * `--archiver`: checks for WAL files which have not yet been archived
+    * `--downstream`: checks that the expected downstream nodes are attached
+    * `--slots`: checks there are no inactive replication slots
 
 * `cluster show`
 

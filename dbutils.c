@@ -2400,8 +2400,10 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 		" SELECT current_setting('max_wal_senders')::INT AS max_wal_senders, "
 		"        (SELECT COUNT(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, "
 		"        current_setting('max_replication_slots')::INT AS max_replication_slots, "
+		"        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
 		"        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = TRUE)  AS active_replication_slots, "
-		"        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = FALSE) AS inactive_replication_slots ");
+		"        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = FALSE) AS inactive_replication_slots, "
+		"        pg_catalog.pg_is_in_recovery() AS in_recovery");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -2417,8 +2419,10 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 	node_info->max_wal_senders = atoi(PQgetvalue(res, 0, 0));
 	node_info->attached_wal_receivers = atoi(PQgetvalue(res, 0, 1));
 	node_info->max_replication_slots = atoi(PQgetvalue(res, 0, 2));
-	node_info->active_replication_slots = atoi(PQgetvalue(res, 0, 3));
-	node_info->inactive_replication_slots = atoi(PQgetvalue(res, 0, 4));
+	node_info->total_replication_slots = atoi(PQgetvalue(res, 0, 3));
+	node_info->active_replication_slots = atoi(PQgetvalue(res, 0, 4));
+	node_info->inactive_replication_slots = atoi(PQgetvalue(res, 0, 5));
+	node_info->recovery_type = strcmp(PQgetvalue(res, 0, 6), "f") == 0 ? RECTYPE_PRIMARY : RECTYPE_STANDBY;
 
 	PQclear(res);
 
