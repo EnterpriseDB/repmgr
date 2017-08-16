@@ -75,18 +75,37 @@ The following commands are available:
 
 * `node status`
 
+    Displays an overview of a node's basic information and replication
+    status. This command must be run on the local node.
+
+    Sample output (execute `repmgr node status`):
+
+        Node "node1":
+            PostgreSQL version: 10beta1
+            Total data size: 30 MB
+            Conninfo: host=localhost dbname=repmgr user=repmgr connect_timeout=2
+            Role: primary
+            WAL archiving: off
+            Archive command: (none)
+            Replication connections: 2 (of maximal 10)
+            Replication slots: 0 (of maximal 10)
+            Replication lag: n/a
+
+    See `repmgr node check` to diagnose issues.
+
 * `node check`
 
     Performs some health checks on a node from a replication perspective.
+    This command must be run on the local node.
 
     Sample output (execute `repmgr node check`):
 
         Node "node1":
-                Server role: OK (node is primary)
-                Replication lag: OK (N/A - node is primary)
-                WAL archiving: OK (0 pending files)
-                Downstream servers: OK (2 of 2 downstream nodes attached)
-                Replication slots: OK (node has no replication slots)
+            Server role: OK (node is primary)
+            Replication lag: OK (N/A - node is primary)
+            WAL archiving: OK (0 pending files)
+            Downstream servers: OK (2 of 2 downstream nodes attached)
+            Replication slots: OK (node has no replication slots)
 
     Additionally each check can be performed individually by supplying
     an additional command line parameter, e.g.:
@@ -144,7 +163,8 @@ The following commands are available:
 
     Note that the availability is tested by connecting from the node where
     `repmgr cluster show` is executed, and does not necessarily imply the node
-    is down.
+    is down. See `repmgr cluster matrix` and `repmgr cluster crosscheck` to get
+    a better overviews of connections between nodes.
 
 
 * `cluster matrix` and `cluster crosscheck`
