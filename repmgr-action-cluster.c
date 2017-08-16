@@ -564,6 +564,28 @@ do_cluster_crosscheck(void)
 
 		printf("\n");
 	}
+
+	/* clean up allocated cube array */
+	{
+		int h, j;
+		for (h = 0; h < n; h++)
+		{
+			for (i = 0; i < n; i++)
+			{
+				for (j = 0; j < n; j++)
+				{
+					free(cube[h]->matrix_list_rec[i]->node_status_list[j]);
+				}
+				free(cube[h]->matrix_list_rec[i]->node_status_list);
+				free(cube[h]->matrix_list_rec[i]);
+			}
+
+			free(cube[h]->matrix_list_rec);
+			free(cube[h]);
+		}
+
+		free(cube);
+	}
 }
 
 
@@ -892,6 +914,8 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 	t_node_status_cube **cube;
 
+	int node_count = 0;
+
 	/* We need to connect to get the list of nodes */
 	log_info(_("connecting to database\n"));
 
@@ -1029,6 +1053,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 							  command.data);
 
 			initialize_conninfo_params(&remote_conninfo, false);
+
 			parse_conninfo_string(cell->node_info->conninfo,
 								  &remote_conninfo,
 								  NULL,
@@ -1044,13 +1069,17 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 				quoted_command.data,
 				&command_output);
 
+			free_conninfo_params(&remote_conninfo);
 			termPQExpBuffer(&quoted_command);
 		}
+
+		termPQExpBuffer(&command);
 
 		p = command_output.data;
 
 		if(!strlen(command_output.data))
 		{
+			termPQExpBuffer(&command_output);
 			continue;
 		}
 
@@ -1078,12 +1107,18 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 			if (*p == '\n')
 				p++;
 		}
+		termPQExpBuffer(&command_output);
 
 		i++;
 	}
 
 	*dest_cube = cube;
-	return nodes.node_count;
+
+	node_count = nodes.node_count;
+
+	clear_node_info_list(&nodes);
+
+	return node_count;
 }
 
 
