@@ -1970,5 +1970,31 @@ do_node_help(void)
 {
 	print_help_header();
 
+	printf(_("Usage:\n"));
+	printf(_("    %s [OPTIONS] node status\n"), progname());
+	printf(_("    %s [OPTIONS] node check\n"), progname());
+	printf(_("    %s [OPTIONS] node rejoin\n"), progname());
+	printf(_("    %s [OPTIONS] node service\n"), progname());
+	puts("");
+
+	printf(_("NODE STATUS\n"));
+	puts("");
+	printf(_("  \"node status\" .\n"));
+	puts("");
+
+	printf(_("NODE CHECK\n"));
+	puts("");
+	printf(_("  \"node check\" .\n"));
+	puts("");
+
+	printf(_("NODE REJOIN\n"));
+	puts("");
+	printf(_("  \"node rejoin\" .\n"));
+	puts("");
+
+	printf(_("NODE SERVICE\n"));
+	puts("");
+	printf(_("  \"node service\" .\n"));
+	puts("");
 
 }

@@ -497,5 +497,21 @@ do_primary_help(void)
 {
 	print_help_header();
 
+	printf(_("Usage:\n"));
+	printf(_("    %s [OPTIONS] primary register\n"), progname());
+	printf(_("    %s [OPTIONS] primary unregister\n"), progname());
+	puts("");
+	printf(_("  Note: \"%s repmgr master ...\" can be used as an alias\n"), progname());
+	puts("");
+
+	printf(_("PRIMARY REGISTER\n"));
+	puts("");
+	printf(_("  \"primary register\" initialises the repmgr cluster and registers the primary node.\n"));
+	puts("");
+
+	printf(_("PRIMARY UNREGISTER\n"));
+	puts("");
+	printf(_("  \"primary unregister\" unregisters an inactive primary node.\n"));
+	puts("");
 
 }

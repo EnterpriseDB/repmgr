@@ -1170,25 +1170,35 @@ do_cluster_help(void)
 	puts("");
 	printf(_("  Configuration file or database connection required.\n"));
 	puts("");
-	printf(_("  --csv                 emit output as CSV (with a subset of fields)\n"));
+	printf(_("    --csv                 emit output as CSV (with a subset of fields)\n"));
 	puts("");
 
 	printf(_("CLUSTER MATRIX\n"));
 	puts("");
-	printf(_("  \"cluster show\" displays a matrix showing connectivity between nodes, seen from this node.\n"));
+	printf(_("  \"cluster matrix\" displays a matrix showing connectivity between nodes, seen from this node.\n"));
 	puts("");
 	printf(_("  Configuration file or database connection required.\n"));
 	puts("");
-	printf(_("  --csv                 emit output as CSV\n"));
+	printf(_("    --csv                 emit output as CSV\n"));
 	puts("");
+
+	printf(_("CLUSTER CROSSCHECK\n"));
+	puts("");
+	printf(_("  \"cluster crosscheck\" displays a matrix showing connectivity between nodes, seen from all nodes.\n"));
+	puts("");
+	printf(_("  Configuration file or database connection required.\n"));
+	puts("");
+	printf(_("    --csv                 emit output as CSV\n"));
+	puts("");
+
 
 	printf(_("CLUSTER EVENT\n"));
 	puts("");
 	printf(_("  \"cluster event\" lists recent events logged in the \"repmgr.events\" table.\n"));
 	puts("");
-	printf(_("  --limit               maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
-	printf(_("  --all                 display all events (overrides --limit)\n"));
-	printf(_("  --event               filter specific event\n"));
+	printf(_("    --limit               maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
+	printf(_("    --all                 display all events (overrides --limit)\n"));
+	printf(_("    --event               filter specific event\n"));
 	puts("");
 
 }

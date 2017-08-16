@@ -421,5 +421,18 @@ do_bdr_help(void)
 {
 	print_help_header();
 
+	printf(_("Usage:\n"));
+	printf(_("    %s [OPTIONS] bdr register\n"), progname());
+	printf(_("    %s [OPTIONS] bdr unregister\n"), progname());
+	puts("");
 
+	printf(_("BDR REGISTER\n"));
+	puts("");
+	printf(_("  \"bdr register\" initialises the repmgr cluster and registers the initial bdr node.\n"));
+	puts("");
+
+	printf(_("BDR UNREGISTER\n"));
+	puts("");
+	printf(_("  \"bdr unregister\" unregisters an inactive BDR node.\n"));
+	puts("");
 }

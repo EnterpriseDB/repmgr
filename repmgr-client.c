@@ -63,8 +63,7 @@ t_conninfo_param_list source_conninfo;
 bool	 config_file_required = true;
 char	 pg_bindir[MAXLEN] = "";
 
-
-char  path_buf[MAXLEN] = "";
+char	 path_buf[MAXLEN] = "";
 
 /*
  * if --node-id/--node-name provided, place that node's record here
@@ -177,14 +176,11 @@ main(int argc, char **argv)
 			case OPT_HELP: /* --help */
 				help_option = true;
 				break;
-				//do_help();
-				//exit(SUCCESS);
 			case '?':
 				/* Actual help option given */
 				if (strcmp(argv[optind - 1], "-?") == 0)
 				{
-					do_help();
-					exit(SUCCESS);
+					help_option = true;
 				}
 				break;
 			case 'V':

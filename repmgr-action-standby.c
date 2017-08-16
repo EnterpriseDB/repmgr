@@ -4073,4 +4073,46 @@ do_standby_help(void)
 	print_help_header();
 
 
+
+	printf(_("Usage:\n"));
+	printf(_("    %s [OPTIONS] standby clone\n"), progname());
+	printf(_("    %s [OPTIONS] standby register\n"), progname());
+	printf(_("    %s [OPTIONS] standby unregister\n"), progname());
+	printf(_("    %s [OPTIONS] standby promote\n"), progname());
+	printf(_("    %s [OPTIONS] standby follow\n"), progname());
+	printf(_("    %s [OPTIONS] standby switchover\n"), progname());
+
+	puts("");
+
+	printf(_("STANDBY CLONE\n"));
+	puts("");
+	printf(_("  \"standby clone\" clones a standby from the primary or an upstream node.\n"));
+	puts("");
+
+	printf(_("STANDBY REGISTER\n"));
+	puts("");
+	printf(_("  \"standby register\" registers the standby node.\n"));
+	puts("");
+
+	printf(_("STANDBY UNREGISTER\n"));
+	puts("");
+	printf(_("  \"standby unregister\" unregisters an inactive standby node.\n"));
+	puts("");
+
+	printf(_("STANDBY PROMOTE\n"));
+	puts("");
+	printf(_("  \"standby promote\" promotes a standby node to primary.\n"));
+	puts("");
+
+	printf(_("STANDBY FOLLOW\n"));
+	puts("");
+	printf(_("  \"standby follow\" instructs a standby node to follow a new primary.\n"));
+	puts("");
+
+
+	printf(_("STANDBY SWITCHOVER\n"));
+	puts("");
+	printf(_("  \"standby switchover\" promotes a standby node to primary, and demotes the previous primary to a standby.\n"));
+	puts("");
+
 }
