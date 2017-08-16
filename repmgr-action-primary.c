@@ -185,13 +185,15 @@ do_primary_register(void)
 	}
 
 	/* Log the event */
-	create_event_notification(conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"primary_register",
-						record_created,
-						event_description.data);
+	create_event_notification(
+		conn,
+		&config_file_options,
+		config_file_options.node_id,
+		"primary_register",
+		record_created,
+		event_description.data);
 
+	termPQExpBuffer(&event_description);
 
 	PQfinish(conn);
 

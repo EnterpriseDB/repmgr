@@ -466,7 +466,7 @@ do_standby_clone(void)
 						true,
 						event_details.data);
 
-	if (PQstatus(primary_conn) == CONNECTION_OK)
+	if (primary_conn != source_conn && PQstatus(primary_conn) == CONNECTION_OK)
 		PQfinish(primary_conn);
 
 	if (PQstatus(source_conn) == CONNECTION_OK)
@@ -1108,6 +1108,7 @@ do_standby_promote(void)
 		exit(ERR_PROMOTION_FAIL);
 	}
 
+	PQfinish(current_primary_conn);
 	PQfinish(conn);
 
 	_do_standby_promote_internal(config_file_options.data_directory);
@@ -1220,6 +1221,7 @@ _do_standby_promote_internal(const char *data_dir)
 						true,
 						details.data);
 
+	termPQExpBuffer(&details);
 	PQfinish(conn);
 
 	return;
@@ -2244,6 +2246,8 @@ do_standby_switchover(void)
 		/* TODO warn about any inactive replication slots*/
 	}
 
+	PQfinish(remote_conn);
+
 	log_notice(_("switchover was successful"));
 	log_detail(_("node \"%s\" is now primary"),
 			   local_node_record.node_name);
@@ -2314,6 +2318,7 @@ do_standby_switchover(void)
 		 * entries in repmgr.nodes match
 		 */
 
+		clear_node_info_list(&sibling_nodes);
 	}
 
 	PQfinish(local_conn);
@@ -2437,11 +2442,13 @@ check_source_server()
 		log_error(_("unable to retrieve source node's data directory"));
 		log_hint(_("STANDBY CLONE must be run as a database superuser"));
 		PQfinish(source_conn);
+		source_conn = NULL;
 		if(superuser_conn != NULL)
 			PQfinish(superuser_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
+
 	if(superuser_conn != NULL)
 		PQfinish(superuser_conn);
 
@@ -3781,6 +3788,16 @@ parse_node_status_is_shutdown(const char *node_status_output, XLogRecPtr *checkP
 			break;
 		}
 	}
+
+	pfree(options_string);
+
+	{
+		int i;
+		for (i = 0; i < argc_item + 2; i ++)
+			pfree(argv_array[i]);
+	}
+	pfree(argv_array);
+
 
 	return node_status;
 }

@@ -1138,7 +1138,11 @@ _get_primary_connection(PGconn *conn,
 		}
 
 		if (PQstatus(remote_conn) != CONNECTION_OK)
+		{
+			PQfinish(remote_conn);
+			remote_conn = NULL;
 			continue;
+		}
 
 		recovery_type = get_recovery_type(remote_conn);
 
