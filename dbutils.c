@@ -2008,6 +2008,8 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 
 	_populate_node_records(res, node_list);
 
+	PQclear(res);
+
 	return;
 }
 

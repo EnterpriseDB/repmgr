@@ -1671,12 +1671,7 @@ do_help(void)
 	printf(_("  -t, --terse                         don't display detail, hints and other non-critical output\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
 
-	puts("");
 
-	printf(_("CLUSTER EVENT options:\n"));
-	printf(_("  --limit                             maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
-	printf(_("  --all                               display all events (overrides --limit)\n"));
-	printf(_("  --event                             filter specific event\n"));
 
 	puts("");
 }

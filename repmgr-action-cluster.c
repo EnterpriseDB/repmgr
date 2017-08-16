@@ -84,11 +84,8 @@ do_cluster_show(void)
 	strncpy(headers_show[SHOW_CONNINFO].title, _("Connection string"), MAXLEN);
 
 	/*
-	 * XXX if repmgr is ever localized into non-ASCII locales,
+	 * NOTE: if repmgr is ever localized into non-ASCII locales,
 	 * use pg_wcssize() or similar to establish printed column length
-	 *
-	 * TODO: skip display of "Upstream" for BDR nodes as it will always
-	 * be empty
 	 */
 
 	for (i = 0; i < SHOW_HEADER_COUNT; i++)
@@ -233,6 +230,7 @@ do_cluster_show(void)
 		termPQExpBuffer(&details);
 
 		PQfinish(cell->node_info->conn);
+		cell->node_info->conn = NULL;
 
 		headers_show[SHOW_ROLE].cur_length = strlen(get_node_type_string(cell->node_info->type));
 		headers_show[SHOW_NAME].cur_length = strlen(cell->node_info->node_name);
@@ -321,6 +319,7 @@ do_cluster_show(void)
 		}
 	}
 
+	clear_node_info_list(&nodes);
 	PQfinish(conn);
 }
 
@@ -632,6 +631,18 @@ do_cluster_matrix()
 			printf("\n");
 		}
 	}
+
+	for (i = 0; i < n; i++)
+	{
+		for (j = 0; j < n; j++)
+		{
+			free(matrix_rec_list[i]->node_status_list[j]);
+		}
+		free(matrix_rec_list[i]->node_status_list);
+		free(matrix_rec_list[i]);
+	}
+
+	free(matrix_rec_list);
 }
 
 
@@ -664,6 +675,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 	PGconn	    *conn = NULL;
 	int			 i = 0, j = 0;
 	int			 local_node_id = UNKNOWN_NODE_ID;
+	int			 node_count = 0;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell = NULL;
 
@@ -689,6 +701,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 	get_all_node_records(conn, &nodes);
 
 	PQfinish(conn);
+	conn = NULL;
 
 	if (nodes.node_count == 0)
 	{
@@ -748,10 +761,11 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
 		int connection_status = 0;
-		t_conninfo_param_list remote_conninfo;
+		t_conninfo_param_list remote_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 		char *host = NULL, *p = NULL;
 		int connection_node_id = cell->node_info->node_id;
 		int			x, y;
+		PGconn *node_conn = NULL;
 
 		initialize_conninfo_params(&remote_conninfo, false);
 		parse_conninfo_string(cell->node_info->conninfo,
@@ -761,10 +775,10 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 		host = param_get(&remote_conninfo, "host");
 
-		conn = establish_db_connection(cell->node_info->conninfo, false);
+		node_conn = establish_db_connection(cell->node_info->conninfo, false);
 
 		connection_status =
-			(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
+			(PQstatus(node_conn) == CONNECTION_OK) ? 0 : -1;
 
 
 		matrix_set_node_status(matrix_rec_list,
@@ -775,11 +789,21 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 
 		if (connection_status)
+		{
+			free_conninfo_params(&remote_conninfo);
+			PQfinish(node_conn);
+			node_conn = NULL;
 			continue;
+		}
 
 		/* We don't need to issue `cluster show --csv` for the local node */
 		if (connection_node_id == local_node_id)
+		{
+			free_conninfo_params(&remote_conninfo);
+			PQfinish(node_conn);
+			node_conn = NULL;
 			continue;
+		}
 
 		initPQExpBuffer(&command);
 
@@ -826,7 +850,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 			if (sscanf(p, "%d,%d", &x, &y) != 2)
 			{
 				fprintf(stderr, _("cannot parse --csv output: %s\n"), p);
-				PQfinish(conn);
+				PQfinish(node_conn);
 				exit(ERR_INTERNAL);
 			}
 
@@ -842,12 +866,19 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 				p++;
 		}
 
-		PQfinish(conn);
+		termPQExpBuffer(&command_output);
+		PQfinish(node_conn);
+		free_conninfo_params(&remote_conninfo);
+
+		node_conn = NULL;
 	}
 
 	*matrix_rec_dest = matrix_rec_list;
 
-	return nodes.node_count;
+	node_count = nodes.node_count;
+	clear_node_info_list(&nodes);
+
+	return node_count;
 }
 
 
@@ -872,6 +903,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 	get_all_node_records(conn, &nodes);
 
 	PQfinish(conn);
+	conn = NULL;
 
 	if (nodes.node_count == 0)
 	{
@@ -1090,5 +1122,38 @@ do_cluster_help(void)
 {
 	print_help_header();
 
+	printf(_("Usage:\n"));
+	printf(_("    %s [OPTIONS] cluster show\n"), progname());
+	printf(_("    %s [OPTIONS] cluster matrix\n"), progname());
+	printf(_("    %s [OPTIONS] cluster crosscheck\n"), progname());
+	printf(_("    %s [OPTIONS] cluster event\n"), progname());
+	puts("");
+
+	printf(_("CLUSTER SHOW\n"));
+	puts("");
+	printf(_("  \"cluster show\" displays a list showing the status of each node in the cluster.\n"));
+	puts("");
+	printf(_("  Configuration file or database connection required.\n"));
+	puts("");
+	printf(_("  --csv                 emit output as CSV (with a subset of fields)\n"));
+	puts("");
+
+	printf(_("CLUSTER MATRIX\n"));
+	puts("");
+	printf(_("  \"cluster show\" displays a matrix showing connectivity between nodes, seen from this node.\n"));
+	puts("");
+	printf(_("  Configuration file or database connection required.\n"));
+	puts("");
+	printf(_("  --csv                 emit output as CSV\n"));
+	puts("");
+
+	printf(_("CLUSTER EVENT\n"));
+	puts("");
+	printf(_("  \"cluster event\" lists recent events logged in the \"repmgr.events\" table.\n"));
+	puts("");
+	printf(_("  --limit               maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
+	printf(_("  --all                 display all events (overrides --limit)\n"));
+	printf(_("  --event               filter specific event\n"));
+	puts("");
 
 }
