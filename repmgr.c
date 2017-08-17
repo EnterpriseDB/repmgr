@@ -4967,7 +4967,9 @@ do_standby_switchover(void)
 
 	if (r != 0)
 	{
-		log_err(_("unable to connect via SSH to host %s, user %s\n"), remote_host, runtime_options.remote_user);
+		log_err(_("unable to connect via SSH to host \"%s\", user \"%s\"\n"),
+				remote_host, runtime_options.remote_user);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	if (get_pg_setting(remote_conn, "data_directory", remote_data_directory) == false)
