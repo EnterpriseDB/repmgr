@@ -22,7 +22,6 @@ typedef struct
 	bool		connection_param_provided;
 	bool		host_param_provided;
 	bool		limit_provided;
-	bool		wal_keep_segments_used;
 
 	/* general configuration options */
 	char		config_file[MAXPGPATH];
@@ -68,7 +67,6 @@ typedef struct
 	char		upstream_conninfo[MAXLEN];
 	int			upstream_node_id;
 	bool		use_recovery_conninfo_password;
-	char		wal_keep_segments[MAXLEN];
 	bool		without_barman;
 
 	/* "standby register" options */
@@ -111,7 +109,7 @@ typedef struct
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
 		/* configuration metadata */ \
-		false, false, false, false,	false, 	\
+		false, false, false, false,	\
 		/* general configuration options */	\
 		"", false, false, "", false,	\
 		/* logging options */ \
@@ -126,7 +124,7 @@ typedef struct
 		UNKNOWN_NODE_ID, "", "", \
 		/* "standby clone" options */ \
 		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", \
-		NO_UPSTREAM_NODE, false, "", false,						 \
+		NO_UPSTREAM_NODE, false, false,						 \
 		/* "standby register" options */ \
 		false, 0, \
 		/* "standby switchover" options */ \

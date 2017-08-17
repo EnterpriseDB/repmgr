@@ -87,10 +87,22 @@ static CheckStatus parse_node_check_archiver(const char *node_check_output, int 
 static CheckStatus parse_node_check_replication_lag(const char *node_check_output, int *seconds, int *threshold);
 
 /*
- * do_standby_clone()
+ * STANDBY CLONE
  *
  * Event(s):
  *  - standby_clone
+ *
+ * Parameters:
+ *  --upstream-conninfo
+ *  --no-upstream-connection
+ *  -F/--force
+ *  --dry-run
+ *  -c/--fast-checkpoint
+ *  --copy-external-config-files
+ *  --recovery-min-apply-delay
+ *  --replication-user XXX only required if no upstream record
+ *  --use-recovery-conninfo-password
+ *  --without-barman
  */
 
 void

@@ -118,7 +118,6 @@ static struct option long_options[] =
 /* "standby clone" options */
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"fast-checkpoint", no_argument, NULL, 'c'},
-	{"wal-keep-segments", required_argument, NULL, 'w'},
 	{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
 	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
 	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},

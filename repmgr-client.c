@@ -334,15 +334,6 @@ main(int argc, char **argv)
 				}
 				break;
 
-			/* -w/--wal-keep-segments */
-			case 'w':
-				(void) repmgr_atoi(optarg, "-w/--wal-keep-segments", &cli_errors, false);
-				strncpy(runtime_options.wal_keep_segments,
-						optarg,
-						MAXLEN);
-				runtime_options.wal_keep_segments_used = true;
-				break;
-
 			/* --no-upstream-connection */
 			case OPT_NO_UPSTREAM_CONNECTION:
 				runtime_options.no_upstream_connection = true;
@@ -2160,23 +2151,13 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 	else if (mode != barman)
 	{
 		bool check_wal_keep_segments = false;
-		char min_wal_keep_segments[MAXLEN] = "1";
-
-		/*
-		 * -w/--wal-keep-segments was supplied - check against that value
-		 */
-		if (runtime_options.wal_keep_segments_used == true)
-		{
-			check_wal_keep_segments = true;
-			strncpy(min_wal_keep_segments, runtime_options.wal_keep_segments, MAXLEN);
-		}
 
 		/*
 		 * A non-zero `wal_keep_segments` value will almost certainly be required
 		 * if pg_basebackup is being used with --xlog-method=fetch,
 		 * *and* no restore command has been specified
 		 */
-		else if (xlog_stream == false
+		if (xlog_stream == false
 			 && strcmp(config_file_options.restore_command, "") == 0)
 		{
 			check_wal_keep_segments = true;
@@ -2184,14 +2165,13 @@ check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error)
 
 		if (check_wal_keep_segments == true)
 		{
-			i = guc_set_typed(conn, "wal_keep_segments", ">=", min_wal_keep_segments, "integer");
+			i = guc_set_typed(conn, "wal_keep_segments", ">", "0", "integer");
 
 			if (i == 0 || i == -1)
 			{
 				if (i == 0)
 				{
-					log_error(_("parameter \"wal_keep_segments\" on the upstream server must be be set to %s or greater"),
-							min_wal_keep_segments);
+					log_error(_("parameter \"wal_keep_segments\" on the upstream server must be be set to a non-zero value"));
 					log_hint(_("Choose a value sufficiently high enough to retain enough WAL "
 							   "until the standby has been cloned and started.\n "
 							   "Alternatively set up WAL archiving using e.g. PgBarman and configure "
