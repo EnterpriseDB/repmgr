@@ -18,8 +18,145 @@ dropped. Please continue to use repmgrd 3.x for those versions.
 required for BDR 2.0. Note that BDR 2.0 is not publicly available; please contact
 2ndQuadrant for details. `repmgr 4` will support future public BDR releases.
 
-Building from source
---------------------
+Overview
+--------
+
+The `repmgr` suite provides two main tools:
+
+- `repmgr` - a command-line tool used to perform administrative tasks such as:
+    - setting up standby servers
+    - promoting a standby server to master
+    - switching over master and standby servers
+    - displaying the status of servers in the replication cluster
+
+- `repmgrd` is a daemon which actively monitors servers in a replication cluster
+   and performs the following tasks:
+    - monitoring and recording replication performance
+    - performing failover by detecting failure of the master and
+      promoting the most suitable standby server
+    - provide notifications about events in the cluster to a user-defined
+      script which can perform tasks such as sending alerts by email
+
+`repmgr` supports and enhances PostgreSQL's built-in streaming replication,
+which provides a single read/write master server and one or more read-only
+standbys containing near-real time copies of the master server's database.
+
+### Concepts
+
+This guide assumes that you are familiar with PostgreSQL administration and
+streaming replication concepts. For further details on streaming
+replication, see this link:
+
+  https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION
+
+The following terms are used throughout the `repmgr` documentation.
+
+- `replication cluster`
+
+In the `repmgr` documentation, "replication cluster" refers to the network
+of PostgreSQL servers connected by streaming replication.
+
+- `node`
+
+A `node` is a server within a replication cluster.
+
+- `upstream node`
+
+This is the node a standby server is connected to; either the master server or in
+the case of cascading replication, another standby.
+
+- `failover`
+
+This is the action which occurs if a master server fails and a suitable standby
+is  promoted as the new master. The `repmgrd` daemon supports automatic failover
+to minimise downtime.
+
+- `switchover`
+
+In certain circumstances, such as hardware or operating system maintenance,
+it's necessary to take a master server offline; in this case a controlled
+switchover is necessary, whereby a suitable standby is promoted and the
+existing master removed from the replication cluster in a controlled manner.
+The `repmgr` command line client provides this functionality.
+
+### repmgr user and metadata
+
+In order to effectively manage a replication cluster, `repmgr` needs to store
+information about the servers in the cluster in a dedicated database schema.
+This schema is automatically by the `repmgr` extension, which is installed
+during the first step in initialising a `repmgr`-administered cluster
+(`repmgr primary register`) and contains the following objects:
+
+tables:
+  - `repmgr.events`: records events of interest
+  - `repmgr.nodes`: connection and status information for each server in the
+    replication cluster
+  - `repmgr.monitor`: historical standby monitoring information written by `repmgrd`
+     XXX not yet implemented
+
+views:
+  - `repmgr.show_nodes`: based on the table `repl_nodes`, additionally showing the
+     name of the server's upstream node
+  - `repmgr.status`: when `repmgrd`'s monitoring is enabled, shows current monitoring
+    status for each node
+     XXX not yet implemented
+
+The `repmgr` metadata schema can be stored in an existing database or in its own
+dedicated database. Note that the `repmgr` metadata schema cannot reside on a database
+server which is not part of the replication cluster managed by `repmgr`.
+
+A database user must be available for `repmgr` to access this database and perform
+necessary changes. This user does not need to be a superuser, however some operations
+such as initial installation of the `repmgr` extension will require a superuser
+connection (this can be specified where required with the command line option
+`--superuser`).
+
+Installation
+------------
+
+### System requirements
+
+`repmgr` is developed and tested on Linux and OS X, but should work on any
+UNIX-like system supported by PostgreSQL itself.
+
+`repmgr 4` supports PostgreSQL from version 9.5. If you need to using `repmgr`
+on earlier versions of PostgreSQL 9.3 or 9.4, please use `repmgr 3.3`.
+
+All servers in the replication cluster must be running the same major version of
+PostgreSQL, and we recommend that they also run the same minor version.
+
+The `repmgr` tools must be installed on each server in the replication cluster.
+
+A dedicated system user for `repmgr` is *not* required; as many `repmgr` and
+`repmgrd` actions require direct access to the PostgreSQL data directory,
+these commands should be executed by the `postgres` user.
+
+Passwordless `ssh` connectivity between all servers in the replication cluster
+is not required, but is necessary in the following cases:
+
+* if you need `repmgr` to copy configuration files from outside the PostgreSQL
+  data directory (in which case `rsync` is also required)
+* to perform switchover operations
+* when executing `repmgr cluster matrix` and `repmgr cluster crosscheck`
+
+* * *
+
+> *TIP*: We recommend using a session multiplexer utility such as `screen` or
+> `tmux` when performing long-running actions (such as cloning a database)
+> on a remote server - this will ensure the `repmgr` action won't be prematurely
+> terminated if your `ssh` session to the server is interrupted or closed.
+
+* * *
+
+### Packages
+
+Release tarballs are also available:
+
+    https://github.com/2ndQuadrant/repmgr/releases
+    http://repmgr.org/
+
+
+### Building from source
 
 Simply:
 
