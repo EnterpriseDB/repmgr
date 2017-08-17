@@ -528,7 +528,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 							 _("parameter \"master_reponse_timeout\" has been removed; use \"async_query_timeout\" instead"));
 			known_parameter = false;
 		}
-		else if (strcmp(name, "master_reponse_timeout") == 0)
+		else if (strcmp(name, "retry_promote_interval_secs") == 0)
 		{
 			item_list_append(warning_list,
 							 _("parameter \"retry_promote_interval_secs\" has been removed; use \"primary_notification_timeout\" instead"));

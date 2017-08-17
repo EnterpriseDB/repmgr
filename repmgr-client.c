@@ -3034,11 +3034,16 @@ init_node_record(t_node_info *node_record)
 	node_record->priority = config_file_options.priority;
 	node_record->active = true;
 
-	strncpy(node_record->location, config_file_options.location, MAXLEN);
+
+	if (config_file_options.location[0] != '\0')
+		strncpy(node_record->location, config_file_options.location, MAXLEN);
+	else
+		strncpy(node_record->location, "default", MAXLEN);
+
 
 	strncpy(node_record->node_name, config_file_options.node_name, MAXLEN);
 	strncpy(node_record->conninfo, config_file_options.conninfo, MAXLEN);
-	strncpy(node_record->config_file, config_file_path, MAXLEN);
+	strncpy(node_record->config_file, config_file_path, MAXPGPATH);
 
 	if (config_file_options.replication_user[0] != '\0')
 	{
@@ -3048,11 +3053,16 @@ init_node_record(t_node_info *node_record)
 	else
 	{
 		/* use the "user" value from "conninfo" */
-		(void)get_conninfo_value(config_file_options.conninfo, "user", node_record->repluser);
+		char repluser[MAXLEN] = "";
+
+		(void)get_conninfo_value(config_file_options.conninfo, "user", repluser);
+		strncpy(node_record->repluser, repluser, NAMEDATALEN);
 	}
 
 	if (config_file_options.use_replication_slots == true)
 	{
 		maxlen_snprintf(node_record->slot_name, "repmgr_slot_%i", config_file_options.node_id);
 	}
+
+
 }

@@ -1,5 +1,5 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
--- \echo Use "CREATE EXTENSION repmgr" to load this file. \quit
+\echo Use "CREATE EXTENSION repmgr" to load this file. \quit
 
 -- extract the current schema name
 -- NOTE: this assumes there will be only one schema matching 'repmgr_%';
@@ -12,18 +12,24 @@ SELECT nspname AS old_schema
  WHERE nspname LIKE 'repmgr_%'
  LIMIT 1;
 
-DO $$
+-- move old objects into new schema
+DO $repmgr$
 DECLARE
-  old_schema TEXT;
+  schema TEXT;
 BEGIN
-  old_schema := SELECT old_schema FROM repmgr_old_schema;
-  ALTER SCHEMA  RENAME TO repmgr;
-END$$;
+  SELECT old_schema FROM repmgr_old_schema
+    INTO schema;
+  EXECUTE format('ALTER TABLE %I.repl_nodes SET SCHEMA repmgr', schema);
+  EXECUTE format('ALTER TABLE %I.repl_events SET SCHEMA repmgr', schema);
+  EXECUTE format('ALTER TABLE %I.repl_monitor SET SCHEMA repmgr', schema);
+  EXECUTE format('ALTER VIEW %I.repl_show_nodes SET SCHEMA repmgr', schema);
+  EXECUTE format('ALTER VIEW %I.repl_status SET SCHEMA repmgr', schema);
+END$repmgr$;
 
 -- convert "repmgr_$cluster.repl_nodes" to "repmgr.nodes"
 CREATE TABLE nodes (
   node_id          INTEGER     PRIMARY KEY,
-  upstream_node_id INTEGER     NULL REFERENCES nodes (node_id) DEFERRABLE,
+  upstream_node_id INTEGER     NULL REFERENCES repmgr.nodes (node_id) DEFERRABLE,
   active           BOOLEAN     NOT NULL DEFAULT TRUE,
   node_name        TEXT        NOT NULL,
   type             TEXT        NOT NULL CHECK (type IN('primary','standby','bdr')),
@@ -44,11 +50,11 @@ SELECT id, upstream_node_id, active, name,
  ORDER BY id;
 
 
--- convert "repmgr_$cluster.repl_event" to "repmgr.event"
+-- convert "repmgr_$cluster.repl_event" to "event"
 
-ALTER TABLE repl_events RENAME TO event;
+ALTER TABLE repl_events RENAME TO events;
 
--- convert "repmgr_$cluster.repl_monitor" to "repmgr.monitor"
+-- convert "repmgr_$cluster.repl_monitor" to "monitor"
 
 ALTER TABLE repl_monitor RENAME TO monitor;
 
@@ -125,3 +131,5 @@ CREATE FUNCTION unset_bdr_failover_handler()
   AS '$libdir/repmgr', 'unset_bdr_failover_handler'
   LANGUAGE C STRICT;
 
+-- remove temporary table
+DROP TABLE repmgr_old_schema;

@@ -26,14 +26,6 @@ objects used by repmgr are stored in a dedicated `repmgr` schema, rather
 than `repmgr_$cluster_name`. Note there is no need to install the extension,
 this will be done automatically by `repmgr primary register`.
 
-Metadata tables have been revised and are not backwards-compatible with repmgr 3.x,
-however future DDL updates will be easier as they can be carried out via the
-`ALTER EXTENSION` mechanism.
-
-An extension upgrade script will be provided for pre-4.0 installations;
-note this will require the existing `repmgr_$cluster_name` schema to
-be renamed to `repmgr` beforehand.
-
 Some configuration items have had their names changed for consistency
 and clarity e.g. `node` => `node_id`. `repmgr` will issue a warning
 about deprecated/altered options.
@@ -43,6 +35,12 @@ and vice-versa, e.g. to avoid hard-coding items such as a a node's
 upstream ID, which might change over time.
 
 See file `doc/changes-in-repmgr4.md` for more details.
+
+To upgrade from repmgr 3.x, both the `repmgr` metadatabase and all
+repmgr configuration files need to be converted. This is quite
+straightforward and scripts are provided to assist with this.
+See document `docs/upgrading-from-repmgr3.md` for further details.
+
 
 Overview
 --------
@@ -147,6 +145,9 @@ UNIX-like system supported by PostgreSQL itself.
 
 `repmgr 4` supports PostgreSQL from version 9.5. If you need to using `repmgr`
 on earlier versions of PostgreSQL 9.3 or 9.4, please use `repmgr 3.3`.
+
+If upgrading from `repmgr 3`, please see the separate upgrade guide
+`docs/upgrading-from-repmgr3.md`.
 
 All servers in the replication cluster must be running the same major version of
 PostgreSQL, and we recommend that they also run the same minor version.

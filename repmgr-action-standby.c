@@ -571,6 +571,7 @@ check_barman_config(void)
  * Event(s):
  *  - standby_register
  */
+// XXX check --upstream-node-id works when re-registering
 
 void
 do_standby_register(void)
