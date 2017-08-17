@@ -202,7 +202,7 @@ See `PACKAGES.md` for details on building .deb and .rpm packages from the
 Release tarballs are also available:
 
     https://github.com/2ndQuadrant/repmgr/releases
-    http://repmgr.org/downloads.php
+    http://repmgr.org/
 
 `repmgr` is compiled in the same way as a PostgreSQL extension using the PGXS
 infrastructure, e.g.:
