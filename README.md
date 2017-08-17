@@ -52,7 +52,9 @@ The following commands are available:
     repmgr node check
 
     repmgr cluster show
-    repmgr cluster event [--all] [--node-id] [--node-name] [--event] [--event-matching]
+    repmgr cluster matrix
+    repmgr cluster crosscheck
+    repmgr cluster event
 
 
 * `primary register`
@@ -260,6 +262,18 @@ The following commands are available:
     matrix` with the `cluster matrix` output from `node2`; the latter is
     able to connect to `node3` and therefore determine the state of
     outbound connections from that node.
+
+* `cluster event`
+
+    This outputs a formatted list of cluster events, as stored in the
+    `repmgr.events` table. Output is in reverse chronological order, and
+    can be filtered with the following options:
+
+        * `--all`: outputs all entries
+        * `--limit`: set the maximum number of entries to output (default: 20)
+        * `--node-id`: restrict entries to node with this ID
+        * `--node-name`: restrict entries to node with this name
+        * `--event`: filter specific event
 
 
 Backwards compatibility

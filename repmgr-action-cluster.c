@@ -416,6 +416,9 @@ do_cluster_event(void)
 	log_debug("do_cluster_event():\n%s", query.data);
 	res = PQexec(conn, query.data);
 
+	termPQExpBuffer(&query);
+	termPQExpBuffer(&where_clause);
+
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_error(_("unable to execute event query:\n  %s"),
