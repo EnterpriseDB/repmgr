@@ -18,6 +18,32 @@ dropped. Please continue to use repmgrd 3.x for those versions.
 required for BDR 2.0. Note that BDR 2.0 is not publicly available; please contact
 2ndQuadrant for details. `repmgr 4` will support future public BDR releases.
 
+Changes in repmgr4 and backwards compatibility
+-----------------------------------------------
+
+`repmgr` is now implemented as a PostgreSQL extension, and all database
+objects used by repmgr are stored in a dedicated `repmgr` schema, rather
+than `repmgr_$cluster_name`. Note there is no need to install the extension,
+this will be done automatically by `repmgr primary register`.
+
+Metadata tables have been revised and are not backwards-compatible with repmgr 3.x,
+however future DDL updates will be easier as they can be carried out via the
+`ALTER EXTENSION` mechanism.
+
+An extension upgrade script will be provided for pre-4.0 installations;
+note this will require the existing `repmgr_$cluster_name` schema to
+be renamed to `repmgr` beforehand.
+
+Some configuration items have had their names changed for consistency
+and clarity e.g. `node` => `node_id`. `repmgr` will issue a warning
+about deprecated/altered options.
+
+Some configuration items have been changed to command line options,
+and vice-versa, e.g. to avoid hard-coding items such as a a node's
+upstream ID, which might change over time.
+
+See file `doc/changes-in-repmgr4.md` for more details.
+
 Overview
 --------
 
@@ -25,21 +51,21 @@ The `repmgr` suite provides two main tools:
 
 - `repmgr` - a command-line tool used to perform administrative tasks such as:
     - setting up standby servers
-    - promoting a standby server to master
-    - switching over master and standby servers
+    - promoting a standby server to primary
+    - switching over primary and standby servers
     - displaying the status of servers in the replication cluster
 
 - `repmgrd` is a daemon which actively monitors servers in a replication cluster
    and performs the following tasks:
     - monitoring and recording replication performance
-    - performing failover by detecting failure of the master and
+    - performing failover by detecting failure of the primary and
       promoting the most suitable standby server
     - provide notifications about events in the cluster to a user-defined
       script which can perform tasks such as sending alerts by email
 
 `repmgr` supports and enhances PostgreSQL's built-in streaming replication,
-which provides a single read/write master server and one or more read-only
-standbys containing near-real time copies of the master server's database.
+which provides a single read/write primary server and one or more read-only
+standbys containing near-real time copies of the primary server's database.
 
 ### Concepts
 
@@ -62,21 +88,21 @@ A `node` is a server within a replication cluster.
 
 - `upstream node`
 
-This is the node a standby server is connected to; either the master server or in
+This is the node a standby server is connected to; either the primary server or in
 the case of cascading replication, another standby.
 
 - `failover`
 
-This is the action which occurs if a master server fails and a suitable standby
-is  promoted as the new master. The `repmgrd` daemon supports automatic failover
+This is the action which occurs if a primary server fails and a suitable standby
+is  promoted as the new primary. The `repmgrd` daemon supports automatic failover
 to minimise downtime.
 
 - `switchover`
 
 In certain circumstances, such as hardware or operating system maintenance,
-it's necessary to take a master server offline; in this case a controlled
+it's necessary to take a primary server offline; in this case a controlled
 switchover is necessary, whereby a suitable standby is promoted and the
-existing master removed from the replication cluster in a controlled manner.
+existing primary removed from the replication cluster in a controlled manner.
 The `repmgr` command line client provides this functionality.
 
 ### repmgr user and metadata
@@ -165,6 +191,138 @@ Simply:
 Ensure `pg_config` for the target PostgreSQL version is in `$PATH`.
 
 
+Configuration
+-------------
+
+`repmgr` and `repmgrd` use a common configuration file, by default called
+`repmgr.conf` (although any name can be used if explicitly specified).
+`repmgr.conf` must contain a number of required parameters, including
+the database connection string for the local node and the location
+of its data directory; other values will be inferred from defaults if
+not explicitly supplied. See section `repmgr configuration file` below
+for more details.
+
+The configuration file will be searched for in the following locations:
+
+- a configuration file specified by the `-f/--config-file` command line option
+- a location specified by the package maintainer (if `repmgr` was installed
+  from a package and the package maintainer has specified the configuration
+  file location)
+- `repmgr.conf` in the local directory
+- `/etc/repmgr.conf`
+- the directory reported by `pg_config --sysconfdir`
+
+Note that if a file is explicitly specified with `-f/--config-file`, an error will
+be raised if it is not found or not readable and no attempt will be made to check
+default locations; this is to prevent `repmgr` unexpectedly reading the wrong file.
+
+For a full list of annotated configuration items, see the file `repmgr.conf.sample`.
+
+The following parameters in the configuration file can be overridden with
+command line options:
+
+- `log_level` with `-L/--log-level`
+- `pg_bindir` with `-b/--pg_bindir`
+
+### Logging
+
+By default `repmgr` and `repmgrd` will log directly to `STDERR`. For `repmgrd`
+we recommend capturing output in a logfile or using your system's log facility;
+see `repmgr.conf.sample` for details.
+
+As a command line utility, `repmgr` will log directly to the console by default.
+However in some circumstances, such as when `repmgr` is executed by `repmgrd`
+during a failover event, it makes sense to capture `repmgr`'s log output - this
+can be done by supplying the command-line option `--log-to-file` to `repmgr`.
+
+### Command line options and environment variables
+
+For some commands, e.g. `repmgr standby clone`, database connection parameters
+need to be provided. Like other PostgreSQL utilities, following standard
+parameters can be used:
+
+- `-d/--dbname=DBNAME`
+- `-h/--host=HOSTNAME`
+- `-p/--port=PORT`
+- `-U/--username=USERNAME`
+
+If `-d/--dbname` contains an `=` sign or starts with a valid URI prefix (`postgresql://`
+or `postgres://`), it is treated as a conninfo string. See the PostgreSQL
+documentation for further details:
+
+  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+
+Note that if a `conninfo` string is provided, values set in this will override any
+provided as individual parameters. For example, with `-d 'host=foo' --host bar`, `foo`
+will be chosen over `bar`.
+
+Like other PostgreSQL utilities, `repmgr` will default to any values set in environment
+variables if explicit command line parameters are not provided. See the PostgreSQL
+documentation for further details:
+
+  https://www.postgresql.org/docs/current/static/libpq-envars.html
+
+Setting up a simple replication cluster with repmgr
+---------------------------------------------------
+
+The following section will describe how to set up a basic replication cluster
+with a primary and a standby server using the `repmgr` command line tool.
+It is assumed PostgreSQL is installed on both servers in the cluster,
+`rsync` is available and passwordless SSH connections are possible between
+both servers.
+
+* * *
+
+> *TIP*: for testing `repmgr`, it's possible to use multiple PostgreSQL
+> instances running on different ports on the same computer, with
+> passwordless SSH access to `localhost` enabled.
+
+* * *
+
+### PostgreSQL configuration
+
+On the primary server, a PostgreSQL instance must be initialised and running.
+The following replication settings may need to be adjusted:
+
+
+    # Enable replication connections; set this figure to at least one more
+    # than the number of standbys which will connect to this server
+    # (note that repmgr will execute `pg_basebackup` in WAL streaming mode,
+    # which requires two free WAL senders)
+
+    max_wal_senders = 10
+
+    # Ensure WAL files contain enough information to enable read-only queries
+    # on the standby
+
+    wal_level = 'hot_standby'
+
+    # Enable read-only queries on a standby
+    # (Note: this will be ignored on a primary but we recommend including
+    # it anyway)
+
+    hot_standby = on
+
+    # Enable WAL file archiving
+    archive_mode = on
+
+    # Set archive command to a script or application that will safely store
+    # you WALs in a secure place. /bin/true is an example of a command that
+    # ignores archiving. Use something more sensible.
+    archive_command = '/bin/true'
+
+    # If cloning using rsync, or you have configured `pg_basebackup_options`
+    # in `repmgr.conf` to include the setting `--xlog-method=fetch` (from
+    # PostgreSQL 10 `--wal-method=fetch`), *and* you have not set
+    # `restore_command` in `repmgr.conf`to fetch WAL files from another
+    # source such as Barman, you'll need to set `wal_keep_segments` to a
+    # high enough value to ensure that all WAL files generated while
+    # the standby is being cloned are retained until the standby starts up.
+
+    # wal_keep_segments = 5000
+
+
+
 Reference
 ---------
 
@@ -200,7 +358,7 @@ The following commands are available:
     it for use with repmgr.  This command needs to be executed before any
     standby nodes are registered.
 
-    `master register` can be used as an alias for `primary register`.
+    `primary register` can be used as an alias for `primary register`.
 
 * `standby switchover`
 
@@ -425,32 +583,6 @@ The following commands are available:
          2       | node2 | standby_register | t  | 2017-08-17 10:28:53 | standby registration succeeded
 
 
-Backwards compatibility
------------------------
-
-`repmgr` is now implemented as a PostgreSQL extension, and all database
-objects used by repmgr are stored in a dedicated `repmgr` schema, rather
-than `repmgr_$cluster_name`. Note there is no need to install the extension,
-this will be done automatically by `repmgr primary register`.
-
-Metadata tables have been revised and are not backwards-compatible
-with repmgr 3.x. (however future DDL updates will be easier as they can be
-carried out via the ALTER EXTENSION mechanism.).
-
-An extension upgrade script will be provided for pre-4.0 installations;
-note this will require the existing `repmgr_$cluster_name` schema to
-be renamed to `repmgr` beforehand.
-
-Some configuration items have had their names changed for consistency
-and clarity e.g. `node` => `node_id`. `repmgr` will issue a warning
-about deprecated/altered options.
-
-Some configuration items have been changed to command line options,
-and vice-versa, e.g. to avoid hard-coding items such as a a node's
-upstream ID, which might change over time.
-
-See file `doc/changes-in-repmgr4.md` for more details.
-
 
 Generating event notifications with repmgr/repmgrd
 --------------------------------------------------
@@ -474,7 +606,7 @@ and registered:
            2 | standby_register | t          | 2016-01-08 15:04:50.621292+09 |
     (3 rows)
 
-Alternatively use `repmgr cluster event` to output a list of events.
+Alternatively, use `repmgr cluster event` to output a formatted list of events.
 
 Additionally, event notifications can be passed to a user-defined program
 or script which can take further action, e.g. send email notifications.
@@ -509,7 +641,7 @@ the notification types can be filtered to explicitly named ones:
 
 The following event types are available:
 
-  * `master_register`
+  * `primary_register`
   * `standby_register`
   * `standby_unregister`
   * `standby_clone`
@@ -526,7 +658,7 @@ The following event types are available:
   * `bdr_register`
   * `bdr_unregister`
 
-Note that under some circumstances (e.g. no replication cluster master could
+Note that under some circumstances (e.g. no replication cluster primary could
 be located), it will not be possible to write an entry into the `repmgr.events`
 table, in which case executing a script via `event_notification_command` can
 serve as a fallback by generating some form of notification.
