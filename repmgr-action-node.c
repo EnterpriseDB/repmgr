@@ -590,6 +590,13 @@ do_node_check(void)
 		return;
 	}
 
+	if (runtime_options.output_mode == OM_NAGIOS)
+	{
+		log_error(_("--nagios can only be used with a specific check"));
+		log_hint(_("execute \"repmgr node --help\" for details"));
+		PQfinish(conn);
+		return;
+	}
 
 	/* output general overview */
 
@@ -2079,7 +2086,20 @@ do_node_help(void)
 
 	printf(_("NODE CHECK\n"));
 	puts("");
-	printf(_("  \"node check\" .\n"));
+	printf(_("  \"node check\" erforms some health checks on a node from a replication perspective.\n"));
+	puts("");
+	printf(_("  Configuration file required, runs on local node only.\n"));
+	puts("");
+	printf(_("    --csv                 emit output as CSV\n"));
+	printf(_("    --nagios              emit output in Nagios format (individual status output only)\n"));
+	puts("");
+	printf(_("  Following options check an individual status:\n"));
+	printf(_("    --archive-ready       number of WAL files ready for archiving\n"));
+	printf(_("    --downstream          whether all downstream nodes are connected\n"));
+	printf(_("    --replication-lag     replication lag in seconds (standbys only)\n"));
+	printf(_("    --role                check node has expected role\n"));
+	printf(_("    --slots               check for inactive replication slots\n"));
+
 	puts("");
 
 	printf(_("NODE REJOIN\n"));
