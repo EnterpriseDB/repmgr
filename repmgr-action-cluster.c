@@ -23,10 +23,11 @@ typedef enum {
 	SHOW_CONNINFO
 } ShowHeader;
 
-#define EVENT_HEADER_COUNT 5
+#define EVENT_HEADER_COUNT 6
 
 typedef enum {
 	EV_NODE_ID = 0,
+	EV_NODE_NAME,
 	EV_EVENT,
 	EV_SUCCESS,
 	EV_TIMESTAMP,
@@ -353,17 +354,20 @@ do_cluster_event(void)
 	initPQExpBuffer(&query);
 	initPQExpBuffer(&where_clause);
 
-	appendPQExpBuffer(&query,
-					  " SELECT e.node_id, e.event, e.successful, \n"
-					  "        TO_CHAR(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, \n"
-					  "        e.details \n"
-					  "   FROM repmgr.events e");
+	/* LEFT JOIN used here as a node record may have been removed */
+	appendPQExpBuffer(
+		&query,
+		"   SELECT e.node_id, n.node_name, e.event, e.successful, \n"
+		"          TO_CHAR(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, \n"
+		"          e.details \n"
+		"     FROM repmgr.events e \n"
+		"LEFT JOIN repmgr.nodes n ON e.node_id = n.node_id ");
 
 	if (runtime_options.node_id != UNKNOWN_NODE_ID)
 	{
 
 		append_where_clause(&where_clause,
-							"node_id=%i", runtime_options.node_id);
+							"n.node_id=%i", runtime_options.node_id);
 	}
 	else if (runtime_options.node_name[0] != '\0')
 	{
@@ -375,8 +379,6 @@ do_cluster_event(void)
 		}
 		else
 		{
-			appendPQExpBuffer(&query,
-							  " INNER JOIN repmgr.nodes n ON e.node_id = n.node_id ");
 			append_where_clause(&where_clause,
 								"n.node_name='%s'",
 								escaped);
@@ -437,6 +439,7 @@ do_cluster_event(void)
 	}
 
 	strncpy(headers_event[EV_NODE_ID].title, _("Node ID"), MAXLEN);
+	strncpy(headers_event[EV_NODE_NAME].title, _("Name"), MAXLEN);
 	strncpy(headers_event[EV_EVENT].title, _("Event"), MAXLEN);
 	strncpy(headers_event[EV_SUCCESS].title, _("OK"), MAXLEN);
 	strncpy(headers_event[EV_TIMESTAMP].title, _("Timestamp"), MAXLEN);

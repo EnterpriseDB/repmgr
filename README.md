@@ -275,6 +275,14 @@ The following commands are available:
         * `--node-name`: restrict entries to node with this name
         * `--event`: filter specific event
 
+    Example:
+
+        $ repmgr -f /etc/repmgr.conf cluster event --event=standby_register
+         Node ID | Name  | Event            | OK | Timestamp           | Details
+        ---------+-------+------------------+----+---------------------+--------------------------------
+         3       | node3 | standby_register | t  | 2017-08-17 10:28:55 | standby registration succeeded
+         2       | node2 | standby_register | t  | 2017-08-17 10:28:53 | standby registration succeeded
+
 
 Backwards compatibility
 -----------------------
