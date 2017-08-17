@@ -786,9 +786,11 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 	switch (mode)
 	{
 		case OM_NAGIOS:
-			printf("REPMGR_INACTIVE_SLOTS %s: %s\n",
+			printf("REPMGR_INACTIVE_SLOTS %s: %s | slots=%i;%i\n",
 				   output_check_status(status),
-				   details.data);
+				   details.data,
+				   node_info->total_replication_slots,
+				   node_info->inactive_replication_slots);
 			break;
 		case OM_TEXT:
 			if (list_output != NULL)
@@ -1011,7 +1013,9 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 			case OM_NAGIOS:
 				appendPQExpBuffer(
 					&details,
-					"0 seconds");
+					"0 seconds | lag=0;%i;%i",
+					config_file_options.replication_lag_warning,
+					config_file_options.replication_lag_critical);
 				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
@@ -1043,13 +1047,16 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 				case OM_NAGIOS:
 					appendPQExpBuffer(
 						&details,
-						"%i seconds (critical: %i)",
-						lag_seconds, config_file_options.replication_lag_critical);
+						"%i seconds | lag=%i;%i;%i",
+						lag_seconds,
+						lag_seconds,
+						config_file_options.replication_lag_warning,
+						config_file_options.replication_lag_critical);
 					break;
 				case OM_TEXT:
 					appendPQExpBuffer(
 						&details,
-						"%i seconds, threshold: %i)",
+						"%i seconds, critical threshold: %i)",
 						lag_seconds, config_file_options.replication_lag_critical);
 					break;
 
@@ -1072,13 +1079,16 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 				case OM_NAGIOS:
 					appendPQExpBuffer(
 						&details,
-						"%i seconds (warning: %i)",
-						lag_seconds, config_file_options.replication_lag_warning);
+						"%i seconds | lag=%i;%i;%i",
+						lag_seconds,
+						lag_seconds,
+						config_file_options.replication_lag_warning,
+						config_file_options.replication_lag_critical);
 					break;
 				case OM_TEXT:
 					appendPQExpBuffer(
 						&details,
-						"%i seconds, threshold: %i)",
+						"%i seconds, warning threshold: %i)",
 						lag_seconds, config_file_options.replication_lag_warning);
 					break;
 
@@ -1118,6 +1128,14 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 						lag_seconds);
 					break;
 				case OM_NAGIOS:
+					appendPQExpBuffer(
+						&details,
+						"%i seconds | lag=%i;%i;%i",
+						lag_seconds,
+						lag_seconds,
+						config_file_options.replication_lag_warning,
+						config_file_options.replication_lag_critical);
+					break;
 				case OM_TEXT:
 					appendPQExpBuffer(
 						&details,
@@ -1177,6 +1195,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 	int				  missing_nodes_count = 0;
 	CheckStatus 	  status = CHECK_STATUS_OK;
 	ItemList 		  missing_nodes = { NULL, NULL };
+	ItemList 		  attached_nodes = { NULL, NULL };
 	PQExpBufferData   details;
 
 	initPQExpBuffer(&details);
@@ -1189,6 +1208,13 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 		{
 			missing_nodes_count ++;
 			item_list_append_format(&missing_nodes,
+									"%s (ID: %i)",
+									cell->node_info->node_name,
+									cell->node_info->node_id);
+		}
+		else
+		{
+			item_list_append_format(&attached_nodes,
 									"%s (ID: %i)",
 									cell->node_info->node_name,
 									cell->node_info->node_id);
@@ -1220,39 +1246,76 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 				missing_nodes_count,
 				downstream_nodes.node_count);
 
-		if (mode == OM_NAGIOS)
-			appendPQExpBuffer(
-				&details, " (missing: ");
-		else
+		if (mode != OM_NAGIOS)
+		{
 			appendPQExpBuffer(
 				&details, "; missing: ");
 
-		for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
-		{
-			if (first == false)
-				appendPQExpBuffer(
-					&details,
-					", ");
-			else
-				first = false;
+			for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
+			{
+				if (first == false)
+					appendPQExpBuffer(
+						&details,
+						", ");
+				else
+					first = false;
 
-			if (first == false)
-				appendPQExpBuffer(
-					&details,
-					"%s", missing_cell->string);
+				if (first == false)
+					appendPQExpBuffer(
+						&details,
+						"%s", missing_cell->string);
+			}
 		}
-
-		if (mode == OM_NAGIOS)
-			appendPQExpBufferChar(
-				&details, ')');
 	}
 
 	switch (mode)
 	{
 		case OM_NAGIOS:
-			printf("REPMGR_DOWNSTREAM_SERVERS %s: %s\n",
+		{
+
+			printf("REPMGR_DOWNSTREAM_SERVERS %s: %s | ",
 				   output_check_status(status),
 				   details.data);
+
+			if (missing_nodes_count)
+			{
+				ItemListCell *missing_cell = NULL;
+				bool first = true;
+
+				printf("missing: ");
+				for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
+				{
+					if (first == false)
+						printf(", ");
+					else
+						first = false;
+
+					if (first == false)
+						printf("%s", missing_cell->string);
+				}
+			}
+
+			if (downstream_nodes.node_count - missing_nodes_count)
+			{
+				ItemListCell *attached_cell = NULL;
+				bool first = true;
+				if (missing_nodes_count)
+					printf("; ");
+				printf("attached: ");
+				for (attached_cell = attached_nodes.head; attached_cell; attached_cell = attached_cell->next)
+				{
+					if (first == false)
+						printf(", ");
+					else
+						first = false;
+
+					if (first == false)
+						printf("%s", attached_cell->string);
+				}
+			}
+			printf("\n");
+
+		}
 			break;
 		case OM_TEXT:
 			if (list_output != NULL)
