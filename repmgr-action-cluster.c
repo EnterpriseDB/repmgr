@@ -50,7 +50,12 @@ static int  build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name
 static int  build_cluster_crosscheck(t_node_status_cube ***cube_dest, int *name_length);
 static void cube_set_node_status(t_node_status_cube **cube, int n, int node_id, int matrix_node_id, int connection_node_id, int connection_status);
 
-
+/*
+ * CLUSTER SHOW
+ *
+ * Parameters:
+ *   --csv
+ */
 void
 do_cluster_show(void)
 {
@@ -330,7 +335,7 @@ do_cluster_show(void)
  * Parameters:
  *   --limit[=20]
  *   --all
- *   --node_[id|name]
+ *   --node-[id|name]
  *   --event
  */
 
@@ -349,15 +354,34 @@ do_cluster_event(void)
 	initPQExpBuffer(&where_clause);
 
 	appendPQExpBuffer(&query,
-					  " SELECT node_id, event, successful, \n"
-					  "        TO_CHAR(event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, \n"
-					  "        details \n"
-					  "   FROM repmgr.events");
+					  " SELECT e.node_id, e.event, e.successful, \n"
+					  "        TO_CHAR(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, \n"
+					  "        e.details \n"
+					  "   FROM repmgr.events e");
 
 	if (runtime_options.node_id != UNKNOWN_NODE_ID)
 	{
+
 		append_where_clause(&where_clause,
 							"node_id=%i", runtime_options.node_id);
+	}
+	else if (runtime_options.node_name[0] != '\0')
+	{
+		char *escaped = escape_string(conn, runtime_options.node_name);
+
+		if (escaped == NULL)
+		{
+			log_error(_("unable to escape value provided for node name"));
+		}
+		else
+		{
+			appendPQExpBuffer(&query,
+							  " INNER JOIN repmgr.nodes n ON e.node_id = n.node_id ");
+			append_where_clause(&where_clause,
+								"n.node_name='%s'",
+								escaped);
+			pfree(escaped);
+		}
 	}
 
 	if (runtime_options.event[0] != '\0')
@@ -371,7 +395,7 @@ do_cluster_event(void)
 		else
 		{
 			append_where_clause(&where_clause,
-								"event='%s'",
+								"e.event='%s'",
 								escaped);
 			pfree(escaped);
 		}
@@ -381,7 +405,7 @@ do_cluster_event(void)
 					  where_clause.data);
 
 	appendPQExpBuffer(&query,
-					  " ORDER BY event_timestamp DESC");
+					  " ORDER BY e.event_timestamp DESC");
 
 	if (runtime_options.all == false && runtime_options.limit > 0)
 	{
@@ -483,6 +507,8 @@ do_cluster_event(void)
 	PQclear(res);
 
 	PQfinish(conn);
+
+	puts("");
 }
 
 
@@ -1199,6 +1225,9 @@ do_cluster_help(void)
 	printf(_("    --limit               maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
 	printf(_("    --all                 display all events (overrides --limit)\n"));
 	printf(_("    --event               filter specific event\n"));
+	printf(_("    --node-id             restrict entries to node with this ID\n"));
+	printf(_("    --node-name           restrict entries to node with this name\n"));
+
 	puts("");
 
 }
