@@ -120,9 +120,13 @@ The following commands are available:
     * `--role`: checks if the node has the expected role
     * `--replication-lag"`: checks if the node is lagging by more than
         `replication_lag_warning` or `replication_lag_critical` seconds.
-    * `--archiver`: checks for WAL files which have not yet been archived
+    * `--archive-ready`: checks for WAL files which have not yet been archived
     * `--downstream`: checks that the expected downstream nodes are attached
     * `--slots`: checks there are no inactive replication slots
+
+    Individual checks can also be output in a Nagios-compatible format with
+    the option `--nagios`.
+
 
 * `cluster show`
 

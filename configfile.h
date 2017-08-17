@@ -77,8 +77,8 @@ typedef struct
 	TablespaceList tablespace_mapping;
 
 	/* node check settings */
-	int			archiver_lag_warning;
-	int			archiver_lag_critical;
+	int			archive_ready_warning;
+	int			archive_ready_critical;
 	int			replication_lag_warning;
 	int			replication_lag_critical;
 
@@ -135,7 +135,7 @@ typedef struct
 		/* standby clone settings */ \
 		false, "", "", "", "", { NULL, NULL },	\
 		/* node check settings */ \
-		DEFAULT_ARCHIVER_LAG_WARNING, DEFAULT_ARCHIVER_LAG_CRITICAL, \
+		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
 		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \
 		/* repmgrd settings */ \
 		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", \

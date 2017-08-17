@@ -390,10 +390,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->restore_command, value, MAXLEN);
 
 		/* node check settings */
-		else if (strcmp(name, "archiver_lag_warning") == 0)
-			options->archiver_lag_warning = repmgr_atoi(value, name, error_list, 1);
-		else if (strcmp(name, "archiver_lag_critcial") == 0)
-			options->archiver_lag_critical = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "archive_ready_warning") == 0)
+			options->archive_ready_warning = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "archive_ready_critcial") == 0)
+			options->archive_ready_critical = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "replication_lag_warning") == 0)
 			options->replication_lag_warning = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "replication_lag_critical") == 0)
@@ -617,10 +617,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 	/* other sanity checks */
 
-	if (options->archiver_lag_warning >= options->archiver_lag_critical)
+	if (options->archive_ready_warning >= options->archive_ready_critical)
 	{
 		item_list_append(error_list,
-						 _("\archiver_lag_critical\" must be greater than  \"archiver_lag_warning\""));
+						 _("\archive_ready_critical\" must be greater than  \"archive_ready_warning\""));
 	}
 
 	if( options->replication_lag_warning >= options->replication_lag_critical)

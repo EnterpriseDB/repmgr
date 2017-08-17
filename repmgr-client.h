@@ -65,7 +65,7 @@
 #define OPT_ALWAYS_PROMOTE                 1029
 #define OPT_FORCE_REWIND                   1030
 #define OPT_NAGIOS                         1031
-#define OPT_ARCHIVER                       1032
+#define OPT_ARCHIVE_READY                  1032
 #define OPT_OPTFORMAT                      1033
 #define OPT_REPLICATION_LAG                1034
 #define OPT_CONFIG_FILES                   1035
@@ -140,7 +140,7 @@ static struct option long_options[] =
 	{"is-shutdown", no_argument, NULL, OPT_IS_SHUTDOWN },
 
 /* "node check" options */
-	{"archiver", no_argument, NULL, OPT_ARCHIVER },
+	{"archive-ready", no_argument, NULL, OPT_ARCHIVE_READY },
 	{"downstream", no_argument, NULL, OPT_DOWNSTREAM },
 	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG },
 	{"role", no_argument, NULL, OPT_ROLE },

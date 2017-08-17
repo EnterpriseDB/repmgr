@@ -1792,7 +1792,7 @@ do_standby_switchover(void)
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 			appendPQExpBuffer(&remote_command_str,
-							  "node check --terse -LERROR --archiver --optformat");
+							  "node check --terse -LERROR --archive-ready --optformat");
 
 			initPQExpBuffer(&command_output);
 

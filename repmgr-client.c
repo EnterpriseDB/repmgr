@@ -422,8 +422,8 @@ main(int argc, char **argv)
 
 			/* "node check" options *
 			 * --------------------- */
-			case OPT_ARCHIVER:
-				runtime_options.archiver = true;
+			case OPT_ARCHIVE_READY:
+				runtime_options.archive_ready = true;
 				break;
 
 			case OPT_DOWNSTREAM:

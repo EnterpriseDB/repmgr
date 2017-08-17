@@ -29,7 +29,7 @@ static void _do_node_status_is_shutdown(void);
 static void _do_node_archive_config(void);
 static void _do_node_restore_config(void);
 
-static CheckStatus do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
+static CheckStatus do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 static CheckStatus do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
@@ -554,9 +554,9 @@ do_node_check(void)
 
 	/* handle specific checks
 	 * ====================== */
-	if (runtime_options.archiver == true)
+	if (runtime_options.archive_ready == true)
 	{
-		(void) do_node_check_archiver(conn, runtime_options.output_mode, NULL);
+		(void) do_node_check_archive_ready(conn, runtime_options.output_mode, NULL);
 		PQfinish(conn);
 		return;
 	}
@@ -598,7 +598,7 @@ do_node_check(void)
 	/* order functions are called is also output order */
 	(void) do_node_check_role(conn, runtime_options.output_mode, &node_info, &status_list);
 	(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &node_info, &status_list);
-	(void) do_node_check_archiver(conn, runtime_options.output_mode, &status_list);
+	(void) do_node_check_archive_ready(conn, runtime_options.output_mode, &status_list);
 	(void) do_node_check_downstream(conn, runtime_options.output_mode, &status_list);
 	(void) do_node_check_slots(conn, runtime_options.output_mode, &node_info, &status_list);
 
@@ -722,7 +722,7 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 	switch (mode)
 	{
 		case OM_NAGIOS:
-			printf("PG_SERVER_ROLE %s: %s\n",
+			printf("REPMGR_SERVER_ROLE %s: %s\n",
 				   output_check_status(status),
 				   details.data);
 			break;
@@ -786,7 +786,7 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 	switch (mode)
 	{
 		case OM_NAGIOS:
-			printf("PG_INACTIVE_SLOTS %s: %s\n",
+			printf("REPMGR_INACTIVE_SLOTS %s: %s\n",
 				   output_check_status(status),
 				   details.data);
 			break;
@@ -814,7 +814,7 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 
 
 static CheckStatus
-do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
+do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
 {
 	int ready_archive_files = 0;
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
@@ -822,7 +822,7 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 
 	if (mode == OM_CSV)
 	{
-		log_error(_("--csv output not provided with --archiver option"));
+		log_error(_("--csv output not provided with --archive-ready option"));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -831,7 +831,7 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 
 	ready_archive_files = get_ready_archive_files(conn, config_file_options.data_directory);
 
-	if (ready_archive_files > config_file_options.archiver_lag_critical)
+	if (ready_archive_files > config_file_options.archive_ready_critical)
 	{
 		status = CHECK_STATUS_CRITICAL;
 
@@ -841,26 +841,29 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 				appendPQExpBuffer(
 					&details,
 					"--files=%i --threshold=%i",
-					ready_archive_files, config_file_options.archiver_lag_critical);
+					ready_archive_files, config_file_options.archive_ready_critical);
 				break;
 			case OM_NAGIOS:
 				appendPQExpBuffer(
 					&details,
-					"%i pending files (critical: %i)",
-					ready_archive_files, config_file_options.archiver_lag_critical);
+					"%i pending archive ready files | files=%i;%i;%i",
+					ready_archive_files,
+					ready_archive_files,
+					config_file_options.archive_ready_warning,
+					config_file_options.archive_ready_critical);
 				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
 					&details,
-					"%i pending files, threshold: %i",
-					ready_archive_files, config_file_options.archiver_lag_critical);
+					"%i pending archive ready files, critical threshold: %i",
+					ready_archive_files, config_file_options.archive_ready_critical);
 				break;
 
 			default:
 				break;
 		}
 	}
-	else if (ready_archive_files > config_file_options.archiver_lag_warning)
+	else if (ready_archive_files > config_file_options.archive_ready_warning)
 	{
 		status = CHECK_STATUS_WARNING;
 
@@ -870,19 +873,23 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 				appendPQExpBuffer(
 					&details,
 					"--files=%i --threshold=%i",
-					ready_archive_files, config_file_options.archiver_lag_warning);
+					ready_archive_files, config_file_options.archive_ready_warning);
 				break;
 			case OM_NAGIOS:
 				appendPQExpBuffer(
 					&details,
-					"%i pending files (warning: %i)",
-					ready_archive_files, config_file_options.archiver_lag_warning);
+					"%i pending archive ready files | files=%i;%i;%i",
+					ready_archive_files,
+					ready_archive_files,
+					config_file_options.archive_ready_warning,
+					config_file_options.archive_ready_critical);
+
 				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
 					&details,
-					"%i pending files (threshold: %i)",
-					ready_archive_files, config_file_options.archiver_lag_warning);
+					"%i pending archive ready files (threshold: %i)",
+					ready_archive_files, config_file_options.archive_ready_warning);
 				break;
 
 			default:
@@ -920,10 +927,18 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 					"--files=%i", ready_archive_files);
 				break;
 			case OM_NAGIOS:
+				appendPQExpBuffer(
+					&details,
+					"%i pending archive ready files | files=%i;%i;%i",
+					ready_archive_files,
+					ready_archive_files,
+					config_file_options.archive_ready_warning,
+					config_file_options.archive_ready_critical);
+				break;
 			case OM_TEXT:
 				appendPQExpBuffer(
 					&details,
-					"%i pending files",	ready_archive_files);
+					"%i pending archive ready files", ready_archive_files);
 				break;
 
 			default:
@@ -941,7 +956,7 @@ do_node_check_archiver(PGconn *conn, OutputMode mode, CheckStatusList *list_outp
 		}
 		break;
 		case OM_NAGIOS:
-			printf("PG_ARCHIVER %s: %s\n",
+			printf("REPMGR_ARCHIVE_READY %s: %s\n",
 				   output_check_status(status),
 				   details.data);
 			break;
@@ -1126,7 +1141,7 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 		}
 		break;
 		case OM_NAGIOS:
-			printf("PG_REPLICATION_LAG %s: %s\n",
+			printf("REPMGR_REPLICATION_LAG %s: %s\n",
 				   output_check_status(status),
 				   details.data);
 			break;
@@ -1235,7 +1250,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 	switch (mode)
 	{
 		case OM_NAGIOS:
-			printf("PG_DOWNSTREAM_SERVERS %s: %s\n",
+			printf("REPMGR_DOWNSTREAM_SERVERS %s: %s\n",
 				   output_check_status(status),
 				   details.data);
 			break;

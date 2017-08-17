@@ -84,7 +84,7 @@ typedef struct
 	bool		is_shutdown;
 
 	/* "node check" options */
-	bool		archiver;
+	bool		archive_ready;
 	bool		downstream;
 	bool		replication_lag;
 	bool		role;
