@@ -1531,10 +1531,11 @@ parse_server_action(const char *action_name)
 
 
 /*
- * Intended mainly for "internal" use by `node switchover`, which
+ * Intended mainly for "internal" use by "standby switchover", which
  * calls this on the target server to excute pg_rewind on a demoted
- * primary with a forked (sic) timeline. Does not currently check
- * whether this is a useful thing to do.
+ * primary with a forked (sic) timeline. This function does not
+ * currently check whether this is a useful thing to do (however
+ * "standby switchover" will perform a check before calling it).
  *
  * TODO: make this into a more generally useful function.
  */
@@ -2100,16 +2101,6 @@ do_node_help(void)
 	printf(_("    --role                check node has expected role\n"));
 	printf(_("    --slots               check for inactive replication slots\n"));
 
-	puts("");
-
-	printf(_("NODE REJOIN\n"));
-	puts("");
-	printf(_("  \"node rejoin\" .\n"));
-	puts("");
-
-	printf(_("NODE SERVICE\n"));
-	puts("");
-	printf(_("  \"node service\" .\n"));
 	puts("");
 
 }
