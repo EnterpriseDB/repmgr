@@ -1245,7 +1245,20 @@ check_cli_parameters(const int action)
 			 */
 		}
 		break;
-
+		case NODE_STATUS:
+			if (runtime_options.node_id != UNKNOWN_NODE_ID)
+			{
+				item_list_append(
+					&cli_warnings,
+					"--node-id will be ignored; \"repmgr node status\" can only be executed on the local node");
+			}
+			if (runtime_options.node_name[0] != '\0')
+			{
+				item_list_append(
+					&cli_warnings,
+					"--node-name will be ignored; \"repmgr node status\" can only be executed on the local node");
+			}
+			break;
 		case NODE_REJOIN:
 			if (runtime_options.connection_param_provided == false)
 			{

@@ -35,12 +35,22 @@ static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, 
 static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 
+/*
+ * NODE STATUS
+ *
+ * Can only be run on the local node, as it needs to be able to
+ * read the data directory.
+ *
+ * Parameters:
+ *   --is-shutdown (for internal use only)
+ *   --csv
+ */
+
 void
 do_node_status(void)
 {
 	PGconn	   	   *conn = NULL;
 
-	int 			target_node_id = UNKNOWN_NODE_ID;
 	t_node_info 	node_info = T_NODE_INFO_INITIALIZER;
 	char			server_version[MAXLEN];
 	char			cluster_size[MAXLEN];
@@ -56,40 +66,22 @@ do_node_status(void)
 
 	char 	 	 	data_dir[MAXPGPATH] = "";
 
-
-
 	if (runtime_options.is_shutdown == true)
 	{
 		return _do_node_status_is_shutdown();
 	}
 
-	if (strlen(config_file_options.conninfo))
-		conn = establish_db_connection(config_file_options.conninfo, true);
-	else
-		conn = establish_db_connection_by_params(&source_conninfo, true);
-
-	if (config_file_options.data_directory[0] != '\0')
-	{
-		strncpy(data_dir, config_file_options.data_directory, MAXPGPATH);
-	}
-	else
-	{
-		/* requires superuser */
-		get_pg_setting(conn, "data_directory", data_dir);
-	}
+	/* config file required, so we should have "conninfo" and "data_directory" */
+	conn = establish_db_connection(config_file_options.conninfo, true);
+	strncpy(data_dir, config_file_options.data_directory, MAXPGPATH);
 
 	server_version_num = get_server_version(conn, NULL);
 
-	if (runtime_options.node_id != UNKNOWN_NODE_ID)
-		target_node_id = runtime_options.node_id;
-	else
-		target_node_id = config_file_options.node_id;
-
 	/* Check node exists and is really a standby */
 
-	if (get_node_record(conn, target_node_id, &node_info) != RECORD_FOUND)
+	if (get_node_record(conn, config_file_options.node_id, &node_info) != RECORD_FOUND)
 	{
-		log_error(_("no record found for node %i"), target_node_id);
+		log_error(_("no record found for node %i"), config_file_options.node_id);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -217,11 +209,22 @@ do_node_status(void)
 
 		ready_files = get_ready_archive_files(conn, data_dir);
 
-		key_value_list_set_format(
-			&node_status,
-			"WALs pending archiving",
-			"%i pending files",
-			ready_files);
+		if (runtime_options.output_mode == OM_CSV)
+		{
+			key_value_list_set_format(
+				&node_status,
+				"WALs pending archiving",
+				"%i",
+				ready_files);
+		}
+		else
+		{
+			key_value_list_set_format(
+				&node_status,
+				"WALs pending archiving",
+				"%i pending files",
+				ready_files);
+		}
 
 		if (guc_set(conn, "archive_mode", "=", "off"))
 		{
@@ -233,6 +236,7 @@ do_node_status(void)
 
 	if (node_info.max_wal_senders >= 0)
 	{
+		/* In CSV mode, raw values supplied as well */
 		key_value_list_set_format(
 			&node_status,
 			"Replication connections",
@@ -350,45 +354,50 @@ do_node_status(void)
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
-		/* output header */
 		appendPQExpBuffer(
 			&output,
-			"\"Node name\",\"Node ID\",");
+			"\"Node name\",\"%s\"\n",
+			node_info.node_name);
 
-		for (cell = node_status.head; cell; cell = cell->next)
-		{
-			appendPQExpBuffer(
-				&output,
-				"\"%s\",", cell->key);
-		}
-
-		/* we'll add the raw data as well */
 		appendPQExpBuffer(
 			&output,
-			"\"max_walsenders\",\"occupied_walsenders\",\"max_replication_slots\",\"active_replication_slots\",\"inactive_replaction_slots\"\n");
-
-		/* output data */
-		appendPQExpBuffer(
-			&output,
-			"\"%s\",%i,",
-			node_info.node_name,
+			"\"Node ID\",\"%i\"\n",
 			node_info.node_id);
 
 		for (cell = node_status.head; cell; cell = cell->next)
 		{
 			appendPQExpBuffer(
 				&output,
-				"\"%s\",", cell->value);
+				"\"%s\",\"%s\"\n",
+				cell->key, cell->value);
 		}
+
+		/* we'll add the raw data as well */
+		appendPQExpBuffer(
+			&output,
+			"\"max_wal_senders\",%i\n",
+			node_info.max_wal_senders);
 
 		appendPQExpBuffer(
 			&output,
-			"%i,%i,%i,%i,%i\n",
-			node_info.max_wal_senders,
-			node_info.attached_wal_receivers,
-			node_info.max_replication_slots,
-			node_info.active_replication_slots,
+			"\"occupied_wal_senders\",%i\n",
+			node_info.attached_wal_receivers);
+
+		appendPQExpBuffer(
+			&output,
+			"\"max_replication_slots\",%i\n",
+			node_info.max_replication_slots);
+
+		appendPQExpBuffer(
+			&output,
+			"\"active_replication_slots\",%i\n",
+			node_info.active_replication_slots);
+
+		appendPQExpBuffer(
+			&output,
+			"\"inactive_replaction_slots\",%i\n",
 			node_info.inactive_replication_slots);
+
 	}
 	else
 	{
@@ -424,6 +433,11 @@ do_node_status(void)
 }
 
 /*
+ * Returns information about the running state of the node.
+ * For internal use during "standby switchover".
+ *
+ * Returns "longopt" output:
+ *
  * --status=(RUNNING|SHUTDOWN|UNKNOWN)
  * --last-checkpoint=...
  */
@@ -452,7 +466,6 @@ void _do_node_status_is_shutdown(void)
 		termPQExpBuffer(&output);
 		return;
 	}
-
 
 	status = PQping(config_file_options.conninfo);
 
@@ -1979,7 +1992,11 @@ do_node_help(void)
 
 	printf(_("NODE STATUS\n"));
 	puts("");
-	printf(_("  \"node status\" .\n"));
+	printf(_("  \"node status\" displays an overview of a node's basic information and replication status.\n"));
+	puts("");
+	printf(_("  Configuration file required, runs on local node only.\n"));
+	puts("");
+	printf(_("    --csv                 emit output as CSV\n"));
 	puts("");
 
 	printf(_("NODE CHECK\n"));
