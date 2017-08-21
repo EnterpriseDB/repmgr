@@ -55,22 +55,24 @@ Configuration file changes
 
 ### Required settings
 
-Following 4 parameters are mandatory:
+The following 4 parameters are mandatory in `repmgr.conf`:
 
-- node_id
-- node_name
-- conninfo
-- pgdata
+- `node_id`
+- `node_name`
+- `conninfo`
+- `data_directory`
 
 
 ### Renamed settings
 
-Some settings have been renamed for clarity/consistency
-node -> node_id
-name -> node_name
+Some settings have been renamed for clarity and consistency:
 
+- `node`: now `node_id`
+- `name`: now `node_name`
+- `master_reponse_timeout`: now `async_query_timeout` to better indicate its
+   purpose
 
-- Following configuration file parameters have been renamed for consistency
+- The following configuration file parameters have been renamed for consistency
   with other parameters (and conform to the pattern used by PostgreSQL itself,
   which uses the prefix `log_` for logging parameters):
   - `loglevel` has been renamed to `log_level`
@@ -79,10 +81,15 @@ name -> node_name
 
 ### Removed settings
 
-- `cluster` has been removed
+- `cluster`: has been removed
 - `upstream_node`: see note about `--upstream-node-id` above.
+- `retry_promote_interval_secs`: this is now redundant due to changes in the
+   failover/promotion mechanism; the new equivalent is `primary_notification_timeout`
+
 
 ### Logging changes
+
 - default value for `log_level` is `INFO` rather than `NOTICE`.
-- new parameter `log_status_interval`
+- new parameter `log_status_interval`, which causes `repmgrd` to emit a status log
+  line at the specified interval
 
