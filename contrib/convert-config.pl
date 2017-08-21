@@ -36,12 +36,12 @@ while(<$fh>) {
     chomp $line;
     if ($line =~ m|\s*#|) {
         push @outp, $line;
-        continue;
+        next;
     }
 
     if ($line !~ m|\s*(\S+?)\s*=(.+?)$|) {
         push @outp, $line;
-        continue;
+        next;
     }
 
     my $param = $1;
@@ -66,8 +66,11 @@ while(<$fh>) {
     elsif ($param eq 'logfile') {
         push @outp, qq|log_file=${value}|;
     }
-    elsif ($param eq 'master_reponse_timeout') {
+    elsif ($param eq 'master_response_timeout') {
         push @outp, qq|async_query_timeout=${value}|;
+    }
+    elsif ($param eq 'retry_promote_interval_secs') {
+        push @outp, qq|primary_notification_timeout=${value}|;
     }
     else {
         if ($param eq 'data_directory') {
