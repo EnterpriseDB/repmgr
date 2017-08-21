@@ -2803,7 +2803,7 @@ run_basebackup(t_node_info *node_record)
 	 */
 	parse_pg_basebackup_options(config_file_options.pg_basebackup_options,
 								&backup_options,
-								server_version_num,
+								source_server_version_num,
 								NULL);
 
 	/* Create pg_basebackup command line options */
@@ -2904,7 +2904,7 @@ run_basebackup(t_node_info *node_record)
 	 *   of values for --wal-method (--xlog-method) and --slot - we're not checking that, just that
 	 *   we're not overriding any user-supplied values
 	 */
-	if (server_version_num >= 90600 && config_file_options.use_replication_slots)
+	if (source_server_version_num >= 90600 && config_file_options.use_replication_slots)
 	{
 		bool slot_add = true;
 
@@ -3073,7 +3073,7 @@ run_file_backup(t_node_info *node_record)
 						q = string_skip_prefix("version=", buf);
 						if (q != NULL)
 						{
-							server_version_num = strtol(q, NULL, 10);
+							source_server_version_num = strtol(q, NULL, 10);
 						}
 					}
 					fclose(fi2);
@@ -3126,7 +3126,7 @@ run_file_backup(t_node_info *node_record)
 		}
 
 		/* For 9.5 and greater, create our own tablespace_map file */
-		if (server_version_num >= 90500)
+		if (source_server_version_num >= 90500)
 		{
 			initPQExpBuffer(&tablespace_map);
 		}
@@ -3193,11 +3193,11 @@ run_file_backup(t_node_info *node_record)
 			for (i = 0; dirs[i]; i++)
 			{
 				/* directory exists in newer versions than this server - skip */
-				if (vers[i] > 0 && server_version_num < vers[i])
+				if (vers[i] > 0 && source_server_version_num < vers[i])
 					continue;
 
 				/* directory existed in earlier versions than this server but has been removed/renamed - skip */
-				if (vers[i] < 0 && server_version_num >= abs(vers[i]))
+				if (vers[i] < 0 && source_server_version_num >= abs(vers[i]))
 					continue;
 
 				maxlen_snprintf(filename, "%s/%s", local_data_directory, dirs[i]);
@@ -3282,7 +3282,7 @@ run_file_backup(t_node_info *node_record)
 		if (mapping_found == true || mode == barman)
 		{
 			/* 9.5 and later - append to the tablespace_map file */
-			if (server_version_num >= 90500)
+			if (source_server_version_num >= 90500)
 			{
 				tablespace_map_rewrite = true;
 				appendPQExpBuffer(&tablespace_map,
@@ -3327,7 +3327,7 @@ run_file_backup(t_node_info *node_record)
 	 * it's better to rely on functionality the backend provides.
 	 */
 
-	if (server_version_num >= 90500 && tablespace_map_rewrite == true)
+	if (source_server_version_num >= 90500 && tablespace_map_rewrite == true)
 	{
 		PQExpBufferData tablespace_map_filename;
 		FILE	   *tablespace_map_file;
@@ -3539,7 +3539,7 @@ copy_configuration_files(void)
 		}
 
 		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-							  file->filepath, dest_path, false, server_version_num);
+							  file->filepath, dest_path, false, source_server_version_num);
 		if (WEXITSTATUS(r))
 		{
 			log_error(_("standby clone: unable to copy config file \"%s\""),
