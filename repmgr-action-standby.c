@@ -1425,7 +1425,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	{
  		int	primary_server_version_num = get_server_version(primary_conn, NULL);
 
-
 		if (create_replication_slot(primary_conn,
 									local_node_record.slot_name,
 									primary_server_version_num,
@@ -1442,13 +1441,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	/* We ignore any application_name set in the primary's conninfo */
 	parse_conninfo_string(primary_node_record->conninfo, &recovery_conninfo, errmsg, true);
-
-	/* Set the default application name to this node's name */
-	param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
-
-	/* Set the replication user from the primary node record */
-	param_set(&recovery_conninfo, "user", primary_node_record->repluser);
-
 
 	{
 		t_conninfo_param_list local_node_conninfo;
@@ -1487,6 +1479,13 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 		free_conninfo_params(&local_node_conninfo);
 	}
+
+
+	/* Set the application name to this node's name */
+	param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
+
+	/* Set the replication user from the primary node record */
+	param_set(&recovery_conninfo, "user", primary_node_record->repluser);
 
 	log_info(_("changing node %i's primary to node %i"),
 			 config_file_options.node_id, primary_node_record->node_id);
