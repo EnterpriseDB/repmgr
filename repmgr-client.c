@@ -80,6 +80,8 @@ static ItemList	cli_warnings = { NULL, NULL };
 int
 main(int argc, char **argv)
 {
+	t_conninfo_param_list default_conninfo;
+
 	int			optindex;
 	int			c;
 
@@ -109,40 +111,43 @@ main(int argc, char **argv)
 	 *
 	 * Note: PQconndefaults() does not provide a default value for
 	 * "dbname", but if none is provided will default to "username"
-	 * when the connection is made.
+	 * when the connection is made. We won't set "dbname" here if no
+	 * default available, as that would break the libpq behaviour if
+	 * non-default username is provided.
 	 */
+	initialize_conninfo_params(&default_conninfo, true);
 
-	initialize_conninfo_params(&source_conninfo, false);
-
-	for (c = 0; c < source_conninfo.size && source_conninfo.keywords[c]; c++)
+	for (c = 0; c < default_conninfo.size && default_conninfo.keywords[c]; c++)
 	{
-		if (strcmp(source_conninfo.keywords[c], "host") == 0 &&
-			(source_conninfo.values[c] != NULL))
+		if (strcmp(default_conninfo.keywords[c], "host") == 0 &&
+			(default_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.host, source_conninfo.values[c], MAXLEN);
+			strncpy(runtime_options.host, default_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(source_conninfo.keywords[c], "hostaddr") == 0 &&
-				(source_conninfo.values[c] != NULL))
+		else if (strcmp(default_conninfo.keywords[c], "hostaddr") == 0 &&
+				(default_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.host, source_conninfo.values[c], MAXLEN);
+			strncpy(runtime_options.host, default_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(source_conninfo.keywords[c], "port") == 0 &&
-				 (source_conninfo.values[c] != NULL))
+		else if (strcmp(default_conninfo.keywords[c], "port") == 0 &&
+				 (default_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.port, source_conninfo.values[c], MAXLEN);
+			strncpy(runtime_options.port, default_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(source_conninfo.keywords[c], "dbname") == 0 &&
-				 (source_conninfo.values[c] != NULL))
+		else if (strcmp(default_conninfo.keywords[c], "dbname") == 0 &&
+				 (default_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.dbname, source_conninfo.values[c], MAXLEN);
+			strncpy(runtime_options.dbname, default_conninfo.values[c], MAXLEN);
 		}
-		else if (strcmp(source_conninfo.keywords[c], "user") == 0 &&
-				 (source_conninfo.values[c] != NULL))
+		else if (strcmp(default_conninfo.keywords[c], "user") == 0 &&
+				 (default_conninfo.values[c] != NULL))
 		{
-			strncpy(runtime_options.username, source_conninfo.values[c], MAXLEN);
+			strncpy(runtime_options.username, default_conninfo.values[c], MAXLEN);
 		}
 	}
+	free_conninfo_params(&default_conninfo);
 
+	initialize_conninfo_params(&source_conninfo, false);
 
 	/* set default user for -R/--remote-user */
 	{
@@ -1669,10 +1674,24 @@ do_help(void)
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -f, --config-file=PATH              path to the repmgr configuration file\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
+	printf(_("  -R, --remote-user=USERNAME          database server username for rsync/ssh (default: \"%s\")\n"), runtime_options.username);
 	puts("");
 
-	printf(_("Connection options:\n"));
-	printf(_("  -S, --superuser=USERNAME            superuser to use if repmgr user is not superuser\n"));
+	printf(_("Database connection options:\n"));
+	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: "));
+	if (runtime_options.dbname[0] != '\0')
+		printf(_("\"%s\")\n"), runtime_options.dbname);
+	else
+		printf(_("\"%s\")\n"), runtime_options.username);
+
+	printf(_("  -h, --host=HOSTNAME                 database server host"));
+	if (runtime_options.host[0] != '\0')
+		printf(_(" (default: \"%s\")"), runtime_options.host);
+	printf(_("\n"));
+
+	printf(_("  -p, --port=PORT                     database server port (default: \"%s\")\n"), runtime_options.port);
+	printf(_("  -U, --username=USERNAME             database user name to connect as (default: \"%s\")\n"), runtime_options.username);
+	printf(_("  -S, --superuser=USERNAME            superuser to use, if repmgr user is not superuser\n"));
 
 	puts("");
 
