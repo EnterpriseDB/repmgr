@@ -620,7 +620,7 @@ try_reconnect(t_node_info *node_info)
 	for (i = 0; i < max_attempts; i++)
 	{
 		log_info(_("checking state of node %i, %i of %i attempts"),
-				 node_info->node_id, i, max_attempts);
+				 node_info->node_id, i + 1, max_attempts);
 		if (is_server_available(node_info->conninfo) == true)
 		{
 			log_notice(_("node has recovered, reconnecting"));
