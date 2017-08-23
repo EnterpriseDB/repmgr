@@ -54,9 +54,6 @@ while(<$fh>) {
     if ($param eq 'node') {
         push @outp, qq|node_id=${value}|;
     }
-    elsif ($param eq 'failover') {
-        push @outp, qq|failover_mode=${value}|;
-    }
     elsif ($param eq 'loglevel') {
         push @outp, qq|log_level=${value}|;
     }

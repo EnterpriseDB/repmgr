@@ -37,7 +37,6 @@ Following parameters have been added:
 
 Following parameters have been renamed:
 
-    - `failover` → `failover_mode`
     - `node` → `node_id`
     - `loglevel` → `log_level`
     - `logfacility` → `log_facility`

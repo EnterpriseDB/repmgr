@@ -19,8 +19,9 @@ typedef enum {
 	FAILOVER_STATE_PRIMARY_REAPPEARED,
 	FAILOVER_STATE_LOCAL_NODE_FAILURE,
 	FAILOVER_STATE_WAITING_NEW_PRIMARY,
+	FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER,
 	FAILOVER_STATE_FOLLOWED_NEW_PRIMARY,
-    FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY,
+	FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY,
 	FAILOVER_STATE_NO_NEW_PRIMARY,
 	FAILOVER_STATE_FOLLOW_FAIL,
 	FAILOVER_STATE_NODE_NOTIFICATION_ERROR
@@ -68,18 +69,20 @@ static bool do_upstream_standby_failover(void);
 #endif
 
 
+/* perform some sanity checks on the node's configuration */
+
 void
 do_physical_node_check(void)
 {
 #ifndef BDR_ONLY
     /*
-     * Check if node record is active - if not, and `failover_mode=automatic`, the node
+     * Check if node record is active - if not, and `failover=automatic`, the node
      * won't be considered as a promotion candidate; this often happens when
      * a failed primary is recloned and the node was not re-registered, giving
      * the impression failover capability is there when it's not. In this case
      * abort with an error and a hint about registering.
      *
-     * If `failover_mode=manual`, repmgrd can continue to passively monitor the node, but
+     * If `failover=manual`, repmgrd can continue to passively monitor the node, but
      * we should nevertheless issue a warning and the same hint.
      */
 
@@ -87,9 +90,9 @@ do_physical_node_check(void)
     {
         char *hint = "Check that 'repmgr (primary|standby) register' was executed for this node";
 
-        switch (config_file_options.failover_mode)
+        switch (config_file_options.failover)
         {
-			/* "failover_mode" is an enum, all values should be covered here */
+			/* "failover" is an enum, all values should be covered here */
 
             case FAILOVER_AUTOMATIC:
                 log_error(_("this node is marked as inactive and cannot be used as a failover target"));
@@ -104,7 +107,7 @@ do_physical_node_check(void)
         }
     }
 
-	if (config_file_options.failover_mode == FAILOVER_AUTOMATIC)
+	if (config_file_options.failover == FAILOVER_AUTOMATIC)
 	{
 		/*
 		 * check that promote/follow commands are defined, otherwise repmgrd
@@ -664,45 +667,48 @@ monitor_streaming_standby(void)
 					}
 				}
 
-				// get all!
-				get_active_sibling_node_records(local_conn,
-												local_node_info.node_id,
-												local_node_info.upstream_node_id,
-												&standby_nodes);
 
-				if (standby_nodes.node_count > 0)
+				if (config_file_options.failover == FAILOVER_AUTOMATIC)
 				{
-					log_debug("scanning %i node records to detect new primary...", standby_nodes.node_count);
-					for (cell = standby_nodes.head; cell; cell = cell->next)
+					get_active_sibling_node_records(local_conn,
+													local_node_info.node_id,
+													local_node_info.upstream_node_id,
+													&standby_nodes);
+
+					if (standby_nodes.node_count > 0)
 					{
-						/* skip local node check, we did that above */
-						if (cell->node_info->node_id == local_node_info.node_id)
+						log_debug("scanning %i node records to detect new primary...", standby_nodes.node_count);
+						for (cell = standby_nodes.head; cell; cell = cell->next)
 						{
-							continue;
-						}
+							/* skip local node check, we did that above */
+							if (cell->node_info->node_id == local_node_info.node_id)
+							{
+								continue;
+							}
 
-						cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
+							cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 
-						if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
-						{
-							log_debug("unable to connect to %i ... ", cell->node_info->node_id);
-							continue;
-						}
+							if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
+							{
+								log_debug("unable to connect to %i ... ", cell->node_info->node_id);
+								continue;
+							}
 
-						if (get_recovery_type(cell->node_info->conn) == RECTYPE_PRIMARY)
-						{
-							follow_node_id = cell->node_info->node_id;
+							if (get_recovery_type(cell->node_info->conn) == RECTYPE_PRIMARY)
+							{
+								follow_node_id = cell->node_info->node_id;
+								PQfinish(cell->node_info->conn);
+								cell->node_info->conn = NULL;
+								break;
+							}
 							PQfinish(cell->node_info->conn);
 							cell->node_info->conn = NULL;
-							break;
 						}
-						PQfinish(cell->node_info->conn);
-						cell->node_info->conn = NULL;
-					}
 
-					if (follow_node_id != UNKNOWN_NODE_ID && config_file_options.failover_mode == FAILOVER_AUTOMATIC)
-					{
-						follow_new_primary(follow_node_id);
+						if (follow_node_id != UNKNOWN_NODE_ID)
+						{
+							follow_new_primary(follow_node_id);
+						}
 					}
 				}
 
@@ -730,7 +736,7 @@ monitor_streaming_standby(void)
 					upstream_node_info.node_id,
 					print_monitoring_state(monitoring_state));
 
-				if (config_file_options.failover_mode == FAILOVER_MANUAL)
+				if (config_file_options.failover == FAILOVER_MANUAL)
 				{
 					appendPQExpBuffer(
 						&monitoring_summary,
@@ -739,7 +745,7 @@ monitor_streaming_standby(void)
 
 				log_info("%s", monitoring_summary.data);
 				termPQExpBuffer(&monitoring_summary);
-				if (monitoring_state == MS_DEGRADED)
+				if (monitoring_state == MS_DEGRADED && config_file_options.failover == FAILOVER_AUTOMATIC)
 				{
 					log_detail(_("waiting for upstream or another primary to reappear"));
 				}
@@ -833,11 +839,10 @@ do_primary_failover(void)
 	}
 	else
 	{
-		/*
-		 * Node is not a candidate but no other nodes are available
-		 */
+
 		if (standby_nodes.node_count == 0)
 		{
+			/* Node is not a candidate but no other nodes are available */
 			log_notice(_("no other nodes are available as promotion candidate"));
 			log_hint(_("use \"repmgr standby promote\" to manually promote this node"));
 
@@ -884,6 +889,45 @@ do_primary_failover(void)
 												upstream_node_info.node_id,
 												&standby_nodes);
 
+			}
+			else if (config_file_options.failover == FAILOVER_MANUAL)
+			{
+				/* automatic failover disabled */
+
+				t_node_info new_primary = T_NODE_INFO_INITIALIZER;
+				RecordStatus record_status = RECORD_NOT_FOUND;
+				PGconn *new_primary_conn;
+
+				record_status = get_node_record(local_conn, new_primary_id, &new_primary);
+
+				if (record_status != RECORD_FOUND)
+				{
+					log_error(_("unable to retrieve metadata record for new primary node (ID: %i)"),
+							  new_primary_id);
+				}
+				else
+				{
+					PQExpBufferData event_details;
+					initPQExpBuffer(&event_details);
+					appendPQExpBuffer(&event_details,
+									  _("node %i is in manual failover mode and is now disconnected from streaming replication"),
+									  local_node_info.node_id);
+
+					new_primary_conn = establish_db_connection(new_primary.conninfo, false);
+
+					create_event_notification(
+						new_primary_conn,
+						&config_file_options,
+						local_node_info.node_id,
+						"standby_disconnect_manual",
+						/* here "true" indicates the action has occurred as expected */
+						true,
+						event_details.data);
+					PQfinish(new_primary_conn);
+					termPQExpBuffer(&event_details);
+
+				}
+				failover_state = FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER;
 			}
 			else
 			{
@@ -959,6 +1003,13 @@ do_primary_failover(void)
 			monitoring_state = MS_DEGRADED;
 			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
+			return false;
+
+		case FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER:
+			log_info(_("automatic failover disabled for this node, manual intervention required"));
+
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 			return false;
 
 		case FAILOVER_STATE_NO_NEW_PRIMARY:
@@ -1049,12 +1100,13 @@ do_upstream_standby_failover(void)
 		 * table but we should be able to generate an external notification
 		 * if required.
 		 */
-		create_event_notification(primary_conn,
-							&config_file_options,
-							local_node_info.node_id,
-							"repmgrd_failover_follow",
-							false,
-							event_details.data);
+		create_event_notification(
+			primary_conn,
+			&config_file_options,
+			local_node_info.node_id,
+			"repmgrd_failover_follow",
+			false,
+			event_details.data);
 
 		termPQExpBuffer(&event_details);
 	}
@@ -1073,12 +1125,13 @@ do_upstream_standby_failover(void)
 
 		log_error("%s", event_details.data);
 
-		create_event_notification(NULL,
-							&config_file_options,
-							local_node_info.node_id,
-							"repmgrd_failover_follow",
-							false,
-							event_details.data);
+		create_event_notification(
+			NULL,
+			&config_file_options,
+			local_node_info.node_id,
+			"repmgrd_failover_follow",
+			false,
+			event_details.data);
 
 		termPQExpBuffer(&event_details);
 
@@ -1104,12 +1157,13 @@ do_upstream_standby_failover(void)
 
 	log_notice("%s", event_details.data);
 
-	create_event_notification(primary_conn,
-							  &config_file_options,
-							  local_node_info.node_id,
-							  "repmgrd_failover_follow",
-							  true,
-							  event_details.data);
+	create_event_notification(
+		primary_conn,
+		&config_file_options,
+		local_node_info.node_id,
+		"repmgrd_failover_follow",
+		true,
+		event_details.data);
 
 	termPQExpBuffer(&event_details);
 
@@ -1375,14 +1429,14 @@ follow_new_primary(int new_primary_id)
 	/* Store details of the failed node here */
 	t_node_info failed_primary = T_NODE_INFO_INITIALIZER;
 	t_node_info new_primary = T_NODE_INFO_INITIALIZER;
-	RecordStatus record_status;
+	RecordStatus record_status = RECORD_NOT_FOUND;
 	bool new_primary_ok = false;
 
 	record_status = get_node_record(local_conn, new_primary_id, &new_primary);
 
 	if (record_status != RECORD_FOUND)
 	{
-		log_error(_("unable to retrieve metadata record for upstream node (ID: %i)"),
+		log_error(_("unable to retrieve metadata record for new primary node (ID: %i)"),
 				  new_primary_id);
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
@@ -1504,12 +1558,13 @@ follow_new_primary(int new_primary_id)
 
 	log_notice("%s\n", event_details.data);
 
-	create_event_notification(upstream_conn,
-						&config_file_options,
-						local_node_info.node_id,
-						"repmgrd_failover_follow",
-						true,
-						event_details.data);
+	create_event_notification(
+		upstream_conn,
+		&config_file_options,
+		local_node_info.node_id,
+		"repmgrd_failover_follow",
+		true,
+		event_details.data);
 
 	termPQExpBuffer(&event_details);
 
@@ -1610,9 +1665,9 @@ do_election(void)
 									upstream_node_info.node_id,
 									&standby_nodes);
 
-	if (config_file_options.failover_mode == FAILOVER_MANUAL)
+	if (config_file_options.failover == FAILOVER_MANUAL)
 	{
-		log_notice(_("this node is not configured for automatic failure so will not be considered as promotion candidate"));
+		log_notice(_("this node is not configured for automatic failover so will not be considered as promotion candidate"));
 
 		return ELECTION_NOT_CANDIDATE;
 	}
@@ -1746,9 +1801,7 @@ do_election(void)
 	/* get our lsn */
 	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
 
-	log_debug("last receive lsn = %X/%X",
-			  (uint32) (local_node_info.last_wal_receive_lsn >> 32),
-			  (uint32)  local_node_info.last_wal_receive_lsn);
+	log_debug("last receive lsn = %X/%X", format_lsn(local_node_info.last_wal_receive_lsn));
 
 	/* request vote from each node */
 

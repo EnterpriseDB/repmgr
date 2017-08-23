@@ -196,7 +196,7 @@ ssh_options='-q'                        # Options to append to "ssh"
 # These settings are only applied when repmgrd is running. Values shown
 # are defaults.
 
-#failover_mode=manual                   # one of 'automatic', 'manual'.
+#failover=manual                        # one of 'automatic', 'manual'.
                                         # determines what action to take in the event of upstream failure
                                         #
                                         # 'automatic': repmgrd will automatically attempt to promote the

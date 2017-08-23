@@ -83,7 +83,7 @@ typedef struct
 	int			replication_lag_critical;
 
 	/* repmgrd settings */
-	failover_mode_opt		failover_mode;
+	failover_mode_opt		failover;
 	char		location[MAXLEN];
 	int			priority;
 	char		promote_command[MAXLEN];

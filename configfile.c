@@ -236,7 +236,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 	/* repmgrd settings
 	 * ---------------- */
-	options->failover_mode = FAILOVER_MANUAL;
+	options->failover = FAILOVER_MANUAL;
 	options->priority = DEFAULT_PRIORITY;
 	memset(options->location, 0, sizeof(options->location));
 	strncpy(options->location, DEFAULT_LOCATION, MAXLEN);
@@ -400,15 +400,15 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->replication_lag_critical = repmgr_atoi(value, name, error_list, 1);
 
 		/* repmgrd settings */
-		else if (strcmp(name, "failover_mode") == 0)
+		else if (strcmp(name, "failover") == 0)
 		{
 			if (strcmp(value, "manual") == 0)
 			{
-				options->failover_mode = FAILOVER_MANUAL;
+				options->failover = FAILOVER_MANUAL;
 			}
 			else if (strcmp(value, "automatic") == 0)
 			{
-				options->failover_mode = FAILOVER_AUTOMATIC;
+				options->failover = FAILOVER_AUTOMATIC;
 			}
 			else
 			{
@@ -484,12 +484,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		{
 			item_list_append(warning_list,
 							 _("parameter \"cluster\" is deprecated and will be ignored"));
-			known_parameter = false;
-		}
-		else if (strcmp(name, "failover") == 0)
-		{
-			item_list_append(warning_list,
-							 _("parameter \"failover\" has been renamed to \"failover_mode\""));
 			known_parameter = false;
 		}
 		else if (strcmp(name, "node") == 0)
