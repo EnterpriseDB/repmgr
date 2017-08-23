@@ -992,6 +992,9 @@ do_primary_failover(void)
 			return true;
 
 		case FAILOVER_STATE_PROMOTION_FAILED:
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
 			log_debug("failover state is PROMOTION FAILED");
 			return false;
 
@@ -1269,9 +1272,19 @@ promote_self(void)
 			return FAILOVER_STATE_PRIMARY_REAPPEARED;
 		}
 
-		// handle this
-		//  -> check if somehow primary; otherwise go for new election?
+
 		log_error(_("promote command failed"));
+		initPQExpBuffer(&event_details);
+
+		create_event_notification(
+			NULL,
+			&config_file_options,
+			local_node_info.node_id,
+			"repmgrd_promote_error",
+			true,
+			event_details.data);
+		termPQExpBuffer(&event_details);
+
 		return FAILOVER_STATE_PROMOTION_FAILED;
 	}
 
