@@ -23,6 +23,18 @@ CREATE TABLE events (
   details          TEXT NULL
 );
 
+CREATE TABLE monitoring_history (
+  primary_node_id                INTEGER NOT NULL,
+  standby_node_id                INTEGER NOT NULL,
+  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL,
+  last_apply_time                TIMESTAMP WITH TIME ZONE,
+  last_wal_primary_location      PG_LSN NOT NULL,
+  last_wal_standby_location      PG_LSN,
+  replication_lag                BIGINT NOT NULL,
+  apply_lag                      BIGINT NOT NULL
+);
+CREATE INDEX idx_monitoring_history_time
+          ON monitoring_history (last_monitor_time, standby_node_id);
 
 CREATE VIEW show_nodes AS
    SELECT n.node_id,

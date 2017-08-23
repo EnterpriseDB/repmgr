@@ -54,9 +54,27 @@ SELECT id, upstream_node_id, active, name,
 
 ALTER TABLE repl_events RENAME TO events;
 
--- convert "repmgr_$cluster.repl_monitor" to "monitor"
+-- convert "repmgr_$cluster.repl_monitor" to "monitoring_history"
 
-ALTER TABLE repl_monitor RENAME TO monitor;
+CREATE TABLE monitoring_history (
+  primary_node_id                INTEGER NOT NULL,
+  standby_node_id                INTEGER NOT NULL,
+  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL,
+  last_apply_time                TIMESTAMP WITH TIME ZONE,
+  last_wal_primary_location      PG_LSN NOT NULL,
+  last_wal_standby_location      PG_LSN,
+  replication_lag                BIGINT NOT NULL,
+  apply_lag                      BIGINT NOT NULL
+);
+
+INSERT INTO monitoring_history
+  (primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag)
+SELECT primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag
+  FROM repl_monitor;
+
+CREATE INDEX idx_monitoring_history_time
+          ON monitoring_history (last_monitor_time, standby_node_id);
+
 
 -- recreate VIEW
 
@@ -79,7 +97,9 @@ DROP VIEW IF EXISTS repl_status;
 
 -- CREATE VIEW status ... ;
 
+/* drop old tables */
 DROP TABLE repl_nodes;
+DROP TABLE repl_monitor;
 
 
 /* repmgrd functions */
