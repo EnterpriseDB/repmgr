@@ -42,6 +42,7 @@ static PGconn *primary_conn = NULL;
 #ifndef BDR_ONLY
 static FailoverState failover_state = FAILOVER_STATE_UNKNOWN;
 
+static int  primary_node_id = UNKNOWN_NODE_ID;
 static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
 static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
@@ -66,6 +67,7 @@ void close_connections_physical();
 static bool do_primary_failover(void);
 static bool do_upstream_standby_failover(void);
 
+static void update_monitoring_history(void);
 #endif
 
 
@@ -355,6 +357,7 @@ monitor_streaming_primary(void)
 			}
 		}
 
+
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
 					config_file_options.monitor_interval_secs);
 
@@ -423,7 +426,7 @@ monitor_streaming_standby(void)
 	 * Upstream node must be running.
 	 *
 	 * We could possibly have repmgrd skip to degraded monitoring mode until it
-	 * comes up, but there doesn't seem to be much point in doint that.
+	 * comes up, but there doesn't seem to be much point in doing that.
 	 */
 	if (PQstatus(upstream_conn) != CONNECTION_OK)
 	{
@@ -460,6 +463,8 @@ monitor_streaming_standby(void)
 	{
 		primary_conn = upstream_conn;
 	}
+
+	primary_node_id = get_primary_node_id(primary_conn);
 
 	/* Log startup event */
 	if (startup_event_logged == false)
@@ -567,7 +572,10 @@ monitor_streaming_standby(void)
 					// it's possible it will make sense to return in
 					// all cases to restart monitoring
 					if (failover_done == true)
+					{
+						primary_node_id = get_primary_node_id(primary_conn);
 						return;
+					}
 				}
 			}
 		}
@@ -763,6 +771,9 @@ monitor_streaming_standby(void)
 		 */
 
 		check_connection(&local_node_info, local_conn);
+
+		if (config_file_options.monitoring_history == true)
+			update_monitoring_history();
 
 		sleep(config_file_options.monitor_interval_secs);
 	}
@@ -1029,9 +1040,76 @@ do_primary_failover(void)
 			return false;
 	}
 
-
 	/* should never reach here */
 	return false;
+}
+
+
+
+
+static void
+update_monitoring_history(void)
+{
+	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
+	XLogRecPtr		primary_last_wal_location = InvalidXLogRecPtr;
+
+	long long unsigned int apply_lag_bytes = 0;
+	long long unsigned int replication_lag_bytes = 0;
+
+	/* both local and primary connections must be available */
+	if (PQstatus(primary_conn) != CONNECTION_OK || PQstatus(local_conn) != CONNECTION_OK)
+		return;
+
+	if (get_replication_info(local_conn, &replication_info) == false)
+	{
+		log_warning(_("unable to retrieve replication status information"));
+		return;
+	}
+
+	if (replication_info.receiving_streamed_wal == false)
+	{
+		log_verbose(LOG_DEBUG, _("standby %i not connected to streaming replication"),
+					local_node_info.node_id);
+	}
+
+	primary_last_wal_location = get_current_wal_lsn(primary_conn);
+
+	/* calculate apply lag in bytes */
+	if (replication_info.last_wal_receive_lsn >= replication_info.last_wal_replay_lsn)
+	{
+		apply_lag_bytes = (long long unsigned int) (replication_info.last_wal_receive_lsn - replication_info.last_wal_replay_lsn);
+	}
+	else
+	{
+		/* if this happens, it probably indicates archive recovery */
+		apply_lag_bytes = 0;
+	}
+
+	/* calculate replication lag in bytes */
+
+	if (primary_last_wal_location >= replication_info.last_wal_receive_lsn)
+	{
+		replication_lag_bytes = (long long unsigned int)(primary_last_wal_location - replication_info.last_wal_receive_lsn);
+	}
+	else
+	{
+		/* This should never happen, but in case it does set replication lag to zero */
+		log_warning("primary xlog (%X/%X) location appears less than standby receive location (%X/%X)",
+					format_lsn(primary_last_wal_location),
+					format_lsn(replication_info.last_wal_receive_lsn));
+		replication_lag_bytes = 0;
+	}
+
+	add_monitoring_record(
+		primary_conn,
+		primary_node_id,
+		local_node_info.node_id,
+		replication_info.current_timestamp,
+		primary_last_wal_location,
+		replication_info.last_wal_receive_lsn,
+		replication_info.last_xact_replay_timestamp,
+		replication_lag_bytes,
+		apply_lag_bytes);
 }
 
 
@@ -1268,7 +1346,7 @@ promote_self(void)
 			// XXX handle this!
 			// -> we'll need to let the other nodes know too....
 			/* no failover occurred but we'll want to restart connections */
-			//failover_done = true;
+
 			return FAILOVER_STATE_PRIMARY_REAPPEARED;
 		}
 

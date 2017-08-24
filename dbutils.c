@@ -1068,7 +1068,7 @@ get_recovery_type(PGconn *conn)
 
 PGconn *
 _get_primary_connection(PGconn *conn,
-					  int *primary_id, char *primary_conninfo_out, bool quiet)
+						int *primary_id, char *primary_conninfo_out, bool quiet)
 {
 	PQExpBufferData	  query;
 
@@ -1250,30 +1250,34 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(
 		&query,
-		" SELECT last_wal_receive_lsn, "
-        "        last_wal_replay_lsn, "
-        "        last_xact_replay_timestamp, "
+		" SELECT ts, "
+		"        last_wal_receive_lsn, "
+		"        last_wal_replay_lsn, "
+		"        last_xact_replay_timestamp, "
 		"        CASE WHEN (last_wal_receive_lsn = last_wal_replay_lsn) "
-        "          THEN 0::INT "
-        "        ELSE "
-        "          EXTRACT(epoch FROM (clock_timestamp() - last_xact_replay_timestamp))::INT "
-        "        END AS replication_lag_time "
-        "   FROM ( ");
+		"          THEN 0::INT "
+		"        ELSE "
+		"          EXTRACT(epoch FROM (clock_timestamp() - last_xact_replay_timestamp))::INT "
+		"        END AS replication_lag_time, "
+		"        COALESCE(last_wal_receive_lsn, '0/0') >= last_wal_replay_lsn AS receiving_streamed_wal "
+		"   FROM ( ");
 
 	if (server_version_num >= 100000)
 	{
 		appendPQExpBuffer(
 			&query,
-		    " SELECT pg_last_wal_receive_lsn()       AS last_wal_receive_lsn, "
-            "        pg_last_wal_replay_lsn()        AS last_wal_replay_lsn, "
+			" SELECT CURRENT_TIMESTAMP AS ts, "
+			"        pg_last_wal_receive_lsn()       AS last_wal_receive_lsn, "
+        	"        pg_last_wal_replay_lsn()        AS last_wal_replay_lsn, "
 			"        pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
 	}
 	else
 	{
 		appendPQExpBuffer(
 			&query,
-		    " SELECT pg_last_xlog_receive_location() AS last_wal_receive_lsn, "
-            "        pg_last_xlog_replay_location()  AS last_wal_replay_lsn, "
+			" SELECT CURRENT_TIMESTAMP AS ts, "
+			"        pg_last_xlog_receive_location() AS last_wal_receive_lsn, "
+			"        pg_last_xlog_replay_location()  AS last_wal_replay_lsn, "
 			"        pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
 	}
 
@@ -1295,10 +1299,12 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 		return false;
 	}
 
-	replication_info->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 0));
-	replication_info->last_wal_replay_lsn = parse_lsn(PQgetvalue(res, 0, 1));
-	replication_info->replication_lag_time = atoi(PQgetvalue(res, 0, 3));
-
+	strncpy(replication_info->current_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+	replication_info->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 1));
+	replication_info->last_wal_replay_lsn = parse_lsn(PQgetvalue(res, 0, 2));
+	strncpy(replication_info->last_xact_replay_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
+	replication_info->replication_lag_time = atoi(PQgetvalue(res, 0, 4));
+	replication_info->receiving_streamed_wal = atobool(PQgetvalue(res, 0, 5));
 	PQclear(res);
 
 	return true;
@@ -2631,7 +2637,7 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 		config_file_list_add(list,
 							 PQgetvalue(res, i, 0),
 							 PQgetvalue(res, i, 1),
-							 strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
+							 atobool(PQgetvalue(res, i, 2)));
 	}
 
 	PQclear(res);
@@ -2676,7 +2682,7 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 			list,
 			PQgetvalue(res, i, 0),
 			PQgetvalue(res, i, 1),
-			strcmp(PQgetvalue(res, i, 2), "t") == 1 ? true : false);
+			atobool(PQgetvalue(res, i, 2)));
 	}
 
 	PQclear(res);
@@ -3171,9 +3177,7 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 	strncpy(record->slot_name, PQgetvalue(res, 0, 0), MAXLEN);
 	strncpy(record->slot_type, PQgetvalue(res, 0, 1), MAXLEN);
-	record->active = (strcmp(PQgetvalue(res, 0, 2), "t") == 0)
-		? true
-		: false;
+	record->active = atobool(PQgetvalue(res, 0, 2));
 
 	PQclear(res);
 
@@ -3347,6 +3351,84 @@ is_server_available(const char *conninfo)
 }
 
 
+/* ==================== */
+/* monitoring functions */
+/* ==================== */
+
+void
+add_monitoring_record(
+				PGconn *conn,
+				int primary_node_id,
+				int local_node_id,
+				char *monitor_standby_timestamp,
+				XLogRecPtr primary_last_wal_location,
+				XLogRecPtr last_wal_receive_lsn,
+				char *last_xact_replay_timestamp,
+				long long unsigned int replication_lag_bytes,
+				long long unsigned int apply_lag_bytes
+			)
+{
+	PQExpBufferData	  query;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		"INSERT INTO repmgr.monitoring_history "
+		"           (primary_node_id, "
+		"            standby_node_id, "
+		"            last_monitor_time, "
+		"            last_apply_time, "
+		"            last_wal_primary_location, "
+		"            last_wal_standby_location, "
+		"            replication_lag, "
+		"            apply_lag ) "
+		"     VALUES(%i, "
+		"            %i, "
+		"            '%s'::TIMESTAMP WITH TIME ZONE, "
+		"            '%s'::TIMESTAMP WITH TIME ZONE, "
+		"            '%X/%X', "
+		"            '%X/%X', "
+		"            %llu, "
+		"            %llu) ",
+		primary_node_id,
+		local_node_id,
+		monitor_standby_timestamp,
+		last_xact_replay_timestamp,
+		format_lsn(primary_last_wal_location),
+		format_lsn(last_wal_receive_lsn),
+		replication_lag_bytes,
+		apply_lag_bytes);
+
+	log_verbose(LOG_DEBUG, "standby_monitor:()\n%s", query.data);
+
+	if (PQsendQuery(conn, query.data) == 0)
+	{
+		log_warning(_("query could not be sent to master: %s\n"),
+					PQerrorMessage(conn));
+	}
+	else
+	{
+		//PGresult		   *res = NULL;
+
+/*		sqlquery_snprintf(sqlquery,
+						  "SELECT %s.repmgr_update_last_updated();",
+						  get_repmgr_schema_quoted(my_local_conn));
+						  res = PQexec(my_local_conn, sqlquery);*/
+
+		/* not critical if the above query fails*/
+/*		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			log_warning(_("unable to set last_updated: %s\n"), PQerrorMessage(my_local_conn));
+
+			PQclear(res);*/
+	}
+
+	termPQExpBuffer(&query);
+
+	return;
+}
+
+
 /*
  * node voting functions
  *
@@ -3512,9 +3594,7 @@ announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_no
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	retval = (strcmp(PQgetvalue(res, 0, 0), "t") == 0)
-		? true
-		: false;
+	retval = atobool(PQgetvalue(res, 0, 0));
 
 	PQclear(res);
 
@@ -3613,6 +3693,33 @@ reset_voting_status(PGconn *conn)
 /* replication status functions */
 /* ============================ */
 
+
+XLogRecPtr
+get_current_wal_lsn(PGconn *conn)
+{
+	PGresult		   *res = NULL;
+	XLogRecPtr		    ptr = InvalidXLogRecPtr;
+
+
+	if (server_version_num >= 100000)
+	{
+		res = PQexec(conn, "SELECT pg_catalog.pg_current_wal_lsn()");
+	}
+	else
+	{
+		res = PQexec(conn, "SELECT pg_catalog.pg_current_xlog_location()");
+	}
+
+	if (PQresultStatus(res) == PGRES_TUPLES_OK)
+	{
+		ptr = parse_lsn(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return ptr;
+}
+
 XLogRecPtr
 get_last_wal_receive_location(PGconn *conn)
 {
@@ -3690,7 +3797,7 @@ is_bdr_db(PGconn *conn, PQExpBufferData *output)
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	is_bdr_db = strcmp(PQgetvalue(res, 0, 0), "t") == 0 ? true : false;
+	is_bdr_db = atobool(PQgetvalue(res, 0, 0));
 
 	if (is_bdr_db == false)
 	{
@@ -3910,7 +4017,7 @@ get_bdr_node_replication_slot_status(PGconn *conn, const char *node_name)
 	}
 	else
 	{
-		status = (strcmp(PQgetvalue(res, 0, 0), "t") == 0)
+		status = (atobool(PQgetvalue(res, 0, 0)) == true)
 			? SLOT_ACTIVE
 			: SLOT_INACTIVE;
 	}
@@ -4143,7 +4250,7 @@ am_bdr_failover_handler(PGconn *conn, int node_id)
 	}
 
 
-	am_handler = (strcmp(PQgetvalue(res, 0, 0), "t") == 0) ? true : false;
+	am_handler = atobool(PQgetvalue(res, 0, 0));
 
 	PQclear(res);
 

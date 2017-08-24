@@ -242,7 +242,6 @@ main(int argc, char **argv)
 		config_file_options.monitoring_history = true;
 	}
 
-
 	fd = freopen("/dev/null", "r", stdin);
 	if (fd == NULL)
 	{
@@ -272,7 +271,6 @@ main(int argc, char **argv)
 					strerror(errno));
 		}
 	}
-
 
 	log_info(_("connecting to database \"%s\""),
 			 config_file_options.conninfo);

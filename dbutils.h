@@ -247,14 +247,19 @@ typedef struct BdrNodeInfoList
 }
 
 typedef struct {
+	char		current_timestamp[MAXLEN];
 	uint64		last_wal_receive_lsn;
 	uint64		last_wal_replay_lsn;
+	char		last_xact_replay_timestamp[MAXLEN];
 	int			replication_lag_time;
+	bool		receiving_streamed_wal;
 } ReplInfo;
 
 #define T_REPLINFO_INTIALIZER { \
+	"", \
 	InvalidXLogRecPtr, \
 	InvalidXLogRecPtr, \
+	"", \
 	0 \
 }
 
@@ -304,6 +309,7 @@ XLogRecPtr parse_lsn(const char *str);
 
 extern void wrap_ddl_query(PQExpBufferData *query_buf, int replication_type, const char *fmt, ...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
+bool		 atobool(const char *value);
 
 /* connection functions */
 PGconn *establish_db_connection(const char *conninfo,
@@ -366,8 +372,7 @@ ExtensionStatus get_repmgr_extension_status(PGconn *conn);
 /* node management functions */
 void		 checkpoint(PGconn *conn);
 
-/* result functions */
-bool		 atobool(const char *value);
+
 
 /* node record functions */
 t_server_type parse_node_type(const char *type);
@@ -424,6 +429,19 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 /* node availability functions */
 bool		is_server_available(const char *conninfo);
 
+/* monitoring functions  */
+void		add_monitoring_record(
+				PGconn *conn,
+				int primary_node_id,
+				int local_node_id,
+				char *monitor_standby_timestamp,
+				XLogRecPtr primary_last_wal_location,
+				XLogRecPtr last_wal_receive_lsn,
+				char *last_xact_replay_timestamp,
+				long long unsigned int replication_lag_bytes,
+				long long unsigned int apply_lag_bytes
+			);
+
 
 /* node voting functions */
 NodeVotingStatus get_voting_status(PGconn *conn);
@@ -435,6 +453,7 @@ bool		 	 get_new_primary(PGconn *conn, int *primary_node_id);
 void		 	 reset_voting_status(PGconn *conn);
 
 /* replication status functions */
+XLogRecPtr	 get_current_wal_lsn(PGconn *conn);
 XLogRecPtr	 get_last_wal_receive_location(PGconn *conn);
 bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int 		 get_replication_lag_seconds(PGconn *conn);
