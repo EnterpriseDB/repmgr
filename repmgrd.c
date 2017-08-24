@@ -107,7 +107,6 @@ close_connections()
 	if (PQstatus(master_conn) == CONNECTION_OK && PQisBusy(master_conn) == 1)
 		cancel_query(master_conn, local_options.master_response_timeout);
 
-
 	if (PQstatus(my_local_conn) == CONNECTION_OK)
 		PQfinish(my_local_conn);
 
@@ -948,7 +947,7 @@ standby_monitor(void)
 				initPQExpBuffer(&errmsg);
 
 				appendPQExpBuffer(&errmsg,
-								  _("node %i is in manual failover mode and is now disconnected from replication"),
+								  _("node %i is in manual failover mode and is now disconnected from streaming replication"),
 								  local_options.node);
 
 				log_verbose(LOG_DEBUG, "old master: %i; current: %i\n", previous_master_node_id, master_options.node);
@@ -962,7 +961,7 @@ standby_monitor(void)
 									/* here "true" indicates the action has occurred as expected */
 									true,
 									errmsg.data);
-
+				termPQExpBuffer(&errmsg);
 			}
 		}
 		else if (local_options.failover == AUTOMATIC_FAILOVER)
