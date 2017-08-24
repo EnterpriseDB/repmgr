@@ -56,6 +56,11 @@ LEFT JOIN repmgr.nodes un
 
 /* monitoring functions */
 
+CREATE FUNCTION set_local_node_id(INT)
+  RETURNS VOID
+  AS '$libdir/repmgr', 'set_local_node_id'
+  LANGUAGE C STRICT;
+
 CREATE FUNCTION standby_set_last_updated()
   RETURNS TIMESTAMP WITH TIME ZONE
   AS '$libdir/repmgr', 'standby_set_last_updated'
@@ -65,7 +70,6 @@ CREATE FUNCTION standby_get_last_updated()
   RETURNS TIMESTAMP WITH TIME ZONE
   AS '$libdir/repmgr', 'standby_get_last_updated'
   LANGUAGE C STRICT;
-
 
 /* failover functions */
 

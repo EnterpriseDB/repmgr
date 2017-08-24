@@ -307,6 +307,8 @@ main(int argc, char **argv)
 		terminate(ERR_BAD_CONFIG);
 	}
 
+	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+
 	if (config_file_options.replication_type == REPLICATION_TYPE_BDR)
 	{
 		log_debug("node id is %i", local_node_info.node_id);
@@ -639,9 +641,13 @@ try_reconnect(t_node_info *node_info)
 			PQfinish(conn);
 			log_notice(_("unable to reconnect to node"));
 		}
-		log_info(_("sleeping %i seconds until next reconnection attempt"),
-				 config_file_options.reconnect_interval);
-		sleep(config_file_options.reconnect_interval);
+
+		if (i + 1 < max_attempts)
+		{
+			log_info(_("sleeping %i seconds until next reconnection attempt"),
+					 config_file_options.reconnect_interval);
+			sleep(config_file_options.reconnect_interval);
+		}
 	}
 
 

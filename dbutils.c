@@ -1525,6 +1525,34 @@ identify_system(PGconn *repl_conn, t_system_identification *identification)
 }
 
 
+bool
+repmgrd_set_local_node_id(PGconn *conn, int local_node_id)
+{
+	PQExpBufferData	  query;
+	PGresult		 *res = NULL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(
+		&query,
+		" SELECT repmgr.set_local_node_id(%i)",
+		local_node_id);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+	return true;
+}
+
+
+
 /* ================ */
 /* result functions */
 /* ================ */
@@ -3598,6 +3626,7 @@ announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_no
 
 	return retval;
 }
+
 
 void
 notify_follow_primary(PGconn *conn, int primary_node_id)

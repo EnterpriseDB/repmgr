@@ -1141,8 +1141,6 @@ _do_standby_promote_internal(const char *data_dir)
 	PGconn	   *conn = NULL;
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 
-	log_notice(_("promoting standby"));
-
 	/*
 	 * Promote standby to primary.
 	 *
@@ -1153,8 +1151,8 @@ _do_standby_promote_internal(const char *data_dir)
 
 	get_server_action(ACTION_PROMOTE, script, (char *)data_dir);
 
-	log_notice(_("promoting server using '%s'"),
-			   script);
+	log_notice(_("promoting standby"));
+	log_detail(_("promoting server using '%s'"), script);
 
 	r = system(script);
 	if (r != 0)

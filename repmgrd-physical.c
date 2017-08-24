@@ -799,7 +799,7 @@ do_primary_failover(void)
 	}
 	else if (election_result == ELECTION_WON)
 	{
-		log_notice("I am the winner, will now promote self and inform other nodes");
+		log_notice("this node is the winner, will now promote self and inform other nodes");
 
 		failover_state = promote_self();
 	}
@@ -1648,7 +1648,7 @@ follow_new_primary(int new_primary_id)
 					  local_node_info.node_id,
 					  upstream_node_info.node_id);
 
-	log_notice("%s\n", event_details.data);
+	log_notice("%s", event_details.data);
 
 	create_event_notification(
 		upstream_conn,

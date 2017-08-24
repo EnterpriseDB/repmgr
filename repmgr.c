@@ -46,6 +46,7 @@ typedef struct repmgrdSharedState
 {
 	LWLockId	lock;			/* protects search/modification */
 	TimestampTz last_updated;
+	int local_node_id;
 	/* streaming failover */
 	NodeState	node_state;
 	NodeVotingStatus voting_status;
@@ -65,6 +66,9 @@ void		_PG_init(void);
 void		_PG_fini(void);
 
 static void repmgr_shmem_startup(void);
+
+Datum		set_local_node_id(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(set_local_node_id);
 
 Datum		standby_set_last_updated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(standby_set_last_updated);
@@ -107,9 +111,9 @@ PG_FUNCTION_INFO_V1(unset_bdr_failover_handler);
 void
 _PG_init(void)
 {
-	elog(INFO, "repmgr init");
+	elog(DEBUG1, "repmgr init");
 
-	// error here?
+	/* error here? */
 	if (!process_shared_preload_libraries_in_progress)
 		return;
 
@@ -128,6 +132,8 @@ _PG_init(void)
 	shmem_startup_hook = repmgr_shmem_startup;
 
 }
+
+
 /*
  * Module unload callback
  */
@@ -171,6 +177,7 @@ repmgr_shmem_startup(void)
 		shared_state->lock = LWLockAssign();
 #endif
 
+		shared_state->local_node_id = UNKNOWN_NODE_ID;
 		shared_state->current_electoral_term = 0;
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
@@ -185,6 +192,21 @@ repmgr_shmem_startup(void)
 /* ==================== */
 /* monitoring functions */
 /* ==================== */
+
+Datum
+set_local_node_id(PG_FUNCTION_ARGS)
+{
+	int local_node_id = PG_GETARG_INT32(0);
+
+	if (!shared_state)
+		PG_RETURN_NULL();
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	shared_state->local_node_id = local_node_id;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_VOID();
+}
 
 /* update and return last updated with current timestamp */
 Datum
@@ -254,7 +276,8 @@ request_vote(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 	}
 
-	elog(INFO, "requesting node id is %i for electoral term %i (our term: %i)",
+	elog(INFO, "node %i has received request from node %i for electoral term %i (our term: %i)",
+		 shared_state->local_node_id,
 		 requesting_node_id, current_electoral_term,
 		 shared_state->current_electoral_term);
 
@@ -270,7 +293,7 @@ request_vote(PG_FUNCTION_ARGS)
 		"SELECT pg_catalog.pg_last_xlog_receive_location()");
 #endif
 
-	elog(INFO, "query: %s", query.data);
+	elog(DEBUG1, "query: %s", query.data);
 	ret = SPI_execute(query.data, true, 0);
 
 	if (ret < 0)
@@ -285,7 +308,7 @@ request_vote(PG_FUNCTION_ARGS)
 										1, &isnull));
 
 
-	elog(INFO, "Our LSN is %X/%X",
+	elog(DEBUG1, "our LSN is %X/%X",
 		 (uint32) (our_lsn >> 32),
 		 (uint32) our_lsn);
 
@@ -388,9 +411,11 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_NULL();
 
-	elog(INFO, "received notification to follow node %i", primary_node_id);
-
 	LWLockAcquire(shared_state->lock, LW_SHARED);
+
+	elog(INFO, "node %i received notification to follow node %i",
+		 shared_state->local_node_id,
+		 primary_node_id);
 
 	/* Explicitly set the primary node id */
 	shared_state->candidate_node_id = primary_node_id;
