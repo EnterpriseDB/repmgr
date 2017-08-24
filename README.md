@@ -327,7 +327,7 @@ Automatic failover with `repmgrd`
 
 `repmgrd` is a management and monitoring daemon which runs on each node in
 a replication cluster and. It can automate actions such as failover and
-updating standbys to follow the new master, as well as providing monitoring
+updating standbys to follow the new primary, as well as providing monitoring
 information about the state of each standby.
 
 To use `repmgrd`, its associated function library must be included in
@@ -339,13 +339,68 @@ Changing this setting requires a restart of PostgreSQL; for more details see:
 
   https://www.postgresql.org/docs/current/static/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES
 
-Additionally the following `repmgrd` options *must* be set in `repmgr.conf`:
+Additionally the following `repmgrd` options *must* be set in `repmgr.conf`
+(adjust configuration file locations as appropriate):
 
     failover=automatic
     promote_command='repmgr standby promote -f /etc/repmgr.conf --log-to-file'
     follow_command='repmgr standby follow -f /etc/repmgr.conf --log-to-file'
 
-(adjust configuration file locations as appropriate).
+
+Note that the `--log-to-file` option will cause `repmgr`'s output to be logged to
+the destination configured to receive log output for `repmgrd`.
+See `repmgr.conf.sample` for further `repmgrd`-specific settings
+
+When `failover` is set to `automatic`, upon detecting failure of the current
+primary, `repmgrd` will execute one of `promote_command` or `follow_command`,
+depending on whether the current server is to become the new primary, or
+needs to follow another server which has become the new primary. Note that
+these commands can be any valid shell script which results in one of these
+two actions happening, but if `repmgr`'s `standby follow` or `standby promote`
+commands are not executed (either directly as shown here, or from a script which
+performs other actions), the `rempgr` metadata will not be updated and
+monitoring will no longer function reliably.
+
+To demonstrate automatic failover, set up a 3-node replication cluster (one primary
+and two standbys streaming directly from the primary) so that the cluster looks
+something like this:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | host=node3 dbname=repmgr user=repmgr
+
+Start `repmgrd` on each standby and verify that it's running by examining the
+log output, which at log level `INFO` will look like this:
+
+    [2017-08-24 17:31:00] [NOTICE] using configuration file "/etc/repmgr.conf"
+    [2017-08-24 17:31:00] [INFO] connecting to database "host=node2 dbname=repmgr user=repmgr"
+    [2017-08-24 17:31:00] [NOTICE] starting monitoring of node "node2" (ID: 2)
+    [2017-08-24 17:31:00] [INFO] monitoring connection to upstream node "node1" (node ID: 1)
+
+Each `repmgrd` should also have recorded its successful startup as an event:
+
+    $ repmgr -f /etc/repmgr.conf cluster event --event=repmgrd_start
+    Node ID | Name  | Event         | OK | Timestamp           | Details
+    ---------+-------+---------------+----+---------------------+-------------------------------------------------------------
+     3       | node3 | repmgrd_start | t  | 2017-08-24 17:35:54 | monitoring connection to upstream node "node1" (node ID: 1)
+     2       | node2 | repmgrd_start | t  | 2017-08-24 17:35:50 | monitoring connection to upstream node "node1" (node ID: 1)
+     1       | node1 | repmgrd_start | t  | 2017-08-24 17:35:46 | monitoring cluster primary "node1" (node ID: 1)
+
+Now stop the current master server with e.g.:
+
+    pg_ctl -D /path/to/node1/data -m immediate stop
+
+This will force the master node to shut down straight away, aborting all
+processes and transactions.  This will cause a flurry of activity in
+the `repmgrd` log files as each `repmgrd` detects the failure of the master
+and a failover decision is made. Here extracts from the standby server
+promoted to new master:
+
+
+
 
 ### Monitoring with `repmgrd`
 

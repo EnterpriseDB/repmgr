@@ -473,7 +473,7 @@ monitor_streaming_standby(void)
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
-						  _("monitoring upstream node \"%s\" (node ID: %i)"),
+						  _("monitoring connection to upstream node \"%s\" (node ID: %i)"),
 						  upstream_node_info.node_name,
 						  upstream_node_info.node_id);
 
@@ -486,7 +486,7 @@ monitor_streaming_standby(void)
 
 		startup_event_logged = true;
 
-		log_notice("%s", event_details.data);
+		log_info("%s", event_details.data);
 
 		termPQExpBuffer(&event_details);
 	}
