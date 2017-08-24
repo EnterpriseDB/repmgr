@@ -117,13 +117,11 @@ tables:
     replication cluster
   - `repmgr.monitoring_history`: historical standby monitoring information written by `repmgrd`
 
-
 views:
   - `repmgr.show_nodes`: based on the table `repl_nodes`, additionally showing the
      name of the server's upstream node
-  - `repmgr.status`: when `repmgrd`'s monitoring is enabled, shows current monitoring
-    status for each node
-     XXX not yet implemented
+  - `repmgr.replication_status`: when `repmgrd`'s monitoring is enabled, shows current monitoring
+    status for each standby.
 
 The `repmgr` metadata schema can be stored in an existing database or in its own
 dedicated database. Note that the `repmgr` metadata schema cannot reside on a database
@@ -366,8 +364,18 @@ Note that when a standby node is not streaming directly from its upstream
 node, e.g. recovering WAL from an archive, `apply_lag` will always appear as
 `0 bytes`.
 
-XXX ALTER TABLE monitoring_history SET UNLOGGED ;
+* * *
 
+> *TIP*: if monitoring history is enabled, the contents of the `monitoring_history`
+> table will be replicated to attached standbys. This means there will be a small but
+> constant stream of replication activity which may not be desirable. To prevent
+> this, convert the table to an `UNLOGGED` one with:
+>
+>    ALTER TABLE repmgr.monitoring_history SET UNLOGGED ;
+>
+> This will however mean that monitoring history will not be available on
+> another node following a failover, and the view `replication_status`
+> will not work on standbys.
 
 
 Reference
