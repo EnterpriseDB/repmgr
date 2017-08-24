@@ -310,16 +310,42 @@ The following replication settings may need to be adjusted:
     # ignores archiving. Use something more sensible.
     archive_command = '/bin/true'
 
-    # If cloning using rsync, or you have configured `pg_basebackup_options`
+    # If you have configured `pg_basebackup_options`
     # in `repmgr.conf` to include the setting `--xlog-method=fetch` (from
     # PostgreSQL 10 `--wal-method=fetch`), *and* you have not set
     # `restore_command` in `repmgr.conf`to fetch WAL files from another
     # source such as Barman, you'll need to set `wal_keep_segments` to a
     # high enough value to ensure that all WAL files generated while
     # the standby is being cloned are retained until the standby starts up.
-
+    #
     # wal_keep_segments = 5000
 
+
+
+Automatic failover with `repmgrd`
+---------------------------------
+
+`repmgrd` is a management and monitoring daemon which runs on each node in
+a replication cluster and. It can automate actions such as failover and
+updating standbys to follow the new master, as well as providing monitoring
+information about the state of each standby.
+
+To use `repmgrd`, its associated function library must be included in
+`postgresql.conf` with:
+
+    shared_preload_libraries = 'repmgr'
+
+Changing this setting requires a restart of PostgreSQL; for more details see:
+
+  https://www.postgresql.org/docs/current/static/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES
+
+Additionally the following `repmgrd` options *must* be set in `repmgr.conf`:
+
+    failover=automatic
+    promote_command='repmgr standby promote -f /etc/repmgr.conf --log-to-file'
+    follow_command='repmgr standby follow -f /etc/repmgr.conf --log-to-file'
+
+(adjust configuration file locations as appropriate).
 
 ### Monitoring with `repmgrd`
 
@@ -330,26 +356,27 @@ in the cluster.
 
 The view `replication_status` shows the most recent state for each node, e.g.:
 
-    repmgr=# SELECT * FROM repmgr.replication_status;
-    -[ RECORD 1 ]-------------+-----------------------------
-    primary_node              | 1
-    standby_node              | 2
+    repmgr=# select * from repmgr.replication_status;
+    -[ RECORD 1 ]-------------+------------------------------
+    primary_node_id           | 1
+    standby_node_id           | 2
     standby_name              | node2
     node_type                 | standby
     active                    | t
-    last_monitor_time         | 2016-01-05 14:02:34.51713+09
-    last_wal_primary_location | 0/3012AF0
-    last_wal_standby_location | 0/3012AF0
-    replication_lag           | 0 bytes
-    replication_time_lag      | 00:00:03.463085
-    apply_lag                 | 0 bytes
-    communication_time_lag    | 00:00:00.955385
+    last_monitor_time         | 2017-08-24 16:28:41.260478+09
+    last_wal_primary_location | 0/6D57A00
+    last_wal_standby_location | 0/5000000
+    replication_lag           | 29 MB
+    replication_time_lag      | 00:00:11.736163
+    apply_lag                 | 15 MB
+    communication_time_lag    | 00:00:01.365643
+
 
 The interval in which monitoring history is written is controlled by the
 configuration parameter `monitor_interval_secs`; default is 2.
 
 As this can generate a large amount of monitoring data in the `monitoring_history`
-table , it's advisable to regularly purge historical data with
+table, it's advisable to regularly purge historical data with
 `repmgr cluster cleanup`; use the `-k/--keep-history` to specify how
 many day's worth of data should be retained. *XXX not yet implemented*
 
