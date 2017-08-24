@@ -1147,18 +1147,22 @@ Automatic failover with `repmgrd`
 and which can automate actions such as failover and updating standbys to
 follow the new master.
 
-To use `repmgrd` for automatic failover, `postgresql.conf` must contain the
-following line:
+To use `repmgrd`, its associated function library must be included in
+`postgresql.conf` with:
 
-    shared_preload_libraries = 'repmgr_funcs'
+    shared_preload_libraries = 'repmgr'
 
-(changing this setting requires a restart of PostgreSQL).
+Changing this setting requires a restart of PostgreSQL; for more details see:
 
-Additionally the following `repmgrd` options must be set in `repmgr.conf`:
+  https://www.postgresql.org/docs/current/static/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES
+
+Additionally the following `repmgrd` options *must* be set in `repmgr.conf`:
 
     failover=automatic
     promote_command='repmgr standby promote -f /etc/repmgr.conf --log-to-file'
     follow_command='repmgr standby follow -f /etc/repmgr.conf --log-to-file'
+
+(adjust configuration file locations as appropriate).
 
 Note that the `--log-to-file` option will cause `repmgr`'s output to be logged to
 the destination configured to receive log output for `repmgrd`.
