@@ -1152,7 +1152,7 @@ _do_standby_promote_internal(const char *data_dir)
 	get_server_action(ACTION_PROMOTE, script, (char *)data_dir);
 
 	log_notice(_("promoting standby"));
-	log_detail(_("promoting server using '%s'"), script);
+	log_detail(_("promoting server using \"%s\""), script);
 
 	r = system(script);
 	if (r != 0)
@@ -1501,7 +1501,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	get_server_action(ACTION_RESTART, restart_command, config_file_options.data_directory);
 
-	log_notice(_("restarting server using '%s'"),
+	log_notice(_("restarting server using \"%s\""),
 			   restart_command);
 
 	r = system(restart_command);

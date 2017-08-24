@@ -320,7 +320,152 @@ The following replication settings may need to be adjusted:
     #
     # wal_keep_segments = 5000
 
+Performing a switchover with repmgr
+-----------------------------------
 
+A typical use-case for replication is a combination of primary and standby
+server, with the standby serving as a backup which can easily be activated
+in case of a problem with the primary. Such an unplanned failover would
+normally be handled by promoting the standby, after which an appropriate
+action must be taken to restore the old primary.
+
+In some cases however it's desirable to promote the standby in a planned
+way, e.g. so maintenance can be performed on the primary; this kind of switchover
+is supported by the `repmgr standby switchover` command.
+
+`repmgr standby switchover` differs from other `repmgr` actions in that it
+also performs actions on another server (the primary to be demoted to a standby),
+which requires passwordless SSH access to that server from the one where
+`repmgr standby switchover` is executed.
+
+* * *
+
+> *NOTE* `repmgr standby switchover` performs a relatively complex series
+> of operations on two servers, and should therefore be performed after
+> careful preparation and with adequate attention. In particular you should
+> be confident that your network environment is stable and reliable.
+>
+> We recommend running `repmgr standby switchover` at the most verbose
+> logging level (`--log-level DEBUG --verbose`) and capturing all output
+> to assist troubleshooting any problems.
+>
+> Please also read carefully the list of caveats below.
+
+* * *
+
+To demonstrate switchover, we will assume a replication cluster running on
+PostgreSQL 9.5 or later with a primary (`node1`) and a standby (`node2`);
+after the switchover `node2` should become the primary with `node1` following it.
+
+The switchover command must be run from the standby which is to be promoted,
+and in its simplest form looks like this:
+
+    $ repmgr -f /etc/repmgr.conf standby switchover
+    NOTICE: executing switchover on node "node2" (ID: 2)
+    NOTICE: issuing CHECKPOINT
+    NOTICE: executing server command "pg_ctl -l /var/log/postgres/startup.log -D '/var/lib/pgsql/data' -m fast -W stop"
+    INFO: checking primary status; 1 of 6 attempts
+    NOTICE: current primary has been shut down at location 0/30005F8
+    NOTICE: promoting standby
+    DETAIL: promoting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' promote"
+    waiting for server to promote.... done
+    server promoted
+    INFO: reconnecting to promoted server
+    NOTICE: STANDBY PROMOTE successful
+    DETAIL: node 2 was successfully promoted to primary
+    INFO: changing node 1's primary to node 2
+    NOTICE: restarting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' restart"
+    pg_ctl: PID file "/var/lib/pgsql/data/postmaster.pid" does not exist
+    Is server running?
+    starting server anyway
+    NOTICE: NODE REJOIN successful
+    DETAIL: node 1 is now attached to node 2
+    NOTICE: switchover was successful
+    DETAIL: node "node2" is now primary
+    NOTICE: STANDBY SWITCHOVER is complete
+
+The old primary is now replicating as a standby from the new primary, and the
+cluster status will now look like this:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | standby |   running | node2    | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
+
+### Handling other attached standbys
+
+By default, `repmgr` will not do anything with other standbys attached to the
+original primary; if there were a second standby (`node3`), executing
+`repmgr standby switchover` as above would result in a cascaded standby
+situation, with `node3` still being attached to `node1`:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | standby |   running | node2    | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | host=node3 dbname=repmgr user=repmgr
+
+However, if executed with the option `--siblings-follow`, `repmgr` will repoint
+any standbys attached to the original primary (the "siblings" of the original
+standby) to point to the new primary:
+
+    $ repmgr -f /etc/repmgr.conf standby switchover --siblings-follow
+    NOTICE: executing switchover on node "node2" (ID: 2)
+    NOTICE: issuing CHECKPOINT
+    NOTICE: executing server command "pg_ctl -l /var/log/postgres/startup.log -D '/var/lib/pgsql/data' -m fast -W stop"
+    INFO: checking primary status; 1 of 6 attempts
+    NOTICE: current primary has been shut down at location 0/30005F8
+    NOTICE: promoting standby
+    DETAIL: promoting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' promote"
+    waiting for server to promote.... done
+    server promoted
+    INFO: reconnecting to promoted server
+    NOTICE: STANDBY PROMOTE successful
+    DETAIL: node 2 was successfully promoted to primary
+    INFO: changing node 1's primary to node 2
+    NOTICE: restarting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' restart"
+    pg_ctl: PID file "/var/lib/pgsql/data/postmaster.pid" does not exist
+    Is server running?
+    starting server anyway
+    NOTICE: NODE REJOIN successful
+    DETAIL: node 1 is now attached to node 2
+    NOTICE: switchover was successful
+    DETAIL: node "node2" is now primary
+    NOTICE: executing STANDBY FOLLOW on 1 of 1 siblings
+    INFO: changing node 3's primary to node 2
+    NOTICE: restarting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' restart"
+    NOTICE: STANDBY FOLLOW successful
+    DETAIL: node 3 is now attached to node 2
+    INFO: STANDBY FOLLOW successfully executed on all reachable sibling nodes
+    NOTICE: STANDBY SWITCHOVER is complete
+
+and the cluster status will now look like this:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | standby |   running | node2    | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+
+### Caveats
+
+- You must ensure that following a server start using `pg_ctl`, log output
+  is not send to STDERR (the default behaviour). If logging is not configured,
+  we recommend setting `logging_collector=on` in `postgresql.conf` and
+  providing an explicit `-l/--log` setting in `repmgr.conf`'s `pg_ctl_options`
+  parameter.
+- `pg_rewind` *requires* that either `wal_log_hints` is enabled, or that
+  data checksums were enabled when the cluster was initialized. See the
+  `pg_rewind` documentation for details:
+     https://www.postgresql.org/docs/current/static/app-pgrewind.html
+- `repmgrd` should not be running with setting `failover=automatic` in
+  `repmgr.conf` when a switchover is carried out, otherwise the `repmgrd`
+  may try and promote a standby by itself.
+
+We hope to remove some of these restrictions in future versions of `repmgr`.
 
 Automatic failover with `repmgrd`
 ---------------------------------
@@ -399,31 +544,70 @@ files as each `repmgrd` detects the failure of the primary and a failover
 decision is made. This is an extract from the log of a standby server ("node2")
 which has promoted to new primary after failure of the original primary ("node1").
 
-    [2017-08-24 22:38:06] [INFO] monitoring connection to upstream node "node1" (node ID: 1)
-    [2017-08-24 22:38:20] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
-    [2017-08-24 22:38:20] [INFO] checking state of node 1, 1 of 5 attempts
-    [2017-08-24 22:38:20] [INFO] sleeping 1 seconds until next reconnection attempt
-    [2017-08-24 22:38:21] [INFO] checking state of node 1, 2 of 5 attempts
-    [2017-08-24 22:38:21] [INFO] sleeping 1 seconds until next reconnection attempt
-    [2017-08-24 22:38:22] [INFO] checking state of node 1, 3 of 5 attempts
-    [2017-08-24 22:38:22] [INFO] sleeping 1 seconds until next reconnection attempt
-    [2017-08-24 22:38:23] [INFO] checking state of node 1, 4 of 5 attempts
-    [2017-08-24 22:38:23] [INFO] sleeping 1 seconds until next reconnection attempt
-    [2017-08-24 22:38:24] [INFO] checking state of node 1, 5 of 5 attempts
-    [2017-08-24 22:38:24] [WARNING] unable to reconnect to node 1 after 5 attempts
+    [2017-08-24 23:32:01] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state
+    [2017-08-24 23:32:08] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
+    [2017-08-24 23:32:08] [INFO] checking state of node 1, 1 of 5 attempts
+    [2017-08-24 23:32:08] [INFO] sleeping 1 seconds until next reconnection attempt
+    [2017-08-24 23:32:09] [INFO] checking state of node 1, 2 of 5 attempts
+    [2017-08-24 23:32:09] [INFO] sleeping 1 seconds until next reconnection attempt
+    [2017-08-24 23:32:10] [INFO] checking state of node 1, 3 of 5 attempts
+    [2017-08-24 23:32:10] [INFO] sleeping 1 seconds until next reconnection attempt
+    [2017-08-24 23:32:11] [INFO] checking state of node 1, 4 of 5 attempts
+    [2017-08-24 23:32:11] [INFO] sleeping 1 seconds until next reconnection attempt
+    [2017-08-24 23:32:12] [INFO] checking state of node 1, 5 of 5 attempts
+    [2017-08-24 23:32:12] [WARNING] unable to reconnect to node 1 after 5 attempts
     INFO:  setting voting term to 1
     INFO:  node 2 is candidate
     INFO:  node 3 has received request from node 2 for electoral term 1 (our term: 0)
-    [2017-08-24 22:38:25] [NOTICE] this node is the winner, will now promote self and inform other nodes
+    [2017-08-24 23:32:12] [NOTICE] this node is the winner, will now promote self and inform other nodes
     INFO: connecting to standby database
     NOTICE: promoting standby
-    DETAIL: promoting server using 'pg_ctl -l /var/log/postgresql.log -w -D /var/lib/pgsql/data promote'
+    DETAIL: promoting server using '/home/barwick/devel/builds/HEAD/bin/pg_ctl -l /tmp/postgres.5602.log -w -D '/tmp/repmgr-test/node_2/data' promote'
     INFO: reconnecting to promoted server
     NOTICE: STANDBY PROMOTE successful
     DETAIL: node 2 was successfully promoted to primary
     INFO:  node 3 received notification to follow node 2
-    [2017-08-24 22:38:27] [INFO] switching to primary monitoring mode
+    [2017-08-24 23:32:13] [INFO] switching to primary monitoring mode
 
+The cluster status will now look like this, with the original primary (`node1`)
+marked as inactive, and standby `node3` now following the new primary (`node2`):
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+----------------------------------------------------
+     1  | node1 | primary | - failed  |          | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+
+The `repl_events` table will contain a summary of what happened to each server
+during the failover:
+
+    $ repmgr -f /etc/repmgr.conf cluster event
+     Node ID | Name  | Event                    | OK | Timestamp           | Details
+    ---------+-------+--------------------------+----+---------------------+-----------------------------------------------------------------------------------
+     3       | node3 | repmgrd_failover_follow  | t  | 2017-08-24 23:32:16 | node 3 now following new upstream node 2
+     3       | node3 | standby_follow           | t  | 2017-08-24 23:32:16 | node 3 is now attached to node 2
+     2       | node2 | repmgrd_failover_promote | t  | 2017-08-24 23:32:13 | node 2 promoted to primary; old primary 1 marked as failed
+     2       | node2 | standby_promote          | t  | 2017-08-24 23:32:13 | node 2 was successfully promoted to primary
+
+
+### `repmgrd` and PostgreSQL connection settings
+
+In addition to the `repmgr` configuration settings, parameters in the
+`conninfo` string influence how `repmgr` makes a network connection to
+PostgreSQL. In particular, if another server in the replication cluster
+is unreachable at network level, system network settings will influence
+the length of time it takes to determine that the connection is not possible.
+
+In particular explicitly setting a parameter for `connect_timeout` should
+be considered; the effective minimum value of `2` (seconds) will ensure
+that a connection failure at network level is reported as soon as possible,
+otherwise depending on the system settings (e.g. `tcp_syn_retries` in Linux)
+a delay of a minute or more is possible.
+
+For further details on `conninfo` network connection parameters, see:
+
+  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS
 
 
 
@@ -483,6 +667,23 @@ node, e.g. recovering WAL from an archive, `apply_lag` will always appear as
 > This will however mean that monitoring history will not be available on
 > another node following a failover, and the view `replication_status`
 > will not work on standbys.
+
+### `repmgrd` log rotation
+
+To ensure the current `repmgrd` logfile does not grow indefinitely, configure
+your system's `logrotate` to do this. Sample configuration to rotate logfiles
+weekly with retention for up to 52 weeks and rotation forced if a file grows
+beyond 100Mb:
+
+    /var/log/postgresql/repmgr-9.5.log {
+        missingok
+        compress
+        rotate 52
+        maxsize 100M
+        weekly
+        create 0600 postgres postgres
+    }
+
 
 
 Reference

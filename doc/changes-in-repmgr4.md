@@ -93,3 +93,11 @@ Some settings have been renamed for clarity and consistency:
 - new parameter `log_status_interval`, which causes `repmgrd` to emit a status log
   line at the specified interval
 
+
+repmgrd
+-------
+
+The `repmgr` shared library has been renamed from `repmgr_funcs` to `repmgr`,
+meaning `shared_preload_libraries` needs to be updated to the new name:
+
+    shared_preload_libraries = 'repmgr'
