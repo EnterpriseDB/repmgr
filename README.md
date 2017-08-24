@@ -389,15 +389,40 @@ Each `repmgrd` should also have recorded its successful startup as an event:
      2       | node2 | repmgrd_start | t  | 2017-08-24 17:35:50 | monitoring connection to upstream node "node1" (node ID: 1)
      1       | node1 | repmgrd_start | t  | 2017-08-24 17:35:46 | monitoring cluster primary "node1" (node ID: 1)
 
-Now stop the current master server with e.g.:
+Now stop the current primary server with e.g.:
 
     pg_ctl -D /path/to/node1/data -m immediate stop
 
-This will force the master node to shut down straight away, aborting all
-processes and transactions.  This will cause a flurry of activity in
-the `repmgrd` log files as each `repmgrd` detects the failure of the master
-and a failover decision is made. Here extracts from the standby server
-promoted to new master:
+This will force the primary to shut down straight away, aborting all processes
+and transactions.  This will cause a flurry of activity in the `repmgrd` log
+files as each `repmgrd` detects the failure of the primary and a failover
+decision is made. This is an extract from the log of a standby server ("node2")
+which has promoted to new primary after failure of the original primary ("node1").
+
+    [2017-08-24 22:38:06] [INFO] monitoring connection to upstream node "node1" (node ID: 1)
+    [2017-08-24 22:38:20] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
+    [2017-08-24 22:38:20] [INFO] checking state of node 1, 1 of 5 attempts
+    [2017-08-24 22:38:20] [INFO] sleeping 1 seconds until next reconnection attempt
+    [2017-08-24 22:38:21] [INFO] checking state of node 1, 2 of 5 attempts
+    [2017-08-24 22:38:21] [INFO] sleeping 1 seconds until next reconnection attempt
+    [2017-08-24 22:38:22] [INFO] checking state of node 1, 3 of 5 attempts
+    [2017-08-24 22:38:22] [INFO] sleeping 1 seconds until next reconnection attempt
+    [2017-08-24 22:38:23] [INFO] checking state of node 1, 4 of 5 attempts
+    [2017-08-24 22:38:23] [INFO] sleeping 1 seconds until next reconnection attempt
+    [2017-08-24 22:38:24] [INFO] checking state of node 1, 5 of 5 attempts
+    [2017-08-24 22:38:24] [WARNING] unable to reconnect to node 1 after 5 attempts
+    INFO:  setting voting term to 1
+    INFO:  node 2 is candidate
+    INFO:  node 3 has received request from node 2 for electoral term 1 (our term: 0)
+    [2017-08-24 22:38:25] [NOTICE] this node is the winner, will now promote self and inform other nodes
+    INFO: connecting to standby database
+    NOTICE: promoting standby
+    DETAIL: promoting server using 'pg_ctl -l /var/log/postgresql.log -w -D /var/lib/pgsql/data promote'
+    INFO: reconnecting to promoted server
+    NOTICE: STANDBY PROMOTE successful
+    DETAIL: node 2 was successfully promoted to primary
+    INFO:  node 3 received notification to follow node 2
+    [2017-08-24 22:38:27] [INFO] switching to primary monitoring mode
 
 
 
