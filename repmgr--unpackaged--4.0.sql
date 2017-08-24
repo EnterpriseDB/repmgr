@@ -5,9 +5,9 @@
 -- NOTE: this assumes there will be only one schema matching 'repmgr_%';
 -- user is responsible for ensuring this is the case
 
-CREATE TEMPORARY TABLE repmgr_old_schema (old_schema TEXT);
-INSERT INTO repmgr_old_schema (old_schema)
-SELECT nspname AS old_schema
+CREATE TEMPORARY TABLE repmgr_old_schema (schema_name TEXT);
+INSERT INTO repmgr_old_schema (schema_name)
+SELECT nspname AS schema_name
   FROM pg_catalog.pg_namespace
  WHERE nspname LIKE 'repmgr_%'
  LIMIT 1;
@@ -15,15 +15,15 @@ SELECT nspname AS old_schema
 -- move old objects into new schema
 DO $repmgr$
 DECLARE
-  schema TEXT;
+  old_schema TEXT;
 BEGIN
-  SELECT old_schema FROM repmgr_old_schema
-    INTO schema;
-  EXECUTE format('ALTER TABLE %I.repl_nodes SET SCHEMA repmgr', schema);
-  EXECUTE format('ALTER TABLE %I.repl_events SET SCHEMA repmgr', schema);
-  EXECUTE format('ALTER TABLE %I.repl_monitor SET SCHEMA repmgr', schema);
-  EXECUTE format('ALTER VIEW %I.repl_show_nodes SET SCHEMA repmgr', schema);
-  EXECUTE format('ALTER VIEW %I.repl_status SET SCHEMA repmgr', schema);
+  SELECT schema_name FROM repmgr_old_schema
+    INTO old_schema;
+  EXECUTE format('ALTER TABLE %I.repl_nodes SET SCHEMA repmgr', old_schema);
+  EXECUTE format('ALTER TABLE %I.repl_events SET SCHEMA repmgr', old_schema);
+  EXECUTE format('ALTER TABLE %I.repl_monitor SET SCHEMA repmgr', old_schema);
+  EXECUTE format('DROP VIEW IF EXISTS %I.repl_show_nodes', old_schema);
+  EXECUTE format('DROP VIEW IF EXISTS %I.repl_status', old_schema);
 END$repmgr$;
 
 -- convert "repmgr_$cluster.repl_nodes" to "repmgr.nodes"
@@ -52,7 +52,7 @@ SELECT id, upstream_node_id, active, name,
 
 -- convert "repmgr_$cluster.repl_event" to "event"
 
-ALTER TABLE repmgr.repl_events RENAME TO repmgr.events;
+ALTER TABLE repmgr.repl_events RENAME TO events;
 
 -- convert "repmgr_$cluster.repl_monitor" to "monitoring_history"
 
@@ -69,16 +69,11 @@ CREATE TABLE repmgr.monitoring_history (
 
 INSERT INTO repmgr.monitoring_history
   (primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag)
-SELECT primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag
+SELECT primary_node, standby_node, last_monitor_time,  last_apply_time, last_wal_primary_location::pg_lsn, last_wal_standby_location::pg_lsn, replication_lag, apply_lag
   FROM repmgr.repl_monitor;
 
 CREATE INDEX idx_monitoring_history_time
           ON repmgr.monitoring_history (last_monitor_time, standby_node_id);
-
-
--- recreate VIEW
-
-DROP VIEW IF EXISTS repl_show_nodes;
 
 CREATE VIEW repmgr.show_nodes AS
    SELECT n.node_id,
@@ -93,16 +88,25 @@ CREATE VIEW repmgr.show_nodes AS
 LEFT JOIN repmgr.nodes un
        ON un.node_id = n.upstream_node_id;
 
-DROP VIEW IF EXISTS repmgr.repl_status;
 
--- XXX CREATE VIEW repmgr.replication_status ... ;
-
-/* drop old tables */
-DROP TABLE repmgr.repl_nodes;
-DROP TABLE repmgr.repl_monitor;
-
-
+/* ================= */
 /* repmgrd functions */
+/* ================= */
+
+/* monitoring functions */
+
+CREATE FUNCTION standby_set_last_updated()
+  RETURNS TIMESTAMP WITH TIME ZONE
+  AS '$libdir/repmgr', 'standby_set_last_updated'
+  LANGUAGE C STRICT;
+
+CREATE FUNCTION standby_get_last_updated()
+  RETURNS TIMESTAMP WITH TIME ZONE
+  AS '$libdir/repmgr', 'standby_get_last_updated'
+  LANGUAGE C STRICT;
+
+
+/* failover functions */
 
 CREATE FUNCTION request_vote(INT,INT)
   RETURNS pg_lsn
@@ -148,6 +152,32 @@ CREATE FUNCTION unset_bdr_failover_handler()
   RETURNS VOID
   AS '$libdir/repmgr', 'unset_bdr_failover_handler'
   LANGUAGE C STRICT;
+
+
+
+CREATE VIEW repmgr.replication_status AS
+  SELECT m.primary_node_id, m.standby_node_id, n.node_name AS standby_name,
+ 	     n.type AS node_type, n.active, last_monitor_time,
+         CASE WHEN n.type='standby' THEN m.last_wal_primary_location ELSE NULL END AS last_wal_primary_location,
+         m.last_wal_standby_location,
+         CASE WHEN n.type='standby' THEN pg_catalog.pg_size_pretty(m.replication_lag) ELSE NULL END AS replication_lag,
+         CASE WHEN n.type='standby' THEN
+           CASE WHEN replication_lag > 0 THEN age(now(), m.last_apply_time) ELSE '0'::INTERVAL END
+           ELSE NULL
+         END AS replication_time_lag,
+         CASE WHEN n.type='standby' THEN pg_catalog.pg_size_pretty(m.apply_lag) ELSE NULL END AS apply_lag,
+         AGE(NOW(), CASE WHEN pg_catalog.pg_is_in_recovery() THEN repmgr.standby_get_last_updated() ELSE m.last_monitor_time END) AS communication_time_lag
+    FROM repmgr.monitoring_history m
+    JOIN repmgr.nodes n ON m.standby_node_id = n.node_id
+   WHERE (m.standby_node_id, m.last_monitor_time) IN (
+	          SELECT m1.standby_node_id, MAX(m1.last_monitor_time)
+			    FROM repmgr.monitoring_history m1 GROUP BY 1
+         );
+
+
+/* drop old tables */
+DROP TABLE repmgr.repl_nodes;
+DROP TABLE repmgr.repl_monitor;
 
 -- remove temporary table
 DROP TABLE repmgr_old_schema;
