@@ -49,27 +49,25 @@ CREATE VIEW repmgr.show_nodes AS
 LEFT JOIN repmgr.nodes un
        ON un.node_id = n.upstream_node_id;
 
--- repmgr.repmgr_get_last_updated()
-CREATE VIEW repmgr.replication_status AS
-  SELECT m.primary_node_id, m.standby_node_id, n.node_name AS standby_name,
- 	     n.type AS node_type, n.active, last_monitor_time,
-         CASE WHEN n.type='standby' THEN m.last_wal_primary_location ELSE NULL END AS last_wal_primary_location,
-         m.last_wal_standby_location,
-         CASE WHEN n.type='standby' THEN pg_catalog.pg_size_pretty(m.replication_lag) ELSE NULL END AS replication_lag,
-         CASE WHEN n.type='standby' THEN
-           CASE WHEN replication_lag > 0 THEN age(now(), m.last_apply_time) ELSE '0'::INTERVAL END
-           ELSE NULL
-         END AS replication_time_lag,
-         CASE WHEN n.type='standby' THEN pg_catalog.pg_size_pretty(m.apply_lag) ELSE NULL END AS apply_lag,
-         AGE(NOW(), CASE WHEN pg_catalog.pg_is_in_recovery() THEN NOW() ELSE m.last_monitor_time END) AS communication_time_lag
-    FROM repmgr.monitoring_history m
-    JOIN repmgr.nodes n ON m.standby_node_id = n.node_id
-   WHERE (m.standby_node_id, m.last_monitor_time) IN (
-	          SELECT m1.standby_node_id, MAX(m1.last_monitor_time)
-			    FROM repmgr.monitoring_history m1 GROUP BY 1
-         );
 
+/* ================= */
 /* repmgrd functions */
+/* ================= */
+
+/* monitoring functions */
+
+CREATE FUNCTION standby_set_last_updated()
+  RETURNS TIMESTAMP WITH TIME ZONE
+  AS '$libdir/repmgr', 'standby_set_last_updated'
+  LANGUAGE C STRICT;
+
+CREATE FUNCTION standby_get_last_updated()
+  RETURNS TIMESTAMP WITH TIME ZONE
+  AS '$libdir/repmgr', 'standby_get_last_updated'
+  LANGUAGE C STRICT;
+
+
+/* failover functions */
 
 CREATE FUNCTION request_vote(INT,INT)
   RETURNS pg_lsn
@@ -117,3 +115,25 @@ CREATE FUNCTION unset_bdr_failover_handler()
   RETURNS VOID
   AS '$libdir/repmgr', 'unset_bdr_failover_handler'
   LANGUAGE C STRICT;
+
+
+
+CREATE VIEW repmgr.replication_status AS
+  SELECT m.primary_node_id, m.standby_node_id, n.node_name AS standby_name,
+ 	     n.type AS node_type, n.active, last_monitor_time,
+         CASE WHEN n.type='standby' THEN m.last_wal_primary_location ELSE NULL END AS last_wal_primary_location,
+         m.last_wal_standby_location,
+         CASE WHEN n.type='standby' THEN pg_catalog.pg_size_pretty(m.replication_lag) ELSE NULL END AS replication_lag,
+         CASE WHEN n.type='standby' THEN
+           CASE WHEN replication_lag > 0 THEN age(now(), m.last_apply_time) ELSE '0'::INTERVAL END
+           ELSE NULL
+         END AS replication_time_lag,
+         CASE WHEN n.type='standby' THEN pg_catalog.pg_size_pretty(m.apply_lag) ELSE NULL END AS apply_lag,
+         AGE(NOW(), CASE WHEN pg_catalog.pg_is_in_recovery() THEN repmgr.standby_get_last_updated() ELSE m.last_monitor_time END) AS communication_time_lag
+    FROM repmgr.monitoring_history m
+    JOIN repmgr.nodes n ON m.standby_node_id = n.node_id
+   WHERE (m.standby_node_id, m.last_monitor_time) IN (
+	          SELECT m1.standby_node_id, MAX(m1.last_monitor_time)
+			    FROM repmgr.monitoring_history m1 GROUP BY 1
+         );
+

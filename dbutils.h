@@ -431,7 +431,8 @@ bool		is_server_available(const char *conninfo);
 
 /* monitoring functions  */
 void		add_monitoring_record(
-				PGconn *conn,
+				PGconn *primary_conn,
+				PGconn *local_conn,
 				int primary_node_id,
 				int local_node_id,
 				char *monitor_standby_timestamp,

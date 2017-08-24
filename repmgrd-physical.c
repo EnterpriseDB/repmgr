@@ -1102,6 +1102,7 @@ update_monitoring_history(void)
 
 	add_monitoring_record(
 		primary_conn,
+		local_conn,
 		primary_node_id,
 		local_node_info.node_id,
 		replication_info.current_timestamp,

@@ -3357,7 +3357,8 @@ is_server_available(const char *conninfo)
 
 void
 add_monitoring_record(
-				PGconn *conn,
+				PGconn *primary_conn,
+				PGconn *local_conn,
 				int primary_node_id,
 				int local_node_id,
 				char *monitor_standby_timestamp,
@@ -3402,25 +3403,22 @@ add_monitoring_record(
 
 	log_verbose(LOG_DEBUG, "standby_monitor:()\n%s", query.data);
 
-	if (PQsendQuery(conn, query.data) == 0)
+	if (PQsendQuery(primary_conn, query.data) == 0)
 	{
 		log_warning(_("query could not be sent to master: %s\n"),
-					PQerrorMessage(conn));
+					PQerrorMessage(primary_conn));
 	}
 	else
 	{
-		//PGresult		   *res = NULL;
+		PGresult		   *res = NULL;
 
-/*		sqlquery_snprintf(sqlquery,
-						  "SELECT %s.repmgr_update_last_updated();",
-						  get_repmgr_schema_quoted(my_local_conn));
-						  res = PQexec(my_local_conn, sqlquery);*/
+		res = PQexec(local_conn, "SELECT repmgr.standby_set_last_updated()");
 
 		/* not critical if the above query fails*/
-/*		if (PQresultStatus(res) != PGRES_TUPLES_OK)
-			log_warning(_("unable to set last_updated: %s\n"), PQerrorMessage(my_local_conn));
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+			log_warning(_("unable to set last_updated:\n  %s"), PQerrorMessage(local_conn));
 
-			PQclear(res);*/
+		PQclear(res);
 	}
 
 	termPQExpBuffer(&query);

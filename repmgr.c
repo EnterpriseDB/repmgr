@@ -45,6 +45,7 @@ typedef enum {
 typedef struct repmgrdSharedState
 {
 	LWLockId	lock;			/* protects search/modification */
+	TimestampTz last_updated;
 	/* streaming failover */
 	NodeState	node_state;
 	NodeVotingStatus voting_status;
@@ -64,6 +65,13 @@ void		_PG_init(void);
 void		_PG_fini(void);
 
 static void repmgr_shmem_startup(void);
+
+Datum		standby_set_last_updated(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(standby_set_last_updated);
+
+Datum		standby_get_last_updated(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(standby_get_last_updated);
+
 
 Datum		request_vote(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(request_vote);
@@ -174,6 +182,51 @@ repmgr_shmem_startup(void)
 }
 
 
+/* ==================== */
+/* monitoring functions */
+/* ==================== */
+
+/* update and return last updated with current timestamp */
+Datum
+standby_set_last_updated(PG_FUNCTION_ARGS)
+{
+	TimestampTz last_updated = GetCurrentTimestamp();
+
+	if (!shared_state)
+		PG_RETURN_NULL();
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	shared_state->last_updated = last_updated;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_TIMESTAMPTZ(last_updated);
+}
+
+
+/* get last updated timestamp */
+Datum
+standby_get_last_updated(PG_FUNCTION_ARGS)
+{
+	TimestampTz last_updated;
+
+	/* Safety check... */
+	if (!shared_state)
+		PG_RETURN_NULL();
+
+	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+	last_updated = shared_state->last_updated;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_TIMESTAMPTZ(last_updated);
+}
+
+
+
+
+/* ===================*/
+/* failover functions */
+/* ===================*/
+
 Datum
 request_vote(PG_FUNCTION_ARGS)
 {
@@ -187,6 +240,9 @@ request_vote(PG_FUNCTION_ARGS)
 
 	int		ret;
 	bool	isnull;
+
+	if (!shared_state)
+		PG_RETURN_NULL();
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
@@ -256,6 +312,9 @@ get_voting_status(PG_FUNCTION_ARGS)
 #ifndef BDR_ONLY
 	NodeVotingStatus voting_status;
 
+	if (!shared_state)
+		PG_RETURN_NULL();
+
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 	voting_status = shared_state->voting_status;
 	LWLockRelease(shared_state->lock);
@@ -294,6 +353,9 @@ other_node_is_candidate(PG_FUNCTION_ARGS)
 	int  requesting_node_id = PG_GETARG_INT32(0);
 	int  electoral_term = PG_GETARG_INT32(1);
 
+	if (!shared_state)
+		PG_RETURN_NULL();
+
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	if (shared_state->current_electoral_term == electoral_term)
@@ -323,6 +385,9 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 #ifndef BDR_ONLY
 	int primary_node_id = PG_GETARG_INT32(0);
 
+	if (!shared_state)
+		PG_RETURN_NULL();
+
 	elog(INFO, "received notification to follow node %i", primary_node_id);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
@@ -341,6 +406,9 @@ get_new_primary(PG_FUNCTION_ARGS)
 {
 	int new_primary_node_id = UNKNOWN_NODE_ID;
 
+	if (!shared_state)
+		PG_RETURN_NULL();
+
 #ifndef BDR_ONLY
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
@@ -357,6 +425,9 @@ Datum
 reset_voting_status(PG_FUNCTION_ARGS)
 {
 #ifndef BDR_ONLY
+	if (!shared_state)
+		PG_RETURN_NULL();
+
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	shared_state->voting_status = VS_NO_VOTE;
@@ -374,6 +445,9 @@ am_bdr_failover_handler(PG_FUNCTION_ARGS)
 {
 	int node_id = PG_GETARG_INT32(0);
 	bool am_handler = false;
+
+	if (!shared_state)
+		PG_RETURN_NULL();
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
@@ -396,6 +470,9 @@ am_bdr_failover_handler(PG_FUNCTION_ARGS)
 Datum
 unset_bdr_failover_handler(PG_FUNCTION_ARGS)
 {
+	if (!shared_state)
+		PG_RETURN_NULL();
+
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 	shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
 	LWLockRelease(shared_state->lock);
