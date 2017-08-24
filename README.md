@@ -115,8 +115,8 @@ tables:
   - `repmgr.events`: records events of interest
   - `repmgr.nodes`: connection and status information for each server in the
     replication cluster
-  - `repmgr.monitor`: historical standby monitoring information written by `repmgrd`
-     XXX not yet implemented
+  - `repmgr.monitoring_history`: historical standby monitoring information written by `repmgrd`
+
 
 views:
   - `repmgr.show_nodes`: based on the table `repl_nodes`, additionally showing the
@@ -321,6 +321,52 @@ The following replication settings may need to be adjusted:
     # the standby is being cloned are retained until the standby starts up.
 
     # wal_keep_segments = 5000
+
+
+### Monitoring with `repmgrd`
+
+When `repmgrd` is running with the option `monitoring_history=true`, it will
+constantly write standby node status information to the `monitoring_history`
+able, providing a near-real time overview of replication status on all nodes
+in the cluster.
+
+The view `replication_status` shows the most recent state for each node, e.g.:
+
+    repmgr=# SELECT * FROM repmgr.replication_status;
+    -[ RECORD 1 ]-------------+-----------------------------
+    primary_node              | 1
+    standby_node              | 2
+    standby_name              | node2
+    node_type                 | standby
+    active                    | t
+    last_monitor_time         | 2016-01-05 14:02:34.51713+09
+    last_wal_primary_location | 0/3012AF0
+    last_wal_standby_location | 0/3012AF0
+    replication_lag           | 0 bytes
+    replication_time_lag      | 00:00:03.463085
+    apply_lag                 | 0 bytes
+    communication_time_lag    | 00:00:00.955385
+
+The interval in which monitoring history is written is controlled by the
+configuration parameter `monitor_interval_secs`; default is 2.
+
+As this can generate a large amount of monitoring data in the `monitoring_history`
+table , it's advisable to regularly purge historical data with
+`repmgr cluster cleanup`; use the `-k/--keep-history` to specify how
+many day's worth of data should be retained. *XXX not yet implemented*
+
+It's possible to use `repmgrd` to provide monitoring only for some or all
+nodes by setting `failover=manual` in the node's `repmgr.conf` file. In the
+event of the node's upstream failing, no failover action will be taken
+and the node will require manual intervention to be reattached to replication.
+If this occurs, an event notification `standby_disconnect_manual` will be
+created.
+
+Note that when a standby node is not streaming directly from its upstream
+node, e.g. recovering WAL from an archive, `apply_lag` will always appear as
+`0 bytes`.
+
+XXX ALTER TABLE monitoring_history SET UNLOGGED ;
 
 
 

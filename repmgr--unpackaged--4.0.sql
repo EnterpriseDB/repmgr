@@ -27,7 +27,7 @@ BEGIN
 END$repmgr$;
 
 -- convert "repmgr_$cluster.repl_nodes" to "repmgr.nodes"
-CREATE TABLE nodes (
+CREATE TABLE repmgr.nodes (
   node_id          INTEGER     PRIMARY KEY,
   upstream_node_id INTEGER     NULL REFERENCES repmgr.nodes (node_id) DEFERRABLE,
   active           BOOLEAN     NOT NULL DEFAULT TRUE,
@@ -41,22 +41,22 @@ CREATE TABLE nodes (
   config_file      TEXT        NOT NULL
 );
 
-INSERT INTO nodes
+INSERT INTO repmgr.nodes
   (node_id, upstream_node_id, active, node_name, type, location, priority, conninfo, repluser, slot_name, config_file)
 SELECT id, upstream_node_id, active, name,
        CASE WHEN type = 'master' THEN 'primary' ELSE type END,
        'default', priority, conninfo, 'unknown', slot_name, 'unknown'
-  FROM repl_nodes
+  FROM repmgr.repl_nodes
  ORDER BY id;
 
 
 -- convert "repmgr_$cluster.repl_event" to "event"
 
-ALTER TABLE repl_events RENAME TO events;
+ALTER TABLE repmgr.repl_events RENAME TO repmgr.events;
 
 -- convert "repmgr_$cluster.repl_monitor" to "monitoring_history"
 
-CREATE TABLE monitoring_history (
+CREATE TABLE repmgr.monitoring_history (
   primary_node_id                INTEGER NOT NULL,
   standby_node_id                INTEGER NOT NULL,
   last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -67,20 +67,20 @@ CREATE TABLE monitoring_history (
   apply_lag                      BIGINT NOT NULL
 );
 
-INSERT INTO monitoring_history
+INSERT INTO repmgr.monitoring_history
   (primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag)
 SELECT primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag
-  FROM repl_monitor;
+  FROM repmgr.repl_monitor;
 
 CREATE INDEX idx_monitoring_history_time
-          ON monitoring_history (last_monitor_time, standby_node_id);
+          ON repmgr.monitoring_history (last_monitor_time, standby_node_id);
 
 
 -- recreate VIEW
 
 DROP VIEW IF EXISTS repl_show_nodes;
 
-CREATE VIEW show_nodes AS
+CREATE VIEW repmgr.show_nodes AS
    SELECT n.node_id,
           n.node_name,
           n.active,
@@ -89,17 +89,17 @@ CREATE VIEW show_nodes AS
           n.type,
           n.priority,
           n.conninfo
-     FROM nodes n
-LEFT JOIN nodes un
+     FROM repmgr.nodes n
+LEFT JOIN repmgr.nodes un
        ON un.node_id = n.upstream_node_id;
 
-DROP VIEW IF EXISTS repl_status;
+DROP VIEW IF EXISTS repmgr.repl_status;
 
--- CREATE VIEW status ... ;
+-- XXX CREATE VIEW repmgr.replication_status ... ;
 
 /* drop old tables */
-DROP TABLE repl_nodes;
-DROP TABLE repl_monitor;
+DROP TABLE repmgr.repl_nodes;
+DROP TABLE repmgr.repl_monitor;
 
 
 /* repmgrd functions */
@@ -139,12 +139,10 @@ CREATE FUNCTION reset_voting_status()
   AS '$libdir/repmgr', 'reset_voting_status'
   LANGUAGE C STRICT;
 
-
 CREATE FUNCTION am_bdr_failover_handler(INT)
   RETURNS BOOL
   AS '$libdir/repmgr', 'am_bdr_failover_handler'
   LANGUAGE C STRICT;
-
 
 CREATE FUNCTION unset_bdr_failover_handler()
   RETURNS VOID
