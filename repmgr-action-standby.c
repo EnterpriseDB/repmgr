@@ -1785,6 +1785,27 @@ do_standby_switchover(void)
 
 		exit(ERR_BAD_CONFIG);
 	}
+	else
+	{
+		PQExpBufferData msg;
+		initPQExpBuffer(&msg);
+
+		appendPQExpBuffer(&msg,
+						  _("SSH connection to host \"%s\" succeeded"),
+						  remote_host);
+
+		if (runtime_options.dry_run == true)
+		{
+			log_info("%s", msg.data);
+		}
+		else
+		{
+			log_verbose(LOG_INFO, "%s", msg.data);
+		}
+
+		termPQExpBuffer(&msg);
+	}
+
 
 	/* check archive/replication status */
 	{
@@ -1822,58 +1843,103 @@ do_standby_switchover(void)
 			}
 
 			termPQExpBuffer(&command_output);
-			if (status == CHECK_STATUS_UNKNOWN)
-			{
-				if (runtime_options.force == false)
-				{
-					log_error(_("unable to check number of pending archive files on demotion candidate \"%s\""),
-							  remote_node_record.node_name);
-					log_hint(_("use -F/--force to continue anyway"));
-					PQfinish(remote_conn);
-					PQfinish(local_conn);
 
-					exit(ERR_SWITCHOVER_FAIL);
+			switch (status)
+			{
+				case CHECK_STATUS_UNKNOWN:
+				{
+					if (runtime_options.force == false)
+					{
+						log_error(_("unable to check number of pending archive files on demotion candidate \"%s\""),
+								  remote_node_record.node_name);
+						log_hint(_("use -F/--force to continue anyway"));
+						PQfinish(remote_conn);
+						PQfinish(local_conn);
+
+						exit(ERR_SWITCHOVER_FAIL);
+					}
+
+					log_warning(_("unable to check number of pending archive files on demotion candidate \"%s\""),
+								remote_node_record.node_name);
+					log_notice(_("-F/--force set, continuing with switchover"));
 				}
+				break;
 
-				log_warning(_("unable to check number of pending archive files on demotion candidate \"%s\""),
-						  remote_node_record.node_name);
-				log_notice(_("-F/--force set, continuing with switchover"));
-
-			}
-			else if (status == CHECK_STATUS_CRITICAL)
-			{
-				if (runtime_options.force == false)
+				case CHECK_STATUS_CRITICAL:
 				{
-					log_error(_("number of pending archive files on demotion candidate \"%s\" is critical"),
-							  remote_node_record.node_name);
+					if (runtime_options.force == false)
+					{
+						log_error(_("number of pending archive files on demotion candidate \"%s\" is critical"),
+								  remote_node_record.node_name);
+						log_detail(_("%i pending archive files (critical threshold: %i)"),
+								   files, threshold);
+						log_hint(_("PostgreSQL will not shut down until all files are archived; use -F/--force to continue anyway"));
+						PQfinish(remote_conn);
+						PQfinish(local_conn);
+
+						exit(ERR_SWITCHOVER_FAIL);
+					}
+
+					log_warning(_("number of pending archive files on demotion candidate \"%s\" is critical"),
+								remote_node_record.node_name);
 					log_detail(_("%i pending archive files (critical threshold: %i)"),
 							   files, threshold);
-					log_hint(_("PostgreSQL will not shut down until all files are archived; use -F/--force to continue anyway"));
-					PQfinish(remote_conn);
-					PQfinish(local_conn);
-
-					exit(ERR_SWITCHOVER_FAIL);
+					log_notice(_("-F/--force set, continuing with switchover"));
 				}
+				break;
 
-				log_warning(_("number of pending archive files on demotion candidate \"%s\" is critical"),
-							remote_node_record.node_name);
-				log_detail(_("%i pending archive files (critical threshold: %i)"),
-						   files, threshold);
-				log_notice(_("-F/--force set, continuing with switchover"));
-			}
-			else if (status == CHECK_STATUS_WARNING)
-			{
-				log_warning(_("number of pending archive files on demotion candidate \"%s\" is warning"),
-							remote_node_record.node_name);
-				log_detail(_("%i pending archive files (warning threshold: %i)"),
-						   files, threshold);
-				log_hint(_("PostgreSQL will not shut down until all files are archived"));
+				case CHECK_STATUS_WARNING:
+				{
+					log_warning(_("number of pending archive files on demotion candidate \"%s\" is warning"),
+								remote_node_record.node_name);
+					log_detail(_("%i pending archive files (warning threshold: %i)"),
+							   files, threshold);
+					log_hint(_("PostgreSQL will not shut down until all files are archived"));
+				}
+				break;
+
+				case CHECK_STATUS_OK:
+				{
+					PQExpBufferData msg;
+					initPQExpBuffer(&msg);
+
+					appendPQExpBuffer(&msg,
+									  _("%i pending archive files"),
+									  files);
+
+					if (runtime_options.dry_run == true)
+					{
+						log_info("%s", msg.data);
+					}
+					else
+					{
+						log_verbose(LOG_INFO, "%s", msg.data);
+					}
+
+					termPQExpBuffer(&msg);
+				}
 			}
 
 		}
+		else
+		{
+			char *msg = _("archive mode is \"off\"");
 
-		/* check replication lag */
-		lag_seconds =  get_replication_lag_seconds(local_conn);
+			if (runtime_options.dry_run == true)
+			{
+				log_info("%s", msg);
+			}
+			else
+			{
+				log_verbose(LOG_INFO, "%s", msg);
+			}
+		}
+
+		/*
+		 * check replication lag on promotion candidate
+		 * (TODO: check on all nodes attached to demotion candidate)
+		 */
+		lag_seconds = get_replication_lag_seconds(local_conn);
 
 		log_debug("lag is %i ", lag_seconds);
 
@@ -1919,6 +1985,27 @@ do_standby_switchover(void)
 			log_warning(_("unable to check replication lag on local node"));
 			log_notice(_("-F/--force set, continuing with switchover"));
 		}
+		/* replication lag is below warning threshold */
+		else
+		{
+			PQExpBufferData msg;
+			initPQExpBuffer(&msg);
+
+			appendPQExpBuffer(&msg,
+							  _("replication lag on this standby is %i seconds"),
+							  lag_seconds);
+
+			if (runtime_options.dry_run == true)
+			{
+				log_info("%s", msg.data);
+			}
+			else
+			{
+				log_verbose(LOG_INFO, "%s", msg.data);
+			}
+
+			termPQExpBuffer(&msg);
+		}
 	}
 
 	PQfinish(remote_conn);
@@ -1927,70 +2014,97 @@ do_standby_switchover(void)
 	/*
 	 * If --siblings-follow specified, get list and check they're reachable
 	 */
+	get_active_sibling_node_records(local_conn,
+									local_node_record.node_id,
+									local_node_record.upstream_node_id,
+									&sibling_nodes);
 
-	if (runtime_options.siblings_follow == true)
+	if (runtime_options.siblings_follow == false)
+	{
+		if (sibling_nodes.node_count > 0)
+		{
+			log_warning(_("%i sibling nodes found, but option \"--siblings-follow\" not specified"),
+						sibling_nodes.node_count);
+			log_detail(_("these nodes will remain attached to the current primary"));
+		}
+	}
+	else
 	{
 		char host[MAXLEN] = "";
 		NodeInfoListCell *cell;
 
-		get_active_sibling_node_records(local_conn,
-										local_node_record.node_id,
-										local_node_record.upstream_node_id,
-										&sibling_nodes);
-
 		log_verbose(LOG_INFO, _("%i active sibling nodes found"),
 					sibling_nodes.node_count);
 
-		for (cell = sibling_nodes.head; cell; cell = cell->next)
+		if (sibling_nodes.node_count == 0)
 		{
-			/* get host from node record */
-			get_conninfo_value(cell->node_info->conninfo, "host", host);
-			r = test_ssh_connection(host, runtime_options.remote_user);
-
-			if (r != 0)
-			{
-				cell->node_info->reachable = false;
-				unreachable_sibling_node_count++;
-			}
-			else
-			{
-				cell->node_info->reachable = true;
-			}
+			log_warning(_("option \"--sibling-nodes\" specified, but no sibling nodes exist"));
 		}
-
-		if (unreachable_sibling_node_count > 0)
+		else
 		{
-			if (runtime_options.force == false)
-			{
-				log_error(_("%i of %i sibling nodes unreachable via SSH:"),
-						  unreachable_sibling_node_count,
-						  sibling_nodes.node_count);
-			}
-			else
-			{
-				log_warning(_("%i of %i sibling nodes unreachable via SSH:"),
-							unreachable_sibling_node_count,
-							sibling_nodes.node_count);
-			}
-
 			for (cell = sibling_nodes.head; cell; cell = cell->next)
 			{
-				if (cell->node_info->reachable == true)
-					continue;
-				log_detail("  %s (ID: %i)",
-						   cell->node_info->node_name,
-						   cell->node_info->node_id);
+				/* get host from node record */
+				get_conninfo_value(cell->node_info->conninfo, "host", host);
+				r = test_ssh_connection(host, runtime_options.remote_user);
+
+				if (r != 0)
+				{
+					cell->node_info->reachable = false;
+					unreachable_sibling_node_count++;
+				}
+				else
+				{
+					cell->node_info->reachable = true;
+				}
 			}
 
-			if (runtime_options.force == false)
+			if (unreachable_sibling_node_count > 0)
 			{
-				log_hint(_("use -F/--force to proceed in any case"));
-				PQfinish(local_conn);
-				exit(ERR_BAD_CONFIG);
+				if (runtime_options.force == false)
+				{
+					log_error(_("%i of %i sibling nodes unreachable via SSH:"),
+							  unreachable_sibling_node_count,
+							  sibling_nodes.node_count);
+				}
+				else
+				{
+					log_warning(_("%i of %i sibling nodes unreachable via SSH:"),
+								unreachable_sibling_node_count,
+								sibling_nodes.node_count);
+				}
+
+				for (cell = sibling_nodes.head; cell; cell = cell->next)
+				{
+					if (cell->node_info->reachable == true)
+						continue;
+					log_detail("  %s (ID: %i)",
+							   cell->node_info->node_name,
+							   cell->node_info->node_id);
+				}
+
+				if (runtime_options.force == false)
+				{
+					log_hint(_("use -F/--force to proceed in any case"));
+					PQfinish(local_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				log_detail(_("F/--force specified, proceeding anyway"));
 			}
+			else
+			{
+				char *msg = _("all sibling nodes are reachable via SSH");
 
-
-			log_detail(_("F/--force specified, proceeding anyway"));
+				if (runtime_options.dry_run == true)
+				{
+					log_info("%s", msg);
+				}
+				else
+				{
+					log_verbose(LOG_INFO, "%s", msg);
+				}
+			}
 		}
 	}
 	PQfinish(local_conn);
@@ -2000,7 +2114,7 @@ do_standby_switchover(void)
 	 * Sanity checks completed - prepare for the switchover
 	 */
 
-	log_detail(_("local node \"%s\" (ID: %i) will be promoted to primary; "
+	log_notice(_("local node \"%s\" (ID: %i) will be promoted to primary; "
 				 "current primary \"%s\" (ID: %i) will be demoted to standby"),
 			   local_node_record.node_name,
 			   local_node_record.node_id,
