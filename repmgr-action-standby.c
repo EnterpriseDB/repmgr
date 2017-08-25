@@ -1390,7 +1390,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 {
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	int			original_upstream_node_id = UNKNOWN_NODE_ID;
-	char		restart_command[MAXLEN] = "";
 	int			r;
 
 	RecordStatus record_status = RECORD_NOT_FOUND;
@@ -1494,22 +1493,40 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* restart the service */
+	/* start/restart the service */
 
 	// XXX here check if service is running!! if not, start
 	//     ensure that problem with pg_ctl output is caught here
 
-	get_server_action(ACTION_RESTART, restart_command, config_file_options.data_directory);
-
-	log_notice(_("restarting server using \"%s\""),
-			   restart_command);
-
-	r = system(restart_command);
-	if (r != 0)
 	{
-		log_error(_("unable to restart server"));
-		PQfinish(primary_conn);
-		exit(ERR_NO_RESTART);
+		char		server_command[MAXLEN] = "";
+		bool		server_up = is_server_available(config_file_options.conninfo);
+		char	   *action = NULL;
+
+		log_debug("XXX %s\n", config_file_options.conninfo);
+		if (server_up == true)
+		{
+			action = "restart";
+			get_server_action(ACTION_RESTART, server_command, config_file_options.data_directory);
+		}
+		else
+		{
+			action = "start";
+			get_server_action(ACTION_START, server_command, config_file_options.data_directory);
+		}
+
+		/* if translation needed, generate messages in the preceding if/else */
+		log_notice(_("%sing server using \"%s\""),
+				   action,
+				   server_command);
+
+		r = system(server_command);
+		if (r != 0)
+		{
+			log_error(_("unable to %s server"), action);
+			PQfinish(primary_conn);
+			exit(ERR_NO_RESTART);
+		}
 	}
 
 
@@ -2381,7 +2398,7 @@ do_standby_switchover(void)
 	 * new standby
 	 */
 
-	if (runtime_options.siblings_follow == true)
+	if (runtime_options.siblings_follow == true && sibling_nodes.node_count > 0)
 	{
 		int failed_follow_count = 0;
 		char host[MAXLEN] = "";
