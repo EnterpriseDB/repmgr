@@ -1,14 +1,14 @@
 Fencing a failed master node with repmgrd and pgbouncer
 =======================================================
 
-With automatic failover, it's essential to ensure that a failed master
+With automatic failover, it's essential to ensure that a failed primary
 remains inaccessible to your application, even if it comes back online
 again, to avoid a split-brain situation.
 
 By using `pgbouncer` together with `repmgrd`, it's possible to combine
-automatic failover with a process to isolate the failed master from
+automatic failover with a process to isolate the failed primary from
 your application and ensure that all connections which should go to
-the master are directed there smoothly without having to reconfigure
+the primary are directed there smoothly without having to reconfigure
 your application. (Note that as a connection pooler, `pgbouncer` can
 benefit your application in other ways, but those are beyond the scope
 of this document).
@@ -22,14 +22,14 @@ of this document).
 
 * * *
 
-In a failover situation, `repmgrd` promotes a standby to master by executing
+In a failover situation, `repmgrd` promotes a standby to primary by executing
 the command defined in `promote_command`. Normally this would be something like:
 
     repmgr standby promote -f /etc/repmgr.conf
 
 By wrapping this in a custom script which adjusts the `pgbouncer` configuration
-on all nodes, it's possible to fence the failed master and redirect write
-connections to the new master.
+on all nodes, it's possible to fence the failed primary and redirect write
+connections to the new primary.
 
 The script consists of two sections:
 
@@ -40,7 +40,7 @@ Note that it requires password-less SSH access from the `repmgr` nodes
 to all the `pgbouncer` nodes to be able to update the `pgbouncer`
 configuration files.
 
-For the purposes of this demonstration, we'll assume there are 3 nodes (master
+For the purposes of this demonstration, we'll assume there are 3 nodes (primary
 and two standbys), with `pgbouncer` listening on port 6432 handling connections
 to a database called `appdb`.  The `postgres` system user must have write
 access to the `pgbouncer` configuration files on all nodes. We'll assume
@@ -106,7 +106,7 @@ The actual script is as follows; adjust the configurable items as appropriate:
     REPMGR_DB="repmgr"
     REPMGR_USER="repmgr"
 
-    # 1. Promote this node from standby to master
+    # 1. Promote this node from standby to primary
 
     repmgr standby promote -f /etc/repmgr.conf
 
@@ -141,8 +141,7 @@ The actual script is as follows; adjust the configurable items as appropriate:
 
     echo "Reconfiguration of pgbouncer complete"
 
-Script and template file should be installed on each node where
-`repmgrd` is running.
+Script and template file should be installed on each node where `repmgrd` is running.
 
 Finally, set `promote_command` in `repmgr.conf` on each node to
 point to the custom promote script:
