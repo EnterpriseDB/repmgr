@@ -4245,6 +4245,15 @@ do_standby_help(void)
 	printf(_("STANDBY CLONE\n"));
 	puts("");
 	printf(_("  \"standby clone\" clones a standby from the primary or an upstream node.\n"));
+	printf(_("  -c, --fast-checkpoint               force fast checkpoint\n"));
+	printf(_("  --copy-external-config-files[={samepath|pgdata}]\n" \
+			 "                                      copy configuration files located outside the \n" \
+			 "                                        data directory to the same path on the standby (default) or to the\n" \
+			 "                                        PostgreSQL data directory\n"));
+	printf(_("  --no-upstream-connection            when using Barman, do not connect to upstream node\n"));
+	printf(_("  --upstream-conninfo                 'primary_conninfo' value to write in recovery.conf\n" \
+			 "                                        when the intended upstream server does not yet exist\n"));
+
 	puts("");
 
 	printf(_("STANDBY REGISTER\n"));
