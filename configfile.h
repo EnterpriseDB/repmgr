@@ -75,6 +75,7 @@ typedef struct
 	char		pg_basebackup_options[MAXLEN];
 	char		restore_command[MAXLEN];
 	TablespaceList tablespace_mapping;
+	char		recovery_min_apply_delay[MAXLEN];
 
 	/* node check settings */
 	int			archive_ready_warning;
@@ -133,7 +134,7 @@ typedef struct
 		/* log settings */ \
 		"", "", "", DEFAULT_LOG_STATUS_INTERVAL,	\
 		/* standby clone settings */ \
-		false, "", "", "", "", { NULL, NULL },	\
+		false, "", "", "", "", { NULL, NULL }, "", \
 		/* node check settings */ \
 		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
 		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \

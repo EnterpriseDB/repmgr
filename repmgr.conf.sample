@@ -66,6 +66,9 @@
                                         # at least the number of standbys which will connect
                                         # to the primary.
 
+#recovery_min_apply_delay=              # Ff provided, "recovery_min_apply_delay" in recovery.conf
+                                        # will be set to this value.
+
 #------------------------------------------------------------------------------
 # Logging settings
 #------------------------------------------------------------------------------

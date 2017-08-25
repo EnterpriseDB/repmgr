@@ -22,6 +22,8 @@ static bool		parse_bool(const char *s,
 
 static void	_parse_line(char *buf, char *name, char *value);
 static void	parse_event_notifications_list(t_configuration_options *options, const char *arg);
+static void parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors);
+
 static void	tablespace_list_append(t_configuration_options *options, const char *arg);
 
 
@@ -233,6 +235,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->restore_command, 0, sizeof(options->restore_command));
 	options->tablespace_mapping.head = NULL;
 	options->tablespace_mapping.tail = NULL;
+	memset(options->recovery_min_apply_delay, 0, sizeof(options->recovery_min_apply_delay));
 
 	/* repmgrd settings
 	 * ---------------- */
@@ -388,6 +391,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			tablespace_list_append(options, value);
 		else if (strcmp(name, "restore_command") == 0)
 			strncpy(options->restore_command, value, MAXLEN);
+		else if (strcmp(name, "recovery_min_apply_delay") == 0)
+			parse_time_unit_parameter(name, value, options->recovery_min_apply_delay, error_list);
 
 		/* node check settings */
 		else if (strcmp(name, "archive_ready_warning") == 0)
@@ -781,10 +786,43 @@ _parse_line(char *buf, char *name, char *value)
 }
 
 
+static void
+parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors)
+{
+	char 	   *ptr = NULL;
+	int targ = strtol(value, &ptr, 10);
+
+	if (targ < 1)
+	{
+		item_list_append_format(
+			errors,
+			_("invalid value provided for \"%s\""),
+			name);
+		return;
+	}
+
+	if (ptr && *ptr)
+	{
+		if (strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 &&
+			strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
+			strcmp(ptr, "d") != 0)
+		{
+			item_list_append_format(
+				errors,
+				_("value provided for \"%s\" must be one of ms/s/min/h/d"),
+				name);
+			return;
+		}
+	}
+
+	strncpy(dest, value, MAXLEN);
+}
+
 
 bool
 reload_config(t_configuration_options *orig_options)
 {
+	// XXX implement!
 	return true;
 }
 

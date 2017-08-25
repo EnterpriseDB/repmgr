@@ -344,32 +344,6 @@ main(int argc, char **argv)
 				runtime_options.no_upstream_connection = true;
 				break;
 
-			/* --recovery-min-apply-delay */
-			case OPT_RECOVERY_MIN_APPLY_DELAY:
-			{
-				char 	   *ptr = NULL;
-				int targ = strtol(optarg, &ptr, 10);
-
-				if (targ < 1)
-				{
-					item_list_append(&cli_errors, _("invalid value provided for '--recovery-min-apply-delay'"));
-					break;
-				}
-				if (ptr && *ptr)
-				{
-					if (strcmp(ptr, "ms") != 0 && strcmp(ptr, "s") != 0 &&
-					   strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
-					   strcmp(ptr, "d") != 0)
-					{
-						item_list_append(&cli_errors,
-										 _("value provided for '--recovery-min-apply-delay' must be one of ms/s/min/h/d"));
-						break;
-					}
-				}
-
-				strncpy(runtime_options.recovery_min_apply_delay, optarg, MAXLEN);
-				break;
-			}
 
 			case OPT_UPSTREAM_CONNINFO:
 				strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
@@ -557,6 +531,11 @@ main(int argc, char **argv)
 								 _("--remote-config-file is no longer required"));
 				break;
 
+			/* --recovery-min-apply-delay */
+			case OPT_RECOVERY_MIN_APPLY_DELAY:
+				item_list_append(&cli_warnings,
+								 _("--recovery-min-apply-delay is now a configuration file parameter, \"recovery_min_apply_delay\""));
+				break;
 
 		}
 	}
@@ -2607,10 +2586,10 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	log_debug("recovery.conf: %s", line);
 
 	/* recovery_min_apply_delay = ... (optional) */
-	if (*runtime_options.recovery_min_apply_delay)
+	if (*config_file_options.recovery_min_apply_delay)
 	{
 		maxlen_snprintf(line, "recovery_min_apply_delay = %s\n",
-						runtime_options.recovery_min_apply_delay);
+						config_file_options.recovery_min_apply_delay);
 		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
 
