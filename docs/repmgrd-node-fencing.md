@@ -133,7 +133,7 @@ The actual script is as follows; adjust the configurable items as appropriate:
 
         psql -d $REPMGR_DB -U $REPMGR_USER -t -A \
           -c "SELECT '${PGBOUNCER_DATABASE}-ro= ' || conninfo || ' application_name=pgbouncer_${HOST}' \
-              FROM $REPMGR_SCHEMA.repl_nodes \
+              FROM ${REPMGR_SCHEMA}.repl_nodes \
               WHERE node_name='${HOST}'" >> $PGBOUNCER_DATABASE_INI_NEW
 
         rsync $PGBOUNCER_DATABASE_INI_NEW $HOST:$PGBOUNCER_DATABASE_INI

@@ -996,6 +996,13 @@ both passwordless SSH access and the path of `repmgr.conf` on that server.
 > careful preparation and with adequate attention. In particular you should
 > be confident that your network environment is stable and reliable.
 >
+> Additionally you should be sure that the current master can be shut down
+> quickly and cleanly. In particular, access from applications should be
+> minimalized or preferably blocked completely. Also check that there is
+> no backlog of files waiting to be archived, as PostgreSQL will not shut
+> down until archiving completes, and that any standbys attached to the
+> current primary don't have a significant amount of replication lag.
+>
 > We recommend running `repmgr standby switchover` at the most verbose
 > logging level (`--log-level DEBUG --verbose`) and capturing all output
 > to assist troubleshooting any problems.
