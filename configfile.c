@@ -716,9 +716,8 @@ parse_recovery_conf(const char *data_dir, t_recovery_conf *conf)
 			strncpy(conf->trigger_file, value, MAXLEN);
 		else if (strcmp(name, "trigger_file") == 0)
 			strncpy(conf->trigger_file, value, MAXLEN);
-		/* TODO: parse values */
-		/*else if (strcmp(name, "recovery_min_apply_delay") == 0)
-		  strncpy(conf->, value, MAXLEN);*/
+		else if (strcmp(name, "recovery_min_apply_delay") == 0)
+			parse_time_unit_parameter(name, value, conf->recovery_min_apply_delay, NULL);
 
 	}
 	fclose(fp);
@@ -794,10 +793,13 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
 
 	if (targ < 1)
 	{
-		item_list_append_format(
-			errors,
-			_("invalid value provided for \"%s\""),
-			name);
+		if (errors != NULL)
+		{
+			item_list_append_format(
+				errors,
+				_("invalid value provided for \"%s\""),
+				name);
+		}
 		return;
 	}
 
@@ -807,11 +809,14 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
 			strcmp(ptr, "min") != 0 && strcmp(ptr, "h") != 0 &&
 			strcmp(ptr, "d") != 0)
 		{
-			item_list_append_format(
-				errors,
-				_("value provided for \"%s\" must be one of ms/s/min/h/d"),
-				name);
-			return;
+			if (errors != NULL)
+			{
+				item_list_append_format(
+					errors,
+					_("value provided for \"%s\" must be one of ms/s/min/h/d"),
+					name);
+				return;
+			}
 		}
 	}
 

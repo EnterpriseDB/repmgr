@@ -30,6 +30,9 @@ Changed command line options
   The value (defaults to the user in the conninfo string) will be stored in
   the repmgr metadata for use by  standby clone/follow..
 
+- `--recovery-min-apply-delay` is now a configuration file parameter
+  `recovery_min_apply_delay, to ensure the setting does not get lost when
+  a standby follows a new upstream.
 
 ### repmgrd
 

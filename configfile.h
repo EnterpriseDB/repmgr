@@ -204,7 +204,7 @@ typedef struct
 	char primary_conninfo[MAXLEN];
 	char primary_slot_name[MAXLEN];
 	char trigger_file[MAXLEN];
-	int recovery_min_apply_delay;
+	char recovery_min_apply_delay[MAXLEN];
 } t_recovery_conf;
 
 #define T_RECOVERY_CONF_INITIALIZER { \
@@ -216,7 +216,7 @@ typedef struct
 	RTA_PAUSE, \
 	/* standby server settings */ \
 	true, \
-	"", "", "", 0 \
+	"", "", "", "" \
 }
 
 
