@@ -112,6 +112,7 @@ typedef struct
 
 	/* event notification settings */
 	char		event_notification_command[MAXLEN];
+	char		event_notifications_orig[MAXLEN];
 	EventNotificationList event_notifications;
 
 	/* barman settings */
@@ -152,7 +153,7 @@ typedef struct
 		/* service settings */ \
 		"", "", "", "", "", "", \
 		/* event notification settings */ \
-		"", { NULL, NULL }, \
+		"", "", { NULL, NULL }, \
 		/* barman settings */ \
 		"", "", "",	 \
 		/* undocumented test settings */ \

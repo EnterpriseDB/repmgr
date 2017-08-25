@@ -22,6 +22,8 @@ static bool		parse_bool(const char *s,
 
 static void	_parse_line(char *buf, char *name, char *value);
 static void	parse_event_notifications_list(t_configuration_options *options, const char *arg);
+static void clear_event_notification_list(t_configuration_options *options);
+
 static void parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors);
 
 static void	tablespace_list_append(t_configuration_options *options, const char *arg);
@@ -470,7 +472,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "event_notification_command") == 0)
 			strncpy(options->event_notification_command, value, MAXLEN);
 		else if (strcmp(name, "event_notifications") == 0)
+		{
+			/* store unparsed value for comparison when reloading config */
+			strncpy(options->event_notifications_orig, value, MAXLEN);
 			parse_event_notifications_list(options, value);
+		}
 
 		/* barman settings */
 		else if (strcmp(name, "barman_host") == 0)
@@ -954,10 +960,13 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
-	/* event_notification_command */
-	// XXX store original string for comparison
-	//else if (strcmp(name, "event_notifications") == 0)
-	//parse_event_notifications_list(options, value);
+	/* event_notifications */
+	if (strcmp(orig_options->event_notifications_orig, new_options.event_notifications_orig) == 0)
+	{
+		strncpy(orig_options->event_notifications_orig, new_options.event_notifications_orig, MAXLEN);
+		clear_event_notification_list(orig_options);
+		orig_options->event_notifications = new_options.event_notifications;
+	}
 
 	/* failover */
 	if (orig_options->failover != new_options.failover)
@@ -1322,7 +1331,6 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 	char		event_type_buf[MAXLEN] = "";
 	char	   *dst_ptr = event_type_buf;
 
-
 	for (arg_ptr = arg; arg_ptr <= (arg + strlen(arg)); arg_ptr++)
 	{
 		/* ignore whitespace */
@@ -1371,6 +1379,26 @@ parse_event_notifications_list(t_configuration_options *options, const char *arg
 		else
 		{
 			*dst_ptr++ = *arg_ptr;
+		}
+	}
+}
+
+
+static void
+clear_event_notification_list(t_configuration_options *options)
+{
+	if (options->event_notifications.head != NULL)
+	{
+		EventNotificationListCell *cell;
+		EventNotificationListCell *next_cell;
+
+		cell = options->event_notifications.head;
+
+		while (cell != NULL)
+		{
+			next_cell = cell->next;
+			pfree(cell);
+			cell = next_cell;
 		}
 	}
 }

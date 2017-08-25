@@ -382,10 +382,6 @@ start_monitoring(void)
 }
 
 
-
-
-
-
 void
 update_registration(PGconn *conn)
 {
