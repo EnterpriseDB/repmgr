@@ -1309,6 +1309,7 @@ check_cli_parameters(const int action)
 			case CLUSTER_SHOW:
 			case CLUSTER_MATRIX:
 			case CLUSTER_CROSSCHECK:
+			case NODE_REJOIN:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
