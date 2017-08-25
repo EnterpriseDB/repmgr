@@ -39,7 +39,7 @@ See file `doc/changes-in-repmgr4.md` for more details.
 To upgrade from repmgr 3.x, both the `repmgr` metadatabase and all
 repmgr configuration files need to be converted. This is quite
 straightforward and scripts are provided to assist with this.
-See document `docs/upgrading-from-repmgr3.md` for further details.
+See document `doc/upgrading-from-repmgr3.md` for further details.
 
 
 Overview
@@ -145,7 +145,7 @@ UNIX-like system supported by PostgreSQL itself.
 on earlier versions of PostgreSQL 9.3 or 9.4, please use `repmgr 3.3`.
 
 If upgrading from `repmgr 3`, please see the separate upgrade guide
-`docs/upgrading-from-repmgr3.md`.
+`doc/upgrading-from-repmgr3.md`.
 
 All servers in the replication cluster must be running the same major version of
 PostgreSQL, and we recommend that they also run the same minor version.
@@ -345,11 +345,18 @@ which requires passwordless SSH access to that server from the one where
 > careful preparation and with adequate attention. In particular you should
 > be confident that your network environment is stable and reliable.
 >
+> Additionally you should be sure that the current primary can be shut down
+> quickly and cleanly. In particular, access from applications should be
+> minimalized or preferably blocked completely. Also be aware that if there
+> is a backlog of files waiting to be archived, PostgreSQL will not shut
+> down until archiving completes.
+>
 > We recommend running `repmgr standby switchover` at the most verbose
 > logging level (`--log-level DEBUG --verbose`) and capturing all output
 > to assist troubleshooting any problems.
 >
-> Please also read carefully the list of caveats below.
+> Please also read carefully the sections `Preparing for switchover` and
+> `Caveats` below.
 
 * * *
 
@@ -392,6 +399,52 @@ cluster status will now look like this:
     ----+-------+---------+-----------+----------+--------------------------------------
      1  | node1 | standby |   running | node2    | host=node1 dbname=repmgr user=repmgr
      2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
+
+### Preparing for switchover
+
+As mentioned above, success of the switchover operation depends on `repmgr`
+being able to shut down the current primary server quickly and cleanly.
+
+Double-check which commands will be used to stop/start/restart the current
+primary; execute:
+
+    repmgr -f /etc./repmgr.conf node service --list --action=stop
+    repmgr -f /etc./repmgr.conf node service --list --action=start
+    repmgr -f /etc./repmgr.conf node service --list --action=restart
+
+If the `pg_ctl` command is used for starting/restarting the server, you *must*
+ensure that logging output is redirected to a file, otherwise the switchover
+will appear to "hang". See note in section `Caveats` below.
+
+Check that access from applications is minimalized or preferably blocked
+completely, so applications are not unexpectedly interrupted.
+
+Check there is no significant replication lag on standbys attached to the
+current primary.
+
+If WAL file archiving is set up, check that there is no backlog of files waiting
+to be archived, as PostgreSQL will not finally shut down until all these have been
+archived. If there is a backlog exceeding `archive_ready_warning` WAL files,
+`repmgr` emit a warning before attempting to perform a switchover; you can also check
+anually with `repmgr node check --archive-ready`.
+
+Ensure that `repmgrd` is *not* running to prevent it unintentionally promoting a node.
+
+Finally, consider executing `repmgr standby switchover` with the `--dry-run` option;
+this will perform any necessary checks and inform you about success/failure, and
+stop before the first actual command is run (which would be the shutdown of the
+current primary). Example output:
+
+    $ repmgr standby switchover --siblings-follow --dry-rub
+    NOTICE: checking switchover on node "node2" (ID: 2) in --dry-run mode
+    INFO: SSH connection to host "localhost" succeeded
+    INFO: archive mode is "off"
+    INFO: replication lag on this standby is 0 seconds
+    INFO: all sibling nodes are reachable via SSH
+    NOTICE: local node "node2" (ID: 2) will be promoted to primary; current primary "node1" (ID: 1) will be demoted to standby
+    INFO: following shutdown command would be run on node "node1":
+      "pg_ctl -l /var/log/postgresql/startup.log -D '/var/lib/postgresql/data' -m fast -W stop"
+
 
 ### Handling other attached standbys
 
