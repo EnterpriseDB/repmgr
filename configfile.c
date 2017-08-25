@@ -823,12 +823,246 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
 	strncpy(dest, value, MAXLEN);
 }
 
+/*
+ * reload_config()
+ *
+ * This is only called by repmgrd after receiving a SIGHUP or when a monitoring
+ * loop is started up; it therefore only needs to reload options required
+ * by repmgrd, which are as follows:
+ *
+ * changeable options:
+ * - async_query_timeout
+ * - bdr_local_monitoring_only
+ * - bdr_recovery_timeout
+ * - conninfo
+ * - degraded_monitoring_timeout
+ * - event_notification_command
+ * - event_notifications
+ * - failover
+ * - follow_command
+ * - log_facility
+ * - log_file
+ * - log_level
+ * - log_status_interval
+ * - monitor_interval_secs
+ * - monitoring_history
+ * - promote_command
+ * - promote_delay
+ * - reconnect_attempts
+ * - reconnect_interval
+ * - retry_promote_interval_secs
+ *
+ * non-changeable options
+ *
+ * - node_id
+ * - node_name
+ * - data_directory
+ * - priority
+ * - replication_type
+ *
+ * extract with something like:
+ *	 grep config_file_options\\. repmgrd*.c | perl -n -e '/config_file_options\.([\w_]+)/ && print qq|$1\n|;' | sort | uniq
 
+ */
 bool
 reload_config(t_configuration_options *orig_options)
 {
-	// XXX implement!
-	return true;
+	PGconn	   *conn;
+	t_configuration_options new_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
+	bool	  config_changed = false;
+	bool	  log_config_changed = false;
+
+	static ItemList config_errors = { NULL, NULL };
+	static ItemList config_warnings = { NULL, NULL };
+
+	log_info(_("reloading configuration file"));
+
+	_parse_config(&new_options, &config_errors, &config_warnings);
+
+	if (config_errors.head != NULL)
+	{
+		/* XXX dump errors to log */
+		log_warning(_("unable to parse new configuration, retaining current configuration\n"));
+		return false;
+	}
+
+	/* The following options cannot be changed */
+
+	if (new_options.node_id != orig_options->node_id)
+	{
+		log_warning(_("\"node_id\" cannot be changed, retaining current configuration"));
+		return false;
+	}
+
+	if (strcmp(new_options.node_name, orig_options->node_name) != 0)
+	{
+		log_warning(_("\"node_name\" cannot be changed, keeping current configuration\n"));
+		return false;
+	}
+
+
+	/*
+	 * No configuration problems detected - copy any changed values
+	 *
+	 * NB: keep these in the same order as in configfile.h to make it easier
+	 * to manage them
+	 */
+
+
+	/* async_query_timeout */
+	if (orig_options->async_query_timeout != new_options.async_query_timeout)
+	{
+		orig_options->async_query_timeout = new_options.async_query_timeout;
+		config_changed = true;
+	}
+
+	/* bdr_local_monitoring_only */
+	if (orig_options->bdr_local_monitoring_only != new_options.bdr_local_monitoring_only)
+	{
+		orig_options->bdr_local_monitoring_only = new_options.bdr_local_monitoring_only;
+		config_changed = true;
+	}
+
+	/* bdr_recovery_timeout */
+	if (orig_options->bdr_recovery_timeout != new_options.bdr_recovery_timeout)
+	{
+		orig_options->bdr_recovery_timeout = new_options.bdr_recovery_timeout;
+		config_changed = true;
+	}
+
+
+	/* conninfo */
+	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
+	{
+		/* Test conninfo string works*/
+		conn = establish_db_connection(new_options.conninfo, false);
+		if (!conn || (PQstatus(conn) != CONNECTION_OK))
+		{
+			log_warning(_("\"conninfo\" string is not valid, retaining current configuration"));
+		}
+		else
+		{
+			strncpy(orig_options->conninfo, new_options.conninfo, MAXLEN);
+		}
+		PQfinish(conn);
+	}
+
+	/* event_notification_command */
+	if (strcmp(orig_options->event_notification_command, new_options.event_notification_command) != 0)
+	{
+		strncpy(orig_options->event_notification_command, new_options.event_notification_command, MAXLEN);
+		config_changed = true;
+	}
+
+	/* event_notification_command */
+	// XXX store original string for comparison
+	//else if (strcmp(name, "event_notifications") == 0)
+	//parse_event_notifications_list(options, value);
+
+	/* failover */
+	if (orig_options->failover != new_options.failover)
+	{
+		orig_options->failover = new_options.failover;
+		config_changed = true;
+	}
+
+	/* follow_command */
+	if (strcmp(orig_options->follow_command, new_options.follow_command) != 0)
+	{
+		strncpy(orig_options->follow_command, new_options.follow_command, MAXLEN);
+		config_changed = true;
+	}
+
+	/* monitor_interval_secs */
+	if (orig_options->monitor_interval_secs != new_options.monitor_interval_secs)
+	{
+		orig_options->monitor_interval_secs = new_options.monitor_interval_secs;
+		config_changed = true;
+	}
+
+	/* monitoring_history */
+	if (orig_options->monitoring_history != new_options.monitoring_history)
+	{
+		orig_options->monitoring_history = new_options.monitoring_history;
+		config_changed = true;
+	}
+
+	/* primary_notification_timeout */
+	if (orig_options->primary_notification_timeout != new_options.primary_notification_timeout)
+	{
+		orig_options->primary_notification_timeout = new_options.primary_notification_timeout;
+		config_changed = true;
+	}
+
+
+	/* promote_command */
+	if (strcmp(orig_options->promote_command, new_options.promote_command) != 0)
+	{
+		strncpy(orig_options->promote_command, new_options.promote_command, MAXLEN);
+		config_changed = true;
+	}
+
+	/* promote_delay */
+	if (orig_options->promote_delay != new_options.promote_delay)
+	{
+		orig_options->promote_delay = new_options.promote_delay;
+		config_changed = true;
+	}
+
+	/* reconnect_attempts */
+	if (orig_options->reconnect_attempts != new_options.reconnect_attempts)
+	{
+		orig_options->reconnect_attempts = new_options.reconnect_attempts;
+		config_changed = true;
+	}
+
+	/* reconnect_interval */
+	if (orig_options->reconnect_interval != new_options.reconnect_interval)
+	{
+		orig_options->reconnect_interval = new_options.reconnect_interval;
+		config_changed = true;
+	}
+
+	/*
+	 * Handle changes to logging configuration
+	 */
+	if (strcmp(orig_options->log_facility, new_options.log_facility) != 0)
+	{
+		strcpy(orig_options->log_facility, new_options.log_facility);
+		log_config_changed = true;
+	}
+
+	if (strcmp(orig_options->log_file, new_options.log_file) != 0)
+	{
+		strcpy(orig_options->log_file, new_options.log_file);
+		log_config_changed = true;
+	}
+
+
+	if (strcmp(orig_options->log_level, new_options.log_level) != 0)
+	{
+		strcpy(orig_options->log_level, new_options.log_level);
+		log_config_changed = true;
+	}
+
+	if (log_config_changed == true)
+	{
+		log_notice(_("restarting logging with changed parameters"));
+		logger_shutdown();
+		logger_init(orig_options, progname());
+		log_notice(_("configuration file reloaded with changed parameters"));
+	}
+
+	/*
+	 * if logging configuration changed, don't say the configuration didn't
+	 * change, as it clearly has.
+	 */
+	else
+	{
+		log_info(_("configuration has not changed"));
+	}
+
+	return config_changed;
 }
 
 
