@@ -15,8 +15,9 @@ dropped. Please continue to use repmgrd 3.x for those versions.
 ### BDR support
 
 `repmgr 4` supports monitoring of a two-node BDR 2.0 cluster. PostgreSQL 9.6 is
-required for BDR 2.0. Note that BDR 2.0 is not publicly available; please contact
-2ndQuadrant for details. `repmgr 4` will support future public BDR releases.
+required for BDR 2.0. Note that BDR 2.0 is not publicly available; please
+contact 2ndQuadrant for details. `repmgr 4` will support future public BDR
+releases.
 
 Changes in repmgr4 and backwards compatibility
 -----------------------------------------------
@@ -502,6 +503,7 @@ and the cluster status will now look like this:
      1  | node1 | standby |   running | node2    | host=node1 dbname=repmgr user=repmgr
      2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
      3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+
 
 ### Caveats
 

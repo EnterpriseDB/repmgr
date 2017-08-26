@@ -1654,8 +1654,6 @@ do_help(void)
 	printf(_("  -b, --pg_bindir=PATH                path to PostgreSQL binaries (optional)\n"));
 	printf(_("  -f, --config-file=PATH              path to the repmgr configuration file\n"));
 	printf(_("  -F, --force                         force potentially dangerous operations to happen\n"));
-	printf(_("  -R, --remote-user=USERNAME          database server username for rsync/ssh (default: \"%s\")\n"), runtime_options.username);
-	puts("");
 
 	printf(_("Database connection options:\n"));
 	printf(_("  -d, --dbname=DBNAME                 database to connect to (default: "));

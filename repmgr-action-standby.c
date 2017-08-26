@@ -1277,7 +1277,7 @@ do_standby_follow(void)
 	/*
 	 * Attempt to connect to primary.
 	 *
-	 * If --wait provided, loop for up `primary_response_timeout`
+	 * If --wait provided, loop for up `primary_follow_timeout`
 	 * seconds before giving up
 	 */
 
@@ -4230,8 +4230,6 @@ do_standby_help(void)
 {
 	print_help_header();
 
-
-
 	printf(_("Usage:\n"));
 	printf(_("    %s [OPTIONS] standby clone\n"), progname());
 	printf(_("    %s [OPTIONS] standby register\n"), progname());
@@ -4245,25 +4243,38 @@ do_standby_help(void)
 	printf(_("STANDBY CLONE\n"));
 	puts("");
 	printf(_("  \"standby clone\" clones a standby from the primary or an upstream node.\n"));
+	puts("");
 	printf(_("  -c, --fast-checkpoint               force fast checkpoint\n"));
 	printf(_("  --copy-external-config-files[={samepath|pgdata}]\n" \
 			 "                                      copy configuration files located outside the \n" \
 			 "                                        data directory to the same path on the standby (default) or to the\n" \
 			 "                                        PostgreSQL data directory\n"));
 	printf(_("  --no-upstream-connection            when using Barman, do not connect to upstream node\n"));
-	printf(_("  --upstream-conninfo                 'primary_conninfo' value to write in recovery.conf\n" \
+	printf(_("  --upstream-conninfo                 \"primary_conninfo\" value to write in recovery.conf\n" \
 			 "                                        when the intended upstream server does not yet exist\n"));
-
+	printf(_("  -R, --remote-user=USERNAME          database server username for SSH operations (default: \"%s\")\n"), runtime_options.username);
+	printf(_("  --replication-user                  username to set in \"primary_conninfo\" in recovery.conf\n"));
+	printf(_("  --without-barman                    do not use Barman even if configured\n"));
 	puts("");
 
 	printf(_("STANDBY REGISTER\n"));
 	puts("");
 	printf(_("  \"standby register\" registers the standby node.\n"));
 	puts("");
+	printf(_("  -F, --force                         overwrite an existing node record, or if primary connection\n"\
+			 "                                        parameters supplied, create record even if standby offline\n"));
+	printf(_("  --upstream-node-id                  ID of the upstream node to replicate from (optional)\n"));
+	printf(_("  --wait-sync[=VALUE]                 wait for the node record to synchronise to the standby\n"\
+			 "                                        (optional timeout in seconds)\n"));
+
+	puts("");
 
 	printf(_("STANDBY UNREGISTER\n"));
 	puts("");
 	printf(_("  \"standby unregister\" unregisters an inactive standby node.\n"));
+	puts("");
+	printf(_("  --node-id                           ID node to unregister (optional, used when the node to unregister\n" \
+			 "                                        is offline)\n"));
 	puts("");
 
 	printf(_("STANDBY PROMOTE\n"));
@@ -4275,11 +4286,20 @@ do_standby_help(void)
 	puts("");
 	printf(_("  \"standby follow\" instructs a standby node to follow a new primary.\n"));
 	puts("");
+	printf(_("  -W, --wait                          wait for a primary to appear\n"));
+	puts("");
 
 
 	printf(_("STANDBY SWITCHOVER\n"));
 	puts("");
 	printf(_("  \"standby switchover\" promotes a standby node to primary, and demotes the previous primary to a standby.\n"));
 	puts("");
+	printf(_("  --always-promote                    promote standby even if behind original primary\n"));
+	printf(_("  --dry-run                           perform checks etc. but don't actually execute switchover\n"));
+	printf(_("  -F, --force                         ignore warnings and continue anyway\n"));
+	printf(_("  --force-rewind                      9.5 and later - use pg_rewind to reintegrate the old primary if necessary\n"));
+	printf(_("  -R, --remote-user=USERNAME          database server username for SSH operations (default: \"%s\")\n"), runtime_options.username);
+	printf(_("  --siblings-follow                   have other standbys follow new primary\n"));
 
+	puts("");
 }
