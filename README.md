@@ -729,7 +729,7 @@ Setting up cascading replication with repmgr
 --------------------------------------------
 
 Cascading replication, introduced with PostgreSQL 9.2, enables a standby server
-to replicate from another standby server rather than directly from the master,
+to replicate from another standby server rather than directly from the primary,
 meaning replication changes "cascade" down through a hierarchy of servers. This
 can be used to reduce load on the primary and minimize bandwith usage between
 sites.
@@ -800,11 +800,11 @@ Using replication slots with repmgr
 -----------------------------------
 
 Replication slots were introduced with PostgreSQL 9.4 and are designed to ensure
-that any standby connected to the master using a replication slot will always
+that any standby connected to the primary using a replication slot will always
 be able to retrieve the required WAL files. This removes the need to manually
 manage WAL file retention by estimating the number of WAL files that need to
-be maintained on the master using `wal_keep_segments`. Do however be aware
-that if a standby is disconnected, WAL will continue to accumulate on the master
+be maintained on the primary using `wal_keep_segments`. Do however be aware
+that if a standby is disconnected, WAL will continue to accumulate on the primary
 until either the standby reconnects or the replication slot is dropped.
 
 To enable `repmgr` to use replication slots, set the boolean parameter
@@ -838,7 +838,7 @@ on the upstream node:
     (2 rows)
 
 Note that a slot name will be created by default for the primary but not
-actually used unless the master is converted to a standby using e.g.
+actually used unless the primary is converted to a standby using e.g.
 `repmgr standby switchover`.
 
 Further information on replication slots in the PostgreSQL documentation:
@@ -881,7 +881,7 @@ Stop the current primary with e.g.:
 
 At this point the replication cluster will be in a partially disabled state, with
 both standbys accepting read-only connections while attempting to connect to the
-stopped master. Note that the `repmgr` metadata table will not yet have been updated;
+stopped primary. Note that the `repmgr` metadata table will not yet have been updated;
 executing `repmgr cluster show` will note the discrepancy:
 
     $ repmgr -f /etc/repmgr.conf cluster show
@@ -920,6 +920,43 @@ active primary, the previous warning will not be displayed:
 
 However the sole remaining standby is still trying to replicate from the failed
 primary; `repmgr standby follow` must now be executed to rectify this situation.
+
+
+Following a new primary server with repmgr
+------------------------------------------
+
+Following the failure or removal of the replication cluster's existing primary
+server, `repmgr standby follow` can be used to make 'orphaned' standbys
+follow the new primary and catch up to its current state.
+
+To demonstrate this, assuming a replication cluster in the same state as the
+end of the preceding section ("Promoting a standby server with repmgr"),
+execute this:
+
+    $ repmgr -f /etc/repmgr.conf repmgr standby follow
+    INFO: changing node 3's primary to node 2
+    NOTICE: restarting server using "pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/postgresql/data' restart"
+    waiting for server to shut down......... done
+    server stopped
+    waiting for server to start.... done
+    server started
+    NOTICE: STANDBY FOLLOW successful
+    DETAIL: node 3 is now attached to node 2
+
+The standby is now replicating from the new primary and `repmgr cluster show`
+output reflects this:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | primary | - failed  |          | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+
+Note that with cascading replication, `repmgr standby follow` can also be
+used to detach a standby from its current upstream server and follow the
+primary. However it's currently not possible to have it follow another standby;
+we hope to improve this in a future release.
 
 
 Performing a switchover with repmgr
@@ -1407,7 +1444,7 @@ The following commands are available:
 * `standby unregister`
 
     Unregisters a standby with `repmgr`. This command does not affect the actual
-    replication, just removes the standby's entry from the `repl_nodes` table.
+    replication, just removes the standby's entry from the `repmgr.nodes` table.
 
 * `standby switchover`
 
