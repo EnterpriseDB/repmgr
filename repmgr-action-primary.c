@@ -355,10 +355,9 @@ do_primary_unregister(void)
 		if (recovery_type == RECTYPE_STANDBY)
 		{
 			/* We'll refuse to do anything unless the node record shows it as a primary */
-
 			if (target_node_info_ptr->type != PRIMARY)
 			{
-				log_error(_("node %s (id: %i) is a %s, unable to unregister"),
+				log_error(_("node %s (ID: %i) is a %s, unable to unregister"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id,
 						  get_node_type_string(target_node_info_ptr->type));
@@ -370,7 +369,7 @@ do_primary_unregister(void)
 			 */
 			else if (!runtime_options.force)
 			{
-				log_error(_("node %s (id: %i) is running as a standby, unable to unregister"),
+				log_error(_("node %s (ID: %i) is running as a standby, unable to unregister"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 				log_hint(_("the node can be registered as a standby with \"repmgr standby register --force\""));
@@ -395,7 +394,7 @@ do_primary_unregister(void)
 
 			if (primary_record_found == false)
 			{
-				log_error(_("node %s (id: %i) is a primary node, but no primary node record found"),
+				log_error(_("node %s (ID: %i) is a primary node, but no primary node record found"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 				log_hint(_("register this node as primary with \"repmgr primary register --force\""));
@@ -408,7 +407,7 @@ do_primary_unregister(void)
 			 */
 			if (primary_node_info.node_id == target_node_info_ptr->node_id)
 			{
-				log_error(_("node %s (id: %i) is the current primary node, unable to unregister"),
+				log_error(_("node %s (ID: %i) is the current primary node, unable to unregister"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 
@@ -430,7 +429,7 @@ do_primary_unregister(void)
 	{
 		if (!runtime_options.force)
 		{
-			log_error(_("node %s (id: %i) is marked as active, unable to unregister"),
+			log_error(_("node %s (ID: %i) is marked as active, unable to unregister"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
 			log_hint(_("run \"repmgr primary unregister --force\" to unregister this node"));
@@ -441,7 +440,7 @@ do_primary_unregister(void)
 
 	if (runtime_options.dry_run == true)
 	{
-		log_notice(_("node %s (id: %i) would now be unregistered"),
+		log_notice(_("node %s (ID: %i) would now be unregistered"),
 				   target_node_info_ptr->node_name,
 				   target_node_info_ptr->node_id);
 		log_hint(_("run the same command without the --dry-run option to unregister this node"));
@@ -454,7 +453,7 @@ do_primary_unregister(void)
 
 		if (delete_success == false)
 		{
-			log_error(_("unable to unregister node %s (id: %i)"),
+			log_error(_("unable to unregister node %s (ID: %i)"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
 			PQfinish(primary_conn);
@@ -463,14 +462,14 @@ do_primary_unregister(void)
 
 		initPQExpBuffer(&event_details);
 		appendPQExpBuffer(&event_details,
-						  _("node %s (id: %i) unregistered"),
+						  _("node %s (ID: %i) unregistered"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 
 		if (target_node_info_ptr->node_id != config_file_options.node_id)
 		{
 			appendPQExpBuffer(&event_details,
-							  _(" from node %s (id: %i)"),
+							  _(" from node %s (ID: %i)"),
 							  config_file_options.node_name,
 							  config_file_options.node_id);
 		}
@@ -483,7 +482,7 @@ do_primary_unregister(void)
 							event_details.data);
 		termPQExpBuffer(&event_details);
 
-		log_info(_("node %s (id: %i) was successfully unregistered"),
+		log_info(_("node %s (ID: %i) was successfully unregistered"),
 				 target_node_info_ptr->node_name,
 				 target_node_info_ptr->node_id);
 	}
@@ -503,17 +502,25 @@ do_primary_help(void)
 	printf(_("    %s [OPTIONS] primary register\n"), progname());
 	printf(_("    %s [OPTIONS] primary unregister\n"), progname());
 	puts("");
-	printf(_("  Note: \"%s repmgr master ...\" can be used as an alias\n"), progname());
+	printf(_("  Note: \"%s master ...\" can be used as an alias\n"), progname());
 	puts("");
 
 	printf(_("PRIMARY REGISTER\n"));
 	puts("");
 	printf(_("  \"primary register\" initialises the repmgr cluster and registers the primary node.\n"));
 	puts("");
+	printf(_("  --dry-run                           check that the prerequisites are met for registering the primary\n" \
+			 "                                      (including availablity of the repmgr extension)\n"));
+	printf(_("  -F, --force                         overwrite an existing node record\n"));
+	puts("");
 
 	printf(_("PRIMARY UNREGISTER\n"));
 	puts("");
 	printf(_("  \"primary unregister\" unregisters an inactive primary node.\n"));
+	puts("");
+	printf(_("  --dry-run                           check what would happen, but don't actually unregister the primary\n"));
+	printf(_("  -F, --force                         force removal of the record\n"));
+
 	puts("");
 
 }

@@ -773,10 +773,21 @@ The following commands are available:
 * `primary register`
 
     Registers a primary in a streaming replication cluster, and configures
-    it for use with repmgr.  This command needs to be executed before any
-    standby nodes are registered.
+    it for use with repmgr, including installing the `repmgr` extension.
+    This command needs to be executed before any  standby nodes are registered.
+    Execute with the `--dry-run` option to check what would happen without
+    actually registering the primary.
 
-    `primary register` can be used as an alias for `primary register`.
+    `master register` can be used as an alias for `primary register`.
+
+* `primary unregister`
+
+   Unregisters an inactive primary node from the `repmgr` metadata. This is
+   typically when the primary has failed and is being removed from the cluster
+   after a new primary has been promoted. Execute with the `--dry-run` option
+   to check what would happen without actually unregistering the node.
+
+   `master unregister` can be used as an alias for `primary unregister`.
 
 * `standby switchover`
 
@@ -784,9 +795,7 @@ The following commands are available:
 
     If other standbys (siblings of the promotion candidate) are connected
     to the demotion candidate, if `--siblings-follow` is specified `repmgr`
-    can instruct these to follow the new primary. Note this can only work
-    if the configuration file on each sibling is the same path as specifed
-    in -f/--config-file or -C/--remote-config-file.
+    can instruct these to follow the new primary. .
 
 * `node status`
 
