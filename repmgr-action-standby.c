@@ -1766,6 +1766,7 @@ do_standby_switchover(void)
 	if (runtime_options.force_rewind == true)
 	{
 		PQExpBufferData reason;
+		PQExpBufferData msg;
 
 		initPQExpBuffer(&reason);
 
@@ -1779,8 +1780,21 @@ do_standby_switchover(void)
 
 			exit(ERR_BAD_CONFIG);
 		}
-
 		termPQExpBuffer(&reason);
+
+		initPQExpBuffer(&msg);
+		appendPQExpBuffer(&msg,
+						  _("pre-requisites for using pg_rewind are met"));
+
+		if (runtime_options.dry_run == true)
+		{
+			log_info("%s", msg.data);
+		}
+		else
+		{
+			log_verbose(LOG_INFO, "%s", msg.data);
+		}
+		termPQExpBuffer(&msg);
 
 		get_datadir_configuration_files(remote_conn, &remote_config_files);
 	}
@@ -1959,8 +1973,6 @@ do_standby_switchover(void)
 		lag_seconds = get_replication_lag_seconds(local_conn);
 
 		log_debug("lag is %i ", lag_seconds);
-
-		termPQExpBuffer(&command_output);
 
 		if (lag_seconds >= config_file_options.replication_lag_critical)
 		{
@@ -2192,6 +2204,10 @@ do_standby_switchover(void)
 		log_info(_("following shutdown command would be run on node \"%s\":\n  \"%s\""),
 				 remote_node_record.node_name,
 				 shutdown_command);
+
+		clear_node_info_list(&sibling_nodes);
+		key_value_list_free(&remote_config_files);
+
 		return;
 	}
 
@@ -2337,6 +2353,8 @@ do_standby_switchover(void)
 		appendPQExpBuffer(&node_rejoin_options, " ");
 	}
 
+	key_value_list_free(&remote_config_files);
+
 	initPQExpBuffer(&remote_command_str);
 	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 
@@ -2458,9 +2476,9 @@ do_standby_switchover(void)
 		/* TODO: double-check all expected nodes are in pg_stat_replication and
 		 * entries in repmgr.nodes match
 		 */
-
-		clear_node_info_list(&sibling_nodes);
 	}
+
+	clear_node_info_list(&sibling_nodes);
 
 	PQfinish(local_conn);
 
