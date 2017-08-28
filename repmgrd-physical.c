@@ -56,7 +56,7 @@ static void notify_followers(NodeInfoList *standby_nodes, int follow_node_id);
 
 static t_node_info *poll_best_candidate(NodeInfoList *standby_nodes);
 
-static void check_connection(t_node_info *node_info, PGconn *conn);
+static void check_connection(t_node_info *node_info, PGconn **conn);
 
 static bool wait_primary_notification(int *new_primary_id);
 static FailoverState follow_new_primary(int new_primary_id);
@@ -410,7 +410,15 @@ monitor_streaming_standby(void)
 	 * to monitor. This is a "fix-the-config" situation, not a lot else we
 	 * can do.
 	 */
-	if (record_status != RECORD_FOUND)
+	if (record_status == RECORD_NOT_FOUND)
+	{
+		log_error(_("no record found for upstream node (ID: %i), terminating"),
+					local_node_info.upstream_node_id);
+		log_hint(_("ensure the upstream node is registered correctly"));
+		PQfinish(local_conn);
+		exit(ERR_DB_CONN);
+	}
+	else if (record_status == RECORD_ERROR)
 	{
 		log_error(_("unable to retrieve record for upstream node (ID: %i), terminating"),
 					local_node_info.upstream_node_id);
@@ -423,7 +431,7 @@ monitor_streaming_standby(void)
 	upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
 	/*
-	 * Upstream node must be running.
+	 * Upstream node must be running at repmgrd startup.
 	 *
 	 * We could possibly have repmgrd skip to degraded monitoring mode until it
 	 * comes up, but there doesn't seem to be much point in doing that.
@@ -663,7 +671,6 @@ monitor_streaming_standby(void)
 
 					if (local_node_info.type == PRIMARY)
 					{
-
 						int		degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
 
 						log_notice(_("resuming monitoring as primary node after %i seconds"),
@@ -770,9 +777,80 @@ monitor_streaming_standby(void)
 		 * TODO: add timeout, after which we run in degraded state
 		 */
 
-		check_connection(&local_node_info, local_conn);
+		check_connection(&local_node_info, &local_conn);
 
-		if (config_file_options.monitoring_history == true)
+		if (PQstatus(local_conn) != CONNECTION_OK)
+		{
+			if (local_node_info.active == true)
+			{
+				if (PQstatus(primary_conn) == CONNECTION_OK)
+				{
+					if (update_node_record_set_active(primary_conn, local_node_info.node_id, false) == true)
+					{
+						PQExpBufferData event_details;
+						initPQExpBuffer(&event_details);
+
+						local_node_info.active = false;
+
+						appendPQExpBuffer(
+							&event_details,
+							_("unable to connect to local node \"%s\" (ID: %i), marking inactive"),
+							local_node_info.node_name,
+							local_node_info.node_id);
+
+						log_warning("%s", event_details.data)
+
+
+						create_event_notification(
+							primary_conn,
+							&config_file_options,
+							local_node_info.node_id,
+							"standby_failure",
+							false,
+							event_details.data);
+
+						termPQExpBuffer(&event_details);
+					}
+				}
+			}
+		}
+		else {
+			if (local_node_info.active == false)
+			{
+				if (PQstatus(primary_conn) == CONNECTION_OK)
+				{
+					if (update_node_record_set_active(primary_conn, local_node_info.node_id, true) == true)
+					{
+						PQExpBufferData event_details;
+						initPQExpBuffer(&event_details);
+
+						local_node_info.active = true;
+
+						appendPQExpBuffer(
+							&event_details,
+							_("reconnect to local node \"%s\" (ID: %i), marking active"),
+							local_node_info.node_name,
+							local_node_info.node_id);
+
+						log_warning("%s", event_details.data)
+
+
+						create_event_notification(
+							primary_conn,
+							&config_file_options,
+							local_node_info.node_id,
+							"standby_recovery",
+							true,
+							event_details.data);
+
+						termPQExpBuffer(&event_details);
+					}
+				}
+			}
+		}
+
+
+		if (PQstatus(local_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
 			update_monitoring_history();
 
 		sleep(config_file_options.monitor_interval_secs);
@@ -1150,8 +1228,7 @@ do_upstream_standby_failover(void)
 	 * the node's upstream is not available
 	 */
 
-	check_connection(&primary_node_info, primary_conn);
-
+	check_connection(&primary_node_info, &primary_conn);
 
 	/* grandparent upstream is inactive  */
 	if (primary_node_info.active == false)
@@ -1975,32 +2052,32 @@ reset_node_voting_status(void)
 
 
 static void
-check_connection(t_node_info *node_info, PGconn *conn)
+check_connection(t_node_info *node_info, PGconn **conn)
 {
-		// consolidate below code
 	if (is_server_available(node_info->conninfo) == false)
 	{
 		log_warning(_("connection to node %i lost"), node_info->node_id);
-
-		if (conn != NULL)
-		{
-			PQfinish(conn);
-			conn = NULL;
-		}
 	}
 
-	if (PQstatus(conn) != CONNECTION_OK)
+	if (PQstatus(*conn) != CONNECTION_OK)
 	{
-		log_info(_("attempting to reconnect"));
-		conn = establish_db_connection(node_info->conninfo, false);
+		log_info(_("attempting to reconnect to node \"%s\" (ID: %i)"),
+				 node_info->node_name,
+				 node_info->node_id);
+		*conn = establish_db_connection(node_info->conninfo, false);
 
-		if (PQstatus(conn) != CONNECTION_OK)
+		if (PQstatus(*conn) != CONNECTION_OK)
 		{
-			log_warning(_("reconnection failed"));
+			*conn = NULL;
+			log_warning(_("reconnection to node \"%s\" (ID: %i) failed"),
+						node_info->node_name,
+						node_info->node_id);
 		}
 		else
 		{
-			log_info(_("reconnected"));
+			log_info(_("reconnected to node \"%s\" (ID: %i)"),
+					 node_info->node_name,
+					 node_info->node_id);
 		}
 	}
 }
