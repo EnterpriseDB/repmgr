@@ -22,25 +22,25 @@ releases.
 Changes in repmgr4 and backwards compatibility
 -----------------------------------------------
 
-`repmgr` is now implemented as a PostgreSQL extension, and all database
-objects used by repmgr are stored in a dedicated `repmgr` schema, rather
-than `repmgr_$cluster_name`. Note there is no need to install the extension,
-this will be done automatically by `repmgr primary register`.
+`repmgr` is now implemented as a PostgreSQL extension, and all database objects
+used by repmgr are stored in a dedicated `repmgr` schema, rather than
+`repmgr_$cluster_name`. Note there is no need to install the extension, this
+will be done automatically by `repmgr primary register`.
 
-Some configuration items have had their names changed for consistency
-and clarity e.g. `node` => `node_id`. `repmgr` will issue a warning
-about deprecated/altered options.
+Some configuration items have had their names changed for consistency and clarity,
+e.g. `node` => `node_id`. `repmgr` will issue a warning about deprecated/altered
+options.
 
-Some configuration items have been changed to command line options,
-and vice-versa, e.g. to avoid hard-coding items such as a a node's
-upstream ID, which might change over time.
+Some configuration items have been changed to command line options, and vice-
+versa, e.g. to avoid hard-coding items such as a a node's upstream ID, which
+might change over time.
 
 See file `doc/changes-in-repmgr4.md` for more details.
 
-To upgrade from repmgr 3.x, both the `repmgr` metadatabase and all
-repmgr configuration files need to be converted. This is quite
-straightforward and scripts are provided to assist with this.
-See document `doc/upgrading-from-repmgr3.md` for further details.
+To upgrade from repmgr 3.x, both the `repmgr` metadatabase and all repmgr
+configuration files need to be converted. This is quite straightforward and
+scripts are provided to assist with this. See document
+`doc/upgrading-from-repmgr3.md` for further details.
 
 
 Overview
@@ -262,7 +262,8 @@ documentation for further details:
 
   https://www.postgresql.org/docs/current/static/libpq-envars.html
 
-Setting up a simple replication cluster with repmgr
+
+Setting up a basic replication cluster with repmgr
 ---------------------------------------------------
 
 The following section will describe how to set up a basic replication cluster
@@ -320,6 +321,226 @@ The following replication settings may need to be adjusted:
     # the standby is being cloned are retained until the standby starts up.
     #
     # wal_keep_segments = 5000
+
+* * *
+
+> *TIP*: rather than editing these settings in the default `postgresql.conf`
+> file, create a separate file such as `postgresql.replication.conf` and
+> include it from the end of the main configuration file with:
+> `include 'postgresql.replication.conf'`
+
+* * *
+
+Create a dedicated PostgreSQL superuser account and a database for
+the `repmgr` metadata, e.g.
+
+    createuser -s repmgr
+    createdb repmgr -O repmgr
+
+For the examples in this document, the name `repmgr` will be used for both
+user and database, but any names can be used.
+
+Ensure the `repmgr` user has appropriate permissions in `pg_hba.conf` and
+can connect in replication mode; `pg_hba.conf` should contain entries
+similar to the following:
+
+    local   replication   repmgr                              trust
+    host    replication   repmgr      127.0.0.1/32            trust
+    host    replication   repmgr      192.168.1.0/24          trust
+
+    local   repmgr        repmgr                              trust
+    host    repmgr        repmgr      127.0.0.1/32            trust
+    host    repmgr        repmgr      192.168.1.0/24          trust
+
+Adjust according to your network environment and authentication requirements.
+
+On the standby, do not create a PostgreSQL instance, but do ensure an empty
+directory is available for the `postgres` system user to create a data
+directory.
+
+### repmgr configuration file
+
+Create a `repmgr.conf` file on the master server. The file must contain at
+least the following parameters:
+
+    node_id=1
+    node_name=node1
+    conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'
+    data_directory='/var/lib/postgresql/data'
+
+- `node_id`: a unique integer identifying the node; note this must be a positive
+     32 bit signed integer between 1 and 2147483647
+- `node_name`: a unique string identifying the node; we recommend a name
+     specific to the server (e.g. 'server_1'); avoid names indicating the
+     current replication role like 'master' or 'standby' as the server's
+     role could change.
+- `conninfo`: a valid connection string for the `repmgr` database on the
+     *current* server. (On the standby, the database will not yet exist, but
+     `repmgr` needs to know the connection details to complete the setup
+     process).
+- `data_directory`: the node's data directory
+
+`repmgr.conf` should not be stored inside the PostgreSQL data directory,
+as it could be overwritten when setting up or reinitialising the PostgreSQL
+server. See section `Configuration` above for further details about `repmgr.conf`.
+
+`repmgr` will install the `repmgr` extension, which creates a `repmgr` schema
+containing the `repmgr` metadata tables as well as other functions and views.
+We also recommend that you set the `repmgr` user's search path
+to include this schema name, e.g.
+
+    ALTER USER repmgr SET search_path TO repmgr, "$user", public;
+
+* * *
+
+> *TIP*: for Debian-based distributions we recommend explictly setting
+> `pg_bindir` to the directory where `pg_ctl` and other binaries not in
+> the standard path are located. For PostgreSQL 9.6 this would be
+> `/usr/lib/postgresql/9.6/bin/`.
+
+* * *
+
+See `repmgr.conf.sample` for details of all available configuration parameters.
+
+
+### Register the primary server
+
+To enable `repmgr` to support a replication cluster, the primary node must
+be registered with `repmgr`. This installs the `repmgr` extension and
+metadata objects, and adds a metadata record for the primary server:
+
+    $ repmgr -f repmgr.conf primary register
+    INFO: connecting to primary database...
+    NOTICE: attempting to install extension "repmgr"
+    NOTICE: "repmgr" extension successfully installed
+    NOTICE: primary node record (id: 1) registered
+
+Verify status of the cluster like this:
+
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
+
+The record in the `repmgr` metadata table will look like this:
+
+    repmgr=# SELECT * from repmgr.nodes;
+    -[ RECORD 1 ]----+---------------------------------------
+    node_id          | 1
+    upstream_node_id |
+    active           | t
+    node_name        | node1
+    type             | primary
+    location         | default
+    priority         | 100
+    conninfo         | host=node1 dbname=repmgr user=repmgr
+    repluser         | repmgr
+    slot_name        |
+    config_file      | /etc/repmgr.conf
+
+Each server in the replication cluster will have its own record and will be updated
+when its status or role changes.
+
+
+### Clone the standby server
+
+Create a `repmgr.conf` file on the standby server. It must contain at
+least the same parameters as the primary's `repmgr.conf`, but with
+the mandatory values `node`, `node_name`, `conninfo` (and possibly
+`data_directory`) adjusted accordingly, e.g.:
+
+    node=2
+    node_name=node2
+    conninfo='host=node2 user=repmgr dbname=repmgr'
+    data_directory='/var/lib/postgresql/data'
+
+Clone the standby with:
+
+    $ repmgr -h node1 -U repmgr -d repmgr -D /path/to/node2/data/ -f /etc/repmgr.conf standby clone
+
+    NOTICE: using configuration file "/etc/repmgr.conf"
+    NOTICE: destination directory "/var/lib/postgresql/data" provided
+    INFO: connecting to upstream node
+    INFO: connected to source node, checking its state
+    NOTICE: checking for available walsenders on upstream node (2 required)
+    INFO: sufficient walsenders available on upstream node (2 required)
+    INFO: successfully connected to source node
+    DETAIL: current installation size is 29 MB
+    INFO: creating directory "/space/sda1/ibarwick/repmgr-test/node_2/data"...
+    NOTICE: starting backup (using pg_basebackup)...
+    HINT: this may take some time; consider using the -c/--fast-checkpoint option
+    INFO: executing: 'pg_basebackup -l "repmgr base backup" -D /var/lib/postgresql/data -h node1 -U repmgr -X stream '
+    NOTICE: standby clone (using pg_basebackup) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example: pg_ctl -D /var/lib/postgresql//data start
+
+This will clone the PostgreSQL data directory files from the primary at `node1`
+using PostgreSQL's `pg_basebackup` utility. A `recovery.conf` file containing the
+correct parameters to start streaming from this primary server will be created
+automatically.
+
+Note that by default, any configuration files in the primary's data directory will be
+copied to the standby. Typically these will be `postgresql.conf`, `postgresql.auto.conf`,
+`pg_hba.conf` and `pg_ident.conf`. These may require modification before the standby
+is started so it functions as desired.
+
+In some cases (e.g. on Debian or Ubuntu Linux installations), PostgreSQL's
+configuration files are located outside of the data directory and will
+not be copied by default. `repmgr` can copy these files, either to the same
+location on the standby server (provided appropriate directory and file permissions
+are available), or into the standby's data directory. This requires passwordless
+SSH access to the primary server. Add the option `--copy-external-config-files`
+to the `repmgr standby clone` command; by default files will be copied to
+the same path as on the upstream server. To have them placed in the standby's
+data directory, specify `--copy-external-config-files=pgdata`, but note that
+any include directives in the copied files may need to be updated.
+
+*Caveat*: when copying external configuration files: `repmgr` will only be able
+to detect files which contain active settings. If a file is referenced by
+an include directive but is empty, only contains comments or contains
+settings which have not been activated, the file will not be copied.
+
+* * *
+
+> *TIP*: for reliable configuration file management we recommend using a
+> configuration management tool such as Ansible, Chef, Puppet or Salt.
+
+* * *
+
+Be aware that when initially cloning a standby, you will need to ensure
+that all required WAL files remain available while the cloning is taking
+place. To ensure this happens when using the default `pg_basebackup` method,
+`repmgr` will set `pg_basebackup`'s `--xlog-method` parameter to `stream`,
+which will ensure all WAL files generated during the cloning process are
+streamed in parallel with the main backup. Note that this requires two
+replication connections to be available (`repmgr` will verify sufficient
+connections are available before attempting to clone).
+
+To override this behaviour, in `repmgr.conf` set `pg_basebackup`'s
+`--xlog-method` parameter to `fetch`:
+
+    pg_basebackup_options='--xlog-method=fetch'
+
+and ensure that `wal_keep_segments` is set to an appropriately high value.
+See the `pg_basebackup` documentation for details:
+
+    https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+
+> *NOTE*: From PostgreSQL 10, `pg_basebackup`'s `--xlog-method` parameter
+> has been renamed to `--wal-method`.
+
+Make any adjustments to the standby's PostgreSQL configuration files now,
+then start the server.
+
+* * *
+
+> *NOTE*: `repmgr standby clone` does not require `repmgr.conf`, however we
+> recommend providing this as `repmgr` will set the `application_name` parameter
+> in `recovery.conf` as the value provided in `node_name`, making it easier to
+> identify the node in `pg_stat_replication`. It's also possible to provide some
+> advanced options for controlling the standby cloning process; see next section
+> for details.
+
+* * *
 
 
 Performing a switchover with repmgr
@@ -790,6 +1011,25 @@ The following commands are available:
 
    `master unregister` can be used as an alias for `primary unregister`.
 
+* `standby clone [node to be cloned]`
+
+    Clones a new standby node from the data directory of the primary (or an
+    upstream cascading standby) using `pg_basebackup`. This will also create
+    the `recovery.conf` file required to start the server as a streaming
+    replication standby.
+
+
+* `standby register`
+
+    Registers a standby with `repmgr`. This command needs to be executed to enable
+    promote/follow operations and to allow `repmgrd` to work with the node.
+    An existing standby can be registered using this command.
+
+* `standby unregister`
+
+    Unregisters a standby with `repmgr`. This command does not affect the actual
+    replication, just removes the standby's entry from the `repl_nodes` table.
+
 * `standby switchover`
 
     Promotes a standby to primary and demotes the existing primary to a standby.
@@ -805,6 +1045,8 @@ The following commands are available:
 
     `repmgrd` should not be active on any nodes while a switchover is being
     carried out. This   restriction may be lifted in a later version.
+
+    For more details see the section `Performing a switchover with repmgr`.
 
 * `node status`
 
@@ -1037,7 +1279,7 @@ and registered:
     repmgr=# SELECT * from repmgr.events ;
      node_id |      event       | successful |        event_timestamp        |                                       details
     ---------+------------------+------------+-------------------------------+-------------------------------------------------------------------------------------
-           1 | primary_register  | t          | 2016-01-08 15:04:39.781733+09 |
+           1 | primary_register | t          | 2016-01-08 15:04:39.781733+09 |
            2 | standby_clone    | t          | 2016-01-08 15:04:49.530001+09 | Cloned from host 'repmgr_node1', port 5432; backup method: pg_basebackup; --force: N
            2 | standby_register | t          | 2016-01-08 15:04:50.621292+09 |
     (3 rows)
