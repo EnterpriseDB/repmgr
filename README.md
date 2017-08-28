@@ -360,7 +360,7 @@ directory.
 
 ### repmgr configuration file
 
-Create a `repmgr.conf` file on the master server. The file must contain at
+Create a `repmgr.conf` file on the primary server. The file must contain at
 least the following parameters:
 
     node_id=1
@@ -372,7 +372,7 @@ least the following parameters:
      32 bit signed integer between 1 and 2147483647
 - `node_name`: a unique string identifying the node; we recommend a name
      specific to the server (e.g. 'server_1'); avoid names indicating the
-     current replication role like 'master' or 'standby' as the server's
+     current replication role like 'primary' or 'standby' as the server's
      role could change.
 - `conninfo`: a valid connection string for the `repmgr` database on the
      *current* server. (On the standby, the database will not yet exist, but
@@ -465,7 +465,7 @@ Clone the standby with:
     INFO: sufficient walsenders available on upstream node (2 required)
     INFO: successfully connected to source node
     DETAIL: current installation size is 29 MB
-    INFO: creating directory "/space/sda1/ibarwick/repmgr-test/node_2/data"...
+    INFO: creating directory "/var/lib/postgresql/data"...
     NOTICE: starting backup (using pg_basebackup)...
     HINT: this may take some time; consider using the -c/--fast-checkpoint option
     INFO: executing: 'pg_basebackup -l "repmgr base backup" -D /var/lib/postgresql/data -h node1 -U repmgr -X stream '
@@ -544,26 +544,321 @@ then start the server.
 
 ### Verify replication is functioning
 
-Connect to the master server and execute:
+Connect to the primary server and execute:
 
     repmgr=# SELECT * FROM pg_stat_replication;
     -[ RECORD 1 ]----+------------------------------
-    pid              | 7704
+    pid              | 19111
     usesysid         | 16384
     usename          | repmgr
     application_name | node2
-    client_addr      | 192.168.1.2
+    client_addr      | ::1
     client_hostname  |
-    client_port      | 46196
-    backend_start    | 2016-01-07 17:32:58.322373+09
+    client_port      | 50378
+    backend_start    | 2017-08-28 15:14:19.851581+09
     backend_xmin     |
     state            | streaming
-    sent_location    | 0/3000220
-    write_location   | 0/3000220
-    flush_location   | 0/3000220
-    replay_location  | 0/3000220
+    sent_location    | 0/7000318
+    write_location   | 0/7000318
+    flush_location   | 0/7000318
+    replay_location  | 0/7000318
     sync_priority    | 0
     sync_state       | async
+
+
+### Register the standby
+
+Register the standby server with:
+
+    $ repmgr -f /etc/repmgr.conf standby register
+    NOTICE: standby node "node2" (id: 2) successfully registered
+
+Check the node is registered by executing `repmgr cluster show` on the standby:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | host=node2 dbname=repmgr user=repmgr
+
+The standby server now has a copy of the records for all servers in the
+replication cluster.
+* * *
+
+> *TIP*: depending on your environment and workload, it may take some time for
+> the standby's node record to propagate from the primary to the standby. Some
+> actions (such as starting `repmgrd`) require that the standby's node record
+> is present and up-to-date to function correctly - by providing the option
+> `--wait-sync` to the `repmgr standby register` command, `repmgr` will wait
+> until the record is synchronised before exiting. An optional timeout (in
+> seconds) can be added to this option (e.g. `--wait-sync=60`).
+
+* * *
+
+Under some circumstances you may wish to register a standby which is not
+yet running; this can be the case when using provisioning tools to create
+a complex replication cluster. In this case, by using the `-F/--force`
+option and providing the connection parameters to the primary server,
+the standby can be registered.
+
+Similarly, with cascading replication it may be necessary to register
+a standby whose upstream node has not yet been registered - in this case,
+using `-F/--force` will result in the creation of an inactive placeholder
+record for the upstream node, which will however later need to be registered
+with the `-F/--force` option too.
+
+When used with `standby register`, care should be taken that use of the
+`-F/--force` option does not result in an incorrectly configured cluster.
+
+### Using Barman to clone a standby
+
+`repmgr standby clone` can use Barman (the "Backup and
+Replication manager", https://www.pgbarman.org/), as a provider of both
+base backups and WAL files.
+
+Barman support provides the following advantages:
+
+- the primary node does not need to perform a new backup every time a
+  new standby is cloned;
+- a standby node can be disconnected for longer periods without losing
+  the ability to catch up, and without causing accumulation of WAL
+  files on the primary node;
+- therefore, `repmgr` does not need to use replication slots, and on the
+  primary node, `wal_keep_segments` does not need to be set.
+
+> *NOTE*: In view of the above, Barman support is incompatible with
+> the `use_replication_slots` setting in `repmgr.conf`.
+
+In order to enable Barman support for `repmgr standby clone`, following
+prerequisites must be met:
+
+- the `barman_server` setting in `repmgr.conf` is the same as the
+  server configured in Barman;
+- the `barman_host` setting in `repmgr.conf` is set to the SSH
+  hostname of the Barman server;
+- the `restore_command` setting in `repmgr.conf` is configured to
+  use a copy of the `barman-wal-restore` script shipped with the
+  `barman-cli` package (see below);
+- the Barman catalogue includes at least one valid backup for this
+  server.
+
+> *NOTE*: Barman support is automatically enabled if `barman_server`
+> is set. Normally it is a good practice to use Barman, for instance
+> when fetching a base backup while cloning a standby; in any case,
+> Barman mode can be disabled using the `--without-barman` command
+> line option.
+
+> *NOTE*: if you have a non-default SSH configuration on the Barman
+> server, e.g. using a port other than 22, then you can set those
+> parameters in a dedicated Host section in `~/.ssh/config`
+> corresponding to the value of `barman_server` in `repmgr.conf`. See
+> the "Host" section in `man 5 ssh_config` for more details.
+
+`barman-wal-restore` is a Python script provided by the Barman
+development team as part of the `barman-cli` package (Barman 2.0
+and later; for Barman 1.x the script is provided separately as
+`barman-wal-restore.py`).
+
+`restore_command` must then be set in `repmgr.conf` as follows:
+
+    <script> <Barman hostname> <cluster_name> %f %p
+
+For instance, suppose that we have installed Barman on the `barmansrv`
+host, and that `barman-wal-restore` is located as an executable at
+`/usr/bin/barman-wal-restore`;  `repmgr.conf` should include the following
+lines:
+
+    barman_server=barmansrv
+    restore_command=/usr/bin/barman-wal-restore barmansrv test %f %p
+
+> *NOTE*: `barman-wal-restore` supports command line switches to
+> control parallelism (`--parallel=N`) and compression (`--bzip2`,
+> `--gzip`).
+
+NOTE: to use a non-default Barman configuration file on the Barman server,
+specify this in `repmgr.conf` with `barman_config`:
+
+    barman_config=/path/to/barman.conf
+
+It's now possible to clone a standby from Barman, e.g.:
+
+    NOTICE: using configuration file "/etc/repmgr.conf"
+    NOTICE: destination directory "/var/lib/postgresql/data" provided
+    INFO: connecting to Barman server to verify backup for test_cluster
+    INFO: checking and correcting permissions on existing directory /var/lib/postgresql/data
+    INFO: creating directory "/var/lib/postgresql/data/repmgr"...
+    INFO: connecting to Barman server to fetch server parameters
+    INFO: connecting to upstream node
+    INFO: connected to source node, checking its state
+    INFO: successfully connected to source node
+    DETAIL: current installation size is 29 MB
+    NOTICE: retrieving backup from Barman...
+    receiving file list ...
+    (...)
+    NOTICE: standby clone (from Barman) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example: pg_ctl -D /var/lib/postgresql/data start
+
+As with cloning direclty from the primary, the standby must be registered
+after the server has started.
+
+
+Advanced options for cloning a standby
+--------------------------------------
+
+The above section demonstrates the simplest possible way to clone a standby
+server. Depending on your circumstances, finer-grained control over the
+cloning process may be necessary.
+
+### pg_basebackup options when cloning a standby
+
+By default, `pg_basebackup` performs a checkpoint before beginning the backup
+process. However, a normal checkpoint may take some time to complete;
+a fast checkpoint can be forced with the `-c/--fast-checkpoint` option.
+However this may impact performance of the server being cloned from
+so should be used with care.
+
+Further options can be passed to the `pg_basebackup` utility via
+the setting `pg_basebackup_options` in `repmgr.conf`. See the PostgreSQL
+documentation for more details of available options:
+
+  https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+
+
+Setting up cascading replication with repmgr
+--------------------------------------------
+
+Cascading replication, introduced with PostgreSQL 9.2, enables a standby server
+to replicate from another standby server rather than directly from the master,
+meaning replication changes "cascade" down through a hierarchy of servers. This
+can be used to reduce load on the primary and minimize bandwith usage between
+sites.
+
+`repmgr` supports cascading replication. When cloning a standby, in `repmgr.conf`
+set the command-line parameter `--upstream-node-id` to the `--node-id` of the
+server the standby should connect to, and `repmgr` will perform the clone using
+this server and create `recovery.conf` to point to it. Note that if `--upstream-node-id`
+is not explicitly provided, `repmgr` will use the primary as the server
+to clone from and attach to.
+
+To demonstrate cascading replication, ensure you have a primary and standby
+set up as shown above in the section "Setting up a simple replication cluster
+with repmgr". Create an additional standby server with `repmgr.conf` looking
+like this:
+
+    node_id=3
+    node_name=node3
+    conninfo='host=node3 user=repmgr dbname=repmgr'
+    data_directory='/var/lib/postgresql/data'
+
+Clone this standby (using the connection parameters for the existing standby),
+ensuring `--upstream-node-id` is provide with the `node_id` of the previously
+created standby, and register it:
+
+    $ repmgr -h node2 -U repmgr -d repmgr -f /etc/repmgr.conf standby clone --upstream-node-id=2
+    NOTICE: using configuration file "/etc/repmgr.conf"
+    NOTICE: destination directory "/var/lib/postgresql/data" provided
+    INFO: connecting to upstream node
+    INFO: connected to source node, checking its state
+    NOTICE: checking for available walsenders on upstream node (2 required)
+    INFO: sufficient walsenders available on upstream node (2 required)
+    INFO: successfully connected to source node
+    DETAIL: current installation size is 29 MB
+    INFO: creating directory "/var/lib/postgresql/data"...
+    NOTICE: starting backup (using pg_basebackup)...
+    HINT: this may take some time; consider using the -c/--fast-checkpoint option
+    INFO: executing: 'pg_basebackup -l "repmgr base backup" -D /var/lib/postgresql/data -h node2 -U repmgr -X stream '
+    NOTICE: standby clone (using pg_basebackup) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example: pg_ctl -D /var/lib/postgresql/data start
+
+    $ repmgr -f /etc/repmgr.conf standby register --upstream-node-id=2
+    NOTICE: standby node "node2" (id: 2) successfully registered
+
+After starting the standby, the cluster will look like this:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+
+
+* * *
+
+> *TIP*: under some circumstances when setting up a cascading replication
+> cluster, you may wish to clone a downstream standby whose upstream node
+> does not yet exist. In this case you can clone from the primary (or
+> another upstream node) and provide the parameter `--upstream-conninfo`
+> to explictly set the upstream's `primary_conninfo` string in `recovery.conf`.
+
+* * *
+
+Promoting a standby server with repmgr
+--------------------------------------
+
+If a primary server fails or needs to be removed from the replication cluster,
+a new primary server must be designated, to ensure the cluster continues
+working correctly. This can be done with `repmgr standby promote`, which promotes
+the standby on the current server to primary.
+
+To demonstrate this, set up a replication cluster with a primary and two attached
+standby servers so that the cluster looks like this:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | host=node3 dbname=repmgr user=repmgr
+
+Stop the current primary with e.g.:
+
+    $ pg_ctl -D /var/lib/postgresql/data -m fast stop
+
+At this point the replication cluster will be in a partially disabled state, with
+both standbys accepting read-only connections while attempting to connect to the
+stopped master. Note that the `repmgr` metadata table will not yet have been updated;
+executing `repmgr cluster show` will note the discrepancy:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status        | Upstream | Connection string
+    ----+-------+---------+---------------+----------+--------------------------------------
+     1  | node1 | primary | ? unreachable |          | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running     | node1    | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running     | node1    | host=node3 dbname=repmgr user=repmgr
+
+    WARNING: following issues were detected
+      node "node1" (ID: 1) is registered as an active primary but is unreachable
+
+Now promote the first standby with:
+
+    $ repmgr -f /etc/repmgr.conf standby promote
+
+This will produce output similar to the following:
+
+    INFO: connecting to standby database
+    NOTICE: promoting standby
+    DETAIL: promoting server using "pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/postgresql/data' promote"
+    server promoting
+    INFO: reconnecting to promoted server
+    NOTICE: STANDBY PROMOTE successful
+    DETAIL: node 2 was successfully promoted to primary
+
+Executing `repmgr cluster show` will show the current state; as there is now an
+active primary, the previous warning will not be displayed:
+
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+----------------------------------------------------
+     1  | node1 | primary | - failed  |          | host=node1 dbname=repmgr user=repmgr port=5501
+     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr port=5502
+     3  | node3 | standby |   running | node1    | host=node3 dbname=repmgr user=repmgr port=5503
+
+However the sole remaining standby is still trying to replicate from the failed
+primary; `repmgr standby follow` must now be executed to rectify this situation.
+
 
 Performing a switchover with repmgr
 -----------------------------------
@@ -878,7 +1173,7 @@ marked as inactive, and standby `node3` now following the new primary (`node2`):
      2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
      3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
 
-The `repl_events` table will contain a summary of what happened to each server
+`repmgr cluster event` will display a summary of what happened to each server
 during the failover:
 
     $ repmgr -f /etc/repmgr.conf cluster event
