@@ -256,9 +256,9 @@ Note that if a `conninfo` string is provided, values set in this will override a
 provided as individual parameters. For example, with `-d 'host=foo' --host bar`, `foo`
 will be chosen over `bar`.
 
-Like other PostgreSQL utilities, `repmgr` will default to any values set in environment
-variables if explicit command line parameters are not provided. See the PostgreSQL
-documentation for further details:
+Like other PostgreSQL utilities based on `libpq`, `repmgr` will default to any values
+set in environment variables if explicit command line parameters are not provided.
+See the PostgreSQL documentation for further details:
 
   https://www.postgresql.org/docs/current/static/libpq-envars.html
 
@@ -542,6 +542,28 @@ then start the server.
 
 * * *
 
+### Verify replication is functioning
+
+Connect to the master server and execute:
+
+    repmgr=# SELECT * FROM pg_stat_replication;
+    -[ RECORD 1 ]----+------------------------------
+    pid              | 7704
+    usesysid         | 16384
+    usename          | repmgr
+    application_name | node2
+    client_addr      | 192.168.1.2
+    client_hostname  |
+    client_port      | 46196
+    backend_start    | 2016-01-07 17:32:58.322373+09
+    backend_xmin     |
+    state            | streaming
+    sent_location    | 0/3000220
+    write_location   | 0/3000220
+    flush_location   | 0/3000220
+    replay_location  | 0/3000220
+    sync_priority    | 0
+    sync_state       | async
 
 Performing a switchover with repmgr
 -----------------------------------

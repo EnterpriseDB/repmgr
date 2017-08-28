@@ -303,6 +303,19 @@ do_standby_clone(void)
 		}
 	}
 
+	if (runtime_options.dry_run == true)
+	{
+		if (mode == pg_basebackup && runtime_options.fast_checkpoint == false)
+		{
+			log_info(_("consider using the -c/--fast-checkpoint option"));
+		}
+
+		log_info(_("all pre-requisites for \"standby clone\" are met"));
+
+		PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 	if (mode != barman)
 	{
 		initialise_direct_clone(&node_record);
@@ -4267,6 +4280,7 @@ do_standby_help(void)
 			 "                                      copy configuration files located outside the \n" \
 			 "                                        data directory to the same path on the standby (default) or to the\n" \
 			 "                                        PostgreSQL data directory\n"));
+	printf(_("  --dry-run                           perform checks but don't actually clone the standby\n"));
 	printf(_("  --no-upstream-connection            when using Barman, do not connect to upstream node\n"));
 	printf(_("  --upstream-conninfo                 \"primary_conninfo\" value to write in recovery.conf\n" \
 			 "                                        when the intended upstream server does not yet exist\n"));
