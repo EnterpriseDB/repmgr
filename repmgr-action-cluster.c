@@ -64,6 +64,7 @@ do_cluster_show(void)
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell = NULL;
 	int			i = 0;
+	ItemList	warnings = { NULL, NULL };
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database\n"));
@@ -139,18 +140,36 @@ do_cluster_show(void)
 								break;
 							case RECTYPE_STANDBY:
 								appendPQExpBuffer(&details, "! running as standby");
+								item_list_append_format(
+									&warnings,
+									"node \"%s\" (ID: %i) is registered as primary but running as standby",
+									cell->node_info->node_name, cell->node_info->node_id);
 								break;
 							case RECTYPE_UNKNOWN:
 								appendPQExpBuffer(&details, "! unknown");
+								item_list_append_format(
+									&warnings,
+									"node \"%s\" (ID: %i) has unknown replication status",
+									cell->node_info->node_name, cell->node_info->node_id);
 								break;
 						}
 					}
 					else
 					{
 						if (cell->node_info->recovery_type == RECTYPE_PRIMARY)
+						{
 							appendPQExpBuffer(&details, "! running");
+							item_list_append_format(
+								&warnings,
+								"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
+								cell->node_info->node_name, cell->node_info->node_id);
+						}
 						else
 							appendPQExpBuffer(&details, "! running as standby");
+							item_list_append_format(
+								&warnings,
+								"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
+								cell->node_info->node_name, cell->node_info->node_id);
 					}
 				}
 				/* node is unreachable */
@@ -158,10 +177,18 @@ do_cluster_show(void)
 				{
 					/* node is unreachable but marked active*/
 					if (cell->node_info->active == true)
+					{
 						appendPQExpBuffer(&details, "? unreachable");
+						item_list_append_format(
+							&warnings,
+							"node \"%s\" (ID: %i) is registered as an active primary but is unreachable",
+							cell->node_info->node_name, cell->node_info->node_id);
+					}
 					/* node is unreachable and marked as inactive */
 					else
+					{
 						appendPQExpBuffer(&details, "- failed");
+					}
 				}
 			}
 			break;
@@ -179,18 +206,38 @@ do_cluster_show(void)
 								break;
 							case RECTYPE_PRIMARY:
 								appendPQExpBuffer(&details, "! running as primary");
+							item_list_append_format(
+								&warnings,
+								"node \"%s\" (ID: %i) is registered as standby but running as primary",
+								cell->node_info->node_name, cell->node_info->node_id);
 								break;
 							case RECTYPE_UNKNOWN:
 								appendPQExpBuffer(&details, "! unknown");
+								item_list_append_format(
+									&warnings,
+									"node \"%s\" (ID: %i) has unknown replication status",
+									cell->node_info->node_name, cell->node_info->node_id);
 								break;
 						}
 					}
 					else
 					{
 						if (cell->node_info->recovery_type == RECTYPE_STANDBY)
+						{
 							appendPQExpBuffer(&details, "! running");
+							item_list_append_format(
+								&warnings,
+								"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
+								cell->node_info->node_name, cell->node_info->node_id);
+						}
 						else
+						{
 							appendPQExpBuffer(&details, "! running as primary");
+							item_list_append_format(
+								&warnings,
+								"node \"%s\" (ID: %i) is running as primary but the repmgr node record is inactive",
+								cell->node_info->node_name, cell->node_info->node_id);
+						}
 					}
 				}
 				/* node is unreachable */
@@ -198,9 +245,17 @@ do_cluster_show(void)
 				{
 					/* node is unreachable but marked active*/
 					if (cell->node_info->active == true)
+					{
 						appendPQExpBuffer(&details, "? unreachable");
+						item_list_append_format(
+							&warnings,
+							"node \"%s\" (ID: %i) is registered as an active standby but is unreachable",
+							cell->node_info->node_name, cell->node_info->node_id);
+					}
 					else
+					{
 						appendPQExpBuffer(&details, "- failed");
+					}
 				}
 			}
 			break;
@@ -327,6 +382,19 @@ do_cluster_show(void)
 
 	clear_node_info_list(&nodes);
 	PQfinish(conn);
+
+	/* emit any warnings */
+
+	if (warnings.head != NULL && runtime_options.terse == false)
+	{
+		ItemListCell *cell = NULL;
+
+		printf(_("\nWARNING: following issues were detected\n"));
+		for (cell = warnings.head; cell; cell = cell->next)
+		{
+			printf(_("  %s\n"), cell->string);
+		}
+	}
 }
 
 
