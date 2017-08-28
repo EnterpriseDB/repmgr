@@ -321,6 +321,7 @@ The following replication settings may need to be adjusted:
     #
     # wal_keep_segments = 5000
 
+
 Performing a switchover with repmgr
 -----------------------------------
 
@@ -791,11 +792,19 @@ The following commands are available:
 
 * `standby switchover`
 
-    ...
+    Promotes a standby to primary and demotes the existing primary to a standby.
+    This command must be run on the standby to be promoted, and requires a
+    passwordless SSH connection to the current primary.
 
     If other standbys (siblings of the promotion candidate) are connected
-    to the demotion candidate, if `--siblings-follow` is specified `repmgr`
-    can instruct these to follow the new primary. .
+    to the demotion candidate, `repmgr`  can instruct these to follow the
+    new primary if the option `--siblings-follow` is specified.
+
+    Execute with the `--dry-run` option to test the switchover as far as
+    possible without actually changing the status of either node.
+
+    `repmgrd` should not be active on any nodes while a switchover is being
+    carried out. This   restriction may be lifted in a later version.
 
 * `node status`
 
