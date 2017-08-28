@@ -1514,6 +1514,24 @@ check_cli_parameters(const int action)
 		}
 	}
 
+	if (runtime_options.dry_run == true)
+	{
+		switch (action)
+		{
+			case PRIMARY_REGISTER:
+			case PRIMARY_UNREGISTER:
+			case STANDBY_CLONE:
+			case STANDBY_SWITCHOVER:
+			case NODE_SERVICE:
+				break;
+			default:
+				item_list_append_format(
+					&cli_warnings,
+					_("--dry-run is not effective when executing %s"),
+					action_name(action));
+		}
+	}
+
 	/* check only one of --csv, --nagios and --optformat  used */
 	{
 		int used_options = 0;
