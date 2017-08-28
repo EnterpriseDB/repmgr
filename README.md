@@ -1160,6 +1160,31 @@ and the cluster status will now look like this:
 
 We hope to remove some of these restrictions in future versions of `repmgr`.
 
+
+Unregistering a standby from a replication cluster
+--------------------------------------------------
+
+To unregister a running standby, execute:
+
+    repmgr standby unregister -f /etc/repmgr.conf
+
+This will remove the standby record from `repmgr`'s internal metadata
+table (`repmgr.nodes`). A `standby_unregister` event notification will be
+recorded in the `repmgr.nodes` table.
+
+Note that this command will not stop the server itself or remove it from
+the replication cluster. Note that if the standby was using a replication
+slot, this will not be removed.
+
+If the standby is not running, the command can be executed on another
+node by providing the id of the node to be unregistered using
+the command line parameter `--node-id`, e.g. executing the following
+command on the master server will unregister the standby with
+id `3`:
+
+    repmgr standby unregister -f /etc/repmgr.conf --node-id=3
+
+
 Automatic failover with `repmgrd`
 ---------------------------------
 
@@ -1378,6 +1403,20 @@ beyond 100Mb:
     }
 
 
+repmgrd and cascading replication
+---------------------------------
+
+Cascading replication - where a standby can connect to an upstream node and not
+the master server itself - was introduced in PostgreSQL 9.2. `repmgr` and
+`repmgrd` support cascading replication by keeping track of the relationship
+between standby servers - each node record is stored with the node id of its
+upstream ("parent") server (except of course the master server).
+
+In a failover situation where the master node fails and a top-level standby
+is promoted, a standby connected to another standby will not be affected
+and continue working as normal (even if the upstream standby it's connected
+to becomes the master node). If however the node's direct upstream fails,
+the "cascaded standby" will attempt to reconnect to that node's parent.
 
 Reference
 ---------
@@ -1445,6 +1484,7 @@ The following commands are available:
 
     Unregisters a standby with `repmgr`. This command does not affect the actual
     replication, just removes the standby's entry from the `repmgr.nodes` table.
+    See also section "Unregistering a standby from a replication cluster".
 
 * `standby switchover`
 
@@ -1462,7 +1502,7 @@ The following commands are available:
     `repmgrd` should not be active on any nodes while a switchover is being
     carried out. This   restriction may be lifted in a later version.
 
-    For more details see the section `Performing a switchover with repmgr`.
+    For more details see the section "Performing a switchover with repmgr".
 
 * `node status`
 
@@ -1757,6 +1797,13 @@ be located), it will not be possible to write an entry into the `repmgr.events`
 table, in which case executing a script via `event_notification_command` can
 serve as a fallback by generating some form of notification.
 
+Upgrading repmgr
+----------------
+
+`repmgr` is updated regularly with point releases (e.g. 3.0.2 to 3.0.3)
+containing bugfixes and other minor improvements. Any substantial new
+functionality will be included in a feature release (e.g. 3.0.x to 3.1.x).
+
 
 Diagnostics
 -----------
@@ -1769,3 +1816,53 @@ Diagnostics
       restart: "/usr/bin/pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/pgsql/data' restart"
        reload: "/usr/bin/pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/pgsql/data' reload"
       promote: "/usr/bin/pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/pgsql/data' promote"
+
+
+Support and Assistance
+----------------------
+
+2ndQuadrant provides 24x7 production support for `repmgr`, including
+configuration assistance, installation verification and training for
+running a robust replication cluster. For further details see:
+
+* http://2ndquadrant.com/en/support/
+
+There is a mailing list/forum to discuss contributions or issues:
+
+* http://groups.google.com/group/repmgr
+
+The IRC channel #repmgr is registered with freenode.
+
+Please report bugs and other issues to:
+
+* https://github.com/2ndQuadrant/repmgr
+
+Further information is available at http://www.repmgr.org/
+
+We'd love to hear from you about how you use repmgr. Case studies and
+news are always welcome. Send us an email at info@2ndQuadrant.com, or
+send a postcard to
+
+    repmgr
+    c/o 2ndQuadrant
+    7200 The Quorum
+    Oxford Business Park North
+    Oxford
+    OX4 2JZ
+    United Kingdom
+
+Thanks from the repmgr core team.
+
+* Ian Barwick
+* Jaime Casanova
+* Abhijit Menon-Sen
+* Simon Riggs
+* Cedric Villemain
+
+Further reading
+---------------
+
+* http://blog.2ndquadrant.com/repmgr-3-2-is-here-barman-support-brand-new-high-availability-features/
+* http://blog.2ndquadrant.com/improvements-in-repmgr-3-1-4/
+* http://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
+* http://blog.2ndquadrant.com/easier_postgresql_90_clusters/
