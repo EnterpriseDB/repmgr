@@ -795,6 +795,68 @@ After starting the standby, the cluster will look like this:
 
 * * *
 
+
+Using replication slots with repmgr
+-----------------------------------
+
+Replication slots were introduced with PostgreSQL 9.4 and are designed to ensure
+that any standby connected to the master using a replication slot will always
+be able to retrieve the required WAL files. This removes the need to manually
+manage WAL file retention by estimating the number of WAL files that need to
+be maintained on the master using `wal_keep_segments`. Do however be aware
+that if a standby is disconnected, WAL will continue to accumulate on the master
+until either the standby reconnects or the replication slot is dropped.
+
+To enable `repmgr` to use replication slots, set the boolean parameter
+`use_replication_slots` in `repmgr.conf`:
+
+    use_replication_slots=true
+
+Replication slots must be enabled in `postgresql.conf` by setting the parameter
+`max_replication_slots` to at least the number of expected standbys (changes
+to this parameter require a server restart).
+
+When cloning a standby, `repmgr` will automatically generate an appropriate
+slot name, which is stored in the `repmgr.nodes` table, and create the slot
+on the upstream node:
+
+    repmgr=# SELECT node_id, upstream_node_id, active, node_name, type, priority, slot_name
+               FROM repmgr.nodes ORDER BY node_id;
+     node_id | upstream_node_id | active | node_name |  type   | priority |   slot_name
+    ---------+------------------+--------+-----------+---------+----------+---------------
+           1 |                  | t      | node1     | primary |      100 | repmgr_slot_1
+           2 |                1 | t      | node2     | standby |      100 | repmgr_slot_2
+           3 |                1 | t      | node3     | standby |      100 | repmgr_slot_3
+    (3 rows)
+
+
+    repmgr=# SELECT slot_name, slot_type, active, active_pid FROM pg_replication_slots ;
+       slot_name   | slot_type | active | active_pid
+    ---------------+-----------+--------+------------
+     repmgr_slot_2 | physical  | t      |      23658
+     repmgr_slot_3 | physical  | t      |      23687
+    (2 rows)
+
+Note that a slot name will be created by default for the primary but not
+actually used unless the master is converted to a standby using e.g.
+`repmgr standby switchover`.
+
+Further information on replication slots in the PostgreSQL documentation:
+    https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS
+
+* * *
+
+> *TIP*: while replication slots can be useful for streaming replication, it's
+> recommended to monitor for inactive slots as these will cause WAL files to
+> build up indefinitely, possibly leading to server failure.
+>
+> As an alternative we recommend using 2ndQuadrant's Barman, which offloads
+> WAL management to a separate server, negating the need to use replication
+> slots to reserve WAL. See section "Using Barman to clone a standby" for mote
+> details on using `repmgr` together with Barman.
+
+* * *
+
 Promoting a standby server with repmgr
 --------------------------------------
 
