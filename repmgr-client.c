@@ -2512,6 +2512,8 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 						rsync_flags.data, host_string, remote_path, local_path);
 	}
 
+	termPQExpBuffer(&rsync_flags);
+
 	log_info(_("rsync command line: '%s'"), script);
 
 	r = system(script);

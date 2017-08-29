@@ -101,7 +101,7 @@ static CheckStatus parse_node_check_replication_lag(const char *node_check_outpu
  *  --copy-external-config-files
  *  --recovery-min-apply-delay
  *  --replication-user XXX only required if no upstream record
- *  --use-recovery-conninfo-password
+ *  --use-recovery-conninfo-password XXX not implemented!
  *  --without-barman
  */
 
@@ -303,11 +303,121 @@ do_standby_clone(void)
 		}
 	}
 
+	/*
+	 * If copying of external configuration files requested, and any are
+	 * detected, perform sanity checks
+	 */
+	{
+		PGconn			 *superuser_conn = NULL;
+		PGconn			 *privileged_conn = NULL;
+		bool			  external_config_files = false;
+		int 			  i = 0;
+
+		/*
+		 * Obtain configuration file locations
+		 *
+		 * We'll check to see whether the configuration files are in the data
+		 * directory - if not we'll have to copy them via SSH, if copying
+		 * requested.
+		 *
+		 * This will require superuser permissions, so we'll attempt to connect
+		 * as -S/--superuser (if provided), otherwise check the current connection
+		 * user has superuser rights.
+		 *
+		 * XXX: if configuration files are symlinks to targets outside the data
+		 * directory, they won't be copied by pg_basebackup, but we can't tell
+		 * this from the below query; we'll probably need to add a check for their
+		 * presence and if missing force copy by SSH
+		 */
+
+		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+
+		if (get_configuration_file_locations(privileged_conn, &config_files) == false)
+		{
+			log_notice(_("unable to proceed without establishing configuration file locations"));
+			PQfinish(source_conn);
+
+			if (superuser_conn != NULL)
+				PQfinish(superuser_conn);
+
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/* check if any files actually outside the data directory */
+		for (i = 0; i < config_files.entries; i++)
+		{
+			t_configfile_info *file = config_files.files[i];
+
+			if (file->in_data_directory == false)
+			{
+				external_config_files = true;
+				break;
+			}
+		}
+
+		if (external_config_files == true)
+		{
+			int r;
+			PQExpBufferData msg;
+
+			initPQExpBuffer(&msg);
+
+			appendPQExpBuffer(&msg,
+							  _("external configuration files detected, checking SSH connection to host \"%s\""),
+							  runtime_options.host);
+
+			if (runtime_options.dry_run == true)
+			{
+				log_notice("%s", msg.data);
+			}
+			else
+			{
+				log_verbose(LOG_INFO, "%s", msg.data);
+			}
+
+			termPQExpBuffer(&msg);
+
+			r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+			if (r != 0)
+			{
+				log_error(_("remote host \"%s\" is not reachable via SSH - unable to copy external configuration files"),
+						 runtime_options.host);
+				if (superuser_conn != NULL)
+					PQfinish(superuser_conn);
+				PQfinish(source_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			initPQExpBuffer(&msg);
+
+			appendPQExpBuffer(&msg,
+							  _("SSH connection to host \"%s\" succeeded"),
+							  runtime_options.host);
+
+			if (runtime_options.dry_run == true)
+			{
+				log_info("%s", msg.data);
+			}
+			else
+			{
+				log_verbose(LOG_INFO, "%s", msg.data);
+			}
+
+			termPQExpBuffer(&msg);
+
+			/* TODO: check all files are readable */
+		}
+
+
+		if (superuser_conn != NULL)
+			PQfinish(superuser_conn);
+	}
+
 	if (runtime_options.dry_run == true)
 	{
 		if (mode == pg_basebackup && runtime_options.fast_checkpoint == false)
 		{
-			log_info(_("consider using the -c/--fast-checkpoint option"));
+			log_hint(_("consider using the -c/--fast-checkpoint option"));
 		}
 
 		log_info(_("all pre-requisites for \"standby clone\" are met"));
@@ -2867,38 +2977,8 @@ initialise_direct_clone(t_node_info *node_record)
 		}
 	}
 
-	/*
-	 * Obtain configuration file locations
-	 *
-	 * We'll check to see whether the configuration files are in the data
-	 * directory - if not we'll have to copy them via SSH, if copying
-	 * requested.
-	 *
-	 * This will require superuser permissions, so we'll attempt to connect
-	 * as -S/--superuser (if provided), otherwise check the current connection
-	 * user has superuser rights.
-	 *
-	 * XXX: if configuration files are symlinks to targets outside the data
-	 * directory, they won't be copied by pg_basebackup, but we can't tell
-	 * this from the below query; we'll probably need to add a check for their
-	 * presence and if missing force copy by SSH
-	 */
 
 	get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
-
-	success = get_configuration_file_locations(privileged_conn, &config_files);
-
-	if (success == false)
-	{
-		log_notice(_("unable to proceed without establishing configuration file locations"));
-		PQfinish(source_conn);
-
-		if (superuser_conn != NULL)
-			PQfinish(superuser_conn);
-
-		exit(ERR_BAD_CONFIG);
-	}
-
 
 	/*
 	 * If replication slots requested, create appropriate slot on the
@@ -3662,16 +3742,7 @@ copy_configuration_files(void)
 	if (host == NULL)
 		host = runtime_options.host;
 
-	log_notice(_("copying external configuration files from upstream node, host \"%s\""), host);
-
-	r = test_ssh_connection(host, runtime_options.remote_user);
-
-	if (r != 0)
-	{
-		log_error(_("remote host \"%s\" is not reachable via SSH - unable to copy external configuration files"),
-				  host);
-		return;
-	}
+	log_notice(_("copying external configuration files from upstream node \"%s\""), host);
 
 	for (i = 0; i < config_files.entries; i++)
 	{
