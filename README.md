@@ -425,7 +425,7 @@ to include this schema name, e.g.
 ### Initialise the master server
 
 To enable `repmgr` to support a replication cluster, the master node must
-be registered with `repmgr`, which creates the `repmgr` database and adds
+be registered with `repmgr`, which creates the `repmgr` metadatabase and adds
 a metadata record for the server:
 
     $ repmgr -f repmgr.conf master register
@@ -1157,7 +1157,7 @@ follow the new master.
 To use `repmgrd`, its associated function library must be included in
 `postgresql.conf` with:
 
-    shared_preload_libraries = 'repmgr'
+    shared_preload_libraries = 'repmgr_funcs'
 
 Changing this setting requires a restart of PostgreSQL; for more details see:
 
