@@ -357,6 +357,31 @@ monitor_streaming_primary(void)
 			}
 		}
 
+		if (got_SIGHUP)
+		{
+			log_debug("SIGHUP received");
+
+			if (reload_config(&config_file_options))
+			{
+				PQfinish(local_conn);
+				local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+				if (*config_file_options.log_file)
+				{
+					FILE	   *fd;
+
+					fd = freopen(config_file_options.log_file, "a", stderr);
+					if (fd == NULL)
+					{
+						fprintf(stderr, "error reopening stderr to '%s': %s",
+								config_file_options.log_file, strerror(errno));
+					}
+				}
+			}
+			got_SIGHUP = false;
+		}
+
+
 
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
 					config_file_options.monitor_interval_secs);
@@ -396,7 +421,6 @@ monitor_streaming_standby(void)
 		 */
 		if (local_node_info.upstream_node_id == NODE_NOT_FOUND)
 		{
-			// XXX check if there's an inactive record(s) and log detail/hint
 			log_error(_("unable to determine an active primary for this cluster, terminating"));
 			PQfinish(local_conn);
 			exit(ERR_BAD_CONFIG);
@@ -852,6 +876,30 @@ monitor_streaming_standby(void)
 
 		if (PQstatus(local_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
 			update_monitoring_history();
+
+		if (got_SIGHUP)
+		{
+			log_debug("SIGHUP received");
+
+			if (reload_config(&config_file_options))
+			{
+				PQfinish(local_conn);
+				local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+				if (*config_file_options.log_file)
+				{
+					FILE	   *fd;
+
+					fd = freopen(config_file_options.log_file, "a", stderr);
+					if (fd == NULL)
+					{
+						fprintf(stderr, "error reopening stderr to '%s': %s",
+								config_file_options.log_file, strerror(errno));
+					}
+				}
+			}
+			got_SIGHUP = false;
+		}
 
 		sleep(config_file_options.monitor_interval_secs);
 	}

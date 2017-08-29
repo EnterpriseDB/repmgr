@@ -10,7 +10,7 @@
 #include <time.h>
 #include "portability/instr_time.h"
 
-
+extern volatile sig_atomic_t got_SIGHUP;
 extern MonitoringState monitoring_state;
 extern instr_time	degraded_monitoring_start;
 

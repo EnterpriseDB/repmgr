@@ -47,7 +47,7 @@ void (*_close_connections)(void) = NULL;
  * Record receipt of SIGHUP; will cause configuration file to be reread
  * at the appropriate point in the main loop.
  */
-static volatile sig_atomic_t got_SIGHUP = false;
+volatile sig_atomic_t got_SIGHUP = false;
 
 static void show_help(void);
 static void show_usage(void);

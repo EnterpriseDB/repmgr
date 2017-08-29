@@ -12,8 +12,6 @@
 #include "configfile.h"
 
 
-static volatile sig_atomic_t got_SIGHUP = false;
-
 static void do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node);
 static void do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node);
 
@@ -281,6 +279,30 @@ monitor_bdr(void)
 				update_registration(local_conn);
 			}
 
+			got_SIGHUP = false;
+		}
+
+		if (got_SIGHUP)
+		{
+			log_debug("SIGHUP received");
+
+			if (reload_config(&config_file_options))
+			{
+				PQfinish(local_conn);
+				local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+				if (*config_file_options.log_file)
+				{
+					FILE	   *fd;
+
+					fd = freopen(config_file_options.log_file, "a", stderr);
+					if (fd == NULL)
+					{
+						fprintf(stderr, "error reopening stderr to '%s': %s",
+								config_file_options.log_file, strerror(errno));
+					}
+				}
+			}
 			got_SIGHUP = false;
 		}
 
