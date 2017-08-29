@@ -425,7 +425,7 @@ to include this schema name, e.g.
 ### Initialise the master server
 
 To enable `repmgr` to support a replication cluster, the master node must
-be registered with `repmgr`, which creates the `repmgr` database and adds
+be registered with `repmgr`, which creates the `repmgr` metadatabase and adds
 a metadata record for the server:
 
     $ repmgr -f repmgr.conf master register
