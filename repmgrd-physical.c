@@ -202,9 +202,10 @@ monitor_streaming_primary(void)
 
 	while (true)
 	{
-
-		// cache node list here, refresh at `node_list_refresh_interval`
-		// also return reason for inavailability so we can log it
+		/*
+		 * TODO: cache node list here, refresh at `node_list_refresh_interval`
+		 * also return reason for inavailability so we can log it
+		 */
 		if (is_server_available(local_node_info.conninfo) == false)
 		{
 
@@ -331,9 +332,11 @@ monitor_streaming_primary(void)
 			}
 
 
-			// possibly attempt to find another node from cached list
-			// check if there's a new primary - if so add hook for fencing?
-			// loop, if starts up check status, switch monitoring mode
+			/*
+			 * possibly attempt to find another node from cached list
+			 * check if there's a new primary - if so add hook for fencing?
+			 * loop, if starts up check status, switch monitoring mode
+			 */
 		}
 	loop:
 		/* emit "still alive" log message at regular intervals, if requested */
@@ -1004,7 +1007,7 @@ do_primary_failover(void)
 	{
 		int new_primary_id;
 
-		//   --> need timeout in case new primary doesn't come up, then rerun election
+		/*  TODO: rerun election if new primary doesn't appear after timeout */
 
 		/* either follow or time out; either way resume monitoring */
 		if (wait_primary_notification(&new_primary_id) == true)
@@ -1155,7 +1158,6 @@ do_primary_failover(void)
 		case FAILOVER_STATE_NO_NEW_PRIMARY:
 		case FAILOVER_STATE_WAITING_NEW_PRIMARY:
 			/* pass control back down to start_monitoring() */
-			// -> should kick off new election
 			return false;
 
 		case FAILOVER_STATE_NODE_NOTIFICATION_ERROR:
@@ -1260,7 +1262,8 @@ do_upstream_standby_failover(void)
 {
 	PQExpBufferData event_details;
 	t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
-	RecordStatus record_status;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	RecoveryType primary_type = RECTYPE_UNKNOWN;
 	int r;
 
 	PQfinish(upstream_conn);
@@ -1278,10 +1281,30 @@ do_upstream_standby_failover(void)
 
 	check_connection(&primary_node_info, &primary_conn);
 
-	/* grandparent upstream is inactive  */
-	if (primary_node_info.active == false)
+	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		// XXX
+		log_error(_("unable to connect to last known primary \"%s\" (ID: %i)"),
+				  primary_node_info.node_name,
+				  primary_node_info.node_id);
+
+		PQfinish(primary_conn);
+		monitoring_state = MS_DEGRADED;
+		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+		return false;
+	}
+
+	primary_type = get_recovery_type(primary_conn);
+
+	if (primary_type != RECTYPE_PRIMARY)
+	{
+		log_error(_("last known primary\"%s\" (ID: %i) is in recovery, not following"),
+				  primary_node_info.node_name,
+				  primary_node_info.node_id);
+
+		PQfinish(primary_conn);
+		monitoring_state = MS_DEGRADED;
+		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+		return false;
 	}
 
 	/* Close the connection to this server */
