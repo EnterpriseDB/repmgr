@@ -919,6 +919,9 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->async_query_timeout != new_options.async_query_timeout)
 	{
 		orig_options->async_query_timeout = new_options.async_query_timeout;
+
+		log_info(_("\"async_query_timeout\" is now \"%i\""), new_options.async_query_timeout);
+
 		config_changed = true;
 	}
 
@@ -926,6 +929,8 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->bdr_local_monitoring_only != new_options.bdr_local_monitoring_only)
 	{
 		orig_options->bdr_local_monitoring_only = new_options.bdr_local_monitoring_only;
+		log_info(_("\"bdr_local_monitoring_only\" is now \"%s\""), new_options.bdr_local_monitoring_only == true ? "TRUE" : "FALSE");
+
 		config_changed = true;
 	}
 
@@ -933,6 +938,8 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->bdr_recovery_timeout != new_options.bdr_recovery_timeout)
 	{
 		orig_options->bdr_recovery_timeout = new_options.bdr_recovery_timeout;
+		log_info(_("\"bdr_recovery_timeout\" is now \"%i\""), new_options.bdr_recovery_timeout);
+
 		config_changed = true;
 	}
 
@@ -949,6 +956,8 @@ reload_config(t_configuration_options *orig_options)
 		else
 		{
 			strncpy(orig_options->conninfo, new_options.conninfo, MAXLEN);
+			log_info(_("\"conninfo\" is now \"%s\""), new_options.conninfo);
+
 		}
 		PQfinish(conn);
 	}
@@ -957,13 +966,17 @@ reload_config(t_configuration_options *orig_options)
 	if (strcmp(orig_options->event_notification_command, new_options.event_notification_command) != 0)
 	{
 		strncpy(orig_options->event_notification_command, new_options.event_notification_command, MAXLEN);
+		log_info(_("\"event_notification_command\" is now \"%s\""), new_options.event_notification_command);
+
 		config_changed = true;
 	}
 
 	/* event_notifications */
-	if (strcmp(orig_options->event_notifications_orig, new_options.event_notifications_orig) == 0)
+	if (strcmp(orig_options->event_notifications_orig, new_options.event_notifications_orig) != 0)
 	{
 		strncpy(orig_options->event_notifications_orig, new_options.event_notifications_orig, MAXLEN);
+		log_info(_("\"event_notifications\" is now \"%s\""), new_options.event_notifications_orig);
+
 		clear_event_notification_list(orig_options);
 		orig_options->event_notifications = new_options.event_notifications;
 	}
@@ -972,6 +985,7 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->failover != new_options.failover)
 	{
 		orig_options->failover = new_options.failover;
+		log_info(_("\"failover\" is now \"%s\""), new_options.failover == true ? "TRUE" : "FALSE");
 		config_changed = true;
 	}
 
@@ -979,6 +993,8 @@ reload_config(t_configuration_options *orig_options)
 	if (strcmp(orig_options->follow_command, new_options.follow_command) != 0)
 	{
 		strncpy(orig_options->follow_command, new_options.follow_command, MAXLEN);
+		log_info(_("\"follow_command\" is now \"%s\""), new_options.follow_command);
+
 		config_changed = true;
 	}
 
@@ -986,6 +1002,8 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->monitor_interval_secs != new_options.monitor_interval_secs)
 	{
 		orig_options->monitor_interval_secs = new_options.monitor_interval_secs;
+		log_info(_("\"monitor_interval_secs\" is now \"%i\""), new_options.monitor_interval_secs);
+
 		config_changed = true;
 	}
 
@@ -993,6 +1011,8 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->monitoring_history != new_options.monitoring_history)
 	{
 		orig_options->monitoring_history = new_options.monitoring_history;
+		log_info(_("\"monitoring_history\" is now \"%s\""), new_options.monitoring_history == true ? "TRUE" : "FALSE");
+
 		config_changed = true;
 	}
 
@@ -1000,6 +1020,8 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->primary_notification_timeout != new_options.primary_notification_timeout)
 	{
 		orig_options->primary_notification_timeout = new_options.primary_notification_timeout;
+		log_info(_("\"primary_notification_timeout\" is now \"%i\""), new_options.primary_notification_timeout);
+
 		config_changed = true;
 	}
 
@@ -1008,6 +1030,8 @@ reload_config(t_configuration_options *orig_options)
 	if (strcmp(orig_options->promote_command, new_options.promote_command) != 0)
 	{
 		strncpy(orig_options->promote_command, new_options.promote_command, MAXLEN);
+		log_info(_("\"promote_command\" is now \"%s\""), new_options.promote_command);
+
 		config_changed = true;
 	}
 
@@ -1015,6 +1039,8 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->promote_delay != new_options.promote_delay)
 	{
 		orig_options->promote_delay = new_options.promote_delay;
+		log_info(_("\"promote_delay\" is now \"%i\""), new_options.promote_delay);
+
 		config_changed = true;
 	}
 
@@ -1022,6 +1048,8 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->reconnect_attempts != new_options.reconnect_attempts)
 	{
 		orig_options->reconnect_attempts = new_options.reconnect_attempts;
+		log_info(_("\"reconnect_attempts\" is now \"%i\""), new_options.reconnect_attempts);
+
 		config_changed = true;
 	}
 
@@ -1029,6 +1057,8 @@ reload_config(t_configuration_options *orig_options)
 	if (orig_options->reconnect_interval != new_options.reconnect_interval)
 	{
 		orig_options->reconnect_interval = new_options.reconnect_interval;
+		log_info(_("\"reconnect_interval\" is now \"%i\""), new_options.reconnect_interval);
+
 		config_changed = true;
 	}
 
@@ -1038,12 +1068,16 @@ reload_config(t_configuration_options *orig_options)
 	if (strcmp(orig_options->log_facility, new_options.log_facility) != 0)
 	{
 		strcpy(orig_options->log_facility, new_options.log_facility);
+		log_info(_("\"log_facility\" is now \"%s\""), new_options.log_facility);
+
 		log_config_changed = true;
 	}
 
 	if (strcmp(orig_options->log_file, new_options.log_file) != 0)
 	{
 		strcpy(orig_options->log_file, new_options.log_file);
+		log_info(_("\"log_file\" is now \"%s\""), new_options.log_file);
+
 		log_config_changed = true;
 	}
 
@@ -1051,6 +1085,8 @@ reload_config(t_configuration_options *orig_options)
 	if (strcmp(orig_options->log_level, new_options.log_level) != 0)
 	{
 		strcpy(orig_options->log_level, new_options.log_level);
+		log_info(_("\"log_level\" is now \"%s\""), new_options.log_level);
+
 		log_config_changed = true;
 	}
 
