@@ -1065,6 +1065,8 @@ reload_config(t_configuration_options *orig_options)
 	/*
 	 * Handle changes to logging configuration
 	 */
+
+	/* log_facility */
 	if (strcmp(orig_options->log_facility, new_options.log_facility) != 0)
 	{
 		strcpy(orig_options->log_facility, new_options.log_facility);
@@ -1073,6 +1075,7 @@ reload_config(t_configuration_options *orig_options)
 		log_config_changed = true;
 	}
 
+	/* log_file */
 	if (strcmp(orig_options->log_file, new_options.log_file) != 0)
 	{
 		strcpy(orig_options->log_file, new_options.log_file);
@@ -1082,6 +1085,7 @@ reload_config(t_configuration_options *orig_options)
 	}
 
 
+	/* log_level */
 	if (strcmp(orig_options->log_level, new_options.log_level) != 0)
 	{
 		strcpy(orig_options->log_level, new_options.log_level);
@@ -1089,6 +1093,16 @@ reload_config(t_configuration_options *orig_options)
 
 		log_config_changed = true;
 	}
+
+	/* log_status_interval */
+	if (orig_options->log_status_interval != new_options.log_status_interval)
+	{
+		orig_options->log_status_interval = new_options.log_status_interval;
+		log_info(_("\"log_status_interval\" is now \"%i\""), new_options.log_status_interval);
+
+		config_changed = true;
+	}
+
 
 	if (log_config_changed == true)
 	{
