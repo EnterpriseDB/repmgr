@@ -49,16 +49,12 @@
 # Replication settings
 #------------------------------------------------------------------------------
 
-#replication_type=physical              # Must be one of 'physical' or 'bdr'
+#replication_type=physical              # Must be one of 'physical' or 'bdr'.
 
-#upstream_node_id=                      # When using cascading replication, a standby
-                                        # can connect to another upstream standby node
-                                        # which is specified by setting 'upstream_node_id'.
-                                        # In that case, the upstream node must exist
-                                        # before the new standby can be registered. If
-                                        # 'upstream_node_id' is not set, then the standby
-                                        # will connect directly to the primary node.
-
+#location=default                       # arbitrary string defining the location of the node; this
+                                        # is used during failover to check visibilty of the
+                                        # current primary node. See the 'repmgrd' documentation
+                                        # in README.md for further details.
 
 #use_replication_slots=no               # whether to use physical replication slots
                                         # NOTE: when using replication slots,

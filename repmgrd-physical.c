@@ -828,7 +828,7 @@ monitor_streaming_standby(void)
 
 						appendPQExpBuffer(
 							&event_details,
-							_("reconnect to local node \"%s\" (ID: %i), marking active"),
+							_("reconnected to local node \"%s\" (ID: %i), marking active"),
 							local_node_info.node_name,
 							local_node_info.node_id);
 

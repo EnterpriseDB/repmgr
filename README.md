@@ -1209,7 +1209,6 @@ Additionally the following `repmgrd` options *must* be set in `repmgr.conf`
     promote_command='repmgr standby promote -f /etc/repmgr.conf --log-to-file'
     follow_command='repmgr standby follow -f /etc/repmgr.conf --log-to-file'
 
-
 Note that the `--log-to-file` option will cause `repmgr`'s output to be logged to
 the destination configured to receive log output for `repmgrd`.
 See `repmgr.conf.sample` for further `repmgrd`-specific settings
@@ -1380,11 +1379,61 @@ node, e.g. recovering WAL from an archive, `apply_lag` will always appear as
 > constant stream of replication activity which may not be desirable. To prevent
 > this, convert the table to an `UNLOGGED` one with:
 >
->    ALTER TABLE repmgr.monitoring_history SET UNLOGGED ;
+>    ALTER TABLE repmgr.monitoring_history SET UNLOGGED;
 >
 > This will however mean that monitoring history will not be available on
-> another node following a failover, and the view `replication_status`
+> another node following a failover, and the view `repmgr.replication_status`
 > will not work on standbys.
+
+### `repmgrd` log output
+
+In normal operation, `repmgrd` remains passive until a connection issue
+with either the upstream or local node is detected. Otherwise there's not
+much to log, so to confirm `repmgrd` is actually running, it emits log lines
+like this at regular intervals:
+
+    ...
+    [2017-08-28 08:51:27] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state
+    [2017-08-28 08:51:43] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state
+    ...
+
+Timing of these entries is determined by the configuration file setting
+`log_status_interval`, which specifies the interval in seconds (default: `300`).
+
+### "degraded monitoring" mode
+
+In certain circumstances, `repmgrd` is not able to fulfill its primary mission
+of monitoring the nodes' upstream server. In these cases it enters "degraded
+monitoring" mode, where `repmgrd` remains active but is waiting for the situation
+to be resolved.
+
+Cases where this happens are:
+
+- a failover situation has occurred, no nodes in the primary node's location are visible
+- a failover situation has occurred, but no promotion candidate is available
+- a failover situation has occurred, but the promotion candidate could not be promoted
+- a failover situation has occurred, but the node was unable to follow the new primary
+- a failover situation has occurred, but no primary has become available
+- a failover situation has occurred, but automatic failover is not enabled for the node
+- repmgrd is monitoring the primary node, but it is not available
+
+Example output in a situation where there is only one standby with `failover=manual`,
+and the primary node is unavailable (but is later restarted):
+
+    [2017-08-29 10:59:19] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state (automatic failover disabled)
+    [2017-08-29 10:59:33] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
+    [2017-08-29 10:59:33] [INFO] checking state of node 1, 1 of 5 attempts
+    [2017-08-29 10:59:33] [INFO] sleeping 1 seconds until next reconnection attempt
+    (...)
+    [2017-08-29 10:59:37] [INFO] checking state of node 1, 5 of 5 attempts
+    [2017-08-29 10:59:37] [WARNING] unable to reconnect to node 1 after 5 attempts
+    [2017-08-29 10:59:37] [NOTICE] this node is not configured for automatic failover so will not be considered as promotion candidate
+    [2017-08-29 10:59:37] [NOTICE] no other nodes are available as promotion candidate
+    [2017-08-29 10:59:37] [HINT] use "repmgr standby promote" to manually promote this node
+    [2017-08-29 10:59:37] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in degraded state (automatic failover disabled)
+    [2017-08-29 10:59:53] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in degraded state (automatic failover disabled)
+    [2017-08-29 11:00:45] [NOTICE] reconnected to upstream node 1 after 68 seconds, resuming monitoring
+    [2017-08-29 11:00:57] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state (automatic failover disabled)
 
 ### `repmgrd` log rotation
 
@@ -1393,7 +1442,7 @@ your system's `logrotate` to do this. Sample configuration to rotate logfiles
 weekly with retention for up to 52 weeks and rotation forced if a file grows
 beyond 100Mb:
 
-    /var/log/postgresql/repmgr-9.5.log {
+    /var/log/postgresql/repmgr-9.6.log {
         missingok
         compress
         rotate 52
@@ -1417,6 +1466,45 @@ is promoted, a standby connected to another standby will not be affected
 and continue working as normal (even if the upstream standby it's connected
 to becomes the master node). If however the node's direct upstream fails,
 the "cascaded standby" will attempt to reconnect to that node's parent.
+
+Handling network splits with `repmgrd`
+--------------------------------------
+
+A common pattern for replication cluster setups is to spread servers over
+more than one datacentre. This can provide benefits such as geographically-
+distributed read replicas and DR (disaster recovery capability). However
+this also means there is a risk of disconnection at network level between
+datacentre locations, which would result in a split-brain scenario if
+servers in a secondary data centre were no longer able to see the primary
+in the main data centre and promoted a standby among themselves.
+
+Previous `repmgr` versions used the concept of a `witness server` to
+artificially create a quorum of servers in a particular location, ensuring
+that nodes in  another location will not elect a new primary if they
+are unable to see the majority of nodes. However this approach does not
+scale well, particularly with more complex replication setups, e.g.
+where the majority of nodes are located outside of the primary datacentre.
+It also means the `witness` node needs to be managed as an extra PostgreSQL
+outside of the main replication cluster, which adds administrative and
+programming complexity.
+
+`repmgr4` introduces the concept of `location`: each node is associated
+with an arbitrary location string (default is `default`); this is set
+in `repmgr.conf`, e.g.:
+
+    node_id=1
+    node_name=node1
+    conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'
+    data_directory='/var/lib/postgresql/data'
+    location='dc1'
+
+In a failover situation, `repmgrd` will check if any servers in the
+same location as the current primary node are visible.  If not, `repmgrd`
+will assume a network interruption and not promote any node in any
+other location (it will however enter "degraded monitoring" mode until
+a primary becomes visible.
+
+
 
 Reference
 ---------
