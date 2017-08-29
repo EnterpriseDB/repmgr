@@ -400,7 +400,8 @@ least the following parameters:
 - `conninfo`: a valid connection string for the `repmgr` database on the
      *current* server. (On the standby, the database will not yet exist, but
      `repmgr` needs to know the connection details to complete the setup
-     process).
+     process). *NOTE* this must be a keyword/value string, not a connection
+     URI; this limitation will be removed in a future `repmgr` version.
 
 `repmgr.conf` should not be stored inside the PostgreSQL data directory,
 as it could be overwritten when setting up or reinitialising the PostgreSQL

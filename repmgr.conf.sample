@@ -26,10 +26,13 @@
                  # the server's hostname or another identifier unambiguously
                  # associated with the server to avoid confusion
 
-# Database connection information as a conninfo string
-# This must be accessible to all servers in the cluster; for details see:
+# Database connection information as a conninfo string (this must be a
+# keyword/value string, not a connection URI).
 #
 #   https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+#
+# All servers in the cluster must be able to access the database
+# using this connection string.
 #
 #conninfo='host=192.168.204.104 dbname=repmgr user=repmgr'
 #
