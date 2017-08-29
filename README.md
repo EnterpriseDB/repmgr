@@ -1720,7 +1720,7 @@ The following commands are available:
     possible connection.
 
 
-    Example 2 (node1 and `node2` up, `node3` down):
+    Example 2 (`node1` and `node2` up, `node3` down):
 
         $ repmgr -f /etc/repmgr.conf cluster matrix
 
@@ -1736,9 +1736,9 @@ The following commands are available:
     Since `node3` is down, all the entries in its row are filled with
     "?", meaning that there we cannot test outbound connections.
 
-    The other two nodes are up; the corresponding rows have "x" in the
-    column corresponding to node3, meaning that inbound connections to
-    that node have failed, and "*" in the columns corresponding to
+    The other two nodes are up; the corresponding rows have `x` in the
+    column corresponding to `node3`, meaning that inbound connections to
+    that node have failed, and `*` in the columns corresponding to
     node1 and node2, meaning that inbound connections to these nodes
     have succeeded.
 
@@ -1747,7 +1747,7 @@ The following commands are available:
     state: `node1` and `node2` are up, `node3` is down.
 
     Example 3 (all nodes up, firewall dropping packets originating
-               from `node1` and directed to port 5432 on node3)
+               from `node1` and directed to port 5432 on `node3`)
 
     Running `cluster matrix` from `node1` gives the following output:
 
