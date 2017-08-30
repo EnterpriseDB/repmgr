@@ -100,7 +100,7 @@ static CheckStatus parse_node_check_replication_lag(const char *node_check_outpu
  *  -c/--fast-checkpoint
  *  --copy-external-config-files
  *  --recovery-min-apply-delay
- *  --replication-user XXX only required if no upstream record
+ *  --replication-user (only required if no upstream record)
  *  --use-recovery-conninfo-password XXX not implemented!
  *  --without-barman
  */
@@ -423,7 +423,7 @@ do_standby_clone(void)
 		log_info(_("all pre-requisites for \"standby clone\" are met"));
 
 		PQfinish(source_conn);
-		exit(ERR_BAD_CONFIG);
+		exit(SUCCESS);
 	}
 
 	if (mode != barman)
