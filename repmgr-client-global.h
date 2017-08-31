@@ -177,7 +177,7 @@ extern int check_server_version(PGconn *conn, char *server_type, bool exit_on_er
 extern bool create_repmgr_extension(PGconn *conn);
 extern int test_ssh_connection(char *host, char *remote_user);
 extern bool local_command(const char *command, PQExpBufferData *outputbuf);
-extern bool check_upstream_config(PGconn *conn, int server_version_num, bool exit_on_error);
+
 extern standy_clone_mode get_standby_clone_mode(void);
 
 extern int  copy_remote_files(char *host, char *remote_user, char *remote_path,
