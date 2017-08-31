@@ -314,7 +314,13 @@ The following replication settings may need to be adjusted:
     max_wal_senders = 10
 
     # Ensure WAL files contain enough information to enable read-only queries
-    # on the standby
+    # on the standby.
+    #
+    #  PostgreSQL 9.5 and earlier: one of 'hot_standby' or 'logical'
+    #  PostgreSQL 9.6 and later: one of 'replica' or 'logical'
+    #    ('hot_standby' will still be accepted as an alias for 'replica')
+    #
+    # See: https://www.postgresql.org/docs/current/static/runtime-config-wal.html#GUC-WAL-LEVEL
 
     wal_level = 'hot_standby'
 
