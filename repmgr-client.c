@@ -847,6 +847,18 @@ main(int argc, char **argv)
 		item_list_append(&cli_errors, too_many_args.data);
 	}
 
+
+	/*
+	 * The configuration file is not required for some actions (e.g. 'standby clone'),
+	 * however if available we'll parse it anyway for options like 'log_level',
+	 * 'use_replication_slots' etc.
+	 */
+	load_config(runtime_options.config_file,
+				runtime_options.verbose,
+				runtime_options.terse,
+				&config_file_options,
+				argv[0]);
+
 	check_cli_parameters(action);
 
 	/*
@@ -885,16 +897,6 @@ main(int argc, char **argv)
 		runtime_options.output_mode = OM_OPTFORMAT;
 	}
 
-	/*
-	 * The configuration file is not required for some actions (e.g. 'standby clone'),
-	 * however if available we'll parse it anyway for options like 'log_level',
-	 * 'use_replication_slots' etc.
-	 */
-	load_config(runtime_options.config_file,
-				runtime_options.verbose,
-				runtime_options.terse,
-				&config_file_options,
-				argv[0]);
 
 
 	/* check for conflicts between runtime options and configuration file */
@@ -2398,7 +2400,7 @@ get_standby_clone_mode(void)
 {
 	standy_clone_mode mode;
 
-	if (strcmp(config_file_options.barman_host, "") != 0 && ! runtime_options.without_barman)
+	if (*config_file_options.barman_host != '\0' && runtime_options.without_barman == false)
 		mode = barman;
 	else
 		mode = pg_basebackup;
