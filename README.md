@@ -1085,11 +1085,6 @@ should have been updated to reflect this:
   may try and promote a standby by itself.
 - Any other standbys attached to the old master will need to be manually
   instructed to point to the new master (e.g. with `repmgr standby follow`).
-- You must ensure that following a server start using `pg_ctl`, log output
-  is not send to STDERR (the default behaviour). If logging is not configured,
-  we recommend setting `logging_collector=on` in `postgresql.conf` and
-  providing an explicit `-l/--log` setting in `repmgr.conf`'s `pg_ctl_options`
-  parameter.
 
 We hope to remove some of these restrictions in future versions of `repmgr`.
 
