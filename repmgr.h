@@ -26,8 +26,8 @@
 #include "dbutils.h"
 #include "log.h"
 
-#define MIN_SUPPORTED_VERSION		"9.5"
-#define MIN_SUPPORTED_VERSION_NUM	90500
+#define MIN_SUPPORTED_VERSION		"9.4"
+#define MIN_SUPPORTED_VERSION_NUM	90400
 
 #define REPLICATION_TYPE_PHYSICAL 1
 #define REPLICATION_TYPE_BDR	  2

@@ -1316,6 +1316,17 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 {
 	bool can_use = true;
 
+	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+		server_version_num = get_server_version(conn, NULL);
+
+	if (server_version_num < 90500)
+	{
+		appendPQExpBuffer(
+			reason,
+			_("pg_rewind available from PostgreSQL 9.5"));
+		return false;
+	}
+
 	if (guc_set(conn, "full_page_writes", "=", "off"))
 	{
 		if (can_use == false)
