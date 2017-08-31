@@ -37,22 +37,22 @@ typedef struct TablespaceDataList
 static PGconn  *primary_conn = NULL;
 static PGconn  *source_conn = NULL;
 
-static char		local_data_directory[MAXPGPATH];
+static char		local_data_directory[MAXPGPATH] = "";
 static bool		local_data_directory_provided = false;
 
-static bool		upstream_record_found = false;
+static bool		upstream_conninfo_found = false;
 static int	    upstream_node_id = UNKNOWN_NODE_ID;
 static char		upstream_data_directory[MAXPGPATH];
 
 static t_conninfo_param_list recovery_conninfo;
-static char		recovery_conninfo_str[MAXLEN];
-static char		upstream_repluser[NAMEDATALEN];
+static char		recovery_conninfo_str[MAXLEN] = "";
+static char		upstream_repluser[NAMEDATALEN] = "";
 
 static int  	source_server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 static t_configfile_list config_files = T_CONFIGFILE_LIST_INITIALIZER;
 
-static standy_clone_mode mode;
+static standy_clone_mode mode = pg_basebackup;
 
 /* used by barman mode */
 static char		local_repmgr_tmp_directory[MAXPGPATH];
@@ -204,44 +204,55 @@ do_standby_clone(void)
 			param_set(&recovery_conninfo, "application_name", "repmgr");
 	}
 
-
 	/*
-	 * --upstream-conninfo supplied, which we interpret to imply
-	 * --no-upstream-connection as well - the use case for this option is when
-	 * the upstream is not available, so no point in checking for it.
-	 *
-	 * XXX not sure of the logic here (and yes I did think this up)
-	 *  - we'll need the source connection in any case, just won't connect
-	 *    to the "upstream_conninfo" server. We'd probably need to
-	 *    to override "no_upstream_connection" if connection params
-	 *    actually provided.
+	 * By default attempt to connect to the source node. This will fail
+	 * if no connection is possible, unless in Barman mode, in which case
+	 * we can fall back to connecting to the source node via Barman.
 	 */
-
-	if (*runtime_options.upstream_conninfo)
-		runtime_options.no_upstream_connection = false;
-
-
-
-	/* By default attempt to connect to the source server */
 	if (runtime_options.no_upstream_connection == false)
 	{
+		/*
+		 * This performs sanity checks on the upstream node, also
+		 * sets "recovery_conninfo_str" and "upstream_repluser"
+		 */
 		check_source_server();
 	}
 
-	if (mode == barman && PQstatus(source_conn) != CONNECTION_OK)
+	/*
+	 * if --upstream-conninfo was supplied, use that (will overwrite
+	 * value set by check_source_server(), but that's OK)
+	 */
+	if (runtime_options.upstream_conninfo[0] != '\0')
+	{
+		strncpy(recovery_conninfo_str, runtime_options.upstream_conninfo, MAXLEN);
+		upstream_conninfo_found = true;
+	}
+	else if (mode == barman && PQstatus(source_conn) != CONNECTION_OK)
 	{
 		/*
-		 * Here we don't have a connection to the upstream node, and are executing
-		 * in Barman mode - we can try and connect via the Barman server to extract
-		 * the upstream node's conninfo string.
+		 * Here we don't have a connection to the upstream node (either because
+		 * --no-upstream-connection was supplied, or check_source_server() was unable
+		 * to make a connection, and --upstream-conninfo wasn't supplied.
+		 *
+		 * As we're executing in Barman mode we can try and connect via the Barman server
+		 * to extract the upstream node's conninfo string.
 		 *
 		 * To do this we need to extract Barman's conninfo string, replace the database
 		 * name with the repmgr one (they could well be different) and remotely execute
 		 * psql.
+		 *
+		 * This attempts to set "recovery_conninfo_str".
 		 */
 		check_source_server_via_barman();
 	}
 
+	if (recovery_conninfo_str[0] == '\0')
+	{
+		log_error(_("unable to determine a connection string to use as \"primary_conninfo\""));
+		if (PQstatus(source_conn) == CONNECTION_OK)
+				PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/*
 	 * by this point we should know the target data directory - check
@@ -259,10 +270,9 @@ do_standby_clone(void)
 		}
 	}
 
-
-	if (upstream_record_found == true)
+	if (upstream_conninfo_found == true)
 	{
-		/* parse returned upstream conninfo string to recovery primary_conninfo params*/
+		/* parse returned upstream conninfo string to recovery primary_conninfo params */
 		char	   *errmsg = NULL;
 		bool	    parse_success = false;
 
@@ -277,7 +287,8 @@ do_standby_clone(void)
 			log_error(_("unable to parse conninfo string \"%s\" for upstream node:\n  %s"),
 					  recovery_conninfo_str, errmsg);
 
-			PQfinish(source_conn);
+			if (PQstatus(source_conn) == CONNECTION_OK)
+				PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -292,13 +303,22 @@ do_standby_clone(void)
 		 * provided on the command line (and assume the user knows what they're
 		 * doing).
 		 */
+		if (upstream_node_id == UNKNOWN_NODE_ID)
+		{
+			log_error(_("unable to determine upstream node"));
+			if (PQstatus(source_conn) == CONNECTION_OK)
+				PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
 
 		if (!runtime_options.force)
 		{
 			log_error(_("no record found for upstream node (upstream_node_id: %i)"),
 					  upstream_node_id);
 			log_hint(_("use -F/--force to create \"primary_conninfo\" based on command-line parameters"));
-			PQfinish(source_conn);
+
+			if (PQstatus(source_conn) == CONNECTION_OK)
+				PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -307,7 +327,7 @@ do_standby_clone(void)
 	 * If copying of external configuration files requested, and any are
 	 * detected, perform sanity checks
 	 */
-	{
+	if (PQstatus(source_conn) == CONNECTION_OK)	{
 		PGconn			 *superuser_conn = NULL;
 		PGconn			 *privileged_conn = NULL;
 		bool			  external_config_files = false;
@@ -329,7 +349,6 @@ do_standby_clone(void)
 		 * this from the below query; we'll probably need to add a check for their
 		 * presence and if missing force copy by SSH
 		 */
-
 		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
 
 		if (get_configuration_file_locations(privileged_conn, &config_files) == false)
@@ -2624,6 +2643,7 @@ check_source_server()
 	ExtensionStatus	   extension_status = REPMGR_UNKNOWN;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
+	log_verbose(LOG_DEBUG, "check_source_server()");
 	log_info(_("connecting to upstream node"));
 
 	source_conn = establish_db_connection_by_params(&source_conninfo, false);
@@ -2635,7 +2655,7 @@ check_source_server()
 	if (PQstatus(source_conn) != CONNECTION_OK)
 	{
 		PQfinish(source_conn);
-
+		source_conn = NULL;
 		if (mode == barman)
 			return;
 		else
@@ -2678,7 +2698,7 @@ check_source_server()
 	}
 
 	/*
-	 * Sanity-check that the primary node has a repmgr schema - if not
+	 * Sanity-check that the primary node has a repmgr extension - if not
 	 * present, fail with an error unless -F/--force is used (to enable
 	 * repmgr to be used as a standalone clone tool)
 	 */
@@ -2722,9 +2742,12 @@ check_source_server()
 	if (get_pg_setting(privileged_conn, "data_directory", upstream_data_directory) == false)
 	{
 		log_error(_("unable to retrieve source node's data directory"));
-		log_hint(_("STANDBY CLONE must be run as a database superuser"));
+		log_detail(_("STANDBY CLONE must be run with database superuser permissions"));
+		log_hint(_("provide a database superuser name with -S/--superuser"));
+
 		PQfinish(source_conn);
 		source_conn = NULL;
+
 		if(superuser_conn != NULL)
 			PQfinish(superuser_conn);
 
@@ -2773,7 +2796,7 @@ check_source_server()
 	record_status = get_node_record(source_conn, upstream_node_id, &node_record);
 	if (record_status == RECORD_FOUND)
 	{
-		upstream_record_found = true;
+		upstream_conninfo_found = true;
 		strncpy(recovery_conninfo_str, node_record.conninfo, MAXLEN);
 		strncpy(upstream_repluser, node_record.repluser, NAMEDATALEN);
 	}
@@ -2874,7 +2897,7 @@ check_source_server_via_barman()
 	maxlen_snprintf(recovery_conninfo_str, "%s", command_output.data);
 	string_remove_trailing_newlines(recovery_conninfo_str);
 
-	upstream_record_found = true;
+	upstream_conninfo_found = true;
 	log_verbose(LOG_DEBUG,
 				"upstream node conninfo string extracted via barman server: %s",
 				recovery_conninfo_str);
