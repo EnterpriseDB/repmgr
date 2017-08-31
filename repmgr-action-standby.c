@@ -494,8 +494,8 @@ do_standby_clone(void)
 		}
 
 		log_error(_("unable to take a base backup of the primary server"));
-		log_warning(_("data directory (%s) may need to be cleaned up manually"),
-					local_data_directory);
+		log_hint(_("data directory (\"%s\") may need to be cleaned up manually"),
+				 local_data_directory);
 
 		PQfinish(source_conn);
 		exit(r);
@@ -517,7 +517,16 @@ do_standby_clone(void)
 
 	/* Write the recovery.conf file */
 
-	create_recovery_file(&node_record, &recovery_conninfo, local_data_directory);
+	if (create_recovery_file(&node_record, &recovery_conninfo, local_data_directory) == false)
+	{
+		/* create_recovery_file() will log an error */
+		log_notice(_("unable to create recovery.conf; see preceding error messages"));
+		log_hint(_("data directory (\"%s\") may need to be cleaned up manually"),
+				 local_data_directory);
+
+		PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	switch(mode)
 	{

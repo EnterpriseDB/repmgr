@@ -344,7 +344,7 @@ do_cluster_show(void)
 	{
 		if (runtime_options.output_mode == OM_CSV)
 		{
-			int connection_status =	(PQstatus(conn) == CONNECTION_OK) ? 0 : -1;
+			int connection_status =	(cell->node_info->node_status == NODE_STATUS_UP) ? 0 : -1;
 			int recovery_type = RECTYPE_UNKNOWN;
 
 			/*

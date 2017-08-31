@@ -285,7 +285,6 @@ both servers.
 On the primary server, a PostgreSQL instance must be initialised and running.
 The following replication settings may need to be adjusted:
 
-
     # Enable replication connections; set this figure to at least one more
     # than the number of standbys which will connect to this server
     # (note that repmgr will execute `pg_basebackup` in WAL streaming mode,
@@ -294,7 +293,13 @@ The following replication settings may need to be adjusted:
     max_wal_senders = 10
 
     # Ensure WAL files contain enough information to enable read-only queries
-    # on the standby
+    # on the standby.
+    #
+    #  PostgreSQL 9.5 and earlier: one of 'hot_standby' or 'logical'
+    #  PostgreSQL 9.6 and later: one of 'replica' or 'logical'
+    #    ('hot_standby' will still be accepted as an alias for 'replica')
+    #
+    # See: https://www.postgresql.org/docs/current/static/runtime-config-wal.html#GUC-WAL-LEVEL
 
     wal_level = 'hot_standby'
 
@@ -1085,9 +1090,13 @@ primary; execute:
     repmgr -f /etc./repmgr.conf node service --list --action=start
     repmgr -f /etc./repmgr.conf node service --list --action=restart
 
-If the `pg_ctl` command is used for starting/restarting the server, you *must*
-ensure that logging output is redirected to a file, otherwise the switchover
-will appear to "hang". See note in section `Caveats` below.
+* * *
+
+> *NOTE* on systemd systems we strongly recommend using the appropriate
+> `systemctl` commands (typically run via `sudo`) to ensure systemd is
+> informed about the status of the PostgreSQL service.
+
+* * *
 
 Check that access from applications is minimalized or preferably blocked
 completely, so applications are not unexpectedly interrupted.

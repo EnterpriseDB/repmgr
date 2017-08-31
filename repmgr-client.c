@@ -2199,6 +2199,8 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	{
 		log_error(_("unable to create recovery.conf file at \"%s\""),
 				  recovery_file_path);
+		log_detail("%s", strerror(errno));
+
 		return false;
 	}
 
@@ -2430,17 +2432,12 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	}
 	else
 	{
-		/*
-		 * When executed remotely, repmgr commands which execute pg_ctl (particularly
-		 * `repmgr standby follow`) will see the pg_ctl command appear to fail with a
-		 * non-zero return code when the output from the executed pg_ctl command
-		 * has nowhere to go, even though the command actually succeeds. We'll consume an
-		 * arbitrary amount of output and throw it away to work around this.
-		 */
-		int i = 0;
-		while (fgets(output, MAXLEN, fp) != NULL && i < 10)
+		while (fgets(output, MAXLEN, fp) != NULL)
 		{
-			i++;
+			if (!feof(fp))
+			{
+				break;
+			}
 		}
 	}
 
