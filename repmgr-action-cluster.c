@@ -109,7 +109,6 @@ do_cluster_show(void)
 		if (PQstatus(cell->node_info->conn) == CONNECTION_OK)
 		{
 			cell->node_info->node_status = NODE_STATUS_UP;
-
 			cell->node_info->recovery_type = get_recovery_type(cell->node_info->conn);
 		}
 		else
@@ -385,7 +384,7 @@ do_cluster_show(void)
 
 	/* emit any warnings */
 
-	if (warnings.head != NULL && runtime_options.terse == false)
+	if (warnings.head != NULL && runtime_options.terse == false && runtime_options.output_mode != OM_CSV)
 	{
 		ItemListCell *cell = NULL;
 
