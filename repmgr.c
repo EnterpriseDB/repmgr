@@ -4087,7 +4087,16 @@ stop_backup:
 
 	/* Finally, write the recovery.conf file */
 
-	create_recovery_file(local_data_directory, &recovery_conninfo);
+	if (create_recovery_file( local_data_directory, &recovery_conninfo) == false)
+	{
+		/* create_recovery_file() will log an error */
+		log_notice(_("unable to create recovery.conf; see preceding error messages\n"));
+		log_hint(_("data directory (\"%s\") may need to be cleaned up manually\n"),
+				 local_data_directory);
+
+		PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	if (mode == barman)
 	{
