@@ -5536,8 +5536,14 @@ do_standby_switchover(void)
 		appendPQExpBuffer(&remote_command_str, " -f ");
 		appendShellString(&remote_command_str, runtime_options.remote_config_file);
 		appendPQExpBuffer(&remote_command_str,
-						 " %s --rsync-only --force --ignore-external-config-files standby clone",
+						 " %s --rsync-only --force standby clone",
 						 repmgr_db_cli_params);
+
+		if (runtime_options.copy_external_config_files == true)
+		{
+			appendPQExpBuffer(&remote_command_str,
+							  " --copy-external-config-files");
+		}
 
 		log_debug("Executing:\n%s\n", remote_command_str.data);
 
@@ -7369,7 +7375,8 @@ check_parameters_for_action(const int action)
 			item_list_append(&cli_warnings, _("-c/--fast-checkpoint can only be used when executing STANDBY CLONE"));
 		}
 
-		if (runtime_options.copy_external_config_files)
+		/* can be used for "standby switchover" too */
+		if (action != STANDBY_SWITCHOVER && runtime_options.copy_external_config_files)
 		{
 			item_list_append(&cli_warnings, _("--copy-external-config-files can only be used when executing STANDBY CLONE"));
 		}
