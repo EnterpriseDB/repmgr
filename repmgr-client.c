@@ -2796,7 +2796,7 @@ make_remote_repmgr_path(PQExpBufferData *output_buf, t_node_info *remote_node_re
 {
 	appendPQExpBuffer(output_buf,
 					  "%s -f %s ",
-					  make_pg_path("repmgr"),
+					  make_pg_path(progname()),
 					  remote_node_record->config_file);
 
 }
