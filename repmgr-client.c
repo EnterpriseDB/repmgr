@@ -93,8 +93,6 @@ main(int argc, char **argv)
 
 	bool	    help_option = false;
 
-	char *foo = "";
-
 	set_progname(argv[0]);
 
 	/*
@@ -118,10 +116,6 @@ main(int argc, char **argv)
 	 * non-default username is provided.
 	 */
 	initialize_conninfo_params(&default_conninfo, true);
-
-/*	foo = param_list_to_string(&default_conninfo);
-	printf("XX '%s'\n", foo);
-	exit(0);*/
 
 	for (c = 0; c < default_conninfo.size && default_conninfo.keywords[c]; c++)
 	{

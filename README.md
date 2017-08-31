@@ -724,6 +724,30 @@ documentation for more details of available options:
 
   https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
 
+### Managing passwords
+
+If replication connections to a standby's upstream server are password-protected,
+the standby must be able to provide the password so it can begin streaming
+replication.
+
+The recommended way to do this is to store the password in the `postgres`
+user's `~/.pgpass` file. It's also possible to store the password in the
+environment variable `PGPASSWORD`, however this is not recommended for
+security reasons. For more details see:
+
+    https://www.postgresql.org/docs/current/static/libpq-pgpass.html
+
+If for whatever reason you wish to include the password in `recovery.conf`,
+set `use_primary_conninfo_password` to `true` in `repmgr.conf`. This
+will read a password set in `PGPASSWORD` (but not `~/.pgpass`) and place
+it into the`primary_conninfo` string in `recovery.conf`. Note that `PGPASSWORD`
+will need to be set during any action which causes `recovery.conf` to be
+rewritten, e.g. `standby follow`.
+
+It is of course also possible to include the password value in the `conninfo`
+string for each node, but this is obviously a security risk and should be
+avoided.
+
 
 Setting up cascading replication with repmgr
 --------------------------------------------
