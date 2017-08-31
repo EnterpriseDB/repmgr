@@ -1435,6 +1435,9 @@ and the primary node is unavailable (but is later restarted):
     [2017-08-29 11:00:45] [NOTICE] reconnected to upstream node 1 after 68 seconds, resuming monitoring
     [2017-08-29 11:00:57] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state (automatic failover disabled)
 
+By default, `repmgrd` will continue in degraded monitoring mode indefinitely.
+However a timeout (in seconds) can be set with `degraded_monitoring_timeout`.
+
 ### `repmgrd` log rotation
 
 To ensure the current `repmgrd` logfile does not grow indefinitely, configure

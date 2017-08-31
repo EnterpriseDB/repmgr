@@ -943,7 +943,6 @@ reload_config(t_configuration_options *orig_options)
 		config_changed = true;
 	}
 
-
 	/* conninfo */
 	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
 	{
@@ -960,6 +959,15 @@ reload_config(t_configuration_options *orig_options)
 
 		}
 		PQfinish(conn);
+	}
+
+	/* degraded_monitoring_timeout */
+	if (orig_options->degraded_monitoring_timeout != new_options.degraded_monitoring_timeout)
+	{
+		orig_options->degraded_monitoring_timeout = new_options.degraded_monitoring_timeout;
+		log_info(_("\"degraded_monitoring_timeout\" is now \"%i\""), new_options.degraded_monitoring_timeout);
+
+		config_changed = true;
 	}
 
 	/* event_notification_command */
