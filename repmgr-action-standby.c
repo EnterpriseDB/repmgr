@@ -292,8 +292,11 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		/* Write the replication user from the node's upstream record */
-		param_set(&recovery_conninfo, "user", upstream_repluser);
+		if (upstream_repluser[0] !=  '\0')
+		{
+			/* Write the replication user from the node's upstream record */
+			param_set(&recovery_conninfo, "user", upstream_repluser);
+		}
 	}
 	else
 	{
@@ -1788,7 +1791,7 @@ do_standby_switchover(void)
 	PQExpBufferData node_rejoin_options;
 
 	int r, i;
-
+	bool		command_success = false;
 	bool		shutdown_success = false;
 	XLogRecPtr remote_last_checkpoint_lsn = InvalidXLogRecPtr;
 	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
@@ -1979,6 +1982,40 @@ do_standby_switchover(void)
 		termPQExpBuffer(&msg);
 	}
 
+	/* check remote repmgr binary can be found */
+	initPQExpBuffer(&remote_command_str);
+	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+
+	appendPQExpBuffer(&remote_command_str, "--version");
+	initPQExpBuffer(&command_output);
+	command_success = remote_command(
+		remote_host,
+		runtime_options.remote_user,
+		remote_command_str.data,
+		&command_output);
+
+	termPQExpBuffer(&remote_command_str);
+
+	if (command_success == false)
+	{
+		log_error(_("unable to execute \"%s\" on \"%s\""),
+				  progname(), remote_host);
+
+		if (strlen(command_output.data))
+			log_detail("%s", command_output.data);
+
+		termPQExpBuffer(&command_output);
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("able to execute \"%s\" on remote host \"localhost\""), progname());
+	}
+	termPQExpBuffer(&command_output);
 
 	/* check archive/replication status */
 	{
@@ -1991,7 +2028,6 @@ do_standby_switchover(void)
 		{
 			int files = 0;
 			int threshold = 0;
-			bool command_success = false;
 
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
