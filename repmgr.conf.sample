@@ -40,6 +40,9 @@
                                         # is not running and there's no other way of determining
                                         # the data directory.
 
+#replication_user                       # User to make replication connections with, if not set defaults
+                                        # to the user defined in "conninfo".
+
 # =============================================================================
 
 # Optional configuration items
@@ -64,6 +67,8 @@
 
 #recovery_min_apply_delay=              # Ff provided, "recovery_min_apply_delay" in recovery.conf
                                         # will be set to this value.
+
+
 
 #------------------------------------------------------------------------------
 # Logging settings

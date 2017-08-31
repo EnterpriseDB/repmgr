@@ -748,6 +748,16 @@ It is of course also possible to include the password value in the `conninfo`
 string for each node, but this is obviously a security risk and should be
 avoided.
 
+### Separate replication user
+
+In some circumstances it might be desirable to create a dedicated replication-only
+user (in addition to the user who manages the `repmgr` metadata. In this case,
+the replication user should be set in `repmgr.conf` via the parameter
+`replication_user`; `repmgr` will use this value when making replication connections
+and generating `recovery.conf`. This value will also be stored in the `repmgr.nodes`
+table for each node; it no longer needs to be explicitly specified when
+cloning a node or executing `repmgr standby follow`.
+
 
 Setting up cascading replication with repmgr
 --------------------------------------------

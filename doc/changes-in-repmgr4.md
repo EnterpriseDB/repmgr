@@ -25,10 +25,10 @@ Changed command line options
 
 ### repmgr
 
-- `--replication-user` is now passed when registering the master server (and
-  optionally when registering a standby), *not* during standby clone/follow.
-  The value (defaults to the user in the conninfo string) will be stored in
-  the repmgr metadata for use by  standby clone/follow..
+- `--replication-user` has been deprecated; it has been replaced by the
+  configuration file option `replication_user`.  The value (which defaults
+  to the user in the `conninfo` string) will be stored in the repmgr metadata
+  for use by  standby clone/follow..
 
 - `--recovery-min-apply-delay` is now a configuration file parameter
   `recovery_min_apply_delay, to ensure the setting does not get lost when
