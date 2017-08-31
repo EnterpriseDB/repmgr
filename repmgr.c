@@ -1301,7 +1301,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 		 */
 		appendPQExpBuffer(&command,
 						  "\"%s -d '%s' --cluster '%s' ",
-						  make_pg_path("repmgr"),
+						  make_pg_path((char *)progname()),
 						  PQgetvalue(res, i, 0),
 						  PQgetvalue(res, i, 5));
 
@@ -1566,7 +1566,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 		appendPQExpBuffer(&command,
 						  "%s -d '%s' --cluster '%s' --node=%i ",
-						  make_pg_path("repmgr"),
+						  make_pg_path((char *)progname()),
 						  PQgetvalue(res, i, 0),
 						  options.cluster_name,
 						  remote_node_id);
@@ -5278,7 +5278,7 @@ do_standby_switchover(void)
 		initPQExpBuffer(&remote_command_str);
 		appendPQExpBuffer(&remote_command_str,
 						  "%s standby archive-config -f ",
-						  make_pg_path("repmgr"));
+						  make_pg_path((char *)progname()));
 		appendShellString(&remote_command_str, runtime_options.remote_config_file);
 		appendPQExpBuffer(&remote_command_str,
 						  " --config-archive-dir=");
@@ -5456,7 +5456,7 @@ do_standby_switchover(void)
 		/* --force */
 		appendPQExpBuffer(&remote_command_str,
 						  "%s standby restore-config -D ",
-						  make_pg_path("repmgr"));
+						  make_pg_path((char *)progname()));
 		appendShellString(&remote_command_str, remote_data_directory);
 
 		/*
@@ -5531,7 +5531,7 @@ do_standby_switchover(void)
 
 		appendPQExpBuffer(&remote_command_str,
 						  "%s -D ",
-						  make_pg_path("repmgr"));
+						  make_pg_path((char *)progname()));
 		appendShellString(&remote_command_str, remote_data_directory);
 		appendPQExpBuffer(&remote_command_str, " -f ");
 		appendShellString(&remote_command_str, runtime_options.remote_config_file);
@@ -5562,7 +5562,7 @@ do_standby_switchover(void)
 	initPQExpBuffer(&remote_command_str);
 	appendPQExpBuffer(&remote_command_str,
 					  "%s -D ",
-					  make_pg_path("repmgr"));
+					  make_pg_path((char *)progname()));
 	appendShellString(&remote_command_str, remote_data_directory);
 	appendPQExpBuffer(&remote_command_str, " -f ");
 	appendShellString(&remote_command_str, runtime_options.remote_config_file);
