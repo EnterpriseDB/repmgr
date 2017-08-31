@@ -93,6 +93,8 @@ main(int argc, char **argv)
 
 	bool	    help_option = false;
 
+	char *foo = "";
+
 	set_progname(argv[0]);
 
 	/*
@@ -116,6 +118,10 @@ main(int argc, char **argv)
 	 * non-default username is provided.
 	 */
 	initialize_conninfo_params(&default_conninfo, true);
+
+/*	foo = param_list_to_string(&default_conninfo);
+	printf("XX '%s'\n", foo);
+	exit(0);*/
 
 	for (c = 0; c < default_conninfo.size && default_conninfo.keywords[c]; c++)
 	{
@@ -347,10 +353,6 @@ main(int argc, char **argv)
 
 			case OPT_UPSTREAM_CONNINFO:
 				strncpy(runtime_options.upstream_conninfo, optarg, MAXLEN);
-				break;
-
-			case OPT_USE_RECOVERY_CONNINFO_PASSWORD:
-				runtime_options.use_recovery_conninfo_password = true;
 				break;
 
 			case OPT_WITHOUT_BARMAN:
@@ -1211,12 +1213,6 @@ check_cli_parameters(const int action)
 
 				if (*runtime_options.upstream_conninfo)
 				{
-					if (runtime_options.use_recovery_conninfo_password == true)
-					{
-						item_list_append(&cli_warnings,
-										 _("--use-recovery-conninfo-password ineffective when specifying --upstream-conninfo"));
-					}
-
 					if (*runtime_options.replication_user)
 					{
 						item_list_append(&cli_warnings,
@@ -2662,8 +2658,12 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 {
 	PQExpBufferData conninfo_buf;
 	bool application_name_provided = false;
+	bool password_provided = false;
 	int c;
 	char *escaped = NULL;
+	t_conninfo_param_list env_conninfo;
+
+	initialize_conninfo_params(&env_conninfo, true);
 
 	initPQExpBuffer(&conninfo_buf);
 
@@ -2680,9 +2680,10 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 			continue;
 
 		/* only include "password" if explicitly requested */
-		if (runtime_options.use_recovery_conninfo_password == false &&
-			strcmp(param_list->keywords[c], "password") == 0)
-			continue;
+		if (strcmp(param_list->keywords[c], "password") == 0)
+		{
+			password_provided = true;
+		}
 
 		if (conninfo_buf.len != 0)
 			appendPQExpBufferChar(&conninfo_buf, ' ');
@@ -2694,7 +2695,7 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 		appendConnStrVal(&conninfo_buf, param_list->values[c]);
 	}
 
-	/* `application_name` not provided - default to repmgr node name */
+	/* "application_name" not provided - default to repmgr node name */
 	if (application_name_provided == false)
 	{
 		if (strlen(config_file_options.node_name))
@@ -2707,12 +2708,27 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 			appendPQExpBuffer(&conninfo_buf, " application_name=repmgr");
 		}
 	}
-	escaped = escape_recovery_conf_value(conninfo_buf.data);
 
+	/* no password provided explicitly  */
+	if (password_provided == false)
+	{
+		if (config_file_options.use_primary_conninfo_password == true)
+		{
+			const char *password = param_get(&env_conninfo, "password");
+
+			if (password != NULL)
+			{
+				appendPQExpBuffer(&conninfo_buf, " password=");
+				appendConnStrVal(&conninfo_buf, password);
+			}
+		}
+	}
+
+	escaped = escape_recovery_conf_value(conninfo_buf.data);
 	maxlen_snprintf(line, "primary_conninfo = '%s'\n", escaped);
 
 	free(escaped);
-
+	free_conninfo_params(&env_conninfo);
 	termPQExpBuffer(&conninfo_buf);
 }
 

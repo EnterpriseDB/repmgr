@@ -66,7 +66,6 @@ typedef struct
 	char		replication_user[MAXLEN];
 	char		upstream_conninfo[MAXLEN];
 	int			upstream_node_id;
-	bool		use_recovery_conninfo_password;
 	bool		without_barman;
 
 	/* "standby register" options */
@@ -124,7 +123,7 @@ typedef struct
 		UNKNOWN_NODE_ID, "", "", \
 		/* "standby clone" options */ \
 		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", \
-		NO_UPSTREAM_NODE, false, false,						 \
+		NO_UPSTREAM_NODE, false,  \
 		/* "standby register" options */ \
 		false, 0, \
 		/* "standby switchover" options */ \

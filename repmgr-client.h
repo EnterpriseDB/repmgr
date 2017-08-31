@@ -49,8 +49,6 @@
 #define OPT_REGISTER_WAIT				   1014
 #define OPT_LOG_TO_FILE					   1015
 #define OPT_UPSTREAM_CONNINFO			   1016
-/* replaces --no-conninfo-password */
-#define OPT_USE_RECOVERY_CONNINFO_PASSWORD 1017
 #define OPT_REPLICATION_USER			   1018
 #define OPT_EVENT						   1019
 #define OPT_LIMIT						   1020
@@ -123,7 +121,6 @@ static struct option long_options[] =
 	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
 	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
 	{"upstream-node-id", required_argument, NULL, OPT_UPSTREAM_NODE_ID},
-	{"use-recovery-conninfo-password", no_argument, NULL, OPT_USE_RECOVERY_CONNINFO_PASSWORD},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 
 /* "standby register" options */

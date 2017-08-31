@@ -1220,7 +1220,7 @@ needs to follow another server which has become the new primary. Note that
 these commands can be any valid shell script which results in one of these
 two actions happening, but if `repmgr`'s `standby follow` or `standby promote`
 commands are not executed (either directly as shown here, or from a script which
-performs other actions), the `rempgr` metadata will not be updated and
+performs other actions), the `repmgr` metadata will not be updated and
 monitoring will no longer function reliably.
 
 To demonstrate automatic failover, set up a 3-node replication cluster (one primary

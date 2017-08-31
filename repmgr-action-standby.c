@@ -101,7 +101,6 @@ static CheckStatus parse_node_check_replication_lag(const char *node_check_outpu
  *  --copy-external-config-files
  *  --recovery-min-apply-delay
  *  --replication-user (only required if no upstream record)
- *  --use-recovery-conninfo-password XXX not implemented!
  *  --without-barman
  */
 

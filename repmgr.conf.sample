@@ -126,7 +126,9 @@
                                         # Debian/Ubuntu users: you will probably need to
                                         # set this to the directory where `pg_ctl` is located,
                                         # e.g. /usr/lib/postgresql/9.6/bin/
-
+#use_primary_conninfo_password=false    # explicitly set "password" in recovery.conf's
+                                        # "primary_conninfo" parameter using the value contained
+                                        # in the environment variable PGPASSWORD
 
 #------------------------------------------------------------------------------
 # external command options
