@@ -1254,9 +1254,8 @@ update_monitoring_history(void)
  * of reconnection strategies as different behaviour might be desirable
  * in different situations;
  * or maybe the option not to reconnect might be required?
- *
- * XXX check this handles replication slots gracefully
  */
+
 static bool
 do_upstream_standby_failover(void)
 {
@@ -1397,8 +1396,7 @@ do_upstream_standby_failover(void)
 
 	termPQExpBuffer(&event_details);
 
-	PQfinish(primary_conn);
-	primary_conn = NULL;
+	/* keep the primary connection open */
 
 	return true;
 }
