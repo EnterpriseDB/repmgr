@@ -1667,15 +1667,20 @@ do_node_rejoin(void)
 			command.data,
 			&command_output);
 
-		termPQExpBuffer(&command_output);
 		termPQExpBuffer(&command);
 
-		if (ret != 0)
+		if (ret == false)
 		{
 			log_error(_("unable to execute pg_rewind"));
-			log_detail(_("see preceding output for details"));
+			log_detail("%s", command_output.data);
+
+			termPQExpBuffer(&command_output);
+
 			exit(ERR_BAD_CONFIG);
 		}
+
+		termPQExpBuffer(&command_output);
+
 		/* Restore any previously archived config files */
 		_do_node_restore_config();
 

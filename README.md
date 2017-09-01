@@ -9,8 +9,8 @@ operations.
 
 `repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
 
-Supports PostgreSQL 9.5 and later; support for PostgreSQL 9.3 and 9.4 has been
-dropped. Please continue to use repmgrd 3.x for those versions.
+Supports PostgreSQL 9.4 and later; support for PostgreSQL 9.3 has been
+dropped (please continue to use repmgrd 3.3 for PostgreSQL 9.3).
 
 ### BDR support
 
@@ -1574,6 +1574,7 @@ The following commands are available:
 
     repmgr node status
     repmgr node check
+    repmgr node rejoin
 
     repmgr cluster show
     repmgr cluster matrix
@@ -1690,6 +1691,14 @@ The following commands are available:
     Individual checks can also be output in a Nagios-compatible format with
     the option `--nagios`.
 
+* `node rejoin`
+
+    Enables a dormant (stopped) node to be rejoined to the replication cluster.
+
+    This can optionally use `pg_rewind` to re-integrate a node which has diverged
+    from the rest of the cluster, typically a failed primary.
+
+    XXX add details
 
 * `cluster show`
 

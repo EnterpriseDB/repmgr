@@ -1657,7 +1657,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		bool		server_up = is_server_available(config_file_options.conninfo);
 		char	   *action = NULL;
 
-		log_debug("XXX %s\n", config_file_options.conninfo);
 		if (server_up == true)
 		{
 			action = "restart";
@@ -2551,25 +2550,42 @@ do_standby_switchover(void)
 					  local_node_record.conninfo);
 
 	log_debug("executing:\n  \"%s\"", remote_command_str.data);
-	(void)remote_command(
+	initPQExpBuffer(&command_output);
+
+	r = remote_command(
 		remote_host,
 		runtime_options.remote_user,
 		remote_command_str.data,
-		NULL);
+		&command_output);
 
 	termPQExpBuffer(&remote_command_str);
 	termPQExpBuffer(&node_rejoin_options);
 
 	/* TODO: verify this node's record was updated correctly */
 
-	create_event_record(local_conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"standby_switchover",
-						true,
-						NULL);
+	if (r == false)
+	{
+		log_error(_("rejoin failed %i"), r);
+		log_detail("%s", command_output.data);
 
+		create_event_record(local_conn,
+							&config_file_options,
+							config_file_options.node_id,
+							"standby_switchover",
+							false,
+							command_output.data);
+	}
+	else
+	{
+		create_event_record(local_conn,
+							&config_file_options,
+							config_file_options.node_id,
+							"standby_switchover",
+							true,
+							NULL);
+	}
 
+	termPQExpBuffer(&command_output);
 
 	/* clean up remote node */
 	remote_conn = establish_db_connection(remote_node_record.conninfo, false);
