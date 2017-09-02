@@ -13,10 +13,8 @@ DATA = \
   repmgr--unpackaged--4.0.sql \
   repmgr--4.0.sql
 
-
 # Hacky workaround to install the binaries
-SCRIPTS_built = repmgr repmgrd
-
+SCRIPTS += repmgr repmgrd
 
 # When in development add -Werror
 PG_CPPFLAGS = -std=gnu89 -I$(libpq_srcdir) -Wall -Wmissing-prototypes -Wmissing-declarations $(EXTRA_CFLAGS)
@@ -28,6 +26,7 @@ OBJS = \
 	repmgr.o
 
 include Makefile.global
+
 
 $(info Building against PostgreSQL $(MAJORVERSION))
 
