@@ -14,6 +14,7 @@ DATA = \
   repmgr--4.0.sql
 
 # Hacky workaround to install the binaries
+SCRIPTS_built += repmgr repmgrd
 SCRIPTS += repmgr repmgrd
 
 # When in development add -Werror
