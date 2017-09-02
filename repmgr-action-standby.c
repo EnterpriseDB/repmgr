@@ -1445,7 +1445,9 @@ do_standby_follow(void)
 		{
 			break;
 		}
+		sleep(1);
 	}
+
 	PQfinish(local_conn);
 
 	if (PQstatus(primary_conn) != CONNECTION_OK)
