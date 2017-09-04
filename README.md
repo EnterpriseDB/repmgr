@@ -1117,7 +1117,7 @@ this will perform any necessary checks and inform you about success/failure, and
 stop before the first actual command is run (which would be the shutdown of the
 current primary). Example output:
 
-    $ repmgr standby switchover --siblings-follow --dry-rub
+    $ repmgr standby switchover --siblings-follow --dry-run
     NOTICE: checking switchover on node "node2" (ID: 2) in --dry-run mode
     INFO: SSH connection to host "localhost" succeeded
     INFO: archive mode is "off"
