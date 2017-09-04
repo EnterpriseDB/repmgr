@@ -1408,6 +1408,7 @@ do_standby_follow(void)
 	PGconn	   *primary_conn = NULL;
 	int			primary_id = UNKNOWN_NODE_ID;
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
+	RecordStatus	   record_status = RECORD_NOT_FOUND;
 
 	int	    	timer = 0;
 
@@ -1428,24 +1429,52 @@ do_standby_follow(void)
 	/* check this is a standby */
 	check_recovery_type(local_conn);
 
-	/*
-	 * Attempt to connect to primary.
-	 *
-	 * If --wait provided, loop for up `primary_follow_timeout`
-	 * seconds before giving up
-	 */
-
-	for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
+	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
-		primary_conn = get_primary_connection_quiet(local_conn,
-													&primary_id,
-													NULL);
+		// XXX check not self!
 
-		if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
+		record_status = get_node_record(local_conn, runtime_options.upstream_node_id, &primary_node_record);
+
+		if (record_status != RECORD_FOUND)
 		{
-			break;
+			log_error(_("unable to find record for specified upstream node %i"),
+					  runtime_options.upstream_node_id);
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
 		}
-		sleep(1);
+
+		for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
+		{
+			primary_conn = establish_db_connection(config_file_options.conninfo, true);
+
+			if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
+			{
+				primary_id = runtime_options.upstream_node_id;
+				break;
+			}
+			sleep(1);
+		}
+	}
+	else
+	{
+		/*
+		 * Attempt to connect to primary.
+		 *
+		 * If --wait provided, loop for up `primary_follow_timeout`
+		 * seconds before giving up
+		 */
+
+		for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
+		{
+			primary_conn = get_primary_connection_quiet(local_conn,
+														&primary_id,
+														NULL);
+			if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
+			{
+				break;
+			}
+			sleep(1);
+		}
 	}
 
 	PQfinish(local_conn);
@@ -1457,10 +1486,19 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	get_node_record(primary_conn, primary_id, &primary_node_record);
+	record_status = get_node_record(primary_conn, primary_id, &primary_node_record);
 
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to find record for new upstream node %i"),
+				  runtime_options.upstream_node_id);
+		PQfinish(primary_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+
+	// XXX check this is not current upstream anyway
 	/* check replication connection */
-
 	initialize_conninfo_params(&repl_conninfo, false);
 
 	conn_to_param_list(primary_conn, &repl_conninfo);

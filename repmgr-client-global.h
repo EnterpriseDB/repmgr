@@ -65,8 +65,10 @@ typedef struct
 	char		recovery_min_apply_delay[MAXLEN];
 	char		replication_user[MAXLEN];
 	char		upstream_conninfo[MAXLEN];
-	int			upstream_node_id;
 	bool		without_barman;
+
+	/* "standby clone"/"standby follow" options */
+	int			upstream_node_id;
 
 	/* "standby register" options */
 	bool		wait_register_sync;
@@ -123,7 +125,9 @@ typedef struct
 		UNKNOWN_NODE_ID, "", "", \
 		/* "standby clone" options */ \
 		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", \
-		NO_UPSTREAM_NODE, false,  \
+		false,  \
+		/* "standby clone"/"standby follow" options */ \
+		NO_UPSTREAM_NODE, \
 		/* "standby register" options */ \
 		false, 0, \
 		/* "standby switchover" options */ \
