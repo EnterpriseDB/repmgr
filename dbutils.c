@@ -912,7 +912,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 					  "  FROM pg_catalog.pg_settings WHERE name = '%s'",
 					  escaped_setting);
 
-	log_verbose(LOG_DEBUG, "get_pg_setting(): %s\n", query.data);
+	log_verbose(LOG_DEBUG, "get_pg_setting():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
 
@@ -969,7 +969,7 @@ get_cluster_size(PGconn *conn, char *size)
 					  "SELECT pg_catalog.pg_size_pretty(SUM(pg_catalog.pg_database_size(oid))::bigint) "
 					  "	 FROM pg_catalog.pg_database ");
 
-	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s\n", query.data);
+	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -1225,7 +1225,7 @@ get_primary_node_id(PGconn *conn)
 	}
 	else if (PQntuples(res) == 0)
 	{
-		log_verbose(LOG_WARNING, _("get_primary_node_id(): no active primary found\n"));
+		log_verbose(LOG_WARNING, _("get_primary_node_id(): no active primary found"));
 		retval = NODE_NOT_FOUND;
 	}
 	else
@@ -2307,7 +2307,7 @@ update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream
 					  new_upstream_node_id,
 					  this_node_id);
 
-	log_verbose(LOG_DEBUG, "update_node_record_set_upstream():\n%s\n", query.data);
+	log_verbose(LOG_DEBUG, "update_node_record_set_upstream():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 
@@ -2929,7 +2929,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 	/* an event notification command was provided - parse and execute it */
 	if (send_notification == true && strlen(options->event_notification_command))
 	{
-		char		parsed_command[MAXPGPATH];
+		char		parsed_command[MAXPGPATH] = "";
 		const char *src_ptr = NULL;
 		char	   *dst_ptr = NULL;
 		char	   *end_ptr = NULL;
@@ -2945,7 +2945,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 		 */
 		if (options->event_notifications.head != NULL)
 		{
-			EventNotificationListCell *cell;
+			EventNotificationListCell *cell = NULL;
 			bool notify_ok = false;
 
 			for (cell = options->event_notifications.head; cell; cell = cell->next)
@@ -2962,7 +2962,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 			 */
 			if (notify_ok == false)
 			{
-				log_debug(_("Not executing notification script for event type '%s'\n"), event);
+				log_debug(_("Not executing notification script for event type '%s'"), event);
 				return success;
 			}
 		}
@@ -2988,7 +2988,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						src_ptr++;
 						if (event_info->node_name != NULL)
 						{
-							log_verbose(LOG_DEBUG, "node_name: %s\n", event_info->node_name);
+							log_verbose(LOG_DEBUG, "node_name: %s", event_info->node_name);
 							strlcpy(dst_ptr, event_info->node_name, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
 						}
@@ -3025,7 +3025,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						src_ptr++;
 						if (event_info->conninfo_str != NULL)
 						{
-							log_debug("conninfo: %s\n", event_info->conninfo_str);
+							log_debug("conninfo: %s", event_info->conninfo_str);
 
 							strlcpy(dst_ptr, event_info->conninfo_str, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
@@ -3291,7 +3291,7 @@ cancel_query(PGconn *conn, int timeout)
 	 */
 	if (PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
 	{
-		log_warning(_("Can't stop current query: %s\n"), errbuf);
+		log_warning(_("unable to stop current query:\n  %s"), errbuf);
 		PQfreeCancel(pgcancel);
 		return false;
 	}
@@ -3326,7 +3326,7 @@ wait_connection_availability(PGconn *conn, long long timeout)
 	{
 		if (PQconsumeInput(conn) == 0)
 		{
-			log_warning(_("wait_connection_availability(): could not receive data from connection. %s\n"),
+			log_warning(_("wait_connection_availability(): could not receive data from connection:\n  %s"),
 						PQerrorMessage(conn));
 			return 0;
 		}
@@ -3444,7 +3444,7 @@ add_monitoring_record(
 
 	if (PQsendQuery(primary_conn, query.data) == 0)
 	{
-		log_warning(_("query could not be sent to master: %s\n"),
+		log_warning(_("query could not be sent to primary:\n  %s"),
 					PQerrorMessage(primary_conn));
 	}
 	else
