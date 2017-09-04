@@ -1661,6 +1661,8 @@ wait_primary_notification(int *new_primary_id)
 static FailoverState
 follow_new_primary(int new_primary_id)
 {
+	char		parsed_follow_command[MAXPGPATH] = "";
+
 	PQExpBufferData event_details;
 	int r;
 
@@ -1695,9 +1697,6 @@ follow_new_primary(int new_primary_id)
 		fflush(stderr);
 	}
 
-	log_debug(_("standby follow command is:\n  \"%s\""),
-			  config_file_options.follow_command);
-
 	upstream_conn = establish_db_connection(new_primary.conninfo, false);
 
 	if (PQstatus(upstream_conn) == CONNECTION_OK)
@@ -1709,6 +1708,7 @@ follow_new_primary(int new_primary_id)
 		}
 		else
 		{
+			new_primary_ok = false;
 			log_warning(_("new primary is not in recovery"));
 			PQfinish(upstream_conn);
 		}
@@ -1727,8 +1727,18 @@ follow_new_primary(int new_primary_id)
 	PQfinish(local_conn);
 	local_conn = NULL;
 
+	/*
+	 * replace %n in "config_file_options.follow_command" with ID of primary
+	 * to follow.
+	 */
+	parse_follow_command(parsed_follow_command, config_file_options.follow_command, new_primary_id);
+
+	log_debug(_("standby follow command is:\n  \"%s\""),
+			  parsed_follow_command);
+
+
 	/* execute the follow command */
-	r = system(config_file_options.follow_command);
+	r = system(parsed_follow_command);
 
 	if (r != 0)
 	{

@@ -2977,6 +2977,14 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 			{
 				switch (src_ptr[1])
 				{
+					case '%':
+						/* %%: replace with % */
+						if (dst_ptr < end_ptr)
+						{
+							src_ptr++;
+							*dst_ptr++ = *src_ptr;
+						}
+						break;
 					case 'n':
 						/* %n: node id */
 						src_ptr++;

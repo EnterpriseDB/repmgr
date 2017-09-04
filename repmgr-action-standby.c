@@ -1431,7 +1431,13 @@ do_standby_follow(void)
 
 	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
-		// XXX check not self!
+		/* check not self! */
+		if (runtime_options.upstream_node_id == config_file_options.node_id)
+		{
+			log_error(_("provided \"--upstream-node-id\" %i is the current node!"),
+					  runtime_options.upstream_node_id);
+			exit(ERR_BAD_CONFIG);
+		}
 
 		record_status = get_node_record(local_conn, runtime_options.upstream_node_id, &primary_node_record);
 
@@ -1445,10 +1451,11 @@ do_standby_follow(void)
 
 		for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
 		{
-			primary_conn = establish_db_connection(config_file_options.conninfo, true);
+			primary_conn = establish_db_connection(primary_node_record.conninfo, true);
 
 			if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
 			{
+				log_debug("setting primary id to %i", runtime_options.upstream_node_id);
 				primary_id = runtime_options.upstream_node_id;
 				break;
 			}
@@ -1690,7 +1697,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	/* start/restart the service */
 
 	// XXX here check if service is running!! if not, start
-	//     ensure that problem with pg_ctl output is caught here
 
 	{
 		char		server_command[MAXLEN] = "";

@@ -1250,11 +1250,17 @@ Additionally the following `repmgrd` options *must* be set in `repmgr.conf`
 
     failover=automatic
     promote_command='repmgr standby promote -f /etc/repmgr.conf --log-to-file'
-    follow_command='repmgr standby follow -f /etc/repmgr.conf --log-to-file'
+    follow_command='repmgr standby follow -f /etc/repmgr.conf --log-to-file --upstream-node-id=%n'
 
 Note that the `--log-to-file` option will cause `repmgr`'s output to be logged to
 the destination configured to receive log output for `repmgrd`.
 See `repmgr.conf.sample` for further `repmgrd`-specific settings
+
+The `follow_command` should provide the `--upstream-node-id=%n` option to
+`repmgr standby follow`; the `%n` will be replaced by `repmgrd` with the ID
+of the new primary. If this is not provided, if the original primary comes back
+online after the new primary is promoted, there is a risk that
+`repmgr standby follow` will follow the original primary.
 
 When `failover` is set to `automatic`, upon detecting failure of the current
 primary, `repmgrd` will execute one of `promote_command` or `follow_command`,

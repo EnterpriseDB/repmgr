@@ -210,15 +210,22 @@ ssh_options='-q'                        # Options to append to "ssh"
                                         # 'manual': repmgrd will take no action and the node will require
                                         #    manual attention to reattach it to replication
                                         # (does not apply to BDR mode)
-#monitoring_history=no
-
+#promote_command=                       # command to execute when promoting a new primary; use something like:
+                                        #
+                                        #     repmgr standby promote -f /etc/repmgr.conf
+                                        #
+#follow_command=                        # command to execute when instructing a standby to follow a new primary;
+                                        # use something like:
+                                        #
+                                        #     repmgr standby follow -f /etc/repmgr.conf -W --upstream-node-id=%n
+                                        #
 #primary_notification_timeout=60        # Interval (in seconds) which repmgrd on a standby
                                         # will wait for a notification from the new primary,
-                                        # before falling back to degraded monitoriong
-#degraded_monitoring_timeout=-1         # Interval (in seconds) after which repmgrd
-                                        # will terminate if the server being monitored
-                                        # is no longer available. -1 (default) disables the
-                                        # timeout completely.
+                                        # before falling back to degraded monitoring
+#monitoring_history=no
+#degraded_monitoring_timeout=-1         # Interval (in seconds) after which repmgrd will terminate if the
+                                        # server being monitored is no longer available. -1 (default)
+                                        # disables the timeout completely.
 #async_query_timeout=60                 # Interval (in seconds) which repmgrd will wait before
                                         # cancelling an asynchronous query.
 

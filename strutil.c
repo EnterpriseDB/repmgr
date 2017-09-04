@@ -410,3 +410,54 @@ trim(char *s)
 
 	return s;
 }
+
+
+void
+parse_follow_command(char *parsed_command, char *template, int node_id)
+{
+	const char *src_ptr = NULL;
+	char	   *dst_ptr = NULL;
+	char	   *end_ptr = NULL;
+
+	dst_ptr = parsed_command;
+	end_ptr = parsed_command + MAXPGPATH - 1;
+	*end_ptr = '\0';
+
+	for(src_ptr = template; *src_ptr; src_ptr++)
+	{
+		if (*src_ptr == '%')
+		{
+			switch (src_ptr[1])
+			{
+				case '%':
+					/* %%: replace with % */
+					if (dst_ptr < end_ptr)
+					{
+						src_ptr++;
+						*dst_ptr++ = *src_ptr;
+					}
+					break;
+				case 'n':
+					/* %n: node id */
+					src_ptr++;
+					snprintf(dst_ptr, end_ptr - dst_ptr, "%i", node_id);
+					dst_ptr += strlen(dst_ptr);
+					break;
+				default:
+					/* otherwise treat the % as not special */
+					if (dst_ptr < end_ptr)
+						*dst_ptr++ = *src_ptr;
+					break;
+			}
+		}
+		else
+		{
+			if (dst_ptr < end_ptr)
+				*dst_ptr++ = *src_ptr;
+		}
+	}
+
+	*dst_ptr = '\0';
+
+	return;
+}

@@ -142,5 +142,7 @@ extern char
 
 extern char	*trim(char *s);
 
+extern void
+parse_follow_command(char *parsed_command, char *template, int node_id);
 
 #endif	 /* _STRUTIL_H_ */
