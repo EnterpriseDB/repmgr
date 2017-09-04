@@ -125,7 +125,7 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 
 	connection_string = param_list_to_string(&conninfo_params);
 
-	log_debug(_("connecting to: '%s'"), connection_string);
+	log_debug(_("connecting to: \"%s\""), connection_string);
 
 	conn = PQconnectdb(connection_string);
 
@@ -748,7 +748,7 @@ _set_config(PGconn *conn, const char *config_param, const char *sqlquery)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error("unable to set '%s': %s", config_param, PQerrorMessage(conn));
+		log_error("unable to set \"%s\": %s", config_param, PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
@@ -902,7 +902,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 
 	if (escaped_setting == NULL)
 	{
-		log_error(_("unable to escape setting '%s'"), setting);
+		log_error(_("unable to escape setting \"%s\""), setting);
 		return false;
 	}
 
@@ -2962,7 +2962,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 			 */
 			if (notify_ok == false)
 			{
-				log_debug(_("Not executing notification script for event type '%s'"), event);
+				log_debug(_("Not executing notification script for event type \"%s\""), event);
 				return success;
 			}
 		}
@@ -3089,7 +3089,7 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 		if (strcmp(slot_info.slot_type, "physical") != 0)
 		{
 			appendPQExpBuffer(error_msg,
-							  _("slot '%s' exists and is not a physical slot\n"),
+							  _("slot \"%s\" exists and is not a physical slot\n"),
 							  slot_name);
 			return false;
 		}
@@ -3097,14 +3097,14 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 		if (slot_info.active == false)
 		{
 			// XXX is this a good idea?
-			log_debug("replication slot '%s' exists but is inactive; reusing",
+			log_debug("replication slot \"%s\" exists but is inactive; reusing",
 					  slot_name);
 
 			return true;
 		}
 
 		appendPQExpBuffer(error_msg,
-						  _("slot '%s' already exists as an active slot\n"),
+						  _("slot \"%s\" already exists as an active slot\n"),
 						  slot_name);
 		return false;
 	}
@@ -3134,7 +3134,7 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		appendPQExpBuffer(error_msg,
-						  _("unable to create slot '%s' on the upstream node: %s\n"),
+						  _("unable to create slot \"%s\" on the upstream node: %s\n"),
 						  slot_name,
 						  PQerrorMessage(conn));
 		PQclear(res);
@@ -3975,7 +3975,7 @@ add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to add table 'repmgr.%s' to replication set '%s':\n  %s"),
+		log_error(_("unable to add table \"repmgr.%s\" to replication set \"%s\":\n  %s"),
 				  tablename,
 				  set,
 				  PQerrorMessage(conn));
