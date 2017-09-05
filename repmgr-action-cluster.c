@@ -164,11 +164,13 @@ do_cluster_show(void)
 								cell->node_info->node_name, cell->node_info->node_id);
 						}
 						else
+						{
 							appendPQExpBuffer(&details, "! running as standby");
 							item_list_append_format(
 								&warnings,
 								"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
 								cell->node_info->node_name, cell->node_info->node_id);
+						}
 					}
 				}
 				/* node is unreachable */
