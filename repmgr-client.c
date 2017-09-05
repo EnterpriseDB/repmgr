@@ -2214,6 +2214,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
 
+	trim(line);
 	log_debug("recovery.conf: %s", line);
 
 	/* primary_conninfo = '...' */
@@ -2240,6 +2241,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
 
+	trim(line);
 	log_debug("recovery.conf: %s", line);
 
 	/* recovery_target_timeline = 'latest' */
@@ -2248,6 +2250,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		return false;
 
+	trim(line);
 	log_debug("recovery.conf: %s", line);
 
 	/* recovery_min_apply_delay = ... (optional) */
@@ -2258,6 +2261,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
 
+		trim(line);
 		log_debug("recovery.conf: %s", line);
 	}
 
@@ -2269,6 +2273,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 			return false;
 
+		trim(line);
 		log_debug("recovery.conf: %s", line);
 	}
 
@@ -2280,6 +2285,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
 		        return false;
 
+		trim(line);
 		log_debug("recovery.conf: %s", line);
 	}
 	fclose(recovery_file);
