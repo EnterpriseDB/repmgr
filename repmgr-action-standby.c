@@ -59,7 +59,7 @@ static char		local_repmgr_tmp_directory[MAXPGPATH];
 static char		datadir_list_filename[MAXLEN];
 static char		barman_command_buf[MAXLEN] = "";
 
-static void _do_standby_promote_internal(const char *data_dir);
+static void _do_standby_promote_internal(PGconn *conn, const char *data_dir);
 
 static void check_barman_config(void);
 static void	check_source_server(void);
@@ -1224,7 +1224,6 @@ do_standby_promote(void)
 
 	int			existing_primary_id = UNKNOWN_NODE_ID;
 
-	log_info(_("connecting to standby database"));
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
 	log_verbose(LOG_INFO, _("connected to standby, checking its state"));
@@ -1251,7 +1250,6 @@ do_standby_promote(void)
 		}
 	}
 
-
 	/* check that there's no existing primary */
 	current_primary_conn = get_primary_connection_quiet(conn, &existing_primary_id, NULL);
 
@@ -1276,14 +1274,14 @@ do_standby_promote(void)
 	}
 
 	PQfinish(current_primary_conn);
-	PQfinish(conn);
 
-	_do_standby_promote_internal(config_file_options.data_directory);
+
+	_do_standby_promote_internal(conn, config_file_options.data_directory);
 }
 
 
 static void
-_do_standby_promote_internal(const char *data_dir)
+_do_standby_promote_internal(PGconn *conn, const char *data_dir)
 {
 	char		script[MAXLEN];
 	int			r;
@@ -1292,8 +1290,26 @@ _do_standby_promote_internal(const char *data_dir)
 				promote_check_interval = 2;
 	bool		promote_success = false;
 	PQExpBufferData details;
-	PGconn	   *conn = NULL;
+
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
+
+	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+
+
+	/* fetch local node record so we can add detail in log messages */
+	record_status = get_node_record(conn,
+									config_file_options.node_id,
+									&local_node_record);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve record for node %i"),
+					config_file_options.node_id);
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 
 	/*
 	 * Promote standby to primary.
@@ -1305,8 +1321,11 @@ _do_standby_promote_internal(const char *data_dir)
 
 	get_server_action(ACTION_PROMOTE, script, (char *)data_dir);
 
-	log_notice(_("promoting standby"));
-	log_detail(_("promoting server using \"%s\""), script);
+	log_notice(_("promoting standby to primary"));
+	log_detail(_("promoting server \"%s\" (ID: %i) using \"%s\""),
+			   local_node_record.node_name,
+			   local_node_record.node_id,
+			   script);
 
 	r = system(script);
 	if (r != 0)
@@ -1315,11 +1334,7 @@ _do_standby_promote_internal(const char *data_dir)
 		exit(ERR_PROMOTION_FAIL);
 	}
 
-	/* reconnect to check we got promoted */
-
-	log_info(_("reconnecting to promoted server"));
-	conn = establish_db_connection(config_file_options.conninfo, true);
-
+	/* TODO: make these values configurable */
 	for (i = 0; i < promote_check_timeout; i += promote_check_interval)
 	{
 		recovery_type = get_recovery_type(conn);
@@ -1372,8 +1387,9 @@ _do_standby_promote_internal(const char *data_dir)
 
 	initPQExpBuffer(&details);
 	appendPQExpBuffer(&details,
-					  _("node %i was successfully promoted to primary"),
-					  config_file_options.node_id);
+					  _("server \"%s\" (ID: %i) was successfully promoted to primary"),
+					  local_node_record.node_name,
+					  local_node_record.node_id);
 
 	log_notice(_("STANDBY PROMOTE successful"));
 	log_detail("%s", details.data);
@@ -2545,8 +2561,8 @@ do_standby_switchover(void)
 		}
 	}
 
-	/* promote standby */
-	_do_standby_promote_internal(config_file_options.data_directory);
+	/* promote standby (local node) */
+	_do_standby_promote_internal(local_conn, config_file_options.data_directory);
 
 	/*
 	 * Execute `repmgr node rejoin` to create recovery.conf and start
