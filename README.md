@@ -581,10 +581,10 @@ Register the standby server with:
 Check the node is registered by executing `repmgr cluster show` on the standby:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | standby |   running | node1    | host=node2 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
 
 The standby server now has a copy of the records for all servers in the
 replication cluster.
@@ -817,11 +817,11 @@ created standby, and register it:
 After starting the standby, the cluster will look like this:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | standby |   running | node1    | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | default  | host=node3 dbname=repmgr user=repmgr
 
 
 * * *
@@ -908,11 +908,11 @@ To demonstrate this, set up a replication cluster with a primary and two attache
 standby servers so that the cluster looks like this:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | standby |   running | node1    | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node1    | host=node3 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr
 
 Stop the current primary with e.g.:
 
@@ -924,11 +924,11 @@ stopped primary. Note that the `repmgr` metadata table will not yet have been up
 executing `repmgr cluster show` will note the discrepancy:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status        | Upstream | Connection string
-    ----+-------+---------+---------------+----------+--------------------------------------
-     1  | node1 | primary | ? unreachable |          | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | standby |   running     | node1    | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running     | node1    | host=node3 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status        | Upstream | Location | Connection string
+    ----+-------+---------+---------------+----------+----------+--------------------------------------
+     1  | node1 | primary | ? unreachable |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running     | node1    | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running     | node1    | default  | host=node3 dbname=repmgr user=repmgr
 
     WARNING: following issues were detected
       node "node1" (ID: 1) is registered as an active primary but is unreachable
@@ -951,11 +951,11 @@ Executing `repmgr cluster show` will show the current state; as there is now an
 active primary, the previous warning will not be displayed:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+----------------------------------------------------
-     1  | node1 | primary | - failed  |          | host=node1 dbname=repmgr user=repmgr port=5501
-     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr port=5502
-     3  | node3 | standby |   running | node1    | host=node3 dbname=repmgr user=repmgr port=5503
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+----------------------------------------------------
+     1  | node1 | primary | - failed  |          | default  | host=node1 dbname=repmgr user=repmgr port=5501
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr port=5502
+     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr port=5503
 
 However the sole remaining standby is still trying to replicate from the failed
 primary; `repmgr standby follow` must now be executed to rectify this situation.
@@ -986,11 +986,11 @@ The standby is now replicating from the new primary and `repmgr cluster show`
 output reflects this:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | primary | - failed  |          | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | - failed  |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | default  | host=node3 dbname=repmgr user=repmgr
 
 Note that with cascading replication, `repmgr standby follow` can also be
 used to detach a standby from its current upstream server and follow the
@@ -1073,10 +1073,10 @@ The old primary is now replicating as a standby from the new primary, and the
 cluster status will now look like this:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | standby |   running | node2    | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | standby |   running | node2    | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
 
 ### Preparing for switchover
 
@@ -1136,11 +1136,11 @@ original primary; if there were a second standby (`node3`), executing
 situation, with `node3` still being attached to `node1`:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | standby |   running | node2    | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node1    | host=node3 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | standby |   running | node2    | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr
 
 However, if executed with the option `--siblings-follow`, `repmgr` will repoint
 any standbys attached to the original primary (the "siblings" of the original
@@ -1179,11 +1179,11 @@ standby) to point to the new primary:
 and the cluster status will now look like this:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | standby |   running | node2    | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | standby |   running | node2    | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | default  | host=node3 dbname=repmgr user=repmgr
 
 
 ### Caveats
@@ -1277,11 +1277,11 @@ and two standbys streaming directly from the primary) so that the cluster looks
 something like this:
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | standby |   running | node1    | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node1    | host=node3 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr
 
 Start `repmgrd` on each standby and verify that it's running by examining the
 log output, which at log level `INFO` will look like this:
@@ -1339,11 +1339,11 @@ The cluster status will now look like this, with the original primary (`node1`)
 marked as inactive, and standby `node3` now following the new primary (`node2`):
 
     $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+----------------------------------------------------
-     1  | node1 | primary | - failed  |          | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | primary | * running |          | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node2    | host=node3 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+----------------------------------------------------
+     1  | node1 | primary | - failed  |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | default  | host=node3 dbname=repmgr user=repmgr
 
 `repmgr cluster event` will display a summary of what happened to each server
 during the failover:
@@ -1721,11 +1721,11 @@ The following commands are available:
 
         $ repmgr -f /etc/repmgr.conf cluster show
 
-         ID | Name  | Role    | Status    | Upstream | Connection string
-        ----+-------+---------+-----------+----------+-----------------------------------------
-         1  | node1 | primary | * running |          | host=db_node1 dbname=repmgr user=repmgr
-         2  | node2 | standby |   running | node1    | host=db_node2 dbname=repmgr user=repmgr
-         3  | node3 | standby |   running | node1    | host=db_node3 dbname=repmgr user=repmgr
+         ID | Name  | Role    | Status    | Upstream | Location | Connection string
+        ----+-------+---------+-----------+----------+----------+-----------------------------------------
+         1  | node1 | primary | * running |          | default  | host=db_node1 dbname=repmgr user=repmgr
+         2  | node2 | standby |   running | node1    | default  | host=db_node2 dbname=repmgr user=repmgr
+         3  | node3 | standby |   running | node1    | default  | host=db_node3 dbname=repmgr user=repmgr
 
     To show database connection errors when polling nodes, run the command in
     `--verbose` mode.

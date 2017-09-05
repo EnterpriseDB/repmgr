@@ -11,7 +11,7 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-cluster.h"
 
-#define SHOW_HEADER_COUNT 6
+#define SHOW_HEADER_COUNT 7
 
 
 typedef enum {
@@ -20,6 +20,7 @@ typedef enum {
 	SHOW_ROLE,
 	SHOW_STATUS,
 	SHOW_UPSTREAM_NAME,
+	SHOW_LOCATION,
 	SHOW_CONNINFO
 } ShowHeader;
 
@@ -88,6 +89,7 @@ do_cluster_show(void)
 	strncpy(headers_show[SHOW_ROLE].title, _("Role"), MAXLEN);
 	strncpy(headers_show[SHOW_STATUS].title, _("Status"), MAXLEN);
 	strncpy(headers_show[SHOW_UPSTREAM_NAME].title, _("Upstream"), MAXLEN);
+	strncpy(headers_show[SHOW_LOCATION].title, _("Location"), MAXLEN);
 	strncpy(headers_show[SHOW_CONNINFO].title, _("Connection string"), MAXLEN);
 
 	/*
@@ -298,6 +300,7 @@ do_cluster_show(void)
 		headers_show[SHOW_NAME].cur_length = strlen(cell->node_info->node_name);
 		headers_show[SHOW_STATUS].cur_length = strlen(cell->node_info->details);
 		headers_show[SHOW_UPSTREAM_NAME].cur_length = strlen(cell->node_info->upstream_node_name);
+		headers_show[SHOW_LOCATION].cur_length = strlen(cell->node_info->location);
 		headers_show[SHOW_CONNINFO].cur_length = strlen(cell->node_info->conninfo);
 
 		for (i = 0; i < SHOW_HEADER_COUNT; i++)
@@ -377,6 +380,7 @@ do_cluster_show(void)
 			printf("| %-*s ",  headers_show[SHOW_ROLE].max_length, get_node_type_string(cell->node_info->type));
 			printf("| %-*s ",  headers_show[SHOW_STATUS].max_length, cell->node_info->details);
 			printf("| %-*s ",  headers_show[SHOW_UPSTREAM_NAME].max_length , cell->node_info->upstream_node_name);
+			printf("| %-*s ",  headers_show[SHOW_LOCATION].max_length , cell->node_info->location);
 			printf("| %-*s\n", headers_show[SHOW_CONNINFO].max_length, cell->node_info->conninfo);
 		}
 	}
