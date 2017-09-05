@@ -1403,7 +1403,6 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 						details.data);
 
 	termPQExpBuffer(&details);
-	PQfinish(conn);
 
 	return;
 }
@@ -1607,7 +1606,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 {
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	int			original_upstream_node_id = UNKNOWN_NODE_ID;
-	int			r;
 
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	char	   *errmsg = NULL;
@@ -1718,6 +1716,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		char		server_command[MAXLEN] = "";
 		bool		server_up = is_server_available(config_file_options.conninfo);
 		char	   *action = NULL;
+		int	  	    r;
 
 		if (server_up == true)
 		{
@@ -2384,7 +2383,7 @@ do_standby_switchover(void)
 			}
 		}
 	}
-	PQfinish(local_conn);
+	//PQfinish(local_conn);
 
 
 	/*
@@ -2411,7 +2410,6 @@ do_standby_switchover(void)
 
 	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 
-
 	if (runtime_options.dry_run == true)
 	{
 		appendPQExpBuffer(&remote_command_str,
@@ -2420,6 +2418,9 @@ do_standby_switchover(void)
 	}
 	else
 	{
+		log_notice(_("stopping current primary node \"%s\" (ID: %i)"),
+				   remote_node_record.node_name,
+				   remote_node_record.node_id);
 		appendPQExpBuffer(&remote_command_str,
 						  "node service --action=stop --checkpoint");
 	}
@@ -2432,9 +2433,7 @@ do_standby_switchover(void)
 		remote_command_str.data,
 		&command_output);
 
-
 	termPQExpBuffer(&remote_command_str);
-
 
 	/*
 	 * --dry-run ends here with display of command which would be used to
@@ -2531,14 +2530,19 @@ do_standby_switchover(void)
 		exit(ERR_SWITCHOVER_FAIL);
 	}
 
-
-	local_conn = establish_db_connection(config_file_options.conninfo, false);
-
+	/* this is unlikely to happen, but check and handle gracefully anyway */
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
-		log_error(_("unable to reestablish connection to local node \"%s\""),
-				  local_node_record.node_name);
-		exit(ERR_DB_CONN);
+		log_warning(_("connection to local node lost, reconnecting.."));
+		local_conn = establish_db_connection(config_file_options.conninfo, false);
+
+		if (PQstatus(local_conn) != CONNECTION_OK)
+		{
+			log_error(_("unable to reconnect to local node \"%s\""),
+					  local_node_record.node_name);
+			exit(ERR_DB_CONN);
+		}
+		log_verbose(LOG_INFO, _("successfully reconnected to local node"));
 	}
 
 	get_replication_info(local_conn, &replication_info);
@@ -2614,7 +2618,7 @@ do_standby_switchover(void)
 	log_debug("executing:\n  \"%s\"", remote_command_str.data);
 	initPQExpBuffer(&command_output);
 
-	r = remote_command(
+	command_success = remote_command(
 		remote_host,
 		runtime_options.remote_user,
 		remote_command_str.data,
@@ -2625,7 +2629,7 @@ do_standby_switchover(void)
 
 	/* TODO: verify this node's record was updated correctly */
 
-	if (r == false)
+	if (command_success == false)
 	{
 		log_error(_("rejoin failed %i"), r);
 		log_detail("%s", command_output.data);
@@ -2748,7 +2752,6 @@ do_standby_switchover(void)
 	PQfinish(local_conn);
 
 	log_notice(_("STANDBY SWITCHOVER is complete"));
-
 
 	return;
 }

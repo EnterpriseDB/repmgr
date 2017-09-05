@@ -1424,12 +1424,18 @@ do_node_service(void)
 		return;
 	}
 
-	log_notice(_("executing server command \"%s\""), command);
+	/*
+	 * log level is "DETAIL" here as this command is intended to be executed
+	 * by another repmgr process (e.g. during standby switchover); that repmgr
+	 * should emit a "NOTICE" about the intent of the command.
+	 */
+	log_detail(_("executing server command \"%s\""), command);
 
 	initPQExpBuffer(&output);
 
 	if (local_command(command, &output) == false)
 	{
+		termPQExpBuffer(&output);
 		exit(ERR_LOCAL_COMMAND);
 	}
 
