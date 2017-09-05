@@ -1264,6 +1264,7 @@ do_upstream_standby_failover(void)
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	RecoveryType primary_type = RECTYPE_UNKNOWN;
 	int r;
+	char		parsed_follow_command[MAXPGPATH] = "";
 
 	PQfinish(upstream_conn);
 	upstream_conn = NULL;
@@ -1315,7 +1316,13 @@ do_upstream_standby_failover(void)
 	log_debug(_("standby follow command is:\n  \"%s\""),
 			  config_file_options.follow_command);
 
-	r = system(config_file_options.follow_command);
+	/*
+	 * replace %n in "config_file_options.follow_command" with ID of primary
+	 * to follow.
+	 */
+	parse_follow_command(parsed_follow_command, config_file_options.follow_command, primary_node_info.node_id);
+
+	r = system(parsed_follow_command);
 
 	if (r != 0)
 	{

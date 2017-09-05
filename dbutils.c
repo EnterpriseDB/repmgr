@@ -1125,7 +1125,7 @@ _get_primary_connection(PGconn *conn,
 		node_id = atoi(PQgetvalue(res, i, 0));
 		strncpy(remote_conninfo, PQgetvalue(res, i, 1), MAXCONNINFO);
 		log_verbose(LOG_INFO,
-					_("checking role of node '%i'"),
+					_("checking role of node %i"),
 					node_id);
 
 		if (quiet)
@@ -1257,7 +1257,7 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 		"        CASE WHEN (last_wal_receive_lsn = last_wal_replay_lsn) "
 		"          THEN 0::INT "
 		"        ELSE "
-		"          EXTRACT(epoch FROM (clock_timestamp() - last_xact_replay_timestamp))::INT "
+		"          EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - last_xact_replay_timestamp))::INT "
 		"        END AS replication_lag_time, "
 		"        COALESCE(last_wal_receive_lsn, '0/0') >= last_wal_replay_lsn AS receiving_streamed_wal "
 		"   FROM ( ");
@@ -1267,18 +1267,18 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 		appendPQExpBuffer(
 			&query,
 			" SELECT CURRENT_TIMESTAMP AS ts, "
-			"        pg_last_wal_receive_lsn()       AS last_wal_receive_lsn, "
-        	"        pg_last_wal_replay_lsn()        AS last_wal_replay_lsn, "
-			"        pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
+			"        pg_catalog.pg_last_wal_receive_lsn()       AS last_wal_receive_lsn, "
+        	"        pg_catalog.pg_last_wal_replay_lsn()        AS last_wal_replay_lsn, "
+			"        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
 	}
 	else
 	{
 		appendPQExpBuffer(
 			&query,
 			" SELECT CURRENT_TIMESTAMP AS ts, "
-			"        pg_last_xlog_receive_location() AS last_wal_receive_lsn, "
-			"        pg_last_xlog_replay_location()  AS last_wal_replay_lsn, "
-			"        pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
+			"        pg_catalog.pg_last_xlog_receive_location() AS last_wal_receive_lsn, "
+			"        pg_catalog.pg_last_xlog_replay_location()  AS last_wal_replay_lsn, "
+			"        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
 	}
 
 	appendPQExpBuffer(
@@ -1485,7 +1485,7 @@ get_replication_lag_seconds(PGconn *conn)
 	appendPQExpBuffer(
 		&query,
         "          THEN 0 "
-        "        ELSE EXTRACT(epoch FROM (clock_timestamp() - pg_catalog.pg_last_xact_replay_timestamp()))::INT "
+        "        ELSE EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - pg_catalog.pg_last_xact_replay_timestamp()))::INT "
 		"          END "
         "        AS lag_seconds");
 
