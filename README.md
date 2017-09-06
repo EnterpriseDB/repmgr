@@ -774,11 +774,11 @@ can be used to reduce load on the primary and minimize bandwith usage between
 sites.
 
 `repmgr` supports cascading replication. When cloning a standby, in `repmgr.conf`
-set the command-line parameter `--upstream-node-id` to the `--node-id` of the
+set the command-line parameter `--upstream-node-id` to the `node_id` of the
 server the standby should connect to, and `repmgr` will perform the clone using
 this server and create `recovery.conf` to point to it. Note that if `--upstream-node-id`
-is not explicitly provided, `repmgr` will use the primary as the server
-to clone from and attach to.
+is not explicitly provided, `repmgr` will set the standby's `recovery.conf` to
+point to the primary node.
 
 To demonstrate cascading replication, ensure you have a primary and standby
 set up as shown above in the section "Setting up a simple replication cluster

@@ -4985,10 +4985,11 @@ do_standby_help(void)
 			 "                                        PostgreSQL data directory\n"));
 	printf(_("  --dry-run                           perform checks but don't actually clone the standby\n"));
 	printf(_("  --no-upstream-connection            when using Barman, do not connect to upstream node\n"));
-	printf(_("  --upstream-conninfo                 \"primary_conninfo\" value to write in recovery.conf\n" \
-			 "                                        when the intended upstream server does not yet exist\n"));
 	printf(_("  -R, --remote-user=USERNAME          database server username for SSH operations (default: \"%s\")\n"), runtime_options.username);
 	printf(_("  --replication-user                  user to make replication connections with (optional, not usually required)\n"));
+	printf(_("  --upstream-conninfo                 \"primary_conninfo\" value to write in recovery.conf\n" \
+			 "                                        when the intended upstream server does not yet exist\n"));
+	printf(_("  --upstream-node-id                  ID of the upstream node to replicate from (optional, defaults to primary node)\n"));
 	printf(_("  --without-barman                    do not use Barman even if configured\n"));
 	puts("");
 
