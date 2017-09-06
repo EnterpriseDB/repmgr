@@ -750,7 +750,10 @@ do_standby_register(void)
 
 	PQExpBufferData details;
 
-	log_info(_("connecting to standby database"));
+	log_info(_("connecting to local node \"%s\" (ID: %i)"),
+			 config_file_options.node_name,
+			 config_file_options.node_id);
+
 	conn = establish_db_connection_quiet(config_file_options.conninfo);
 
 	if (PQstatus(conn) != CONNECTION_OK)
@@ -867,14 +870,15 @@ do_standby_register(void)
 	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
 		RecordStatus upstream_record_status = RECORD_NOT_FOUND;
-
+		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 		upstream_record_status = get_node_record(primary_conn,
 												 runtime_options.upstream_node_id,
-												 &node_record);
+												 &upstream_node_record);
 
+		/* create placeholder upstream record if -F/--force set */
 		if (upstream_record_status != RECORD_FOUND)
 		{
-			t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+			t_node_info placeholder_upstream_node_record = T_NODE_INFO_INITIALIZER;
 
 			if (!runtime_options.force)
 			{
@@ -891,15 +895,15 @@ do_standby_register(void)
 			log_notice(_("creating placeholder record for upstream node %i"),
 					   runtime_options.upstream_node_id);
 
-			upstream_node_record.node_id = runtime_options.upstream_node_id;
-			upstream_node_record.type = STANDBY;
-			upstream_node_record.upstream_node_id = NO_UPSTREAM_NODE;
-			strncpy(upstream_node_record.conninfo, runtime_options.upstream_conninfo, MAXLEN);
-			upstream_node_record.active = false;
+			placeholder_upstream_node_record.node_id = runtime_options.upstream_node_id;
+			placeholder_upstream_node_record.type = STANDBY;
+			placeholder_upstream_node_record.upstream_node_id = NO_UPSTREAM_NODE;
+			strncpy(placeholder_upstream_node_record.conninfo, runtime_options.upstream_conninfo, MAXLEN);
+			placeholder_upstream_node_record.active = false;
 
 			record_created = create_node_record(primary_conn,
 												"standby register",
-												&upstream_node_record);
+												&placeholder_upstream_node_record);
 
 			/*
 			 * It's possible, in the kind of scenario this functionality is intended
@@ -915,7 +919,7 @@ do_standby_register(void)
 			{
 				upstream_record_status = get_node_record(primary_conn,
 														 runtime_options.upstream_node_id,
-														 &node_record);
+														 &placeholder_upstream_node_record);
 				if (upstream_record_status != RECORD_FOUND)
 				{
 					log_error(_("unable to create placeholder record for upstream node %i"),
@@ -929,7 +933,6 @@ do_standby_register(void)
 				log_info(_("a record for upstream node %i was already created"),
 						 runtime_options.upstream_node_id);
 			}
-
 		}
 		else if (node_record.active == false)
 		{
@@ -954,8 +957,73 @@ do_standby_register(void)
 					   config_file_options.node_id,
 					   runtime_options.upstream_node_id);
 		}
+		/* check upstream node is accessible and this node is connected */
+		else
+		{
+			PGconn *upstream_conn = NULL;
+
+			upstream_conn = establish_db_connection(upstream_node_record.conninfo, false);
+
+			if (PQstatus(upstream_conn) != CONNECTION_OK)
+			{
+				if (!runtime_options.force)
+				{
+					log_error(_("unable to connect to upstream node \"%s\" (ID: %i)"),
+							  upstream_node_record.node_name,
+							  upstream_node_record.node_id);
+					log_hint(_("use -F/--force to continue anyway"));
+					PQfinish(primary_conn);
+					if (PQstatus(conn) == CONNECTION_OK)
+						PQfinish(conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				log_warning(_("unable to connect to upstream node \"%s\" (ID: %i) but continuing anyway"),
+							upstream_node_record.node_name,
+							upstream_node_record.node_id);
+			}
+			else
+			{
+				/* check our standby is connected */
+				if (is_downstream_node_attached(upstream_conn, config_file_options.node_name) == true)
+				{
+					log_verbose(LOG_INFO, _("local node is attached to upstream"));
+				}
+				else
+				{
+					if (!runtime_options.force)
+					{
+						log_error(_("this node does not appear to be attached to upstream node \"%s\" (ID: %i)"),
+								  config_file_options.node_name,
+								  config_file_options.node_id);
+
+						log_detail(_("no record for application name \"%s\" found in \"pg_stat_replication\""),
+								   config_file_options.node_name);
+						log_hint(_("use -F/--force to continue anyway"));
+						PQfinish(primary_conn);
+						if (PQstatus(conn) == CONNECTION_OK)
+							PQfinish(conn);
+						exit(ERR_BAD_CONFIG);
+					}
+					log_warning(_("this node does not appear to be attached to upstream node \"%s\" (ID: %i)"),
+								config_file_options.node_name,
+								config_file_options.node_id);
+				}
+				PQfinish(upstream_conn);
+			}
+		}
 	}
 
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("all pre-requisites for \"standby register\" are met"));
+
+		PQfinish(primary_conn);
+		if (PQstatus(conn) == CONNECTION_OK)
+			PQfinish(conn);
+		exit(SUCCESS);
+	}
 
 	/*
 	 * populate node record structure with current values (this will overwrite

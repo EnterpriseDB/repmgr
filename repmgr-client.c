@@ -1514,6 +1514,7 @@ check_cli_parameters(const int action)
 			case PRIMARY_REGISTER:
 			case PRIMARY_UNREGISTER:
 			case STANDBY_CLONE:
+			case STANDBY_REGISTER:
 			case STANDBY_SWITCHOVER:
 			case NODE_SERVICE:
 				break;

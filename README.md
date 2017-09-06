@@ -1614,12 +1614,17 @@ The following commands are available:
     the `recovery.conf` file required to start the server as a streaming
     replication standby.
 
+    Execute with the`--dry-run` option to check what would happen without actually
+    cloning the standby. Note this will not simulate the actual cloning process,
+    but will check the prerequisites are met for cloning the standby.
 
 * `standby register`
 
     Registers a standby with `repmgr`. This command needs to be executed to enable
     promote/follow operations and to allow `repmgrd` to work with the node.
-    An existing standby can be registered using this command.
+    An existing standby can be registered using this command. Execute with the
+    `--dry-run` option to check what would happen without actually registering the
+    standby.
 
 * `standby unregister`
 
