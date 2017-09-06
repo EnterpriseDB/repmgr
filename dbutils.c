@@ -3184,6 +3184,8 @@ drop_replication_slot(PGconn *conn, char *slot_name)
 	log_verbose(LOG_DEBUG, "replication slot \"%s\" successfully dropped",
 				slot_name);
 
+	PQclear(res);
+
 	return true;
 }
 
