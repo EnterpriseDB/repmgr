@@ -3404,7 +3404,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		{
 			param_set(&repl_conninfo, "user", runtime_options.replication_user);
 		}
-		else if (node_info->repluser[0] != '\n')
+		else if (node_info->repluser[0] != '\0')
 		{
 			param_set(&repl_conninfo, "user", node_info->repluser);
 		}
@@ -3416,7 +3416,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		if (xlog_stream == true)
 			min_replication_connections += 1;
 
-		log_verbose(LOG_NOTICE, "checking for available walsenders on upstream node (%i required)",
+		log_verbose(LOG_NOTICE, "checking for available walsenders on source node (%i required)",
 					min_replication_connections);
 
 		connections = pg_malloc0(sizeof(PGconn *) * min_replication_connections);
