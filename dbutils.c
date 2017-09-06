@@ -1094,7 +1094,7 @@ _get_primary_connection(PGconn *conn,
 	}
 
 	/* find all registered nodes  */
-	log_verbose(LOG_INFO, _("retrieving node list"));
+	log_verbose(LOG_INFO, _("searching for primary node"));
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
@@ -1125,7 +1125,7 @@ _get_primary_connection(PGconn *conn,
 		node_id = atoi(PQgetvalue(res, i, 0));
 		strncpy(remote_conninfo, PQgetvalue(res, i, 1), MAXCONNINFO);
 		log_verbose(LOG_INFO,
-					_("checking role of node %i"),
+					_("checking if node %i is primary"),
 					node_id);
 
 		if (quiet)
@@ -1158,7 +1158,7 @@ _get_primary_connection(PGconn *conn,
 		if (recovery_type == RECTYPE_PRIMARY)
 		{
 			PQclear(res);
-			log_debug(_("get_primary_connection(): current primary node is %i"), node_id);
+			log_verbose(LOG_INFO, _("current primary node is %i"), node_id);
 
 			if (primary_id != NULL)
 			{

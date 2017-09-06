@@ -212,8 +212,10 @@ do_standby_clone(void)
 	if (runtime_options.no_upstream_connection == false)
 	{
 		/*
-		 * This performs sanity checks on the upstream node, also
-		 * sets "recovery_conninfo_str" and "upstream_repluser"
+		 * This connects to the source node and performs sanity checks, also
+		 * sets "recovery_conninfo_str", "upstream_repluser" and "upstream_node_id".
+		 *
+		 * Will error out if source connection not possible and not in "barman" mode.
 		 */
 		check_source_server();
 	}
@@ -437,6 +439,15 @@ do_standby_clone(void)
 
 	if (runtime_options.dry_run == true)
 	{
+		if (upstream_node_id != UNKNOWN_NODE_ID)
+		{
+			log_notice(_("standby will attach to upstream node %i"), upstream_node_id);
+		}
+		else
+		{
+			log_warning(_("unable to determine a valid upstream node id"));
+		}
+
 		if (mode == pg_basebackup && runtime_options.fast_checkpoint == false)
 		{
 			log_hint(_("consider using the -c/--fast-checkpoint option"));
