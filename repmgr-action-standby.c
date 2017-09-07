@@ -83,7 +83,7 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 static int  get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
-static NodeStatus parse_node_status_is_shutdown(const char *node_status_output, XLogRecPtr *checkPoint);
+static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
 static CheckStatus parse_node_check_replication_lag(const char *node_check_output, int *seconds, int *threshold);
 
@@ -2579,7 +2579,7 @@ do_standby_switchover(void)
 
 
 		/* database server could not be contacted */
-		if (ping_res == PQPING_NO_RESPONSE ||PQPING_NO_ATTEMPT)
+		if (ping_res == PQPING_NO_RESPONSE || ping_res == PQPING_NO_ATTEMPT)
 		{
 			bool command_success;
 
@@ -2593,7 +2593,7 @@ do_standby_switchover(void)
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 			appendPQExpBuffer(&remote_command_str,
-							  "node status --is-shutdown");
+							  "node status --is-shutdown--cleanly");
 
 			initPQExpBuffer(&command_output);
 
@@ -2607,12 +2607,12 @@ do_standby_switchover(void)
 
 			if (command_success == true)
 			{
-				NodeStatus status = parse_node_status_is_shutdown(command_output.data, &remote_last_checkpoint_lsn);
+				NodeStatus status = parse_node_status_is_shutdown_cleanly(command_output.data, &remote_last_checkpoint_lsn);
 
 				if (status == NODE_STATUS_DOWN && remote_last_checkpoint_lsn != InvalidXLogRecPtr)
 				{
 					shutdown_success = true;
-					log_notice(_("current primary has been shut down at location %X/%X"),
+					log_notice(_("current primary has been cleanly shut down at location %X/%X"),
 							   format_lsn(remote_last_checkpoint_lsn));
 					termPQExpBuffer(&command_output);
 
@@ -4641,7 +4641,7 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 
 /* TODO: consolidate code in below functions */
 static NodeStatus
-parse_node_status_is_shutdown(const char *node_status_output, XLogRecPtr *checkPoint)
+parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint)
 {
 	int   options_len = 0;
 	char *options_string = NULL;
@@ -4748,6 +4748,10 @@ parse_node_status_is_shutdown(const char *node_status_output, XLogRecPtr *checkP
 				else if (strncmp(optarg, "SHUTDOWN", MAXLEN) == 0)
 				{
 					node_status = NODE_STATUS_DOWN;
+				}
+				else if (strncmp(optarg, "UNCLEAN_SHUTDOWN", MAXLEN) == 0)
+				{
+					node_status = NODE_STATUS_UNCLEAN_SHUTDOWN;
 				}
 				else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
 				{

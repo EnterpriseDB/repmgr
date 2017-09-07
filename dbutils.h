@@ -54,7 +54,8 @@ typedef enum {
 typedef enum {
 	NODE_STATUS_UNKNOWN = -1,
 	NODE_STATUS_UP,
-	NODE_STATUS_DOWN
+	NODE_STATUS_DOWN,
+	NODE_STATUS_UNCLEAN_SHUTDOWN
 } NodeStatus;
 
 typedef enum {

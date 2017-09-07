@@ -382,8 +382,8 @@ main(int argc, char **argv)
 			/* "node status" options *
 			 * --------------------- */
 
-			case OPT_IS_SHUTDOWN:
-				runtime_options.is_shutdown = true;
+			case OPT_IS_SHUTDOWN_CLEANLY:
+				runtime_options.is_shutdown_cleanly = true;
 				break;
 
 			/* "node check" options *
@@ -1448,8 +1448,8 @@ check_cli_parameters(const int action)
 		}
 	}
 
-	/* repmgr node status --is-shutdown */
-	if (runtime_options.is_shutdown == true)
+	/* repmgr node status --is-shutdown-cleanly */
+	if (runtime_options.is_shutdown_cleanly == true)
 	{
 		switch (action)
 		{
@@ -1458,7 +1458,7 @@ check_cli_parameters(const int action)
 			default:
 				item_list_append_format(
 					&cli_warnings,
-					_("--is-shutdown will be ignored when executing %s"),
+					_("--is-shutdown-cleanly will be ignored when executing %s"),
 					action_name(action));
 		}
 	}

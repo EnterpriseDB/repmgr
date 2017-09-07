@@ -80,7 +80,7 @@ typedef struct
 	bool		siblings_follow;
 
 	/* "node status" options */
-	bool		is_shutdown;
+	bool		is_shutdown_cleanly;
 
 	/* "node check" options */
 	bool		archive_ready;

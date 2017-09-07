@@ -59,7 +59,7 @@
 #define OPT_LIST_ACTIONS                   1025
 #define OPT_CHECK                          1026
 #define OPT_CHECKPOINT                     1027
-#define OPT_IS_SHUTDOWN                    1028
+#define OPT_IS_SHUTDOWN_CLEANLY            1028
 #define OPT_ALWAYS_PROMOTE                 1029
 #define OPT_FORCE_REWIND                   1030
 #define OPT_NAGIOS                         1031
@@ -133,7 +133,7 @@ static struct option long_options[] =
 	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW },
 
 /* "node status" options */
-	{"is-shutdown", no_argument, NULL, OPT_IS_SHUTDOWN },
+	{"is-shutdown-cleanly", no_argument, NULL, OPT_IS_SHUTDOWN_CLEANLY },
 
 /* "node check" options */
 	{"archive-ready", no_argument, NULL, OPT_ARCHIVE_READY },

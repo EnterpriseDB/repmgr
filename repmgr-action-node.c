@@ -25,7 +25,7 @@ static t_server_action parse_server_action(const char *action);
 
 static void _do_node_service_check(void);
 static void _do_node_service_list_actions(t_server_action action);
-static void _do_node_status_is_shutdown(void);
+static void _do_node_status_is_shutdown_cleanly(void);
 static void _do_node_archive_config(void);
 static void _do_node_restore_config(void);
 
@@ -42,7 +42,7 @@ static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_inf
  * read the data directory.
  *
  * Parameters:
- *   --is-shutdown (for internal use only)
+ *   --is-shutdown-cleanly (for internal use only)
  *   --csv
  */
 
@@ -66,9 +66,9 @@ do_node_status(void)
 
 	char 	 	 	data_dir[MAXPGPATH] = "";
 
-	if (runtime_options.is_shutdown == true)
+	if (runtime_options.is_shutdown_cleanly == true)
 	{
-		return _do_node_status_is_shutdown();
+		return _do_node_status_is_shutdown_cleanly();
 	}
 
 	/* config file required, so we should have "conninfo" and "data_directory" */
@@ -438,19 +438,20 @@ do_node_status(void)
  *
  * Returns "longopt" output:
  *
- * --status=(RUNNING|SHUTDOWN|UNKNOWN)
+ * --status=(RUNNING|SHUTDOWN|UNCLEAN_SHUTDOWN|UNKNOWN)
  * --last-checkpoint=...
  */
 
 static
-void _do_node_status_is_shutdown(void)
+void _do_node_status_is_shutdown_cleanly(void)
 {
-	PGPing status;
+	PGPing ping_status;
 	PQExpBufferData output;
 
-	bool is_shutdown = true;
 	DBState db_state;
 	XLogRecPtr checkPoint = InvalidXLogRecPtr;
+
+	NodeStatus node_status = NODE_STATUS_UNKNOWN;
 
 	initPQExpBuffer(&output);
 
@@ -467,17 +468,15 @@ void _do_node_status_is_shutdown(void)
 		return;
 	}
 
-	status = PQping(config_file_options.conninfo);
+	ping_status = PQping(config_file_options.conninfo);
 
-	switch (status)
+	switch (ping_status)
 	{
 		case PQPING_OK:
-			appendPQExpBuffer(&output, "RUNNING");
-			is_shutdown = false;
+			node_status = NODE_STATUS_UP;
 			break;
 		case PQPING_REJECT:
-			appendPQExpBuffer(&output, "RUNNING");
-			is_shutdown = false;
+			node_status = NODE_STATUS_UP;
 			break;
 		case PQPING_NO_ATTEMPT:
 		case PQPING_NO_RESPONSE:
@@ -491,31 +490,43 @@ void _do_node_status_is_shutdown(void)
 
 	if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
 	{
-		appendPQExpBuffer(&output, "RUNNING");
-		is_shutdown = false;
+		/* node is not running, but pg_controldata says it is - unclean shutdown */
+		if (node_status != NODE_STATUS_UP)
+		{
+			node_status = NODE_STATUS_UNCLEAN_SHUTDOWN;
+		}
 	}
-
 
 	checkPoint = get_latest_checkpoint_location(config_file_options.data_directory);
 
 	/* unable to read pg_control, don't know what's happening */
 	if (checkPoint == InvalidXLogRecPtr)
 	{
-		appendPQExpBuffer(&output, "UNKNOWN");
-		is_shutdown = false;
+		node_status = NODE_STATUS_UNKNOWN;
 	}
-
-	/* server is running in some state - just output --status */
-	if (is_shutdown == false)
+	/*  if still "UNKNOWN" at this point, then the node must be cleanly shut down  */
+	else if (node_status == NODE_STATUS_UNKNOWN)
 	{
-		printf("%s\n", output.data);
-		termPQExpBuffer(&output);
-		return;
+		node_status = NODE_STATUS_DOWN;
 	}
 
-	appendPQExpBuffer(&output,
-					  "SHUTDOWN --last-checkpoint-lsn=%X/%X",
-					  format_lsn(checkPoint));
+	switch (node_status)
+	{
+		case NODE_STATUS_UP:
+			appendPQExpBuffer(&output, "RUNNING");
+			break;
+		case NODE_STATUS_UNCLEAN_SHUTDOWN:
+			appendPQExpBuffer(&output, "UNCLEAN_SHUTDOWN");
+			break;
+		case NODE_STATUS_DOWN:
+			appendPQExpBuffer(&output,
+							  "SHUTDOWN --last-checkpoint-lsn=%X/%X",
+							  format_lsn(checkPoint));
+			break;
+		case NODE_STATUS_UNKNOWN:
+			appendPQExpBuffer(&output, "UNKNOWN");
+			break;
+	}
 
 	printf("%s\n", output.data);
 	termPQExpBuffer(&output);
