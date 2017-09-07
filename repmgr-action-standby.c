@@ -2593,7 +2593,7 @@ do_standby_switchover(void)
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 			appendPQExpBuffer(&remote_command_str,
-							  "node status --is-shutdown--cleanly");
+							  "node status --is-shutdown-cleanly");
 
 			initPQExpBuffer(&command_output);
 
@@ -2623,9 +2623,7 @@ do_standby_switchover(void)
 			termPQExpBuffer(&command_output);
 		}
 
-		/* XXX make configurable? */
 		sleep(config_file_options.reconnect_interval);
-		i++;
 	}
 
 	if (shutdown_success == false)
@@ -2720,6 +2718,8 @@ do_standby_switchover(void)
 					  node_rejoin_options.data,
 					  local_node_record.conninfo);
 
+	termPQExpBuffer(&node_rejoin_options);
+
 	log_debug("executing:\n  \"%s\"", remote_command_str.data);
 	initPQExpBuffer(&command_output);
 
@@ -2730,14 +2730,15 @@ do_standby_switchover(void)
 		&command_output);
 
 	termPQExpBuffer(&remote_command_str);
-	termPQExpBuffer(&node_rejoin_options);
 
 	/* TODO: verify this node's record was updated correctly */
 
-	if (command_success == false)
+	if (command_success == false || command_output.data[0] == '0')
 	{
 		log_error(_("rejoin failed %i"), r);
-		log_detail("%s", command_output.data);
+
+		if (strlen(command_output.data > 2))
+			log_detail("%s", command_output.data);
 
 		create_event_record(local_conn,
 							&config_file_options,
@@ -2809,7 +2810,6 @@ do_standby_switchover(void)
 			if (cell->node_info->reachable == false)
 				continue;
 
-
 			record_status = get_node_record(local_conn,
 											cell->node_info->node_id,
 											&sibling_node_record);
@@ -2818,23 +2818,28 @@ do_standby_switchover(void)
 			make_remote_repmgr_path(&remote_command_str, &sibling_node_record);
 
 			appendPQExpBuffer(&remote_command_str,
-							  "standby follow");
+							  "standby follow 2>/dev/null && echo \"1\" || echo \"0\"");
 			get_conninfo_value(cell->node_info->conninfo, "host", host);
 			log_debug("executing:\n  \"%s\"", remote_command_str.data);
+
+			initPQExpBuffer(&command_output);
 
 			success = remote_command(
 				host,
 				runtime_options.remote_user,
 				remote_command_str.data,
-				NULL);
+				&command_output);
 
-			if (success == false)
+			termPQExpBuffer(&remote_command_str);
+
+			if (success == false || command_output.data[0] == '0')
 			{
 				log_warning(_("STANDBY FOLLOW failed on node \"%s\""),
 							cell->node_info->node_name);
 				failed_follow_count++;
 			}
-			termPQExpBuffer(&remote_command_str);
+
+			termPQExpBuffer(&command_output);
 		}
 
 		if (failed_follow_count == 0)
