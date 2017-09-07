@@ -453,7 +453,7 @@ do_standby_clone(void)
 			log_hint(_("consider using the -c/--fast-checkpoint option"));
 		}
 
-		log_info(_("all pre-requisites for \"standby clone\" are met"));
+		log_info(_("all prerequisites for \"standby clone\" are met"));
 
 		PQfinish(source_conn);
 		exit(SUCCESS);
@@ -1017,7 +1017,7 @@ do_standby_register(void)
 
 	if (runtime_options.dry_run == true)
 	{
-		log_info(_("all pre-requisites for \"standby register\" are met"));
+		log_info(_("all prerequisites for \"standby register\" are met"));
 
 		PQfinish(primary_conn);
 		if (PQstatus(conn) == CONNECTION_OK)
@@ -2077,7 +2077,7 @@ do_standby_switchover(void)
 
 		initPQExpBuffer(&msg);
 		appendPQExpBuffer(&msg,
-						  _("pre-requisites for using pg_rewind are met"));
+						  _("prerequisites for using pg_rewind are met"));
 
 		if (runtime_options.dry_run == true)
 		{
@@ -2134,7 +2134,7 @@ do_standby_switchover(void)
 	initPQExpBuffer(&remote_command_str);
 	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 
-	appendPQExpBuffer(&remote_command_str, "--version");
+	appendPQExpBuffer(&remote_command_str, "--version 2>/dev/null && echo \"1\" || echo \"0\"");
 	initPQExpBuffer(&command_output);
 	command_success = remote_command(
 		remote_host,
@@ -2144,15 +2144,41 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&remote_command_str);
 
-	if (command_success == false)
+	if (command_success == false || command_output.data[0] == '0')
 	{
+		PQExpBufferData hint;
+
 		log_error(_("unable to execute \"%s\" on \"%s\""),
 				  progname(), remote_host);
 
-		if (strlen(command_output.data))
+		if (strlen(command_output.data) > 2)
 			log_detail("%s", command_output.data);
 
 		termPQExpBuffer(&command_output);
+
+		initPQExpBuffer(&hint);
+		appendPQExpBuffer(
+			&hint,
+			_("check \"pg_bindir\" is set to the correct path in \"repmgr.conf\"; current value: "));
+
+		if (strlen(config_file_options.pg_bindir))
+		{
+			appendPQExpBuffer(
+				&hint,
+				"\"%s\"", config_file_options.pg_bindir);
+		}
+		else
+		{
+			appendPQExpBuffer(
+				&hint,
+				"(not set)");
+		}
+
+
+		log_hint("%s", hint.data);
+
+		termPQExpBuffer(&hint);
+
 		PQfinish(remote_conn);
 		PQfinish(local_conn);
 
