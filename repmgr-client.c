@@ -1277,6 +1277,7 @@ check_cli_parameters(const int action)
 		{
 			case STANDBY_CLONE:
 			case STANDBY_FOLLOW:
+			case STANDBY_REGISTER:
 			case CLUSTER_SHOW:
 			case CLUSTER_MATRIX:
 			case CLUSTER_CROSSCHECK:
