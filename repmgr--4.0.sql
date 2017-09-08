@@ -58,68 +58,67 @@ LEFT JOIN repmgr.nodes un
 
 CREATE FUNCTION set_local_node_id(INT)
   RETURNS VOID
-  AS '$libdir/repmgr', 'set_local_node_id'
+  AS 'MODULE_PATHNAME', 'set_local_node_id'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION standby_set_last_updated()
   RETURNS TIMESTAMP WITH TIME ZONE
-  AS '$libdir/repmgr', 'standby_set_last_updated'
+  AS 'MODULE_PATHNAME', 'standby_set_last_updated'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION standby_get_last_updated()
   RETURNS TIMESTAMP WITH TIME ZONE
-  AS '$libdir/repmgr', 'standby_get_last_updated'
+  AS 'MODULE_PATHNAME', 'standby_get_last_updated'
   LANGUAGE C STRICT;
 
 /* failover functions */
 
 CREATE FUNCTION request_vote(INT,INT)
   RETURNS pg_lsn
-  AS '$libdir/repmgr', 'request_vote'
+  AS 'MODULE_PATHNAME', 'request_vote'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION get_voting_status()
   RETURNS INT
-  AS '$libdir/repmgr', 'get_voting_status'
+  AS 'MODULE_PATHNAME', 'get_voting_status'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION set_voting_status_initiated()
   RETURNS INT
-  AS '$libdir/repmgr', 'set_voting_status_initiated'
+  AS 'MODULE_PATHNAME', 'set_voting_status_initiated'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION other_node_is_candidate(INT, INT)
   RETURNS BOOL
-  AS '$libdir/repmgr', 'other_node_is_candidate'
+  AS 'MODULE_PATHNAME', 'other_node_is_candidate'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION notify_follow_primary(INT)
   RETURNS VOID
-  AS '$libdir/repmgr', 'notify_follow_primary'
+  AS 'MODULE_PATHNAME', 'notify_follow_primary'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION get_new_primary()
   RETURNS INT
-  AS '$libdir/repmgr', 'get_new_primary'
+  AS 'MODULE_PATHNAME', 'get_new_primary'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION reset_voting_status()
   RETURNS VOID
-  AS '$libdir/repmgr', 'reset_voting_status'
+  AS 'MODULE_PATHNAME', 'reset_voting_status'
   LANGUAGE C STRICT;
 
 
 CREATE FUNCTION am_bdr_failover_handler(INT)
   RETURNS BOOL
-  AS '$libdir/repmgr', 'am_bdr_failover_handler'
+  AS 'MODULE_PATHNAME', 'am_bdr_failover_handler'
   LANGUAGE C STRICT;
 
 
 CREATE FUNCTION unset_bdr_failover_handler()
   RETURNS VOID
-  AS '$libdir/repmgr', 'unset_bdr_failover_handler'
+  AS 'MODULE_PATHNAME', 'unset_bdr_failover_handler'
   LANGUAGE C STRICT;
-
 
 
 CREATE VIEW repmgr.replication_status AS
