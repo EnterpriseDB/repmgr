@@ -222,7 +222,7 @@ monitor_streaming_primary(void)
 		if (is_server_available(local_node_info.conninfo) == false)
 		{
 
-			/* node is down, we were expecting it to be up */
+			/* local node is down, we were expecting it to be up */
 			if (local_node_info.node_status == NODE_STATUS_UP)
 			{
 				PQExpBufferData event_details;
@@ -617,11 +617,10 @@ monitor_streaming_standby(void)
 						failover_done = do_upstream_standby_failover();
 					}
 
-					// it's possible it will make sense to return in
-					// all cases to restart monitoring
+					/* XXX it's possible it will make sense to return in all cases to restart monitoring */
 					if (failover_done == true)
 					{
-						primary_node_id = get_primary_node_id(primary_conn);
+						primary_node_id = get_primary_node_id(local_conn);
 						return;
 					}
 				}
@@ -1486,7 +1485,7 @@ promote_self(void)
 		int primary_node_id;
 
 		upstream_conn = get_primary_connection(local_conn,
-											  &primary_node_id, NULL);
+											   &primary_node_id, NULL);
 
 		if (PQstatus(upstream_conn) == CONNECTION_OK && primary_node_id == failed_primary.node_id)
 		{

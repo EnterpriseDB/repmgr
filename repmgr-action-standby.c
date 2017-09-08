@@ -1506,6 +1506,10 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
  *
  * Node must be running. To start an inactive node and point it at a
  * new primary, use "repmgr node rejoin".
+ *
+ * TODO: enable provision of new primary's conninfo parameters, which
+ * will be necessary if the primary's information has changed, but
+ * was not replicated to the current standby.
  */
 
 void
