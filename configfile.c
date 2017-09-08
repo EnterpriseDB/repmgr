@@ -1003,6 +1003,8 @@ reload_config(t_configuration_options *orig_options)
 
 		clear_event_notification_list(orig_options);
 		orig_options->event_notifications = new_options.event_notifications;
+
+		config_changed = true;
 	}
 
 	/* failover */
@@ -1136,11 +1138,15 @@ reload_config(t_configuration_options *orig_options)
 		log_notice(_("configuration file reloaded with changed parameters"));
 	}
 
+	if (config_changed == true)
+	{
+		log_info(_("configuration has changed"));
+	}
+
 	/*
-	 * if logging configuration changed, don't say the configuration didn't
-	 * change, as it clearly has.
+	 * neither logging nor other configuration has changed
 	 */
-	else
+	if (log_config_changed == false && config_changed == false)
 	{
 		log_info(_("configuration has not changed"));
 	}
