@@ -95,6 +95,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 	/*-----------
 	 * If no configuration file was provided, attempt to find a default file
 	 * in this order:
+	 *  - location provided by packager
 	 *  - current directory
 	 *  - /etc/repmgr.conf
 	 *  - default sysconfdir
@@ -102,16 +103,27 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 	 * here we just check for the existence of the file; parse_config() will
 	 * handle read errors etc.
 	 *
-	 * XXX modify this section so package maintainers can provide a patch
-	 * specifying location of a distribution-specific configuration file
 	 *-----------
 	 */
 	if (config_file_provided == false)
 	{
+		/* packagers: if feasible, patch configuration file path into "package_conf_file" */
+		char		package_conf_file[MAXPGPATH] = "";
 		char		my_exec_path[MAXPGPATH] = "";
 		char		sysconf_etc_path[MAXPGPATH] = "";
 
-		/* 1. "./repmgr.conf" */
+		/* 1. location provided by packager */
+		if (package_conf_file[0] != '\0')
+		{
+			if (stat(package_conf_file, &stat_config) == 0)
+			{
+				strncpy(config_file_path, package_conf_file, MAXPGPATH);
+				config_file_found = true;
+				goto end_search;
+			}
+		}
+
+		/* 2 "./repmgr.conf" */
 		if (verbose == true)
 		{
 			log_notice(_("looking for configuration file in current directory"));
@@ -126,7 +138,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 			goto end_search;
 		}
 
-		/* 2. "/etc/repmgr.conf" */
+		/* 3. "/etc/repmgr.conf" */
 		if (verbose == true)
 		{
 			log_notice(_("looking for configuration file in /etc"));
@@ -139,7 +151,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 			goto end_search;
 		}
 
-		/* 3. default sysconfdir */
+		/* 4. default sysconfdir */
 		if (find_my_exec(argv0, my_exec_path) < 0)
 		{
 			log_error(_("%s: could not find own program executable"), argv0);
