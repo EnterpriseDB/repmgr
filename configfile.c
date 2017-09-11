@@ -221,7 +221,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 	/* Initialize configuration options with sensible defaults */
 
-	/* node information */
+	/*-----------------
+	 * node information
+	 *-----------------
+	 */
 	options->node_id = UNKNOWN_NODE_ID;
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->conninfo, 0, sizeof(options->conninfo));
@@ -229,18 +232,21 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	options->replication_type = REPLICATION_TYPE_PHYSICAL;
 
-	/*
+	/*-------------
 	 * log settings
 	 *
 	 * note: the default for "log_level" is set in log.c and does not need
 	 * to be initialised here
+	 *-------------
 	 */
 	memset(options->log_facility, 0, sizeof(options->log_facility));
 	memset(options->log_file, 0, sizeof(options->log_file));
 	options->log_status_interval = DEFAULT_LOG_STATUS_INTERVAL;
 
-	/* standby action settings
-	 * ----------------------- */
+	/*-----------------------
+	 * standby action settings
+	 *------------------------
+	 */
 	options->use_replication_slots = false;
 	memset(options->rsync_options, 0, sizeof(options->rsync_options));
 	memset(options->ssh_options, 0, sizeof(options->ssh_options));
@@ -253,8 +259,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->recovery_min_apply_delay, 0, sizeof(options->recovery_min_apply_delay));
 	options->use_primary_conninfo_password = false;
 
-	/* repmgrd settings
-	 * ---------------- */
+	/*-----------------
+	 * repmgrd settings
+	 *-----------------
+	 */
 	options->failover = FAILOVER_MANUAL;
 	options->priority = DEFAULT_PRIORITY;
 	memset(options->location, 0, sizeof(options->location));
@@ -271,13 +279,17 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->primary_notification_timeout = DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT;
 	options->primary_follow_timeout = DEFAULT_PRIMARY_FOLLOW_TIMEOUT;
 
-	/* BDR settings
-	 * ------------ */
+	/*-------------
+	 * BDR settings
+	 *-------------
+	 */
 	options->bdr_local_monitoring_only = false;
 	options->bdr_recovery_timeout = DEFAULT_BDR_RECOVERY_TIMEOUT;
 
-	/* service settings
-	 * ---------------- */
+	/*-----------------
+	 * service settings
+	 *-----------------
+	 */
 	memset(options->pg_ctl_options, 0, sizeof(options->pg_ctl_options));
 	memset(options->service_stop_command, 0, sizeof(options->service_stop_command));
 	memset(options->service_start_command, 0, sizeof(options->service_start_command));
@@ -285,19 +297,25 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->service_reload_command, 0, sizeof(options->service_reload_command));
 	memset(options->service_promote_command, 0, sizeof(options->service_promote_command));
 
-	/* event notification settings
-	 * --------------------------- */
+	/*----------------------------
+	 * event notification settings
+	 *----------------------------
+	 */
 	memset(options->event_notification_command, 0, sizeof(options->event_notification_command));
 	options->event_notifications.head = NULL;
 	options->event_notifications.tail = NULL;
 
-	/* barman settings */
-	/* --------------- */
+	/*----------------
+	 * barman settings
+	 * ---------------
+	 */
 	memset(options->barman_server, 0, sizeof(options->barman_server));
 	memset(options->barman_config, 0, sizeof(options->barman_config));
 
-	/* undocumented test settings */
-	/* -------------------------- */
+	/*---------------------------
+	 * undocumented test settings
+	 *---------------------------
+	 */
 	options->promote_delay = 0;
 
 	/*

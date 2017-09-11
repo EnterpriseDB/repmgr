@@ -209,8 +209,10 @@ main(int argc, char **argv)
 				printf("%s %s\n", progname(), REPMGR_VERSION);
 				exit(SUCCESS);
 
-			/* general configuration options
-			 * ----------------------------- */
+			/*------------------------------
+			 * general configuration options
+			 *------------------------------
+			 */
 
 			/* -b/--pg_bindir */
 			case 'b':
@@ -242,8 +244,10 @@ main(int argc, char **argv)
 				runtime_options.wait = true;
 				break;
 
-			/* database connection options */
-			/* --------------------------- */
+			/*----------------------------
+			 * database connection options
+			 *----------------------------
+			 */
 
 			/*
 			 * These are the standard database connection options; with the
@@ -283,8 +287,10 @@ main(int argc, char **argv)
 				runtime_options.connection_param_provided = true;
 				break;
 
-			/* other connection options */
-			/* ------------------------ */
+			/*-------------------------
+			 * other connection options
+			 *-------------------------
+			 */
 
 			/* -R/--remote_user */
 			case 'R':
@@ -296,8 +302,10 @@ main(int argc, char **argv)
 				strncpy(runtime_options.superuser, optarg, MAXLEN);
 				break;
 
-			/* node options *
-			 * ------------ */
+			/*-------------
+			 * node options
+			 *-------------
+			 */
 
 			/* -D/--pgdata/--data-dir */
 			case 'D':
@@ -322,8 +330,10 @@ main(int argc, char **argv)
 				runtime_options.upstream_node_id = repmgr_atoi(optarg, "--upstream-node-id", &cli_errors, false);
 				break;
 
-			/* "standby clone" options *
-			 * ----------------------- */
+			/*------------------------
+			 * "standby clone" options
+			 *------------------------
+			 */
 
 			/* -c/--fast-checkpoint */
 			case 'c':
@@ -366,8 +376,10 @@ main(int argc, char **argv)
 				runtime_options.without_barman = true;
 				break;
 
-			/* "standby register" options *
-			 * -------------------------- */
+			/*---------------------------
+			 * "standby register" options
+			 *---------------------------
+			 */
 
 			case OPT_REGISTER_WAIT:
 				runtime_options.wait_register_sync = true;
@@ -377,8 +389,10 @@ main(int argc, char **argv)
 				}
 				break;
 
-			/* "standby switchover" options *
-			 * ---------------------------- */
+			/*-----------------------------
+			 * "standby switchover" options
+			 *-----------------------------
+			 */
 
 			case OPT_ALWAYS_PROMOTE:
 				runtime_options.always_promote = true;
@@ -392,15 +406,19 @@ main(int argc, char **argv)
 				runtime_options.siblings_follow = true;
 				break;
 
-			/* "node status" options *
-			 * --------------------- */
+			/*----------------------
+			 * "node status" options
+			 *----------------------
+			 */
 
 			case OPT_IS_SHUTDOWN_CLEANLY:
 				runtime_options.is_shutdown_cleanly = true;
 				break;
 
-			/* "node check" options *
-			 * --------------------- */
+			/*---------------------
+			 * "node check" options
+			 *--------------------
+			 */
 			case OPT_ARCHIVE_READY:
 				runtime_options.archive_ready = true;
 				break;
@@ -421,14 +439,24 @@ main(int argc, char **argv)
 				runtime_options.slots = true;
 				break;
 
-			/* "node join" options *
-			 * ------------------- */
+			/*--------------------
+			 * "node rejoin" options
+			 *--------------------
+			 */
 			case OPT_CONFIG_FILES:
 				strncpy(runtime_options.config_files, optarg, MAXLEN);
 				break;
 
-			/* "node service" options *
-			 * ---------------------- */
+			/* internal options */
+			case OPT_CONFIG_ARCHIVE_DIR:
+				/* TODO: check this is an absolute path */
+				strncpy(runtime_options.config_archive_dir, optarg, MAXPGPATH);
+				break;
+
+			/*-----------------------
+			 * "node service" options
+			 *-----------------------
+			 */
 
 			/* --action (repmgr node service --action) */
 			case OPT_ACTION:
@@ -447,8 +475,10 @@ main(int argc, char **argv)
 				runtime_options.checkpoint = true;
 				break;
 
-			/* "cluster event" options *
-			 * ----------------------- */
+			/*------------------------
+			 * "cluster event" options
+			 *------------------------
+			 */
 
 			case OPT_EVENT:
 				strncpy(runtime_options.event, optarg, MAXLEN);
@@ -463,10 +493,10 @@ main(int argc, char **argv)
 				runtime_options.all = true;
 				break;
 
-
-
-			/* logging options *
-			 * --------------- */
+			/*----------------
+			 * logging options
+			 *----------------
+			 */
 
 			/* -L/--log-level */
 			case 'L':
@@ -504,8 +534,10 @@ main(int argc, char **argv)
 				break;
 
 
-			/* output options */
-			/* -------------- */
+			/*--------------
+			 * output options
+			 *---------------
+			 */
 			case OPT_CSV:
 				runtime_options.csv = true;
 				break;
@@ -518,14 +550,10 @@ main(int argc, char **argv)
 				runtime_options.optformat = true;
 				break;
 
-			/* internal options */
-			case OPT_CONFIG_ARCHIVE_DIR:
-				/* TODO: check this is an absolute path */
-				strncpy(runtime_options.config_archive_dir, optarg, MAXPGPATH);
-				break;
-
-			/* options deprecated since 3.3 *
-			 * ---------------------------- */
+			/*-----------------------------
+			 * options deprecated since 3.3
+			 *-----------------------------
+			 */
 			case OPT_DATA_DIR:
 				item_list_append(&cli_warnings,
 								 _("--data-dir is deprecated; use -D/--pgdata instead"));
