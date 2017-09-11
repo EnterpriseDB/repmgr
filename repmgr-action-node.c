@@ -1764,11 +1764,13 @@ do_node_rejoin(void)
 	termPQExpBuffer(&follow_output);
 }
 
+
 /*
- * Intended mainly for "internal" use by `node switchover`, which
- * calls this on the target server to archive any configuration files
- * in the data directory, which may be overwritten by an operation
- * like pg_rewind
+ * Intended mainly for "internal" use by `node rejoin` on the local node when
+ * called by "standby switchover" from the remote node.
+ *
+ * This archives any configuration files in the data directory, which may be
+ * overwritten by pg_rewind.
  *
  * Requires configuration file, optionally --config_archive_dir
  */
