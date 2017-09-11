@@ -40,11 +40,11 @@ typedef struct
 	char		config_file[MAXPGPATH];
 	bool		dry_run;
 	bool		force;
-	char		pg_bindir[MAXLEN]; /* overrides setting in repmgr.conf */
+	char		pg_bindir[MAXLEN];	/* overrides setting in repmgr.conf */
 	bool		wait;
 
 	/* logging options */
-	char		log_level[MAXLEN];  /* overrides setting in repmgr.conf */
+	char		log_level[MAXLEN];	/* overrides setting in repmgr.conf */
 	bool		log_to_file;
 	bool		terse;
 	bool		verbose;
@@ -119,7 +119,7 @@ typedef struct
 	/* following options for internal use */
 	char		config_archive_dir[MAXPGPATH];
 	OutputMode	output_mode;
-}	t_runtime_options;
+} t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
 		/* configuration metadata */ \
@@ -160,12 +160,14 @@ typedef struct
 }
 
 
-typedef enum {
+typedef enum
+{
 	barman,
 	pg_basebackup
-}	standy_clone_mode;
+} standy_clone_mode;
 
-typedef enum {
+typedef enum
+{
 	ACTION_UNKNOWN = -1,
 	ACTION_NONE,
 	ACTION_START,
@@ -184,21 +186,21 @@ extern t_configuration_options config_file_options;
 t_conninfo_param_list source_conninfo;
 
 
-extern bool	 config_file_required;
-extern char	 pg_bindir[MAXLEN];
+extern bool config_file_required;
+extern char pg_bindir[MAXLEN];
 
 extern t_node_info target_node_info;
 
 
-extern int check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
+extern int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
 extern bool create_repmgr_extension(PGconn *conn);
-extern int test_ssh_connection(char *host, char *remote_user);
+extern int	test_ssh_connection(char *host, char *remote_user);
 extern bool local_command(const char *command, PQExpBufferData *outputbuf);
 
 extern standy_clone_mode get_standby_clone_mode(void);
 
-extern int  copy_remote_files(char *host, char *remote_user, char *remote_path,
-							  char *local_path, bool is_directory, int server_version_num);
+extern int copy_remote_files(char *host, char *remote_user, char *remote_path,
+				  char *local_path, bool is_directory, int server_version_num);
 
 extern void print_error_list(ItemList *error_list, int log_level);
 
@@ -219,4 +221,4 @@ extern bool data_dir_required_for_action(t_server_action action);
 extern void get_node_data_directory(char *data_dir_buf);
 extern void init_node_record(t_node_info *node_record);
 
-#endif /* _REPMGR_CLIENT_GLOBAL_H_ */
+#endif							/* _REPMGR_CLIENT_GLOBAL_H_ */

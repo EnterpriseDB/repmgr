@@ -37,7 +37,8 @@
 /* #define REPMGR_DEBUG */
 
 static int	detect_log_facility(const char *facility);
-static void _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_list ap)
+static void
+_stderr_log_with_level(const char *level_name, int level, const char *fmt, va_list ap)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 0)));
 
 int			log_type = REPMGR_STDERR;
@@ -45,6 +46,7 @@ int			log_level = LOG_NOTICE;
 int			last_log_level = LOG_INFO;
 int			verbose_logging = false;
 int			terse_logging = false;
+
 /*
  * Global variable to be set by the main application to ensure any log output
  * emitted before logger_init is called, is output in the correct format
@@ -52,7 +54,7 @@ int			terse_logging = false;
 int			logger_output_mode = OM_DAEMON;
 
 extern void
-stderr_log_with_level(const char *level_name, int level, const char *fmt, ...)
+stderr_log_with_level(const char *level_name, int level, const char *fmt,...)
 {
 	va_list		arglist;
 
@@ -67,8 +69,8 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 	char		buf[100];
 
 	/*
-	 * Store the requested level so that if there's a subsequent
-	 * log_hint() or log_detail(), we can suppress that if appropriate.
+	 * Store the requested level so that if there's a subsequent log_hint() or
+	 * log_detail(), we can suppress that if appropriate.
 	 */
 	last_log_level = level;
 
@@ -80,6 +82,7 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 		{
 			time_t		t;
 			struct tm  *tm;
+
 			time(&t);
 			tm = localtime(&t);
 			strftime(buf, 100, "[%Y-%m-%d %H:%M:%S]", tm);
@@ -97,7 +100,7 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 }
 
 void
-log_hint(const char *fmt, ...)
+log_hint(const char *fmt,...)
 {
 	va_list		ap;
 
@@ -111,7 +114,7 @@ log_hint(const char *fmt, ...)
 
 
 void
-log_detail(const char *fmt, ...)
+log_detail(const char *fmt,...)
 {
 	va_list		ap;
 
@@ -125,7 +128,7 @@ log_detail(const char *fmt, ...)
 
 
 void
-log_verbose(int level, const char *fmt, ...)
+log_verbose(int level, const char *fmt,...)
 {
 	va_list		ap;
 
@@ -133,7 +136,7 @@ log_verbose(int level, const char *fmt, ...)
 
 	if (verbose_logging == true)
 	{
-		switch(level)
+		switch (level)
 		{
 			case LOG_EMERG:
 				_stderr_log_with_level("EMERG", level, fmt, ap);
@@ -202,8 +205,8 @@ logger_init(t_configuration_options *opts, const char *ident)
 	}
 
 	/*
-	 * STDERR only logging requested - finish here without setting up any further
-	 * logging facility.
+	 * STDERR only logging requested - finish here without setting up any
+	 * further logging facility.
 	 */
 	if (logger_output_mode == OM_COMMAND_LINE)
 		return true;
@@ -251,9 +254,10 @@ logger_init(t_configuration_options *opts, const char *ident)
 	{
 		FILE	   *fd;
 
-		/* Check if we can write to the specified file before redirecting
-		 * stderr - if freopen() fails, stderr output will vanish into
-		 * the ether and the user won't know what's going on.
+		/*
+		 * Check if we can write to the specified file before redirecting
+		 * stderr - if freopen() fails, stderr output will vanish into the
+		 * ether and the user won't know what's going on.
 		 */
 
 		fd = fopen(opts->log_file, "a");
@@ -270,9 +274,9 @@ logger_init(t_configuration_options *opts, const char *ident)
 		fd = freopen(opts->log_file, "a", stderr);
 
 		/*
-		 * It's possible freopen() may still fail due to e.g. a race condition;
-		 * as it's not feasible to restore stderr after a failed freopen(),
-		 * we'll write to stdout as a last resort.
+		 * It's possible freopen() may still fail due to e.g. a race
+		 * condition; as it's not feasible to restore stderr after a failed
+		 * freopen(), we'll write to stdout as a last resort.
 		 */
 		if (fd == NULL)
 		{
@@ -318,7 +322,8 @@ logger_set_verbose(void)
  * options and hints.
  */
 
-void logger_set_terse(void)
+void
+logger_set_terse(void)
 {
 	terse_logging = true;
 }

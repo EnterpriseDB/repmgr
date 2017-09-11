@@ -14,14 +14,14 @@
 
 typedef struct
 {
-	bool control_file_processed;
+	bool		control_file_processed;
 	ControlFileData *control_file;
 } ControlFileInfo;
 
 extern DBState get_db_state(const char *data_directory);
-extern const char * describe_db_state(DBState state);
-extern int get_data_checksum_version(const char *data_directory);
+extern const char *describe_db_state(DBState state);
+extern int	get_data_checksum_version(const char *data_directory);
 extern uint64 get_system_identifier(const char *data_directory);
 extern XLogRecPtr get_latest_checkpoint_location(const char *data_directory);
 
-#endif /* _CONTROLDATA_H_ */
+#endif							/* _CONTROLDATA_H_ */

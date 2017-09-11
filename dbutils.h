@@ -33,52 +33,60 @@
 
 #define ERRBUFF_SIZE 512
 
-typedef enum {
+typedef enum
+{
 	UNKNOWN = 0,
 	PRIMARY,
 	STANDBY,
 	BDR
 } t_server_type;
 
-typedef enum {
+typedef enum
+{
 	REPMGR_INSTALLED = 0,
 	REPMGR_AVAILABLE,
 	REPMGR_UNAVAILABLE,
-    REPMGR_UNKNOWN
+	REPMGR_UNKNOWN
 } ExtensionStatus;
 
-typedef enum {
+typedef enum
+{
 	RECTYPE_UNKNOWN = -1,
 	RECTYPE_PRIMARY,
 	RECTYPE_STANDBY
 } RecoveryType;
 
-typedef enum {
+typedef enum
+{
 	RECORD_ERROR = -1,
 	RECORD_FOUND,
 	RECORD_NOT_FOUND
 } RecordStatus;
 
-typedef enum {
+typedef enum
+{
 	MS_NORMAL = 0,
 	MS_DEGRADED = 1
 } MonitoringState;
 
-typedef enum {
+typedef enum
+{
 	NODE_STATUS_UNKNOWN = -1,
 	NODE_STATUS_UP,
 	NODE_STATUS_DOWN,
 	NODE_STATUS_UNCLEAN_SHUTDOWN
 } NodeStatus;
 
-typedef enum {
+typedef enum
+{
 	VR_VOTE_REFUSED = -1,
 	VR_POSITIVE_VOTE,
 	VR_NEGATIVE_VOTE
 } VoteRequestResult;
 
 
-typedef enum {
+typedef enum
+{
 	SLOT_UNKNOWN = -1,
 	SLOT_INACTIVE,
 	SLOT_ACTIVE
@@ -90,36 +98,36 @@ typedef enum {
 typedef struct s_node_info
 {
 	/* contents of "repmgr.nodes" */
-	int			  node_id;
-	int			  upstream_node_id;
+	int			node_id;
+	int			upstream_node_id;
 	t_server_type type;
-	char		  node_name[MAXLEN];
-	char		  upstream_node_name[MAXLEN];
-	char		  conninfo[MAXLEN];
-	char		  repluser[NAMEDATALEN];
-	char		  location[MAXLEN];
-	int			  priority;
-	bool		  active;
-	char		  slot_name[MAXLEN];
-	char		  config_file[MAXPGPATH];
+	char		node_name[MAXLEN];
+	char		upstream_node_name[MAXLEN];
+	char		conninfo[MAXLEN];
+	char		repluser[NAMEDATALEN];
+	char		location[MAXLEN];
+	int			priority;
+	bool		active;
+	char		slot_name[MAXLEN];
+	char		config_file[MAXPGPATH];
 	/* used during failover to track node status */
-	XLogRecPtr	  last_wal_receive_lsn;
-	NodeStatus	  node_status;
-	RecoveryType  recovery_type;
+	XLogRecPtr	last_wal_receive_lsn;
+	NodeStatus	node_status;
+	RecoveryType recovery_type;
 	MonitoringState monitoring_state;
-	PGconn		 *conn;
+	PGconn	   *conn;
 	/* for ad-hoc use e.g. when working with a list of nodes */
-    char		  details[MAXLEN];
-	bool		  reachable;
-	bool		  attached;
+	char		details[MAXLEN];
+	bool		reachable;
+	bool		attached;
 	/* various statistics */
-	int			  max_wal_senders;
-	int			  attached_wal_receivers;
-	int			  max_replication_slots;
-	int			  total_replication_slots;
-	int			  active_replication_slots;
-	int			  inactive_replication_slots;
-}	t_node_info;
+	int			max_wal_senders;
+	int			attached_wal_receivers;
+	int			max_replication_slots;
+	int			total_replication_slots;
+	int			active_replication_slots;
+	int			inactive_replication_slots;
+} t_node_info;
 
 
 #define T_NODE_INFO_INITIALIZER { \
@@ -160,7 +168,7 @@ typedef struct NodeInfoList
 {
 	NodeInfoListCell *head;
 	NodeInfoListCell *tail;
-	int				  node_count;
+	int			node_count;
 } NodeInfoList;
 
 #define T_NODE_INFO_LIST_INITIALIZER { \
@@ -171,9 +179,9 @@ typedef struct NodeInfoList
 
 typedef struct s_event_info
 {
-	char		  *node_name;
-	char		  *conninfo_str;
-}	t_event_info;
+	char	   *node_name;
+	char	   *conninfo_str;
+} t_event_info;
 
 #define T_EVENT_INFO_INITIALIZER { \
 	NULL, \
@@ -186,9 +194,9 @@ typedef struct s_event_info
  */
 typedef struct
 {
-	int	   size;
-	char **keywords;
-	char **values;
+	int			size;
+	char	  **keywords;
+	char	  **values;
 } t_conninfo_param_list;
 
 #define T_CONNINFO_PARAM_LIST_INITIALIZER { \
@@ -202,19 +210,19 @@ typedef struct
  */
 typedef struct s_replication_slot
 {
-	char slot_name[MAXLEN];
-	char slot_type[MAXLEN];
-	bool active;
-}	t_replication_slot;
+	char		slot_name[MAXLEN];
+	char		slot_type[MAXLEN];
+	bool		active;
+} t_replication_slot;
 
 #define T_REPLICATION_SLOT_INITIALIZER { "", "", false }
 
 
 typedef struct s_connection_user
 {
-	char username[MAXLEN];
-	bool is_superuser;
-}   t_connection_user;
+	char		username[MAXLEN];
+	bool		is_superuser;
+} t_connection_user;
 
 #define T_CONNECTION_USER_INITIALIZER { "", false }
 
@@ -222,15 +230,15 @@ typedef struct s_connection_user
 /* represents an entry in bdr.bdr_nodes */
 typedef struct s_bdr_node_info
 {
-	char		  node_sysid[MAXLEN];
-	uint32 		  node_timeline;
-	uint32		  node_dboid;
-	char		  node_status;
-	char		  node_name[MAXLEN];
-	char		  node_local_dsn[MAXLEN];
-	char		  node_init_from_dsn[MAXLEN];
-	bool		  read_only;
-	uint32		  node_seq_id;
+	char		node_sysid[MAXLEN];
+	uint32		node_timeline;
+	uint32		node_dboid;
+	char		node_status;
+	char		node_name[MAXLEN];
+	char		node_local_dsn[MAXLEN];
+	char		node_init_from_dsn[MAXLEN];
+	bool		read_only;
+	uint32		node_seq_id;
 } t_bdr_node_info;
 
 #define T_BDR_NODE_INFO_INITIALIZER { \
@@ -251,7 +259,7 @@ typedef struct BdrNodeInfoList
 {
 	BdrNodeInfoListCell *head;
 	BdrNodeInfoListCell *tail;
-	int				  node_count;
+	int			node_count;
 } BdrNodeInfoList;
 
 #define T_BDR_NODE_INFO_LIST_INITIALIZER { \
@@ -260,7 +268,8 @@ typedef struct BdrNodeInfoList
 	0 \
 }
 
-typedef struct {
+typedef struct
+{
 	char		current_timestamp[MAXLEN];
 	uint64		last_wal_receive_lsn;
 	uint64		last_wal_replay_lsn;
@@ -280,17 +289,17 @@ typedef struct {
 
 typedef struct
 {
-	char filepath[MAXPGPATH];
-	char filename[MAXPGPATH];
-	bool in_data_directory;
+	char		filepath[MAXPGPATH];
+	char		filename[MAXPGPATH];
+	bool		in_data_directory;
 } t_configfile_info;
 
 #define T_CONFIGFILE_INFO_INITIALIZER { "", "", false }
 
 typedef struct
 {
-	int    size;
-	int    entries;
+	int			size;
+	int			entries;
 	t_configfile_info **files;
 } t_configfile_list;
 
@@ -298,9 +307,9 @@ typedef struct
 
 typedef struct
 {
-	uint64	   system_identifier;
-	TimeLineID timeline;
-	XLogRecPtr xlogpos;
+	uint64		system_identifier;
+	TimeLineID	timeline;
+	XLogRecPtr	xlogpos;
 } t_system_identification;
 
 #define T_SYSTEM_IDENTIFICATION_INITIALIZER { \
@@ -310,7 +319,7 @@ typedef struct
 }
 /* global variables */
 
-extern int			server_version_num;
+extern int	server_version_num;
 
 /* macros */
 
@@ -319,24 +328,25 @@ extern int			server_version_num;
 
 /* utility functions */
 
-XLogRecPtr parse_lsn(const char *str);
+XLogRecPtr	parse_lsn(const char *str);
 
-extern void wrap_ddl_query(PQExpBufferData *query_buf, int replication_type, const char *fmt, ...)
+extern void
+wrap_ddl_query(PQExpBufferData *query_buf, int replication_type, const char *fmt,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
-bool		 atobool(const char *value);
+bool		atobool(const char *value);
 
 /* connection functions */
 PGconn *establish_db_connection(const char *conninfo,
-								const bool exit_on_error);
-PGconn *establish_db_connection_quiet(const char *conninfo);
+						const bool exit_on_error);
+PGconn	   *establish_db_connection_quiet(const char *conninfo);
 PGconn *establish_db_connection_as_user(const char *conninfo,
-										const char *user,
-										const bool exit_on_error);
+								const char *user,
+								const bool exit_on_error);
 
 PGconn *establish_db_connection_by_params(t_conninfo_param_list *param_list,
-										  const bool exit_on_error);
+								  const bool exit_on_error);
 PGconn *establish_primary_db_connection(PGconn *conn,
-										const bool exit_on_error);
+								const bool exit_on_error);
 
 PGconn	   *get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 PGconn	   *get_primary_connection_quiet(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
@@ -363,35 +373,35 @@ bool		rollback_transaction(PGconn *conn);
 bool		check_cluster_schema(PGconn *conn);
 
 /* GUC manipulation functions */
-bool		set_config(PGconn *conn, const char *config_param,	const char *config_value);
+bool		set_config(PGconn *conn, const char *config_param, const char *config_value);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
-int			guc_set(PGconn *conn, const char *parameter, const char *op,
-			const char *value);
-int			guc_set_typed(PGconn *conn, const char *parameter, const char *op,
+int guc_set(PGconn *conn, const char *parameter, const char *op,
+		const char *value);
+int guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 			  const char *value, const char *datatype);
 bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 
 /* server information functions */
-bool		 get_cluster_size(PGconn *conn, char *size);
-int		   	 get_server_version(PGconn *conn, char *server_version);
+bool		get_cluster_size(PGconn *conn, char *size);
+int			get_server_version(PGconn *conn, char *server_version);
 RecoveryType get_recovery_type(PGconn *conn);
-int			 get_primary_node_id(PGconn *conn);
-bool		 can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
-int 		 get_ready_archive_files(PGconn *conn, const char *data_directory);
-bool		 identify_system(PGconn *repl_conn, t_system_identification *identification);
-bool 		 repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
+int			get_primary_node_id(PGconn *conn);
+bool		can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
+int			get_ready_archive_files(PGconn *conn, const char *data_directory);
+bool		identify_system(PGconn *repl_conn, t_system_identification *identification);
+bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);
 
 /* node management functions */
-void		 checkpoint(PGconn *conn);
+void		checkpoint(PGconn *conn);
 
 
 
 /* node record functions */
 t_server_type parse_node_type(const char *type);
-const char  *get_node_type_string(t_server_type type);
+const char *get_node_type_string(t_server_type type);
 
 RecordStatus get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
 RecordStatus get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
@@ -445,53 +455,53 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 bool		is_server_available(const char *conninfo);
 
 /* monitoring functions  */
-void		add_monitoring_record(
-				PGconn *primary_conn,
-				PGconn *local_conn,
-				int primary_node_id,
-				int local_node_id,
-				char *monitor_standby_timestamp,
-				XLogRecPtr primary_last_wal_location,
-				XLogRecPtr last_wal_receive_lsn,
-				char *last_xact_replay_timestamp,
-				long long unsigned int replication_lag_bytes,
-				long long unsigned int apply_lag_bytes
-			);
+void
+add_monitoring_record(
+					  PGconn *primary_conn,
+					  PGconn *local_conn,
+					  int primary_node_id,
+					  int local_node_id,
+					  char *monitor_standby_timestamp,
+					  XLogRecPtr primary_last_wal_location,
+					  XLogRecPtr last_wal_receive_lsn,
+					  char *last_xact_replay_timestamp,
+					  long long unsigned int replication_lag_bytes,
+					  long long unsigned int apply_lag_bytes
+);
 
 
 /* node voting functions */
 NodeVotingStatus get_voting_status(PGconn *conn);
 VoteRequestResult request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
-int		 		 set_voting_status_initiated(PGconn *conn);
-bool		 	 announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
-void		 	 notify_follow_primary(PGconn *conn, int primary_node_id);
-bool		 	 get_new_primary(PGconn *conn, int *primary_node_id);
-void		 	 reset_voting_status(PGconn *conn);
+int			set_voting_status_initiated(PGconn *conn);
+bool		announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
+void		notify_follow_primary(PGconn *conn, int primary_node_id);
+bool		get_new_primary(PGconn *conn, int *primary_node_id);
+void		reset_voting_status(PGconn *conn);
 
 /* replication status functions */
-XLogRecPtr	 get_current_wal_lsn(PGconn *conn);
-XLogRecPtr	 get_last_wal_receive_location(PGconn *conn);
-bool		 get_replication_info(PGconn *conn, ReplInfo *replication_info);
-int 		 get_replication_lag_seconds(PGconn *conn);
-void   		 get_node_replication_stats(PGconn *conn, t_node_info *node_info);
-bool		 is_downstream_node_attached(PGconn *conn, char *node_name);
+XLogRecPtr	get_current_wal_lsn(PGconn *conn);
+XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
+bool		get_replication_info(PGconn *conn, ReplInfo *replication_info);
+int			get_replication_lag_seconds(PGconn *conn);
+void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
+bool		is_downstream_node_attached(PGconn *conn, char *node_name);
 
 /* BDR functions */
-void		 get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);
+void		get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);
 RecordStatus get_bdr_node_record_by_name(PGconn *conn, const char *node_name, t_bdr_node_info *node_info);
-bool		 is_bdr_db(PGconn *conn, PQExpBufferData *output);
-bool		 is_active_bdr_node(PGconn *conn, const char *node_name);
-bool		 is_bdr_repmgr(PGconn *conn);
-bool		 is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
-bool		 add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
-void		 add_extension_tables_to_bdr_replication_set(PGconn *conn);
+bool		is_bdr_db(PGconn *conn, PQExpBufferData *output);
+bool		is_active_bdr_node(PGconn *conn, const char *node_name);
+bool		is_bdr_repmgr(PGconn *conn);
+bool		is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
+bool		add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
+void		add_extension_tables_to_bdr_replication_set(PGconn *conn);
 
-bool		 bdr_node_exists(PGconn *conn, const char *node_name);
+bool		bdr_node_exists(PGconn *conn, const char *node_name);
 ReplSlotStatus get_bdr_node_replication_slot_status(PGconn *conn, const char *node_name);
-void 		 get_bdr_other_node_name(PGconn *conn, int node_id, char *name_buf);
+void		get_bdr_other_node_name(PGconn *conn, int node_id, char *name_buf);
 
-bool		 am_bdr_failover_handler(PGconn *conn, int node_id);
-void		 unset_bdr_failover_handler(PGconn *conn);
+bool		am_bdr_failover_handler(PGconn *conn, int node_id);
+void		unset_bdr_failover_handler(PGconn *conn);
 
-#endif /* _REPMGR_DBUTILS_H_ */
-
+#endif							/* _REPMGR_DBUTILS_H_ */

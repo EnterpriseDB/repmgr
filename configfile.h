@@ -28,18 +28,19 @@
 /* magic number for use in t_recovery_conf */
 #define TARGET_TIMELINE_LATEST 0
 
-extern bool		config_file_found;
-extern char		config_file_path[MAXPGPATH];
+extern bool config_file_found;
+extern char config_file_path[MAXPGPATH];
 
-typedef enum {
+typedef enum
+{
 	FAILOVER_MANUAL,
 	FAILOVER_AUTOMATIC
-}	failover_mode_opt;
+} failover_mode_opt;
 
 typedef struct EventNotificationListCell
 {
 	struct EventNotificationListCell *next;
-	char event_type[MAXLEN];
+	char		event_type[MAXLEN];
 } EventNotificationListCell;
 
 typedef struct EventNotificationList
@@ -67,7 +68,7 @@ typedef struct TablespaceList
 typedef struct
 {
 	/* node information */
-    int			node_id;
+	int			node_id;
 	char		node_name[MAXLEN];
 	char		conninfo[MAXLEN];
 	char		replication_user[NAMEDATALEN];
@@ -98,7 +99,7 @@ typedef struct
 	int			replication_lag_critical;
 
 	/* repmgrd settings */
-	failover_mode_opt		failover;
+	failover_mode_opt failover;
 	char		location[MAXLEN];
 	int			priority;
 	char		promote_command[MAXLEN];
@@ -136,7 +137,7 @@ typedef struct
 
 	/* undocumented test settings */
 	int			promote_delay;
-}	t_configuration_options;
+} t_configuration_options;
 
 /*
  * The following will initialize the structure with a minimal set of options;
@@ -180,13 +181,14 @@ typedef struct
 {
 	char		slot[MAXLEN];
 	char		xlog_method[MAXLEN];
-	bool		no_slot; /* from PostgreSQL 10 */
+	bool		no_slot;		/* from PostgreSQL 10 */
 } t_basebackup_options;
 
 #define T_BASEBACKUP_OPTIONS_INITIALIZER { "", "", false }
 
 
-typedef enum {
+typedef enum
+{
 	RTA_PAUSE,
 	RTA_PROMOTE,
 	RTA_SHUTDOWN
@@ -204,22 +206,22 @@ typedef enum {
 typedef struct
 {
 	/* archive recovery settings */
-	char restore_command[MAXLEN];
-	char archive_cleanup_command[MAXLEN];
-	char recovery_end_command[MAXLEN];
+	char		restore_command[MAXLEN];
+	char		archive_cleanup_command[MAXLEN];
+	char		recovery_end_command[MAXLEN];
 	/* recovery target settings */
-	char recovery_target_name[MAXLEN];
-	char recovery_target_time[MAXLEN];
-	char recovery_target_xid[MAXLEN];
-	bool recovery_target_inclusive;
-	int recovery_target_timeline;
-	RecoveryTargetAction recovery_target_action; /* default: RTA_PAUSE */
+	char		recovery_target_name[MAXLEN];
+	char		recovery_target_time[MAXLEN];
+	char		recovery_target_xid[MAXLEN];
+	bool		recovery_target_inclusive;
+	int			recovery_target_timeline;
+	RecoveryTargetAction recovery_target_action;	/* default: RTA_PAUSE */
 	/* standby server settings */
-	bool standby_mode;
-	char primary_conninfo[MAXLEN];
-	char primary_slot_name[MAXLEN];
-	char trigger_file[MAXLEN];
-	char recovery_min_apply_delay[MAXLEN];
+	bool		standby_mode;
+	char		primary_conninfo[MAXLEN];
+	char		primary_slot_name[MAXLEN];
+	char		trigger_file[MAXLEN];
+	char		recovery_min_apply_delay[MAXLEN];
 } t_recovery_conf;
 
 #define T_RECOVERY_CONF_INITIALIZER { \
@@ -245,19 +247,19 @@ bool		reload_config(t_configuration_options *orig_options);
 
 bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
 
-int			repmgr_atoi(const char *s,
-						const char *config_item,
-						ItemList *error_list,
-						int minval);
+int repmgr_atoi(const char *s,
+			const char *config_item,
+			ItemList *error_list,
+			int minval);
 
 
 bool parse_pg_basebackup_options(const char *pg_basebackup_options,
-								 t_basebackup_options *backup_options,
-								 int server_version_num,
-								 ItemList *error_list);
+							t_basebackup_options *backup_options,
+							int server_version_num,
+							ItemList *error_list);
 
 /* called by repmgr-client and repmgrd */
-void exit_with_cli_errors(ItemList *error_list);
-void print_item_list(ItemList *item_list);
+void		exit_with_cli_errors(ItemList *error_list);
+void		print_item_list(ItemList *item_list);
 
-#endif /* _REPMGR_CONFIGFILE_H_ */
+#endif							/* _REPMGR_CONFIGFILE_H_ */

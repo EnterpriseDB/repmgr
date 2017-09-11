@@ -122,18 +122,21 @@ int			detect_log_level(const char *level);
 
 /* Logger initialisation and shutdown */
 
-bool		logger_init(t_configuration_options * opts, const char *ident);
+bool		logger_init(t_configuration_options *opts, const char *ident);
 
 bool		logger_shutdown(void);
 
 void		logger_set_verbose(void);
 void		logger_set_terse(void);
 
-void		log_detail(const char *fmt, ...)
+void
+log_detail(const char *fmt,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 1, 2)));
-void		log_hint(const char *fmt, ...)
+void
+log_hint(const char *fmt,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 1, 2)));
-void		log_verbose(int level, const char *fmt, ...)
+void
+log_verbose(int level, const char *fmt,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
 extern int	log_type;
@@ -142,4 +145,4 @@ extern int	verbose_logging;
 extern int	terse_logging;
 extern int	logger_output_mode;
 
-#endif /* _REPMGR_LOG_H_ */
+#endif							/* _REPMGR_LOG_H_ */

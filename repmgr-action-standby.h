@@ -32,4 +32,4 @@ extern bool do_standby_follow_internal(PGconn *primary_conn, t_node_info *primar
 
 
 
-#endif /* _REPMGR_ACTION_STANDBY_H_ */
+#endif							/* _REPMGR_ACTION_STANDBY_H_ */

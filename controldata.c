@@ -34,7 +34,7 @@ uint64
 get_system_identifier(const char *data_directory)
 {
 	ControlFileInfo *control_file_info = NULL;
-	uint64 system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+	uint64		system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
 
 	control_file_info = get_controlfile(data_directory);
 
@@ -53,7 +53,7 @@ DBState
 get_db_state(const char *data_directory)
 {
 	ControlFileInfo *control_file_info = NULL;
-	DBState state;
+	DBState		state;
 
 	control_file_info = get_controlfile(data_directory);
 
@@ -74,7 +74,7 @@ extern XLogRecPtr
 get_latest_checkpoint_location(const char *data_directory)
 {
 	ControlFileInfo *control_file_info = NULL;
-	XLogRecPtr checkPoint = InvalidXLogRecPtr;
+	XLogRecPtr	checkPoint = InvalidXLogRecPtr;
 
 	control_file_info = get_controlfile(data_directory);
 
@@ -94,7 +94,7 @@ int
 get_data_checksum_version(const char *data_directory)
 {
 	ControlFileInfo *control_file_info = NULL;
-	int data_checksum_version = -1;
+	int			data_checksum_version = -1;
 
 	control_file_info = get_controlfile(data_directory);
 
@@ -104,7 +104,7 @@ get_data_checksum_version(const char *data_directory)
 	}
 	else
 	{
-		data_checksum_version = (int)control_file_info->control_file->data_checksum_version;
+		data_checksum_version = (int) control_file_info->control_file->data_checksum_version;
 	}
 
 	pfree(control_file_info->control_file);

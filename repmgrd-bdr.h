@@ -22,4 +22,4 @@
 extern void do_bdr_node_check(void);
 extern void monitor_bdr(void);
 
-#endif /* _REPMGRD_BDR_H_ */
+#endif							/* _REPMGRD_BDR_H_ */

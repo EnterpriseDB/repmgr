@@ -24,25 +24,25 @@
 #include "log.h"
 
 const static char *_progname = NULL;
-char config_file_path[MAXPGPATH] = "";
+char		config_file_path[MAXPGPATH] = "";
 static bool config_file_provided = false;
-bool config_file_found = false;
+bool		config_file_found = false;
 
-static void	_parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
-static bool		parse_bool(const char *s,
-					   const char *config_item,
-					   ItemList *error_list);
+static void _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+static bool parse_bool(const char *s,
+		   const char *config_item,
+		   ItemList *error_list);
 
-static void	_parse_line(char *buf, char *name, char *value);
-static void	parse_event_notifications_list(t_configuration_options *options, const char *arg);
+static void _parse_line(char *buf, char *name, char *value);
+static void parse_event_notifications_list(t_configuration_options *options, const char *arg);
 static void clear_event_notification_list(t_configuration_options *options);
 
 static void parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors);
 
-static void	tablespace_list_append(t_configuration_options *options, const char *arg);
+static void tablespace_list_append(t_configuration_options *options, const char *arg);
 
 
-static void	exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings, bool terse);
+static void exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings, bool terse);
 
 
 void
@@ -63,10 +63,10 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 	struct stat stat_config;
 
 	/*
-	 * If a configuration file was provided, check it exists, otherwise
-	 * emit an error and terminate. We assume that if a user explicitly
-	 * provides a configuration file, they'll want to make sure it's
-	 * used and not fall back to any of the defaults.
+	 * If a configuration file was provided, check it exists, otherwise emit
+	 * an error and terminate. We assume that if a user explicitly provides a
+	 * configuration file, they'll want to make sure it's used and not fall
+	 * back to any of the defaults.
 	 */
 	if (config_file != NULL && config_file[0] != '\0')
 	{
@@ -76,8 +76,8 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		if (stat(config_file_path, &stat_config) != 0)
 		{
 			log_error(_("provided configuration file \"%s\" not found: %s"),
-					config_file,
-					strerror(errno)
+					  config_file,
+					  strerror(errno)
 				);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -92,18 +92,19 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 	}
 
 
-	/*
+	/*-----------
 	 * If no configuration file was provided, attempt to find a default file
 	 * in this order:
-	 *	- current directory
-	 *	- /etc/repmgr.conf
-	 *	- default sysconfdir
+	 *  - current directory
+	 *  - /etc/repmgr.conf
+	 *  - default sysconfdir
 	 *
-	 * here we just check for the existence of the file; parse_config()
-	 * will handle read errors etc.
+	 * here we just check for the existence of the file; parse_config() will
+	 * handle read errors etc.
 	 *
 	 * XXX modify this section so package maintainers can provide a patch
-	 *	   specifying location of a distribution-specific configuration file
+	 * specifying location of a distribution-specific configuration file
+	 *-----------
 	 */
 	if (config_file_provided == false)
 	{
@@ -159,7 +160,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 			goto end_search;
 		}
 
-	end_search:
+end_search:
 		if (config_file_found == true)
 		{
 			if (verbose == true)
@@ -186,8 +187,8 @@ void
 parse_config(t_configuration_options *options, bool terse)
 {
 	/* Collate configuration file errors here for friendlier reporting */
-	static ItemList config_errors = { NULL, NULL };
-	static ItemList config_warnings = { NULL, NULL };
+	static ItemList config_errors = {NULL, NULL};
+	static ItemList config_warnings = {NULL, NULL};
 
 	_parse_config(options, &config_errors, &config_warnings);
 
@@ -273,7 +274,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	/* default to 6 reconnection attempts at intervals of 10 seconds */
 	options->reconnect_attempts = DEFAULT_RECONNECTION_ATTEMPTS;
 	options->reconnect_interval = DEFAULT_RECONNECTION_INTERVAL;
-	options->monitoring_history = false;  /* new in 4.0, replaces --monitoring-history */
+	options->monitoring_history = false;	/* new in 4.0, replaces
+											 * --monitoring-history */
 	options->degraded_monitoring_timeout = -1;
 	options->async_query_timeout = DEFAULT_ASYNC_QUERY_TIMEOUT;
 	options->primary_notification_timeout = DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT;
@@ -326,16 +328,16 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	{
 		log_verbose(LOG_NOTICE,
 					_("no configuration file provided and no default file found - "
-					 "continuing with default values"));
+					  "continuing with default values"));
 		return;
 	}
 
 	fp = fopen(config_file_path, "r");
 
 	/*
-	 * A configuration file has been found, either provided by the user
-	 * or found in one of the default locations. If we can't open it,
-	 * fail with an error.
+	 * A configuration file has been found, either provided by the user or
+	 * found in one of the default locations. If we can't open it, fail with
+	 * an error.
 	 */
 	if (fp == NULL)
 	{
@@ -347,7 +349,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else
 		{
 			log_error(_("unable to open default configuration file	\"%s\"; terminating"),
-					config_file_path);
+					  config_file_path);
 		}
 
 		exit(ERR_BAD_CONFIG);
@@ -356,7 +358,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	/* Read file */
 	while ((s = fgets(buf, sizeof buf, fp)) != NULL)
 	{
-		bool known_parameter = true;
+		bool		known_parameter = true;
 
 		/* Parse name/value pair from line */
 		_parse_line(buf, name, value);
@@ -387,7 +389,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 				strncpy(options->replication_user, value, NAMEDATALEN);
 			else
 				item_list_append(error_list,
-								 _( "value for \"replication_user\" must contain fewer than " STR(NAMEDATALEN) " characters"));
+								 _("value for \"replication_user\" must contain fewer than " STR(NAMEDATALEN) " characters"));
 		}
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXPGPATH);
@@ -524,7 +526,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "promote_delay") == 0)
 			options->promote_delay = repmgr_atoi(value, name, error_list, 1);
 
-		/* Following parameters have been deprecated or renamed from 3.x - issue a warning */
+		/*
+		 * Following parameters have been deprecated or renamed from 3.x -
+		 * issue a warning
+		 */
 		else if (strcmp(name, "cluster") == 0)
 		{
 			item_list_append(warning_list,
@@ -578,14 +583,18 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			known_parameter = false;
 			log_warning(_("%s/%s: unknown name/value pair provided; ignoring"), name, value);
 		}
+
 		/*
-		 * Raise an error if a known parameter is provided with an empty value.
-		 * Currently there's no reason why empty parameters are needed; if
-		 * we want to accept those, we'd need to add stricter default checking,
-		 * as currently e.g. an empty `node` value will be converted to '0'.
+		 * Raise an error if a known parameter is provided with an empty
+		 * value. Currently there's no reason why empty parameters are needed;
+		 * if we want to accept those, we'd need to add stricter default
+		 * checking, as currently e.g. an empty `node` value will be converted
+		 * to '0'.
 		 */
-		if (known_parameter == true && !strlen(value)) {
-			char	   error_message_buf[MAXLEN] = "";
+		if (known_parameter == true && !strlen(value))
+		{
+			char		error_message_buf[MAXLEN] = "";
+
 			maxlen_snprintf(error_message_buf,
 							_("\"%s\": no value provided"),
 							name);
@@ -618,10 +627,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	}
 	else
 	{
-		/* Sanity check the provided conninfo string
+		/*
+		 * Sanity check the provided conninfo string
 		 *
-		 * NOTE: PQconninfoParse() verifies the string format and checks for valid options
-		 * but does not sanity check values
+		 * NOTE: PQconninfoParse() verifies the string format and checks for
+		 * valid options but does not sanity check values
 		 */
 
 		PQconninfoOption *conninfo_options = NULL;
@@ -630,7 +640,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
 		if (conninfo_options == NULL)
 		{
-			char	   error_message_buf[MAXLEN] = "";
+			char		error_message_buf[MAXLEN] = "";
+
 			snprintf(error_message_buf,
 					 MAXLEN,
 					 _("\"conninfo\": %s	(provided: \"%s\")"),
@@ -662,7 +673,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 						 _("\archive_ready_critical\" must be greater than  \"archive_ready_warning\""));
 	}
 
-	if( options->replication_lag_warning >= options->replication_lag_critical)
+	if (options->replication_lag_warning >= options->replication_lag_critical)
 	{
 		item_list_append(error_list,
 						 _("\replication_lag_critical\" must be greater than  \"replication_lag_warning\""));
@@ -675,7 +686,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 bool
 parse_recovery_conf(const char *data_dir, t_recovery_conf *conf)
 {
-	char recovery_conf_path[MAXPGPATH] = "";
+	char		recovery_conf_path[MAXPGPATH] = "";
 	FILE	   *fp;
 	char	   *s = NULL,
 				buf[MAXLINELENGTH] = "";
@@ -780,9 +791,9 @@ _parse_line(char *buf, char *name, char *value)
 		if (buf[i] == '=')
 			break;
 
-		switch(buf[i])
+		switch (buf[i])
 		{
-			/* Ignore whitespace */
+				/* Ignore whitespace */
 			case ' ':
 			case '\n':
 			case '\r':
@@ -799,9 +810,9 @@ _parse_line(char *buf, char *name, char *value)
 	 */
 	for (; i < MAXLEN; ++i)
 	{
-		if (buf[i+1] == ' ')
+		if (buf[i + 1] == ' ')
 			continue;
-		if (buf[i+1] == '\t')
+		if (buf[i + 1] == '\t')
 			continue;
 
 		break;
@@ -828,17 +839,17 @@ _parse_line(char *buf, char *name, char *value)
 static void
 parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemList *errors)
 {
-	char 	   *ptr = NULL;
-	int targ = strtol(value, &ptr, 10);
+	char	   *ptr = NULL;
+	int			targ = strtol(value, &ptr, 10);
 
 	if (targ < 1)
 	{
 		if (errors != NULL)
 		{
 			item_list_append_format(
-				errors,
-				_("invalid value provided for \"%s\""),
-				name);
+									errors,
+									_("invalid value provided for \"%s\""),
+									name);
 		}
 		return;
 	}
@@ -852,9 +863,9 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
 			if (errors != NULL)
 			{
 				item_list_append_format(
-					errors,
-					_("value provided for \"%s\" must be one of ms/s/min/h/d"),
-					name);
+										errors,
+										_("value provided for \"%s\" must be one of ms/s/min/h/d"),
+										name);
 				return;
 			}
 		}
@@ -909,11 +920,11 @@ reload_config(t_configuration_options *orig_options)
 {
 	PGconn	   *conn;
 	t_configuration_options new_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
-	bool	  config_changed = false;
-	bool	  log_config_changed = false;
+	bool		config_changed = false;
+	bool		log_config_changed = false;
 
-	static ItemList config_errors = { NULL, NULL };
-	static ItemList config_warnings = { NULL, NULL };
+	static ItemList config_errors = {NULL, NULL};
+	static ItemList config_warnings = {NULL, NULL};
 
 	log_info(_("reloading configuration file"));
 
@@ -980,7 +991,7 @@ reload_config(t_configuration_options *orig_options)
 	/* conninfo */
 	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
 	{
-		/* Test conninfo string works*/
+		/* Test conninfo string works */
 		conn = establish_db_connection(new_options.conninfo, false);
 		if (!conn || (PQstatus(conn) != CONNECTION_OK))
 		{
@@ -1228,13 +1239,14 @@ print_item_list(ItemList *item_list)
 int
 repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, int minval)
 {
-	char	  *endptr = NULL;
-	long	   longval = 0;
+	char	   *endptr = NULL;
+	long		longval = 0;
 	PQExpBufferData errors;
 
 	initPQExpBuffer(&errors);
 
-	/* It's possible that some versions of strtol() don't treat an empty
+	/*
+	 * It's possible that some versions of strtol() don't treat an empty
 	 * string as an error.
 	 */
 	if (*value == '\0')
@@ -1253,14 +1265,14 @@ repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, in
 							  _("\"%s\": invalid value (provided: \"%s\")"),
 							  config_item, value);
 		}
-		else if ((int32)longval < longval)
+		else if ((int32) longval < longval)
 		{
 			appendPQExpBuffer(&errors,
 							  _("\"%s\": must be a positive signed 32 bit integer, i.e. 2147483647 or less (provided: \"%s\")"),
 							  config_item,
 							  value);
 		}
-		else if ((int32)longval < minval)
+		else if ((int32) longval < minval)
 			/* Disallow negative values for most parameters */
 		{
 			appendPQExpBuffer(&errors,
@@ -1399,7 +1411,7 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 	if (!*cell->old_dir || !*cell->new_dir)
 	{
 		log_error(_("invalid tablespace mapping format \"%s\", must be \"OLDDIR=NEWDIR\""),
-				arg);
+				  arg);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1505,20 +1517,21 @@ clear_event_notification_list(t_configuration_options *options)
 bool
 parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num, ItemList *error_list)
 {
-	int   options_len = 0;
-	char *options_string = NULL;
-	char *options_string_ptr = NULL;
+	int			options_len = 0;
+	char	   *options_string = NULL;
+	char	   *options_string_ptr = NULL;
 
 	/*
-	 * Add parsed options to this list, then copy to an array
-	 * to pass to getopt
+	 * Add parsed options to this list, then copy to an array to pass to
+	 * getopt
 	 */
-	static ItemList option_argv = { NULL, NULL };
+	static ItemList option_argv = {NULL, NULL};
 
-	char *argv_item = NULL;
-	int c, argc_item = 1;
+	char	   *argv_item = NULL;
+	int			c,
+				argc_item = 1;
 
-	char **argv_array = NULL;
+	char	  **argv_array = NULL;
 	ItemListCell *cell = NULL;
 
 	int			optindex = 0;
@@ -1536,8 +1549,8 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	};
 
 	/*
-	 * From PostgreSQL 10, --xlog-method is renamed --wal-method
-	 * and there's also --no-slot, which we'll want to consider.
+	 * From PostgreSQL 10, --xlog-method is renamed --wal-method and there's
+	 * also --no-slot, which we'll want to consider.
 	 */
 	static struct option long_options_10[] =
 	{
@@ -1576,8 +1589,8 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 
 	/*
 	 * Array of argument values to pass to getopt_long - this will need to
-	 * include an empty string as the first value (normally this would be
-	 * the program name)
+	 * include an empty string as the first value (normally this would be the
+	 * program name)
 	 */
 	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
 
@@ -1591,7 +1604,7 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	 */
 	for (cell = option_argv.head; cell; cell = cell->next)
 	{
-		int argv_len = strlen(cell->string) + 1;
+		int			argv_len = strlen(cell->string) + 1;
 
 		argv_array[c] = pg_malloc0(argv_len);
 
@@ -1647,8 +1660,9 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	pfree(options_string);
 
 	{
-		int i;
-		for (i = 0; i < argc_item + 2; i ++)
+		int			i;
+
+		for (i = 0; i < argc_item + 2; i++)
 			pfree(argv_array[i]);
 	}
 	pfree(argv_array);

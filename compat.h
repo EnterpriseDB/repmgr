@@ -23,10 +23,8 @@
 #ifndef _COMPAT_H_
 #define _COMPAT_H_
 
-extern void
-appendConnStrVal(PQExpBuffer buf, const char *str);
+extern void appendConnStrVal(PQExpBuffer buf, const char *str);
 
-extern void
-appendShellString(PQExpBuffer buf, const char *str);
+extern void appendShellString(PQExpBuffer buf, const char *str);
 
 #endif

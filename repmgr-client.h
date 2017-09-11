@@ -141,22 +141,22 @@ static struct option long_options[] =
 
 /* "standby switchover" options */
 	{"remote-config-file", required_argument, NULL, 'C'},
-	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE },
-	{"force-rewind", no_argument, NULL, OPT_FORCE_REWIND },
-	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW },
+	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE},
+	{"force-rewind", no_argument, NULL, OPT_FORCE_REWIND},
+	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW},
 
 /* "node status" options */
-	{"is-shutdown-cleanly", no_argument, NULL, OPT_IS_SHUTDOWN_CLEANLY },
+	{"is-shutdown-cleanly", no_argument, NULL, OPT_IS_SHUTDOWN_CLEANLY},
 
 /* "node check" options */
-	{"archive-ready", no_argument, NULL, OPT_ARCHIVE_READY },
-	{"downstream", no_argument, NULL, OPT_DOWNSTREAM },
-	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG },
-	{"role", no_argument, NULL, OPT_ROLE },
-	{"slots", no_argument, NULL, OPT_SLOTS },
+	{"archive-ready", no_argument, NULL, OPT_ARCHIVE_READY},
+	{"downstream", no_argument, NULL, OPT_DOWNSTREAM},
+	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG},
+	{"role", no_argument, NULL, OPT_ROLE},
+	{"slots", no_argument, NULL, OPT_SLOTS},
 
 /* "node join" options */
-	{"config-files", required_argument, NULL, OPT_CONFIG_FILES },
+	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},
 
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},
@@ -165,16 +165,16 @@ static struct option long_options[] =
 	{"checkpoint", no_argument, NULL, OPT_CHECKPOINT},
 
 /* "cluster event" options */
-	{"all", no_argument, NULL, OPT_ALL },
-	{"event", required_argument, NULL, OPT_EVENT },
-	{"limit", required_argument, NULL, OPT_LIMIT },
+	{"all", no_argument, NULL, OPT_ALL},
+	{"event", required_argument, NULL, OPT_EVENT},
+	{"limit", required_argument, NULL, OPT_LIMIT},
 
 /* Following options for internal use */
 	{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
 
 /* deprecated */
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
-	/* legacy alias for -D/--pgdata*/
+	/* legacy alias for -D/--pgdata */
 	{"data-dir", required_argument, NULL, OPT_DATA_DIR},
 	/* --node-id */
 	{"node", required_argument, NULL, OPT_NODE},
@@ -204,4 +204,4 @@ static void check_cli_parameters(const int action);
 static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 
-#endif /* _REPMGR_CLIENT_H_ */
+#endif							/* _REPMGR_CLIENT_H_ */

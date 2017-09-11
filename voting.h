@@ -18,11 +18,12 @@
 #ifndef _VOTING_H_
 #define _VOTING_H_
 
-typedef enum {
+typedef enum
+{
 	VS_UNKNOWN = -1,
 	VS_NO_VOTE,
 	VS_VOTE_REQUEST_RECEIVED,
 	VS_VOTE_INITIATED
 } NodeVotingStatus;
 
-#endif /* _VOTING_H_ */
+#endif							/* _VOTING_H_ */

@@ -35,7 +35,7 @@
 #include "strutil.h"
 #include "log.h"
 
-static int unlink_dir_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf);
+static int	unlink_dir_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf);
 
 
 
@@ -107,7 +107,7 @@ create_dir(char *path)
 		return true;
 
 	log_error(_("unable to create directory \"%s\": %s"),
-			path, strerror(errno));
+			  path, strerror(errno));
 
 	return false;
 }
@@ -258,7 +258,7 @@ create_pg_dir(char *path, bool force)
 			if (!create_dir(path))
 			{
 				log_error(_("unable to create directory \"%s\"..."),
-						path);
+						  path);
 				return false;
 			}
 			break;
@@ -270,7 +270,7 @@ create_pg_dir(char *path, bool force)
 			if (!set_dir_permissions(path))
 			{
 				log_error(_("unable to change permissions of directory \"%s\":\n  %s"),
-						path, strerror(errno));
+						  path, strerror(errno));
 				return false;
 			}
 			break;
@@ -296,16 +296,16 @@ create_pg_dir(char *path, bool force)
 			else if (pg_dir && !force)
 			{
 				log_hint(_("This looks like a PostgreSQL directory.\n"
-							"If you are sure you want to clone here, "
-							"please check there is no PostgreSQL server "
-							"running and use the -F/--force option"));
+						   "If you are sure you want to clone here, "
+						   "please check there is no PostgreSQL server "
+						   "running and use the -F/--force option"));
 				return false;
 			}
 
 			return false;
 		default:
 			log_error(_("could not access directory \"%s\": %s"),
-					path, strerror(errno));
+					  path, strerror(errno));
 			return false;
 	}
 	return true;
@@ -314,11 +314,10 @@ create_pg_dir(char *path, bool force)
 static int
 unlink_dir_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
-    int rv = remove(fpath);
+	int			rv = remove(fpath);
 
-    if (rv)
-        perror(fpath);
+	if (rv)
+		perror(fpath);
 
-    return rv;
+	return rv;
 }
-

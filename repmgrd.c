@@ -33,10 +33,10 @@
 #define OPT_HELP	1
 
 
-static char	   *config_file = NULL;
-static bool		verbose = false;
-static char	   *pid_file = NULL;
-static bool		daemonize = false;
+static char *config_file = NULL;
+static bool verbose = false;
+static char *pid_file = NULL;
+static bool daemonize = false;
 
 t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
@@ -46,15 +46,15 @@ PGconn	   *local_conn = NULL;
 
 
 /* Collate command line errors here for friendlier reporting */
-static ItemList	cli_errors = { NULL, NULL };
+static ItemList cli_errors = {NULL, NULL};
 
-bool        startup_event_logged = false;
+bool		startup_event_logged = false;
 
 MonitoringState monitoring_state = MS_NORMAL;
 instr_time	degraded_monitoring_start;
 
 static void close_connections(void);
-void (*_close_connections)(void) = NULL;
+void		(*_close_connections) (void) = NULL;
 
 /*
  * Record receipt of SIGHUP; will cause configuration file to be reread
@@ -76,9 +76,9 @@ static void handle_sighup(SIGNAL_ARGS);
 static void handle_sigint(SIGNAL_ARGS);
 #endif
 
-int calculate_elapsed(instr_time start_time);
-void update_registration(PGconn *conn);
-void terminate(int retval);
+int			calculate_elapsed(instr_time start_time);
+void		update_registration(PGconn *conn);
+void		terminate(int retval);
 
 int
 main(int argc, char **argv)
@@ -116,7 +116,7 @@ main(int argc, char **argv)
 
 	set_progname(argv[0]);
 
-    srand ( time(NULL) );
+	srand(time(NULL));
 
 	/* Disallow running as root */
 	if (geteuid() == 0)
@@ -126,7 +126,7 @@ main(int argc, char **argv)
 				  "Please log in (using, e.g., \"su\") as the "
 				  "(unprivileged) user that owns "
 				  "the data directory.\n"
-				),
+				  ),
 				progname());
 		exit(1);
 	}
@@ -136,7 +136,7 @@ main(int argc, char **argv)
 		switch (c)
 		{
 
-			/* general options */
+				/* general options */
 
 			case '?':
 				/* Actual help option given */
@@ -154,20 +154,22 @@ main(int argc, char **argv)
 				exit(SUCCESS);
 
 			case 'V':
+
 				/*
-				 * in contrast to repmgr3 and earlier, we only display the repmgr version
-				 * as it's not specific to a particular PostgreSQL version
+				 * in contrast to repmgr3 and earlier, we only display the
+				 * repmgr version as it's not specific to a particular
+				 * PostgreSQL version
 				 */
 				printf("%s %s\n", progname(), REPMGR_VERSION);
 				exit(SUCCESS);
 
-			/* configuration options */
+				/* configuration options */
 
 			case 'f':
 				config_file = optarg;
 				break;
 
-			/* daemon options */
+				/* daemon options */
 
 			case 'd':
 				daemonize = true;
@@ -177,40 +179,42 @@ main(int argc, char **argv)
 				pid_file = optarg;
 				break;
 
-			/* logging options */
+				/* logging options */
 
-			/* -L/--log-level */
+				/* -L/--log-level */
 			case 'L':
-			{
-				int detected_cli_log_level = detect_log_level(optarg);
-				if (detected_cli_log_level != -1)
 				{
-					strncpy(cli_log_level, optarg, MAXLEN);
+					int			detected_cli_log_level = detect_log_level(optarg);
+
+					if (detected_cli_log_level != -1)
+					{
+						strncpy(cli_log_level, optarg, MAXLEN);
+					}
+					else
+					{
+						PQExpBufferData invalid_log_level;
+
+						initPQExpBuffer(&invalid_log_level);
+						appendPQExpBuffer(&invalid_log_level,
+										  _("invalid log level \"%s\" provided"),
+										  optarg);
+						item_list_append(&cli_errors, invalid_log_level.data);
+						termPQExpBuffer(&invalid_log_level);
+					}
+					break;
 				}
-				else
-				{
-					PQExpBufferData invalid_log_level;
-					initPQExpBuffer(&invalid_log_level);
-					appendPQExpBuffer(&invalid_log_level,
-									  _("invalid log level \"%s\" provided"),
-									  optarg);
-					item_list_append(&cli_errors, invalid_log_level.data);
-					termPQExpBuffer(&invalid_log_level);
-				}
-				break;
-			}
 			case 'v':
 				verbose = true;
 				break;
 
-			/* legacy options */
+				/* legacy options */
 
 			case 'm':
 				cli_monitoring_history = true;
 				break;
 
 			default:
-     unknown_option:
+		unknown_option:
 				show_usage();
 				exit(ERR_BAD_CONFIG);
 		}
@@ -223,6 +227,7 @@ main(int argc, char **argv)
 	}
 
 	startup_event_logged = false;
+
 	/*
 	 * Tell the logger we're a daemon - this will ensure any output logged
 	 * before the logger is initialized will be formatted correctly
@@ -230,15 +235,19 @@ main(int argc, char **argv)
 	logger_output_mode = OM_DAEMON;
 
 	/*
-	 * Parse the configuration file, if provided. If no configuration file
-	 * was provided, or one was but was incomplete, parse_config() will
-	 * abort anyway, with an appropriate message.
+	 * Parse the configuration file, if provided. If no configuration file was
+	 * provided, or one was but was incomplete, parse_config() will abort
+	 * anyway, with an appropriate message.
 	 */
 	load_config(config_file, verbose, false, &config_file_options, argv[0]);
 
 
 	/* Some configuration file items can be overriden by command line options */
-	/* Command-line parameter -L/--log-level overrides any setting in config file*/
+
+	/*
+	 * Command-line parameter -L/--log-level overrides any setting in config
+	 * file
+	 */
 	if (*cli_log_level != '\0')
 	{
 		strncpy(config_file_options.log_level, cli_log_level, MAXLEN);
@@ -304,8 +313,8 @@ main(int argc, char **argv)
 	 * point, but we'll skip that and assume the presence of a node record
 	 * means we're dealing with a supported installation.
 	 *
-	 * The absence of a node record will also indicate that either the node
-	 * or repmgr has not been properly configured.
+	 * The absence of a node record will also indicate that either the node or
+	 * repmgr has not been properly configured.
 	 */
 
 	/* Retrieve record for this node from the local database */
@@ -368,7 +377,7 @@ start_monitoring(void)
 			   local_node_info.node_name,
 			   local_node_info.node_id);
 
-	while(true)
+	while (true)
 	{
 		switch (local_node_info.type)
 		{
@@ -398,13 +407,15 @@ start_monitoring(void)
 void
 update_registration(PGconn *conn)
 {
-	bool success = update_node_record_conn_priority(local_conn,
-													&config_file_options);
-	// check values have actually changed
+	bool		success = update_node_record_conn_priority(local_conn,
+														   &config_file_options);
+
+	/* check values have actually changed */
 
 	if (success == false)
 	{
 		PQExpBufferData errmsg;
+
 		initPQExpBuffer(&errmsg);
 
 		appendPQExpBuffer(&errmsg,
@@ -620,11 +631,11 @@ show_help(void)
 PGconn *
 try_reconnect(t_node_info *node_info)
 {
-	PGconn *conn;
+	PGconn	   *conn;
 
-	int i;
+	int			i;
 
-	int max_attempts = config_file_options.reconnect_attempts;
+	int			max_attempts = config_file_options.reconnect_attempts;
 
 	for (i = 0; i < max_attempts; i++)
 	{
@@ -635,10 +646,9 @@ try_reconnect(t_node_info *node_info)
 			log_notice(_("node has recovered, reconnecting"));
 
 			/*
-			 * XXX we should also handle the case where node is pingable
-			 * but connection denied due to connection exhaustion
-			 *  - fall back to degraded monitoring?
-			 *  - make that configurable
+			 * XXX we should also handle the case where node is pingable but
+			 * connection denied due to connection exhaustion - fall back to
+			 * degraded monitoring? - make that configurable
 			 */
 			conn = establish_db_connection(node_info->conninfo, false);
 			if (PQstatus(conn) == CONNECTION_OK)
@@ -680,14 +690,14 @@ calculate_elapsed(instr_time start_time)
 
 	INSTR_TIME_SUBTRACT(current_time, start_time);
 
-	return (int)INSTR_TIME_GET_DOUBLE(current_time);
+	return (int) INSTR_TIME_GET_DOUBLE(current_time);
 }
 
 
 const char *
 print_monitoring_state(MonitoringState monitoring_state)
 {
-	switch(monitoring_state)
+	switch (monitoring_state)
 	{
 		case MS_NORMAL:
 			return "normal";
@@ -730,5 +740,3 @@ terminate(int retval)
 
 	exit(retval);
 }
-
-

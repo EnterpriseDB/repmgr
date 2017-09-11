@@ -27,7 +27,8 @@
 #define SHOW_HEADER_COUNT 7
 
 
-typedef enum {
+typedef enum
+{
 	SHOW_ID = 0,
 	SHOW_NAME,
 	SHOW_ROLE,
@@ -35,25 +36,27 @@ typedef enum {
 	SHOW_UPSTREAM_NAME,
 	SHOW_LOCATION,
 	SHOW_CONNINFO
-} ShowHeader;
+}			ShowHeader;
 
 #define EVENT_HEADER_COUNT 6
 
-typedef enum {
+typedef enum
+{
 	EV_NODE_ID = 0,
 	EV_NODE_NAME,
 	EV_EVENT,
 	EV_SUCCESS,
 	EV_TIMESTAMP,
 	EV_DETAILS
-} EventHeader;
+}			EventHeader;
 
 
 
-struct ColHeader {
-	char  title[MAXLEN];
-	int   max_length;
-	int   cur_length;
+struct ColHeader
+{
+	char		title[MAXLEN];
+	int			max_length;
+	int			cur_length;
 };
 
 struct ColHeader headers_show[SHOW_HEADER_COUNT];
@@ -61,8 +64,8 @@ struct ColHeader headers_event[EVENT_HEADER_COUNT];
 
 
 
-static int  build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length);
-static int  build_cluster_crosscheck(t_node_status_cube ***cube_dest, int *name_length);
+static int	build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length);
+static int	build_cluster_crosscheck(t_node_status_cube ***cube_dest, int *name_length);
 static void cube_set_node_status(t_node_status_cube **cube, int n, int node_id, int matrix_node_id, int connection_node_id, int connection_status);
 
 /*
@@ -78,7 +81,7 @@ do_cluster_show(void)
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell = NULL;
 	int			i = 0;
-	ItemList	warnings = { NULL, NULL };
+	ItemList	warnings = {NULL, NULL};
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database\n"));
@@ -106,8 +109,8 @@ do_cluster_show(void)
 	strncpy(headers_show[SHOW_CONNINFO].title, _("Connection string"), MAXLEN);
 
 	/*
-	 * NOTE: if repmgr is ever localized into non-ASCII locales,
-	 * use pg_wcssize() or similar to establish printed column length
+	 * NOTE: if repmgr is ever localized into non-ASCII locales, use
+	 * pg_wcssize() or similar to establish printed column length
 	 */
 
 	for (i = 0; i < SHOW_HEADER_COUNT; i++)
@@ -136,171 +139,172 @@ do_cluster_show(void)
 
 		/*
 		 * TODO: count nodes marked as "? unreachable" and add a hint about
-		 * the other cluster commands for better determining whether unreachable.
+		 * the other cluster commands for better determining whether
+		 * unreachable.
 		 */
 		switch (cell->node_info->type)
 		{
 			case PRIMARY:
-			{
-				/* node is reachable */
-				if (cell->node_info->node_status == NODE_STATUS_UP)
 				{
-					if (cell->node_info->active == true)
+					/* node is reachable */
+					if (cell->node_info->node_status == NODE_STATUS_UP)
 					{
-						switch (cell->node_info->recovery_type)
+						if (cell->node_info->active == true)
 						{
-							case RECTYPE_PRIMARY:
-								appendPQExpBuffer(&details, "* running");
-								break;
-							case RECTYPE_STANDBY:
+							switch (cell->node_info->recovery_type)
+							{
+								case RECTYPE_PRIMARY:
+									appendPQExpBuffer(&details, "* running");
+									break;
+								case RECTYPE_STANDBY:
+									appendPQExpBuffer(&details, "! running as standby");
+									item_list_append_format(
+															&warnings,
+															"node \"%s\" (ID: %i) is registered as primary but running as standby",
+															cell->node_info->node_name, cell->node_info->node_id);
+									break;
+								case RECTYPE_UNKNOWN:
+									appendPQExpBuffer(&details, "! unknown");
+									item_list_append_format(
+															&warnings,
+															"node \"%s\" (ID: %i) has unknown replication status",
+															cell->node_info->node_name, cell->node_info->node_id);
+									break;
+							}
+						}
+						else
+						{
+							if (cell->node_info->recovery_type == RECTYPE_PRIMARY)
+							{
+								appendPQExpBuffer(&details, "! running");
+								item_list_append_format(
+														&warnings,
+														"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
+														cell->node_info->node_name, cell->node_info->node_id);
+							}
+							else
+							{
 								appendPQExpBuffer(&details, "! running as standby");
 								item_list_append_format(
-									&warnings,
-									"node \"%s\" (ID: %i) is registered as primary but running as standby",
-									cell->node_info->node_name, cell->node_info->node_id);
-								break;
-							case RECTYPE_UNKNOWN:
-								appendPQExpBuffer(&details, "! unknown");
-								item_list_append_format(
-									&warnings,
-									"node \"%s\" (ID: %i) has unknown replication status",
-									cell->node_info->node_name, cell->node_info->node_id);
-								break;
+														&warnings,
+														"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
+														cell->node_info->node_name, cell->node_info->node_id);
+							}
 						}
 					}
+					/* node is unreachable */
 					else
 					{
-						if (cell->node_info->recovery_type == RECTYPE_PRIMARY)
+						/* node is unreachable but marked active */
+						if (cell->node_info->active == true)
 						{
-							appendPQExpBuffer(&details, "! running");
+							appendPQExpBuffer(&details, "? unreachable");
 							item_list_append_format(
-								&warnings,
-								"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
-								cell->node_info->node_name, cell->node_info->node_id);
+													&warnings,
+													"node \"%s\" (ID: %i) is registered as an active primary but is unreachable",
+													cell->node_info->node_name, cell->node_info->node_id);
 						}
+						/* node is unreachable and marked as inactive */
 						else
 						{
-							appendPQExpBuffer(&details, "! running as standby");
-							item_list_append_format(
-								&warnings,
-								"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
-								cell->node_info->node_name, cell->node_info->node_id);
+							appendPQExpBuffer(&details, "- failed");
 						}
 					}
 				}
-				/* node is unreachable */
-				else
-				{
-					/* node is unreachable but marked active*/
-					if (cell->node_info->active == true)
-					{
-						appendPQExpBuffer(&details, "? unreachable");
-						item_list_append_format(
-							&warnings,
-							"node \"%s\" (ID: %i) is registered as an active primary but is unreachable",
-							cell->node_info->node_name, cell->node_info->node_id);
-					}
-					/* node is unreachable and marked as inactive */
-					else
-					{
-						appendPQExpBuffer(&details, "- failed");
-					}
-				}
-			}
-			break;
+				break;
 			case STANDBY:
-			{
-				/* node is reachable */
-				if (cell->node_info->node_status == NODE_STATUS_UP)
 				{
-					if (cell->node_info->active == true)
+					/* node is reachable */
+					if (cell->node_info->node_status == NODE_STATUS_UP)
 					{
-						switch (cell->node_info->recovery_type)
+						if (cell->node_info->active == true)
 						{
-							case RECTYPE_STANDBY:
-								appendPQExpBuffer(&details, "  running");
-								break;
-							case RECTYPE_PRIMARY:
-								appendPQExpBuffer(&details, "! running as primary");
-							item_list_append_format(
-								&warnings,
-								"node \"%s\" (ID: %i) is registered as standby but running as primary",
-								cell->node_info->node_name, cell->node_info->node_id);
-								break;
-							case RECTYPE_UNKNOWN:
-								appendPQExpBuffer(&details, "! unknown");
-								item_list_append_format(
-									&warnings,
-									"node \"%s\" (ID: %i) has unknown replication status",
-									cell->node_info->node_name, cell->node_info->node_id);
-								break;
-						}
-					}
-					else
-					{
-						if (cell->node_info->recovery_type == RECTYPE_STANDBY)
-						{
-							appendPQExpBuffer(&details, "! running");
-							item_list_append_format(
-								&warnings,
-								"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
-								cell->node_info->node_name, cell->node_info->node_id);
+							switch (cell->node_info->recovery_type)
+							{
+								case RECTYPE_STANDBY:
+									appendPQExpBuffer(&details, "  running");
+									break;
+								case RECTYPE_PRIMARY:
+									appendPQExpBuffer(&details, "! running as primary");
+									item_list_append_format(
+															&warnings,
+															"node \"%s\" (ID: %i) is registered as standby but running as primary",
+															cell->node_info->node_name, cell->node_info->node_id);
+									break;
+								case RECTYPE_UNKNOWN:
+									appendPQExpBuffer(&details, "! unknown");
+									item_list_append_format(
+															&warnings,
+															"node \"%s\" (ID: %i) has unknown replication status",
+															cell->node_info->node_name, cell->node_info->node_id);
+									break;
+							}
 						}
 						else
 						{
-							appendPQExpBuffer(&details, "! running as primary");
+							if (cell->node_info->recovery_type == RECTYPE_STANDBY)
+							{
+								appendPQExpBuffer(&details, "! running");
+								item_list_append_format(
+														&warnings,
+														"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
+														cell->node_info->node_name, cell->node_info->node_id);
+							}
+							else
+							{
+								appendPQExpBuffer(&details, "! running as primary");
+								item_list_append_format(
+														&warnings,
+														"node \"%s\" (ID: %i) is running as primary but the repmgr node record is inactive",
+														cell->node_info->node_name, cell->node_info->node_id);
+							}
+						}
+					}
+					/* node is unreachable */
+					else
+					{
+						/* node is unreachable but marked active */
+						if (cell->node_info->active == true)
+						{
+							appendPQExpBuffer(&details, "? unreachable");
 							item_list_append_format(
-								&warnings,
-								"node \"%s\" (ID: %i) is running as primary but the repmgr node record is inactive",
-								cell->node_info->node_name, cell->node_info->node_id);
+													&warnings,
+													"node \"%s\" (ID: %i) is registered as an active standby but is unreachable",
+													cell->node_info->node_name, cell->node_info->node_id);
+						}
+						else
+						{
+							appendPQExpBuffer(&details, "- failed");
 						}
 					}
 				}
-				/* node is unreachable */
-				else
-				{
-					/* node is unreachable but marked active*/
-					if (cell->node_info->active == true)
-					{
-						appendPQExpBuffer(&details, "? unreachable");
-						item_list_append_format(
-							&warnings,
-							"node \"%s\" (ID: %i) is registered as an active standby but is unreachable",
-							cell->node_info->node_name, cell->node_info->node_id);
-					}
-					else
-					{
-						appendPQExpBuffer(&details, "- failed");
-					}
-				}
-			}
-			break;
+				break;
 			case BDR:
-			{
-				/* node is reachable */
-				if (cell->node_info->node_status == NODE_STATUS_UP)
 				{
-					if (cell->node_info->active == true)
-						appendPQExpBuffer(&details, "* running");
+					/* node is reachable */
+					if (cell->node_info->node_status == NODE_STATUS_UP)
+					{
+						if (cell->node_info->active == true)
+							appendPQExpBuffer(&details, "* running");
+						else
+							appendPQExpBuffer(&details, "! running");
+					}
+					/* node is unreachable */
 					else
-						appendPQExpBuffer(&details, "! running");
+					{
+						if (cell->node_info->active == true)
+							appendPQExpBuffer(&details, "? unreachable");
+						else
+							appendPQExpBuffer(&details, "- failed");
+					}
 				}
-				/* node is unreachable */
-				else
-				{
-					if (cell->node_info->active == true)
-						appendPQExpBuffer(&details, "? unreachable");
-					else
-						appendPQExpBuffer(&details, "- failed");
-				}
-			}
-			break;
+				break;
 			case UNKNOWN:
-			{
-				/* this should never happen */
-				appendPQExpBuffer(&details, "? unknown node type");
-			}
-			break;
+				{
+					/* this should never happen */
+					appendPQExpBuffer(&details, "? unknown node type");
+				}
+				break;
 		}
 
 		strncpy(cell->node_info->details, details.data, MAXLEN);
@@ -344,7 +348,8 @@ do_cluster_show(void)
 
 		for (i = 0; i < SHOW_HEADER_COUNT; i++)
 		{
-			int j;
+			int			j;
+
 			for (j = 0; j < headers_show[i].max_length; j++)
 				printf("-");
 
@@ -361,12 +366,12 @@ do_cluster_show(void)
 	{
 		if (runtime_options.output_mode == OM_CSV)
 		{
-			int connection_status =	(cell->node_info->node_status == NODE_STATUS_UP) ? 0 : -1;
-			int recovery_type = RECTYPE_UNKNOWN;
+			int			connection_status = (cell->node_info->node_status == NODE_STATUS_UP) ? 0 : -1;
+			int			recovery_type = RECTYPE_UNKNOWN;
 
 			/*
-			 * here we explicitly convert the RecoveryType to integer values to
-			 * avoid implicit dependency on the values in the enum
+			 * here we explicitly convert the RecoveryType to integer values
+			 * to avoid implicit dependency on the values in the enum
 			 */
 			switch (cell->node_info->recovery_type)
 			{
@@ -388,12 +393,12 @@ do_cluster_show(void)
 		}
 		else
 		{
-			printf( " %-*i ",  headers_show[SHOW_ID].max_length, cell->node_info->node_id);
-			printf("| %-*s ",  headers_show[SHOW_NAME].max_length, cell->node_info->node_name);
-			printf("| %-*s ",  headers_show[SHOW_ROLE].max_length, get_node_type_string(cell->node_info->type));
-			printf("| %-*s ",  headers_show[SHOW_STATUS].max_length, cell->node_info->details);
-			printf("| %-*s ",  headers_show[SHOW_UPSTREAM_NAME].max_length , cell->node_info->upstream_node_name);
-			printf("| %-*s ",  headers_show[SHOW_LOCATION].max_length , cell->node_info->location);
+			printf(" %-*i ", headers_show[SHOW_ID].max_length, cell->node_info->node_id);
+			printf("| %-*s ", headers_show[SHOW_NAME].max_length, cell->node_info->node_name);
+			printf("| %-*s ", headers_show[SHOW_ROLE].max_length, get_node_type_string(cell->node_info->type));
+			printf("| %-*s ", headers_show[SHOW_STATUS].max_length, cell->node_info->details);
+			printf("| %-*s ", headers_show[SHOW_UPSTREAM_NAME].max_length, cell->node_info->upstream_node_name);
+			printf("| %-*s ", headers_show[SHOW_LOCATION].max_length, cell->node_info->location);
 			printf("| %-*s\n", headers_show[SHOW_CONNINFO].max_length, cell->node_info->conninfo);
 		}
 	}
@@ -429,11 +434,11 @@ do_cluster_show(void)
 void
 do_cluster_event(void)
 {
-	PGconn			 *conn = NULL;
-	PQExpBufferData	  query;
-	PQExpBufferData	  where_clause;
-	PGresult		 *res;
-	int			 	  i = 0;
+	PGconn	   *conn = NULL;
+	PQExpBufferData query;
+	PQExpBufferData where_clause;
+	PGresult   *res;
+	int			i = 0;
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
@@ -442,12 +447,12 @@ do_cluster_event(void)
 
 	/* LEFT JOIN used here as a node record may have been removed */
 	appendPQExpBuffer(
-		&query,
-		"   SELECT e.node_id, n.node_name, e.event, e.successful, \n"
-		"          TO_CHAR(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, \n"
-		"          e.details \n"
-		"     FROM repmgr.events e \n"
-		"LEFT JOIN repmgr.nodes n ON e.node_id = n.node_id ");
+					  &query,
+					  "   SELECT e.node_id, n.node_name, e.event, e.successful, \n"
+					  "          TO_CHAR(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, \n"
+					  "          e.details \n"
+					  "     FROM repmgr.events e \n"
+					  "LEFT JOIN repmgr.nodes n ON e.node_id = n.node_id ");
 
 	if (runtime_options.node_id != UNKNOWN_NODE_ID)
 	{
@@ -457,7 +462,7 @@ do_cluster_event(void)
 	}
 	else if (runtime_options.node_name[0] != '\0')
 	{
-		char *escaped = escape_string(conn, runtime_options.node_name);
+		char	   *escaped = escape_string(conn, runtime_options.node_name);
 
 		if (escaped == NULL)
 		{
@@ -474,7 +479,7 @@ do_cluster_event(void)
 
 	if (runtime_options.event[0] != '\0')
 	{
-		char *escaped = escape_string(conn, runtime_options.event);
+		char	   *escaped = escape_string(conn, runtime_options.event);
 
 		if (escaped == NULL)
 		{
@@ -516,7 +521,8 @@ do_cluster_event(void)
 		exit(ERR_DB_QUERY);
 	}
 
-	if (PQntuples(res) == 0) {
+	if (PQntuples(res) == 0)
+	{
 		/* print this message directly, rather than as a log line */
 		printf(_("no matching events found\n"));
 		PQclear(res);
@@ -536,14 +542,14 @@ do_cluster_event(void)
 		headers_event[i].max_length = strlen(headers_event[i].title);
 	}
 
-	for(i = 0; i < PQntuples(res); i++)
+	for (i = 0; i < PQntuples(res); i++)
 	{
-		int j;
+		int			j;
 
 		for (j = 0; j < EVENT_HEADER_COUNT; j++)
 		{
 			headers_event[j].cur_length = strlen(PQgetvalue(res, i, j));
-			if(headers_event[j].cur_length > headers_event[j].max_length)
+			if (headers_event[j].cur_length > headers_event[j].max_length)
 			{
 				headers_event[j].max_length = headers_event[j].cur_length;
 			}
@@ -566,7 +572,8 @@ do_cluster_event(void)
 	printf("-");
 	for (i = 0; i < EVENT_HEADER_COUNT; i++)
 	{
-		int j;
+		int			j;
+
 		for (j = 0; j < headers_event[i].max_length; j++)
 			printf("-");
 
@@ -578,9 +585,9 @@ do_cluster_event(void)
 
 	printf("\n");
 
-	for(i = 0; i < PQntuples(res); i++)
+	for (i = 0; i < PQntuples(res); i++)
 	{
-		int j;
+		int			j;
 
 		printf(" ");
 		for (j = 0; j < EVENT_HEADER_COUNT; j++)
@@ -590,7 +597,7 @@ do_cluster_event(void)
 				   PQgetvalue(res, i, j));
 
 			if (j < (EVENT_HEADER_COUNT - 1))
-			printf(" | ");
+				printf(" | ");
 		}
 
 		printf("\n");
@@ -607,7 +614,8 @@ do_cluster_event(void)
 void
 do_cluster_crosscheck(void)
 {
-	int			i = 0, n = 0;
+	int			i = 0,
+				n = 0;
 	char		c;
 	const char *node_header = "Name";
 	int			name_length = strlen(node_header);
@@ -630,7 +638,7 @@ do_cluster_crosscheck(void)
 
 	for (i = 0; i < n; i++)
 	{
-		int column_node_ix;
+		int			column_node_ix;
 
 		printf("%*s | %2d ", name_length,
 			   cube[i]->node_name,
@@ -638,26 +646,27 @@ do_cluster_crosscheck(void)
 
 		for (column_node_ix = 0; column_node_ix < n; column_node_ix++)
 		{
-			int max_node_status = -2;
-			int node_ix = 0;
+			int			max_node_status = -2;
+			int			node_ix = 0;
 
 			/*
-			 * The value of entry (i,j) is equal to the
-			 * maximum value of all the (i,j,k). Indeed:
+			 * The value of entry (i,j) is equal to the maximum value of all
+			 * the (i,j,k). Indeed:
 			 *
-			 * - if one of the (i,j,k) is 0 (node up), then 0
-			 *	 (the node is up);
+			 * - if one of the (i,j,k) is 0 (node up), then 0 (the node is
+			 * up);
 			 *
-			 * - if the (i,j,k) are either -1 (down) or -2
-			 *	 (unknown), then -1 (the node is down);
+			 * - if the (i,j,k) are either -1 (down) or -2 (unknown), then -1
+			 * (the node is down);
 			 *
-			 * - if all the (i,j,k) are -2 (unknown), then -2
-			 *	 (the node is in an unknown state).
+			 * - if all the (i,j,k) are -2 (unknown), then -2 (the node is in
+			 * an unknown state).
 			 */
 
-			for(node_ix = 0; node_ix < n; node_ix ++)
+			for (node_ix = 0; node_ix < n; node_ix++)
 			{
-				int node_status = cube[node_ix]->matrix_list_rec[i]->node_status_list[column_node_ix]->node_status;
+				int			node_status = cube[node_ix]->matrix_list_rec[i]->node_status_list[column_node_ix]->node_status;
+
 				if (node_status > max_node_status)
 					max_node_status = node_status;
 			}
@@ -685,7 +694,9 @@ do_cluster_crosscheck(void)
 
 	/* clean up allocated cube array */
 	{
-		int h, j;
+		int			h,
+					j;
+
 		for (h = 0; h < n; h++)
 		{
 			for (i = 0; i < n; i++)
@@ -710,7 +721,9 @@ do_cluster_crosscheck(void)
 void
 do_cluster_matrix()
 {
-	int			i = 0, j = 0, n = 0;
+	int			i = 0,
+				j = 0,
+				n = 0;
 
 	const char *node_header = "Name";
 	int			name_length = strlen(node_header);
@@ -730,7 +743,7 @@ do_cluster_matrix()
 	}
 	else
 	{
-		char c;
+		char		c;
 
 		printf("%*s | Id ", name_length, node_header);
 		for (i = 0; i < n; i++)
@@ -753,17 +766,17 @@ do_cluster_matrix()
 			{
 				switch (matrix_rec_list[i]->node_status_list[j]->node_status)
 				{
-				case -2:
-					c = '?';
-					break;
-				case -1:
-					c = 'x';
-					break;
-				case 0:
-					c = '*';
-					break;
-				default:
-					exit(ERR_INTERNAL);
+					case -2:
+						c = '?';
+						break;
+					case -1:
+						c = 'x';
+						break;
+					case 0:
+						c = '*';
+						break;
+					default:
+						exit(ERR_INTERNAL);
 				}
 
 				printf("|  %c ", c);
@@ -789,7 +802,8 @@ do_cluster_matrix()
 static void
 matrix_set_node_status(t_node_matrix_rec **matrix_rec_list, int n, int node_id, int connection_node_id, int connection_status)
 {
-	int i, j;
+	int			i,
+				j;
 
 	for (i = 0; i < n; i++)
 	{
@@ -812,10 +826,11 @@ matrix_set_node_status(t_node_matrix_rec **matrix_rec_list, int n, int node_id, 
 static int
 build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 {
-	PGconn	    *conn = NULL;
-	int			 i = 0, j = 0;
-	int			 local_node_id = UNKNOWN_NODE_ID;
-	int			 node_count = 0;
+	PGconn	   *conn = NULL;
+	int			i = 0,
+				j = 0;
+	int			local_node_id = UNKNOWN_NODE_ID;
+	int			node_count = 0;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell = NULL;
 
@@ -852,9 +867,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 	/*
 	 * Allocate an empty matrix record list
 	 *
-	 * -2 == NULL  ?
-	 * -1 == Error x
-	 *  0 == OK    *
+	 * -2 == NULL  ? -1 == Error x 0 == OK    *
 	 */
 
 	matrix_rec_list = (t_node_matrix_rec **) pg_malloc0(sizeof(t_node_matrix_rec) * nodes.node_count);
@@ -864,7 +877,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 	/* Initialise matrix structure for each node */
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int name_length_cur;
+		int			name_length_cur;
 		NodeInfoListCell *cell_j;
 
 		matrix_rec_list[i] = (t_node_matrix_rec *) pg_malloc0(sizeof(t_node_matrix_rec));
@@ -875,7 +888,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 		/*
 		 * Find the maximum length of a node name
 		 */
-		name_length_cur	= strlen(matrix_rec_list[i]->node_name);
+		name_length_cur = strlen(matrix_rec_list[i]->node_name);
 		if (name_length_cur > *name_length)
 			*name_length = name_length_cur;
 
@@ -887,7 +900,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 		{
 			matrix_rec_list[i]->node_status_list[j] = (t_node_status_rec *) pg_malloc0(sizeof(t_node_status_rec));
 			matrix_rec_list[i]->node_status_list[j]->node_id = cell_j->node_info->node_id;
-			matrix_rec_list[i]->node_status_list[j]->node_status = -2;  /* default unknown */
+			matrix_rec_list[i]->node_status_list[j]->node_status = -2;	/* default unknown */
 
 			j++;
 		}
@@ -900,12 +913,14 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int connection_status = 0;
+		int			connection_status = 0;
 		t_conninfo_param_list remote_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
-		char *host = NULL, *p = NULL;
-		int connection_node_id = cell->node_info->node_id;
-		int			x, y;
-		PGconn *node_conn = NULL;
+		char	   *host = NULL,
+				   *p = NULL;
+		int			connection_node_id = cell->node_info->node_id;
+		int			x,
+					y;
+		PGconn	   *node_conn = NULL;
 
 		initialize_conninfo_params(&remote_conninfo, false);
 		parse_conninfo_string(cell->node_info->conninfo,
@@ -948,9 +963,9 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 		initPQExpBuffer(&command);
 
 		/*
-		 * We'll pass cluster name and database connection string to the remote
-		 * repmgr - those are the only values it needs to work, and saves us
-		 * making assumptions about the location of repmgr.conf
+		 * We'll pass cluster name and database connection string to the
+		 * remote repmgr - those are the only values it needs to work, and
+		 * saves us making assumptions about the location of repmgr.conf
 		 */
 		appendPQExpBuffer(&command,
 						  "\"%s -d '%s' ",
@@ -975,11 +990,11 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 		initPQExpBuffer(&command_output);
 
-		(void)remote_command(
-			host,
-			runtime_options.remote_user,
-			command.data,
-			&command_output);
+		(void) remote_command(
+							  host,
+							  runtime_options.remote_user,
+							  command.data,
+							  &command_output);
 
 		p = command_output.data;
 
@@ -998,7 +1013,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 								   nodes.node_count,
 								   connection_node_id,
 								   x,
-								   (y == -1) ? -1 : 0 );
+								   (y == -1) ? -1 : 0);
 
 			while (*p && (*p != '\n'))
 				p++;
@@ -1026,13 +1041,15 @@ static int
 build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 {
 	PGconn	   *conn = NULL;
-	int			h, i, j;
+	int			h,
+				i,
+				j;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell = NULL;
 
 	t_node_status_cube **cube;
 
-	int node_count = 0;
+	int			node_count = 0;
 
 	/* We need to connect to get the list of nodes */
 	log_info(_("connecting to database\n"));
@@ -1056,9 +1073,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 	/*
 	 * Allocate an empty cube matrix structure
 	 *
-	 * -2 == NULL
-	 * -1 == Error
-	 *	0 == OK
+	 * -2 == NULL -1 == Error 0 == OK
 	 */
 
 	cube = (t_node_status_cube **) pg_malloc(sizeof(t_node_status_cube *) * nodes.node_count);
@@ -1067,7 +1082,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int name_length_cur = 0;
+		int			name_length_cur = 0;
 		NodeInfoListCell *cell_i = NULL;
 
 		cube[h] = (t_node_status_cube *) pg_malloc(sizeof(t_node_status_cube));
@@ -1077,7 +1092,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 		/*
 		 * Find the maximum length of a node name
 		 */
-		name_length_cur	= strlen(cube[h]->node_name);
+		name_length_cur = strlen(cube[h]->node_name);
 		if (name_length_cur > *name_length)
 			*name_length = name_length_cur;
 
@@ -1102,7 +1117,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 			{
 				cube[h]->matrix_list_rec[i]->node_status_list[j] = (t_node_status_rec *) pg_malloc0(sizeof(t_node_status_rec));
 				cube[h]->matrix_list_rec[i]->node_status_list[j]->node_id = cell_j->node_info->node_id;
-				cube[h]->matrix_list_rec[i]->node_status_list[j]->node_status = -2;  /* default unknown */
+				cube[h]->matrix_list_rec[i]->node_status_list[j]->node_status = -2; /* default unknown */
 
 				j++;
 			}
@@ -1121,7 +1136,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		int remote_node_id = UNKNOWN_NODE_ID;
+		int			remote_node_id = UNKNOWN_NODE_ID;
 		PQExpBufferData command;
 		PQExpBufferData command_output;
 
@@ -1155,14 +1170,14 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 		/* fix to work with --node-id */
 		if (cube[i]->node_id == config_file_options.node_id)
 		{
-			(void)local_command(
-				command.data,
-				&command_output);
+			(void) local_command(
+								 command.data,
+								 &command_output);
 		}
 		else
 		{
 			t_conninfo_param_list remote_conninfo;
-			char *host = NULL;
+			char	   *host = NULL;
 			PQExpBufferData quoted_command;
 
 			initPQExpBuffer(&quoted_command);
@@ -1181,11 +1196,11 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 			log_verbose(LOG_DEBUG, "build_cluster_crosscheck(): executing\n  %s", quoted_command.data);
 
-			(void)remote_command(
-				host,
-				runtime_options.remote_user,
-				quoted_command.data,
-				&command_output);
+			(void) remote_command(
+								  host,
+								  runtime_options.remote_user,
+								  quoted_command.data,
+								  &command_output);
 
 			free_conninfo_params(&remote_conninfo);
 			termPQExpBuffer(&quoted_command);
@@ -1195,7 +1210,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 		p = command_output.data;
 
-		if(!strlen(command_output.data))
+		if (!strlen(command_output.data))
 		{
 			termPQExpBuffer(&command_output);
 			continue;
@@ -1203,9 +1218,9 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 		for (j = 0; j < (nodes.node_count * nodes.node_count); j++)
 		{
-			int matrix_rec_node_id;
-			int node_status_node_id;
-			int node_status;
+			int			matrix_rec_node_id;
+			int			node_status_node_id;
+			int			node_status;
 
 			if (sscanf(p, "%d,%d,%d", &matrix_rec_node_id, &node_status_node_id, &node_status) != 3)
 			{
@@ -1243,7 +1258,9 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 static void
 cube_set_node_status(t_node_status_cube **cube, int n, int execute_node_id, int matrix_node_id, int connection_node_id, int connection_status)
 {
-	int h, i, j;
+	int			h,
+				i,
+				j;
 
 
 	for (h = 0; h < n; h++)

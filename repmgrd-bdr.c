@@ -39,9 +39,9 @@ do_bdr_node_check(void)
 void
 monitor_bdr(void)
 {
-	NodeInfoList    nodes = T_NODE_INFO_LIST_INITIALIZER;
+	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	t_bdr_node_info bdr_node_info = T_BDR_NODE_INFO_INITIALIZER;
-	RecordStatus  record_status;
+	RecordStatus record_status;
 	NodeInfoListCell *cell;
 	PQExpBufferData event_details;
 	instr_time	log_status_interval_start;
@@ -65,8 +65,7 @@ monitor_bdr(void)
 	}
 
 	/*
-	 * Verify that database is a BDR one
-	 * TODO: check if supported BDR version?
+	 * Verify that database is a BDR one TODO: check if supported BDR version?
 	 */
 	log_info(_("connected to database, checking for BDR"));
 
@@ -81,7 +80,10 @@ monitor_bdr(void)
 		log_error(_("repmgr metadata table 'repmgr.%s' is not in the 'repmgr' replication set"),
 				  "nodes");
 
-		/* TODO: add `repmgr bdr sync` or similar for this situation, and hint here */
+		/*
+		 * TODO: add `repmgr bdr sync` or similar for this situation, and hint
+		 * here
+		 */
 
 		exit(ERR_BAD_CONFIG);
 	}
@@ -100,8 +102,8 @@ monitor_bdr(void)
 	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_info);
 
 	/*
-	 * Terminate if we can't find the local node record. This is a "fix-the-config"
-	 * situation, not a lot else we can do.
+	 * Terminate if we can't find the local node record. This is a
+	 * "fix-the-config" situation, not a lot else we can do.
 	 */
 	if (record_status != RECORD_FOUND)
 	{
@@ -139,7 +141,8 @@ monitor_bdr(void)
 						NULL);
 
 	/*
-	 * retrieve list of all nodes - we'll need these if the DB connection goes away
+	 * retrieve list of all nodes - we'll need these if the DB connection goes
+	 * away
 	 */
 	get_all_node_records(local_conn, &nodes);
 
@@ -184,80 +187,81 @@ monitor_bdr(void)
 			switch (cell->node_info->monitoring_state)
 			{
 				case MS_NORMAL:
-				{
-					if (is_server_available(cell->node_info->conninfo) == false)
 					{
-						/* node is down, we were expecting it to be up */
-						if (cell->node_info->node_status == NODE_STATUS_UP)
+						if (is_server_available(cell->node_info->conninfo) == false)
 						{
-							instr_time	node_unreachable_start;
-							INSTR_TIME_SET_CURRENT(node_unreachable_start);
-
-							cell->node_info->node_status = NODE_STATUS_DOWN;
-
-							if (cell->node_info->conn != NULL)
-							{
-								PQfinish(cell->node_info->conn);
-								cell->node_info->conn = NULL;
-							}
-
-							log_warning(_("unable to connect to node %s (ID %i)"),
-										cell->node_info->node_name, cell->node_info->node_id);
-							cell->node_info->conn = try_reconnect(cell->node_info);
-
-							/* node has recovered - log and continue */
+							/* node is down, we were expecting it to be up */
 							if (cell->node_info->node_status == NODE_STATUS_UP)
 							{
-								int		node_unreachable_elapsed = calculate_elapsed(node_unreachable_start);
+								instr_time	node_unreachable_start;
 
-								initPQExpBuffer(&event_details);
+								INSTR_TIME_SET_CURRENT(node_unreachable_start);
 
-								appendPQExpBuffer(&event_details,
-												  _("reconnected to node %i after %i seconds"),
-												  cell->node_info->node_id,
-												  node_unreachable_elapsed);
-								log_notice("%s", event_details.data);
+								cell->node_info->node_status = NODE_STATUS_DOWN;
 
-								create_event_notification(cell->node_info->conn,
-														  &config_file_options,
-														  config_file_options.node_id,
-														  "bdr_reconnect",
-														  true,
-														  event_details.data);
-								termPQExpBuffer(&event_details);
+								if (cell->node_info->conn != NULL)
+								{
+									PQfinish(cell->node_info->conn);
+									cell->node_info->conn = NULL;
+								}
 
-								goto loop;
-							}
+								log_warning(_("unable to connect to node %s (ID %i)"),
+											cell->node_info->node_name, cell->node_info->node_id);
+								cell->node_info->conn = try_reconnect(cell->node_info);
 
-							/* still down after reconnect attempt(s) */
-							if (cell->node_info->node_status == NODE_STATUS_DOWN)
-							{
-								do_bdr_failover(&nodes, cell->node_info);
-								goto loop;
+								/* node has recovered - log and continue */
+								if (cell->node_info->node_status == NODE_STATUS_UP)
+								{
+									int			node_unreachable_elapsed = calculate_elapsed(node_unreachable_start);
+
+									initPQExpBuffer(&event_details);
+
+									appendPQExpBuffer(&event_details,
+													  _("reconnected to node %i after %i seconds"),
+													  cell->node_info->node_id,
+													  node_unreachable_elapsed);
+									log_notice("%s", event_details.data);
+
+									create_event_notification(cell->node_info->conn,
+															  &config_file_options,
+															  config_file_options.node_id,
+															  "bdr_reconnect",
+															  true,
+															  event_details.data);
+									termPQExpBuffer(&event_details);
+
+									goto loop;
+								}
+
+								/* still down after reconnect attempt(s) */
+								if (cell->node_info->node_status == NODE_STATUS_DOWN)
+								{
+									do_bdr_failover(&nodes, cell->node_info);
+									goto loop;
+								}
 							}
 						}
 					}
-				}
-				break;
+					break;
 				case MS_DEGRADED:
-				{
-					/* degraded monitoring */
-					if (is_server_available(cell->node_info->conninfo) == true)
 					{
-						do_bdr_recovery(&nodes, cell->node_info);
-					}
+						/* degraded monitoring */
+						if (is_server_available(cell->node_info->conninfo) == true)
+						{
+							do_bdr_recovery(&nodes, cell->node_info);
+						}
 
-				}
-				break;
+					}
+					break;
 			}
 		}
 
-	loop:
+loop:
 
 		/* emit "still alive" log message at regular intervals, if requested */
 		if (config_file_options.log_status_interval > 0)
 		{
-			int		log_status_interval_elapsed = calculate_elapsed(log_status_interval_start);
+			int			log_status_interval_elapsed = calculate_elapsed(log_status_interval_start);
 
 			if (log_status_interval_elapsed >= config_file_options.log_status_interval)
 			{
@@ -270,9 +274,9 @@ monitor_bdr(void)
 					if (cell->node_info->monitoring_state == MS_DEGRADED)
 					{
 						log_detail(
-							_("monitoring node \"%s\" (ID: %i) in degraded mode"),
-							cell->node_info->node_name,
-							cell->node_info->node_id);
+								   _("monitoring node \"%s\" (ID: %i) in degraded mode"),
+								   cell->node_info->node_name,
+								   cell->node_info->node_id);
 					}
 				}
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
@@ -282,8 +286,7 @@ monitor_bdr(void)
 		if (got_SIGHUP)
 		{
 			/*
-			 * if we can reload, then could need to change
-			 * local_conn
+			 * if we can reload, then could need to change local_conn
 			 */
 			if (reload_config(&config_file_options))
 			{
@@ -350,8 +353,8 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	NodeInfoListCell *cell;
 	PQExpBufferData event_details;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
-	t_node_info target_node  = T_NODE_INFO_INITIALIZER;
-	t_node_info failed_node  = T_NODE_INFO_INITIALIZER;
+	t_node_info target_node = T_NODE_INFO_INITIALIZER;
+	t_node_info failed_node = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status;
 
 	/* if one of the two nodes is down, cluster will be in a degraded state */
@@ -372,7 +375,10 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	{
 		log_debug("do_bdr_failover() %s", cell->node_info->node_name);
 
-		/* don't attempt to connect to the current monitored node, as that's the one which has failed  */
+		/*
+		 * don't attempt to connect to the current monitored node, as that's
+		 * the one which has failed
+		 */
 		if (cell->node_info->node_id == monitored_node->node_id)
 			continue;
 
@@ -459,21 +465,21 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	/*
 	 * Create an event record
 	 *
-	 * If we were able to connect to another node, we'll update the
-	 * event log there.
+	 * If we were able to connect to another node, we'll update the event log
+	 * there.
 	 *
-	 * In any case the event notification command will be triggered
-	 * with the event "bdr_failover"
+	 * In any case the event notification command will be triggered with the
+	 * event "bdr_failover"
 	 */
 
 	create_event_notification_extended(
-		next_node_conn,
-		&config_file_options,
-		monitored_node->node_id,
-		"bdr_failover",
-		true,
-		event_details.data,
-		&event_info);
+									   next_node_conn,
+									   &config_file_options,
+									   monitored_node->node_id,
+									   "bdr_failover",
+									   true,
+									   event_details.data,
+									   &event_info);
 
 	log_info("%s", event_details.data);
 
@@ -490,15 +496,15 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 static void
 do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 {
-	PGconn *recovered_node_conn;
+	PGconn	   *recovered_node_conn;
 
 	PQExpBufferData event_details;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
-	int i;
-	bool slot_reactivated = false;
-	int		node_recovery_elapsed;
+	int			i;
+	bool		slot_reactivated = false;
+	int			node_recovery_elapsed;
 
-	char node_name[MAXLEN] = "";
+	char		node_name[MAXLEN] = "";
 
 	log_debug("handling recovery for monitored node %i", monitored_node->node_id);
 
@@ -519,7 +525,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	/*
 	 * still unable to connect - the local node is probably down, so we can't
 	 * check for reconnection
- 	 */
+	 */
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
 		local_conn = NULL;
@@ -532,11 +538,11 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		monitored_node->node_status = NODE_STATUS_UP;
 
 		appendPQExpBuffer(
-			&event_details,
-			_("node \"%s\" (ID: %i) has become available after %i seconds"),
-			monitored_node->node_name,
-			monitored_node->node_id,
-			node_recovery_elapsed);
+						  &event_details,
+						  _("node \"%s\" (ID: %i) has become available after %i seconds"),
+						  monitored_node->node_name,
+						  monitored_node->node_id,
+						  node_recovery_elapsed);
 
 		log_notice("%s", event_details.data);
 
@@ -560,8 +566,8 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		log_debug("checking for state of replication slot for node \"%s\"", node_name);
 
 		slot_status = get_bdr_node_replication_slot_status(
-			local_conn,
-			node_name);
+														   local_conn,
+														   node_name);
 
 		if (slot_status == SLOT_ACTIVE)
 		{
@@ -621,13 +627,13 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 		event_info.node_name = monitored_node->node_name;
 
 		create_event_notification_extended(
-			local_conn,
-			&config_file_options,
-			config_file_options.node_id,
-			"bdr_recovery",
-			true,
-			event_details.data,
-			&event_info);
+										   local_conn,
+										   &config_file_options,
+										   config_file_options.node_id,
+										   "bdr_recovery",
+										   true,
+										   event_details.data,
+										   &event_info);
 	}
 
 

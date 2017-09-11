@@ -34,14 +34,14 @@
 void
 do_bdr_register(void)
 {
-	PGconn	   	   *conn = NULL;
+	PGconn	   *conn = NULL;
 	BdrNodeInfoList bdr_nodes = T_BDR_NODE_INFO_LIST_INITIALIZER;
-    ExtensionStatus extension_status = REPMGR_UNKNOWN;
-	t_node_info		node_info = T_NODE_INFO_INITIALIZER;
-	RecordStatus	record_status = RECORD_NOT_FOUND;
+	ExtensionStatus extension_status = REPMGR_UNKNOWN;
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status = RECORD_NOT_FOUND;
 	PQExpBufferData event_details;
-	bool	   	    success = true;
-	char			dbname[MAXLEN];
+	bool		success = true;
+	char		dbname[MAXLEN];
 
 	/* sanity-check configuration for BDR-compatability */
 	if (config_file_options.replication_type != REPLICATION_TYPE_BDR)
@@ -124,7 +124,7 @@ do_bdr_register(void)
 
 	/* check for a matching BDR node */
 	{
-		bool node_exists = bdr_node_exists(conn, config_file_options.node_name);
+		bool		node_exists = bdr_node_exists(conn, config_file_options.node_name);
 
 		if (node_exists == false)
 		{
@@ -136,15 +136,15 @@ do_bdr_register(void)
 	}
 
 	/*
-	 * before adding the extension tables to the replication set,
-	 * if any other BDR nodes exist, populate repmgr.nodes with a copy
-	 * of existing entries
+	 * before adding the extension tables to the replication set, if any other
+	 * BDR nodes exist, populate repmgr.nodes with a copy of existing entries
 	 *
 	 * currently we won't copy the contents of any other tables
 	 *
 	 */
 	{
 		NodeInfoList local_node_records = T_NODE_INFO_LIST_INITIALIZER;
+
 		get_all_node_records(conn, &local_node_records);
 
 		if (local_node_records.node_count == 0)
@@ -163,7 +163,7 @@ do_bdr_register(void)
 
 			for (bdr_cell = bdr_nodes.head; bdr_cell; bdr_cell = bdr_cell->next)
 			{
-				PGconn *bdr_node_conn = NULL;
+				PGconn	   *bdr_node_conn = NULL;
 				NodeInfoList existing_nodes = T_NODE_INFO_LIST_INITIALIZER;
 				NodeInfoListCell *cell = NULL;
 				ExtensionStatus other_node_extension_status = REPMGR_UNKNOWN;
@@ -235,10 +235,11 @@ do_bdr_register(void)
 
 	if (record_status == RECORD_FOUND)
 	{
-		bool node_updated = false;
+		bool		node_updated = false;
+
 		/*
-		 * At this point we will have established there are no non-BDR records,
-		 * so no need to verify the node type
+		 * At this point we will have established there are no non-BDR
+		 * records, so no need to verify the node type
 		 */
 		if (!runtime_options.force)
 		{
@@ -250,8 +251,8 @@ do_bdr_register(void)
 		}
 
 		/*
-		 * don't permit changing the node name - this must match the
-		 * BDR node name set when the node was registered.
+		 * don't permit changing the node name - this must match the BDR node
+		 * name set when the node was registered.
 		 */
 
 		if (strncmp(node_info.node_name, config_file_options.node_name, MAXLEN) != 0)
@@ -281,7 +282,7 @@ do_bdr_register(void)
 	else
 	{
 		/* create new node record */
-		bool node_created = create_node_record(conn, "bdr register", &node_info);
+		bool		node_created = create_node_record(conn, "bdr register", &node_info);
 
 		if (node_created == true)
 		{
@@ -306,12 +307,12 @@ do_bdr_register(void)
 	commit_transaction(conn);
 	/* Log the event */
 	create_event_notification(
-		conn,
-		&config_file_options,
-		config_file_options.node_id,
-		"bdr_register",
-		true,
-		event_details.data);
+							  conn,
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "bdr_register",
+							  true,
+							  event_details.data);
 
 	termPQExpBuffer(&event_details);
 
@@ -327,14 +328,14 @@ do_bdr_register(void)
 void
 do_bdr_unregister(void)
 {
-	PGconn	   	   *conn = NULL;
-    ExtensionStatus extension_status = REPMGR_UNKNOWN;
-	int 			target_node_id = UNKNOWN_NODE_ID;
-	t_node_info		node_info = T_NODE_INFO_INITIALIZER;
-	RecordStatus	record_status = RECORD_NOT_FOUND;
-	bool			node_record_deleted = false;
+	PGconn	   *conn = NULL;
+	ExtensionStatus extension_status = REPMGR_UNKNOWN;
+	int			target_node_id = UNKNOWN_NODE_ID;
+	t_node_info node_info = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	bool		node_record_deleted = false;
 	PQExpBufferData event_details;
-	char			dbname[MAXLEN];
+	char		dbname[MAXLEN];
 
 	/* sanity-check configuration for BDR-compatability */
 
@@ -411,12 +412,12 @@ do_bdr_unregister(void)
 
 	/* Log the event */
 	create_event_notification(
-		conn,
-		&config_file_options,
-		config_file_options.node_id,
-		"bdr_unregister",
-		true,
-		event_details.data);
+							  conn,
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "bdr_unregister",
+							  true,
+							  event_details.data);
 
 	PQfinish(conn);
 

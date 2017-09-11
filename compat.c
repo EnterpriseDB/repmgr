@@ -104,4 +104,3 @@ appendShellString(PQExpBuffer buf, const char *str)
 
 	appendPQExpBufferChar(buf, '\'');
 }
-

@@ -33,14 +33,16 @@
 #define MAXLEN_STR STR(MAXLEN)
 
 
-typedef enum {
+typedef enum
+{
 	CHECK_STATUS_OK = 0,
 	CHECK_STATUS_WARNING,
 	CHECK_STATUS_CRITICAL,
 	CHECK_STATUS_UNKNOWN
 } CheckStatus;
 
-typedef enum {
+typedef enum
+{
 	OM_NOT_SET = -1,
 	OM_TEXT,
 	OM_CSV,
@@ -51,7 +53,7 @@ typedef enum {
 typedef struct ItemListCell
 {
 	struct ItemListCell *next;
-	char			    *string;
+	char	   *string;
 } ItemListCell;
 
 typedef struct ItemList
@@ -63,9 +65,9 @@ typedef struct ItemList
 typedef struct KeyValueListCell
 {
 	struct KeyValueListCell *next;
-	char				    *key;
-	char				    *value;
-	OutputMode			     output_mode;
+	char	   *key;
+	char	   *value;
+	OutputMode	output_mode;
 } KeyValueListCell;
 
 typedef struct KeyValueList
@@ -78,9 +80,9 @@ typedef struct KeyValueList
 typedef struct CheckStatusListCell
 {
 	struct CheckStatusListCell *next;
-	char				       *item;
-	CheckStatus				    status;
-	char				       *details;
+	char	   *item;
+	CheckStatus status;
+	char	   *details;
 } CheckStatusListCell;
 
 typedef struct CheckStatusList
@@ -100,62 +102,58 @@ maxpath_snprintf(char *str, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
 extern void
-item_list_append(ItemList *item_list, const char *message);
+			item_list_append(ItemList *item_list, const char *message);
 
 extern void
-item_list_append_format(ItemList *item_list, const char *format, ...)
+item_list_append_format(ItemList *item_list, const char *format,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
 extern void
-item_list_free(ItemList *item_list);
+			item_list_free(ItemList *item_list);
 
 extern void
-key_value_list_set(KeyValueList *item_list, const char *key, const char *value);
+			key_value_list_set(KeyValueList *item_list, const char *key, const char *value);
 
 extern void
-key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value, ...)
+key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 
 extern void
-key_value_list_set_output_mode(KeyValueList *item_list, const char *key, OutputMode mode);
+			key_value_list_set_output_mode(KeyValueList *item_list, const char *key, OutputMode mode);
 
-extern const char *
-key_value_list_get(KeyValueList *item_list, const char *key);
-
-extern void
-key_value_list_free(KeyValueList *item_list);
+extern const char *key_value_list_get(KeyValueList *item_list, const char *key);
 
 extern void
-check_status_list_set(CheckStatusList *list, const char *item, CheckStatus status, const char *details);
+			key_value_list_free(KeyValueList *item_list);
 
 extern void
-check_status_list_set_format(CheckStatusList *list, const char *item, CheckStatus status, const char *details, ...)
+			check_status_list_set(CheckStatusList *list, const char *item, CheckStatus status, const char *details);
+
+extern void
+check_status_list_set_format(CheckStatusList *list, const char *item, CheckStatus status, const char *details,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 4, 5)));
 
 extern void
-check_status_list_free(CheckStatusList *list);
+			check_status_list_free(CheckStatusList *list);
 
-extern const char * output_check_status(CheckStatus status);
+extern const char *output_check_status(CheckStatus status);
 
-extern char *
-escape_recovery_conf_value(const char *src);
+extern char *escape_recovery_conf_value(const char *src);
 
-extern char *
-escape_string(PGconn *conn, const char *string);
+extern char *escape_string(PGconn *conn, const char *string);
 
 extern void
-append_where_clause(PQExpBufferData *where_clause, const char *clause, ...)
+append_where_clause(PQExpBufferData *where_clause, const char *clause,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
 
-extern char *
-string_skip_prefix(const char *prefix, char *string);
+extern char *string_skip_prefix(const char *prefix, char *string);
 
 extern char
-*string_remove_trailing_newlines(char *string);
+		   *string_remove_trailing_newlines(char *string);
 
-extern char	*trim(char *s);
+extern char *trim(char *s);
 
 extern void
-parse_follow_command(char *parsed_command, char *template, int node_id);
+			parse_follow_command(char *parsed_command, char *template, int node_id);
 
-#endif	 /* _STRUTIL_H_ */
+#endif							/* _STRUTIL_H_ */

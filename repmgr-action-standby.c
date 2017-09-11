@@ -37,7 +37,7 @@ typedef struct TablespaceDataListCell
 	char	   *oid;
 	char	   *location;
 	/* optional payload */
-	FILE       *f;
+	FILE	   *f;
 } TablespaceDataListCell;
 
 typedef struct TablespaceDataList
@@ -47,44 +47,44 @@ typedef struct TablespaceDataList
 } TablespaceDataList;
 
 
-static PGconn  *primary_conn = NULL;
-static PGconn  *source_conn = NULL;
+static PGconn *primary_conn = NULL;
+static PGconn *source_conn = NULL;
 
-static char		local_data_directory[MAXPGPATH] = "";
-static bool		local_data_directory_provided = false;
+static char local_data_directory[MAXPGPATH] = "";
+static bool local_data_directory_provided = false;
 
-static bool		upstream_conninfo_found = false;
-static int	    upstream_node_id = UNKNOWN_NODE_ID;
-static char		upstream_data_directory[MAXPGPATH];
+static bool upstream_conninfo_found = false;
+static int	upstream_node_id = UNKNOWN_NODE_ID;
+static char upstream_data_directory[MAXPGPATH];
 
 static t_conninfo_param_list recovery_conninfo;
-static char		recovery_conninfo_str[MAXLEN] = "";
-static char		upstream_repluser[NAMEDATALEN] = "";
+static char recovery_conninfo_str[MAXLEN] = "";
+static char upstream_repluser[NAMEDATALEN] = "";
 
-static int  	source_server_version_num = UNKNOWN_SERVER_VERSION_NUM;
+static int	source_server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 static t_configfile_list config_files = T_CONFIGFILE_LIST_INITIALIZER;
 
 static standy_clone_mode mode = pg_basebackup;
 
 /* used by barman mode */
-static char		local_repmgr_tmp_directory[MAXPGPATH];
-static char		datadir_list_filename[MAXLEN];
-static char		barman_command_buf[MAXLEN] = "";
+static char local_repmgr_tmp_directory[MAXPGPATH];
+static char datadir_list_filename[MAXLEN];
+static char barman_command_buf[MAXLEN] = "";
 
 static void _do_standby_promote_internal(PGconn *conn, const char *data_dir);
 
 static void check_barman_config(void);
-static void	check_source_server(void);
-static void	check_source_server_via_barman(void);
+static void check_source_server(void);
+static void check_source_server_via_barman(void);
 static bool check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_info, bool exit_on_error);
 static void check_primary_standby_version_match(PGconn *conn, PGconn *primary_conn);
 static void check_recovery_type(PGconn *conn);
 
 
 static void initialise_direct_clone(t_node_info *node_record);
-static int run_basebackup(t_node_info *node_record);
-static int run_file_backup(t_node_info *node_record);
+static int	run_basebackup(t_node_info *node_record);
+static int	run_file_backup(t_node_info *node_record);
 
 static void copy_configuration_files(void);
 
@@ -93,7 +93,7 @@ static void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slo
 static void tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location);
 
 static void get_barman_property(char *dst, char *name, char *local_repmgr_directory);
-static int  get_tablespace_data_barman(char *, TablespaceDataList *);
+static int	get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
@@ -122,7 +122,7 @@ void
 do_standby_clone(void)
 {
 	PQExpBufferData event_details;
-	int r = 0;
+	int			r = 0;
 
 	/* dummy node record */
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
@@ -136,15 +136,15 @@ do_standby_clone(void)
 
 	/*
 	 * Copy the provided data directory; if a configuration file was provided,
-	 * use the (mandatory) value from that; if -D/--pgdata was provided, use that;
-	 * otherwise repmgr will default to using the same directory path as on the
-	 * source host. The last case will only ever occur when executing "repmgr
-	 * standby clone" with no configuration file.
+	 * use the (mandatory) value from that; if -D/--pgdata was provided, use
+	 * that; otherwise repmgr will default to using the same directory path as
+	 * on the source host. The last case will only ever occur when executing
+	 * "repmgr standby clone" with no configuration file.
 	 *
 	 * Note that barman mode requires -D/--pgdata.
 	 *
-	 * If no data directory is explicitly provided, and we're not cloning from barman,
-	 * the source host's data directory will be fetched later, after
+	 * If no data directory is explicitly provided, and we're not cloning from
+	 * barman, the source host's data directory will be fetched later, after
 	 * we've connected to it, in check_source_server().
 	 *
 	 */
@@ -158,7 +158,8 @@ do_standby_clone(void)
 	}
 	else if (mode == barman)
 	{
-		/* XXX in Barman mode it's still possible to connect to the upstream,
+		/*
+		 * XXX in Barman mode it's still possible to connect to the upstream,
 		 * so only fail if that's not available.
 		 */
 		log_error(_("Barman mode requires a data directory"));
@@ -177,15 +178,14 @@ do_standby_clone(void)
 	node_record.type = STANDBY;
 
 	/*
-	 * Initialise list of conninfo parameters which will later be used
-	 * to create the `primary_conninfo` string in recovery.conf .
+	 * Initialise list of conninfo parameters which will later be used to
+	 * create the `primary_conninfo` string in recovery.conf .
 	 *
 	 * We'll initialise it with the host settings specified on the command
 	 * line. As it's possible the standby will be cloned from a node different
-	 * to its intended upstream, we'll later attempt to fetch the
-	 * upstream node record and overwrite the values set here with
-	 * those from the upstream node record (excluding that record's
-	 * application_name)
+	 * to its intended upstream, we'll later attempt to fetch the upstream
+	 * node record and overwrite the values set here with those from the
+	 * upstream node record (excluding that record's application_name)
 	 */
 	initialize_conninfo_params(&recovery_conninfo, false);
 
@@ -195,7 +195,7 @@ do_standby_clone(void)
 	/* Set the default application name to this node's name */
 	if (config_file_options.node_id != UNKNOWN_NODE_ID)
 	{
-		char application_name[MAXLEN] = "";
+		char		application_name[MAXLEN] = "";
 
 		param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
 
@@ -207,35 +207,38 @@ do_standby_clone(void)
 	}
 	else
 	{
-		/* this will only happen in corner cases where the node is being
-		 * cloned without a configuration file; fall back to "repmgr" if no application_name
-		 * provided
+		/*
+		 * this will only happen in corner cases where the node is being
+		 * cloned without a configuration file; fall back to "repmgr" if no
+		 * application_name provided
 		 */
-		char *application_name = param_get(&source_conninfo, "application_name");
+		char	   *application_name = param_get(&source_conninfo, "application_name");
 
 		if (application_name == NULL)
 			param_set(&recovery_conninfo, "application_name", "repmgr");
 	}
 
 	/*
-	 * By default attempt to connect to the source node. This will fail
-	 * if no connection is possible, unless in Barman mode, in which case
-	 * we can fall back to connecting to the source node via Barman.
+	 * By default attempt to connect to the source node. This will fail if no
+	 * connection is possible, unless in Barman mode, in which case we can
+	 * fall back to connecting to the source node via Barman.
 	 */
 	if (runtime_options.no_upstream_connection == false)
 	{
 		/*
 		 * This connects to the source node and performs sanity checks, also
-		 * sets "recovery_conninfo_str", "upstream_repluser" and "upstream_node_id".
+		 * sets "recovery_conninfo_str", "upstream_repluser" and
+		 * "upstream_node_id".
 		 *
-		 * Will error out if source connection not possible and not in "barman" mode.
+		 * Will error out if source connection not possible and not in
+		 * "barman" mode.
 		 */
 		check_source_server();
 	}
 
 	/*
-	 * if --upstream-conninfo was supplied, use that (will overwrite
-	 * value set by check_source_server(), but that's OK)
+	 * if --upstream-conninfo was supplied, use that (will overwrite value set
+	 * by check_source_server(), but that's OK)
 	 */
 	if (runtime_options.upstream_conninfo[0] != '\0')
 	{
@@ -245,16 +248,17 @@ do_standby_clone(void)
 	else if (mode == barman && PQstatus(source_conn) != CONNECTION_OK)
 	{
 		/*
-		 * Here we don't have a connection to the upstream node (either because
-		 * --no-upstream-connection was supplied, or check_source_server() was unable
-		 * to make a connection, and --upstream-conninfo wasn't supplied.
+		 * Here we don't have a connection to the upstream node (either
+		 * because --no-upstream-connection was supplied, or
+		 * check_source_server() was unable to make a connection, and
+		 * --upstream-conninfo wasn't supplied.
 		 *
-		 * As we're executing in Barman mode we can try and connect via the Barman server
-		 * to extract the upstream node's conninfo string.
+		 * As we're executing in Barman mode we can try and connect via the
+		 * Barman server to extract the upstream node's conninfo string.
 		 *
-		 * To do this we need to extract Barman's conninfo string, replace the database
-		 * name with the repmgr one (they could well be different) and remotely execute
-		 * psql.
+		 * To do this we need to extract Barman's conninfo string, replace the
+		 * database name with the repmgr one (they could well be different)
+		 * and remotely execute psql.
 		 *
 		 * This attempts to set "recovery_conninfo_str".
 		 */
@@ -266,17 +270,17 @@ do_standby_clone(void)
 		log_error(_("unable to determine a connection string to use as \"primary_conninfo\""));
 		log_hint(_("use \"--upstream-conninfo\" to explicitly provide a value for \"primary_conninfo\""));
 		if (PQstatus(source_conn) == CONNECTION_OK)
-				PQfinish(source_conn);
+			PQfinish(source_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
-	 * by this point we should know the target data directory - check
-	 * there's no running Pg instance
+	 * by this point we should know the target data directory - check there's
+	 * no running Pg instance
 	 */
 	if (is_pg_dir(local_data_directory))
 	{
-		DBState state = get_db_state(local_data_directory);
+		DBState		state = get_db_state(local_data_directory);
 
 		if (state != DB_SHUTDOWNED && state != DB_SHUTDOWNED_IN_RECOVERY)
 		{
@@ -288,13 +292,19 @@ do_standby_clone(void)
 
 	if (upstream_conninfo_found == true)
 	{
-		/* parse returned upstream conninfo string to recovery primary_conninfo params */
+		/*
+		 * parse returned upstream conninfo string to recovery
+		 * primary_conninfo params
+		 */
 		char	   *errmsg = NULL;
-		bool	    parse_success = false;
+		bool		parse_success = false;
 
 		log_verbose(LOG_DEBUG, "parsing upstream conninfo string \"%s\"", recovery_conninfo_str);
 
-		/* parse_conninfo_string() here will remove the upstream's `application_name`, if set */
+		/*
+		 * parse_conninfo_string() here will remove the upstream's
+		 * `application_name`, if set
+		 */
 
 		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, errmsg, true);
 
@@ -308,7 +318,7 @@ do_standby_clone(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if (upstream_repluser[0] !=  '\0')
+		if (upstream_repluser[0] != '\0')
 		{
 			/* Write the replication user from the node's upstream record */
 			param_set(&recovery_conninfo, "user", upstream_repluser);
@@ -319,8 +329,8 @@ do_standby_clone(void)
 		/*
 		 * If no upstream node record found, we'll abort with an error here,
 		 * unless -F/--force is used, in which case we'll use the parameters
-		 * provided on the command line (and assume the user knows what they're
-		 * doing).
+		 * provided on the command line (and assume the user knows what
+		 * they're doing).
 		 */
 		if (upstream_node_id == UNKNOWN_NODE_ID)
 		{
@@ -346,11 +356,12 @@ do_standby_clone(void)
 	 * If copying of external configuration files requested, and any are
 	 * detected, perform sanity checks
 	 */
-	if (PQstatus(source_conn) == CONNECTION_OK)	{
-		PGconn			 *superuser_conn = NULL;
-		PGconn			 *privileged_conn = NULL;
-		bool			  external_config_files = false;
-		int 			  i = 0;
+	if (PQstatus(source_conn) == CONNECTION_OK)
+	{
+		PGconn	   *superuser_conn = NULL;
+		PGconn	   *privileged_conn = NULL;
+		bool		external_config_files = false;
+		int			i = 0;
 
 		/*
 		 * Obtain configuration file locations
@@ -359,14 +370,14 @@ do_standby_clone(void)
 		 * directory - if not we'll have to copy them via SSH, if copying
 		 * requested.
 		 *
-		 * This will require superuser permissions, so we'll attempt to connect
-		 * as -S/--superuser (if provided), otherwise check the current connection
-		 * user has superuser rights.
+		 * This will require superuser permissions, so we'll attempt to
+		 * connect as -S/--superuser (if provided), otherwise check the
+		 * current connection user has superuser rights.
 		 *
-		 * XXX: if configuration files are symlinks to targets outside the data
-		 * directory, they won't be copied by pg_basebackup, but we can't tell
-		 * this from the below query; we'll probably need to add a check for their
-		 * presence and if missing force copy by SSH
+		 * XXX: if configuration files are symlinks to targets outside the
+		 * data directory, they won't be copied by pg_basebackup, but we can't
+		 * tell this from the below query; we'll probably need to add a check
+		 * for their presence and if missing force copy by SSH
 		 */
 		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
 
@@ -395,7 +406,7 @@ do_standby_clone(void)
 
 		if (external_config_files == true)
 		{
-			int r;
+			int			r;
 			PQExpBufferData msg;
 
 			initPQExpBuffer(&msg);
@@ -419,7 +430,7 @@ do_standby_clone(void)
 			if (r != 0)
 			{
 				log_error(_("remote host \"%s\" is not reachable via SSH - unable to copy external configuration files"),
-						 runtime_options.host);
+						  runtime_options.host);
 				if (superuser_conn != NULL)
 					PQfinish(superuser_conn);
 				PQfinish(source_conn);
@@ -529,8 +540,8 @@ do_standby_clone(void)
 
 	/*
 	 * If `--copy-external-config-files` was provided, copy any configuration
-	 * files detected to the appropriate location. Any errors encountered
-	 * will not be treated as fatal.
+	 * files detected to the appropriate location. Any errors encountered will
+	 * not be treated as fatal.
 	 *
 	 * This won't run in Barman mode as "config_files" is only populated in
 	 * "initialise_direct_clone()", which isn't called in Barman mode.
@@ -553,7 +564,7 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	switch(mode)
+	switch (mode)
 	{
 		case pg_basebackup:
 			log_notice(_("standby clone (using pg_basebackup) complete"));
@@ -565,8 +576,8 @@ do_standby_clone(void)
 	}
 
 	/*
-	 * TODO: It might be nice to provide an option to have repmgr start
-	 * the PostgreSQL server automatically
+	 * TODO: It might be nice to provide an option to have repmgr start the
+	 * PostgreSQL server automatically
 	 */
 
 	log_notice(_("you can now start your PostgreSQL server"));
@@ -587,21 +598,20 @@ do_standby_clone(void)
 	}
 
 	/*
-	 * XXX forgetting to (re) register the standby is a frequent cause
-	 * of error; we should consider having repmgr automatically
-	 * register the standby, either by default with an option
-	 * "--no-register", or an option "--register".
+	 * XXX forgetting to (re) register the standby is a frequent cause of
+	 * error; we should consider having repmgr automatically register the
+	 * standby, either by default with an option "--no-register", or an option
+	 * "--register".
 	 *
-	 * Note that "repmgr standby register" requires the standby to
-	 * be running - if not, and we just update the node record,
-	 * we'd have an incorrect representation of the replication cluster.
-	 * Best combined with an automatic start of the server (see note
-	 * above)
+	 * Note that "repmgr standby register" requires the standby to be running
+	 * - if not, and we just update the node record, we'd have an incorrect
+	 * representation of the replication cluster. Best combined with an
+	 * automatic start of the server (see note above)
 	 */
 
 	/*
-	 * Check for an existing node record, and output the appropriate
-	 * command for registering or re-registering.
+	 * Check for an existing node record, and output the appropriate command
+	 * for registering or re-registering.
 	 */
 	{
 		t_node_info node_record = T_NODE_INFO_INITIALIZER;
@@ -636,7 +646,7 @@ do_standby_clone(void)
 	appendPQExpBuffer(&event_details,
 					  _("; backup method: "));
 
-	switch(mode)
+	switch (mode)
 	{
 		case pg_basebackup:
 			appendPQExpBuffer(&event_details, "pg_basebackup");
@@ -651,11 +661,11 @@ do_standby_clone(void)
 					  runtime_options.force ? "Y" : "N");
 
 	create_event_notification(primary_conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"standby_clone",
-						true,
-						event_details.data);
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "standby_clone",
+							  true,
+							  event_details.data);
 
 	if (primary_conn != source_conn && PQstatus(primary_conn) == CONNECTION_OK)
 		PQfinish(primary_conn);
@@ -681,7 +691,7 @@ check_barman_config(void)
 
 	maxlen_snprintf(command, "%s show-backup %s latest > /dev/null",
 					make_barman_ssh_command(barman_command_buf),
-				 	config_file_options.barman_server);
+					config_file_options.barman_server);
 
 	command_ok = local_command(command, NULL);
 
@@ -698,7 +708,7 @@ check_barman_config(void)
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
 	{
 		log_error(_("unable to use directory %s"),
-				local_data_directory);
+				  local_data_directory);
 		log_hint(_("use -F/--force option to force this directory to be overwritten"));
 		exit(ERR_BAD_CONFIG);
 	}
@@ -750,7 +760,7 @@ check_barman_config(void)
  * Event(s):
  *  - standby_register
  */
-// XXX check --upstream-node-id works when re-registering
+/*  XXX check --upstream-node-id works when re-registering */
 
 void
 do_standby_register(void)
@@ -807,7 +817,11 @@ do_standby_register(void)
 	{
 		primary_conn = get_primary_connection(conn, NULL, NULL);
 	}
-	/* User is forcing a registration and must have supplied primary connection info */
+
+	/*
+	 * User is forcing a registration and must have supplied primary
+	 * connection info
+	 */
 	else
 	{
 		primary_conn = establish_db_connection_by_params(&source_conninfo, false);
@@ -885,6 +899,7 @@ do_standby_register(void)
 	{
 		RecordStatus upstream_record_status = RECORD_NOT_FOUND;
 		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+
 		upstream_record_status = get_node_record(primary_conn,
 												 runtime_options.upstream_node_id,
 												 &upstream_node_record);
@@ -920,14 +935,14 @@ do_standby_register(void)
 												&placeholder_upstream_node_record);
 
 			/*
-			 * It's possible, in the kind of scenario this functionality is intended
-			 * to support, that there's a race condition where the node's actual
-			 * record gets inserted, causing the insert of the placeholder record
-			 * to fail. If this is the case, we don't worry about this insert failing;
-			 * if not we bail out.
+			 * It's possible, in the kind of scenario this functionality is
+			 * intended to support, that there's a race condition where the
+			 * node's actual record gets inserted, causing the insert of the
+			 * placeholder record to fail. If this is the case, we don't worry
+			 * about this insert failing; if not we bail out.
 			 *
-			 * TODO: teach create_node_record() to use ON CONFLICT DO NOTHING for
-			 * 9.5 and later.
+			 * TODO: teach create_node_record() to use ON CONFLICT DO NOTHING
+			 * for 9.5 and later.
 			 */
 			if (record_created == false)
 			{
@@ -951,7 +966,8 @@ do_standby_register(void)
 		else if (node_record.active == false)
 		{
 			/*
-			 * upstream node is inactive and --force not supplied - refuse to register
+			 * upstream node is inactive and --force not supplied - refuse to
+			 * register
 			 */
 			if (!runtime_options.force)
 			{
@@ -974,7 +990,7 @@ do_standby_register(void)
 		/* check upstream node is accessible and this node is connected */
 		else
 		{
-			PGconn *upstream_conn = NULL;
+			PGconn	   *upstream_conn = NULL;
 
 			upstream_conn = establish_db_connection(upstream_node_record.conninfo, false);
 
@@ -1048,8 +1064,8 @@ do_standby_register(void)
 
 
 	/*
-	 * node record exists - update it
-	 * (at this point we have already established that -F/--force is in use)
+	 * node record exists - update it (at this point we have already
+	 * established that -F/--force is in use)
 	 */
 	if (record_status == RECORD_FOUND)
 	{
@@ -1069,13 +1085,13 @@ do_standby_register(void)
 	if (record_created == false)
 	{
 		appendPQExpBuffer(
-			&details,
-			"standby registration failed");
+						  &details,
+						  "standby registration failed");
 
 		if (runtime_options.force == true)
 			appendPQExpBuffer(
-				&details,
-				" (-F/--force option was used)");
+							  &details,
+							  " (-F/--force option was used)");
 
 		create_event_notification(primary_conn,
 								  &config_file_options,
@@ -1094,13 +1110,13 @@ do_standby_register(void)
 	}
 
 	appendPQExpBuffer(
-		&details,
-		"standby registration succeeded");
+					  &details,
+					  "standby registration succeeded");
 
 	if (runtime_options.force == true)
 		appendPQExpBuffer(
-			&details,
-			" (-F/--force option was used)");
+						  &details,
+						  " (-F/--force option was used)");
 
 
 	/* Log the event */
@@ -1119,8 +1135,8 @@ do_standby_register(void)
 		runtime_options.wait_register_sync == true &&
 		runtime_options.wait_register_sync_seconds > 0)
 	{
-		bool sync_ok = false;
-		int timer = 0;
+		bool		sync_ok = false;
+		int			timer = 0;
 		RecordStatus node_record_status = RECORD_NOT_FOUND;
 		t_node_info node_record_on_primary = T_NODE_INFO_INITIALIZER;
 		t_node_info node_record_on_standby = T_NODE_INFO_INITIALIZER;
@@ -1139,7 +1155,7 @@ do_standby_register(void)
 
 		for (;;)
 		{
-			bool records_match = true;
+			bool		records_match = true;
 
 			if (runtime_options.wait_register_sync_seconds && runtime_options.wait_register_sync_seconds == timer)
 				break;
@@ -1150,7 +1166,7 @@ do_standby_register(void)
 
 			if (node_record_status == RECORD_NOT_FOUND)
 			{
-				/* no record available yet on standby*/
+				/* no record available yet on standby */
 				records_match = false;
 			}
 			else if (node_record_status == RECORD_FOUND)
@@ -1185,7 +1201,7 @@ do_standby_register(void)
 			}
 
 			sleep(1);
-			timer ++;
+			timer++;
 		}
 
 		if (sync_ok == false)
@@ -1225,7 +1241,7 @@ do_standby_unregister(void)
 	PGconn	   *conn = NULL;
 	PGconn	   *primary_conn = NULL;
 
-	int 		target_node_id = UNKNOWN_NODE_ID;
+	int			target_node_id = UNKNOWN_NODE_ID;
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
 	bool		node_record_deleted = false;
@@ -1275,7 +1291,7 @@ do_standby_unregister(void)
 	/* Now unregister the standby */
 	log_notice(_("unregistering node %i"), target_node_id);
 	node_record_deleted = delete_node_record(primary_conn,
-										     target_node_id);
+											 target_node_id);
 
 	if (node_record_deleted == false)
 	{
@@ -1286,11 +1302,11 @@ do_standby_unregister(void)
 
 	/* Log the event */
 	create_event_notification(primary_conn,
-						&config_file_options,
-						target_node_id,
-						"standby_unregister",
-						true,
-						NULL);
+							  &config_file_options,
+							  target_node_id,
+							  "standby_unregister",
+							  true,
+							  NULL);
 
 	PQfinish(primary_conn);
 	PQfinish(conn);
@@ -1379,7 +1395,7 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 	char		script[MAXLEN];
 	int			r;
 	int			i,
-				promote_check_timeout  = 60,
+				promote_check_timeout = 60,
 				promote_check_interval = 2;
 	bool		promote_success = false;
 	PQExpBufferData details;
@@ -1398,7 +1414,7 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("unable to retrieve record for node %i"),
-					config_file_options.node_id);
+				  config_file_options.node_id);
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1407,12 +1423,12 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 	/*
 	 * Promote standby to primary.
 	 *
-	 * `pg_ctl promote` returns immediately and (prior to 10.0) has no -w option
-	 * so we can't be sure when or if the promotion completes.
-	 * For now we'll poll the server until the default timeout (60 seconds)
+	 * `pg_ctl promote` returns immediately and (prior to 10.0) has no -w
+	 * option so we can't be sure when or if the promotion completes. For now
+	 * we'll poll the server until the default timeout (60 seconds)
 	 */
 
-	get_server_action(ACTION_PROMOTE, script, (char *)data_dir);
+	get_server_action(ACTION_PROMOTE, script, (char *) data_dir);
 
 	log_notice(_("promoting standby to primary"));
 	log_detail(_("promoting server \"%s\" (ID: %i) using \"%s\""),
@@ -1468,11 +1484,11 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 		log_error("%s", details.data);
 
 		create_event_notification(NULL,
-							&config_file_options,
-							config_file_options.node_id,
-							"standby_promote",
-							false,
-							details.data);
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "standby_promote",
+								  false,
+								  details.data);
 
 		exit(ERR_DB_QUERY);
 	}
@@ -1489,11 +1505,11 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 
 	/* Log the event */
 	create_event_notification(conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"standby_promote",
-						true,
-						details.data);
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "standby_promote",
+							  true,
+							  details.data);
 
 	termPQExpBuffer(&details);
 
@@ -1520,16 +1536,16 @@ do_standby_follow(void)
 	PGconn	   *primary_conn = NULL;
 	int			primary_id = UNKNOWN_NODE_ID;
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
-	RecordStatus	   record_status = RECORD_NOT_FOUND;
+	RecordStatus record_status = RECORD_NOT_FOUND;
 
-	int	    	timer = 0;
+	int			timer = 0;
 
 	PQExpBufferData follow_output;
-	bool    	success = false;
+	bool		success = false;
 
-	uint64  	local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+	uint64		local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
 	t_conninfo_param_list repl_conninfo;
-	PGconn  	*repl_conn = NULL;
+	PGconn	   *repl_conn = NULL;
 	t_system_identification primary_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 
 	log_verbose(LOG_DEBUG, "do_standby_follow()");
@@ -1579,8 +1595,8 @@ do_standby_follow(void)
 		/*
 		 * Attempt to connect to primary.
 		 *
-		 * If --wait provided, loop for up `primary_follow_timeout`
-		 * seconds before giving up
+		 * If --wait provided, loop for up `primary_follow_timeout` seconds
+		 * before giving up
 		 */
 
 		for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
@@ -1616,7 +1632,7 @@ do_standby_follow(void)
 	}
 
 
-	// XXX check this is not current upstream anyway
+	/* XXX check this is not current upstream anyway */
 	/* check replication connection */
 	initialize_conninfo_params(&repl_conninfo, false);
 
@@ -1662,17 +1678,17 @@ do_standby_follow(void)
 	initPQExpBuffer(&follow_output);
 
 	success = do_standby_follow_internal(
-		primary_conn,
-		&primary_node_record,
-		&follow_output);
+										 primary_conn,
+										 &primary_node_record,
+										 &follow_output);
 
 	create_event_notification(
-		primary_conn,
-		&config_file_options,
-		config_file_options.node_id,
-		"standby_follow",
-		success,
-		follow_output.data);
+							  primary_conn,
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "standby_follow",
+							  success,
+							  follow_output.data);
 
 	PQfinish(primary_conn);
 
@@ -1709,9 +1725,9 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 
 	/*
-	 * Fetch our node record so we can write application_name, if set,
-	 * and to get the upstream node ID, which we'll need to know if
-	 * replication slots are in use and we want to delete the old slot.
+	 * Fetch our node record so we can write application_name, if set, and to
+	 * get the upstream node ID, which we'll need to know if replication slots
+	 * are in use and we want to delete the old slot.
 	 */
 	record_status = get_node_record(primary_conn,
 									config_file_options.node_id,
@@ -1720,19 +1736,19 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("unable to retrieve record for node %i"),
-					config_file_options.node_id);
+				  config_file_options.node_id);
 		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
-	 * If replication slots are in use, we'll need to create a
-	 * slot on the new primary
+	 * If replication slots are in use, we'll need to create a slot on the new
+	 * primary
 	 */
 
 	if (config_file_options.use_replication_slots)
 	{
- 		int	primary_server_version_num = get_server_version(primary_conn, NULL);
+		int			primary_server_version_num = get_server_version(primary_conn, NULL);
 
 		if (create_replication_slot(primary_conn,
 									local_node_record.slot_name,
@@ -1753,7 +1769,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	{
 		t_conninfo_param_list local_node_conninfo;
-		bool parse_success;
+		bool		parse_success;
 
 		initialize_conninfo_params(&local_node_conninfo, false);
 
@@ -1761,21 +1777,24 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 		if (parse_success == false)
 		{
-			/* this shouldn't happen, but if it does we'll plough on regardless */
+			/*
+			 * this shouldn't happen, but if it does we'll plough on
+			 * regardless
+			 */
 			log_warning(_("unable to parse conninfo string \"%s\":\n  %s"),
 						local_node_record.conninfo, errmsg);
 		}
 		else
 		{
-			char *application_name = param_get(&local_node_conninfo, "application_name");
+			char	   *application_name = param_get(&local_node_conninfo, "application_name");
 
 			if (application_name != NULL && strlen(application_name))
 				param_set(&recovery_conninfo, "application_name", application_name);
 		}
 
 		/*
-		 * store the original upstream node id so we can delete the replication slot,
-		 * if exists
+		 * store the original upstream node id so we can delete the
+		 * replication slot, if exists
 		 */
 		if (local_node_record.upstream_node_id != UNKNOWN_NODE_ID)
 		{
@@ -1807,13 +1826,13 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	/* start/restart the service */
 
-	// XXX here check if service is running!! if not, start
+	/* XXX here check if service is running!! if not, start */
 
 	{
 		char		server_command[MAXLEN] = "";
 		bool		server_up = is_server_available(config_file_options.conninfo);
 		char	   *action = NULL;
-		int	  	    r;
+		int			r;
 
 		if (server_up == true)
 		{
@@ -1850,7 +1869,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
 	{
-		t_node_info upstream_node_record  = T_NODE_INFO_INITIALIZER;
+		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 		RecordStatus upstream_record_status = RECORD_NOT_FOUND;
 		PGconn	   *local_conn = NULL;
 
@@ -1861,8 +1880,8 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 		upstream_record_status = get_node_record(local_conn,
-												   original_upstream_node_id,
-												   &upstream_node_record);
+												 original_upstream_node_id,
+												 &upstream_node_record);
 
 		PQfinish(local_conn);
 
@@ -1873,7 +1892,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		}
 		else
 		{
-			PGconn *old_upstream_conn = establish_db_connection_quiet(upstream_node_record.conninfo);
+			PGconn	   *old_upstream_conn = establish_db_connection_quiet(upstream_node_record.conninfo);
 
 			if (PQstatus(old_upstream_conn) != CONNECTION_OK)
 			{
@@ -1891,8 +1910,8 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	}
 
 	/*
-	 * It's possible this node was an inactive primary - update the
-	 * relevant fields to ensure it's marked as an active standby
+	 * It's possible this node was an inactive primary - update the relevant
+	 * fields to ensure it's marked as an active standby
 	 */
 	if (update_node_record_status(primary_conn,
 								  config_file_options.node_id,
@@ -1945,35 +1964,36 @@ do_standby_switchover(void)
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 	/* the remote server is the primary to be demoted */
-	char	    remote_conninfo[MAXCONNINFO] = "";
-	char	    remote_host[MAXLEN] = "";
-	int         remote_node_id = UNKNOWN_NODE_ID;
+	char		remote_conninfo[MAXCONNINFO] = "";
+	char		remote_host[MAXLEN] = "";
+	int			remote_node_id = UNKNOWN_NODE_ID;
 	t_node_info remote_node_record = T_NODE_INFO_INITIALIZER;
 
-	RecordStatus	record_status = RECORD_NOT_FOUND;
-	RecoveryType	recovery_type = RECTYPE_UNKNOWN;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 	PQExpBufferData remote_command_str;
 	PQExpBufferData command_output;
 	PQExpBufferData node_rejoin_options;
 
-	int r, i;
+	int			r,
+				i;
 	bool		command_success = false;
 	bool		shutdown_success = false;
-	XLogRecPtr remote_last_checkpoint_lsn = InvalidXLogRecPtr;
-	ReplInfo 		replication_info = T_REPLINFO_INTIALIZER;
+	XLogRecPtr	remote_last_checkpoint_lsn = InvalidXLogRecPtr;
+	ReplInfo	replication_info = T_REPLINFO_INTIALIZER;
 
 	/* store list of configuration files on the demotion candidate */
-	KeyValueList	remote_config_files = { NULL, NULL };
+	KeyValueList remote_config_files = {NULL, NULL};
 
 	/* store list of sibling nodes if --siblings-follow specified */
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
-	int unreachable_sibling_node_count = 0;
+	int			unreachable_sibling_node_count = 0;
 
 	/*
 	 * SANITY CHECKS
 	 *
-	 * We'll be doing a bunch of operations on the remote server (primary
-	 * to be demoted) - careful checks needed before proceding.
+	 * We'll be doing a bunch of operations on the remote server (primary to
+	 * be demoted) - careful checks needed before proceding.
 	 */
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
@@ -2048,10 +2068,9 @@ do_standby_switchover(void)
 	}
 
 	/*
-	 * Check this standby is attached to the demotion candidate
-	 * TODO:
-	 *  - check standby is attached to demotion candidate
-	 *    - check application_name  in pg_stat_replication
+	 * Check this standby is attached to the demotion candidate TODO: - check
+	 * standby is attached to demotion candidate - check application_name  in
+	 * pg_stat_replication
 	 */
 
 	if (local_node_record.upstream_node_id != remote_node_record.node_id)
@@ -2070,8 +2089,9 @@ do_standby_switchover(void)
 
 
 	/*
-	 * If --force-rewind specified, check pg_rewind can be used, and pre-emptively
-	 * fetch the list of configuration files which should be archived
+	 * If --force-rewind specified, check pg_rewind can be used, and
+	 * pre-emptively fetch the list of configuration files which should be
+	 * archived
 	 */
 
 	if (runtime_options.force_rewind == true)
@@ -2130,6 +2150,7 @@ do_standby_switchover(void)
 	else
 	{
 		PQExpBufferData msg;
+
 		initPQExpBuffer(&msg);
 
 		appendPQExpBuffer(&msg,
@@ -2155,10 +2176,10 @@ do_standby_switchover(void)
 	appendPQExpBuffer(&remote_command_str, "--version 2>/dev/null && echo \"1\" || echo \"0\"");
 	initPQExpBuffer(&command_output);
 	command_success = remote_command(
-		remote_host,
-		runtime_options.remote_user,
-		remote_command_str.data,
-		&command_output);
+									 remote_host,
+									 runtime_options.remote_user,
+									 remote_command_str.data,
+									 &command_output);
 
 	termPQExpBuffer(&remote_command_str);
 
@@ -2176,20 +2197,20 @@ do_standby_switchover(void)
 
 		initPQExpBuffer(&hint);
 		appendPQExpBuffer(
-			&hint,
-			_("check \"pg_bindir\" is set to the correct path in \"repmgr.conf\"; current value: "));
+						  &hint,
+						  _("check \"pg_bindir\" is set to the correct path in \"repmgr.conf\"; current value: "));
 
 		if (strlen(config_file_options.pg_bindir))
 		{
 			appendPQExpBuffer(
-				&hint,
-				"\"%s\"", config_file_options.pg_bindir);
+							  &hint,
+							  "\"%s\"", config_file_options.pg_bindir);
 		}
 		else
 		{
 			appendPQExpBuffer(
-				&hint,
-				"(not set)");
+							  &hint,
+							  "(not set)");
 		}
 
 
@@ -2211,15 +2232,15 @@ do_standby_switchover(void)
 
 	/* check archive/replication status */
 	{
-		int lag_seconds = 0;
+		int			lag_seconds = 0;
 		CheckStatus status = CHECK_STATUS_UNKNOWN;
 
 		/* archive status - check when "archive_mode" is activated */
 
 		if (guc_set(remote_conn, "archive_mode", "!=", "off"))
 		{
-			int files = 0;
-			int threshold = 0;
+			int			files = 0;
+			int			threshold = 0;
 
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
@@ -2229,10 +2250,10 @@ do_standby_switchover(void)
 			initPQExpBuffer(&command_output);
 
 			command_success = remote_command(
-				remote_host,
-				runtime_options.remote_user,
-				remote_command_str.data,
-				&command_output);
+											 remote_host,
+											 runtime_options.remote_user,
+											 remote_command_str.data,
+											 &command_output);
 
 			termPQExpBuffer(&remote_command_str);
 
@@ -2248,83 +2269,84 @@ do_standby_switchover(void)
 			switch (status)
 			{
 				case CHECK_STATUS_UNKNOWN:
-				{
-					if (runtime_options.force == false)
 					{
-						log_error(_("unable to check number of pending archive files on demotion candidate \"%s\""),
-								  remote_node_record.node_name);
-						log_hint(_("use -F/--force to continue anyway"));
-						PQfinish(remote_conn);
-						PQfinish(local_conn);
+						if (runtime_options.force == false)
+						{
+							log_error(_("unable to check number of pending archive files on demotion candidate \"%s\""),
+									  remote_node_record.node_name);
+							log_hint(_("use -F/--force to continue anyway"));
+							PQfinish(remote_conn);
+							PQfinish(local_conn);
 
-						exit(ERR_SWITCHOVER_FAIL);
+							exit(ERR_SWITCHOVER_FAIL);
+						}
+
+						log_warning(_("unable to check number of pending archive files on demotion candidate \"%s\""),
+									remote_node_record.node_name);
+						log_notice(_("-F/--force set, continuing with switchover"));
 					}
-
-					log_warning(_("unable to check number of pending archive files on demotion candidate \"%s\""),
-								remote_node_record.node_name);
-					log_notice(_("-F/--force set, continuing with switchover"));
-				}
-				break;
+					break;
 
 				case CHECK_STATUS_CRITICAL:
-				{
-					if (runtime_options.force == false)
 					{
-						log_error(_("number of pending archive files on demotion candidate \"%s\" is critical"),
-								  remote_node_record.node_name);
+						if (runtime_options.force == false)
+						{
+							log_error(_("number of pending archive files on demotion candidate \"%s\" is critical"),
+									  remote_node_record.node_name);
+							log_detail(_("%i pending archive files (critical threshold: %i)"),
+									   files, threshold);
+							log_hint(_("PostgreSQL will not shut down until all files are archived; use -F/--force to continue anyway"));
+							PQfinish(remote_conn);
+							PQfinish(local_conn);
+
+							exit(ERR_SWITCHOVER_FAIL);
+						}
+
+						log_warning(_("number of pending archive files on demotion candidate \"%s\" is critical"),
+									remote_node_record.node_name);
 						log_detail(_("%i pending archive files (critical threshold: %i)"),
 								   files, threshold);
-						log_hint(_("PostgreSQL will not shut down until all files are archived; use -F/--force to continue anyway"));
-						PQfinish(remote_conn);
-						PQfinish(local_conn);
-
-						exit(ERR_SWITCHOVER_FAIL);
+						log_notice(_("-F/--force set, continuing with switchover"));
 					}
-
-					log_warning(_("number of pending archive files on demotion candidate \"%s\" is critical"),
-								remote_node_record.node_name);
-					log_detail(_("%i pending archive files (critical threshold: %i)"),
-							   files, threshold);
-					log_notice(_("-F/--force set, continuing with switchover"));
-				}
-				break;
+					break;
 
 				case CHECK_STATUS_WARNING:
-				{
-					log_warning(_("number of pending archive files on demotion candidate \"%s\" is warning"),
-								remote_node_record.node_name);
-					log_detail(_("%i pending archive files (warning threshold: %i)"),
-							   files, threshold);
-					log_hint(_("PostgreSQL will not shut down until all files are archived"));
-				}
-				break;
+					{
+						log_warning(_("number of pending archive files on demotion candidate \"%s\" is warning"),
+									remote_node_record.node_name);
+						log_detail(_("%i pending archive files (warning threshold: %i)"),
+								   files, threshold);
+						log_hint(_("PostgreSQL will not shut down until all files are archived"));
+					}
+					break;
 
 				case CHECK_STATUS_OK:
-				{
-					PQExpBufferData msg;
-					initPQExpBuffer(&msg);
-
-					appendPQExpBuffer(&msg,
-									  _("%i pending archive files"),
-									  files);
-
-					if (runtime_options.dry_run == true)
 					{
-						log_info("%s", msg.data);
-					}
-					else
-					{
-						log_verbose(LOG_INFO, "%s", msg.data);
-					}
+						PQExpBufferData msg;
 
-					termPQExpBuffer(&msg);
-				}
+						initPQExpBuffer(&msg);
+
+						appendPQExpBuffer(&msg,
+										  _("%i pending archive files"),
+										  files);
+
+						if (runtime_options.dry_run == true)
+						{
+							log_info("%s", msg.data);
+						}
+						else
+						{
+							log_verbose(LOG_INFO, "%s", msg.data);
+						}
+
+						termPQExpBuffer(&msg);
+					}
 			}
 
 		}
 		else
 		{
-			char *msg = _("archive mode is \"off\"");
+			char	   *msg = _("archive mode is \"off\"");
 
 			if (runtime_options.dry_run == true)
 			{
@@ -2337,8 +2359,8 @@ do_standby_switchover(void)
 		}
 
 		/*
-		 * check replication lag on promotion candidate
-		 * (TODO: check on all nodes attached to demotion candidate)
+		 * check replication lag on promotion candidate (TODO: check on all
+		 * nodes attached to demotion candidate)
 		 */
 		lag_seconds = get_replication_lag_seconds(local_conn);
 
@@ -2388,6 +2410,7 @@ do_standby_switchover(void)
 		else
 		{
 			PQExpBufferData msg;
+
 			initPQExpBuffer(&msg);
 
 			appendPQExpBuffer(&msg,
@@ -2429,7 +2452,7 @@ do_standby_switchover(void)
 	}
 	else
 	{
-		char host[MAXLEN] = "";
+		char		host[MAXLEN] = "";
 		NodeInfoListCell *cell;
 
 		log_verbose(LOG_INFO, _("%i active sibling nodes found"),
@@ -2493,7 +2516,7 @@ do_standby_switchover(void)
 			}
 			else
 			{
-				char *msg = _("all sibling nodes are reachable via SSH");
+				char	   *msg = _("all sibling nodes are reachable via SSH");
 
 				if (runtime_options.dry_run == true)
 				{
@@ -2506,7 +2529,7 @@ do_standby_switchover(void)
 			}
 		}
 	}
-	//PQfinish(local_conn);
+	/* PQfinish(local_conn); */
 
 
 	/*
@@ -2523,9 +2546,9 @@ do_standby_switchover(void)
 	/*
 	 * Stop the remote primary
 	 *
-	 * We'll issue the pg_ctl command but not force it not to wait; we'll check
-	 * the connection from here - and error out if no shutdown is detected
-	 * after a certain time.
+	 * We'll issue the pg_ctl command but not force it not to wait; we'll
+	 * check the connection from here - and error out if no shutdown is
+	 * detected after a certain time.
 	 */
 
 	initPQExpBuffer(&remote_command_str);
@@ -2548,23 +2571,24 @@ do_standby_switchover(void)
 						  "node service --action=stop --checkpoint");
 	}
 
-	// XXX handle failure
+	/* XXX handle failure */
 
-	(void)remote_command(
-		remote_host,
-		runtime_options.remote_user,
-		remote_command_str.data,
-		&command_output);
+	(void) remote_command(
+						  remote_host,
+						  runtime_options.remote_user,
+						  remote_command_str.data,
+						  &command_output);
 
 	termPQExpBuffer(&remote_command_str);
 
 	/*
-	 * --dry-run ends here with display of command which would be used to
-	 * shut down the remote server
+	 * --dry-run ends here with display of command which would be used to shut
+	 * down the remote server
 	 */
 	if (runtime_options.dry_run == true)
 	{
-		char shutdown_command[MAXLEN] = "";
+		char		shutdown_command[MAXLEN] = "";
+
 		strncpy(shutdown_command, command_output.data, MAXLEN);
 
 		termPQExpBuffer(&command_output);
@@ -2589,7 +2613,7 @@ do_standby_switchover(void)
 	for (i = 0; i < config_file_options.reconnect_attempts; i++)
 	{
 		/* Check whether primary is available */
-		PGPing ping_res;
+		PGPing		ping_res;
 
 		log_info(_("checking primary status; %i of %i attempts"),
 				 i + 1, config_file_options.reconnect_attempts);
@@ -2599,13 +2623,13 @@ do_standby_switchover(void)
 		/* database server could not be contacted */
 		if (ping_res == PQPING_NO_RESPONSE || ping_res == PQPING_NO_ATTEMPT)
 		{
-			bool command_success;
+			bool		command_success;
 
 			/*
 			 * remote server can't be contacted at protocol level - that
-			 * doesn't necessarily mean it's shut down, so we'll ask
-			 * its repmgr to check at data directory level, and if shut down
-			 * also return the last checkpoint LSN.
+			 * doesn't necessarily mean it's shut down, so we'll ask its
+			 * repmgr to check at data directory level, and if shut down also
+			 * return the last checkpoint LSN.
 			 */
 
 			initPQExpBuffer(&remote_command_str);
@@ -2616,16 +2640,16 @@ do_standby_switchover(void)
 			initPQExpBuffer(&command_output);
 
 			command_success = remote_command(
-				remote_host,
-				runtime_options.remote_user,
-				remote_command_str.data,
-				&command_output);
+											 remote_host,
+											 runtime_options.remote_user,
+											 remote_command_str.data,
+											 &command_output);
 
 			termPQExpBuffer(&remote_command_str);
 
 			if (command_success == true)
 			{
-				NodeStatus status = parse_node_status_is_shutdown_cleanly(command_output.data, &remote_last_checkpoint_lsn);
+				NodeStatus	status = parse_node_status_is_shutdown_cleanly(command_output.data, &remote_last_checkpoint_lsn);
 
 				if (status == NODE_STATUS_DOWN && remote_last_checkpoint_lsn != InvalidXLogRecPtr)
 				{
@@ -2690,15 +2714,15 @@ do_standby_switchover(void)
 	_do_standby_promote_internal(local_conn, config_file_options.data_directory);
 
 	/*
-	 * Execute `repmgr node rejoin` to create recovery.conf and start
-	 * the remote server. Additionally execute "pg_rewind", if required
-	 * and requested.
+	 * Execute `repmgr node rejoin` to create recovery.conf and start the
+	 * remote server. Additionally execute "pg_rewind", if required and
+	 * requested.
 	 */
 	initPQExpBuffer(&node_rejoin_options);
 	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
 	{
 		KeyValueListCell *cell = NULL;
-		bool first_entry = true;
+		bool		first_entry = true;
 
 		if (runtime_options.force_rewind == false)
 		{
@@ -2742,10 +2766,10 @@ do_standby_switchover(void)
 	initPQExpBuffer(&command_output);
 
 	command_success = remote_command(
-		remote_host,
-		runtime_options.remote_user,
-		remote_command_str.data,
-		&command_output);
+									 remote_host,
+									 runtime_options.remote_user,
+									 remote_command_str.data,
+									 &command_output);
 
 	termPQExpBuffer(&remote_command_str);
 
@@ -2780,12 +2804,12 @@ do_standby_switchover(void)
 	/* clean up remote node */
 	remote_conn = establish_db_connection(remote_node_record.conninfo, false);
 
-	// check replication status
+	/* check replication status */
 	if (PQstatus(remote_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to reestablish connection to remote node \"%s\""),
 				  remote_node_record.node_name);
-		//log_hint(_("")); // depends on replication status
+		/* log_hint(_("")); // depends on replication status */
 	}
 	else
 	{
@@ -2795,7 +2819,7 @@ do_standby_switchover(void)
 											remote_node_record.node_id,
 											local_node_record.slot_name);
 		}
-		/* TODO warn about any inactive replication slots*/
+		/* TODO warn about any inactive replication slots */
 	}
 
 	PQfinish(remote_conn);
@@ -2805,14 +2829,14 @@ do_standby_switchover(void)
 			   local_node_record.node_name);
 
 	/*
-	 * If --siblings-follow specified, attempt to make them follow the
-	 * new standby
+	 * If --siblings-follow specified, attempt to make them follow the new
+	 * standby
 	 */
 
 	if (runtime_options.siblings_follow == true && sibling_nodes.node_count > 0)
 	{
-		int failed_follow_count = 0;
-		char host[MAXLEN] = "";
+		int			failed_follow_count = 0;
+		char		host[MAXLEN] = "";
 		NodeInfoListCell *cell = NULL;
 
 		log_notice(_("executing STANDBY FOLLOW on %i of %i siblings"),
@@ -2821,7 +2845,7 @@ do_standby_switchover(void)
 
 		for (cell = sibling_nodes.head; cell; cell = cell->next)
 		{
-			bool success = false;
+			bool		success = false;
 			t_node_info sibling_node_record = T_NODE_INFO_INITIALIZER;
 
 			/* skip nodes previously determined as unreachable */
@@ -2843,10 +2867,10 @@ do_standby_switchover(void)
 			initPQExpBuffer(&command_output);
 
 			success = remote_command(
-				host,
-				runtime_options.remote_user,
-				remote_command_str.data,
-				&command_output);
+									 host,
+									 runtime_options.remote_user,
+									 remote_command_str.data,
+									 &command_output);
 
 			termPQExpBuffer(&remote_command_str);
 
@@ -2870,8 +2894,9 @@ do_standby_switchover(void)
 						failed_follow_count);
 		}
 
-		/* TODO: double-check all expected nodes are in pg_stat_replication and
-		 * entries in repmgr.nodes match
+		/*
+		 * TODO: double-check all expected nodes are in pg_stat_replication
+		 * and entries in repmgr.nodes match
 		 */
 	}
 
@@ -2888,13 +2913,13 @@ do_standby_switchover(void)
 static void
 check_source_server()
 {
-	PGconn			  *superuser_conn = NULL;
-	PGconn			  *privileged_conn = NULL;
+	PGconn	   *superuser_conn = NULL;
+	PGconn	   *privileged_conn = NULL;
 
-	char			   cluster_size[MAXLEN];
-	t_node_info		   node_record = T_NODE_INFO_INITIALIZER;
-	RecordStatus	   record_status = RECORD_NOT_FOUND;
-	ExtensionStatus	   extension_status = REPMGR_UNKNOWN;
+	char		cluster_size[MAXLEN];
+	t_node_info node_record = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	ExtensionStatus extension_status = REPMGR_UNKNOWN;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
 	log_verbose(LOG_DEBUG, "check_source_server()");
@@ -2904,7 +2929,8 @@ check_source_server()
 
 	/*
 	 * Unless in barman mode, exit with an error;
-	 * establish_db_connection_by_params() will have already logged an error message
+	 * establish_db_connection_by_params() will have already logged an error
+	 * message
 	 */
 	if (PQstatus(source_conn) != CONNECTION_OK)
 	{
@@ -2930,8 +2956,8 @@ check_source_server()
 			   cluster_size);
 
 	/*
-	 * If the upstream node is a standby, try to connect to the primary too so we
-	 * can write an event record
+	 * If the upstream node is a standby, try to connect to the primary too so
+	 * we can write an event record
 	 */
 	if (get_recovery_type(source_conn) == RECTYPE_STANDBY)
 	{
@@ -2950,8 +2976,8 @@ check_source_server()
 
 	/*
 	 * Sanity-check that the primary node has a repmgr extension - if not
-	 * present, fail with an error unless -F/--force is used (to enable
-	 * repmgr to be used as a standalone clone tool)
+	 * present, fail with an error unless -F/--force is used (to enable repmgr
+	 * to be used as a standalone clone tool)
 	 */
 
 	extension_status = get_repmgr_extension_status(primary_conn);
@@ -2999,13 +3025,13 @@ check_source_server()
 		PQfinish(source_conn);
 		source_conn = NULL;
 
-		if(superuser_conn != NULL)
+		if (superuser_conn != NULL)
 			PQfinish(superuser_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if(superuser_conn != NULL)
+	if (superuser_conn != NULL)
 		PQfinish(superuser_conn);
 
 	/*
@@ -3079,29 +3105,32 @@ check_source_server()
 static void
 check_source_server_via_barman()
 {
-	char		    buf[MAXLEN] = "";
-	char		    barman_conninfo_str[MAXLEN] = "";
+	char		buf[MAXLEN] = "";
+	char		barman_conninfo_str[MAXLEN] = "";
 	t_conninfo_param_list barman_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
-	char		   *errmsg = NULL;
-	bool		    parse_success = false,
-				    command_success = false;
-	char		    where_condition[MAXLEN];
+	char	   *errmsg = NULL;
+	bool		parse_success = false,
+				command_success = false;
+	char		where_condition[MAXLEN];
 	PQExpBufferData command_output;
 	PQExpBufferData repmgr_conninfo_buf;
 
-	int c = 0;
+	int			c = 0;
 
 	get_barman_property(barman_conninfo_str, "conninfo", local_repmgr_tmp_directory);
 
 	initialize_conninfo_params(&barman_conninfo, false);
 
-	/* parse_conninfo_string() here will remove the upstream's `application_name`, if set */
+	/*
+	 * parse_conninfo_string() here will remove the upstream's
+	 * `application_name`, if set
+	 */
 	parse_success = parse_conninfo_string(barman_conninfo_str, &barman_conninfo, errmsg, true);
 
 	if (parse_success == false)
 	{
 		log_error(_("Unable to parse barman conninfo string \"%s\":\n%s"),
-				barman_conninfo_str, errmsg);
+				  barman_conninfo_str, errmsg);
 		exit(ERR_BARMAN);
 	}
 
@@ -3126,7 +3155,7 @@ check_source_server_via_barman()
 				"repmgr database conninfo string on barman server: %s",
 				repmgr_conninfo_buf.data);
 
-	// XXX check this works in all cases
+	/* XXX check this works in all cases */
 	maxlen_snprintf(where_condition, "node_id=%i", upstream_node_id);
 
 	initPQExpBuffer(&command_output);
@@ -3179,9 +3208,9 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 	int			i;
 	bool		config_ok = true;
 	char	   *wal_error_message = NULL;
-	t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
+	t_basebackup_options backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
 	bool		backup_options_ok = true;
-	ItemList	backup_option_errors = { NULL, NULL };
+	ItemList	backup_option_errors = {NULL, NULL};
 	bool		xlog_stream = true;
 	standy_clone_mode mode;
 
@@ -3192,14 +3221,14 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 
 	/*
 	 * Parse `pg_basebackup_options`, if set, to detect whether --xlog-method
-	 * has been set to something other than `stream` (i.e. `fetch`), as
-	 * this will influence some checks
+	 * has been set to something other than `stream` (i.e. `fetch`), as this
+	 * will influence some checks
 	 */
 
 	backup_options_ok = parse_pg_basebackup_options(
-		config_file_options.pg_basebackup_options,
-		&backup_options, server_version_num,
-		&backup_option_errors);
+													config_file_options.pg_basebackup_options,
+													&backup_options, server_version_num,
+													&backup_option_errors);
 
 	if (backup_options_ok == false)
 	{
@@ -3220,33 +3249,34 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 
 	/* Check that WAL level is set correctly */
 	{
-		char *levels_pre96[] = {
+		char	   *levels_pre96[] = {
 			"hot_standby",
 			"logical",
 			NULL,
 		};
 
 		/*
-		 * Note that in 9.6+, "hot_standby" and "archive" are accepted as aliases
-		 * for "replica", but current_setting() will of course always return "replica"
+		 * Note that in 9.6+, "hot_standby" and "archive" are accepted as
+		 * aliases for "replica", but current_setting() will of course always
+		 * return "replica"
 		 */
-		char *levels_96plus[] = {
+		char	   *levels_96plus[] = {
 			"replica",
 			"logical",
 			NULL,
 		};
 
-		char **levels;
-		int j = 0;
+		char	  **levels;
+		int			j = 0;
 
 		if (server_version_num < 90600)
 		{
-			levels = (char **)levels_pre96;
+			levels = (char **) levels_pre96;
 			wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby' or 'logical'");
 		}
 		else
 		{
-			levels = (char **)levels_96plus;
+			levels = (char **) levels_96plus;
 			wal_error_message = _("parameter 'wal_level' must be set to 'replica' or 'logical'");
 		}
 
@@ -3297,21 +3327,22 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 			}
 		}
 	}
+
 	/*
 	 * physical replication slots not available or not requested - check if
 	 * there are any circumstances where `wal_keep_segments` should be set
 	 */
 	else if (mode != barman)
 	{
-		bool check_wal_keep_segments = false;
+		bool		check_wal_keep_segments = false;
 
 		/*
-		 * A non-zero `wal_keep_segments` value will almost certainly be required
-		 * if pg_basebackup is being used with --xlog-method=fetch,
+		 * A non-zero `wal_keep_segments` value will almost certainly be
+		 * required if pg_basebackup is being used with --xlog-method=fetch,
 		 * *and* no restore command has been specified
 		 */
 		if (xlog_stream == false
-			 && strcmp(config_file_options.restore_command, "") == 0)
+			&& strcmp(config_file_options.restore_command, "") == 0)
 		{
 			check_wal_keep_segments = true;
 		}
@@ -3335,7 +3366,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 						log_hint(_("In PostgreSQL 9.4 and later, replication slots can be used, which "
 								   "do not require \"wal_keep_segments\" to be set "
 								   "(set parameter \"use_replication_slots\" in repmgr.conf to enable)\n"
-									 ));
+								   ));
 					}
 				}
 
@@ -3353,12 +3384,12 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 
 	/*
 	 * If archive_mode is enabled, check that 'archive_command' is non empty
-	 * (however it's not practical to check that it actually represents a valid
-	 * command).
+	 * (however it's not practical to check that it actually represents a
+	 * valid command).
 	 *
 	 * From PostgreSQL 9.5, archive_mode can be one of 'off', 'on' or 'always'
-	 * so for ease of backwards compatibility, rather than explicitly check for an
-	 * enabled mode, check that it's not "off".
+	 * so for ease of backwards compatibility, rather than explicitly check
+	 * for an enabled mode, check that it's not "off".
 	 */
 
 	if (guc_set(conn, "archive_mode", "!=", "off"))
@@ -3382,10 +3413,10 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 
 
 	/*
-	 * Check that 'hot_standby' is on. This isn't strictly necessary
-	 * for the primary server, however the assumption is that we'll be
-	 * cloning standbys and thus copying the primary configuration;
-	 * this way the standby will be correctly configured by default.
+	 * Check that 'hot_standby' is on. This isn't strictly necessary for the
+	 * primary server, however the assumption is that we'll be cloning
+	 * standbys and thus copying the primary configuration; this way the
+	 * standby will be correctly configured by default.
 	 */
 
 	i = guc_set(conn, "hot_standby", "=", "on");
@@ -3424,9 +3455,9 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 	}
 
 	/*
-	 * If using pg_basebackup, ensure sufficient replication connections can be made.
-	 * There's no guarantee they'll still be available by the time pg_basebackup
-	 * is executed, but there's nothing we can do about that.
+	 * If using pg_basebackup, ensure sufficient replication connections can
+	 * be made. There's no guarantee they'll still be available by the time
+	 * pg_basebackup is executed, but there's nothing we can do about that.
 	 */
 	if (mode == pg_basebackup)
 	{
@@ -3438,7 +3469,10 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 
 		t_conninfo_param_list repl_conninfo;
 
-		/* Make a copy of the connection parameter arrays, and append "replication" */
+		/*
+		 * Make a copy of the connection parameter arrays, and append
+		 * "replication"
+		 */
 
 		initialize_conninfo_params(&repl_conninfo, false);
 
@@ -3467,10 +3501,13 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 
 		connections = pg_malloc0(sizeof(PGconn *) * min_replication_connections);
 
-		/* Attempt to create the minimum number of required concurrent connections */
+		/*
+		 * Attempt to create the minimum number of required concurrent
+		 * connections
+		 */
 		for (i = 0; i < min_replication_connections; i++)
 		{
-			PGconn *replication_conn;
+			PGconn	   *replication_conn;
 
 			replication_conn = establish_db_connection_by_params(&repl_conninfo, false);
 
@@ -3495,10 +3532,13 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 			config_ok = false;
 
 			/*
-			 * XXX at this point we could check current_setting('max_wal_senders) - COUNT(*) FROM pg_stat_replication;
-			 * if >= min_replication_connections we could infer possible authentication error.
+			 * XXX at this point we could check
+			 * current_setting('max_wal_senders) - COUNT(*) FROM
+			 * pg_stat_replication; if >= min_replication_connections we could
+			 * infer possible authentication error.
 			 *
-			 * Alternatively call PQconnectStart() and poll for presence/absence of CONNECTION_AUTH_OK ?
+			 * Alternatively call PQconnectStart() and poll for
+			 * presence/absence of CONNECTION_AUTH_OK ?
 			 */
 			log_error(_("unable to establish necessary replication connections"));
 			log_hint(_("increase \"max_wal_senders\" by at least %i"),
@@ -3533,8 +3573,8 @@ static void
 initialise_direct_clone(t_node_info *node_record)
 {
 	/*
-	 * Check the destination data directory can be used
-	 * (in Barman mode, this directory will already have been created)
+	 * Check the destination data directory can be used (in Barman mode, this
+	 * directory will already have been created)
 	 */
 
 	if (!create_pg_dir(local_data_directory, runtime_options.force))
@@ -3549,44 +3589,45 @@ initialise_direct_clone(t_node_info *node_record)
 	 * Check that tablespaces named in any `tablespace_mapping` configuration
 	 * file parameters exist.
 	 *
-	 * pg_basebackup doesn't verify mappings, so any errors will not be caught.
-	 * We'll do that here as a value-added service.
+	 * pg_basebackup doesn't verify mappings, so any errors will not be
+	 * caught. We'll do that here as a value-added service.
 	 *
 	 */
 
 	if (config_file_options.tablespace_mapping.head != NULL)
 	{
 		TablespaceListCell *cell = false;
-		KeyValueList not_found = { NULL, NULL };
-		int total = 0, matched = 0;
-		bool	 		  success = false;
+		KeyValueList not_found = {NULL, NULL};
+		int			total = 0,
+					matched = 0;
+		bool		success = false;
 
 		for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
 		{
-			char *old_dir_escaped     = escape_string(source_conn, cell->old_dir);
-			char name[MAXLEN] = "";
+			char	   *old_dir_escaped = escape_string(source_conn, cell->old_dir);
+			char		name[MAXLEN] = "";
 
 			success = get_tablespace_name_by_location(source_conn, old_dir_escaped, name);
 			pfree(old_dir_escaped);
 
 			if (success == true)
 			{
-				matched ++;
+				matched++;
 			}
 			else
 			{
 				key_value_list_set(
-					&not_found,
-					cell->old_dir,
-					"");
+								   &not_found,
+								   cell->old_dir,
+								   "");
 			}
 
-			total ++;
+			total++;
 		}
 
 		if (not_found.head != NULL)
 		{
-			PQExpBufferData	  detail;
+			PQExpBufferData detail;
 			KeyValueListCell *kv_cell;
 
 			log_error(_("%i of %i mapped tablespaces not found"),
@@ -3597,8 +3638,8 @@ initialise_direct_clone(t_node_info *node_record)
 			for (kv_cell = not_found.head; kv_cell; kv_cell = kv_cell->next)
 			{
 				appendPQExpBuffer(
-					&detail,
-					"  %s\n", kv_cell->key);
+								  &detail,
+								  "  %s\n", kv_cell->key);
 			}
 
 			log_detail(_("following tablespaces not found:\n%s"),
@@ -3610,23 +3651,24 @@ initialise_direct_clone(t_node_info *node_record)
 	}
 
 	/*
-	 * If replication slots requested, create appropriate slot on the
-	 * source node; this must be done before pg_basebackup is called.
+	 * If replication slots requested, create appropriate slot on the source
+	 * node; this must be done before pg_basebackup is called.
 	 *
-	 * Note: if the source node is different to the specified upstream
-	 * node, we'll need to drop the slot and recreate it on the upstream.
+	 * Note: if the source node is different to the specified upstream node,
+	 * we'll need to drop the slot and recreate it on the upstream.
 	 *
 	 * TODO: skip this for Pg10, and ensure temp slot option used
 	 *
-	 * Replication slots are not supported (and not very useful
-	 * anyway) in Barman mode.
+	 * Replication slots are not supported (and not very useful anyway) in
+	 * Barman mode.
 	 */
 
 	if (config_file_options.use_replication_slots == true)
 	{
-		PGconn			 *superuser_conn = NULL;
-		PGconn			 *privileged_conn = NULL;
+		PGconn	   *superuser_conn = NULL;
+		PGconn	   *privileged_conn = NULL;
 		PQExpBufferData event_details;
+
 		initPQExpBuffer(&event_details);
 
 		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
@@ -3636,12 +3678,12 @@ initialise_direct_clone(t_node_info *node_record)
 			log_error("%s", event_details.data);
 
 			create_event_notification(
-				primary_conn,
-				&config_file_options,
-				config_file_options.node_id,
-				"standby_clone",
-				false,
-				event_details.data);
+									  primary_conn,
+									  &config_file_options,
+									  config_file_options.node_id,
+									  "standby_clone",
+									  false,
+									  event_details.data);
 
 			PQfinish(source_conn);
 
@@ -3668,15 +3710,15 @@ initialise_direct_clone(t_node_info *node_record)
 static int
 run_basebackup(t_node_info *node_record)
 {
-	char				  script[MAXLEN] = "";
-	int					  r = SUCCESS;
-	PQExpBufferData 	  params;
-	TablespaceListCell   *cell = NULL;
-	t_basebackup_options  backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
+	char		script[MAXLEN] = "";
+	int			r = SUCCESS;
+	PQExpBufferData params;
+	TablespaceListCell *cell = NULL;
+	t_basebackup_options backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
 
 	/*
-	 * Parse the pg_basebackup_options provided in repmgr.conf - we'll want
-	 * to check later whether certain options were set by the user
+	 * Parse the pg_basebackup_options provided in repmgr.conf - we'll want to
+	 * check later whether certain options were set by the user
 	 */
 	parse_pg_basebackup_options(config_file_options.pg_basebackup_options,
 								&backup_options,
@@ -3692,13 +3734,13 @@ run_basebackup(t_node_info *node_record)
 	/*
 	 * conninfo string provided - pass it to pg_basebackup as the -d option
 	 * (pg_basebackup doesn't require or want a database name, but for
-	 * consistency with other applications accepts a conninfo string
-	 * under -d/--dbname)
+	 * consistency with other applications accepts a conninfo string under
+	 * -d/--dbname)
 	 */
 	if (runtime_options.conninfo_provided == true)
 	{
 		t_conninfo_param_list conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
-		char *conninfo_str = NULL;
+		char	   *conninfo_str = NULL;
 
 		initialize_conninfo_params(&conninfo, false);
 
@@ -3752,7 +3794,8 @@ run_basebackup(t_node_info *node_record)
 
 	}
 
-	if (runtime_options.fast_checkpoint) {
+	if (runtime_options.fast_checkpoint)
+	{
 		appendPQExpBuffer(&params, " -c fast");
 	}
 
@@ -3765,13 +3808,13 @@ run_basebackup(t_node_info *node_record)
 	}
 
 	/*
-	 * To ensure we have all the WALs needed during basebackup execution we stream
-	 * them as the backup is taking place.
+	 * To ensure we have all the WALs needed during basebackup execution we
+	 * stream them as the backup is taking place.
 	 *
 	 * From 9.6, if replication slots are in use, we'll have previously
-	 * created a slot with reserved LSN, and will stream from that slot to avoid
-	 * WAL buildup on the primary using the -S/--slot, which requires -X/--xlog-method=stream
-	 * (from 10, -X/--wal-method=stream)
+	 * created a slot with reserved LSN, and will stream from that slot to
+	 * avoid WAL buildup on the primary using the -S/--slot, which requires
+	 * -X/--xlog-method=stream (from 10, -X/--wal-method=stream)
 	 */
 	if (!strlen(backup_options.xlog_method))
 	{
@@ -3779,29 +3822,30 @@ run_basebackup(t_node_info *node_record)
 	}
 
 	/*
-	 * From 9.6, pg_basebackup accepts -S/--slot, which forces WAL streaming to use
-	 * the specified replication slot. If replication slot usage is specified, the
-	 * slot will already have been created.
+	 * From 9.6, pg_basebackup accepts -S/--slot, which forces WAL streaming
+	 * to use the specified replication slot. If replication slot usage is
+	 * specified, the slot will already have been created.
 	 *
-	 * NOTE: currently there's no way of disabling the --slot option while using
-	 *   --xlog-method=stream - it's hard to imagine a use case for this, so no
-	 *   provision has been made for doing it.
+	 * NOTE: currently there's no way of disabling the --slot option while
+	 * using --xlog-method=stream - it's hard to imagine a use case for this,
+	 * so no provision has been made for doing it.
 	 *
-	 * NOTE:
-	 *   It's possible to set 'pg_basebackup_options' with an invalid combination
-	 *   of values for --wal-method (--xlog-method) and --slot - we're not checking that, just that
-	 *   we're not overriding any user-supplied values
+	 * NOTE: It's possible to set 'pg_basebackup_options' with an invalid
+	 * combination of values for --wal-method (--xlog-method) and --slot -
+	 * we're not checking that, just that we're not overriding any
+	 * user-supplied values
 	 */
 	if (source_server_version_num >= 90600 && config_file_options.use_replication_slots)
 	{
-		bool slot_add = true;
+		bool		slot_add = true;
 
 		/*
-		 * Check whether 'pg_basebackup_options' in repmgr.conf has the --slot option set,
-		 * or if --wal-method (--xlog-method) is set to a value other than "stream"
-		 * (in which case we can't use --slot).
+		 * Check whether 'pg_basebackup_options' in repmgr.conf has the --slot
+		 * option set, or if --wal-method (--xlog-method) is set to a value
+		 * other than "stream" (in which case we can't use --slot).
 		 */
-		if (strlen(backup_options.slot) || (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)) {
+		if (strlen(backup_options.slot) || (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0))
+		{
 			slot_add = false;
 		}
 
@@ -3831,25 +3875,27 @@ run_basebackup(t_node_info *node_record)
 		return ERR_BAD_BASEBACKUP;
 
 	/*
-	 * If replication slots in use, check the created slot is on the correct node;
-	 * the slot will initially get created on the source node, and will need to be
-	 * dropped and recreated on the actual upstream node if these differ.
+	 * If replication slots in use, check the created slot is on the correct
+	 * node; the slot will initially get created on the source node, and will
+	 * need to be dropped and recreated on the actual upstream node if these
+	 * differ.
 	 */
 	if (config_file_options.use_replication_slots && upstream_node_id != UNKNOWN_NODE_ID)
 	{
 
-		PGconn			 *superuser_conn = NULL;
-		PGconn			 *privileged_conn = NULL;
+		PGconn	   *superuser_conn = NULL;
+		PGconn	   *privileged_conn = NULL;
 
-		t_node_info		   upstream_node_record = T_NODE_INFO_INITIALIZER;
-		t_replication_slot  slot_info = T_REPLICATION_SLOT_INITIALIZER;
-		RecordStatus		record_status = RECORD_NOT_FOUND;
+		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+		t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
+		RecordStatus record_status = RECORD_NOT_FOUND;
 
 		record_status = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
 
 		/*
-		 * if there's no upstream record, there's no point in trying to create a replication
-		 * slot on the designated upstream, as the assumption is it won't exist at this point.
+		 * if there's no upstream record, there's no point in trying to create
+		 * a replication slot on the designated upstream, as the assumption is
+		 * it won't exist at this point.
 		 */
 		if (record_status != RECORD_FOUND)
 		{
@@ -3860,7 +3906,7 @@ run_basebackup(t_node_info *node_record)
 		}
 		else
 		{
-			PGconn			 *upstream_conn = NULL;
+			PGconn	   *upstream_conn = NULL;
 
 			upstream_conn = establish_db_connection(upstream_node_record.conninfo, true);
 
@@ -3891,12 +3937,12 @@ run_basebackup(t_node_info *node_record)
 					log_error("%s", event_details.data);
 
 					create_event_notification(
-						primary_conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"standby_clone",
-						false,
-						event_details.data);
+											  primary_conn,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "standby_clone",
+											  false,
+											  event_details.data);
 
 					PQfinish(source_conn);
 
@@ -3928,7 +3974,11 @@ run_basebackup(t_node_info *node_record)
 				log_error(_("unable to delete replication slot \"%s\" on source node"), node_record->slot_name);
 			}
 		}
-		/* if replication slot is still active (shouldn't happen), emit a warning*/
+
+		/*
+		 * if replication slot is still active (shouldn't happen), emit a
+		 * warning
+		 */
 		else
 		{
 			log_warning(_("replication slot \"%s\" is still active on source node"), node_record->slot_name);
@@ -3947,15 +3997,17 @@ run_basebackup(t_node_info *node_record)
 static int
 run_file_backup(t_node_info *node_record)
 {
-	int r = SUCCESS, i;
+	int			r = SUCCESS,
+				i;
 
 	char		command[MAXLEN] = "";
 	char		filename[MAXLEN] = "";
 	char		buf[MAXLEN] = "";
 	char		basebackups_directory[MAXLEN] = "";
 	char		backup_id[MAXLEN] = "";
-	char		*p = NULL, *q = NULL;
-	TablespaceDataList tablespace_list = { NULL, NULL };
+	char	   *p = NULL,
+			   *q = NULL;
+	TablespaceDataList tablespace_list = {NULL, NULL};
 	TablespaceDataListCell *cell_t = NULL;
 
 	PQExpBufferData tablespace_map;
@@ -3970,21 +4022,18 @@ run_file_backup(t_node_info *node_record)
 		get_barman_property(basebackups_directory, "basebackups_directory", local_repmgr_tmp_directory);
 
 		/*
-		 * Read the list of backup files into a local file. In the
-		 * process:
+		 * Read the list of backup files into a local file. In the process:
 		 *
-		 * - determine the backup ID;
-		 * - check, and remove, the prefix;
-		 * - detect tablespaces;
-		 * - filter files in one list per tablespace;
+		 * - determine the backup ID; - check, and remove, the prefix; -
+		 * detect tablespaces; - filter files in one list per tablespace;
 		 */
 
 		{
-			FILE *fi; /* input stream */
-			FILE *fd; /* output for data.txt */
-			char prefix[MAXLEN] = "";
-			char output[MAXLEN] = "";
-			int n = 0;
+			FILE	   *fi;		/* input stream */
+			FILE	   *fd;		/* output for data.txt */
+			char		prefix[MAXLEN] = "";
+			char		output[MAXLEN] = "";
+			int			n = 0;
 
 			maxlen_snprintf(command, "%s list-files --target=data %s latest",
 							make_barman_ssh_command(barman_command_buf),
@@ -4017,23 +4066,23 @@ run_file_backup(t_node_info *node_record)
 				if (p == NULL)
 				{
 					log_error("unexpected output from \"barman list-files\": %s",
-							output);
+							  output);
 					exit(ERR_BARMAN);
 				}
 
 				/*
 				 * Remove and note backup ID; copy backup.info
 				 */
-				if (! strcmp(backup_id, ""))
+				if (!strcmp(backup_id, ""))
 				{
-					FILE *fi2;
+					FILE	   *fi2;
 
 					n = strcspn(p, "/");
 
 					strncpy(backup_id, p, n);
 
-					strncat(prefix,backup_id,MAXLEN-1);
-					strncat(prefix,"/",MAXLEN-1);
+					strncat(prefix, backup_id, MAXLEN - 1);
+					strncat(prefix, "/", MAXLEN - 1);
 					p = string_skip_prefix(backup_id, p);
 					p = string_skip_prefix("/", p);
 
@@ -4046,9 +4095,9 @@ run_file_backup(t_node_info *node_record)
 									basebackups_directory,
 									backup_id,
 									local_repmgr_tmp_directory);
-					(void)local_command(
-						command,
-						NULL);
+					(void) local_command(
+										 command,
+										 NULL);
 
 					/*
 					 * Get tablespace data
@@ -4130,19 +4179,18 @@ run_file_backup(t_node_info *node_record)
 		}
 
 		/*
-		 * As of Barman version 1.6.1, the file structure of a backup
-		 * is as follows:
+		 * As of Barman version 1.6.1, the file structure of a backup is as
+		 * follows:
 		 *
-		 * base/ - base backup
-		 * wals/ - WAL files associated to the backup
+		 * base/ - base backup wals/ - WAL files associated to the backup
 		 *
 		 * base/<ID> - backup files
 		 *
-		 *   here ID has the standard timestamp form yyyymmddThhmmss
+		 * here ID has the standard timestamp form yyyymmddThhmmss
 		 *
 		 * base/<ID>/backup.info - backup metadata, in text format
-		 * base/<ID>/data        - data directory
-		 * base/<ID>/<OID>       - tablespace with the given oid
+		 * base/<ID>/data        - data directory base/<ID>/<OID>       -
+		 * tablespace with the given oid
 		 */
 
 		/*
@@ -4156,21 +4204,22 @@ run_file_backup(t_node_info *node_record)
 						backup_id,
 						local_data_directory);
 
-		(void)local_command(
-			command,
-			NULL);
+		(void) local_command(
+							 command,
+							 NULL);
 
 		unlink(datadir_list_filename);
 
 		/*
-		 * We must create some PGDATA subdirectories because they are
-		 * not included in the Barman backup.
+		 * We must create some PGDATA subdirectories because they are not
+		 * included in the Barman backup.
 		 *
-		 * See class RsyncBackupExecutor in the Barman source (barman/backup_executor.py)
-		 * for a definitive list of excluded directories.
+		 * See class RsyncBackupExecutor in the Barman source
+		 * (barman/backup_executor.py) for a definitive list of excluded
+		 * directories.
 		 */
 		{
-			const char* const dirs[] = {
+			const char *const dirs[] = {
 				/* Only from 10 */
 				"pg_wal",
 				/* Only from 9.5 */
@@ -4181,20 +4230,24 @@ run_file_backup(t_node_info *node_record)
 				"pg_notify", "pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
 				"pg_twophase", "pg_xlog", 0
 			};
-			const int vers[] = {
+			const int	vers[] = {
 				100000,
 				90500,
 				90400, 90400, 90400, 90400, 90400,
 				0, 0, 0, 0, 0, 0,
 				0, -100000, 0
 			};
+
 			for (i = 0; dirs[i]; i++)
 			{
 				/* directory exists in newer versions than this server - skip */
 				if (vers[i] > 0 && source_server_version_num < vers[i])
 					continue;
 
-				/* directory existed in earlier versions than this server but has been removed/renamed - skip */
+				/*
+				 * directory existed in earlier versions than this server but
+				 * has been removed/renamed - skip
+				 */
 				if (vers[i] < 0 && source_server_version_num >= abs(vers[i]))
 					continue;
 
@@ -4211,11 +4264,14 @@ run_file_backup(t_node_info *node_record)
 
 	for (cell_t = tablespace_list.head; cell_t; cell_t = cell_t->next)
 	{
-		bool mapping_found = false;
+		bool		mapping_found = false;
 		TablespaceListCell *cell = NULL;
-		char *tblspc_dir_dest = NULL;
+		char	   *tblspc_dir_dest = NULL;
 
-		/* Check if tablespace path matches one of the provided tablespace mappings */
+		/*
+		 * Check if tablespace path matches one of the provided tablespace
+		 * mappings
+		 */
 		if (config_file_options.tablespace_mapping.head != NULL)
 		{
 			for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
@@ -4247,7 +4303,8 @@ run_file_backup(t_node_info *node_record)
 		{
 			create_pg_dir(cell_t->location, false);
 
-			if (cell_t->f != NULL) /* cell_t->f == NULL iff the tablespace is empty */
+			if (cell_t->f != NULL)	/* cell_t->f == NULL iff the tablespace is
+									 * empty */
 			{
 				maxlen_snprintf(command,
 								"rsync --progress -a --files-from=%s/%s.txt %s:%s/base/%s/%s %s",
@@ -4258,9 +4315,9 @@ run_file_backup(t_node_info *node_record)
 								backup_id,
 								cell_t->oid,
 								tblspc_dir_dest);
-				(void)local_command(
-					command,
-					NULL);
+				(void) local_command(
+									 command,
+									 NULL);
 				fclose(cell_t->f);
 				maxlen_snprintf(filename,
 								"%s/%s.txt",
@@ -4272,10 +4329,9 @@ run_file_backup(t_node_info *node_record)
 
 
 		/*
-		 * If a valid mapping was provide for this tablespace, arrange for it to
-		 * be remapped
-		 * (if no tablespace mapping was provided, the link will be copied as-is
-		 * by pg_basebackup and no action is required)
+		 * If a valid mapping was provide for this tablespace, arrange for it
+		 * to be remapped (if no tablespace mapping was provided, the link
+		 * will be copied as-is by pg_basebackup and no action is required)
 		 */
 		if (mapping_found == true || mode == barman)
 		{
@@ -4288,7 +4344,11 @@ run_file_backup(t_node_info *node_record)
 								  cell_t->oid,
 								  tblspc_dir_dest);
 			}
-			/* Pre-9.5, we have to manipulate the symlinks in pg_tblspc/ ourselves */
+
+			/*
+			 * Pre-9.5, we have to manipulate the symlinks in pg_tblspc/
+			 * ourselves
+			 */
 			else
 			{
 				PQExpBufferData tblspc_symlink;
@@ -4318,23 +4378,27 @@ run_file_backup(t_node_info *node_record)
 	}
 
 	/*
-	 * For 9.5 and later, if tablespace remapping was requested, we'll need
-	 * to rewrite the tablespace map file ourselves.
-	 * The tablespace map file is read on startup and any links created by
-	 * the backend; we could do this ourselves like for pre-9.5 servers, but
-	 * it's better to rely on functionality the backend provides.
+	 * For 9.5 and later, if tablespace remapping was requested, we'll need to
+	 * rewrite the tablespace map file ourselves. The tablespace map file is
+	 * read on startup and any links created by the backend; we could do this
+	 * ourselves like for pre-9.5 servers, but it's better to rely on
+	 * functionality the backend provides.
 	 */
 
 	if (source_server_version_num >= 90500 && tablespace_map_rewrite == true)
 	{
 		PQExpBufferData tablespace_map_filename;
 		FILE	   *tablespace_map_file;
+
 		initPQExpBuffer(&tablespace_map_filename);
 		appendPQExpBuffer(&tablespace_map_filename, "%s/%s",
 						  local_data_directory,
 						  TABLESPACE_MAP);
 
-		/* Unlink any existing file (it should be there, but we don't care if it isn't) */
+		/*
+		 * Unlink any existing file (it should be there, but we don't care if
+		 * it isn't)
+		 */
 		if (unlink(tablespace_map_filename.data) < 0 && errno != ENOENT)
 		{
 			log_error(_("unable to remove tablespace_map file %s: %s"),
@@ -4358,7 +4422,7 @@ run_file_backup(t_node_info *node_record)
 		{
 			log_error(_("unable to write to tablespace_map file '%s'"), tablespace_map_filename.data);
 
-			r  = ERR_BAD_BASEBACKUP;
+			r = ERR_BAD_BASEBACKUP;
 			goto stop_backup;
 		}
 
@@ -4397,60 +4461,66 @@ make_barman_ssh_command(char *buf)
 
 
 static int
-get_tablespace_data_barman
-( char *tablespace_data_barman,
-  TablespaceDataList *tablespace_list)
+			get_tablespace_data_barman
+			(char *tablespace_data_barman,
+			 TablespaceDataList *tablespace_list)
 {
 	/*
-	 * Example:
-	 * [('main', 24674, '/var/lib/postgresql/tablespaces/9.5/main'), ('alt', 24678, '/var/lib/postgresql/tablespaces/9.5/alt')]
+	 * Example: [('main', 24674, '/var/lib/postgresql/tablespaces/9.5/main'),
+	 * ('alt', 24678, '/var/lib/postgresql/tablespaces/9.5/alt')]
 	 */
 
-	char name[MAXLEN] = "";
-	char oid[MAXLEN] = "";
-	char location[MAXPGPATH] = "";
-	char *p = tablespace_data_barman;
-	int i = 0;
+	char		name[MAXLEN] = "";
+	char		oid[MAXLEN] = "";
+	char		location[MAXPGPATH] = "";
+	char	   *p = tablespace_data_barman;
+	int			i = 0;
 
 	tablespace_list->head = NULL;
 	tablespace_list->tail = NULL;
 
 	p = string_skip_prefix("[", p);
-	if (p == NULL) return -1;
+	if (p == NULL)
+		return -1;
 
 	while (*p == '(')
 	{
 		p = string_skip_prefix("('", p);
-		if (p == NULL) return -1;
+		if (p == NULL)
+			return -1;
 
 		i = strcspn(p, "'");
 		strncpy(name, p, i);
 		name[i] = 0;
 
 		p = string_skip_prefix("', ", p + i);
-		if (p == NULL) return -1;
+		if (p == NULL)
+			return -1;
 
 		i = strcspn(p, ",");
 		strncpy(oid, p, i);
 		oid[i] = 0;
 
 		p = string_skip_prefix(", '", p + i);
-		if (p == NULL) return -1;
+		if (p == NULL)
+			return -1;
 
 		i = strcspn(p, "'");
 		strncpy(location, p, i);
 		location[i] = 0;
 
 		p = string_skip_prefix("')", p + i);
-		if (p == NULL) return -1;
+		if (p == NULL)
+			return -1;
 
-		tablespace_data_append (tablespace_list, name, oid, location);
+		tablespace_data_append(tablespace_list, name, oid, location);
 
 		if (*p == ']')
 			break;
 
 		p = string_skip_prefix(", ", p);
-		if (p == NULL) return -1;
+		if (p == NULL)
+			return -1;
 	}
 
 	return SUCCESS;
@@ -4461,16 +4531,16 @@ void
 get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 {
 	PQExpBufferData command_output;
-	char buf[MAXLEN] = "";
-	char command[MAXLEN] = "";
-	char *p = NULL;
+	char		buf[MAXLEN] = "";
+	char		command[MAXLEN] = "";
+	char	   *p = NULL;
 
 	initPQExpBuffer(&command_output);
 
 	maxlen_snprintf(command,
 					"grep \"^\t%s:\" %s/show-server.txt",
 					name, local_repmgr_tmp_directory);
-	(void)local_command(command, &command_output);
+	(void) local_command(command, &command_output);
 
 	maxlen_snprintf(buf, "\t%s: ", name);
 	p = string_skip_prefix(buf, command_output.data);
@@ -4491,9 +4561,10 @@ get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 static void
 copy_configuration_files(void)
 {
-	int i, r;
+	int			i,
+				r;
 	t_configfile_info *file = NULL;
-	char *host = NULL;
+	char	   *host = NULL;
 
 	/* get host from upstream record */
 	host = param_get(&recovery_conninfo, "host");
@@ -4505,12 +4576,13 @@ copy_configuration_files(void)
 
 	for (i = 0; i < config_files.entries; i++)
 	{
-		char dest_path[MAXPGPATH] = "";
+		char		dest_path[MAXPGPATH] = "";
+
 		file = config_files.files[i];
 
 		/*
-		 * Skip files in the data directory - these will be copied during
-		 * the main backup
+		 * Skip files in the data directory - these will be copied during the
+		 * main backup
 		 */
 		if (file->in_data_directory == true)
 			continue;
@@ -4553,12 +4625,12 @@ tablespace_data_append(TablespaceDataList *list, const char *name, const char *o
 		exit(ERR_OUT_OF_MEMORY);
 	}
 
-	cell->oid      = pg_malloc(1 + strlen(oid     ));
-	cell->name     = pg_malloc(1 + strlen(name    ));
+	cell->oid = pg_malloc(1 + strlen(oid));
+	cell->name = pg_malloc(1 + strlen(name));
 	cell->location = pg_malloc(1 + strlen(location));
 
-	strncpy(cell->oid     , oid     , 1 + strlen(oid     ));
-	strncpy(cell->name    , name    , 1 + strlen(name    ));
+	strncpy(cell->oid, oid, 1 + strlen(oid));
+	strncpy(cell->name, name, 1 + strlen(name));
 	strncpy(cell->location, location, 1 + strlen(location));
 
 	if (list->tail)
@@ -4639,8 +4711,8 @@ check_recovery_type(PGconn *conn)
 static void
 drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 {
-	t_replication_slot  slot_info = T_REPLICATION_SLOT_INITIALIZER;
-	RecordStatus		record_status = get_slot_record(conn, slot_name, &slot_info);
+	t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
+	RecordStatus record_status = get_slot_record(conn, slot_name, &slot_info);
 
 	log_verbose(LOG_DEBUG, "attempting to delete slot \"%s\" on node %i",
 				slot_name, node_id);
@@ -4663,7 +4735,11 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 				log_error(_("unable to delete replication slot \"%s\" on node %i"), slot_name, node_id);
 			}
 		}
-		/* if active replication slot exists, call Houston as we have a problem */
+
+		/*
+		 * if active replication slot exists, call Houston as we have a
+		 * problem
+		 */
 		else
 		{
 			log_warning(_("replication slot \"%s\" is still active on node %i"), slot_name, node_id);
@@ -4676,21 +4752,22 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 static NodeStatus
 parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint)
 {
-	int   options_len = 0;
-	char *options_string = NULL;
-	char *options_string_ptr = NULL;
-	NodeStatus node_status = NODE_STATUS_UNKNOWN;
+	int			options_len = 0;
+	char	   *options_string = NULL;
+	char	   *options_string_ptr = NULL;
+	NodeStatus	node_status = NODE_STATUS_UNKNOWN;
 
 	/*
-	 * Add parsed options to this list, then copy to an array
-	 * to pass to getopt
+	 * Add parsed options to this list, then copy to an array to pass to
+	 * getopt
 	 */
-	static ItemList option_argv = { NULL, NULL };
+	static ItemList option_argv = {NULL, NULL};
 
-	char *argv_item;
-	int c, argc_item = 1;
+	char	   *argv_item;
+	int			c,
+				argc_item = 1;
 
-	char **argv_array;
+	char	  **argv_array;
 	ItemListCell *cell;
 
 	int			optindex = 0;
@@ -4730,8 +4807,8 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 
 	/*
 	 * Array of argument values to pass to getopt_long - this will need to
-	 * include an empty string as the first value (normally this would be
-	 * the program name)
+	 * include an empty string as the first value (normally this would be the
+	 * program name)
 	 */
 	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
 
@@ -4745,7 +4822,7 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 	 */
 	for (cell = option_argv.head; cell; cell = cell->next)
 	{
-		int argv_len = strlen(cell->string) + 1;
+		int			argv_len = strlen(cell->string) + 1;
 
 		argv_array[c] = pg_malloc0(argv_len);
 
@@ -4767,39 +4844,40 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 	{
 		switch (c)
 		{
-			/* --last-checkpoint-lsn */
+				/* --last-checkpoint-lsn */
 			case 'L':
 				*checkPoint = parse_lsn(optarg);
 				break;
-			/* --state */
+				/* --state */
 			case 'S':
-			{
-				if (strncmp(optarg, "RUNNING", MAXLEN) == 0)
 				{
-					node_status = NODE_STATUS_UP;
+					if (strncmp(optarg, "RUNNING", MAXLEN) == 0)
+					{
+						node_status = NODE_STATUS_UP;
+					}
+					else if (strncmp(optarg, "SHUTDOWN", MAXLEN) == 0)
+					{
+						node_status = NODE_STATUS_DOWN;
+					}
+					else if (strncmp(optarg, "UNCLEAN_SHUTDOWN", MAXLEN) == 0)
+					{
+						node_status = NODE_STATUS_UNCLEAN_SHUTDOWN;
+					}
+					else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
+					{
+						node_status = NODE_STATUS_UNKNOWN;
+					}
 				}
-				else if (strncmp(optarg, "SHUTDOWN", MAXLEN) == 0)
-				{
-					node_status = NODE_STATUS_DOWN;
-				}
-				else if (strncmp(optarg, "UNCLEAN_SHUTDOWN", MAXLEN) == 0)
-				{
-					node_status = NODE_STATUS_UNCLEAN_SHUTDOWN;
-				}
-				else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
-				{
-					node_status = NODE_STATUS_UNKNOWN;
-				}
-			}
-			break;
+				break;
 		}
 	}
 
 	pfree(options_string);
 
 	{
-		int i;
-		for (i = 0; i < argc_item + 2; i ++)
+		int			i;
+
+		for (i = 0; i < argc_item + 2; i++)
 			pfree(argv_array[i]);
 	}
 	pfree(argv_array);
@@ -4812,23 +4890,24 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 static CheckStatus
 parse_node_check_archiver(const char *node_check_output, int *files, int *threshold)
 {
-	int   options_len = 0;
-	char *options_string = NULL;
-	char *options_string_ptr = NULL;
+	int			options_len = 0;
+	char	   *options_string = NULL;
+	char	   *options_string_ptr = NULL;
 
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
 
 
 	/*
-	 * Add parsed options to this list, then copy to an array
-	 * to pass to getopt
+	 * Add parsed options to this list, then copy to an array to pass to
+	 * getopt
 	 */
-	static ItemList option_argv = { NULL, NULL };
+	static ItemList option_argv = {NULL, NULL};
 
-	char *argv_item;
-	int c, argc_item = 1;
+	char	   *argv_item;
+	int			c,
+				argc_item = 1;
 
-	char **argv_array;
+	char	  **argv_array;
 	ItemListCell *cell;
 
 	int			optindex = 0;
@@ -4871,8 +4950,8 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 
 	/*
 	 * Array of argument values to pass to getopt_long - this will need to
-	 * include an empty string as the first value (normally this would be
-	 * the program name)
+	 * include an empty string as the first value (normally this would be the
+	 * program name)
 	 */
 	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
 
@@ -4886,7 +4965,7 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 	 */
 	for (cell = option_argv.head; cell; cell = cell->next)
 	{
-		int argv_len = strlen(cell->string) + 1;
+		int			argv_len = strlen(cell->string) + 1;
 
 		argv_array[c] = pg_malloc0(argv_len);
 
@@ -4908,7 +4987,7 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 	{
 		switch (c)
 		{
-			/* --files */
+				/* --files */
 			case 'f':
 				*files = atoi(optarg);
 				break;
@@ -4917,31 +4996,31 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 				*threshold = atoi(optarg);
 				break;
 
-			/* --status */
+				/* --status */
 			case 'S':
-			{
-				if (strncmp(optarg, "OK", MAXLEN) == 0)
 				{
-					status = CHECK_STATUS_OK;
+					if (strncmp(optarg, "OK", MAXLEN) == 0)
+					{
+						status = CHECK_STATUS_OK;
+					}
+					else if (strncmp(optarg, "WARNING", MAXLEN) == 0)
+					{
+						status = CHECK_STATUS_WARNING;
+					}
+					else if (strncmp(optarg, "CRITICAL", MAXLEN) == 0)
+					{
+						status = CHECK_STATUS_CRITICAL;
+					}
+					else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
+					{
+						status = CHECK_STATUS_UNKNOWN;
+					}
+					else
+					{
+						status = CHECK_STATUS_UNKNOWN;
+					}
 				}
-				else if (strncmp(optarg, "WARNING", MAXLEN) == 0)
-				{
-					status = CHECK_STATUS_WARNING;
-				}
-				else if (strncmp(optarg, "CRITICAL", MAXLEN) == 0)
-				{
-					status = CHECK_STATUS_CRITICAL;
-				}
-				else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
-				{
-					status = CHECK_STATUS_UNKNOWN;
-				}
-				else
-				{
-					status = CHECK_STATUS_UNKNOWN;
-				}
-			}
-			break;
+				break;
 		}
 	}
 
@@ -4953,23 +5032,24 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 static CheckStatus
 parse_node_check_replication_lag(const char *node_check_output, int *seconds, int *threshold)
 {
-	int   options_len = 0;
-	char *options_string = NULL;
-	char *options_string_ptr = NULL;
+	int			options_len = 0;
+	char	   *options_string = NULL;
+	char	   *options_string_ptr = NULL;
 
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
 
 
 	/*
-	 * Add parsed options to this list, then copy to an array
-	 * to pass to getopt
+	 * Add parsed options to this list, then copy to an array to pass to
+	 * getopt
 	 */
-	static ItemList option_argv = { NULL, NULL };
+	static ItemList option_argv = {NULL, NULL};
 
-	char *argv_item;
-	int c, argc_item = 1;
+	char	   *argv_item;
+	int			c,
+				argc_item = 1;
 
-	char **argv_array;
+	char	  **argv_array;
 	ItemListCell *cell;
 
 	int			optindex = 0;
@@ -5012,8 +5092,8 @@ parse_node_check_replication_lag(const char *node_check_output, int *seconds, in
 
 	/*
 	 * Array of argument values to pass to getopt_long - this will need to
-	 * include an empty string as the first value (normally this would be
-	 * the program name)
+	 * include an empty string as the first value (normally this would be the
+	 * program name)
 	 */
 	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
 
@@ -5027,7 +5107,7 @@ parse_node_check_replication_lag(const char *node_check_output, int *seconds, in
 	 */
 	for (cell = option_argv.head; cell; cell = cell->next)
 	{
-		int argv_len = strlen(cell->string) + 1;
+		int			argv_len = strlen(cell->string) + 1;
 
 		argv_array[c] = pg_malloc0(argv_len);
 
@@ -5049,7 +5129,7 @@ parse_node_check_replication_lag(const char *node_check_output, int *seconds, in
 	{
 		switch (c)
 		{
-			/* --files */
+				/* --files */
 			case 'l':
 				*seconds = atoi(optarg);
 				break;
@@ -5058,31 +5138,31 @@ parse_node_check_replication_lag(const char *node_check_output, int *seconds, in
 				*threshold = atoi(optarg);
 				break;
 
-			/* --status */
+				/* --status */
 			case 'S':
-			{
-				if (strncmp(optarg, "OK", MAXLEN) == 0)
 				{
-					status = CHECK_STATUS_OK;
+					if (strncmp(optarg, "OK", MAXLEN) == 0)
+					{
+						status = CHECK_STATUS_OK;
+					}
+					else if (strncmp(optarg, "WARNING", MAXLEN) == 0)
+					{
+						status = CHECK_STATUS_WARNING;
+					}
+					else if (strncmp(optarg, "CRITICAL", MAXLEN) == 0)
+					{
+						status = CHECK_STATUS_CRITICAL;
+					}
+					else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
+					{
+						status = CHECK_STATUS_UNKNOWN;
+					}
+					else
+					{
+						status = CHECK_STATUS_UNKNOWN;
+					}
 				}
-				else if (strncmp(optarg, "WARNING", MAXLEN) == 0)
-				{
-					status = CHECK_STATUS_WARNING;
-				}
-				else if (strncmp(optarg, "CRITICAL", MAXLEN) == 0)
-				{
-					status = CHECK_STATUS_CRITICAL;
-				}
-				else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
-				{
-					status = CHECK_STATUS_UNKNOWN;
-				}
-				else
-				{
-					status = CHECK_STATUS_UNKNOWN;
-				}
-			}
-			break;
+				break;
 		}
 	}
 
@@ -5128,10 +5208,10 @@ do_standby_help(void)
 	puts("");
 	printf(_("  \"standby register\" registers the standby node.\n"));
 	puts("");
-	printf(_("  -F, --force                         overwrite an existing node record, or if primary connection\n"\
+	printf(_("  -F, --force                         overwrite an existing node record, or if primary connection\n" \
 			 "                                        parameters supplied, create record even if standby offline\n"));
 	printf(_("  --upstream-node-id                  ID of the upstream node to replicate from (optional)\n"));
-	printf(_("  --wait-sync[=VALUE]                 wait for the node record to synchronise to the standby\n"\
+	printf(_("  --wait-sync[=VALUE]                 wait for the node record to synchronise to the standby\n" \
 			 "                                        (optional timeout in seconds)\n"));
 
 	puts("");

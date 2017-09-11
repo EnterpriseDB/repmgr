@@ -61,7 +61,7 @@
 
 #include "repmgr-action-cluster.h"
 
-#include <storage/fd.h>         /* for PG_TEMP_FILE_PREFIX */
+#include <storage/fd.h>			/* for PG_TEMP_FILE_PREFIX */
 
 
 /* globally available variables *
@@ -73,10 +73,10 @@ t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZE
 /* conninfo params for the node we're operating on */
 t_conninfo_param_list source_conninfo;
 
-bool	 config_file_required = true;
-char	 pg_bindir[MAXLEN] = "";
+bool		config_file_required = true;
+char		pg_bindir[MAXLEN] = "";
 
-char	 path_buf[MAXLEN] = "";
+char		path_buf[MAXLEN] = "";
 
 /*
  * if --node-id/--node-name provided, place that node's record here
@@ -86,8 +86,8 @@ t_node_info target_node_info = T_NODE_INFO_INITIALIZER;
 
 
 /* Collate command line errors and warnings here for friendlier reporting */
-static ItemList	cli_errors = { NULL, NULL };
-static ItemList	cli_warnings = { NULL, NULL };
+static ItemList cli_errors = {NULL, NULL};
+static ItemList cli_warnings = {NULL, NULL};
 
 
 int
@@ -104,14 +104,14 @@ main(int argc, char **argv)
 	int			action = NO_ACTION;
 	char	   *dummy_action = "";
 
-	bool	    help_option = false;
+	bool		help_option = false;
 
 	set_progname(argv[0]);
 
 	/*
-	 * Tell the logger we're a command-line program - this will
-	 * ensure any output logged before the logger is initialized
-	 * will be formatted correctly. Can be overriden with "--log-to-file".
+	 * Tell the logger we're a command-line program - this will ensure any
+	 * output logged before the logger is initialized will be formatted
+	 * correctly. Can be overriden with "--log-to-file".
 	 */
 	logger_output_mode = OM_COMMAND_LINE;
 
@@ -119,14 +119,13 @@ main(int argc, char **argv)
 	 * Initialize and pre-populate conninfo parameters; these will be
 	 * overwritten if matching command line parameters are provided.
 	 *
-	 * Only some actions will need these, but we need to do this before
-	 * the command line is parsed.
+	 * Only some actions will need these, but we need to do this before the
+	 * command line is parsed.
 	 *
-	 * Note: PQconndefaults() does not provide a default value for
-	 * "dbname", but if none is provided will default to "username"
-	 * when the connection is made. We won't set "dbname" here if no
-	 * default available, as that would break the libpq behaviour if
-	 * non-default username is provided.
+	 * Note: PQconndefaults() does not provide a default value for "dbname",
+	 * but if none is provided will default to "username" when the connection
+	 * is made. We won't set "dbname" here if no default available, as that
+	 * would break the libpq behaviour if non-default username is provided.
 	 */
 	initialize_conninfo_params(&default_conninfo, true);
 
@@ -138,7 +137,7 @@ main(int argc, char **argv)
 			strncpy(runtime_options.host, default_conninfo.values[c], MAXLEN);
 		}
 		else if (strcmp(default_conninfo.keywords[c], "hostaddr") == 0 &&
-				(default_conninfo.values[c] != NULL))
+				 (default_conninfo.values[c] != NULL))
 		{
 			strncpy(runtime_options.host, default_conninfo.values[c], MAXLEN);
 		}
@@ -180,18 +179,18 @@ main(int argc, char **argv)
 							&optindex)) != -1)
 	{
 		/*
-		 * NOTE: some integer parameters (e.g. -p/--port) are stored internally
-		 * as strings. We use repmgr_atoi() to check these but discard the
-		 * returned integer; repmgr_atoi() will append the error message to the
-		 * provided list.
+		 * NOTE: some integer parameters (e.g. -p/--port) are stored
+		 * internally as strings. We use repmgr_atoi() to check these but
+		 * discard the returned integer; repmgr_atoi() will append the error
+		 * message to the provided list.
 		 */
 		switch (c)
 		{
-			/*
-			 * Options which cause repmgr to exit in this block;
-			 * these are the only ones which can be executed as root user
-			 */
-			case OPT_HELP: /* --help */
+				/*
+				 * Options which cause repmgr to exit in this block; these are
+				 * the only ones which can be executed as root user
+				 */
+			case OPT_HELP:		/* --help */
 				help_option = true;
 				break;
 			case '?':
@@ -202,68 +201,74 @@ main(int argc, char **argv)
 				}
 				break;
 			case 'V':
+
 				/*
-				 * in contrast to repmgr3 and earlier, we only display the repmgr version
-				 * as it's not specific to a particular PostgreSQL version
+				 * in contrast to repmgr3 and earlier, we only display the
+				 * repmgr version as it's not specific to a particular
+				 * PostgreSQL version
 				 */
 				printf("%s %s\n", progname(), REPMGR_VERSION);
 				exit(SUCCESS);
 
-			/*------------------------------
-			 * general configuration options
-			 *------------------------------
-			 */
+				/*------------------------------
+				 * general configuration options
+				 *------------------------------
+				 */
 
-			/* -b/--pg_bindir */
+				/* -b/--pg_bindir */
 			case 'b':
 				strncpy(runtime_options.pg_bindir, optarg, MAXLEN);
 				break;
 
-			/* -f/--config-file */
+				/* -f/--config-file */
 			case 'f':
 				strncpy(runtime_options.config_file, optarg, MAXLEN);
 				break;
 
-			/* --dry-run */
+				/* --dry-run */
 			case OPT_DRY_RUN:
 				runtime_options.dry_run = true;
 				break;
 
-			/* -F/--force */
+				/* -F/--force */
 			case 'F':
 				runtime_options.force = true;
 				break;
 
-			/* --replication-user (primary/standby register only) */
+				/* --replication-user (primary/standby register only) */
 			case OPT_REPLICATION_USER:
 				strncpy(runtime_options.replication_user, optarg, MAXLEN);
 				break;
 
-			/* -W/--wait */
+				/* -W/--wait */
 			case 'W':
 				runtime_options.wait = true;
 				break;
 
-			/*----------------------------
-			 * database connection options
-			 *----------------------------
-			 */
+				/*----------------------------
+				 * database connection options
+				 *----------------------------
+				 */
 
-			/*
-			 * These are the standard database connection options; with the
-			 * exception of -d/--dbname (which could be a conninfo string)
-			 * we'll also set these values in "source_conninfo" (overwriting
-			 * preset values from environment variables).
-			 * XXX check this is same as psql
-			 */
-			/* -d/--dbname */
+				/*
+				 * These are the standard database connection options; with
+				 * the exception of -d/--dbname (which could be a conninfo
+				 * string) we'll also set these values in "source_conninfo"
+				 * (overwriting preset values from environment variables). XXX
+				 * check this is same as psql
+				 */
+				/* -d/--dbname */
 			case 'd':
 				strncpy(runtime_options.dbname, optarg, MAXLEN);
-				/* dbname will be set in source_conninfo later after checking if it's a conninfo string */
+
+				/*
+				 * dbname will be set in source_conninfo later after checking
+				 * if it's a conninfo string
+				 */
 				runtime_options.connection_param_provided = true;
 				break;
 
-			/* -h/--host */
+				/* -h/--host */
 			case 'h':
 				strncpy(runtime_options.host, optarg, MAXLEN);
 				param_set(&source_conninfo, "host", optarg);
@@ -280,67 +285,68 @@ main(int argc, char **argv)
 				runtime_options.connection_param_provided = true;
 				break;
 
-			/* -U/--user */
+				/* -U/--user */
 			case 'U':
 				strncpy(runtime_options.username, optarg, MAXLEN);
 				param_set(&source_conninfo, "user", optarg);
 				runtime_options.connection_param_provided = true;
 				break;
 
-			/*-------------------------
-			 * other connection options
-			 *-------------------------
-			 */
+				/*-------------------------
+				 * other connection options
+				 *-------------------------
+				 */
 
-			/* -R/--remote_user */
+				/* -R/--remote_user */
 			case 'R':
 				strncpy(runtime_options.remote_user, optarg, MAXLEN);
 				break;
 
-			/* -S/--superuser */
+				/* -S/--superuser */
 			case 'S':
 				strncpy(runtime_options.superuser, optarg, MAXLEN);
 				break;
 
-			/*-------------
-			 * node options
-			 *-------------
-			 */
+				/*-------------
+				 * node options
+				 *-------------
+				 */
 
-			/* -D/--pgdata/--data-dir */
+				/* -D/--pgdata/--data-dir */
 			case 'D':
 				strncpy(runtime_options.data_dir, optarg, MAXPGPATH);
 				break;
 
-			/* --node-id */
+				/* --node-id */
 			case OPT_NODE_ID:
 				runtime_options.node_id = repmgr_atoi(optarg, "--node-id", &cli_errors, false);
 				break;
 
-			/* --node-name */
+				/* --node-name */
 			case OPT_NODE_NAME:
 				strncpy(runtime_options.node_name, optarg, MAXLEN);
 				break;
 
-			/* standby options *
-			 * --------------- */
+				/*
+				 * standby options * ---------------
+				 */
 
-			/* --upstream-node-id */
+				/* --upstream-node-id */
 			case OPT_UPSTREAM_NODE_ID:
 				runtime_options.upstream_node_id = repmgr_atoi(optarg, "--upstream-node-id", &cli_errors, false);
 				break;
 
-			/*------------------------
-			 * "standby clone" options
-			 *------------------------
-			 */
+				/*------------------------
+				 * "standby clone" options
+				 *------------------------
+				 */
 
-			/* -c/--fast-checkpoint */
+				/* -c/--fast-checkpoint */
 			case 'c':
 				runtime_options.fast_checkpoint = true;
 				break;
 
-			/* --copy-external-config-files(=[samepath|pgdata]) */
+				/* --copy-external-config-files(=[samepath|pgdata]) */
 			case OPT_COPY_EXTERNAL_CONFIG_FILES:
 				runtime_options.copy_external_config_files = true;
 				if (optarg != NULL)
@@ -362,7 +368,7 @@ main(int argc, char **argv)
 				}
 				break;
 
-			/* --no-upstream-connection */
+				/* --no-upstream-connection */
 			case OPT_NO_UPSTREAM_CONNECTION:
 				runtime_options.no_upstream_connection = true;
 				break;
@@ -376,10 +382,10 @@ main(int argc, char **argv)
 				runtime_options.without_barman = true;
 				break;
 
-			/*---------------------------
-			 * "standby register" options
-			 *---------------------------
-			 */
+				/*---------------------------
+				 * "standby register" options
+				 *---------------------------
+				 */
 
 			case OPT_REGISTER_WAIT:
 				runtime_options.wait_register_sync = true;
@@ -389,10 +395,10 @@ main(int argc, char **argv)
 				}
 				break;
 
-			/*-----------------------------
-			 * "standby switchover" options
-			 *-----------------------------
-			 */
+				/*-----------------------------
+				 * "standby switchover" options
+				 *-----------------------------
+				 */
 
 			case OPT_ALWAYS_PROMOTE:
 				runtime_options.always_promote = true;
@@ -406,19 +412,19 @@ main(int argc, char **argv)
 				runtime_options.siblings_follow = true;
 				break;
 
-			/*----------------------
-			 * "node status" options
-			 *----------------------
-			 */
+				/*----------------------
+				 * "node status" options
+				 *----------------------
+				 */
 
 			case OPT_IS_SHUTDOWN_CLEANLY:
 				runtime_options.is_shutdown_cleanly = true;
 				break;
 
-			/*---------------------
-			 * "node check" options
-			 *--------------------
-			 */
+				/*---------------------
+				 * "node check" options
+				 *--------------------
+				 */
 			case OPT_ARCHIVE_READY:
 				runtime_options.archive_ready = true;
 				break;
@@ -439,26 +445,26 @@ main(int argc, char **argv)
 				runtime_options.slots = true;
 				break;
 
-			/*--------------------
-			 * "node rejoin" options
-			 *--------------------
-			 */
+				/*--------------------
+				 * "node rejoin" options
+				 *--------------------
+				 */
 			case OPT_CONFIG_FILES:
 				strncpy(runtime_options.config_files, optarg, MAXLEN);
 				break;
 
-			/* internal options */
+				/* internal options */
 			case OPT_CONFIG_ARCHIVE_DIR:
 				/* TODO: check this is an absolute path */
 				strncpy(runtime_options.config_archive_dir, optarg, MAXPGPATH);
 				break;
 
-			/*-----------------------
-			 * "node service" options
-			 *-----------------------
-			 */
+				/*-----------------------
+				 * "node service" options
+				 *-----------------------
+				 */
 
-			/* --action (repmgr node service --action) */
+				/* --action (repmgr node service --action) */
 			case OPT_ACTION:
 				strncpy(runtime_options.action, optarg, MAXLEN);
 				break;
@@ -475,10 +481,10 @@ main(int argc, char **argv)
 				runtime_options.checkpoint = true;
 				break;
 
-			/*------------------------
-			 * "cluster event" options
-			 *------------------------
-			 */
+				/*------------------------
+				 * "cluster event" options
+				 *------------------------
+				 */
 
 			case OPT_EVENT:
 				strncpy(runtime_options.event, optarg, MAXLEN);
@@ -493,51 +499,53 @@ main(int argc, char **argv)
 				runtime_options.all = true;
 				break;
 
-			/*----------------
-			 * logging options
-			 *----------------
-			 */
+				/*----------------
+				 * logging options
+				 *----------------
+				 */
 
-			/* -L/--log-level */
+				/* -L/--log-level */
 			case 'L':
-			{
-				int detected_log_level = detect_log_level(optarg);
-				if (detected_log_level != -1)
 				{
-					strncpy(runtime_options.log_level, optarg, MAXLEN);
-				}
-				else
-				{
-					PQExpBufferData invalid_log_level;
-					initPQExpBuffer(&invalid_log_level);
-					appendPQExpBuffer(&invalid_log_level, _("invalid log level \"%s\" provided"), optarg);
-					item_list_append(&cli_errors, invalid_log_level.data);
-					termPQExpBuffer(&invalid_log_level);
-				}
-				break;
-			}
+					int			detected_log_level = detect_log_level(optarg);
 
-			/* --log-to-file */
+					if (detected_log_level != -1)
+					{
+						strncpy(runtime_options.log_level, optarg, MAXLEN);
+					}
+					else
+					{
+						PQExpBufferData invalid_log_level;
+
+						initPQExpBuffer(&invalid_log_level);
+						appendPQExpBuffer(&invalid_log_level, _("invalid log level \"%s\" provided"), optarg);
+						item_list_append(&cli_errors, invalid_log_level.data);
+						termPQExpBuffer(&invalid_log_level);
+					}
+					break;
+				}
+
+				/* --log-to-file */
 			case OPT_LOG_TO_FILE:
 				runtime_options.log_to_file = true;
 				logger_output_mode = OM_DAEMON;
 				break;
 
-			/* --terse */
+				/* --terse */
 			case 't':
 				runtime_options.terse = true;
 				break;
 
-			/* --verbose */
+				/* --verbose */
 			case 'v':
 				runtime_options.verbose = true;
 				break;
 
 
-			/*--------------
-			 * output options
-			 *---------------
-			 */
+				/*--------------
+				 * output options
+				 *---------------
+				 */
 			case OPT_CSV:
 				runtime_options.csv = true;
 				break;
@@ -550,10 +558,10 @@ main(int argc, char **argv)
 				runtime_options.optformat = true;
 				break;
 
-			/*-----------------------------
-			 * options deprecated since 3.3
-			 *-----------------------------
-			 */
+				/*-----------------------------
+				 * options deprecated since 3.3
+				 *-----------------------------
+				 */
 			case OPT_DATA_DIR:
 				item_list_append(&cli_warnings,
 								 _("--data-dir is deprecated; use -D/--pgdata instead"));
@@ -562,13 +570,13 @@ main(int argc, char **argv)
 				item_list_append(&cli_warnings,
 								 _("--no-conninfo-password is deprecated; pasuse --use-recovery-conninfo-password to explicitly set a password"));
 				break;
-			/* -C/--remote-config-file */
+				/* -C/--remote-config-file */
 			case 'C':
 				item_list_append(&cli_warnings,
 								 _("--remote-config-file is no longer required"));
 				break;
 
-			/* --recovery-min-apply-delay */
+				/* --recovery-min-apply-delay */
 			case OPT_RECOVERY_MIN_APPLY_DELAY:
 				item_list_append(&cli_warnings,
 								 _("--recovery-min-apply-delay is now a configuration file parameter, \"recovery_min_apply_delay\""));
@@ -584,8 +592,8 @@ main(int argc, char **argv)
 	if (runtime_options.dbname)
 	{
 		if (strncmp(runtime_options.dbname, "postgresql://", 13) == 0 ||
-		   strncmp(runtime_options.dbname, "postgres://", 11) == 0 ||
-		   strchr(runtime_options.dbname, '=') != NULL)
+			strncmp(runtime_options.dbname, "postgres://", 11) == 0 ||
+			strchr(runtime_options.dbname, '=') != NULL)
 		{
 			char	   *errmsg = NULL;
 			PQconninfoOption *opts;
@@ -597,6 +605,7 @@ main(int argc, char **argv)
 			if (opts == NULL)
 			{
 				PQExpBufferData conninfo_error;
+
 				initPQExpBuffer(&conninfo_error);
 				appendPQExpBuffer(&conninfo_error, _("error parsing conninfo:\n%s"), errmsg);
 				item_list_append(&cli_errors, conninfo_error.data);
@@ -613,6 +622,7 @@ main(int argc, char **argv)
 				 * settings take priority
 				 */
 				PQconninfoOption *opt;
+
 				for (opt = opts; opt->keyword != NULL; opt++)
 				{
 					if (opt->val != NULL && opt->val[0] != '\0')
@@ -649,14 +659,14 @@ main(int argc, char **argv)
 		}
 		else
 		{
-   			param_set(&source_conninfo, "dbname", runtime_options.dbname);
+			param_set(&source_conninfo, "dbname", runtime_options.dbname);
 		}
 	}
 
 	/*
-	 * Disallow further running as root to prevent directory ownership problems.
-	 * We check this here to give the root user a chance to execute --help/--version
-	 * options.
+	 * Disallow further running as root to prevent directory ownership
+	 * problems. We check this here to give the root user a chance to execute
+	 * --help/--version options.
 	 */
 	if (geteuid() == 0 && help_option == false)
 	{
@@ -665,7 +675,7 @@ main(int argc, char **argv)
 				  "Please log in (using, e.g., \"su\") as the "
 				  "(unprivileged) user that owns "
 				  "the data directory.\n"
-				),
+				  ),
 				progname());
 		free_conninfo_params(&source_conninfo);
 		exit(ERR_BAD_CONFIG);
@@ -681,13 +691,14 @@ main(int argc, char **argv)
 	/*
 	 * Determine the node type and action; following are valid:
 	 *
-	 *	 { PRIMARY | MASTER } REGISTER |
-	 *	 STANDBY {REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} |
-	 *	 BDR { REGISTER | UNREGISTER } |
-	 *   NODE { STATUS | CHECK | REJOIN | ARCHIVE-CONFIG | RESTORE-CONFIG | SERVICE } |
-	 *	 CLUSTER { CROSSCHECK | MATRIX | SHOW | CLEANUP | EVENT }
+	 * { PRIMARY | MASTER } REGISTER | STANDBY {REGISTER | UNREGISTER | CLONE
+	 * [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} | BDR {
+	 * REGISTER | UNREGISTER } | NODE { STATUS | CHECK | REJOIN |
+	 * ARCHIVE-CONFIG | RESTORE-CONFIG | SERVICE } | CLUSTER { CROSSCHECK |
+	 * MATRIX | SHOW | CLEANUP | EVENT }
 	 *
-	 * [node] is an optional hostname, provided instead of the -h/--host option
+	 * [node] is an optional hostname, provided instead of the -h/--host
+	 * option
 	 */
 	if (optind < argc)
 	{
@@ -706,7 +717,7 @@ main(int argc, char **argv)
 	if (repmgr_command != NULL)
 	{
 #ifndef BDR_ONLY
-		if (strcasecmp(repmgr_command, "PRIMARY") == 0 || strcasecmp(repmgr_command, "MASTER") == 0 )
+		if (strcasecmp(repmgr_command, "PRIMARY") == 0 || strcasecmp(repmgr_command, "MASTER") == 0)
 		{
 			if (help_option == true)
 			{
@@ -778,7 +789,7 @@ main(int argc, char **argv)
 				exit(SUCCESS);
 			}
 
-		    if (strcasecmp(repmgr_action, "CHECK") == 0)
+			if (strcasecmp(repmgr_action, "CHECK") == 0)
 				action = NODE_CHECK;
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
 				action = NODE_STATUS;
@@ -823,6 +834,7 @@ main(int argc, char **argv)
 	if (action == NO_ACTION)
 	{
 		PQExpBufferData command_error;
+
 		initPQExpBuffer(&command_error);
 
 		if (repmgr_command == NULL)
@@ -838,9 +850,9 @@ main(int argc, char **argv)
 		}
 		else if (repmgr_action[0] == '\0')
 		{
-		   appendPQExpBuffer(&command_error,
-							 _("no action provided for command '%s'"),
-							 repmgr_command);
+			appendPQExpBuffer(&command_error,
+							  _("no action provided for command '%s'"),
+							  repmgr_command);
 		}
 		else
 		{
@@ -853,7 +865,10 @@ main(int argc, char **argv)
 		item_list_append(&cli_errors, command_error.data);
 	}
 
-	/* STANDBY CLONE historically accepts the upstream hostname as an additional argument */
+	/*
+	 * STANDBY CLONE historically accepts the upstream hostname as an
+	 * additional argument
+	 */
 	if (action == STANDBY_CLONE)
 	{
 		if (optind < argc)
@@ -861,6 +876,7 @@ main(int argc, char **argv)
 			if (runtime_options.host_param_provided == true)
 			{
 				PQExpBufferData additional_host_arg;
+
 				initPQExpBuffer(&additional_host_arg);
 				appendPQExpBuffer(&additional_host_arg,
 								  _("host name provided both with %s and as an extra parameter"),
@@ -879,6 +895,7 @@ main(int argc, char **argv)
 	if (optind < argc)
 	{
 		PQExpBufferData too_many_args;
+
 		initPQExpBuffer(&too_many_args);
 		appendPQExpBuffer(&too_many_args, _("too many command-line arguments (first extra is \"%s\")"), argv[optind]);
 		item_list_append(&cli_errors, too_many_args.data);
@@ -886,9 +903,9 @@ main(int argc, char **argv)
 
 
 	/*
-	 * The configuration file is not required for some actions (e.g. 'standby clone'),
-	 * however if available we'll parse it anyway for options like 'log_level',
-	 * 'use_replication_slots' etc.
+	 * The configuration file is not required for some actions (e.g. 'standby
+	 * clone'), however if available we'll parse it anyway for options like
+	 * 'log_level', 'use_replication_slots' etc.
 	 */
 	load_config(runtime_options.config_file,
 				runtime_options.verbose,
@@ -899,8 +916,8 @@ main(int argc, char **argv)
 	check_cli_parameters(action);
 
 	/*
-	 * Sanity checks for command line parameters completed by now;
-	 * any further errors will be runtime ones
+	 * Sanity checks for command line parameters completed by now; any further
+	 * errors will be runtime ones
 	 */
 	if (cli_errors.head != NULL)
 	{
@@ -909,8 +926,8 @@ main(int argc, char **argv)
 	}
 
 	/*
-	 * Print any warnings about inappropriate command line options,
-	 * unless -t/--terse set
+	 * Print any warnings about inappropriate command line options, unless
+	 * -t/--terse set
 	 */
 	if (cli_warnings.head != NULL && runtime_options.terse == false)
 	{
@@ -918,8 +935,10 @@ main(int argc, char **argv)
 		print_item_list(&cli_warnings);
 	}
 
-	/* post-processing following command line parameter checks
-	 * ======================================================= */
+	/*
+	 * post-processing following command line parameter checks
+	 * =======================================================
+	 */
 
 	if (runtime_options.csv == true)
 	{
@@ -953,18 +972,27 @@ main(int argc, char **argv)
 	}
 
 
-	/* Check for configuration file items which can be overriden by runtime options */
-	/* ============================================================================ */
+	/*
+	 * Check for configuration file items which can be overriden by runtime
+	 * options
+	 */
 
-	/* Command-line parameter -L/--log-level overrides any setting in config file*/
+	/*
+	 * ============================================================================
+	 */
+
+	/*
+	 * Command-line parameter -L/--log-level overrides any setting in config
+	 * file
+	 */
 	if (*runtime_options.log_level != '\0')
 	{
 		strncpy(config_file_options.log_level, runtime_options.log_level, MAXLEN);
 	}
 
 	/*
-	 * Initialise pg_bindir - command line parameter will override
-	 * any setting in the configuration file
+	 * Initialise pg_bindir - command line parameter will override any setting
+	 * in the configuration file
 	 */
 	if (!strlen(runtime_options.pg_bindir))
 	{
@@ -974,7 +1002,8 @@ main(int argc, char **argv)
 	/* Add trailing slash */
 	if (strlen(runtime_options.pg_bindir))
 	{
-		int len = strlen(runtime_options.pg_bindir);
+		int			len = strlen(runtime_options.pg_bindir);
+
 		if (runtime_options.pg_bindir[len - 1] != '/')
 		{
 			maxlen_snprintf(pg_bindir, "%s/", runtime_options.pg_bindir);
@@ -987,11 +1016,12 @@ main(int argc, char **argv)
 
 	/*
 	 * Initialize the logger. We've previously requested STDERR logging only
-	 * to ensure the repmgr command doesn't have its output diverted to a logging
-	 * facility (which usually doesn't make sense for a command line program).
+	 * to ensure the repmgr command doesn't have its output diverted to a
+	 * logging facility (which usually doesn't make sense for a command line
+	 * program).
 	 *
-	 * If required (e.g. when calling repmgr from repmgrd), this behaviour can be
-	 * overridden with "--log-to-file".
+	 * If required (e.g. when calling repmgr from repmgrd), this behaviour can
+	 * be overridden with "--log-to-file".
 	 */
 
 	logger_init(&config_file_options, progname());
@@ -1025,17 +1055,17 @@ main(int argc, char **argv)
 	 * If a node was specified (by --node-id or --node-name), check it exists
 	 * (and pre-populate a record for later use).
 	 *
-	 * At this point check_cli_parameters() will already have determined
-	 * if provision of these is valid for the action, otherwise it unsets them.
+	 * At this point check_cli_parameters() will already have determined if
+	 * provision of these is valid for the action, otherwise it unsets them.
 	 *
-	 * We need to check this much later than other command line parameters
-	 * as we need to wait until the configuration file is parsed and we can
+	 * We need to check this much later than other command line parameters as
+	 * we need to wait until the configuration file is parsed and we can
 	 * obtain the conninfo string.
 	 */
 
 	if (runtime_options.node_id != UNKNOWN_NODE_ID || runtime_options.node_name[0] != '\0')
 	{
-		PGconn *conn = NULL;
+		PGconn	   *conn = NULL;
 		RecordStatus record_status = RECORD_NOT_FOUND;
 
 		log_verbose(LOG_DEBUG, "connecting to local node to retrieve record for node specified with --node-id or --node-name");
@@ -1061,7 +1091,8 @@ main(int argc, char **argv)
 		}
 		else if (runtime_options.node_name[0] != '\0')
 		{
-			char *escaped = escape_string(conn, runtime_options.node_name);
+			char	   *escaped = escape_string(conn, runtime_options.node_name);
+
 			if (escaped == NULL)
 			{
 				log_error(_("unable to escape value provided for --node-name"));
@@ -1092,7 +1123,7 @@ main(int argc, char **argv)
 	switch (action)
 	{
 #ifndef BDR_ONLY
-		/* PRIMARY */
+			/* PRIMARY */
 		case PRIMARY_REGISTER:
 			do_primary_register();
 			break;
@@ -1100,7 +1131,7 @@ main(int argc, char **argv)
 			do_primary_unregister();
 			break;
 
-		/* STANDBY */
+			/* STANDBY */
 		case STANDBY_CLONE:
 			do_standby_clone();
 			break;
@@ -1122,7 +1153,7 @@ main(int argc, char **argv)
 
 			break;
 #else
-		/* we won't ever reach here, but stop the compiler complaining */
+			/* we won't ever reach here, but stop the compiler complaining */
 		case PRIMARY_REGISTER:
 		case PRIMARY_UNREGISTER:
 		case STANDBY_CLONE:
@@ -1134,7 +1165,7 @@ main(int argc, char **argv)
 			break;
 
 #endif
-		/* BDR */
+			/* BDR */
 		case BDR_REGISTER:
 			do_bdr_register();
 			break;
@@ -1142,7 +1173,7 @@ main(int argc, char **argv)
 			do_bdr_unregister();
 			break;
 
-		/* NODE */
+			/* NODE */
 		case NODE_STATUS:
 			do_node_status();
 			break;
@@ -1156,7 +1187,7 @@ main(int argc, char **argv)
 			do_node_service();
 			break;
 
-		/* CLUSTER */
+			/* CLUSTER */
 		case CLUSTER_SHOW:
 			do_cluster_show();
 			break;
@@ -1196,7 +1227,8 @@ main(int argc, char **argv)
 static void
 check_cli_parameters(const int action)
 {
-	/* ========================================================================
+	/*
+	 * ========================================================================
 	 * check all parameters required for an action are provided, and warn
 	 * about ineffective actions
 	 * ========================================================================
@@ -1207,91 +1239,95 @@ check_cli_parameters(const int action)
 			/* no required parameters */
 			break;
 		case STANDBY_CLONE:
-		{
-			standy_clone_mode mode = get_standby_clone_mode();
-
-			config_file_required = false;
-
-			if (mode == barman)
 			{
-				if (runtime_options.copy_external_config_files)
+				standy_clone_mode mode = get_standby_clone_mode();
+
+				config_file_required = false;
+
+				if (mode == barman)
 				{
-					item_list_append(&cli_warnings,
-									 _("--copy-external-config-files ineffective in Barman mode"));
-				}
-
-				if (runtime_options.fast_checkpoint)
-				{
-					item_list_append(&cli_warnings,
-									 _("-c/--fast-checkpoint has no effect in Barman mode"));
-				}
-
-
-			}
-			else
-			{
-				if (!runtime_options.host_param_provided)
-				{
-					item_list_append_format(&cli_errors,
-											_("host name for the source node must be provided when executing %s"),
-											action_name(action));
-				}
-
-				if (!runtime_options.connection_param_provided)
-				{
-					item_list_append_format(&cli_errors,
-											_("database connection parameters for the source node must be provided when executing %s"),
-											action_name(action));
-				}
-
-				// XXX if -D/--pgdata provided, and also config_file_options.pgdaga, warn -D/--pgdata will be ignored
-
-				if (*runtime_options.upstream_conninfo)
-				{
-					if (*runtime_options.replication_user)
+					if (runtime_options.copy_external_config_files)
 					{
 						item_list_append(&cli_warnings,
-										 _("--replication-user ineffective when specifying --upstream-conninfo"));
+										 _("--copy-external-config-files ineffective in Barman mode"));
+					}
+
+					if (runtime_options.fast_checkpoint)
+					{
+						item_list_append(&cli_warnings,
+										 _("-c/--fast-checkpoint has no effect in Barman mode"));
+					}
+
+
+				}
+				else
+				{
+					if (!runtime_options.host_param_provided)
+					{
+						item_list_append_format(&cli_errors,
+												_("host name for the source node must be provided when executing %s"),
+												action_name(action));
+					}
+
+					if (!runtime_options.connection_param_provided)
+					{
+						item_list_append_format(&cli_errors,
+												_("database connection parameters for the source node must be provided when executing %s"),
+												action_name(action));
+					}
+
+					/*
+					 * XXX if -D/--pgdata provided, and also
+					 * config_file_options.pgdaga, warn -D/--pgdata will be
+					 * ignored
+					 */
+
+					if (*runtime_options.upstream_conninfo)
+					{
+						if (*runtime_options.replication_user)
+						{
+							item_list_append(&cli_warnings,
+											 _("--replication-user ineffective when specifying --upstream-conninfo"));
+						}
+					}
+
+					if (runtime_options.no_upstream_connection == true)
+					{
+						item_list_append(&cli_warnings,
+										 _("--no-upstream-connection only effective in Barman mode"));
 					}
 				}
-
-				if (runtime_options.no_upstream_connection == true)
-				{
-					item_list_append(&cli_warnings,
-									 _("--no-upstream-connection only effective in Barman mode"));
-				}
 			}
-		}
-		break;
+			break;
 
 		case STANDBY_FOLLOW:
-		{
-			/*
-			 * if `repmgr standby follow` executed with host params, ensure data
-			 * directory was provided
-			 */
-		}
-		break;
+			{
+				/*
+				 * if `repmgr standby follow` executed with host params,
+				 * ensure data directory was provided
+				 */
+			}
+			break;
 		case NODE_STATUS:
 			if (runtime_options.node_id != UNKNOWN_NODE_ID)
 			{
 				item_list_append(
-					&cli_warnings,
-					"--node-id will be ignored; \"repmgr node status\" can only be executed on the local node");
+								 &cli_warnings,
+								 "--node-id will be ignored; \"repmgr node status\" can only be executed on the local node");
 			}
 			if (runtime_options.node_name[0] != '\0')
 			{
 				item_list_append(
-					&cli_warnings,
-					"--node-name will be ignored; \"repmgr node status\" can only be executed on the local node");
+								 &cli_warnings,
+								 "--node-name will be ignored; \"repmgr node status\" can only be executed on the local node");
 			}
 			break;
 		case NODE_REJOIN:
 			if (runtime_options.connection_param_provided == false)
 			{
 				item_list_append(
-					&cli_errors,
-					"database connection parameters for an available node must be provided when executing NODE REJOIN");
+								 &cli_errors,
+								 "database connection parameters for an available node must be provided when executing NODE REJOIN");
 			}
 			break;
 		case CLUSTER_SHOW:
@@ -1306,12 +1342,13 @@ check_cli_parameters(const int action)
 
 	}
 
-	/* ========================================================================
+	/*
+	 * ========================================================================
 	 * warn if parameters provided for an action where they're not relevant
 	 * ========================================================================
 	 */
 
-	/* --host etc.*/
+	/* --host etc. */
 	if (runtime_options.connection_param_provided)
 	{
 		switch (action)
@@ -1499,9 +1536,9 @@ check_cli_parameters(const int action)
 				break;
 			default:
 				item_list_append_format(
-					&cli_warnings,
-					_("--is-shutdown-cleanly will be ignored when executing %s"),
-					action_name(action));
+										&cli_warnings,
+										_("--is-shutdown-cleanly will be ignored when executing %s"),
+										action_name(action));
 		}
 	}
 
@@ -1513,9 +1550,9 @@ check_cli_parameters(const int action)
 				break;
 			default:
 				item_list_append_format(
-					&cli_warnings,
-					_("--always-promote will be ignored when executing %s"),
-					action_name(action));
+										&cli_warnings,
+										_("--always-promote will be ignored when executing %s"),
+										action_name(action));
 		}
 	}
 
@@ -1528,9 +1565,9 @@ check_cli_parameters(const int action)
 				break;
 			default:
 				item_list_append_format(
-					&cli_warnings,
-					_("--force-rewind will be ignored when executing %s"),
-					action_name(action));
+										&cli_warnings,
+										_("--force-rewind will be ignored when executing %s"),
+										action_name(action));
 		}
 	}
 
@@ -1543,9 +1580,9 @@ check_cli_parameters(const int action)
 				break;
 			default:
 				item_list_append_format(
-					&cli_warnings,
-					_("--config-files will be ignored when executing %s"),
-					action_name(action));
+										&cli_warnings,
+										_("--config-files will be ignored when executing %s"),
+										action_name(action));
 		}
 	}
 
@@ -1562,40 +1599,40 @@ check_cli_parameters(const int action)
 				break;
 			default:
 				item_list_append_format(
-					&cli_warnings,
-					_("--dry-run is not effective when executing %s"),
-					action_name(action));
+										&cli_warnings,
+										_("--dry-run is not effective when executing %s"),
+										action_name(action));
 		}
 	}
 
 	/* check only one of --csv, --nagios and --optformat  used */
 	{
-		int used_options = 0;
+		int			used_options = 0;
 
 		if (runtime_options.csv == true)
-			used_options ++;
+			used_options++;
 
 		if (runtime_options.nagios == true)
-			used_options ++;
+			used_options++;
 
 		if (runtime_options.optformat == true)
-			used_options ++;
+			used_options++;
 
 		if (used_options > 1)
 		{
 			/* TODO: list which options were used */
 			item_list_append(
-				&cli_errors,
-				"only one of --csv, --nagios and --optformat can be used");
+							 &cli_errors,
+							 "only one of --csv, --nagios and --optformat can be used");
 		}
 	}
 }
 
 
-static const char*
+static const char *
 action_name(const int action)
 {
-	switch(action)
+	switch (action)
 	{
 		case PRIMARY_REGISTER:
 			return "PRIMARY REGISTER";
@@ -1648,14 +1685,14 @@ print_error_list(ItemList *error_list, int log_level)
 
 	for (cell = error_list->head; cell; cell = cell->next)
 	{
-		switch(log_level)
+		switch (log_level)
 		{
-			/* Currently we only need errors and warnings */
+				/* Currently we only need errors and warnings */
 			case LOG_ERROR:
-				log_error("%s",  cell->string);
+				log_error("%s", cell->string);
 				break;
 			case LOG_WARNING:
-				log_warning("%s",  cell->string);
+				log_warning("%s", cell->string);
 				break;
 		}
 	}
@@ -1760,19 +1797,19 @@ do_help(void)
 bool
 create_repmgr_extension(PGconn *conn)
 {
-	PQExpBufferData	  query;
-	PGresult		 *res;
+	PQExpBufferData query;
+	PGresult   *res;
 
-	ExtensionStatus	 extension_status = REPMGR_UNKNOWN;
+	ExtensionStatus extension_status = REPMGR_UNKNOWN;
 
-	t_connection_user  userinfo = T_CONNECTION_USER_INITIALIZER;
-	bool			 is_superuser = false;
-	PGconn			 *superuser_conn = NULL;
-	PGconn			 *schema_create_conn = NULL;
+	t_connection_user userinfo = T_CONNECTION_USER_INITIALIZER;
+	bool		is_superuser = false;
+	PGconn	   *superuser_conn = NULL;
+	PGconn	   *schema_create_conn = NULL;
 
 	extension_status = get_repmgr_extension_status(conn);
 
-	switch(extension_status)
+	switch (extension_status)
 	{
 		case REPMGR_UNKNOWN:
 			log_error(_("unable to determine status of \"repmgr\" extension"));
@@ -1887,11 +1924,11 @@ create_repmgr_extension(PGconn *conn)
 	log_notice(_("\"repmgr\" extension successfully installed"));
 
 	create_event_notification(conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"cluster_created",
-						true,
-						NULL);
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "cluster_created",
+							  true,
+							  NULL);
 
 	return true;
 }
@@ -1948,12 +1985,13 @@ int
 test_ssh_connection(char *host, char *remote_user)
 {
 	char		script[MAXLEN] = "";
-	int			r = 1, i;
+	int			r = 1,
+				i;
 
-	/* On some OS, true is located in a different place than in Linux
-	 * we have to try them all until all alternatives are gone or we
-	 * found `true' because the target OS may differ from the source
-	 * OS
+	/*
+	 * On some OS, true is located in a different place than in Linux we have
+	 * to try them all until all alternatives are gone or we found `true'
+	 * because the target OS may differ from the source OS
 	 */
 	const char *bin_true_paths[] = {
 		"/bin/true",
@@ -1989,9 +2027,9 @@ test_ssh_connection(char *host, char *remote_user)
 bool
 local_command(const char *command, PQExpBufferData *outputbuf)
 {
-	FILE *fp;
-	char output[MAXLEN];
-	int retval = 0;
+	FILE	   *fp;
+	char		output[MAXLEN];
+	int			retval = 0;
 
 	if (outputbuf == NULL)
 	{
@@ -2028,7 +2066,7 @@ void
 get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn)
 {
 	t_connection_user userinfo = T_CONNECTION_USER_INITIALIZER;
-	bool			  is_superuser = false;
+	bool		is_superuser = false;
 
 	/* this should never happen */
 	if (PQstatus(*conn) != CONNECTION_OK)
@@ -2054,8 +2092,8 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 	}
 
 	*superuser_conn = establish_db_connection_as_user(config_file_options.conninfo,
-													 runtime_options.superuser,
-													 false);
+													  runtime_options.superuser,
+													  false);
 
 	if (PQstatus(*superuser_conn) != CONNECTION_OK)
 	{
@@ -2108,7 +2146,7 @@ int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
 				  char *local_path, bool is_directory, int server_version_num)
 {
-	PQExpBufferData 	rsync_flags;
+	PQExpBufferData rsync_flags;
 	char		script[MAXLEN] = "";
 	char		host_string[MAXLEN] = "";
 	int			r = 0;
@@ -2142,12 +2180,12 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	}
 
 	/*
-	 * When copying the main PGDATA directory, certain files and contents
-	 * of certain directories need to be excluded.
+	 * When copying the main PGDATA directory, certain files and contents of
+	 * certain directories need to be excluded.
 	 *
 	 * See function 'sendDir()' in 'src/backend/replication/basebackup.c' -
-	 * we're basically simulating what pg_basebackup does, but with rsync rather
-	 * than the BASEBACKUP replication protocol command.
+	 * we're basically simulating what pg_basebackup does, but with rsync
+	 * rather than the BASEBACKUP replication protocol command.
 	 *
 	 * *However* currently we'll always copy the contents of the 'pg_replslot'
 	 * directory and delete later if appropriate.
@@ -2267,14 +2305,16 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	 */
 	if (strlen(runtime_options.upstream_conninfo))
 	{
-		char *escaped = escape_recovery_conf_value(runtime_options.upstream_conninfo);
+		char	   *escaped = escape_recovery_conf_value(runtime_options.upstream_conninfo);
+
 		maxlen_snprintf(line, "primary_conninfo = '%s'\n",
 						escaped);
 		free(escaped);
 	}
+
 	/*
-	 * otherwise use the conninfo inferred from the upstream connection
-	 * and/or node record
+	 * otherwise use the conninfo inferred from the upstream connection and/or
+	 * node record
 	 */
 	else
 	{
@@ -2320,13 +2360,16 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 		log_debug("recovery.conf: %s", line);
 	}
 
-	/* If restore_command is set, we use it as restore_command in recovery.conf */
+	/*
+	 * If restore_command is set, we use it as restore_command in
+	 * recovery.conf
+	 */
 	if (strcmp(config_file_options.restore_command, "") != 0)
 	{
 		maxlen_snprintf(line, "restore_command = '%s'\n",
 						config_file_options.restore_command);
 		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
-		        return false;
+			return false;
 
 		trim(line);
 		log_debug("recovery.conf: %s", line);
@@ -2355,10 +2398,10 @@ static void
 write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 {
 	PQExpBufferData conninfo_buf;
-	bool application_name_provided = false;
-	bool password_provided = false;
-	int c;
-	char *escaped = NULL;
+	bool		application_name_provided = false;
+	bool		password_provided = false;
+	int			c;
+	char	   *escaped = NULL;
 	t_conninfo_param_list env_conninfo;
 
 	initialize_conninfo_params(&env_conninfo, true);
@@ -2372,9 +2415,9 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 		 * recovery.conf
 		 */
 		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
-		    strcmp(param_list->keywords[c], "replication") == 0 ||
-		    (param_list->values[c] == NULL) ||
-		    (param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
+			strcmp(param_list->keywords[c], "replication") == 0 ||
+			(param_list->values[c] == NULL) ||
+			(param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
 			continue;
 
 		/* only include "password" if explicitly requested */
@@ -2399,7 +2442,7 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 		if (strlen(config_file_options.node_name))
 		{
 			appendPQExpBuffer(&conninfo_buf, " application_name=");
-		    appendConnStrVal(&conninfo_buf, config_file_options.node_name);
+			appendConnStrVal(&conninfo_buf, config_file_options.node_name);
 		}
 		else
 		{
@@ -2439,11 +2482,11 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 bool
 remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf)
 {
-	FILE *fp;
-	char ssh_command[MAXLEN] = "";
+	FILE	   *fp;
+	char		ssh_command[MAXLEN] = "";
 	PQExpBufferData ssh_host;
 
-	char output[MAXLEN] = "";
+	char		output[MAXLEN] = "";
 
 	initPQExpBuffer(&ssh_host);
 
@@ -2523,169 +2566,169 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 	if (data_dir == NULL || data_dir[0] == '\0')
 		data_dir = "(none provided)";
 
-	switch(action)
+	switch (action)
 	{
 		case ACTION_NONE:
 			script[0] = '\0';
 			return;
 
 		case ACTION_START:
-		{
-			if (config_file_options.service_start_command[0] != '\0')
 			{
-				maxlen_snprintf(script, "%s",
-								config_file_options.service_start_command);
+				if (config_file_options.service_start_command[0] != '\0')
+				{
+					maxlen_snprintf(script, "%s",
+									config_file_options.service_start_command);
+				}
+				else
+				{
+					initPQExpBuffer(&command);
+
+					appendPQExpBuffer(
+									  &command,
+									  "%s %s -w -D ",
+									  make_pg_path("pg_ctl"),
+									  config_file_options.pg_ctl_options);
+
+					appendShellString(
+									  &command,
+									  data_dir);
+
+					appendPQExpBuffer(
+									  &command,
+									  " start");
+
+					strncpy(script, command.data, MAXLEN);
+
+					termPQExpBuffer(&command);
+				}
+
+				return;
 			}
-			else
-			{
-				initPQExpBuffer(&command);
-
-				appendPQExpBuffer(
-					&command,
-					"%s %s -w -D ",
-					make_pg_path("pg_ctl"),
-					config_file_options.pg_ctl_options);
-
-				appendShellString(
-					&command,
-					data_dir);
-
-				appendPQExpBuffer(
-					&command,
-					" start");
-
-				strncpy(script, command.data, MAXLEN);
-
-				termPQExpBuffer(&command);
-			}
-
-			return;
-		}
 
 		case ACTION_STOP:
-		{
-			if (config_file_options.service_stop_command[0] != '\0')
 			{
-				maxlen_snprintf(script, "%s",
-								config_file_options.service_stop_command);
+				if (config_file_options.service_stop_command[0] != '\0')
+				{
+					maxlen_snprintf(script, "%s",
+									config_file_options.service_stop_command);
+				}
+				else
+				{
+					initPQExpBuffer(&command);
+					appendPQExpBuffer(
+									  &command,
+									  "%s %s -D ",
+									  make_pg_path("pg_ctl"),
+									  config_file_options.pg_ctl_options);
+
+					appendShellString(
+									  &command,
+									  data_dir);
+
+					appendPQExpBuffer(
+									  &command,
+									  " -m fast -W stop");
+
+					strncpy(script, command.data, MAXLEN);
+
+					termPQExpBuffer(&command);
+				}
+				return;
 			}
-			else
-			{
-				initPQExpBuffer(&command);
-				appendPQExpBuffer(
-					&command,
-					"%s %s -D ",
-					make_pg_path("pg_ctl"),
-					config_file_options.pg_ctl_options);
-
-				appendShellString(
-					&command,
-					data_dir);
-
-				appendPQExpBuffer(
-					&command,
-					" -m fast -W stop");
-
-				strncpy(script, command.data, MAXLEN);
-
-				termPQExpBuffer(&command);
-			}
-			return;
-		}
 
 		case ACTION_RESTART:
-		{
-			if (config_file_options.service_restart_command[0] != '\0')
 			{
-				maxlen_snprintf(script, "%s",
-								config_file_options.service_restart_command);
+				if (config_file_options.service_restart_command[0] != '\0')
+				{
+					maxlen_snprintf(script, "%s",
+									config_file_options.service_restart_command);
+				}
+				else
+				{
+					initPQExpBuffer(&command);
+					appendPQExpBuffer(
+									  &command,
+									  "%s %s -w -D ",
+									  make_pg_path("pg_ctl"),
+									  config_file_options.pg_ctl_options);
+
+					appendShellString(
+									  &command,
+									  data_dir);
+
+					appendPQExpBuffer(
+									  &command,
+									  " restart");
+
+					strncpy(script, command.data, MAXLEN);
+
+					termPQExpBuffer(&command);
+				}
+				return;
 			}
-			else
-			{
-				initPQExpBuffer(&command);
-				appendPQExpBuffer(
-					&command,
-					"%s %s -w -D ",
-					make_pg_path("pg_ctl"),
-					config_file_options.pg_ctl_options);
-
-				appendShellString(
-					&command,
-					data_dir);
-
-				appendPQExpBuffer(
-					&command,
-					" restart");
-
-				strncpy(script, command.data, MAXLEN);
-
-				termPQExpBuffer(&command);
-			}
-			return;
-		}
 
 		case ACTION_RELOAD:
-		{
-			if (config_file_options.service_reload_command[0] != '\0')
 			{
-				maxlen_snprintf(script, "%s",
-								config_file_options.service_reload_command);
+				if (config_file_options.service_reload_command[0] != '\0')
+				{
+					maxlen_snprintf(script, "%s",
+									config_file_options.service_reload_command);
+				}
+				else
+				{
+					initPQExpBuffer(&command);
+					appendPQExpBuffer(
+									  &command,
+									  "%s %s -w -D ",
+									  make_pg_path("pg_ctl"),
+									  config_file_options.pg_ctl_options);
+
+					appendShellString(
+									  &command,
+									  data_dir);
+
+					appendPQExpBuffer(
+									  &command,
+									  " reload");
+
+					strncpy(script, command.data, MAXLEN);
+
+					termPQExpBuffer(&command);
+
+				}
+				return;
 			}
-			else
-			{
-				initPQExpBuffer(&command);
-				appendPQExpBuffer(
-					&command,
-					"%s %s -w -D ",
-					make_pg_path("pg_ctl"),
-					config_file_options.pg_ctl_options);
-
-				appendShellString(
-					&command,
-					data_dir);
-
-				appendPQExpBuffer(
-					&command,
-					" reload");
-
-				strncpy(script, command.data, MAXLEN);
-
-				termPQExpBuffer(&command);
-
-			}
-			return;
-		}
 
 		case ACTION_PROMOTE:
-		{
-			if (config_file_options.service_promote_command[0] != '\0')
 			{
-				maxlen_snprintf(script, "%s",
-								config_file_options.service_promote_command);
+				if (config_file_options.service_promote_command[0] != '\0')
+				{
+					maxlen_snprintf(script, "%s",
+									config_file_options.service_promote_command);
+				}
+				else
+				{
+					initPQExpBuffer(&command);
+					appendPQExpBuffer(
+									  &command,
+									  "%s %s -w -D ",
+									  make_pg_path("pg_ctl"),
+									  config_file_options.pg_ctl_options);
+
+					appendShellString(
+									  &command,
+									  data_dir);
+
+					appendPQExpBuffer(
+									  &command,
+									  " promote");
+
+					strncpy(script, command.data, MAXLEN);
+
+					termPQExpBuffer(&command);
+				}
+				return;
 			}
-			else
-			{
-				initPQExpBuffer(&command);
-				appendPQExpBuffer(
-					&command,
-					"%s %s -w -D ",
-					make_pg_path("pg_ctl"),
-					config_file_options.pg_ctl_options);
-
-				appendShellString(
-					&command,
-					data_dir);
-
-				appendPQExpBuffer(
-					&command,
-					" promote");
-
-				strncpy(script, command.data, MAXLEN);
-
-				termPQExpBuffer(&command);
-			}
-			return;
-		}
 
 		default:
 			return;
@@ -2698,7 +2741,7 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 bool
 data_dir_required_for_action(t_server_action action)
 {
-	switch(action)
+	switch (action)
 	{
 		case ACTION_NONE:
 			return false;
@@ -2750,8 +2793,8 @@ void
 get_node_data_directory(char *data_dir_buf)
 {
 	/*
-	 * the configuration file setting has priority, and will always be
-	 * set when a configuration file was provided
+	 * the configuration file setting has priority, and will always be set
+	 * when a configuration file was provided
 	 */
 	if (config_file_options.data_directory[0] != '\0')
 	{
@@ -2800,9 +2843,9 @@ init_node_record(t_node_info *node_record)
 	else
 	{
 		/* use the "user" value from "conninfo" */
-		char repluser[MAXLEN] = "";
+		char		repluser[MAXLEN] = "";
 
-		(void)get_conninfo_value(config_file_options.conninfo, "user", repluser);
+		(void) get_conninfo_value(config_file_options.conninfo, "user", repluser);
 		strncpy(node_record->repluser, repluser, NAMEDATALEN);
 	}
 

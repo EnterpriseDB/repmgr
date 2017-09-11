@@ -43,7 +43,7 @@ do_primary_register(void)
 
 	bool		record_created = false;
 
-	PQExpBufferData	  event_description;
+	PQExpBufferData event_description;
 
 	log_info(_("connecting to primary database..."));
 
@@ -83,8 +83,8 @@ do_primary_register(void)
 
 	/*
 	 * In --dry-run mode we can't proceed any further as the following code
-	 * attempts to query the repmgr metadata, which won't exist until
-	 * the extension is installed
+	 * attempts to query the repmgr metadata, which won't exist until the
+	 * extension is installed
 	 */
 	if (runtime_options.dry_run == true)
 	{
@@ -100,7 +100,10 @@ do_primary_register(void)
 	{
 		if (current_primary_id != config_file_options.node_id)
 		{
-			/* it's impossible to add a second primary to a streaming replication cluster */
+			/*
+			 * it's impossible to add a second primary to a streaming
+			 * replication cluster
+			 */
 			log_error(_("there is already an active registered primary (node ID: %i) in this cluster"), current_primary_id);
 			PQfinish(primary_conn);
 			PQfinish(conn);
@@ -115,9 +118,10 @@ do_primary_register(void)
 	begin_transaction(conn);
 
 	/*
-	 * Check for an active primary node record with a different ID. This shouldn't
-	 * happen, but could do if an existing primary was shut down without being unregistered.
-	*/
+	 * Check for an active primary node record with a different ID. This
+	 * shouldn't happen, but could do if an existing primary was shut down
+	 * without being unregistered.
+	 */
 	current_primary_id = get_primary_node_id(conn);
 	if (current_primary_id != NODE_NOT_FOUND && current_primary_id != config_file_options.node_id)
 	{
@@ -130,8 +134,8 @@ do_primary_register(void)
 	}
 
 	/*
-	 * Check whether there's an existing record for this node, and
-	 * update it if --force set
+	 * Check whether there's an existing record for this node, and update it
+	 * if --force set
 	 */
 
 	record_status = get_node_record(conn, config_file_options.node_id, &node_info);
@@ -199,12 +203,12 @@ do_primary_register(void)
 
 	/* Log the event */
 	create_event_notification(
-		conn,
-		&config_file_options,
-		config_file_options.node_id,
-		"primary_register",
-		record_created,
-		event_description.data);
+							  conn,
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "primary_register",
+							  record_created,
+							  event_description.data);
 
 	termPQExpBuffer(&event_description);
 
@@ -241,12 +245,12 @@ do_primary_register(void)
 void
 do_primary_unregister(void)
 {
-	PGconn	    *primary_conn = NULL;
-	PGconn	    *local_conn = NULL;
-	t_node_info  local_node_info = T_NODE_INFO_INITIALIZER;
+	PGconn	   *primary_conn = NULL;
+	PGconn	   *local_conn = NULL;
+	t_node_info local_node_info = T_NODE_INFO_INITIALIZER;
 
 	t_node_info *target_node_info_ptr = NULL;
-	PGconn	    *target_node_conn = NULL;
+	PGconn	   *target_node_conn = NULL;
 
 	NodeInfoList downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
@@ -257,8 +261,8 @@ do_primary_unregister(void)
 	get_local_node_record(local_conn, config_file_options.node_id, &local_node_info);
 
 	/*
-	 * Obtain a connection to the current primary node - if this isn't possible,
-	 * abort as we won't be able to update the "nodes" table anyway.
+	 * Obtain a connection to the current primary node - if this isn't
+	 * possible, abort as we won't be able to update the "nodes" table anyway.
 	 */
 	primary_conn = establish_primary_db_connection(local_conn, false);
 
@@ -287,7 +291,7 @@ do_primary_unregister(void)
 
 	/* Target node is local node? */
 	if (target_node_info.node_id == UNKNOWN_NODE_ID
-	 || target_node_info.node_id == config_file_options.node_id)
+		|| target_node_info.node_id == config_file_options.node_id)
 	{
 		target_node_info_ptr = &local_node_info;
 	}
@@ -306,7 +310,7 @@ do_primary_unregister(void)
 	if (downstream_nodes.node_count > 0)
 	{
 		NodeInfoListCell *cell = NULL;
-		PQExpBufferData   detail;
+		PQExpBufferData detail;
 
 		if (downstream_nodes.node_count == 1)
 		{
@@ -361,13 +365,16 @@ do_primary_unregister(void)
 	/* If we can connect to the node, perform some sanity checks on it */
 	else
 	{
-		bool can_unregister = true;
+		bool		can_unregister = true;
 		RecoveryType recovery_type = get_recovery_type(target_node_conn);
 
 		/* Node appears to be a standby */
 		if (recovery_type == RECTYPE_STANDBY)
 		{
-			/* We'll refuse to do anything unless the node record shows it as a primary */
+			/*
+			 * We'll refuse to do anything unless the node record shows it as
+			 * a primary
+			 */
 			if (target_node_info_ptr->type != PRIMARY)
 			{
 				log_error(_("node %s (ID: %i) is a %s, unable to unregister"),
@@ -376,9 +383,11 @@ do_primary_unregister(void)
 						  get_node_type_string(target_node_info_ptr->type));
 				can_unregister = false;
 			}
+
 			/*
 			 * If --F/--force not set, hint that it might be appropriate to
-			 * register the node as a standby rather than unregister as primary
+			 * register the node as a standby rather than unregister as
+			 * primary
 			 */
 			else if (!runtime_options.force)
 			{
@@ -400,8 +409,8 @@ do_primary_unregister(void)
 		}
 		else if (recovery_type == RECTYPE_PRIMARY)
 		{
-			t_node_info  primary_node_info = T_NODE_INFO_INITIALIZER;
-			bool primary_record_found = false;
+			t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
+			bool		primary_record_found = false;
 
 			primary_record_found = get_primary_node_record(primary_conn, &primary_node_info);
 
@@ -415,8 +424,10 @@ do_primary_unregister(void)
 				PQfinish(primary_conn);
 				exit(ERR_BAD_CONFIG);
 			}
-			/* This appears to be the cluster primary - cowardly refuse
-			 * to delete the record
+
+			/*
+			 * This appears to be the cluster primary - cowardly refuse to
+			 * delete the record
 			 */
 			if (primary_node_info.node_id == target_node_info_ptr->node_id)
 			{
@@ -461,8 +472,8 @@ do_primary_unregister(void)
 	else
 	{
 		PQExpBufferData event_details;
-		bool delete_success = delete_node_record(primary_conn,
-												 target_node_info_ptr->node_id);
+		bool		delete_success = delete_node_record(primary_conn,
+														target_node_info_ptr->node_id);
 
 		if (delete_success == false)
 		{
@@ -488,11 +499,11 @@ do_primary_unregister(void)
 		}
 
 		create_event_notification(primary_conn,
-							&config_file_options,
-							config_file_options.node_id,
-							"primary_unregister",
-							true,
-							event_details.data);
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "primary_unregister",
+								  true,
+								  event_details.data);
 		termPQExpBuffer(&event_details);
 
 		log_info(_("node %s (ID: %i) was successfully unregistered"),

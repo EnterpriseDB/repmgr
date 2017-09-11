@@ -76,7 +76,7 @@ maxpath_snprintf(char *str, const char *format,...)
 
 
 void
-append_where_clause(PQExpBufferData *where_clause, const char *format, ...)
+append_where_clause(PQExpBufferData *where_clause, const char *format,...)
 {
 	va_list		arglist;
 	char		stringbuf[MAXLEN];
@@ -85,7 +85,7 @@ append_where_clause(PQExpBufferData *where_clause, const char *format, ...)
 	(void) xvsnprintf(stringbuf, MAXLEN, format, arglist);
 	va_end(arglist);
 
-	if(where_clause->data[0] == '\0')
+	if (where_clause->data[0] == '\0')
 	{
 		appendPQExpBuffer(where_clause,
 						  " WHERE ");
@@ -110,10 +110,10 @@ item_list_append(ItemList *item_list, const char *message)
 
 
 void
-item_list_append_format(ItemList *item_list, const char *format, ...)
+item_list_append_format(ItemList *item_list, const char *format,...)
 {
 	ItemListCell *cell;
-	va_list		  arglist;
+	va_list		arglist;
 
 	cell = (ItemListCell *) pg_malloc0(sizeof(ItemListCell));
 
@@ -166,11 +166,11 @@ key_value_list_set(KeyValueList *item_list, const char *key, const char *value)
 }
 
 void
-key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value, ...)
+key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value,...)
 {
 	KeyValueListCell *cell = NULL;
-	va_list			  arglist;
-	int			  	  keylen = 0;
+	va_list		arglist;
+	int			keylen = 0;
 
 	cell = (KeyValueListCell *) pg_malloc0(sizeof(KeyValueListCell));
 
@@ -205,7 +205,7 @@ key_value_list_set_format(KeyValueList *item_list, const char *key, const char *
 
 
 void
-key_value_list_set_output_mode (KeyValueList *item_list, const char *key, OutputMode mode)
+key_value_list_set_output_mode(KeyValueList *item_list, const char *key, OutputMode mode)
 {
 	KeyValueListCell *cell = NULL;
 
@@ -250,11 +250,11 @@ check_status_list_set(CheckStatusList *list, const char *item, CheckStatus statu
 
 
 void
-check_status_list_set_format(CheckStatusList *list, const char *item, CheckStatus status, const char *details, ...)
+check_status_list_set_format(CheckStatusList *list, const char *item, CheckStatus status, const char *details,...)
 {
 	CheckStatusListCell *cell;
-	va_list			  arglist;
-	int			  	  itemlen;
+	va_list		arglist;
+	int			itemlen;
 
 	cell = (CheckStatusListCell *) pg_malloc0(sizeof(CheckStatusListCell));
 
@@ -352,7 +352,7 @@ escape_recovery_conf_value(const char *src)
 char *
 escape_string(PGconn *conn, const char *string)
 {
-	char		*escaped_string;
+	char	   *escaped_string;
 	int			error;
 
 	escaped_string = pg_malloc0(MAXLEN);
@@ -372,7 +372,7 @@ escape_string(PGconn *conn, const char *string)
 char *
 string_skip_prefix(const char *prefix, char *string)
 {
-	int n;
+	int			n;
 
 	n = strlen(prefix);
 
@@ -386,7 +386,7 @@ string_skip_prefix(const char *prefix, char *string)
 char *
 string_remove_trailing_newlines(char *string)
 {
-	int n;
+	int			n;
 
 	n = strlen(string) - 1;
 
@@ -436,7 +436,7 @@ parse_follow_command(char *parsed_command, char *template, int node_id)
 	end_ptr = parsed_command + MAXPGPATH - 1;
 	*end_ptr = '\0';
 
-	for(src_ptr = template; *src_ptr; src_ptr++)
+	for (src_ptr = template; *src_ptr; src_ptr++)
 	{
 		if (*src_ptr == '%')
 		{
