@@ -1399,9 +1399,9 @@ do_cluster_help(void)
 	printf(_("    --node-name               restrict entries to node with this name\n"));
 	puts("");
 
-	printf(_("CLUSTER EVENT\n"));
+	printf(_("CLUSTER CLEANUP\n"));
 	puts("");
-	printf(_("  \"cluster event\" purges records from the \"repmgr.monitor\" table.\n"));
+	printf(_("  \"cluster cleanup\" purges records from the \"repmgr.monitor\" table.\n"));
 	puts("");
 	printf(_("    -k, --keep-history=VALUE  retain indicated number of days of history (default: 0)\n"));
 	puts("");
