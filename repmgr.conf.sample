@@ -242,7 +242,12 @@ ssh_options='-q'                        # Options to append to "ssh"
 # If you use sudo, the user repmgr runs as (usually 'postgres')  must have
 # passwordless sudo access to execute the command.
 #
-# For example, to use systemd, you may use the following configuration:
+# For example, to use systemd, you can set
+#
+#    service_start_command = 'sudo systemctl start postgresql-9.6'
+#    (...)
+#
+# and then use the following sudoers configuration:
 #
 #    # this is required when running sudo over ssh without -t:
 #    Defaults:postgres !requiretty
