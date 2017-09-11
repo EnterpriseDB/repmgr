@@ -1288,6 +1288,67 @@ cube_set_node_status(t_node_status_cube **cube, int n, int execute_node_id, int 
 
 
 void
+do_cluster_cleanup(void)
+{
+	PGconn	   *conn = NULL;
+	PGconn	   *primary_conn = NULL;
+	int			entries_to_delete = 0;
+
+	conn = establish_db_connection(config_file_options.conninfo, true);
+
+	/* check if there is a master in this cluster */
+	log_info(_("connecting to primary server"));
+	primary_conn = establish_primary_db_connection(conn, true);
+
+	PQfinish(conn);
+
+	log_debug(_("number of days of monitoring history to retain: %i"), runtime_options.keep_history);
+
+	entries_to_delete = get_number_of_monitoring_records_to_delete(primary_conn, runtime_options.keep_history);
+
+	if (entries_to_delete == 0)
+	{
+		log_info(_("no monitoring records to delete"));
+		PQfinish(primary_conn);
+		return;
+	}
+
+	log_debug("at least %i monitoring records for deletion",
+			  entries_to_delete);
+
+	if (delete_monitoring_records(primary_conn, runtime_options.keep_history) == false)
+	{
+		log_error(_("unable to delete monitoring records"));
+		log_detail("%s", PQerrorMessage(primary_conn));
+		PQfinish(primary_conn);
+		exit(ERR_DB_QUERY);
+	}
+
+	if (vacuum_table(primary_conn, "repmgr.monitoring_history") == false)
+	{
+		/* annoying if this fails, but not fatal */
+		log_warning(_("unable to vacuum table repmgr.monitoring_history\n"));
+		log_detail("%s", PQerrorMessage(primary_conn));
+	}
+
+
+	PQfinish(primary_conn);
+
+	if (runtime_options.keep_history > 0)
+	{
+		log_notice(_("monitoring records older than %i day(s) deleted"),
+				   runtime_options.keep_history);
+	}
+	else
+	{
+		log_info(_("all monitoring records deleted"));
+	}
+
+	return;
+}
+
+
+void
 do_cluster_help(void)
 {
 	print_help_header();
@@ -1305,7 +1366,7 @@ do_cluster_help(void)
 	puts("");
 	printf(_("  Configuration file or database connection required.\n"));
 	puts("");
-	printf(_("    --csv                 emit output as CSV (with a subset of fields)\n"));
+	printf(_("    --csv                     emit output as CSV (with a subset of fields)\n"));
 	puts("");
 
 	printf(_("CLUSTER MATRIX\n"));
@@ -1314,7 +1375,7 @@ do_cluster_help(void)
 	puts("");
 	printf(_("  Configuration file or database connection required.\n"));
 	puts("");
-	printf(_("    --csv                 emit output as CSV\n"));
+	printf(_("    --csv                     emit output as CSV\n"));
 	puts("");
 
 	printf(_("CLUSTER CROSSCHECK\n"));
@@ -1323,7 +1384,7 @@ do_cluster_help(void)
 	puts("");
 	printf(_("  Configuration file or database connection required.\n"));
 	puts("");
-	printf(_("    --csv                 emit output as CSV\n"));
+	printf(_("    --csv                     emit output as CSV\n"));
 	puts("");
 
 
@@ -1331,12 +1392,18 @@ do_cluster_help(void)
 	puts("");
 	printf(_("  \"cluster event\" lists recent events logged in the \"repmgr.events\" table.\n"));
 	puts("");
-	printf(_("    --limit               maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
-	printf(_("    --all                 display all events (overrides --limit)\n"));
-	printf(_("    --event               filter specific event\n"));
-	printf(_("    --node-id             restrict entries to node with this ID\n"));
-	printf(_("    --node-name           restrict entries to node with this name\n"));
+	printf(_("    --limit                   maximum number of events to display (default: %i)\n"), CLUSTER_EVENT_LIMIT);
+	printf(_("    --all                     display all events (overrides --limit)\n"));
+	printf(_("    --event                   filter specific event\n"));
+	printf(_("    --node-id                 restrict entries to node with this ID\n"));
+	printf(_("    --node-name               restrict entries to node with this name\n"));
+	puts("");
 
+	printf(_("CLUSTER EVENT\n"));
+	puts("");
+	printf(_("  \"cluster event\" purges records from the \"repmgr.monitor\" table.\n"));
+	puts("");
+	printf(_("    -k, --keep-history=VALUE  retain indicated number of days of history (default: 0)\n"));
 	puts("");
 
 }

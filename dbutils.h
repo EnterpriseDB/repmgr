@@ -396,7 +396,7 @@ ExtensionStatus get_repmgr_extension_status(PGconn *conn);
 
 /* node management functions */
 void		checkpoint(PGconn *conn);
-
+bool		vacuum_table(PGconn *conn, const char *table);
 
 
 /* node record functions */
@@ -456,8 +456,7 @@ bool		is_server_available(const char *conninfo);
 
 /* monitoring functions  */
 void
-add_monitoring_record(
-					  PGconn *primary_conn,
+add_monitoring_record(PGconn *primary_conn,
 					  PGconn *local_conn,
 					  int primary_node_id,
 					  int local_node_id,
@@ -468,6 +467,10 @@ add_monitoring_record(
 					  long long unsigned int replication_lag_bytes,
 					  long long unsigned int apply_lag_bytes
 );
+
+int			get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_history);
+bool		delete_monitoring_records(PGconn *primary_conn, int keep_history);
+
 
 
 /* node voting functions */

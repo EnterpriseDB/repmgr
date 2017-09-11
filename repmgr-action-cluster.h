@@ -47,6 +47,7 @@ extern void do_cluster_show(void);
 extern void do_cluster_event(void);
 extern void do_cluster_crosscheck(void);
 extern void do_cluster_matrix(void);
+extern void do_cluster_cleanup(void);
 
 extern void do_cluster_help(void);
 

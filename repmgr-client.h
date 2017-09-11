@@ -169,6 +169,9 @@ static struct option long_options[] =
 	{"event", required_argument, NULL, OPT_EVENT},
 	{"limit", required_argument, NULL, OPT_LIMIT},
 
+/* "cluster cleanup" options */
+	{"keep-history", required_argument, NULL, 'k'},
+
 /* Following options for internal use */
 	{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
 
@@ -181,7 +184,7 @@ static struct option long_options[] =
 
 
 /* not yet handled */
-	{"keep-history", required_argument, NULL, 'k'},
+
 	{"mode", required_argument, NULL, 'm'},
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 	{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},

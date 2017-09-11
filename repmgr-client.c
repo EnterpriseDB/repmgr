@@ -25,6 +25,7 @@
  * CLUSTER EVENT
  * CLUSTER CROSSCHECK
  * CLUSTER MATRIX
+ * CLUSTER CLEANUP
  *
  * NODE STATUS
  * NODE CHECK
@@ -499,6 +500,16 @@ main(int argc, char **argv)
 				runtime_options.all = true;
 				break;
 
+				/*------------------------
+				 * "cluster cleanup" options
+				 *------------------------
+				 */
+
+				/* -k/--keep-history */
+			case 'k':
+				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", &cli_errors, false);
+				break;
+
 				/*----------------
 				 * logging options
 				 *----------------
@@ -688,17 +699,18 @@ main(int argc, char **argv)
 		exit_with_cli_errors(&cli_errors);
 	}
 
-	/*
+	/*----------
 	 * Determine the node type and action; following are valid:
 	 *
-	 * { PRIMARY | MASTER } REGISTER | STANDBY {REGISTER | UNREGISTER | CLONE
-	 * [node] | PROMOTE | FOLLOW [node] | SWITCHOVER | REWIND} | BDR {
-	 * REGISTER | UNREGISTER } | NODE { STATUS | CHECK | REJOIN |
-	 * ARCHIVE-CONFIG | RESTORE-CONFIG | SERVICE } | CLUSTER { CROSSCHECK |
-	 * MATRIX | SHOW | CLEANUP | EVENT }
+	 *   { PRIMARY | MASTER } REGISTER |
+	 *   STANDBY { REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER } |
+	 *   BDR { REGISTER | UNREGISTER } |
+	 *   NODE { STATUS | CHECK | REJOIN | SERVICE } |
+	 *   CLUSTER { CROSSCHECK | MATRIX | SHOW | EVENT | CLEANUP }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host
 	 * option
+	 * ---------
 	 */
 	if (optind < argc)
 	{
@@ -818,6 +830,8 @@ main(int argc, char **argv)
 				action = CLUSTER_CROSSCHECK;
 			else if (strcasecmp(repmgr_action, "MATRIX") == 0)
 				action = CLUSTER_MATRIX;
+			else if (strcasecmp(repmgr_action, "CLEANUP") == 0)
+				action = CLUSTER_CLEANUP;
 		}
 		else
 		{
@@ -1199,6 +1213,9 @@ main(int argc, char **argv)
 			break;
 		case CLUSTER_MATRIX:
 			do_cluster_matrix();
+			break;
+		case CLUSTER_CLEANUP:
+			do_cluster_cleanup();
 			break;
 
 		default:

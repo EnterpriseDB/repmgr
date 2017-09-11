@@ -1661,6 +1661,31 @@ checkpoint(PGconn *conn)
 	return;
 }
 
+/* assumes superuser connection */
+bool
+vacuum_table(PGconn *primary_conn, const char *table)
+{
+	PQExpBufferData query;
+	bool		success = true;
+	PGresult   *res = NULL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query, "VACUUM %s", table);
+
+	res = PQexec(primary_conn, query.data);
+	termPQExpBuffer(&query);
+
+	log_debug("%i", (int) PQresultStatus(res));
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		success = false;
+	}
+
+	PQclear(res);
+
+	return success;
+}
 
 /* ===================== */
 /* Node record functions */
@@ -3408,8 +3433,7 @@ is_server_available(const char *conninfo)
 /* ==================== */
 
 void
-add_monitoring_record(
-					  PGconn *primary_conn,
+add_monitoring_record(PGconn *primary_conn,
 					  PGconn *local_conn,
 					  int primary_node_id,
 					  int local_node_id,
@@ -3477,6 +3501,79 @@ add_monitoring_record(
 	return;
 }
 
+
+int
+get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_history)
+{
+	PQExpBufferData query;
+	int				record_count = -1;
+	PGresult	   *res = NULL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT COUNT(*) "
+					  "  FROM repmgr.monitoring_history "
+					  " WHERE age(now(), last_monitor_time) >= '%d days'::interval",
+					  keep_history);
+
+	res = PQexec(primary_conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to query number of monitoring records to clean up"));
+		log_detail("%s", PQerrorMessage(primary_conn));
+
+		PQclear(res);
+		PQfinish(primary_conn);
+		exit(ERR_DB_QUERY);
+	}
+	else
+	{
+		record_count = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return record_count;
+}
+
+
+bool
+delete_monitoring_records(PGconn *primary_conn, int keep_history)
+{
+	PQExpBufferData query;
+	bool			success = true;
+	PGresult	   *res = NULL;
+
+	initPQExpBuffer(&query);
+
+	if (keep_history > 0)
+	{
+		appendPQExpBuffer(&query,
+						  "DELETE FROM repmgr.monitoring_history "
+						  " WHERE age(now(), last_monitor_time) >= '%d days'::interval ",
+						  keep_history);
+	}
+	else
+	{
+		appendPQExpBuffer(&query,
+						  "TRUNCATE TABLE repmgr.monitoring_history");
+	}
+
+	res = PQexec(primary_conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		success = false;
+	}
+
+	PQclear(res);
+
+	return success;
+}
 
 /*
  * node voting functions

@@ -116,6 +116,9 @@ typedef struct
 	char		event[MAXLEN];
 	int			limit;
 
+	/* "cluster cleanup" options */
+	int			keep_history;
+
 	/* following options for internal use */
 	char		config_archive_dir[MAXPGPATH];
 	OutputMode	output_mode;
@@ -155,6 +158,8 @@ typedef struct
 		"", false, false, false,  \
 		/* "cluster event" options */ \
 		false, "", CLUSTER_EVENT_LIMIT,	\
+		/* "cluster cleanup" options */ \
+		0, \
 		/* Following options for internal use */ \
 		"/tmp", OM_TEXT	\
 }

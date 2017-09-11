@@ -1405,10 +1405,10 @@ The view `replication_status` shows the most recent state for each node, e.g.:
 The interval in which monitoring history is written is controlled by the
 configuration parameter `monitor_interval_secs`; default is 2.
 
-As this can generate a large amount of monitoring data in the `monitoring_history`
-table, it's advisable to regularly purge historical data with
-`repmgr cluster cleanup`; use the `-k/--keep-history` to specify how
-many day's worth of data should be retained. *XXX not yet implemented*
+As this can generate a large amount of monitoring data in the table
+`repmgr.monitoring_history`. it's advisable to regularly purge historical data
+using the `repmgr cluster cleanup` command ; use the `-k/--keep-history` to
+specify how many day's worth of data should be retained.
 
 It's possible to use `repmgrd` to provide monitoring only for some or all
 nodes by setting `failover=manual` in the node's `repmgr.conf` file. In the
@@ -1870,6 +1870,16 @@ The following commands are available:
          3       | node3 | standby_register | t  | 2017-08-17 10:28:55 | standby registration succeeded
          2       | node2 | standby_register | t  | 2017-08-17 10:28:53 | standby registration succeeded
 
+* `cluster cleanup`
+
+    Purges monitoring history from the `repmgr.monitoring_history` table to
+    prevent excessive table growth. Use the `-k/--keep-history` to specify the
+    number of days of monitoring history to retain. This command can be used
+    manually or as a cronjob.
+
+    This command requires a valid `repmgr.conf` file for the node on which it is
+    executed, either specified explicitly with `-f/--config-file` or located in
+    the current working directory; no additional arguments are required.
 
 
 Generating event notifications with repmgr/repmgrd
