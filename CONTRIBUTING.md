@@ -21,9 +21,11 @@ copy of the relevant Copyright Assignment Form.
 Code style
 ----------
 
-Code in repmgr is formatted to a consistent style using the following command:
+Code in repmgr should be formatted to the same standards as the main PostgreSQL
+project. For more details see:
 
-    astyle --style=ansi --indent=tab --suffix=none *.c *.h
+    https://www.postgresql.org/docs/current/static/source-format.html
 
 Contributors should reformat their code similarly before submitting code to
 the project, in order to minimize merge conflicts with other work.
+
