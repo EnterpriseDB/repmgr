@@ -115,6 +115,8 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		/* 1. location provided by packager */
 		if (package_conf_file[0] != '\0')
 		{
+			log_verbose(LOG_INFO, _("checking for package configuration file \"%s\""), package_conf_file);
+
 			if (stat(package_conf_file, &stat_config) == 0)
 			{
 				strncpy(config_file_path, package_conf_file, MAXPGPATH);
@@ -124,10 +126,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		}
 
 		/* 2 "./repmgr.conf" */
-		if (verbose == true)
-		{
-			log_notice(_("looking for configuration file in current directory"));
-		}
+		log_verbose(LOG_INFO, _("looking for configuration file in current directory"));
 
 		maxpath_snprintf(config_file_path, "./%s", CONFIG_FILE_NAME);
 		canonicalize_path(config_file_path);
@@ -139,10 +138,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		}
 
 		/* 3. "/etc/repmgr.conf" */
-		if (verbose == true)
-		{
-			log_notice(_("looking for configuration file in /etc"));
-		}
+		log_verbose(LOG_INFO, _("looking for configuration file in /etc"));
 
 		maxpath_snprintf(config_file_path, "/etc/%s", CONFIG_FILE_NAME);
 		if (stat(config_file_path, &stat_config) == 0)
@@ -160,10 +156,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 
 		get_etc_path(my_exec_path, sysconf_etc_path);
 
-		if (verbose == true)
-		{
-			log_notice(_("looking for configuration file in %s"), sysconf_etc_path);
-		}
+		log_verbose(LOG_INFO, _("looking for configuration file in %s"), sysconf_etc_path);
 
 		maxpath_snprintf(config_file_path, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);
 		if (stat(config_file_path, &stat_config) == 0)
@@ -175,17 +168,11 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 end_search:
 		if (config_file_found == true)
 		{
-			if (verbose == true)
-			{
-				log_notice(_("configuration file found at: %s"), config_file_path);
-			}
+			log_verbose(LOG_NOTICE, _("configuration file found at: %s"), config_file_path);
 		}
 		else
 		{
-			if (verbose == true)
-			{
-				log_notice(_("no configuration file provided or found"));
-			}
+			log_verbose(LOG_NOTICE, _("no configuration file provided or found"));
 		}
 	}
 
