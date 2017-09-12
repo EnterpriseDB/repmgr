@@ -10,7 +10,7 @@ operations.
 `repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
 
 Supports PostgreSQL 9.4 and later; support for PostgreSQL 9.3 has been
-dropped (please continue to use repmgrd 3.3 for PostgreSQL 9.3).
+dropped (please continue to use repmgr 3.3 for PostgreSQL 9.3).
 
 ### BDR support
 
@@ -175,6 +175,35 @@ is not required, but is necessary in the following cases:
 * * *
 
 ### Packages
+
+We recommend installing `repmgr` using the available packages for your
+system.
+
+- RedHat/CentOS: RPM packages for `repmgr` are available via Yum through
+  the PostgreSQL Global Development Group RPM repository ( http://yum.postgresql.org/ ).
+  Follow the instructions for your distribution (RedHat, CentOS,
+  Fedora, etc.) and architecture as detailed at yum.postgresql.org.
+
+  2ndQuadrant also provides its own RPM packages which are made available
+  at the same time as each `repmgr` release, as it can take some days for
+  them to become available via the main PGDG repository. See here for details:
+
+     http://repmgr.org/yum-repository.html
+
+- Debian/Ubuntu: the most recent `repmgr` packages are available from the
+  PostgreSQL Community APT repository ( http://apt.postgresql.org/ ).
+  Instructions can be found in the APT section of the PostgreSQL Wiki
+  ( https://wiki.postgresql.org/wiki/Apt ).
+
+See `PACKAGES.md` for details on building .deb and .rpm packages from the
+`repmgr` source code.
+
+
+### Source installation
+
+`repmgr` source code can be obtained directly from the project GitHub repository:
+
+    git clone https://github.com/2ndQuadrant/repmgr
 
 Release tarballs are also available:
 
