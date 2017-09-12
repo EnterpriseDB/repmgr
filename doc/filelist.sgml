@@ -35,4 +35,7 @@
 <!ENTITY install-requirements      SYSTEM "install-requirements.sgml">
 <!ENTITY install-packages      SYSTEM "install-packages.sgml">
 <!ENTITY install-source      SYSTEM "install-source.sgml">
+<!ENTITY configuration      SYSTEM "configuration.sgml">
+<!ENTITY configuration-file      SYSTEM "configuration-file.sgml">
+<!ENTITY configuration-file-settings      SYSTEM "configuration-file-settings.sgml">
 <!ENTITY appendix-signatures      SYSTEM "appendix-signatures.sgml">

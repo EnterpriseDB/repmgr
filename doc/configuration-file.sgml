@@ -1,0 +1,42 @@
+<sect1 id="configuration-file" xreflabel="configuration file location">
+  <title>Configuration file location</title>
+  <para>
+    `repmgr` and `repmgrd` use a common configuration file, by default called
+    `repmgr.conf` (although any name can be used if explicitly specified).
+    `repmgr.conf` must contain a number of required parameters, including
+    the database connection string for the local node and the location
+    of its data directory; other values will be inferred from defaults if
+    not explicitly supplied. See section `configuration file parameters`
+    for more details.
+  </para>
+
+  <para>
+   The configuration file will be searched for in the following locations:
+   <itemizedlist spacing="compact" mark="bullet">
+    <listitem>
+     <para>a configuration file specified by the `-f/--config-file` command line option</para>
+    </listitem>
+    <listitem>
+     <para>a location specified by the package maintainer (if `repmgr` was installed
+  from a package and the package maintainer has specified the configuration
+  file location)</para>
+    </listitem>
+    <listitem>
+     <para>`repmgr.conf` in the local directory</para>
+    </listitem>
+    <listitem>
+     <para>`/etc/repmgr.conf`</para>
+    </listitem>
+    <listitem>
+     <para>the directory reported by `pg_config --sysconfdir`</para>
+    </listitem>
+   </itemizedlist>
+  </para>
+
+  <para>
+    Note that if a file is explicitly specified with `-f/--config-file`, an error will
+    be raised if it is not found or not readable and no attempt will be made to check
+    default locations; this is to prevent `repmgr` unexpectedly reading the wrong file.
+  </para>
+
+</sect1>

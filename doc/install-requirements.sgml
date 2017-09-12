@@ -1,4 +1,4 @@
- <sect1 id="install-requirements" xreflabel="installation requirements">
+<sect1 id="install-requirements" xreflabel="installation requirements">
   <title>Requirements for installing repmgr</title>
   <para>
     repmgr is developed and tested on Linux and OS X, but should work on any

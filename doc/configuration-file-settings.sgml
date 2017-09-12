@@ -1,0 +1,26 @@
+<sect1 id="configuration-file-settings" xreflabel="configuration file settings">
+  <title>Configuration file settings</title>
+  <para>
+
+  </para>
+  <para>
+    For a full list of annotated configuration items, see the file
+    <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</>.
+  </para>
+
+  <note>
+    <para>
+    The following parameters in the configuration file can be overridden with
+command line options:
+    <itemizedlist>
+     <listitem>
+       <simpara>`-L/--log-level` overrides `log_level` in repmgr.conf </simpara>
+     </listitem>
+     <listitem>
+       <simpara>`-b/--pg_bindir` overrides `pg_bindir` in repmgr.conf</simpara>
+     </listitem>
+    </itemizedlist>
+    </para>
+  </note>
+
+</sect1>

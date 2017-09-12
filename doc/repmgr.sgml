@@ -65,8 +65,13 @@
   &overview;
   &install;
  </part>
+
+ <part id="repmgr-administration-manual">
+  <title>repmgr administration manual</title>
+
+  &configuration;
+ </part>
+
  &appendix-signatures;
 
- <![%include-index;[&bookindex;]]>
- <![%include-xslt-index;[<index id="bookindex"></index>]]>
 </book>
