@@ -10,7 +10,7 @@ system.
    <para>
      RPM packages for `repmgr` are available via Yum through
      the PostgreSQL Global Development Group RPM repository
-     ( <ulink url="http://yum.postgresql.org/">http://yum.postgresql.org/</>).
+     ( <ulink url="https://yum.postgresql.org/">http://yum.postgresql.org/</>).
      Follow the instructions for your distribution (RedHat, CentOS,
      Fedora, etc.) and architecture as detailed at yum.postgresql.org.
    </para>

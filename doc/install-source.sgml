@@ -32,7 +32,7 @@
     <listitem>
      <para>
       <literal>RHEL or CentOS 6.x or 7.x</literal>: install the appropriate repository RPM
-      for your system from <ulink url="http://yum.postgresql.org/repopackages.php">
+      for your system from <ulink url="https://yum.postgresql.org/repopackages.php">
       yum.postgresql.org</ulink>. Then install the prerequisites for building
       PostgreSQL with:
       <programlisting>
@@ -65,7 +65,7 @@
    <title>Using <application>git</application> to get the &repmgr; sources</title>
 
    <para>
-    Use <application><ulink url="http://git-scm.org">git</ulink></application> if you expect
+    Use <application><ulink url="https://git-scm.com">git</ulink></application> if you expect
     to update often, you want to keep track of development or if you want to contribute
     changes to &repmgr;. There is no reason <emphasis>not</emphasis> to use <application>git</application>
     if you're familiar with it.
@@ -89,7 +89,7 @@
 
    <para>
     For more information on using <application>git</application> see
-    <ulink url="http://git-scm.org/">git-scm.org</ulink>.
+    <ulink url="https://git-scm.com/">git-scm.com</ulink>.
    </para>
 
   </sect3>
