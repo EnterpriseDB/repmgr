@@ -115,7 +115,8 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		/* 1. location provided by packager */
 		if (package_conf_file[0] != '\0')
 		{
-			log_verbose(LOG_INFO, _("checking for package configuration file \"%s\""), package_conf_file);
+			if (verbose == true)
+				fprintf(stdout, _("INFO: checking for package configuration file \"%s\"\n"), package_conf_file);
 
 			if (stat(package_conf_file, &stat_config) == 0)
 			{
@@ -126,7 +127,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		}
 
 		/* 2 "./repmgr.conf" */
-		log_verbose(LOG_INFO, _("looking for configuration file in current directory"));
+		log_verbose(LOG_INFO, _("looking for configuration file in current directory\n"));
 
 		maxpath_snprintf(config_file_path, "./%s", CONFIG_FILE_NAME);
 		canonicalize_path(config_file_path);
@@ -138,7 +139,8 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		}
 
 		/* 3. "/etc/repmgr.conf" */
-		log_verbose(LOG_INFO, _("looking for configuration file in /etc"));
+		if (verbose == true)
+			fprintf(stdout, _("INFO: looking for configuration file in /etc\n"));
 
 		maxpath_snprintf(config_file_path, "/etc/%s", CONFIG_FILE_NAME);
 		if (stat(config_file_path, &stat_config) == 0)
@@ -150,13 +152,14 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		/* 4. default sysconfdir */
 		if (find_my_exec(argv0, my_exec_path) < 0)
 		{
-			log_error(_("%s: could not find own program executable"), argv0);
+			fprintf(stderr, _("ERROR: %s: could not find own program executable\n"), argv0);
 			exit(EXIT_FAILURE);
 		}
 
 		get_etc_path(my_exec_path, sysconf_etc_path);
 
-		log_verbose(LOG_INFO, _("looking for configuration file in %s"), sysconf_etc_path);
+		if (verbose == true)
+			fprintf(stdout, _("INFO: looking for configuration file in \"%s\"\n"), sysconf_etc_path);
 
 		maxpath_snprintf(config_file_path, "%s/%s", sysconf_etc_path, CONFIG_FILE_NAME);
 		if (stat(config_file_path, &stat_config) == 0)
@@ -166,13 +169,16 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		}
 
 end_search:
-		if (config_file_found == true)
+		if (verbose == true)
 		{
-			log_verbose(LOG_NOTICE, _("configuration file found at: %s"), config_file_path);
-		}
-		else
-		{
-			log_verbose(LOG_NOTICE, _("no configuration file provided or found"));
+			if (config_file_found == true)
+			{
+				fprintf(stdout, _("INFO: configuration file found at: \"%s\"\n"), config_file_path);
+			}
+			else
+			{
+				fprintf(stdout, _("INFO: no configuration file provided or found\n"));
+			}
 		}
 	}
 
