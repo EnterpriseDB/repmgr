@@ -36,8 +36,8 @@
     <ulink url="http://2ndquadrant.com">2ndQuadrant</ulink>
     along with contributions from other individuals and companies.
     Contributions from the community are appreciated and welcome - get
-    in touch via <ulink url="http://github.com/2ndQuadrant/bdr">github</>
-    or <ulink url="https://groups.google.com/a/2ndquadrant.com/forum/#!forum/bdr-list">the mailing list/forum</>.
+    in touch via <ulink url="http://github.com/2ndQuadrant/repmgr">github</>
+    or <ulink url="http://groups.google.com/group/repmgr">the mailing list/forum</>.
     Multiple 2ndQuadrant customers contribute funding
     to make repmgr development possible.
    </para>
@@ -48,7 +48,7 @@
      Other companies as well as individual developers
     are welcome to participate in the efforts.
    </para>
-
+  </abstract>
 
   <keywordset>
    <keyword>repmgr</keyword>
@@ -59,12 +59,6 @@
  <part id="getting-started">
   <title>Getting started</title>
   &overview;
-
- </part>
-
- <part id="manual" xreflabel="repmgr administration manual">
-  <title>repmgr administration manual</title>
-
 
  </part>
 
