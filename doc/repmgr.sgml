@@ -1,0 +1,74 @@
+<!-- doc/src/sgml/postgres.sgml -->
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.2//EN" [
+
+          <!ENTITY % version SYSTEM "version.sgml">
+          %version;
+
+          <!ENTITY % filelist SYSTEM "filelist.sgml">
+          %filelist;
+
+          <!ENTITY repmgr "<productname>repmgr</productname>">
+          <!ENTITY postgres "<productname>PostgreSQL</productname>">
+]>
+
+<book id="repmgr">
+ <title>repmgr &repmgrversion; Documentation</title>
+
+ <bookinfo>
+  <corpauthor>2ndQuadrant Ltd</corpauthor>
+  <productname>repmgr</productname>
+  <productnumber>&repmgrversion;</productnumber>
+  &legal;
+
+  <abstract>
+   <para>
+   This book is the official documentation of repmgr &repmgrversion; for
+   use with PostgreSQL 9.6 or with a modified version of PostgreSQL 9.4.
+   It has been written by the &postgres; and repmgr developers and other
+   volunteers in parallel to the development of the repmgr software.  It
+   describes all the functionality that the current version of repmgr officially
+   supports.
+   </para>
+
+   <para>
+    repmgr was developed by
+    <ulink url="http://2ndquadrant.com">2ndQuadrant</ulink>
+    along with contributions from other individuals and companies.
+    Contributions from the community are appreciated and welcome - get
+    in touch via <ulink url="http://github.com/2ndQuadrant/bdr">github</>
+    or <ulink url="https://groups.google.com/a/2ndquadrant.com/forum/#!forum/bdr-list">the mailing list/forum</>.
+    Multiple 2ndQuadrant customers contribute funding
+    to make repmgr development possible.
+   </para>
+
+   <para>
+    2ndQuadrant, a Platinum sponsor of the PostgreSQL project,
+    continues to develop repmgr to meet internal needs and those of customers.
+     Other companies as well as individual developers
+    are welcome to participate in the efforts.
+   </para>
+
+
+  <keywordset>
+   <keyword>repmgr</keyword>
+  </keywordset>
+ </bookinfo>
+
+
+ <part id="getting-started">
+  <title>Getting started</title>
+  &overview;
+
+ </part>
+
+ <part id="manual" xreflabel="repmgr administration manual">
+  <title>repmgr administration manual</title>
+
+
+ </part>
+
+
+ <![%include-index;[&bookindex;]]>
+ <![%include-xslt-index;[<index id="bookindex"></index>]]>
+</book>

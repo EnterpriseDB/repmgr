@@ -24,7 +24,7 @@ all: html
 
 html: html-stamp
 
-html-stamp: bdr.sgml $(ALLSGML) $(GENERATED_SGML) stylesheet.dsl website-docs.css
+html-stamp: repmgr.sgml $(ALLSGML) $(GENERATED_SGML) stylesheet.dsl website-docs.css
 	$(MKDIR_P) html
 	$(JADE.html.call) -i include-index $<
 	cp $(srcdir)/stylesheet.css $(srcdir)/website-docs.css html/
@@ -32,10 +32,10 @@ html-stamp: bdr.sgml $(ALLSGML) $(GENERATED_SGML) stylesheet.dsl website-docs.cs
 
 version.sgml: ${repmgr_top_builddir}/repmgr_version.h
 	{ \
-	  echo "<!ENTITY bdrversion \"$(REPMGR_VERSION)\">"; \
+	  echo "<!ENTITY repmgrversion \"$(REPMGR_VERSION)\">"; \
 	} > $@
 
-HTML.index: bdr.sgml $(ALMOSTALLSGML) stylesheet.dsl
+HTML.index: repmgr.sgml $(ALMOSTALLSGML) stylesheet.dsl
 	@$(MKDIR_P) html
 	$(JADE.html.call) -V html-index $<
 
@@ -59,13 +59,13 @@ maintainer-clean:
 	rm -rf Makefile
 
 zip: html
-	cp -r html bdr-docs-$(REPMGR_VERSION)
-	zip -r bdr-docs-$(REPMGR_VERSION).zip bdr-docs-$(REPMGR_VERSION)
-	rm -rf bdr-docs-$(REPMGR_VERSION)
+	cp -r html repmgr-docs-$(REPMGR_VERSION)
+	zip -r repmgr-docs-$(REPMGR_VERSION).zip repmgr-docs-$(REPMGR_VERSION)
+	rm -rf repmgr-docs-$(REPMGR_VERSION)
 
 install: html
-	@$(MKDIR_P) $(DESTDIR)$(docdir)/$(docmoduledir)/bdr
-	@$(INSTALL_DATA) $(wildcard html/*.html) $(wildcard html/*.css) $(DESTDIR)$(docdir)/$(docmoduledir)/bdr
-	@echo Installed docs to $(DESTDIR)$(docdir)/$(docmoduledir)/bdr
+	@$(MKDIR_P) $(DESTDIR)$(docdir)/$(docmoduledir)/repmgr
+	@$(INSTALL_DATA) $(wildcard html/*.html) $(wildcard html/*.css) $(DESTDIR)$(docdir)/$(docmoduledir)/repmgr
+	@echo Installed docs to $(DESTDIR)$(docdir)/$(docmoduledir)/repmgr
 
 .PHONY: html all
