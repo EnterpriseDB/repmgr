@@ -35,6 +35,7 @@ lib*.pc
 /config.log
 /config.status
 /config.h
+/repmgr_version.h
 
 # other
 /.lineno
