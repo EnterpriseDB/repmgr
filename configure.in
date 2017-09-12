@@ -65,5 +65,6 @@ AC_SUBST(vpath_build)
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([Makefile.global])
+AC_CONFIG_FILES([doc/Makefile])
 AC_OUTPUT
 

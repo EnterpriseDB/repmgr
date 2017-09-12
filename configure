@@ -1871,6 +1871,8 @@ ac_config_files="$ac_config_files Makefile"
 
 ac_config_files="$ac_config_files Makefile.global"
 
+ac_config_files="$ac_config_files doc/Makefile"
+
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
 # tests run on this system so they can be shared between configure
@@ -2564,6 +2566,7 @@ do
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "Makefile.global") CONFIG_FILES="$CONFIG_FILES Makefile.global" ;;
+    "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
