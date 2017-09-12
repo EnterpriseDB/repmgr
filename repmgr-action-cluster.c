@@ -84,7 +84,7 @@ do_cluster_show(void)
 	ItemList	warnings = {NULL, NULL};
 
 	/* Connect to local database to obtain cluster connection data */
-	log_verbose(LOG_INFO, _("connecting to database\n"));
+	log_verbose(LOG_INFO, _("connecting to database"));
 
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
@@ -1052,7 +1052,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 	int			node_count = 0;
 
 	/* We need to connect to get the list of nodes */
-	log_info(_("connecting to database\n"));
+	log_info(_("connecting to database"));
 
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
@@ -1327,7 +1327,7 @@ do_cluster_cleanup(void)
 	if (vacuum_table(primary_conn, "repmgr.monitoring_history") == false)
 	{
 		/* annoying if this fails, but not fatal */
-		log_warning(_("unable to vacuum table repmgr.monitoring_history\n"));
+		log_warning(_("unable to vacuum table \"repmgr.monitoring_history\""));
 		log_detail("%s", PQerrorMessage(primary_conn));
 	}
 

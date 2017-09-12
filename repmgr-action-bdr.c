@@ -129,7 +129,7 @@ do_bdr_register(void)
 		if (node_exists == false)
 		{
 			log_error(_("no BDR node with node_name \"%s\" found"), config_file_options.node_name);
-			log_hint(_("\"node_name\" in repmgr.conf must match \"node_name\" in bdr.bdr_nodes\n"));
+			log_hint(_("\"node_name\" in repmgr.conf must match \"node_name\" in bdr.bdr_nodes"));
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -272,8 +272,9 @@ do_bdr_register(void)
 		{
 			appendPQExpBuffer(&event_details, _("node record updated for node '%s' (%i)"),
 							  config_file_options.node_name, config_file_options.node_id);
-			log_verbose(LOG_NOTICE, "%s\n", event_details.data);
+			log_verbose(LOG_NOTICE, "%s", event_details.data);
 		}
+		else
 		{
 			success = false;
 		}

@@ -932,7 +932,7 @@ reload_config(t_configuration_options *orig_options)
 	if (config_errors.head != NULL)
 	{
 		/* XXX dump errors to log */
-		log_warning(_("unable to parse new configuration, retaining current configuration\n"));
+		log_warning(_("unable to parse new configuration, retaining current configuration"));
 		return false;
 	}
 
@@ -946,7 +946,7 @@ reload_config(t_configuration_options *orig_options)
 
 	if (strcmp(new_options.node_name, orig_options->node_name) != 0)
 	{
-		log_warning(_("\"node_name\" cannot be changed, keeping current configuration\n"));
+		log_warning(_("\"node_name\" cannot be changed, keeping current configuration"));
 		return false;
 	}
 

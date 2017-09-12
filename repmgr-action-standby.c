@@ -4039,7 +4039,7 @@ run_file_backup(t_node_info *node_record)
 							make_barman_ssh_command(barman_command_buf),
 							config_file_options.barman_server);
 
-			log_verbose(LOG_DEBUG, "executing:\n  %s\n", command);
+			log_verbose(LOG_DEBUG, "executing:\n  %s", command);
 
 			fi = popen(command, "r");
 			if (fi == NULL)
