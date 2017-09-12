@@ -1,0 +1,67 @@
+ <sect1 id="install-requirements" xreflabel="installation requirements">
+  <title>Requirements for installing repmgr</title>
+  <para>
+    repmgr is developed and tested on Linux and OS X, but should work on any
+    UNIX-like system supported by PostgreSQL itself. There is no support for
+    Microsoft Windows.
+  </para>
+
+  <para>
+   From version 4.0, repmgr is compatible with all PostgreSQL versions from 9.4, including PostgreSQL 10.
+  </para>
+  <para>
+   PostgreSQL 9.3 is supported by repmgr 3.3.
+  </para>
+
+  <note>
+    <simpara>
+If upgrading from `repmgr 3`, please see the separate upgrade guide
+`doc/upgrading-from-repmgr3.md`.
+    </simpara>
+  </note>
+
+  <para>
+   All servers in the replication cluster must be running the same major version of
+   PostgreSQL, and we recommend that they also run the same minor version.
+  </para>
+
+  <para>
+   `repmgr` must be installed on each server in the replication cluster.
+   If installing repmgr from packages, the package version must match the PostgreSQL
+   version. If installing from source, repmgr must be compiled against the same
+   major version.
+  </para>
+
+  <para>
+   A dedicated system user for `repmgr` is *not* required; as many `repmgr` and
+  `repmgrd` actions require direct access to the PostgreSQL data directory,
+  these commands should be executed by the `postgres` user.
+  </para>
+
+
+  <para>
+   Passwordless `ssh` connectivity between all servers in the replication cluster
+   is not required, but is necessary in the following cases:
+   <itemizedlist>
+     <listitem>
+       <simpara>if you need `repmgr` to copy configuration files from outside the PostgreSQL
+  data directory (in which case `rsync` is also required)</simpara>
+     </listitem>
+     <listitem>
+       <simpara>to perform switchover operations</simpara>
+     </listitem>
+     <listitem>
+       <simpara>when executing `repmgr cluster matrix` and `repmgr cluster crosscheck`</simpara>
+     </listitem>
+   </itemizedlist>
+  </para>
+
+  <tip>
+   <simpara>
+    We recommend using a session multiplexer utility such as `screen` or
+    `tmux` when performing long-running actions (such as cloning a database)
+    on a remote server - this will ensure the `repmgr` action won't be prematurely
+    terminated if your `ssh` session to the server is interrupted or closed.
+    </simpara>
+  </tip>
+ </sect1>

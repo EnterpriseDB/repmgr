@@ -13,6 +13,8 @@
 <!ENTITY % standalone-ignore  "INCLUDE">
 <!ENTITY % standalone-include "IGNORE">
 
+<!-- doc/filelist.sgml -->
+
 <!--
  By default, no index is included.  Use -i include-index on the command line
  to include it.
@@ -29,3 +31,8 @@
  -->
 
 <!ENTITY overview      SYSTEM "overview.sgml">
+<!ENTITY install SYSTEM "install.sgml">
+<!ENTITY install-requirements      SYSTEM "install-requirements.sgml">
+<!ENTITY install-packages      SYSTEM "install-packages.sgml">
+<!ENTITY install-source      SYSTEM "install-source.sgml">
+<!ENTITY appendix-signatures      SYSTEM "appendix-signatures.sgml">

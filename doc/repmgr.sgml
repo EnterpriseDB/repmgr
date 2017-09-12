@@ -63,9 +63,9 @@
  <part id="getting-started">
   <title>Getting started</title>
   &overview;
-
+  &install;
  </part>
-
+ &appendix-signatures;
 
  <![%include-index;[&bookindex;]]>
  <![%include-xslt-index;[<index id="bookindex"></index>]]>

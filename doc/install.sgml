@@ -1,0 +1,24 @@
+<chapter id="installation" xreflabel="Installation">
+ <title>Installation</title>
+
+ <para>
+  &repmgr; can be installed from binary packages provided by your operating
+  system's packaging system, or from source.
+ </para>
+ <para>
+  In general we recommend using binary packages, unless unavailable for your operating system.
+ </para>
+ <para>
+  Source installs are mainly useful if you want to keep track of the very
+  latest repmgr development and contribute to development.  They're also the
+  only option if there are no packages for your operating system yet.
+ </para>
+ <para>
+  Before installing &repmgr; make sure you satisfy the <xref linkend="install-requirements">.
+ </para>
+
+ &install-requirements;
+ &install-packages;
+ &install-source;
+
+</chapter>
