@@ -2,6 +2,208 @@
  <title>repmgr overview</title>
 
  <para>
-   repmgr is repmgr.
+  This chapter provides a high-level overview of repmgr's components and functionality.
  </para>
+ <sect1 id="repmgr-concepts" xreflabel="Concepts">
+  <title>Concepts</title>
+
+  <para>
+   This guide assumes that you are familiar with PostgreSQL administration and
+   streaming replication concepts. For further details on streaming
+   replication, see the PostgreSQL documentation section on <ulink
+   url="https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION">
+   streaming replication</>.
+  </para>
+  <para>
+   The following terms are used throughout the `repmgr` documentation.
+   <variablelist>
+    <varlistentry>
+     <term>replication cluster</term>
+     <listitem>
+      <simpara>
+       In the `repmgr` documentation, "replication cluster" refers to the network
+       of PostgreSQL servers connected by streaming replication.
+      </simpara>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term>node</term>
+     <listitem>
+      <simpara>
+       A node is a server within a replication cluster.
+      </simpara>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term>upstream node</term>
+     <listitem>
+      <simpara>
+       The node a standby server connects to, in order to receive streaming replication.
+       This is either the primary server or in the case of cascading replication, another
+       standby.
+      </simpara>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term>failover</term>
+     <listitem>
+      <simpara>
+       This is the action which occurs if a primary server fails and a suitable standby
+       is  promoted as the new primary. The `repmgrd` daemon supports automatic failover
+       to minimise downtime.
+      </simpara>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term>switchover</term>
+     <listitem>
+      <simpara>
+       In certain circumstances, such as hardware or operating system maintenance,
+       it's necessary to take a primary server offline; in this case a controlled
+       switchover is necessary, whereby a suitable standby is promoted and the
+       existing primary removed from the replication cluster in a controlled manner.
+       The `repmgr` command line client provides this functionality.
+      </simpara>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term>fencing</term>
+     <listitem>
+      <simpara>
+       In a failover situation, following the promotion of a new standby, it's
+       essential that the previous primary does not unexpectedly come back on
+       line, which would result in a split-brain situation. To prevent this,
+       the failed primary should be isolated from applications, i.e. "fenced off".
+      </simpara>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+ </sect1>
+ <sect1 id="repmgr-components" xreflabel="Components">
+  <title>Components</title>
+  <para>
+  `repmgr` is a suite of open-source tools to manage replication and failover
+  within a cluster of PostgreSQL servers. It supports and enhances PostgreSQL's
+  built-in streaming replication, which provides a single read/write primary server
+  and one or more read-only standbys containing near-real time copies of the primary
+  server's database. It provides two main tools:
+   <variablelist>
+    <varlistentry>
+     <term>repmgr</term>
+     <listitem>
+      <para>
+       A command-line tool used to perform administrative tasks such as:
+       <itemizedlist>
+        <listitem>
+          <simpara>setting up standby servers</simpara>
+        </listitem>
+        <listitem>
+          <simpara>promoting a standby server to primary</simpara>
+        </listitem>
+        <listitem>
+          <simpara>switching over primary and standby servers</simpara>
+        </listitem>
+        <listitem>
+          <simpara>displaying the status of servers in the replication cluster</simpara>
+        </listitem>
+       </itemizedlist>
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry>
+     <term>repmgrd</term>
+     <listitem>
+      <para>
+       A daemon which actively monitors servers in a replication cluster
+       and performs the following tasks:
+       <itemizedlist>
+        <listitem>
+          <simpara>monitoring and recording replication performance</simpara>
+        </listitem>
+        <listitem>
+          <simpara>performing failover by detecting failure of the primary and
+            promoting the most suitable standby server
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>provide notifications about events in the cluster to a user-defined
+      script which can perform tasks such as sending alerts by email</simpara>
+        </listitem>
+       </itemizedlist>
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+ </sect1>
+
+ <sect1 id="repmgr-user-metadata" xreflabel="Repmgr user and metadata">
+  <title>Repmgr user and metadata</title>
+  <para>
+   In order to effectively manage a replication cluster, `repmgr` needs to store
+   information about the servers in the cluster in a dedicated database schema.
+   This schema is automatically by the `repmgr` extension, which is installed
+   during the first step in initialising a `repmgr`-administered cluster
+   (`repmgr primary register`) and contains the following objects:
+   <variablelist>
+    <varlistentry>
+     <term>Tables</term>
+     <listitem>
+      <para>
+       <itemizedlist>
+        <listitem>
+          <simpara>repmgr.events: records events of interest</simpara>
+        </listitem>
+        <listitem>
+          <simpara>repmgr.nodes: connection and status information for each server in the
+    replication cluster</simpara>
+        </listitem>
+        <listitem>
+          <simpara>repmgr.monitoring_history: historical standby monitoring information written by `repmgrd`</simpara>
+        </listitem>
+       </itemizedlist>
+      </para>
+     </listitem>
+    </varlistentry>
+    <varlistentry>
+     <term>Views</term>
+     <listitem>
+      <para>
+       <itemizedlist>
+        <listitem>
+          <simpara>repmgr.show_nodes: based on the table `repl_nodes`, additionally showing the
+     name of the server's upstream node</simpara>
+        </listitem>
+        <listitem>
+          <simpara>repmgr.replication_status: when `repmgrd`'s monitoring is enabled, shows current monitoring
+    status for each standby.</simpara>
+        </listitem>
+       </itemizedlist>
+      </para>
+     </listitem>
+    </varlistentry>
+   </variablelist>
+  </para>
+
+  <para>
+   The `repmgr` metadata schema can be stored in an existing database or in its own
+   dedicated database. Note that the `repmgr` metadata schema cannot reside on a database
+   server which is not part of the replication cluster managed by `repmgr`.
+  </para>
+  <para>
+   A database user must be available for `repmgr` to access this database and perform
+   necessary changes. This user does not need to be a superuser, however some operations
+   such as initial installation of the `repmgr` extension will require a superuser
+   connection (this can be specified where required with the command line option
+   `--superuser`).
+  </para>
+ </sect1>
+
 </chapter>

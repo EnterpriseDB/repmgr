@@ -52,6 +52,10 @@
 
   <keywordset>
    <keyword>repmgr</keyword>
+   <keyword>PostgreSQL</keyword>
+   <keyword>replication</keyword>
+   <keyword>asynchronous</keyword>
+   <keyword>high-availability</keyword>
   </keywordset>
  </bookinfo>
 
