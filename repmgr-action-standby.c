@@ -1815,7 +1815,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	/* Set the replication user from the primary node record */
 	param_set(&recovery_conninfo, "user", primary_node_record->repluser);
 
-	log_info(_("changing node %i's primary to node %i"),
+	log_info(_("setting node %i's primary to node %i"),
 			 config_file_options.node_id, primary_node_record->node_id);
 
 	if (!create_recovery_file(&local_node_record, &recovery_conninfo, config_file_options.data_directory))
@@ -1824,9 +1824,9 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* start/restart the service */
-
-	/* XXX here check if service is running!! if not, start */
+	/*
+	 * start/restart the service
+	 */
 
 	{
 		char		server_command[MAXLEN] = "";
