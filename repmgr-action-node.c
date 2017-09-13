@@ -1646,8 +1646,6 @@ do_node_rejoin(void)
 	/* check provided upstream connection */
 	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
 
-	/* establish_db_connection(runtime_options.upstream_conninfo, true); */
-
 	if (get_primary_node_record(upstream_conn, &primary_node_record) == false)
 	{
 		log_error(_("unable to retrieve primary node record"));

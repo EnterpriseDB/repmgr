@@ -1740,12 +1740,33 @@ The following commands are available:
 
 * `node rejoin`
 
-    Enables a dormant (stopped) node to be rejoined to the replication cluster.
+    Enables a stopped node to be rejoined to the replication cluster.
 
-    This can optionally use `pg_rewind` to re-integrate a node which has diverged
-    from the rest of the cluster, typically a failed primary.
+    Note that currently `node rejoin` can only be used to attach a standby to the
+    current primary, not another standby.
 
-    XXX add details
+    The node must have been shut down cleanly; if this was not the case, it will
+    need to be manually started (remove any existing `recovery.conf` file) until
+    it has reached a consistent recovery point, then shut down cleanly/
+
+    Usage:
+
+        repmgr node rejoin -d '$conninfo'
+
+    where `$conninfo` is the conninfo string of any reachable node in the cluster.
+    `repmgr.conf` for the stopped node *must* be supplied explicitly if not
+    otherwise available.
+
+    `node rejoin` can optionally use `pg_rewind` to re-integrate a node which has
+    diverged from the rest of the cluster, typically a failed primary.
+    `pg_rewind` is available in PostgreSQL 9.5 and later.
+
+    *NOTE*: `pg_rewind` *requires* that either `wal_log_hints` is enabled, or that
+    data checksums were enabled when the cluster was initialized. See the
+    `pg_rewind` documentation for details:
+         https://www.postgresql.org/docs/current/static/app-pgrewind.html
+
+     
 
 * `cluster show`
 
