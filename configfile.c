@@ -254,9 +254,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	 *------------------------
 	 */
 	options->use_replication_slots = false;
-	memset(options->rsync_options, 0, sizeof(options->rsync_options));
-	memset(options->ssh_options, 0, sizeof(options->ssh_options));
-	strncpy(options->ssh_options, "-q", sizeof(options->ssh_options));
 	memset(options->replication_user, 0, sizeof(options->replication_user));
 	memset(options->pg_basebackup_options, 0, sizeof(options->pg_basebackup_options));
 	memset(options->restore_command, 0, sizeof(options->restore_command));
@@ -316,8 +313,17 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	 * barman settings
 	 * ---------------
 	 */
+	memset(options->barman_host, 0, sizeof(options->barman_host));
 	memset(options->barman_server, 0, sizeof(options->barman_server));
 	memset(options->barman_config, 0, sizeof(options->barman_config));
+
+	/*-------------------
+	 * rsync/ssh settings
+	 * ------------------
+	 */
+	memset(options->rsync_options, 0, sizeof(options->rsync_options));
+	memset(options->ssh_options, 0, sizeof(options->ssh_options));
+	strncpy(options->ssh_options, "-q -o ConnectTimeout=10", sizeof(options->ssh_options));
 
 	/*---------------------------
 	 * undocumented test settings
@@ -422,10 +428,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		/* standby clone settings */
 		else if (strcmp(name, "use_replication_slots") == 0)
 			options->use_replication_slots = parse_bool(value, name, error_list);
-		else if (strcmp(name, "rsync_options") == 0)
-			strncpy(options->rsync_options, value, MAXLEN);
-		else if (strcmp(name, "ssh_options") == 0)
-			strncpy(options->ssh_options, value, MAXLEN);
 		else if (strcmp(name, "pg_basebackup_options") == 0)
 			strncpy(options->pg_basebackup_options, value, MAXLEN);
 		else if (strcmp(name, "tablespace_mapping") == 0)
@@ -526,6 +528,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->barman_server, value, MAXLEN);
 		else if (strcmp(name, "barman_config") == 0)
 			strncpy(options->barman_config, value, MAXLEN);
+
+		/* rsync/ssh settings */
+		else if (strcmp(name, "rsync_options") == 0)
+			strncpy(options->rsync_options, value, MAXLEN);
+		else if (strcmp(name, "ssh_options") == 0)
+			strncpy(options->ssh_options, value, MAXLEN);
 
 		/* undocumented settings for testing */
 		else if (strcmp(name, "promote_delay") == 0)

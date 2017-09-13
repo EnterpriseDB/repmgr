@@ -84,8 +84,6 @@ typedef struct
 
 	/* standby action settings */
 	bool		use_replication_slots;
-	char		rsync_options[MAXLEN];
-	char		ssh_options[MAXLEN];
 	char		pg_basebackup_options[MAXLEN];
 	char		restore_command[MAXLEN];
 	TablespaceList tablespace_mapping;
@@ -135,6 +133,10 @@ typedef struct
 	char		barman_server[MAXLEN];
 	char		barman_config[MAXLEN];
 
+	/* rsync/ssh settings */
+	char		rsync_options[MAXLEN];
+	char		ssh_options[MAXLEN];
+
 	/* undocumented test settings */
 	int			promote_delay;
 } t_configuration_options;
@@ -150,7 +152,7 @@ typedef struct
 		/* log settings */ \
 		"", "", "", DEFAULT_LOG_STATUS_INTERVAL,	\
 		/* standby action settings */ \
-		false, "", "", "", "", { NULL, NULL }, "", false, \
+		false, "", "", { NULL, NULL }, "", false, \
 		/* node check settings */ \
 		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
 		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \
@@ -171,6 +173,8 @@ typedef struct
 		"", "", { NULL, NULL }, \
 		/* barman settings */ \
 		"", "", "",	 \
+		/* rsync/ssh settings */ \
+		 "", "", \
 		/* undocumented test settings */ \
 		0 \
  }

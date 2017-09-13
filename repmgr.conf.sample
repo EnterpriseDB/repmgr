@@ -151,7 +151,7 @@
 #pg_ctl_options=''                      # Options to append to "pg_ctl"
 #pg_basebackup_options=''               # Options to append to "pg_basebackup"
 #rsync_options=''                       # Options to append to "rsync"
-ssh_options='-q'                        # Options to append to "ssh"
+ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
 
 
 
