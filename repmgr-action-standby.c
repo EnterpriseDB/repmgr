@@ -2076,7 +2076,7 @@ do_standby_switchover(void)
 	if (local_node_record.upstream_node_id != remote_node_record.node_id)
 	{
 		log_error(_("local node %i is not a downstream of demotion candidate primary %i"),
-				  local_node_record.upstream_node_id,
+				  local_node_record.node_id,
 				  remote_node_record.node_id);
 
 		PQfinish(local_conn);
