@@ -30,8 +30,9 @@
        or another identifier unambiguously associated with the server to avoid
        confusion. Avoid choosing names which reflect the node's current role,
        e.g. <varname>primary</varname> or <varname>standby1</varname>
-       as roles can change and it will be confusing if e.g. the current primary is
-       called <varname>standby1</varname>.
+       as roles can change and if you end up in a solution where the current primary is
+       called <varname>standby1</varname> (for example), things will be confusing
+       to say the least.
      </para>
     </listitem>
    </varlistentry>
