@@ -1036,6 +1036,13 @@ in case of a problem with the primary. Such an unplanned failover would
 normally be handled by promoting the standby, after which an appropriate
 action must be taken to restore the old primary.
 
+* * *
+
+> *NOTE* `repmgr standby switchover` can only be executed on a standby directly
+> attached to the primary server.
+
+* * *
+
 In some cases however it's desirable to promote the standby in a planned
 way, e.g. so maintenance can be performed on the primary; this kind of switchover
 is supported by the `repmgr standby switchover` command.
