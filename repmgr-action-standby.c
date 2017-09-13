@@ -3889,6 +3889,7 @@ run_basebackup(t_node_info *node_record)
 		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 		t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
 		RecordStatus record_status = RECORD_NOT_FOUND;
+		bool slot_exists_on_upstream = false;
 
 		record_status = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
 
@@ -3918,12 +3919,11 @@ run_basebackup(t_node_info *node_record)
 							_("replication slot \"%s\" aleady exists on upstream node %i"),
 							node_record->slot_name,
 							upstream_node_id);
+				slot_exists_on_upstream = true;
 			}
 			else
 			{
-
 				PQExpBufferData event_details;
-
 
 				log_notice(_("creating replication slot \"%s\" on upstream node %i"),
 						   node_record->slot_name,
@@ -3965,13 +3965,16 @@ run_basebackup(t_node_info *node_record)
 
 		if (slot_info.active == false)
 		{
-			if (drop_replication_slot(source_conn, node_record->slot_name) == true)
+			if (slot_exists_on_upstream == false)
 			{
-				log_notice(_("replication slot \"%s\" deleted on source node"), node_record->slot_name);
-			}
-			else
-			{
-				log_error(_("unable to delete replication slot \"%s\" on source node"), node_record->slot_name);
+				if (drop_replication_slot(source_conn, node_record->slot_name) == true)
+				{
+					log_notice(_("replication slot \"%s\" deleted on source node"), node_record->slot_name);
+				}
+				else
+				{
+					log_error(_("unable to delete replication slot \"%s\" on source node"), node_record->slot_name);
+				}
 			}
 		}
 
