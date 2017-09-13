@@ -23,11 +23,9 @@
 
   <abstract>
    <para>
-   This book is the official documentation of repmgr &repmgrversion; for
-   use with PostgreSQL 9.6 or with a modified version of PostgreSQL 9.4.
-   It has been written by the &postgres; and repmgr developers and other
-   volunteers in parallel to the development of the repmgr software.  It
-   describes all the functionality that the current version of repmgr officially
+   Thisis the official documentation of repmgr &repmgrversion; for
+   use with PostgreSQL 9.4 - PostgreSQL 10.
+   It describes all the functionality that the current version of repmgr officially
    supports.
    </para>
 
