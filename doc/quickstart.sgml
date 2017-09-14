@@ -1,0 +1,223 @@
+<chapter id="quickstart" xreflabel="Quick-start guide">
+ <title>Quick-start guide</title>
+
+ <para>
+  This section gives a quick introduction to &repmgr;, including setting up a
+  sample &repmgr; installation and a basic replication cluster.
+ </para>
+
+ <para>
+  These instructions are not suitable for a production install, as they may not
+  take into account security considerations, proper system administration
+  procedures etc..
+ </para>
+
+ <sect1 id="quickstart-prerequisites">
+   <title>Prerequisites for setting up a basic replication cluster with &repmgr;</title>
+    <para>
+     The following section will describe how to set up a basic replication cluster
+     with a primary and a standby server using the <application>repmgr</application>
+     command line tool.
+    </para>
+    <para>
+      We'll assume the primary is called <literal>node1</literal> with IP address
+      <literal>192.168.1.11</literal>, and the standby is called <literal>node2</literal>
+      with IP address <literal>192.168.1.12</literal>
+    </para>
+    <para>
+     Following software must be installed on both servers:
+     <itemizedlist spacing="compact" mark="bullet">
+      <listitem>
+       <simpara><application>PostgreSQL</application></simpara>
+      </listitem>
+      <listitem>
+       <simpara>
+        <application>repmgr</application> (matching the installed
+        <application>PostgreSQL</application> major version)
+       </simpara>
+      </listitem>
+     </itemizedlist>
+    </para>
+
+    <para>
+      At network level, connections between the PostgreSQL port (default: <literal>5432</literal>)
+      must be possible in both directions.
+    </para>
+    <para>
+      If you want <application>repmgr</application> to copy configuration files which are
+      located outside the PostgreSQL data directory, and/or to test <command>switchover</command>
+      functionality, you will also need passwordless SSH connections between both servers, and
+      <application>rsync</application> should be installed.
+    </para>
+    <tip>
+     <simpara>
+      For testing <application>repmgr</application>, it's possible to use multiple PostgreSQL
+      instances running on different ports on the same computer, with
+      passwordless SSH access to <filename>localhost</filename> enabled.
+     </simpara>
+    </tip>
+ </sect1>
+
+ <sect1 id="quickstart-postgresql-configuration">
+   <title>PostgreSQL configuration</title>
+   <para>
+    On the primary server, a PostgreSQL instance must be initialised and running.
+    The following replication settings may need to be adjusted:
+   </para>
+   <programlisting>
+
+    # Enable replication connections; set this figure to at least one more
+    # than the number of standbys which will connect to this server
+    # (note that repmgr will execute `pg_basebackup` in WAL streaming mode,
+    # which requires two free WAL senders)
+
+    max_wal_senders = 10
+
+    # Ensure WAL files contain enough information to enable read-only queries
+    # on the standby.
+    #
+    #  PostgreSQL 9.5 and earlier: one of 'hot_standby' or 'logical'
+    #  PostgreSQL 9.6 and later: one of 'replica' or 'logical'
+    #    ('hot_standby' will still be accepted as an alias for 'replica')
+    #
+    # See: https://www.postgresql.org/docs/current/static/runtime-config-wal.html#GUC-WAL-LEVEL
+
+    wal_level = 'hot_standby'
+
+    # Enable read-only queries on a standby
+    # (Note: this will be ignored on a primary but we recommend including
+    # it anyway)
+
+    hot_standby = on
+
+    # Enable WAL file archiving
+    archive_mode = on
+
+    # Set archive command to a script or application that will safely store
+    # you WALs in a secure place. /bin/true is an example of a command that
+    # ignores archiving. Use something more sensible.
+    archive_command = '/bin/true'
+
+    # If you have configured `pg_basebackup_options`
+    # in `repmgr.conf` to include the setting `--xlog-method=fetch` (from
+    # PostgreSQL 10 `--wal-method=fetch`), *and* you have not set
+    # `restore_command` in `repmgr.conf`to fetch WAL files from another
+    # source such as Barman, you'll need to set `wal_keep_segments` to a
+    # high enough value to ensure that all WAL files generated while
+    # the standby is being cloned are retained until the standby starts up.
+    #
+    # wal_keep_segments = 5000
+   </programlisting>
+   <tip>
+    <simpara>
+      Rather than editing these settings in the default <filename>postgresql.conf</filename>
+     file, create a separate file such as <filename>postgresql.replication.conf</filename> and
+      include it from the end of the main configuration file with:
+     <command>include 'postgresql.replication.conf</command>.
+    </simpara>
+   </tip>
+ </sect1>
+
+ <sect1 id="quickstart-repmgr-user-database">
+  <title>repmgr user and database</title>
+  <para>
+   Create a dedicated PostgreSQL superuser account and a database for
+   the `repmgr` metadata, e.g.
+  </para>
+  <programlisting>
+   createuser -s repmgr
+   createdb repmgr -O repmgr
+  </programlisting>
+
+  <para>
+   For the examples in this document, the name <literal>repmgr</literal> will be
+   used for both user and database, but any names can be used.
+  </para>
+  <note>
+   <para>
+    For the sake of simplicity, the <literal>repmgr</literal> user is created
+    as a superuser. If desired, it's possible to create the <literal>repmgr</literal>
+    user as a normal user. However for certain operations superuser permissions
+    are requiredl; in this case the command line option <command>--superuser</command>
+    can be provided to specify a superuser.
+   </para>
+   <para>
+    It's also assumed that the <literal>repmgr</literal> user will be used to make the
+    replication connection from the standby to the primary; again this can be
+    overridden by specifying a separate replication user when registering each node.
+   </para>
+  </note>
+ </sect1>
+
+ <sect1 id="quickstart-authentication">
+  <title>Configuring authentication in pg_hba.conf</title>
+  <para>
+   Ensure the `repmgr` user has appropriate permissions in <filename>pg_hba.conf</filename> and
+   can connect in replication mode; <filename>pg_hba.conf</filename> should contain entries
+   similar to the following:
+  </para>
+  <programlisting>
+    local   replication   repmgr                              trust
+    host    replication   repmgr      127.0.0.1/32            trust
+    host    replication   repmgr      192.168.1.0/24          trust
+
+    local   repmgr        repmgr                              trust
+    host    repmgr        repmgr      127.0.0.1/32            trust
+    host    repmgr        repmgr      192.168.1.0/24          trust
+  </programlisting>
+  <para>
+   Adjust according to your network environment and authentication requirements.
+  </para>
+ </sect1>
+
+ <sect1 id="quickstart-standby-preparation">
+  <title>Preparing the standby</title>
+  <para>
+   On the standby, do not create a PostgreSQL instance, but do ensure the destination
+   data directory (and any other directories which you want PostgreSQL to use)
+   exist and are owned by the <literal>postgres</literal> system user. Permissions
+   should be set to <literal>0700</literal> (<literal>drwx------</literal>).
+  </para>
+  <para>
+   Check the primary database is reachable from the standby using <application>psql</application>:
+  </para>
+  <programlisting>
+    psql 'host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlisting>
+
+  <note>
+   <para>
+    &repmgr; stores connection information as <ulink
+    url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING">libpq
+    connection strings</ulink> throughout. This documentation refers to them as <literal>conninfo</literal>
+    strings; an alternative name is <literal>DSN</literal> (<literal>data source name</literal>).
+    We'll use these in place of the <command>-h hostname -d databasename -U username</command> syntax.
+   </para>
+  </note>
+ </sect1>
+
+ <sect1 id="quickstart-repmgr-conf">
+  <title>repmgr configuration file</title>
+  <para>
+   Create a <filename>repmgr.conf</filename> file on the primary server. The file must
+   contain at least the following parameters:
+  </para>
+  <programlisting>
+    node_id=1
+    node_name=node1
+    conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'
+    data_directory='/var/lib/postgresql/data'
+  </programlisting>
+
+  <para>
+
+  </para>
+
+  <para>
+   <filename>repmgr.conf</filename> should not be stored inside the PostgreSQL data directory,
+   as it could be overwritten when setting up or reinitialising the PostgreSQL
+   server. See sections on <xref linkend="configuration-file"> and <xref linkend="configuration-file-settings">
+   for further details about <filename>repmgr.conf</filename>.
+  </para>
+ </sect1>
+
+</chapter>

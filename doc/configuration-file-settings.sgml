@@ -1,7 +1,7 @@
 <sect1 id="configuration-file-settings" xreflabel="configuration file settings">
  <title>Configuration file settings</title>
  <para>
-  Each repmgr.conf file must contain the following parameters:
+   Each <filename>repmgr.conf</filename> file must contain the following parameters:
  </para>
  <para>
   <variablelist>
@@ -51,8 +51,8 @@
      </para>
      <para>
        For details on conninfo strings, see section <ulink
-       url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING">
-       Connection Strings</> in the PosgreSQL documentation.
+       url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING">Connection Strings</>
+        in the PosgreSQL documentation.
      </para>
      <para>
         If repmgrd is in use, consider explicitly setting
@@ -66,7 +66,7 @@
    </varlistentry>
 
    <varlistentry id="repmgr-conf-data-directory" xreflabel="data_directory">
-    <term><varname>data_directory</varname> (<type>data_directory</type>)
+    <term><varname>data_directory</varname> (<type>string</type>)
      <indexterm>
       <primary><varname>data_directory</varname> configuration file parameter</primary>
      </indexterm>
@@ -93,13 +93,19 @@
   <note>
     <para>
     The following parameters in the configuration file can be overridden with
-command line options:
+    command line options:
     <itemizedlist>
      <listitem>
-       <simpara>`-L/--log-level` overrides `log_level` in repmgr.conf </simpara>
+       <simpara>
+         <literal>-L/--log-level</literal> overrides <literal>log_level</literal> in
+         <filename>repmgr.conf</filename>
+       </simpara>
      </listitem>
      <listitem>
-       <simpara>`-b/--pg_bindir` overrides `pg_bindir` in repmgr.conf</simpara>
+       <simpara>
+         <literal>-b/--pg_bindir</literal> overrides <literal>pg_bindir</literal> in
+         <filename>repmgr.conf</filename>
+       </simpara>
      </listitem>
     </itemizedlist>
     </para>
