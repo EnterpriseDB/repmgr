@@ -3619,10 +3619,6 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int 
 					  "SELECT repmgr.request_vote(%i, %i)",
 					  this_node->node_id,
 					  electoral_term);
-/*					  "SELECT repmgr.request_vote(%i, '%X/%X'::pg_lsn)",
-					  this_node->node_id,
-					  (uint32) (last_wal_receive_lsn >> 32),
-					  (uint32) last_wal_receive_lsn);*/
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);

@@ -333,7 +333,12 @@ request_vote(PG_FUNCTION_ARGS)
 	{
 		SPI_finish();
 		elog(WARNING, "unable to retrieve last received LSN");
+
+#if (PG_VERSION_NUM >= 90400)
 		PG_RETURN_LSN(InvalidOid);
+#else
+        PG_RETURN_TEXT_P(cstring_to_text("0/0"));
+#endif
 	}
 
 	our_lsn = DatumGetLSN(SPI_getbinval(SPI_tuptable->vals[0],
@@ -354,7 +359,19 @@ request_vote(PG_FUNCTION_ARGS)
 	/* should we free "query" here? */
 	SPI_finish();
 
+#if (PG_VERSION_NUM >= 90400)
 	PG_RETURN_LSN(our_lsn);
+#else
+	{
+		char lsn_text[64] = "";
+		snprintf(lsn_text, 64,
+				 "%X/%X",
+				 (uint32) (our_lsn >> 32),
+				 (uint32) our_lsn);
+
+        PG_RETURN_TEXT_P(cstring_to_text(lsn_text));
+	}
+#endif
 #else
 	PG_RETURN(InvalidOid);
 #endif
