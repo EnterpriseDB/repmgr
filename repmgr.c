@@ -20,6 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include "postgres.h"
 #include "fmgr.h"
 #include "access/xlog.h"
@@ -31,7 +32,13 @@
 #include "storage/shmem.h"
 #include "storage/spin.h"
 #include "utils/builtins.h"
+
+#if (PG_VERSION_NUM >= 90400)
 #include "utils/pg_lsn.h"
+#else
+#include "compat-lsn.h"
+#endif
+
 #include "utils/timestamp.h"
 
 #include "executor/spi.h"

@@ -23,6 +23,16 @@ CREATE TABLE repmgr.events (
   details          TEXT NULL
 );
 
+DO $repmgr$
+DECLARE
+  DECLARE server_version_num INT;
+BEGIN
+  SELECT setting
+    FROM pg_catalog.pg_settings
+   WHERE name = 'server_version_num'
+    INTO server_version_num;
+  IF server_version_num >= 90400 THEN
+    EXECUTE $repmgr_func$
 CREATE TABLE repmgr.monitoring_history (
   primary_node_id                INTEGER NOT NULL,
   standby_node_id                INTEGER NOT NULL,
@@ -32,7 +42,26 @@ CREATE TABLE repmgr.monitoring_history (
   last_wal_standby_location      PG_LSN,
   replication_lag                BIGINT NOT NULL,
   apply_lag                      BIGINT NOT NULL
-);
+)
+    $repmgr_func$;
+  ELSE
+    EXECUTE $repmgr_func$
+CREATE TABLE repmgr.monitoring_history (
+  primary_node_id                INTEGER NOT NULL,
+  standby_node_id                INTEGER NOT NULL,
+  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL,
+  last_apply_time                TIMESTAMP WITH TIME ZONE,
+  last_wal_primary_location      TEXT NOT NULL,
+  last_wal_standby_location      TEXT,
+  replication_lag                BIGINT NOT NULL,
+  apply_lag                      BIGINT NOT NULL
+)
+    $repmgr_func$;
+  END IF;
+END$repmgr$;
+
+
+
 CREATE INDEX idx_monitoring_history_time
           ON repmgr.monitoring_history (last_monitor_time, standby_node_id);
 
@@ -73,10 +102,33 @@ CREATE FUNCTION standby_get_last_updated()
 
 /* failover functions */
 
+
+DO $repmgr$
+DECLARE
+  DECLARE server_version_num INT;
+BEGIN
+  SELECT setting
+    FROM pg_catalog.pg_settings
+   WHERE name = 'server_version_num'
+    INTO server_version_num;
+
+  IF server_version_num >= 90400 THEN
+    EXECUTE $repmgr_func$
 CREATE FUNCTION request_vote(INT,INT)
   RETURNS pg_lsn
   AS 'MODULE_PATHNAME', 'request_vote'
   LANGUAGE C STRICT;
+    $repmgr_func$;
+  ELSE
+    EXECUTE $repmgr_func$
+CREATE FUNCTION request_vote(INT,INT)
+  RETURNS TEXT
+  AS 'MODULE_PATHNAME', 'request_vote'
+  LANGUAGE C STRICT;
+    $repmgr_func$;
+  END IF;
+END$repmgr$;
+
 
 CREATE FUNCTION get_voting_status()
   RETURNS INT
