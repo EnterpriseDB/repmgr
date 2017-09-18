@@ -13,6 +13,8 @@ DATA = \
   repmgr--unpackaged--4.0.sql \
   repmgr--4.0.sql
 
+REGRESS = repmgr_extension
+
 DOCS = README.md repmgr.conf.sample
 
 # Hacky workaround to install the binaries

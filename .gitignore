@@ -37,6 +37,9 @@ lib*.pc
 /config.h
 /repmgr_version.h
 
+# test output
+/results/
+
 # other
 /.lineno
 *.dSYM
