@@ -211,8 +211,6 @@ extern void print_error_list(ItemList *error_list, int log_level);
 
 extern char *make_pg_path(const char *file);
 
-extern bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir);
-
 extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn);
 
 extern bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);

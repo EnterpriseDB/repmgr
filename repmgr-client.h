@@ -204,7 +204,4 @@ static const char *action_name(const int action);
 
 static void check_cli_parameters(const int action);
 
-static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
-static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
-
 #endif							/* _REPMGR_CLIENT_H_ */
