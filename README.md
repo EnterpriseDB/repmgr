@@ -427,7 +427,7 @@ to include this schema name, e.g.
 
 * * *
 
-> *TIP*: for Debian-based distributions we recommend explictly setting
+> *TIP*: for Debian-based distributions we recommend explicitly setting
 > `pg_bindir` to the directory where `pg_ctl` and other binaries not in
 > the standard path are located. For PostgreSQL 9.6 this would be
 > `/usr/lib/postgresql/9.6/bin/`.
@@ -799,7 +799,7 @@ Setting up cascading replication with repmgr
 Cascading replication, introduced with PostgreSQL 9.2, enables a standby server
 to replicate from another standby server rather than directly from the primary,
 meaning replication changes "cascade" down through a hierarchy of servers. This
-can be used to reduce load on the primary and minimize bandwith usage between
+can be used to reduce load on the primary and minimize bandwidth usage between
 sites.
 
 `repmgr` supports cascading replication. When cloning a standby, in `repmgr.conf`
@@ -859,7 +859,7 @@ After starting the standby, the cluster will look like this:
 > cluster, you may wish to clone a downstream standby whose upstream node
 > does not yet exist. In this case you can clone from the primary (or
 > another upstream node) and provide the parameter `--upstream-conninfo`
-> to explictly set the upstream's `primary_conninfo` string in `recovery.conf`.
+> to set explicitly the upstream's `primary_conninfo` string in `recovery.conf`.
 
 * * *
 
@@ -920,7 +920,7 @@ Further information on replication slots in the PostgreSQL documentation:
 >
 > As an alternative we recommend using 2ndQuadrant's Barman, which offloads
 > WAL management to a separate server, negating the need to use replication
-> slots to reserve WAL. See section "Using Barman to clone a standby" for mote
+> slots to reserve WAL. See section "Using Barman to clone a standby" for more
 > details on using `repmgr` together with Barman.
 
 * * *
@@ -1061,7 +1061,7 @@ which requires passwordless SSH access to that server from the one where
 >
 > Additionally you should be sure that the current primary can be shut down
 > quickly and cleanly. In particular, access from applications should be
-> minimalized or preferably blocked completely. Also be aware that if there
+> minimized or preferably blocked completely. Also be aware that if there
 > is a backlog of files waiting to be archived, PostgreSQL will not shut
 > down until archiving completes.
 >
@@ -1134,7 +1134,7 @@ primary; execute:
 
 * * *
 
-Check that access from applications is minimalized or preferably blocked
+Check that access from applications is minimized or preferably blocked
 completely, so applications are not unexpectedly interrupted.
 
 Check there is no significant replication lag on standbys attached to the
@@ -1144,7 +1144,7 @@ If WAL file archiving is set up, check that there is no backlog of files waiting
 to be archived, as PostgreSQL will not finally shut down until all these have been
 archived. If there is a backlog exceeding `archive_ready_warning` WAL files,
 `repmgr` emit a warning before attempting to perform a switchover; you can also check
-anually with `repmgr node check --archive-ready`.
+annually with `repmgr node check --archive-ready`.
 
 Ensure that `repmgrd` is *not* running to prevent it unintentionally promoting a node.
 
@@ -1417,7 +1417,7 @@ For further details on `conninfo` network connection parameters, see:
 
 When `repmgrd` is running with the option `monitoring_history=true`, it will
 constantly write standby node status information to the `monitoring_history`
-able, providing a near-real time overview of replication status on all nodes
+table, providing a near-real time overview of replication status on all nodes
 in the cluster.
 
 The view `replication_status` shows the most recent state for each node, e.g.:
