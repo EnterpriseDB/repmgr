@@ -534,7 +534,7 @@ do_primary_help(void)
 	printf(_("  \"primary register\" initialises the repmgr cluster and registers the primary node.\n"));
 	puts("");
 	printf(_("  --dry-run                           check that the prerequisites are met for registering the primary\n" \
-			 "                                      (including availablity of the repmgr extension)\n"));
+			 "                                      (including availability of the repmgr extension)\n"));
 	printf(_("  -F, --force                         overwrite an existing node record\n"));
 	puts("");
 
