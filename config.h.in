@@ -2,4 +2,3 @@
 
 /* Only build repmgr for BDR */
 #undef BDR_ONLY
-

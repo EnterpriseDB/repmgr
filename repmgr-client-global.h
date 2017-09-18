@@ -198,6 +198,7 @@ extern t_node_info target_node_info;
 
 
 extern int	check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string);
+extern void check_93_config(void);
 extern bool create_repmgr_extension(PGconn *conn);
 extern int	test_ssh_connection(char *host, char *remote_user);
 extern bool local_command(const char *command, PQExpBufferData *outputbuf);
@@ -210,8 +211,6 @@ extern int copy_remote_files(char *host, char *remote_user, char *remote_path,
 extern void print_error_list(ItemList *error_list, int log_level);
 
 extern char *make_pg_path(const char *file);
-
-extern bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir);
 
 extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn);
 

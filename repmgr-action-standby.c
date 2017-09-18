@@ -81,7 +81,6 @@ static bool check_upstream_config(PGconn *conn, int server_version_num, t_node_i
 static void check_primary_standby_version_match(PGconn *conn, PGconn *primary_conn);
 static void check_recovery_type(PGconn *conn);
 
-
 static void initialise_direct_clone(t_node_info *node_record);
 static int	run_basebackup(t_node_info *node_record);
 static int	run_file_backup(t_node_info *node_record);
@@ -95,6 +94,11 @@ static void tablespace_data_append(TablespaceDataList *list, const char *name, c
 static void get_barman_property(char *dst, char *name, char *local_repmgr_directory);
 static int	get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
+
+static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir);
+static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
+static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
+
 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
@@ -1539,6 +1543,7 @@ do_standby_follow(void)
 	RecordStatus record_status = RECORD_NOT_FOUND;
 
 	int			timer = 0;
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	PQExpBufferData follow_output;
 	bool		success = false;
@@ -1556,6 +1561,12 @@ do_standby_follow(void)
 
 	/* check this is a standby */
 	check_recovery_type(local_conn);
+
+	/* sanity-checks for 9.3 */
+	server_version_num = get_server_version(local_conn, NULL);
+
+	if (server_version_num < 90400)
+		check_93_config();
 
 	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
@@ -1677,13 +1688,11 @@ do_standby_follow(void)
 
 	initPQExpBuffer(&follow_output);
 
-	success = do_standby_follow_internal(
-										 primary_conn,
+	success = do_standby_follow_internal(primary_conn,
 										 &primary_node_record,
 										 &follow_output);
 
-	create_event_notification(
-							  primary_conn,
+	create_event_notification(primary_conn,
 							  &config_file_options,
 							  config_file_options.node_id,
 							  "standby_follow",
@@ -1713,6 +1722,9 @@ do_standby_follow(void)
 /*
  * Perform the actuall "follow" operation; this is executed by
  * "node rejoin" too.
+ *
+ * For PostgreSQL 9.3, ensure check_93_config() was called before calling
+ * this function.
  */
 bool
 do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_record, PQExpBufferData *output)
@@ -3098,6 +3110,10 @@ check_source_server()
 		}
 	}
 
+	/* disable configuration file options incompatible with 9.3 */
+	if (source_server_version_num < 90400)
+		check_93_config();
+
 	check_upstream_config(source_conn, source_server_version_num, &node_record, true);
 }
 
@@ -3198,6 +3214,8 @@ check_source_server_via_barman()
  * Perform sanity check on upstream server configuration before starting cloning
  * process
  *
+ * For PostreSQL 9.3, ensure check_93_config() is called before calling this.
+ *
  * TODO:
  *  - check user is qualified to perform base backup
  */
@@ -3248,6 +3266,12 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		xlog_stream = false;
 
 	/* Check that WAL level is set correctly */
+	if (server_version_num < 90400)
+	{
+		i = guc_set(conn, "wal_level", "=", "hot_standby");
+		wal_error_message = _("parameter \"wal_level\" must be set to \"hot_standby\"");
+	}
+	else
 	{
 		char	   *levels_pre96[] = {
 			"hot_standby",
@@ -3272,12 +3296,12 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		if (server_version_num < 90600)
 		{
 			levels = (char **) levels_pre96;
-			wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby' or 'logical'");
+			wal_error_message = _("parameter \"wal_level\" must be set to \"hot_standby\" or \"logical\"");
 		}
 		else
 		{
 			levels = (char **) levels_96plus;
-			wal_error_message = _("parameter 'wal_level' must be set to 'replica' or 'logical'");
+			wal_error_message = _("parameter \"wal_level\" must be set to \"replica\" or \"logical\"");
 		}
 
 		do
@@ -3596,57 +3620,64 @@ initialise_direct_clone(t_node_info *node_record)
 
 	if (config_file_options.tablespace_mapping.head != NULL)
 	{
-		TablespaceListCell *cell = false;
-		KeyValueList not_found = {NULL, NULL};
-		int			total = 0,
-					matched = 0;
-		bool		success = false;
-
-		for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
+		if (server_version_num < 90400)
 		{
-			char	   *old_dir_escaped = escape_string(source_conn, cell->old_dir);
-			char		name[MAXLEN] = "";
-
-			success = get_tablespace_name_by_location(source_conn, old_dir_escaped, name);
-			pfree(old_dir_escaped);
-
-			if (success == true)
-			{
-				matched++;
-			}
-			else
-			{
-				key_value_list_set(
-								   &not_found,
-								   cell->old_dir,
-								   "");
-			}
-
-			total++;
+			log_error(_("tablespace mapping not supported in PostgreSQL 9.3, ignoring"));
 		}
-
-		if (not_found.head != NULL)
+		else
 		{
-			PQExpBufferData detail;
-			KeyValueListCell *kv_cell;
+			TablespaceListCell *cell = false;
+			KeyValueList not_found = {NULL, NULL};
+			int			total = 0,
+						matched = 0;
+			bool		success = false;
 
-			log_error(_("%i of %i mapped tablespaces not found"),
-					  total - matched, total);
 
-			initPQExpBuffer(&detail);
-
-			for (kv_cell = not_found.head; kv_cell; kv_cell = kv_cell->next)
+			for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
 			{
-				appendPQExpBuffer(
-								  &detail,
-								  "  %s\n", kv_cell->key);
+				char	   *old_dir_escaped = escape_string(source_conn, cell->old_dir);
+				char		name[MAXLEN] = "";
+
+				success = get_tablespace_name_by_location(source_conn, old_dir_escaped, name);
+				pfree(old_dir_escaped);
+
+				if (success == true)
+				{
+					matched++;
+				}
+				else
+				{
+					key_value_list_set(&not_found,
+									   cell->old_dir,
+									   "");
+				}
+
+				total++;
 			}
 
-			log_detail(_("following tablespaces not found:\n%s"),
-					   detail.data);
-			termPQExpBuffer(&detail);
+			if (not_found.head != NULL)
+			{
+				PQExpBufferData detail;
+				KeyValueListCell *kv_cell;
 
-			exit(ERR_BAD_CONFIG);
+				log_error(_("%i of %i mapped tablespaces not found"),
+						  total - matched, total);
+
+				initPQExpBuffer(&detail);
+
+				for (kv_cell = not_found.head; kv_cell; kv_cell = kv_cell->next)
+				{
+					appendPQExpBuffer(
+						&detail,
+						"  %s\n", kv_cell->key);
+				}
+
+				log_detail(_("following tablespaces not found:\n%s"),
+						   detail.data);
+				termPQExpBuffer(&detail);
+
+				exit(ERR_BAD_CONFIG);
+			}
 		}
 	}
 
@@ -4748,6 +4779,225 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 			log_warning(_("replication slot \"%s\" is still active on node %i"), slot_name, node_id);
 		}
 	}
+}
+
+
+/*
+ * Creates a recovery.conf file for a standby
+ *
+ * A database connection pointer is required for escaping primary_conninfo
+ * parameters. When cloning from Barman and --no-upstream-connection ) this
+ * might not be available.
+ */
+bool
+create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir)
+{
+	FILE	   *recovery_file;
+	char		recovery_file_path[MAXPGPATH] = "";
+	char		line[MAXLEN] = "";
+	mode_t		um;
+
+	maxpath_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_COMMAND_FILE);
+
+	/* Set umask to 0600 */
+	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
+	recovery_file = fopen(recovery_file_path, "w");
+	umask(um);
+
+	if (recovery_file == NULL)
+	{
+		log_error(_("unable to create recovery.conf file at \"%s\""),
+				  recovery_file_path);
+		log_detail("%s", strerror(errno));
+
+		return false;
+	}
+
+	log_debug("create_recovery_file(): creating \"%s\"...",
+			  recovery_file_path);
+
+	/* standby_mode = 'on' */
+	maxlen_snprintf(line, "standby_mode = 'on'\n");
+
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		return false;
+
+	trim(line);
+	log_debug("recovery.conf: %s", line);
+
+	/* primary_conninfo = '...' */
+
+	/*
+	 * the user specified --upstream-conninfo string - copy that
+	 */
+	if (strlen(runtime_options.upstream_conninfo))
+	{
+		char	   *escaped = escape_recovery_conf_value(runtime_options.upstream_conninfo);
+
+		maxlen_snprintf(line, "primary_conninfo = '%s'\n",
+						escaped);
+		free(escaped);
+	}
+
+	/*
+	 * otherwise use the conninfo inferred from the upstream connection and/or
+	 * node record
+	 */
+	else
+	{
+		write_primary_conninfo(line, recovery_conninfo);
+	}
+
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		return false;
+
+	trim(line);
+	log_debug("recovery.conf: %s", line);
+
+	/* recovery_target_timeline = 'latest' */
+	maxlen_snprintf(line, "recovery_target_timeline = 'latest'\n");
+
+	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+		return false;
+
+	trim(line);
+	log_debug("recovery.conf: %s", line);
+
+	/* recovery_min_apply_delay = ... (optional) */
+	if (config_file_options.recovery_min_apply_delay_provided == true)
+	{
+		maxlen_snprintf(line, "recovery_min_apply_delay = %s\n",
+						config_file_options.recovery_min_apply_delay);
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+			return false;
+
+		trim(line);
+		log_debug("recovery.conf: %s", line);
+	}
+
+	/* primary_slot_name = '...' (optional, for 9.4 and later) */
+	if (config_file_options.use_replication_slots)
+	{
+		maxlen_snprintf(line, "primary_slot_name = %s\n",
+						node_record->slot_name);
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+			return false;
+
+		trim(line);
+		log_debug("recovery.conf: %s", line);
+	}
+
+	/*
+	 * If restore_command is set, we use it as restore_command in
+	 * recovery.conf
+	 */
+	if (strcmp(config_file_options.restore_command, "") != 0)
+	{
+		maxlen_snprintf(line, "restore_command = '%s'\n",
+						config_file_options.restore_command);
+		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
+			return false;
+
+		trim(line);
+		log_debug("recovery.conf: %s", line);
+	}
+	fclose(recovery_file);
+
+	return true;
+}
+
+
+static bool
+write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line)
+{
+	if (fputs(line, recovery_file) == EOF)
+	{
+		log_error(_("unable to write to recovery file at \"%s\""), recovery_file_path);
+		fclose(recovery_file);
+		return false;
+	}
+
+	return true;
+}
+
+
+static void
+write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
+{
+	PQExpBufferData conninfo_buf;
+	bool		application_name_provided = false;
+	bool		password_provided = false;
+	int			c;
+	char	   *escaped = NULL;
+	t_conninfo_param_list env_conninfo;
+
+	initialize_conninfo_params(&env_conninfo, true);
+
+	initPQExpBuffer(&conninfo_buf);
+
+	for (c = 0; c < param_list->size && param_list->keywords[c] != NULL; c++)
+	{
+		/*
+		 * Skip empty settings and ones which don't make any sense in
+		 * recovery.conf
+		 */
+		if (strcmp(param_list->keywords[c], "dbname") == 0 ||
+			strcmp(param_list->keywords[c], "replication") == 0 ||
+			(param_list->values[c] == NULL) ||
+			(param_list->values[c] != NULL && param_list->values[c][0] == '\0'))
+			continue;
+
+		/* only include "password" if explicitly requested */
+		if (strcmp(param_list->keywords[c], "password") == 0)
+		{
+			password_provided = true;
+		}
+
+		if (conninfo_buf.len != 0)
+			appendPQExpBufferChar(&conninfo_buf, ' ');
+
+		if (strcmp(param_list->keywords[c], "application_name") == 0)
+			application_name_provided = true;
+
+		appendPQExpBuffer(&conninfo_buf, "%s=", param_list->keywords[c]);
+		appendConnStrVal(&conninfo_buf, param_list->values[c]);
+	}
+
+	/* "application_name" not provided - default to repmgr node name */
+	if (application_name_provided == false)
+	{
+		if (strlen(config_file_options.node_name))
+		{
+			appendPQExpBuffer(&conninfo_buf, " application_name=");
+			appendConnStrVal(&conninfo_buf, config_file_options.node_name);
+		}
+		else
+		{
+			appendPQExpBuffer(&conninfo_buf, " application_name=repmgr");
+		}
+	}
+
+	/* no password provided explicitly  */
+	if (password_provided == false)
+	{
+		if (config_file_options.use_primary_conninfo_password == true)
+		{
+			const char *password = param_get(&env_conninfo, "password");
+
+			if (password != NULL)
+			{
+				appendPQExpBuffer(&conninfo_buf, " password=");
+				appendConnStrVal(&conninfo_buf, password);
+			}
+		}
+	}
+
+	escaped = escape_recovery_conf_value(conninfo_buf.data);
+	maxlen_snprintf(line, "primary_conninfo = '%s'\n", escaped);
+
+	free(escaped);
+	free_conninfo_params(&env_conninfo);
+	termPQExpBuffer(&conninfo_buf);
 }
 
 

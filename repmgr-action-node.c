@@ -1598,6 +1598,7 @@ do_node_rejoin(void)
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 
 	bool		success = true;
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	/* check node is not actually running */
 
@@ -1645,6 +1646,12 @@ do_node_rejoin(void)
 
 	/* check provided upstream connection */
 	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	/* sanity-checks for 9.3 */
+	server_version_num = get_server_version(upstream_conn, NULL);
+
+	if (server_version_num < 90400)
+		check_93_config();
 
 	if (get_primary_node_record(upstream_conn, &primary_node_record) == false)
 	{

@@ -88,6 +88,7 @@ typedef struct
 	char		restore_command[MAXLEN];
 	TablespaceList tablespace_mapping;
 	char		recovery_min_apply_delay[MAXLEN];
+	bool		recovery_min_apply_delay_provided;
 	bool		use_primary_conninfo_password;
 
 	/* node check settings */
@@ -152,7 +153,7 @@ typedef struct
 		/* log settings */ \
 		"", "", "", DEFAULT_LOG_STATUS_INTERVAL,	\
 		/* standby action settings */ \
-		false, "", "", { NULL, NULL }, "", false, \
+		false, "", "", { NULL, NULL }, "", false, false, \
 		/* node check settings */ \
 		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
 		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \
