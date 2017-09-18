@@ -21,7 +21,7 @@ also for consistency with PostgreSQL naming conventions
 
 Other configuration items have been changed to command line options,
 and vice-versa, e.g. to avoid hard-coding items such as a a node's
-upstream ID, which might change oer time.
+upstream ID, which might change over time.
 
 `repmgr` will issue a warning about deprecated/altered options.
 
@@ -76,7 +76,7 @@ placeholder parameter.
 Upgrading the repmgr schema
 ---------------------------
 
-Ensure `repmgrd` is not running, or any cronjobs which execute the
+Ensure `repmgrd` is not running, or any cron jobs which execute the
 `repmgr` binary.
 
 Install `repmgr4`; any `repmgr3` packages should be uninstalled
