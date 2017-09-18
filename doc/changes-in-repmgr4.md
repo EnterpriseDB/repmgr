@@ -2,7 +2,7 @@
 Standardisation on `primary`
 ----------------------------
 
-To standardise terminolgy, `primary` is used to denote the read/write
+To standardise terminology, `primary` is used to denote the read/write
 node in a streaming replication cluster. `master` is still accepted
 as a synonym (e.g. `repmgr master register`).
 
