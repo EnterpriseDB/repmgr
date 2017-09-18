@@ -35,8 +35,6 @@
 
 #if (PG_VERSION_NUM >= 90400)
 #include "utils/pg_lsn.h"
-#else
-#include "compat-lsn.h"
 #endif
 
 #include "utils/timestamp.h"
@@ -287,14 +285,24 @@ request_vote(PG_FUNCTION_ARGS)
 {
 #ifndef BDR_ONLY
 	StringInfoData query;
+
+#if (PG_VERSION_NUM >= 90400)
 	XLogRecPtr	our_lsn = InvalidXLogRecPtr;
+	bool		isnull;
+#else
+	char *value = NULL;
+	char lsn_text[64] = "";
+#endif
 
 	/* node_id used for logging purposes */
 	int			requesting_node_id = PG_GETARG_INT32(0);
 	int			current_electoral_term = PG_GETARG_INT32(1);
 
 	int			ret;
-	bool		isnull;
+
+
+
+
 
 	if (!shared_state)
 		PG_RETURN_NULL();
@@ -341,14 +349,22 @@ request_vote(PG_FUNCTION_ARGS)
 #endif
 	}
 
+#if (PG_VERSION_NUM >= 90400)
 	our_lsn = DatumGetLSN(SPI_getbinval(SPI_tuptable->vals[0],
 										SPI_tuptable->tupdesc,
 										1, &isnull));
 
-
 	elog(DEBUG1, "our LSN is %X/%X",
 		 (uint32) (our_lsn >> 32),
 		 (uint32) our_lsn);
+#else
+	value = SPI_getvalue(SPI_tuptable->vals[0],
+						 SPI_tuptable->tupdesc,
+						 1);
+	strncpy(lsn_text, value, 64);
+	pfree(value);
+	elog(DEBUG1, "our LSN is %s", lsn_text);
+#endif
 
 	/* indicate this node has responded to a vote request */
 	shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
@@ -362,15 +378,7 @@ request_vote(PG_FUNCTION_ARGS)
 #if (PG_VERSION_NUM >= 90400)
 	PG_RETURN_LSN(our_lsn);
 #else
-	{
-		char lsn_text[64] = "";
-		snprintf(lsn_text, 64,
-				 "%X/%X",
-				 (uint32) (our_lsn >> 32),
-				 (uint32) our_lsn);
-
-        PG_RETURN_TEXT_P(cstring_to_text(lsn_text));
-	}
+	PG_RETURN_TEXT_P(cstring_to_text(lsn_text));
 #endif
 #else
 	PG_RETURN(InvalidOid);
