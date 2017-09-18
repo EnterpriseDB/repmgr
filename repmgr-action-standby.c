@@ -3620,57 +3620,64 @@ initialise_direct_clone(t_node_info *node_record)
 
 	if (config_file_options.tablespace_mapping.head != NULL)
 	{
-		TablespaceListCell *cell = false;
-		KeyValueList not_found = {NULL, NULL};
-		int			total = 0,
-					matched = 0;
-		bool		success = false;
-
-		for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
+		if (server_version_num < 90400)
 		{
-			char	   *old_dir_escaped = escape_string(source_conn, cell->old_dir);
-			char		name[MAXLEN] = "";
-
-			success = get_tablespace_name_by_location(source_conn, old_dir_escaped, name);
-			pfree(old_dir_escaped);
-
-			if (success == true)
-			{
-				matched++;
-			}
-			else
-			{
-				key_value_list_set(
-								   &not_found,
-								   cell->old_dir,
-								   "");
-			}
-
-			total++;
+			log_error(_("tablespace mapping not supported in PostgreSQL 9.3, ignoring"));
 		}
-
-		if (not_found.head != NULL)
+		else
 		{
-			PQExpBufferData detail;
-			KeyValueListCell *kv_cell;
+			TablespaceListCell *cell = false;
+			KeyValueList not_found = {NULL, NULL};
+			int			total = 0,
+						matched = 0;
+			bool		success = false;
 
-			log_error(_("%i of %i mapped tablespaces not found"),
-					  total - matched, total);
 
-			initPQExpBuffer(&detail);
-
-			for (kv_cell = not_found.head; kv_cell; kv_cell = kv_cell->next)
+			for (cell = config_file_options.tablespace_mapping.head; cell; cell = cell->next)
 			{
-				appendPQExpBuffer(
-								  &detail,
-								  "  %s\n", kv_cell->key);
+				char	   *old_dir_escaped = escape_string(source_conn, cell->old_dir);
+				char		name[MAXLEN] = "";
+
+				success = get_tablespace_name_by_location(source_conn, old_dir_escaped, name);
+				pfree(old_dir_escaped);
+
+				if (success == true)
+				{
+					matched++;
+				}
+				else
+				{
+					key_value_list_set(&not_found,
+									   cell->old_dir,
+									   "");
+				}
+
+				total++;
 			}
 
-			log_detail(_("following tablespaces not found:\n%s"),
-					   detail.data);
-			termPQExpBuffer(&detail);
+			if (not_found.head != NULL)
+			{
+				PQExpBufferData detail;
+				KeyValueListCell *kv_cell;
 
-			exit(ERR_BAD_CONFIG);
+				log_error(_("%i of %i mapped tablespaces not found"),
+						  total - matched, total);
+
+				initPQExpBuffer(&detail);
+
+				for (kv_cell = not_found.head; kv_cell; kv_cell = kv_cell->next)
+				{
+					appendPQExpBuffer(
+						&detail,
+						"  %s\n", kv_cell->key);
+				}
+
+				log_detail(_("following tablespaces not found:\n%s"),
+						   detail.data);
+				termPQExpBuffer(&detail);
+
+				exit(ERR_BAD_CONFIG);
+			}
 		}
 	}
 
