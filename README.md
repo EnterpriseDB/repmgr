@@ -7,10 +7,11 @@ replication capabilities with utilities to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or switchover
 operations.
 
-`repmgr 4` is a complete rewrite of the existing `repmgr` codebase.
+`repmgr 4` is a complete rewrite of the existing `repmgr` codebase, allowing
+the use of all of the latest features in PostgreSQL replication.
 
-Supports PostgreSQL 9.4 and later; support for PostgreSQL 9.3 has been
-dropped (please continue to use repmgr 3.3 for PostgreSQL 9.3).
+PostgreSQL 10, 9.6 and 9.5 are fully supported.
+PostgreSQL 9.4 and 9.3 are supported, with some restrictions.
 
 ### BDR support
 
