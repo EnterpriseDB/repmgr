@@ -143,8 +143,7 @@ Installation
 `repmgr` is developed and tested on Linux and OS X, but should work on any
 UNIX-like system supported by PostgreSQL itself.
 
-`repmgr 4` supports PostgreSQL from version 9.5. If you need to using `repmgr`
-on earlier versions of PostgreSQL 9.3 or 9.4, please use `repmgr 3.3`.
+`repmgr 4` supports PostgreSQL from version 9.3.
 
 If upgrading from `repmgr 3`, please see the separate upgrade guide
 `doc/upgrading-from-repmgr3.md`.
