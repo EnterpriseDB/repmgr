@@ -260,6 +260,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->tablespace_mapping.head = NULL;
 	options->tablespace_mapping.tail = NULL;
 	memset(options->recovery_min_apply_delay, 0, sizeof(options->recovery_min_apply_delay));
+	options->recovery_min_apply_delay_provided = false;
 	options->use_primary_conninfo_password = false;
 
 	/*-----------------
@@ -435,7 +436,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "restore_command") == 0)
 			strncpy(options->restore_command, value, MAXLEN);
 		else if (strcmp(name, "recovery_min_apply_delay") == 0)
+		{
 			parse_time_unit_parameter(name, value, options->recovery_min_apply_delay, error_list);
+			options->recovery_min_apply_delay_provided = true;
+		}
 		else if (strcmp(name, "use_primary_conninfo_password") == 0)
 			options->use_primary_conninfo_password = parse_bool(value, name, error_list);
 

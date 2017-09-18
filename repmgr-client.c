@@ -1998,6 +1998,30 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 }
 
 
+
+/*
+ * check_93_config()
+ *
+ * Disable options not compatible with PostgreSQL 9.3
+ */
+void
+check_93_config(void)
+{
+	if (config_file_options.recovery_min_apply_delay_provided == true)
+	{
+		config_file_options.recovery_min_apply_delay_provided = false;
+		log_warning(_("configuration file option \"recovery_min_apply_delay\" not compatible with PostgreSQL 9.3, ignoring"));
+	}
+
+	if (config_file_options.use_replication_slots == true)
+	{
+		config_file_options.use_replication_slots = false;
+		log_warning(_("configuration file option \"use_replication_slots\" not compatible with PostgreSQL 9.3, ignoring"));
+		log_hint(_("replication slots are available from PostgreSQL 9.4"));
+	}
+}
+
+
 int
 test_ssh_connection(char *host, char *remote_user)
 {

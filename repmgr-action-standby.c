@@ -81,7 +81,6 @@ static bool check_upstream_config(PGconn *conn, int server_version_num, t_node_i
 static void check_primary_standby_version_match(PGconn *conn, PGconn *primary_conn);
 static void check_recovery_type(PGconn *conn);
 
-
 static void initialise_direct_clone(t_node_info *node_record);
 static int	run_basebackup(t_node_info *node_record);
 static int	run_file_backup(t_node_info *node_record);
@@ -1544,6 +1543,7 @@ do_standby_follow(void)
 	RecordStatus record_status = RECORD_NOT_FOUND;
 
 	int			timer = 0;
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	PQExpBufferData follow_output;
 	bool		success = false;
@@ -1561,6 +1561,12 @@ do_standby_follow(void)
 
 	/* check this is a standby */
 	check_recovery_type(local_conn);
+
+	/* sanity-checks for 9.3 */
+	server_version_num = get_server_version(local_conn, NULL);
+
+	if (server_version_num < 90400)
+		check_93_config();
 
 	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
@@ -1682,13 +1688,11 @@ do_standby_follow(void)
 
 	initPQExpBuffer(&follow_output);
 
-	success = do_standby_follow_internal(
-										 primary_conn,
+	success = do_standby_follow_internal(primary_conn,
 										 &primary_node_record,
 										 &follow_output);
 
-	create_event_notification(
-							  primary_conn,
+	create_event_notification(primary_conn,
 							  &config_file_options,
 							  config_file_options.node_id,
 							  "standby_follow",
@@ -1718,6 +1722,9 @@ do_standby_follow(void)
 /*
  * Perform the actuall "follow" operation; this is executed by
  * "node rejoin" too.
+ *
+ * For PostgreSQL 9.3, ensure check_93_config() was called before calling
+ * this function.
  */
 bool
 do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_record, PQExpBufferData *output)
@@ -3103,6 +3110,10 @@ check_source_server()
 		}
 	}
 
+	/* disable configuration file options incompatible with 9.3 */
+	if (source_server_version_num < 90400)
+		check_93_config();
+
 	check_upstream_config(source_conn, source_server_version_num, &node_record, true);
 }
 
@@ -3203,6 +3214,8 @@ check_source_server_via_barman()
  * Perform sanity check on upstream server configuration before starting cloning
  * process
  *
+ * For PostreSQL 9.3, ensure check_93_config() is called before calling this.
+ *
  * TODO:
  *  - check user is qualified to perform base backup
  */
@@ -3253,6 +3266,12 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		xlog_stream = false;
 
 	/* Check that WAL level is set correctly */
+	if (server_version_num < 90400)
+	{
+		i = guc_set(conn, "wal_level", "=", "hot_standby");
+		wal_error_message = _("parameter \"wal_level\" must be set to \"hot_standby\"");
+	}
+	else
 	{
 		char	   *levels_pre96[] = {
 			"hot_standby",
@@ -3277,12 +3296,12 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		if (server_version_num < 90600)
 		{
 			levels = (char **) levels_pre96;
-			wal_error_message = _("parameter 'wal_level' must be set to 'hot_standby' or 'logical'");
+			wal_error_message = _("parameter \"wal_level\" must be set to \"hot_standby\" or \"logical\"");
 		}
 		else
 		{
 			levels = (char **) levels_96plus;
-			wal_error_message = _("parameter 'wal_level' must be set to 'replica' or 'logical'");
+			wal_error_message = _("parameter \"wal_level\" must be set to \"replica\" or \"logical\"");
 		}
 
 		do
@@ -4838,7 +4857,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	log_debug("recovery.conf: %s", line);
 
 	/* recovery_min_apply_delay = ... (optional) */
-	if (*config_file_options.recovery_min_apply_delay)
+	if (config_file_options.recovery_min_apply_delay_provided == true)
 	{
 		maxlen_snprintf(line, "recovery_min_apply_delay = %s\n",
 						config_file_options.recovery_min_apply_delay);
