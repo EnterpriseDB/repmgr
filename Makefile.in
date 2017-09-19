@@ -25,7 +25,7 @@ all: \
 	repmgrd
 
 # When in development add -Werror
-PG_CPPFLAGS = -std=gnu89 -I$(libpq_srcdir) -Wall -Wmissing-prototypes -Wmissing-declarations $(EXTRA_CFLAGS)
+PG_CPPFLAGS = -std=gnu89 -I$(includedir_internal) -I$(libpq_srcdir) -Wall -Wmissing-prototypes -Wmissing-declarations $(EXTRA_CFLAGS)
 SHLIB_LINK = $(libpq)
 
 HEADERS = $(wildcard *.h)
