@@ -479,11 +479,11 @@ daemonize_process(void)
 
 			memset(path, 0, MAXPGPATH);
 
-			for (ptr = config_file + strlen(config_file); ptr > config_file; --ptr)
+			for (ptr = config_file_path + strlen(config_file_path); ptr > config_file_path; --ptr)
 			{
 				if (*ptr == '/')
 				{
-					strncpy(path, config_file, ptr - config_file);
+					strncpy(path, config_file_path, ptr - config_file_path);
 				}
 			}
 
