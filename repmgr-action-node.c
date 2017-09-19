@@ -1898,8 +1898,8 @@ _do_node_archive_config(void)
 		int			j = 0;
 		int			config_file_len = strlen(runtime_options.config_files);
 
-		char		filenamebuf[MAXLEN] = "";
-		char		pathbuf[MAXPGPATH] = "";
+		char		filenamebuf[MAXPGPATH] = "";
+		PQExpBufferData		pathbuf;
 
 		for (j = 0; j < config_file_len; j++)
 		{
@@ -1907,23 +1907,24 @@ _do_node_archive_config(void)
 			{
 				int			filename_len = j - i;
 
-				if (filename_len > MAXLEN)
-					filename_len = MAXLEN - 1;
+				if (filename_len > MAXPGPATH)
+					filename_len = MAXPGPATH - 1;
 
 				strncpy(filenamebuf, runtime_options.config_files + i, filename_len);
 
 				filenamebuf[filename_len] = '\0';
 
-				snprintf(pathbuf, MAXPGPATH,
-						 "%s/%s",
-						 config_file_options.data_directory,
-						 filenamebuf);
+				initPQExpBuffer(&pathbuf);
 
-				key_value_list_set(
-								   &config_files,
+				appendPQExpBuffer(&pathbuf,
+								  "%s/%s",
+								  config_file_options.data_directory,
+								  filenamebuf);
+
+				key_value_list_set(&config_files,
 								   filenamebuf,
-								   pathbuf);
-
+								   pathbuf.data);
+				termPQExpBuffer(&pathbuf);
 				i = j + 1;
 			}
 		}
@@ -1931,14 +1932,17 @@ _do_node_archive_config(void)
 		if (i < config_file_len)
 		{
 			strncpy(filenamebuf, runtime_options.config_files + i, config_file_len - i);
-			snprintf(pathbuf, MAXPGPATH,
-					 "%s/%s",
-					 config_file_options.data_directory,
-					 filenamebuf);
-			key_value_list_set(
-							   &config_files,
+
+			initPQExpBuffer(&pathbuf);
+			appendPQExpBuffer(&pathbuf,
+							  "%s/%s",
+							  config_file_options.data_directory,
+							  filenamebuf);
+
+			key_value_list_set(&config_files,
 							   filenamebuf,
-							   pathbuf);
+							   pathbuf.data);
+			termPQExpBuffer(&pathbuf);
 		}
 	}
 
