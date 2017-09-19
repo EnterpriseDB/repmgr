@@ -4609,7 +4609,7 @@ copy_configuration_files(void)
 
 	for (i = 0; i < config_files.entries; i++)
 	{
-		char		dest_path[MAXPGPATH] = "";
+		PQExpBufferData dest_path;
 
 		file = config_files.files[i];
 
@@ -4620,20 +4620,25 @@ copy_configuration_files(void)
 		if (file->in_data_directory == true)
 			continue;
 
+		initPQExpBuffer(&dest_path);
+
 		if (runtime_options.copy_external_config_files_destination == CONFIG_FILE_SAMEPATH)
 		{
-			strncpy(dest_path, file->filepath, MAXPGPATH);
+			appendPQExpBufferStr(&dest_path, file->filepath);
 		}
 		else
 		{
-			snprintf(dest_path, MAXPGPATH,
-					 "%s/%s",
-					 local_data_directory,
-					 file->filename);
+			appendPQExpBuffer(&dest_path,
+							  "%s/%s",
+							  local_data_directory,
+							  file->filename);
 		}
 
 		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
-							  file->filepath, dest_path, false, source_server_version_num);
+							  file->filepath, dest_path.data, false, source_server_version_num);
+
+		termPQExpBuffer(&dest_path);
+
 		if (WEXITSTATUS(r))
 		{
 			log_error(_("standby clone: unable to copy config file \"%s\""),

@@ -33,7 +33,7 @@
 #include "repmgr-action-standby.h"
 
 static bool copy_file(const char *src_file, const char *dest_file);
-static void format_archive_dir(char *archive_dir);
+static void format_archive_dir(PQExpBufferData *archive_dir);
 static t_server_action parse_server_action(const char *action);
 
 static void _do_node_service_check(void);
@@ -1594,7 +1594,6 @@ do_node_rejoin(void)
 	PQExpBufferData command_output;
 	PQExpBufferData follow_output;
 	struct stat statbuf;
-	char		filebuf[MAXPGPATH] = "";
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 
 	bool		success = true;
@@ -1684,6 +1683,7 @@ do_node_rejoin(void)
 	if (runtime_options.force_rewind == true)
 	{
 		int			ret;
+		PQExpBufferData		filebuf;
 
 		_do_node_archive_config();
 
@@ -1731,22 +1731,26 @@ do_node_rejoin(void)
 		/* Restore any previously archived config files */
 		_do_node_restore_config();
 
-		/* remove any recovery.done file copied in by pg_rewind */
-		snprintf(filebuf, MAXPGPATH,
-				 "%s/recovery.done",
-				 config_file_options.data_directory);
+		initPQExpBuffer(&filebuf);
 
-		if (stat(filebuf, &statbuf) == 0)
+		/* remove any recovery.done file copied in by pg_rewind */
+		appendPQExpBuffer(&filebuf,
+						  "%s/recovery.done",
+						  config_file_options.data_directory);
+
+		if (stat(filebuf.data, &statbuf) == 0)
 		{
 			log_verbose(LOG_INFO, _("deleting \"recovery.done\""));
 
-			if (unlink(filebuf) == -1)
+			if (unlink(filebuf.data) == -1)
 			{
 				log_warning(_("unable to delete \"%s\""),
-							filebuf);
+							filebuf.data);
 				log_detail("%s", strerror(errno));
 			}
 		}
+
+		termPQExpBuffer(&filebuf);
 	}
 
 	initPQExpBuffer(&follow_output);
@@ -1794,35 +1798,37 @@ do_node_rejoin(void)
 static void
 _do_node_archive_config(void)
 {
-	char		archive_dir[MAXPGPATH];
+	PQExpBufferData		archive_dir;
 	struct stat statbuf;
 	struct dirent *arcdir_ent;
 	DIR		   *arcdir;
-
 
 	KeyValueList config_files = {NULL, NULL};
 	KeyValueListCell *cell = NULL;
 	int			copied_count = 0;
 
-	format_archive_dir(archive_dir);
+	initPQExpBuffer(&archive_dir);
+	format_archive_dir(&archive_dir);
 
 	/* sanity-check directory path */
-	if (stat(archive_dir, &statbuf) == -1)
+	if (stat(archive_dir.data, &statbuf) == -1)
 	{
 		if (errno != ENOENT)
 		{
 			log_error(_("error encountered when checking archive directory \"%s\""),
-					  archive_dir);
+					  archive_dir.data);
 			log_detail("%s", strerror(errno));
+			termPQExpBuffer(&archive_dir);
 			exit(ERR_BAD_CONFIG);
 		}
 
 		/* attempt to create and open the directory */
-		if (mkdir(archive_dir, S_IRWXU) != 0 && errno != EEXIST)
+		if (mkdir(archive_dir.data, S_IRWXU) != 0 && errno != EEXIST)
 		{
 			log_error(_("unable to create temporary archive directory \"%s\""),
-					  archive_dir);
+					  archive_dir.data);
 			log_detail("%s", strerror(errno));
+			termPQExpBuffer(&archive_dir);
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -1831,18 +1837,20 @@ _do_node_archive_config(void)
 	else if (!S_ISDIR(statbuf.st_mode))
 	{
 		log_error(_("\"%s\" exists but is not a directory"),
-				  archive_dir);
+				  archive_dir.data);
+		termPQExpBuffer(&archive_dir);
 		exit(ERR_BAD_CONFIG);
 	}
 
 
-	arcdir = opendir(archive_dir);
+	arcdir = opendir(archive_dir.data);
 
 	if (arcdir == NULL)
 	{
 		log_error(_("unable to open archive directory \"%s\""),
-				  archive_dir);
+				  archive_dir.data);
 		log_detail("%s", strerror(errno));
+		termPQExpBuffer(&archive_dir);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -1852,26 +1860,32 @@ _do_node_archive_config(void)
 	 */
 	while ((arcdir_ent = readdir(arcdir)) != NULL)
 	{
-		char		arcdir_ent_path[MAXPGPATH] = "";
+		PQExpBufferData arcdir_ent_path;
 
-		snprintf(arcdir_ent_path, MAXPGPATH,
-				 "%s/%s",
-				 archive_dir,
-				 arcdir_ent->d_name);
+		initPQExpBuffer(&arcdir_ent_path);
 
-		if (stat(arcdir_ent_path, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+		appendPQExpBuffer(&arcdir_ent_path,
+						  "%s/%s",
+						  archive_dir.data,
+						  arcdir_ent->d_name);
+
+		if (stat(arcdir_ent_path.data, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
 		{
+			termPQExpBuffer(&arcdir_ent_path);
 			continue;
 		}
 
-		if (unlink(arcdir_ent_path) == -1)
+		if (unlink(arcdir_ent_path.data) == -1)
 		{
 			log_error(_("unable to delete file in temporary archive directory"));
-			log_detail(_("file is:  \"%s\""), arcdir_ent_path);
+			log_detail(_("file is:  \"%s\""), arcdir_ent_path.data);
 			log_detail("%s", strerror(errno));
 			closedir(arcdir);
+			termPQExpBuffer(&arcdir_ent_path);
 			exit(ERR_BAD_CONFIG);
 		}
+
+		termPQExpBuffer(&arcdir_ent_path);
 	}
 
 	closedir(arcdir);
@@ -1931,12 +1945,15 @@ _do_node_archive_config(void)
 
 	for (cell = config_files.head; cell; cell = cell->next)
 	{
-		char		dest_file[MAXPGPATH] = "";
+		PQExpBufferData dest_file;
 
-		snprintf(dest_file, MAXPGPATH,
-				 "%s/%s",
-				 archive_dir,
-				 cell->key);
+		initPQExpBuffer(&dest_file);
+
+		appendPQExpBuffer(&dest_file,
+						  "%s/%s",
+						  archive_dir.data,
+						  cell->key);
+
 		if (stat(cell->value, &statbuf) == -1)
 		{
 			log_warning(_("specified file \"%s\" not found, skipping"),
@@ -1945,15 +1962,19 @@ _do_node_archive_config(void)
 		else
 		{
 			log_verbose(LOG_DEBUG, "copying \"%s\" to \"%s\"",
-						cell->key, dest_file);
-			copy_file(cell->value, dest_file);
+						cell->key, dest_file.data);
+			copy_file(cell->value, dest_file.data);
 			copied_count++;
 		}
+
+		termPQExpBuffer(&dest_file);
 	}
 
 
 	log_verbose(LOG_INFO, _("%i files copied to \"%s\""),
-				copied_count, archive_dir);
+				copied_count, archive_dir.data);
+
+	termPQExpBuffer(&archive_dir);
 }
 
 
@@ -1974,51 +1995,59 @@ _do_node_archive_config(void)
 static void
 _do_node_restore_config(void)
 {
-	char		archive_dir[MAXPGPATH] = "";
+	PQExpBufferData		archive_dir;
 
 	DIR		   *arcdir;
 	struct dirent *arcdir_ent;
 	int			copied_count = 0;
 	bool		copy_ok = true;
 
-	format_archive_dir(archive_dir);
+	initPQExpBuffer(&archive_dir);
 
-	arcdir = opendir(archive_dir);
+	format_archive_dir(&archive_dir);
+
+	arcdir = opendir(archive_dir.data);
 
 	if (arcdir == NULL)
 	{
 		log_error(_("unable to open archive directory \"%s\""),
-				  archive_dir);
+				  archive_dir.data);
 		log_detail("%s", strerror(errno));
+		termPQExpBuffer(&archive_dir);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	while ((arcdir_ent = readdir(arcdir)) != NULL)
 	{
 		struct stat statbuf;
-		char		src_file_path[MAXPGPATH];
-		char		dest_file_path[MAXPGPATH];
+		PQExpBufferData		src_file_path;
+		PQExpBufferData		dest_file_path;
 
-		snprintf(src_file_path, MAXPGPATH,
-				 "%s/%s",
-				 archive_dir,
-				 arcdir_ent->d_name);
+		initPQExpBuffer(&src_file_path);
+
+		appendPQExpBuffer(&src_file_path,
+						  "%s/%s",
+						  archive_dir.data,
+						  arcdir_ent->d_name);
 
 		/* skip non-files */
-		if (stat(src_file_path, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+		if (stat(src_file_path.data, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
 		{
+			termPQExpBuffer(&src_file_path);
 			continue;
 		}
 
-		snprintf(dest_file_path, MAXPGPATH,
-				 "%s/%s",
-				 config_file_options.data_directory,
-				 arcdir_ent->d_name);
+		initPQExpBuffer(&dest_file_path);
+
+		appendPQExpBuffer(&dest_file_path,
+						  "%s/%s",
+						  config_file_options.data_directory,
+						  arcdir_ent->d_name);
 
 		log_verbose(LOG_DEBUG, "copying \"%s\" to \"%s\"",
-					src_file_path, dest_file_path);
+					src_file_path.data, dest_file_path.data);
 
-		if (copy_file(src_file_path, dest_file_path) == false)
+		if (copy_file(src_file_path.data, dest_file_path.data) == false)
 		{
 			copy_ok = false;
 			log_warning(_("unable to copy \"%s\" to \"%s\""),
@@ -2026,11 +2055,14 @@ _do_node_restore_config(void)
 		}
 		else
 		{
-			unlink(src_file_path);
+			unlink(src_file_path.data);
 			copied_count++;
 		}
 
+		termPQExpBuffer(&dest_file_path);
+		termPQExpBuffer(&src_file_path);
 	}
+
 	closedir(arcdir);
 
 	log_notice(_("%i files copied to %s"),
@@ -2039,42 +2071,42 @@ _do_node_restore_config(void)
 
 	if (copy_ok == false)
 	{
-		log_error(_("unable to copy all files from \"%s\""), archive_dir);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	/*
-	 * Finally, delete directory - it should be empty unless it's been
-	 * interfered with for some reason, in which case manual intervention is
-	 * required
-	 */
-	if (rmdir(archive_dir) != 0 && errno != EEXIST)
-	{
-		log_warning(_("unable to delete directory \"%s\""), archive_dir);
-		log_detail("%s", strerror(errno));
-		log_hint(_("directory may need to be manually removed"));
+		log_warning(_("unable to copy all files from \"%s\""), archive_dir.data);
 	}
 	else
 	{
-		log_verbose(LOG_INFO, "directory \"%s\" deleted", archive_dir);
+		/*
+		 * Finally, delete directory - it should be empty unless it's been
+		 * interfered with for some reason, in which case manual intervention is
+		 * required
+		 */
+		if (rmdir(archive_dir.data) != 0 && errno != EEXIST)
+		{
+			log_warning(_("unable to delete directory \"%s\""), archive_dir.data);
+			log_detail("%s", strerror(errno));
+			log_hint(_("directory may need to be manually removed"));
+		}
+		else
+		{
+			log_verbose(LOG_INFO, "directory \"%s\" deleted", archive_dir.data);
+		}
 	}
+
+	termPQExpBuffer(&archive_dir);
 
 	return;
 }
 
 
-
-
 static void
-format_archive_dir(char *archive_dir)
+format_archive_dir(PQExpBufferData *archive_dir)
 {
-	snprintf(archive_dir,
-			 MAXPGPATH,
-			 "%s/repmgr-config-archive-%s",
-			 runtime_options.config_archive_dir,
-			 config_file_options.node_name);
+	appendPQExpBuffer(archive_dir,
+					  "%s/repmgr-config-archive-%s",
+					  runtime_options.config_archive_dir,
+					  config_file_options.node_name);
 
-	log_verbose(LOG_DEBUG, "using archive directory \"%s\"", archive_dir);
+	log_verbose(LOG_DEBUG, "using archive directory \"%s\"", archive_dir->data);
 }
 
 
