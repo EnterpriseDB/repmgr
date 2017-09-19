@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <libpq-fe.h>
 #include <postgres_fe.h>
