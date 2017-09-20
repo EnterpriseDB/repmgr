@@ -100,10 +100,11 @@ to minimise downtime.
 - `switchover`
 
 In certain circumstances, such as hardware or operating system maintenance,
-it's necessary to take a primary server offline; in this case a controlled
-switchover is necessary, whereby a suitable standby is promoted and the
-existing primary removed from the replication cluster in a controlled manner.
-The `repmgr` command line client provides this functionality.
+it's desirable to promote a suitable standby to primary, and demote the current
+primary to a standby role in a controlled way. This enables work to be carried
+out on the former primary without interrupting the replication cluster.
+The `repmgr` command line client provides this functionality with the
+`repmgr standby switchover` command.
 
 ### repmgr user and metadata
 
