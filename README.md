@@ -1828,7 +1828,8 @@ The following commands are available:
 
     These commands require a valid `repmgr.conf` file on each node.
     Additionally passwordless `ssh` connections are required between
-    all nodes.
+    all nodes. Both commands can provided output in CSV format if the
+    `--csv` command line option is provided.
 
     Example 1 (all nodes up):
 
