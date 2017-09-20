@@ -623,73 +623,100 @@ do_cluster_crosscheck(void)
 	t_node_status_cube **cube;
 
 	n = build_cluster_crosscheck(&cube, &name_length);
-
-	printf("%*s | Id ", name_length, node_header);
-	for (i = 0; i < n; i++)
-		printf("| %2d ", cube[i]->node_id);
-	printf("\n");
-
-	for (i = 0; i < name_length; i++)
-		printf("-");
-	printf("-+----");
-	for (i = 0; i < n; i++)
-		printf("+----");
-	printf("\n");
-
-	for (i = 0; i < n; i++)
+	if (runtime_options.output_mode == OM_CSV)
 	{
-		int			column_node_ix;
-
-		printf("%*s | %2d ", name_length,
-			   cube[i]->node_name,
-			   cube[i]->node_id);
-
-		for (column_node_ix = 0; column_node_ix < n; column_node_ix++)
+		for (i = 0; i < n; i++)
 		{
-			int			max_node_status = -2;
-			int			node_ix = 0;
-
-			/*
-			 * The value of entry (i,j) is equal to the maximum value of all
-			 * the (i,j,k). Indeed:
-			 *
-			 * - if one of the (i,j,k) is 0 (node up), then 0 (the node is
-			 * up);
-			 *
-			 * - if the (i,j,k) are either -1 (down) or -2 (unknown), then -1
-			 * (the node is down);
-			 *
-			 * - if all the (i,j,k) are -2 (unknown), then -2 (the node is in
-			 * an unknown state).
-			 */
-
-			for (node_ix = 0; node_ix < n; node_ix++)
+			int j;
+			for (j = 0; j < n; j++)
 			{
-				int			node_status = cube[node_ix]->matrix_list_rec[i]->node_status_list[column_node_ix]->node_status;
+				int			max_node_status = -2;
+				int			node_ix = 0;
 
-				if (node_status > max_node_status)
-					max_node_status = node_status;
+				for (node_ix = 0; node_ix < n; node_ix++)
+				{
+					int			node_status = cube[node_ix]->matrix_list_rec[i]->node_status_list[j]->node_status;
+
+					if (node_status > max_node_status)
+						max_node_status = node_status;
+				}
+				printf("%i,%i,%i\n",
+					   cube[i]->node_id,
+					   cube[j]->node_id,
+					   max_node_status);
 			}
 
-			switch (max_node_status)
-			{
-				case -2:
-					c = '?';
-					break;
-				case -1:
-					c = 'x';
-					break;
-				case 0:
-					c = '*';
-					break;
-				default:
-					exit(ERR_INTERNAL);
-			}
-
-			printf("|  %c ", c);
 		}
-
+	}
+	else
+	{
+		printf("%*s | Id ", name_length, node_header);
+		for (i = 0; i < n; i++)
+			printf("| %2d ", cube[i]->node_id);
 		printf("\n");
+
+		for (i = 0; i < name_length; i++)
+			printf("-");
+		printf("-+----");
+		for (i = 0; i < n; i++)
+			printf("+----");
+		printf("\n");
+
+		for (i = 0; i < n; i++)
+		{
+			int			column_node_ix;
+
+			printf("%*s | %2d ", name_length,
+				   cube[i]->node_name,
+				   cube[i]->node_id);
+
+			for (column_node_ix = 0; column_node_ix < n; column_node_ix++)
+			{
+				int			max_node_status = -2;
+				int			node_ix = 0;
+
+				/*
+				 * The value of entry (i,j) is equal to the maximum value of all
+				 * the (i,j,k). Indeed:
+				 *
+				 * - if one of the (i,j,k) is 0 (node up), then 0 (the node is
+				 * up);
+				 *
+				 * - if the (i,j,k) are either -1 (down) or -2 (unknown), then -1
+				 * (the node is down);
+				 *
+				 * - if all the (i,j,k) are -2 (unknown), then -2 (the node is in
+				 * an unknown state).
+				 */
+
+				for (node_ix = 0; node_ix < n; node_ix++)
+				{
+					int			node_status = cube[node_ix]->matrix_list_rec[i]->node_status_list[column_node_ix]->node_status;
+
+					if (node_status > max_node_status)
+						max_node_status = node_status;
+				}
+
+				switch (max_node_status)
+				{
+					case -2:
+						c = '?';
+						break;
+					case -1:
+						c = 'x';
+						break;
+					case 0:
+						c = '*';
+						break;
+					default:
+						exit(ERR_INTERNAL);
+				}
+
+				printf("|  %c ", c);
+			}
+
+			printf("\n");
+		}
 	}
 
 	/* clean up allocated cube array */
