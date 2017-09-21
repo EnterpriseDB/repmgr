@@ -1370,7 +1370,7 @@ parse_bool(const char *s, const char *config_item, ItemList *error_list)
 		initPQExpBuffer(&errors);
 
 		appendPQExpBuffer(&errors,
-						  "\"%s\": unable to interpret '%s' as a boolean value",
+						  "\"%s\": unable to interpret \"%s\" as a boolean value",
 						  config_item, s);
 		item_list_append(error_list, errors.data);
 		termPQExpBuffer(&errors);

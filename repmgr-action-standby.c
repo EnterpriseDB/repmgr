@@ -642,7 +642,7 @@ do_standby_clone(void)
 
 	/* Add details about relevant runtime options used */
 	appendPQExpBuffer(&event_details,
-					  _("cloned from host '%s', port %s"),
+					  _("cloned from host \"%s\", port %s"),
 					  runtime_options.host,
 					  runtime_options.port);
 
@@ -2271,8 +2271,6 @@ do_standby_switchover(void)
 			if (command_success == true)
 			{
 				status = parse_node_check_archiver(command_output.data, &files, &threshold);
-
-				log_debug("%i %i; '%s'", files, threshold, command_output.data);
 			}
 
 			termPQExpBuffer(&command_output);
@@ -2773,7 +2771,7 @@ do_standby_switchover(void)
 
 	termPQExpBuffer(&node_rejoin_options);
 
-	log_debug("executing:\n  \"%s\"", remote_command_str.data);
+	log_debug("executing:\n  %s", remote_command_str.data);
 	initPQExpBuffer(&command_output);
 
 	command_success = remote_command(
@@ -2873,7 +2871,7 @@ do_standby_switchover(void)
 			appendPQExpBuffer(&remote_command_str,
 							  "standby follow 2>/dev/null && echo \"1\" || echo \"0\"");
 			get_conninfo_value(cell->node_info->conninfo, "host", host);
-			log_debug("executing:\n  \"%s\"", remote_command_str.data);
+			log_debug("executing:\n  %s", remote_command_str.data);
 
 			initPQExpBuffer(&command_output);
 
@@ -3251,9 +3249,9 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 	{
 		if (exit_on_error == true)
 		{
-			log_error(_("error(s) encountered parsing 'pg_basebackup_options'"));
+			log_error(_("error(s) encountered parsing \"pg_basebackup_options\""));
 			print_error_list(&backup_option_errors, LOG_ERR);
-			log_hint(_("'pg_basebackup_options' is: '%s'"),
+			log_hint(_("\"pg_basebackup_options\" is: \"%s\""),
 					 config_file_options.pg_basebackup_options);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -3893,7 +3891,7 @@ run_basebackup(t_node_info *node_record)
 
 	termPQExpBuffer(&params);
 
-	log_info(_("executing: '%s'"), script);
+	log_info(_("executing:\n  %s"), script);
 
 	/*
 	 * As of 9.4, pg_basebackup only ever returns 0 or 1
@@ -4320,7 +4318,7 @@ run_file_backup(t_node_info *node_record)
 		if (mapping_found == true)
 		{
 			tblspc_dir_dest = cell->new_dir;
-			log_debug(_("mapping source tablespace '%s' (OID %s) to '%s'"),
+			log_debug(_("mapping source tablespace \"%s\" (OID %s) to \"%s\""),
 					  cell_t->location, cell_t->oid, tblspc_dir_dest);
 		}
 		else
@@ -4445,7 +4443,7 @@ run_file_backup(t_node_info *node_record)
 		tablespace_map_file = fopen(tablespace_map_filename.data, "w");
 		if (tablespace_map_file == NULL)
 		{
-			log_error(_("unable to create tablespace_map file '%s'"), tablespace_map_filename.data);
+			log_error(_("unable to create tablespace_map file \"%s\""), tablespace_map_filename.data);
 
 			r = ERR_BAD_BASEBACKUP;
 			goto stop_backup;
@@ -4453,7 +4451,7 @@ run_file_backup(t_node_info *node_record)
 
 		if (fputs(tablespace_map.data, tablespace_map_file) == EOF)
 		{
-			log_error(_("unable to write to tablespace_map file '%s'"), tablespace_map_filename.data);
+			log_error(_("unable to write to tablespace_map file \"%s\""), tablespace_map_filename.data);
 
 			r = ERR_BAD_BASEBACKUP;
 			goto stop_backup;

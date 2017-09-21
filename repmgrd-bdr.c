@@ -47,7 +47,7 @@ monitor_bdr(void)
 	instr_time	log_status_interval_start;
 
 	/* sanity check local database */
-	log_info(_("connecting to local database '%s'"),
+	log_info(_("connecting to local database \"%s\""),
 			 config_file_options.conninfo);
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
@@ -314,7 +314,7 @@ loop:
 					fd = freopen(config_file_options.log_file, "a", stderr);
 					if (fd == NULL)
 					{
-						fprintf(stderr, "error reopening stderr to '%s': %s",
+						fprintf(stderr, "error reopening stderr to \"%s\": %s",
 								config_file_options.log_file, strerror(errno));
 					}
 				}
@@ -456,7 +456,7 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	log_notice(_("setting node record for node %i to inactive"), monitored_node->node_id);
 
 	appendPQExpBuffer(&event_details,
-					  _("node '%s' (ID: %i) detected as failed; next available node is '%s' (ID: %i)"),
+					  _("node \"%s\" (ID: %i) detected as failed; next available node is \"%s\" (ID: %i)"),
 					  monitored_node->node_name,
 					  monitored_node->node_id,
 					  target_node.node_name,

@@ -391,7 +391,7 @@ loop:
 					fd = freopen(config_file_options.log_file, "a", stderr);
 					if (fd == NULL)
 					{
-						fprintf(stderr, "error reopening stderr to '%s': %s",
+						fprintf(stderr, "error reopening stderr to \"%s\": %s",
 								config_file_options.log_file, strerror(errno));
 					}
 				}
@@ -925,7 +925,7 @@ loop:
 					fd = freopen(config_file_options.log_file, "a", stderr);
 					if (fd == NULL)
 					{
-						fprintf(stderr, "error reopening stderr to '%s': %s",
+						fprintf(stderr, "error reopening stderr to \"%s\": %s",
 								config_file_options.log_file, strerror(errno));
 					}
 				}

@@ -263,14 +263,14 @@ logger_init(t_configuration_options *opts, const char *ident)
 		fd = fopen(opts->log_file, "a");
 		if (fd == NULL)
 		{
-			stderr_log_error(_("unable to open specified log file '%s' for writing: %s\n"),
+			stderr_log_error(_("unable to open specified log file \"%s\" for writing: %s\n"),
 							 opts->log_file, strerror(errno));
 			stderr_log_error(_("Terminating\n"));
 			exit(ERR_BAD_CONFIG);
 		}
 		fclose(fd);
 
-		stderr_log_notice(_("redirecting logging output to '%s'\n"), opts->log_file);
+		stderr_log_notice(_("redirecting logging output to \"%s\"\n"), opts->log_file);
 		fd = freopen(opts->log_file, "a", stderr);
 
 		/*

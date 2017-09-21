@@ -497,7 +497,7 @@ daemonize_process(void)
 			ret = chdir(path);
 			if (ret != 0)
 			{
-				log_error(_("error changing directory to '%s':\n  %s"), path,
+				log_error(_("error changing directory to \"%s\":\n  %s"), path,
 						  strerror(errno));
 			}
 
@@ -525,7 +525,7 @@ check_and_create_pid_file(const char *pid_file)
 
 		if (fd == NULL)
 		{
-			log_error(_("PID file %s exists but could not opened for reading"), pid_file);
+			log_error(_("PID file \"%s\" exists but could not opened for reading"), pid_file);
 			log_hint(_("if repmgrd is no longer alive, remove the file and restart repmgrd"));
 			exit(ERR_BAD_PIDFILE);
 		}
@@ -534,7 +534,7 @@ check_and_create_pid_file(const char *pid_file)
 
 		if (nread == 0 && ferror(fd))
 		{
-			log_error(_("error reading PID file '%s', aborting"), pid_file);
+			log_error(_("error reading PID file \"%s\", aborting"), pid_file);
 			exit(ERR_BAD_PIDFILE);
 		}
 
@@ -546,7 +546,7 @@ check_and_create_pid_file(const char *pid_file)
 		{
 			if (kill(pid, 0) != -1)
 			{
-				log_error(_("PID file %s exists and seems to contain a valid PID"), pid_file);
+				log_error(_("PID file \"%s\" exists and seems to contain a valid PID"), pid_file);
 				log_hint(_("if repmgrd is no longer alive, remove the file and restart repmgrd"));
 				exit(ERR_BAD_PIDFILE);
 			}

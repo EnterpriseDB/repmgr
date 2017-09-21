@@ -277,9 +277,9 @@ do_bdr_register(void)
 
 		if (strncmp(node_info.node_name, config_file_options.node_name, MAXLEN) != 0)
 		{
-			log_error(_("a record for node %i is already registered with node_name '%s'"),
+			log_error(_("a record for node %i is already registered with node_name \"%s\""),
 					  config_file_options.node_id, node_info.node_name);
-			log_hint(_("node_name configured in repmgr.conf is '%s'"), config_file_options.node_name);
+			log_hint(_("node_name configured in repmgr.conf is \"%s\""), config_file_options.node_name);
 
 			rollback_transaction(conn);
 			PQfinish(conn);
@@ -290,7 +290,7 @@ do_bdr_register(void)
 
 		if (node_updated == true)
 		{
-			appendPQExpBuffer(&event_details, _("node record updated for node '%s' (%i)"),
+			appendPQExpBuffer(&event_details, _("node record updated for node \"%s\" (%i)"),
 							  config_file_options.node_name, config_file_options.node_id);
 			log_verbose(LOG_NOTICE, "%s", event_details.data);
 		}
@@ -308,7 +308,7 @@ do_bdr_register(void)
 		if (node_created == true)
 		{
 			appendPQExpBuffer(&event_details,
-							  _("node record created for node '%s' (ID: %i)"),
+							  _("node record created for node \"%s\" (ID: %i)"),
 							  config_file_options.node_name, config_file_options.node_id);
 			log_notice("%s", event_details.data);
 		}

@@ -3161,7 +3161,7 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 						  slot_name);
 	}
 
-	log_debug(_("create_replication_slot(): creating slot '%s' on upstream"), slot_name);
+	log_debug(_("create_replication_slot(): creating slot \"%s\" on upstream"), slot_name);
 	log_verbose(LOG_DEBUG, "create_replication_slot():\n%s", query.data);
 
 	res = PQexec(conn, query.data);

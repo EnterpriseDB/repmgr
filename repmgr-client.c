@@ -2055,7 +2055,7 @@ test_ssh_connection(char *host, char *remote_user)
 	}
 
 	if (r != 0)
-		log_warning(_("unable to connect to remote host '%s' via SSH"), host);
+		log_warning(_("unable to connect to remote host \"%s\" via SSH"), host);
 
 	return r;
 }
@@ -2281,7 +2281,7 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	termPQExpBuffer(&rsync_flags);
 
-	log_info(_("rsync command line: '%s'"), script);
+	log_info(_("rsync command line:\n  %s"), script);
 
 	r = system(script);
 
