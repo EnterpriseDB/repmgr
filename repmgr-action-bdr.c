@@ -41,13 +41,21 @@ do_bdr_register(void)
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	PQExpBufferData event_details;
 	bool		success = true;
-	char		dbname[MAXLEN];
+	char	   *dbname = NULL;
 
 	/* sanity-check configuration for BDR-compatability */
 	if (config_file_options.replication_type != REPLICATION_TYPE_BDR)
 	{
 		log_error(_("cannot run BDR REGISTER on a non-BDR node"));
 		exit(ERR_BAD_CONFIG);
+	}
+
+	dbname = pg_malloc0(MAXLEN);
+
+	if (dbname == NULL)
+	{
+		log_error(_("unable to allocate memory; terminating."));
+		exit(ERR_OUT_OF_MEMORY);
 	}
 
 	/* store the database name for future reference */
@@ -60,6 +68,7 @@ do_bdr_register(void)
 		log_error(_("database \"%s\" is not BDR-enabled"), dbname);
 		log_hint(_("when using repmgr with BDR, the repmgr schema must be stored in the BDR database"));
 		PQfinish(conn);
+		pfree(dbname);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -70,6 +79,7 @@ do_bdr_register(void)
 	{
 		log_error(_("database \"%s\" is BDR-enabled but no BDR nodes were found"), dbname);
 		PQfinish(conn);
+		pfree(dbname);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -78,6 +88,7 @@ do_bdr_register(void)
 		log_error(_("repmgr can only support BDR clusters with 2 nodes"));
 		log_detail(_("this BDR cluster has %i nodes"), bdr_nodes.node_count);
 		PQfinish(conn);
+		pfree(dbname);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -115,12 +126,15 @@ do_bdr_register(void)
 		{
 			log_error(_("unable to create repmgr extension - see preceding error message(s); aborting"));
 			rollback_transaction(conn);
+			pfree(dbname);
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
 
 		commit_transaction(conn);
 	}
+
+	pfree(dbname);
 
 	/* check for a matching BDR node */
 	{
@@ -336,7 +350,7 @@ do_bdr_unregister(void)
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	bool		node_record_deleted = false;
 	PQExpBufferData event_details;
-	char		dbname[MAXLEN];
+	char	   *dbname;
 
 	/* sanity-check configuration for BDR-compatability */
 
@@ -344,6 +358,14 @@ do_bdr_unregister(void)
 	{
 		log_error(_("cannot run BDR UNREGISTER on a non-BDR node"));
 		exit(ERR_BAD_CONFIG);
+	}
+
+	dbname = pg_malloc0(MAXLEN);
+
+	if (dbname == NULL)
+	{
+		log_error(_("unable to allocate memory; terminating."));
+		exit(ERR_OUT_OF_MEMORY);
 	}
 
 	/* store the database name for future reference */
@@ -354,6 +376,7 @@ do_bdr_unregister(void)
 	if (!is_bdr_db(conn, NULL))
 	{
 		log_error(_("database \"%s\" is not BDR-enabled"), dbname);
+		pfree(dbname);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -361,14 +384,18 @@ do_bdr_unregister(void)
 	if (extension_status != REPMGR_INSTALLED)
 	{
 		log_error(_("repmgr is not installed on database \"%s\""), dbname);
+		pfree(dbname);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	if (!is_bdr_repmgr(conn))
 	{
 		log_error(_("repmgr metadatabase contains records for non-BDR nodes"));
+		pfree(dbname);
 		exit(ERR_BAD_CONFIG);
 	}
+
+	pfree(dbname);
 
 	initPQExpBuffer(&event_details);
 	if (runtime_options.node_id != UNKNOWN_NODE_ID)
@@ -445,9 +472,14 @@ do_bdr_help(void)
 	puts("");
 	printf(_("  \"bdr register\" initialises the repmgr cluster and registers the initial bdr node.\n"));
 	puts("");
+	printf(_("  -F, --force                         overwrite an existing node record\n"));
+	puts("");
 
 	printf(_("BDR UNREGISTER\n"));
 	puts("");
 	printf(_("  \"bdr unregister\" unregisters an inactive BDR node.\n"));
+	puts("");
+	printf(_("  --node-id                           ID node to unregister (optional, used when the node to unregister\n" \
+			 "                                        is offline)\n"));
 	puts("");
 }

@@ -120,7 +120,7 @@ item_list_append_format(ItemList *item_list, const char *format,...)
 	if (cell == NULL)
 	{
 		log_error(_("unable to allocate memory; terminating."));
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_OUT_OF_MEMORY);
 	}
 
 	cell->string = pg_malloc0(MAXLEN);
