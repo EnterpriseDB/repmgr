@@ -48,45 +48,43 @@
 /* command line options without short versions */
 #define OPT_HELP						   1001
 #define OPT_CHECK_UPSTREAM_CONFIG		   1002
-#define OPT_RECOVERY_MIN_APPLY_DELAY	   1003
-#define OPT_COPY_EXTERNAL_CONFIG_FILES	   1004
-#define OPT_CONFIG_ARCHIVE_DIR			   1005
-#define OPT_PG_REWIND					   1006
-#define OPT_PWPROMPT					   1007
-#define OPT_CSV							   1008
-#define OPT_NODE						   1009
-#define OPT_NODE_ID					 	   1010
-#define OPT_NODE_NAME				 	   1011
-#define OPT_WITHOUT_BARMAN				   1012
-#define OPT_NO_UPSTREAM_CONNECTION		   1013
-#define OPT_REGISTER_WAIT				   1014
-#define OPT_LOG_TO_FILE					   1015
-#define OPT_UPSTREAM_CONNINFO			   1016
-#define OPT_REPLICATION_USER			   1018
-#define OPT_EVENT						   1019
-#define OPT_LIMIT						   1020
-#define OPT_ALL							   1021
-#define OPT_DRY_RUN						   1022
-#define OPT_UPSTREAM_NODE_ID			   1023
-#define OPT_ACTION                         1024
-#define OPT_LIST_ACTIONS                   1025
-#define OPT_CHECK                          1026
-#define OPT_CHECKPOINT                     1027
-#define OPT_IS_SHUTDOWN_CLEANLY            1028
-#define OPT_ALWAYS_PROMOTE                 1029
-#define OPT_FORCE_REWIND                   1030
-#define OPT_NAGIOS                         1031
-#define OPT_ARCHIVE_READY                  1032
-#define OPT_OPTFORMAT                      1033
-#define OPT_REPLICATION_LAG                1034
-#define OPT_CONFIG_FILES                   1035
-#define OPT_SIBLINGS_FOLLOW                1036
-#define OPT_ROLE                           1037
-#define OPT_DOWNSTREAM                     1038
-#define OPT_SLOTS                          1039
+#define OPT_COPY_EXTERNAL_CONFIG_FILES	   1003
+#define OPT_CSV							   1004
+#define OPT_NODE						   1005
+#define OPT_NODE_ID						   1006
+#define OPT_NODE_NAME					   1007
+#define OPT_WITHOUT_BARMAN				   1008
+#define OPT_NO_UPSTREAM_CONNECTION		   1009
+#define OPT_REGISTER_WAIT				   1010
+#define OPT_LOG_TO_FILE					   1011
+#define OPT_UPSTREAM_CONNINFO			   1012
+#define OPT_REPLICATION_USER			   1013
+#define OPT_EVENT						   1014
+#define OPT_LIMIT						   1015
+#define OPT_ALL							   1016
+#define OPT_DRY_RUN						   1017
+#define OPT_UPSTREAM_NODE_ID			   1018
+#define OPT_ACTION						   1019
+#define OPT_LIST_ACTIONS				   1020
+#define OPT_CHECK						   1021
+#define OPT_CHECKPOINT					   1022
+#define OPT_IS_SHUTDOWN_CLEANLY			   1023
+#define OPT_ALWAYS_PROMOTE				   1024
+#define OPT_FORCE_REWIND				   1025
+#define OPT_NAGIOS						   1026
+#define OPT_ARCHIVE_READY				   1027
+#define OPT_OPTFORMAT					   1028
+#define OPT_REPLICATION_LAG				   1029
+#define OPT_CONFIG_FILES				   1030
+#define OPT_SIBLINGS_FOLLOW				   1031
+#define OPT_ROLE						   1032
+#define OPT_DOWNSTREAM					   1033
+#define OPT_SLOTS						   1034
+#define OPT_CONFIG_ARCHIVE_DIR			   1035
 /* deprecated since 3.3 */
-#define OPT_DATA_DIR					    999
-#define OPT_NO_CONNINFO_PASSWORD		    998
+#define OPT_DATA_DIR						999
+#define OPT_NO_CONNINFO_PASSWORD			998
+#define OPT_RECOVERY_MIN_APPLY_DELAY		997
 
 
 static struct option long_options[] =
@@ -139,10 +137,12 @@ static struct option long_options[] =
 /* "standby register" options */
 	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
 
-/* "standby switchover" options */
+/* "standby switchover" options
+ *
+ * Note: --force-rewind accepted to pass to "node join"
+ */
 	{"remote-config-file", required_argument, NULL, 'C'},
 	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE},
-	{"force-rewind", no_argument, NULL, OPT_FORCE_REWIND},
 	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW},
 
 /* "node status" options */
@@ -155,8 +155,10 @@ static struct option long_options[] =
 	{"role", no_argument, NULL, OPT_ROLE},
 	{"slots", no_argument, NULL, OPT_SLOTS},
 
-/* "node join" options */
+/* "node rejoin" options */
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},
+    {"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
+	{"force-rewind", no_argument, NULL, OPT_FORCE_REWIND},
 
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},
@@ -172,33 +174,19 @@ static struct option long_options[] =
 /* "cluster cleanup" options */
 	{"keep-history", required_argument, NULL, 'k'},
 
-/* Following options for internal use */
-	{"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
-
 /* deprecated */
+	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 	/* legacy alias for -D/--pgdata */
 	{"data-dir", required_argument, NULL, OPT_DATA_DIR},
-	/* --node-id */
+	/* replaced by --node-id */
 	{"node", required_argument, NULL, OPT_NODE},
-
-
-/* not yet handled */
-
-	{"mode", required_argument, NULL, 'm'},
-	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
-	{"pg_rewind", optional_argument, NULL, OPT_PG_REWIND},
-	{"pwprompt", optional_argument, NULL, OPT_PWPROMPT},
-
 
 	{NULL, 0, NULL, 0}
 };
 
 
-
 static void do_help(void);
-
-
 
 static const char *action_name(const int action);
 

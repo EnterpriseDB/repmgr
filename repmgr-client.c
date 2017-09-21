@@ -454,7 +454,6 @@ main(int argc, char **argv)
 				strncpy(runtime_options.config_files, optarg, MAXLEN);
 				break;
 
-				/* internal options */
 			case OPT_CONFIG_ARCHIVE_DIR:
 				/* TODO: check this is an absolute path */
 				strncpy(runtime_options.config_archive_dir, optarg, MAXPGPATH);
@@ -573,13 +572,17 @@ main(int argc, char **argv)
 				 * options deprecated since 3.3
 				 *-----------------------------
 				 */
+			case OPT_CHECK_UPSTREAM_CONFIG:
+				item_list_append(&cli_warnings,
+								 _("--check-upstream-config is deprecated; use --dry-run instead"));
+				break;
 			case OPT_DATA_DIR:
 				item_list_append(&cli_warnings,
 								 _("--data-dir is deprecated; use -D/--pgdata instead"));
 				break;
 			case OPT_NO_CONNINFO_PASSWORD:
 				item_list_append(&cli_warnings,
-								 _("--no-conninfo-password is deprecated; pasuse --use-recovery-conninfo-password to explicitly set a password"));
+								 _("--no-conninfo-password is deprecated; use --use-recovery-conninfo-password to explicitly set a password"));
 				break;
 				/* -C/--remote-config-file */
 			case 'C':
