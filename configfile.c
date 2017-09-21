@@ -77,14 +77,13 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		{
 			log_error(_("provided configuration file \"%s\" not found: %s"),
 					  config_file,
-					  strerror(errno)
-				);
+					  strerror(errno));
 			exit(ERR_BAD_CONFIG);
 		}
 
 		if (verbose == true)
 		{
-			log_notice(_("using configuration file \"%s\""), config_file);
+			log_notice(_("using provided configuration file \"%s\""), config_file);
 		}
 
 		config_file_provided = true;
@@ -1217,6 +1216,9 @@ exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings,
 		print_item_list(config_warnings);
 		item_list_free(config_warnings);
 	}
+
+	if (config_file_provided == false)
+		log_detail(_("configuration file is: \"%s\""), config_file_path);
 
 	exit(ERR_BAD_CONFIG);
 }
