@@ -1225,11 +1225,10 @@ and the cluster status will now look like this:
 
 ### Caveats
 
-- You must ensure that following a server start using `pg_ctl`, log output
-  is not send to STDERR (the default behaviour). If logging is not configured,
-  we recommend setting `logging_collector=on` in `postgresql.conf` and
-  providing an explicit `-l/--log` setting in `repmgr.conf`'s `pg_ctl_options`
-  parameter.
+- If using PostgreSQL 9.3 or 9.4, you should ensure that the shutdown command
+  is configured to use PostgreSQL's `fast` shutdown mode (the default in 9.5
+  and later). If relying on `pg_ctl` to perform database server operations,
+  you should include `-m fast` in `pg_ctl_options` in `repmgr.conf`.
 - `pg_rewind` *requires* that either `wal_log_hints` is enabled, or that
   data checksums were enabled when the cluster was initialized. See the
   `pg_rewind` documentation for details:
