@@ -233,7 +233,13 @@ set_local_node_id(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
-	shared_state->local_node_id = local_node_id;
+
+	/* only set local_node_id once, as it should never change */
+	if (shared_state->local_node_id == UNKNOWN_NODE_ID)
+	{
+		shared_state->local_node_id = local_node_id;
+	}
+
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_VOID();
@@ -300,80 +306,81 @@ request_vote(PG_FUNCTION_ARGS)
 
 	int			ret;
 
-
-
-
-
 	if (!shared_state)
 		PG_RETURN_NULL();
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
-	/* this node has initiated voting or already responded to another node */
-	if (shared_state->voting_status != VS_NO_VOTE)
+	/* only do something if local_node_id is initialised */
+	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
 	{
-		LWLockRelease(shared_state->lock);
+		/* this node has initiated voting or already responded to another node */
+		if (shared_state->voting_status != VS_NO_VOTE)
+		{
+			LWLockRelease(shared_state->lock);
 
-		PG_RETURN_NULL();
-	}
+			PG_RETURN_NULL();
+		}
 
-	elog(INFO, "node %i has received request from node %i for electoral term %i (our term: %i)",
-		 shared_state->local_node_id,
-		 requesting_node_id, current_electoral_term,
-		 shared_state->current_electoral_term);
+		elog(INFO, "node %i has received request from node %i for electoral term %i (our term: %i)",
+			 shared_state->local_node_id,
+			 requesting_node_id, current_electoral_term,
+			 shared_state->current_electoral_term);
 
-	SPI_connect();
+		SPI_connect();
 
-	initStringInfo(&query);
+		initStringInfo(&query);
 
-	appendStringInfo(
-					 &query,
+		appendStringInfo(
+			&query,
 #if (PG_VERSION_NUM >= 100000)
-					 "SELECT pg_catalog.pg_last_wal_receive_lsn()");
+			"SELECT pg_catalog.pg_last_wal_receive_lsn()");
 #else
-					 "SELECT pg_catalog.pg_last_xlog_receive_location()");
+		    "SELECT pg_catalog.pg_last_xlog_receive_location()");
 #endif
 
-	elog(DEBUG1, "query: %s", query.data);
-	ret = SPI_execute(query.data, true, 0);
+		elog(DEBUG1, "query: %s", query.data);
+		ret = SPI_execute(query.data, true, 0);
 
-	if (ret < 0)
-	{
+		if (ret < 0)
+		{
+			SPI_finish();
+			elog(WARNING, "unable to retrieve last received LSN");
+			LWLockRelease(shared_state->lock);
+
+#if (PG_VERSION_NUM >= 90400)
+			PG_RETURN_LSN(InvalidOid);
+#else
+			PG_RETURN_TEXT_P(cstring_to_text("0/0"));
+#endif
+		}
+
+#if (PG_VERSION_NUM >= 90400)
+		our_lsn = DatumGetLSN(SPI_getbinval(SPI_tuptable->vals[0],
+											SPI_tuptable->tupdesc,
+											1, &isnull));
+
+		elog(DEBUG1, "our LSN is %X/%X",
+			 (uint32) (our_lsn >> 32),
+			 (uint32) our_lsn);
+#else
+		value = SPI_getvalue(SPI_tuptable->vals[0],
+							 SPI_tuptable->tupdesc,
+							 1);
+		strncpy(lsn_text, value, 64);
+		pfree(value);
+		elog(DEBUG1, "our LSN is %s", lsn_text);
+#endif
+
+		/* indicate this node has responded to a vote request */
+		shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
+		shared_state->current_electoral_term = current_electoral_term;
+
+		/* should we free "query" here? */
 		SPI_finish();
-		elog(WARNING, "unable to retrieve last received LSN");
-
-#if (PG_VERSION_NUM >= 90400)
-		PG_RETURN_LSN(InvalidOid);
-#else
-        PG_RETURN_TEXT_P(cstring_to_text("0/0"));
-#endif
 	}
-
-#if (PG_VERSION_NUM >= 90400)
-	our_lsn = DatumGetLSN(SPI_getbinval(SPI_tuptable->vals[0],
-										SPI_tuptable->tupdesc,
-										1, &isnull));
-
-	elog(DEBUG1, "our LSN is %X/%X",
-		 (uint32) (our_lsn >> 32),
-		 (uint32) our_lsn);
-#else
-	value = SPI_getvalue(SPI_tuptable->vals[0],
-						 SPI_tuptable->tupdesc,
-						 1);
-	strncpy(lsn_text, value, 64);
-	pfree(value);
-	elog(DEBUG1, "our LSN is %s", lsn_text);
-#endif
-
-	/* indicate this node has responded to a vote request */
-	shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
-	shared_state->current_electoral_term = current_electoral_term;
 
 	LWLockRelease(shared_state->lock);
-
-	/* should we free "query" here? */
-	SPI_finish();
 
 #if (PG_VERSION_NUM >= 90400)
 	PG_RETURN_LSN(our_lsn);
@@ -410,16 +417,22 @@ Datum
 set_voting_status_initiated(PG_FUNCTION_ARGS)
 {
 #ifndef BDR_ONLY
-	int			electoral_term;
+	int			electoral_term = -1;
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
-	shared_state->voting_status = VS_VOTE_INITIATED;
-	shared_state->current_electoral_term += 1;
 
-	electoral_term = shared_state->current_electoral_term;
+	/* only do something if local_node_id is initialised */
+	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
+	{
+		shared_state->voting_status = VS_VOTE_INITIATED;
+		shared_state->current_electoral_term += 1;
+
+		electoral_term = shared_state->current_electoral_term;
+
+		elog(INFO, "setting voting term to %i", electoral_term);
+	}
+
 	LWLockRelease(shared_state->lock);
-
-	elog(INFO, "setting voting term to %i", electoral_term);
 
 	PG_RETURN_INT32(electoral_term);
 #else
@@ -439,21 +452,26 @@ other_node_is_candidate(PG_FUNCTION_ARGS)
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
-	if (shared_state->current_electoral_term == electoral_term)
+	/* only do something if local_node_id is initialised */
+	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
 	{
-		if (shared_state->candidate_node_id != UNKNOWN_NODE_ID)
+		if (shared_state->current_electoral_term == electoral_term)
 		{
-			elog(INFO, "node %i requesting candidature, but node %i already candidate",
-				 requesting_node_id,
-				 shared_state->candidate_node_id);
-			PG_RETURN_BOOL(false);
+			if (shared_state->candidate_node_id != UNKNOWN_NODE_ID)
+			{
+				elog(INFO, "node %i requesting candidature, but node %i already candidate",
+					 requesting_node_id,
+					 shared_state->candidate_node_id);
+				PG_RETURN_BOOL(false);
+			}
 		}
+
+		shared_state->candidate_node_id = requesting_node_id;
+		elog(INFO, "node %i is candidate", requesting_node_id);
 	}
 
-	shared_state->candidate_node_id = requesting_node_id;
 	LWLockRelease(shared_state->lock);
 
-	elog(INFO, "node %i is candidate", requesting_node_id);
 	PG_RETURN_BOOL(true);
 #else
 	PG_RETURN_BOOL(false);
@@ -471,13 +489,18 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
-	elog(INFO, "node %i received notification to follow node %i",
-		 shared_state->local_node_id,
-		 primary_node_id);
+	/* only do something if local_node_id is initialised */
+	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
+	{
+		elog(INFO, "node %i received notification to follow node %i",
+			 shared_state->local_node_id,
+			 primary_node_id);
 
-	/* Explicitly set the primary node id */
-	shared_state->candidate_node_id = primary_node_id;
-	shared_state->follow_new_primary = true;
+		/* Explicitly set the primary node id */
+		shared_state->candidate_node_id = primary_node_id;
+		shared_state->follow_new_primary = true;
+	}
+
 	LWLockRelease(shared_state->lock);
 #endif
 	PG_RETURN_VOID();
@@ -513,9 +536,13 @@ reset_voting_status(PG_FUNCTION_ARGS)
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
-	shared_state->voting_status = VS_NO_VOTE;
-	shared_state->candidate_node_id = UNKNOWN_NODE_ID;
-	shared_state->follow_new_primary = false;
+	/* only do something if local_node_id is initialised */
+	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
+	{
+		shared_state->voting_status = VS_NO_VOTE;
+		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
+		shared_state->follow_new_primary = false;
+	}
 
 	LWLockRelease(shared_state->lock);
 #endif
@@ -556,9 +583,13 @@ unset_bdr_failover_handler(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_NULL();
 
-	LWLockAcquire(shared_state->lock, LW_SHARED);
-	shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
-	LWLockRelease(shared_state->lock);
+	/* only do something if local_node_id is initialised */
+	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
+	{
+		LWLockAcquire(shared_state->lock, LW_SHARED);
+		shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
+		LWLockRelease(shared_state->lock);
+	}
 
 	PG_RETURN_VOID();
 }
