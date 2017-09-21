@@ -100,12 +100,16 @@ do_bdr_register(void)
 		log_error(_("unable to determine status of \"repmgr\" extension in database \"%s\""),
 				  dbname);
 		PQfinish(conn);
+		pfree(dbname);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	if (extension_status == REPMGR_UNAVAILABLE)
 	{
 		log_error(_("\"repmgr\" extension is not available"));
 		PQfinish(conn);
+		pfree(dbname);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	if (extension_status == REPMGR_INSTALLED)
@@ -113,6 +117,8 @@ do_bdr_register(void)
 		if (!is_bdr_repmgr(conn))
 		{
 			log_error(_("repmgr metadatabase contains records for non-BDR nodes"));
+			PQfinish(conn);
+			pfree(dbname);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -376,6 +382,7 @@ do_bdr_unregister(void)
 	if (!is_bdr_db(conn, NULL))
 	{
 		log_error(_("database \"%s\" is not BDR-enabled"), dbname);
+		PQfinish(conn);
 		pfree(dbname);
 		exit(ERR_BAD_CONFIG);
 	}
@@ -384,18 +391,19 @@ do_bdr_unregister(void)
 	if (extension_status != REPMGR_INSTALLED)
 	{
 		log_error(_("repmgr is not installed on database \"%s\""), dbname);
-		pfree(dbname);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	if (!is_bdr_repmgr(conn))
-	{
-		log_error(_("repmgr metadatabase contains records for non-BDR nodes"));
+		PQfinish(conn);
 		pfree(dbname);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	pfree(dbname);
+
+	if (!is_bdr_repmgr(conn))
+	{
+		log_error(_("repmgr metadatabase contains records for non-BDR nodes"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	initPQExpBuffer(&event_details);
 	if (runtime_options.node_id != UNKNOWN_NODE_ID)
