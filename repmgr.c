@@ -419,6 +419,9 @@ set_voting_status_initiated(PG_FUNCTION_ARGS)
 #ifndef BDR_ONLY
 	int			electoral_term = -1;
 
+	if (!shared_state)
+		PG_RETURN_NULL();
+
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	/* only do something if local_node_id is initialised */
