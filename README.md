@@ -444,7 +444,8 @@ To enable `repmgr` to support a replication cluster, the primary node must
 be registered with `repmgr`. This installs the `repmgr` extension and
 metadata objects, and adds a metadata record for the primary server:
 
-    $ repmgr -f repmgr.conf primary register
+    $ repmgr -f /etc/repmgr.conf primary register
+
     INFO: connecting to primary database...
     NOTICE: attempting to install extension "repmgr"
     NOTICE: "repmgr" extension successfully installed
@@ -452,13 +453,15 @@ metadata objects, and adds a metadata record for the primary server:
 
 Verify status of the cluster like this:
 
+    $ repmgr -f /etc/repmgr.conf cluster show
+
      ID | Name  | Role    | Status    | Upstream | Connection string
     ----+-------+---------+-----------+----------+--------------------------------------
      1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
 
 The record in the `repmgr` metadata table will look like this:
 
-    repmgr=# SELECT * from repmgr.nodes;
+    repmgr=# SELECT * FROM repmgr.nodes;
     -[ RECORD 1 ]----+---------------------------------------
     node_id          | 1
     upstream_node_id |
@@ -490,23 +493,21 @@ the mandatory values `node`, `node_name`, `conninfo` (and possibly
 
 Clone the standby with:
 
-    $ repmgr -h node1 -U repmgr -d repmgr -D /path/to/node2/data/ -f /etc/repmgr.conf standby clone
+    $ repmgr -h node1 -U repmgr -d repmgr -f /etc/repmgr.conf standby clone
 
     NOTICE: using configuration file "/etc/repmgr.conf"
     NOTICE: destination directory "/var/lib/postgresql/data" provided
-    INFO: connecting to upstream node
-    INFO: connected to source node, checking its state
-    NOTICE: checking for available walsenders on upstream node (2 required)
-    INFO: sufficient walsenders available on upstream node (2 required)
-    INFO: successfully connected to source node
-    DETAIL: current installation size is 29 MB
+    INFO: connecting to source node
+    NOTICE: checking for available walsenders on source node (2 required)
+    INFO: sufficient walsenders available on source node (2 required)
     INFO: creating directory "/var/lib/postgresql/data"...
     NOTICE: starting backup (using pg_basebackup)...
     HINT: this may take some time; consider using the -c/--fast-checkpoint option
-    INFO: executing: 'pg_basebackup -l "repmgr base backup" -D /var/lib/postgresql/data -h node1 -U repmgr -X stream '
+    INFO: executing:
+      pg_basebackup -l "repmgr base backup" -D /var/lib/postgresql/data -h node1 -U repmgr -X stream
     NOTICE: standby clone (using pg_basebackup) complete
     NOTICE: you can now start your PostgreSQL server
-    HINT: for example: pg_ctl -D /var/lib/postgresql//data start
+    HINT: for example: pg_ctl -D /var/lib/postgresql/data start
 
 This will clone the PostgreSQL data directory files from the primary at `node1`
 using PostgreSQL's `pg_basebackup` utility. A `recovery.conf` file containing the
@@ -587,7 +588,7 @@ Connect to the primary server and execute:
     usesysid         | 16384
     usename          | repmgr
     application_name | node2
-    client_addr      | ::1
+    client_addr      | 192.168.1.12
     client_hostname  |
     client_port      | 50378
     backend_start    | 2017-08-28 15:14:19.851581+09
@@ -686,7 +687,7 @@ prerequisites must be met:
 > *NOTE*: if you have a non-default SSH configuration on the Barman
 > server, e.g. using a port other than 22, then you can set those
 > parameters in a dedicated Host section in `~/.ssh/config`
-> corresponding to the value of `barman_server` in `repmgr.conf`. See
+> corresponding to the value of `barman_host` in `repmgr.conf`. See
 > the "Host" section in `man 5 ssh_config` for more details.
 
 `barman-wal-restore` is a Python script provided by the Barman
@@ -703,8 +704,9 @@ host, and that `barman-wal-restore` is located as an executable at
 `/usr/bin/barman-wal-restore`;  `repmgr.conf` should include the following
 lines:
 
-    barman_server=barmansrv
-    restore_command=/usr/bin/barman-wal-restore barmansrv test %f %p
+    barman_host=barmansrv
+    barman_server=somedb
+    restore_command=/usr/bin/barman-wal-restore barmansrv somedb %f %p
 
 > *NOTE*: `barman-wal-restore` supports command line switches to
 > control parallelism (`--parallel=N`) and compression (`--bzip2`,
@@ -720,7 +722,7 @@ It's now possible to clone a standby from Barman, e.g.:
     NOTICE: using configuration file "/etc/repmgr.conf"
     NOTICE: destination directory "/var/lib/postgresql/data" provided
     INFO: connecting to Barman server to verify backup for test_cluster
-    INFO: checking and correcting permissions on existing directory /var/lib/postgresql/data
+    INFO: checking and correcting permissions on existing directory "/var/lib/postgresql/data"
     INFO: creating directory "/var/lib/postgresql/data/repmgr"...
     INFO: connecting to Barman server to fetch server parameters
     INFO: connecting to upstream node
@@ -734,7 +736,7 @@ It's now possible to clone a standby from Barman, e.g.:
     NOTICE: you can now start your PostgreSQL server
     HINT: for example: pg_ctl -D /var/lib/postgresql/data start
 
-As with cloning direclty from the primary, the standby must be registered
+As with cloning directly from the primary, the standby must be registered
 after the server has started.
 
 
