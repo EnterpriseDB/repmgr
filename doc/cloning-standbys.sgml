@@ -308,7 +308,7 @@
    </para>
    <para>
     After starting the standby, the cluster will look like this, showing that <literal>node3</literal>
-    is attached to <literal>node3</literal>, not the primary (<literal>node1</literal>).
+    is attached to <literal>node2</literal>, not the primary (<literal>node1</literal>).
     <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show
      ID | Name  | Role    | Status    | Upstream | Location | Connection string

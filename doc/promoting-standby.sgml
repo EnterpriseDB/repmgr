@@ -1,0 +1,74 @@
+<chapter id="promoting-standby" xreflabel="promoting a standby">
+ <title>Promoting a standby server with repmgr</title>
+ <para>
+   If a primary server fails or needs to be removed from the replication cluster,
+   a new primary server must be designated, to ensure the cluster continues
+   to function correctly. This can be done with <xref linkend="repmgr-standby-promote">,
+   which promotes the standby on the current server to primary.
+ </para>
+
+ <para>
+  To demonstrate this, set up a replication cluster with a primary and two attached
+  standby servers so that the cluster looks like this:
+  <programlisting>
+     $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr</programlisting>
+ </para>
+ <para>
+  Stop the current primary with e.g.:
+  <programlisting>
+   $ pg_ctl -D /var/lib/postgresql/data -m fast stop</programlisting>
+ </para>
+ <para>
+  At this point the replication cluster will be in a partially disabled state, with
+  both standbys accepting read-only connections while attempting to connect to the
+  stopped primary. Note that the &repmgr; metadata table will not yet have been updated;
+  executing <xref linkend="repmgr-cluster-show"> will note the discrepancy:
+  <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status        | Upstream | Location | Connection string
+    ----+-------+---------+---------------+----------+----------+--------------------------------------
+     1  | node1 | primary | ? unreachable |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running     | node1    | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running     | node1    | default  | host=node3 dbname=repmgr user=repmgr
+
+    WARNING: following issues were detected
+    node "node1" (ID: 1) is registered as an active primary but is unreachable</programlisting>
+ </para>
+ <para>
+  Now promote the first standby with:
+  <programlisting>
+   $ repmgr -f /etc/repmgr.conf standby promote</programlisting>
+ </para>
+ <para>
+  This will produce output similar to the following:
+  <programlisting>
+    INFO: connecting to standby database
+    NOTICE: promoting standby
+    DETAIL: promoting server using "pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/postgresql/data' promote"
+    server promoting
+    INFO: reconnecting to promoted server
+    NOTICE: STANDBY PROMOTE successful
+    DETAIL: node 2 was successfully promoted to primary</programlisting>
+ </para>
+ <para>
+  Executing <xref linkend="repmgr-cluster-show"> will show the current state; as there is now an
+  active primary, the previous warning will not be displayed:
+  <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | - failed  |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr</programlisting>
+ </para>
+ <para>
+  However the sole remaining standby (<literal>node3</literal>) is still trying to replicate from the failed
+  primary; <xref linkend="repmgr-standby-follow"> must now be executed to rectify this situation.
+ </para>
+</chapter>
+

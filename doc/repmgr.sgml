@@ -69,6 +69,7 @@
 
   &configuration;
   &cloning-standbys;
+  &promoting-standby;
   &command-reference;
  </part>
 
