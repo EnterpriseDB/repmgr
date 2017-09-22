@@ -70,6 +70,7 @@
   &configuration;
   &cloning-standbys;
   &promoting-standby;
+  &follow-new-primary;
   &command-reference;
  </part>
 
