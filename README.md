@@ -1251,7 +1251,7 @@ To unregister a running standby, execute:
 
 This will remove the standby record from `repmgr`'s internal metadata
 table (`repmgr.nodes`). A `standby_unregister` event notification will be
-recorded in the `repmgr.nodes` table.
+recorded in the `repmgr.events` table.
 
 Note that this command will not stop the server itself or remove it from
 the replication cluster. Note that if the standby was using a replication
