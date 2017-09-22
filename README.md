@@ -1670,6 +1670,20 @@ The following commands are available:
     replication, just removes the standby's entry from the `repmgr.nodes` table.
     See also section "Unregistering a standby from a replication cluster".
 
+* `standby promote`
+
+    Promotes a standby to a primary if the current primary has failed. This
+    command requires a valid `repmgr.conf` file for the standby, either
+    specified explicitly  with `-f/--config-file` or located in the current
+    working directory; no additional arguments are required.
+
+    If the standby promotion succeeds, the server will not need to be
+    restarted. However any other standbys will need to follow the new server,
+    by using `standby follow` (see below); if `repmgrd` is active, it will
+    handle this automatically.
+
+    This command will fail with an error if the current primary is still running.
+
 * `standby follow`
 
     Attaches the standby to a new primary. This command requires a valid
