@@ -788,7 +788,7 @@ avoided.
 ### Separate replication user
 
 In some circumstances it might be desirable to create a dedicated replication-only
-user (in addition to the user who manages the `repmgr` metadata. In this case,
+user (in addition to the user who manages the `repmgr` metadata). In this case,
 the replication user should be set in `repmgr.conf` via the parameter
 `replication_user`; `repmgr` will use this value when making replication connections
 and generating `recovery.conf`. This value will also be stored in the `repmgr.nodes`
@@ -1669,6 +1669,16 @@ The following commands are available:
     Unregisters a standby with `repmgr`. This command does not affect the actual
     replication, just removes the standby's entry from the `repmgr.nodes` table.
     See also section "Unregistering a standby from a replication cluster".
+
+* `standby follow`
+
+    Attaches the standby to a new primary. This command requires a valid
+    `repmgr.conf` file for the standby, either specified explicitly with
+    `-f/--config-file` or located in the current working directory; no
+    additional arguments are required.
+
+    This command will force a restart of the standby server. It can only be used
+    to attach a standby to a new primary node.
 
 * `standby switchover`
 
