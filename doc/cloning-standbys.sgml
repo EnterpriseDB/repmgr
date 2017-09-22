@@ -4,7 +4,10 @@
  </para>
 
  <sect1 id="cloning-from-barman" xreflabel="Cloning from Barman">
-   <indexterm><primary>Barman</primary></indexterm>
+   <indexterm>
+     <primary>cloning</primary>
+     <secondary>from Barman</secondary>
+   </indexterm>
    <title>Cloning a standby from Barman</title>
    <para>
     <xref linkend="repmgr-standby-clone"> can use
@@ -158,5 +161,75 @@
     </para>
    </note>
   </sect2>
+ </sect1>
+
+ <sect1 id="cloning-advanced" xreflabel="Advanced cloning options">
+   <indexterm>
+     <primary>cloning</primary>
+     <secondary>advanced options</secondary>
+   </indexterm>
+   <title>Advanced cloning options</title>
+
+   <sect2 id="cloning-advanced-pg-basebackup-options" xreflabel="pg_basebackup options when cloning a standby">
+    <title>pg_basebackup options when cloning a standby</title>
+    <para>
+     By default, <command>pg_basebackup</command> performs a checkpoint before beginning the backup
+     process. However, a normal checkpoint may take some time to complete;
+     a fast checkpoint can be forced with the <literal>-c/--fast-checkpoint</literal> option.
+     However this may impact performance of the server being cloned from
+     so should be used with care.
+    </para>
+    <para>
+     Further options can be passed to the <command>pg_basebackup</command> utility via
+     the setting <varname>pg_basebackup_options</varname> in <filename>repmgr.conf</filename>.
+     See the <ulink url="https://www.postgresql.org/docs/current/static/app-pgbasebackup.html">PostgreSQL pg_basebackup documentation</ulink>
+     for more details of available options.
+    </para>
+   </sect2>
+
+   <sect2 id="cloning-advanced-managing-passwords" xreflabel="Managing passwords">
+    <title>Managing passwords</title>
+    <para>
+     If replication connections to a standby's upstream server are password-protected,
+     the standby must be able to provide the password so it can begin streaming
+     replication.
+    </para>
+    <para>
+     The recommended way to do this is to store the password in the <literal>postgres</literal> system
+     user's <filename>~/.pgpass</filename> file. It's also possible to store the password in the
+     environment variable <varname>PGPASSWORD</varname>, however this is not recommended for
+     security reasons. For more details see the
+     <ulink url="https://www.postgresql.org/docs/current/static/libpq-pgpass.html">PostgreSQL password file documentation</ulink>.
+    </para>
+    <para>
+     If, for whatever reason, you wish to include the password in <filename>recovery.conf</filename>,
+     set <varname>use_primary_conninfo_password</varname> to <literal>true</literal> in
+     <filename>repmgr.conf</filename>. This will read a password set in <varname>PGPASSWORD</varname>
+     (but not <filename>~/.pgpass</filename>) and place it into the <literal>primary_conninfo</literal>
+     string in <filename>recovery.conf</filename>. Note that <varname>PGPASSWORD</varname>
+     will need to be set during any action which causes <filename>recovery.conf</filename> to be
+     rewritten, e.g. <xref linkend="repmgr-standby-follow">.
+    </para>
+    <para>
+     It is of course also possible to include the password value in the <varname>conninfo</varname>
+     string for each node, but this is obviously a security risk and should be
+     avoided.
+    </para>
+   </sect2>
+
+   <sect2 id="cloning-advanced-replication-user" xreflabel="Separate replication user">
+    <title>Separate replication user</title>
+    <para>
+     In some circumstances it might be desirable to create a dedicated replication-only
+     user (in addition to the user who manages the &repmgr; metadata). In this case,
+     the replication user should be set in <filename>repmgr.conf</filename> via the parameter
+     <varname>replication_user</varname>; &repmgr; will use this value when making
+     replication connections and generating <filename>recovery.conf</filename>. This
+     value will also be stored in the <literal>repmgr.nodes</literal>
+     table for each node; it no longer needs to be explicitly specified when
+     cloning a node or executing <xref linkend="repmgr-standby-follow">.
+    </para>
+   </sect2>
+
  </sect1>
 </chapter>

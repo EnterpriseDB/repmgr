@@ -6,7 +6,10 @@
  </para>
 
  <sect1 id="repmgr-standby-clone" xreflabel="repmgr standby clone">
-  <indexterm><primary>repmgr standby clone</primary></indexterm>
+  <indexterm>
+    <primary>repmgr standby clone</primary>
+    <seealso>cloning</seealso>
+  </indexterm>
   <title>repmgr standby clone</title>
   <para>
    <command>repmgr standby clone</command> clones a PostgreSQL node from another
@@ -143,5 +146,41 @@
     <literal>-F/--force</literal> option does not result in an incorrectly configured cluster.
    </para>
   </sect2>
+ </sect1>
+
+ <sect1 id="repmgr-standby-follow" xreflabel="repmgr standby follow">
+  <indexterm>
+    <primary>repmgr standby follow</primary>
+  </indexterm>
+  <title>repmgr standby follow</title>
+  <para>
+   Attaches the standby to a new primary. This command requires a valid
+   <filename>repmgr.conf</filename> file for the standby, either specified
+   explicitly with <literal>-f/--config-file</literal> or located in a
+   default location; no additional arguments are required.
+  </para>
+  <para>
+   This command will force a restart of the standby server, which must be
+   running. It can only be used to attach a standby to a new primary node.
+  </para>
+  <para>
+   To re-add an inactive node to the replication cluster, see
+   <xref linkend="repmgr-node-rejoin">
+  </para>
+ </sect1>
+
+
+ <sect1 id="repmgr-node-rejoin" xreflabel="repmgr node rejoin">
+  <indexterm>
+    <primary>repmgr node rejoin</primary>
+  </indexterm>
+  <title>repmgr node rejoin</title>
+  <para>
+   Enables a dormant (stopped) node to be rejoined to the replication cluster.
+  </para>
+  <para>
+    This can optionally use `pg_rewind` to re-integrate a node which has diverged
+    from the rest of the cluster, typically a failed primary.
+  </para>
  </sect1>
 </chapter>
