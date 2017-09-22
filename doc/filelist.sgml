@@ -41,7 +41,9 @@
 <!ENTITY configuration-file-settings      SYSTEM "configuration-file-settings.sgml">
 <!ENTITY cloning-standbys  SYSTEM "cloning-standbys.sgml">
 <!ENTITY promoting-standby  SYSTEM "promoting-standby.sgml">
+<!ENTITY follow-new-primary  SYSTEM "follow-new-primary.sgml">
 <!ENTITY command-reference SYSTEM "command-reference.sgml">
 <!ENTITY appendix-signatures      SYSTEM "appendix-signatures.sgml">
 
 <!ENTITY bookindex  SYSTEM "bookindex.sgml">
+

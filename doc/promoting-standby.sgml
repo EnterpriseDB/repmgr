@@ -1,4 +1,4 @@
-<chapter id="promoting-standby" xreflabel="promoting a standby">
+<chapter id="promoting-standby" xreflabel="Promoting a standby">
  <title>Promoting a standby server with repmgr</title>
  <para>
    If a primary server fails or needs to be removed from the replication cluster,
@@ -68,7 +68,8 @@
  </para>
  <para>
   However the sole remaining standby (<literal>node3</literal>) is still trying to replicate from the failed
-  primary; <xref linkend="repmgr-standby-follow"> must now be executed to rectify this situation.
+  primary; <xref linkend="repmgr-standby-follow"> must now be executed to rectify this situation
+  (see <xref linkend="follow-new-primary"> for example).
  </para>
 </chapter>
 
