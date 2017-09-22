@@ -119,10 +119,10 @@
  </sect1>
 
  <sect1 id="quickstart-repmgr-user-database">
-  <title>repmgr user and database</title>
+  <title>Create the repmgr user and database</title>
   <para>
    Create a dedicated PostgreSQL superuser account and a database for
-   the `repmgr` metadata, e.g.
+   the &repmgr; metadata, e.g.
   </para>
   <programlisting>
    createuser -s repmgr
@@ -147,12 +147,24 @@
     overridden by specifying a separate replication user when registering each node.
    </para>
   </note>
+
+  <tip>
+    <para>
+     &repmgr; will install the <literal>repmgr</literal> extension, which creates a
+     <literal>repmgr</literal> schema containing the &repmgr;'s metadata tables as
+     well as other functions and views. We also recommend that you set the
+     <literal>repmgr</literal> user's search path to include this schema name, e.g.
+     <programlisting>
+       ALTER USER repmgr SET search_path TO repmgr, "$user", public;</programlisting>
+    </para>
+  </tip>
+
  </sect1>
 
  <sect1 id="quickstart-authentication">
   <title>Configuring authentication in pg_hba.conf</title>
   <para>
-   Ensure the `repmgr` user has appropriate permissions in <filename>pg_hba.conf</filename> and
+   Ensure the <literal>repmgr</literal> user has appropriate permissions in <filename>pg_hba.conf</filename> and
    can connect in replication mode; <filename>pg_hba.conf</filename> should contain entries
    similar to the following:
   </para>
@@ -166,6 +178,7 @@
     host    repmgr        repmgr      192.168.1.0/24          trust
   </programlisting>
   <para>
+   Note that these are simple settings for testing purposes.
    Adjust according to your network environment and authentication requirements.
   </para>
  </sect1>
@@ -176,7 +189,7 @@
    On the standby, do not create a PostgreSQL instance, but do ensure the destination
    data directory (and any other directories which you want PostgreSQL to use)
    exist and are owned by the <literal>postgres</literal> system user. Permissions
-   should be set to <literal>0700</literal> (<literal>drwx------</literal>).
+   must be set to <literal>0700</literal> (<literal>drwx------</literal>).
   </para>
   <para>
    Check the primary database is reachable from the standby using <application>psql</application>:
@@ -209,14 +222,224 @@
   </programlisting>
 
   <para>
-
-  </para>
-
-  <para>
    <filename>repmgr.conf</filename> should not be stored inside the PostgreSQL data directory,
    as it could be overwritten when setting up or reinitialising the PostgreSQL
    server. See sections on <xref linkend="configuration-file"> and <xref linkend="configuration-file-settings">
    for further details about <filename>repmgr.conf</filename>.
+  </para>
+  <tip>
+   <simpara>
+    For Debian-based distributions we recommend explictly setting
+    <literal>pg_bindir</literal> to the directory where <command>pg_ctl</command> and other binaries
+    not in the standard path are located. For PostgreSQL 9.6 this would be <filename>/usr/lib/postgresql/9.6/bin/</filename>.
+   </simpara>
+  </tip>
+
+  <para>
+   See the file
+   <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</>
+    for details of all available configuration parameters.
+  </para>
+
+ </sect1>
+
+
+ <sect1 id="quickstart-primary-register">
+  <title>Register the primary server</title>
+  <para>
+   To enable &repmgr; to support a replication cluster, the primary node must
+   be registered with &repmgr;. This installs the <literal>repmgr</literal>
+   extension and metadata objects, and adds a metadata record for the primary server:
+  </para>
+
+  <programlisting>
+    $ repmgr -f /etc/repmgr.conf primary register
+    INFO: connecting to primary database...
+    NOTICE: attempting to install extension "repmgr"
+    NOTICE: "repmgr" extension successfully installed
+    NOTICE: primary node record (id: 1) registered</programlisting>
+
+  <para>
+    Verify status of the cluster like this:
+  </para>
+  <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Connection string
+    ----+-------+---------+-----------+----------+--------------------------------------------------------
+     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr connect_timeout=2
+  </programlisting>
+  <para>
+    The record in the <literal>repmgr</literal> metadata table will look like this:
+  </para>
+  <programlisting>
+    repmgr=# SELECT * FROM repmgr.nodes;
+    -[ RECORD 1 ]----+-------------------------------------------------------
+    node_id          | 1
+    upstream_node_id |
+    active           | t
+    node_name        | node1
+    type             | primary
+    location         | default
+    priority         | 100
+    conninfo         | host=node1 dbname=repmgr user=repmgr connect_timeout=2
+    repluser         | repmgr
+    slot_name        |
+    config_file      | /etc/repmgr.conf</programlisting>
+  <para>
+    Each server in the replication cluster will have its own record. If <command>repmgrd</command>
+    is in use, the fields <literal>upstream_node_id</literal>, <literal>active</literal> and
+    <literal>type</literal> will be updated when the node's status or role changes.
+  </para>
+ </sect1>
+
+ <sect1 id="quickstart-standby-clone">
+  <title>Clone the standby server</title>
+  <para>
+   Create a <filename>repmgr.conf</filename> file on the standby server. It must contain at
+   least the same parameters as the primary's <filename>repmgr.conf</filename>, but with
+   the mandatory values <literal>node</literal>, <literal>node_name</literal>, <literal>conninfo</literal>
+   (and possibly <literal>data_directory</literal>) adjusted accordingly, e.g.:
+  </para>
+  <programlisting>
+    node=2
+    node_name=node2
+    conninfo='host=node2 user=repmgr dbname=repmgr connect_timeout=2'
+    data_directory='/var/lib/postgresql/data'
+  </programlisting>
+  <para>
+   Use the <command>--dry-run</command> option to check the standby can be cloned:
+  </para>
+  <programlisting>
+    $ repmgr -h node1 -U repmgr -d repmgr -f /etc/repmgr.conf standby clone --dry-run
+    NOTICE: using provided configuration file "/etc/repmgr.conf"
+    NOTICE: destination directory "/var/lib/postgresql/data" provided
+    INFO: connecting to source node
+    NOTICE: checking for available walsenders on source node (2 required)
+    INFO: sufficient walsenders available on source node (2 required)
+    NOTICE: standby will attach to upstream node 1
+    HINT: consider using the -c/--fast-checkpoint option
+    INFO: all prerequisites for "standby clone" are met</programlisting>
+  <para>
+    If no problems are reported, the standby can then be cloned with:
+  </para>
+  <programlisting>
+    $ repmgr -h node1 -U repmgr -d repmgr -f /etc/repmgr.conf standby clone
+
+    NOTICE: using configuration file "/etc/repmgr.conf"
+    NOTICE: destination directory "/var/lib/postgresql/data" provided
+    INFO: connecting to source node
+    NOTICE: checking for available walsenders on source node (2 required)
+    INFO: sufficient walsenders available on source node (2 required)
+    INFO: creating directory "/var/lib/postgresql/data"...
+    NOTICE: starting backup (using pg_basebackup)...
+    HINT: this may take some time; consider using the -c/--fast-checkpoint option
+    INFO: executing:
+      pg_basebackup -l "repmgr base backup" -D /var/lib/postgresql/data -h node1 -U repmgr -X stream
+    NOTICE: standby clone (using pg_basebackup) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example: pg_ctl -D /var/lib/postgresql/data start
+  </programlisting>
+  <para>
+   This has cloned the PostgreSQL data directory files from the primary <literal>node1</literal>
+   using PostgreSQL's <command>pg_basebackup</command> utility. A <filename>recovery.conf</filename>
+   file containing the correct parameters to start streaming from this primary server will be created
+   automatically.
+  </para>
+  <note>
+   <simpara>
+    By default, any configuration files in the primary's data directory will be
+    copied to the standby. Typically these will be <filename>postgresql.conf</filename>,
+    <filename>postgresql.auto.conf</filename>, <filename>pg_hba.conf</filename> and
+    <filename>pg_ident.conf</filename>. These may require modification before the standby
+    is started.
+   </simpara>
+  </note>
+  <para>
+   Make any adjustments to the standby's PostgreSQL configuration files now,
+   then start the server.
+  </para>
+  <para>
+   For more details on <command>repmgr standby clone</command>, see the
+   <link linkend="repmgr-standby-clone">command reference</link>.
+   A more detailed overview of cloning options is available in the
+   <link linkend="cloning-standbys">administration manual</link>.
+  </para>
+ </sect1>
+
+ <sect1 id="quickstart-verify-replication">
+  <title>Verify replication is functioning</title>
+  <para>
+   Connect to the primary server and execute:
+   <programlisting>
+    repmgr=# SELECT * FROM pg_stat_replication;
+    -[ RECORD 1 ]----+------------------------------
+    pid              | 19111
+    usesysid         | 16384
+    usename          | repmgr
+    application_name | node2
+    client_addr      | 192.168.1.12
+    client_hostname  |
+    client_port      | 50378
+    backend_start    | 2017-08-28 15:14:19.851581+09
+    backend_xmin     |
+    state            | streaming
+    sent_location    | 0/7000318
+    write_location   | 0/7000318
+    flush_location   | 0/7000318
+    replay_location  | 0/7000318
+    sync_priority    | 0
+    sync_state       | async</programlisting>
+   This shows that the previously cloned standby (<literal>node2</literal> shown in the field
+   <literal>application_name</literal>) has connected to the primary from IP address
+   <literal>192.168.1.12</literal>.
+  </para>
+  <para>
+    From PostgreSQL 9.6 you can also use the view
+    <ulink url="https://www.postgresql.org/docs/current/static/monitoring-stats.html#PG-STAT-WAL-RECEIVER-VIEW">
+    <literal>pg_stat_wal_receiver</literal></ulink> to check the replication status from the standby.
+
+   <programlisting>
+    repmgr=# SELECT * FROM pg_stat_wal_receiver;
+    Expanded display is on.
+    -[ RECORD 1 ]---------+--------------------------------------------------------------------------------
+    pid                   | 18236
+    status                | streaming
+    receive_start_lsn     | 0/3000000
+    receive_start_tli     | 1
+    received_lsn          | 0/7000538
+    received_tli          | 1
+    last_msg_send_time    | 2017-08-28 15:21:26.465728+09
+    last_msg_receipt_time | 2017-08-28 15:21:26.465774+09
+    latest_end_lsn        | 0/7000538
+    latest_end_time       | 2017-08-28 15:20:56.418735+09
+    slot_name             |
+    conninfo              | user=repmgr dbname=replication host=node1 application_name=node2
+   </programlisting>
+   Note that the <varname>conninfo</varname> value is that generated in <filename>recovery.conf</filename>
+   and will differ slightly from the primary's <varname>conninfo</varname> as set in <filename>repmgr.conf</filename> -
+   among others it will contain the connecting node's name as <varname>application_name</varname>.
+  </para>
+ </sect1>
+
+ <sect1 id="quickstart-register-standby">
+  <title>Register the standby</title>
+  <para>
+    Register the standby server with:
+    <programlisting>
+    $ repmgr -f /etc/repmgr.conf standby register
+    NOTICE: standby node "node2" (ID: 2) successfully registered</programlisting>
+  </para>
+  <para>
+    Check the node is registered by executing <command>repmgr cluster show</command> on the standby:
+    <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr</programlisting>
+  </para>
+  <para>
+   Both nodes are now registered with &repmgr; and the records have been copied to the standby server.
   </para>
  </sect1>
 

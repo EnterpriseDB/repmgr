@@ -23,10 +23,9 @@
 
   <abstract>
    <para>
-   Thisis the official documentation of repmgr &repmgrversion; for
-   use with PostgreSQL 9.4 - PostgreSQL 10.
-   It describes all the functionality that the current version of repmgr officially
-   supports.
+   Thisis the official documentation of &repmgr; &repmgrversion; for
+   use with PostgreSQL 9.3 - PostgreSQL 10.
+   It describes the functionality supported by the current version of &repmgr;.
    </para>
 
    <para>
@@ -69,8 +68,14 @@
   <title>repmgr administration manual</title>
 
   &configuration;
+  &cloning-standbys;
+  &command-reference;
  </part>
 
+
  &appendix-signatures;
+
+ <![%include-index;[&bookindex;]]>
+ <![%include-xslt-index;[<index id="bookindex"></index>]]>
 
 </book>

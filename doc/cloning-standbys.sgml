@@ -1,0 +1,162 @@
+<chapter id="cloning-standbys" xreflabel="cloning standbys">
+ <title>Cloning standbys</title>
+ <para>
+ </para>
+
+ <sect1 id="cloning-from-barman" xreflabel="Cloning from Barman">
+   <indexterm><primary>Barman</primary></indexterm>
+   <title>Cloning a standby from Barman</title>
+   <para>
+    <xref linkend="repmgr-standby-clone"> can use
+    <ulink url="https://www.2ndquadrant.com/">2ndQuadrant</ulink>'s
+    <ulink url="https://www.pgbarman.org/">Barman</ulink> application
+    to clone a standby (and also as a fallback source for WAL files).
+   </para>
+   <tip>
+    <simpara>
+     Barman (aka PgBarman) should be considered as an integral part of any
+     PostgreSQL replication cluster. For more details see:
+     <ulink url="https://www.pgbarman.org/">https://www.pgbarman.org/</ulink>.
+    </simpara>
+   </tip>
+   <para>
+    Barman support provides the following advantages:
+    <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <para>
+       the primary node does not need to perform a new backup every time a
+       new standby is cloned
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       a standby node can be disconnected for longer periods without losing
+       the ability to catch up, and without causing accumulation of WAL
+       files on the primary node
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       WAL management on the primary becomes much easier as there's no need
+       to use replication slots, and <varname>wal_keep_segments</varname>
+       does not need to be set.
+     </para>
+    </listitem>
+   </itemizedlist>
+   </para>
+
+  <sect2 id="cloning-from-barman-prerequisites" xreflabel="Prerequisites for cloning from Barman">
+   <title>Prerequisites for cloning from Barman</title>
+   <para>
+    In order to enable Barman support for <command>repmgr standby clone</command>, following
+    prerequisites must be met:
+   <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <para>
+        the <varname>barman_server</varname> setting in <filename>repmgr.conf</filename> is the same as the
+        server configured in Barman;
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+        the <varname>barman_host</varname> setting in <filename>repmgr.conf</filename> is set to the SSH
+        hostname of the Barman server;
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+        the <varname>restore_command</varname> setting in <filename>repmgr.conf</filename> is configured to
+        use a copy of the <command>barman-wal-restore</command> script shipped with the
+        <literal>barman-cli</literal> package (see below);
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+        the Barman catalogue includes at least one valid backup for this  server.
+      </para>
+     </listitem>
+   </itemizedlist>
+   </para>
+   <note>
+    <simpara>
+     Barman support is automatically enabled if <varname>barman_server</varname>
+     is set. Normally it is good practice to use Barman, for instance
+     when fetching a base backup while cloning a standby; in any case,
+     Barman mode can be disabled using the <literal>--without-barman</literal>
+     command line option.
+    </simpara>
+   </note>
+   <tip>
+    <simpara>
+      If you have a non-default SSH configuration on the Barman
+      server, e.g. using a port other than 22, then you can set those
+      parameters in a dedicated Host section in <filename>~/.ssh/config</filename>
+      corresponding to the value of<varname>barman_host</varname> in
+      <filename>repmgr.conf</filename>. See the <literal>Host</literal>
+      section in <command>man 5 ssh_config</command> for more details.
+    </simpara>
+   </tip>
+   <para>
+    It's now possible to clone a standby from Barman, e.g.:
+    <programlisting>
+    NOTICE: using configuration file "/etc/repmgr.conf"
+    NOTICE: destination directory "/var/lib/postgresql/data" provided
+    INFO: connecting to Barman server to verify backup for test_cluster
+    INFO: checking and correcting permissions on existing directory "/var/lib/postgresql/data"
+    INFO: creating directory "/var/lib/postgresql/data/repmgr"...
+    INFO: connecting to Barman server to fetch server parameters
+    INFO: connecting to upstream node
+    INFO: connected to source node, checking its state
+    INFO: successfully connected to source node
+    DETAIL: current installation size is 29 MB
+    NOTICE: retrieving backup from Barman...
+    receiving file list ...
+    (...)
+    NOTICE: standby clone (from Barman) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example: pg_ctl -D /var/lib/postgresql/data start</programlisting>
+
+   </para>
+  </sect2>
+  <sect2 id="cloning-from-barman-restore-command" xreflabel="Using Barman as a WAL file source">
+   <title>Using Barman as a WAL file source</title>
+   <para>
+    As a fallback in case streaming replication is interrupted, PostgreSQL can optionally
+    retrieve WAL files from an archive, such as that provided by Barman. This is done by
+    setting <varname>restore_command</varname> in <filename>recovery.conf</filename> to
+    a valid shell command which can retrieve a specified WAL file from the archive.
+   </para>
+   <para>
+     <command>barman-wal-restore</command> is a Python script provided as part of the <literal>barman-cli</literal>
+     package (Barman 2.0 and later; for Barman 1.x the script is provided separately as
+     <command>barman-wal-restore.py</command>) which performs this function for Barman.
+   </para>
+   <para>
+    To use <command>barman-wal-restore</command> with &repmgr;
+    and assuming Barman is located on the <literal>barmansrv</literal> host
+    and that <command>barman-wal-restore</command> is located as an executable at
+    <filename>/usr/bin/barman-wal-restore</filename>,
+    <filename>repmgr.conf</filename> should include the following lines:
+    <programlisting>
+    barman_host=barmansrv
+    barman_server=somedb
+    restore_command=/usr/bin/barman-wal-restore barmansrv somedb %f %p</programlisting>
+   </para>
+   <note>
+    <simpara>
+      <command>barman-wal-restore</command> supports command line switches to
+      control parallelism (<literal>--parallel=N</literal>) and compression (
+      <literal>--bzip2</literal>, <literal>--gzip</literal>).
+    </simpara>
+   </note>
+   <note>
+    <para>
+     To use a non-default Barman configuration file on the Barman server,
+     specify this in <filename>repmgr.conf</filename> with <filename>barman_config</filename>:
+     <programlisting>
+      barman_config=/path/to/barman.conf</programlisting>
+    </para>
+   </note>
+  </sect2>
+ </sect1>
+</chapter>
