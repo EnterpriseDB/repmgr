@@ -217,7 +217,9 @@ Simply:
 
     ./configure && make install
 
-Ensure `pg_config` for the target PostgreSQL version is in `$PATH`.
+Ensure `pg_config` for the target PostgreSQL version is in `$PATH`, and that you
+have installed the development package for the postgres version you are compiling
+against.
 
 
 Configuration
@@ -450,13 +452,12 @@ metadata objects, and adds a metadata record for the primary server:
     NOTICE: "repmgr" extension successfully installed
     NOTICE: primary node record (id: 1) registered
 
-Verify status of the cluster like this:
+Verify status of the cluster like this by using the `repmgr cluster show`
+command:
 
-    $ repmgr -f /etc/repmgr.conf cluster show
-
-     ID | Name  | Role    | Status    | Upstream | Connection string
-    ----+-------+---------+-----------+----------+--------------------------------------
-     1  | node1 | primary | * running |          | host=node1 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
 
 The record in the `repmgr` metadata table will look like this:
 
@@ -1146,7 +1147,7 @@ If WAL file archiving is set up, check that there is no backlog of files waiting
 to be archived, as PostgreSQL will not finally shut down until all these have been
 archived. If there is a backlog exceeding `archive_ready_warning` WAL files,
 `repmgr` emit a warning before attempting to perform a switchover; you can also check
-annually with `repmgr node check --archive-ready`.
+manually with `repmgr node check --archive-ready`.
 
 Ensure that `repmgrd` is *not* running to prevent it unintentionally promoting a node.
 
@@ -1569,7 +1570,7 @@ in the main data centre and promoted a standby among themselves.
 
 Previous `repmgr` versions used the concept of a `witness server` to
 artificially create a quorum of servers in a particular location, ensuring
-that nodes in  another location will not elect a new primary if they
+that nodes in another location will not elect a new primary if they
 are unable to see the majority of nodes. However this approach does not
 scale well, particularly with more complex replication setups, e.g.
 where the majority of nodes are located outside of the primary datacentre.
