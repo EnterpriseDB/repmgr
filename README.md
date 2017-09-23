@@ -455,6 +455,7 @@ metadata objects, and adds a metadata record for the primary server:
 Verify status of the cluster like this by using the `repmgr cluster show`
 command:
 
+    $ repmgr -f /etc/repmgr.conf cluster show
      ID | Name  | Role    | Status    | Upstream | Location | Connection string
     ----+-------+---------+-----------+----------+----------+--------------------------------------
      1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
