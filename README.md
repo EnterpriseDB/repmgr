@@ -15,10 +15,9 @@ PostgreSQL 9.4 and 9.3 are supported, with some restrictions.
 
 ### BDR support
 
-`repmgr 4` supports monitoring of a two-node BDR 2.0 cluster. PostgreSQL 9.6 is
-required for BDR 2.0. Note that BDR 2.0 is not publicly available; please
-contact 2ndQuadrant for details. `repmgr 4` will support future public BDR
-releases.
+`repmgr 4` supports monitoring of a two-node BDR 2.0 cluster on PostgreSQL 9.6
+only. Note that BDR 2.0 is not publicly available; please contact 2ndQuadrant
+for details. `repmgr 4` will support future public BDR releases.
 
 Changes in repmgr4 and backwards compatibility
 -----------------------------------------------
@@ -1722,7 +1721,7 @@ The following commands are available:
         Node "node1":
             PostgreSQL version: 10beta1
             Total data size: 30 MB
-            Conninfo: host=localhost dbname=repmgr user=repmgr connect_timeout=2
+            Conninfo: host=node1 dbname=repmgr user=repmgr connect_timeout=2
             Role: primary
             WAL archiving: off
             Archive command: (none)
@@ -1790,9 +1789,9 @@ The following commands are available:
     *NOTE*: `pg_rewind` *requires* that either `wal_log_hints` is enabled, or that
     data checksums were enabled when the cluster was initialized. See the
     `pg_rewind` documentation for details:
+
          https://www.postgresql.org/docs/current/static/app-pgrewind.html
 
-     
 
 * `cluster show`
 
@@ -1810,10 +1809,10 @@ The following commands are available:
         $ repmgr -f /etc/repmgr.conf cluster show
 
          ID | Name  | Role    | Status    | Upstream | Location | Connection string
-        ----+-------+---------+-----------+----------+----------+-----------------------------------------
-         1  | node1 | primary | * running |          | default  | host=db_node1 dbname=repmgr user=repmgr
-         2  | node2 | standby |   running | node1    | default  | host=db_node2 dbname=repmgr user=repmgr
-         3  | node3 | standby |   running | node1    | default  | host=db_node3 dbname=repmgr user=repmgr
+        ----+-------+---------+-----------+----------+----------+--------------------------------------
+         1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
+         2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
+         3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr
 
     To show database connection errors when polling nodes, run the command in
     `--verbose` mode.
