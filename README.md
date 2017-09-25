@@ -188,7 +188,7 @@ system.
   at the same time as each `repmgr` release, as it can take some days for
   them to become available via the main PGDG repository. See here for details:
 
-     http://repmgr.org/yum-repository.html
+     https://repmgr.org/yum-repository.html
 
 - Debian/Ubuntu: the most recent `repmgr` packages are available from the
   PostgreSQL Community APT repository ( http://apt.postgresql.org/ ).
@@ -208,7 +208,7 @@ See `PACKAGES.md` for details on building .deb and .rpm packages from the
 Release tarballs are also available:
 
     https://github.com/2ndQuadrant/repmgr/releases
-    http://repmgr.org/
+    https://repmgr.org/
 
 
 ### Building from source
