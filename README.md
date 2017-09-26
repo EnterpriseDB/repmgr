@@ -1087,22 +1087,25 @@ and in its simplest form looks like this:
 
     $ repmgr -f /etc/repmgr.conf standby switchover
     NOTICE: executing switchover on node "node2" (ID: 2)
+    INFO: searching for primary node
+    INFO: checking if node 1 is primary
+    INFO: current primary node is 1
+    INFO: SSH connection to host "localhost" succeeded
+    INFO: archive mode is "off"
+    INFO: replication lag on this standby is 0 seconds
+    NOTICE: local node "node2" (ID: 2) will be promoted to primary; current primary "node1" (ID: 1) will be demoted to standby
+    NOTICE: stopping current primary node "node1" (ID: 1)
     NOTICE: issuing CHECKPOINT
-    NOTICE: executing server command "pg_ctl -l /var/log/postgres/startup.log -D '/var/lib/pgsql/data' -m fast -W stop"
+    DETAIL: executing server command "pg_ctl -l /var/log/postgres/startup.log -D '/var/lib/pgsql/data' -m fast -W stop"
     INFO: checking primary status; 1 of 6 attempts
-    NOTICE: current primary has been shut down at location 0/30005F8
-    NOTICE: promoting standby
-    DETAIL: promoting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' promote"
-    waiting for server to promote.... done
-    server promoted
-    INFO: reconnecting to promoted server
+    NOTICE: current primary has been cleanly shut down at location 0/3001460
+    NOTICE: promoting standby to primary
+    DETAIL: promoting server "node2" (ID: 2) using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' promote"
+    server promoting
     NOTICE: STANDBY PROMOTE successful
-    DETAIL: node 2 was successfully promoted to primary
-    INFO: changing node 1's primary to node 2
-    NOTICE: restarting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' restart"
-    pg_ctl: PID file "/var/lib/pgsql/data/postmaster.pid" does not exist
-    Is server running?
-    starting server anyway
+    DETAIL: server "node2" (ID: 2) was successfully promoted to primary
+    INFO: setting node 1's primary to node 2
+    NOTICE: starting server using  "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' restart"
     NOTICE: NODE REJOIN successful
     DETAIL: node 1 is now attached to node 2
     NOTICE: switchover was successful
@@ -1147,7 +1150,7 @@ current primary.
 If WAL file archiving is set up, check that there is no backlog of files waiting
 to be archived, as PostgreSQL will not finally shut down until all these have been
 archived. If there is a backlog exceeding `archive_ready_warning` WAL files,
-`repmgr` emit a warning before attempting to perform a switchover; you can also check
+`repmgr` will emit a warning before attempting to perform a switchover; you can also check
 manually with `repmgr node check --archive-ready`.
 
 Ensure that `repmgrd` is *not* running to prevent it unintentionally promoting a node.
@@ -1238,7 +1241,7 @@ and the cluster status will now look like this:
      https://www.postgresql.org/docs/current/static/app-pgrewind.html
 - `repmgrd` should not be running with setting `failover=automatic` in
   `repmgr.conf` when a switchover is carried out, otherwise the `repmgrd`
-  may try and promote a standby by itself.
+  daemon may try and promote a standby by itself.
 
 We hope to remove some of these restrictions in future versions of `repmgr`.
 
@@ -1271,7 +1274,7 @@ Automatic failover with `repmgrd`
 ---------------------------------
 
 `repmgrd` is a management and monitoring daemon which runs on each node in
-a replication cluster and. It can automate actions such as failover and
+a replication cluster. It can automate actions such as failover and
 updating standbys to follow the new primary, as well as providing monitoring
 information about the state of each standby.
 
@@ -1333,7 +1336,7 @@ log output, which at log level `INFO` will look like this:
 Each `repmgrd` should also have recorded its successful startup as an event:
 
     $ repmgr -f /etc/repmgr.conf cluster event --event=repmgrd_start
-    Node ID | Name  | Event         | OK | Timestamp           | Details
+     Node ID | Name  | Event         | OK | Timestamp           | Details
     ---------+-------+---------------+----+---------------------+-------------------------------------------------------------
      3       | node3 | repmgrd_start | t  | 2017-08-24 17:35:54 | monitoring connection to upstream node "node1" (node ID: 1)
      2       | node2 | repmgrd_start | t  | 2017-08-24 17:35:50 | monitoring connection to upstream node "node1" (node ID: 1)
