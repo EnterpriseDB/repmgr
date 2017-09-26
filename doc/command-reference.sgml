@@ -147,7 +147,7 @@
    standby.
   </para>
 
-  <sect2 id="rempgr-standby-register-wait" xreflabel="rempgr standby register --wait">
+  <sect2 id="repmgr-standby-register-wait" xreflabel="repmgr standby register --wait">
    <title>Waiting for the registration to propagate to the standby</title>
    <para>
      Depending on your environment and workload, it may take some time for
@@ -478,10 +478,31 @@
    What happened is that <command>repmgr cluster crosscheck</command> merged its own
    <command>repmgr cluster matrix</command> with the <command>repmgr cluster matrix</command>
    output from <literal>node2</literal>; the latter is able to connect to <literal>node3</literal>
-   and therefore determine the state ofx outbound connections from that node.
+   and therefore determine the state of outbound connections from that node.
   </para>
-
  </sect1>
 
+ <sect1 id="repmgr-cluster-cleanup" xreflabel="repmgr cluster cleanup">
+  <indexterm>
+    <primary>repmgr cluster cleanup</primary>
+  </indexterm>
+  <title>repmgr cluster cleanup</title>
+  <para>
+   Purges monitoring history from the <literal>repmgr.monitoring_history</literal> table to
+   prevent excessive table growth. Use the <literal>-k/--keep-history</literal> to specify the
+   number of days of monitoring history to retain. This command can be used
+   manually or as a cronjob.
+  </para>
+  <para>
+   This command requires a valid <filename>repmgr.conf</filename> file for the node on which it is
+   executed; no additional arguments are required.
+  </para>
+  <note>
+   <simpara>
+    Monitoring history will only be written if <command>repmgrd</command> is active, and
+    <varname>monitoring_history</varname> is set to <literal>true</literal> in <filename>repmgr.conf</filename>.
+   </simpara>
+  </note>
+ </sect1>
 
 </chapter>
