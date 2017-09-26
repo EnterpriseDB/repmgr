@@ -5,6 +5,44 @@
    Overview of repmgr commands.
  </para>
 
+ <sect1 id="repmgr-primary-register" xreflabel="repmgr primary register">
+  <indexterm><primary>repmgr primary register</primary></indexterm>
+  <title>repmgr primary register</title>
+  <para>
+   <command>repmgr primary register</command> registers a primary node in a
+   streaming replication cluster, and configures it for use with repmgr, including
+   installing the &repmgr; extension. This command needs to be executed before any
+   standby nodes are registered.
+  </para>
+  <para>
+   Execute with the <literal>--dry-run</literal> option to check what would happen without
+   actually registering the primary.
+  </para>
+  <para>
+   <command>repmgr master register</command> can be used as an alias for
+   <command>repmgr primary register</command>/
+  </para>
+ </sect1>
+
+ <sect1 id="repmgr-primary-unregister" xreflabel="repmgr primary unregister">
+  <indexterm><primary>repmgr primary unregister</primary></indexterm>
+  <title>repmgr primary unregister</title>
+  <para>
+   <command>repmgr primary register</command> unregisters an inactive primary node
+   from the `repmgr` metadata. This is typically when the primary has failed and is
+   being removed from the cluster after a new primary has been promoted.
+  </para>
+  <para>
+   Execute with the <literal>--dry-run</literal> option to check what would happen without
+   actually unregistering the node.
+  </para>
+
+  <para>
+   <command>repmgr master unregister</command> can be used as an alias for
+   <command>repmgr primary unregister</command>/
+  </para>
+ </sect1>
+
  <sect1 id="repmgr-standby-clone" xreflabel="repmgr standby clone">
   <indexterm>
     <primary>repmgr standby clone</primary>
@@ -336,7 +374,7 @@
   <indexterm>
     <primary>repmgr cluster matrix</primary>
   </indexterm>
-  <title>repmgr cluster matric</title>
+  <title>repmgr cluster matrix</title>
   <para>
     <command>repmgr cluster matrix</command> runs  <command>repmgr cluster show</command> on each
     node and arranges the results in a matrix, recording success or failure.
