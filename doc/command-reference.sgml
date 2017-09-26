@@ -259,20 +259,6 @@
 
 
 
- <sect1 id="repmgr-node-rejoin" xreflabel="repmgr node rejoin">
-  <indexterm>
-    <primary>repmgr node rejoin</primary>
-  </indexterm>
-  <title>repmgr node rejoin</title>
-  <para>
-   Enables a dormant (stopped) node to be rejoined to the replication cluster.
-  </para>
-  <para>
-    This can optionally use <command>pg_rewind</command> to re-integrate a node which has diverged
-    from the rest of the cluster, typically a failed primary.
-  </para>
- </sect1>
-
 
  <sect1 id="repmgr-standby-switchover" xreflabel="repmgr standby switchover">
   <indexterm>
@@ -301,6 +287,122 @@
     For more details see the section <xref linkend="performing-switchover">.
   </para>
  </sect1>
+
+
+ <sect1 id="repmgr-node-status" xreflabel="repmgr node status">
+  <indexterm>
+    <primary>repmgr node status</primary>
+  </indexterm>
+  <title>repmgr node status</title>
+  <para>
+   Displays an overview of a node's basic information and replication
+   status. This command must be run on the local node.
+  </para>
+  <para>
+   Sample output (execute <command>repmgr node status</command>):
+   <programlisting>
+        Node "node1":
+            PostgreSQL version: 10beta1
+            Total data size: 30 MB
+            Conninfo: host=node1 dbname=repmgr user=repmgr connect_timeout=2
+            Role: primary
+            WAL archiving: off
+            Archive command: (none)
+            Replication connections: 2 (of maximal 10)
+            Replication slots: 0 (of maximal 10)
+            Replication lag: n/a
+   </programlisting>
+  </para>
+  <para>
+    See <xref linkend="repmgr-node-check"> to diagnose issues.
+  </para>
+ </sect1>
+
+ <sect1 id="repmgr-node-check" xreflabel="repmgr node check">
+  <indexterm>
+    <primary>repmgr node check</primary>
+  </indexterm>
+  <title>repmgr node check</title>
+  <para>
+    Performs some health checks on a node from a replication perspective.
+    This command must be run on the local node.
+  </para>
+  <para>
+   Sample output (execute <command>repmgr node check</command>):
+   <programlisting>
+       Node "node1":
+            Server role: OK (node is primary)
+            Replication lag: OK (N/A - node is primary)
+            WAL archiving: OK (0 pending files)
+            Downstream servers: OK (2 of 2 downstream nodes attached)
+            Replication slots: OK (node has no replication slots)
+   </programlisting>
+  </para>
+  <para>
+   Additionally each check can be performed individually by supplying
+   an additional command line parameter, e.g.:
+   <programlisting>
+     $ repmgr node check --role
+     OK (node is primary)
+   </programlisting>
+  </para>
+  <para>
+   Parameters for individual checks are as follows:
+    <itemizedlist spacing="compact" mark="bullet">
+
+     <listitem>
+      <simpara>
+        <literal>--role</literal>: checks if the node has the expected role
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <literal>--replication-lag</literal>: checks if the node is lagging by more than
+        <varname>replication_lag_warning</varname> or <varname>replication_lag_critical</varname>
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <literal>--archive-ready</literal>: checks for WAL files which have not yet been archived
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <literal>--downstream</literal>: checks that the expected downstream nodes are attached
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <literal>--slots</literal>: checks there are no inactive replication slots
+      </simpara>
+     </listitem>
+
+    </itemizedlist>
+  </para>
+  <para>
+   Individual checks can also be output in a Nagios-compatible format by additionally
+   providing the option <literal>--nagios</literal>.
+  </para>
+ </sect1>
+
+ <sect1 id="repmgr-node-rejoin" xreflabel="repmgr node rejoin">
+  <indexterm>
+    <primary>repmgr node rejoin</primary>
+  </indexterm>
+  <title>repmgr node rejoin</title>
+  <para>
+   Enables a dormant (stopped) node to be rejoined to the replication cluster.
+  </para>
+  <para>
+    This can optionally use <command>pg_rewind</command> to re-integrate a node which has diverged
+    from the rest of the cluster, typically a failed primary.
+  </para>
+ </sect1>
+
 
  <sect1 id="repmgr-cluster-show" xreflabel="repmgr cluster show">
   <indexterm>
