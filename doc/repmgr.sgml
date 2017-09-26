@@ -71,6 +71,7 @@
   &cloning-standbys;
   &promoting-standby;
   &follow-new-primary;
+  &switchover;
   &command-reference;
  </part>
 

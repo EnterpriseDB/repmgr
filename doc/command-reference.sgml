@@ -149,7 +149,7 @@
  </sect1>
 
 
- <sect1 id="repmgr-standby-unregister" xreflabel="repmgr standby inregister">
+ <sect1 id="repmgr-standby-unregister" xreflabel="repmgr standby unregister">
   <indexterm><primary>repmgr standby unregister</primary></indexterm>
   <title>repmgr standby unregister</title>
   <para>
@@ -232,6 +232,35 @@
   <para>
     This can optionally use <command>pg_rewind</command> to re-integrate a node which has diverged
     from the rest of the cluster, typically a failed primary.
+  </para>
+ </sect1>
+
+
+ <sect1 id="repmgr-standby-switchover" xreflabel="repmgr standby switchover">
+  <indexterm>
+    <primary>repmgr standby switchover</primary>
+  </indexterm>
+  <title>repmgr standby switchover</title>
+  <para>
+    Promotes a standby to primary and demotes the existing primary to a standby.
+    This command must be run on the standby to be promoted, and requires a
+    passwordless SSH connection to the current primary.
+  </para>
+  <para>
+    If other standbys are connected to the demotion candidate, &repmgr; can instruct
+    these to follow the new primary if the option <literal>--siblings-follow</literal>
+    is specified.
+  </para>
+  <para>
+    Execute with the <literal>--dry-run</literal> option to test the switchover as far as
+    possible without actually changing the status of either node.
+  </para>
+  <para>
+    <command>repmgrd</command> should not be active on any nodes while a switchover is being
+    executed. This restriction may be lifted in a later version.
+  </para>
+  <para>
+    For more details see the section <xref linkend="performing-switchover">.
   </para>
  </sect1>
 

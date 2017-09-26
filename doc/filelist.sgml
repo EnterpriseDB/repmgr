@@ -42,6 +42,7 @@
 <!ENTITY cloning-standbys  SYSTEM "cloning-standbys.sgml">
 <!ENTITY promoting-standby  SYSTEM "promoting-standby.sgml">
 <!ENTITY follow-new-primary  SYSTEM "follow-new-primary.sgml">
+<!ENTITY switchover  SYSTEM "switchover.sgml">
 <!ENTITY command-reference SYSTEM "command-reference.sgml">
 <!ENTITY appendix-signatures      SYSTEM "appendix-signatures.sgml">
 
