@@ -15,8 +15,6 @@ DATA = \
 
 REGRESS = repmgr_extension
 
-DOCS = README.md repmgr.conf.sample
-
 # Hacky workaround to install the binaries
 SCRIPTS_built = repmgr repmgrd
 
