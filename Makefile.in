@@ -91,8 +91,8 @@ maintainer-additional-clean: clean
 	rm -f Makefile
 	@rm -rf autom4te.cache/
 
-ifeq ($(MAJORVERSION),9.4)
-# We must emulate SCRIPTS_built for Pg 9.4 as PGXS doesn't support it
+ifeq ($(MAJORVERSION),$(filter $(MAJORVERSION),9.3 9.4))
+# We must emulate SCRIPTS_built for Pg < 9.5 as PGXS doesn't support it
 install: install-scripts
 install-scripts:
 	$(INSTALL_SCRIPT) $(SCRIPTS_built) '$(DESTDIR)$(bindir)/'
