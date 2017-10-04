@@ -30,7 +30,7 @@ static void tablespace_list_append(t_configuration_options *options, const char 
 static void exit_with_errors(ItemList *config_errors);
 
 const static char *_progname = NULL;
-static char config_file_path[MAXPGPATH];
+static char config_file_path[MAXPGPATH] = "";
 static bool config_file_provided = false;
 bool config_file_found = false;
 
