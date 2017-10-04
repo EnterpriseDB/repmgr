@@ -1,2 +1,281 @@
-4.0     2017-09
+4.0     2017-10-04
+        Complete rewrite with many changes; see file "doc/upgrading-from-repmgr3.md"
+        for details.
+
+3.3.2   2017-06-01
+        Add support for PostgreSQL 10 (Ian)
+        repmgr: ensure --replication-user option is honoured when passing database
+          connection parameters as a conninfo string (Ian)
+        repmgr: improve detection of pg_rewind on remote server (Ian)
+        repmgr: add DETAIL log output for additional clarification of error messages (Ian)
+        repmgr: suppress various spurious error messages in `standby follow` and
+          `standby switchover` (Ian)
+        repmgr: add missing `-P` option (Ian)
+        repmgrd: monitoring statistic reporting fixes (Ian)
+
+3.3.1   2017-03-13
+        repmgrd: prevent invalid apply lag value being written to the
+          monitoring table (Ian)
+        repmgrd: fix error in XLogRecPtr conversion when calculating
+          monitoring statistics (Ian)
+        repmgr: if replication slots in use, where possible delete slot on old
+          upstream node after following new upstream (Ian)
+        repmgr: improve logging of rsync actions (Ian)
+        repmgr: improve `standby clone` when synchronous replication in use (Ian)
+        repmgr: stricter checking of allowed node id values
+        repmgr: enable `master register --force` when there is a foreign key
+          dependency from a standby node (Ian)
+
+3.3     2016-12-27
+        repmgr: always log to STDERR even if log facility defined (Ian)
+        repmgr: add --log-to-file to log repmgr output to the defined
+          log facility (Ian)
+        repmgr: improve handling of command line parameter errors (Ian)
+        repmgr: add option --upstream-conninfo to explicitly set
+          'primary_conninfo' in recovery.conf (Ian)
+        repmgr: enable a standby to be registered which isn't running (Ian)
+        repmgr: enable `standby register --force` to update a node record
+          with cascaded downstream node records (Ian)
+        repmgr: add option `--no-conninfo-password` (Abhijit, Ian)
+        repmgr: add initial support for PostgreSQL 10.0 (Ian)
+        repmgr: escape values in primary_conninfo if needed (Ian)
+
+3.2.1   2016-10-24
+        repmgr: require a valid repmgr cluster name unless -F/--force
+          supplied (Ian)
+        repmgr: check master server is registered with repmgr before
+          cloning (Ian)
+        repmgr: ensure data directory defaults to that of the source node (Ian)
+        repmgr: various fixes to Barman cloning mode (Gianni, Ian)
+        repmgr: fix `repmgr cluster crosscheck` output (Ian)
+
+3.2     2016-10-05
+        repmgr: add support for cloning from a Barman backup (Gianni)
+        repmgr: add commands `standby matrix` and `standby crosscheck` (Gianni)
+        repmgr: suppress connection error display in `repmgr cluster show`
+          unless `--verbose` supplied (Ian)
+        repmgr: add commands `witness register` and `witness unregister` (Ian)
+        repmgr: enable `standby unregister` / `witness unregister` to be
+          executed for a node which is not running (Ian)
+        repmgr: remove deprecated command line options --initdb-no-pwprompt and
+           -l/--local-port (Ian)
+        repmgr: before cloning with pg_basebackup, check that sufficient free
+           walsenders are available (Ian)
+        repmgr: add option `--wait-sync` for `standby register` which causes
+           repmgr to wait for the registered node record to synchronise to
+           the standby (Ian)
+        repmgr: add option `--copy-external-config-files` for files outside
+           of the data directory (Ian)
+        repmgr: only require `wal_keep_segments` to be set in certain corner
+           cases (Ian)
+        repmgr: better support cloning from a node other than the one to
+           stream from (Ian)
+        repmgrd: add configuration options to override the default pg_ctl
+           commands (Jarkko Oranen, Ian)
+        repmgrd: don't start if node is inactive and failover=automatic (Ian)
+        packaging: improve "repmgr-auto" Debian package (Gianni)
+
+
+3.1.5   2016-08-15
+        repmgrd: in a failover situation, prevent endless looping when
+          attempting to establish the status of a node with
+          `failover=manual` (Ian)
+        repmgrd: improve handling of failover events on standbys with
+          `failover=manual`, and create a new event notification
+          for this, `standby_disconnect_manual` (Ian)
+        repmgr: add further event notifications (Gianni)
+        repmgr: when executing `standby switchover`, don't collect remote
+          command output unless required (Gianni, Ian)
+        repmgrd: improve standby monitoring query (Ian, based on suggestion
+          from  Álvaro)
+        repmgr: various command line handling improvements (Ian)
+
+3.1.4   2016-07-12
+        repmgr: new configuration option for setting "restore_command"
+          in the recovery.conf file generated by repmgr (Martín)
+        repmgr: add --csv option to "repmgr cluster show" (Gianni)
+        repmgr: enable provision of a conninfo string as the -d/--dbname
+          parameter, similar to other PostgreSQL utilities (Ian)
+        repmgr: during switchover operations improve detection of
+          demotion candidate shutdown (Ian)
+        various bugfixes and documentation updates (Ian, Martín)
+
+3.1.3   2016-05-17
+        repmgrd: enable monitoring when a standby is catching up by
+          replaying archived WAL (Ian)
+        repmgrd: when upstream_node_id is NULL, assume upstream node
+          to be current master (Ian)
+        repmgrd: check for reappearance of the master node if standby
+          promotion fails (Ian)
+        improve handling of rsync failure conditions (Martín)
+
+3.1.2   2016-04-12
+        Fix pg_ctl path generation in do_standby_switchover() (Ian)
+        Regularly sync witness server repl_nodes table (Ian)
+        Documentation improvements (Gianni, dhyannataraj)
+        (Experimental) ensure repmgr handles failover slots when copying
+          in rsync mode (Craig, Ian)
+        rsync mode handling fixes (Martín)
+        Enable repmgr to compile against 9.6devel (Ian)
+
+3.1.1   2016-02-24
+        Add '-P/--pwprompt' option for "repmgr create witness" (Ian)
+        Prevent repmgr/repmgrd running as root (Ian)
+
+3.1.0   2016-02-01
+        Add "repmgr standby switchover" command (Ian)
+        Revised README file (Ian)
+        Remove requirement for 'archive_mode' to be enabled (Ian)
+        Improve -?/--help output, showing default values if relevant (Ian)
+        Various bugfixes to command line/configuration parameter handling (Ian)
+
+3.0.3   2016-01-04
+        Create replication slot if required before base backup is run (Abhijit)
+        standy clone: when using rsync, clean up "pg_replslot" directory (Ian)
+        Improve --help output (Ian)
+        Improve config file parsing (Ian)
+        Various logging output improvements, including explicit HINTS (Ian)
+        Add --log-level to explicitly set log level on command line (Ian)
+        Repurpose --verbose to display extra log output (Ian)
+        Add --terse to hide hints and other non-critical output (Ian)
+        Reference internal functions with explicit catalog path (Ian)
+        When following a new primary, have repmgr (not repmgrd) create the new slot (Ian)
+        Add /etc/repmgr.conf as a default configuration file location (Ian)
+        Prevent repmgrd's -v/--verbose option expecting a parameter (Ian)
+        Prevent invalid replication_lag values being written to the monitoring table (Ian)
+        Improve repmgrd behaviour when monitored standby node is temporarily
+          unavailable (Martín)
+
+3.0.2   2015-10-02
+        Improve handling of --help/--version options; and improve help output (Ian)
+        Improve handling of situation where logfile can't be opened (Ian)
+        Always pass -D/--pgdata option to pg_basebackup (Ian)
+        Bugfix: standby clone --force does not empty pg_xlog (Gianni)
+        Bugfix: autofailover with reconnect_attempts > 1 (Gianni)
+        Bugfix: ignore comments after values (soxwellfb)
+        Bugfix: handle string values in 'node' parameter correctly (Gregory Duchatelet)
+        Allow repmgr to be compiled with a newer libpq (Marco)
+        Bugfix: call update_node_record_set_upstream() for STANDBY FOLLOW (Tomas)
+        Update `repmgr --help` output (per Github report from renard)
+        Update tablespace remapping in --rsync-only mode for 9.5 and later (Ian)
+        Deprecate `-l/--local-port` option - the port can be extracted
+          from the conninfo string in repmgr.conf (Ian)
+        Add STANDBY UNREGISTER (Vik Fearing)
+        Don't fail with error when registering master if schema already defined (Ian)
+        Fixes to whitespace handling when parsing config file (Ian)
+
+3.0.1   2015-04-16
+        Prevent repmgrd from looping infinitely if node was not registered (Ian)
+        When promoting a standby, have repmgr (not repmgrd) handle metadata updates (Ian)
+        Re-use replication slot if it already exists (Ian)
+        Prevent a test SSH connection being made when not needed (Ian)
+        Correct monitoring table column names (Ian)
+
+3.0     2015-03-27
+        Require PostgreSQL 9.3 or later (Ian)
+        Use `pg_basebackup` by default (instead of `rsync`) to clone standby servers (Ian)
+        Use `pg_ctl promote` to promote a standby to primary
+        Enable tablespace remapping using `pg_basebackup` (in PostgreSQL 9.3 with `rsync`) (Ian)
+        Support cascaded standbys (Ian)
+        "pg_bindir" no longer required as a configuration parameter (Ian)
+        Enable replication slots to be used (PostgreSQL 9.4 and later (Ian)
+        Command line option "--check-upstream-config" (Ian)
+        Add event logging table and option to execute an external program when an event occurs (Ian)
+        General usability and logging message improvements (Ian)
+        Code consolidation and cleanup (Ian)
+
+2.0.3   2015-04-16
+        Add -S/--superuser option for witness database creation Ian)
+        Add -c/--fast-checkpoint option for cloning (Christoph)
+        Add option "--initdb-no-pwprompt" (Ian)
+
+2.0.2   2015-02-17
+        Add "--checksum" in rsync when using "--force" (Jaime)
+        Use createdb/createuser instead of psql (Jaime)
+        Fixes to witness creation and monitoring (wamonite)
+        Use default master port if none supplied (Martín)
+        Documentation fixes and improvements (Ian)
+
+2.0.1   2014-07-16
+        Documentation fixes and new QUICKSTART file (Ian)
+        Explicitly specify directories to ignore when cloning (Ian)
+        Fix log level for some log messages (Ian)
+        RHEL/CentOS specfile, init script and Makefile fixes (Nathan Van Overloop)
+        Debian init script and config file documentation fixes (József Kószó)
+        Typo fixes (Riegie Godwin Jeyaranchen, PriceChild)
+
+2.0stable 2014-01-30
+        Documentation fixes (Christian)
+        General refactoring, code quality improvements and stabilization work (Christian)
+        Added proper daemonizing (-d/--daemonize) (Christian)
+        Added PID file handling (-p/--pid-file) (Christian)
+        New config option: monitor_interval_secs (Christian)
+        New config option: retry_promote_interval (Christian)
+        New config option: logfile (Christian)
+        New config option: pg_bindir (Christian)
+        New config option: pgctl_options (Christian)
+
+2.0beta2 2013-12-19
+        Improve autofailover logic and algorithms (Jaime, Andres)
+        Ignore pg_log when cloning (Jaime)
+        Add timestamps to log line in stderr (Christian)
+        Correctly check wal_keep_segments (Jay Taylor)
+        Add a ssh_options parameter (Jay Taylor)
+
+2.0beta1 2012-07-27
+        Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
+        Add detection of master failure (Jaime)
+        Add the notion of a witness server (Jaime)
+        Add autofailover capabilities (Jaime)
+        Add a configuration parameter to indicate the script to execute on failover or follow (Jaime)
+        Make the monitoring optional and turned off by default, it can be turned on with --monitoring-history switch (Jaime)
+        Add tunables to specify number of retries to reconnect to master and the time between them (Jaime)
+
+1.2.0   2012-07-27
+        Test ssh connection before trying to rsync (Cédric)
+        Add CLUSTER SHOW command (Carlo)
+        Add CLUSTER CLEANUP command (Jaime)
+        Add function write_primary_conninfo (Marco)
+        Teach repmgr how to get tablespace's location in different pg version (Jaime)
+        Improve version message (Carlo)
+
+1.1.1   2012-04-18
+        Add --ignore-rsync-warning (Cédric)
+        Add strnlen for compatibility with OS X (Greg)
+        Improve performance of the repl_status view (Jaime)
+        Remove last argument from log_err (Jaime, Reported by Jeroen Dekkers)
+        Complete documentation about possible error conditions (Jaime)
+        Document how to clean history (Jaime)
+
+1.1.0   2011-03-09
+        Make options -U, -R and -p not mandatory (Jaime)
+
+1.1.0b1 2011-02-24
+        Fix missing "--force" option in help (Greg Smith)
+        Correct warning message for wal_keep_segments (Bas van Oostveen)
+        Add Debian build/usage docs (Bas, Hannu Krosing, Cedric Villemain)
+        Add Debian .deb packaging (Hannu)
+        Move configuration data into a structure (Bas, Gabriele Bartolini)
+        Make rsync options configurable (Bas)
+        Add syslog as alternate logging destination (Gabriele)
+        Change from using malloc to static memory allocations (Gabriele)
+        Add debugging messages after every query (Gabriele)
+        Parameterize schema name used for repmgr (Gabriele)
+        Avoid buffer overruns by using snprintf etc. (Gabriele)
+        Fix use of database query after close (Gabriele)
+        Add information about progress during "standby clone" (Gabriele)
+        Fix double free errors in repmgrd (Charles Duffy, Greg)
+        Make repmgr exit with an error code when encountering an error (Charles)
+        Standardize on error return codes, use in repmgrd too (Greg)
+        Add [un]install actions/SQL like most contrib modules (Daniel Farina)
+        Wrap all string construction and produce error on overflow (Daniel)
+        Correct freeing of memory from first_wal_segment (Daniel)
+        Allow creating recovery.conf file with a password (Daniel)
+        Inform when STANDBY CLONE sees an unused config file (Daniel)
+        Use 64-bit computation for WAL apply_lag (Greg)
+        Add info messages for database and general work done (Greg)
+        Map old verbose flag into a useful setting for the new logger (Greg)
+        Document repmgrd startup restrictions and log info about them (Greg)
+
+1.0.0   2010-12-05
         First public release
