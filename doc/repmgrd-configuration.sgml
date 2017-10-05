@@ -47,5 +47,28 @@
   <command>repmgr standby follow</command> will result in the node continuing to follow
   the original primary.
  </para>
+ <sect1 id="repmgrd-connection-settings">
+ <title>repmgrd connection settings</title>
+ <para>
+  In addition to the &repmgr; configuration settings, parameters in the
+  <varname>conninfo</varname> string influence how &repmgr; makes a network connection to
+  PostgreSQL. In particular, if another server in the replication cluster
+  is unreachable at network level, system network settings will influence
+  the length of time it takes to determine that the connection is not possible.
+ </para>
+ <para>
+  In particular explicitly setting a parameter for <literal>connect_timeout</literal>
+  should be considered; the effective minimum value of <literal>2</literal>
+  (seconds) will ensure that a connection failure at network level is reported
+  as soon as possible, otherwise depending on the system settings (e.g.
+  <varname>tcp_syn_retries</varname> in Linux) a delay of a minute or more
+  is possible.
+ </para>
+ <para>
+  For further details on <varname>conninfo</varname> network connection
+  parameters, see the
+  <ulink url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS">PostgreSQL documentation</ulink>.
+ </para>
+ </sect1>
 
 </chapter>

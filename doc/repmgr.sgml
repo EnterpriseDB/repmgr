@@ -79,6 +79,7 @@
   <title>Using repmgrd</title>
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
+  &repmgrd-demonstration;
  </part>
 
  <part id="repmgr-command-reference">
