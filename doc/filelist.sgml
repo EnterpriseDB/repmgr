@@ -43,6 +43,10 @@
 <!ENTITY promoting-standby  SYSTEM "promoting-standby.sgml">
 <!ENTITY follow-new-primary  SYSTEM "follow-new-primary.sgml">
 <!ENTITY switchover  SYSTEM "switchover.sgml">
+
+<!ENTITY repmgrd-automatic-failover SYSTEM "repmgrd-automatic-failover.sgml">
+<!ENTITY repmgrd-configuration SYSTEM "repmgrd-configuration.sgml">
+
 <!ENTITY repmgr-primary-register SYSTEM "repmgr-primary-register.sgml">
 <!ENTITY repmgr-primary-unregister SYSTEM "repmgr-primary-unregister.sgml">
 <!ENTITY repmgr-standby-clone SYSTEM "repmgr-standby-clone.sgml">

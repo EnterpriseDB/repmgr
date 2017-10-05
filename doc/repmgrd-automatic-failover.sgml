@@ -1,0 +1,12 @@
+<chapter id="repmgrd-automatic-failover" xreflabel="Automatic failover with repmgrd">
+ <title>Automatic failover with repmgrd</title>
+
+ <para>
+  <command>repmgrd</command> is a management and monitoring daemon which runs
+  on each node in a replication cluster. It can automate actions such as
+  failover and updating standbys to follow the new primary, as well as
+  providing monitoring information about the state of each standby.
+ </para>
+
+
+</chapter>

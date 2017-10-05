@@ -75,6 +75,12 @@
   &switchover;
  </part>
 
+ <part id="using-repmgrd">
+  <title>Using repmgrd</title>
+  &repmgrd-automatic-failover;
+  &repmgrd-configuration;
+ </part>
+
  <part id="repmgr-command-reference">
   <title>repmgr command reference</title>
 
