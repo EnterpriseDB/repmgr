@@ -1,0 +1,83 @@
+<chapter id="repmgr-cluster-matrix" xreflabel="repmgr cluster matrix">
+  <indexterm>
+    <primary>repmgr cluster matrix</primary>
+  </indexterm>
+  <title>repmgr cluster matrix</title>
+  <para>
+    <command>repmgr cluster matrix</command> runs  <command>repmgr cluster show</command> on each
+    node and arranges the results in a matrix, recording success or failure.
+  </para>
+  <para>
+    <command>repmgr cluster matrix</command> requires a valid <filename>repmgr.conf</filename>
+    file on each node.  Additionally passwordless `ssh` connections are required between
+    all nodes.
+  </para>
+  <para>
+    Example 1 (all nodes up):
+    <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster matrix
+
+    Name   | Id |  1 |  2 |  3
+    -------+----+----+----+----
+    node1 |  1 |  * |  * |  *
+    node2 |  2 |  * |  * |  *
+    node3 |  3 |  * |  * |  *</programlisting>
+  </para>
+  <para>
+    Example 2 (<literal>node1</literal> and <literal>node2</literal> up, <literal>node3</literal> down):
+    <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster matrix
+
+    Name   | Id |  1 |  2 |  3
+    -------+----+----+----+----
+     node1 |  1 |  * |  * |  x
+     node2 |  2 |  * |  * |  x
+     node3 |  3 |  ? |  ? |  ?
+    </programlisting>
+  </para>
+  <para>
+   Each row corresponds to one server, and indicates the result of
+   testing an outbound connection from that server.
+  </para>
+  <para>
+    Since <literal>node3</literal> is down, all the entries in its row are filled with
+    <literal>?</literal>, meaning that there we cannot test outbound connections.
+  </para>
+  <para>
+    The other two nodes are up; the corresponding rows have <literal>x</literal> in the
+    column corresponding to <literal>node3</literal>, meaning that inbound connections to
+    that node have failed, and `*` in the columns corresponding to
+    <literal>node1</literal> and <literal>node2</literal>, meaning that inbound connections
+    to these nodes have succeeded.
+  </para>
+  <para>
+    Example 3 (all nodes up, firewall dropping packets originating
+    from <literal>node1</literal> and directed to port 5432 on <literal>node3</literal>) -
+    running <command>repmgr cluster matrix</command> from <literal>node1</literal> gives the following output:
+    <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster matrix
+
+    Name   | Id |  1 |  2 |  3
+    -------+----+----+----+----
+     node1 |  1 |  * |  * |  x
+     node2 |  2 |  * |  * |  *
+     node3 |  3 |  ? |  ? |  ?</programlisting>
+  </para>
+  <para>
+    Note this may take some time depending on the <varname>connect_timeout</varname>
+    setting in the node <varname>conninfo</varname> strings; default is
+    <literal>1 minute</literal> which means without modification the above
+    command would take around 2 minutes to run; see comment elsewhere about setting
+    <varname>connect_timeout</varname>)
+  </para>
+  <para>
+   The matrix tells us that we cannot connect from <literal>node1</literal> to <literal>node3</literal>,
+   and that (therefore) we don't know the state of any outbound
+   connection from <literal>node3</literal>.
+  </para>
+  <para>
+    In this case, the <xref linkend="repmgr-cluster-crosscheck"> command will produce a more
+    useful result.
+  </para>
+</chapter>
+

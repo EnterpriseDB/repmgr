@@ -43,7 +43,23 @@
 <!ENTITY promoting-standby  SYSTEM "promoting-standby.sgml">
 <!ENTITY follow-new-primary  SYSTEM "follow-new-primary.sgml">
 <!ENTITY switchover  SYSTEM "switchover.sgml">
-<!ENTITY command-reference SYSTEM "command-reference.sgml">
+<!ENTITY repmgr-primary-register SYSTEM "repmgr-primary-register.sgml">
+<!ENTITY repmgr-primary-unregister SYSTEM "repmgr-primary-unregister.sgml">
+<!ENTITY repmgr-standby-clone SYSTEM "repmgr-standby-clone.sgml">
+<!ENTITY repmgr-standby-register SYSTEM "repmgr-standby-register.sgml">
+<!ENTITY repmgr-standby-unregister SYSTEM "repmgr-standby-unregister.sgml">
+<!ENTITY repmgr-standby-promote SYSTEM "repmgr-standby-promote.sgml">
+<!ENTITY repmgr-standby-follow SYSTEM "repmgr-standby-follow.sgml">
+<!ENTITY repmgr-standby-switchover SYSTEM "repmgr-standby-switchover.sgml">
+<!ENTITY repmgr-node-status SYSTEM "repmgr-node-status.sgml">
+<!ENTITY repmgr-node-check SYSTEM "repmgr-node-check.sgml">
+<!ENTITY repmgr-node-rejoin SYSTEM "repmgr-node-rejoin.sgml">
+<!ENTITY repmgr-cluster-show SYSTEM "repmgr-cluster-show.sgml">
+<!ENTITY repmgr-cluster-matrix SYSTEM "repmgr-cluster-matrix.sgml">
+<!ENTITY repmgr-cluster-crosscheck SYSTEM "repmgr-cluster-crosscheck.sgml">
+<!ENTITY repmgr-cluster-cleanup SYSTEM "repmgr-cluster-cleanup.sgml">
+
+
 <!ENTITY appendix-signatures      SYSTEM "appendix-signatures.sgml">
 
 <!ENTITY bookindex  SYSTEM "bookindex.sgml">

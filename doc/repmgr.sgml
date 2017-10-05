@@ -52,6 +52,7 @@
    <keyword>PostgreSQL</keyword>
    <keyword>replication</keyword>
    <keyword>asynchronous</keyword>
+   <keyword>HA</keyword>
    <keyword>high-availability</keyword>
   </keywordset>
  </bookinfo>
@@ -72,9 +73,27 @@
   &promoting-standby;
   &follow-new-primary;
   &switchover;
-  &command-reference;
  </part>
 
+ <part id="repmgr-command-reference">
+  <title>repmgr command reference</title>
+
+  &repmgr-primary-register;
+  &repmgr-primary-unregister;
+  &repmgr-standby-clone;
+  &repmgr-standby-register;
+  &repmgr-standby-unregister;
+  &repmgr-standby-promote;
+  &repmgr-standby-follow;
+  &repmgr-standby-switchover;
+  &repmgr-node-status;
+  &repmgr-node-check;
+  &repmgr-node-rejoin;
+  &repmgr-cluster-show;
+  &repmgr-cluster-matrix;
+  &repmgr-cluster-crosscheck;
+  &repmgr-cluster-cleanup;
+ </part>
 
  &appendix-signatures;
 
