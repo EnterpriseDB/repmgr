@@ -70,5 +70,25 @@
   <ulink url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS">PostgreSQL documentation</ulink>.
  </para>
  </sect1>
-
+ <sect1 id="repmgrd-log-rotation">
+  <title>repmgrd log rotation</title>
+  <para>
+   To ensure the current <command>repmgrd</command> logfile does not grow
+   indefinitely, configure your system's <command>logrotate</command> to
+   regularly rotate it.
+  </para>
+  <para>
+   Sample configuration to rotate logfiles weekly with retention for
+   up to 52 weeks and rotation forced if a file grows beyond 100Mb:
+   <programlisting>
+    /var/log/postgresql/repmgr-9.6.log {
+        missingok
+        compress
+        rotate 52
+        maxsize 100M
+        weekly
+        create 0600 postgres postgres
+    }</programlisting>
+  </para>
+ </sect1>
 </chapter>
