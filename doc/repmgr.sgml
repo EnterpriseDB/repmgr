@@ -73,6 +73,7 @@
   &promoting-standby;
   &follow-new-primary;
   &switchover;
+  &event-notifications;
  </part>
 
  <part id="using-repmgrd">
@@ -80,6 +81,7 @@
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
   &repmgrd-demonstration;
+  &repmgrd-monitoring;
  </part>
 
  <part id="repmgr-command-reference">
@@ -99,6 +101,7 @@
   &repmgr-cluster-show;
   &repmgr-cluster-matrix;
   &repmgr-cluster-crosscheck;
+  &repmgr-cluster-event;
   &repmgr-cluster-cleanup;
  </part>
 
