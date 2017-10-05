@@ -81,6 +81,9 @@
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
   &repmgrd-demonstration;
+  &repmgrd-cascading-replication;
+  &repmgrd-network-split;
+  &repmgrd-degraded-monitoring;
   &repmgrd-monitoring;
  </part>
 
