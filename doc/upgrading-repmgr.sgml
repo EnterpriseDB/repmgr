@@ -166,6 +166,31 @@
     (if not automatically uninstalled already).
    </para>
    <sect3>
+    <title>Upgrading from repmgr 3.1.1 or earlier</title>
+    <para>
+     If your repmgr version is 3.1.1 or earlier, you will need to update
+     the schema to the latest version in the 3.x series (3.3.2) before
+     converting the installation to repmgr 4.
+    </para>
+    <para>
+      To do this, apply the following upgrade scripts as appropriate for
+      your current version:
+      <itemizedlist spacing="compact" mark="bullet">
+      <listitem>
+        <simpara>
+          <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/REL3_3_STABLE/sql/repmgr3.0_repmgr3.1.sql">repmgr3.0_repmgr3.1.sql</ulink></simpara>
+      </listitem>
+      <listitem>
+        <simpara><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/REL3_3_STABLE/sql/repmgr3.1.1_repmgr3.1.2.sql">repmgr3.1.1_repmgr3.1.2.sql</ulink></simpara>
+      </listitem>
+      </itemizedlist>
+    </para>
+    <para>
+      For more details see the
+      <ulink url="https://repmgr.org/release-notes-3.3.2.html#upgrading">repmgr 3 upgrade notes</ulink>.
+    </para>
+   </sect3>
+   <sect3>
     <title>Manually create the repmgr extension</title>
     <para>
      In the database used by the existing &repmgr; installation, execute:
