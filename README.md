@@ -176,6 +176,12 @@ is not required, but is necessary in the following cases:
 
 ### Packages
 
+* * *
+
+> *NOTE*: packages are currently being prepared for the repmgr 4.0beta release.
+
+* * *
+
 We recommend installing `repmgr` using the available packages for your
 system.
 
