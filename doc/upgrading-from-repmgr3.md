@@ -85,6 +85,22 @@ Ensure `repmgrd` is not running, or any cron jobs which execute the
 Install `repmgr4`; any `repmgr3` packages should be uninstalled
 (if not automatically uninstalled already).
 
+### Upgrading from repmgr 3.1.1 or earlier
+
+If your repmgr version is 3.1.1 or earlier, you will need to update
+the schema to the latest version in the 3.x series (3.3.2) before
+converting the installation to repmgr 4.
+
+To do this, apply the following upgrade scripts as appropriate for
+your current version:
+
+    - repmgr3.0_repmgr3.1.sql
+    - repmgr3.1.1_repmgr3.1.2.sql
+
+For more details see:
+
+    https://repmgr.org/release-notes-3.3.2.html#upgrading
+
 ### Manually create the repmgr extension
 
 In the database used by the existing `repmgr` configuration, execute:
