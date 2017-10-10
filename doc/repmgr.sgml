@@ -74,6 +74,7 @@
   &follow-new-primary;
   &switchover;
   &event-notifications;
+  &upgrading-repmgr;
  </part>
 
  <part id="using-repmgrd">

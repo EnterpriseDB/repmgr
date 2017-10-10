@@ -44,6 +44,7 @@
 <!ENTITY follow-new-primary  SYSTEM "follow-new-primary.sgml">
 <!ENTITY switchover  SYSTEM "switchover.sgml">
 <!ENTITY event-notifications  SYSTEM "event-notifications.sgml">
+<!ENTITY upgrading-repmgr  SYSTEM "upgrading-repmgr.sgml">
 
 <!ENTITY repmgrd-automatic-failover SYSTEM "repmgrd-automatic-failover.sgml">
 <!ENTITY repmgrd-configuration SYSTEM "repmgrd-configuration.sgml">

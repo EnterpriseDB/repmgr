@@ -1,0 +1,22 @@
+<chapter id="upgrading-repmgr" xreflabel="Upgrading repmgr">
+ <title>Upgrading repmgr</title>
+ <para>
+  &repmgr; is updated regularly with point releases (e.g. 4.0.1 to 4.0.2)
+  containing bugfixes and other minor improvements. Any substantial new
+  functionality will be included in a feature release (e.g. 4.0.x to 4.1.x).
+ </para>
+ <para>
+  &repmgr; is implemented as a PostgreSQL extension; to upgrade it, first
+  install the updated package, then in the database where the &repmgr;
+  extension is installed, execute <command>ALTER EXTENSION repmgr UPDATE</command>.
+ </para>
+ <para>
+  If <command>repmgrd</command> is running, it may be necessary to restart
+  the PostgreSQL server if the upgrade contains changes to the shared object
+  file used by <command>repmgrd</command>; check the release notes for details.
+ </para>
+ <sect1 id="upgrading-from-repmgr-3">
+  <title>Upgrading from repmgr 3</title>
+ </sect1>
+
+</chapter>
