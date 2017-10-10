@@ -28,4 +28,3 @@ project. For more details see:
 
 Contributors should reformat their code similarly before submitting code to
 the project, in order to minimize merge conflicts with other work.
->>>>>>> Add further documentation files
