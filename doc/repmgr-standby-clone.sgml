@@ -1,0 +1,91 @@
+<chapter id="repmgr-standby-clone" xreflabel="repmgr standby clone">
+  <indexterm>
+    <primary>repmgr standby clone</primary>
+    <seealso>cloning</seealso>
+  </indexterm>
+  <title>repmgr standby clone</title>
+  <para>
+   <command>repmgr standby clone</command> clones a PostgreSQL node from another
+   PostgreSQL node, typically the primary, but optionally from any other node in
+   the cluster or from Barman. It creates the <filename>recovery.conf</filename> file required
+   to attach the cloned node to the primary node (or another standby, if cascading replication
+   is in use).
+  </para>
+  <note>
+   <simpara>
+    <command>repmgr standby clone</command> does not start the standby, and after cloning
+    <command>repmgr standby register</command> must be executed to notify &repmgr; of its presence.
+   </simpara>
+  </note>
+
+
+  <sect1 id="repmgr-standby-clone-config-file-copying" xreflabel="Copying configuration files">
+   <title>Handling configuration files</title>
+
+   <para>
+    Note that by default, all configuration files in the source node's data
+    directory will be copied to the cloned node.  Typically these will be
+    <filename>postgresql.conf</filename>, <filename>postgresql.auto.conf</filename>,
+    <filename>pg_hba.conf</filename> and <filename>pg_ident.conf</filename>.
+    These may require modification before the standby is started.
+   </para>
+   <para>
+    In some cases (e.g. on Debian or Ubuntu Linux installations), PostgreSQL's
+    configuration files are located outside of the data directory and will
+    not be copied by default. &repmgr; can copy these files, either to the same
+    location on the standby server (provided appropriate directory and file permissions
+    are available), or into the standby's data directory. This requires passwordless
+    SSH access to the primary server. Add the option <literal>--copy-external-config-files</literal>
+    to the <command>repmgr standby clone</command> command; by default files will be copied to
+    the same path as on the upstream server. Note that the user executing <command>repmgr</command>
+    must have write access to those directories.
+   </para>
+   <para>
+    To have the configuration files placed in the standby's data directory, specify
+    <literal>--copy-external-config-files=pgdata</literal>, but note that
+    any include directives in the copied files may need to be updated.
+   </para>
+   <tip>
+    <simpara>
+     For reliable configuration file management we recommend using a
+     configuration management tool such as Ansible, Chef, Puppet or Salt.
+    </simpara>
+   </tip>
+  </sect1>
+
+  <sect1 id="repmgr-standby-clone-wal-management" xreflabel="Managing WAL during the cloning process">
+   <title>Managing WAL during the cloning process</title>
+   <para>
+    When initially cloning a standby, you will need to ensure
+    that all required WAL files remain available while the cloning is taking
+    place. To ensure this happens when using the default `pg_basebackup` method,
+    &repmgr; will set <command>pg_basebackup</command>'s <literal>--xlog-method</literal>
+    parameter to <literal>stream</literal>,
+    which will ensure all WAL files generated during the cloning process are
+    streamed in parallel with the main backup. Note that this requires two
+    replication connections to be available (&repmgr; will verify sufficient
+    connections are available before attempting to clone, and this can be checked
+    before performing the clone using the <literal>--dry-run</literal> option).
+   </para>
+   <para>
+    To override this behaviour, in <filename>repmgr.conf</filename> set
+    <command>pg_basebackup</command>'s <literal>--xlog-method</literal>
+    parameter to <literal>fetch</literal>:
+    <programlisting>
+      pg_basebackup_options='--xlog-method=fetch'</programlisting>
+
+    and ensure that <literal>wal_keep_segments</literal> is set to an appropriately high value.
+    See the <ulink url="https://www.postgresql.org/docs/current/static/app-pgbasebackup.html">
+    pg_basebackup</ulink> documentation for details.
+   </para>
+
+   <note>
+    <simpara>
+      From PostgreSQL 10, <command>pg_basebackup</command>'s
+      <literal>--xlog-method</literal> parameter has been renamed to
+      <literal>--wal-method</literal>.
+    </simpara>
+   </note>
+  </sect1>
+</chapter>
+

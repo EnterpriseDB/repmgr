@@ -1,0 +1,32 @@
+<sect1 id="installation-packages" xreflabel="Installing from packages">
+ <title>Installing &repmgr; from packages</title>
+ <para>
+We recommend installing `repmgr` using the available packages for your
+system.
+ </para>
+
+ <sect2 id="installation-packages-redhat" xreflabel="Installing from packages on RHEL, Fedora and CentOS">
+   <title>RedHat/Fedora/CentOS</title>
+   <para>
+     RPM packages for `repmgr` are available via Yum through
+     the PostgreSQL Global Development Group RPM repository
+     ( <ulink url="https://yum.postgresql.org/">http://yum.postgresql.org/</>).
+     Follow the instructions for your distribution (RedHat, CentOS,
+     Fedora, etc.) and architecture as detailed at yum.postgresql.org.
+   </para>
+   <para>
+     2ndQuadrant also provides its own RPM packages which are made available
+     at the same time as each `repmgr` release, as it can take some days for
+     them to become available via the main PGDG repository. See here for details:
+     <ulink url="http://repmgr.org/yum-repository.html">http://repmgr.org/yum-repository.html</>
+   </para>
+ </sect2>
+ <sect2 id="installation-packages-debian" xreflabel="Installing from packages on Debian or Ubuntu">
+  <title>Debian/Ubuntu</title>
+  <para>.deb packages for `repmgr` are available from the
+  PostgreSQL Community APT repository (<ulink url="http://apt.postgresql.org/">http://apt.postgresql.org/</> ).
+  Instructions can be found in the APT section of the PostgreSQL Wiki
+  (<ulink url="https://wiki.postgresql.org/wiki/Apt">https://wiki.postgresql.org/wiki/Apt</> ).
+  </para>
+ </sect2>
+</sect1>

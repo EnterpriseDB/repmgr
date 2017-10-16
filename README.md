@@ -176,6 +176,12 @@ is not required, but is necessary in the following cases:
 
 ### Packages
 
+* * *
+
+> *NOTE*: packages are currently being prepared for the repmgr 4.0beta release.
+
+* * *
+
 We recommend installing `repmgr` using the available packages for your
 system.
 
@@ -985,10 +991,10 @@ active primary, the previous warning will not be displayed:
 
     $ repmgr -f /etc/repmgr.conf cluster show
      ID | Name  | Role    | Status    | Upstream | Location | Connection string
-    ----+-------+---------+-----------+----------+----------+----------------------------------------------------
-     1  | node1 | primary | - failed  |          | default  | host=node1 dbname=repmgr user=repmgr port=5501
-     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr port=5502
-     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr port=5503
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | - failed  |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr
 
 However the sole remaining standby is still trying to replicate from the failed
 primary; `repmgr standby follow` must now be executed to rectify this situation.

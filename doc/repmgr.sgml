@@ -1,0 +1,117 @@
+<!-- doc/src/sgml/postgres.sgml -->
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.2//EN" [
+
+          <!ENTITY % version SYSTEM "version.sgml">
+          %version;
+
+          <!ENTITY % filelist SYSTEM "filelist.sgml">
+          %filelist;
+
+          <!ENTITY repmgr "<productname>repmgr</productname>">
+          <!ENTITY postgres "<productname>PostgreSQL</productname>">
+]>
+
+<book id="repmgr">
+ <title>repmgr &repmgrversion; Documentation</title>
+
+ <bookinfo>
+  <corpauthor>2ndQuadrant Ltd</corpauthor>
+  <productname>repmgr</productname>
+  <productnumber>&repmgrversion;</productnumber>
+  &legal;
+
+  <abstract>
+   <para>
+   Thisis the official documentation of &repmgr; &repmgrversion; for
+   use with PostgreSQL 9.3 - PostgreSQL 10.
+   It describes the functionality supported by the current version of &repmgr;.
+   </para>
+
+   <para>
+    repmgr was developed by
+    <ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
+    along with contributions from other individuals and companies.
+    Contributions from the community are appreciated and welcome - get
+    in touch via <ulink url="https://github.com/2ndQuadrant/repmgr">github</>
+    or <ulink url="https://groups.google.com/group/repmgr">the mailing list/forum</>.
+    Multiple 2ndQuadrant customers contribute funding
+    to make repmgr development possible.
+   </para>
+
+   <para>
+    2ndQuadrant, a Platinum sponsor of the PostgreSQL project,
+    continues to develop repmgr to meet internal needs and those of customers.
+     Other companies as well as individual developers
+    are welcome to participate in the efforts.
+   </para>
+  </abstract>
+
+  <keywordset>
+   <keyword>repmgr</keyword>
+   <keyword>PostgreSQL</keyword>
+   <keyword>replication</keyword>
+   <keyword>asynchronous</keyword>
+   <keyword>HA</keyword>
+   <keyword>high-availability</keyword>
+  </keywordset>
+ </bookinfo>
+
+
+ <part id="getting-started">
+  <title>Getting started</title>
+  &overview;
+  &install;
+  &quickstart;
+ </part>
+
+ <part id="repmgr-administration-manual">
+  <title>repmgr administration manual</title>
+
+  &configuration;
+  &cloning-standbys;
+  &promoting-standby;
+  &follow-new-primary;
+  &switchover;
+  &event-notifications;
+  &upgrading-repmgr;
+ </part>
+
+ <part id="using-repmgrd">
+  <title>Using repmgrd</title>
+  &repmgrd-automatic-failover;
+  &repmgrd-configuration;
+  &repmgrd-demonstration;
+  &repmgrd-cascading-replication;
+  &repmgrd-network-split;
+  &repmgrd-degraded-monitoring;
+  &repmgrd-monitoring;
+ </part>
+
+ <part id="repmgr-command-reference">
+  <title>repmgr command reference</title>
+
+  &repmgr-primary-register;
+  &repmgr-primary-unregister;
+  &repmgr-standby-clone;
+  &repmgr-standby-register;
+  &repmgr-standby-unregister;
+  &repmgr-standby-promote;
+  &repmgr-standby-follow;
+  &repmgr-standby-switchover;
+  &repmgr-node-status;
+  &repmgr-node-check;
+  &repmgr-node-rejoin;
+  &repmgr-cluster-show;
+  &repmgr-cluster-matrix;
+  &repmgr-cluster-crosscheck;
+  &repmgr-cluster-event;
+  &repmgr-cluster-cleanup;
+ </part>
+
+ &appendix-signatures;
+
+ <![%include-index;[&bookindex;]]>
+ <![%include-xslt-index;[<index id="bookindex"></index>]]>
+
+</book>

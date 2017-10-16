@@ -1,0 +1,181 @@
+<chapter id="event-notifications" xreflabel="event notifications">
+ <title>Event Notifications</title>
+ <para>
+  Each time `repmgr` or `repmgrd` perform a significant event, a record
+  of that event is written into the `repmgr.events` table together with
+  a timestamp, an indication of failure or success, and further details
+  if appropriate. This is useful for gaining an overview of events
+  affecting the replication cluster. However note that this table has
+  advisory character and should be used in combination with the `repmgr`
+  and PostgreSQL logs to obtain details of any events.
+ </para>
+ <para>
+  Example output after a primary was registered and a standby cloned
+  and registered:
+  <programlisting>
+    repmgr=# SELECT * from repmgr.events ;
+     node_id |      event       | successful |        event_timestamp        |                                       details
+    ---------+------------------+------------+-------------------------------+-------------------------------------------------------------------------------------
+           1 | primary_register | t          | 2016-01-08 15:04:39.781733+09 |
+           2 | standby_clone    | t          | 2016-01-08 15:04:49.530001+09 | Cloned from host 'repmgr_node1', port 5432; backup method: pg_basebackup; --force: N
+           2 | standby_register | t          | 2016-01-08 15:04:50.621292+09 |
+    (3 rows)</programlisting>
+ </para>
+ <para>
+  Alternatively, use <xref linkend="repmgr-cluster-event"> to output a
+  formatted list of events.
+ </para>
+ <para>
+  Additionally, event notifications can be passed to a user-defined program
+  or script which can take further action, e.g. send email notifications.
+  This is done by setting the `event_notification_command` parameter in
+  `repmgr.conf`.
+ </para>
+ <para>
+  This parameter accepts the following format placeholders:
+ </para>
+
+ <variablelist>
+  <varlistentry>
+   <term><option>%n</option></term>
+   <listitem>
+    <para>
+      node ID
+    </para>
+   </listitem>
+  </varlistentry>
+
+  <varlistentry>
+   <term><option>%e</option></term>
+   <listitem>
+    <para>
+     event type
+    </para>
+   </listitem>
+  </varlistentry>
+
+  <varlistentry>
+   <term><option>%t</option></term>
+   <listitem>
+    <para>
+     success (1 or 0)
+    </para>
+   </listitem>
+  </varlistentry>
+  <varlistentry>
+   <term><option>%t</option></term>
+   <listitem>
+    <para>
+     timestamp
+    </para>
+   </listitem>
+  </varlistentry>
+
+  <varlistentry>
+   <term><option>%d</option></term>
+   <listitem>
+    <para>
+     details
+    </para>
+   </listitem>
+  </varlistentry>
+ </variablelist>
+ <para>
+  The values provided for <literal>%t</literal> and <literal>%d</literal>
+  will probably contain spaces, so should be quoted in the provided command
+  configuration, e.g.:
+  <programlisting>
+    event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
+  </programlisting>
+ </para>
+ <para>
+  Additionally the following format placeholders are available for the event
+  type <varname>bdr_failover</varname> and optionally <varname>bdr_recovery</varname>:
+ </para>
+ <variablelist>
+  <varlistentry>
+   <term><option>%c</option></term>
+   <listitem>
+    <para>
+     conninfo string of the next available node
+    </para>
+   </listitem>
+  </varlistentry>
+  <varlistentry>
+   <term><option>%a</option></term>
+   <listitem>
+    <para>
+     name of the next available node
+    </para>
+   </listitem>
+  </varlistentry>
+ </variablelist>
+ <para>
+  These should always be quoted.
+ </para>
+ <para>
+  By default, all notification types will be passed to the designated script;
+  the notification types can be filtered to explicitly named ones:
+  <itemizedlist spacing="compact" mark="bullet">
+
+   <listitem>
+    <simpara><literal>primary_register</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>standby_register</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>standby_unregister</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>standby_clone</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>standby_promote</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>standby_follow</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>standby_disconnect_manual</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>repmgrd_start</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>repmgrd_shutdown</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>repmgrd_failover_promote</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>repmgrd_failover_follow</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>bdr_failover</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>bdr_reconnect</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>bdr_recovery</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>bdr_register</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>bdr_unregister</literal></simpara>
+   </listitem>
+
+  </itemizedlist>
+ </para>
+ <para>
+  Note that under some circumstances (e.g. when no replication cluster primary
+  could be located), it will not be possible to write an entry into the
+  <literal>repmgr.events</literal>
+  table, in which case executing a script via <varname>event_notification_command</varname>
+  can serve as a fallback by generating some form of notification.
+ </para>
+
+
+</chapter>

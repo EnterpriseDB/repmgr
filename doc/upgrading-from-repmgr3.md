@@ -4,10 +4,14 @@ Upgrading from repmgr 3
 The upgrade process consists of two steps:
 
     1) converting the repmgr.conf configuration files
-    2) upgrading the repmgr schema.
+    2) upgrading the repmgr schema
 
-Scripts are provided to assist both with converting repmgr.conf
-and upgrading the schema.
+A script is provided to assist with converting `repmgr.conf`.
+
+The schema upgrade (which converts the `repmgr` metadata into
+a packaged PostgreSQL extension) is normally carried out
+automatically when the `repmgr` extension is created.
+
 
 Converting repmgr.conf configuration files
 ------------------------------------------
@@ -57,11 +61,10 @@ is provided in `contrib/convert-config.pl`. Use like this:
     $ ./convert-config.pl /etc/repmgr.conf
     node_id=2
     node_name=node2
-    conninfo=host=localhost dbname=repmgr user=repmgr port=5602
-    pg_ctl_options='-l /tmp/postgres.5602.log'
-    pg_bindir=/home/barwick/devel/builds/HEAD/bin
+    conninfo=host=node2 dbname=repmgr user=repmgr connect_timeout=2
+    pg_ctl_options='-l /var/log/postgres/startup.log'
     rsync_options=--exclude=postgresql.local.conf --archive
-    log_level=DEBUG
+    log_level=INFO
     pg_basebackup_options=--no-slot
     data_directory=
 
@@ -80,7 +83,23 @@ Ensure `repmgrd` is not running, or any cron jobs which execute the
 `repmgr` binary.
 
 Install `repmgr4`; any `repmgr3` packages should be uninstalled
-(if not automatically installed already).
+(if not automatically uninstalled already).
+
+### Upgrading from repmgr 3.1.1 or earlier
+
+If your repmgr version is 3.1.1 or earlier, you will need to update
+the schema to the latest version in the 3.x series (3.3.2) before
+converting the installation to repmgr 4.
+
+To do this, apply the following upgrade scripts as appropriate for
+your current version:
+
+    - repmgr3.0_repmgr3.1.sql
+    - repmgr3.1.1_repmgr3.1.2.sql
+
+For more details see:
+
+    https://repmgr.org/release-notes-3.3.2.html#upgrading
 
 ### Manually create the repmgr extension
 

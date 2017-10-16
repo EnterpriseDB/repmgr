@@ -1,0 +1,114 @@
+<sect1 id="configuration-file-settings" xreflabel="configuration file settings">
+ <title>Configuration file settings</title>
+ <para>
+   Each <filename>repmgr.conf</filename> file must contain the following parameters:
+ </para>
+ <para>
+  <variablelist>
+   <varlistentry id="repmgr-conf-node-id" xreflabel="node_id">
+    <term><varname>node_id</varname> (<type>int</type>)
+     <indexterm>
+      <primary><varname>node_id</varname> configuration file parameter</primary>
+     </indexterm>
+    </term>
+    <listitem>
+     <para>
+      A unique integer greater than zero which identifies the node.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry id="repmgr-conf-node-name" xreflabel="node_name">
+    <term><varname>node_name</varname> (<type>string</type>)
+     <indexterm>
+      <primary><varname>node_name</varname> configuration file parameter</primary>
+     </indexterm>
+    </term>
+    <listitem>
+     <para>
+       An arbitrary (but unique) string; we recommend using the server's hostname
+       or another identifier unambiguously associated with the server to avoid
+       confusion. Avoid choosing names which reflect the node's current role,
+       e.g. <varname>primary</varname> or <varname>standby1</varname>
+       as roles can change and if you end up in a solution where the current primary is
+       called <varname>standby1</varname> (for example), things will be confusing
+       to say the least.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry id="repmgr-conf-conninfo" xreflabel="conninfo">
+    <term><varname>conninfo</varname> (<type>string</type>)
+     <indexterm>
+      <primary><varname>conninfo</varname> configuration file parameter</primary>
+     </indexterm>
+    </term>
+    <listitem>
+     <para>
+      Database connection information as a conninfo string.
+      All servers in the cluster must be able to connect to
+      the local node using this string.
+     </para>
+     <para>
+       For details on conninfo strings, see section <ulink
+       url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING">Connection Strings</>
+        in the PosgreSQL documentation.
+     </para>
+     <para>
+        If repmgrd is in use, consider explicitly setting
+        <varname>connect_timeout</varname> in the <varname>conninfo</varname>
+        string to determine the length of time which elapses before a network
+        connection attempt is abandoned; for details see <ulink
+        url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT">
+        the PostgreSQL documentation</>.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry id="repmgr-conf-data-directory" xreflabel="data_directory">
+    <term><varname>data_directory</varname> (<type>string</type>)
+     <indexterm>
+      <primary><varname>data_directory</varname> configuration file parameter</primary>
+     </indexterm>
+    </term>
+    <listitem>
+     <para>
+       The node's data directory. This is needed by repmgr
+       when performing operations when the PostgreSQL instance
+       is not running and there's no other way of determining
+       the data directory.
+     </para>
+    </listitem>
+   </varlistentry>
+
+
+  </variablelist>
+ </para>
+
+  <para>
+    For a full list of annotated configuration items, see the file
+    <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</>.
+  </para>
+
+  <note>
+    <para>
+    The following parameters in the configuration file can be overridden with
+    command line options:
+    <itemizedlist>
+     <listitem>
+       <simpara>
+         <literal>-L/--log-level</literal> overrides <literal>log_level</literal> in
+         <filename>repmgr.conf</filename>
+       </simpara>
+     </listitem>
+     <listitem>
+       <simpara>
+         <literal>-b/--pg_bindir</literal> overrides <literal>pg_bindir</literal> in
+         <filename>repmgr.conf</filename>
+       </simpara>
+     </listitem>
+    </itemizedlist>
+    </para>
+  </note>
+
+</sect1>

@@ -1,0 +1,42 @@
+<chapter id="follow-new-primary" xreflabel="Following a new primary">
+ <title>Following a new primary</title>
+ <para>
+   Following the failure or removal of the replication cluster's existing primary
+   server, <xref linkend="repmgr-standby-follow"> can be used to make 'orphaned' standbys
+   follow the new primary and catch up to its current state.
+ </para>
+ <para>
+  To demonstrate this, assuming a replication cluster in the same state as the
+  end of the preceding section (<xref linkend="promoting-standby">),
+  execute this:
+  <programlisting>
+    $ repmgr -f /etc/repmgr.conf repmgr standby follow
+    INFO: changing node 3's primary to node 2
+    NOTICE: restarting server using "pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/postgresql/data' restart"
+    waiting for server to shut down......... done
+    server stopped
+    waiting for server to start.... done
+    server started
+    NOTICE: STANDBY FOLLOW successful
+    DETAIL: node 3 is now attached to node 2
+  </programlisting>
+ </para>
+ <para>
+   The standby is now replicating from the new primary and `repmgr cluster show`
+   output reflects this:
+   <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | - failed  |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | default  | host=node3 dbname=repmgr user=repmgr</programlisting>
+ </para>
+ <para>
+  Note that with cascading replication, <command>repmgr standby follow</command> can also be
+  used to detach a standby from its current upstream server and follow the
+  primary. However it's currently not possible to have it follow another standby;
+  we hope to improve this in a future release.
+ </para>
+
+</chapter>

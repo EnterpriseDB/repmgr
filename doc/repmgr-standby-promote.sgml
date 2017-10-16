@@ -1,0 +1,18 @@
+<chapter id="repmgr-standby-promote" xreflabel="repmgr standby promote">
+  <indexterm>
+    <primary>repmgr standby promote</primary>
+  </indexterm>
+  <title>repmgr standby promote</title>
+  <para>
+   Promotes a standby to a primary if the current primary has failed. This
+   command requires a valid <filename>repmgr.conf</filename> file for the standby, either
+   specified explicitly  with <literal>-f/--config-file</literal> or located in a
+    default location; no additional arguments are required.
+  </para>
+  <para>
+   If the standby promotion succeeds, the server will not need to be
+   restarted. However any other standbys will need to follow the new server,
+   by using <xref linkend="repmgr-standby-follow">; if <command>repmgrd</command>
+   is active, it will handle this automatically.
+  </para>
+</chapter>

@@ -1,0 +1,20 @@
+<!-- doc/src/sgml/legal.sgml -->
+
+<date>2017</date>
+
+<copyright>
+ <year>2010-2017</year>
+ <holder>2ndQuadrant, Ltd.</holder>
+</copyright>
+
+<legalnotice id="legalnotice">
+ <title>Legal Notice</title>
+
+ <para>
+  <productname>repmgr</productname> is Copyright &copy; 2010-2017
+  by 2ndQuadrant, Ltd.
+ </para>
+
+ <para>add license</para>
+
+</legalnotice>

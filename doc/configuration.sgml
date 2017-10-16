@@ -1,0 +1,7 @@
+<chapter id="configuration" xreflabel="Configuration">
+ <title>repmgr configuration</title>
+
+  &configuration-file;
+  &configuration-file-settings;
+
+</chapter>

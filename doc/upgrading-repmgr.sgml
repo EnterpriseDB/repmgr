@@ -1,0 +1,245 @@
+<chapter id="upgrading-repmgr" xreflabel="Upgrading repmgr">
+ <title>Upgrading repmgr</title>
+ <para>
+  &repmgr; is updated regularly with point releases (e.g. 4.0.1 to 4.0.2)
+  containing bugfixes and other minor improvements. Any substantial new
+  functionality will be included in a feature release (e.g. 4.0.x to 4.1.x).
+ </para>
+ <para>
+  &repmgr; is implemented as a PostgreSQL extension; to upgrade it, first
+  install the updated package (or compile the updated source), then in the
+  database where the &repmgr; extension is installed, execute
+  <command>ALTER EXTENSION repmgr UPDATE</command>.
+ </para>
+ <para>
+  If <command>repmgrd</command> is running, it may be necessary to restart
+  the PostgreSQL server if the upgrade contains changes to the shared object
+  file used by <command>repmgrd</command>; check the release notes for details.
+ </para>
+
+ <sect1 id="upgrading-from-repmgr-3">
+  <title>Upgrading from repmgr 3</title>
+  <para>
+   The upgrade process consists of two steps:
+   <orderedlist>
+    <listitem>
+     <simpara>
+       converting the repmgr.conf configuration files
+     </simpara>
+    </listitem>
+    <listitem>
+     <simpara>
+       upgrading the repmgr schema
+     </simpara>
+    </listitem>
+   </orderedlist>
+  </para>
+  <para>
+   A script is provided to assist with converting <filename>repmgr.conf</filename>.
+  </para>
+  <para>
+   The schema upgrade (which converts the &repmgr; metadata into
+   a packaged PostgreSQL extension) is normally carried out
+   automatically when the &repmgr; extension is created.
+  </para>
+  <sect2 id="converting-repmgr-conf">
+   <title>Converting repmgr.conf configuration files</title>
+   <para>
+    With a completely new repmgr version, we've taken the opportunity
+    to rename some configuration items have had their names changed for
+    clarity and consistency, both between the configuration file and
+    the column names in <structname>repmgr.nodes</structname>
+    (e.g. <varname>node</varname> to <varname>node_id</varname>), and
+    also for consistency with PostgreSQL naming conventions
+    (e.g. <varname>loglevel</varname> to <varname>log_level</varname>).
+   </para>
+   <para>
+    Other configuration items have been changed to command line options,
+    and vice-versa, e.g. to avoid hard-coding items such as a a node's
+    upstream ID, which might change over time.
+   </para>
+   <para>
+    &repmgr; will issue a warning about deprecated/altered options.
+   </para>
+   <sect3>
+    <title>Changed parameters in "repmgr.conf"</title>
+    <para>
+     Following parameters have been added:
+     <itemizedlist spacing="compact" mark="bullet">
+      <listitem>
+        <simpara><varname>data_directory</varname>: this is mandatory and must
+         contain the path to the node's data directory</simpara>
+      </listitem>
+      <listitem>
+        <simpara><varname>monitoring_history</varname>: this replaces the
+          <command>repmgrd</command> command line option
+          <literal>--monitoring-history</literal></simpara>
+      </listitem>
+     </itemizedlist>
+    </para>
+    <para>
+     Following parameters have been renamed:
+    </para>
+    <table tocentry="1" id="repmgr3-repmgr4-renamed-parameters">
+     <title>Parameters renamed in repmgr4</title>
+     <tgroup cols="2">
+      <thead>
+       <row>
+        <entry>repmgr3</entry>
+        <entry>repmgr4</entry>
+       </row>
+      </thead>
+      <tbody>
+       <row>
+        <entry><varname>node</varname></entry>
+        <entry><varname>node_id</varname></entry>
+       </row>
+       <row>
+        <entry><varname>loglevel</varname></entry>
+        <entry><varname>log_level</varname></entry>
+       </row>
+       <row>
+        <entry><varname>logfacility</varname></entry>
+        <entry><varname>log_facility</varname></entry>
+       </row>
+       <row>
+        <entry><varname>logfile</varname></entry>
+        <entry><varname>log_file</varname></entry>
+       </row>
+       <row>
+        <entry><varname>master_reponse_timeout</varname></entry>
+        <entry><varname>async_query_timeout</varname></entry>
+       </row>
+      </tbody>
+     </tgroup>
+    </table>
+    <para>
+     Following parameters have been removed:
+     <itemizedlist spacing="compact" mark="bullet">
+      <listitem>
+        <simpara><varname>cluster</varname>: is no longer required and will
+        be ignored.</simpara>
+      </listitem>
+      <listitem>
+        <simpara><varname>upstream_node_id</varname>:  is replaced by the
+        command-line parameter <literal>--upstream-node-id</literal></simpara>
+      </listitem>
+     </itemizedlist>
+    </para>
+   </sect3>
+   <sect3>
+    <title>Conversion script</title>
+    <para>
+     To assist with conversion of <filename>repmgr.conf</filename> files, a Perl script
+     is provided in <filename>contrib/convert-config.pl</filename>.
+     Use like this:
+     <programlisting>
+    $ ./convert-config.pl /etc/repmgr.conf
+    node_id=2
+    node_name=node2
+    conninfo=host=localhost dbname=repmgr user=repmgr connect_timeout=2
+    pg_ctl_options='-l /var/log/postgres/startup.log'
+    rsync_options=--exclude=postgresql.local.conf --archive
+    log_level=INFO
+    pg_basebackup_options=--no-slot
+    data_directory=</programlisting>
+    </para>
+    <para>
+      The converted file is printed to <literal>STDOUT</literal> and the original file is not
+      changed.
+    </para>
+    <para>
+      Please note that the parameter <varname>data_directory</varname> <emphasis>must</emphasis>
+      be provided; if not already present, the conversion script will add an empty
+      placeholder parameter.
+    </para>
+   </sect3>
+  </sect2>
+  <sect2>
+   <title>Upgrading the repmgr schema</title>
+   <para>
+    Ensure <command>repmgrd</command> is not running, or any cron jobs which execute the
+    <command>repmgr</command> binary.
+   </para>
+   <para>
+    Install <literal>repmgr4</literal>; any <literal>repmgr3</literal> packages should be uninstalled
+    (if not automatically uninstalled already).
+   </para>
+   <sect3>
+    <title>Upgrading from repmgr 3.1.1 or earlier</title>
+    <para>
+     If your repmgr version is 3.1.1 or earlier, you will need to update
+     the schema to the latest version in the 3.x series (3.3.2) before
+     converting the installation to repmgr 4.
+    </para>
+    <para>
+      To do this, apply the following upgrade scripts as appropriate for
+      your current version:
+      <itemizedlist spacing="compact" mark="bullet">
+      <listitem>
+        <simpara>
+          <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/REL3_3_STABLE/sql/repmgr3.0_repmgr3.1.sql">repmgr3.0_repmgr3.1.sql</ulink></simpara>
+      </listitem>
+      <listitem>
+        <simpara><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/REL3_3_STABLE/sql/repmgr3.1.1_repmgr3.1.2.sql">repmgr3.1.1_repmgr3.1.2.sql</ulink></simpara>
+      </listitem>
+      </itemizedlist>
+    </para>
+    <para>
+      For more details see the
+      <ulink url="https://repmgr.org/release-notes-3.3.2.html#upgrading">repmgr 3 upgrade notes</ulink>.
+    </para>
+   </sect3>
+   <sect3>
+    <title>Manually create the repmgr extension</title>
+    <para>
+     In the database used by the existing &repmgr; installation, execute:
+     <programlisting>
+      CREATE EXTENSION repmgr FROM unpackaged;</programlisting>
+    </para>
+    <para>
+     This will move and convert all objects from the existing schema
+     into the new, standard <literal>repmgr</literal> schema.
+    </para>
+    <note>
+      <simpara>there must be only one schema matching <literal>repmgr_%</literal> in the
+        database, otherwise this step may not work.</simpara>
+    </note>
+   </sect3>
+   <sect3>
+    <title>Re-register each node</title>
+    <para>
+     This is necessary to update the <literal>repmgr</literal> metadata with some additional items.
+    </para>
+    <para>
+     On the primary node, execute e.g.
+     <programlisting>
+      repmgr primary register -f /etc/repmgr.conf --force</programlisting>
+    </para>
+    <para>
+     On each standby node, execute e.g.
+     <programlisting>
+      repmgr standby register -f /etc/repmgr.conf --force</programlisting>
+    </para>
+    <para>
+     Check the data is updated as expected by examining the <structname>repmgr.nodes</structname>
+     table; restart <command>repmgrd</command> if required.
+    </para>
+    <para>
+     The original <literal>repmgr_$cluster</literal> schema can be dropped at any time.
+    </para>
+    <tip>
+     <simpara>
+      If you don't care about any data from the existing &repmgr; installation,
+      (e.g. the contents of the <structname>events</structname> and <structname>monitoring</structname>
+      tables), the manual <command>CREATE EXTENSION</command> step can be skipped; just re-register
+      each node, starting with the primary node, and the <literal>repmgr</literal> extension will be
+      automatically created.
+     </simpara>
+    </tip>
+   </sect3>
+  </sect2>
+
+ </sect1>
+
+</chapter>
