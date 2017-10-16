@@ -1,0 +1,67 @@
+<chapter id="repmgr-cluster-show" xreflabel="repmgr cluster show">
+  <indexterm>
+    <primary>repmgr cluster show</primary>
+  </indexterm>
+  <title>repmgr cluster show</title>
+  <para>
+    Displays information about each active node in the replication cluster. This
+    command polls each registered server and shows its role (<literal>primary</literal> /
+    <literal>standby</literal> / <literal>bdr</literal>) and status. It polls each server
+    directly and can be run on any node in the cluster; this is also useful when analyzing
+    connectivity from a particular node.
+  </para>
+  <para>
+    This command requires either a valid <filename>repmgr.conf</filename> file or a database
+    connection string to one of the registered nodes; no  additional arguments are needed.
+  </para>
+
+  <para>
+    Example:
+    <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+-----------------------------------------
+     1  | node1 | primary | * running |          | default  | host=db_node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | default  | host=db_node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node1    | default  | host=db_node3 dbname=repmgr user=repmgr</programlisting>
+  </para>
+
+  <para>
+    To show database connection errors when polling nodes, run the command in
+    <literal>--verbose</literal> mode.
+  </para>
+  <para>
+    The `cluster show` command accepts an optional parameter <literal>--csv</literal>, which
+    outputs the replication cluster's status in a simple CSV format, suitable for
+    parsing by scripts:
+    <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show --csv
+    1,-1,-1
+    2,0,0
+    3,0,1</programlisting>
+  </para>
+  <para>
+    The columns have following meanings:
+    <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <simpara>
+        node ID
+      </simpara>
+      <simpara>
+        availability (0 = available, -1 = unavailable)
+      </simpara>
+      <simpara>
+        recovery state (0 = not in recovery, 1 = in recovery, -1 = unknown)
+      </simpara>
+     </listitem>
+    </itemizedlist>
+  </para>
+
+  <para>
+   Note that the availability is tested by connecting from the node where
+   <command>repmgr cluster show</command> is executed, and does not necessarily imply the node
+   is down. See <xref linkend="repmgr-cluster-matrix"> and <xref linkend="repmgr-cluster-crosscheck"> to get
+    a better overviews of connections between nodes.
+  </para>
+</chapter>

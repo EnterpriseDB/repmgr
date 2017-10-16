@@ -1,0 +1,403 @@
+<chapter id="cloning-standbys" xreflabel="cloning standbys">
+ <title>Cloning standbys</title>
+ <para>
+ </para>
+
+ <sect1 id="cloning-from-barman" xreflabel="Cloning from Barman">
+   <indexterm>
+     <primary>cloning</primary>
+     <secondary>from Barman</secondary>
+   </indexterm>
+   <title>Cloning a standby from Barman</title>
+   <para>
+    <xref linkend="repmgr-standby-clone"> can use
+    <ulink url="https://www.2ndquadrant.com/">2ndQuadrant</ulink>'s
+    <ulink url="https://www.pgbarman.org/">Barman</ulink> application
+    to clone a standby (and also as a fallback source for WAL files).
+   </para>
+   <tip>
+    <simpara>
+     Barman (aka PgBarman) should be considered as an integral part of any
+     PostgreSQL replication cluster. For more details see:
+     <ulink url="https://www.pgbarman.org/">https://www.pgbarman.org/</ulink>.
+    </simpara>
+   </tip>
+   <para>
+    Barman support provides the following advantages:
+    <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <para>
+       the primary node does not need to perform a new backup every time a
+       new standby is cloned
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       a standby node can be disconnected for longer periods without losing
+       the ability to catch up, and without causing accumulation of WAL
+       files on the primary node
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+       WAL management on the primary becomes much easier as there's no need
+       to use replication slots, and <varname>wal_keep_segments</varname>
+       does not need to be set.
+     </para>
+    </listitem>
+   </itemizedlist>
+   </para>
+
+  <sect2 id="cloning-from-barman-prerequisites" xreflabel="Prerequisites for cloning from Barman">
+   <title>Prerequisites for cloning from Barman</title>
+   <para>
+    In order to enable Barman support for <command>repmgr standby clone</command>, following
+    prerequisites must be met:
+   <itemizedlist spacing="compact" mark="bullet">
+     <listitem>
+      <para>
+        the <varname>barman_server</varname> setting in <filename>repmgr.conf</filename> is the same as the
+        server configured in Barman;
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+        the <varname>barman_host</varname> setting in <filename>repmgr.conf</filename> is set to the SSH
+        hostname of the Barman server;
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+        the <varname>restore_command</varname> setting in <filename>repmgr.conf</filename> is configured to
+        use a copy of the <command>barman-wal-restore</command> script shipped with the
+        <literal>barman-cli</literal> package (see below);
+      </para>
+     </listitem>
+     <listitem>
+      <para>
+        the Barman catalogue includes at least one valid backup for this  server.
+      </para>
+     </listitem>
+   </itemizedlist>
+   </para>
+   <note>
+    <simpara>
+     Barman support is automatically enabled if <varname>barman_server</varname>
+     is set. Normally it is good practice to use Barman, for instance
+     when fetching a base backup while cloning a standby; in any case,
+     Barman mode can be disabled using the <literal>--without-barman</literal>
+     command line option.
+    </simpara>
+   </note>
+   <tip>
+    <simpara>
+      If you have a non-default SSH configuration on the Barman
+      server, e.g. using a port other than 22, then you can set those
+      parameters in a dedicated Host section in <filename>~/.ssh/config</filename>
+      corresponding to the value of<varname>barman_host</varname> in
+      <filename>repmgr.conf</filename>. See the <literal>Host</literal>
+      section in <command>man 5 ssh_config</command> for more details.
+    </simpara>
+   </tip>
+   <para>
+    It's now possible to clone a standby from Barman, e.g.:
+    <programlisting>
+    NOTICE: using configuration file "/etc/repmgr.conf"
+    NOTICE: destination directory "/var/lib/postgresql/data" provided
+    INFO: connecting to Barman server to verify backup for test_cluster
+    INFO: checking and correcting permissions on existing directory "/var/lib/postgresql/data"
+    INFO: creating directory "/var/lib/postgresql/data/repmgr"...
+    INFO: connecting to Barman server to fetch server parameters
+    INFO: connecting to upstream node
+    INFO: connected to source node, checking its state
+    INFO: successfully connected to source node
+    DETAIL: current installation size is 29 MB
+    NOTICE: retrieving backup from Barman...
+    receiving file list ...
+    (...)
+    NOTICE: standby clone (from Barman) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example: pg_ctl -D /var/lib/postgresql/data start</programlisting>
+
+   </para>
+  </sect2>
+  <sect2 id="cloning-from-barman-restore-command" xreflabel="Using Barman as a WAL file source">
+   <title>Using Barman as a WAL file source</title>
+   <para>
+    As a fallback in case streaming replication is interrupted, PostgreSQL can optionally
+    retrieve WAL files from an archive, such as that provided by Barman. This is done by
+    setting <varname>restore_command</varname> in <filename>recovery.conf</filename> to
+    a valid shell command which can retrieve a specified WAL file from the archive.
+   </para>
+   <para>
+     <command>barman-wal-restore</command> is a Python script provided as part of the <literal>barman-cli</literal>
+     package (Barman 2.0 and later; for Barman 1.x the script is provided separately as
+     <command>barman-wal-restore.py</command>) which performs this function for Barman.
+   </para>
+   <para>
+    To use <command>barman-wal-restore</command> with &repmgr;
+    and assuming Barman is located on the <literal>barmansrv</literal> host
+    and that <command>barman-wal-restore</command> is located as an executable at
+    <filename>/usr/bin/barman-wal-restore</filename>,
+    <filename>repmgr.conf</filename> should include the following lines:
+    <programlisting>
+    barman_host=barmansrv
+    barman_server=somedb
+    restore_command=/usr/bin/barman-wal-restore barmansrv somedb %f %p</programlisting>
+   </para>
+   <note>
+    <simpara>
+      <command>barman-wal-restore</command> supports command line switches to
+      control parallelism (<literal>--parallel=N</literal>) and compression (
+      <literal>--bzip2</literal>, <literal>--gzip</literal>).
+    </simpara>
+   </note>
+   <note>
+    <para>
+     To use a non-default Barman configuration file on the Barman server,
+     specify this in <filename>repmgr.conf</filename> with <filename>barman_config</filename>:
+     <programlisting>
+      barman_config=/path/to/barman.conf</programlisting>
+    </para>
+   </note>
+  </sect2>
+ </sect1>
+
+<sect1 id="cloning-replication-slots" xreflabel="Cloning and replication slots">
+   <indexterm>
+     <primary>cloning</primary>
+     <secondary>replication slots</secondary>
+   </indexterm>
+
+   <indexterm>
+     <primary>replication slots</primary>
+     <secondary>cloning</secondary>
+   </indexterm>
+   <title>Cloning and replication slots</title>
+   <para>
+    Replication slots were introduced with PostgreSQL 9.4 and are designed to ensure
+    that any standby connected to the primary using a replication slot will always
+    be able to retrieve the required WAL files. This removes the need to manually
+    manage WAL file retention by estimating the number of WAL files that need to
+    be maintained on the primary using <varname>wal_keep_segments</varname>.
+    Do however be aware that if a standby is disconnected, WAL will continue to
+    accumulate on the primary until either the standby reconnects or the replication
+    slot is dropped.
+   </para>
+   <para>
+     To enable &repmgr; to use replication slots, set the boolean parameter
+     <varname>use_replication_slots</varname> in <filename>repmgr.conf</filename>:
+     <programlisting>
+       use_replication_slots=true
+     </programlisting>
+   </para>
+   <para>
+    Replication slots must be enabled in <filename>postgresql.conf</filename>` by
+    setting the parameter <varname>max_replication_slots</varname> to at least the
+    number of expected standbys (changes to this parameter require a server restart).
+   </para>
+   <para>
+    When cloning a standby, &repmgr; will automatically generate an appropriate
+    slot name, which is stored in the <literal>repmgr.nodes</literal> table, and create the slot
+    on the upstream node:
+     <programlisting>
+    repmgr=# SELECT node_id, upstream_node_id, active, node_name, type, priority, slot_name
+               FROM repmgr.nodes ORDER BY node_id;
+     node_id | upstream_node_id | active | node_name |  type   | priority |   slot_name
+    ---------+------------------+--------+-----------+---------+----------+---------------
+           1 |                  | t      | node1     | primary |      100 | repmgr_slot_1
+           2 |                1 | t      | node2     | standby |      100 | repmgr_slot_2
+           3 |                1 | t      | node3     | standby |      100 | repmgr_slot_3
+     (3 rows)</programlisting>
+
+    <programlisting>
+    repmgr=# SELECT slot_name, slot_type, active, active_pid FROM pg_replication_slots ;
+       slot_name   | slot_type | active | active_pid
+    ---------------+-----------+--------+------------
+     repmgr_slot_2 | physical  | t      |      23658
+     repmgr_slot_3 | physical  | t      |      23687
+    (2 rows)</programlisting>
+   </para>
+   <para>
+    Note that a slot name will be created by default for the primary but not
+    actually used unless the primary is converted to a standby using e.g.
+    <command>repmgr standby switchover</command>.
+   </para>
+   <para>
+    Further information on replication slots in the PostgreSQL documentation:
+    <ulink url="https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS">https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION-SLOTS</ulink>
+   </para>
+   <tip>
+    <simpara>
+     While replication slots can be useful for streaming replication, it's
+     recommended to monitor for inactive slots as these will cause WAL files to
+     build up indefinitely, possibly leading to server failure.
+    </simpara>
+    <simpara>
+     As an alternative we recommend using 2ndQuadrant's <ulink url="https://www.pgbarman.org/">Barman</ulink>,
+     which offloads WAL management to a separate server, negating the need to use replication
+     slots to reserve WAL. See section <xref linkend="cloning-from-barman">
+     for more details on using &repmgr; together with Barman.
+    </simpara>
+   </tip>
+ </sect1>
+
+ <sect1 id="cloning-cascading" xreflabel="Cloning and cascading replication">
+   <indexterm>
+     <primary>cloning</primary>
+     <secondary>cascading replication</secondary>
+   </indexterm>
+   <title>Cloning and cascading replication</title>
+   <para>
+    Cascading replication, introduced with PostgreSQL 9.2, enables a standby server
+    to replicate from another standby server rather than directly from the primary,
+    meaning replication changes "cascade" down through a hierarchy of servers. This
+    can be used to reduce load on the primary and minimize bandwith usage between
+    sites. For more details, see the
+    <ulink url="https://www.postgresql.org/docs/current/static/warm-standby.html#CASCADING-REPLICATION">
+    PostgreSQL cascading replication documentation</ulink>.
+   </para>
+   <para>
+    &repmgr; supports cascading replication. When cloning a standby,
+    set the command-line parameter <literal>--upstream-node-id</literal> to the
+    <varname>node_id</varname> of the server the standby should connect to, and
+    &repmgr; will create <filename>recovery.conf</filename> to point to it. Note
+    that if <literal>--upstream-node-id</literal> is not explicitly provided,
+    &repmgr; will set the standby's <filename>recovery.conf</filename> to
+    point to the primary node.
+   </para>
+   <para>
+    To demonstrate cascading replication, first ensure you have a primary and standby
+    set up as shown in the <xref linkend="quickstart">.
+    Then create an additional standby server with <filename>repmgr.conf</filename> looking
+    like this:
+    <programlisting>
+    node_id=3
+    node_name=node3
+    conninfo='host=node3 user=repmgr dbname=repmgr'
+    data_directory='/var/lib/postgresql/data'</programlisting>
+   </para>
+   <para>
+    Clone this standby (using the connection parameters for the existing standby),
+    ensuring <literal>--upstream-node-id</literal> is provide with the <varname>node_id</varname>
+    of the previously created standby (if following the example, this will be <literal>2</literal>):
+    <programlisting>
+    $ repmgr -h node2 -U repmgr -d repmgr -f /etc/repmgr.conf standby clone --upstream-node-id=2
+    NOTICE: using configuration file "/etc/repmgr.conf"
+    NOTICE: destination directory "/var/lib/postgresql/data" provided
+    INFO: connecting to upstream node
+    INFO: connected to source node, checking its state
+    NOTICE: checking for available walsenders on upstream node (2 required)
+    INFO: sufficient walsenders available on upstream node (2 required)
+    INFO: successfully connected to source node
+    DETAIL: current installation size is 29 MB
+    INFO: creating directory "/var/lib/postgresql/data"...
+    NOTICE: starting backup (using pg_basebackup)...
+    HINT: this may take some time; consider using the -c/--fast-checkpoint option
+    INFO: executing: 'pg_basebackup -l "repmgr base backup" -D /var/lib/postgresql/data -h node2 -U repmgr -X stream '
+    NOTICE: standby clone (using pg_basebackup) complete
+    NOTICE: you can now start your PostgreSQL server
+    HINT: for example: pg_ctl -D /var/lib/postgresql/data start</programlisting>
+
+    then register it (note that <literal>--upstream-node-id</literal> must be provided here
+    too):
+    <programlisting>
+     $ repmgr -f /etc/repmgr.conf standby register --upstream-node-id=2
+     NOTICE: standby node "node2" (ID: 2) successfully registered
+    </programlisting>
+   </para>
+   <para>
+    After starting the standby, the cluster will look like this, showing that <literal>node3</literal>
+    is attached to <literal>node2</literal>, not the primary (<literal>node1</literal>).
+    <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running | node2    | default  | host=node3 dbname=repmgr user=repmgr
+    </programlisting>
+   </para>
+   <tip>
+    <simpara>
+     Under some circumstances when setting up a cascading replication
+     cluster, you may wish to clone a downstream standby whose upstream node
+     does not yet exist. In this case you can clone from the primary (or
+     another upstream node); provide the parameter <literal>--upstream-conninfo</literal>
+     to explictly set the upstream's <varname>primary_conninfo</varname> string
+     in <filename>recovery.conf</filename>.
+    </simpara>
+   </tip>
+ </sect1>
+
+ <sect1 id="cloning-advanced" xreflabel="Advanced cloning options">
+   <indexterm>
+     <primary>cloning</primary>
+     <secondary>advanced options</secondary>
+   </indexterm>
+   <title>Advanced cloning options</title>
+
+   <sect2 id="cloning-advanced-pg-basebackup-options" xreflabel="pg_basebackup options when cloning a standby">
+    <title>pg_basebackup options when cloning a standby</title>
+    <para>
+     By default, <command>pg_basebackup</command> performs a checkpoint before beginning the backup
+     process. However, a normal checkpoint may take some time to complete;
+     a fast checkpoint can be forced with the <literal>-c/--fast-checkpoint</literal> option.
+     However this may impact performance of the server being cloned from
+     so should be used with care.
+    </para>
+    <para>
+     Further options can be passed to the <command>pg_basebackup</command> utility via
+     the setting <varname>pg_basebackup_options</varname> in <filename>repmgr.conf</filename>.
+     See the <ulink url="https://www.postgresql.org/docs/current/static/app-pgbasebackup.html">PostgreSQL pg_basebackup documentation</ulink>
+     for more details of available options.
+    </para>
+   </sect2>
+
+   <sect2 id="cloning-advanced-managing-passwords" xreflabel="Managing passwords">
+    <title>Managing passwords</title>
+    <para>
+     If replication connections to a standby's upstream server are password-protected,
+     the standby must be able to provide the password so it can begin streaming
+     replication.
+    </para>
+    <para>
+     The recommended way to do this is to store the password in the <literal>postgres</literal> system
+     user's <filename>~/.pgpass</filename> file. It's also possible to store the password in the
+     environment variable <varname>PGPASSWORD</varname>, however this is not recommended for
+     security reasons. For more details see the
+     <ulink url="https://www.postgresql.org/docs/current/static/libpq-pgpass.html">PostgreSQL password file documentation</ulink>.
+    </para>
+    <para>
+     If, for whatever reason, you wish to include the password in <filename>recovery.conf</filename>,
+     set <varname>use_primary_conninfo_password</varname> to <literal>true</literal> in
+     <filename>repmgr.conf</filename>. This will read a password set in <varname>PGPASSWORD</varname>
+     (but not <filename>~/.pgpass</filename>) and place it into the <literal>primary_conninfo</literal>
+     string in <filename>recovery.conf</filename>. Note that <varname>PGPASSWORD</varname>
+     will need to be set during any action which causes <filename>recovery.conf</filename> to be
+     rewritten, e.g. <xref linkend="repmgr-standby-follow">.
+    </para>
+    <para>
+     It is of course also possible to include the password value in the <varname>conninfo</varname>
+     string for each node, but this is obviously a security risk and should be
+     avoided.
+    </para>
+   </sect2>
+
+   <sect2 id="cloning-advanced-replication-user" xreflabel="Separate replication user">
+    <title>Separate replication user</title>
+    <para>
+     In some circumstances it might be desirable to create a dedicated replication-only
+     user (in addition to the user who manages the &repmgr; metadata). In this case,
+     the replication user should be set in <filename>repmgr.conf</filename> via the parameter
+     <varname>replication_user</varname>; &repmgr; will use this value when making
+     replication connections and generating <filename>recovery.conf</filename>. This
+     value will also be stored in the <literal>repmgr.nodes</literal>
+     table for each node; it no longer needs to be explicitly specified when
+     cloning a node or executing <xref linkend="repmgr-standby-follow">.
+    </para>
+   </sect2>
+ </sect1>
+
+
+</chapter>

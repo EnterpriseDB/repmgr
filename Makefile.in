@@ -63,6 +63,12 @@ Makefile: Makefile.in config.status configure
 Makefile.global: Makefile.global.in config.status configure
 	./config.status $@
 
+doc:
+	$(MAKE) -C doc all
+
+install-doc:
+	$(MAKE) -C doc install
+
 clean: additional-clean
 
 maintainer-clean: additional-maintainer-clean

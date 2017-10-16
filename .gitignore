@@ -40,6 +40,8 @@ lib*.pc
 # test output
 /results/
 
+/doc/Makefile
+
 # other
 /.lineno
 *.dSYM

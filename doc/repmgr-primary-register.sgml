@@ -1,0 +1,18 @@
+<chapter id="repmgr-primary-register" xreflabel="repmgr primary register">
+  <indexterm><primary>repmgr primary register</primary></indexterm>
+  <title>repmgr primary register</title>
+  <para>
+   <command>repmgr primary register</command> registers a primary node in a
+   streaming replication cluster, and configures it for use with repmgr, including
+   installing the &repmgr; extension. This command needs to be executed before any
+   standby nodes are registered.
+  </para>
+  <para>
+   Execute with the <literal>--dry-run</literal> option to check what would happen without
+   actually registering the primary.
+  </para>
+  <para>
+   <command>repmgr master register</command> can be used as an alias for
+   <command>repmgr primary register</command>.
+  </para>
+</chapter>

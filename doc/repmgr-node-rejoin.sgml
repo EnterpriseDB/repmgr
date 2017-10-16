@@ -1,0 +1,13 @@
+<chapter id="repmgr-node-rejoin" xreflabel="repmgr node rejoin">
+  <indexterm>
+    <primary>repmgr node rejoin</primary>
+  </indexterm>
+  <title>repmgr node rejoin</title>
+  <para>
+   Enables a dormant (stopped) node to be rejoined to the replication cluster.
+  </para>
+  <para>
+    This can optionally use <command>pg_rewind</command> to re-integrate a node which has diverged
+    from the rest of the cluster, typically a failed primary.
+  </para>
+</chapter>

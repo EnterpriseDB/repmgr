@@ -1,0 +1,139 @@
+<sect1 id="installation-source" xreflabel="Installing from source code">
+ <title>Installing &repmgr; from source</title>
+
+ <sect2 id="installation-source-prereqs">
+  <title>Prerequisites for installing from source</title>
+  <para>
+   To install &repmgr; the prerequisites for compiling
+   &postgres; must be installed. These are described in &postgres;'s
+   documentation
+   on <ulink url="https://www.postgresql.org/docs/current/install-requirements.html">build requirements</ulink>
+   and <ulink url="https://www.postgresql.org/docs/current/docguide-toolsets.html">build requirements for documentation</ulink>.
+  </para>
+
+  <para>
+   Most mainstream Linux distributions and other UNIX variants provide simple
+   ways to install the prerequisites from packages.
+   <itemizedlist spacing="compact" mark="bullet">
+    <listitem>
+     <para>
+      <literal>Debian</literal> and <literal>Ubuntu</literal>: First
+      add the <ulink
+      url="http://apt.postgresql.org/">apt.postgresql.org</ulink>
+      repository to your <filename>sources.list</filename> if you
+      have not already done so. Then install the pre-requisites for
+      building PostgreSQL with:
+      <programlisting>
+       sudo apt-get update
+       sudo apt-get build-dep postgresql-9.6
+      </programlisting>
+      </para>
+    </listitem>
+    <listitem>
+     <para>
+      <literal>RHEL or CentOS 6.x or 7.x</literal>: install the appropriate repository RPM
+      for your system from <ulink url="https://yum.postgresql.org/repopackages.php">
+      yum.postgresql.org</ulink>. Then install the prerequisites for building
+      PostgreSQL with:
+      <programlisting>
+       sudo yum check-update
+       sudo yum groupinstall "Development Tools"
+       sudo yum install yum-utils openjade docbook-dtds docbook-style-dsssl docbook-style-xsl
+       sudo yum-builddep postgresql96
+      </programlisting>
+     </para>
+    </listitem>
+   </itemizedlist>
+  </para>
+
+  <note>
+    <simpara>
+      Select the appropriate PostgreSQL versions for your target repmgr version.
+    </simpara>
+  </note>
+ </sect2>
+
+
+<sect2 id="installation-get-source">
+  <title>Getting &repmgr; source code</title>
+
+  <para>
+   There are two ways to get the &repmgr; source code: with git, or by downloading tarballs of released versions.
+  </para>
+
+  <sect3>
+   <title>Using <application>git</application> to get the &repmgr; sources</title>
+
+   <para>
+    Use <application><ulink url="https://git-scm.com">git</ulink></application> if you expect
+    to update often, you want to keep track of development or if you want to contribute
+    changes to &repmgr;. There is no reason <emphasis>not</emphasis> to use <application>git</application>
+    if you're familiar with it.
+   </para>
+
+   <para>
+    The source for &repmgr; is maintained at
+    <ulink url="https://github.com/2ndQuadrant/repmgr">https://github.com/2ndQuadrant/repmgr</ulink>.
+   </para>
+
+   <para>
+    There are also tags for each &repmgr; release, e.g. <filename>REL4_0_STABLE</filename>.
+   </para>
+
+   <para>
+    Clone the source code using <application>git</application>:
+    <programlisting>
+     git clone https://github.com/2ndQuadrant/repmgr
+    </programlisting>
+   </para>
+
+   <para>
+    For more information on using <application>git</application> see
+    <ulink url="https://git-scm.com/">git-scm.com</ulink>.
+   </para>
+
+  </sect3>
+
+  <sect3>
+   <title>Downloading release source tarballs</title>
+
+   <para>
+    Official release source code is uploaded as tarballs to the
+    &repmgr; website along with a tarball checksum and a matching GnuPG
+    signature. See
+    <ulink url="http://repmgr.org/">http://repmgr.org/</ulink>
+    for the download information. See <xref linkend="appendix-signatures">
+    for information on verifying digital signatures.
+   </para>
+
+   <para>
+    You will need to download the repmgr source, e.g. <filename>repmgr-4.0.tar.gz</filename>.
+    You may optionally verify the package checksums from the
+    <literal>.md5</literal> files and/or verify the GnuPG signatures
+    per <xref linkend="appendix-signatures">.
+   </para>
+
+   <para>
+    After you unpack the source code archives using <literal>tar xf</literal>
+    the installation process is the same as if you were installing from a git
+    clone.
+   </para>
+
+  </sect3>
+
+ </sect2>
+
+ <sect2 id="installation-repmgr-source">
+  <title>Installation of &repmgr; from source</title>
+  <para>
+   To installing &repmgr; from source, simply execute:
+
+   <programlisting>
+    ./configure && make install
+   </programlisting>
+
+   Ensure `pg_config` for the target PostgreSQL version is in `$PATH`.
+  </para>
+ </sect2>
+
+</sect1>

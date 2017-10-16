@@ -1,0 +1,204 @@
+<chapter id="performing-switchover" xreflabel="Performing a switchover with repmgr">
+ <title>Performing a switchover with repmgr</title>
+ <para>
+  A typical use-case for replication is a combination of primary and standby
+  server, with the standby serving as a backup which can easily be activated
+  in case of a problem with the primary. Such an unplanned failover would
+  normally be handled by promoting the standby, after which an appropriate
+  action must be taken to restore the old primary.
+ </para>
+ <para>
+  In some cases however it's desirable to promote the standby in a planned
+  way, e.g. so maintenance can be performed on the primary; this kind of switchover
+  is supported by the <xref linkend="repmgr-standby-switchover"> command.
+ </para>
+ <para>
+  <command>repmgr standby switchover</command> differs from other &repmgr;
+  actions in that it lso performs actions on another server (the demotion
+  candidate), which means passwordless SSH access is required to that server
+  from the one where <command>repmgr standby switchover</command> is executed.
+ </para>
+ <note>
+  <simpara>
+   <command>repmgr standby switchover</command> performs a relatively complex
+   series of operations on two servers, and should therefore be performed after
+   careful preparation and with adequate attention. In particular you should
+   be confident that your network environment is stable and reliable.
+  </simpara>
+  <simpara>
+   Additionally you should be sure that the current primary can be shut down
+   quickly and cleanly. In particular, access from applications should be
+   minimalized or preferably blocked completely. Also be aware that if there
+   is a backlog of files waiting to be archived, PostgreSQL will not shut
+   down until archiving completes.
+  </simpara>
+  <simpara>
+    We recommend running <command>repmgr standby switchover</command> at the
+    most verbose logging level (<literal>--log-level=DEBUG --verbose</literal>)
+    and capturing all output to assist troubleshooting any problems.
+  </simpara>
+  <simpara>
+   Please also read carefully the sections <xref linkend="preparing-for-switchover"> and
+  `Caveats` below.
+  </simpara>
+ </note>
+
+ <sect1 id="preparing-for-switchover" xreflabel="Preparing for switchover">
+   <indexterm>
+     <primary>switchover</primary>
+     <secondary>preparation</secondary>
+   </indexterm>
+   <title>Preparing for switchover</title>
+   <para>
+    As mentioned above, success of the switchover operation depends on &repmgr;
+    being able to shut down the current primary server quickly and cleanly.
+   </para>
+   <para>
+    Double-check which commands will be used to stop/start/restart the current
+    primary; on the primary execute:
+    <programlisting>
+     repmgr -f /etc./repmgr.conf node service --list --action=stop
+     repmgr -f /etc./repmgr.conf node service --list --action=start
+     repmgr -f /etc./repmgr.conf node service --list --action=restart
+    </programlisting>
+   </para>
+   <note>
+    <simpara>
+     On <literal>systemd</literal> systems we strongly recommend using the appropriate
+     <command>systemctl</command> commands (typically run via <command>sudo</command>) to ensure
+     <literal>systemd</literal> informed about the status of the PostgreSQL service.
+    </simpara>
+   </note>
+   <para>
+    Check that access from applications is minimalized or preferably blocked
+    completely, so applications are not unexpectedly interrupted.
+   </para>
+   <para>
+    Check there is no significant replication lag on standbys attached to the
+    current primary.
+   </para>
+   <para>
+    If WAL file archiving is set up, check that there is no backlog of files waiting
+    to be archived, as PostgreSQL will not finally shut down until all these have been
+    archived. If there is a backlog exceeding <varname>archive_ready_warning</varname> WAL files,
+    `repmgr` will emit a warning before attempting to perform a switchover; you can also check
+    manually with <command>repmgr node check --archive-ready</command>.
+   </para>
+   <para>
+    Ensure that <command>repmgrd</command> is *not* running anywhere to prevent it unintentionally
+    promoting a node.
+   </para>
+   <para>
+    Finally, consider executing <command>repmgr standby switchover</command> with the
+    <literal>--dry-run</literal> option; this will perform any necessary checks and inform you about
+    success/failure, and stop before the first actual command is run (which would be the shutdown of the
+    current primary). Example output:
+    <programlisting>
+      $ repmgr standby switchover -f /etc/repmgr.conf --siblings-follow --dry-run
+      NOTICE: checking switchover on node "node2" (ID: 2) in --dry-run mode
+      INFO: SSH connection to host "localhost" succeeded
+      INFO: archive mode is "off"
+      INFO: replication lag on this standby is 0 seconds
+      INFO: all sibling nodes are reachable via SSH
+      NOTICE: local node "node2" (ID: 2) will be promoted to primary; current primary "node1" (ID: 1) will be demoted to standby
+      INFO: following shutdown command would be run on node "node1":
+        "pg_ctl -l /var/log/postgresql/startup.log -D '/var/lib/postgresql/data' -m fast -W stop"
+    </programlisting>
+   </para>
+ </sect1>
+
+ <sect1 id="switchover-execution" xreflabel="Executing the switchover command">
+  <indexterm>
+   <primary>switchover</primary>
+    <secondary>execution</secondary>
+  </indexterm>
+  <title>Executing the switchover command</title>
+  <para>
+   To demonstrate switchover, we will assume a replication cluster with a
+   primary (<literal>node1</literal>) and one standby (<literal>node2</literal>);
+   after the switchover <literal>node2</literal> should become the primary with
+   <literal>node1</literal> following it.
+  </para>
+  <para>
+   The switchover command must be run from the standby which is to be promoted,
+   and in its simplest form looks like this:
+   <programlisting>
+    $ repmgr -f /etc/repmgr.conf standby switchover
+    NOTICE: executing switchover on node "node2" (ID: 2)
+    INFO: searching for primary node
+    INFO: checking if node 1 is primary
+    INFO: current primary node is 1
+    INFO: SSH connection to host "localhost" succeeded
+    INFO: archive mode is "off"
+    INFO: replication lag on this standby is 0 seconds
+    NOTICE: local node "node2" (ID: 2) will be promoted to primary; current primary "node1" (ID: 1) will be demoted to standby
+    NOTICE: stopping current primary node "node1" (ID: 1)
+    NOTICE: issuing CHECKPOINT
+    DETAIL: executing server command "pg_ctl -l /var/log/postgres/startup.log -D '/var/lib/pgsql/data' -m fast -W stop"
+    INFO: checking primary status; 1 of 6 attempts
+    NOTICE: current primary has been cleanly shut down at location 0/3001460
+    NOTICE: promoting standby to primary
+    DETAIL: promoting server "node2" (ID: 2) using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' promote"
+    server promoting
+    NOTICE: STANDBY PROMOTE successful
+    DETAIL: server "node2" (ID: 2) was successfully promoted to primary
+    INFO: setting node 1's primary to node 2
+    NOTICE: starting server using  "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' restart"
+    NOTICE: NODE REJOIN successful
+    DETAIL: node 1 is now attached to node 2
+    NOTICE: switchover was successful
+    DETAIL: node "node2" is now primary
+    NOTICE: STANDBY SWITCHOVER is complete
+   </programlisting>
+  </para>
+  <para>
+   The old primary is now replicating as a standby from the new primary, and the
+   cluster status will now look like this:
+   <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+     ID | Name  | Role    | Status    | Upstream | Location | Connection string
+    ----+-------+---------+-----------+----------+----------+--------------------------------------
+     1  | node1 | standby |   running | node2    | default  | host=node1 dbname=repmgr user=repmgr
+     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
+   </programlisting>
+  </para>
+ </sect1>
+ <sect1 id="switchover-caveats" xreflabel="Caveats">
+  <indexterm>
+   <primary>switchover</primary>
+    <secondary>caveats</secondary>
+  </indexterm>
+  <title>Caveats</title>
+  <para>
+   <itemizedlist spacing="compact" mark="bullet">
+    <listitem>
+     <simpara>
+      If using PostgreSQL 9.3 or 9.4, you should ensure that the shutdown command
+      is configured to use PostgreSQL's <varname>fast</varname> shutdown mode (the default in 9.5
+      and later). If relying on <command>pg_ctl</command> to perform database server operations,
+      you should include <literal>-m fast</literal> in <varname>pg_ctl_options</varname>
+      in <filename>repmgr.conf</filename>.
+     </simpara>
+    </listitem>
+    <listitem>
+     <simpara>
+      <command>pg_rewind</command> *requires* that either <varname>wal_log_hints</varname> is enabled, or that
+      data checksums were enabled when the cluster was initialized. See the
+      <ulink url="https://www.postgresql.org/docs/current/static/app-pgrewind.html">pg_rewind documentation</ulink>
+      for details.
+     </simpara>
+    </listitem>
+    <listitem>
+     <simpara>
+      <command>repmgrd</command> should not be running with setting <varname>failover=automatic</varname>
+      in <filename>repmgr.conf</filename> when a switchover is carried out, otherwise the
+      <command>repmgrd</command> daemon may try and promote a standby by itself.
+     </simpara>
+    </listitem>
+   </itemizedlist>
+  </para>
+  <para>
+   We hope to remove some of these restrictions in future versions of `repmgr`.
+  </para>
+ </sect1>
+</chapter>

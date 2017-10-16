@@ -1,0 +1,23 @@
+<chapter id="repmgr-cluster-cleanup" xreflabel="repmgr cluster cleanup">
+  <indexterm>
+    <primary>repmgr cluster cleanup</primary>
+  </indexterm>
+  <title>repmgr cluster cleanup</title>
+  <para>
+   Purges monitoring history from the <literal>repmgr.monitoring_history</literal> table to
+   prevent excessive table growth. Use the <literal>-k/--keep-history</literal> to specify the
+   number of days of monitoring history to retain. This command can be used
+   manually or as a cronjob.
+  </para>
+  <para>
+   This command requires a valid <filename>repmgr.conf</filename> file for the node on which it is
+   executed; no additional arguments are required.
+  </para>
+  <note>
+   <simpara>
+    Monitoring history will only be written if <command>repmgrd</command> is active, and
+    <varname>monitoring_history</varname> is set to <literal>true</literal> in
+    <filename>repmgr.conf</filename>.
+   </simpara>
+  </note>
+</chapter>

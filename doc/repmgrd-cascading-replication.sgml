@@ -1,0 +1,17 @@
+<chapter id="repmgrd-cascading-replication">
+ <title>repmgrd and cascading replication</title>
+ <para>
+  Cascading replication - where a standby can connect to an upstream node and not
+  the primary server itself - was introduced in PostgreSQL 9.2. &repmgr; and
+  <command>repmgrd</command> support cascading replication by keeping track of the relationship
+  between standby servers - each node record is stored with the node id of its
+  upstream ("parent") server (except of course the primary server).
+ </para>
+ <para>
+  In a failover situation where the primary node fails and a top-level standby
+  is promoted, a standby connected to another standby will not be affected
+  and continue working as normal (even if the upstream standby it's connected
+  to becomes the primary node). If however the node's direct upstream fails,
+  the "cascaded standby" will attempt to reconnect to that node's parent.
+ </para>
+</chapter>

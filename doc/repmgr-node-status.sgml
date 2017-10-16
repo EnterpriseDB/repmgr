@@ -1,0 +1,29 @@
+
+<chapter id="repmgr-node-status" xreflabel="repmgr node status">
+  <indexterm>
+    <primary>repmgr node status</primary>
+  </indexterm>
+  <title>repmgr node status</title>
+  <para>
+   Displays an overview of a node's basic information and replication
+   status. This command must be run on the local node.
+  </para>
+  <para>
+   Sample output (execute <command>repmgr node status</command>):
+   <programlisting>
+        Node "node1":
+            PostgreSQL version: 10beta1
+            Total data size: 30 MB
+            Conninfo: host=node1 dbname=repmgr user=repmgr connect_timeout=2
+            Role: primary
+            WAL archiving: off
+            Archive command: (none)
+            Replication connections: 2 (of maximal 10)
+            Replication slots: 0 (of maximal 10)
+            Replication lag: n/a
+   </programlisting>
+  </para>
+  <para>
+    See <xref linkend="repmgr-node-check"> to diagnose issues.
+  </para>
+</chapter>

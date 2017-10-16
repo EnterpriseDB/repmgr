@@ -1,0 +1,71 @@
+<chapter id="repmgrd-monitoring">
+ <title>Monitoring with repmgrd</title>
+ <para>
+  When `repmgrd` is running with the option <literal>monitoring_history=true</literal>,
+  it will constantly write standby node status information to the
+  <varname>monitoring_history</varname> table, providing a near-real time
+  overview of replication status on all nodes
+  in the cluster.
+ </para>
+ <para>
+   The view <literal>replication_status</literal> shows the most recent state
+   for each node, e.g.:
+  <programlisting>
+    repmgr=# select * from repmgr.replication_status;
+    -[ RECORD 1 ]-------------+------------------------------
+    primary_node_id           | 1
+    standby_node_id           | 2
+    standby_name              | node2
+    node_type                 | standby
+    active                    | t
+    last_monitor_time         | 2017-08-24 16:28:41.260478+09
+    last_wal_primary_location | 0/6D57A00
+    last_wal_standby_location | 0/5000000
+    replication_lag           | 29 MB
+    replication_time_lag      | 00:00:11.736163
+    apply_lag                 | 15 MB
+    communication_time_lag    | 00:00:01.365643</programlisting>
+ </para>
+ <para>
+  The interval in which monitoring history is written is controlled by the
+  configuration parameter <varname>monitor_interval_secs</varname>;
+  default is 2.
+ </para>
+ <para>
+  As this can generate a large amount of monitoring data in the table
+  <literal>repmgr.monitoring_history</literal>. it's advisable to regularly
+  purge historical data using the <xref linkend="repmgr-cluster-cleanup">
+  command; use the <literal>-k/--keep-history</literal> option to
+  specify how many day's worth of data should be retained.
+ </para>
+ <para>
+  It's possible to use <command>repmgrd</command> to run in monitoring
+  mode only (without automatic failover capability) for some or all
+  nodes by setting <literal>failover=manual</literal> in the node's
+  <filename>repmgr.conf</filename> file. In the event of the node's upstream failing,
+  no failover action will be taken and the node will require manual intervention to
+  be reattached to replication. If this occurs, an
+  <link linkend="event-notifications">event notification</link>
+  <varname>standby_disconnect_manual</varname> will be created.
+ </para>
+ <para>
+  Note that when a standby node is not streaming directly from its upstream
+  node, e.g. recovering WAL from an archive, <varname>apply_lag</varname> will always appear as
+  <literal>0 bytes</literal>.
+ </para>
+ <tip>
+  <para>
+   If monitoring history is enabled, the contents of the <literal>repmgr.monitoring_history</literal>
+   table will be replicated to attached standbys. This means there will be a small but
+   constant stream of replication activity which may not be desirable. To prevent
+   this, convert the table to an <literal>UNLOGGED</literal> one with:
+   <programlisting>
+     ALTER TABLE repmgr.monitoring_history SET UNLOGGED;</programlisting>
+  </para>
+  <para>
+   This will however mean that monitoring history will not be available on
+   another node following a failover, and the view <literal>repmgr.replication_status</literal>
+   will not work on standbys.
+  </para>
+ </tip>
+</chapter>
