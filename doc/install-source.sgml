@@ -1,4 +1,9 @@
 <sect1 id="installation-source" xreflabel="Installing from source code">
+  <indexterm>
+   <primary>installation</primary>
+   <secondary>from source</secondary>
+  </indexterm>
+
  <title>Installing &repmgr; from source</title>
 
  <sect2 id="installation-source-prereqs">
@@ -132,7 +137,8 @@
     ./configure && make install
    </programlisting>
 
-   Ensure `pg_config` for the target PostgreSQL version is in `$PATH`.
+   Ensure <command>pg_config</command> for the target PostgreSQL version is in
+   <varname>$PATH</varname>.
   </para>
  </sect2>
 

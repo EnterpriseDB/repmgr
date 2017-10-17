@@ -9,7 +9,7 @@
   </para>
   <para>
     <command>repmgr cluster matrix</command> requires a valid <filename>repmgr.conf</filename>
-    file on each node.  Additionally passwordless `ssh` connections are required between
+    file on each node.  Additionally passwordless <command>ssh</command> connections are required between
     all nodes.
   </para>
   <para>
@@ -46,7 +46,7 @@
   <para>
     The other two nodes are up; the corresponding rows have <literal>x</literal> in the
     column corresponding to <literal>node3</literal>, meaning that inbound connections to
-    that node have failed, and `*` in the columns corresponding to
+    that node have failed, and <literal>*</literal> in the columns corresponding to
     <literal>node1</literal> and <literal>node2</literal>, meaning that inbound connections
     to these nodes have succeeded.
   </para>

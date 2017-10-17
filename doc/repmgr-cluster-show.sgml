@@ -32,7 +32,7 @@
     <literal>--verbose</literal> mode.
   </para>
   <para>
-    The `cluster show` command accepts an optional parameter <literal>--csv</literal>, which
+    <command>cluster show</command> accepts an optional parameter <literal>--csv</literal>, which
     outputs the replication cluster's status in a simple CSV format, suitable for
     parsing by scripts:
     <programlisting>

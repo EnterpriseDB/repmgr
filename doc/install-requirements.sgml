@@ -7,17 +7,14 @@
   </para>
 
   <para>
-   From version 4.0, repmgr is compatible with all PostgreSQL versions from 9.4, including PostgreSQL 10.
-  </para>
-  <para>
-   PostgreSQL 9.3 is supported by repmgr 3.3.
+   From version 4.0, repmgr is compatible with all PostgreSQL versions from 9.3, including PostgreSQL 10.
+   Note that some &repmgr; functionality is not available in PostgreSQL 9.3 and PostgreSQL 9.4.
   </para>
 
   <note>
-    <simpara>
-If upgrading from `repmgr 3`, please see the separate upgrade guide
-`doc/upgrading-from-repmgr3.md`.
-    </simpara>
+   <simpara>
+    If upgrading from &repmgr; 3.x, please see the section <xref linkend="upgrading-from-repmgr-3">.
+   </simpara>
   </note>
 
   <para>
@@ -26,42 +23,44 @@ If upgrading from `repmgr 3`, please see the separate upgrade guide
   </para>
 
   <para>
-   `repmgr` must be installed on each server in the replication cluster.
+   &repmgr; must be installed on each server in the replication cluster.
    If installing repmgr from packages, the package version must match the PostgreSQL
    version. If installing from source, repmgr must be compiled against the same
    major version.
   </para>
 
   <para>
-   A dedicated system user for `repmgr` is *not* required; as many `repmgr` and
-  `repmgrd` actions require direct access to the PostgreSQL data directory,
-  these commands should be executed by the `postgres` user.
+   A dedicated system user for &repmgr; is *not* required; as many &repmgr; and
+   <command>repmgrd</command> actions require direct access to the PostgreSQL data directory,
+   these commands should be executed by the <literal>postgres</literal> user.
   </para>
 
-
   <para>
-   Passwordless `ssh` connectivity between all servers in the replication cluster
+   Passwordless <command>ssh</command> connectivity between all servers in the replication cluster
    is not required, but is necessary in the following cases:
    <itemizedlist>
      <listitem>
-       <simpara>if you need `repmgr` to copy configuration files from outside the PostgreSQL
-  data directory (in which case `rsync` is also required)</simpara>
+       <simpara>if you need &repmgr; to copy configuration files from outside the PostgreSQL
+       data directory (in which case <command>rsync</command> is also required)</simpara>
      </listitem>
      <listitem>
-       <simpara>to perform switchover operations</simpara>
+       <simpara>to perform <link linkend="performing-switchover">switchover operations</link></simpara>
      </listitem>
      <listitem>
-       <simpara>when executing `repmgr cluster matrix` and `repmgr cluster crosscheck`</simpara>
+       <simpara>
+        when executing <command><link linkend="repmgr-cluster-matrix">repmgr cluster matrix</link></command>
+        and <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command>
+       </simpara>
      </listitem>
    </itemizedlist>
   </para>
 
   <tip>
    <simpara>
-    We recommend using a session multiplexer utility such as `screen` or
-    `tmux` when performing long-running actions (such as cloning a database)
-    on a remote server - this will ensure the `repmgr` action won't be prematurely
-    terminated if your `ssh` session to the server is interrupted or closed.
+    We recommend using a session multiplexer utility such as <command>screen</command> or
+    <command>tmux</command> when performing long-running actions (such as cloning a database)
+    on a remote server - this will ensure the &repmgr; action won't be prematurely
+    terminated if your <command>ssh</command> session to the server is interrupted or closed.
     </simpara>
   </tip>
  </sect1>

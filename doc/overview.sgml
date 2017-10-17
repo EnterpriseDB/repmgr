@@ -5,6 +5,11 @@
   This chapter provides a high-level overview of repmgr's components and functionality.
  </para>
  <sect1 id="repmgr-concepts" xreflabel="Concepts">
+
+  <indexterm>
+    <primary>concepts</primary>
+  </indexterm>
+
   <title>Concepts</title>
 
   <para>
@@ -15,13 +20,13 @@
    streaming replication</>.
   </para>
   <para>
-   The following terms are used throughout the `repmgr` documentation.
+   The following terms are used throughout the &repmgr; documentation.
    <variablelist>
     <varlistentry>
      <term>replication cluster</term>
      <listitem>
       <simpara>
-       In the `repmgr` documentation, "replication cluster" refers to the network
+       In the &repmgr; documentation, "replication cluster" refers to the network
        of PostgreSQL servers connected by streaming replication.
       </simpara>
      </listitem>
@@ -31,7 +36,7 @@
      <term>node</term>
      <listitem>
       <simpara>
-       A node is a server within a replication cluster.
+       A node is a single PostgreSQL server within a replication cluster.
       </simpara>
      </listitem>
     </varlistentry>
@@ -41,7 +46,7 @@
      <listitem>
       <simpara>
        The node a standby server connects to, in order to receive streaming replication.
-       This is either the primary server or in the case of cascading replication, another
+       This is either the primary server, or in the case of cascading replication, another
        standby.
       </simpara>
      </listitem>
@@ -52,7 +57,7 @@
      <listitem>
       <simpara>
        This is the action which occurs if a primary server fails and a suitable standby
-       is  promoted as the new primary. The `repmgrd` daemon supports automatic failover
+       is  promoted as the new primary. The <command>repmgrd</command> daemon supports automatic failover
        to minimise downtime.
       </simpara>
      </listitem>
@@ -66,7 +71,7 @@
        it's necessary to take a primary server offline; in this case a controlled
        switchover is necessary, whereby a suitable standby is promoted and the
        existing primary removed from the replication cluster in a controlled manner.
-       The `repmgr` command line client provides this functionality.
+       The &repmgr; command line client provides this functionality.
       </simpara>
      </listitem>
     </varlistentry>
@@ -88,7 +93,7 @@
  <sect1 id="repmgr-components" xreflabel="Components">
   <title>Components</title>
   <para>
-  `repmgr` is a suite of open-source tools to manage replication and failover
+  &repmgr; is a suite of open-source tools to manage replication and failover
   within a cluster of PostgreSQL servers. It supports and enhances PostgreSQL's
   built-in streaming replication, which provides a single read/write primary server
   and one or more read-only standbys containing near-real time copies of the primary
@@ -147,11 +152,12 @@
  <sect1 id="repmgr-user-metadata" xreflabel="Repmgr user and metadata">
   <title>Repmgr user and metadata</title>
   <para>
-   In order to effectively manage a replication cluster, `repmgr` needs to store
+   In order to effectively manage a replication cluster, &repmgr; needs to store
    information about the servers in the cluster in a dedicated database schema.
-   This schema is automatically by the `repmgr` extension, which is installed
-   during the first step in initialising a `repmgr`-administered cluster
-   (`repmgr primary register`) and contains the following objects:
+   This schema is automatically by the &repmgr; extension, which is installed
+   during the first step in initialising a &repmgr;-administered cluster
+   (<command><link linkend="repmgr-primary-register">repmgr primary register</link></command>)
+   and contains the following objects:
    <variablelist>
     <varlistentry>
      <term>Tables</term>
@@ -159,14 +165,15 @@
       <para>
        <itemizedlist>
         <listitem>
-          <simpara>repmgr.events: records events of interest</simpara>
+          <simpara><literal>repmgr.events</literal>: records events of interest</simpara>
         </listitem>
         <listitem>
-          <simpara>repmgr.nodes: connection and status information for each server in the
+          <simpara><literal>repmgr.nodes</literal>: connection and status information for each server in the
     replication cluster</simpara>
         </listitem>
         <listitem>
-          <simpara>repmgr.monitoring_history: historical standby monitoring information written by `repmgrd`</simpara>
+          <simpara><literal>repmgr.monitoring_history</literal>: historical standby monitoring information
+            written by <command>repmgrd</command></simpara>
         </listitem>
        </itemizedlist>
       </para>
@@ -178,12 +185,12 @@
       <para>
        <itemizedlist>
         <listitem>
-          <simpara>repmgr.show_nodes: based on the table `repl_nodes`, additionally showing the
-     name of the server's upstream node</simpara>
+          <simpara>repmgr.show_nodes: based on the table <literal>repmgr.nodes</literal>, additionally showing the
+           name of the server's upstream node</simpara>
         </listitem>
         <listitem>
-          <simpara>repmgr.replication_status: when `repmgrd`'s monitoring is enabled, shows current monitoring
-    status for each standby.</simpara>
+          <simpara>repmgr.replication_status: when <command>repmgrd</command>'s monitoring is enabled, shows
+            current monitoring status for each standby.</simpara>
         </listitem>
        </itemizedlist>
       </para>
@@ -193,16 +200,16 @@
   </para>
 
   <para>
-   The `repmgr` metadata schema can be stored in an existing database or in its own
-   dedicated database. Note that the `repmgr` metadata schema cannot reside on a database
-   server which is not part of the replication cluster managed by `repmgr`.
+   The &repmgr; metadata schema can be stored in an existing database or in its own
+   dedicated database. Note that the &repmgr; metadata schema cannot reside on a database
+   server which is not part of the replication cluster managed by &repmgr;.
   </para>
   <para>
-   A database user must be available for `repmgr` to access this database and perform
+   A database user must be available for &repmgr; to access this database and perform
    necessary changes. This user does not need to be a superuser, however some operations
-   such as initial installation of the `repmgr` extension will require a superuser
+   such as initial installation of the &repmgr; extension will require a superuser
    connection (this can be specified where required with the command line option
-   `--superuser`).
+   <literal>--superuser</literal>).
   </para>
  </sect1>
 

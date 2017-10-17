@@ -1,4 +1,9 @@
 <chapter id="performing-switchover" xreflabel="Performing a switchover with repmgr">
+
+ <indexterm>
+  <primary>switchover</primary>
+ </indexterm>
+
  <title>Performing a switchover with repmgr</title>
  <para>
   A typical use-case for replication is a combination of primary and standby
@@ -39,7 +44,7 @@
   </simpara>
   <simpara>
    Please also read carefully the sections <xref linkend="preparing-for-switchover"> and
-  `Caveats` below.
+   <xref linkend="switchover-caveats"> below.
   </simpara>
  </note>
 
@@ -81,7 +86,7 @@
     If WAL file archiving is set up, check that there is no backlog of files waiting
     to be archived, as PostgreSQL will not finally shut down until all these have been
     archived. If there is a backlog exceeding <varname>archive_ready_warning</varname> WAL files,
-    `repmgr` will emit a warning before attempting to perform a switchover; you can also check
+    &repmgr; will emit a warning before attempting to perform a switchover; you can also check
     manually with <command>repmgr node check --archive-ready</command>.
    </para>
    <para>
@@ -198,7 +203,7 @@
    </itemizedlist>
   </para>
   <para>
-   We hope to remove some of these restrictions in future versions of `repmgr`.
+   We hope to remove some of these restrictions in future versions of &repmgr;.
   </para>
  </sect1>
 </chapter>

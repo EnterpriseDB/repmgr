@@ -1,4 +1,9 @@
 <sect1 id="configuration-file-settings" xreflabel="configuration file settings">
+  <indexterm>
+    <primary>repmgr.conf</primary>
+    <secondary>settings</secondary>
+  </indexterm>
+
  <title>Configuration file settings</title>
  <para>
    Each <filename>repmgr.conf</filename> file must contain the following parameters:

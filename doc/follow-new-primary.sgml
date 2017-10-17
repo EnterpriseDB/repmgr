@@ -1,4 +1,9 @@
 <chapter id="follow-new-primary" xreflabel="Following a new primary">
+ <indexterm>
+  <primary>Following a new primary</primary>
+  <seealso>repmgr standby follow</seealso>
+ </indexterm>
+
  <title>Following a new primary</title>
  <para>
    Following the failure or removal of the replication cluster's existing primary
@@ -22,7 +27,8 @@
   </programlisting>
  </para>
  <para>
-   The standby is now replicating from the new primary and `repmgr cluster show`
+   The standby is now replicating from the new primary and
+   <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>
    output reflects this:
    <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show
