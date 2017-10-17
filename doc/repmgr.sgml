@@ -23,13 +23,13 @@
 
   <abstract>
    <para>
-   Thisis the official documentation of &repmgr; &repmgrversion; for
+   This is the official documentation of &repmgr; &repmgrversion; for
    use with PostgreSQL 9.3 - PostgreSQL 10.
    It describes the functionality supported by the current version of &repmgr;.
    </para>
 
    <para>
-    repmgr was developed by
+    &repmgr; was developed by
     <ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
     along with contributions from other individuals and companies.
     Contributions from the community are appreciated and welcome - get
@@ -109,6 +109,7 @@
   &repmgr-cluster-cleanup;
  </part>
 
+ &appendix-faq;
  &appendix-signatures;
 
  <![%include-index;[&bookindex;]]>
