@@ -1,0 +1,228 @@
+<appendix id="appendix-faq" xreflabel="FAQ">
+ <title>FAQ (Frequently Asked Questions)</title>
+
+ <sect1 id="faq-general" xreflabel="General">
+  <title>General</title>
+
+  <sect2 id="faq-xrepmgr-version-diff" xreflabel="Version differences">
+    <title>What's the difference between the repmgr versions?</title>
+    <para>
+      &repmgr; 4 is a complete rewrite of the existing &repmgr; code base
+      and implements &repmgr; as a PostgreSQL extension. It
+      supports all PostgreSQL versions from 9.3 (although some &repmgr;
+      features are not available for PostgreSQL 9.3 and 9.4).
+     </para>
+     <para>
+      &repmgr; 3.x builds on the improved replication facilities added
+      in PostgreSQL 9.3, as well as improved automated failover support
+      via <command>repmgrd</command>, and is not compatible with PostgreSQL 9.2
+      and earlier. We recommend upgrading to &repmgr; 4, as the &repmgr; 3.x
+      series will no longer be actively maintained.
+     </para>
+     <para>
+      repmgr 2.x supports PostgreSQL 9.0 ~ 9.3. While it is compatible
+      with PostgreSQL 9.3, we recommend using repmgr 4.x.
+     </para>
+  </sect2>
+
+  <sect2 id="faq-replication-slots-advantage" xreflabel="Advantages of replication slots">
+   <title>What's the advantage of using replication slots?</title>
+   <para>
+    Replication slots, introduced in PostgreSQL 9.4, ensure that the
+    primary server will retain WAL files until they have been consumed
+    by all standby servers. This makes WAL file management much easier,
+    and if used `repmgr` will no longer insist on a fixed minimum number
+    (default: 5000) of WAL files being retained.
+   </para>
+   <para>
+    However this does mean that if a standby is no longer connected to the
+    primary, the presence of the replication slot will cause WAL files
+    to be retained indefinitely.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-replication-slots-number" xreflabel="Number of replication slots">
+   <title>How many replication slots should I define in <varname>max_replication_slots</varname>?</title>
+   <para>
+    Normally at least same number as the number of standbys which will connect
+    to the node. Note that changes to <varname>max_replication_slots</varname> require a server
+    restart to take effect, and as there is no particular penalty for unused
+    replication slots, setting a higher figure will make adding new nodes
+    easier.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-hash-index" xreflabel="Hash indexes">
+   <title>Does &repmgr; support hash indexes?</title>
+   <para>
+    Before PostgreSQL 10, hash indexes were not WAL logged and are therefore not suitable
+    for use in streaming replication in PostgreSQL 9.6 and earlier. See the
+    <ulink url="https://www.postgresql.org/docs/9.6/static/sql-createindex.html#AEN80279">PostgreSQL documentation</ulink>
+    for details.
+   </para>
+   <para>
+    From PostgreSQL 10, this restriction has been lifted and hash indexes can be used
+    in a streaming replication cluster.
+   </para>
+  </sect2>
+ </sect1>
+
+ <sect1 id="faq-repmgr" xreflabel="repmgr">
+  <title><command>repmgr</command></title>
+
+  <sect2 id="faq-register-existing-node" xreflabel="">
+   <title>Can I register an existing PostgreSQL server with repmgr?</title>
+   <para>
+    Yes, any existing PostgreSQL server which is part of the same replication
+    cluster can be registered with &repmgr;. There's no requirement for a
+    standby to have been cloned using &repmgr;.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgr-failed-primary-standby" xreflabel="Reintegrate a failed primary as a standby">
+   <title>How can a failed primary be re-added as a standby?</title>
+   <para>
+    This is a two-stage process. First, the failed primary's data directory
+    must be re-synced with the current primary; secondly the failed primary
+    needs to be re-registered as a standby.
+   </para>
+   <para>
+    In PostgreSQL 9.5 and later, it's possible to use <command>pg_rewind</command>
+    to re-synchronise the existing data directory, which will usually be much
+    faster than re-cloning the server. However <command>pg_rewind</command> can only
+    be used if PostgreSQL either has <varname>wal_log_hints</varname> enabled, or
+    data checksums were enabled when the cluster was initialized.
+   </para>
+   <para>
+    &repmgr; provides the command <command>repmgr node rejoin</command> which can
+    optionally execute <command>pg_rewind</command>; see the <xref linkend="repmgr-node-rejoin">
+    documentation for details.
+   </para>
+   <para>
+    If <command>pg_rewind</command> cannot be used, then the data directory will have
+    to be re-cloned from scratch.
+   </para>
+
+  </sect2>
+
+  <sect2 id="faq-repmgr-check-configuration" xreflabel="Check PostgreSQL configuration">
+   <title>Is there an easy way to check my primary server is correctly configured for use with &repmgr;?</title>
+   <para>
+    Execute <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>
+    with the <literal>--dry-run</literal> option; this will report any configuration problems
+    which need to be rectified.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgr-clone-skip-config-files" xreflabel="">
+   <title>When cloning a standby, how can I get &repmgr; to copy
+     <filename>postgresql.conf</filename> and <filename>pg_hba.conf</filename> from the PostgreSQL configuration
+     directory in <filename>/etc</filename>?</title>
+   <para>
+    Use the command line option <literal>--copy-external-config-files</literal>. For more details
+    see <xref linkend="repmgr-standby-clone-config-file-copying">.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgr-shared-preload-libaries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
+    <title>Do I need to include <literal>shared_preload_libraries = 'repmgr'</literal>
+      in <filename>postgresql.conf</filename> if I'm not using <command>repmgrd</command>?</title>
+   <para>
+    No, the <literal>repmgr</literal> shared library is only needed when running <command>repmgrd</command>.
+    If you later decide to run <command>repmgrd</command>, you just need to add
+    <literal>shared_preload_libraries = 'repmgr'</literal> and restart PostgreSQL.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgr-permissions" xreflabel="Replication permission problems">
+   <title>I've provided replication permission for the <literal>repmgr</literal> user in <filename>pg_hba.conf</filename>
+     but <command>repmgr</command>/<command>repmgrd</command> complains it can't connect to the server... Why?</title>
+   <para>
+    <command>repmgr</command> and<command>repmgrd</command> need to be able to connect to the repmgr database
+    with a normal connection to query metadata. The <literal>replication</literal> connection
+    permission is for PostgreSQL's streaming replication (and doesn't  necessarily need to be the <literal>repmgr</literal> user).
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgr-clone-provide-primary-conninfo" xreflabel="Providing primary connection parameters">
+   <title>When cloning a standby, why do I need to provide the connection parameters
+     for the primary server on the command line, not in the configuration file?</title>
+   <para>
+    Cloning a standby is a one-time action; the role of the server being cloned
+    from could change, so fixing it in the configuration file would create
+    confusion. If &repmgr; needs to establish a connection to the primary
+    server, it can retrieve this from the <literal>repmgr.nodes</literal> table or if necessary
+    scan the replication cluster until it locates the active primary.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgr-events-no-fkey" xreflabel="No foreign key on node_id in repmgr.events">
+   <title>Why is there no foreign key on the <literal>node_id</literal> column in the <literal>repmgr.events</literal>
+     table?</title>
+   <para>
+     Under some circumstances event notifications can be generated for servers
+     which have not yet been registered; it's also useful to retain a record
+     of events which includes servers removed from the replication cluster
+     which no longer have an entry in the <literal>repmrg.nodes</literal> table.
+   </para>
+  </sect2>
+
+ </sect1>
+
+ <sect1 id="faq-repmgrd" xreflabel="repmgrd">
+  <title><command>repmgrd</command></title>
+
+
+  <sect2 id="faq-repmgrd-prevent-promotion" xreflabel="Prevent standby from being promoted to primary">
+   <title>How can I prevent a node from ever being promoted to primary?</title>
+   <para>
+    In `repmgr.conf`, set its priority to a value of 0 or less; apply the changed setting with
+    <command><link linkend="repmgr-standby-register">repmgr standby register --force</link></command>.
+   </para>
+   <para>
+    Additionally, if <varname>failover</varname> is set to <literal>manual</literal>, the node will never
+    be considered as a promotion candidate.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgrd-delayed-standby" xreflabel="Delayed standby support">
+   <title>Does <command>repmgrd</command> support delayed standbys?</title>
+   <para>
+    <command>repmgrd</command> can monitor delayed standbys - those set up with
+    <varname>recovery_min_apply_delay</varname> set to a non-zero value
+    in <filename>recovery.conf</filename> - but as it's not currently possible
+    to directly examine the value applied to the standby, <command>repmgrd</command>
+    may not be able to properly evaluate the node as a promotion candidate.
+   </para>
+   <para>
+    We recommend that delayed standbys are explicitly excluded from promotion
+    by setting <varname>priority</varname> to <literal>0</literal> in
+    <filename>repmgr.conf</filename>.
+   </para>
+   <para>
+    Note that after registering a delayed standby, <command>repmgrd</command> will only start
+    once the metadata added in the master node has been replicated.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgrd-logfile-rotate" xreflabel="repmgrd logfile rotation">
+   <title>How can I get <command>repmgrd</command> to rotate its logfile?</title>
+   <para>
+     Configure your system's <literal>logrotate</literal> service to do this; see <xref linkend="repmgrd-log-rotation">.
+   </para>
+
+  </sect2>
+
+  <sect2 id="faq-repmgrd-recloned-no-start" xreflabel="repmgrd not restarting after node cloned">
+   <title>I've recloned a failed master as a standby, but <command>repmgrd</command> refuses to start?</title>
+   <para>
+    Check you registered the standby after recloning. If unregistered, the standby
+    cannot be considered as a promotion candidate even if <varname>failover</varname> is set to
+    <literal>automatic</literal>, which is probably not what you want. <command>repmgrd</command> will start if
+    <varname>failover</varname> is set to <literal>manual</literal> so the node's replication status can still
+  be monitored, if desired.
+   </para>
+  </sect2>
+
+ </sect1>
+</appendix>
