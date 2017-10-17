@@ -1,5 +1,11 @@
 <chapter id="upgrading-repmgr" xreflabel="Upgrading repmgr">
+
+ <indexterm>
+  <primary>upgrading</primary>
+ </indexterm>
+
  <title>Upgrading repmgr</title>
+
  <para>
   &repmgr; is updated regularly with point releases (e.g. 4.0.1 to 4.0.2)
   containing bugfixes and other minor improvements. Any substantial new
@@ -17,8 +23,13 @@
   file used by <command>repmgrd</command>; check the release notes for details.
  </para>
 
- <sect1 id="upgrading-from-repmgr-3">
-  <title>Upgrading from repmgr 3</title>
+ <sect1 id="upgrading-from-repmgr-3" xreflabel="Upgrading from repmgr 3.x">
+  <indexterm>
+   <primary>upgrading</primary>
+   <secondary>from repmgr 3.x</secondary>
+  </indexterm>
+
+  <title>Upgrading from repmgr 3.x</title>
   <para>
    The upgrade process consists of two steps:
    <orderedlist>
@@ -162,8 +173,8 @@
     <command>repmgr</command> binary.
    </para>
    <para>
-    Install <literal>repmgr4</literal>; any <literal>repmgr3</literal> packages should be uninstalled
-    (if not automatically uninstalled already).
+    Install <literal>repmgr 4</literal> packages; any <literal>repmgr 3.x</literal> packages
+    should be uninstalled (if not automatically uninstalled already by your packaging system).
    </para>
    <sect3>
     <title>Upgrading from repmgr 3.1.1 or earlier</title>
@@ -203,7 +214,8 @@
     </para>
     <note>
       <simpara>there must be only one schema matching <literal>repmgr_%</literal> in the
-        database, otherwise this step may not work.</simpara>
+        database, otherwise this step may not work.
+      </simpara>
     </note>
    </sect3>
    <sect3>

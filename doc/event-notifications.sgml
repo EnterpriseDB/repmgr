@@ -1,12 +1,12 @@
 <chapter id="event-notifications" xreflabel="event notifications">
  <title>Event Notifications</title>
  <para>
-  Each time `repmgr` or `repmgrd` perform a significant event, a record
-  of that event is written into the `repmgr.events` table together with
+  Each time &repmgr; or <command>repmgrd</command> perform a significant event, a record
+  of that event is written into the <literal>repmgr.events</literal> table together with
   a timestamp, an indication of failure or success, and further details
   if appropriate. This is useful for gaining an overview of events
   affecting the replication cluster. However note that this table has
-  advisory character and should be used in combination with the `repmgr`
+  advisory character and should be used in combination with the &repmgr;
   and PostgreSQL logs to obtain details of any events.
  </para>
  <para>
@@ -28,8 +28,8 @@
  <para>
   Additionally, event notifications can be passed to a user-defined program
   or script which can take further action, e.g. send email notifications.
-  This is done by setting the `event_notification_command` parameter in
-  `repmgr.conf`.
+  This is done by setting the <literal>event_notification_command</literal> parameter in
+  <filename>repmgr.conf</filename>.
  </para>
  <para>
   This parameter accepts the following format placeholders:

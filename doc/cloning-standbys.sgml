@@ -5,8 +5,8 @@
 
  <sect1 id="cloning-from-barman" xreflabel="Cloning from Barman">
    <indexterm>
-     <primary>cloning</primary>
-     <secondary>from Barman</secondary>
+    <primary>cloning</primary>
+    <secondary>from Barman</secondary>
    </indexterm>
    <title>Cloning a standby from Barman</title>
    <para>
@@ -192,7 +192,7 @@
      </programlisting>
    </para>
    <para>
-    Replication slots must be enabled in <filename>postgresql.conf</filename>` by
+    Replication slots must be enabled in <filename>postgresql.conf</filename> by
     setting the parameter <varname>max_replication_slots</varname> to at least the
     number of expected standbys (changes to this parameter require a server restart).
    </para>

@@ -1,4 +1,9 @@
 <sect1 id="configuration-file" xreflabel="configuration file location">
+  <indexterm>
+    <primary>repmgr.conf</primary>
+    <secondary>location</secondary>
+  </indexterm>
+
   <title>Configuration file location</title>
   <para>
     <application>repmgr</application> and <application>repmgrd</application>
@@ -7,7 +12,7 @@
     <filename>repmgr.conf</filename> must contain a number of required parameters, including
     the database connection string for the local node and the location
     of its data directory; other values will be inferred from defaults if
-    not explicitly supplied. See section `configuration file parameters`
+    not explicitly supplied. See section <xref linkend="configuration-file-settings">
     for more details.
   </para>
 
@@ -15,7 +20,7 @@
    The configuration file will be searched for in the following locations:
    <itemizedlist spacing="compact" mark="bullet">
     <listitem>
-     <para>a configuration file specified by the `-f/--config-file` command line option</para>
+     <para>a configuration file specified by the <literal>-f/--config-file</literal> command line option</para>
     </listitem>
     <listitem>
      <para>
@@ -37,10 +42,10 @@
   </para>
 
   <para>
-   Note that if a file is explicitly specified with <application>-f/--config-file</application>,
-   an error will be raised if it is not found or not readable and no attempt will be made to
+   Note that if a file is explicitly specified with <literal>-f/--config-file</literal>,
+   an error will be raised if it is not found or not readable, and no attempt will be made to
    check default locations; this is to prevent <application>repmgr</application> unexpectedly
-   reading the wrong file.
+   reading the wrong configuraton file.
   </para>
 
 </sect1>

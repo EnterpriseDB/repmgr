@@ -58,7 +58,7 @@
    <para>
     When initially cloning a standby, you will need to ensure
     that all required WAL files remain available while the cloning is taking
-    place. To ensure this happens when using the default `pg_basebackup` method,
+    place. To ensure this happens when using the default <command>pg_basebackup</command> method,
     &repmgr; will set <command>pg_basebackup</command>'s <literal>--xlog-method</literal>
     parameter to <literal>stream</literal>,
     which will ensure all WAL files generated during the cloning process are
