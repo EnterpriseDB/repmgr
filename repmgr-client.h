@@ -141,7 +141,6 @@ static struct option long_options[] =
  *
  * Note: --force-rewind accepted to pass to "node join"
  */
-	{"remote-config-file", required_argument, NULL, 'C'},
 	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE},
 	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW},
 
@@ -177,6 +176,8 @@ static struct option long_options[] =
 /* deprecated */
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
 	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
+	/* previously used by "standby switchover" */
+	{"remote-config-file", required_argument, NULL, 'C'},
 	/* legacy alias for -D/--pgdata */
 	{"data-dir", required_argument, NULL, OPT_DATA_DIR},
 	/* replaced by --node-id */
