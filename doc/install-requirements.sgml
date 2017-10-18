@@ -31,7 +31,7 @@
 
   <para>
    A dedicated system user for &repmgr; is *not* required; as many &repmgr; and
-   <command>repmgrd</command> actions require direct access to the PostgreSQL data directory,
+   <application>repmgrd</application> actions require direct access to the PostgreSQL data directory,
    these commands should be executed by the <literal>postgres</literal> user.
   </para>
 

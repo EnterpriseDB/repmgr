@@ -18,9 +18,9 @@
   <command>ALTER EXTENSION repmgr UPDATE</command>.
  </para>
  <para>
-  If <command>repmgrd</command> is running, it may be necessary to restart
+  If <application>repmgrd</application> is running, it may be necessary to restart
   the PostgreSQL server if the upgrade contains changes to the shared object
-  file used by <command>repmgrd</command>; check the release notes for details.
+  file used by <application>repmgrd</application>; check the release notes for details.
  </para>
 
  <sect1 id="upgrading-from-repmgr-3" xreflabel="Upgrading from repmgr 3.x">
@@ -83,7 +83,7 @@
       </listitem>
       <listitem>
         <simpara><varname>monitoring_history</varname>: this replaces the
-          <command>repmgrd</command> command line option
+          <application>repmgrd</application> command line option
           <literal>--monitoring-history</literal></simpara>
       </listitem>
      </itemizedlist>
@@ -169,7 +169,7 @@
   <sect2>
    <title>Upgrading the repmgr schema</title>
    <para>
-    Ensure <command>repmgrd</command> is not running, or any cron jobs which execute the
+    Ensure <application>repmgrd</application> is not running, or any cron jobs which execute the
     <command>repmgr</command> binary.
    </para>
    <para>
@@ -235,7 +235,7 @@
     </para>
     <para>
      Check the data is updated as expected by examining the <structname>repmgr.nodes</structname>
-     table; restart <command>repmgrd</command> if required.
+     table; restart <application>repmgrd</application> if required.
     </para>
     <para>
      The original <literal>repmgr_$cluster</literal> schema can be dropped at any time.

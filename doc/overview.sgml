@@ -57,7 +57,7 @@
      <listitem>
       <simpara>
        This is the action which occurs if a primary server fails and a suitable standby
-       is  promoted as the new primary. The <command>repmgrd</command> daemon supports automatic failover
+       is  promoted as the new primary. The <application>repmgrd</application> daemon supports automatic failover
        to minimise downtime.
       </simpara>
      </listitem>
@@ -173,7 +173,7 @@
         </listitem>
         <listitem>
           <simpara><literal>repmgr.monitoring_history</literal>: historical standby monitoring information
-            written by <command>repmgrd</command></simpara>
+            written by <application>repmgrd</application></simpara>
         </listitem>
        </itemizedlist>
       </para>
@@ -189,7 +189,7 @@
            name of the server's upstream node</simpara>
         </listitem>
         <listitem>
-          <simpara>repmgr.replication_status: when <command>repmgrd</command>'s monitoring is enabled, shows
+          <simpara>repmgr.replication_status: when <application>repmgrd</application>'s monitoring is enabled, shows
             current monitoring status for each standby.</simpara>
         </listitem>
        </itemizedlist>

@@ -18,7 +18,7 @@
     possible without actually changing the status of either node.
   </para>
   <para>
-    <command>repmgrd</command> should not be active on any nodes while a switchover is being
+    <application>repmgrd</application> should not be active on any nodes while a switchover is being
     executed. This restriction may be lifted in a later version.
   </para>
   <para>
