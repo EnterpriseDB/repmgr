@@ -13,14 +13,25 @@
    </simpara>
   </note>
   <para>
-    This can optionally use <command>pg_rewind</command> to re-integrate a node which has diverged
+    This can optionally use <application>pg_rewind</application> to re-integrate a node which has diverged
     from the rest of the cluster, typically a failed primary.
   </para>
   <para>
     The node must have been shut down cleanly; if this was not the case, it will
-    need to be manually started (remove any existing <filename>recovery.conf</filename> file) until
-    it has reached a consistent recovery point, then shut down cleanly.
+    need to be manually started (remove any existing <filename>recovery.conf</filename> file first)
+    until it has reached a consistent recovery point, then shut down cleanly.
   </para>
+  <tip>
+    <para>
+      If <application>PostgreSQL</application> is started in single-user mode and
+      input is directed from <filename>/dev/null/</filename>, it will perform recovery
+      then immediately quit, and will then be in a state suitable for use by
+      <application>pg_rewind</application>.
+      <programlisting>
+        rm -f /var/lib/pgsql/data/recovery.conf
+        postgres --single -D /var/lib/pgsql/data/ < /dev/null
+    </para>
+  </tip>
   <para>
     Usage:
     <programlisting>
