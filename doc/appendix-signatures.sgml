@@ -1,5 +1,66 @@
 <appendix id="appendix-signatures" xreflabel="Verifying digital signatures">
  <title>Verifying digital signatures</title>
 
- <para>WIP</para>
+ <sect1 id="repmgr-source-key" xreflabel="repmgr source key">
+   <title>repmgr source code signing key</title>
+   <para>
+     The signing key ID used for <application>repmgr</application> source code bundles is:
+     <ulink url="http://packages.2ndquadrant.com/repmgr/SOURCE-GPG-KEY-repmgr">
+       <literal>0x297F1DCC</literal></ulink>.
+   </para>
+
+   <para>
+     To download the <application>repmgr</application> source key to your computer:
+     <programlisting>
+       curl -s http://packages.2ndquadrant.com/repmgr/SOURCE-GPG-KEY-repmgr | gpg --import
+       gpg --fingerprint 0x297F1DCC
+     </programlisting>
+     then verify that the fingerprint is the expected value:
+     <programlisting>
+       085A BE38 6FD9 72CE 6365  340D 8365 683D 297F 1DCC</programlisting>
+   </para>
+
+   <para>
+     For checking tarballs, first download and import the <application>repmgr</application>
+     source signing key as shown above. Then download both source tarball and the detached
+     key (e.g. <filename>repmgr-4.0beta1.tar.gz</filename> and
+     <filename>repmgr-4.0beta1.tar.gz.asc</filename>) from
+     <ulink url="https://repmgr.org/download/">https://repmgr.org/download/</ulink>
+     and use <application>gpg</application> to verify the key, e.g.:
+     <programlisting>
+       gpg --verify repmgr-4.0beta1.tar.gz.asc</programlisting>
+   </para>
+
+ </sect1>
+
+ <sect1 id="repmgr-rpm-key" xreflabel="repmgr rpm key">
+   <title>repmgr RPM signing key</title>
+   <para>
+     The signing key ID used for <application>repmgr</application> source code bundles is:
+     <ulink url="http://packages.2ndquadrant.com/repmgr/RPM-GPG-KEY-repmgr">
+       <literal>0x702D883A</literal></ulink>.
+   </para>
+
+   <para>
+     To download the <application>repmgr</application> source key to your computer:
+     <programlisting>
+       curl -s http://packages.2ndquadrant.com/repmgr/RPM-GPG-KEY-repmgr | gpg --import
+       gpg --fingerprint 0x702D883A
+     </programlisting>
+     then verify that the fingerprint is the expected value:
+     <programlisting>
+       AE4E 390E A58E 0037 6148  3F29 888D 018B 702D 883A</programlisting>
+   </para>
+
+   <para>
+     To check a repository RPM, use <application>rpmkeys</application> to load the
+      packaging signing key into the RPM database then use <literal>rpm -K</literal>, e.g.:
+     <programlisting>
+       sudo rpmkeys --import http://packages.2ndquadrant.com/repmgr/RPM-GPG-KEY-repmgr
+       rpm -K postgresql-bdr94-2ndquadrant-redhat-1.0-2.noarch.rpm
+     </programlisting>
+   </para>
+
+ </sect1>
+
 </appendix>
