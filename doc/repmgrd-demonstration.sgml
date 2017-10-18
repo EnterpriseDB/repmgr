@@ -10,19 +10,19 @@
     ----+-------+---------+-----------+----------+----------+--------------------------------------
      1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
      2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr  </programlisting>
+     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr</programlisting>
  </para>
  <para>
-  Start <command>repmgrd</command> on each standby and verify that it's running by examining the
+  Start <application>repmgrd</application> on each standby and verify that it's running by examining the
   log output, which at log level <literal>INFO</literal> will look like this:
   <programlisting>
     [2017-08-24 17:31:00] [NOTICE] using configuration file "/etc/repmgr.conf"
     [2017-08-24 17:31:00] [INFO] connecting to database "host=node2 dbname=repmgr user=repmgr"
     [2017-08-24 17:31:00] [NOTICE] starting monitoring of node <literal>node2</literal> (ID: 2)
-    [2017-08-24 17:31:00] [INFO] monitoring connection to upstream node "node1" (node ID: 1)  </programlisting>
+    [2017-08-24 17:31:00] [INFO] monitoring connection to upstream node "node1" (node ID: 1)</programlisting>
  </para>
  <para>
-  Each <command>repmgrd</command> should also have recorded its successful startup as an event:
+  Each <application>repmgrd</application> should also have recorded its successful startup as an event:
   <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster event --event=repmgrd_start
      Node ID | Name  | Event         | OK | Timestamp           | Details
@@ -38,8 +38,8 @@
  </para>
  <para>
   This will force the primary to shut down straight away, aborting all processes
-  and transactions.  This will cause a flurry of activity in the <command>repmgrd</command> log
-  files as each <command>repmgrd</command> detects the failure of the primary and a failover
+  and transactions.  This will cause a flurry of activity in the <application>repmgrd</application> log
+  files as each <application>repmgrd</application> detects the failure of the primary and a failover
   decision is made. This is an extract from the log of a standby server (<literal>node2</literal>)
   which has promoted to new primary after failure of the original primary (<literal>node1</literal>).
   <programlisting>

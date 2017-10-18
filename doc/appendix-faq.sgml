@@ -15,7 +15,7 @@
      <para>
       &repmgr; 3.x builds on the improved replication facilities added
       in PostgreSQL 9.3, as well as improved automated failover support
-      via <command>repmgrd</command>, and is not compatible with PostgreSQL 9.2
+      via <application>repmgrd</application>, and is not compatible with PostgreSQL 9.2
       and earlier. We recommend upgrading to &repmgr; 4, as the &repmgr; 3.x
       series will no longer be actively maintained.
      </para>
@@ -126,19 +126,19 @@
 
   <sect2 id="faq-repmgr-shared-preload-libaries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
     <title>Do I need to include <literal>shared_preload_libraries = 'repmgr'</literal>
-      in <filename>postgresql.conf</filename> if I'm not using <command>repmgrd</command>?</title>
+      in <filename>postgresql.conf</filename> if I'm not using <application>repmgrd</application>?</title>
    <para>
-    No, the <literal>repmgr</literal> shared library is only needed when running <command>repmgrd</command>.
-    If you later decide to run <command>repmgrd</command>, you just need to add
+    No, the <literal>repmgr</literal> shared library is only needed when running <application>repmgrd</application>.
+    If you later decide to run <application>repmgrd</application>, you just need to add
     <literal>shared_preload_libraries = 'repmgr'</literal> and restart PostgreSQL.
    </para>
   </sect2>
 
   <sect2 id="faq-repmgr-permissions" xreflabel="Replication permission problems">
    <title>I've provided replication permission for the <literal>repmgr</literal> user in <filename>pg_hba.conf</filename>
-     but <command>repmgr</command>/<command>repmgrd</command> complains it can't connect to the server... Why?</title>
+     but <command>repmgr</command>/<application>repmgrd</application> complains it can't connect to the server... Why?</title>
    <para>
-    <command>repmgr</command> and<command>repmgrd</command> need to be able to connect to the repmgr database
+    <command>repmgr</command> and<application>repmgrd</application> need to be able to connect to the repmgr database
     with a normal connection to query metadata. The <literal>replication</literal> connection
     permission is for PostgreSQL's streaming replication (and doesn't  necessarily need to be the <literal>repmgr</literal> user).
    </para>
@@ -170,7 +170,7 @@
  </sect1>
 
  <sect1 id="faq-repmgrd" xreflabel="repmgrd">
-  <title><command>repmgrd</command></title>
+  <title><application>repmgrd</application></title>
 
 
   <sect2 id="faq-repmgrd-prevent-promotion" xreflabel="Prevent standby from being promoted to primary">
@@ -186,12 +186,12 @@
   </sect2>
 
   <sect2 id="faq-repmgrd-delayed-standby" xreflabel="Delayed standby support">
-   <title>Does <command>repmgrd</command> support delayed standbys?</title>
+   <title>Does <application>repmgrd</application> support delayed standbys?</title>
    <para>
-    <command>repmgrd</command> can monitor delayed standbys - those set up with
+    <application>repmgrd</application> can monitor delayed standbys - those set up with
     <varname>recovery_min_apply_delay</varname> set to a non-zero value
     in <filename>recovery.conf</filename> - but as it's not currently possible
-    to directly examine the value applied to the standby, <command>repmgrd</command>
+    to directly examine the value applied to the standby, <application>repmgrd</application>
     may not be able to properly evaluate the node as a promotion candidate.
    </para>
    <para>
@@ -200,13 +200,13 @@
     <filename>repmgr.conf</filename>.
    </para>
    <para>
-    Note that after registering a delayed standby, <command>repmgrd</command> will only start
+    Note that after registering a delayed standby, <application>repmgrd</application> will only start
     once the metadata added in the master node has been replicated.
    </para>
   </sect2>
 
   <sect2 id="faq-repmgrd-logfile-rotate" xreflabel="repmgrd logfile rotation">
-   <title>How can I get <command>repmgrd</command> to rotate its logfile?</title>
+   <title>How can I get <application>repmgrd</application> to rotate its logfile?</title>
    <para>
      Configure your system's <literal>logrotate</literal> service to do this; see <xref linkend="repmgrd-log-rotation">.
    </para>
@@ -214,11 +214,11 @@
   </sect2>
 
   <sect2 id="faq-repmgrd-recloned-no-start" xreflabel="repmgrd not restarting after node cloned">
-   <title>I've recloned a failed master as a standby, but <command>repmgrd</command> refuses to start?</title>
+   <title>I've recloned a failed master as a standby, but <application>repmgrd</application> refuses to start?</title>
    <para>
     Check you registered the standby after recloning. If unregistered, the standby
     cannot be considered as a promotion candidate even if <varname>failover</varname> is set to
-    <literal>automatic</literal>, which is probably not what you want. <command>repmgrd</command> will start if
+    <literal>automatic</literal>, which is probably not what you want. <application>repmgrd</application> will start if
     <varname>failover</varname> is set to <literal>manual</literal> so the node's replication status can still
   be monitored, if desired.
    </para>

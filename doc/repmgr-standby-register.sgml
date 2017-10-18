@@ -4,7 +4,7 @@
   <para>
    <command>repmgr standby register</command> adds a standby's information to
    the &repmgr; metadata. This command needs to be executed to enable
-   promote/follow operations and to allow <command>repmgrd</command> to work with the node.
+   promote/follow operations and to allow <application>repmgrd</application> to work with the node.
    An existing standby can be registered using this command. Execute with the
    <literal>--dry-run</literal> option to check what would happen without actually registering the
    standby.
@@ -15,7 +15,7 @@
    <para>
      Depending on your environment and workload, it may take some time for
      the standby's node record to propagate from the primary to the standby. Some
-     actions (such as starting <command>repmgrd</command>) require that the standby's node record
+     actions (such as starting <application>repmgrd</application>) require that the standby's node record
      is present and up-to-date to function correctly.
    </para>
    <para>

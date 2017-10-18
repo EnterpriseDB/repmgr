@@ -32,8 +32,8 @@
     location='dc1'</programlisting>
  </para>
  <para>
-  In a failover situation, <command>repmgrd</command> will check if any servers in the
-  same location as the current primary node are visible.  If not, <command>repmgrd</command>
+  In a failover situation, <application>repmgrd</application> will check if any servers in the
+  same location as the current primary node are visible.  If not, <application>repmgrd</application>
   will assume a network interruption and not promote any node in any
   other location (it will however enter <xref linkend="repmgrd-degraded-monitoring"> mode until
   a primary becomes visible).

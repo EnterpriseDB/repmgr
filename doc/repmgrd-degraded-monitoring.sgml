@@ -1,9 +1,9 @@
 <chapter id="repmgrd-degraded-monitoring">
  <title>"degraded monitoring" mode</title>
  <para>
-  In certain circumstances, <command>repmgrd</command> is not able to fulfill its primary mission
+  In certain circumstances, <application>repmgrd</application> is not able to fulfill its primary mission
   of monitoring the nodes' upstream server. In these cases it enters "degraded
-  monitoring" mode, where <command>repmgrd</command> remains active but is waiting for the situation
+  monitoring" mode, where <application>repmgrd</application> remains active but is waiting for the situation
   to be resolved.
  </para>
  <para>
@@ -63,7 +63,7 @@
  <para>
   By default, <literal>repmgrd</literal> will continue in degraded monitoring mode indefinitely.
   However a timeout (in seconds) can be set with <varname>degraded_monitoring_timeout</varname>,
-  after which <command>repmgrd</command> will terminate.
+  after which <application>repmgrd</application> will terminate.
 
  </para>
 

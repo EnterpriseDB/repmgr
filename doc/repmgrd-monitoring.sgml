@@ -39,7 +39,7 @@
   specify how many day's worth of data should be retained.
  </para>
  <para>
-  It's possible to use <command>repmgrd</command> to run in monitoring
+  It's possible to use <application>repmgrd</application> to run in monitoring
   mode only (without automatic failover capability) for some or all
   nodes by setting <literal>failover=manual</literal> in the node's
   <filename>repmgr.conf</filename> file. In the event of the node's upstream failing,

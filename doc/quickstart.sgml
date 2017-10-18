@@ -286,7 +286,7 @@
     slot_name        |
     config_file      | /etc/repmgr.conf</programlisting>
   <para>
-    Each server in the replication cluster will have its own record. If <command>repmgrd</command>
+    Each server in the replication cluster will have its own record. If <application>repmgrd</application>
     is in use, the fields <literal>upstream_node_id</literal>, <literal>active</literal> and
     <literal>type</literal> will be updated when the node's status or role changes.
   </para>

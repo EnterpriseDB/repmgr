@@ -90,7 +90,7 @@
     manually with <command>repmgr node check --archive-ready</command>.
    </para>
    <para>
-    Ensure that <command>repmgrd</command> is *not* running anywhere to prevent it unintentionally
+    Ensure that <application>repmgrd</application> is *not* running anywhere to prevent it unintentionally
     promoting a node.
    </para>
    <para>
@@ -195,9 +195,9 @@
     </listitem>
     <listitem>
      <simpara>
-      <command>repmgrd</command> should not be running with setting <varname>failover=automatic</varname>
+      <application>repmgrd</application> should not be running with setting <varname>failover=automatic</varname>
       in <filename>repmgr.conf</filename> when a switchover is carried out, otherwise the
-      <command>repmgrd</command> daemon may try and promote a standby by itself.
+      <application>repmgrd</application> daemon may try and promote a standby by itself.
      </simpara>
     </listitem>
    </itemizedlist>

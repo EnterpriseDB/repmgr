@@ -1,7 +1,7 @@
 <chapter id="event-notifications" xreflabel="event notifications">
  <title>Event Notifications</title>
  <para>
-  Each time &repmgr; or <command>repmgrd</command> perform a significant event, a record
+  Each time &repmgr; or <application>repmgrd</application> perform a significant event, a record
   of that event is written into the <literal>repmgr.events</literal> table together with
   a timestamp, an indication of failure or success, and further details
   if appropriate. This is useful for gaining an overview of events
