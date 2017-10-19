@@ -32,6 +32,14 @@
     <xref linkend="upgrading-from-repmgr-3">.
   </para>
 
+  <note>
+    <para>
+      To standardise terminology, from this release <literal>primary</literal> is used to
+      denote the read/write node in a streaming replication cluster. <literal>master</literal>
+      is still accepted as an alias for &repmgr; commands
+      (e.g. <link linkend="repmgr-primary-register"><command>repmgr master register</command></link>).
+    </para>
+  </note>
   <sect2>
     <title>New command line options</title>
     <para>
