@@ -14,7 +14,6 @@
     This command requires either a valid <filename>repmgr.conf</filename> file or a database
     connection string to one of the registered nodes; no  additional arguments are needed.
   </para>
-
   <para>
     Example:
     <programlisting>
@@ -31,8 +30,26 @@
     To show database connection errors when polling nodes, run the command in
     <literal>--verbose</literal> mode.
   </para>
+
   <para>
-    <command>cluster show</command> accepts an optional parameter <literal>--csv</literal>, which
+    Note that the column <literal>Role</literal> shows the expected server role according to the
+    &repmgr; metadata. <literal>Status</literal> shows whether the server is running or unreachable.
+    If the node has an unexpected role not reflected in the &repmgr; metadata, e.g. a node was manually
+    promoted to primary, this will be highlighted with an exclamation mark, e.g.:
+    <programlisting>
+     ID | Name  | Role    | Status               | Upstream | Location | Connection string
+    ----+-------+---------+----------------------+----------+----------+-----------------------------------------
+     1  | node1 | primary | ? unreachable        |          | default  | host=db_node1 dbname=repmgr user=repmgr
+     2  | node2 | standby | ! running as primary | node1    | default  | host=db_node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running            | node1    | default  | host=db_node3 dbname=repmgr user=repmgr
+
+    WARNING: following issues were detected
+      node "node1" (ID: 1) is registered as an active primary but is unreachable
+      node "node2" (ID: 2) is registered as standby but running as primary</programlisting>
+  </para>
+
+  <para>
+    <command>repmgr cluster show</command> accepts an optional parameter <literal>--csv</literal>, which
     outputs the replication cluster's status in a simple CSV format, suitable for
     parsing by scripts:
     <programlisting>
