@@ -109,8 +109,9 @@
   &repmgr-cluster-cleanup;
  </part>
 
- &appendix-faq;
+ &appendix-release-notes;
  &appendix-signatures;
+ &appendix-faq;
 
  <![%include-index;[&bookindex;]]>
  <![%include-xslt-index;[<index id="bookindex"></index>]]>

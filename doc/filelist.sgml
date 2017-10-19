@@ -71,6 +71,7 @@
 <!ENTITY repmgr-cluster-event SYSTEM "repmgr-cluster-event.sgml">
 <!ENTITY repmgr-cluster-cleanup SYSTEM "repmgr-cluster-cleanup.sgml">
 
+<!ENTITY appendix-release-notes  SYSTEM "appendix-release-notes.sgml">
 <!ENTITY appendix-faq      SYSTEM "appendix-faq.sgml">
 <!ENTITY appendix-signatures      SYSTEM "appendix-signatures.sgml">
 

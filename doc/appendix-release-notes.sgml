@@ -1,0 +1,228 @@
+<appendix id="appendix-release-notes" xreflabel="Release notes">
+ <title>Release notes</title>
+ <indexterm>
+  <primary>Release notes</primary>
+ </indexterm>
+
+ <para>
+  Changes to each &repmgr; release are documented in the release notes.
+  Please read the release notes for all versions between
+  your current version and the version you are plan to upgrade to
+  before performing an upgrade, as there may be version-specific upgrade steps.
+ </para>
+
+
+ <para>
+  See also: <xref linkend="upgrading-repmgr">
+ </para>
+
+ <sect1 id="release-4.0">
+  <title>Release 4.0beta1</title>
+
+  <para><emphasis>Thu Oct 5, 2017</emphasis></para>
+
+  <para>
+    repmgr 4.0 is an entirely new version of &repmgr;, providing many
+    improvements together with some changes in the way it works.
+    In particular changes have been made to some configuration file
+    settings and command line options for consistency and clarity.
+  </para>
+  <para>
+    For detailed instructions on upgrading from repmgr 3.x, see
+    <xref linkend="upgrading-from-repmgr-3">.
+  </para>
+
+  <sect2>
+    <title>New command line options</title>
+    <para>
+      <itemizedlist>
+
+        <listitem><para>
+          <literal>--dry-run</literal>: &repmgr; will attempt to perform
+          the action as far as possible without making any changes to the
+          database
+        </para></listitem>
+
+        <listitem>
+          <para>
+            <literal>--upstream-node-id</literal>: use to specify the upstream node
+            the standby will connect later stream from, when <link linkend="repmgr-standby-clone">cloning</link>
+            and <link linkend="repmgr-standby-register">registering</link> a standby.
+          </para>
+          <para>
+            This replaces the configuration file parameter <varname>upstream_node</varname>.
+            as the upstream node is set when the standby is initially cloned, but can change
+            over the lifetime of an installation (due to failovers, switchovers etc.) so it's
+            pointless/confusing keeping the original value around in <filename>repmgr.conf</filename>.
+        </para></listitem>
+
+      </itemizedlist>
+    </para>
+  </sect2>
+
+  <sect2>
+    <title>Changed command line options</title>
+    <para>
+      <application>repmgr</application>
+      <itemizedlist>
+
+        <listitem><para>
+            <literal>--replication-user</literal> has been deprecated; it has been replaced
+            by the configuration file option <varname>replication_user</varname>.
+            The value (which defaults to the user provided in the <varname>conninfo</varname>
+            string) will be stored in the &repmgr; metadata for use by
+            <xref linkend="repmgr-standby-clone"> and <xref linkend="repmgr-standby-follow">.
+        </para></listitem>
+
+        <listitem><para>
+            <literal>--recovery-min-apply-delay</literal> is now a configuration file parameter
+            <varname>recovery_min_apply_delay</varname>, to ensure the setting does not get lost
+            when a standby follows a new upstream.
+        </para></listitem>
+
+      </itemizedlist>
+    </para>
+
+    <para>
+      <application>repmgrd</application>
+      <itemizedlist>
+
+        <listitem><para>
+            <literal>--monitoring-history</literal> is deprecated and is replaced by the
+            configuration file option <varname>monitoring_history</varname>.
+            This enables the setting to be changed without having to modify system service
+            files.
+        </para></listitem>
+
+      </itemizedlist>
+    </para>
+
+  </sect2>
+
+  <sect2>
+    <title>Configuration file changes</title>
+
+    <para><emphasis>Required settings</emphasis></para>
+    <para>The following 4 parameters are mandatory in <filename>repmgr.conf</filename>:
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>node_id</simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>node_name</simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>conninfo</simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>data_directory</simpara>
+        </listitem>
+      </itemizedlist>
+    </para>
+
+   <para><emphasis>Renamed settings</emphasis></para>
+   <para>
+     Some settings have been renamed for clarity and consistency:
+     <itemizedlist spacing="compact" mark="bullet">
+
+       <listitem>
+         <simpara><varname>node</varname> is now <varname>node_id</varname></simpara>
+       </listitem>
+
+       <listitem>
+         <simpara><varname>name</varname> is now <varname>node_name</varname></simpara>
+       </listitem>
+
+       <listitem>
+         <simpara><varname>master_reponse_timeout</varname> is now
+           <varname>async_query_timeout</varname> (to better indicate its purpose)
+         </simpara>
+       </listitem>
+
+     </itemizedlist>
+   </para>
+
+   <para>
+     The following configuration file parameters have been renamed for consistency
+     with other parameters (and conform to the pattern used by PostgreSQL itself,
+     which uses the prefix <varname>log_</varname> for logging parameters):
+
+    <itemizedlist spacing="compact" mark="bullet">
+
+      <listitem>
+        <simpara><varname>loglevel</varname> is now <varname>log_level</varname></simpara>
+      </listitem>
+
+      <listitem>
+        <simpara><varname>logfile</varname> is now <varname>log_file</varname></simpara>
+      </listitem>
+
+      <listitem>
+        <simpara><varname>logfacility</varname> is now <varname>log_facility</varname></simpara>
+      </listitem>
+
+    </itemizedlist>
+   </para>
+
+   <para><emphasis>Removed settings</emphasis></para>
+   <para>
+     <itemizedlist spacing="compact" mark="bullet">
+
+      <listitem>
+        <simpara><varname>cluster</varname> has been removed</simpara>
+      </listitem>
+      <listitem>
+        <simpara><varname>upstream_node</varname> - see note about
+          <literal>--upstream-node-id</literal> above</simpara>
+      </listitem>
+
+      <listitem>
+        <simpara><varname>retry_promote_interval_secs</varname>this is now redundant due
+          to changes in the failover/promotion mechanism; the new equivalent is
+          <varname>primary_notification_timeout</varname> </simpara>
+      </listitem>
+     </itemizedlist>
+   </para>
+
+   <para><emphasis>Logging changes</emphasis></para>
+   <para>
+     <itemizedlist spacing="compact" mark="bullet">
+
+      <listitem>
+        <simpara>
+          default value for <varname>log_level</varname> is <literal>INFO</literal>
+          rather than <literal>NOTICE</literal>.
+        </simpara>
+      </listitem>
+
+      <listitem>
+        <simpara>
+          new parameter <varname>log_status_interval</varname>, which causes
+          <application>repmgrd</application> to emit a status log
+          line at the specified interval
+        </simpara>
+      </listitem>
+
+     </itemizedlist>
+
+   </para>
+
+  </sect2>
+  <sect2>
+    <title>repmgrd</title>
+    <para>
+      The `repmgr` shared library has been renamed from <literal>repmgr_funcs</literal> to
+      <literal>repmgr</literal>,  meaning <varname>shared_preload_libraries</varname>
+      in <filename>postgresql.conf</filename> needs to be updated to the new name:
+      <programlisting>
+        shared_preload_libraries = 'repmgr'</programlisting>
+    </para>
+  </sect2>
+
+ </sect1>
+
+</appendix>
