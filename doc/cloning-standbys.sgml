@@ -1,7 +1,5 @@
 <chapter id="cloning-standbys" xreflabel="cloning standbys">
  <title>Cloning standbys</title>
- <para>
- </para>
 
  <sect1 id="cloning-from-barman" xreflabel="Cloning from Barman">
    <indexterm>

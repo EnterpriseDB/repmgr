@@ -1,4 +1,9 @@
 <chapter id="repmgrd-monitoring">
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>monitoring</secondary>
+ </indexterm>
+
  <title>Monitoring with repmgrd</title>
  <para>
   When `repmgrd` is running with the option <literal>monitoring_history=true</literal>,

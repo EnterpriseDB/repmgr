@@ -1,4 +1,9 @@
 <chapter id="repmgrd-cascading-replication">
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>cascading replication</secondary>
+ </indexterm>
+
  <title>repmgrd and cascading replication</title>
  <para>
   Cascading replication - where a standby can connect to an upstream node and not

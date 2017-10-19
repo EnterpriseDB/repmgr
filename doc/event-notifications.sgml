@@ -1,4 +1,9 @@
 <chapter id="event-notifications" xreflabel="event notifications">
+
+ <indexterm>
+   <primary>event notifications</primary>
+ </indexterm>
+
  <title>Event Notifications</title>
  <para>
   Each time &repmgr; or <application>repmgrd</application> perform a significant event, a record

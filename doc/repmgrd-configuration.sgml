@@ -1,4 +1,10 @@
 <chapter id="repmgrd-configuration">
+
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>configuration</secondary>
+ </indexterm>
+
  <title>repmgrd configuration</title>
  <para>
   To use <application>repmgrd</application>, its associated function library must be
