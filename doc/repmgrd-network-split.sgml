@@ -1,4 +1,9 @@
 <chapter id="repmgrd-network-split">
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>network splits</secondary>
+ </indexterm>
+
  <title>Handling network splits with repmgrd</title>
  <para>
   A common pattern for replication cluster setups is to spread servers over

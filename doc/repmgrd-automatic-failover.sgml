@@ -1,4 +1,9 @@
 <chapter id="repmgrd-automatic-failover" xreflabel="Automatic failover with repmgrd">
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>automatic failover</secondary>
+ </indexterm>
+
  <title>Automatic failover with repmgrd</title>
 
  <para>

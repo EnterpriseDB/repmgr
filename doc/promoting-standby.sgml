@@ -1,4 +1,8 @@
 <chapter id="promoting-standby" xreflabel="Promoting a standby">
+ <indexterm>
+   <primary>promoting a standby</primary>
+   <seealso>repmgr standby promote</seealso>
+ </indexterm>
  <title>Promoting a standby server with repmgr</title>
  <para>
    If a primary server fails or needs to be removed from the replication cluster,

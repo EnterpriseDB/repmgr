@@ -1,4 +1,9 @@
 <chapter id="repmgrd-degraded-monitoring">
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>degraded monitoring</secondary>
+ </indexterm>
+
  <title>"degraded monitoring" mode</title>
  <para>
   In certain circumstances, <application>repmgrd</application> is not able to fulfill its primary mission

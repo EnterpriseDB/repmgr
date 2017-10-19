@@ -1,7 +1,9 @@
 <chapter id="repmgr-node-rejoin" xreflabel="repmgr node rejoin">
+
   <indexterm>
     <primary>repmgr node rejoin</primary>
   </indexterm>
+
   <title>repmgr node rejoin</title>
   <para>
    Enables a dormant (stopped) node to be rejoined to the replication cluster.
@@ -29,7 +31,7 @@
       <application>pg_rewind</application>.
       <programlisting>
         rm -f /var/lib/pgsql/data/recovery.conf
-        postgres --single -D /var/lib/pgsql/data/ < /dev/null
+        postgres --single -D /var/lib/pgsql/data/ &lt; /dev/null</programlisting>
     </para>
   </tip>
   <para>
