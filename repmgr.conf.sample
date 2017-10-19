@@ -210,6 +210,11 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
                                         # 'manual': repmgrd will take no action and the node will require
                                         #    manual attention to reattach it to replication
                                         # (does not apply to BDR mode)
+
+#priority=100                           # indicate a preferred priorty for promoting nodes;
+                                        # a value of zero prevents the node being promoted to primary
+                                        # (default: 100)
+
 #promote_command=                       # command to execute when promoting a new primary; use something like:
                                         #
                                         #     repmgr standby promote -f /etc/repmgr.conf
