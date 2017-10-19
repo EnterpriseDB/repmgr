@@ -23,6 +23,11 @@
   file used by <application>repmgrd</application>; check the release notes for details.
  </para>
 
+ <para>
+   Please check the <link linkend="appendix-release-notes">release notes</link> for every
+   release as they may contain upgrade instructions particular to individual versions.
+ </para>
+
  <sect1 id="upgrading-from-repmgr-3" xreflabel="Upgrading from repmgr 3.x">
   <indexterm>
    <primary>upgrading</primary>
