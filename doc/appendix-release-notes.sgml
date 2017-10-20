@@ -146,6 +146,10 @@
        </listitem>
 
        <listitem>
+         <simpara><varname>barman_server</varname> is now <varname>barman_host</varname></simpara>
+       </listitem>
+
+       <listitem>
          <simpara><varname>master_reponse_timeout</varname> is now
            <varname>async_query_timeout</varname> (to better indicate its purpose)
          </simpara>

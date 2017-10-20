@@ -123,12 +123,26 @@
         <entry><varname>log_file</varname></entry>
        </row>
        <row>
+        <entry><varname>barman_server</varname></entry>
+        <entry><varname>barman_host</varname></entry>
+       </row>
+       <row>
         <entry><varname>master_reponse_timeout</varname></entry>
         <entry><varname>async_query_timeout</varname></entry>
        </row>
       </tbody>
      </tgroup>
     </table>
+    <note>
+      <para>
+        From &repmgr; 4, <literal>barman_server</literal> refers
+        to the server configured in Barman (in &repmgr; 3, the deprecated
+        <literal>cluster</literal> parameter was used for this);
+        the physical Barman hostname is configured with
+        <literal>barman_host</literal> (see <xref linkend="cloning-from-barman-prerequisites">
+          for details).
+      </para>
+    </note>
     <para>
      Following parameters have been removed:
      <itemizedlist spacing="compact" mark="bullet">
