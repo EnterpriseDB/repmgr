@@ -473,10 +473,6 @@ main(int argc, char **argv)
 				runtime_options.list_actions = true;
 				break;
 
-			case OPT_CHECK:
-				runtime_options.check = true;
-				break;
-
 			case OPT_CHECKPOINT:
 				runtime_options.checkpoint = true;
 				break;
