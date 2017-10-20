@@ -39,7 +39,7 @@
    </para>
   </sect1>
 
-  <sect1 id="rempgr-standby-register-inactive-node" xreflabel="Registering an inactive node">
+  <sect1 id="repmgr-standby-register-inactive-node" xreflabel="Registering an inactive node">
    <title>Registering an inactive node</title>
    <para>
     Under some circumstances you may wish to register a standby which is not
