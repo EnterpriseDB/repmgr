@@ -10,6 +10,19 @@
    standby.
   </para>
 
+  <note>
+    <para>
+      If providing the configuration file location with <literal>-f/--config-file</literal>,
+      avoid using a relative path, as &repmgr; stores the configuration file location
+      in the repmgr metadata for use when &repmgr; is executed remotely (e.g. during
+      <xref linkend="repmgr-standby-switchover">). &repmgr; will attempt to convert the
+      a relative path into an absolute one, but this may not be the same as the path you
+      would explicitly provide (e.g. <filename>./repmgr.conf</filename> might be converted
+      to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write
+      <filename>/path/to/repmgr.conf</filename>).
+    </para>
+  </note>
+
   <sect1 id="repmgr-standby-register-wait" xreflabel="repmgr standby register --wait">
    <title>Waiting for the registration to propagate to the standby</title>
    <para>
