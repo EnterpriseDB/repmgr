@@ -1677,6 +1677,45 @@ do_node_rejoin(void)
 	}
 
 	/*
+	 * If --force-rewind specified, check pg_rewind can be used, and
+	 * pre-emptively fetch the list of configuration files which should be
+	 * archived
+	 */
+
+	if (runtime_options.force_rewind == true)
+	{
+		PQExpBufferData reason;
+		PQExpBufferData msg;
+
+		initPQExpBuffer(&reason);
+
+		if (can_use_pg_rewind(upstream_conn, config_file_options.data_directory, &reason) == false)
+		{
+			log_error(_("--force-rewind specified but pg_rewind cannot be used"));
+			log_detail("%s", reason.data);
+			termPQExpBuffer(&reason);
+			PQfinish(upstream_conn);
+
+			exit(ERR_BAD_CONFIG);
+		}
+		termPQExpBuffer(&reason);
+
+		initPQExpBuffer(&msg);
+		appendPQExpBuffer(&msg,
+						  _("prerequisites for using pg_rewind are met"));
+
+		if (runtime_options.dry_run == true)
+		{
+			log_info("%s", msg.data);
+		}
+		else
+		{
+			log_verbose(LOG_INFO, "%s", msg.data);
+		}
+		termPQExpBuffer(&msg);
+	}
+
+	/*
 	 * Forcibly rewind node if requested (this is mainly for use when this
 	 * action is being executed by "repmgr standby switchover")
 	 */
@@ -1703,6 +1742,16 @@ do_node_rejoin(void)
 						  &command,
 						  " --source-server='%s'",
 						  primary_node_record.conninfo);
+
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("pg_rewind would now be executed"));
+			log_detail(_("pg_rewind command is:\n  %s"),
+						 command.data);
+
+			PQfinish(upstream_conn);
+			exit(SUCCESS);
+		}
 
 		log_notice(_("executing pg_rewind"));
 		log_debug("pg_rewind command is:\n  %s",
