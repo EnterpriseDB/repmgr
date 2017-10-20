@@ -66,21 +66,20 @@
 #define OPT_UPSTREAM_NODE_ID			   1018
 #define OPT_ACTION						   1019
 #define OPT_LIST_ACTIONS				   1020
-#define OPT_CHECK						   1021
-#define OPT_CHECKPOINT					   1022
-#define OPT_IS_SHUTDOWN_CLEANLY			   1023
-#define OPT_ALWAYS_PROMOTE				   1024
-#define OPT_FORCE_REWIND				   1025
-#define OPT_NAGIOS						   1026
-#define OPT_ARCHIVE_READY				   1027
-#define OPT_OPTFORMAT					   1028
-#define OPT_REPLICATION_LAG				   1029
-#define OPT_CONFIG_FILES				   1030
-#define OPT_SIBLINGS_FOLLOW				   1031
-#define OPT_ROLE						   1032
-#define OPT_DOWNSTREAM					   1033
-#define OPT_SLOTS						   1034
-#define OPT_CONFIG_ARCHIVE_DIR			   1035
+#define OPT_CHECKPOINT					   1021
+#define OPT_IS_SHUTDOWN_CLEANLY			   1022
+#define OPT_ALWAYS_PROMOTE				   1023
+#define OPT_FORCE_REWIND				   1024
+#define OPT_NAGIOS						   1025
+#define OPT_ARCHIVE_READY				   1026
+#define OPT_OPTFORMAT					   1027
+#define OPT_REPLICATION_LAG				   1028
+#define OPT_CONFIG_FILES				   1029
+#define OPT_SIBLINGS_FOLLOW				   1030
+#define OPT_ROLE						   1031
+#define OPT_DOWNSTREAM					   1032
+#define OPT_SLOTS						   1033
+#define OPT_CONFIG_ARCHIVE_DIR			   1034
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
 #define OPT_NO_CONNINFO_PASSWORD			998
@@ -161,7 +160,6 @@ static struct option long_options[] =
 
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},
-	{"check", no_argument, NULL, OPT_CHECK},
 	{"list-actions", no_argument, NULL, OPT_LIST_ACTIONS},
 	{"checkpoint", no_argument, NULL, OPT_CHECKPOINT},
 

@@ -36,7 +36,6 @@ static bool copy_file(const char *src_file, const char *dest_file);
 static void format_archive_dir(PQExpBufferData *archive_dir);
 static t_server_action parse_server_action(const char *action);
 
-static void _do_node_service_check(void);
 static void _do_node_service_list_actions(t_server_action action);
 static void _do_node_status_is_shutdown_cleanly(void);
 static void _do_node_archive_config(void);
@@ -1402,14 +1401,6 @@ do_node_service(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (runtime_options.check == true)
-	{
-		if (action != ACTION_NONE)
-			log_warning(_("--action not required for --check"));
-
-		return _do_node_service_check();
-	}
-
 	if (runtime_options.list_actions == true)
 	{
 		return _do_node_service_list_actions(action);
@@ -1476,12 +1467,6 @@ do_node_service(void)
 	}
 
 	termPQExpBuffer(&output);
-}
-
-
-static void
-_do_node_service_check(void)
-{
 }
 
 
@@ -2258,5 +2243,19 @@ do_node_help(void)
 	printf(_("    --config-archive-dir  directory to temporarily store retained configuration files\n" \
 			 "                          (default: /tmp)\n"));
 	puts("");
+
+	printf(_("NODE SERVICE\n"));
+	puts("");
+	printf(_("  \"node service\" executes a system service command to stop/start/restart/reload a node\n" \
+			 "                   or optionally display which command would be executed\n"));
+	puts("");
+	printf(_("  Configuration file required, runs on local node only.\n"));
+	puts("");
+	printf(_("    --dry-run             show what action would be performed, but don't execute it\n"));
+	printf(_("    --action              action to perform (one of \"start\", \"stop\", \"restart\" or \"reload\")\n"));
+	printf(_("    --list-actions        show what command would be performed for each action\n"));
+	puts("");
+
+
 
 }
