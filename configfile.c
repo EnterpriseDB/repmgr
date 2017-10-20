@@ -731,7 +731,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		item_list_append(error_list,
 						 _("use \"barman_host\" for the hostname of the Barman server"));
 		item_list_append(error_list,
-						 _("use \"barman_server\" for the name of the [server] section in the Barman configururation file"));
+						 _("use \"barman_server\" for the name of the [server] section in the Barman configuration file"));
 
 	}
 
