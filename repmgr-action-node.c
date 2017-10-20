@@ -1842,7 +1842,7 @@ do_node_rejoin(void)
  * This archives any configuration files in the data directory, which may be
  * overwritten by pg_rewind.
  *
- * Requires configuration file, optionally --config_archive_dir
+ * Requires configuration file, optionally --config-archive-dir
  */
 static void
 _do_node_archive_config(void)
@@ -2040,9 +2040,9 @@ _do_node_archive_config(void)
  * Not designed to be called if the instance is running, but does
  * not currently check.
  *
- * Requires -D/--pgdata, optionally --config_archive_dir
+ * Requires -D/--pgdata, optionally --config-archive-dir
  *
- * Removes --config_archive_dir after successful copy
+ * Removes --config-archive-dir after successful copy
  */
 
 static void
@@ -2228,7 +2228,7 @@ do_node_help(void)
 
 	printf(_("NODE CHECK\n"));
 	puts("");
-	printf(_("  \"node check\" erforms some health checks on a node from a replication perspective.\n"));
+	printf(_("  \"node check\" performs some health checks on a node from a replication perspective.\n"));
 	puts("");
 	printf(_("  Configuration file required, runs on local node only.\n"));
 	puts("");
@@ -2242,6 +2242,21 @@ do_node_help(void)
 	printf(_("    --role                check node has expected role\n"));
 	printf(_("    --slots               check for inactive replication slots\n"));
 
+	puts("");
+
+	printf(_("NODE REJOIN\n"));
+	puts("");
+	printf(_("  \"node rejoin\" enables a dormant (stopped) node to be rejoined to the replication cluster.\n"));
+	puts("");
+	printf(_("  Configuration file required, runs on local node only.\n"));
+	puts("");
+	printf(_("    --dry-run             check that the prerequisites are met for rejoining the node\n" \
+			 "                          (including usability of \"pg_rewind\" if requested)\n"));
+	printf(_("    --force-rewind        execute \"pg_rewind\" if necessary\n"));
+	printf(_("    --config-files        comma-separated list of configuration files to retain\n" \
+			 "                          after executing \"pg_rewind\"\n"));
+	printf(_("    --config-archive-dir  directory to temporarily store retained configuration files\n" \
+			 "                          (default: /tmp)\n"));
 	puts("");
 
 }
