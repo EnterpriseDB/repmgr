@@ -73,6 +73,59 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 		strncpy(config_file_path, config_file, MAXPGPATH);
 		canonicalize_path(config_file_path);
 
+		/* relative path supplied - convert to absolute path */
+		if (config_file_path[0] != '/')
+		{
+			PQExpBufferData fullpath;
+			char *pwd = NULL;
+
+			initPQExpBuffer(&fullpath);
+
+			/*
+			 * we'll attempt to use $PWD to derive the effective path; getcwd()
+			 * will likely resolve symlinks, which may result in a path which
+			 * isn't permanent (e.g. if filesystem mountpoints change).
+			 */
+			pwd = getenv("PWD");
+
+			if (pwd != NULL)
+			{
+				appendPQExpBuffer(&fullpath,
+								  "%s", pwd);
+			}
+			else
+			{
+				/* $PWD not available - fall back to getcwd() */
+				char cwd[MAXPGPATH] = "";
+
+				if (getcwd(cwd, MAXPGPATH) == NULL)
+				{
+					log_error(_("unable to execute getcwd()"));
+					log_detail("%s", strerror(errno));
+
+					termPQExpBuffer(&fullpath);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				appendPQExpBuffer(&fullpath,
+								  "%s",
+								  cwd);
+			}
+
+			appendPQExpBuffer(&fullpath,
+							  "/%s", config_file_path);
+
+			log_debug("relative configuration file converted to:\n  \"%s\"",
+					  fullpath.data);
+
+			strncpy(config_file_path, fullpath.data, MAXPGPATH);
+
+			termPQExpBuffer(&fullpath);
+
+			canonicalize_path(config_file_path);
+		}
+
+
 		if (stat(config_file_path, &stat_config) != 0)
 		{
 			log_error(_("provided configuration file \"%s\" not found: %s"),
@@ -80,6 +133,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 					  strerror(errno));
 			exit(ERR_BAD_CONFIG);
 		}
+
 
 		if (verbose == true)
 		{
