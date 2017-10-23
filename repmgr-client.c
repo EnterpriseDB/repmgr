@@ -1611,6 +1611,7 @@ check_cli_parameters(const int action)
 			case STANDBY_CLONE:
 			case STANDBY_REGISTER:
 			case STANDBY_SWITCHOVER:
+			case NODE_REJOIN:
 			case NODE_SERVICE:
 				break;
 			default:
