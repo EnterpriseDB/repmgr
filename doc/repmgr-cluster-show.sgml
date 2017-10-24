@@ -37,6 +37,8 @@
     If the node has an unexpected role not reflected in the &repmgr; metadata, e.g. a node was manually
     promoted to primary, this will be highlighted with an exclamation mark, e.g.:
     <programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show
+
      ID | Name  | Role    | Status               | Upstream | Location | Connection string
     ----+-------+---------+----------------------+----------+----------+-----------------------------------------
      1  | node1 | primary | ? unreachable        |          | default  | host=db_node1 dbname=repmgr user=repmgr
