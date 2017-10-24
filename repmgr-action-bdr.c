@@ -28,7 +28,7 @@
 /*
  * do_bdr_register()
  *
- * As each BDR node is its own master, registering a BDR node
+ * As each BDR node is its own primary, registering a BDR node
  * will create the repmgr metadata schema if necessary.
  */
 void

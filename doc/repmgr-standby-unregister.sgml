@@ -19,7 +19,7 @@
    If the standby is not running, the command can be executed on another
    node by providing the id of the node to be unregistered using
    the command line parameter <literal>--node-id</literal>, e.g. executing the following
-   command on the master server will unregister the standby with
+   command on the primary server will unregister the standby with
    id <literal>3</literal>:
    <programlisting>
     repmgr standby unregister -f /etc/repmgr.conf --node-id=3

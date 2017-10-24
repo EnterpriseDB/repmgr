@@ -925,7 +925,7 @@ main(int argc, char **argv)
 				runtime_options.terse,
 				&config_file_options,
 				argv[0]);
-
+	exit(SUCCESS);
 	check_cli_parameters(action);
 
 	/*
