@@ -413,12 +413,16 @@ trim(char *s)
 		--s2;
 	*(s2 + 1) = '\0';
 
+	/* String is all whitespace - no need for further processing */
+	if (s2 + 1 == s1)
+		return s;
+
 	/* Trim left side */
 	while ((isspace(*s1)) && (s1 < s2))
 		++s1;
 
 	/* Copy finished string */
-	memmove(s, s1, s2 - s1);
+	memmove(s, s1, (s2 - s1) + 1);
 	s[s2 - s1 + 1] = '\0';
 
 	return s;
