@@ -205,7 +205,7 @@
    </para>
    <para>
     Note that after registering a delayed standby, <application>repmgrd</application> will only start
-    once the metadata added in the master node has been replicated.
+    once the metadata added in the primary node has been replicated.
    </para>
   </sect2>
 
@@ -218,7 +218,7 @@
   </sect2>
 
   <sect2 id="faq-repmgrd-recloned-no-start" xreflabel="repmgrd not restarting after node cloned">
-   <title>I've recloned a failed master as a standby, but <application>repmgrd</application> refuses to start?</title>
+   <title>I've recloned a failed primary as a standby, but <application>repmgrd</application> refuses to start?</title>
    <para>
     Check you registered the standby after recloning. If unregistered, the standby
     cannot be considered as a promotion candidate even if <varname>failover</varname> is set to

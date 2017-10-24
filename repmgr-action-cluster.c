@@ -1323,7 +1323,7 @@ do_cluster_cleanup(void)
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
-	/* check if there is a master in this cluster */
+	/* check if there is a primary in this cluster */
 	log_info(_("connecting to primary server"));
 	primary_conn = establish_primary_db_connection(conn, true);
 
