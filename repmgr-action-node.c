@@ -1821,7 +1821,7 @@ do_node_rejoin(void)
 
 
 /*
- * Intended mainly for "internal" use by `node rejoin` on the local node when
+ * For "internal" use by `node rejoin` on the local node when
  * called by "standby switchover" from the remote node.
  *
  * This archives any configuration files in the data directory, which may be
@@ -1865,8 +1865,6 @@ _do_node_archive_config(void)
 			termPQExpBuffer(&archive_dir);
 			exit(ERR_BAD_CONFIG);
 		}
-
-
 	}
 	else if (!S_ISDIR(statbuf.st_mode))
 	{
@@ -1875,7 +1873,6 @@ _do_node_archive_config(void)
 		termPQExpBuffer(&archive_dir);
 		exit(ERR_BAD_CONFIG);
 	}
-
 
 	arcdir = opendir(archive_dir.data);
 
@@ -1888,41 +1885,45 @@ _do_node_archive_config(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * attempt to remove any existing files in the directory TODO: collate
-	 * problem files into list
-	 */
-	while ((arcdir_ent = readdir(arcdir)) != NULL)
+	if (runtime_options.dry_run == false)
 	{
-		PQExpBufferData arcdir_ent_path;
 
-		initPQExpBuffer(&arcdir_ent_path);
-
-		appendPQExpBuffer(&arcdir_ent_path,
-						  "%s/%s",
-						  archive_dir.data,
-						  arcdir_ent->d_name);
-
-		if (stat(arcdir_ent_path.data, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+		/*
+		 * attempt to remove any existing files in the directory TODO: collate
+		 * problem files into list
+		 */
+		while ((arcdir_ent = readdir(arcdir)) != NULL)
 		{
+			PQExpBufferData arcdir_ent_path;
+
+			initPQExpBuffer(&arcdir_ent_path);
+
+			appendPQExpBuffer(&arcdir_ent_path,
+							  "%s/%s",
+							  archive_dir.data,
+							  arcdir_ent->d_name);
+
+			if (stat(arcdir_ent_path.data, &statbuf) == 0 && !S_ISREG(statbuf.st_mode))
+			{
+				termPQExpBuffer(&arcdir_ent_path);
+				continue;
+			}
+
+			if (unlink(arcdir_ent_path.data) == -1)
+			{
+				log_error(_("unable to delete file in temporary archive directory"));
+				log_detail(_("file is:  \"%s\""), arcdir_ent_path.data);
+				log_detail("%s", strerror(errno));
+				closedir(arcdir);
+				termPQExpBuffer(&arcdir_ent_path);
+				exit(ERR_BAD_CONFIG);
+			}
+
 			termPQExpBuffer(&arcdir_ent_path);
-			continue;
 		}
 
-		if (unlink(arcdir_ent_path.data) == -1)
-		{
-			log_error(_("unable to delete file in temporary archive directory"));
-			log_detail(_("file is:  \"%s\""), arcdir_ent_path.data);
-			log_detail("%s", strerror(errno));
-			closedir(arcdir);
-			termPQExpBuffer(&arcdir_ent_path);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		termPQExpBuffer(&arcdir_ent_path);
+		closedir(arcdir);
 	}
-
-	closedir(arcdir);
 
 	/*
 	 * extract list of config files from --config-files
@@ -1999,18 +2000,53 @@ _do_node_archive_config(void)
 		}
 		else
 		{
-			log_verbose(LOG_DEBUG, "copying \"%s\" to \"%s\"",
-						cell->key, dest_file.data);
-			copy_file(cell->value, dest_file.data);
-			copied_count++;
+			if (runtime_options.dry_run == true)
+			{
+				log_info("file \"%s\" would be copied to \"%s\"",
+						 cell->key, dest_file.data);
+				copied_count++;
+			}
+			else
+			{
+				log_verbose(LOG_DEBUG, "copying \"%s\" to \"%s\"",
+							cell->key, dest_file.data);
+				copy_file(cell->value, dest_file.data);
+				copied_count++;
+			}
 		}
 
 		termPQExpBuffer(&dest_file);
 	}
 
+	if (runtime_options.dry_run == true)
+	{
+		log_verbose(LOG_INFO, _("%i files would have been copied to \"%s\""),
+					copied_count, archive_dir.data);
+	}
+	else
+	{
+		log_verbose(LOG_INFO, _("%i files copied to \"%s\""),
+					copied_count, archive_dir.data);
+	}
 
-	log_verbose(LOG_INFO, _("%i files copied to \"%s\""),
-				copied_count, archive_dir.data);
+	if (runtime_options.dry_run == true)
+	{
+		/*
+		 * Delete directory in --dry-run mode  - it should be empty unless it's been
+		 * interfered with for some reason, in which case manual intervention is
+		 * required
+		 */
+		if (rmdir(archive_dir.data) != 0 && errno != EEXIST)
+		{
+			log_warning(_("unable to delete directory \"%s\""), archive_dir.data);
+			log_detail("%s", strerror(errno));
+			log_hint(_("directory may need to be manually removed"));
+		}
+		else
+		{
+			log_verbose(LOG_INFO, "directory \"%s\" deleted", archive_dir.data);
+		}
+	}
 
 	termPQExpBuffer(&archive_dir);
 }

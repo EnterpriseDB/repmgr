@@ -43,17 +43,72 @@
     <filename>repmgr.conf</filename> for the stopped node *must* be supplied explicitly if not
     otherwise available.
   </para>
-  <para>
-    <command>repmgr node rejoin</command> can optionally use <command>pg_rewind</command> to re-integrate a
-    node which has diverged from the rest of the cluster, typically a failed primary.
-    <command>pg_rewind</command> is available in PostgreSQL 9.5 and later.
-  </para>
-  <note>
-    <para>
-      <command>pg_rewind</command> *requires* that either <varname>wal_log_hints</varname> is enabled, or that
-      data checksums were enabled when the cluster was initialized. See the
-      <ulink url="https://www.postgresql.org/docs/current/static/app-pgrewind.html"><command>pg_rewind</command> documentation</ulink> for details.
 
+  <sect1 id="repmgr-node-rejoin-pg-rewind">
+    <title>Using <command>pg_rewind</command></title>
+    <para>
+      <command>repmgr node rejoin</command> can optionally use <command>pg_rewind</command> to re-integrate a
+      node which has diverged from the rest of the cluster, typically a failed primary.
+      <command>pg_rewind</command> is available in PostgreSQL 9.5 and later.
     </para>
-  </note>
+    <note>
+      <para>
+        <command>pg_rewind</command> *requires* that either <varname>wal_log_hints</varname> is enabled, or that
+        data checksums were enabled when the cluster was initialized. See the
+        <ulink url="https://www.postgresql.org/docs/current/static/app-pgrewind.html"><command>pg_rewind</command> documentation</ulink> for details.
+      </para>
+    </note>
+
+    <para>
+      To have <command>repmgr node rejoin</command> use <command>pg_rewind</command> if required,
+      pass the command line option <literal>--force-rewind</literal>, which will tell &repmgr;
+      to execute <command>pg_rewind</command> to ensure the node can be rejoined successfully.
+    </para>
+
+    <para>
+      Be aware that if <command>pg_rewind</command> is executed and actually performs a
+      rewind operation, any configuration files in the PostgreSQL data directory will be
+      overwritten with those from the source server.
+    </para>
+    <para>
+      To prevent this happening, provide a comma-separated list of files to retain
+      using the <literal>--config-file</literal> command line option; the specified files
+      will be archived in a temporary directory (whose parent directory can be specified with
+      <literal>--config-archive-dir</literal>) and restored once the rewind operation is
+      complete.
+    </para>
+
+    <para>
+      Example, first using <literal>--dry-run</literal>, then actually executing the
+      <literal>node rejoin command</literal>.
+    <programlisting>
+    $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node1 dbname=repmgr user=repmgr' \
+         --force-rewind --config-files=postgresql.local.conf,postgresql.conf --verbose --dry-run
+    NOTICE: using provided configuration file "/etc/repmgr.conf"
+    INFO: prerequisites for using pg_rewind are met
+    INFO: file "postgresql.local.conf" would be copied to "/tmp/repmgr-config-archive-node1/postgresql.local.conf"
+    INFO: file "postgresql.conf" would be copied to "/tmp/repmgr-config-archive-node1/postgresql.local.conf"
+    INFO: 2 files would have been copied to "/tmp/repmgr-config-archive-node1"
+    INFO: directory "/tmp/repmgr-config-archive-node1" deleted
+    INFO: pg_rewind would now be executed
+    DETAIL: pg_rewind command is:
+      pg_rewind -D '/var/lib/postgresql/data' --source-server='host=node1 dbname=repmgr user=repmgr'</programlisting>
+    <programlisting>
+    $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node1 dbname=repmgr user=repmgr' \
+         --force-rewind --config-files=postgresql.local.conf,postgresql.conf --verbose
+    NOTICE: using provided configuration file "/etc/repmgr.conf"
+    INFO: prerequisites for using pg_rewind are met
+    INFO: 2 files copied to "/tmp/repmgr-config-archive-node1"
+    NOTICE: executing pg_rewind
+    NOTICE: 2 files copied to /space/sda1/ibarwick/repmgr-test/node_1/data
+    INFO: directory "/tmp/repmgr-config-archive-node1" deleted
+    INFO: deleting "recovery.done"
+    INFO: setting node 1's primary to node 2
+    NOTICE: starting server using "pg_ctl-l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' start"
+    waiting for server to start.... done
+    server started
+    NOTICE: NODE REJOIN successful
+    DETAIL: node 1 is now attached to node 2</programlisting>
+    </para>
+  </sect1>
 </chapter>
