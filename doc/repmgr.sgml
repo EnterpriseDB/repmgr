@@ -86,6 +86,7 @@
   &repmgrd-network-split;
   &repmgrd-degraded-monitoring;
   &repmgrd-monitoring;
+  &repmgrd-bdr;
  </part>
 
  <part id="repmgr-command-reference">
