@@ -13,7 +13,7 @@
     <title>repmgr user permissions</title>
     <para>
       &repmgr; will create an extension in the BDR database containing objects
-      for administering &repmgr; metadata. The user defined in the `conninfo`
+      for administering &repmgr; metadata. The user defined in the <varname>conninfo</varname>
       setting must be able to access all objects. Additionally, superuser permissions
       are required to install the &repmgr; extension. The easiest way to do this
       is create the &repmgr; user as a superuser, however if this is not
