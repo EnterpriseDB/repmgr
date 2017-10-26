@@ -1,0 +1,171 @@
+<chapter id="repmgrd-bdr">
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>BDR</secondary>
+  </indexterm>
+
+  <indexterm>
+    <primary>BDR</primary>
+  </indexterm>
+
+  <title>BDR failover with repmgrd</title>
+  <para>
+    &repmgr; 4.x provides support for monitoring BDR nodes and taking action in
+    case one of the nodes fails.
+  </para>
+  <note>
+    <simpara>
+      Due to the nature of BDR, it's only safe to use this solution for
+      a two-node scenario. Introducing additional nodes will create an inherent
+      risk of node desynchronisation if a node goes down without being cleanly
+      removed from the cluster.
+    </simpara>
+  </note>
+  <para>
+    In contrast to streaming replication, there's no concept of "promoting" a new
+    primary node with BDR. Instead, "failover" involves monitoring both nodes
+    with `repmgrd` and redirecting queries from the failed node to the remaining
+    active node. This can be done by using an
+    <link linkend="event-notifications">event notification</link> script
+    which is called by <application>repmgrd</application> to dynamically
+    reconfigure a proxy server/connection pooler such as <application>PgBouncer</application>.
+  </para>
+
+  <sect1 id="bdr-prerequisites" xreflabel="BDR prequisites">
+    <title>Prerequisites</title>
+    <para>
+      &repmgr; 4 requires PostgreSQL 9.4 or 9.6 with the BDR 2 extension
+      enabled and configured for a two-node BDR network. &repmgr; 4 packages
+      must be installed on each node before attempting to configure
+      <application>repmgr</application>.
+    </para>
+    <note>
+      <simpara>
+        &repmgr; 4 will refuse to install if it detects more than two BDR nodes.
+      </simpara>
+    </note>
+    <para>
+      Application database connections *must* be passed through a proxy server/
+      connection pooler such as <application>PgBouncer</application>, and it must be possible to dynamically
+      reconfigure that from <application>repmgrd</application>. The example demonstrated in this document
+      will use <application>PgBouncer</application>
+    </para>
+    <para>
+      The proxy server / connection poolers must <emphasis>not</emphasis>
+      be installed on the database servers.
+    </para>
+    <para>
+      For this example, it's assumed password-less SSH connections are available
+      from the PostgreSQL servers to the servers where <application>PgBouncer</application>
+      runs, and that the user on those servers has permission to alter the
+      <application>PgBouncer</application> configuration files.
+    </para>
+    <para>
+      PostgreSQL connections must be possible between each node, and each node
+      must be able to connect to each PgBouncer instance.
+    </para>
+  </sect1>
+
+  <sect1 id="bdr-configuration" xreflabel="BDR configuration">
+    <title>Configuration</title>
+    <para>
+      A sample configuration for <filename>repmgr.conf</filename> on each
+      BDR node would look like this:
+      <programlisting>
+        # Node information
+        node_id=1
+        node_name='node1'
+        conninfo='host=node1 dbname=bdrtest user=repmgr connect_timeout=2'
+        data_directory='/var/lib/postgresql/data'
+        replication_type='bdr'
+
+        # Event notification configuration
+        event_notifications=bdr_failover
+        event_notification_command='/path/to/bdr-pgbouncer.sh %n %e %s "%c" "%a" >> /tmp/bdr-failover.log 2>&1'
+
+        # repmgrd options
+        monitor_interval_secs=5
+        reconnect_attempts=6
+        reconnect_interval=5</programlisting>
+    </para>
+    <para>
+      Adjust settings as appropriate; copy and adjust for the second node (particularly
+      the values <varname>node_id</varname>, <varname>node_name</varname>
+      and <varname>conninfo</varname>).
+    </para>
+    <para>
+      Note that the values provided for the <varname>conninfo</varname> string
+      must be valid for connections from <emphasis>both</emphasis> nodes in the
+      replication cluster. The database must be the BDR-enabled database.
+    </para>
+    <para>
+      If defined, the evenr <application>event_notifications</application> parameter
+      will restrict execution of <varname>event_notification_command</varname>
+      to the specified event(s).
+    </para>
+    <note>
+      <simpara>
+        <varname>event_notification_command</varname> is the script which does the actual "heavy lifting"
+        of reconfiguring the proxy server/ connection pooler. It is fully
+        user-definable; a reference implementation is documented below.
+      </simpara>
+    </note>
+
+  </sect1>
+
+  <sect1 id="bdr-repmgr-setup" xreflabel="repmgr setup with BDR">
+    <title>repmgr setup</title>
+    <para>
+      Register both nodes; example on <literal>node1</literal>:
+      <programlisting>
+        $ repmgr -f /etc/repmgr.conf bdr register
+        NOTICE: attempting to install extension "repmgr"
+        NOTICE: "repmgr" extension successfully installed
+        NOTICE: node record created for node 'node1' (ID: 1)
+        NOTICE: BDR node 1 registered (conninfo: host=node1 dbname=bdrtest user=repmgr)</programlisting>
+    </para>
+    <para>
+      and on <literal>node1</literal>:
+      <programlisting>
+        $ repmgr -f /etc/repmgr.conf bdr register
+        NOTICE: node record created for node 'node2' (ID: 2)
+        NOTICE: BDR node 2 registered (conninfo: host=node2 dbname=bdrtest user=repmgr)</programlisting>
+    </para>
+    <para>
+      The <literal>repmgr</literal> extension will be automatically created
+      when the first node is registered, and will be propagated to the second
+      node.
+    </para>
+    <important>
+      <simpara>
+        Ensure the &repmgr; package is available on both nodes before
+        attempting to register the first node.
+      </simpara>
+    </important>
+    <para>
+      At this point the meta data for both nodes has been created; executing
+      <xref linkend="repmgr-cluster-show"> (on either node) should produce output like this:
+      <programlisting>
+        $ repmgr -f /etc/repmgr.conf cluster show
+        ID | Name  | Role | Status    | Upstream | Location | Connection string
+       ----+-------+------+-----------+----------+--------------------------------------------------------
+        1  | node1 | bdr  | * running |          | default  | host=node1 dbname=bdrtest user=repmgr connect_timeout=2
+        2  | node2 | bdr  | * running |          | default  | host=node2 dbname=bdrtest user=repmgr connect_timeout=2</programlisting>
+    </para>
+    <para>
+      Additionally it's possible to display log of significant events;  executing
+      <xref linkend="repmgr-cluster-show"> (on either node) should produce output like this:
+      <programlisting>
+        Node ID | Event        | OK | Timestamp           | Details
+       ---------+--------------+----+---------------------+----------------------------------------------
+        2       | bdr_register | t  | 2017-07-27 17:51:48 | node record created for node 'node2' (ID: 2)
+        1       | bdr_register | t  | 2017-07-27 17:51:00 | node record created for node 'node1' (ID: 1)
+      </programlisting>
+    </para>
+    <para>
+      At this point there will only be records for the two node registrations (displayed in reverse
+      chronological order).
+    </para>
+  </sect1>
+</chapter>
+

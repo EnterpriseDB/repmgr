@@ -53,6 +53,7 @@
 <!ENTITY repmgrd-degraded-monitoring SYSTEM "repmgrd-degraded-monitoring.sgml">
 <!ENTITY repmgrd-cascading-replication SYSTEM "repmgrd-cascading-replication.sgml">
 <!ENTITY repmgrd-network-split SYSTEM "repmgrd-network-split.sgml">
+<!ENTITY repmgrd-bdr SYSTEM "repmgrd-bdr.sgml">
 
 <!ENTITY repmgr-primary-register SYSTEM "repmgr-primary-register.sgml">
 <!ENTITY repmgr-primary-unregister SYSTEM "repmgr-primary-unregister.sgml">

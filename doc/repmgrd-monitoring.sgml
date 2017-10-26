@@ -6,7 +6,7 @@
 
  <title>Monitoring with repmgrd</title>
  <para>
-  When `repmgrd` is running with the option <literal>monitoring_history=true</literal>,
+   When <application>repmgrd</application> is running with the option <literal>monitoring_history=true</literal>,
   it will constantly write standby node status information to the
   <varname>monitoring_history</varname> table, providing a near-real time
   overview of replication status on all nodes

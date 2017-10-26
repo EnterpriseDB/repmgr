@@ -1,0 +1,37 @@
+<chapter id="repmgrd-bdr">
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>BDR</secondary>
+  </indexterm>
+
+  <indexterm>
+    <primary>BDR</primary>
+  </indexterm>
+
+  <title>BDR failover with repmgrd</title>
+  <para>
+    &repmgr; 4.x provides support for monitoring BDR nodes and taking action in
+    case one of the nodes fails.
+  </para>
+  <note>
+    <simpara>
+      Due to the nature of BDR, it's only safe to use this solution for
+      a two-node scenario. Introducing additional nodes will create an inherent
+      risk of node desynchronisation if a node goes down without being cleanly
+      removed from the cluster.
+    </simpara>
+  </note>
+  <para>
+    In contrast to streaming replication, there's no concept of "promoting" a new
+    primary node with BDR. Instead, "failover" involves monitoring both nodes
+    with `repmgrd` and redirecting queries from the failed node to the remaining
+    active node. This can be done by using an
+    <link linkend="event-notifications">event notification</link> script
+    which is called by <application>repmgrd</application> to dynamically
+    reconfigure a proxy server/connection pooler such as <application>PgBouncer</application>.
+  </para>
+
+  <sect1 id="prerequisites" xreflable="BDR prequisites">
+  </sect1>
+</chapter>
+
