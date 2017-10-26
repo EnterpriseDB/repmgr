@@ -4,6 +4,11 @@
     <secondary>location</secondary>
   </indexterm>
 
+  <indexterm>
+    <primary>configuration</primary>
+    <secondary>repmgr.conf location</secondary>
+  </indexterm>
+
   <title>Configuration file location</title>
   <para>
     <application>repmgr</application> and <application>repmgrd</application>
