@@ -19,7 +19,7 @@
  </para>
  <para>
   <command>repmgr standby switchover</command> differs from other &repmgr;
-  actions in that it lso performs actions on another server (the demotion
+  actions in that it also performs actions on another server (the demotion
   candidate), which means passwordless SSH access is required to that server
   from the one where <command>repmgr standby switchover</command> is executed.
  </para>
