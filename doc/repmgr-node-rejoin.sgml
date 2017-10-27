@@ -14,6 +14,14 @@
      a standby to the current primary, not another standby.
    </simpara>
   </note>
+
+  <tip>
+    <para>
+      If the node is running and needs to be attached to the current primary, use
+      <xref linkend="repmgr-standby-follow">.
+    </para>
+  </tip>
+
   <para>
     This can optionally use <application>pg_rewind</application> to re-integrate a node which has diverged
     from the rest of the cluster, typically a failed primary.
