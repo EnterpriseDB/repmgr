@@ -30,8 +30,7 @@
       building PostgreSQL with:
       <programlisting>
        sudo apt-get update
-       sudo apt-get build-dep postgresql-9.6
-      </programlisting>
+       sudo apt-get build-dep postgresql-9.6</programlisting>
       </para>
     </listitem>
     <listitem>
@@ -44,8 +43,7 @@
        sudo yum check-update
        sudo yum groupinstall "Development Tools"
        sudo yum install yum-utils openjade docbook-dtds docbook-style-dsssl docbook-style-xsl
-       sudo yum-builddep postgresql96
-      </programlisting>
+       sudo yum-builddep postgresql96</programlisting>
      </para>
     </listitem>
    </itemizedlist>
@@ -88,8 +86,7 @@
    <para>
     Clone the source code using <application>git</application>:
     <programlisting>
-     git clone https://github.com/2ndQuadrant/repmgr
-    </programlisting>
+     git clone https://github.com/2ndQuadrant/repmgr</programlisting>
    </para>
 
    <para>
@@ -134,12 +131,31 @@
    To installing &repmgr; from source, simply execute:
 
    <programlisting>
-    ./configure && make install
-   </programlisting>
+    ./configure && make install</programlisting>
 
    Ensure <command>pg_config</command> for the target PostgreSQL version is in
    <varname>$PATH</varname>.
   </para>
  </sect2>
+
+
+
+ <sect2 id="installation-build-repmgr-docs">
+   <title>Building &repmgr; documentation</title>
+   <para>
+    The &repmgr; documentation is (like the main PostgreSQL project)
+    written in DocBook format. To build it locally as HTML, you'll need to
+    install the required packages as described in the
+    <ulink url="https://www.postgresql.org/docs/9.6/static/docguide-toolsets.html">
+      PostgreSQL documentation</ulink> then execute:
+   <programlisting>
+    ./configure && make install-doc</programlisting>
+   </para>
+   <para>
+     The generated HTML files will be placed in the <filename>doc/html</filename>
+     subdirectory of your source tree.
+   </para>
+ </sect2>
+
 
 </sect1>
