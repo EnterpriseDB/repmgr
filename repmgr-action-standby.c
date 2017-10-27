@@ -1567,59 +1567,23 @@ do_standby_follow(void)
 	if (server_version_num < 90400)
 		check_93_config();
 
-	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
+	/*
+	 * Attempt to connect to primary.
+	 *
+	 * If --wait provided, loop for up `primary_follow_timeout` seconds
+	 * before giving up
+	 */
+
+	for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
 	{
-		/* check not self! */
-		if (runtime_options.upstream_node_id == config_file_options.node_id)
+		primary_conn = get_primary_connection_quiet(local_conn,
+													&primary_id,
+													NULL);
+		if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
 		{
-			log_error(_("provided \"--upstream-node-id\" %i is the current node!"),
-					  runtime_options.upstream_node_id);
-			exit(ERR_BAD_CONFIG);
+			break;
 		}
-
-		record_status = get_node_record(local_conn, runtime_options.upstream_node_id, &primary_node_record);
-
-		if (record_status != RECORD_FOUND)
-		{
-			log_error(_("unable to find record for specified upstream node %i"),
-					  runtime_options.upstream_node_id);
-			PQfinish(local_conn);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
-		{
-			primary_conn = establish_db_connection(primary_node_record.conninfo, true);
-
-			if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
-			{
-				log_debug("setting primary id to %i", runtime_options.upstream_node_id);
-				primary_id = runtime_options.upstream_node_id;
-				break;
-			}
-			sleep(1);
-		}
-	}
-	else
-	{
-		/*
-		 * Attempt to connect to primary.
-		 *
-		 * If --wait provided, loop for up `primary_follow_timeout` seconds
-		 * before giving up
-		 */
-
-		for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
-		{
-			primary_conn = get_primary_connection_quiet(local_conn,
-														&primary_id,
-														NULL);
-			if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
-			{
-				break;
-			}
-			sleep(1);
-		}
+		sleep(1);
 	}
 
 	PQfinish(local_conn);
@@ -1627,6 +1591,13 @@ do_standby_follow(void)
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to determine primary node"));
+
+		if (runtime_options.wait == true)
+		{
+			log_detail(_("no primary appeared after %i seconds"),
+					   config_file_options.primary_follow_timeout);
+			log_hint(_("alter \"primary_follow_timeout\" in \"repmgr.conf\" to change this value"));
+		}
 
 		exit(ERR_BAD_CONFIG);
 	}
@@ -1640,7 +1611,6 @@ do_standby_follow(void)
 		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
-
 
 	/* XXX check this is not current upstream anyway */
 	/* check replication connection */
@@ -1730,11 +1700,12 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 {
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	int			original_upstream_node_id = UNKNOWN_NODE_ID;
+	t_node_info original_upstream_node_record = T_NODE_INFO_INITIALIZER;
 
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	char	   *errmsg = NULL;
 
-
+	bool		remove_old_replication_slot = false;
 	/*
 	 * Fetch our node record so we can write application_name, if set, and to
 	 * get the upstream node ID, which we'll need to know if replication slots
@@ -1803,6 +1774,8 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 				param_set(&recovery_conninfo, "application_name", application_name);
 		}
 
+		free_conninfo_params(&local_node_conninfo);
+
 		/*
 		 * store the original upstream node id so we can delete the
 		 * replication slot, if exists
@@ -1816,9 +1789,34 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 			original_upstream_node_id = primary_node_record->node_id;
 		}
 
-		free_conninfo_params(&local_node_conninfo);
+
+		if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
+		{
+			remove_old_replication_slot = true;
+		}
 	}
 
+	/* Fetch original upstream's record */
+	if (remove_old_replication_slot == true)
+	{
+		PGconn	    *local_conn = NULL;
+		RecordStatus upstream_record_status = RECORD_NOT_FOUND;
+
+		/* abort if local connection not available */
+		local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+		upstream_record_status = get_node_record(local_conn,
+												 original_upstream_node_id,
+												 &original_upstream_node_record);
+		PQfinish(local_conn);
+
+		if (upstream_record_status != RECORD_FOUND)
+		{
+			log_warning(_("unable to retrieve node record for old upstream node %i"),
+						original_upstream_node_id);
+			log_detail(_("replication slot will need to be removed manually"));
+		}
+	}
 
 	/* Set the application name to this node's name */
 	param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
@@ -1870,7 +1868,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		}
 	}
 
-
 	/*
 	 * If replication slots are in use, and an inactive one for this node
 	 * exists on the former upstream, drop it.
@@ -1878,37 +1875,16 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	 * XXX check if former upstream is current primary?
 	 */
 
-	if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
+	if (remove_old_replication_slot == true)
 	{
-		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
-		RecordStatus upstream_record_status = RECORD_NOT_FOUND;
-		PGconn	   *local_conn = NULL;
-
-		log_verbose(LOG_INFO, "attempting to remove replication slot from old upstream node %i",
-					original_upstream_node_id);
-
-		/* XXX should we poll for server restart? */
-		local_conn = establish_db_connection(config_file_options.conninfo, true);
-
-		upstream_record_status = get_node_record(local_conn,
-												 original_upstream_node_id,
-												 &upstream_node_record);
-
-		PQfinish(local_conn);
-
-		if (upstream_record_status != RECORD_FOUND)
+		if (original_upstream_node_record.node_id != UNKNOWN_NODE_ID)
 		{
-			log_warning(_("unable to retrieve node record for old upstream node %i"),
-						original_upstream_node_id);
-		}
-		else
-		{
-			PGconn	   *old_upstream_conn = establish_db_connection_quiet(upstream_node_record.conninfo);
+			PGconn	   *old_upstream_conn = establish_db_connection_quiet(original_upstream_node_record.conninfo);
 
 			if (PQstatus(old_upstream_conn) != CONNECTION_OK)
 			{
-				log_info(_("unable to connect to old upstream node %i to remove replication slot"),
-						 original_upstream_node_id);
+				log_warning(_("unable to connect to old upstream node %i to remove replication slot"),
+							original_upstream_node_id);
 				log_hint(_("if reusing this node, you should manually remove any inactive replication slots"));
 			}
 			else
@@ -1916,6 +1892,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 				drop_replication_slot_if_exists(old_upstream_conn,
 												original_upstream_node_id,
 												local_node_record.slot_name);
+				PQfinish(old_upstream_conn);
 			}
 		}
 	}
@@ -1940,7 +1917,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 					  _("node %i is now attached to node %i"),
 					  config_file_options.node_id,
 					  primary_node_record->node_id);
-
 
 	return true;
 }
