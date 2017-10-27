@@ -11,11 +11,25 @@
   </para>
   <para>
    This command will force a restart of the standby server, which must be
-   running. It can only be used to attach a standby to a new primary node.
+   running. It can only be used to attach an active standby to the current primary node
+   (and not to another standby).
   </para>
   <para>
    To re-add an inactive node to the replication cluster, see
    <xref linkend="repmgr-node-rejoin">
+  </para>
+  <para>
+    Example execution:
+    <programlisting>
+      $ repmgr -f /etc/repmgr.conf standby follow
+      INFO: setting node 3's primary to node 2
+      NOTICE: restarting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/postgres/data' restart"
+      waiting for server to shut down........ done
+      server stopped
+      waiting for server to start.... done
+      server started
+      NOTICE: STANDBY FOLLOW successful
+      DETAIL: node 3 is now attached to node 2</programlisting>
   </para>
 </chapter>
 

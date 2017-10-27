@@ -15,4 +15,16 @@
    by using <xref linkend="repmgr-standby-follow">; if <application>repmgrd</application>
    is active, it will handle this automatically.
   </para>
+  <para>
+    Example execution:
+    <programlisting>
+      $ repmgr -f /etc/repmgr.conf standby promote
+      NOTICE: promoting standby to primary
+      DETAIL: promoting server "node2" (ID: 2) using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/postgres/data' promote"
+      server promoting
+      DEBUG: setting node 2 as primary and marking existing primary as failed
+      NOTICE: STANDBY PROMOTE successful
+      DETAIL: server "node2" (ID: 2) was successfully promoted to primary
+    </programlisting>
+  </para>
 </chapter>
