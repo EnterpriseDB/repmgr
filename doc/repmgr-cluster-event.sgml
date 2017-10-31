@@ -1,37 +1,60 @@
-<chapter id="repmgr-cluster-event" xreflabel="repmgr cluster event">
- <indexterm>
-  <primary>repmgr cluster event</primary>
- </indexterm>
- <title>repmgr cluster event</title>
- <para>
-  This outputs a formatted list of cluster events, as stored in the
-  <literal>repmgr.events</literal> table. Output is in reverse chronological order, and
-  can be filtered with the following options:
- <itemizedlist spacing="compact" mark="bullet">
-  <listitem>
-    <simpara><literal>--all</literal>: outputs all entries</simpara>
-  </listitem>
-  <listitem>
-    <simpara><literal>--limit</literal>: set the maximum number of entries to output (default: 20)</simpara>
-  </listitem>
-  <listitem>
-    <simpara><literal>--node-id</literal>: restrict entries to node with this ID</simpara>
-  </listitem>
-  <listitem>
-    <simpara><literal>--node-name</literal>: restrict entries to node with this name</simpara>
-  </listitem>
-  <listitem>
-    <simpara><literal>--event</literal>: filter specific event</simpara>
-  </listitem>
- </itemizedlist>
- </para>
- <para>
-  Example:
-  <programlisting>
+<refentry id="repmgr-cluster-event">
+  <indexterm>
+    <primary>repmgr cluster event</primary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr cluster event</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr cluster event</refname>
+    <refpurpose>output a formatted list of cluster events</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+
+    <para>
+      Outputs a formatted list of cluster events, as stored in the <literal>repmgr.events</literal> table.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Usage</title>
+
+    <para>
+      Output is in reverse chronological order, and
+      can be filtered with the following options:
+      <itemizedlist spacing="compact" mark="bullet">
+        <listitem>
+          <simpara><literal>--all</literal>: outputs all entries</simpara>
+        </listitem>
+        <listitem>
+          <simpara><literal>--limit</literal>: set the maximum number of entries to output (default: 20)</simpara>
+        </listitem>
+        <listitem>
+          <simpara><literal>--node-id</literal>: restrict entries to node with this ID</simpara>
+        </listitem>
+        <listitem>
+          <simpara><literal>--node-name</literal>: restrict entries to node with this name</simpara>
+        </listitem>
+        <listitem>
+          <simpara><literal>--event</literal>: filter specific event</simpara>
+        </listitem>
+      </itemizedlist>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <para>
+      <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster event --event=standby_register
      Node ID | Name  | Event            | OK | Timestamp           | Details
     ---------+-------+------------------+----+---------------------+--------------------------------
      3       | node3 | standby_register | t  | 2017-08-17 10:28:55 | standby registration succeeded
      2       | node2 | standby_register | t  | 2017-08-17 10:28:53 | standby registration succeeded</programlisting>
- </para>
-</chapter>
+    </para>
+  </refsect1>
+</refentry>

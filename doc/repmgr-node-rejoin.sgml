@@ -1,58 +1,75 @@
-<chapter id="repmgr-node-rejoin" xreflabel="repmgr node rejoin">
+<refentry id="repmgr-node-rejoin">
 
   <indexterm>
     <primary>repmgr node rejoin</primary>
   </indexterm>
 
-  <title>repmgr node rejoin</title>
-  <para>
-   Enables a dormant (stopped) node to be rejoined to the replication cluster.
-  </para>
-  <note>
-   <simpara>
-     Currently <command>repmgr node rejoin</command> can only be used to attach
-     a standby to the current primary, not another standby.
-   </simpara>
-  </note>
+  <refmeta>
+    <refentrytitle>repmgr node rejoin</refentrytitle>
+  </refmeta>
 
-  <tip>
+  <refnamediv>
+    <refname>repmgr node rejoin</refname>
+    <refpurpose>rejoin a dormant (stopped) node to the replication cluster</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
     <para>
-      If the node is running and needs to be attached to the current primary, use
-      <xref linkend="repmgr-standby-follow">.
+      Enables a dormant (stopped) node to be rejoined to the replication cluster.
     </para>
-  </tip>
-
-  <para>
-    This can optionally use <application>pg_rewind</application> to re-integrate a node which has diverged
-    from the rest of the cluster, typically a failed primary.
-  </para>
-  <para>
-    The node must have been shut down cleanly; if this was not the case, it will
-    need to be manually started (remove any existing <filename>recovery.conf</filename> file first)
-    until it has reached a consistent recovery point, then shut down cleanly.
-  </para>
-  <tip>
     <para>
-      If <application>PostgreSQL</application> is started in single-user mode and
-      input is directed from <filename>/dev/null/</filename>, it will perform recovery
-      then immediately quit, and will then be in a state suitable for use by
-      <application>pg_rewind</application>.
+      This can optionally use <application>pg_rewind</application> to re-integrate
+      a node which has diverged from the rest of the cluster, typically a failed primary.
+    </para>
+
+    <tip>
+      <para>
+        If the node is running and needs to be attached to the current primary, use
+        <xref linkend="repmgr-standby-follow">.
+      </para>
+    </tip>
+  </refsect1>
+
+
+  <refsect1>
+    <title>Usage</title>
+
+    <para>
       <programlisting>
-        rm -f /var/lib/pgsql/data/recovery.conf
-        postgres --single -D /var/lib/pgsql/data/ &lt; /dev/null</programlisting>
-    </para>
-  </tip>
-  <para>
-    Usage:
-    <programlisting>
       repmgr node rejoin -d '$conninfo'</programlisting>
 
-    where <literal>$conninfo</literal> is the conninfo string of any reachable node in the cluster.
-    <filename>repmgr.conf</filename> for the stopped node *must* be supplied explicitly if not
-    otherwise available.
-  </para>
+      where <literal>$conninfo</literal> is the conninfo string of any reachable node in the cluster.
+      <filename>repmgr.conf</filename> for the stopped node *must* be supplied explicitly if not
+      otherwise available.
+    </para>
+  </refsect1>
 
-  <sect1 id="repmgr-node-rejoin-pg-rewind">
+  <refsect1>
+    <title>Notes</title>
+    <para>
+      Currently <command>repmgr node rejoin</command> can only be used to attach
+      a standby to the current primary, not another standby.
+    </para>
+    <para>
+      The node must have been shut down cleanly; if this was not the case, it will
+      need to be manually started (remove any existing <filename>recovery.conf</filename> file first)
+      until it has reached a consistent recovery point, then shut down cleanly.
+    </para>
+    <tip>
+      <para>
+        If <application>PostgreSQL</application> is started in single-user mode and
+        input is directed from <filename>/dev/null/</filename>, it will perform recovery
+        then immediately quit, and will then be in a state suitable for use by
+        <application>pg_rewind</application>.
+        <programlisting>
+          rm -f /var/lib/pgsql/data/recovery.conf
+          postgres --single -D /var/lib/pgsql/data/ &lt; /dev/null</programlisting>
+      </para>
+    </tip>
+  </refsect1>
+
+  <refsect1 id="repmgr-node-rejoin-pg-rewind">
     <title>Using <command>pg_rewind</command></title>
     <para>
       <command>repmgr node rejoin</command> can optionally use <command>pg_rewind</command> to re-integrate a
@@ -118,5 +135,14 @@
     NOTICE: NODE REJOIN successful
     DETAIL: node 1 is now attached to node 2</programlisting>
     </para>
-  </sect1>
-</chapter>
+
+
+  </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+     <xref linkend="repmgr-standby-follow">
+    </para>
+  </refsect1>
+</refentry>

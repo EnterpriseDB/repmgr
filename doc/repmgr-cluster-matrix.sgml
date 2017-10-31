@@ -1,27 +1,44 @@
-<chapter id="repmgr-cluster-matrix" xreflabel="repmgr cluster matrix">
+<refentry id="repmgr-cluster-matrix">
   <indexterm>
     <primary>repmgr cluster matrix</primary>
   </indexterm>
-  <title>repmgr cluster matrix</title>
-  <para>
-    <command>repmgr cluster matrix</command> runs  <command>repmgr cluster show</command> on each
-    node and arranges the results in a matrix, recording success or failure.
-  </para>
-  <para>
-    <command>repmgr cluster matrix</command> requires a valid <filename>repmgr.conf</filename>
-    file on each node.  Additionally passwordless <command>ssh</command> connections are required between
-    all nodes.
-  </para>
-  <para>
+
+  <refmeta>
+    <refentrytitle>repmgr cluster matrix</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr cluster matrix</refname>
+    <refpurpose>
+      runs repmgr cluster show on each node and summarizes output
+    </refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>repmgr cluster matrix</command> runs <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> on each
+      node and arranges the results in a matrix, recording success or failure.
+    </para>
+    <para>
+      <command>repmgr cluster matrix</command> requires a valid <filename>repmgr.conf</filename>
+      file on each node. Additionally, passwordless <command>ssh</command> connections are required between
+      all nodes.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <para>
     Example 1 (all nodes up):
     <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster matrix
 
     Name   | Id |  1 |  2 |  3
     -------+----+----+----+----
-    node1 |  1 |  * |  * |  *
-    node2 |  2 |  * |  * |  *
-    node3 |  3 |  * |  * |  *</programlisting>
+     node1 |  1 |  * |  * |  *
+     node2 |  2 |  * |  * |  *
+     node3 |  3 |  * |  * |  *</programlisting>
   </para>
   <para>
     Example 2 (<literal>node1</literal> and <literal>node2</literal> up, <literal>node3</literal> down):
@@ -79,5 +96,6 @@
     In this case, the <xref linkend="repmgr-cluster-crosscheck"> command will produce a more
     useful result.
   </para>
-</chapter>
+  </refsect1>
+</refentry>
 

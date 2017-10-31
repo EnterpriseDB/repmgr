@@ -1,32 +1,51 @@
-<chapter id="repmgr-primary-register" xreflabel="repmgr primary register">
-  <indexterm><primary>repmgr primary register</primary></indexterm>
-  <title>repmgr primary register</title>
-  <para>
-   <command>repmgr primary register</command> registers a primary node in a
-   streaming replication cluster, and configures it for use with repmgr, including
-   installing the &repmgr; extension. This command needs to be executed before any
-   standby nodes are registered.
-  </para>
-  <para>
-   Execute with the <literal>--dry-run</literal> option to check what would happen without
-   actually registering the primary.
-  </para>
-  <para>
-   <command>repmgr master register</command> can be used as an alias for
-   <command>repmgr primary register</command>.
-  </para>
+<refentry id="repmgr-primary-register">
+  <indexterm>
+    <primary>repmgr primary register</primary>
+  </indexterm>
 
-  <note>
+  <refmeta>
+    <refentrytitle>repmgr primary register</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr primary register</refname>
+    <refpurpose>initialise a repmgr installation and register the primary node</refpurpose>
+  </refnamediv>
+
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>repmgr primary register</command> registers a primary node in a
+      streaming replication cluster, and configures it for use with repmgr, including
+      installing the &repmgr; extension. This command needs to be executed before any
+      standby nodes are registered.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Execution</title>
+    <para>
+      Execute with the <literal>--dry-run</literal> option to check what would happen without
+      actually registering the primary.
+    </para>
+    <para>
+      <command>repmgr master register</command> can be used as an alias for
+      <command>repmgr primary register</command>.
+    </para>
+
+    <note>
     <para>
       If providing the configuration file location with <literal>-f/--config-file</literal>,
       avoid using a relative path, as &repmgr; stores the configuration file location
       in the repmgr metadata for use when &repmgr; is executed remotely (e.g. during
       <xref linkend="repmgr-standby-switchover">). &repmgr; will attempt to convert the
-      a relative path into an absolute one, but this may not be the same as the path you
-      would explicitly provide (e.g. <filename>./repmgr.conf</filename> might be converted
-      to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write
-      <filename>/path/to/repmgr.conf</filename>).
+        a relative path into an absolute one, but this may not be the same as the path you
+        would explicitly provide (e.g. <filename>./repmgr.conf</filename> might be converted
+        to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write
+        <filename>/path/to/repmgr.conf</filename>).
     </para>
-  </note>
+    </note>
+  </refsect1>
 
-</chapter>
+</refentry>

@@ -1,15 +1,27 @@
-<chapter id="repmgr-cluster-crosscheck" xreflabel="repmgr cluster crosscheck">
+<refentry id="repmgr-cluster-crosscheck">
   <indexterm>
     <primary>repmgr cluster crosscheck</primary>
   </indexterm>
-  <title>repmgr cluster crosscheck</title>
-  <para>
-    <command>repmgr cluster crosscheck</command> is similar to <xref linkend="repmgr-cluster-matrix">,
-    but cross-checks connections between each combination of nodes. In "Example 3" in
-    <xref linkend="repmgr-cluster-matrix"> we have no information about the state of <literal>node3</literal>.
-    However by running <command>repmgr cluster crosscheck</command> it's possible to get a better
-    overview of the cluster situation:
-    <programlisting>
+
+
+  <refmeta>
+    <refentrytitle>repmgr cluster crosscheck</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr cluster crosscheck</refname>
+    <refpurpose>cross-checks connections between each combination of nodes</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>repmgr cluster crosscheck</command> is similar to <xref linkend="repmgr-cluster-matrix">,
+        but cross-checks connections between each combination of nodes. In "Example 3" in
+        <xref linkend="repmgr-cluster-matrix"> we have no information about the state of <literal>node3</literal>.
+        However by running <command>repmgr cluster crosscheck</command> it's possible to get a better
+        overview of the cluster situation:
+          <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster crosscheck
 
     Name   | Id |  1 |  2 |  3
@@ -17,12 +29,14 @@
      node1 |  1 |  * |  * |  x
      node2 |  2 |  * |  * |  *
      node3 |  3 |  * |  * |  *</programlisting>
-  </para>
-  <para>
-   What happened is that <command>repmgr cluster crosscheck</command> merged its own
-   <command>repmgr cluster matrix</command> with the <command>repmgr cluster matrix</command>
-   output from <literal>node2</literal>; the latter is able to connect to <literal>node3</literal>
-   and therefore determine the state of outbound connections from that node.
-  </para>
-</chapter>
+    </para>
+    <para>
+      What happened is that <command>repmgr cluster crosscheck</command> merged its own
+      <command><link linkend="repmgr-cluster-matrix">repmgr cluster matrix</link></command> with the
+      <command>repmgr cluster matrix</command> output from <literal>node2</literal>; the latter is
+      able to connect to <literal>node3</literal>
+      and therefore determine the state of outbound connections from that node.
+    </para>
+  </refsect1>
+</refentry>
 
