@@ -1,21 +1,46 @@
-<chapter id="repmgr-cluster-show" xreflabel="repmgr cluster show">
+<refentry id="repmgr-cluster-show">
   <indexterm>
     <primary>repmgr cluster show</primary>
   </indexterm>
-  <title>repmgr cluster show</title>
-  <para>
-    Displays information about each active node in the replication cluster. This
-    command polls each registered server and shows its role (<literal>primary</literal> /
-    <literal>standby</literal> / <literal>bdr</literal>) and status. It polls each server
-    directly and can be run on any node in the cluster; this is also useful when analyzing
-    connectivity from a particular node.
-  </para>
-  <para>
-    This command requires either a valid <filename>repmgr.conf</filename> file or a database
-    connection string to one of the registered nodes; no  additional arguments are needed.
-  </para>
-  <para>
-    Example:
+
+  <refmeta>
+    <refentrytitle>repmgr cluster show</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr cluster show</refname>
+    <refpurpose>display information about each registered node in the replication cluster</refpurpose>
+  </refnamediv>
+
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Displays information about each registered node in the replication cluster. This
+      command polls each registered server and shows its role (<literal>primary</literal> /
+      <literal>standby</literal> / <literal>bdr</literal>) and status. It polls each server
+      directly and can be run on any node in the cluster; this is also useful when analyzing
+      connectivity from a particular node.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Execution</title>
+    <para>
+      This command requires either a valid <filename>repmgr.conf</filename> file or a database
+      connection string to one of the registered nodes; no additional arguments are needed.
+    </para>
+
+    <para>
+      To show database connection errors when polling nodes, run the command in
+      <literal>--verbose</literal> mode.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <para>
     <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show
 
@@ -25,18 +50,15 @@
      2  | node2 | standby |   running | node1    | default  | host=db_node2 dbname=repmgr user=repmgr
      3  | node3 | standby |   running | node1    | default  | host=db_node3 dbname=repmgr user=repmgr</programlisting>
   </para>
-
-  <para>
-    To show database connection errors when polling nodes, run the command in
-    <literal>--verbose</literal> mode.
-  </para>
-
-  <para>
-    Note that the column <literal>Role</literal> shows the expected server role according to the
-    &repmgr; metadata. <literal>Status</literal> shows whether the server is running or unreachable.
-    If the node has an unexpected role not reflected in the &repmgr; metadata, e.g. a node was manually
-    promoted to primary, this will be highlighted with an exclamation mark, e.g.:
-    <programlisting>
+  </refsect1>
+  <refsect1>
+    <title>Notes</title>
+    <para>
+      The column <literal>Role</literal> shows the expected server role according to the
+      &repmgr; metadata. <literal>Status</literal> shows whether the server is running or unreachable.
+      If the node has an unexpected role not reflected in the &repmgr; metadata, e.g. a node was manually
+      promoted to primary, this will be highlighted with an exclamation mark, e.g.:
+      <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show
 
      ID | Name  | Role    | Status               | Upstream | Location | Connection string
@@ -48,43 +70,47 @@
     WARNING: following issues were detected
       node "node1" (ID: 1) is registered as an active primary but is unreachable
       node "node2" (ID: 2) is registered as standby but running as primary</programlisting>
-  </para>
+    </para>
+    <para>
+      Node availability is tested by connecting from the node where
+      <command>repmgr cluster show</command> is executed, and does not necessarily imply the node
+      is down. See <xref linkend="repmgr-cluster-matrix"> and <xref linkend="repmgr-cluster-crosscheck"> to get
+          a better overviews of connections between nodes.
+    </para>
+  </refsect1>
 
-  <para>
-    <command>repmgr cluster show</command> accepts an optional parameter <literal>--csv</literal>, which
-    outputs the replication cluster's status in a simple CSV format, suitable for
-    parsing by scripts:
-    <programlisting>
+  <refsect1>
+    <title>Options</title>
+    <para>
+      <command>repmgr cluster show</command> accepts an optional parameter <literal>--csv</literal>, which
+      outputs the replication cluster's status in a simple CSV format, suitable for
+      parsing by scripts:
+      <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show --csv
     1,-1,-1
     2,0,0
     3,0,1</programlisting>
-  </para>
-  <para>
-    The columns have following meanings:
-    <itemizedlist spacing="compact" mark="bullet">
-     <listitem>
-      <simpara>
-        node ID
-      </simpara>
-     </listitem>
-     <listitem>
-      <simpara>
-        availability (0 = available, -1 = unavailable)
-      </simpara>
-     </listitem>
-     <listitem>
-      <simpara>
-        recovery state (0 = not in recovery, 1 = in recovery, -1 = unknown)
-      </simpara>
-     </listitem>
-    </itemizedlist>
-  </para>
+    </para>
+    <para>
+      The columns have following meanings:
+      <itemizedlist spacing="compact" mark="bullet">
+        <listitem>
+          <simpara>
+            node ID
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            availability (0 = available, -1 = unavailable)
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            recovery state (0 = not in recovery, 1 = in recovery, -1 = unknown)
+          </simpara>
+        </listitem>
+      </itemizedlist>
+    </para>
+  </refsect1>
 
-  <para>
-   Note that the availability is tested by connecting from the node where
-   <command>repmgr cluster show</command> is executed, and does not necessarily imply the node
-   is down. See <xref linkend="repmgr-cluster-matrix"> and <xref linkend="repmgr-cluster-crosscheck"> to get
-    a better overviews of connections between nodes.
-  </para>
-</chapter>
+</refentry>

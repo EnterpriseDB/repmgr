@@ -1,29 +1,46 @@
-<chapter id="repmgr-standby-unregister" xreflabel="repmgr standby unregister">
-  <indexterm><primary>repmgr standby unregister</primary></indexterm>
-  <title>repmgr standby unregister</title>
-  <para>
-    Unregisters a standby with `repmgr`. This command does not affect the actual
-    replication, just removes the standby's entry from the &repmgr; metadata.
-  </para>
-  <para>
-    To unregister a running standby, execute:
-    <programlisting>
-      repmgr standby unregister -f /etc/repmgr.conf</programlisting>
-  </para>
-  <para>
-    This will remove the standby record from &repmgr;'s internal metadata
-    table (<literal>repmgr.nodes</literal>). A <literal>standby_unregister</literal>
-    event notification will be recorded in the <literal>repmgr.events</literal> table.
-  </para>
-  <para>
-   If the standby is not running, the command can be executed on another
-   node by providing the id of the node to be unregistered using
-   the command line parameter <literal>--node-id</literal>, e.g. executing the following
-   command on the primary server will unregister the standby with
-   id <literal>3</literal>:
-   <programlisting>
-    repmgr standby unregister -f /etc/repmgr.conf --node-id=3
-   </programlisting>
-  </para>
-</chapter>
+<refentry id="repmgr-standby-unregister">
+  <indexterm>
+    <primary>repmgr standby unregister</primary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr standby unregister</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr standby unregister</refname>
+    <refpurpose>remove a standby's information from the &repmgr; metadata</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Unregisters a standby with &repmgr;. This command does not affect the actual
+      replication, just removes the standby's entry from the &repmgr; metadata.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Execution</title>
+    <para>
+      To unregister a running standby, execute:
+      <programlisting>
+        repmgr standby unregister -f /etc/repmgr.conf</programlisting>
+    </para>
+    <para>
+      This will remove the standby record from &repmgr;'s internal metadata
+      table (<literal>repmgr.nodes</literal>). A <literal>standby_unregister</literal>
+      event notification will be recorded in the <literal>repmgr.events</literal> table.
+    </para>
+    <para>
+      If the standby is not running, the command can be executed on another
+      node by providing the id of the node to be unregistered using
+      the command line parameter <literal>--node-id</literal>, e.g. executing the following
+      command on the primary server will unregister the standby with
+      id <literal>3</literal>:
+      <programlisting>
+        repmgr standby unregister -f /etc/repmgr.conf --node-id=3</programlisting>
+    </para>
+  </refsect1>
+</refentry>
 

@@ -1,30 +1,44 @@
-<chapter id="repmgr-standby-promote" xreflabel="repmgr standby promote">
+<refentry id="repmgr-standby-promote">
   <indexterm>
     <primary>repmgr standby promote</primary>
   </indexterm>
-  <title>repmgr standby promote</title>
-  <para>
-   Promotes a standby to a primary if the current primary has failed. This
-   command requires a valid <filename>repmgr.conf</filename> file for the standby, either
-   specified explicitly  with <literal>-f/--config-file</literal> or located in a
-    default location; no additional arguments are required.
-  </para>
-  <para>
-   If the standby promotion succeeds, the server will not need to be
-   restarted. However any other standbys will need to follow the new server,
-   by using <xref linkend="repmgr-standby-follow">; if <application>repmgrd</application>
-   is active, it will handle this automatically.
-  </para>
-  <para>
-    Example execution:
-    <programlisting>
+
+  <refmeta>
+    <refentrytitle>repmgr standby promote</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr standby promote</refname>
+    <refpurpose>promote a standby to a primary</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Promotes a standby to a primary if the current primary has failed. This
+      command requires a valid <filename>repmgr.conf</filename> file for the standby, either
+      specified explicitly  with <literal>-f/--config-file</literal> or located in a
+      default location; no additional arguments are required.
+    </para>
+    <para>
+      If the standby promotion succeeds, the server will not need to be
+      restarted. However any other standbys will need to follow the new server,
+      by using <xref linkend="repmgr-standby-follow">; if <application>repmgrd</application>
+        is active, it will handle this automatically.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <para>
+      <programlisting>
       $ repmgr -f /etc/repmgr.conf standby promote
       NOTICE: promoting standby to primary
       DETAIL: promoting server "node2" (ID: 2) using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/postgres/data' promote"
       server promoting
       DEBUG: setting node 2 as primary and marking existing primary as failed
       NOTICE: STANDBY PROMOTE successful
-      DETAIL: server "node2" (ID: 2) was successfully promoted to primary
-    </programlisting>
-  </para>
-</chapter>
+      DETAIL: server "node2" (ID: 2) was successfully promoted to primary</programlisting>
+    </para>
+  </refsect1>
+</refentry>

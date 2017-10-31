@@ -1,29 +1,43 @@
-<chapter id="repmgr-standby-register" xreflabel="repmgr standby register">
-  <indexterm><primary>repmgr standby register</primary></indexterm>
-  <title>repmgr standby register</title>
-  <para>
-   <command>repmgr standby register</command> adds a standby's information to
-   the &repmgr; metadata. This command needs to be executed to enable
-   promote/follow operations and to allow <application>repmgrd</application> to work with the node.
-   An existing standby can be registered using this command. Execute with the
-   <literal>--dry-run</literal> option to check what would happen without actually registering the
-   standby.
-  </para>
+<refentry id="repmgr-standby-register" xreflabel="repmgr standby register">
+  <indexterm>
+    <primary>repmgr standby register</primary>
+  </indexterm>
 
-  <note>
+  <refmeta>
+    <refentrytitle>repmgr standby register</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr standby register</refname>
+    <refpurpose>add a standby's information to the &repmgr; metadata</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
     <para>
-      If providing the configuration file location with <literal>-f/--config-file</literal>,
-      avoid using a relative path, as &repmgr; stores the configuration file location
-      in the repmgr metadata for use when &repmgr; is executed remotely (e.g. during
-      <xref linkend="repmgr-standby-switchover">). &repmgr; will attempt to convert the
-      a relative path into an absolute one, but this may not be the same as the path you
-      would explicitly provide (e.g. <filename>./repmgr.conf</filename> might be converted
-      to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write
-      <filename>/path/to/repmgr.conf</filename>).
+      <command>repmgr standby register</command> adds a standby's information to
+      the &repmgr; metadata. This command needs to be executed to enable
+      promote/follow operations and to allow <application>repmgrd</application> to work with the node.
+      An existing standby can be registered using this command. Execute with the
+      <literal>--dry-run</literal> option to check what would happen without actually registering the
+      standby.
     </para>
-  </note>
 
-  <sect1 id="repmgr-standby-register-wait" xreflabel="repmgr standby register --wait">
+    <note>
+      <para>
+        If providing the configuration file location with <literal>-f/--config-file</literal>,
+        avoid using a relative path, as &repmgr; stores the configuration file location
+        in the repmgr metadata for use when &repmgr; is executed remotely (e.g. during
+        <xref linkend="repmgr-standby-switchover">). &repmgr; will attempt to convert the
+          a relative path into an absolute one, but this may not be the same as the path you
+          would explicitly provide (e.g. <filename>./repmgr.conf</filename> might be converted
+          to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write
+          <filename>/path/to/repmgr.conf</filename>).
+      </para>
+    </note>
+  </refsect1>
+
+  <refsect1 id="repmgr-standby-register-wait" xreflabel="repmgr standby register --wait">
    <title>Waiting for the registration to propagate to the standby</title>
    <para>
      Depending on your environment and workload, it may take some time for
@@ -37,9 +51,9 @@
     until the record is synchronised before exiting. An optional timeout (in
     seconds) can be added to this option (e.g. <literal>--wait-sync=60</literal>).
    </para>
-  </sect1>
+  </refsect1>
 
-  <sect1 id="repmgr-standby-register-inactive-node" xreflabel="Registering an inactive node">
+  <refsect1 id="repmgr-standby-register-inactive-node" xreflabel="Registering an inactive node">
    <title>Registering an inactive node</title>
    <para>
     Under some circumstances you may wish to register a standby which is not
@@ -59,5 +73,5 @@
     When used with <command>repmgr standby register</command>, care should be taken that use of the
     <literal>-F/--force</literal> option does not result in an incorrectly configured cluster.
    </para>
-  </sect1>
-</chapter>
+  </refsect1>
+</refentry>

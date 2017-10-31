@@ -1,18 +1,34 @@
-<chapter id="repmgr-primary-unregister" xreflabel="repmgr primary unregister">
-  <indexterm><primary>repmgr primary unregister</primary></indexterm>
-  <title>repmgr primary unregister</title>
-  <para>
-   <command>repmgr primary register</command> unregisters an inactive primary node
-   from the &repmgr; metadata. This is typically when the primary has failed and is
-   being removed from the cluster after a new primary has been promoted.
-  </para>
-  <para>
-   Execute with the <literal>--dry-run</literal> option to check what would happen without
-   actually unregistering the node.
-  </para>
+<refentry id="repmgr-primary-unregister">
+  <indexterm>
+    <primary>repmgr primary unregister</primary>
+  </indexterm>
+  <refmeta>
+    <refentrytitle>repmgr primary unregister</refentrytitle>
+  </refmeta>
+  <refnamediv>
+    <refname>repmgr primary unregister</refname>
+    <refpurpose>unregister an inactive primary node</refpurpose>
+  </refnamediv>
 
-  <para>
-   <command>repmgr master unregister</command> can be used as an alias for
-   <command>repmgr primary unregister</command>/
-  </para>
-</chapter>
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>repmgr primary register</command> unregisters an inactive primary node
+      from the &repmgr; metadata. This is typically when the primary has failed and is
+      being removed from the cluster after a new primary has been promoted.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Execution</title>
+    <para>
+      Execute with the <literal>--dry-run</literal> option to check what would happen without
+      actually unregistering the node.
+    </para>
+
+    <para>
+      <command>repmgr master unregister</command> can be used as an alias for
+      <command>repmgr primary unregister</command>/
+    </para>
+  </refsect1>
+</refentry>

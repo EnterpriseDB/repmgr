@@ -1,26 +1,41 @@
-<chapter id="repmgr-standby-follow" xreflabel="repmgr standby follow">
+<refentry id="repmgr-standby-follow">
   <indexterm>
     <primary>repmgr standby follow</primary>
   </indexterm>
-  <title>repmgr standby follow</title>
-  <para>
-   Attaches the standby to a new primary. This command requires a valid
-   <filename>repmgr.conf</filename> file for the standby, either specified
-   explicitly with <literal>-f/--config-file</literal> or located in a
-   default location; no additional arguments are required.
-  </para>
-  <para>
-   This command will force a restart of the standby server, which must be
-   running. It can only be used to attach an active standby to the current primary node
+
+  <refmeta>
+    <refentrytitle>repmgr standby follow</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr standby follow</refname>
+    <refpurpose>attach a standby to a new primary</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+
+    <para>
+      Attaches the standby to a new primary. This command requires a valid
+      <filename>repmgr.conf</filename> file for the standby, either specified
+      explicitly with <literal>-f/--config-file</literal> or located in a
+      default location; no additional arguments are required.
+    </para>
+    <para>
+      This command will force a restart of the standby server, which must be
+      running. It can only be used to attach an active standby to the current primary node
    (and not to another standby).
-  </para>
-  <para>
-   To re-add an inactive node to the replication cluster, see
-   <xref linkend="repmgr-node-rejoin">
-  </para>
-  <para>
-    Example execution:
-    <programlisting>
+    </para>
+    <para>
+      To re-add an inactive node to the replication cluster, see
+      <xref linkend="repmgr-node-rejoin">
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <para>
+      <programlisting>
       $ repmgr -f /etc/repmgr.conf standby follow
       INFO: setting node 3's primary to node 2
       NOTICE: restarting server using "pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/postgres/data' restart"
@@ -30,6 +45,14 @@
       server started
       NOTICE: STANDBY FOLLOW successful
       DETAIL: node 3 is now attached to node 2</programlisting>
-  </para>
-</chapter>
+    </para>
+  </refsect1>
+
+ <refsect1>
+    <title>See also</title>
+    <para>
+     <xref linkend="repmgr-node-rejoin">
+    </para>
+  </refsect1>
+</refentry>
 

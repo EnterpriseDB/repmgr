@@ -1,25 +1,37 @@
-<chapter id="repmgr-standby-clone" xreflabel="repmgr standby clone">
+<refentry id="repmgr-standby-clone">
   <indexterm>
     <primary>repmgr standby clone</primary>
     <seealso>cloning</seealso>
   </indexterm>
-  <title>repmgr standby clone</title>
-  <para>
-   <command>repmgr standby clone</command> clones a PostgreSQL node from another
-   PostgreSQL node, typically the primary, but optionally from any other node in
-   the cluster or from Barman. It creates the <filename>recovery.conf</filename> file required
-   to attach the cloned node to the primary node (or another standby, if cascading replication
-   is in use).
-  </para>
-  <note>
-   <simpara>
-    <command>repmgr standby clone</command> does not start the standby, and after cloning
-    <command>repmgr standby register</command> must be executed to notify &repmgr; of its presence.
-   </simpara>
-  </note>
+
+  <refmeta>
+    <refentrytitle>repmgr standby clone</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr standby clone</refname>
+    <refpurpose>clone a PostgreSQL standby node from another PostgreSQL node</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>repmgr standby clone</command> clones a PostgreSQL node from another
+      PostgreSQL node, typically the primary, but optionally from any other node in
+      the cluster or from Barman. It creates the <filename>recovery.conf</filename> file required
+      to attach the cloned node to the primary node (or another standby, if cascading replication
+      is in use).
+    </para>
+    <note>
+      <simpara>
+        <command>repmgr standby clone</command> does not start the standby, and after cloning
+        <command>repmgr standby register</command> must be executed to notify &repmgr; of its presence.
+      </simpara>
+    </note>
+  </refsect1>
 
 
-  <sect1 id="repmgr-standby-clone-config-file-copying" xreflabel="Copying configuration files">
+  <refsect1 id="repmgr-standby-clone-config-file-copying" xreflabel="Copying configuration files">
    <title>Handling configuration files</title>
 
    <para>
@@ -51,9 +63,9 @@
      configuration management tool such as Ansible, Chef, Puppet or Salt.
     </simpara>
    </tip>
-  </sect1>
+  </refsect1>
 
-  <sect1 id="repmgr-standby-clone-wal-management" xreflabel="Managing WAL during the cloning process">
+  <refsect1 id="repmgr-standby-clone-wal-management" xreflabel="Managing WAL during the cloning process">
    <title>Managing WAL during the cloning process</title>
    <para>
     When initially cloning a standby, you will need to ensure
@@ -86,6 +98,6 @@
       <literal>--wal-method</literal>.
     </simpara>
    </note>
-  </sect1>
-</chapter>
+  </refsect1>
+</refentry>
 

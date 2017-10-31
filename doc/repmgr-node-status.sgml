@@ -1,16 +1,30 @@
-
-<chapter id="repmgr-node-status" xreflabel="repmgr node status">
+<refentry id="repmgr-node-status">
   <indexterm>
     <primary>repmgr node status</primary>
   </indexterm>
-  <title>repmgr node status</title>
-  <para>
-   Displays an overview of a node's basic information and replication
-   status. This command must be run on the local node.
-  </para>
-  <para>
-   Sample output (execute <command>repmgr node status</command>):
-   <programlisting>
+
+  <refmeta>
+    <refentrytitle>repmgr node status</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr node status</refname>
+    <refpurpose>show overview of a node's basic information and replication status</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Displays an overview of a node's basic information and replication
+      status. This command must be run on the local node.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Example</title>
+    <para>
+    <programlisting>
+        $ repmgr -f /etc/repmgr.comf node status
         Node "node1":
             PostgreSQL version: 10beta1
             Total data size: 30 MB
@@ -20,10 +34,14 @@
             Archive command: (none)
             Replication connections: 2 (of maximal 10)
             Replication slots: 0 (of maximal 10)
-            Replication lag: n/a
-   </programlisting>
-  </para>
-  <para>
-    See <xref linkend="repmgr-node-check"> to diagnose issues.
-  </para>
-</chapter>
+            Replication lag: n/a</programlisting>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+      See <xref linkend="repmgr-node-check"> to diagnose issues.
+    </para>
+  </refsect1>
+</refentry>
