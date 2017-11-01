@@ -25,9 +25,9 @@ for details. `repmgr 4` will support future public BDR releases.
 Documentation
 -------------
 
-The main `repmgr` documentation is available at:
+The main `repmgr` documentation is available here:
 
-    https://repmgr.org/docs/index.html
+    (repmgr 4 documentation)[https://repmgr.org/docs/4.0/index.html]
 
 The `README` file for `repmgr` 3.x is available here:
 
