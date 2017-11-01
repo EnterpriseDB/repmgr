@@ -27,11 +27,11 @@ Documentation
 
 The main `repmgr` documentation is available here:
 
-    (repmgr 4 documentation)[https://repmgr.org/docs/4.0/index.html]
+> [repmgr 4 documentation](https://repmgr.org/docs/4.0/index.html)
 
 The `README` file for `repmgr` 3.x is available here:
 
-    https://github.com/2ndQuadrant/repmgr/blob/REL3_3_STABLE/README.md
+> https://github.com/2ndQuadrant/repmgr/blob/REL3_3_STABLE/README.md
 
 
 Files
