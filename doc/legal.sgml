@@ -1,4 +1,4 @@
-<!-- doc/src/sgml/legal.sgml -->
+<!-- doc/legal.sgml -->
 
 <date>2017</date>
 
@@ -12,9 +12,26 @@
 
  <para>
   <productname>repmgr</productname> is Copyright &copy; 2010-2017
-  by 2ndQuadrant, Ltd.
+  by 2ndQuadrant, Ltd. All rights reserved.
  </para>
 
- <para>add license</para>
+ <para>
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+ </para>
+ <para>
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+ </para>
+ <para>
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see
+   <ulink url="https://www.gnu.org/licenses/">https://www.gnu.org/licenses/</ulink>
+   to obtain one.
+ </para>
 
 </legalnotice>
