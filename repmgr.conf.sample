@@ -215,6 +215,10 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
                                         # a value of zero prevents the node being promoted to primary
                                         # (default: 100)
 
+#reconnect_attempts=6                   # Number attempts which will be made to reconnect to an unreachable
+                                        # primary (or other upstream node)
+#reconnect_interval=10                  # Interval between attempts  to reconnect to an unreachable
+                                        # primary (or other upstream node)
 #promote_command=                       # command to execute when promoting a new primary; use something like:
                                         #
                                         #     repmgr standby promote -f /etc/repmgr.conf
@@ -228,6 +232,7 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
                                         # will wait for a notification from the new primary,
                                         # before falling back to degraded monitoring
 #monitoring_history=no
+
 #degraded_monitoring_timeout=-1         # Interval (in seconds) after which repmgrd will terminate if the
                                         # server being monitored is no longer available. -1 (default)
                                         # disables the timeout completely.
