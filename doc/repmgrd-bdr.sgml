@@ -154,8 +154,9 @@
     </para>
     <para>
       Additionally it's possible to display log of significant events;  executing
-      <xref linkend="repmgr-cluster-show"> (on either node) should produce output like this:
+      <xref linkend="repmgr-cluster-event"> (on either node) should produce output like this:
       <programlisting>
+        $ repmgr -f /etc/repmgr.conf cluster event
         Node ID | Event        | OK | Timestamp           | Details
        ---------+--------------+----+---------------------+----------------------------------------------
         2       | bdr_register | t  | 2017-07-27 17:51:48 | node record created for node 'node2' (ID: 2)
@@ -163,8 +164,8 @@
       </programlisting>
     </para>
     <para>
-      At this point there will only be records for the two node registrations (displayed in reverse
-      chronological order).
+      At this point there will only be records for the two node registrations (displayed here
+      in reverse chronological order).
     </para>
   </sect1>
 
