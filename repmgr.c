@@ -427,6 +427,7 @@ get_voting_status(PG_FUNCTION_ARGS)
 #endif
 }
 
+
 Datum
 set_voting_status_initiated(PG_FUNCTION_ARGS)
 {
@@ -434,7 +435,12 @@ set_voting_status_initiated(PG_FUNCTION_ARGS)
 	int			electoral_term = -1;
 
 	if (!shared_state)
-		PG_RETURN_NULL();
+		PG_RETURN_VOID();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_VOID();
+
+	electoral_term = PG_GETARG_INT32(0);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
@@ -445,20 +451,17 @@ set_voting_status_initiated(PG_FUNCTION_ARGS)
 		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 
 		shared_state->voting_status = VS_VOTE_INITIATED;
-		shared_state->current_electoral_term += 1;
-
-		electoral_term = shared_state->current_electoral_term;
+		shared_state->current_electoral_term = electoral_term;
 
 		elog(INFO, "setting voting term to %i", electoral_term);
 	}
 
 	LWLockRelease(shared_state->lock);
 
-	PG_RETURN_INT32(electoral_term);
-#else
-	PG_RETURN_INT32(-1);
 #endif
+	PG_RETURN_VOID();
 }
+
 
 Datum
 other_node_is_candidate(PG_FUNCTION_ARGS)

@@ -474,9 +474,11 @@ bool		delete_monitoring_records(PGconn *primary_conn, int keep_history);
 
 
 /* node voting functions */
+int			get_current_term(PGconn *conn);
+void		increment_current_term(PGconn *conn);
 NodeVotingStatus get_voting_status(PGconn *conn);
 VoteRequestResult request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
-int			set_voting_status_initiated(PGconn *conn);
+void		set_voting_status_initiated(PGconn *conn, int electoral_term);
 bool		announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
 void		notify_follow_primary(PGconn *conn, int primary_node_id);
 bool		get_new_primary(PGconn *conn, int *primary_node_id);
