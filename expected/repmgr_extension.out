@@ -38,6 +38,12 @@ SELECT repmgr.am_bdr_failover_handler(-1);
  
 (1 row)
 
+SELECT repmgr.am_bdr_failover_handler(NULL);
+ am_bdr_failover_handler 
+-------------------------
+ 
+(1 row)
+
 SELECT repmgr.get_new_primary();
  get_new_primary 
 -----------------
@@ -56,13 +62,55 @@ SELECT repmgr.notify_follow_primary(-1);
  
 (1 row)
 
+SELECT repmgr.notify_follow_primary(NULL);
+ notify_follow_primary 
+-----------------------
+ 
+(1 row)
+
 SELECT repmgr.other_node_is_candidate(-1,-1);
  other_node_is_candidate 
 -------------------------
  
 (1 row)
 
+SELECT repmgr.other_node_is_candidate(-1,NULL);
+ other_node_is_candidate 
+-------------------------
+ 
+(1 row)
+
+SELECT repmgr.other_node_is_candidate(NULL,-1);
+ other_node_is_candidate 
+-------------------------
+ 
+(1 row)
+
+SELECT repmgr.other_node_is_candidate(NULL,NULL);
+ other_node_is_candidate 
+-------------------------
+ 
+(1 row)
+
 SELECT repmgr.request_vote(-1,-1);
+ request_vote 
+--------------
+ 
+(1 row)
+
+SELECT repmgr.request_vote(-1,NULL);
+ request_vote 
+--------------
+ 
+(1 row)
+
+SELECT repmgr.request_vote(NULL,-1);
+ request_vote 
+--------------
+ 
+(1 row)
+
+SELECT repmgr.request_vote(NULL,NULL);
  request_vote 
 --------------
  
@@ -75,6 +123,12 @@ SELECT repmgr.reset_voting_status();
 (1 row)
 
 SELECT repmgr.set_local_node_id(-1);
+ set_local_node_id 
+-------------------
+ 
+(1 row)
+
+SELECT repmgr.set_local_node_id(NULL);
  set_local_node_id 
 -------------------
  

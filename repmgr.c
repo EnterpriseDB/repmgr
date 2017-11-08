@@ -227,10 +227,15 @@ repmgr_shmem_startup(void)
 Datum
 set_local_node_id(PG_FUNCTION_ARGS)
 {
-	int			local_node_id = PG_GETARG_INT32(0);
+	int			local_node_id = UNKNOWN_NODE_ID;
 
 	if (!shared_state)
 		PG_RETURN_NULL();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	local_node_id = PG_GETARG_INT32(0);
 
 	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 
@@ -301,13 +306,19 @@ request_vote(PG_FUNCTION_ARGS)
 #endif
 
 	/* node_id used for logging purposes */
-	int			requesting_node_id = PG_GETARG_INT32(0);
-	int			current_electoral_term = PG_GETARG_INT32(1);
+	int			requesting_node_id = UNKNOWN_NODE_ID;
+	int			current_electoral_term = UNKNOWN_NODE_ID;
 
 	int			ret;
 
 	if (!shared_state)
 		PG_RETURN_NULL();
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+		PG_RETURN_NULL();
+
+	requesting_node_id = PG_GETARG_INT32(0);
+	current_electoral_term = PG_GETARG_INT32(1);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
@@ -453,11 +464,18 @@ Datum
 other_node_is_candidate(PG_FUNCTION_ARGS)
 {
 #ifndef BDR_ONLY
-	int			requesting_node_id = PG_GETARG_INT32(0);
-	int			electoral_term = PG_GETARG_INT32(1);
+
+	int			requesting_node_id = UNKNOWN_NODE_ID;
+	int			electoral_term = UNKNOWN_NODE_ID;
 
 	if (!shared_state)
 		PG_RETURN_NULL();
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+		PG_RETURN_NULL();
+
+	requesting_node_id = PG_GETARG_INT32(0);
+	electoral_term = PG_GETARG_INT32(1);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
@@ -493,10 +511,15 @@ Datum
 notify_follow_primary(PG_FUNCTION_ARGS)
 {
 #ifndef BDR_ONLY
-	int			primary_node_id = PG_GETARG_INT32(0);
+	int			primary_node_id = UNKNOWN_NODE_ID;
 
 	if (!shared_state)
 		PG_RETURN_NULL();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	primary_node_id = PG_GETARG_INT32(0);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
@@ -536,6 +559,10 @@ get_new_primary(PG_FUNCTION_ARGS)
 
 	LWLockRelease(shared_state->lock);
 #endif
+
+	if (new_primary_node_id == UNKNOWN_NODE_ID)
+		PG_RETURN_NULL();
+
 	PG_RETURN_INT32(new_primary_node_id);
 }
 
@@ -569,11 +596,16 @@ reset_voting_status(PG_FUNCTION_ARGS)
 Datum
 am_bdr_failover_handler(PG_FUNCTION_ARGS)
 {
-	int			node_id = PG_GETARG_INT32(0);
+	int			node_id = UNKNOWN_NODE_ID;
 	bool		am_handler = false;
 
 	if (!shared_state)
 		PG_RETURN_NULL();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	node_id = PG_GETARG_INT32(0);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
