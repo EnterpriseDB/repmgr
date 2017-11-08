@@ -232,7 +232,7 @@ set_local_node_id(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_NULL();
 
-	LWLockAcquire(shared_state->lock, LW_SHARED);
+	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 
 	/* only set local_node_id once, as it should never change */
 	if (shared_state->local_node_id == UNKNOWN_NODE_ID)
@@ -254,7 +254,7 @@ standby_set_last_updated(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_NULL();
 
-	LWLockAcquire(shared_state->lock, LW_SHARED);
+	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 	shared_state->last_updated = last_updated;
 	LWLockRelease(shared_state->lock);
 
@@ -272,7 +272,7 @@ standby_get_last_updated(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_NULL();
 
-	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+	LWLockAcquire(shared_state->lock, LW_SHARED);
 	last_updated = shared_state->last_updated;
 	LWLockRelease(shared_state->lock);
 
@@ -372,6 +372,9 @@ request_vote(PG_FUNCTION_ARGS)
 		elog(DEBUG1, "our LSN is %s", lsn_text);
 #endif
 
+		LWLockRelease(shared_state->lock);
+		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+
 		/* indicate this node has responded to a vote request */
 		shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
 		shared_state->current_electoral_term = current_electoral_term;
@@ -427,6 +430,9 @@ set_voting_status_initiated(PG_FUNCTION_ARGS)
 	/* only do something if local_node_id is initialised */
 	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
 	{
+		LWLockRelease(shared_state->lock);
+		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+
 		shared_state->voting_status = VS_VOTE_INITIATED;
 		shared_state->current_electoral_term += 1;
 
@@ -469,6 +475,8 @@ other_node_is_candidate(PG_FUNCTION_ARGS)
 			}
 		}
 
+		LWLockRelease(shared_state->lock);
+		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 		shared_state->candidate_node_id = requesting_node_id;
 		elog(INFO, "node %i is candidate", requesting_node_id);
 	}
@@ -499,6 +507,8 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 			 shared_state->local_node_id,
 			 primary_node_id);
 
+		LWLockRelease(shared_state->lock);
+		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 		/* Explicitly set the primary node id */
 		shared_state->candidate_node_id = primary_node_id;
 		shared_state->follow_new_primary = true;
@@ -542,6 +552,9 @@ reset_voting_status(PG_FUNCTION_ARGS)
 	/* only do something if local_node_id is initialised */
 	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
 	{
+		LWLockRelease(shared_state->lock);
+		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 		shared_state->follow_new_primary = false;
@@ -566,6 +579,8 @@ am_bdr_failover_handler(PG_FUNCTION_ARGS)
 
 	if (shared_state->bdr_failover_handler == UNKNOWN_NODE_ID)
 	{
+		LWLockRelease(shared_state->lock);
+		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 		shared_state->bdr_failover_handler = node_id;
 		am_handler = true;
 	}
@@ -586,11 +601,16 @@ unset_bdr_failover_handler(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_NULL();
 
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+
 	/* only do something if local_node_id is initialised */
 	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
 	{
-		LWLockAcquire(shared_state->lock, LW_SHARED);
+		LWLockRelease(shared_state->lock);
+		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+
 		shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
+
 		LWLockRelease(shared_state->lock);
 	}
 
