@@ -39,6 +39,8 @@ lib*.pc
 
 # test output
 /results/
+/regression.diffs
+/regression.out
 
 /doc/Makefile
 
