@@ -63,13 +63,10 @@ static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 
 static ElectionResult do_election(void);
-static const char *_print_voting_status(NodeVotingStatus voting_status);
 static const char *_print_election_result(ElectionResult result);
 
 static FailoverState promote_self(void);
 static void notify_followers(NodeInfoList *standby_nodes, int follow_node_id);
-
-static t_node_info *poll_best_candidate(NodeInfoList *standby_nodes);
 
 static void check_connection(t_node_info *node_info, PGconn **conn);
 
@@ -970,68 +967,8 @@ do_primary_failover(void)
 	}
 	else if (election_result == ELECTION_LOST)
 	{
-		t_node_info *best_candidate;
-
-		log_info(_("I am the candidate but did not get all votes; will now determine the best candidate"));
-
-		/* standby_nodes is in the state created by do_election() */
-		best_candidate = poll_best_candidate(&standby_nodes);
-
-		/*
-		 * this can occur in a tie-break situation, where this node
-		 * establishes it is the best candidate
-		 */
-		if (best_candidate->node_id == local_node_info.node_id)
-		{
-			log_notice("I am the best candidate, will now promote self and inform other nodes");
-
-			failover_state = promote_self();
-		}
-		else
-		{
-			PGconn	   *candidate_conn = NULL;
-
-			log_info("node %i is the best candidate, waiting for it to confirm so I can follow it",
-					 best_candidate->node_id);
-
-			/* notify the best candidate so it */
-
-			candidate_conn = establish_db_connection(best_candidate->conninfo, false);
-
-			if (PQstatus(candidate_conn) == CONNECTION_OK)
-			{
-				notify_follow_primary(candidate_conn, best_candidate->node_id);
-
-				/* we'll wait for the candidate to get back to us */
-				failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
-			}
-			else
-			{
-				log_error(_("unable to connect to candidate node (ID: %i)"), best_candidate->node_id);
-				failover_state = FAILOVER_STATE_NODE_NOTIFICATION_ERROR;
-			}
-			PQfinish(candidate_conn);
-		}
-	}
-	else
-	{
-
-		if (standby_nodes.node_count == 0)
-		{
-			/* Node is not a candidate but no other nodes are available */
-			log_notice(_("no other nodes are available as promotion candidate"));
-			log_hint(_("use \"repmgr standby promote\" to manually promote this node"));
-
-			monitoring_state = MS_DEGRADED;
-			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
-
-			failover_state = FAILOVER_STATE_NO_NEW_PRIMARY;
-		}
-		else
-		{
-			log_info(_("follower node awaiting notification from the candidate node"));
-			failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
-		}
+		log_info(_("follower node awaiting notification from the candidate node"));
+		failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
 	}
 
 
@@ -1545,8 +1482,6 @@ promote_self(void)
 
 			termPQExpBuffer(&event_details);
 
-			/* primary_conn = NULL; */
-
 			/* XXX handle this! */
 			/* -> we'll need to let the other nodes know too.... */
 			/* no failover occurred but we'll want to restart connections */
@@ -1638,56 +1573,6 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 	}
 }
 
-
-static t_node_info *
-poll_best_candidate(NodeInfoList *standby_nodes)
-{
-	NodeInfoListCell *cell;
-	t_node_info *best_candidate = &local_node_info;
-
-
-	/*
-	 * we need to definitively decide the best candidate, as in some corner
-	 * cases we could end up with two candidate nodes, so they should each
-	 * come to the same conclusion.
-	 *
-	 * XXX check there are no cases where the standby node's LSN is not set
-	 */
-	for (cell = standby_nodes->head; cell; cell = cell->next)
-	{
-		if (cell->node_info->last_wal_receive_lsn > best_candidate->last_wal_receive_lsn)
-		{
-			log_debug("node %i has higher LSN, now best candidate", cell->node_info->node_id);
-			best_candidate = cell->node_info;
-		}
-		else if (cell->node_info->last_wal_receive_lsn == best_candidate->last_wal_receive_lsn)
-		{
-			if (cell->node_info->priority > best_candidate->priority)
-			{
-				log_debug("node %i has higher priority, now best candidate", cell->node_info->node_id);
-				best_candidate = cell->node_info;
-			}
-		}
-		/* if all else fails, we decide by node_id */
-		else if (cell->node_info->node_id < best_candidate->node_id)
-		{
-			log_debug("node %i has lower node_id, now best candidate", cell->node_info->node_id);
-			best_candidate = cell->node_info;
-		}
-
-		if (cell->node_info->conn != NULL && PQstatus(upstream_conn) == CONNECTION_OK)
-		{
-			PQfinish(cell->node_info->conn);
-			cell->node_info->conn = NULL;
-		}
-	}
-
-	log_info(_("best candidate is node %s (node ID: %i)"),
-			 best_candidate->node_name,
-			 best_candidate->node_id);
-
-	return best_candidate;
-}
 
 
 static bool
@@ -1884,27 +1769,6 @@ follow_new_primary(int new_primary_id)
 
 
 static const char *
-_print_voting_status(NodeVotingStatus voting_status)
-{
-	switch (voting_status)
-	{
-		case VS_NO_VOTE:
-			return "NO VOTE";
-
-		case VS_VOTE_REQUEST_RECEIVED:
-			return "VOTE REQUEST RECEIVED";
-
-		case VS_VOTE_INITIATED:
-			return "VOTE REQUEST INITIATED";
-
-		case VS_UNKNOWN:
-			return "VOTE REQUEST UNKNOWN";
-	}
-
-	return "UNKNOWN VOTE REQUEST STATE";
-}
-
-static const char *
 _print_election_result(ElectionResult result)
 {
 	switch (result)
@@ -1935,22 +1799,14 @@ static ElectionResult
 do_election(void)
 {
 	int			electoral_term = -1;
-	int			votes_for_me = 0;
 
 	/* we're visible */
 	int			visible_nodes = 1;
 
-	/*
-	 * get voting status from shared memory - should be one of "VS_NO_VOTE" or
-	 * "VS_VOTE_REQUEST_RECEIVED". If VS_NO_VOTE, we declare ourselves as
-	 * candidate and initiate the voting process.
-	 */
-	NodeVotingStatus voting_status;
+	NodeInfoListCell *cell = NULL;
 
-	NodeInfoListCell *cell;
+	t_node_info *candidate_node = NULL;
 
-	bool		other_node_is_candidate = false;
-	bool		other_node_is_ahead = false;
 
 	/*
 	 * Check if at least one server in the primary's location is visible; if
@@ -1962,12 +1818,6 @@ do_election(void)
 	 * contain the primary node record.
 	 */
 	bool		primary_location_seen = false;
-
-	/*
-	 * sleep for a random period of 100 ~ 350 ms
-	 */
-
-	long unsigned rand_wait = (long) ((rand() % 35) + 10) * 10000;
 
 	electoral_term = get_current_term(local_conn);
 
@@ -2003,23 +1853,9 @@ do_election(void)
 	}
 
 
-	log_debug("do_election(): sleeping %lu", rand_wait);
 	log_debug("do_election(): primary location is %s", upstream_node_info.location);
 
-	pg_usleep(rand_wait);
-
 	local_node_info.last_wal_receive_lsn = InvalidXLogRecPtr;
-
-	log_debug("do_election(): executing get_voting_status()");
-	voting_status = get_voting_status(local_conn);
-	log_debug("do_election(): node voting status is %s", _print_voting_status(voting_status));
-
-	if (voting_status == VS_VOTE_REQUEST_RECEIVED)
-	{
-		/* we've already been requested to vote, so can't become a candidate */
-		log_debug("vote request already received, not candidate");
-		return ELECTION_NOT_CANDIDATE;
-	}
 
 	/*
 	 * Here we mark ourselves as candidate, so any further vote requests are
@@ -2048,8 +1884,17 @@ do_election(void)
 		}
 	}
 
+	/* get our lsn */
+	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
+
+	log_debug("our last receive lsn: %X/%X", format_lsn(local_node_info.last_wal_receive_lsn));
+
+	// pointer to "winning" node, by default self
+	candidate_node = &local_node_info;
+
 	for (cell = standby_nodes.head; cell; cell = cell->next)
 	{
+
 		/* assume the worst case */
 		cell->node_info->node_status = NODE_STATUS_UNKNOWN;
 
@@ -2060,29 +1905,52 @@ do_election(void)
 			continue;
 		}
 
-		/*
-		 * tell the other node we're candidate - if the node has already
-		 * declared itself, we withdraw
-		 *
-		 * XXX check for situations where more than one node could end up as
-		 * candidate?
-		 *
-		 * XXX note it's possible some nodes accepted our candidature before
-		 * we found out about the other candidate, check what happens in that
-		 * situation -> other node will have info from all the nodes, even if
-		 * not the vote, so it should be able to determine the best node
-		 * anyway
-		 */
+		cell->node_info->node_status = NODE_STATUS_UP;
 
-		if (announce_candidature(cell->node_info->conn, &local_node_info, cell->node_info, electoral_term) == false)
+		// XXX don't check 0-priority nodes
+
+		// get node's LSN
+		//   if "higher" than current winner, current node is candidate
+
+		cell->node_info->last_wal_receive_lsn = get_last_wal_receive_location(cell->node_info->conn);
+
+		log_verbose(LOG_DEBUG, "node %i's last receive LSN is: %X/%X",
+					cell->node_info->node_id,
+					format_lsn(cell->node_info->last_wal_receive_lsn));
+
+		// compare LSN
+		if (cell->node_info->last_wal_receive_lsn > candidate_node->last_wal_receive_lsn)
 		{
-			log_debug("node %i is candidate", cell->node_info->node_id);
-			other_node_is_candidate = true;
+			/* other node is ahead */
+			log_verbose(LOG_DEBUG, "node %i is ahead of current candidate %i",
+						cell->node_info->node_id,
+						candidate_node->node_id);
 
-			/* don't notify any further standbys */
-			break;
+			candidate_node = cell->node_info;
 		}
-
+		// LSN same - tiebreak on priority, then node_id
+		else if(cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
+		{
+			log_verbose(LOG_DEBUG, "node %i has same LSN as current candidate %i",
+						cell->node_info->node_id,
+						candidate_node->node_id);
+			if (cell->node_info->priority > candidate_node->priority)
+			{
+				log_verbose(LOG_DEBUG, "node %i has higher priority (%i) than current candidate %i (%i)",
+							cell->node_info->node_id,
+							cell->node_info->priority,
+							candidate_node->node_id,
+							candidate_node->priority);
+				candidate_node = cell->node_info;
+			}
+			else if (cell->node_info->node_id < candidate_node->node_id)
+			{
+				log_verbose(LOG_DEBUG, "node %i has lower node_id than current t candidate %i",
+						cell->node_info->node_id,
+						candidate_node->node_id);
+				candidate_node = cell->node_info;
+			}
+		}
 		/*
 		 * see if the node is in the primary's location (but skip the check if
 		 * we've seen a node there already)
@@ -2095,15 +1963,7 @@ do_election(void)
 			}
 		}
 
-		cell->node_info->node_status = NODE_STATUS_UP;
 		visible_nodes++;
-	}
-
-	if (other_node_is_candidate == true)
-	{
-		reset_node_voting_status();
-		log_debug("other node is candidate, returning NOT CANDIDATE");
-		return ELECTION_NOT_CANDIDATE;
 	}
 
 	if (primary_location_seen == false)
@@ -2121,70 +1981,8 @@ do_election(void)
 	}
 
 
-	/* get our lsn */
-	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
-
-	log_debug("last receive lsn = %X/%X", format_lsn(local_node_info.last_wal_receive_lsn));
-
-	/* request vote from each node */
-
-	for (cell = standby_nodes.head; cell; cell = cell->next)
-	{
-		VoteRequestResult vote_result;
-
-		log_debug("checking node %i...", cell->node_info->node_id);
-		/* ignore unreachable nodes */
-		if (cell->node_info->node_status != NODE_STATUS_UP)
-			continue;
-
-		vote_result = request_vote(cell->node_info->conn,
-								   &local_node_info,
-								   cell->node_info,
-								   electoral_term);
-
-		switch (vote_result)
-		{
-			case VR_VOTE_REFUSED:
-				if (cell->node_info->node_id < local_node_info.node_id)
-				{
-					log_debug(_("node %i refused vote, their ID is lower, yielding"),
-							  cell->node_info->node_id);
-					PQfinish(cell->node_info->conn);
-					cell->node_info->conn = NULL;
-
-					reset_node_voting_status();
-					log_debug("other node is candidate, returning NOT CANDIDATE");
-					return ELECTION_NOT_CANDIDATE;
-				}
-
-				log_debug(_("no vote received from %i, our ID is lower, not yielding"),
-						  cell->node_info->node_id);
-				break;
-
-			case VR_POSITIVE_VOTE:
-				votes_for_me += 1;
-				break;
-			case VR_NEGATIVE_VOTE:
-				break;
-		}
-
-		if (cell->node_info->last_wal_receive_lsn > local_node_info.last_wal_receive_lsn)
-		{
-			/* register if another node is ahead of us */
-			other_node_is_ahead = true;
-		}
-
-	}
-
-	/* vote for myself, but only if I believe no-one else is ahead */
-	if (other_node_is_ahead == false)
-	{
-		votes_for_me += 1;
-	}
-
-	log_debug(_("%i of of %i votes"), votes_for_me, visible_nodes);
-
-	if (votes_for_me == visible_nodes)
+	log_debug("promotion candidate is %i", candidate_node->node_id);
+	if (candidate_node->node_id ==  local_node_info.node_id)
 		return ELECTION_WON;
 
 	return ELECTION_LOST;
