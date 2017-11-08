@@ -60,11 +60,11 @@ Support and Assistance
 configuration assistance, installation verification and training for
 running a robust replication cluster. For further details see:
 
-* http://2ndquadrant.com/en/support/
+* https://2ndquadrant.com/en/support/
 
 There is a mailing list/forum to discuss contributions or issues:
 
-* http://groups.google.com/group/repmgr
+* https://groups.google.com/group/repmgr
 
 The IRC channel #repmgr is registered with freenode.
 
@@ -72,7 +72,7 @@ Please report bugs and other issues to:
 
 * https://github.com/2ndQuadrant/repmgr
 
-Further information is available at http://www.repmgr.org/
+Further information is available at https://www.repmgr.org/
 
 We'd love to hear from you about how you use repmgr. Case studies and
 news are always welcome. Send us an email at info@2ndQuadrant.com, or
@@ -97,7 +97,7 @@ Thanks from the repmgr core team.
 Further reading
 ---------------
 
-* http://blog.2ndquadrant.com/repmgr-3-2-is-here-barman-support-brand-new-high-availability-features/
-* http://blog.2ndquadrant.com/improvements-in-repmgr-3-1-4/
-* http://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
-* http://blog.2ndquadrant.com/easier_postgresql_90_clusters/
+* https://blog.2ndquadrant.com/repmgr-3-2-is-here-barman-support-brand-new-high-availability-features/
+* https://blog.2ndquadrant.com/improvements-in-repmgr-3-1-4/
+* https://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
+* https://blog.2ndquadrant.com/easier_postgresql_90_clusters/
