@@ -79,6 +79,22 @@ LEFT JOIN repmgr.nodes un
        ON un.node_id = n.upstream_node_id;
 
 
+/* XXX update upgrade scripts! */
+CREATE TABLE repmgr.voting_term (
+  term INT NOT NULL
+);
+
+CREATE UNIQUE INDEX voting_term_restrict
+ON repmgr.voting_term ((TRUE));
+
+CREATE RULE voting_term_delete AS
+   ON DELETE TO repmgr.voting_term
+   DO INSTEAD NOTHING;
+
+/* XXX do this in "repmgr primary register" */
+INSERT INTO repmgr.voting_term (term) VALUES (1);
+
+
 /* ================= */
 /* repmgrd functions */
 /* ================= */
@@ -135,8 +151,8 @@ CREATE FUNCTION get_voting_status()
   AS 'MODULE_PATHNAME', 'get_voting_status'
   LANGUAGE C STRICT;
 
-CREATE FUNCTION set_voting_status_initiated()
-  RETURNS INT
+CREATE FUNCTION set_voting_status_initiated(INT)
+  RETURNS VOID
   AS 'MODULE_PATHNAME', 'set_voting_status_initiated'
   LANGUAGE C STRICT;
 

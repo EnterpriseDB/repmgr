@@ -3578,8 +3578,51 @@ delete_monitoring_records(PGconn *primary_conn, int keep_history)
 /*
  * node voting functions
  *
- * These are intended to run under repmgrd and rely on shared memory
+ * These are intended to run under repmgrd and mainly rely on shared memory
  */
+
+int
+get_current_term(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	int term = -1;
+
+	res = PQexec(conn, "SELECT term FROM repmgr.voting_term");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to query repmgr.voting_term:\n  %s"),
+				  PQerrorMessage(conn));
+		PQclear(res);
+		return -1;
+	}
+
+	term = atoi(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+	return term;
+}
+
+
+void
+increment_current_term(PGconn *conn)
+{
+	PGresult   *res = NULL;
+
+	res = PQexec(conn, "UPDATE repmgr.voting_term SET term = term + 1");
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to increment repmgr.voting_term:\n  %s"),
+				  PQerrorMessage(conn));
+		PQclear(res);
+		return;
+	}
+
+	PQclear(res);
+	return;
+}
+
 
 NodeVotingStatus
 get_voting_status(PGconn *conn)
@@ -3700,19 +3743,26 @@ request_vote(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int 
 }
 
 
-int
-set_voting_status_initiated(PGconn *conn)
+void
+set_voting_status_initiated(PGconn *conn, int electoral_term)
 {
+	PQExpBufferData query;
 	PGresult   *res = NULL;
-	int			electoral_term = 0;
 
-	res = PQexec(conn, "SELECT repmgr.set_voting_status_initiated()");
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT repmgr.set_voting_status_initiated(%i)",
+					  electoral_term);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
 
 	electoral_term = atoi(PQgetvalue(res, 0, 0));
 
 	PQclear(res);
 
-	return electoral_term;
+	return;
 }
 
 
@@ -3748,7 +3798,6 @@ notify_follow_primary(PGconn *conn, int primary_node_id)
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 
-
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
@@ -3756,9 +3805,16 @@ notify_follow_primary(PGconn *conn, int primary_node_id)
 					  primary_node_id);
 	log_verbose(LOG_DEBUG, "notify_follow_primary():\n  %s", query.data);
 
-	/* XXX handle failure */
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute repmgr.notify_follow_primary():\n  %s"),
+				  PQerrorMessage(conn));
+		PQclear(res);
+		return;
+	}
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -3786,15 +3842,23 @@ get_new_primary(PGconn *conn, int *primary_node_id)
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
-	/* XXX handle error */
 
-	new_primary_node_id = atoi(PQgetvalue(res, 0, 0));
-
-	if (new_primary_node_id == UNKNOWN_NODE_ID)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
+		log_error(_("unable to execute repmgr.reset_voting_status():\n  %s"),
+				  PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
+
+	if (PQgetisnull(res, 0, 0))
+	{
+		*primary_node_id = UNKNOWN_NODE_ID;
+		PQclear(res);
+		return false;
+	}
+
+	new_primary_node_id = atoi(PQgetvalue(res, 0, 0));
 
 	PQclear(res);
 

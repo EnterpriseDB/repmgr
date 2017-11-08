@@ -957,7 +957,14 @@ do_primary_failover(void)
 	}
 	else if (election_result == ELECTION_WON)
 	{
-		log_notice("this node is the winner, will now promote self and inform other nodes");
+		if (standby_nodes.node_count > 0)
+		{
+			log_notice("this node is the winner, will now promote itself and inform other nodes");
+		}
+		else
+		{
+			log_notice("this node is the only available candidate and will now promote itself");
+		}
 
 		failover_state = promote_self();
 	}
@@ -1034,7 +1041,7 @@ do_primary_failover(void)
 	 */
 	if (failover_state == FAILOVER_STATE_WAITING_NEW_PRIMARY)
 	{
-		int			new_primary_id;
+		int			new_primary_id = UNKNOWN_NODE_ID;
 
 		/* TODO: rerun election if new primary doesn't appear after timeout */
 
@@ -1563,6 +1570,8 @@ promote_self(void)
 		return FAILOVER_STATE_PROMOTION_FAILED;
 	}
 
+	/* bump the electoral term */
+	increment_current_term(local_conn);
 
 	initPQExpBuffer(&event_details);
 
@@ -1604,10 +1613,11 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 {
 	NodeInfoListCell *cell;
 
-	log_debug("notify_followers()");
+	log_debug("notify_followers(): %i followers to notify", standby_nodes->node_count);
+
 	for (cell = standby_nodes->head; cell; cell = cell->next)
 	{
-		log_debug("intending to notify node %i... ", cell->node_info->node_id);
+		log_verbose(LOG_DEBUG, "intending to notify node %i... ", cell->node_info->node_id);
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
 			log_debug("reconnecting to node %i... ", cell->node_info->node_id);
@@ -1925,7 +1935,6 @@ static ElectionResult
 do_election(void)
 {
 	int			electoral_term = -1;
-
 	int			votes_for_me = 0;
 
 	/* we're visible */
@@ -1959,6 +1968,17 @@ do_election(void)
 	 */
 
 	long unsigned rand_wait = (long) ((rand() % 35) + 10) * 10000;
+
+	electoral_term = get_current_term(local_conn);
+
+	if (electoral_term == -1)
+	{
+		log_error(_("unable to determine electoral term"));
+
+		return ELECTION_NOT_CANDIDATE;
+	}
+
+	log_debug("do_election(): electoral term is %i", electoral_term);
 
 	/* get all active nodes attached to primary, excluding self */
 	get_active_sibling_node_records(local_conn,
@@ -2007,7 +2027,7 @@ do_election(void)
 	 * so when announcing ourselves as candidate to the other nodes, we'll
 	 * check for that and withdraw our candidature.
 	 */
-	electoral_term = set_voting_status_initiated(local_conn);
+	set_voting_status_initiated(local_conn, electoral_term);
 
 	/* no other standbys - normally win by default */
 	if (standby_nodes.node_count == 0)
@@ -2065,7 +2085,7 @@ do_election(void)
 
 		/*
 		 * see if the node is in the primary's location (but skip the check if
-		 * we've seen
+		 * we've seen a node there already)
 		 */
 		if (primary_location_seen == false)
 		{
