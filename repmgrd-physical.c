@@ -1574,7 +1574,6 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 }
 
 
-
 static bool
 wait_primary_notification(int *new_primary_id)
 {
@@ -1584,13 +1583,12 @@ wait_primary_notification(int *new_primary_id)
 	{
 		if (get_new_primary(local_conn, new_primary_id) == true)
 		{
-			log_debug("new primary is %i; elapsed: %i",
+			log_debug("new primary is %i; elapsed: %i seconds",
 					  *new_primary_id, i);
 			return true;
 		}
 		sleep(1);
 	}
-
 
 	log_warning(_("no notification received from new primary after %i seconds"),
 				config_file_options.primary_notification_timeout);
@@ -1681,7 +1679,6 @@ follow_new_primary(int new_primary_id)
 	log_debug(_("standby follow command is:\n  \"%s\""),
 			  parsed_follow_command);
 
-
 	/* execute the follow command */
 	r = system(parsed_follow_command);
 
@@ -1722,6 +1719,7 @@ follow_new_primary(int new_primary_id)
 	}
 
 
+
 	/*
 	 * refresh local copy of local and primary node records - we get these
 	 * directly from the primary to ensure they're the current version
@@ -1744,8 +1742,11 @@ follow_new_primary(int new_primary_id)
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
-
+	/* refresh shared memory settings which will have been zapped by the restart */
 	local_conn = establish_db_connection(local_node_info.conninfo, false);
+
+	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+
 	initPQExpBuffer(&event_details);
 	appendPQExpBuffer(&event_details,
 					  _("node %i now following new upstream node %i"),
