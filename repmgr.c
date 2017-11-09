@@ -67,7 +67,6 @@ typedef struct repmgrdSharedState
 	TimestampTz last_updated;
 	int			local_node_id;
 	/* streaming failover */
-	NodeState	node_state;
 	NodeVotingStatus voting_status;
 	int			current_electoral_term;
 	int			candidate_node_id;
@@ -98,22 +97,9 @@ Datum		standby_get_last_updated(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(standby_get_last_updated);
 
-
-Datum		request_vote(PG_FUNCTION_ARGS);
-
-PG_FUNCTION_INFO_V1(request_vote);
-
-Datum		get_voting_status(PG_FUNCTION_ARGS);
-
-PG_FUNCTION_INFO_V1(get_voting_status);
-
 Datum		set_voting_status_initiated(PG_FUNCTION_ARGS);
 
 PG_FUNCTION_INFO_V1(set_voting_status_initiated);
-
-Datum		other_node_is_candidate(PG_FUNCTION_ARGS);
-
-PG_FUNCTION_INFO_V1(other_node_is_candidate);
 
 Datum		notify_follow_primary(PG_FUNCTION_ARGS);
 
@@ -291,141 +277,6 @@ standby_get_last_updated(PG_FUNCTION_ARGS)
 /* failover functions */
 /* ===================*/
 
-Datum
-request_vote(PG_FUNCTION_ARGS)
-{
-#ifndef BDR_ONLY
-	StringInfoData query;
-
-#if (PG_VERSION_NUM >= 90400)
-	XLogRecPtr	our_lsn = InvalidXLogRecPtr;
-	bool		isnull;
-#else
-	char *value = NULL;
-	char lsn_text[64] = "";
-#endif
-
-	/* node_id used for logging purposes */
-	int			requesting_node_id = UNKNOWN_NODE_ID;
-	int			current_electoral_term = UNKNOWN_NODE_ID;
-
-	int			ret;
-
-	if (!shared_state)
-		PG_RETURN_NULL();
-
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-		PG_RETURN_NULL();
-
-	requesting_node_id = PG_GETARG_INT32(0);
-	current_electoral_term = PG_GETARG_INT32(1);
-
-	LWLockAcquire(shared_state->lock, LW_SHARED);
-
-	/* only do something if local_node_id is initialised */
-	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
-	{
-		/* this node has initiated voting or already responded to another node */
-		if (shared_state->voting_status != VS_NO_VOTE)
-		{
-			LWLockRelease(shared_state->lock);
-
-			PG_RETURN_NULL();
-		}
-
-		elog(INFO, "node %i has received request from node %i for electoral term %i (our term: %i)",
-			 shared_state->local_node_id,
-			 requesting_node_id, current_electoral_term,
-			 shared_state->current_electoral_term);
-
-		SPI_connect();
-
-		initStringInfo(&query);
-
-		appendStringInfo(
-			&query,
-#if (PG_VERSION_NUM >= 100000)
-			"SELECT pg_catalog.pg_last_wal_receive_lsn()");
-#else
-		    "SELECT pg_catalog.pg_last_xlog_receive_location()");
-#endif
-
-		elog(DEBUG1, "query: %s", query.data);
-		ret = SPI_execute(query.data, true, 0);
-
-		if (ret < 0)
-		{
-			SPI_finish();
-			elog(WARNING, "unable to retrieve last received LSN");
-			LWLockRelease(shared_state->lock);
-
-#if (PG_VERSION_NUM >= 90400)
-			PG_RETURN_LSN(InvalidOid);
-#else
-			PG_RETURN_TEXT_P(cstring_to_text("0/0"));
-#endif
-		}
-
-#if (PG_VERSION_NUM >= 90400)
-		our_lsn = DatumGetLSN(SPI_getbinval(SPI_tuptable->vals[0],
-											SPI_tuptable->tupdesc,
-											1, &isnull));
-
-		elog(DEBUG1, "our LSN is %X/%X",
-			 (uint32) (our_lsn >> 32),
-			 (uint32) our_lsn);
-#else
-		value = SPI_getvalue(SPI_tuptable->vals[0],
-							 SPI_tuptable->tupdesc,
-							 1);
-		strncpy(lsn_text, value, 64);
-		pfree(value);
-		elog(DEBUG1, "our LSN is %s", lsn_text);
-#endif
-
-		LWLockRelease(shared_state->lock);
-		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
-
-		/* indicate this node has responded to a vote request */
-		shared_state->voting_status = VS_VOTE_REQUEST_RECEIVED;
-		shared_state->current_electoral_term = current_electoral_term;
-
-		/* should we free "query" here? */
-		SPI_finish();
-	}
-
-	LWLockRelease(shared_state->lock);
-
-#if (PG_VERSION_NUM >= 90400)
-	PG_RETURN_LSN(our_lsn);
-#else
-	PG_RETURN_TEXT_P(cstring_to_text(lsn_text));
-#endif
-#else
-	PG_RETURN(InvalidOid);
-#endif
-}
-
-
-
-Datum
-get_voting_status(PG_FUNCTION_ARGS)
-{
-#ifndef BDR_ONLY
-	NodeVotingStatus voting_status;
-
-	if (!shared_state)
-		PG_RETURN_NULL();
-
-	LWLockAcquire(shared_state->lock, LW_SHARED);
-	voting_status = shared_state->voting_status;
-	LWLockRelease(shared_state->lock);
-
-	PG_RETURN_INT32(voting_status);
-#else
-	PG_RETURN_INT32(VS_UNKNOWN);
-#endif
-}
 
 
 Datum
@@ -462,53 +313,6 @@ set_voting_status_initiated(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
-
-Datum
-other_node_is_candidate(PG_FUNCTION_ARGS)
-{
-#ifndef BDR_ONLY
-
-	int			requesting_node_id = UNKNOWN_NODE_ID;
-	int			electoral_term = UNKNOWN_NODE_ID;
-
-	if (!shared_state)
-		PG_RETURN_NULL();
-
-	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
-		PG_RETURN_NULL();
-
-	requesting_node_id = PG_GETARG_INT32(0);
-	electoral_term = PG_GETARG_INT32(1);
-
-	LWLockAcquire(shared_state->lock, LW_SHARED);
-
-	/* only do something if local_node_id is initialised */
-	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
-	{
-		if (shared_state->current_electoral_term == electoral_term)
-		{
-			if (shared_state->candidate_node_id != UNKNOWN_NODE_ID)
-			{
-				elog(INFO, "node %i requesting candidature, but node %i already candidate",
-					 requesting_node_id,
-					 shared_state->candidate_node_id);
-				PG_RETURN_BOOL(false);
-			}
-		}
-
-		LWLockRelease(shared_state->lock);
-		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
-		shared_state->candidate_node_id = requesting_node_id;
-		elog(INFO, "node %i is candidate", requesting_node_id);
-	}
-
-	LWLockRelease(shared_state->lock);
-
-	PG_RETURN_BOOL(true);
-#else
-	PG_RETURN_BOOL(false);
-#endif
-}
 
 Datum
 notify_follow_primary(PG_FUNCTION_ARGS)
