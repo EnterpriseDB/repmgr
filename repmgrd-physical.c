@@ -1176,13 +1176,24 @@ update_monitoring_history(void)
 		return;
 	}
 
+	/*
+	 * this can be the case when a standby is starting up after following
+	 * a new primary
+	 */
 	if (replication_info.receiving_streamed_wal == false)
 	{
-		log_verbose(LOG_DEBUG, _("standby %i not connected to streaming replication"),
+		log_verbose(LOG_WARNING, _("standby %i not connected to streaming replication"),
 					local_node_info.node_id);
+		return;
 	}
 
 	primary_last_wal_location = get_current_wal_lsn(primary_conn);
+
+	if (primary_last_wal_location == InvalidXLogRecPtr)
+	{
+		log_warning(_("unable to retrieve primary's current LSN"));
+		return;
+	}
 
 	/* calculate apply lag in bytes */
 	if (replication_info.last_wal_receive_lsn >= replication_info.last_wal_replay_lsn)
@@ -1548,7 +1559,8 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 {
 	NodeInfoListCell *cell;
 
-	log_debug("notify_followers(): %i followers to notify", standby_nodes->node_count);
+	log_verbose(LOG_NOTICE, "%i followers to notify",
+				standby_nodes->node_count);
 
 	for (cell = standby_nodes->head; cell; cell = cell->next)
 	{
@@ -1567,8 +1579,8 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 			continue;
 		}
 
-		log_debug("notifying node %i to follow node %i",
-				  cell->node_info->node_id, follow_node_id);
+		log_verbose(LOG_NOTICE, "notifying node %i to follow node %i",
+					cell->node_info->node_id, follow_node_id);
 		notify_follow_primary(cell->node_info->conn, follow_node_id);
 	}
 }
