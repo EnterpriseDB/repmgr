@@ -1943,12 +1943,23 @@ do_election(void)
 							candidate_node->priority);
 				candidate_node = cell->node_info;
 			}
-			else if (cell->node_info->node_id < candidate_node->node_id)
+			else if (cell->node_info->priority == candidate_node->priority)
 			{
-				log_verbose(LOG_DEBUG, "node %i has lower node_id than current t candidate %i",
-						cell->node_info->node_id,
-						candidate_node->node_id);
-				candidate_node = cell->node_info;
+				if (cell->node_info->node_id < candidate_node->node_id)
+				{
+					log_verbose(LOG_DEBUG, "node %i has same priority but lower node_id than current candidate %i",
+								cell->node_info->node_id,
+								candidate_node->node_id);
+					candidate_node = cell->node_info;
+				}
+			}
+			else
+			{
+				log_verbose(LOG_DEBUG, "node %i has lower priority (%i) than current candidate %i (%i)",
+							cell->node_info->node_id,
+							cell->node_info->priority,
+							candidate_node->node_id,
+							candidate_node->priority);
 			}
 		}
 		/*
