@@ -595,7 +595,7 @@ monitor_streaming_standby(void)
 									  upstream_node_unreachable_elapsed);
 					log_notice("%s", event_details.data);
 
-					create_event_notification(local_conn,
+					create_event_notification(upstream_conn,
 											  &config_file_options,
 											  config_file_options.node_id,
 											  "repmgrd_upstream_reconnect",
@@ -1840,7 +1840,7 @@ do_election(void)
 	{
 		log_notice(_("this node is not configured for automatic failover so will not be considered as promotion candidate"));
 
-		return ELECTION_NOT_CANDIDATE;
+		return ELECTION_LOST;
 	}
 
 	/* node priority is set to zero - don't ever become a candidate */
