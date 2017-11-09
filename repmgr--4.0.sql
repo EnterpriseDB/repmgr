@@ -118,47 +118,9 @@ CREATE FUNCTION standby_get_last_updated()
 
 /* failover functions */
 
-
-DO $repmgr$
-DECLARE
-  DECLARE server_version_num INT;
-BEGIN
-  SELECT setting
-    FROM pg_catalog.pg_settings
-   WHERE name = 'server_version_num'
-    INTO server_version_num;
-
-  IF server_version_num >= 90400 THEN
-    EXECUTE $repmgr_func$
-CREATE FUNCTION request_vote(INT,INT)
-  RETURNS pg_lsn
-  AS 'MODULE_PATHNAME', 'request_vote'
-  LANGUAGE C STRICT;
-    $repmgr_func$;
-  ELSE
-    EXECUTE $repmgr_func$
-CREATE FUNCTION request_vote(INT,INT)
-  RETURNS TEXT
-  AS 'MODULE_PATHNAME', 'request_vote'
-  LANGUAGE C STRICT;
-    $repmgr_func$;
-  END IF;
-END$repmgr$;
-
-
-CREATE FUNCTION get_voting_status()
-  RETURNS INT
-  AS 'MODULE_PATHNAME', 'get_voting_status'
-  LANGUAGE C STRICT;
-
 CREATE FUNCTION set_voting_status_initiated(INT)
   RETURNS VOID
   AS 'MODULE_PATHNAME', 'set_voting_status_initiated'
-  LANGUAGE C STRICT;
-
-CREATE FUNCTION other_node_is_candidate(INT, INT)
-  RETURNS BOOL
-  AS 'MODULE_PATHNAME', 'other_node_is_candidate'
   LANGUAGE C STRICT;
 
 CREATE FUNCTION notify_follow_primary(INT)
