@@ -318,28 +318,105 @@ monitor_streaming_primary(void)
 			{
 				local_conn = establish_db_connection(local_node_info.conninfo, false);
 
-				if (PQstatus(local_conn) == CONNECTION_OK)
+				if (PQstatus(local_conn) != CONNECTION_OK)
+				{
+					log_warning(_("node appears to be up but no connection could be made"));
+					PQfinish(local_conn);
+				}
+				else
 				{
 					local_node_info.node_status = NODE_STATUS_UP;
 					monitoring_state = MS_NORMAL;
 
 					initPQExpBuffer(&event_details);
 
-					appendPQExpBuffer(&event_details,
-									  _("reconnected to primary node after %i seconds, resuming monitoring"),
-									  degraded_monitoring_elapsed);
+					/* check to see if the node has been restored as a standby */
+					if (get_recovery_type(local_conn) == RECTYPE_STANDBY)
+					{
+						PGconn *new_primary_conn;
 
-					create_event_notification(local_conn,
-											  &config_file_options,
-											  config_file_options.node_id,
-											  "repmgrd_local_reconnect",
-											  true,
-											  event_details.data);
+						appendPQExpBuffer(&event_details,
+										  _("reconnected to node after %i seconds, node is now a standby, switching to standby monitoring"),
+										  degraded_monitoring_elapsed);
+						log_notice("%s", event_details.data);
+						termPQExpBuffer(&event_details);
 
-					log_notice("%s", event_details.data);
-					termPQExpBuffer(&event_details);
 
-					goto loop;
+						primary_node_id = UNKNOWN_NODE_ID;
+
+						new_primary_conn = get_primary_connection_quiet(local_conn, &primary_node_id, NULL);
+
+						if (PQstatus(new_primary_conn) != CONNECTION_OK)
+						{
+							PQfinish(new_primary_conn);
+							log_warning(_("unable to connect to new primary node %i"), primary_node_id);
+						}
+						else
+						{
+							RecordStatus record_status;
+							int i = 0;
+
+							log_debug("primary node id is now %i", primary_node_id);
+
+							/*
+							 * poll for a while until record type is returned as "STANDBY" - it's possible
+							 * that there's a gap between the server being restarted and the record
+							 * being updated
+							 */
+							for (i = 0; i < 30; i++)
+							{
+								/*
+								 * try and refresh the local node record from the primary, as the updated
+								 * local node record may not have been replicated yet
+								 */
+
+								record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
+
+								if (record_status == RECORD_FOUND)
+								{
+									log_debug("type = %s", get_node_type_string(local_node_info.type));
+
+									if (local_node_info.type == STANDBY)
+									{
+										PQfinish(new_primary_conn);
+
+										/* XXX add event notification */
+										return;
+									}
+								}
+								sleep(1);
+							}
+
+							PQfinish(new_primary_conn);
+
+							if (record_status == RECORD_FOUND)
+							{
+								log_warning(_("repmgr node record is still %s"), get_node_type_string(local_node_info.type));
+							}
+							else
+							{
+								log_error(_("no metadata record found for this node"));
+								log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
+							}
+						}
+					}
+					else
+					{
+						appendPQExpBuffer(&event_details,
+										  _("reconnected to primary node after %i seconds, resuming monitoring"),
+										  degraded_monitoring_elapsed);
+
+						create_event_notification(local_conn,
+												  &config_file_options,
+												  config_file_options.node_id,
+												  "repmgrd_local_reconnect",
+												  true,
+												  event_details.data);
+
+						log_notice("%s", event_details.data);
+						termPQExpBuffer(&event_details);
+						goto loop;
+					}
 				}
 			}
 
@@ -1909,7 +1986,7 @@ do_election(void)
 
 	log_debug("our last receive lsn: %X/%X", format_lsn(local_node_info.last_wal_receive_lsn));
 
-	// pointer to "winning" node, by default self
+	/* pointer to "winning" node, initially self */
 	candidate_node = &local_node_info;
 
 	for (cell = standby_nodes.head; cell; cell = cell->next)
@@ -1927,7 +2004,7 @@ do_election(void)
 
 		cell->node_info->node_status = NODE_STATUS_UP;
 
-		// XXX don't check 0-priority nodes
+		/* XXX don't check 0-priority nodes */
 
 		// get node's LSN
 		//   if "higher" than current winner, current node is candidate
