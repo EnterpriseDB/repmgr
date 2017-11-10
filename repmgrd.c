@@ -332,6 +332,24 @@ main(int argc, char **argv)
 
 	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
 
+	{
+		/*
+		 * sanity-check that the shared library is loaded and shared memory
+		 * can be written by attempting to retrieve the previously stored node_id
+		 */
+		int stored_local_node_id = UNKNOWN_NODE_ID;
+
+		stored_local_node_id = repmgrd_get_local_node_id(local_conn);
+
+		if (stored_local_node_id == UNKNOWN_NODE_ID)
+		{
+			log_error(_("unable to write to shared memory"));
+			log_hint(_("ensure \"shared_preload_libraries\" includes \"repmgr\""));
+			PQfinish(local_conn);
+			terminate(ERR_BAD_CONFIG);
+		}
+	}
+
 	if (config_file_options.replication_type == REPLICATION_TYPE_BDR)
 	{
 		log_debug("node id is %i", local_node_info.node_id);
