@@ -1347,6 +1347,9 @@ do_upstream_standby_failover(void)
 	/* reconnect to local node */
 	local_conn = establish_db_connection(config_file_options.conninfo, false);
 
+	/* refresh shared memory settings which will have been zapped by the restart */
+	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+
 	if (update_node_record_set_upstream(primary_conn,
 										local_node_info.node_id,
 										primary_node_info.node_id) == false)
@@ -1599,6 +1602,10 @@ wait_primary_notification(int *new_primary_id)
 					  *new_primary_id, i);
 			return true;
 		}
+
+		log_verbose(LOG_DEBUG, "waiting for new primary notification, %i of max %i seconds",
+					i, config_file_options.primary_notification_timeout);
+
 		sleep(1);
 	}
 
@@ -1754,9 +1761,9 @@ follow_new_primary(int new_primary_id)
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
-	/* refresh shared memory settings which will have been zapped by the restart */
 	local_conn = establish_db_connection(local_node_info.conninfo, false);
 
+	/* refresh shared memory settings which will have been zapped by the restart */
 	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
 
 	initPQExpBuffer(&event_details);
