@@ -124,7 +124,6 @@ _PG_init(void)
 {
 	elog(DEBUG1, "repmgr init");
 
-	/* error here? */
 	if (!process_shared_preload_libraries_in_progress)
 		return;
 

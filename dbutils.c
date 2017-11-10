@@ -1554,7 +1554,7 @@ repmgrd_set_local_node_id(PGconn *conn, int local_node_id)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  " SELECT repmgr.set_local_node_id(%i)",
+					  "SELECT repmgr.set_local_node_id(%i)",
 					  local_node_id);
 
 	res = PQexec(conn, query.data);
@@ -1568,6 +1568,26 @@ repmgrd_set_local_node_id(PGconn *conn, int local_node_id)
 
 	PQclear(res);
 	return true;
+}
+
+
+
+int
+repmgrd_get_local_node_id(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	int			local_node_id = UNKNOWN_NODE_ID;
+
+	res = PQexec(conn, "SELECT repmgr.get_local_node_id()");
+
+	if (!PQgetisnull(res, 0, 0))
+	{
+		local_node_id = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return local_node_id;
 }
 
 

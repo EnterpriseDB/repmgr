@@ -382,6 +382,7 @@ bool		can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferDat
 int			get_ready_archive_files(PGconn *conn, const char *data_directory);
 bool		identify_system(PGconn *repl_conn, t_system_identification *identification);
 bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
+int			repmgrd_get_local_node_id(PGconn *conn);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);
