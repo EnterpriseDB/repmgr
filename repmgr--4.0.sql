@@ -106,6 +106,11 @@ CREATE FUNCTION set_local_node_id(INT)
   AS 'MODULE_PATHNAME', 'set_local_node_id'
   LANGUAGE C STRICT;
 
+CREATE FUNCTION get_local_node_id()
+  RETURNS INT
+  AS 'MODULE_PATHNAME', 'get_local_node_id'
+  LANGUAGE C STRICT;
+
 CREATE FUNCTION standby_set_last_updated()
   RETURNS TIMESTAMP WITH TIME ZONE
   AS 'MODULE_PATHNAME', 'standby_set_last_updated'

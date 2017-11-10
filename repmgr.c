@@ -86,39 +86,33 @@ void		_PG_fini(void);
 static void repmgr_shmem_startup(void);
 
 Datum		set_local_node_id(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(set_local_node_id);
 
-Datum		standby_set_last_updated(PG_FUNCTION_ARGS);
+Datum		get_local_node_id(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(get_local_node_id);
 
+Datum		standby_set_last_updated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(standby_set_last_updated);
 
 Datum		standby_get_last_updated(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(standby_get_last_updated);
 
 Datum		set_voting_status_initiated(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(set_voting_status_initiated);
 
 Datum		notify_follow_primary(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(notify_follow_primary);
 
 Datum		get_new_primary(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(get_new_primary);
 
 Datum		reset_voting_status(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(reset_voting_status);
 
 Datum		am_bdr_failover_handler(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(am_bdr_failover_handler);
 
 Datum		unset_bdr_failover_handler(PG_FUNCTION_ARGS);
-
 PG_FUNCTION_INFO_V1(unset_bdr_failover_handler);
 
 
@@ -235,6 +229,23 @@ set_local_node_id(PG_FUNCTION_ARGS)
 
 	PG_RETURN_VOID();
 }
+
+
+Datum
+get_local_node_id(PG_FUNCTION_ARGS)
+{
+	int			local_node_id = UNKNOWN_NODE_ID;
+
+	if (!shared_state)
+		PG_RETURN_NULL();
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	local_node_id = shared_state->local_node_id;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_INT32(local_node_id);
+}
+
 
 /* update and return last updated with current timestamp */
 Datum
