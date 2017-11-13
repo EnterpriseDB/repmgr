@@ -1012,6 +1012,15 @@ loop:
 #endif
 }
 
+
+void
+monitor_streaming_witness(void)
+{
+	log_error("not yet implemented");
+	return;
+}
+
+
 #ifndef BDR_ONLY
 static bool
 do_primary_failover(void)

@@ -339,6 +339,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->primary_follow_timeout = DEFAULT_PRIMARY_FOLLOW_TIMEOUT;
 
 	/*-------------
+	 * witness settings
+	 *-------------
+	 */
+	options->witness_sync_interval = DEFAULT_WITNESS_SYNC_INTERVAL;
+
+	/*-------------
 	 * BDR settings
 	 *-------------
 	 */
@@ -550,6 +556,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->primary_notification_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "primary_follow_timeout") == 0)
 			options->primary_follow_timeout = repmgr_atoi(value, name, error_list, 0);
+
+		/* witness settings */
+		else if (strcmp(name, "witness_sync_interval") == 0)
+			options->witness_sync_interval = repmgr_atoi(value, name, error_list, 1);
 
 		/* BDR settings */
 		else if (strcmp(name, "bdr_local_monitoring_only") == 0)

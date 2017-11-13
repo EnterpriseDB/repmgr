@@ -806,7 +806,6 @@ do_standby_register(void)
 		}
 	}
 
-
 	if (PQstatus(conn) == CONNECTION_OK)
 	{
 		check_recovery_type(conn);
@@ -838,7 +837,7 @@ do_standby_register(void)
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to connect to the primary database"));
-		log_hint(_("a primary must be configured before registering a standby"));
+		log_hint(_("a primary node must be configured before registering a standby node"));
 		exit(ERR_BAD_CONFIG);
 	}
 

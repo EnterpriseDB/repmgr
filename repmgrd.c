@@ -407,6 +407,9 @@ start_monitoring(void)
 			case STANDBY:
 				monitor_streaming_standby();
 				break;
+			case WITNESS:
+				monitor_streaming_witness();
+				break;
 #else
 			case PRIMARY:
 			case STANDBY:

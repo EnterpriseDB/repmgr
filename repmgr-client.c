@@ -1346,6 +1346,16 @@ check_cli_parameters(const int action)
 				 */
 			}
 			break;
+		case WITNESS_REGISTER:
+			{
+				if (!runtime_options.host_param_provided)
+				{
+					item_list_append_format(&cli_errors,
+											_("host name for the source node must be provided when executing %s"),
+											action_name(action));
+				}
+			}
+			break;
 		case NODE_STATUS:
 			if (runtime_options.node_id != UNKNOWN_NODE_ID)
 			{
@@ -1688,6 +1698,11 @@ action_name(const int action)
 			return "STANDBY PROMOTE";
 		case STANDBY_FOLLOW:
 			return "STANDBY FOLLOW";
+
+		case WITNESS_REGISTER:
+			return "WITNESS REGISTER";
+		case WITNESS_UNREGISTER:
+			return "WITNESS UNREGISTER";
 
 		case BDR_REGISTER:
 			return "BDR REGISTER";
@@ -2670,7 +2685,6 @@ init_node_record(t_node_info *node_record)
 	node_record->priority = config_file_options.priority;
 	node_record->active = true;
 
-
 	if (config_file_options.location[0] != '\0')
 		strncpy(node_record->location, config_file_options.location, MAXLEN);
 	else
@@ -2699,6 +2713,4 @@ init_node_record(t_node_info *node_record)
 	{
 		maxlen_snprintf(node_record->slot_name, "repmgr_slot_%i", config_file_options.node_id);
 	}
-
-
 }

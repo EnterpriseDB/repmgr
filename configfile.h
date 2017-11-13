@@ -98,6 +98,9 @@ typedef struct
 	int			replication_lag_warning;
 	int			replication_lag_critical;
 
+	/* witness settings */
+	int			witness_sync_interval;
+
 	/* repmgrd settings */
 	failover_mode_opt failover;
 	char		location[MAXLEN];
@@ -158,6 +161,8 @@ typedef struct
 		/* node check settings */ \
 		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
 		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \
+		/* witness settings */ \
+		DEFAULT_WITNESS_SYNC_INTERVAL, \
 		/* repmgrd settings */ \
 		FAILOVER_MANUAL, DEFAULT_LOCATION, DEFAULT_PRIORITY, "", "", \
 		DEFAULT_MONITORING_INTERVAL, \

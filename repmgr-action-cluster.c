@@ -279,6 +279,7 @@ do_cluster_show(void)
 					}
 				}
 				break;
+			case WITNESS:
 			case BDR:
 				{
 					/* node is reachable */
