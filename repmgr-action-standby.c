@@ -5322,8 +5322,8 @@ do_standby_help(void)
 	puts("");
 	printf(_("  \"standby unregister\" unregisters an inactive standby node.\n"));
 	puts("");
-	printf(_("  --node-id                           ID node to unregister (optional, used when the node to unregister\n" \
-			 "                                        is offline)\n"));
+	printf(_("  --node-id                           ID of node to unregister (optional, used when the node to\n" \
+			 "                                         unregister is offline)\n"));
 	puts("");
 
 	printf(_("STANDBY PROMOTE\n"));
