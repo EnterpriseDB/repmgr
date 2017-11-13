@@ -23,6 +23,7 @@ void		do_physical_node_check(void);
 
 void		monitor_streaming_primary(void);
 void		monitor_streaming_standby(void);
+void		monitor_streaming_witness(void);
 void		close_connections_physical(void);
 
 #endif							/* _REPMGRD_PHYSICAL_H_ */

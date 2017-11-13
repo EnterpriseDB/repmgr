@@ -68,7 +68,12 @@
 #recovery_min_apply_delay=              # If provided, "recovery_min_apply_delay" in recovery.conf
                                         # will be set to this value.
 
+#------------------------------------------------------------------------------
+# Witness server settings
+#------------------------------------------------------------------------------
 
+#witness_sync_interval=15               # interval (in seconds) to synchronise node records
+                                        # to the witness server
 
 #------------------------------------------------------------------------------
 # Logging settings

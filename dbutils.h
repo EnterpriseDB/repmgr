@@ -38,6 +38,7 @@ typedef enum
 	UNKNOWN = 0,
 	PRIMARY,
 	STANDBY,
+	WITNESS,
 	BDR
 } t_server_type;
 
@@ -413,12 +414,16 @@ void		get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list);
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		delete_node_record(PGconn *conn, int node);
+bool		truncate_node_records(PGconn *conn);
 
 bool		update_node_record_set_active(PGconn *conn, int this_node_id, bool active);
 bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
 bool		update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 bool		update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
 bool		update_node_record_conn_priority(PGconn *conn, t_configuration_options *options);
+
+bool		witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn);
+
 
 void		clear_node_info_list(NodeInfoList *nodes);
 
@@ -489,6 +494,7 @@ bool		is_downstream_node_attached(PGconn *conn, char *node_name);
 void		get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);
 RecordStatus get_bdr_node_record_by_name(PGconn *conn, const char *node_name, t_bdr_node_info *node_info);
 bool		is_bdr_db(PGconn *conn, PQExpBufferData *output);
+bool		is_bdr_db_quiet(PGconn *conn);
 bool		is_active_bdr_node(PGconn *conn, const char *node_name);
 bool		is_bdr_repmgr(PGconn *conn);
 bool		is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
