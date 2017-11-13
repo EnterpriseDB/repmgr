@@ -1149,6 +1149,7 @@ _get_primary_connection(PGconn *conn,
 					  "         CASE WHEN type = 'primary' THEN 1 ELSE 2 END AS type_priority"
 					  "	   FROM repmgr.nodes "
 					  "   WHERE active IS TRUE "
+					  "     AND type != 'witness' "
 					  "ORDER BY active DESC, type_priority, priority, node_id");
 
 	log_verbose(LOG_DEBUG, "get_primary_connection():\n%s", query.data);
