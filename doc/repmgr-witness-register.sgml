@@ -1,0 +1,51 @@
+<refentry id="repmgr-witness-register" xreflabel="repmgr witness register">
+  <indexterm>
+    <primary>repmgr witness register</primary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr witness register</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr witness register</refname>
+    <refpurpose>add a witness node's information to the &repmgr; metadata</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>repmgr witness register</command> adds a witness server's node
+      record to the &repmgr; metadata, and if necessary initialises the witness
+      node by installing the &repmgr; extension and copying the &repmgr; metadata
+      to the witness server. This command needs to be executed to enable
+      use of the witness server with <application>repmgrd</application>.
+    </para>
+    <para>
+      When executing <command>repmgr witness register</command>, connection information
+      for the cluster primary server must also be provided. &repmgr; will automatically
+      use the <varname>user</varname> and <varname>dbname</varname> values defined
+      in the <varname>conninfo</varname> string defined in the  witness node's
+      <filename>repmgr.conf</filename>, if these are not explicitly provided.
+    </para>
+    <para>
+      Execute with the <literal>--dry-run</literal> option to check what would happen
+      without actually registering the witness server.
+    </para>
+  </refsect1>
+  <refsect1>
+    <title>Example</title>
+    <para>
+      <programlisting>
+    $ repmgr -f /etc/repmgr.conf witness register -h node1
+    INFO: connecting to witness node "node3" (ID: 3)
+    INFO: connecting to primary node
+    NOTICE: attempting to install extension "repmgr"
+    NOTICE: "repmgr" extension successfully installed
+    INFO: witness registration complete
+    NOTICE: witness node "node3" (ID: 3) successfully registered
+      </programlisting>
+    </para>
+  </refsect1>
+
+</refentry>

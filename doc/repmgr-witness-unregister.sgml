@@ -1,0 +1,64 @@
+<refentry id="repmgr-witness-unregister" xreflabel="repmgr witness unregister">
+  <indexterm>
+    <primary>repmgr witness unregister</primary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr witness unregister</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr witness unregister</refname>
+    <refpurpose>remove a witness node's information to the &repmgr; metadata</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      <command>repmgr witness unregister</command> removes a witness server's node
+      record from the &repmgr; metadata.
+    </para>
+    <para>
+      The node does not have to be running to be unregistered, however if this is the
+      case then connection information for the primary server must be provided.
+    </para>
+    <para>
+      Execute with the <literal>--dry-run</literal> option to check what would happen
+      without actually registering the witness server.
+    </para>
+  </refsect1>
+  <refsect1>
+    <title>Examples</title>
+    <para>
+      Unregistering a running witness node:
+      <programlisting>
+    $ ./repmgr -f /space/sda1/ibarwick/repmgr-test/node_3/repmgr.conf witness unregister
+    INFO: connecting to witness node "node3" (ID: 3)
+    INFO: unregistering witness node 3
+    INFO: witness unregistration complete
+    DETAIL: witness node with id 3 (conninfo: host=node3 dbname=repmgr user=repmgr port=5499) successfully unregistered</programlisting>
+    </para>
+    <para>
+      Unregistering a non-running witness node:
+      <programlisting>
+        $ ./repmgr -f /space/sda1/ibarwick/repmgr-test/node_3/repmgr.conf witness unregister -h localhost -p 5501  -F
+        INFO: connecting to witness node "node3" (ID: 3)
+        NOTICE: unable to connect to witness node "node3" (ID: 3), removing node record on cluster primary only
+        INFO: unregistering witness node 3
+        INFO: witness unregistration complete
+        DETAIL: witness node with id 3 (conninfo: host=node3 dbname=repmgr user=repmgr port=5499) successfully unregistered</programlisting>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Notes</title>
+    <para>
+      This command will not make any changes to the witness node itself and will neither
+      remove any data from the witness database nor stop the PostgreSQL instance.
+    </para>
+    <para>
+      A witness node which has been unregistered, can be re-registered with
+      <link linkend="repmgr-witness-register">repmgr witness register --force</link>.
+    </para>
+  </refsect1>
+</refentry>
