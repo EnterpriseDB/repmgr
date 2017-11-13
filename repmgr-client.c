@@ -57,6 +57,7 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-primary.h"
 #include "repmgr-action-standby.h"
+#include "repmgr-action-witness.h"
 #include "repmgr-action-bdr.h"
 #include "repmgr-action-node.h"
 
@@ -703,6 +704,7 @@ main(int argc, char **argv)
 	 *
 	 *   { PRIMARY | MASTER } REGISTER |
 	 *   STANDBY { REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER } |
+	 *   WITNESS { CREATE | REGISTER | UNREGISTER }
 	 *   BDR { REGISTER | UNREGISTER } |
 	 *   NODE { STATUS | CHECK | REJOIN | SERVICE } |
 	 *   CLUSTER { CROSSCHECK | MATRIX | SHOW | EVENT | CLEANUP }
@@ -770,6 +772,18 @@ main(int argc, char **argv)
 				action = NODE_CHECK;
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
 				action = NODE_STATUS;
+		}
+		else if (strcasecmp(repmgr_command, "WITNESS") == 0)
+		{
+			if (help_option == true)
+			{
+				do_witness_help();
+				exit(SUCCESS);
+			}
+			else if (strcasecmp(repmgr_action, "REGISTER") == 0)
+				action = WITNESS_REGISTER;
+			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
+				action = WITNESS_UNREGISTER;
 		}
 		else if (strcasecmp(repmgr_command, "BDR") == 0)
 #else
@@ -1164,6 +1178,12 @@ main(int argc, char **argv)
 			do_standby_switchover();
 			break;
 
+			/* WITNESS */
+		case WITNESS_REGISTER:
+			do_witness_register();
+			break;
+		case WITNESS_UNREGISTER:
+			do_witness_unregister();
 			break;
 #else
 			/* we won't ever reach here, but stop the compiler complaining */
@@ -1175,6 +1195,8 @@ main(int argc, char **argv)
 		case STANDBY_PROMOTE:
 		case STANDBY_FOLLOW:
 		case STANDBY_SWITCHOVER:
+		case WITNESS_REGISTER:
+		case WITNESS_UNREGISTER:
 			break;
 
 #endif

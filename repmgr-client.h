@@ -23,7 +23,6 @@
 #include "log.h"
 
 
-
 #define NO_ACTION			   0	/* Dummy default action */
 #define PRIMARY_REGISTER	   1
 #define PRIMARY_UNREGISTER	   2
@@ -33,17 +32,19 @@
 #define STANDBY_PROMOTE		   6
 #define STANDBY_FOLLOW		   7
 #define STANDBY_SWITCHOVER	   8
-#define BDR_REGISTER		   9
-#define BDR_UNREGISTER		   10
-#define NODE_STATUS			   11
-#define NODE_CHECK			   12
-#define NODE_SERVICE		   13
-#define NODE_REJOIN            14
-#define CLUSTER_SHOW		   15
-#define CLUSTER_CLEANUP		   16
-#define CLUSTER_MATRIX		   17
-#define CLUSTER_CROSSCHECK	   18
-#define CLUSTER_EVENT		   19
+#define WITNESS_REGISTER       9
+#define WITNESS_UNREGISTER     10
+#define BDR_REGISTER		   11
+#define BDR_UNREGISTER		   12
+#define NODE_STATUS			   13
+#define NODE_CHECK			   14
+#define NODE_SERVICE		   15
+#define NODE_REJOIN            16
+#define CLUSTER_SHOW		   17
+#define CLUSTER_CLEANUP		   18
+#define CLUSTER_MATRIX		   19
+#define CLUSTER_CROSSCHECK	   20
+#define CLUSTER_EVENT		   21
 
 /* command line options without short versions */
 #define OPT_HELP						   1001

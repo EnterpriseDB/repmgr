@@ -37,7 +37,8 @@ include Makefile.global
 $(info Building against PostgreSQL $(MAJORVERSION))
 
 REPMGR_CLIENT_OBJS = repmgr-client.o \
-	repmgr-action-primary.o repmgr-action-standby.o repmgr-action-bdr.o repmgr-action-cluster.o repmgr-action-node.o \
+	repmgr-action-primary.o repmgr-action-standby.o repmgr-action-witness.o \
+	repmgr-action-bdr.o repmgr-action-cluster.o repmgr-action-node.o \
 	configfile.o log.o strutil.o controldata.o dirutil.o compat.o dbutils.o
 REPMGRD_OBJS = repmgrd.o repmgrd-physical.o repmgrd-bdr.o configfile.o log.o dbutils.o strutil.o controldata.o
 DATE=$(shell date "+%Y-%m-%d")
@@ -77,6 +78,7 @@ additional-clean:
 	rm -f repmgr-client.o
 	rm -f repmgr-action-primary.o
 	rm -f repmgr-action-standby.o
+	rm -f repmgr-action-witness.o
 	rm -f repmgr-action-bdr.o
 	rm -f repmgr-action-node.o
 	rm -f repmgr-action-cluster.o

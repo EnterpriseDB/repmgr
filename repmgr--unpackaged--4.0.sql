@@ -32,7 +32,7 @@ CREATE TABLE repmgr.nodes (
   upstream_node_id INTEGER     NULL REFERENCES repmgr.nodes (node_id) DEFERRABLE,
   active           BOOLEAN     NOT NULL DEFAULT TRUE,
   node_name        TEXT        NOT NULL,
-  type             TEXT        NOT NULL CHECK (type IN('primary','standby','bdr')),
+  type             TEXT        NOT NULL CHECK (type IN('primary','standby','witness','bdr')),
   location         TEXT        NOT NULL DEFAULT 'default',
   priority         INT         NOT NULL DEFAULT 100,
   conninfo         TEXT        NOT NULL,
