@@ -143,7 +143,6 @@ CREATE FUNCTION reset_voting_status()
   AS 'MODULE_PATHNAME', 'reset_voting_status'
   LANGUAGE C STRICT;
 
-
 CREATE FUNCTION am_bdr_failover_handler(INT)
   RETURNS BOOL
   AS 'MODULE_PATHNAME', 'am_bdr_failover_handler'
