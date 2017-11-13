@@ -55,6 +55,7 @@ do_witness_register(void)
 				  config_file_options.node_id);
 		log_detail("%s",
 				   PQerrorMessage(witness_conn));
+		log_hint(_("the witness node must be running before it can be registered"));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -138,7 +139,7 @@ do_witness_register(void)
 
 
 	/* create repmgr extension, if does not exist */
-	if (!create_repmgr_extension(witness_conn))
+	if (runtime_options.dry_run == false &&  !create_repmgr_extension(witness_conn))
 	{
 		PQfinish(witness_conn);
 		PQfinish(primary_conn);
@@ -214,6 +215,13 @@ do_witness_register(void)
 
 	clear_node_info_list(&nodes);
 
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("prerequisites for registering the witness node are met"));
+		PQfinish(primary_conn);
+		PQfinish(witness_conn);
+		exit(SUCCESS);
+	}
 	/* create record on primary */
 
 	/*
@@ -354,8 +362,11 @@ do_witness_unregister(void)
 	if (record_status != RECORD_FOUND)
 	{
 		log_error(_("no record found for node %i"), config_file_options.node_id);
-		PQfinish(witness_conn);
+
+		if (witness_available == true)
+			PQfinish(witness_conn);
 		PQfinish(primary_conn);
+
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -363,9 +374,22 @@ do_witness_unregister(void)
 	{
 		log_error(_("node %i is not a witness node"), config_file_options.node_id);
 		log_detail(_("node %i is a %s node"), config_file_options.node_id, get_node_type_string(node_record.type));
-		PQfinish(witness_conn);
+
+		if (witness_available == true)
+			PQfinish(witness_conn);
 		PQfinish(primary_conn);
+
 		exit(ERR_BAD_CONFIG);
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("prerequisites for unregistering the witness node are met"));
+		if (witness_available == true)
+			PQfinish(witness_conn);
+		PQfinish(primary_conn);
+
+		exit(SUCCESS);
 	}
 
 	log_info(_("unregistering witness node %i"), config_file_options.node_id);
@@ -421,8 +445,9 @@ void do_witness_help(void)
 	puts("");
 	printf(_("  \"witness register\" registers a witness node.\n"));
 	puts("");
-	printf(_("  Requires provision of the primary connection information\n"));
+	printf(_("  Requires provision of connection information for the primary\n"));
 	puts("");
+	printf(_("  --dry-run                           check prerequisites but don't make any changes\n"));
 	printf(_("  -F, --force                         overwrite an existing node record\n"));
 	puts("");
 
@@ -430,7 +455,8 @@ void do_witness_help(void)
 	puts("");
 	printf(_("  \"witness register\" unregisters a witness node.\n"));
 	puts("");
-	printf(_("  -F, --force                        unregister when witness node not running\n"));
+	printf(_("  --dry-run                           check prerequisites but don't make any changes\n"));
+	printf(_("  -F, --force                         unregister when witness node not running\n"));
 	puts("");
 
 	return;
