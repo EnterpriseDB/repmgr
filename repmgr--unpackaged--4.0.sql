@@ -54,6 +54,21 @@ SELECT id, upstream_node_id, active, name,
 
 ALTER TABLE repmgr.repl_events RENAME TO events;
 
+-- create new table "repmgr.voting_term"
+CREATE TABLE repmgr.voting_term (
+  term INT NOT NULL
+);
+
+CREATE UNIQUE INDEX voting_term_restrict
+ON repmgr.voting_term ((TRUE));
+
+CREATE RULE voting_term_delete AS
+   ON DELETE TO repmgr.voting_term
+   DO INSTEAD NOTHING;
+
+INSERT INTO repmgr.voting_term (term) VALUES (1);
+
+
 -- convert "repmgr_$cluster.repl_monitor" to "monitoring_history"
 
 CREATE TABLE repmgr.monitoring_history (
@@ -94,6 +109,16 @@ LEFT JOIN repmgr.nodes un
 /* ================= */
 
 /* monitoring functions */
+
+CREATE FUNCTION set_local_node_id(INT)
+  RETURNS VOID
+  AS 'MODULE_PATHNAME', 'set_local_node_id'
+  LANGUAGE C STRICT;
+
+CREATE FUNCTION get_local_node_id()
+  RETURNS INT
+  AS 'MODULE_PATHNAME', 'get_local_node_id'
+  LANGUAGE C STRICT;
 
 CREATE FUNCTION standby_set_last_updated()
   RETURNS TIMESTAMP WITH TIME ZONE
