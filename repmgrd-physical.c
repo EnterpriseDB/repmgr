@@ -869,8 +869,7 @@ loop:
 
 				initPQExpBuffer(&monitoring_summary);
 
-				appendPQExpBuffer(
-								  &monitoring_summary,
+				appendPQExpBuffer(&monitoring_summary,
 								  _("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i) in %s state"),
 								  local_node_info.node_name,
 								  local_node_info.node_id,
@@ -1016,8 +1015,98 @@ loop:
 void
 monitor_streaming_witness(void)
 {
-	log_error("not yet implemented");
+#ifndef BDR_ONLY
+	instr_time	log_status_interval_start;
+	PQExpBufferData event_details;
+	RecordStatus record_status;
+
+	reset_node_voting_status();
+
+	log_debug("monitor_streaming_witness()");
+
+	if (get_primary_node_record(local_conn, &upstream_node_info) == false)
+	{
+		log_error(_("unable to retrieve record for primary node"));
+		log_hint(_("execute \"repmgr witness register --force\" to update the witness node "));
+		PQfinish(local_conn);
+		terminate(ERR_BAD_CONFIG);
+	}
+
+	primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
+
+	/*
+	 * Primary node must be running at repmgrd startup.
+	 *
+	 * We could possibly have repmgrd skip to degraded monitoring mode until
+	 * it comes up, but there doesn't seem to be much point in doing that.
+	 */
+	if (PQstatus(primary_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable connect to upstream node (ID: %i), terminating"),
+				  upstream_node_info.node_id);
+		log_hint(_("primary node must be running before repmgrd can start"));
+
+		PQfinish(local_conn);
+		exit(ERR_DB_CONN);
+	}
+
+
+	/*
+	 * refresh upstream node record from primary, so it's as up-to-date
+	 * as possible
+	 */
+	record_status = get_node_record(primary_conn, upstream_node_info.node_id, &upstream_node_info);
+
+	monitoring_state = MS_NORMAL;
+	INSTR_TIME_SET_CURRENT(log_status_interval_start);
+	upstream_node_info.node_status = NODE_STATUS_UP;
+
+	// XXX startup event
+
+	while (true)
+	{
+		if (is_server_available(upstream_node_info.conninfo) == false)
+		{
+
+		}
+
+loop:
+
+		/* emit "still alive" log message at regular intervals, if requested */
+		if (config_file_options.log_status_interval > 0)
+		{
+			int			log_status_interval_elapsed = calculate_elapsed(log_status_interval_start);
+
+			if (log_status_interval_elapsed >= config_file_options.log_status_interval)
+			{
+				PQExpBufferData monitoring_summary;
+
+				initPQExpBuffer(&monitoring_summary);
+
+				appendPQExpBuffer(&monitoring_summary,
+								  _("witness node \"%s\" (node ID: %i) monitoring primary node \"%s\" (node ID: %i) in %s state"),
+								  local_node_info.node_name,
+								  local_node_info.node_id,
+								  upstream_node_info.node_name,
+								  upstream_node_info.node_id,
+								  print_monitoring_state(monitoring_state));
+
+				log_info("%s", monitoring_summary.data);
+				termPQExpBuffer(&monitoring_summary);
+				if (monitoring_state == MS_DEGRADED && config_file_options.failover == FAILOVER_AUTOMATIC)
+				{
+					log_detail(_("waiting for current or new primary to reappear"));
+				}
+
+				INSTR_TIME_SET_CURRENT(log_status_interval_start);
+			}
+		}
+
+		sleep(config_file_options.monitor_interval_secs);
+	}
+#endif
 	return;
+
 }
 
 
