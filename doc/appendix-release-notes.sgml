@@ -88,6 +88,15 @@
             when a standby follows a new upstream.
         </para></listitem>
 
+        <listitem><para>
+            <literal>--no-conninfo-password</literal> is deprecated; a password included in
+            the environment variable <varname>PGPASSWORD</varname> will no longer be added
+            to <varname>primary_conninfo</varname> by default; to force the inclusion
+            of a password (not recommended), use the new configuration file parameter
+            <varname>use_primary_conninfo_password</varname>. For details, ee section
+            <xref linkend="cloning-advanced-managing-passwords">.
+        </para></listitem>
+
       </itemizedlist>
     </para>
 
