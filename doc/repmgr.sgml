@@ -100,6 +100,8 @@
   &repmgr-standby-promote;
   &repmgr-standby-follow;
   &repmgr-standby-switchover;
+  &repmgr-witness-register;
+  &repmgr-witness-unregister;
   &repmgr-node-status;
   &repmgr-node-check;
   &repmgr-node-rejoin;
