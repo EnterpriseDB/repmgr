@@ -4970,6 +4970,17 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 		}
 	}
 
+	/* passfile provided as configuration option */
+	if (config_file_options.passfile[0] != '\n')
+	{
+		/* check if the libpq we're using supports "passfile=" */
+		if (has_passfile() == true)
+		{
+			appendPQExpBuffer(&conninfo_buf, " passfile=");
+			appendConnStrVal(&conninfo_buf, config_file_options.passfile);
+		}
+	}
+
 	escaped = escape_recovery_conf_value(conninfo_buf.data);
 	maxlen_snprintf(line, "primary_conninfo = '%s'\n", escaped);
 

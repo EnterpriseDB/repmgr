@@ -134,7 +134,7 @@
 #use_primary_conninfo_password=false    # explicitly set "password" in recovery.conf's
                                         # "primary_conninfo" parameter using the value contained
                                         # in the environment variable PGPASSWORD
-
+#passfile=''                            # path to .pgpass file to include in "primary_conninfo"
 #------------------------------------------------------------------------------
 # external command options
 #------------------------------------------------------------------------------

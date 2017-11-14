@@ -357,6 +357,7 @@ void		param_set_ine(t_conninfo_param_list *param_list, const char *param, const 
 char	   *param_get(t_conninfo_param_list *param_list, const char *param);
 bool		parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_local_params);
 char	   *param_list_to_string(t_conninfo_param_list *param_list);
+bool		has_passfile(void);
 
 /* transaction functions */
 bool		begin_transaction(PGconn *conn);

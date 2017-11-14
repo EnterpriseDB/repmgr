@@ -594,7 +594,7 @@ parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_lis
 			(option->val != NULL && option->val[0] == '\0'))
 			continue;
 
-		/* Ignore application_name */
+		/* Ignore settings specific to the upstream node */
 		if (ignore_local_params == true)
 		{
 			if (strcmp(option->keyword, "application_name") == 0)
@@ -676,6 +676,33 @@ param_list_to_string(t_conninfo_param_list *param_list)
 
 	return conninfo_str;
 }
+
+
+/*
+ * check whether the libpq version in use recognizes the "passfile" parameter
+ * (should be 9.6 and later)
+ */
+bool
+has_passfile(void)
+{
+	PQconninfoOption *defs = PQconndefaults();
+	PQconninfoOption *def = NULL;
+    bool has_passfile = false;
+
+   	for (def = defs; def->keyword; def++)
+    {
+        if (strcmp(def->keyword, "passfile") == 0)
+        {
+            has_passfile = true;
+            break;
+        }
+    }
+
+	PQconninfoFree(defs);
+
+    return has_passfile;
+}
+
 
 
 /* ===================== */

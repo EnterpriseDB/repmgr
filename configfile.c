@@ -315,6 +315,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->recovery_min_apply_delay, 0, sizeof(options->recovery_min_apply_delay));
 	options->recovery_min_apply_delay_provided = false;
 	options->use_primary_conninfo_password = false;
+	memset(options->passfile, 0, sizeof(options->passfile));
 
 	/*-----------------
 	 * repmgrd settings
@@ -495,6 +496,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 		else if (strcmp(name, "use_primary_conninfo_password") == 0)
 			options->use_primary_conninfo_password = parse_bool(value, name, error_list);
+		else if (strcmp(name, "passfile") == 0)
+			strncpy(options->passfile, value, sizeof(options->passfile));
 
 		/* node check settings */
 		else if (strcmp(name, "archive_ready_warning") == 0)
