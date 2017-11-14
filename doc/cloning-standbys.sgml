@@ -68,7 +68,8 @@
       <para>
         the <varname>restore_command</varname> setting in <filename>repmgr.conf</filename> is configured to
         use a copy of the <command>barman-wal-restore</command> script shipped with the
-        <literal>barman-cli</literal> package (see below);
+        <literal>barman-cli</literal> package (see section <xref linkend="cloning-from-barman-restore-command">
+        below).
       </para>
      </listitem>
      <listitem>
@@ -186,8 +187,7 @@
      To enable &repmgr; to use replication slots, set the boolean parameter
      <varname>use_replication_slots</varname> in <filename>repmgr.conf</filename>:
      <programlisting>
-       use_replication_slots=true
-     </programlisting>
+       use_replication_slots=true</programlisting>
    </para>
    <para>
     Replication slots must be enabled in <filename>postgresql.conf</filename> by
@@ -341,9 +341,16 @@
      By default, <command>pg_basebackup</command> performs a checkpoint before beginning the backup
      process. However, a normal checkpoint may take some time to complete;
      a fast checkpoint can be forced with the <literal>-c/--fast-checkpoint</literal> option.
-     However this may impact performance of the server being cloned from
+     However this may impact performance of the server being cloned from (typically the primary)
      so should be used with care.
     </para>
+    <tip>
+      <simpara>
+        If <application>Barman</application> is set up for the cluster, it's possible to
+        clone the standby directly from Barman, without any impact on the server the standby
+        is being cloned from. For more details see <xref linkend="cloning-from-barman">.
+      </simpara>
+    </tip>
     <para>
      Further options can be passed to the <command>pg_basebackup</command> utility via
      the setting <varname>pg_basebackup_options</varname> in <filename>repmgr.conf</filename>.
@@ -370,7 +377,7 @@
      If, for whatever reason, you wish to include the password in <filename>recovery.conf</filename>,
      set <varname>use_primary_conninfo_password</varname> to <literal>true</literal> in
      <filename>repmgr.conf</filename>. This will read a password set in <varname>PGPASSWORD</varname>
-     (but not <filename>~/.pgpass</filename>) and place it into the <literal>primary_conninfo</literal>
+     (but not <filename>~/.pgpass</filename>) and place it into the <varname>primary_conninfo</varname>
      string in <filename>recovery.conf</filename>. Note that <varname>PGPASSWORD</varname>
      will need to be set during any action which causes <filename>recovery.conf</filename> to be
      rewritten, e.g. <xref linkend="repmgr-standby-follow">.
@@ -379,6 +386,15 @@
      It is of course also possible to include the password value in the <varname>conninfo</varname>
      string for each node, but this is obviously a security risk and should be
      avoided.
+    </para>
+    <para>
+      From PostgreSQL 9.6, <application>libpq</application> supports the <varname>passfile</varname>
+      parameter in connection strings, which can be used to specify a password file other than
+      the default <filename>~/.pgpass</filename>.
+    </para>
+    <para>
+      To have &repmgr; write a custom password file in <varname>primary_conninfo</varname>,
+      specify its location in <varname>passfile</varname> in <filename>repmgr.conf</filename>.
     </para>
    </sect2>
 
@@ -390,7 +406,7 @@
      the replication user should be set in <filename>repmgr.conf</filename> via the parameter
      <varname>replication_user</varname>; &repmgr; will use this value when making
      replication connections and generating <filename>recovery.conf</filename>. This
-     value will also be stored in the <literal>repmgr.nodes</literal>
+     value will also be stored in the parameter <literal>repmgr.nodes</literal>
      table for each node; it no longer needs to be explicitly specified when
      cloning a node or executing <xref linkend="repmgr-standby-follow">.
     </para>
