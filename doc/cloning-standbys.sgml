@@ -6,6 +6,11 @@
     <primary>cloning</primary>
     <secondary>from Barman</secondary>
    </indexterm>
+   <indexterm>
+    <primary>Barman</primary>
+    <secondary>cloning a standby</secondary>
+   </indexterm>
+
    <title>Cloning a standby from Barman</title>
    <para>
     <xref linkend="repmgr-standby-clone"> can use
@@ -121,6 +126,11 @@
    </para>
   </sect2>
   <sect2 id="cloning-from-barman-restore-command" xreflabel="Using Barman as a WAL file source">
+  <indexterm>
+    <primary>Barman</primary>
+    <secondary>fetching archived WAL</secondary>
+   </indexterm>
+
    <title>Using Barman as a WAL file source</title>
    <para>
     As a fallback in case streaming replication is interrupted, PostgreSQL can optionally
