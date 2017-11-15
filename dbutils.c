@@ -3545,6 +3545,7 @@ is_server_available(const char *conninfo)
 {
 	PGPing		status = PQping(conninfo);
 
+	log_verbose(LOG_DEBUG, "ping status for %s is %i", conninfo, (int)status);
 	if (status == PQPING_OK)
 		return true;
 
