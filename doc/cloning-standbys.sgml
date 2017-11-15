@@ -348,6 +348,11 @@
    <sect2 id="cloning-advanced-pg-basebackup-options" xreflabel="pg_basebackup options when cloning a standby">
     <title>pg_basebackup options when cloning a standby</title>
     <para>
+      As &repmgr; uses <command>pg_basebackup</command> to clone a standby, it's possible to
+      provide additional parameters for <command>pg_basebackup</command> to customise the
+      cloning process.
+    </para>
+    <para>
      By default, <command>pg_basebackup</command> performs a checkpoint before beginning the backup
      process. However, a normal checkpoint may take some time to complete;
      a fast checkpoint can be forced with the <literal>-c/--fast-checkpoint</literal> option.
@@ -362,8 +367,16 @@
       </simpara>
     </tip>
     <para>
-     Further options can be passed to the <command>pg_basebackup</command> utility via
-     the setting <varname>pg_basebackup_options</varname> in <filename>repmgr.conf</filename>.
+      Other options can be passed to <command>pg_basebackup</command> by including them
+      in the <filename>repmgr.conf</filename> setting <varname>pg_basebackup_options</varname>.
+    </para>
+    <para>
+      If using a separate directory to store WAL files, provide the option <literal>--waldir</literal>
+      (<literal>--xlogdir</literal> in PostgreSQL 9.6 and earlier) with the absolute path to the
+      WAL directory. Any WALs generated during the cloning process will be copied here, and
+      a symlink will automatically be created from the main data directory.
+    </para>
+    <para>
      See the <ulink url="https://www.postgresql.org/docs/current/static/app-pgbasebackup.html">PostgreSQL pg_basebackup documentation</ulink>
      for more details of available options.
     </para>
