@@ -72,14 +72,19 @@ static void check_connection(t_node_info *node_info, PGconn **conn);
 
 static bool wait_primary_notification(int *new_primary_id);
 static FailoverState follow_new_primary(int new_primary_id);
+static FailoverState witness_follow_new_primary(int new_primary_id);
 
 static void reset_node_voting_status(void);
 void		close_connections_physical();
 
 static bool do_primary_failover(void);
 static bool do_upstream_standby_failover(void);
+static bool do_witness_failover(void);
 
 static void update_monitoring_history(void);
+
+static const char * format_failover_state(FailoverState failover_state);
+
 #endif
 
 
@@ -643,10 +648,21 @@ monitor_streaming_standby(void)
 								  _("unable to connect to upstream node \"%s\" (node ID: %i)"),
 								  upstream_node_info.node_name, upstream_node_info.node_id);
 
+				/* */
 				if (upstream_node_info.type == STANDBY)
 				{
 					/* XXX possible pre-action event */
 					create_event_record(primary_conn,
+										&config_file_options,
+										config_file_options.node_id,
+										"repmgrd_upstream_disconnect",
+										true,
+										event_details.data);
+				}
+				else
+				{
+					/* primary connection lost - script notification only */
+					create_event_record(NULL,
 										&config_file_options,
 										config_file_options.node_id,
 										"repmgrd_upstream_disconnect",
@@ -964,8 +980,7 @@ loop:
 						log_warning("%s", event_details.data)
 
 
-							create_event_notification(
-													  primary_conn,
+							create_event_notification(primary_conn,
 													  &config_file_options,
 													  local_node_info.node_id,
 													  "standby_recovery",
@@ -1057,20 +1072,117 @@ monitor_streaming_witness(void)
 	 */
 	record_status = get_node_record(primary_conn, upstream_node_info.node_id, &upstream_node_info);
 
+
+	/* Log startup event */
+	if (startup_event_logged == false)
+	{
+		PQExpBufferData event_details;
+
+		initPQExpBuffer(&event_details);
+
+		appendPQExpBuffer(&event_details,
+						  _("witness monitoring connection to primary node \"%s\" (node ID: %i)"),
+						  upstream_node_info.node_name,
+						  upstream_node_info.node_id);
+
+		create_event_notification(primary_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "repmgrd_start",
+								  true,
+								  event_details.data);
+
+		startup_event_logged = true;
+
+		log_info("%s", event_details.data);
+
+		termPQExpBuffer(&event_details);
+	}
+
 	monitoring_state = MS_NORMAL;
 	INSTR_TIME_SET_CURRENT(log_status_interval_start);
 	upstream_node_info.node_status = NODE_STATUS_UP;
-
-	// XXX startup event
 
 	while (true)
 	{
 		if (is_server_available(upstream_node_info.conninfo) == false)
 		{
+			if (upstream_node_info.node_status == NODE_STATUS_UP)
+			{
+				instr_time	upstream_node_unreachable_start;
 
+				INSTR_TIME_SET_CURRENT(upstream_node_unreachable_start);
+
+				initPQExpBuffer(&event_details);
+
+				upstream_node_info.node_status = NODE_STATUS_UNKNOWN;
+
+				appendPQExpBuffer(&event_details,
+								  _("unable to connect to primary node \"%s\" (node ID: %i)"),
+								  upstream_node_info.node_name, upstream_node_info.node_id);
+
+				create_event_record(NULL,
+									&config_file_options,
+									config_file_options.node_id,
+									"repmgrd_upstream_disconnect",
+									true,
+									event_details.data);
+
+				PQfinish(primary_conn);
+				primary_conn = try_reconnect(&upstream_node_info);
+
+				/* Node has recovered - log and continue */
+				if (upstream_node_info.node_status == NODE_STATUS_UP)
+				{
+					int			upstream_node_unreachable_elapsed = calculate_elapsed(upstream_node_unreachable_start);
+
+					initPQExpBuffer(&event_details);
+
+					appendPQExpBuffer(&event_details,
+									  _("reconnected to upstream node after %i seconds"),
+									  upstream_node_unreachable_elapsed);
+					log_notice("%s", event_details.data);
+
+					create_event_notification(upstream_conn,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_upstream_reconnect",
+											  true,
+											  event_details.data);
+					termPQExpBuffer(&event_details);
+
+					goto loop;
+				}
+
+				/* still down after reconnect attempt(s) */
+				if (upstream_node_info.node_status == NODE_STATUS_DOWN)
+				{
+					bool		failover_done = false;
+
+
+					failover_done = do_witness_failover();
+
+					/*
+					 * XXX it's possible it will make sense to return in all
+					 * cases to restart monitoring
+					 */
+					if (failover_done == true)
+					{
+						primary_node_id = get_primary_node_id(local_conn);
+						return;
+					}
+				}
+			}
 		}
 
+
+		if (monitoring_state == MS_DEGRADED)
+		{
+			// XXX
+		}
 loop:
+
+		// XXX refresh repmgr.nodes
 
 		/* emit "still alive" log message at regular intervals, if requested */
 		if (config_file_options.log_status_interval > 0)
@@ -1146,7 +1258,6 @@ do_primary_failover(void)
 		failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
 	}
 
-
 	/*
 	 * node has decided it is a follower, so will await notification from the
 	 * candidate that it has promoted itself and can be followed
@@ -1204,8 +1315,7 @@ do_primary_failover(void)
 
 					new_primary_conn = establish_db_connection(new_primary.conninfo, false);
 
-					create_event_notification(
-											  new_primary_conn,
+					create_event_notification(new_primary_conn,
 											  &config_file_options,
 											  local_node_info.node_id,
 											  "standby_disconnect_manual",
@@ -1233,11 +1343,12 @@ do_primary_failover(void)
 		}
 	}
 
+	log_verbose(LOG_DEBUG, "failover state is %s",
+				format_failover_state(failover_state));
+
 	switch (failover_state)
 	{
 		case FAILOVER_STATE_PROMOTED:
-			log_debug("failover state is PROMOTED");
-
 			/* notify former siblings that they should now follow this node */
 			notify_followers(&standby_nodes, local_node_info.node_id);
 
@@ -1251,7 +1362,6 @@ do_primary_failover(void)
 			return true;
 
 		case FAILOVER_STATE_PRIMARY_REAPPEARED:
-			log_debug("failover state is PRIMARY_REAPPEARED");
 
 			/*
 			 * notify siblings that they should resume following the original
@@ -1963,6 +2073,103 @@ follow_new_primary(int new_primary_id)
 }
 
 
+static FailoverState
+witness_follow_new_primary(int new_primary_id)
+{
+	PQExpBufferData event_details;
+
+	t_node_info new_primary = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	bool		new_primary_ok = false;
+
+	record_status = get_node_record(local_conn, new_primary_id, &new_primary);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve metadata record for new primary node (ID: %i)"),
+				  new_primary_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+
+	/* TODO: check if new_primary_id == failed_primary.node_id? */
+
+	if (log_type == REPMGR_STDERR && *config_file_options.log_file)
+	{
+		fflush(stderr);
+	}
+
+	upstream_conn = establish_db_connection(new_primary.conninfo, false);
+
+	if (PQstatus(upstream_conn) == CONNECTION_OK)
+	{
+		RecoveryType primary_recovery_type = get_recovery_type(upstream_conn);
+
+		if (primary_recovery_type == RECTYPE_PRIMARY)
+		{
+			new_primary_ok = true;
+		}
+		else
+		{
+			new_primary_ok = false;
+			log_warning(_("new primary is not in recovery"));
+			PQfinish(upstream_conn);
+		}
+	}
+
+	if (new_primary_ok == false)
+	{
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+
+	/* set new upstream node ID on primary */
+	update_node_record_set_upstream(upstream_conn, local_node_info.node_id, new_primary_id);
+
+	witness_copy_node_records(upstream_conn, local_conn);
+
+	/*
+	 * refresh local copy of local and primary node records - we get these
+	 * directly from the primary to ensure they're the current version
+	 */
+
+	record_status = get_node_record(upstream_conn, new_primary_id, &upstream_node_info);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve metadata record found for node %i"),
+				  new_primary_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+
+	record_status = get_node_record(upstream_conn, local_node_info.node_id, &local_node_info);
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve metadata record found for node %i"),
+				  local_node_info.node_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
+
+	initPQExpBuffer(&event_details);
+	appendPQExpBuffer(&event_details,
+					  _("witness node %i now following new primary node %i"),
+					  local_node_info.node_id,
+					  upstream_node_info.node_id);
+
+	log_notice("%s", event_details.data);
+
+	create_event_notification(
+							  upstream_conn,
+							  &config_file_options,
+							  local_node_info.node_id,
+							  "repmgrd_failover_follow",
+							  true,
+							  event_details.data);
+
+	termPQExpBuffer(&event_details);
+
+	return FAILOVER_STATE_FOLLOWED_NEW_PRIMARY;
+}
+
+
 static const char *
 _print_election_result(ElectionResult result)
 {
@@ -2002,7 +2209,6 @@ do_election(void)
 
 	t_node_info *candidate_node = NULL;
 
-
 	/*
 	 * Check if at least one server in the primary's location is visible; if
 	 * not we'll assume a network split between this node and the primary
@@ -2025,11 +2231,6 @@ do_election(void)
 
 	log_debug("do_election(): electoral term is %i", electoral_term);
 
-	/* get all active nodes attached to primary, excluding self */
-	get_active_sibling_node_records(local_conn,
-									local_node_info.node_id,
-									upstream_node_info.node_id,
-									&standby_nodes);
 
 	if (config_file_options.failover == FAILOVER_MANUAL)
 	{
@@ -2047,6 +2248,11 @@ do_election(void)
 		return ELECTION_NOT_CANDIDATE;
 	}
 
+	/* get all active nodes attached to upstream, excluding self */
+	get_active_sibling_node_records(local_conn,
+									local_node_info.node_id,
+									upstream_node_info.node_id,
+									&standby_nodes);
 
 	log_debug("do_election(): primary location is %s", upstream_node_info.location);
 
@@ -2060,7 +2266,7 @@ do_election(void)
 	 */
 	set_voting_status_initiated(local_conn, electoral_term);
 
-	/* no other standbys - normally win by default */
+	/* fast path if no other standbys (or witness) exists - normally win by default */
 	if (standby_nodes.node_count == 0)
 	{
 		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
@@ -2070,6 +2276,15 @@ do_election(void)
 		}
 		else
 		{
+			/*
+			 * If primary and standby have different locations set, the assumption
+			 * is that no action should be taken as we can't tell whether there's
+			 * been a network interruption or not.
+			 *
+			 * Normally a situation with primary and standby in different physical
+			 * locations would be handled by leaving the location as "default" and
+			 * setting up a witness server in the primary's location.
+			 */
 			log_debug("no other nodes, but primary and standby locations differ");
 
 			monitoring_state = MS_DEGRADED;
@@ -2089,7 +2304,6 @@ do_election(void)
 
 	for (cell = standby_nodes.head; cell; cell = cell->next)
 	{
-
 		/* assume the worst case */
 		cell->node_info->node_status = NODE_STATUS_UNKNOWN;
 
@@ -2102,10 +2316,29 @@ do_election(void)
 
 		cell->node_info->node_status = NODE_STATUS_UP;
 
+		visible_nodes++;
+
+		/*
+		 * see if the node is in the primary's location (but skip the check if
+		 * we've seen a node there already)
+		 */
+		if (primary_location_seen == false)
+		{
+			if (strncmp(cell->node_info->location, upstream_node_info.location, MAXLEN) == 0)
+			{
+				primary_location_seen = true;
+			}
+		}
+
+		/* don't interrogate a witness server */
+		if (cell->node_info->type == WITNESS)
+		{
+			log_debug("node %i is witness, not querying state", cell->node_info->node_id);
+			continue;
+		}
 		/* XXX don't check 0-priority nodes */
 
-		// get node's LSN
-		//   if "higher" than current winner, current node is candidate
+		/* get node's LSN - if "higher" than current winner, current node is candidate */
 
 		cell->node_info->last_wal_receive_lsn = get_last_wal_receive_location(cell->node_info->conn);
 
@@ -2113,7 +2346,7 @@ do_election(void)
 					cell->node_info->node_id,
 					format_lsn(cell->node_info->last_wal_receive_lsn));
 
-		// compare LSN
+		/* compare LSN */
 		if (cell->node_info->last_wal_receive_lsn > candidate_node->last_wal_receive_lsn)
 		{
 			/* other node is ahead */
@@ -2123,7 +2356,7 @@ do_election(void)
 
 			candidate_node = cell->node_info;
 		}
-		// LSN same - tiebreak on priority, then node_id
+		/* LSN is same - tiebreak on priority, then node_id */
 		else if(cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
 		{
 			log_verbose(LOG_DEBUG, "node %i has same LSN as current candidate %i",
@@ -2157,19 +2390,7 @@ do_election(void)
 							candidate_node->priority);
 			}
 		}
-		/*
-		 * see if the node is in the primary's location (but skip the check if
-		 * we've seen a node there already)
-		 */
-		if (primary_location_seen == false)
-		{
-			if (strncmp(cell->node_info->location, upstream_node_info.location, MAXLEN) == 0)
-			{
-				primary_location_seen = true;
-			}
-		}
 
-		visible_nodes++;
 	}
 
 	if (primary_location_seen == false)
@@ -2192,6 +2413,85 @@ do_election(void)
 		return ELECTION_WON;
 
 	return ELECTION_LOST;
+}
+
+/*
+ * "failover" for the witness node; the witness has no part in the election
+ * other than being reachable, so just needs to await notification from the
+ * new primary
+ */
+static
+bool do_witness_failover(void)
+{
+	int new_primary_id = UNKNOWN_NODE_ID;
+
+	/* TODO add pre-event notification here */
+	failover_state = FAILOVER_STATE_UNKNOWN;
+
+	if (wait_primary_notification(&new_primary_id) == true)
+	{
+		/* if primary has reappeared, no action needed */
+		if (new_primary_id == upstream_node_info.node_id)
+		{
+			failover_state = FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY;
+		}
+		else
+		{
+			failover_state = witness_follow_new_primary(new_primary_id);
+		}
+	}
+	else
+	{
+		failover_state = FAILOVER_STATE_NO_NEW_PRIMARY;
+	}
+
+
+	log_verbose(LOG_DEBUG, "failover state is %s",
+				format_failover_state(failover_state));
+
+	switch (failover_state)
+	{
+		case FAILOVER_STATE_PRIMARY_REAPPEARED:
+			/* pass control back down to start_monitoring() */
+			log_info(_("resuming witness monitoring mode"));
+			log_detail(_("original primary \"%s\" (node ID: %i) reappeared"),
+					   upstream_node_info.node_name, upstream_node_info.node_id);
+
+			failover_state = FAILOVER_STATE_NONE;
+			return true;
+
+
+		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
+			log_info(_("resuming standby monitoring mode"));
+			log_detail(_("following new primary \"%s\" (node id: %i)"),
+					   upstream_node_info.node_name, upstream_node_info.node_id);
+			failover_state = FAILOVER_STATE_NONE;
+
+			return true;
+
+		case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
+			log_info(_("resuming witness monitoring mode"));
+			log_detail(_("following original primary \"%s\" (node id: %i)"),
+					   upstream_node_info.node_name, upstream_node_info.node_id);
+			failover_state = FAILOVER_STATE_NONE;
+
+			return true;
+		case FAILOVER_STATE_FOLLOW_FAIL:
+
+			/*
+			 * for whatever reason we were unable to follow the new primary -
+			 * continue monitoring in degraded state
+			 */
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
+			return false;
+
+		default:
+			return false;
+	}
+	/* should never reach here */
+	return false;
 }
 
 
@@ -2240,6 +2540,43 @@ check_connection(t_node_info *node_info, PGconn **conn)
 	}
 }
 
+
+static const char *
+format_failover_state(FailoverState failover_state)
+{
+	switch(failover_state)
+	{
+		case FAILOVER_STATE_UNKNOWN:
+			return "UNKNOWN";
+		case FAILOVER_STATE_NONE:
+			return "NONE";
+		case FAILOVER_STATE_PROMOTED:
+			return "PROMOTED";
+		case FAILOVER_STATE_PROMOTION_FAILED:
+			return "PROMOTION_FAILED";
+		case FAILOVER_STATE_PRIMARY_REAPPEARED:
+			return "PRIMARY_REAPPEARED";
+		case FAILOVER_STATE_LOCAL_NODE_FAILURE:
+			return "LOCAL_NODE_FAILURE";
+		case FAILOVER_STATE_WAITING_NEW_PRIMARY:
+			return "WAITING_NEW_PRIMARY";
+		case FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER:
+			return "REQUIRES_MANUAL_FAILOVER";
+		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
+			return "FOLLOWED_NEW_PRIMARY";
+		case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
+			return "FOLLOWING_ORIGINAL_PRIMARY";
+		case FAILOVER_STATE_NO_NEW_PRIMARY:
+			return "NO_NEW_PRIMARY";
+		case FAILOVER_STATE_FOLLOW_FAIL:
+			return "FOLLOW_FAIL";
+		case FAILOVER_STATE_NODE_NOTIFICATION_ERROR:
+			return "ODE_NOTIFICATION_ERROR";
+	}
+
+	/* should never reach here */
+	return "UNKNOWN_FAILOVER_STATE";
+}
 
 #endif							/* #ifndef BDR_ONLY */
 
