@@ -867,8 +867,8 @@ monitor_streaming_standby(void)
 							follow_new_primary(follow_node_id);
 						}
 					}
+					clear_node_info_list(&standby_nodes);
 				}
-
 			}
 		}
 
@@ -1183,7 +1183,93 @@ monitor_streaming_witness(void)
 
 		if (monitoring_state == MS_DEGRADED)
 		{
-			// XXX
+			int			degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
+
+			log_debug("monitoring node %i in degraded state for %i seconds",
+					  upstream_node_info.node_id,
+					  degraded_monitoring_elapsed);
+
+			if (is_server_available(upstream_node_info.conninfo) == true)
+			{
+				primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
+
+				if (PQstatus(primary_conn) == CONNECTION_OK)
+				{
+					upstream_node_info.node_status = NODE_STATUS_UP;
+					monitoring_state = MS_NORMAL;
+
+					initPQExpBuffer(&event_details);
+
+					appendPQExpBuffer(&event_details,
+									  _("reconnected to upstream node %i after %i seconds, resuming monitoring"),
+									  upstream_node_info.node_id,
+									  degraded_monitoring_elapsed);
+
+					create_event_notification(primary_conn,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_upstream_reconnect",
+											  true,
+											  event_details.data);
+
+					log_notice("%s", event_details.data);
+					termPQExpBuffer(&event_details);
+
+					goto loop;
+				}
+			}
+			else
+			{
+				/*
+				 * unable to connect to former primary - check if another node
+				 * has been promoted
+				 */
+
+				NodeInfoListCell *cell;
+				int			follow_node_id = UNKNOWN_NODE_ID;
+
+				get_active_sibling_node_records(local_conn,
+												local_node_info.node_id,
+												local_node_info.upstream_node_id,
+												&standby_nodes);
+
+				if (standby_nodes.node_count > 0)
+				{
+					log_debug("scanning %i node records to detect new primary...", standby_nodes.node_count);
+					for (cell = standby_nodes.head; cell; cell = cell->next)
+					{
+						/* skip local node check, we did that above */
+						if (cell->node_info->node_id == local_node_info.node_id)
+						{
+							continue;
+						}
+
+						cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
+
+						if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
+						{
+							log_debug("unable to connect to %i ... ", cell->node_info->node_id);
+							continue;
+						}
+
+						if (get_recovery_type(cell->node_info->conn) == RECTYPE_PRIMARY)
+						{
+							follow_node_id = cell->node_info->node_id;
+							PQfinish(cell->node_info->conn);
+							cell->node_info->conn = NULL;
+							break;
+						}
+						PQfinish(cell->node_info->conn);
+						cell->node_info->conn = NULL;
+					}
+
+					if (follow_node_id != UNKNOWN_NODE_ID)
+					{
+						witness_follow_new_primary(follow_node_id);
+					}
+				}
+				clear_node_info_list(&standby_nodes);
+			}
 		}
 loop:
 
@@ -1227,6 +1313,31 @@ loop:
 
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
 			}
+		}
+
+
+		if (got_SIGHUP)
+		{
+			log_debug("SIGHUP received");
+
+			if (reload_config(&config_file_options))
+			{
+				PQfinish(local_conn);
+				local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+				if (*config_file_options.log_file)
+				{
+					FILE	   *fd;
+
+					fd = freopen(config_file_options.log_file, "a", stderr);
+					if (fd == NULL)
+					{
+						fprintf(stderr, "error reopening stderr to \"%s\": %s",
+								config_file_options.log_file, strerror(errno));
+					}
+				}
+			}
+			got_SIGHUP = false;
 		}
 
 		sleep(config_file_options.monitor_interval_secs);
@@ -2491,8 +2602,8 @@ bool do_witness_failover(void)
 			failover_state = FAILOVER_STATE_NONE;
 
 			return true;
-		case FAILOVER_STATE_FOLLOW_FAIL:
 
+		case FAILOVER_STATE_FOLLOW_FAIL:
 			/*
 			 * for whatever reason we were unable to follow the new primary -
 			 * continue monitoring in degraded state
@@ -2503,6 +2614,9 @@ bool do_witness_failover(void)
 			return false;
 
 		default:
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
 			return false;
 	}
 	/* should never reach here */
