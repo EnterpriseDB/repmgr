@@ -142,7 +142,7 @@
    <title>I've provided replication permission for the <literal>repmgr</literal> user in <filename>pg_hba.conf</filename>
      but <command>repmgr</command>/<application>repmgrd</application> complains it can't connect to the server... Why?</title>
    <para>
-    <command>repmgr</command> and<application>repmgrd</application> need to be able to connect to the repmgr database
+    <command>repmgr</command> and <application>repmgrd</application> need to be able to connect to the repmgr database
     with a normal connection to query metadata. The <literal>replication</literal> connection
     permission is for PostgreSQL's streaming replication (and doesn't  necessarily need to be the <literal>repmgr</literal> user).
    </para>
@@ -155,8 +155,17 @@
     Cloning a standby is a one-time action; the role of the server being cloned
     from could change, so fixing it in the configuration file would create
     confusion. If &repmgr; needs to establish a connection to the primary
-    server, it can retrieve this from the <literal>repmgr.nodes</literal> table or if necessary
-    scan the replication cluster until it locates the active primary.
+    server, it can retrieve this from the <literal>repmgr.nodes</literal> table on the local
+    node, and if necessary scan the replication cluster until it locates the active primary.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-repmgr-clone-waldir-xlogdir" xreflabel="Providing a custom WAL directory">
+   <title>When cloning a standby, how do I ensure the WAL files are placed in a custom directory?</title>
+   <para>
+     Provide the option <literal>--waldir</literal>  (<literal>--xlogdir</literal> in PostgreSQL 9.6
+     and earlier) with the absolute path to the WAL directory in <varname>pg_basebackup_options</varname>.
+     For more details see <xref linkend="cloning-advanced-pg-basebackup-options">.
    </para>
   </sect2>
 
