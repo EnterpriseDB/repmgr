@@ -234,11 +234,10 @@ do_witness_register(void)
 	/* these values are mandatory, setting them to anything else has no point */
 	node_record.type = WITNESS;
 	node_record.priority = 0;
-	node_record.upstream_node_id = NO_UPSTREAM_NODE;
+	node_record.upstream_node_id = get_primary_node_id(primary_conn);
 
 	if (record_status == RECORD_FOUND)
 	{
-
 		record_created = update_node_record(primary_conn,
 											"witness register",
 											&node_record);
