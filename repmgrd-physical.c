@@ -1032,6 +1032,8 @@ monitor_streaming_witness(void)
 {
 #ifndef BDR_ONLY
 	instr_time	log_status_interval_start;
+	instr_time	witness_sync_interval_start;
+
 	PQExpBufferData event_details;
 	RecordStatus record_status;
 
@@ -1065,7 +1067,8 @@ monitor_streaming_witness(void)
 		exit(ERR_DB_CONN);
 	}
 
-
+	/* synchronise local copy of "repmgr.nodes", in case it was stale */
+	witness_copy_node_records(primary_conn, local_conn);
 	/*
 	 * refresh upstream node record from primary, so it's as up-to-date
 	 * as possible
@@ -1101,6 +1104,8 @@ monitor_streaming_witness(void)
 
 	monitoring_state = MS_NORMAL;
 	INSTR_TIME_SET_CURRENT(log_status_interval_start);
+	INSTR_TIME_SET_CURRENT(witness_sync_interval_start);
+
 	upstream_node_info.node_status = NODE_STATUS_UP;
 
 	while (true)
@@ -1182,7 +1187,17 @@ monitor_streaming_witness(void)
 		}
 loop:
 
-		// XXX refresh repmgr.nodes
+		/* refresh repmgr.nodes after "witness_sync_interval" seconds */
+
+		{
+			int witness_sync_interval_elapsed = calculate_elapsed(witness_sync_interval_start);
+			if (witness_sync_interval_elapsed >= config_file_options.witness_sync_interval)
+			{
+				log_debug("synchronising witness node records");
+				witness_copy_node_records(primary_conn, local_conn);
+				INSTR_TIME_SET_CURRENT(witness_sync_interval_start);
+			}
+		}
 
 		/* emit "still alive" log message at regular intervals, if requested */
 		if (config_file_options.log_status_interval > 0)
