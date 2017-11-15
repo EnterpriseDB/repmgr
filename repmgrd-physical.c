@@ -630,9 +630,9 @@ monitor_streaming_standby(void)
 
 	while (true)
 	{
+		log_verbose(LOG_DEBUG, "checking %s", upstream_node_info.conninfo);
 		if (is_server_available(upstream_node_info.conninfo) == false)
 		{
-
 			/* upstream node is down, we were expecting it to be up */
 			if (upstream_node_info.node_status == NODE_STATUS_UP)
 			{
@@ -994,7 +994,7 @@ loop:
 		}
 
 
-		if (PQstatus(local_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
+		if (PQstatus(primary_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
 			update_monitoring_history();
 
 		if (got_SIGHUP)
@@ -1069,6 +1069,7 @@ monitor_streaming_witness(void)
 
 	/* synchronise local copy of "repmgr.nodes", in case it was stale */
 	witness_copy_node_records(primary_conn, local_conn);
+
 	/*
 	 * refresh upstream node record from primary, so it's as up-to-date
 	 * as possible
@@ -1527,7 +1528,6 @@ do_primary_failover(void)
 			monitoring_state = MS_DEGRADED;
 			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
-			log_debug("failover state is PROMOTION FAILED");
 			return false;
 
 		case FAILOVER_STATE_FOLLOW_FAIL:
@@ -1557,7 +1557,6 @@ do_primary_failover(void)
 		case FAILOVER_STATE_LOCAL_NODE_FAILURE:
 		case FAILOVER_STATE_UNKNOWN:
 		case FAILOVER_STATE_NONE:
-			log_debug("failover state is %i", failover_state);
 			return false;
 	}
 
@@ -1988,7 +1987,7 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
-			log_debug("unable to reconnect to  %i ... ", cell->node_info->node_id);
+			log_debug("unable to reconnect to %i ... ", cell->node_info->node_id);
 
 			continue;
 		}
@@ -2533,9 +2532,25 @@ do_election(void)
 		return ELECTION_CANCELLED;
 	}
 
+	log_debug("visible nodes: %i; total nodes: %i",
+			  visible_nodes,
+			  standby_nodes.node_count);
+
+	if (visible_nodes <= (standby_nodes.node_count / 2.0))
+	{
+		log_notice(_("unable to reach a qualified majority of nodes"));
+		log_detail(_("node will enter degraded monitoring state waiting for reconnect"));
+
+		monitoring_state = MS_DEGRADED;
+		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
+		reset_node_voting_status();
+
+		return ELECTION_CANCELLED;
+	}
 
 	log_debug("promotion candidate is %i", candidate_node->node_id);
-	if (candidate_node->node_id ==  local_node_info.node_id)
+	if (candidate_node->node_id == local_node_info.node_id)
 		return ELECTION_WON;
 
 	return ELECTION_LOST;
