@@ -1076,6 +1076,18 @@ monitor_streaming_witness(void)
 	 */
 	record_status = get_node_record(primary_conn, upstream_node_info.node_id, &upstream_node_info);
 
+	/*
+	 * This is unlikely to happen; if it does emit a warning for diagnostic
+	 * purposes and plough on regardless.
+	 *
+	 * A check for the existence of the record will have already been carried out
+	 * in main().
+	 */
+	if (record_status != RECORD_FOUND)
+	{
+		log_warning(_("unable to retrieve node record from primary"));
+	}
+
 
 	/* Log startup event */
 	if (startup_event_logged == false)
@@ -1587,14 +1599,14 @@ update_monitoring_history(void)
 	}
 
 	/*
-	 * this can be the case when a standby is starting up after following
-	 * a new primary
+	 * This can be the case when a standby is starting up after following
+	 * a new primary, or when it has dropped back to archive recovery.
+	 * As long as we can connect to the primary, we can still provide lag information.
 	 */
 	if (replication_info.receiving_streamed_wal == false)
 	{
 		log_verbose(LOG_WARNING, _("standby %i not connected to streaming replication"),
 					local_node_info.node_id);
-		return;
 	}
 
 	primary_last_wal_location = get_current_wal_lsn(primary_conn);
