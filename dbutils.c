@@ -2593,7 +2593,7 @@ truncate_node_records(PGconn *conn)
 }
 
 void
-get_node_replication_stats(PGconn *conn, t_node_info *node_info)
+get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *node_info)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -2602,12 +2602,31 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 
 	appendPQExpBuffer(&query,
 					  " SELECT current_setting('max_wal_senders')::INT AS max_wal_senders, "
-					  "        (SELECT COUNT(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, "
-					  "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
-					  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
-					  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = TRUE)  AS active_replication_slots, "
-					  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = FALSE) AS inactive_replication_slots, "
+					  "        (SELECT COUNT(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, ");
+
+	/* no replication slots in PostgreSQL 9.3 */
+	if (server_version_num < 90400)
+	{
+		appendPQExpBuffer(&query,
+						  "        0 AS  max_replication_slots, "
+						  "        0 AS total_replication_slots, "
+						  "        0 AS active_replication_slots, "
+						  "        0 AS inactive_replication_slots, ");
+	}
+	else
+	{
+		appendPQExpBuffer(&query,
+						  "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
+						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
+						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = TRUE)  AS active_replication_slots, "
+						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = FALSE) AS inactive_replication_slots, ");
+	}
+
+
+	appendPQExpBuffer(&query,
 					  "        pg_catalog.pg_is_in_recovery() AS in_recovery");
+
+
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
