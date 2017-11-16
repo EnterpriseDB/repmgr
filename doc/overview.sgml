@@ -145,6 +145,31 @@
       </para>
      </listitem>
     </varlistentry>
+    <varlistentry>
+     <term>witness server</term>
+     <listitem>
+      <para>
+        &repmgr; provides functionality to set up a so-called "witness server" to
+        assist in determining a new master server in a failover situation with more
+        than one standby. The witness server itself is not part of the replication
+        cluster, although it does contain a copy of the repmgr metadata schema
+        (see below).
+      </para>
+      <para>
+        The purpose of a witness server is to provide a "casting vote" where servers
+        in the replication cluster are split over more than one location. In the event
+        of a loss of connectivity between locations, the presence or absence of
+        the witness server will decide whether a server at that location is promoted
+        to master; this is to prevent a "split-brain" situation where an isolated
+        location interprets a network outage as a failure of the (remote) master and
+        promotes a (local) standby.
+      </para>
+      <para>
+        A witness server only needs to be created if <application>repmgrd</application>
+        is in use.
+      </para>
+     </listitem>
+    </varlistentry>
    </variablelist>
   </para>
  </sect1>
