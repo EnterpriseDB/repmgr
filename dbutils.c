@@ -27,7 +27,6 @@
 #include "repmgr.h"
 #include "dbutils.h"
 #include "controldata.h"
-
 #include "dirutil.h"
 
 /* mainly for use by repmgrd */
@@ -3086,6 +3085,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 		char	   *end_ptr = NULL;
 		int			r = 0;
 
+		log_verbose(LOG_DEBUG, "_create_event(): command is '%s'", options->event_notification_command);
 		/*
 		 * If configuration option 'event_notifications' was provided, check
 		 * if this event is one of the ones listed; if not listed, don't
@@ -3164,8 +3164,14 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						src_ptr++;
 						if (details != NULL)
 						{
-							strlcpy(dst_ptr, details, end_ptr - dst_ptr);
+							PQExpBufferData details_escaped;
+							initPQExpBuffer(&details_escaped);
+
+							escape_double_quotes(details, &details_escaped);
+
+							strlcpy(dst_ptr, details_escaped.data, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
+							termPQExpBuffer(&details_escaped);
 						}
 						break;
 					case 's':

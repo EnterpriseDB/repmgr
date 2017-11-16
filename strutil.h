@@ -142,6 +142,8 @@ extern char *escape_recovery_conf_value(const char *src);
 
 extern char *escape_string(PGconn *conn, const char *string);
 
+extern void escape_double_quotes(char *string, PQExpBufferData *out);
+
 extern void
 append_where_clause(PQExpBufferData *where_clause, const char *clause,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));

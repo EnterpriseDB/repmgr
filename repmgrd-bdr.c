@@ -472,8 +472,8 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 	 * event "bdr_failover"
 	 */
 
-	create_event_notification_extended(
-									   next_node_conn,
+
+	create_event_notification_extended(next_node_conn,
 									   &config_file_options,
 									   monitored_node->node_id,
 									   "bdr_failover",

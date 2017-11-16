@@ -369,6 +369,31 @@ escape_string(PGconn *conn, const char *string)
 }
 
 
+/*
+ * simple function to escape double quotes only
+ */
+
+void
+escape_double_quotes(char *string, PQExpBufferData *out)
+{
+	char *ptr;
+
+	for (ptr = string; *ptr; ptr++)
+	{
+		if (*ptr == '"')
+		{
+			if ( (ptr == string) || (ptr > string && *(ptr - 1) != '\\'))
+			{
+				appendPQExpBufferChar(out, '\\');
+			}
+		}
+		appendPQExpBufferChar(out, *ptr);
+	}
+
+	return;
+}
+
+
 char *
 string_skip_prefix(const char *prefix, char *string)
 {
