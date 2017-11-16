@@ -1,0 +1,31 @@
+<chapter id="repmgrd-witness-server">
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>witness server</secondary>
+ </indexterm>
+
+ <title>Using a witness server with repmgrd</title>
+ <para>
+   In a situation caused e.g. by a network interruption between two
+   data centres, it's important to avoid a "split-brain" situation where
+   both sides of the network assume they are the active segment and the
+   side without an active master unilaterally promotes one of its standbys.
+ </para>
+ <para>
+   To prevent this situation happening, it's essential to ensure that one
+   network segment has a "voting majority", so other segments will know
+   they're in the minority and not attempt to promote a new master. Where
+   an odd number of servers exists, this is not an issue. However, if each
+   network has an even number of nodes, it's necessary to provide some way
+   of ensuring a majority, which is where the witness server becomes useful.
+ </para>
+ <para>
+   This is not a fully-fledged standby node and is not integrated into
+   replication, but it effectively represents the "casting vote" when
+   deciding which network segment has a majority. A witness server can
+   be set up using `repmgr witness create` (see below for details) and
+   can run on a dedicated server or an existing node. Note that it only
+   makes sense to create a witness server in conjunction with running
+   `repmgrd`; the witness server will require its own `repmgrd` instance.
+ </para>
+</chapter>
