@@ -15,7 +15,7 @@
   in the main data centre and promoted a standby among themselves.
  </para>
  <para>
-  Previous &repmgr; versions used the concept of a "witness server" to
+  &repmgr; enables provision of &quot;<xref linkend="witness-server">&quot; to
   artificially create a quorum of servers in a particular location, ensuring
   that nodes in another location will not elect a new primary if they
   are unable to see the majority of nodes. However this approach does not

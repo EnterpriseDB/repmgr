@@ -61,7 +61,7 @@
     [2017-08-24 23:32:12] [NOTICE] this node is the winner, will now promote self and inform other nodes
     INFO: connecting to standby database
     NOTICE: promoting standby
-    DETAIL: promoting server using '/home/barwick/devel/builds/HEAD/bin/pg_ctl -l /var/log/postgres/startup.log -w -D '/tmp/repmgr-test/node_2/data' promote'
+    DETAIL: promoting server using 'pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' promote'
     INFO: reconnecting to promoted server
     NOTICE: STANDBY PROMOTE successful
     DETAIL: node 2 was successfully promoted to primary

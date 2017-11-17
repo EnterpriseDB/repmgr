@@ -62,9 +62,9 @@
     Double-check which commands will be used to stop/start/restart the current
     primary; on the primary execute:
     <programlisting>
-     repmgr -f /etc./repmgr.conf node service --list --action=stop
-     repmgr -f /etc./repmgr.conf node service --list --action=start
-     repmgr -f /etc./repmgr.conf node service --list --action=restart
+     repmgr -f /etc/repmgr.conf node service --list --action=stop
+     repmgr -f /etc/repmgr.conf node service --list --action=start
+     repmgr -f /etc/repmgr.conf node service --list --action=restart
     </programlisting>
    </para>
    <note>
