@@ -1,4 +1,4 @@
-<chapter id="repmgrd-network-split">
+<chapter id="repmgrd-network-split" xreflabel="Handling network splits with repmgrd">
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>network splits</secondary>

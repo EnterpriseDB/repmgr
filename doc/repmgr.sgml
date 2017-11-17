@@ -73,6 +73,7 @@
   &promoting-standby;
   &follow-new-primary;
   &switchover;
+  &configuring-witness-server;
   &event-notifications;
   &upgrading-repmgr;
  </part>

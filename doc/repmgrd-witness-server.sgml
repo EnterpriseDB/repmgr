@@ -1,4 +1,4 @@
-<chapter id="repmgrd-witness-server">
+<chapter id="repmgrd-witness-server" xreflabel="Using a witness server with repmgrd">
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>witness server</secondary>
@@ -23,9 +23,9 @@
    This is not a fully-fledged standby node and is not integrated into
    replication, but it effectively represents the "casting vote" when
    deciding which network segment has a majority. A witness server can
-   be set up using `repmgr witness create` (see below for details) and
-   can run on a dedicated server or an existing node. Note that it only
+   be set up using <xref linkend="repmgr-witness-register">. Note that it only
    makes sense to create a witness server in conjunction with running
-   `repmgrd`; the witness server will require its own `repmgrd` instance.
+   <application>repmgrd</application>; the witness server will require its own
+   <application>repmgrd</application> instance.
  </para>
 </chapter>

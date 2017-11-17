@@ -1,6 +1,7 @@
-<refentry id="repmgr-witness-register" xreflabel="repmgr witness register">
+<refentry id="repmgr-witness-register">
   <indexterm>
     <primary>repmgr witness register</primary>
+    <seealso>witness server</seealso>
   </indexterm>
 
   <refmeta>

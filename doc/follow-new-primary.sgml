@@ -1,4 +1,4 @@
-<chapter id="follow-new-primary" xreflabel="Following a new primary">
+<chapter id="follow-new-primary">
  <indexterm>
   <primary>Following a new primary</primary>
   <seealso>repmgr standby follow</seealso>
