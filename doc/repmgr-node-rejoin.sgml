@@ -125,7 +125,7 @@
     INFO: prerequisites for using pg_rewind are met
     INFO: 2 files copied to "/tmp/repmgr-config-archive-node1"
     NOTICE: executing pg_rewind
-    NOTICE: 2 files copied to /space/sda1/ibarwick/repmgr-test/node_1/data
+    NOTICE: 2 files copied to /var/lib/pgsql/data
     INFO: directory "/tmp/repmgr-config-archive-node1" deleted
     INFO: deleting "recovery.done"
     INFO: setting node 1's primary to node 2
@@ -135,7 +135,6 @@
     NOTICE: NODE REJOIN successful
     DETAIL: node 1 is now attached to node 2</programlisting>
     </para>
-
 
   </refsect1>
 

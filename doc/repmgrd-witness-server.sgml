@@ -9,12 +9,12 @@
    In a situation caused e.g. by a network interruption between two
    data centres, it's important to avoid a "split-brain" situation where
    both sides of the network assume they are the active segment and the
-   side without an active master unilaterally promotes one of its standbys.
+   side without an active primary unilaterally promotes one of its standbys.
  </para>
  <para>
    To prevent this situation happening, it's essential to ensure that one
    network segment has a "voting majority", so other segments will know
-   they're in the minority and not attempt to promote a new master. Where
+   they're in the minority and not attempt to promote a new primary. Where
    an odd number of servers exists, this is not an issue. However, if each
    network has an even number of nodes, it's necessary to provide some way
    of ensuring a majority, which is where the witness server becomes useful.
