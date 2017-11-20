@@ -275,8 +275,10 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
 #service_stop_command = ''
 #service_restart_command = ''
 #service_reload_command = ''
-#service_promote_command = ''            # Note: this overrides any value contained
-                                         # in the setting "promote_command"
+#service_promote_command = ''            # Note: this overrides any value contained in the setting
+                                         # "promote_command". This is intended for systems which
+                                         # provide a package-level promote command, such as Debian's
+                                         # "pg_ctlcluster"
 
 
 #------------------------------------------------------------------------------
