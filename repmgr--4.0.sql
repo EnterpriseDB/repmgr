@@ -123,11 +123,6 @@ CREATE FUNCTION standby_get_last_updated()
 
 /* failover functions */
 
-CREATE FUNCTION set_voting_status_initiated(INT)
-  RETURNS VOID
-  AS 'MODULE_PATHNAME', 'set_voting_status_initiated'
-  LANGUAGE C STRICT;
-
 CREATE FUNCTION notify_follow_primary(INT)
   RETURNS VOID
   AS 'MODULE_PATHNAME', 'notify_follow_primary'
@@ -147,7 +142,6 @@ CREATE FUNCTION am_bdr_failover_handler(INT)
   RETURNS BOOL
   AS 'MODULE_PATHNAME', 'am_bdr_failover_handler'
   LANGUAGE C STRICT;
-
 
 CREATE FUNCTION unset_bdr_failover_handler()
   RETURNS VOID

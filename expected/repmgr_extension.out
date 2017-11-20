@@ -50,12 +50,6 @@ SELECT repmgr.get_new_primary();
                 
 (1 row)
 
-SELECT repmgr.get_voting_status();
- get_voting_status 
--------------------
-                  
-(1 row)
-
 SELECT repmgr.notify_follow_primary(-1);
  notify_follow_primary 
 -----------------------
@@ -65,54 +59,6 @@ SELECT repmgr.notify_follow_primary(-1);
 SELECT repmgr.notify_follow_primary(NULL);
  notify_follow_primary 
 -----------------------
- 
-(1 row)
-
-SELECT repmgr.other_node_is_candidate(-1,-1);
- other_node_is_candidate 
--------------------------
- 
-(1 row)
-
-SELECT repmgr.other_node_is_candidate(-1,NULL);
- other_node_is_candidate 
--------------------------
- 
-(1 row)
-
-SELECT repmgr.other_node_is_candidate(NULL,-1);
- other_node_is_candidate 
--------------------------
- 
-(1 row)
-
-SELECT repmgr.other_node_is_candidate(NULL,NULL);
- other_node_is_candidate 
--------------------------
- 
-(1 row)
-
-SELECT repmgr.request_vote(-1,-1);
- request_vote 
---------------
- 
-(1 row)
-
-SELECT repmgr.request_vote(-1,NULL);
- request_vote 
---------------
- 
-(1 row)
-
-SELECT repmgr.request_vote(NULL,-1);
- request_vote 
---------------
- 
-(1 row)
-
-SELECT repmgr.request_vote(NULL,NULL);
- request_vote 
---------------
  
 (1 row)
 
@@ -132,12 +78,6 @@ SELECT repmgr.set_local_node_id(NULL);
  set_local_node_id 
 -------------------
  
-(1 row)
-
-SELECT repmgr.set_voting_status_initiated();
- set_voting_status_initiated 
------------------------------
-                            
 (1 row)
 
 SELECT repmgr.standby_get_last_updated();

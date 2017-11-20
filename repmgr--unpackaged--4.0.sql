@@ -133,11 +133,6 @@ CREATE FUNCTION standby_get_last_updated()
 
 /* failover functions */
 
-CREATE FUNCTION set_voting_status_initiated()
-  RETURNS INT
-  AS '$libdir/repmgr', 'set_voting_status_initiated'
-  LANGUAGE C STRICT;
-
 CREATE FUNCTION notify_follow_primary(INT)
   RETURNS VOID
   AS '$libdir/repmgr', 'notify_follow_primary'

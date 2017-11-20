@@ -3774,52 +3774,6 @@ increment_current_term(PGconn *conn)
 }
 
 
-NodeVotingStatus
-get_voting_status(PGconn *conn)
-{
-	PGresult   *res = NULL;
-	NodeVotingStatus voting_status = VS_UNKNOWN;
-
-	res = PQexec(conn, "SELECT repmgr.get_voting_status()");
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_error(_("unable to query repmgr.get_voting_status():\n  %s"),
-				  PQerrorMessage(conn));
-		PQclear(res);
-		return VS_UNKNOWN;
-	}
-
-	voting_status = atoi(PQgetvalue(res, 0, 0));
-
-	PQclear(res);
-	return voting_status;
-}
-
-
-void
-set_voting_status_initiated(PGconn *conn, int electoral_term)
-{
-	PQExpBufferData query;
-	PGresult   *res = NULL;
-
-	initPQExpBuffer(&query);
-
-	appendPQExpBuffer(&query,
-					  "SELECT repmgr.set_voting_status_initiated(%i)",
-					  electoral_term);
-
-	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
-
-	electoral_term = atoi(PQgetvalue(res, 0, 0));
-
-	PQclear(res);
-
-	return;
-}
-
-
 bool
 announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term)
 {

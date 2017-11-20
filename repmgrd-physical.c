@@ -2383,14 +2383,6 @@ do_election(void)
 
 	local_node_info.last_wal_receive_lsn = InvalidXLogRecPtr;
 
-	/*
-	 * Here we mark ourselves as candidate, so any further vote requests are
-	 * rejected. However it's possible another node has done the same thing,
-	 * so when announcing ourselves as candidate to the other nodes, we'll
-	 * check for that and withdraw our candidature.
-	 */
-	set_voting_status_initiated(local_conn, electoral_term);
-
 	/* fast path if no other standbys (or witness) exists - normally win by default */
 	if (standby_nodes.node_count == 0)
 	{
