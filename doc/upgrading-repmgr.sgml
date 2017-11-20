@@ -179,9 +179,10 @@
       changed.
     </para>
     <para>
-      Please note that the parameter <varname>data_directory</varname> <emphasis>must</emphasis>
-      be provided; if not already present, the conversion script will add an empty
-      placeholder parameter.
+      Please note that the the conversion script will add an empty
+      placeholder parameter for <varname>data_directory</varname>, which
+      is a required parameter in repmgr4 and which <emphasis>must</emphasis>
+      be provided.
     </para>
    </sect3>
   </sect2>

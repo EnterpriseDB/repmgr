@@ -1,6 +1,6 @@
-4.0     2017-10-04
-        Complete rewrite with many changes; see file "doc/upgrading-from-repmgr3.md"
-        for details.
+4.0.0   2017-11-21
+        Complete rewrite with many changes; for details see the repmgr 4.0.0 release
+        notes at: https://repmgr.org/docs/4.0/release-4.0.html
 
 3.3.2   2017-06-01
         Add support for PostgreSQL 10 (Ian)

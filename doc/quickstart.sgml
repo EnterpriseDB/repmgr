@@ -5,12 +5,17 @@
   This section gives a quick introduction to &repmgr;, including setting up a
   sample &repmgr; installation and a basic replication cluster.
  </para>
-
  <para>
-  These instructions are not suitable for a production install, as they may not
-  take into account security considerations, proper system administration
-  procedures etc..
+  These instructions for demonstration purposes and are not suitable for a production
+  install, as issues such as account security considerations, and system administration
+  best practices are omitted.
  </para>
+ <note>
+   <simpara>
+     To upgrade an existing &repmgr; 3.x installation, see section
+     <xref linkend="upgrading-from-repmgr-3">.
+   </simpara>
+ </note>
 
  <sect1 id="quickstart-prerequisites">
    <title>Prerequisites for setting up a basic replication cluster with &repmgr;</title>
