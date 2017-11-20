@@ -4970,7 +4970,7 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 	}
 
 	/* passfile provided as configuration option */
-	if (config_file_options.passfile[0] != '\n')
+	if (config_file_options.passfile[0] != '\0')
 	{
 		/* check if the libpq we're using supports "passfile=" */
 		if (has_passfile() == true)
