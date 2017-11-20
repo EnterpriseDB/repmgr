@@ -4313,7 +4313,7 @@ run_file_backup(t_node_info *node_record)
 									 * empty */
 			{
 				maxlen_snprintf(command,
-								"rsync --progress -a --files-from=%s/%s.txt %s:%s/base/%s/%s %s",
+								"rsync --progress -a --files-from=%s/%s.txt %s:%s/%s/%s %s",
 								local_repmgr_tmp_directory,
 								cell_t->oid,
 								config_file_options.barman_host,
