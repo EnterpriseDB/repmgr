@@ -97,9 +97,6 @@ PG_FUNCTION_INFO_V1(standby_set_last_updated);
 Datum		standby_get_last_updated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(standby_get_last_updated);
 
-Datum		set_voting_status_initiated(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(set_voting_status_initiated);
-
 Datum		notify_follow_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(notify_follow_primary);
 
@@ -286,42 +283,6 @@ standby_get_last_updated(PG_FUNCTION_ARGS)
 /* ===================*/
 /* failover functions */
 /* ===================*/
-
-
-
-Datum
-set_voting_status_initiated(PG_FUNCTION_ARGS)
-{
-#ifndef BDR_ONLY
-	int			electoral_term = -1;
-
-	if (!shared_state)
-		PG_RETURN_VOID();
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_VOID();
-
-	electoral_term = PG_GETARG_INT32(0);
-
-	LWLockAcquire(shared_state->lock, LW_SHARED);
-
-	/* only do something if local_node_id is initialised */
-	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
-	{
-		LWLockRelease(shared_state->lock);
-		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
-
-		shared_state->voting_status = VS_VOTE_INITIATED;
-		shared_state->current_electoral_term = electoral_term;
-
-		elog(INFO, "setting voting term to %i", electoral_term);
-	}
-
-	LWLockRelease(shared_state->lock);
-
-#endif
-	PG_RETURN_VOID();
-}
 
 
 Datum
