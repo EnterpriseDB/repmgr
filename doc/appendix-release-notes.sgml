@@ -1,4 +1,4 @@
-<appendix id="appendix-release-notes" xreflabel="Release notes">
+<appendix id="appendix-release-notes">
  <title>Release notes</title>
  <indexterm>
   <primary>Release notes</primary>
@@ -16,30 +16,153 @@
   See also: <xref linkend="upgrading-repmgr">
  </para>
 
- <sect1 id="release-4.0">
-  <title>Release 4.0beta1</title>
+ <sect1 id="release-4.0.0">
+  <title>Release 4.0.0</title>
 
-  <para><emphasis>Thu Oct 5, 2017</emphasis></para>
+  <para><emphasis>Tue Nov 21, 2017</emphasis></para>
 
   <para>
-    repmgr 4.0 is an entirely new version of &repmgr;, providing many
-    improvements together with some changes in the way it works.
-    In particular changes have been made to some configuration file
-    settings and command line options for consistency and clarity.
+    repmgr 4.0 is an entirely new version of &repmgr;, implementing &repmgr;
+    as a native PostgreSQL extension, adding new and improving existing features,
+    and making &repmgr; more user-friendly and intuitive to use. The new code base
+    will make it easier to add additional functionality for future releases.
   </para>
-  <para>
-    For detailed instructions on upgrading from repmgr 3.x, see
-    <xref linkend="upgrading-from-repmgr-3">.
-  </para>
-
   <note>
-    <para>
+    <simpara>
+      With the new version, the opportunity has been taken to
+      make some changes in the way &repmgr; is set up and
+      configured. In particular changes have been made to some
+      configuration file settings consistency for and clarity.
+      Changes are covered in detail below
+    </simpara>
+    <simpara>
       To standardise terminology, from this release <literal>primary</literal> is used to
       denote the read/write node in a streaming replication cluster. <literal>master</literal>
       is still accepted as an alias for &repmgr; commands
       (e.g. <link linkend="repmgr-primary-register"><command>repmgr master register</command></link>).
-    </para>
+    </simpara>
   </note>
+
+  <para>
+    For detailed instructions on upgrading from repmgr 3.x, see <xref linkend="upgrading-from-repmgr-3">.
+  </para>
+
+  <sect2>
+    <title>Features and improvements</title>
+    <para>
+
+      <itemizedlist>
+        <listitem>
+          <para>
+            <emphasis>improved switchover</emphasis>:
+            the <command>switchover</command> process has been improved and streamlined,
+            speeding up the switchover process and can also instruct other standbys
+            to follow the new primary once the switchover has completed. See
+             <xref linkend="performing-switchover"> for more details.
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+           <emphasis>"--dry-run" option</emphasis>: many &repmgr; commands now provide
+           a <literal>--dry-run</literal> option which will execute the command as far
+           as possible without making any changes, which will enable possible issues
+           to be identified before the intended operation is actually carried out.
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            <emphasis>easier upgrades</emphasis>: &repmgr; is now implemented as a native
+            PostgreSQL extension, which means future upgrades can be carried out by
+            installing the upgraded package and issuing
+            <ulink url="https://www.postgresql.org/docs/current/static/sql-alterextension.html">ALTER EXTENSION repmgr UPDATE</ulink>.
+          </para>
+        </listitem>
+
+
+        <listitem>
+          <para>
+            <emphasis>improved logging output</emphasis>:
+            &repmgr; (and <application>repmgrd</application>) now provide more explicit
+            logging output giving a better picture of what is going on. Where appropriate,
+            <literal>DETAIL</literal> and <literal>HINT</literal> log lines provide additional
+            detail and suggestions for resolving problems. Additionally, <application>repmgrd</application>
+            now emits informational log lines at regular, configurable intervals
+            to confirm that it's running correctly and which node(s) it's monitoring.
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            <emphasis>automatic configuration file location in packages</emphasis>:
+            Many operating system packages place the &repmgr; configuration files
+            in a version-specific subdirectory, e.g. <filename>/etc/repmgr/9.6/repmgr.conf</filename>;
+            &repmgr; now makes it easy for package maintainers to provide a patch
+            with the actual file location, meaning <filename>repmgr.conf</filename>
+            does not need to be provided explicitly. This is currently the case
+            for 2ndQuadrant-provided <literal>.deb</literal> and <literal>.rpm</literal> packages.
+          </para>
+        </listitem>
+
+
+        <listitem>
+          <para>
+            <emphasis>monitoring and status checks</emphasis>:
+            New commands <xref linkend="repmgr-node-check"> and
+            <xref linkend="repmgr-node-status"> providing information
+            about a node's status and replication-related monitoring
+            output.
+          </para>
+        </listitem>
+
+
+        <listitem>
+          <para>
+            <emphasis>node rejoin</emphasis>:
+            New commands <xref linkend="repmgr-node-rejoin"> enables a failed
+            primary to be rejoined to a replication cluster, optionally using
+            <application>pg_rewind</application> to synchronise its data,
+            (note that <application>pg_rewind</application> may not be useable
+            in some circumstances).
+          </para>
+        </listitem>
+
+
+        <listitem>
+          <para>
+            <emphasis>automatic failover</emphasis>:
+            improved detection of node status; promotion decision based on a consensual
+            model, with the promoted primary explicitly informing other standbys to
+            follow it. The <application>repmgrd</application> daemon will continue
+            functioning even if the monitored PostgreSQL instance is down, and resume
+            monitoring if it reappears. Additionally, if the instance's role has changed
+            (typically from a primary to a standby, e.g. following reintegration of a
+            failed primary using <xref linkend="repmgr-node-rejoin">) <application>repmgrd</application>
+            will automatically resume monitoring it as a standby.
+          </para>
+        </listitem>
+
+
+
+        <listitem>
+          <para>
+            <emphasis>new documentation</emphasis>:
+            the existing documentation spread over multiple text files
+            has been consolidated into DocBook format (as used by the
+            main PostgreSQL project) and is now available online in
+            HTML format.
+          </para>
+          <para>
+            The DocBook files can easily be used to create versions
+            of the documentation in other formats such as PDF.
+          </para>
+        </listitem>
+
+      </itemizedlist>
+
+    </para>
+  </sect2>
   <sect2>
     <title>New command line options</title>
     <para>
