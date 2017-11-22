@@ -2130,7 +2130,7 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
 					  "           n.slot_name, n.location, n.priority, n.active, un.node_name AS upstream_node_name "
 					  "      FROM repmgr.nodes n "
-					  " LEFT JOIN nodes un "
+					  " LEFT JOIN repmgr.nodes un "
 					  "        ON un.node_id = n.upstream_node_id"
 					  "  ORDER BY n.node_id ");
 
