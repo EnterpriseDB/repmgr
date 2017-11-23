@@ -559,6 +559,7 @@ do_node_check(void)
 
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
 
+	CheckStatus return_code;
 	CheckStatusList status_list = {NULL, NULL};
 	CheckStatusListCell *cell = NULL;
 
@@ -585,38 +586,51 @@ do_node_check(void)
 	 */
 	if (runtime_options.archive_ready == true)
 	{
-		(void) do_node_check_archive_ready(conn, runtime_options.output_mode, NULL);
+		return_code = do_node_check_archive_ready(conn,
+													runtime_options.output_mode,
+													NULL);
 		PQfinish(conn);
-		return;
+		exit(return_code);
 	}
 
 	if (runtime_options.downstream == true)
 	{
-		(void) do_node_check_downstream(conn, runtime_options.output_mode, NULL);
+		return_code = do_node_check_downstream(conn,
+											   runtime_options.output_mode,
+											   NULL);
 		PQfinish(conn);
-		return;
+		exit(return_code);
 	}
 
 
 	if (runtime_options.replication_lag == true)
 	{
-		(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &node_info, NULL);
+		return_code = do_node_check_replication_lag(conn,
+													runtime_options.output_mode,
+													&node_info,
+													NULL);
 		PQfinish(conn);
-		return;
+		exit(return_code);
 	}
 
 	if (runtime_options.role == true)
 	{
-		(void) do_node_check_role(conn, runtime_options.output_mode, &node_info, NULL);
+		return_code = do_node_check_role(conn,
+										 runtime_options.output_mode,
+										 &node_info,
+										 NULL);
 		PQfinish(conn);
-		return;
+		exit(return_code);
 	}
 
 	if (runtime_options.slots == true)
 	{
-		(void) do_node_check_slots(conn, runtime_options.output_mode, &node_info, NULL);
+		return_code = do_node_check_slots(conn,
+										  runtime_options.output_mode,
+										  &node_info,
+										  NULL);
 		PQfinish(conn);
-		return;
+		exit(return_code);
 	}
 
 	if (runtime_options.output_mode == OM_NAGIOS)
