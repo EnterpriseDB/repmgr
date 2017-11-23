@@ -359,7 +359,7 @@ do_standby_clone(void)
 	 * If copying of external configuration files requested, and any are
 	 * detected, perform sanity checks
 	 */
-	if (PQstatus(source_conn) == CONNECTION_OK)
+	if (PQstatus(source_conn) == CONNECTION_OK && runtime_options.copy_external_config_files == true)
 	{
 		PGconn	   *superuser_conn = NULL;
 		PGconn	   *privileged_conn = NULL;
@@ -549,7 +549,7 @@ do_standby_clone(void)
 	 * This won't run in Barman mode as "config_files" is only populated in
 	 * "initialise_direct_clone()", which isn't called in Barman mode.
 	 */
-	if (runtime_options.copy_external_config_files && config_files.entries)
+	if (runtime_options.copy_external_config_files == true && config_files.entries > 0)
 	{
 		copy_configuration_files();
 	}
