@@ -22,7 +22,6 @@
 extern void do_node_status(void);
 extern void do_node_check(void);
 
-
 extern void do_node_rejoin(void);
 extern void do_node_service(void);
 

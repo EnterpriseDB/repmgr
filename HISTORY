@@ -1,6 +1,12 @@
+4.0.1   2017-11-
+        repmgr: ensure "repmgr node check --action=" returns appropriate return
+          code (Ian)
+        repmgr: add missing schema qualification in get_all_node_records_with_upstream()
+          query (Martín)
+
 4.0.0   2017-11-21
         Complete rewrite with many changes; for details see the repmgr 4.0.0 release
-        notes at: https://repmgr.org/docs/4.0/release-4.0.html
+        notes at: https://repmgr.org/docs/4.0/release-4.0.0.html
 
 3.3.2   2017-06-01
         Add support for PostgreSQL 10 (Ian)

@@ -33,12 +33,17 @@
 #define MAXLEN_STR STR(MAXLEN)
 
 
+/*
+ * These values must match the Nagios return codes defined here:
+ *
+ * https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/3/en/pluginapi.html
+ */
 typedef enum
 {
-	CHECK_STATUS_OK = 0,
-	CHECK_STATUS_WARNING,
-	CHECK_STATUS_CRITICAL,
-	CHECK_STATUS_UNKNOWN
+	CHECK_STATUS_OK       = 0,
+	CHECK_STATUS_WARNING  = 1,
+	CHECK_STATUS_CRITICAL = 2,
+	CHECK_STATUS_UNKNOWN  = 3
 } CheckStatus;
 
 typedef enum

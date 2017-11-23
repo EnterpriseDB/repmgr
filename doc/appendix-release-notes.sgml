@@ -16,6 +16,40 @@
   See also: <xref linkend="upgrading-repmgr">
  </para>
 
+ <sect1 id="release-4.0.1">
+  <title>Release 4.0.1</title>
+
+  <para><emphasis>2017</emphasis></para>
+
+  <para>
+    repmgr 4.0.1 is a bugfix release.
+  </para>
+  <sect2>
+    <title>Bug fixes</title>
+    <para>
+      <itemizedlist>
+        <listitem>
+          <para>
+            ensure correct return codes are returned for
+            <command><link linkend="repmgr-node-check">repmgr node check --action=</link></command> operations
+            (GitHub #340)
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            Fix <xref linkend="repmgr-cluster-show"> when <literal>repmgr</literal> schema not set in search path
+            (GitHub #341)
+          </para>
+        </listitem>
+
+      </itemizedlist>
+    </para>
+  </sect2>
+ </sect1>
+
+
+
  <sect1 id="release-4.0.0">
   <title>Release 4.0.0</title>
 

@@ -4050,7 +4050,7 @@ is_active_bdr_node(PGconn *conn, const char *node_name)
 	appendPQExpBuffer(&query,
 					  "    SELECT COALESCE(s.active, TRUE) AS active"
 					  "      FROM bdr.bdr_nodes n "
-					  " LEFT JOIN pg_replication_slots s "
+					  " LEFT JOIN pg_catalog.pg_replication_slots s "
 					  "        ON slot_name=bdr.bdr_format_slot_name(n.node_sysid, n.node_timeline, n.node_dboid, (SELECT oid FROM pg_database WHERE datname = current_database())) "
 					  "     WHERE node_name='%s' ",
 					  node_name);
