@@ -16,7 +16,7 @@
   <para>
    RPM packages for &repmgr; are available via Yum through
    the PostgreSQL Global Development Group RPM repository
-   (<ulink url="https://yum.postgresql.org/">http://yum.postgresql.org/</>).
+   (<ulink url="https://yum.postgresql.org/">http://yum.postgresql.org/</ulink>).
    Follow the instructions for your distribution (RedHat, CentOS,
    Fedora, etc.) and architecture as detailed there.
   </para>
@@ -24,10 +24,116 @@
    <ulink url="https://2ndquadrant.com">2ndQuadrant</ulink> also provides its
    own RPM packages which are made available
    at the same time as each &repmgr; release, as it can take some days for
-   them to become available via the main PGDG repository. See here for details:
-   <ulink url="http://repmgr.org/yum-repository.html">http://repmgr.org/yum-repository.html</>
+   them to become available via the main PGDG repository. See following section for details:
   </para>
+
+
+  <sect3 id="installation-packages-redhat-2ndq">
+    <title>2ndQuadrant repmgr yum repository</title>
+    <para>
+      Beginning with <ulink url="http://repmgr.org/release-notes-3.1.3.html">repmgr 3.1.3</ulink>,
+      <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a dedicated <literal>yum</literal>
+      repository for &repmgr; releases. This repository complements the main
+      <ulink url="https://yum.postgresql.org/repopackages.php">PGDG community repository</ulink>,
+      but enables repmgr users to access the latest &repmgr; packages before they are
+      available via the PGDG repository, which can take several days to be updated following
+      a fresh  &repmgr; release.
+    </para>
+    <para>
+      <emphasis>Installation</emphasis>
+
+      <itemizedlist>
+        <listitem>
+          <para>
+            Import the repository public key (optional but recommended):
+            <programlisting>
+              rpm --import http://packages.2ndquadrant.com/repmgr/RPM-GPG-KEY-repmgr</programlisting>
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            Install the repository RPM for your distribution (this enables the 2ndQuadrant
+            repository as a source of repmgr packages):
+            <itemizedlist>
+              <listitem>
+                <simpara>
+                  <emphasis>Fedora:</emphasis>
+                  <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm</ulink>
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  <emphasis>RHEL, CentOS etc:</emphasis>
+                  <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm</ulink>
+                </simpara>
+              </listitem>
+            </itemizedlist>
+          </para>
+          <para>
+            e.g.:
+            <programlisting>
+              $ yum install http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm</programlisting>
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            Install the repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr96</literal>), e.g.:
+            <programlisting>
+              $ yum install repmg96</programlisting>
+          </para>
+        </listitem>
+      </itemizedlist>
+    </para>
+
+    <para>
+      <emphasis>Compatibility with PGDG Repositories</emphasis>
+    </para>
+    <para>
+        The 2ndQuadrant &repmgr; yum repository uses exactly the same package definitions as the
+        main PGDG repository and is effectively a selective mirror for &repmgr; packages only.
+    </para>
+    <para>
+        Normally yum should prioritize the repository with the most recent &repmgr; version.
+        Once the PGDG repository has been updated, it doesn't matter which repository
+        the packages are installed from.
+    </para>
+    <para>
+      To ensure the 2ndQuadrant repository is always prioritised, install <literal>yum-plugin-priorities</literal>
+      and set the repository priorities accordingly.
+    </para>
+
+    <para>
+      <emphasis>Installing a specific package version</emphasis>
+    </para>
+    <para>
+      To install a specific package version, execute <command>yum --showduplicates list</command>
+      for the package in question:
+      <programlisting>
+        [root@localhost ~]# yum --showduplicates list repmgr96
+        Loaded plugins: fastestmirror
+        Loading mirror speeds from cached hostfile
+         * base: ftp.iij.ad.jp
+         * extras: ftp.iij.ad.jp
+         * updates: ftp.iij.ad.jp
+        Available Packages
+        repmgr96.x86_64               3.2-1.el6                    2ndquadrant-repmgr
+        repmgr96.x86_64               3.2.1-1.el6                  2ndquadrant-repmgr
+        repmgr96.x86_64               3.3-1.el6                    2ndquadrant-repmgr
+        repmgr96.x86_64               3.3.1-1.el6                  2ndquadrant-repmgr
+        repmgr96.x86_64               3.3.2-1.el6                  2ndquadrant-repmgr
+        repmgr96.x86_64               3.3.2-1.rhel6                pgdg96
+        repmgr96.x86_64               4.0.0-1.el6                  2ndquadrant-repmgr
+        repmgr96.x86_64               4.0.0-1.rhel6                pgdg96</programlisting>
+      then append the appropriate version number to the package name with a hyphen, e.g.:
+      <programlisting>
+        [root@localhost ~]# yum install repmgr96-3.3.2-1.el6</programlisting>
+    </para>
+  </sect3>
  </sect2>
+
+
 
  <sect2 id="installation-packages-debian" xreflabel="Installing from packages on Debian or Ubuntu">
 
@@ -38,9 +144,9 @@
 
   <title>Debian/Ubuntu</title>
   <para>.deb packages for &repmgr; are available from the
-  PostgreSQL Community APT repository (<ulink url="http://apt.postgresql.org/">http://apt.postgresql.org/</>).
+  PostgreSQL Community APT repository (<ulink url="http://apt.postgresql.org/">http://apt.postgresql.org/</ulink>).
   Instructions can be found in the APT section of the PostgreSQL Wiki
-  (<ulink url="https://wiki.postgresql.org/wiki/Apt">https://wiki.postgresql.org/wiki/Apt</>).
+  (<ulink url="https://wiki.postgresql.org/wiki/Apt">https://wiki.postgresql.org/wiki/Apt</ulink>).
   </para>
  </sect2>
 
