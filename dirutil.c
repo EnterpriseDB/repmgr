@@ -311,6 +311,14 @@ create_pg_dir(char *path, bool force)
 	return true;
 }
 
+
+
+int
+rmdir_recursive(char *path)
+{
+	return nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);
+}
+
 static int
 unlink_dir_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
