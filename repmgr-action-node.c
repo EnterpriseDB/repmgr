@@ -1769,19 +1769,72 @@ do_node_rejoin(void)
 				log_detail("%s", strerror(errno));
 			}
 		}
-
 		termPQExpBuffer(&filebuf);
+
+		/* delete any replication slots copied in by pg_rewind */
+		{
+			PQExpBufferData slotdir_path;
+			DIR			  *slotdir;
+			struct dirent *slotdir_ent;
+
+			initPQExpBuffer(&slotdir_path);
+
+			appendPQExpBuffer(&slotdir_path,
+							  "%s/pg_replslot",
+							  config_file_options.data_directory);
+
+			slotdir = opendir(slotdir_path.data);
+
+			if (slotdir == NULL)
+			{
+				log_warning(_("unable to open replication slot directory \"%s\""),
+							slotdir_path.data);
+				log_detail("%s", strerror(errno));
+			}
+			else
+			{
+				while ((slotdir_ent = readdir(slotdir)) != NULL) {
+					struct stat statbuf;
+					PQExpBufferData slotdir_ent_path;
+
+					if(strcmp(slotdir_ent->d_name, ".") == 0 || strcmp(slotdir_ent->d_name, "..") == 0)
+						continue;
+
+					initPQExpBuffer(&slotdir_ent_path);
+
+					appendPQExpBuffer(&slotdir_ent_path,
+									  "%s/%s",
+									  slotdir_path.data,
+									  slotdir_ent->d_name);
+
+					if (stat(slotdir_ent_path.data, &statbuf) == 0 && !S_ISDIR(statbuf.st_mode))
+					{
+						termPQExpBuffer(&slotdir_ent_path);
+						continue;
+					}
+
+					log_debug("deleting slot directory \"%s\"", slotdir_ent_path.data);
+					if (rmdir_recursive(slotdir_ent_path.data) != 0 && errno != EEXIST)
+					{
+						log_warning(_("unable to delete replication slot directory \"%s\""), slotdir_ent_path.data);
+						log_detail("%s", strerror(errno));
+						log_hint(_("directory may need to be manually removed"));
+					}
+
+					termPQExpBuffer(&slotdir_ent_path);
+				}
+			}
+			termPQExpBuffer(&slotdir_path);
+		}
 	}
 
 	initPQExpBuffer(&follow_output);
 
-	success = do_standby_follow_internal(
-										 upstream_conn,
+	success = do_standby_follow_internal(upstream_conn,
 										 &primary_node_record,
 										 &follow_output);
 
-	create_event_notification(
-							  upstream_conn,
+	create_event_notification(upstream_conn,
 							  &config_file_options,
 							  config_file_options.node_id,
 							  "node_rejoin",
