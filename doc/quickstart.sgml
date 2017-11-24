@@ -306,11 +306,10 @@
    (and possibly <literal>data_directory</literal>) adjusted accordingly, e.g.:
   </para>
   <programlisting>
-    node=2
+    node_id=2
     node_name=node2
     conninfo='host=node2 user=repmgr dbname=repmgr connect_timeout=2'
-    data_directory='/var/lib/postgresql/data'
-  </programlisting>
+    data_directory='/var/lib/postgresql/data'</programlisting>
   <para>
    Use the <command>--dry-run</command> option to check the standby can be cloned:
   </para>
