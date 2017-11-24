@@ -189,6 +189,14 @@ system.
   Instructions can be found in the APT section of the PostgreSQL Wiki
   ( https://wiki.postgresql.org/wiki/Apt ).
 
+  *NOTE*: repmgr 3.3 packages are now only available via a 2ndQuadrant-hosted
+  repository which can be installed like this:
+
+    apt-key adv --fetch-keys http://packages.2ndquadrant.com/repmgr3/apt/0xD3FA41F6.asc
+
+    echo deb http://packages.2ndquadrant.com/repmgr3/apt/ $(lsb_release -cs)-2ndquadrant main > /etc/apt/sources.list.d/repmgr3.lis
+
+
 See `PACKAGES.md` for details on building .deb and .rpm packages from the
 `repmgr` source code.
 
