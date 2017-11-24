@@ -194,7 +194,7 @@ system.
 
     apt-key adv --fetch-keys http://packages.2ndquadrant.com/repmgr3/apt/0xD3FA41F6.asc
 
-    echo deb http://packages.2ndquadrant.com/repmgr3/apt/ $(lsb_release -cs)-2ndquadrant main > /etc/apt/sources.list.d/repmgr3.lis
+    echo deb http://packages.2ndquadrant.com/repmgr3/apt/ $(lsb_release -cs)-2ndquadrant main > /etc/apt/sources.list.d/repmgr3.list
 
 
 See `PACKAGES.md` for details on building .deb and .rpm packages from the
