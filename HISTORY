@@ -2,7 +2,7 @@
         repmgr: ensure "repmgr node check --action=" returns appropriate return
           code; GitHub #340 (Ian)
         repmgr: add missing schema qualification in get_all_node_records_with_upstream()
-          query (Martín)
+          query GitHub #341 (Martín)
         repmgr: initialise "voting_term" table in application, not extension SQL;
           GitHub #344 (Ian)
         repmgr: delete any replication slots copied by pg_rewind; GitHub #334 (Ian)
