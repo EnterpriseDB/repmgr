@@ -43,6 +43,29 @@
           </para>
         </listitem>
 
+        <listitem>
+          <para>
+            When using <literal>--force-rewind</literal> with <xref linkend="repmgr-node-rejoin">
+            delete any replication slots copied by <application>pg_rewind</application>
+            (GitHub #334)
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            Only perform sanity check on accessibility of configuration files outside
+            the data directory when <literal>--copy-external-config-files</literal>
+            provided (GitHub #342)
+          </para>
+        </listitem>
+
+        <listitem>
+          <para>
+            Initialise "voting_term" table in application, not extension SQL
+            (GitHub #344)
+          </para>
+        </listitem>
+
       </itemizedlist>
     </para>
   </sect2>
