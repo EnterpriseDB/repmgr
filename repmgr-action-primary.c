@@ -74,7 +74,11 @@ do_primary_register(void)
 
 	log_verbose(LOG_INFO, _("server is not in recovery"));
 
-	/* create the repmgr extension if it doesn't already exist */
+	/*
+	 * create the repmgr extension if it doesn't already exist;
+	 * note that create_repmgr_extension() will take into account
+	 * the --dry-run option
+	 */
 	if (!create_repmgr_extension(conn))
 	{
 		PQfinish(conn);
@@ -92,6 +96,7 @@ do_primary_register(void)
 		return;
 	}
 
+	initialize_voting_term(conn);
 
 	/* Ensure there isn't another registered node which is primary */
 	primary_conn = get_primary_connection(conn, &current_primary_id, NULL);

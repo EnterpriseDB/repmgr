@@ -91,9 +91,6 @@ CREATE RULE voting_term_delete AS
    ON DELETE TO repmgr.voting_term
    DO INSTEAD NOTHING;
 
-/* XXX do this in "repmgr primary register" */
-INSERT INTO repmgr.voting_term (term) VALUES (1);
-
 
 /* ================= */
 /* repmgrd functions */

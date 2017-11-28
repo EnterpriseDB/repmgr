@@ -3735,7 +3735,7 @@ int
 get_current_term(PGconn *conn)
 {
 	PGresult   *res = NULL;
-	int term = -1;
+	int term = VOTING_TERM_NOT_SET;
 
 	res = PQexec(conn, "SELECT term FROM repmgr.voting_term");
 
@@ -3747,10 +3747,40 @@ get_current_term(PGconn *conn)
 		return -1;
 	}
 
-	term = atoi(PQgetvalue(res, 0, 0));
+	if (PQntuples(res) > 0)
+	{
+		term = atoi(PQgetvalue(res, 0, 0));
+	}
 
 	PQclear(res);
 	return term;
+}
+
+
+void
+initialize_voting_term(PGconn *conn)
+{
+	PGresult   *res = NULL;
+
+	int current_term = get_current_term(conn);
+
+	if (current_term == VOTING_TERM_NOT_SET)
+	{
+		res = PQexec(conn, "INSERT INTO repmgr.voting_term (term) VALUES (1)");
+	}
+	else
+	{
+		res = PQexec(conn, "UPDATE repmgr.voting_term SET term = 1");
+	}
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to initialize repmgr.voting_term:\n  %s"),
+				  PQerrorMessage(conn));
+	}
+
+	PQclear(res);
+	return;
 }
 
 
@@ -3765,8 +3795,6 @@ increment_current_term(PGconn *conn)
 	{
 		log_error(_("unable to increment repmgr.voting_term:\n  %s"),
 				  PQerrorMessage(conn));
-		PQclear(res);
-		return;
 	}
 
 	PQclear(res);

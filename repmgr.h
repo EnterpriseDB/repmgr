@@ -56,6 +56,7 @@
 #define NO_UPSTREAM_NODE	-1
 #define UNKNOWN_NODE_ID		-1
 
+#define VOTING_TERM_NOT_SET -1
 
 /*
  * various default values - ensure repmgr.conf.sample is update
