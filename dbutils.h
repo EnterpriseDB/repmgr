@@ -473,6 +473,7 @@ bool		delete_monitoring_records(PGconn *primary_conn, int keep_history);
 
 
 /* node voting functions */
+void		initialize_voting_term(PGconn *conn);
 int			get_current_term(PGconn *conn);
 void		increment_current_term(PGconn *conn);
 bool		announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_node, int electoral_term);
