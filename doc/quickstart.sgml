@@ -103,11 +103,11 @@
     # ignores archiving. Use something more sensible.
     archive_command = '/bin/true'
 
-    # If you have configured `pg_basebackup_options`
-    # in `repmgr.conf` to include the setting `--xlog-method=fetch` (from
-    # PostgreSQL 10 `--wal-method=fetch`), *and* you have not set
-    # `restore_command` in `repmgr.conf`to fetch WAL files from another
-    # source such as Barman, you'll need to set `wal_keep_segments` to a
+    # If you have configured "pg_basebackup_options"
+    # in "repmgr.conf" to include the setting "--xlog-method=fetch" (from
+    # PostgreSQL 10 "--wal-method=fetch"), *and* you have not set
+    # "restore_command" in "repmgr.conf"to fetch WAL files from another
+    # source such as Barman, you'll need to set "wal_keep_segments" to a
     # high enough value to ensure that all WAL files generated while
     # the standby is being cloned are retained until the standby starts up.
     #
@@ -121,6 +121,11 @@
      <command>include 'postgresql.replication.conf</command>.
     </simpara>
    </tip>
+   <para>
+     Additionally, if you are intending to use <application>pg_rewind</application>,
+     and the cluster was not initialised using data checksums, you may want to consider enabling
+     <varname>wal_log_hints</varname>; for more details see <xref linkend="repmgr-node-rejoin-pg-rewind">.
+   </para>
  </sect1>
 
  <sect1 id="quickstart-repmgr-user-database">
