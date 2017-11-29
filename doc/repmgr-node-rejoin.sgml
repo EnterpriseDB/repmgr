@@ -69,7 +69,7 @@
     </tip>
   </refsect1>
 
-  <refsect1 id="repmgr-node-rejoin-pg-rewind">
+  <refsect1 id="repmgr-node-rejoin-pg-rewind" xreflabel="Using pg_rewind">
     <title>Using <command>pg_rewind</command></title>
     <para>
       <command>repmgr node rejoin</command> can optionally use <command>pg_rewind</command> to re-integrate a
