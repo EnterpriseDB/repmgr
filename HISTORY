@@ -1,4 +1,4 @@
-4.0.1   2017-11-
+4.0.1   2017-12-04
         repmgr: ensure "repmgr node check --action=" returns appropriate return
           code; GitHub #340 (Ian)
         repmgr: add missing schema qualification in get_all_node_records_with_upstream()
@@ -7,6 +7,7 @@
           GitHub #344 (Ian)
         repmgr: delete any replication slots copied by pg_rewind; GitHub #334 (Ian)
         repmgr: fix configuration file sanity check; GitHub #342 (Ian)
+        Improve event notification documentation (Ian)
 
 4.0.0   2017-11-21
         Complete rewrite with many changes; for details see the repmgr 4.0.0 release
