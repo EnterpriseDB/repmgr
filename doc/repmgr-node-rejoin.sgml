@@ -46,6 +46,13 @@
   </refsect1>
 
   <refsect1>
+    <title>Event notifications</title>
+    <para>
+      A <literal>node_rejoin</literal> event notification will be generated.
+    </para>
+  </refsect1>
+
+  <refsect1>
     <title>Notes</title>
     <para>
       Currently <command>repmgr node rejoin</command> can only be used to attach
@@ -78,7 +85,8 @@
     </para>
     <note>
       <para>
-        <command>pg_rewind</command> *requires* that either <varname>wal_log_hints</varname> is enabled, or that
+        <command>pg_rewind</command> <emphasis>requires</emphasis> that either
+        <varname>wal_log_hints</varname> is enabled, or that
         data checksums were enabled when the cluster was initialized. See the
         <ulink url="https://www.postgresql.org/docs/current/static/app-pgrewind.html"><command>pg_rewind</command> documentation</ulink> for details.
       </para>

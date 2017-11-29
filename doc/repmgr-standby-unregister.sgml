@@ -42,5 +42,13 @@
         repmgr standby unregister -f /etc/repmgr.conf --node-id=3</programlisting>
     </para>
   </refsect1>
+
+  <refsect1>
+    <title>Event notifications</title>
+    <para>
+      A <literal>standby_unregister</literal> event notification will be generated.
+    </para>
+  </refsect1>
+
 </refentry>
 

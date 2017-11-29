@@ -41,6 +41,15 @@
   </refsect1>
 
   <refsect1>
+    <title>Event notifications</title>
+    <para>
+      A <literal>standby_promote</literal> event notification will be generated on the new primary,
+      and a <literal>node_rejoin</literal> event notification on the former primary (new standby).
+    </para>
+  </refsect1>
+
+
+  <refsect1>
     <title>See also</title>
     <para>
       For more details see the section <xref linkend="performing-switchover">.

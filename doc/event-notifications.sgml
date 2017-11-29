@@ -127,6 +127,9 @@
     <simpara><literal>primary_register</literal></simpara>
    </listitem>
    <listitem>
+    <simpara><literal>primary_unregister</literal></simpara>
+   </listitem>
+   <listitem>
     <simpara><literal>standby_register</literal></simpara>
    </listitem>
    <listitem>
@@ -143,6 +146,15 @@
    </listitem>
    <listitem>
     <simpara><literal>standby_disconnect_manual</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>witness_register</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>witness_unregister</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>node_rejoin</literal></simpara>
    </listitem>
    <listitem>
     <simpara><literal>repmgrd_start</literal></simpara>

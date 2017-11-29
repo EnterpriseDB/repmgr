@@ -49,4 +49,12 @@
     </para>
   </refsect1>
 
+
+  <refsect1>
+    <title>Event notifications</title>
+    <para>
+      A <literal>witness_register</literal> event notification will be generated.
+    </para>
+  </refsect1>
+
 </refentry>
