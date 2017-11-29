@@ -101,7 +101,7 @@
     <programlisting>
       $ repmgr standby switchover -f /etc/repmgr.conf --siblings-follow --dry-run
       NOTICE: checking switchover on node "node2" (ID: 2) in --dry-run mode
-      INFO: SSH connection to host "localhost" succeeded
+      INFO: SSH connection to host "node1" succeeded
       INFO: archive mode is "off"
       INFO: replication lag on this standby is 0 seconds
       INFO: all sibling nodes are reachable via SSH
@@ -133,7 +133,7 @@
     INFO: searching for primary node
     INFO: checking if node 1 is primary
     INFO: current primary node is 1
-    INFO: SSH connection to host "localhost" succeeded
+    INFO: SSH connection to host "node1" succeeded
     INFO: archive mode is "off"
     INFO: replication lag on this standby is 0 seconds
     NOTICE: local node "node2" (ID: 2) will be promoted to primary; current primary "node1" (ID: 1) will be demoted to standby
