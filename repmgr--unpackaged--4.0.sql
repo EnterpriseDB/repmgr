@@ -71,6 +71,17 @@ INSERT INTO repmgr.voting_term (term) VALUES (1);
 
 -- convert "repmgr_$cluster.repl_monitor" to "monitoring_history"
 
+
+DO $repmgr$
+DECLARE
+  DECLARE server_version_num INT;
+BEGIN
+  SELECT setting
+    FROM pg_catalog.pg_settings
+   WHERE name = 'server_version_num'
+    INTO server_version_num;
+  IF server_version_num >= 90400 THEN
+    EXECUTE $repmgr_func$
 CREATE TABLE repmgr.monitoring_history (
   primary_node_id                INTEGER NOT NULL,
   standby_node_id                INTEGER NOT NULL,
@@ -80,12 +91,32 @@ CREATE TABLE repmgr.monitoring_history (
   last_wal_standby_location      PG_LSN,
   replication_lag                BIGINT NOT NULL,
   apply_lag                      BIGINT NOT NULL
-);
+)
+    $repmgr_func$;
+    INSERT INTO repmgr.monitoring_history
+      (primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag)
+    SELECT primary_node, standby_node, last_monitor_time,  last_apply_time, last_wal_primary_location::pg_lsn, last_wal_standby_location::pg_lsn, replication_lag, apply_lag
+      FROM repmgr.repl_monitor;
+  ELSE
+    EXECUTE $repmgr_func$
+CREATE TABLE repmgr.monitoring_history (
+  primary_node_id                INTEGER NOT NULL,
+  standby_node_id                INTEGER NOT NULL,
+  last_monitor_time              TIMESTAMP WITH TIME ZONE NOT NULL,
+  last_apply_time                TIMESTAMP WITH TIME ZONE,
+  last_wal_primary_location      TEXT NOT NULL,
+  last_wal_standby_location      TEXT,
+  replication_lag                BIGINT NOT NULL,
+  apply_lag                      BIGINT NOT NULL
+)
+    $repmgr_func$;
+    INSERT INTO repmgr.monitoring_history
+      (primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag)
+    SELECT primary_node, standby_node, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag
+      FROM repmgr.repl_monitor;
 
-INSERT INTO repmgr.monitoring_history
-  (primary_node_id, standby_node_id, last_monitor_time,  last_apply_time, last_wal_primary_location, last_wal_standby_location, replication_lag, apply_lag)
-SELECT primary_node, standby_node, last_monitor_time,  last_apply_time, last_wal_primary_location::pg_lsn, last_wal_standby_location::pg_lsn, replication_lag, apply_lag
-  FROM repmgr.repl_monitor;
+  END IF;
+END$repmgr$;
 
 CREATE INDEX idx_monitoring_history_time
           ON repmgr.monitoring_history (last_monitor_time, standby_node_id);
