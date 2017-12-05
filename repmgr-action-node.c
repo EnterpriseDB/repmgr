@@ -564,6 +564,15 @@ do_node_check(void)
 	CheckStatusListCell *cell = NULL;
 
 
+	/* internal */
+	if (runtime_options.has_passfile == true)
+	{
+		return_code = has_passfile() ? 0 : 1;
+
+		exit(return_code);
+	}
+
+
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
 	else
@@ -587,8 +596,8 @@ do_node_check(void)
 	if (runtime_options.archive_ready == true)
 	{
 		return_code = do_node_check_archive_ready(conn,
-													runtime_options.output_mode,
-													NULL);
+												  runtime_options.output_mode,
+												  NULL);
 		PQfinish(conn);
 		exit(return_code);
 	}

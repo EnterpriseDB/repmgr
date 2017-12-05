@@ -447,6 +447,10 @@ main(int argc, char **argv)
 				runtime_options.slots = true;
 				break;
 
+			case OPT_HAS_PASSFILE:
+				runtime_options.has_passfile = true;
+				break;
+
 				/*--------------------
 				 * "node rejoin" options
 				 *--------------------
@@ -1316,7 +1320,7 @@ check_cli_parameters(const int action)
 
 					/*
 					 * XXX if -D/--pgdata provided, and also
-					 * config_file_options.pgdaga, warn -D/--pgdata will be
+					 * config_file_options.pgdata, warn -D/--pgdata will be
 					 * ignored
 					 */
 
@@ -1354,6 +1358,12 @@ check_cli_parameters(const int action)
 											_("host name for the source node must be provided when executing %s"),
 											action_name(action));
 				}
+			}
+			break;
+		case NODE_CHECK:
+			if (runtime_options.has_passfile == true)
+			{
+				config_file_required = false;
 			}
 			break;
 		case NODE_STATUS:

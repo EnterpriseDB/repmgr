@@ -700,7 +700,7 @@ has_passfile(void)
 
 	PQconninfoFree(defs);
 
-    return has_passfile;
+	return has_passfile;
 }
 
 
