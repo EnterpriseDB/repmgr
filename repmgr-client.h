@@ -81,6 +81,7 @@
 #define OPT_DOWNSTREAM					   1032
 #define OPT_SLOTS						   1033
 #define OPT_CONFIG_ARCHIVE_DIR			   1034
+#define OPT_HAS_PASSFILE                   1035
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
 #define OPT_NO_CONNINFO_PASSWORD			998
@@ -153,6 +154,7 @@ static struct option long_options[] =
 	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG},
 	{"role", no_argument, NULL, OPT_ROLE},
 	{"slots", no_argument, NULL, OPT_SLOTS},
+	{"has-passfile", no_argument, NULL, OPT_HAS_PASSFILE},
 
 /* "node rejoin" options */
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},
