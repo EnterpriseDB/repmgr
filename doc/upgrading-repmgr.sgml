@@ -151,7 +151,7 @@
         be ignored.</simpara>
       </listitem>
       <listitem>
-        <simpara><varname>upstream_node_id</varname>:  is replaced by the
+        <simpara><varname>upstream_node</varname>:  is replaced by the
         command-line parameter <literal>--upstream-node-id</literal></simpara>
       </listitem>
      </itemizedlist>
