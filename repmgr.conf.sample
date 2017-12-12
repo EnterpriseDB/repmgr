@@ -13,35 +13,35 @@
 # repmgr and repmgrd require the following items to be explicitly configured.
 
 
-#node_id=                               # A unique integer greater than zero
-#node_name=''                           # An arbitrary (but unique) string; we recommend
-                                        # using the server's hostname or another identifier
-                                        # unambiguously associated with the server to avoid
-                                        # confusion. Avoid choosing names which reflect the
-                                        # node's current role, e.g. "primary" or "standby1",
-                                        # as roles can change and it will be confusing if
-                                        # the current primary is called "standby1".
+#node_id=    	     	     	 # A unique integer greater than zero
+#node_name=''			 # An arbitrary (but unique) string; we recommend
+				 # using the server's hostname or another identifier
+				 # unambiguously associated with the server to avoid
+				 # confusion. Avoid choosing names which reflect the
+				 # node's current role, e.g. "primary" or "standby1",
+				 # as roles can change and it will be confusing if
+				 # the current primary is called "standby1".
 
-#conninfo=''                            # Database connection information as a conninfo string.
-                                        # All servers in the cluster must be able to connect to
-                                        # the local node using this string.
-                                        #
-                                        # For details on conninfo strings, see:
-                                        #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
-                                        #
-                                        # If repmgrd is in use, consider explicitly setting
-                                        # "connect_timeout" in the conninfo string to determine
-                                        # the length of time which elapses before a network
-                                        # connection attempt is abandoned; for details see:
-                                        #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
+#conninfo=''			 # Database connection information as a conninfo string.
+				 # All servers in the cluster must be able to connect to
+				 # the local node using this string.
+				 #
+				 # For details on conninfo strings, see:
+				 #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+				 #
+				 # If repmgrd is in use, consider explicitly setting
+				 # "connect_timeout" in the conninfo string to determine
+				 # the length of time which elapses before a network
+				 # connection attempt is abandoned; for details see:
+				 #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
 
-#data_directory                         # The node's data directory. This is needed by repmgr
-                                        # when performing operations when the PostgreSQL instance
-                                        # is not running and there's no other way of determining
-                                        # the data directory.
+#data_directory=''		 # The node's data directory. This is needed by repmgr
+				 # when performing operations when the PostgreSQL instance
+				 # is not running and there's no other way of determining
+				 # the data directory.
 
-#replication_user                       # User to make replication connections with, if not set defaults
-                                        # to the user defined in "conninfo".
+#replication_user='repmgr'	 # User to make replication connections with, if not set defaults
+				 # to the user defined in "conninfo".
 
 # =============================================================================
 
@@ -52,28 +52,28 @@
 # Replication settings
 #------------------------------------------------------------------------------
 
-#replication_type=physical              # Must be one of 'physical' or 'bdr'.
+#replication_type=physical	 # Must be one of 'physical' or 'bdr'.
 
-#location=default                       # arbitrary string defining the location of the node; this
-                                        # is used during failover to check visibilty of the
-                                        # current primary node. See the 'repmgrd' documentation
-                                        # in README.md for further details.
+#location=default		 # arbitrary string defining the location of the node; this
+				 # is used during failover to check visibilty of the
+				 # current primary node. See the 'repmgrd' documentation
+				 # in README.md for further details.
 
-#use_replication_slots=no               # whether to use physical replication slots
-                                        # NOTE: when using replication slots,
-                                        # 'max_replication_slots' should be configured for
-                                        # at least the number of standbys which will connect
-                                        # to the primary.
+#use_replication_slots=no	 # whether to use physical replication slots
+				 # NOTE: when using replication slots,
+				 # 'max_replication_slots' should be configured for
+				 # at least the number of standbys which will connect
+				 # to the primary.
 
-#recovery_min_apply_delay=              # If provided, "recovery_min_apply_delay" in recovery.conf
-                                        # will be set to this value.
+#recovery_min_apply_delay=	 # If provided, "recovery_min_apply_delay" in recovery.conf
+				 # will be set to this value.
 
 #------------------------------------------------------------------------------
 # Witness server settings
 #------------------------------------------------------------------------------
 
-#witness_sync_interval=15               # interval (in seconds) to synchronise node records
-                                        # to the witness server
+#witness_sync_interval=15	 # interval (in seconds) to synchronise node records
+				 # to the witness server
 
 #------------------------------------------------------------------------------
 # Logging settings
@@ -85,14 +85,14 @@
 # This is mainly intended for those cases when `repmgr` is executed directly
 # by `repmgrd`.
 
-#log_level=INFO                         # Log level: possible values are DEBUG, INFO, NOTICE,
-                                        # WARNING, ERROR, ALERT, CRIT or EMERG
+#log_level=INFO			 # Log level: possible values are DEBUG, INFO, NOTICE,
+				 # WARNING, ERROR, ALERT, CRIT or EMERG
 
-#log_facility=STDERR                    # Logging facility: possible values are STDERR, or for
-                                        # syslog integration, one of LOCAL0, LOCAL1, ..., LOCAL7, USER
+#log_facility=STDERR		 # Logging facility: possible values are STDERR, or for
+				 # syslog integration, one of LOCAL0, LOCAL1, ..., LOCAL7, USER
 
-#log_file=''                            # stderr can be redirected to an arbitrary file:
-#log_status_interval=300                # interval (in seconds) for repmgrd to log a status message
+#log_file=''			 # stderr can be redirected to an arbitrary file:
+#log_status_interval=300	 # interval (in seconds) for repmgrd to log a status message
 
 
 #------------------------------------------------------------------------------
@@ -118,28 +118,28 @@
 #
 #   event_notifications=primary_register,standby_register
 
-#event_notification_command=''          # An external program or script which
-                                        # can be executed by the user under which
-                                        # repmgr/repmgrd are run.
+#event_notification_command=''		# An external program or script which
+					# can be executed by the user under which
+					# repmgr/repmgrd are run.
 
-#event_notifications=''                 # A commas-separated list of notification
-                                        # types
+#event_notifications=''			# A commas-separated list of notification
+					# types
 
 #------------------------------------------------------------------------------
 # Environment/command settings
 #------------------------------------------------------------------------------
 
-#pg_bindir=''                           # Path to PostgreSQL binary directory (location
-                                        # of pg_ctl, pg_basebackup etc.). Only needed
-                                        # if these files are not in the system $PATH.
-                                        #
-                                        # Debian/Ubuntu users: you will probably need to
-                                        # set this to the directory where `pg_ctl` is located,
-                                        # e.g. /usr/lib/postgresql/9.6/bin/
-#use_primary_conninfo_password=false    # explicitly set "password" in recovery.conf's
-                                        # "primary_conninfo" parameter using the value contained
-                                        # in the environment variable PGPASSWORD
-#passfile=''                            # path to .pgpass file to include in "primary_conninfo"
+#pg_bindir=''				# Path to PostgreSQL binary directory (location
+					# of pg_ctl, pg_basebackup etc.). Only needed
+					# if these files are not in the system $PATH.
+					#
+					# Debian/Ubuntu users: you will probably need to
+					# set this to the directory where `pg_ctl` is located,
+					# e.g. /usr/lib/postgresql/9.6/bin/
+#use_primary_conninfo_password=false	# explicitly set "password" in recovery.conf's
+					# "primary_conninfo" parameter using the value contained
+					# in the environment variable PGPASSWORD
+#passfile=''				# path to .pgpass file to include in "primary_conninfo"
 #------------------------------------------------------------------------------
 # external command options
 #------------------------------------------------------------------------------
@@ -153,11 +153,10 @@
 #   rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
 #   ssh_options=-o "StrictHostKeyChecking no"
 
-#pg_ctl_options=''                      # Options to append to "pg_ctl"
-#pg_basebackup_options=''               # Options to append to "pg_basebackup"
-#rsync_options=''                       # Options to append to "rsync"
-ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
-
+#pg_ctl_options='' 			# Options to append to "pg_ctl"
+#pg_basebackup_options=''		# Options to append to "pg_basebackup"
+#rsync_options=''			# Options to append to "rsync"
+ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 
 
 
@@ -172,12 +171,12 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
 #   tablespace_mapping=/path/to/original/tablespace=/path/to/new/tablespace
 #   restore_command = 'cp /path/to/archived/wals/%f %p'
 
-#tablespace_mapping=''                  # Tablespaces can be remapped from one
-                                        # file system location to another. This
-                                        # parameter can be provided multiple times.
+#tablespace_mapping=''	  		# Tablespaces can be remapped from one
+					# file system location to another. This
+					# parameter can be provided multiple times.
 
-#restore_command=''                     # This will be placed in the recovery.conf
-                                        # file generated by repmgr
+#restore_command=''			# This will be placed in the recovery.conf
+					# file generated by repmgr
 
 #------------------------------------------------------------------------------
 # Standby follow settings
@@ -186,19 +185,19 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
 # These settings apply when instructing a standby to follow the new primary
 # ("repmgr standby follow").
 
-#primary_follow_timeout=60              # The length of time (in seconds) to wait
-                                        # for the new primary to become available
+#primary_follow_timeout=60		# The length of time (in seconds) to wait
+					# for the new primary to become available
 
 
 #------------------------------------------------------------------------------
 # Barman options
 #------------------------------------------------------------------------------
 
-#barman_server=''                       # The barman configuration section
-#barman_host=''                         # The host name of the barman server
-#barman_config=''                       # The Barman configuration file on the
-                                        # Barman server (needed if the file is
-                                        # in a non-standard location)
+#barman_server=''			# The barman configuration section
+#barman_host=''				# The host name of the barman server
+#barman_config=''			# The Barman configuration file on the
+					# Barman server (needed if the file is
+					# in a non-standard location)
 
 #------------------------------------------------------------------------------
 # Failover and monitoring settings (repmgrd)
@@ -207,42 +206,42 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
 # These settings are only applied when repmgrd is running. Values shown
 # are defaults.
 
-#failover=manual                        # one of 'automatic', 'manual'.
-                                        # determines what action to take in the event of upstream failure
-                                        #
-                                        # 'automatic': repmgrd will automatically attempt to promote the
-                                        #    node or follow the new upstream node
-                                        # 'manual': repmgrd will take no action and the node will require
-                                        #    manual attention to reattach it to replication
-                                        # (does not apply to BDR mode)
+#failover=manual			# one of 'automatic', 'manual'.
+					# determines what action to take in the event of upstream failure
+					#
+					# 'automatic': repmgrd will automatically attempt to promote the
+					#    node or follow the new upstream node
+					# 'manual': repmgrd will take no action and the node will require
+					#    manual attention to reattach it to replication
+					# (does not apply to BDR mode)
 
-#priority=100                           # indicate a preferred priorty for promoting nodes;
-                                        # a value of zero prevents the node being promoted to primary
-                                        # (default: 100)
+#priority=100				# indicate a preferred priorty for promoting nodes;
+					# a value of zero prevents the node being promoted to primary
+					# (default: 100)
 
-#reconnect_attempts=6                   # Number attempts which will be made to reconnect to an unreachable
-                                        # primary (or other upstream node)
-#reconnect_interval=10                  # Interval between attempts  to reconnect to an unreachable
-                                        # primary (or other upstream node)
-#promote_command=                       # command to execute when promoting a new primary; use something like:
-                                        #
-                                        #     repmgr standby promote -f /etc/repmgr.conf
-                                        #
-#follow_command=                        # command to execute when instructing a standby to follow a new primary;
-                                        # use something like:
-                                        #
-                                        #     repmgr standby follow -f /etc/repmgr.conf -W --upstream-node-id=%n
-                                        #
-#primary_notification_timeout=60        # Interval (in seconds) which repmgrd on a standby
-                                        # will wait for a notification from the new primary,
-                                        # before falling back to degraded monitoring
+#reconnect_attempts=6			# Number attempts which will be made to reconnect to an unreachable
+					# primary (or other upstream node)
+#reconnect_interval=10			# Interval between attempts  to reconnect to an unreachable
+					# primary (or other upstream node)
+#promote_command=			# command to execute when promoting a new primary; use something like:
+					#
+					#     repmgr standby promote -f /etc/repmgr.conf
+					#
+#follow_command=			# command to execute when instructing a standby to follow a new primary;
+					# use something like:
+					#
+					#     repmgr standby follow -f /etc/repmgr.conf -W --upstream-node-id=%n
+					#
+#primary_notification_timeout=60	# Interval (in seconds) which repmgrd on a standby
+					# will wait for a notification from the new primary,
+					# before falling back to degraded monitoring
 #monitoring_history=no
 
-#degraded_monitoring_timeout=-1         # Interval (in seconds) after which repmgrd will terminate if the
-                                        # server being monitored is no longer available. -1 (default)
-                                        # disables the timeout completely.
-#async_query_timeout=60                 # Interval (in seconds) which repmgrd will wait before
-                                        # cancelling an asynchronous query.
+#degraded_monitoring_timeout=-1		# Interval (in seconds) after which repmgrd will terminate if the
+					# server being monitored is no longer available. -1 (default)
+					# disables the timeout completely.
+#async_query_timeout=60			# Interval (in seconds) which repmgrd will wait before
+					# cancelling an asynchronous query.
 
 #------------------------------------------------------------------------------
 # service control commands
@@ -275,10 +274,10 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
 #service_stop_command = ''
 #service_restart_command = ''
 #service_reload_command = ''
-#service_promote_command = ''            # Note: this overrides any value contained in the setting
-                                         # "promote_command". This is intended for systems which
-                                         # provide a package-level promote command, such as Debian's
-                                         # "pg_ctlcluster"
+#service_promote_command = ''		# Note: this overrides any value contained in the setting
+					# "promote_command". This is intended for systems which
+					# provide a package-level promote command, such as Debian's
+					# "pg_ctlcluster"
 
 
 #------------------------------------------------------------------------------
@@ -287,25 +286,25 @@ ssh_options='-q -o ConnectTimeout=10'   # Options to append to "ssh"
 
 # Various warning/critical thresholds used by "repmgr node check".
 
-#archive_ready_warning=16                # repmgr node check --archiver
-#archive_ready_critical=128              #
-                                         # Numbers of files pending archiving via PostgreSQL's
-                                         # "archive_command" configuration parameter. If
-                                         # files can't be archived fast enough, or the archive
-                                         # command is failing, the buildup of files can
-                                         # cause various issues, such as server shutdown being
-                                         # delayed until all files are archived, or excessive
-                                         # space being occupied by unarchived files.
-                                         #
-                                         # Note that these values will be checked when executing
-                                         # "repmgr standby switchover" to warn about potential
-                                         # issues with shutting down the demotion candidate.
+#archive_ready_warning=16  	      	# repmgr node check --archiver
+#archive_ready_critical=128		#
+					# Numbers of files pending archiving via PostgreSQL's
+					# "archive_command" configuration parameter. If
+					# files can't be archived fast enough, or the archive
+					# command is failing, the buildup of files can
+					# cause various issues, such as server shutdown being
+					# delayed until all files are archived, or excessive
+					# space being occupied by unarchived files.
+					#
+					# Note that these values will be checked when executing
+					# "repmgr standby switchover" to warn about potential
+					# issues with shutting down the demotion candidate.
 
-#replication_lag_warning=300             # repmgr node check --replication-lag
-#replication_lag_critical=600            #
-                                         # Note that these values will be checked when executing
-                                         # "repmgr standby switchover" to warn about potential
-                                         # issues with shutting down the demotion candidate.
+#replication_lag_warning=300		# repmgr node check --replication-lag
+#replication_lag_critical=600		#
+					# Note that these values will be checked when executing
+					# "repmgr standby switchover" to warn about potential
+					# issues with shutting down the demotion candidate.
 
 
 #------------------------------------------------------------------------------
