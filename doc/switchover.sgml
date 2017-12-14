@@ -73,6 +73,11 @@
      <command>systemctl</command> commands (typically run via <command>sudo</command>) to ensure
      <literal>systemd</literal> informed about the status of the PostgreSQL service.
     </simpara>
+    <simpara>
+     If using <command>sudo</command> for the <command>systemctl</command> calls, make sure the
+     <command>sudo</command> specification doesn't require a real tty for the user. If not set
+     this way, <command>repmgr</command> will fail to stop the primary.
+    </simpara>
    </note>
    <para>
     Check that access from applications is minimalized or preferably blocked
