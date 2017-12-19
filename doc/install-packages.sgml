@@ -81,7 +81,7 @@
           <para>
             Install the repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr96</literal>), e.g.:
             <programlisting>
-              $ yum install repmg96</programlisting>
+              $ yum install repmgr96</programlisting>
           </para>
         </listitem>
       </itemizedlist>
