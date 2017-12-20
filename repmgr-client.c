@@ -177,7 +177,7 @@ main(int argc, char **argv)
 		strncpy(runtime_options.username, pw->pw_name, MAXLEN);
 	}
 
-	while ((c = getopt_long(argc, argv, "?Vb:f:Fd:h:p:U:R:S:L:vtD:crC:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vb:f:FWd:h:p:U:R:S:D:ckL:tvC:", long_options,
 							&optindex)) != -1)
 	{
 		/*
