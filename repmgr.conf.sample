@@ -286,7 +286,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 
 # Various warning/critical thresholds used by "repmgr node check".
 
-#archive_ready_warning=16  	      	# repmgr node check --archiver
+#archive_ready_warning=16  	      	# repmgr node check --archive
 #archive_ready_critical=128		#
 					# Numbers of files pending archiving via PostgreSQL's
 					# "archive_command" configuration parameter. If
