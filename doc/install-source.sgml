@@ -155,6 +155,20 @@
      The generated HTML files will be placed in the <filename>doc/html</filename>
      subdirectory of your source tree.
    </para>
+
+   <para>
+     To build the documentation as a single HTML file, execute:
+   <programlisting>
+    cd doc/ && make repmgr.html</programlisting>
+   </para>
+
+   <note>
+     <simpara>
+       Due to changes in PostgreSQL's documentation build system from PostgreSQL 10,
+       the documentation can currently only be built agains PostgreSQL 9.6 or earlier.
+       This limitation will be fixed when time and resources permit.
+     </simpara>
+   </note>
  </sect2>
 
 
