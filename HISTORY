@@ -1,4 +1,9 @@
-4.0.1   2017-11-
+4.0.2   2018-01-
+        repmgr: enable documentation to be build as single HTML file; GitHub #353 (fanf2)
+        repmgr: add missing -W option to getopt_long() invocation; GitHub #350 (Ian)
+        docs: various fixes (Ian, Daymel, Martín, ams)
+
+4.0.1   2017-12-13
         repmgr: ensure "repmgr node check --action=" returns appropriate return
           code; GitHub #340 (Ian)
         repmgr: add missing schema qualification in get_all_node_records_with_upstream()
