@@ -60,7 +60,7 @@
   </varlistentry>
 
   <varlistentry>
-   <term><option>%t</option></term>
+   <term><option>%s</option></term>
    <listitem>
     <para>
      success (1 or 0)
