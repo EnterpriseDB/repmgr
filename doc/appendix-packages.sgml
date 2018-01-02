@@ -1,0 +1,154 @@
+<appendix id="appendix-packages" xreflabel="Package details">
+ <indexterm>
+  <primary>packages</primary>
+ </indexterm>
+
+ <title>&repmgr; package details</title>
+ <para>
+   This section provides technical details about various &repmgr; binary
+   packages, such as location of the installed binaries and
+   configuration files.
+ </para>
+
+ <sect1 id="packages-centos" xreflabel="CentOS packages">
+  <title>CentOS, RHEL, Scientific Linux etc.</title>
+  <para>
+    Currently packages are provided for versions 6.x and 7.x of CentOS et al.
+  </para>
+
+  <note>
+    <para>
+      For PostgreSQL 9.6 and lower, the CentOS packages use a mixture of <literal>9.6</literal>
+      and <literal>96</literal> in various places to designate the major version;
+      from PostgreSQL 10, the first part of the version number (e.g. <literal>10</literal>) is
+      the major version, so there is more consistency in file/path/package naming.
+    </para>
+  </note>
+
+  <table id="centos-7-packages">
+   <title>CentOS 7 packages</title>
+
+   <tgroup cols="2">
+    <tbody>
+     <row>
+      <entry>Repository URL:</entry>
+      <entry><ulink url="https://yum.postgresql.org/repopackages.php">https://yum.postgresql.org/repopackages.php</ulink></entry>
+     </row>
+
+     <row>
+      <entry>Repository documentation:</entry>
+      <entry><ulink url="https://yum.postgresql.org/">https://yum.postgresql.org/</ulink></entry>
+     </row>
+
+     <row>
+      <entry>Package name example:</entry>
+      <entry><filename>repmgr10-4.0.0-1.rhel7.x86_64</filename></entry>
+     </row>
+
+     <row>
+      <entry>Metapackage:</entry>
+      <entry>(none)</entry>
+     </row>
+
+     <row>
+      <entry>Installation command:</entry>
+      <entry><literal>yum install -y repmgr10</literal></entry>
+     </row>
+
+     <row>
+      <entry>Binary location:</entry>
+      <entry><filename>/usr/pgsql-10/bin</filename></entry>
+     </row>
+
+     <row>
+      <entry>In default path:</entry>
+      <entry>NO</entry>
+     </row>
+
+     <row>
+      <entry>Configuration file location:</entry>
+      <entry><filename>/etc/repmgr/10/repmgr.conf</filename></entry>
+     </row>
+
+     <row>
+      <entry>repmgrd service command:</entry>
+      <entry><literal>service repmgr10</literal></entry>
+     </row>
+
+     <row>
+      <entry>repmgrd service file location:</entry>
+      <entry><filename>/usr/lib/systemd/system/repmgr10.service</filename></entry>
+     </row>
+
+     <row>
+      <entry>repmgrd log file location:</entry>
+      <entry>(not specified)</entry>
+     </row>
+
+    </tbody>
+   </tgroup>
+  </table>
+
+  <table id="centos-6-packages">
+   <title>CentOS 6 packages</title>
+
+   <tgroup cols="2">
+    <tbody>
+     <row>
+      <entry>Repository URL:</entry>
+      <entry><ulink url="https://yum.postgresql.org/repopackages.php">https://yum.postgresql.org/repopackages.php</ulink></entry>
+     </row>
+
+     <row>
+      <entry>Repository documentation:</entry>
+      <entry><ulink url="https://yum.postgresql.org/">https://yum.postgresql.org/</ulink></entry>
+     </row>
+
+     <row>
+      <entry>Package name example:</entry>
+      <entry><filename>repmgr96-4.0.0-1.rhel6.x86_64</filename></entry>
+     </row>
+
+     <row>
+      <entry>Metapackage:</entry>
+      <entry>NO</entry>
+     </row>
+
+     <row>
+      <entry>Installation command:</entry>
+      <entry><literal>yum install -y repmgr96</literal></entry>
+     </row>
+
+     <row>
+      <entry>Binary location:</entry>
+      <entry><filename>/usr/pgsql-9.6/bin</filename></entry>
+     </row>
+
+     <row>
+      <entry>In default path:</entry>
+      <entry>NO</entry>
+     </row>
+
+     <row>
+      <entry>Configuration file location:</entry>
+      <entry><filename>/etc/repmgr/9.6/repmgr.conf</filename></entry>
+     </row>
+
+     <row>
+      <entry>repmgrd service command:</entry>
+      <entry>service repmgr-9.6</entry>
+     </row>
+
+     <row>
+      <entry>repmgrd service file location:</entry>
+      <entry><literal>/etc/init.d/repmgr-9.6</literal></entry>
+     </row>
+
+
+    </tbody>
+   </tgroup>
+  </table>
+
+
+ </sect1>
+</appendix>
