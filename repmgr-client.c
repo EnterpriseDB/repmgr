@@ -1,7 +1,7 @@
 /*
  * repmgr-client.c - Command interpreter for the repmgr package
  *
- * Copyright (c) 2ndQuadrant, 2010-2017
+ * Copyright (c) 2ndQuadrant, 2010-2018
  *
  * This module is a command-line utility to easily setup a cluster of
  * hot standby servers for an HA environment

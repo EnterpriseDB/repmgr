@@ -1,6 +1,6 @@
 AC_INIT([repmgr], [4.0.1], [pgsql-bugs@postgresql.org], [repmgr], [https://2ndquadrant.com/en/resources/repmgr/])
 
-AC_COPYRIGHT([Copyright (c) 2010-2017, 2ndQuadrant Ltd.])
+AC_COPYRIGHT([Copyright (c) 2010-2018, 2ndQuadrant Ltd.])
 
 AC_CONFIG_HEADER(config.h)
 
