@@ -1629,7 +1629,7 @@ do_node_rejoin(void)
 	/* check provided upstream connection */
 	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
 
-	/* sanity-checks for 9.3 */
+	/* sanity checks for 9.3 */
 	server_version_num = get_server_version(upstream_conn, NULL);
 
 	if (server_version_num < 90400)
@@ -1638,7 +1638,9 @@ do_node_rejoin(void)
 	if (get_primary_node_record(upstream_conn, &primary_node_record) == false)
 	{
 		log_error(_("unable to retrieve primary node record"));
+		log_hint(_("check the provided database connection string is for a \"repmgr\" database"));
 		PQfinish(upstream_conn);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	PQfinish(upstream_conn);
