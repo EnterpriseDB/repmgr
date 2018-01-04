@@ -124,9 +124,9 @@ monitor_bdr(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (is_active_bdr_node(local_conn, local_node_info.node_name))
+	if (is_active_bdr_node(local_conn, local_node_info.node_name) == false)
 	{
-		log_error(_("BDR node %s is not active, terminating"),
+		log_error(_("BDR node \"%s\" is not active, terminating"),
 				  local_node_info.node_name);
 		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
