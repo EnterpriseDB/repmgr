@@ -124,7 +124,7 @@ do_bdr_register(void)
 		termPQExpBuffer(&bdr_local_node_name);
 	}
 
-	/* check whether repmgr extension exists, and that any other nodes are BDR */
+	/* check whether repmgr extension exists, and there are no non-BDR nodes registered */
 	extension_status = get_repmgr_extension_status(conn);
 
 	if (extension_status == REPMGR_UNKNOWN)
@@ -174,6 +174,10 @@ do_bdr_register(void)
 
 	pfree(dbname);
 
+	if (bdr_node_has_repmgr_set(conn, config_file_options.node_name) == false)
+	{
+		bdr_node_set_repmgr_set(conn, config_file_options.node_name);
+	}
 
 	/*
 	 * before adding the extension tables to the replication set, if any other

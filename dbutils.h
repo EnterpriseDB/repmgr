@@ -504,5 +504,7 @@ void		get_bdr_other_node_name(PGconn *conn, int node_id, char *name_buf);
 
 bool		am_bdr_failover_handler(PGconn *conn, int node_id);
 void		unset_bdr_failover_handler(PGconn *conn);
+bool		bdr_node_has_repmgr_set(PGconn *conn, const char *node_name);
+bool		bdr_node_set_repmgr_set(PGconn *conn, const char *node_name);
 
 #endif							/* _REPMGR_DBUTILS_H_ */
