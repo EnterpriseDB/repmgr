@@ -1,6 +1,7 @@
 4.0.2   2018-01-
         repmgr: enable documentation to be build as single HTML file; GitHub #353 (fanf2)
         repmgr: add missing -W option to getopt_long() invocation; GitHub #350 (Ian)
+        repmgr: recognize "--terse" option for "repmgr cluster event"; GitHub #360 (Ian)
         docs: various fixes (Ian, Daymel, Martín, ams)
 
 4.0.1   2017-12-13
