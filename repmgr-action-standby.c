@@ -783,9 +783,52 @@ do_standby_register(void)
 
 	conn = establish_db_connection_quiet(config_file_options.conninfo);
 
+	/*
+	 * if --force provided, don't wait for the node to start, as the
+	 * normal use case will be re-registering an existing node, or
+	 * registering an inactive/not-yet-extant one; we'll do the
+	 * error handling for those cases in the next code block
+	 */
+	if (PQstatus(conn) != CONNECTION_OK && runtime_options.force == false)
+	{
+		bool		conn_ok = false;
+		int			timer = 0;
+
+		for (;;)
+		{
+			if (timer == runtime_options.wait_start)
+				break;
+
+			sleep(1);
+
+			log_verbose(LOG_INFO, _("%i of %i connection attempts"),
+						timer + 1,
+						runtime_options.wait_start);
+
+			conn = establish_db_connection_quiet(config_file_options.conninfo);
+
+			if (PQstatus(conn) == CONNECTION_OK)
+			{
+				conn_ok = true;
+				break;
+			}
+
+			timer++;
+		}
+
+		if (conn_ok == true)
+		{
+			log_info(_("connected to local node \"%s\" (ID: %i) after %i seconds"),
+					 config_file_options.node_name,
+					 config_file_options.node_id,
+					 timer);
+		}
+
+	}
+
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
-		if (!runtime_options.force)
+		if (runtime_options.force == false)
 		{
 			log_error(_("unable to connect to local node \"%s\" (ID: %i)"),
 					  config_file_options.node_name,
@@ -797,7 +840,7 @@ do_standby_register(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		if (!runtime_options.connection_param_provided)
+		if (runtime_options.connection_param_provided == false)
 		{
 			log_error(_("unable to connect to local node \"%s\" (ID: %i) and no primary connection parameters provided"),
 					  config_file_options.node_name,
@@ -821,8 +864,8 @@ do_standby_register(void)
 	}
 
 	/*
-	 * User is forcing a registration and must have supplied primary
-	 * connection info
+	 * otherwise user is forcing a registration of a (potentially) inactive (or
+	 * not-yet-extant) node and must have supplied primary connection info
 	 */
 	else
 	{
@@ -5313,6 +5356,8 @@ do_standby_help(void)
 	printf(_("  -F, --force                         overwrite an existing node record, or if primary connection\n" \
 			 "                                        parameters supplied, create record even if standby offline\n"));
 	printf(_("  --upstream-node-id                  ID of the upstream node to replicate from (optional)\n"));
+	printf(_("  --wait-start=VALUE                  wait for the standby to start (timeout in seconds, default %i)\n"), DEFAULT_WAIT_START);
+
 	printf(_("  --wait-sync[=VALUE]                 wait for the node record to synchronise to the standby\n" \
 			 "                                        (optional timeout in seconds)\n"));
 

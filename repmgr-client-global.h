@@ -86,6 +86,7 @@ typedef struct
 	/* "standby register" options */
 	bool		wait_register_sync;
 	int			wait_register_sync_seconds;
+	int			wait_start;
 
 	/* "standby switchover" options */
 	bool		always_promote;
@@ -146,7 +147,7 @@ typedef struct
 		/* "standby clone"/"standby follow" options */ \
 		NO_UPSTREAM_NODE, \
 		/* "standby register" options */ \
-		false, 0, \
+		false, 0, DEFAULT_WAIT_START,   \
 		/* "standby switchover" options */ \
 		false, false, false, \
 		/* "node status" options */ \

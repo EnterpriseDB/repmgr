@@ -37,7 +37,24 @@
     </note>
   </refsect1>
 
-  <refsect1 id="repmgr-standby-register-wait" xreflabel="repmgr standby register --wait">
+  <refsect1 id="repmgr-standby-register-wait-start" xreflabel="repmgr standby register --wait-start">
+   <title>Waiting for the the standby to start</title>
+   <para>
+     By default, &repmgr; will wait 30 seconds for the standby to become available before
+     aborting with a connection error. This is useful when setting up a standby from a script,
+     as the standby may not have fully started up by the time <command>repmgr standby register</command>
+     is executed.
+   </para>
+   <para>
+     To change the timeout, pass the desired value with the <literal>--wait-start</literal> option.
+     A value of <literal>0</literal> will disable the timeout.
+   </para>
+   <para>
+     The timeout will be ignored if <literal>-F/--force</literal> was provided.
+   </para>
+  </refsect1>
+
+  <refsect1 id="repmgr-standby-register-wait-sync" xreflabel="repmgr standby register --wait-sync">
    <title>Waiting for the registration to propagate to the standby</title>
    <para>
      Depending on your environment and workload, it may take some time for
@@ -75,11 +92,11 @@
    </para>
   </refsect1>
 
-
   <refsect1>
     <title>Event notifications</title>
     <para>
-      A <literal>standby_register</literal> event notification will be generated.
+      A <literal>standby_register</literal> <link linkend="event-notifications">event notification</link>
+      will be generated.
     </para>
   </refsect1>
 

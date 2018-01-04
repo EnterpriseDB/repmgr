@@ -56,7 +56,7 @@
 #define OPT_NODE_NAME					   1007
 #define OPT_WITHOUT_BARMAN				   1008
 #define OPT_NO_UPSTREAM_CONNECTION		   1009
-#define OPT_REGISTER_WAIT				   1010
+#define OPT_WAIT_SYNC				       1010
 #define OPT_LOG_TO_FILE					   1011
 #define OPT_UPSTREAM_CONNINFO			   1012
 #define OPT_REPLICATION_USER			   1013
@@ -82,6 +82,8 @@
 #define OPT_SLOTS						   1033
 #define OPT_CONFIG_ARCHIVE_DIR			   1034
 #define OPT_HAS_PASSFILE                   1035
+#define OPT_WAIT_START                     1036
+
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
 #define OPT_NO_CONNINFO_PASSWORD			998
@@ -136,7 +138,8 @@ static struct option long_options[] =
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
 
 /* "standby register" options */
-	{"wait-sync", optional_argument, NULL, OPT_REGISTER_WAIT},
+	{"wait-start", required_argument, NULL, OPT_WAIT_START},
+	{"wait-sync", optional_argument, NULL, OPT_WAIT_SYNC},
 
 /* "standby switchover" options
  *

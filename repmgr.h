@@ -76,6 +76,7 @@
 #define	DEFAULT_REPLICATION_LAG_WARNING      300 /* seconds */
 #define DEFAULT_REPLICATION_LAG_CRITICAL     600 /* seconds */
 #define DEFAULT_WITNESS_SYNC_INTERVAL        15  /* seconds */
+#define DEFAULT_WAIT_START                   30  /* seconds */
 
 #ifndef RECOVERY_COMMAND_FILE
 #define RECOVERY_COMMAND_FILE "recovery.conf"

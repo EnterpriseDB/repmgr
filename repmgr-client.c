@@ -389,7 +389,11 @@ main(int argc, char **argv)
 				 *---------------------------
 				 */
 
-			case OPT_REGISTER_WAIT:
+			case OPT_WAIT_START:
+				runtime_options.wait_start = repmgr_atoi(optarg, "--wait-start", &cli_errors, false);
+				break;
+
+			case OPT_WAIT_SYNC:
 				runtime_options.wait_register_sync = true;
 				if (optarg != NULL)
 				{
