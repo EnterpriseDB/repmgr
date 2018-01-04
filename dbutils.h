@@ -498,8 +498,7 @@ bool		is_bdr_repmgr(PGconn *conn);
 bool		is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
 bool		add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
 void		add_extension_tables_to_bdr_replication_set(PGconn *conn);
-
-bool		bdr_node_exists(PGconn *conn, const char *node_name);
+bool		bdr_node_name_matches(PGconn *conn, const char *node_name, PQExpBufferData *bdr_local_node_name);
 ReplSlotStatus get_bdr_node_replication_slot_status(PGconn *conn, const char *node_name);
 void		get_bdr_other_node_name(PGconn *conn, int node_id, char *name_buf);
 

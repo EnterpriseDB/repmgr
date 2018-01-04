@@ -4289,7 +4289,7 @@ add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char
 
 
 bool
-bdr_node_exists(PGconn *conn, const char *node_name)
+bdr_node_name_matches(PGconn *conn, const char *node_name, PQExpBufferData *bdr_local_node_name)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -4298,10 +4298,7 @@ bdr_node_exists(PGconn *conn, const char *node_name)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT COUNT(*)"
-					  "  FROM bdr.bdr_nodes"
-					  " WHERE node_name = '%s'",
-					  node_name);
+					  "SELECT bdr.bdr_get_local_node_name() AS node_name");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -4312,7 +4309,9 @@ bdr_node_exists(PGconn *conn, const char *node_name)
 	}
 	else
 	{
-		node_exists = atoi(PQgetvalue(res, 0, 0)) == 1 ? true : false;
+		node_exists = true;
+		appendPQExpBuffer(bdr_local_node_name,
+						  "%s", PQgetvalue(res, 0, 0));
 	}
 
 	PQclear(res);
