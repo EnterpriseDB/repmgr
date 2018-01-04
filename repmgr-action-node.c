@@ -728,8 +728,7 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 			}
 			else
 			{
-				appendPQExpBuffer(
-								  &details,
+				appendPQExpBuffer(&details,
 								  _("node is primary"));
 			}
 			break;
@@ -754,8 +753,7 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 				if (is_bdr_db(conn, &output) == false)
 				{
 					status = CHECK_STATUS_CRITICAL;
-					appendPQExpBuffer(
-									  &details,
+					appendPQExpBuffer(&details,
 									  "%s", output.data);
 				}
 				termPQExpBuffer(&output);
@@ -767,6 +765,11 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 						status = CHECK_STATUS_CRITICAL;
 						appendPQExpBuffer(&details,
 										  _("node is not an active BDR node"));
+					}
+					else
+					{
+						appendPQExpBuffer(&details,
+										  _("node is an active BDR node"));
 					}
 				}
 			}
