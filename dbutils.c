@@ -3249,6 +3249,90 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 }
 
 
+PGresult *
+get_event_records(PGconn *conn, int node_id, const char *node_name, const char *event, bool all, int limit)
+{
+	PGresult   *res;
+
+	PQExpBufferData query;
+	PQExpBufferData where_clause;
+
+
+	initPQExpBuffer(&query);
+	initPQExpBuffer(&where_clause);
+
+	/* LEFT JOIN used here as a node record may have been removed */
+	appendPQExpBuffer(&query,
+					  "   SELECT e.node_id, n.node_name, e.event, e.successful, "
+					  "          TO_CHAR(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, "
+					  "          e.details "
+					  "     FROM repmgr.events e "
+					  "LEFT JOIN repmgr.nodes n ON e.node_id = n.node_id ");
+
+	if (node_id != UNKNOWN_NODE_ID)
+	{
+		append_where_clause(&where_clause,
+							"n.node_id=%i", node_id);
+	}
+	else if (node_name[0] != '\0')
+	{
+		char	   *escaped = escape_string(conn, node_name);
+
+		if (escaped == NULL)
+		{
+			log_error(_("unable to escape value provided for node name"));
+			log_detail(_("node name is: \"%s\""), node_name);
+		}
+		else
+		{
+			append_where_clause(&where_clause,
+								"n.node_name='%s'",
+								escaped);
+			pfree(escaped);
+		}
+	}
+
+	if (event[0] != '\0')
+	{
+		char	   *escaped = escape_string(conn, event);
+
+		if (escaped == NULL)
+		{
+			log_error(_("unable to escape value provided for event"));
+			log_detail(_("event is: \"%s\""), event);
+		}
+		else
+		{
+			append_where_clause(&where_clause,
+								"e.event='%s'",
+								escaped);
+			pfree(escaped);
+		}
+	}
+
+	appendPQExpBuffer(&query, "\n%s\n",
+					  where_clause.data);
+
+	appendPQExpBuffer(&query,
+					  " ORDER BY e.event_timestamp DESC");
+
+	if (all == false && limit > 0)
+	{
+		appendPQExpBuffer(&query, " LIMIT %i",
+						  limit);
+	}
+
+	log_debug("do_cluster_event():\n%s", query.data);
+	res = PQexec(conn, query.data);
+
+	termPQExpBuffer(&query);
+	termPQExpBuffer(&where_clause);
+
+
+	return res;
+}
+
+
 /* ========================== */
 /* replication slot functions */
 /* ========================== */
