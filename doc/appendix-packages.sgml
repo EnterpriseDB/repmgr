@@ -144,6 +144,10 @@
       <entry><literal>/etc/init.d/repmgr-9.6</literal></entry>
      </row>
 
+     <row>
+      <entry>repmgrd log file location:</entry>
+      <entry><filename>/var/log/repmgr/repmgrd-9.6.log</filename></entry>
+     </row>
 
     </tbody>
    </tgroup>
