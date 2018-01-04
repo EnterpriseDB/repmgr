@@ -4163,20 +4163,23 @@ is_active_bdr_node(PGconn *conn, const char *node_name)
 					  "    SELECT COALESCE(s.active, TRUE) AS active"
 					  "      FROM bdr.bdr_nodes n "
 					  " LEFT JOIN pg_catalog.pg_replication_slots s "
-					  "        ON slot_name=bdr.bdr_format_slot_name(n.node_sysid, n.node_timeline, n.node_dboid, (SELECT oid FROM pg_database WHERE datname = current_database())) "
-					  "     WHERE node_name='%s' ",
+					  "        ON s.slot_name=bdr.bdr_format_slot_name(n.node_sysid, n.node_timeline, n.node_dboid, (SELECT oid FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database())) "
+					  "     WHERE n.node_name='%s' ",
 					  node_name);
+
+	log_verbose(LOG_DEBUG, "is_active_bdr_node():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
+	/* we don't care if the query fails */
 	if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
 	{
 		is_active_bdr_node = false;
 	}
 	else
 	{
-		is_active_bdr_node = atoi(PQgetvalue(res, 0, 0)) == 1 ? true : false;
+		is_active_bdr_node = atobool(PQgetvalue(res, 0, 0));
 	}
 
 	PQclear(res);
