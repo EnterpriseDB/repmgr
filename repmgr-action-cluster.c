@@ -440,6 +440,7 @@ do_cluster_event(void)
 	PQExpBufferData where_clause;
 	PGresult   *res;
 	int			i = 0;
+	int			column_count = EVENT_HEADER_COUNT;
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
@@ -538,7 +539,11 @@ do_cluster_event(void)
 	strncpy(headers_event[EV_TIMESTAMP].title, _("Timestamp"), MAXLEN);
 	strncpy(headers_event[EV_DETAILS].title, _("Details"), MAXLEN);
 
-	for (i = 0; i < EVENT_HEADER_COUNT; i++)
+	/* if --terse provided, simply omit the "Details" column */
+	if (runtime_options.terse == true)
+		column_count --;
+
+	for (i = 0; i < column_count; i++)
 	{
 		headers_event[i].max_length = strlen(headers_event[i].title);
 	}
@@ -547,7 +552,7 @@ do_cluster_event(void)
 	{
 		int			j;
 
-		for (j = 0; j < EVENT_HEADER_COUNT; j++)
+		for (j = 0; j < column_count; j++)
 		{
 			headers_event[j].cur_length = strlen(PQgetvalue(res, i, j));
 			if (headers_event[j].cur_length > headers_event[j].max_length)
@@ -558,7 +563,7 @@ do_cluster_event(void)
 
 	}
 
-	for (i = 0; i < EVENT_HEADER_COUNT; i++)
+	for (i = 0; i < column_count; i++)
 	{
 		if (i == 0)
 			printf(" ");
@@ -571,14 +576,14 @@ do_cluster_event(void)
 	}
 	printf("\n");
 	printf("-");
-	for (i = 0; i < EVENT_HEADER_COUNT; i++)
+	for (i = 0; i < column_count; i++)
 	{
 		int			j;
 
 		for (j = 0; j < headers_event[i].max_length; j++)
 			printf("-");
 
-		if (i < (EVENT_HEADER_COUNT - 1))
+		if (i < (column_count - 1))
 			printf("-+-");
 		else
 			printf("-");
@@ -591,13 +596,13 @@ do_cluster_event(void)
 		int			j;
 
 		printf(" ");
-		for (j = 0; j < EVENT_HEADER_COUNT; j++)
+		for (j = 0; j < column_count; j++)
 		{
 			printf("%-*s",
 				   headers_event[j].max_length,
 				   PQgetvalue(res, i, j));
 
-			if (j < (EVENT_HEADER_COUNT - 1))
+			if (j < (column_count - 1))
 				printf(" | ");
 		}
 
