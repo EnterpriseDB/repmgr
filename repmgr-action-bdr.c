@@ -1,5 +1,5 @@
 /*
- * repmgr-action-standby.c
+ * repmgr-action-bdr.c
  *
  * Implements BDR-related actions for the repmgr command line utility
  *
@@ -92,6 +92,38 @@ do_bdr_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* check for a matching BDR node */
+	{
+		PQExpBufferData bdr_local_node_name;
+		bool		node_match = false;
+
+		initPQExpBuffer(&bdr_local_node_name);
+		node_match = bdr_node_name_matches(conn, config_file_options.node_name, &bdr_local_node_name);
+
+		if (node_match == false)
+		{
+			if (strlen(bdr_local_node_name.data))
+			{
+				log_error(_("local node BDR node name is \"%s\", expected: \"%s\""),
+						  bdr_local_node_name.data,
+						  config_file_options.node_name);
+				log_hint(_("\"node_name\" in repmgr.conf must match \"node_name\" in bdr.bdr_nodes"));
+			}
+			else
+			{
+				log_error(_("local node does not report BDR node name"));
+				log_hint(_("ensure this is an active BDR node"));
+			}
+
+			PQfinish(conn);
+			pfree(dbname);
+			termPQExpBuffer(&bdr_local_node_name);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		termPQExpBuffer(&bdr_local_node_name);
+	}
+
 	/* check whether repmgr extension exists, and that any other nodes are BDR */
 	extension_status = get_repmgr_extension_status(conn);
 
@@ -142,18 +174,6 @@ do_bdr_register(void)
 
 	pfree(dbname);
 
-	/* check for a matching BDR node */
-	{
-		bool		node_exists = bdr_node_exists(conn, config_file_options.node_name);
-
-		if (node_exists == false)
-		{
-			log_error(_("no BDR node with node_name \"%s\" found"), config_file_options.node_name);
-			log_hint(_("\"node_name\" in repmgr.conf must match \"node_name\" in bdr.bdr_nodes"));
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
-		}
-	}
 
 	/*
 	 * before adding the extension tables to the replication set, if any other
