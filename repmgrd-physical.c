@@ -1,5 +1,5 @@
 /*
- * repmgrd-physical.c - physical replication functionality for repmgrd
+ * repmgrd-physical.c - physical (streaming) replication functionality for repmgrd
  *
  * Copyright (c) 2ndQuadrant, 2010-2018
  *
@@ -107,11 +107,11 @@ do_physical_node_check(void)
 
 	if (local_node_info.active == false)
 	{
-		char	   *hint = "Check that 'repmgr (primary|standby) register' was executed for this node";
+		char	   *hint = "Check that \"repmgr (primary|standby) register\" was executed for this node";
 
 		switch (config_file_options.failover)
 		{
-				/* "failover" is an enum, all values should be covered here */
+			/* "failover" is an enum, all values should be covered here */
 
 			case FAILOVER_AUTOMATIC:
 				log_error(_("this node is marked as inactive and cannot be used as a failover target"));
@@ -935,22 +935,19 @@ loop:
 
 						local_node_info.active = false;
 
-						appendPQExpBuffer(
-										  &event_details,
+						appendPQExpBuffer(&event_details,
 										  _("unable to connect to local node \"%s\" (ID: %i), marking inactive"),
 										  local_node_info.node_name,
 										  local_node_info.node_id);
 
-						log_warning("%s", event_details.data)
+						log_warning("%s", event_details.data);
 
-
-							create_event_notification(
-													  primary_conn,
-													  &config_file_options,
-													  local_node_info.node_id,
-													  "standby_failure",
-													  false,
-													  event_details.data);
+						create_event_notification(primary_conn,
+												  &config_file_options,
+												  local_node_info.node_id,
+												  "standby_failure",
+												  false,
+												  event_details.data);
 
 						termPQExpBuffer(&event_details);
 					}
@@ -971,8 +968,7 @@ loop:
 
 						local_node_info.active = true;
 
-						appendPQExpBuffer(
-										  &event_details,
+						appendPQExpBuffer(&event_details,
 										  _("reconnected to local node \"%s\" (ID: %i), marking active"),
 										  local_node_info.node_name,
 										  local_node_info.node_id);

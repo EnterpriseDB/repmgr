@@ -121,6 +121,7 @@
  <para>
   By default, all notification types will be passed to the designated script;
   the notification types can be filtered to explicitly named ones:
+
   <itemizedlist spacing="compact" mark="bullet">
 
    <listitem>
@@ -146,6 +147,12 @@
    </listitem>
    <listitem>
     <simpara><literal>standby_disconnect_manual</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>standby_failure</literal></simpara>
+   </listitem>
+   <listitem>
+    <simpara><literal>standby_recovery</literal></simpara>
    </listitem>
    <listitem>
     <simpara><literal>witness_register</literal></simpara>
