@@ -369,10 +369,8 @@ bool		check_cluster_schema(PGconn *conn);
 /* GUC manipulation functions */
 bool		set_config(PGconn *conn, const char *config_param, const char *config_value);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
-int guc_set(PGconn *conn, const char *parameter, const char *op,
-		const char *value);
-int guc_set_typed(PGconn *conn, const char *parameter, const char *op,
-			  const char *value, const char *datatype);
+int		    guc_set(PGconn *conn, const char *parameter, const char *op, const char *value);
+int			guc_set_typed(PGconn *conn, const char *parameter, const char *op, const char *value, const char *datatype);
 bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 
 /* server information functions */
@@ -437,6 +435,7 @@ void		config_file_list_add(t_configfile_list *list, const char *file, const char
 bool		create_event_record(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
 bool		create_event_notification(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details);
 bool		create_event_notification_extended(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info);
+PGresult   *get_event_records(PGconn *conn, int node_id, const char *node_name, const char *event, bool all, int limit);
 
 /* replication slot functions */
 bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);

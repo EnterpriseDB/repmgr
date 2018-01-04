@@ -436,83 +436,18 @@ void
 do_cluster_event(void)
 {
 	PGconn	   *conn = NULL;
-	PQExpBufferData query;
-	PQExpBufferData where_clause;
 	PGresult   *res;
 	int			i = 0;
 	int			column_count = EVENT_HEADER_COUNT;
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
-	initPQExpBuffer(&query);
-	initPQExpBuffer(&where_clause);
-
-	/* LEFT JOIN used here as a node record may have been removed */
-	appendPQExpBuffer(
-					  &query,
-					  "   SELECT e.node_id, n.node_name, e.event, e.successful, \n"
-					  "          TO_CHAR(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, \n"
-					  "          e.details \n"
-					  "     FROM repmgr.events e \n"
-					  "LEFT JOIN repmgr.nodes n ON e.node_id = n.node_id ");
-
-	if (runtime_options.node_id != UNKNOWN_NODE_ID)
-	{
-
-		append_where_clause(&where_clause,
-							"n.node_id=%i", runtime_options.node_id);
-	}
-	else if (runtime_options.node_name[0] != '\0')
-	{
-		char	   *escaped = escape_string(conn, runtime_options.node_name);
-
-		if (escaped == NULL)
-		{
-			log_error(_("unable to escape value provided for node name"));
-		}
-		else
-		{
-			append_where_clause(&where_clause,
-								"n.node_name='%s'",
-								escaped);
-			pfree(escaped);
-		}
-	}
-
-	if (runtime_options.event[0] != '\0')
-	{
-		char	   *escaped = escape_string(conn, runtime_options.event);
-
-		if (escaped == NULL)
-		{
-			log_error(_("unable to escape value provided for event"));
-		}
-		else
-		{
-			append_where_clause(&where_clause,
-								"e.event='%s'",
-								escaped);
-			pfree(escaped);
-		}
-	}
-
-	appendPQExpBuffer(&query, "\n%s\n",
-					  where_clause.data);
-
-	appendPQExpBuffer(&query,
-					  " ORDER BY e.event_timestamp DESC");
-
-	if (runtime_options.all == false && runtime_options.limit > 0)
-	{
-		appendPQExpBuffer(&query, " LIMIT %i",
-						  runtime_options.limit);
-	}
-
-	log_debug("do_cluster_event():\n%s", query.data);
-	res = PQexec(conn, query.data);
-
-	termPQExpBuffer(&query);
-	termPQExpBuffer(&where_clause);
+	res = get_event_records(conn,
+							runtime_options.node_id,
+							runtime_options.node_name,
+							runtime_options.event,
+							runtime_options.all,
+							runtime_options.limit);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
