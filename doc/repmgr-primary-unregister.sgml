@@ -13,7 +13,7 @@
   <refsect1>
     <title>Description</title>
     <para>
-      <command>repmgr primary register</command> unregisters an inactive primary node
+      <command>repmgr primary unregister</command> unregisters an inactive primary node
       from the &repmgr; metadata. This is typically when the primary has failed and is
       being removed from the cluster after a new primary has been promoted.
     </para>
@@ -28,14 +28,14 @@
 
     <para>
       <command>repmgr master unregister</command> can be used as an alias for
-      <command>repmgr primary unregister</command>/
+      <command>repmgr primary unregister</command>.
     </para>
   </refsect1>
 
   <refsect1>
     <title>Event notifications</title>
     <para>
-      A <literal>primary_unregister</literal> event notification will be generated.
+      A <literal>primary_unregister</literal> <link linkend="event-notifications">event notification</link> will be generated.
     </para>
   </refsect1>
 
