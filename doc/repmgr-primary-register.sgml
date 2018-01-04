@@ -51,7 +51,7 @@
   <refsect1>
     <title>Event notifications</title>
     <para>
-      A <literal>primary_register</literal> event notification will be generated.
+      A <literal>primary_register</literal> <link linkend="event-notifications">event notification</link> will be generated.
     </para>
   </refsect1>
 

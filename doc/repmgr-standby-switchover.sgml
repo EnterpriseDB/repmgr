@@ -43,7 +43,7 @@
   <refsect1>
     <title>Event notifications</title>
     <para>
-      A <literal>standby_promote</literal> event notification will be generated on the new primary,
+      A <literal>standby_promote</literal> <link linkend="event-notifications">event notification</link> will be generated on the new primary,
       and a <literal>node_rejoin</literal> event notification on the former primary (new standby).
     </para>
   </refsect1>

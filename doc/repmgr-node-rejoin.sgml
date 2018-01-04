@@ -48,7 +48,7 @@
   <refsect1>
     <title>Event notifications</title>
     <para>
-      A <literal>node_rejoin</literal> event notification will be generated.
+      A <literal>node_rejoin</literal> <link linkend="event-notifications">event notification</link> will be generated.
     </para>
   </refsect1>
 
