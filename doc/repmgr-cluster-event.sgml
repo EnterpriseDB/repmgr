@@ -40,7 +40,7 @@
           <simpara><literal>--node-name</literal>: restrict entries to node with this name</simpara>
         </listitem>
         <listitem>
-          <simpara><literal>--event</literal>: filter specific event</simpara>
+          <simpara><literal>--event</literal>: filter specific event (see <xref linkend="event-notifications"> for a full list)</simpara>
         </listitem>
       </itemizedlist>
     </para>
