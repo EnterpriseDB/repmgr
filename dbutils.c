@@ -4596,3 +4596,71 @@ unset_bdr_failover_handler(PGconn *conn)
 	PQclear(res);
 	return;
 }
+
+
+bool
+bdr_node_has_repmgr_set(PGconn *conn, const char *node_name)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool		has_repmgr_set = false;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  " SELECT COUNT(*) "
+					  "   FROM UNNEST(bdr.connection_get_replication_sets('%s') AS repset "
+					  "  WHERE repset = 'repmgr'",
+					  node_name);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
+	{
+		has_repmgr_set = false;
+	}
+	else
+	{
+		has_repmgr_set = atoi(PQgetvalue(res, 0, 0)) == 1 ? true : false;
+	}
+
+	PQclear(res);
+
+	return has_repmgr_set;
+}
+
+
+bool
+bdr_node_set_repmgr_set(PGconn *conn, const char *node_name)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool		success = true;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  " SELECT bdr.connection_set_replication_sets( "
+					  "   ARRAY( "
+					  "     SELECT repset::TEXT "
+					  "       FROM UNNEST(bdr.connection_get_replication_sets('node1')) AS repset "
+					  "         UNION "
+					  "     SELECT 'repmgr'::TEXT "
+					  "   ), "
+					  "   '%s' "
+					  " ) ",
+					  node_name);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		success = false;
+	}
+
+	PQclear(res);
+
+	return success;
+}
