@@ -99,7 +99,8 @@ static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list
 static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
 static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
 
-
+static int parse_output_to_argv(const char *string, char ***argv_array);
+static void free_parsed_argv(char ***argv_array);
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
 
@@ -5032,28 +5033,14 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 }
 
 
-/* TODO: consolidate code in below functions */
 static NodeStatus
 parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint)
 {
-	int			options_len = 0;
-	char	   *options_string = NULL;
-	char	   *options_string_ptr = NULL;
 	NodeStatus	node_status = NODE_STATUS_UNKNOWN;
 
-	/*
-	 * Add parsed options to this list, then copy to an array to pass to
-	 * getopt
-	 */
-	static ItemList option_argv = {NULL, NULL};
-
-	char	   *argv_item;
-	int			c,
-				argc_item = 1;
-
-	char	  **argv_array;
-	ItemListCell *cell;
-
+	int			c = 0,
+				argc_item = 0;
+	char	  **argv_array = NULL;
 	int			optindex = 0;
 
 	/* We're only interested in these options */
@@ -5071,51 +5058,7 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 		return node_status;
 	}
 
-	options_len = strlen(node_status_output) + 1;
-	options_string = pg_malloc(options_len);
-	options_string_ptr = options_string;
-
-	/* Copy the string before operating on it with strtok() */
-	strncpy(options_string, node_status_output, options_len);
-
-	/* Extract arguments into a list and keep a count of the total */
-	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
-	{
-		item_list_append(&option_argv, argv_item);
-
-		argc_item++;
-
-		if (options_string_ptr != NULL)
-			options_string_ptr = NULL;
-	}
-
-	/*
-	 * Array of argument values to pass to getopt_long - this will need to
-	 * include an empty string as the first value (normally this would be the
-	 * program name)
-	 */
-	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
-
-	/* Insert a blank dummy program name at the start of the array */
-	argv_array[0] = pg_malloc0(1);
-
-	c = 1;
-
-	/*
-	 * Copy the previously extracted arguments from our list to the array
-	 */
-	for (cell = option_argv.head; cell; cell = cell->next)
-	{
-		int			argv_len = strlen(cell->string) + 1;
-
-		argv_array[c] = pg_malloc0(argv_len);
-
-		strncpy(argv_array[c], cell->string, argv_len);
-
-		c++;
-	}
-
-	argv_array[c] = NULL;
+	argc_item = parse_output_to_argv(node_status_output, &argv_array);
 
 	/* Reset getopt's optind variable */
 	optind = 0;
@@ -5156,16 +5099,7 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 		}
 	}
 
-	pfree(options_string);
-
-	{
-		int			i;
-
-		for (i = 0; i < argc_item + 2; i++)
-			pfree(argv_array[i]);
-	}
-	pfree(argv_array);
-
+	free_parsed_argv(&argv_array);
 
 	return node_status;
 }
@@ -5174,26 +5108,11 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 static CheckStatus
 parse_node_check_archiver(const char *node_check_output, int *files, int *threshold)
 {
-	int			options_len = 0;
-	char	   *options_string = NULL;
-	char	   *options_string_ptr = NULL;
-
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
 
-
-	/*
-	 * Add parsed options to this list, then copy to an array to pass to
-	 * getopt
-	 */
-	static ItemList option_argv = {NULL, NULL};
-
-	char	   *argv_item;
-	int			c,
-				argc_item = 1;
-
-	char	  **argv_array;
-	ItemListCell *cell;
-
+	int			c = 0,
+				argc_item = 0;
+	char	  **argv_array = NULL;
 	int			optindex = 0;
 
 	/* We're only interested in these options */
@@ -5214,51 +5133,8 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 		return status;
 	}
 
-	options_len = strlen(node_check_output) + 1;
-	options_string = pg_malloc(options_len);
-	options_string_ptr = options_string;
+	argc_item = parse_output_to_argv(node_check_output, &argv_array);
 
-	/* Copy the string before operating on it with strtok() */
-	strncpy(options_string, node_check_output, options_len);
-
-	/* Extract arguments into a list and keep a count of the total */
-	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
-	{
-		item_list_append(&option_argv, argv_item);
-
-		argc_item++;
-
-		if (options_string_ptr != NULL)
-			options_string_ptr = NULL;
-	}
-
-	/*
-	 * Array of argument values to pass to getopt_long - this will need to
-	 * include an empty string as the first value (normally this would be the
-	 * program name)
-	 */
-	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
-
-	/* Insert a blank dummy program name at the start of the array */
-	argv_array[0] = pg_malloc0(1);
-
-	c = 1;
-
-	/*
-	 * Copy the previously extracted arguments from our list to the array
-	 */
-	for (cell = option_argv.head; cell; cell = cell->next)
-	{
-		int			argv_len = strlen(cell->string) + 1;
-
-		argv_array[c] = pg_malloc0(argv_len);
-
-		strncpy(argv_array[c], cell->string, argv_len);
-
-		c++;
-	}
-
-	argv_array[c] = NULL;
 
 	/* Reset getopt's optind variable */
 	optind = 0;
@@ -5308,11 +5184,98 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 		}
 	}
 
+	free_parsed_argv(&argv_array);
+
 	return status;
 }
 
 
+static int
+parse_output_to_argv(const char *string, char ***argv_array)
+{
+	int			options_len = 0;
+	char	   *options_string = NULL;
+	char	   *options_string_ptr = NULL;
+	int			c = 1,
+	   			argc_item = 1;
+	char	   *argv_item = NULL;
+	char **local_argv_array = NULL;
+	ItemListCell *cell;
 
+	/*
+	 * Add parsed options to this list, then copy to an array to pass to
+	 * getopt
+	 */
+	ItemList option_argv = {NULL, NULL};
+
+	options_len = strlen(string) + 1;
+	options_string = pg_malloc(options_len);
+	options_string_ptr = options_string;
+
+	/* Copy the string before operating on it with strtok() */
+	strncpy(options_string, string, options_len);
+
+	/* Extract arguments into a list and keep a count of the total */
+	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
+	{
+		item_list_append(&option_argv, argv_item);
+
+		argc_item++;
+
+		if (options_string_ptr != NULL)
+			options_string_ptr = NULL;
+	}
+
+	pfree(options_string);
+
+	/*
+	 * Array of argument values to pass to getopt_long - this will need to
+	 * include an empty string as the first value (normally this would be the
+	 * program name)
+	 */
+	local_argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
+
+	/* Insert a blank dummy program name at the start of the array */
+	local_argv_array[0] = pg_malloc0(1);
+
+	/*
+	 * Copy the previously extracted arguments from our list to the array
+	 */
+	for (cell = option_argv.head; cell; cell = cell->next)
+	{
+		int			argv_len = strlen(cell->string) + 1;
+
+		local_argv_array[c] = pg_malloc0(argv_len);
+
+		strncpy(local_argv_array[c], cell->string, argv_len);
+
+		c++;
+	}
+
+	local_argv_array[c] = NULL;
+
+	item_list_free(&option_argv);
+
+	*argv_array = local_argv_array;
+
+	return argc_item;
+}
+
+
+static void
+free_parsed_argv(char ***argv_array)
+{
+	char	  **local_argv_array = *argv_array;
+	int			i = 0;
+
+	while (local_argv_array[i] != NULL)
+	{
+		pfree(local_argv_array[i]);
+		i++;
+	}
+
+	pfree(local_argv_array);
+}
 
 
 void
