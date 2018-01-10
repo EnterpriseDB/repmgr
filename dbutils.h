@@ -509,4 +509,7 @@ void		unset_bdr_failover_handler(PGconn *conn);
 bool		bdr_node_has_repmgr_set(PGconn *conn, const char *node_name);
 bool		bdr_node_set_repmgr_set(PGconn *conn, const char *node_name);
 
+/* miscellaneous debugging functions */
+const char *print_node_status(NodeStatus node_status);
+
 #endif							/* _REPMGR_DBUTILS_H_ */
