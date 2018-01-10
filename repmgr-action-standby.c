@@ -2701,6 +2701,11 @@ do_standby_switchover(void)
 					}
 					log_error(_("current primary did not shut down cleanly, continuing anyway"));
 					shutdown_success = true;
+					break;
+				}
+				else if (status == NODE_STATUS_SHUTTING_DOWN)
+				{
+					log_info(_("remote node is still shutting down"));
 				}
 			}
 
@@ -5268,7 +5273,7 @@ parse_output_to_argv(const char *string, char ***argv_array)
 	{
 		int			argv_len = strlen(cell->string) + 1;
 
-		local_argv_array[c] = pg_malloc0(argv_len);
+		local_argv_array[c] = (char *)pg_malloc0(argv_len);
 
 		strncpy(local_argv_array[c], cell->string, argv_len);
 
@@ -5293,11 +5298,11 @@ free_parsed_argv(char ***argv_array)
 
 	while (local_argv_array[i] != NULL)
 	{
-		pfree(local_argv_array[i]);
+		pfree((char *)local_argv_array[i]);
 		i++;
 	}
 
-	pfree(local_argv_array);
+	pfree((char **)local_argv_array);
 	*argv_array = NULL;
 }
 

@@ -4692,6 +4692,8 @@ print_node_status(NodeStatus node_status)
 			return "UNKNOWN";
 		case NODE_STATUS_UP:
 			return "UP";
+		case NODE_STATUS_SHUTTING_DOWN:
+			return "SHUTTING_DOWN";
 		case NODE_STATUS_DOWN:
 			return "DOWN";
 		case NODE_STATUS_UNCLEAN_SHUTDOWN:
