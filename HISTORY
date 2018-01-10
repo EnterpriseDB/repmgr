@@ -2,7 +2,10 @@
         repmgr: enable documentation to be build as single HTML file; GitHub #353 (fanf2)
         repmgr: add missing -W option to getopt_long() invocation; GitHub #350 (Ian)
         repmgr: recognize "--terse" option for "repmgr cluster event"; GitHub #360 (Ian)
-        docs: various fixes (Ian, Daymel, Martín, ams)
+        repmgr: add "--wait-start" option for "repmgr standby register"; GitHub #356 (Ian)
+        repmgr: add "%p" event notification parameter for "repmgr standby switchover"
+          containing the node ID of the demoted primary (Ian)
+        docs: various fixes and updates (Ian, Daymel, Martín, ams)
 
 4.0.1   2017-12-13
         repmgr: ensure "repmgr node check --action=" returns appropriate return

@@ -2016,6 +2016,8 @@ do_standby_switchover(void)
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	int			unreachable_sibling_node_count = 0;
 
+	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
+
 	/*
 	 * SANITY CHECKS
 	 *
@@ -2114,6 +2116,8 @@ do_standby_switchover(void)
 
 	log_verbose(LOG_DEBUG, "remote node name is \"%s\"", remote_node_record.node_name);
 
+	/* this will fill the %p event notification parameter */
+	event_info.former_primary_id = remote_node_record.node_id;
 
 	/*
 	 * If --force-rewind specified, check pg_rewind can be used, and
@@ -2790,8 +2794,7 @@ do_standby_switchover(void)
 	log_debug("executing:\n  %s", remote_command_str.data);
 	initPQExpBuffer(&command_output);
 
-	command_success = remote_command(
-									 remote_host,
+	command_success = remote_command(remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
 									 &command_output);
@@ -2807,12 +2810,13 @@ do_standby_switchover(void)
 		if (strlen(command_output.data) > 2)
 			log_detail("%s", command_output.data);
 
-		create_event_record(local_conn,
-							&config_file_options,
-							config_file_options.node_id,
-							"standby_switchover",
-							false,
-							command_output.data);
+		create_event_notification_extended(local_conn,
+										   &config_file_options,
+										   config_file_options.node_id,
+										   "standby_switchover",
+										   false,
+										   command_output.data,
+										   &event_info);
 	}
 	else
 	{
@@ -2825,12 +2829,13 @@ do_standby_switchover(void)
 						  config_file_options.node_id,
 						  remote_node_record.node_id);
 
-		create_event_record(local_conn,
-							&config_file_options,
-							config_file_options.node_id,
-							"standby_switchover",
-							true,
-							event_details.data);
+		create_event_notification_extended(local_conn,
+										   &config_file_options,
+										   config_file_options.node_id,
+										   "standby_switchover",
+										   true,
+										   event_details.data,
+										   &event_info);
 		termPQExpBuffer(&event_details);
 	}
 
@@ -3730,8 +3735,7 @@ initialise_direct_clone(t_node_info *node_record)
 		{
 			log_error("%s", event_details.data);
 
-			create_event_notification(
-									  primary_conn,
+			create_event_notification(primary_conn,
 									  &config_file_options,
 									  config_file_options.node_id,
 									  "standby_clone",

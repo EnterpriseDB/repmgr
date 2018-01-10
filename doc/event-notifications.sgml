@@ -63,7 +63,7 @@
    <term><option>%s</option></term>
    <listitem>
     <para>
-     success (1 or 0)
+     success (1) or failure (0)
     </para>
    </listitem>
   </varlistentry>
@@ -84,6 +84,17 @@
     </para>
    </listitem>
   </varlistentry>
+
+
+  <varlistentry>
+   <term><option>%p</option></term>
+   <listitem>
+    <para>
+     node ID of the demoted standby (<xref linkend="repmgr-standby-switchover"> only)
+    </para>
+   </listitem>
+  </varlistentry>
+
  </variablelist>
  <para>
   The values provided for <literal>%t</literal> and <literal>%d</literal>
