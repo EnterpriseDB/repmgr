@@ -1971,14 +1971,11 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
  *  - promoting this standby node to primary
  *  - forcing previous primary node to follow this node
  *
- * Caveats:
+ * Caveat:
  *  - repmgrd must not be running, otherwise it may
  *    attempt a failover
  *    (TODO: find some way of notifying repmgrd of planned
  *     activity like this)
- *  - currently only set up for two-node operation; any other
- *    standbys will probably become downstream cascaded standbys
- *    of the old primary once it's restarted
  *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
@@ -2819,12 +2816,22 @@ do_standby_switchover(void)
 	}
 	else
 	{
+		PQExpBufferData event_details;
+
+		initPQExpBuffer(&event_details);
+
+		appendPQExpBuffer(&event_details,
+						  "node %i promoted to primary, node %i demoted to standby",
+						  config_file_options.node_id,
+						  remote_node_record.node_id);
+
 		create_event_record(local_conn,
 							&config_file_options,
 							config_file_options.node_id,
 							"standby_switchover",
 							true,
-							NULL);
+							event_details.data);
+		termPQExpBuffer(&event_details);
 	}
 
 	termPQExpBuffer(&command_output);
@@ -2894,8 +2901,7 @@ do_standby_switchover(void)
 
 			initPQExpBuffer(&command_output);
 
-			success = remote_command(
-									 host,
+			success = remote_command(host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
 									 &command_output);
