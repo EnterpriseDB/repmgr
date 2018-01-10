@@ -28,6 +28,71 @@
   </refsect1>
 
   <refsect1>
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--always-promote</option></term>
+        <listitem>
+          <para>
+            Promote standby to primary, even if it is behind original primary
+            (original primary will be shut down in any case).
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually execute a switchover.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-F</option></term>
+        <term><option>--force</option></term>
+        <listitem>
+          <para>
+            Ignore warnings and continue anyway.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--force-rewind</option></term>
+        <listitem>
+          <para>
+            Use <application>pg_rewind</application> to reintegrate the old primary if necessary
+            (PostgreSQL 9.5 and later).
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-R</option></term>
+        <term><option>--remote-user</option></term>
+        <listitem>
+          <para>
+            System username for remote SSH operations (defaults to local system user).
+          </para>
+        </listitem>
+      </varlistentry>
+
+     <varlistentry>
+        <term><option>--siblings-follow</option></term>
+        <listitem>
+          <para>
+            Have standbys attached to the old primary follow the new primary.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
     <title>Execution</title>
 
     <para>
@@ -43,8 +108,9 @@
   <refsect1>
     <title>Event notifications</title>
     <para>
-      A <literal>standby_promote</literal> <link linkend="event-notifications">event notification</link> will be generated on the new primary,
-      and a <literal>node_rejoin</literal> event notification on the former primary (new standby).
+      <literal>standby_switchover</literal> and <literal>standby_promote</literal>
+      <link linkend="event-notifications">event notification</link> will be generated for the new primary,
+      and a <literal>node_rejoin</literal> event notification for the former primary (new standby).
     </para>
   </refsect1>
 
