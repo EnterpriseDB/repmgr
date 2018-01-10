@@ -4657,12 +4657,13 @@ bdr_node_set_repmgr_set(PGconn *conn, const char *node_name)
 					  " SELECT bdr.connection_set_replication_sets( "
 					  "   ARRAY( "
 					  "     SELECT repset::TEXT "
-					  "       FROM UNNEST(bdr.connection_get_replication_sets('node1')) AS repset "
+					  "       FROM UNNEST(bdr.connection_get_replication_sets('%s')) AS repset "
 					  "         UNION "
 					  "     SELECT 'repmgr'::TEXT "
 					  "   ), "
 					  "   '%s' "
 					  " ) ",
+					  node_name,
 					  node_name);
 
 	res = PQexec(conn, query.data);
@@ -4676,4 +4677,26 @@ bdr_node_set_repmgr_set(PGconn *conn, const char *node_name)
 	PQclear(res);
 
 	return success;
+}
+
+
+
+/* miscellaneous debugging functions */
+
+const char *
+print_node_status(NodeStatus node_status)
+{
+	switch (node_status)
+	{
+		case NODE_STATUS_UNKNOWN:
+			return "UNKNOWN";
+		case NODE_STATUS_UP:
+			return "UP";
+		case NODE_STATUS_DOWN:
+			return "DOWN";
+		case NODE_STATUS_UNCLEAN_SHUTDOWN:
+			return "UNCLEAN_SHUTDOWN";
+	}
+
+	return "UNIDENTIFIED_STATUS";
 }

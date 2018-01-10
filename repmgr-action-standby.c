@@ -2648,7 +2648,6 @@ do_standby_switchover(void)
 				 i + 1, config_file_options.reconnect_attempts);
 		ping_res = PQping(remote_conninfo);
 
-
 		/* database server could not be contacted */
 		if (ping_res == PQPING_NO_RESPONSE || ping_res == PQPING_NO_ATTEMPT)
 		{
@@ -2668,8 +2667,7 @@ do_standby_switchover(void)
 
 			initPQExpBuffer(&command_output);
 
-			command_success = remote_command(
-											 remote_host,
+			command_success = remote_command(remote_host,
 											 runtime_options.remote_user,
 											 remote_command_str.data,
 											 &command_output);
@@ -2680,6 +2678,8 @@ do_standby_switchover(void)
 			{
 				NodeStatus	status = parse_node_status_is_shutdown_cleanly(command_output.data, &remote_last_checkpoint_lsn);
 
+				log_verbose(LOG_DEBUG, "remote node status is: %s", print_node_status(status));
+
 				if (status == NODE_STATUS_DOWN && remote_last_checkpoint_lsn != InvalidXLogRecPtr)
 				{
 					shutdown_success = true;
@@ -2688,6 +2688,19 @@ do_standby_switchover(void)
 					termPQExpBuffer(&command_output);
 
 					break;
+				}
+				/* remote node did not shut down cleanly */
+				else if (status == NODE_STATUS_UNCLEAN_SHUTDOWN)
+				{
+					if (!runtime_options.force)
+					{
+						log_error(_("current primary did not shut down cleanly, aborting"));
+						log_hint(_("use -F/--force to promote current standby"));
+						termPQExpBuffer(&command_output);
+						exit(ERR_SWITCHOVER_FAIL);
+					}
+					log_error(_("current primary did not shut down cleanly, continuing anyway"));
+					shutdown_success = true;
 				}
 			}
 
@@ -2707,7 +2720,7 @@ do_standby_switchover(void)
 	/* this is unlikely to happen, but check and handle gracefully anyway */
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
-		log_warning(_("connection to local node lost, reconnecting.."));
+		log_warning(_("connection to local node lost, reconnecting..."));
 		local_conn = establish_db_connection(config_file_options.conninfo, false);
 
 		if (PQstatus(local_conn) != CONNECTION_OK)
@@ -5054,7 +5067,7 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 	int			optindex = 0;
 
 	/* We're only interested in these options */
-	static struct option long_options[] =
+	struct option node_status_options[] =
 	{
 		{"last-checkpoint-lsn", required_argument, NULL, 'L'},
 		{"state", required_argument, NULL, 'S'},
@@ -5076,7 +5089,7 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 	/* Prevent getopt from emitting errors */
 	opterr = 0;
 
-	while ((c = getopt_long(argc_item, argv_array, "L:S:", long_options,
+	while ((c = getopt_long(argc_item, argv_array, "L:S:", node_status_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -5126,7 +5139,7 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 	int			optindex = 0;
 
 	/* We're only interested in these options */
-	static struct option long_options[] =
+	struct option node_check_options[] =
 	{
 		{"status", required_argument, NULL, 'S'},
 		{"files", required_argument, NULL, 'f'},
@@ -5152,7 +5165,7 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 	/* Prevent getopt from emitting errors */
 	opterr = 0;
 
-	while ((c = getopt_long(argc_item, argv_array, "f:S:t:", long_options,
+	while ((c = getopt_long(argc_item, argv_array, "f:S:t:", node_check_options,
 							&optindex)) != -1)
 	{
 		switch (c)
@@ -5228,7 +5241,7 @@ parse_output_to_argv(const char *string, char ***argv_array)
 	/* Extract arguments into a list and keep a count of the total */
 	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
 	{
-		item_list_append(&option_argv, argv_item);
+		item_list_append(&option_argv, trim(argv_item));
 
 		argc_item++;
 
@@ -5285,6 +5298,7 @@ free_parsed_argv(char ***argv_array)
 	}
 
 	pfree(local_argv_array);
+	*argv_array = NULL;
 }
 
 
