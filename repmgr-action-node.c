@@ -496,15 +496,26 @@ _do_node_status_is_shutdown_cleanly(void)
 
 	db_state = get_db_state(config_file_options.data_directory);
 
+
+	log_verbose(LOG_DEBUG, "db state now: %s", describe_db_state(db_state));
+
 	if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
 	{
-		/*
-		 * node is not running, but pg_controldata says it is - unclean
-		 * shutdown
-		 */
+
 		if (node_status != NODE_STATUS_UP)
 		{
-			node_status = NODE_STATUS_UNCLEAN_SHUTDOWN;
+			if (db_state == DB_SHUTDOWNING)
+			{
+				node_status = NODE_STATUS_SHUTTING_DOWN;
+			}
+			/*
+			 * node is not running or shutting down, but pg_controldata says it is -
+			 * unclean shutdown
+			 */
+			else
+			{
+				node_status = NODE_STATUS_UNCLEAN_SHUTDOWN;
+			}
 		}
 	}
 
@@ -525,18 +536,23 @@ _do_node_status_is_shutdown_cleanly(void)
 		node_status = NODE_STATUS_DOWN;
 	}
 
+	log_verbose(LOG_DEBUG, "node status determined as: %s", print_node_status(node_status));
+
 	switch (node_status)
 	{
 		case NODE_STATUS_UP:
 			appendPQExpBuffer(&output, "RUNNING");
 			break;
-		case NODE_STATUS_UNCLEAN_SHUTDOWN:
-			appendPQExpBuffer(&output, "UNCLEAN_SHUTDOWN");
+		case NODE_STATUS_SHUTTING_DOWN:
+			appendPQExpBuffer(&output, "SHUTTING_DOWN");
 			break;
 		case NODE_STATUS_DOWN:
 			appendPQExpBuffer(&output,
 							  "SHUTDOWN --last-checkpoint-lsn=%X/%X",
 							  format_lsn(checkPoint));
+			break;
+		case NODE_STATUS_UNCLEAN_SHUTDOWN:
+			appendPQExpBuffer(&output, "UNCLEAN_SHUTDOWN");
 			break;
 		case NODE_STATUS_UNKNOWN:
 			appendPQExpBuffer(&output, "UNKNOWN");
