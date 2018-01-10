@@ -2962,7 +2962,6 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 }
 
 
-
 /*
  * create_event_notification()
  *
@@ -3063,7 +3062,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
-			/* we don't treat this as an error */
+			/* we don't treat this as a fatal error */
 			log_warning(_("unable to create event record:\n  %s"),
 						PQerrorMessage(conn));
 
@@ -3214,6 +3213,20 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 
 							strlcpy(dst_ptr, event_info->conninfo_str, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
+						}
+						break;
+					case 'p':
+						/* %p: former primary id ("repmgr standby switchover") */
+						src_ptr++;
+						if (event_info->former_primary_id != UNKNOWN_NODE_ID)
+						{
+							PQExpBufferData node_id;
+							initPQExpBuffer(&node_id);
+							appendPQExpBuffer(&node_id,
+											  "%i", event_info->former_primary_id);
+							strlcpy(dst_ptr, node_id.data, end_ptr - dst_ptr);
+							dst_ptr += strlen(dst_ptr);
+							termPQExpBuffer(&node_id);
 						}
 						break;
 					default:

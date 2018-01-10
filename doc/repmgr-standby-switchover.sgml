@@ -109,8 +109,13 @@
     <title>Event notifications</title>
     <para>
       <literal>standby_switchover</literal> and <literal>standby_promote</literal>
-      <link linkend="event-notifications">event notification</link> will be generated for the new primary,
+      <link linkend="event-notifications">event notifications</link> will be generated for the new primary,
       and a <literal>node_rejoin</literal> event notification for the former primary (new standby).
+    </para>
+    <para>
+      If using an event notification script, <literal>standby_switchover</literal>
+      will populate the placeholder parameter <literal>%p</literal> with the node ID of
+      the former standby.
     </para>
   </refsect1>
 
