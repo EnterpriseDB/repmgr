@@ -1,6 +1,11 @@
 4.0.2   2018-01-
-        repmgr: enable documentation to be build as single HTML file; GitHub #353 (fanf2)
         repmgr: add missing -W option to getopt_long() invocation; GitHub #350 (Ian)
+        repmgr: automatically create slot name if missing; GitHub #343 (Ian)
+        repmgr: fixes to parsing output of remote repmgr invocations; GitHub #349 (Ian)
+        repmgr: BDR support - create missing connection replication set
+          if required; GitHub #347 (Ian)
+        repmgr: handle missing node record in "repmgr node rejoin"; GitHub #358 (Ian)
+        repmgr: enable documentation to be build as single HTML file; GitHub #353 (fanf2)
         repmgr: recognize "--terse" option for "repmgr cluster event"; GitHub #360 (Ian)
         repmgr: add "--wait-start" option for "repmgr standby register"; GitHub #356 (Ian)
         repmgr: add "%p" event notification parameter for "repmgr standby switchover"
@@ -243,7 +248,7 @@
         Add a ssh_options parameter (Jay Taylor)
 
 2.0beta1 2012-07-27
-        Make CLONE command try to make an exact copy including $PGDATA location (Cedric) 
+        Make CLONE command try to make an exact copy including $PGDATA location (Cedric)
         Add detection of master failure (Jaime)
         Add the notion of a witness server (Jaime)
         Add autofailover capabilities (Jaime)
