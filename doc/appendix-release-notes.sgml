@@ -416,7 +416,7 @@
   <sect2>
     <title>repmgrd</title>
     <para>
-      The `repmgr` shared library has been renamed from <literal>repmgr_funcs</literal> to
+      The shared library has been renamed from <literal>repmgr_funcs</literal> to
       <literal>repmgr</literal>,  meaning <varname>shared_preload_libraries</varname>
       in <filename>postgresql.conf</filename> needs to be updated to the new name:
       <programlisting>
