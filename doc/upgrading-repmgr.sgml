@@ -70,7 +70,7 @@
    <title>Converting repmgr.conf configuration files</title>
    <para>
     With a completely new repmgr version, we've taken the opportunity
-    to rename some configuration items have had their names changed for
+    to rename some configuration items for
     clarity and consistency, both between the configuration file and
     the column names in <structname>repmgr.nodes</structname>
     (e.g. <varname>node</varname> to <varname>node_id</varname>), and
