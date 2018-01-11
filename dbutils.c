@@ -2592,6 +2592,36 @@ truncate_node_records(PGconn *conn)
 	return true;
 }
 
+
+bool
+update_node_record_slot_name(PGconn *primary_conn, int node_id, char *slot_name)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  " UPDATE repmgr.nodes "
+					  "    SET slot_name = '%s' "
+					  "  WHERE node_id = %i ",
+					  slot_name,
+					  node_id);
+	res = PQexec(primary_conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to set node record slot name:\n  %s"),
+				  PQerrorMessage(primary_conn));
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+	return true;
+}
+
 void
 get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *node_info)
 {
@@ -3349,6 +3379,14 @@ get_event_records(PGconn *conn, int node_id, const char *node_name, const char *
 /* ========================== */
 /* replication slot functions */
 /* ========================== */
+
+
+void
+create_slot_name(char *slot_name, int node_id)
+{
+	maxlen_snprintf(slot_name, "repmgr_slot_%i", node_id);
+}
+
 
 bool
 create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg)

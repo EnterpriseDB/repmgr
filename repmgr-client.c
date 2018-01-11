@@ -2729,6 +2729,6 @@ init_node_record(t_node_info *node_record)
 
 	if (config_file_options.use_replication_slots == true)
 	{
-		maxlen_snprintf(node_record->slot_name, "repmgr_slot_%i", config_file_options.node_id);
+		create_slot_name(node_record->slot_name, config_file_options.node_id);
 	}
 }
