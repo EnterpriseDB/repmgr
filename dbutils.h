@@ -422,9 +422,9 @@ bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
 bool		update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 bool		update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
 bool		update_node_record_conn_priority(PGconn *conn, t_configuration_options *options);
+bool		update_node_record_slot_name(PGconn *primary_conn, int node_id, char *slot_name);
 
 bool		witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn);
-
 
 void		clear_node_info_list(NodeInfoList *nodes);
 
@@ -441,6 +441,7 @@ bool		create_event_notification_extended(PGconn *conn, t_configuration_options *
 PGresult   *get_event_records(PGconn *conn, int node_id, const char *node_name, const char *event, bool all, int limit);
 
 /* replication slot functions */
+void		create_slot_name(char *slot_name, int node_id);
 bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);
 bool		drop_replication_slot(PGconn *conn, char *slot_name);
 RecordStatus get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);

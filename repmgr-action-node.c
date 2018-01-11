@@ -1575,13 +1575,11 @@ parse_server_action(const char *action_name)
 
 
 /*
- * Intended mainly for "internal" use by "standby switchover", which
- * calls this on the target server to excute pg_rewind on a demoted
- * primary with a forked (sic) timeline. This function does not
- * currently check whether this is a useful thing to do (however
- * "standby switchover" will perform a check before calling it).
+ * Rejoin a dormant (shut down) node to the replication cluster; this
+ * is typically a former primary which needs to be demoted to a standby.
  *
- * TODO: make this into a more generally useful function.
+ * Note that "repmgr node rejoin" is also executed by
+ * "repmgr standby switchover" after promoting the new primary.
  */
 void
 do_node_rejoin(void)
@@ -1634,14 +1632,21 @@ do_node_rejoin(void)
 	/* check if cleanly shut down */
 	if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
 	{
-		log_error(_("database is not shut down cleanly"));
-
-		if (runtime_options.force_rewind == true)
+		if (db_state == DB_SHUTDOWNING)
 		{
-			log_detail(_("pg_rewind will not be able to run"));
+			log_error(_("database is still shutting down"));
 		}
-		log_hint(_("database should be restarted and shut down cleanly after crash recovery completes"));
-		exit(ERR_BAD_CONFIG);
+		else
+		{
+			log_error(_("database is not shut down cleanly"));
+
+			if (runtime_options.force_rewind == true)
+			{
+				log_detail(_("pg_rewind will not be able to run"));
+			}
+			log_hint(_("database should be restarted then shut down cleanly after crash recovery completes"));
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 
 

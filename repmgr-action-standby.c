@@ -1775,6 +1775,26 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	{
 		int			primary_server_version_num = get_server_version(primary_conn, NULL);
 
+		/*
+		 * Here we add a sanity check for the "slot_name" field - it's possible
+		 * the node was initially registered with "use_replication_slots=false"
+		 * but the configuration was subsequently changed, leaving the field NULL.
+		 *
+		 * To avoid annoying failures we can just update the node record and proceed.
+		 */
+
+		if (!strlen(local_node_record.slot_name))
+		{
+			create_slot_name(local_node_record.slot_name, config_file_options.node_id);
+
+			log_notice(_("setting node %i's slot name to \"%s\""),
+					   config_file_options.node_id,
+					   local_node_record.slot_name);
+
+			update_node_record_slot_name(primary_conn, config_file_options.node_id, local_node_record.slot_name);
+		}
+
+
 		if (create_replication_slot(primary_conn,
 									local_node_record.slot_name,
 									primary_server_version_num,
@@ -1867,8 +1887,8 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	/* Set the replication user from the primary node record */
 	param_set(&recovery_conninfo, "user", primary_node_record->repluser);
 
-	log_info(_("setting node %i's primary to node %i"),
-			 config_file_options.node_id, primary_node_record->node_id);
+	log_notice(_("setting node %i's primary to node %i"),
+			   config_file_options.node_id, primary_node_record->node_id);
 
 	if (!create_recovery_file(&local_node_record, &recovery_conninfo, config_file_options.data_directory))
 	{
