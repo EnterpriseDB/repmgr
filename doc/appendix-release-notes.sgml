@@ -1,20 +1,119 @@
 <appendix id="appendix-release-notes">
- <title>Release notes</title>
- <indexterm>
-  <primary>Release notes</primary>
- </indexterm>
+  <title>Release notes</title>
+  <indexterm>
+    <primary>Release notes</primary>
+  </indexterm>
 
- <para>
-  Changes to each &repmgr; release are documented in the release notes.
-  Please read the release notes for all versions between
-  your current version and the version you are plan to upgrade to
-  before performing an upgrade, as there may be version-specific upgrade steps.
- </para>
+  <para>
+    Changes to each &repmgr; release are documented in the release notes.
+    Please read the release notes for all versions between
+    your current version and the version you are plan to upgrade to
+    before performing an upgrade, as there may be version-specific upgrade steps.
+  </para>
 
 
- <para>
-  See also: <xref linkend="upgrading-repmgr">
- </para>
+  <para>
+    See also: <xref linkend="upgrading-repmgr">
+  </para>
+
+  <sect1 id="release-4.0.2">
+    <title>Release 4.0.2</title>
+    <para><emphasis>Thu Jan 18, 2018</emphasis></para>
+
+    <para>
+      repmgr 4.0.2 contains some bug fixes and minor usability enhancements.
+    </para>
+    <sect2>
+      <title>Usability enhancements</title>
+
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              Recognize the <option>-t</option>/<option>--terse</option> option for
+              <command><link linkend="repmgr-cluster-event">repmgr cluster event</link></command> to hide
+              the <literal>Details</literal> column (GitHub #360)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Add "--wait-start" option for
+              <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>
+              (GitHub #356)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Add <literal>%p</literal> <link linkend="event-notifications">event notification parameter</link>
+              for <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+
+    </sect2>
+
+    <sect2>
+      <title>Bug fixes</title>
+
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              Add missing -W option to <literal>getopt_long()</literal> invocation (GitHub #350)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Automatically create slot name if missing (GitHub #343)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Fixes to parsing output of remote repmgr invocations (GitHub #349)
+            </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
+              When registering BDR nodes, automatically create missing connection replication set (GitHub #347)
+            </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
+              Handle missing node record in <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>
+              (GitHub #358)
+            </para>
+          </listitem>
+
+
+        </itemizedlist>
+      </para>
+
+    </sect2>
+
+    <sect2>
+      <title>Documentation</title>
+
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              The documentation can now be built as a single HTML file (GitHub pull request #353)
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+
+  </sect1>
 
  <sect1 id="release-4.0.1">
   <title>Release 4.0.1</title>
