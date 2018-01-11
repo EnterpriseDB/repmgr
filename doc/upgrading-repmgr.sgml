@@ -105,7 +105,7 @@
     </listitem>
     <listitem>
      <simpara>
-       upgrading the repmgr schema
+       upgrading the repmgr schema using <command>CREATE EXTENSION</command>
      </simpara>
     </listitem>
    </orderedlist>
@@ -118,6 +118,14 @@
    a packaged PostgreSQL extension) is normally carried out
    automatically when the &repmgr; extension is created.
   </para>
+  <para>
+   The shared library has been renamed from <literal>repmgr_funcs</literal> to
+   <literal>repmgr</literal> - if it's set in <varname>shared_preload_libraries</varname>
+   in <filename>postgresql.conf</filename> it will need to be updated to the new name:
+   <programlisting>
+    shared_preload_libraries = 'repmgr'</programlisting>
+  </para>
+
   <sect2 id="converting-repmgr-conf">
    <title>Converting repmgr.conf configuration files</title>
    <para>
