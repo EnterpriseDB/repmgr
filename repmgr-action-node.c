@@ -496,26 +496,18 @@ _do_node_status_is_shutdown_cleanly(void)
 
 	db_state = get_db_state(config_file_options.data_directory);
 
-
 	log_verbose(LOG_DEBUG, "db state now: %s", describe_db_state(db_state));
 
 	if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
 	{
-
 		if (node_status != NODE_STATUS_UP)
 		{
-			if (db_state == DB_SHUTDOWNING)
-			{
-				node_status = NODE_STATUS_SHUTTING_DOWN;
-			}
-			/*
-			 * node is not running or shutting down, but pg_controldata says it is -
-			 * unclean shutdown
-			 */
-			else
-			{
-				node_status = NODE_STATUS_UNCLEAN_SHUTDOWN;
-			}
+			node_status = NODE_STATUS_UNCLEAN_SHUTDOWN;
+		}
+		/* server is still responding but shutting down */
+		else if (db_state == DB_SHUTDOWNING)
+		{
+			node_status = NODE_STATUS_SHUTTING_DOWN;
 		}
 	}
 

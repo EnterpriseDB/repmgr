@@ -513,5 +513,6 @@ bool		bdr_node_set_repmgr_set(PGconn *conn, const char *node_name);
 
 /* miscellaneous debugging functions */
 const char *print_node_status(NodeStatus node_status);
+const char *print_pqping_status(PGPing ping_status);
 
 #endif							/* _REPMGR_DBUTILS_H_ */
