@@ -2668,6 +2668,8 @@ do_standby_switchover(void)
 				 i + 1, config_file_options.reconnect_attempts);
 		ping_res = PQping(remote_conninfo);
 
+		log_debug("ping status is: %s", print_pqping_status(ping_res));
+
 		/* database server could not be contacted */
 		if (ping_res == PQPING_NO_RESPONSE || ping_res == PQPING_NO_ATTEMPT)
 		{
@@ -2732,6 +2734,7 @@ do_standby_switchover(void)
 			termPQExpBuffer(&command_output);
 		}
 
+		log_debug("sleeping %i seconds until next check", config_file_options.reconnect_interval);
 		sleep(config_file_options.reconnect_interval);
 	}
 

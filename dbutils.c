@@ -4740,3 +4740,22 @@ print_node_status(NodeStatus node_status)
 
 	return "UNIDENTIFIED_STATUS";
 }
+
+
+const char *
+print_pqping_status(PGPing ping_status)
+{
+	switch (ping_status)
+	{
+		case PQPING_OK:
+			return "PQPING_OK";
+		case PQPING_REJECT:
+			return "PQPING_REJECT";
+		case PQPING_NO_RESPONSE:
+			return "PQPING_NO_RESPONSE";
+		case PQPING_NO_ATTEMPT:
+			return "PQPING_NO_ATTEMPT";
+	}
+
+	return "PQPING_UNKNOWN_STATUS";
+}
