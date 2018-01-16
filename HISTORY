@@ -1,4 +1,4 @@
-4.0.2   2018-01-
+4.0.2   2018-01-18
         repmgr: add missing -W option to getopt_long() invocation; GitHub #350 (Ian)
         repmgr: automatically create slot name if missing; GitHub #343 (Ian)
         repmgr: fixes to parsing output of remote repmgr invocations; GitHub #349 (Ian)
