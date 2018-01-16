@@ -54,10 +54,12 @@
      <secondary>preparation</secondary>
    </indexterm>
    <title>Preparing for switchover</title>
+
    <para>
-    Success of the switchover operation depends on &repmgr;
-    being able to shut down the current primary server quickly and cleanly.
+    As mentioned in the previous section, success of the switchover operation depends on
+    &repmgr;  being able to shut down the current primary server quickly and cleanly.
    </para>
+
    <para>
     Double-check which commands will be used to stop/start/restart the current
     primary; on the primary execute:
@@ -66,11 +68,32 @@
      repmgr -f /etc/repmgr.conf node service --list --action=start
      repmgr -f /etc/repmgr.conf node service --list --action=restart</programlisting>
    </para>
+
+   <para>
+     These commands can be defined in <filename>repmgr.conf</filename> with
+     <option>service_start_command</option>, <option>service_stop_command</option>
+     and <option>service_restart_command</option>.
+   </para>
+
+   <important>
+     <para>
+       If &repmgr; is installed from a package. you should set these commands
+       to use the appropriate service commands defined by the package/operating
+       system as these will ensure PostgreSQL is stopped/started properly
+       taking into account configuration and log file locations etc.
+     </para>
+     <para>
+       If the <option>service_*_command</option> options aren't defined, &repmgr; will
+       fall back to using <application>pg_ctl</application> to stop/start/restart
+       PostgreSQL, which may not work properly.
+     </para>
+   </important>
+
    <note>
     <simpara>
      On <literal>systemd</literal> systems we strongly recommend using the appropriate
      <command>systemctl</command> commands (typically run via <command>sudo</command>) to ensure
-     <literal>systemd</literal> informed about the status of the PostgreSQL service.
+     <literal>systemd</literal> is informed about the status of the PostgreSQL service.
     </simpara>
     <simpara>
      If using <command>sudo</command> for the <command>systemctl</command> calls, make sure the
@@ -78,25 +101,30 @@
      this way, <command>repmgr</command> will fail to stop the primary.
     </simpara>
    </note>
+
    <para>
     Check that access from applications is minimalized or preferably blocked
     completely, so applications are not unexpectedly interrupted.
    </para>
+
    <para>
     Check there is no significant replication lag on standbys attached to the
     current primary.
    </para>
+
    <para>
     If WAL file archiving is set up, check that there is no backlog of files waiting
-    to be archived, as PostgreSQL will not finally shut down until all these have been
+    to be archived, as PostgreSQL will not finally shut down until all of these have been
     archived. If there is a backlog exceeding <varname>archive_ready_warning</varname> WAL files,
     &repmgr; will emit a warning before attempting to perform a switchover; you can also check
     manually with <command>repmgr node check --archive-ready</command>.
    </para>
+
    <para>
     Ensure that <application>repmgrd</application> is *not* running anywhere to prevent it unintentionally
     promoting a node.
    </para>
+
    <para>
     Finally, consider executing <command>repmgr standby switchover</command> with the
     <literal>--dry-run</literal> option; this will perform any necessary checks and inform you about
@@ -114,6 +142,20 @@
         "pg_ctl -l /var/log/postgresql/startup.log -D '/var/lib/postgresql/data' -m fast -W stop"
     </programlisting>
    </para>
+
+   <important>
+     <para>
+       Be aware that <option>--dry-run</option> checks the prerequisites
+       for performing the switchover and some basic sanity checks on the
+       state of the database which might effect the switchover operation
+       (e.g. replication lag); it cannot however guarantee the switchover
+       operation will succeed. In particular, if the current primary
+       does not shut down cleanly, &repmgr; will not be able to reliably
+       execute the switchover (as there would be a danger of divergence
+       between the former and new primary nodes).
+     </para>
+   </important>
+
    <para>
      Note that following parameters in <filename>repmgr.conf</filename> are relevant to the
      switchover operation:
