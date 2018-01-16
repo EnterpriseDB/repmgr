@@ -1608,7 +1608,12 @@ repmgrd_get_local_node_id(PGconn *conn)
 
 	res = PQexec(conn, "SELECT repmgr.get_local_node_id()");
 
-	if (!PQgetisnull(res, 0, 0))
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute \"SELECT repmgr.get_local_node_id()\""));
+		log_detail("%s", PQerrorMessage(conn));
+	}
+	else if (!PQgetisnull(res, 0, 0))
 	{
 		local_node_id = atoi(PQgetvalue(res, 0, 0));
 	}
