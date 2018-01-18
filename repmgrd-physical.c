@@ -54,7 +54,6 @@ typedef enum
 static PGconn *upstream_conn = NULL;
 static PGconn *primary_conn = NULL;
 
-#ifndef BDR_ONLY
 static FailoverState failover_state = FAILOVER_STATE_UNKNOWN;
 
 static int	primary_node_id = UNKNOWN_NODE_ID;
@@ -85,15 +84,12 @@ static void update_monitoring_history(void);
 
 static const char * format_failover_state(FailoverState failover_state);
 
-#endif
-
 
 /* perform some sanity checks on the node's configuration */
 
 void
 do_physical_node_check(void)
 {
-#ifndef BDR_ONLY
 	/*
 	 * Check if node record is active - if not, and `failover=automatic`, the
 	 * node won't be considered as a promotion candidate; this often happens
@@ -163,7 +159,6 @@ do_physical_node_check(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-#endif
 }
 
 
@@ -174,7 +169,6 @@ do_physical_node_check(void)
 void
 monitor_streaming_primary(void)
 {
-#ifndef BDR_ONLY
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
 
@@ -485,14 +479,12 @@ loop:
 
 		sleep(config_file_options.monitor_interval_secs);
 	}
-#endif
 }
 
 
 void
 monitor_streaming_standby(void)
 {
-#ifndef BDR_ONLY
 	RecordStatus record_status;
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
@@ -1019,14 +1011,12 @@ loop:
 
 		sleep(config_file_options.monitor_interval_secs);
 	}
-#endif
 }
 
 
 void
 monitor_streaming_witness(void)
 {
-#ifndef BDR_ONLY
 	instr_time	log_status_interval_start;
 	instr_time	witness_sync_interval_start;
 
@@ -1351,13 +1341,12 @@ loop:
 
 		sleep(config_file_options.monitor_interval_secs);
 	}
-#endif
+
 	return;
 
 }
 
 
-#ifndef BDR_ONLY
 static bool
 do_primary_failover(void)
 {
@@ -2722,7 +2711,6 @@ format_failover_state(FailoverState failover_state)
 	return "UNKNOWN_FAILOVER_STATE";
 }
 
-#endif							/* #ifndef BDR_ONLY */
 
 void
 close_connections_physical()

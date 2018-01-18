@@ -400,7 +400,6 @@ start_monitoring(void)
 	{
 		switch (local_node_info.type)
 		{
-#ifndef BDR_ONLY
 			case PRIMARY:
 				monitor_streaming_primary();
 				break;
@@ -409,12 +408,6 @@ start_monitoring(void)
 				break;
 			case WITNESS:
 				monitor_streaming_witness();
-				break;
-#else
-			case PRIMARY:
-			case STANDBY:
-				return;
-#endif
 			case BDR:
 				monitor_bdr();
 				return;

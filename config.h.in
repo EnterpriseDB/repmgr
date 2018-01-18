@@ -1,4 +1,2 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
-/* Only build repmgr for BDR */
-#undef BDR_ONLY

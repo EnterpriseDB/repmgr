@@ -737,7 +737,6 @@ main(int argc, char **argv)
 
 	if (repmgr_command != NULL)
 	{
-#ifndef BDR_ONLY
 		if (strcasecmp(repmgr_command, "PRIMARY") == 0 || strcasecmp(repmgr_command, "MASTER") == 0)
 		{
 			if (help_option == true)
@@ -794,9 +793,6 @@ main(int argc, char **argv)
 				action = WITNESS_UNREGISTER;
 		}
 		else if (strcasecmp(repmgr_command, "BDR") == 0)
-#else
-		if (strcasecmp(repmgr_command, "BDR") == 0)
-#endif
 		{
 			if (help_option == true)
 			{
@@ -1157,7 +1153,6 @@ main(int argc, char **argv)
 
 	switch (action)
 	{
-#ifndef BDR_ONLY
 			/* PRIMARY */
 		case PRIMARY_REGISTER:
 			do_primary_register();
@@ -1193,21 +1188,6 @@ main(int argc, char **argv)
 		case WITNESS_UNREGISTER:
 			do_witness_unregister();
 			break;
-#else
-			/* we won't ever reach here, but stop the compiler complaining */
-		case PRIMARY_REGISTER:
-		case PRIMARY_UNREGISTER:
-		case STANDBY_CLONE:
-		case STANDBY_REGISTER:
-		case STANDBY_UNREGISTER:
-		case STANDBY_PROMOTE:
-		case STANDBY_FOLLOW:
-		case STANDBY_SWITCHOVER:
-		case WITNESS_REGISTER:
-		case WITNESS_UNREGISTER:
-			break;
-
-#endif
 			/* BDR */
 		case BDR_REGISTER:
 			do_bdr_register();
@@ -1793,10 +1773,8 @@ do_help(void)
 	print_help_header();
 
 	printf(_("Usage:\n"));
-#ifndef BDR_ONLY
 	printf(_("    %s [OPTIONS] primary {register|unregister}\n"), progname());
 	printf(_("    %s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"), progname());
-#endif
 	printf(_("    %s [OPTIONS] bdr     {register|unregister}\n"), progname());
 	printf(_("    %s [OPTIONS] node    status\n"), progname());
 	printf(_("    %s [OPTIONS] cluster {show|event|matrix|crosscheck}\n"), progname());
