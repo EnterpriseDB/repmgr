@@ -6,12 +6,6 @@ AC_CONFIG_HEADER(config.h)
 
 AC_ARG_VAR([PG_CONFIG], [Location to find pg_config for target PostgreSQL (default PATH)])
 
-AC_ARG_WITH([bdr_only], [AS_HELP_STRING([--with-bdr-only], [BDR-only build])])
-AS_IF([test "x$with_bdr_only" != "x"],
-    [AC_DEFINE([BDR_ONLY], ["1"], [Only build repmgr for BDR])]
-)
-
-
 AC_PROG_SED
 
 if test -z "$PG_CONFIG"; then

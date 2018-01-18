@@ -288,7 +288,6 @@ standby_get_last_updated(PG_FUNCTION_ARGS)
 Datum
 notify_follow_primary(PG_FUNCTION_ARGS)
 {
-#ifndef BDR_ONLY
 	int			primary_node_id = UNKNOWN_NODE_ID;
 
 	if (!shared_state)
@@ -316,7 +315,7 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 	}
 
 	LWLockRelease(shared_state->lock);
-#endif
+
 	PG_RETURN_VOID();
 }
 
@@ -329,14 +328,12 @@ get_new_primary(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_NULL();
 
-#ifndef BDR_ONLY
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	if (shared_state->follow_new_primary == true)
 		new_primary_node_id = shared_state->candidate_node_id;
 
 	LWLockRelease(shared_state->lock);
-#endif
 
 	if (new_primary_node_id == UNKNOWN_NODE_ID)
 		PG_RETURN_NULL();
@@ -348,7 +345,6 @@ get_new_primary(PG_FUNCTION_ARGS)
 Datum
 reset_voting_status(PG_FUNCTION_ARGS)
 {
-#ifndef BDR_ONLY
 	if (!shared_state)
 		PG_RETURN_NULL();
 
@@ -366,7 +362,7 @@ reset_voting_status(PG_FUNCTION_ARGS)
 	}
 
 	LWLockRelease(shared_state->lock);
-#endif
+
 	PG_RETURN_VOID();
 }
 
