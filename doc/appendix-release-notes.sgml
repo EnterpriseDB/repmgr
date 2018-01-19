@@ -21,8 +21,13 @@
     <para><emphasis>Thu Jan 18, 2018</emphasis></para>
 
     <para>
-      repmgr 4.0.2 contains some bug fixes and minor usability enhancements.
+      repmgr 4.0.2 contains some bug fixes and small usability enhancements.
     </para>
+    <para>
+      This release can be installed as a simple package upgrade from &repmgr; 4.0.1 or 4.0;
+      <application>repmgrd</application> (if running) should be restarted.
+    </para>
+
     <sect2>
       <title>Usability enhancements</title>
 
