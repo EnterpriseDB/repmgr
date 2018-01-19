@@ -178,8 +178,8 @@
   <para>
    In order to effectively manage a replication cluster, &repmgr; needs to store
    information about the servers in the cluster in a dedicated database schema.
-   This schema is automatically by the &repmgr; extension, which is installed
-   during the first step in initialising a &repmgr;-administered cluster
+   This schema is automatically created by the &repmgr; extension, which is installed
+   during the first step in initializing a &repmgr;-administered cluster
    (<command><link linkend="repmgr-primary-register">repmgr primary register</link></command>)
    and contains the following objects:
    <variablelist>
