@@ -89,6 +89,7 @@ main(int argc, char **argv)
 	bool		cli_monitoring_history = false;
 
 	RecordStatus record_status;
+	ExtensionStatus extension_status = REPMGR_UNKNOWN;
 
 	FILE	   *fd;
 
@@ -317,6 +318,37 @@ main(int argc, char **argv)
 	 * The absence of a node record will also indicate that either the node or
 	 * repmgr has not been properly configured.
 	 */
+
+	/* Check "repmgr" the extension is installed */
+	extension_status = get_repmgr_extension_status(local_conn);
+
+	if (extension_status != REPMGR_INSTALLED)
+	{
+		/* this is unlikely to happen */
+		if (extension_status == REPMGR_UNKNOWN)
+		{
+			log_error(_("unable to determine status of \"repmgr\" extension"));
+			log_detail("%s", PQerrorMessage(local_conn));
+			PQfinish(local_conn);
+			exit(ERR_DB_QUERY);
+		}
+
+		log_error(_("repmgr extension not found on this node"));
+
+		if (extension_status == REPMGR_AVAILABLE)
+		{
+			log_detail(_("repmgr extension is available but not installed in database \"%s\""),
+					   PQdb(local_conn));
+		}
+		else if (extension_status == REPMGR_UNAVAILABLE)
+		{
+			log_detail(_("repmgr extension is not available on this node"));
+		}
+
+		log_hint(_("check that this node is part of a repmgr cluster"));
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/* Retrieve record for this node from the local database */
 	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_info);
