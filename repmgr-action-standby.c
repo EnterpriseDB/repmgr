@@ -3391,8 +3391,11 @@ check_source_server()
 	{
 		if (!runtime_options.force)
 		{
+			/* this is unlikely to happen */
 			if (extension_status == REPMGR_UNKNOWN)
 			{
+				log_error(_("unable to determine status of \"repmgr\" extension"));
+				log_detail("%s", PQerrorMessage(primary_conn));
 				PQfinish(source_conn);
 				exit(ERR_DB_QUERY);
 			}
@@ -3407,10 +3410,10 @@ check_source_server()
 			}
 			else if (extension_status == REPMGR_UNAVAILABLE)
 			{
-				log_detail(_("repmgr extension is not available on the upstream server"));
+				log_detail(_("repmgr extension is not available on the upstream node"));
 			}
 
-			log_hint(_("check that the upstream server is part of a repmgr cluster"));
+			log_hint(_("check that the upstream node is part of a repmgr cluster"));
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
