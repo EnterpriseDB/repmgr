@@ -11,22 +11,82 @@
   containing bugfixes and other minor improvements. Any substantial new
   functionality will be included in a feature release (e.g. 4.0.x to 4.1.x).
  </para>
- <para>
-  &repmgr; is implemented as a PostgreSQL extension; to upgrade it, first
-  install the updated package (or compile the updated source), then in the
-  database where the &repmgr; extension is installed, execute
-  <command>ALTER EXTENSION repmgr UPDATE</command>.
- </para>
- <para>
-  If <application>repmgrd</application> is running, it may be necessary to restart
-  the PostgreSQL server if the upgrade contains changes to the shared object
-  file used by <application>repmgrd</application>; check the release notes for details.
- </para>
 
- <para>
-   Please check the <link linkend="appendix-release-notes">release notes</link> for every
-   release as they may contain upgrade instructions particular to individual versions.
- </para>
+ <sect1 id="upgrading-repmgr-extension" xreflabel="Upgrading repmgr 4.x and later">
+  <indexterm>
+   <primary>upgrading</primary>
+   <secondary>repmgr 4.x and later</secondary>
+  </indexterm>
+  <title>Upgrading repmgr 4.x and later</title>
+  <para>
+    &repmgr; 4.x is implemented as a PostgreSQL extension; normally the upgrade consists
+    of the two following steps:
+    <orderedlist>
+      <listitem>
+        <simpara>
+          Install the updated package (or compile the updated source)
+        </simpara>
+      </listitem>
+      <listitem>
+        <simpara>
+          In the database where the &repmgr; extension is installed, execute
+          <command>ALTER EXTENSION repmgr UPDATE</command>.
+        </simpara>
+      </listitem>
+    </orderedlist>
+  </para>
+
+  <para>
+    Always check the <link linkend="appendix-release-notes">release notes</link> for every
+    release as they may contain upgrade instructions particular to individual versions.
+  </para>
+
+  <para>
+    If the <application>repmgrd</application> daemon is in use, we recommend stopping it
+    before upgrading &repmgr;.
+  </para>
+  <para>
+    Note that it may be necessary to restart the PostgreSQL server if the upgrade contains
+    changes to the shared object file used by <application>repmgrd</application>; check the
+    release notes for details.
+  </para>
+ </sect1>
+
+ <sect1 id="upgrading-and-pg-upgrade" xreflabel="pg_upgrade and repmgr">
+  <indexterm>
+   <primary>upgrading</primary>
+   <secondary>pg_upgrade</secondary>
+  </indexterm>
+  <indexterm>
+    <primary>pg_upgrade</primary>
+  </indexterm>
+  <title>pg_upgrade and repmgr</title>
+
+  <para>
+    <application>pg_upgrade</application> requires that if any functions are
+    dependent on a shared library, this library must be present in both
+    the old and new installations before <application>pg_upgrade</application>
+    can be executed.
+  </para>
+  <para>
+    To minimize the risk of any upgrade issues (particularly if an upgrade to
+    a new major &repmgr; version is involved), we recommend upgrading
+    &repmgr; on the old server <emphasis>before</emphasis> running
+    <application>pg_upgrade</application> to ensure that old and new
+    versions are the same.
+  </para>
+  <note>
+    <simpara>
+      This issue applies to any PostgreSQL extension which has
+      dependencies on a shared library.
+    </simpara>
+  </note>
+  <para>
+    For further details please see the <ulink url="https://www.postgresql.org/docs/current/static/pgupgrade.html">pg_upgrade documentation</ulink>.
+  </para>
+
+ </sect1>
+
 
  <sect1 id="upgrading-from-repmgr-3" xreflabel="Upgrading from repmgr 3.x">
   <indexterm>
