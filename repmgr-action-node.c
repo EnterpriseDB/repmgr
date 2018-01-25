@@ -314,8 +314,8 @@ do_node_status(void)
 		key_value_list_set_format(&node_status,
 								  "Upstream node",
 								  "%s (ID: %i)",
-								  node_info.node_name,
-								  node_info.node_id);
+								  node_info.upstream_node_name,
+								  node_info.upstream_node_id);
 
 		get_replication_info(conn, &replication_info);
 
