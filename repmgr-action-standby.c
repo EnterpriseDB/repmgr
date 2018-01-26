@@ -843,9 +843,10 @@ do_standby_register(void)
 
 		if (runtime_options.connection_param_provided == false)
 		{
-			log_error(_("unable to connect to local node \"%s\" (ID: %i) and no primary connection parameters provided"),
+			log_error(_("unable to connect to local node \"%s\" (ID: %i)"),
 					  config_file_options.node_name,
 					  config_file_options.node_id);
+			log_hint(_("to register an inactive standby, additionally provide the primary connection parameters"));
 			exit(ERR_BAD_CONFIG);
 		}
 	}
