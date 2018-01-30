@@ -1590,6 +1590,7 @@ do_standby_follow(void)
 
 	PQExpBufferData follow_output;
 	bool		success = false;
+	int			follow_error_code = SUCCESS;
 
 	uint64		local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
 	t_conninfo_param_list repl_conninfo;
@@ -1703,7 +1704,8 @@ do_standby_follow(void)
 
 	success = do_standby_follow_internal(primary_conn,
 										 &primary_node_record,
-										 &follow_output);
+										 &follow_output,
+										 &follow_error_code);
 
 	create_event_notification(primary_conn,
 							  &config_file_options,
@@ -1720,7 +1722,7 @@ do_standby_follow(void)
 		log_detail("%s", follow_output.data);
 
 		termPQExpBuffer(&follow_output);
-		exit(ERR_DB_QUERY);
+		exit(follow_error_code);
 	}
 
 	log_notice(_("STANDBY FOLLOW successful"));
@@ -1740,7 +1742,7 @@ do_standby_follow(void)
  * this function.
  */
 bool
-do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_record, PQExpBufferData *output)
+do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_record, PQExpBufferData *output, int *error_code)
 {
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	int			original_upstream_node_id = UNKNOWN_NODE_ID;
@@ -1763,8 +1765,9 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	{
 		log_error(_("unable to retrieve record for node %i"),
 				  config_file_options.node_id);
-		PQfinish(primary_conn);
-		exit(ERR_BAD_CONFIG);
+
+		*error_code = ERR_BAD_CONFIG;
+		return false;
 	}
 
 	/*
@@ -1893,8 +1896,9 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	if (!create_recovery_file(&local_node_record, &recovery_conninfo, config_file_options.data_directory))
 	{
-		PQfinish(primary_conn);
-		exit(ERR_BAD_CONFIG);
+		/* XXX ERR_RECOVERY_FILE ??? */
+		*error_code = ERR_BAD_CONFIG;
+		return false;
 	}
 
 	/*
@@ -1931,8 +1935,9 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		if (success == false)
 		{
 			log_error(_("unable to %s server"), action);
-			PQfinish(primary_conn);
-			exit(ERR_NO_RESTART);
+
+			*error_code = ERR_NO_RESTART;
+			return false;
 		}
 	}
 
@@ -2059,6 +2064,7 @@ do_standby_switchover(void)
 				  config_file_options.node_id);
 
 		PQfinish(local_conn);
+
 		exit(ERR_DB_QUERY);
 	}
 

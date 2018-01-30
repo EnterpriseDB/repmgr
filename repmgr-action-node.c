@@ -1590,6 +1590,7 @@ do_node_rejoin(void)
 
 	bool		success = true;
 	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
+	int			follow_error_code = SUCCESS;
 
 	/* check node is not actually running */
 
@@ -1859,7 +1860,31 @@ do_node_rejoin(void)
 
 	success = do_standby_follow_internal(upstream_conn,
 										 &primary_node_record,
-										 &follow_output);
+										 &follow_output,
+										 &follow_error_code);
+
+	if (success == false)
+	{
+		log_notice(_("NODE REJOIN failed"));
+		log_detail("%s", follow_output.data);
+
+		create_event_notification(upstream_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "node_rejoin",
+								  success,
+								  follow_output.data);
+
+		PQfinish(upstream_conn);
+
+		termPQExpBuffer(&follow_output);
+		exit(follow_error_code);
+	}
+
+	/*
+	 * XXX add checks that node actually started and connected to primary,
+	 * if not exit with ERR_REJOIN_FAIL
+	 */
 
 	create_event_notification(upstream_conn,
 							  &config_file_options,
@@ -1870,19 +1895,12 @@ do_node_rejoin(void)
 
 	PQfinish(upstream_conn);
 
-	if (success == false)
-	{
-		log_notice(_("NODE REJOIN failed"));
-		log_detail("%s", follow_output.data);
-
-		termPQExpBuffer(&follow_output);
-		exit(ERR_DB_QUERY);
-	}
-
 	log_notice(_("NODE REJOIN successful"));
 	log_detail("%s", follow_output.data);
 
 	termPQExpBuffer(&follow_output);
+
+	return;
 }
 
 
