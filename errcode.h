@@ -43,5 +43,6 @@
 #define ERR_BARMAN 19
 #define ERR_REGISTRATION_SYNC 20
 #define ERR_OUT_OF_MEMORY 21
+#define ERR_REJOIN_FAIL 22
 
 #endif							/* _ERRCODE_H_ */
