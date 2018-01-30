@@ -1905,7 +1905,10 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		char		server_command[MAXLEN] = "";
 		bool		server_up = is_server_available(config_file_options.conninfo);
 		char	   *action = NULL;
-		int			r;
+		bool		success;
+
+		PQExpBufferData output_buf;
+		initPQExpBuffer(&output_buf);
 
 		if (server_up == true)
 		{
@@ -1923,8 +1926,9 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 				   action,
 				   server_command);
 
-		r = system(server_command);
-		if (r != 0)
+		success = local_command(server_command, &output_buf);
+
+		if (success == false)
 		{
 			log_error(_("unable to %s server"), action);
 			PQfinish(primary_conn);
@@ -2735,7 +2739,8 @@ do_standby_switchover(void)
 			termPQExpBuffer(&command_output);
 		}
 
-		log_debug("sleeping %i seconds until next check", config_file_options.reconnect_interval);
+		log_debug("sleeping %i seconds (\"reconnect_interval\") until next check",
+				  config_file_options.reconnect_interval);
 		sleep(config_file_options.reconnect_interval);
 	}
 
@@ -2845,12 +2850,9 @@ do_standby_switchover(void)
 
 	/* TODO: verify this node's record was updated correctly */
 
-	if (command_success == false || command_output.data[0] == '0')
+	if (command_success == false)
 	{
 		log_error(_("rejoin failed %i"), r);
-
-		if (strlen(command_output.data) > 2)
-			log_detail("%s", command_output.data);
 
 		create_event_notification_extended(local_conn,
 										   &config_file_options,
