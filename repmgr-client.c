@@ -2101,9 +2101,12 @@ test_ssh_connection(char *host, char *remote_user)
 bool
 local_command(const char *command, PQExpBufferData *outputbuf)
 {
-	FILE	   *fp;
+	FILE	   *fp = NULL;
 	char		output[MAXLEN];
 	int			retval = 0;
+	bool		success;
+
+	log_verbose(LOG_DEBUG, "executing:\n  %s", command);
 
 	if (outputbuf == NULL)
 	{
@@ -2119,20 +2122,28 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 		return false;
 	}
 
-	/* TODO: better error handling */
+
 	while (fgets(output, MAXLEN, fp) != NULL)
 	{
 		appendPQExpBuffer(outputbuf, "%s", output);
+		if (!feof(fp))
+		{
+			break;
+		}
 	}
 
-	pclose(fp);
+	retval = pclose(fp);
+
+	success = (WEXITSTATUS(retval) == 0) ? true : false;
+
+	log_verbose(LOG_DEBUG, "result of command was %i (%i)", WEXITSTATUS(retval), retval);
 
 	if (outputbuf->data != NULL)
 		log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
 	else
 		log_verbose(LOG_DEBUG, "local_command(): no output returned");
 
-	return true;
+	return success;
 }
 
 
@@ -2394,7 +2405,12 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	pclose(fp);
 
 	if (outputbuf != NULL)
-		log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n  %s", outputbuf->data);
+	{
+		if (strlen(outputbuf->data))
+			log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n  %s", outputbuf->data);
+		else
+			log_verbose(LOG_DEBUG, "remote_command(): no output returned");
+	}
 
 	return true;
 }
