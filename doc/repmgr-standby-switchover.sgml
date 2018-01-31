@@ -22,9 +22,17 @@
     </para>
     <para>
       If other standbys are connected to the demotion candidate, &repmgr; can instruct
-    these to follow the new primary if the option <literal>--siblings-follow</literal>
+      these to follow the new primary if the option <literal>--siblings-follow</literal>
       is specified.
     </para>
+    <note>
+      <para>
+        Performing a switchover is a non-trivial operation. In particular it
+        relies on the current primary being able to shut down cleanly and quickly.
+        &repmgr; will attempt to check for potential issues but cannot guarantee
+        a successful switchover.
+      </para>
+    </note>
   </refsect1>
 
   <refsect1>
@@ -47,6 +55,13 @@
           <para>
             Check prerequisites but don't actually execute a switchover.
           </para>
+          <important>
+            <para>
+              Success of <option>--dry-run</option> does not imply the switchover will
+              complete successfully, only that
+              the prerequisites for performing the operation are met.
+            </para>
+          </important>
         </listitem>
       </varlistentry>
 
@@ -56,6 +71,12 @@
         <listitem>
           <para>
             Ignore warnings and continue anyway.
+          </para>
+          <para>
+            Specifically, if a problem is encountered when shutting down the current primary,
+            using <option>-F/--force</option> will cause &repmgr; to continue by promoting
+            the standby to be the new primary, and if <option>--siblings-follow</option> is
+            specified, attach any other standbys to the new primary.
           </para>
         </listitem>
       </varlistentry>
@@ -103,6 +124,11 @@
       <application>repmgrd</application> should not be active on any nodes while a switchover is being
       executed. This restriction may be lifted in a later version.
     </para>
+    <para>
+      External database connections, e.g. from an application, should not be permitted while
+      the switchover is taking place. In particular, active transactions on the primary
+      can potentially disrupt the shutdown process.
+    </para>
   </refsect1>
 
   <refsect1>
@@ -119,6 +145,44 @@
     </para>
   </refsect1>
 
+  <refsect1>
+    <title>Exit codes</title>
+    <para>
+      Following exit codes can be emitted by <literal>repmgr standby switchover</literal>:
+    </para>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            The switchover completed successfully.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_SWITCHOVER_FAIL (18)</option></term>
+        <listitem>
+          <para>
+            The switchover could not be executed.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_SWITCHOVER_INCOMPLETE (22)</option></term>
+        <listitem>
+          <para>
+            The switchover was executed but a problem was encountered.
+            Typically this means the former primary could not be reattached
+            as a standby.
+          </para>
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+  </refsect1>
 
   <refsect1>
     <title>See also</title>

@@ -2036,6 +2036,10 @@ do_standby_switchover(void)
 				i;
 	bool		command_success = false;
 	bool		shutdown_success = false;
+
+	/* this flag will use to generate the final message generated */
+	bool		switchover_success = true;
+
 	XLogRecPtr	remote_last_checkpoint_lsn = InvalidXLogRecPtr;
 	ReplInfo	replication_info = T_REPLINFO_INTIALIZER;
 
@@ -2894,12 +2898,17 @@ do_standby_switchover(void)
 	/* clean up remote node */
 	remote_conn = establish_db_connection(remote_node_record.conninfo, false);
 
-	/* check replication status */
+	/* check new standby (old primary) is reachable */
 	if (PQstatus(remote_conn) != CONNECTION_OK)
 	{
-		log_error(_("unable to reestablish connection to remote node \"%s\""),
-				  remote_node_record.node_name);
-		/* log_hint(_("")); // depends on replication status */
+		switchover_success = false;
+
+		/* TODO: double-check whether new standby has attached */
+
+		log_warning(_("switchover did not fully complete"));
+		log_detail(_("node \"%s\" is now primary but node \"%s\" is not reachable"),
+				   local_node_record.node_name,
+				   remote_node_record.node_name);
 	}
 	else
 	{
@@ -2910,17 +2919,20 @@ do_standby_switchover(void)
 											local_node_record.slot_name);
 		}
 		/* TODO warn about any inactive replication slots */
+
+		log_notice(_("switchover was successful"));
+		log_detail(_("node \"%s\" is now primary and node \"%s\" is attached as standby"),
+				   local_node_record.node_name,
+				   remote_node_record.node_name);
+
 	}
 
 	PQfinish(remote_conn);
 
-	log_notice(_("switchover was successful"));
-	log_detail(_("node \"%s\" is now primary"),
-			   local_node_record.node_name);
 
 	/*
 	 * If --siblings-follow specified, attempt to make them follow the new
-	 * standby
+	 * primary
 	 */
 
 	if (runtime_options.siblings_follow == true && sibling_nodes.node_count > 0)
@@ -2993,7 +3005,17 @@ do_standby_switchover(void)
 
 	PQfinish(local_conn);
 
-	log_notice(_("STANDBY SWITCHOVER is complete"));
+	if (switchover_success == true)
+	{
+		log_notice(_("STANDBY SWITCHOVER has completed successfully"));
+	}
+	else
+	{
+		log_notice(_("STANDBY SWITCHOVER has completed with issues"));
+		log_hint(_("see preceding log message(s) for details"));
+		exit(ERR_SWITCHOVER_INCOMPLETE);
+	}
+
 
 	return;
 }
