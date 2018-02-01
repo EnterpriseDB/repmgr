@@ -49,6 +49,32 @@
   </refsect1>
 
   <refsect1>
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually follow a new standby.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-W</option></term>
+        <term><option>--wait</option></term>
+        <listitem>
+          <para>
+            Wait for a primary to appear.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
     <title>Event notifications</title>
     <para>
       A <literal>standby_follow</literal> <link linkend="event-notifications">event notification</link> will be generated.
