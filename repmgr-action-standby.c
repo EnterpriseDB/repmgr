@@ -1647,6 +1647,15 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("connected to node %i, checking for current primary"), primary_id);
+	}
+	else
+	{
+		log_verbose(LOG_INFO, _("connected to node %i, checking for current primary"), primary_id);
+	}
+
 	record_status = get_node_record(primary_conn, primary_id, &primary_node_record);
 
 	if (record_status != RECORD_FOUND)
@@ -1655,6 +1664,19 @@ do_standby_follow(void)
 				  runtime_options.upstream_node_id);
 		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("primary node is \"%s\" (ID: %i)"),
+				 primary_node_record.node_name,
+				 primary_id);
+	}
+	else
+	{
+		log_verbose(LOG_INFO, ("primary node is \"%s\" (ID: %i)"),
+					primary_node_record.node_name,
+					primary_id);
 	}
 
 	/* XXX check this is not current upstream anyway */
@@ -1672,6 +1694,10 @@ do_standby_follow(void)
 		log_error(_("unable to establish a replication connection to the primary node"));
 		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
+	}
+	else if (runtime_options.dry_run == true)
+	{
+		log_info(_("replication connection to primary node was successful"));
 	}
 
 	/* check system_identifiers match */
@@ -1696,9 +1722,23 @@ do_standby_follow(void)
 		PQfinish(repl_conn);
 		exit(ERR_BAD_CONFIG);
 	}
+	else if (runtime_options.dry_run == true)
+	{
+		log_info(_("local and primary system identifiers match"));
+		log_detail(_("system identifier is %lu"), local_system_identifier);
+	}
+
+	/* TODO: check timelines*/
 
 	PQfinish(repl_conn);
 	free_conninfo_params(&repl_conninfo);
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("prerequisites for executing STANDBY FOLLOW are met"));
+		exit(SUCCESS);
+	}
+
 
 	initPQExpBuffer(&follow_output);
 
@@ -5426,6 +5466,7 @@ do_standby_help(void)
 	puts("");
 	printf(_("  \"standby follow\" instructs a standby node to follow a new primary.\n"));
 	puts("");
+	printf(_("  --dry-run                           perform checks but don't actually follow the new primary\n"));
 	printf(_("  -W, --wait                          wait for a primary to appear\n"));
 	puts("");
 

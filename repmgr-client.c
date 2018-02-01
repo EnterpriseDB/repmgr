@@ -1579,8 +1579,7 @@ check_cli_parameters(const int action)
 			case NODE_STATUS:
 				break;
 			default:
-				item_list_append_format(
-										&cli_warnings,
+				item_list_append_format(&cli_warnings,
 										_("--is-shutdown-cleanly will be ignored when executing %s"),
 										action_name(action));
 		}
@@ -1593,8 +1592,7 @@ check_cli_parameters(const int action)
 			case STANDBY_SWITCHOVER:
 				break;
 			default:
-				item_list_append_format(
-										&cli_warnings,
+				item_list_append_format(&cli_warnings,
 										_("--always-promote will be ignored when executing %s"),
 										action_name(action));
 		}
@@ -1608,8 +1606,7 @@ check_cli_parameters(const int action)
 			case NODE_REJOIN:
 				break;
 			default:
-				item_list_append_format(
-										&cli_warnings,
+				item_list_append_format(&cli_warnings,
 										_("--force-rewind will be ignored when executing %s"),
 										action_name(action));
 		}
@@ -1623,8 +1620,7 @@ check_cli_parameters(const int action)
 			case NODE_REJOIN:
 				break;
 			default:
-				item_list_append_format(
-										&cli_warnings,
+				item_list_append_format(&cli_warnings,
 										_("--config-files will be ignored when executing %s"),
 										action_name(action));
 		}
@@ -1638,6 +1634,7 @@ check_cli_parameters(const int action)
 			case PRIMARY_UNREGISTER:
 			case STANDBY_CLONE:
 			case STANDBY_REGISTER:
+			case STANDBY_FOLLOW:
 			case STANDBY_SWITCHOVER:
 			case WITNESS_REGISTER:
 			case WITNESS_UNREGISTER:
@@ -1645,8 +1642,7 @@ check_cli_parameters(const int action)
 			case NODE_SERVICE:
 				break;
 			default:
-				item_list_append_format(
-										&cli_warnings,
+				item_list_append_format(&cli_warnings,
 										_("--dry-run is not effective when executing %s"),
 										action_name(action));
 		}
@@ -1668,8 +1664,7 @@ check_cli_parameters(const int action)
 		if (used_options > 1)
 		{
 			/* TODO: list which options were used */
-			item_list_append(
-							 &cli_errors,
+			item_list_append(&cli_errors,
 							 "only one of --csv, --nagios and --optformat can be used");
 		}
 	}
