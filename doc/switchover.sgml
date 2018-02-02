@@ -61,6 +61,13 @@
    </para>
 
    <para>
+     Ensure that a passwordless SSH connection is possible from the promotion candidate
+     (standby) to the demotion candidate (current primary). If <literal>--siblings-follow</literal>
+     will be used, ensure that passwordless SSH connections are possible from the
+     promotion candidate to all standbys attached to the demotion candidate.
+   </para>
+
+   <para>
     Double-check which commands will be used to stop/start/restart the current
     primary; on the primary execute:
     <programlisting>
