@@ -84,7 +84,11 @@
   <para>
     For further details please see the <ulink url="https://www.postgresql.org/docs/current/static/pgupgrade.html">pg_upgrade documentation</ulink>.
   </para>
-
+  <para>
+    If replication slots are in use, bear in mind these will <emphasis>not</emphasis>
+    be recreated by <application>pg_upgrade</application>. These will need to
+    be recreated manually.
+  </para>
  </sect1>
 
 
