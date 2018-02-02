@@ -22,6 +22,10 @@
   <refsect1>
     <title>Execution</title>
     <para>
+      <command>repmgr primary unregister</command> should be run on the current primary,
+      with the ID of the node to unregister passed as <option>--node-id</option>.
+    </para>
+    <para>
       Execute with the <literal>--dry-run</literal> option to check what would happen without
       actually unregistering the node.
     </para>
@@ -30,6 +34,34 @@
       <command>repmgr master unregister</command> can be used as an alias for
       <command>repmgr primary unregister</command>.
     </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually unregister the primary.
+          </para>
+        </listitem>
+      </varlistentry>
+
+     <varlistentry>
+        <term><option>--node-id</option></term>
+        <listitem>
+          <para>
+            ID of the inactive primary to be unregistered.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
   </refsect1>
 
   <refsect1>

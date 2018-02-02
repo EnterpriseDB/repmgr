@@ -548,7 +548,8 @@ do_primary_help(void)
 	printf(_("  \"primary unregister\" unregisters an inactive primary node.\n"));
 	puts("");
 	printf(_("  --dry-run                           check what would happen, but don't actually unregister the primary\n"));
-	printf(_("  -F, --force                         force removal of the record\n"));
+	printf(_("  --node-id                           ID of the inactive primary node to unregister.\n"));
+	printf(_("  -F, --force                         force removal of an active record\n"));
 
 	puts("");
 
