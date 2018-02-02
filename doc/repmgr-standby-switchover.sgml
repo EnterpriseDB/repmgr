@@ -23,7 +23,9 @@
     <para>
       If other standbys are connected to the demotion candidate, &repmgr; can instruct
       these to follow the new primary if the option <literal>--siblings-follow</literal>
-      is specified.
+      is specified. This requires a passwordless SSH connection between the promotion
+      candidate (new primary) and the standbys attached to the demotion candidate
+      (existing primary).
     </para>
     <note>
       <para>
