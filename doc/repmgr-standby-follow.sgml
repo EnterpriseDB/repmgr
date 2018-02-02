@@ -58,6 +58,14 @@
           <para>
             Check prerequisites but don't actually follow a new standby.
           </para>
+          <important>
+            <para>
+              This does not guarantee the standby can follow the primary; in
+              particular, whether the primary and standby timelines have diverged,
+              can currently only be determined by actually attempting to
+              attach the standby to the primary.
+            </para>
+          </important>
         </listitem>
       </varlistentry>
 
