@@ -1679,6 +1679,33 @@ do_standby_follow(void)
 					primary_id);
 	}
 
+	/* if replication slots in use, check at least one free slot is available */
+
+	if (config_file_options.use_replication_slots)
+	{
+		int free_slots = get_free_replication_slots(primary_conn);
+		if (free_slots < 0)
+		{
+			log_error(_("unable to determine number of free replication slots on the primary"));
+			PQfinish(primary_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (free_slots == 0)
+		{
+			log_error(_("no free replication slots available on the primary"));
+			log_hint(_("consider increasing \"max_replication_slots\""));
+			PQfinish(primary_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+		else if (runtime_options.dry_run == true)
+		{
+			log_info(_("replication slots in use, %i free slots on the primary"),
+					 free_slots);
+		}
+
+	}
+
 	/* XXX check this is not current upstream anyway */
 	/* check replication connection */
 	initialize_conninfo_params(&repl_conninfo, false);
@@ -1699,6 +1726,7 @@ do_standby_follow(void)
 	{
 		log_info(_("replication connection to primary node was successful"));
 	}
+
 
 	/* check system_identifiers match */
 	local_system_identifier = get_system_identifier(config_file_options.data_directory);
@@ -1728,7 +1756,7 @@ do_standby_follow(void)
 		log_detail(_("system identifier is %lu"), local_system_identifier);
 	}
 
-	/* TODO: check timelines*/
+	/* TODO: check timelines */
 
 	PQfinish(repl_conn);
 	free_conninfo_params(&repl_conninfo);

@@ -3550,6 +3550,45 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 	return RECORD_FOUND;
 }
 
+
+int
+get_free_replication_slots(PGconn *conn)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	int			free_slots = 0;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  " SELECT pg_catalog.current_setting('max_replication_slots')::INT - "
+					  "        COUNT(*) AS free_slots"
+					  "   FROM pg_catalog.pg_replication_slots");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute replication slot query"));
+		log_detail("%s", PQerrorMessage(conn));
+		PQclear(res);
+		return -1;
+	}
+
+	if (PQntuples(res) == 0)
+	{
+		PQclear(res);
+		return -1;
+	}
+
+	free_slots = atoi(PQgetvalue(res, 0, 0));
+
+	PQclear(res);
+	return free_slots;
+}
+
+
 /* ==================== */
 /* tablespace functions */
 /* ==================== */
