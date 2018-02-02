@@ -34,6 +34,7 @@
 #include "dirutil.h"
 #include "strutil.h"
 #include "log.h"
+#include "controldata.h"
 
 static int	unlink_dir_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf);
 
@@ -246,8 +247,6 @@ is_pg_dir(char *path)
 bool
 create_pg_dir(char *path, bool force)
 {
-	bool		pg_dir = false;
-
 	/* Check this directory could be used as a PGDATA dir */
 	switch (check_dir(path))
 	{
@@ -279,35 +278,48 @@ create_pg_dir(char *path, bool force)
 			log_warning(_("directory \"%s\" exists but is not empty"),
 						path);
 
-			pg_dir = is_pg_dir(path);
-
-			if (pg_dir && force)
+			if (is_pg_dir(path))
 			{
-				/* TODO: check DB state, if not running overwrite */
+				DBState		db_state;
 
-				if (false)
+				/* note: state will be DB_SHUTDOWNED if unable to read a control file */
+				db_state = get_db_state(path);
+
+				if (force == true)
 				{
+					if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
+					{
+						log_error(_("directory \"%s\" appears to be an active PostgreSQL data directory"), path);
+						log_detail(_("instance appears to be running in state \"%s\""), describe_db_state(db_state));
+						log_hint(_("any running instance must be shut down"));
+						return false;
+					}
 					log_notice(_("deleting existing data directory \"%s\""), path);
 					nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);
+					return true;
 				}
-				/* Let it continue */
-				break;
+				else
+				{
+					return false;
+				}
 			}
-			else if (pg_dir && !force)
+			else
 			{
-				log_hint(_("This looks like a PostgreSQL directory.\n"
-						   "If you are sure you want to clone here, "
-						   "please check there is no PostgreSQL server "
-						   "running and use the -F/--force option"));
+				if (force == true)
+				{
+					log_notice(_("deleting existing directory \"%s\""), path);
+					nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);
+					return true;
+				}
 				return false;
 			}
-
-			return false;
+			break;
 		default:
 			log_error(_("could not access directory \"%s\": %s"),
 					  path, strerror(errno));
 			return false;
 	}
+
 	return true;
 }
 
