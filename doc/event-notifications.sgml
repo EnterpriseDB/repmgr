@@ -90,7 +90,7 @@
    <term><option>%p</option></term>
    <listitem>
     <para>
-     node ID of the demoted standby (<xref linkend="repmgr-standby-switchover"> only)
+     node ID of the demoted primary (<xref linkend="repmgr-standby-switchover"> only)
     </para>
    </listitem>
   </varlistentry>
