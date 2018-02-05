@@ -24,7 +24,7 @@
   <para>
     In contrast to streaming replication, there's no concept of "promoting" a new
     primary node with BDR. Instead, "failover" involves monitoring both nodes
-    with `repmgrd` and redirecting queries from the failed node to the remaining
+    with <application>repmgrd</application> and redirecting queries from the failed node to the remaining
     active node. This can be done by using an
     <link linkend="event-notifications">event notification</link> script
     which is called by <application>repmgrd</application> to dynamically
@@ -231,7 +231,7 @@
         <term><option>%c</option></term>
         <listitem>
           <para>
-            conninfo string of the next available node (<varname>bdr_failover</varname>)
+            conninfo string of the next available node (<varname>bdr_failover</varname> and <varname>bdr_recovery</varname>)
           </para>
         </listitem>
       </varlistentry>
@@ -239,7 +239,7 @@
         <term><option>%a</option></term>
         <listitem>
           <para>
-            name of the next available node (<varname>bdr_failover</varname>)
+            name of the next available node (<varname>bdr_failover</varname> and <varname>bdr_recovery</varname>)
           </para>
         </listitem>
       </varlistentry>
@@ -250,7 +250,9 @@
       particular failover events, in this case <varname>bdr_failover</varname>.
     </para>
     <para>
-      The provided sample script (`scripts/bdr-pgbouncer.sh`) is configured as follows:
+      The provided sample script
+     (<literal><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/scripts/bdr-pgbouncer.sh">scripts/bdr-pgbouncer.sh</ulink></literal>)
+      is configured as follows:
       <programlisting>
         event_notification_command='/path/to/bdr-pgbouncer.sh %n %e %s "%c" "%a"'</programlisting>
     </para>
