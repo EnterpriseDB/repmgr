@@ -763,6 +763,7 @@ check_barman_config(void)
  *
  * Event(s):
  *  - standby_register
+ *  - standby_register_sync
  */
 /*  XXX check --upstream-node-id works when re-registering */
 
@@ -1156,13 +1157,11 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	appendPQExpBuffer(
-					  &details,
+	appendPQExpBuffer(&details,
 					  "standby registration succeeded");
 
 	if (runtime_options.force == true)
-		appendPQExpBuffer(
-						  &details,
+		appendPQExpBuffer(&details,
 						  " (-F/--force option was used)");
 
 
@@ -1251,16 +1250,41 @@ do_standby_register(void)
 			timer++;
 		}
 
+		/* Log the event */
+		initPQExpBuffer(&details);
+
 		if (sync_ok == false)
 		{
-			log_error(_("node record was not synchronised after %i seconds"),
-					  runtime_options.wait_register_sync_seconds);
+			appendPQExpBuffer(&details,
+							  _("node record was not synchronised after %i seconds"),
+							  runtime_options.wait_register_sync_seconds);
+		}
+		else
+		{
+			appendPQExpBuffer(&details,
+							  _("node record synchronised after %i seconds"),
+							  timer);
+		}
+
+		create_event_notification(primary_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "standby_register_sync",
+								  sync_ok,
+								  details.data);
+
+		if (sync_ok == false)
+		{
+			log_error("%s", details.data);
+			termPQExpBuffer(&details);
 			PQfinish(primary_conn);
 			PQfinish(conn);
 			exit(ERR_REGISTRATION_SYNC);
 		}
 
 		log_info(_("node record on standby synchronised from primary"));
+		log_detail("%s", details.data);
+		termPQExpBuffer(&details);
 	}
 
 
