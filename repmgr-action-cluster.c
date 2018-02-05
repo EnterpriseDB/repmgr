@@ -82,6 +82,7 @@ do_cluster_show(void)
 	NodeInfoListCell *cell = NULL;
 	int			i = 0;
 	ItemList	warnings = {NULL, NULL};
+	bool		success = false;
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database"));
@@ -91,11 +92,19 @@ do_cluster_show(void)
 	else
 		conn = establish_db_connection_by_params(&source_conninfo, true);
 
-	get_all_node_records_with_upstream(conn, &nodes);
+	success = get_all_node_records_with_upstream(conn, &nodes);
+
+	if (success == false)
+	{
+		/* get_all_node_records_with_upstream() will print error message */
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	if (nodes.node_count == 0)
 	{
-		log_error(_("unable to retrieve any node records"));
+		log_error(_("no node records were found"));
+		log_hint(_("ensure at least one node is registered"));
 		PQfinish(conn);
 		exit(ERR_BAD_CONFIG);
 	}
