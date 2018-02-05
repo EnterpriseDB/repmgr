@@ -140,8 +140,14 @@ do_cluster_show(void)
 		}
 		else
 		{
+			char		error[MAXLEN];
+
+			strncpy(error, PQerrorMessage(cell->node_info->conn), MAXLEN);
 			cell->node_info->node_status = NODE_STATUS_DOWN;
 			cell->node_info->recovery_type = RECTYPE_UNKNOWN;
+			item_list_append_format(&warnings,
+									"when attempting to connect to node \"%s\" (ID: %i), following error encountered :\n\"%s\"",
+									cell->node_info->node_name, cell->node_info->node_id, trim(error));
 		}
 
 		initPQExpBuffer(&details);
@@ -416,7 +422,7 @@ do_cluster_show(void)
 		printf(_("\nWARNING: following issues were detected\n"));
 		for (cell = warnings.head; cell; cell = cell->next)
 		{
-			printf(_("  %s\n"), cell->string);
+			printf(_("  - %s\n"), cell->string);
 		}
 	}
 }
