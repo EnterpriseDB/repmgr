@@ -143,7 +143,7 @@
     <para>
       If using an event notification script, <literal>standby_switchover</literal>
       will populate the placeholder parameter <literal>%p</literal> with the node ID of
-      the former standby.
+      the former primary.
     </para>
   </refsect1>
 
