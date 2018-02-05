@@ -145,6 +145,9 @@
     <simpara><literal>standby_register</literal></simpara>
    </listitem>
    <listitem>
+    <simpara><literal>standby_register_sync</literal></simpara>
+   </listitem>
+   <listitem>
     <simpara><literal>standby_unregister</literal></simpara>
    </listitem>
    <listitem>

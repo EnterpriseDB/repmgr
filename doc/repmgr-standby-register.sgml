@@ -57,16 +57,16 @@
   <refsect1 id="repmgr-standby-register-wait-sync" xreflabel="repmgr standby register --wait-sync">
    <title>Waiting for the registration to propagate to the standby</title>
    <para>
-     Depending on your environment and workload, it may take some time for
-     the standby's node record to propagate from the primary to the standby. Some
-     actions (such as starting <application>repmgrd</application>) require that the standby's node record
+     Depending on your environment and workload, it may take some time for the standby's node record
+     to propagate from the primary to the standby. Some actions (such as starting
+     <application>repmgrd</application>) require that the standby's node record
      is present and up-to-date to function correctly.
    </para>
    <para>
-    By providing the option <literal>--wait-sync</literal> to the
+    By providing the option <option>--wait-sync</option> to the
     <command>repmgr standby register</command> command, &repmgr; will wait
     until the record is synchronised before exiting. An optional timeout (in
-    seconds) can be added to this option (e.g. <literal>--wait-sync=60</literal>).
+    seconds) can be added to this option (e.g. <option>--wait-sync=60</option>).
    </para>
   </refsect1>
 
@@ -75,20 +75,20 @@
    <para>
     Under some circumstances you may wish to register a standby which is not
     yet running; this can be the case when using provisioning tools to create
-    a complex replication cluster. In this case, by using the <literal>-F/--force</literal>
+    a complex replication cluster. In this case, by using the <option>-F/--force</option>
     option and providing the connection parameters to the primary server,
     the standby can be registered.
    </para>
    <para>
     Similarly, with cascading replication it may be necessary to register
     a standby whose upstream node has not yet been registered - in this case,
-    using <literal>-F/--force</literal> will result in the creation of an inactive placeholder
+    using <option>-F/--force</option> will result in the creation of an inactive placeholder
     record for the upstream node, which will however later need to be registered
-    with the <literal>-F/--force</literal> option too.
+    with the <option>-F/--force</option> option too.
    </para>
    <para>
     When used with <command>repmgr standby register</command>, care should be taken that use of the
-    <literal>-F/--force</literal> option does not result in an incorrectly configured cluster.
+    <option>-F/--force</option> option does not result in an incorrectly configured cluster.
    </para>
   </refsect1>
 
@@ -96,8 +96,15 @@
     <title>Event notifications</title>
     <para>
       A <literal>standby_register</literal> <link linkend="event-notifications">event notification</link>
-      will be generated.
+      will be generated immediately after the node record is updated on the primary.
     </para>
+
+    <para>
+      If the <option>--wait-sync</option> option is provided, a <literal>standby_register_sync</literal>
+      event notification  will be generated immediately after the node record has synchronised to the
+      standby.
+    </para>
+
   </refsect1>
 
 </refentry>
