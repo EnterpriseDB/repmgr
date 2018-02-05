@@ -167,15 +167,13 @@ do_cluster_show(void)
 									break;
 								case RECTYPE_STANDBY:
 									appendPQExpBuffer(&details, "! running as standby");
-									item_list_append_format(
-															&warnings,
+									item_list_append_format(&warnings,
 															"node \"%s\" (ID: %i) is registered as primary but running as standby",
 															cell->node_info->node_name, cell->node_info->node_id);
 									break;
 								case RECTYPE_UNKNOWN:
 									appendPQExpBuffer(&details, "! unknown");
-									item_list_append_format(
-															&warnings,
+									item_list_append_format(&warnings,
 															"node \"%s\" (ID: %i) has unknown replication status",
 															cell->node_info->node_name, cell->node_info->node_id);
 									break;
@@ -186,16 +184,14 @@ do_cluster_show(void)
 							if (cell->node_info->recovery_type == RECTYPE_PRIMARY)
 							{
 								appendPQExpBuffer(&details, "! running");
-								item_list_append_format(
-														&warnings,
+								item_list_append_format(&warnings,
 														"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
 														cell->node_info->node_name, cell->node_info->node_id);
 							}
 							else
 							{
 								appendPQExpBuffer(&details, "! running as standby");
-								item_list_append_format(
-														&warnings,
+								item_list_append_format(&warnings,
 														"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
 														cell->node_info->node_name, cell->node_info->node_id);
 							}
@@ -208,8 +204,7 @@ do_cluster_show(void)
 						if (cell->node_info->active == true)
 						{
 							appendPQExpBuffer(&details, "? unreachable");
-							item_list_append_format(
-													&warnings,
+							item_list_append_format(&warnings,
 													"node \"%s\" (ID: %i) is registered as an active primary but is unreachable",
 													cell->node_info->node_name, cell->node_info->node_id);
 						}
@@ -235,8 +230,7 @@ do_cluster_show(void)
 									break;
 								case RECTYPE_PRIMARY:
 									appendPQExpBuffer(&details, "! running as primary");
-									item_list_append_format(
-															&warnings,
+									item_list_append_format(&warnings,
 															"node \"%s\" (ID: %i) is registered as standby but running as primary",
 															cell->node_info->node_name, cell->node_info->node_id);
 									break;
@@ -254,16 +248,14 @@ do_cluster_show(void)
 							if (cell->node_info->recovery_type == RECTYPE_STANDBY)
 							{
 								appendPQExpBuffer(&details, "! running");
-								item_list_append_format(
-														&warnings,
+								item_list_append_format(&warnings,
 														"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
 														cell->node_info->node_name, cell->node_info->node_id);
 							}
 							else
 							{
 								appendPQExpBuffer(&details, "! running as primary");
-								item_list_append_format(
-														&warnings,
+								item_list_append_format(&warnings,
 														"node \"%s\" (ID: %i) is running as primary but the repmgr node record is inactive",
 														cell->node_info->node_name, cell->node_info->node_id);
 							}
@@ -276,8 +268,7 @@ do_cluster_show(void)
 						if (cell->node_info->active == true)
 						{
 							appendPQExpBuffer(&details, "? unreachable");
-							item_list_append_format(
-													&warnings,
+							item_list_append_format(&warnings,
 													"node \"%s\" (ID: %i) is registered as an active standby but is unreachable",
 													cell->node_info->node_name, cell->node_info->node_id);
 						}
