@@ -2123,7 +2123,11 @@ get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list)
 	return;
 }
 
-void
+/*
+ * return all node records together with their upstream's node name,
+ * if available.
+ */
+bool
 get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 {
 	PQExpBufferData query;
@@ -2145,11 +2149,19 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 
 	termPQExpBuffer(&query);
 
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to retrieve node records"));
+		log_detail("%s", PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
 	_populate_node_records(res, node_list);
 
 	PQclear(res);
 
-	return;
+	return true;
 }
 
 
@@ -2271,9 +2283,11 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to %s node record:\n  %s"),
+		log_error(_("unable to %s node record for node \"%s\" (ID: %i)"),
 				  action,
-				  PQerrorMessage(conn));
+				  node_info->node_name,
+				  node_info->node_id);
+		log_detail("%s", PQerrorMessage(conn));
 		PQclear(res);
 		return false;
 	}
