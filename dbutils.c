@@ -3265,14 +3265,14 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						}
 						break;
 					case 'p':
-						/* %p: former primary id ("repmgr standby switchover") */
+						/* %p: primary id ("standby_switchover": former primary id) */
 						src_ptr++;
-						if (event_info->former_primary_id != UNKNOWN_NODE_ID)
+						if (event_info->node_id != UNKNOWN_NODE_ID)
 						{
 							PQExpBufferData node_id;
 							initPQExpBuffer(&node_id);
 							appendPQExpBuffer(&node_id,
-											  "%i", event_info->former_primary_id);
+											  "%i", event_info->node_id);
 							strlcpy(dst_ptr, node_id.data, end_ptr - dst_ptr);
 							dst_ptr += strlen(dst_ptr);
 							termPQExpBuffer(&node_id);

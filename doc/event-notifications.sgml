@@ -37,7 +37,7 @@
   <filename>repmgr.conf</filename>.
  </para>
  <para>
-  This parameter accepts the following format placeholders:
+  The following format placeholders are provided for all event notifications:
  </para>
 
  <variablelist>
@@ -84,18 +84,8 @@
     </para>
    </listitem>
   </varlistentry>
-
-
-  <varlistentry>
-   <term><option>%p</option></term>
-   <listitem>
-    <para>
-     node ID of the demoted primary (<xref linkend="repmgr-standby-switchover"> only)
-    </para>
-   </listitem>
-  </varlistentry>
-
  </variablelist>
+
  <para>
   The values provided for <literal>%t</literal> and <literal>%d</literal>
   will probably contain spaces, so should be quoted in the provided command
@@ -104,34 +94,60 @@
     event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
   </programlisting>
  </para>
+
  <para>
-  Additionally the following format placeholders are available for the event
-  type <varname>bdr_failover</varname> and optionally <varname>bdr_recovery</varname>:
+   The following parameters are provided for a subset of event notifications:
  </para>
+
  <variablelist>
+  <varlistentry>
+   <term><option>%p</option></term>
+   <listitem>
+    <para>
+     node ID of the current primary (<xref linkend="repmgr-standby-register"> and <xref linkend="repmgr-standby-follow">)
+    </para>
+    <para>
+     node ID of the demoted primary (<xref linkend="repmgr-standby-switchover"> only)
+    </para>
+   </listitem>
+  </varlistentry>
   <varlistentry>
    <term><option>%c</option></term>
    <listitem>
     <para>
-     conninfo string of the next available node
+     <literal>conninfo</literal> string of the primary node
+     (<xref linkend="repmgr-standby-register"> and <xref linkend="repmgr-standby-follow">)
+    </para>
+    <para>
+      <literal>conninfo</literal> string of the next available node
+      (<varname>bdr_failover</varname> and  <varname>bdr_recovery</varname>)
     </para>
    </listitem>
   </varlistentry>
+
   <varlistentry>
    <term><option>%a</option></term>
    <listitem>
     <para>
-     name of the next available node
+     name of the current primary node (<xref linkend="repmgr-standby-register"> and <xref linkend="repmgr-standby-follow">)
+    </para>
+    <para>
+     name of the next available node (<varname>bdr_failover</varname> and  <varname>bdr_recovery</varname>)
     </para>
    </listitem>
   </varlistentry>
+
  </variablelist>
+
  <para>
-  These should always be quoted.
+  The values provided for <literal>%c</literal> and <literal>%a</literal>
+  will probably contain spaces, so should always be quoted.
  </para>
+
  <para>
   By default, all notification types will be passed to the designated script;
-  the notification types can be filtered to explicitly named ones:
+  the notification types can be filtered to explicitly named ones using the
+  <varname>event_notifications</varname> parameter:
 
   <itemizedlist spacing="compact" mark="bullet">
 
@@ -219,6 +235,7 @@
 
   </itemizedlist>
  </para>
+
  <para>
   Note that under some circumstances (e.g. when no replication cluster primary
   could be located), it will not be possible to write an entry into the

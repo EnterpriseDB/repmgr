@@ -779,6 +779,11 @@ do_standby_register(void)
 
 	PQExpBufferData details;
 
+	/* so we can pass info about the primary to event notification scripts */
+	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
+	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
+	int primary_node_id = UNKNOWN_NODE_ID;
+
 	log_info(_("connecting to local node \"%s\" (ID: %i)"),
 			 config_file_options.node_name,
 			 config_file_options.node_id);
@@ -863,7 +868,7 @@ do_standby_register(void)
 	/* Normal case - we can connect to the local node */
 	if (PQstatus(conn) == CONNECTION_OK)
 	{
-		primary_conn = get_primary_connection(conn, NULL, NULL);
+		primary_conn = get_primary_connection(conn, &primary_node_id, NULL);
 	}
 
 	/*
@@ -886,6 +891,16 @@ do_standby_register(void)
 		log_hint(_("a primary node must be configured before registering a standby node"));
 		exit(ERR_BAD_CONFIG);
 	}
+
+	/*
+	 * Populate "event_info" with info about the primary for event notifications
+	 */
+	record_status = get_node_record(primary_conn,
+									primary_node_id,
+									&primary_node_record);
+	event_info.node_id = primary_node_id;
+	event_info.node_name = primary_node_record.node_name;
+	event_info.conninfo_str = primary_node_record.conninfo;
 
 	/*
 	 * Verify that standby and primary are supported and compatible server
@@ -1141,12 +1156,14 @@ do_standby_register(void)
 							  &details,
 							  " (-F/--force option was used)");
 
-		create_event_notification(primary_conn,
-								  &config_file_options,
-								  config_file_options.node_id,
-								  "standby_register",
-								  false,
-								  details.data);
+		create_event_notification_extended(
+			primary_conn,
+			&config_file_options,
+			config_file_options.node_id,
+			"standby_register",
+			false,
+			details.data,
+			&event_info);
 
 		termPQExpBuffer(&details);
 		PQfinish(primary_conn);
@@ -1166,12 +1183,14 @@ do_standby_register(void)
 
 
 	/* Log the event */
-	create_event_notification(primary_conn,
-							  &config_file_options,
-							  config_file_options.node_id,
-							  "standby_register",
-							  true,
-							  details.data);
+	create_event_notification_extended(
+		primary_conn,
+		&config_file_options,
+		config_file_options.node_id,
+		"standby_register",
+		true,
+		details.data,
+		&event_info);
 
 	termPQExpBuffer(&details);
 
@@ -1266,12 +1285,14 @@ do_standby_register(void)
 							  timer);
 		}
 
-		create_event_notification(primary_conn,
-								  &config_file_options,
-								  config_file_options.node_id,
-								  "standby_register_sync",
-								  sync_ok,
-								  details.data);
+		create_event_notification_extended(
+			primary_conn,
+			&config_file_options,
+			config_file_options.node_id,
+			"standby_register_sync",
+			sync_ok,
+			details.data,
+			&event_info);
 
 		if (sync_ok == false)
 		{
@@ -1605,9 +1626,11 @@ do_standby_follow(void)
 	PGconn	   *local_conn = NULL;
 
 	PGconn	   *primary_conn = NULL;
-	int			primary_id = UNKNOWN_NODE_ID;
+	int			primary_node_id = UNKNOWN_NODE_ID;
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
+	/* so we can pass info about the primary to event notification scripts */
+	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
 	int			timer = 0;
 	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
@@ -1646,7 +1669,7 @@ do_standby_follow(void)
 	for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
 	{
 		primary_conn = get_primary_connection_quiet(local_conn,
-													&primary_id,
+													&primary_node_id,
 													NULL);
 		if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
 		{
@@ -1673,14 +1696,14 @@ do_standby_follow(void)
 
 	if (runtime_options.dry_run == true)
 	{
-		log_info(_("connected to node %i, checking for current primary"), primary_id);
+		log_info(_("connected to node %i, checking for current primary"), primary_node_id);
 	}
 	else
 	{
-		log_verbose(LOG_INFO, _("connected to node %i, checking for current primary"), primary_id);
+		log_verbose(LOG_INFO, _("connected to node %i, checking for current primary"), primary_node_id);
 	}
 
-	record_status = get_node_record(primary_conn, primary_id, &primary_node_record);
+	record_status = get_node_record(primary_conn, primary_node_id, &primary_node_record);
 
 	if (record_status != RECORD_FOUND)
 	{
@@ -1690,17 +1713,25 @@ do_standby_follow(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/*
+	 * Populate "event_info" with info about the primary for event notifications
+	 */
+	event_info.node_id = primary_node_id;
+	event_info.node_name = primary_node_record.node_name;
+	event_info.conninfo_str = primary_node_record.conninfo;
+
+
 	if (runtime_options.dry_run == true)
 	{
 		log_info(_("primary node is \"%s\" (ID: %i)"),
 				 primary_node_record.node_name,
-				 primary_id);
+				 primary_node_id);
 	}
 	else
 	{
 		log_verbose(LOG_INFO, ("primary node is \"%s\" (ID: %i)"),
 					primary_node_record.node_name,
-					primary_id);
+					primary_node_id);
 	}
 
 	/* if replication slots in use, check at least one free slot is available */
@@ -1791,7 +1822,6 @@ do_standby_follow(void)
 		exit(SUCCESS);
 	}
 
-
 	initPQExpBuffer(&follow_output);
 
 	success = do_standby_follow_internal(primary_conn,
@@ -1799,12 +1829,14 @@ do_standby_follow(void)
 										 &follow_output,
 										 &follow_error_code);
 
-	create_event_notification(primary_conn,
-							  &config_file_options,
-							  config_file_options.node_id,
-							  "standby_follow",
-							  success,
-							  follow_output.data);
+	create_event_notification_extended(
+		primary_conn,
+		&config_file_options,
+		config_file_options.node_id,
+		"standby_follow",
+		success,
+		follow_output.data,
+		&event_info);
 
 	PQfinish(primary_conn);
 
@@ -2244,7 +2276,7 @@ do_standby_switchover(void)
 	log_verbose(LOG_DEBUG, "remote node name is \"%s\"", remote_node_record.node_name);
 
 	/* this will fill the %p event notification parameter */
-	event_info.former_primary_id = remote_node_record.node_id;
+	event_info.node_id = remote_node_record.node_id;
 
 	/*
 	 * If --force-rewind specified, check pg_rewind can be used, and
