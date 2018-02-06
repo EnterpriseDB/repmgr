@@ -172,6 +172,12 @@
       standby.
     </para>
 
+    <para>
+      If provided, &repmgr; will subsitute the placeholders <literal>%p</literal> with the node ID of the
+      primary node, <literal>%c</literal> with its <literal>conninfo</literal> string, and
+      <literal>%a</literal> with its node name.
+    </para>
+
   </refsect1>
 
 </refentry>

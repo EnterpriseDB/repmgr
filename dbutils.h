@@ -183,7 +183,7 @@ typedef struct s_event_info
 {
 	char	   *node_name;
 	char	   *conninfo_str;
-	int			former_primary_id;
+	int			node_id;
 } t_event_info;
 
 #define T_EVENT_INFO_INITIALIZER { \
