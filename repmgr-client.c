@@ -997,7 +997,7 @@ main(int argc, char **argv)
 			&& config_file_options.use_replication_slots == true)
 		{
 			log_error(_("STANDBY CLONE in Barman mode is incompatible with configuration option \"use_replication_slots\""));
-			log_hint(_("set \"use_replication_slots\" to \"no\" in repmgr.conf, or use --without-barman fo clone directly from the upstream server"));
+			log_hint(_("set \"use_replication_slots\" to \"no\" in repmgr.conf, or use --without-barman to clone directly from the upstream server"));
 			exit(ERR_BAD_CONFIG);
 		}
 	}
