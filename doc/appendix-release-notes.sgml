@@ -96,8 +96,8 @@
 
           <listitem>
             <para>
-              <command><link linkend="repmgr-primary-unregister">repmgr primary unregister</link></command>
-              clarify usage and fix <literal>--help</literal> output (GitHub #363)
+              <command><link linkend="repmgr-primary-unregister">repmgr primary unregister</link></command>:
+              clarify usage and fix <literal>--help</literal> output (GitHub #373)
             </para>
           </listitem>
 
