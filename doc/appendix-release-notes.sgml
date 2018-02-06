@@ -11,17 +11,110 @@
     before performing an upgrade, as there may be version-specific upgrade steps.
   </para>
 
-
   <para>
     See also: <xref linkend="upgrading-repmgr">
   </para>
+
+  <sect1 id="release-4.0.3">
+    <title>Release 4.0.3</title>
+    <para><emphasis>??? Feb ??, 2018</emphasis></para>
+
+    <para>
+      &repmgr; 4.0.3 contains some bug fixes and and a number of
+      usability enhancements related to logging/diagnostics,
+      event notifications and pre-action checks.
+    </para>
+
+    <sect2>
+      <title>Usability enhancements</title>
+
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              improve <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>
+              behaviour when <command>pg_ctl</command> is used to control the server and logging output is
+              not explicitly redirected
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              improve <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>
+              log messages and provide new exit code <literal>ERR_SWITCHOVER_INCOMPLETE</literal> when old primary could
+              not be shut down cleanly
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              add --dry-run mode to <command><link linkend="repmgr-standby-switchover">repmgr standby follow</link></command>
+              (GitHub #369)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              add <literal>standby_register_sync</literal> event notification, which is fired when
+              <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>
+              is run with the <option>--wait-sync</option> option and the new or updated standby node
+              record has synchronised to the standy (GitHub #374)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              when running <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>,
+              if any node is unreachable, output the error message encountered in the list of warnings
+              (GitHub #369)
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
+      <title>Bug fixes</title>
+
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              ensure an inactive data directory can be overwritten when
+              cloning a standby (GitHub #366)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-node-status">repmgr node status</link></command>
+              upstream node display fixed (GitHub #363)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-primary-unregister">repmgr primary unregister</link></command>
+              clarify usage and fix <literal>--help</literal> output (GitHub #363)
+            </para>
+          </listitem>
+
+        </itemizedlist>
+
+      </para>
+    </sect2>
+
+  </sect1>
+
 
   <sect1 id="release-4.0.2">
     <title>Release 4.0.2</title>
     <para><emphasis>Thu Jan 18, 2018</emphasis></para>
 
     <para>
-      repmgr 4.0.2 contains some bug fixes and small usability enhancements.
+      &repmgr; 4.0.2 contains some bug fixes and small usability enhancements.
     </para>
     <para>
       This release can be installed as a simple package upgrade from &repmgr; 4.0.1 or 4.0;
@@ -126,7 +219,7 @@
   <para><emphasis>Wed Dec 13, 2017</emphasis></para>
 
   <para>
-    repmgr 4.0.1 is a bugfix release.
+    &repmgr; 4.0.1 is a bugfix release.
   </para>
   <sect2>
     <title>Bug fixes</title>

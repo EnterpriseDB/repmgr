@@ -4,7 +4,15 @@
         repmgr: improve switchover log messages and exit code when old primary could
           not be shut down cleanly (Ian)
         repmgr: add --dry-run mode to "repmgr standby follow"; GitHub #368 (Ian)
+        repmgr: provide information about the primary node for "standby_register" and
+          "standby_follow" event notifications; GitHub #375 (Ian)
+        repmgr: add "standby_register_sync" event notification; GitHub #374 (Ian)
+        repmgr: output any connection error messages in "cluster show"'s list of
+          warnings; GitHub #369 (Ian)
+        repmgr: ensure an inactive data directory can be deleted; GitHub #366 (Ian)
         repmgr: fix upstream node display in "repmgr node status"; GitHub #363 (fanf2)
+        repmgr: improve/clarify documentation and update --help output for
+          "primary unregister"; GitHub #373 (Ian)
 
 4.0.2   2018-01-18
         repmgr: add missing -W option to getopt_long() invocation; GitHub #350 (Ian)
