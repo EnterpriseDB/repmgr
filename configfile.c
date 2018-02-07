@@ -671,7 +671,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		 * Raise an error if a known parameter is provided with an empty
 		 * value. Currently there's no reason why empty parameters are needed;
 		 * if we want to accept those, we'd need to add stricter default
-		 * checking, as currently e.g. an empty `node` value will be converted
+		 * checking, as currently e.g. an empty `node_id` value will be converted
 		 * to '0'.
 		 */
 		if (known_parameter == true && !strlen(value))
@@ -1600,31 +1600,112 @@ clear_event_notification_list(t_configuration_options *options)
 }
 
 
-bool
-parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num, ItemList *error_list)
+int
+parse_output_to_argv(const char *string, char ***argv_array)
 {
 	int			options_len = 0;
 	char	   *options_string = NULL;
 	char	   *options_string_ptr = NULL;
+	int			c = 1,
+	   			argc_item = 1;
+	char	   *argv_item = NULL;
+	char	  **local_argv_array = NULL;
+	ItemListCell *cell;
 
 	/*
 	 * Add parsed options to this list, then copy to an array to pass to
 	 * getopt
 	 */
-	static ItemList option_argv = {NULL, NULL};
+	ItemList option_argv = {NULL, NULL};
 
-	char	   *argv_item = NULL;
-	int			c,
-				argc_item = 1;
+	options_len = strlen(string) + 1;
+	options_string = pg_malloc0(options_len);
+	options_string_ptr = options_string;
+
+	/* Copy the string before operating on it with strtok() */
+	strncpy(options_string, string, options_len);
+
+	/* Extract arguments into a list and keep a count of the total */
+	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
+	{
+		item_list_append(&option_argv, trim(argv_item));
+
+		argc_item++;
+
+		if (options_string_ptr != NULL)
+			options_string_ptr = NULL;
+	}
+
+	pfree(options_string);
+
+	/*
+	 * Array of argument values to pass to getopt_long - this will need to
+	 * include an empty string as the first value (normally this would be the
+	 * program name)
+	 */
+	local_argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
+
+	/* Insert a blank dummy program name at the start of the array */
+	local_argv_array[0] = pg_malloc0(1);
+
+	/*
+	 * Copy the previously extracted arguments from our list to the array
+	 */
+	for (cell = option_argv.head; cell; cell = cell->next)
+	{
+		int			argv_len = strlen(cell->string) + 1;
+
+		local_argv_array[c] = (char *)pg_malloc0(argv_len);
+
+		strncpy(local_argv_array[c], cell->string, argv_len);
+
+		c++;
+	}
+
+	local_argv_array[c] = NULL;
+
+	item_list_free(&option_argv);
+
+	*argv_array = local_argv_array;
+
+	return argc_item;
+}
+
+
+void
+free_parsed_argv(char ***argv_array)
+{
+	char	  **local_argv_array = *argv_array;
+	int			i = 0;
+
+	while (local_argv_array[i] != NULL)
+	{
+		pfree((char *)local_argv_array[i]);
+		i++;
+	}
+
+	pfree((char **)local_argv_array);
+	*argv_array = NULL;
+}
+
+
+
+
+
+bool
+parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num, ItemList *error_list)
+{
+	bool		backup_options_ok = true;
+
+	int			c = 0,
+				argc_item = 0;
 
 	char	  **argv_array = NULL;
-	ItemListCell *cell = NULL;
 
 	int			optindex = 0;
 
 	struct option *long_options = NULL;
 
-	bool		backup_options_ok = true;
 
 	/* We're only interested in these options */
 	static struct option long_options_9[] =
@@ -1650,56 +1731,12 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	if (!strlen(pg_basebackup_options))
 		return backup_options_ok;
 
-	options_len = strlen(pg_basebackup_options) + 1;
-	options_string = pg_malloc(options_len);
-	options_string_ptr = options_string;
-
 	if (server_version_num >= 100000)
 		long_options = long_options_10;
 	else
 		long_options = long_options_9;
 
-	/* Copy the string before operating on it with strtok() */
-	strncpy(options_string, pg_basebackup_options, options_len);
-
-	/* Extract arguments into a list and keep a count of the total */
-	while ((argv_item = strtok(options_string_ptr, " ")) != NULL)
-	{
-		item_list_append(&option_argv, argv_item);
-
-		argc_item++;
-
-		if (options_string_ptr != NULL)
-			options_string_ptr = NULL;
-	}
-
-	/*
-	 * Array of argument values to pass to getopt_long - this will need to
-	 * include an empty string as the first value (normally this would be the
-	 * program name)
-	 */
-	argv_array = pg_malloc0(sizeof(char *) * (argc_item + 2));
-
-	/* Insert a blank dummy program name at the start of the array */
-	argv_array[0] = pg_malloc0(1);
-
-	c = 1;
-
-	/*
-	 * Copy the previously extracted arguments from our list to the array
-	 */
-	for (cell = option_argv.head; cell; cell = cell->next)
-	{
-		int			argv_len = strlen(cell->string) + 1;
-
-		argv_array[c] = pg_malloc0(argv_len);
-
-		strncpy(argv_array[c], cell->string, argv_len);
-
-		c++;
-	}
-
-	argv_array[c] = NULL;
+	argc_item = parse_output_to_argv(pg_basebackup_options, &argv_array);
 
 	/* Reset getopt's optind variable */
 	optind = 0;
@@ -1743,15 +1780,7 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 		backup_options_ok = false;
 	}
 
-	pfree(options_string);
-
-	{
-		int			i;
-
-		for (i = 0; i < argc_item + 2; i++)
-			pfree(argv_array[i]);
-	}
-	pfree(argv_array);
+	free_parsed_argv(&argv_array);
 
 	return backup_options_ok;
 }

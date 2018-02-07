@@ -248,7 +248,6 @@ typedef struct
 }
 
 
-
 void		set_progname(const char *argv0);
 const char *progname(void);
 
@@ -263,11 +262,14 @@ int repmgr_atoi(const char *s,
 			ItemList *error_list,
 			int minval);
 
-
 bool parse_pg_basebackup_options(const char *pg_basebackup_options,
 							t_basebackup_options *backup_options,
 							int server_version_num,
 							ItemList *error_list);
+
+int parse_output_to_argv(const char *string, char ***argv_array);
+void free_parsed_argv(char ***argv_array);
+
 
 /* called by repmgr-client and repmgrd */
 void		exit_with_cli_errors(ItemList *error_list);
