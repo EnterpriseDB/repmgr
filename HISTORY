@@ -13,6 +13,9 @@
         repmgr: fix upstream node display in "repmgr node status"; GitHub #363 (fanf2)
         repmgr: improve/clarify documentation and update --help output for
           "primary unregister"; GitHub #373 (Ian)
+        repmgr: fix parsing of "pg_basebackup_options"; GitHub #376 (Ian)
+        repmgr: ensure "pg_subtrans" directory is created when cloning a standby in
+          Barman mode (Ian)
 
 4.0.2   2018-01-18
         repmgr: add missing -W option to getopt_long() invocation; GitHub #350 (Ian)

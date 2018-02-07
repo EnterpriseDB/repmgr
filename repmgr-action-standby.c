@@ -4449,8 +4449,8 @@ run_file_backup(t_node_info *node_record)
 				/* Only from 9.4 */
 				"pg_dynshmem", "pg_logical", "pg_logical/snapshots", "pg_logical/mappings", "pg_replslot",
 				/* Already in 9.3 */
-				"pg_notify", "pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
-				"pg_twophase", "pg_xlog", 0
+				"pg_notify", "pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp",
+				"pg_subtrans", "pg_tblspc", "pg_twophase", "pg_xlog", 0
 			};
 			const int	vers[] = {
 				100000,
