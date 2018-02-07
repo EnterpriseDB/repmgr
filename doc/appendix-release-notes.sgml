@@ -101,6 +101,12 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              parsining of <varname>pg_basebackup_options</varname> fixed (GitHub #376)
+            </para>
+          </listitem>
+
         </itemizedlist>
 
       </para>

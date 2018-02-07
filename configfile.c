@@ -1689,9 +1689,6 @@ free_parsed_argv(char ***argv_array)
 }
 
 
-
-
-
 bool
 parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_options *backup_options, int server_version_num, ItemList *error_list)
 {
