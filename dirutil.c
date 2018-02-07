@@ -21,6 +21,7 @@
 
 #include <unistd.h>
 #include <dirent.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <stdio.h>
@@ -38,31 +39,29 @@
 
 static int	unlink_dir_callback(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf);
 
+/* PID can be negative if backend is standalone */
+typedef long pgpid_t;
 
 
 /*
- * make sure the directory either doesn't exist or is empty
- * we use this function to check the new data directory and
- * the directories for tablespaces
+ * Check if a directory exists, and if so whether it is empty.
  *
- * This is the same check initdb does on the new PGDATA dir
- *
- * Returns 0 if nonexistent, 1 if exists and empty, 2 if not empty,
- * or -1 if trouble accessing directory
+ * This function is used for checking both the data directory
+ * and tablespace directories.
  */
-int
+DataDirState
 check_dir(char *path)
 {
-	DIR		   *chkdir;
-	struct dirent *file;
-	int			result = 1;
+	DIR		   *chkdir = NULL;
+	struct dirent *file = NULL;
+	int			result = DIR_EMPTY;
 
 	errno = 0;
 
 	chkdir = opendir(path);
 
 	if (!chkdir)
-		return (errno == ENOENT) ? 0 : -1;
+		return (errno == ENOENT) ? DIR_NOENT : DIR_ERROR;
 
 	while ((file = readdir(chkdir)) != NULL)
 	{
@@ -74,25 +73,15 @@ check_dir(char *path)
 		}
 		else
 		{
-			result = 2;			/* not empty */
+			result = DIR_NOT_EMPTY;
 			break;
 		}
 	}
 
-#ifdef WIN32
-
-	/*
-	 * This fix is in mingw cvs (runtime/mingwex/dirent.c rev 1.4), but not in
-	 * released version
-	 */
-	if (GetLastError() == ERROR_NO_MORE_FILES)
-		errno = 0;
-#endif
-
 	closedir(chkdir);
 
 	if (errno != 0)
-		return -1;				/* some kind of I/O error? */
+		return DIR_ERROR;				/* some kind of I/O error? */
 
 	return result;
 }
@@ -107,11 +96,12 @@ create_dir(char *path)
 	if (mkdir_p(path, 0700) == 0)
 		return true;
 
-	log_error(_("unable to create directory \"%s\": %s"),
-			  path, strerror(errno));
+	log_error(_("unable to create directory \"%s\""), path);
+	log_detail("%s", strerror(errno));
 
 	return false;
 }
+
 
 bool
 set_dir_permissions(char *path)
@@ -147,26 +137,6 @@ mkdir_p(char *path, mode_t omode)
 	oumask = 0;
 	retval = 0;
 
-#ifdef WIN32
-	/* skip network and drive specifiers for win32 */
-	if (strlen(p) >= 2)
-	{
-		if (p[0] == '/' && p[1] == '/')
-		{
-			/* network drive */
-			p = strstr(p + 2, "/");
-			if (p == NULL)
-				return 1;
-		}
-		else if (p[1] == ':' &&
-				 ((p[0] >= 'a' && p[0] <= 'z') ||
-				  (p[0] >= 'A' && p[0] <= 'Z')))
-		{
-			/* local drive */
-			p += 2;
-		}
-	}
-#endif
 
 	if (p[0] == '/')			/* Skip leading '/'. */
 		++p;
@@ -243,15 +213,91 @@ is_pg_dir(char *path)
 	return false;
 }
 
+/*
+ * Attempt to determine if a PostgreSQL data directory is in use
+ * by reading the pidfile. This is the same mechanism used by
+ * "pg_ctl".
+ *
+ * This function will abort with appropriate log messages if a file error
+ * is encountered, as the user will need to address the situation before
+ * any further useful progress can be made.
+ */
+PgDirState
+is_pg_running(char *path)
+{
+	long		pid;
+	FILE	   *pidf;
+
+	char pid_file[MAXPGPATH];
+
+	/* it's reasonable to assume the pidfile name will not change */
+	snprintf(pid_file, MAXPGPATH, "%s/postmaster.pid", path);
+
+	pidf = fopen(pid_file, "r");
+	if (pidf == NULL)
+	{
+		/*
+		 * No PID file - PostgreSQL shouldn't be running. From 9.3 (the
+		 * earliesty version we care about) removal of the PID file will
+		 * cause the postmaster to shut down, so it's highly unlikely
+		 * that PostgreSQL will still be running.
+		 */
+		if (errno == ENOENT)
+		{
+			return PG_DIR_NOT_RUNNING;
+		}
+		else
+		{
+			log_error(_("unable to open PostgreSQL PID file \"%s\""), pid_file);
+			log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+
+	/*
+	 * In the unlikely event we're unable to extract a PID from the PID file,
+	 * log a warning but assume we're not dealing with a running instance
+	 * as PostgreSQL should have shut itself down in these cases anyway.
+	 */
+	if (fscanf(pidf, "%ld", &pid) != 1)
+	{
+		/* Is the file empty? */
+		if (ftell(pidf) == 0 && feof(pidf))
+		{
+			log_warning(_("PostgreSQL PID file \"%s\" is empty"), path);
+		}
+		else
+		{
+			log_warning(_("invalid data in PostgreSQL PID file \"%s\""), path);
+		}
+
+		return PG_DIR_NOT_RUNNING;
+	}
+
+	fclose(pidf);
+
+	if (pid == getpid())
+		return PG_DIR_NOT_RUNNING;
+
+	if (pid == getppid())
+		return PG_DIR_NOT_RUNNING;
+
+	if (kill(pid, 0) == 0)
+		return PG_DIR_RUNNING;
+
+	return PG_DIR_NOT_RUNNING;
+}
+
 
 bool
 create_pg_dir(char *path, bool force)
 {
-	/* Check this directory could be used as a PGDATA dir */
+	/* Check this directory can be used as a PGDATA dir */
 	switch (check_dir(path))
 	{
-		case 0:
-			/* dir not there, must create it */
+		case DIR_NOENT:
+			/* directory does not exist, attempt to create it */
 			log_info(_("creating directory \"%s\"..."), path);
 
 			if (!create_dir(path))
@@ -261,20 +307,20 @@ create_pg_dir(char *path, bool force)
 				return false;
 			}
 			break;
-		case 1:
-			/* Present but empty, fix permissions and use it */
-			log_info(_("checking and correcting permissions on existing directory %s"),
+		case DIR_EMPTY:
+			/* exists but empty, fix permissions and use it */
+			log_info(_("checking and correcting permissions on existing directory \"%s\""),
 					 path);
 
 			if (!set_dir_permissions(path))
 			{
-				log_error(_("unable to change permissions of directory \"%s\":\n  %s"),
-						  path, strerror(errno));
+				log_error(_("unable to change permissions of directory \"%s\""), path);
+				log_detail("%s", strerror(errno));
 				return false;
 			}
 			break;
-		case 2:
-			/* Present and not empty */
+		case DIR_NOT_EMPTY:
+			/* exists but is not empty */
 			log_warning(_("directory \"%s\" exists but is not empty"),
 						path);
 
@@ -282,7 +328,7 @@ create_pg_dir(char *path, bool force)
 			{
 				if (force == true)
 				{
-					log_notice(_("deleting existing data directory \"%s\""), path);
+					log_notice(_("-F/--force provided - deleting existing data directory \"%s\""), path);
 					nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);
 					return true;
 				}
@@ -300,7 +346,7 @@ create_pg_dir(char *path, bool force)
 				return false;
 			}
 			break;
-		default:
+		case DIR_ERROR:
 			log_error(_("could not access directory \"%s\": %s"),
 					  path, strerror(errno));
 			return false;

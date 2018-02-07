@@ -19,12 +19,29 @@
 #ifndef _DIRUTIL_H_
 #define _DIRUTIL_H_
 
+typedef enum
+{
+	DIR_ERROR = -1,
+	DIR_NOENT,
+	DIR_EMPTY,
+	DIR_NOT_EMPTY
+} DataDirState;
+
+typedef enum
+{
+	PG_DIR_ERROR = -1,
+	PG_DIR_NOT_RUNNING,
+	PG_DIR_RUNNING
+} PgDirState;
+
 extern int	mkdir_p(char *path, mode_t omode);
 extern bool set_dir_permissions(char *path);
 
-extern int	check_dir(char *path);
+extern DataDirState	check_dir(char *path);
 extern bool create_dir(char *path);
 extern bool is_pg_dir(char *path);
+extern PgDirState is_pg_running(char *path);
 extern bool create_pg_dir(char *path, bool force);
 extern int rmdir_recursive(char *path);
+
 #endif
