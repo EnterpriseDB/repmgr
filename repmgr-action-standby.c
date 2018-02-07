@@ -220,6 +220,49 @@ do_standby_clone(void)
 			param_set(&recovery_conninfo, "application_name", "repmgr");
 	}
 
+
+
+	/*
+	 * Do some sanity checks on the proposed data directory; if it exists:
+	 *  - check it's openable
+	 *  - check if there's an instance running
+	 *
+	 * We do this here so the check can be part of a --dry-run.
+	 */
+	switch (check_dir(local_data_directory))
+	{
+		case DIR_ERROR:
+			log_error(_("unable to access specified data directory \"%s\""), local_data_directory);
+			log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+			break;
+		case DIR_NOENT:
+			/*
+			 * directory doesn't exist
+			 * TODO: in --dry-run mode, attempt to create and delete?
+			 */
+			break;
+		case DIR_EMPTY:
+			/* Present but empty */
+			break;
+		case DIR_NOT_EMPTY:
+			/* Present but not empty */
+			if (is_pg_dir(local_data_directory))
+			{
+				/* even -F/--force is not enough to overwrite an active directory... */
+				if (is_pg_running(local_data_directory))
+				{
+					log_error(_("specified data directory \"%s\" appears to contain a running PostgreSQL instance"),
+							  local_data_directory);
+					log_hint(_("ensure the target data directory does not contain a running PostgreSQL instance"));
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+			break;
+		default:
+			break;
+	}
+
 	/*
 	 * By default attempt to connect to the source node. This will fail if no
 	 * connection is possible, unless in Barman mode, in which case we can
@@ -278,6 +321,7 @@ do_standby_clone(void)
 			PQfinish(source_conn);
 		exit(ERR_BAD_CONFIG);
 	}
+
 
 	if (upstream_conninfo_found == true)
 	{
@@ -450,6 +494,7 @@ do_standby_clone(void)
 		if (superuser_conn != NULL)
 			PQfinish(superuser_conn);
 	}
+
 
 	if (runtime_options.dry_run == true)
 	{
