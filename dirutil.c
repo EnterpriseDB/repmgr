@@ -280,28 +280,14 @@ create_pg_dir(char *path, bool force)
 
 			if (is_pg_dir(path))
 			{
-				DBState		db_state;
-
-				/* note: state will be DB_SHUTDOWNED if unable to read a control file */
-				db_state = get_db_state(path);
-
 				if (force == true)
 				{
-					if (db_state != DB_SHUTDOWNED && db_state != DB_SHUTDOWNED_IN_RECOVERY)
-					{
-						log_error(_("directory \"%s\" appears to be an active PostgreSQL data directory"), path);
-						log_detail(_("instance appears to be running in state \"%s\""), describe_db_state(db_state));
-						log_hint(_("any running instance must be shut down"));
-						return false;
-					}
 					log_notice(_("deleting existing data directory \"%s\""), path);
 					nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);
 					return true;
 				}
-				else
-				{
-					return false;
-				}
+
+				return false;
 			}
 			else
 			{

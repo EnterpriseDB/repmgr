@@ -276,22 +276,6 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * by this point we should know the target data directory - check there's
-	 * no running Pg instance
-	 */
-	if (is_pg_dir(local_data_directory))
-	{
-		DBState		state = get_db_state(local_data_directory);
-
-		if (state != DB_SHUTDOWNED && state != DB_SHUTDOWNED_IN_RECOVERY)
-		{
-			log_error(_("target data directory appears to contain an active PostgreSQL instance"));
-			log_detail(_("instance state is %s"), describe_db_state(state));
-			exit(ERR_BAD_CONFIG);
-		}
-	}
-
 	if (upstream_conninfo_found == true)
 	{
 		/*
@@ -3257,7 +3241,7 @@ check_source_server()
 		{
 			log_error(_("target data directory appears to be a PostgreSQL data directory"));
 			log_detail(_("target data directory is \"%s\""), local_data_directory);
-			log_hint(_("ensure the target data directory is empty before running \"STANDBY CLONE\" in pg_basebackup mode"));
+			log_hint(_("use -F/--force to overwrite the existing data directory"));
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
