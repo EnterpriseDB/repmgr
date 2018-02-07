@@ -103,7 +103,14 @@
 
           <listitem>
             <para>
-              parsining of <varname>pg_basebackup_options</varname> fixed (GitHub #376)
+              parsing of <varname>pg_basebackup_options</varname> fixed (GitHub #376)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              ensure the <filename>pg_subtrans</filename> directory is created when cloning a
+              standby in Barman mode
             </para>
           </listitem>
 
