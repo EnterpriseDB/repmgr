@@ -237,6 +237,9 @@ do_standby_clone(void)
 		 */
 		check_source_server();
 	}
+	else {
+		upstream_node_id = runtime_options.upstream_node_id;
+	}
 
 	/*
 	 * if --upstream-conninfo was supplied, use that (will overwrite value set
@@ -3344,8 +3347,14 @@ check_source_server_via_barman()
 				"repmgr database conninfo string on barman server: %s",
 				repmgr_conninfo_buf.data);
 
-	/* XXX check this works in all cases */
-	maxlen_snprintf(where_condition, "node_id=%i", upstream_node_id);
+	if (upstream_node_id == UNKNOWN_NODE_ID)
+	{
+		maxlen_snprintf(where_condition, "type='primary' AND active IS TRUE");
+	}
+	else
+	{
+		maxlen_snprintf(where_condition, "node_id=%i", upstream_node_id);
+	}
 
 	initPQExpBuffer(&command_output);
 	maxlen_snprintf(buf,
