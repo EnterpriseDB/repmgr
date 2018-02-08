@@ -110,12 +110,12 @@ do_witness_register(void)
 	}
 
 	/* check primary node's recovery type */
-	recovery_type = get_recovery_type(witness_conn);
+	recovery_type = get_recovery_type(primary_conn);
 
 	if (recovery_type == RECTYPE_STANDBY)
 	{
 		log_error(_("provided primary node is a standby"));
-		log_error(_("provide the connection details of the cluster's primary server"));
+		log_hint(_("provide the connection details of the cluster's primary server"));
 
 		PQfinish(witness_conn);
 		PQfinish(primary_conn);

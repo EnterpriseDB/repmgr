@@ -122,6 +122,12 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-witness-register">repmgr witness register</link></command>:
+              fix primary node check (GitHub #377).
+            </para>
+          </listitem>
         </itemizedlist>
 
       </para>
