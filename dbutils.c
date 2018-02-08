@@ -2667,8 +2667,8 @@ get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *no
 		appendPQExpBuffer(&query,
 						  "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
 						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
-						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = TRUE)  AS active_replication_slots, "
-						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active = FALSE) AS inactive_replication_slots, ");
+						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE)  AS active_replication_slots, "
+						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE) AS inactive_replication_slots, ");
 	}
 
 

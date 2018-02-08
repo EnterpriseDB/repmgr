@@ -47,6 +47,14 @@
             </para>
           </listitem>
 
+         <listitem>
+            <para>
+              add check for sufficient walsenders and replication slots on the promotion candidate  before executing
+              <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>
+              (GitHub #371)
+            </para>
+         </listitem>
+
           <listitem>
             <para>
               add --dry-run mode to <command><link linkend="repmgr-standby-switchover">repmgr standby follow</link></command>
