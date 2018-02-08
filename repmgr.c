@@ -4515,6 +4515,12 @@ do_standby_promote(void)
 
 	log_notice(_("STANDBY PROMOTE successful\n"));
 
+	/*
+	 * Force a checkpoint so that pg_rewind on former master can tell that the
+	 * servers have diverged.
+	 */
+	create_checkpoint(conn);
+
 	/* Log the event */
 	create_event_record(conn,
 						&options,
