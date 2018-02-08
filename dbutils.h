@@ -81,6 +81,14 @@ typedef enum
 
 typedef enum
 {
+	CONN_UNKNOWN = -1,
+	CONN_OK,
+	CONN_BAD,
+	CONN_ERROR
+} ConnectionStatus;
+
+typedef enum
+{
 	SLOT_UNKNOWN = -1,
 	SLOT_INACTIVE,
 	SLOT_ACTIVE

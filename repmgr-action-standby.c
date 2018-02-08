@@ -101,6 +101,7 @@ static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_pa
 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
+static ConnectionStatus parse_remote_node_replication_connection(const char *node_check_output);
 
 /*
  * STANDBY CLONE
@@ -2373,8 +2374,7 @@ do_standby_switchover(void)
 
 	appendPQExpBuffer(&remote_command_str, "--version 2>/dev/null && echo \"1\" || echo \"0\"");
 	initPQExpBuffer(&command_output);
-	command_success = remote_command(
-									 remote_host,
+	command_success = remote_command(remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
 									 &command_output);
@@ -2394,20 +2394,17 @@ do_standby_switchover(void)
 		termPQExpBuffer(&command_output);
 
 		initPQExpBuffer(&hint);
-		appendPQExpBuffer(
-						  &hint,
+		appendPQExpBuffer(&hint,
 						  _("check \"pg_bindir\" is set to the correct path in \"repmgr.conf\"; current value: "));
 
 		if (strlen(config_file_options.pg_bindir))
 		{
-			appendPQExpBuffer(
-							  &hint,
+			appendPQExpBuffer(&hint,
 							  "\"%s\"", config_file_options.pg_bindir);
 		}
 		else
 		{
-			appendPQExpBuffer(
-							  &hint,
+			appendPQExpBuffer(&hint,
 							  "(not set)");
 		}
 
@@ -2427,6 +2424,49 @@ do_standby_switchover(void)
 		log_info(_("able to execute \"%s\" on remote host \"localhost\""), progname());
 	}
 	termPQExpBuffer(&command_output);
+
+	/* check demotion candidate can make replication connection to promotion candidate */
+	{
+		initPQExpBuffer(&remote_command_str);
+		make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+		appendPQExpBuffer(&remote_command_str,
+						  "node check --remote-node-id=%i --replication-connection",
+						  local_node_record.node_id);
+
+		initPQExpBuffer(&command_output);
+
+		command_success = remote_command(remote_host,
+										 runtime_options.remote_user,
+										 remote_command_str.data,
+										 &command_output);
+
+		termPQExpBuffer(&remote_command_str);
+
+		if (command_success == true)
+		{
+			ConnectionStatus conn_status = parse_remote_node_replication_connection(command_output.data);
+
+			switch(conn_status)
+			{
+				case CONN_OK:
+					if (runtime_options.dry_run == true)
+					{
+						log_info(_("demotion candidate is able to make replication connection to promotion candidate"));
+					}
+					break;
+				case CONN_BAD:
+					log_error(_("demotion candidate is unable to make replication connection to promotion candidate"));
+					exit(ERR_BAD_CONFIG);
+					break;
+				default:
+					log_error(_("unable to deterimine whether candidate is able to make replication connection to promotion candidate"));
+					exit(ERR_BAD_CONFIG);
+					break;
+			}
+
+			termPQExpBuffer(&command_output);
+		}
+	}
 
 	/* check archive/replication status */
 	{
@@ -5444,6 +5484,69 @@ parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr
 	free_parsed_argv(&argv_array);
 
 	return node_status;
+}
+
+
+static ConnectionStatus
+parse_remote_node_replication_connection(const char *node_check_output)
+{
+	ConnectionStatus	conn_status = CONN_UNKNOWN;
+
+	int			c = 0,
+				argc_item = 0;
+	char	  **argv_array = NULL;
+	int			optindex = 0;
+
+	/* We're only interested in these options */
+	struct option node_check_options[] =
+	{
+		{"connection", required_argument, NULL, 'c'},
+		{NULL, 0, NULL, 0}
+	};
+
+	/* Don't attempt to tokenise an empty string */
+	if (!strlen(node_check_output))
+	{
+		return CONN_UNKNOWN;
+	}
+
+	argc_item = parse_output_to_argv(node_check_output, &argv_array);
+
+	/* Reset getopt's optind variable */
+	optind = 0;
+
+	/* Prevent getopt from emitting errors */
+	opterr = 0;
+
+	while ((c = getopt_long(argc_item, argv_array, "L:S:", node_check_options,
+							&optindex)) != -1)
+	{
+		switch (c)
+		{
+
+			/* --connection */
+			case 'c':
+				{
+					if (strncmp(optarg, "OK", MAXLEN) == 0)
+					{
+						conn_status = CONN_OK;
+					}
+					else if (strncmp(optarg, "BAD", MAXLEN) == 0)
+					{
+						conn_status = CONN_BAD;
+					}
+					else if (strncmp(optarg, "UNKNOWN", MAXLEN) == 0)
+					{
+						conn_status = CONN_UNKNOWN;
+					}
+				}
+				break;
+		}
+	}
+
+	free_parsed_argv(&argv_array);
+
+	return conn_status;
 }
 
 

@@ -83,6 +83,8 @@
 #define OPT_CONFIG_ARCHIVE_DIR			   1034
 #define OPT_HAS_PASSFILE                   1035
 #define OPT_WAIT_START                     1036
+#define OPT_REPL_CONN                      1037
+#define OPT_REMOTE_NODE_ID                 1038
 
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
@@ -115,6 +117,7 @@ static struct option long_options[] =
 	{"pgdata", required_argument, NULL, 'D'},
 	{"node-id", required_argument, NULL, OPT_NODE_ID},
 	{"node-name", required_argument, NULL, OPT_NODE_NAME},
+	{"remote-node-id", required_argument, NULL, OPT_REMOTE_NODE_ID},
 
 /* logging options */
 	{"log-level", required_argument, NULL, 'L'},
@@ -158,6 +161,7 @@ static struct option long_options[] =
 	{"role", no_argument, NULL, OPT_ROLE},
 	{"slots", no_argument, NULL, OPT_SLOTS},
 	{"has-passfile", no_argument, NULL, OPT_HAS_PASSFILE},
+	{"replication-connection", no_argument, NULL, OPT_REPL_CONN},
 
 /* "node rejoin" options */
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},

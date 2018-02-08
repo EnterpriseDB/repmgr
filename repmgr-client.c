@@ -60,7 +60,6 @@
 #include "repmgr-action-witness.h"
 #include "repmgr-action-bdr.h"
 #include "repmgr-action-node.h"
-
 #include "repmgr-action-cluster.h"
 
 #include <storage/fd.h>			/* for PG_TEMP_FILE_PREFIX */
@@ -329,6 +328,11 @@ main(int argc, char **argv)
 				strncpy(runtime_options.node_name, optarg, MAXLEN);
 				break;
 
+				/* --remote-node-id */
+			case OPT_REMOTE_NODE_ID:
+				runtime_options.remote_node_id = repmgr_atoi(optarg, "--remote-node-id", &cli_errors, false);
+				break;
+
 				/*
 				 * standby options * ---------------
 				 */
@@ -453,6 +457,10 @@ main(int argc, char **argv)
 
 			case OPT_HAS_PASSFILE:
 				runtime_options.has_passfile = true;
+				break;
+
+			case OPT_REPL_CONN:
+				runtime_options.replication_connection = true;
 				break;
 
 				/*--------------------
