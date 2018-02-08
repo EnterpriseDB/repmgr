@@ -41,6 +41,7 @@ static void _do_node_status_is_shutdown_cleanly(void);
 static void _do_node_archive_config(void);
 static void _do_node_restore_config(void);
 
+static void do_node_check_replication_connection(void);
 static CheckStatus do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 static CheckStatus do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output);
 static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
@@ -463,8 +464,7 @@ _do_node_status_is_shutdown_cleanly(void)
 
 	initPQExpBuffer(&output);
 
-	appendPQExpBuffer(
-					  &output,
+	appendPQExpBuffer(&output,
 					  "--state=");
 
 	/* sanity-check we're dealing with a PostgreSQL directory */
@@ -580,6 +580,11 @@ do_node_check(void)
 		exit(return_code);
 	}
 
+	if (runtime_options.replication_connection == true)
+	{
+		do_node_check_replication_connection();
+		exit(SUCCESS);
+	}
 
 	if (strlen(config_file_options.conninfo))
 		conn = establish_db_connection(config_file_options.conninfo, true);
@@ -882,6 +887,67 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 	return status;
 }
 
+
+static void
+do_node_check_replication_connection(void)
+{
+	PGconn *local_conn = NULL;
+	PGconn *repl_conn = NULL;
+	t_node_info node_record = T_NODE_INFO_INITIALIZER;
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	t_conninfo_param_list remote_conninfo;
+	PQExpBufferData output;
+
+
+	initPQExpBuffer(&output);
+	appendPQExpBuffer(&output,
+					  "--connection=");
+
+	if (runtime_options.remote_node_id == UNKNOWN_NODE_ID)
+	{
+		appendPQExpBuffer(&output, "UNKNOWN");
+		printf("%s\n", output.data);
+		termPQExpBuffer(&output);
+		return;
+	}
+
+	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	record_status = get_node_record(local_conn, runtime_options.remote_node_id, &node_record);
+	PQfinish(local_conn);
+
+	if (record_status != RECORD_FOUND)
+	{
+		appendPQExpBuffer(&output, "UNKNOWN");
+		printf("%s\n", output.data);
+		termPQExpBuffer(&output);
+		return;
+	}
+
+	initialize_conninfo_params(&remote_conninfo, false);
+	parse_conninfo_string(node_record.conninfo, &remote_conninfo, NULL, false);
+
+	param_set(&remote_conninfo, "replication", "1");
+	param_set(&remote_conninfo, "user", node_record.repluser);
+
+	repl_conn = establish_db_connection_by_params(&remote_conninfo, false);
+
+	if (PQstatus(repl_conn) != CONNECTION_OK)
+	{
+		appendPQExpBuffer(&output, "BAD");
+		printf("%s\n", output.data);
+		termPQExpBuffer(&output);
+		return;
+	}
+
+	PQfinish(repl_conn);
+
+	appendPQExpBuffer(&output, "OK");
+	printf("%s\n", output.data);
+	termPQExpBuffer(&output);
+
+	return;
+}
 
 static CheckStatus
 do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list_output)

@@ -68,6 +68,7 @@ typedef struct
 	int			node_id;
 	char		node_name[MAXLEN];
 	char		data_dir[MAXPGPATH];
+	int			remote_node_id;
 
 	/* "standby clone" options */
 	bool		copy_external_config_files;
@@ -103,6 +104,7 @@ typedef struct
 	bool		role;
 	bool		slots;
 	bool		has_passfile;
+	bool		replication_connection;
 
 	/* "node join" options */
 	char		config_files[MAXLEN];
@@ -139,8 +141,8 @@ typedef struct
 		"", "", "",	"",				  \
 		/* other connection options */ \
 		"",	"",  \
-		/* node options */ \
-		UNKNOWN_NODE_ID, "", "", \
+		/* general node options */ \
+		UNKNOWN_NODE_ID, "", "", UNKNOWN_NODE_ID, \
 		/* "standby clone" options */ \
 		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", \
 		false,  \
@@ -153,7 +155,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false, false, false, \
+		false, false, false, false, false, false, false, \
 		/* "node join" options */ \
 		"", \
 		/* "node service" options */ \
