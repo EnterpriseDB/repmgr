@@ -18,6 +18,7 @@
         repmgr: fix parsing of "pg_basebackup_options"; GitHub #376 (Ian)
         repmgr: ensure "pg_subtrans" directory is created when cloning a standby in
           Barman mode (Ian)
+        repmgr: fix primary node check in "witness register"; GitHub #377 (Ian)
 
 4.0.2   2018-01-18
         repmgr: add missing -W option to getopt_long() invocation; GitHub #350 (Ian)
