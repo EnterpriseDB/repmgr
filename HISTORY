@@ -27,6 +27,8 @@
           server and logging output is not explicitly redirected (Ian)
         repmgr: improve switchover log messages and exit code when old primary could
           not be shut down cleanly (Ian)
+        repmgr: check demotion candidate can make a replication connection to the
+          promotion candidate before executing a switchover; GitHub #370 (Ian)
         repmgr: add check for sufficient walsenders/replication slots before executing
           a switchover; GitHub #371 (Ian)
         repmgr: add --dry-run mode to "repmgr standby follow"; GitHub #368 (Ian)
