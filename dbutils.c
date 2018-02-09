@@ -1721,6 +1721,25 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	return success;
 }
 
+bool
+create_checkpoint(PGconn *conn)
+{
+	char		sqlquery[MAXLEN];
+	PGresult   *res;
+
+	sqlquery_snprintf(sqlquery, "CHECKPOINT");
+	log_verbose(LOG_DEBUG, "checkpoint:\n%s\n", sqlquery);
+
+	res = PQexec(conn, sqlquery);
+	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_err(_("Unable to create CHECKPOINT:\n%s\n"),
+				PQerrorMessage(conn));
+		PQfinish(conn);
+		exit(ERR_DB_QUERY);
+	}
+	log_notice(_("CHECKPOINT created\n"));
+}
 
 bool
 update_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active)
