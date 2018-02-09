@@ -1721,7 +1721,7 @@ create_event_record(PGconn *conn, t_configuration_options *options, int node_id,
 	return success;
 }
 
-bool
+void
 create_checkpoint(PGconn *conn)
 {
 	char		sqlquery[MAXLEN];
@@ -1738,8 +1738,10 @@ create_checkpoint(PGconn *conn)
 		PQfinish(conn);
 		exit(ERR_DB_QUERY);
 	}
+
 	log_notice(_("CHECKPOINT created\n"));
 }
+
 
 bool
 update_node_record(PGconn *conn, char *action, int node, char *type, int upstream_node, char *cluster_name, char *node_name, char *conninfo, int priority, char *slot_name, bool active)
