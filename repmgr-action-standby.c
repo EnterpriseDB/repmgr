@@ -1596,6 +1596,13 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 	}
 
 
+	/*
+	 * Execute a CHECKPOINT as soon as possible after promotion. The primary
+	 * reason for this is to ensure that "pg_control" has the latest timeline
+	 * before it's read by "pg_rewind", typically during a switchover operation.
+	 */
+	checkpoint(conn);
+
 	/* update node information to reflect new status */
 	if (update_node_record_set_primary(conn, config_file_options.node_id) == false)
 	{
