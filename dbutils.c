@@ -2647,6 +2647,11 @@ get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *no
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 
+	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+		server_version_num = get_server_version(conn, NULL);
+
+	Assert(server_version_num != UNKNOWN_SERVER_VERSION_NUM);
+
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,

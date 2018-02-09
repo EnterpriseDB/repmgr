@@ -2174,7 +2174,6 @@ do_standby_switchover(void)
 	PGconn	   *remote_conn = NULL;
 
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
-	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	/* the remote server is the primary to be demoted */
 	char		remote_conninfo[MAXCONNINFO] = "";
@@ -2239,8 +2238,6 @@ do_standby_switchover(void)
 		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
-
-	server_version_num = get_server_version(local_conn, NULL);
 
 	if (runtime_options.dry_run == true)
 	{

@@ -49,6 +49,13 @@
 
          <listitem>
             <para>
+              add check to verify the demotion candidate can make a replication connection to the
+              promotion candidate before executing a switchover (GitHub #370)
+            </para>
+         </listitem>
+
+         <listitem>
+            <para>
               add check for sufficient walsenders and replication slots on the promotion candidate  before executing
               <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>
               (GitHub #371)
