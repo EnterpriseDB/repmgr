@@ -2174,6 +2174,7 @@ do_standby_switchover(void)
 	PGconn	   *remote_conn = NULL;
 
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	/* the remote server is the primary to be demoted */
 	char		remote_conninfo[MAXCONNINFO] = "";
@@ -2238,6 +2239,8 @@ do_standby_switchover(void)
 		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
+
+	server_version_num = get_server_version(local_conn, NULL);
 
 	if (runtime_options.dry_run == true)
 	{
@@ -2704,7 +2707,7 @@ do_standby_switchover(void)
 	 * populate local node record with current state of various replication-related
 	 * values, so we can check for sufficient walsenders and replication slots
 	 */
-	get_node_replication_stats(local_conn, source_server_version_num, &local_node_record);
+	get_node_replication_stats(local_conn, server_version_num, &local_node_record);
 
 	/*
 	 * If --siblings-follow specified, get list and check they're reachable
@@ -2871,7 +2874,7 @@ do_standby_switchover(void)
 	/*
 	 * if replication slots are required by demotion candidate and/or siblings,
 	 * check the promotion candidate has sufficient free slots
-x	 */
+	 */
 
 	if (min_required_free_slots > 0 )
 	{
