@@ -250,8 +250,7 @@ do_node_status(void)
 	if (node_info.max_wal_senders >= 0)
 	{
 		/* In CSV mode, raw values supplied as well */
-		key_value_list_set_format(
-								  &node_status,
+		key_value_list_set_format(&node_status,
 								  "Replication connections",
 								  "%i (of maximal %i)",
 								  node_info.attached_wal_receivers,
@@ -259,8 +258,7 @@ do_node_status(void)
 	}
 	else if (node_info.max_wal_senders == 0)
 	{
-		key_value_list_set_format(
-								  &node_status,
+		key_value_list_set_format(&node_status,
 								  "Replication connections",
 								  "disabled");
 	}
@@ -277,8 +275,7 @@ do_node_status(void)
 
 		initPQExpBuffer(&slotinfo);
 
-		appendPQExpBuffer(
-						  &slotinfo,
+		appendPQExpBuffer(&slotinfo,
 						  "%i (of maximal %i)",
 						  node_info.active_replication_slots + node_info.inactive_replication_slots,
 						  node_info.max_replication_slots);
@@ -290,8 +287,7 @@ do_node_status(void)
 							  "; %i inactive",
 							  node_info.inactive_replication_slots);
 
-			item_list_append_format(
-									&warnings,
+			item_list_append_format(&warnings,
 									_("- node has %i inactive replication slots"),
 									node_info.inactive_replication_slots);
 		}
@@ -307,6 +303,37 @@ do_node_status(void)
 		key_value_list_set(&node_status,
 						   "Replication slots",
 						   "disabled");
+	}
+
+
+	/*
+	 * check for missing replication slots - we do this regardless of
+	 * what "max_replication_slots" is set to
+	 */
+
+	{
+		NodeInfoList missing_slots = T_NODE_INFO_LIST_INITIALIZER;
+		get_downsteam_nodes_with_missing_slot(conn,
+											  config_file_options.node_id,
+											  &missing_slots);
+
+		if (missing_slots.node_count > 0)
+		{
+			NodeInfoListCell *missing_slot_cell = NULL;
+
+			item_list_append_format(&warnings,
+									_("- replication slots missing for following %i node(s):"),
+									missing_slots.node_count);
+
+			for (missing_slot_cell = missing_slots.head; missing_slot_cell; missing_slot_cell = missing_slot_cell->next)
+			{
+				item_list_append_format(&warnings,
+										_("  - %s (ID: %i, slot name: \"%s\")"),
+										missing_slot_cell->node_info->node_name,
+										missing_slot_cell->node_info->node_id,
+										missing_slot_cell->node_info->slot_name);
+			}
+		}
 	}
 
 

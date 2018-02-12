@@ -28,7 +28,7 @@
 #include "strutil.h"
 #include "voting.h"
 
-#define REPMGR_NODES_COLUMNS "node_id, type, upstream_node_id, node_name, conninfo, repluser, slot_name, location, priority, active, config_file, '' AS upstream_node_name "
+#define REPMGR_NODES_COLUMNS "n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, n.slot_name, n.location, n.priority, n.active, n.config_file, '' AS upstream_node_name "
 #define BDR_NODES_COLUMNS "node_sysid, node_timeline, node_dboid, node_status, node_name, node_local_dsn, node_init_from_dsn, node_read_only, node_seq_id"
 
 #define ERRBUFF_SIZE 512
@@ -419,6 +419,7 @@ void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes
 void		get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id, NodeInfoList *node_list);
 void		get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list);
 bool		get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list);
+bool		get_downsteam_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoList *noede_list);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
