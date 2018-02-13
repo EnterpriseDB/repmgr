@@ -421,15 +421,18 @@ free_conninfo_params(t_conninfo_param_list *param_list)
 
 	for (c = 0; c < param_list->size; c++)
 	{
-		if (param_list->keywords[c] != NULL)
+		if (param_list->keywords != NULL && param_list->keywords[c] != NULL)
 			pfree(param_list->keywords[c]);
 
-		if (param_list->values[c] != NULL)
+		if (param_list->values != NULL && param_list->values[c] != NULL)
 			pfree(param_list->values[c]);
 	}
 
-	pfree(param_list->keywords);
-	pfree(param_list->values);
+	if (param_list->keywords != NULL)
+		pfree(param_list->keywords);
+
+	if (param_list->values != NULL)
+		pfree(param_list->values);
 }
 
 

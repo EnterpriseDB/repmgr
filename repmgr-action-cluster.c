@@ -1148,7 +1148,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 		}
 		else
 		{
-			t_conninfo_param_list remote_conninfo;
+			t_conninfo_param_list remote_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 			char	   *host = NULL;
 			PQExpBufferData quoted_command;
 
