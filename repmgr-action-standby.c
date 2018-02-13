@@ -57,7 +57,7 @@ static bool upstream_conninfo_found = false;
 static int	upstream_node_id = UNKNOWN_NODE_ID;
 static char upstream_data_directory[MAXPGPATH];
 
-static t_conninfo_param_list recovery_conninfo;
+static t_conninfo_param_list recovery_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 static char recovery_conninfo_str[MAXLEN] = "";
 static char upstream_repluser[NAMEDATALEN] = "";
 
@@ -1678,7 +1678,7 @@ do_standby_follow(void)
 	int			follow_error_code = SUCCESS;
 
 	uint64		local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
-	t_conninfo_param_list repl_conninfo;
+	t_conninfo_param_list repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	PGconn	   *repl_conn = NULL;
 	t_system_identification primary_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 
@@ -1979,7 +1979,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	parse_conninfo_string(primary_node_record->conninfo, &recovery_conninfo, errmsg, true);
 
 	{
-		t_conninfo_param_list local_node_conninfo;
+		t_conninfo_param_list local_node_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 		bool		parse_success;
 
 		initialize_conninfo_params(&local_node_conninfo, false);
@@ -3932,7 +3932,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		int			min_replication_connections = 1,
 					possible_replication_connections = 0;
 
-		t_conninfo_param_list repl_conninfo;
+		t_conninfo_param_list repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 		/*
 		 * Make a copy of the connection parameter arrays, and append
@@ -5374,7 +5374,7 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 	bool		password_provided = false;
 	int			c;
 	char	   *escaped = NULL;
-	t_conninfo_param_list env_conninfo;
+	t_conninfo_param_list env_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 	initialize_conninfo_params(&env_conninfo, true);
 

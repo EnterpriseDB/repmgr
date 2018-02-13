@@ -72,7 +72,7 @@ t_runtime_options runtime_options = T_RUNTIME_OPTIONS_INITIALIZER;
 t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
 /* conninfo params for the node we're operating on */
-t_conninfo_param_list source_conninfo;
+t_conninfo_param_list source_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 bool		config_file_required = true;
 char		pg_bindir[MAXLEN] = "";
@@ -94,7 +94,7 @@ static ItemList cli_warnings = {NULL, NULL};
 int
 main(int argc, char **argv)
 {
-	t_conninfo_param_list default_conninfo;
+	t_conninfo_param_list default_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 	int			optindex;
 	int			c;

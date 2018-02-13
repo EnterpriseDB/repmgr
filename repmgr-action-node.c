@@ -922,7 +922,7 @@ do_node_check_replication_connection(void)
 	PGconn *repl_conn = NULL;
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
-	t_conninfo_param_list remote_conninfo;
+	t_conninfo_param_list remote_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	PQExpBufferData output;
 
 
