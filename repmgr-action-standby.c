@@ -2078,28 +2078,88 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 		if (server_up == true)
 		{
-			action = "restart";
-			get_server_action(ACTION_RESTART, server_command, config_file_options.data_directory);
+			/* no "service_restart_command" defined - stop and start using pg_ctl*/
+			if (config_file_options.service_restart_command[0] == '\0')
+			{
+				action = "stopp"; /* sic */
+				get_server_action(ACTION_STOP_WAIT, server_command, config_file_options.data_directory);
+
+				/* if translation needed, generate messages in the preceding if/else */
+				log_notice(_("%sing server using \"%s\""),
+						   action,
+						   server_command);
+
+				success = local_command(server_command, &output_buf);
+
+				if (success == false)
+				{
+					log_error(_("unable to %s server"), action);
+
+					*error_code = ERR_NO_RESTART;
+					return false;
+				}
+
+				action = "start";
+				get_server_action(ACTION_START, server_command, config_file_options.data_directory);
+
+				/* if translation needed, generate messages in the preceding if/else */
+				log_notice(_("%sing server using \"%s\""),
+						   action,
+						   server_command);
+
+				success = local_command(server_command, &output_buf);
+
+				if (success == false)
+				{
+					log_error(_("unable to %s server"), action);
+
+					*error_code = ERR_NO_RESTART;
+					return false;
+				}
+
+			}
+			else
+			{
+				action = "restart";
+				get_server_action(ACTION_RESTART, server_command, config_file_options.data_directory);
+
+				/* if translation needed, generate messages in the preceding if/else */
+				log_notice(_("%sing server using \"%s\""),
+						   action,
+						   server_command);
+
+				success = local_command(server_command, &output_buf);
+
+				if (success == false)
+				{
+					log_error(_("unable to %s server"), action);
+
+					*error_code = ERR_NO_RESTART;
+					return false;
+				}
+
+			}
 		}
 		else
 		{
+
 			action = "start";
 			get_server_action(ACTION_START, server_command, config_file_options.data_directory);
-		}
 
-		/* if translation needed, generate messages in the preceding if/else */
-		log_notice(_("%sing server using \"%s\""),
-				   action,
-				   server_command);
+			/* if translation needed, generate messages in the preceding if/else */
+			log_notice(_("%sing server using \"%s\""),
+					   action,
+					   server_command);
 
-		success = local_command(server_command, &output_buf);
+			success = local_command(server_command, &output_buf);
 
-		if (success == false)
-		{
-			log_error(_("unable to %s server"), action);
+			if (success == false)
+			{
+				log_error(_("unable to %s server"), action);
 
-			*error_code = ERR_NO_RESTART;
-			return false;
+				*error_code = ERR_NO_RESTART;
+				return false;
+			}
 		}
 	}
 

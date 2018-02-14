@@ -2137,7 +2137,8 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 
 	retval = pclose(fp);
 
-	success = (WEXITSTATUS(retval) == 0) ? true : false;
+	/*  */
+	success = (WEXITSTATUS(retval) == 0 || WEXITSTATUS(retval) == 141) ? true : false;
 
 	log_verbose(LOG_DEBUG, "result of command was %i (%i)", WEXITSTATUS(retval), retval);
 
@@ -2459,18 +2460,15 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				{
 					initPQExpBuffer(&command);
 
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  "%s %s -w -D ",
 									  make_pg_path("pg_ctl"),
 									  config_file_options.pg_ctl_options);
 
-					appendShellString(
-									  &command,
+					appendShellString(&command,
 									  data_dir);
 
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  " start");
 
 					strncpy(script, command.data, MAXLEN);
@@ -2482,6 +2480,7 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 			}
 
 		case ACTION_STOP:
+		case ACTION_STOP_WAIT:
 			{
 				if (config_file_options.service_stop_command[0] != '\0')
 				{
@@ -2491,19 +2490,23 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				else
 				{
 					initPQExpBuffer(&command);
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  "%s %s -D ",
 									  make_pg_path("pg_ctl"),
 									  config_file_options.pg_ctl_options);
 
-					appendShellString(
-									  &command,
+					appendShellString(&command,
 									  data_dir);
 
-					appendPQExpBuffer(
-									  &command,
-									  " -m fast -W stop");
+					if (action == ACTION_STOP_WAIT)
+						appendPQExpBuffer(&command,
+										  " -w");
+					else
+						appendPQExpBuffer(&command,
+										  " -W");
+
+					appendPQExpBuffer(&command,
+									  " -m fast stop");
 
 					strncpy(script, command.data, MAXLEN);
 
@@ -2522,18 +2525,15 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				else
 				{
 					initPQExpBuffer(&command);
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  "%s %s -w -D ",
 									  make_pg_path("pg_ctl"),
 									  config_file_options.pg_ctl_options);
 
-					appendShellString(
-									  &command,
+					appendShellString(&command,
 									  data_dir);
 
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  " restart");
 
 					strncpy(script, command.data, MAXLEN);
@@ -2553,18 +2553,15 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				else
 				{
 					initPQExpBuffer(&command);
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  "%s %s -w -D ",
 									  make_pg_path("pg_ctl"),
 									  config_file_options.pg_ctl_options);
 
-					appendShellString(
-									  &command,
+					appendShellString(&command,
 									  data_dir);
 
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  " reload");
 
 					strncpy(script, command.data, MAXLEN);
@@ -2585,18 +2582,15 @@ get_server_action(t_server_action action, char *script, char *data_dir)
 				else
 				{
 					initPQExpBuffer(&command);
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  "%s %s -w -D ",
 									  make_pg_path("pg_ctl"),
 									  config_file_options.pg_ctl_options);
 
-					appendShellString(
-									  &command,
+					appendShellString(&command,
 									  data_dir);
 
-					appendPQExpBuffer(
-									  &command,
+					appendPQExpBuffer(&command,
 									  " promote");
 
 					strncpy(script, command.data, MAXLEN);
@@ -2630,6 +2624,7 @@ data_dir_required_for_action(t_server_action action)
 			return true;
 
 		case ACTION_STOP:
+		case ACTION_STOP_WAIT:
 			if (config_file_options.service_stop_command[0] != '\0')
 			{
 				return false;
