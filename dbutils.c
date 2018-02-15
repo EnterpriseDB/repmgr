@@ -1057,7 +1057,7 @@ get_server_version(PGconn *conn, char *server_version)
 	}
 
 	if (server_version != NULL)
-		strcpy(server_version, PQgetvalue(res, 0, 1));
+		strncpy(server_version, PQgetvalue(res, 0, 1), MAXVERSIONSTR);
 
 	server_version_num = atoi(PQgetvalue(res, 0, 0));
 

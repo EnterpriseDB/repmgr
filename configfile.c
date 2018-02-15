@@ -1028,7 +1028,7 @@ reload_config(t_configuration_options *orig_options)
 		return false;
 	}
 
-	if (strcmp(new_options.node_name, orig_options->node_name) != 0)
+	if (strncmp(new_options.node_name, orig_options->node_name, MAXLEN) != 0)
 	{
 		log_warning(_("\"node_name\" cannot be changed, keeping current configuration"));
 		return false;
@@ -1072,7 +1072,7 @@ reload_config(t_configuration_options *orig_options)
 	}
 
 	/* conninfo */
-	if (strcmp(orig_options->conninfo, new_options.conninfo) != 0)
+	if (strncmp(orig_options->conninfo, new_options.conninfo, MAXLEN) != 0)
 	{
 		/* Test conninfo string works */
 		conn = establish_db_connection(new_options.conninfo, false);
@@ -1099,7 +1099,7 @@ reload_config(t_configuration_options *orig_options)
 	}
 
 	/* event_notification_command */
-	if (strcmp(orig_options->event_notification_command, new_options.event_notification_command) != 0)
+	if (strncmp(orig_options->event_notification_command, new_options.event_notification_command, MAXLEN) != 0)
 	{
 		strncpy(orig_options->event_notification_command, new_options.event_notification_command, MAXLEN);
 		log_info(_("\"event_notification_command\" is now \"%s\""), new_options.event_notification_command);
@@ -1108,7 +1108,7 @@ reload_config(t_configuration_options *orig_options)
 	}
 
 	/* event_notifications */
-	if (strcmp(orig_options->event_notifications_orig, new_options.event_notifications_orig) != 0)
+	if (strncmp(orig_options->event_notifications_orig, new_options.event_notifications_orig, MAXLEN) != 0)
 	{
 		strncpy(orig_options->event_notifications_orig, new_options.event_notifications_orig, MAXLEN);
 		log_info(_("\"event_notifications\" is now \"%s\""), new_options.event_notifications_orig);
@@ -1128,7 +1128,7 @@ reload_config(t_configuration_options *orig_options)
 	}
 
 	/* follow_command */
-	if (strcmp(orig_options->follow_command, new_options.follow_command) != 0)
+	if (strncmp(orig_options->follow_command, new_options.follow_command, MAXLEN) != 0)
 	{
 		strncpy(orig_options->follow_command, new_options.follow_command, MAXLEN);
 		log_info(_("\"follow_command\" is now \"%s\""), new_options.follow_command);
@@ -1165,7 +1165,7 @@ reload_config(t_configuration_options *orig_options)
 
 
 	/* promote_command */
-	if (strcmp(orig_options->promote_command, new_options.promote_command) != 0)
+	if (strncmp(orig_options->promote_command, new_options.promote_command, MAXLEN) != 0)
 	{
 		strncpy(orig_options->promote_command, new_options.promote_command, MAXLEN);
 		log_info(_("\"promote_command\" is now \"%s\""), new_options.promote_command);
@@ -1205,18 +1205,18 @@ reload_config(t_configuration_options *orig_options)
 	 */
 
 	/* log_facility */
-	if (strcmp(orig_options->log_facility, new_options.log_facility) != 0)
+	if (strncmp(orig_options->log_facility, new_options.log_facility, MAXLEN) != 0)
 	{
-		strcpy(orig_options->log_facility, new_options.log_facility);
+		strncpy(orig_options->log_facility, new_options.log_facility, MAXLEN);
 		log_info(_("\"log_facility\" is now \"%s\""), new_options.log_facility);
 
 		log_config_changed = true;
 	}
 
 	/* log_file */
-	if (strcmp(orig_options->log_file, new_options.log_file) != 0)
+	if (strncmp(orig_options->log_file, new_options.log_file, MAXLEN) != 0)
 	{
-		strcpy(orig_options->log_file, new_options.log_file);
+		strncpy(orig_options->log_file, new_options.log_file, MAXLEN);
 		log_info(_("\"log_file\" is now \"%s\""), new_options.log_file);
 
 		log_config_changed = true;
@@ -1224,9 +1224,9 @@ reload_config(t_configuration_options *orig_options)
 
 
 	/* log_level */
-	if (strcmp(orig_options->log_level, new_options.log_level) != 0)
+	if (strncmp(orig_options->log_level, new_options.log_level, MAXLEN) != 0)
 	{
-		strcpy(orig_options->log_level, new_options.log_level);
+		strncpy(orig_options->log_level, new_options.log_level, MAXLEN);
 		log_info(_("\"log_level\" is now \"%s\""), new_options.log_level);
 
 		log_config_changed = true;
