@@ -179,7 +179,7 @@
 
 3.0.3   2016-01-04
         Create replication slot if required before base backup is run (Abhijit)
-        standy clone: when using rsync, clean up "pg_replslot" directory (Ian)
+        standby clone: when using rsync, clean up "pg_replslot" directory (Ian)
         Improve --help output (Ian)
         Improve config file parsing (Ian)
         Various logging output improvements, including explicit HINTS (Ian)
