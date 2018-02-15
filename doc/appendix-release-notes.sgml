@@ -17,7 +17,7 @@
 
   <sect1 id="release-4.0.3">
     <title>Release 4.0.3</title>
-    <para><emphasis>??? Feb ??, 2018</emphasis></para>
+    <para><emphasis>Thu Feb 15, 2018</emphasis></para>
 
     <para>
       &repmgr; 4.0.3 contains some bug fixes and and a number of
@@ -58,16 +58,24 @@
           <listitem>
             <para>
               add --dry-run mode to <command><link linkend="repmgr-standby-switchover">repmgr standby follow</link></command>
-              (GitHub #369)
+              (GitHub #368)
             </para>
           </listitem>
 
           <listitem>
             <para>
-              add <literal>standby_register_sync</literal> event notification, which is fired when
+              provide information about the primary node for
+              <command><link linkend="repmgr-standby-register">repmgr standby register</link></command> and
+              <command><link linkend="repmgr-standby-follow">repmgr standby follow</link></command> event notifications (GitHub #375)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              add <literal>standby_register_sync</literal> <link linkend="event-notifications">event notification</link>, which is fired when
               <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>
               is run with the <option>--wait-sync</option> option and the new or updated standby node
-              record has synchronised to the standy (GitHub #374)
+              record has synchronised to the standby (GitHub #374)
             </para>
           </listitem>
 
