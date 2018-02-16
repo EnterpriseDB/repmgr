@@ -25,6 +25,10 @@
       event notifications and pre-action checks.
     </para>
 
+    <para>
+      This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.2;
+      repmgrd (if running) should be restarted.
+    </para>
     <sect2>
       <title>Usability enhancements</title>
 
