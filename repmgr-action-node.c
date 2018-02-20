@@ -1814,7 +1814,7 @@ do_node_rejoin(void)
 	 * Forcibly rewind node if requested (this is mainly for use when this
 	 * action is being executed by "repmgr standby switchover")
 	 */
-	if (runtime_options.force_rewind == true)
+	if (runtime_options.force_rewind == true && runtime_options.dry_run == false)
 	{
 		int			ret;
 		PQExpBufferData		filebuf;
@@ -1947,6 +1947,12 @@ do_node_rejoin(void)
 			}
 			termPQExpBuffer(&slotdir_path);
 		}
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("prerequisites for executing NODE REJOIN are met"));
+		exit(SUCCESS);
 	}
 
 	initPQExpBuffer(&follow_output);
