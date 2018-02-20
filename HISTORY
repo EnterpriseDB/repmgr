@@ -1,4 +1,7 @@
-4.0.3   2018-02-
+4.0.4   2018-??-??
+        repmgr: ensure "node rejoin" honours "--dry-run" option; GitHub #383 (Ian)
+
+4.0.3   2018-02-15
         repmgr: improve switchover handling when "pg_ctl" used to control the
           server and logging output is not explicitly redirected (Ian)
         repmgr: improve switchover log messages and exit code when old primary could
