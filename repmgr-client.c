@@ -388,6 +388,11 @@ main(int argc, char **argv)
 				runtime_options.without_barman = true;
 				break;
 
+			case OPT_RECOVERY_CONF_ONLY:
+				runtime_options.recovery_conf_only = true;
+				break;
+
+
 				/*---------------------------
 				 * "standby register" options
 				 *---------------------------
@@ -1014,10 +1019,7 @@ main(int argc, char **argv)
 	/*
 	 * Check for configuration file items which can be overriden by runtime
 	 * options
-	 */
-
-	/*
-	 * ============================================================================
+	 * =====================================================================
 	 */
 
 	/*
@@ -1495,19 +1497,6 @@ check_cli_parameters(const int action)
 		}
 	}
 
-	if (runtime_options.event[0])
-	{
-		switch (action)
-		{
-			case CLUSTER_EVENT:
-				break;
-			default:
-				item_list_append_format(&cli_warnings,
-										_("--event not required when executing %s"),
-										action_name(action));
-		}
-	}
-
 	if (runtime_options.replication_user[0])
 	{
 		switch (action)
@@ -1523,6 +1512,32 @@ check_cli_parameters(const int action)
 			default:
 				item_list_append_format(&cli_warnings,
 										_("--replication-user not required when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if (runtime_options.recovery_conf_only == true)
+	{
+		switch (action)
+		{
+			case STANDBY_CLONE:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--create-recovery-conf will be ignored when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if (runtime_options.event[0])
+	{
+		switch (action)
+		{
+			case CLUSTER_EVENT:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--event not required when executing %s"),
 										action_name(action));
 		}
 	}

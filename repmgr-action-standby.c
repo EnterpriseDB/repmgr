@@ -73,6 +73,7 @@ static char datadir_list_filename[MAXLEN];
 static char barman_command_buf[MAXLEN] = "";
 
 static void _do_standby_promote_internal(PGconn *conn, const char *data_dir);
+static void _do_create_recovery_conf(void);
 
 static void check_barman_config(void);
 static void check_source_server(void);
@@ -119,6 +120,7 @@ static ConnectionStatus parse_remote_node_replication_connection(const char *nod
  *  --recovery-min-apply-delay
  *  --replication-user (only required if no upstream record)
  *  --without-barman
+ *  --recovery-conf-only
  */
 
 void
@@ -129,6 +131,14 @@ do_standby_clone(void)
 
 	/* dummy node record */
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
+
+	/*
+	 * --recovery-conf-only provided - we'll handle that separately
+	 */
+	if (runtime_options.recovery_conf_only == true)
+	{
+		return _do_create_recovery_conf();
+	}
 
 	/*
 	 * conninfo params for the actual upstream node (which might be different
@@ -786,6 +796,372 @@ check_barman_config(void)
 		exit(ERR_BARMAN);
 	}
 
+}
+
+
+/*
+ * _do_create_recovery_conf()
+ *
+ * Create recovery.conf for a previously cloned instance.
+ *
+ * Prerequisites:
+ *
+ * - data directory must be provided
+ * - the instance should not be running
+ * - an existing "recovery.conf" file can only be overwritten with
+ *   -F/--force
+ * - connection parameters for an existing, running node must be provided
+ * - --upstream-node-id, if provided, will be "primary_conninfo",
+ *   otherwise primary node id; node must exist; unless -F/--force
+ *   provided, must be active and connection possible
+ * - if replication slots in use, create (respect --dry-run)
+ *
+ * not compatible with --no-upstream-connection
+ *
+ */
+
+static void
+_do_create_recovery_conf(void)
+{
+	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
+	t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	char		recovery_file_path[MAXPGPATH] = "";
+	struct stat st;
+	bool		node_is_running = false;
+	bool		slot_creation_required = false;
+	PGconn	   *upstream_conn = NULL;
+	PGconn	   *upstream_repl_conn = NULL;
+
+	get_node_data_directory(local_data_directory);
+
+	if (local_data_directory[0] == '\0')
+	{
+		log_error(_("no data directory provided"));
+		log_hint(_("provide the node's \"repmgr.conf\" file with -f/--config-file or the data directory with -D/--pgdata"));
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * Do some sanity checks on the data directory to make sure
+	 * it contains a valid but dormant instance
+	 */
+	switch (check_dir(local_data_directory))
+	{
+		case DIR_ERROR:
+			log_error(_("unable to access specified data directory \"%s\""), local_data_directory);
+			log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+			break;
+		case DIR_NOENT:
+			log_error(_("specified data directory \"%s\" does not exist"), local_data_directory);
+			exit(ERR_BAD_CONFIG);
+			break;
+		case DIR_EMPTY:
+			log_error(_("specified data directory \"%s\" is empty"), local_data_directory);
+			exit(ERR_BAD_CONFIG);
+			break;
+		case DIR_NOT_EMPTY:
+			/* Present but not empty */
+			if (!is_pg_dir(local_data_directory))
+			{
+				log_error(_("specified data directory \"%s\" does not contain a PostgreSQL instance"), local_data_directory);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			if (is_pg_running(local_data_directory))
+			{
+				if (runtime_options.force == false)
+				{
+					log_error(_("specified data directory \"%s\" appears to contain a running PostgreSQL instance"),
+							  local_data_directory);
+					log_hint(_("use -F/--force to create \"recovery.conf\" anyway"));
+					exit(ERR_BAD_CONFIG);
+				}
+
+				node_is_running = true;
+
+				if (runtime_options.dry_run == true)
+				{
+					log_warning(_("\"recovery.conf\" would be created in an active data directory"));
+				}
+				else
+				{
+					log_warning(_("creating \"recovery.conf\" in an active data directory"));
+				}
+			}
+			break;
+		default:
+			break;
+	}
+
+	/* check connection */
+	source_conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	/* determine node for primary_conninfo */
+
+	if (runtime_options.upstream_node_id != UNKNOWN_NODE_ID)
+	{
+		upstream_node_id = runtime_options.upstream_node_id;
+	}
+	else
+	{
+		/* if --upstream-node-id not specifically supplied, get primary node id */
+		upstream_node_id = get_primary_node_id(source_conn);
+
+		if (upstream_node_id == NODE_NOT_FOUND)
+		{
+			log_error(_("unable to determine primary node for this replication cluster"));
+			PQfinish(source_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		log_debug("primary node determined as: %i", upstream_node_id);
+	}
+
+	/* attempt to retrieve upstream node record */
+	record_status = get_node_record(source_conn,
+									upstream_node_id,
+									&upstream_node_record);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve node record for upstream node %i"), upstream_node_id);
+
+		if (record_status == RECORD_ERROR)
+		{
+			log_detail("%s", PQerrorMessage(source_conn));
+		}
+
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* attempt to retrieve local node record */
+	record_status = get_node_record(source_conn,
+									config_file_options.node_id,
+									&local_node_record);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve node record for local node %i"), config_file_options.node_id);
+
+		if (record_status == RECORD_ERROR)
+		{
+			log_detail("%s", PQerrorMessage(source_conn));
+		}
+
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	PQfinish(source_conn);
+
+
+	/* connect to upstream (which could be different to source) */
+
+	upstream_conn = establish_db_connection(upstream_node_record.conninfo, false);
+	if (PQstatus(upstream_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to connect to upstream node \"%s\" (ID: %i)"),
+				  upstream_node_record.node_name,
+ 				  upstream_node_id);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/* Set the application name to this node's name */
+	if (config_file_options.node_name[0] != '\0')
+		param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
+
+	/* Set the replication user from the primary node record */
+	param_set(&recovery_conninfo, "user", upstream_node_record.repluser);
+
+	initialize_conninfo_params(&recovery_conninfo, false);
+
+	/* We ignore any application_name set in the primary's conninfo */
+	parse_conninfo_string(upstream_node_record.conninfo, &recovery_conninfo, NULL, true);
+
+	/* check that a replication connection can be made (--force = override) */
+	upstream_repl_conn = establish_db_connection_by_params(&recovery_conninfo, false);
+
+	if (PQstatus(upstream_repl_conn) != CONNECTION_OK)
+	{
+		if (runtime_options.force == false)
+		{
+			log_error(_("unable to initiate replication connection to upstream node \"%s\" (ID: %i)"),
+					  upstream_node_record.node_name,
+					  upstream_node_id);
+			PQfinish(upstream_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+	/* if replication slots are in use, perform some checks */
+	if (config_file_options.use_replication_slots == true)
+	{
+		PQExpBufferData msg;
+		t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
+
+		record_status = get_slot_record(upstream_conn, local_node_record.slot_name, &slot_info);
+
+		/* check if replication slot exists*/
+		if (record_status == RECORD_FOUND)
+		{
+			if (slot_info.active == true)
+			{
+				initPQExpBuffer(&msg);
+
+				appendPQExpBuffer(&msg,
+								  _("an active replication slot named \"%s\" already exists on upstream node \"%s\" (ID: %i)"),
+								  local_node_record.slot_name,
+								  upstream_node_record.node_name,
+								  upstream_node_id);
+				if (runtime_options.force == false && runtime_options.dry_run == false)
+				{
+					log_error("%s", msg.data);
+					log_hint(_("use -F/--force to continue anyway"));
+					termPQExpBuffer(&msg);
+					PQfinish(upstream_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				log_warning("%s", msg.data);
+				termPQExpBuffer(&msg);
+			}
+			else
+			{
+				log_info(_("an inactive replication slot for this node exists on the upstream node"));
+			}
+		}
+		/* if not, if check one can and should be created */
+		else
+		{
+			get_node_replication_stats(upstream_conn, UNKNOWN_SERVER_VERSION_NUM, &upstream_node_record);
+
+		    if (upstream_node_record.max_replication_slots > upstream_node_record.total_replication_slots)
+			{
+				slot_creation_required = true;
+			}
+			else
+			{
+				initPQExpBuffer(&msg);
+
+				appendPQExpBuffer(&msg,
+								  _("insufficient free replicaiton slots on upstream node \"%s\" (ID: %i)"),
+								  upstream_node_record.node_name,
+								  upstream_node_id);
+
+				if (runtime_options.force == false && runtime_options.dry_run == false)
+				{
+					log_error("%s", msg.data);
+					log_hint(_("use -F/--force to continue anyway"));
+					termPQExpBuffer(&msg);
+					PQfinish(upstream_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				log_warning("%s", msg.data);
+				termPQExpBuffer(&msg);
+			}
+		}
+	}
+
+	/* check if recovery.conf exists */
+
+	maxpath_snprintf(recovery_file_path, "%s/%s", local_data_directory, RECOVERY_COMMAND_FILE);
+
+	if (stat(recovery_file_path, &st) == -1)
+	{
+		if (errno != ENOENT)
+		{
+			log_error(_("unable to check for existing \"recovery.conf\" file in \"%s\""),
+					  local_data_directory);
+			log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+	else
+	{
+		if (runtime_options.force == false)
+		{
+			log_error(_("\"recovery.conf\" already exists in \"%s\""),
+					  local_data_directory);
+			log_hint(_("use -F/--force to overwrite an existing \"recovery.conf\" file"));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (runtime_options.dry_run == true)
+		{
+			log_warning(_("the existing \"recovery.conf\" file would be overwritten"));
+		}
+		else
+		{
+			log_warning(_("the existing \"recovery.conf\" file will be overwritten"));
+		}
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("would create \"recovery.conf\" file"));
+		log_detail(_("data directory is: \"%s\""), local_data_directory);
+	}
+	else
+	{
+		if (!create_recovery_file(&upstream_node_record, &recovery_conninfo, local_data_directory))
+		{
+			log_error(_("unable to create \"recovery.conf\""));
+		}
+		else
+		{
+			log_notice(_("\"recovery.conf\" created as \"%s\""), recovery_file_path);
+
+			if (node_is_running == true)
+			{
+				log_hint(_("node must be restarted for the new file to take effect"));
+			}
+		}
+	}
+
+	/* add replication slot, if required */
+	if (slot_creation_required == true)
+	{
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("would create replication slot \"%s\" on upstream node \"%s\" (ID: %i)"),
+					 local_node_record.slot_name,
+					 upstream_node_record.node_name,
+					 upstream_node_id);
+		}
+		else
+		{
+			PQExpBufferData msg;
+			initPQExpBuffer(&msg);
+
+			if (create_replication_slot(upstream_conn,
+										local_node_record.slot_name,
+										UNKNOWN_SERVER_VERSION_NUM,
+										&msg) == false)
+			{
+				log_error("%s", msg.data);
+				PQfinish(upstream_conn);
+				termPQExpBuffer(&msg);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			termPQExpBuffer(&msg);
+
+			log_notice(_("replication slot \"%s\" created on upstream node \"%s\" (ID: %i)"),
+					   local_node_record.slot_name,
+					   upstream_node_record.node_name,
+					   upstream_node_id);
+		}
+	}
+
+
+	PQfinish(upstream_conn);
+
+	return;
 }
 
 
@@ -4895,7 +5271,7 @@ run_file_backup(t_node_info *node_record)
 				if (unlink(tblspc_symlink.data) < 0 && errno != ENOENT)
 				{
 					log_error(_("unable to remove tablespace symlink %s"), tblspc_symlink.data);
-
+					log_detail("%s", strerror(errno));
 					r = ERR_BAD_BASEBACKUP;
 					goto stop_backup;
 				}
@@ -4935,9 +5311,9 @@ run_file_backup(t_node_info *node_record)
 		 */
 		if (unlink(tablespace_map_filename.data) < 0 && errno != ENOENT)
 		{
-			log_error(_("unable to remove tablespace_map file %s: %s"),
-					  tablespace_map_filename.data,
-					  strerror(errno));
+			log_error(_("unable to remove tablespace_map file \"%s\""),
+					  tablespace_map_filename.data);
+			log_detail("%s", strerror(errno));
 
 			r = ERR_BAD_BASEBACKUP;
 			goto stop_backup;
@@ -5771,6 +6147,8 @@ do_standby_help(void)
 			 "                                        when the intended upstream server does not yet exist\n"));
 	printf(_("  --upstream-node-id                  ID of the upstream node to replicate from (optional, defaults to primary node)\n"));
 	printf(_("  --without-barman                    do not use Barman even if configured\n"));
+	printf(_("  --recovery-conf-only                create \"recovery.conf\" file for a previously cloned instance\n"));
+
 	puts("");
 
 	printf(_("STANDBY REGISTER\n"));
