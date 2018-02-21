@@ -3486,6 +3486,9 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 	PGresult   *res = NULL;
 	t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
 
+	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+		server_version_num = get_server_version(conn, NULL);
+
 	/*
 	 * Check whether slot exists already; if it exists and is active, that
 	 * means another active standby is using it, which creates an error
