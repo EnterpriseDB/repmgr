@@ -2167,7 +2167,7 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 
 
 bool
-get_downsteam_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoList *node_list)
+get_downstream_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoList *node_list)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;

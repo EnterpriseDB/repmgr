@@ -419,7 +419,7 @@ void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes
 void		get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id, NodeInfoList *node_list);
 void		get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list);
 bool		get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list);
-bool		get_downsteam_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoList *noede_list);
+bool		get_downstream_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoList *noede_list);
 
 bool		create_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
 bool		update_node_record(PGconn *conn, char *repmgr_action, t_node_info *node_info);
