@@ -40,7 +40,7 @@
    </listitem>
 
    <listitem>
-    <simpara>repmgrd is monitoring the primary node, but it is not available</simpara>
+    <simpara>repmgrd is monitoring the primary node, but it is not available (and no other node has been promoted as primary)</simpara>
    </listitem>
   </itemizedlist>
  </para>
@@ -69,7 +69,15 @@
   By default, <literal>repmgrd</literal> will continue in degraded monitoring mode indefinitely.
   However a timeout (in seconds) can be set with <varname>degraded_monitoring_timeout</varname>,
   after which <application>repmgrd</application> will terminate.
-
  </para>
+
+ <note>
+   <para>
+     If <application>repmgrd</application> is monitoring a primary mode which has been stopped
+     and manually restarted as a standby attached to a new primary, it will automatically detect
+     the status change and update the node record to reflect the node's new status
+     as an active standby. It will then resume monitoring the node as a standby.
+   </para>
+ </note>
 
 </chapter>
