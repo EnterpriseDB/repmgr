@@ -313,9 +313,9 @@ do_node_status(void)
 
 	{
 		NodeInfoList missing_slots = T_NODE_INFO_LIST_INITIALIZER;
-		get_downsteam_nodes_with_missing_slot(conn,
-											  config_file_options.node_id,
-											  &missing_slots);
+		get_downstream_nodes_with_missing_slot(conn,
+											   config_file_options.node_id,
+											   &missing_slots);
 
 		if (missing_slots.node_count > 0)
 		{
