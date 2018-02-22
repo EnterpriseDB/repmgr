@@ -2347,14 +2347,47 @@ update_node_record_set_active(PGconn *conn, int this_node_id, bool active)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(
-					  &query,
+	appendPQExpBuffer(&query,
 					  "UPDATE repmgr.nodes SET active = %s "
 					  " WHERE node_id = %i",
 					  active == true ? "TRUE" : "FALSE",
 					  this_node_id);
 
 	log_verbose(LOG_DEBUG, "update_node_record_set_active():\n  %s", query.data);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_error(_("unable to update node record:\n  %s"),
+				  PQerrorMessage(conn));
+		PQclear(res);
+		return false;
+	}
+
+	PQclear(res);
+
+	return true;
+}
+
+
+bool
+update_node_record_set_active_standby(PGconn *conn, int this_node_id)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "UPDATE repmgr.nodes "
+					  "   SET type = 'standby', "
+					  "       active = TRUE "
+					  " WHERE node_id = %i",
+					  this_node_id);
+
+	log_verbose(LOG_DEBUG, "update_node_record_set_active_standby():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);

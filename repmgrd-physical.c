@@ -325,7 +325,6 @@ monitor_streaming_primary(void)
 				else
 				{
 					local_node_info.node_status = NODE_STATUS_UP;
-					monitoring_state = MS_NORMAL;
 
 					initPQExpBuffer(&event_details);
 
@@ -353,54 +352,83 @@ monitor_streaming_primary(void)
 						else
 						{
 							RecordStatus record_status;
-							int i = 0;
 
 							log_debug("primary node id is now %i", primary_node_id);
 
-							/*
-							 * poll for a while until record type is returned as "STANDBY" - it's possible
-							 * that there's a gap between the server being restarted and the record
-							 * being updated
-							 */
-							for (i = 0; i < 30; i++)
-							{
-								/*
-								 * try and refresh the local node record from the primary, as the updated
-								 * local node record may not have been replicated yet
-								 */
-
-								record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
-
-								if (record_status == RECORD_FOUND)
-								{
-									log_debug("type = %s", get_node_type_string(local_node_info.type));
-
-									if (local_node_info.type == STANDBY)
-									{
-										PQfinish(new_primary_conn);
-
-										/* XXX add event notification */
-										return;
-									}
-								}
-								sleep(1);
-							}
-
-							PQfinish(new_primary_conn);
+							record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
 
 							if (record_status == RECORD_FOUND)
 							{
-								log_warning(_("repmgr node record is still %s"), get_node_type_string(local_node_info.type));
+								bool resume_monitoring = true;
+
+								log_debug("node %i is registered with type = %s",
+										  config_file_options.node_id,
+										  get_node_type_string(local_node_info.type));
+
+								/*
+								 * node has recovered but metadata not updated - we can do that ourselves,
+								 */
+								if (local_node_info.type == PRIMARY)
+								{
+									log_notice(_("node \"%s\" (ID: %i) still registered as primary, setting to standby"),
+											   config_file_options.node_name,
+											   config_file_options.node_id);
+
+									if (update_node_record_set_active_standby(new_primary_conn, config_file_options.node_id) == false)
+									{
+										resume_monitoring = false;
+									}
+									else
+									{
+										record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
+
+										if (record_status != RECORD_FOUND)
+										{
+											resume_monitoring = false;
+										}
+									}
+								}
+
+								if (resume_monitoring == true)
+								{
+									monitoring_state = MS_NORMAL;
+
+									appendPQExpBuffer(&event_details,
+													  _("former primary has been restored as standby after %i seconds, updating node record and resuming monitoring"),
+													  degraded_monitoring_elapsed);
+
+									create_event_notification(new_primary_conn,
+															  &config_file_options,
+															  config_file_options.node_id,
+															  "repmgrd_standby_reconnect",
+															  true,
+															  event_details.data);
+									log_notice("%s", event_details.data);
+									termPQExpBuffer(&event_details);
+
+									PQfinish(new_primary_conn);
+
+									/* restart monitoring as standby */
+									return;
+								}
 							}
-							else
+							else if (record_status == RECORD_NOT_FOUND)
 							{
-								log_error(_("no metadata record found for this node"));
+								log_error(_("no metadata record found for this node on current primary %i"), primary_node_id);
 								log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
+
+								PQfinish(new_primary_conn);
+
+								/* add event notification */
+								terminate(ERR_BAD_CONFIG);
 							}
+
 						}
 					}
 					else
 					{
+						monitoring_state = MS_NORMAL;
+
 						appendPQExpBuffer(&event_details,
 										  _("reconnected to primary node after %i seconds, resuming monitoring"),
 										  degraded_monitoring_elapsed);

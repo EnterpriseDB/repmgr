@@ -428,6 +428,7 @@ bool		truncate_node_records(PGconn *conn);
 
 bool		update_node_record_set_active(PGconn *conn, int this_node_id, bool active);
 bool		update_node_record_set_primary(PGconn *conn, int this_node_id);
+bool		update_node_record_set_active_standby(PGconn *conn, int this_node_id);
 bool		update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream_node_id);
 bool		update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstream_node_id, bool active);
 bool		update_node_record_conn_priority(PGconn *conn, t_configuration_options *options);
