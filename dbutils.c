@@ -1800,7 +1800,7 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 	strncpy(node_info->config_file, PQgetvalue(res, row, 10), MAXLEN);
 
 	/* This won't normally be set */
-	strncpy(node_info->upstream_node_name, PQgetvalue(res, row, 10), MAXLEN);
+	strncpy(node_info->upstream_node_name, PQgetvalue(res, row, 11), MAXLEN);
 
 	/* Set remaining struct fields with default values */
 	node_info->node_status = NODE_STATUS_UNKNOWN;
@@ -1867,6 +1867,36 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 	appendPQExpBuffer(&query,
 					  "SELECT " REPMGR_NODES_COLUMNS
 					  "  FROM repmgr.nodes n "
+					  " WHERE n.node_id = %i",
+					  node_id);
+
+	log_verbose(LOG_DEBUG, "get_node_record():\n  %s", query.data);
+
+	result = _get_node_record(conn, query.data, node_info);
+	termPQExpBuffer(&query);
+
+	if (result == RECORD_NOT_FOUND)
+	{
+		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %i", node_id);
+	}
+
+	return result;
+}
+
+
+RecordStatus
+get_node_record_with_upstream(PGconn *conn, int node_id, t_node_info *node_info)
+{
+	PQExpBufferData query;
+	RecordStatus result;
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
+					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name "
+					  "      FROM repmgr.nodes n "
+					  " LEFT JOIN repmgr.nodes un "
+					  "        ON un.node_id = n.upstream_node_id"
 					  " WHERE n.node_id = %i",
 					  node_id);
 
@@ -2137,7 +2167,7 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 
 	appendPQExpBuffer(&query,
 					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
-					  "           n.slot_name, n.location, n.priority, n.active, un.node_name AS upstream_node_name "
+					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name "
 					  "      FROM repmgr.nodes n "
 					  " LEFT JOIN repmgr.nodes un "
 					  "        ON un.node_id = n.upstream_node_id"
@@ -2178,9 +2208,10 @@ get_downstream_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoL
 					  "   SELECT " REPMGR_NODES_COLUMNS
 					  "     FROM repmgr.nodes n "
 					  "LEFT JOIN pg_catalog.pg_replication_slots rs "
-					  "       ON rs.slot_name = n.node_name "
-					  "    WHERE rs.slot_name IS NULL "
-                      "      AND n.node_id != %i ",
+					  "       ON rs.slot_name = n.slot_name "
+					  "    WHERE n.slot_name IS NOT NULL"
+                      "      AND rs.slot_name IS NULL "
+                      "      AND n.upstream_node_id = %i ",
 					  this_node_id);
 
 	log_verbose(LOG_DEBUG, "get_all_node_records_with_missing_slot():\n%s", query.data);
