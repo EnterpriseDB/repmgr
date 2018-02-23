@@ -408,6 +408,8 @@ t_server_type parse_node_type(const char *type);
 const char *get_node_type_string(t_server_type type);
 
 RecordStatus get_node_record(PGconn *conn, int node_id, t_node_info *node_info);
+RecordStatus get_node_record_with_upstream(PGconn *conn, int node_id, t_node_info *node_info);
+
 RecordStatus get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_info);
 t_node_info *get_node_record_pointer(PGconn *conn, int node_id);
 

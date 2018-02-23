@@ -92,7 +92,7 @@ do_node_status(void)
 
 	/* Check node exists and is really a standby */
 
-	if (get_node_record(conn, config_file_options.node_id, &node_info) != RECORD_FOUND)
+	if (get_node_record_with_upstream(conn, config_file_options.node_id, &node_info) != RECORD_FOUND)
 	{
 		log_error(_("no record found for node %i"), config_file_options.node_id);
 		PQfinish(conn);
@@ -308,7 +308,9 @@ do_node_status(void)
 
 	/*
 	 * check for missing replication slots - we do this regardless of
-	 * what "max_replication_slots" is set to
+	 * what "max_replication_slots" is set to, in case the downstream
+	 * node was configured with "use_replication_slots=true" and is
+	 * expecting a replication slot to be available
 	 */
 
 	{
