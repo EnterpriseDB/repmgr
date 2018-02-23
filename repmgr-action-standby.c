@@ -96,9 +96,8 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 static int	get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
-static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir);
-static void write_primary_conninfo(char *line, t_conninfo_param_list *param_list);
-static bool write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line);
+static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, char *dest, bool as_file);
+static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list);
 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
@@ -598,7 +597,7 @@ do_standby_clone(void)
 
 	/* Write the recovery.conf file */
 
-	if (create_recovery_file(&node_record, &recovery_conninfo, local_data_directory) == false)
+	if (create_recovery_file(&node_record, &recovery_conninfo, local_data_directory, true) == false)
 	{
 		/* create_recovery_file() will log an error */
 		log_notice(_("unable to create recovery.conf; see preceding error messages"));
@@ -1103,12 +1102,15 @@ _do_create_recovery_conf(void)
 
 	if (runtime_options.dry_run == true)
 	{
-		log_info(_("would create \"recovery.conf\" file"));
-		log_detail(_("data directory is: \"%s\""), local_data_directory);
+		char		recovery_conf_contents[MAXLEN] = "";
+		create_recovery_file(&upstream_node_record, &recovery_conninfo, recovery_conf_contents, false);
+
+		log_info(_("would create \"recovery.conf\" file in \"%s\""), local_data_directory);
+		log_detail(_("\n%s"), recovery_conf_contents);
 	}
 	else
 	{
-		if (!create_recovery_file(&upstream_node_record, &recovery_conninfo, local_data_directory))
+		if (!create_recovery_file(&upstream_node_record, &recovery_conninfo, local_data_directory, true))
 		{
 			log_error(_("unable to create \"recovery.conf\""));
 		}
@@ -2393,7 +2395,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	log_notice(_("setting node %i's primary to node %i"),
 			   config_file_options.node_id, primary_node_record->node_id);
 
-	if (!create_recovery_file(&local_node_record, &recovery_conninfo, config_file_options.data_directory))
+	if (!create_recovery_file(&local_node_record, &recovery_conninfo, config_file_options.data_directory, true))
 	{
 		/* XXX ERR_RECOVERY_FILE ??? */
 		*error_code = ERR_BAD_CONFIG;
@@ -5572,40 +5574,19 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
  * might not be available.
  */
 bool
-create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, const char *data_dir)
+create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, char *dest, bool as_file)
 {
-	FILE	   *recovery_file;
+	PQExpBufferData recovery_file_buf;
 	char		recovery_file_path[MAXPGPATH] = "";
-	char		line[MAXLEN] = "";
+	FILE	   *recovery_file;
 	mode_t		um;
 
-	maxpath_snprintf(recovery_file_path, "%s/%s", data_dir, RECOVERY_COMMAND_FILE);
-
-	/* Set umask to 0600 */
-	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
-	recovery_file = fopen(recovery_file_path, "w");
-	umask(um);
-
-	if (recovery_file == NULL)
-	{
-		log_error(_("unable to create recovery.conf file at \"%s\""),
-				  recovery_file_path);
-		log_detail("%s", strerror(errno));
-
-		return false;
-	}
-
-	log_debug("create_recovery_file(): creating \"%s\"...",
-			  recovery_file_path);
+	/* create file in buffer */
+	initPQExpBuffer(&recovery_file_buf);
 
 	/* standby_mode = 'on' */
-	maxlen_snprintf(line, "standby_mode = 'on'\n");
-
-	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
-		return false;
-
-	trim(line);
-	log_debug("recovery.conf: %s", line);
+	appendPQExpBuffer(&recovery_file_buf,
+					  "standby_mode = 'on'\n");
 
 	/* primary_conninfo = '...' */
 
@@ -5616,8 +5597,10 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	{
 		char	   *escaped = escape_recovery_conf_value(runtime_options.upstream_conninfo);
 
-		maxlen_snprintf(line, "primary_conninfo = '%s'\n",
-						escaped);
+		appendPQExpBuffer(&recovery_file_buf,
+						  "primary_conninfo = '%s\n",
+						  escaped);
+
 		free(escaped);
 	}
 
@@ -5627,46 +5610,29 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	 */
 	else
 	{
-		write_primary_conninfo(line, recovery_conninfo);
+		write_primary_conninfo(&recovery_file_buf, recovery_conninfo);
 	}
 
-	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
-		return false;
-
-	trim(line);
-	log_debug("recovery.conf: %s", line);
-
 	/* recovery_target_timeline = 'latest' */
-	maxlen_snprintf(line, "recovery_target_timeline = 'latest'\n");
+	appendPQExpBuffer(&recovery_file_buf,
+					  "recovery_target_timeline = 'latest'\n");
 
-	if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
-		return false;
-
-	trim(line);
-	log_debug("recovery.conf: %s", line);
 
 	/* recovery_min_apply_delay = ... (optional) */
 	if (config_file_options.recovery_min_apply_delay_provided == true)
 	{
-		maxlen_snprintf(line, "recovery_min_apply_delay = %s\n",
-						config_file_options.recovery_min_apply_delay);
-		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
-			return false;
+		appendPQExpBuffer(&recovery_file_buf,
+						  "recovery_min_apply_delay = %s\n",
+						  config_file_options.recovery_min_apply_delay);
 
-		trim(line);
-		log_debug("recovery.conf: %s", line);
 	}
 
 	/* primary_slot_name = '...' (optional, for 9.4 and later) */
 	if (config_file_options.use_replication_slots)
 	{
-		maxlen_snprintf(line, "primary_slot_name = %s\n",
-						node_record->slot_name);
-		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
-			return false;
-
-		trim(line);
-		log_debug("recovery.conf: %s", line);
+		appendPQExpBuffer(&recovery_file_buf,
+						  "primary_slot_name = %s\n",
+						  node_record->slot_name);
 	}
 
 	/*
@@ -5675,36 +5641,56 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	 */
 	if (strcmp(config_file_options.restore_command, "") != 0)
 	{
-		maxlen_snprintf(line, "restore_command = '%s'\n",
-						config_file_options.restore_command);
-		if (write_recovery_file_line(recovery_file, recovery_file_path, line) == false)
-			return false;
-
-		trim(line);
-		log_debug("recovery.conf: %s", line);
+		appendPQExpBuffer(&recovery_file_buf,
+						  "restore_command = '%s'\n",
+						  config_file_options.restore_command);
 	}
-	fclose(recovery_file);
 
-	return true;
-}
-
-
-static bool
-write_recovery_file_line(FILE *recovery_file, char *recovery_file_path, char *line)
-{
-	if (fputs(line, recovery_file) == EOF)
+	if (as_file == true)
 	{
-		log_error(_("unable to write to recovery file at \"%s\""), recovery_file_path);
+		maxpath_snprintf(recovery_file_path, "%s/%s", dest, RECOVERY_COMMAND_FILE);
+		log_debug("create_recovery_file(): creating \"%s\"...",
+				  recovery_file_path);
+
+		/* Set umask to 0600 */
+		um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
+		recovery_file = fopen(recovery_file_path, "w");
+		umask(um);
+
+		if (recovery_file == NULL)
+		{
+			log_error(_("unable to create recovery.conf file at \"%s\""),
+					  recovery_file_path);
+			log_detail("%s", strerror(errno));
+
+			return false;
+		}
+
+		log_debug("recovery file is:\n%s", recovery_file_buf.data);
+
+		if (fputs(recovery_file_buf.data, recovery_file) == EOF)
+		{
+			log_error(_("unable to write to recovery file at \"%s\""), recovery_file_path);
+			fclose(recovery_file);
+			termPQExpBuffer(&recovery_file_buf);
+			return false;
+		}
+
 		fclose(recovery_file);
-		return false;
 	}
+	else
+	{
+		maxlen_snprintf(dest, "%s", recovery_file_buf.data);
+	}
+
+	termPQExpBuffer(&recovery_file_buf);
 
 	return true;
 }
 
 
 static void
-write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
+write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 {
 	PQExpBufferData conninfo_buf;
 	bool		application_name_provided = false;
@@ -5786,7 +5772,9 @@ write_primary_conninfo(char *line, t_conninfo_param_list *param_list)
 	}
 
 	escaped = escape_recovery_conf_value(conninfo_buf.data);
-	maxlen_snprintf(line, "primary_conninfo = '%s'\n", escaped);
+
+	appendPQExpBuffer(dest,
+					  "primary_conninfo = '%s'\n", escaped);
 
 	free(escaped);
 	free_conninfo_params(&env_conninfo);
