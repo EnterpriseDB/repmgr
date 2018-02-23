@@ -180,6 +180,16 @@
    </para>
   </sect2>
 
+  <sect2 id="faq-repmgr-clone-other-source" >
+   <title>Can I use a standby not cloned by &repmgr; as a &repmgr; node?</title>
+   <para>
+     Yes - use <link linkend="repmgr-standby-create-recovery-conf">repmgr standby clone --recovery-conf-only</link> to create the node's
+     <filename>recovery.conf</filename> file, and
+     <link linkend="repmgr-standby-register">register the node</link> as usual.
+   </para>
+  </sect2>
+
+
  </sect1>
 
  <sect1 id="faq-repmgrd" xreflabel="repmgrd">
