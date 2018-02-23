@@ -92,6 +92,15 @@
    </para>
   </refsect1>
 
+  <refsect1 id="repmgr-standby-register-node-cloned-other-source">
+    <title>Registering a node not cloned by repmgr</title>
+    <para>
+      If you've cloned a standby using another method (e.g. <application>barman</application>'s
+     <command>barman recover</command> command), first execute
+     <link linkend="repmgr-standby-create-recovery-conf">repmgr standby clone --recovery-conf-only</link>
+     to add the <filename>recovery.conf</filename> file, then register the standby as usual.
+    </para>
+  </refsect1>
   <refsect1>
     <title>Event notifications</title>
     <para>

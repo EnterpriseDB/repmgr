@@ -1,5 +1,6 @@
 4.0.4   2018-03-??
         repmgr: ensure "node rejoin" honours "--dry-run" option; GitHub #383 (Ian)
+        repmgr: add "standby clone --recovery-conf-only" option; GitHub #382 (Ian)
         repmgrd: improve detection of status change from primary to standby (Ian)
 
 4.0.3   2018-02-15

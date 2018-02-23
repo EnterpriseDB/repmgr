@@ -100,6 +100,138 @@
    </note>
   </refsect1>
 
+
+  <refsect1 id="repmgr-standby-create-recovery-conf">
+   <title>Using a standby cloned by another method</title>
+   <para>
+     &repmgr; supports standbys cloned by another method (e.g. using <application>barman</application>'s
+     <command>barman recover</command> command).
+   </para>
+   <para>
+     To integrate the standby as a &repmgr; node, ensure the <filename>repmgr.conf</filename>
+     file is created for the node, then execute the command
+     <command>repmgr standby clone --recovery-conf-only</command>.
+     This will create the <filename>recovery.conf</filename> file needed to attach
+     the node to its upstream, and will also create a replication slot on the
+     upstream node if required.
+   </para>
+   <para>
+     Note that the upstream node must be running. An existing
+     <filename>recovery.conf</filename> will not be overwritten unless the
+     <option>-F/--force</option> option is provided.
+   </para>
+   <para>
+     Execute <command>repmgr standby clone --recovery-conf-only --dry-run</command>
+     to check the prerequisites for creating the <filename>recovery.conf</filename> file,
+     and display the contents of the file without actually creating it.
+   </para>
+  </refsect1>
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually clone the standby.
+          </para>
+          <para>
+            If <option>--recovery-conf-only</option> specified, the contents of
+            the generated <filename>recovery.conf</filename> file will be displayed
+            but the file itself not written.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-c, --fast-checkpoint</option></term>
+        <listitem>
+          <para>
+            force fast checkpoint (not effective when cloning from Barman
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--copy-external-config-files[={samepath|pgdata}]</option></term>
+        <listitem>
+          <para>
+            copy configuration files located outside the data directory on the source
+            node to the same path on the standby (default) or to the
+            PostgreSQL data directory.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--no-upstream-connection</option></term>
+        <listitem>
+          <para>
+            when using Barman, do not connect to upstream node
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>-R, --remote-user=USERNAME</option></term>
+        <listitem>
+          <para>
+            remote system username for SSH operations (default: current local system username)
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--replication-user</option></term>
+        <listitem>
+          <para>
+            user to make replication connections with (optional, not usually required)
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--upstream-conninfo</option></term>
+        <listitem>
+          <para>
+            <literal>primary_conninfo</literal> value to write in recovery.conf
+            when the intended upstream server does not yet exist
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--upstream-node-id</option></term>
+        <listitem>
+          <para>
+            ID of the upstream node to replicate from (optional, defaults to primary node)
+          </para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term><option>--without-barman </option></term>
+        <listitem>
+          <para>
+            do not use Barman even if configured
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option> --recovery-conf-only</option></term>
+        <listitem>
+          <para>
+            create <filename>recovery.conf</filename> file for a previously cloned instance
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
   <refsect1>
     <title>Event notifications</title>
     <para>
