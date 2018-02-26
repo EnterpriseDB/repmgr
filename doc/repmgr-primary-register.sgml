@@ -26,7 +26,7 @@
   <refsect1>
     <title>Execution</title>
     <para>
-      Execute with the <literal>--dry-run</literal> option to check what would happen without
+      Execute with the <option>--dry-run</option> option to check what would happen without
       actually registering the primary.
     </para>
     <para>
@@ -36,7 +36,7 @@
 
     <note>
     <para>
-      If providing the configuration file location with <literal>-f/--config-file</literal>,
+      If providing the configuration file location with <option>-f/--config-file</option>,
       avoid using a relative path, as &repmgr; stores the configuration file location
       in the repmgr metadata for use when &repmgr; is executed remotely (e.g. during
       <xref linkend="repmgr-standby-switchover">). &repmgr; will attempt to convert the
@@ -47,6 +47,33 @@
     </para>
     </note>
   </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually register the primary.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+       <term><option>-F</option><option>--force</option></term>
+        <listitem>
+          <para>
+            Overwrite an existing node record
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
 
   <refsect1>
     <title>Event notifications</title>
