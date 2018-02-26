@@ -101,6 +101,64 @@
      to add the <filename>recovery.conf</filename> file, then register the standby as usual.
     </para>
   </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually register the standby.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+       <term><option>-F</option><option>--force</option></term>
+        <listitem>
+          <para>
+            Overwrite an existing node record
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+        <term><option>--upstream-node-id</option></term>
+        <listitem>
+          <para>
+            ID of the upstream node to replicate from (optional)
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--wait-start</option></term>
+        <listitem>
+          <para>
+            wait for the standby to start (timeout in seconds, default 30 seconds)
+          </para>
+        </listitem>
+      </varlistentry>
+
+     <varlistentry>
+        <term><option>--wait-sync</option></term>
+        <listitem>
+          <para>
+            wait for the node record to synchronise to the standby (optional timeout in seconds)
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+    </variablelist>
+  </refsect1>
+
   <refsect1>
     <title>Event notifications</title>
     <para>
