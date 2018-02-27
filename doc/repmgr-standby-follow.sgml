@@ -30,6 +30,7 @@
       To re-add an inactive node to the replication cluster, see
       <xref linkend="repmgr-node-rejoin">
     </para>
+
   </refsect1>
 
   <refsect1>
@@ -74,7 +75,10 @@
         <term><option>--wait</option></term>
         <listitem>
           <para>
-            Wait for a primary to appear.
+            Wait for a primary to appear. &repmgr; will wait for up to
+            <varname>primary_follow_timeout</varname> seconds
+            (default: 60 seconds) to verify that the standby is following the new primary.
+            This value can be defined in <filename>repmgr.conf</filename>.
           </para>
         </listitem>
       </varlistentry>
