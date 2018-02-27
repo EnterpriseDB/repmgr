@@ -303,7 +303,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->log_status_interval = DEFAULT_LOG_STATUS_INTERVAL;
 
 	/*-----------------------
-	 * standby action settings
+	 * standby clone settings
 	 *------------------------
 	 */
 	options->use_replication_slots = false;
@@ -316,6 +316,13 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->recovery_min_apply_delay_provided = false;
 	options->use_primary_conninfo_password = false;
 	memset(options->passfile, 0, sizeof(options->passfile));
+
+	/*-----------------------
+	 * standby promote settings
+	 *------------------------
+	 */
+	options->promote_check_timeout = DEFAULT_PROMOTE_CHECK_TIMEOUT;
+	options->promote_check_interval = DEFAULT_PROMOTE_CHECK_INTERVAL;
 
 	/*-----------------
 	 * repmgrd settings
@@ -505,6 +512,13 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->use_primary_conninfo_password = parse_bool(value, name, error_list);
 		else if (strcmp(name, "passfile") == 0)
 			strncpy(options->passfile, value, sizeof(options->passfile));
+
+		/* standby promote settings */
+		else if (strcmp(name, "promote_check_timeout") == 0)
+			options->promote_check_timeout = repmgr_atoi(value, name, error_list, 1);
+
+		else if (strcmp(name, "promote_check_interval") == 0)
+			options->promote_check_interval = repmgr_atoi(value, name, error_list, 1);
 
 		/* node check settings */
 		else if (strcmp(name, "archive_ready_warning") == 0)

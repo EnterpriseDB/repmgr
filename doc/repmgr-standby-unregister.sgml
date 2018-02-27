@@ -44,6 +44,22 @@
   </refsect1>
 
   <refsect1>
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--node-id</option></term>
+        <listitem>
+          <para>
+            <varname>node_id</varname> of the node to unregister (optional)
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
     <title>Event notifications</title>
     <para>
       A <literal>standby_unregister</literal> <link linkend="event-notifications">event notification</link> will be generated.

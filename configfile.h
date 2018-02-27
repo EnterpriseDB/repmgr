@@ -82,7 +82,7 @@ typedef struct
 	char		log_file[MAXLEN];
 	int			log_status_interval;
 
-	/* standby action settings */
+	/* standby clone settings */
 	bool		use_replication_slots;
 	char		pg_basebackup_options[MAXLEN];
 	char		restore_command[MAXLEN];
@@ -91,6 +91,10 @@ typedef struct
 	bool		recovery_min_apply_delay_provided;
 	bool		use_primary_conninfo_password;
 	char		passfile[MAXPGPATH];
+
+	/* standby promote settings */
+	int			promote_check_timeout;
+	int			promote_check_interval;
 
 	/* node check settings */
 	int			archive_ready_warning;
@@ -159,6 +163,8 @@ typedef struct
 		"", "", "", DEFAULT_LOG_STATUS_INTERVAL,	\
 		/* standby action settings */ \
 		false, "", "", { NULL, NULL }, "", false, false, "",	\
+		/* standby promote settings */ \
+		DEFAULT_PROMOTE_CHECK_TIMEOUT, DEFAULT_PROMOTE_CHECK_INTERVAL, \
 		/* node check settings */ \
 		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
 		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \
