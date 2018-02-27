@@ -1894,10 +1894,8 @@ static void
 _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 {
 	char		script[MAXLEN];
-	int			r;
-	int			i,
-				promote_check_timeout = 60,
-				promote_check_interval = 2;
+	int			r,
+				i;
 	bool		promote_success = false;
 	PQExpBufferData details;
 
@@ -1944,8 +1942,7 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 		exit(ERR_PROMOTION_FAIL);
 	}
 
-	/* TODO: make these values configurable */
-	for (i = 0; i < promote_check_timeout; i += promote_check_interval)
+	for (i = 0; i < config_file_options.promote_check_timeout; i += config_file_options.promote_check_interval)
 	{
 		recovery_type = get_recovery_type(conn);
 
@@ -1954,7 +1951,7 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 			promote_success = true;
 			break;
 		}
-		sleep(promote_check_interval);
+		sleep(config_file_options.promote_check_interval);
 	}
 
 	if (promote_success == false)
@@ -1973,6 +1970,7 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 		}
 	}
 
+	log_verbose(LOG_INFO, _("standby promoted to primary after %i second(s)"), i);
 
 	/*
 	 * Execute a CHECKPOINT as soon as possible after promotion. The primary
