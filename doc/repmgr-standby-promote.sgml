@@ -29,8 +29,8 @@
     <para>
       Note that &repmgr; will wait for up to <varname>promote_check_timeout</varname> seconds
       (default: 60 seconds) to verify that the standby has been promoted, and will
-      check the promotion every <varname>promote_check_interval</varname> seconds (default: 1 second)
-      (both values can be defined in <filename>repmgr.conf</filename>).
+      check the promotion every <varname>promote_check_interval</varname> seconds (default: 1 second).
+      Both values can be defined in <filename>repmgr.conf</filename>.
     </para>
   </refsect1>
 
