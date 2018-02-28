@@ -79,6 +79,7 @@
 #define DEFAULT_WAIT_START                   30  /* seconds */
 #define DEFAULT_PROMOTE_CHECK_TIMEOUT        60  /* seconds */
 #define DEFAULT_PROMOTE_CHECK_INTERVAL       1   /* seconds */
+#define DEFAULT_STANDBY_RECONNECT_TIMEOUT    60  /* seconds */
 
 #ifndef RECOVERY_COMMAND_FILE
 #define RECOVERY_COMMAND_FILE "recovery.conf"

@@ -249,6 +249,8 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #primary_notification_timeout=60	# Interval (in seconds) which repmgrd on a standby
 					# will wait for a notification from the new primary,
 					# before falling back to degraded monitoring
+#standby_reconnect_timeout=60	# Interval (in seconds) which repmgrd on a standby will wait
+					# to reconnect to the local node after executing "follow_command"
 
 #monitoring_history=no                  # Whether to write monitoring data to the "montoring_history" table
 #monitor_interval_secs=2                # Interval (in seconds) at which to write monitoring data

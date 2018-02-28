@@ -344,6 +344,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->async_query_timeout = DEFAULT_ASYNC_QUERY_TIMEOUT;
 	options->primary_notification_timeout = DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT;
 	options->primary_follow_timeout = DEFAULT_PRIMARY_FOLLOW_TIMEOUT;
+	options->standby_reconnect_timeout = DEFAULT_STANDBY_RECONNECT_TIMEOUT;
 
 	/*-------------
 	 * witness settings
@@ -570,6 +571,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->primary_notification_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "primary_follow_timeout") == 0)
 			options->primary_follow_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "standby_reconnect_timeout") == 0)
+			options->standby_reconnect_timeout = repmgr_atoi(value, name, error_list, 0);
 
 		/* witness settings */
 		else if (strcmp(name, "witness_sync_interval") == 0)

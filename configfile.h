@@ -119,6 +119,7 @@ typedef struct
 	int			async_query_timeout;
 	int			primary_notification_timeout;
 	int			primary_follow_timeout;
+	int			standby_reconnect_timeout;
 
 	/* BDR settings */
 	bool		bdr_local_monitoring_only;
@@ -178,6 +179,7 @@ typedef struct
 		DEFAULT_ASYNC_QUERY_TIMEOUT, \
 		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT,	\
 		DEFAULT_PRIMARY_FOLLOW_TIMEOUT,	\
+		DEFAULT_STANDBY_RECONNECT_TIMEOUT,	\
 		/* BDR settings */ \
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \
