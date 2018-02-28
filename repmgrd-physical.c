@@ -2201,17 +2201,18 @@ follow_new_primary(int new_primary_id)
 		 *
 		 * TODO:
 		 *  - implement for cascading standby follow too
-		 *  - make timeout configurable ("standby_reconnect_timeout")
-		*/
-		int i, max = 60;
-		for (i = 0; i < max; i++)
+		 */
+		int i;
+		for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
 		{
 			local_conn = establish_db_connection(local_node_info.conninfo, false);
 
 			if (PQstatus(local_conn) == CONNECTION_OK)
 				break;
 
-			log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node", i + 1, max);
+			log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
+					  i + 1,
+					  config_file_options.standby_reconnect_timeout);
 			sleep(1);
 		}
 
