@@ -318,6 +318,7 @@ monitor_streaming_primary(void)
 
 				monitoring_state = MS_DEGRADED;
 				INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+				log_notice(_("unable to connect to local node, falling back to degraded monitoring"));
 			}
 
 		}
@@ -364,19 +365,18 @@ monitor_streaming_primary(void)
 				{
 					local_node_info.node_status = NODE_STATUS_UP;
 
-					initPQExpBuffer(&event_details);
-
 					/* check to see if the node has been restored as a standby */
 					if (get_recovery_type(local_conn) == RECTYPE_STANDBY)
 					{
 						PGconn *new_primary_conn;
+
+						initPQExpBuffer(&event_details);
 
 						appendPQExpBuffer(&event_details,
 										  _("reconnected to node after %i seconds, node is now a standby, switching to standby monitoring"),
 										  degraded_monitoring_elapsed);
 						log_notice("%s", event_details.data);
 						termPQExpBuffer(&event_details);
-
 
 						primary_node_id = UNKNOWN_NODE_ID;
 
@@ -430,10 +430,15 @@ monitor_streaming_primary(void)
 								if (resume_monitoring == true)
 								{
 									monitoring_state = MS_NORMAL;
+									log_notice(_("former primary has been restored as standby after %i seconds, updating node record and resuming monitoring"),
+											   degraded_monitoring_elapsed);
+
+									initPQExpBuffer(&event_details);
 
 									appendPQExpBuffer(&event_details,
-													  _("former primary has been restored as standby after %i seconds, updating node record and resuming monitoring"),
-													  degraded_monitoring_elapsed);
+													  _("node restored as standby after %i seconds, monitoring connection to upstream node %i"),
+													  degraded_monitoring_elapsed,
+													  local_node_info.upstream_node_id);
 
 									create_event_notification(new_primary_conn,
 															  &config_file_options,
@@ -441,7 +446,8 @@ monitor_streaming_primary(void)
 															  "repmgrd_standby_reconnect",
 															  true,
 															  event_details.data);
-									log_notice("%s", event_details.data);
+
+
 									termPQExpBuffer(&event_details);
 
 									close_connection(&new_primary_conn);
@@ -480,6 +486,7 @@ monitor_streaming_primary(void)
 					{
 						monitoring_state = MS_NORMAL;
 
+						initPQExpBuffer(&event_details);
 						appendPQExpBuffer(&event_details,
 										  _("reconnected to primary node after %i seconds, resuming monitoring"),
 										  degraded_monitoring_elapsed);
@@ -520,7 +527,7 @@ loop:
 
 				if (monitoring_state == MS_DEGRADED)
 				{
-					log_detail(_("waiting for primary to reappear"));
+					log_detail(_("waiting for the node to become available"));
 				}
 
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
@@ -2503,18 +2510,20 @@ do_election(void)
 
 	if (config_file_options.failover == FAILOVER_MANUAL)
 	{
-		log_notice(_("this node is not configured for automatic failover so will not be considered as promotion candidate"));
+		log_notice(_("this node is not configured for automatic failover so will not be considered as promotion candidate, and will not follow the new primary"));
+		log_detail(_("\"failover\" is set to \"manual\" in repmgr.conf"));
+		log_hint(_("manually execute \"repmgr standby follow\" to have this node follow the new primary"));
 
-		return ELECTION_LOST;
+		return ELECTION_NOT_CANDIDATE;
 	}
 
-	/* node priority is set to zero - don't ever become a candidate */
+	/* node priority is set to zero - don't become a candidate, and lose by default */
 	if (local_node_info.priority <= 0)
 	{
 		log_notice(_("this node's priority is %i so will not be considered as an automatic promotion candidate"),
 				   local_node_info.priority);
 
-		return ELECTION_NOT_CANDIDATE;
+		return ELECTION_LOST;
 	}
 
 	/* get all active nodes attached to upstream, excluding self */
