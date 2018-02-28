@@ -1701,7 +1701,7 @@ do_upstream_standby_failover(void)
 	t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	RecoveryType primary_type = RECTYPE_UNKNOWN;
-	int			r;
+	int			i, r;
 	char		parsed_follow_command[MAXPGPATH] = "";
 
 	PQfinish(upstream_conn);
@@ -1786,8 +1786,30 @@ do_upstream_standby_failover(void)
 		termPQExpBuffer(&event_details);
 	}
 
-	/* reconnect to local node */
-	local_conn = establish_db_connection(config_file_options.conninfo, false);
+	/*
+	 * It's possible that the standby is still starting up after the "follow_command"
+	 * completes, so poll for a while until we get a connection.
+	 */
+
+	for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
+	{
+		local_conn = establish_db_connection(local_node_info.conninfo, false);
+
+		if (PQstatus(local_conn) == CONNECTION_OK)
+			break;
+
+		log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
+				  i + 1,
+				  config_file_options.standby_reconnect_timeout);
+		sleep(1);
+	}
+
+	if (PQstatus(local_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to reconnect to local node %i"),
+				  local_node_info.node_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
 
 	/* refresh shared memory settings which will have been zapped by the restart */
 	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
@@ -2067,7 +2089,7 @@ follow_new_primary(int new_primary_id)
 	char		parsed_follow_command[MAXPGPATH] = "";
 
 	PQExpBufferData event_details;
-	int			r;
+	int			i, r;
 
 	/* Store details of the failed node here */
 	t_node_info failed_primary = T_NODE_INFO_INITIALIZER;
@@ -2201,34 +2223,29 @@ follow_new_primary(int new_primary_id)
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
+	/*
+	 * It's possible that the standby is still starting up after the "follow_command"
+	 * completes, so poll for a while until we get a connection.
+	 */
+
+	for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
 	{
-		/*
-		 * It's possible that the standby is still starting up after the "follow_command"
-		 * completes, so poll for a while until we get a connection.
-		 *
-		 * TODO:
-		 *  - implement for cascading standby follow too
-		 */
-		int i;
-		for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
-		{
-			local_conn = establish_db_connection(local_node_info.conninfo, false);
+		local_conn = establish_db_connection(local_node_info.conninfo, false);
 
-			if (PQstatus(local_conn) == CONNECTION_OK)
-				break;
+		if (PQstatus(local_conn) == CONNECTION_OK)
+			break;
 
-			log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
-					  i + 1,
-					  config_file_options.standby_reconnect_timeout);
-			sleep(1);
-		}
+		log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
+				  i + 1,
+				  config_file_options.standby_reconnect_timeout);
+		sleep(1);
+	}
 
-		if (PQstatus(local_conn) != CONNECTION_OK)
-		{
-			log_error(_("unable to reconnect to local node %i"),
-					  local_node_info.node_id);
-			return FAILOVER_STATE_FOLLOW_FAIL;
-		}
+	if (PQstatus(local_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to reconnect to local node %i"),
+				  local_node_info.node_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
 	/* refresh shared memory settings which will have been zapped by the restart */
