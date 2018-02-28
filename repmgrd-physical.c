@@ -2172,8 +2172,6 @@ follow_new_primary(int new_primary_id)
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
-
-
 	/*
 	 * refresh local copy of local and primary node records - we get these
 	 * directly from the primary to ensure they're the current version
@@ -2196,7 +2194,34 @@ follow_new_primary(int new_primary_id)
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
-	local_conn = establish_db_connection(local_node_info.conninfo, false);
+	{
+		/*
+		 * It's possible that the standby is still starting up after the "follow_command"
+		 * completes, so poll for a while until we get a connection.
+		 *
+		 * TODO:
+		 *  - implement for cascading standby follow too
+		 *  - make timeout configurable ("standby_reconnect_timeout")
+		*/
+		int i, max = 60;
+		for (i = 0; i < max; i++)
+		{
+			local_conn = establish_db_connection(local_node_info.conninfo, false);
+
+			if (PQstatus(local_conn) == CONNECTION_OK)
+				break;
+
+			log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node", i + 1, max);
+			sleep(1);
+		}
+
+		if (PQstatus(local_conn) != CONNECTION_OK)
+		{
+			log_error(_("unable to reconnect to local node %i"),
+					  local_node_info.node_id);
+			return FAILOVER_STATE_FOLLOW_FAIL;
+		}
+	}
 
 	/* refresh shared memory settings which will have been zapped by the restart */
 	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
@@ -2209,8 +2234,7 @@ follow_new_primary(int new_primary_id)
 
 	log_notice("%s", event_details.data);
 
-	create_event_notification(
-							  upstream_conn,
+	create_event_notification(upstream_conn,
 							  &config_file_options,
 							  local_node_info.node_id,
 							  "repmgrd_failover_follow",
