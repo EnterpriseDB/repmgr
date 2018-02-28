@@ -440,6 +440,7 @@ start_monitoring(void)
 				break;
 			case WITNESS:
 				monitor_streaming_witness();
+				break;
 			case BDR:
 				monitor_bdr();
 				return;
