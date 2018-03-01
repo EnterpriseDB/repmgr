@@ -998,24 +998,6 @@ main(int argc, char **argv)
 	}
 
 
-
-	/* check for conflicts between runtime options and configuration file */
-	/* ================================================================== */
-
-	if (action == STANDBY_CLONE)
-	{
-		standy_clone_mode mode = get_standby_clone_mode();
-
-		if (mode == barman && runtime_options.without_barman == false
-			&& config_file_options.use_replication_slots == true)
-		{
-			log_error(_("STANDBY CLONE in Barman mode is incompatible with configuration option \"use_replication_slots\""));
-			log_hint(_("set \"use_replication_slots\" to \"no\" in repmgr.conf, or use --without-barman to clone directly from the upstream server"));
-			exit(ERR_BAD_CONFIG);
-		}
-	}
-
-
 	/*
 	 * Check for configuration file items which can be overriden by runtime
 	 * options
