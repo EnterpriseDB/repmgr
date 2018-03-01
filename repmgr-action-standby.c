@@ -5736,11 +5736,14 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	 * If restore_command is set, we use it as restore_command in
 	 * recovery.conf
 	 */
-	if (strcmp(config_file_options.restore_command, "") != 0)
+	if (config_file_options.restore_command[0] != '\0')
 	{
+		char	   *escaped = escape_recovery_conf_value(config_file_options.restore_command);
+
 		appendPQExpBuffer(&recovery_file_buf,
 						  "restore_command = '%s'\n",
-						  config_file_options.restore_command);
+						  escaped);
+		free(escaped);
 	}
 
 	if (as_file == true)
