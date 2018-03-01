@@ -554,13 +554,17 @@ do_standby_clone(void)
 		}
 	}
 
-	if (mode == pg_basebackup)
+	switch (mode)
 	{
-		r = run_basebackup(&node_record);
-	}
-	else
-	{
-		r = run_file_backup(&node_record);
+		case pg_basebackup:
+			r = run_basebackup(&node_record);
+			break;
+		case barman:
+			r = run_file_backup(&node_record);
+			break;
+		default:
+			/* should never reach here */
+			log_error(_("unknown clone mode"));
 	}
 
 
@@ -5345,6 +5349,90 @@ stop_backup:
 	{
 		/* In Barman mode, remove local_repmgr_directory */
 		rmtree(local_repmgr_tmp_directory, true);
+	}
+
+
+	/*
+	 * if replication slots in use, create replication slot
+	 */
+	if (r == SUCCESS)
+	{
+		if (config_file_options.use_replication_slots == true)
+		{
+			bool slot_warning = false;
+			if (runtime_options.no_upstream_connection == true)
+			{
+				slot_warning = true;
+			}
+			else
+			{
+				t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
+				t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
+				RecordStatus record_status = RECORD_NOT_FOUND;
+				PGconn	   *upstream_conn = NULL;
+
+				record_status = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
+
+				if (record_status != RECORD_FOUND)
+				{
+					log_error(_("unable to retrieve node record for upstream node %i"), upstream_node_id);
+					slot_warning = true;
+				}
+				else
+				{
+					upstream_conn = establish_db_connection(upstream_node_record.conninfo, false);
+					if (PQstatus(upstream_conn) != CONNECTION_OK)
+					{
+						log_error(_("unable to connect to upstream node %i to create a replication slot"), upstream_node_id);
+						slot_warning = true;
+					}
+					else
+					{
+						record_status = get_slot_record(upstream_conn, node_record->slot_name, &slot_info);
+
+						if (record_status == RECORD_FOUND)
+						{
+							log_verbose(LOG_INFO,
+										_("replication slot \"%s\" aleady exists on upstream node %i"),
+										node_record->slot_name,
+										upstream_node_id);
+						}
+						else
+						{
+							PQExpBufferData errmsg;
+
+							initPQExpBuffer(&errmsg);
+
+							if (create_replication_slot(upstream_conn, node_record->slot_name, source_server_version_num, &errmsg) == false)
+							{
+								log_error(_("unable to create replication slot on upstream node %i"), upstream_node_id);
+								log_detail("%s", errmsg.data);
+								slot_warning = true;
+							}
+							else
+							{
+								log_notice(_("replication slot \"%s\" created on upstream node \"%s\" (ID: %i)"),
+										   node_record->slot_name,
+										   upstream_node_record.node_name,
+										   upstream_node_id );
+							}
+							termPQExpBuffer(&errmsg);
+						}
+
+						PQfinish(upstream_conn);
+					}
+				}
+			}
+
+
+			if (slot_warning == true)
+			{
+				log_warning(_("\"use_replication_slots\" specified but a replication slot could not be created"));
+				log_hint(_("ensure a replication slot called \"%s\" is created on the upstream node (ID: %i)"),
+						 node_record->slot_name,
+						 upstream_node_id);
+			}
+		}
 	}
 
 	return r;
