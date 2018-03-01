@@ -5598,7 +5598,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 		char	   *escaped = escape_recovery_conf_value(runtime_options.upstream_conninfo);
 
 		appendPQExpBuffer(&recovery_file_buf,
-						  "primary_conninfo = '%s\n",
+						  "primary_conninfo = '%s'\n",
 						  escaped);
 
 		free(escaped);
