@@ -1775,9 +1775,9 @@ do_help(void)
 
 	printf(_("Usage:\n"));
 	printf(_("    %s [OPTIONS] primary {register|unregister}\n"), progname());
-	printf(_("    %s [OPTIONS] standby {register|unregister|clone|promote|follow}\n"), progname());
+	printf(_("    %s [OPTIONS] standby {register|unregister|clone|promote|follow|switchover}\n"), progname());
 	printf(_("    %s [OPTIONS] bdr     {register|unregister}\n"), progname());
-	printf(_("    %s [OPTIONS] node    status\n"), progname());
+	printf(_("    %s [OPTIONS] node    {status|check|rejoin|service}\n"), progname());
 	printf(_("    %s [OPTIONS] cluster {show|event|matrix|crosscheck}\n"), progname());
 
 	puts("");
