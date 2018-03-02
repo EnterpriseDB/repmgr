@@ -6,6 +6,7 @@
         repmgr: remove restriction on replication slots when cloning from
           a Barman server; GitHub #379 (Ian)
         repmgr: ensure "node rejoin" honours "--dry-run" option; GitHub #383 (Ian)
+        repmgr: fix --superuser handling when cloning a standby; GitHub #380 (Ian)
         repmgrd: improve detection of status change from primary to standby (Ian)
         repmgrd: improve log output in various situations (Ian)
         repmgrd: improve reconnection to the local node after a failover (Ian)

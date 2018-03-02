@@ -4385,7 +4385,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 
 		param_set(&repl_conninfo, "replication", "1");
 
-		if (*runtime_options.replication_user)
+		if (runtime_options.replication_user[0] != '\0')
 		{
 			param_set(&repl_conninfo, "user", runtime_options.replication_user);
 		}
@@ -4440,12 +4440,13 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 			 * XXX at this point we could check
 			 * current_setting('max_wal_senders) - COUNT(*) FROM
 			 * pg_stat_replication; if >= min_replication_connections we could
-			 * infer possible authentication error.
+			 * infer possible authentication error / lack of permissions.
 			 *
 			 * Alternatively call PQconnectStart() and poll for
 			 * presence/absence of CONNECTION_AUTH_OK ?
 			 */
 			log_error(_("unable to establish necessary replication connections"));
+
 			log_hint(_("increase \"max_wal_senders\" by at least %i"),
 					 min_replication_connections - possible_replication_connections);
 
