@@ -2721,7 +2721,7 @@ init_node_record(t_node_info *node_record)
 
 	if (config_file_options.replication_user[0] != '\0')
 	{
-		/* replication user explicitly provided */
+		/* replication user explicitly provided in configuration file */
 		strncpy(node_record->repluser, config_file_options.replication_user, NAMEDATALEN);
 	}
 	else
