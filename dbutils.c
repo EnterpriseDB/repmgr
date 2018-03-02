@@ -219,8 +219,7 @@ establish_db_connection_quiet(const char *conninfo)
 }
 
 
-PGconn
-		   *
+PGconn *
 establish_primary_db_connection(PGconn *conn,
 								const bool exit_on_error)
 {
@@ -235,36 +234,6 @@ establish_primary_db_connection(PGconn *conn,
 	return establish_db_connection(primary_node_info.conninfo,
 								   exit_on_error);
 }
-
-
-PGconn *
-establish_db_connection_as_user(const char *conninfo,
-								const char *user,
-								const bool exit_on_error)
-{
-	PGconn	   *conn = NULL;
-	t_conninfo_param_list conninfo_params = T_CONNINFO_PARAM_LIST_INITIALIZER;
-	bool		parse_success = false;
-	char	   *errmsg = NULL;
-
-	initialize_conninfo_params(&conninfo_params, false);
-
-	parse_success = parse_conninfo_string(conninfo, &conninfo_params, errmsg, true);
-
-	if (parse_success == false)
-	{
-		log_error(_("unable to pass provided conninfo string:\n	 %s"), errmsg);
-		return NULL;
-	}
-
-	param_set(&conninfo_params, "user", user);
-
-	conn = establish_db_connection_by_params(&conninfo_params, false);
-
-	return conn;
-}
-
-
 
 
 PGconn *

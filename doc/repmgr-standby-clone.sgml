@@ -186,6 +186,15 @@
       </varlistentry>
 
       <varlistentry>
+        <term><option> --recovery-conf-only</option></term>
+        <listitem>
+          <para>
+            create <filename>recovery.conf</filename> file for a previously cloned instance
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>--replication-user</option></term>
         <listitem>
           <para>
@@ -193,6 +202,17 @@
           </para>
         </listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><option>--superuser</option></term>
+        <listitem>
+          <para>
+            if the &repmgr; user is not a superuser, the name of a valid superuser must
+            be provided with this option
+          </para>
+        </listitem>
+      </varlistentry>
+
 
       <varlistentry>
         <term><option>--upstream-conninfo</option></term>
@@ -217,15 +237,6 @@
         <listitem>
           <para>
             do not use Barman even if configured
-          </para>
-        </listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term><option> --recovery-conf-only</option></term>
-        <listitem>
-          <para>
-            create <filename>recovery.conf</filename> file for a previously cloned instance
           </para>
         </listitem>
       </varlistentry>

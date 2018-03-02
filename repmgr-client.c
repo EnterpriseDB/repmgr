@@ -1485,11 +1485,12 @@ check_cli_parameters(const int action)
 		{
 			case PRIMARY_REGISTER:
 			case STANDBY_REGISTER:
-				break;
 			case STANDBY_CLONE:
+				break;
+
 			case STANDBY_FOLLOW:
 				item_list_append_format(&cli_warnings,
-										_("--replication-user ignored when executing %s)"),
+										_("--replication-user ignored when executing %s"),
 										action_name(action));
 			default:
 				item_list_append_format(&cli_warnings,
@@ -2147,10 +2148,19 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 }
 
 
+/*
+ * get_superuser_connection()
+ *
+ * Check if provided connection "conn" is a superuser connection, if not attempt to
+ * make a superuser connection "superuser_conn" with the provided --superuser parameter.
+ *
+ * "privileged_conn" is set to whichever connection is the superuser connection.
+ */
 void
 get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn)
 {
 	t_connection_user userinfo = T_CONNECTION_USER_INITIALIZER;
+	t_conninfo_param_list conninfo_params = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	bool		is_superuser = false;
 
 	/* this should never happen */
@@ -2176,9 +2186,11 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 		exit(ERR_BAD_CONFIG);
 	}
 
-	*superuser_conn = establish_db_connection_as_user(config_file_options.conninfo,
-													  runtime_options.superuser,
-													  false);
+	initialize_conninfo_params(&conninfo_params, false);
+	conn_to_param_list(*conn, &conninfo_params);
+	param_set(&conninfo_params, "user", runtime_options.superuser);
+
+	*superuser_conn = establish_db_connection_by_params(&conninfo_params, false);
 
 	if (PQstatus(*superuser_conn) != CONNECTION_OK)
 	{
