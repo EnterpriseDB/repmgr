@@ -129,7 +129,7 @@ do_standby_clone(void)
 	int			r = 0;
 
 	/* dummy node record */
-	t_node_info node_record = T_NODE_INFO_INITIALIZER;
+	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 	/*
 	 * --recovery-conf-only provided - we'll handle that separately
@@ -186,8 +186,8 @@ do_standby_clone(void)
 		check_barman_config();
 	}
 
-	init_node_record(&node_record);
-	node_record.type = STANDBY;
+	init_node_record(&local_node_record);
+	local_node_record.type = STANDBY;
 
 	/*
 	 * Initialise list of conninfo parameters which will later be used to
@@ -530,7 +530,7 @@ do_standby_clone(void)
 
 	if (mode != barman)
 	{
-		initialise_direct_clone(&node_record);
+		initialise_direct_clone(&local_node_record);
 	}
 
 	switch (mode)
@@ -557,10 +557,10 @@ do_standby_clone(void)
 	switch (mode)
 	{
 		case pg_basebackup:
-			r = run_basebackup(&node_record);
+			r = run_basebackup(&local_node_record);
 			break;
 		case barman:
-			r = run_file_backup(&node_record);
+			r = run_file_backup(&local_node_record);
 			break;
 		default:
 			/* should never reach here */
@@ -574,7 +574,7 @@ do_standby_clone(void)
 		/* If a replication slot was previously created, drop it */
 		if (config_file_options.use_replication_slots == true)
 		{
-			drop_replication_slot(source_conn, node_record.slot_name);
+			drop_replication_slot(source_conn, local_node_record.slot_name);
 		}
 
 		log_error(_("unable to take a base backup of the primary server"));
@@ -601,7 +601,7 @@ do_standby_clone(void)
 
 	/* Write the recovery.conf file */
 
-	if (create_recovery_file(&node_record, &recovery_conninfo, local_data_directory, true) == false)
+	if (create_recovery_file(&local_node_record, &recovery_conninfo, local_data_directory, true) == false)
 	{
 		/* create_recovery_file() will log an error */
 		log_notice(_("unable to create recovery.conf; see preceding error messages"));
@@ -4389,6 +4389,10 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		{
 			param_set(&repl_conninfo, "user", runtime_options.replication_user);
 		}
+		else if (upstream_repluser[0] != '\0')
+		{
+			param_set(&repl_conninfo, "user", upstream_repluser);
+		}
 		else if (node_info->repluser[0] != '\0')
 		{
 			param_set(&repl_conninfo, "user", node_info->repluser);
@@ -4659,9 +4663,13 @@ run_basebackup(t_node_info *node_record)
 		/* string will already have been parsed */
 		(void) parse_conninfo_string(runtime_options.dbname, &conninfo, NULL, false);
 
-		if (*runtime_options.replication_user)
+		if (runtime_options.replication_user[0] != '\0')
 		{
 			param_set(&conninfo, "user", runtime_options.replication_user);
+		}
+		else if (upstream_repluser[0] != '\0')
+		{
+			param_set(&conninfo, "user", upstream_repluser);
 		}
 		else
 		{
@@ -4694,6 +4702,10 @@ run_basebackup(t_node_info *node_record)
 		if (strlen(runtime_options.replication_user))
 		{
 			appendPQExpBuffer(&params, " -U %s", runtime_options.replication_user);
+		}
+		else if (strlen(upstream_repluser))
+		{
+			appendPQExpBuffer(&params, " -U %s", upstream_repluser);
 		}
 		else if (strlen(node_record->repluser))
 		{
