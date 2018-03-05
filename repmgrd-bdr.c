@@ -152,15 +152,16 @@ monitor_bdr(void)
 		cell->node_info->node_status = NODE_STATUS_UP;
 	}
 
-	log_debug("main_loop_bdr() monitoring local node %i", config_file_options.node_id);
+	log_info(_("starting continuous BDR node monitoring on node %i"),
+			 config_file_options.node_id);
 
-	log_info(_("starting continuous BDR node monitoring"));
+	INSTR_TIME_SET_CURRENT(log_status_interval_start);
 
 	while (true)
 	{
 
 		/* monitoring loop */
-		log_verbose(LOG_DEBUG, "BDR check loop...");
+		log_verbose(LOG_DEBUG, "BDR check loop - checking %i nodes", nodes.node_count);
 
 		for (cell = nodes.head; cell; cell = cell->next)
 		{
@@ -262,7 +263,6 @@ loop:
 		if (config_file_options.log_status_interval > 0)
 		{
 			int			log_status_interval_elapsed = calculate_elapsed(log_status_interval_start);
-
 			if (log_status_interval_elapsed >= config_file_options.log_status_interval)
 			{
 				log_info(_("monitoring BDR replication status on node \"%s\" (ID: %i)"),
@@ -273,8 +273,7 @@ loop:
 				{
 					if (cell->node_info->monitoring_state == MS_DEGRADED)
 					{
-						log_detail(
-								   _("monitoring node \"%s\" (ID: %i) in degraded mode"),
+						log_detail(_("monitoring node \"%s\" (ID: %i) in degraded mode"),
 								   cell->node_info->node_name,
 								   cell->node_info->node_id);
 					}
