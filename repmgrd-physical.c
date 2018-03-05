@@ -507,8 +507,6 @@ loop:
 			got_SIGHUP = false;
 		}
 
-
-
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
 					config_file_options.monitor_interval_secs);
 
@@ -1044,6 +1042,9 @@ loop:
 			got_SIGHUP = false;
 		}
 
+		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
+					config_file_options.monitor_interval_secs);
+
 		sleep(config_file_options.monitor_interval_secs);
 	}
 }
@@ -1373,6 +1374,9 @@ loop:
 			}
 			got_SIGHUP = false;
 		}
+
+		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
+					config_file_options.monitor_interval_secs);
 
 		sleep(config_file_options.monitor_interval_secs);
 	}
