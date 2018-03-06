@@ -73,7 +73,6 @@ static void start_monitoring(void);
 #ifndef WIN32
 static void setup_event_handlers(void);
 static void handle_sighup(SIGNAL_ARGS);
-static void handle_sigint(SIGNAL_ARGS);
 #endif
 
 int			calculate_elapsed(instr_time start_time);
@@ -613,11 +612,6 @@ check_and_create_pid_file(const char *pid_file)
 
 
 #ifndef WIN32
-static void
-handle_sigint(SIGNAL_ARGS)
-{
-	terminate(SUCCESS);
-}
 
 /* SIGHUP: set flag to re-read config file at next convenient time */
 static void
@@ -630,8 +624,23 @@ static void
 setup_event_handlers(void)
 {
 	pqsignal(SIGHUP, handle_sighup);
-	pqsignal(SIGINT, handle_sigint);
-	pqsignal(SIGTERM, handle_sigint);
+
+	/*
+	 * we want to be able to write a "repmgrd_shutdown" event, so delegate
+	 * signal handling to the respective replication type handler, as it
+	 * will know best which database connection to use
+	 */
+	switch (config_file_options.replication_type)
+	{
+		case REPLICATION_TYPE_BDR:
+			pqsignal(SIGINT, handle_sigint_bdr);
+			pqsignal(SIGTERM, handle_sigint_bdr);
+			break;
+		case REPLICATION_TYPE_PHYSICAL:
+			pqsignal(SIGINT, handle_sigint_physical);
+			pqsignal(SIGTERM, handle_sigint_physical);
+			break;
+	}
 }
 #endif
 
