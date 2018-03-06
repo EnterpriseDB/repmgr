@@ -22,4 +22,5 @@
 extern void do_bdr_node_check(void);
 extern void monitor_bdr(void);
 
+extern void	handle_sigint_bdr(SIGNAL_ARGS);
 #endif							/* _REPMGRD_BDR_H_ */

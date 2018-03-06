@@ -26,4 +26,6 @@ void		monitor_streaming_standby(void);
 void		monitor_streaming_witness(void);
 void		close_connections_physical(void);
 
+void		handle_sigint_physical(SIGNAL_ARGS);
+
 #endif							/* _REPMGRD_PHYSICAL_H_ */

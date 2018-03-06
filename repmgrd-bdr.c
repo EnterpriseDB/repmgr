@@ -35,6 +35,29 @@ do_bdr_node_check(void)
 	/* nothing to do at the moment */
 }
 
+void
+handle_sigint_bdr(SIGNAL_ARGS)
+{
+	PQExpBufferData event_details;
+
+	initPQExpBuffer(&event_details);
+
+	appendPQExpBuffer(&event_details,
+					  "%s signal received",
+					  postgres_signal_arg == SIGTERM
+					  ? "TERM" : "INT");
+
+	create_event_notification(local_conn,
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "repmgrd_shutdown",
+							  true,
+							  event_details.data);
+	termPQExpBuffer(&event_details);
+
+	terminate(SUCCESS);
+}
+
 
 void
 monitor_bdr(void)

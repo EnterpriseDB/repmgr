@@ -85,6 +85,36 @@ static void update_monitoring_history(void);
 static const char * format_failover_state(FailoverState failover_state);
 
 
+void
+handle_sigint_physical(SIGNAL_ARGS)
+{
+	PGconn *writeable_conn;
+	PQExpBufferData event_details;
+
+	initPQExpBuffer(&event_details);
+
+	appendPQExpBuffer(&event_details,
+					  "%s signal received",
+					  postgres_signal_arg == SIGTERM
+					  ? "TERM" : "INT");
+
+	if (local_node_info.type == PRIMARY)
+		writeable_conn = local_conn;
+	else
+		writeable_conn = primary_conn;
+
+	create_event_notification(writeable_conn,
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "repmgrd_shutdown",
+							  true,
+							  event_details.data);
+
+	termPQExpBuffer(&event_details);
+
+	terminate(SUCCESS);
+}
+
 /* perform some sanity checks on the node's configuration */
 
 void
@@ -113,6 +143,14 @@ do_physical_node_check(void)
 				log_error(_("this node is marked as inactive and cannot be used as a failover target"));
 				log_hint(_("%s"), hint);
 				PQfinish(local_conn);
+
+				create_event_notification(NULL,
+										  &config_file_options,
+										  config_file_options.node_id,
+										  "repmgrd_shutdown",
+										  false,
+										  "node is inactive and cannot be used as a failover target");
+
 				terminate(ERR_BAD_CONFIG);
 
 			case FAILOVER_MANUAL:
@@ -304,7 +342,7 @@ monitor_streaming_primary(void)
 				create_event_notification(NULL,
 										  &config_file_options,
 										  config_file_options.node_id,
-										  "repmgrd_terminate",
+										  "repmgrd_shutdown",
 										  true,
 										  event_details.data);
 
@@ -420,15 +458,28 @@ monitor_streaming_primary(void)
 							}
 							else if (record_status == RECORD_NOT_FOUND)
 							{
-								log_error(_("no metadata record found for this node on current primary %i"), primary_node_id);
+								PQExpBufferData event_details;
+								initPQExpBuffer(&event_details);
+
+								appendPQExpBuffer(&event_details,
+												  _("no metadata record found for this node on current primary %i"),
+												  primary_node_id);
+
+								log_error("%s", event_details.data);
 								log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
 
 								PQfinish(new_primary_conn);
 
-								/* add event notification */
+								create_event_notification(NULL,
+														  &config_file_options,
+														  config_file_options.node_id,
+														  "repmgrd_shutdown",
+														  false,
+														  event_details.data);
+								termPQExpBuffer(&event_details);
+
 								terminate(ERR_BAD_CONFIG);
 							}
-
 						}
 					}
 					else
@@ -1065,9 +1116,26 @@ monitor_streaming_witness(void)
 
 	if (get_primary_node_record(local_conn, &upstream_node_info) == false)
 	{
-		log_error(_("unable to retrieve record for primary node"));
+		PQExpBufferData event_details;
+
+		initPQExpBuffer(&event_details);
+
+		appendPQExpBuffer(&event_details,
+						  _("unable to retrieve record for primary node"));
+
+		log_error("%s", event_details.data);
 		log_hint(_("execute \"repmgr witness register --force\" to update the witness node "));
 		PQfinish(local_conn);
+
+		create_event_notification(NULL,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "repmgrd_shutdown",
+								  false,
+								  event_details.data);
+
+		termPQExpBuffer(&event_details);
+
 		terminate(ERR_BAD_CONFIG);
 	}
 
