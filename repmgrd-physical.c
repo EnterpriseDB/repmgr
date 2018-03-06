@@ -1476,7 +1476,7 @@ do_primary_failover(void)
 
 		failover_state = promote_self();
 	}
-	else if (election_result == ELECTION_LOST)
+	else if (election_result == ELECTION_LOST || election_result == ELECTION_NOT_CANDIDATE)
 	{
 		log_info(_("follower node awaiting notification from the candidate node"));
 		failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
@@ -1492,7 +1492,7 @@ do_primary_failover(void)
 
 		/* TODO: rerun election if new primary doesn't appear after timeout */
 
-		/* either follow or time out; either way resume monitoring */
+		/* either follow, self-promote or time out; either way resume monitoring */
 		if (wait_primary_notification(&new_primary_id) == true)
 		{
 			/* if primary has reappeared, no action needed */
@@ -1543,11 +1543,9 @@ do_primary_failover(void)
 											  &config_file_options,
 											  local_node_info.node_id,
 											  "standby_disconnect_manual",
-
-					/*
-					 * here "true" indicates the action has occurred as
-					 * expected
-					 */
+											  /*
+											   * here "true" indicates the action has occurred as expected
+											   */
 											  true,
 											  event_details.data);
 					PQfinish(new_primary_conn);
