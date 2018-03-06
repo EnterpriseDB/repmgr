@@ -121,23 +121,6 @@ monitor_bdr(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Retrieve record for this node from the local database */
-	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_info);
-
-	/*
-	 * Terminate if we can't find the local node record. This is a
-	 * "fix-the-config" situation, not a lot else we can do.
-	 */
-	if (record_status != RECORD_FOUND)
-	{
-		log_error(_("unable to retrieve record for local node (ID: %i), terminating"),
-				  local_node_info.node_id);
-		log_hint(_("check that \"repmgr bdr register\" was executed for this node"));
-		PQfinish(local_conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-
 	if (local_node_info.active == false)
 	{
 		log_error(_("local node (ID: %i) is marked as inactive in repmgr"),
