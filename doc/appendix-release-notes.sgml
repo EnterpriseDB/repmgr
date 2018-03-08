@@ -38,7 +38,7 @@
 
           <listitem>
             <para>
-              add <command><link linkend="repmgr-standby-clone">repmgr standby clone</link> --recovery-conf-only</command>
+              add <command><link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link></command>
               option to enable integration of a standby cloned from another source into a &repmgr; cluster (GitHub #382)
             </para>
           </listitem>

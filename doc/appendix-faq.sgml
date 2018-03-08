@@ -97,12 +97,24 @@
  <sect1 id="faq-repmgr" xreflabel="repmgr">
   <title><command>repmgr</command></title>
 
-  <sect2 id="faq-register-existing-node" xreflabel="">
+  <sect2 id="faq-register-existing-node" xreflabel="registering an existing node">
    <title>Can I register an existing PostgreSQL server with repmgr?</title>
    <para>
     Yes, any existing PostgreSQL server which is part of the same replication
     cluster can be registered with &repmgr;. There's no requirement for a
     standby to have been cloned using &repmgr;.
+   </para>
+  </sect2>
+  <sect2 id="faq-repmgr-clone-other-source" >
+   <title>Can I use a standby not cloned by &repmgr; as a &repmgr; node?</title>
+
+   <para>
+     For a standby which has been manually cloned or recovered from an external
+     backup manager such as Barman, the command
+     <command><link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link></command>
+     can be used to create the correct <filename>recovery.conf</filename> file for
+     use with &repmgr; (and will create a replication slot if required). Once this has been done,
+     <link linkend="repmgr-standby-register">register the node</link> as usual.
    </para>
   </sect2>
 
@@ -203,14 +215,7 @@
    </para>
   </sect2>
 
-  <sect2 id="faq-repmgr-clone-other-source" >
-   <title>Can I use a standby not cloned by &repmgr; as a &repmgr; node?</title>
-   <para>
-     Yes - use <link linkend="repmgr-standby-create-recovery-conf">repmgr standby clone --recovery-conf-only</link> to create the node's
-     <filename>recovery.conf</filename> file, and
-     <link linkend="repmgr-standby-register">register the node</link> as usual.
-   </para>
-  </sect2>
+
 
 
  </sect1>
