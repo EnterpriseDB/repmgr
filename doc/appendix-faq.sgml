@@ -69,6 +69,29 @@
     in a streaming replication cluster.
    </para>
   </sect2>
+
+  <sect2 id="faq-upgrades" xreflabel="Upgrading PostgreSQL with repmgr">
+   <title>Can &repmgr; assist with upgrading a PostgreSQL cluster?</title>
+   <para>
+     For <emphasis>minor</emphasis> version upgrades, e.g. from 9.6.7 to 9.6.8, a common
+     approach is to upgrade a standby to the latest version, perform a
+     <link linkend="performing-switchover">switchover</link> promoting it to a primary,
+     then upgrade the former primary.
+   </para>
+   <para>
+     For <emphasis>major</emphasis> version upgrades (e.g. from PostgreSQL 9.6 to PostgreSQL 10),
+     the traditional approach is to "reseed" a cluster by upgrading a single
+     node with <ulink url="https://www.postgresql.org/docs/current/static/pgupgrade.html">pg_upgrade</ulink>
+     and recloning standbys from this.
+   </para>
+   <para>
+     To minimize downtime during major upgrades, for more recent PostgreSQL
+     versions <ulink url="https://www.2ndquadrant.com/en/resources/pglogical/">pglogical</ulink>
+     can be used to set up a parallel cluster using the newer PostgreSQL version,
+     which can be kept in sync with the existing production cluster until the
+     new cluster is ready to be put into production.
+   </para>
+  </sect2>
  </sect1>
 
  <sect1 id="faq-repmgr" xreflabel="repmgr">
