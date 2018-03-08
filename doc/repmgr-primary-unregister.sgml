@@ -22,7 +22,7 @@
   <refsect1>
     <title>Execution</title>
     <para>
-      <command>repmgr primary unregister</command> should be run on the current primary,
+      <command>repmgr primary unregister</command> can be run on any active &repmgr; node,
       with the ID of the node to unregister passed as <option>--node-id</option>.
     </para>
     <para>
