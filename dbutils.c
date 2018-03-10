@@ -124,7 +124,7 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 
 	initialize_conninfo_params(&conninfo_params, false);
 
-	parse_success = parse_conninfo_string(conninfo, &conninfo_params, errmsg, false);
+	parse_success = parse_conninfo_string(conninfo, &conninfo_params, &errmsg, false);
 
 	if (parse_success == false)
 	{
@@ -546,12 +546,12 @@ param_get(t_conninfo_param_list *param_list, const char *param)
  * don't copy that node's values
  */
 bool
-parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char *errmsg, bool ignore_local_params)
+parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char **errmsg, bool ignore_local_params)
 {
 	PQconninfoOption *connOptions = NULL;
 	PQconninfoOption *option = NULL;
 
-	connOptions = PQconninfoParse(conninfo_str, &errmsg);
+	connOptions = PQconninfoParse(conninfo_str, errmsg);
 
 	if (connOptions == NULL)
 		return false;

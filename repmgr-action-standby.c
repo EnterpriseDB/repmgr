@@ -349,7 +349,7 @@ do_standby_clone(void)
 		 * `application_name`, if set
 		 */
 
-		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, errmsg, true);
+		parse_success = parse_conninfo_string(recovery_conninfo_str, &recovery_conninfo, &errmsg, true);
 
 		if (parse_success == false)
 		{
@@ -2319,7 +2319,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	initialize_conninfo_params(&recovery_conninfo, false);
 
 	/* We ignore any application_name set in the primary's conninfo */
-	parse_conninfo_string(primary_node_record->conninfo, &recovery_conninfo, errmsg, true);
+	parse_conninfo_string(primary_node_record->conninfo, &recovery_conninfo, &errmsg, true);
 
 	{
 		t_conninfo_param_list local_node_conninfo;
@@ -2327,7 +2327,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 		initialize_conninfo_params(&local_node_conninfo, false);
 
-		parse_success = parse_conninfo_string(local_node_record.conninfo, &local_node_conninfo, errmsg, false);
+		parse_success = parse_conninfo_string(local_node_record.conninfo, &local_node_conninfo, &errmsg, false);
 
 		if (parse_success == false)
 		{
@@ -3919,7 +3919,7 @@ check_source_server_via_barman()
 	 * parse_conninfo_string() here will remove the upstream's
 	 * `application_name`, if set
 	 */
-	parse_success = parse_conninfo_string(barman_conninfo_str, &barman_conninfo, errmsg, true);
+	parse_success = parse_conninfo_string(barman_conninfo_str, &barman_conninfo, &errmsg, true);
 
 	if (parse_success == false)
 	{
