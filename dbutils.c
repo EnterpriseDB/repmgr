@@ -2608,6 +2608,7 @@ witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn)
 
 		return false;
 	}
+	PQclear(res);
 
 	/* truncate existing records */
 
@@ -2628,6 +2629,8 @@ witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn)
 	/* and done */
 	commit_transaction(witness_conn);
 
+	clear_node_info_list(&nodes);
+	
 	return true;
 }
 
