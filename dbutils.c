@@ -2608,6 +2608,7 @@ witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn)
 		log_error(_("unable to defer constraints:\n  %s"),
 				  PQerrorMessage(witness_conn));
 		rollback_transaction(witness_conn);
+		PQclear(res);
 
 		return false;
 	}
