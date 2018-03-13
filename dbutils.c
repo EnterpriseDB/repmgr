@@ -2611,6 +2611,7 @@ witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn)
 
 		return false;
 	}
+	PQclear(res);
 
 	/* truncate existing records */
 
