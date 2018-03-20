@@ -2634,7 +2634,7 @@ witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn)
 	commit_transaction(witness_conn);
 
 	clear_node_info_list(&nodes);
-	
+
 	return true;
 }
 
