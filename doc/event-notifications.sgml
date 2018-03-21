@@ -190,6 +190,9 @@
     <simpara><literal>repmgrd_failover_follow</literal></simpara>
    </listitem>
    <listitem>
+    <simpara><literal>repmgrd_failover_aborted</literal></simpara>
+   </listitem>
+   <listitem>
     <simpara><literal>bdr_failover</literal></simpara>
    </listitem>
    <listitem>
