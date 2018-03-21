@@ -703,17 +703,29 @@ PGconn *
 try_reconnect(t_node_info *node_info)
 {
 	PGconn	   *conn;
+	t_conninfo_param_list conninfo_params = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 	int			i;
 
 	int			max_attempts = config_file_options.reconnect_attempts;
 
+	initialize_conninfo_params(&conninfo_params, false);
+
+
+	/* we assume by now the conninfo string is parseable */
+	(void) parse_conninfo_string(node_info->conninfo, &conninfo_params, NULL, false);
+
+	/* set some default values if not explicitly provided */
+	param_set_ine(&conninfo_params, "connect_timeout", "2");
+	param_set_ine(&conninfo_params, "fallback_application_name", "repmgr");
+
 	for (i = 0; i < max_attempts; i++)
 	{
 		log_info(_("checking state of node %i, %i of %i attempts"),
 				 node_info->node_id, i + 1, max_attempts);
-		if (is_server_available(node_info->conninfo) == true)
+		if (is_server_available_params(&conninfo_params) == true)
 		{
+
 			log_notice(_("node has recovered, reconnecting"));
 
 			/*
@@ -721,9 +733,13 @@ try_reconnect(t_node_info *node_info)
 			 * connection denied due to connection exhaustion - fall back to
 			 * degraded monitoring? - make that configurable
 			 */
-			conn = establish_db_connection(node_info->conninfo, false);
+
+			conn = establish_db_connection_by_params(&conninfo_params, false);
+
 			if (PQstatus(conn) == CONNECTION_OK)
 			{
+				free_conninfo_params(&conninfo_params);
+
 				node_info->node_status = NODE_STATUS_UP;
 				return conn;
 			}
@@ -740,12 +756,13 @@ try_reconnect(t_node_info *node_info)
 		}
 	}
 
-
 	log_warning(_("unable to reconnect to node %i after %i attempts"),
 				node_info->node_id,
 				max_attempts);
 
 	node_info->node_status = NODE_STATUS_DOWN;
+
+	free_conninfo_params(&conninfo_params);
 
 	return NULL;
 }

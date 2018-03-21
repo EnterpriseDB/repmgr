@@ -3849,6 +3849,28 @@ is_server_available(const char *conninfo)
 }
 
 
+bool
+is_server_available_params(t_conninfo_param_list *param_list)
+{
+	PGPing		status = PQpingParams((const char **) param_list->keywords,
+									  (const char **) param_list->values,
+									  false);
+
+	/* deparsing the param_list adds overhead, so only do it if needed  */
+	if (log_level == LOG_DEBUG)
+	{
+		char *conninfo_str = param_list_to_string(param_list);
+		log_verbose(LOG_DEBUG, "ping status for %s is %i", conninfo_str, (int)status);
+		pfree(conninfo_str);
+	}
+
+	if (status == PQPING_OK)
+		return true;
+
+	return false;
+}
+
+
 /* ==================== */
 /* monitoring functions */
 /* ==================== */

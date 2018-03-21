@@ -465,6 +465,7 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 
 /* node availability functions */
 bool		is_server_available(const char *conninfo);
+bool		is_server_available_params(t_conninfo_param_list *param_list);
 
 /* monitoring functions  */
 void
