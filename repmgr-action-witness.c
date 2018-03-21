@@ -65,7 +65,7 @@ do_witness_register(void)
 	if (recovery_type == RECTYPE_STANDBY)
 	{
 		log_error(_("provided node is a standby"));
-		log_error(_("a witness node must run on an independent primary server"));
+		log_hint(_("a witness node must run on an independent primary server"));
 
 		PQfinish(witness_conn);
 
@@ -86,6 +86,7 @@ do_witness_register(void)
 
 	/* connect to primary with provided parameters */
 	log_info(_("connecting to primary node"));
+
 	/*
 	 * Extract the repmgr user and database names from the conninfo string
 	 * provided in repmgr.conf
@@ -135,8 +136,11 @@ do_witness_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* XXX sanity check witness node is not part of main cluster */
-
+	/*
+	 * TODO:sanity check witness node is not part of main cluster; we could
+	 * add a random application_name to the respective connections,
+	 * and do a simple check of pg_stat_activity
+	 */
 
 	/* create repmgr extension, if does not exist */
 	if (runtime_options.dry_run == false &&  !create_repmgr_extension(witness_conn))
@@ -181,7 +185,6 @@ do_witness_register(void)
 		{
 			log_error(_("witness node is already registered"));
 			log_hint(_("use option -F/--force to reregister the node"));
-
 
 			PQfinish(witness_conn);
 			PQfinish(primary_conn);
