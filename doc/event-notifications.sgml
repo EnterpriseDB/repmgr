@@ -206,6 +206,9 @@
     <simpara><literal>repmgrd_failover_follow</literal></simpara>
    </listitem>
    <listitem>
+     <simpara><literal>repmgrd_failover_aborted</literal></simpara>
+   </listitem>
+   <listitem>
     <simpara><literal>repmgrd_upstream_disconnect</literal></simpara>
    </listitem>
    <listitem>

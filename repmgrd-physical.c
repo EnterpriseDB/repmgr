@@ -2240,17 +2240,14 @@ follow_new_primary(int new_primary_id)
 		PGconn	   *old_primary_conn;
 
 		/*
-		 * The follow action could still fail due to the original primary
+		 * The "standby follow" command could still fail due to the original primary
 		 * reappearing before the candidate could promote itself ("repmgr
 		 * standby follow" will refuse to promote another node if the primary
-		 * is available). However the new primary will only instruct use to
-		 * follow it after it's successfully promoted itself, so that very
-		 * likely won't be the reason for the failure.
-		 *
-		 *
-		 * TODO: check the new primary too - we could have a split-brain
-		 * situation where the old primary reappeared just after the new one
-		 * promoted itself.
+		 * is available). However the new primary will only instruct the other
+		 * nodes to follow it after it's successfully promoted itself, so this
+		 * case is highly unlikely. A slightly more likely scenario would
+		 * be the new primary becoming unavailable just after it's sent notifications
+		 * to its follower nodes, and the old primary becoming available again.
 		 */
 		old_primary_conn = establish_db_connection(failed_primary.conninfo, false);
 
@@ -2259,13 +2256,31 @@ follow_new_primary(int new_primary_id)
 			/* XXX add event notifications */
 			RecoveryType upstream_recovery_type = get_recovery_type(old_primary_conn);
 
-			PQfinish(old_primary_conn);
-
 			if (upstream_recovery_type == RECTYPE_PRIMARY)
 			{
-				log_notice(_("original primary reappeared - no action taken"));
+				initPQExpBuffer(&event_details);
+				appendPQExpBuffer(&event_details,
+								  _("original primary reappeared - no action taken"));
+
+				log_notice("%s", event_details.data);
+
+				create_event_notification(old_primary_conn,
+										  &config_file_options,
+										  local_node_info.node_id,
+										  "repmgrd_failover_aborted",
+										  true,
+										  event_details.data);
+
+				termPQExpBuffer(&event_details);
+
+				PQfinish(old_primary_conn);
+
 				return FAILOVER_STATE_PRIMARY_REAPPEARED;
 			}
+
+			log_notice(_("original primary reappeared as standby"));
+
+			PQfinish(old_primary_conn);
 		}
 
 		return FAILOVER_STATE_FOLLOW_FAIL;
