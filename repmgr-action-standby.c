@@ -2081,7 +2081,7 @@ do_standby_follow(void)
 			log_hint(_("alter \"primary_follow_timeout\" in \"repmgr.conf\" to change this value"));
 		}
 
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_FOLLOW_FAIL);
 	}
 
 	if (runtime_options.dry_run == true)
@@ -2100,7 +2100,7 @@ do_standby_follow(void)
 		log_error(_("unable to find record for new upstream node %i"),
 				  runtime_options.upstream_node_id);
 		PQfinish(primary_conn);
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_FOLLOW_FAIL);
 	}
 
 	if (runtime_options.dry_run == true)
@@ -2125,7 +2125,7 @@ do_standby_follow(void)
 		{
 			log_error(_("unable to determine number of free replication slots on the primary"));
 			PQfinish(primary_conn);
-			exit(ERR_BAD_CONFIG);
+			exit(ERR_FOLLOW_FAIL);
 		}
 
 		if (free_slots == 0)
@@ -2133,7 +2133,7 @@ do_standby_follow(void)
 			log_error(_("no free replication slots available on the primary"));
 			log_hint(_("consider increasing \"max_replication_slots\""));
 			PQfinish(primary_conn);
-			exit(ERR_BAD_CONFIG);
+			exit(ERR_FOLLOW_FAIL);
 		}
 		else if (runtime_options.dry_run == true)
 		{
@@ -2157,7 +2157,7 @@ do_standby_follow(void)
 	{
 		log_error(_("unable to establish a replication connection to the primary node"));
 		PQfinish(primary_conn);
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_FOLLOW_FAIL);
 	}
 	else if (runtime_options.dry_run == true)
 	{
@@ -2174,7 +2174,7 @@ do_standby_follow(void)
 		log_error(_("unable to query the primary node's system identification"));
 		PQfinish(primary_conn);
 		PQfinish(repl_conn);
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_FOLLOW_FAIL);
 	}
 
 	if (primary_identification.system_identifier != local_system_identifier)
@@ -2185,7 +2185,7 @@ do_standby_follow(void)
 				   primary_identification.system_identifier);
 		PQfinish(primary_conn);
 		PQfinish(repl_conn);
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_FOLLOW_FAIL);
 	}
 	else if (runtime_options.dry_run == true)
 	{
@@ -2271,7 +2271,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 		log_error(_("unable to retrieve record for node %i"),
 				  config_file_options.node_id);
 
-		*error_code = ERR_BAD_CONFIG;
+		*error_code = ERR_FOLLOW_FAIL;
 		return false;
 	}
 
@@ -2401,8 +2401,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	if (!create_recovery_file(&local_node_record, &recovery_conninfo, config_file_options.data_directory, true))
 	{
-		/* XXX ERR_RECOVERY_FILE ??? */
-		*error_code = ERR_BAD_CONFIG;
+		*error_code = ERR_FOLLOW_FAIL;
 		return false;
 	}
 

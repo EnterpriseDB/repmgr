@@ -44,5 +44,6 @@
 #define ERR_REGISTRATION_SYNC 20
 #define ERR_OUT_OF_MEMORY 21
 #define ERR_SWITCHOVER_INCOMPLETE 22
+#define ERR_FOLLOW_FAIL 23
 
 #endif							/* _ERRCODE_H_ */
