@@ -2853,7 +2853,7 @@ format_failover_state(FailoverState failover_state)
 		case FAILOVER_STATE_FOLLOW_FAIL:
 			return "FOLLOW_FAIL";
 		case FAILOVER_STATE_NODE_NOTIFICATION_ERROR:
-			return "ODE_NOTIFICATION_ERROR";
+			return "NODE_NOTIFICATION_ERROR";
 	}
 
 	/* should never reach here */
