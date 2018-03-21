@@ -142,7 +142,7 @@ do_physical_node_check(void)
 			case FAILOVER_AUTOMATIC:
 				log_error(_("this node is marked as inactive and cannot be used as a failover target"));
 				log_hint(_("%s"), hint);
-				PQfinish(local_conn);
+				close_connection(&local_conn);
 
 				create_event_notification(NULL,
 										  &config_file_options,
@@ -193,7 +193,7 @@ do_physical_node_check(void)
 		if (required_param_missing == true)
 		{
 			log_hint(_("add the missing configuration parameter(s) and start repmgrd again"));
-			PQfinish(local_conn);
+			close_connection(&local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -275,7 +275,7 @@ monitor_streaming_primary(void)
 
 				local_node_info.node_status = NODE_STATUS_UNKNOWN;
 
-				PQfinish(local_conn);
+				close_connection(&local_conn);
 
 				/*
 				 * as we're monitoring the primary, no point in trying to
@@ -359,7 +359,7 @@ monitor_streaming_primary(void)
 				if (PQstatus(local_conn) != CONNECTION_OK)
 				{
 					log_warning(_("node appears to be up but no connection could be made"));
-					PQfinish(local_conn);
+					close_connection(&local_conn);
 				}
 				else
 				{
@@ -384,7 +384,7 @@ monitor_streaming_primary(void)
 
 						if (PQstatus(new_primary_conn) != CONNECTION_OK)
 						{
-							PQfinish(new_primary_conn);
+							close_connection(&new_primary_conn);
 							log_warning(_("unable to connect to new primary node %i"), primary_node_id);
 						}
 						else
@@ -450,7 +450,7 @@ monitor_streaming_primary(void)
 
 									termPQExpBuffer(&event_details);
 
-									PQfinish(new_primary_conn);
+									close_connection(&new_primary_conn);
 
 									/* restart monitoring as standby */
 									return;
@@ -468,7 +468,7 @@ monitor_streaming_primary(void)
 								log_error("%s", event_details.data);
 								log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
 
-								PQfinish(new_primary_conn);
+								close_connection(&new_primary_conn);
 
 								create_event_notification(NULL,
 														  &config_file_options,
@@ -540,7 +540,7 @@ loop:
 
 			if (reload_config(&config_file_options))
 			{
-				PQfinish(local_conn);
+				close_connection(&local_conn);
 				local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 				if (*config_file_options.log_file)
@@ -595,7 +595,7 @@ monitor_streaming_standby(void)
 		if (local_node_info.upstream_node_id == NODE_NOT_FOUND)
 		{
 			log_error(_("unable to determine an active primary for this cluster, terminating"));
-			PQfinish(local_conn);
+			close_connection(&local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
 	}
@@ -612,14 +612,14 @@ monitor_streaming_standby(void)
 		log_error(_("no record found for upstream node (ID: %i), terminating"),
 				  local_node_info.upstream_node_id);
 		log_hint(_("ensure the upstream node is registered correctly"));
-		PQfinish(local_conn);
+		close_connection(&local_conn);
 		exit(ERR_DB_CONN);
 	}
 	else if (record_status == RECORD_ERROR)
 	{
 		log_error(_("unable to retrieve record for upstream node (ID: %i), terminating"),
 				  local_node_info.upstream_node_id);
-		PQfinish(local_conn);
+		close_connection(&local_conn);
 		exit(ERR_DB_CONN);
 	}
 
@@ -639,7 +639,7 @@ monitor_streaming_standby(void)
 				  local_node_info.upstream_node_id);
 		log_hint(_("upstream node must be running before repmgrd can start"));
 
-		PQfinish(local_conn);
+		close_connection(&local_conn);
 		exit(ERR_DB_CONN);
 	}
 
@@ -749,7 +749,7 @@ monitor_streaming_standby(void)
 				log_warning("%s", event_details.data);
 				termPQExpBuffer(&event_details);
 
-				PQfinish(upstream_conn);
+				close_connection(&upstream_conn);
 				upstream_conn = try_reconnect(&upstream_node_info);
 
 				/* Node has recovered - log and continue */
@@ -930,12 +930,10 @@ monitor_streaming_standby(void)
 							if (get_recovery_type(cell->node_info->conn) == RECTYPE_PRIMARY)
 							{
 								follow_node_id = cell->node_info->node_id;
-								PQfinish(cell->node_info->conn);
-								cell->node_info->conn = NULL;
+								close_connection(&cell->node_info->conn);
 								break;
 							}
-							PQfinish(cell->node_info->conn);
-							cell->node_info->conn = NULL;
+							close_connection(&cell->node_info->conn);
 						}
 
 						if (follow_node_id != UNKNOWN_NODE_ID)
@@ -1081,7 +1079,7 @@ loop:
 
 			if (reload_config(&config_file_options))
 			{
-				PQfinish(local_conn);
+				close_connection(&local_conn);
 				local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 				if (*config_file_options.log_file)
@@ -1131,7 +1129,7 @@ monitor_streaming_witness(void)
 
 		log_error("%s", event_details.data);
 		log_hint(_("execute \"repmgr witness register --force\" to update the witness node "));
-		PQfinish(local_conn);
+		close_connection(&local_conn);
 
 		create_event_notification(NULL,
 								  &config_file_options,
@@ -1159,7 +1157,7 @@ monitor_streaming_witness(void)
 				  upstream_node_info.node_id);
 		log_hint(_("primary node must be running before repmgrd can start"));
 
-		PQfinish(local_conn);
+		close_connection(&local_conn);
 		exit(ERR_DB_CONN);
 	}
 
@@ -1242,7 +1240,7 @@ monitor_streaming_witness(void)
 									true,
 									event_details.data);
 
-				PQfinish(primary_conn);
+				close_connection(&primary_conn);
 				primary_conn = try_reconnect(&upstream_node_info);
 
 				/* Node has recovered - log and continue */
@@ -1364,12 +1362,10 @@ monitor_streaming_witness(void)
 						if (get_recovery_type(cell->node_info->conn) == RECTYPE_PRIMARY)
 						{
 							follow_node_id = cell->node_info->node_id;
-							PQfinish(cell->node_info->conn);
-							cell->node_info->conn = NULL;
+							close_connection(&cell->node_info->conn);
 							break;
 						}
-						PQfinish(cell->node_info->conn);
-						cell->node_info->conn = NULL;
+						close_connection(&cell->node_info->conn);
 					}
 
 					if (follow_node_id != UNKNOWN_NODE_ID)
@@ -1431,7 +1427,7 @@ loop:
 
 			if (reload_config(&config_file_options))
 			{
-				PQfinish(local_conn);
+				close_connection(&local_conn);
 				local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 				if (*config_file_options.log_file)
@@ -1561,7 +1557,7 @@ do_primary_failover(void)
 											   */
 											  true,
 											  event_details.data);
-					PQfinish(new_primary_conn);
+					close_connection(&new_primary_conn);
 					termPQExpBuffer(&event_details);
 
 				}
@@ -1780,8 +1776,7 @@ do_upstream_standby_failover(void)
 	int			i, r;
 	char		parsed_follow_command[MAXPGPATH] = "";
 
-	PQfinish(upstream_conn);
-	upstream_conn = NULL;
+	close_connection(&upstream_conn);
 
 	if (get_primary_node_record(local_conn, &primary_node_info) == false)
 	{
@@ -1802,7 +1797,7 @@ do_upstream_standby_failover(void)
 				  primary_node_info.node_name,
 				  primary_node_info.node_id);
 
-		PQfinish(primary_conn);
+		close_connection(&primary_conn);
 		monitoring_state = MS_DEGRADED;
 		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 		return false;
@@ -1816,15 +1811,14 @@ do_upstream_standby_failover(void)
 				  primary_node_info.node_name,
 				  primary_node_info.node_id);
 
-		PQfinish(primary_conn);
+		close_connection(&primary_conn);
 		monitoring_state = MS_DEGRADED;
 		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 		return false;
 	}
 
 	/* Close the connection to this server */
-	PQfinish(local_conn);
-	local_conn = NULL;
+	close_connection(&local_conn);
 
 	initPQExpBuffer(&event_details);
 
@@ -2212,7 +2206,7 @@ follow_new_primary(int new_primary_id)
 		{
 			new_primary_ok = false;
 			log_warning(_("new primary is not in recovery"));
-			PQfinish(upstream_conn);
+			close_connection(&upstream_conn);
 		}
 	}
 
@@ -2226,8 +2220,7 @@ follow_new_primary(int new_primary_id)
 	 * restart
 	 */
 
-	PQfinish(local_conn);
-	local_conn = NULL;
+	close_connection(&local_conn);
 
 	/*
 	 * replace %n in "config_file_options.follow_command" with ID of primary
@@ -2259,7 +2252,6 @@ follow_new_primary(int new_primary_id)
 
 		if (PQstatus(old_primary_conn) == CONNECTION_OK)
 		{
-			/* XXX add event notifications */
 			RecoveryType upstream_recovery_type = get_recovery_type(old_primary_conn);
 
 			if (upstream_recovery_type == RECTYPE_PRIMARY)
@@ -2279,14 +2271,14 @@ follow_new_primary(int new_primary_id)
 
 				termPQExpBuffer(&event_details);
 
-				PQfinish(old_primary_conn);
+				close_connection(&old_primary_conn);
 
 				return FAILOVER_STATE_PRIMARY_REAPPEARED;
 			}
 
 			log_notice(_("original primary reappeared as standby"));
 
-			PQfinish(old_primary_conn);
+			close_connection(&old_primary_conn);
 		}
 
 		return FAILOVER_STATE_FOLLOW_FAIL;
@@ -2402,7 +2394,7 @@ witness_follow_new_primary(int new_primary_id)
 		{
 			new_primary_ok = false;
 			log_warning(_("new primary is not in recovery"));
-			PQfinish(upstream_conn);
+			close_connection(&upstream_conn);
 		}
 	}
 
@@ -2889,15 +2881,12 @@ close_connections_physical()
 	{
 		/* cancel any pending queries to the primary */
 		if (PQisBusy(primary_conn) == 1)
+		{
+			log_debug("cancelling query on primary");
 			cancel_query(primary_conn, config_file_options.async_query_timeout);
-		PQfinish(primary_conn);
-		primary_conn = NULL;
+		}
+		close_connection(&primary_conn);
 	}
 
-	if (upstream_conn != NULL && PQstatus(upstream_conn) == CONNECTION_OK)
-	{
-		PQfinish(upstream_conn);
-		upstream_conn = NULL;
-	}
-
+	close_connection(&upstream_conn);
 }

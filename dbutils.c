@@ -311,6 +311,21 @@ is_superuser_connection(PGconn *conn, t_connection_user *userinfo)
 }
 
 
+void
+close_connection(PGconn **conn)
+{
+	if (*conn == NULL)
+		return;
+
+	if (PQstatus(*conn) == CONNECTION_OK)
+	{
+		PQfinish(*conn);
+	}
+
+	*conn = NULL;
+}
+
+
 /* =============================== */
 /* conninfo manipulation functions */
 /* =============================== */

@@ -330,7 +330,7 @@ main(int argc, char **argv)
 		{
 			log_error(_("unable to determine status of \"repmgr\" extension"));
 			log_detail("%s", PQerrorMessage(local_conn));
-			PQfinish(local_conn);
+			close_connection(&local_conn);
 			exit(ERR_DB_QUERY);
 		}
 
@@ -347,7 +347,7 @@ main(int argc, char **argv)
 		}
 
 		log_hint(_("check that this node is part of a repmgr cluster"));
-		PQfinish(local_conn);
+		close_connection(&local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -373,7 +373,7 @@ main(int argc, char **argv)
 				break;
 		}
 
-		PQfinish(local_conn);
+		close_connection(&local_conn);
 		terminate(ERR_BAD_CONFIG);
 	}
 
@@ -392,7 +392,7 @@ main(int argc, char **argv)
 		{
 			log_error(_("unable to write to shared memory"));
 			log_hint(_("ensure \"shared_preload_libraries\" includes \"repmgr\""));
-			PQfinish(local_conn);
+			close_connection(&local_conn);
 			terminate(ERR_BAD_CONFIG);
 		}
 	}
@@ -730,7 +730,7 @@ try_reconnect(t_node_info *node_info)
 				return conn;
 			}
 
-			PQfinish(conn);
+			close_connection(&conn);
 			log_notice(_("unable to reconnect to node"));
 		}
 
@@ -790,13 +790,9 @@ close_connections()
 	if (_close_connections != NULL)
 		_close_connections();
 
-	if (local_conn != NULL && PQstatus(local_conn) == CONNECTION_OK)
-	{
-		PQfinish(local_conn);
-		local_conn = NULL;
-	}
-
+	close_connection(&local_conn);
 }
+
 
 void
 terminate(int retval)
