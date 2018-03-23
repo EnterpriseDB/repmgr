@@ -984,7 +984,7 @@ get_cluster_size(PGconn *conn, char *size)
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
-					  "SELECT pg_catalog.pg_size_pretty(SUM(pg_catalog.pg_database_size(oid))::bigint) "
+					  "SELECT pg_catalog.pg_size_pretty(pg_catalog.sum(pg_catalog.pg_database_size(oid))::bigint) "
 					  "	 FROM pg_catalog.pg_database ");
 
 	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s", query.data);
@@ -2649,7 +2649,7 @@ delete_node_record(PGconn *conn, int node)
 
 	appendPQExpBuffer(&query,
 					  "DELETE FROM repmgr.nodes "
-					  " WHERE node_id = %d",
+					  " WHERE node_id = %i",
 					  node);
 
 	log_verbose(LOG_DEBUG, "delete_node_record():\n  %s", query.data);
@@ -2719,6 +2719,7 @@ update_node_record_slot_name(PGconn *primary_conn, int node_id, char *slot_name)
 	return true;
 }
 
+
 void
 get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *node_info)
 {
@@ -2733,14 +2734,14 @@ get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *no
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  " SELECT current_setting('max_wal_senders')::INT AS max_wal_senders, "
-					  "        (SELECT COUNT(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, ");
+					  " SELECT pg_catalog.current_setting('max_wal_senders')::INT AS max_wal_senders, "
+					  "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, ");
 
 	/* no replication slots in PostgreSQL 9.3 */
 	if (server_version_num < 90400)
 	{
 		appendPQExpBuffer(&query,
-						  "        0 AS  max_replication_slots, "
+						  "        0 AS max_replication_slots, "
 						  "        0 AS total_replication_slots, "
 						  "        0 AS active_replication_slots, "
 						  "        0 AS inactive_replication_slots, ");
@@ -2749,16 +2750,16 @@ get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *no
 	{
 		appendPQExpBuffer(&query,
 						  "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
-						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
-						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE)  AS active_replication_slots, "
-						  "        (SELECT COUNT(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE) AS inactive_replication_slots, ");
+						  "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
+						  "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE)  AS active_replication_slots, "
+						  "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE) AS inactive_replication_slots, ");
 	}
 
 
 	appendPQExpBuffer(&query,
 					  "        pg_catalog.pg_is_in_recovery() AS in_recovery");
 
-
+	log_verbose(LOG_DEBUG, "get_node_replication_stats():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -2795,7 +2796,7 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  " SELECT COUNT(*) FROM pg_catalog.pg_stat_replication "
+					  " SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication "
 					  "  WHERE application_name = '%s'",
 					  node_name);
 	res = PQexec(conn, query.data);
@@ -2885,21 +2886,21 @@ get_datadir_configuration_files(PGconn *conn, KeyValueList *list)
 	appendPQExpBuffer(&query,
 					  "WITH files AS ( "
 					  "  WITH dd AS ( "
-					  "    SELECT setting "
+					  "   SELECT setting "
 					  "     FROM pg_catalog.pg_settings "
 					  "    WHERE name = 'data_directory') "
-					  " SELECT distinct(sourcefile) AS config_file"
-					  "   FROM dd, pg_catalog.pg_settings ps "
-					  "  WHERE ps.sourcefile IS NOT NULL "
-					  "    AND ps.sourcefile ~ ('^' || dd.setting) "
-					  "     UNION "
-					  "  SELECT ps.setting  AS config_file"
-					  "    FROM dd, pg_catalog.pg_settings ps "
-					  "   WHERE ps.name IN ( 'config_file', 'hba_file', 'ident_file') "
-					  "     AND ps.setting ~ ('^' || dd.setting) "
+					  "   SELECT distinct(sourcefile) AS config_file"
+					  "     FROM dd, pg_catalog.pg_settings ps "
+					  "    WHERE ps.sourcefile IS NOT NULL "
+					  "      AND ps.sourcefile ~ ('^' || dd.setting) "
+					  "       UNION "
+					  "   SELECT ps.setting  AS config_file"
+					  "     FROM dd, pg_catalog.pg_settings ps "
+					  "    WHERE ps.name IN ('config_file', 'hba_file', 'ident_file') "
+					  "      AND ps.setting ~ ('^' || dd.setting) "
 					  ") "
 					  "  SELECT config_file, "
-					  "         regexp_replace(config_file, '^.*\\/','') AS filename "
+					  "         pg_catalog.regexp_replace(config_file, '^.*\\/','') AS filename "
 					  "    FROM files "
 					  "ORDER BY config_file");
 
@@ -2992,7 +2993,7 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 					  "     WHERE name = 'data_directory' "
 					  "  ) "
 					  "    SELECT ps.setting, "
-					  "           regexp_replace(setting, '^.*\\/', '') AS filename, "
+					  "           pg_catalog.regexp_replace(setting, '^.*\\/', '') AS filename, "
 					  "           ps.setting ~ ('^' || dd.data_directory) AS in_data_dir "
 					  "      FROM dd, pg_catalog.pg_settings ps "
 					  "     WHERE ps.name IN ('hba_file', 'ident_file') "
@@ -3409,7 +3410,7 @@ get_event_records(PGconn *conn, int node_id, const char *node_name, const char *
 	/* LEFT JOIN used here as a node record may have been removed */
 	appendPQExpBuffer(&query,
 					  "   SELECT e.node_id, n.node_name, e.event, e.successful, "
-					  "          TO_CHAR(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, "
+					  "          pg_catalog.to_char(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, "
 					  "          e.details "
 					  "     FROM repmgr.events e "
 					  "LEFT JOIN repmgr.nodes n ON e.node_id = n.node_id ");
@@ -3662,7 +3663,7 @@ get_free_replication_slots(PGconn *conn)
 
 	appendPQExpBuffer(&query,
 					  " SELECT pg_catalog.current_setting('max_replication_slots')::INT - "
-					  "        COUNT(*) AS free_slots"
+					  "        pg_catalog.count(*) AS free_slots"
 					  "   FROM pg_catalog.pg_replication_slots");
 
 	res = PQexec(conn, query.data);
@@ -3941,9 +3942,9 @@ get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_histor
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT COUNT(*) "
+					  "SELECT pg_catalog.count(*) "
 					  "  FROM repmgr.monitoring_history "
-					  " WHERE age(now(), last_monitor_time) >= '%d days'::interval",
+					  " WHERE pg_catalog.age(pg_catalog.now(), last_monitor_time) >= '%d days'::interval",
 					  keep_history);
 
 	res = PQexec(primary_conn, query.data);
@@ -3982,7 +3983,7 @@ delete_monitoring_records(PGconn *primary_conn, int keep_history)
 	{
 		appendPQExpBuffer(&query,
 						  "DELETE FROM repmgr.monitoring_history "
-						  " WHERE age(now(), last_monitor_time) >= '%d days'::interval ",
+						  " WHERE pg_catalog.age(pg_catalog.now(), last_monitor_time) >= '%d days'::interval ",
 						  keep_history);
 	}
 	else
@@ -4280,7 +4281,7 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT COUNT(*) FROM pg_catalog.pg_extension WHERE extname='bdr'");
+					  "SELECT pg_catalog.count(*) FROM pg_catalog.pg_extension WHERE extname='bdr'");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -4393,7 +4394,7 @@ is_bdr_repmgr(PGconn *conn)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT COUNT(*)"
+					  "SELECT pg_catalog.count(*)"
 					  "  FROM repmgr.nodes n"
 					  " WHERE n.type != 'bdr' ");
 
@@ -4424,8 +4425,8 @@ is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char 
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT COUNT(*) "
-					  "  FROM UNNEST(bdr.table_get_replication_sets('repmgr.%s')) AS repset "
+					  "SELECT pg_catalog.count(*) "
+					  "  FROM pg_catalog.unnest(bdr.table_get_replication_sets('repmgr.%s')) AS repset "
 					  " WHERE repset='%s' ",
 					  tablename,
 					  set);
@@ -4803,8 +4804,8 @@ bdr_node_has_repmgr_set(PGconn *conn, const char *node_name)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  " SELECT COUNT(*) "
-					  "   FROM UNNEST(bdr.connection_get_replication_sets('%s') AS repset "
+					  " SELECT pg_catalog.count(*) "
+					  "   FROM pg_catalog.unnest(bdr.connection_get_replication_sets('%s') AS repset "
 					  "  WHERE repset = 'repmgr'",
 					  node_name);
 
@@ -4839,7 +4840,7 @@ bdr_node_set_repmgr_set(PGconn *conn, const char *node_name)
 					  " SELECT bdr.connection_set_replication_sets( "
 					  "   ARRAY( "
 					  "     SELECT repset::TEXT "
-					  "       FROM UNNEST(bdr.connection_get_replication_sets('%s')) AS repset "
+					  "       FROM pg_catalog.unnest(bdr.connection_get_replication_sets('%s')) AS repset "
 					  "         UNION "
 					  "     SELECT 'repmgr'::TEXT "
 					  "   ), "
