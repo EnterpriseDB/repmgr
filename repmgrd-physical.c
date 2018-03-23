@@ -1003,30 +1003,36 @@ loop:
 			{
 				if (PQstatus(primary_conn) == CONNECTION_OK)
 				{
-					if (update_node_record_set_active(primary_conn, local_node_info.node_id, false) == true)
+					PQExpBufferData event_details;
+					bool success = true;
+
+					initPQExpBuffer(&event_details);
+
+					local_node_info.active = false;
+
+					appendPQExpBuffer(&event_details,
+									  _("unable to connect to local node \"%s\" (ID: %i), marking inactive"),
+									  local_node_info.node_name,
+									  local_node_info.node_id);
+
+					log_notice("%s", event_details.data);
+
+					if (update_node_record_set_active(primary_conn, local_node_info.node_id, false) == false)
 					{
-						PQExpBufferData event_details;
-
-						initPQExpBuffer(&event_details);
-
-						local_node_info.active = false;
-
-						appendPQExpBuffer(&event_details,
-										  _("unable to connect to local node \"%s\" (ID: %i), marking inactive"),
-										  local_node_info.node_name,
-										  local_node_info.node_id);
-
-						log_warning("%s", event_details.data);
-
-						create_event_notification(primary_conn,
-												  &config_file_options,
-												  local_node_info.node_id,
-												  "standby_failure",
-												  false,
-												  event_details.data);
-
-						termPQExpBuffer(&event_details);
+						success = false;
+						log_warning(_("unable to mark node \"%s\" (ID: %i) as inactive"),
+									  local_node_info.node_name,
+									  local_node_info.node_id);
 					}
+
+					create_event_notification(primary_conn,
+											  &config_file_options,
+											  local_node_info.node_id,
+											  "standby_failure",
+											  success,
+											  event_details.data);
+
+					termPQExpBuffer(&event_details);
 				}
 			}
 		}
