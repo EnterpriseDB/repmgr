@@ -67,6 +67,13 @@
      promotion candidate to all standbys attached to the demotion candidate.
    </para>
 
+   <note>
+     <simpara>
+       &repmgr; expects to find the &repmgr; binary in the same path on the remote
+       server as on the local server.
+     </simpara>
+   </note>
+
    <para>
     Double-check which commands will be used to stop/start/restart the current
     primary; on the primary execute:
