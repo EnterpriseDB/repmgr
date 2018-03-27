@@ -1,5 +1,6 @@
 4.0.5   2018-??-??
         repmgr: fix display of conninfo parsing error messages (Ian)
+        repmgr: fix "repmgr cluster crosscheck" output; GitHub #389 (Ian)
         repmgrd: fix memory leaks in witness code (AndrzejNowicki, Martín)
         repmgrd: set "connect_timeout=2" when pinging a server (Ian)
 

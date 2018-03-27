@@ -964,8 +964,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 		initPQExpBuffer(&command_output);
 
-		(void) remote_command(
-							  host,
+		(void) remote_command(host,
 							  runtime_options.remote_user,
 							  command.data,
 							  &command_output);
@@ -1144,9 +1143,8 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 		/* fix to work with --node-id */
 		if (cube[i]->node_id == config_file_options.node_id)
 		{
-			(void) local_command(
-								 command.data,
-								 &command_output);
+			(void) local_command_simple(command.data,
+										&command_output);
 		}
 		else
 		{
@@ -1170,8 +1168,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 			log_verbose(LOG_DEBUG, "build_cluster_crosscheck(): executing\n  %s", quoted_command.data);
 
-			(void) remote_command(
-								  host,
+			(void) remote_command(host,
 								  runtime_options.remote_user,
 								  quoted_command.data,
 								  &command_output);

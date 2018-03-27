@@ -207,6 +207,7 @@ extern void check_93_config(void);
 extern bool create_repmgr_extension(PGconn *conn);
 extern int	test_ssh_connection(char *host, char *remote_user);
 extern bool local_command(const char *command, PQExpBufferData *outputbuf);
+extern bool local_command_simple(const char *command, PQExpBufferData *outputbuf);
 
 extern standy_clone_mode get_standby_clone_mode(void);
 
