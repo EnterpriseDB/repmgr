@@ -170,34 +170,16 @@
      </para>
    </important>
 
-   <para>
-     Note that following parameters in <filename>repmgr.conf</filename> are relevant to the
-     switchover operation:
-     <itemizedlist spacing="compact" mark="bullet">
-       <listitem>
-         <simpara>
-           <literal>reconnect_attempts</literal>: number of times to check the original primary
-           for a clean shutdown after executing the shutdown command, before aborting
-         </simpara>
-       </listitem>
-       <listitem>
-         <simpara>
-           <literal>reconnect_interval</literal>: interval (in seconds) to check the original
-           primary for a clean shutdown after executing the shutdown command (up to a maximum
-           of <literal>reconnect_attempts</literal> tries)
-         </simpara>
-       </listitem>
-       <listitem>
-         <simpara>
-           <literal>replication_lag_critical</literal>:
-           if replication lag (in seconds) on the standby exceeds this value, the
-           switchover will be aborted (unless the <literal>-F/--force</literal> option
-           is provided)
-         </simpara>
-       </listitem>
 
-     </itemizedlist>
-   </para>
+   <note>
+     <simpara>
+       See <xref linkend="repmgr-standby-switchover"> for a full list of available
+       command line options and <filename>repmgr.conf</filename> settings relevant
+       to performing a switchover.
+     </simpara>
+   </note>
+
+
  </sect1>
 
  <sect1 id="switchover-execution" xreflabel="Executing the switchover command">
