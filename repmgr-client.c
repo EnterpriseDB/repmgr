@@ -90,6 +90,7 @@ t_node_info target_node_info = T_NODE_INFO_INITIALIZER;
 static ItemList cli_errors = {NULL, NULL};
 static ItemList cli_warnings = {NULL, NULL};
 
+static bool _local_command(const char *command, PQExpBufferData *outputbuf, bool simple);
 
 int
 main(int argc, char **argv)
@@ -2096,12 +2097,28 @@ test_ssh_connection(char *host, char *remote_user)
 }
 
 
+
+
 /*
  * Execute a command locally. "outputbuf" should either be an
  * initialised PQexpbuffer, or NULL
  */
 bool
 local_command(const char *command, PQExpBufferData *outputbuf)
+{
+	return _local_command(command, outputbuf, false);
+}
+
+
+bool
+local_command_simple(const char *command, PQExpBufferData *outputbuf)
+{
+	return _local_command(command, outputbuf, true);
+}
+
+
+static bool
+_local_command(const char *command, PQExpBufferData *outputbuf, bool simple)
 {
 	FILE	   *fp = NULL;
 	char		output[MAXLEN];
@@ -2128,7 +2145,8 @@ local_command(const char *command, PQExpBufferData *outputbuf)
 	while (fgets(output, MAXLEN, fp) != NULL)
 	{
 		appendPQExpBuffer(outputbuf, "%s", output);
-		if (!feof(fp))
+
+		if (!feof(fp) && simple == false)
 		{
 			break;
 		}
@@ -2353,9 +2371,6 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 }
 
 
-
-
-
 /*
  * Execute a command via ssh on the remote host.
  *
@@ -2421,7 +2436,7 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 	if (outputbuf != NULL)
 	{
 		if (strlen(outputbuf->data))
-			log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n  %s", outputbuf->data);
+			log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
 		else
 			log_verbose(LOG_DEBUG, "remote_command(): no output returned");
 	}
