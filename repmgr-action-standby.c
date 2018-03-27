@@ -3571,61 +3571,6 @@ x	 */
 	termPQExpBuffer(&command_output);
 
 	/*
-	 * Clean up remote node. It's possible that the standby is still starting up,
-	 * so poll for a while until we get a connection.
-	 */
-
-	for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
-	{
-		remote_conn = establish_db_connection(remote_node_record.conninfo, false);
-
-		if (PQstatus(remote_conn) == CONNECTION_OK)
-			break;
-
-		log_info(_("sleeping 1 second; %i of %i attempts (\"standby_reconnect_timeout\") to reconnect to demoted primary"),
-				 i + 1,
-				 config_file_options.standby_reconnect_timeout);
-		sleep(1);
-	}
-
-	/* check new standby (old primary) is reachable */
-	if (PQstatus(remote_conn) != CONNECTION_OK)
-	{
-		switchover_success = false;
-
-		/* TODO: double-check whether new standby has attached */
-
-		log_warning(_("switchover did not fully complete"));
-		log_detail(_("node \"%s\" is now primary but node \"%s\" is not reachable"),
-				   local_node_record.node_name,
-				   remote_node_record.node_name);
-
-		if (config_file_options.use_replication_slots == true)
-		{
-			log_hint(_("any inactive replication slots on the old primary will need to be dropped manually"));
-		}
-	}
-	else
-	{
-		if (config_file_options.use_replication_slots == true)
-		{
-			drop_replication_slot_if_exists(remote_conn,
-											remote_node_record.node_id,
-											local_node_record.slot_name);
-		}
-		/* TODO warn about any inactive replication slots */
-
-		log_notice(_("switchover was successful"));
-		log_detail(_("node \"%s\" is now primary and node \"%s\" is attached as standby"),
-				   local_node_record.node_name,
-				   remote_node_record.node_name);
-
-	}
-
-	PQfinish(remote_conn);
-
-
-	/*
 	 * If --siblings-follow specified, attempt to make them follow the new
 	 * primary
 	 */
@@ -3699,6 +3644,61 @@ x	 */
 	clear_node_info_list(&sibling_nodes);
 
 	PQfinish(local_conn);
+
+	/*
+	 * Clean up remote node. It's possible that the standby is still starting up,
+	 * so poll for a while until we get a connection.
+	 */
+
+	for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
+	{
+		remote_conn = establish_db_connection(remote_node_record.conninfo, false);
+
+		if (PQstatus(remote_conn) == CONNECTION_OK)
+			break;
+
+		log_info(_("sleeping 1 second; %i of %i attempts (\"standby_reconnect_timeout\") to reconnect to demoted primary"),
+				 i + 1,
+				 config_file_options.standby_reconnect_timeout);
+		sleep(1);
+	}
+
+	/* check new standby (old primary) is reachable */
+	if (PQstatus(remote_conn) != CONNECTION_OK)
+	{
+		switchover_success = false;
+
+		/* TODO: double-check whether new standby has attached */
+
+		log_warning(_("switchover did not fully complete"));
+		log_detail(_("node \"%s\" is now primary but node \"%s\" is not reachable"),
+				   local_node_record.node_name,
+				   remote_node_record.node_name);
+
+		if (config_file_options.use_replication_slots == true)
+		{
+			log_hint(_("any inactive replication slots on the old primary will need to be dropped manually"));
+		}
+	}
+	else
+	{
+		if (config_file_options.use_replication_slots == true)
+		{
+			drop_replication_slot_if_exists(remote_conn,
+											remote_node_record.node_id,
+											local_node_record.slot_name);
+		}
+		/* TODO warn about any inactive replication slots */
+
+		log_notice(_("switchover was successful"));
+		log_detail(_("node \"%s\" is now primary and node \"%s\" is attached as standby"),
+				   local_node_record.node_name,
+				   remote_node_record.node_name);
+
+	}
+
+	PQfinish(remote_conn);
+
 
 	if (switchover_success == true)
 	{
