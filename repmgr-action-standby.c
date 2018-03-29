@@ -3585,8 +3585,7 @@ do_standby_switchover(void)
 		if (runtime_options.force_rewind == false)
 		{
 			log_error(_("new primary diverges from former primary and --force-rewind not provided"));
-			/* TODO: "repmgr node rejoin" example, when available */
-			log_hint(_("the former primary will need to be restored manually"));
+			log_hint(_("the former primary will need to be restored manually, or use \"repmgr node rejoin\""));
 			termPQExpBuffer(&node_rejoin_options);
 			PQfinish(local_conn);
 			exit(ERR_SWITCHOVER_FAIL);
