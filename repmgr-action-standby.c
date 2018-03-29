@@ -3571,6 +3571,19 @@ do_standby_switchover(void)
 	/* promote standby (local node) */
 	_do_standby_promote_internal(local_conn, config_file_options.data_directory);
 
+
+	/*
+	 * if pg_rewind is requested, issue a checkpoint immediately after promoting
+	 * the local node, as pg_rewind compares timelines on the basis of the value
+	 * in pg_control, which is written at the first checkpoint, which might not
+	 * occur immediately.
+	 */
+	if (runtime_options.force_rewind == true)
+	{
+		log_notice(_("issuing CHECKPOINT"));
+		checkpoint(local_conn);
+	}
+
 	/*
 	 * Execute `repmgr node rejoin` to create recovery.conf and start the
 	 * remote server. Additionally execute "pg_rewind", if required and
