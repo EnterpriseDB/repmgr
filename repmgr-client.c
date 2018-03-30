@@ -53,6 +53,7 @@
 
 #include "repmgr.h"
 #include "compat.h"
+#include "controldata.h"
 #include "repmgr-client.h"
 #include "repmgr-client-global.h"
 #include "repmgr-action-primary.h"
@@ -421,7 +422,13 @@ main(int argc, char **argv)
 				break;
 
 			case OPT_FORCE_REWIND:
-				runtime_options.force_rewind = true;
+				runtime_options.force_rewind_used = true;
+
+				if (optarg != NULL)
+				{
+					strncpy(runtime_options.force_rewind_path, optarg, MAXPGPATH);
+				}
+
 				break;
 
 			case OPT_SIBLINGS_FOLLOW:
@@ -1605,7 +1612,7 @@ check_cli_parameters(const int action)
 		}
 	}
 
-	if (runtime_options.force_rewind == true)
+	if (runtime_options.force_rewind_used == true)
 	{
 		switch (action)
 		{
@@ -2748,4 +2755,78 @@ init_node_record(t_node_info *node_record)
 	{
 		create_slot_name(node_record->slot_name, config_file_options.node_id);
 	}
+}
+
+
+bool
+can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason)
+{
+	bool		can_use = true;
+	int			server_version_num = get_server_version(conn, NULL);
+
+	/* wal_log_hints not available in 9.3, so just determine if data checksums enabled */
+	if (server_version_num < 90400)
+	{
+		int			data_checksum_version = get_data_checksum_version(data_directory);
+
+		if (data_checksum_version < 0)
+		{
+			appendPQExpBuffer(reason,
+							  _("unable to determine data checksum version"));
+			can_use = false;
+		}
+		else if (data_checksum_version == 0)
+		{
+			appendPQExpBuffer(reason,
+							  _("this cluster was initialised without data checksums"));
+			can_use = false;
+		}
+
+		return can_use;
+	}
+
+	/* "full_page_writes" must be on in any case */
+	if (guc_set(conn, "full_page_writes", "=", "off"))
+	{
+		if (can_use == false)
+			appendPQExpBuffer(reason, "; ");
+
+		appendPQExpBuffer(reason,
+						  _("\"full_page_writes\" must be set to \"on\""));
+
+		can_use = false;
+	}
+
+	/*
+	 * "wal_log_hints" off - are data checksums available? Note: we're
+	 * checking the local pg_control file here as the value will be the same
+	 * throughout the cluster and saves a round-trip to the demotion
+	 * candidate.
+	 */
+	if (guc_set(conn, "wal_log_hints", "=", "on") == false)
+	{
+		int			data_checksum_version = get_data_checksum_version(data_directory);
+
+		if (data_checksum_version < 0)
+		{
+			if (can_use == false)
+				appendPQExpBuffer(reason, "; ");
+
+			appendPQExpBuffer(reason,
+							  _("\"wal_log_hints\" is set to \"off\" but unable to determine data checksum version"));
+			can_use = false;
+		}
+		else if (data_checksum_version == 0)
+		{
+			if (can_use == false)
+				appendPQExpBuffer(reason, "; ");
+
+			appendPQExpBuffer(reason,
+							  _("\"wal_log_hints\" is set to \"off\" and data checksums are disabled"));
+
+			can_use = false;
+		}
+	}
+
+	return can_use;
 }

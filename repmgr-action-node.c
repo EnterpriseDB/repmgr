@@ -1728,7 +1728,7 @@ do_node_rejoin(void)
 		{
 			log_error(_("database is not shut down cleanly"));
 
-			if (runtime_options.force_rewind == true)
+			if (runtime_options.force_rewind_used == true)
 			{
 				log_detail(_("pg_rewind will not be able to run"));
 			}
@@ -1779,7 +1779,7 @@ do_node_rejoin(void)
 	 * archived
 	 */
 
-	if (runtime_options.force_rewind == true)
+	if (runtime_options.force_rewind_used == true)
 	{
 		PQExpBufferData reason;
 		PQExpBufferData msg;
@@ -1816,7 +1816,7 @@ do_node_rejoin(void)
 	 * Forcibly rewind node if requested (this is mainly for use when this
 	 * action is being executed by "repmgr standby switchover")
 	 */
-	if (runtime_options.force_rewind == true && runtime_options.dry_run == false)
+	if (runtime_options.force_rewind_used == true && runtime_options.dry_run == false)
 	{
 		int			ret;
 		PQExpBufferData		filebuf;
@@ -1826,9 +1826,18 @@ do_node_rejoin(void)
 		/* execute pg_rewind */
 		initPQExpBuffer(&command);
 
-		appendPQExpBuffer(&command,
-						  "%s -D ",
-						  make_pg_path("pg_rewind"));
+		if (runtime_options.force_rewind_path[0] != '\0')
+		{
+			appendPQExpBuffer(&command,
+							  "%s -D ",
+							  runtime_options.force_rewind_path);
+		}
+		else
+		{
+			appendPQExpBuffer(&command,
+							  "%s -D ",
+							  make_pg_path("pg_rewind"));
+		}
 
 		appendShellString(&command,
 						  config_file_options.data_directory);
@@ -2438,15 +2447,15 @@ do_node_help(void)
 	puts("");
 	printf(_("  Configuration file required, runs on local node only.\n"));
 	puts("");
-	printf(_("    --csv                 emit output as CSV\n"));
-	printf(_("    --nagios              emit output in Nagios format (individual status output only)\n"));
+	printf(_("    --csv                   emit output as CSV\n"));
+	printf(_("    --nagios                emit output in Nagios format (individual status output only)\n"));
 	puts("");
 	printf(_("  Following options check an individual status:\n"));
-	printf(_("    --archive-ready       number of WAL files ready for archiving\n"));
-	printf(_("    --downstream          whether all downstream nodes are connected\n"));
-	printf(_("    --replication-lag     replication lag in seconds (standbys only)\n"));
-	printf(_("    --role                check node has expected role\n"));
-	printf(_("    --slots               check for inactive replication slots\n"));
+	printf(_("    --archive-ready         number of WAL files ready for archiving\n"));
+	printf(_("    --downstream            whether all downstream nodes are connected\n"));
+	printf(_("    --replication-lag       replication lag in seconds (standbys only)\n"));
+	printf(_("    --role                  check node has expected role\n"));
+	printf(_("    --slots                 check for inactive replication slots\n"));
 
 	puts("");
 
@@ -2456,13 +2465,15 @@ do_node_help(void)
 	puts("");
 	printf(_("  Configuration file required, runs on local node only.\n"));
 	puts("");
-	printf(_("    --dry-run             check that the prerequisites are met for rejoining the node\n" \
-			 "                          (including usability of \"pg_rewind\" if requested)\n"));
-	printf(_("    --force-rewind        execute \"pg_rewind\" if necessary\n"));
-	printf(_("    --config-files        comma-separated list of configuration files to retain\n" \
-			 "                          after executing \"pg_rewind\"\n"));
-	printf(_("    --config-archive-dir  directory to temporarily store retained configuration files\n" \
-			 "                          (default: /tmp)\n"));
+	printf(_("    --dry-run               check that the prerequisites are met for rejoining the node\n" \
+			 "                              (including usability of \"pg_rewind\" if requested)\n"));
+	printf(_("    --force-rewind[=VALUE]  execute \"pg_rewind\" if necessary\n"));
+	printf(_("                              (9.3 and 9.4 - provide full \"pg_rewind\" path)\n"));
+
+	printf(_("    --config-files          comma-separated list of configuration files to retain\n" \
+			 "                            after executing \"pg_rewind\"\n"));
+	printf(_("    --config-archive-dir    directory to temporarily store retained configuration files\n" \
+			 "                              (default: /tmp)\n"));
 	puts("");
 
 	printf(_("NODE SERVICE\n"));

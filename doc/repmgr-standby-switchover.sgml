@@ -84,11 +84,14 @@
       </varlistentry>
 
       <varlistentry>
-        <term><option>--force-rewind</option></term>
+        <term><option>--force-rewind[=/path/to/pg_rewind]</option></term>
         <listitem>
           <para>
             Use <application>pg_rewind</application> to reintegrate the old primary if necessary
-            (PostgreSQL 9.5 and later).
+            (and the prerequisites for using <application>pg_rewind</application> are met).
+            If using PostgreSQL 9.3 or 9.4, and the <application>pg_rewind</application>
+            binary is not installed in the PostgreSQL <filename>bin</filename> directory,
+            provide its full path. For more details see also <xref linkend="switchover-pg-rewind">.
           </para>
         </listitem>
       </varlistentry>

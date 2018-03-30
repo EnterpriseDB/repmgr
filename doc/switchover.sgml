@@ -179,6 +179,46 @@
      </simpara>
    </note>
 
+  <sect2 id="switchover-pg-rewind" xreflabel="Switchover and pg_rewind">
+    <title>Switchover and pg_rewind</title>
+    <para>
+      If the demotion candidate does not shut down smoothly or cleanly, there's a risk it
+      will have a slightly divergent timeline and will not be able to attach to the new
+      primary. To fix this situation without needing to reclone the old primary, it's
+      possible to use the <application>pg_rewind</application> utility, which will usually be
+      able to resync the two servers.
+    </para>
+    <para>
+      To have &repmgr; execute <application>pg_rewind</application> if it detects this
+      situation after promoting the new primary, add the <option>--force-rewind</option>
+      option.
+    </para>
+    <note>
+      <simpara>
+        If &repmgr; detects a situation where it needs to execute <application>pg_rewind</application>,
+        it will execute a <literal>CHECKPOINT</literal> on the new primary before executing
+        <application>pg_rewind</application>.
+      </simpara>
+    </note>
+    <para>
+      For more details on <application>pg_rewind</application>, see:
+      <ulink url="https://www.postgresql.org/docs/current/static/app-pgrewind.html">https://www.postgresql.org/docs/current/static/app-pgrewind.html</ulink>.
+    </para>
+    <para>
+      <application>pg_rewind</application> has been part of the core PostgreSQL distribution since
+      version 9.5. Users of versions 9.3 and 9.4 will need to manually install; source code available here:
+      <ulink url="https://github.com/vmware/pg_rewind">https://github.com/vmware/pg_rewind</ulink>.
+      If the <application>pg_rewind</application>
+      binary is not installed in the PostgreSQL <filename>bin</filename> directory, provide
+      its full path  on the demotion candidate  with <option>--force-rewind</option>.
+    </para>
+    <para>
+      Note that building the 9.3/9.4 version of <application>pg_rewind</application> requires the PostgreSQL
+      source code. Also, PostgreSQL 9.3 does not provide <varname>wal_log_hints</varname>,
+      meaning data checksums must have been enabled when the database was initialized.
+    </para>
+  </sect2>
+
 
  </sect1>
 
