@@ -2569,6 +2569,14 @@ do_election(void)
 			return ELECTION_NOT_CANDIDATE;
 		}
 	}
+	else
+	{
+		/* standby nodes found - check if we're in the primary location befor checking theirs */
+		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
+		{
+			primary_location_seen = true;
+		}
+	}
 
 	/* get our lsn */
 	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
