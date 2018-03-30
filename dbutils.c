@@ -1381,7 +1381,7 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 				appendPQExpBuffer(reason, "; ");
 
 			appendPQExpBuffer(reason,
-							  _("\"wal_log_hints\" is set to \"off\" but unable to determine checksum version"));
+							  _("\"wal_log_hints\" is set to \"off\" but unable to determine data checksum version"));
 			can_use = false;
 		}
 		else if (data_checksum_version == 0)
@@ -1390,7 +1390,7 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 				appendPQExpBuffer(reason, "; ");
 
 			appendPQExpBuffer(reason,
-							  _("\"wal_log_hints\" is set to \"off\" and checksums are disabled"));
+							  _("\"wal_log_hints\" is set to \"off\" and data checksums are disabled"));
 
 			can_use = false;
 		}

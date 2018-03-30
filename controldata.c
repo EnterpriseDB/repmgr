@@ -157,15 +157,18 @@ get_controlfile(const char *DataDir)
 
 	if ((fd = open(ControlFilePath, O_RDONLY | PG_BINARY, 0)) == -1)
 	{
-		log_debug("could not open file \"%s\" for reading: %s",
-				  ControlFilePath, strerror(errno));
+		log_warning(_("could not open file \"%s\" for reading"),
+					ControlFilePath);
+		log_detail("%s", strerror(errno));
 		return control_file_info;
 	}
 
 	if (read(fd, control_file_info->control_file, sizeof(ControlFileData)) != sizeof(ControlFileData))
 	{
-		log_debug("could not read file \"%s\": %s",
-				  ControlFilePath, strerror(errno));
+		log_warning(_("could not read file \"%s\""),
+					ControlFilePath);
+		log_detail("%s", strerror(errno));
+
 		return control_file_info;
 	}
 
