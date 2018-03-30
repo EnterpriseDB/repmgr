@@ -4,6 +4,8 @@
         repmgr: poll demoted primary after restart as a standby during a
           switchover operation; GitHub #408 (Ian)
         repmgrd: fix memory leaks in witness code (AndrzejNowicki, Martín)
+        repmgrd: handle failover situation with only two nodes in the primary
+          location, and at least one node in another location; GitHub #407 (Ian)
         repmgrd: set "connect_timeout=2" when pinging a server (Ian)
 
 4.0.4   2018-03-09
