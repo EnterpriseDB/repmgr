@@ -2674,7 +2674,7 @@ do_standby_switchover(void)
 	 * archived
 	 */
 
-	if (runtime_options.force_rewind == true)
+	if (runtime_options.force_rewind_used == true)
 	{
 		PQExpBufferData reason;
 		PQExpBufferData msg;
@@ -3481,7 +3481,7 @@ x	 */
 	 * in pg_control, which is written at the first checkpoint, which might not
 	 * occur immediately.
 	 */
-	if (runtime_options.force_rewind == true)
+	if (runtime_options.force_rewind_used == true)
 	{
 		log_notice(_("issuing CHECKPOINT"));
 		checkpoint(local_conn);
@@ -3498,7 +3498,7 @@ x	 */
 		KeyValueListCell *cell = NULL;
 		bool		first_entry = true;
 
-		if (runtime_options.force_rewind == false)
+		if (runtime_options.force_rewind_used == false)
 		{
 			log_error(_("new primary diverges from former primary and --force-rewind not provided"));
 			log_hint(_("the former primary will need to be restored manually, or use \"repmgr node rejoin\""));
@@ -3508,7 +3508,16 @@ x	 */
 		}
 
 		appendPQExpBuffer(&node_rejoin_options,
-						  " --force-rewind --config-files=");
+						  " --force-rewind");
+
+		if (runtime_options.force_rewind_path[0] != '\0')
+		{
+			appendPQExpBuffer(&node_rejoin_options,
+							  "=%s",
+							  runtime_options.force_rewind_path);
+		}
+		appendPQExpBuffer(&node_rejoin_options,
+						  " --config-files=");
 
 		for (cell = remote_config_files.head; cell; cell = cell->next)
 		{
@@ -6218,7 +6227,9 @@ do_standby_help(void)
 	printf(_("  --always-promote                    promote standby even if behind original primary\n"));
 	printf(_("  --dry-run                           perform checks etc. but don't actually execute switchover\n"));
 	printf(_("  -F, --force                         ignore warnings and continue anyway\n"));
-	printf(_("  --force-rewind                      9.5 and later - use pg_rewind to reintegrate the old primary if necessary\n"));
+	printf(_("  --force-rewind[=VALUE]              use \"pg_rewind\" to reintegrate the old primary if necessary\n"));
+	printf(_("                                        (9.3 and 9.4 - provide \"pg_rewind\" path)\n"));
+
 	printf(_("  -R, --remote-user=USERNAME          database server username for SSH operations (default: \"%s\")\n"), runtime_options.username);
 	printf(_("  --siblings-follow                   have other standbys follow new primary\n"));
 

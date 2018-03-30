@@ -1339,67 +1339,6 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 }
 
 
-bool
-can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason)
-{
-	bool		can_use = true;
-
-	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
-		server_version_num = get_server_version(conn, NULL);
-
-	if (server_version_num < 90500)
-	{
-		appendPQExpBuffer(reason,
-						  _("pg_rewind available from PostgreSQL 9.5"));
-		return false;
-	}
-
-	if (guc_set(conn, "full_page_writes", "=", "off"))
-	{
-		if (can_use == false)
-			appendPQExpBuffer(reason, "; ");
-
-		appendPQExpBuffer(reason,
-						  _("\"full_page_writes\" must be set to \"on\""));
-
-		can_use = false;
-	}
-
-	/*
-	 * "wal_log_hints" off - are data checksums available? Note: we're
-	 * checking the local pg_control file here as the value will be the same
-	 * throughout the cluster and saves a round-trip to the demotion
-	 * candidate.
-	 */
-	if (guc_set(conn, "wal_log_hints", "=", "on") == false)
-	{
-		int			data_checksum_version = get_data_checksum_version(data_directory);
-
-		if (data_checksum_version < 0)
-		{
-			if (can_use == false)
-				appendPQExpBuffer(reason, "; ");
-
-			appendPQExpBuffer(reason,
-							  _("\"wal_log_hints\" is set to \"off\" but unable to determine data checksum version"));
-			can_use = false;
-		}
-		else if (data_checksum_version == 0)
-		{
-			if (can_use == false)
-				appendPQExpBuffer(reason, "; ");
-
-			appendPQExpBuffer(reason,
-							  _("\"wal_log_hints\" is set to \"off\" and data checksums are disabled"));
-
-			can_use = false;
-		}
-	}
-
-	return can_use;
-}
-
-
 int
 get_ready_archive_files(PGconn *conn, const char *data_directory)
 {

@@ -92,7 +92,8 @@ typedef struct
 
 	/* "standby switchover" options */
 	bool		always_promote;
-	bool		force_rewind;
+	bool		force_rewind_used;
+	char		force_rewind_path[MAXPGPATH];
 	bool		siblings_follow;
 
 	/* "node status" options */
@@ -152,7 +153,7 @@ typedef struct
 		/* "standby register" options */ \
 		false, 0, DEFAULT_WAIT_START,   \
 		/* "standby switchover" options */ \
-		false, false, false, \
+		false, false, "", false,		   \
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
@@ -230,5 +231,6 @@ extern void get_server_action(t_server_action action, char *script, char *data_d
 extern bool data_dir_required_for_action(t_server_action action);
 extern void get_node_data_directory(char *data_dir_buf);
 extern void init_node_record(t_node_info *node_record);
+extern bool can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
 
 #endif							/* _REPMGR_CLIENT_GLOBAL_H_ */

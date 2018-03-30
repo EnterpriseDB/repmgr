@@ -168,7 +168,7 @@ static struct option long_options[] =
 /* "node rejoin" options */
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},
     {"config-archive-dir", required_argument, NULL, OPT_CONFIG_ARCHIVE_DIR},
-	{"force-rewind", no_argument, NULL, OPT_FORCE_REWIND},
+	{"force-rewind", optional_argument, NULL, OPT_FORCE_REWIND},
 
 /* "node service" options */
 	{"action", required_argument, NULL, OPT_ACTION},
