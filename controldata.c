@@ -37,13 +37,8 @@ get_system_identifier(const char *data_directory)
 	uint64		system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
 
 	control_file_info = get_controlfile(data_directory);
+	system_identifier = control_file_info->system_identifier;
 
-	if (control_file_info->control_file_processed == true)
-		system_identifier = control_file_info->control_file->system_identifier;
-	else
-		system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
-
-	pfree(control_file_info->control_file);
 	pfree(control_file_info);
 
 	return system_identifier;
@@ -57,13 +52,8 @@ get_db_state(const char *data_directory)
 
 	control_file_info = get_controlfile(data_directory);
 
-	if (control_file_info->control_file_processed == true)
-		state = control_file_info->control_file->state;
-	else
-		/* if we were unable to parse the control file, assume DB is shut down */
-		state = DB_SHUTDOWNED;
+	state = control_file_info->state;
 
-	pfree(control_file_info->control_file);
 	pfree(control_file_info);
 
 	return state;
@@ -78,12 +68,8 @@ get_latest_checkpoint_location(const char *data_directory)
 
 	control_file_info = get_controlfile(data_directory);
 
-	if (control_file_info->control_file_processed == false)
-		return InvalidXLogRecPtr;
+	checkPoint = control_file_info->checkPoint;
 
-	checkPoint = control_file_info->control_file->checkPoint;
-
-	pfree(control_file_info->control_file);
 	pfree(control_file_info);
 
 	return checkPoint;
@@ -98,16 +84,8 @@ get_data_checksum_version(const char *data_directory)
 
 	control_file_info = get_controlfile(data_directory);
 
-	if (control_file_info->control_file_processed == false)
-	{
-		data_checksum_version = -1;
-	}
-	else
-	{
-		data_checksum_version = (int) control_file_info->control_file->data_checksum_version;
-	}
+	data_checksum_version = (int) control_file_info->data_checksum_version;
 
-	pfree(control_file_info->control_file);
 	pfree(control_file_info);
 
 	return data_checksum_version;
@@ -139,19 +117,74 @@ describe_db_state(DBState state)
 
 
 /*
- * we maintain our own version of get_controlfile() as we need cross-version
+ * We maintain our own version of get_controlfile() as we need cross-version
  * compatibility, and also don't care if the file isn't readable.
  */
 static ControlFileInfo *
 get_controlfile(const char *DataDir)
 {
 	ControlFileInfo *control_file_info;
-	int			fd;
+	FILE	   *fp = NULL;
+	int			fd, ret, version_num;
+	char		PgVersionPath[MAXPGPATH] = "";
 	char		ControlFilePath[MAXPGPATH] = "";
+	char		file_version_string[64] = "";
+	long		file_major, file_minor;
+	char	   *endptr = NULL;
+	void	   *ControlFileDataPtr = NULL;
+	int			expected_size = 0;
 
 	control_file_info = palloc0(sizeof(ControlFileInfo));
+
+	/* set default values */
 	control_file_info->control_file_processed = false;
-	control_file_info->control_file = palloc0(sizeof(ControlFileData));
+	control_file_info->system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+	control_file_info->state = DB_SHUTDOWNED;
+	control_file_info->checkPoint = InvalidXLogRecPtr;
+	control_file_info->data_checksum_version = -1;
+
+	/*
+	 * Read PG_VERSION, as we'll need to determine which struct to read
+	 * the control file contents into
+	 */
+	snprintf(PgVersionPath, MAXPGPATH, "%s/PG_VERSION", DataDir);
+
+	fp = fopen(PgVersionPath, "r");
+
+	if (fp == NULL)
+	{
+		log_warning(_("could not open file \"%s\" for reading"),
+					PgVersionPath);
+		log_detail("%s", strerror(errno));
+		return control_file_info;
+	}
+
+	file_version_string[0] = '\0';
+
+	ret = fscanf(fp, "%63s", file_version_string);
+	fclose(fp);
+
+	if (ret != 1 || endptr == file_version_string)
+	{
+		log_warning(_("unable to determine major version number from PG_VERSION"));
+
+		return control_file_info;
+	}
+
+	file_major = strtol(file_version_string, &endptr, 10);
+	file_minor = 0;
+
+	if (*endptr == '.')
+		file_minor = strtol(endptr + 1, NULL, 10);
+
+	version_num = ((int) file_major * 10000) + ((int) file_minor * 100);
+
+	if (version_num < 90300)
+	{
+		log_warning(_("Data directory appears to be initialised for %s"), file_version_string);
+		return control_file_info;
+	}
+
 
 	snprintf(ControlFilePath, MAXPGPATH, "%s/global/pg_control", DataDir);
 
@@ -163,7 +196,25 @@ get_controlfile(const char *DataDir)
 		return control_file_info;
 	}
 
-	if (read(fd, control_file_info->control_file, sizeof(ControlFileData)) != sizeof(ControlFileData))
+
+	if (version_num >= 90500)
+	{
+		expected_size = sizeof(ControlFileData95);
+		ControlFileDataPtr = palloc0(expected_size);
+	}
+	else if (version_num >= 90400)
+	{
+		expected_size = sizeof(ControlFileData94);
+		ControlFileDataPtr = palloc0(expected_size);
+	}
+	else if (version_num >= 90300)
+	{
+		expected_size = sizeof(ControlFileData93);
+		ControlFileDataPtr = palloc0(expected_size);
+	}
+
+
+	if (read(fd, ControlFileDataPtr, expected_size) != expected_size)
 	{
 		log_warning(_("could not read file \"%s\""),
 					ControlFilePath);
@@ -175,6 +226,33 @@ get_controlfile(const char *DataDir)
 	close(fd);
 
 	control_file_info->control_file_processed = true;
+
+	if (version_num >= 90500)
+	{
+		ControlFileData95 *ptr = (struct ControlFileData95 *)ControlFileDataPtr;
+		control_file_info->system_identifier = ptr->system_identifier;
+		control_file_info->state = ptr->state;
+		control_file_info->checkPoint = ptr->checkPoint;
+		control_file_info->data_checksum_version = ptr->data_checksum_version;
+	}
+	else if (version_num >= 90400)
+	{
+		ControlFileData94 *ptr = (struct ControlFileData94 *)ControlFileDataPtr;
+		control_file_info->system_identifier = ptr->system_identifier;
+		control_file_info->state = ptr->state;
+		control_file_info->checkPoint = ptr->checkPoint;
+		control_file_info->data_checksum_version = ptr->data_checksum_version;
+	}
+	else if (version_num >= 90300)
+	{
+		ControlFileData93 *ptr = (struct ControlFileData93 *)ControlFileDataPtr;
+		control_file_info->system_identifier = ptr->system_identifier;
+		control_file_info->state = ptr->state;
+		control_file_info->checkPoint = ptr->checkPoint;
+		control_file_info->data_checksum_version = ptr->data_checksum_version;
+	}
+
+	pfree(ControlFileDataPtr);
 
 	/*
 	 * We don't check the CRC here as we're potentially checking a pg_control
