@@ -3380,6 +3380,8 @@ do_standby_switchover(void)
 				   remote_node_record.node_name,
 				   remote_node_record.node_id);
 	}
+
+
 	/*
 	 * Stop the remote primary
 	 *
