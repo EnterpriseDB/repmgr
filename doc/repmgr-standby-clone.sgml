@@ -65,7 +65,71 @@
    </tip>
   </refsect1>
 
-  <refsect1 id="repmgr-standby-clone-wal-management" xreflabel="Managing WAL during the cloning process">
+  <refsect1 id="repmgr-standby-clone-recovery-conf">
+   <indexterm>
+     <primary>recovery.conf</primary>
+     <secondary>customising with "repmgr standby clone"</secondary>
+   </indexterm>
+
+   <title>Customising recovery.conf</title>
+   <para>
+     By default, &repmgr; will create a minimal <filename>recovery.conf</filename>
+     containing following parameters:
+   </para>
+
+   <itemizedlist spacing="compact" mark="bullet">
+
+     <listitem>
+       <simpara><varname>standby_mode</varname> (always <literal>'on'</literal>)</simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>recovery_target_timeline</varname> (always <literal>'latest'</literal>)</simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>primary_conninfo</varname></simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>primary_slot_name</varname> (if replication slots in use)</simpara>
+     </listitem>
+
+   </itemizedlist>
+
+   <para>
+     The following additional parameters can be specified in <filename>repmgr.conf</filename>
+     for inclusion in <filename>recovery.conf</filename>:
+   </para>
+
+   <itemizedlist spacing="compact" mark="bullet">
+
+     <listitem>
+       <simpara><varname>restore_command</varname></simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>archive_cleanup_command</varname></simpara>
+     </listitem>
+
+     <listitem>
+       <simpara><varname>recovery_min_apply_delay</varname></simpara>
+     </listitem>
+
+   </itemizedlist>
+
+   <note>
+     <para>
+       We recommend using <ulink url="https://www.pgbarman.org/">Barman</ulink> to manage
+       WAL file archiving. For more details on combining &repmgr; and <application>Barman</application>,
+       in particular using <varname>restore_command</varname> to configure Barman as a backu source of
+       WAL files, see <xref linkend="cloning-from-barman">.
+     </para>
+   </note>
+
+  </refsect1>
+
+  <refsect1 id="repmgr-standby-clone-wal-management">
    <title>Managing WAL during the cloning process</title>
    <para>
     When initially cloning a standby, you will need to ensure
@@ -102,6 +166,12 @@
 
 
   <refsect1 id="repmgr-standby-create-recovery-conf">
+
+   <indexterm>
+     <primary>recovery.conf</primary>
+     <secondary>generating for a standby cloned by another method</secondary>
+   </indexterm>
+
    <title>Using a standby cloned by another method</title>
    <para>
      &repmgr; supports standbys cloned by another method (e.g. using <application>barman</application>'s

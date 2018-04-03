@@ -89,6 +89,7 @@ typedef struct
 	TablespaceList tablespace_mapping;
 	char		recovery_min_apply_delay[MAXLEN];
 	bool		recovery_min_apply_delay_provided;
+	char		archive_cleanup_command[MAXLEN];
 	bool		use_primary_conninfo_password;
 	char		passfile[MAXPGPATH];
 
@@ -161,8 +162,8 @@ typedef struct
 		UNKNOWN_NODE_ID, "", "", "", "", "", REPLICATION_TYPE_PHYSICAL,	\
 		/* log settings */ \
 		"", "", "", DEFAULT_LOG_STATUS_INTERVAL,	\
-		/* standby action settings */ \
-		false, "", "", { NULL, NULL }, "", false, false, "",	\
+		/* standby clone settings */ \
+		false, "", "", { NULL, NULL }, "", false, "", false, "", \
 		/* standby promote settings */ \
 		DEFAULT_PROMOTE_CHECK_TIMEOUT, DEFAULT_PROMOTE_CHECK_INTERVAL, \
 		/* node check settings */ \

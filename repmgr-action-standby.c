@@ -5864,7 +5864,6 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 		appendPQExpBuffer(&recovery_file_buf,
 						  "recovery_min_apply_delay = %s\n",
 						  config_file_options.recovery_min_apply_delay);
-
 	}
 
 	/* primary_slot_name = '...' (optional, for 9.4 and later) */
@@ -5885,6 +5884,16 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 
 		appendPQExpBuffer(&recovery_file_buf,
 						  "restore_command = '%s'\n",
+						  escaped);
+		free(escaped);
+	}
+
+	/* archive_cleanup_command (optional) */
+	if (config_file_options.archive_cleanup_command[0] != '\0')
+	{
+		char	   *escaped = escape_recovery_conf_value(config_file_options.archive_cleanup_command);
+		appendPQExpBuffer(&recovery_file_buf,
+						  "archive_cleanup_command = '%s'\n",
 						  escaped);
 		free(escaped);
 	}
