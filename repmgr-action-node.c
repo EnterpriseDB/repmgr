@@ -1913,7 +1913,16 @@ do_node_rejoin(void)
 		}
 		termPQExpBuffer(&filebuf);
 
-		/* delete any replication slots copied in by pg_rewind */
+		/*
+		 * Delete any replication slots copied in by pg_rewind.
+		 *
+		 * TODO:
+		 *  - from PostgreSQL 11, this will be handled by pg_rewind, so
+		 *    we can skip this step from that version; see commit
+		 *    266b6acb312fc440c1c1a2036aa9da94916beac6
+		 *  - possibly delete contents various other directories
+		 *    as per the above commit for pre-PostgreSQL 11
+		 */
 		{
 			PQExpBufferData slotdir_path;
 			DIR			  *slotdir;
