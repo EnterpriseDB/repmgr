@@ -45,5 +45,6 @@
 #define ERR_OUT_OF_MEMORY 21
 #define ERR_SWITCHOVER_INCOMPLETE 22
 #define ERR_FOLLOW_FAIL 23
+#define ERR_REJOIN_FAIL 24
 
 #endif							/* _ERRCODE_H_ */

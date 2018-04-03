@@ -180,6 +180,10 @@
    </note>
 
   <sect2 id="switchover-pg-rewind" xreflabel="Switchover and pg_rewind">
+    <indexterm>
+      <primary>pg_rewind</primary>
+      <secondary>using with "repmgr standby switchover"</secondary>
+    </indexterm>
     <title>Switchover and pg_rewind</title>
     <para>
       If the demotion candidate does not shut down smoothly or cleanly, there's a risk it
@@ -206,7 +210,7 @@
     </para>
     <para>
       <application>pg_rewind</application> has been part of the core PostgreSQL distribution since
-      version 9.5. Users of versions 9.3 and 9.4 will need to manually install; source code available here:
+      version 9.5. Users of versions 9.3 and 9.4 will need to manually install it; the source code is available here:
       <ulink url="https://github.com/vmware/pg_rewind">https://github.com/vmware/pg_rewind</ulink>.
       If the <application>pg_rewind</application>
       binary is not installed in the PostgreSQL <filename>bin</filename> directory, provide

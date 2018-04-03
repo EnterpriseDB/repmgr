@@ -178,7 +178,7 @@ main(int argc, char **argv)
 		strncpy(runtime_options.username, pw->pw_name, MAXLEN);
 	}
 
-	while ((c = getopt_long(argc, argv, "?Vb:f:FWd:h:p:U:R:S:D:ck:L:tvC:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vb:f:FwWd:h:p:U:R:S:D:ck:L:tvC:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -243,9 +243,14 @@ main(int argc, char **argv)
 				strncpy(runtime_options.replication_user, optarg, MAXLEN);
 				break;
 
-				/* -W/--wait */
-			case 'W':
+				/* -w/--wait */
+			case 'w':
 				runtime_options.wait = true;
+				break;
+
+				/* -W/--no-wait */
+			case 'W':
+				runtime_options.no_wait = true;
 				break;
 
 				/*----------------------------
@@ -1568,6 +1573,41 @@ check_cli_parameters(const int action)
 				item_list_append_format(&cli_warnings,
 										_("--all not required when executing %s"),
 										action_name(action));
+		}
+	}
+
+	/* --wait/--no-wait */
+
+	if (runtime_options.wait == true && runtime_options.no_wait == true)
+	{
+		item_list_append_format(&cli_errors,
+								_("both --wait and --no-wait options provided"));
+	}
+	else
+	{
+		if (runtime_options.wait)
+		{
+			switch (action)
+			{
+				case STANDBY_FOLLOW:
+					break;
+				default:
+					item_list_append_format(&cli_warnings,
+											_("--wait will be ignored when executing %s"),
+											action_name(action));
+			}
+		}
+		else if (runtime_options.wait)
+		{
+			switch (action)
+			{
+				case NODE_REJOIN:
+					break;
+				default:
+					item_list_append_format(&cli_warnings,
+											_("--no-wait will be ignored when executing %s"),
+											action_name(action));
+			}
 		}
 	}
 
