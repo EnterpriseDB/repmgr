@@ -314,6 +314,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->tablespace_mapping.tail = NULL;
 	memset(options->recovery_min_apply_delay, 0, sizeof(options->recovery_min_apply_delay));
 	options->recovery_min_apply_delay_provided = false;
+	memset(options->archive_cleanup_command, 0, sizeof(options->archive_cleanup_command));
 	options->use_primary_conninfo_password = false;
 	memset(options->passfile, 0, sizeof(options->passfile));
 
@@ -508,6 +509,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			parse_time_unit_parameter(name, value, options->recovery_min_apply_delay, error_list);
 			options->recovery_min_apply_delay_provided = true;
 		}
+		else if (strcmp(name, "archive_cleanup_command") == 0)
+			strncpy(options->archive_cleanup_command, value, MAXLEN);
 		else if (strcmp(name, "use_primary_conninfo_password") == 0)
 			options->use_primary_conninfo_password = parse_bool(value, name, error_list);
 		else if (strcmp(name, "passfile") == 0)

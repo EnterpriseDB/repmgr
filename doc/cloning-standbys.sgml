@@ -51,7 +51,7 @@
    </itemizedlist>
    </para>
 
-  <sect2 id="cloning-from-barman-prerequisites" xreflabel="Prerequisites for cloning from Barman">
+  <sect2 id="cloning-from-barman-prerequisites">
    <title>Prerequisites for cloning from Barman</title>
    <para>
     In order to enable Barman support for <command>repmgr standby clone</command>, following
