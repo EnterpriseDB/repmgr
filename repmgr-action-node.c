@@ -1758,7 +1758,17 @@ do_node_rejoin(void)
 	PQfinish(upstream_conn);
 
 	/* connect to registered primary and check it's not in recovery */
-	upstream_conn = establish_db_connection(primary_node_record.conninfo, true);
+	upstream_conn = establish_db_connection(primary_node_record.conninfo, false);
+
+	if (PQstatus(upstream_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to connect to current primary \"%s\" (node ID: %i)"),
+				  primary_node_record.node_name,
+				  primary_node_record.node_id);
+		log_detail(_("primay node conninfo is: \"%s\""),
+				   primary_node_record.conninfo);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	upstream_recovery_type = get_recovery_type(upstream_conn);
 
@@ -1992,22 +2002,99 @@ do_node_rejoin(void)
 	}
 
 	/*
-	 * XXX add checks that node actually started and connected to primary,
-	 * if not exit with ERR_REJOIN_FAIL
+	 * Actively check that node actually started and connected to primary,
+	 * if not exit with ERR_REJOIN_FAIL.
+	 *
+	 * This check can be overridden with -W/--no-wait, in which case a one-time
+	 * check will be carried out.
 	 */
+	if (runtime_options.no_wait == false)
+	{
+		int i;
 
-	create_event_notification(upstream_conn,
-							  &config_file_options,
-							  config_file_options.node_id,
-							  "node_rejoin",
-							  success,
-							  follow_output.data);
+		for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
+		{
+			if (is_server_available(config_file_options.conninfo))
+			{
+				log_verbose(LOG_INFO, _("demoted primary is pingable"));
+				break;
+			}
 
-	PQfinish(upstream_conn);
+			if (i % 5 == 0)
+			{
+				log_verbose(LOG_INFO, _("waiting for node %i to respond to pings; %i of max %i attempts"),
+							config_file_options.node_id,
+							i + 1, config_file_options.standby_reconnect_timeout);
+			}
+			else
+			{
+				log_debug("sleeping 1 second waiting for node %i to respond to pings; %i of max %i attempts",
+						  config_file_options.node_id,
+						  i + 1, config_file_options.standby_reconnect_timeout);
+			}
 
-	log_notice(_("NODE REJOIN successful"));
-	log_detail("%s", follow_output.data);
+			sleep(1);
+		}
 
+		for (;  i < config_file_options.standby_reconnect_timeout; i++)
+		{
+			success = is_downstream_node_attached(upstream_conn, config_file_options.node_name);
+
+			if (success == true)
+			{
+				log_verbose(LOG_INFO, _("node %i has attached to its upstream node"),
+							config_file_options.node_id);
+				break;
+			}
+
+			if (i % 5 == 0)
+			{
+				log_info(_("waiting for node %i to connect to new primary; %i of max %i attempts"),
+						 config_file_options.node_id,
+						 i + 1, config_file_options.standby_reconnect_timeout);
+			}
+			else
+			{
+				log_debug("sleeping 1 second waiting for node %i to connect to new primary; %i of max %i attempts",
+						  config_file_options.node_id,
+						  i + 1, config_file_options.standby_reconnect_timeout);
+			}
+
+			sleep(1);
+		}
+
+		create_event_notification(upstream_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "node_rejoin",
+								  success,
+								  follow_output.data);
+
+		if (success == false)
+		{
+			termPQExpBuffer(&follow_output);
+			log_notice(_("NODE REJOIN failed"));
+			exit(ERR_REJOIN_FAIL);
+		}
+	}
+	else
+	{
+		success = is_downstream_node_attached(upstream_conn, config_file_options.node_name);
+	}
+
+
+	if (success == true)
+	{
+		log_notice(_("NODE REJOIN successful"));
+		log_detail("%s", follow_output.data);
+	}
+	else
+	{
+		/*
+		 * if we reach here, no record found in upstream node's pg_stat_replication */
+		log_notice(_("NODE REJOIN has completed but node is not yet reattached to upstream"));
+		log_hint(_("you will need to manually check the node's replication status"));
+	}
 	termPQExpBuffer(&follow_output);
 
 	return;
@@ -2474,6 +2561,7 @@ do_node_help(void)
 			 "                            after executing \"pg_rewind\"\n"));
 	printf(_("    --config-archive-dir    directory to temporarily store retained configuration files\n" \
 			 "                              (default: /tmp)\n"));
+	printf(_("    -W/--no-wait            don't wait for the node to rejoin cluster\n"));
 	puts("");
 
 	printf(_("NODE SERVICE\n"));

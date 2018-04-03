@@ -46,6 +46,77 @@
   </refsect1>
 
   <refsect1>
+
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually execute the rejoin.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--force-rewind[=/path/to/pg_rewind]</option></term>
+        <listitem>
+          <para>
+            Execute <application>pg_rewind</application> if necessary.
+          </para>
+          <para>
+            It is only necessary to provide the <application>pg_rewind</application>
+            if using PostgreSQL 9.3 or 9.4, and <application>pg_rewind</application>
+            is not installed in the PostgreSQL <filename>bin</filename> directory.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--config-files</option></term>
+        <listitem>
+          <para>
+            comma-separated list of configuration files to retain after
+            executing <application>pg_rewind</application>.
+          </para>
+          <para>
+            Currently <application>pg_rewind</application> will overwrite
+            the local node's configuration files with the files from the source node,
+            so it's advisable to use this option to ensure they are kept.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+        <term><option>--config-archive-dir</option></term>
+        <listitem>
+          <para>
+            Directory to temporarily store configuration files specified with
+            <option>--config-files</option>; default: <filename>/tmp</filename>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+        <term><option>-W/--no-wait</option></term>
+        <listitem>
+          <para>
+            Don't wait for the node to rejoin cluster.
+          </para>
+          <para>
+            If this option is supplied, &repmgr; will restart the node but
+            not wait for it to connect to the primary.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
     <title>Event notifications</title>
     <para>
       A <literal>node_rejoin</literal> <link linkend="event-notifications">event notification</link> will be generated.
@@ -77,11 +148,18 @@
   </refsect1>
 
   <refsect1 id="repmgr-node-rejoin-pg-rewind" xreflabel="Using pg_rewind">
+
+   <indexterm>
+      <primary>pg_rewind</primary>
+      <secondary>using with "repmgr node rejoin"</secondary>
+    </indexterm>
+
     <title>Using <command>pg_rewind</command></title>
     <para>
       <command>repmgr node rejoin</command> can optionally use <command>pg_rewind</command> to re-integrate a
       node which has diverged from the rest of the cluster, typically a failed primary.
-      <command>pg_rewind</command> is available in PostgreSQL 9.5 and later.
+      <command>pg_rewind</command> is available in PostgreSQL 9.5 and later as part of the core distribution,
+      and can be installed from external sources for PostgreSQL 9.3 and 9.4.
     </para>
     <note>
       <para>

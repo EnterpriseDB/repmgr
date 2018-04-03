@@ -86,6 +86,7 @@
 #define OPT_REPL_CONN                      1037
 #define OPT_REMOTE_NODE_ID                 1038
 #define OPT_RECOVERY_CONF_ONLY             1039
+#define OPT_NO_WAIT                        1040
 
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
@@ -104,7 +105,8 @@ static struct option long_options[] =
 	{"dry-run", no_argument, NULL, OPT_DRY_RUN},
 	{"force", no_argument, NULL, 'F'},
 	{"pg_bindir", required_argument, NULL, 'b'},
-	{"wait", no_argument, NULL, 'W'},
+	{"wait", no_argument, NULL, 'w'},
+	{"no-wait", no_argument, NULL, 'W'},
 
 /* connection options */
 	{"dbname", required_argument, NULL, 'd'},
