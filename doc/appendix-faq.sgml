@@ -105,6 +105,7 @@
     standby to have been cloned using &repmgr;.
    </para>
   </sect2>
+
   <sect2 id="faq-repmgr-clone-other-source" >
    <title>Can I use a standby not cloned by &repmgr; as a &repmgr; node?</title>
 
@@ -118,6 +119,13 @@
    </para>
   </sect2>
 
+  <sect2 id="faq-repmgr-recovery-conf" >
+    <title>What does &repmgr; write in <filename>recovery.conf</filename>, and what options can be set there?</title>
+   <para>
+     See section <link linkend="repmgr-standby-clone-recovery-conf">Customising recovery.conf</link>.
+   </para>
+  </sect2>
+
   <sect2 id="faq-repmgr-failed-primary-standby" xreflabel="Reintegrate a failed primary as a standby">
    <title>How can a failed primary be re-added as a standby?</title>
    <para>
@@ -126,19 +134,23 @@
     needs to be re-registered as a standby.
    </para>
    <para>
-    In PostgreSQL 9.5 and later, it's possible to use <command>pg_rewind</command>
-    to re-synchronise the existing data directory, which will usually be much
+    It's possible to use <command>pg_rewind</command> to re-synchronise the existing data
+    directory, which will usually be much
     faster than re-cloning the server. However <command>pg_rewind</command> can only
     be used if PostgreSQL either has <varname>wal_log_hints</varname> enabled, or
     data checksums were enabled when the cluster was initialized.
    </para>
    <para>
-    &repmgr; provides the command <command>repmgr node rejoin</command> which can
-    optionally execute <command>pg_rewind</command>; see the <xref linkend="repmgr-node-rejoin">
-    documentation for details.
+     Note that <command>pg_rewind</command> is available as part of the core PostgreSQL
+     distribution from PostgreSQL 9.5, and as a third-party utility for PostgreSQL 9.3 and 9.4.
    </para>
    <para>
-    If <command>pg_rewind</command> cannot be used, then the data directory will have
+    &repmgr; provides the command <command>repmgr node rejoin</command> which can
+    optionally execute <command>pg_rewind</command>; see the <xref linkend="repmgr-node-rejoin">
+    documentation for details, in particular the section <xref linkend="repmgr-node-rejoin-pg-rewind">.
+   </para>
+   <para>
+    If <command>pg_rewind</command> cannot be used, then the data directory will need
     to be re-cloned from scratch.
    </para>
 
