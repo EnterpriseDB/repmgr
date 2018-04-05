@@ -33,26 +33,32 @@
  </para>
  <para>
   When <varname>failover</varname> is set to <literal>automatic</literal>, upon detecting failure
-  of the current  primary, <application>repmgrd</application> will execute one of
-  <varname>promote_command</varname> or <varname>follow_command</varname>,
-  depending on whether the current server is to become the new primary, or
-  needs to follow another server which has become the new primary. Note that
-  these commands can be any valid shell script which results in one of these
-  two actions happening, but if &repmgr;'s <command>standby follow</command> or
-  <command>standby promote</command>
-  commands are not executed (either directly as shown here, or from a script which
-  performs other actions), the &repmgr; metadata will not be updated and
-  &repmgr; will no longer function reliably.
+  of the current  primary, <application>repmgrd</application> will execute either
+  <varname>promote_command</varname> (if the current server is to become the new primary) or
+  <varname>follow_command</varname> (if the current serverneeds to follow another server which has
+  become the new primary.
  </para>
+ <note>
+   <para>
+     These commands can be any valid shell script which results in one of these
+     two actions happening, but if &repmgr;'s <command>standby follow</command> or
+     <command>standby promote</command>
+     commands are not executed (either directly as shown here, or from a script which
+     performs other actions), the &repmgr; metadata will not be updated and
+     &repmgr; will no longer function reliably.
+   </para>
+ </note>
+
  <para>
-  The <varname>follow_command</varname> should provide the <literal>--upstream-node-id=%n</literal>
-  option to <command>repmgr standby follow</command>; the <literal>%n</literal> will be replaced by
-  <application>repmgrd</application> with the ID of the new primary node. If this is not provided, &repmgr;
-  will attempt to determine the new primary by itself, but  if the
-  original primary comes back online after the new primary is promoted, there is a risk that
-  <command>repmgr standby follow</command> will result in the node continuing to follow
-  the original primary.
+   The <varname>follow_command</varname> should provide the <literal>--upstream-node-id=%n</literal>
+   option to <command>repmgr standby follow</command>; the <literal>%n</literal> will be replaced by
+   <application>repmgrd</application> with the ID of the new primary node. If this is not provided, &repmgr;
+   will attempt to determine the new primary by itself, but  if the
+   original primary comes back online after the new primary is promoted, there is a risk that
+   <command>repmgr standby follow</command> will result in the node continuing to follow
+   the original primary.
  </para>
+
  <sect1 id="repmgrd-connection-settings">
  <title>repmgrd connection settings</title>
  <para>
@@ -76,6 +82,82 @@
   <ulink url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS">PostgreSQL documentation</ulink>.
  </para>
  </sect1>
+
+
+ <sect1 id="repmgrd-service-command">
+   <indexterm>
+     <primary>service commands</primary>
+     <secondary>repmgrd</secondary>
+   </indexterm>
+
+   <title>repmgrd and service commands</title>
+   <para>
+     By default, &repmgr; will use <application>pg_ctl</application> to
+     stop, start, restart, reloadthe PostgreSQL cluster.
+     However, if installed from a package, particularly under
+     <application>pg_ctl</application>, it's advisable to specify
+     the appropriate service commands to perform these options.
+   </para>
+   <para>
+     To do this, specify the appropriate command for each action
+     in <filename>repmgr.conf</filename> using the following configuration
+     parameters:
+     <programlisting>
+    service_start_command
+    service_stop_command
+    service_restart_command
+    service_reload_command</programlisting>
+   </para>
+
+   <note>
+     <para>
+       It's also possible to specify a <varname>service_promote_command</varname>;
+       this overrides any value contained in the setting <varname>promote_command</varname>.
+       This is intended for systems which provide a package-level promote command,
+       such as Debian's <application>pg_ctlcluster</application>.
+     </para>
+   </note>
+
+   <para>
+     To confirm which command &repmgr; will execute for each action, use
+     <command>repmgr node service --list --action=...</command>, e.g.:
+     <programlisting>
+       repmgr -f /etc/repmgr.conf node service --list --action=stop
+       repmgr -f /etc/repmgr.conf node service --list --action=start
+       repmgr -f /etc/repmgr.conf node service --list --action=restart
+       repmgr -f /etc/repmgr.conf node service --list --action=reload</programlisting>
+   </para>
+
+
+   <para>
+     These commands will be executed by the system user which &repmgr; runs as (usually <literal>postgres</literal>)
+     and will probably require passwordless sudo access to be able to execute the command.
+   </para>
+   <para>
+     For example, using <application>systemd</application> on CentOS 7, the service commands can be
+     set as follows:
+     <programlisting>
+       service_start_command = 'sudo systemctl start postgresql-9.6'
+       service_stop_command = 'sudo systemctl stop postgresql-9.6'
+       service_restart_command = 'sudo systemctl restart postgresql-9.6'</programlisting>
+     and <filename>/etc/sudoers</filename> should be set as follows:
+     <programlisting>
+    Defaults:postgres !requiretty
+    postgres ALL = NOPASSWD: /usr/bin/systemctl stop postgresql-9.6, \
+       /usr/bin/systemctl start postgresql-9.6, \
+       /usr/bin/systemctl restart postgresql-9.6</programlisting>
+   </para>
+
+   <note>
+     <para>
+       If using <application>systemd</application>, ensure you have <varname>RemoteIPC</varname> set to <literal>off</literal>.
+       See the <ulink url="https://wiki.postgresql.org/wiki/Systemd">systemd</ulink>
+       entry in the <ulink url="https://wiki.postgresql.org/wiki/Main_Page">PostgreSQL wiki</ulink> for details.
+     </para>
+   </note>
+ </sect1>
+
+
  <sect1 id="repmgrd-log-rotation">
   <title>repmgrd log rotation</title>
   <para>
