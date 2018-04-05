@@ -1197,6 +1197,8 @@ do_standby_register(void)
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 	int primary_node_id = UNKNOWN_NODE_ID;
 
+	bool		dry_run_ok = true;
+
 	log_info(_("connecting to local node \"%s\" (ID: %i)"),
 			 config_file_options.node_name,
 			 config_file_options.node_id);
@@ -1204,8 +1206,11 @@ do_standby_register(void)
 	conn = establish_db_connection_quiet(config_file_options.conninfo);
 
 	/*
-	 * if --force provided, don't wait for the node to start, as the
-	 * normal use case will be re-registering an existing node, or
+	 * If unable to connect, and --force not provided, wait up to --wait-start
+	 * seconds (default: 0) for the node to become reachable.
+	 *
+	 * Not that if --force provided, we don't wait for the node to start, as
+	 * the normal use case will be re-registering an existing node, or
 	 * registering an inactive/not-yet-extant one; we'll do the
 	 * error handling for those cases in the next code block
 	 */
@@ -1243,9 +1248,12 @@ do_standby_register(void)
 					 config_file_options.node_id,
 					 timer);
 		}
-
 	}
 
+	/*
+	 * If still unable to connect, continue only if -F/--force provided,
+	 * and primary connection parameters provided.
+	 */
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
 		if (runtime_options.force == false)
@@ -1265,12 +1273,12 @@ do_standby_register(void)
 			log_error(_("unable to connect to local node \"%s\" (ID: %i)"),
 					  config_file_options.node_name,
 					  config_file_options.node_id);
-			log_hint(_("to register an inactive standby, additionally provide the primary connection parameters"));
+			log_hint(_("to register a standby which is not running, additionally provide the primary connection parameters"));
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-
-	if (PQstatus(conn) == CONNECTION_OK)
+	/* connection OK - check this is actually a standby */
+	else
 	{
 		check_recovery_type(conn);
 	}
@@ -1292,7 +1300,6 @@ do_standby_register(void)
 	{
 		primary_conn = establish_db_connection_by_params(&source_conninfo, false);
 	}
-
 
 	/*
 	 * no amount of --force will make it possible to register the standby
@@ -1368,8 +1375,12 @@ do_standby_register(void)
 	}
 
 	/*
-	 * If an upstream node is defined, check if that node exists and is active
-	 * If it doesn't exist, and --force set, create a minimal inactive record
+	 * If an upstream node is defined, check if that node exists and is active.
+	 *
+	 * If it doesn't exist, and --force set, create a minimal inactive record,
+	 * in the assumption that the user knows what they are doing (usually some kind
+	 * of provisioning where multiple servers are created in parallel) and will
+	 * create the active record later.
 	 */
 	if (runtime_options.upstream_node_id != NO_UPSTREAM_NODE)
 	{
@@ -1493,15 +1504,15 @@ do_standby_register(void)
 				/* check our standby is connected */
 				if (is_downstream_node_attached(upstream_conn, config_file_options.node_name) == true)
 				{
-					log_verbose(LOG_INFO, _("local node is attached to upstream"));
+					log_verbose(LOG_INFO, _("local node is attached to specified upstream node %i"), runtime_options.upstream_node_id);
 				}
 				else
 				{
 					if (!runtime_options.force)
 					{
 						log_error(_("this node does not appear to be attached to upstream node \"%s\" (ID: %i)"),
-								  config_file_options.node_name,
-								  config_file_options.node_id);
+								  upstream_node_record.node_name,
+								  upstream_node_record.node_id);
 
 						log_detail(_("no record for application name \"%s\" found in \"pg_stat_replication\""),
 								   config_file_options.node_name);
@@ -1520,24 +1531,82 @@ do_standby_register(void)
 		}
 	}
 
-
-	if (runtime_options.dry_run == true)
-	{
-		log_info(_("all prerequisites for \"standby register\" are met"));
-
-		PQfinish(primary_conn);
-		if (PQstatus(conn) == CONNECTION_OK)
-			PQfinish(conn);
-		exit(SUCCESS);
-	}
-
 	/*
-	 * populate node record structure with current values (this will overwrite
-	 * any existing values, which is what we want when updating the record
+	 * populate node record structure with current values set in repmgr.conf
+	 * and/or the command line (this will overwrite  any existing values, which
+	 * is what we want when updating the record)
 	 */
 	init_node_record(&node_record);
 	node_record.type = STANDBY;
 
+	/* if --upstream-node-id not provided, set to primary node id */
+	if (node_record.upstream_node_id == UNKNOWN_NODE_ID)
+	{
+		node_record.upstream_node_id = primary_node_id;
+	}
+
+	/*
+	 * If --upstream-node-id not provided, we're defaulting to the primary as
+	 * upstream node. If local node is available, double-check that it's attached
+	 * to the primary, in case --upstream-node-id was an accidental ommission.
+	 *
+	 * Currently we'll only do this for newly registered nodes.
+	 */
+	if (runtime_options.upstream_node_id == NO_UPSTREAM_NODE && PQstatus(conn) == CONNECTION_OK)
+	{
+		/* only do this if record does not exist */
+		if (record_status != RECORD_FOUND)
+		{
+			log_warning(_("--upstream-node-id not supplied, assuming upstream node is primary (node ID %i)"),
+						primary_node_id);
+
+			/* check our standby is connected */
+			if (is_downstream_node_attached(primary_conn, config_file_options.node_name) == true)
+			{
+				log_verbose(LOG_INFO, _("local node is attached to primary"));
+			}
+			else if (runtime_options.force == false)
+			{
+				log_error(_("local node not attached to primary node %i"), primary_node_id);
+				/* TODO: 9.6 and later, display detail from pg_stat_wal_receiver */
+				log_hint(_("specify the actual upstream node id with --upstream-node-id, or use -F/--force to continue anyway"));
+
+				if (runtime_options.dry_run == true)
+				{
+					dry_run_ok = false;
+				}
+				else
+				{
+					PQfinish(primary_conn);
+					PQfinish(conn);
+					exit(ERR_BAD_CONFIG);
+				}
+			}
+			else
+			{
+				log_warning(_("local node not attached to primary node %i"), primary_node_id);
+				log_notice(_("-F/--force supplied, continuing anyway"));
+			}
+		}
+
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		PQfinish(primary_conn);
+		if (PQstatus(conn) == CONNECTION_OK)
+			PQfinish(conn);
+
+		if (dry_run_ok == false)
+		{
+			log_warning(_("issue(s) encountered; see preceding log messages"));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		log_info(_("all prerequisites for \"standby register\" are met"));
+
+		exit(SUCCESS);
+	}
 
 	/*
 	 * node record exists - update it (at this point we have already
@@ -1560,13 +1629,11 @@ do_standby_register(void)
 
 	if (record_created == false)
 	{
-		appendPQExpBuffer(
-						  &details,
+		appendPQExpBuffer(&details,
 						  "standby registration failed");
 
 		if (runtime_options.force == true)
-			appendPQExpBuffer(
-							  &details,
+			appendPQExpBuffer(&details,
 							  " (-F/--force option was used)");
 
 		create_event_notification_extended(
