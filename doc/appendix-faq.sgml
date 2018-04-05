@@ -24,8 +24,9 @@
       series will no longer be actively maintained.
      </para>
      <para>
-      repmgr 2.x supports PostgreSQL 9.0 ~ 9.3. While it is compatible
-      with PostgreSQL 9.3, we recommend using repmgr 4.x.
+      &repmgr; 2.x supports PostgreSQL 9.0 ~ 9.3. While it is compatible
+      with PostgreSQL 9.3, we recommend using repmgr 4.x. &repmgr; 2.x is
+      no longer maintained.
      </para>
   </sect2>
 
@@ -35,7 +36,7 @@
     Replication slots, introduced in PostgreSQL 9.4, ensure that the
     primary server will retain WAL files until they have been consumed
     by all standby servers. This makes WAL file management much easier,
-    and if used `repmgr` will no longer insist on a fixed minimum number
+    and if used &repmgr; will no longer insist on a fixed minimum number
     (default: 5000) of WAL files being retained.
    </para>
    <para>
