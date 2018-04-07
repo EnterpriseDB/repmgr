@@ -1,9 +1,7 @@
 FAQ - Frequently Asked Questions about repmgr
 =============================================
 
-The repmgr 4 FAQ is located here:
-
-    https://repmgr.org/docs/appendix-faq.html
+The repmgr 4 FAQ is located here: [repmgr FAQ (Frequently Asked Questions)](https://repmgr.org/docs/4.0/appendix-faq.html "repmgr FAQ")
 
 The repmgr 3.x FAQ can be found here:
 
