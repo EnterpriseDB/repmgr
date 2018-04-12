@@ -940,6 +940,7 @@ do_node_check_replication_connection(void)
 		return;
 	}
 
+	/* retrieve remote node record from local database */
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	record_status = get_node_record(local_conn, runtime_options.remote_node_id, &node_record);
@@ -956,8 +957,12 @@ do_node_check_replication_connection(void)
 	initialize_conninfo_params(&remote_conninfo, false);
 	parse_conninfo_string(node_record.conninfo, &remote_conninfo, NULL, false);
 
+	if (strcmp(param_get(&remote_conninfo, "user"), node_record.repluser) != 0)
+	{
+		param_set(&remote_conninfo, "user", node_record.repluser);
+		param_set(&remote_conninfo, "dbname", "replication");
+	}
 	param_set(&remote_conninfo, "replication", "1");
-	param_set(&remote_conninfo, "user", node_record.repluser);
 
 	repl_conn = establish_db_connection_by_params(&remote_conninfo, false);
 
