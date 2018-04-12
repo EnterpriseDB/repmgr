@@ -2236,6 +2236,7 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 		log_error(_("no database connection available"));
 		exit(ERR_INTERNAL);
 	}
+
 	is_superuser = is_superuser_connection(*conn, &userinfo);
 
 	if (is_superuser == true)
@@ -2276,6 +2277,8 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 		PQfinish(*conn);
 		exit(ERR_BAD_CONFIG);
 	}
+
+	log_debug("established superuser connection as \"%s\"", runtime_options.superuser);
 
 	*privileged_conn = *superuser_conn;
 	return;

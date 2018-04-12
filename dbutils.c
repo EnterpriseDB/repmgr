@@ -556,7 +556,7 @@ param_get(t_conninfo_param_list *param_list, const char *param)
 /*
  * Parse a conninfo string into a t_conninfo_param_list
  *
- * See conn_to_param_list() to do the same for a PQconn
+ * See conn_to_param_list() to do the same for a PGconn
  *
  * "ignore_local_params": ignores those parameters specific
  * to a local installation, i.e. when parsing an upstream
@@ -600,10 +600,19 @@ parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_lis
 	return true;
 }
 
+
 /*
- * Parse a PQconn into a t_conninfo_param_list
+ * Parse a PGconn into a t_conninfo_param_list
  *
  * See parse_conninfo_string() to do the same for a conninfo string
+ *
+ * NOTE: the current use case for this is to take an active connection,
+ * replace the existing username (typically replacing it with the superuser
+ * or replication user name), and make a new connection as that user.
+ * If the "password" field is set, it will cause any connection made with
+ * these parameters to fail (unless of course the password happens to be the
+ * same). Therefore we remove the password altogether, and rely on it being
+ * available via .pgpass.
  */
 void
 conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
@@ -617,6 +626,10 @@ conn_to_param_list(PGconn *conn, t_conninfo_param_list *param_list)
 		/* Ignore non-set or blank parameter values */
 		if ((option->val == NULL) ||
 			(option->val != NULL && option->val[0] == '\0'))
+			continue;
+
+		/* Ignore "password" */
+		if (strcmp(option->keyword, "password") == 0)
 			continue;
 
 		param_set(param_list, option->keyword, option->val);
