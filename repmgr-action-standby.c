@@ -60,6 +60,7 @@ static char upstream_data_directory[MAXPGPATH];
 static t_conninfo_param_list recovery_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 static char recovery_conninfo_str[MAXLEN] = "";
 static char upstream_repluser[NAMEDATALEN] = "";
+static char upstream_user[NAMEDATALEN] = "";
 
 static int	source_server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
@@ -282,7 +283,7 @@ do_standby_clone(void)
 	{
 		/*
 		 * This connects to the source node and performs sanity checks, also
-		 * sets "recovery_conninfo_str", "upstream_repluser" and
+		 * sets "recovery_conninfo_str", "upstream_repluser", "upstream_user" and
 		 * "upstream_node_id".
 		 *
 		 * Will error out if source connection not possible and not in
@@ -2245,8 +2246,12 @@ do_standby_follow(void)
 
 	conn_to_param_list(primary_conn, &repl_conninfo);
 
+	if (strcmp(param_get(&repl_conninfo, "user"), primary_node_record.repluser) != 0)
+	{
+		param_set(&repl_conninfo, "user", primary_node_record.repluser);
+		param_set(&repl_conninfo, "dbname", "replication");
+	}
 	param_set(&repl_conninfo, "replication", "1");
-	param_set(&repl_conninfo, "user", primary_node_record.repluser);
 
 	repl_conn = establish_db_connection_by_params(&repl_conninfo, false);
 	if (PQstatus(repl_conn) != CONNECTION_OK)
@@ -2997,7 +3002,7 @@ do_standby_switchover(void)
 					exit(ERR_BAD_CONFIG);
 					break;
 				default:
-					log_error(_("unable to deterimine whether candidate is able to make replication connection to promotion candidate"));
+					log_error(_("unable to determine whether demotion candidate is able to make replication connection to promotion candidate"));
 					exit(ERR_BAD_CONFIG);
 					break;
 			}
@@ -4066,9 +4071,16 @@ check_source_server()
 		record_status = get_node_record(source_conn, upstream_node_id, &node_record);
 		if (record_status == RECORD_FOUND)
 		{
-			upstream_conninfo_found = true;
+			t_conninfo_param_list upstream_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+
+			initialize_conninfo_params(&upstream_conninfo, false);
+			parse_conninfo_string(node_record.conninfo, &upstream_conninfo, NULL, false);
+
 			strncpy(recovery_conninfo_str, node_record.conninfo, MAXLEN);
 			strncpy(upstream_repluser, node_record.repluser, NAMEDATALEN);
+			strncpy(upstream_user, param_get(&upstream_conninfo, "user"), NAMEDATALEN);
+
+			upstream_conninfo_found = true;
 		}
 
 		/*
@@ -4498,6 +4510,11 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		else if (node_info->repluser[0] != '\0')
 		{
 			param_set(&repl_conninfo, "user", node_info->repluser);
+		}
+
+		if (strcmp(param_get(&repl_conninfo, "user"), upstream_user) != 0)
+		{
+			param_set(&repl_conninfo, "dbname", "replication");
 		}
 
 		/*
