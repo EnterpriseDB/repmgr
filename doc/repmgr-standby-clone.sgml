@@ -197,6 +197,13 @@
      to check the prerequisites for creating the <filename>recovery.conf</filename> file,
      and display the contents of the file without actually creating it.
    </para>
+
+   <note>
+     <para>
+       <option>--recovery-conf-only</option> was introduced in &repmgr; <link linkend="release-4.0.4">4.0.4</link>.
+     </para>
+   </note>
+
   </refsect1>
 
   <refsect1>
@@ -223,7 +230,7 @@
         <term><option>-c, --fast-checkpoint</option></term>
         <listitem>
           <para>
-            force fast checkpoint (not effective when cloning from Barman
+            Force fast checkpoint (not effective when cloning from Barman).
           </para>
         </listitem>
       </varlistentry>
@@ -232,7 +239,7 @@
         <term><option>--copy-external-config-files[={samepath|pgdata}]</option></term>
         <listitem>
           <para>
-            copy configuration files located outside the data directory on the source
+            Copy configuration files located outside the data directory on the source
             node to the same path on the standby (default) or to the
             PostgreSQL data directory.
           </para>
@@ -243,7 +250,7 @@
         <term><option>--no-upstream-connection</option></term>
         <listitem>
           <para>
-            when using Barman, do not connect to upstream node
+            When using Barman, do not connect to upstream node.
           </para>
         </listitem>
       </varlistentry>
@@ -252,7 +259,7 @@
         <term><option>-R, --remote-user=USERNAME</option></term>
         <listitem>
           <para>
-            remote system username for SSH operations (default: current local system username)
+            Remote system username for SSH operations (default: current local system username).
           </para>
         </listitem>
       </varlistentry>
@@ -261,7 +268,7 @@
         <term><option> --recovery-conf-only</option></term>
         <listitem>
           <para>
-            create <filename>recovery.conf</filename> file for a previously cloned instance
+            Create <filename>recovery.conf</filename> file for a previously cloned instance. &repmgr 4.0.4 and later.
           </para>
         </listitem>
       </varlistentry>
@@ -270,7 +277,7 @@
         <term><option>--replication-user</option></term>
         <listitem>
           <para>
-            user to make replication connections with (optional, not usually required)
+            User to make replication connections with (optional, not usually required).
           </para>
         </listitem>
       </varlistentry>
@@ -279,8 +286,8 @@
         <term><option>--superuser</option></term>
         <listitem>
           <para>
-            if the &repmgr; user is not a superuser, the name of a valid superuser must
-            be provided with this option
+            If the &repmgr; user is not a superuser, the name of a valid superuser must
+            be provided with this option.
           </para>
         </listitem>
       </varlistentry>
@@ -291,7 +298,7 @@
         <listitem>
           <para>
             <literal>primary_conninfo</literal> value to write in recovery.conf
-            when the intended upstream server does not yet exist
+            when the intended upstream server does not yet exist.
           </para>
         </listitem>
       </varlistentry>
@@ -308,7 +315,7 @@
         <term><option>--without-barman </option></term>
         <listitem>
           <para>
-            do not use Barman even if configured
+            Do not use Barman even if configured.
           </para>
         </listitem>
       </varlistentry>
