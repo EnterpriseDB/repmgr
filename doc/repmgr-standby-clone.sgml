@@ -25,9 +25,11 @@
     <note>
       <simpara>
         <command>repmgr standby clone</command> does not start the standby, and after cloning
-        <command>repmgr standby register</command> must be executed to notify &repmgr; of its presence.
+        a standby, the command <command>repmgr standby register</command> must be executed to
+        notify &repmgr; of its existence.
       </simpara>
     </note>
+
   </refsect1>
 
 
@@ -321,5 +323,11 @@
     </para>
   </refsect1>
 
+  <refsect1>
+    <title>See also</title>
+    <para>
+      See <xref linkend="cloning-standbys"> for details about various aspects of cloning.
+    </para>
+  </refsect1>
 </refentry>
 
