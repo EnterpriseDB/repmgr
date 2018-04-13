@@ -29,7 +29,9 @@
 #include "voting.h"
 
 #define REPMGR_NODES_COLUMNS "n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, n.slot_name, n.location, n.priority, n.active, n.config_file, '' AS upstream_node_name "
-#define BDR_NODES_COLUMNS "node_sysid, node_timeline, node_dboid, node_status, node_name, node_local_dsn, node_init_from_dsn, node_read_only, node_seq_id"
+#define BDR2_NODES_COLUMNS "node_sysid, node_timeline, node_dboid, node_name, node_local_dsn"
+#define BDR3_NODES_COLUMNS "'', 0, 0, node_name, node_init_from_dsn"
+
 
 #define ERRBUFF_SIZE 512
 
@@ -237,18 +239,13 @@ typedef struct s_bdr_node_info
 	char		node_sysid[MAXLEN];
 	uint32		node_timeline;
 	uint32		node_dboid;
-	char		node_status;
 	char		node_name[MAXLEN];
 	char		node_local_dsn[MAXLEN];
-	char		node_init_from_dsn[MAXLEN];
-	bool		read_only;
-	uint32		node_seq_id;
 } t_bdr_node_info;
 
 #define T_BDR_NODE_INFO_INITIALIZER { \
 	"", InvalidOid, InvalidOid, \
-	'?', "", "", "", \
-    false, -1 \
+    "", "", \
 }
 
 
