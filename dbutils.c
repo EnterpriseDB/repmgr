@@ -33,6 +33,12 @@
 /* mainly for use by repmgrd */
 int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
+/*
+ * This is set by is_bdr_db(), which is called by every BDR-related
+ * action anyway; this is required to be able to generate appropriate
+ * queries for versions 2 and 3.
+ */
+int			bdr_version_num = UNKNOWN_BDR_VERSION_NUM;
 
 static PGconn *_establish_db_connection(const char *conninfo,
 						 const bool exit_on_error,
@@ -4321,7 +4327,9 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT pg_catalog.count(*) FROM pg_catalog.pg_extension WHERE extname='bdr'");
+					  " SELECT (pg_catalog.regexp_match(extversion, '^\\d+'))[1] AS major_version "
+					  "  FROM pg_catalog.pg_extension "
+					  " WHERE extname = 'bdr' ");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -4329,10 +4337,12 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 	if (PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
 	{
 		is_bdr_db = false;
+		bdr_version_num = UNKNOWN_BDR_VERSION_NUM;
 	}
 	else
 	{
-		is_bdr_db = atoi(PQgetvalue(res, 0, 0)) == 1 ? true : false;
+		is_bdr_db = true;
+		bdr_version_num = atoi(PQgetvalue(res, 0, 0));
 	}
 
 	PQclear(res);
@@ -4373,18 +4383,19 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 	return is_bdr_db;
 }
 
+
 bool
 is_bdr_db(PGconn *conn, PQExpBufferData *output)
 {
 	return _is_bdr_db(conn, output, false);
 }
 
+
 bool
 is_bdr_db_quiet(PGconn *conn)
 {
 	return _is_bdr_db(conn, NULL, true);
 }
-
 
 
 bool
