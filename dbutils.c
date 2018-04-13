@@ -90,7 +90,10 @@ wrap_ddl_query(PQExpBufferData *query_buf, int replication_type, const char *fmt
 
 	if (replication_type == REPLICATION_TYPE_BDR)
 	{
-		appendPQExpBuffer(query_buf, "SELECT bdr.bdr_replicate_ddl_command($repmgr$");
+		if (bdr_version_num < 3)
+			appendPQExpBuffer(query_buf, "SELECT bdr.bdr_replicate_ddl_command($repmgr$");
+		else
+			appendPQExpBuffer(query_buf, "SELECT bdr.replicate_ddl_command($repmgr$");
 	}
 
 	va_start(arglist, fmt);
@@ -4379,9 +4382,10 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 			else if (quiet == false)
 				log_warning("%s", warning);
 		}
+
+		PQclear(res);
 	}
 
-	PQclear(res);
 
 	return is_bdr_db;
 }
@@ -4760,7 +4764,8 @@ get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list)
 						  "     SELECT " BDR3_NODES_COLUMNS
 						  "       FROM bdr.node bn "
 						  " INNER JOIN pglogical.node_interface pni "
-						  "         ON bn.pglogical_node_id = pni.if_nodeid ");
+						  "         ON bn.pglogical_node_id = pni.if_nodeid "
+						  "   ORDER BY node_name");
 	}
 
 	log_verbose(LOG_DEBUG, "get_all_node_records():\n%s", query.data);
