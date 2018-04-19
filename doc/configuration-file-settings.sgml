@@ -1,10 +1,10 @@
 <sect1 id="configuration-file-settings" xreflabel="configuration file settings">
   <indexterm>
     <primary>repmgr.conf</primary>
-    <secondary>settings</secondary>
+    <secondary>basic settings</secondary>
   </indexterm>
 
- <title>Configuration file settings</title>
+ <title>Basic configuration file settings</title>
  <para>
    Each <filename>repmgr.conf</filename> file must contain the following parameters:
  </para>
@@ -92,7 +92,10 @@
 
   <para>
     For a full list of annotated configuration items, see the file
-    <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</>.
+    <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>.
+  </para>
+  <para>
+    For <application>repmgrd</application>-specific settings, see <xref linkend="repmgrd-configuration">.
   </para>
 
   <note>

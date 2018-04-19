@@ -39,6 +39,7 @@
 <!ENTITY configuration      SYSTEM "configuration.sgml">
 <!ENTITY configuration-file      SYSTEM "configuration-file.sgml">
 <!ENTITY configuration-file-settings      SYSTEM "configuration-file-settings.sgml">
+<!ENTITY configuration-service-commands   SYSTEM "configuration-service-commands.sgml">
 <!ENTITY cloning-standbys  SYSTEM "cloning-standbys.sgml">
 <!ENTITY promoting-standby  SYSTEM "promoting-standby.sgml">
 <!ENTITY follow-new-primary  SYSTEM "follow-new-primary.sgml">
