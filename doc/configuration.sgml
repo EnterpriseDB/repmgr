@@ -3,6 +3,7 @@
 
   &configuration-file;
   &configuration-file-settings;
+  &configuration-service-commands;
 
   <sect1 id="configuration-permissions" xreflabel="User permissions">
     <indexterm>

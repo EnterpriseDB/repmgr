@@ -290,6 +290,9 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #       /usr/bin/systemctl start postgresql-9.6, \
 #       /usr/bin/systemctl restart postgresql-9.6
 #
+# Debian/Ubuntu users: use "sudo pg_ctlcluster" to execute service control commands.
+#
+# For more details, see: https://repmgr.org/docs/4.0/configuration-service-commands.html
 
 #service_start_command = ''
 #service_stop_command = ''

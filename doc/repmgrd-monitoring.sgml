@@ -3,6 +3,10 @@
    <primary>repmgrd</primary>
    <secondary>monitoring</secondary>
  </indexterm>
+ <indexterm>
+   <primary>monitoring</primary>
+   <secondary>with repmgrd</secondary>
+ </indexterm>
 
  <title>Monitoring with repmgrd</title>
  <para>
