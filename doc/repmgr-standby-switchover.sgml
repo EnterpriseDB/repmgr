@@ -35,6 +35,10 @@
         a successful switchover.
       </para>
     </note>
+    <para>
+      For more details on performing a switchover, including preparation and configuration,
+      see section <xref linkend="performing-switchover">.
+    </para>
   </refsect1>
 
   <refsect1>
