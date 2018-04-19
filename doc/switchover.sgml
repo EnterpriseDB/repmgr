@@ -100,7 +100,11 @@
      <para>
        If the <option>service_*_command</option> options aren't defined, &repmgr; will
        fall back to using <application>pg_ctl</application> to stop/start/restart
-       PostgreSQL, which may not work properly.
+       PostgreSQL, which may not work properly, particularly when executed on a remote
+       server.
+     </para>
+     <para>
+       For more details, see <xref linkend="configuration-service-commands">.
      </para>
    </important>
 
@@ -116,6 +120,7 @@
      this way, <command>repmgr</command> will fail to stop the primary.
     </simpara>
    </note>
+
 
    <para>
     Check that access from applications is minimalized or preferably blocked
