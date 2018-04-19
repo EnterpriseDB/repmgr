@@ -1,29 +1,58 @@
 <appendix id="appendix-packages" xreflabel="Package details">
- <indexterm>
-  <primary>packages</primary>
- </indexterm>
+  <indexterm>
+    <primary>packages</primary>
+  </indexterm>
 
- <title>&repmgr; package details</title>
- <para>
-   This section provides technical details about various &repmgr; binary
-   packages, such as location of the installed binaries and
-   configuration files.
- </para>
-
- <sect1 id="packages-centos" xreflabel="CentOS packages">
-  <title>CentOS, RHEL, Scientific Linux etc.</title>
+  <title>&repmgr; package details</title>
   <para>
-    Currently packages are provided for versions 6.x and 7.x of CentOS et al.
+    This section provides technical details about various &repmgr; binary
+    packages, such as location of the installed binaries and
+    configuration files.
   </para>
 
-  <note>
+  <sect1 id="packages-centos" xreflabel="CentOS packages">
+    <title>CentOS Packages</title>
+    <indexterm>
+      <primary>packages</primary>
+      <secondary>CentOS packages</secondary>
+    </indexterm>
     <para>
-      For PostgreSQL 9.6 and lower, the CentOS packages use a mixture of <literal>9.6</literal>
-      and <literal>96</literal> in various places to designate the major version;
-      from PostgreSQL 10, the first part of the version number (e.g. <literal>10</literal>) is
-      the major version, so there is more consistency in file/path/package naming.
+      Currently, &repmgr; RPM packages are provided for versions 6.x and 7.x of CentOS. These should also
+      work on matching versions of Red Hat Enterprise Linux, Scientific Linux and Oracle Enterprise Linux;
+      together with CentOS, these are the same RedHat-based distributions for which the main community project
+      provides packages (see the <ulink url="https://yum.postgresql.org/">PostgreSQL RPM Building Project</ulink>
+      page for details).
     </para>
-  </note>
+    <para>
+      It appears Red Hat provides enterprise users with PostgreSQL RPMs with a different
+      filesystem layout to the community RPMs, in which case the 2ndQuadrant &repmgr; RPM packages
+      may not be compatible. Please contact your support vendor for assistance.
+    </para>
+    <para>
+      Note these &repmgr; RPM packages are not designed to work with SuSE/OpenSuSE.
+    </para>
+
+
+    <para>
+      The two tables below list relevant information, paths, commands etc. for the &repmgr; packages on
+      CentOS 7 (with systemd) and CentOS 6 (no systemd). Substitute the appropriate PostgreSQL major
+      version number for your installation.
+    </para>
+
+    <note>
+      <para>
+        For PostgreSQL 9.6 and lower, the CentOS packages use a mixture of <literal>9.6</literal>
+        and <literal>96</literal> in various places to designate the major version; e.g. the
+        package name is <literal>repmgr96</literal>, but the binary directory is
+        <filename>/var/lib/pgsql/9.6/data</filename>.
+      </para>
+      <para>
+        From PostgreSQL 10, the first part of the version number (e.g. <literal>10</literal>) is
+        the major version, so there is more consistency in file/path/package naming
+        (package <literal>repmgr10</literal>, binary directory <filename>/var/lib/pgsql/10/data</filename>).
+      </para>
+    </note>
+
 
   <table id="centos-7-packages">
    <title>CentOS 7 packages</title>
@@ -42,7 +71,7 @@
 
      <row>
       <entry>Package name example:</entry>
-      <entry><filename>repmgr10-4.0.0-1.rhel7.x86_64</filename></entry>
+      <entry><filename>repmgr10-4.0.4-1.rhel7.x86_64</filename></entry>
      </row>
 
      <row>
@@ -52,7 +81,7 @@
 
      <row>
       <entry>Installation command:</entry>
-      <entry><literal>yum install -y repmgr10</literal></entry>
+      <entry><literal>yum install repmgr10</literal></entry>
      </row>
 
      <row>
@@ -61,7 +90,7 @@
      </row>
 
      <row>
-      <entry>In default path:</entry>
+      <entry>repmgr in default path:</entry>
       <entry>NO</entry>
      </row>
 
@@ -71,8 +100,13 @@
      </row>
 
      <row>
+      <entry>Data directory:</entry>
+      <entry><filename>/var/lib/pgsql/10/data</filename></entry>
+     </row>
+
+     <row>
       <entry>repmgrd service command:</entry>
-      <entry><literal>service repmgr10</literal></entry>
+      <entry><command>systemctl [start|stop|restart|reload] repmgr10</command></entry>
      </row>
 
      <row>
@@ -82,7 +116,7 @@
 
      <row>
       <entry>repmgrd log file location:</entry>
-      <entry>(not specified)</entry>
+      <entry>(not specified by package; set in <filename>repmgr.conf</filename>)</entry>
      </row>
 
     </tbody>
@@ -106,17 +140,17 @@
 
      <row>
       <entry>Package name example:</entry>
-      <entry><filename>repmgr96-4.0.0-1.rhel6.x86_64</filename></entry>
+      <entry><filename>repmgr96-4.0.4-1.rhel6.x86_64</filename></entry>
      </row>
 
      <row>
       <entry>Metapackage:</entry>
-      <entry>NO</entry>
+      <entry>(none)</entry>
      </row>
 
      <row>
       <entry>Installation command:</entry>
-      <entry><literal>yum install -y repmgr96</literal></entry>
+      <entry><literal>yum install repmgr96</literal></entry>
      </row>
 
      <row>
@@ -125,7 +159,7 @@
      </row>
 
      <row>
-      <entry>In default path:</entry>
+      <entry>repmgr in default path:</entry>
       <entry>NO</entry>
      </row>
 
@@ -135,8 +169,13 @@
      </row>
 
      <row>
+      <entry>Data directory:</entry>
+      <entry><filename>/var/lib/pgsql/9.6/data</filename></entry>
+     </row>
+
+     <row>
       <entry>repmgrd service command:</entry>
-      <entry>service repmgr-9.6</entry>
+      <entry><literal>service [start|stop|restart|reload] repmgr-9.6</literal></entry>
      </row>
 
      <row>
