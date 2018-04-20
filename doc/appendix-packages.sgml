@@ -221,4 +221,118 @@
 
     </sect2>
  </sect1>
+
+
+
+
+  <sect1 id="packages-debian-ubuntu" xreflabel="Debian/Ubuntu packages">
+    <title>Debian/Ubuntu Packages</title>
+    <indexterm>
+      <primary>packages</primary>
+      <secondary>Debian/Ubuntupackages</secondary>
+    </indexterm>
+    <para>
+      &repmgr; <literal>.deb</literal> packages are provided via the
+      PostgreSQL Community APT repository, and are available for each community-supported
+      PostgreSQL version, currently supported Debian releases, and currently supported
+      Ubuntu LTS releases.
+    </para>
+
+    <sect2 id="packages-apt-repository">
+      <title>APT repository</title>
+
+      <para>
+        &repmgr; packages are available from the  PostgreSQL Community APT repository,
+        which is updated immediately after each &repmgr; release.
+      </para>
+
+
+      <table id="apt-repository">
+        <title>PostgreSQL Community APT repository (PGDG)</title>
+        <tgroup cols="2">
+          <tbody>
+            <row>
+              <entry>Repository URL:</entry>
+              <entry><ulink url="http://apt.postgresql.org/">http://apt.postgresql.org/</ulink></entry>
+            </row>
+            <row>
+              <entry>Repository documentation:</entry>
+              <entry><ulink url="https://wiki.postgresql.org/wiki/Apt)">https://wiki.postgresql.org/wiki/Apt)</ulink></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
+    </sect2>
+
+   <sect2 id="packages-debian-details">
+      <title>Debian/Ubuntu package details</title>
+
+      <para>
+        The two tables below list relevant information, paths, commands etc. for the &repmgr; packages on
+        Debian 9.x ("Stretch") and Ubuntu 16.04 ("Xenial Xerus"). Substitute the appropriate PostgreSQL major
+        version number for your installation.
+      </para>
+
+      <table id="debian-9-packages">
+        <title>Debian 9.x packages</title>
+
+        <tgroup cols="2">
+          <tbody>
+
+            <row>
+              <entry>Package name example:</entry>
+              <entry><filename>postgresql-10-repmgr</filename></entry>
+            </row>
+
+            <row>
+              <entry>Metapackage:</entry>
+              <entry><filename>repmgr-common</filename></entry>
+            </row>
+
+            <row>
+              <entry>Installation command:</entry>
+              <entry><literal>apt-get install postgresql-10-repmgr</literal></entry>
+            </row>
+
+            <row>
+              <entry>Binary location:</entry>
+              <entry><filename>/usr/lib/postgresql/10/bin</filename></entry>
+            </row>
+
+            <row>
+              <entry>repmgr in default path:</entry>
+              <entry>Yes (via wrapper script <filename>/usr/bin/repmgr</filename>)</entry>
+            </row>
+
+            <row>
+              <entry>Configuration file location:</entry>
+              <entry>(not set by package)</entry>
+            </row>
+
+            <row>
+              <entry>Data directory:</entry>
+              <entry><filename>/var/lib/postgresql/10/main</filename></entry>
+            </row>
+
+            <row>
+              <entry>repmgrd service command:</entry>
+              <entry><command>systemctl [start|stop|restart|reload] postgresql@10-main</command></entry>
+            </row>
+
+            <row>
+              <entry>repmgrd service file location:</entry>
+              <entry><filename>/etc/init.d/repmgrd</filename> (defaults in: <filename>/etc/defaults/repmgrd</filename>)</entry>
+            </row>
+
+            <row>
+              <entry>repmgrd log file location:</entry>
+              <entry>(not specified by package; set in <filename>repmgr.conf</filename>)</entry>
+            </row>
+
+          </tbody>
+        </tgroup>
+      </table>
+   </sect2>
+
+  </sect1>
 </appendix>
