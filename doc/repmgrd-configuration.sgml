@@ -141,8 +141,93 @@
 
   </sect1>
 
- <sect1 id="repmgrd-connection-settings">
- <title>repmgrd connection settings</title>
+  <sect1 id="repmgrd-daemon">
+    <indexterm>
+      <primary>repmgrd</primary>
+      <secondary>starting and stopping</secondary>
+    </indexterm>
+    <title>repmgrd daemon</title>
+    <para>
+      If installed from a package, the <application>repmgrd</application> can be started
+      via the operating system's service command, e.g. in <application>systemd</application>
+      using <command>systemctl</command>.
+    </para>
+    <para>
+      See appendix <xref linkend="appendix-packages"> for details of service commands
+      for different distributions.
+    </para>
+    <para>
+      <application>repmgrd</application> can be started manually like this:
+      <programlisting>
+        repmgrd -f /etc/repmgr.conf --pid-file /tmp/repmgrd.pid --daemonize</programlisting>
+      and stopped with <command>kill `cat /tmp/repmgrd.pid`</command>. Adjust paths as appropriate.
+    </para>
+    <para>
+      To apply configuration file changes to a running <application>repmgrd</application>
+      daemon, execute the operating system's service reload command (for manually started
+      instances, execute <command>kill -HUP `cat /tmp/repmgrd.pid`</command>).
+      Note that only a subset of configuration file parameters can be changed on a
+      running <application>repmgrd</application> daemon.
+    </para>
+
+    <sect2 id="repmgrd-configuration-debian-ubuntu">
+      <indexterm>
+        <primary>repmgrd</primary>
+        <secondary>Debian/Ubuntu and daemon configuration</secondary>
+      </indexterm>
+      <indexterm>
+        <primary>Debian/Ubuntu</primary>
+        <secondary>repmgrd daemon configuration</secondary>
+      </indexterm>
+
+      <title>repmgrd daemon configuration on Debian/Ubuntu</title>
+
+      <para>
+        If &repmgr; was installed from Debian/Ubuntu packages, additional configuration
+        is required before <application>repmgrd</application> is started as a daemon.
+      </para>
+      <para>
+        This is done via the file <filename>/etc/default/repmgrd</filename>, which by default
+        looks like this:
+        <programlisting>
+# default settings for repmgrd. This file is source by /bin/sh from
+# /etc/init.d/repmgrd
+
+# disable repmgrd by default so it won't get started upon installation
+# valid values: yes/no
+REPMGRD_ENABLED=no
+
+# configuration file (required)
+#REPMGRD_CONF="/path/to/repmgr.conf"
+
+# additional options
+#REPMGRD_OPTS=""
+
+# user to run repmgrd as
+#REPMGRD_USER=postgres
+
+# repmgrd binary
+#REPMGRD_BIN=/usr/bin/repmgrd
+
+# pid file
+#REPMGRD_PIDFILE=/var/run/repmgrd.pid</programlisting>
+      </para>
+      <para>
+        Set <varname>REPMGRD_ENABLED</varname> to <literal>yes</literal>, and <varname>REPMGRD_CONF</varname>
+        to the <filename>repmgr.conf</filename> file you are using.
+      </para>
+      <para>
+        If using <application>systemd</application>, you may need to execute <command>systemctl daemon-reload</command>.
+        Also, if you attempted to start <application>repmgrd</application> using <command>systemctl start repmgrd</command>,
+        you'll need to execute <command>systemctl stop repmgrd</command>. Because that's how <application>systemd</application>
+        rolls.
+      </para>
+
+    </sect2>
+  </sect1>
+
+  <sect1 id="repmgrd-connection-settings">
+    <title>repmgrd connection settings</title>
  <para>
   In addition to the &repmgr; configuration settings, parameters in the
   <varname>conninfo</varname> string influence how &repmgr; makes a network connection to

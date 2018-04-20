@@ -3,6 +3,10 @@
     <primary>repmgr.conf</primary>
     <secondary>service command settings</secondary>
   </indexterm>
+  <indexterm>
+    <primary>service command settings</primary>
+    <secondary>configuration in repmgr.conf</secondary>
+  </indexterm>
   <title>Service command settings</title>
 
   <para>

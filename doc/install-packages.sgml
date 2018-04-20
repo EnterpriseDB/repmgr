@@ -153,6 +153,12 @@
   Instructions can be found in the APT section of the PostgreSQL Wiki
   (<ulink url="https://wiki.postgresql.org/wiki/Apt">https://wiki.postgresql.org/wiki/Apt</ulink>).
   </para>
+  <para>
+    For more information on the package contents, including details of installation
+    paths and relevant <link linkend="configuration-service-commands">service commands</link>,
+    see the appendix section <xref linkend="packages-debian-ubuntu">.
+  </para>
+
  </sect2>
 
 </sect1>
