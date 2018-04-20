@@ -32,26 +32,71 @@
       Note these &repmgr; RPM packages are not designed to work with SuSE/OpenSuSE.
     </para>
 
+    <sect2 id="packages-centos-repositories">
+      <title>CentOS repositories</title>
 
-    <para>
-      The two tables below list relevant information, paths, commands etc. for the &repmgr; packages on
-      CentOS 7 (with systemd) and CentOS 6 (no systemd). Substitute the appropriate PostgreSQL major
-      version number for your installation.
-    </para>
+      <para>
+        &repmgr; packages are available from the 2ndQuadrant repository, and also the PostgreSQL
+        community repository. The 2ndQuadrant repository is updated immediately after each
+        &repmgr; release.
+      </para>
 
-    <note>
+      <table id="centos-2ndquadrant-repository">
+        <title>2ndQuadrant repository</title>
+        <tgroup cols="2">
+          <tbody>
+            <row>
+              <entry>Repository URL:</entry>
+              <entry><ulink url="http://packages.2ndquadrant.com/repmgr/">http://packages.2ndquadrant.com/repmgr/</ulink></entry>
+            </row>
+            <row>
+              <entry>Repository documentation:</entry>
+              <entry><ulink url="https://repmgr.org/docs/4.0/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ">https://repmgr.org/docs/4.0/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ</ulink></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
+
+      <table id="centos-pgdg-repository">
+        <title>PostgreSQL community repository (PGDG)</title>
+        <tgroup cols="2">
+          <tbody>
+            <row>
+              <entry>Repository URL:</entry>
+              <entry><ulink url="https://yum.postgresql.org/repopackages.php">https://yum.postgresql.org/repopackages.php</ulink></entry>
+            </row>
+            <row>
+              <entry>Repository documentation:</entry>
+              <entry><ulink url="https://yum.postgresql.org/">https://yum.postgresql.org/</ulink></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
+
+    </sect2>
+
+    <sect2 id="packages-centos-details">
+      <title>CentOS package details</title>
+
       <para>
-        For PostgreSQL 9.6 and lower, the CentOS packages use a mixture of <literal>9.6</literal>
-        and <literal>96</literal> in various places to designate the major version; e.g. the
-        package name is <literal>repmgr96</literal>, but the binary directory is
-        <filename>/var/lib/pgsql/9.6/data</filename>.
+        The two tables below list relevant information, paths, commands etc. for the &repmgr; packages on
+        CentOS 7 (with systemd) and CentOS 6 (no systemd). Substitute the appropriate PostgreSQL major
+        version number for your installation.
       </para>
-      <para>
-        From PostgreSQL 10, the first part of the version number (e.g. <literal>10</literal>) is
-        the major version, so there is more consistency in file/path/package naming
-        (package <literal>repmgr10</literal>, binary directory <filename>/var/lib/pgsql/10/data</filename>).
-      </para>
-    </note>
+
+      <note>
+        <para>
+          For PostgreSQL 9.6 and lower, the CentOS packages use a mixture of <literal>9.6</literal>
+          and <literal>96</literal> in various places to designate the major version; e.g. the
+          package name is <literal>repmgr96</literal>, but the binary directory is
+          <filename>/var/lib/pgsql/9.6/data</filename>.
+        </para>
+        <para>
+          From PostgreSQL 10, the first part of the version number (e.g. <literal>10</literal>) is
+          the major version, so there is more consistency in file/path/package naming
+          (package <literal>repmgr10</literal>, binary directory <filename>/var/lib/pgsql/10/data</filename>).
+        </para>
+      </note>
 
 
   <table id="centos-7-packages">
@@ -59,15 +104,6 @@
 
    <tgroup cols="2">
     <tbody>
-     <row>
-      <entry>Repository URL:</entry>
-      <entry><ulink url="https://yum.postgresql.org/repopackages.php">https://yum.postgresql.org/repopackages.php</ulink></entry>
-     </row>
-
-     <row>
-      <entry>Repository documentation:</entry>
-      <entry><ulink url="https://yum.postgresql.org/">https://yum.postgresql.org/</ulink></entry>
-     </row>
 
      <row>
       <entry>Package name example:</entry>
@@ -128,15 +164,6 @@
 
    <tgroup cols="2">
     <tbody>
-     <row>
-      <entry>Repository URL:</entry>
-      <entry><ulink url="https://yum.postgresql.org/repopackages.php">https://yum.postgresql.org/repopackages.php</ulink></entry>
-     </row>
-
-     <row>
-      <entry>Repository documentation:</entry>
-      <entry><ulink url="https://yum.postgresql.org/">https://yum.postgresql.org/</ulink></entry>
-     </row>
 
      <row>
       <entry>Package name example:</entry>
@@ -192,6 +219,6 @@
    </tgroup>
   </table>
 
-
+    </sect2>
  </sect1>
 </appendix>
