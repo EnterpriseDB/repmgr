@@ -104,8 +104,8 @@
       and set <filename>/etc/sudoers</filename> accordingly.
     </para>
     <para>
-      While <command>pg_ctlcluster</command> should work, it's strongly recommended
-      to use <command>sudo pg_ctlcluster</command> on <application>systemd</application>
+      While <command>pg_ctlcluster</command> will work when executed as user <literal>postgres</literal>,
+      it's strongly recommended to use <command>sudo pg_ctlcluster</command> on <application>systemd</application>
       systems, to ensure <application>systemd</application> has a correct picture of
       the PostgreSQL application state.
     </para>
