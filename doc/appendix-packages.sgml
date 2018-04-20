@@ -229,7 +229,7 @@
     <title>Debian/Ubuntu Packages</title>
     <indexterm>
       <primary>packages</primary>
-      <secondary>Debian/Ubuntupackages</secondary>
+      <secondary>Debian/Ubuntu packages</secondary>
     </indexterm>
     <para>
       &repmgr; <literal>.deb</literal> packages are provided via the
@@ -268,9 +268,13 @@
       <title>Debian/Ubuntu package details</title>
 
       <para>
-        The two tables below list relevant information, paths, commands etc. for the &repmgr; packages on
-        Debian 9.x ("Stretch") and Ubuntu 16.04 ("Xenial Xerus"). Substitute the appropriate PostgreSQL major
+        The table below lists relevant information, paths, commands etc. for the &repmgr; packages on
+        Debian 9.x ("Stretch"). Substitute the appropriate PostgreSQL major
         version number for your installation.
+      </para>
+      <para>
+        See also <xref linkend="repmgrd-configuration-debian-ubuntu"> for some specifics related
+        to configuring the <application>repmgrd</application> daemon.
       </para>
 
       <table id="debian-9-packages">
@@ -315,8 +319,14 @@
             </row>
 
             <row>
-              <entry>repmgrd service command:</entry>
+              <entry>PostgreSQL service command:</entry>
               <entry><command>systemctl [start|stop|restart|reload] postgresql@10-main</command></entry>
+
+            </row>
+
+            <row>
+              <entry>repmgrd service command:</entry>
+              <entry><command>systemctl [start|stop|restart|reload] repmgrd</command></entry>
             </row>
 
             <row>
@@ -332,6 +342,19 @@
           </tbody>
         </tgroup>
       </table>
+      <note>
+        <para>
+          Instead of using the <application>systemd</application> service command directly,
+          it's recommended to execute <command>pg_ctlcluster</command> (as <literal>root</literal>,
+          either directly or via <command>sudo</command>), e.g.:
+          <programlisting>
+            <command>pg_ctlcluster 10 main [start|stop|restart|reload]</command></programlisting>
+        </para>
+        <para>
+          For pre-<application>systemd</application> systems, <command>pg_ctlcluster</command>
+          can be executed directly by the <literal>postgres</literal> user.
+        </para>
+      </note>
    </sect2>
 
   </sect1>
