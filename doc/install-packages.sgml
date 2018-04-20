@@ -9,7 +9,7 @@
 
   <indexterm>
    <primary>installation</primary>
-   <secondary>on Redhat/CentOS/Fedora etc.</secondary>
+   <secondary>on Red Hat/CentOS/Fedora etc.</secondary>
   </indexterm>
 
   <title>RedHat/Fedora/CentOS</title>
@@ -25,6 +25,11 @@
    own RPM packages which are made available
    at the same time as each &repmgr; release, as it can take some days for
    them to become available via the main PGDG repository. See following section for details:
+  </para>
+  <para>
+    For more information on the package contents, including details of installation
+    paths and relevant <link linkend="configuration-service-commands">service commands</link>,
+    see the appendix section <xref linkend="packages-centos">.
   </para>
 
 
