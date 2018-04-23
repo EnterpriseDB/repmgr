@@ -3847,6 +3847,21 @@ is_server_available_params(t_conninfo_param_list *param_list)
 }
 
 
+
+/*
+ * Simple throw-away query to stop a connection handle going stale
+ */
+void
+connection_ping(PGconn *conn)
+{
+	PGresult   *res = PQexec(conn, "SELECT TRUE");
+
+	PQclear(res);
+	return;
+}
+
+
+
 /* ==================== */
 /* monitoring functions */
 /* ==================== */

@@ -1070,7 +1070,13 @@ loop:
 
 
 		if (PQstatus(primary_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
+		{
 			update_monitoring_history();
+		}
+		else
+		{
+			connection_ping(local_conn);
+		}
 
 		if (got_SIGHUP)
 		{
