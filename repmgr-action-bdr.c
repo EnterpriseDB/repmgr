@@ -83,7 +83,8 @@ do_bdr_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (bdr_nodes.node_count > 2)
+	/* BDR 2 implementation is for 2 nodes only */
+	if (get_bdr_version_num() < 3 && bdr_nodes.node_count > 2)
 	{
 		log_error(_("repmgr can only support BDR clusters with 2 nodes"));
 		log_detail(_("this BDR cluster has %i nodes"), bdr_nodes.node_count);
@@ -176,6 +177,7 @@ do_bdr_register(void)
 
 	if (bdr_node_has_repmgr_set(conn, config_file_options.node_name) == false)
 	{
+		log_debug("bdr_node_has_repmgr_set() = false");
 		bdr_node_set_repmgr_set(conn, config_file_options.node_name);
 	}
 
@@ -201,6 +203,7 @@ do_bdr_register(void)
 			if (bdr_nodes.node_count == 0)
 			{
 				log_error(_("unable to retrieve any BDR node records"));
+				log_detail("%s", PQerrorMessage(conn));
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
 			}
@@ -252,7 +255,35 @@ do_bdr_register(void)
 	}
 
 	/* Add the repmgr extension tables to a replication set */
-	add_extension_tables_to_bdr_replication_set(conn);
+
+	if (get_bdr_version_num() < 3)
+	{
+		add_extension_tables_to_bdr_replication_set(conn);
+	}
+	else
+	{
+		/* this is the only table we need to replicate */
+		char *replication_set = get_default_bdr_replication_set(conn);
+
+		/*
+		 * this probably won't happen, but we need to be sure we're using
+		 * the replication set metadata correctly...
+		 */
+		if (conn == NULL)
+		{
+			log_error(_("unable to retrieve default BDR replication set"));
+			log_hint(_("see preceding messages"));
+			log_debug("check query in get_default_bdr_replication_set()");
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (is_table_in_bdr_replication_set(conn, "nodes", replication_set) == false)
+		{
+			add_table_to_bdr_replication_set(conn, "nodes", replication_set);
+		}
+
+		pfree(replication_set);
+	}
 
 	initPQExpBuffer(&event_details);
 

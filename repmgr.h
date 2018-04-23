@@ -60,6 +60,8 @@
 
 #define VOTING_TERM_NOT_SET -1
 
+#define BDR2_REPLICATION_SET_NAME "repmgr"
+
 /*
  * various default values - ensure repmgr.conf.sample is update
  * if any of these are changed
