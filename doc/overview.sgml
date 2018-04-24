@@ -2,7 +2,8 @@
  <title>repmgr overview</title>
 
  <para>
-  This chapter provides a high-level overview of repmgr's components and functionality.
+  This chapter provides a high-level overview of &repmgr;'s components and
+  functionality.
  </para>
  <sect1 id="repmgr-concepts" xreflabel="Concepts">
 

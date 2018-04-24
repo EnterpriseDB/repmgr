@@ -2142,7 +2142,7 @@ wait_primary_notification(int *new_primary_id)
 			return true;
 		}
 
-		log_verbose(LOG_DEBUG, "waiting for new primary notification, %i of max %i seconds",
+		log_verbose(LOG_DEBUG, "waiting for new primary notification, %i of max %i seconds (\"primary_notification_timeout\")",
 					i, config_file_options.primary_notification_timeout);
 
 		sleep(1);
