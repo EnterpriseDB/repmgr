@@ -2390,7 +2390,9 @@ update_node_record_set_primary(PGconn *conn, int this_node_id)
 					  "  UPDATE repmgr.nodes "
 					  "     SET active = FALSE "
 					  "   WHERE type = 'primary' "
-					  "     AND active IS TRUE ");
+					  "     AND active IS TRUE "
+					  "     AND node_id != %i ",
+					  this_node_id);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -2412,7 +2414,8 @@ update_node_record_set_primary(PGconn *conn, int this_node_id)
 	appendPQExpBuffer(&query,
 					  "  UPDATE repmgr.nodes"
 					  "     SET type = 'primary', "
-					  "         upstream_node_id = NULL "
+					  "         upstream_node_id = NULL, "
+					  "         active = TRUE "
 					  "   WHERE node_id = %i ",
 					  this_node_id);
 
@@ -3855,6 +3858,8 @@ void
 connection_ping(PGconn *conn)
 {
 	PGresult   *res = PQexec(conn, "SELECT TRUE");
+
+	log_verbose(LOG_DEBUG, "connection_ping(): result is %s", PQresStatus(PQresultStatus(res)));
 
 	PQclear(res);
 	return;
