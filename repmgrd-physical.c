@@ -750,6 +750,17 @@ monitor_streaming_standby(void)
 				termPQExpBuffer(&event_details);
 
 				close_connection(&upstream_conn);
+
+				/*
+				 * if local node is unreachable, make a last-minute attempt to reconnect
+				 * before continuing with the failover process
+				 */
+
+				if (PQstatus(local_conn) != CONNECTION_OK)
+				{
+					check_connection(&local_node_info, &local_conn);
+				}
+
 				upstream_conn = try_reconnect(&upstream_node_info);
 
 				/* Node has recovered - log and continue */
@@ -985,6 +996,15 @@ loop:
 			}
 		}
 
+		if (PQstatus(primary_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
+		{
+			update_monitoring_history();
+		}
+		else
+		{
+			connection_ping(local_conn);
+		}
+
 		/*
 		 * handle local node failure
 		 *
@@ -1068,15 +1088,6 @@ loop:
 			}
 		}
 
-
-		if (PQstatus(primary_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
-		{
-			update_monitoring_history();
-		}
-		else
-		{
-			connection_ping(local_conn);
-		}
 
 		if (got_SIGHUP)
 		{
