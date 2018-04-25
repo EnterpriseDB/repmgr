@@ -231,6 +231,7 @@ extern void print_help_header(void);
 /* server control functions */
 extern void get_server_action(t_server_action action, char *script, char *data_dir);
 extern bool data_dir_required_for_action(t_server_action action);
+extern void get_node_config_directory(char *config_dir_buf);
 extern void get_node_data_directory(char *data_dir_buf);
 extern void init_node_record(t_node_info *node_record);
 extern bool can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);

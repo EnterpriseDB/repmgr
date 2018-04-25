@@ -1328,6 +1328,15 @@ check_cli_parameters(const int action)
 										 _("--no-upstream-connection only effective in Barman mode"));
 					}
 				}
+
+				if (strlen(config_file_options.config_directory))
+				{
+					if (runtime_options.copy_external_config_files == false)
+					{
+						item_list_append(&cli_warnings,
+										 _("\"config_directory\" set in repmgr.conf, but --copy-external-config-files not provided"));
+					}
+				}
 			}
 			break;
 
@@ -2732,6 +2741,33 @@ data_dir_required_for_action(t_server_action action)
 	}
 
 	return false;
+}
+
+
+/*
+ * Copy the location of the configuration file directory into the
+ * provided buffer; if "config_directory" provided, use that, otherwise
+ * default to the data directory.
+ *
+ * This is primarily intended for use with "pg_ctl" (which itself shouldn't
+ * be used outside of development environments).
+ */
+void
+get_node_config_directory(char *config_dir_buf)
+{
+	if (config_file_options.config_directory[0] != '\0')
+	{
+		strncpy(config_dir_buf, config_file_options.config_directory, MAXPGPATH);
+		return;
+	}
+
+	if (config_file_options.data_directory[0] != '\0')
+	{
+		strncpy(config_dir_buf, config_file_options.data_directory, MAXPGPATH);
+		return;
+	}
+
+	return;
 }
 
 
