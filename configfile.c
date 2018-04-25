@@ -288,6 +288,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->node_name, 0, sizeof(options->node_name));
 	memset(options->conninfo, 0, sizeof(options->conninfo));
 	memset(options->data_directory, 0, sizeof(options->data_directory));
+	memset(options->config_directory, 0, sizeof(options->data_directory));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
 	options->replication_type = REPLICATION_TYPE_PHYSICAL;
 
@@ -464,6 +465,9 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "data_directory") == 0)
 			strncpy(options->data_directory, value, MAXPGPATH);
+		else if (strcmp(name, "config_directory") == 0)
+			strncpy(options->config_directory, value, MAXPGPATH);
+
 		else if (strcmp(name, "replication_user") == 0)
 		{
 			if (strlen(value) < NAMEDATALEN)

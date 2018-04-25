@@ -40,17 +40,27 @@
 				 # is not running and there's no other way of determining
 				 # the data directory.
 
-#replication_user='repmgr'	 # User to make replication connections with, if not set defaults
-				 # to the user defined in "conninfo".
 
 # =============================================================================
 
 # Optional configuration items
 # =============================================================================
 
+
+#------------------------------------------------------------------------------
+# Server settings
+#------------------------------------------------------------------------------
+
+#config_directory=''		 # If configuration files are located outside the data
+				 # directory, specify the directory where the main
+				 # postgresql.conf file is located.
+
 #------------------------------------------------------------------------------
 # Replication settings
 #------------------------------------------------------------------------------
+
+#replication_user='repmgr'	 # User to make replication connections with, if not set defaults
+				 # to the user defined in "conninfo".
 
 #replication_type=physical	 # Must be one of 'physical' or 'bdr'.
 

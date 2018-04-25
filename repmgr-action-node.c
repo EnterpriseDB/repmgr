@@ -1518,7 +1518,7 @@ do_node_service(void)
 
 	if (data_dir_required_for_action(action))
 	{
-		get_node_data_directory(data_dir);
+		get_node_config_directory(data_dir);
 
 		if (data_dir[0] == '\0')
 		{
@@ -1606,7 +1606,7 @@ _do_node_service_list_actions(t_server_action action)
 
 	if (data_dir_required == true)
 	{
-		get_node_data_directory(data_dir);
+		get_node_config_directory(data_dir);
 	}
 
 	/* show command for specific action only */

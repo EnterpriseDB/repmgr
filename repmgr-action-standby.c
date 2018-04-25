@@ -73,7 +73,7 @@ static char local_repmgr_tmp_directory[MAXPGPATH];
 static char datadir_list_filename[MAXLEN];
 static char barman_command_buf[MAXLEN] = "";
 
-static void _do_standby_promote_internal(PGconn *conn, const char *data_dir);
+static void _do_standby_promote_internal(PGconn *conn);
 static void _do_create_recovery_conf(void);
 
 static void check_barman_config(void);
@@ -1957,13 +1957,12 @@ do_standby_promote(void)
 
 	PQfinish(current_primary_conn);
 
-
-	_do_standby_promote_internal(conn, config_file_options.data_directory);
+	_do_standby_promote_internal(conn);
 }
 
 
 static void
-_do_standby_promote_internal(PGconn *conn, const char *data_dir)
+_do_standby_promote_internal(PGconn *conn)
 {
 	char		script[MAXLEN];
 	int			r,
@@ -1975,7 +1974,9 @@ _do_standby_promote_internal(PGconn *conn, const char *data_dir)
 
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
+	char		data_dir[MAXPGPATH];
 
+	get_node_config_directory(data_dir);
 
 	/* fetch local node record so we can add detail in log messages */
 	record_status = get_node_record(conn,
@@ -3636,7 +3637,7 @@ do_standby_switchover(void)
 	}
 
 	/* promote standby (local node) */
-	_do_standby_promote_internal(local_conn, config_file_options.data_directory);
+	_do_standby_promote_internal(local_conn);
 
 
 	/*
