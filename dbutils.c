@@ -317,10 +317,7 @@ close_connection(PGconn **conn)
 	if (*conn == NULL)
 		return;
 
-	if (PQstatus(*conn) == CONNECTION_OK)
-	{
-		PQfinish(*conn);
-	}
+	PQfinish(*conn);
 
 	*conn = NULL;
 }
