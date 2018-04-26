@@ -86,7 +86,7 @@ do_bdr_register(void)
 	/* BDR 2 implementation is for 2 nodes only */
 	if (get_bdr_version_num() < 3 && bdr_nodes.node_count > 2)
 	{
-		log_error(_("repmgr can only support BDR clusters with 2 nodes"));
+		log_error(_("repmgr can only support BDR 2.x clusters with 2 nodes"));
 		log_detail(_("this BDR cluster has %i nodes"), bdr_nodes.node_count);
 		PQfinish(conn);
 		pfree(dbname);

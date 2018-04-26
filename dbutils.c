@@ -4851,9 +4851,7 @@ get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list)
 	{
 		appendPQExpBuffer(&query,
 						  "     SELECT " BDR3_NODES_COLUMNS
-						  "       FROM bdr.node bn "
-						  " INNER JOIN pglogical.node_interface pni "
-						  "         ON bn.pglogical_node_id = pni.if_nodeid "
+						  "       FROM bdr.node_summary ns "
 						  "   ORDER BY node_name");
 	}
 
@@ -4888,10 +4886,8 @@ get_bdr_node_record_by_name(PGconn *conn, const char *node_name, t_bdr_node_info
 	{
 		appendPQExpBuffer(&query,
 						  "     SELECT " BDR3_NODES_COLUMNS
-						  "       FROM bdr.node bn "
-						  " INNER JOIN pglogical.node_interface pni "
-						  "         ON bn.pglogical_node_id = pni.if_nodeid "
-						  "      WHERE bn.node_name = '%s'",
+						  "       FROM bdr.node_summary ns "
+						  "      WHERE ns.node_name = '%s'",
 						  node_name);
 	}
 
@@ -4968,6 +4964,7 @@ _populate_bdr_node_record(PGresult *res, t_bdr_node_info *node_info, int row)
 	node_info->node_dboid = atoi(PQgetvalue(res, row, 2));
 	strncpy(node_info->node_name, PQgetvalue(res, row, 3), MAXLEN);
 	strncpy(node_info->node_local_dsn, PQgetvalue(res, row, 4), MAXLEN);
+	strncpy(node_info->peer_state_name, PQgetvalue(res, row, 5), MAXLEN);
 }
 
 

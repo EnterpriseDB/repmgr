@@ -1503,6 +1503,7 @@ check_cli_parameters(const int action)
 			case STANDBY_CLONE:
 			case STANDBY_REGISTER:
 			case STANDBY_FOLLOW:
+			case BDR_REGISTER:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
