@@ -883,7 +883,31 @@ monitor_streaming_standby(void)
 				/* local node has been promoted */
 				if (get_recovery_type(local_conn) == RECTYPE_PRIMARY)
 				{
-					log_notice(_("local node is primary, checking local node record"));
+					log_notice(_("local node is primary, checking local node state"));
+
+					/*
+					 * It's possible the promote command timed out, but the promotion itself
+					 * succeeded. In this case failover state will be FAILOVER_STATE_PROMOTION_FAILED;
+					 * we can update the node record ourselves and resume primary monitoring.
+					 *
+					 * XXX check if other standbys follow
+					 */
+					if (failover_state == FAILOVER_STATE_PROMOTION_FAILED)
+					{
+						int			degraded_monitoring_elapsed;
+
+						update_node_record_set_primary(local_conn,  local_node_info.node_id);
+						record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
+
+						degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
+
+						log_notice(_("resuming monitoring as primary node after %i seconds"),
+								   degraded_monitoring_elapsed);
+
+						/* this will restart monitoring in primary mode */
+						monitoring_state = MS_NORMAL;
+						return;
+					}
 
 					/*
 					 * There may be a delay between the node being promoted
