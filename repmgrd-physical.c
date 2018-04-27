@@ -889,12 +889,11 @@ monitor_streaming_standby(void)
 					 * It's possible the promote command timed out, but the promotion itself
 					 * succeeded. In this case failover state will be FAILOVER_STATE_PROMOTION_FAILED;
 					 * we can update the node record ourselves and resume primary monitoring.
-					 *
-					 * XXX check if other standbys follow
 					 */
 					if (failover_state == FAILOVER_STATE_PROMOTION_FAILED)
 					{
 						int			degraded_monitoring_elapsed;
+						int			former_upstream_node_id = local_node_info.upstream_node_id;
 
 						update_node_record_set_primary(local_conn,  local_node_info.node_id);
 						record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
@@ -903,6 +902,25 @@ monitor_streaming_standby(void)
 
 						log_notice(_("resuming monitoring as primary node after %i seconds"),
 								   degraded_monitoring_elapsed);
+
+						initPQExpBuffer(&event_details);
+						appendPQExpBuffer(&event_details,
+										  "promotion command failed but promotion completed successfully");
+						create_event_notification(local_conn,
+												  &config_file_options,
+												  local_node_info.node_id,
+												  "repmgrd_failover_promote",
+												  true,
+												  event_details.data);
+
+						termPQExpBuffer(&event_details);
+
+						/* notify former siblings that they should now follow this node */
+						get_active_sibling_node_records(local_conn,
+														local_node_info.node_id,
+														former_upstream_node_id,
+														&standby_nodes);
+						notify_followers(&standby_nodes, local_node_info.node_id);
 
 						/* this will restart monitoring in primary mode */
 						monitoring_state = MS_NORMAL;
