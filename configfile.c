@@ -530,7 +530,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		/* node check settings */
 		else if (strcmp(name, "archive_ready_warning") == 0)
 			options->archive_ready_warning = repmgr_atoi(value, name, error_list, 1);
-		else if (strcmp(name, "archive_ready_critcial") == 0)
+		else if (strcmp(name, "archive_ready_critical") == 0)
 			options->archive_ready_critical = repmgr_atoi(value, name, error_list, 1);
 		else if (strcmp(name, "replication_lag_warning") == 0)
 			options->replication_lag_warning = repmgr_atoi(value, name, error_list, 1);
