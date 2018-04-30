@@ -74,7 +74,6 @@ static FailoverState follow_new_primary(int new_primary_id);
 static FailoverState witness_follow_new_primary(int new_primary_id);
 
 static void reset_node_voting_status(void);
-void		close_connections_physical();
 
 static bool do_primary_failover(void);
 static bool do_upstream_standby_failover(void);
@@ -2940,19 +2939,3 @@ format_failover_state(FailoverState failover_state)
 }
 
 
-void
-close_connections_physical()
-{
-	if (PQstatus(primary_conn) == CONNECTION_OK)
-	{
-		/* cancel any pending queries to the primary */
-		if (PQisBusy(primary_conn) == 1)
-		{
-			log_debug("cancelling query on primary");
-			cancel_query(primary_conn, config_file_options.async_query_timeout);
-		}
-		close_connection(&primary_conn);
-	}
-
-	close_connection(&upstream_conn);
-}
