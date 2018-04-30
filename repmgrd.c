@@ -53,9 +53,6 @@ bool		startup_event_logged = false;
 MonitoringState monitoring_state = MS_NORMAL;
 instr_time	degraded_monitoring_start;
 
-static void close_connections(void);
-void		(*_close_connections) (void) = NULL;
-
 /*
  * Record receipt of SIGHUP; will cause configuration file to be reread
  * at the appropriate point in the main loop.
@@ -404,7 +401,6 @@ main(int argc, char **argv)
 	}
 	else
 	{
-		_close_connections = close_connections_physical;
 		log_debug("node id is %i, upstream node id is %i",
 				  local_node_info.node_id,
 				  local_node_info.upstream_node_id);
@@ -801,20 +797,9 @@ print_monitoring_state(MonitoringState monitoring_state)
 }
 
 
-static void
-close_connections()
-{
-	if (_close_connections != NULL)
-		_close_connections();
-
-	close_connection(&local_conn);
-}
-
-
 void
 terminate(int retval)
 {
-	close_connections();
 	logger_shutdown();
 
 	if (pid_file)
