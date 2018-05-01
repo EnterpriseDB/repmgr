@@ -87,10 +87,25 @@
    </para>
    <para>
      To minimize downtime during major upgrades, for more recent PostgreSQL
-     versions <ulink url="https://www.2ndquadrant.com/en/resources/pglogical/">pglogical</ulink>
+     versions (PostgreSQL 9.4 and later),
+     <ulink url="https://www.2ndquadrant.com/en/resources/pglogical/">pglogical</ulink>
      can be used to set up a parallel cluster using the newer PostgreSQL version,
      which can be kept in sync with the existing production cluster until the
      new cluster is ready to be put into production.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-libdir-repmgr-error">
+   <title>What does this error mean: <literal>ERROR: could not access file "$libdir/repmgr"</literal>?</title>
+   <para>
+     It means the &repmgr; extension code is not installed in the
+     PostgreSQL application directory. This typically happens when using PostgreSQL
+     packages provided by a third-party vendor, which often have different
+     filesystem layouts.
+   </para>
+   <para>
+     Either use PostgreSQL packages provided by the community or 2ndQuadrant; if this
+     is not possible, contact your vendor for assistance.
    </para>
   </sect2>
  </sect1>

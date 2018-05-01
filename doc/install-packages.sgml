@@ -26,6 +26,15 @@
    at the same time as each &repmgr; release, as it can take some days for
    them to become available via the main PGDG repository. See following section for details:
   </para>
+  <note>
+    <para>
+      &repmgr; packages are designed to be compatible with the community-provided PostgreSQL packages.
+      They may not work with vendor-specific packages such as those provided by RedHat for RHEL
+      customers, as the filesystem layout may be different to the community RPMs.
+      Please contact your support vendor for assistance.
+    </para>
+  </note>
+
   <para>
     For more information on the package contents, including details of installation
     paths and relevant <link linkend="configuration-service-commands">service commands</link>,

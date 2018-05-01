@@ -20,17 +20,22 @@
       Currently, &repmgr; RPM packages are provided for versions 6.x and 7.x of CentOS. These should also
       work on matching versions of Red Hat Enterprise Linux, Scientific Linux and Oracle Enterprise Linux;
       together with CentOS, these are the same RedHat-based distributions for which the main community project
-      provides packages (see the <ulink url="https://yum.postgresql.org/">PostgreSQL RPM Building Project</ulink>
+      (PGDG) provides packages (see the <ulink url="https://yum.postgresql.org/">PostgreSQL RPM Building Project</ulink>
       page for details).
     </para>
-    <para>
-      It appears Red Hat provides enterprise users with PostgreSQL RPMs with a different
-      filesystem layout to the community RPMs, in which case the 2ndQuadrant &repmgr; RPM packages
-      may not be compatible. Please contact your support vendor for assistance.
-    </para>
+
     <para>
       Note these &repmgr; RPM packages are not designed to work with SuSE/OpenSuSE.
     </para>
+
+    <note>
+      <para>
+        &repmgr; packages are designed to be compatible with community-provided PostgreSQL packages.
+        They may not work with vendor-specific packages such as those provided by RedHat for RHEL
+        customers, as the filesystem layout may be different to the community RPMs.
+        Please contact your support vendor for assistance.
+      </para>
+    </note>
 
     <sect2 id="packages-centos-repositories">
       <title>CentOS repositories</title>
