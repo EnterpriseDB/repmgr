@@ -15,6 +15,158 @@
     See also: <xref linkend="upgrading-repmgr">
   </para>
 
+  <sect1 id="release-4.0.5">
+    <title>Release 4.0.5</title>
+    <para><emphasis>Wed May 2, 2018</emphasis></para>
+    <para>
+      &repmgr; 4.0.5 contains a number of usability enhancements related to
+      <application>pg_rewind</application> usage, <filename>recovery.conf</filename>
+      generation and (in <application>repmgrd</application>) handling of various
+      corner-case situations, as well as a number of bug fixes.
+    </para>
+    <sect2>
+      <title>Usability enhancements</title>
+
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              Various documentation improvements, with particular emphasis on
+              the importance of setting appropriate <link linkend="configuration-service-commands">service commands</link>
+              instead of relying on <application>pg_ctl</application>.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Poll demoted primary after restart as a standby during a switchover operation (GitHub #408).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Add configuration parameter <option>config_directory</option> (GitHub #424).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Add sanity check if <option>--upstream-node-id</option> not supplied when executing
+              <xref linkend="repmgr-standby-register"> (GitHub #395).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Enable <link linkend="repmgr-node-rejoin-pg-rewind">pg_rewind</link> to be used with
+              PostgreSQL 9.3/9.4 (GitHub #413).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              When generating replication connection strings, set <literal>dbname=replication</literal>
+              if appropriate (GitHub #421).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Enable provision of <option>archive_cleanup_command</option> in <filename>recovery.conf</filename>
+              (GitHub #416).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Actively check for node to <link linkend="repmgr-node-rejoin">rejoin</link> cluster (GitHub #415).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application>: set <literal>connect_timeout=2</literal> (if not explicitly set)
+              when pinging a server.
+           </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+
+    </sect2>
+
+   <sect2>
+      <title>Bug fixes</title>
+      <para>
+
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              Fix display of conninfo parsing error messages.
+           </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
+              Fix minimum accepted value for <varname>degraded_monitoring_timeout</varname> (GitHub #411).
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Fix superuser password handling (GitHub #400)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Fix parsing of <varname>archive_ready_critical</varname> configuration file parameter (GitHub #426).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Fix <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command>
+              output (GitHub #389)
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+               Fix memory leaks in witness code (GitHub #402).
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application>: handle <command>pg_ctl promote</command> timeout (GitHub #425).
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application>: handle failover situation with only two nodes in the primary
+          location, and at least one node in another location (GitHub #407).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+               <application>repmgrd</application>: prevent standby connection handle from going stale.
+           </para>
+          </listitem>
+
+
+
+        </itemizedlist>
+      </para>
+   </sect2>
+
+  </sect1>
+
+
   <sect1 id="release-4.0.4">
     <title>Release 4.0.4</title>
     <para><emphasis>Fri Mar 9, 2018</emphasis></para>

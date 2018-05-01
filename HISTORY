@@ -1,9 +1,25 @@
-4.0.5   2018-??-??
-        repmgr: fix display of conninfo parsing error messages (Ian)
-        repmgr: fix "repmgr cluster crosscheck" output; GitHub #389 (Ian)
+4.0.5   2018-05-02
         repmgr: poll demoted primary after restart as a standby during a
           switchover operation; GitHub #408 (Ian)
-        repmgrd: fix memory leaks in witness code (AndrzejNowicki, Martín)
+        repmgr: add configuration parameter "config_directory"; GitHub #424 (Ian)
+        repmgr: add "dbname=replication" to all replication connection strings;
+          GitHub #421 (Ian)
+        repmgr: add sanity check if --upstream-node-id not supplied when executing
+          "standby register"; GitHub #395 (Ian)
+        repmgr: enable provision of "archive_cleanup_command" in recovery.conf;
+          GitHub #416 (Ian)
+        repmgr: actively check for node to rejoin cluster; GitHub #415 (Ian)
+        repmgr: enable pg_rewind to be used with PostgreSQL 9.3/9.4; GitHub #413 (Ian)
+        repmgr: fix minimum accepted value for "degraded_monitoring_timeout";
+          GitHub #411 (Ian)
+        repmgr: fix superuser password handling; GitHub #400 (Ian)
+        repmgr: fix parsing of "archive_ready_critical" configuration file
+          parameter; GitHub #426 (Ian)
+        repmgr: fix display of conninfo parsing error messages (Ian)
+        repmgr: fix "repmgr cluster crosscheck" output; GitHub #389 (Ian)
+        repmgrd: prevent standby connection handle from going stale (Ian)
+        repmgrd: fix memory leaks in witness code; GitHub #402 (AndrzejNowicki, Martín)
+        repmgrd: handle "pg_ctl promote" timeout; GitHub #425 (Ian)
         repmgrd: handle failover situation with only two nodes in the primary
           location, and at least one node in another location; GitHub #407 (Ian)
         repmgrd: set "connect_timeout=2" when pinging a server (Ian)
