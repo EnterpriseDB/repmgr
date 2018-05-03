@@ -49,9 +49,9 @@
 	<note>
 	  <para>
 		Beginning with <ulink url="http://repmgr.org/release-notes-3.1.3.html">repmgr 3.1.3</ulink>,
-		<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink> provided its own repository
+		<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink> provided a dedicated &repmgr; repository
 		at  <ulink url="http://packages.2ndquadrant.com/repmgr/">http://packages.2ndquadrant.com/repmgr/</ulink>.
-		This repository will be deprecated in a future release as it is replaced by
+		This repository will be deprecated in a future release as it is now replaced by
 		the <ulink url="https://rpm.2ndquadrant.com/">public RPM repository</ulink>
 		documented below.
 	  </para>
