@@ -5,26 +5,27 @@
   system.
  </para>
 
- <sect2 id="installation-packages-redhat" xreflabel="Installing from packages on RHEL, Fedora and CentOS">
+ <sect2 id="installation-packages-redhat" xreflabel="Installing from packages on RHEL, CentOS and Fedora">
 
   <indexterm>
    <primary>installation</primary>
    <secondary>on Red Hat/CentOS/Fedora etc.</secondary>
   </indexterm>
 
-  <title>RedHat/Fedora/CentOS</title>
+  <title>RedHat/CentOS/Fedora</title>
   <para>
-   RPM packages for &repmgr; are available via Yum through
+	&repmgr; RPM packages for RedHat/CentOS variants and Fedora are available from the
+	<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
+	<ulink url="https://rpm.2ndquadrant.com/">public RPM repository</ulink>; see following
+	section for details.
+  </para>
+  <para>
+   RPM packages for &repmgr; are also available via Yum through
    the PostgreSQL Global Development Group RPM repository
    (<ulink url="https://yum.postgresql.org/">http://yum.postgresql.org/</ulink>).
    Follow the instructions for your distribution (RedHat, CentOS,
-   Fedora, etc.) and architecture as detailed there.
-  </para>
-  <para>
-   <ulink url="https://2ndquadrant.com">2ndQuadrant</ulink> also provides its
-   own RPM packages which are made available
-   at the same time as each &repmgr; release, as it can take some days for
-   them to become available via the main PGDG repository. See following section for details:
+   Fedora, etc.) and architecture as detailed there. Note that it can take some days
+   for new &repmgr; packages to become available via the this repository.
   </para>
   <note>
     <para>
@@ -43,59 +44,68 @@
 
 
   <sect3 id="installation-packages-redhat-2ndq">
-    <title>2ndQuadrant repmgr yum repository</title>
+    <title>2ndQuadrant public RPM yum repository</title>
+
+	<note>
+	  <para>
+		Beginning with <ulink url="http://repmgr.org/release-notes-3.1.3.html">repmgr 3.1.3</ulink>,
+		<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink> provided its own repository
+		at  <ulink url="http://packages.2ndquadrant.com/repmgr/">http://packages.2ndquadrant.com/repmgr/</ulink>.
+		This repository will be deprecated in a future release as it is replaced by
+		the <ulink url="https://rpm.2ndquadrant.com/">public RPM repository</ulink>
+		documented below.
+	  </para>
+	</note>
+
     <para>
-      Beginning with <ulink url="http://repmgr.org/release-notes-3.1.3.html">repmgr 3.1.3</ulink>,
+      Beginning with <ulink url="https://repmgr.org/docs/4.0/release-4.0.5.html">repmgr 4.0.5</ulink>,
       <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a dedicated <literal>yum</literal>
-      repository for &repmgr; releases. This repository complements the main
-      <ulink url="https://yum.postgresql.org/repopackages.php">PGDG community repository</ulink>,
-      but enables repmgr users to access the latest &repmgr; packages before they are
-      available via the PGDG repository, which can take several days to be updated following
-      a fresh  &repmgr; release.
-    </para>
+	  <ulink url="https://rpm.2ndquadrant.com/">public RPM repository</ulink> for 2ndQuadrant software,
+	  including &repmgr;. We recommend using this for all future &repmgr; releases.
+	</para>
+	<para>
+	  General instructions for using this repository can be found on its
+	  <ulink url="https://rpm.2ndquadrant.com/site/content/">homepage</ulink>. Specific instructions
+	  for installing &repmgr; follow below.
+	</para>
     <para>
       <emphasis>Installation</emphasis>
 
       <itemizedlist>
-        <listitem>
-          <para>
-            Import the repository public key (optional but recommended):
-            <programlisting>
-              rpm --import http://packages.2ndquadrant.com/repmgr/RPM-GPG-KEY-repmgr</programlisting>
-          </para>
-        </listitem>
+		<listitem>
+		  <para>
+			Locate the repository RPM for your PostgreSQL version from the list at:
+			<ulink url="https://rpm.2ndquadrant.com/site/content/">https://rpm.2ndquadrant.com/site/content/</ulink>
+		  </para>
+		</listitem>
 
         <listitem>
           <para>
-            Install the repository RPM for your distribution (this enables the 2ndQuadrant
-            repository as a source of repmgr packages):
-            <itemizedlist>
-              <listitem>
-                <simpara>
-                  <emphasis>Fedora:</emphasis>
-                  <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm</ulink>
-                </simpara>
-              </listitem>
-              <listitem>
-                <simpara>
-                  <emphasis>RHEL, CentOS etc:</emphasis>
-                  <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm</ulink>
-                </simpara>
-              </listitem>
-            </itemizedlist>
-          </para>
-          <para>
-            e.g.:
-            <programlisting>
-              $ yum install http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm</programlisting>
-          </para>
-        </listitem>
+            Install the repository RPM for your distribution and PostgreSQL version
+			(this enables the 2ndQuadrant repository as a source of &repmgr; packages).
+		  </para>
+		  <para>
+			For example, for PostgreSQL 10 on CentOS, execute:
+			<programlisting>
+sudo yum install https://rpm.2ndquadrant.com/site/content/2ndquadrant-repo-10-1-1.el7.noarch.rpm
+			</programlisting>
+		  </para>
+		  <para>
+			Verify that the repository is installed with:
+			<programlisting>
+sudo yum repolist</programlisting>
+			The output should contain two entries like this:
+			<programlisting>
+2ndquadrant-repo-10/7/x86_64         2ndQuadrant packages for PG10 for rhel 7 - x86_64           1
+2ndquadrant-repo-10-debug/7/x86_64   2ndQuadrant packages for PG10 for rhel 7 - x86_64 - Debug   1</programlisting>
+		  </para>
+		</listitem>
 
         <listitem>
           <para>
-            Install the repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr96</literal>), e.g.:
+            Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>), e.g.:
             <programlisting>
-              $ yum install repmgr96</programlisting>
+$ yum install repmgr10</programlisting>
           </para>
         </listitem>
       </itemizedlist>
@@ -105,13 +115,13 @@
       <emphasis>Compatibility with PGDG Repositories</emphasis>
     </para>
     <para>
-        The 2ndQuadrant &repmgr; yum repository uses exactly the same package definitions as the
-        main PGDG repository and is effectively a selective mirror for &repmgr; packages only.
+      The 2ndQuadrant &repmgr; yum repository packages use the same definitions and file system layout as the
+      main PGDG repository.
     </para>
     <para>
-        Normally yum should prioritize the repository with the most recent &repmgr; version.
-        Once the PGDG repository has been updated, it doesn't matter which repository
-        the packages are installed from.
+      Normally <application>yum</application> will prioritize the repository with the most recent &repmgr; version.
+      Once the PGDG repository has been updated, it doesn't matter which repository
+      the packages are installed from.
     </para>
     <para>
       To ensure the 2ndQuadrant repository is always prioritised, install <literal>yum-plugin-priorities</literal>
@@ -125,24 +135,19 @@
       To install a specific package version, execute <command>yum --showduplicates list</command>
       for the package in question:
       <programlisting>
-        [root@localhost ~]# yum --showduplicates list repmgr96
+        [root@localhost ~]# yum --showduplicates list repmgr10
         Loaded plugins: fastestmirror
         Loading mirror speeds from cached hostfile
          * base: ftp.iij.ad.jp
          * extras: ftp.iij.ad.jp
          * updates: ftp.iij.ad.jp
         Available Packages
-        repmgr96.x86_64               3.2-1.el6                    2ndquadrant-repmgr
-        repmgr96.x86_64               3.2.1-1.el6                  2ndquadrant-repmgr
-        repmgr96.x86_64               3.3-1.el6                    2ndquadrant-repmgr
-        repmgr96.x86_64               3.3.1-1.el6                  2ndquadrant-repmgr
-        repmgr96.x86_64               3.3.2-1.el6                  2ndquadrant-repmgr
-        repmgr96.x86_64               3.3.2-1.rhel6                pgdg96
-        repmgr96.x86_64               4.0.0-1.el6                  2ndquadrant-repmgr
-        repmgr96.x86_64               4.0.0-1.rhel6                pgdg96</programlisting>
+		repmgr10.x86_64                       4.0.3-1.rhel7                        pgdg10
+		repmgr10.x86_64                       4.0.4-1.rhel7                        pgdg10
+		repmgr10.x86_64                       4.0.5-1.el7                          2ndquadrant-repo-10</programlisting>
       then append the appropriate version number to the package name with a hyphen, e.g.:
       <programlisting>
-        [root@localhost ~]# yum install repmgr96-3.3.2-1.el6</programlisting>
+        [root@localhost ~]# yum install repmgr10-4.0.3-1.rhel7</programlisting>
     </para>
   </sect3>
  </sect2>
