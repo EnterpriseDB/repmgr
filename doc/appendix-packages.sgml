@@ -47,12 +47,12 @@
       </para>
 
       <table id="centos-2ndquadrant-repository">
-        <title>2ndQuadrant repository</title>
+        <title>2ndQuadrant public repository</title>
         <tgroup cols="2">
           <tbody>
             <row>
               <entry>Repository URL:</entry>
-              <entry><ulink url="http://packages.2ndquadrant.com/repmgr/">http://packages.2ndquadrant.com/repmgr/</ulink></entry>
+              <entry><ulink url="https://rpm.2ndquadrant.com/">https://rpm.2ndquadrant.com/</ulink></entry>
             </row>
             <row>
               <entry>Repository documentation:</entry>
