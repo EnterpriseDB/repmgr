@@ -48,9 +48,9 @@
 
 	<note>
 	  <para>
-		Beginning with <ulink url="http://repmgr.org/release-notes-3.1.3.html">repmgr 3.1.3</ulink>,
-		<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink> provided a dedicated &repmgr; repository
-		at  <ulink url="http://packages.2ndquadrant.com/repmgr/">http://packages.2ndquadrant.com/repmgr/</ulink>.
+		<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink> previously provided a dedicated
+        &repmgr; repository at
+        <ulink url="http://packages.2ndquadrant.com/repmgr/">http://packages.2ndquadrant.com/repmgr/</ulink>.
 		This repository will be deprecated in a future release as it is now replaced by
 		the <ulink url="https://rpm.2ndquadrant.com/">public RPM repository</ulink>
 		documented below.
@@ -65,7 +65,7 @@
 	</para>
 	<para>
 	  General instructions for using this repository can be found on its
-	  <ulink url="https://rpm.2ndquadrant.com/site/content/">homepage</ulink>. Specific instructions
+	  <ulink url="https://rpm.2ndquadrant.com/">homepage</ulink>. Specific instructions
 	  for installing &repmgr; follow below.
 	</para>
     <para>
@@ -75,7 +75,7 @@
 		<listitem>
 		  <para>
 			Locate the repository RPM for your PostgreSQL version from the list at:
-			<ulink url="https://rpm.2ndquadrant.com/site/content/">https://rpm.2ndquadrant.com/site/content/</ulink>
+			<ulink url="https://rpm.2ndquadrant.com/">https://rpm.2ndquadrant.com/</ulink>
 		  </para>
 		</listitem>
 
@@ -182,7 +182,7 @@ $ yum install repmgr10</programlisting>
 	</para>
 	<para>
 	  General instructions for using this repository can be found on its
-	  <ulink url="https://apt.2ndquadrant.com/site/content/">homepage</ulink>. Specific instructions
+	  <ulink url="https://apt.2ndquadrant.com/">homepage</ulink>. Specific instructions
 	  for installing &repmgr; follow below.
 	</para>
 
