@@ -103,7 +103,7 @@ sudo yum repolist</programlisting>
 
         <listitem>
           <para>
-            Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>), e.g.:
+            Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
             <programlisting>
 $ yum install repmgr10</programlisting>
           </para>
@@ -152,8 +152,6 @@ $ yum install repmgr10</programlisting>
   </sect3>
  </sect2>
 
-
-
  <sect2 id="installation-packages-debian" xreflabel="Installing from packages on Debian or Ubuntu">
 
   <indexterm>
@@ -173,6 +171,79 @@ $ yum install repmgr10</programlisting>
     see the appendix section <xref linkend="packages-debian-ubuntu">.
   </para>
 
+  <sect3 id="installation-packages-debian-ubuntu-2ndq">
+    <title>2ndQuadrant public apt repository for Debian/Ubuntu</title>
+
+    <para>
+      Beginning with <ulink url="https://repmgr.org/docs/4.0/release-4.0.5.html">repmgr 4.0.5</ulink>,
+      <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a
+	  <ulink url="https://apt.2ndquadrant.com/">public apt repository</ulink> for 2ndQuadrant software,
+	  including &repmgr;.
+	</para>
+	<para>
+	  General instructions for using this repository can be found on its
+	  <ulink url="https://apt.2ndquadrant.com/site/content/">homepage</ulink>. Specific instructions
+	  for installing &repmgr; follow below.
+	</para>
+
+    <para>
+      <emphasis>Installation</emphasis>
+
+      <itemizedlist>
+
+		<listitem>
+		  <para>
+			If not already present, install the  <application>apt-transport-https</application> package:
+			<programlisting>
+sudo apt-get install apt-transport-https</programlisting>
+		  </para>
+		</listitem>
+
+		<listitem>
+		  <para>
+			Create <filename>/etc/apt/sources.list.d/2ndquadrant.list</filename> as follows:
+			<programlisting>
+sudo sh -c 'echo "deb https://apt.2ndquadrant.com/ $(lsb_release -cs)-2ndquadrant main" > /etc/apt/sources.list.d/2ndquadrant.list'</programlisting>
+		  </para>
+		</listitem>
+
+		<listitem>
+		  <para>
+			Install the 2ndQuadrant <ulink url="https://apt.2ndquadrant.com/site/keys/9904CD4BD6BAF0C3.asc">repository key</ulink>:
+			<programlisting>
+sudo apt-get install curl ca-certificates
+curl https://apt.2ndquadrant.com/site/keys/9904CD4BD6BAF0C3.asc | sudo apt-key add -</programlisting>
+		  </para>
+		</listitem>
+
+		<listitem>
+		  <para>
+			Update the package list
+			<programlisting>
+ sudo apt-get update</programlisting>
+		  </para>
+		</listitem>
+
+		<listitem>
+		  <para>
+            Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
+            <programlisting>
+$ apt-get install postgresql-10-repmgr</programlisting>
+		  </para>
+          <note>
+            <para>
+            For packages for PostgreSQL 9.6 and earlier, the package name includes
+            a period between major and minor version numbers, e.g.
+            <literal>postgresql-9.6-repmgr</literal>.
+            </para>
+          </note>
+		</listitem>
+
+	  </itemizedlist>
+
+	</para>
+
+  </sect3>
  </sect2>
 
 </sect1>
