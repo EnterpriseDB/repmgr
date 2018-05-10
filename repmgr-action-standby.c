@@ -3909,6 +3909,8 @@ check_source_server()
 	PGconn	   *privileged_conn = NULL;
 
 	char		cluster_size[MAXLEN];
+	char	   *connstr = NULL;
+
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	ExtensionStatus extension_status = REPMGR_UNKNOWN;
@@ -3917,8 +3919,11 @@ check_source_server()
 	log_verbose(LOG_DEBUG, "check_source_server()");
 	log_info(_("connecting to source node"));
 
-	source_conn = establish_db_connection_by_params(&source_conninfo, false);
+	connstr = param_list_to_string(&source_conninfo);
+	log_detail(_("connection string is: %s"), connstr);
+	pfree(connstr);
 
+	source_conn = establish_db_connection_by_params(&source_conninfo, false);
 	/*
 	 * Unless in barman mode, exit with an error;
 	 * establish_db_connection_by_params() will have already logged an error
@@ -4632,7 +4637,7 @@ initialise_direct_clone(t_node_info *node_record)
 		}
 		else
 		{
-			TablespaceListCell *cell = false;
+			TablespaceListCell *cell;
 			KeyValueList not_found = {NULL, NULL};
 			int			total = 0,
 						matched = 0;
