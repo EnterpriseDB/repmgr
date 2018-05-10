@@ -634,7 +634,7 @@ main(int argc, char **argv)
 	 * If -d/--dbname appears to be a conninfo string, validate by attempting
 	 * to parse it (and if successful, store the parsed parameters)
 	 */
-	if (runtime_options.dbname)
+	if (runtime_options.dbname[0])
 	{
 		if (strncmp(runtime_options.dbname, "postgresql://", 13) == 0 ||
 			strncmp(runtime_options.dbname, "postgres://", 11) == 0 ||
