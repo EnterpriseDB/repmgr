@@ -23,6 +23,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <arpa/inet.h>
 
 #include "repmgr.h"
 #include "dbutils.h"
