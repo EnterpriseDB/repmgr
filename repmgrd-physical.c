@@ -2628,7 +2628,7 @@ do_election(void)
 	}
 	else
 	{
-		/* standby nodes found - check if we're in the primary location befor checking theirs */
+		/* standby nodes found - check if we're in the primary location before checking theirs */
 		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
 		{
 			primary_location_seen = true;
