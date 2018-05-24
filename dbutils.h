@@ -357,7 +357,7 @@ void		close_connection(PGconn **conn);
 
 /* conninfo manipulation functions */
 bool		get_conninfo_value(const char *conninfo, const char *keyword, char *output);
-
+bool		get_conninfo_default_value(const char *param, char *output, int maxlen);
 void		initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults);
 void		free_conninfo_params(t_conninfo_param_list *param_list);
 void		copy_conninfo_params(t_conninfo_param_list *dest_list, t_conninfo_param_list *source_list);
@@ -368,6 +368,7 @@ char	   *param_get(t_conninfo_param_list *param_list, const char *param);
 bool		parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_list, char **errmsg, bool ignore_local_params);
 char	   *param_list_to_string(t_conninfo_param_list *param_list);
 bool		has_passfile(void);
+
 
 /* transaction functions */
 bool		begin_transaction(PGconn *conn);

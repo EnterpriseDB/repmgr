@@ -371,6 +371,37 @@ get_conninfo_value(const char *conninfo, const char *keyword, char *output)
 }
 
 
+/*
+ * Get a default conninfo value for the provided parameter, and copy
+ * it to the 'output' buffer.
+ *
+ * Returns true on success, or false on failure (provided keyword not found).
+ *
+ */
+bool
+get_conninfo_default_value(const char *param, char *output, int maxlen)
+{
+	PQconninfoOption *defs = NULL;
+	PQconninfoOption *def = NULL;
+	bool found = false;
+
+	defs = PQconndefaults();
+
+	for (def = defs; def->keyword; def++)
+	{
+		if (strncmp(def->keyword, param, maxlen) == 0)
+		{
+			strncpy(output, def->val, maxlen);
+			found = true;
+		}
+	}
+
+	PQconninfoFree(defs);
+
+	return found;
+}
+
+
 void
 initialize_conninfo_params(t_conninfo_param_list *param_list, bool set_defaults)
 {

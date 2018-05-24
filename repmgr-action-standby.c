@@ -4078,13 +4078,25 @@ check_source_server()
 		if (record_status == RECORD_FOUND)
 		{
 			t_conninfo_param_list upstream_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+			char	   *upstream_conninfo_user;
 
 			initialize_conninfo_params(&upstream_conninfo, false);
 			parse_conninfo_string(node_record.conninfo, &upstream_conninfo, NULL, false);
 
 			strncpy(recovery_conninfo_str, node_record.conninfo, MAXLEN);
 			strncpy(upstream_repluser, node_record.repluser, NAMEDATALEN);
-			strncpy(upstream_user, param_get(&upstream_conninfo, "user"), NAMEDATALEN);
+
+			upstream_conninfo_user = param_get(&upstream_conninfo, "user");
+			if (upstream_conninfo_user != NULL)
+			{
+				strncpy(upstream_user, upstream_conninfo_user, NAMEDATALEN);
+			}
+			else
+			{
+				get_conninfo_default_value("user", upstream_user, NAMEDATALEN);
+			}
+
+			log_verbose(LOG_DEBUG, "upstream_user is \"%s\"", upstream_user);
 
 			upstream_conninfo_found = true;
 		}
