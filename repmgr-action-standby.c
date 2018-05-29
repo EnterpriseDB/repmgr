@@ -938,7 +938,6 @@ _do_create_recovery_conf(void)
 			log_detail("%s", PQerrorMessage(source_conn));
 		}
 
-
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -955,7 +954,10 @@ _do_create_recovery_conf(void)
 		{
 			log_detail("%s", PQerrorMessage(source_conn));
 		}
-
+		else
+		{
+			log_hint(_("standby must be registered before a new recovery.conf file can be created"));
+		}
 
 		exit(ERR_BAD_CONFIG);
 	}
