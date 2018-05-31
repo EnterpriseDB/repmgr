@@ -1672,6 +1672,13 @@ parse_server_action(const char *action_name)
  *
  * Note that "repmgr node rejoin" is also executed by
  * "repmgr standby switchover" after promoting the new primary.
+ *
+ * Parameters:
+ *   --dry-run
+ *   --force-rewind[=VALUE]
+ *   --config-files
+ *   --config-archive-dir
+ *   -W/--no-wait
  */
 void
 do_node_rejoin(void)
@@ -1827,11 +1834,14 @@ do_node_rejoin(void)
 		termPQExpBuffer(&msg);
 	}
 
+
+
 	/*
 	 * Forcibly rewind node if requested (this is mainly for use when this
 	 * action is being executed by "repmgr standby switchover")
 	 */
-	if (runtime_options.force_rewind_used == true && runtime_options.dry_run == false)
+
+	if (runtime_options.force_rewind_used == true)
 	{
 		int			ret;
 		PQExpBufferData		filebuf;
@@ -1866,121 +1876,119 @@ do_node_rejoin(void)
 			log_info(_("pg_rewind would now be executed"));
 			log_detail(_("pg_rewind command is:\n  %s"),
 						 command.data);
-
-			PQfinish(upstream_conn);
-			exit(SUCCESS);
 		}
-
-		log_notice(_("executing pg_rewind"));
-		log_debug("pg_rewind command is:\n  %s",
-				  command.data);
-
-		initPQExpBuffer(&command_output);
-
-		ret = local_command(
-							command.data,
-							&command_output);
-
-		termPQExpBuffer(&command);
-
-		if (ret == false)
+		else
 		{
-			log_error(_("unable to execute pg_rewind"));
-			log_detail("%s", command_output.data);
+			log_notice(_("executing pg_rewind"));
+			log_debug("pg_rewind command is:\n  %s",
+					  command.data);
+
+			initPQExpBuffer(&command_output);
+
+			ret = local_command(command.data,
+								&command_output);
+
+			termPQExpBuffer(&command);
+
+			if (ret == false)
+			{
+				log_error(_("unable to execute pg_rewind"));
+				log_detail("%s", command_output.data);
+
+				termPQExpBuffer(&command_output);
+
+				exit(ERR_BAD_CONFIG);
+			}
 
 			termPQExpBuffer(&command_output);
 
-			exit(ERR_BAD_CONFIG);
-		}
+			/* Restore any previously archived config files */
+			_do_node_restore_config();
 
-		termPQExpBuffer(&command_output);
+			initPQExpBuffer(&filebuf);
 
-		/* Restore any previously archived config files */
-		_do_node_restore_config();
-
-		initPQExpBuffer(&filebuf);
-
-		/* remove any recovery.done file copied in by pg_rewind */
-		appendPQExpBuffer(&filebuf,
-						  "%s/recovery.done",
-						  config_file_options.data_directory);
-
-		if (stat(filebuf.data, &statbuf) == 0)
-		{
-			log_verbose(LOG_INFO, _("deleting \"recovery.done\""));
-
-			if (unlink(filebuf.data) == -1)
-			{
-				log_warning(_("unable to delete \"%s\""),
-							filebuf.data);
-				log_detail("%s", strerror(errno));
-			}
-		}
-		termPQExpBuffer(&filebuf);
-
-		/*
-		 * Delete any replication slots copied in by pg_rewind.
-		 *
-		 * TODO:
-		 *  - from PostgreSQL 11, this will be handled by pg_rewind, so
-		 *    we can skip this step from that version; see commit
-		 *    266b6acb312fc440c1c1a2036aa9da94916beac6
-		 *  - possibly delete contents various other directories
-		 *    as per the above commit for pre-PostgreSQL 11
-		 */
-		{
-			PQExpBufferData slotdir_path;
-			DIR			  *slotdir;
-			struct dirent *slotdir_ent;
-
-			initPQExpBuffer(&slotdir_path);
-
-			appendPQExpBuffer(&slotdir_path,
-							  "%s/pg_replslot",
+			/* remove any recovery.done file copied in by pg_rewind */
+			appendPQExpBuffer(&filebuf,
+							  "%s/recovery.done",
 							  config_file_options.data_directory);
 
-			slotdir = opendir(slotdir_path.data);
-
-			if (slotdir == NULL)
+			if (stat(filebuf.data, &statbuf) == 0)
 			{
-				log_warning(_("unable to open replication slot directory \"%s\""),
-							slotdir_path.data);
-				log_detail("%s", strerror(errno));
-			}
-			else
-			{
-				while ((slotdir_ent = readdir(slotdir)) != NULL) {
-					struct stat statbuf;
-					PQExpBufferData slotdir_ent_path;
+				log_verbose(LOG_INFO, _("deleting \"recovery.done\""));
 
-					if(strcmp(slotdir_ent->d_name, ".") == 0 || strcmp(slotdir_ent->d_name, "..") == 0)
-						continue;
-
-					initPQExpBuffer(&slotdir_ent_path);
-
-					appendPQExpBuffer(&slotdir_ent_path,
-									  "%s/%s",
-									  slotdir_path.data,
-									  slotdir_ent->d_name);
-
-					if (stat(slotdir_ent_path.data, &statbuf) == 0 && !S_ISDIR(statbuf.st_mode))
-					{
-						termPQExpBuffer(&slotdir_ent_path);
-						continue;
-					}
-
-					log_debug("deleting slot directory \"%s\"", slotdir_ent_path.data);
-					if (rmdir_recursive(slotdir_ent_path.data) != 0 && errno != EEXIST)
-					{
-						log_warning(_("unable to delete replication slot directory \"%s\""), slotdir_ent_path.data);
-						log_detail("%s", strerror(errno));
-						log_hint(_("directory may need to be manually removed"));
-					}
-
-					termPQExpBuffer(&slotdir_ent_path);
+				if (unlink(filebuf.data) == -1)
+				{
+					log_warning(_("unable to delete \"%s\""),
+								filebuf.data);
+					log_detail("%s", strerror(errno));
 				}
 			}
-			termPQExpBuffer(&slotdir_path);
+			termPQExpBuffer(&filebuf);
+
+			/*
+			 * Delete any replication slots copied in by pg_rewind.
+			 *
+			 * TODO:
+			 *  - from PostgreSQL 11, this will be handled by pg_rewind, so
+			 *    we can skip this step from that version; see commit
+			 *    266b6acb312fc440c1c1a2036aa9da94916beac6
+			 *  - possibly delete contents of various other directories
+			 *    as per the above commit for pre-PostgreSQL 11
+			 */
+			{
+				PQExpBufferData slotdir_path;
+				DIR			  *slotdir;
+				struct dirent *slotdir_ent;
+
+				initPQExpBuffer(&slotdir_path);
+
+				appendPQExpBuffer(&slotdir_path,
+								  "%s/pg_replslot",
+								  config_file_options.data_directory);
+
+				slotdir = opendir(slotdir_path.data);
+
+				if (slotdir == NULL)
+				{
+					log_warning(_("unable to open replication slot directory \"%s\""),
+								slotdir_path.data);
+					log_detail("%s", strerror(errno));
+				}
+				else
+				{
+					while ((slotdir_ent = readdir(slotdir)) != NULL) {
+						struct stat statbuf;
+						PQExpBufferData slotdir_ent_path;
+
+						if(strcmp(slotdir_ent->d_name, ".") == 0 || strcmp(slotdir_ent->d_name, "..") == 0)
+							continue;
+
+						initPQExpBuffer(&slotdir_ent_path);
+
+						appendPQExpBuffer(&slotdir_ent_path,
+										  "%s/%s",
+										  slotdir_path.data,
+										  slotdir_ent->d_name);
+
+						if (stat(slotdir_ent_path.data, &statbuf) == 0 && !S_ISDIR(statbuf.st_mode))
+						{
+							termPQExpBuffer(&slotdir_ent_path);
+							continue;
+						}
+
+						log_debug("deleting slot directory \"%s\"", slotdir_ent_path.data);
+						if (rmdir_recursive(slotdir_ent_path.data) != 0 && errno != EEXIST)
+						{
+							log_warning(_("unable to delete replication slot directory \"%s\""), slotdir_ent_path.data);
+							log_detail("%s", strerror(errno));
+							log_hint(_("directory may need to be manually removed"));
+						}
+
+						termPQExpBuffer(&slotdir_ent_path);
+					}
+				}
+				termPQExpBuffer(&slotdir_path);
+			}
 		}
 	}
 
@@ -2160,6 +2168,11 @@ _do_node_archive_config(void)
 			termPQExpBuffer(&archive_dir);
 			exit(ERR_BAD_CONFIG);
 		}
+
+		if (runtime_options.dry_run == true)
+		{
+			log_verbose(LOG_INFO, "temporary archive directory \"%s\" created", archive_dir.data);
+		}
 	}
 	else if (!S_ISDIR(statbuf.st_mode))
 	{
@@ -2184,8 +2197,8 @@ _do_node_archive_config(void)
 	{
 
 		/*
-		 * attempt to remove any existing files in the directory TODO: collate
-		 * problem files into list
+		 * attempt to remove any existing files in the directory
+		 * TODO: collate problem files into list
 		 */
 		while ((arcdir_ent = readdir(arcdir)) != NULL)
 		{
@@ -2261,7 +2274,11 @@ _do_node_archive_config(void)
 
 		if (i < config_file_len)
 		{
-			strncpy(filenamebuf, runtime_options.config_files + i, config_file_len - i);
+			int			filename_len = config_file_len - i;
+
+			strncpy(filenamebuf, runtime_options.config_files + i, filename_len);
+
+			filenamebuf[filename_len] = '\0';
 
 			initPQExpBuffer(&pathbuf);
 			appendPQExpBuffer(&pathbuf,
@@ -2339,7 +2356,7 @@ _do_node_archive_config(void)
 		}
 		else
 		{
-			log_verbose(LOG_INFO, "directory \"%s\" deleted", archive_dir.data);
+			log_verbose(LOG_INFO, "temporary archive directory \"%s\" deleted", archive_dir.data);
 		}
 	}
 
