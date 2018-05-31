@@ -329,6 +329,13 @@ logger_set_terse(void)
 }
 
 
+void
+logger_set_min_level(int min_log_level)
+{
+	if (min_log_level > log_level)
+		log_level = min_log_level;
+}
+
 int
 detect_log_level(const char *level)
 {

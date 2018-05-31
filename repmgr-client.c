@@ -1010,7 +1010,6 @@ main(int argc, char **argv)
 		runtime_options.output_mode = OM_OPTFORMAT;
 	}
 
-
 	/*
 	 * Check for configuration file items which can be overriden by runtime
 	 * options
@@ -1067,6 +1066,17 @@ main(int argc, char **argv)
 
 	if (runtime_options.terse)
 		logger_set_terse();
+
+	/*
+	 * If --dry-run specified, ensure log_level is at least LOG_INFO, regardless
+	 * of what's in the configuration file or -L/--log-level paremeter, otherwise
+	 * some or output might not be displayed.
+	 */
+	if (runtime_options.dry_run == true)
+	{
+		logger_set_min_level(LOG_INFO);
+	}
+
 
 	/*
 	 * Node configuration information is not needed for all actions, with
