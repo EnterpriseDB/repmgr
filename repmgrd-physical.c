@@ -816,6 +816,29 @@ monitor_streaming_standby(void)
 		{
 			int			degraded_monitoring_elapsed = calculate_elapsed(degraded_monitoring_start);
 
+			if (config_file_options.degraded_monitoring_timeout > 0
+				&& degraded_monitoring_elapsed > config_file_options.degraded_monitoring_timeout)
+			{
+				initPQExpBuffer(&event_details);
+
+				appendPQExpBuffer(&event_details,
+								  _("degraded monitoring timeout (%i seconds) exceeded, terminating"),
+								  degraded_monitoring_elapsed);
+
+				log_notice("%s", event_details.data);
+
+				create_event_notification(NULL,
+										  &config_file_options,
+										  config_file_options.node_id,
+										  "repmgrd_shutdown",
+										  true,
+										  event_details.data);
+
+				termPQExpBuffer(&event_details);
+				terminate(ERR_MONITORING_TIMEOUT);
+			}
+
+
 			log_debug("monitoring node %i in degraded state for %i seconds",
 					  upstream_node_info.node_id,
 					  degraded_monitoring_elapsed);
