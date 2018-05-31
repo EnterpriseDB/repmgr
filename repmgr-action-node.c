@@ -2008,7 +2008,9 @@ do_node_rejoin(void)
 	if (success == false)
 	{
 		log_notice(_("NODE REJOIN failed"));
-		log_detail("%s", follow_output.data);
+
+		if (strlen(follow_output.data))
+			log_detail("%s", follow_output.data);
 
 		create_event_notification(upstream_conn,
 								  &config_file_options,
