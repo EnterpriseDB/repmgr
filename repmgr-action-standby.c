@@ -87,7 +87,7 @@ static void initialise_direct_clone(t_node_info *node_record);
 static int	run_basebackup(t_node_info *node_record);
 static int	run_file_backup(t_node_info *node_record);
 
-static void copy_configuration_files(void);
+static void copy_configuration_files(bool delete_after_copy);
 
 static void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
 
@@ -498,7 +498,33 @@ do_standby_clone(void)
 
 			termPQExpBuffer(&msg);
 
-			/* TODO: check all files are readable */
+			/*
+			 * Here we'll attempt an initial test copy of the detected external
+			 * files, to detect any issues before we run the base backup.
+			 *
+			 * Note this will exit with an error, unless -F/--force supplied.
+			 *
+			 * TODO: put the files in a temporary directory and move to their final
+			 * destination once the database has been cloned.
+			 */
+
+			if (runtime_options.copy_external_config_files_destination == CONFIG_FILE_SAMEPATH)
+			{
+				/*
+				 * Files will be placed in the same path as on the source server;
+				 * don't delete after copying.
+				 */
+				copy_configuration_files(false);
+
+			}
+			else
+			{
+				/*
+				 * Files will be placed in the data directory - delete after copying.
+				 * They'll be copied again later; see TODO above.
+				 */
+				copy_configuration_files(true);
+			}
 		}
 
 
@@ -597,7 +623,12 @@ do_standby_clone(void)
 	 */
 	if (runtime_options.copy_external_config_files == true && config_files.entries > 0)
 	{
-		copy_configuration_files();
+		/*
+		 * If "--copy-external-config-files=samepath" was used, the files will already
+		 * have been copied.
+		 */
+		if (runtime_options.copy_external_config_files_destination == CONFIG_FILE_PGDATA)
+			copy_configuration_files(false);
 	}
 
 	/* Write the recovery.conf file */
@@ -5709,7 +5740,7 @@ get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 
 
 static void
-copy_configuration_files(void)
+copy_configuration_files(bool delete_after_copy)
 {
 	int			i,
 				r;
@@ -5754,13 +5785,35 @@ copy_configuration_files(void)
 		r = copy_remote_files(runtime_options.host, runtime_options.remote_user,
 							  file->filepath, dest_path.data, false, source_server_version_num);
 
-		termPQExpBuffer(&dest_path);
+		/*
+		 * TODO: collate errors into list
+		 */
 
 		if (WEXITSTATUS(r))
 		{
 			log_error(_("standby clone: unable to copy config file \"%s\""),
 					  file->filename);
+			log_hint(_("see preceding messages for details"));
+
+			if (runtime_options.force == false)
+				exit(ERR_BAD_RSYNC);
 		}
+
+		/*
+		 * This is to check we can actually copy the files before running the
+		 * main clone operation
+		 */
+		if (delete_after_copy == true)
+		{
+			/* this is very unlikely to happen, but log in case it does */
+			if (unlink(dest_path.data) < 0 && errno != ENOENT)
+			{
+				log_warning(_("unable to delete %s"), dest_path.data);
+				log_detail("%s", strerror(errno));
+			}
+		}
+
+		termPQExpBuffer(&dest_path);
 	}
 
 	return;
