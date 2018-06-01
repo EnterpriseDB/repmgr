@@ -58,7 +58,7 @@ static FailoverState failover_state = FAILOVER_STATE_UNKNOWN;
 
 static int	primary_node_id = UNKNOWN_NODE_ID;
 static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
-static NodeInfoList standby_nodes = T_NODE_INFO_LIST_INITIALIZER;
+static NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 
 static ElectionResult do_election(void);
@@ -941,8 +941,8 @@ monitor_streaming_standby(void)
 						get_active_sibling_node_records(local_conn,
 														local_node_info.node_id,
 														former_upstream_node_id,
-														&standby_nodes);
-						notify_followers(&standby_nodes, local_node_info.node_id);
+														&sibling_nodes);
+						notify_followers(&sibling_nodes, local_node_info.node_id);
 
 						/* this will restart monitoring in primary mode */
 						monitoring_state = MS_NORMAL;
@@ -981,12 +981,12 @@ monitor_streaming_standby(void)
 					get_active_sibling_node_records(local_conn,
 													local_node_info.node_id,
 													local_node_info.upstream_node_id,
-													&standby_nodes);
+													&sibling_nodes);
 
-					if (standby_nodes.node_count > 0)
+					if (sibling_nodes.node_count > 0)
 					{
-						log_debug("scanning %i node records to detect new primary...", standby_nodes.node_count);
-						for (cell = standby_nodes.head; cell; cell = cell->next)
+						log_debug("scanning %i node records to detect new primary...", sibling_nodes.node_count);
+						for (cell = sibling_nodes.head; cell; cell = cell->next)
 						{
 							/* skip local node check, we did that above */
 							if (cell->node_info->node_id == local_node_info.node_id)
@@ -1016,7 +1016,7 @@ monitor_streaming_standby(void)
 							follow_new_primary(follow_node_id);
 						}
 					}
-					clear_node_info_list(&standby_nodes);
+					clear_node_info_list(&sibling_nodes);
 				}
 			}
 		}
@@ -1418,12 +1418,12 @@ monitor_streaming_witness(void)
 				get_active_sibling_node_records(local_conn,
 												local_node_info.node_id,
 												local_node_info.upstream_node_id,
-												&standby_nodes);
+												&sibling_nodes);
 
-				if (standby_nodes.node_count > 0)
+				if (sibling_nodes.node_count > 0)
 				{
-					log_debug("scanning %i node records to detect new primary...", standby_nodes.node_count);
-					for (cell = standby_nodes.head; cell; cell = cell->next)
+					log_debug("scanning %i node records to detect new primary...", sibling_nodes.node_count);
+					for (cell = sibling_nodes.head; cell; cell = cell->next)
 					{
 						/* skip local node check, we did that above */
 						if (cell->node_info->node_id == local_node_info.node_id)
@@ -1453,7 +1453,7 @@ monitor_streaming_witness(void)
 						witness_follow_new_primary(follow_node_id);
 					}
 				}
-				clear_node_info_list(&standby_nodes);
+				clear_node_info_list(&sibling_nodes);
 			}
 		}
 loop:
@@ -1554,7 +1554,7 @@ do_primary_failover(void)
 	}
 	else if (election_result == ELECTION_WON)
 	{
-		if (standby_nodes.node_count > 0)
+		if (sibling_nodes.node_count > 0)
 		{
 			log_notice("this node is the winner, will now promote itself and inform other nodes");
 		}
@@ -1599,7 +1599,7 @@ do_primary_failover(void)
 				get_active_sibling_node_records(local_conn,
 												local_node_info.node_id,
 												upstream_node_info.node_id,
-												&standby_nodes);
+												&sibling_nodes);
 
 			}
 			else if (config_file_options.failover == FAILOVER_MANUAL)
@@ -1661,10 +1661,10 @@ do_primary_failover(void)
 	{
 		case FAILOVER_STATE_PROMOTED:
 			/* notify former siblings that they should now follow this node */
-			notify_followers(&standby_nodes, local_node_info.node_id);
+			notify_followers(&sibling_nodes, local_node_info.node_id);
 
 			/* we no longer care about our former siblings */
-			clear_node_info_list(&standby_nodes);
+			clear_node_info_list(&sibling_nodes);
 
 			/* pass control back down to start_monitoring() */
 			log_info(_("switching to primary monitoring mode"));
@@ -1678,10 +1678,10 @@ do_primary_failover(void)
 			 * notify siblings that they should resume following the original
 			 * primary
 			 */
-			notify_followers(&standby_nodes, upstream_node_info.node_id);
+			notify_followers(&sibling_nodes, upstream_node_info.node_id);
 
 			/* we no longer care about our former siblings */
-			clear_node_info_list(&standby_nodes);
+			clear_node_info_list(&sibling_nodes);
 
 			/* pass control back down to start_monitoring() */
 			log_info(_("resuming standby monitoring mode"));
@@ -2566,6 +2566,7 @@ do_election(void)
 
 	/* we're visible */
 	int			visible_nodes = 1;
+	int			total_nodes = 0;
 
 	NodeInfoListCell *cell = NULL;
 
@@ -2616,14 +2617,16 @@ do_election(void)
 	get_active_sibling_node_records(local_conn,
 									local_node_info.node_id,
 									upstream_node_info.node_id,
-									&standby_nodes);
+									&sibling_nodes);
+
+	total_nodes = sibling_nodes.node_count + 1;
 
 	log_debug("do_election(): primary location is %s", upstream_node_info.location);
 
 	local_node_info.last_wal_receive_lsn = InvalidXLogRecPtr;
 
 	/* fast path if no other standbys (or witness) exists - normally win by default */
-	if (standby_nodes.node_count == 0)
+	if (sibling_nodes.node_count == 0)
 	{
 		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
 		{
@@ -2666,7 +2669,7 @@ do_election(void)
 	/* pointer to "winning" node, initially self */
 	candidate_node = &local_node_info;
 
-	for (cell = standby_nodes.head; cell; cell = cell->next)
+	for (cell = sibling_nodes.head; cell; cell = cell->next)
 	{
 		/* assume the worst case */
 		cell->node_info->node_status = NODE_STATUS_UNKNOWN;
@@ -2721,7 +2724,7 @@ do_election(void)
 			candidate_node = cell->node_info;
 		}
 		/* LSN is same - tiebreak on priority, then node_id */
-		else if(cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
+		else if (cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
 		{
 			log_verbose(LOG_DEBUG, "node %i has same LSN as current candidate %i",
 						cell->node_info->node_id,
@@ -2773,9 +2776,9 @@ do_election(void)
 
 	log_debug("visible nodes: %i; total nodes: %i",
 			  visible_nodes,
-			  standby_nodes.node_count);
+			  total_nodes);
 
-	if (visible_nodes <= (standby_nodes.node_count / 2.0))
+	if (visible_nodes <= (total_nodes / 2.0))
 	{
 		log_notice(_("unable to reach a qualified majority of nodes"));
 		log_detail(_("node will enter degraded monitoring state waiting for reconnect"));
