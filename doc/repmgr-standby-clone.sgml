@@ -124,7 +124,7 @@
      <para>
        We recommend using <ulink url="https://www.pgbarman.org/">Barman</ulink> to manage
        WAL file archiving. For more details on combining &repmgr; and <application>Barman</application>,
-       in particular using <varname>restore_command</varname> to configure Barman as a backu source of
+       in particular using <varname>restore_command</varname> to configure Barman as a backup source of
        WAL files, see <xref linkend="cloning-from-barman">.
      </para>
    </note>
