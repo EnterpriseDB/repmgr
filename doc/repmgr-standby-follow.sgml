@@ -92,7 +92,7 @@
       A <literal>standby_follow</literal> <link linkend="event-notifications">event notification</link> will be generated.
     </para>
     <para>
-      If provided, &repmgr; will subsitute the placeholders <literal>%p</literal> with the node ID of the primary
+      If provided, &repmgr; will substitute the placeholders <literal>%p</literal> with the node ID of the primary
       being followed, <literal>%c</literal> with its <literal>conninfo</literal> string, and
       <literal>%a</literal> with its node name.
     </para>
