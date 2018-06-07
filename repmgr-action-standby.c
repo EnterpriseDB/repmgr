@@ -2159,7 +2159,13 @@ do_standby_follow(void)
 
 	log_verbose(LOG_DEBUG, "do_standby_follow()");
 
-	local_conn = establish_db_connection(config_file_options.conninfo, true);
+	local_conn = establish_db_connection(config_file_options.conninfo, false);
+
+	if (PQstatus(local_conn) != CONNECTION_OK)
+	{
+		log_hint(_("use \"repmgr node rejoin\" to re-add an inactive node to the replication cluster"));
+		exit(ERR_DB_CONN);
+	}
 
 	log_verbose(LOG_INFO, _("connected to local node"));
 
