@@ -19,7 +19,14 @@
     <title>Release 4.0.6</title>
     <para><emphasis>June ??, 2018</emphasis></para>
     <para>
+	  &repmgr; 4.0.6 contains a number of bug fixes and usability enhancements.
     </para>
+	<para>
+	  We recommend upgrading to this version as soon as possible.
+	  This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.5;
+      <application>repmgrd</application> (if running) should be restarted. See <xref linkend="upgrading-repmgr">
+      for more details.
+	</para>
 
     <sect2>
       <title>Bug fixes</title>
@@ -31,6 +38,64 @@
             <para>
               <command><link linkend="repmgr-witness-register">repmgr witness register</link></command>:
               prevent registration of a witness server with the same name as an existing node.
+           </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
+               <command><link linkend="repmgr-standby-follow">repmgr standby follow</link></command>:
+			   check node has actually connected to new primary before reporting success
+			   (GitHub #444)
+           </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
+               <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
+			   Improve handling of external configuration file copying,  including consideration in
+			   <option>--dry-run</option> check
+			   (GitHub #443)
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+               <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
+			   Don't require presence of <varname>user</varname> parameter in conninfo string
+			   (GitHub #437)
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+               <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
+			   Improve documentation of <option>--recovery-conf-only</option> mode
+			   (GitHub #438)
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+               <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
+			   Fix bug when parsing <option>--config-files</option> parameter
+			   (GitHub #442)
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              When using <option>--dry-run</option>, force log level to <literal>INFO</literal>
+			  to ensure output will always be displayed
+			  (GitHub #441)
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application>: ensure local node is counted as quorum member
+			  (GitHub #439)
            </para>
           </listitem>
 

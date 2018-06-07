@@ -1,6 +1,19 @@
 4.0.6   2018-06-??
-        repmgr: prevent registration of a witness server with the same name as
-          an existing node (Ian)
+        repmgr: (witness register) prevent registration of a witness server with the
+ 		  same name as an existing node (Ian)
+		repmgr: (standby follow) check node has actually connected to new primary
+		  before reporting success; GitHub #444 (Ian)
+		repmgr: (standby clone) improve handling of external configuration file copying,
+		  including consideration in --dry-run check; GitHub #443 (Ian)
+		repmgr: (standby clone) don't require presence of "user" parameter in
+		  conninfo string; GitHub #437 (Ian)
+		repmgr: (standby clone) improve documentation of --recovery-conf-only
+		  mode; GitHub #438 (Ian)
+		repmgr: (node rejoin) fix bug when parsing --config-files parameter;
+		  GitHub #442 (Ian)
+		repmgr: when using --dry-run, force log level to INFO to ensure output
+		  will always be displayed; GitHub #441 (Ian)
+		repmgrd: ensure local node is counted as quorum member; GitHub #439 (Ian)
 
 4.0.5   2018-05-02
         repmgr: poll demoted primary after restart as a standby during a
