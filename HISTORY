@@ -1,3 +1,7 @@
+4.0.6   2018-06-??
+        repmgr: prevent registration of a witness server with the same name as
+          an existing node (Ian)
+
 4.0.5   2018-05-02
         repmgr: poll demoted primary after restart as a standby during a
           switchover operation; GitHub #408 (Ian)
