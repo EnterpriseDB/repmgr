@@ -319,12 +319,19 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->use_primary_conninfo_password = false;
 	memset(options->passfile, 0, sizeof(options->passfile));
 
-	/*-----------------------
+	/*-------------------------
 	 * standby promote settings
-	 *------------------------
+	 *-------------------------
 	 */
 	options->promote_check_timeout = DEFAULT_PROMOTE_CHECK_TIMEOUT;
 	options->promote_check_interval = DEFAULT_PROMOTE_CHECK_INTERVAL;
+
+	/*------------------------
+	 * standby follow settings
+	 *------------------------
+	 */
+	options->primary_follow_timeout = DEFAULT_PRIMARY_FOLLOW_TIMEOUT;
+	options->standby_follow_timeout = DEFAULT_STANDBY_FOLLOW_TIMEOUT;
 
 	/*-----------------
 	 * repmgrd settings
@@ -345,7 +352,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->degraded_monitoring_timeout = -1;
 	options->async_query_timeout = DEFAULT_ASYNC_QUERY_TIMEOUT;
 	options->primary_notification_timeout = DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT;
-	options->primary_follow_timeout = DEFAULT_PRIMARY_FOLLOW_TIMEOUT;
 	options->standby_reconnect_timeout = DEFAULT_STANDBY_RECONNECT_TIMEOUT;
 
 	/*-------------
@@ -527,6 +533,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "promote_check_interval") == 0)
 			options->promote_check_interval = repmgr_atoi(value, name, error_list, 1);
 
+		/* standby follow settings */
+		else if (strcmp(name, "primary_follow_timeout") == 0)
+			options->primary_follow_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "standby_follow_timeout") == 0)
+			options->standby_follow_timeout = repmgr_atoi(value, name, error_list, 0);
+
 		/* node check settings */
 		else if (strcmp(name, "archive_ready_warning") == 0)
 			options->archive_ready_warning = repmgr_atoi(value, name, error_list, 1);
@@ -576,8 +588,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->async_query_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "primary_notification_timeout") == 0)
 			options->primary_notification_timeout = repmgr_atoi(value, name, error_list, 0);
-		else if (strcmp(name, "primary_follow_timeout") == 0)
-			options->primary_follow_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "standby_reconnect_timeout") == 0)
 			options->standby_reconnect_timeout = repmgr_atoi(value, name, error_list, 0);
 

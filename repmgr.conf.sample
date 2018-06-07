@@ -213,8 +213,10 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 # These settings apply when instructing a standby to follow the new primary
 # ("repmgr standby follow").
 
-#primary_follow_timeout=60		# The length of time (in seconds) to wait
+#primary_follow_timeout=60		# The max length of time (in seconds) to wait
 					# for the new primary to become available
+#standby_follow_timeout=15		# The max length of time (in seconds) to wait
+					# for the standby to connect to the primary
 
 
 #------------------------------------------------------------------------------

@@ -2352,6 +2352,74 @@ do_standby_follow(void)
 										 &follow_output,
 										 &follow_error_code);
 
+	/* unable to restart the standby */
+	if (success == false)
+	{
+		create_event_notification_extended(
+			primary_conn,
+			&config_file_options,
+			config_file_options.node_id,
+			"standby_follow",
+			success,
+			follow_output.data,
+			&event_info);
+
+		PQfinish(primary_conn);
+
+		log_notice(_("STANDBY FOLLOW failed"));
+		if (strlen( follow_output.data ))
+			log_detail("%s", follow_output.data);
+
+		termPQExpBuffer(&follow_output);
+		exit(follow_error_code);
+	}
+
+	termPQExpBuffer(&follow_output);
+
+	initPQExpBuffer(&follow_output);
+
+	/*
+	 * Wait up to "standby_follow_timeout" seconds for standby to connect to
+	 * upstream.
+	 * For 9.6 and later, we could check pg_stat_wal_receiver on the local node.
+	 */
+
+	/* assume success, necessary if standby_follow_timeout is zero */
+	success = true;
+
+	for (timer = 0; timer < config_file_options.standby_follow_timeout; timer++)
+	{
+		success = is_downstream_node_attached(primary_conn, config_file_options.node_name);
+		if (success == true)
+			break;
+
+		log_verbose(LOG_DEBUG, "sleeping %i of max %i seconds waiting for standby to attach to primary",
+					timer + 1,
+					config_file_options.standby_follow_timeout);
+		sleep(1);
+	}
+
+	if (success == true)
+	{
+		log_notice(_("STANDBY FOLLOW successful"));
+		appendPQExpBuffer(&follow_output,
+						  "standby attached to upstream node \"%s\" (node ID: %i)",
+						  primary_node_record.node_name,
+						  primary_node_id);
+	}
+	else
+	{
+		log_error(_("STANDBY FOLLOW failed"));
+		appendPQExpBuffer(&follow_output,
+						  "standby did not attach to upstream node \"%s\" (node ID: %i) after %i seconds",
+						  primary_node_record.node_name,
+						  primary_node_id,
+						  config_file_options.standby_follow_timeout);
+
+	}
+
+	log_detail("%s", follow_output.data);
+
 	create_event_notification_extended(
 		primary_conn,
 		&config_file_options,
@@ -2363,19 +2431,10 @@ do_standby_follow(void)
 
 	PQfinish(primary_conn);
 
-	if (success == false)
-	{
-		log_notice(_("STANDBY FOLLOW failed"));
-		log_detail("%s", follow_output.data);
-
-		termPQExpBuffer(&follow_output);
-		exit(follow_error_code);
-	}
-
-	log_notice(_("STANDBY FOLLOW successful"));
-	log_detail("%s", follow_output.data);
-
 	termPQExpBuffer(&follow_output);
+
+	if (success == false)
+		exit(ERR_FOLLOW_FAIL);
 
 	return;
 }
