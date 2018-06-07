@@ -15,6 +15,31 @@
     See also: <xref linkend="upgrading-repmgr">
   </para>
 
+  <sect1 id="release-4.0.6">
+    <title>Release 4.0.6</title>
+    <para><emphasis>June ??, 2018</emphasis></para>
+    <para>
+    </para>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-witness-register">repmgr witness register</link></command>:
+              prevent registration of a witness server with the same name as an existing node.
+           </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
+  </sect1>
+
   <sect1 id="release-4.0.5">
     <title>Release 4.0.5</title>
     <para><emphasis>Wed May 2, 2018</emphasis></para>
@@ -24,6 +49,7 @@
       generation and (in <application>repmgrd</application>) handling of various
       corner-case situations, as well as a number of bug fixes.
     </para>
+
     <sect2>
       <title>Usability enhancements</title>
 
