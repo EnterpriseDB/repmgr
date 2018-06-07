@@ -137,7 +137,7 @@ do_witness_register(void)
 	}
 
 	/*
-	 * TODO:sanity check witness node is not part of main cluster; we could
+	 * TODO: sanity check witness node is not part of main cluster; we could
 	 * add a random application_name to the respective connections,
 	 * and do a simple check of pg_stat_activity
 	 */
@@ -193,8 +193,26 @@ do_witness_register(void)
 		}
 	}
 
+	/*
+	 * Check that an active node with the same node_name doesn't exist already
+	 */
 
-	// XXX check other node with same name does not exist
+	record_status = get_node_record_by_name(primary_conn,
+											config_file_options.node_name,
+											&node_record);
+
+
+	if (record_status == RECORD_FOUND)
+	{
+		if (node_record.active == true && node_record.node_id != config_file_options.node_id)
+		{
+			log_error(_("node %i exists already with node_name \"%s\""),
+					  node_record.node_id,
+					  config_file_options.node_name);
+			PQfinish(primary_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
 
 	/*
 	 * if repmgr.nodes contains entries, delete if -F/--force provided,
@@ -225,6 +243,7 @@ do_witness_register(void)
 		PQfinish(witness_conn);
 		exit(SUCCESS);
 	}
+
 	/* create record on primary */
 
 	/*
