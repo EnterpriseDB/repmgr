@@ -26,10 +26,18 @@
       running. It can only be used to attach an active standby to the current primary node
    (and not to another standby).
     </para>
-    <para>
-      To re-add an inactive node to the replication cluster, see
-      <xref linkend="repmgr-node-rejoin">
-    </para>
+	<tip>
+      <para>
+		To re-add an inactive node to the replication cluster, use
+		<xref linkend="repmgr-node-rejoin">.
+      </para>
+	</tip>
+
+	<para>
+	  <command>repmgr standby follow</command> will wait up to
+	  <varname>standby_follow_timeout</varname> seconds (default: <literal>30</literal>)
+	  to verify the standby has actually connected to the new primary.
+	</para>
 
   </refsect1>
 

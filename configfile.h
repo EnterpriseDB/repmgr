@@ -98,6 +98,10 @@ typedef struct
 	int			promote_check_timeout;
 	int			promote_check_interval;
 
+	/* standby follow settings */
+	int			primary_follow_timeout;
+	int			standby_follow_timeout;
+
 	/* node check settings */
 	int			archive_ready_warning;
 	int			archive_ready_critical;
@@ -120,7 +124,6 @@ typedef struct
 	int			degraded_monitoring_timeout;
 	int			async_query_timeout;
 	int			primary_notification_timeout;
-	int			primary_follow_timeout;
 	int			standby_reconnect_timeout;
 
 	/* BDR settings */
@@ -167,6 +170,9 @@ typedef struct
 		false, "", "", { NULL, NULL }, "", false, "", false, "", \
 		/* standby promote settings */ \
 		DEFAULT_PROMOTE_CHECK_TIMEOUT, DEFAULT_PROMOTE_CHECK_INTERVAL, \
+		/* standby follow settings */ \
+		DEFAULT_PRIMARY_FOLLOW_TIMEOUT,	\
+		DEFAULT_STANDBY_FOLLOW_TIMEOUT,	\
 		/* node check settings */ \
 		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
 		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \
@@ -180,7 +186,6 @@ typedef struct
         false, -1, \
 		DEFAULT_ASYNC_QUERY_TIMEOUT, \
 		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT,	\
-		DEFAULT_PRIMARY_FOLLOW_TIMEOUT,	\
 		DEFAULT_STANDBY_RECONNECT_TIMEOUT,	\
 		/* BDR settings */ \
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
