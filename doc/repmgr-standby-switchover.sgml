@@ -171,10 +171,12 @@
       Execute with the <literal>--dry-run</literal> option to test the switchover as far as
       possible without actually changing the status of either node.
     </para>
-    <para>
-      <application>repmgrd</application> should not be active on any nodes while a switchover is being
-      executed. This restriction may be lifted in a later version.
-    </para>
+    <important>
+      <para>
+        <application>repmgrd</application> should not be active on any nodes while a switchover is being
+        executed. This restriction may be lifted in a later version.
+      </para>
+    </important>
     <para>
       External database connections, e.g. from an application, should not be permitted while
       the switchover is taking place. In particular, active transactions on the primary
