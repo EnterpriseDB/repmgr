@@ -1796,30 +1796,33 @@ do_node_rejoin(void)
 	}
 
 	/*
-	 * If --force-rewind specified, check pg_rewind can be used, and
-	 * pre-emptively fetch the list of configuration files which should be
-	 * archived
+	 * --force-rewind specified - check prerequisites, and attempt to execute
+  	 * (if --dry-run provided, just output the command which would be executed)
 	 */
+
 
 	if (runtime_options.force_rewind_used == true)
 	{
-		PQExpBufferData reason;
 		PQExpBufferData msg;
+		PQExpBufferData	filebuf;
+		int				ret;
 
-		initPQExpBuffer(&reason);
+		/*
+		 * Check that pg_rewind can be used
+		 */
 
-		if (can_use_pg_rewind(upstream_conn, config_file_options.data_directory, &reason) == false)
+		initPQExpBuffer(&msg);
+
+		if (can_use_pg_rewind(upstream_conn, config_file_options.data_directory, &msg) == false)
 		{
 			log_error(_("--force-rewind specified but pg_rewind cannot be used"));
-			log_detail("%s", reason.data);
-			termPQExpBuffer(&reason);
+			log_detail("%s", msg.data);
+			termPQExpBuffer(&msg);
 			PQfinish(upstream_conn);
 
 			exit(ERR_BAD_CONFIG);
 		}
-		termPQExpBuffer(&reason);
 
-		initPQExpBuffer(&msg);
 		appendPQExpBuffer(&msg,
 						  _("prerequisites for using pg_rewind are met"));
 
@@ -1832,20 +1835,14 @@ do_node_rejoin(void)
 			log_verbose(LOG_INFO, "%s", msg.data);
 		}
 		termPQExpBuffer(&msg);
-	}
 
-
-
-	/*
-	 * Forcibly rewind node if requested (this is mainly for use when this
-	 * action is being executed by "repmgr standby switchover")
-	 */
-
-	if (runtime_options.force_rewind_used == true)
-	{
-		int			ret;
-		PQExpBufferData		filebuf;
-
+		/*
+		 * Archive requested configuration files.
+		 *
+		 * In --dry-run mode this acts as a check that the files can be archived, though
+		 * errors will only be logged; any copied files will be deleted and --dry-run
+		 * execution will continue.
+		 */
 		_do_node_archive_config();
 
 		/* execute pg_rewind */
