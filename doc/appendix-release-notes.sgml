@@ -29,6 +29,40 @@
 	</para>
 
     <sect2>
+      <title>Usability enhancements</title>
+
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command> and
+              <command><link linkend="repmgr-cluster-matrix">repmgr cluster matrix</link></command>:
+              return non-zero exit code if node connection issues detected (GitHub #447)
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+               <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
+			   Improve handling of external configuration file copying,  including consideration in
+			   <option>--dry-run</option> check
+			   (GitHub #443)
+           </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              When using <option>--dry-run</option>, force log level to <literal>INFO</literal>
+			  to ensure output will always be displayed
+			  (GitHub #441)
+           </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
       <title>Bug fixes</title>
       <para>
 
@@ -54,15 +88,6 @@
           <listitem>
             <para>
                <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
-			   Improve handling of external configuration file copying,  including consideration in
-			   <option>--dry-run</option> check
-			   (GitHub #443)
-           </para>
-          </listitem>
-
-          <listitem>
-            <para>
-               <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
 			   Don't require presence of <varname>user</varname> parameter in conninfo string
 			   (GitHub #437)
            </para>
@@ -81,14 +106,6 @@
                <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
 			   Fix bug when parsing <option>--config-files</option> parameter
 			   (GitHub #442)
-           </para>
-          </listitem>
-
-          <listitem>
-            <para>
-              When using <option>--dry-run</option>, force log level to <literal>INFO</literal>
-			  to ensure output will always be displayed
-			  (GitHub #441)
            </para>
           </listitem>
 

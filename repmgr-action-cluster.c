@@ -569,6 +569,8 @@ do_cluster_crosscheck(void)
 
 	t_node_status_cube **cube;
 
+	bool		error_found = false;
+
 	n = build_cluster_crosscheck(&cube, &name_length);
 	if (runtime_options.output_mode == OM_CSV)
 	{
@@ -648,9 +650,11 @@ do_cluster_crosscheck(void)
 				{
 					case -2:
 						c = '?';
+						error_found = true;
 						break;
 					case -1:
 						c = 'x';
+						error_found = true;
 						break;
 					case 0:
 						c = '*';
@@ -689,6 +693,11 @@ do_cluster_crosscheck(void)
 
 		free(cube);
 	}
+
+	if (error_found == true)
+	{
+		exit(ERR_CLUSTER_CHECK);
+	}
 }
 
 
@@ -703,6 +712,8 @@ do_cluster_matrix()
 	int			name_length = strlen(node_header);
 
 	t_node_matrix_rec **matrix_rec_list;
+
+	bool		error_found = false;
 
 	n = build_cluster_matrix(&matrix_rec_list, &name_length);
 
@@ -742,9 +753,11 @@ do_cluster_matrix()
 				{
 					case -2:
 						c = '?';
+						error_found = true;
 						break;
 					case -1:
 						c = 'x';
+						error_found = true;
 						break;
 					case 0:
 						c = '*';
@@ -770,6 +783,11 @@ do_cluster_matrix()
 	}
 
 	free(matrix_rec_list);
+
+	if (error_found == true)
+	{
+		exit(ERR_CLUSTER_CHECK);
+	}
 }
 
 
