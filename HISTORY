@@ -1,4 +1,4 @@
-4.0.6   2018-06-??
+4.0.6   2018-06-14
         repmgr: (witness register) prevent registration of a witness server with the
  		  same name as an existing node (Ian)
 		repmgr: (standby follow) check node has actually connected to new primary
@@ -13,6 +13,8 @@
 		  GitHub #442 (Ian)
 		repmgr: when using --dry-run, force log level to INFO to ensure output
 		  will always be displayed; GitHub #441 (Ian)
+        repmgr: (cluster matrix/crosscheck) return non-zero exit code if node
+           connection issues detected; GitHub #447 (Ian)
 		repmgrd: ensure local node is counted as quorum member; GitHub #439 (Ian)
 
 4.0.5   2018-05-02

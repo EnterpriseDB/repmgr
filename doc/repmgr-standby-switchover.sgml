@@ -199,7 +199,7 @@
   <refsect1>
     <title>Exit codes</title>
     <para>
-      Following exit codes can be emitted by <literal>repmgr standby switchover</literal>:
+      Following exit codes can be emitted by <command>repmgr standby switchover</command>:
     </para>
     <variablelist>
 
@@ -227,7 +227,7 @@
           <para>
             The switchover was executed but a problem was encountered.
             Typically this means the former primary could not be reattached
-            as a standby.
+            as a standby. Check preceding log messages for more information.
           </para>
         </listitem>
       </varlistentry>

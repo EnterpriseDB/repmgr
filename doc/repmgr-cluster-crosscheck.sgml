@@ -38,5 +38,34 @@
       and therefore determine the state of outbound connections from that node.
     </para>
   </refsect1>
+
+  <refsect1>
+    <title>Exit codes</title>
+    <para>
+      Following exit codes can be emitted by <command>repmgr cluster crosscheck</command>:
+    </para>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            The check completed successfully and all nodes are reachable.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_CLUSTER_CHECK (25)</option></term>
+        <listitem>
+          <para>
+            One or more nodes could not be reached.
+          </para>
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+  </refsect1>
+
 </refentry>
 
