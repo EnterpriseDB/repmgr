@@ -3142,6 +3142,8 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 	char		event_timestamp[MAXLEN] = "";
 	bool		success = true;
 
+	log_verbose(LOG_DEBUG, "_create_event(): event is \"%s\" for node %i", event, node_id);
+
 	/*
 	 * Only attempt to write a record if a connection handle was provided.
 	 * Also check that the repmgr schema has been properly initialised - if
