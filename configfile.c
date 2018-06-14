@@ -959,12 +959,11 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
 	char	   *ptr = NULL;
 	int			targ = strtol(value, &ptr, 10);
 
-	if (targ < 1)
+	if (targ < 0)
 	{
 		if (errors != NULL)
 		{
-			item_list_append_format(
-									errors,
+			item_list_append_format(errors,
 									_("invalid value provided for \"%s\""),
 									name);
 		}
