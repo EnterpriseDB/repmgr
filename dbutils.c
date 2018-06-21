@@ -2187,8 +2187,9 @@ get_downstream_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoL
 					  "LEFT JOIN pg_catalog.pg_replication_slots rs "
 					  "       ON rs.slot_name = n.slot_name "
 					  "    WHERE n.slot_name IS NOT NULL"
-                      "      AND rs.slot_name IS NULL "
-                      "      AND n.upstream_node_id = %i ",
+					  "      AND rs.slot_name IS NULL "
+					  "      AND n.upstream_node_id = %i "
+					  "      AND n.type = 'standby'",
 					  this_node_id);
 
 	log_verbose(LOG_DEBUG, "get_all_node_records_with_missing_slot():\n%s", query.data);
