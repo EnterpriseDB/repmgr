@@ -1343,6 +1343,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 	NodeInfoList downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell = NULL;
 	int			missing_nodes_count = 0;
+	int			expected_nodes_count = 0;
 	CheckStatus status = CHECK_STATUS_OK;
 	ItemList	missing_nodes = {NULL, NULL};
 	ItemList	attached_nodes = {NULL, NULL};
@@ -1352,8 +1353,17 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 
 	get_downstream_node_records(conn, config_file_options.node_id, &downstream_nodes);
 
+	/* if a witness node is present, we'll need to remove this from the total */
+	expected_nodes_count = downstream_nodes.node_count;
+
 	for (cell = downstream_nodes.head; cell; cell = cell->next)
 	{
+		if (cell->node_info->type == WITNESS)
+		{
+			expected_nodes_count --;
+			continue;
+		}
+
 		if (is_downstream_node_attached(conn, cell->node_info->node_name) == false)
 		{
 			missing_nodes_count++;
@@ -1373,7 +1383,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 
 	if (missing_nodes_count == 0)
 	{
-		if (downstream_nodes.node_count == 0)
+		if (expected_nodes_count == 0)
 			appendPQExpBuffer(
 							  &details,
 							  "this node has no downstream nodes");
@@ -1381,8 +1391,8 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 			appendPQExpBuffer(
 							  &details,
 							  "%i of %i downstream nodes attached",
-							  downstream_nodes.node_count,
-							  downstream_nodes.node_count);
+							  expected_nodes_count - missing_nodes_count,
+							  expected_nodes_count);
 	}
 	else
 	{
@@ -1391,22 +1401,19 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 
 		status = CHECK_STATUS_CRITICAL;
 
-		appendPQExpBuffer(
-						  &details,
+		appendPQExpBuffer(&details,
 						  "%i of %i downstream nodes not attached",
 						  missing_nodes_count,
-						  downstream_nodes.node_count);
+						  expected_nodes_count);
 
 		if (mode != OM_NAGIOS)
 		{
-			appendPQExpBuffer(
-							  &details, "; missing: ");
+			appendPQExpBuffer(&details, "; missing: ");
 
 			for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
 			{
 				if (first == false)
-					appendPQExpBuffer(
-									  &details,
+					appendPQExpBuffer(&details,
 									  ", ");
 				else
 					first = false;
@@ -1445,7 +1452,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 					}
 				}
 
-				if (downstream_nodes.node_count - missing_nodes_count)
+				if (expected_nodes_count - missing_nodes_count)
 				{
 					ItemListCell *attached_cell = NULL;
 					bool		first = true;
