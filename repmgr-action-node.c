@@ -256,52 +256,23 @@ do_node_status(void)
 						   "Replication slots",
 						   "not available");
 	}
-	else if (node_info.max_replication_slots > 0)
-	{
-		PQExpBufferData slotinfo;
-
-		initPQExpBuffer(&slotinfo);
-
-		appendPQExpBuffer(&slotinfo,
-						  "%i (of maximal %i)",
-						  node_info.active_replication_slots + node_info.inactive_replication_slots,
-						  node_info.max_replication_slots);
-
-
-		if (node_info.inactive_replication_slots > 0)
-		{
-			appendPQExpBuffer(&slotinfo,
-							  "; %i inactive",
-							  node_info.inactive_replication_slots);
-
-			item_list_append_format(&warnings,
-									_("- node has %i inactive replication slots"),
-									node_info.inactive_replication_slots);
-		}
-
-		key_value_list_set(&node_status,
-						   "Replication slots",
-						   slotinfo.data);
-
-		termPQExpBuffer(&slotinfo);
-	}
 	else if (node_info.max_replication_slots == 0)
 	{
 		key_value_list_set(&node_status,
 						   "Replication slots",
 						   "disabled");
 	}
-
-
-	/*
-	 * check for missing replication slots - we do this regardless of
-	 * what "max_replication_slots" is set to, in case the downstream
-	 * node was configured with "use_replication_slots=true" and is
-	 * expecting a replication slot to be available
-	 */
-
+	else
 	{
+		PQExpBufferData slotinfo;
 		NodeInfoList missing_slots = T_NODE_INFO_LIST_INITIALIZER;
+
+		/*
+		 * check for missing replication slots - we do this regardless of
+		 * what "max_replication_slots" is set to, in case the downstream
+		 * node was configured with "use_replication_slots=true" and is
+		 * expecting a replication slot to be available
+		 */
 		get_downstream_nodes_with_missing_slot(conn,
 											   config_file_options.node_id,
 											   &missing_slots);
@@ -323,6 +294,31 @@ do_node_status(void)
 										missing_slot_cell->node_info->slot_name);
 			}
 		}
+
+		initPQExpBuffer(&slotinfo);
+
+		appendPQExpBuffer(&slotinfo,
+						  "%i (of maximal %i; %i missing)",
+						  node_info.active_replication_slots + node_info.inactive_replication_slots,
+						  node_info.max_replication_slots,
+						  missing_slots.node_count);
+
+		if (node_info.inactive_replication_slots > 0)
+		{
+			appendPQExpBuffer(&slotinfo,
+							  "; %i inactive",
+							  node_info.inactive_replication_slots);
+
+			item_list_append_format(&warnings,
+									_("- node has %i inactive replication slots"),
+									node_info.inactive_replication_slots);
+		}
+
+		key_value_list_set(&node_status,
+						   "Replication slots",
+						   slotinfo.data);
+
+		termPQExpBuffer(&slotinfo);
 	}
 
 
