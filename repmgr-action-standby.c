@@ -3433,8 +3433,6 @@ do_standby_switchover(void)
 				}
 			}
 
-
-
 			/*
 			 * check there are sufficient free walsenders - obviously there's potential
 			 * for a later race condition if some walsenders come into use before the
@@ -3858,7 +3856,6 @@ do_standby_switchover(void)
 	 * If --siblings-follow specified, attempt to make them follow the new
 	 * primary
 	 */
-
 	if (runtime_options.siblings_follow == true && sibling_nodes.node_count > 0)
 	{
 		int			failed_follow_count = 0;
@@ -3885,8 +3882,17 @@ do_standby_switchover(void)
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &sibling_node_record);
 
-			appendPQExpBuffer(&remote_command_str,
-							  "standby follow 2>/dev/null && echo \"1\" || echo \"0\"");
+			if (sibling_node_record.type == WITNESS)
+			{
+				appendPQExpBuffer(&remote_command_str,
+								  "witness register -d \\'%s\\' --force 2>/dev/null && echo \"1\" || echo \"0\"",
+								  local_node_record.conninfo);
+			}
+			else
+			{
+				appendPQExpBuffer(&remote_command_str,
+								  "standby follow 2>/dev/null && echo \"1\" || echo \"0\"");
+			}
 			get_conninfo_value(cell->node_info->conninfo, "host", host);
 			log_debug("executing:\n  %s", remote_command_str.data);
 
@@ -3901,8 +3907,16 @@ do_standby_switchover(void)
 
 			if (success == false || command_output.data[0] == '0')
 			{
-				log_warning(_("STANDBY FOLLOW failed on node \"%s\""),
-							cell->node_info->node_name);
+				if (sibling_node_record.type == WITNESS)
+				{
+					log_warning(_("WITNESS REGISTER failed on node \"%s\""),
+								cell->node_info->node_name);
+				}
+				else
+				{
+					log_warning(_("STANDBY FOLLOW failed on node \"%s\""),
+								cell->node_info->node_name);
+				}
 				failed_follow_count++;
 			}
 
