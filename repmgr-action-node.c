@@ -90,7 +90,7 @@ do_node_status(void)
 
 	server_version_num = get_server_version(conn, NULL);
 
-	/* Check node exists and is really a standby */
+	/* check node exists  */
 
 	if (get_node_record_with_upstream(conn, config_file_options.node_id, &node_info) != RECORD_FOUND)
 	{
@@ -108,18 +108,15 @@ do_node_status(void)
 
 	get_node_replication_stats(conn, server_version_num, &node_info);
 
-	key_value_list_set(
-					   &node_status,
+	key_value_list_set(&node_status,
 					   "PostgreSQL version",
 					   server_version);
 
-	key_value_list_set(
-					   &node_status,
+	key_value_list_set(&node_status,
 					   "Total data size",
 					   cluster_size);
 
-	key_value_list_set(
-					   &node_status,
+	key_value_list_set(&node_status,
 					   "Conninfo",
 					   node_info.conninfo);
 
@@ -129,14 +126,12 @@ do_node_status(void)
 
 		local_system_identifier = get_system_identifier(config_file_options.data_directory);
 
-		key_value_list_set_format(
-								  &node_status,
+		key_value_list_set_format(&node_status,
 								  "System identifier",
 								  "%lu", local_system_identifier);
 	}
 
-	key_value_list_set(
-					   &node_status,
+	key_value_list_set(&node_status,
 					   "Role",
 					   get_node_type_string(node_info.type));
 
@@ -145,16 +140,14 @@ do_node_status(void)
 		case PRIMARY:
 			if (recovery_type == RECTYPE_STANDBY)
 			{
-				item_list_append(
-								 &warnings,
+				item_list_append(&warnings,
 								 _("- node is registered as primary but running as standby"));
 			}
 			break;
 		case STANDBY:
 			if (recovery_type == RECTYPE_PRIMARY)
 			{
-				item_list_append(
-								 &warnings,
+				item_list_append(&warnings,
 								 _("- node is registered as standby but running as primary"));
 			}
 			break;
@@ -165,13 +158,11 @@ do_node_status(void)
 
 	if (guc_set(conn, "archive_mode", "=", "off"))
 	{
-		key_value_list_set(
-						   &node_status,
+		key_value_list_set(&node_status,
 						   "WAL archiving",
 						   "off");
 
-		key_value_list_set(
-						   &node_status,
+		key_value_list_set(&node_status,
 						   "Archive command",
 						   "(none)");
 	}
@@ -202,8 +193,7 @@ do_node_status(void)
 			appendPQExpBuffer(&archiving_status, " (on standbys \"archive_mode\" must be set to \"always\" to be effective)");
 		}
 
-		key_value_list_set(
-						   &node_status,
+		key_value_list_set(&node_status,
 						   "WAL archiving",
 						   archiving_status.data);
 
@@ -211,8 +201,7 @@ do_node_status(void)
 
 		get_pg_setting(conn, "archive_command", archive_command);
 
-		key_value_list_set(
-						   &node_status,
+		key_value_list_set(&node_status,
 						   "Archive command",
 						   archive_command);
 	}
@@ -224,16 +213,14 @@ do_node_status(void)
 
 		if (runtime_options.output_mode == OM_CSV)
 		{
-			key_value_list_set_format(
-									  &node_status,
+			key_value_list_set_format(&node_status,
 									  "WALs pending archiving",
 									  "%i",
 									  ready_files);
 		}
 		else
 		{
-			key_value_list_set_format(
-									  &node_status,
+			key_value_list_set_format(&node_status,
 									  "WALs pending archiving",
 									  "%i pending files",
 									  ready_files);
@@ -1384,12 +1371,10 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 	if (missing_nodes_count == 0)
 	{
 		if (expected_nodes_count == 0)
-			appendPQExpBuffer(
-							  &details,
+			appendPQExpBuffer(&details,
 							  "this node has no downstream nodes");
 		else
-			appendPQExpBuffer(
-							  &details,
+			appendPQExpBuffer(&details,
 							  "%i of %i downstream nodes attached",
 							  expected_nodes_count - missing_nodes_count,
 							  expected_nodes_count);
