@@ -453,7 +453,8 @@ void		create_slot_name(char *slot_name, int node_id);
 bool		create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg);
 bool		drop_replication_slot(PGconn *conn, char *slot_name);
 RecordStatus get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
-int			get_free_replication_slots(PGconn *conn);
+int			get_free_replication_slot_count(PGconn *conn);
+int			get_inactive_replication_slots(PGconn *conn, KeyValueList *list);
 
 /* tablespace functions */
 bool		get_tablespace_name_by_location(PGconn *conn, const char *location, char *name);

@@ -2933,8 +2933,7 @@ get_datadir_configuration_files(PGconn *conn, KeyValueList *list)
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		key_value_list_set(
-						   list,
+		key_value_list_set(list,
 						   PQgetvalue(res, i, 1),
 						   PQgetvalue(res, i, 0));
 	}
@@ -3671,7 +3670,7 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 
 int
-get_free_replication_slots(PGconn *conn)
+get_free_replication_slot_count(PGconn *conn)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -3706,6 +3705,47 @@ get_free_replication_slots(PGconn *conn)
 	PQclear(res);
 	return free_slots;
 }
+
+
+int
+get_inactive_replication_slots(PGconn *conn, KeyValueList *list)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	int			i, inactive_slots = 0;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "   SELECT slot_name, slot_type "
+					  "     FROM pg_catalog.pg_replication_slots "
+					  "    WHERE active IS FALSE "
+					  " ORDER BY slot_name ");
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute replication slot query"));
+		log_detail("%s", PQerrorMessage(conn));
+		PQclear(res);
+		return -1;
+	}
+
+	inactive_slots = PQntuples(res);
+
+	for (i = 0; i < inactive_slots; i++)
+	{
+		key_value_list_set(list,
+						   PQgetvalue(res, i, 0),
+						   PQgetvalue(res, i, 1));
+	}
+
+	PQclear(res);
+	return inactive_slots;
+}
+
 
 
 /* ==================== */

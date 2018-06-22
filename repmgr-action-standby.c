@@ -2257,7 +2257,7 @@ do_standby_follow(void)
 
 	if (config_file_options.use_replication_slots)
 	{
-		int free_slots = get_free_replication_slots(primary_conn);
+		int free_slots = get_free_replication_slot_count(primary_conn);
 		if (free_slots < 0)
 		{
 			log_error(_("unable to determine number of free replication slots on the primary"));

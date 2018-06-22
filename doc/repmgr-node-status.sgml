@@ -24,7 +24,7 @@
     <title>Example</title>
     <para>
     <programlisting>
-        $ repmgr -f /etc/repmgr.comf node status
+        $ repmgr -f /etc/repmgr.conf node status
         Node "node1":
             PostgreSQL version: 10beta1
             Total data size: 30 MB
@@ -35,6 +35,20 @@
             Replication connections: 2 (of maximal 10)
             Replication slots: 0 (of maximal 10)
             Replication lag: n/a</programlisting>
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Output format</title>
+    <para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <literal>--csv</literal>: generate output in CSV format
+          </simpara>
+        </listitem>
+      </itemizedlist>
     </para>
   </refsect1>
 

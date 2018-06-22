@@ -71,6 +71,7 @@ do_node_status(void)
 
 	KeyValueList node_status = {NULL, NULL};
 	KeyValueListCell *cell = NULL;
+	NodeInfoList missing_slots = T_NODE_INFO_LIST_INITIALIZER;
 
 	ItemList	warnings = {NULL, NULL};
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
@@ -265,7 +266,6 @@ do_node_status(void)
 	else
 	{
 		PQExpBufferData slotinfo;
-		NodeInfoList missing_slots = T_NODE_INFO_LIST_INITIALIZER;
 
 		/*
 		 * check for missing replication slots - we do this regardless of
@@ -305,6 +305,11 @@ do_node_status(void)
 
 		if (node_info.inactive_replication_slots > 0)
 		{
+			KeyValueList inactive_replication_slots = {NULL, NULL};
+			KeyValueListCell *cell = NULL;
+
+			(void) get_inactive_replication_slots(conn, &inactive_replication_slots);
+
 			appendPQExpBuffer(&slotinfo,
 							  "; %i inactive",
 							  node_info.inactive_replication_slots);
@@ -312,6 +317,14 @@ do_node_status(void)
 			item_list_append_format(&warnings,
 									_("- node has %i inactive replication slots"),
 									node_info.inactive_replication_slots);
+
+			for (cell = inactive_replication_slots.head; cell; cell = cell->next)
+			{
+				item_list_append_format(&warnings,
+										"  - %s (%s)", cell->key, cell->value);
+			}
+
+			key_value_list_free(&inactive_replication_slots);
 		}
 
 		key_value_list_set(&node_status,
@@ -415,9 +428,43 @@ do_node_status(void)
 						  "\"active_replication_slots\",%i\n",
 						  node_info.active_replication_slots);
 
+		/* output inactive slot information */
 		appendPQExpBuffer(&output,
-						  "\"inactive_replaction_slots\",%i\n",
+						  "\"inactive_replication_slots\",%i",
 						  node_info.inactive_replication_slots);
+
+		if (node_info.inactive_replication_slots)
+		{
+			KeyValueList inactive_replication_slots = {NULL, NULL};
+			KeyValueListCell *cell = NULL;
+
+			(void) get_inactive_replication_slots(conn, &inactive_replication_slots);
+			for (cell = inactive_replication_slots.head; cell; cell = cell->next)
+			{
+				appendPQExpBuffer(&output,
+								  ",\"%s\"", cell->key);
+			}
+
+			key_value_list_free(&inactive_replication_slots);
+		}
+
+		/* output missing slot information */
+
+		appendPQExpBuffer(&output, "\n");
+		appendPQExpBuffer(&output,
+						  "\"missing_replication_slots\",%i",
+						  missing_slots.node_count);
+
+		if (missing_slots.node_count > 0)
+		{
+			NodeInfoListCell *missing_slot_cell = NULL;
+
+			for (missing_slot_cell = missing_slots.head; missing_slot_cell; missing_slot_cell = missing_slot_cell->next)
+			{
+				appendPQExpBuffer(&output,
+								  ",\"%s\"", missing_slot_cell->node_info->slot_name);
+			}
+		}
 
 	}
 	else
@@ -439,12 +486,11 @@ do_node_status(void)
 
 	termPQExpBuffer(&output);
 
-	if (warnings.head != NULL && runtime_options.terse == false)
+	if (runtime_options.output_mode == OM_TEXT && warnings.head != NULL && runtime_options.terse == false)
 	{
 		log_warning(_("following issue(s) were detected:"));
 		print_item_list(&warnings);
-		/* add this when functionality implemented */
-		/* log_hint(_("execute \"repmgr node check\" for more details")); */
+		log_hint(_("execute \"repmgr node check\" for more details"));
 	}
 
 	key_value_list_free(&node_status);
@@ -1337,7 +1383,7 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 	return status;
 }
 
-/* TODO: ensure only runs on streaming replication nodes */
+
 static CheckStatus
 do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
 {
