@@ -79,9 +79,26 @@
 
     </itemizedlist>
   </para>
-  <para>
-   Individual checks can also be output in a Nagios-compatible format by additionally
-   providing the option <literal>--nagios</literal>.
-  </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Output format</title>
+    <para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <literal>--csv</literal>: generate output in CSV format (not available
+            for individual checks)
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <literal>--nagios</literal>: generate output in a Nagios-compatible format
+          </simpara>
+        </listitem>
+      </itemizedlist>
+    </para>
   </refsect1>
 </refentry>

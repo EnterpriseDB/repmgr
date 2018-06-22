@@ -508,8 +508,7 @@ do_node_status(void)
  * --last-checkpoint=...
  */
 
-static
-void
+static void
 _do_node_status_is_shutdown_cleanly(void)
 {
 	PGPing		ping_status;
@@ -630,7 +629,7 @@ do_node_check(void)
 	CheckStatusListCell *cell = NULL;
 
 
-	/* internal */
+	/* for internal use */
 	if (runtime_options.has_passfile == true)
 	{
 		return_code = has_passfile() ? 0 : 1;
@@ -718,7 +717,7 @@ do_node_check(void)
 		log_error(_("--nagios can only be used with a specific check"));
 		log_hint(_("execute \"repmgr node --help\" for details"));
 		PQfinish(conn);
-		return;
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/* output general overview */
@@ -734,27 +733,46 @@ do_node_check(void)
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
-		/* TODO */
+		appendPQExpBuffer(&output,
+						  "\"Node name\",\"%s\"\n",
+						  node_info.node_name);
+
+		appendPQExpBuffer(&output,
+						  "\"Node ID\",\"%i\"\n",
+						  node_info.node_id);
+
+		for (cell = status_list.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(&output,
+							  "\"%s\",\"%s\"",
+							  cell->item,
+							  output_check_status(cell->status));
+
+			if (strlen(cell->details))
+			{
+				appendPQExpBuffer(&output,
+								  ",\"%s\"",
+								  cell->details);
+			}
+			appendPQExpBuffer(&output, "\n");
+		}
 	}
 	else
 	{
-		appendPQExpBuffer(
-						  &output,
+		appendPQExpBuffer(&output,
 						  "Node \"%s\":\n",
 						  node_info.node_name);
 
 		for (cell = status_list.head; cell; cell = cell->next)
 		{
-			appendPQExpBuffer(
-							  &output,
+			appendPQExpBuffer(&output,
 							  "\t%s: %s",
 							  cell->item,
 							  output_check_status(cell->status));
 
 			if (strlen(cell->details))
 			{
-				appendPQExpBuffer(
-								  &output,
+				appendPQExpBuffer(&output,
 								  " (%s)",
 								  cell->details);
 			}
@@ -768,194 +786,6 @@ do_node_check(void)
 	check_status_list_free(&status_list);
 
 	PQfinish(conn);
-}
-
-
-static CheckStatus
-do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
-{
-
-	CheckStatus status = CHECK_STATUS_OK;
-	PQExpBufferData details;
-	RecoveryType recovery_type = get_recovery_type(conn);
-
-	if (mode == OM_CSV)
-	{
-		log_error(_("--csv output not provided with --role option"));
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
-	}
-
-	initPQExpBuffer(&details);
-
-	switch (node_info->type)
-	{
-		case PRIMARY:
-			if (recovery_type == RECTYPE_STANDBY)
-			{
-				status = CHECK_STATUS_CRITICAL;
-				appendPQExpBuffer(&details,
-								  _("node is registered as primary but running as standby"));
-			}
-			else
-			{
-				appendPQExpBuffer(&details,
-								  _("node is primary"));
-			}
-			break;
-		case STANDBY:
-			if (recovery_type == RECTYPE_PRIMARY)
-			{
-				status = CHECK_STATUS_CRITICAL;
-				appendPQExpBuffer(&details,
-								  _("node is registered as standby but running as primary"));
-			}
-			else
-			{
-				appendPQExpBuffer(&details,
-								  _("node is standby"));
-			}
-			break;
-		case WITNESS:
-			if (recovery_type == RECTYPE_STANDBY)
-			{
-				status = CHECK_STATUS_CRITICAL;
-				appendPQExpBuffer(&details,
-								  _("node is registered as witness but running as standby"));
-			}
-			else
-			{
-				appendPQExpBuffer(&details,
-								  _("node is witness"));
-			}
-			break;
-		case BDR:
-			{
-				PQExpBufferData output;
-
-				initPQExpBuffer(&output);
-				if (is_bdr_db(conn, &output) == false)
-				{
-					status = CHECK_STATUS_CRITICAL;
-					appendPQExpBuffer(&details,
-									  "%s", output.data);
-				}
-				termPQExpBuffer(&output);
-
-				if (status == CHECK_STATUS_OK)
-				{
-					if (is_active_bdr_node(conn, node_info->node_name) == false)
-					{
-						status = CHECK_STATUS_CRITICAL;
-						appendPQExpBuffer(&details,
-										  _("node is not an active BDR node"));
-					}
-					else
-					{
-						appendPQExpBuffer(&details,
-										  _("node is an active BDR node"));
-					}
-				}
-			}
-		default:
-			break;
-	}
-
-	switch (mode)
-	{
-		case OM_NAGIOS:
-			printf("REPMGR_SERVER_ROLE %s: %s\n",
-				   output_check_status(status),
-				   details.data);
-			break;
-		case OM_TEXT:
-			if (list_output != NULL)
-			{
-				check_status_list_set(list_output,
-									  "Server role",
-									  status,
-									  details.data);
-			}
-			else
-			{
-				printf("%s (%s)\n",
-					   output_check_status(status),
-					   details.data);
-			}
-		default:
-			break;
-	}
-
-	termPQExpBuffer(&details);
-	return status;
-
-}
-
-
-static CheckStatus
-do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
-{
-	CheckStatus status = CHECK_STATUS_OK;
-	PQExpBufferData details;
-
-	initPQExpBuffer(&details);
-
-	if (server_version_num < 90400)
-	{
-		appendPQExpBuffer(&details,
-						  _("replication slots not available for this PostgreSQL version"));
-	}
-	else if (node_info->total_replication_slots == 0)
-	{
-		appendPQExpBuffer(&details,
-						  _("node has no replication slots"));
-	}
-	else if (node_info->inactive_replication_slots == 0)
-	{
-		appendPQExpBuffer(&details,
-						  _("%i of %i replication slots are active"),
-						  node_info->total_replication_slots,
-						  node_info->total_replication_slots);
-	}
-	else if (node_info->inactive_replication_slots > 0)
-	{
-		status = CHECK_STATUS_CRITICAL;
-
-		appendPQExpBuffer(&details,
-						  _("%i of %i replication slots are inactive"),
-						  node_info->inactive_replication_slots,
-						  node_info->total_replication_slots);
-	}
-
-	switch (mode)
-	{
-		case OM_NAGIOS:
-			printf("REPMGR_INACTIVE_SLOTS %s: %s | slots=%i;%i\n",
-				   output_check_status(status),
-				   details.data,
-				   node_info->total_replication_slots,
-				   node_info->inactive_replication_slots);
-			break;
-		case OM_TEXT:
-			if (list_output != NULL)
-			{
-				check_status_list_set(list_output,
-									  "Replication slots",
-									  status,
-									  details.data);
-			}
-			else
-			{
-				printf("%s (%s)\n",
-					   output_check_status(status),
-					   details.data);
-			}
-		default:
-			break;
-	}
-
-	termPQExpBuffer(&details);
-	return status;
 }
 
 
@@ -1025,6 +855,8 @@ do_node_check_replication_connection(void)
 	return;
 }
 
+
+
 static CheckStatus
 do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
 {
@@ -1032,7 +864,7 @@ do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list
 	CheckStatus status = CHECK_STATUS_UNKNOWN;
 	PQExpBufferData details;
 
-	if (mode == OM_CSV)
+	if (mode == OM_CSV && list_output == NULL)
 	{
 		log_error(_("--csv output not provided with --archive-ready option"));
 		PQfinish(conn);
@@ -1163,6 +995,7 @@ do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list
 				   output_check_status(status),
 				   details.data);
 			break;
+		case OM_CSV:
 		case OM_TEXT:
 			if (list_output != NULL)
 			{
@@ -1187,13 +1020,181 @@ do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list
 
 
 static CheckStatus
+do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
+{
+	NodeInfoList downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
+	NodeInfoListCell *cell = NULL;
+	int			missing_nodes_count = 0;
+	int			expected_nodes_count = 0;
+	CheckStatus status = CHECK_STATUS_OK;
+	ItemList	missing_nodes = {NULL, NULL};
+	ItemList	attached_nodes = {NULL, NULL};
+	PQExpBufferData details;
+
+	if (mode == OM_CSV && list_output == NULL)
+	{
+		log_error(_("--csv output not provided with --downstream option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&details);
+
+	get_downstream_node_records(conn, config_file_options.node_id, &downstream_nodes);
+
+	/* if a witness node is present, we'll need to remove this from the total */
+	expected_nodes_count = downstream_nodes.node_count;
+
+	for (cell = downstream_nodes.head; cell; cell = cell->next)
+	{
+		if (cell->node_info->type == WITNESS)
+		{
+			expected_nodes_count --;
+			continue;
+		}
+
+		if (is_downstream_node_attached(conn, cell->node_info->node_name) == false)
+		{
+			missing_nodes_count++;
+			item_list_append_format(&missing_nodes,
+									"%s (ID: %i)",
+									cell->node_info->node_name,
+									cell->node_info->node_id);
+		}
+		else
+		{
+			item_list_append_format(&attached_nodes,
+									"%s (ID: %i)",
+									cell->node_info->node_name,
+									cell->node_info->node_id);
+		}
+	}
+
+	if (missing_nodes_count == 0)
+	{
+		if (expected_nodes_count == 0)
+			appendPQExpBuffer(&details,
+							  "this node has no downstream nodes");
+		else
+			appendPQExpBuffer(&details,
+							  "%i of %i downstream nodes attached",
+							  expected_nodes_count - missing_nodes_count,
+							  expected_nodes_count);
+	}
+	else
+	{
+		ItemListCell *missing_cell = NULL;
+		bool		first = true;
+
+		status = CHECK_STATUS_CRITICAL;
+
+		appendPQExpBuffer(&details,
+						  "%i of %i downstream nodes not attached",
+						  missing_nodes_count,
+						  expected_nodes_count);
+
+		if (mode != OM_NAGIOS)
+		{
+			appendPQExpBuffer(&details, "; missing: ");
+
+			for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
+			{
+				if (first == false)
+					appendPQExpBuffer(&details,
+									  ", ");
+				else
+					first = false;
+
+				if (first == false)
+					appendPQExpBuffer(
+									  &details,
+									  "%s", missing_cell->string);
+			}
+		}
+	}
+
+	switch (mode)
+	{
+		case OM_NAGIOS:
+			{
+				printf("REPMGR_DOWNSTREAM_SERVERS %s: %s | ",
+					   output_check_status(status),
+					   details.data);
+
+				if (missing_nodes_count)
+				{
+					ItemListCell *missing_cell = NULL;
+					bool		first = true;
+
+					printf("missing: ");
+					for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
+					{
+						if (first == false)
+							printf(", ");
+						else
+							first = false;
+
+						if (first == false)
+							printf("%s", missing_cell->string);
+					}
+				}
+
+				if (expected_nodes_count - missing_nodes_count)
+				{
+					ItemListCell *attached_cell = NULL;
+					bool		first = true;
+
+					if (missing_nodes_count)
+						printf("; ");
+					printf("attached: ");
+					for (attached_cell = attached_nodes.head; attached_cell; attached_cell = attached_cell->next)
+					{
+						if (first == false)
+							printf(", ");
+						else
+							first = false;
+
+						if (first == false)
+							printf("%s", attached_cell->string);
+					}
+				}
+				printf("\n");
+
+			}
+			break;
+		case OM_CSV:
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Downstream servers",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
+
+	}
+	termPQExpBuffer(&details);
+	clear_node_info_list(&downstream_nodes);
+	return status;
+}
+
+
+static CheckStatus
 do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
 {
 	CheckStatus status = CHECK_STATUS_OK;
 	int			lag_seconds = 0;
 	PQExpBufferData details;
 
-	if (mode == OM_CSV)
+	if (mode == OM_CSV && list_output == NULL)
 	{
 		log_error(_("--csv output not provided with --replication-lag option"));
 		PQfinish(conn);
@@ -1360,6 +1361,7 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 				   output_check_status(status),
 				   details.data);
 			break;
+		case OM_CSV:
 		case OM_TEXT:
 			if (list_output != NULL)
 			{
@@ -1385,146 +1387,108 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 
 
 static CheckStatus
-do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_output)
+do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
 {
-	NodeInfoList downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
-	NodeInfoListCell *cell = NULL;
-	int			missing_nodes_count = 0;
-	int			expected_nodes_count = 0;
+
 	CheckStatus status = CHECK_STATUS_OK;
-	ItemList	missing_nodes = {NULL, NULL};
-	ItemList	attached_nodes = {NULL, NULL};
 	PQExpBufferData details;
+	RecoveryType recovery_type = get_recovery_type(conn);
+
+	if (mode == OM_CSV && list_output == NULL)
+	{
+		log_error(_("--csv output not provided with --role option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	initPQExpBuffer(&details);
 
-	get_downstream_node_records(conn, config_file_options.node_id, &downstream_nodes);
-
-	/* if a witness node is present, we'll need to remove this from the total */
-	expected_nodes_count = downstream_nodes.node_count;
-
-	for (cell = downstream_nodes.head; cell; cell = cell->next)
+	switch (node_info->type)
 	{
-		if (cell->node_info->type == WITNESS)
-		{
-			expected_nodes_count --;
-			continue;
-		}
-
-		if (is_downstream_node_attached(conn, cell->node_info->node_name) == false)
-		{
-			missing_nodes_count++;
-			item_list_append_format(&missing_nodes,
-									"%s (ID: %i)",
-									cell->node_info->node_name,
-									cell->node_info->node_id);
-		}
-		else
-		{
-			item_list_append_format(&attached_nodes,
-									"%s (ID: %i)",
-									cell->node_info->node_name,
-									cell->node_info->node_id);
-		}
-	}
-
-	if (missing_nodes_count == 0)
-	{
-		if (expected_nodes_count == 0)
-			appendPQExpBuffer(&details,
-							  "this node has no downstream nodes");
-		else
-			appendPQExpBuffer(&details,
-							  "%i of %i downstream nodes attached",
-							  expected_nodes_count - missing_nodes_count,
-							  expected_nodes_count);
-	}
-	else
-	{
-		ItemListCell *missing_cell = NULL;
-		bool		first = true;
-
-		status = CHECK_STATUS_CRITICAL;
-
-		appendPQExpBuffer(&details,
-						  "%i of %i downstream nodes not attached",
-						  missing_nodes_count,
-						  expected_nodes_count);
-
-		if (mode != OM_NAGIOS)
-		{
-			appendPQExpBuffer(&details, "; missing: ");
-
-			for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
+		case PRIMARY:
+			if (recovery_type == RECTYPE_STANDBY)
 			{
-				if (first == false)
-					appendPQExpBuffer(&details,
-									  ", ");
-				else
-					first = false;
-
-				if (first == false)
-					appendPQExpBuffer(
-									  &details,
-									  "%s", missing_cell->string);
+				status = CHECK_STATUS_CRITICAL;
+				appendPQExpBuffer(&details,
+								  _("node is registered as primary but running as standby"));
 			}
-		}
+			else
+			{
+				appendPQExpBuffer(&details,
+								  _("node is primary"));
+			}
+			break;
+		case STANDBY:
+			if (recovery_type == RECTYPE_PRIMARY)
+			{
+				status = CHECK_STATUS_CRITICAL;
+				appendPQExpBuffer(&details,
+								  _("node is registered as standby but running as primary"));
+			}
+			else
+			{
+				appendPQExpBuffer(&details,
+								  _("node is standby"));
+			}
+			break;
+		case WITNESS:
+			if (recovery_type == RECTYPE_STANDBY)
+			{
+				status = CHECK_STATUS_CRITICAL;
+				appendPQExpBuffer(&details,
+								  _("node is registered as witness but running as standby"));
+			}
+			else
+			{
+				appendPQExpBuffer(&details,
+								  _("node is witness"));
+			}
+			break;
+		case BDR:
+			{
+				PQExpBufferData output;
+
+				initPQExpBuffer(&output);
+				if (is_bdr_db(conn, &output) == false)
+				{
+					status = CHECK_STATUS_CRITICAL;
+					appendPQExpBuffer(&details,
+									  "%s", output.data);
+				}
+				termPQExpBuffer(&output);
+
+				if (status == CHECK_STATUS_OK)
+				{
+					if (is_active_bdr_node(conn, node_info->node_name) == false)
+					{
+						status = CHECK_STATUS_CRITICAL;
+						appendPQExpBuffer(&details,
+										  _("node is not an active BDR node"));
+					}
+					else
+					{
+						appendPQExpBuffer(&details,
+										  _("node is an active BDR node"));
+					}
+				}
+			}
+		default:
+			break;
 	}
 
 	switch (mode)
 	{
 		case OM_NAGIOS:
-			{
-				printf("REPMGR_DOWNSTREAM_SERVERS %s: %s | ",
-					   output_check_status(status),
-					   details.data);
-
-				if (missing_nodes_count)
-				{
-					ItemListCell *missing_cell = NULL;
-					bool		first = true;
-
-					printf("missing: ");
-					for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
-					{
-						if (first == false)
-							printf(", ");
-						else
-							first = false;
-
-						if (first == false)
-							printf("%s", missing_cell->string);
-					}
-				}
-
-				if (expected_nodes_count - missing_nodes_count)
-				{
-					ItemListCell *attached_cell = NULL;
-					bool		first = true;
-
-					if (missing_nodes_count)
-						printf("; ");
-					printf("attached: ");
-					for (attached_cell = attached_nodes.head; attached_cell; attached_cell = attached_cell->next)
-					{
-						if (first == false)
-							printf(", ");
-						else
-							first = false;
-
-						if (first == false)
-							printf("%s", attached_cell->string);
-					}
-				}
-				printf("\n");
-
-			}
+			printf("REPMGR_SERVER_ROLE %s: %s\n",
+				   output_check_status(status),
+				   details.data);
 			break;
+		case OM_CSV:
 		case OM_TEXT:
 			if (list_output != NULL)
 			{
 				check_status_list_set(list_output,
-									  "Downstream servers",
+									  "Server role",
 									  status,
 									  details.data);
 			}
@@ -1536,10 +1500,85 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 			}
 		default:
 			break;
-
 	}
+
 	termPQExpBuffer(&details);
-	clear_node_info_list(&downstream_nodes);
+	return status;
+
+}
+
+
+static CheckStatus
+do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
+{
+	CheckStatus status = CHECK_STATUS_OK;
+	PQExpBufferData details;
+
+	if (mode == OM_CSV && list_output == NULL)
+	{
+		log_error(_("--csv output not provided with --slots option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&details);
+
+	if (server_version_num < 90400)
+	{
+		appendPQExpBuffer(&details,
+						  _("replication slots not available for this PostgreSQL version"));
+	}
+	else if (node_info->total_replication_slots == 0)
+	{
+		appendPQExpBuffer(&details,
+						  _("node has no replication slots"));
+	}
+	else if (node_info->inactive_replication_slots == 0)
+	{
+		appendPQExpBuffer(&details,
+						  _("%i of %i replication slots are active"),
+						  node_info->total_replication_slots,
+						  node_info->total_replication_slots);
+	}
+	else if (node_info->inactive_replication_slots > 0)
+	{
+		status = CHECK_STATUS_CRITICAL;
+
+		appendPQExpBuffer(&details,
+						  _("%i of %i replication slots are inactive"),
+						  node_info->inactive_replication_slots,
+						  node_info->total_replication_slots);
+	}
+
+	switch (mode)
+	{
+		case OM_NAGIOS:
+			printf("REPMGR_INACTIVE_SLOTS %s: %s | slots=%i;%i\n",
+				   output_check_status(status),
+				   details.data,
+				   node_info->total_replication_slots,
+				   node_info->inactive_replication_slots);
+			break;
+		case OM_CSV:
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Replication slots",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
+	}
+
+	termPQExpBuffer(&details);
 	return status;
 }
 
