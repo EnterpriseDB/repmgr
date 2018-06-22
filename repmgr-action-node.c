@@ -770,6 +770,19 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 								  _("node is standby"));
 			}
 			break;
+		case WITNESS:
+			if (recovery_type == RECTYPE_STANDBY)
+			{
+				status = CHECK_STATUS_CRITICAL;
+				appendPQExpBuffer(&details,
+								  _("node is registered as witness but running as standby"));
+			}
+			else
+			{
+				appendPQExpBuffer(&details,
+								  _("node is witness"));
+			}
+			break;
 		case BDR:
 			{
 				PQExpBufferData output;
@@ -1148,21 +1161,26 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 		switch (mode)
 		{
 			case OM_OPTFORMAT:
-				appendPQExpBuffer(
-								  &details,
+				appendPQExpBuffer(&details,
 								  "--lag=0");
 				break;
 			case OM_NAGIOS:
-				appendPQExpBuffer(
-								  &details,
+				appendPQExpBuffer(&details,
 								  "0 seconds | lag=0;%i;%i",
 								  config_file_options.replication_lag_warning,
 								  config_file_options.replication_lag_critical);
 				break;
 			case OM_TEXT:
-				appendPQExpBuffer(
-								  &details,
-								  "N/A - node is primary");
+				if (node_info->type == WITNESS)
+				{
+					appendPQExpBuffer(&details,
+									  "N/A - node is witness");
+				}
+				else
+				{
+					appendPQExpBuffer(&details,
+									  "N/A - node is primary");
+				}
 				break;
 			default:
 				break;
