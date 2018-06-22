@@ -87,6 +87,7 @@
 #define OPT_REMOTE_NODE_ID                 1038
 #define OPT_RECOVERY_CONF_ONLY             1039
 #define OPT_NO_WAIT                        1040
+#define OPT_MISSING_SLOTS                  1041
 
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
@@ -164,6 +165,7 @@ static struct option long_options[] =
 	{"replication-lag", no_argument, NULL, OPT_REPLICATION_LAG},
 	{"role", no_argument, NULL, OPT_ROLE},
 	{"slots", no_argument, NULL, OPT_SLOTS},
+	{"missing-slots", no_argument, NULL, OPT_MISSING_SLOTS},
 	{"has-passfile", no_argument, NULL, OPT_HAS_PASSFILE},
 	{"replication-connection", no_argument, NULL, OPT_REPL_CONN},
 

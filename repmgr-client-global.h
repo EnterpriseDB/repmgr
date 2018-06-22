@@ -106,6 +106,7 @@ typedef struct
 	bool		replication_lag;
 	bool		role;
 	bool		slots;
+	bool		missing_slots;
 	bool		has_passfile;
 	bool		replication_connection;
 
@@ -158,7 +159,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false, false, false, false, \
+		false, false, false, false, false, false, false, false,	\
 		/* "node join" options */ \
 		"", \
 		/* "node service" options */ \

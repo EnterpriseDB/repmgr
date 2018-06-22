@@ -473,6 +473,10 @@ main(int argc, char **argv)
 				runtime_options.slots = true;
 				break;
 
+			case OPT_MISSING_SLOTS:
+				runtime_options.missing_slots = true;
+				break;
+
 			case OPT_HAS_PASSFILE:
 				runtime_options.has_passfile = true;
 				break;

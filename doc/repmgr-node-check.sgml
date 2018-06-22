@@ -77,6 +77,12 @@
       </simpara>
      </listitem>
 
+     <listitem>
+      <simpara>
+        <literal>--missing-slots</literal>: checks there are no missing replication slots
+      </simpara>
+     </listitem>
+
     </itemizedlist>
   </para>
   </refsect1>

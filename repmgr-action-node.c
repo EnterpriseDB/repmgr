@@ -47,6 +47,7 @@ static CheckStatus do_node_check_downstream(PGconn *conn, OutputMode mode, Check
 static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
+static CheckStatus do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 
 /*
  * NODE STATUS
@@ -493,6 +494,7 @@ do_node_status(void)
 		log_hint(_("execute \"repmgr node check\" for more details"));
 	}
 
+	clear_node_info_list(&missing_slots);
 	key_value_list_free(&node_status);
 	item_list_free(&warnings);
 	PQfinish(conn);
@@ -712,6 +714,17 @@ do_node_check(void)
 		exit(return_code);
 	}
 
+	if (runtime_options.missing_slots == true)
+	{
+		return_code = do_node_check_missing_slots(conn,
+												  runtime_options.output_mode,
+												  &node_info,
+												  NULL);
+		PQfinish(conn);
+		exit(return_code);
+	}
+
+
 	if (runtime_options.output_mode == OM_NAGIOS)
 	{
 		log_error(_("--nagios can only be used with a specific check"));
@@ -730,6 +743,7 @@ do_node_check(void)
 	(void) do_node_check_archive_ready(conn, runtime_options.output_mode, &status_list);
 	(void) do_node_check_downstream(conn, runtime_options.output_mode, &status_list);
 	(void) do_node_check_slots(conn, runtime_options.output_mode, &node_info, &status_list);
+	(void) do_node_check_missing_slots(conn, runtime_options.output_mode, &node_info, &status_list);
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
@@ -1581,6 +1595,130 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 	termPQExpBuffer(&details);
 	return status;
 }
+
+
+static CheckStatus
+do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
+{
+	CheckStatus status = CHECK_STATUS_OK;
+	PQExpBufferData details;
+	NodeInfoList missing_slots = T_NODE_INFO_LIST_INITIALIZER;
+
+	if (mode == OM_CSV && list_output == NULL)
+	{
+		log_error(_("--csv output not provided with --missing-slots option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&details);
+
+	if (server_version_num < 90400)
+	{
+		appendPQExpBuffer(&details,
+						  _("replication slots not available for this PostgreSQL version"));
+	}
+	else
+	{
+		get_downstream_nodes_with_missing_slot(conn,
+											   config_file_options.node_id,
+											   &missing_slots);
+
+		if (missing_slots.node_count == 0)
+		{
+			appendPQExpBuffer(&details,
+						  _("node has no missing replication slots"));
+
+		}
+		else
+		{
+			NodeInfoListCell *missing_slot_cell = NULL;
+			bool first_element = true;
+
+			status = CHECK_STATUS_CRITICAL;
+
+			appendPQExpBuffer(&details,
+							  _("%i replication slots are missing"),
+							  missing_slots.node_count);
+
+			if (missing_slots.node_count)
+			{
+				appendPQExpBuffer(&details, ": ");
+
+				for (missing_slot_cell = missing_slots.head; missing_slot_cell; missing_slot_cell = missing_slot_cell->next)
+				{
+					if (first_element == true)
+					{
+						first_element = false;
+					}
+					else
+					{
+						appendPQExpBuffer(&details, ", ");
+					}
+
+					appendPQExpBuffer(&details, "%s", missing_slot_cell->node_info->slot_name);
+				}
+			}
+		}
+	}
+
+	switch (mode)
+	{
+		case OM_NAGIOS:
+		{
+			printf("REPMGR_MISSING_SLOTS %s: %s | missing_slots=%i",
+				   output_check_status(status),
+				   details.data,
+				   missing_slots.node_count);
+
+			if (missing_slots.node_count)
+			{
+				NodeInfoListCell *missing_slot_cell = NULL;
+				bool first_element = true;
+
+				printf(";");
+
+				for (missing_slot_cell = missing_slots.head; missing_slot_cell; missing_slot_cell = missing_slot_cell->next)
+				{
+					if (first_element == true)
+					{
+						first_element = false;
+					}
+					else
+					{
+						printf(",");
+					}
+					printf("%s", missing_slot_cell->node_info->slot_name);
+				}
+			}
+			printf("\n");
+			break;
+		}
+		case OM_CSV:
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Replication slots",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
+	}
+
+	clear_node_info_list(&missing_slots);
+
+	termPQExpBuffer(&details);
+	return status;
+}
+
 
 
 void
@@ -2664,6 +2802,7 @@ do_node_help(void)
 	printf(_("    --replication-lag       replication lag in seconds (standbys only)\n"));
 	printf(_("    --role                  check node has expected role\n"));
 	printf(_("    --slots                 check for inactive replication slots\n"));
+	printf(_("    --missing-slots         check for missing replication slots\n"));
 
 	puts("");
 
