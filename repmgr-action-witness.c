@@ -218,7 +218,13 @@ do_witness_register(void)
 	 * if repmgr.nodes contains entries, delete if -F/--force provided,
 	 * otherwise exit with error
 	 */
-	get_all_node_records(witness_conn, &nodes);
+	if (get_all_node_records(witness_conn, &nodes) == false)
+	{
+		/* get_all_node_records() will display the error */
+		PQfinish(witness_conn);
+		PQfinish(primary_conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	log_verbose(LOG_DEBUG, "%i node records found", nodes.node_count);
 

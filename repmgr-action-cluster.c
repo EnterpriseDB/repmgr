@@ -913,7 +913,12 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 		local_node_id = runtime_options.node_id;
 	}
 
-	get_all_node_records(conn, &nodes);
+	if (get_all_node_records(conn, &nodes) == false)
+	{
+		/* get_all_node_records() will display the error */
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	PQfinish(conn);
 	conn = NULL;
@@ -1118,7 +1123,12 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 	else
 		conn = establish_db_connection_by_params(&source_conninfo, true);
 
-	get_all_node_records(conn, &nodes);
+	if (get_all_node_records(conn, &nodes) == false)
+	{
+		/* get_all_node_records() will display the error */
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	PQfinish(conn);
 	conn = NULL;

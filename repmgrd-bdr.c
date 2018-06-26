@@ -150,7 +150,13 @@ monitor_bdr(void)
 	 * retrieve list of all nodes - we'll need these if the DB connection goes
 	 * away
 	 */
-	get_all_node_records(local_conn, &nodes);
+	if (get_all_node_records(local_conn, &nodes) == false)
+	{
+		/* get_all_node_records() will display the error */
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
 
 	/* we're expecting all (both) nodes to be up */
 	for (cell = nodes.head; cell; cell = cell->next)

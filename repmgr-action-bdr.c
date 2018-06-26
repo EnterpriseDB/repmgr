@@ -191,7 +191,7 @@ do_bdr_register(void)
 	{
 		NodeInfoList local_node_records = T_NODE_INFO_LIST_INITIALIZER;
 
-		get_all_node_records(conn, &local_node_records);
+		(void) get_all_node_records(conn, &local_node_records);
 
 		if (local_node_records.node_count == 0)
 		{
@@ -239,7 +239,7 @@ do_bdr_register(void)
 					continue;
 				}
 
-				get_all_node_records(bdr_node_conn, &existing_nodes);
+				(void) get_all_node_records(bdr_node_conn, &existing_nodes);
 
 				for (cell = existing_nodes.head; cell; cell = cell->next)
 				{

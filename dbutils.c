@@ -2098,12 +2098,12 @@ _populate_node_records(PGresult *res, NodeInfoList *node_list)
 }
 
 
-void
+bool
 get_all_node_records(PGconn *conn, NodeInfoList *node_list)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
-
+	bool success = true;
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
@@ -2115,20 +2115,21 @@ get_all_node_records(PGconn *conn, NodeInfoList *node_list)
 
 	res = PQexec(conn, query.data);
 
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_db_error(conn, query.data, _("get_all_node_records(): unable to execute query"));
-	}
-
-	termPQExpBuffer(&query);
-
 	/* this will return an empty list if there was an error executing the query */
 	_populate_node_records(res, node_list);
 
-	PQclear(res);
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("get_all_node_records(): unable to execute query"));
+		success = false;
+	}
 
-	return;
+	PQclear(res);
+	termPQExpBuffer(&query);
+
+	return success;
 }
+
 
 void
 get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *node_list)
