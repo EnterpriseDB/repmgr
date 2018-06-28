@@ -154,8 +154,8 @@
        <listitem>
          <simpara>
            <literal>standby_reconnect_timeout</literal>:
-           Number of seconds to attempt to reconnect to the demoted primary
-           once it has been restarted.
+           number of seconds to attempt to wait for the demoted primary
+           to reconnect to the promoted primary (default: 60 seconds)
          </simpara>
        </listitem>
 

@@ -1941,7 +1941,7 @@ do_upstream_standby_failover(void)
 	 * completes, so poll for a while until we get a connection.
 	 */
 
-	for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
+	for (i = 0; i < config_file_options.repmgrd_standby_startup_timeout; i++)
 	{
 		local_conn = establish_db_connection(local_node_info.conninfo, false);
 
@@ -1950,7 +1950,7 @@ do_upstream_standby_failover(void)
 
 		log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
 				  i + 1,
-				  config_file_options.standby_reconnect_timeout);
+				  config_file_options.repmgrd_standby_startup_timeout);
 		sleep(1);
 	}
 
@@ -2391,7 +2391,7 @@ follow_new_primary(int new_primary_id)
 	 * completes, so poll for a while until we get a connection.
 	 */
 
-	for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
+	for (i = 0; i < config_file_options.repmgrd_standby_startup_timeout; i++)
 	{
 		local_conn = establish_db_connection(local_node_info.conninfo, false);
 
@@ -2400,7 +2400,7 @@ follow_new_primary(int new_primary_id)
 
 		log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
 				  i + 1,
-				  config_file_options.standby_reconnect_timeout);
+				  config_file_options.repmgrd_standby_startup_timeout);
 		sleep(1);
 	}
 

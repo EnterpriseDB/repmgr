@@ -207,7 +207,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 
 
 #------------------------------------------------------------------------------
-# Standby follow settings
+# "standby follow" settings
 #------------------------------------------------------------------------------
 
 # These settings apply when instructing a standby to follow the new primary
@@ -218,6 +218,28 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #standby_follow_timeout=15		# The max length of time (in seconds) to wait
 					# for the standby to connect to the primary
 
+
+#------------------------------------------------------------------------------
+# "standby switchover" settings
+#------------------------------------------------------------------------------
+
+# These settings apply when switching roles between a primary and a standby
+# ("repmgr standby switchover").
+
+#standby_reconnect_timeout=60		# The max length of time (in seconds) to wait
+					# for the demoted standby to reconnect to the promoted
+					# primary (note: this value should be equal to or greater
+					# than that set for "node_rejoin_timeout")
+
+#------------------------------------------------------------------------------
+# "node rejoin" settings
+#------------------------------------------------------------------------------
+
+# These settings apply when reintegrating a node into a replication cluster
+# with "repmgrd_node_rejoin"
+
+#node_rejoin_timeout=60		# The maximum length of time (in seconds) to wait for
+					# the node to reconnect to the replication cluster
 
 #------------------------------------------------------------------------------
 # Barman options
@@ -265,8 +287,9 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #primary_notification_timeout=60	# Interval (in seconds) which repmgrd on a standby
 					# will wait for a notification from the new primary,
 					# before falling back to degraded monitoring
-#standby_reconnect_timeout=60	# Interval (in seconds) which repmgrd on a standby will wait
-					# to reconnect to the local node after executing "follow_command"
+#repmgrd_standby_startup_timeout=60	# Interval (in seconds) which repmgrd on a standby will wait
+					# for the the local node to restart and become ready to accept connections after
+					# executing "follow_command" (defaults to the value set in "standby_reconnect_timeout")
 
 #monitoring_history=no                  # Whether to write monitoring data to the "montoring_history" table
 #monitor_interval_secs=2                # Interval (in seconds) at which to write monitoring data

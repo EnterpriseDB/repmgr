@@ -102,6 +102,12 @@ typedef struct
 	int			primary_follow_timeout;
 	int			standby_follow_timeout;
 
+	/* standby switchover settings */
+	int			standby_reconnect_timeout;
+
+	/* node rejoin settings */
+	int			node_rejoin_timeout;
+
 	/* node check settings */
 	int			archive_ready_warning;
 	int			archive_ready_critical;
@@ -124,7 +130,7 @@ typedef struct
 	int			degraded_monitoring_timeout;
 	int			async_query_timeout;
 	int			primary_notification_timeout;
-	int			standby_reconnect_timeout;
+	int			repmgrd_standby_startup_timeout;
 
 	/* BDR settings */
 	bool		bdr_local_monitoring_only;
@@ -173,6 +179,10 @@ typedef struct
 		/* standby follow settings */ \
 		DEFAULT_PRIMARY_FOLLOW_TIMEOUT,	\
 		DEFAULT_STANDBY_FOLLOW_TIMEOUT,	\
+		/* standby switchover settings */ \
+		DEFAULT_STANDBY_RECONNECT_TIMEOUT, \
+		/* node rejoin settings */ \
+		DEFAULT_NODE_REJOIN_TIMEOUT, \
 		/* node check settings */ \
 		DEFAULT_ARCHIVE_READY_WARNING, DEFAULT_ARCHIVE_READY_CRITICAL, \
 		DEFAULT_REPLICATION_LAG_WARNING, DEFAULT_REPLICATION_LAG_CRITICAL, \
@@ -186,7 +196,7 @@ typedef struct
         false, -1, \
 		DEFAULT_ASYNC_QUERY_TIMEOUT, \
 		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT,	\
-		DEFAULT_STANDBY_RECONNECT_TIMEOUT,	\
+		-1,	\
 		/* BDR settings */ \
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \

@@ -115,7 +115,24 @@
 
     </variablelist>
   </refsect1>
+ <refsect1>
+    <title>Configuration file settings</title>
 
+    <para>
+      <itemizedlist spacing="compact" mark="bullet">
+       <listitem>
+         <simpara>
+           <literal>node_rejoin_timeout</literal>:
+		   the maximum length of time (in seconds) to wait for
+		   the node to reconnect to the replication cluster (defaults to
+		   the value set in <literal>standby_reconnect_timeout</literal>,
+		   60 seconds).
+		 </simpara>
+	   </listitem>
+	  </itemizedlist>
+	</para>
+
+ </refsect1>
   <refsect1>
     <title>Event notifications</title>
     <para>

@@ -2274,19 +2274,19 @@ do_node_rejoin(void)
 			{
 				log_verbose(LOG_INFO, _("waiting for node %i to respond to pings; %i of max %i attempts"),
 							config_file_options.node_id,
-							i + 1, config_file_options.standby_reconnect_timeout);
+							i + 1, config_file_options.node_rejoin_timeout);
 			}
 			else
 			{
 				log_debug("sleeping 1 second waiting for node %i to respond to pings; %i of max %i attempts",
 						  config_file_options.node_id,
-						  i + 1, config_file_options.standby_reconnect_timeout);
+						  i + 1, config_file_options.node_rejoin_timeout);
 			}
 
 			sleep(1);
 		}
 
-		for (;  i < config_file_options.standby_reconnect_timeout; i++)
+		for (;  i < config_file_options.node_rejoin_timeout; i++)
 		{
 			success = is_downstream_node_attached(upstream_conn, config_file_options.node_name);
 
@@ -2301,13 +2301,13 @@ do_node_rejoin(void)
 			{
 				log_info(_("waiting for node %i to connect to new primary; %i of max %i attempts"),
 						 config_file_options.node_id,
-						 i + 1, config_file_options.standby_reconnect_timeout);
+						 i + 1, config_file_options.node_rejoin_timeout);
 			}
 			else
 			{
 				log_debug("sleeping 1 second waiting for node %i to connect to new primary; %i of max %i attempts",
 						  config_file_options.node_id,
-						  i + 1, config_file_options.standby_reconnect_timeout);
+						  i + 1, config_file_options.node_rejoin_timeout);
 			}
 
 			sleep(1);

@@ -333,6 +333,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->primary_follow_timeout = DEFAULT_PRIMARY_FOLLOW_TIMEOUT;
 	options->standby_follow_timeout = DEFAULT_STANDBY_FOLLOW_TIMEOUT;
 
+	/*------------------------
+	 * standby switchover settings
+	 *------------------------
+	 */
+	options->standby_reconnect_timeout = DEFAULT_STANDBY_RECONNECT_TIMEOUT;
+
 	/*-----------------
 	 * repmgrd settings
 	 *-----------------
@@ -352,7 +358,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->degraded_monitoring_timeout = -1;
 	options->async_query_timeout = DEFAULT_ASYNC_QUERY_TIMEOUT;
 	options->primary_notification_timeout = DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT;
-	options->standby_reconnect_timeout = DEFAULT_STANDBY_RECONNECT_TIMEOUT;
+	options->repmgrd_standby_startup_timeout = -1; /* defaults to "standby_reconnect_timeout" if not set */
 
 	/*-------------
 	 * witness settings
@@ -539,6 +545,14 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "standby_follow_timeout") == 0)
 			options->standby_follow_timeout = repmgr_atoi(value, name, error_list, 0);
 
+		/* standby switchover settings */
+		else if (strcmp(name, "standby_reconnect_timeout") == 0)
+			options->standby_reconnect_timeout = repmgr_atoi(value, name, error_list, 0);
+
+		/* node rejoin settings */
+		else if (strcmp(name, "node_rejoin_timeout") == 0)
+			options->node_rejoin_timeout = repmgr_atoi(value, name, error_list, 0);
+
 		/* node check settings */
 		else if (strcmp(name, "archive_ready_warning") == 0)
 			options->archive_ready_warning = repmgr_atoi(value, name, error_list, 1);
@@ -588,8 +602,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->async_query_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "primary_notification_timeout") == 0)
 			options->primary_notification_timeout = repmgr_atoi(value, name, error_list, 0);
-		else if (strcmp(name, "standby_reconnect_timeout") == 0)
-			options->standby_reconnect_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "repmgrd_standby_startup_timeout") == 0)
+			options->repmgrd_standby_startup_timeout = repmgr_atoi(value, name, error_list, 0);
 
 		/* witness settings */
 		else if (strcmp(name, "witness_sync_interval") == 0)
@@ -771,6 +785,18 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		PQconninfoFree(conninfo_options);
 	}
 
+
+	/* set values for parameters which default to other parameters */
+
+	/*
+	 * From 4.1, "repmgrd_standby_startup_timeout" replaces "standby_reconnect_timeout"
+	 * in repmgrd; fall back to "standby_reconnect_timeout" if no value explicitly provided
+	 */
+	if (options->repmgrd_standby_startup_timeout == -1)
+	{
+		options->repmgrd_standby_startup_timeout = options->standby_reconnect_timeout;
+	}
+
 	/* add warning about changed "barman_" parameter meanings */
 	if ((options->barman_host[0] == '\0' && options->barman_server[0] != '\0') ||
 		(options->barman_host[0] != '\0' && options->barman_server[0] == '\0'))
@@ -794,6 +820,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	{
 		item_list_append(error_list,
 						 _("\replication_lag_critical\" must be greater than  \"replication_lag_warning\""));
+	}
+
+	if (options->standby_reconnect_timeout < options->node_rejoin_timeout)
+	{
+		item_list_append(error_list,
+						 _("\"standby_reconnect_timeout\" must be equal to or greater than \"node_rejoin_timeout\""));
 	}
 }
 
@@ -1017,6 +1049,7 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * - promote_delay
  * - reconnect_attempts
  * - reconnect_interval
+ * - repmgrd_standby_startup_timeout
  * - retry_promote_interval_secs
  *
  * non-changeable options
@@ -1229,6 +1262,15 @@ reload_config(t_configuration_options *orig_options)
 	{
 		orig_options->reconnect_interval = new_options.reconnect_interval;
 		log_info(_("\"reconnect_interval\" is now \"%i\""), new_options.reconnect_interval);
+
+		config_changed = true;
+	}
+
+	/* repmgrd_standby_startup_timeout */
+	if (orig_options->repmgrd_standby_startup_timeout != new_options.repmgrd_standby_startup_timeout)
+	{
+		orig_options->repmgrd_standby_startup_timeout = new_options.repmgrd_standby_startup_timeout;
+		log_info(_("\"repmgrd_standby_startup_timeout\" is now \"%i\""), new_options.repmgrd_standby_startup_timeout);
 
 		config_changed = true;
 	}
