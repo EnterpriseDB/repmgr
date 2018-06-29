@@ -272,7 +272,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					#    manual attention to reattach it to replication
 					# (does not apply to BDR mode)
 
-#priority=100				# indicate a preferred priorty for promoting nodes;
+#priority=100				# indicate a preferred priority for promoting nodes;
 					# a value of zero prevents the node being promoted to primary
 					# (default: 100)
 
