@@ -1,5 +1,6 @@
 4.1.0   2018-??-??
-		repmgr: add "--missing-slots" check to "repmgr node check"
+		repmgr: add "--missing-slots" check to "repmgr node check" (Ian)
+        repmgrd: create a PID file by default; GitHub #457 (Ian)
 
 4.0.6   2018-06-14
         repmgr: (witness register) prevent registration of a witness server with the

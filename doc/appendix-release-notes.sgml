@@ -15,6 +15,40 @@
     See also: <xref linkend="upgrading-repmgr">
   </para>
 
+  <sect1 id="release-4.1.0">
+    <title>Release 4.1.0</title>
+    <para><emphasis>???? ??, 2018</emphasis></para>
+    <para>
+      &repmgr; 4.1.0 introduces some changes to <application>repmgrd</application>
+      behaviour and some additional configuration parameters.
+    </para>
+    <para>
+      &repmgr; 4.1.0 introduces changes to the &repmgr; extension schema, meaning
+      <command>ALTER EXTENSION repmgr UPGRADE</command> must be executed after
+      installing the new version.
+    </para>
+    <para>
+      Configuration changes are backwards-compatible and no changes to
+      <filename>repmgr.conf</filename> are required. However users should
+      review changes listed below.
+    </para>
+
+    <sect2>
+      <title>repmgrd enhancements</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <application>repmgrd</application>: create a PID file by default
+              (GitHub #457). For details, see <xref linkend="repmgrd-pid-file">.
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
+
   <sect1 id="release-4.0.6">
     <title>Release 4.0.6</title>
     <para><emphasis>June 14, 2018</emphasis></para>

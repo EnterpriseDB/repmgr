@@ -24,7 +24,7 @@
 
     <para>
       To use <application>repmgrd</application>, its associated function library <emphasis>must</emphasis> be
-      included in <filename>postgresql.conf</filename> with:
+      included via <filename>postgresql.conf</filename> with:
 
       <programlisting>
         shared_preload_libraries = 'repmgr'</programlisting>
@@ -169,6 +169,50 @@
       Note that only a subset of configuration file parameters can be changed on a
       running <application>repmgrd</application> daemon.
     </para>
+
+    <sect2 id="repmgrd-pid-file">
+      <indexterm>
+        <primary>repmgrd</primary>
+        <secondary>PID file</secondary>
+      </indexterm>
+      <title>repmgrd's PID file</title>
+      <para>
+        <application>repmgrd</application> will generate a PID file by default.
+      </para>
+      <note>
+        <simpara>
+          This is a behaviour change from previous versions (earlier than 4.1), where
+          the PID file had to be explicitly specified with the command line
+          parameter <option> --pid-file</option>.
+        </simpara>
+      </note>
+      <para>
+        The PID file can be specified in <filename>repmgr.conf</filename> with the configuration
+        parameter <varname>repmgrd_pid_file</varname>.
+      </para>
+      <para>
+        It can also be specified on the command line (as in previous versions) with
+        the command line parameter <option>--pid-file</option>. Note this will override
+        any value set in <filename>repmgr.conf</filename> with <varname>repmgrd_pid_file</varname>.
+        <option>--pid-file</option> may be deprecated in future releases.
+      </para>
+      <para>
+        If no PID file is specified, <application>repmgrd</application> will create one
+        in the operating system's temporary directory (determined by the environment variable
+        <varname>TMPDIR</varname>, or if that is not set, will use <filename>/tmp</filename>.
+      </para>
+      <para>
+        To prevent a PID file being generated at all, provide the command line option
+        <option>--no-pid-file</option>.
+      </para>
+      <para>
+        To see which PID file would use, execute <application>repmgrd</application>
+        with the option <option>--show-pid-file</option>. <application>repmgrd</application>
+        will not start if this option is provided. Note that the value shown is the
+        file  <application>repmgrd</application> would use next time it starts, and is
+        not necessarily the PID file currently in use.
+      </para>
+    </sect2>
 
     <sect2 id="repmgrd-configuration-debian-ubuntu">
       <indexterm>
