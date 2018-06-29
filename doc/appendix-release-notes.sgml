@@ -37,12 +37,23 @@
       <title>repmgrd enhancements</title>
       <para>
         <itemizedlist>
+
           <listitem>
             <para>
               <application>repmgrd</application>: create a PID file by default
               (GitHub #457). For details, see <xref linkend="repmgrd-pid-file">.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application>: daemonize process by default.
+			  In case, for whatever reason, the user does not wish to daemonize the
+			  process, provice <option>--daemonize=false</option>.
+			  (GitHub #458).
+            </para>
+          </listitem>
+
 
         </itemizedlist>
       </para>

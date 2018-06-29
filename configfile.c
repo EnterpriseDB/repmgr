@@ -29,9 +29,6 @@ static bool config_file_provided = false;
 bool		config_file_found = false;
 
 static void _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
-static bool parse_bool(const char *s,
-		   const char *config_item,
-		   ItemList *error_list);
 
 static void _parse_line(char *buf, char *name, char *value);
 static void parse_event_notifications_list(t_configuration_options *options, const char *arg);
@@ -1481,7 +1478,7 @@ repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, in
  *
  *   https://www.postgresql.org/docs/current/static/config-setting.html
  */
-static bool
+bool
 parse_bool(const char *s, const char *config_item, ItemList *error_list)
 {
 	PQExpBufferData errors;

@@ -159,7 +159,7 @@
     <para>
       <application>repmgrd</application> can be started manually like this:
       <programlisting>
-        repmgrd -f /etc/repmgr.conf --pid-file /tmp/repmgrd.pid --daemonize</programlisting>
+        repmgrd -f /etc/repmgr.conf --pid-file /tmp/repmgrd.pid</programlisting>
       and stopped with <command>kill `cat /tmp/repmgrd.pid`</command>. Adjust paths as appropriate.
     </para>
     <para>

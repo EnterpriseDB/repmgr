@@ -36,7 +36,7 @@
 static char *config_file = NULL;
 static bool verbose = false;
 static char pid_file[MAXPGPATH];
-static bool daemonize = false;
+static bool daemonize = true;
 static bool show_pid_file = false;
 static bool no_pid_file = false;
 
@@ -101,7 +101,7 @@ main(int argc, char **argv)
 		{"config-file", required_argument, NULL, 'f'},
 
 /* daemon options */
-		{"daemonize", no_argument, NULL, 'd'},
+		{"daemonize", optional_argument, NULL, 'd'},
 		{"pid-file", required_argument, NULL, 'p'},
 		{"show-pid-file", no_argument, NULL, 's'},
 		{"no-pid-file", no_argument, NULL, OPT_NO_PID_FILE},
@@ -175,7 +175,10 @@ main(int argc, char **argv)
 				/* daemon options */
 
 			case 'd':
-				daemonize = true;
+				if (optarg != NULL)
+				{
+					daemonize = parse_bool(optarg, "-d/--daemonize", &cli_errors);
+				}
 				break;
 
 			case 'p':
@@ -747,7 +750,8 @@ show_help(void)
 	puts("");
 
 	printf(_("Daemon configuration options:\n"));
-	printf(_("  -d, --daemonize           detach process from foreground\n"));
+	printf(_("  -d, --daemonize[=true/false]\n"));
+	printf(_("                            detach process from foreground (default: true)\n"));
 	printf(_("  -p, --pid-file=PATH       use the specified PID file\n"));
 	printf(_("  -s, --show-pid-file       show PID file which would be used by the current configuration\n"));
 	printf(_("  --no-pid-file             don't write a PID file\n"));

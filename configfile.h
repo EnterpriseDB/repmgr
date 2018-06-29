@@ -283,6 +283,10 @@ bool		reload_config(t_configuration_options *orig_options);
 
 bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
 
+bool		parse_bool(const char *s,
+					   const char *config_item,
+					   ItemList *error_list);
+
 int repmgr_atoi(const char *s,
 			const char *config_item,
 			ItemList *error_list,
