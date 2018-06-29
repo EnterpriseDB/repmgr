@@ -35,8 +35,10 @@
 
 static char *config_file = NULL;
 static bool verbose = false;
-static char *pid_file = NULL;
+static char pid_file[MAXPGPATH];
 static bool daemonize = false;
+static bool show_pid_file = false;
+static bool no_pid_file = false;
 
 t_configuration_options config_file_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
 
@@ -101,6 +103,8 @@ main(int argc, char **argv)
 /* daemon options */
 		{"daemonize", no_argument, NULL, 'd'},
 		{"pid-file", required_argument, NULL, 'p'},
+		{"show-pid-file", no_argument, NULL, 's'},
+		{"no-pid-file", no_argument, NULL, OPT_NO_PID_FILE},
 
 /* logging options */
 		{"log-level", required_argument, NULL, 'L'},
@@ -112,8 +116,6 @@ main(int argc, char **argv)
 	};
 
 	set_progname(argv[0]);
-
-	srand(time(NULL));
 
 	/* Disallow running as root */
 	if (geteuid() == 0)
@@ -127,6 +129,10 @@ main(int argc, char **argv)
 				progname());
 		exit(1);
 	}
+
+	srand(time(NULL));
+
+	memset(pid_file, 0, MAXPGPATH);
 
 	while ((c = getopt_long(argc, argv, "?Vf:L:vdp:m", long_options, &optindex)) != -1)
 	{
@@ -173,7 +179,15 @@ main(int argc, char **argv)
 				break;
 
 			case 'p':
-				pid_file = optarg;
+				strncpy(pid_file, optarg, MAXPGPATH);
+				break;
+
+			case 's':
+				show_pid_file = true;
+				break;
+
+			case OPT_NO_PID_FILE:
+				no_pid_file = true;
 				break;
 
 				/* logging options */
@@ -238,6 +252,48 @@ main(int argc, char **argv)
 	 * parse_config() will abort anyway, with an appropriate message.
 	 */
 	load_config(config_file, verbose, false, &config_file_options, argv[0]);
+
+	/* Determine pid file location, unless --no-pid-file supplied */
+
+	if (no_pid_file == false)
+	{
+		if (config_file_options.repmgrd_pid_file[0] != '\0')
+		{
+			if (pid_file[0] != '\0')
+			{
+				log_warning(_("\"repmgrd_pid_file\" will be overridden by --pid-file"));
+			}
+			else
+			{
+				strncpy(pid_file, config_file_options.repmgrd_pid_file, MAXPGPATH);
+			}
+		}
+
+		/* no pid file provided - determine location */
+		if (pid_file[0] == '\0')
+		{
+			const char *tmpdir = getenv("TMPDIR");
+
+			if (!tmpdir)
+				tmpdir = "/tmp";
+
+			maxpath_snprintf(pid_file, "%s/repmgrd.pid", tmpdir);
+		}
+	}
+	else
+	{
+		/* --no-pid-file supplied - overwrite any value provided with --pid-file ... */
+		memset(pid_file, 0, MAXPGPATH);
+	}
+
+
+	/* If --show-pid-file supplied, output the location (if set) and exit */
+
+	if (show_pid_file == true)
+	{
+		printf("%s\n", pid_file);
+		exit(SUCCESS);
+	}
 
 
 	/* Some configuration file items can be overriden by command line options */
@@ -414,7 +470,7 @@ main(int argc, char **argv)
 		daemonize_process();
 	}
 
-	if (pid_file != NULL)
+	if (pid_file[0] != '\0')
 	{
 		check_and_create_pid_file(pid_file);
 	}
@@ -669,6 +725,8 @@ show_help(void)
 {
 	printf(_("%s: replication management daemon for PostgreSQL\n"), progname());
 	puts("");
+	printf(_("%s monitors a cluster of servers and optionally performs failover.\n"), progname());
+	puts("");
 
 	printf(_("Usage:\n"));
 	printf(_("  %s [OPTIONS]\n"), progname());
@@ -688,12 +746,13 @@ show_help(void)
 
 	puts("");
 
-	printf(_("General configuration options:\n"));
+	printf(_("Daemon configuration options:\n"));
 	printf(_("  -d, --daemonize           detach process from foreground\n"));
-	printf(_("  -p, --pid-file=PATH       write a PID file\n"));
+	printf(_("  -p, --pid-file=PATH       use the specified PID file\n"));
+	printf(_("  -s, --show-pid-file       show PID file which would be used by the current configuration\n"));
+	printf(_("  --no-pid-file             don't write a PID file\n"));
 	puts("");
 
-	printf(_("%s monitors a cluster of servers and optionally performs failover.\n"), progname());
 }
 
 
@@ -802,7 +861,7 @@ terminate(int retval)
 {
 	logger_shutdown();
 
-	if (pid_file)
+	if (pid_file[0] != '\0')
 	{
 		unlink(pid_file);
 	}

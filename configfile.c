@@ -359,6 +359,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->async_query_timeout = DEFAULT_ASYNC_QUERY_TIMEOUT;
 	options->primary_notification_timeout = DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT;
 	options->repmgrd_standby_startup_timeout = -1; /* defaults to "standby_reconnect_timeout" if not set */
+	memset(options->repmgrd_pid_file, 0, sizeof(options->repmgrd_pid_file));
 
 	/*-------------
 	 * witness settings
@@ -604,6 +605,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->primary_notification_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "repmgrd_standby_startup_timeout") == 0)
 			options->repmgrd_standby_startup_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "repmgrd_pid_file") == 0)
+			strncpy(options->repmgrd_pid_file, value, MAXPGPATH);
 
 		/* witness settings */
 		else if (strcmp(name, "witness_sync_interval") == 0)

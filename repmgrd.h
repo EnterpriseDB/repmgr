@@ -10,6 +10,8 @@
 #include <time.h>
 #include "portability/instr_time.h"
 
+#define OPT_NO_PID_FILE                  1000
+
 extern volatile sig_atomic_t got_SIGHUP;
 extern MonitoringState monitoring_state;
 extern instr_time degraded_monitoring_start;
@@ -26,4 +28,6 @@ const char *print_monitoring_state(MonitoringState monitoring_state);
 
 void		update_registration(PGconn *conn);
 void		terminate(int retval);
+
+
 #endif							/* _REPMGRD_H_ */

@@ -131,6 +131,7 @@ typedef struct
 	int			async_query_timeout;
 	int			primary_notification_timeout;
 	int			repmgrd_standby_startup_timeout;
+	char		repmgrd_pid_file[MAXPGPATH];
 
 	/* BDR settings */
 	bool		bdr_local_monitoring_only;
@@ -196,7 +197,7 @@ typedef struct
         false, -1, \
 		DEFAULT_ASYNC_QUERY_TIMEOUT, \
 		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT,	\
-		-1,	\
+		-1, "", \
 		/* BDR settings */ \
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \
