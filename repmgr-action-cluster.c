@@ -1347,6 +1347,7 @@ do_cluster_help(void)
 	printf(_("    %s [OPTIONS] cluster matrix\n"), progname());
 	printf(_("    %s [OPTIONS] cluster crosscheck\n"), progname());
 	printf(_("    %s [OPTIONS] cluster event\n"), progname());
+	printf(_("    %s [OPTIONS] cluster cleanup\n"), progname());
 	puts("");
 
 	printf(_("CLUSTER SHOW\n"));
