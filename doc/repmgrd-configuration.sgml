@@ -319,8 +319,10 @@ REPMGRD_ENABLED=no
         rotate 52
         maxsize 100M
         weekly
-        create 0600 postgres postgres
+        copytruncate
     }</programlisting>
+    <application>repmgrd</application> currently does not reopen the logfile on HUP signal.
+    Usage of <command>copytruncate</command> option of <command>logrotate</command> is required.
   </para>
  </sect1>
 </chapter>
