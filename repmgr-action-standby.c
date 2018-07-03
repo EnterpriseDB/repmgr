@@ -5979,7 +5979,7 @@ check_recovery_type(PGconn *conn)
 	{
 		if (recovery_type == RECTYPE_PRIMARY)
 		{
-			log_error(_("this node should be a standby (%s)"),
+			log_error(_("this node is not a standby (%s)"),
 					  config_file_options.conninfo);
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
