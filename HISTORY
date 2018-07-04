@@ -1,6 +1,7 @@
 4.1.0   2018-??-??
 		repmgr: add "--missing-slots" check to "repmgr node check" (Ian)
         repmgr: improve command line error handling; GitHub #464 (Ian)
+        repmgr: fix "standby register --wait-sync" when no timeout provided (Ian)
         repmgrd: create a PID file by default; GitHub #457 (Ian)
 		repmgrd: daemonize process by default; GitHub #458 (Ian)
 

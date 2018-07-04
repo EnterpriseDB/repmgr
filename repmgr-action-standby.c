@@ -1708,11 +1708,15 @@ do_standby_register(void)
 
 	termPQExpBuffer(&details);
 
-	/* if --wait-sync option set, wait for the records to synchronise */
+	/*
+	 * if --wait-sync option set, wait for the records to synchronise
+	 * (unless 0 seconds provided, which disables it, which is the same as
+	 *  not providing the option)
+	 */
 
 	if (PQstatus(conn) == CONNECTION_OK &&
 		runtime_options.wait_register_sync == true &&
-		runtime_options.wait_register_sync_seconds > 0)
+		runtime_options.wait_register_sync_seconds != 0)
 	{
 		bool		sync_ok = false;
 		int			timer = 0;
@@ -1736,7 +1740,11 @@ do_standby_register(void)
 		{
 			bool		records_match = true;
 
-			if (runtime_options.wait_register_sync_seconds && runtime_options.wait_register_sync_seconds == timer)
+			/*
+			 * If timeout set to a positive value, check if we've reached it and
+			 * exit the loop
+			 */
+			if (runtime_options.wait_register_sync_seconds > 0 && runtime_options.wait_register_sync_seconds == timer)
 				break;
 
 			node_record_status = get_node_record(conn,

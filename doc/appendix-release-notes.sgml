@@ -67,6 +67,23 @@
         </itemizedlist>
       </para>
     </sect2>
+
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              <application>repmgr</application>: fix <command><link linkend="repmgr-standby-register">repmgr standby register--wait-sync </link></command>
+              when no timeout provided.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+
   </sect1>
 
   <sect1 id="release-4.0.6">
