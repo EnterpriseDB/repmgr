@@ -40,6 +40,15 @@
 
           <listitem>
             <para>
+              <application>repmgr</application>: always exit with an error if an unrecognised
+              command line option is provided. This matches the behaviour of other PostgreSQL
+              utilities such as <application>psql</application>. (GitHub #464).
+            </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
               <application>repmgrd</application>: create a PID file by default
               (GitHub #457). For details, see <xref linkend="repmgrd-pid-file">.
             </para>

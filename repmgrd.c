@@ -237,7 +237,7 @@ main(int argc, char **argv)
 	/* Exit here already if errors in command line options found */
 	if (cli_errors.head != NULL)
 	{
-		exit_with_cli_errors(&cli_errors);
+		exit_with_cli_errors(&cli_errors, NULL);
 	}
 
 	startup_event_logged = false;

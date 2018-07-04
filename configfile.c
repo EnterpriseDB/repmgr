@@ -1367,13 +1367,23 @@ exit_with_config_file_errors(ItemList *config_errors, ItemList *config_warnings,
 
 
 void
-exit_with_cli_errors(ItemList *error_list)
+exit_with_cli_errors(ItemList *error_list, const char *repmgr_command)
 {
 	fprintf(stderr, _("The following command line errors were encountered:\n"));
 
 	print_item_list(error_list);
 
-	fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
+	if (repmgr_command != NULL)
+	{
+		fprintf(stderr, _("Try \"%s --help\" or \"%s %s --help\" for more information.\n"),
+				progname(),
+				progname(),
+				repmgr_command);
+	}
+	else
+	{
+		fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname());
+	}
 
 	exit(ERR_BAD_CONFIG);
 }

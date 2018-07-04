@@ -98,7 +98,7 @@ main(int argc, char **argv)
 {
 	t_conninfo_param_list default_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
-	int			optindex;
+	int			optindex = 0;
 	int			c;
 
 	char	   *repmgr_command = NULL;
@@ -108,6 +108,7 @@ main(int argc, char **argv)
 	char	   *dummy_action = "";
 
 	bool		help_option = false;
+	bool		option_error_found = false;
 
 	set_progname(argv[0]);
 
@@ -178,6 +179,9 @@ main(int argc, char **argv)
 		strncpy(runtime_options.username, pw->pw_name, MAXLEN);
 	}
 
+	/* Make getopt emitting errors */
+	opterr = 1;
+
 	while ((c = getopt_long(argc, argv, "?Vb:f:FwWd:h:p:U:R:S:D:ck:L:tvC:", long_options,
 							&optindex)) != -1)
 	{
@@ -196,13 +200,7 @@ main(int argc, char **argv)
 			case OPT_HELP:		/* --help */
 				help_option = true;
 				break;
-			case '?':
-				/* Actual help option given */
-				if (strcmp(argv[optind - 1], "-?") == 0)
-				{
-					help_option = true;
-				}
-				break;
+
 			case 'V':
 
 				/*
@@ -631,8 +629,23 @@ main(int argc, char **argv)
 								 _("--recovery-min-apply-delay is now a configuration file parameter, \"recovery_min_apply_delay\""));
 				break;
 
+			case ':':   /* missing option argument */
+				option_error_found = true;
+				break;
+			case '?':
+				/* Actual help option given? */
+				if (strcmp(argv[optind - 1], "-?") == 0)
+				{
+					help_option = true;
+					break;
+				}
+				/* otherwise fall through to default */
+			default:    /* invalid option */
+				option_error_found = true;
+				break;
 		}
 	}
+
 
 	/*
 	 * If -d/--dbname appears to be a conninfo string, validate by attempting
@@ -734,8 +747,9 @@ main(int argc, char **argv)
 	if (cli_errors.head != NULL)
 	{
 		free_conninfo_params(&source_conninfo);
-		exit_with_cli_errors(&cli_errors);
+		exit_with_cli_errors(&cli_errors, NULL);
 	}
+
 
 	/*----------
 	 * Determine the node type and action; following are valid:
@@ -983,8 +997,29 @@ main(int argc, char **argv)
 	if (cli_errors.head != NULL)
 	{
 		free_conninfo_params(&source_conninfo);
-		exit_with_cli_errors(&cli_errors);
+
+		exit_with_cli_errors(&cli_errors, valid_repmgr_command_found == true ? repmgr_command : NULL);
 	}
+
+	/* no errors detected by repmgr, but getopt might have */
+	if (option_error_found == true)
+	{
+		if (valid_repmgr_command_found == true)
+		{
+			printf(_("Try \"%s --help\" or \"%s %s --help\" for more information.\n"),
+				   progname(),
+				   progname(),
+				   repmgr_command);
+		}
+		else
+		{
+			printf(_("Try \"repmgr --help\" for more information.\n"));
+		}
+
+		free_conninfo_params(&source_conninfo);
+		exit(ERR_BAD_CONFIG);
+	}
+
 
 	/*
 	 * Print any warnings about inappropriate command line options, unless
