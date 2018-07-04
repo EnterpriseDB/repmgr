@@ -58,7 +58,7 @@
             <para>
               <application>repmgrd</application>: daemonize process by default.
 			  In case, for whatever reason, the user does not wish to daemonize the
-			  process, provice <option>--daemonize=false</option>.
+			  process, provide <option>--daemonize=false</option>.
 			  (GitHub #458).
             </para>
           </listitem>
