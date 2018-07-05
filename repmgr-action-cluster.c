@@ -83,6 +83,7 @@ do_cluster_show(void)
 	int			i = 0;
 	ItemList	warnings = {NULL, NULL};
 	bool		success = false;
+	bool		error_found = false;
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database"));
@@ -218,6 +219,7 @@ do_cluster_show(void)
 						else
 						{
 							appendPQExpBuffer(&details, "- failed");
+							error_found = true;
 						}
 					}
 				}
@@ -281,6 +283,7 @@ do_cluster_show(void)
 						else
 						{
 							appendPQExpBuffer(&details, "- failed");
+							error_found = true;
 						}
 					}
 				}
@@ -292,17 +295,27 @@ do_cluster_show(void)
 					if (cell->node_info->node_status == NODE_STATUS_UP)
 					{
 						if (cell->node_info->active == true)
+						{
 							appendPQExpBuffer(&details, "* running");
+						}
 						else
+						{
 							appendPQExpBuffer(&details, "! running");
+							error_found = true;
+						}
 					}
 					/* node is unreachable */
 					else
 					{
 						if (cell->node_info->active == true)
+						{
 							appendPQExpBuffer(&details, "? unreachable");
+						}
 						else
+						{
 							appendPQExpBuffer(&details, "- failed");
+							error_found = true;
+						}
 					}
 				}
 				break;
@@ -310,6 +323,7 @@ do_cluster_show(void)
 				{
 					/* this should never happen */
 					appendPQExpBuffer(&details, "? unknown node type");
+						error_found = true;
 				}
 				break;
 		}
@@ -414,7 +428,6 @@ do_cluster_show(void)
 	PQfinish(conn);
 
 	/* emit any warnings */
-
 	if (warnings.head != NULL && runtime_options.terse == false && runtime_options.output_mode != OM_CSV)
 	{
 		ItemListCell *cell = NULL;
@@ -424,6 +437,20 @@ do_cluster_show(void)
 		{
 			printf(_("  - %s\n"), cell->string);
 		}
+	}
+
+	/*
+	 * If warnings were noted, even if they're not displayed (e.g. in --csv node),
+	 * that means something's not right so we need to emit a non-zero exit code.
+	 */
+	if (warnings.head != NULL)
+	{
+		error_found = true;
+	}
+
+	if (error_found == true)
+	{
+		exit(ERR_NODE_STATUS);
 	}
 }
 
@@ -696,7 +723,7 @@ do_cluster_crosscheck(void)
 
 	if (error_found == true)
 	{
-		exit(ERR_CLUSTER_CHECK);
+		exit(ERR_NODE_STATUS);
 	}
 }
 
@@ -786,7 +813,7 @@ do_cluster_matrix()
 
 	if (error_found == true)
 	{
-		exit(ERR_CLUSTER_CHECK);
+		exit(ERR_NODE_STATUS);
 	}
 }
 

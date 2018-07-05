@@ -116,7 +116,7 @@
       </varlistentry>
 
       <varlistentry>
-        <term><option>ERR_CLUSTER_CHECK (25)</option></term>
+        <term><option>ERR_NODE_STATUS (25)</option></term>
         <listitem>
           <para>
             One or more nodes could not be reached.

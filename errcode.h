@@ -46,6 +46,6 @@
 #define ERR_SWITCHOVER_INCOMPLETE 22
 #define ERR_FOLLOW_FAIL 23
 #define ERR_REJOIN_FAIL 24
-#define ERR_CLUSTER_CHECK 25
+#define ERR_NODE_STATUS 25
 
 #endif							/* _ERRCODE_H_ */

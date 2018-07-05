@@ -46,6 +46,12 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-cluster-show">repmgr cluster-show</link></command>
+              returns non-zero exit code if node status issues detected (GitHub #456).
+            </para>
+          </listitem>
 
           <listitem>
             <para>
@@ -76,7 +82,7 @@
 
           <listitem>
             <para>
-              <application>repmgr</application>: fix <command><link linkend="repmgr-standby-register">repmgr standby register--wait-sync </link></command>
+              <application>repmgr</application>: fix <command><link linkend="repmgr-standby-register">repmgr standby register --wait-sync</link></command>
               when no timeout provided.
             </para>
           </listitem>
