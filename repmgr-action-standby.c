@@ -1709,9 +1709,10 @@ do_standby_register(void)
 	termPQExpBuffer(&details);
 
 	/*
-	 * if --wait-sync option set, wait for the records to synchronise
+	 * If --wait-sync option set, wait for the records to synchronise
 	 * (unless 0 seconds provided, which disables it, which is the same as
-	 *  not providing the option)
+	 *  not providing the option). The default value is -1, which means
+	 * no timeout.
 	 */
 
 	if (PQstatus(conn) == CONNECTION_OK &&
