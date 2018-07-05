@@ -170,11 +170,17 @@ do_node_status(void)
 	}
 	else
 	{
+		/* "archive_mode" is not "off", i.e. one of "on", "always" */
 		bool		enabled = true;
 		PQExpBufferData archiving_status;
 		char		archive_command[MAXLEN] = "";
 
 		initPQExpBuffer(&archiving_status);
+
+		/*
+		 * if the node is a standby, and "archive_mode" is "on", archiving will
+		 * actually be disabled.
+		 */
 		if (recovery_type == RECTYPE_STANDBY)
 		{
 			if (guc_set(conn, "archive_mode", "=", "on"))
@@ -642,6 +648,7 @@ do_node_check(void)
 	CheckStatusList status_list = {NULL, NULL};
 	CheckStatusListCell *cell = NULL;
 
+	bool			issue_detected = false;
 
 	/* for internal use */
 	if (runtime_options.has_passfile == true)
@@ -750,12 +757,23 @@ do_node_check(void)
 	initPQExpBuffer(&output);
 
 	/* order functions are called is also output order */
-	(void) do_node_check_role(conn, runtime_options.output_mode, &node_info, &status_list);
-	(void) do_node_check_replication_lag(conn, runtime_options.output_mode, &node_info, &status_list);
-	(void) do_node_check_archive_ready(conn, runtime_options.output_mode, &status_list);
-	(void) do_node_check_downstream(conn, runtime_options.output_mode, &status_list);
-	(void) do_node_check_slots(conn, runtime_options.output_mode, &node_info, &status_list);
-	(void) do_node_check_missing_slots(conn, runtime_options.output_mode, &node_info, &status_list);
+	if (do_node_check_role(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
+		issue_detected = true;
+
+	if (do_node_check_replication_lag(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
+		issue_detected = true;
+
+	if (do_node_check_archive_ready(conn, runtime_options.output_mode, &status_list) != CHECK_STATUS_OK)
+		issue_detected = true;
+
+	if (do_node_check_downstream(conn, runtime_options.output_mode, &status_list) != CHECK_STATUS_OK)
+		issue_detected = true;
+
+	if (do_node_check_slots(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
+		issue_detected = true;
+
+	if (do_node_check_missing_slots(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
+		issue_detected = true;
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
@@ -812,6 +830,11 @@ do_node_check(void)
 	check_status_list_free(&status_list);
 
 	PQfinish(conn);
+
+	if (issue_detected == true)
+	{
+		exit(ERR_NODE_STATUS);
+	}
 }
 
 

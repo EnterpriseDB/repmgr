@@ -61,7 +61,9 @@
 
      <listitem>
       <simpara>
-        <literal>--archive-ready</literal>: checks for WAL files which have not yet been archived
+        <literal>--archive-ready</literal>: checks for WAL files which have not yet been archived,
+        and returns <literal>WARNING</literal> or <literal>CRITICAL</literal> if the number
+        exceeds <varname>archive_ready_warning</varname> or <varname>archive_ready_critical</varname> respectively.
       </simpara>
      </listitem>
 
@@ -107,4 +109,80 @@
       </itemizedlist>
     </para>
   </refsect1>
+
+  <refsect1>
+    <title>Exit codes</title>
+
+    <para>
+      When executing <command>repmgr node check</command> with one of the individual
+      checks listed above, &repmgr; will emit one of the following Nagios-style exit codes
+      (even if <literal>--nagios</literal> is not supplied):
+
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <literal>0</literal>: OK
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <literal>1</literal>: WARNING
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <literal>2</literal>: ERROR
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <literal>3</literal>: UNKNOWN
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+    </para>
+
+
+
+    <para>
+      Following exit codes can be emitted by <command>repmgr status check</command>
+      if no individual check was specified.
+    </para>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            No issues were detected.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_NODE_STATUS (25)</option></term>
+        <listitem>
+          <para>
+            One or more issues were detected.
+          </para>
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+  </refsect1>
+
+
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+     <xref linkend="repmgr-node-status">, <xref linkend="repmgr-cluster-show">
+    </para>
+  </refsect1>
+
 </refentry>

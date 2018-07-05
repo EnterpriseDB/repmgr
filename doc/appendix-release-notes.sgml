@@ -34,11 +34,11 @@
     </para>
 
     <sect2>
-      <title>repmgrd enhancements</title>
+      <title>repmgr enhancements</title>
       <para>
         <itemizedlist>
 
-          <listitem>
+        <listitem>
             <para>
               <application>repmgr</application>: always exit with an error if an unrecognised
               command line option is provided. This matches the behaviour of other PostgreSQL
@@ -48,10 +48,20 @@
 
           <listitem>
             <para>
-              <command><link linkend="repmgr-cluster-show">repmgr cluster-show</link></command>
-              returns non-zero exit code if node status issues detected (GitHub #456).
+              <command><link linkend="repmgr-cluster-show">repmgr cluster-show</link></command>,
+              <command><link linkend="repmgr-node-check">repmgr node check</link></command> and
+              <command><link linkend="repmgr-node-status">repmgr node status</link></command>
+              return non-zero exit code if node status issues detected. (GitHub #456).
             </para>
           </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
+      <title>repmgrd enhancements</title>
+      <para>
+        <itemizedlist>
 
           <listitem>
             <para>

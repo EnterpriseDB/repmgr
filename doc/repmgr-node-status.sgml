@@ -84,7 +84,8 @@
   <refsect1>
     <title>See also</title>
     <para>
-      See <xref linkend="repmgr-node-check"> to diagnose issues.
+      See <xref linkend="repmgr-node-check"> to diagnose issues and <xref linkend="repmgr-cluster-show">
+      for an overview of all nodes in the cluster.
     </para>
   </refsect1>
 </refentry>

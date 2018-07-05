@@ -142,4 +142,11 @@
    </variablelist>
   </refsect1>
 
+  <refsect1>
+    <title>See also</title>
+    <para>
+     <xref linkend="repmgr-node-status">, <xref linkend="repmgr-node-check">
+    </para>
+  </refsect1>
+
 </refentry>
