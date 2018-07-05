@@ -53,6 +53,35 @@
   </refsect1>
 
   <refsect1>
+    <title>Exit codes</title>
+    <para>
+      Following exit codes can be emitted by <command>repmgr node status</command>:
+    </para>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            No issues were detected.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_NODE_STATUS (25)</option></term>
+        <listitem>
+          <para>
+            One or more issues were detected.
+          </para>
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+  </refsect1>
+
+
+  <refsect1>
     <title>See also</title>
     <para>
       See <xref linkend="repmgr-node-check"> to diagnose issues.

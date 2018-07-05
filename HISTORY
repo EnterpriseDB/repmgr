@@ -4,6 +4,7 @@
         repmgr: fix "standby register --wait-sync" when no timeout provided (Ian)
         repmgr: "cluster show" returns non-zero value if an issue encountered;
           GitHub #456 (Ian)
+        repmgr: "node status" returns non-zero value if an issue encountered (Ian)
         repmgrd: create a PID file by default; GitHub #457 (Ian)
 		repmgrd: daemonize process by default; GitHub #458 (Ian)
 

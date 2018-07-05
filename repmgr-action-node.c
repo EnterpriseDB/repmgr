@@ -487,7 +487,7 @@ do_node_status(void)
 
 	termPQExpBuffer(&output);
 
-	if (runtime_options.output_mode == OM_TEXT && warnings.head != NULL && runtime_options.terse == false)
+	if (warnings.head != NULL && runtime_options.terse == false && runtime_options.output_mode == OM_TEXT)
 	{
 		log_warning(_("following issue(s) were detected:"));
 		print_item_list(&warnings);
@@ -498,7 +498,19 @@ do_node_status(void)
 	key_value_list_free(&node_status);
 	item_list_free(&warnings);
 	PQfinish(conn);
+
+	/*
+	 * If warnings were noted, even if they're not displayed (e.g. in --csv node),
+	 * that means something's not right so we need to emit a non-zero exit code.
+	 */
+	if (warnings.head != NULL)
+	{
+		exit(ERR_NODE_STATUS);
+	}
+
+	return;
 }
+
 
 /*
  * Returns information about the running state of the node.
