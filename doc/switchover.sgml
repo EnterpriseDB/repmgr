@@ -140,10 +140,12 @@
     manually with <command>repmgr node check --archive-ready</command>.
    </para>
 
-   <para>
-    Ensure that <application>repmgrd</application> is *not* running anywhere to prevent it unintentionally
-    promoting a node.
-   </para>
+   <note>
+     <para>
+       Ensure that <application>repmgrd</application> is *not* running anywhere to prevent it unintentionally
+       promoting a node. This restriction will be removed in a future &repmgr; version.
+     </para>
+   </note>
 
    <para>
     Finally, consider executing <command>repmgr standby switchover</command> with the

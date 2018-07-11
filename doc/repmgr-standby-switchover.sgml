@@ -12,6 +12,7 @@
     <refpurpose>promote a standby to primary and demote the existing primary to a standby</refpurpose>
   </refnamediv>
 
+
   <refsect1>
     <title>Description</title>
 
@@ -39,6 +40,14 @@
       For more details on performing a switchover, including preparation and configuration,
       see section <xref linkend="performing-switchover">.
     </para>
+
+    <note>
+      <para>
+        <application>repmgrd</application> should not be active on any nodes while a switchover is being
+        executed. This restriction may be lifted in a later version.
+      </para>
+    </note>
+
   </refsect1>
 
   <refsect1>
@@ -173,8 +182,8 @@
     </para>
     <important>
       <para>
-        <application>repmgrd</application> should not be active on any nodes while a switchover is being
-        executed. This restriction may be lifted in a later version.
+        <application>repmgrd</application> must be shut down on all nodes while a switchover is being
+        executed. This restriction will be removed in a future &repmgr; version.
       </para>
     </important>
     <para>
