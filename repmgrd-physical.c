@@ -1539,8 +1539,15 @@ loop:
 static bool
 do_primary_failover(void)
 {
+	ElectionResult election_result;
+
+	/*
+	 * Double-check status of the local connection
+	 */
+	check_connection(&local_node_info, &local_conn);
+
 	/* attempt to initiate voting process */
-	ElectionResult election_result = do_election();
+	election_result = do_election();
 
 	/* TODO add pre-event notification here */
 	failover_state = FAILOVER_STATE_UNKNOWN;
