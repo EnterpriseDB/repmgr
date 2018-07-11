@@ -32,6 +32,7 @@
       check the promotion every <varname>promote_check_interval</varname> seconds (default: 1 second).
       Both values can be defined in <filename>repmgr.conf</filename>.
     </para>
+
   </refsect1>
 
   <refsect1>
