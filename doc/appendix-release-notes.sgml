@@ -47,6 +47,14 @@
               (GitHub #470).
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              <varname>recovery_min_apply_delay</varname> now accepts a minimum value
+              of <literal>zero</literal> (GitHub #448).
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
 
