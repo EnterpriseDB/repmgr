@@ -112,7 +112,7 @@
         particularly on <application>systemd</application>-based systems.
       </para>
       <para>
-        For more details, see <xref linkend="configuration-service-commands">.
+        For more details, see <xref linkend="configuration-file-service-commands">.
       </para>
     </sect2>
 

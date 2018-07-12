@@ -1,4 +1,4 @@
-<sect1 id="configuration-service-commands" xreflabel="service command settings">
+<sect1 id="configuration-file-service-commands" xreflabel="service command settings">
   <indexterm>
     <primary>repmgr.conf</primary>
     <secondary>service command settings</secondary>

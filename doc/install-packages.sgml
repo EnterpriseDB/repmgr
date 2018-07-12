@@ -38,7 +38,7 @@
 
   <para>
     For more information on the package contents, including details of installation
-    paths and relevant <link linkend="configuration-service-commands">service commands</link>,
+    paths and relevant <link linkend="configuration-file-service-commands">service commands</link>,
     see the appendix section <xref linkend="packages-centos">.
   </para>
 
@@ -167,7 +167,7 @@ $ yum install repmgr10</programlisting>
   </para>
   <para>
     For more information on the package contents, including details of installation
-    paths and relevant <link linkend="configuration-service-commands">service commands</link>,
+    paths and relevant <link linkend="configuration-file-service-commands">service commands</link>,
     see the appendix section <xref linkend="packages-debian-ubuntu">.
   </para>
 

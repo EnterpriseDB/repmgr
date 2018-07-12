@@ -2,16 +2,16 @@
   <title>repmgr configuration</title>
 
   &configuration-file;
-  &configuration-file-settings;
-  &configuration-service-commands;
+  &configuration-file-required-settings;
+  &configuration-file-service-commands;
 
-  <sect1 id="configuration-permissions" xreflabel="User permissions">
+  <sect1 id="configuration-permissions" xreflabel="Database user permissions">
     <indexterm>
       <primary>configuration</primary>
-      <secondary>user permissions</secondary>
+      <secondary>database user permissions</secondary>
     </indexterm>
 
-    <title>repmgr user permissions</title>
+    <title>repmgr database user permissions</title>
     <para>
       &repmgr; will create an extension database containing objects
       for administering &repmgr; metadata. The user defined in the <varname>conninfo</varname>

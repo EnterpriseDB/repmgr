@@ -234,7 +234,7 @@
   <para>
    <filename>repmgr.conf</filename> should not be stored inside the PostgreSQL data directory,
    as it could be overwritten when setting up or reinitialising the PostgreSQL
-   server. See sections on <xref linkend="configuration-file"> and <xref linkend="configuration-file-settings">
+   server. See sections <xref linkend="configuration"> and <xref linkend="configuration-file">
    for further details about <filename>repmgr.conf</filename>.
   </para>
   <tip>

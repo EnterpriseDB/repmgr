@@ -227,7 +227,7 @@
           <listitem>
             <para>
               Various documentation improvements, with particular emphasis on
-              the importance of setting appropriate <link linkend="configuration-service-commands">service commands</link>
+              the importance of setting appropriate <link linkend="configuration-file-service-commands">service commands</link>
               instead of relying on <application>pg_ctl</application>.
             </para>
           </listitem>

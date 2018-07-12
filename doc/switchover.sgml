@@ -104,7 +104,7 @@
        server.
      </para>
      <para>
-       For more details, see <xref linkend="configuration-service-commands">.
+       For more details, see <xref linkend="configuration-file-service-commands">.
      </para>
    </important>
 

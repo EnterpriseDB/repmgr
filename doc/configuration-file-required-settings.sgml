@@ -1,10 +1,10 @@
-<sect1 id="configuration-file-settings" xreflabel="configuration file settings">
+<sect1 id="configuration-file-settings" xreflabel="required configuration file settings">
   <indexterm>
     <primary>repmgr.conf</primary>
-    <secondary>basic settings</secondary>
+    <secondary>required settings</secondary>
   </indexterm>
 
- <title>Basic configuration file settings</title>
+ <title>Required configuration file settings</title>
  <para>
    Each <filename>repmgr.conf</filename> file must contain the following parameters:
  </para>
