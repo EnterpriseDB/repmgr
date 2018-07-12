@@ -98,7 +98,7 @@
 #log_facility=STDERR		 # Logging facility: possible values are STDERR, or for
 				 # syslog integration, one of LOCAL0, LOCAL1, ..., LOCAL7, USER
 
-#log_file=''			 # stderr can be redirected to an arbitrary file
+#log_file=''			 # STDERR can be redirected to an arbitrary file
 #log_status_interval=300	 # interval (in seconds) for repmgrd to log a status message
 
 

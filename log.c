@@ -42,7 +42,7 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 0)));
 
 int			log_type = REPMGR_STDERR;
-int			log_level = LOG_NOTICE;
+int			log_level = LOG_INFO;
 int			last_log_level = LOG_INFO;
 int			verbose_logging = false;
 int			terse_logging = false;
@@ -70,7 +70,7 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 
 	/*
 	 * Store the requested level so that if there's a subsequent log_hint() or
-	 * log_detail(), we can suppress that if appropriate.
+	 * log_detail(), we can suppress that if --terse was specified,
 	 */
 	last_log_level = level;
 

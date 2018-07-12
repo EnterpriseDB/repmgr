@@ -34,11 +34,31 @@
     </para>
 
     <sect2>
+      <title>Configuration file changes</title>
+
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              Default for <xref linkend="repmgr-conf-log-level"> is now <option>INFO</option>.
+              This produces additional informative log output, without creating excessive additional
+              log file volume, and matches the setting assumed for examples in the documentation.
+              (GitHub #470).
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+
+    </sect2>
+
+
+    <sect2>
       <title>repmgr enhancements</title>
       <para>
         <itemizedlist>
 
-        <listitem>
+          <listitem>
             <para>
               <application>repmgr</application>: always exit with an error if an unrecognised
               command line option is provided. This matches the behaviour of other PostgreSQL
@@ -53,6 +73,8 @@
               <command><link linkend="repmgr-node-status">repmgr node status</link></command>
               return non-zero exit code if node status issues detected. (GitHub #456).
             </para>
+
+
           </listitem>
         </itemizedlist>
       </para>

@@ -3,6 +3,7 @@
 
   &configuration-file;
   &configuration-file-required-settings;
+  &configuration-file-log-settings;
   &configuration-file-service-commands;
 
   <sect1 id="configuration-permissions" xreflabel="Database user permissions">
