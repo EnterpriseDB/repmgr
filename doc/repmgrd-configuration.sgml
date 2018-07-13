@@ -170,10 +170,14 @@
       running <application>repmgrd</application> daemon.
     </para>
 
-    <sect2 id="repmgrd-pid-file">
+    <sect2 id="repmgrd-pid-file" xreflabel="repmgrd's PID file">
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>PID file</secondary>
+      </indexterm>
+      <indexterm>
+        <primary>PID file</primary>
+        <secondary>repmgrd</secondary>
       </indexterm>
       <title>repmgrd's PID file</title>
       <para>
@@ -197,16 +201,21 @@
         <option>--pid-file</option> may be deprecated in future releases.
       </para>
       <para>
-        If no PID file is specified, <application>repmgrd</application> will create one
-        in the operating system's temporary directory (determined by the environment variable
-        <varname>TMPDIR</varname>, or if that is not set, will use <filename>/tmp</filename>.
+        If a PID file location was specified by the package maintainer, <application>repmgrd</application>
+        will use that. This only applies if &repmgr; was installed from a package and the package
+        maintainer has specified the PID file location.
+      </para>
+      <para>
+        If none of the above apply, <application>repmgrd</application> will create a PID file
+        in the operating system's temporary directory (das etermined by the environment variable
+        <varname>TMPDIR</varname>, or if that is not set, will use <filename>/tmp</filename>).
       </para>
       <para>
         To prevent a PID file being generated at all, provide the command line option
         <option>--no-pid-file</option>.
       </para>
       <para>
-        To see which PID file would use, execute <application>repmgrd</application>
+        To see which PID file <application>repmgrd</application> would use, execute <application>repmgrd</application>
         with the option <option>--show-pid-file</option>. <application>repmgrd</application>
         will not start if this option is provided. Note that the value shown is the
         file  <application>repmgrd</application> would use next time it starts, and is

@@ -275,12 +275,22 @@ main(int argc, char **argv)
 		/* no pid file provided - determine location */
 		if (pid_file[0] == '\0')
 		{
-			const char *tmpdir = getenv("TMPDIR");
+			/* packagers: if feasible, patch PID file path into "package_pid_file" */
+			char		package_pid_file[MAXPGPATH] = "";
 
-			if (!tmpdir)
-				tmpdir = "/tmp";
+			if (package_pid_file[0] != '\0')
+			{
+				maxpath_snprintf(pid_file, "%s", package_pid_file);
+			}
+			else
+			{
+				const char *tmpdir = getenv("TMPDIR");
 
-			maxpath_snprintf(pid_file, "%s/repmgrd.pid", tmpdir);
+				if (!tmpdir)
+					tmpdir = "/tmp";
+
+				maxpath_snprintf(pid_file, "%s/repmgrd.pid", tmpdir);
+			}
 		}
 	}
 	else

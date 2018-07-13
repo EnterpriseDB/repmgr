@@ -364,4 +364,48 @@
    </sect2>
 
   </sect1>
+
+
+  <sect1 id="packages-packager-info" xreflabel="Information for packagers">
+    <title>Information for packagers</title>
+    <indexterm>
+      <primary>packages</primary>
+      <secondary>information for packagers</secondary>
+    </indexterm>
+    <para>
+      We recommend patching the following  parameters when
+      building the package as built-in default values for user convenience.
+      These values can nevertheless be overridden by the user, if desired.
+    </para>
+    <itemizedlist>
+      <listitem>
+        <para>
+          Configuration file location: the default configuration file location
+          can be hard-coded by patching <varname>package_conf_file</varname>
+          in <filename>configfile.c</filename>:
+          <programlisting>
+		/* packagers: if feasible, patch configuration file path into "package_conf_file" */
+		char		package_conf_file[MAXPGPATH] = "";</programlisting>
+        </para>
+        <para>
+          See also: <xref linkend="configuration-file">
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          PID file location: the default <application>repmgrd</application> PID file
+          location can be hard-coded by patching <varname>package_pid_file</varname>
+          in <filename>repmgrd.c</filename>:
+          <programlisting>
+		/* packagers: if feasible, patch PID file path into "package_pid_file" */
+		char		package_pid_file[MAXPGPATH] = "";</programlisting>
+        </para>
+        <para>
+          See also: <xref linkend="repmgrd-pid-file">
+        </para>
+      </listitem>
+
+    </itemizedlist>
+  </sect1>
 </appendix>
