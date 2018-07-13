@@ -8,6 +8,7 @@
         repmgr: "node check" and "node status" returns non-zero value if an issue
            encountered (Ian)
         repmgr: add CSV output mode to "cluster event"; GitHub #471 (Ian)
+        repmgr: add -q/--quiet option to suppress non-error output; GitHub #468 (Ian)
         repmgr: "node status" returns non-zero value if an issue encountered (Ian)
         repmgrd: create a PID file by default; GitHub #457 (Ian)
         repmgrd: daemonize process by default; GitHub #458 (Ian)

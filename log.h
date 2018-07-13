@@ -129,6 +129,7 @@ bool		logger_shutdown(void);
 void		logger_set_verbose(void);
 void		logger_set_terse(void);
 void		logger_set_min_level(int min_log_level);
+void		logger_set_level(int new_log_level);
 
 void
 log_detail(const char *fmt,...)

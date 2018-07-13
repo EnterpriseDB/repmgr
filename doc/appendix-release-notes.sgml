@@ -68,6 +68,13 @@
 
           <listitem>
             <para>
+              <application>repmgr</application>: add <option>-q/--quiet</option> option to suppress non-error
+              output. (GitHub #468).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>,
               <command><link linkend="repmgr-node-check">repmgr node check</link></command> and
               <command><link linkend="repmgr-node-status">repmgr node status</link></command>

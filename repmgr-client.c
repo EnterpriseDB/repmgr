@@ -182,7 +182,7 @@ main(int argc, char **argv)
 	/* Make getopt emitting errors */
 	opterr = 1;
 
-	while ((c = getopt_long(argc, argv, "?Vb:f:FwWd:h:p:U:R:S:D:ck:L:tvC:", long_options,
+	while ((c = getopt_long(argc, argv, "?Vb:f:FwWd:h:p:U:R:S:D:ck:L:qtvC:", long_options,
 							&optindex)) != -1)
 	{
 		/*
@@ -572,6 +572,12 @@ main(int argc, char **argv)
 			case OPT_LOG_TO_FILE:
 				runtime_options.log_to_file = true;
 				logger_output_mode = OM_DAEMON;
+				break;
+
+
+				/* --quiet */
+			case 'q':
+				runtime_options.quiet = true;
 				break;
 
 				/* --terse */
@@ -1115,6 +1121,17 @@ main(int argc, char **argv)
 	{
 		logger_set_min_level(LOG_INFO);
 	}
+
+	/*
+	 * If -q/--quiet supplied, suppress any non-ERROR log output.
+	 * This overrides everything else; we'll leave it up to the user to deal with the
+	 * consequences of e.g. running --dry-run together with -q/--quiet.
+	 */
+	if (runtime_options.quiet == true)
+	{
+		logger_set_level(LOG_ERROR);
+	}
+
 
 
 	/*
@@ -1934,6 +1951,7 @@ do_help(void)
 	printf(_("  --dry-run                           show what would happen for action, but don't execute it\n"));
 	printf(_("  -L, --log-level                     set log level (overrides configuration file; default: NOTICE)\n"));
 	printf(_("  --log-to-file                       log to file (or logging facility) defined in repmgr.conf\n"));
+	printf(_("  -q, --quiet                         suppress all log output apart from errors\n"));
 	printf(_("  -t, --terse                         don't display detail, hints and other non-critical output\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
 

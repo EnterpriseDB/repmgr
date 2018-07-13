@@ -47,6 +47,7 @@ typedef struct
 	/* logging options */
 	char		log_level[MAXLEN];	/* overrides setting in repmgr.conf */
 	bool		log_to_file;
+	bool		quiet;
 	bool		terse;
 	bool		verbose;
 
@@ -138,7 +139,7 @@ typedef struct
 		/* general configuration options */	\
 		"", false, false, "", false, false,	\
 		/* logging options */ \
-		"", false, false, false, \
+		"", false, false, false, false,	\
 		/* output options */ \
 		false, false, false,  \
 		/* database connection options */ \

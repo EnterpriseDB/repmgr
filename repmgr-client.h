@@ -126,6 +126,7 @@ static struct option long_options[] =
 /* logging options */
 	{"log-level", required_argument, NULL, 'L'},
 	{"log-to-file", no_argument, NULL, OPT_LOG_TO_FILE},
+	{"quiet",  no_argument, NULL, 'q'},
 	{"terse", no_argument, NULL, 't'},
 	{"verbose", no_argument, NULL, 'v'},
 
