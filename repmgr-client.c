@@ -1519,6 +1519,7 @@ check_cli_parameters(const int action)
 		{
 			case PRIMARY_UNREGISTER:
 			case STANDBY_UNREGISTER:
+			case WITNESS_UNREGISTER:
 			case CLUSTER_EVENT:
 			case CLUSTER_MATRIX:
 			case CLUSTER_CROSSCHECK:

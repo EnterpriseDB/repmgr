@@ -20,7 +20,10 @@
     </para>
     <para>
       The node does not have to be running to be unregistered, however if this is the
-      case then connection information for the primary server must be provided.
+      case then either provide connection information for the primary server, or
+	  execute <command>repmgr witness unregister</command> on a running node and
+	  provide the parameter <option>--node-id</option> with the node ID of the
+	  witness server.
     </para>
     <para>
       Execute with the <literal>--dry-run</literal> option to check what would happen
@@ -36,17 +39,17 @@
     INFO: connecting to witness node "node3" (ID: 3)
     INFO: unregistering witness node 3
     INFO: witness unregistration complete
-    DETAIL: witness node with id 3 (conninfo: host=node3 dbname=repmgr user=repmgr port=5499) successfully unregistered</programlisting>
+    DETAIL: witness node with UD 3 successfully unregistered</programlisting>
     </para>
     <para>
       Unregistering a non-running witness node:
       <programlisting>
         $ repmgr -f /etc/repmgr.conf witness unregister -h node1 -p 5501  -F
-        INFO: connecting to witness node "node3" (ID: 3)
-        NOTICE: unable to connect to witness node "node3" (ID: 3), removing node record on cluster primary only
+        INFO: connecting to node "node3" (ID: 3)
+        NOTICE: unable to connect to node "node3" (ID: 3), removing node record on cluster primary only
         INFO: unregistering witness node 3
         INFO: witness unregistration complete
-        DETAIL: witness node with id 3 (conninfo: host=node3 dbname=repmgr user=repmgr port=5499) successfully unregistered</programlisting>
+        DETAIL: witness node with id ID 3 successfully unregistered</programlisting>
     </para>
   </refsect1>
 
@@ -60,6 +63,32 @@
       A witness node which has been unregistered, can be re-registered with
       <link linkend="repmgr-witness-register">repmgr witness register --force</link>.
     </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually unregister the witness.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+       <term><option>--node-id</option></term>
+        <listitem>
+          <para>
+            Unregister witness server with the specified node ID.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
   </refsect1>
 
 

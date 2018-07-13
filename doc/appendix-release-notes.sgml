@@ -98,6 +98,14 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-witness-unregister">repmgr witness unregister</link></command>
+			  can be run on any node, by providing the ID of the witness node with <option>--node-id</option>.
+			  (GitHub #472).
+			</para>
+		  </listitem>
+
         </itemizedlist>
       </para>
     </sect2>

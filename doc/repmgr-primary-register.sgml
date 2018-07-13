@@ -17,7 +17,7 @@
     <title>Description</title>
     <para>
       <command>repmgr primary register</command> registers a primary node in a
-      streaming replication cluster, and configures it for use with repmgr, including
+      streaming replication cluster, and configures it for use with &repmgr;, including
       installing the &repmgr; extension. This command needs to be executed before any
       standby nodes are registered.
     </para>

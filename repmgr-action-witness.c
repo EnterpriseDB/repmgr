@@ -310,55 +310,59 @@ do_witness_register(void)
 void
 do_witness_unregister(void)
 {
-	PGconn	   *witness_conn = NULL;
+	PGconn	   *local_conn = NULL;
 	PGconn	   *primary_conn = NULL;
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	bool		node_record_deleted = false;
-	bool		witness_available = true;
+	bool		local_node_available = true;
+	int			witness_node_id = UNKNOWN_NODE_ID;
 
-	log_info(_("connecting to witness node \"%s\" (ID: %i)"),
+	if (runtime_options.node_id != UNKNOWN_NODE_ID)
+	{
+		/* user has specified the witness node id */
+		witness_node_id = runtime_options.node_id;
+	}
+	else
+	{
+		/* assume witness node is local node */
+		witness_node_id = config_file_options.node_id;
+	}
+
+	log_info(_("connecting to node \"%s\" (ID: %i)"),
 			 config_file_options.node_name,
 			 config_file_options.node_id);
 
-	witness_conn = establish_db_connection_quiet(config_file_options.conninfo);
+	local_conn = establish_db_connection_quiet(config_file_options.conninfo);
 
-	if (PQstatus(witness_conn) != CONNECTION_OK)
+	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
 		if (!runtime_options.force)
 		{
-			log_error(_("unable to connect to witness node \"%s\" (ID: %i)"),
+			log_error(_("unable to connect to node \"%s\" (ID: %i)"),
 					  config_file_options.node_name,
 					  config_file_options.node_id);
-			log_detail("%s", PQerrorMessage(witness_conn));
-			log_hint(_("provide -F/--force to remove the witness record if the server is not running"));
+			log_detail("%s", PQerrorMessage(local_conn));
 			exit(ERR_BAD_CONFIG);
 		}
 
 		log_notice(_("unable to connect to witness node \"%s\" (ID: %i), removing node record on cluster primary only"),
 				   config_file_options.node_name,
 				   config_file_options.node_id);
-		witness_available = false;
+		local_node_available = false;
 	}
 
-	if (witness_available == true)
+	if (local_node_available == true)
 	{
-		primary_conn = get_primary_connection_quiet(witness_conn, NULL, NULL);
+		primary_conn = get_primary_connection_quiet(local_conn, NULL, NULL);
 	}
 	else
 	{
 		/*
-		 * Extract the repmgr user and database names from the conninfo string
-		 * provided in repmgr.conf
+		 * Assume user has provided connection details for the primary server
 		 */
-		get_conninfo_value(config_file_options.conninfo, "user", repmgr_user);
-		get_conninfo_value(config_file_options.conninfo, "dbname", repmgr_db);
-
-		param_set_ine(&source_conninfo, "user", repmgr_user);
-		param_set_ine(&source_conninfo, "dbname", repmgr_db);
 
 		primary_conn = establish_db_connection_by_params(&source_conninfo, false);
-
 	}
 
 	if (PQstatus(primary_conn) != CONNECTION_OK)
@@ -366,26 +370,26 @@ do_witness_unregister(void)
 		log_error(_("unable to connect to primary"));
 		log_detail("%s", PQerrorMessage(primary_conn));
 
-		if (witness_available == true)
+		if (local_node_available == true)
 		{
-			PQfinish(witness_conn);
+			PQfinish(local_conn);
 		}
-		else
+		else if (runtime_options.connection_param_provided == false)
 		{
-			log_hint(_("provide connection details to primary server"));
+			log_hint(_("provide connection details for the primary server"));
 		}
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Check node exists and is really a witness */
-	record_status = get_node_record(primary_conn, config_file_options.node_id, &node_record);
+	record_status = get_node_record(primary_conn, witness_node_id, &node_record);
 
 	if (record_status != RECORD_FOUND)
 	{
-		log_error(_("no record found for node %i"), config_file_options.node_id);
+		log_error(_("no record found for node %i"), witness_node_id);
 
-		if (witness_available == true)
-			PQfinish(witness_conn);
+		if (local_node_available == true)
+			PQfinish(local_conn);
 		PQfinish(primary_conn);
 
 		exit(ERR_BAD_CONFIG);
@@ -393,11 +397,17 @@ do_witness_unregister(void)
 
 	if (node_record.type != WITNESS)
 	{
+		/*
+		 * The node (either explicitly provided with --node-id, or the local node)
+		 * is not a witness.
+		 *
+		 * TODO: scan node list and print hint about identity of known witness servers.
+		 */
 		log_error(_("node %i is not a witness node"), config_file_options.node_id);
 		log_detail(_("node %i is a %s node"), config_file_options.node_id, get_node_type_string(node_record.type));
 
-		if (witness_available == true)
-			PQfinish(witness_conn);
+		if (local_node_available == true)
+			PQfinish(local_conn);
 		PQfinish(primary_conn);
 
 		exit(ERR_BAD_CONFIG);
@@ -406,49 +416,43 @@ do_witness_unregister(void)
 	if (runtime_options.dry_run == true)
 	{
 		log_info(_("prerequisites for unregistering the witness node are met"));
-		if (witness_available == true)
-			PQfinish(witness_conn);
+		if (local_node_available == true)
+			PQfinish(local_conn);
 		PQfinish(primary_conn);
 
 		exit(SUCCESS);
 	}
 
-	log_info(_("unregistering witness node %i"), config_file_options.node_id);
+	log_info(_("unregistering witness node %i"), witness_node_id);
 	node_record_deleted = delete_node_record(primary_conn,
-										     config_file_options.node_id);
+										     witness_node_id);
 
 	if (node_record_deleted == false)
 	{
 		PQfinish(primary_conn);
-		PQfinish(witness_conn);
-		exit(ERR_BAD_CONFIG);
-	}
 
-	/* sync records from primary */
-	if (witness_available == true && witness_copy_node_records(primary_conn, witness_conn) == false)
-	{
-		log_error(_("unable to copy repmgr node records from primary"));
-		PQfinish(primary_conn);
-		PQfinish(witness_conn);
+		if (local_node_available == true)
+			PQfinish(local_conn);
+		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
 	/* Log the event */
 	create_event_record(primary_conn,
 						&config_file_options,
-						config_file_options.node_id,
+						witness_node_id,
 						"witness_unregister",
 						true,
 						NULL);
 
 	PQfinish(primary_conn);
 
-	if (witness_available == true)
-		PQfinish(witness_conn);
+	if (local_node_available == true)
+		PQfinish(local_conn);
 
 	log_info(_("witness unregistration complete"));
-	log_detail(_("witness node with id %i (conninfo: %s) successfully unregistered"),
-			    config_file_options.node_id, config_file_options.conninfo);
+	log_detail(_("witness node with ID %i successfully unregistered"),
+			    witness_node_id);
 
 	return;
 }
@@ -468,16 +472,19 @@ void do_witness_help(void)
 	puts("");
 	printf(_("  Requires provision of connection information for the primary\n"));
 	puts("");
-	printf(_("  --dry-run                           check prerequisites but don't make any changes\n"));
-	printf(_("  -F, --force                         overwrite an existing node record\n"));
+	printf(_("  --dry-run                check prerequisites but don't make any changes\n"));
+	printf(_("  -F, --force              overwrite an existing node record\n"));
 	puts("");
 
 	printf(_("WITNESS UNREGISTER\n"));
 	puts("");
 	printf(_("  \"witness register\" unregisters a witness node.\n"));
 	puts("");
-	printf(_("  --dry-run                           check prerequisites but don't make any changes\n"));
-	printf(_("  -F, --force                         unregister when witness node not running\n"));
+	printf(_("  --dry-run                check prerequisites but don't make any changes\n"));
+	printf(_("  -F, --force              unregister when witness node not running\n"));
+	printf(_("  --node-id                node ID of the witness node (provide if executing on\n"));
+	printf(_("                             another node)\n"));
+
 	puts("");
 
 	return;
