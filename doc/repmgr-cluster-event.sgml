@@ -50,6 +50,22 @@
   </refsect1>
 
   <refsect1>
+    <title>Output format</title>
+    <para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <literal>--csv</literal>: generate output in CSV format. Note that the <literal>Details</literal>
+            column will currently not be emitted in CSV format.
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+    </para>
+  </refsect1>
+
+  <refsect1>
     <title>Example</title>
     <para>
       <programlisting>

@@ -68,14 +68,21 @@
 
           <listitem>
             <para>
-              <command><link linkend="repmgr-cluster-show">repmgr cluster-show</link></command>,
+              <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>,
               <command><link linkend="repmgr-node-check">repmgr node check</link></command> and
               <command><link linkend="repmgr-node-status">repmgr node status</link></command>
               return non-zero exit code if node status issues detected. (GitHub #456).
             </para>
-
-
           </listitem>
+
+          <listitem>
+            <para>
+              Add <option>--csv</option> output option for
+              <command><link linkend="repmgr-cluster-event">repmgr cluster event</link></command>.
+              (GitHub #471).
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>

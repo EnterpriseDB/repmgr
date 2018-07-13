@@ -463,6 +463,7 @@ do_cluster_show(void)
  *   --all
  *   --node-[id|name]
  *   --event
+ *   --csv
  */
 
 void
@@ -507,8 +508,12 @@ do_cluster_event(void)
 	strncpy(headers_event[EV_TIMESTAMP].title, _("Timestamp"), MAXLEN);
 	strncpy(headers_event[EV_DETAILS].title, _("Details"), MAXLEN);
 
-	/* if --terse provided, simply omit the "Details" column */
-	if (runtime_options.terse == true)
+	/*
+	 * If --terse or --csv provided, simply omit the "Details" column.
+	 * In --csv mode we'd need to quote/escape the contents "Details" column,
+	 * which is doable but which will remain a TODO for now.
+	 */
+	if (runtime_options.terse == true || runtime_options.output_mode == OM_CSV)
 		column_count --;
 
 	for (i = 0; i < column_count; i++)
@@ -531,47 +536,64 @@ do_cluster_event(void)
 
 	}
 
-	for (i = 0; i < column_count; i++)
+	if (runtime_options.output_mode == OM_TEXT)
 	{
-		if (i == 0)
-			printf(" ");
-		else
-			printf(" | ");
+		for (i = 0; i < column_count; i++)
+		{
+			if (i == 0)
+				printf(" ");
+			else
+				printf(" | ");
 
-		printf("%-*s",
-			   headers_event[i].max_length,
-			   headers_event[i].title);
+			printf("%-*s",
+				   headers_event[i].max_length,
+				   headers_event[i].title);
+		}
+		printf("\n");
+		printf("-");
+		for (i = 0; i < column_count; i++)
+		{
+			int			j;
+
+			for (j = 0; j < headers_event[i].max_length; j++)
+				printf("-");
+
+			if (i < (column_count - 1))
+				printf("-+-");
+			else
+				printf("-");
+		}
+
+		printf("\n");
 	}
-	printf("\n");
-	printf("-");
-	for (i = 0; i < column_count; i++)
-	{
-		int			j;
-
-		for (j = 0; j < headers_event[i].max_length; j++)
-			printf("-");
-
-		if (i < (column_count - 1))
-			printf("-+-");
-		else
-			printf("-");
-	}
-
-	printf("\n");
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
 		int			j;
 
-		printf(" ");
-		for (j = 0; j < column_count; j++)
+		if (runtime_options.output_mode == OM_CSV)
 		{
-			printf("%-*s",
-				   headers_event[j].max_length,
-				   PQgetvalue(res, i, j));
+			for (j = 0; j < column_count; j++)
+			{
+				printf("%s", PQgetvalue(res, i, j));
+				if ((j + 1) < column_count)
+				{
+					printf(",");
+				}
+			}
+		}
+		else
+		{
+			printf(" ");
+			for (j = 0; j < column_count; j++)
+			{
+				printf("%-*s",
+					   headers_event[j].max_length,
+					   PQgetvalue(res, i, j));
 
-			if (j < (column_count - 1))
-				printf(" | ");
+				if (j < (column_count - 1))
+					printf(" | ");
+			}
 		}
 
 		printf("\n");
@@ -581,7 +603,8 @@ do_cluster_event(void)
 
 	PQfinish(conn);
 
-	puts("");
+	if (runtime_options.output_mode == OM_TEXT)
+		puts("");
 }
 
 
@@ -1414,6 +1437,7 @@ do_cluster_help(void)
 	printf(_("    --event                   filter specific event\n"));
 	printf(_("    --node-id                 restrict entries to node with this ID\n"));
 	printf(_("    --node-name               restrict entries to node with this name\n"));
+	printf(_("    --csv                     emit output as CSV\n"));
 	puts("");
 
 	printf(_("CLUSTER CLEANUP\n"));
