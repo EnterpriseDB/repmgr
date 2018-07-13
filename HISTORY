@@ -11,6 +11,11 @@
         repmgr: add -q/--quiet option to suppress non-error output; GitHub #468 (Ian)
         repmgr: "node status" returns non-zero value if an issue encountered (Ian)
         repmgr: enable "recovery_min_apply_delay" to be 0; GitHub #448 (Ian)
+		repmgr: "cluster cleanup" - add missing help options; GitHub #461/#462 (gclough)
+		repmgr: ensure witness node follows new primary after switchover;
+		  GitHub #453 (Ian)
+		repmgr: fix witness node handling in "node check"/"node status";
+		  GitHub #451 (Ian)
         repmgrd: create a PID file by default; GitHub #457 (Ian)
         repmgrd: daemonize process by default; GitHub #458 (Ian)
 

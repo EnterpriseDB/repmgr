@@ -136,10 +136,33 @@
 
           <listitem>
             <para>
-              <application>repmgr</application>: fix <command><link linkend="repmgr-standby-register">repmgr standby register --wait-sync</link></command>
-              when no timeout provided.
+              <command><link linkend="repmgr-standby-register">repmgr standby register --wait-sync</link></command>:
+              fix behaviour when no timeout provided.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-cluster-cleanup">repmgr cluster cleanup</link></command>:
+			  add missing help options. (GitHub #461/#462).
+			</para>
+		  </listitem>
+
+          <listitem>
+            <para>
+			  Ensure witness node follows new primary after switchover. (GitHub #453).
+			</para>
+		  </listitem>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-node-check">repmgr node check</link></command> and
+              <command><link linkend="repmgr-node-status">repmgr node status</link></command>:
+			  fix witness node handling. (GitHub #451).
+			</para>
+		  </listitem>
+
+
         </itemizedlist>
       </para>
     </sect2>
