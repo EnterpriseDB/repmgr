@@ -1075,16 +1075,35 @@ reload_config(t_configuration_options *orig_options)
 	static ItemList config_errors = {NULL, NULL};
 	static ItemList config_warnings = {NULL, NULL};
 
+	PQExpBufferData errors;
+
 	log_info(_("reloading configuration file"));
 
 	_parse_config(&new_options, &config_errors, &config_warnings);
 
 	if (config_errors.head != NULL)
 	{
-		/* XXX dump errors to log */
+		ItemListCell *cell = NULL;
+
 		log_warning(_("unable to parse new configuration, retaining current configuration"));
+
+		initPQExpBuffer(&errors);
+
+		appendPQExpBuffer(&errors,
+						  "following errors were detected:\n");
+
+		for (cell = config_errors.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(&errors,
+							  "  %s\n", cell->string);
+		}
+
+		log_detail("%s", errors.data);
+		termPQExpBuffer(&errors);
 		return false;
 	}
+
+
 
 	/* The following options cannot be changed */
 
