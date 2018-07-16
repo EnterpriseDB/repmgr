@@ -2076,7 +2076,7 @@ promote_self(void)
 	/* the presence of this command has been established already */
 	promote_command = config_file_options.promote_command;
 
-	log_debug("promote command is:\n  \"%s\"",
+	log_info(_("promote_command is:\n  \"%s\""),
 			  promote_command);
 
 	if (log_type == REPMGR_STDERR && *config_file_options.log_file)
