@@ -214,6 +214,15 @@
     <variablelist>
 
       <varlistentry>
+        <term><option>-d, --dbname=CONNINFO</option></term>
+        <listitem>
+          <para>
+            Connection string of the upstream node to use for cloning.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>--dry-run</option></term>
         <listitem>
           <para>

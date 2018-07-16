@@ -6513,6 +6513,7 @@ do_standby_help(void)
 	puts("");
 	printf(_("  \"standby clone\" clones a standby from the primary or an upstream node.\n"));
 	puts("");
+	printf(_("  -d, --dbname=conninfo               conninfo of the upstream node to use for cloning.\n"));
 	printf(_("  -c, --fast-checkpoint               force fast checkpoint\n"));
 	printf(_("  --copy-external-config-files[={samepath|pgdata}]\n" \
 			 "                                      copy configuration files located outside the \n" \
