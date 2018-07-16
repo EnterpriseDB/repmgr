@@ -34,6 +34,24 @@
       the <ulink url="https://www.postgresql.org/docs/current/static/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES">PostgreSQL documentation</ulink>.
     </para>
 
+    <para>
+      To apply configuration file changes to a running <application>repmgrd</application>
+      daemon, execute the operating system's r<application>repmgrd</application> service reload command
+      (see <xref linkend="appendix-packages"> for examples),
+      or for instances  which were manually started, execute <command>kill -HUP</command>, e.g.
+      <command>kill -HUP `cat /tmp/repmgrd.pid`</command>.
+    </para>
+    <note>
+      <para>
+        Check the <application>repmgrd</application> log to see what changes were
+        applied, or if any issues were encountered when reloading the configuration.
+      </para>
+    </note>
+    <para>
+      Note that only a subset of configuration file parameters can be changed on a
+      running <application>repmgrd</application> daemon.
+    </para>
+
     <sect2 id="repmgrd-automatic-failover-configuration">
       <title>automatic failover configuration</title>
       <para>
@@ -161,13 +179,6 @@
       <programlisting>
         repmgrd -f /etc/repmgr.conf --pid-file /tmp/repmgrd.pid --daemonize</programlisting>
       and stopped with <command>kill `cat /tmp/repmgrd.pid`</command>. Adjust paths as appropriate.
-    </para>
-    <para>
-      To apply configuration file changes to a running <application>repmgrd</application>
-      daemon, execute the operating system's service reload command (for manually started
-      instances, execute <command>kill -HUP `cat /tmp/repmgrd.pid`</command>).
-      Note that only a subset of configuration file parameters can be changed on a
-      running <application>repmgrd</application> daemon.
     </para>
 
     <sect2 id="repmgrd-configuration-debian-ubuntu">

@@ -47,15 +47,23 @@
     service_restart_command
     service_reload_command</programlisting>
   </para>
-
   <note>
     <para>
-      It's also possible to specify a <varname>service_promote_command</varname>;
-      this overrides any value contained in the setting <varname>promote_command</varname>.
+      It's also possible to specify a <varname>service_promote_command</varname>.
       This is intended for systems which provide a package-level promote command,
-      such as Debian's <application>pg_ctlcluster</application>.
+      such as Debian's <application>pg_ctlcluster</application>, to promote the
+      PostgreSQL from standby to primary.
+    </para>
+    <para>
+      If your packaging system does not provide such a command, it can be left empty,
+      and &repmgr; will generate the appropriate <command>pg_ctl ... promote</command> command.
+    </para>
+    <para>
+      Do not confuse this with <varname>promote_command</varname>, which is used
+      by <application>repmgrd</application> to execute <xref linkend="repmgr-standby-promote">.
     </para>
   </note>
+
 
   <para>
     To confirm which command &repmgr; will execute for each action, use
