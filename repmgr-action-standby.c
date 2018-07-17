@@ -2912,6 +2912,24 @@ do_standby_switchover(void)
 	}
 
 	/*
+	 * Check that there's no exclusive backups running on the primary.
+	 * We don't want to end up damaging the backup and also leaving the server in an
+	 * state where there's control data saying it's in backup mode but there's no
+	 * backup_label in PGDATA.
+	 * If the DBA wants to do the switchover anyway, he should first stop the
+	 * backup that's running.
+	 */
+	if (!server_not_in_exclusive_backup_mode(remote_conn))
+	{
+		log_error(_("can't perform a switchover while primary server is in exclusive backup mode"));
+		log_hint(_("stop backup before attempting the switchover"));
+
+		PQfinish(remote_conn);
+
+		exit(ERR_SWITCHOVER_FAIL);
+	}
+
+	/*
 	 * Check this standby is attached to the demotion candidate
 	 * TODO:
 	 *  - check application_name in pg_stat_replication
