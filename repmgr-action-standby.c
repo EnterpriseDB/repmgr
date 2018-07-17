@@ -2916,7 +2916,7 @@ do_standby_switchover(void)
 	 * We don't want to end up damaging the backup and also leaving the server in an
 	 * state where there's control data saying it's in backup mode but there's no
 	 * backup_label in PGDATA.
-	 * If the DBA want's to do the switchover anyway, he should first stop the
+	 * If the DBA wants to do the switchover anyway, he should first stop the
 	 * backup that's running.
 	 */
 	if (!server_not_in_exclusive_backup_mode(remote_conn))
