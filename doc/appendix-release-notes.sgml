@@ -170,6 +170,13 @@
 			</para>
 		  </listitem>
 
+          <listitem>
+            <para>
+              When using <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>
+              with <option>--recovery-conf-only</option> and replication slots, ensure
+              <varname>primary_slot_name</varname> is set correctly. (GitHub #474).
+            </para>
+          </listitem>
 
         </itemizedlist>
       </para>

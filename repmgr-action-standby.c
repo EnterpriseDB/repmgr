@@ -1054,6 +1054,7 @@ _do_create_recovery_conf(void)
 								  local_node_record.slot_name,
 								  upstream_node_record.node_name,
 								  upstream_node_id);
+
 				if (runtime_options.force == false && runtime_options.dry_run == false)
 				{
 					log_error("%s", msg.data);
@@ -1085,7 +1086,7 @@ _do_create_recovery_conf(void)
 				initPQExpBuffer(&msg);
 
 				appendPQExpBuffer(&msg,
-								  _("insufficient free replicaiton slots on upstream node \"%s\" (ID: %i)"),
+								  _("insufficient free replication slots on upstream node \"%s\" (ID: %i)"),
 								  upstream_node_record.node_name,
 								  upstream_node_id);
 
@@ -1141,14 +1142,14 @@ _do_create_recovery_conf(void)
 	if (runtime_options.dry_run == true)
 	{
 		char		recovery_conf_contents[MAXLEN] = "";
-		create_recovery_file(&upstream_node_record, &recovery_conninfo, recovery_conf_contents, false);
+		create_recovery_file(&local_node_record, &recovery_conninfo, recovery_conf_contents, false);
 
 		log_info(_("would create \"recovery.conf\" file in \"%s\""), local_data_directory);
 		log_detail(_("\n%s"), recovery_conf_contents);
 	}
 	else
 	{
-		if (!create_recovery_file(&upstream_node_record, &recovery_conninfo, local_data_directory, true))
+		if (!create_recovery_file(&local_node_record, &recovery_conninfo, local_data_directory, true))
 		{
 			log_error(_("unable to create \"recovery.conf\""));
 		}
