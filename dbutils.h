@@ -467,6 +467,7 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 bool		is_server_available(const char *conninfo);
 bool		is_server_available_params(t_conninfo_param_list *param_list);
 void		connection_ping(PGconn *conn);
+bool            server_not_in_exclusive_backup_mode(PGconn *conn);
 
 /* monitoring functions  */
 void
