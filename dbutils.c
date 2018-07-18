@@ -4379,7 +4379,7 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  " SELECT (pg_catalog.regexp_match(extversion, '^\\d+'))[1] AS major_version "
+					  " SELECT (pg_catalog.regexp_matches(extversion, '^\\d+'))[1] AS major_version "
 					  "  FROM pg_catalog.pg_extension "
 					  " WHERE extname = 'bdr' ");
 
