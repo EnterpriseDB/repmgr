@@ -218,9 +218,6 @@
     <simpara><literal>repmgrd_promote_error</literal></simpara>
    </listitem>
    <listitem>
-    <simpara><literal>repmgrd_failover_promote</literal></simpara>
-   </listitem>
-   <listitem>
     <simpara><literal>bdr_failover</literal></simpara>
    </listitem>
    <listitem>
