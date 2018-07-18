@@ -258,6 +258,55 @@ do_node_status(void)
 								  "disabled");
 	}
 
+	/* check for attached nodes */
+	{
+		NodeInfoList downstream_nodes = T_NODE_INFO_LIST_INITIALIZER;
+		NodeInfoListCell *node_cell = NULL;
+		ItemList	missing_nodes = {NULL, NULL};
+		int			missing_nodes_count = 0;
+		int			expected_nodes_count = 0;
+
+		get_downstream_node_records(conn, config_file_options.node_id, &downstream_nodes);
+
+		/* if a witness node is present, we'll need to remove this from the total */
+		expected_nodes_count = downstream_nodes.node_count;
+
+		for (node_cell = downstream_nodes.head; node_cell; node_cell = node_cell->next)
+		{
+			/* skip witness server */
+			if (node_cell->node_info->type == WITNESS)
+			{
+				expected_nodes_count --;
+				continue;
+			}
+
+			if (is_downstream_node_attached(conn, node_cell->node_info->node_name) == false)
+			{
+				missing_nodes_count++;
+				item_list_append_format(&missing_nodes,
+										"%s (ID: %i)",
+										node_cell->node_info->node_name,
+										node_cell->node_info->node_id);
+			}
+		}
+
+		if (missing_nodes_count)
+		{
+			ItemListCell *missing_cell = NULL;
+
+			item_list_append_format(&warnings,
+									_("- %i of %i downstream nodes not attached:"),
+									missing_nodes_count,
+									expected_nodes_count);
+
+			for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
+			{
+				item_list_append_format(&warnings,
+										"  - %s\n", missing_cell->string);
+			}
+		}
+	}
+
 	if (server_version_num < 90400)
 	{
 		key_value_list_set(&node_status,
@@ -1096,6 +1145,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 
 	for (cell = downstream_nodes.head; cell; cell = cell->next)
 	{
+		/* skip witness server */
 		if (cell->node_info->type == WITNESS)
 		{
 			expected_nodes_count --;
