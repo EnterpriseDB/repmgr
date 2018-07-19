@@ -2919,11 +2919,12 @@ do_standby_switchover(void)
 	 * If the DBA wants to do the switchover anyway, he should first stop the
 	 * backup that's running.
 	 */
-	if (!server_not_in_exclusive_backup_mode(remote_conn))
+	if (server_in_exclusive_backup_mode(remote_conn) != BACKUP_STATE_NO_BACKUP)
 	{
-		log_error(_("can't perform a switchover while primary server is in exclusive backup mode"));
+		log_error(_("unable to perform a switchover while primary server is in exclusive backup mode"));
 		log_hint(_("stop backup before attempting the switchover"));
 
+		PQfinish(local_conn);
 		PQfinish(remote_conn);
 
 		exit(ERR_SWITCHOVER_FAIL);

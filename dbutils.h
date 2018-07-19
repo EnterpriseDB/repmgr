@@ -96,6 +96,14 @@ typedef enum
 	SLOT_ACTIVE
 } ReplSlotStatus;
 
+typedef enum
+{
+	BACKUP_STATE_UNKNOWN = -1,
+	BACKUP_STATE_IN_BACKUP,
+	BACKUP_STATE_NO_BACKUP
+} BackupState;
+
+
 /*
  * Struct to store node information
  */
@@ -390,6 +398,7 @@ int			get_ready_archive_files(PGconn *conn, const char *data_directory);
 bool		identify_system(PGconn *repl_conn, t_system_identification *identification);
 bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
 int			repmgrd_get_local_node_id(PGconn *conn);
+BackupState	server_in_exclusive_backup_mode(PGconn *conn);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);
@@ -467,7 +476,6 @@ int			wait_connection_availability(PGconn *conn, long long timeout);
 bool		is_server_available(const char *conninfo);
 bool		is_server_available_params(t_conninfo_param_list *param_list);
 void		connection_ping(PGconn *conn);
-bool            server_not_in_exclusive_backup_mode(PGconn *conn);
 
 /* monitoring functions  */
 void

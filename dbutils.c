@@ -1601,6 +1601,39 @@ repmgrd_get_local_node_id(PGconn *conn)
 }
 
 
+/*
+ * Function that checks if the primary is in exclusive backup mode.
+ * We'll use this when executing an action can conflict with an exclusive
+ * backup.
+ */
+BackupState
+server_in_exclusive_backup_mode(PGconn *conn)
+{
+	BackupState backup_state = BACKUP_STATE_UNKNOWN;
+	PGresult   *res = PQexec(conn, "SELECT pg_catalog.pg_is_in_backup()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to retrieve information regarding backup mode of node"));
+		log_detail("%s", PQerrorMessage(conn));
+		PQclear(res);
+		return BACKUP_STATE_UNKNOWN;
+	}
+
+	if (atobool(PQgetvalue(res, 0, 0)) == true)
+	{
+		backup_state = BACKUP_STATE_IN_BACKUP;
+	}
+	else
+	{
+		backup_state = BACKUP_STATE_NO_BACKUP;
+	}
+
+	PQclear(res);
+
+	return backup_state;
+}
+
 
 /* ================ */
 /* result functions */
@@ -3953,31 +3986,7 @@ connection_ping(PGconn *conn)
 	return;
 }
 
-/*
- * Function that checks if the primary is in exclusive backup mode.
- * We'll use this when executing an action can conflict with an exclusive
- * backup.
- */
-bool
-server_not_in_exclusive_backup_mode(PGconn *conn)
-{
-	PGresult   *res = PQexec(conn, "SELECT pg_is_in_backup()");
 
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_error(_("unable to retrieve information regarding backup mode of node"));
-		log_detail("%s", PQerrorMessage(conn));
-		PQclear(res);
-		return false;
-	}
-
-	if (strcmp(PQgetvalue(res, 0, 0), "t") == 0)
-	{
-		log_warning(_("node is in exclusive backup mode"));
-		return false;
-	}
-	return true;
-}
 
 /* ==================== */
 /* monitoring functions */

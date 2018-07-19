@@ -18,6 +18,8 @@
           GitHub #451 (Ian)
         repmgr: fix "primary_slot_name" when using "standby clone" with --recovery-conf-only;
           GitHub #474 (Ian)
+        repmgr: don't perform a switchover if an exclusive backup is running;
+          GitHub #476 (Martín)
         repmgr: enable "witness unregister" to be run on any node; GitHub #472 (Ian)
         repmgrd: create a PID file by default; GitHub #457 (Ian)
         repmgrd: daemonize process by default; GitHub #458 (Ian)

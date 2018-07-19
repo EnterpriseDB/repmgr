@@ -46,6 +46,9 @@
         <application>repmgrd</application> should not be active on any nodes while a switchover is being
         executed. This restriction may be lifted in a later version.
       </para>
+      <para>
+        &repmgr; will not perform the switchover if an exclusive backup is running on the current primary.
+      </para>
     </note>
 
   </refsect1>

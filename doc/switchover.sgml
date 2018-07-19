@@ -57,7 +57,7 @@
 
    <para>
     As mentioned in the previous section, success of the switchover operation depends on
-    &repmgr;  being able to shut down the current primary server quickly and cleanly.
+    &repmgr; being able to shut down the current primary server quickly and cleanly.
    </para>
 
    <para>
@@ -121,15 +121,21 @@
     </simpara>
    </note>
 
-
    <para>
-    Check that access from applications is minimalized or preferably blocked
-    completely, so applications are not unexpectedly interrupted.
+     Check that access from applications is minimalized or preferably blocked
+     completely, so applications are not unexpectedly interrupted.
+   </para>
+
+   <note>
+     <para>
+       If an exclusive backup is running on the current primary, &repmgr; will not perform the
+       switchover.
+     </para>
    </para>
 
    <para>
-    Check there is no significant replication lag on standbys attached to the
-    current primary.
+     Check there is no significant replication lag on standbys attached to the
+     current primary.
    </para>
 
    <para>
@@ -146,6 +152,7 @@
        promoting a node. This restriction will be removed in a future &repmgr; version.
      </para>
    </note>
+
 
    <para>
     Finally, consider executing <command>repmgr standby switchover</command> with the
