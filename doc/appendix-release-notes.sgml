@@ -108,7 +108,7 @@
 
           <listitem>
             <para>
-              <command><link linkend="repmgr-standby switchover">repmgr standby switchover</link></command>
+              <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>
               will refuse to run if an exclusive backup is taking place on the current primary.
 			  (GitHub #476).
 			</para>

@@ -131,7 +131,7 @@
        If an exclusive backup is running on the current primary, &repmgr; will not perform the
        switchover.
      </para>
-   </para>
+   </note>
 
    <para>
      Check there is no significant replication lag on standbys attached to the
