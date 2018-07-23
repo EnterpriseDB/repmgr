@@ -99,15 +99,16 @@
       replication cluster. The database must be the BDR-enabled database.
     </para>
     <para>
-      If defined, the evenr <application>event_notifications</application> parameter
-      will restrict execution of <varname>event_notification_command</varname>
+      If defined, the <varname>event_notifications</varname> parameter will restrict
+      execution of the script defined in  <varname>event_notification_command</varname>
       to the specified event(s).
     </para>
     <note>
       <simpara>
         <varname>event_notification_command</varname> is the script which does the actual "heavy lifting"
         of reconfiguring the proxy server/ connection pooler. It is fully
-        user-definable; a reference implementation is documented below.
+        user-definable; see section <xref linkend="bdr-event-notification-command"> for a reference
+        implementation.
       </simpara>
     </note>
 
@@ -169,8 +170,8 @@
     </para>
   </sect1>
 
-  <sect1 id="bdr-event-notification-command" xreflabel="BDR failover event notification command">
-    <title>Defining the "event_notification_command"</title>
+  <sect1 id="bdr-event-notification-command" xreflabel="Defining the BDR failover &quot;event_notification command&quot;">
+    <title>Defining the BDR failover "event_notification_command"</title>
     <para>
       Key to "failover" execution is the <literal>event_notification_command</literal>,
       which is a user-definable script specified in <filename>repmpgr.conf</filename>
