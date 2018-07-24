@@ -34,7 +34,7 @@
           </listitem>
           <listitem>
             <para>
-              Execute <command>ALTER EXTENSION repmgr UPGRADE</command>
+              Execute <command>ALTER EXTENSION repmgr UPDATE</command>
               on the primary server in the database where &repmgr; is installed.
             </para>
           </listitem>
