@@ -23,14 +23,34 @@
       behaviour and some additional configuration parameters.
     </para>
     <para>
-      &repmgr; 4.1.0 introduces changes to the &repmgr; extension schema, meaning
-      <command>ALTER EXTENSION repmgr UPGRADE</command> must be executed after
-      installing the new version.
+      This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.6.
+      The following post-upgrade steps must be carried out:
+
+       <itemizedlist>
+          <listitem>
+            <para>
+              <application>repmgrd</application> (if running) must be restarted.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              Execute <command>ALTER EXTENSION repmgr UPGRADE</command>
+              on the primary server in the database where &repmgr; is installed.
+            </para>
+          </listitem>
+       </itemizedlist>
+
+       A restart of the PostgreSQL server is <emphasis>not</emphasis> required
+       for this release.
     </para>
+    <para>
+       See <xref linkend="upgrading-repmgr-extension"> for more details.
+    </para>
+
     <para>
       Configuration changes are backwards-compatible and no changes to
       <filename>repmgr.conf</filename> are required. However users should
-      review changes listed below.
+      review the changes listed below.
     </para>
 
     <sect2>

@@ -29,8 +29,18 @@
       </listitem>
       <listitem>
         <simpara>
-          In the database where the &repmgr; extension is installed, execute
-          <command>ALTER EXTENSION repmgr UPDATE</command>.
+          <application>repmgrd</application> (if running) must be restarted.
+        </simpara>
+      </listitem>
+      <listitem>
+        <simpara>
+          For major releases, e.g. from <literal>4.0.x</literal> to <literal>4.1</literal>,
+          execute <command>ALTER EXTENSION repmgr UPDATE</command>
+          on the primary node in the database where the &repmgr; extension is installed.
+        </simpara>
+        <simpara>
+          This will update the extension metadata and, if necessary, apply
+          changes to the &repmgr; extension objects.
         </simpara>
       </listitem>
     </orderedlist>
@@ -41,10 +51,6 @@
     release as they may contain upgrade instructions particular to individual versions.
   </para>
 
-  <para>
-    If the <application>repmgrd</application> daemon is in use, we recommend stopping it
-    before upgrading &repmgr;.
-  </para>
   <para>
     Note that it may be necessary to restart the PostgreSQL server if the upgrade contains
     changes to the shared object file used by <application>repmgrd</application>; check the
