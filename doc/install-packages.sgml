@@ -16,7 +16,7 @@
   <para>
 	&repmgr; RPM packages for RedHat/CentOS variants and Fedora are available from the
 	<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
-	<ulink url="https://rpm.2ndquadrant.com/">public RPM repository</ulink>; see following
+	<ulink url="https://dl.2ndquadrant.com/">public repository</ulink>; see following
 	section for details.
   </para>
   <para>
@@ -46,26 +46,15 @@
   <sect3 id="installation-packages-redhat-2ndq">
     <title>2ndQuadrant public RPM yum repository</title>
 
-	<note>
-	  <para>
-		<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink> previously provided a dedicated
-        &repmgr; repository at
-        <ulink url="http://packages.2ndquadrant.com/repmgr/">http://packages.2ndquadrant.com/repmgr/</ulink>.
-		This repository will be deprecated in a future release as it is now replaced by
-		the <ulink url="https://rpm.2ndquadrant.com/">public RPM repository</ulink>
-		documented below.
-	  </para>
-	</note>
-
     <para>
       Beginning with <ulink url="https://repmgr.org/docs/4.0/release-4.0.5.html">repmgr 4.0.5</ulink>,
       <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a dedicated <literal>yum</literal>
-	  <ulink url="https://rpm.2ndquadrant.com/">public RPM repository</ulink> for 2ndQuadrant software,
+	  <ulink url="https://dl.2ndquadrant.com/">public repository</ulink> for 2ndQuadrant software,
 	  including &repmgr;. We recommend using this for all future &repmgr; releases.
 	</para>
 	<para>
 	  General instructions for using this repository can be found on its
-	  <ulink url="https://rpm.2ndquadrant.com/">homepage</ulink>. Specific instructions
+	  <ulink url="https://dl.2ndquadrant.com/">homepage</ulink>. Specific instructions
 	  for installing &repmgr; follow below.
 	</para>
     <para>
@@ -75,19 +64,19 @@
 		<listitem>
 		  <para>
 			Locate the repository RPM for your PostgreSQL version from the list at:
-			<ulink url="https://rpm.2ndquadrant.com/">https://rpm.2ndquadrant.com/</ulink>
+			<ulink url="https://dl.2ndquadrant.com/">https://dl.2ndquadrant.com/</ulink>
 		  </para>
 		</listitem>
 
         <listitem>
           <para>
-            Install the repository RPM for your distribution and PostgreSQL version
+            Install the repository definition for your distribution and PostgreSQL version
 			(this enables the 2ndQuadrant repository as a source of &repmgr; packages).
 		  </para>
 		  <para>
 			For example, for PostgreSQL 10 on CentOS, execute:
 			<programlisting>
-sudo yum install https://rpm.2ndquadrant.com/site/content/2ndquadrant-repo-10-1-1.el7.noarch.rpm
+curl https://dl.2ndquadrant.com/default/release/get/10/rpm | sudo bash
 			</programlisting>
 		  </para>
 		  <para>
@@ -96,8 +85,8 @@ sudo yum install https://rpm.2ndquadrant.com/site/content/2ndquadrant-repo-10-1-
 sudo yum repolist</programlisting>
 			The output should contain two entries like this:
 			<programlisting>
-2ndquadrant-repo-10/7/x86_64         2ndQuadrant packages for PG10 for rhel 7 - x86_64           1
-2ndquadrant-repo-10-debug/7/x86_64   2ndQuadrant packages for PG10 for rhel 7 - x86_64 - Debug   1</programlisting>
+2ndquadrant-dl-default-release-pg10/7/x86_64        2ndQuadrant packages (PG10) for 7 - x86_64          4
+2ndquadrant-dl-default-release-pg10-debug/7/x86_64  2ndQuadrant packages (PG10) for 7 - x86_64 - Debug  3</programlisting>
 		  </para>
 		</listitem>
 
