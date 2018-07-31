@@ -1,4 +1,4 @@
-4.1.0   2018-??-??
+4.1.0   2018-07-31
         repmgr: change default log_level to INFO, add documentation; GitHub #470 (Ian)
         repmgr: add "--missing-slots" check to "repmgr node check" (Ian)
         repmgr: improve command line error handling; GitHub #464 (Ian)

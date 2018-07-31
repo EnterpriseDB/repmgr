@@ -17,7 +17,7 @@
 
   <sect1 id="release-4.1.0">
     <title>Release 4.1.0</title>
-    <para><emphasis>???? ??, 2018</emphasis></para>
+    <para><emphasis>Tue July 31, 2018</emphasis></para>
     <para>
       &repmgr; 4.1.0 introduces some changes to <application>repmgrd</application>
       behaviour and some additional configuration parameters.
@@ -214,7 +214,7 @@
 
   <sect1 id="release-4.0.6">
     <title>Release 4.0.6</title>
-    <para><emphasis>June 14, 2018</emphasis></para>
+    <para><emphasis>Thu June 14, 2018</emphasis></para>
     <para>
 	  &repmgr; 4.0.6 contains a number of bug fixes and usability enhancements.
     </para>
