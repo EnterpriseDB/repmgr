@@ -29,19 +29,20 @@
        <itemizedlist>
           <listitem>
             <para>
-              <application>repmgrd</application> (if running) must be restarted.
-            </para>
-          </listitem>
-          <listitem>
-            <para>
               Execute <command>ALTER EXTENSION repmgr UPDATE</command>
               on the primary server in the database where &repmgr; is installed.
             </para>
           </listitem>
+          <listitem>
+            <para>
+              <application>repmgrd</application> must be restarted on all nodes where it is running.
+            </para>
+          </listitem>
+
        </itemizedlist>
 
        A restart of the PostgreSQL server is <emphasis>not</emphasis> required
-       for this release.
+       for this release (unless upgrading from repmgr 3.x).
     </para>
     <para>
        See <xref linkend="upgrading-repmgr-extension"> for more details.
