@@ -54,6 +54,17 @@
       review the changes listed below.
     </para>
 
+    <note>
+      <para>
+        <emphasis>Repository changes</emphasis>
+      </para>
+      <para>
+        Coinciding with this release, the 2ndQuadrant repository structure has changed.
+        See section <xref linkend="installation-packages"> for details, particularly
+        if you are using a RPM-based system.
+      </para>
+    </note>
+
     <sect2>
       <title>Configuration file changes</title>
 
