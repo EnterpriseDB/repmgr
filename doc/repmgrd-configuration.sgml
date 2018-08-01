@@ -364,7 +364,7 @@ REPMGRD_ENABLED=no
     <para>
       This restriction may be lifted in a future &repmgr; version by providing a
       signal which causes <application>repmgrd</application> to reopen the log file,
-      and which can be send from <command>logrotate</command> via a <command>postrotate</command>
+      and which can be sent from <command>logrotate</command> via a <command>postrotate</command>
       script.
     </para>
   </note>
