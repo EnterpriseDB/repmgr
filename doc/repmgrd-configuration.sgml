@@ -334,14 +334,39 @@ REPMGRD_ENABLED=no
    Sample configuration to rotate logfiles weekly with retention for
    up to 52 weeks and rotation forced if a file grows beyond 100Mb:
    <programlisting>
-    /var/log/postgresql/repmgr-9.6.log {
+    /var/log/repmgr/repmgrd.log {
         missingok
         compress
         rotate 52
         maxsize 100M
         weekly
-        create 0600 postgres postgres
+        copytruncate
     }</programlisting>
   </para>
+
+  <note>
+    <para>
+      Currently <application>repmgrd</application> will not reopen the log
+      file unless the configuration is reloaded via <literal>SIGHUP</literal>
+      <emphasis>and</emphasis> the configuration changes.
+    </para>
+    <para>
+      Therefore it's recommended to use <literal>copytruncate</literal> when
+      rotating logs, so that the contents of the existing file are rotated out
+      by creating a copy, then truncating the original file, which
+      <application>repmgrd</application> still holds open.
+    </para>
+    <para>
+      Note that any logging data written in the (short) timespan after the existing file
+      is copied, but before it is truncated, will be lost; see the
+      <ulink url="https://linux.die.net/man/8/logrotate">logrotate documentation</ulink>.
+    </para>
+    <para>
+      This restriction may be lifted in a future &repmgr; version by providing a
+      signal which causes <application>repmgrd</application> to reopen the log file,
+      and which can be send from <command>logrotate</command> via a <command>postrotate</command>
+      script.
+    </para>
+  </note>
  </sect1>
 </chapter>
