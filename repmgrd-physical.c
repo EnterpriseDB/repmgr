@@ -81,6 +81,8 @@ static bool do_witness_failover(void);
 
 static void update_monitoring_history(void);
 
+static void handle_sighup(PGconn *conn);
+
 static const char * format_failover_state(FailoverState failover_state);
 
 
@@ -545,26 +547,7 @@ loop:
 
 		if (got_SIGHUP)
 		{
-			log_debug("SIGHUP received");
-
-			if (reload_config(&config_file_options))
-			{
-				close_connection(&local_conn);
-				local_conn = establish_db_connection(config_file_options.conninfo, true);
-
-				if (*config_file_options.log_file)
-				{
-					FILE	   *fd;
-
-					fd = freopen(config_file_options.log_file, "a", stderr);
-					if (fd == NULL)
-					{
-						fprintf(stderr, "error reopening stderr to \"%s\": %s",
-								config_file_options.log_file, strerror(errno));
-					}
-				}
-			}
-			got_SIGHUP = false;
+			handle_sighup(local_conn);
 		}
 
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
@@ -1165,26 +1148,7 @@ loop:
 
 		if (got_SIGHUP)
 		{
-			log_debug("SIGHUP received");
-
-			if (reload_config(&config_file_options))
-			{
-				close_connection(&local_conn);
-				local_conn = establish_db_connection(config_file_options.conninfo, true);
-
-				if (*config_file_options.log_file)
-				{
-					FILE	   *fd;
-
-					fd = freopen(config_file_options.log_file, "a", stderr);
-					if (fd == NULL)
-					{
-						fprintf(stderr, "error reopening stderr to \"%s\": %s",
-								config_file_options.log_file, strerror(errno));
-					}
-				}
-			}
-			got_SIGHUP = false;
+			handle_sighup(local_conn);
 		}
 
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
@@ -1513,26 +1477,7 @@ loop:
 
 		if (got_SIGHUP)
 		{
-			log_debug("SIGHUP received");
-
-			if (reload_config(&config_file_options))
-			{
-				close_connection(&local_conn);
-				local_conn = establish_db_connection(config_file_options.conninfo, true);
-
-				if (*config_file_options.log_file)
-				{
-					FILE	   *fd;
-
-					fd = freopen(config_file_options.log_file, "a", stderr);
-					if (fd == NULL)
-					{
-						fprintf(stderr, "error reopening stderr to \"%s\": %s",
-								config_file_options.log_file, strerror(errno));
-					}
-				}
-			}
-			got_SIGHUP = false;
+			handle_sighup(local_conn);
 		}
 
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
@@ -2982,3 +2927,27 @@ format_failover_state(FailoverState failover_state)
 }
 
 
+static void
+handle_sighup(PGconn *conn)
+{
+	log_debug("SIGHUP received");
+
+	if (reload_config(&config_file_options))
+	{
+		close_connection(&conn);
+		conn = establish_db_connection(config_file_options.conninfo, true);
+
+		if (*config_file_options.log_file)
+		{
+			FILE	   *fd;
+
+			fd = freopen(config_file_options.log_file, "a", stderr);
+			if (fd == NULL)
+			{
+				fprintf(stderr, "error reopening stderr to \"%s\": %s",
+						config_file_options.log_file, strerror(errno));
+			}
+		}
+	}
+	got_SIGHUP = false;
+}
