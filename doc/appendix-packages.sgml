@@ -53,11 +53,11 @@
           <tbody>
             <row>
               <entry>Repository URL:</entry>
-              <entry><ulink url="https://rpm.2ndquadrant.com/">https://rpm.2ndquadrant.com/</ulink></entry>
+              <entry><ulink url="https://dl.2ndquadrant.com/">https://dl.2ndquadrant.com/</ulink></entry>
             </row>
             <row>
               <entry>Repository documentation:</entry>
-              <entry><ulink url="https://repmgr.org/docs/4.0/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ">https://repmgr.org/docs/4.0/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ</ulink></entry>
+              <entry><ulink url="https://repmgr.org/docs/4.1/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ">https://repmgr.org/docs/4.1/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ</ulink></entry>
             </row>
           </tbody>
         </tgroup>
@@ -251,6 +251,23 @@
         &repmgr; packages are available from the  PostgreSQL Community APT repository,
         which is updated immediately after each &repmgr; release.
       </para>
+
+
+      <table id="apt-2ndquadrant-repository">
+        <title>2ndQuadrant public repository</title>
+        <tgroup cols="2">
+          <tbody>
+            <row>
+              <entry>Repository URL:</entry>
+              <entry><ulink url="https://dl.2ndquadrant.com/">https://dl.2ndquadrant.com/</ulink></entry>
+            </row>
+            <row>
+              <entry>Repository documentation:</entry>
+              <entry><ulink url="https://repmgr.org/docs/4.1/installation-packages.html#INSTALLATION-PACKAGES-DEBIAN">https://repmgr.org/docs/4.1/installation-packages.html#INSTALLATION-PACKAGES-DEBIAN</ulink></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
 
 
       <table id="apt-repository">
