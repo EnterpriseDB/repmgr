@@ -2936,18 +2936,21 @@ handle_sighup(PGconn *conn)
 	{
 		close_connection(&conn);
 		conn = establish_db_connection(config_file_options.conninfo, true);
+	}
 
-		if (*config_file_options.log_file)
+	if (*config_file_options.log_file)
+	{
+		FILE	   *fd;
+
+		log_debug("reopening %s", config_file_options.log_file);
+
+		fd = freopen(config_file_options.log_file, "a", stderr);
+		if (fd == NULL)
 		{
-			FILE	   *fd;
-
-			fd = freopen(config_file_options.log_file, "a", stderr);
-			if (fd == NULL)
-			{
-				fprintf(stderr, "error reopening stderr to \"%s\": %s",
-						config_file_options.log_file, strerror(errno));
-			}
+			fprintf(stderr, "error reopening stderr to \"%s\": %s",
+					config_file_options.log_file, strerror(errno));
 		}
 	}
+
 	got_SIGHUP = false;
 }

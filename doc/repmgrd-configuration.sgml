@@ -323,11 +323,16 @@ REPMGRD_ENABLED=no
      <secondary>repmgrd</secondary>
    </indexterm>
 
+   <indexterm>
+     <primary>repmgrd</primary>
+     <secondary>log rotation</secondary>
+   </indexterm>
+
   <title>repmgrd log rotation</title>
   <para>
    To ensure the current <application>repmgrd</application> logfile
    (specified in <filename>repmgr.conf</filename> with the parameter
-   <option>log_file</option> does not grow indefinitely, configure your
+   <option>log_file</option>) does not grow indefinitely, configure your
    system's <command>logrotate</command> to regularly rotate it.
   </para>
   <para>
@@ -340,33 +345,12 @@ REPMGRD_ENABLED=no
         rotate 52
         maxsize 100M
         weekly
-        copytruncate
+        create 0600 postgres postgres
+        postrotate
+            /usr/bin/killall -HUP repmgrd
+        endscript
     }</programlisting>
   </para>
 
-  <note>
-    <para>
-      Currently <application>repmgrd</application> will not reopen the log
-      file unless the configuration is reloaded via <literal>SIGHUP</literal>
-      <emphasis>and</emphasis> the configuration changes.
-    </para>
-    <para>
-      Therefore it's recommended to use <literal>copytruncate</literal> when
-      rotating logs, so that the contents of the existing file are rotated out
-      by creating a copy, then truncating the original file, which
-      <application>repmgrd</application> still holds open.
-    </para>
-    <para>
-      Note that any logging data written in the (short) timespan after the existing file
-      is copied, but before it is truncated, will be lost; see the
-      <ulink url="https://linux.die.net/man/8/logrotate">logrotate documentation</ulink>.
-    </para>
-    <para>
-      This restriction may be lifted in a future &repmgr; version by providing a
-      signal which causes <application>repmgrd</application> to reopen the log file,
-      and which can be sent from <command>logrotate</command> via a <command>postrotate</command>
-      script.
-    </para>
-  </note>
  </sect1>
 </chapter>
