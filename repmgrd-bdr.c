@@ -293,7 +293,7 @@ loop:
 			/*
 			 * if we can reload, then could need to change local_conn
 			 */
-			if (reload_config(&config_file_options))
+			if (reload_config(&config_file_options, BDR))
 			{
 				PQfinish(local_conn);
 				local_conn = establish_db_connection(config_file_options.conninfo, true);
@@ -303,11 +303,12 @@ loop:
 			got_SIGHUP = false;
 		}
 
+		/* XXX this looks like it will never be called */
 		if (got_SIGHUP)
 		{
 			log_debug("SIGHUP received");
 
-			if (reload_config(&config_file_options))
+			if (reload_config(&config_file_options, BDR))
 			{
 				PQfinish(local_conn);
 				local_conn = establish_db_connection(config_file_options.conninfo, true);
