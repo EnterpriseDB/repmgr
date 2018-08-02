@@ -273,13 +273,13 @@ typedef struct
 	"", "", "", "" \
 }
 
+#include "dbutils.h"
 
 void		set_progname(const char *argv0);
 const char *progname(void);
 
 void		load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
-void		parse_config(t_configuration_options *options, bool terse);
-bool		reload_config(t_configuration_options *orig_options);
+bool		reload_config(t_configuration_options *orig_options, t_server_type server_type);
 
 bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
 

@@ -3941,7 +3941,7 @@ is_server_available(const char *conninfo)
 {
 	PGPing		status = PQping(conninfo);
 
-	log_verbose(LOG_DEBUG, "ping status for %s is %i", conninfo, (int)status);
+	log_verbose(LOG_DEBUG, "is_server_available(): ping status for %s is %i", conninfo, (int)status);
 	if (status == PQPING_OK)
 		return true;
 
@@ -3960,7 +3960,7 @@ is_server_available_params(t_conninfo_param_list *param_list)
 	if (log_level == LOG_DEBUG)
 	{
 		char *conninfo_str = param_list_to_string(param_list);
-		log_verbose(LOG_DEBUG, "ping status for %s is %i", conninfo_str, (int)status);
+		log_verbose(LOG_DEBUG, "is_server_available_params(): ping status for %s is %i", conninfo_str, (int)status);
 		pfree(conninfo_str);
 	}
 

@@ -28,6 +28,7 @@ char		config_file_path[MAXPGPATH] = "";
 static bool config_file_provided = false;
 bool		config_file_found = false;
 
+static void parse_config(t_configuration_options *options, bool terse);
 static void _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
 static void _parse_line(char *buf, char *name, char *value);
@@ -238,7 +239,7 @@ end_search:
 }
 
 
-void
+static void
 parse_config(t_configuration_options *options, bool terse)
 {
 	/* Collate configuration file errors here for friendlier reporting */
@@ -785,7 +786,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		PQconninfoFree(conninfo_options);
 	}
 
-
 	/* set values for parameters which default to other parameters */
 
 	/*
@@ -1065,7 +1065,7 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
 
  */
 bool
-reload_config(t_configuration_options *orig_options)
+reload_config(t_configuration_options *orig_options, t_server_type server_type)
 {
 	PGconn	   *conn;
 	t_configuration_options new_options = T_CONFIGURATION_OPTIONS_INITIALIZER;
@@ -1080,6 +1080,20 @@ reload_config(t_configuration_options *orig_options)
 	log_info(_("reloading configuration file"));
 
 	_parse_config(&new_options, &config_errors, &config_warnings);
+
+
+	if (server_type == PRIMARY || server_type == STANDBY)
+	{
+		if (new_options.promote_command[0] == '\0')
+		{
+			item_list_append(&config_errors, _("\"promote_command\": required parameter was not found"));
+		}
+
+		if (new_options.follow_command[0] == '\0')
+		{
+			item_list_append(&config_errors, _("\"follow_command\": required parameter was not found"));
+		}
+	}
 
 	if (config_errors.head != NULL)
 	{

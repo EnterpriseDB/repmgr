@@ -81,7 +81,7 @@ static bool do_witness_failover(void);
 
 static void update_monitoring_history(void);
 
-static void handle_sighup(PGconn *conn);
+static void handle_sighup(PGconn **conn, t_server_type server_type);
 
 static const char * format_failover_state(FailoverState failover_state);
 
@@ -547,7 +547,7 @@ loop:
 
 		if (got_SIGHUP)
 		{
-			handle_sighup(local_conn);
+			handle_sighup(&local_conn, PRIMARY);
 		}
 
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
@@ -1148,7 +1148,7 @@ loop:
 
 		if (got_SIGHUP)
 		{
-			handle_sighup(local_conn);
+			handle_sighup(&local_conn, STANDBY);
 		}
 
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
@@ -1477,7 +1477,7 @@ loop:
 
 		if (got_SIGHUP)
 		{
-			handle_sighup(local_conn);
+			handle_sighup(&local_conn, WITNESS);
 		}
 
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
@@ -2928,14 +2928,14 @@ format_failover_state(FailoverState failover_state)
 
 
 static void
-handle_sighup(PGconn *conn)
+handle_sighup(PGconn **conn, t_server_type server_type)
 {
 	log_debug("SIGHUP received");
 
-	if (reload_config(&config_file_options))
+	if (reload_config(&config_file_options, server_type))
 	{
-		close_connection(&conn);
-		conn = establish_db_connection(config_file_options.conninfo, true);
+		PQfinish(*conn);
+		*conn = establish_db_connection(config_file_options.conninfo, true);
 	}
 
 	if (*config_file_options.log_file)
