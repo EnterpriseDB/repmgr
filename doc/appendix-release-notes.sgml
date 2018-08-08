@@ -34,6 +34,14 @@
               (GitHub #485).
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application>: report version number <emphasis>after</emphasis>
+              logger initialisation. (GitHub #487).
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>
