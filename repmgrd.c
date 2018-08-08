@@ -320,8 +320,6 @@ main(int argc, char **argv)
 		strncpy(config_file_options.log_level, cli_log_level, MAXLEN);
 	}
 
-	log_notice(_("repmgrd (repmgr %s) starting up"), REPMGR_VERSION);
-
 	/*
 	 * -m/--monitoring-history, if provided, will override repmgr.conf's
 	 * monitoring_history; this is for backwards compatibility as it's
@@ -348,6 +346,8 @@ main(int argc, char **argv)
 	}
 
 	logger_init(&config_file_options, progname());
+
+	log_notice(_("repmgrd (%s %s) starting up"), progname(), REPMGR_VERSION);
 
 	if (verbose)
 		logger_set_verbose();
