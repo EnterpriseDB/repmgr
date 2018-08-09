@@ -1168,36 +1168,18 @@ monitor_streaming_witness(void)
 	PQExpBufferData event_details;
 	RecordStatus record_status;
 
+	int primary_node_id = UNKNOWN_NODE_ID;
+
 	reset_node_voting_status();
 
 	log_debug("monitor_streaming_witness()");
 
-	if (get_primary_node_record(local_conn, &upstream_node_info) == false)
-	{
-		PQExpBufferData event_details;
-
-		initPQExpBuffer(&event_details);
-
-		appendPQExpBuffer(&event_details,
-						  _("unable to retrieve record for primary node"));
-
-		log_error("%s", event_details.data);
-		log_hint(_("execute \"repmgr witness register --force\" to update the witness node "));
-		close_connection(&local_conn);
-
-		create_event_notification(NULL,
-								  &config_file_options,
-								  config_file_options.node_id,
-								  "repmgrd_shutdown",
-								  false,
-								  event_details.data);
-
-		termPQExpBuffer(&event_details);
-
-		terminate(ERR_BAD_CONFIG);
-	}
-
-	primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
+	/*
+	 * At this point we can't trust the local copy of "repmgr.nodes", as
+	 * it may not have been updated. We'll scan the cluster for the current
+	 * primary and refresh the copy from that before proceeding further.
+	 */
+	primary_conn = get_primary_connection_quiet(local_conn, &primary_node_id, NULL);
 
 	/*
 	 * Primary node must be running at repmgrd startup.
@@ -1222,7 +1204,7 @@ monitor_streaming_witness(void)
 	 * refresh upstream node record from primary, so it's as up-to-date
 	 * as possible
 	 */
-	record_status = get_node_record(primary_conn, upstream_node_info.node_id, &upstream_node_info);
+	record_status = get_node_record(primary_conn, primary_node_id, &upstream_node_info);
 
 	/*
 	 * This is unlikely to happen; if it does emit a warning for diagnostic
