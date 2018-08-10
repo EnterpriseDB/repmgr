@@ -50,6 +50,13 @@
 
   <note>
     <para>
+      &repmgr; will not apply <option>pg_bindir</option> when executing any of these commands;
+      these can be user-defined scripts so must always be specified with the full path.
+    </para>
+  </note>
+
+  <note>
+    <para>
       It's also possible to specify a <varname>service_promote_command</varname>.
       This is intended for systems which provide a package-level promote command,
       such as Debian's <application>pg_ctlcluster</application>, to promote the

@@ -303,5 +303,16 @@
    </para>
   </sect2>
 
+  <sect2 id="faq-repmgrd-pg-bindir" xreflabel="repmgrd does not apply pg_bindir to promote_command or follow_command">
+    <title>
+      <application>repmgrd</application> ignores pg_bindir when executing <varname>promote_command</varname> or <varname>follow_command</varname>
+    </title>
+    <para>
+      <varname>promote_command</varname> or <varname>follow_command</varname> can be user-defined scripts,
+      so &repmgr; will not apply <option>pg_bindir</option> even if excuting &repmgr;. Always provide the full
+      path; see <xref linkend="repmgrd-automatic-failover-configuration"> for more details.
+    </para>
+  </sect2>
+
  </sect1>
 </appendix>

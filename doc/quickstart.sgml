@@ -240,10 +240,27 @@
   <tip>
    <simpara>
     For Debian-based distributions we recommend explictly setting
-    <literal>pg_bindir</literal> to the directory where <command>pg_ctl</command> and other binaries
+    <option>pg_bindir</option> to the directory where <command>pg_ctl</command> and other binaries
     not in the standard path are located. For PostgreSQL 9.6 this would be <filename>/usr/lib/postgresql/9.6/bin/</filename>.
    </simpara>
   </tip>
+
+  <note>
+    <para>
+      &repmgr; only uses <option>pg_bindir</option> when it executes
+      PostgreSQL binaries directly.
+    </para>
+    <para>
+      For user-defined scripts such as <option>promote_command</option> and the
+      various <option>service_*_command</option>s, you <emphasis>must</emphasis>
+      always explicitly provide the full path to the binary or script being
+      executed, even if it is &repmgr; itself.
+    </para>
+    <para>
+      This is because these options can contain user-defined scripts in arbitrary
+      locations, so prepending <option>pg_bindir</option> may break them.
+    </para>
+  </note>
 
   <para>
    See the file
