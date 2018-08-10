@@ -314,5 +314,25 @@
     </para>
   </sect2>
 
+  <sect2 id="faq-repmgrd-startup-no-upstream" xreflabel="repmgrd does not start if upstream node is not running">
+    <title>
+      <application>repmgrd</application> aborts startup with the error "<literal>upstream node must be running before repmgrd can start</literal>"
+    </title>
+    <para>
+      <application>repmgrd</application> does this to avoid starting up on a replication cluster
+      which is not in a healthy state. If the upstream is unavailable, <application>repmgrd</application>
+      may initiate a failover immediately after starting up, which could have unintended side-effects,
+      particularly if <application>repmgrd</application> is not running on other nodes.
+    </para>
+    <para>
+      In particular, it's possible that the node's local copy of the <literal>repmgr.nodes</literal> copy
+      is out-of-date, which may lead to incorrect failover behaviour.
+    </para>
+    <para>
+      The onus is therefore on the adminstrator to manually set the cluster to a stable, healthy state before
+      starting <application>repmgrd</application>.
+    </para>
+  </sect2>
+
  </sect1>
 </appendix>
