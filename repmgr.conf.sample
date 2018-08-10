@@ -143,6 +143,11 @@
 					# Debian/Ubuntu users: you will probably need to
 					# set this to the directory where `pg_ctl` is located,
 					# e.g. /usr/lib/postgresql/9.6/bin/
+					#
+					# *NOTE* "pg_bindir" is only used when repmgr directly
+					# executes PostgreSQL binaries; any user-defined scripts
+					# *must* be specified with the full path
+					#
 #use_primary_conninfo_password=false	# explicitly set "password" in recovery.conf's
 					# "primary_conninfo" parameter using the value contained
 					# in the environment variable PGPASSWORD
@@ -183,11 +188,11 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# parameter can be provided multiple times.
 
 #restore_command=''			# This will be placed in the recovery.conf file generated
-                                        # by repmgr.
+					# by repmgr.
 
 #archive_cleanup_command=''		# This will be placed in the recovery.conf file generated
-                                        # by repmgr. Note we recommend using Barman for managing
-                                        # WAL archives (see: https://www.pgbarman.org )
+					# by repmgr. Note we recommend using Barman for managing
+					# WAL archives (see: https://www.pgbarman.org )
 
 #recovery_min_apply_delay=		# If provided, "recovery_min_apply_delay" in recovery.conf
 					# will be set to this value (PostgreSQL 9.4 and later).
@@ -259,10 +264,10 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 # are defaults.
 
 #repmgrd_pid_file=			# Path of PID file to use for repmgrd; if not set, a PID file will
-                                        # be generated in a temporary directory specified by the environment
-                                        # variable $TMPDIR, or if not set, in "/tmp". This value can be overridden
-                                        # by the command line option "-p/--pid-file"; the command line option
-                                        # "--no-pid-file" will force PID file creation to be skipped.
+					# be generated in a temporary directory specified by the environment
+					# variable $TMPDIR, or if not set, in "/tmp". This value can be overridden
+					# by the command line option "-p/--pid-file"; the command line option
+					# "--no-pid-file" will force PID file creation to be skipped.
 #failover=manual			# one of 'automatic', 'manual'.
 					# determines what action to take in the event of upstream failure
 					#
@@ -332,7 +337,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #
 # Debian/Ubuntu users: use "sudo pg_ctlcluster" to execute service control commands.
 #
-# For more details, see: https://repmgr.org/docs/4.0/configuration-service-commands.html
+# For more details, see: https://repmgr.org/docs/4.1/configuration-service-commands.html
 
 #service_start_command = ''
 #service_stop_command = ''
@@ -376,7 +381,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #------------------------------------------------------------------------------
 
 #bdr_local_monitoring_only=false         # Only monitor the local node; no checks will be
-                                         # performed on the other node
+					 # performed on the other node
 #bdr_recovery_timeout                    # If a BDR node was offline and has become available
-                                         # maximum length of time in seconds to wait for the
-                                         # node to reconnect to the cluster
+					 # maximum length of time in seconds to wait for the
+					 # node to reconnect to the cluster
