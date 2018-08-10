@@ -3,7 +3,7 @@
         repmgrd: ensure that sending SIGHUP always results in the log file
           being reopened; GitHub #485 (Ian)
         repmgrd: report version number *after* logger initialisation; GitHub #487 (Ian)
-        repmgrd: ; GitHub #489 (Ian)
+        repmgrd: fix startup on witness node when local data is stale; GitHub #488/#489 (Ian)
 
 4.1.0   2018-07-31
         repmgr: change default log_level to INFO, add documentation; GitHub #470 (Ian)

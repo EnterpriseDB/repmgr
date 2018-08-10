@@ -46,6 +46,21 @@
       </para>
     </sect2>
 
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application>: fix startup on witness node when local data is stale. (GitHub #488, #489).
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
 
   </sect1>
 
