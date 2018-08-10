@@ -255,7 +255,7 @@
   <sect2 id="faq-repmgrd-prevent-promotion" xreflabel="Prevent standby from being promoted to primary">
    <title>How can I prevent a node from ever being promoted to primary?</title>
    <para>
-    In `repmgr.conf`, set its priority to a value of 0 or less; apply the changed setting with
+     In <filename>repmgr.conf</filename>, set its priority to a value of <literal>0</literal>; apply the changed setting with
     <command><link linkend="repmgr-standby-register">repmgr standby register --force</link></command>.
    </para>
    <para>
