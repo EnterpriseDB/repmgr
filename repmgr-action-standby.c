@@ -1558,8 +1558,8 @@ do_standby_register(void)
 						exit(ERR_BAD_CONFIG);
 					}
 					log_warning(_("this node does not appear to be attached to upstream node \"%s\" (ID: %i)"),
-								config_file_options.node_name,
-								config_file_options.node_id);
+								upstream_node_record.node_name,
+								upstream_node_record.node_id);
 				}
 				PQfinish(upstream_conn);
 			}
