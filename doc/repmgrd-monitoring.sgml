@@ -1,4 +1,4 @@
-<chapter id="repmgrd-monitoring">
+<chapter id="repmgrd-monitoring" xreflabel="Monitoring with repmgrd">
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>monitoring</secondary>
