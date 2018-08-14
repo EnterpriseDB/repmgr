@@ -15,9 +15,14 @@
     <title>Description</title>
     <para>
       Purges monitoring history from the <literal>repmgr.monitoring_history</literal> table to
-      prevent excessive table growth. Use the <literal>-k/--keep-history</literal> to specify the
-      number of days of monitoring history to retain. This command can be used
-      manually or as a cronjob.
+      prevent excessive table growth.
+    </para>
+    <para>
+      By default <emphasis>all</emphasis> data will be removed; Use the <option>-k/--keep-history</option>
+      option to specify the number of days of monitoring history to retain.
+    </para>
+    <para>
+      This command can be executed manually or as a cronjob.
     </para>
   </refsect1>
 
@@ -38,4 +43,13 @@
       <filename>repmgr.conf</filename>.
     </para>
   </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+      For more details see the sections <xref linkend="repmgrd-monitoring"> and
+      <xref linkend="repmgrd-monitoring-configuration">.
+    </para>
+  </refsect1>
+
 </refentry>

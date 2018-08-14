@@ -144,7 +144,7 @@
       </para>
     </sect2>
 
-    <sect2 id="repmgrd-monitoring-configuration">
+    <sect2 id="repmgrd-monitoring-configuration" xreflabel="repmgrd monitoring configuration">
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>monitoring configuration</secondary>
