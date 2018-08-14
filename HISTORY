@@ -1,5 +1,6 @@
 
 4.1.1   2018-??-??
+        repmgr: truncate version string, if necessary; GitHub #490 (Ian)
         repmgrd: ensure that sending SIGHUP always results in the log file
           being reopened; GitHub #485 (Ian)
         repmgrd: report version number *after* logger initialisation; GitHub #487 (Ian)
