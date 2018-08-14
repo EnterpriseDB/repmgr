@@ -1095,7 +1095,28 @@ get_server_version(PGconn *conn, char *server_version)
 	}
 
 	if (server_version != NULL)
-		strncpy(server_version, PQgetvalue(res, 0, 1), MAXVERSIONSTR);
+	{
+		char		server_version_buf[MAXVERSIONSTR];
+		int			i;
+
+		memset(server_version_buf, 0, MAXVERSIONSTR);
+
+		/*
+		 * Some distributions may add extra info after the actual version number,
+		 * e.g. "10.4 (Debian 10.4-2.pgdg90+1)", so copy everything up until the
+		 * first space.
+		 */
+
+		strncpy(server_version_buf, PQgetvalue(res, 0, 1), MAXVERSIONSTR);
+
+		for (i = 0; i < MAXVERSIONSTR; i++)
+		{
+			if (server_version_buf[i] == ' ')
+				break;
+
+			*server_version++ = server_version_buf[i];
+		}
+	}
 
 	server_version_num = atoi(PQgetvalue(res, 0, 0));
 
