@@ -239,11 +239,22 @@
      Under some circumstances event notifications can be generated for servers
      which have not yet been registered; it's also useful to retain a record
      of events which includes servers removed from the replication cluster
-     which no longer have an entry in the <literal>repmrg.nodes</literal> table.
+     which no longer have an entry in the <literal>repmgr.nodes</literal> table.
    </para>
   </sect2>
 
-
+  <sect2 id="faq-repmgr-recovery-conf-quoted-values" xreflabel="Quoted values in recovery.conf">
+    <title>Why are some values in <filename>recovery.conf</filename> surrounded by pairs of single quotes?</title>
+    <para>
+      This is to ensure that user-supplied values which are written as parameter values in <filename>recovery.conf</filename>
+      are escaped correctly and do not cause errors when <filename>recovery.conf</filename> is parsed.
+    </para>
+    <para>
+      The escaping is performed by an internal PostgreSQL routine, which leaves strings consisting
+      of digits and alphabetical characters only as-is, but wraps everything else in pairs of single quotes,
+      even if the string does not contain any characters which need escaping.
+    </para>
+  </sect2>
 
 
  </sect1>
