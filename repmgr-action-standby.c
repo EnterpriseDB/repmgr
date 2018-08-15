@@ -5111,57 +5111,73 @@ run_basebackup(t_node_info *node_record)
 		{
 			PGconn	   *upstream_conn = NULL;
 
-			upstream_conn = establish_db_connection(upstream_node_record.conninfo, true);
+			upstream_conn = establish_db_connection(upstream_node_record.conninfo, false);
 
-			record_status = get_slot_record(upstream_conn, node_record->slot_name, &slot_info);
-
-			if (record_status == RECORD_FOUND)
+			/*
+			 * It's possible the upstream node is not yet running, in which case we'll
+			 * have to rely on the user taking action to create the slot
+			 */
+			if (PQstatus(upstream_conn) != CONNECTION_OK)
 			{
-				log_verbose(LOG_INFO,
-							_("replication slot \"%s\" aleady exists on upstream node %i"),
-							node_record->slot_name,
-							upstream_node_id);
-				slot_exists_on_upstream = true;
+				log_warning(_("unable to connect to upstream node to create replication slot"));
+				/*
+				 * TODO: if slot creation also handled by "standby register", update warning
+				 */
+				log_hint(_("you may need to create the replication slot manually"));
 			}
 			else
 			{
-				PQExpBufferData event_details;
+				record_status = get_slot_record(upstream_conn, node_record->slot_name, &slot_info);
 
-				log_notice(_("creating replication slot \"%s\" on upstream node %i"),
-						   node_record->slot_name,
-						   upstream_node_id);
-
-				get_superuser_connection(&upstream_conn, &superuser_conn, &privileged_conn);
-
-				initPQExpBuffer(&event_details);
-				if (create_replication_slot(privileged_conn, node_record->slot_name, source_server_version_num, &event_details) == false)
+				if (record_status == RECORD_FOUND)
 				{
-					log_error("%s", event_details.data);
+					log_verbose(LOG_INFO,
+								_("replication slot \"%s\" aleady exists on upstream node %i"),
+								node_record->slot_name,
+								upstream_node_id);
+					slot_exists_on_upstream = true;
+				}
+				else
+				{
+					PQExpBufferData event_details;
 
-					create_event_notification(
-											  primary_conn,
-											  &config_file_options,
-											  config_file_options.node_id,
-											  "standby_clone",
-											  false,
-											  event_details.data);
+					log_notice(_("creating replication slot \"%s\" on upstream node %i"),
+							   node_record->slot_name,
+							   upstream_node_id);
 
-					PQfinish(source_conn);
+					get_superuser_connection(&upstream_conn, &superuser_conn, &privileged_conn);
+
+					initPQExpBuffer(&event_details);
+					if (create_replication_slot(privileged_conn, node_record->slot_name, source_server_version_num, &event_details) == false)
+					{
+						log_error("%s", event_details.data);
+
+						create_event_notification(primary_conn,
+												  &config_file_options,
+												  config_file_options.node_id,
+												  "standby_clone",
+												  false,
+												  event_details.data);
+
+						PQfinish(source_conn);
+
+						if (superuser_conn != NULL)
+							PQfinish(superuser_conn);
+
+						exit(ERR_DB_QUERY);
+					}
 
 					if (superuser_conn != NULL)
 						PQfinish(superuser_conn);
 
-					exit(ERR_DB_QUERY);
+					termPQExpBuffer(&event_details);
 				}
 
-				if (superuser_conn != NULL)
-					PQfinish(superuser_conn);
-
-				termPQExpBuffer(&event_details);
+				PQfinish(upstream_conn);
 			}
-
-			PQfinish(upstream_conn);
 		}
+
+		/* delete slot on source server */
 
 		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
 
@@ -5169,7 +5185,7 @@ run_basebackup(t_node_info *node_record)
 		{
 			if (slot_exists_on_upstream == false)
 			{
-				if (drop_replication_slot(source_conn, node_record->slot_name) == true)
+				if (drop_replication_slot(privileged_conn, node_record->slot_name) == true)
 				{
 					log_notice(_("replication slot \"%s\" deleted on source node"), node_record->slot_name);
 				}
