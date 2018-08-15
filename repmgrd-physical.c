@@ -760,6 +760,11 @@ monitor_streaming_standby(void)
 				{
 					int			upstream_node_unreachable_elapsed = calculate_elapsed(upstream_node_unreachable_start);
 
+					if (upstream_node_info.type == PRIMARY)
+					{
+						primary_conn = upstream_conn;
+					}
+
 					initPQExpBuffer(&event_details);
 
 					appendPQExpBuffer(&event_details,
