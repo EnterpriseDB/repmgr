@@ -49,7 +49,7 @@
     not be copied by default. &repmgr; can copy these files, either to the same
     location on the standby server (provided appropriate directory and file permissions
     are available), or into the standby's data directory. This requires passwordless
-    SSH access to the primary server. Add the option <literal>--copy-external-config-files</literal>
+    SSH access to the primary server. Add the option <option>--copy-external-config-files</option>
     to the <command>repmgr standby clone</command> command; by default files will be copied to
     the same path as on the upstream server. Note that the user executing <command>repmgr</command>
     must have write access to those directories.
@@ -59,12 +59,29 @@
     <literal>--copy-external-config-files=pgdata</literal>, but note that
     any include directives in the copied files may need to be updated.
    </para>
+
+   <note>
+	 <para>
+	   When executing <command>repmgr standby clone</command> with the
+	   <option>--copy-external-config-files</option> aand <option>--dry-run</option>
+	   options, &repmgr; will check the SSH connection to the source node, but
+	   will not verify whether the files can actually be copied.
+	 </para>
+	 <para>
+	   During the actual clone operation, a check will be made before the database itself
+	   is cloned to determine whether the files can actually be copied; if any problems are
+	   encountered, the clone operation will be aborted, enabling the user to fix
+	   any issues before retrying the clone operation.
+	 </para>
+   </note>
+
    <tip>
     <simpara>
      For reliable configuration file management we recommend using a
      configuration management tool such as Ansible, Chef, Puppet or Salt.
     </simpara>
    </tip>
+
   </refsect1>
 
   <refsect1 id="repmgr-standby-clone-recovery-conf">
