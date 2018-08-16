@@ -61,6 +61,13 @@
    </para>
 
    <para>
+     Ensure that the promotion candidate has sufficient free walsenders available
+     (PostgreSQL configuration item <varname>max_wal_senders</varname>), and if replication
+     slots are in use, at least one free slot is available for the demotion candidate (
+     PostgreSQL configuration item <varname>max_replication_slots</varname>).
+   </para>
+
+   <para>
      Ensure that a passwordless SSH connection is possible from the promotion candidate
      (standby) to the demotion candidate (current primary). If <literal>--siblings-follow</literal>
      will be used, ensure that passwordless SSH connections are possible from the

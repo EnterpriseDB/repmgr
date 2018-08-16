@@ -21,6 +21,22 @@
     <para>
     </para>
 
+   <sect2>
+      <title>repmgr enhancements</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>:
+              improve detection of free walsenders. (GitHub #495).
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+   </sect2>
+
     <sect2>
       <title>repmgr enhancements</title>
       <para>
