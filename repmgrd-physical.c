@@ -1876,8 +1876,6 @@ do_upstream_standby_failover(void)
 	/* Close the connection to this server */
 	close_connection(&local_conn);
 
-	initPQExpBuffer(&event_details);
-
 	log_debug(_("standby follow command is:\n  \"%s\""),
 			  config_file_options.follow_command);
 
@@ -1891,6 +1889,8 @@ do_upstream_standby_failover(void)
 
 	if (r != 0)
 	{
+		initPQExpBuffer(&event_details);
+
 		appendPQExpBuffer(&event_details,
 						  _("unable to execute follow command:\n %s"),
 						  config_file_options.follow_command);
@@ -1901,8 +1901,7 @@ do_upstream_standby_failover(void)
 		 * It may not possible to write to the event notification table but we
 		 * should be able to generate an external notification if required.
 		 */
-		create_event_notification(
-								  primary_conn,
+		create_event_notification(primary_conn,
 								  &config_file_options,
 								  local_node_info.node_id,
 								  "repmgrd_failover_follow",
@@ -1944,6 +1943,8 @@ do_upstream_standby_failover(void)
 										local_node_info.node_id,
 										primary_node_info.node_id) == false)
 	{
+		initPQExpBuffer(&event_details);
+
 		appendPQExpBuffer(&event_details,
 						  _("unable to set node %i's new upstream ID to %i"),
 						  local_node_info.node_id,
@@ -1977,6 +1978,8 @@ do_upstream_standby_failover(void)
 		local_node_info.upstream_node_id = primary_node_info.node_id;
 	}
 
+	initPQExpBuffer(&event_details);
+
 	appendPQExpBuffer(&event_details,
 					  _("node %i is now following primary node %i"),
 					  local_node_info.node_id,
@@ -1984,8 +1987,7 @@ do_upstream_standby_failover(void)
 
 	log_notice("%s", event_details.data);
 
-	create_event_notification(
-							  primary_conn,
+	create_event_notification(primary_conn,
 							  &config_file_options,
 							  local_node_info.node_id,
 							  "repmgrd_failover_follow",
