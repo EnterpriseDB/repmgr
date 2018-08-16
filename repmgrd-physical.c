@@ -1802,7 +1802,7 @@ do_upstream_standby_failover(void)
 	t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	RecoveryType primary_type = RECTYPE_UNKNOWN;
-	int			i, r;
+	int			i, standby_follow_result;
 	char		parsed_follow_command[MAXPGPATH] = "";
 
 	close_connection(&upstream_conn);
@@ -1867,9 +1867,9 @@ do_upstream_standby_failover(void)
 	 */
 	parse_follow_command(parsed_follow_command, config_file_options.follow_command, primary_node_info.node_id);
 
-	r = system(parsed_follow_command);
+	standby_follow_result = system(parsed_follow_command);
 
-	if (r != 0)
+	if (standby_follow_result != 0)
 	{
 		initPQExpBuffer(&event_details);
 
@@ -1896,6 +1896,10 @@ do_upstream_standby_failover(void)
 	/*
 	 * It's possible that the standby is still starting up after the "follow_command"
 	 * completes, so poll for a while until we get a connection.
+	 *
+	 * NOTE: we've previously closed the local connection, so even if the follow command
+	 * failed for whatever reason and the local node remained up, we can re-open
+	 * the local connection.
 	 */
 
 	for (i = 0; i < config_file_options.repmgrd_standby_startup_timeout; i++)
@@ -1905,7 +1909,7 @@ do_upstream_standby_failover(void)
 		if (PQstatus(local_conn) == CONNECTION_OK)
 			break;
 
-		log_debug("sleeping 1 second; %i of %i attempts to reconnect to local node",
+		log_debug("sleeping 1 second; %i of %i (\"repmgrd_standby_startup_timeout\") attempts to reconnect to local node",
 				  i + 1,
 				  config_file_options.repmgrd_standby_startup_timeout);
 		sleep(1);
@@ -1921,30 +1925,47 @@ do_upstream_standby_failover(void)
 	/* refresh shared memory settings which will have been zapped by the restart */
 	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
 
-	if (update_node_record_set_upstream(primary_conn,
-										local_node_info.node_id,
-										primary_node_info.node_id) == false)
+	/*
+	 *
+	 */
+
+	if (standby_follow_result != 0)
 	{
-		initPQExpBuffer(&event_details);
+		monitoring_state = MS_DEGRADED;
+		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
-		appendPQExpBuffer(&event_details,
-						  _("unable to set node %i's new upstream ID to %i"),
-						  local_node_info.node_id,
-						  primary_node_info.node_id);
+		return FAILOVER_STATE_FOLLOW_FAIL;
+	}
 
-		log_error("%s", event_details.data);
+	/*
+	 * update upstream_node_id to primary node (but only if follow command
+	 * was successful)
+	 */
 
-		create_event_notification(
-								  NULL,
-								  &config_file_options,
-								  local_node_info.node_id,
-								  "repmgrd_failover_follow",
-								  false,
-								  event_details.data);
+	{
+		if (update_node_record_set_upstream(primary_conn,
+											local_node_info.node_id,
+											primary_node_info.node_id) == false)
+		{
+			initPQExpBuffer(&event_details);
+			appendPQExpBuffer(&event_details,
+							  _("unable to set node %i's new upstream ID to %i"),
+							  local_node_info.node_id,
+							  primary_node_info.node_id);
 
-		termPQExpBuffer(&event_details);
+			log_error("%s", event_details.data);
 
-		terminate(ERR_BAD_CONFIG);
+			create_event_notification(NULL,
+									  &config_file_options,
+									  local_node_info.node_id,
+									  "repmgrd_failover_follow",
+									  false,
+									  event_details.data);
+
+			termPQExpBuffer(&event_details);
+
+			terminate(ERR_BAD_CONFIG);
+		}
 	}
 
 	/* refresh own internal node record */
