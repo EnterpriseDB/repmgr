@@ -772,7 +772,7 @@ monitor_streaming_standby(void)
 									  upstream_node_unreachable_elapsed);
 					log_notice("%s", event_details.data);
 
-					create_event_notification(upstream_conn,
+					create_event_notification(primary_conn,
 											  &config_file_options,
 											  config_file_options.node_id,
 											  "repmgrd_upstream_reconnect",
@@ -1296,7 +1296,7 @@ monitor_streaming_witness(void)
 									  upstream_node_unreachable_elapsed);
 					log_notice("%s", event_details.data);
 
-					create_event_notification(upstream_conn,
+					create_event_notification(primary_conn,
 											  &config_file_options,
 											  config_file_options.node_id,
 											  "repmgrd_upstream_reconnect",
