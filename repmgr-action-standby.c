@@ -471,6 +471,7 @@ do_standby_clone(void)
 			termPQExpBuffer(&msg);
 
 			r = test_ssh_connection(runtime_options.host, runtime_options.remote_user);
+
 			if (r != 0)
 			{
 				log_error(_("remote host \"%s\" is not reachable via SSH - unable to copy external configuration files"),
@@ -498,32 +499,41 @@ do_standby_clone(void)
 
 			termPQExpBuffer(&msg);
 
+
 			/*
 			 * Here we'll attempt an initial test copy of the detected external
 			 * files, to detect any issues before we run the base backup.
 			 *
 			 * Note this will exit with an error, unless -F/--force supplied.
 			 *
+			 * We don't do this during a --dry-run as it may introduce unexpected changes
+			 * on the local node; during an actual clone operation, any problems with
+			 * copying files will be detected early and the operation aborted before
+			 * the actual database cloning commences.
+			 *
 			 * TODO: put the files in a temporary directory and move to their final
 			 * destination once the database has been cloned.
 			 */
 
-			if (runtime_options.copy_external_config_files_destination == CONFIG_FILE_SAMEPATH)
+			if (runtime_options.dry_run == false)
 			{
-				/*
-				 * Files will be placed in the same path as on the source server;
-				 * don't delete after copying.
-				 */
-				copy_configuration_files(false);
+				if (runtime_options.copy_external_config_files_destination == CONFIG_FILE_SAMEPATH)
+				{
+					/*
+					 * Files will be placed in the same path as on the source server;
+					 * don't delete after copying.
+					 */
+					copy_configuration_files(false);
 
-			}
-			else
-			{
-				/*
-				 * Files will be placed in the data directory - delete after copying.
-				 * They'll be copied again later; see TODO above.
-				 */
-				copy_configuration_files(true);
+				}
+				else
+				{
+					/*
+					 * Files will be placed in the data directory - delete after copying.
+					 * They'll be copied again later; see TODO above.
+					 */
+					copy_configuration_files(true);
+				}
 			}
 		}
 
