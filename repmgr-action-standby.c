@@ -2841,6 +2841,12 @@ do_standby_switchover(void)
 	int			reachable_sibling_nodes_with_slot_count = 0;
 	int			unreachable_sibling_node_count = 0;
 
+	/* number of free walsenders required on promotion candidate */
+	int			min_required_wal_senders = 1;
+
+	/* this will be calculated as max_wal_senders - COUNT(*) FROM pg_stat_replication */
+	int			available_wal_senders = 0;
+
 	/* number of free replication slots required on promotion candidate */
 	int			min_required_free_slots = 0;
 
@@ -3110,6 +3116,178 @@ do_standby_switchover(void)
 	}
 	termPQExpBuffer(&command_output);
 
+
+	// check walsenders here
+	/*
+	 * populate local node record with current state of various replication-related
+	 * values, so we can check for sufficient walsenders and replication slots
+	 */
+	get_node_replication_stats(local_conn, server_version_num, &local_node_record);
+
+	available_wal_senders = local_node_record.max_wal_senders -
+		local_node_record.attached_wal_receivers;
+
+	/*
+	 * If --siblings-follow specified, get list and check they're reachable
+	 * (if not just issue a warning)
+	 */
+	get_active_sibling_node_records(local_conn,
+									local_node_record.node_id,
+									local_node_record.upstream_node_id,
+									&sibling_nodes);
+
+	if (runtime_options.siblings_follow == false)
+	{
+		if (sibling_nodes.node_count > 0)
+		{
+			log_warning(_("%i sibling nodes found, but option \"--siblings-follow\" not specified"),
+						sibling_nodes.node_count);
+			log_detail(_("these nodes will remain attached to the current primary"));
+		}
+	}
+	else
+	{
+		char		host[MAXLEN] = "";
+		NodeInfoListCell *cell;
+
+		log_verbose(LOG_INFO, _("%i active sibling nodes found"),
+					sibling_nodes.node_count);
+
+		if (sibling_nodes.node_count == 0)
+		{
+			log_warning(_("option \"--sibling-nodes\" specified, but no sibling nodes exist"));
+		}
+		else
+		{
+			/* include walsender for promotion candidate in total */
+
+
+			for (cell = sibling_nodes.head; cell; cell = cell->next)
+			{
+				/* get host from node record */
+				get_conninfo_value(cell->node_info->conninfo, "host", host);
+				r = test_ssh_connection(host, runtime_options.remote_user);
+
+				if (r != 0)
+				{
+					cell->node_info->reachable = false;
+					unreachable_sibling_node_count++;
+				}
+				else
+				{
+					cell->node_info->reachable = true;
+					reachable_sibling_node_count++;
+					min_required_wal_senders++;
+
+					if (cell->node_info->slot_name[0] != '\0')
+					{
+						reachable_sibling_nodes_with_slot_count++;
+						min_required_free_slots++;
+					}
+				}
+			}
+
+			if (unreachable_sibling_node_count > 0)
+			{
+				if (runtime_options.force == false)
+				{
+					log_error(_("%i of %i sibling nodes unreachable via SSH:"),
+							  unreachable_sibling_node_count,
+							  sibling_nodes.node_count);
+				}
+				else
+				{
+					log_warning(_("%i of %i sibling nodes unreachable via SSH:"),
+								unreachable_sibling_node_count,
+								sibling_nodes.node_count);
+				}
+
+				/* display list of unreachable sibling nodes */
+				for (cell = sibling_nodes.head; cell; cell = cell->next)
+				{
+					if (cell->node_info->reachable == true)
+						continue;
+					log_detail("  %s (ID: %i)",
+							   cell->node_info->node_name,
+							   cell->node_info->node_id);
+				}
+
+				if (runtime_options.force == false)
+				{
+					log_hint(_("use -F/--force to proceed in any case"));
+					PQfinish(local_conn);
+					exit(ERR_BAD_CONFIG);
+				}
+
+				if (runtime_options.dry_run == true)
+				{
+					log_detail(_("F/--force specified, would proceed anyway"));
+				}
+				else
+				{
+					log_detail(_("F/--force specified, proceeding anyway"));
+				}
+			}
+			else
+			{
+				char	   *msg = _("all sibling nodes are reachable via SSH");
+
+				if (runtime_options.dry_run == true)
+				{
+					log_info("%s", msg);
+				}
+				else
+				{
+					log_verbose(LOG_INFO, "%s", msg);
+				}
+			}
+		}
+	}
+
+
+	/*
+	 * check there are sufficient free walsenders - obviously there's potential
+	 * for a later race condition if some walsenders come into use before the
+	 * switchover operation gets around to attaching the sibling nodes, but
+	 * this should catch any actual existing configuration issue (and if anyone's
+	 * performing a switchover in such an unstable environment, they only have
+	 * themselves to blame).
+	 */
+	if (available_wal_senders < min_required_wal_senders)
+	{
+		if (runtime_options.force == false || runtime_options.dry_run == true)
+		{
+			log_error(_("insufficient free walsenders on promotion candidate"));
+			log_detail(_("at least %i walsenders required but only %i free walsenders on promotion candidate"),
+					   min_required_wal_senders,
+					   available_wal_senders);
+			log_hint(_("increase parameter \"max_wal_senders\" or use -F/--force to proceed in any case"));
+
+			if (runtime_options.dry_run == false)
+			{
+				PQfinish(local_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+		else
+		{
+			log_warning(_("insufficient free walsenders on promotion candidate"));
+			log_detail(_("at least %i walsenders required but only %i free walsender(s) on promotion candidate"),
+					   min_required_wal_senders,
+					   available_wal_senders);
+		}
+	}
+	else
+	{
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("%i walsenders required, %i available"),
+					 min_required_wal_senders,
+					 available_wal_senders);
+		}
+	}
+
+
 	/* check demotion candidate can make replication connection to promotion candidate */
 	{
 		initPQExpBuffer(&remote_command_str);
@@ -3352,171 +3530,6 @@ do_standby_switchover(void)
 	}
 
 	PQfinish(remote_conn);
-
-	/*
-	 * populate local node record with current state of various replication-related
-	 * values, so we can check for sufficient walsenders and replication slots
-	 */
-	get_node_replication_stats(local_conn, server_version_num, &local_node_record);
-
-	/*
-	 * If --siblings-follow specified, get list and check they're reachable
-	 * (if not just issue a warning)
-	 */
-	get_active_sibling_node_records(local_conn,
-									local_node_record.node_id,
-									local_node_record.upstream_node_id,
-									&sibling_nodes);
-
-	if (runtime_options.siblings_follow == false)
-	{
-		if (sibling_nodes.node_count > 0)
-		{
-			log_warning(_("%i sibling nodes found, but option \"--siblings-follow\" not specified"),
-						sibling_nodes.node_count);
-			log_detail(_("these nodes will remain attached to the current primary"));
-		}
-	}
-	else
-	{
-		char		host[MAXLEN] = "";
-		NodeInfoListCell *cell;
-
-		log_verbose(LOG_INFO, _("%i active sibling nodes found"),
-					sibling_nodes.node_count);
-
-		if (sibling_nodes.node_count == 0)
-		{
-			log_warning(_("option \"--sibling-nodes\" specified, but no sibling nodes exist"));
-		}
-		else
-		{
-			/* include walsender for promotion candidate in total */
-			int			min_required_wal_senders = 1;
-			int			available_wal_senders = local_node_record.max_wal_senders -
-				local_node_record.attached_wal_receivers;
-
-			for (cell = sibling_nodes.head; cell; cell = cell->next)
-			{
-				/* get host from node record */
-				get_conninfo_value(cell->node_info->conninfo, "host", host);
-				r = test_ssh_connection(host, runtime_options.remote_user);
-
-				if (r != 0)
-				{
-					cell->node_info->reachable = false;
-					unreachable_sibling_node_count++;
-				}
-				else
-				{
-					cell->node_info->reachable = true;
-					reachable_sibling_node_count++;
-					min_required_wal_senders++;
-
-					if (cell->node_info->slot_name[0] != '\0')
-					{
-						reachable_sibling_nodes_with_slot_count++;
-						min_required_free_slots++;
-					}
-				}
-			}
-
-			if (unreachable_sibling_node_count > 0)
-			{
-				if (runtime_options.force == false)
-				{
-					log_error(_("%i of %i sibling nodes unreachable via SSH:"),
-							  unreachable_sibling_node_count,
-							  sibling_nodes.node_count);
-				}
-				else
-				{
-					log_warning(_("%i of %i sibling nodes unreachable via SSH:"),
-								unreachable_sibling_node_count,
-								sibling_nodes.node_count);
-				}
-
-				/* display list of unreachable sibling nodes */
-				for (cell = sibling_nodes.head; cell; cell = cell->next)
-				{
-					if (cell->node_info->reachable == true)
-						continue;
-					log_detail("  %s (ID: %i)",
-							   cell->node_info->node_name,
-							   cell->node_info->node_id);
-				}
-
-				if (runtime_options.force == false)
-				{
-					log_hint(_("use -F/--force to proceed in any case"));
-					PQfinish(local_conn);
-					exit(ERR_BAD_CONFIG);
-				}
-
-				if (runtime_options.dry_run == true)
-				{
-					log_detail(_("F/--force specified, would proceed anyway"));
-				}
-				else
-				{
-					log_detail(_("F/--force specified, proceeding anyway"));
-				}
-			}
-			else
-			{
-				char	   *msg = _("all sibling nodes are reachable via SSH");
-
-				if (runtime_options.dry_run == true)
-				{
-					log_info("%s", msg);
-				}
-				else
-				{
-					log_verbose(LOG_INFO, "%s", msg);
-				}
-			}
-
-			/*
-			 * check there are sufficient free walsenders - obviously there's potential
-			 * for a later race condition if some walsenders come into use before the
-			 * switchover operation gets around to attaching the sibling nodes, but
-			 * this should catch any actual existing configuration issue.
-			 */
-			if (available_wal_senders < min_required_wal_senders)
-			{
-				if (runtime_options.force == false || runtime_options.dry_run == true)
-				{
-					log_error(_("insufficient free walsenders to attach all sibling nodes"));
-					log_detail(_("at least %i walsenders required but only %i free walsenders on promotion candidate"),
-							   min_required_wal_senders,
-							   available_wal_senders);
-					log_hint(_("increase parameter \"max_wal_senders\" or use -F/--force to proceed in any case"));
-
-					if (runtime_options.dry_run == false)
-					{
-						PQfinish(local_conn);
-						exit(ERR_BAD_CONFIG);
-					}
-				}
-				else
-				{
-					log_warning(_("insufficient free walsenders to attach all sibling nodes"));
-					log_detail(_("at least %i walsenders required but only %i free walsender(s) on promotion candidate"),
-							   min_required_wal_senders,
-							   available_wal_senders);
-				}
-			}
-			else
-			{
-				if (runtime_options.dry_run == true)
-				{
-					log_info(_("%i walsenders required, %i available"),
-							 min_required_wal_senders,
-							 available_wal_senders);
-				}
-			}
-		}
-	}
 
 
 	/*
