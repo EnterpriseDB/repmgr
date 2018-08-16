@@ -2050,6 +2050,8 @@ _do_standby_promote_internal(PGconn *conn)
 			   local_node_record.node_name,
 			   local_node_record.node_id,
 			   script);
+	log_detail(_("waiting up to %i seconds (parameter \"promote_check_timeout\") for promotion to complete"),
+			   config_file_options.promote_check_timeout);
 
 	r = system(script);
 	if (r != 0)
@@ -2075,6 +2077,8 @@ _do_standby_promote_internal(PGconn *conn)
 		if (recovery_type == RECTYPE_STANDBY)
 		{
 			log_error(_("STANDBY PROMOTE failed, node is still a standby"));
+			log_detail(_("node still in recovery after %i seconds"), config_file_options.promote_check_timeout);
+			log_hint(_("the node may need more time to promote itself, check the PostgreSQL log for details"));
 			PQfinish(conn);
 			exit(ERR_PROMOTION_FAIL);
 		}
