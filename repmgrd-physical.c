@@ -1836,9 +1836,18 @@ do_upstream_standby_failover(void)
 
 	if (primary_type != RECTYPE_PRIMARY)
 	{
-		log_error(_("last known primary\"%s\" (ID: %i) is in recovery, not following"),
-				  primary_node_info.node_name,
-				  primary_node_info.node_id);
+		if (primary_type == RECTYPE_STANDBY)
+		{
+			log_error(_("last known primary \"%s\" (ID: %i) is in recovery, not following"),
+					  primary_node_info.node_name,
+					  primary_node_info.node_id);
+		}
+		else
+		{
+			log_error(_("unable to determine status of last known primary \"%s\" (ID: %i), not following"),
+					  primary_node_info.node_name,
+					  primary_node_info.node_id);
+		}
 
 		close_connection(&primary_conn);
 		monitoring_state = MS_DEGRADED;
@@ -2415,20 +2424,26 @@ witness_follow_new_primary(int new_primary_id)
 	{
 		RecoveryType primary_recovery_type = get_recovery_type(upstream_conn);
 
-		if (primary_recovery_type == RECTYPE_PRIMARY)
+		switch (primary_recovery_type)
 		{
-			new_primary_ok = true;
-		}
-		else
-		{
-			new_primary_ok = false;
-			log_warning(_("new primary is not in recovery"));
-			close_connection(&upstream_conn);
+			case RECTYPE_PRIMARY:
+				new_primary_ok = true;
+				break;
+			case RECTYPE_STANDBY:
+				new_primary_ok = false;
+				log_warning(_("new primary is not in recovery"));
+				break;
+			case RECTYPE_UNKNOWN:
+				new_primary_ok = false;
+				log_warning(_("unable to determine status of new primary"));
+				break;
 		}
 	}
 
 	if (new_primary_ok == false)
 	{
+		close_connection(&upstream_conn);
+
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
