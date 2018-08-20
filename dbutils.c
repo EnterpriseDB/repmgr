@@ -1760,7 +1760,6 @@ vacuum_table(PGconn *primary_conn, const char *table)
 	res = PQexec(primary_conn, query.data);
 	termPQExpBuffer(&query);
 
-	log_debug("%i", (int) PQresultStatus(res));
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
 		success = false;
@@ -3336,7 +3335,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 			 */
 			if (notify_ok == false)
 			{
-				log_debug(_("Not executing notification script for event type \"%s\""), event);
+				log_debug(_("not executing notification script for event type \"%s\""), event);
 				return success;
 			}
 		}
