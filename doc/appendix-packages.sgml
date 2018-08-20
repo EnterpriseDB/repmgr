@@ -391,6 +391,7 @@
       <primary>packages</primary>
       <secondary>snaphots</secondary>
     </indexterm>
+
     <para>
       For testing new features and bug fixes, from time to time 2ndQuadrant provides
       so-called &quot;snapshot packages&quot; via its public repository. These packages
@@ -439,6 +440,69 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
     </para>
 
   </sect1>
+
+  <sect1 id="packages-old-versions" xreflabel="Installing old package versions">
+    <title>Installing old package versions</title>
+    <indexterm>
+      <primary>old packages</primary>
+    </indexterm>
+    <indexterm>
+      <primary>packages</primary>
+      <secondary>old versions</secondary>
+    </indexterm>
+
+    <sect2 id="packages-old-versions-debian" xreflabel="old Debian package versions">
+      <title>Debian/Ubuntu</title>
+      <para>
+        An archive of old packages (<literal>3.3.2</literal> and later) for Debian/Ubuntu-based systems is available here:
+        <ulink url="http://atalia.postgresql.org/morgue/r/repmgr/">http://atalia.postgresql.org/morgue/r/repmgr/</ulink>
+      </para>
+    </sect2>
+
+    <sect2 id="packages-old-versions-rhel-centos" xreflabel="old RHEL/CentOS package versions">
+      <title>RHEL/CentOS</title>
+      <para>
+        Old RPM packages (<literal>3.2</literal> and later) can be retrieved from the
+        (deprecated) 2ndQuadrant repository at
+        <ulink url="http://packages.2ndquadrant.com/">http://packages.2ndquadrant.com/</ulink>
+        by installing the appropriate repository RPM:
+      </para>
+
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm</ulink>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm</ulink>
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+
+      <para>
+        Old versions can be located with e.g.:
+        <programlisting>
+          yum --showduplicates list repmgr96</programlisting>
+        (substitute the appropriate package name; see <xref linkend="packages-centos">) and installed with:
+        <programlisting>
+          yum install {package_name}-{version}</programlisting>
+        where <literal>{package_name}</literal> is the base package name (e.g. <literal>repmgr96</literal>)
+        and <literal>{version}</literal> is the version listed by the
+        <command> yum --showduplicates list ...</command> command, e.g. <literal>4.0.6-1.rhel6</literal>.
+      </para>
+      <para>For example:
+        <programlisting>
+          yum install repmgr96-4.0.6-1.rhel6</programlisting>
+      </para>
+
+    </sect2>
+  </sect1>
+
 
   <sect1 id="packages-packager-info" xreflabel="Information for packagers">
     <title>Information for packagers</title>
