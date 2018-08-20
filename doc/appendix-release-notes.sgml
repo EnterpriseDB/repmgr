@@ -22,13 +22,31 @@
     </para>
 
     <sect2>
+      <title>repmgr enhancements</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-standby-clone">repmgr standby switchover --dry-run</link></command>
+              no longer copies external configuration files to test they can be copied; this avoids making
+              any changes to the target system. (GitHub #491).
+            </para>
+          </listitem>
+
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
       <title>repmgrd enhancements</title>
       <para>
         <itemizedlist>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: always reopen the log file after
+              Always reopen the log file after
               receiving <literal>SIGHUP</literal>. Previously this only happened if
               a configuration file change was detected.
               (GitHub #485).
@@ -37,8 +55,14 @@
 
           <listitem>
             <para>
-              <application>repmgrd</application>: report version number <emphasis>after</emphasis>
+              Report version number <emphasis>after</emphasis>
               logger initialisation. (GitHub #487).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Improve cascaded standby failover handling. (GitHub #480).
             </para>
           </listitem>
 
@@ -56,6 +80,7 @@
               <application>repmgrd</application>: fix startup on witness node when local data is stale. (GitHub #488, #489).
             </para>
           </listitem>
+
 
         </itemizedlist>
       </para>
