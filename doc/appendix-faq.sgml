@@ -108,6 +108,14 @@
      is not possible, contact your vendor for assistance.
    </para>
   </sect2>
+
+  <sect2 id="faq-old-packages">
+   <title>How can I obtain old versions of &repmgr; packages?</title>
+   <para>
+     See appendix <xref linkend="packages-old-versions"> for details.
+   </para>
+  </sect2>
+
  </sect1>
 
  <sect1 id="faq-repmgr" xreflabel="repmgr">
