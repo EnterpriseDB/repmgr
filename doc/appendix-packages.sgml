@@ -382,6 +382,63 @@
 
   </sect1>
 
+  <sect1 id="packages-snapshot" xreflabel="Snapshot packages">
+    <title>Snapshot packages</title>
+    <indexterm>
+      <primary>snapshot packages</primary>
+    </indexterm>
+    <indexterm>
+      <primary>packages</primary>
+      <secondary>snaphots</secondary>
+    </indexterm>
+    <para>
+      For testing new features and bug fixes, from time to time 2ndQuadrant provides
+      so-called &quot;snapshot packages&quot; via its public repository. These packages
+      are built from the &repmgr; source at a particular point in time, and are not formal
+      releases.
+    </para>
+    <note>
+      <para>
+        We do not recommend installing these packages in a production environment
+        unless specifically advised.
+      </para>
+    </note>
+    <para>
+      To install a snapshot package, it's necessary to install the 2ndQuadrant public snapshot repository,
+      following the instructions here: <ulink url="https://dl.2ndquadrant.com/default/release/site/">https://dl.2ndquadrant.com/default/release/site/</ulink> but replace <literal>release</literal> with <literal>snapshot</literal>
+      in the appropriate URL.
+    </para>
+    <para>
+      For example, to install the snapshot RPM repository for PostgreSQL 9.6, execute (as <literal>root</literal>):
+      <programlisting>
+curl https://dl.2ndquadrant.com/default/snapshot/get/9.6/rpm | bash</programlisting>
+
+      or as a normal user with root sudo access:
+      <programlisting>
+curl https://dl.2ndquadrant.com/default/snapshot/get/9.6/rpm | sudo bash</programlisting>
+    </para>
+    <para>
+      Alternatively you can browse the repository here:
+      <ulink url="https://dl.2ndquadrant.com/default/snapshot/browse/">https://dl.2ndquadrant.com/default/snapshot/browse/</ulink>.
+    </para>
+    <para>
+      Once the repository is installed, installing or updating &repmgr; will result in the latest snapshot
+      package being installed.
+    </para>
+    <para>
+      The package name will be formatted like this:
+      <programlisting>
+repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
+      containg the snapshot build number (here: <literal>320</literal>) and the hash
+      of the <application>git</application> commit it was built from (here: <literal>g5113ab0</literal>).
+    </para>
+
+    <para>
+      Note that the next formal release (in the above example <literal>4.1.1</literal>), once available,
+      will install in place of any snapshot builds.
+    </para>
+
+  </sect1>
 
   <sect1 id="packages-packager-info" xreflabel="Information for packagers">
     <title>Information for packagers</title>
@@ -390,7 +447,7 @@
       <secondary>information for packagers</secondary>
     </indexterm>
     <para>
-      We recommend patching the following  parameters when
+      We recommend patching the following parameters when
       building the package as built-in default values for user convenience.
       These values can nevertheless be overridden by the user, if desired.
     </para>
