@@ -34,6 +34,12 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-cluster-cleanup">repmgr cluster cleanup</link></command>:
+              add <literal>cluster_cleanup</literal> event. (GitHub #492)
+            </para>
+          </listitem>
 
         </itemizedlist>
       </para>

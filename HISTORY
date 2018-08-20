@@ -3,6 +3,7 @@
         repmgr: improve messages emitted during "standby promote" (Ian)
         repmgr: "standby clone" - don't copy external config files in --dry-run
           mode; GitHub #491 (Ian)
+        repmgr: add "cluster_cleanup" event; GitHub #492 (Ian)
         repmgrd: ensure that sending SIGHUP always results in the log file
           being reopened; GitHub #485 (Ian)
         repmgrd: report version number *after* logger initialisation; GitHub #487 (Ian)

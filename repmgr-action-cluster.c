@@ -1332,6 +1332,7 @@ do_cluster_cleanup(void)
 	PGconn	   *conn = NULL;
 	PGconn	   *primary_conn = NULL;
 	int			entries_to_delete = 0;
+	PQExpBufferData event_details;
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
@@ -1355,10 +1356,23 @@ do_cluster_cleanup(void)
 	log_debug("at least %i monitoring records for deletion",
 			  entries_to_delete);
 
+	initPQExpBuffer(&event_details);
+
 	if (delete_monitoring_records(primary_conn, runtime_options.keep_history) == false)
 	{
-		log_error(_("unable to delete monitoring records"));
+		appendPQExpBuffer(&event_details,
+						  _("unable to delete monitoring records"));
+
+		log_error("%s", event_details.data);
 		log_detail("%s", PQerrorMessage(primary_conn));
+
+		create_event_notification(primary_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "cluster_cleanup",
+								  false,
+								  event_details.data);
+
 		PQfinish(primary_conn);
 		exit(ERR_DB_QUERY);
 	}
@@ -1370,7 +1384,22 @@ do_cluster_cleanup(void)
 		log_detail("%s", PQerrorMessage(primary_conn));
 	}
 
+	appendPQExpBuffer(&event_details,
+					  _("monitoring records deleted"));
 
+	if (runtime_options.keep_history > 0)
+		appendPQExpBuffer(&event_details,
+						  _("; records newer than %i day(s) retained"),
+						  runtime_options.keep_history);
+
+	create_event_notification(primary_conn,
+							  &config_file_options,
+							  config_file_options.node_id,
+							  "cluster_cleanup",
+							  true,
+							  event_details.data);
+
+	termPQExpBuffer(&event_details);
 	PQfinish(primary_conn);
 
 	if (runtime_options.keep_history > 0)
