@@ -28,6 +28,10 @@
         If the node is running and needs to be attached to the current primary, use
         <xref linkend="repmgr-standby-follow">.
       </para>
+      <para>
+        Note <xref linkend="repmgr-standby-follow"> can only be used for standbys which have not diverged
+        from the rest of the cluster.
+      </para>
     </tip>
   </refsect1>
 
