@@ -5857,7 +5857,7 @@ get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 	initPQExpBuffer(&command_output);
 
 	maxlen_snprintf(command,
-					"grep \"^\t%s:\" %s/show-server.txt",
+					"grep \"^[[:space:]]%s:\" %s/show-server.txt",
 					name, local_repmgr_tmp_directory);
 	(void) local_command(command, &command_output);
 
