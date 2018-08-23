@@ -15,7 +15,7 @@
   </para>
   <note>
     <simpara>
-      Due to the nature of BDR, it's only safe to use this solution for
+      Due to the nature of BDR 1.x/2.x, it's only safe to use this solution for
       a two-node scenario. Introducing additional nodes will create an inherent
       risk of node desynchronisation if a node goes down without being cleanly
       removed from the cluster.
