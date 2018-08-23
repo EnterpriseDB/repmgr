@@ -44,7 +44,7 @@
     </para>
   </refsect1>
 
-  <refsect1>
+  <refsect1 id="repmgr-cluster-cleanup-events">
     <title>Event notifications</title>
     <para>
       A <literal>cluster_cleanup</literal> <link linkend="event-notifications">event notification</link> will be generated.

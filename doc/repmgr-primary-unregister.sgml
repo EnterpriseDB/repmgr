@@ -64,7 +64,7 @@
 
   </refsect1>
 
-  <refsect1>
+  <refsect1 id="repmgr-primary-unregister-events">
     <title>Event notifications</title>
     <para>
       A <literal>primary_unregister</literal> <link linkend="event-notifications">event notification</link> will be generated.

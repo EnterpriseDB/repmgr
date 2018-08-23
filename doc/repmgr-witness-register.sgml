@@ -50,7 +50,7 @@
   </refsect1>
 
 
-  <refsect1>
+  <refsect1 id="repmgr-witness-register-events">
     <title>Event notifications</title>
     <para>
       A <literal>witness_register</literal> <link linkend="event-notifications">event notification</link> will be generated.

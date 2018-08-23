@@ -159,7 +159,7 @@
     </variablelist>
   </refsect1>
 
-  <refsect1>
+  <refsect1 id="repmgr-standby-register-events">
     <title>Event notifications</title>
     <para>
       A <literal>standby_register</literal> <link linkend="event-notifications">event notification</link>

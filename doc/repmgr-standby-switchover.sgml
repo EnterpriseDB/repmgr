@@ -196,7 +196,7 @@
     </para>
   </refsect1>
 
-  <refsect1>
+  <refsect1 id="repmgr-standby-switchover-events">
     <title>Event notifications</title>
     <para>
       <literal>standby_switchover</literal> and <literal>standby_promote</literal>
