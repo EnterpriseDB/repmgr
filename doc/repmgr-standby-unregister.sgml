@@ -59,7 +59,7 @@
     </variablelist>
   </refsect1>
 
-  <refsect1>
+  <refsect1 id="repmgr-standby-unregister-events">
     <title>Event notifications</title>
     <para>
       A <literal>standby_unregister</literal> <link linkend="event-notifications">event notification</link> will be generated.

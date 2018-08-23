@@ -119,7 +119,7 @@
 
     </variablelist>
   </refsect1>
- <refsect1>
+  <refsect1>
     <title>Configuration file settings</title>
 
     <para>
@@ -136,8 +136,9 @@
 	  </itemizedlist>
 	</para>
 
- </refsect1>
-  <refsect1>
+  </refsect1>
+
+  <refsect1 id="repmgr-node-rejoin-events">
     <title>Event notifications</title>
     <para>
       A <literal>node_rejoin</literal> <link linkend="event-notifications">event notification</link> will be generated.

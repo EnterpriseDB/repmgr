@@ -75,10 +75,18 @@
   </refsect1>
 
 
-  <refsect1>
+  <refsect1 id="repmgr-primary-register-events">
     <title>Event notifications</title>
     <para>
-      A <literal>primary_register</literal> <link linkend="event-notifications">event notification</link> will be generated.
+      Following <link linkend="event-notifications">event notifications</link> will be generated:
+      <itemizedlist spacing="compact" mark="bullet">
+        <listitem>
+          <simpara><literal>cluster_created</literal></simpara>
+        </listitem>
+        <listitem>
+          <simpara><literal>primary_register</literal></simpara>
+        </listitem>
+      </itemizedlist>
     </para>
   </refsect1>
 
