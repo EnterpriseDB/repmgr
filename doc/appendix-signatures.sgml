@@ -5,14 +5,14 @@
    <title>repmgr source code signing key</title>
    <para>
      The signing key ID used for <application>repmgr</application> source code bundles is:
-     <ulink url="http://packages.2ndquadrant.com/repmgr/SOURCE-GPG-KEY-repmgr">
+     <ulink url="https://repmgr.org/download/SOURCE-GPG-KEY-repmgr">
        <literal>0x297F1DCC</literal></ulink>.
    </para>
 
    <para>
      To download the <application>repmgr</application> source key to your computer:
      <programlisting>
-       curl -s http://packages.2ndquadrant.com/repmgr/SOURCE-GPG-KEY-repmgr | gpg --import
+       curl -s https://repmgr.org/download/SOURCE-GPG-KEY-repmgr | gpg --import
        gpg --fingerprint 0x297F1DCC
      </programlisting>
      then verify that the fingerprint is the expected value:
