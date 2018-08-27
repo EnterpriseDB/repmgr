@@ -17,7 +17,7 @@
 
   <sect1 id="release-4.1.1">
     <title>Release 4.1.1</title>
-    <para><emphasis>??? ??? ??, 2018</emphasis></para>
+    <para><emphasis>Wed September 5, 2018</emphasis></para>
     <para>
     </para>
 
@@ -30,6 +30,14 @@
             <para>
               <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>:
               improve detection of free walsenders. (GitHub #495).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Text of any failed queries will now be logged as <literal>ERROR</literal> to assist
+              logfile analysis at log levels higher than <literal>DEBUG</literal>.
+              (GitHub #498).
             </para>
           </listitem>
 

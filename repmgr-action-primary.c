@@ -64,12 +64,10 @@ do_primary_register(void)
 			PQfinish(conn);
 			exit(ERR_BAD_CONFIG);
 		}
-		else
-		{
-			log_error(_("connection to node lost"));
-			PQfinish(conn);
-			exit(ERR_DB_CONN);
-		}
+
+		log_error(_("unable to determine server's recovery type"));
+		PQfinish(conn);
+		exit(ERR_DB_CONN);
 	}
 
 	log_verbose(LOG_INFO, _("server is not in recovery"));

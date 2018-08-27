@@ -1,4 +1,6 @@
 4.1.1   2018-??-??
+        logging: explicitly log the text of failed queries as ERRORs to
+          assist logfile analysis; GitHub #498
         repmgr: truncate version string, if necessary; GitHub #490 (Ian)
         repmgr: improve messages emitted during "standby promote" (Ian)
         repmgr: "standby clone" - don't copy external config files in --dry-run
