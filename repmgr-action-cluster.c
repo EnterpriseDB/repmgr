@@ -1346,7 +1346,13 @@ do_cluster_cleanup(void)
 
 	entries_to_delete = get_number_of_monitoring_records_to_delete(primary_conn, runtime_options.keep_history);
 
-	if (entries_to_delete == 0)
+	if (entries_to_delete < 0)
+	{
+		log_error(_("unable to query number of monitoring records to clean up"));
+		PQfinish(primary_conn);
+		exit(ERR_DB_QUERY);
+	}
+	else if (entries_to_delete == 0)
 	{
 		log_info(_("no monitoring records to delete"));
 		PQfinish(primary_conn);

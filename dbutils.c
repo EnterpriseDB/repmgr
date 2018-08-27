@@ -40,6 +40,9 @@ int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
  */
 int			bdr_version_num = UNKNOWN_BDR_VERSION_NUM;
 
+static void log_db_error(PGconn *conn, const char *query_text, const char *fmt,...)
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
+
 static PGconn *_establish_db_connection(const char *conninfo,
 						 const bool exit_on_error,
 						 const bool log_notice,
@@ -60,6 +63,27 @@ static bool _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet);
 static void _populate_bdr_node_record(PGresult *res, t_bdr_node_info *node_info, int row);
 static void _populate_bdr_node_records(PGresult *res, BdrNodeInfoList *node_list);
 
+void
+log_db_error(PGconn *conn, const char *query_text, const char *fmt,...)
+{
+	va_list		ap;
+
+	va_start(ap, fmt);
+
+	log_error(fmt, ap);
+
+	va_end(ap);
+
+	if (conn != NULL && PQstatus(conn) == CONNECTION_OK)
+	{
+		log_detail("%s", PQerrorMessage(conn));
+	}
+
+	if (query_text != NULL)
+	{
+		log_detail("query text is:\n%s", query_text);
+	}
+}
 
 /* ================= */
 /* utility functions */
@@ -826,20 +850,18 @@ rollback_transaction(PGconn *conn)
 static bool
 _set_config(PGconn *conn, const char *config_param, const char *sqlquery)
 {
-	PGresult   *res = NULL;
-
-	res = PQexec(conn, sqlquery);
+	bool		success = true;
+	PGresult   *res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error("unable to set \"%s\": %s", config_param, PQerrorMessage(conn));
-		PQclear(res);
-		return false;
+		log_db_error(conn, sqlquery, "_set_config(): unable to set \"%s\"", config_param);
+		success = false;
 	}
 
 	PQclear(res);
 
-	return true;
+	return success;
 }
 
 
@@ -908,14 +930,9 @@ guc_set(PGconn *conn, const char *parameter, const char *op,
 
 	res = PQexec(conn, query.data);
 
-	termPQExpBuffer(&query);
-	pfree(escaped_parameter);
-	pfree(escaped_value);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("guc_set(): unable to execute query\n%s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data, _("guc_set(): unable to execute query"));
 		retval = -1;
 	}
 	else if (PQntuples(res) == 0)
@@ -923,6 +940,9 @@ guc_set(PGconn *conn, const char *parameter, const char *op,
 		retval = 0;
 	}
 
+	pfree(escaped_parameter);
+	pfree(escaped_value);
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return retval;
@@ -953,14 +973,9 @@ guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 
 	res = PQexec(conn, query.data);
 
-	termPQExpBuffer(&query);
-	pfree(escaped_parameter);
-	pfree(escaped_value);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("guc_set_typed(): unable to execute query\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data, _("guc_set_typed(): unable to execute query"));
 		retval = -1;
 	}
 	else if (PQntuples(res) == 0)
@@ -968,6 +983,9 @@ guc_set_typed(PGconn *conn, const char *parameter, const char *op,
 		retval = 0;
 	}
 
+	pfree(escaped_parameter);
+	pfree(escaped_value);
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return retval;
@@ -1000,14 +1018,15 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 
 	res = PQexec(conn, query.data);
 
-	termPQExpBuffer(&query);
 	pfree(escaped_setting);
 
-	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("get_pg_setting() - PQexec failed: %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data, _("get_pg_setting() - unable to execute query"));
+
+		termPQExpBuffer(&query);
 		PQclear(res);
+
 		return false;
 	}
 
@@ -1031,6 +1050,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 		log_verbose(LOG_DEBUG, _("get_pg_setting(): returned value is \"%s\""), output);
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -1047,6 +1067,7 @@ get_cluster_size(PGconn *conn, char *size)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
@@ -1056,21 +1077,21 @@ get_cluster_size(PGconn *conn, char *size)
 	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
-	if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("get_cluster_size(): unable to execute query\n%s"),
-				  PQerrorMessage(conn));
-
-		PQclear(res);
-		return false;
+		log_db_error(conn, query.data, _("get_cluster_size(): unable to execute query"));
+		success = false;
+	}
+	else
+	{
+		strncpy(size, PQgetvalue(res, 0, 0), MAXLEN);
 	}
 
-	strncpy(size, PQgetvalue(res, 0, 0), MAXLEN);
-
+	termPQExpBuffer(&query);
 	PQclear(res);
-	return true;
+
+	return success;
 }
 
 /*
@@ -1081,16 +1102,17 @@ get_server_version(PGconn *conn, char *server_version)
 {
 	PGresult   *res = NULL;
 	int			server_version_num;
+	const char	   *sqlquery =
+		"SELECT pg_catalog.current_setting('server_version_num'), "
+		"       pg_catalog.current_setting('server_version')";
 
-	res = PQexec(conn,
-				 "SELECT pg_catalog.current_setting('server_version_num'), "
-				 "       pg_catalog.current_setting('server_version')");
+	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to determine server version number:\n%s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, sqlquery, _("unable to determine server version number"));
 		PQclear(res);
+
 		return -1;
 	}
 
@@ -1121,6 +1143,7 @@ get_server_version(PGconn *conn, char *server_version)
 	server_version_num = atoi(PQgetvalue(res, 0, 0));
 
 	PQclear(res);
+
 	return server_version_num;
 }
 
@@ -1131,7 +1154,7 @@ get_recovery_type(PGconn *conn)
 	PGresult   *res = NULL;
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 
-	char	   *sqlquery = "SELECT pg_catalog.pg_is_in_recovery()";
+	const char	   *sqlquery = "SELECT pg_catalog.pg_is_in_recovery()";
 
 	log_verbose(LOG_DEBUG, "get_recovery_type(): %s", sqlquery);
 
@@ -1139,8 +1162,10 @@ get_recovery_type(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to determine if server is in recovery:\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn,
+					 sqlquery,
+					 _("unable to determine if server is in recovery"));
+
 		recovery_type = RECTYPE_UNKNOWN;
 	}
 	else if (PQntuples(res) == 1)
@@ -1156,6 +1181,7 @@ get_recovery_type(PGconn *conn)
 	}
 
 	PQclear(res);
+
 	return recovery_type;
 }
 
@@ -1213,11 +1239,14 @@ _get_primary_connection(PGconn *conn,
 	log_verbose(LOG_DEBUG, "get_primary_connection():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
+
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to retrieve node records:\n	 %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data, _("_get_primary_connection(): unable to retrieve node records"));
+
+		termPQExpBuffer(&query);
 		PQclear(res);
+
 		return NULL;
 	}
 
@@ -1254,9 +1283,9 @@ _get_primary_connection(PGconn *conn,
 
 		if (recovery_type == RECTYPE_UNKNOWN)
 		{
-			log_error(_("unable to retrieve recovery state from node %i:\n	%s"),
-					  node_id,
-					  PQerrorMessage(remote_conn));
+			log_warning(_("unable to retrieve recovery state from node %i"),
+						node_id);
+
 			PQfinish(remote_conn);
 			continue;
 		}
@@ -1321,13 +1350,11 @@ get_primary_node_id(PGconn *conn)
 	log_verbose(LOG_DEBUG, "get_primary_node_id():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("get_primary_node_id(): query failed\n  %s"),
-				  PQerrorMessage(conn));
-		retval = NODE_NOT_FOUND;
+		log_db_error(conn, query.data, _("get_primary_node_id(): unable to execute query"));
+		retval = UNKNOWN_NODE_ID;
 	}
 	else if (PQntuples(res) == 0)
 	{
@@ -1338,6 +1365,8 @@ get_primary_node_id(PGconn *conn)
 	{
 		retval = atoi(PQgetvalue(res, 0, 0));
 	}
+
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return retval;
@@ -1349,6 +1378,7 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
 		server_version_num = get_server_version(conn, NULL);
@@ -1390,27 +1420,27 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 	log_verbose(LOG_DEBUG, "get_replication_info():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
 	{
-		log_error(_("unable to execute replication info query:\n  %s"),
-				  PQerrorMessage(conn));
-		PQclear(res);
+		log_db_error(conn, query.data, _("get_replication_info(): unable to execute query"));
 
-		return false;
+		success = false;
+	}
+	else
+	{
+		strncpy(replication_info->current_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+		replication_info->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 1));
+		replication_info->last_wal_replay_lsn = parse_lsn(PQgetvalue(res, 0, 2));
+		strncpy(replication_info->last_xact_replay_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
+		replication_info->replication_lag_time = atoi(PQgetvalue(res, 0, 4));
+		replication_info->receiving_streamed_wal = atobool(PQgetvalue(res, 0, 5));
 	}
 
-	strncpy(replication_info->current_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
-	replication_info->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 1));
-	replication_info->last_wal_replay_lsn = parse_lsn(PQgetvalue(res, 0, 2));
-	strncpy(replication_info->last_xact_replay_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
-	replication_info->replication_lag_time = atoi(PQgetvalue(res, 0, 4));
-	replication_info->receiving_streamed_wal = atobool(PQgetvalue(res, 0, 5));
-
+	termPQExpBuffer(&query);
 	PQclear(res);
 
-	return true;
+	return success;
 }
 
 
@@ -1604,12 +1634,13 @@ repmgrd_get_local_node_id(PGconn *conn)
 	PGresult   *res = NULL;
 	int			local_node_id = UNKNOWN_NODE_ID;
 
-	res = PQexec(conn, "SELECT repmgr.get_local_node_id()");
+	const char *sqlquery = "SELECT repmgr.get_local_node_id()";
+
+	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute \"SELECT repmgr.get_local_node_id()\""));
-		log_detail("%s", PQerrorMessage(conn));
+		log_db_error(conn, sqlquery, _("repmgrd_get_local_node_id(): unable to execute query"));
 	}
 	else if (!PQgetisnull(res, 0, 0))
 	{
@@ -1631,17 +1662,16 @@ BackupState
 server_in_exclusive_backup_mode(PGconn *conn)
 {
 	BackupState backup_state = BACKUP_STATE_UNKNOWN;
-	PGresult   *res = PQexec(conn, "SELECT pg_catalog.pg_is_in_backup()");
+	const char *sqlquery = "SELECT pg_catalog.pg_is_in_backup()";
+	PGresult   *res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to retrieve information regarding backup mode of node"));
-		log_detail("%s", PQerrorMessage(conn));
-		PQclear(res);
-		return BACKUP_STATE_UNKNOWN;
-	}
+		log_db_error(conn, sqlquery, _("unable to retrieve information regarding backup mode of node"));
 
-	if (atobool(PQgetvalue(res, 0, 0)) == true)
+		backup_state = BACKUP_STATE_UNKNOWN;
+	}
+	else if (atobool(PQgetvalue(res, 0, 0)) == true)
 	{
 		backup_state = BACKUP_STATE_IN_BACKUP;
 	}
@@ -1693,13 +1723,9 @@ get_repmgr_extension_status(PGconn *conn)
 
 	res = PQexec(conn, query.data);
 
-	termPQExpBuffer(&query);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute extension query:\n  %s"),
-				  PQerrorMessage(conn));
-
+		log_db_error(conn, query.data, _("get_repmgr_extension_status(): unable to execute extension query"));
 		status = REPMGR_UNKNOWN;
 	}
 
@@ -1718,6 +1744,8 @@ get_repmgr_extension_status(PGconn *conn)
 	{
 		status = REPMGR_AVAILABLE;
 	}
+
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return status;
@@ -1737,8 +1765,7 @@ checkpoint(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to execute CHECKPOINT"));
-		log_detail("%s", PQerrorMessage(conn));
+		log_db_error(conn, NULL, _("unable to execute CHECKPOINT"));
 	}
 
 	PQclear(res);
@@ -1758,13 +1785,14 @@ vacuum_table(PGconn *primary_conn, const char *table)
 	appendPQExpBuffer(&query, "VACUUM %s", table);
 
 	res = PQexec(primary_conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
+		log_db_error(primary_conn, NULL, _("unable to vacuum table \"%s\""), table);
 		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -2192,6 +2220,7 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	initPQExpBuffer(&query);
 
@@ -2207,21 +2236,20 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 
 	res = PQexec(conn, query.data);
 
-	termPQExpBuffer(&query);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to retrieve node records"));
-		log_detail("%s", PQerrorMessage(conn));
-		PQclear(res);
-		return false;
+		log_db_error(conn, query.data, _("get_all_node_records_with_upstream(): unable to retrieve node records"));
+		success = false;
+	}
+	else
+	{
+		_populate_node_records(res, node_list);
 	}
 
-	_populate_node_records(res, node_list);
-
+	termPQExpBuffer(&query);
 	PQclear(res);
 
-	return true;
+	return success;
 }
 
 
@@ -2231,6 +2259,7 @@ get_downstream_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoL
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	initPQExpBuffer(&query);
 
@@ -2249,21 +2278,20 @@ get_downstream_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoL
 
 	res = PQexec(conn, query.data);
 
-	termPQExpBuffer(&query);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to retrieve node records"));
-		log_detail("%s", PQerrorMessage(conn));
-		PQclear(res);
-		return false;
+		log_db_error(conn, query.data, _("get_downstream_nodes_with_missing_slot(): unable to retrieve node records"));
+		success = false;
+	}
+	else
+	{
+		_populate_node_records(res, node_list);
 	}
 
-	_populate_node_records(res, node_list);
-
+	termPQExpBuffer(&query);
 	PQclear(res);
 
-	return true;
+	return success;
 }
 
 bool
@@ -2380,19 +2408,18 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 					   NULL,
 					   0);
 
-	termPQExpBuffer(&query);
-
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to %s node record for node \"%s\" (ID: %i)"),
-				  action,
-				  node_info->node_name,
-				  node_info->node_id);
-		log_detail("%s", PQerrorMessage(conn));
+		log_db_error(conn, query.data,
+					 _("_create_update_node_record(): unable to %s node record for node \"%s\" (ID: %i)"),
+					 action,
+					 node_info->node_name,
+					 node_info->node_id);
 
 		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -2417,16 +2444,15 @@ update_node_record_set_active(PGconn *conn, int this_node_id, bool active)
 	log_verbose(LOG_DEBUG, "update_node_record_set_active():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to update node record:\n  %s"),
-				  PQerrorMessage(conn));
-
+		log_db_error(conn, query.data,
+					 _("update_node_record_set_active(): unable to update node record"));
 		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -2452,16 +2478,14 @@ update_node_record_set_active_standby(PGconn *conn, int this_node_id)
 	log_verbose(LOG_DEBUG, "update_node_record_set_active_standby():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to update node record:\n  %s"),
-				  PQerrorMessage(conn));
-
+		log_db_error(conn, query.data, _("update_node_record_set_active_standby(): unable to update node record"));
 		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -2490,18 +2514,21 @@ update_node_record_set_primary(PGconn *conn, int this_node_id)
 					  this_node_id);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to set old primary node as inactive:\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data,
+					 _("update_node_record_set_primary(): unable to set old primary node as inactive"));
+
+		termPQExpBuffer(&query);
 		PQclear(res);
 
 		rollback_transaction(conn);
+
 		return false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	initPQExpBuffer(&query);
@@ -2515,19 +2542,22 @@ update_node_record_set_primary(PGconn *conn, int this_node_id)
 					  this_node_id);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to set current node %i as active primary:\n  %s"),
-				  this_node_id,
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data,
+					 _("unable to set current node %i as active primary"),
+					 this_node_id);
+
+		termPQExpBuffer(&query);
 		PQclear(res);
 
 		rollback_transaction(conn);
+
 		return false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return commit_transaction(conn);
@@ -2559,12 +2589,12 @@ update_node_record_set_upstream(PGconn *conn, int this_node_id, int new_upstream
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to set new upstream node id:\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data, _("update_node_record_set_upstream(): unable to set new upstream node id"));
 
 		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -2598,16 +2628,17 @@ update_node_record_status(PGconn *conn, int this_node_id, char *type, int upstre
 	log_verbose(LOG_DEBUG, "update_node_record_status():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to update node record:\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data,
+					 _("update_node_record_status(): unable to update node record status for node %i"),
+					 this_node_id);
 
 		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -2669,15 +2700,17 @@ witness_copy_node_records(PGconn *primary_conn, PGconn *witness_conn)
 	/* Defer constraints */
 
 	res = PQexec(witness_conn, "SET CONSTRAINTS ALL DEFERRED");
+
 	if (!res || PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to defer constraints:\n  %s"),
-				  PQerrorMessage(witness_conn));
+		log_db_error(witness_conn, NULL, ("witness_copy_node_records(): unable to defer constraints"));
+
 		rollback_transaction(witness_conn);
 		PQclear(res);
 
 		return false;
 	}
+
 	PQclear(res);
 
 	/* truncate existing records */
@@ -2722,16 +2755,15 @@ delete_node_record(PGconn *conn, int node)
 	log_verbose(LOG_DEBUG, "delete_node_record():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to delete node record:\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, query.data, _("delete_node_record(): unable to delete node record"));
 
 		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -2747,8 +2779,7 @@ truncate_node_records(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to truncate node record table:\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, NULL, _("truncate_node_records(): unable to truncate table \"repmgr.nodes\""));
 
 		success = false;
 	}
@@ -2764,6 +2795,7 @@ update_node_record_slot_name(PGconn *primary_conn, int node_id, char *slot_name)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	initPQExpBuffer(&query);
 
@@ -2773,19 +2805,20 @@ update_node_record_slot_name(PGconn *primary_conn, int node_id, char *slot_name)
 					  "  WHERE node_id = %i ",
 					  slot_name,
 					  node_id);
+
 	res = PQexec(primary_conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to set node record slot name:\n  %s"),
-				  PQerrorMessage(primary_conn));
-		PQclear(res);
-		return false;
+		log_db_error(primary_conn, query.data, _("unable to set node record slot name"));
+
+		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
-	return true;
+
+	return success;
 }
 
 
@@ -2831,13 +2864,16 @@ get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *no
 	log_verbose(LOG_DEBUG, "get_node_replication_stats():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_warning(_("unable to retrieve node replication statistics"));
 		log_detail("%s", PQerrorMessage(conn));
+		log_detail("%s", query.data);
+
+		termPQExpBuffer(&query);
 		PQclear(res);
+
 		return;
 	}
 
@@ -2849,6 +2885,7 @@ get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *no
 	node_info->inactive_replication_slots = atoi(PQgetvalue(res, 0, 5));
 	node_info->recovery_type = strcmp(PQgetvalue(res, 0, 6), "f") == 0 ? RECTYPE_PRIMARY : RECTYPE_STANDBY;
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return;
@@ -2868,30 +2905,40 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 					  " SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication "
 					  "  WHERE application_name = '%s'",
 					  node_name);
+
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_verbose(LOG_WARNING, _("unable to query pg_stat_replication"));
 		log_detail("%s", PQerrorMessage(conn));
+		log_detail("%s", query.data);
+
+		termPQExpBuffer(&query);
 		PQclear(res);
+
 		return false;
 	}
 
 	if (PQntuples(res) != 1)
 	{
 		log_verbose(LOG_WARNING, _("unexpected number of tuples (%i) returned"), PQntuples(res));
+
+		termPQExpBuffer(&query);
 		PQclear(res);
+
 		return false;
 	}
 
 	c = atoi(PQgetvalue(res, 0, 0));
+
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	if (c == 0)
 	{
 		log_verbose(LOG_WARNING, _("node \"%s\" not found in \"pg_stat_replication\""), node_name);
+
 		return false;
 	}
 
@@ -2949,6 +2996,7 @@ get_datadir_configuration_files(PGconn *conn, KeyValueList *list)
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 	int			i;
+	bool		success = true;
 
 	initPQExpBuffer(&query);
 
@@ -2974,25 +3022,28 @@ get_datadir_configuration_files(PGconn *conn, KeyValueList *list)
 					  "ORDER BY config_file");
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to retrieve configuration file information"));
-		log_detail("%s", PQerrorMessage(conn));
-		PQclear(res);
-		return false;
-	}
+		log_db_error(conn, query.data,
+					 _("get_datadir_configuration_files(): unable to retrieve configuration file information"));
 
-	for (i = 0; i < PQntuples(res); i++)
+		success = false;
+	}
+	else
 	{
-		key_value_list_set(list,
-						   PQgetvalue(res, i, 1),
-						   PQgetvalue(res, i, 0));
+		for (i = 0; i < PQntuples(res); i++)
+		{
+			key_value_list_set(list,
+							   PQgetvalue(res, i, 1),
+							   PQgetvalue(res, i, 0));
+		}
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
-	return true;
+
+	return success;
 }
 
 
@@ -3022,13 +3073,13 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 				query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to retrieve configuration file locations"));
-		log_detail("%s", PQerrorMessage(conn));
+		log_db_error(conn, query.data,
+					 _("get_configuration_file_locations(): unable to retrieve configuration file locations"));
 
+		termPQExpBuffer(&query);
 		PQclear(res);
 
 		return false;
@@ -3049,6 +3100,7 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 							 atobool(PQgetvalue(res, i, 2)));
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	/* Fetch locations of pg_hba.conf and pg_ident.conf */
@@ -3072,13 +3124,13 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 				query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to retrieve configuration file locations"));
-		log_detail("%s", PQerrorMessage(conn));
+		log_db_error(conn, query.data,
+					 _("get_configuration_file_locations(): unable to retrieve configuration file locations"));
 
+		termPQExpBuffer(&query);
 		PQclear(res);
 
 		return false;
@@ -3086,13 +3138,13 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 
 	for (i = 0; i < PQntuples(res); i++)
 	{
-		config_file_list_add(
-							 list,
+		config_file_list_add(list,
 							 PQgetvalue(res, i, 0),
 							 PQgetvalue(res, i, 1),
 							 atobool(PQgetvalue(res, i, 2)));
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return true;
@@ -3108,7 +3160,7 @@ config_file_list_init(t_configfile_list *list, int max_size)
 
 	if (list->files == NULL)
 	{
-		log_error(_("unable to allocate memory; terminating"));
+		log_error(_("config_file_list_init(): unable to allocate memory; terminating"));
 		exit(ERR_OUT_OF_MEMORY);
 	}
 }
@@ -3125,7 +3177,7 @@ config_file_list_add(t_configfile_list *list, const char *file, const char *file
 
 	if (list->files[list->entries] == NULL)
 	{
-		log_error(_("unable to allocate memory; terminating"));
+		log_error(_("config_file_list_add(): unable to allocate memory; terminating"));
 		exit(ERR_OUT_OF_MEMORY);
 	}
 
@@ -3261,13 +3313,13 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 						   binary,
 						   0);
 
-		termPQExpBuffer(&query);
 
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
 		{
 			/* we don't treat this as a fatal error */
-			log_warning(_("unable to create event record:\n  %s"),
-						PQerrorMessage(conn));
+			log_warning(_("unable to create event record"));
+			log_detail("%s", PQerrorMessage(conn));
+			log_detail("%s", query.data);
 
 			success = false;
 		}
@@ -3277,6 +3329,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 			strncpy(event_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
 		}
 
+		termPQExpBuffer(&query);
 		PQclear(res);
 	}
 
@@ -3456,7 +3509,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 		if (r != 0)
 		{
 			log_warning(_("unable to execute event notification command"));
-			log_info(_("parsed event notification command was:\n  %s"), parsed_command);
+			log_detail(_("parsed event notification command was:\n  %s"), parsed_command);
 			success = false;
 		}
 	}
@@ -3543,7 +3596,6 @@ get_event_records(PGconn *conn, int node_id, const char *node_name, const char *
 
 	termPQExpBuffer(&query);
 	termPQExpBuffer(&where_clause);
-
 
 	return res;
 }
@@ -3647,6 +3699,7 @@ drop_replication_slot(PGconn *conn, char *slot_name)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	initPQExpBuffer(&query);
 
@@ -3658,23 +3711,24 @@ drop_replication_slot(PGconn *conn, char *slot_name)
 
 	res = PQexec(conn, query.data);
 
-	termPQExpBuffer(&query);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to drop replication slot \"%s\":\n  %s"),
-				  slot_name,
-				  PQerrorMessage(conn));
-		PQclear(res);
-		return false;
+		log_db_error(conn, query.data,
+					 _("drop_replication_slot(): unable to drop replication slot \"%s\""),
+					 slot_name);
+
+		success = false;
+	}
+	else
+	{
+		log_verbose(LOG_DEBUG, "replication slot \"%s\" successfully dropped",
+					slot_name);
 	}
 
-	log_verbose(LOG_DEBUG, "replication slot \"%s\" successfully dropped",
-				slot_name);
-
+	termPQExpBuffer(&query);
 	PQclear(res);
 
-	return true;
+	return success;
 }
 
 
@@ -3683,6 +3737,7 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	RecordStatus record_status = RECORD_FOUND;
 
 	initPQExpBuffer(&query);
 
@@ -3696,29 +3751,28 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 	res = PQexec(conn, query.data);
 
-	termPQExpBuffer(&query);
-
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to query pg_replication_slots:\n  %s"),
-				  PQerrorMessage(conn));
-		PQclear(res);
-		return RECORD_ERROR;
-	}
+		log_db_error(conn, query.data,
+					 _("get_slot_record(): unable to query pg_replication_slots"));
 
-	if (!PQntuples(res))
+		record_status = RECORD_ERROR;
+	}
+	else if (!PQntuples(res))
 	{
-		PQclear(res);
-		return RECORD_NOT_FOUND;
+		record_status = RECORD_NOT_FOUND;
+	}
+	else
+	{
+		strncpy(record->slot_name, PQgetvalue(res, 0, 0), MAXLEN);
+		strncpy(record->slot_type, PQgetvalue(res, 0, 1), MAXLEN);
+		record->active = atobool(PQgetvalue(res, 0, 2));
 	}
 
-	strncpy(record->slot_name, PQgetvalue(res, 0, 0), MAXLEN);
-	strncpy(record->slot_type, PQgetvalue(res, 0, 1), MAXLEN);
-	record->active = atobool(PQgetvalue(res, 0, 2));
-
+	termPQExpBuffer(&query);
 	PQclear(res);
 
-	return RECORD_FOUND;
+	return record_status;
 }
 
 
@@ -3737,25 +3791,26 @@ get_free_replication_slot_count(PGconn *conn)
 					  "   FROM pg_catalog.pg_replication_slots");
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute replication slot query"));
-		log_detail("%s", PQerrorMessage(conn));
-		PQclear(res);
-		return -1;
-	}
+		log_db_error(conn, query.data,
+					 _("get_free_replication_slot_count(): unable to execute replication slot query"));
 
-	if (PQntuples(res) == 0)
+		free_slots = -1;
+	}
+	else if (PQntuples(res) == 0)
 	{
-		PQclear(res);
-		return -1;
+		free_slots = -1;
+	}
+	else
+	{
+		free_slots = atoi(PQgetvalue(res, 0, 0));
 	}
 
-	free_slots = atoi(PQgetvalue(res, 0, 0));
-
+	termPQExpBuffer(&query);
 	PQclear(res);
+
 	return free_slots;
 }
 
@@ -3776,26 +3831,29 @@ get_inactive_replication_slots(PGconn *conn, KeyValueList *list)
 					  " ORDER BY slot_name ");
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute replication slot query"));
-		log_detail("%s", PQerrorMessage(conn));
-		PQclear(res);
-		return -1;
+		log_db_error(conn, query.data,
+					 _("get_inactive_replication_slots(): unable to execute replication slot query"));
+
+		inactive_slots = -1;
 	}
-
-	inactive_slots = PQntuples(res);
-
-	for (i = 0; i < inactive_slots; i++)
+	else
 	{
-		key_value_list_set(list,
-						   PQgetvalue(res, i, 0),
-						   PQgetvalue(res, i, 1));
+		inactive_slots = PQntuples(res);
+
+		for (i = 0; i < inactive_slots; i++)
+		{
+			key_value_list_set(list,
+							   PQgetvalue(res, i, 0),
+							   PQgetvalue(res, i, 1));
+		}
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
+
 	return inactive_slots;
 }
 
@@ -3810,11 +3868,11 @@ get_tablespace_name_by_location(PGconn *conn, const char *location, char *name)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool	    success = true;
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(
-					  &query,
+	appendPQExpBuffer(&query,
 					  "SELECT spcname "
 					  "  FROM pg_catalog.pg_tablespace "
 					  " WHERE pg_catalog.pg_tablespace_location(oid) = '%s'",
@@ -3823,26 +3881,26 @@ get_tablespace_name_by_location(PGconn *conn, const char *location, char *name)
 	log_verbose(LOG_DEBUG, "get_tablespace_name_by_location():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute tablespace query"));
-		log_detail("%s", PQerrorMessage(conn));
-		PQclear(res);
-		return false;
+		log_db_error(conn, query.data,
+					 _("get_tablespace_name_by_location(): unable to execute tablespace query"));
+		success = false;
 	}
-
-	if (PQntuples(res) == 0)
+	else if (PQntuples(res) == 0)
 	{
-		PQclear(res);
-		return false;
+		success = false;
+	}
+	else
+	{
+		strncpy(name, PQgetvalue(res, 0, 0), MAXLEN);
 	}
 
-	strncpy(name, PQgetvalue(res, 0, 0), MAXLEN);
-
+	termPQExpBuffer(&query);
 	PQclear(res);
-	return true;
+
+	return success;
 }
 
 /* ============================ */
@@ -4098,22 +4156,19 @@ get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_histor
 					  keep_history);
 
 	res = PQexec(primary_conn, query.data);
-	termPQExpBuffer(&query);
+
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to query number of monitoring records to clean up"));
-		log_detail("%s", PQerrorMessage(primary_conn));
-
-		PQclear(res);
-		PQfinish(primary_conn);
-		exit(ERR_DB_QUERY);
+		log_db_error(primary_conn, query.data,
+					 _("get_number_of_monitoring_records_to_delete(): unable to query number of monitoring records to clean up"));
 	}
 	else
 	{
 		record_count = atoi(PQgetvalue(res, 0, 0));
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return record_count;
@@ -4133,7 +4188,7 @@ delete_monitoring_records(PGconn *primary_conn, int keep_history)
 	{
 		appendPQExpBuffer(&query,
 						  "DELETE FROM repmgr.monitoring_history "
-						  " WHERE pg_catalog.age(pg_catalog.now(), last_monitor_time) >= '%d days'::interval ",
+						  " WHERE pg_catalog.age(pg_catalog.now(), last_monitor_time) >= '%d days'::INTERVAL ",
 						  keep_history);
 	}
 	else
@@ -4143,13 +4198,15 @@ delete_monitoring_records(PGconn *primary_conn, int keep_history)
 	}
 
 	res = PQexec(primary_conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
+		log_db_error(primary_conn, query.data,
+					 _("delete_monitoring_records(): unable to delete monitoring records"));
 		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
@@ -4169,15 +4226,14 @@ get_current_term(PGconn *conn)
 
 	res = PQexec(conn, "SELECT term FROM repmgr.voting_term");
 
+	/* it doesn't matter if for whatever reason the table has no rows */
+
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to query repmgr.voting_term:\n  %s"),
-				  PQerrorMessage(conn));
-		PQclear(res);
-		return -1;
+		log_db_error(conn, NULL,
+					 _("get_current_term(): unable to query \"repmgr.voting_term\""));
 	}
-
-	if (PQntuples(res) > 0)
+	else if (PQntuples(res) > 0)
 	{
 		term = atoi(PQgetvalue(res, 0, 0));
 	}
@@ -4205,8 +4261,7 @@ initialize_voting_term(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to initialize repmgr.voting_term:\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, NULL, _("unable to initialize repmgr.voting_term"));
 	}
 
 	PQclear(res);
@@ -4223,8 +4278,7 @@ increment_current_term(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to increment repmgr.voting_term:\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, NULL, _("unable to increment repmgr.voting_term"));
 	}
 
 	PQclear(res);
@@ -4248,10 +4302,17 @@ announce_candidature(PGconn *conn, t_node_info *this_node, t_node_info *other_no
 					  electoral_term);
 
 	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_db_error(conn, query.data, _("announce_candidature(): unable to execute repmgr.other_node_is_candidate()"));
+	}
+	else
+	{
+		retval = atobool(PQgetvalue(res, 0, 0));
+	}
+
 	termPQExpBuffer(&query);
-
-	retval = atobool(PQgetvalue(res, 0, 0));
-
 	PQclear(res);
 
 	return retval;
@@ -4269,26 +4330,19 @@ notify_follow_primary(PGconn *conn, int primary_node_id)
 	appendPQExpBuffer(&query,
 					  "SELECT repmgr.notify_follow_primary(%i)",
 					  primary_node_id);
+
 	log_verbose(LOG_DEBUG, "notify_follow_primary():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("unable to execute repmgr.notify_follow_primary()"));
+	}
+
 	termPQExpBuffer(&query);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_error(_("unable to execute repmgr.notify_follow_primary():\n  %s"),
-				  PQerrorMessage(conn));
-		PQclear(res);
-		return;
-	}
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_error(_("unable to execute repmgr.notify_follow_primary():\n  %s"),
-				  PQerrorMessage(conn));
-	}
-
 	PQclear(res);
+
 	return;
 }
 
@@ -4296,63 +4350,48 @@ notify_follow_primary(PGconn *conn, int primary_node_id)
 bool
 get_new_primary(PGconn *conn, int *primary_node_id)
 {
-	PQExpBufferData query;
 	PGresult   *res = NULL;
-
 	int			new_primary_node_id = UNKNOWN_NODE_ID;
+	bool		success = true;
 
-	initPQExpBuffer(&query);
+	const char *sqlquery = "SELECT repmgr.get_new_primary()";
 
-	appendPQExpBuffer(&query,
-					  "SELECT repmgr.get_new_primary()");
-
-	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
+	res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute repmgr.reset_voting_status():\n  %s"),
-				  PQerrorMessage(conn));
-		PQclear(res);
-		return false;
+		log_db_error(conn, sqlquery, _("unable to execute repmgr.get_new_primary()"));
+		success = false;
 	}
-
-	if (PQgetisnull(res, 0, 0))
+	else if (PQgetisnull(res, 0, 0))
 	{
-		*primary_node_id = UNKNOWN_NODE_ID;
-		PQclear(res);
-		return false;
+		success = false;
 	}
-
-	new_primary_node_id = atoi(PQgetvalue(res, 0, 0));
+	else
+	{
+		new_primary_node_id = atoi(PQgetvalue(res, 0, 0));
+	}
 
 	PQclear(res);
 
 	*primary_node_id = new_primary_node_id;
 
-	return true;
+	return success;
 }
 
 
 void
 reset_voting_status(PGconn *conn)
 {
-	PQExpBufferData query;
 	PGresult   *res = NULL;
 
-	initPQExpBuffer(&query);
+	const char *sqlquery = "SELECT repmgr.reset_voting_status()";
 
-	appendPQExpBuffer(&query,
-					  "SELECT repmgr.reset_voting_status()");
+	res = PQexec(conn, sqlquery);
 
-	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
-
-	/* COMMAND_OK? */
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_error(_("unable to execute repmgr.reset_voting_status():\n  %s"),
-				  PQerrorMessage(conn));
+		log_db_error(conn, sqlquery, _("unable to execute repmgr.reset_voting_status()"));
 	}
 
 	PQclear(res);
@@ -4370,7 +4409,6 @@ get_current_wal_lsn(PGconn *conn)
 {
 	PGresult   *res = NULL;
 	XLogRecPtr	ptr = InvalidXLogRecPtr;
-
 
 	if (server_version_num >= 100000)
 	{
@@ -4622,7 +4660,6 @@ get_default_bdr_replication_set(PGconn *conn)
 
 		return default_replication_set;
 	}
-
 
 	initPQExpBuffer(&query);
 
@@ -4949,7 +4986,7 @@ get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list)
 						  "   ORDER BY node_name");
 	}
 
-	log_verbose(LOG_DEBUG, "get_all_node_records():\n%s", query.data);
+	log_verbose(LOG_DEBUG, "get_all_bdr_node_records():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
