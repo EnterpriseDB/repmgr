@@ -2115,8 +2115,14 @@ get_all_node_records(PGconn *conn, NodeInfoList *node_list)
 
 	res = PQexec(conn, query.data);
 
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("get_all_node_records(): unable to execute query"));
+	}
+
 	termPQExpBuffer(&query);
 
+	/* this will return an empty list if there was an error executing the query */
 	_populate_node_records(res, node_list);
 
 	PQclear(res);
@@ -2143,8 +2149,14 @@ get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *node_list)
 
 	res = PQexec(conn, query.data);
 
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("get_downstream_node_records(): unable to execute query"));
+	}
+
 	termPQExpBuffer(&query);
 
+	/* this will return an empty list if there was an error executing the query */
 	_populate_node_records(res, node_list);
 
 	PQclear(res);
@@ -2175,8 +2187,14 @@ get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id,
 
 	res = PQexec(conn, query.data);
 
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("get_active_sibling_records(): unable to execute query"));
+	}
+
 	termPQExpBuffer(&query);
 
+	/* this will return an empty list if there was an error executing the query */
 	_populate_node_records(res, node_list);
 
 	PQclear(res);
@@ -2202,8 +2220,14 @@ get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list)
 
 	res = PQexec(conn, query.data);
 
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("get_node_records_by_priority(): unable to execute query"));
+	}
+
 	termPQExpBuffer(&query);
 
+	/* this will return an empty list if there was an error executing the query */
 	_populate_node_records(res, node_list);
 
 	PQclear(res);
@@ -2241,10 +2265,10 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 		log_db_error(conn, query.data, _("get_all_node_records_with_upstream(): unable to retrieve node records"));
 		success = false;
 	}
-	else
-	{
-		_populate_node_records(res, node_list);
-	}
+
+
+	/* this will return an empty list if there was an error executing the query */
+	_populate_node_records(res, node_list);
 
 	termPQExpBuffer(&query);
 	PQclear(res);
@@ -2283,10 +2307,9 @@ get_downstream_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoL
 		log_db_error(conn, query.data, _("get_downstream_nodes_with_missing_slot(): unable to retrieve node records"));
 		success = false;
 	}
-	else
-	{
-		_populate_node_records(res, node_list);
-	}
+
+	/* this will return an empty list if there was an error executing the query */
+	_populate_node_records(res, node_list);
 
 	termPQExpBuffer(&query);
 	PQclear(res);
