@@ -4146,13 +4146,12 @@ add_monitoring_record(PGconn *primary_conn,
 	}
 	else
 	{
-		PGresult   *res = NULL;
-
-		res = PQexec(local_conn, "SELECT repmgr.standby_set_last_updated()");
+		PGresult   *res = PQexec(local_conn, "SELECT repmgr.standby_set_last_updated()");
 
 		/* not critical if the above query fails */
 		if (PQresultStatus(res) != PGRES_TUPLES_OK)
-			log_warning(_("unable to set last_updated:\n  %s"), PQerrorMessage(local_conn));
+			log_warning(_("add_monitoring_record(): unable to set last_updated:\n  %s"),
+						PQerrorMessage(local_conn));
 
 		PQclear(res);
 	}
