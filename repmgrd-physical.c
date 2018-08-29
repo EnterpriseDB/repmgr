@@ -60,6 +60,8 @@ static int	primary_node_id = UNKNOWN_NODE_ID;
 static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
 static NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
+static instr_time last_monitoring_update;
+
 
 static ElectionResult do_election(void);
 static const char *_print_election_result(ElectionResult result);
@@ -565,9 +567,11 @@ monitor_streaming_standby(void)
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
 
+	log_debug("monitor_streaming_standby()");
+
 	reset_node_voting_status();
 
-	log_debug("monitor_streaming_standby()");
+	INSTR_TIME_SET_ZERO(last_monitoring_update);
 
 	/*
 	 * If no upstream node id is specified in the metadata, we'll try and
@@ -716,10 +720,9 @@ monitor_streaming_standby(void)
 								  _("unable to connect to upstream node \"%s\" (node ID: %i)"),
 								  upstream_node_info.node_name, upstream_node_info.node_id);
 
-				/* */
+				/* XXX possible pre-action event */
 				if (upstream_node_info.type == STANDBY)
 				{
-					/* XXX possible pre-action event */
 					create_event_record(primary_conn,
 										&config_file_options,
 										config_file_options.node_id,
@@ -1042,8 +1045,7 @@ loop:
 
 				if (config_file_options.failover == FAILOVER_MANUAL)
 				{
-					appendPQExpBuffer(
-									  &monitoring_summary,
+					appendPQExpBuffer(&monitoring_summary,
 									  _(" (automatic failover disabled)"));
 				}
 
@@ -1052,6 +1054,18 @@ loop:
 				if (monitoring_state == MS_DEGRADED && config_file_options.failover == FAILOVER_AUTOMATIC)
 				{
 					log_detail(_("waiting for upstream or another primary to reappear"));
+				}
+				else if (config_file_options.monitoring_history == true)
+				{
+					if (INSTR_TIME_IS_ZERO(last_monitoring_update))
+					{
+						log_detail(_("no monitoring statistics have been written yet"));
+					}
+					else
+					{
+						log_detail(_("last monitoring statistics update was %i seconds ago"),
+								   calculate_elapsed(last_monitoring_update));
+					}
 				}
 
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
@@ -1064,6 +1078,15 @@ loop:
 		}
 		else
 		{
+			if (config_file_options.monitoring_history == true)
+			{
+				log_verbose(LOG_WARNING, _("monitoring_history requested but primary connection not available"));
+			}
+
+			/*
+			 * if monitoring not in use, we'll need to ensure the local connection
+			 * handle isn't stale
+			 */
 			connection_ping(local_conn);
 		}
 
@@ -1710,12 +1733,21 @@ update_monitoring_history(void)
 	long long unsigned int replication_lag_bytes = 0;
 
 	/* both local and primary connections must be available */
-	if (PQstatus(primary_conn) != CONNECTION_OK || PQstatus(local_conn) != CONNECTION_OK)
+	if (PQstatus(primary_conn) != CONNECTION_OK)
+	{
+		log_warning(_("primary connection is not available, unable to update monitoring history"));
 		return;
+	}
+
+	if (PQstatus(local_conn) != CONNECTION_OK)
+	{
+		log_warning(_("local connection is not available, unable to update monitoring history"));
+		return;
+	}
 
 	if (get_replication_info(local_conn, &replication_info) == false)
 	{
-		log_warning(_("unable to retrieve replication status information"));
+		log_warning(_("unable to retrieve replication status information, unable to update monitoring history"));
 		return;
 	}
 
@@ -1767,8 +1799,7 @@ update_monitoring_history(void)
 		replication_lag_bytes = 0;
 	}
 
-	add_monitoring_record(
-						  primary_conn,
+	add_monitoring_record(primary_conn,
 						  local_conn,
 						  primary_node_id,
 						  local_node_info.node_id,
@@ -1778,6 +1809,8 @@ update_monitoring_history(void)
 						  replication_info.last_xact_replay_timestamp,
 						  replication_lag_bytes,
 						  apply_lag_bytes);
+
+	INSTR_TIME_SET_CURRENT(last_monitoring_update);
 }
 
 
