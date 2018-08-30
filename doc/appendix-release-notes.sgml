@@ -107,6 +107,14 @@
 
           <listitem>
             <para>
+              <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
+              remove new upstream's replication slot if it still exists on the rejoined
+              standby. (GitHub #495).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <application>repmgrd</application>: fix startup on witness node when local data is stale. (GitHub #488, #489).
             </para>
           </listitem>
