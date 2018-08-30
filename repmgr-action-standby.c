@@ -89,8 +89,6 @@ static int	run_file_backup(t_node_info *node_record);
 
 static void copy_configuration_files(bool delete_after_copy);
 
-static void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
-
 static void tablespace_data_append(TablespaceDataList *list, const char *name, const char *oid, const char *location);
 
 static void get_barman_property(char *dst, char *name, char *local_repmgr_directory);
@@ -2734,6 +2732,10 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 	 * If replication slots are in use, and an inactive one for this node
 	 * exists on the former upstream, drop it.
 	 *
+	 * Note that if this function is called by do_standby_switchover(), the
+	 * "repmgr node rejoin" command executed on the demotion candidate may already
+	 * have removed the slot, so there may be nothing to do.
+	 *
 	 * XXX check if former upstream is current primary?
 	 */
 
@@ -3116,8 +3118,6 @@ do_standby_switchover(void)
 	}
 	termPQExpBuffer(&command_output);
 
-
-	// check walsenders here
 	/*
 	 * populate local node record with current state of various replication-related
 	 * values, so we can check for sufficient walsenders and replication slots
@@ -6066,45 +6066,6 @@ check_recovery_type(PGconn *conn)
 	}
 }
 
-
-static void
-drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
-{
-	t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
-	RecordStatus record_status = get_slot_record(conn, slot_name, &slot_info);
-
-	log_verbose(LOG_DEBUG, "attempting to delete slot \"%s\" on node %i",
-				slot_name, node_id);
-
-	if (record_status != RECORD_FOUND)
-	{
-		log_info(_("no slot record found for slot \"%s\" on node %i"),
-				 slot_name, node_id);
-	}
-	else
-	{
-		if (slot_info.active == false)
-		{
-			if (drop_replication_slot(conn, slot_name) == true)
-			{
-				log_notice(_("replication slot \"%s\" deleted on node %i"), slot_name, node_id);
-			}
-			else
-			{
-				log_error(_("unable to delete replication slot \"%s\" on node %i"), slot_name, node_id);
-			}
-		}
-
-		/*
-		 * if active replication slot exists, call Houston as we have a
-		 * problem
-		 */
-		else
-		{
-			log_warning(_("replication slot \"%s\" is still active on node %i"), slot_name, node_id);
-		}
-	}
-}
 
 
 /*
