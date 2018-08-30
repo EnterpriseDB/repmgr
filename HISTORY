@@ -1,4 +1,4 @@
-4.1.1   2018-??-??
+4.1.1   2018-09-05
         logging: explicitly log the text of failed queries as ERRORs to
           assist logfile analysis; GitHub #498
         repmgr: truncate version string, if necessary; GitHub #490 (Ian)
@@ -8,6 +8,7 @@
         repmgr: add "cluster_cleanup" event; GitHub #492 (Ian)
         repmgr: (standby switchover) improve detection of free walsenders;
           GitHub #495 (Ian)
+        repmgr: (node rejoin) improve replication slot handling; GitHub #499 (Ian)
         repmgrd: ensure that sending SIGHUP always results in the log file
           being reopened; GitHub #485 (Ian)
         repmgrd: report version number *after* logger initialisation; GitHub #487 (Ian)
