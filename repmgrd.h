@@ -21,7 +21,7 @@ extern t_node_info local_node_info;
 extern PGconn *local_conn;
 extern bool startup_event_logged;
 
-PGconn	   *try_reconnect(t_node_info *node_info);
+void		try_reconnect(PGconn **conn, t_node_info *node_info);
 
 int			calculate_elapsed(instr_time start_time);
 const char *print_monitoring_state(MonitoringState monitoring_state);

@@ -96,6 +96,12 @@
             </para>
           </listitem>
 
+        <listitem>
+            <para>
+              Improve reconnection handling. (GitHub #480).
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>

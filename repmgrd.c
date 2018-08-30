@@ -770,10 +770,10 @@ show_help(void)
 }
 
 
-PGconn *
-try_reconnect(t_node_info *node_info)
+void
+try_reconnect(PGconn **conn, t_node_info *node_info)
 {
-	PGconn	   *conn;
+	PGconn	   *our_conn;
 	t_conninfo_param_list conninfo_params = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 	int			i;
@@ -781,7 +781,6 @@ try_reconnect(t_node_info *node_info)
 	int			max_attempts = config_file_options.reconnect_attempts;
 
 	initialize_conninfo_params(&conninfo_params, false);
-
 
 	/* we assume by now the conninfo string is parseable */
 	(void) parse_conninfo_string(node_info->conninfo, &conninfo_params, NULL, false);
@@ -805,18 +804,47 @@ try_reconnect(t_node_info *node_info)
 			 * degraded monitoring? - make that configurable
 			 */
 
-			conn = establish_db_connection_by_params(&conninfo_params, false);
+			our_conn = establish_db_connection_by_params(&conninfo_params, false);
 
-			if (PQstatus(conn) == CONNECTION_OK)
+			if (PQstatus(our_conn) == CONNECTION_OK)
 			{
 				free_conninfo_params(&conninfo_params);
 
+				log_info(_("connection to node %i succeeded"), node_info.node_id);
+
+				if (PQstatus(*conn) == CONNECTION_BAD)
+				{
+					log_verbose(LOG_INFO, "original connection handle returned CONNECTION_BAD, using new connection");
+					close_connection(conn);
+					*conn = our_conn;
+				}
+				else
+				{
+					ExecStatusType ping_result;
+
+					ping_result = connection_ping(*conn);
+
+					if (ping_result != PGRES_TUPLES_OK)
+					{
+						log_info("original connnection no longer available, using new connection");
+						close_connection(conn);
+						*conn = our_conn;
+					}
+					else
+					{
+						log_info(_("original connection is still available"));
+
+						PQfinish(our_conn);
+					}
+				}
+
 				node_info->node_status = NODE_STATUS_UP;
-				return conn;
+
+				return;
 			}
 
-			close_connection(&conn);
-			log_notice(_("unable to reconnect to node"));
+			close_connection(&our_conn);
+			log_notice(_("unable to reconnect to node %i"), node_info.node_id);
 		}
 
 		if (i + 1 < max_attempts)
@@ -835,7 +863,7 @@ try_reconnect(t_node_info *node_info)
 
 	free_conninfo_params(&conninfo_params);
 
-	return NULL;
+	return;
 }
 
 

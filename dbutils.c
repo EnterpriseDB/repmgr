@@ -4074,17 +4074,20 @@ is_server_available_params(t_conninfo_param_list *param_list)
 
 
 /*
- * Simple throw-away query to stop a connection handle going stale
+ * Simple throw-away query to stop a connection handle going stale.
  */
-void
+ExecStatusType
 connection_ping(PGconn *conn)
 {
 	PGresult   *res = PQexec(conn, "SELECT TRUE");
+	ExecStatusType ping_result;
 
 	log_verbose(LOG_DEBUG, "connection_ping(): result is %s", PQresStatus(PQresultStatus(res)));
 
+	ping_result = PQresultStatus(res);
 	PQclear(res);
-	return;
+
+	return ping_result;
 }
 
 

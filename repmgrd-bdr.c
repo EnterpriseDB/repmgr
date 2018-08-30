@@ -214,7 +214,8 @@ monitor_bdr(void)
 
 								log_warning(_("unable to connect to node %s (ID %i)"),
 											cell->node_info->node_name, cell->node_info->node_id);
-								cell->node_info->conn = try_reconnect(cell->node_info);
+								//cell->node_info->conn = try_reconnect(cell->node_info);
+								try_reconnect(&cell->node_info->conn, cell->node_info);
 
 								/* node has recovered - log and continue */
 								if (cell->node_info->node_status == NODE_STATUS_UP)
