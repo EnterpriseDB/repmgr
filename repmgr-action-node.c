@@ -2417,6 +2417,54 @@ do_node_rejoin(void)
 		success = is_downstream_node_attached(upstream_conn, config_file_options.node_name);
 	}
 
+	/*
+	 * Handle replication slots:
+	 *  - if a slot for the new upstream exists, delete that
+	 *  - warn about any other inactive replication slots
+	 */
+	if (runtime_options.force_rewind_used == false && config_file_options.use_replication_slots)
+	{
+		PGconn	   *local_conn = NULL;
+		local_conn = establish_db_connection(config_file_options.conninfo, false);
+
+		if (PQstatus(local_conn) != CONNECTION_OK)
+		{
+			log_warning(_("unable to connect to local node to check replication slot status"));
+			log_hint(_("execute \"repmgr node check\" to check inactive slots and drop manually if necessary"));
+		}
+		else
+		{
+			KeyValueList inactive_replication_slots = {NULL, NULL};
+			KeyValueListCell *cell = NULL;
+			int inactive_count = 0;
+			PQExpBufferData slotinfo;
+
+			drop_replication_slot_if_exists(local_conn,
+											config_file_options.node_id,
+											primary_node_record.slot_name);
+
+			(void) get_inactive_replication_slots(local_conn, &inactive_replication_slots);
+
+			initPQExpBuffer(&slotinfo);
+			for (cell = inactive_replication_slots.head; cell; cell = cell->next)
+			{
+				appendPQExpBuffer(&slotinfo,
+								  "  - %s (%s)", cell->key, cell->value);
+				inactive_count++;
+			}
+
+			if (inactive_count > 0)
+			{
+				log_warning(_("%i inactive replication slots detected"), inactive_count);
+				log_detail(_("inactive replication slots:\n%s"), slotinfo.data);
+				log_hint(_("these replication slots may need to be removed manually"));
+			}
+
+			termPQExpBuffer(&slotinfo);
+
+			PQfinish(local_conn);
+		}
+	}
 
 	if (success == true)
 	{
@@ -2426,7 +2474,8 @@ do_node_rejoin(void)
 	else
 	{
 		/*
-		 * if we reach here, no record found in upstream node's pg_stat_replication */
+		 * if we reach here, no record found in upstream node's pg_stat_replication
+		 */
 		log_notice(_("NODE REJOIN has completed but node is not yet reattached to upstream"));
 		log_hint(_("you will need to manually check the node's replication status"));
 	}

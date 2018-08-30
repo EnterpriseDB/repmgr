@@ -237,5 +237,6 @@ extern void get_node_config_directory(char *config_dir_buf);
 extern void get_node_data_directory(char *data_dir_buf);
 extern void init_node_record(t_node_info *node_record);
 extern bool can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
+extern void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
 
 #endif							/* _REPMGR_CLIENT_GLOBAL_H_ */

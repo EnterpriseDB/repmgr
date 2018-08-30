@@ -2978,3 +2978,46 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 
 	return can_use;
 }
+
+
+void
+drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
+{
+	t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
+	RecordStatus record_status = get_slot_record(conn, slot_name, &slot_info);
+
+	log_verbose(LOG_DEBUG, "attempting to delete slot \"%s\" on node %i",
+				slot_name, node_id);
+
+	if (record_status != RECORD_FOUND)
+	{
+		/* this is a good thing */
+		log_verbose(LOG_INFO,
+					_("slot \"%s\" does not exist on node %i, nothing to remove"),
+					slot_name, node_id);
+	}
+	else
+	{
+		if (slot_info.active == false)
+		{
+			if (drop_replication_slot(conn, slot_name) == true)
+			{
+				log_notice(_("replication slot \"%s\" deleted on node %i"), slot_name, node_id);
+			}
+			else
+			{
+				log_error(_("unable to delete replication slot \"%s\" on node %i"), slot_name, node_id);
+			}
+		}
+
+		/*
+		 * if active replication slot exists, call Houston as we have a
+		 * problem
+		 */
+		else
+		{
+			log_warning(_("replication slot \"%s\" is still active on node %i"), slot_name, node_id);
+		}
+	}
+}
+
