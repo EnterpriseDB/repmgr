@@ -810,7 +810,7 @@ try_reconnect(PGconn **conn, t_node_info *node_info)
 			{
 				free_conninfo_params(&conninfo_params);
 
-				log_info(_("connection to node %i succeeded"), node_info.node_id);
+				log_info(_("connection to node %i succeeded"), node_info->node_id);
 
 				if (PQstatus(*conn) == CONNECTION_BAD)
 				{
@@ -844,7 +844,7 @@ try_reconnect(PGconn **conn, t_node_info *node_info)
 			}
 
 			close_connection(&our_conn);
-			log_notice(_("unable to reconnect to node %i"), node_info.node_id);
+			log_notice(_("unable to reconnect to node %i"), node_info->node_id);
 		}
 
 		if (i + 1 < max_attempts)
