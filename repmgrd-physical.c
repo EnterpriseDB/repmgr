@@ -288,8 +288,6 @@ monitor_streaming_primary(void)
 
 				local_node_info.node_status = NODE_STATUS_UNKNOWN;
 
-				close_connection(&local_conn);
-
 				/*
 				 * as we're monitoring the primary, no point in trying to
 				 * write the event to the database
@@ -305,7 +303,7 @@ monitor_streaming_primary(void)
 
 				termPQExpBuffer(&event_details);
 
-				local_conn = try_reconnect(&local_node_info);
+				try_reconnect(&local_conn, &local_node_info);
 
 				if (local_node_info.node_status == NODE_STATUS_UP)
 				{
@@ -744,8 +742,6 @@ monitor_streaming_standby(void)
 				log_warning("%s", event_details.data);
 				termPQExpBuffer(&event_details);
 
-				close_connection(&upstream_conn);
-
 				/*
 				 * if local node is unreachable, make a last-minute attempt to reconnect
 				 * before continuing with the failover process
@@ -756,7 +752,7 @@ monitor_streaming_standby(void)
 					check_connection(&local_node_info, &local_conn);
 				}
 
-				upstream_conn = try_reconnect(&upstream_node_info);
+				try_reconnect(&upstream_conn, &upstream_node_info);
 
 				/* Node has recovered - log and continue */
 				if (upstream_node_info.node_status == NODE_STATUS_UP)
@@ -1087,7 +1083,7 @@ loop:
 			 * if monitoring not in use, we'll need to ensure the local connection
 			 * handle isn't stale
 			 */
-			connection_ping(local_conn);
+			(void) connection_ping(local_conn);
 		}
 
 		/*
@@ -1304,8 +1300,7 @@ monitor_streaming_witness(void)
 									true,
 									event_details.data);
 
-				close_connection(&primary_conn);
-				primary_conn = try_reconnect(&upstream_node_info);
+				try_reconnect(&primary_conn, &upstream_node_info);
 
 				/* Node has recovered - log and continue */
 				if (upstream_node_info.node_status == NODE_STATUS_UP)
