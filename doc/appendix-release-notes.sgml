@@ -26,29 +26,6 @@
       <para>
         <itemizedlist>
 
-          <listitem>
-            <para>
-              <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>:
-              improve detection of free walsenders. (GitHub #495).
-            </para>
-          </listitem>
-
-          <listitem>
-            <para>
-              Text of any failed queries will now be logged as <literal>ERROR</literal> to assist
-              logfile analysis at log levels higher than <literal>DEBUG</literal>.
-              (GitHub #498).
-            </para>
-          </listitem>
-
-        </itemizedlist>
-      </para>
-   </sect2>
-
-    <sect2>
-      <title>repmgr enhancements</title>
-      <para>
-        <itemizedlist>
 
           <listitem>
             <para>
@@ -65,9 +42,24 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>:
+              improve detection of free walsenders. (GitHub #495).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Improve messages emitted during
+              <command><link linkend="repmgr-standby-promote">repmgr standby promote</link></command>.
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
-    </sect2>
+   </sect2>
+
 
     <sect2>
       <title>repmgrd enhancements</title>
@@ -96,12 +88,41 @@
             </para>
           </listitem>
 
-        <listitem>
+          <listitem>
             <para>
-              Improve reconnection handling. (GitHub #480).
+              Improve reconnection handling after brief network outages; if
+              monitoring data being collected, this could lead to orphaned
+              sessions on the primary. (GitHub #480).
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              Check <varname>promote_command</varname> and <varname>follow_command</varname>
+              are defined when reloading configuration. These were checked on startup but
+              not reload by <application>repmgrd</application>, which made it possible to
+              make <application>repmgrd</application> with invalid values. It's unlikely
+              anyone would want to do this, but we should make it impossible anyway.
+              (GitHub #486).
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
+      <title>Other</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              Text of any failed queries will now be logged as <literal>ERROR</literal> to assist
+              logfile analysis at log levels higher than <literal>DEBUG</literal>.
+              (GitHub #498).
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>
@@ -115,13 +136,21 @@
             <para>
               <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
               remove new upstream's replication slot if it still exists on the rejoined
-              standby. (GitHub #495).
+              standby. (GitHub #499).
             </para>
           </listitem>
 
           <listitem>
             <para>
               <application>repmgrd</application>: fix startup on witness node when local data is stale. (GitHub #488, #489).
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Truncate version string reported by PostgreSQL if necessary; some
+              distributions insert additional detail after the actual version.
+              (GitHub #490).
             </para>
           </listitem>
 
