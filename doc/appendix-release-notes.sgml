@@ -19,9 +19,16 @@
     <title>Release 4.1.1</title>
     <para><emphasis>Wed September 5, 2018</emphasis></para>
     <para>
+      repmgr 4.1.1 contains a number of usability enhancements and bug fixes.
     </para>
+    <para>
+	  We recommend upgrading to this version as soon as possible.
+	  This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.1.0;
+      <application>repmgrd</application> (if running) should be restarted.
+      See <xref linkend="upgrading-repmgr"> for more details.
+	</para>
 
-   <sect2>
+    <sect2>
       <title>repmgr enhancements</title>
       <para>
         <itemizedlist>
