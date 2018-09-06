@@ -268,7 +268,12 @@ monitor_streaming_primary(void)
 		 * TODO: cache node list here, refresh at `node_list_refresh_interval`
 		 * also return reason for inavailability so we can log it
 		 */
-		if (is_server_available(local_node_info.conninfo) == false)
+
+		(void) connection_ping(local_conn);
+
+		check_connection(&local_node_info, &local_conn);
+
+		if (PQstatus(local_conn) != CONNECTION_OK)
 		{
 
 			/* local node is down, we were expecting it to be up */
@@ -308,6 +313,7 @@ monitor_streaming_primary(void)
 				if (local_node_info.node_status == NODE_STATUS_UP)
 				{
 					int			local_node_unreachable_elapsed = calculate_elapsed(local_node_unreachable_start);
+					int 		stored_local_node_id = UNKNOWN_NODE_ID;
 
 					initPQExpBuffer(&event_details);
 
@@ -323,6 +329,17 @@ monitor_streaming_primary(void)
 											  true,
 											  event_details.data);
 					termPQExpBuffer(&event_details);
+
+					/*
+					 * If the local node was restarted, we'll need to reinitialise values
+					 * stored in shared memory.
+					 */
+
+					stored_local_node_id = repmgrd_get_local_node_id(local_conn);
+					if (stored_local_node_id == UNKNOWN_NODE_ID)
+					{
+						repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+					}
 
 					goto loop;
 				}
@@ -1136,8 +1153,11 @@ loop:
 		}
 		else
 		{
+			/* we've reconnected to the local node after an outage */
 			if (local_node_info.active == false)
 			{
+				int stored_local_node_id = UNKNOWN_NODE_ID;
+
 				if (PQstatus(primary_conn) == CONNECTION_OK)
 				{
 					if (update_node_record_set_active(primary_conn, local_node_info.node_id, true) == true)
@@ -1153,18 +1173,28 @@ loop:
 										  local_node_info.node_name,
 										  local_node_info.node_id);
 
-						log_warning("%s", event_details.data)
+						log_notice("%s", event_details.data);
 
-
-							create_event_notification(primary_conn,
-													  &config_file_options,
-													  local_node_info.node_id,
-													  "standby_recovery",
-													  true,
-													  event_details.data);
+						create_event_notification(primary_conn,
+												  &config_file_options,
+												  local_node_info.node_id,
+												  "standby_recovery",
+												  true,
+												  event_details.data);
 
 						termPQExpBuffer(&event_details);
 					}
+				}
+
+				/*
+				 * If the local node was restarted, we'll need to reinitialise values
+				 * stored in shared memory.
+				 */
+
+				stored_local_node_id = repmgrd_get_local_node_id(local_conn);
+				if (stored_local_node_id == UNKNOWN_NODE_ID)
+				{
+					repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
 				}
 			}
 		}
@@ -1201,7 +1231,7 @@ monitor_streaming_witness(void)
 	/*
 	 * At this point we can't trust the local copy of "repmgr.nodes", as
 	 * it may not have been updated. We'll scan the cluster for the current
-	 * primary and refresh the copy from that before proceeding further.
+[''	 * primary and refresh the copy from that before proceeding further.
 	 */
 	primary_conn = get_primary_connection_quiet(local_conn, &primary_node_id, NULL);
 
@@ -1437,6 +1467,105 @@ monitor_streaming_witness(void)
 		}
 loop:
 
+		/*
+		 * handle local node failure
+		 *
+		 * currently we'll just check the connection, and try to reconnect
+		 *
+		 * TODO: add timeout, after which we run in degraded state
+		 */
+
+		(void) connection_ping(local_conn);
+
+		check_connection(&local_node_info, &local_conn);
+
+		if (PQstatus(local_conn) != CONNECTION_OK)
+		{
+			if (local_node_info.active == true)
+			{
+				bool success = true;
+				PQExpBufferData event_details;
+
+				initPQExpBuffer(&event_details);
+
+				local_node_info.active = false;
+
+				appendPQExpBuffer(&event_details,
+								  _("unable to connect to local node \"%s\" (ID: %i), marking inactive"),
+								  local_node_info.node_name,
+								  local_node_info.node_id);
+				log_notice("%s", event_details.data);
+
+				if (PQstatus(primary_conn) == CONNECTION_OK)
+				{
+					if (update_node_record_set_active(primary_conn, local_node_info.node_id, false) == false)
+					{
+						success = false;
+						log_warning(_("unable to mark node \"%s\" (ID: %i) as inactive"),
+									  local_node_info.node_name,
+									  local_node_info.node_id);
+					}
+				}
+
+				create_event_notification(primary_conn,
+										  &config_file_options,
+										  local_node_info.node_id,
+										  "standby_failure",
+										  success,
+										  event_details.data);
+
+				termPQExpBuffer(&event_details);
+			}
+		}
+		else
+		{
+			/* we've reconnected to the local node after an outage */
+			if (local_node_info.active == false)
+			{
+				int stored_local_node_id = UNKNOWN_NODE_ID;
+
+				if (PQstatus(primary_conn) == CONNECTION_OK)
+				{
+					if (update_node_record_set_active(primary_conn, local_node_info.node_id, true) == true)
+					{
+						PQExpBufferData event_details;
+
+						initPQExpBuffer(&event_details);
+
+						local_node_info.active = true;
+
+						appendPQExpBuffer(&event_details,
+										  _("reconnected to local node \"%s\" (ID: %i), marking active"),
+										  local_node_info.node_name,
+										  local_node_info.node_id);
+
+						log_notice("%s", event_details.data);
+
+						create_event_notification(primary_conn,
+												  &config_file_options,
+												  local_node_info.node_id,
+												  "standby_recovery",
+												  true,
+												  event_details.data);
+
+						termPQExpBuffer(&event_details);
+					}
+				}
+
+				/*
+				 * If the local node was restarted, we'll need to reinitialise values
+				 * stored in shared memory.
+				 */
+
+				stored_local_node_id = repmgrd_get_local_node_id(local_conn);
+				if (stored_local_node_id == UNKNOWN_NODE_ID)
+				{
+					repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+				}
+			}
+		}
+
+
 		/* refresh repmgr.nodes after "witness_sync_interval" seconds */
 
 		{
@@ -1478,6 +1607,7 @@ loop:
 				INSTR_TIME_SET_CURRENT(log_status_interval_start);
 			}
 		}
+
 
 
 		if (got_SIGHUP)
@@ -2934,9 +3064,18 @@ check_connection(t_node_info *node_info, PGconn **conn)
 		}
 		else
 		{
+			int 		stored_local_node_id = UNKNOWN_NODE_ID;
+
 			log_info(_("reconnected to node \"%s\" (ID: %i)"),
 					 node_info->node_name,
 					 node_info->node_id);
+
+			stored_local_node_id = repmgrd_get_local_node_id(*conn);
+			if (stored_local_node_id == UNKNOWN_NODE_ID)
+			{
+				repmgrd_set_local_node_id(*conn, config_file_options.node_id);
+			}
+
 		}
 	}
 }
