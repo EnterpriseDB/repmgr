@@ -84,6 +84,7 @@ do_cluster_show(void)
 	ItemList	warnings = {NULL, NULL};
 	bool		success = false;
 	bool		error_found = false;
+	bool		connection_error_found = false;
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database"));
@@ -141,14 +142,26 @@ do_cluster_show(void)
 		}
 		else
 		{
-			char		error[MAXLEN];
-
-			strncpy(error, PQerrorMessage(cell->node_info->conn), MAXLEN);
 			cell->node_info->node_status = NODE_STATUS_DOWN;
 			cell->node_info->recovery_type = RECTYPE_UNKNOWN;
-			item_list_append_format(&warnings,
-									"when attempting to connect to node \"%s\" (ID: %i), following error encountered :\n\"%s\"",
-									cell->node_info->node_name, cell->node_info->node_id, trim(error));
+
+			connection_error_found = true;
+
+			if (runtime_options.verbose)
+			{
+				char		error[MAXLEN];
+
+				strncpy(error, PQerrorMessage(cell->node_info->conn), MAXLEN);
+				item_list_append_format(&warnings,
+										"when attempting to connect to node \"%s\" (ID: %i), following error encountered :\n\"%s\"",
+										cell->node_info->node_name, cell->node_info->node_id, trim(error));
+			}
+			else
+			{
+				item_list_append_format(&warnings,
+										"unable to  connect to node \"%s\" (ID: %i)",
+										cell->node_info->node_name, cell->node_info->node_id);
+			}
 		}
 
 		initPQExpBuffer(&details);
@@ -436,6 +449,11 @@ do_cluster_show(void)
 		for (cell = warnings.head; cell; cell = cell->next)
 		{
 			printf(_("  - %s\n"), cell->string);
+		}
+
+		if (runtime_options.verbose == false && connection_error_found == true)
+		{
+			log_hint(_("execute with --verbose option to see connection error messages"));
 		}
 	}
 
