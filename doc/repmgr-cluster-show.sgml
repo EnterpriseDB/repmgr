@@ -81,36 +81,56 @@
 
   <refsect1>
     <title>Options</title>
-    <para>
-      <command>repmgr cluster show</command> accepts an optional parameter <literal>--csv</literal>, which
-      outputs the replication cluster's status in a simple CSV format, suitable for
-      parsing by scripts:
-      <programlisting>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--csv</option></term>
+        <listitem>
+		  <para>
+			<command>repmgr cluster show</command> accepts an optional parameter <literal>--csv</literal>, which
+			outputs the replication cluster's status in a simple CSV format, suitable for
+			parsing by scripts:
+			<programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show --csv
     1,-1,-1
     2,0,0
     3,0,1</programlisting>
-    </para>
-    <para>
-      The columns have following meanings:
-      <itemizedlist spacing="compact" mark="bullet">
-        <listitem>
-          <simpara>
-            node ID
-          </simpara>
-        </listitem>
-        <listitem>
-          <simpara>
+		  </para>
+		  <para>
+			The columns have following meanings:
+			<itemizedlist spacing="compact" mark="bullet">
+			  <listitem>
+				<simpara>
+				  node ID
+				</simpara>
+			  </listitem>
+			  <listitem>
+				<simpara>
             availability (0 = available, -1 = unavailable)
-          </simpara>
-        </listitem>
+				</simpara>
+			  </listitem>
+			  <listitem>
+				<simpara>
+				  recovery state (0 = not in recovery, 1 = in recovery, -1 = unknown)
+				</simpara>
+			  </listitem>
+			</itemizedlist>
+		  </para>
+		</listitem>
+	  </varlistentry>
+
+      <varlistentry>
+        <term><option>--verbose</option></term>
         <listitem>
-          <simpara>
-            recovery state (0 = not in recovery, 1 = in recovery, -1 = unknown)
-          </simpara>
+          <para>
+			Display the full text of any database connection error messages
+          </para>
         </listitem>
-      </itemizedlist>
-    </para>
+      </varlistentry>
+
+	</variablelist>
+
   </refsect1>
 
 
