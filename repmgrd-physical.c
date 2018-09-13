@@ -1231,7 +1231,7 @@ monitor_streaming_witness(void)
 	/*
 	 * At this point we can't trust the local copy of "repmgr.nodes", as
 	 * it may not have been updated. We'll scan the cluster for the current
-[''	 * primary and refresh the copy from that before proceeding further.
+	 * primary and refresh the copy from that before proceeding further.
 	 */
 	primary_conn = get_primary_connection_quiet(local_conn, &primary_node_id, NULL);
 
