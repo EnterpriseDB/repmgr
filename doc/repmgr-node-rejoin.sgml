@@ -67,10 +67,10 @@
         <term><option>--force-rewind[=/path/to/pg_rewind]</option></term>
         <listitem>
           <para>
-            Execute <application>pg_rewind</application> if necessary.
+            Execute <application>pg_rewind</application>.
           </para>
           <para>
-            It is only necessary to provide the <application>pg_rewind</application>
+            It is only necessary to provide the <application>pg_rewind</application> path
             if using PostgreSQL 9.3 or 9.4, and <application>pg_rewind</application>
             is not installed in the PostgreSQL <filename>bin</filename> directory.
           </para>
@@ -193,7 +193,7 @@
     </note>
 
     <para>
-      To have <command>repmgr node rejoin</command> use <command>pg_rewind</command> if required,
+      To have <command>repmgr node rejoin</command> use <command>pg_rewind</command>,
       pass the command line option <literal>--force-rewind</literal>, which will tell &repmgr;
       to execute <command>pg_rewind</command> to ensure the node can be rejoined successfully.
     </para>
@@ -226,6 +226,15 @@
     INFO: pg_rewind would now be executed
     DETAIL: pg_rewind command is:
       pg_rewind -D '/var/lib/postgresql/data' --source-server='host=node1 dbname=repmgr user=repmgr'</programlisting>
+
+    <note>
+      <para>
+        If <option>--force-rewind</option> is used with the <option>--dry-run</option> option,
+        this checks the prerequisites for using <application>pg_rewind</application>, but cannot
+        predict the outcome of actually executing <application>pg_rewind</application>.
+      </para>
+    </note>
+
     <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node1 dbname=repmgr user=repmgr' \
          --force-rewind --config-files=postgresql.local.conf,postgresql.conf --verbose
