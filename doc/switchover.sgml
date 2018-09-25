@@ -342,4 +342,73 @@
    We hope to remove some of these restrictions in future versions of &repmgr;.
   </para>
  </sect1>
+
+ <sect1 id="switchover-troubleshooting" xreflabel="Troubleshooting">
+   <indexterm>
+     <primary>switchover</primary>
+     <secondary>troubleshooting</secondary>
+   </indexterm>
+   <title>Troubleshooting switchover issues</title>
+
+   <para>
+     As <link linkend="performing-switchover">emphasised previously</link>, performing a switchover
+     is a non-trivial operation and there are a number of potential issues which can occur.
+     While &repmgr; attempts to perform sanity checks, there's no guaranteed way of determining the success of
+     a switchover without actually carrying it out.
+   </para>
+
+   <sect2 id="switchover-troubleshooting-primary-shutdown">
+     <title>Demotion candidate (old primary) does not shut down</title>
+     <para>
+       &repmgr; may abort a switchover with a message like:
+       <programlisting>
+ERROR: shutdown of the primary server could not be confirmed
+HINT: check the primary server status before performing any further actions</programlisting>
+     </para>
+     <para>
+       This means the shutdown of the old primary has taken longer than &repmgr; expected,
+       and it has given up waiting.
+     </para>
+     <para>
+       In this case, check the PostgreSQL log on the primary server to see what is going
+       on. It's entirely possible the shutdown process is just taking longer than the
+       timeout set by the configuration parameter <varname>shutdown_check_timeout</varname>
+       (default: 60 seconds), in which case you may need to adjust this parameter.
+     </para>
+     <note>
+       <para>
+         Note that <varname>shutdown_check_timeout</varname>is set on the node where
+         <command>repmgr standby switchover</command> is executed (promotion candidate); setting it on the
+         demotion candidate (former primary) will have no effect.
+       </para>
+     </note>
+     <para>
+       If the primary server has shut down cleanly, and no other node has been promoted,
+       it is safe to restart it, in which case the replication cluster will be restored
+       to its original configuration.
+     </para>
+   </sect2>
+
+   <sect2 id="switchover-troubleshooting-exclusive-backup">
+     <title>Switchover aborts with an &quot;exclusive backup&quot; error</title>
+     <para>
+       &repmgr; may abort a switchover with a message like:
+       <programlisting>
+ERROR: unable to perform a switchover while primary server is in exclusive backup mode
+HINT: stop backup before attempting the switchover</programlisting>
+     </para>
+     <para>
+       This means an exclusive backup is running on the current primary; interrupting this
+       will not only abort the backup, but potentially leave the primary with an ambiguous
+       backup state.
+     </para>
+     <para>
+       To proceed, either wait until the backup has finished, or cancel it with the command
+       <command>SELECT pg_stop_backup()</command>. For more details see the PostgreSQL
+       documentation section
+       <ulink url="https://www.postgresql.org/docs/current/static/continuous-archiving.html#BACKUP-LOWLEVEL-BASE-BACKUP-EXCLUSIVE">Making an exclusive low level backup</ulink>.
+     </para>
+   </sect2>
+ </sect1>
+
 </chapter>

@@ -156,9 +156,14 @@
            <literal>shutdown_check_timeout</literal>: maximum number of seconds to wait for the
            demotion candidate (current primary) to shut down, before aborting the switchover.
          </simpara>
+         <simpara>
+           Note that this parameter is set on the node where <command>repmgr standby switchover</command>
+           is executed (promotion candidate); setting it on the demotion candidate (former primary) will
+           have no effect.
+         </simpara>
          <note>
            <para>
-             In versions prior to &repmgr; 4.2, <command>repmgr standby switchover</command> would
+             In versions prior to <link linkend="release-4.2">&repmgr; 4.2</link>, <command>repmgr standby switchover</command> would
              use the values defined in <literal>reconnect_attempts</literal> and <literal>reconnect_interval</literal>
              to determine the timeout for demotion candidate shutdown.
            </para>
@@ -168,7 +173,7 @@
        <listitem>
          <simpara>
            <literal>standby_reconnect_timeout</literal>:
-           maximum number of seconds to attempt to wait for the demoted primary
+           maximum number of seconds to attempt to wait for the demotion candidate (former primary)
            to reconnect to the promoted primary (default: 60 seconds)
          </simpara>
        </listitem>
