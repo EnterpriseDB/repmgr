@@ -33,10 +33,9 @@
       <para>
         <itemizedlist>
 
-
           <listitem>
             <para>
-              <command><link linkend="repmgr-standby-clone">repmgr standby switchover --dry-run</link></command>
+              <command><link linkend="repmgr-standby-switchover">repmgr standby switchover --dry-run</link></command>
               no longer copies external configuration files to test they can be copied; this avoids making
               any changes to the target system. (GitHub #491).
             </para>
@@ -45,7 +44,7 @@
           <listitem>
             <para>
               <command><link linkend="repmgr-cluster-cleanup">repmgr cluster cleanup</link></command>:
-              add <literal>cluster_cleanup</literal> event. (GitHub #492)
+              add <literal>cluster_cleanup</literal> event. (GitHub #492).
             </para>
           </listitem>
 
