@@ -231,6 +231,8 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 # These settings apply when switching roles between a primary and a standby
 # ("repmgr standby switchover").
 
+#shutdown_check_timeout=60		# The max length of time (in seconds) to wait for the demotion
+					# candidate (current primary) to shut down
 #standby_reconnect_timeout=60		# The max length of time (in seconds) to wait
 					# for the demoted standby to reconnect to the promoted
 					# primary (note: this value should be equal to or greater

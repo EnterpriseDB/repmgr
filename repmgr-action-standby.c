@@ -3666,13 +3666,14 @@ do_standby_switchover(void)
 
 	/* loop for timeout waiting for current primary to stop */
 
-	for (i = 0; i < config_file_options.reconnect_attempts; i++)
+	for (i = 0; i < config_file_options.shutdown_check_timeout; i++)
 	{
 		/* Check whether primary is available */
 		PGPing		ping_res;
 
-		log_info(_("checking primary status; %i of %i attempts"),
-				 i + 1, config_file_options.reconnect_attempts);
+		log_info(_("checking for primary shutdown; %i of %i attempts (\"shutdown_check_timeout\")"),
+				 i + 1, config_file_options.shutdown_check_timeout);
+
 		ping_res = PQping(remote_conninfo);
 
 		log_debug("ping status is: %s", print_pqping_status(ping_res));
@@ -3741,9 +3742,8 @@ do_standby_switchover(void)
 			termPQExpBuffer(&command_output);
 		}
 
-		log_debug("sleeping %i seconds (\"reconnect_interval\") until next check",
-				  config_file_options.reconnect_interval);
-		sleep(config_file_options.reconnect_interval);
+		log_debug("sleeping 1 second until next check");
+		sleep(1);
 	}
 
 	if (shutdown_success == false)

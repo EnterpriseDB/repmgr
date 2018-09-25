@@ -103,6 +103,7 @@ typedef struct
 	int			standby_follow_timeout;
 
 	/* standby switchover settings */
+	int			shutdown_check_timeout;
 	int			standby_reconnect_timeout;
 
 	/* node rejoin settings */
@@ -181,6 +182,7 @@ typedef struct
 		DEFAULT_PRIMARY_FOLLOW_TIMEOUT,	\
 		DEFAULT_STANDBY_FOLLOW_TIMEOUT,	\
 		/* standby switchover settings */ \
+		DEFAULT_SHUTDOWN_CHECK_TIMEOUT, \
 		DEFAULT_STANDBY_RECONNECT_TIMEOUT, \
 		/* node rejoin settings */ \
 		DEFAULT_NODE_REJOIN_TIMEOUT, \
