@@ -20,6 +20,25 @@
     <para><emphasis>???, 2018</emphasis></para>
     <para>
     </para>
+    <sect2>
+      <title>Configuration file changes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              New parameter <varname>shutdown_check_timeout</varname> (default: 60 seconds) added;
+              this provides an explicit timeout for
+              <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>
+              to check that the demotion candidate (current primary) has shut down. Previously, the parameters
+              <literal>reconnect_attempts</literal> and <literal>reconnect_interval</literal>
+              were used to calculate a timeout, but these are actually
+              intended for primary failure detection. (GitHub #504).
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+
+    </sect2>
   </sect1>
 
   <sect1 id="release-4.1.1">
