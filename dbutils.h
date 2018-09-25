@@ -491,8 +491,8 @@ add_monitoring_record(PGconn *primary_conn,
 					  long long unsigned int apply_lag_bytes
 );
 
-int			get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_history);
-bool		delete_monitoring_records(PGconn *primary_conn, int keep_history);
+int			get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_history, int node_id);
+bool		delete_monitoring_records(PGconn *primary_conn, int keep_history, int node_id);
 
 
 

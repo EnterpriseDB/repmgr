@@ -51,6 +51,20 @@
     </para>
   </refsect1>
 
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--node-id</option></term>
+        <listitem>
+          <para>
+            Only delete monitoring records for the specified node.
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
 
   <refsect1>
     <title>See also</title>

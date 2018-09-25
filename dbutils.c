@@ -4167,7 +4167,7 @@ add_monitoring_record(PGconn *primary_conn,
 
 
 int
-get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_history)
+get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_history, int node_id)
 {
 	PQExpBufferData query;
 	int				record_count = -1;
@@ -4181,8 +4181,15 @@ get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_histor
 					  " WHERE pg_catalog.age(pg_catalog.now(), last_monitor_time) >= '%d days'::interval",
 					  keep_history);
 
-	res = PQexec(primary_conn, query.data);
+	if (node_id != UNKNOWN_NODE_ID)
+	{
+		appendPQExpBuffer(&query,
+						  "  AND standby_node_id = %i", node_id);
+	}
 
+	log_verbose(LOG_DEBUG, "get_number_of_monitoring_records_to_delete():\n  %s", query.data);
+
+	res = PQexec(primary_conn, query.data);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
@@ -4202,7 +4209,7 @@ get_number_of_monitoring_records_to_delete(PGconn *primary_conn, int keep_histor
 
 
 bool
-delete_monitoring_records(PGconn *primary_conn, int keep_history)
+delete_monitoring_records(PGconn *primary_conn, int keep_history, int node_id)
 {
 	PQExpBufferData query;
 	bool			success = true;
@@ -4210,12 +4217,18 @@ delete_monitoring_records(PGconn *primary_conn, int keep_history)
 
 	initPQExpBuffer(&query);
 
-	if (keep_history > 0)
+	if (keep_history > 0 || node_id != UNKNOWN_NODE_ID)
 	{
 		appendPQExpBuffer(&query,
 						  "DELETE FROM repmgr.monitoring_history "
 						  " WHERE pg_catalog.age(pg_catalog.now(), last_monitor_time) >= '%d days'::INTERVAL ",
 						  keep_history);
+
+		if (node_id != UNKNOWN_NODE_ID)
+		{
+			appendPQExpBuffer(&query,
+							  "  AND standby_node_id = %i", node_id);
+		}
 	}
 	else
 	{

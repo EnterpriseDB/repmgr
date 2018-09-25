@@ -20,6 +20,7 @@
     <para><emphasis>???, 2018</emphasis></para>
     <para>
     </para>
+
     <sect2>
       <title>Configuration file changes</title>
       <para>
@@ -38,6 +39,23 @@
         </itemizedlist>
       </para>
 
+    </sect2>
+
+    <sect2>
+      <title>repmgr enhancements</title>
+      <para>
+       <itemizedlist>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-cluster-cleanup">repmgr cluster cleanup</link></command>
+              now accepts the <option>--node-id</option> option to delete records for only one
+              node. (GitHub #493).
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
     </sect2>
   </sect1>
 

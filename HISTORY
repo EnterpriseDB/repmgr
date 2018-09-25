@@ -1,6 +1,7 @@
 4.2.0   2018-??-??
         repmgr: add parameter "shutdown_check_timeout" for use by "standby switchover";
           GitHub #504 (Ian)
+        repmgr: add "--node-id" option to "repmgr cluster cleanup"; GitHub #493 (Ian)
 
 4.1.1   2018-09-05
         logging: explicitly log the text of failed queries as ERRORs to

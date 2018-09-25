@@ -1372,7 +1372,9 @@ do_cluster_cleanup(void)
 
 	log_debug(_("number of days of monitoring history to retain: %i"), runtime_options.keep_history);
 
-	entries_to_delete = get_number_of_monitoring_records_to_delete(primary_conn, runtime_options.keep_history);
+	entries_to_delete = get_number_of_monitoring_records_to_delete(primary_conn,
+																   runtime_options.keep_history,
+																   runtime_options.node_id);
 
 	if (entries_to_delete < 0)
 	{
@@ -1392,7 +1394,7 @@ do_cluster_cleanup(void)
 
 	initPQExpBuffer(&event_details);
 
-	if (delete_monitoring_records(primary_conn, runtime_options.keep_history) == false)
+	if (delete_monitoring_records(primary_conn, runtime_options.keep_history, runtime_options.node_id) == false)
 	{
 		appendPQExpBuffer(&event_details,
 						  _("unable to delete monitoring records"));
@@ -1418,8 +1420,21 @@ do_cluster_cleanup(void)
 		log_detail("%s", PQerrorMessage(primary_conn));
 	}
 
-	appendPQExpBuffer(&event_details,
-					  _("monitoring records deleted"));
+	if (runtime_options.keep_history == 0)
+	{
+		appendPQExpBuffer(&event_details,
+						  _("all monitoring records deleted"));
+	}
+	else
+	{
+		appendPQExpBuffer(&event_details,
+						  _("monitoring records deleted"));
+	}
+
+	if (runtime_options.node_id != UNKNOWN_NODE_ID)
+		appendPQExpBuffer(&event_details,
+						  _(" for node %i"),
+						  runtime_options.node_id);
 
 	if (runtime_options.keep_history > 0)
 		appendPQExpBuffer(&event_details,
@@ -1433,18 +1448,11 @@ do_cluster_cleanup(void)
 							  true,
 							  event_details.data);
 
+	log_notice("%s", event_details.data);
+
 	termPQExpBuffer(&event_details);
 	PQfinish(primary_conn);
 
-	if (runtime_options.keep_history > 0)
-	{
-		log_notice(_("monitoring records older than %i day(s) deleted"),
-				   runtime_options.keep_history);
-	}
-	else
-	{
-		log_info(_("all monitoring records deleted"));
-	}
 
 	return;
 }
