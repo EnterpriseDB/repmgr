@@ -281,9 +281,9 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# a value of zero prevents the node being promoted to primary
 					# (default: 100)
 
-#reconnect_attempts=6			# Number attempts which will be made to reconnect to an unreachable
+#reconnect_attempts=6			# Number of attempts which will be made to reconnect to an unreachable
 					# primary (or other upstream node)
-#reconnect_interval=10			# Interval between attempts  to reconnect to an unreachable
+#reconnect_interval=10			# Interval between attempts to reconnect to an unreachable
 					# primary (or other upstream node)
 #promote_command=			# command repmgrd executes when promoting a new primary; use something like:
 					#
