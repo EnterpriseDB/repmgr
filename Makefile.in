@@ -17,7 +17,6 @@ DATA = \
   repmgr--4.1--4.2.sql \
   repmgr--4.2.sql
 
-
 REGRESS = repmgr_extension
 
 # Hacky workaround to install the binaries
@@ -43,7 +42,7 @@ $(info Building against PostgreSQL $(MAJORVERSION))
 
 REPMGR_CLIENT_OBJS = repmgr-client.o \
 	repmgr-action-primary.o repmgr-action-standby.o repmgr-action-witness.o \
-	repmgr-action-bdr.o repmgr-action-cluster.o repmgr-action-node.o \
+	repmgr-action-bdr.o repmgr-action-cluster.o repmgr-action-node.o repmgr-action-daemon.o \
 	configfile.o log.o strutil.o controldata.o dirutil.o compat.o dbutils.o
 REPMGRD_OBJS = repmgrd.o repmgrd-physical.o repmgrd-bdr.o configfile.o log.o dbutils.o strutil.o controldata.o compat.o
 DATE=$(shell date "+%Y-%m-%d")
@@ -87,6 +86,7 @@ additional-clean:
 	rm -f repmgr-action-bdr.o
 	rm -f repmgr-action-node.o
 	rm -f repmgr-action-cluster.o
+	rm -f repmgr-action-daemon.o
 	rm -f repmgrd.o
 	rm -f repmgrd-physical.o
 	rm -f repmgrd-bdr.o

@@ -53,6 +53,7 @@
 
 #define UNKNOWN_TIMELINE_ID -1
 #define UNKNOWN_SYSTEM_IDENTIFIER 0
+#define UNKNOWN_PID			-1
 
 #define NODE_NOT_FOUND		-1
 #define NO_UPSTREAM_NODE	-1

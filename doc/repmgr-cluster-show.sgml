@@ -90,7 +90,7 @@
 		  <para>
 			<command>repmgr cluster show</command> accepts an optional parameter <literal>--csv</literal>, which
 			outputs the replication cluster's status in a simple CSV format, suitable for
-			parsing by scripts:
+			parsing by scripts, e.g.:
 			<programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show --csv
     1,-1,-1
@@ -165,7 +165,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-     <xref linkend="repmgr-node-status">, <xref linkend="repmgr-node-check">
+     <xref linkend="repmgr-node-status">, <xref linkend="repmgr-node-check">, <xref linkend="repmgr-daemon-status">
     </para>
   </refsect1>
 

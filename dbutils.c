@@ -1627,7 +1627,6 @@ repmgrd_set_local_node_id(PGconn *conn, int local_node_id)
 }
 
 
-
 int
 repmgrd_get_local_node_id(PGconn *conn)
 {
@@ -1685,6 +1684,135 @@ server_in_exclusive_backup_mode(PGconn *conn)
 	return backup_state;
 }
 
+
+void
+repmgrd_set_pid(PGconn *conn, pid_t repmgrd_pid, const char *pidfile)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+
+	log_verbose(LOG_DEBUG, "repmgrd_set_pid(): pid is %i", (int) repmgrd_pid);
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT repmgr.set_repmgrd_pid(%i, '%s')",
+					  (int) repmgrd_pid, pidfile);
+
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute \"SELECT repmgr.set_repmgrd_pid()\""));
+		log_detail("%s", PQerrorMessage(conn));
+	}
+
+	PQclear(res);
+
+	return;
+}
+
+
+pid_t
+repmgrd_get_pid(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	pid_t		repmgrd_pid = UNKNOWN_PID;
+
+	res = PQexec(conn, "SELECT repmgr.get_repmgrd_pid()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute \"SELECT repmgr.get_repmgrd_pid()\""));
+		log_detail("%s", PQerrorMessage(conn));
+	}
+	else if (!PQgetisnull(res, 0, 0))
+	{
+		repmgrd_pid = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return repmgrd_pid;
+}
+
+
+bool
+repmgrd_is_running(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	bool		is_running = false;
+
+	res = PQexec(conn, "SELECT repmgr.repmgrd_is_running()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute \"SELECT repmgr.repmgrd_is_running()\""));
+		log_detail("%s", PQerrorMessage(conn));
+	}
+	else if (!PQgetisnull(res, 0, 0))
+	{
+		is_running = atobool(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return is_running;
+}
+
+
+bool
+repmgrd_is_paused(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	bool		is_paused = false;
+
+	res = PQexec(conn, "SELECT repmgr.repmgrd_is_paused()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute \"SELECT repmgr.repmgrd_is_paused()\""));
+		log_detail("%s", PQerrorMessage(conn));
+	}
+	else if (!PQgetisnull(res, 0, 0))
+	{
+		is_paused = atobool(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return is_paused;
+}
+
+
+bool
+repmgrd_pause(PGconn *conn, bool pause)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool		success = true;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT repmgr.repmgrd_pause(%s)",
+					  pause == true ? "TRUE" : "FALSE");
+	res = PQexec(conn, query.data);
+	termPQExpBuffer(&query);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute \"SELECT repmgr.repmgrd_pause()\""));
+		log_detail("%s", PQerrorMessage(conn));
+
+		success = false;
+	}
+
+	PQclear(res);
+
+	return success;
+}
 
 /* ================ */
 /* result functions */

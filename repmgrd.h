@@ -20,6 +20,7 @@ extern t_configuration_options config_file_options;
 extern t_node_info local_node_info;
 extern PGconn *local_conn;
 extern bool startup_event_logged;
+extern char pid_file[MAXPGPATH];
 
 void		try_reconnect(PGconn **conn, t_node_info *node_info);
 

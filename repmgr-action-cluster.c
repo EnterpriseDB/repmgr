@@ -26,7 +26,6 @@
 
 #define SHOW_HEADER_COUNT 7
 
-
 typedef enum
 {
 	SHOW_ID = 0,
@@ -50,14 +49,6 @@ typedef enum
 	EV_DETAILS
 }			EventHeader;
 
-
-
-struct ColHeader
-{
-	char		title[MAXLEN];
-	int			max_length;
-	int			cur_length;
-};
 
 struct ColHeader headers_show[SHOW_HEADER_COUNT];
 struct ColHeader headers_event[EVENT_HEADER_COUNT];
@@ -159,7 +150,7 @@ do_cluster_show(void)
 			else
 			{
 				item_list_append_format(&warnings,
-										"unable to  connect to node \"%s\" (ID: %i)",
+										"unable to connect to node \"%s\" (ID: %i)",
 										cell->node_info->node_name, cell->node_info->node_id);
 			}
 		}
@@ -364,36 +355,10 @@ do_cluster_show(void)
 
 	}
 
+	/* Print column header row (text mode only) */
 	if (runtime_options.output_mode == OM_TEXT)
 	{
-		for (i = 0; i < SHOW_HEADER_COUNT; i++)
-		{
-			if (i == 0)
-				printf(" ");
-			else
-				printf(" | ");
-
-			printf("%-*s",
-				   headers_show[i].max_length,
-				   headers_show[i].title);
-		}
-		printf("\n");
-		printf("-");
-
-		for (i = 0; i < SHOW_HEADER_COUNT; i++)
-		{
-			int			j;
-
-			for (j = 0; j < headers_show[i].max_length; j++)
-				printf("-");
-
-			if (i < (SHOW_HEADER_COUNT - 1))
-				printf("-+-");
-			else
-				printf("-");
-		}
-
-		printf("\n");
+		print_status_header(SHOW_HEADER_COUNT, headers_show);
 	}
 
 	for (cell = nodes.head; cell; cell = cell->next)

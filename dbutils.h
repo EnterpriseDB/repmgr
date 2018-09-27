@@ -327,6 +327,21 @@ typedef struct
     UNKNOWN_TIMELINE_ID, \
 	InvalidXLogRecPtr \
 }
+
+
+typedef struct RepmgrdInfo {
+	int node_id;
+	int pid;
+	char pid_text[MAXLEN];
+	char pid_file[MAXLEN];
+	bool pg_running;
+	char pg_running_text[MAXLEN];
+	bool running;
+	char repmgrd_running[MAXLEN];
+	bool paused;
+} RepmgrdInfo;
+
+
 /* global variables */
 
 extern int	server_version_num;
@@ -399,6 +414,11 @@ bool		identify_system(PGconn *repl_conn, t_system_identification *identification
 bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
 int			repmgrd_get_local_node_id(PGconn *conn);
 BackupState	server_in_exclusive_backup_mode(PGconn *conn);
+void		repmgrd_set_pid(PGconn *conn, pid_t repmgrd_pid, const char *pidfile);
+pid_t		repmgrd_get_pid(PGconn *conn);
+bool		repmgrd_is_running(PGconn *conn);
+bool		repmgrd_is_paused(PGconn *conn);
+bool		repmgrd_pause(PGconn *conn, bool pause);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn);

@@ -30,9 +30,14 @@
  * NODE STATUS
  * NODE CHECK
  *
+ * DAEMON STATUS
+ * DAEMON PAUSE
+ * DAEMON UNPAUSE
+ *
  * For internal use:
  * NODE REJOIN
  * NODE SERVICE
+ *
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,6 +67,7 @@
 #include "repmgr-action-bdr.h"
 #include "repmgr-action-node.h"
 #include "repmgr-action-cluster.h"
+#include "repmgr-action-daemon.h"
 
 #include <storage/fd.h>			/* for PG_TEMP_FILE_PREFIX */
 
@@ -436,6 +442,10 @@ main(int argc, char **argv)
 
 			case OPT_SIBLINGS_FOLLOW:
 				runtime_options.siblings_follow = true;
+				break;
+
+			case OPT_REPMGRD_NO_PAUSE:
+				runtime_options.repmgrd_no_pause = true;
 				break;
 
 				/*----------------------
@@ -900,6 +910,21 @@ main(int argc, char **argv)
 			else if (strcasecmp(repmgr_action, "CLEANUP") == 0)
 				action = CLUSTER_CLEANUP;
 		}
+		else if (strcasecmp(repmgr_command, "DAEMON") == 0)
+		{
+			if (help_option == true)
+			{
+				do_daemon_help();
+				exit(SUCCESS);
+			}
+
+			if (strcasecmp(repmgr_action, "STATUS") == 0)
+				action = DAEMON_STATUS;
+			else if (strcasecmp(repmgr_action, "PAUSE") == 0)
+				action = DAEMON_PAUSE;
+			else if (strcasecmp(repmgr_action, "UNPAUSE") == 0)
+				action = DAEMON_UNPAUSE;
+		}
 		else
 		{
 			valid_repmgr_command_found = false;
@@ -1296,6 +1321,17 @@ main(int argc, char **argv)
 			break;
 		case CLUSTER_CLEANUP:
 			do_cluster_cleanup();
+			break;
+
+			/* DAEMON */
+		case DAEMON_STATUS:
+			do_daemon_status();
+			break;
+		case DAEMON_PAUSE:
+			do_daemon_pause();
+			break;
+		case DAEMON_UNPAUSE:
+			do_daemon_unpause();
 			break;
 
 		default:
@@ -1744,6 +1780,18 @@ check_cli_parameters(const int action)
 		}
 	}
 
+	if (runtime_options.repmgrd_no_pause == true)
+	{
+		switch (action)
+		{
+			case STANDBY_SWITCHOVER:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--repmgrd-no-pause will be ignored when executing %s"),
+										action_name(action));
+		}
+	}
 
 	if (runtime_options.config_files[0] != '\0')
 	{
@@ -1772,6 +1820,8 @@ check_cli_parameters(const int action)
 			case WITNESS_UNREGISTER:
 			case NODE_REJOIN:
 			case NODE_SERVICE:
+			case DAEMON_PAUSE:
+			case DAEMON_UNPAUSE:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
@@ -1851,6 +1901,14 @@ action_name(const int action)
 			return "CLUSTER MATRIX";
 		case CLUSTER_CROSSCHECK:
 			return "CLUSTER CROSSCHECK";
+
+		case DAEMON_STATUS:
+			return "DAEMON STATUS";
+		case DAEMON_PAUSE:
+			return "DAEMON PAUSE";
+		case DAEMON_UNPAUSE:
+			return "DAEMON UNPAUSE";
+
 	}
 
 	return "UNKNOWN ACTION";
@@ -1875,6 +1933,42 @@ print_error_list(ItemList *error_list, int log_level)
 				break;
 		}
 	}
+}
+
+
+void
+print_status_header(int cols, ColHeader *headers)
+{
+	int i;
+
+	for (i = 0; i < cols; i++)
+	{
+		if (i == 0)
+			printf(" ");
+		else
+			printf(" | ");
+
+		printf("%-*s",
+			   headers[i].max_length,
+			   headers[i].title);
+	}
+	printf("\n");
+	printf("-");
+
+	for (i = 0; i < cols; i++)
+	{
+		int			j;
+
+		for (j = 0; j < headers[i].max_length; j++)
+			printf("-");
+
+		if (i < (cols - 1))
+			printf("-+-");
+		else
+			printf("-");
+	}
+
+	printf("\n");
 }
 
 
@@ -3021,4 +3115,3 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 		}
 	}
 }
-

@@ -86,6 +86,7 @@
   &repmgrd-cascading-replication;
   &repmgrd-network-split;
   &repmgrd-witness-server;
+  &repmgrd-pausing;
   &repmgrd-degraded-monitoring;
   &repmgrd-monitoring;
   &repmgrd-bdr;
@@ -112,6 +113,9 @@
   &repmgr-cluster-crosscheck;
   &repmgr-cluster-event;
   &repmgr-cluster-cleanup;
+  &repmgr-daemon-status;
+  &repmgr-daemon-pause;
+  &repmgr-daemon-unpause;
  </part>
 
  &appendix-release-notes;

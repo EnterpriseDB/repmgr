@@ -58,6 +58,7 @@
 <!ENTITY repmgrd-cascading-replication SYSTEM "repmgrd-cascading-replication.sgml">
 <!ENTITY repmgrd-network-split SYSTEM "repmgrd-network-split.sgml">
 <!ENTITY repmgrd-witness-server SYSTEM "repmgrd-witness-server.sgml">
+<!ENTITY repmgrd-pausing SYSTEM "repmgrd-pausing.sgml">
 <!ENTITY repmgrd-bdr SYSTEM "repmgrd-bdr.sgml">
 
 <!ENTITY repmgr-primary-register SYSTEM "repmgr-primary-register.sgml">
@@ -78,6 +79,9 @@
 <!ENTITY repmgr-cluster-crosscheck SYSTEM "repmgr-cluster-crosscheck.sgml">
 <!ENTITY repmgr-cluster-event SYSTEM "repmgr-cluster-event.sgml">
 <!ENTITY repmgr-cluster-cleanup SYSTEM "repmgr-cluster-cleanup.sgml">
+<!ENTITY repmgr-daemon-status SYSTEM "repmgr-daemon-status.sgml">
+<!ENTITY repmgr-daemon-pause SYSTEM "repmgr-daemon-pause.sgml">
+<!ENTITY repmgr-daemon-unpause SYSTEM "repmgr-daemon-unpause.sgml">
 
 <!ENTITY appendix-release-notes  SYSTEM "appendix-release-notes.sgml">
 <!ENTITY appendix-faq      SYSTEM "appendix-faq.sgml">

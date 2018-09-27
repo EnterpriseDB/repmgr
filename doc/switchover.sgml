@@ -19,9 +19,10 @@
  </para>
  <para>
   <command>repmgr standby switchover</command> differs from other &repmgr;
-  actions in that it also performs actions on another server (the demotion
-  candidate), which means passwordless SSH access is required to that server
-  from the one where <command>repmgr standby switchover</command> is executed.
+  actions in that it also performs actions on other servers (the demotion
+  candidate, and optionally any other servers which are to follow the new primary),
+  which means passwordless SSH access is required to those servers from the one where
+  <command>repmgr standby switchover</command> is executed.
  </para>
  <note>
   <simpara>
@@ -153,12 +154,18 @@
     manually with <command>repmgr node check --archive-ready</command>.
    </para>
 
-   <note>
-     <para>
-       Ensure that <application>repmgrd</application> is *not* running anywhere to prevent it unintentionally
-       promoting a node. This restriction will be removed in a future &repmgr; version.
-     </para>
-   </note>
+    <note>
+      <para>
+        From <link linkend="release-4.2">repmgr 4.2</link>, &repmgr; will instruct any running
+        <application>repmgrd</application> instances to pause operations while the switchover
+        is being carried out, to prevent <application>repmgrd</application> from
+        unintentionally promoting a node. For more details, see <xref linkend="repmgrd-pausing">.
+      </para>
+      <para>
+        Users of &repmgr; versions prior to 4.2 should ensure that <application>repmgrd</application>
+        is not running on any nodes while a switchover is being executed.
+      </para>
+    </note>
 
 
    <para>
@@ -303,7 +310,21 @@
      2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
    </programlisting>
   </para>
+  <para>
+    If <application>repmgrd</application> is in use, it's worth double-checking that
+    all nodes are unpaused by executing <command><link linkend="repmgr-daemon-status">repmgr-daemon-status</link></command>.
+  </para>
+
+   <note>
+     <para>
+       Users of &repmgr; versions prior to 4.2 will need to manually restart <application>repmgrd</application>
+       on all nodes after the switchover is completed.
+     </para>
+    </note>
+
  </sect1>
+
+
  <sect1 id="switchover-caveats" xreflabel="Caveats">
   <indexterm>
    <primary>switchover</primary>
@@ -329,17 +350,7 @@
       for details.
      </simpara>
     </listitem>
-    <listitem>
-     <simpara>
-      <application>repmgrd</application> should not be running with setting <varname>failover=automatic</varname>
-      in <filename>repmgr.conf</filename> when a switchover is carried out, otherwise the
-      <application>repmgrd</application> daemon may try and promote a standby by itself.
-     </simpara>
-    </listitem>
    </itemizedlist>
-  </para>
-  <para>
-   We hope to remove some of these restrictions in future versions of &repmgr;.
   </para>
  </sect1>
 

@@ -97,6 +97,7 @@ typedef struct
 	bool		force_rewind_used;
 	char		force_rewind_path[MAXPGPATH];
 	bool		siblings_follow;
+	bool		repmgrd_no_pause;
 
 	/* "node status" options */
 	bool		is_shutdown_cleanly;
@@ -156,7 +157,7 @@ typedef struct
 		/* "standby register" options */ \
 		false, -1, DEFAULT_WAIT_START,   \
 		/* "standby switchover" options */ \
-		false, false, "", false,		   \
+		false, false, "", false, false,	\
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
@@ -191,6 +192,14 @@ typedef enum
 	ACTION_RELOAD,
 	ACTION_PROMOTE
 } t_server_action;
+
+
+typedef struct ColHeader
+{
+	char		title[MAXLEN];
+	int			max_length;
+	int			cur_length;
+} ColHeader;
 
 
 
@@ -228,7 +237,10 @@ extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGc
 extern bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
 
 extern void make_remote_repmgr_path(PQExpBufferData *outputbuf, t_node_info *remote_node_record);
+
+/* display functions */
 extern void print_help_header(void);
+extern void print_status_header(int cols, ColHeader *headers);
 
 /* server control functions */
 extern void get_server_action(t_server_action action, char *script, char *data_dir);

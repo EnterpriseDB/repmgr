@@ -106,12 +106,13 @@ handle_sigint_physical(SIGNAL_ARGS)
 	else
 		writeable_conn = primary_conn;
 
-	create_event_notification(writeable_conn,
-							  &config_file_options,
-							  config_file_options.node_id,
-							  "repmgrd_shutdown",
-							  true,
-							  event_details.data);
+	if (PQstatus(writeable_conn) == CONNECTION_OK)
+		create_event_notification(writeable_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "repmgrd_shutdown",
+								  true,
+								  event_details.data);
 
 	termPQExpBuffer(&event_details);
 
@@ -145,7 +146,6 @@ do_physical_node_check(void)
 			case FAILOVER_AUTOMATIC:
 				log_error(_("this node is marked as inactive and cannot be used as a failover target"));
 				log_hint(_("%s"), hint);
-				close_connection(&local_conn);
 
 				create_event_notification(NULL,
 										  &config_file_options,
@@ -206,8 +206,7 @@ do_physical_node_check(void)
 		if (required_param_missing == true)
 		{
 			log_hint(_("add the missing configuration parameter(s) and start repmgrd again"));
-			close_connection(&local_conn);
-			exit(ERR_BAD_CONFIG);
+			terminate(ERR_BAD_CONFIG);
 		}
 	}
 }
@@ -339,6 +338,7 @@ monitor_streaming_primary(void)
 					if (stored_local_node_id == UNKNOWN_NODE_ID)
 					{
 						repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+						repmgrd_set_pid(local_conn, getpid(), pid_file);
 					}
 
 					goto loop;
@@ -606,8 +606,7 @@ monitor_streaming_standby(void)
 		if (local_node_info.upstream_node_id == NODE_NOT_FOUND)
 		{
 			log_error(_("unable to determine an active primary for this cluster, terminating"));
-			close_connection(&local_conn);
-			exit(ERR_BAD_CONFIG);
+			terminate(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -623,15 +622,15 @@ monitor_streaming_standby(void)
 		log_error(_("no record found for upstream node (ID: %i), terminating"),
 				  local_node_info.upstream_node_id);
 		log_hint(_("ensure the upstream node is registered correctly"));
-		close_connection(&local_conn);
-		exit(ERR_DB_CONN);
+
+		terminate(ERR_DB_CONN);
 	}
 	else if (record_status == RECORD_ERROR)
 	{
 		log_error(_("unable to retrieve record for upstream node (ID: %i), terminating"),
 				  local_node_info.upstream_node_id);
-		close_connection(&local_conn);
-		exit(ERR_DB_CONN);
+
+		terminate(ERR_DB_CONN);
 	}
 
 	log_debug("connecting to upstream node %i: \"%s\"", upstream_node_info.node_id, upstream_node_info.conninfo);
@@ -650,8 +649,7 @@ monitor_streaming_standby(void)
 				  local_node_info.upstream_node_id);
 		log_hint(_("upstream node must be running before repmgrd can start"));
 
-		close_connection(&local_conn);
-		exit(ERR_DB_CONN);
+		terminate(ERR_DB_CONN);
 	}
 
 	/*
@@ -673,7 +671,8 @@ monitor_streaming_standby(void)
 		{
 			log_error(_("unable to connect to primary node"));
 			log_hint(_("ensure the primary node is reachable from this node"));
-			exit(ERR_DB_CONN);
+
+			terminate(ERR_DB_CONN);
 		}
 
 		log_verbose(LOG_DEBUG, "connected to primary");
@@ -799,28 +798,40 @@ monitor_streaming_standby(void)
 					goto loop;
 				}
 
-				/* still down after reconnect attempt(s) */
+
+				/* upstream is still down after reconnect attempt(s) */
 				if (upstream_node_info.node_status == NODE_STATUS_DOWN)
 				{
 					bool		failover_done = false;
 
-					if (upstream_node_info.type == PRIMARY)
+					if (PQstatus(local_conn) == CONNECTION_OK && repmgrd_is_paused(local_conn))
 					{
-						failover_done = do_primary_failover();
+						log_notice(_("repmgrd on this node is paused"));
+						log_detail(_("no failover will be carried out"));
+						log_hint(_("execute \"repmgr daemon unpause\" to resume normal failover mode"));
+						monitoring_state = MS_DEGRADED;
+						INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 					}
-					else if (upstream_node_info.type == STANDBY)
+					else
 					{
-						failover_done = do_upstream_standby_failover();
-					}
+						if (upstream_node_info.type == PRIMARY)
+						{
+							failover_done = do_primary_failover();
+						}
+						else if (upstream_node_info.type == STANDBY)
+						{
+							failover_done = do_upstream_standby_failover();
+						}
 
-					/*
-					 * XXX it's possible it will make sense to return in all
-					 * cases to restart monitoring
-					 */
-					if (failover_done == true)
-					{
-						primary_node_id = get_primary_node_id(local_conn);
-						return;
+						/*
+						 * XXX it's possible it will make sense to return in all
+						 * cases to restart monitoring
+						 */
+						if (failover_done == true)
+						{
+							primary_node_id = get_primary_node_id(local_conn);
+							return;
+						}
 					}
 				}
 			}
@@ -990,7 +1001,7 @@ monitor_streaming_standby(void)
 				}
 
 
-				if (config_file_options.failover == FAILOVER_AUTOMATIC)
+				if (config_file_options.failover == FAILOVER_AUTOMATIC && repmgrd_is_paused(local_conn) == false)
 				{
 					get_active_sibling_node_records(local_conn,
 													local_node_info.node_id,
@@ -1066,7 +1077,15 @@ loop:
 				termPQExpBuffer(&monitoring_summary);
 				if (monitoring_state == MS_DEGRADED && config_file_options.failover == FAILOVER_AUTOMATIC)
 				{
-					log_detail(_("waiting for upstream or another primary to reappear"));
+					if (PQstatus(local_conn) == CONNECTION_OK && repmgrd_is_paused(local_conn))
+					{
+						log_detail(_("repmgrd paused by administrator"));
+						log_hint(_("execute \"repmgr daemon unpause\" to resume normal failover mode"));
+					}
+					else
+					{
+						log_detail(_("waiting for upstream or another primary to reappear"));
+					}
 				}
 				else if (config_file_options.monitoring_history == true)
 				{
@@ -1195,6 +1214,7 @@ loop:
 				if (stored_local_node_id == UNKNOWN_NODE_ID)
 				{
 					repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+					repmgrd_set_pid(local_conn, getpid(), pid_file);
 				}
 			}
 		}
@@ -1247,8 +1267,7 @@ monitor_streaming_witness(void)
 				  upstream_node_info.node_id);
 		log_hint(_("primary node must be running before repmgrd can start"));
 
-		close_connection(&local_conn);
-		exit(ERR_DB_CONN);
+		terminate(ERR_DB_CONN);
 	}
 
 	/* synchronise local copy of "repmgr.nodes", in case it was stale */
@@ -1561,6 +1580,7 @@ loop:
 				if (stored_local_node_id == UNKNOWN_NODE_ID)
 				{
 					repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+					repmgrd_set_pid(local_conn, getpid(), pid_file);
 				}
 			}
 		}
@@ -2094,6 +2114,7 @@ do_upstream_standby_failover(void)
 
 	/* refresh shared memory settings which will have been zapped by the restart */
 	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+	repmgrd_set_pid(local_conn, getpid(), pid_file);
 
 	/*
 	 *
@@ -2564,6 +2585,7 @@ follow_new_primary(int new_primary_id)
 
 	/* refresh shared memory settings which will have been zapped by the restart */
 	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
+	repmgrd_set_pid(local_conn, getpid(), pid_file);
 
 	initPQExpBuffer(&event_details);
 	appendPQExpBuffer(&event_details,
@@ -3088,6 +3110,7 @@ check_connection(t_node_info *node_info, PGconn **conn)
 			if (stored_local_node_id == UNKNOWN_NODE_ID)
 			{
 				repmgrd_set_local_node_id(*conn, config_file_options.node_id);
+				repmgrd_set_pid(local_conn, getpid(), pid_file);
 			}
 
 		}

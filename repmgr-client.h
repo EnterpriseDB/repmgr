@@ -45,6 +45,9 @@
 #define CLUSTER_MATRIX		   19
 #define CLUSTER_CROSSCHECK	   20
 #define CLUSTER_EVENT		   21
+#define DAEMON_STATUS		   22
+#define DAEMON_PAUSE		   23
+#define DAEMON_UNPAUSE		   24
 
 /* command line options without short versions */
 #define OPT_HELP						   1001
@@ -88,6 +91,7 @@
 #define OPT_RECOVERY_CONF_ONLY             1039
 #define OPT_NO_WAIT                        1040
 #define OPT_MISSING_SLOTS                  1041
+#define OPT_REPMGRD_NO_PAUSE               1042
 
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
@@ -156,6 +160,7 @@ static struct option long_options[] =
  */
 	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE},
 	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW},
+	{"repmgrd-no-pause", no_argument, NULL, OPT_REPMGRD_NO_PAUSE},
 
 /* "node status" options */
 	{"is-shutdown-cleanly", no_argument, NULL, OPT_IS_SHUTDOWN_CLEANLY},
