@@ -1052,11 +1052,13 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * - repmgrd_standby_startup_timeout
  * - retry_promote_interval_secs
  *
- * non-changeable options
+ * non-changeable options (repmgrd references these from the "repmgr.nodes"
+ * table, not the configuration file)
  *
  * - node_id
  * - node_name
  * - data_directory
+ * - location
  * - priority
  * - replication_type
  *
@@ -1272,7 +1274,7 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		config_changed = true;
 	}
 
-	/* promote_delay */
+	/* promote_delay (for testing use only; not documented */
 	if (orig_options->promote_delay != new_options.promote_delay)
 	{
 		orig_options->promote_delay = new_options.promote_delay;
