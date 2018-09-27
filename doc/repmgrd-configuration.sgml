@@ -34,24 +34,6 @@
       the <ulink url="https://www.postgresql.org/docs/current/static/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES">PostgreSQL documentation</ulink>.
     </para>
 
-    <para>
-      To apply configuration file changes to a running <application>repmgrd</application>
-      daemon, execute the operating system's r<application>repmgrd</application> service reload command
-      (see <xref linkend="appendix-packages"> for examples),
-      or for instances  which were manually started, execute <command>kill -HUP</command>, e.g.
-      <command>kill -HUP `cat /tmp/repmgrd.pid`</command>.
-    </para>
-    <note>
-      <para>
-        Check the <application>repmgrd</application> log to see what changes were
-        applied, or if any issues were encountered when reloading the configuration.
-      </para>
-    </note>
-    <para>
-      Note that only a subset of configuration file parameters can be changed on a
-      running <application>repmgrd</application> daemon.
-    </para>
-
 
     <sect2 id="repmgrd-automatic-failover-configuration">
       <title>automatic failover configuration</title>
@@ -165,6 +147,203 @@
       <para>
         For more details on monitoring, see <xref linkend="repmgrd-monitoring">.
       </para>
+    </sect2>
+
+    <sect2 id="repmgrd-reloading-configuration"xreflabel="reloading repmgrd configuration">
+      <indexterm>
+        <primary>repmgrd</primary>
+        <secondary>applying configuration changes</secondary>
+      </indexterm>
+      <title>Applying configuration changes to repmgrd</title>
+      <para>
+        To apply configuration file changes to a running <application>repmgrd</application>
+        daemon, execute the operating system's <application>repmgrd</application> service reload command
+        (see <xref linkend="appendix-packages"> for examples),
+          or for instances  which were manually started, execute <command>kill -HUP</command>, e.g.
+          <command>kill -HUP `cat /tmp/repmgrd.pid`</command>.
+      </para>
+      <tip>
+        <para>
+          Check the <application>repmgrd</application> log to see what changes were
+          applied, or if any issues were encountered when reloading the configuration.
+        </para>
+      </tip>
+      <para>
+        Note that only the following subset of configuration file parameters can be changed on a
+        running <application>repmgrd</application> daemon:
+      </para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <varname>async_query_timeout</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>bdr_local_monitoring_only</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>bdr_recovery_timeout</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>conninfo</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>degraded_monitoring_timeout</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>event_notification_command</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>event_notifications</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>failover</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>follow_command</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>log_facility</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>log_file</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>log_level</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>log_status_interval</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>monitor_interval_secs</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>monitoring_history</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>primary_notification_timeout</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>promote_command</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>reconnect_attempts</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>reconnect_interval</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>repmgrd_standby_startup_timeout</varname>
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+
+      <para>
+        The following set of configuration file parameters must be updated via
+        <command><link linkend="repmgr-standby-register">repmgr standby register --force</link></command>,
+        as they require changes to the <literal>repmgr.nodes</literal> table so they are visible to
+        all nodes in the replication cluster:
+      </para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <varname>node_id</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>node_name</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>data_directory</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>location</varname>
+          </simpara>
+        </listitem>
+
+
+        <listitem>
+          <simpara>
+            <varname>priority</varname>
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+
+      <note>
+        <para>
+          After executing <command><link linkend="repmgr-standby-register">repmgr standby register --force</link></command>,
+          <application>repmgrd</application> <emphasis>must</emphasis> be restarted for the changes to take effect.
+        </para>
+      </note>
+
     </sect2>
 
   </sect1>
