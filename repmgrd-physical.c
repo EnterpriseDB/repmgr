@@ -1664,7 +1664,19 @@ do_primary_failover(void)
 	}
 	else if (election_result == ELECTION_LOST || election_result == ELECTION_NOT_CANDIDATE)
 	{
-		log_info(_("follower node awaiting notification from the candidate node"));
+		/*
+		 * if the node couldn't be promoted as it's not in the same location as the primary,
+		 * add an explanatory notice
+		 */
+		if (election_result == ELECTION_NOT_CANDIDATE && strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) != 0)
+		{
+			log_notice(_("this node's location (\"%s\") is not the primary node location (\"%s\"), so node cannot be promoted"),
+					   local_node_info.location,
+					   upstream_node_info.location);
+		}
+
+		log_info(_("follower node awaiting notification from a candidate node"));
+
 		failover_state = FAILOVER_STATE_WAITING_NEW_PRIMARY;
 	}
 
@@ -2766,7 +2778,9 @@ do_election(void)
 
 	total_nodes = sibling_nodes.node_count + 1;
 
-	log_debug("do_election(): primary location is %s", upstream_node_info.location);
+	log_debug("do_election(): primary location is \"%s\", standby location is \"%s\"",
+			  upstream_node_info.location,
+			  local_node_info.location);
 
 	local_node_info.last_wal_receive_lsn = InvalidXLogRecPtr;
 
