@@ -2000,6 +2000,7 @@ do_help(void)
 	printf(_("    %s [OPTIONS] node    {status|check|rejoin|service}\n"), progname());
 	printf(_("    %s [OPTIONS] cluster {show|event|matrix|crosscheck|cleanup}\n"), progname());
 	printf(_("    %s [OPTIONS] witness {register|unregister}\n"), progname());
+	printf(_("    %s [OPTIONS] daemon  {status|pause|unpause}\n"), progname());
 
 	puts("");
 
