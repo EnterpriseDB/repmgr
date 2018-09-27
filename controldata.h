@@ -265,6 +265,71 @@ typedef struct ControlFileData95
 
 } ControlFileData95;
 
+/*
+ * Following field removed in 11:
+ *
+ *  XLogRecPtr	prevCheckPoint;
+ *
+ * In 10, following field appended *after* "data_checksum_version":
+ *
+ * 	char		mock_authentication_nonce[MOCK_AUTH_NONCE_LEN];
+ *
+ * (but we don't care about that)
+ */
+
+typedef struct ControlFileData11
+{
+	uint64		system_identifier;
+
+	uint32		pg_control_version;		/* PG_CONTROL_VERSION */
+	uint32		catalog_version_no;		/* see catversion.h */
+
+	DBState		state;			/* see enum above */
+	pg_time_t	time;			/* time stamp of last pg_control update */
+	XLogRecPtr	checkPoint;		/* last check point record ptr */
+
+	CheckPoint95	checkPointCopy; /* copy of last check point record */
+
+	XLogRecPtr	unloggedLSN;	/* current fake LSN value, for unlogged rels */
+
+	XLogRecPtr	minRecoveryPoint;
+	TimeLineID	minRecoveryPointTLI;
+	XLogRecPtr	backupStartPoint;
+	XLogRecPtr	backupEndPoint;
+	bool		backupEndRequired;
+
+	int			wal_level;
+	bool		wal_log_hints;
+	int			MaxConnections;
+	int			max_worker_processes;
+	int			max_prepared_xacts;
+	int			max_locks_per_xact;
+	bool		track_commit_timestamp;
+
+	uint32		maxAlign;		/* alignment requirement for tuples */
+	double		floatFormat;	/* constant 1234567.0 */
+
+	uint32		blcksz;			/* data block size for this DB */
+	uint32		relseg_size;	/* blocks per segment of large relation */
+
+	uint32		xlog_blcksz;	/* block size within WAL files */
+	uint32		xlog_seg_size;	/* size of each WAL segment */
+
+	uint32		nameDataLen;	/* catalog name field width */
+	uint32		indexMaxKeys;	/* max number of columns in an index */
+
+	uint32		toast_max_chunk_size;	/* chunk size in TOAST tables */
+	uint32		loblksize;		/* chunk size in pg_largeobject */
+
+	bool		enableIntTimes; /* int64 storage enabled? */
+
+	bool		float4ByVal;	/* float4 pass-by-value? */
+	bool		float8ByVal;	/* float8, int8, etc pass-by-value? */
+
+	uint32		data_checksum_version;
+
+} ControlFileData11;
+
 
 
 extern DBState get_db_state(const char *data_directory);

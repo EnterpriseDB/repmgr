@@ -227,7 +227,15 @@ get_controlfile(const char *DataDir)
 
 	control_file_info->control_file_processed = true;
 
-	if (version_num >= 90500)
+	if (version_num >= 110000)
+	{
+		ControlFileData11 *ptr = (struct ControlFileData11 *)ControlFileDataPtr;
+		control_file_info->system_identifier = ptr->system_identifier;
+		control_file_info->state = ptr->state;
+		control_file_info->checkPoint = ptr->checkPoint;
+		control_file_info->data_checksum_version = ptr->data_checksum_version;
+	}
+	else if (version_num >= 90500)
 	{
 		ControlFileData95 *ptr = (struct ControlFileData95 *)ControlFileDataPtr;
 		control_file_info->system_identifier = ptr->system_identifier;
