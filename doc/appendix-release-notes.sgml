@@ -37,6 +37,23 @@
             </para>
           </listitem>
         </itemizedlist>
+
+        <itemizedlist>
+          <listitem>
+            <para>
+              New parameter <varname>repmgr_bindir</varname> added, to facilitate remote invocation of repmgr
+              when the repmgr binary is located somewhere other than the PostgreSQL binary directory, as it
+              cannot be assumed all package maintainers will install &repmgr; there.
+            </para>
+            <para>
+              This parameter is optional; if not set (the default), &repmgr; will fall back
+              to <option>pg_bindir</option> (if set).
+            </para>
+            <para>
+              (GitHub #246).
+            </para>
+          </listitem>
+        </itemizedlist>
       </para>
 
     </sect2>

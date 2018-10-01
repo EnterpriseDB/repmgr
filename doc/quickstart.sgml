@@ -237,13 +237,6 @@
    server. See sections <xref linkend="configuration"> and <xref linkend="configuration-file">
    for further details about <filename>repmgr.conf</filename>.
   </para>
-  <tip>
-   <simpara>
-    For Debian-based distributions we recommend explictly setting
-    <option>pg_bindir</option> to the directory where <command>pg_ctl</command> and other binaries
-    not in the standard path are located. For PostgreSQL 9.6 this would be <filename>/usr/lib/postgresql/9.6/bin/</filename>.
-   </simpara>
-  </tip>
 
   <note>
     <para>
@@ -261,6 +254,24 @@
       locations, so prepending <option>pg_bindir</option> may break them.
     </para>
   </note>
+
+  <tip>
+   <simpara>
+    For Debian-based distributions we recommend explictly setting
+    <option>pg_bindir</option> to the directory where <command>pg_ctl</command> and other binaries
+    not in the standard path are located. For PostgreSQL 9.6 this would be <filename>/usr/lib/postgresql/9.6/bin/</filename>.
+   </simpara>
+  </tip>
+
+  <tip>
+    <simpara>
+      If your distribution places the &repmgr; binaries in a location other than the
+      PostgreSQL installation directory, specify this with <option>repmgr_bindir</option>
+      to enable &repmgr; to perform operations (e.g.
+      <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command>)
+      on other nodes.
+    </simpara>
+  </tip>
 
   <para>
    See the file

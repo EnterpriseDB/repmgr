@@ -288,6 +288,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	memset(options->data_directory, 0, sizeof(options->data_directory));
 	memset(options->config_directory, 0, sizeof(options->data_directory));
 	memset(options->pg_bindir, 0, sizeof(options->pg_bindir));
+	memset(options->repmgr_bindir, 0, sizeof(options->repmgr_bindir));
 	options->replication_type = REPLICATION_TYPE_PHYSICAL;
 
 	/*-------------
@@ -490,6 +491,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXPGPATH);
+		else if (strcmp(name, "repmgr_bindir") == 0)
+			strncpy(options->repmgr_bindir, value, MAXPGPATH);
 
 		else if (strcmp(name, "replication_type") == 0)
 		{

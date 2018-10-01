@@ -231,6 +231,7 @@ extern int copy_remote_files(char *host, char *remote_user, char *remote_path,
 extern void print_error_list(ItemList *error_list, int log_level);
 
 extern char *make_pg_path(const char *file);
+extern char *make_repmgr_path(const char *file);
 
 extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn);
 

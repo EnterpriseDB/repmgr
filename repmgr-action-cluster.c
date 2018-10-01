@@ -999,7 +999,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 		 */
 		appendPQExpBuffer(&command,
 						  "\"%s -d '%s' ",
-						  make_pg_path(progname()),
+						  make_repmgr_path(progname()),
 						  cell->node_info->conninfo);
 
 
@@ -1182,7 +1182,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 		appendPQExpBuffer(&command,
 						  "%s -d '%s' --node-id=%i ",
-						  make_pg_path(progname()),
+						  make_repmgr_path(progname()),
 						  cell->node_info->conninfo,
 						  remote_node_id);
 
