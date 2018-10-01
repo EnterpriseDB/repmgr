@@ -2483,22 +2483,6 @@ make_pg_path(const char *file)
 }
 
 
-char *
-make_repmgr_path(const char *file)
-{
-	if (config_file_options.repmgr_bindir[0] != '\0')
-	{
-		maxlen_snprintf(path_buf, "%s%s", config_file_options.repmgr_bindir, file);
-	}
-	else
-	{
-		maxlen_snprintf(path_buf, "%s%s", pg_bindir, file);
-	}
-
-	return path_buf;
-}
-
-
 int
 copy_remote_files(char *host, char *remote_user, char *remote_path,
 				  char *local_path, bool is_directory, int server_version_num)
@@ -2688,9 +2672,28 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 void
 make_remote_repmgr_path(PQExpBufferData *output_buf, t_node_info *remote_node_record)
 {
+	if (config_file_options.repmgr_bindir[0] != '\0')
+	{
+		int			len = strlen(config_file_options.repmgr_bindir);
+
+		appendPQExpBufferStr(output_buf,
+							 config_file_options.repmgr_bindir);
+
+		/* Add trailing slash */
+		if (config_file_options.repmgr_bindir[len - 1] != '/')
+		{
+			appendPQExpBufferChar(output_buf, '/');
+		}
+	}
+	else if (pg_bindir[0] != '\0')
+	{
+		appendPQExpBufferStr(output_buf,
+							 pg_bindir);
+	}
+
 	appendPQExpBuffer(output_buf,
 					  "%s -f %s ",
-					  make_repmgr_path(progname()),
+					  progname(),
 					  remote_node_record->config_file);
 }
 

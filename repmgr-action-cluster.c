@@ -960,7 +960,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 		host = param_get(&remote_conninfo, "host");
 
-		node_conn = establish_db_connection(cell->node_info->conninfo, false);
+		node_conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
 		connection_status =
 			(PQstatus(node_conn) == CONNECTION_OK) ? 0 : -1;
@@ -997,24 +997,12 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 		 * remote repmgr - those are the only values it needs to work, and
 		 * saves us making assumptions about the location of repmgr.conf
 		 */
-		appendPQExpBuffer(&command,
-						  "\"%s -d '%s' ",
-						  make_repmgr_path(progname()),
-						  cell->node_info->conninfo);
+		appendPQExpBufferChar(&command, '"');
 
+		make_remote_repmgr_path(&command, cell->node_info);
 
-		if (strlen(pg_bindir))
-		{
-			appendPQExpBuffer(&command,
-							  "--pg_bindir=");
-			appendShellString(&command,
-							  pg_bindir);
-			appendPQExpBuffer(&command,
-							  " ");
-		}
-
-		appendPQExpBuffer(&command,
-						  " cluster show --csv\"");
+		appendPQExpBufferStr(&command,
+							 " cluster show --csv -L NOTICE --terse\"");
 
 		log_verbose(LOG_DEBUG, "build_cluster_matrix(): executing:\n  %s", command.data);
 
@@ -1180,24 +1168,10 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 		initPQExpBuffer(&command);
 
-		appendPQExpBuffer(&command,
-						  "%s -d '%s' --node-id=%i ",
-						  make_repmgr_path(progname()),
-						  cell->node_info->conninfo,
-						  remote_node_id);
+		make_remote_repmgr_path(&command, cell->node_info);
 
-		if (strlen(pg_bindir))
-		{
-			appendPQExpBuffer(&command,
-							  "--pg_bindir=");
-			appendShellString(&command,
-							  pg_bindir);
-			appendPQExpBuffer(&command,
-							  " ");
-		}
-
-		appendPQExpBuffer(&command,
-						  "cluster matrix --csv 2>/dev/null");
+		appendPQExpBufferStr(&command,
+							 " cluster matrix --csv -L NOTICE --terse");
 
 		initPQExpBuffer(&command_output);
 
