@@ -116,11 +116,25 @@
       </varlistentry>
 
       <varlistentry>
+        <term><option>ERR_BAD_SSH (12)</option></term>
+        <listitem>
+          <para>
+            One or more nodes could not be accessed via SSH.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>ERR_NODE_STATUS (25)</option></term>
         <listitem>
           <para>
-            One or more nodes could not be reached.
+            PostgreSQL on one or more nodes could not be reached.
           </para>
+          <note>
+            <simpara>
+              This error code overrides <option>ERR_BAD_SSH</option>.
+            </simpara>
+          </note>
         </listitem>
       </varlistentry>
 

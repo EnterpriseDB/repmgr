@@ -71,6 +71,27 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              When running
+              <command><link linkend="repmgr-cluster-matrix">repmgr cluster matrix</link></command> and
+              <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command>,
+              &repmgr; will report nodes unreachable via SSH, and emit return code <literal>ERR_BAD_SSH</literal>.
+              (GitHub #246).
+            </para>
+            <note>
+              <para>
+                Users relying on
+                <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command>
+                to return a non-zero return code as a way of detecting connectivity errors should be aware
+                that <literal>ERR_BAD_SSH</literal> will be returned if there is an SSH connection error
+                from the node where the command is executed, even if the command is able to establish
+                that PostgreSQL connectivity is fine. Therefore the exact return code should be checked
+                to determine what kind of connectivity error has been detected.
+              </para>
+            </note>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>

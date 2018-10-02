@@ -55,8 +55,8 @@ struct ColHeader headers_event[EVENT_HEADER_COUNT];
 
 
 
-static int	build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length);
-static int	build_cluster_crosscheck(t_node_status_cube ***cube_dest, int *name_length);
+static int	build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, ItemList *warnings, int *error_code);
+static int	build_cluster_crosscheck(t_node_status_cube ***cube_dest, int *name_length, ItemList *warnings, int *error_code);
 static void cube_set_node_status(t_node_status_cube **cube, int n, int node_id, int matrix_node_id, int connection_node_id, int connection_status);
 
 /*
@@ -602,9 +602,12 @@ do_cluster_crosscheck(void)
 
 	t_node_status_cube **cube;
 
-	bool		error_found = false;
+	bool		connection_error_found = false;
+	int			error_code = SUCCESS;
+	ItemList	warnings = {NULL, NULL};
 
-	n = build_cluster_crosscheck(&cube, &name_length);
+	n = build_cluster_crosscheck(&cube, &name_length, &warnings, &error_code);
+
 	if (runtime_options.output_mode == OM_CSV)
 	{
 		for (i = 0; i < n; i++)
@@ -626,6 +629,11 @@ do_cluster_crosscheck(void)
 					   cube[i]->node_id,
 					   cube[j]->node_id,
 					   max_node_status);
+
+				if (max_node_status == -1)
+				{
+					connection_error_found = true;
+				}
 			}
 
 		}
@@ -683,16 +691,16 @@ do_cluster_crosscheck(void)
 				{
 					case -2:
 						c = '?';
-						error_found = true;
 						break;
 					case -1:
 						c = 'x';
-						error_found = true;
+						connection_error_found = true;
 						break;
 					case 0:
 						c = '*';
 						break;
 					default:
+						log_error("unexpected node status value %i", max_node_status);
 						exit(ERR_INTERNAL);
 				}
 
@@ -701,6 +709,13 @@ do_cluster_crosscheck(void)
 
 			printf("\n");
 		}
+
+		if (warnings.head != NULL && runtime_options.terse == false)
+		{
+			log_warning(_("following problems detected:"));
+			print_item_list(&warnings);
+		}
+
 	}
 
 	/* clean up allocated cube array */
@@ -727,13 +742,23 @@ do_cluster_crosscheck(void)
 		free(cube);
 	}
 
-	if (error_found == true)
+	/* errors detected by build_cluster_crosscheck() have priority */
+	if (connection_error_found == true)
 	{
-		exit(ERR_NODE_STATUS);
+		error_code = ERR_NODE_STATUS;
 	}
+
+	exit(error_code);
+
 }
 
 
+/*
+ * CLUSTER MATRIX
+ *
+ * Parameters:
+ *   --csv
+ */
 void
 do_cluster_matrix()
 {
@@ -746,18 +771,30 @@ do_cluster_matrix()
 
 	t_node_matrix_rec **matrix_rec_list;
 
-	bool		error_found = false;
+	bool		connection_error_found = false;
+	int			error_code = SUCCESS;
+	ItemList	warnings = {NULL, NULL};
 
-	n = build_cluster_matrix(&matrix_rec_list, &name_length);
+	n = build_cluster_matrix(&matrix_rec_list, &name_length, &warnings, &error_code);
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
 		for (i = 0; i < n; i++)
+		{
 			for (j = 0; j < n; j++)
+			{
 				printf("%d,%d,%d\n",
 					   matrix_rec_list[i]->node_id,
 					   matrix_rec_list[i]->node_status_list[j]->node_id,
 					   matrix_rec_list[i]->node_status_list[j]->node_status);
+
+				if (matrix_rec_list[i]->node_status_list[j]->node_status == -2
+					|| matrix_rec_list[i]->node_status_list[j]->node_status == -1)
+				{
+					connection_error_found = true;
+				}
+			}
+		}
 	}
 	else
 	{
@@ -786,16 +823,16 @@ do_cluster_matrix()
 				{
 					case -2:
 						c = '?';
-						error_found = true;
 						break;
 					case -1:
 						c = 'x';
-						error_found = true;
+						connection_error_found = true;
 						break;
 					case 0:
 						c = '*';
 						break;
 					default:
+						log_error("unexpected node status value %i", matrix_rec_list[i]->node_status_list[j]->node_status);
 						exit(ERR_INTERNAL);
 				}
 
@@ -803,6 +840,13 @@ do_cluster_matrix()
 			}
 			printf("\n");
 		}
+
+		if (warnings.head != NULL && runtime_options.terse == false)
+		{
+			log_warning(_("following problems detected:"));
+			print_item_list(&warnings);
+		}
+
 	}
 
 	for (i = 0; i < n; i++)
@@ -817,10 +861,13 @@ do_cluster_matrix()
 
 	free(matrix_rec_list);
 
-	if (error_found == true)
+	/* actual database connection errors have priority */
+	if (connection_error_found == true)
 	{
-		exit(ERR_NODE_STATUS);
+		error_code = ERR_NODE_STATUS;
 	}
+
+	exit(error_code);
 }
 
 
@@ -849,7 +896,7 @@ matrix_set_node_status(t_node_matrix_rec **matrix_rec_list, int n, int node_id, 
 
 
 static int
-build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
+build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, ItemList *warnings, int *error_code)
 {
 	PGconn	   *conn = NULL;
 	int			i = 0,
@@ -897,7 +944,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 	/*
 	 * Allocate an empty matrix record list
 	 *
-	 * -2 == NULL  ? -1 == Error x 0 == OK    *
+	 * -2 == NULL  ? -1 == Error x 0 == OK
 	 */
 
 	matrix_rec_list = (t_node_matrix_rec **) pg_malloc0(sizeof(t_node_matrix_rec) * nodes.node_count);
@@ -1017,32 +1064,50 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 		termPQExpBuffer(&command);
 
-		for (j = 0; j < nodes.node_count; j++)
+		/* no output returned - probably SSH error */
+		if (p[0] == '\0' || p[0] == '\n')
 		{
-			if (sscanf(p, "%d,%d", &x, &y) != 2)
+			item_list_append_format(warnings,
+									"node %i inaccessible via SSH",
+									connection_node_id);
+			*error_code = ERR_BAD_SSH;
+		}
+		else
+		{
+			for (j = 0; j < nodes.node_count; j++)
 			{
-				fprintf(stderr, _("cannot parse --csv output: %s\n"), p);
-				PQfinish(node_conn);
-				exit(ERR_INTERNAL);
+				if (sscanf(p, "%d,%d", &x, &y) != 2)
+				{
+					matrix_set_node_status(matrix_rec_list,
+										   nodes.node_count,
+										   connection_node_id,
+										   x,
+										   -2);
+
+					item_list_append_format(warnings,
+											"unable to parse --csv output for node %i; output returned was:\n\"%s\"",
+											connection_node_id, p);
+					*error_code = ERR_INTERNAL;
+				}
+				else
+				{
+					matrix_set_node_status(matrix_rec_list,
+										   nodes.node_count,
+										   connection_node_id,
+										   x,
+										   (y == -1) ? -1 : 0);
+				}
+
+				while (*p && (*p != '\n'))
+					p++;
+				if (*p == '\n')
+					p++;
 			}
-
-			matrix_set_node_status(matrix_rec_list,
-								   nodes.node_count,
-								   connection_node_id,
-								   x,
-								   (y == -1) ? -1 : 0);
-
-			while (*p && (*p != '\n'))
-				p++;
-			if (*p == '\n')
-				p++;
 		}
 
 		termPQExpBuffer(&command_output);
 		PQfinish(node_conn);
 		free_conninfo_params(&remote_conninfo);
-
-		node_conn = NULL;
 	}
 
 	*matrix_rec_dest = matrix_rec_list;
@@ -1055,7 +1120,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length)
 
 
 static int
-build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
+build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length, ItemList *warnings, int *error_code)
 {
 	PGconn	   *conn = NULL;
 	int			h,
@@ -1175,7 +1240,6 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 		initPQExpBuffer(&command_output);
 
-		/* fix to work with --node-id */
 		if (cube[i]->node_id == config_file_options.node_id)
 		{
 			(void) local_command_simple(command.data,
@@ -1216,9 +1280,13 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 		p = command_output.data;
 
-		if (!strlen(command_output.data))
+		if (p[0] == '\0' || p[0] == '\n')
 		{
+			item_list_append_format(warnings,
+									"node %i inaccessible via SSH",
+									remote_node_id);
 			termPQExpBuffer(&command_output);
+			*error_code = ERR_BAD_SSH;
 			continue;
 		}
 
@@ -1230,16 +1298,23 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length)
 
 			if (sscanf(p, "%d,%d,%d", &matrix_rec_node_id, &node_status_node_id, &node_status) != 3)
 			{
-				fprintf(stderr, _("cannot parse --csv output: %s\n"), p);
-				exit(ERR_INTERNAL);
+				cube_set_node_status(cube,
+									 nodes.node_count,
+									 remote_node_id,
+									 matrix_rec_node_id,
+									 node_status_node_id,
+									 -2);
+				*error_code = ERR_INTERNAL;
 			}
-
-			cube_set_node_status(cube,
-								 nodes.node_count,
-								 remote_node_id,
-								 matrix_rec_node_id,
-								 node_status_node_id,
-								 node_status);
+			else
+			{
+				cube_set_node_status(cube,
+									 nodes.node_count,
+									 remote_node_id,
+									 matrix_rec_node_id,
+									 node_status_node_id,
+									 node_status);
+			}
 
 			while (*p && (*p != '\n'))
 				p++;

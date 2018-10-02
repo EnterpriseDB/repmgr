@@ -56,11 +56,36 @@
       </varlistentry>
 
       <varlistentry>
+        <term><option>ERR_BAD_SSH (12)</option></term>
+        <listitem>
+          <para>
+            One or more nodes could not be accessed via SSH.
+          </para>
+          <note>
+            <simpara>
+              This only applies to nodes unreachable from the node where
+              this command is executed.
+            </simpara>
+            <simpara>
+              It's also possible that the crosscheck establishes that
+              connections between PostgreSQL on all nodes are functioning,
+              even if SSH access between some nodes is not possible.
+            </simpara>
+          </note>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>ERR_NODE_STATUS (25)</option></term>
         <listitem>
           <para>
-            One or more nodes could not be reached.
+            PostgreSQL on one or more nodes could not be reached.
           </para>
+          <note>
+            <simpara>
+              This error code overrides <option>ERR_BAD_SSH</option>.
+            </simpara>
+          </note>
         </listitem>
       </varlistentry>
 
