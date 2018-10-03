@@ -115,20 +115,20 @@ wrap_ddl_query(PQExpBufferData *query_buf, int replication_type, const char *fmt
 	if (replication_type == REPLICATION_TYPE_BDR)
 	{
 		if (bdr_version_num < 3)
-			appendPQExpBuffer(query_buf, "SELECT bdr.bdr_replicate_ddl_command($repmgr$");
+			appendPQExpBufferStr(query_buf, "SELECT bdr.bdr_replicate_ddl_command($repmgr$");
 		else
-			appendPQExpBuffer(query_buf, "SELECT bdr.replicate_ddl_command($repmgr$");
+			appendPQExpBufferStr(query_buf, "SELECT bdr.replicate_ddl_command($repmgr$");
 	}
 
 	va_start(arglist, fmt);
 	vsnprintf(buf, MAXLEN, fmt, arglist);
 	va_end(arglist);
 
-	appendPQExpBuffer(query_buf, "%s", buf);
+	appendPQExpBufferStr(query_buf, buf);
 
 	if (replication_type == REPLICATION_TYPE_BDR)
 	{
-		appendPQExpBuffer(query_buf, "$repmgr$)");
+		appendPQExpBufferStr(query_buf, "$repmgr$)");
 	}
 }
 
@@ -1070,9 +1070,9 @@ get_cluster_size(PGconn *conn, char *size)
 	bool		success = true;
 
 	initPQExpBuffer(&query);
-	appendPQExpBuffer(&query,
-					  "SELECT pg_catalog.pg_size_pretty(pg_catalog.sum(pg_catalog.pg_database_size(oid))::bigint) "
-					  "	 FROM pg_catalog.pg_database ");
+	appendPQExpBufferStr(&query,
+						 "SELECT pg_catalog.pg_size_pretty(pg_catalog.sum(pg_catalog.pg_database_size(oid))::bigint) "
+						 "	 FROM pg_catalog.pg_database ");
 
 	log_verbose(LOG_DEBUG, "get_cluster_size():\n%s", query.data);
 
@@ -1228,13 +1228,13 @@ _get_primary_connection(PGconn *conn,
 	log_verbose(LOG_INFO, _("searching for primary node"));
 
 	initPQExpBuffer(&query);
-	appendPQExpBuffer(&query,
-					  "  SELECT node_id, conninfo, "
-					  "         CASE WHEN type = 'primary' THEN 1 ELSE 2 END AS type_priority"
-					  "	   FROM repmgr.nodes "
-					  "   WHERE active IS TRUE "
-					  "     AND type != 'witness' "
-					  "ORDER BY active DESC, type_priority, priority, node_id");
+	appendPQExpBufferStr(&query,
+						 "  SELECT node_id, conninfo, "
+						 "         CASE WHEN type = 'primary' THEN 1 ELSE 2 END AS type_priority"
+						 "	   FROM repmgr.nodes "
+						 "   WHERE active IS TRUE "
+						 "     AND type != 'witness' "
+						 "ORDER BY active DESC, type_priority, priority, node_id");
 
 	log_verbose(LOG_DEBUG, "get_primary_connection():\n%s", query.data);
 
@@ -1341,11 +1341,11 @@ get_primary_node_id(PGconn *conn)
 	int			retval = NODE_NOT_FOUND;
 
 	initPQExpBuffer(&query);
-	appendPQExpBuffer(&query,
-					  "SELECT node_id		  "
-					  "	 FROM repmgr.nodes    "
-					  " WHERE type = 'primary' "
-					  "   AND active IS TRUE  ");
+	appendPQExpBufferStr(&query,
+						 "SELECT node_id		  "
+						 "	 FROM repmgr.nodes    "
+						 " WHERE type = 'primary' "
+						 "   AND active IS TRUE  ");
 
 	log_verbose(LOG_DEBUG, "get_primary_node_id():\n%s", query.data);
 
@@ -1384,38 +1384,38 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 		server_version_num = get_server_version(conn, NULL);
 
 	initPQExpBuffer(&query);
-	appendPQExpBuffer(&query,
-					  " SELECT ts, "
-					  "        last_wal_receive_lsn, "
-					  "        last_wal_replay_lsn, "
-					  "        last_xact_replay_timestamp, "
-					  "        CASE WHEN (last_wal_receive_lsn = last_wal_replay_lsn) "
-					  "          THEN 0::INT "
-					  "        ELSE "
-					  "          EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - last_xact_replay_timestamp))::INT "
-					  "        END AS replication_lag_time, "
-					  "        COALESCE(last_wal_receive_lsn, '0/0') >= last_wal_replay_lsn AS receiving_streamed_wal "
-					  "   FROM ( ");
+	appendPQExpBufferStr(&query,
+						 " SELECT ts, "
+						 "        last_wal_receive_lsn, "
+						 "        last_wal_replay_lsn, "
+						 "        last_xact_replay_timestamp, "
+						 "        CASE WHEN (last_wal_receive_lsn = last_wal_replay_lsn) "
+						 "          THEN 0::INT "
+						 "        ELSE "
+						 "          EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - last_xact_replay_timestamp))::INT "
+						 "        END AS replication_lag_time, "
+						 "        COALESCE(last_wal_receive_lsn, '0/0') >= last_wal_replay_lsn AS receiving_streamed_wal "
+						 "   FROM ( ");
 
 	if (server_version_num >= 100000)
 	{
-		appendPQExpBuffer(&query,
-						  " SELECT CURRENT_TIMESTAMP AS ts, "
-						  "        pg_catalog.pg_last_wal_receive_lsn()       AS last_wal_receive_lsn, "
-						  "        pg_catalog.pg_last_wal_replay_lsn()        AS last_wal_replay_lsn, "
-						  "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
+		appendPQExpBufferStr(&query,
+							 " SELECT CURRENT_TIMESTAMP AS ts, "
+							 "        pg_catalog.pg_last_wal_receive_lsn()       AS last_wal_receive_lsn, "
+							 "        pg_catalog.pg_last_wal_replay_lsn()        AS last_wal_replay_lsn, "
+							 "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
 	}
 	else
 	{
-		appendPQExpBuffer(&query,
-						  " SELECT CURRENT_TIMESTAMP AS ts, "
-						  "        pg_catalog.pg_last_xlog_receive_location() AS last_wal_receive_lsn, "
-						  "        pg_catalog.pg_last_xlog_replay_location()  AS last_wal_replay_lsn, "
-						  "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
+		appendPQExpBufferStr(&query,
+							 " SELECT CURRENT_TIMESTAMP AS ts, "
+							 "        pg_catalog.pg_last_xlog_receive_location() AS last_wal_receive_lsn, "
+							 "        pg_catalog.pg_last_xlog_replay_location()  AS last_wal_replay_lsn, "
+							 "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
 	}
 
-	appendPQExpBuffer(&query,
-					  "          ) q ");
+	appendPQExpBufferStr(&query,
+						 "          ) q ");
 
 	log_verbose(LOG_DEBUG, "get_replication_info():\n%s", query.data);
 
@@ -1538,21 +1538,21 @@ get_replication_lag_seconds(PGconn *conn)
 
 	if (server_version_num >= 100000)
 	{
-		appendPQExpBuffer(&query,
-						  " SELECT CASE WHEN (pg_catalog.pg_last_wal_receive_lsn() = pg_catalog.pg_last_wal_replay_lsn()) ");
+		appendPQExpBufferStr(&query,
+							 " SELECT CASE WHEN (pg_catalog.pg_last_wal_receive_lsn() = pg_catalog.pg_last_wal_replay_lsn()) ");
 
 	}
 	else
 	{
-		appendPQExpBuffer(&query,
-						  " SELECT CASE WHEN (pg_catalog.pg_last_xlog_receive_location() = pg_catalog.pg_last_xlog_replay_location()) ");
+		appendPQExpBufferStr(&query,
+							 " SELECT CASE WHEN (pg_catalog.pg_last_xlog_receive_location() = pg_catalog.pg_last_xlog_replay_location()) ");
 	}
 
-	appendPQExpBuffer(&query,
-					  "          THEN 0 "
-					  "        ELSE EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - pg_catalog.pg_last_xact_replay_timestamp()))::INT "
-					  "          END "
-					  "        AS lag_seconds");
+	appendPQExpBufferStr(&query,
+						 "          THEN 0 "
+						 "        ELSE EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - pg_catalog.pg_last_xact_replay_timestamp()))::INT "
+						 "          END "
+						 "        AS lag_seconds");
 
 	res = PQexec(conn, query.data);
 	log_verbose(LOG_DEBUG, "get_replication_lag_seconds():\n%s", query.data);
@@ -1842,12 +1842,12 @@ get_repmgr_extension_status(PGconn *conn)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "	  SELECT ae.name, e.extname "
-					  "     FROM pg_catalog.pg_available_extensions ae "
-					  "LEFT JOIN pg_catalog.pg_extension e "
-					  "       ON e.extname=ae.name "
-					  "	   WHERE ae.name='repmgr' ");
+	appendPQExpBufferStr(&query,
+						 "	  SELECT ae.name, e.extname "
+						 "     FROM pg_catalog.pg_available_extensions ae "
+						 "LEFT JOIN pg_catalog.pg_extension e "
+						 "       ON e.extname=ae.name "
+						 "	   WHERE ae.name='repmgr' ");
 
 	res = PQexec(conn, query.data);
 
@@ -2234,10 +2234,10 @@ get_all_node_records(PGconn *conn, NodeInfoList *node_list)
 	bool success = true;
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "  SELECT " REPMGR_NODES_COLUMNS
-					  "    FROM repmgr.nodes n "
-					  "ORDER BY n.node_id ");
+	appendPQExpBufferStr(&query,
+						 "  SELECT " REPMGR_NODES_COLUMNS
+						 "    FROM repmgr.nodes n "
+						 "ORDER BY n.node_id ");
 
 	log_verbose(LOG_DEBUG, "get_all_node_records():\n%s", query.data);
 
@@ -2340,10 +2340,10 @@ get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "  SELECT " REPMGR_NODES_COLUMNS
-					  "    FROM repmgr.nodes n "
-					  "ORDER BY n.priority DESC, n.node_name ");
+	appendPQExpBufferStr(&query,
+						 "  SELECT " REPMGR_NODES_COLUMNS
+						 "    FROM repmgr.nodes n "
+						 "ORDER BY n.priority DESC, n.node_name ");
 
 	log_verbose(LOG_DEBUG, "get_node_records_by_priority():\n%s", query.data);
 
@@ -2377,13 +2377,13 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
-					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name "
-					  "      FROM repmgr.nodes n "
-					  " LEFT JOIN repmgr.nodes un "
-					  "        ON un.node_id = n.upstream_node_id"
-					  "  ORDER BY n.node_id ");
+	appendPQExpBufferStr(&query,
+						 "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
+						 "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name "
+						 "      FROM repmgr.nodes n "
+						 " LEFT JOIN repmgr.nodes un "
+						 "        ON un.node_id = n.upstream_node_id"
+						 "  ORDER BY n.node_id ");
 
 	log_verbose(LOG_DEBUG, "get_all_node_records_with_upstream():\n%s", query.data);
 
@@ -2526,30 +2526,29 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 
 	if (strcmp(action, "create") == 0)
 	{
-		appendPQExpBuffer(&query,
-						  "INSERT INTO repmgr.nodes "
-						  "       (node_id, type, upstream_node_id, "
-						  "        node_name, conninfo, repluser, slot_name, "
-						  "        location, priority, active, config_file) "
-						  "VALUES ($11, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ");
+		appendPQExpBufferStr(&query,
+							 "INSERT INTO repmgr.nodes "
+							 "       (node_id, type, upstream_node_id, "
+							 "        node_name, conninfo, repluser, slot_name, "
+							 "        location, priority, active, config_file) "
+							 "VALUES ($11, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ");
 	}
 	else
 	{
-		appendPQExpBuffer(&query,
-						  "UPDATE repmgr.nodes SET "
-						  "       type = $1, "
-						  "       upstream_node_id = $2, "
-						  "       node_name = $3, "
-						  "       conninfo = $4, "
-						  "       repluser = $5, "
-						  "       slot_name = $6, "
-						  "       location = $7, "
-						  "       priority = $8, "
-						  "       active = $9, "
-						  "       config_file = $10 "
-						  " WHERE node_id = $11 ");
+		appendPQExpBufferStr(&query,
+							 "UPDATE repmgr.nodes SET "
+							 "       type = $1, "
+							 "       upstream_node_id = $2, "
+							 "       node_name = $3, "
+							 "       conninfo = $4, "
+							 "       repluser = $5, "
+							 "       slot_name = $6, "
+							 "       location = $7, "
+							 "       priority = $8, "
+							 "       active = $9, "
+							 "       config_file = $10 "
+							 " WHERE node_id = $11 ");
 	}
-
 
 	res = PQexecParams(conn,
 					   query.data,
@@ -2987,31 +2986,31 @@ get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *no
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  " SELECT pg_catalog.current_setting('max_wal_senders')::INT AS max_wal_senders, "
-					  "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, ");
+	appendPQExpBufferStr(&query,
+						 " SELECT pg_catalog.current_setting('max_wal_senders')::INT AS max_wal_senders, "
+						 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, ");
 
 	/* no replication slots in PostgreSQL 9.3 */
 	if (server_version_num < 90400)
 	{
-		appendPQExpBuffer(&query,
-						  "        0 AS max_replication_slots, "
-						  "        0 AS total_replication_slots, "
-						  "        0 AS active_replication_slots, "
-						  "        0 AS inactive_replication_slots, ");
+		appendPQExpBufferStr(&query,
+							 "        0 AS max_replication_slots, "
+							 "        0 AS total_replication_slots, "
+							 "        0 AS active_replication_slots, "
+							 "        0 AS inactive_replication_slots, ");
 	}
 	else
 	{
-		appendPQExpBuffer(&query,
-						  "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
-						  "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
-						  "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE)  AS active_replication_slots, "
-						  "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE) AS inactive_replication_slots, ");
+		appendPQExpBufferStr(&query,
+							 "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
+							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
+							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE)  AS active_replication_slots, "
+							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE) AS inactive_replication_slots, ");
 	}
 
 
-	appendPQExpBuffer(&query,
-					  "        pg_catalog.pg_is_in_recovery() AS in_recovery");
+	appendPQExpBufferStr(&query,
+						 "        pg_catalog.pg_is_in_recovery() AS in_recovery");
 
 	log_verbose(LOG_DEBUG, "get_node_replication_stats():\n%s", query.data);
 
@@ -3152,26 +3151,26 @@ get_datadir_configuration_files(PGconn *conn, KeyValueList *list)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "WITH files AS ( "
-					  "  WITH dd AS ( "
-					  "   SELECT setting "
-					  "     FROM pg_catalog.pg_settings "
-					  "    WHERE name = 'data_directory') "
-					  "   SELECT distinct(sourcefile) AS config_file"
-					  "     FROM dd, pg_catalog.pg_settings ps "
-					  "    WHERE ps.sourcefile IS NOT NULL "
-					  "      AND ps.sourcefile ~ ('^' || dd.setting) "
-					  "       UNION "
-					  "   SELECT ps.setting  AS config_file"
-					  "     FROM dd, pg_catalog.pg_settings ps "
-					  "    WHERE ps.name IN ('config_file', 'hba_file', 'ident_file') "
-					  "      AND ps.setting ~ ('^' || dd.setting) "
-					  ") "
-					  "  SELECT config_file, "
-					  "         pg_catalog.regexp_replace(config_file, '^.*\\/','') AS filename "
-					  "    FROM files "
-					  "ORDER BY config_file");
+	appendPQExpBufferStr(&query,
+						 "WITH files AS ( "
+						 "  WITH dd AS ( "
+						 "   SELECT setting "
+						 "     FROM pg_catalog.pg_settings "
+						 "    WHERE name = 'data_directory') "
+						 "   SELECT distinct(sourcefile) AS config_file"
+						 "     FROM dd, pg_catalog.pg_settings ps "
+						 "    WHERE ps.sourcefile IS NOT NULL "
+						 "      AND ps.sourcefile ~ ('^' || dd.setting) "
+						 "       UNION "
+						 "   SELECT ps.setting  AS config_file"
+						 "     FROM dd, pg_catalog.pg_settings ps "
+						 "    WHERE ps.name IN ('config_file', 'hba_file', 'ident_file') "
+						 "      AND ps.setting ~ ('^' || dd.setting) "
+						 ") "
+						 "  SELECT config_file, "
+						 "         pg_catalog.regexp_replace(config_file, '^.*\\/','') AS filename "
+						 "    FROM files "
+						 "ORDER BY config_file");
 
 	res = PQexec(conn, query.data);
 
@@ -3208,18 +3207,18 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "  WITH dd AS ( "
-					  "    SELECT setting AS data_directory"
-					  "      FROM pg_catalog.pg_settings "
-					  "     WHERE name = 'data_directory' "
-					  "  ) "
-					  "    SELECT DISTINCT(sourcefile), "
-					  "           pg_catalog.regexp_replace(sourcefile, '^.*\\/', '') AS filename, "
-					  "           sourcefile ~ ('^' || dd.data_directory) AS in_data_dir "
-					  "      FROM dd, pg_catalog.pg_settings ps "
-					  "     WHERE sourcefile IS NOT NULL "
-					  "  ORDER BY 1 ");
+	appendPQExpBufferStr(&query,
+						 "  WITH dd AS ( "
+						 "    SELECT setting AS data_directory"
+						 "      FROM pg_catalog.pg_settings "
+						 "     WHERE name = 'data_directory' "
+						 "  ) "
+						 "    SELECT DISTINCT(sourcefile), "
+						 "           pg_catalog.regexp_replace(sourcefile, '^.*\\/', '') AS filename, "
+						 "           sourcefile ~ ('^' || dd.data_directory) AS in_data_dir "
+						 "      FROM dd, pg_catalog.pg_settings ps "
+						 "     WHERE sourcefile IS NOT NULL "
+						 "  ORDER BY 1 ");
 
 	log_verbose(LOG_DEBUG, "get_configuration_file_locations():\n  %s",
 				query.data);
@@ -3258,19 +3257,18 @@ get_configuration_file_locations(PGconn *conn, t_configfile_list *list)
 	/* Fetch locations of pg_hba.conf and pg_ident.conf */
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "  WITH dd AS ( "
-					  "    SELECT setting AS data_directory"
-					  "      FROM pg_catalog.pg_settings "
-					  "     WHERE name = 'data_directory' "
-					  "  ) "
-					  "    SELECT ps.setting, "
-					  "           pg_catalog.regexp_replace(setting, '^.*\\/', '') AS filename, "
-					  "           ps.setting ~ ('^' || dd.data_directory) AS in_data_dir "
-					  "      FROM dd, pg_catalog.pg_settings ps "
-					  "     WHERE ps.name IN ('hba_file', 'ident_file') "
-					  "  ORDER BY 1 ");
-
+	appendPQExpBufferStr(&query,
+						 "  WITH dd AS ( "
+						 "    SELECT setting AS data_directory"
+						 "      FROM pg_catalog.pg_settings "
+						 "     WHERE name = 'data_directory' "
+						 "  ) "
+						 "    SELECT ps.setting, "
+						 "           pg_catalog.regexp_replace(setting, '^.*\\/', '') AS filename, "
+						 "           ps.setting ~ ('^' || dd.data_directory) AS in_data_dir "
+						 "      FROM dd, pg_catalog.pg_settings ps "
+						 "     WHERE ps.name IN ('hba_file', 'ident_file') "
+						 "  ORDER BY 1 ");
 
 	log_verbose(LOG_DEBUG, "get_configuration_file_locations():\n  %s",
 				query.data);
@@ -3444,15 +3442,15 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 		int			binary[4] = {1, 0, 0, 0};
 
 		initPQExpBuffer(&query);
-		appendPQExpBuffer(&query,
-						  " INSERT INTO repmgr.events ( "
-						  "             node_id, "
-						  "             event, "
-						  "             successful, "
-						  "             details "
-						  "            ) "
-						  "      VALUES ($1, $2, $3, $4) "
-						  "   RETURNING event_timestamp ");
+		appendPQExpBufferStr(&query,
+							 " INSERT INTO repmgr.events ( "
+							 "             node_id, "
+							 "             event, "
+							 "             successful, "
+							 "             details "
+							 "            ) "
+							 "      VALUES ($1, $2, $3, $4) "
+							 "   RETURNING event_timestamp ");
 
 		log_verbose(LOG_DEBUG, "_create_event():\n  %s", query.data);
 
@@ -3683,12 +3681,12 @@ get_event_records(PGconn *conn, int node_id, const char *node_name, const char *
 	initPQExpBuffer(&where_clause);
 
 	/* LEFT JOIN used here as a node record may have been removed */
-	appendPQExpBuffer(&query,
-					  "   SELECT e.node_id, n.node_name, e.event, e.successful, "
-					  "          pg_catalog.to_char(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, "
-					  "          e.details "
-					  "     FROM repmgr.events e "
-					  "LEFT JOIN repmgr.nodes n ON e.node_id = n.node_id ");
+	appendPQExpBufferStr(&query,
+						 "   SELECT e.node_id, n.node_name, e.event, e.successful, "
+						 "          pg_catalog.to_char(e.event_timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp, "
+						 "          e.details "
+						 "     FROM repmgr.events e "
+						 "LEFT JOIN repmgr.nodes n ON e.node_id = n.node_id ");
 
 	if (node_id != UNKNOWN_NODE_ID)
 	{
@@ -3734,8 +3732,8 @@ get_event_records(PGconn *conn, int node_id, const char *node_name, const char *
 	appendPQExpBuffer(&query, "\n%s\n",
 					  where_clause.data);
 
-	appendPQExpBuffer(&query,
-					  " ORDER BY e.event_timestamp DESC");
+	appendPQExpBufferStr(&query,
+						 " ORDER BY e.event_timestamp DESC");
 
 	if (all == false && limit > 0)
 	{
@@ -3937,10 +3935,10 @@ get_free_replication_slot_count(PGconn *conn)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  " SELECT pg_catalog.current_setting('max_replication_slots')::INT - "
-					  "        pg_catalog.count(*) AS free_slots"
-					  "   FROM pg_catalog.pg_replication_slots");
+	appendPQExpBufferStr(&query,
+						 " SELECT pg_catalog.current_setting('max_replication_slots')::INT - "
+						 "        pg_catalog.count(*) AS free_slots"
+						 "   FROM pg_catalog.pg_replication_slots");
 
 	res = PQexec(conn, query.data);
 
@@ -3976,11 +3974,11 @@ get_inactive_replication_slots(PGconn *conn, KeyValueList *list)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "   SELECT slot_name, slot_type "
-					  "     FROM pg_catalog.pg_replication_slots "
-					  "    WHERE active IS FALSE "
-					  " ORDER BY slot_name ");
+	appendPQExpBufferStr(&query,
+						 "   SELECT slot_name, slot_type "
+						 "     FROM pg_catalog.pg_replication_slots "
+						 "    WHERE active IS FALSE "
+						 " ORDER BY slot_name ");
 
 	res = PQexec(conn, query.data);
 
@@ -4360,8 +4358,8 @@ delete_monitoring_records(PGconn *primary_conn, int keep_history, int node_id)
 	}
 	else
 	{
-		appendPQExpBuffer(&query,
-						  "TRUNCATE TABLE repmgr.monitoring_history");
+		appendPQExpBufferStr(&query,
+							 "TRUNCATE TABLE repmgr.monitoring_history");
 	}
 
 	res = PQexec(primary_conn, query.data);
@@ -4636,10 +4634,10 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  " SELECT (pg_catalog.regexp_matches(extversion, '^\\d+'))[1] AS major_version "
-					  "  FROM pg_catalog.pg_extension "
-					  " WHERE extname = 'bdr' ");
+	appendPQExpBufferStr(&query,
+						 " SELECT (pg_catalog.regexp_matches(extversion, '^\\d+'))[1] AS major_version "
+						 "  FROM pg_catalog.pg_extension "
+						 " WHERE extname = 'bdr' ");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -4664,7 +4662,7 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 		const char *warning = _("BDR extension is not available for this database");
 
 		if (output != NULL)
-			appendPQExpBuffer(output, "%s", warning);
+			appendPQExpBufferStr(output, warning);
 		else if (quiet == false)
 			log_warning("%s", warning);
 
@@ -4675,8 +4673,8 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 	{
 		initPQExpBuffer(&query);
 
-		appendPQExpBuffer(&query,
-						  "SELECT bdr.bdr_is_active_in_db()");
+		appendPQExpBufferStr(&query,
+							 "SELECT bdr.bdr_is_active_in_db()");
 		res = PQexec(conn, query.data);
 		termPQExpBuffer(&query);
 
@@ -4687,7 +4685,7 @@ _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet)
 			const char *warning = _("BDR extension available for this database, but the database is not configured for BDR");
 
 			if (output != NULL)
-				appendPQExpBuffer(output, "%s", warning);
+				appendPQExpBufferStr(output, warning);
 			else if (quiet == false)
 				log_warning("%s", warning);
 		}
@@ -4782,10 +4780,10 @@ is_bdr_repmgr(PGconn *conn)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "SELECT pg_catalog.count(*)"
-					  "  FROM repmgr.nodes n"
-					  " WHERE n.type != 'bdr' ");
+	appendPQExpBufferStr(&query,
+						 "SELECT pg_catalog.count(*)"
+						 "  FROM repmgr.nodes n"
+						 " WHERE n.type != 'bdr' ");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -4830,11 +4828,11 @@ get_default_bdr_replication_set(PGconn *conn)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "     SELECT rs.set_name "
-					  "       FROM pglogical.replication_set rs "
-					  " INNER JOIN bdr.node_group ng "
-					  "         ON ng.node_group_default_repset = rs.set_id ");
+	appendPQExpBufferStr(&query,
+						 "     SELECT rs.set_name "
+						 "       FROM pglogical.replication_set rs "
+						 " INNER JOIN bdr.node_group ng "
+						 "         ON ng.node_group_default_repset = rs.set_id ");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -4969,13 +4967,13 @@ bdr_node_name_matches(PGconn *conn, const char *node_name, PQExpBufferData *bdr_
 
 	if (bdr_version_num < 3)
 	{
-		appendPQExpBuffer(&query,
-						  "SELECT bdr.bdr_get_local_node_name() AS node_name");
+		appendPQExpBufferStr(&query,
+							 "SELECT bdr.bdr_get_local_node_name() AS node_name");
 	}
 	else
 	{
-		appendPQExpBuffer(&query,
-						  "SELECT node_name FROM bdr.local_node_info()");
+		appendPQExpBufferStr(&query,
+							 "SELECT node_name FROM bdr.local_node_info()");
 	}
 
 	res = PQexec(conn, query.data);
@@ -5098,13 +5096,13 @@ add_extension_tables_to_bdr_replication_set(PGconn *conn)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "    SELECT c.relname "
-					  "      FROM pg_class c "
-					  "INNER JOIN pg_namespace n "
-					  "        ON c.relnamespace = n.oid "
-					  "     WHERE n.nspname = 'repmgr' "
-					  "       AND c.relkind = 'r' ");
+	appendPQExpBufferStr(&query,
+						 "    SELECT c.relname "
+						 "      FROM pg_class c "
+						 "INNER JOIN pg_namespace n "
+						 "        ON c.relnamespace = n.oid "
+						 "     WHERE n.nspname = 'repmgr' "
+						 "       AND c.relkind = 'r' ");
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -5140,17 +5138,17 @@ get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list)
 
 	if (bdr_version_num < 3)
 	{
-		appendPQExpBuffer(&query,
-						  "  SELECT " BDR2_NODES_COLUMNS
-						  "    FROM bdr.bdr_nodes "
-						  "ORDER BY node_seq_id ");
+		appendPQExpBufferStr(&query,
+							 "  SELECT " BDR2_NODES_COLUMNS
+							 "    FROM bdr.bdr_nodes "
+							 "ORDER BY node_seq_id ");
 	}
 	else
 	{
-		appendPQExpBuffer(&query,
-						  "     SELECT " BDR3_NODES_COLUMNS
-						  "       FROM bdr.node_summary ns "
-						  "   ORDER BY node_name");
+		appendPQExpBufferStr(&query,
+							 "     SELECT " BDR3_NODES_COLUMNS
+							 "       FROM bdr.node_summary ns "
+							 "   ORDER BY node_name");
 	}
 
 	log_verbose(LOG_DEBUG, "get_all_bdr_node_records():\n%s", query.data);

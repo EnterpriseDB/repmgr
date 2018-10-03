@@ -87,17 +87,17 @@ append_where_clause(PQExpBufferData *where_clause, const char *format,...)
 
 	if (where_clause->data[0] == '\0')
 	{
-		appendPQExpBuffer(where_clause,
-						  " WHERE ");
+		appendPQExpBufferStr(where_clause,
+							 " WHERE ");
 	}
 	else
 	{
-		appendPQExpBuffer(where_clause,
-						  " AND ");
+		appendPQExpBufferStr(where_clause,
+							 " AND ");
 	}
 
-	appendPQExpBuffer(where_clause,
-					  "%s", stringbuf);
+	appendPQExpBufferStr(where_clause,
+						 stringbuf);
 
 }
 

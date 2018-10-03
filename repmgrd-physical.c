@@ -285,8 +285,8 @@ monitor_streaming_primary(void)
 
 				initPQExpBuffer(&event_details);
 
-				appendPQExpBuffer(&event_details,
-								  _("unable to connect to local node"));
+				appendPQExpBufferStr(&event_details,
+									 _("unable to connect to local node"));
 
 				log_warning("%s", event_details.data);
 
@@ -951,8 +951,8 @@ monitor_streaming_standby(void)
 								   degraded_monitoring_elapsed);
 
 						initPQExpBuffer(&event_details);
-						appendPQExpBuffer(&event_details,
-										  "promotion command failed but promotion completed successfully");
+						appendPQExpBufferStr(&event_details,
+											 _("promotion command failed but promotion completed successfully"));
 						create_event_notification(local_conn,
 												  &config_file_options,
 												  local_node_info.node_id,
@@ -1069,8 +1069,8 @@ loop:
 
 				if (config_file_options.failover == FAILOVER_MANUAL)
 				{
-					appendPQExpBuffer(&monitoring_summary,
-									  _(" (automatic failover disabled)"));
+					appendPQExpBufferStr(&monitoring_summary,
+										 _(" (automatic failover disabled)"));
 				}
 
 				log_info("%s", monitoring_summary.data);
@@ -2509,8 +2509,8 @@ follow_new_primary(int new_primary_id)
 			if (upstream_recovery_type == RECTYPE_PRIMARY)
 			{
 				initPQExpBuffer(&event_details);
-				appendPQExpBuffer(&event_details,
-								  _("original primary reappeared - no action taken"));
+				appendPQExpBufferStr(&event_details,
+									 _("original primary reappeared - no action taken"));
 
 				log_notice("%s", event_details.data);
 

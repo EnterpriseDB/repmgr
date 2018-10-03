@@ -88,8 +88,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 
 			if (pwd != NULL)
 			{
-				appendPQExpBuffer(&fullpath,
-								  "%s", pwd);
+				appendPQExpBufferStr(&fullpath, pwd);
 			}
 			else
 			{
@@ -105,9 +104,7 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 					exit(ERR_BAD_CONFIG);
 				}
 
-				appendPQExpBuffer(&fullpath,
-								  "%s",
-								  cwd);
+				appendPQExpBufferStr(&fullpath, cwd);
 			}
 
 			appendPQExpBuffer(&fullpath,
@@ -1111,8 +1108,8 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 
 		initPQExpBuffer(&errors);
 
-		appendPQExpBuffer(&errors,
-						  "following errors were detected:\n");
+		appendPQExpBufferStr(&errors,
+							 "following errors were detected:\n");
 
 		for (cell = config_errors.head; cell; cell = cell->next)
 		{

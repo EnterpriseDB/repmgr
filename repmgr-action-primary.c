@@ -170,8 +170,8 @@ do_primary_register(void)
 											&node_info);
 		if (record_created == true)
 		{
-			appendPQExpBuffer(&event_description,
-							  "existing primary record updated");
+			appendPQExpBufferStr(&event_description,
+								 "existing primary record updated");
 		}
 		else
 		{

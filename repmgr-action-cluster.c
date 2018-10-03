@@ -174,16 +174,16 @@ do_cluster_show(void)
 							switch (cell->node_info->recovery_type)
 							{
 								case RECTYPE_PRIMARY:
-									appendPQExpBuffer(&details, "* running");
+									appendPQExpBufferStr(&details, "* running");
 									break;
 								case RECTYPE_STANDBY:
-									appendPQExpBuffer(&details, "! running as standby");
+									appendPQExpBufferStr(&details, "! running as standby");
 									item_list_append_format(&warnings,
 															"node \"%s\" (ID: %i) is registered as primary but running as standby",
 															cell->node_info->node_name, cell->node_info->node_id);
 									break;
 								case RECTYPE_UNKNOWN:
-									appendPQExpBuffer(&details, "! unknown");
+									appendPQExpBufferStr(&details, "! unknown");
 									item_list_append_format(&warnings,
 															"node \"%s\" (ID: %i) has unknown replication status",
 															cell->node_info->node_name, cell->node_info->node_id);
@@ -194,14 +194,14 @@ do_cluster_show(void)
 						{
 							if (cell->node_info->recovery_type == RECTYPE_PRIMARY)
 							{
-								appendPQExpBuffer(&details, "! running");
+								appendPQExpBufferStr(&details, "! running");
 								item_list_append_format(&warnings,
 														"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
 														cell->node_info->node_name, cell->node_info->node_id);
 							}
 							else
 							{
-								appendPQExpBuffer(&details, "! running as standby");
+								appendPQExpBufferStr(&details, "! running as standby");
 								item_list_append_format(&warnings,
 														"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
 														cell->node_info->node_name, cell->node_info->node_id);
@@ -214,7 +214,7 @@ do_cluster_show(void)
 						/* node is unreachable but marked active */
 						if (cell->node_info->active == true)
 						{
-							appendPQExpBuffer(&details, "? unreachable");
+							appendPQExpBufferStr(&details, "? unreachable");
 							item_list_append_format(&warnings,
 													"node \"%s\" (ID: %i) is registered as an active primary but is unreachable",
 													cell->node_info->node_name, cell->node_info->node_id);
@@ -222,7 +222,7 @@ do_cluster_show(void)
 						/* node is unreachable and marked as inactive */
 						else
 						{
-							appendPQExpBuffer(&details, "- failed");
+							appendPQExpBufferStr(&details, "- failed");
 							error_found = true;
 						}
 					}
@@ -238,16 +238,16 @@ do_cluster_show(void)
 							switch (cell->node_info->recovery_type)
 							{
 								case RECTYPE_STANDBY:
-									appendPQExpBuffer(&details, "  running");
+									appendPQExpBufferStr(&details, "  running");
 									break;
 								case RECTYPE_PRIMARY:
-									appendPQExpBuffer(&details, "! running as primary");
+									appendPQExpBufferStr(&details, "! running as primary");
 									item_list_append_format(&warnings,
 															"node \"%s\" (ID: %i) is registered as standby but running as primary",
 															cell->node_info->node_name, cell->node_info->node_id);
 									break;
 								case RECTYPE_UNKNOWN:
-									appendPQExpBuffer(&details, "! unknown");
+									appendPQExpBufferStr(&details, "! unknown");
 									item_list_append_format(
 															&warnings,
 															"node \"%s\" (ID: %i) has unknown replication status",
@@ -259,14 +259,14 @@ do_cluster_show(void)
 						{
 							if (cell->node_info->recovery_type == RECTYPE_STANDBY)
 							{
-								appendPQExpBuffer(&details, "! running");
+								appendPQExpBufferStr(&details, "! running");
 								item_list_append_format(&warnings,
 														"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
 														cell->node_info->node_name, cell->node_info->node_id);
 							}
 							else
 							{
-								appendPQExpBuffer(&details, "! running as primary");
+								appendPQExpBufferStr(&details, "! running as primary");
 								item_list_append_format(&warnings,
 														"node \"%s\" (ID: %i) is running as primary but the repmgr node record is inactive",
 														cell->node_info->node_name, cell->node_info->node_id);
@@ -279,14 +279,14 @@ do_cluster_show(void)
 						/* node is unreachable but marked active */
 						if (cell->node_info->active == true)
 						{
-							appendPQExpBuffer(&details, "? unreachable");
+							appendPQExpBufferStr(&details, "? unreachable");
 							item_list_append_format(&warnings,
 													"node \"%s\" (ID: %i) is registered as an active standby but is unreachable",
 													cell->node_info->node_name, cell->node_info->node_id);
 						}
 						else
 						{
-							appendPQExpBuffer(&details, "- failed");
+							appendPQExpBufferStr(&details, "- failed");
 							error_found = true;
 						}
 					}
@@ -300,11 +300,11 @@ do_cluster_show(void)
 					{
 						if (cell->node_info->active == true)
 						{
-							appendPQExpBuffer(&details, "* running");
+							appendPQExpBufferStr(&details, "* running");
 						}
 						else
 						{
-							appendPQExpBuffer(&details, "! running");
+							appendPQExpBufferStr(&details, "! running");
 							error_found = true;
 						}
 					}
@@ -313,11 +313,11 @@ do_cluster_show(void)
 					{
 						if (cell->node_info->active == true)
 						{
-							appendPQExpBuffer(&details, "? unreachable");
+							appendPQExpBufferStr(&details, "? unreachable");
 						}
 						else
 						{
-							appendPQExpBuffer(&details, "- failed");
+							appendPQExpBufferStr(&details, "- failed");
 							error_found = true;
 						}
 					}
@@ -326,7 +326,7 @@ do_cluster_show(void)
 			case UNKNOWN:
 				{
 					/* this should never happen */
-					appendPQExpBuffer(&details, "? unknown node type");
+					appendPQExpBufferStr(&details, "? unknown node type");
 						error_found = true;
 				}
 				break;
@@ -1410,7 +1410,7 @@ do_cluster_cleanup(void)
 
 	if (delete_monitoring_records(primary_conn, runtime_options.keep_history, runtime_options.node_id) == false)
 	{
-		appendPQExpBuffer(&event_details,
+		appendPQExpBufferStr(&event_details,
 						  _("unable to delete monitoring records"));
 
 		log_error("%s", event_details.data);
@@ -1436,12 +1436,12 @@ do_cluster_cleanup(void)
 
 	if (runtime_options.keep_history == 0)
 	{
-		appendPQExpBuffer(&event_details,
+		appendPQExpBufferStr(&event_details,
 						  _("all monitoring records deleted"));
 	}
 	else
 	{
-		appendPQExpBuffer(&event_details,
+		appendPQExpBufferStr(&event_details,
 						  _("monitoring records deleted"));
 	}
 
