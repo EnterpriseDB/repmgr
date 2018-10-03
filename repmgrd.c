@@ -134,7 +134,7 @@ main(int argc, char **argv)
 
 	memset(pid_file, 0, MAXPGPATH);
 
-	while ((c = getopt_long(argc, argv, "?Vf:L:vdp:m", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "?Vf:L:vd:p:m", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{

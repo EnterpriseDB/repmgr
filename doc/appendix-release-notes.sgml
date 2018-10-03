@@ -95,6 +95,20 @@
         </itemizedlist>
       </para>
     </sect2>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <application>repmgrd</application>: fix parsing of <option>-d/--daemonize</option> option.
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
   </sect1>
 
   <sect1 id="release-4.1.1">
