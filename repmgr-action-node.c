@@ -1784,7 +1784,7 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 			if (list_output != NULL)
 			{
 				check_status_list_set(list_output,
-									  "Replication slots",
+									  "Missing replication slots",
 									  status,
 									  details.data);
 			}

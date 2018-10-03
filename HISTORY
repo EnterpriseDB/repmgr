@@ -5,6 +5,7 @@
         repmgr: report unreachable nodes when running "repmgr cluster (matrix|crosscheck);
           GitHub #246 (Ian)
         repmgr: add configuration file parameter "repmgr_bindir"; GitHub #246 (Ian)
+		repmgr: fix "Missing replication slots" label in "node check"; GitHub #507 (Ian)
         repmgrd: fix parsing of -d/--daemonize option (Ian)
 
 4.1.1   2018-09-05
