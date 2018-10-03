@@ -12,10 +12,17 @@
 
   <sect1 id="packages-centos" xreflabel="CentOS packages">
     <title>CentOS Packages</title>
+
     <indexterm>
       <primary>packages</primary>
       <secondary>CentOS packages</secondary>
     </indexterm>
+
+    <indexterm>
+      <primary>CentOS</primary>
+      <secondary>package information</secondary>
+    </indexterm>
+
     <para>
       Currently, &repmgr; RPM packages are provided for versions 6.x and 7.x of CentOS. These should also
       work on matching versions of Red Hat Enterprise Linux, Scientific Linux and Oracle Enterprise Linux;
@@ -237,6 +244,12 @@
       <primary>packages</primary>
       <secondary>Debian/Ubuntu packages</secondary>
     </indexterm>
+
+    <indexterm>
+      <primary>Debian/Ubuntu</primary>
+      <secondary>package information</secondary>
+    </indexterm>
+
     <para>
       &repmgr; <literal>.deb</literal> packages are provided via the
       PostgreSQL Community APT repository, and are available for each community-supported
