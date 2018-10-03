@@ -454,7 +454,7 @@ REPMGRD_ENABLED=no
 #REPMGRD_CONF="/path/to/repmgr.conf"
 
 # additional options
-#REPMGRD_OPTS=""
+REPMGRD_OPTS="--daemonize=false"
 
 # user to run repmgrd as
 #REPMGRD_USER=postgres
@@ -468,6 +468,19 @@ REPMGRD_ENABLED=no
       <para>
         Set <varname>REPMGRD_ENABLED</varname> to <literal>yes</literal>, and <varname>REPMGRD_CONF</varname>
         to the <filename>repmgr.conf</filename> file you are using.
+      </para>
+      <tip>
+        <para>
+          See <xref linkend="packages-debian-ubuntu"> for details of the Debian/Ubuntu packages and
+          typical file locations (including <filename>repmgr.conf</filename>).
+        </para>
+      </tip>
+      <para>
+        From <application>repmgrd</application> 4.1, ensure <varname>REPMGRD_OPTS</varname> includes
+        <option>--daemonize=false</option>, as daemonization is handled by the service command.
+        We recommend setting <varname>repmgrd_pid_file</varname> in <filename>repmgr.conf</filename> to the
+        same value set in <varname>REPMGRD_PIDFILE</varname> to prevent another <application>repmgrd</application>
+        instance from being started manually.
       </para>
       <para>
         If using <application>systemd</application>, you may need to execute <command>systemctl daemon-reload</command>.
