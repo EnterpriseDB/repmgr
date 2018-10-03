@@ -731,16 +731,16 @@ do_standby_clone(void)
 					  runtime_options.host,
 					  runtime_options.port);
 
-	appendPQExpBuffer(&event_details,
-					  _("; backup method: "));
+	appendPQExpBufferStr(&event_details,
+						 _("; backup method: "));
 
 	switch (mode)
 	{
 		case pg_basebackup:
-			appendPQExpBuffer(&event_details, "pg_basebackup");
+			appendPQExpBufferStr(&event_details, "pg_basebackup");
 			break;
 		case barman:
-			appendPQExpBuffer(&event_details, "barman");
+			appendPQExpBufferStr(&event_details, "barman");
 			break;
 	}
 
@@ -1672,12 +1672,12 @@ do_standby_register(void)
 
 	if (record_created == false)
 	{
-		appendPQExpBuffer(&details,
-						  "standby registration failed");
+		appendPQExpBufferStr(&details,
+							 "standby registration failed");
 
 		if (runtime_options.force == true)
-			appendPQExpBuffer(&details,
-							  " (-F/--force option was used)");
+			appendPQExpBufferStr(&details,
+								 " (-F/--force option was used)");
 
 		create_event_notification_extended(
 			primary_conn,
@@ -1697,12 +1697,12 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	appendPQExpBuffer(&details,
-					  "standby registration succeeded");
+	appendPQExpBufferStr(&details,
+						 "standby registration succeeded");
 
 	if (runtime_options.force == true)
-		appendPQExpBuffer(&details,
-						  " (-F/--force option was used)");
+		appendPQExpBufferStr(&details,
+							 " (-F/--force option was used)");
 
 
 	/* Log the event */
@@ -2771,8 +2771,8 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 								  primary_node_record->node_id,
 								  true) == false)
 	{
-		appendPQExpBuffer(output,
-						  _("unable to update upstream node"));
+		appendPQExpBufferStr(output,
+							 _("unable to update upstream node"));
 		return false;
 	}
 
@@ -3010,8 +3010,8 @@ do_standby_switchover(void)
 		termPQExpBuffer(&reason);
 
 		initPQExpBuffer(&msg);
-		appendPQExpBuffer(&msg,
-						  _("prerequisites for using pg_rewind are met"));
+		appendPQExpBufferStr(&msg,
+							 _("prerequisites for using pg_rewind are met"));
 
 		if (runtime_options.dry_run == true)
 		{
@@ -3069,7 +3069,7 @@ do_standby_switchover(void)
 	initPQExpBuffer(&remote_command_str);
 	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 
-	appendPQExpBuffer(&remote_command_str, "--version 2>/dev/null && echo \"1\" || echo \"0\"");
+	appendPQExpBufferStr(&remote_command_str, "--version 2>/dev/null && echo \"1\" || echo \"0\"");
 	initPQExpBuffer(&command_output);
 	command_success = remote_command(remote_host,
 									 runtime_options.remote_user,
@@ -3091,8 +3091,8 @@ do_standby_switchover(void)
 		termPQExpBuffer(&command_output);
 
 		initPQExpBuffer(&hint);
-		appendPQExpBuffer(&hint,
-						  _("check \"pg_bindir\" is set to the correct path in \"repmgr.conf\"; current value: "));
+		appendPQExpBufferStr(&hint,
+							 _("check \"pg_bindir\" is set to the correct path in \"repmgr.conf\"; current value: "));
 
 		if (strlen(config_file_options.pg_bindir))
 		{
@@ -3101,8 +3101,8 @@ do_standby_switchover(void)
 		}
 		else
 		{
-			appendPQExpBuffer(&hint,
-							  "(not set)");
+			appendPQExpBufferStr(&hint,
+								 "(not set)");
 		}
 
 
@@ -3349,8 +3349,8 @@ do_standby_switchover(void)
 
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
-			appendPQExpBuffer(&remote_command_str,
-							  "node check --terse -LERROR --archive-ready --optformat");
+			appendPQExpBufferStr(&remote_command_str,
+								 "node check --terse -LERROR --archive-ready --optformat");
 
 			initPQExpBuffer(&command_output);
 
@@ -3760,8 +3760,8 @@ do_standby_switchover(void)
 
 	if (runtime_options.dry_run == true)
 	{
-		appendPQExpBuffer(&remote_command_str,
-						  "node service --terse -LERROR --list-actions --action=stop");
+		appendPQExpBufferStr(&remote_command_str,
+							 "node service --terse -LERROR --list-actions --action=stop");
 
 	}
 	else
@@ -3769,8 +3769,8 @@ do_standby_switchover(void)
 		log_notice(_("stopping current primary node \"%s\" (ID: %i)"),
 				   remote_node_record.node_name,
 				   remote_node_record.node_id);
-		appendPQExpBuffer(&remote_command_str,
-						  "node service --action=stop --checkpoint");
+		appendPQExpBufferStr(&remote_command_str,
+							 "node service --action=stop --checkpoint");
 	}
 
 	/* XXX handle failure */
@@ -3838,8 +3838,8 @@ do_standby_switchover(void)
 
 			initPQExpBuffer(&remote_command_str);
 			make_remote_repmgr_path(&remote_command_str, &remote_node_record);
-			appendPQExpBuffer(&remote_command_str,
-							  "node status --is-shutdown-cleanly");
+			appendPQExpBufferStr(&remote_command_str,
+								 "node status --is-shutdown-cleanly");
 
 			initPQExpBuffer(&command_output);
 
@@ -3971,7 +3971,7 @@ do_standby_switchover(void)
 			exit(ERR_SWITCHOVER_FAIL);
 		}
 
-		appendPQExpBuffer(&node_rejoin_options,
+		appendPQExpBufferStr(&node_rejoin_options,
 						  " --force-rewind");
 
 		if (runtime_options.force_rewind_path[0] != '\0')
@@ -3980,20 +3980,20 @@ do_standby_switchover(void)
 							  "=%s",
 							  runtime_options.force_rewind_path);
 		}
-		appendPQExpBuffer(&node_rejoin_options,
-						  " --config-files=");
+		appendPQExpBufferStr(&node_rejoin_options,
+							 " --config-files=");
 
 		for (cell = remote_config_files.head; cell; cell = cell->next)
 		{
 			if (first_entry == false)
-				appendPQExpBuffer(&node_rejoin_options, ",");
+				appendPQExpBufferChar(&node_rejoin_options, ',');
 			else
 				first_entry = false;
 
-			appendPQExpBuffer(&node_rejoin_options, "%s", cell->key);
+			appendPQExpBufferStr(&node_rejoin_options, cell->key);
 		}
 
-		appendPQExpBuffer(&node_rejoin_options, " ");
+		appendPQExpBufferChar(&node_rejoin_options, ' ');
 	}
 
 	key_value_list_free(&remote_config_files);
@@ -4093,8 +4093,8 @@ do_standby_switchover(void)
 			}
 			else
 			{
-				appendPQExpBuffer(&remote_command_str,
-								  "standby follow 2>/dev/null && echo \"1\" || echo \"0\"");
+				appendPQExpBufferStr(&remote_command_str,
+									 "standby follow 2>/dev/null && echo \"1\" || echo \"0\"");
 			}
 			get_conninfo_value(cell->node_info->conninfo, "host", host);
 			log_debug("executing:\n  %s", remote_command_str.data);
@@ -5252,7 +5252,7 @@ run_basebackup(t_node_info *node_record)
 
 	if (runtime_options.fast_checkpoint)
 	{
-		appendPQExpBuffer(&params, " -c fast");
+		appendPQExpBufferStr(&params, " -c fast");
 	}
 
 	if (config_file_options.tablespace_mapping.head != NULL)
@@ -5274,7 +5274,7 @@ run_basebackup(t_node_info *node_record)
 	 */
 	if (!strlen(backup_options.xlog_method))
 	{
-		appendPQExpBuffer(&params, " -X stream");
+		appendPQExpBufferStr(&params, " -X stream");
 	}
 
 	/*
@@ -6314,8 +6314,8 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	initPQExpBuffer(&recovery_file_buf);
 
 	/* standby_mode = 'on' */
-	appendPQExpBuffer(&recovery_file_buf,
-					  "standby_mode = 'on'\n");
+	appendPQExpBufferStr(&recovery_file_buf,
+						 "standby_mode = 'on'\n");
 
 	/* primary_conninfo = '...' */
 
@@ -6343,8 +6343,8 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 	}
 
 	/* recovery_target_timeline = 'latest' */
-	appendPQExpBuffer(&recovery_file_buf,
-					  "recovery_target_timeline = 'latest'\n");
+	appendPQExpBufferStr(&recovery_file_buf,
+						 "recovery_target_timeline = 'latest'\n");
 
 
 	/* recovery_min_apply_delay = ... (optional) */
@@ -6477,12 +6477,12 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 	{
 		if (strlen(config_file_options.node_name))
 		{
-			appendPQExpBuffer(&conninfo_buf, " application_name=");
+			appendPQExpBufferStr(&conninfo_buf, " application_name=");
 			appendConnStrVal(&conninfo_buf, config_file_options.node_name);
 		}
 		else
 		{
-			appendPQExpBuffer(&conninfo_buf, " application_name=repmgr");
+			appendPQExpBufferStr(&conninfo_buf, " application_name=repmgr");
 		}
 	}
 
@@ -6495,7 +6495,7 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 
 			if (password != NULL)
 			{
-				appendPQExpBuffer(&conninfo_buf, " password=");
+				appendPQExpBufferStr(&conninfo_buf, " password=");
 				appendConnStrVal(&conninfo_buf, password);
 			}
 		}
@@ -6507,7 +6507,7 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 		/* check if the libpq we're using supports "passfile=" */
 		if (has_passfile() == true)
 		{
-			appendPQExpBuffer(&conninfo_buf, " passfile=");
+			appendPQExpBufferStr(&conninfo_buf, " passfile=");
 			appendConnStrVal(&conninfo_buf, config_file_options.passfile);
 		}
 	}
