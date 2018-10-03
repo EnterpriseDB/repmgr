@@ -36,7 +36,7 @@
   </para>
 
   <para>
-   A dedicated system user for &repmgr; is *not* required; as many &repmgr; and
+   A dedicated system user for &repmgr; is <emphasis>not</emphasis> required; as many &repmgr; and
    <application>repmgrd</application> actions require direct access to the PostgreSQL data directory,
    these commands should be executed by the <literal>postgres</literal> user.
   </para>
@@ -60,6 +60,13 @@
      </listitem>
    </itemizedlist>
   </para>
+
+  <tip>
+    <simpara>
+      Consider setting <varname>ConnectTimeout</varname> to a low value in your SSH configuration.
+      This will make it faster to detect any SSH connection errors.
+    </simpara>
+  </tip>
 
   <tip>
    <simpara>
