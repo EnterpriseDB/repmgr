@@ -189,16 +189,16 @@ do_node_status(void)
 
 		if (enabled == true)
 		{
-			appendPQExpBuffer(&archiving_status, "enabled");
+			appendPQExpBufferStr(&archiving_status, "enabled");
 		}
 		else
 		{
-			appendPQExpBuffer(&archiving_status, "disabled");
+			appendPQExpBufferStr(&archiving_status, "disabled");
 		}
 
 		if (enabled == false && recovery_type == RECTYPE_STANDBY)
 		{
-			appendPQExpBuffer(&archiving_status, " (on standbys \"archive_mode\" must be set to \"always\" to be effective)");
+			appendPQExpBufferStr(&archiving_status, " (on standbys \"archive_mode\" must be set to \"always\" to be effective)");
 		}
 
 		key_value_list_set(&node_status,
@@ -506,7 +506,7 @@ do_node_status(void)
 
 		/* output missing slot information */
 
-		appendPQExpBuffer(&output, "\n");
+		appendPQExpBufferChar(&output, '\n');
 		appendPQExpBuffer(&output,
 						  "\"missing_replication_slots\",%i",
 						  missing_slots.node_count);
@@ -590,13 +590,13 @@ _do_node_status_is_shutdown_cleanly(void)
 
 	initPQExpBuffer(&output);
 
-	appendPQExpBuffer(&output,
+	appendPQExpBufferStr(&output,
 					  "--state=");
 
 	/* sanity-check we're dealing with a PostgreSQL directory */
 	if (is_pg_dir(config_file_options.data_directory) == false)
 	{
-		appendPQExpBuffer(&output, "UNKNOWN");
+		appendPQExpBufferStr(&output, "UNKNOWN");
 		printf("%s\n", output.data);
 		termPQExpBuffer(&output);
 		return;
@@ -659,10 +659,10 @@ _do_node_status_is_shutdown_cleanly(void)
 	switch (node_status)
 	{
 		case NODE_STATUS_UP:
-			appendPQExpBuffer(&output, "RUNNING");
+			appendPQExpBufferStr(&output, "RUNNING");
 			break;
 		case NODE_STATUS_SHUTTING_DOWN:
-			appendPQExpBuffer(&output, "SHUTTING_DOWN");
+			appendPQExpBufferStr(&output, "SHUTTING_DOWN");
 			break;
 		case NODE_STATUS_DOWN:
 			appendPQExpBuffer(&output,
@@ -670,10 +670,10 @@ _do_node_status_is_shutdown_cleanly(void)
 							  format_lsn(checkPoint));
 			break;
 		case NODE_STATUS_UNCLEAN_SHUTDOWN:
-			appendPQExpBuffer(&output, "UNCLEAN_SHUTDOWN");
+			appendPQExpBufferStr(&output, "UNCLEAN_SHUTDOWN");
 			break;
 		case NODE_STATUS_UNKNOWN:
-			appendPQExpBuffer(&output, "UNKNOWN");
+			appendPQExpBufferStr(&output, "UNKNOWN");
 			break;
 	}
 
@@ -847,7 +847,7 @@ do_node_check(void)
 								  ",\"%s\"",
 								  cell->details);
 			}
-			appendPQExpBuffer(&output, "\n");
+			appendPQExpBufferChar(&output, '\n');
 		}
 	}
 	else
@@ -869,7 +869,7 @@ do_node_check(void)
 								  " (%s)",
 								  cell->details);
 			}
-			appendPQExpBuffer(&output, "\n");
+			appendPQExpBufferChar(&output, '\n');
 		}
 	}
 
@@ -899,12 +899,12 @@ do_node_check_replication_connection(void)
 
 
 	initPQExpBuffer(&output);
-	appendPQExpBuffer(&output,
-					  "--connection=");
+	appendPQExpBufferStr(&output,
+						 "--connection=");
 
 	if (runtime_options.remote_node_id == UNKNOWN_NODE_ID)
 	{
-		appendPQExpBuffer(&output, "UNKNOWN");
+		appendPQExpBufferStr(&output, "UNKNOWN");
 		printf("%s\n", output.data);
 		termPQExpBuffer(&output);
 		return;
@@ -918,7 +918,7 @@ do_node_check_replication_connection(void)
 
 	if (record_status != RECORD_FOUND)
 	{
-		appendPQExpBuffer(&output, "UNKNOWN");
+		appendPQExpBufferStr(&output, "UNKNOWN");
 		printf("%s\n", output.data);
 		termPQExpBuffer(&output);
 		return;
@@ -938,7 +938,7 @@ do_node_check_replication_connection(void)
 
 	if (PQstatus(repl_conn) != CONNECTION_OK)
 	{
-		appendPQExpBuffer(&output, "BAD");
+		appendPQExpBufferStr(&output, "BAD");
 		printf("%s\n", output.data);
 		termPQExpBuffer(&output);
 		return;
@@ -946,7 +946,7 @@ do_node_check_replication_connection(void)
 
 	PQfinish(repl_conn);
 
-	appendPQExpBuffer(&output, "OK");
+	appendPQExpBufferStr(&output, "OK");
 	printf("%s\n", output.data);
 	termPQExpBuffer(&output);
 
@@ -1042,9 +1042,8 @@ do_node_check_archive_ready(PGconn *conn, OutputMode mode, CheckStatusList *list
 				break;
 			case OM_NAGIOS:
 			case OM_TEXT:
-				appendPQExpBuffer(
-								  &details,
-								  "unable to check archive_status directory");
+				appendPQExpBufferStr(&details,
+									 "unable to check archive_status directory");
 				break;
 
 			default:
@@ -1172,8 +1171,8 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 	if (missing_nodes_count == 0)
 	{
 		if (expected_nodes_count == 0)
-			appendPQExpBuffer(&details,
-							  "this node has no downstream nodes");
+			appendPQExpBufferStr(&details,
+								 "this node has no downstream nodes");
 		else
 			appendPQExpBuffer(&details,
 							  "%i of %i downstream nodes attached",
@@ -1194,20 +1193,18 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 
 		if (mode != OM_NAGIOS)
 		{
-			appendPQExpBuffer(&details, "; missing: ");
+			appendPQExpBufferStr(&details, "; missing: ");
 
 			for (missing_cell = missing_nodes.head; missing_cell; missing_cell = missing_cell->next)
 			{
 				if (first == false)
-					appendPQExpBuffer(&details,
-									  ", ");
+					appendPQExpBufferStr(&details,
+										 ", ");
 				else
 					first = false;
 
 				if (first == false)
-					appendPQExpBuffer(
-									  &details,
-									  "%s", missing_cell->string);
+					appendPQExpBufferStr(&details, missing_cell->string);
 			}
 		}
 	}
@@ -1307,8 +1304,8 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 		switch (mode)
 		{
 			case OM_OPTFORMAT:
-				appendPQExpBuffer(&details,
-								  "--lag=0");
+				appendPQExpBufferStr(&details,
+									 "--lag=0");
 				break;
 			case OM_NAGIOS:
 				appendPQExpBuffer(&details,
@@ -1319,13 +1316,13 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 			case OM_TEXT:
 				if (node_info->type == WITNESS)
 				{
-					appendPQExpBuffer(&details,
-									  "N/A - node is witness");
+					appendPQExpBufferStr(&details,
+										 "N/A - node is witness");
 				}
 				else
 				{
-					appendPQExpBuffer(&details,
-									  "N/A - node is primary");
+					appendPQExpBufferStr(&details,
+										 "N/A - node is primary");
 				}
 				break;
 			default:
@@ -1406,9 +1403,8 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 					break;
 				case OM_NAGIOS:
 				case OM_TEXT:
-					appendPQExpBuffer(
-									  &details,
-									  "unable to query replication lag");
+					appendPQExpBufferStr(&details,
+										 "unable to query replication lag");
 					break;
 
 				default:
@@ -1508,39 +1504,39 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 			if (recovery_type == RECTYPE_STANDBY)
 			{
 				status = CHECK_STATUS_CRITICAL;
-				appendPQExpBuffer(&details,
-								  _("node is registered as primary but running as standby"));
+				appendPQExpBufferStr(&details,
+									 _("node is registered as primary but running as standby"));
 			}
 			else
 			{
-				appendPQExpBuffer(&details,
-								  _("node is primary"));
+				appendPQExpBufferStr(&details,
+									 _("node is primary"));
 			}
 			break;
 		case STANDBY:
 			if (recovery_type == RECTYPE_PRIMARY)
 			{
 				status = CHECK_STATUS_CRITICAL;
-				appendPQExpBuffer(&details,
-								  _("node is registered as standby but running as primary"));
+				appendPQExpBufferStr(&details,
+									 _("node is registered as standby but running as primary"));
 			}
 			else
 			{
-				appendPQExpBuffer(&details,
-								  _("node is standby"));
+				appendPQExpBufferStr(&details,
+									 _("node is standby"));
 			}
 			break;
 		case WITNESS:
 			if (recovery_type == RECTYPE_STANDBY)
 			{
 				status = CHECK_STATUS_CRITICAL;
-				appendPQExpBuffer(&details,
-								  _("node is registered as witness but running as standby"));
+				appendPQExpBufferStr(&details,
+									 _("node is registered as witness but running as standby"));
 			}
 			else
 			{
-				appendPQExpBuffer(&details,
-								  _("node is witness"));
+				appendPQExpBufferStr(&details,
+									 _("node is witness"));
 			}
 			break;
 		case BDR:
@@ -1551,8 +1547,8 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 				if (is_bdr_db(conn, &output) == false)
 				{
 					status = CHECK_STATUS_CRITICAL;
-					appendPQExpBuffer(&details,
-									  "%s", output.data);
+					appendPQExpBufferStr(&details,
+										 output.data);
 				}
 				termPQExpBuffer(&output);
 
@@ -1561,13 +1557,13 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 					if (is_active_bdr_node(conn, node_info->node_name) == false)
 					{
 						status = CHECK_STATUS_CRITICAL;
-						appendPQExpBuffer(&details,
-										  _("node is not an active BDR node"));
+						appendPQExpBufferStr(&details,
+											 _("node is not an active BDR node"));
 					}
 					else
 					{
-						appendPQExpBuffer(&details,
-										  _("node is an active BDR node"));
+						appendPQExpBufferStr(&details,
+											 _("node is an active BDR node"));
 					}
 				}
 			}
@@ -1624,13 +1620,13 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 
 	if (server_version_num < 90400)
 	{
-		appendPQExpBuffer(&details,
-						  _("replication slots not available for this PostgreSQL version"));
+		appendPQExpBufferStr(&details,
+							 _("replication slots not available for this PostgreSQL version"));
 	}
 	else if (node_info->total_replication_slots == 0)
 	{
-		appendPQExpBuffer(&details,
-						  _("node has no replication slots"));
+		appendPQExpBufferStr(&details,
+							 _("node has no replication slots"));
 	}
 	else if (node_info->inactive_replication_slots == 0)
 	{
@@ -1700,8 +1696,8 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 
 	if (server_version_num < 90400)
 	{
-		appendPQExpBuffer(&details,
-						  _("replication slots not available for this PostgreSQL version"));
+		appendPQExpBufferStr(&details,
+							 _("replication slots not available for this PostgreSQL version"));
 	}
 	else
 	{
@@ -1711,9 +1707,8 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 
 		if (missing_slots.node_count == 0)
 		{
-			appendPQExpBuffer(&details,
-						  _("node has no missing replication slots"));
-
+			appendPQExpBufferStr(&details,
+								 _("node has no missing replication slots"));
 		}
 		else
 		{
@@ -1728,7 +1723,7 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 
 			if (missing_slots.node_count)
 			{
-				appendPQExpBuffer(&details, ": ");
+				appendPQExpBufferStr(&details, ": ");
 
 				for (missing_slot_cell = missing_slots.head; missing_slot_cell; missing_slot_cell = missing_slot_cell->next)
 				{
@@ -1738,10 +1733,10 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 					}
 					else
 					{
-						appendPQExpBuffer(&details, ", ");
+						appendPQExpBufferStr(&details, ", ");
 					}
 
-					appendPQExpBuffer(&details, "%s", missing_slot_cell->node_info->slot_name);
+					appendPQExpBufferStr(&details, missing_slot_cell->node_info->slot_name);
 				}
 			}
 		}
@@ -2137,8 +2132,8 @@ do_node_rejoin(void)
 			exit(ERR_BAD_CONFIG);
 		}
 
-		appendPQExpBuffer(&msg,
-						  _("prerequisites for using pg_rewind are met"));
+		appendPQExpBufferStr(&msg,
+							 _("prerequisites for using pg_rewind are met"));
 
 		if (runtime_options.dry_run == true)
 		{
