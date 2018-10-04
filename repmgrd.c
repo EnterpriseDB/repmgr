@@ -101,7 +101,8 @@ main(int argc, char **argv)
 		{"config-file", required_argument, NULL, 'f'},
 
 /* daemon options */
-		{"daemonize", optional_argument, NULL, 'd'},
+		{"daemonize-short", optional_argument, NULL, 'd'},
+		{"daemonize", optional_argument, NULL, OPT_DAEMONIZE},
 		{"pid-file", required_argument, NULL, 'p'},
 		{"show-pid-file", no_argument, NULL, 's'},
 		{"no-pid-file", no_argument, NULL, OPT_NO_PID_FILE},
@@ -134,7 +135,7 @@ main(int argc, char **argv)
 
 	memset(pid_file, 0, MAXPGPATH);
 
-	while ((c = getopt_long(argc, argv, "?Vf:L:vd:p:m", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "?Vf:L:vdp:m", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -174,12 +175,15 @@ main(int argc, char **argv)
 
 				/* daemon options */
 
+
 			case 'd':
-				if (optarg != NULL)
-				{
-					daemonize = parse_bool(optarg, "-d/--daemonize", &cli_errors);
-				}
+				daemonize = true;
 				break;
+
+			case OPT_DAEMONIZE:
+				daemonize = parse_bool(optarg, "-d/--daemonize", &cli_errors);
+				break;
+
 
 			case 'p':
 				strncpy(pid_file, optarg, MAXPGPATH);
@@ -763,7 +767,8 @@ show_help(void)
 	puts("");
 
 	printf(_("Daemon configuration options:\n"));
-	printf(_("  -d, --daemonize[=true/false]\n"));
+	printf(_("  -d\n"));
+	printf(_("  --daemonize[=true/false]\n"));
 	printf(_("                            detach process from foreground (default: true)\n"));
 	printf(_("  -p, --pid-file=PATH       use the specified PID file\n"));
 	printf(_("  -s, --show-pid-file       show PID file which would be used by the current configuration\n"));

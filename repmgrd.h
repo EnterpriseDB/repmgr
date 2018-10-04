@@ -11,6 +11,7 @@
 #include "portability/instr_time.h"
 
 #define OPT_NO_PID_FILE                  1000
+#define OPT_DAEMONIZE                    1001
 
 extern volatile sig_atomic_t got_SIGHUP;
 extern MonitoringState monitoring_state;
