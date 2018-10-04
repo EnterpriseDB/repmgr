@@ -352,10 +352,12 @@
       provide additional parameters for <command>pg_basebackup</command> to customise the
       cloning process.
     </para>
+
     <para>
      By default, <command>pg_basebackup</command> performs a checkpoint before beginning the backup
      process. However, a normal checkpoint may take some time to complete;
-     a fast checkpoint can be forced with the <literal>-c/--fast-checkpoint</literal> option.
+     a fast checkpoint can be forced with <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>'s
+     <literal>-c/--fast-checkpoint</literal> option.
      Note that this may impact performance of the server being cloned from (typically the primary)
      so should be used with care.
     </para>
@@ -369,6 +371,18 @@
     <para>
       Other options can be passed to <command>pg_basebackup</command> by including them
       in the <filename>repmgr.conf</filename> setting <varname>pg_basebackup_options</varname>.
+    </para>
+
+    <para>
+      Not that by default, &repmgr; executes <command>pg_basebackup</command> with <option>-X/--wal-method</option>
+      (PostgreSQL 9.6 and earlier: <option>-X/--xlog-method</option>) set to <literal>stream</literal>.
+      From PostgreSQL 9.6, if replication slots are in use, it will also create a replication slot before
+      running the base backup, and execute <command>pg_basebackup</command> with the
+      <option>-S/--slot</option> option set to the name of the previously created replication slot.
+    </para>
+    <para>
+      These parameters can set by the user in <varname>pg_basebackup_options</varname>, in which case they
+      will override the &repmgr; default values. However normally there's no reason to do this.
     </para>
     <para>
       If using a separate directory to store WAL files, provide the option <literal>--waldir</literal>
