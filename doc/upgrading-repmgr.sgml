@@ -20,18 +20,22 @@
   <title>Upgrading repmgr 4.x and later</title>
   <para>
     &repmgr; 4.x is implemented as a PostgreSQL extension; normally the upgrade consists
-    of the two following steps:
+    of the following steps:
     <orderedlist>
+
+      <listitem>
+        <simpara>
+          Stop <application>repmgrd</application> (if in use) on all nodes where it is running
+        </simpara>
+      </listitem>
+
       <listitem>
         <simpara>
           Install the updated package (or compile the updated source)
         </simpara>
       </listitem>
-      <listitem>
-        <simpara>
-          <application>repmgrd</application> (if running) must be restarted.
-        </simpara>
-      </listitem>
+
+
       <listitem>
         <simpara>
           For major releases, e.g. from <literal>4.0.x</literal> to <literal>4.1</literal>,
@@ -43,6 +47,13 @@
           changes to the &repmgr; extension objects.
         </simpara>
       </listitem>
+
+      <listitem>
+        <simpara>
+          Start <application>repmgrd</application> (if in use).
+        </simpara>
+      </listitem>
+
     </orderedlist>
   </para>
 
@@ -54,8 +65,86 @@
   <para>
     Note that it may be necessary to restart the PostgreSQL server if the upgrade contains
     changes to the shared object file used by <application>repmgrd</application>; check the
-    release notes for details.
+    <link linkend="appendix-release-notes">release notes</link> for details.
   </para>
+
+  <sect2 id="upgrading-replication-cluster" xreflabel="Upgrading a replication cluster">
+	<indexterm>
+	  <primary>upgrading</primary>
+	  <secondary>repmgr 4.x and later</secondary>
+	</indexterm>
+	<title>Upgrading a replication cluster</title>
+	<para>
+	  The same &repmgr; &quot;major version&quot; (e.g. <literal>4.2</literal>) must be
+	  installed on all nodes in the replication cluster. While it's possible to have differing
+	  &repmgr; &quot;minor versions&quot; (e.g. <literal>4.2.1</literal>)  on different nodes,
+	  we strongly recommend updating all nodes to the latest minor version.
+	</para>
+	<note>
+	  <para>
+		Minor version upgrades can be performed in any order on the nodes in the replicaiton
+		cluster. In general it makes sense to start on the primary.
+	  </para>
+	  <para>
+		A PostgreSQL restart is <emphasis>not</emphasis> required for minor version upgrades.
+	  </para>
+	</note>
+	<para>
+	  &quot;major version&quot; upgrades need to be planned more carefully, as they may include
+	  changes to the &repmgr; metadata (which need to be propagated from the primary to all
+	  standbys) and/or changes to the shared object file used by <application>repmgrd</application>
+	  (which require a PostgreSQL restart).
+	</para>
+	<para>
+	  With this in mind,
+	</para>
+
+	<para>
+      <orderedlist>
+
+		<listitem>
+          <simpara>
+			Stop <application>repmgrd</application> (if in use) on all nodes where it is running
+          </simpara>
+		</listitem>
+
+		<listitem>
+          <simpara>
+			Install the updated package (or compile the updated source) on all nodes.
+          </simpara>
+		</listitem>
+
+		<listitem>
+          <para>
+			On the primary node, execute
+			<programlisting>
+			  ALTER EXTENSION repmgr UPDATE</programlisting>
+			in the database where &repmgr; is installed.
+          </para>
+		</listitem>
+
+		<listitem>
+          <simpara>
+			If necessary, restart PostgreSQL, then <application>repmgrd</application> (if in use)
+			on each node. The order in which this is applied to individual nodes is not critical,
+			and it's also fine to restart on all nodes first before starting <application>repmgrd</application>.
+		  </simpara>
+		  <simpara>
+			Note that if the upgrade requires a PostgreSQL restart, <application>repmgrd</application>
+			will only function correctly once all nodes have been restarted.
+          </simpara>
+		</listitem>
+	  </orderedlist>
+	</para>
+	<tip>
+	  <para>
+		If the &repmgr; upgrade requires a PostgreSQL restart, combine the &repmgr; upgrade
+		with a PostgreSQL minor version upgrade, which will require a restart in any case.
+		New PostgreSQL minor version are usually released every couple of months.
+	  </para>
+	</tip>
+  </sect2>
+
  </sect1>
 
  <sect1 id="upgrading-and-pg-upgrade" xreflabel="pg_upgrade and repmgr">
@@ -95,6 +184,13 @@
     be recreated by <application>pg_upgrade</application>. These will need to
     be recreated manually.
   </para>
+  <tip>
+	<para>
+	  Use <command><link linkend="repmgr-node-check">repmgr node check</link></command>
+	  to determine which replacation slots need to be recreated.
+	</para>
+  </tip>
+
  </sect1>
 
 
