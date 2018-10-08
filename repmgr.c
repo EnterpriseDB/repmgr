@@ -416,9 +416,9 @@ unset_bdr_failover_handler(PG_FUNCTION_ARGS)
 		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 
 		shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
-
-		LWLockRelease(shared_state->lock);
 	}
+
+	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_VOID();
 }
