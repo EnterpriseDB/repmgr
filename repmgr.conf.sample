@@ -161,7 +161,7 @@
 # Examples:
 #
 #   pg_ctl_options='-s'
-#   pg_basebackup_options='--label=repmgr_backup
+#   pg_basebackup_options='--label=repmgr_backup'
 #   rsync_options=--archive --checksum --compress --progress --rsh="ssh -o \"StrictHostKeyChecking no\""
 #   ssh_options=-o "StrictHostKeyChecking no"
 
