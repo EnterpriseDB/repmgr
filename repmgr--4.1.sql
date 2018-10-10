@@ -145,22 +145,6 @@ CREATE FUNCTION unset_bdr_failover_handler()
   AS 'MODULE_PATHNAME', 'unset_bdr_failover_handler'
   LANGUAGE C STRICT;
 
-CREATE FUNCTION get_repmgrd_pid()
-  RETURNS INT
-  AS 'MODULE_PATHNAME', 'get_repmgrd_pid'
-  LANGUAGE C STRICT;
-
-CREATE FUNCTION get_repmgrd_pidfile()
-  RETURNS TEXT
-  AS 'MODULE_PATHNAME', 'get_repmgrd_pidfile'
-  LANGUAGE C STRICT;
-
-CREATE FUNCTION set_repmgrd_pid(INT, TEXT)
-  RETURNS VOID
-  AS 'MODULE_PATHNAME', 'set_repmgrd_pid'
-  LANGUAGE C STRICT;
-
-
 CREATE VIEW repmgr.replication_status AS
   SELECT m.primary_node_id, m.standby_node_id, n.node_name AS standby_name,
  	     n.type AS node_type, n.active, last_monitor_time,
