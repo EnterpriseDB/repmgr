@@ -99,7 +99,7 @@
       Defaults:postgres !requiretty
       postgres ALL = NOPASSWD: /usr/bin/systemctl stop postgresql-9.6, \
         /usr/bin/systemctl start postgresql-9.6, \
-        /usr/bin/systemctl restart postgresql-9.6 \
+        /usr/bin/systemctl restart postgresql-9.6, \
         /usr/bin/systemctl reload postgresql-9.6</programlisting>
   </para>
 
