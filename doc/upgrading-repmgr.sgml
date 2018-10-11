@@ -35,6 +35,13 @@
         </simpara>
       </listitem>
 
+      <listitem>
+        <simpara>
+          For major releases, e.g. from <literal>4.0.x</literal> to <literal>4.1</literal>,
+          where the <literal>repmgr</literal> shared object library has been updated,
+          restart PostgreSQL.
+        </simpara>
+      </listitem>
 
       <listitem>
         <simpara>
