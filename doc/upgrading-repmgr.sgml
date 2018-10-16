@@ -121,14 +121,6 @@
           </simpara>
 		</listitem>
 
-		<listitem>
-          <para>
-			On the primary node, execute
-			<programlisting>
-			  ALTER EXTENSION repmgr UPDATE</programlisting>
-			in the database where &repmgr; is installed.
-          </para>
-		</listitem>
 
 		<listitem>
           <simpara>
@@ -141,6 +133,16 @@
 			will only function correctly once all nodes have been restarted.
           </simpara>
 		</listitem>
+
+		<listitem>
+          <para>
+			On the primary node, execute
+			<programlisting>
+			  ALTER EXTENSION repmgr UPDATE</programlisting>
+			in the database where &repmgr; is installed.
+          </para>
+		</listitem>
+
 	  </orderedlist>
 	</para>
 	<tip>
