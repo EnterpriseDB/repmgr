@@ -1008,6 +1008,13 @@ monitor_streaming_standby(void)
 								continue;
 							}
 
+							/* skip witness node - we can't possibly "follow" that */
+
+							if (cell->node_info->type == WITNESS)
+							{
+								continue;
+							}
+
 							cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 
 							if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
@@ -1030,6 +1037,7 @@ monitor_streaming_standby(void)
 							follow_new_primary(follow_node_id);
 						}
 					}
+
 					clear_node_info_list(&sibling_nodes);
 				}
 			}
@@ -2385,6 +2393,8 @@ follow_new_primary(int new_primary_id)
 	t_node_info new_primary = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	bool		new_primary_ok = false;
+
+	log_verbose(LOG_DEBUG, "follow_new_primary(): new primary id is %i", new_primary_id);
 
 	record_status = get_node_record(local_conn, new_primary_id, &new_primary);
 
