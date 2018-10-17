@@ -96,10 +96,44 @@
       </para>
     </sect2>
 
+
+    <sect2>
+      <title>repmgrd enhancements</title>
+      <para>
+       <itemizedlist>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application> can now be &quot;paused&quot;, i.e. instructed
+              not to take any action such as a failover, even if the prerequisites for such an
+              action are detected.
+            </para>
+            <para>
+              This removes the need to stop <application>repmgrd</application> on all nodes when
+              performing a planned operation such as a switchover.
+            </para>
+            <para>
+              For further details, see <link linkend="repmgrd-pausing">Pausing repmgrd</link>.
+            </para>
+          </listitem>
+
+       </itemizedlist>
+      </para>
+    </sect2>
+
     <sect2>
       <title>Bug fixes</title>
       <para>
         <itemizedlist>
+
+          <listitem>
+            <para>
+              &repmgr;: fix &quot;Missing replication slots&quot; label in
+              <command><link linkend="repmgr-node-check">repmgr node check</link></command>.  (GitHub #507)
+            </para>
+          </listitem>
+
+
           <listitem>
             <para>
               <application>repmgrd</application>: fix parsing of <option>-d/--daemonize</option> option.
