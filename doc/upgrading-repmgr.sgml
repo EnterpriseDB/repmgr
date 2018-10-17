@@ -155,6 +155,15 @@
           </simpara>
 		</listitem>
 
+        <listitem>
+          <para>
+            If running a <literal>systemd</literal>-based Linux distribution, execute (as <literal>root</literal>,
+            or with appropriate <literal>sudo</literal> permissions):
+            <programlisting>
+systemctl daemon-reload</programlisting>
+          </para>
+        </listitem>
+
 		<listitem>
           <simpara>
 			If the &repmgr; shared library module has been updated (check the <link linkend="appendix-release-notes">release notes</link>!),
@@ -172,7 +181,7 @@
           <para>
 			On the primary node, execute
 			<programlisting>
-			  ALTER EXTENSION repmgr UPDATE</programlisting>
+ALTER EXTENSION repmgr UPDATE</programlisting>
 			in the database where &repmgr; is installed.
           </para>
 		</listitem>
