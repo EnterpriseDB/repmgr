@@ -175,7 +175,6 @@ main(int argc, char **argv)
 
 				/* daemon options */
 
-
 			case 'd':
 				daemonize = true;
 				break;
@@ -183,7 +182,6 @@ main(int argc, char **argv)
 			case OPT_DAEMONIZE:
 				daemonize = parse_bool(optarg, "-d/--daemonize", &cli_errors);
 				break;
-
 
 			case 'p':
 				strncpy(pid_file, optarg, MAXPGPATH);

@@ -1531,6 +1531,9 @@ parse_bool(const char *s, const char *config_item, ItemList *error_list)
 {
 	PQExpBufferData errors;
 
+	if (s == NULL)
+		return true;
+
 	if (strcasecmp(s, "0") == 0)
 		return false;
 
