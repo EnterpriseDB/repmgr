@@ -1467,6 +1467,12 @@ monitor_streaming_witness(void)
 							continue;
 						}
 
+						/* skip node if configured as a witness node - we can't possibly "follow" that */
+						if (cell->node_info->type == WITNESS)
+						{
+							continue;
+						}
+
 						cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 
 						if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
