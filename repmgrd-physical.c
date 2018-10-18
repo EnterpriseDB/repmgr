@@ -1299,11 +1299,12 @@ monitor_streaming_witness(void)
 		log_warning(_("unable to retrieve node record from primary"));
 	}
 
-
-	/* Log startup event */
-	if (startup_event_logged == false)
 	{
 		PQExpBufferData event_details;
+
+		char *event_type = startup_event_logged == false
+			? "repmgrd_start"
+			: "repmgrd_upstream_reconnect";
 
 		initPQExpBuffer(&event_details);
 
@@ -1312,16 +1313,17 @@ monitor_streaming_witness(void)
 						  upstream_node_info.node_name,
 						  upstream_node_info.node_id);
 
+		log_info("%s", event_details.data);
+
 		create_event_notification(primary_conn,
 								  &config_file_options,
 								  config_file_options.node_id,
-								  "repmgrd_start",
+								  event_type,
 								  true,
 								  event_details.data);
 
-		startup_event_logged = true;
-
-		log_info("%s", event_details.data);
+		if (startup_event_logged == false)
+			startup_event_logged = true;
 
 		termPQExpBuffer(&event_details);
 	}
@@ -1370,6 +1372,17 @@ monitor_streaming_witness(void)
 									  _("reconnected to upstream node after %i seconds"),
 									  upstream_node_unreachable_elapsed);
 					log_notice("%s", event_details.data);
+
+					/* check upstream is still primary */
+					if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
+					{
+						log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
+								   upstream_node_info.node_name, upstream_node_info.node_id);
+						PQfinish(primary_conn);
+						primary_conn = NULL;
+						termPQExpBuffer(&event_details);
+						return;
+					}
 
 					create_event_notification(primary_conn,
 											  &config_file_options,
@@ -1428,14 +1441,25 @@ monitor_streaming_witness(void)
 									  upstream_node_info.node_id,
 									  degraded_monitoring_elapsed);
 
+					log_notice("%s", event_details.data);
+
+					/* check upstream is still primary */
+					if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
+					{
+						log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
+								   upstream_node_info.node_name, upstream_node_info.node_id);
+						PQfinish(primary_conn);
+						primary_conn = NULL;
+						termPQExpBuffer(&event_details);
+						return;
+					}
+
 					create_event_notification(primary_conn,
 											  &config_file_options,
 											  config_file_options.node_id,
 											  "repmgrd_upstream_reconnect",
 											  true,
 											  event_details.data);
-
-					log_notice("%s", event_details.data);
 					termPQExpBuffer(&event_details);
 
 					goto loop;
