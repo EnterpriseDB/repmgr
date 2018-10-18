@@ -778,6 +778,16 @@ monitor_streaming_standby(void)
 					if (upstream_node_info.type == PRIMARY)
 					{
 						primary_conn = upstream_conn;
+
+						if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
+						{
+							log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
+									   upstream_node_info.node_name, upstream_node_info.node_id);
+							PQfinish(upstream_conn);
+							upstream_conn = NULL;
+							termPQExpBuffer(&event_details);
+							return;
+						}
 					}
 
 					initPQExpBuffer(&event_details);
