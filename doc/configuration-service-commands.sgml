@@ -25,7 +25,7 @@
 
   <note>
     <para>
-      If using <application>systemd</application>, ensure you have <varname>RemoteIPC</varname> set to <literal>off</literal>.
+      If using <application>systemd</application>, ensure you have <varname>RemoveIPC</varname> set to <literal>off</literal>.
       See the <ulink url="https://wiki.postgresql.org/wiki/Systemd">systemd</ulink>
       entry in the <ulink url="https://wiki.postgresql.org/wiki/Main_Page">PostgreSQL wiki</ulink> for details.
     </para>
