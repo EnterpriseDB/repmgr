@@ -30,13 +30,18 @@ all: \
 PG_CPPFLAGS = -std=gnu89 -I$(includedir_internal) -I$(libpq_srcdir) -Wall -Wmissing-prototypes -Wmissing-declarations $(EXTRA_CFLAGS)
 SHLIB_LINK = $(libpq)
 
-HEADERS = $(wildcard *.h)
+
 
 OBJS = \
 	repmgr.o
 
 include Makefile.global
 
+ifeq ($(vpath_build),yes)
+	HEADERS = $(wildcard *.h)
+else
+	HEADERS_built = $(wildcard *.h)
+endif
 
 $(info Building against PostgreSQL $(MAJORVERSION))
 
