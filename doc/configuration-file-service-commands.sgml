@@ -17,9 +17,9 @@
     <link linkend="repmgr-node-rejoin"><command>repmgr node rejoin</command></link>.
   </para>
   <para>
-    By default, &repmgr; will use PostgreSQL's <command>pg_ctl</command> to control the PostgreSQL
+    By default, &repmgr; will use PostgreSQL's <command>pg_ctl</command> utility to control the PostgreSQL
     server. However this can lead to various problems, particularly when PostgreSQL has been
-    installed from packages, and expecially so if <application>systemd</application> is in use.
+    installed from packages, and especially so if <application>systemd</application> is in use.
   </para>
 
 
