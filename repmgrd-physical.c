@@ -868,7 +868,7 @@ monitor_streaming_standby(void)
 					{
 						primary_conn = upstream_conn;
 
-						if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
+						if (get_recovery_type(primary_conn) == RECTYPE_STANDBY)
 						{
 							ExecStatusType ping_result;
 
@@ -1322,7 +1322,7 @@ loop:
 
 			if (PQstatus(primary_conn) == CONNECTION_OK)
 			{
-				if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
+				if (get_recovery_type(primary_conn) == RECTYPE_STANDBY)
 				{
 					log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
 							   upstream_node_info.node_name, upstream_node_info.node_id);
@@ -1334,8 +1334,6 @@ loop:
 					return;
 				}
 			}
-
-			log_debug("YYY here3 active ? %c", local_node_info.active ? 't' : 'f');
 
 			/* we've reconnected to the local node after an outage */
 			if (local_node_info.active == false)
