@@ -3718,8 +3718,17 @@ do_standby_switchover(void)
 				i++;
 			}
 		}
-
+		else
+		{
+			/* close all connections - we'll reestablish later */
+			for (cell = all_nodes.head; cell; cell = cell->next)
+			{
+				PQfinish(cell->node_info->conn);
+				cell->node_info->conn = NULL;
+			}
+		}
 	}
+
 
 	/*
 	 * Sanity checks completed - prepare for the switchover
@@ -3801,7 +3810,7 @@ do_standby_switchover(void)
 				 shutdown_command);
 
 		clear_node_info_list(&sibling_nodes);
-		clear_node_info_list(&all_nodes);
+
 		key_value_list_free(&remote_config_files);
 
 		return;
@@ -4159,8 +4168,6 @@ do_standby_switchover(void)
 	}
 
 	clear_node_info_list(&sibling_nodes);
-
-
 
 	PQfinish(local_conn);
 
