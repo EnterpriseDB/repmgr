@@ -17,8 +17,18 @@
 
   <sect1 id="release-4.2">
     <title>Release 4.2</title>
-    <para><emphasis>???, 2018</emphasis></para>
+    <para><emphasis>Wed October 24, 2018</emphasis></para>
+
     <para>
+      &repmgr; 4.2 is a major release, with the main new feature being the
+      ability to <link linkend="repmgrd-pausing">pause repmgrd</link>, e.g. during planned maintenance
+      operations. Various other usability enhancements and a couple of bug fixes are also included;
+      see notes below for details.
+    </para>
+    <para>
+      A restart of the PostgreSQL server <emphasis>is</emphasis> required
+      for this release. For detailed upgrade instructions, see
+      <link linkend="upgrading-major-version">Upgrading a major version release</link>.
     </para>
 
     <sect2>
