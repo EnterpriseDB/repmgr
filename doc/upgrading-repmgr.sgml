@@ -188,7 +188,8 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
 
 		<listitem>
           <simpara>
-			Reenable the <application>repmgrd</application> service on all nodes where it is in use.
+			Reenable the <application>repmgrd</application> service on all nodes where it is in use, and
+            ensure it is running.
           </simpara>
 		</listitem>
 
@@ -210,7 +211,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
 	</indexterm>
 	<title>Checking repmgrd status after an upgrade</title>
 	<para>
-      From &repmgr; 4.2, once the upgrade is complete, execute the <command><link linkend="repmgr-daemon-status">repmgr daemon status</link></command>
+      From <link linkend="release-4.2">repmgr 4.2</link>, once the upgrade is complete, execute the <command><link linkend="repmgr-daemon-status">repmgr daemon status</link></command>
       command (on any node) to show an overview of the status of <application>repmgrd</application> on all nodes.
     </para>
   </sect2>
