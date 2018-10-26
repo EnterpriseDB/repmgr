@@ -1928,6 +1928,51 @@ vacuum_table(PGconn *primary_conn, const char *table)
 	return success;
 }
 
+/*
+ * For use in PostgreSQL 12 and later
+ */
+bool
+promote_standby(PGconn *conn, bool wait, int wait_seconds)
+{
+	PQExpBufferData query;
+	bool		success = true;
+	PGresult   *res = NULL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "SELECT pg_catalog.pg_promote(wait := %s",
+					  wait ? "TRUE" : "FALSE");
+
+	if (wait_seconds > 0)
+	{
+		appendPQExpBuffer(&query,
+						  ", wait_seconds := %i",
+						  wait_seconds);
+	}
+
+	appendPQExpBufferStr(&query, ")");
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("unable to execute pg_promote()"));
+		success = false;
+	}
+	else
+	{
+		/* NOTE: if "wait" is false, pg_promote() will always return true */
+		success = atobool(PQgetvalue(res, 0, 0));
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return success;
+}
+
+
 /* ===================== */
 /* Node record functions */
 /* ===================== */

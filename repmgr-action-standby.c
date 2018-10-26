@@ -73,7 +73,7 @@ static char local_repmgr_tmp_directory[MAXPGPATH];
 static char datadir_list_filename[MAXLEN];
 static char barman_command_buf[MAXLEN] = "";
 
-static void _do_standby_promote_internal(PGconn *conn);
+static void _do_standby_promote_internal(PGconn *conn, int server_version_num);
 static void _do_create_recovery_conf(void);
 
 static void check_barman_config(void);
@@ -1956,13 +1956,14 @@ do_standby_promote(void)
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 
 	int			existing_primary_id = UNKNOWN_NODE_ID;
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	conn = establish_db_connection(config_file_options.conninfo, true);
 
 	log_verbose(LOG_INFO, _("connected to standby, checking its state"));
 
 	/* Verify that standby is a supported server version */
-	check_server_version(conn, "standby", true, NULL);
+	server_version_num = check_server_version(conn, "standby", true, NULL);
 
 	/* Check we are in a standby node */
 	recovery_type = get_recovery_type(conn);
@@ -2008,16 +2009,14 @@ do_standby_promote(void)
 
 	PQfinish(current_primary_conn);
 
-	_do_standby_promote_internal(conn);
+	_do_standby_promote_internal(conn, server_version_num);
 }
 
 
 static void
-_do_standby_promote_internal(PGconn *conn)
+_do_standby_promote_internal(PGconn *conn, int server_version_num)
 {
-	char		script[MAXLEN];
-	int			r,
-				i;
+	int			i;
 	bool		promote_success = false;
 	PQExpBufferData details;
 
@@ -2049,24 +2048,51 @@ _do_standby_promote_internal(PGconn *conn)
 	 * `pg_ctl promote` returns immediately and (prior to 10.0) has no -w
 	 * option so we can't be sure when or if the promotion completes. For now
 	 * we'll poll the server until the default timeout (60 seconds)
+	 *
+	 * For PostgreSQL 12+, use the pg_promote() function - note this is
+	 * experimental
 	 */
-
-	get_server_action(ACTION_PROMOTE, script, (char *) data_dir);
-
 	log_notice(_("promoting standby to primary"));
-	log_detail(_("promoting server \"%s\" (ID: %i) using \"%s\""),
-			   local_node_record.node_name,
-			   local_node_record.node_id,
-			   script);
-	log_detail(_("waiting up to %i seconds (parameter \"promote_check_timeout\") for promotion to complete"),
-			   config_file_options.promote_check_timeout);
 
-	r = system(script);
-	if (r != 0)
+	if (server_version_num >= 120000)
 	{
-		log_error(_("unable to promote server from standby to primary"));
-		exit(ERR_PROMOTION_FAIL);
+		log_detail(_("promoting server \"%s\" (ID: %i) using pg_promote()"),
+				   local_node_record.node_name,
+				   local_node_record.node_id);
+
+		/*
+		 * We'll check for promotion success ourselves, but will abort
+		 * if some unrecoverable error prevented the function from being
+		 * executed.
+		 */
+		if (!promote_standby(conn, false, 0))
+		{
+			log_error(_("unable to promote server from standby to primary"));
+			exit(ERR_PROMOTION_FAIL);
+		}
 	}
+	else
+	{
+		char		script[MAXLEN];
+		int			r;
+
+		get_server_action(ACTION_PROMOTE, script, (char *) data_dir);
+
+		log_detail(_("promoting server \"%s\" (ID: %i) using \"%s\""),
+				   local_node_record.node_name,
+				   local_node_record.node_id,
+				   script);
+
+		r = system(script);
+		if (r != 0)
+		{
+			log_error(_("unable to promote server from standby to primary"));
+			exit(ERR_PROMOTION_FAIL);
+		}
+	}
+
+	log_notice(_("waiting up to %i seconds (parameter \"promote_check_timeout\") for promotion to complete"),
+			   config_file_options.promote_check_timeout);
 
 	for (i = 0; i < config_file_options.promote_check_timeout; i += config_file_options.promote_check_interval)
 	{
@@ -2807,6 +2833,7 @@ do_standby_switchover(void)
 	PGconn	   *local_conn = NULL;
 	PGconn	   *remote_conn = NULL;
 
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 	/* the remote server is the primary to be demoted */
@@ -2865,6 +2892,9 @@ do_standby_switchover(void)
 	 */
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
+
+	/* Verify that standby is a supported server version */
+	server_version_num = check_server_version(local_conn, "standby", true, NULL);
 
 	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_record);
 	if (record_status != RECORD_FOUND)
@@ -3944,7 +3974,7 @@ do_standby_switchover(void)
 	}
 
 	/* promote standby (local node) */
-	_do_standby_promote_internal(local_conn);
+	_do_standby_promote_internal(local_conn, server_version_num);
 
 
 	/*
