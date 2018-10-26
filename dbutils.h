@@ -361,15 +361,13 @@ __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 bool		atobool(const char *value);
 
 /* connection functions */
-PGconn *establish_db_connection(const char *conninfo,
+PGconn	   *establish_db_connection(const char *conninfo,
 						const bool exit_on_error);
 PGconn	   *establish_db_connection_quiet(const char *conninfo);
-
-PGconn *establish_db_connection_by_params(t_conninfo_param_list *param_list,
+PGconn	   *establish_db_connection_by_params(t_conninfo_param_list *param_list,
 								  const bool exit_on_error);
-PGconn *establish_primary_db_connection(PGconn *conn,
+PGconn	   *establish_primary_db_connection(PGconn *conn,
 								const bool exit_on_error);
-
 PGconn	   *get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 PGconn	   *get_primary_connection_quiet(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 
