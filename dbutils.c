@@ -30,6 +30,8 @@
 #include "controldata.h"
 #include "dirutil.h"
 
+#define NODE_RECORD_PARAM_COUNT 11
+
 /* mainly for use by repmgrd */
 int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
@@ -2478,8 +2480,8 @@ _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info)
 
 	char	   *slot_name_ptr = NULL;
 
-	int			param_count = 11;
-	const char *param_values[param_count];
+	int			param_count = NODE_RECORD_PARAM_COUNT;
+	const char *param_values[NODE_RECORD_PARAM_COUNT];
 
 	PGresult   *res;
 	bool		success = true;
