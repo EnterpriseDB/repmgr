@@ -58,7 +58,7 @@
 
 #define TRANCHE_NAME "repmgrd"
 #define REPMGRD_STATE_FILE PGSTAT_STAT_PERMANENT_DIRECTORY "/repmgrd_state.txt"
-
+#define REPMGRD_STATE_FILE_BUF_SIZE 128
 
 PG_MODULE_MAGIC;
 
@@ -256,8 +256,8 @@ set_local_node_id(PG_FUNCTION_ARGS)
 
 		if (file != NULL)
 		{
-			int			buffer_size = 128;
-			char		buffer[buffer_size];
+			int			buffer_size = REPMGRD_STATE_FILE_BUF_SIZE;
+			char		buffer[REPMGRD_STATE_FILE_BUF_SIZE];
 
 			if (fgets(buffer, buffer_size, file) != NULL)
 			{
