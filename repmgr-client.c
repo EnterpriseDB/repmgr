@@ -2080,8 +2080,9 @@ create_repmgr_extension(PGconn *conn)
 	bool		is_superuser = false;
 	PGconn	   *superuser_conn = NULL;
 	PGconn	   *schema_create_conn = NULL;
+	t_extension_versions extversions = T_EXTENSION_VERSIONS_INITIALIZER;
 
-	extension_status = get_repmgr_extension_status(conn);
+	extension_status = get_repmgr_extension_status(conn, &extversions);
 
 	switch (extension_status)
 	{
@@ -2093,8 +2094,15 @@ create_repmgr_extension(PGconn *conn)
 			log_error(_("\"repmgr\" extension is not available"));
 			return false;
 
+		case REPMGR_OLD_VERSION_INSTALLED:
+			log_error(_("an older version of the \"repmgr\" extension is installed"));
+			log_detail(_("version %s is installed but newer version %s is available"),
+					   extversions.installed_version,
+					   extversions.default_version);
+			log_hint(_("execute \"ALTER EXTENSION repmgr UPGRADE\""));
+			return false;
+
 		case REPMGR_INSTALLED:
-			/* TODO: check version */
 			log_info(_("\"repmgr\" extension is already installed"));
 			return true;
 

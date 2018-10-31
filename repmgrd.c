@@ -88,6 +88,7 @@ main(int argc, char **argv)
 
 	RecordStatus record_status;
 	ExtensionStatus extension_status = REPMGR_UNKNOWN;
+	t_extension_versions extversions = T_EXTENSION_VERSIONS_INITIALIZER;
 
 	FILE	   *fd;
 
@@ -389,7 +390,7 @@ main(int argc, char **argv)
 	 */
 
 	/* Check "repmgr" the extension is installed */
-	extension_status = get_repmgr_extension_status(local_conn);
+	extension_status = get_repmgr_extension_status(local_conn, &extversions);
 
 	if (extension_status != REPMGR_INSTALLED)
 	{
@@ -402,19 +403,32 @@ main(int argc, char **argv)
 			exit(ERR_DB_QUERY);
 		}
 
-		log_error(_("repmgr extension not found on this node"));
-
-		if (extension_status == REPMGR_AVAILABLE)
+		if (extension_status == REPMGR_OLD_VERSION_INSTALLED)
 		{
-			log_detail(_("repmgr extension is available but not installed in database \"%s\""),
-					   PQdb(local_conn));
+			log_error(_("an older version of the \"repmgr\" extension is installed"));
+			log_detail(_("version %s is installed but newer version %s is available"),
+					   extversions.installed_version,
+					   extversions.default_version);
+			log_hint(_("verify the repmgr installation is updated properly before continuing"));
+
 		}
-		else if (extension_status == REPMGR_UNAVAILABLE)
+		else
 		{
-			log_detail(_("repmgr extension is not available on this node"));
+			log_error(_("repmgr extension not found on this node"));
+
+			if (extension_status == REPMGR_AVAILABLE)
+			{
+				log_detail(_("repmgr extension is available but not installed in database \"%s\""),
+						   PQdb(local_conn));
+			}
+			else if (extension_status == REPMGR_UNAVAILABLE)
+			{
+				log_detail(_("repmgr extension is not available on this node"));
+			}
+
+			log_hint(_("check that this node is part of a repmgr cluster"));
 		}
 
-		log_hint(_("check that this node is part of a repmgr cluster"));
 		close_connection(&local_conn);
 		exit(ERR_BAD_CONFIG);
 	}

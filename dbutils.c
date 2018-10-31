@@ -1834,7 +1834,7 @@ atobool(const char *value)
 /* =================== */
 
 ExtensionStatus
-get_repmgr_extension_status(PGconn *conn)
+get_repmgr_extension_status(PGconn *conn, t_extension_versions *extversions)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -1845,7 +1845,11 @@ get_repmgr_extension_status(PGconn *conn)
 	initPQExpBuffer(&query);
 
 	appendPQExpBufferStr(&query,
-						 "	  SELECT ae.name, e.extname "
+						 "	  SELECT ae.name, e.extname, "
+						 "           ae.default_version, "
+						 "           (ae.default_version::numeric * 10)::INT AS available, "
+						 "           ae.installed_version, "
+						 "           (ae.installed_version::numeric * 10)::INT AS installed "
 						 "     FROM pg_catalog.pg_available_extensions ae "
 						 "LEFT JOIN pg_catalog.pg_extension e "
 						 "       ON e.extname=ae.name "
@@ -1868,7 +1872,24 @@ get_repmgr_extension_status(PGconn *conn)
 	/* 2. Check if extension installed */
 	else if (PQgetisnull(res, 0, 1) == 0)
 	{
-		status = REPMGR_INSTALLED;
+		int available_version = atoi(PQgetvalue(res, 0, 3));
+		int installed_version = atoi(PQgetvalue(res, 0, 5));
+
+		/* caller wants to know which versions are installed/available */
+		if (extversions != NULL)
+		{
+			strncpy(extversions->default_version, PQgetvalue(res, 0, 2), 7);
+			strncpy(extversions->installed_version, PQgetvalue(res, 0, 4), 7);
+		}
+
+		if (available_version > installed_version)
+		{
+			status = REPMGR_OLD_VERSION_INSTALLED;
+		}
+		else
+		{
+			status = REPMGR_INSTALLED;
+		}
 	}
 	else
 	{

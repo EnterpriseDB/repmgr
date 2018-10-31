@@ -4425,7 +4425,7 @@ check_source_server()
 	 * to be used as a standalone clone tool)
 	 */
 
-	extension_status = get_repmgr_extension_status(primary_conn);
+	extension_status = get_repmgr_extension_status(primary_conn, NULL);
 
 	if (extension_status != REPMGR_INSTALLED)
 	{
