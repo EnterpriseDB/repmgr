@@ -35,15 +35,25 @@
    <para>
     Replication slots, introduced in PostgreSQL 9.4, ensure that the
     primary server will retain WAL files until they have been consumed
-    by all standby servers. This makes WAL file management much easier,
-    and if used &repmgr; will no longer insist on a fixed minimum number
-    (default: 5000) of WAL files being retained.
+    by all standby servers. This means standby servers should never
+    fail due to not being able to retrieve required WAL files from the
+    primary.
    </para>
    <para>
     However this does mean that if a standby is no longer connected to the
     primary, the presence of the replication slot will cause WAL files
-    to be retained indefinitely.
+    to be retained indefinitely, and eventually lead to disk space
+    exhaustion.
    </para>
+
+   <tip>
+     <para>
+       2ndQuadrant's recommended configuration is to configure
+       <ulink url="https://www.pgbarman.org/">Barman</ulink> as a fallback
+       source of WAL files, rather than maintain replication slots for
+       each standby. See also: <link linkend="cloning-from-barman-restore-command">Using Barman as a WAL file source</link>.
+     </para>
+   </tip>
   </sect2>
 
   <sect2 id="faq-replication-slots-number" xreflabel="Number of replication slots">
