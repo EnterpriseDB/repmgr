@@ -47,6 +47,7 @@ typedef enum
 typedef enum
 {
 	REPMGR_INSTALLED = 0,
+	REPMGR_OLD_VERSION_INSTALLED,
 	REPMGR_AVAILABLE,
 	REPMGR_UNAVAILABLE,
 	REPMGR_UNKNOWN
@@ -103,6 +104,20 @@ typedef enum
 	BACKUP_STATE_NO_BACKUP
 } BackupState;
 
+
+/*
+ * Struct to store extension version information
+ */
+
+typedef struct s_extension_versions {
+	char		default_version[8];
+	char		installed_version[8];
+} t_extension_versions;
+
+#define T_EXTENSION_VERSIONS_INITIALIZER { \
+	"", \
+	"", \
+}
 
 /*
  * Struct to store node information
@@ -419,7 +434,7 @@ bool		repmgrd_is_paused(PGconn *conn);
 bool		repmgrd_pause(PGconn *conn, bool pause);
 
 /* extension functions */
-ExtensionStatus get_repmgr_extension_status(PGconn *conn);
+ExtensionStatus get_repmgr_extension_status(PGconn *conn, t_extension_versions *extversions);
 
 /* node management functions */
 void		checkpoint(PGconn *conn);

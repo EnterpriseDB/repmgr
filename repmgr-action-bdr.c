@@ -126,7 +126,7 @@ do_bdr_register(void)
 	}
 
 	/* check whether repmgr extension exists, and there are no non-BDR nodes registered */
-	extension_status = get_repmgr_extension_status(conn);
+	extension_status = get_repmgr_extension_status(conn, NULL);
 
 	if (extension_status == REPMGR_UNKNOWN)
 	{
@@ -232,7 +232,7 @@ do_bdr_register(void)
 				}
 
 				/* check repmgr schema exists, skip if not */
-				other_node_extension_status = get_repmgr_extension_status(bdr_node_conn);
+				other_node_extension_status = get_repmgr_extension_status(bdr_node_conn, NULL);
 
 				if (other_node_extension_status != REPMGR_INSTALLED)
 				{
@@ -442,7 +442,7 @@ do_bdr_unregister(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	extension_status = get_repmgr_extension_status(conn);
+	extension_status = get_repmgr_extension_status(conn, NULL);
 	if (extension_status != REPMGR_INSTALLED)
 	{
 		log_error(_("repmgr is not installed on database \"%s\""), dbname);
