@@ -1,6 +1,10 @@
 <chapter id="quickstart" xreflabel="Quick-start guide">
  <title>Quick-start guide</title>
 
+ <indexterm>
+   <primary>quickstart</primary>
+ </indexterm>
+
  <para>
   This section gives a quick introduction to &repmgr;, including setting up a
   sample &repmgr; installation and a basic replication cluster.
@@ -50,7 +54,8 @@
     </para>
     <para>
       If you want <application>repmgr</application> to copy configuration files which are
-      located outside the PostgreSQL data directory, and/or to test <command>switchover</command>
+      located outside the PostgreSQL data directory, and/or to test
+      <command><link linkend="repmgr-standby-switchover">switchover</link></command>
       functionality, you will also need passwordless SSH connections between both servers, and
       <application>rsync</application> should be installed.
     </para>
