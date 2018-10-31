@@ -116,6 +116,20 @@
    </para>
   </sect2>
 
+  <sect2 id="faq-what-if-repmgr-uninstalled">
+   <title>Will replication stop working if &repmgr; is uninstalled?</title>
+   <para>
+     No.
+   </para>
+   <para>
+     &repmgr; (together with <application>repmgrd</application>) assist with
+     managing replication. They do not actually perform replication, which
+     is part of the core PostgreSQL functionality.
+   </para>
+  </sect2>
+
+
+
  </sect1>
 
  <sect1 id="faq-repmgr" xreflabel="repmgr">
