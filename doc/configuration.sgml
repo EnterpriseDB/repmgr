@@ -1,6 +1,43 @@
 <chapter id="configuration" xreflabel="Configuration">
   <title>repmgr configuration</title>
 
+  <sect1 id="configuration-prerequisites" xreflabel="Prerequisites for configuration">
+    <indexterm>
+      <primary>configuration</primary>
+      <secondary>prerequisites</secondary>
+    </indexterm>
+
+    <title>Prerequisites for configuration</title>
+    <para>
+     Following software must be installed on both servers:
+     <itemizedlist spacing="compact" mark="bullet">
+      <listitem>
+       <simpara><application>PostgreSQL</application></simpara>
+      </listitem>
+      <listitem>
+       <simpara>
+        <application>repmgr</application>
+       </simpara>
+      </listitem>
+     </itemizedlist>
+    </para>
+
+    <para>
+      At network level, connections between the PostgreSQL port (default: <literal>5432</literal>)
+      must be possible between all nodes.
+    </para>
+    <para>
+      Optionally, if you want <application>repmgr</application> to copy PostgreSQL configuration
+      files which are located outside the data directory (as is the case with e.g.
+      <link linkend="packages-debian-ubuntu">Debian packages</link>)
+      when <link linkend="repmgr-standby-clone">cloning a standby</link>, or use &repmgr; to perform
+      <link linkend="preparing-for-switchover">switchovers</link>, passwordless SSH connections are required
+      between all nodes. Additionally, for copying files outide the data directory,
+      <application>rsync</application> must be installed.
+    </para>
+  </sect1>
+
+
   &configuration-file;
   &configuration-file-required-settings;
   &configuration-file-log-settings;
