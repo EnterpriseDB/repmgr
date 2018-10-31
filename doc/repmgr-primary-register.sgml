@@ -21,6 +21,15 @@
       installing the &repmgr; extension. This command needs to be executed before any
       standby nodes are registered.
     </para>
+
+    <note>
+      <para>
+        It's possibly to install the &repmgr; extension manually before executing
+        <command>repmgr primary register</command>; in this case &repmgr; will
+        detect the presence of the extension and skip that step.
+      </para>
+    </note>
+
   </refsect1>
 
   <refsect1>
@@ -35,16 +44,16 @@
     </para>
 
     <note>
-    <para>
-      If providing the configuration file location with <option>-f/--config-file</option>,
-      avoid using a relative path, as &repmgr; stores the configuration file location
-      in the repmgr metadata for use when &repmgr; is executed remotely (e.g. during
-      <xref linkend="repmgr-standby-switchover">). &repmgr; will attempt to convert the
-        a relative path into an absolute one, but this may not be the same as the path you
-        would explicitly provide (e.g. <filename>./repmgr.conf</filename> might be converted
-        to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write
-        <filename>/path/to/repmgr.conf</filename>).
-    </para>
+      <para>
+        If providing the configuration file location with <option>-f/--config-file</option>,
+        avoid using a relative path, as &repmgr; stores the configuration file location
+        in the repmgr metadata for use when &repmgr; is executed remotely (e.g. during
+        <xref linkend="repmgr-standby-switchover">). &repmgr; will attempt to convert the
+          a relative path into an absolute one, but this may not be the same as the path you
+          would explicitly provide (e.g. <filename>./repmgr.conf</filename> might be converted
+          to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write
+          <filename>/path/to/repmgr.conf</filename>).
+      </para>
     </note>
   </refsect1>
 
