@@ -13,7 +13,7 @@
   </para>
 
   <para>
-   From version 4.0, repmgr is compatible with all PostgreSQL versions from 9.3, including PostgreSQL 10.
+   From version 4.0, repmgr is compatible with all PostgreSQL versions from 9.3.
    Note that some &repmgr; functionality is not available in PostgreSQL 9.3 and PostgreSQL 9.4.
   </para>
 
@@ -31,7 +31,7 @@
   <para>
    &repmgr; must be installed on each server in the replication cluster.
    If installing repmgr from packages, the package version must match the PostgreSQL
-   version. If installing from source, repmgr must be compiled against the same
+   version. If installing from source, &repmgr; must be compiled against the same
    major version.
   </para>
 
@@ -42,31 +42,9 @@
   </para>
 
   <para>
-   Passwordless <command>ssh</command> connectivity between all servers in the replication cluster
-   is not required, but is necessary in the following cases:
-   <itemizedlist>
-     <listitem>
-       <simpara>if you need &repmgr; to copy configuration files from outside the PostgreSQL
-       data directory (in which case <command>rsync</command> is also required)</simpara>
-     </listitem>
-     <listitem>
-       <simpara>to perform <link linkend="performing-switchover">switchover operations</link></simpara>
-     </listitem>
-     <listitem>
-       <simpara>
-        when executing <command><link linkend="repmgr-cluster-matrix">repmgr cluster matrix</link></command>
-        and <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command>
-       </simpara>
-     </listitem>
-   </itemizedlist>
+    See also <link linkend="configuration-prerequisites">Prerequisites for configuration</link>
+    for information on networking requirements.
   </para>
-
-  <tip>
-    <simpara>
-      Consider setting <varname>ConnectTimeout</varname> to a low value in your SSH configuration.
-      This will make it faster to detect any SSH connection errors.
-    </simpara>
-  </tip>
 
   <tip>
    <simpara>

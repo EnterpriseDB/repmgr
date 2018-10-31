@@ -7,6 +7,11 @@
       <secondary>prerequisites</secondary>
     </indexterm>
 
+    <indexterm>
+      <primary>configuration</primary>
+      <secondary>ssh</secondary>
+    </indexterm>
+
     <title>Prerequisites for configuration</title>
     <para>
      Following software must be installed on both servers:
@@ -26,15 +31,36 @@
       At network level, connections between the PostgreSQL port (default: <literal>5432</literal>)
       must be possible between all nodes.
     </para>
+
     <para>
-      Optionally, if you want <application>repmgr</application> to copy PostgreSQL configuration
-      files which are located outside the data directory (as is the case with e.g.
-      <link linkend="packages-debian-ubuntu">Debian packages</link>)
-      when <link linkend="repmgr-standby-clone">cloning a standby</link>, or use &repmgr; to perform
-      <link linkend="preparing-for-switchover">switchovers</link>, passwordless SSH connections are required
-      between all nodes. Additionally, for copying files outide the data directory,
-      <application>rsync</application> must be installed.
+      Passwordless <command>SSH</command> connectivity between all servers in the replication cluster
+      is not required, but is necessary in the following cases:
+      <itemizedlist>
+        <listitem>
+          <simpara>if you need &repmgr; to copy configuration files from outside the PostgreSQL
+            data directory (as is the case with e.g. <link linkend="packages-debian-ubuntu">Debian packages</link>);
+            in this case <command>rsync</command> must also be installed on all servers.
+          </simpara>
+        </listitem>
+        <listitem>
+          <simpara>to perform <link linkend="performing-switchover">switchover operations</link></simpara>
+        </listitem>
+        <listitem>
+          <simpara>
+            when executing <command><link linkend="repmgr-cluster-matrix">repmgr cluster matrix</link></command>
+            and <command><link linkend="repmgr-cluster-crosscheck">repmgr cluster crosscheck</link></command>
+          </simpara>
+        </listitem>
+      </itemizedlist>
     </para>
+
+    <tip>
+      <simpara>
+        Consider setting <varname>ConnectTimeout</varname> to a low value in your SSH configuration.
+        This will make it faster to detect any SSH connection errors.
+      </simpara>
+    </tip>
+
   </sect1>
 
 
