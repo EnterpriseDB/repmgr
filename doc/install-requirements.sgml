@@ -13,8 +13,9 @@
   </para>
 
   <para>
-   From version 4.0, repmgr is compatible with all PostgreSQL versions from 9.3.
-   Note that some &repmgr; functionality is not available in PostgreSQL 9.3 and PostgreSQL 9.4.
+   &repmgr; 4.x is compatible with all PostgreSQL versions from 9.3. See
+   section <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>
+   for an overview of version compatibility.
   </para>
 
   <note>
@@ -54,4 +55,111 @@
     terminated if your <command>ssh</command> session to the server is interrupted or closed.
     </simpara>
   </tip>
+
+  <sect2 id="install-compatibility-matrix">
+
+    <indexterm>
+      <primary>repmgr</primary>
+      <secondary>compatibility matrix</secondary>
+    </indexterm>
+
+    <indexterm>
+      <primary>compatibility matrix</primary>
+    </indexterm>
+
+    <title>&repmgr; compatibility matrix</title>
+    <para>
+      The following table provides an overview of which &repmgr; version supports
+      which PostgreSQL version.
+    </para>
+
+
+    <table id="repmgr-compatibility-matrix">
+      <title>&repmgr; compatibility matrix</title>
+
+      <tgroup cols="2">
+        <thead>
+          <row>
+            <entry>
+              &repmgr; version
+            </entry>
+            <entry>
+              Latest release
+            </entry>
+            <entry>
+              Supported PostgreSQL versions
+            </entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry>
+              &repmgr; 4.x
+            </entry>
+            <entry>
+              <link linkend="release-4.2">4.2</link> (2018-10-24)
+            </entry>
+            <entry>
+              9.3, 9.4, 9.5, 9.6, 10, 11
+            </entry>
+          </row>
+
+          <row>
+            <entry>
+              &repmgr; 3.x
+            </entry>
+            <entry>
+              <ulink url="https://repmgr.org/release-notes-3.3.2.html">3.3.2</ulink> (2017-05-30)
+            </entry>
+            <entry>
+              9.3, 9.4, 9.5, 9.6
+            </entry>
+          </row>
+
+          <row>
+            <entry>
+              &repmgr; 2.x
+            </entry>
+            <entry>
+              <ulink url="https://repmgr.org/release-notes-2.0.3.html">2.0.3</ulink> (2015-04-16)
+            </entry>
+            <entry>
+              9.0, 9.1, 9.2, 9.3, 9.4
+            </entry>
+          </row>
+        </tbody>
+
+      </tgroup>
+    </table>
+
+    <important>
+      <para>
+        The &repmgr; 2.x and 3.x series are no longer maintained or supported.
+        We strongly recommend  upgrading to the latest &repmgr; version.
+      </para>
+    </important>
+
+
+    <para>
+      Note that some &repmgr; functionality is not available in PostgreSQL 9.3 and PostgreSQL 9.4.
+    </para>
+    <itemizedlist spacing="compact" mark="bullet">
+
+      <listitem>
+        <para>
+          PostgreSQL 9.3 does not support replication slots, so corresponding &repmgr; functionality
+          is not available.
+        </para>
+      </listitem>
+      <listitem>
+        <para>
+          In PostgreSQL 9.3 and PostgreSQL 9.4, <command>pg_rewind</command> is not part of the core
+          distribution. <command>pg_rewind</command> will need to be compiled separately to be able
+          to use any &repmgr; functionality which takes advantage of it.
+        </para>
+      </listitem>
+    </itemizedlist>
+
+  </sect2>
  </sect1>
