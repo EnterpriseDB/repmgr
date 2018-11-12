@@ -213,12 +213,7 @@
       Execute with the <literal>--dry-run</literal> option to test the switchover as far as
       possible without actually changing the status of either node.
     </para>
-    <important>
-      <para>
-        <application>repmgrd</application> must be shut down on all nodes while a switchover is being
-        executed. This restriction will be removed in a future &repmgr; version.
-      </para>
-    </important>
+
     <para>
       External database connections, e.g. from an application, should not be permitted while
       the switchover is taking place. In particular, active transactions on the primary
