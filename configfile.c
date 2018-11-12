@@ -816,13 +816,13 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	if (options->archive_ready_warning >= options->archive_ready_critical)
 	{
 		item_list_append(error_list,
-						 _("\archive_ready_critical\" must be greater than  \"archive_ready_warning\""));
+						 _("\"archive_ready_critical\" must be greater than  \"archive_ready_warning\""));
 	}
 
 	if (options->replication_lag_warning >= options->replication_lag_critical)
 	{
 		item_list_append(error_list,
-						 _("\replication_lag_critical\" must be greater than  \"replication_lag_warning\""));
+						 _("\"replication_lag_critical\" must be greater than  \"replication_lag_warning\""));
 	}
 
 	if (options->standby_reconnect_timeout < options->node_rejoin_timeout)
