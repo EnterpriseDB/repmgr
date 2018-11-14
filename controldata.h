@@ -134,13 +134,11 @@ typedef struct ControlFileData93
 
 
 /*
- * Following fields added since 9.3:
+ * Following field added since 9.3:
  *
  * 	int			max_worker_processes;
- *  int			max_prepared_xacts;
- *  int			max_locks_per_xact;
- *
  */
+
 typedef struct ControlFileData94
 {
 	uint64		system_identifier;

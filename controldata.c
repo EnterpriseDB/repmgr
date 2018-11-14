@@ -1,5 +1,11 @@
 /*
- * controldata.c
+ * controldata.c - functions for reading the pg_control file
+ *
+ * The functions provided here enable repmgr to read a pg_control file
+ * in a version-indepent way, even if the PostgreSQL instance is not
+ * running. For that reason we can't use on the pg_control_*() functions
+ * provided in PostgreSQL 9.6 and later.
+ *
  * Copyright (c) 2ndQuadrant, 2010-2018
  *
  * Portions Copyright (c) 1996-2016, PostgreSQL Global Development Group
@@ -112,6 +118,7 @@ describe_db_state(DBState state)
 		case DB_IN_PRODUCTION:
 			return _("in production");
 	}
+
 	return _("unrecognized status code");
 }
 
@@ -265,9 +272,7 @@ get_controlfile(const char *DataDir)
 	/*
 	 * We don't check the CRC here as we're potentially checking a pg_control
 	 * file from a different PostgreSQL version to the one repmgr was compiled
-	 * against. However we're only interested in the first few fields, which
-	 * should be constant across supported versions
-	 *
+	 * against.
 	 */
 
 	return control_file_info;
