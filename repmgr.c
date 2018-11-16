@@ -40,7 +40,6 @@
 
 #include "utils/timestamp.h"
 
-#include "executor/spi.h"
 #include "lib/stringinfo.h"
 #include "access/xact.h"
 #include "utils/snapmgr.h"
@@ -78,6 +77,7 @@ typedef struct repmgrdSharedState
 	char		repmgrd_pidfile[MAXPGPATH];
 	bool		repmgrd_paused;
 	/* streaming failover */
+	TimestampTz primary_last_seen;
 	NodeVotingStatus voting_status;
 	int			current_electoral_term;
 	int			candidate_node_id;
@@ -107,6 +107,12 @@ PG_FUNCTION_INFO_V1(standby_set_last_updated);
 
 Datum		standby_get_last_updated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(standby_get_last_updated);
+
+Datum		set_primary_last_seen(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(set_primary_last_seen);
+
+Datum		get_primary_last_seen(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(get_primary_last_seen);
 
 Datum		notify_follow_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(notify_follow_primary);
@@ -219,6 +225,8 @@ repmgr_shmem_startup(void)
 		memset(shared_state->repmgrd_pidfile, 0, MAXPGPATH);
 		shared_state->repmgrd_paused = false;
 		shared_state->current_electoral_term = 0;
+		/* we should probably set this to an earlier value */
+		shared_state->primary_last_seen = GetCurrentTimestamp();
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 		shared_state->follow_new_primary = false;
@@ -354,6 +362,47 @@ standby_get_last_updated(PG_FUNCTION_ARGS)
 }
 
 
+Datum
+set_primary_last_seen(PG_FUNCTION_ARGS)
+{
+	if (!shared_state)
+		PG_RETURN_VOID();
+
+	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+
+	shared_state->primary_last_seen = GetCurrentTimestamp();
+	elog(INFO,
+		 "primary_last_seen: %s",
+		 timestamptz_to_str( 	shared_state->primary_last_seen));
+
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_VOID();
+}
+
+
+Datum
+get_primary_last_seen(PG_FUNCTION_ARGS)
+{
+	long		secs;
+	int			microsecs;
+	TimestampTz last_seen;
+
+	if (!shared_state)
+		PG_RETURN_INT32(-1);
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+
+	last_seen = shared_state->primary_last_seen;
+
+	LWLockRelease(shared_state->lock);
+
+	TimestampDifference(last_seen, GetCurrentTimestamp(),
+						&secs, &microsecs);
+
+	/* let's hope repmgrd never runs for more than a century or so without seeing a primary */
+	PG_RETURN_INT32((uint32)secs);
+}
 
 
 /* ===================*/
@@ -367,10 +416,10 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 	int			primary_node_id = UNKNOWN_NODE_ID;
 
 	if (!shared_state)
-		PG_RETURN_NULL();
+		PG_RETURN_VOID();
 
 	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
+		PG_RETURN_VOID();
 
 	primary_node_id = PG_GETARG_INT32(0);
 
@@ -402,7 +451,7 @@ get_new_primary(PG_FUNCTION_ARGS)
 	int			new_primary_node_id = UNKNOWN_NODE_ID;
 
 	if (!shared_state)
-		PG_RETURN_NULL();
+		PG_RETURN_INT32(UNKNOWN_NODE_ID);
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
@@ -412,7 +461,7 @@ get_new_primary(PG_FUNCTION_ARGS)
 	LWLockRelease(shared_state->lock);
 
 	if (new_primary_node_id == UNKNOWN_NODE_ID)
-		PG_RETURN_NULL();
+		PG_RETURN_INT32(UNKNOWN_NODE_ID);
 
 	PG_RETURN_INT32(new_primary_node_id);
 }

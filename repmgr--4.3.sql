@@ -118,6 +118,16 @@ CREATE FUNCTION standby_get_last_updated()
   AS 'MODULE_PATHNAME', 'standby_get_last_updated'
   LANGUAGE C STRICT;
 
+CREATE FUNCTION set_primary_last_seen()
+  RETURNS VOID
+  AS 'MODULE_PATHNAME', 'set_primary_last_seen'
+  LANGUAGE C STRICT;
+
+CREATE FUNCTION get_primary_last_seen()
+  RETURNS INT
+  AS 'MODULE_PATHNAME', 'get_primary_last_seen'
+  LANGUAGE C STRICT;
+
 /* failover functions */
 
 CREATE FUNCTION notify_follow_primary(INT)
