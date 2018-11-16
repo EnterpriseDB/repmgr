@@ -15,7 +15,9 @@ DATA = \
   repmgr--4.0--4.1.sql \
   repmgr--4.1.sql \
   repmgr--4.1--4.2.sql \
-  repmgr--4.2.sql
+  repmgr--4.2.sql \
+  repmgr--4.2--4.3.sql \
+  repmgr--4.3.sql
 
 REGRESS = repmgr_extension
 
