@@ -3169,6 +3169,59 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 }
 
 void
+set_primary_last_seen(PGconn *conn)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBufferStr(&query,
+						 "SELECT repmgr.set_primary_last_seen()");
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_db_error(conn, query.data, _("unable to execute repmgr.set_primary_last_seen()"));
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+}
+
+int
+get_primary_last_seen(PGconn *conn)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	int primary_last_seen = -1;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBufferStr(&query,
+						 "SELECT repmgr.get_primary_last_seen()");
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_db_error(conn, query.data, _("unable to execute repmgr.get_primary_last_seen()"));
+	}
+	else
+	{
+		primary_last_seen = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return primary_last_seen;
+}
+
+
+void
 clear_node_info_list(NodeInfoList *nodes)
 {
 	NodeInfoListCell *cell = NULL;

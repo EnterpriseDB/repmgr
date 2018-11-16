@@ -545,6 +545,8 @@ bool		get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);
 void		get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *node_info);
 bool		is_downstream_node_attached(PGconn *conn, char *node_name);
+void		set_primary_last_seen(PGconn *conn);
+int			get_primary_last_seen(PGconn *conn);
 
 /* BDR functions */
 int			get_bdr_version_num(void);

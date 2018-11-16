@@ -805,7 +805,11 @@ monitor_streaming_standby(void)
 	while (true)
 	{
 		log_verbose(LOG_DEBUG, "checking %s", upstream_node_info.conninfo);
-		if (is_server_available(upstream_node_info.conninfo) == false)
+		if (is_server_available(upstream_node_info.conninfo) == true)
+		{
+			set_primary_last_seen(local_conn);
+		}
+		else
 		{
 			/* upstream node is down, we were expecting it to be up */
 			if (upstream_node_info.node_status == NODE_STATUS_UP)
@@ -1265,7 +1269,6 @@ loop:
 		 */
 
 		check_connection(&local_node_info, &local_conn);
-
 
 		if (PQstatus(local_conn) != CONNECTION_OK)
 		{
