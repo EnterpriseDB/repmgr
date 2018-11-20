@@ -194,10 +194,11 @@
    <title>Using a standby cloned by another method</title>
    <para>
      &repmgr; supports standbys cloned by another method (e.g. using <application>barman</application>'s
-     <command><ulink url="http://docs.pgbarman.org/release/2.4/#recover">barman recover</ulink></command> command).
+     <command><ulink url="http://docs.pgbarman.org/release/2.5/#recover">barman recover</ulink></command> command).
    </para>
    <para>
-     To integrate the standby as a &repmgr; node, ensure the <filename>repmgr.conf</filename>
+     To integrate the standby as a &repmgr; node, once the standby has been cloned,
+     ensure the <filename>repmgr.conf</filename>
      file is created for the node, and that it has been registered using
      <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>.
      Then execute the command <command>repmgr standby clone --recovery-conf-only</command>.
