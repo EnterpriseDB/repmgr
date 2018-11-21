@@ -3168,6 +3168,7 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 	return true;
 }
 
+
 void
 set_primary_last_seen(PGconn *conn)
 {

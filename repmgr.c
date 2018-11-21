@@ -225,8 +225,8 @@ repmgr_shmem_startup(void)
 		memset(shared_state->repmgrd_pidfile, 0, MAXPGPATH);
 		shared_state->repmgrd_paused = false;
 		shared_state->current_electoral_term = 0;
-		/* we should probably set this to an earlier value */
-		shared_state->primary_last_seen = GetCurrentTimestamp();
+		/* arbitrary "magic" date to indicate this field hasn't been updated */
+		shared_state->primary_last_seen = POSTGRES_EPOCH_JDATE;
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 		shared_state->follow_new_primary = false;
@@ -391,11 +391,25 @@ get_primary_last_seen(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_INT32(-1);
 
+	/* A primary is always visible */
+	if (!RecoveryInProgress())
+		PG_RETURN_INT32(0);
+
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	last_seen = shared_state->primary_last_seen;
 
 	LWLockRelease(shared_state->lock);
+
+	/*
+	 * "last_seen" is initialised with the PostgreSQL epoch as a
+	 * "magic" value to indicate the field hasn't ever been updated
+	 * by repmgrd. We return -1 instead, rather than imply that the
+	 * primary was last seen at the turn of the century.
+	 */
+	if (last_seen == POSTGRES_EPOCH_JDATE)
+		PG_RETURN_INT32(-1);
+
 
 	TimestampDifference(last_seen, GetCurrentTimestamp(),
 						&secs, &microsecs);
