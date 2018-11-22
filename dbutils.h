@@ -20,6 +20,7 @@
 #ifndef _REPMGR_DBUTILS_H_
 #define _REPMGR_DBUTILS_H_
 
+#include "access/timeline.h"
 #include "access/xlogdefs.h"
 #include "pqexpbuffer.h"
 #include "portability/instr_time.h"
@@ -424,6 +425,9 @@ RecoveryType get_recovery_type(PGconn *conn);
 int			get_primary_node_id(PGconn *conn);
 int			get_ready_archive_files(PGconn *conn, const char *data_directory);
 bool		identify_system(PGconn *repl_conn, t_system_identification *identification);
+TimeLineHistoryEntry *get_timeline_history(PGconn *repl_conn, TimeLineID tli);
+
+/* repmgrd shared memory functions */
 bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
 int			repmgrd_get_local_node_id(PGconn *conn);
 BackupState	server_in_exclusive_backup_mode(PGconn *conn);

@@ -1602,6 +1602,71 @@ identify_system(PGconn *repl_conn, t_system_identification *identification)
 	return true;
 }
 
+TimeLineHistoryEntry *
+get_timeline_history(PGconn *repl_conn, TimeLineID tli)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+
+	int			nfields;
+	TimeLineID	file_tli;
+	uint32		switchpoint_hi;
+	uint32		switchpoint_lo;
+	TimeLineHistoryEntry *history;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "TIMELINE_HISTORY %i",
+					  (int)tli);
+
+	res = PQexec(repl_conn, query.data);
+	log_verbose(LOG_DEBUG, "get_timeline_history():\n%s", query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(repl_conn, query.data, _("get_timeline_history(): unable to execute query"));
+		termPQExpBuffer(&query);
+		PQclear(res);
+		return NULL;
+	}
+
+	termPQExpBuffer(&query);
+
+	if (PQnfields(res) != 2 || PQntuples(res) != 1)
+	{
+		log_error(_("unexpected response to TIMELINE_HISTORY command"));
+		log_detail(_("got %i rows and %i fields, expected %i rows and %i fields"),
+				   PQntuples(res), PQnfields(res), 1, 2);
+		PQclear(res);
+		return NULL;
+	}
+
+	nfields = sscanf(PQgetvalue(res, 0, 1),
+					 "%u\t%X/%X",
+					 &file_tli, &switchpoint_hi, &switchpoint_lo);
+
+	if (nfields != 3)
+	{
+		log_error(_("unable to parse timeline history file content"));
+		log_detail(_("content is: \"%s\""), PQgetvalue(res, 0, 1));
+		PQclear(res);
+		return NULL;
+	}
+
+	history = (TimeLineHistoryEntry *) palloc(sizeof(TimeLineHistoryEntry));
+	history->tli = file_tli;
+	history->begin = InvalidXLogRecPtr; /* we don't care about this */
+	history->end = ((uint64) (switchpoint_hi)) << 32 | (uint64) switchpoint_lo;
+
+	PQclear(res);
+	return history;
+}
+
+
+/* =============================== */
+/* repmgrd shared memory functions */
+/* =============================== */
 
 bool
 repmgrd_set_local_node_id(PGconn *conn, int local_node_id)
