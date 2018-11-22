@@ -36,7 +36,7 @@
 
 
     <sect2 id="repmgrd-automatic-failover-configuration">
-      <title>automatic failover configuration</title>
+      <title>Automatic failover configuration</title>
       <para>
         If using automatic failover, the following <application>repmgrd</application> options *must* be set in
         <filename>repmgr.conf</filename> :

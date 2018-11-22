@@ -24,7 +24,7 @@
     <para>
       This command will force a restart of the standby server, which must be
       running. It can only be used to attach an active standby to the current primary node
-   (and not to another standby).
+      (and not to another standby).
     </para>
 	<tip>
       <para>
@@ -75,6 +75,20 @@
               attach the standby to the primary.
             </para>
           </important>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--upstream-node-id</option></term>
+        <listitem>
+          <para>
+            Node ID of the new primary.
+          </para>
+          <para>
+            This option is intended for use by <application>repmgrd</application>, when
+			instructing standbys to follow the new primary. For more details
+			see <link linkend="repmgrd-automatic-failover-configuration">Automatic failover configuration</link>.
+          </para>
         </listitem>
       </varlistentry>
 

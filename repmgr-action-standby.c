@@ -2227,17 +2227,53 @@ do_standby_follow(void)
 		check_93_config();
 
 	/*
+	 * --upstream-node-id provided; assume that is the desired primary
+	 * and retrieve its record. We'll check if it's actualy a primary later.
+	 */
+	if (runtime_options.upstream_node_id != UNKNOWN_NODE_ID)
+	{
+		if (runtime_options.upstream_node_id == config_file_options.node_id)
+		{
+			log_error(_("provided --upstream-node-id %i is the current node"),
+					  runtime_options.upstream_node_id);
+			PQfinish(local_conn);
+			exit(ERR_FOLLOW_FAIL);
+		}
+
+		primary_node_id = runtime_options.upstream_node_id;
+		record_status = get_node_record(local_conn, primary_node_id, &primary_node_record);
+
+		if (record_status != RECORD_FOUND)
+		{
+			log_error(_("unable to find record for upstream node %i"),
+					  runtime_options.upstream_node_id);
+			PQfinish(local_conn);
+			exit(ERR_FOLLOW_FAIL);
+		}
+	}
+
+	/*
 	 * Attempt to connect to primary.
 	 *
 	 * If --wait provided, loop for up `primary_follow_timeout` seconds
 	 * before giving up
 	 */
 
+
 	for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
 	{
-		primary_conn = get_primary_connection_quiet(local_conn,
-													&primary_node_id,
-													NULL);
+		/* --upstream-node-id provided */
+		if (primary_node_id != UNKNOWN_NODE_ID)
+		{
+			primary_conn = establish_db_connection_quiet(primary_node_record.conninfo);
+		}
+		else
+		{
+			primary_conn = get_primary_connection_quiet(local_conn,
+														&primary_node_id,
+														NULL);
+		}
+
 		if (PQstatus(primary_conn) == CONNECTION_OK || runtime_options.wait == false)
 		{
 			break;
@@ -2249,7 +2285,14 @@ do_standby_follow(void)
 
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		log_error(_("unable to determine primary node"));
+		if (primary_node_id == UNKNOWN_NODE_ID)
+		{
+			log_error(_("unable to find a primary node"));
+		}
+		else
+		{
+			log_error(_("unable to connect to primary node %i"), primary_node_id);
+		}
 
 		if (runtime_options.wait == true)
 		{
@@ -2261,23 +2304,27 @@ do_standby_follow(void)
 		exit(ERR_FOLLOW_FAIL);
 	}
 
-	if (runtime_options.dry_run == true)
+	/* --upstream-node-id not provided - retrieve record for node determined as primary  */
+	if (runtime_options.upstream_node_id == UNKNOWN_NODE_ID)
 	{
-		log_info(_("connected to node %i, checking for current primary"), primary_node_id);
-	}
-	else
-	{
-		log_verbose(LOG_INFO, _("connected to node %i, checking for current primary"), primary_node_id);
-	}
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("connected to node %i, checking for current primary"), primary_node_id);
+		}
+		else
+		{
+			log_verbose(LOG_INFO, _("connected to node %i, checking for current primary"), primary_node_id);
+		}
 
-	record_status = get_node_record(primary_conn, primary_node_id, &primary_node_record);
+		record_status = get_node_record(primary_conn, primary_node_id, &primary_node_record);
 
-	if (record_status != RECORD_FOUND)
-	{
-		log_error(_("unable to find record for new upstream node %i"),
-				  runtime_options.upstream_node_id);
-		PQfinish(primary_conn);
-		exit(ERR_FOLLOW_FAIL);
+		if (record_status != RECORD_FOUND)
+		{
+			log_error(_("unable to find record for new primarynode %i"),
+					  primary_node_id);
+			PQfinish(primary_conn);
+			exit(ERR_FOLLOW_FAIL);
+		}
 	}
 
 	/*
@@ -2286,7 +2333,6 @@ do_standby_follow(void)
 	event_info.node_id = primary_node_id;
 	event_info.node_name = primary_node_record.node_name;
 	event_info.conninfo_str = primary_node_record.conninfo;
-
 
 	if (runtime_options.dry_run == true)
 	{
@@ -6867,6 +6913,7 @@ do_standby_help(void)
 	printf(_("  \"standby follow\" instructs a standby node to follow a new primary.\n"));
 	puts("");
 	printf(_("  --dry-run                           perform checks but don't actually follow the new primary\n"));
+	printf(_("  --upstream-node-id                  node ID of the new primary\n"));
 	printf(_("  -W, --wait                          wait for a primary to appear\n"));
 	puts("");
 
