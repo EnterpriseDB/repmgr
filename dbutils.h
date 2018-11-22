@@ -358,10 +358,6 @@ typedef struct RepmgrdInfo {
 } RepmgrdInfo;
 
 
-/* global variables */
-
-extern int	server_version_num;
-
 /* macros */
 
 #define is_streaming_replication(x) (x == PRIMARY || x == STANDBY)
@@ -420,7 +416,8 @@ bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
 
 /* server information functions */
 bool		get_cluster_size(PGconn *conn, char *size);
-int			get_server_version(PGconn *conn, char *server_version);
+int			get_server_version(PGconn *conn, char *server_version_buf);
+
 RecoveryType get_recovery_type(PGconn *conn);
 int			get_primary_node_id(PGconn *conn);
 int			get_ready_archive_files(PGconn *conn, const char *data_directory);
@@ -548,7 +545,7 @@ XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
 XLogRecPtr	get_current_lsn(PGconn *conn);
 bool		get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);
-void		get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *node_info);
+void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 bool		is_downstream_node_attached(PGconn *conn, char *node_name);
 void		set_primary_last_seen(PGconn *conn);
 int			get_primary_last_seen(PGconn *conn);

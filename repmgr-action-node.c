@@ -66,7 +66,6 @@ do_node_status(void)
 	PGconn	   *conn = NULL;
 
 	t_node_info node_info = T_NODE_INFO_INITIALIZER;
-	char		server_version[MAXLEN];
 	char		cluster_size[MAXLEN];
 	PQExpBufferData output;
 
@@ -80,6 +79,8 @@ do_node_status(void)
 	t_recovery_conf recovery_conf = T_RECOVERY_CONF_INITIALIZER;
 
 	char		data_dir[MAXPGPATH] = "";
+	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
+	char		server_version_str[MAXVERSIONSTR] = "";
 
 	if (runtime_options.is_shutdown_cleanly == true)
 	{
@@ -90,7 +91,7 @@ do_node_status(void)
 	conn = establish_db_connection(config_file_options.conninfo, true);
 	strncpy(data_dir, config_file_options.data_directory, MAXPGPATH);
 
-	server_version_num = get_server_version(conn, NULL);
+	server_version_num = get_server_version(conn, server_version_str);
 
 	/* check node exists  */
 
@@ -101,18 +102,16 @@ do_node_status(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	(void) get_server_version(conn, server_version);
-
 	if (get_cluster_size(conn, cluster_size) == false)
 		strncpy(cluster_size, _("unknown"), MAXLEN);
 
 	recovery_type = get_recovery_type(conn);
 
-	get_node_replication_stats(conn, server_version_num, &node_info);
+	get_node_replication_stats(conn, &node_info);
 
 	key_value_list_set(&node_status,
 					   "PostgreSQL version",
-					   server_version);
+					   server_version_str);
 
 	key_value_list_set(&node_status,
 					   "Total data size",
@@ -725,10 +724,8 @@ do_node_check(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	server_version_num = get_server_version(conn, NULL);
-
 	/* add replication statistics to node record */
-	get_node_replication_stats(conn, server_version_num, &node_info);
+	get_node_replication_stats(conn, &node_info);
 
 	/*
 	 * handle specific checks ======================
@@ -1618,7 +1615,7 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 
 	initPQExpBuffer(&details);
 
-	if (server_version_num < 90400)
+	if (PQserverVersion(conn) < 90400)
 	{
 		appendPQExpBufferStr(&details,
 							 _("replication slots not available for this PostgreSQL version"));
@@ -1694,7 +1691,7 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 
 	initPQExpBuffer(&details);
 
-	if (server_version_num < 90400)
+	if (PQserverVersion(conn) < 90400)
 	{
 		appendPQExpBufferStr(&details,
 							 _("replication slots not available for this PostgreSQL version"));
@@ -2005,7 +2002,6 @@ do_node_rejoin(void)
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 
 	bool		success = true;
-	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	int			follow_error_code = SUCCESS;
 
 	/* check node is not actually running */
@@ -2063,9 +2059,8 @@ do_node_rejoin(void)
 	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
 
 	/* sanity checks for 9.3 */
-	server_version_num = get_server_version(upstream_conn, NULL);
 
-	if (server_version_num < 90400)
+	if (PQserverVersion(upstream_conn) < 90400)
 		check_93_config();
 
 	if (get_primary_node_record(upstream_conn, &primary_node_record) == false)

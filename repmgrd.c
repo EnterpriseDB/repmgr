@@ -373,12 +373,6 @@ main(int argc, char **argv)
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	/*
-	 * store the server version number - we'll need this to generate
-	 * version-dependent queries etc.
-	 */
-	server_version_num = get_server_version(local_conn, NULL);
-
-	/*
 	 * sanity checks
 	 *
 	 * Note: previous repmgr versions checked the PostgreSQL version at this

@@ -32,8 +32,6 @@
 
 #define NODE_RECORD_PARAM_COUNT 11
 
-/* mainly for use by repmgrd */
-int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 /*
  * This is set by is_bdr_db(), which is called by every BDR-related
@@ -1096,14 +1094,16 @@ get_cluster_size(PGconn *conn, char *size)
 	return success;
 }
 
+
 /*
  * Return the server version number for the connection provided
  */
 int
-get_server_version(PGconn *conn, char *server_version)
+get_server_version(PGconn *conn, char *server_version_buf)
 {
 	PGresult   *res = NULL;
-	int			server_version_num;
+	int			_server_version_num = UNKNOWN_SERVER_VERSION_NUM;
+
 	const char	   *sqlquery =
 		"SELECT pg_catalog.current_setting('server_version_num'), "
 		"       pg_catalog.current_setting('server_version')";
@@ -1115,15 +1115,17 @@ get_server_version(PGconn *conn, char *server_version)
 		log_db_error(conn, sqlquery, _("unable to determine server version number"));
 		PQclear(res);
 
-		return -1;
+		return UNKNOWN_SERVER_VERSION_NUM;
 	}
 
-	if (server_version != NULL)
-	{
-		char		server_version_buf[MAXVERSIONSTR];
-		int			i;
+	_server_version_num = atoi(PQgetvalue(res, 0, 0));
 
-		memset(server_version_buf, 0, MAXVERSIONSTR);
+	if (server_version_buf != NULL)
+	{
+		int			i;
+		char		_server_version_buf[MAXVERSIONSTR] = "";
+
+		memset(_server_version_buf, 0, MAXVERSIONSTR);
 
 		/*
 		 * Some distributions may add extra info after the actual version number,
@@ -1131,22 +1133,20 @@ get_server_version(PGconn *conn, char *server_version)
 		 * first space.
 		 */
 
-		strncpy(server_version_buf, PQgetvalue(res, 0, 1), MAXVERSIONSTR);
+		strncpy(_server_version_buf, PQgetvalue(res, 0, 1), MAXVERSIONSTR);
 
 		for (i = 0; i < MAXVERSIONSTR; i++)
 		{
-			if (server_version_buf[i] == ' ')
+			if (_server_version_buf[i] == ' ')
 				break;
 
-			*server_version++ = server_version_buf[i];
+			*server_version_buf++ = _server_version_buf[i];
 		}
 	}
 
-	server_version_num = atoi(PQgetvalue(res, 0, 0));
-
 	PQclear(res);
 
-	return server_version_num;
+	return _server_version_num;
 }
 
 
@@ -1382,9 +1382,6 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 	PGresult   *res = NULL;
 	bool		success = true;
 
-	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
-		server_version_num = get_server_version(conn, NULL);
-
 	initPQExpBuffer(&query);
 	appendPQExpBufferStr(&query,
 						 " SELECT ts, "
@@ -1399,7 +1396,7 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 						 "        COALESCE(last_wal_receive_lsn, '0/0') >= last_wal_replay_lsn AS receiving_streamed_wal "
 						 "   FROM ( ");
 
-	if (server_version_num >= 100000)
+	if (PQserverVersion(conn) >= 100000)
 	{
 		appendPQExpBufferStr(&query,
 							 " SELECT CURRENT_TIMESTAMP AS ts, "
@@ -1456,10 +1453,7 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 
 	int			ready_count = 0;
 
-	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
-		server_version_num = get_server_version(conn, NULL);
-
-	if (server_version_num >= 100000)
+	if (PQserverVersion(conn) >= 100000)
 	{
 		snprintf(archive_status_dir, MAXPGPATH,
 				 "%s/pg_wal/archive_status",
@@ -1533,12 +1527,9 @@ get_replication_lag_seconds(PGconn *conn)
 	PGresult   *res = NULL;
 	int			lag_seconds = 0;
 
-	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
-		server_version_num = get_server_version(conn, NULL);
-
 	initPQExpBuffer(&query);
 
-	if (server_version_num >= 100000)
+	if (PQserverVersion(conn) >= 100000)
 	{
 		appendPQExpBufferStr(&query,
 							 " SELECT CASE WHEN (pg_catalog.pg_last_wal_receive_lsn() = pg_catalog.pg_last_wal_replay_lsn()) ");
@@ -3107,15 +3098,10 @@ update_node_record_slot_name(PGconn *primary_conn, int node_id, char *slot_name)
 
 
 void
-get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *node_info)
+get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
-
-	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
-		server_version_num = get_server_version(conn, NULL);
-
-	Assert(server_version_num != UNKNOWN_SERVER_VERSION_NUM);
 
 	initPQExpBuffer(&query);
 
@@ -3124,7 +3110,7 @@ get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *no
 						 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication) AS attached_wal_receivers, ");
 
 	/* no replication slots in PostgreSQL 9.3 */
-	if (server_version_num < 90400)
+	if (PQserverVersion(conn) < 90400)
 	{
 		appendPQExpBufferStr(&query,
 							 "        0 AS max_replication_slots, "
@@ -3958,9 +3944,6 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 	PGresult   *res = NULL;
 	t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
 
-	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
-		server_version_num = get_server_version(conn, NULL);
-
 	/*
 	 * Check whether slot exists already; if it exists and is active, that
 	 * means another active standby is using it, which creates an error
@@ -3997,7 +3980,7 @@ create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, P
 	initPQExpBuffer(&query);
 
 	/* In 9.6 and later, reserve the LSN straight away */
-	if (server_version_num >= 90600)
+	if (PQserverVersion(conn) >= 90600)
 	{
 		appendPQExpBuffer(&query,
 						  "SELECT * FROM pg_catalog.pg_create_physical_replication_slot('%s', TRUE)",
@@ -4762,7 +4745,7 @@ get_current_wal_lsn(PGconn *conn)
 	PGresult   *res = NULL;
 	XLogRecPtr	ptr = InvalidXLogRecPtr;
 
-	if (server_version_num >= 100000)
+	if (PQserverVersion(conn) >= 100000)
 	{
 		res = PQexec(conn, "SELECT pg_catalog.pg_current_wal_lsn()");
 	}
@@ -4787,7 +4770,7 @@ get_last_wal_receive_location(PGconn *conn)
 	PGresult   *res = NULL;
 	XLogRecPtr	ptr = InvalidXLogRecPtr;
 
-	if (server_version_num >= 100000)
+	if (PQserverVersion(conn) >= 100000)
 	{
 		res = PQexec(conn, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
 	}
@@ -4815,47 +4798,7 @@ get_current_lsn(PGconn *conn)
 
 	initPQExpBuffer(&query);
 
-	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
-		server_version_num = get_server_version(conn, NULL);
-
-/*
-WITH lsn_states AS (
-  SELECT
-    CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE
-      THEN pg_catalog.pg_current_wal_lsn()
-      ELSE NULL
-    END
-      AS current_wal_lsn,
-    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE
-	   THEN pg_catalog.pg_last_wal_receive_lsn()
-       ELSE NULL
-    END
-      AS last_wal_receive_lsn,
-    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE
-	   THEN pg_catalog.pg_last_wal_replay_lsn()
-       ELSE NULL
-    END
-      AS last_wal_replay_lsn
-)
-SELECT
-  CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE
-    THEN current_wal_lsn
-    ELSE
-      CASE WHEN last_wal_receive_lsn IS NULL
-         THEN last_wal_replay_lsn
-         ELSE
-           CASE WHEN last_wal_replay_lsn > last_wal_receive_lsn
-             THEN last_wal_replay_lsn
-             ELSE last_wal_receive_lsn
-           END
-       END
-  END
-    AS current_lsn
-   FROM lsn_states
-
-
-*/
-	if (server_version_num >= 100000)
+	if (PQserverVersion(conn) >= 100000)
 	{
 		appendPQExpBufferStr(&query,
 							 " WITH lsn_states AS ( "

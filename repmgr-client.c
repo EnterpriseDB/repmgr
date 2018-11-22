@@ -2238,17 +2238,15 @@ create_repmgr_extension(PGconn *conn)
 int
 check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string)
 {
-	int			conn_server_version_num = UNKNOWN_SERVER_VERSION_NUM;
+	int			conn_server_version_num = get_server_version(conn, server_version_string);
 
-	conn_server_version_num = get_server_version(conn, server_version_string);
 	if (conn_server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		if (conn_server_version_num > 0)
 			log_error(_("%s requires %s to be PostgreSQL %s or later"),
 					  progname(),
 					  server_type,
-					  MIN_SUPPORTED_VERSION
-				);
+					  MIN_SUPPORTED_VERSION);
 
 		if (exit_on_error == true)
 		{
@@ -2256,7 +2254,7 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 			exit(ERR_BAD_CONFIG);
 		}
 
-		return -1;
+		return UNKNOWN_SERVER_VERSION_NUM;
 	}
 
 	return conn_server_version_num;
@@ -3032,10 +3030,9 @@ bool
 can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason)
 {
 	bool		can_use = true;
-	int			server_version_num = get_server_version(conn, NULL);
 
 	/* wal_log_hints not available in 9.3, so just determine if data checksums enabled */
-	if (server_version_num < 90400)
+	if (PQserverVersion(conn) < 90400)
 	{
 		int			data_checksum_version = get_data_checksum_version(data_directory);
 

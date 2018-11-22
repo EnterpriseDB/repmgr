@@ -1083,7 +1083,7 @@ _do_create_recovery_conf(void)
 		/* if not, if check one can and should be created */
 		else
 		{
-			get_node_replication_stats(upstream_conn, UNKNOWN_SERVER_VERSION_NUM, &upstream_node_record);
+			get_node_replication_stats(upstream_conn, &upstream_node_record);
 
 		    if (upstream_node_record.max_replication_slots > upstream_node_record.total_replication_slots)
 			{
@@ -2194,7 +2194,6 @@ do_standby_follow(void)
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
 	int			timer = 0;
-	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	PQExpBufferData follow_output;
 	bool		success = false;
@@ -2221,9 +2220,7 @@ do_standby_follow(void)
 	check_recovery_type(local_conn);
 
 	/* sanity-checks for 9.3 */
-	server_version_num = get_server_version(local_conn, NULL);
-
-	if (server_version_num < 90400)
+	if (PQserverVersion(local_conn) < 90400)
 		check_93_config();
 
 	/*
@@ -2577,7 +2574,7 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	if (config_file_options.use_replication_slots)
 	{
-		int			primary_server_version_num = get_server_version(primary_conn, NULL);
+		int			primary_server_version_num = PQserverVersion(primary_conn);
 
 		/*
 		 * Here we add a sanity check for the "slot_name" field - it's possible
@@ -3202,7 +3199,7 @@ do_standby_switchover(void)
 	 * populate local node record with current state of various replication-related
 	 * values, so we can check for sufficient walsenders and replication slots
 	 */
-	get_node_replication_stats(local_conn, server_version_num, &local_node_record);
+	get_node_replication_stats(local_conn, &local_node_record);
 
 	available_wal_senders = local_node_record.max_wal_senders -
 		local_node_record.attached_wal_receivers;
