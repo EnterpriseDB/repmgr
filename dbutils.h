@@ -545,6 +545,7 @@ void		reset_voting_status(PGconn *conn);
 /* replication status functions */
 XLogRecPtr	get_current_wal_lsn(PGconn *conn);
 XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
+XLogRecPtr	get_current_lsn(PGconn *conn);
 bool		get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);
 void		get_node_replication_stats(PGconn *conn, int server_version_num, t_node_info *node_info);

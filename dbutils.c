@@ -4787,7 +4787,6 @@ get_last_wal_receive_location(PGconn *conn)
 	PGresult   *res = NULL;
 	XLogRecPtr	ptr = InvalidXLogRecPtr;
 
-
 	if (server_version_num >= 100000)
 	{
 		res = PQexec(conn, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
@@ -4802,6 +4801,134 @@ get_last_wal_receive_location(PGconn *conn)
 		ptr = parse_lsn(PQgetvalue(res, 0, 0));
 	}
 
+	PQclear(res);
+
+	return ptr;
+}
+
+XLogRecPtr
+get_current_lsn(PGconn *conn)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	XLogRecPtr	ptr = InvalidXLogRecPtr;
+
+	initPQExpBuffer(&query);
+
+	if (server_version_num == UNKNOWN_SERVER_VERSION_NUM)
+		server_version_num = get_server_version(conn, NULL);
+
+/*
+WITH lsn_states AS (
+  SELECT
+    CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE
+      THEN pg_catalog.pg_current_wal_lsn()
+      ELSE NULL
+    END
+      AS current_wal_lsn,
+    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE
+	   THEN pg_catalog.pg_last_wal_receive_lsn()
+       ELSE NULL
+    END
+      AS last_wal_receive_lsn,
+    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE
+	   THEN pg_catalog.pg_last_wal_replay_lsn()
+       ELSE NULL
+    END
+      AS last_wal_replay_lsn
+)
+SELECT
+  CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE
+    THEN current_wal_lsn
+    ELSE
+      CASE WHEN last_wal_receive_lsn IS NULL
+         THEN last_wal_replay_lsn
+         ELSE
+           CASE WHEN last_wal_replay_lsn > last_wal_receive_lsn
+             THEN last_wal_replay_lsn
+             ELSE last_wal_receive_lsn
+           END
+       END
+  END
+    AS current_lsn
+   FROM lsn_states
+
+
+*/
+	if (server_version_num >= 100000)
+	{
+		appendPQExpBufferStr(&query,
+							 " WITH lsn_states AS ( "
+							 "  SELECT "
+							 "    CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "      THEN pg_catalog.pg_current_wal_lsn() "
+							 "      ELSE NULL "
+							 "    END "
+							 "      AS current_wal_lsn, "
+							 "    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE "
+							 "      THEN pg_catalog.pg_last_wal_receive_lsn() "
+							 "      ELSE NULL "
+							 "    END "
+							 "      AS last_wal_receive_lsn, "
+							 "    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE "
+							 "      THEN pg_catalog.pg_last_wal_replay_lsn() "
+							 "      ELSE NULL "
+							 "     END "
+							 "       AS last_wal_replay_lsn "
+							 " ) ");
+	}
+	else
+	{
+		appendPQExpBufferStr(&query,
+							 " WITH lsn_states AS ( "
+							 "  SELECT "
+							 "    CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "      THEN pg_catalog.pg_current_xlog_location() "
+							 "      ELSE NULL "
+							 "    END "
+							 "      AS current_wal_lsn, "
+							 "    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE "
+							 "      THEN pg_catalog.pg_last_xlog_receive_location() "
+							 "      ELSE NULL "
+							 "    END "
+							 "      AS last_wal_receive_lsn, "
+							 "    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE "
+							 "      THEN pg_catalog.pg_last_xlog_replay_location()) "
+							 "      ELSE NULL "
+							 "     END "
+							 "       AS last_wal_replay_lsn "
+							 " ) ");
+	}
+
+	appendPQExpBufferStr(&query,
+						 " SELECT "
+						 "   CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+						 "     THEN current_wal_lsn "
+						 "     ELSE "
+						 "       CASE WHEN last_wal_receive_lsn IS NULL "
+						 "       THEN last_wal_replay_lsn "
+						 "         ELSE "
+						 "           CASE WHEN last_wal_replay_lsn > last_wal_receive_lsn "
+						 "             THEN last_wal_replay_lsn "
+						 "             ELSE last_wal_receive_lsn "
+						 "           END "
+						 "       END "
+						 "   END "
+						 "     AS current_lsn "
+						 "   FROM lsn_states ");
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("unable to execute get_current_lsn()"));
+	}
+	else if (!PQgetisnull(res, 0, 0))
+	{
+		ptr = parse_lsn(PQgetvalue(res, 0, 0));
+	}
+
+	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return ptr;
