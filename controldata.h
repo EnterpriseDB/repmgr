@@ -12,6 +12,7 @@
 #include "postgres_fe.h"
 #include "catalog/pg_control.h"
 
+#define MAX_VERSION_STRING 24
 /*
  * A simplified representation of pg_control containing only those fields
  * required by repmgr.
@@ -329,7 +330,7 @@ typedef struct ControlFileData11
 } ControlFileData11;
 
 
-
+extern int get_pg_version(const char *data_directory, char *version_string);
 extern DBState get_db_state(const char *data_directory);
 extern const char *describe_db_state(DBState state);
 extern int	get_data_checksum_version(const char *data_directory);

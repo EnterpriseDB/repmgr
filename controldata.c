@@ -36,6 +36,53 @@
 
 static ControlFileInfo *get_controlfile(const char *DataDir);
 
+int
+get_pg_version(const char *data_directory, char *version_string)
+{
+	char		PgVersionPath[MAXPGPATH] = "";
+	FILE	   *fp = NULL;
+	char	   *endptr = NULL;
+	char		file_version_string[MAX_VERSION_STRING] = "";
+	long		file_major, file_minor;
+	int			ret;
+
+	snprintf(PgVersionPath, MAXPGPATH, "%s/PG_VERSION", data_directory);
+
+	fp = fopen(PgVersionPath, "r");
+
+	if (fp == NULL)
+	{
+		log_warning(_("could not open file \"%s\" for reading"),
+					PgVersionPath);
+		log_detail("%s", strerror(errno));
+		return UNKNOWN_SERVER_VERSION_NUM;
+	}
+
+	file_version_string[0] = '\0';
+
+	ret = fscanf(fp, "%23s", file_version_string);
+	fclose(fp);
+
+	if (ret != 1 || endptr == file_version_string)
+	{
+		log_warning(_("unable to determine major version number from PG_VERSION"));
+
+		return UNKNOWN_SERVER_VERSION_NUM;
+	}
+
+	file_major = strtol(file_version_string, &endptr, 10);
+	file_minor = 0;
+
+	if (*endptr == '.')
+		file_minor = strtol(endptr + 1, NULL, 10);
+
+	if (version_string != NULL)
+		strncpy(version_string, file_version_string, MAX_VERSION_STRING);
+
+	return ((int) file_major * 10000) + ((int) file_minor * 100);
+}
+
+
 uint64
 get_system_identifier(const char *data_directory)
 {
@@ -49,6 +96,7 @@ get_system_identifier(const char *data_directory)
 
 	return system_identifier;
 }
+
 
 DBState
 get_db_state(const char *data_directory)
@@ -130,14 +178,10 @@ describe_db_state(DBState state)
 static ControlFileInfo *
 get_controlfile(const char *DataDir)
 {
+	char		file_version_string[MAX_VERSION_STRING] = "";
 	ControlFileInfo *control_file_info;
-	FILE	   *fp = NULL;
-	int			fd, ret, version_num;
-	char		PgVersionPath[MAXPGPATH] = "";
+	int			fd, version_num;
 	char		ControlFilePath[MAXPGPATH] = "";
-	char		file_version_string[64] = "";
-	long		file_major, file_minor;
-	char	   *endptr = NULL;
 	void	   *ControlFileDataPtr = NULL;
 	int			expected_size = 0;
 
@@ -154,44 +198,23 @@ get_controlfile(const char *DataDir)
 	 * Read PG_VERSION, as we'll need to determine which struct to read
 	 * the control file contents into
 	 */
-	snprintf(PgVersionPath, MAXPGPATH, "%s/PG_VERSION", DataDir);
 
-	fp = fopen(PgVersionPath, "r");
+	version_num = get_pg_version(DataDir, file_version_string);
 
-	if (fp == NULL)
+	if (version_num == UNKNOWN_SERVER_VERSION_NUM)
 	{
-		log_warning(_("could not open file \"%s\" for reading"),
-					PgVersionPath);
-		log_detail("%s", strerror(errno));
+		log_warning(_("unable to determine server version number from PG_VERSION"));
 		return control_file_info;
 	}
 
-	file_version_string[0] = '\0';
-
-	ret = fscanf(fp, "%63s", file_version_string);
-	fclose(fp);
-
-	if (ret != 1 || endptr == file_version_string)
+	if (version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
-		log_warning(_("unable to determine major version number from PG_VERSION"));
-
+		log_warning(_("data directory appears to be initialised for %s"),
+					file_version_string);
+		log_detail(_("minimum supported PostgreSQL version is %s"),
+				   MIN_SUPPORTED_VERSION);
 		return control_file_info;
 	}
-
-	file_major = strtol(file_version_string, &endptr, 10);
-	file_minor = 0;
-
-	if (*endptr == '.')
-		file_minor = strtol(endptr + 1, NULL, 10);
-
-	version_num = ((int) file_major * 10000) + ((int) file_minor * 100);
-
-	if (version_num < 90300)
-	{
-		log_warning(_("Data directory appears to be initialised for %s"), file_version_string);
-		return control_file_info;
-	}
-
 
 	snprintf(ControlFilePath, MAXPGPATH, "%s/global/pg_control", DataDir);
 
