@@ -74,6 +74,7 @@
 <!ENTITY repmgr-node-status SYSTEM "repmgr-node-status.sgml">
 <!ENTITY repmgr-node-check SYSTEM "repmgr-node-check.sgml">
 <!ENTITY repmgr-node-rejoin SYSTEM "repmgr-node-rejoin.sgml">
+<!ENTITY repmgr-node-service SYSTEM "repmgr-node-service.sgml">
 <!ENTITY repmgr-cluster-show SYSTEM "repmgr-cluster-show.sgml">
 <!ENTITY repmgr-cluster-matrix SYSTEM "repmgr-cluster-matrix.sgml">
 <!ENTITY repmgr-cluster-crosscheck SYSTEM "repmgr-cluster-crosscheck.sgml">

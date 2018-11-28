@@ -1,0 +1,151 @@
+<refentry id="repmgr-node-service">
+  <indexterm>
+    <primary>repmgr node service</primary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr node service</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr node service</refname>
+    <refpurpose>show or execute the system service command to stop/start/restart/reload/promote a node</refpurpose>
+  </refnamediv>
+
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Shows or executes the system service command to stop/start/restart/reload a node.
+    </para>
+    <para>
+      This command is mainly meant for internal &repmgr; usage, but is useful for
+      confirming the command configuration.
+    </para>
+  </refsect1>
+
+  <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Log the steps which would be taken, including displaying the command which would be executed.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--action</option></term>
+        <listitem>
+          <para>
+            The action to perform. One of <literal>start</literal>, <literal>stop</literal>,
+            <literal>restart</literal>, <literal>reload</literal> or <literal>promote</literal>.
+          </para>
+          <para>
+            If the parameter <option>--list-actions</option> is provided together with
+            <option>--action</option>, the command which would be executed will be printed.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+        <term><option>--list-actions</option></term>
+        <listitem>
+          <para>
+            List all configured commands.
+          </para>
+          <para>
+            If the parameter <option>--action</option> is provided together with
+            <option>--list-actions</option>, the command which would be executed for that
+            particular action will be printed.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+     <varlistentry>
+        <term><option>--checkpoint</option></term>
+        <listitem>
+          <para>
+            Issue a <command>CHECKPOINT</command> before stopping or restarting the node.
+          </para>
+        </listitem>
+     </varlistentry>
+    </variablelist>
+
+  </refsect1>
+
+  <refsect1>
+    <title>Exit codes</title>
+    <para>
+      Following exit codes can be emitted by <command>repmgr node service</command>:
+    </para>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            No issues were detected.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_LOCAL_COMMAND (5)</option></term>
+        <listitem>
+          <para>
+            Execution of the system service command failed.
+          </para>
+        </listitem>
+      </varlistentry>
+
+   </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>Examples</title>
+    <para>
+      See what action would be taken for a restart:
+      <programlisting>
+[postgres@node1 ~]$ repmgr -f /etc/repmgr/11/repmgr.conf node service --action=restart --checkpoint --dry-run
+INFO: a CHECKPOINT would be issued here
+INFO: would execute server command "sudo service postgresql-11 restart"</programlisting>
+    </para>
+
+    <para>
+      Restart the PostgreSQL instance:
+      <programlisting>
+[postgres@node1 ~]$ repmgr -f /etc/repmgr/11/repmgr.conf node service --action=restart --checkpoint
+NOTICE: issuing CHECKPOINT
+DETAIL: executing server command "sudo service postgresql-11 restart"
+Redirecting to /bin/systemctl restart postgresql-11.service</programlisting>
+    </para>
+
+    <para>
+      List all commands:
+      <programlisting>
+[postgres@node1 ~]$ repmgr -f /etc/repmgr/11/repmgr.conf node service --list-actions
+Following commands would be executed for each action:
+
+    start: "sudo service postgresql-11 start"
+     stop: "sudo service postgresql-11 stop"
+  restart: "sudo service postgresql-11 restart"
+   reload: "sudo service postgresql-11 reload"
+  promote: "/usr/pgsql-11/bin/pg_ctl  -w -D '/var/lib/pgsql/11/data' promote"</programlisting>
+    </para>
+
+    <para>
+      List a single command:
+      <programlisting>
+[postgres@node1 ~]$ repmgr -f /etc/repmgr/11/repmgr.conf node service --list-actions --action=promote
+/usr/pgsql-11/bin/pg_ctl  -w -D '/var/lib/pgsql/11/data' promote      </programlisting>
+    </para>
+  </refsect1>
+</refentry>
