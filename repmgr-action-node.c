@@ -2958,6 +2958,7 @@ do_node_help(void)
 	printf(_("    --dry-run             show what action would be performed, but don't execute it\n"));
 	printf(_("    --action              action to perform (one of \"start\", \"stop\", \"restart\" or \"reload\")\n"));
 	printf(_("    --list-actions        show what command would be performed for each action\n"));
+	printf(_("    --checkpoint          issue a CHECKPOINT before stopping or restarting the node\n"));
 	puts("");
 
 

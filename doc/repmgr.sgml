@@ -108,6 +108,7 @@
   &repmgr-node-status;
   &repmgr-node-check;
   &repmgr-node-rejoin;
+  &repmgr-node-service;
   &repmgr-cluster-show;
   &repmgr-cluster-matrix;
   &repmgr-cluster-crosscheck;

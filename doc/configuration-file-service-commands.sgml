@@ -74,12 +74,12 @@
 
   <para>
     To confirm which command &repmgr; will execute for each action, use
-    <command>repmgr node service --list --action=...</command>, e.g.:
+    <command><link linkend="repmgr-node-service">repmgr node service --list-actions --action=...</link></command>, e.g.:
     <programlisting>
-      repmgr -f /etc/repmgr.conf node service --list --action=stop
-      repmgr -f /etc/repmgr.conf node service --list --action=start
-      repmgr -f /etc/repmgr.conf node service --list --action=restart
-      repmgr -f /etc/repmgr.conf node service --list --action=reload</programlisting>
+      repmgr -f /etc/repmgr.conf node service --list-actions --action=stop
+      repmgr -f /etc/repmgr.conf node service --list-actions --action=start
+      repmgr -f /etc/repmgr.conf node service --list-actions --action=restart
+      repmgr -f /etc/repmgr.conf node service --list-actions --action=reload</programlisting>
   </para>
 
   <para>
