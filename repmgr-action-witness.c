@@ -37,6 +37,7 @@ do_witness_register(void)
 	PGconn	   *witness_conn = NULL;
 	PGconn	   *primary_conn = NULL;
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
+	ExtensionStatus extension_status = REPMGR_UNKNOWN;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
@@ -214,33 +215,45 @@ do_witness_register(void)
 		}
 	}
 
+	extension_status = get_repmgr_extension_status(witness_conn, NULL);
+
 	/*
-	 * if repmgr.nodes contains entries, delete if -F/--force provided,
-	 * otherwise exit with error
+	 * Check if the witness database already contains node records;
+	 * only do this if the extension is actually installed.
 	 */
-	if (get_all_node_records(witness_conn, &nodes) == false)
+	if (extension_status == REPMGR_INSTALLED
+	 || extension_status == REPMGR_OLD_VERSION_INSTALLED)
 	{
-		/* get_all_node_records() will display the error */
-		PQfinish(witness_conn);
-		PQfinish(primary_conn);
-		exit(ERR_BAD_CONFIG);
-	}
+		/*
+		 * if repmgr.nodes contains entries, exit with error unless
+		 * -F/--force provided (which will cause the existing records
+		 * to be overwritten)
+		 */
 
-	log_verbose(LOG_DEBUG, "%i node records found", nodes.node_count);
-
-	if (nodes.node_count > 0)
-	{
-		if (!runtime_options.force)
+		if (get_all_node_records(witness_conn, &nodes) == false)
 		{
-			log_error(_("witness node is already initialised and contains node records"));
-			log_hint(_("use option -F/--force to reinitialise the node"));
-			PQfinish(primary_conn);
+			/* get_all_node_records() will display the error */
 			PQfinish(witness_conn);
+			PQfinish(primary_conn);
 			exit(ERR_BAD_CONFIG);
 		}
-	}
 
-	clear_node_info_list(&nodes);
+		log_verbose(LOG_DEBUG, "%i node records found", nodes.node_count);
+
+		if (nodes.node_count > 0)
+		{
+			if (!runtime_options.force)
+			{
+				log_error(_("witness node is already initialised and contains node records"));
+				log_hint(_("use option -F/--force to reinitialise the node"));
+				PQfinish(primary_conn);
+				PQfinish(witness_conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+
+		clear_node_info_list(&nodes);
+	}
 
 	if (runtime_options.dry_run == true)
 	{
