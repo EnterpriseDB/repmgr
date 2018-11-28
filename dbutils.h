@@ -408,7 +408,6 @@ bool		has_passfile(void);
 bool		begin_transaction(PGconn *conn);
 bool		commit_transaction(PGconn *conn);
 bool		rollback_transaction(PGconn *conn);
-bool		check_cluster_schema(PGconn *conn);
 
 /* GUC manipulation functions */
 bool		set_config(PGconn *conn, const char *config_param, const char *config_value);
