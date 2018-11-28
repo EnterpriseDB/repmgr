@@ -4169,6 +4169,8 @@ do_standby_switchover(void)
 
 			if (sibling_node_record.type == WITNESS)
 			{
+				PGconn *witness_conn = NULL;
+
 				/* TODO: create "repmgr witness resync" or similar */
 				appendPQExpBuffer(&remote_command_str,
 								  "witness register -d \\'%s\\' --force 2>/dev/null && echo \"1\" || echo \"0\"",
@@ -4181,13 +4183,13 @@ do_standby_switchover(void)
 				 *
 				 * In the unlikely event repmgrd is not running or not in use, this will have no effect.
 				 */
-				cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
+				witness_conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
-				if (PQstatus(cell->node_info->conn) == CONNECTION_OK)
+				if (PQstatus(witness_conn) == CONNECTION_OK)
 				{
-					notify_follow_primary(cell->node_info->conn, local_node_record.node_id);
+					notify_follow_primary(witness_conn, local_node_record.node_id);
 				}
-				PQfinish(cell->node_info->conn);
+				PQfinish(witness_conn);
 			}
 			else
 			{
