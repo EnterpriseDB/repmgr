@@ -1398,53 +1398,45 @@ monitor_streaming_witness(void)
 
 	/*
 	 * At this point we can't trust the local copy of "repmgr.nodes", as
-	 * it may not have been updated. We'll scan the cluster for the current
-	 * primary and refresh the copy from that before proceeding further.
+	 * it may not have been updated. We'll scan the cluster to find the
+	 * current primary and refresh the copy from that before proceeding
+	 * further.
 	 */
 	primary_conn = get_primary_connection_quiet(local_conn, &primary_node_id, NULL);
 
 	/*
-	 * Primary node must be running at repmgrd startup.
+	 * Primary node should be running at repmgrd startup.
 	 *
-	 * We could possibly have repmgrd skip to degraded monitoring mode until
-	 * it comes up, but there doesn't seem to be much point in doing that.
+	 * Otherwise we'll skip to degraded monitoring.
 	 */
-	if (PQstatus(primary_conn) != CONNECTION_OK)
-	{
-		log_error(_("unable connect to upstream node (ID: %i), terminating"),
-				  upstream_node_info.node_id);
-		log_hint(_("primary node must be running before repmgrd can start"));
-
-		terminate(ERR_DB_CONN);
-	}
-
-	/* synchronise local copy of "repmgr.nodes", in case it was stale */
-	witness_copy_node_records(primary_conn, local_conn);
-
-	/*
-	 * refresh upstream node record from primary, so it's as up-to-date
-	 * as possible
-	 */
-	record_status = get_node_record(primary_conn, primary_node_id, &upstream_node_info);
-
-	/*
-	 * This is unlikely to happen; if it does emit a warning for diagnostic
-	 * purposes and plough on regardless.
-	 *
-	 * A check for the existence of the record will have already been carried out
-	 * in main().
-	 */
-	if (record_status != RECORD_FOUND)
-	{
-		log_warning(_("unable to retrieve node record from primary"));
-	}
-
+	if (PQstatus(primary_conn) == CONNECTION_OK)
 	{
 		PQExpBufferData event_details;
 
 		char *event_type = startup_event_logged == false
 			? "repmgrd_start"
 			: "repmgrd_upstream_reconnect";
+
+		/* synchronise local copy of "repmgr.nodes", in case it was stale */
+		witness_copy_node_records(primary_conn, local_conn);
+
+		/*
+		 * refresh upstream node record from primary, so it's as up-to-date
+		 * as possible
+		 */
+		record_status = get_node_record(primary_conn, primary_node_id, &upstream_node_info);
+
+		/*
+		 * This is unlikely to happen; if it does emit a warning for diagnostic
+		 * purposes and plough on regardless.
+		 *
+		 * A check for the existence of the record will have already been carried out
+		 * in main().
+		 */
+		if (record_status != RECORD_FOUND)
+		{
+			log_warning(_("unable to retrieve node record from primary"));
+		}
 
 		initPQExpBuffer(&event_details);
 
@@ -1466,13 +1458,45 @@ monitor_streaming_witness(void)
 			startup_event_logged = true;
 
 		termPQExpBuffer(&event_details);
+
+		monitoring_state = MS_NORMAL;
+		INSTR_TIME_SET_CURRENT(log_status_interval_start);
+		INSTR_TIME_SET_CURRENT(witness_sync_interval_start);
+
+		upstream_node_info.node_status = NODE_STATUS_UP;
 	}
+	else
+	{
+		/*
+		 * Here we're unable to connect to a primary despite having scanned all
+		 * known nodes, so we'll grab the record of the node we think is primary
+		 * and continue straight to degraded monitoring in the hope a primary
+		 * will appear.
+		 */
 
-	monitoring_state = MS_NORMAL;
-	INSTR_TIME_SET_CURRENT(log_status_interval_start);
-	INSTR_TIME_SET_CURRENT(witness_sync_interval_start);
+		primary_node_id = get_primary_node_id(local_conn);
 
-	upstream_node_info.node_status = NODE_STATUS_UP;
+		log_debug("unable to find current primary; setting primary_node_id to last known ID %i", primary_node_id);
+
+		record_status = get_node_record(local_conn, primary_node_id, &upstream_node_info);
+
+		/*
+		 * This is unlikely to happen, but if for whatever reason there's
+		 * no primary record in the local table, we should just give up
+		 */
+		if (record_status != RECORD_FOUND)
+		{
+			log_error(_("unable to retrieve node record for last known primary %i"),
+						primary_node_id);
+			log_hint(_("execute \"repmgr witness register --force\" to sync the local node records"));
+			PQfinish(local_conn);
+			terminate(ERR_BAD_CONFIG);
+		}
+
+		monitoring_state = MS_DEGRADED;
+		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+		upstream_node_info.node_status = NODE_STATUS_DOWN;
+	}
 
 	while (true)
 	{
@@ -1480,7 +1504,7 @@ monitor_streaming_witness(void)
 		{
 			if (upstream_node_info.node_status == NODE_STATUS_UP)
 			{
-				instr_time	upstream_node_unreachable_start;
+				instr_time		upstream_node_unreachable_start;
 
 				INSTR_TIME_SET_CURRENT(upstream_node_unreachable_start);
 
@@ -1769,6 +1793,7 @@ loop:
 		 * has changed
 		 */
 
+		if (PQstatus(primary_conn) == CONNECTION_OK)
 		{
 			int witness_sync_interval_elapsed = calculate_elapsed(witness_sync_interval_start);
 
