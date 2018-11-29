@@ -114,7 +114,7 @@ get_db_state(const char *data_directory)
 }
 
 
-extern XLogRecPtr
+XLogRecPtr
 get_latest_checkpoint_location(const char *data_directory)
 {
 	ControlFileInfo *control_file_info = NULL;
@@ -171,6 +171,38 @@ describe_db_state(DBState state)
 }
 
 
+TimeLineID
+get_timeline(const char *data_directory)
+{
+	ControlFileInfo *control_file_info = NULL;
+	TimeLineID		 timeline = -1;
+
+	control_file_info = get_controlfile(data_directory);
+
+	timeline = (int) control_file_info->timeline;
+
+	pfree(control_file_info);
+
+	return timeline;
+}
+
+
+XLogRecPtr
+get_min_recovery_location(const char *data_directory)
+{
+	ControlFileInfo *control_file_info = NULL;
+	XLogRecPtr	minRecoveryPoint  = InvalidXLogRecPtr;
+
+	control_file_info = get_controlfile(data_directory);
+
+	minRecoveryPoint = control_file_info->minRecoveryPoint;
+
+	pfree(control_file_info);
+
+	return minRecoveryPoint;
+}
+
+
 /*
  * We maintain our own version of get_controlfile() as we need cross-version
  * compatibility, and also don't care if the file isn't readable.
@@ -193,6 +225,7 @@ get_controlfile(const char *DataDir)
 	control_file_info->state = DB_SHUTDOWNED;
 	control_file_info->checkPoint = InvalidXLogRecPtr;
 	control_file_info->data_checksum_version = -1;
+	control_file_info->timeline = -1;
 
 	/*
 	 * Read PG_VERSION, as we'll need to determine which struct to read
@@ -264,6 +297,8 @@ get_controlfile(const char *DataDir)
 		control_file_info->state = ptr->state;
 		control_file_info->checkPoint = ptr->checkPoint;
 		control_file_info->data_checksum_version = ptr->data_checksum_version;
+		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 	}
 	else if (version_num >= 90500)
 	{
@@ -272,6 +307,8 @@ get_controlfile(const char *DataDir)
 		control_file_info->state = ptr->state;
 		control_file_info->checkPoint = ptr->checkPoint;
 		control_file_info->data_checksum_version = ptr->data_checksum_version;
+		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 	}
 	else if (version_num >= 90400)
 	{
@@ -280,6 +317,8 @@ get_controlfile(const char *DataDir)
 		control_file_info->state = ptr->state;
 		control_file_info->checkPoint = ptr->checkPoint;
 		control_file_info->data_checksum_version = ptr->data_checksum_version;
+		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 	}
 	else if (version_num >= 90300)
 	{
@@ -288,6 +327,8 @@ get_controlfile(const char *DataDir)
 		control_file_info->state = ptr->state;
 		control_file_info->checkPoint = ptr->checkPoint;
 		control_file_info->data_checksum_version = ptr->data_checksum_version;
+		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 	}
 
 	pfree(ControlFileDataPtr);

@@ -2301,7 +2301,14 @@ do_node_rejoin(void)
 
 	initPQExpBuffer(&follow_output);
 
+	/*
+	 * do_standby_follow_internal() can handle situations where the follow
+	 * target is not the primary, so requires database handles to both
+	 * (even if they point to the same node). For the time being,
+	 * "node rejoin" will only attatch a standby to the primary.
+	 */
 	success = do_standby_follow_internal(upstream_conn,
+										 upstream_conn,
 										 &primary_node_record,
 										 &follow_output,
 										 &follow_error_code);
