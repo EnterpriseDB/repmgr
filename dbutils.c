@@ -3937,7 +3937,7 @@ create_slot_name(char *slot_name, int node_id)
 
 
 bool
-create_replication_slot(PGconn *conn, char *slot_name, int server_version_num, PQExpBufferData *error_msg)
+create_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_msg)
 {
 	PQExpBufferData query;
 	RecordStatus record_status = RECORD_NOT_FOUND;

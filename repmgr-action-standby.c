@@ -1189,7 +1189,6 @@ _do_create_recovery_conf(void)
 
 			if (create_replication_slot(upstream_conn,
 										local_node_record.slot_name,
-										UNKNOWN_SERVER_VERSION_NUM,
 										&msg) == false)
 			{
 				log_error("%s", msg.data);
@@ -2574,8 +2573,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 	if (config_file_options.use_replication_slots)
 	{
-		int			primary_server_version_num = PQserverVersion(primary_conn);
-
 		/*
 		 * Here we add a sanity check for the "slot_name" field - it's possible
 		 * the node was initially registered with "use_replication_slots=false"
@@ -2598,7 +2595,6 @@ do_standby_follow_internal(PGconn *primary_conn, t_node_info *primary_node_recor
 
 		if (create_replication_slot(primary_conn,
 									local_node_record.slot_name,
-									primary_server_version_num,
 									output) == false)
 		{
 			log_error("%s", output->data);
@@ -5220,7 +5216,7 @@ initialise_direct_clone(t_node_info *node_record)
 
 		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
 
-		if (create_replication_slot(privileged_conn, node_record->slot_name, source_server_version_num, &event_details) == false)
+		if (create_replication_slot(privileged_conn, node_record->slot_name, &event_details) == false)
 		{
 			log_error("%s", event_details.data);
 
@@ -5500,7 +5496,7 @@ run_basebackup(t_node_info *node_record)
 					get_superuser_connection(&upstream_conn, &superuser_conn, &privileged_conn);
 
 					initPQExpBuffer(&event_details);
-					if (create_replication_slot(privileged_conn, node_record->slot_name, source_server_version_num, &event_details) == false)
+					if (create_replication_slot(privileged_conn, node_record->slot_name, &event_details) == false)
 					{
 						log_error("%s", event_details.data);
 
@@ -6062,7 +6058,7 @@ stop_backup:
 
 							initPQExpBuffer(&errmsg);
 
-							if (create_replication_slot(upstream_conn, node_record->slot_name, source_server_version_num, &errmsg) == false)
+							if (create_replication_slot(upstream_conn, node_record->slot_name, &errmsg) == false)
 							{
 								log_error(_("unable to create replication slot on upstream node %i"), upstream_node_id);
 								log_detail("%s", errmsg.data);
