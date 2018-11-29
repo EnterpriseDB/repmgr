@@ -4709,6 +4709,13 @@ get_new_primary(PGconn *conn, int *primary_node_id)
 
 	PQclear(res);
 
+	/*
+	 * repmgr.get_new_primary() will return UNKNOWN_NODE_ID if
+	 * "follow_new_primary" is false
+	 */
+	if (new_primary_node_id == UNKNOWN_NODE_ID)
+		success = false;
+
 	*primary_node_id = new_primary_node_id;
 
 	return success;
