@@ -3233,7 +3233,7 @@ set_primary_last_seen(PGconn *conn)
 
 	res = PQexec(conn, query.data);
 
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_db_error(conn, query.data, _("unable to execute repmgr.set_primary_last_seen()"));
 	}
@@ -3257,7 +3257,7 @@ get_primary_last_seen(PGconn *conn)
 
 	res = PQexec(conn, query.data);
 
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_db_error(conn, query.data, _("unable to execute repmgr.get_primary_last_seen()"));
 	}
