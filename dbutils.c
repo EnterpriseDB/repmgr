@@ -4843,7 +4843,7 @@ get_current_lsn(PGconn *conn)
 							 "    END "
 							 "      AS last_wal_receive_lsn, "
 							 "    CASE WHEN pg_catalog.pg_is_in_recovery() IS TRUE "
-							 "      THEN pg_catalog.pg_last_xlog_replay_location()) "
+							 "      THEN pg_catalog.pg_last_xlog_replay_location() "
 							 "      ELSE NULL "
 							 "     END "
 							 "       AS last_wal_replay_lsn "
