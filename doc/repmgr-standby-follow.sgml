@@ -9,29 +9,42 @@
 
   <refnamediv>
     <refname>repmgr standby follow</refname>
-    <refpurpose>attach a standby to a new primary</refpurpose>
+    <refpurpose>attach a running standby to a new upstream node</refpurpose>
   </refnamediv>
 
   <refsect1>
     <title>Description</title>
 
     <para>
-      Attaches the standby to a new primary. This command requires a valid
+      Attaches the standby to a new upstream node. This command requires a valid
       <filename>repmgr.conf</filename> file for the standby, either specified
       explicitly with <literal>-f/--config-file</literal> or located in a
       default location; no additional arguments are required.
     </para>
-    <para>
-      This command will force a restart of the standby server, which must be
-      running. It can only be used to attach an active standby to the current primary node
-      (and not to another standby).
-    </para>
+
 	<tip>
       <para>
 		To re-add an inactive node to the replication cluster, use
 		<xref linkend="repmgr-node-rejoin">.
       </para>
 	</tip>
+
+    <para>
+      This command will force a restart of the standby server, which must be
+      running. Additionally, in order to be able to verify whether the standby
+      can attach to the upstream node, a <command>CHECKPOINT</command> will
+      be executed - this requires superuser privileges, and will be executed
+      even with the <option>--dry-run</option> option.
+    </para>
+
+    <important>
+      <para>
+        If the &repmgr; database user is not a superuser, it will not be possible
+        to execute <command>CHECKPOINT</command>, meaning &repmgr; may not be
+        able to determine whether the upstream node can be followed.
+      </para>
+    </important>
+
 
 	<para>
 	  <command>repmgr standby follow</command> will wait up to
@@ -108,6 +121,44 @@
     </variablelist>
   </refsect1>
 
+  <refsect1>
+    <title>Exit codes</title>
+    <para>
+      Following exit codes can be emitted by <command>repmgr standby follow</command>:
+    </para>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            No issues were detected.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_DB_CONN (6)</option></term>
+        <listitem>
+          <para>
+            &repmgr; was unable to establish a database connection to one of the nodes.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_FOLLOW_FAIL (23)</option></term>
+        <listitem>
+          <para>
+            &repmgr; was unable to complete the follow command.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+
+  </refsect1>
+
   <refsect1 id="repmgr-standby-follow-events">
     <title>Event notifications</title>
     <para>
@@ -127,4 +178,3 @@
     </para>
   </refsect1>
 </refentry>
-
