@@ -1624,7 +1624,7 @@ get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 
 	termPQExpBuffer(&query);
 
-	if (PQnfields(res) != 2 || PQntuples(res) != 1)
+	if (PQntuples(res) != 1 || PQnfields(res) != 2)
 	{
 		log_error(_("unexpected response to TIMELINE_HISTORY command"));
 		log_detail(_("got %i rows and %i fields, expected %i rows and %i fields"),
@@ -1645,12 +1645,13 @@ get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 		return NULL;
 	}
 
+	PQclear(res);
+
 	history = (TimeLineHistoryEntry *) palloc(sizeof(TimeLineHistoryEntry));
 	history->tli = file_tli;
 	history->begin = InvalidXLogRecPtr; /* we don't care about this */
 	history->end = ((uint64) (switchpoint_hi)) << 32 | (uint64) switchpoint_lo;
 
-	PQclear(res);
 	return history;
 }
 
