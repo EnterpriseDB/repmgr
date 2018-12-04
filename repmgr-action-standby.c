@@ -2206,7 +2206,7 @@ do_standby_follow(void)
 	uint64		local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
 	t_conninfo_param_list repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	PGconn	   *repl_conn = NULL;
-	t_system_identification follow_target_identifcation = T_SYSTEM_IDENTIFICATION_INITIALIZER;
+	t_system_identification follow_target_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 	TimeLineHistoryEntry *follow_target_history = NULL;
 
 	log_verbose(LOG_DEBUG, "do_standby_follow()");
@@ -2475,7 +2475,7 @@ do_standby_follow(void)
 
 	/* check system_identifiers match */
 	local_system_identifier = get_system_identifier(config_file_options.data_directory);
-	success = identify_system(repl_conn, &follow_target_identifcation);
+	success = identify_system(repl_conn, &follow_target_identification);
 
 	if (success == false)
 	{
@@ -2485,12 +2485,12 @@ do_standby_follow(void)
 		exit(ERR_FOLLOW_FAIL);
 	}
 
-	if (follow_target_identifcation.system_identifier != local_system_identifier)
+	if (follow_target_identification.system_identifier != local_system_identifier)
 	{
 		log_error(_("this node is not part of the follow target node's replication cluster"));
 		log_detail(_("this node's system identifier is %lu, follow target node's system identifier is %lu"),
 				   local_system_identifier,
-				   follow_target_identifcation.system_identifier);
+				   follow_target_identification.system_identifier);
 		PQfinish(follow_target_conn);
 		PQfinish(repl_conn);
 		exit(ERR_FOLLOW_FAIL);
@@ -2520,15 +2520,15 @@ do_standby_follow(void)
 
 		log_verbose(LOG_DEBUG, "local timeline: %i; follow target timeline: %i",
 					local_timeline,
-					follow_target_identifcation.timeline);
+					follow_target_identification.timeline);
 
 		/* upstream's timeline is lower than ours - impossible case */
-		if (follow_target_identifcation.timeline < local_timeline)
+		if (follow_target_identification.timeline < local_timeline)
 		{
 			log_error(_("this node's timeline is ahead of the follow target node's timeline"));
 			log_detail(_("this node's timeline is %i, follow target node's timeline is %i"),
 					   local_timeline,
-					   follow_target_identifcation.timeline);
+					   follow_target_identification.timeline);
 
 			PQfinish(follow_target_conn);
 			PQfinish(repl_conn);
@@ -2536,7 +2536,7 @@ do_standby_follow(void)
 			exit(ERR_FOLLOW_FAIL);
 		}
 
-		if (follow_target_identifcation.timeline == local_timeline)
+		if (follow_target_identification.timeline == local_timeline)
 		{
 			XLogRecPtr local_xlogpos = get_current_lsn(local_conn);
 			XLogRecPtr follow_target_xlogpos = get_current_lsn(follow_target_conn);
