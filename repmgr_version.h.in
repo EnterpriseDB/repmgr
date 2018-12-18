@@ -1,2 +1,3 @@
 #define REPMGR_VERSION_DATE ""
 #define REPMGR_VERSION "4.3dev"
+#define REPMGR_VERSION_NUM 40300

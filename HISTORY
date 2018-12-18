@@ -1,3 +1,6 @@
+4.3     2019-??
+        repmgrd: check binary and extension major versions match; GitHub #515 (Ian)
+
 4.2.1   2018-??-??
         repmgr: add sanity check for correct extension version (Ian)
         repmgr: ensure "witness register --dry-run" does not attempt to read node

@@ -112,12 +112,16 @@ typedef enum
 
 typedef struct s_extension_versions {
 	char		default_version[8];
+	int			default_version_num;
 	char		installed_version[8];
+	int			installed_version_num;
 } t_extension_versions;
 
 #define T_EXTENSION_VERSIONS_INITIALIZER { \
 	"", \
+	UNKNOWN_SERVER_VERSION_NUM, \
 	"", \
+	UNKNOWN_SERVER_VERSION_NUM \
 }
 
 /*

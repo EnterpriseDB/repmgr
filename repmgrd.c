@@ -386,7 +386,39 @@ main(int argc, char **argv)
 	/* Check "repmgr" the extension is installed */
 	extension_status = get_repmgr_extension_status(local_conn, &extversions);
 
-	if (extension_status != REPMGR_INSTALLED)
+	if (extension_status == REPMGR_INSTALLED)
+	{
+		/*
+		 * extension is the latest available according to "pg_available_extensions" -
+		 * - does our (major) version match that?
+		 */
+		log_verbose(LOG_DEBUG, "binary version: %i; extension version: %i",
+					REPMGR_VERSION_NUM, extversions.installed_version_num);
+		if ((REPMGR_VERSION_NUM/100) < (extversions.installed_version_num / 100))
+		{
+			log_error(_("this \"repmgr\" version is older than the installed \"repmgr\" extension version"));
+			log_detail(_("\"repmgr\" version %s is installed but extension is version %s"),
+					   REPMGR_VERSION,
+					   extversions.installed_version);
+
+			log_hint(_("verify the repmgr installation on this server is updated properly before continuing"));
+			close_connection(&local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if ((REPMGR_VERSION_NUM/100) > (extversions.installed_version_num / 100))
+		{
+			log_error(_("this \"repmgr\" version is newer than the installed \"repmgr\" extension version"));
+			log_detail(_("\"repmgr\" version %s is installed but extension is version %s"),
+					   REPMGR_VERSION,
+					   extversions.installed_version);
+
+			log_hint(_("verify the repmgr extension is updated properly before continuing"));
+			close_connection(&local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+	else
 	{
 		/* this is unlikely to happen */
 		if (extension_status == REPMGR_UNKNOWN)
@@ -400,11 +432,10 @@ main(int argc, char **argv)
 		if (extension_status == REPMGR_OLD_VERSION_INSTALLED)
 		{
 			log_error(_("an older version of the \"repmgr\" extension is installed"));
-			log_detail(_("version %s is installed but newer version %s is available"),
+			log_detail(_("extension version %s is installed but newer version %s is available"),
 					   extversions.installed_version,
 					   extversions.default_version);
 			log_hint(_("verify the repmgr installation is updated properly before continuing"));
-
 		}
 		else
 		{
