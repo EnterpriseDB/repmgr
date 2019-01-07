@@ -145,6 +145,40 @@
    </para>
   </sect2>
 
+  <sect2 id="faq-version-mix">
+   <title>Does it matter if different &repmgr; versions are present in the replication cluster?</title>
+   <para>
+     Yes. If different &quot;major&quot; &repmgr; versions (e.g. 3.3.x and 4.1.x) are present,
+     &repmgr; (in particular <application>repmgrd</application>)
+     may not run, or run properly, or in the worst case (if different <application>repmgrd</application>
+     versions are running and there are differences in the failover implementation) break
+     your replication cluster.
+   </para>
+   <para>
+     If different &quot;minor&quot; &repmgr; versions (e.g. 4.1.1 and 4.1.6) are installed,
+     &repmgr; will function, but we strongly recommend always running the same version
+     to ensure there are no unexpected suprises, e.g. a newer version behaving slightly
+     differently to the older version.
+   </para>
+   <para>
+     See also <link linkend="faq-upgrade-repmgr">Should I upgrade &repmgr;?</link>.
+   </para>
+  </sect2>
+
+  <sect2 id="faq-upgrade-repmgr">
+    <title>Should I upgrade &repmgr;?</title>
+    <para>
+      Yes.
+    </para>
+    <para>
+      We don't release new versions for fun, you know. Upgrading may require a little effort,
+      but running an older &repmgr; version with bugs which have since been fixed may end up
+      costing you more effort. The same applies to PostgreSQL itself.
+    </para>
+
+  </sect2>
+
+
  </sect1>
 
  <sect1 id="faq-repmgr" xreflabel="repmgr">

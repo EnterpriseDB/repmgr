@@ -36,6 +36,20 @@
    major version.
   </para>
 
+  <note>
+   <simpara>
+     The same &quot;major&quot; &repmgr; version (e.g. <literal>4.2.x</literal>) <emphasis>must</emphasis>
+     be installed on all node in the replication cluster. We strongly recommend keeping all
+     nodes on the same (preferably latest) &quot;minor&quot; &repmgr; version to minimize the risk
+     of incompatibilities.
+   </simpara>
+   <simpara>
+     If different &quot;major&quot; &repmgr; versions (e.g. 3.3.x and 4.1.x)
+     are installed on different nodes, in the best case &repmgr; (in particular <application>repmgrd</application>)
+     will not run. In the worst case, you will end up with a broken cluster.
+   </simpara>
+  </note>
+
   <para>
    A dedicated system user for &repmgr; is <emphasis>not</emphasis> required; as many &repmgr; and
    <application>repmgrd</application> actions require direct access to the PostgreSQL data directory,
