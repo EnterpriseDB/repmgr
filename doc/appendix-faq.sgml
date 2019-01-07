@@ -21,7 +21,7 @@
       in PostgreSQL 9.3, as well as improved automated failover support
       via <application>repmgrd</application>, and is not compatible with PostgreSQL 9.2
       and earlier. We recommend upgrading to &repmgr; 4, as the &repmgr; 3.x
-      series will no longer be actively maintained.
+      series is no longer maintained.
      </para>
      <para>
       &repmgr; 2.x supports PostgreSQL 9.0 ~ 9.3. While it is compatible
@@ -29,7 +29,8 @@
       no longer maintained.
      </para>
      <para>
-       See also <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>.
+       See also <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>
+       and <link linkend="faq-upgrade-repmgr">Should I upgrade &repmgr;?</link>.
      </para>
   </sect2>
 
