@@ -28,6 +28,9 @@
       with PostgreSQL 9.3, we recommend using repmgr 4.x. &repmgr; 2.x is
       no longer maintained.
      </para>
+     <para>
+       See also <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>.
+     </para>
   </sect2>
 
   <sect2 id="faq-replication-slots-advantage" xreflabel="Advantages of replication slots">
