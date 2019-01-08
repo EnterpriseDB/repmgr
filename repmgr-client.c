@@ -2011,7 +2011,7 @@ do_help(void)
 
 	puts("");
 
-	printf(_("  Execute \"%s {primary|standby|bdr|node|cluster} --help\" to see command-specific options\n"), progname());
+	printf(_("  Execute \"%s {primary|standby|bdr|node|cluster|witness|daemon} --help\" to see command-specific options\n"), progname());
 
 	puts("");
 
@@ -2059,8 +2059,6 @@ do_help(void)
 	printf(_("  -q, --quiet                         suppress all log output apart from errors\n"));
 	printf(_("  -t, --terse                         don't display detail, hints and other non-critical output\n"));
 	printf(_("  -v, --verbose                       display additional log output (useful for debugging)\n"));
-
-
 
 	puts("");
 }
