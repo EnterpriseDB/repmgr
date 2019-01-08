@@ -808,6 +808,7 @@ main(int argc, char **argv)
 				action = PRIMARY_REGISTER;
 			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
 				action = PRIMARY_UNREGISTER;
+			/* allow "primary check"/"primary status" as aliases for "node check"/"node status" */
 			else if (strcasecmp(repmgr_action, "CHECK") == 0)
 				action = NODE_CHECK;
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
@@ -834,6 +835,7 @@ main(int argc, char **argv)
 				action = STANDBY_FOLLOW;
 			else if (strcasecmp(repmgr_action, "SWITCHOVER") == 0)
 				action = STANDBY_SWITCHOVER;
+			/* allow "standby check"/"standby status" as aliases for "node check"/"node status" */
 			else if (strcasecmp(repmgr_action, "CHECK") == 0)
 				action = NODE_CHECK;
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
