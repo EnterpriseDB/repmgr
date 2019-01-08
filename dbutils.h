@@ -183,7 +183,7 @@ typedef struct s_node_info
 	MS_NORMAL, \
 	NULL, \
 	/* for ad-hoc use e.g. when working with a list of nodes */ \
-	"", true, true \
+	"", true, true,	\
 	/* various statistics */ \
 	-1, -1, -1, -1, -1, -1					\
 }
