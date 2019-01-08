@@ -1,4 +1,5 @@
 4.3     2019-??
+        repmgr: add --version-number command line option (Ian)
         repmgrd: check binary and extension major versions match; GitHub #515 (Ian)
 
 4.2.1   2018-??-??

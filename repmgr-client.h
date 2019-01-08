@@ -92,6 +92,8 @@
 #define OPT_NO_WAIT                        1040
 #define OPT_MISSING_SLOTS                  1041
 #define OPT_REPMGRD_NO_PAUSE               1042
+#define OPT_VERSION_NUMBER				   1043
+
 
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
@@ -102,8 +104,9 @@
 static struct option long_options[] =
 {
 /* general options */
-	{"version", no_argument, NULL, 'V'},
 	{"help", no_argument, NULL, OPT_HELP},
+	{"version", no_argument, NULL, 'V'},
+	{"version-number", no_argument, NULL, OPT_VERSION_NUMBER},
 
 /* general configuration options */
 	{"config-file", required_argument, NULL, 'f'},

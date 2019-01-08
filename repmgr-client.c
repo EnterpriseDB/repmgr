@@ -205,6 +205,7 @@ main(int argc, char **argv)
 				help_option = true;
 				break;
 
+				/* -V/--version */
 			case 'V':
 
 				/*
@@ -213,6 +214,11 @@ main(int argc, char **argv)
 				 * PostgreSQL version
 				 */
 				printf("%s %s\n", progname(), REPMGR_VERSION);
+				exit(SUCCESS);
+
+				/* --version-number */
+			case OPT_VERSION_NUMBER:
+				printf("%i\n", REPMGR_VERSION_NUM);
 				exit(SUCCESS);
 
 				/*------------------------------
@@ -2012,6 +2018,7 @@ do_help(void)
 	printf(_("General options:\n"));
 	printf(_("  -?, --help                          show this help, then exit\n"));
 	printf(_("  -V, --version                       output version information, then exit\n"));
+	printf(_("  --version-number                    output version number, then exit\n"));
 	puts("");
 
 	printf(_("General configuration options:\n"));
