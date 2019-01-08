@@ -774,6 +774,7 @@ main(int argc, char **argv)
 	 *   BDR { REGISTER | UNREGISTER } |
 	 *   NODE { STATUS | CHECK | REJOIN | SERVICE } |
 	 *   CLUSTER { CROSSCHECK | MATRIX | SHOW | EVENT | CLEANUP }
+	 *   DAEMON { STATUS | PAUSE | UNPAUSE }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host
 	 * option
