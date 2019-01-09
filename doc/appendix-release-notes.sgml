@@ -28,12 +28,22 @@
 
           <listitem>
             <para>
+              Add <option>--terse</option> to <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> (GitHub #521).
+            </para>
+            <para>
+              This makes it easier to copy the output into emails, chats etc. as a compact table.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <command>repmgr --version-number</command> outputs the &quot;raw&quot;
               repmgr version number (e.g. <literal>40300</literal>). This is intended
               for use by scripts etc. requiring an easily parseable representation
               of the &repmgr; version.
             </para>
           </listitem>
+
        </itemizedlist>
       </para>
     </sect2>

@@ -199,6 +199,7 @@ typedef struct ColHeader
 	char		title[MAXLEN];
 	int			max_length;
 	int			cur_length;
+	bool		display;
 } ColHeader;
 
 

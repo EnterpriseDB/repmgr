@@ -102,6 +102,7 @@ do_cluster_show(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* Initialize column headers  */
 	strncpy(headers_show[SHOW_ID].title, _("ID"), MAXLEN);
 	strncpy(headers_show[SHOW_NAME].title, _("Name"), MAXLEN);
 	strncpy(headers_show[SHOW_ROLE].title, _("Role"), MAXLEN);
@@ -117,7 +118,20 @@ do_cluster_show(void)
 
 	for (i = 0; i < SHOW_HEADER_COUNT; i++)
 	{
-		headers_show[i].max_length = strlen(headers_show[i].title);
+		headers_show[i].display = true;
+
+		if (runtime_options.terse == true)
+		{
+			if (i == SHOW_CONNINFO)
+			{
+				headers_show[i].display = false;
+			}
+		}
+
+		if (headers_show[i].display == true)
+		{
+			headers_show[i].max_length = strlen(headers_show[i].title);
+		}
 	}
 
 	for (cell = nodes.head; cell; cell = cell->next)
@@ -347,6 +361,12 @@ do_cluster_show(void)
 
 		for (i = 0; i < SHOW_HEADER_COUNT; i++)
 		{
+			if (runtime_options.terse == true)
+			{
+				if (headers_show[i].display == false)
+					continue;
+			}
+
 			if (headers_show[i].cur_length > headers_show[i].max_length)
 			{
 				headers_show[i].max_length = headers_show[i].cur_length;
@@ -398,7 +418,13 @@ do_cluster_show(void)
 			printf("| %-*s ", headers_show[SHOW_STATUS].max_length, cell->node_info->details);
 			printf("| %-*s ", headers_show[SHOW_UPSTREAM_NAME].max_length, cell->node_info->upstream_node_name);
 			printf("| %-*s ", headers_show[SHOW_LOCATION].max_length, cell->node_info->location);
-			printf("| %-*s\n", headers_show[SHOW_CONNINFO].max_length, cell->node_info->conninfo);
+
+			if (headers_show[SHOW_CONNINFO].display == true)
+			{
+				printf("| %-*s", headers_show[SHOW_CONNINFO].max_length, cell->node_info->conninfo);
+			}
+
+			puts("");
 		}
 	}
 

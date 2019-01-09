@@ -1947,9 +1947,20 @@ void
 print_status_header(int cols, ColHeader *headers)
 {
 	int i;
+	int max_cols = 0;
+
+	/* count how many columns we actually need to display */
+	for (i = 0; i < cols; i++)
+	{
+		if (headers[i].display == true)
+			max_cols ++;
+	}
 
 	for (i = 0; i < cols; i++)
 	{
+		if (headers[i].display == false)
+			continue;
+
 		if (i == 0)
 			printf(" ");
 		else
@@ -1959,17 +1970,22 @@ print_status_header(int cols, ColHeader *headers)
 			   headers[i].max_length,
 			   headers[i].title);
 	}
+
+
 	printf("\n");
 	printf("-");
 
-	for (i = 0; i < cols; i++)
+	for (i = 0; i < max_cols; i++)
 	{
 		int			j;
+
+		if (headers[i].display == false)
+			continue;
 
 		for (j = 0; j < headers[i].max_length; j++)
 			printf("-");
 
-		if (i < (cols - 1))
+		if (i < (max_cols - 1))
 			printf("-+-");
 		else
 			printf("-");

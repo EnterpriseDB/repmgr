@@ -91,6 +91,7 @@ do_daemon_status(void)
 	for (i = 0; i < STATUS_HEADER_COUNT; i++)
 	{
 		headers_status[i].max_length = strlen(headers_status[i].title);
+		headers_status[i].display = true;
 	}
 
 	i = 0;

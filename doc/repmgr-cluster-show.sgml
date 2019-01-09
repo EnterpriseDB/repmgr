@@ -121,6 +121,15 @@
 	  </varlistentry>
 
       <varlistentry>
+        <term><option>--terse</option></term>
+        <listitem>
+          <para>
+			Suppress display of the <literal>conninfo</literal> column.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>--verbose</option></term>
         <listitem>
           <para>
