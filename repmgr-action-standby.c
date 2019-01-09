@@ -2261,7 +2261,7 @@ do_standby_follow(void)
 	 */
 	else
 	{
-		log_notice(_("attempting  find to follow current primary"));
+		log_notice(_("attempting to find and follow current primary"));
 	}
 
 	/*
@@ -2273,7 +2273,6 @@ do_standby_follow(void)
 	 *
 	 * XXX add `upstream_follow_timeout` ?
 	 */
-
 
 	for (timer = 0; timer < config_file_options.primary_follow_timeout; timer++)
 	{
@@ -2416,7 +2415,10 @@ do_standby_follow(void)
 		termPQExpBuffer(&node_info_msg);
 	}
 
-	/* if replication slots in use, check at least one free slot is available */
+	/*
+	 * if replication slots in use, check at least one free slot is available
+	 * on the follow target
+	 */
 
 	if (config_file_options.use_replication_slots)
 	{
