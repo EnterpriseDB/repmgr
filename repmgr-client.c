@@ -1823,6 +1823,7 @@ check_cli_parameters(const int action)
 			case STANDBY_REGISTER:
 			case STANDBY_FOLLOW:
 			case STANDBY_SWITCHOVER:
+			case STANDBY_PROMOTE:
 			case WITNESS_REGISTER:
 			case WITNESS_UNREGISTER:
 			case NODE_REJOIN:

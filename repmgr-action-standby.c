@@ -1982,13 +1982,17 @@ do_standby_promote(void)
 			exit(ERR_DB_CONN);
 		}
 	}
+	else if (runtime_options.dry_run == true)
+	{
+		log_info(_("node is a standby"));
+	}
 
 	/* check that there's no existing primary */
 	current_primary_conn = get_primary_connection_quiet(conn, &existing_primary_id, NULL);
 
 	if (PQstatus(current_primary_conn) == CONNECTION_OK)
 	{
-		log_error(_("this cluster already has an active primary server"));
+		log_error(_("this replication cluster already has an active primary server"));
 
 		if (existing_primary_id != UNKNOWN_NODE_ID)
 		{
@@ -2005,8 +2009,18 @@ do_standby_promote(void)
 		PQfinish(conn);
 		exit(ERR_PROMOTION_FAIL);
 	}
+	else if (runtime_options.dry_run == true)
+	{
+		log_info(_("no active primary server found in this replication cluster"));
+	}
 
 	PQfinish(current_primary_conn);
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("prerequisites for executing STANDBY PROMOTE are met"));
+		exit(SUCCESS);
+	}
 
 	_do_standby_promote_internal(conn, server_version_num);
 }

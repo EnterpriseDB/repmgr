@@ -36,6 +36,20 @@
   </refsect1>
 
   <refsect1>
+    <title>Options</title>
+    <variablelist>
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check if this node can be promoted, but don't carry out the promotion
+          </para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
     <title>Example</title>
     <para>
       <programlisting>
