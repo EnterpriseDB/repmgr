@@ -3704,8 +3704,7 @@ do_standby_switchover(void)
 
 			initPQExpBuffer(&command_output);
 
-			command_success = remote_command(
-											 remote_host,
+			command_success = remote_command(remote_host,
 											 runtime_options.remote_user,
 											 remote_command_str.data,
 											 &command_output);
@@ -4360,10 +4359,27 @@ do_standby_switchover(void)
 	initPQExpBuffer(&remote_command_str);
 	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 
-	appendPQExpBuffer(&remote_command_str,
-					  "%s-d \\'%s\\' node rejoin",
-					  node_rejoin_options.data,
-					  local_node_record.conninfo);
+	/*
+	 * Here we'll coerce the local node's connection string into
+	 * "param=value" format, in case it's configured in URI format,
+	 * to simplify escaping issues when passing the string to the
+	 * remote node.
+	 */
+	{
+		char	   *conninfo_normalized = normalize_conninfo_string(local_node_record.conninfo);
+
+		appendPQExpBuffer(&remote_command_str,
+						  "%s-d  ",
+						  node_rejoin_options.data);
+
+		appendRemoteShellString(&remote_command_str,
+								conninfo_normalized);
+
+		appendPQExpBufferStr(&remote_command_str,
+							 " node rejoin");
+
+		pfree(conninfo_normalized);
+	}
 
 	termPQExpBuffer(&node_rejoin_options);
 

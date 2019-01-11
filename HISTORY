@@ -2,6 +2,8 @@
         repmgr: add --version-number command line option (Ian)
         repmgr: add --terse option to "cluster show"; GitHub #521 (Ian)
         repmgr: add --dry-run option to "standby promote"; GitHub #522 (Ian)
+        repmgr: "standby switchover": improve handling of connection URIs when
+          executing "node rejoin" on the demotion candidate; GitHub #525 (Ian)
         repmgrd: check binary and extension major versions match; GitHub #515 (Ian)
 
 4.2.1   2018-??-??

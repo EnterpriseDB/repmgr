@@ -98,9 +98,42 @@ appendShellString(PQExpBuffer buf, const char *str)
 
 		if (*p == '\'')
 			appendPQExpBufferStr(buf, "'\"'\"'");
+		else if (*p == '&')
+			appendPQExpBufferStr(buf, "\\&");
 		else
 			appendPQExpBufferChar(buf, *p);
 	}
 
 	appendPQExpBufferChar(buf, '\'');
+}
+
+/*
+ * Adapted from: src/fe_utils/string_utils.c
+ */
+void
+appendRemoteShellString(PQExpBuffer buf, const char *str)
+{
+	const char *p;
+
+	appendPQExpBufferStr(buf, "\\'");
+
+	for (p = str; *p; p++)
+	{
+		if (*p == '\n' || *p == '\r')
+		{
+			fprintf(stderr,
+					_("shell command argument contains a newline or carriage return: \"%s\"\n"),
+					str);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (*p == '\'')
+			appendPQExpBufferStr(buf, "'\"'\"'");
+		else if (*p == '&')
+			appendPQExpBufferStr(buf, "\\&");
+		else
+			appendPQExpBufferChar(buf, *p);
+	}
+
+	appendPQExpBufferStr(buf, "\\'");
 }

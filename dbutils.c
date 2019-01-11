@@ -162,7 +162,8 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 
 	if (parse_success == false)
 	{
-		log_error(_("unable to pass provided conninfo string:\n	 %s"), errmsg);
+		log_error(_("unable to parse provided conninfo string \"%s\""), conninfo);
+		log_detail("%s", errmsg);
 		free_conninfo_params(&conninfo_params);
 		return NULL;
 	}
@@ -653,7 +654,6 @@ parse_conninfo_string(const char *conninfo_str, t_conninfo_param_list *param_lis
 			if (strcmp(option->keyword, "servicefile") == 0)
 				continue;
 		}
-
 		param_set(param_list, option->keyword, option->val);
 	}
 
@@ -739,6 +739,41 @@ param_list_to_string(t_conninfo_param_list *param_list)
 	return conninfo_str;
 }
 
+
+/*
+ * Run a conninfo string through the parser, and pass it back as a normal
+ * conninfo string. This is mainly intended for converting connection URIs
+ * to parameter/value conninfo strings.
+ *
+ * Caller must free returned pointer.
+ */
+
+char *
+normalize_conninfo_string(const char *conninfo_str)
+{
+	t_conninfo_param_list conninfo_params = T_CONNINFO_PARAM_LIST_INITIALIZER;
+	bool		parse_success = false;
+	char	   *normalized_string = NULL;
+	char	   *errmsg = NULL;
+
+	initialize_conninfo_params(&conninfo_params, false);
+
+	parse_success = parse_conninfo_string(conninfo_str, &conninfo_params, &errmsg, false);
+
+	if (parse_success == false)
+	{
+		log_error(_("unable to parse provided conninfo string \"%s\""), conninfo_str);
+		log_detail("%s", errmsg);
+		free_conninfo_params(&conninfo_params);
+		return NULL;
+	}
+
+
+	normalized_string = param_list_to_string(&conninfo_params);
+	free_conninfo_params(&conninfo_params);
+
+	return normalized_string;
+}
 
 /*
  * check whether the libpq version in use recognizes the "passfile" parameter

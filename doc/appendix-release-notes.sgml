@@ -54,6 +54,25 @@
       </para>
     </sect2>
 
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              &repmgr;: when executing <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>,
+              prevent escaping issues with connection URIs when executing <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>
+              on the demotion candidate (GitHub #525).
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
+
+
   </sect1>
 
   <sect1 id="release-4.2">

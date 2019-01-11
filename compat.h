@@ -27,4 +27,6 @@ extern void appendConnStrVal(PQExpBuffer buf, const char *str);
 
 extern void appendShellString(PQExpBuffer buf, const char *str);
 
+extern void appendRemoteShellString(PQExpBuffer buf, const char *str);
+
 #endif
