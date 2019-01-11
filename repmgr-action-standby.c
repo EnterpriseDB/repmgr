@@ -2633,8 +2633,6 @@ do_standby_follow(void)
 		else
 		{
 			XLogRecPtr local_xlogpos = get_current_lsn(local_conn);
-			bool can_follow = true;
-			XLogRecPtr local_min_recovery_location = InvalidXLogRecPtr;
 
 			/*
 			 * upstream has higher timeline - check where it forked off from this node's timeline
@@ -2650,8 +2648,6 @@ do_standby_follow(void)
 				exit(ERR_FOLLOW_FAIL);
 			}
 
-			local_min_recovery_location = get_min_recovery_location(config_file_options.data_directory);
-
 			/*
 			 * Local node has proceeded beyond the follow target's fork, so we
 			 * definitely can't attach.
@@ -2661,58 +2657,30 @@ do_standby_follow(void)
 			 */
 			if (local_xlogpos > follow_target_history->end)
 			{
-				can_follow = false;
-			}
-			else
-			{
-				/*
-				 * XXX can we establish what the window is where we *need* to execute
-				 * a CHECKPOINT?
-				 */
-
-				/*
-				 * Execute CHECKPOINT on the local node - we'll need this to update
-				 * the pg_control file so we can compare positions with the new upstream.
-				 * There is no way of avoiding this for --dry-run.
-				 */
-
-				if (is_superuser_connection(local_conn, NULL) == true)
-				{
-					log_notice(_("executing CHECKPOINT"));
-					checkpoint(local_conn);
-				}
-				else
-				{
-					log_warning(_("connection is not a superuser, unable to execute CHECKPOINT"));
-					log_detail(_("a CHECKPOINT is required in order to compare local and follow target states"));
-				}
-
-				log_debug("upstream tli: %i; branch LSN: %X/%X",
-						  follow_target_history->tli, format_lsn(follow_target_history->end));
-
-				if (follow_target_history->end < local_min_recovery_location)
-					can_follow = false;
-			}
-
-			if (can_follow == false)
-			{
 				log_error(_("this node cannot attach to follow target node %i"),
 						  follow_target_node_id);
 				log_detail(_("follow target server's timeline %i forked off current database system timeline %i before current recovery point %X/%X\n"),
 						   local_identification.timeline + 1,
 						   local_identification.timeline,
-						   format_lsn(local_min_recovery_location));
+						   format_lsn(local_xlogpos));
 
 				PQfinish(follow_target_conn);
-				PQfinish(follow_target_repl_conn);
 				PQfinish(local_conn);
 				exit(ERR_FOLLOW_FAIL);
+			}
+			if (runtime_options.dry_run == true)
+			{
+				log_info(_("local node %i can follow target node %i"),
+						 config_file_options.node_id,
+						 follow_target_node_id);
+				log_detail(_("local node's recovery point: %X/%X; follow target node's fork point: %X/%X"),
+						   format_lsn(local_xlogpos),
+						   format_lsn(follow_target_history->end));
 			}
 		}
 	}
 
 	PQfinish(local_conn);
-
 	PQfinish(follow_target_repl_conn);
 
 	if (runtime_options.dry_run == true)

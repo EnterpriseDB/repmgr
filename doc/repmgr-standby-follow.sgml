@@ -22,6 +22,17 @@
       default location; no additional arguments are required.
     </para>
 
+	<para>
+	  By default &repmgr; will attempt to attach the standby to the current primary.
+	  If <option>--upstream-node-id</option> is provided, &repmgr; will attempt
+	  to attach the standby to the specified node, which can be another standby.
+	</para>
+
+    <para>
+      This command will force a restart of the standby server, which must be
+      running.
+    </para>
+
 	<tip>
       <para>
 		To re-add an inactive node to the replication cluster, use
@@ -29,28 +40,24 @@
       </para>
 	</tip>
 
-    <para>
-      This command will force a restart of the standby server, which must be
-      running. Additionally, in order to be able to verify whether the standby
-      can attach to the upstream node, a <command>CHECKPOINT</command> will
-      be executed - this requires superuser privileges, and will be executed
-      even with the <option>--dry-run</option> option.
-    </para>
-
-    <important>
-      <para>
-        If the &repmgr; database user is not a superuser, it will not be possible
-        to execute <command>CHECKPOINT</command>, meaning &repmgr; may not be
-        able to determine whether the upstream node can be followed.
-      </para>
-    </important>
-
-
 	<para>
 	  <command>repmgr standby follow</command> will wait up to
 	  <varname>standby_follow_timeout</varname> seconds (default: <literal>30</literal>)
-	  to verify the standby has actually connected to the new primary.
+	  to verify the standby has actually connected to the new upstream node.
 	</para>
+
+	<note>
+	  <para>
+		If <option>recovery_min_apply_delay</option> is set for the standby, it
+		will not attach to the new upstream node until it has replayed available
+		WAL.
+	  </para>
+	  <para>
+		Conversely, if the standby is attached follows another standby
+		with <option>recovery_min_apply_delay</option> set, that standby's replay
+		state may actually be behind that of its new downstream node.
+	  </para>
+	</note>
 
   </refsect1>
 
