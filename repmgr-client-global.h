@@ -112,7 +112,7 @@ typedef struct
 	bool		has_passfile;
 	bool		replication_connection;
 
-	/* "node join" options */
+	/* "node rejoin" options */
 	char		config_files[MAXLEN];
 
 	/* "node service" options */
@@ -162,7 +162,7 @@ typedef struct
 		false, \
 		/* "node check" options */ \
 		false, false, false, false, false, false, false, false,	\
-		/* "node join" options */ \
+		/* "node rejoin" options */ \
 		"", \
 		/* "node service" options */ \
 		"", false, false, false,  \

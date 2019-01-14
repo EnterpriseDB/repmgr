@@ -159,7 +159,7 @@ static struct option long_options[] =
 
 /* "standby switchover" options
  *
- * Note: --force-rewind accepted to pass to "node join"
+ * Note: --force-rewind accepted to pass to "node rejoin"
  */
 	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE},
 	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW},
