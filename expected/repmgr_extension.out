@@ -47,7 +47,7 @@ SELECT repmgr.am_bdr_failover_handler(NULL);
 SELECT repmgr.get_new_primary();
  get_new_primary 
 -----------------
-                
+              -1
 (1 row)
 
 SELECT repmgr.notify_follow_primary(-1);
