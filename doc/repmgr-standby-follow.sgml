@@ -16,7 +16,12 @@
     <title>Description</title>
 
     <para>
-      Attaches the standby to a new upstream node. This command requires a valid
+      Attaches the standby (&quot;follow candidate&quot;) to a new upstream node
+      (&quot;follow target&quot;). Typically this will be the primary, but this
+      command can also be used to attach the standby to another standby.
+    </para>
+    <para>
+      This command requires a valid
       <filename>repmgr.conf</filename> file for the standby, either specified
       explicitly with <literal>-f/--config-file</literal> or located in a
       default location; no additional arguments are required.
@@ -85,14 +90,23 @@
         <term><option>--dry-run</option></term>
         <listitem>
           <para>
-            Check prerequisites but don't actually follow a new standby.
+            Check prerequisites but don't actually follow a new upstream node.
+          </para>
+          <para>
+            This will also verify whether the standby is capable of following the new upstream node.
           </para>
           <important>
             <para>
-              This does not guarantee the standby can follow the primary; in
-              particular, whether the primary and standby timelines have diverged,
-              can currently only be determined by actually attempting to
-              attach the standby to the primary.
+              If a standby was turned into a primary by removing <filename>recovery.conf</filename>
+              (<application>PostgreSQL 12</application> and later: <filename>standby.signal</filename>),
+              &repmgr; will <emphasis>not</emphasis> be able to determine whether that primary's timeline
+              has diverged from the timeline of the standby (&quot;follow candidate&quot;).
+            </para>
+            <para>
+              We recommend always to use <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>
+              to promote a standby to primary, as this will ensure that the new primary
+              will perform a timeline switch (making it practical to check for timeline divergence)
+              and also that &repmgr; metadata is updated correctly.
             </para>
           </important>
         </listitem>
@@ -102,12 +116,16 @@
         <term><option>--upstream-node-id</option></term>
         <listitem>
           <para>
-            Node ID of the new primary.
+            Node ID of the new upstream node (&quot;follow target&quot;).
           </para>
           <para>
-            This option is intended for use by <application>repmgrd</application>, when
-			instructing standbys to follow the new primary. For more details
-			see <link linkend="repmgrd-automatic-failover-configuration">Automatic failover configuration</link>.
+            If not provided, &repmgr; will attempt to follow the current primary node.
+          </para>
+          <para>
+            Note that when using <application>repmgrd</application>, <option>--upstream-node-id</option>
+            should always be configured;
+			see <link linkend="repmgrd-automatic-failover-configuration">Automatic failover configuration</link>
+            for details.
           </para>
         </listitem>
       </varlistentry>
