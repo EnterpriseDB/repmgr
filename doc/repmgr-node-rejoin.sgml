@@ -188,7 +188,7 @@
         <command>pg_rewind</command> <emphasis>requires</emphasis> that either
         <varname>wal_log_hints</varname> is enabled, or that
         data checksums were enabled when the cluster was initialized. See the
-        <ulink url="https://www.postgresql.org/docs/current/static/app-pgrewind.html"><command>pg_rewind</command> documentation</ulink> for details.
+        <ulink url="https://www.postgresql.org/docs/current/app-pgrewind.html"><command>pg_rewind</command> documentation</ulink> for details.
       </para>
     </note>
 

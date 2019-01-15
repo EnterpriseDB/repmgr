@@ -90,7 +90,7 @@
     #  PostgreSQL 9.6 and later: one of 'replica' or 'logical'
     #    ('hot_standby' will still be accepted as an alias for 'replica')
     #
-    # See: https://www.postgresql.org/docs/current/static/runtime-config-wal.html#GUC-WAL-LEVEL
+    # See: https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-WAL-LEVEL
 
     wal_level = 'hot_standby'
 
@@ -215,7 +215,7 @@
   <note>
    <para>
     &repmgr; stores connection information as <ulink
-    url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING">libpq
+    url="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">libpq
     connection strings</ulink> throughout. This documentation refers to them as <literal>conninfo</literal>
     strings; an alternative name is <literal>DSN</literal> (<literal>data source name</literal>).
     We'll use these in place of the <command>-h hostname -d databasename -U username</command> syntax.
@@ -437,7 +437,7 @@
   </para>
   <para>
     From PostgreSQL 9.6 you can also use the view
-    <ulink url="https://www.postgresql.org/docs/current/static/monitoring-stats.html#PG-STAT-WAL-RECEIVER-VIEW">
+    <ulink url="https://www.postgresql.org/docs/current/monitoring-stats.html#PG-STAT-WAL-RECEIVER-VIEW">
     <literal>pg_stat_wal_receiver</literal></ulink> to check the replication status from the standby.
 
    <programlisting>

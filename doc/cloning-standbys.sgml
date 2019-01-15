@@ -262,7 +262,7 @@
     meaning replication changes "cascade" down through a hierarchy of servers. This
     can be used to reduce load on the primary and minimize bandwith usage between
     sites. For more details, see the
-    <ulink url="https://www.postgresql.org/docs/current/static/warm-standby.html#CASCADING-REPLICATION">
+    <ulink url="https://www.postgresql.org/docs/current/warm-standby.html#CASCADING-REPLICATION">
     PostgreSQL cascading replication documentation</ulink>.
    </para>
    <para>
@@ -391,7 +391,7 @@
       a symlink will automatically be created from the main data directory.
     </para>
     <para>
-     See the <ulink url="https://www.postgresql.org/docs/current/static/app-pgbasebackup.html">PostgreSQL pg_basebackup documentation</ulink>
+     See the <ulink url="https://www.postgresql.org/docs/current/app-pgbasebackup.html">PostgreSQL pg_basebackup documentation</ulink>
      for more details of available options.
     </para>
    </sect2>
@@ -413,7 +413,7 @@
      user's <filename>~/.pgpass</filename> file. It's also possible to store the password in the
      environment variable <varname>PGPASSWORD</varname>, however this is not recommended for
      security reasons. For more details see the
-     <ulink url="https://www.postgresql.org/docs/current/static/libpq-pgpass.html">PostgreSQL password file documentation</ulink>.
+     <ulink url="https://www.postgresql.org/docs/current/libpq-pgpass.html">PostgreSQL password file documentation</ulink>.
     </para>
 
     <note>

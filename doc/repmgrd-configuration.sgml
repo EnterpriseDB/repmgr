@@ -31,7 +31,7 @@
     </para>
     <para>
       Changing this setting requires a restart of PostgreSQL; for more details see
-      the <ulink url="https://www.postgresql.org/docs/current/static/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES">PostgreSQL documentation</ulink>.
+      the <ulink url="https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES">PostgreSQL documentation</ulink>.
     </para>
 
 
@@ -512,7 +512,7 @@ REPMGRD_OPTS="--daemonize=false"
  <para>
   For further details on <varname>conninfo</varname> network connection
   parameters, see the
-  <ulink url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS">PostgreSQL documentation</ulink>.
+  <ulink url="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-PARAMKEYWORDS">PostgreSQL documentation</ulink>.
  </para>
  </sect1>
 

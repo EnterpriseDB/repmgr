@@ -170,7 +170,7 @@
       pg_basebackup_options='--xlog-method=fetch'</programlisting>
 
     and ensure that <literal>wal_keep_segments</literal> is set to an appropriately high value.
-    See the <ulink url="https://www.postgresql.org/docs/current/static/app-pgbasebackup.html">
+    See the <ulink url="https://www.postgresql.org/docs/current/app-pgbasebackup.html">
     pg_basebackup</ulink> documentation for details.
    </para>
 

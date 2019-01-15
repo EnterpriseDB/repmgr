@@ -1524,7 +1524,7 @@ repmgr_atoi(const char *value, const char *config_item, ItemList *error_list, in
  *
  * TODO: accept "any unambiguous prefix of one of these" as per postgresql.conf:
  *
- *   https://www.postgresql.org/docs/current/static/config-setting.html
+ *   https://www.postgresql.org/docs/current/config-setting.html
  */
 bool
 parse_bool(const char *s, const char *config_item, ItemList *error_list)

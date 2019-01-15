@@ -24,7 +24,7 @@ Code style
 Code in repmgr should be formatted to the same standards as the main PostgreSQL
 project. For more details see:
 
-    https://www.postgresql.org/docs/current/static/source-format.html
+    https://www.postgresql.org/docs/current/source-format.html
 
 Contributors should reformat their code similarly before submitting code to
 the project, in order to minimize merge conflicts with other work.

@@ -27,13 +27,13 @@
 				 # the local node using this string.
 				 #
 				 # For details on conninfo strings, see:
-				 #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+				 #  https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
 				 #
 				 # If repmgrd is in use, consider explicitly setting
 				 # "connect_timeout" in the conninfo string to determine
 				 # the length of time which elapses before a network
 				 # connection attempt is abandoned; for details see:
-				 #  https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
+				 #  https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT
 
 #data_directory=''		 # The node's data directory. This is needed by repmgr
 				 # when performing operations when the PostgreSQL instance

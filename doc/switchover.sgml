@@ -236,7 +236,7 @@
     </note>
     <para>
       For more details on <application>pg_rewind</application>, see:
-      <ulink url="https://www.postgresql.org/docs/current/static/app-pgrewind.html">https://www.postgresql.org/docs/current/static/app-pgrewind.html</ulink>.
+      <ulink url="https://www.postgresql.org/docs/current/app-pgrewind.html">https://www.postgresql.org/docs/current/app-pgrewind.html</ulink>.
     </para>
     <para>
       <application>pg_rewind</application> has been part of the core PostgreSQL distribution since
@@ -347,7 +347,7 @@
      <simpara>
       <command>pg_rewind</command> *requires* that either <varname>wal_log_hints</varname> is enabled, or that
       data checksums were enabled when the cluster was initialized. See the
-      <ulink url="https://www.postgresql.org/docs/current/static/app-pgrewind.html">pg_rewind documentation</ulink>
+      <ulink url="https://www.postgresql.org/docs/current/app-pgrewind.html">pg_rewind documentation</ulink>
       for details.
      </simpara>
     </listitem>
@@ -418,7 +418,7 @@ HINT: stop backup before attempting the switchover</programlisting>
        To proceed, either wait until the backup has finished, or cancel it with the command
        <command>SELECT pg_stop_backup()</command>. For more details see the PostgreSQL
        documentation section
-       <ulink url="https://www.postgresql.org/docs/current/static/continuous-archiving.html#BACKUP-LOWLEVEL-BASE-BACKUP-EXCLUSIVE">Making an exclusive low level backup</ulink>.
+       <ulink url="https://www.postgresql.org/docs/current/continuous-archiving.html#BACKUP-LOWLEVEL-BASE-BACKUP-EXCLUSIVE">Making an exclusive low level backup</ulink>.
      </para>
    </sect2>
  </sect1>

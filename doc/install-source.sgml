@@ -12,8 +12,8 @@
    To install &repmgr; the prerequisites for compiling
    &postgres; must be installed. These are described in &postgres;'s
    documentation
-   on <ulink url="https://www.postgresql.org/docs/current/static/install-requirements.html">build requirements</ulink>
-   and <ulink url="https://www.postgresql.org/docs/current/static/docguide-toolsets.html">build requirements for documentation</ulink>.
+   on <ulink url="https://www.postgresql.org/docs/current/install-requirements.html">build requirements</ulink>
+   and <ulink url="https://www.postgresql.org/docs/current/docguide-toolsets.html">build requirements for documentation</ulink>.
   </para>
 
   <para>
@@ -146,7 +146,7 @@
     The &repmgr; documentation is (like the main PostgreSQL project)
     written in DocBook format. To build it locally as HTML, you'll need to
     install the required packages as described in the
-    <ulink url="https://www.postgresql.org/docs/9.6/static/docguide-toolsets.html">
+    <ulink url="https://www.postgresql.org/docs/9.6/docguide-toolsets.html">
       PostgreSQL documentation</ulink> then execute:
    <programlisting>
     ./configure && make install-doc</programlisting>

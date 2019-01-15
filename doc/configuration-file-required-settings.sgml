@@ -56,7 +56,7 @@
      </para>
      <para>
        For details on conninfo strings, see section <ulink
-       url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING">Connection Strings</>
+       url="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">Connection Strings</>
         in the PosgreSQL documentation.
      </para>
      <para>
@@ -64,7 +64,7 @@
         <varname>connect_timeout</varname> in the <varname>conninfo</varname>
         string to determine the length of time which elapses before a network
         connection attempt is abandoned; for details see <ulink
-        url="https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT">
+        url="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT">
         the PostgreSQL documentation</>.
      </para>
     </listitem>

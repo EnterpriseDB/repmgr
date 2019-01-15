@@ -1332,7 +1332,7 @@
             <emphasis>easier upgrades</emphasis>: &repmgr; is now implemented as a native
             PostgreSQL extension, which means future upgrades can be carried out by
             installing the upgraded package and issuing
-            <ulink url="https://www.postgresql.org/docs/current/static/sql-alterextension.html">ALTER EXTENSION repmgr UPDATE</ulink>.
+            <ulink url="https://www.postgresql.org/docs/current/sql-alterextension.html">ALTER EXTENSION repmgr UPDATE</ulink>.
           </para>
         </listitem>
 

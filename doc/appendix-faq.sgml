@@ -76,7 +76,7 @@
    <para>
     Before PostgreSQL 10, hash indexes were not WAL logged and are therefore not suitable
     for use in streaming replication in PostgreSQL 9.6 and earlier. See the
-    <ulink url="https://www.postgresql.org/docs/9.6/static/sql-createindex.html#AEN80279">PostgreSQL documentation</ulink>
+    <ulink url="https://www.postgresql.org/docs/9.6/sql-createindex.html#AEN80279">PostgreSQL documentation</ulink>
     for details.
    </para>
    <para>
@@ -96,7 +96,7 @@
    <para>
      For <emphasis>major</emphasis> version upgrades (e.g. from PostgreSQL 9.6 to PostgreSQL 10),
      the traditional approach is to "reseed" a cluster by upgrading a single
-     node with <ulink url="https://www.postgresql.org/docs/current/static/pgupgrade.html">pg_upgrade</ulink>
+     node with <ulink url="https://www.postgresql.org/docs/current/pgupgrade.html">pg_upgrade</ulink>
      and recloning standbys from this.
    </para>
    <para>
