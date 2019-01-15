@@ -94,7 +94,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
    </para>
 
    <para>
-    There are also tags for each &repmgr; release, e.g. <filename>4.0.5</filename>.
+    There are also tags for each &repmgr; release, e.g. <literal>v4.2.0</literal>.
    </para>
 
    <para>
@@ -179,7 +179,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
    <note>
      <simpara>
        Due to changes in PostgreSQL's documentation build system from PostgreSQL 10,
-       the documentation can currently only be built agains PostgreSQL 9.6 or earlier.
+       the documentation can currently only be built against PostgreSQL 9.6 or earlier.
        This limitation will be fixed when time and resources permit.
      </simpara>
    </note>
