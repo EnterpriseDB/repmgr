@@ -26,7 +26,21 @@
       add the <ulink
       url="http://apt.postgresql.org/">apt.postgresql.org</ulink>
       repository to your <filename>sources.list</filename> if you
-      have not already done so. Then install the pre-requisites for
+      have not already done so, and ensure the source repository is enabled.
+     </para>
+     <tip>
+       <para>
+         If not configured, the source repository can be added by including
+         a <literal>deb-src</literal> line as a copy of the existing <literal>deb</literal>
+         line in the repository file, which is usually
+         <filename>/etc/apt/sources.list.d/pgdg.list</filename>, e.g.:
+         <programlisting>
+deb http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main
+deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisting>
+       </para>
+     </tip>
+     <para>
+      Then install the prerequisites for
       building PostgreSQL with:
       <programlisting>
        sudo apt-get update
