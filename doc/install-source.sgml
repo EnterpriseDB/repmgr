@@ -56,7 +56,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
       <programlisting>
        sudo yum check-update
        sudo yum groupinstall "Development Tools"
-       sudo yum install yum-utils openjade docbook-dtds docbook-style-dsssl docbook-style-xsl
+       sudo yum install yum-utils openjade docbook-dtds docbook-style-dsssl docbook-style-xsl readline-devel
        sudo yum-builddep postgresql96</programlisting>
      </para>
     </listitem>
