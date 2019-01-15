@@ -389,7 +389,7 @@ HINT: check the primary server status before performing any further actions</pro
      </para>
      <note>
        <para>
-         Note that <varname>shutdown_check_timeout</varname>is set on the node where
+         Note that <varname>shutdown_check_timeout</varname> is set on the node where
          <command>repmgr standby switchover</command> is executed (promotion candidate); setting it on the
          demotion candidate (former primary) will have no effect.
        </para>
