@@ -121,7 +121,7 @@ NOTICE: node 3 (node3) paused</programlisting>
     <para>
       To unpause <application>repmgrd</application>, execute <link linkend="repmgr-daemon-unpause"><command>repmgr daemon unpause</command></link>, e.g.:
    <programlisting>
-$ repmgr -f /etc/repmgr.conf daemon pause
+$ repmgr -f /etc/repmgr.conf daemon unpause
 NOTICE: node 1 (node1) unpaused
 NOTICE: node 2 (node2) unpaused
 NOTICE: node 3 (node3) unpaused</programlisting>
