@@ -93,6 +93,7 @@
 #define OPT_MISSING_SLOTS                  1041
 #define OPT_REPMGRD_NO_PAUSE               1042
 #define OPT_VERSION_NUMBER				   1043
+#define OPT_DATA_DIRECTORY_CONFIG		   1044
 
 
 /* deprecated since 3.3 */
@@ -177,6 +178,7 @@ static struct option long_options[] =
 	{"missing-slots", no_argument, NULL, OPT_MISSING_SLOTS},
 	{"has-passfile", no_argument, NULL, OPT_HAS_PASSFILE},
 	{"replication-connection", no_argument, NULL, OPT_REPL_CONN},
+	{"data-directory-config", no_argument, NULL, OPT_DATA_DIRECTORY_CONFIG},
 
 /* "node rejoin" options */
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},

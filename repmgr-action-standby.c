@@ -3472,6 +3472,10 @@ do_standby_switchover(void)
 	}
 	termPQExpBuffer(&command_output);
 
+	/* check remote repmgr has the data directory correctly configured */
+
+	// - add repmgr node check --data-directory
+
 	/*
 	 * populate local node record with current state of various replication-related
 	 * values, so we can check for sufficient walsenders and replication slots

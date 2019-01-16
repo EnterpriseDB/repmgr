@@ -111,6 +111,7 @@ typedef struct
 	bool		missing_slots;
 	bool		has_passfile;
 	bool		replication_connection;
+	bool		data_directory_config;
 
 	/* "node rejoin" options */
 	char		config_files[MAXLEN];
@@ -161,7 +162,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false, false, false, false, false,	\
+		false, false, false, false, false, false, false, false,	false, \
 		/* "node rejoin" options */ \
 		"", \
 		/* "node service" options */ \

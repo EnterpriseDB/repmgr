@@ -50,6 +50,13 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-check"><command>repmgr node check --data-directory-config</command></link>
+              option added; this is to confirm &repmgr; is correctly configured.
+            </para>
+          </listitem>
+
        </itemizedlist>
       </para>
     </sect2>

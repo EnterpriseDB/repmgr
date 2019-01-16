@@ -497,6 +497,10 @@ main(int argc, char **argv)
 				runtime_options.replication_connection = true;
 				break;
 
+			case OPT_DATA_DIRECTORY_CONFIG:
+				runtime_options.data_directory_config = true;
+				break;
+
 				/*--------------------
 				 * "node rejoin" options
 				 *--------------------

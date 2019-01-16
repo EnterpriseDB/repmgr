@@ -48,7 +48,7 @@ static CheckStatus do_node_check_replication_lag(PGconn *conn, OutputMode mode, 
 static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
-
+static CheckStatus do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 /*
  * NODE STATUS
  *
@@ -82,6 +82,9 @@ do_node_status(void)
 	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	char		server_version_str[MAXVERSIONSTR] = "";
 
+	/*
+	 * A database connection is *not* required for this check
+	 */
 	if (runtime_options.is_shutdown_cleanly == true)
 	{
 		return _do_node_status_is_shutdown_cleanly();
@@ -653,7 +656,8 @@ _do_node_status_is_shutdown_cleanly(void)
 		node_status = NODE_STATUS_DOWN;
 	}
 
-	log_verbose(LOG_DEBUG, "node status determined as: %s", print_node_status(node_status));
+	log_verbose(LOG_DEBUG, "node status determined as: %s",
+				print_node_status(node_status));
 
 	switch (node_status)
 	{
@@ -789,6 +793,16 @@ do_node_check(void)
 		exit(return_code);
 	}
 
+	if (runtime_options.data_directory_config == true)
+	{
+		return_code = do_node_check_data_directory(conn,
+												   runtime_options.output_mode,
+												   &node_info,
+												   NULL);
+		PQfinish(conn);
+		exit(return_code);
+	}
+
 
 	if (runtime_options.output_mode == OM_NAGIOS)
 	{
@@ -819,6 +833,9 @@ do_node_check(void)
 		issue_detected = true;
 
 	if (do_node_check_missing_slots(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
+		issue_detected = true;
+
+	if (do_node_check_data_directory(conn, runtime_options.output_mode, &node_info, &status_list) != CHECK_STATUS_OK)
 		issue_detected = true;
 
 	if (runtime_options.output_mode == OM_CSV)
@@ -1442,11 +1459,9 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 	switch (mode)
 	{
 		case OM_OPTFORMAT:
-			{
-				printf("--status=%s %s\n",
-					   output_check_status(status),
-					   details.data);
-			}
+			printf("--status=%s %s\n",
+				   output_check_status(status),
+				   details.data);
 			break;
 		case OM_NAGIOS:
 			printf("REPMGR_REPLICATION_LAG %s: %s\n",
@@ -1796,6 +1811,135 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 	return status;
 }
 
+
+CheckStatus
+do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
+{
+	CheckStatus status = CHECK_STATUS_OK;
+	char actual_data_directory[MAXPGPATH] = "";
+	PQExpBufferData details;
+
+	if (mode == OM_CSV && list_output == NULL)
+	{
+		log_error(_("--csv output not provided with --data-directory-config option"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&details);
+	/*
+	 * Check actual data directory matches that in repmgr.conf; note this requires
+	 * a superuser connection
+	 */
+
+	if (is_superuser_connection(conn, NULL) == true)
+	{
+		/* we expect to have a database connection */
+		if (get_pg_setting(conn, "data_directory", actual_data_directory) == false)
+		{
+			appendPQExpBuffer(&details,
+							  _("unable to determine current \"data_directory\""));
+			status = CHECK_STATUS_UNKNOWN;
+		}
+
+		if (strncmp(actual_data_directory, config_file_options.data_directory, MAXPGPATH) != 0)
+		{
+			if (mode != OM_NAGIOS)
+			{
+				appendPQExpBuffer(&details,
+								  _("configured \"data_directory\" is \"%s\"; "),
+								  config_file_options.data_directory);
+			}
+
+			appendPQExpBuffer(&details,
+							  "actual data directory is \"%s\"",
+							  actual_data_directory);
+
+			status = CHECK_STATUS_CRITICAL;
+		}
+		else
+		{
+			appendPQExpBuffer(&details,
+							  _("configured \"data_directory\" is \"%s\""),
+							  config_file_options.data_directory);
+		}
+	}
+	/*
+	 * If no superuser connection available, sanity-check that the configuration directory looks
+	 * like a PostgreSQL directory and hope it's the right one.
+	 */
+	else
+	{
+		if (mode == OM_TEXT)
+		{
+			log_info(_("connection is not a superuser connection, falling back to simple check"));
+
+			/* XXX add -S/--superuser option */
+			if (PQserverVersion(conn) >= 100000)
+			{
+				log_hint(_("add the \"%s\" user to group \"pg_read_all_settings\""),
+						   PQuser(conn));
+			}
+		}
+
+		if (is_pg_dir(config_file_options.data_directory) == false)
+		{
+			if (mode == OM_NAGIOS)
+			{
+				appendPQExpBufferStr(&details,
+								  _("configured \"data_directory\" is not a PostgreSQL data directory"));
+			}
+			else
+			{
+				appendPQExpBuffer(&details,
+								  _("configured \"data_directory\" \"%s\" is not a PostgreSQL data directory"),
+								  actual_data_directory);
+			}
+
+			status = CHECK_STATUS_CRITICAL;
+		}
+	}
+
+	switch (mode)
+	{
+		case OM_OPTFORMAT:
+			printf("--configured-data-directory=%s\n",
+				   output_check_status(status));
+			break;
+		case OM_NAGIOS:
+			printf("REPMGR_DATA_DIRECTORY %s: %s",
+				   output_check_status(status),
+				   config_file_options.data_directory);
+
+			if (status == CHECK_STATUS_CRITICAL)
+			{
+				printf(" | %s", details.data);
+			}
+			puts("");
+			break;
+		case OM_CSV:
+		case OM_TEXT:
+			if (list_output != NULL)
+			{
+				check_status_list_set(list_output,
+									  "Configured data directory",
+									  status,
+									  details.data);
+			}
+			else
+			{
+				printf("%s (%s)\n",
+					   output_check_status(status),
+					   details.data);
+			}
+		default:
+			break;
+	}
+
+	termPQExpBuffer(&details);
+
+	return status;
+}
 
 
 void
@@ -2924,8 +3068,8 @@ do_node_help(void)
 	puts("");
 	printf(_("  Configuration file required, runs on local node only.\n"));
 	puts("");
-	printf(_("    --csv                   emit output as CSV\n"));
-	printf(_("    --nagios                emit output in Nagios format (individual status output only)\n"));
+	printf(_("    --csv                   emit output as CSV (not available for individual check output)\n"));
+	printf(_("    --nagios                emit output in Nagios format (individual check output only)\n"));
 	puts("");
 	printf(_("  Following options check an individual status:\n"));
 	printf(_("    --archive-ready         number of WAL files ready for archiving\n"));
@@ -2934,6 +3078,7 @@ do_node_help(void)
 	printf(_("    --role                  check node has expected role\n"));
 	printf(_("    --slots                 check for inactive replication slots\n"));
 	printf(_("    --missing-slots         check for missing replication slots\n"));
+	printf(_("    --data-directory-config check repmgr's data directory configuration\n"));
 
 	puts("");
 

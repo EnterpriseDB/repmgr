@@ -198,9 +198,9 @@ mkdir_p(char *path, mode_t omode)
 
 
 bool
-is_pg_dir(char *path)
+is_pg_dir(const char *path)
 {
-	char		dirpath[MAXPGPATH];
+	char		dirpath[MAXPGPATH] = "";
 	struct stat sb;
 
 	/* test pgdata */
