@@ -182,7 +182,14 @@
 
   </sect2>
 
-
+  <sect2 id="faq-repmgr-conf-data-directory">
+    <title>Why do I need to specify the data directory location in repmgr.conf?</title>
+    <para>
+      In some circumstances &repmgr; may need to access a PostgreSQL data
+      directory while the PostgreSQL server is not running, e.g. to confirm
+      it shut down cleanly during a <link linkend="performing-switchover">switchover</link>.
+    </para>
+  </sect2>
  </sect1>
 
  <sect1 id="faq-repmgr" xreflabel="repmgr">
