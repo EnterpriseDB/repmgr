@@ -50,7 +50,7 @@ typedef long pgpid_t;
  * and tablespace directories.
  */
 DataDirState
-check_dir(char *path)
+check_dir(const char *path)
 {
 	DIR		   *chkdir = NULL;
 	struct dirent *file = NULL;
@@ -91,12 +91,17 @@ check_dir(char *path)
  * Create directory with error log message when failing
  */
 bool
-create_dir(char *path)
+create_dir(const char *path)
 {
-	if (mkdir_p(path, 0700) == 0)
+	char create_dir_path[MAXPGPATH];
+
+	/* mkdir_p() may modify the supplied path */
+	strncpy(create_dir_path, path, MAXPGPATH);
+
+	if (mkdir_p(create_dir_path, 0700) == 0)
 		return true;
 
-	log_error(_("unable to create directory \"%s\""), path);
+	log_error(_("unable to create directory \"%s\""), create_dir_path);
 	log_detail("%s", strerror(errno));
 
 	return false;
@@ -104,11 +109,10 @@ create_dir(char *path)
 
 
 bool
-set_dir_permissions(char *path)
+set_dir_permissions(const char *path)
 {
 	return (chmod(path, 0700) != 0) ? false : true;
 }
-
 
 
 /* function from initdb.c */
@@ -223,7 +227,7 @@ is_pg_dir(const char *path)
  * any further useful progress can be made.
  */
 PgDirState
-is_pg_running(char *path)
+is_pg_running(const char *path)
 {
 	long		pid;
 	FILE	   *pidf;
@@ -291,7 +295,7 @@ is_pg_running(char *path)
 
 
 bool
-create_pg_dir(char *path, bool force)
+create_pg_dir(const char *path, bool force)
 {
 	/* Check this directory can be used as a PGDATA dir */
 	switch (check_dir(path))
@@ -358,7 +362,7 @@ create_pg_dir(char *path, bool force)
 
 
 int
-rmdir_recursive(char *path)
+rmdir_recursive(const char *path)
 {
 	return nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);
 }

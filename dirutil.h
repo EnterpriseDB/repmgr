@@ -35,13 +35,13 @@ typedef enum
 } PgDirState;
 
 extern int	mkdir_p(char *path, mode_t omode);
-extern bool set_dir_permissions(char *path);
+extern bool set_dir_permissions(const char *path);
 
-extern DataDirState	check_dir(char *path);
-extern bool create_dir(char *path);
+extern DataDirState	check_dir(const char *path);
+extern bool create_dir(const char *path);
 extern bool is_pg_dir(const char *path);
-extern PgDirState is_pg_running(char *path);
-extern bool create_pg_dir(char *path, bool force);
-extern int rmdir_recursive(char *path);
+extern PgDirState is_pg_running(const char *path);
+extern bool create_pg_dir(const char *path, bool force);
+extern int rmdir_recursive(const char *path);
 
 #endif
