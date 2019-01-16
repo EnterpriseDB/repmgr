@@ -101,6 +101,7 @@ static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
 static ConnectionStatus parse_remote_node_replication_connection(const char *node_check_output);
+static bool parse_data_directory_config(const char *node_check_output);
 
 /*
  * STANDBY CLONE
@@ -3455,7 +3456,6 @@ do_standby_switchover(void)
 								 "(not set)");
 		}
 
-
 		log_hint("%s", hint.data);
 
 		termPQExpBuffer(&hint);
@@ -3465,12 +3465,70 @@ do_standby_switchover(void)
 
 		exit(ERR_BAD_CONFIG);
 	}
+	termPQExpBuffer(&command_output);
+
+	/*
+	 * Sanity-check remote "data_directory" is correctly configured in repmgr.conf.
+	 *
+	 * This is important as we'll need to be able to run "repmgr node status" on the data
+	 * directory after the remote (demotion candidate) has shut down.
+	 */
+
+	initPQExpBuffer(&remote_command_str);
+	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+
+	/*
+	 * --data-directory-config is available from repmgr 4.3; it will fail
+	 * if the remote repmgr is an earlier version, but the version should match
+	 * anyway.
+	 */
+	appendPQExpBufferStr(&remote_command_str, "node check --data-directory-config --optformat -LINFO 2>/dev/null");
+
+	initPQExpBuffer(&command_output);
+	command_success = remote_command(remote_host,
+									 runtime_options.remote_user,
+									 remote_command_str.data,
+									 &command_output);
+
+	termPQExpBuffer(&remote_command_str);
+
+	if (command_success == false)
+	{
+		log_error(_("unable to execute \"%s node check --data-directory-config\" on \"%s\":"),
+				  progname(), remote_host);
+		log_detail("%s", command_output.data);
+
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+
+		termPQExpBuffer(&command_output);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (parse_data_directory_config(command_output.data) == false)
+	{
+		log_error(_("\"data_directory\" parameter in repmgr.conf on \"%s\" is incorrectly configured"),
+				  remote_node_record.node_name);
+
+		log_hint(_("execute \"repmgr node check --data-directory-config\" on \"%s\" to diagnose the issue"),
+				 remote_node_record.node_name);
+
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+
+		termPQExpBuffer(&command_output);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	termPQExpBuffer(&command_output);
 
 	if (runtime_options.dry_run == true)
 	{
 		log_info(_("able to execute \"%s\" on remote host \"localhost\""), progname());
 	}
-	termPQExpBuffer(&command_output);
+
 
 	/* check remote repmgr has the data directory correctly configured */
 
@@ -7137,7 +7195,57 @@ parse_node_check_archiver(const char *node_check_output, int *files, int *thresh
 	return status;
 }
 
+static bool
+parse_data_directory_config(const char *node_check_output)
+{
+	bool		config_ok = true;
 
+	int			c = 0,
+				argc_item = 0;
+	char	  **argv_array = NULL;
+	int			optindex = 0;
+
+	/* We're only interested in this option */
+	struct option node_check_options[] =
+	{
+		{"configured-data-directory", required_argument, NULL, 'C'},
+		{NULL, 0, NULL, 0}
+	};
+
+	/* Don't attempt to tokenise an empty string */
+	if (!strlen(node_check_output))
+	{
+		return false;
+	}
+
+	argc_item = parse_output_to_argv(node_check_output, &argv_array);
+
+	/* Reset getopt's optind variable */
+	optind = 0;
+
+	/* Prevent getopt from emitting errors */
+	opterr = 0;
+
+	while ((c = getopt_long(argc_item, argv_array, "C:", node_check_options,
+							&optindex)) != -1)
+	{
+		switch (c)
+		{
+			/* --configured-data-directory */
+			case 'C':
+				{
+					/* we only care whether it's "OK" or not */
+					if (strncmp(optarg, "OK", 2) != 0)
+						config_ok = false;
+				}
+				break;
+		}
+	}
+
+	free_parsed_argv(&argv_array);
+
+	return config_ok;
+}
 
 
 void

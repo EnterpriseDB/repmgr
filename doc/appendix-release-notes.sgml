@@ -53,7 +53,16 @@
           <listitem>
             <para>
               <link linkend="repmgr-node-check"><command>repmgr node check --data-directory-config</command></link>
-              option added; this is to confirm &repmgr; is correctly configured.
+              option added; this is to confirm &repmgr; is correctly configured. GitHub #523.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              Add check <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>
+              to ensure the data directory on the demotion candidate is configured correctly in <filename>repmgr.conf</filename>.
+              This is to ensure that &repmgr;, when remotely executed on the demotion candidate, can correctly verify
+              that PostgreSQL on the demotion candidate was shut down cleanly. GitHub #523.
             </para>
           </listitem>
 
