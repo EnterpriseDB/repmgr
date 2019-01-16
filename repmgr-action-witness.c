@@ -482,7 +482,7 @@ void do_witness_help(void)
 	print_help_header();
 
 	printf(_("Usage:\n"));
-	printf(_("    %s [OPTIONS] witness register\n"), progname());
+	printf(_("    %s [OPTIONS] witness register -h primary_node\n"), progname());
 	printf(_("    %s [OPTIONS] witness unregister\n"), progname());
 
 	printf(_("WITNESS REGISTER\n"));
