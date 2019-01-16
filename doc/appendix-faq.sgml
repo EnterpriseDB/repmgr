@@ -189,6 +189,14 @@
       directory while the PostgreSQL server is not running, e.g. to confirm
       it shut down cleanly during a <link linkend="performing-switchover">switchover</link>.
     </para>
+    <para>
+      Additionally, this provides support when using &repmgr; on PostgreSQL 9.6 and
+      earlier, where the <literal>repmgr</literal> user is not a superuser; in that
+      case the <literal>repmgr</literal> user will not be able to access the
+      <literal>data_directory</literal> configuration setting, access to which is restricted
+      to superusers. (In PostgreSQL 10 and later, non-superusers can be added to the
+      group <option>pg_read_all_settings</option> which will enable them to read this setting).
+    </para>
   </sect2>
  </sect1>
 
