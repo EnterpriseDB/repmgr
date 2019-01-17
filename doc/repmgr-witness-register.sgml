@@ -28,7 +28,7 @@
     </para>
     <para>
       In most cases it's only necessary to provide the primary's hostname with
-      the <option>-h</option>/<option>--hostname</option> option; &repmgr; will
+      the <option>-h</option>/<option>--host</option> option; &repmgr; will
       automatically use the <varname>user</varname> and <varname>dbname</varname>
       values defined in the <varname>conninfo</varname> string defined in the
       witness node's <filename>repmgr.conf</filename>, unless these are explicitly
