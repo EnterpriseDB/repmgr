@@ -1399,7 +1399,7 @@ check_cli_parameters(const int action)
 					if (!runtime_options.host_param_provided)
 					{
 						item_list_append_format(&cli_errors,
-												_("host name for the source node must be provided when executing %s"),
+												_("host name for the source node must be provided with -h/--hostname when executing %s"),
 												action_name(action));
 					}
 
@@ -1456,7 +1456,7 @@ check_cli_parameters(const int action)
 				if (!runtime_options.host_param_provided)
 				{
 					item_list_append_format(&cli_errors,
-											_("host name for the source node must be provided when executing %s"),
+											_("host name for the source node must be provided with -h/--hostname when executing %s"),
 											action_name(action));
 				}
 			}

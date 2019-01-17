@@ -23,14 +23,19 @@
       use of the witness server with <application>repmgrd</application>.
     </para>
     <para>
-      When executing <command>repmgr witness register</command>, connection information
-      for the cluster primary server must also be provided. &repmgr; will automatically
-      use the <varname>user</varname> and <varname>dbname</varname> values defined
-      in the <varname>conninfo</varname> string defined in the  witness node's
-      <filename>repmgr.conf</filename>, if these are not explicitly provided.
+      When executing <command>repmgr witness register</command>, database connection
+      information for the cluster primary server must also be provided.
     </para>
     <para>
-      Execute with the <literal>--dry-run</literal> option to check what would happen
+      In most cases it's only necessary to provide the primary's hostname with
+      the <option>-h</option>/<option>--hostname</option> option; &repmgr; will
+      automatically use the <varname>user</varname> and <varname>dbname</varname>
+      values defined in the <varname>conninfo</varname> string defined in the
+      witness node's <filename>repmgr.conf</filename>, unless these are explicitly
+      provided as command line options.
+    </para>
+    <para>
+      Execute with the <option>--dry-run</option> option to check what would happen
       without actually registering the witness server.
     </para>
   </refsect1>

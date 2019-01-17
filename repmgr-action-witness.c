@@ -484,13 +484,15 @@ void do_witness_help(void)
 	printf(_("Usage:\n"));
 	printf(_("    %s [OPTIONS] witness register\n"), progname());
 	printf(_("    %s [OPTIONS] witness unregister\n"), progname());
-
+	puts("");
 	printf(_("WITNESS REGISTER\n"));
 	puts("");
 	printf(_("  \"witness register\" registers a witness node.\n"));
 	puts("");
-	printf(_("  Requires provision of connection information for the primary\n"));
+	printf(_("  Requires provision of connection information for the primary node,\n"));
+	printf(_("  typically usually just the hostname.\n"));
 	puts("");
+	printf(_("  -h/--hostname            hostname of the primary node\n"));
 	printf(_("  --dry-run                check prerequisites but don't make any changes\n"));
 	printf(_("  -F, --force              overwrite an existing node record\n"));
 	puts("");
