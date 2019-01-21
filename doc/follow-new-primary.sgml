@@ -15,7 +15,7 @@
   end of the preceding section (<xref linkend="promoting-standby">),
   execute this:
   <programlisting>
-    $ repmgr -f /etc/repmgr.conf repmgr standby follow
+    $ repmgr -f /etc/repmgr.conf standby follow
     INFO: changing node 3's primary to node 2
     NOTICE: restarting server using "pg_ctl -l /var/log/postgresql/startup.log -w -D '/var/lib/postgresql/data' restart"
     waiting for server to shut down......... done
