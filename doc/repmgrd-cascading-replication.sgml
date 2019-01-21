@@ -17,6 +17,8 @@
   is promoted, a standby connected to another standby will not be affected
   and continue working as normal (even if the upstream standby it's connected
   to becomes the primary node). If however the node's direct upstream fails,
-  the "cascaded standby" will attempt to reconnect to that node's parent.
+  the &quot;cascaded standby&quot; will attempt to reconnect to that node's parent
+  (unless <varname>failover</varname> is set to <literal>manual</literal> in
+  <filename>repmgr.conf</filename>).
  </para>
 </chapter>

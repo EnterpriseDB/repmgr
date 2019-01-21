@@ -83,6 +83,13 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <application>repmgrd</application>:  on a cascaded standby, don't fail over if
+              <literal>failover=manual</literal>. GitHub #531.
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>

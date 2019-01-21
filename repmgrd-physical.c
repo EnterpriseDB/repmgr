@@ -950,7 +950,14 @@ monitor_streaming_standby(void)
 						}
 						else if (upstream_node_info.type == STANDBY)
 						{
+
 							failover_done = do_upstream_standby_failover();
+
+							if (failover_done == false)
+							{
+								monitoring_state = MS_DEGRADED;
+								INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+							}
 						}
 
 						/*
@@ -1225,7 +1232,15 @@ loop:
 						log_detail(_("waiting for upstream or another primary to reappear"));
 					}
 				}
-				else if (config_file_options.monitoring_history == true)
+
+				/*
+				 * Add update about monitoring updates.
+				 *
+				 * Note: with cascaded replication, it's possible we're still able to write
+				 * monitoring history to the primary even if the upstream is still reachable.
+				 */
+
+				if (PQstatus(primary_conn) == CONNECTION_OK && config_file_options.monitoring_history == true)
 				{
 					if (INSTR_TIME_IS_ZERO(last_monitoring_update))
 					{
@@ -2194,15 +2209,18 @@ update_monitoring_history(void)
 /*
  * do_upstream_standby_failover()
  *
- * Attach cascaded standby to primary
+ * Attach cascaded standby to another node, currently the primary.
  *
- * Currently we will try to attach to the cluster primary, as "repmgr
- * standby follow" doesn't support attaching to another node.
+ * Note that in contrast to a primary failover, where one of the downstrean
+ * standby nodes will become a primary, a cascaded standby failover (where the
+ * upstream standby has gone away) is "just" a case of attaching the standby to
+ * another node.
  *
- * If this becomes supported, it might be worth providing a selection
- * of reconnection strategies as different behaviour might be desirable
- * in different situations;
- * or maybe the option not to reconnect might be required?
+ * Currently we will try to attach the node to the cluster primary.
+ *
+ * TODO: As of repmgr 4.3, "repmgr standby follow" supports attaching a standby to another
+ * standby node. We need to provide a selection of reconnection strategies as different
+ * behaviour might be desirable in different situations.
  */
 
 static bool
@@ -2216,6 +2234,15 @@ do_upstream_standby_failover(void)
 	char		parsed_follow_command[MAXPGPATH] = "";
 
 	close_connection(&upstream_conn);
+
+	/*
+	 *
+	 */
+	if (config_file_options.failover == FAILOVER_MANUAL)
+	{
+		log_notice(_("this node is not configured for automatic failover"));
+		return false;
+	}
 
 	if (get_primary_node_record(local_conn, &primary_node_info) == false)
 	{
