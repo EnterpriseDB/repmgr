@@ -1,7 +1,7 @@
 /*
  * repmgrd-physical.c - physical (streaming) replication functionality for repmgrd
  *
- * Copyright (c) 2ndQuadrant, 2010-2018
+ * Copyright (c) 2ndQuadrant, 2010-2019
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
