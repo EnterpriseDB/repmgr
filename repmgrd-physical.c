@@ -665,11 +665,14 @@ monitor_streaming_standby(void)
 			terminate(ERR_BAD_CONFIG);
 		}
 
-		(void) get_node_record(upstream_conn, local_node_info.upstream_node_id, &upstream_node_info);
+		log_debug("upstream node ID determined as %i", local_node_info.upstream_node_id);
 
+		(void) get_node_record(upstream_conn, local_node_info.upstream_node_id, &upstream_node_info);
 	}
 	else
 	{
+		log_debug("upstream node ID in local node record is %i", local_node_info.upstream_node_id);
+
 		record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &upstream_node_info);
 
 		/*
@@ -731,10 +734,11 @@ monitor_streaming_standby(void)
 
 	if (upstream_node_info.type == STANDBY)
 	{
+		log_debug("upstream node is standby, connecting to primary");
 		/*
 		 * Currently cascaded standbys need to be able to connect to the
 		 * primary. We could possibly add a limited connection mode for cases
-		 * where this isn't possible.
+		 * where this isn't possible, but that will complicate things further.
 		 */
 		primary_conn = establish_primary_db_connection(upstream_conn, false);
 
@@ -750,6 +754,7 @@ monitor_streaming_standby(void)
 	}
 	else
 	{
+		log_debug("upstream node is primary");
 		primary_conn = upstream_conn;
 	}
 
@@ -770,7 +775,17 @@ monitor_streaming_standby(void)
 		}
 	}
 
-	primary_node_id = get_primary_node_id(primary_conn);
+	if (PQstatus(primary_conn) == CONNECTION_OK)
+	{
+		primary_node_id = get_primary_node_id(primary_conn);
+		log_debug("primary_node_id is %i", primary_node_id);
+	}
+	else
+	{
+		primary_node_id = get_primary_node_id(local_conn);
+		log_debug("primary_node_id according to local records is %i", primary_node_id);
+	}
+
 
 	/* Log startup event */
 	if (startup_event_logged == false)
@@ -857,16 +872,23 @@ monitor_streaming_standby(void)
 
 				if (PQstatus(local_conn) != CONNECTION_OK)
 				{
+					
 					check_connection(&local_node_info, &local_conn);
-					log_debug("YYY here");
 				}
 
 				try_reconnect(&upstream_conn, &upstream_node_info);
 
-				/* Node has recovered - log and continue */
+				/* Upstream node has recovered - log and continue */
 				if (upstream_node_info.node_status == NODE_STATUS_UP)
 				{
 					int			upstream_node_unreachable_elapsed = calculate_elapsed(upstream_node_unreachable_start);
+
+					initPQExpBuffer(&event_details);
+
+					appendPQExpBuffer(&event_details,
+									  _("reconnected to upstream node after %i seconds"),
+									  upstream_node_unreachable_elapsed);
+					log_notice("%s", event_details.data);
 
 					if (upstream_node_info.type == PRIMARY)
 					{
@@ -876,11 +898,12 @@ monitor_streaming_standby(void)
 						{
 							ExecStatusType ping_result;
 
+							termPQExpBuffer(&event_details);
+
 							log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
 									   upstream_node_info.node_name, upstream_node_info.node_id);
 							PQfinish(upstream_conn);
 							upstream_conn = NULL;
-							termPQExpBuffer(&event_details);
 							local_node_info.upstream_node_id = UNKNOWN_NODE_ID;
 
 							/* check local connection */
@@ -909,13 +932,6 @@ monitor_streaming_standby(void)
 							return;
 						}
 					}
-
-					initPQExpBuffer(&event_details);
-
-					appendPQExpBuffer(&event_details,
-									  _("reconnected to upstream node after %i seconds"),
-									  upstream_node_unreachable_elapsed);
-					log_notice("%s", event_details.data);
 
 					create_event_notification(primary_conn,
 											  &config_file_options,
@@ -1000,8 +1016,7 @@ monitor_streaming_standby(void)
 				terminate(ERR_MONITORING_TIMEOUT);
 			}
 
-
-			log_debug("monitoring node %i in degraded state for %i seconds",
+			log_debug("monitoring upstream node %i in degraded state for %i seconds",
 					  upstream_node_info.node_id,
 					  degraded_monitoring_elapsed);
 
@@ -1011,6 +1026,10 @@ monitor_streaming_standby(void)
 
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
 				{
+
+					log_debug(" upstream node %i has recovered",
+							  upstream_node_info.node_id);
+
 					/* XXX check here if upstream is still primary */
 					/*
 					 * -> will be a problem if another node was promoted in
