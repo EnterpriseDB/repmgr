@@ -201,11 +201,20 @@
  <sect1 id="quickstart-standby-preparation">
   <title>Preparing the standby</title>
   <para>
-   On the standby, do not create a PostgreSQL instance, but do ensure the destination
+   On the standby, do <emphasis>not</emphasis> create a PostgreSQL instance (i.e.
+   do not execute <application>initdb</application> or any database creation
+   scripts provided by packages), but do ensure the destination
    data directory (and any other directories which you want PostgreSQL to use)
    exist and are owned by the <literal>postgres</literal> system user. Permissions
    must be set to <literal>0700</literal> (<literal>drwx------</literal>).
   </para>
+  <tip>
+    <simpara>
+      &repmgr; will place a copy of the primary's database files in this directory.
+      It will however refuse to run if a PostgreSQL instance has already been
+      created there.
+    </simpara>
+  </tip>
   <para>
    Check the primary database is reachable from the standby using <application>psql</application>:
   </para>
