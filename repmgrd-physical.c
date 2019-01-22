@@ -638,6 +638,9 @@ monitor_streaming_standby(void)
 	instr_time	log_status_interval_start;
 	PQExpBufferData event_details;
 
+	MonitoringState local_monitoring_state = MS_NORMAL;
+	instr_time	local_degraded_monitoring_start;
+
 	log_debug("monitor_streaming_standby()");
 
 	reset_node_voting_status();
@@ -1341,10 +1344,25 @@ loop:
 
 				termPQExpBuffer(&event_details);
 			}
+
+			if (local_monitoring_state == MS_NORMAL)
+			{
+				log_info("entering degraded monitoring for the local node");
+				local_monitoring_state = MS_DEGRADED;
+				INSTR_TIME_SET_CURRENT(local_degraded_monitoring_start);
+			}
 		}
 		else
 		{
 			int stored_local_node_id = repmgrd_get_local_node_id(local_conn);
+
+
+			if (local_monitoring_state == MS_DEGRADED)
+			{
+				log_info(_("connection to local node recovered after %i seconds"),
+						 calculate_elapsed(local_degraded_monitoring_start));
+				local_monitoring_state = MS_NORMAL;
+			}
 
 			/*
 			 * If the local node was restarted, we'll need to reinitialise values
