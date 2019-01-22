@@ -630,7 +630,9 @@ check_primary_status(int degraded_monitoring_elapsed)
 }
 
 
-
+/*
+ * repmgrd running on a standby server
+ */
 void
 monitor_streaming_standby(void)
 {
@@ -640,6 +642,8 @@ monitor_streaming_standby(void)
 
 	MonitoringState local_monitoring_state = MS_NORMAL;
 	instr_time	local_degraded_monitoring_start;
+
+	int last_known_upstream_node_id = UNKNOWN_NODE_ID;
 
 	log_debug("monitor_streaming_standby()");
 
@@ -728,6 +732,8 @@ monitor_streaming_standby(void)
 		upstream_conn = NULL;
 		return;
 	}
+
+	last_known_upstream_node_id = local_node_info.upstream_node_id;
 
 	/*
 	 * refresh upstream node record from upstream node, so it's as up-to-date
@@ -875,7 +881,6 @@ monitor_streaming_standby(void)
 
 				if (PQstatus(local_conn) != CONNECTION_OK)
 				{
-					
 					check_connection(&local_node_info, &local_conn);
 				}
 
@@ -1144,7 +1149,7 @@ monitor_streaming_standby(void)
 					 */
 
 					/* refresh own internal node record */
-					record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
+					record_status = refresh_node_record(local_conn, local_node_info.node_id, &local_node_info);
 
 					if (local_node_info.type == PRIMARY)
 					{
@@ -1354,20 +1359,48 @@ loop:
 		}
 		else
 		{
-			int stored_local_node_id = repmgrd_get_local_node_id(local_conn);
-
+			int stored_local_node_id = UNKNOWN_NODE_ID;
 
 			if (local_monitoring_state == MS_DEGRADED)
 			{
 				log_info(_("connection to local node recovered after %i seconds"),
 						 calculate_elapsed(local_degraded_monitoring_start));
 				local_monitoring_state = MS_NORMAL;
+
+				/*
+				 * Check if anything has changed since the local node came back on line;
+				 * we may need to restart monitoring.
+				 */
+				refresh_node_record(local_conn, local_node_info.node_id, &local_node_info);
+
+				if (last_known_upstream_node_id != local_node_info.upstream_node_id)
+				{
+					log_notice(_("local node %i upstream appears to have changed, restarting monitoring"),
+							   local_node_info.node_id);
+					log_detail(_("currently monitoring upstream %i; new upstream is %i"),
+							   last_known_upstream_node_id,
+							   local_node_info.upstream_node_id);
+					close_connection(&upstream_conn);
+					return;
+				}
+
+				/*
+				 *
+				 */
+				if (local_node_info.type != STANDBY)
+				{
+					log_notice(_("local node %i is no longer a standby, restarting monitoring"),
+							   local_node_info.node_id);
+					close_connection(&upstream_conn);
+					return;
+				}
 			}
 
 			/*
 			 * If the local node was restarted, we'll need to reinitialise values
 			 * stored in shared memory.
 			 */
+			stored_local_node_id = repmgrd_get_local_node_id(local_conn);
 
 			if (stored_local_node_id == UNKNOWN_NODE_ID)
 			{
@@ -1428,8 +1461,22 @@ loop:
 			handle_sighup(&local_conn, STANDBY);
 		}
 
+		refresh_node_record(local_conn, local_node_info.node_id, &local_node_info);
+
+		if (local_monitoring_state == MS_NORMAL && last_known_upstream_node_id != local_node_info.upstream_node_id)
+		{
+			log_notice(_("local node %i's upstream appears to have changed, restarting monitoring"),
+					   local_node_info.node_id);
+			log_detail(_("currently monitoring upstream %i; new upstream is %i"),
+					   last_known_upstream_node_id,
+					   local_node_info.upstream_node_id);
+			close_connection(&upstream_conn);
+			return;
+		}
+
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",
 					config_file_options.monitor_interval_secs);
+
 
 		sleep(config_file_options.monitor_interval_secs);
 	}

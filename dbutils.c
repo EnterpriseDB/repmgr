@@ -51,8 +51,8 @@ static PGconn *_establish_db_connection(const char *conninfo,
 static PGconn *_get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out, bool quiet);
 
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
-static RecordStatus _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info);
-static void _populate_node_record(PGresult *res, t_node_info *node_info, int row);
+static RecordStatus _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info, bool init_defaults);
+static void _populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_defaults);
 
 static void _populate_node_records(PGresult *res, NodeInfoList *node_list);
 
@@ -2094,7 +2094,7 @@ promote_standby(PGconn *conn, bool wait, int wait_seconds)
 
 
 static RecordStatus
-_get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info)
+_get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info, bool init_defaults)
 {
 	int			ntuples = 0;
 	PGresult   *res = NULL;
@@ -2115,7 +2115,7 @@ _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info)
 		return RECORD_NOT_FOUND;
 	}
 
-	_populate_node_record(res, node_info, 0);
+	_populate_node_record(res, node_info, 0, init_defaults);
 
 	PQclear(res);
 
@@ -2124,7 +2124,7 @@ _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info)
 
 
 static void
-_populate_node_record(PGresult *res, t_node_info *node_info, int row)
+_populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_defaults)
 {
 	node_info->node_id = atoi(PQgetvalue(res, row, 0));
 	node_info->type = parse_node_type(PQgetvalue(res, row, 1));
@@ -2151,11 +2151,15 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row)
 	strncpy(node_info->upstream_node_name, PQgetvalue(res, row, 11), MAXLEN);
 
 	/* Set remaining struct fields with default values */
-	node_info->node_status = NODE_STATUS_UNKNOWN;
-	node_info->recovery_type = RECTYPE_UNKNOWN;
-	node_info->last_wal_receive_lsn = InvalidXLogRecPtr;
-	node_info->monitoring_state = MS_NORMAL;
-	node_info->conn = NULL;
+
+	if (init_defaults == true)
+	{
+		node_info->node_status = NODE_STATUS_UNKNOWN;
+		node_info->recovery_type = RECTYPE_UNKNOWN;
+		node_info->last_wal_receive_lsn = InvalidXLogRecPtr;
+		node_info->monitoring_state = MS_NORMAL;
+		node_info->conn = NULL;
+	}
 }
 
 
@@ -2220,12 +2224,39 @@ get_node_record(PGconn *conn, int node_id, t_node_info *node_info)
 
 	log_verbose(LOG_DEBUG, "get_node_record():\n  %s", query.data);
 
-	result = _get_node_record(conn, query.data, node_info);
+	result = _get_node_record(conn, query.data, node_info, true);
 	termPQExpBuffer(&query);
 
 	if (result == RECORD_NOT_FOUND)
 	{
 		log_verbose(LOG_DEBUG, "get_node_record(): no record found for node %i", node_id);
+	}
+
+	return result;
+}
+
+
+RecordStatus
+refresh_node_record(PGconn *conn, int node_id, t_node_info *node_info)
+{
+	PQExpBufferData query;
+	RecordStatus result;
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+					  "SELECT " REPMGR_NODES_COLUMNS
+					  "  FROM repmgr.nodes n "
+					  " WHERE n.node_id = %i",
+					  node_id);
+
+	log_verbose(LOG_DEBUG, "get_node_record():\n  %s", query.data);
+
+	result = _get_node_record(conn, query.data, node_info, false);
+	termPQExpBuffer(&query);
+
+	if (result == RECORD_NOT_FOUND)
+	{
+		log_verbose(LOG_DEBUG, "refresh_node_record(): no record found for node %i", node_id);
 	}
 
 	return result;
@@ -2250,7 +2281,7 @@ get_node_record_with_upstream(PGconn *conn, int node_id, t_node_info *node_info)
 
 	log_verbose(LOG_DEBUG, "get_node_record():\n  %s", query.data);
 
-	result = _get_node_record(conn, query.data, node_info);
+	result = _get_node_record(conn, query.data, node_info, true);
 	termPQExpBuffer(&query);
 
 	if (result == RECORD_NOT_FOUND)
@@ -2278,7 +2309,7 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 
 	log_verbose(LOG_DEBUG, "get_node_record_by_name():\n  %s", query.data);
 
-	record_status = _get_node_record(conn, query.data, node_info);
+	record_status = _get_node_record(conn, query.data, node_info, true);
 
 	termPQExpBuffer(&query);
 
@@ -2373,7 +2404,7 @@ _populate_node_records(PGresult *res, NodeInfoList *node_list)
 
 		cell->node_info = pg_malloc0(sizeof(t_node_info));
 
-		_populate_node_record(res, cell->node_info, i);
+		_populate_node_record(res, cell->node_info, i, true);
 
 		if (node_list->tail)
 			node_list->tail->next = cell;
