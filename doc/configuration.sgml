@@ -61,6 +61,229 @@
       </simpara>
     </tip>
 
+  <sect2 id="configuration-postgresql" xreflabel="PostgreSQL configuration">
+    <indexterm>
+      <primary>configuration</primary>
+      <secondary>PostgreSQL</secondary>
+    </indexterm>
+
+    <indexterm>
+      <primary>PostgreSQL configuration</primary>
+    </indexterm>
+
+    <title>PostgreSQL configuration for &repmgr;</title>
+    <para>
+      The following PostgreSQL configuration parameters may need to be changed in order
+      for &repmgr; (and replication itself) to function correctly.
+    </para>
+    <variablelist>
+
+
+      <varlistentry>
+
+        <indexterm>
+          <primary>hot_standby</primary>
+          <secondary>PostgreSQL configuration</secondary>
+        </indexterm>
+
+        <term><option>hot_standby</option></term>
+        <listitem>
+          <para>
+            <option>hot_standby</option> must always be set to <literal>on</literal>, as &repmgr; needs
+            to be able to connect to each server it manages.
+          </para>
+          <para>
+            Note that <option>hot_standby</option> defaults to <literal>on</literal> from PostgreSQL 10
+            and later; in PostgreSQL 9.6 and earlier, the default was <literal>off</literal>.
+          </para>
+          <para>
+            PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-HOT-STANDBY">hot_standby</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+
+        <indexterm>
+          <primary>wal_level</primary>
+          <secondary>PostgreSQL configuration</secondary>
+        </indexterm>
+
+        <term><option>wal_level</option></term>
+        <listitem>
+          <para>
+            <option>wal_level</option> must be one of <option>replica</option> or <option>logical</option>
+            (PostgreSQL 9.5 and earlier: one of <option>hot_standby</option> or <option>logical</option>).
+          </para>
+          <para>
+            PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-WAL-LEVEL">wal_level</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+
+        <indexterm>
+          <primary>max_wal_senders</primary>
+          <secondary>PostgreSQL configuration</secondary>
+        </indexterm>
+
+        <term><option>max_wal_senders</option></term>
+        <listitem>
+          <para>
+            <option>max_wal_senders</option> must be set to a value of <literal>2</literal> or greater.
+            In general you will need one WAL sender for each standby which will attach to the PostgreSQL
+            instance; additionally &repmgr; will require two free WAL senders in order to clone further
+            standbys.
+          </para>
+          <para>
+            <option>max_wal_senders</option> should be set to an appropriate value on all PostgreSQL
+            instances in the replication cluster which may potentially become a primary server or
+            (in cascading replication) the upstream server of a standby.
+          </para>
+          <para>
+            PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-MAX-WAL-SENDERS">max_wal_senders</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+
+        <indexterm>
+          <primary>max_replication_slots</primary>
+          <secondary>PostgreSQL configuration</secondary>
+        </indexterm>
+
+        <term><option>max_replication_slots</option></term>
+        <listitem>
+          <para>
+            If you are intending to use replication slots, <option>max_replication_slots</option>
+            must be set to a non-zero value.
+          </para>
+          <para>
+            <option>max_replication_slots</option> should be set to an appropriate value on all PostgreSQL
+            instances in the replication cluster which may potentially become a primary server or
+            (in cascading replication) the upstream server of a standby.
+          </para>
+          <para>
+            PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-MAX-REPLICATION-SLOTS">max_replication_slots</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+
+        <indexterm>
+          <primary>wal_log_hints</primary>
+          <secondary>PostgreSQL configuration</secondary>
+        </indexterm>
+
+        <term><option>wal_log_hints</option></term>
+        <listitem>
+          <para>If you are intending to use <application>pg_rewind</application>,
+            and the cluster was not initialised using data checksums, you may want to consider enabling
+            <option>wal_log_hints</option>.
+          </para>
+          <para>
+            For more details see <xref linkend="repmgr-node-rejoin-pg-rewind">.
+          </para>
+          <para>
+            PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-WAL-LOG-HINTS">wal_log_hints</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+
+        <indexterm>
+          <primary>archive_mode</primary>
+          <secondary>PostgreSQL configuration</secondary>
+        </indexterm>
+
+        <term><option>archive_mode</option></term>
+        <listitem>
+          <para>
+            We suggest setting <option>archive_mode</option> to <literal>on</literal> (and
+            <option>archive_command</option> to <literal>/bin/true</literal>; see below)
+            even if you are currently not planning to use WAL file archiving.
+          </para>
+          <para>
+            This will make it simpler to set up WAL file archiving if it is ever required,
+            as changes to <option>archive_mode</option> require a full PostgreSQL server
+            restart, while <option>archive_command</option> changes can be applied via a normal
+            configuration reload.
+          </para>
+          <para>
+            However, &repmgr; itself does not require WAL file archiving.
+          </para>
+          <para>
+            PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-ARCHIVE-MODE">archive_mode</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+
+        <indexterm>
+          <primary>archive_command</primary>
+          <secondary>PostgreSQL configuration</secondary>
+        </indexterm>
+
+        <term><option>archive_command</option></term>
+        <listitem>
+          <para>
+            If you have set  <option>archive_mode</option> to <literal>on</literal> but are not currently planning
+            to use WAL file archiving, set <option>archive_command</option> to a command which does nothing but returns
+            <literal>true</literal>, such as <command>/bin/true</command>. See above for details.
+          </para>
+          <para>
+            PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-ARCHIVE-COMMAND">archive_command</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
+
+        <indexterm>
+          <primary>wal_keep_segments</primary>
+          <secondary>PostgreSQL configuration</secondary>
+        </indexterm>
+
+        <term><option>wal_keep_segments</option></term>
+        <listitem>
+          <para>
+            Normally there is no need to set <option>wal_keep_segments</option> (default: <literal>0</literal>), as it
+            is <emphasis>not</emphasis> a reliable way of ensuring that all required WAL segments are available to standbys.
+            Replication slots and/or an archiving solution such as Barman are recommended to ensure standbys have a reliable
+            source of WAL segments at all times.
+          </para>
+          <para>
+            The only reason ever to set  <option>wal_keep_segments</option> is you have
+            you have configured <option>pg_basebackup_options</option>
+            in <filename>repmgr.conf</filename> to include the setting <literal>--wal-method=fetch</literal>
+            (PostgreSQL 9.6 and earlier: <literal>--xlog-method=fetch</literal>)
+            <emphasis>and</emphasis> you have <emphasis>not</emphasis> set <option>restore_command</option>
+            in <filename>repmgr.conf</filename> to fetch WAL files from a reliable source such as Barman,
+            in which case you'll need to set <option>wal_keep_segments</option>
+            to a sufficiently high number to ensure that all WAL files required by the standby
+            are retained. However we do not recommend managing replication in this way.
+          </para>
+          <para>
+            PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-WAL-KEEP-SEGMENTS">wal_keep_segments</ulink>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+    <para>
+      See also the <link linkend="quickstart-postgresql-configuration">PostgreSQL configuration</link> section in the
+      <link linkend="quickstart">Quick-start guide</link>.
+    </para>
+  </sect2>
+
+
   </sect1>
 
 
