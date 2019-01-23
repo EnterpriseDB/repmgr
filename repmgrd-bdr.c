@@ -43,9 +43,11 @@ handle_sigint_bdr(SIGNAL_ARGS)
 	initPQExpBuffer(&event_details);
 
 	appendPQExpBuffer(&event_details,
-					  "%s signal received",
+					  _("%s signal received"),
 					  postgres_signal_arg == SIGTERM
 					  ? "TERM" : "INT");
+
+	log_notice("%s", event_details.data);
 
 	create_event_notification(local_conn,
 							  &config_file_options,

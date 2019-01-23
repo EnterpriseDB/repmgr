@@ -99,9 +99,11 @@ handle_sigint_physical(SIGNAL_ARGS)
 	initPQExpBuffer(&event_details);
 
 	appendPQExpBuffer(&event_details,
-					  "%s signal received",
+					  _("%s signal received"),
 					  postgres_signal_arg == SIGTERM
 					  ? "TERM" : "INT");
+
+	log_notice("%s", event_details.data);
 
 	if (local_node_info.type == PRIMARY)
 		writeable_conn = local_conn;
