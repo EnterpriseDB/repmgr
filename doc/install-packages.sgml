@@ -47,7 +47,7 @@
     <title>2ndQuadrant public RPM yum repository</title>
 
     <para>
-      Beginning with <ulink url="https://repmgr.org/docs/4.1/release-4.0.5.html">repmgr 4.0.5</ulink>,
+      Beginning with <ulink url="https://repmgr.org/docs/current/release-4.0.5.html">repmgr 4.0.5</ulink>,
       <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a dedicated <literal>yum</literal>
 	  <ulink url="https://dl.2ndquadrant.com/">public repository</ulink> for 2ndQuadrant software,
 	  including &repmgr;. We recommend using this for all future &repmgr; releases.
@@ -163,7 +163,7 @@ $ yum install repmgr10</programlisting>
     <title>2ndQuadrant public apt repository for Debian/Ubuntu</title>
 
     <para>
-      Beginning with <ulink url="https://repmgr.org/docs/4.0/release-4.0.5.html">repmgr 4.0.5</ulink>,
+      Beginning with <ulink url="https://repmgr.org/docs/current/release-4.0.5.html">repmgr 4.0.5</ulink>,
       <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a
 	  <ulink url="https://dl.2ndquadrant.com/">public apt repository</ulink> for 2ndQuadrant software,
 	  including &repmgr;.
