@@ -21,19 +21,28 @@
   <para>
     However, <application>repmgrd</application> is unable to distinguish between
     planned outages (such as performing a <link linkend="performing-switchover">switchover</link>
-    or upgrading a server), and an actual server outage. In versions prior to &repmgr; 4.2
-    it was necessary to stop <application>repmgrd</application> on all nodes (or at least
+    or installing PostgreSQL maintenance released), and an actual server outage. In versions prior to
+    &repmgr; 4.2 it was necessary to stop <application>repmgrd</application> on all nodes (or at least
     on all nodes where <application>repmgrd</application> is
     <link linkend="repmgrd-automatic-failover">configured for automatic failover</link>)
-    to prevent <application>repmgrd</application> from making changes to the
+    to prevent <application>repmgrd</application> from making unintentional changes to the
     replication cluster.
   </para>
+
   <para>
     From <link linkend="release-4.2">&repmgr; 4.2</link>, <application>repmgrd</application>
     can now be &quot;paused&quot;, i.e. instructed not to take any action such as performing a failover.
     This can be done from any node in the cluster, removing the need to stop/restart
     each <application>repmgrd</application> individually.
   </para>
+
+  <note>
+    <para>
+      For major PostgreSQL upgrades, e.g. from PostgreSQL 10 to PostgreSQL 11,
+      <application>repmgrd</application> should be shut down completely and only started up
+      once the &repmgr; packages for the new PostgreSQL major version have been installed.
+    </para>
+  </note>
 
   <sect1 id="repmgrd-pausing-prerequisites">
     <title>Prerequisites for pausing <application>repmgrd</application></title>
