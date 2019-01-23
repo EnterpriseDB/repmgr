@@ -2203,7 +2203,6 @@ do_node_rejoin(void)
 	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
 
 	/* sanity checks for 9.3 */
-
 	if (PQserverVersion(upstream_conn) < 90400)
 		check_93_config();
 
@@ -2225,7 +2224,7 @@ do_node_rejoin(void)
 		log_error(_("unable to connect to current primary \"%s\" (node ID: %i)"),
 				  primary_node_record.node_name,
 				  primary_node_record.node_id);
-		log_detail(_("primay node conninfo is: \"%s\""),
+		log_detail(_("primary node conninfo is: \"%s\""),
 				   primary_node_record.conninfo);
 		exit(ERR_BAD_CONFIG);
 	}
