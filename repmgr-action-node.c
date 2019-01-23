@@ -2341,8 +2341,8 @@ do_node_rejoin(void)
 		else
 		{
 			log_notice(_("executing pg_rewind"));
-			log_debug("pg_rewind command is:\n  %s",
-					  command.data);
+			log_detail(_("pg_rewind command is \"%s\""),
+					   command.data);
 
 			initPQExpBuffer(&command_output);
 
