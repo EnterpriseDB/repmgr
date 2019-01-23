@@ -253,6 +253,6 @@ extern void init_node_record(t_node_info *node_record);
 extern bool can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
 extern void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
 
-extern bool check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record);
+extern bool check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record, bool is_rejoin);
 
 #endif							/* _REPMGR_CLIENT_GLOBAL_H_ */

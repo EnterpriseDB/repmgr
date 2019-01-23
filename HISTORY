@@ -5,6 +5,8 @@
         repmgr: add "node check --data-directory-config"; GitHub #523 (Ian)
         repmgr: ensure "standby switchover" verifies repmgr can read the
           data directory on the demotion candidate; GitHub #523 (Ian)
+        repmgr: when executing "standby follow" and "node rejoin", check that
+          it will actually be possible to stream from the target node (Ian)
         repmgr: "standby switchover": improve handling of connection URIs when
           executing "node rejoin" on the demotion candidate; GitHub #525 (Ian)
         repmgrd: check binary and extension major versions match; GitHub #515 (Ian)

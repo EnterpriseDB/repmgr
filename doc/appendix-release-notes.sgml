@@ -24,10 +24,32 @@
     <sect2>
       <title>repmgr enhancements</title>
       <para>
-       <itemizedlist>
+        <itemizedlist>
 
           <listitem>
             <para>
+              <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>:
+              option <option>--upstream-node-id</option> can now be used to specify another standby
+              to follow.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>:
+              verify that it is actually possible to follow another node.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-rejoin"><command>repmgr node rejoin</command></link>:
+              verify that it is actually possible to attach the node to the current primary.
+            </para>
+          </listitem>
+
+          <listitem>
+           <para>
               Add <option>--terse</option> to <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> (GitHub #521).
             </para>
             <para>

@@ -2240,8 +2240,24 @@ do_node_rejoin(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	// sanity-check that it will actually be possible to stream from the new upstream
-	
+	/*
+	 * sanity-check that it will actually be possible to stream from the new upstream
+	 */
+	{
+		bool can_follow;
+
+		can_follow = check_node_can_attach(get_timeline(config_file_options.data_directory),
+										   get_min_recovery_location(config_file_options.data_directory),
+										   upstream_conn,
+										   &primary_node_record,
+										   true);
+
+		if (can_follow == false)
+		{
+			PQfinish(upstream_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
 
 
 	/*

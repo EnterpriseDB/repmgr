@@ -2489,8 +2489,10 @@ do_standby_follow(void)
 		if (PQstatus(local_repl_conn) != CONNECTION_OK)
 		{
 			log_error(_("unable to establish a replication connection to the local node"));
+
 			PQfinish(local_conn);
 			PQfinish(follow_target_conn);
+
 			exit(ERR_FOLLOW_FAIL);
 		}
 		else if (runtime_options.dry_run == true)
@@ -2499,21 +2501,24 @@ do_standby_follow(void)
 		}
 
 		success = identify_system(local_repl_conn, &local_identification);
+		PQfinish(local_repl_conn);
 
 		if (success == false)
 		{
 			log_error(_("unable to query the local node's system identification"));
+
 			PQfinish(local_conn);
+
 			PQfinish(follow_target_conn);
+
 			exit(ERR_FOLLOW_FAIL);
 		}
-
-		PQfinish(local_repl_conn);
 
 		can_follow = check_node_can_attach(local_identification.timeline,
 										   local_xlogpos,
 										   follow_target_conn,
-										   &follow_target_node_record);
+										   &follow_target_node_record,
+										   false);
 
 		if (can_follow == false)
 		{
