@@ -64,7 +64,7 @@
             </row>
             <row>
               <entry>Repository documentation:</entry>
-              <entry><ulink url="https://repmgr.org/docs/4.1/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ">https://repmgr.org/docs/4.1/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ</ulink></entry>
+              <entry><ulink url="https://repmgr.org/docs/4.2/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ">https://repmgr.org/docs/4.2/installation-packages.html#INSTALLATION-PACKAGES-REDHAT-2NDQ</ulink></entry>
             </row>
           </tbody>
         </tgroup>
@@ -276,7 +276,7 @@
             </row>
             <row>
               <entry>Repository documentation:</entry>
-              <entry><ulink url="https://repmgr.org/docs/4.1/installation-packages.html#INSTALLATION-PACKAGES-DEBIAN">https://repmgr.org/docs/4.1/installation-packages.html#INSTALLATION-PACKAGES-DEBIAN</ulink></entry>
+              <entry><ulink url="https://repmgr.org/docs/4.2/installation-packages.html#INSTALLATION-PACKAGES-DEBIAN">https://repmgr.org/docs/4.2/installation-packages.html#INSTALLATION-PACKAGES-DEBIAN</ulink></entry>
             </row>
           </tbody>
         </tgroup>
