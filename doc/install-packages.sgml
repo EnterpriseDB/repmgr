@@ -29,9 +29,10 @@
   </para>
   <note>
     <para>
-      &repmgr; packages are designed to be compatible with the community-provided PostgreSQL packages.
+      &repmgr; RPM packages are designed to be compatible with the community-provided PostgreSQL packages
+      and 2ndQuadrant's <ulink url="https://www.2ndquadrant.com/en/resources/2ndqpostgres/">2ndQPostgres</ulink>.
       They may not work with vendor-specific packages such as those provided by RedHat for RHEL
-      customers, as the filesystem layout may be different to the community RPMs.
+      customers, as the PostgreSQL filesystem layout may be different to the community RPMs.
       Please contact your support vendor for assistance.
     </para>
   </note>
@@ -47,54 +48,76 @@
     <title>2ndQuadrant public RPM yum repository</title>
 
     <para>
-      Beginning with <ulink url="https://repmgr.org/docs/current/release-4.0.5.html">repmgr 4.0.5</ulink>,
       <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a dedicated <literal>yum</literal>
-	  <ulink url="https://dl.2ndquadrant.com/">public repository</ulink> for 2ndQuadrant software,
-	  including &repmgr;. We recommend using this for all future &repmgr; releases.
-	</para>
-	<para>
-	  General instructions for using this repository can be found on its
-	  <ulink url="https://dl.2ndquadrant.com/">homepage</ulink>. Specific instructions
-	  for installing &repmgr; follow below.
-	</para>
+      <ulink url="https://dl.2ndquadrant.com/">public repository</ulink> for 2ndQuadrant software,
+      including &repmgr;. We recommend using this for all future &repmgr; releases.
+    </para>
+    <para>
+      General instructions for using this repository can be found on its
+      <ulink url="https://dl.2ndquadrant.com/">homepage</ulink>. Specific instructions
+      for installing &repmgr; follow below.
+    </para>
     <para>
       <emphasis>Installation</emphasis>
 
       <itemizedlist>
-		<listitem>
-		  <para>
-			Locate the repository RPM for your PostgreSQL version from the list at:
-			<ulink url="https://dl.2ndquadrant.com/">https://dl.2ndquadrant.com/</ulink>
-		  </para>
-		</listitem>
+	<listitem>
+	  <para>
+	    Locate the repository RPM for your PostgreSQL version from the list at:
+	    <ulink url="https://dl.2ndquadrant.com/">https://dl.2ndquadrant.com/</ulink>
+	  </para>
+	</listitem>
 
         <listitem>
           <para>
             Install the repository definition for your distribution and PostgreSQL version
-			(this enables the 2ndQuadrant repository as a source of &repmgr; packages).
-		  </para>
-		  <para>
-			For example, for PostgreSQL 10 on CentOS, execute:
-			<programlisting>
+	    (this enables the 2ndQuadrant repository as a source of &repmgr; packages).
+	  </para>
+	  <para>
+	    For example, for PostgreSQL 10 on CentOS, execute:
+	    <programlisting>
 curl https://dl.2ndquadrant.com/default/release/get/10/rpm | sudo bash</programlisting>
-		  </para>
-		  <para>
-			Verify that the repository is installed with:
-			<programlisting>
+	  </para>
+
+	  <para>
+	    For PostgreSQL 9.6 on CentOS, execute:
+	    <programlisting>
+curl https://dl.2ndquadrant.com/default/release/get/9.6/rpm | sudo bash</programlisting>
+	  </para>
+
+
+	  <para>
+	    Verify that the repository is installed with:
+	    <programlisting>
 sudo yum repolist</programlisting>
-			The output should contain two entries like this:
-			<programlisting>
+	    The output should contain two entries like this:
+	    <programlisting>
 2ndquadrant-dl-default-release-pg10/7/x86_64        2ndQuadrant packages (PG10) for 7 - x86_64          4
 2ndquadrant-dl-default-release-pg10-debug/7/x86_64  2ndQuadrant packages (PG10) for 7 - x86_64 - Debug  3</programlisting>
-		  </para>
-		</listitem>
+	  </para>
+	</listitem>
 
         <listitem>
           <para>
             Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
             <programlisting>
-$ yum install repmgr10</programlisting>
+sudo yum install repmgr10</programlisting>
           </para>
+          <note>
+            <para>
+              For packages for PostgreSQL 9.6 and earlier, the package name does not contain
+              a period between major and minor version numbers, e.g.
+              <literal>repmgr96</literal>.
+            </para>
+          </note>
+          <tip>
+            <para>
+              To determine the names of available packages, execute:
+              <programlisting>
+yum search repmgr</programlisting>
+            </para>
+          </tip>
+
         </listitem>
       </itemizedlist>
     </para>
@@ -163,16 +186,15 @@ $ yum install repmgr10</programlisting>
     <title>2ndQuadrant public apt repository for Debian/Ubuntu</title>
 
     <para>
-      Beginning with <ulink url="https://repmgr.org/docs/current/release-4.0.5.html">repmgr 4.0.5</ulink>,
       <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides a
-	  <ulink url="https://dl.2ndquadrant.com/">public apt repository</ulink> for 2ndQuadrant software,
-	  including &repmgr;.
-	</para>
-	<para>
-	  General instructions for using this repository can be found on its
-	  <ulink url="https://dl.2ndquadrant.com/">homepage</ulink>. Specific instructions
-	  for installing &repmgr; follow below.
-	</para>
+      <ulink url="https://dl.2ndquadrant.com/">public apt repository</ulink> for 2ndQuadrant software,
+      including &repmgr;.
+    </para>
+    <para>
+      General instructions for using this repository can be found on its
+      <ulink url="https://dl.2ndquadrant.com/">homepage</ulink>. Specific instructions
+      for installing &repmgr; follow below.
+    </para>
 
     <para>
 
@@ -180,13 +202,13 @@ $ yum install repmgr10</programlisting>
 
       <itemizedlist>
 
-		<listitem>
-		  <para>
+	<listitem>
+	  <para>
             Install the repository definition for your distribution and PostgreSQL version
-			(this enables the 2ndQuadrant repository as a source of &repmgr; packages) by executing:
+	    (this enables the 2ndQuadrant repository as a source of &repmgr; packages) by executing:
             <programlisting>
 curl https://dl.2ndquadrant.com/default/release/get/deb | sudo bash</programlisting>
-		  </para>
+	  </para>
           <note>
             <para>
               This will automatically install the following additional packages, if not already present:
@@ -203,12 +225,12 @@ curl https://dl.2ndquadrant.com/default/release/get/deb | sudo bash</programlist
         </listitem>
 
 
-		<listitem>
-		  <para>
+	<listitem>
+	  <para>
             Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
             <programlisting>
-$ apt-get install postgresql-10-repmgr</programlisting>
-		  </para>
+sudo apt-get install postgresql-10-repmgr</programlisting>
+	  </para>
           <note>
             <para>
             For packages for PostgreSQL 9.6 and earlier, the package name includes
@@ -216,11 +238,11 @@ $ apt-get install postgresql-10-repmgr</programlisting>
             <literal>postgresql-9.6-repmgr</literal>.
             </para>
           </note>
-		</listitem>
+	</listitem>
 
-	  </itemizedlist>
+      </itemizedlist>
 
-	</para>
+    </para>
 
   </sect3>
  </sect2>
