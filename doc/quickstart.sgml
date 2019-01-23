@@ -68,7 +68,7 @@
     </tip>
  </sect1>
 
- <sect1 id="quickstart-postgresql-configuration">
+ <sect1 id="quickstart-postgresql-configuration" xreflabel="PostgreSQL configuration">
    <title>PostgreSQL configuration</title>
    <para>
     On the primary server, a PostgreSQL instance must be initialised and running.
@@ -82,6 +82,13 @@
     # which requires two free WAL senders)
 
     max_wal_senders = 10
+
+    # Enable replication slots; set this figure to at least one more
+    # than the number of standbys which will connect to this server.
+    # Note that repmgr will only make use of replication slots if
+    # "use_replication_slots" is set to "true" in repmgr.conf
+
+    max_replication_slots = 0
 
     # Ensure WAL files contain enough information to enable read-only queries
     # on the standby.
@@ -107,16 +114,6 @@
     # you WALs in a secure place. /bin/true is an example of a command that
     # ignores archiving. Use something more sensible.
     archive_command = '/bin/true'
-
-    # If you have configured "pg_basebackup_options"
-    # in "repmgr.conf" to include the setting "--xlog-method=fetch" (from
-    # PostgreSQL 10 "--wal-method=fetch"), *and* you have not set
-    # "restore_command" in "repmgr.conf"to fetch WAL files from another
-    # source such as Barman, you'll need to set "wal_keep_segments" to a
-    # high enough value to ensure that all WAL files generated while
-    # the standby is being cloned are retained until the standby starts up.
-    #
-    # wal_keep_segments = 5000
    </programlisting>
    <tip>
     <simpara>
@@ -131,6 +128,9 @@
      and the cluster was not initialised using data checksums, you may want to consider enabling
      <varname>wal_log_hints</varname>; for more details see <xref linkend="repmgr-node-rejoin-pg-rewind">.
    </para>
+    <para>
+      See also the <link linkend="configuration-postgresql">PostgreSQL configuration</link> section in the <link linkend="configuration">repmgr configuaration guide</link>.
+    </para>
  </sect1>
 
  <sect1 id="quickstart-repmgr-user-database">
