@@ -2448,7 +2448,7 @@ do_node_rejoin(void)
 	 * do_standby_follow_internal() can handle situations where the follow
 	 * target is not the primary, so requires database handles to both
 	 * (even if they point to the same node). For the time being,
-	 * "node rejoin" will only attatch a standby to the primary.
+	 * "node rejoin" will only attach a standby to the primary.
 	 */
 	success = do_standby_follow_internal(upstream_conn,
 										 upstream_conn,
@@ -2458,7 +2458,7 @@ do_node_rejoin(void)
 
 	if (success == false)
 	{
-		log_notice(_("NODE REJOIN failed"));
+		log_error(_("NODE REJOIN failed"));
 
 		if (strlen(follow_output.data))
 			log_detail("%s", follow_output.data);
@@ -2548,7 +2548,7 @@ do_node_rejoin(void)
 		if (success == false)
 		{
 			termPQExpBuffer(&follow_output);
-			log_notice(_("NODE REJOIN failed"));
+			log_error(_("NODE REJOIN failed"));
 			exit(ERR_REJOIN_FAIL);
 		}
 	}
