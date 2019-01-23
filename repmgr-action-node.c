@@ -2149,7 +2149,6 @@ do_node_rejoin(void)
 	int			follow_error_code = SUCCESS;
 
 	/* check node is not actually running */
-
 	status = PQping(config_file_options.conninfo);
 
 	switch (status)
@@ -2198,7 +2197,6 @@ do_node_rejoin(void)
 		}
 	}
 
-
 	/* check provided upstream connection */
 	upstream_conn = establish_db_connection_by_params(&source_conninfo, true);
 
@@ -2233,7 +2231,7 @@ do_node_rejoin(void)
 
 	if (upstream_recovery_type != RECTYPE_PRIMARY)
 	{
-		log_error(_("primary server is registered node \"%s\" (ID: %i), but server is not a primary"),
+		log_error(_("primary server is registered as node \"%s\" (ID: %i), but server is not a primary"),
 				  primary_node_record.node_name,
 				  primary_node_record.node_id);
 		/* TODO: hint about checking cluster */
@@ -2242,11 +2240,14 @@ do_node_rejoin(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	// sanity-check that it will actually be possible to stream from the new upstream
+	
+
+
 	/*
 	 * --force-rewind specified - check prerequisites, and attempt to execute
   	 * (if --dry-run provided, just output the command which would be executed)
 	 */
-
 
 	if (runtime_options.force_rewind_used == true)
 	{
