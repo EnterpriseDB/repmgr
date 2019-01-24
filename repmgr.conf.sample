@@ -322,6 +322,12 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 # repmgr provides options to override the default pg_ctl commands
 # used to stop, start, restart, reload and promote the PostgreSQL cluster
 #
+# These options are useful when PostgreSQL has been installed from a package
+# which provides OS-level service commands. In environments using an init system
+# such as systemd, which keeps track of the state of various services, it is
+# essential that the service commands are correctly configured and pg_ctl is
+# not executed directly.
+#
 # NOTE: These commands must be runnable on remote nodes as well for switchover
 # to function correctly.
 #
@@ -343,7 +349,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #
 # Debian/Ubuntu users: use "sudo pg_ctlcluster" to execute service control commands.
 #
-# For more details, see: https://repmgr.org/docs/4.1/configuration-service-commands.html
+# For more details, see: https://repmgr.org/docs/current/configuration-service-commands.html
 
 #service_start_command = ''
 #service_stop_command = ''
@@ -354,6 +360,11 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# "pg_ctlcluster". *IMPORTANT*: it is *not* a substitute
 					# for "promote_command"; do not use "repmgr standby promote"
 					# (or a script which executes "repmgr standby promote") here.
+
+# Used by "repmgr daemon (start|stop)" to control repmgrd
+#
+#repmgrd_service_start_command = ''
+#repmgrd_service_stop_command = ''
 
 #------------------------------------------------------------------------------
 # Status check thresholds

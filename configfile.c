@@ -371,16 +371,23 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->bdr_local_monitoring_only = false;
 	options->bdr_recovery_timeout = DEFAULT_BDR_RECOVERY_TIMEOUT;
 
-	/*-----------------
-	 * service settings
-	 *-----------------
+	/*-------------------------
+	 * service command settings
+	 *-------------------------
 	 */
 	memset(options->pg_ctl_options, 0, sizeof(options->pg_ctl_options));
-	memset(options->service_stop_command, 0, sizeof(options->service_stop_command));
 	memset(options->service_start_command, 0, sizeof(options->service_start_command));
+	memset(options->service_stop_command, 0, sizeof(options->service_stop_command));
 	memset(options->service_restart_command, 0, sizeof(options->service_restart_command));
 	memset(options->service_reload_command, 0, sizeof(options->service_reload_command));
 	memset(options->service_promote_command, 0, sizeof(options->service_promote_command));
+
+	/*---------------------------------
+	 * repmgrd service command settings
+	 *---------------------------------
+	 */
+	memset(options->repmgrd_service_start_command, 0, sizeof(options->repmgrd_service_start_command));
+	memset(options->repmgrd_service_stop_command, 0, sizeof(options->repmgrd_service_stop_command));
 
 	/*----------------------------
 	 * event notification settings
@@ -585,11 +592,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "priority") == 0)
 			options->priority = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "location") == 0)
-			strncpy(options->location, value, MAXLEN);
+			strncpy(options->location, value, sizeof(options->location));
 		else if (strcmp(name, "promote_command") == 0)
-			strncpy(options->promote_command, value, MAXLEN);
+			strncpy(options->promote_command, value, sizeof(options->promote_command));
 		else if (strcmp(name, "follow_command") == 0)
-			strncpy(options->follow_command, value, MAXLEN);
+			strncpy(options->follow_command, value, sizeof(options->follow_command));
 		else if (strcmp(name, "reconnect_attempts") == 0)
 			options->reconnect_attempts = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "reconnect_interval") == 0)
@@ -621,41 +628,48 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 		/* service settings */
 		else if (strcmp(name, "pg_ctl_options") == 0)
-			strncpy(options->pg_ctl_options, value, MAXLEN);
-		else if (strcmp(name, "service_stop_command") == 0)
-			strncpy(options->service_stop_command, value, MAXLEN);
+			strncpy(options->pg_ctl_options, value, sizeof(options->pg_ctl_options));
 		else if (strcmp(name, "service_start_command") == 0)
-			strncpy(options->service_start_command, value, MAXLEN);
+			strncpy(options->service_start_command, value, sizeof(options->service_start_command));
+		else if (strcmp(name, "service_stop_command") == 0)
+			strncpy(options->service_stop_command, value, sizeof(options->service_stop_command));
 		else if (strcmp(name, "service_restart_command") == 0)
-			strncpy(options->service_restart_command, value, MAXLEN);
+			strncpy(options->service_restart_command, value, sizeof(options->service_restart_command));
 		else if (strcmp(name, "service_reload_command") == 0)
-			strncpy(options->service_reload_command, value, MAXLEN);
+			strncpy(options->service_reload_command, value, sizeof(options->service_reload_command));
 		else if (strcmp(name, "service_promote_command") == 0)
-			strncpy(options->service_promote_command, value, MAXLEN);
+			strncpy(options->service_promote_command, value, sizeof(options->service_promote_command));
+
+		/* repmgrd service settings */
+		else if (strcmp(name, "repmgrd_service_start_command") == 0)
+			strncpy(options->repmgrd_service_start_command, value, sizeof(options->repmgrd_service_start_command));
+		else if (strcmp(name, "repmgrd_service_stop_command") == 0)
+			strncpy(options->repmgrd_service_stop_command, value, sizeof(options->repmgrd_service_stop_command));
+
 
 		/* event notification settings */
 		else if (strcmp(name, "event_notification_command") == 0)
-			strncpy(options->event_notification_command, value, MAXLEN);
+			strncpy(options->event_notification_command, value, sizeof(options->event_notification_command));
 		else if (strcmp(name, "event_notifications") == 0)
 		{
 			/* store unparsed value for comparison when reloading config */
-			strncpy(options->event_notifications_orig, value, MAXLEN);
+			strncpy(options->event_notifications_orig, value, sizeof(options->event_notifications_orig));
 			parse_event_notifications_list(options, value);
 		}
 
 		/* barman settings */
 		else if (strcmp(name, "barman_host") == 0)
-			strncpy(options->barman_host, value, MAXLEN);
+			strncpy(options->barman_host, value, sizeof(options->barman_host));
 		else if (strcmp(name, "barman_server") == 0)
-			strncpy(options->barman_server, value, MAXLEN);
+			strncpy(options->barman_server, value, sizeof(options->barman_server));
 		else if (strcmp(name, "barman_config") == 0)
-			strncpy(options->barman_config, value, MAXLEN);
+			strncpy(options->barman_config, value, sizeof(options->barman_config));
 
 		/* rsync/ssh settings */
 		else if (strcmp(name, "rsync_options") == 0)
-			strncpy(options->rsync_options, value, MAXLEN);
+			strncpy(options->rsync_options, value, sizeof(options->rsync_options));
 		else if (strcmp(name, "ssh_options") == 0)
-			strncpy(options->ssh_options, value, MAXLEN);
+			strncpy(options->ssh_options, value, sizeof(options->ssh_options));
 
 		/* undocumented settings for testing */
 		else if (strcmp(name, "promote_delay") == 0)

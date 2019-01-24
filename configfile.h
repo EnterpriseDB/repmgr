@@ -141,14 +141,18 @@ typedef struct
 
 	/* service settings */
 	char		pg_ctl_options[MAXLEN];
-	char		service_stop_command[MAXLEN];
-	char		service_start_command[MAXLEN];
-	char		service_restart_command[MAXLEN];
-	char		service_reload_command[MAXLEN];
-	char		service_promote_command[MAXLEN];
+	char		service_start_command[MAXPGPATH];
+	char		service_stop_command[MAXPGPATH];
+	char		service_restart_command[MAXPGPATH];
+	char		service_reload_command[MAXPGPATH];
+	char		service_promote_command[MAXPGPATH];
+
+	/* repmgrd service settings */
+	char		repmgrd_service_start_command[MAXPGPATH];
+	char		repmgrd_service_stop_command[MAXPGPATH];
 
 	/* event notification settings */
-	char		event_notification_command[MAXLEN];
+	char		event_notification_command[MAXPGPATH];
 	char		event_notifications_orig[MAXLEN];
 	EventNotificationList event_notifications;
 
@@ -205,6 +209,8 @@ typedef struct
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \
 		"", "", "", "", "", "", \
+		/* repmgrd service settings */ \
+		"", "",  \
 		/* event notification settings */ \
 		"", "", { NULL, NULL }, \
 		/* barman settings */ \

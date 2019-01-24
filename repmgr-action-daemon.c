@@ -384,6 +384,84 @@ fetch_node_records(PGconn *conn, NodeInfoList *node_list)
 }
 
 
+void
+do_daemon_start(void)
+{
+	PGconn	   *conn = NULL;
+	PQExpBufferData repmgrd_command;
+	PQExpBufferData output_buf;
+	bool success;
+
+	/*
+	 * if local connection available, check if repmgr.so is installed, and
+	 * whether repmgrd is running
+	 */
+	log_verbose(LOG_INFO, _("connecting to local node"));
+
+	if (strlen(config_file_options.conninfo))
+		conn = establish_db_connection(config_file_options.conninfo, false);
+	else
+		conn = establish_db_connection_by_params(&source_conninfo, false);
+
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		log_warning(_("unable to connect to local node"));
+	}
+	else
+	{
+		check_shared_library(conn);
+
+		if (is_repmgrd_running(conn) == true)
+		{
+			log_error(_("repmgrd appears to be running already"));
+			PQfinish(conn);
+			exit(ERR_REPMGRD_SERVICE);
+		}
+	}
+
+	initPQExpBuffer(&repmgrd_command);
+
+	if (config_file_options.repmgrd_service_start_command[0] != '\0')
+	{
+		appendPQExpBufferStr(&repmgrd_command,
+							 config_file_options.repmgrd_service_start_command);
+	}
+	else
+	{
+		make_repmgrd_path(&repmgrd_command);
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("prerequisites for starting repmgrd met"));
+		log_detail("%s", repmgrd_command.data);
+		exit(SUCCESS);
+	}
+
+	log_debug("repmgrd start command: '%s'", repmgrd_command.data);
+
+	initPQExpBuffer(&output_buf);
+
+	success = local_command(repmgrd_command.data, &output_buf);
+	termPQExpBuffer(&repmgrd_command);
+
+	if (success == false)
+	{
+		log_error(_("unable to start repmgrd"));
+		if (output_buf.data[0] != '\0')
+			log_detail("%s", output_buf.data);
+		termPQExpBuffer(&output_buf);
+		exit(ERR_REPMGRD_SERVICE);
+	}
+
+	termPQExpBuffer(&output_buf);
+}
+
+
+void do_daemon_stop(void)
+{
+}
+
 void do_daemon_help(void)
 {
 	print_help_header();
@@ -392,6 +470,8 @@ void do_daemon_help(void)
 	printf(_("    %s [OPTIONS] daemon status\n"),  progname());
 	printf(_("    %s [OPTIONS] daemon pause\n"),   progname());
 	printf(_("    %s [OPTIONS] daemon unpause\n"), progname());
+	printf(_("    %s [OPTIONS] daemon start\n"),   progname());
+	printf(_("    %s [OPTIONS] daemon stop\n"),    progname());
 	puts("");
 
 	printf(_("DAEMON STATUS\n"));
@@ -416,6 +496,13 @@ void do_daemon_help(void)
 	printf(_("    --dry-run               check if nodes are reachable but don't unpause repmgrd\n"));
 	puts("");
 
+	printf(_("DAEMON START\n"));
+	puts("");
+	puts("XXX");
+
+	printf(_("DAEMON STOP\n"));
+	puts("");
+	puts("XXX");
 
 	puts("");
 }

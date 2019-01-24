@@ -431,6 +431,7 @@ TimeLineHistoryEntry *get_timeline_history(PGconn *repl_conn, TimeLineID tli);
 /* repmgrd shared memory functions */
 bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
 int			repmgrd_get_local_node_id(PGconn *conn);
+bool		repmgrd_check_local_node_id(PGconn *conn);
 BackupState	server_in_exclusive_backup_mode(PGconn *conn);
 void		repmgrd_set_pid(PGconn *conn, pid_t repmgrd_pid, const char *pidfile);
 pid_t		repmgrd_get_pid(PGconn *conn);

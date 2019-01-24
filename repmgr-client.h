@@ -48,6 +48,8 @@
 #define DAEMON_STATUS		   22
 #define DAEMON_PAUSE		   23
 #define DAEMON_UNPAUSE		   24
+#define DAEMON_START 		   25
+#define DAEMON_STOP 		   26
 
 /* command line options without short versions */
 #define OPT_HELP						   1001

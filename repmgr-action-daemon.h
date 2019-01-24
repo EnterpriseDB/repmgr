@@ -23,6 +23,8 @@
 extern void do_daemon_status(void);
 extern void do_daemon_pause(void);
 extern void do_daemon_unpause(void);
+extern void do_daemon_start(void);
+extern void do_daemon_stop(void);
 
 extern void do_daemon_help(void);
 #endif

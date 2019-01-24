@@ -35,7 +35,8 @@
  * DAEMON STATUS
  * DAEMON PAUSE
  * DAEMON UNPAUSE
- *
+ * DAEMON START
+ * DAEMON STOP
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -935,6 +936,10 @@ main(int argc, char **argv)
 				action = DAEMON_PAUSE;
 			else if (strcasecmp(repmgr_action, "UNPAUSE") == 0)
 				action = DAEMON_UNPAUSE;
+			else if (strcasecmp(repmgr_action, "START") == 0)
+				action = DAEMON_START;
+			else if (strcasecmp(repmgr_action, "STOP") == 0)
+				action = DAEMON_STOP;
 		}
 		else
 		{
@@ -1343,6 +1348,11 @@ main(int argc, char **argv)
 			break;
 		case DAEMON_UNPAUSE:
 			do_daemon_unpause();
+			break;
+		case DAEMON_START:
+			do_daemon_start();
+		case DAEMON_STOP:
+			do_daemon_stop();
 			break;
 
 		default:
@@ -1834,6 +1844,8 @@ check_cli_parameters(const int action)
 			case NODE_SERVICE:
 			case DAEMON_PAUSE:
 			case DAEMON_UNPAUSE:
+			case DAEMON_START:
+			case DAEMON_STOP:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
@@ -1920,7 +1932,10 @@ action_name(const int action)
 			return "DAEMON PAUSE";
 		case DAEMON_UNPAUSE:
 			return "DAEMON UNPAUSE";
-
+		case DAEMON_START:
+			return "DAEMON START";
+		case DAEMON_STOP:
+			return "DAEMON STOP";
 	}
 
 	return "UNKNOWN ACTION";
@@ -2731,6 +2746,34 @@ make_remote_repmgr_path(PQExpBufferData *output_buf, t_node_info *remote_node_re
 }
 
 
+void
+make_repmgrd_path(PQExpBufferData *output_buf)
+{
+	if (config_file_options.repmgr_bindir[0] != '\0')
+	{
+		int			len = strlen(config_file_options.repmgr_bindir);
+
+		appendPQExpBufferStr(output_buf,
+							 config_file_options.repmgr_bindir);
+
+		/* Add trailing slash */
+		if (config_file_options.repmgr_bindir[len - 1] != '/')
+		{
+			appendPQExpBufferChar(output_buf, '/');
+		}
+	}
+	else if (pg_bindir[0] != '\0')
+	{
+		appendPQExpBufferStr(output_buf,
+							 pg_bindir);
+	}
+
+	appendPQExpBuffer(output_buf,
+					  "repmgrd -f %s ",
+					  config_file_path);
+}
+
+
 /* ======================== */
 /* server control functions */
 /* ======================== */
@@ -3357,4 +3400,48 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 
 	PQfinish(follow_target_repl_conn);
 	return success;
+}
+
+
+/*
+ * Simple check to see if "shared_preload_libraries" includes "repmgr".
+ * Parsing "shared_preload_libraries" is non-trivial, as it's potentially
+ * a comma-separated list, and worse may not be readable by the repmgr
+ * user.
+ *
+ * Instead, we check if a function which should return a value returns
+ * NULL; this indicates the shared library is not installed.
+ */
+void
+check_shared_library(PGconn *conn)
+{
+	bool ok = repmgrd_check_local_node_id(conn);
+
+	if (ok == true)
+		return;
+
+	log_error(_("repmgrd not configured for this node"));
+	log_hint(_("ensure \"shared_preload_libraries\" includes \"repmgr\" and restart PostgreSQL"));
+	PQfinish(conn);
+	exit(ERR_BAD_CONFIG);
+}
+
+
+bool
+is_repmgrd_running(PGconn *conn)
+{
+	pid_t		pid;
+	bool		is_running = false;
+
+	pid = repmgrd_get_pid(conn);
+
+	if (pid != UNKNOWN_PID)
+	{
+		if (kill(pid, 0) != -1)
+		{
+			is_running = true;
+		}
+	}
+
+	return is_running;
 }

@@ -48,5 +48,6 @@
 #define ERR_REJOIN_FAIL 24
 #define ERR_NODE_STATUS 25
 #define ERR_REPMGRD_PAUSE 26
+#define ERR_REPMGRD_SERVICE 27
 
 #endif							/* _ERRCODE_H_ */

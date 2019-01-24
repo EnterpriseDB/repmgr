@@ -1746,6 +1746,31 @@ repmgrd_get_local_node_id(PGconn *conn)
 }
 
 
+bool
+repmgrd_check_local_node_id(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	bool		node_id_settable = true;
+	const char *sqlquery = "SELECT repmgr.get_local_node_id()";
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, sqlquery, _("repmgrd_get_local_node_id(): unable to execute query"));
+	}
+
+	if (PQgetisnull(res, 0, 0))
+	{
+		node_id_settable = false;
+	}
+
+	PQclear(res);
+
+	return node_id_settable;
+}
+
+
 /*
  * Function that checks if the primary is in exclusive backup mode.
  * We'll use this when executing an action can conflict with an exclusive

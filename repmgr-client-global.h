@@ -239,6 +239,8 @@ extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGc
 extern bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
 
 extern void make_remote_repmgr_path(PQExpBufferData *outputbuf, t_node_info *remote_node_record);
+extern void make_repmgrd_path(PQExpBufferData *output_buf);
+
 
 /* display functions */
 extern void print_help_header(void);
@@ -254,5 +256,7 @@ extern bool can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBuf
 extern void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
 
 extern bool check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record, bool is_rejoin);
+extern void check_shared_library(PGconn *conn);
+extern bool is_repmgrd_running(PGconn *conn);
 
 #endif							/* _REPMGR_CLIENT_GLOBAL_H_ */
