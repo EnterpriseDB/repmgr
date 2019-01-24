@@ -2561,6 +2561,7 @@ do_standby_follow(void)
 		follow_target_conn,
 		&follow_target_node_record,
 		&follow_output,
+		ERR_FOLLOW_FAIL,
 		&follow_error_code);
 
 	/* unable to restart the standby */
@@ -2665,7 +2666,7 @@ do_standby_follow(void)
  * this function.
  */
 bool
-do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_node_info *follow_target_node_record, PQExpBufferData *output, int *error_code)
+do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_node_info *follow_target_node_record, PQExpBufferData *output, int general_error_code, int *error_code)
 {
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	int			original_upstream_node_id = UNKNOWN_NODE_ID;
@@ -2691,7 +2692,7 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 		log_error(_("unable to retrieve record for node %i"),
 				  config_file_options.node_id);
 
-		*error_code = ERR_FOLLOW_FAIL;
+		*error_code = ERR_BAD_CONFIG;
 		return false;
 	}
 
@@ -2818,7 +2819,7 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 
 	if (!create_recovery_file(&local_node_record, &recovery_conninfo, config_file_options.data_directory, true))
 	{
-		*error_code = ERR_FOLLOW_FAIL;
+		*error_code = general_error_code;
 		return false;
 	}
 
@@ -2968,7 +2969,6 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 							 _("unable to update upstream node"));
 		return false;
 	}
-
 
 	appendPQExpBuffer(output,
 					  _("node %i is now attached to node %i"),

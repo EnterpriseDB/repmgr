@@ -165,6 +165,7 @@
       Following exit codes can be emitted by <command>repmgr status check</command>
       if no individual check was specified.
     </para>
+
     <variablelist>
 
       <varlistentry>
@@ -186,6 +187,7 @@
       </varlistentry>
 
    </variablelist>
+
   </refsect1>
 
 

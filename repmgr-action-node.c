@@ -2174,7 +2174,7 @@ do_node_rejoin(void)
 		log_error(_("database is still running in state \"%s\""),
 				  describe_db_state(db_state));
 		log_hint(_("\"repmgr node rejoin\" cannot be executed on a running node"));
-		exit(ERR_BAD_CONFIG);
+		exit(ERR_REJOIN_FAIL);
 	}
 
 	/* check if cleanly shut down */
@@ -2193,7 +2193,7 @@ do_node_rejoin(void)
 				log_detail(_("pg_rewind will not be able to run"));
 			}
 			log_hint(_("database should be restarted then shut down cleanly after crash recovery completes"));
-			exit(ERR_BAD_CONFIG);
+			exit(ERR_REJOIN_FAIL);
 		}
 	}
 
@@ -2255,7 +2255,7 @@ do_node_rejoin(void)
 		if (can_follow == false)
 		{
 			PQfinish(upstream_conn);
-			exit(ERR_BAD_CONFIG);
+			exit(ERR_REJOIN_FAIL);
 		}
 	}
 
@@ -2358,7 +2358,7 @@ do_node_rejoin(void)
 
 				termPQExpBuffer(&command_output);
 
-				exit(ERR_BAD_CONFIG);
+				exit(ERR_REJOIN_FAIL);
 			}
 
 			termPQExpBuffer(&command_output);
@@ -2471,6 +2471,7 @@ do_node_rejoin(void)
 										 upstream_conn,
 										 &primary_node_record,
 										 &follow_output,
+										 ERR_REJOIN_FAIL,
 										 &follow_error_code);
 
 	if (success == false)
