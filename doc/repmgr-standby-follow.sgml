@@ -157,7 +157,27 @@
         <term><option>SUCCESS (0)</option></term>
         <listitem>
           <para>
-            No issues were detected.
+            The follow operation succeeded; or if <option>--dry-run</option> was provided,
+            no issues were detected which would prevent the follow operation.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_BAD_CONFIG (1)</option></term>
+        <listitem>
+          <para>
+            A configuration issue was detected which prevented &repmgr; from
+            continuing with the follow operation.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_NO_RESTART (4)</option></term>
+        <listitem>
+          <para>
+            The node could not be restarted.
           </para>
         </listitem>
       </varlistentry>
