@@ -1,0 +1,95 @@
+<refentry id="repmgr-daemon-start">
+  <indexterm>
+    <primary>repmgr daemon start</primary>
+  </indexterm>
+
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>starting</secondary>
+  </indexterm>
+
+  <refmeta>
+    <refentrytitle>repmgr daemon start</refentrytitle>
+  </refmeta>
+
+  <refnamediv>
+    <refname>repmgr daemon start</refname>
+    <refpurpose>Start the <application>repmgrd</application> daemon</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      This command starts the <application>repmgrd</application> daemon on the
+      local node.
+    </para>
+    <note>
+      <para>
+        If &repmgr; was installed from packages, it is <emphasis>essential</emphasis>
+        that <application>repmgrd</application> is configured to use the
+        package-provided service start/stop commands. See below for details.
+      </para>
+    </note>
+  </refsect1>
+
+  <refsect1>
+    <title>Configuration</title>
+    <para>
+      <command>repmgr daemon start</command> will execute the command defined by the
+      <varname>repmgrd_service_start_command</varname> parameter in <filename>repmgr.conf</filename>.
+      This must be set to a shell command which will start <application>repmgrd</application>;
+      if &repmgr; was installed from a package, this will be the service command defined by the
+      package. For more details see <link linkend="appendix-packages">Appendix: &repmgr; package details</link>.
+    </para>
+    <para>
+      <emphasis>If</emphasis> <varname>repmgrd_service_start_command</varname> is not set,
+      &repmgr; will default to executing <application>repmgrd</application> directly.
+    </para>
+
+    <important>
+      <para>
+        If &repmgr; was installed from a system package, and you do not configure
+        <varname>repmgrd_service_start_command</varname> to an appropriate service command, this may
+        result in the system becoming confused about the state of the <application>repmgrd</application>
+        service; this is particularly the case with <literal>systemd</literal>.
+      </para>
+    </important>
+
+  </refsect1>
+
+  <refsect1>
+    <title>Exit codes</title>
+    <para>
+      Following exit codes can be emitted by <command>repmgr daemon start</command>:
+    </para>
+    <variablelist>
+
+      <varlistentry>
+        <term><option>SUCCESS (0)</option></term>
+        <listitem>
+          <para>
+            <application>repmgrd</application> could be started.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_REPMGRD_SERVICE (27)</option></term>
+        <listitem>
+          <para>
+            <application>repmgrd</application> could not be started.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>See also</title>
+    <para>
+      <xref linkend="repmgr-daemon-stop">
+    </para>
+  </refsect1>
+
+</refentry>

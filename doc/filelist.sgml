@@ -81,6 +81,8 @@
 <!ENTITY repmgr-cluster-event SYSTEM "repmgr-cluster-event.sgml">
 <!ENTITY repmgr-cluster-cleanup SYSTEM "repmgr-cluster-cleanup.sgml">
 <!ENTITY repmgr-daemon-status SYSTEM "repmgr-daemon-status.sgml">
+<!ENTITY repmgr-daemon-start SYSTEM "repmgr-daemon-start.sgml">
+<!ENTITY repmgr-daemon-stop SYSTEM "repmgr-daemon-stop.sgml">
 <!ENTITY repmgr-daemon-pause SYSTEM "repmgr-daemon-pause.sgml">
 <!ENTITY repmgr-daemon-unpause SYSTEM "repmgr-daemon-unpause.sgml">
 

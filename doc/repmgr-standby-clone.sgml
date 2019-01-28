@@ -87,7 +87,7 @@
   <refsect1 id="repmgr-standby-clone-recovery-conf">
    <indexterm>
      <primary>recovery.conf</primary>
-     <secondary>customising with "repmgr standby clone"</secondary>
+     <secondary>customising with &quot;repmgr standby clone&quot;</secondary>
    </indexterm>
 
    <title>Customising recovery.conf</title>

@@ -115,6 +115,8 @@
   &repmgr-cluster-event;
   &repmgr-cluster-cleanup;
   &repmgr-daemon-status;
+  &repmgr-daemon-start;
+  &repmgr-daemon-stop;
   &repmgr-daemon-pause;
   &repmgr-daemon-unpause;
  </part>
