@@ -3,6 +3,11 @@
     <primary>repmgr daemon pause</primary>
   </indexterm>
 
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>pausing</secondary>
+  </indexterm>
+
   <refmeta>
     <refentrytitle>repmgr daemon pause</refentrytitle>
   </refmeta>

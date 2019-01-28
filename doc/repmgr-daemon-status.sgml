@@ -3,6 +3,11 @@
     <primary>repmgr daemon status</primary>
   </indexterm>
 
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>displaying daemon status</secondary>
+  </indexterm>
+
   <refmeta>
     <refentrytitle>repmgr daemon status</refentrytitle>
   </refmeta>

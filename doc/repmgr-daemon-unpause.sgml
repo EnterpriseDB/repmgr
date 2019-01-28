@@ -3,6 +3,12 @@
     <primary>repmgr daemon unpause</primary>
   </indexterm>
 
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>unpausing</secondary>
+  </indexterm>
+
+
   <refmeta>
     <refentrytitle>repmgr daemon unpause</refentrytitle>
   </refmeta>
