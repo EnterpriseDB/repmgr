@@ -17,7 +17,7 @@
 
   <sect1 id="release-4.3">
     <title>Release 4.3</title>
-    <para><emphasis>???, 2019</emphasis></para>
+    <para><emphasis>Feb ???, 2019</emphasis></para>
     <para>
       &repmgr; 4.3 is a major release.
     </para>
@@ -49,8 +49,24 @@
           </listitem>
 
           <listitem>
+            <para>
+              New commands <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link> and
+              <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link>:
+              these provide a standardized way of starting and stopping <application>repmgrd</application>.
+              GitHub #528.
+            </para>
+            <note>
+              <para>
+                For these commands to work reliably, the configuration file settings
+                <varname>repmgrd_service_start_command</varname> and <varname>repmgrd_service_stop_command</varname>
+                should be set in <filename>repmgr.conf</filename>.
+              </para>
+            </note>
+          </listitem>
+
+          <listitem>
            <para>
-              Add <option>--terse</option> to <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> (GitHub #521).
+              Add <option>--terse</option> option to <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> (GitHub #521).
             </para>
             <para>
               This makes it easier to copy the output into emails, chats etc. as a compact table.
@@ -101,7 +117,7 @@
             <para>
               &repmgr;: when executing <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>,
               prevent escaping issues with connection URIs when executing <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>
-              on the demotion candidate (GitHub #525).
+              on the demotion candidate. GitHub #525.
             </para>
           </listitem>
 
@@ -114,7 +130,7 @@
 
         </itemizedlist>
       </para>
-    </sect2>
+    </sect>2
 
 
 
