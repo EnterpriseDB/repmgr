@@ -4376,9 +4376,8 @@ wait_connection_availability(PGconn *conn, long long timeout)
 		gettimeofday(&before, &tz);
 		if (select(sock, &read_set, NULL, NULL, &tmout) == -1)
 		{
-			log_warning(
-						_("wait_connection_availability(): select() returned with error:\n  %s"),
-						strerror(errno));
+			log_warning(_("wait_connection_availability(): select() returned with error"));
+			log_detail("%s", strerror(errno));
 			return -1;
 		}
 

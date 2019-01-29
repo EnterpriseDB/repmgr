@@ -618,7 +618,8 @@ daemonize_process(void)
 	switch (pid)
 	{
 		case -1:
-			log_error(_("error in fork():\n  %s"), strerror(errno));
+			log_error(_("error in fork()"));
+			log_detail("%s", strerror(errno));
 			exit(ERR_SYS_FAILURE);
 			break;
 
@@ -627,7 +628,8 @@ daemonize_process(void)
 			pid = setsid();
 			if (pid == (pid_t) -1)
 			{
-				log_error(_("error in setsid():\n  %s"), strerror(errno));
+				log_error(_("error executing setsid()"));
+				log_detail("%s", strerror(errno));
 				exit(ERR_SYS_FAILURE);
 			}
 
@@ -637,7 +639,8 @@ daemonize_process(void)
 			/* error case */
 			if (pid == -1)
 			{
-				log_error(_("error in fork():\n  %s"), strerror(errno));
+				log_error(_("error executing fork()"));
+				log_detail("%s", strerror(errno));
 				exit(ERR_SYS_FAILURE);
 			}
 

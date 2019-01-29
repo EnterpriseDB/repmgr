@@ -351,8 +351,9 @@ create_pg_dir(const char *path, bool force)
 			}
 			break;
 		case DIR_ERROR:
-			log_error(_("could not access directory \"%s\": %s"),
-					  path, strerror(errno));
+			log_error(_("could not access directory \"%s\"")
+					  , path);
+			log_detail("%s", strerror(errno));
 			return false;
 	}
 

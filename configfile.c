@@ -123,9 +123,9 @@ load_config(const char *config_file, bool verbose, bool terse, t_configuration_o
 
 		if (stat(config_file_path, &stat_config) != 0)
 		{
-			log_error(_("provided configuration file \"%s\" not found: %s"),
-					  config_file,
-					  strerror(errno));
+			log_error(_("provided configuration file \"%s\" not found"),
+					  config_file);
+			log_detail("%s", strerror(errno));
 			exit(ERR_BAD_CONFIG);
 		}
 
