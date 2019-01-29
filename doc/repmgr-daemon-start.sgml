@@ -58,6 +58,27 @@
   </refsect1>
 
   <refsect1>
+
+    <title>Options</title>
+
+    <variablelist>
+
+      <varlistentry>
+        <term><option>--dry-run</option></term>
+        <listitem>
+          <para>
+            Check prerequisites but don't actually attempt to start <application>repmgrd</application>.
+          </para>
+          <para>
+            This action will output the command which would be executed.
+          </para>
+        </listitem>
+      </varlistentry>
+
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
     <title>Exit codes</title>
     <para>
       Following exit codes can be emitted by <command>repmgr daemon start</command>:
