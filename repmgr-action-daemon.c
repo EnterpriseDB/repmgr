@@ -18,6 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <sys/stat.h>			/* for stat() */
+
 #include "repmgr.h"
 
 #include "repmgr-client-global.h"
@@ -390,7 +392,7 @@ do_daemon_start(void)
 	PGconn	   *conn = NULL;
 	PQExpBufferData repmgrd_command;
 	PQExpBufferData output_buf;
-	bool success;
+	bool		success;
 
 	/*
 	 * if local connection available, check if repmgr.so is installed, and
@@ -405,19 +407,22 @@ do_daemon_start(void)
 
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
-		log_warning(_("unable to connect to local node"));
+		/* TODO: if PostgreSQL is not available, have repmgrd loop and retry connection */
+		log_error(_("unable to connect to local node"));
+		log_detail(_("PostgreSQL must be running before \"repmgrd\" can be started"));
+		exit(ERR_REPMGRD_SERVICE);
 	}
-	else
-	{
-		check_shared_library(conn);
 
-		if (is_repmgrd_running(conn) == true)
-		{
-			log_error(_("repmgrd appears to be running already"));
-			PQfinish(conn);
-			exit(ERR_REPMGRD_SERVICE);
-		}
+	check_shared_library(conn);
+
+	if (is_repmgrd_running(conn) == true)
+	{
+		log_error(_("repmgrd appears to be running already"));
+		PQfinish(conn);
+		exit(ERR_REPMGRD_SERVICE);
 	}
+
+	PQfinish(conn);
 
 	initPQExpBuffer(&repmgrd_command);
 
@@ -434,11 +439,11 @@ do_daemon_start(void)
 	if (runtime_options.dry_run == true)
 	{
 		log_info(_("prerequisites for starting repmgrd met"));
-		log_detail("%s", repmgrd_command.data);
+		log_detail("following command would be executed:\n  %s", repmgrd_command.data);
 		exit(SUCCESS);
 	}
 
-	log_debug("repmgrd start command: '%s'", repmgrd_command.data);
+	log_notice(_("executing: \"%s\""), repmgrd_command.data);
 
 	initPQExpBuffer(&output_buf);
 
@@ -460,7 +465,149 @@ do_daemon_start(void)
 
 void do_daemon_stop(void)
 {
+	PGconn	   *conn = NULL;
+	PQExpBufferData repmgrd_command;
+	PQExpBufferData output_buf;
+	bool		success;
+	pid_t		pid = UNKNOWN_PID;
+
+	/*
+	 * if local connection available, check if repmgr.so is installed, and
+	 * whether repmgrd is running
+	 */
+	log_verbose(LOG_INFO, _("connecting to local node"));
+
+	if (strlen(config_file_options.conninfo))
+		conn = establish_db_connection(config_file_options.conninfo, false);
+	else
+		conn = establish_db_connection_by_params(&source_conninfo, false);
+
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		log_warning(_("unable to connect to local node"));
+	}
+	else
+	{
+		check_shared_library(conn);
+
+		if (is_repmgrd_running(conn) == false)
+ 		{
+			log_error(_("repmgrd appears to be stopped already"));
+			PQfinish(conn);
+			exit(ERR_REPMGRD_SERVICE);
+		}
+
+		/* Attempt to fetch the PID, in case we need it later */
+		pid = repmgrd_get_pid(conn);
+		log_debug("retrieved pid is %i", pid);
+	}
+
+	PQfinish(conn);
+
+	initPQExpBuffer(&repmgrd_command);
+
+	if (config_file_options.repmgrd_service_start_command[0] != '\0')
+	{
+		appendPQExpBufferStr(&repmgrd_command,
+							 config_file_options.repmgrd_service_stop_command);
+	}
+	else
+	{
+		/* PID not known - attempt to retrieve repmgrd default PID */
+		if (pid == UNKNOWN_PID)
+		{
+			PQExpBufferData repmgrd_pid_command;
+			char		pidfile[MAXPGPATH] = "";
+			int			pidfile_pathlen;
+			struct stat stat_pidfile;
+
+			initPQExpBuffer(&repmgrd_pid_command);
+
+			make_repmgrd_path(&repmgrd_pid_command);
+			appendPQExpBufferStr(&repmgrd_pid_command, " --show-pid-file 2>/dev/null");
+
+			initPQExpBuffer(&output_buf);
+			log_debug("%s", repmgrd_pid_command.data);
+			success = local_command(repmgrd_pid_command.data, &output_buf);
+			termPQExpBuffer(&repmgrd_pid_command);
+
+			if (success == false)
+			{
+				log_error(_("unable to execute \"repmgrd --show-pid-file\""));
+
+				if (output_buf.data[0] != '\0')
+					log_detail("%s", output_buf.data);
+
+				termPQExpBuffer(&output_buf);
+				exit(ERR_REPMGRD_SERVICE);
+			}
+
+			if (output_buf.data[0] == '\0')
+			{
+				log_error(_("\"repmgrd --show-pid-file\" did not return a file"));
+				termPQExpBuffer(&output_buf);
+				exit(ERR_REPMGRD_SERVICE);
+			}
+
+			pidfile_pathlen = strlen(output_buf.data);
+
+			if (pidfile_pathlen > MAXPGPATH)
+				pidfile_pathlen = MAXPGPATH;
+			else
+				pidfile_pathlen --;
+
+			strncpy(pidfile, output_buf.data, pidfile_pathlen);
+
+			/* check if pid file actually exists */
+
+			if (stat(pidfile, &stat_pidfile) != 0)
+			{
+				log_error(_("PID file \"%s\" not found"),
+						  pidfile);
+				log_detail("%s",  strerror(errno));
+
+				if (config_file_options.repmgrd_pid_file == '\0')
+					log_hint(_("set \"repmgrd_pid_file\" in \"%s\""), config_file_path);
+				exit(ERR_REPMGRD_SERVICE);
+			}
+
+			appendPQExpBuffer(&repmgrd_command,
+							  "kill `cat %s`", pidfile);
+			termPQExpBuffer(&output_buf);
+		}
+		else
+		{
+			appendPQExpBuffer(&repmgrd_command,
+							  "kill %i", pid);
+		}
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("prerequisites for stopping repmgrd met"));
+		log_detail("following command would be executed:\n  %s", repmgrd_command.data);
+		exit(SUCCESS);
+	}
+
+	log_notice(_("executing: \"%s\""), repmgrd_command.data);
+
+	initPQExpBuffer(&output_buf);
+
+	success = local_command(repmgrd_command.data, &output_buf);
+	termPQExpBuffer(&repmgrd_command);
+
+	if (success == false)
+	{
+		log_error(_("unable to stop repmgrd"));
+		if (output_buf.data[0] != '\0')
+			log_detail("%s", output_buf.data);
+		termPQExpBuffer(&output_buf);
+		exit(ERR_REPMGRD_SERVICE);
+	}
+
+	termPQExpBuffer(&output_buf);
 }
+
 
 void do_daemon_help(void)
 {
@@ -482,6 +629,20 @@ void do_daemon_help(void)
 	printf(_("    --verbose                 show text of database connection error messages\n"));
 	puts("");
 
+	printf(_("DAEMON START\n"));
+	puts("");
+	printf(_("  \"daemon start\" attempts to start repmgrd"));
+	puts("");
+	printf(_("    --dry-run               check prerequisites but don't start repmgrd\n"));
+	puts("");
+
+	printf(_("DAEMON STOP\n"));
+	puts("");
+	printf(_("  \"daemon stop\" attempts to stop repmgrd"));
+	puts("");
+	printf(_("    --dry-run               check prerequisites but don't stop repmgrd\n"));
+	puts("");
+
 	printf(_("DAEMON PAUSE\n"));
 	puts("");
 	printf(_("  \"daemon pause\" instructs repmgrd on each node to pause failover detection\n"));
@@ -495,14 +656,6 @@ void do_daemon_help(void)
 	puts("");
 	printf(_("    --dry-run               check if nodes are reachable but don't unpause repmgrd\n"));
 	puts("");
-
-	printf(_("DAEMON START\n"));
-	puts("");
-	puts("XXX");
-
-	printf(_("DAEMON STOP\n"));
-	puts("");
-	puts("XXX");
 
 	puts("");
 }

@@ -1351,6 +1351,7 @@ main(int argc, char **argv)
 			break;
 		case DAEMON_START:
 			do_daemon_start();
+			break;
 		case DAEMON_STOP:
 			do_daemon_stop();
 			break;
