@@ -1722,7 +1722,7 @@ check_cli_parameters(const int action)
 											action_name(action));
 			}
 		}
-		else if (runtime_options.wait)
+		else if (runtime_options.no_wait)
 		{
 			switch (action)
 			{
