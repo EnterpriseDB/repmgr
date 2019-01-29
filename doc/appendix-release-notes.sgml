@@ -21,6 +21,7 @@
     <para>
       &repmgr; 4.3 is a major release.
     </para>
+
     <sect2>
       <title>repmgr enhancements</title>
       <para>
@@ -65,7 +66,7 @@
           </listitem>
 
           <listitem>
-           <para>
+            <para>
               Add <option>--terse</option> option to <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> (GitHub #521).
             </para>
             <para>
@@ -130,9 +131,7 @@
 
         </itemizedlist>
       </para>
-    </sect>2
-
-
+    </sect2>
 
   </sect1>
 

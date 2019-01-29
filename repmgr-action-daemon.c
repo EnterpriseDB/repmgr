@@ -433,6 +433,14 @@ do_daemon_start(void)
 	}
 	else
 	{
+		/*
+ 		 * repmgr will attempt to construct appropriate commands, but
+		 * usually it's preferable for them to be explicitly defined,
+		 * particularly if repmgr is installed from packages.
+		 */
+		log_warning(_("\"repmgrd_service_start_command\" is not set"));
+		log_hint(_("specify appropriate repmgrd start and stop commands in \"repmgr.conf\" for reliable operation"));
+
 		make_repmgrd_path(&repmgrd_command);
 	}
 
@@ -513,6 +521,9 @@ void do_daemon_stop(void)
 	}
 	else
 	{
+		log_warning(_("\"repmgrd_service_stop_command\" is not set"));
+		log_hint(_("specify appropriate repmgrd start and stop commands in \"repmgr.conf\" for reliable operation"));
+
 		/* PID not known - attempt to retrieve repmgrd default PID */
 		if (pid == UNKNOWN_PID)
 		{
