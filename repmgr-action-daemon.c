@@ -577,7 +577,7 @@ void do_daemon_stop(void)
 						  pidfile);
 				log_detail("%s",  strerror(errno));
 
-				if (config_file_options.repmgrd_pid_file == '\0')
+				if (config_file_options.repmgrd_pid_file[0] == '\0')
 					log_hint(_("set \"repmgrd_pid_file\" in \"%s\""), config_file_path);
 				exit(ERR_REPMGRD_SERVICE);
 			}
