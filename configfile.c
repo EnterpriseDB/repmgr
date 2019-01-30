@@ -473,7 +473,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		/* Copy into correct entry in parameters struct */
 		if (strcmp(name, "node_id") == 0)
 		{
-			options->node_id = repmgr_atoi(value, name, error_list, 1);
+			options->node_id = repmgr_atoi(value, name, error_list, MIN_NODE_ID);
 			node_id_found = true;
 		}
 		else if (strcmp(name, "node_name") == 0)

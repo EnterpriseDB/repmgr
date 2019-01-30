@@ -58,7 +58,7 @@
 #define NODE_NOT_FOUND		-1
 #define NO_UPSTREAM_NODE	-1
 #define UNKNOWN_NODE_ID		-1
-
+#define MIN_NODE_ID          1
 #define VOTING_TERM_NOT_SET -1
 
 #define BDR2_REPLICATION_SET_NAME "repmgr"

@@ -294,7 +294,12 @@ main(int argc, char **argv)
 				break;
 
 			case 'p':
-				(void) repmgr_atoi(optarg, "-p/--port", &cli_errors, false);
+				/*
+				 * minimum TCP port number is 1; in practice PostgreSQL
+				 * won't be running on a privileged port, but we don't want
+				 * to be concerned with that level of checking
+				 */
+				(void) repmgr_atoi(optarg, "-p/--port", &cli_errors, 1);
 				param_set(&source_conninfo, "port", optarg);
 				strncpy(runtime_options.port,
 						optarg,
@@ -336,7 +341,7 @@ main(int argc, char **argv)
 
 				/* --node-id */
 			case OPT_NODE_ID:
-				runtime_options.node_id = repmgr_atoi(optarg, "--node-id", &cli_errors, false);
+				runtime_options.node_id = repmgr_atoi(optarg, "--node-id", &cli_errors, MIN_NODE_ID);
 				break;
 
 				/* --node-name */
@@ -346,7 +351,7 @@ main(int argc, char **argv)
 
 				/* --remote-node-id */
 			case OPT_REMOTE_NODE_ID:
-				runtime_options.remote_node_id = repmgr_atoi(optarg, "--remote-node-id", &cli_errors, false);
+				runtime_options.remote_node_id = repmgr_atoi(optarg, "--remote-node-id", &cli_errors, MIN_NODE_ID);
 				break;
 
 				/*
@@ -355,7 +360,7 @@ main(int argc, char **argv)
 
 				/* --upstream-node-id */
 			case OPT_UPSTREAM_NODE_ID:
-				runtime_options.upstream_node_id = repmgr_atoi(optarg, "--upstream-node-id", &cli_errors, false);
+				runtime_options.upstream_node_id = repmgr_atoi(optarg, "--upstream-node-id", &cli_errors, MIN_NODE_ID);
 				break;
 
 				/*------------------------
@@ -415,14 +420,14 @@ main(int argc, char **argv)
 				 */
 
 			case OPT_WAIT_START:
-				runtime_options.wait_start = repmgr_atoi(optarg, "--wait-start", &cli_errors, false);
+				runtime_options.wait_start = repmgr_atoi(optarg, "--wait-start", &cli_errors, 0);
 				break;
 
 			case OPT_WAIT_SYNC:
 				runtime_options.wait_register_sync = true;
 				if (optarg != NULL)
 				{
-					runtime_options.wait_register_sync_seconds = repmgr_atoi(optarg, "--wait-sync", &cli_errors, false);
+					runtime_options.wait_register_sync_seconds = repmgr_atoi(optarg, "--wait-sync", &cli_errors, 0);
 				}
 				break;
 
@@ -543,7 +548,7 @@ main(int argc, char **argv)
 				break;
 
 			case OPT_LIMIT:
-				runtime_options.limit = repmgr_atoi(optarg, "--limit", &cli_errors, false);
+				runtime_options.limit = repmgr_atoi(optarg, "--limit", &cli_errors, 1);
 				runtime_options.limit_provided = true;
 				break;
 
@@ -558,7 +563,7 @@ main(int argc, char **argv)
 
 				/* -k/--keep-history */
 			case 'k':
-				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", &cli_errors, false);
+				runtime_options.keep_history = repmgr_atoi(optarg, "-k/--keep-history", &cli_errors, 0);
 				break;
 
 				/*----------------
@@ -1679,12 +1684,6 @@ check_cli_parameters(const int action)
 		switch (action)
 		{
 			case CLUSTER_EVENT:
-				if (runtime_options.limit < 1)
-				{
-					item_list_append_format(&cli_errors,
-											_("value for --limit must be 1 or greater (provided: %i)"),
-											runtime_options.limit);
-				}
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
