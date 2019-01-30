@@ -24,6 +24,18 @@
       local node.
     </para>
 
+    <para>
+      By default, &repmgr; will wait for up to 15 seconds to confirm that <application>repmgrd</application>
+      stopped. This behaviour can be overridden by specifying a diffent value using the <option>--wait</option>
+      option, or disabled altogether with the <option>--no-wait</option> option.
+    </para>
+    <note>
+      <para>
+        If PostgreSQL is not running on the local node, under some circumstances &repmgr; may not
+        be able to confirm if <application>repmgrd</application> has actually stopped.
+      </para>
+    </note>
+
   </refsect1>
 
   <refsect1>
@@ -65,6 +77,32 @@
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><option>-w/--wait</option></term>
+        <listitem>
+          <para>
+            Wait for the specified number of seconds to confirm that <application>repmgrd</application>
+            stopped successfully.
+          </para>
+          <para>
+            Note that providing <option>--wait=0</option> is the equivalent of <option>--no-wait</option>.
+          </para>
+
+         </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--no-wait</option></term>
+        <listitem>
+          <para>
+            Don't wait to confirm that <application>repmgrd</application>
+            stopped successfully.
+          </para>
+          <para>
+            This is equivalent to providing <option>--wait=0</option>.
+          </para>
+         </listitem>
+      </varlistentry>
     </variablelist>
   </refsect1>
 

@@ -254,7 +254,11 @@ main(int argc, char **argv)
 
 				/* -w/--wait */
 			case 'w':
-				runtime_options.wait = true;
+				runtime_options.wait_provided = true;
+				if (optarg != NULL)
+				{
+					runtime_options.wait = repmgr_atoi(optarg, "--wait", &cli_errors, 0);
+				}
 				break;
 
 				/* -W/--no-wait */
@@ -1713,17 +1717,19 @@ check_cli_parameters(const int action)
 
 	/* --wait/--no-wait */
 
-	if (runtime_options.wait == true && runtime_options.no_wait == true)
+	if (runtime_options.wait_provided == true && runtime_options.no_wait == true)
 	{
 		item_list_append_format(&cli_errors,
 								_("both --wait and --no-wait options provided"));
 	}
 	else
 	{
-		if (runtime_options.wait)
+		if (runtime_options.wait_provided)
 		{
 			switch (action)
 			{
+				case DAEMON_START:
+				case DAEMON_STOP:
 				case STANDBY_FOLLOW:
 					break;
 				default:
@@ -1736,6 +1742,8 @@ check_cli_parameters(const int action)
 		{
 			switch (action)
 			{
+				case DAEMON_START:
+				case DAEMON_STOP:
 				case NODE_REJOIN:
 					break;
 				default:

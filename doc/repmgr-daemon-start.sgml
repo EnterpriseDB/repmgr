@@ -23,7 +23,11 @@
       This command starts the <application>repmgrd</application> daemon on the
       local node.
     </para>
-
+    <para>
+      By default, &repmgr; will wait for up to 15 seconds to confirm that <application>repmgrd</application>
+      started. This behaviour can be overridden by specifying a diffent value using the <option>--wait</option>
+      option, or disabled altogether with the <option>--no-wait</option> option.
+    </para>
   </refsect1>
 
   <refsect1>
@@ -65,6 +69,33 @@
         </listitem>
       </varlistentry>
 
+      <varlistentry>
+        <term><option>--wait</option></term>
+        <listitem>
+          <para>
+            Wait for the specified number of seconds to confirm that <application>repmgrd</application>
+            started successfully.
+          </para>
+          <para>
+            Note that providing <option>--wait=0</option> is the equivalent of <option>--no-wait</option>.
+          </para>
+
+         </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>--no-wait</option></term>
+        <listitem>
+          <para>
+            Don't wait to confirm that <application>repmgrd</application>
+            started successfully.
+          </para>
+          <para>
+            This is equivalent to providing <option>--wait=0</option>.
+          </para>
+         </listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 
@@ -79,7 +110,12 @@
         <term><option>SUCCESS (0)</option></term>
         <listitem>
           <para>
-            <application>repmgrd</application> could be started.
+            The <application>repmgrd</application> start command (defined in
+            <varname>repmgrd_service_start_command</varname>) was successfully executed.
+          </para>
+          <para>
+            If the <option>--wait</option> option was provided, &repmgr; will confirm that
+            <application>repmgrd</application> has actually started up.
           </para>
         </listitem>
       </varlistentry>
@@ -94,11 +130,33 @@
         </listitem>
       </varlistentry>
 
+
+      <varlistentry>
+        <term><option>ERR_DB_CONN (6)</option></term>
+        <listitem>
+          <para>
+            &repmgr; was unable to connect to the local PostgreSQL node.
+          </para>
+          <para>
+            PostgreSQL must be running before <application>repmgrd</application>
+            can be started. Additionally, unless the <option>--no-wait</option> option was
+            provided, &repmgr; needs to be able to connect to the local PostgreSQL node
+            to determine the state of <application>repmgrd</application>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+
       <varlistentry>
         <term><option>ERR_REPMGRD_SERVICE (27)</option></term>
         <listitem>
           <para>
-            <application>repmgrd</application> could not be started.
+            The <application>repmgrd</application> start command (defined in
+            <varname>repmgrd_service_start_command</varname>) was not successfully executed.
+          </para>
+          <para>
+            This can also mean that &repmgr; was unable to confirm whether <application>repmgrd</application>
+            successfully started (unless the <option>--no-wait</option> option was provided).
           </para>
         </listitem>
       </varlistentry>
@@ -109,7 +167,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-stop">, <xref linkend="repmgr-daemon-status">
+      <xref linkend="repmgr-daemon-stop">, <xref linkend="repmgr-daemon-status">, <xref linkend="repmgrd-daemon">
     </para>
   </refsect1>
 

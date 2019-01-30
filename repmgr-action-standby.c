@@ -2298,7 +2298,7 @@ do_standby_follow(void)
 															  NULL);
 		}
 
-		if (PQstatus(follow_target_conn) == CONNECTION_OK || runtime_options.wait == false)
+		if (PQstatus(follow_target_conn) == CONNECTION_OK || runtime_options.wait_provided == false)
 		{
 			break;
 		}
@@ -2317,7 +2317,7 @@ do_standby_follow(void)
 			log_error(_("unable to connect to target node %i"), follow_target_node_id);
 		}
 
-		if (runtime_options.wait == true)
+		if (runtime_options.wait_provided == true)
 		{
 			if (follow_target_node_id == UNKNOWN_NODE_ID)
 			{

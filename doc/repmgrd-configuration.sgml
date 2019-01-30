@@ -348,7 +348,7 @@
 
   </sect1>
 
-  <sect1 id="repmgrd-daemon">
+  <sect1 id="repmgrd-daemon" xreflabel="repmgrd daemon">
     <indexterm>
       <primary>repmgrd</primary>
       <secondary>starting and stopping</secondary>

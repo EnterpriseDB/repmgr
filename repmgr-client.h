@@ -116,7 +116,7 @@ static struct option long_options[] =
 	{"dry-run", no_argument, NULL, OPT_DRY_RUN},
 	{"force", no_argument, NULL, 'F'},
 	{"pg_bindir", required_argument, NULL, 'b'},
-	{"wait", no_argument, NULL, 'w'},
+	{"wait", optional_argument, NULL, 'w'},
 	{"no-wait", no_argument, NULL, 'W'},
 
 /* connection options */

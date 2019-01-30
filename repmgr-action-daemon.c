@@ -25,7 +25,9 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-daemon.h"
 
-
+#define REPMGR_DAEMON_STOP_START_WAIT 15
+#define REPMGR_DAEMON_STATUS_START_HINT _("use \"repmgr daemon status\" to confirm that repmgrd was successfully started")
+#define REPMGR_DAEMON_STATUS_STOP_HINT _("use \"repmgr daemon status\" to confirm that repmgrd was successfully stopped")
 
 /*
  * Possibly also show:
@@ -410,7 +412,7 @@ do_daemon_start(void)
 		/* TODO: if PostgreSQL is not available, have repmgrd loop and retry connection */
 		log_error(_("unable to connect to local node"));
 		log_detail(_("PostgreSQL must be running before \"repmgrd\" can be started"));
-		exit(ERR_REPMGRD_SERVICE);
+		exit(ERR_DB_CONN);
 	}
 
 	/*
@@ -421,7 +423,17 @@ do_daemon_start(void)
 
 	if (is_repmgrd_running(conn) == true)
 	{
+		pid_t		pid = UNKNOWN_PID;
+
 		log_error(_("repmgrd appears to be running already"));
+
+		pid = repmgrd_get_pid(conn);
+
+		if (pid != UNKNOWN_PID)
+			log_detail(_("repmgrd PID is %i"), pid);
+		else
+			log_warning(_("unable to determine repmgrd PID"));
+
 		PQfinish(conn);
 		exit(ERR_REPMGRD_SERVICE);
 	}
@@ -457,6 +469,52 @@ do_daemon_start(void)
 	}
 
 	termPQExpBuffer(&output_buf);
+
+	if (runtime_options.no_wait == true || runtime_options.wait == 0)
+	{
+		log_hint(REPMGR_DAEMON_STATUS_START_HINT);
+	}
+	else
+	{
+		int i = 0;
+		int timeout = REPMGR_DAEMON_STOP_START_WAIT;
+
+		if (runtime_options.wait_provided)
+			timeout = runtime_options.wait;
+
+		conn = establish_db_connection(config_file_options.conninfo, false);
+
+		if (PQstatus(conn) != CONNECTION_OK)
+		{
+			log_notice(_("unable to connect to local node"));
+			log_hint(REPMGR_DAEMON_STATUS_START_HINT);
+			exit(ERR_DB_CONN);
+		}
+
+		for (;;)
+		{
+			if (is_repmgrd_running(conn) == true)
+			{
+				log_notice(_("repmgrd was successfully started"));
+				PQfinish(conn);
+				break;
+			}
+
+			if (i == timeout)
+			{
+				PQfinish(conn);
+				log_error(_("repmgrd does not appear to have started after %i seconds"),
+						  timeout);
+				log_hint(REPMGR_DAEMON_STATUS_START_HINT);
+				exit(ERR_REPMGRD_SERVICE);
+			}
+
+			log_debug("sleeping 1 second; %i of %i attempts to determine if repmgrd is running",
+					  i, runtime_options.wait);
+			sleep(1);
+			i++;
+		}
+	}
 }
 
 
@@ -468,7 +526,7 @@ void do_daemon_stop(void)
 	bool		success;
 	pid_t		pid = UNKNOWN_PID;
 
-	if (config_file_options.repmgrd_service_start_command[0] == '\0')
+	if (config_file_options.repmgrd_service_stop_command[0] == '\0')
 	{
 		log_error(_("\"repmgrd_service_stop_command\" is not set"));
 		log_hint(_("set \"repmgrd_service_stop_command\" in \"repmgr.conf\""));
@@ -485,6 +543,9 @@ void do_daemon_stop(void)
 
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
+		/*
+		 * a PostgreSQL connection is not required to stop repmgrd,
+		 */
 		log_warning(_("unable to connect to local node"));
 	}
 	else
@@ -534,6 +595,66 @@ void do_daemon_stop(void)
 	}
 
 	termPQExpBuffer(&output_buf);
+
+	if (runtime_options.no_wait == true || runtime_options.wait == 0)
+	{
+		log_hint(REPMGR_DAEMON_STATUS_STOP_HINT);
+	}
+	else
+	{
+		int i = 0;
+		int timeout = REPMGR_DAEMON_STOP_START_WAIT;
+		/*
+		 *
+		 */
+		if (pid == UNKNOWN_PID)
+		{
+			/*
+			 * XXX attempt to get pidfile from config
+			 *   and get contents
+			 *   ( see check_and_create_pid_file() )
+			 * if PID still unknown, exit here
+			 */
+			log_warning(_("unable to determine repmgrd PID"));
+			log_hint(REPMGR_DAEMON_STATUS_STOP_HINT);
+			exit(ERR_REPMGRD_SERVICE);
+		}
+
+		if (runtime_options.wait_provided)
+			timeout = runtime_options.wait;
+
+		for (;;)
+		{
+			if (kill(pid, 0) == -1)
+			{
+				if (errno == ESRCH)
+				{
+					log_notice(_("repmgrd was successfully stopped"));
+					exit(SUCCESS);
+				}
+				else
+				{
+					log_error(_("unable to determine status of process with PID %i"), pid);
+					log_detail("%s", strerror(errno));
+					exit(ERR_REPMGRD_SERVICE);
+				}
+			}
+
+
+			if (i == timeout)
+			{
+				log_error(_("repmgrd does not appear to have stopped after %i seconds"),
+						  timeout);
+				log_hint(REPMGR_DAEMON_STATUS_START_HINT);
+				exit(ERR_REPMGRD_SERVICE);
+			}
+
+			log_debug("sleeping 1 second; %i of %i attempts to determine if repmgrd with PID %i is running",
+					  i, timeout, pid);
+			sleep(1);
+			i++;
+		}
+	}
 }
 
 
@@ -559,16 +680,20 @@ void do_daemon_help(void)
 
 	printf(_("DAEMON START\n"));
 	puts("");
-	printf(_("  \"daemon start\" attempts to start repmgrd"));
+	printf(_("  \"daemon start\" attempts to start repmgrd\n"));
 	puts("");
 	printf(_("    --dry-run               check prerequisites but don't start repmgrd\n"));
+	printf(_("    -w/--wait               wait for repmgrd to start (default: %i seconds)\n"), REPMGR_DAEMON_STOP_START_WAIT);
+	printf(_("    --no-wait               don't wait for repmgrd to start\n"));
 	puts("");
 
 	printf(_("DAEMON STOP\n"));
 	puts("");
-	printf(_("  \"daemon stop\" attempts to stop repmgrd"));
+	printf(_("  \"daemon stop\" attempts to stop repmgrd\n"));
 	puts("");
 	printf(_("    --dry-run               check prerequisites but don't stop repmgrd\n"));
+	printf(_("    -w/--wait               wait for repmgrd to stop (default: %i seconds)\n"), REPMGR_DAEMON_STOP_START_WAIT);
+	printf(_("    --no-wait               don't wait for repmgrd to stop\n"));
 	puts("");
 
 	printf(_("DAEMON PAUSE\n"));

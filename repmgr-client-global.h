@@ -35,13 +35,14 @@ typedef struct
 	bool		connection_param_provided;
 	bool		host_param_provided;
 	bool		limit_provided;
+	bool		wait_provided;
 
 	/* general configuration options */
 	char		config_file[MAXPGPATH];
 	bool		dry_run;
 	bool		force;
 	char		pg_bindir[MAXLEN];	/* overrides setting in repmgr.conf */
-	bool		wait;
+	int			wait;
 	bool		no_wait;
 
 	/* logging options */
@@ -137,9 +138,9 @@ typedef struct
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
 		/* configuration metadata */ \
-		false, false, false, false,	\
+		false, false, false, false, false,	\
 		/* general configuration options */	\
-		"", false, false, "", false, false,	\
+		"", false, false, "", -1, false, \
 		/* logging options */ \
 		"", false, false, false, false,	\
 		/* output options */ \
