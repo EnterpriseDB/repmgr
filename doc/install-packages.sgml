@@ -1,5 +1,11 @@
 <sect1 id="installation-packages" xreflabel="Installing from packages">
  <title>Installing &repmgr; from packages</title>
+
+  <indexterm>
+   <primary>installation</primary>
+   <secondary>from packages</secondary>
+  </indexterm>
+
  <para>
   We recommend installing &repmgr; using the available packages for your
   system.
@@ -160,7 +166,17 @@ yum search repmgr</programlisting>
       <programlisting>
         [root@localhost ~]# yum install repmgr10-4.0.3-1.rhel7</programlisting>
     </para>
+
+    <para>
+      <emphasis>Installing old packages</emphasis>
+    </para>
+    <para>
+      See appendix <link linkend="packages-old-versions-rhel-centos">Installing old package versions</link>
+      for details on how to retrieve older package versions.
+    </para>
+
   </sect3>
+
  </sect2>
 
  <sect2 id="installation-packages-debian" xreflabel="Installing from packages on Debian or Ubuntu">
@@ -224,7 +240,6 @@ curl https://dl.2ndquadrant.com/default/release/get/deb | sudo bash</programlist
           </note>
         </listitem>
 
-
 	<listitem>
 	  <para>
             Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
@@ -243,6 +258,15 @@ sudo apt-get install postgresql-10-repmgr</programlisting>
       </itemizedlist>
 
     </para>
+
+    <para>
+      <emphasis>Installing old packages</emphasis>
+    </para>
+    <para>
+      See appendix <link linkend="packages-old-versions-debian">Installing old package versions</link>
+      for details on how to retrieve older package versions.
+    </para>
+
 
   </sect3>
  </sect2>

@@ -456,12 +456,19 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
 
   <sect1 id="packages-old-versions" xreflabel="Installing old package versions">
     <title>Installing old package versions</title>
+
     <indexterm>
       <primary>old packages</primary>
     </indexterm>
+
     <indexterm>
       <primary>packages</primary>
       <secondary>old versions</secondary>
+    </indexterm>
+
+    <indexterm>
+      <primary>installation</primary>
+      <secondary>old package versions</secondary>
     </indexterm>
 
     <sect2 id="packages-old-versions-debian" xreflabel="old Debian package versions">
