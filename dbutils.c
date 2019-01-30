@@ -540,7 +540,7 @@ param_set(t_conninfo_param_list *param_list, const char *param, const char *valu
 	/*
 	 * Parameter not in array - add it and its associated value
 	 */
-	if (c < param_list->size)
+	if (c == param_list->size)
 	{
 		int			param_len = strlen(param) + 1;
 
