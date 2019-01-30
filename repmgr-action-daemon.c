@@ -524,6 +524,7 @@ void do_daemon_stop(void)
 	PQExpBufferData repmgrd_command;
 	PQExpBufferData output_buf;
 	bool		success;
+	bool		have_db_connection = true;
 	pid_t		pid = UNKNOWN_PID;
 
 	if (config_file_options.repmgrd_service_stop_command[0] == '\0')
@@ -547,6 +548,7 @@ void do_daemon_stop(void)
 		 * a PostgreSQL connection is not required to stop repmgrd,
 		 */
 		log_warning(_("unable to connect to local node"));
+		have_db_connection = false;
 	}
 	else
 	{
@@ -598,7 +600,8 @@ void do_daemon_stop(void)
 
 	if (runtime_options.no_wait == true || runtime_options.wait == 0)
 	{
-		log_hint(REPMGR_DAEMON_STATUS_STOP_HINT);
+		if (have_db_connection == true)
+			log_hint(REPMGR_DAEMON_STATUS_STOP_HINT);
 	}
 	else
 	{
@@ -616,7 +619,10 @@ void do_daemon_stop(void)
 			 * if PID still unknown, exit here
 			 */
 			log_warning(_("unable to determine repmgrd PID"));
-			log_hint(REPMGR_DAEMON_STATUS_STOP_HINT);
+
+			if (have_db_connection == true)
+				log_hint(REPMGR_DAEMON_STATUS_STOP_HINT);
+
 			exit(ERR_REPMGRD_SERVICE);
 		}
 
@@ -645,7 +651,10 @@ void do_daemon_stop(void)
 			{
 				log_error(_("repmgrd does not appear to have stopped after %i seconds"),
 						  timeout);
-				log_hint(REPMGR_DAEMON_STATUS_START_HINT);
+
+				if (have_db_connection == true)
+					log_hint(REPMGR_DAEMON_STATUS_START_HINT);
+
 				exit(ERR_REPMGRD_SERVICE);
 			}
 
