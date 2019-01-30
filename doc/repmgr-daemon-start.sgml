@@ -70,6 +70,7 @@
       </varlistentry>
 
       <varlistentry>
+        <term><option>-w</option></term>
         <term><option>--wait</option></term>
         <listitem>
           <para>

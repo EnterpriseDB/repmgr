@@ -78,7 +78,8 @@
       </varlistentry>
 
       <varlistentry>
-        <term><option>-w/--wait</option></term>
+        <term><option>-w</option></term>
+        <term><option>--wait</option></term>
         <listitem>
           <para>
             Wait for the specified number of seconds to confirm that <application>repmgrd</application>
