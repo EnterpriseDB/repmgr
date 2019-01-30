@@ -23,13 +23,7 @@
       This command stops the <application>repmgrd</application> daemon on the
       local node.
     </para>
-    <note>
-      <para>
-        If &repmgr; was installed from packages, it is <emphasis>essential</emphasis>
-        that <application>repmgrd</application> is configured to use the
-        package-provided service start/stop commands. See below for details.
-      </para>
-    </note>
+
   </refsect1>
 
   <refsect1>
@@ -40,10 +34,6 @@
       This must be set to a shell command which will stop <application>repmgrd</application>;
       if &repmgr; was installed from a package, this will be the service command defined by the
       package. For more details see <link linkend="appendix-packages">Appendix: &repmgr; package details</link>.
-    </para>
-    <para>
-      <emphasis>If</emphasis> <varname>repmgrd_service_stop_command</varname> is not set,
-      &repmgr; will default to executing <application>repmgrd</application> directly.
     </para>
 
     <important>
@@ -95,6 +85,16 @@
       </varlistentry>
 
       <varlistentry>
+        <term><option>ERR_BAD_CONFIG (1)</option></term>
+        <listitem>
+          <para>
+            <varname>repmgrd_service_stop_command</varname> is not defined in
+            <filename>repmgr.conf</filename>.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>ERR_REPMGRD_SERVICE (27)</option></term>
         <listitem>
           <para>
@@ -109,7 +109,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-stop">
+      <xref linkend="repmgr-daemon-start">, <xref linkend="repmgr-daemon-status">
     </para>
   </refsect1>
 

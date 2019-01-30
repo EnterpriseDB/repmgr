@@ -394,16 +394,16 @@ do_daemon_start(void)
 	PQExpBufferData output_buf;
 	bool		success;
 
-	/*
-	 * if local connection available, check if repmgr.so is installed, and
-	 * whether repmgrd is running
-	 */
+	if (config_file_options.repmgrd_service_start_command[0] == '\0')
+	{
+		log_error(_("\"repmgrd_service_start_command\" is not set"));
+		log_hint(_("set \"repmgrd_service_start_command\" in \"repmgr.conf\""));
+		exit(ERR_BAD_CONFIG);
+	}
+
 	log_verbose(LOG_INFO, _("connecting to local node"));
 
-	if (strlen(config_file_options.conninfo))
-		conn = establish_db_connection(config_file_options.conninfo, false);
-	else
-		conn = establish_db_connection_by_params(&source_conninfo, false);
+	conn = establish_db_connection(config_file_options.conninfo, false);
 
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
@@ -413,6 +413,10 @@ do_daemon_start(void)
 		exit(ERR_REPMGRD_SERVICE);
 	}
 
+	/*
+	 * if local connection available, check if repmgr.so is installed, and
+	 * whether repmgrd is running
+	 */
 	check_shared_library(conn);
 
 	if (is_repmgrd_running(conn) == true)
@@ -424,25 +428,10 @@ do_daemon_start(void)
 
 	PQfinish(conn);
 
+
 	initPQExpBuffer(&repmgrd_command);
-
-	if (config_file_options.repmgrd_service_start_command[0] != '\0')
-	{
-		appendPQExpBufferStr(&repmgrd_command,
-							 config_file_options.repmgrd_service_start_command);
-	}
-	else
-	{
-		/*
- 		 * repmgr will attempt to construct appropriate commands, but
-		 * usually it's preferable for them to be explicitly defined,
-		 * particularly if repmgr is installed from packages.
-		 */
-		log_warning(_("\"repmgrd_service_start_command\" is not set"));
-		log_hint(_("specify appropriate repmgrd start and stop commands in \"repmgr.conf\" for reliable operation"));
-
-		make_repmgrd_path(&repmgrd_command);
-	}
+	appendPQExpBufferStr(&repmgrd_command,
+						 config_file_options.repmgrd_service_start_command);
 
 	if (runtime_options.dry_run == true)
 	{
@@ -479,16 +468,20 @@ void do_daemon_stop(void)
 	bool		success;
 	pid_t		pid = UNKNOWN_PID;
 
+	if (config_file_options.repmgrd_service_start_command[0] == '\0')
+	{
+		log_error(_("\"repmgrd_service_stop_command\" is not set"));
+		log_hint(_("set \"repmgrd_service_stop_command\" in \"repmgr.conf\""));
+		exit(ERR_BAD_CONFIG);
+	}
+
 	/*
 	 * if local connection available, check if repmgr.so is installed, and
 	 * whether repmgrd is running
 	 */
 	log_verbose(LOG_INFO, _("connecting to local node"));
 
-	if (strlen(config_file_options.conninfo))
-		conn = establish_db_connection(config_file_options.conninfo, false);
-	else
-		conn = establish_db_connection_by_params(&source_conninfo, false);
+	conn = establish_db_connection(config_file_options.conninfo, false);
 
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
@@ -514,84 +507,8 @@ void do_daemon_stop(void)
 
 	initPQExpBuffer(&repmgrd_command);
 
-	if (config_file_options.repmgrd_service_start_command[0] != '\0')
-	{
-		appendPQExpBufferStr(&repmgrd_command,
-							 config_file_options.repmgrd_service_stop_command);
-	}
-	else
-	{
-		log_warning(_("\"repmgrd_service_stop_command\" is not set"));
-		log_hint(_("specify appropriate repmgrd start and stop commands in \"repmgr.conf\" for reliable operation"));
-
-		/* PID not known - attempt to retrieve repmgrd default PID */
-		if (pid == UNKNOWN_PID)
-		{
-			PQExpBufferData repmgrd_pid_command;
-			char		pidfile[MAXPGPATH] = "";
-			int			pidfile_pathlen;
-			struct stat stat_pidfile;
-
-			initPQExpBuffer(&repmgrd_pid_command);
-
-			make_repmgrd_path(&repmgrd_pid_command);
-			appendPQExpBufferStr(&repmgrd_pid_command, " --show-pid-file 2>/dev/null");
-
-			initPQExpBuffer(&output_buf);
-			log_debug("%s", repmgrd_pid_command.data);
-			success = local_command(repmgrd_pid_command.data, &output_buf);
-			termPQExpBuffer(&repmgrd_pid_command);
-
-			if (success == false)
-			{
-				log_error(_("unable to execute \"repmgrd --show-pid-file\""));
-
-				if (output_buf.data[0] != '\0')
-					log_detail("%s", output_buf.data);
-
-				termPQExpBuffer(&output_buf);
-				exit(ERR_REPMGRD_SERVICE);
-			}
-
-			if (output_buf.data[0] == '\0')
-			{
-				log_error(_("\"repmgrd --show-pid-file\" did not return a file"));
-				termPQExpBuffer(&output_buf);
-				exit(ERR_REPMGRD_SERVICE);
-			}
-
-			pidfile_pathlen = strlen(output_buf.data);
-
-			if (pidfile_pathlen > MAXPGPATH)
-				pidfile_pathlen = MAXPGPATH;
-			else
-				pidfile_pathlen --;
-
-			strncpy(pidfile, output_buf.data, pidfile_pathlen);
-
-			/* check if pid file actually exists */
-
-			if (stat(pidfile, &stat_pidfile) != 0)
-			{
-				log_error(_("PID file \"%s\" not found"),
-						  pidfile);
-				log_detail("%s",  strerror(errno));
-
-				if (config_file_options.repmgrd_pid_file[0] == '\0')
-					log_hint(_("set \"repmgrd_pid_file\" in \"%s\""), config_file_path);
-				exit(ERR_REPMGRD_SERVICE);
-			}
-
-			appendPQExpBuffer(&repmgrd_command,
-							  "kill `cat %s`", pidfile);
-			termPQExpBuffer(&output_buf);
-		}
-		else
-		{
-			appendPQExpBuffer(&repmgrd_command,
-							  "kill %i", pid);
-		}
-	}
+	appendPQExpBufferStr(&repmgrd_command,
+						 config_file_options.repmgrd_service_stop_command);
 
 	if (runtime_options.dry_run == true)
 	{

@@ -364,6 +364,20 @@
       for different distributions.
     </para>
     <para>
+      The commands <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link> and
+      <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link> can be used
+      as convenience wrappers to start and stop <application>repmgrd</application>.
+    </para>
+    <important>
+      <para>
+        <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link> and
+        <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link> require
+        that the appropriate start/stop commands are configured as
+        <varname>repmgrd_service_start_command</varname> and <varname>repmgrd_service_stop_command</varname>
+        in <filename>repmgr.conf</filename>.
+      </para>
+    </important>
+    <para>
       <application>repmgrd</application> can be started manually like this:
       <programlisting>
         repmgrd -f /etc/repmgr.conf --pid-file /tmp/repmgrd.pid</programlisting>
