@@ -3330,19 +3330,12 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 		{
 			const char *error_msg = _("this node is ahead of the follow target");
 
-			if (is_rejoin == true && runtime_options.force_rewind_used == true)
-			{
-				log_warning("%s", error_msg);
-			}
-			else
-			{
-				log_error("%s", error_msg);
-				success = false;
-			}
-
+			log_error("%s", error_msg);
 			log_detail(_("local node lsn is %X/%X, follow target lsn is %X/%X"),
 					   format_lsn(local_xlogpos),
 					   format_lsn(follow_target_xlogpos));
+
+			success = false;
 		}
 	}
 	else
