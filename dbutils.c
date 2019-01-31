@@ -519,6 +519,7 @@ param_set(t_conninfo_param_list *param_list, const char *param, const char *valu
 {
 	int			c;
 	int			value_len = strlen(value) + 1;
+	int			param_len;
 
 	/*
 	 * Scan array to see if the parameter is already set - if not, replace it
@@ -538,24 +539,22 @@ param_set(t_conninfo_param_list *param_list, const char *param, const char *valu
 	}
 
 	/*
-	 * Parameter not in array - add it and its associated value
+	 * Sanity-check that the caller is not trying to overflow the array;
+	 * in practice this is highly unlikely, and if it ever happens, this means
+	 * something is highly wrong.
 	 */
-	if (c < param_list->size)
-	{
-		int			param_len = strlen(param) + 1;
-
-		param_list->keywords[c] = pg_malloc0(param_len);
-		param_list->values[c] = pg_malloc0(value_len);
-
-		strncpy(param_list->keywords[c], param, param_len);
-		strncpy(param_list->values[c], value, value_len);
-	}
+	Assert(c < param_list->size);
 
 	/*
-	 * It's theoretically possible a parameter couldn't be added as the array
-	 * is full, but it's highly improbable so we won't handle it at the
-	 * moment.
+	 * Parameter not in array - add it and its associated value
 	 */
+	param_len = strlen(param) + 1;
+
+	param_list->keywords[c] = pg_malloc0(param_len);
+	param_list->values[c] = pg_malloc0(value_len);
+
+	strncpy(param_list->keywords[c], param, param_len);
+	strncpy(param_list->values[c], value, value_len);
 }
 
 
@@ -567,6 +566,7 @@ param_set_ine(t_conninfo_param_list *param_list, const char *param, const char *
 {
 	int			c;
 	int			value_len = strlen(value) + 1;
+	int			param_len;
 
 	/*
 	 * Scan array to see if the parameter is already set - if so, do nothing
@@ -581,18 +581,22 @@ param_set_ine(t_conninfo_param_list *param_list, const char *param, const char *
 	}
 
 	/*
+	 * Sanity-check that the caller is not trying to overflow the array;
+	 * in practice this is highly unlikely, and if it ever happens, this means
+	 * something is highly wrong.
+	 */
+	Assert(c < param_list->size);
+
+	/*
 	 * Parameter not in array - add it and its associated value
 	 */
-	if (c < param_list->size)
-	{
-		int			param_len = strlen(param) + 1;
+	param_len = strlen(param) + 1;
 
-		param_list->keywords[c] = pg_malloc0(param_len);
-		param_list->values[c] = pg_malloc0(value_len);
+	param_list->keywords[c] = pg_malloc0(param_len);
+	param_list->values[c] = pg_malloc0(value_len);
 
-		strncpy(param_list->keywords[c], param, param_len);
-		strncpy(param_list->values[c], value, value_len);
-	}
+	strncpy(param_list->keywords[c], param, param_len);
+	strncpy(param_list->values[c], value, value_len);
 }
 
 
