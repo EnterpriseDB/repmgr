@@ -248,7 +248,7 @@
     <para>
       We strongly recommend familiarizing yourself with <command>pg_rewind</command> before attempting
       to use it with &repmgr;, as while it is an extremely useful tool, it is <emphasis>not</emphasis>
-      a &quot;magic bullet&quot;.
+      a &quot;magic bullet&quot; which can resolve all problematic replication situations.
     </para>
 
     <para>
@@ -315,8 +315,9 @@
         If <option>--force-rewind</option> is used with the <option>--dry-run</option> option,
         this checks the prerequisites for using <application>pg_rewind</application>, but is
         not an absolute guarantee that actually executing <application>pg_rewind</application>
-        will succeed.
+        will succeed. See also section <xref linkend="repmgr-node-rejoin-caveats"> below.
       </para>
+
     </note>
 
     <programlisting>
@@ -335,6 +336,41 @@
 
   </refsect1>
 
+  <refsect1 id="repmgr-node-rejoin-caveats" xreflabel="Caveats">
+
+   <indexterm>
+      <primary>repmgr node rejoin</primary>
+      <secondary>caveats</secondary>
+    </indexterm>
+
+   <title>Caveats when using <command>repmgr node rejoin</command></title>
+   <para>
+     <command>repmgr node rejoin</command> attempts to determine whether it will succeed by
+     comparing the timelines and relative WAL positions of the local node (rejoin candidate) and primary
+     (rejoin target). This is particularly important if planning to use <application>pg_rewind</application>,
+     which currently (as of PostgreSQL 11) may appear to succeed (or indicate there is no action
+     needed) but potentially allow an impossible action, such as trying to rejoin a standby to a
+     primary which is behind the standby. &repmgr; will prevent this situation from occurring.
+   </para>
+   <para>
+     Currently it is <emphasis>not</emphasis> possible to detect a situation where the rejoin target
+     is a standby which has been &quot;promoted&quot; by removing <filename>recovery.conf</filename>
+     (PostgreSQL 12 and later: <filename>standby.signal</filename>) and restarting it.
+     In this case there will be no information about the point the rejoin target diverged
+     from the current standby; the rejoin operation will fail and
+     the current standby's PostgreSQL log will contain entries with the text
+     &quot;<literal>record with incorrect prev-link</literal>&quot;.
+   </para>
+   <para>
+     We strongly recommend running <command>repmgr node rejoin</command> with the
+     <option>--dry-run</option> option first. Additionally it might be a good idea
+     to execute the <application>pg_rewind</application> command displayed by
+     &repmgr; with the <application>pg_rewind</application> <option>--dry-run</option>
+     option. Note that <application>pg_rewind</application> does not indicate that it
+     is running in <option>--dry-run</option> mode.
+   </para>
+
+  </refsect1>
 
   <refsect1>
     <title>See also</title>
