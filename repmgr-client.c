@@ -54,6 +54,7 @@
 
 #include <unistd.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #include "repmgr.h"
 #include "compat.h"
