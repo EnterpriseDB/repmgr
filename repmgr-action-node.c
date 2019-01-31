@@ -2134,7 +2134,9 @@ void
 do_node_rejoin(void)
 {
 	PGconn	   *upstream_conn = NULL;
-	RecoveryType upstream_recovery_type = RECTYPE_UNKNOWN;
+	RecoveryType primary_recovery_type = RECTYPE_UNKNOWN;
+	PGconn	   *primary_conn = NULL;
+
 	DBState		db_state;
 	PGPing		status;
 	bool		is_shutdown = true;
@@ -2212,30 +2214,44 @@ do_node_rejoin(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	PQfinish(upstream_conn);
-
 	/* connect to registered primary and check it's not in recovery */
-	upstream_conn = establish_db_connection(primary_node_record.conninfo, false);
+	primary_conn = establish_db_connection(primary_node_record.conninfo, false);
 
-	if (PQstatus(upstream_conn) != CONNECTION_OK)
+	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		log_error(_("unable to connect to current primary \"%s\" (node ID: %i)"),
+		RecoveryType upstream_recovery_type = get_recovery_type(upstream_conn);
+
+		log_error(_("unable to connect to current registered primary \"%s\" (node ID: %i)"),
 				  primary_node_record.node_name,
 				  primary_node_record.node_id);
-		log_detail(_("primary node conninfo is: \"%s\""),
+		log_detail(_("registered primary node conninfo is: \"%s\""),
 				   primary_node_record.conninfo);
+		/*
+		 * Catch case where provided upstream is not in recovery, but is also
+		 * not registered as primary
+		 */
+
+		if (upstream_recovery_type == RECTYPE_PRIMARY)
+		{
+			log_warning(_("provided upstream connection string is for a server which is not in recovery, but not registered as primary"));
+			log_hint(_("fix repmgr metadata configuration before continuing"));
+		}
+
+		PQfinish(upstream_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
-	upstream_recovery_type = get_recovery_type(upstream_conn);
+	PQfinish(upstream_conn);
 
-	if (upstream_recovery_type != RECTYPE_PRIMARY)
+	primary_recovery_type = get_recovery_type(primary_conn);
+
+	if (primary_recovery_type != RECTYPE_PRIMARY)
 	{
 		log_error(_("primary server is registered as node \"%s\" (ID: %i), but server is not a primary"),
 				  primary_node_record.node_name,
 				  primary_node_record.node_id);
 		/* TODO: hint about checking cluster */
-		PQfinish(upstream_conn);
+		PQfinish(primary_conn);
 
 		exit(ERR_BAD_CONFIG);
 	}
@@ -2248,13 +2264,13 @@ do_node_rejoin(void)
 
 		can_follow = check_node_can_attach(get_timeline(config_file_options.data_directory),
 										   get_min_recovery_location(config_file_options.data_directory),
-										   upstream_conn,
+										   primary_conn,
 										   &primary_node_record,
 										   true);
 
 		if (can_follow == false)
 		{
-			PQfinish(upstream_conn);
+			PQfinish(primary_conn);
 			exit(ERR_REJOIN_FAIL);
 		}
 	}
@@ -2277,12 +2293,12 @@ do_node_rejoin(void)
 
 		initPQExpBuffer(&msg);
 
-		if (can_use_pg_rewind(upstream_conn, config_file_options.data_directory, &msg) == false)
+		if (can_use_pg_rewind(primary_conn, config_file_options.data_directory, &msg) == false)
 		{
 			log_error(_("--force-rewind specified but pg_rewind cannot be used"));
 			log_detail("%s", msg.data);
 			termPQExpBuffer(&msg);
-			PQfinish(upstream_conn);
+			PQfinish(primary_conn);
 
 			exit(ERR_BAD_CONFIG);
 		}
@@ -2467,8 +2483,8 @@ do_node_rejoin(void)
 	 * (even if they point to the same node). For the time being,
 	 * "node rejoin" will only attach a standby to the primary.
 	 */
-	success = do_standby_follow_internal(upstream_conn,
-										 upstream_conn,
+	success = do_standby_follow_internal(primary_conn,
+										 primary_conn,
 										 &primary_node_record,
 										 &follow_output,
 										 ERR_REJOIN_FAIL,
@@ -2481,14 +2497,14 @@ do_node_rejoin(void)
 		if (strlen(follow_output.data))
 			log_detail("%s", follow_output.data);
 
-		create_event_notification(upstream_conn,
+		create_event_notification(primary_conn,
 								  &config_file_options,
 								  config_file_options.node_id,
 								  "node_rejoin",
 								  success,
 								  follow_output.data);
 
-		PQfinish(upstream_conn);
+		PQfinish(primary_conn);
 
 		termPQExpBuffer(&follow_output);
 		exit(follow_error_code);
@@ -2531,7 +2547,7 @@ do_node_rejoin(void)
 
 		for (;  i < config_file_options.node_rejoin_timeout; i++)
 		{
-			success = is_downstream_node_attached(upstream_conn, config_file_options.node_name);
+			success = is_downstream_node_attached(primary_conn, config_file_options.node_name);
 
 			if (success == true)
 			{
@@ -2556,7 +2572,7 @@ do_node_rejoin(void)
 			sleep(1);
 		}
 
-		create_event_notification(upstream_conn,
+		create_event_notification(primary_conn,
 								  &config_file_options,
 								  config_file_options.node_id,
 								  "node_rejoin",
@@ -2572,7 +2588,7 @@ do_node_rejoin(void)
 	}
 	else
 	{
-		success = is_downstream_node_attached(upstream_conn, config_file_options.node_name);
+		success = is_downstream_node_attached(primary_conn, config_file_options.node_name);
 	}
 
 	/*
