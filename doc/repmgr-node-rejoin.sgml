@@ -257,11 +257,11 @@
       <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --force-rewind --config-files=postgresql.local.conf,postgresql.conf --verbose --dry-run
-    INFO: replication connection to the follow target node was successful
-    INFO: local and follow target system identifiers match
+    INFO: replication connection to the rejoin target node was successful
+    INFO: local and rejoin target system identifiers match
     DETAIL: system identifier is 6652184002263212600
-    ERROR: this node cannot attach to follow target node 3
-    DETAIL: follow target server's timeline 2 forked off current database system timeline 1 before current recovery point 0/610D710
+    ERROR: this node cannot attach to rejoin target node 3
+    DETAIL: rejoin target server's timeline 2 forked off current database system timeline 1 before current recovery point 0/610D710
     HINT: use --force-rewind to execute pg_rewind</programlisting>
 
       Here, <literal>node3</literal> was promoted to a primary while the local node was
@@ -297,11 +297,11 @@
     <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --config-files=postgresql.local.conf,postgresql.conf --verbose --force-rewind --dry-run
-    INFO: replication connection to the follow target node was successful
-    INFO: local and follow target system identifiers match
+    INFO: replication connection to the rejoin target node was successful
+    INFO: local and rejoin target system identifiers match
     DETAIL: system identifier is 6652460429293670710
-    NOTICE: pg_rewind execution required for this node to attach to follow target node 3
-    DETAIL: follow target server's timeline 2 forked off current database system timeline 1 before current recovery point 0/610D710
+    NOTICE: pg_rewind execution required for this node to attach to rejoin target node 3
+    DETAIL: rejoin target server's timeline 2 forked off current database system timeline 1 before current recovery point 0/610D710
     INFO: prerequisites for using pg_rewind are met
     INFO: file "postgresql.local.conf" would be copied to "/tmp/repmgr-config-archive-node2/postgresql.local.conf"
     INFO: file "postgresql.replication-setup.conf" would be copied to "/tmp/repmgr-config-archive-node2/postgresql.replication-setup.conf"
@@ -322,8 +322,8 @@
     <programlisting>
     $ repmgr node rejoin -f /etc/repmgr.conf -d 'host=node3 dbname=repmgr user=repmgr' \
         --config-files=postgresql.local.conf,postgresql.conf --verbose --force-rewind
-    NOTICE: pg_rewind execution required for this node to attach to follow target node 3
-    DETAIL: follow target server's timeline 2 forked off current database system timeline 1 before current recovery point 0/610D710
+    NOTICE: pg_rewind execution required for this node to attach to rejoin target node 3
+    DETAIL: rejoin target server's timeline 2 forked off current database system timeline 1 before current recovery point 0/610D710
     NOTICE: executing pg_rewind
     DETAIL: pg_rewind command is "pg_rewind -D '/var/lib/postgresql/data' --source-server='host=node3 dbname=repmgr user=repmgr'"
     NOTICE: 2 files copied to /var/lib/postgresql/data

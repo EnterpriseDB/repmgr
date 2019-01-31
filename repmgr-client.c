@@ -3233,6 +3233,8 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 	TimeLineHistoryEntry *follow_target_history = NULL;
 	bool success = true;
 
+	const char *action = is_rejoin == true ? "rejoin" : "follow";
+
 	/* check replication connection */
 	initialize_conninfo_params(&follow_target_repl_conninfo, false);
 
@@ -3252,18 +3254,18 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 
 	if (PQstatus(follow_target_repl_conn) != CONNECTION_OK)
 	{
-		log_error(_("unable to establish a replication connection to the follow target node"));
+		log_error(_("unable to establish a replication connection to the %s target node"), action);
 		return false;
 	}
 	else if (runtime_options.dry_run == true)
 	{
-		log_info(_("replication connection to the follow target node was successful"));
+		log_info(_("replication connection to the %s target node was successful"), action);
 	}
 
 	/* check system_identifiers match */
 	if (identify_system(follow_target_repl_conn, &follow_target_identification) == false)
 	{
-		log_error(_("unable to query the follow target node's system identification"));
+		log_error(_("unable to query the %s target node's system identification"), action);
 
 		PQfinish(follow_target_repl_conn);
 		return false;
@@ -3276,9 +3278,10 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 	 */
 	if (follow_target_identification.system_identifier != local_system_identifier)
 	{
-		log_error(_("this node is not part of the follow target node's replication cluster"));
-		log_detail(_("this node's system identifier is %lu, follow target node's system identifier is %lu"),
+		log_error(_("this node is not part of the %s target node's replication cluster"), action);
+		log_detail(_("this node's system identifier is %lu, %s target node's system identifier is %lu"),
 				   local_system_identifier,
+				   action,
 				   follow_target_identification.system_identifier);
 		PQfinish(follow_target_repl_conn);
 		return false;
@@ -3286,22 +3289,24 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 
 	if (runtime_options.dry_run == true)
 	{
-		log_info(_("local and follow target system identifiers match"));
+		log_info(_("local and %s target system identifiers match"), action);
 		log_detail(_("system identifier is %lu"), local_system_identifier);
 	}
 
 	/* check timelines */
 
-	log_verbose(LOG_DEBUG, "local timeline: %i; follow target timeline: %i",
+	log_verbose(LOG_DEBUG, "local timeline: %i; %s target timeline: %i",
 				local_tli,
+				action,
 				follow_target_identification.timeline);
 
 	/* upstream's timeline is lower than ours - impossible case */
 	if (follow_target_identification.timeline < local_tli)
 	{
-		log_error(_("this node's timeline is ahead of the follow target node's timeline"));
-		log_detail(_("this node's timeline is %i, follow target node's timeline is %i"),
+		log_error(_("this node's timeline is ahead of the %s target node's timeline"), action);
+		log_detail(_("this node's timeline is %i, %s target node's timeline is %i"),
 				   local_tli,
+				   action,
 				   follow_target_identification.timeline);
 		PQfinish(follow_target_repl_conn);
 		return false;
@@ -3322,17 +3327,17 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 		if (local_xlogpos <= follow_target_xlogpos)
 		{
 			log_info(_("timelines are same, this server is not ahead"));
-			log_detail(_("local node lsn is %X/%X, follow target lsn is %X/%X"),
+			log_detail(_("local node lsn is %X/%X, %s target lsn is %X/%X"),
 					   format_lsn(local_xlogpos),
+					   action,
 					   format_lsn(follow_target_xlogpos));
 		}
 		else
 		{
-			const char *error_msg = _("this node is ahead of the follow target");
-
-			log_error("%s", error_msg);
-			log_detail(_("local node lsn is %X/%X, follow target lsn is %X/%X"),
+			log_error(_("this node is ahead of the %s target"), action);
+			log_detail(_("local node lsn is %X/%X, %s target lsn is %X/%X"),
 					   format_lsn(local_xlogpos),
+					   action,
 					   format_lsn(follow_target_xlogpos));
 
 			success = false;
@@ -3363,17 +3368,19 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 		{
 			if (is_rejoin == true && runtime_options.force_rewind_used == true)
 			{
-				log_notice(_("pg_rewind execution required for this node to attach to follow target node %i"),
-						  follow_target_node_record->node_id);
+				log_notice(_("pg_rewind execution required for this node to attach to rejoin target node %i"),
+						   follow_target_node_record->node_id);
 			}
 			else
 			{
-				log_error(_("this node cannot attach to follow target node %i"),
+				log_error(_("this node cannot attach to %s target node %i"),
+						  action,
 						  follow_target_node_record->node_id);
 				success = false;
 			}
 
-			log_detail(_("follow target server's timeline %i forked off current database system timeline %i before current recovery point %X/%X"),
+			log_detail(_("%s target server's timeline %i forked off current database system timeline %i before current recovery point %X/%X"),
+					   action,
 					   local_tli + 1,
 					   local_tli,
 					   format_lsn(local_xlogpos));
@@ -3388,12 +3395,14 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 		{
 			if (is_rejoin == false || (is_rejoin == true && runtime_options.force_rewind_used == false))
 			{
-				log_info(_("local node %i can attach to target node %i"),
+				log_info(_("local node %i can attach to %s target node %i"),
 						 config_file_options.node_id,
+						 action,
 						 follow_target_node_record->node_id);
 
-				log_detail(_("local node's recovery point: %X/%X; follow target node's fork point: %X/%X"),
+				log_detail(_("local node's recovery point: %X/%X; %s target node's fork point: %X/%X"),
 						   format_lsn(local_xlogpos),
+						   action,
 						   format_lsn(follow_target_history->end));
 			}
 		}
