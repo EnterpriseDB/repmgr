@@ -293,7 +293,7 @@
             </row>
             <row>
               <entry>Repository documentation:</entry>
-              <entry><ulink url="https://wiki.postgresql.org/wiki/Apt)">https://wiki.postgresql.org/wiki/Apt)</ulink></entry>
+              <entry><ulink url="https://wiki.postgresql.org/wiki/Apt">https://wiki.postgresql.org/wiki/Apt</ulink></entry>
             </row>
           </tbody>
         </tgroup>
