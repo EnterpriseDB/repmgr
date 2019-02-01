@@ -401,7 +401,7 @@
         <simpara>
           This is a behaviour change from previous versions (earlier than 4.1), where
           the PID file had to be explicitly specified with the command line
-          parameter <option> --pid-file</option>.
+          parameter <option>--pid-file</option>.
         </simpara>
       </note>
       <para>
@@ -421,7 +421,7 @@
       </para>
       <para>
         If none of the above apply, <application>repmgrd</application> will create a PID file
-        in the operating system's temporary directory (das etermined by the environment variable
+        in the operating system's temporary directory (as setermined by the environment variable
         <varname>TMPDIR</varname>, or if that is not set, will use <filename>/tmp</filename>).
       </para>
       <para>

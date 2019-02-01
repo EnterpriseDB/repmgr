@@ -22,6 +22,20 @@
       &repmgr; 4.3 is a major release.
     </para>
 
+	<important>
+	  <para>
+		On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
+		please ensure that the in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
+		<varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
+		<programlisting>
+# additional options
+REPMGRD_OPTS="--daemonize=false"</programlisting>
+	  </para>
+	  <para>
+		For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd daemon configuration on Debian/Ubuntu</link>.
+	  </para>
+	</important>
+
     <sect2>
       <title>repmgr enhancements</title>
       <para>
@@ -167,6 +181,20 @@
       for this release. For detailed upgrade instructions, see
       <link linkend="upgrading-major-version">Upgrading a major version release</link>.
     </para>
+
+	<important>
+	  <para>
+		On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
+		please ensure that the in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
+		<varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
+		<programlisting>
+# additional options
+REPMGRD_OPTS="--daemonize=false"</programlisting>
+	  </para>
+	  <para>
+		For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd daemon configuration on Debian/Ubuntu</link>.
+	  </para>
+	</important>
 
     <sect2>
       <title>Configuration file changes</title>

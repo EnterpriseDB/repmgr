@@ -272,11 +272,6 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 # These settings are only applied when repmgrd is running. Values shown
 # are defaults.
 
-#repmgrd_pid_file=			# Path of PID file to use for repmgrd; if not set, a PID file will
-					# be generated in a temporary directory specified by the environment
-					# variable $TMPDIR, or if not set, in "/tmp". This value can be overridden
-					# by the command line option "-p/--pid-file"; the command line option
-					# "--no-pid-file" will force PID file creation to be skipped.
 #failover=manual			# one of 'automatic', 'manual'.
 					# determines what action to take in the event of upstream failure
 					#
@@ -317,6 +312,13 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# disables the timeout completely.
 #async_query_timeout=60			# Interval (in seconds) which repmgrd will wait before
 					# cancelling an asynchronous query.
+#repmgrd_pid_file=			# Path of PID file to use for repmgrd; if not set, a PID file will
+					# be generated in a temporary directory specified by the environment
+					# variable $TMPDIR, or if not set, in "/tmp". This value can be overridden
+					# by the command line option "-p/--pid-file"; the command line option
+					# "--no-pid-file" will force PID file creation to be skipped.
+					# Note: there is normally no need to set this, particularly if
+					# repmgr was installed from packages.
 
 #------------------------------------------------------------------------------
 # service control commands
