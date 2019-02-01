@@ -221,19 +221,27 @@ do_node_status(void)
 
 		ready_files = get_ready_archive_files(conn, data_dir);
 
-		if (runtime_options.output_mode == OM_CSV)
+		if (ready_files == ARCHIVE_STATUS_DIR_ERROR)
 		{
-			key_value_list_set_format(&node_status,
-									  "WALs pending archiving",
-									  "%i",
-									  ready_files);
+			item_list_append_format(&warnings,
+									"- unable to check archive_status directory\n");
 		}
 		else
 		{
-			key_value_list_set_format(&node_status,
-									  "WALs pending archiving",
-									  "%i pending files",
-									  ready_files);
+			if (runtime_options.output_mode == OM_CSV)
+			{
+				key_value_list_set_format(&node_status,
+										  "WALs pending archiving",
+										  "%i",
+										  ready_files);
+			}
+			else
+			{
+				key_value_list_set_format(&node_status,
+										  "WALs pending archiving",
+										  "%i pending files",
+										  ready_files);
+			}
 		}
 
 		if (guc_set(conn, "archive_mode", "=", "off"))

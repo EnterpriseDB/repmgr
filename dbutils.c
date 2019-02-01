@@ -1511,8 +1511,8 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 		log_error(_("unable to access archive_status directory \"%s\""),
 				  archive_status_dir);
 		log_detail("%s", strerror(errno));
-		/* XXX magic number */
-		return -1;
+
+		return ARCHIVE_STATUS_DIR_ERROR;
 	}
 
 	arcdir = opendir(archive_status_dir);
@@ -1522,8 +1522,8 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 		log_error(_("unable to open archive directory \"%s\""),
 				  archive_status_dir);
 		log_detail("%s", strerror(errno));
-		/* XXX magic number */
-		return -1;
+
+		return ARCHIVE_STATUS_DIR_ERROR;
 	}
 
 	while ((arcdir_ent = readdir(arcdir)) != NULL)
