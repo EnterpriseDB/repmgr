@@ -3124,7 +3124,7 @@ do_standby_switchover(void)
 
 	if (record_status != RECORD_FOUND)
 	{
-		log_error(_("unable to retrieve node record for currentr primary (node %i)"),
+		log_error(_("unable to retrieve node record for current primary (node %i)"),
 				  remote_node_id);
 
 		PQfinish(local_conn);
@@ -3154,14 +3154,26 @@ do_standby_switchover(void)
 
 	/*
 	 * Check this standby is attached to the demotion candidate
-	 * TODO:
-	 *  - check application_name in pg_stat_replication
 	 */
 
 	if (local_node_record.upstream_node_id != remote_node_record.node_id)
 	{
 		log_error(_("local node %i is not a downstream of demotion candidate primary %i"),
 				  local_node_record.node_id,
+				  remote_node_record.node_id);
+
+		PQfinish(local_conn);
+		PQfinish(remote_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	if (is_downstream_node_attached(remote_conn, local_node_record.node_name) == false)
+	{
+		log_error(_("local node \"%s\" (ID: %i) is not attached to demotion candidate \"%s\" (ID: %i)"),
+				  local_node_record.node_name,
+				  local_node_record.node_id,
+				  remote_node_record.node_name,
 				  remote_node_record.node_id);
 
 		PQfinish(local_conn);
@@ -3352,6 +3364,8 @@ do_standby_switchover(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	/* check remote repmgr has the data directory correctly configured */
+
 	if (parse_data_directory_config(command_output.data) == false)
 	{
 		log_error(_("\"data_directory\" parameter in repmgr.conf on \"%s\" is incorrectly configured"),
@@ -3376,9 +3390,6 @@ do_standby_switchover(void)
 	}
 
 
-	/* check remote repmgr has the data directory correctly configured */
-
-	// - add repmgr node check --data-directory
 
 	/*
 	 * populate local node record with current state of various replication-related

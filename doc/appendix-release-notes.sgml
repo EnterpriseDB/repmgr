@@ -105,14 +105,6 @@
             </para>
           </listitem>
 
-         <listitem>
-            <para>
-              Add check <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>
-              when comparing received WAL on the standby to the primary's shutdown location to avoid a potential
-              race condition if the standby's walreceiver has not yet flushed all received WAL to disk.
-              GitHub #518.
-            </para>
-          </listitem>
 
        </itemizedlist>
       </para>
@@ -128,6 +120,22 @@
               &repmgr;: when executing <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>,
               prevent escaping issues with connection URIs when executing <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>
               on the demotion candidate. GitHub #525.
+            </para>
+          </listitem>
+
+         <listitem>
+            <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+              avoid a potential race condition when comparing received WAL on the standby to the primary's shutdown location,
+			  as the standby's walreceiver may not have yet flushed all received WAL to disk. GitHub #518.
+            </para>
+          </listitem>
+
+
+         <listitem>
+            <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+			  verify the standby (promotion candidate) is currently attached to the primary (demotion candidate). GitHub #519.
             </para>
           </listitem>
 

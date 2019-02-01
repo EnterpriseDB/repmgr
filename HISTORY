@@ -8,6 +8,8 @@
           when checking received WAL location; GitHub #518 (Ian)
         repmgr: ensure "standby switchover" verifies repmgr can read the
           data directory on the demotion candidate; GitHub #523 (Ian)
+        repmgr: ensure "standby switchover" verifies replication connection
+		  exists; GitHub #519 (Ian)
         repmgr: when executing "standby follow" and "node rejoin", check that
           it will actually be possible to stream from the target node (Ian)
         repmgr: "standby switchover": improve handling of connection URIs when
