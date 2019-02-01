@@ -170,20 +170,6 @@
 
       <varlistentry>
         <indexterm>
-          <primary>x</primary>
-          <secondary>with &quot;repmgr standby switchover &quot;</secondary>
-        </indexterm>
-
-        <term><option></option></term>
-        <listitem>
-          <para>
-         </para>
-        </listitem>
-      </varlistentry>
-
-
-      <varlistentry>
-        <indexterm>
           <primary>replication_lag_critical</primary>
           <secondary>with &quot;repmgr standby switchover &quot;</secondary>
         </indexterm>
@@ -207,7 +193,7 @@
         <term><option>shutdown_check_timeout</option></term>
         <listitem>
           <para>
-            maximum number of seconds to wait for the
+            The maximum number of seconds to wait for the
             demotion candidate (current primary) to shut down, before aborting the switchover.
           </para>
           <para>
@@ -225,7 +211,25 @@
         </listitem>
       </varlistentry>
 
-     <varlistentry>
+
+      <varlistentry>
+        <indexterm>
+          <primary>wal_receive_check_timeout</primary>
+          <secondary>with &quot;repmgr standby switchover &quot;</secondary>
+        </indexterm>
+
+        <term><option>wal_receive_check_timeout</option></term>
+        <listitem>
+          <para>
+            After the primary has shut down, the maximum number of seconds to wait for the
+            walreceiver on the standby to flush WAL to disk before comparing WAL receive location
+            with the primary's shut down location.
+         </para>
+        </listitem>
+      </varlistentry>
+
+
+      <varlistentry>
         <indexterm>
           <primary>standby_reconnect_timeout</primary>
           <secondary>with &quot;repmgr standby switchover &quot;</secondary>
@@ -234,8 +238,8 @@
         <term><option>standby_reconnect_timeout</option></term>
         <listitem>
           <para>
-            maximum number of seconds to attempt to wait for the demotion candidate (former primary)
-           to reconnect to the promoted primary (default: 60 seconds)
+            The maximum number of seconds to attempt to wait for the demotion candidate (former primary)
+            to reconnect to the promoted primary (default: 60 seconds)
           </para>
           <para>
             Note that this parameter is set on the node where <command>repmgr standby switchover</command>
@@ -244,7 +248,6 @@
           </para>
         </listitem>
       </varlistentry>
-
 
      <varlistentry>
         <indexterm>
@@ -265,7 +268,7 @@
           </para>
           <para>
             However, this value <emphasis>must</emphasis> be less than <option>standby_reconnect_timeout</option> on the
-            promotion candidate (node where <command>repmgr standby switchover</command> is executed).
+            promotion candidate (the node where <command>repmgr standby switchover</command> is executed).
           </para>
         </listitem>
       </varlistentry>

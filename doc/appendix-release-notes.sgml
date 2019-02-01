@@ -105,6 +105,15 @@
             </para>
           </listitem>
 
+         <listitem>
+            <para>
+              Add check <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>
+              when comparing received WAL on the standby to the primary's shutdown location to avoid a potential
+              race condition if the standby's walreceiver has not yet flushed all received WAL to disk.
+              GitHub #518.
+            </para>
+          </listitem>
+
        </itemizedlist>
       </para>
     </sect2>

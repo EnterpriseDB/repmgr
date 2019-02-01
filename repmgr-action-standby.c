@@ -3423,7 +3423,6 @@ do_standby_switchover(void)
 		{
 			/* include walsender for promotion candidate in total */
 
-
 			for (cell = sibling_nodes.head; cell; cell = cell->next)
 			{
 				/* get host from node record */
@@ -4180,7 +4179,37 @@ do_standby_switchover(void)
 		log_verbose(LOG_INFO, _("successfully reconnected to local node"));
 	}
 
-	get_replication_info(local_conn, &replication_info);
+	/*
+	 * Compare standby's last WAL receive location with the primary's last
+	 * checkpoint LSN. We'll loop for a while as it's possible the standby's
+	 * walreceiver has not yet flushed all received WAL to disk.
+	 */
+	{
+		bool notice_emitted = false;
+
+		for (i = 0; i < config_file_options.wal_receive_check_timeout; i++)
+		{
+			get_replication_info(local_conn, &replication_info);
+			if (replication_info.last_wal_receive_lsn >= remote_last_checkpoint_lsn)
+				break;
+
+			/*
+			 * We'll only output this notice if it looks like we're going to have
+			 * to wait for WAL to be flushed.
+			 */
+			if (notice_emitted == false)
+			{
+				log_notice(_("waiting up to %i seconds (parameter \"wal_receive_check_timeout\") for received WAL to flush to disk"),
+						   config_file_options.wal_receive_check_timeout);
+
+				notice_emitted = true;
+			}
+
+			log_info(_("sleeping %i of maximum %i seconds waiting for standby to flush received WAL to disk"),
+					 i + 1, config_file_options.wal_receive_check_timeout);
+			sleep(1);
+		}
+	}
 
 	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
 	{
@@ -4199,6 +4228,10 @@ do_standby_switchover(void)
 			exit(ERR_SWITCHOVER_FAIL);
 		}
 	}
+
+	log_debug("local node last receive LSN is %X/%X, primary shutdown checkpoint LSN is %X/%X",
+			  format_lsn(replication_info.last_wal_receive_lsn),
+			  format_lsn(remote_last_checkpoint_lsn));
 
 	/* promote standby (local node) */
 	_do_standby_promote_internal(local_conn, server_version_num);

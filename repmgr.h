@@ -88,6 +88,7 @@
 #define DEFAULT_SHUTDOWN_CHECK_TIMEOUT       60  /* seconds */
 #define DEFAULT_STANDBY_RECONNECT_TIMEOUT    60  /* seconds */
 #define DEFAULT_NODE_REJOIN_TIMEOUT          60  /* seconds */
+#define DEFAULT_WAL_RECEIVE_CHECK_TIMEOUT    30  /* seconds */
 
 #ifndef RECOVERY_COMMAND_FILE
 #define RECOVERY_COMMAND_FILE "recovery.conf"

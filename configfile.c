@@ -335,6 +335,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	 */
 	options->shutdown_check_timeout = DEFAULT_SHUTDOWN_CHECK_TIMEOUT;
 	options->standby_reconnect_timeout = DEFAULT_STANDBY_RECONNECT_TIMEOUT;
+	options->wal_receive_check_timeout = DEFAULT_WAL_RECEIVE_CHECK_TIMEOUT;
 
 	/*-----------------
 	 * repmgrd settings
@@ -557,6 +558,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->shutdown_check_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "standby_reconnect_timeout") == 0)
 			options->standby_reconnect_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "wal_receive_check_timeout") == 0)
+			options->wal_receive_check_timeout = repmgr_atoi(value, name, error_list, 0);
 
 		/* node rejoin settings */
 		else if (strcmp(name, "node_rejoin_timeout") == 0)

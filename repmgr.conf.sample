@@ -241,6 +241,9 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# for the demoted standby to reconnect to the promoted
 					# primary (note: this value should be equal to or greater
 					# than that set for "node_rejoin_timeout")
+#wal_receive_check_timeout=30		# The max length of time (in seconds) to wait for the walreceiver
+					# on the standby to flush WAL to disk before comparing location
+					# with the shut-down primary
 
 #------------------------------------------------------------------------------
 # "node rejoin" settings

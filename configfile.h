@@ -106,6 +106,7 @@ typedef struct
 	/* standby switchover settings */
 	int			shutdown_check_timeout;
 	int			standby_reconnect_timeout;
+	int			wal_receive_check_timeout;
 
 	/* node rejoin settings */
 	int			node_rejoin_timeout;
@@ -189,6 +190,7 @@ typedef struct
 		/* standby switchover settings */ \
 		DEFAULT_SHUTDOWN_CHECK_TIMEOUT, \
 		DEFAULT_STANDBY_RECONNECT_TIMEOUT, \
+		DEFAULT_WAL_RECEIVE_CHECK_TIMEOUT, \
 		/* node rejoin settings */ \
 		DEFAULT_NODE_REJOIN_TIMEOUT, \
 		/* node check settings */ \
