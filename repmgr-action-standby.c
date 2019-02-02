@@ -3024,7 +3024,7 @@ do_standby_switchover(void)
 	bool		switchover_success = true;
 
 	XLogRecPtr	remote_last_checkpoint_lsn = InvalidXLogRecPtr;
-	ReplInfo	replication_info = T_REPLINFO_INTIALIZER;
+	ReplInfo	replication_info;
 
 	/* store list of configuration files on the demotion candidate */
 	KeyValueList remote_config_files = {NULL, NULL};
@@ -4190,6 +4190,7 @@ do_standby_switchover(void)
 		log_verbose(LOG_INFO, _("successfully reconnected to local node"));
 	}
 
+	init_replication_info(&replication_info);
 	/*
 	 * Compare standby's last WAL receive location with the primary's last
 	 * checkpoint LSN. We'll loop for a while as it's possible the standby's

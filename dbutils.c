@@ -1414,6 +1414,17 @@ get_primary_node_id(PGconn *conn)
 }
 
 
+void
+init_replication_info(ReplInfo *replication_info)
+{
+	memset(replication_info->current_timestamp, 0, sizeof(replication_info->current_timestamp));
+	replication_info->last_wal_receive_lsn = InvalidXLogRecPtr;
+	replication_info->last_wal_replay_lsn = InvalidXLogRecPtr;
+	memset(replication_info->last_xact_replay_timestamp, 0, sizeof(replication_info->last_xact_replay_timestamp));
+	replication_info->replication_lag_time = 0;
+	replication_info->receiving_streamed_wal = true;
+}
+
 bool
 get_replication_info(PGconn *conn, ReplInfo *replication_info)
 {

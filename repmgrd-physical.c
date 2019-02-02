@@ -2204,7 +2204,7 @@ do_primary_failover(void)
 static void
 update_monitoring_history(void)
 {
-	ReplInfo	replication_info = T_REPLINFO_INTIALIZER;
+	ReplInfo	replication_info;
 	XLogRecPtr	primary_last_wal_location = InvalidXLogRecPtr;
 
 	long long unsigned int apply_lag_bytes = 0;
@@ -2222,6 +2222,8 @@ update_monitoring_history(void)
 		log_warning(_("local connection is not available, unable to update monitoring history"));
 		return;
 	}
+
+	init_replication_info(&replication_info);
 
 	if (get_replication_info(local_conn, &replication_info) == false)
 	{

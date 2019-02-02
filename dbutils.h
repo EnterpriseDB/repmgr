@@ -301,21 +301,12 @@ typedef struct BdrNodeInfoList
 typedef struct
 {
 	char		current_timestamp[MAXLEN];
-	uint64		last_wal_receive_lsn;
-	uint64		last_wal_replay_lsn;
+	XLogRecPtr	last_wal_receive_lsn;
+	XLogRecPtr	last_wal_replay_lsn;
 	char		last_xact_replay_timestamp[MAXLEN];
 	int			replication_lag_time;
 	bool		receiving_streamed_wal;
 } ReplInfo;
-
-#define T_REPLINFO_INTIALIZER { \
-	"", \
-	InvalidXLogRecPtr, \
-	InvalidXLogRecPtr, \
-	"", \
-	0 \
-}
-
 
 typedef struct
 {
@@ -550,6 +541,7 @@ void		reset_voting_status(PGconn *conn);
 XLogRecPtr	get_current_wal_lsn(PGconn *conn);
 XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
 XLogRecPtr	get_current_lsn(PGconn *conn);
+void		init_replication_info(ReplInfo *replication_info);
 bool		get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);

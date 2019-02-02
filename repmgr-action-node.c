@@ -75,7 +75,7 @@ do_node_status(void)
 
 	ItemList	warnings = {NULL, NULL};
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
-	ReplInfo	replication_info = T_REPLINFO_INTIALIZER;
+	ReplInfo	replication_info;
 	t_recovery_conf recovery_conf = T_RECOVERY_CONF_INITIALIZER;
 
 	char		data_dir[MAXPGPATH] = "";
@@ -89,6 +89,9 @@ do_node_status(void)
 	{
 		return _do_node_status_is_shutdown_cleanly();
 	}
+
+	init_replication_info(&replication_info);
+
 
 	/* config file required, so we should have "conninfo" and "data_directory" */
 	conn = establish_db_connection(config_file_options.conninfo, true);
