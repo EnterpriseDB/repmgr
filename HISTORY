@@ -14,6 +14,7 @@
           it will actually be possible to stream from the target node (Ian)
         repmgr: "standby switchover": improve handling of connection URIs when
           executing "node rejoin" on the demotion candidate; GitHub #525 (Ian)
+        repmgr: fix long node ID display in "cluster show"; (Ian)
         repmgrd: check binary and extension major versions match; GitHub #515 (Ian)
         repmgrd: on a cascaded standby, don't fail over if "failover=manual";
           GitHub #531 (Ian)

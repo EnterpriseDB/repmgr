@@ -137,6 +137,7 @@ do_cluster_show(void)
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
 		PQExpBufferData details;
+		PQExpBufferData node_id;
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
@@ -351,6 +352,11 @@ do_cluster_show(void)
 
 		PQfinish(cell->node_info->conn);
 		cell->node_info->conn = NULL;
+
+		initPQExpBuffer(&node_id);
+		appendPQExpBuffer(&node_id, "%i", cell->node_info->node_id);
+		headers_show[SHOW_ID].cur_length = strlen(node_id.data);
+		termPQExpBuffer(&node_id);
 
 		headers_show[SHOW_ROLE].cur_length = strlen(get_node_type_string(cell->node_info->type));
 		headers_show[SHOW_NAME].cur_length = strlen(cell->node_info->node_name);

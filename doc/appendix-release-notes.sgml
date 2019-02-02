@@ -155,10 +155,17 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>:  on a cascaded standby, don't fail over if
+              <application>repmgrd</application>: on a cascaded standby, don't fail over if
               <literal>failover=manual</literal>. GitHub #531.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>:
+			  fix display of node IDs with multiple digits.
+            </para>
+		  </listitem>
 
         </itemizedlist>
       </para>
