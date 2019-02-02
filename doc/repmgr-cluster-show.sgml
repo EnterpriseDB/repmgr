@@ -121,10 +121,19 @@
       </varlistentry>
 
       <varlistentry>
+        <term><option>--compact</option></term>
+        <listitem>
+          <para>
+			Suppress display of the <literal>conninfo</literal> column.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>--terse</option></term>
         <listitem>
           <para>
-	    Suppress display of the <literal>conninfo</literal> column.
+			Suppress warnings about connection issues.
           </para>
         </listitem>
       </varlistentry>

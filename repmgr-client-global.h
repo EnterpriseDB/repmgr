@@ -44,6 +44,7 @@ typedef struct
 	char		pg_bindir[MAXLEN];	/* overrides setting in repmgr.conf */
 	int			wait;
 	bool		no_wait;
+	bool		compact;
 
 	/* logging options */
 	char		log_level[MAXLEN];	/* overrides setting in repmgr.conf */
@@ -140,7 +141,7 @@ typedef struct
 		/* configuration metadata */ \
 		false, false, false, false, false,	\
 		/* general configuration options */	\
-		"", false, false, "", -1, false, \
+		"", false, false, "", -1, false, false, \
 		/* logging options */ \
 		"", false, false, false, false,	\
 		/* output options */ \

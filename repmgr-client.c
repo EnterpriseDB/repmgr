@@ -267,6 +267,12 @@ main(int argc, char **argv)
 				runtime_options.no_wait = true;
 				break;
 
+				/* --compact */
+			case OPT_COMPACT:
+				runtime_options.compact = true;
+				break;
+
+
 				/*----------------------------
 				 * database connection options
 				 *----------------------------

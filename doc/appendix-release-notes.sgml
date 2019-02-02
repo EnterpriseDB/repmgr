@@ -81,7 +81,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              Add <option>--terse</option> option to <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> (GitHub #521).
+              Add <option>--compact</option> option to <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> (GitHub #521).
             </para>
             <para>
               This makes it easier to copy the output into emails, chats etc. as a compact table.

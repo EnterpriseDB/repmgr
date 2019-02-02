@@ -120,7 +120,7 @@ do_cluster_show(void)
 	{
 		headers_show[i].display = true;
 
-		if (runtime_options.terse == true)
+		if (runtime_options.compact == true)
 		{
 			if (i == SHOW_CONNINFO)
 			{
@@ -361,7 +361,7 @@ do_cluster_show(void)
 
 		for (i = 0; i < SHOW_HEADER_COUNT; i++)
 		{
-			if (runtime_options.terse == true)
+			if (runtime_options.compact == true)
 			{
 				if (headers_show[i].display == false)
 					continue;
@@ -1518,6 +1518,7 @@ do_cluster_help(void)
 	printf(_("  Configuration file or database connection required.\n"));
 	puts("");
 	printf(_("    --csv                     emit output as CSV (with a subset of fields)\n"));
+	printf(_("    --compact                 display only a subset of fields\n"));
 	puts("");
 
 	printf(_("CLUSTER MATRIX\n"));

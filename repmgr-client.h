@@ -96,6 +96,7 @@
 #define OPT_REPMGRD_NO_PAUSE               1042
 #define OPT_VERSION_NUMBER				   1043
 #define OPT_DATA_DIRECTORY_CONFIG		   1044
+#define OPT_COMPACT		                   1045
 
 
 /* deprecated since 3.3 */
@@ -118,6 +119,7 @@ static struct option long_options[] =
 	{"pg_bindir", required_argument, NULL, 'b'},
 	{"wait", optional_argument, NULL, 'w'},
 	{"no-wait", no_argument, NULL, 'W'},
+	{"compact", no_argument, NULL, OPT_COMPACT},
 
 /* connection options */
 	{"dbname", required_argument, NULL, 'd'},
