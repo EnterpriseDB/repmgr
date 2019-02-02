@@ -801,7 +801,7 @@ main(int argc, char **argv)
 	 *   BDR { REGISTER | UNREGISTER } |
 	 *   NODE { STATUS | CHECK | REJOIN | SERVICE } |
 	 *   CLUSTER { CROSSCHECK | MATRIX | SHOW | EVENT | CLEANUP }
-	 *   DAEMON { STATUS | PAUSE | UNPAUSE }
+	 *   DAEMON { STATUS | PAUSE | UNPAUSE | START | STOP }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host
 	 * option
@@ -2058,7 +2058,7 @@ do_help(void)
 	printf(_("    %s [OPTIONS] node    {status|check|rejoin|service}\n"), progname());
 	printf(_("    %s [OPTIONS] cluster {show|event|matrix|crosscheck|cleanup}\n"), progname());
 	printf(_("    %s [OPTIONS] witness {register|unregister}\n"), progname());
-	printf(_("    %s [OPTIONS] daemon  {status|pause|unpause}\n"), progname());
+	printf(_("    %s [OPTIONS] daemon  {status|pause|unpause|start|stop}\n"), progname());
 
 	puts("");
 
