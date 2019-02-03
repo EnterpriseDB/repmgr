@@ -25,7 +25,7 @@
 	<important>
 	  <para>
 		On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
-		please ensure that the in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
+		please ensure that in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
 		<varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
 		<programlisting>
 # additional options
