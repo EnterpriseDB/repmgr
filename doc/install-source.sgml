@@ -41,11 +41,53 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
      </tip>
      <para>
       Then install the prerequisites for
-      building PostgreSQL with:
+      building PostgreSQL with e.g.:
       <programlisting>
        sudo apt-get update
        sudo apt-get build-dep postgresql-9.6</programlisting>
       </para>
+
+     <important>
+       <simpara>
+         Select the appropriate PostgreSQL version for your target repmgr version.
+       </simpara>
+     </important>
+
+     <note>
+       <para>
+       If using <command>apt-get build-dep</command> is not possible, the
+       following packages may need to be installed manually:
+
+         <itemizedlist spacing="compact" mark="bullet">
+
+           <listitem>
+             <simpara><literal>llibedit-dev</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>llibkrb5-dev</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>llibpam0g-dev</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>llibreadline-dev</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>llibselinux1-dev</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>llibssl-dev</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>llibxml2-dev</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>llibxslt1-dev</literal></simpara>
+           </listitem>
+         </itemizedlist>
+       </para>
+     </note>
+
     </listitem>
     <listitem>
      <para>
@@ -59,15 +101,45 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
        sudo yum install yum-utils openjade docbook-dtds docbook-style-dsssl docbook-style-xsl
        sudo yum-builddep postgresql96</programlisting>
      </para>
+
+     <important>
+       <simpara>
+         Select the appropriate PostgreSQL version for your target repmgr version.
+       </simpara>
+     </important>
+     <note>
+       <para>
+         If using <command>yum-builddep</command> is not possible, the
+         following packages may need to be installed manually:
+
+         <itemizedlist spacing="compact" mark="bullet">
+
+           <listitem>
+             <simpara><literal>libselinux-devel</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>libxml2-devel</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>libxslt-devel</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>openssl-devel</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>pam-devel</literal></simpara>
+           </listitem>
+           <listitem>
+             <simpara><literal>readline-devel</literal></simpara>
+           </listitem>
+
+         </itemizedlist>
+       </para>
+     </note>
     </listitem>
    </itemizedlist>
   </para>
 
-  <note>
-    <simpara>
-      Select the appropriate PostgreSQL versions for your target repmgr version.
-    </simpara>
-  </note>
  </sect2>
 
 
