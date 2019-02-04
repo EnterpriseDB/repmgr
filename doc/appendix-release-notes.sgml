@@ -137,6 +137,13 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              &repmgr;: when executing <command><link linkend="repmgr-witness-register">repmgr witness register</link></command>,
+              chech the node to connected is actually the primary (i.e. not the witness server).  (GitHub #528).
+            </para>
+          </listitem>
+
          <listitem>
             <para>
               &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
@@ -314,7 +321,6 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
               <command><link linkend="repmgr-node-check">repmgr node check</link></command>.  (GitHub #507)
             </para>
           </listitem>
-
 
           <listitem>
             <para>

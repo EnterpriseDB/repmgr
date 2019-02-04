@@ -34,6 +34,14 @@
       witness node's <filename>repmgr.conf</filename>, unless these are explicitly
       provided as command line options.
     </para>
+
+    <note>
+      <para>
+        The primary server must be registered with <command><link linkend="repmgr-primary-register">repmgr primary register</link></command> before the witness
+        server can be registered.
+      </para>
+    </note>
+
     <para>
       Execute with the <option>--dry-run</option> option to check what would happen
       without actually registering the witness server.

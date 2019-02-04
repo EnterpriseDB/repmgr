@@ -36,10 +36,12 @@ do_witness_register(void)
 {
 	PGconn	   *witness_conn = NULL;
 	PGconn	   *primary_conn = NULL;
+	int			primary_node_id = UNKNOWN_NODE_ID;
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 	ExtensionStatus extension_status = REPMGR_UNKNOWN;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
+	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	bool		record_created = false;
 
@@ -125,6 +127,59 @@ do_witness_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
+	/* check we can determine the primary node */
+	primary_node_id = get_primary_node_id(primary_conn);
+
+	if (primary_node_id == UNKNOWN_NODE_ID)
+	{
+		log_error(_("unable to determine the cluster's primary node"));
+		log_hint(_("ensure the primary node connection details are correct and that it is registered"));
+		PQfinish(witness_conn);
+		PQfinish(primary_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	record_status = get_node_record(primary_conn, primary_node_id, &primary_node_record);
+	PQfinish(primary_conn);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve record for primary node %i"),
+				  primary_node_id);
+
+		PQfinish(witness_conn);
+
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * Reconnect to the primary node's conninfo - this will
+	 * protect against the situation where the witness connection
+	 * details were provided, and we're actually connected to the
+	 * witness server.
+	 */
+
+	primary_conn = establish_db_connection_quiet(primary_node_record.conninfo);
+
+	if (PQstatus(primary_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to reconnect to the primary node (node %i)"), primary_node_id);
+		log_detail(_("primary node's conninfo is \"%s\""), primary_node_record.conninfo);
+
+		PQfinish(witness_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * TODO: sanity check witness node is not part of main cluster; we could
+	 * add a random application_name to the respective connections,
+	 * and do a simple check of pg_stat_activity
+	 */
+
 	/* check that primary node is not a BDR node */
 	if (is_bdr_db_quiet(primary_conn) == true)
 	{
@@ -137,11 +192,6 @@ do_witness_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * TODO: sanity check witness node is not part of main cluster; we could
-	 * add a random application_name to the respective connections,
-	 * and do a simple check of pg_stat_activity
-	 */
 
 	/* create repmgr extension, if does not exist */
 	if (runtime_options.dry_run == false &&  !create_repmgr_extension(witness_conn))
@@ -275,7 +325,7 @@ do_witness_register(void)
 	/* these values are mandatory, setting them to anything else has no point */
 	node_record.type = WITNESS;
 	node_record.priority = 0;
-	node_record.upstream_node_id = get_primary_node_id(primary_conn);
+	node_record.upstream_node_id = primary_node_id;
 
 	if (record_status == RECORD_FOUND)
 	{
