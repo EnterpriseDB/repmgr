@@ -478,9 +478,6 @@ REPMGRD_OPTS="--daemonize=false"
       <para>
         From <application>repmgrd</application> 4.1, ensure <varname>REPMGRD_OPTS</varname> includes
         <option>--daemonize=false</option>, as daemonization is handled by the service command.
-        We recommend setting <varname>repmgrd_pid_file</varname> in <filename>repmgr.conf</filename> to the
-        same value set in <varname>REPMGRD_PIDFILE</varname> to prevent another <application>repmgrd</application>
-        instance from being started manually.
       </para>
       <para>
         If using <application>systemd</application>, you may need to execute <command>systemctl daemon-reload</command>.
