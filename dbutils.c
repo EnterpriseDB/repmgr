@@ -4946,6 +4946,7 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 	return true;
 }
 
+
 void
 set_primary_last_seen(PGconn *conn)
 {
@@ -4997,6 +4998,55 @@ get_primary_last_seen(PGconn *conn)
 	PQclear(res);
 
 	return primary_last_seen;
+}
+
+
+bool
+is_wal_replay_paused(PGconn *conn, bool check_pending_wal)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool		is_paused = false;
+
+	initPQExpBuffer(&query);
+
+	if (PQserverVersion(conn) >= 100000)
+	{
+		appendPQExpBufferStr(&query,
+							 "SELECT pg_catalog.pg_is_wal_replay_paused()");
+
+		if (check_pending_wal == true)
+		{
+			appendPQExpBufferStr(&query,
+								 " AND pg_catalog.pg_last_wal_replay_location() < pg_catalog.pg_last_wal_receive_location()");
+		}
+	}
+	else
+	{
+		appendPQExpBufferStr(&query,
+							 "SELECT pg_catalog.pg_is_xlog_replay_paused()");
+		if (check_pending_wal == true)
+		{
+			appendPQExpBufferStr(&query,
+								 " AND pg_catalog.pg_last_xlog_replay_location() < pg_catalog.pg_last_xlog_receive_location()");
+		}
+	}
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("unable to execute \"%s\""), query.data);
+	}
+	else
+	{
+		is_paused = atobool(PQgetvalue(res, 0, 0));
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return is_paused;
 }
 
 

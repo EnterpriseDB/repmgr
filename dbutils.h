@@ -548,6 +548,7 @@ void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 bool		is_downstream_node_attached(PGconn *conn, char *node_name);
 void		set_primary_last_seen(PGconn *conn);
 int			get_primary_last_seen(PGconn *conn);
+bool		is_wal_replay_paused(PGconn *conn, bool check_pending_wal);
 
 /* BDR functions */
 int			get_bdr_version_num(void);

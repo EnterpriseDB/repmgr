@@ -1974,7 +1974,7 @@ do_standby_promote(void)
 		{
 			log_error(_("STANDBY PROMOTE can only be executed on a standby node"));
 			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
+			exit(ERR_PROMOTION_FAIL);
 		}
 		else
 		{
@@ -1986,6 +1986,38 @@ do_standby_promote(void)
 	else if (runtime_options.dry_run == true)
 	{
 		log_info(_("node is a standby"));
+	}
+
+	/*
+	 * Executing "pg_ctl ... promote" when WAL replay is paused and
+	 * WAL is pending replay will mean the standby will not promote
+	 * until replay is resumed.
+	 *
+	 * As that could happen at any time outside repmgr's control, we
+	 * need to avoid leaving a "ticking timebomb" which might cause
+	 * an unexpected status change in the replication cluster.
+	 */
+	if (is_wal_replay_paused(conn, true) == true)
+	{
+		ReplInfo replication_info;
+
+		init_replication_info(&replication_info);
+
+		log_error(_("WAL replay is paused on this node but not all WAL has been replayed"));
+
+		if (get_replication_info(conn, &replication_info) == true)
+		{
+			log_detail(_("replay paused at %X/%X; last WAL received is %X/%X"),
+					   format_lsn(replication_info.last_wal_replay_lsn),
+					   format_lsn(replication_info.last_wal_receive_lsn));
+		}
+
+		if (PQserverVersion(conn) >= 100000)
+			log_hint(_("execute \"pg_wal_replay_resume()\" to unpause WAL replay"));
+		else
+			log_hint(_("execute \"pg_xlog_replay_resume()\" to unpause WAL replay"));
+		PQfinish(conn);
+		exit(ERR_PROMOTION_FAIL);
 	}
 
 	/* check that there's no existing primary */
