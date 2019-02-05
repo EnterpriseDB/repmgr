@@ -102,7 +102,7 @@
   <refsect1>
     <title>Exit codes</title>
     <para>
-      Following exit codes can be emitted by <command>repmgr cluster matrix</command>:
+      One of the following exit codes will be emitted by <command>repmgr cluster matrix</command>:
     </para>
     <variablelist>
 

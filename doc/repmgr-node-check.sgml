@@ -162,7 +162,7 @@
 
 
     <para>
-      Following exit codes can be emitted by <command>repmgr status check</command>
+      One of the following exit codes will be emitted by <command>repmgr status check</command>
       if no individual check was specified.
     </para>
 

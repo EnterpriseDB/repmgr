@@ -162,7 +162,7 @@
     <title>Configuration file settings</title>
 
     <para>
-     Note that following parameters in <filename>repmgr.conf</filename> are relevant to the
+     The following parameters in <filename>repmgr.conf</filename> are relevant to the
      switchover operation:
     </para>
 
@@ -310,7 +310,7 @@
   <refsect1>
     <title>Exit codes</title>
     <para>
-      Following exit codes can be emitted by <command>repmgr standby switchover</command>:
+      One of the following exit codes will be emitted by <command>repmgr standby switchover</command>:
     </para>
     <variablelist>
 

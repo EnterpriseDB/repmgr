@@ -134,7 +134,7 @@
 		   60 seconds).
 		 </simpara>
          <simpara>
-           Note that<literal>standby_reconnect_timeout</literal> must be
+           Note that <literal>standby_reconnect_timeout</literal> must be
            set to a value equal to or greater than
            <literal>node_rejoin_timeout</literal>.
          </simpara>
@@ -153,7 +153,7 @@
   <refsect1>
     <title>Exit codes</title>
     <para>
-      Following exit codes can be emitted by <command>repmgr node rejoin</command>:
+      One of the following exit codes will be emitted by <command>repmgr node rejoin</command>:
     </para>
 
     <variablelist>

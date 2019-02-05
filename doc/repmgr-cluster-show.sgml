@@ -155,7 +155,7 @@
   <refsect1>
     <title>Exit codes</title>
     <para>
-      Following exit codes can be emitted by <command>repmgr cluster show</command>:
+      One of the following exit codes will be emitted by <command>repmgr cluster show</command>:
     </para>
     <variablelist>
 

@@ -149,7 +149,7 @@
   <refsect1>
     <title>Exit codes</title>
     <para>
-      Following exit codes can be emitted by <command>repmgr standby follow</command>:
+      One of the following exit codes will be emitted by <command>repmgr standby follow</command>:
     </para>
     <variablelist>
 

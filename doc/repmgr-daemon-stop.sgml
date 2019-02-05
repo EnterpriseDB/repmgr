@@ -110,7 +110,7 @@
   <refsect1>
     <title>Exit codes</title>
     <para>
-      Following exit codes can be emitted by <command>repmgr daemon stop</command>:
+      One of the following exit codes will be emitted by <command>repmgr daemon stop</command>:
     </para>
     <variablelist>
 
