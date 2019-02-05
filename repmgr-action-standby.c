@@ -1997,27 +1997,59 @@ do_standby_promote(void)
 	 * need to avoid leaving a "ticking timebomb" which might cause
 	 * an unexpected status change in the replication cluster.
 	 */
-	if (is_wal_replay_paused(conn, true) == true)
 	{
-		ReplInfo replication_info;
+		ReplInfo 	replication_info;
+		bool 	 	replay_paused = false;
 
 		init_replication_info(&replication_info);
 
-		log_error(_("WAL replay is paused on this node but not all WAL has been replayed"));
-
-		if (get_replication_info(conn, &replication_info) == true)
+		if (get_replication_info(conn, &replication_info) == false)
 		{
-			log_detail(_("replay paused at %X/%X; last WAL received is %X/%X"),
-					   format_lsn(replication_info.last_wal_replay_lsn),
-					   format_lsn(replication_info.last_wal_receive_lsn));
+			log_error(_("unable to retrieve replication information from local node"));
+			PQfinish(conn);
+			exit(ERR_PROMOTION_FAIL);
 		}
 
-		if (PQserverVersion(conn) >= 100000)
-			log_hint(_("execute \"pg_wal_replay_resume()\" to unpause WAL replay"));
+		/*
+		 * If the local node is recovering from archive, we can't tell
+		 * whether there's still WAL which needs to be replayed, so
+		 * we'll abort if WAL replay is paused.
+		 */
+		if (replication_info.receiving_streamed_wal == false)
+		{
+			/* just a simple check for paused WAL replay */
+			replay_paused = is_wal_replay_paused(conn, false);
+			if (replay_paused == true)
+			{
+				log_error(_("WAL replay is paused on this node"));
+				log_detail(_("node is in archive recovery and is not safe to promote in this state"));
+				log_detail(_("replay paused at %X/%X"),
+						   format_lsn(replication_info.last_wal_replay_lsn));
+			}
+		}
 		else
-			log_hint(_("execute \"pg_xlog_replay_resume()\" to unpause WAL replay"));
-		PQfinish(conn);
-		exit(ERR_PROMOTION_FAIL);
+		{
+			/* check that replay is pause *and* WAL is pending replay */
+			replay_paused = is_wal_replay_paused(conn, true);
+			if (replay_paused == true)
+			{
+				log_error(_("WAL replay is paused on this node but not all WAL has been replayed"));
+				log_detail(_("replay paused at %X/%X; last WAL received is %X/%X"),
+						   format_lsn(replication_info.last_wal_replay_lsn),
+						   format_lsn(replication_info.last_wal_receive_lsn));
+			}
+		}
+
+		if (replay_paused == true)
+		{
+			if (PQserverVersion(conn) >= 100000)
+				log_hint(_("execute \"pg_wal_replay_resume()\" to unpause WAL replay"));
+			else
+				log_hint(_("execute \"pg_xlog_replay_resume()\" to unpause WAL replay"));
+
+			PQfinish(conn);
+			exit(ERR_PROMOTION_FAIL);
+		}
 	}
 
 	/* check that there's no existing primary */

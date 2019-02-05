@@ -44,6 +44,10 @@
         attempting to promote PostgreSQL in this state will leave PostgreSQL in a condition where the
         promotion may occur at a unpredictable point in the future.
       </para>
+      <para>
+        Note that if the standby is in archive recovery, &repmgr; will not be able to determine
+        if more WAL is pending replay, and will abort the promotion attempt if WAL replay is paused.
+      </para>
     </note>
 
   </refsect1>
