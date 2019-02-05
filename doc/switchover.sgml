@@ -137,8 +137,8 @@
 
    <note>
      <para>
-       If an exclusive backup is running on the current primary, &repmgr; will not perform the
-       switchover.
+       If an exclusive backup is running on the current primary, or if WAL replay is paused on the standby,
+       &repmgr; will <emphasis>not</emphasis> perform the switchover.
      </para>
    </note>
 

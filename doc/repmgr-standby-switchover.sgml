@@ -37,7 +37,7 @@
       </para>
       <para>
         &repmgr; will refuse to perform the switchover if an exclusive backup is running on
-        the current primary.
+        the current primary, or if WAL replay is paused on the standby.
       </para>
     </note>
     <para>

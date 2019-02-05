@@ -3197,24 +3197,7 @@ do_standby_switchover(void)
 		exit(ERR_DB_QUERY);
 	}
 
-	/*
-	 * Check that there are no exclusive backups running on the primary.
-	 * We don't want to end up damaging the backup and also leaving the server in an
-	 * state where there's control data saying it's in backup mode but there's no
-	 * backup_label in PGDATA.
-	 * If the user wants to do the switchover anyway, they should first stop the
-	 * backup that's running.
-	 */
-	if (server_in_exclusive_backup_mode(remote_conn) != BACKUP_STATE_NO_BACKUP)
-	{
-		log_error(_("unable to perform a switchover while primary server is in exclusive backup mode"));
-		log_hint(_("stop backup before attempting the switchover"));
-
-		PQfinish(local_conn);
-		PQfinish(remote_conn);
-
-		exit(ERR_SWITCHOVER_FAIL);
-	}
+	log_verbose(LOG_DEBUG, "remote node name is \"%s\"", remote_node_record.node_name);
 
 	/*
 	 * Check this standby is attached to the demotion candidate
@@ -3246,7 +3229,63 @@ do_standby_switchover(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	log_verbose(LOG_DEBUG, "remote node name is \"%s\"", remote_node_record.node_name);
+	/*
+	 * Check that WAL replay on the standby is *not* paused, as that could lead
+	 * to unexpected behaviour when the standby is promoted.
+	 *
+	 * For switchover we'll mandate that WAL replay *must not* be paused.
+	 * For a promote operation we can proceed if WAL replay is paused
+	 * there is no more available WAL to be replayed, as we can be sure the
+	 * primary is down already, but in a switchover context there's
+	 * potentially a window for more WAL to be received before we shut down
+	 * the primary completely.
+	 */
+
+	if (is_wal_replay_paused(local_conn, false) == true)
+	{
+		ReplInfo 	replication_info;
+		init_replication_info(&replication_info);
+
+		if (get_replication_info(local_conn, &replication_info) == false)
+		{
+			log_error(_("unable to retrieve replication information from local node"));
+			PQfinish(local_conn);
+			exit(ERR_SWITCHOVER_FAIL);
+		}
+
+		log_error(_("WAL replay is paused on this node and it is not safe to proceed"));
+		log_detail(_("replay paused at %X/%X; last WAL received is %X/%X"),
+				   format_lsn(replication_info.last_wal_replay_lsn),
+				   format_lsn(replication_info.last_wal_receive_lsn));
+
+		if (PQserverVersion(local_conn) >= 100000)
+			log_hint(_("execute \"pg_wal_replay_resume()\" to unpause WAL replay"));
+		else
+			log_hint(_("execute \"pg_xlog_replay_resume()\" to unpause WAL replay"));
+
+		PQfinish(local_conn);
+		exit(ERR_SWITCHOVER_FAIL);
+	}
+
+
+	/*
+	 * Check that there are no exclusive backups running on the primary.
+	 * We don't want to end up damaging the backup and also leaving the server in an
+	 * state where there's control data saying it's in backup mode but there's no
+	 * backup_label in PGDATA.
+	 * If the user wants to do the switchover anyway, they should first stop the
+	 * backup that's running.
+	 */
+	if (server_in_exclusive_backup_mode(remote_conn) != BACKUP_STATE_NO_BACKUP)
+	{
+		log_error(_("unable to perform a switchover while primary server is in exclusive backup mode"));
+		log_hint(_("stop backup before attempting the switchover"));
+
+		PQfinish(local_conn);
+		PQfinish(remote_conn);
+
+		exit(ERR_SWITCHOVER_FAIL);
+	}
 
 	/* this will fill the %p event notification parameter */
 	event_info.node_id = remote_node_record.node_id;
