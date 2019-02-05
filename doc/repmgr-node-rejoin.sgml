@@ -119,6 +119,7 @@
 
     </variablelist>
   </refsect1>
+
   <refsect1>
     <title>Configuration file settings</title>
 
@@ -132,6 +133,11 @@
 		   the value set in <literal>standby_reconnect_timeout</literal>,
 		   60 seconds).
 		 </simpara>
+         <simpara>
+           Note that<literal>standby_reconnect_timeout</literal> must be
+           set to a value equal to or greater than
+           <literal>node_rejoin_timeout</literal>.
+         </simpara>
 	   </listitem>
 	  </itemizedlist>
 	</para>
