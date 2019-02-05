@@ -5018,7 +5018,7 @@ is_wal_replay_paused(PGconn *conn, bool check_pending_wal)
 		if (check_pending_wal == true)
 		{
 			appendPQExpBufferStr(&query,
-								 " AND pg_catalog.pg_last_wal_replay_location() < pg_catalog.pg_last_wal_receive_location()");
+								 " AND pg_catalog.pg_last_wal_replay_lsn() < pg_catalog.pg_last_wal_receive_lsn()");
 		}
 	}
 	else
