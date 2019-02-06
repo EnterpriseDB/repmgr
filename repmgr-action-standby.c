@@ -131,6 +131,8 @@ do_standby_clone(void)
 	/* dummy node record */
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
+	initialize_conninfo_params(&recovery_conninfo, false);
+
 	/*
 	 * --recovery-conf-only provided - we'll handle that separately
 	 */
@@ -199,7 +201,6 @@ do_standby_clone(void)
 	 * node record and overwrite the values set here with those from the
 	 * upstream node record (excluding that record's application_name)
 	 */
-	initialize_conninfo_params(&recovery_conninfo, false);
 
 	copy_conninfo_params(&recovery_conninfo, &source_conninfo);
 
