@@ -2242,7 +2242,7 @@ update_monitoring_history(void)
 					local_node_info.node_id);
 	}
 
-	primary_last_wal_location = get_current_wal_lsn(primary_conn);
+	primary_last_wal_location = get_primary_current_lsn(primary_conn);
 
 	if (primary_last_wal_location == InvalidXLogRecPtr)
 	{

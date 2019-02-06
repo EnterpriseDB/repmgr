@@ -2532,7 +2532,7 @@ do_standby_follow(void)
 		t_system_identification local_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 
 		bool can_follow;
-		XLogRecPtr local_xlogpos = get_current_lsn(local_conn);
+		XLogRecPtr local_xlogpos = get_node_current_lsn(local_conn);
 
 		/* Check local replication connection - we want to execute IDENTIFY_SYSTEM
 		 * to get the current timeline ID, which might not yet be written to
@@ -3234,7 +3234,7 @@ do_standby_switchover(void)
 	 * to unexpected behaviour when the standby is promoted.
 	 *
 	 * For switchover we'll mandate that WAL replay *must not* be paused.
-	 * For a promote operation we can proceed if WAL replay is paused
+	 * For a promote operation we can proceed if WAL replay is paused and
 	 * there is no more available WAL to be replayed, as we can be sure the
 	 * primary is down already, but in a switchover context there's
 	 * potentially a window for more WAL to be received before we shut down

@@ -4551,9 +4551,16 @@ reset_voting_status(PGconn *conn)
 /* replication status functions */
 /* ============================ */
 
-
+/*
+ * Returns the current LSN on the primary.
+ *
+ * This just executes "pg_current_wal_lsn()".
+ *
+ * Function "get_node_current_lsn()" below will return the latest
+ * LSN regardless of recovery state.
+ */
 XLogRecPtr
-get_current_wal_lsn(PGconn *conn)
+get_primary_current_lsn(PGconn *conn)
 {
 	PGresult   *res = NULL;
 	XLogRecPtr	ptr = InvalidXLogRecPtr;
@@ -4576,6 +4583,7 @@ get_current_wal_lsn(PGconn *conn)
 
 	return ptr;
 }
+
 
 XLogRecPtr
 get_last_wal_receive_location(PGconn *conn)
@@ -4602,9 +4610,11 @@ get_last_wal_receive_location(PGconn *conn)
 	return ptr;
 }
 
-
+/*
+ * Returns the latest LSN for the node regardless of recovery state.
+ */
 XLogRecPtr
-get_current_lsn(PGconn *conn)
+get_node_current_lsn(PGconn *conn)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -4678,7 +4688,7 @@ get_current_lsn(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_db_error(conn, query.data, _("unable to execute get_current_lsn()"));
+		log_db_error(conn, query.data, _("unable to execute get_node_current_lsn()"));
 	}
 	else if (!PQgetisnull(res, 0, 0))
 	{

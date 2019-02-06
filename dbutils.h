@@ -538,9 +538,9 @@ bool		get_new_primary(PGconn *conn, int *primary_node_id);
 void		reset_voting_status(PGconn *conn);
 
 /* replication status functions */
-XLogRecPtr	get_current_wal_lsn(PGconn *conn);
+XLogRecPtr	get_primary_current_lsn(PGconn *conn);
+XLogRecPtr	get_node_current_lsn(PGconn *conn);
 XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
-XLogRecPtr	get_current_lsn(PGconn *conn);
 void		init_replication_info(ReplInfo *replication_info);
 bool		get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);

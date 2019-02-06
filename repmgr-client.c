@@ -3321,7 +3321,7 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 
 	if (follow_target_identification.timeline == local_tli)
 	{
-		XLogRecPtr follow_target_xlogpos = get_current_lsn(follow_target_conn);
+		XLogRecPtr follow_target_xlogpos = get_node_current_lsn(follow_target_conn);
 
 		if (local_xlogpos == InvalidXLogRecPtr || follow_target_xlogpos == InvalidXLogRecPtr)
 		{
