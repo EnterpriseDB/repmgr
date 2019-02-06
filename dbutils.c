@@ -4730,26 +4730,41 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 						 "        CASE WHEN (last_wal_receive_lsn = last_wal_replay_lsn) "
 						 "          THEN 0::INT "
 						 "        ELSE "
-						 "          EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - last_xact_replay_timestamp))::INT "
+						 "          CASE WHEN last_xact_replay_timestamp IS NULL "
+						 "            THEN 0::INT "
+						 "          ELSE "
+						 "            EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - last_xact_replay_timestamp))::INT "
+						 "          END "
 						 "        END AS replication_lag_time, "
-						 "        COALESCE(last_wal_receive_lsn, '0/0') >= last_wal_replay_lsn AS receiving_streamed_wal "
-						 "   FROM ( ");
+						 "        last_wal_receive_lsn >= last_wal_replay_lsn AS receiving_streamed_wal "
+						 "   FROM ( "
+						 " SELECT CURRENT_TIMESTAMP AS ts, "
+						 "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp, ");
+
 
 	if (PQserverVersion(conn) >= 100000)
 	{
 		appendPQExpBufferStr(&query,
-							 " SELECT CURRENT_TIMESTAMP AS ts, "
-							 "        pg_catalog.pg_last_wal_receive_lsn()       AS last_wal_receive_lsn, "
-							 "        pg_catalog.pg_last_wal_replay_lsn()        AS last_wal_replay_lsn, "
-							 "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
+							 "        COALESCE(pg_catalog.pg_last_wal_receive_lsn(), '0/0'::PG_LSN) AS last_wal_receive_lsn, "
+							 "        COALESCE(pg_catalog.pg_last_wal_replay_lsn(),  '0/0'::PG_LSN) AS last_wal_replay_lsn ");
+
 	}
 	else
 	{
-		appendPQExpBufferStr(&query,
-							 " SELECT CURRENT_TIMESTAMP AS ts, "
-							 "        pg_catalog.pg_last_xlog_receive_location() AS last_wal_receive_lsn, "
-							 "        pg_catalog.pg_last_xlog_replay_location()  AS last_wal_replay_lsn, "
-							 "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp ");
+		if (PQserverVersion(conn) >= 90400)
+		{
+			appendPQExpBufferStr(&query,
+								 "        COALESCE(pg_catalog.pg_last_xlog_receive_location(), '0/0'::PG_LSN) AS last_wal_receive_lsn, "
+								 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0'::PG_LSN) AS last_wal_replay_lsn ");
+		}
+		else
+		{
+			/* 9.3 does not have "pg_lsn" datatype */
+			appendPQExpBufferStr(&query,
+								 "        COALESCE(pg_catalog.pg_last_xlog_receive_location(), '0/0') AS last_wal_receive_lsn, "
+								 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0') AS last_wal_replay_lsn ");
+		}
+
 	}
 
 	appendPQExpBufferStr(&query,
