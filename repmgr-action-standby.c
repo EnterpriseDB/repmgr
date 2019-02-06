@@ -1116,7 +1116,7 @@ _do_create_recovery_conf(void)
 
 	/* check if recovery.conf exists */
 
-	maxpath_snprintf(recovery_file_path, "%s/%s", local_data_directory, RECOVERY_COMMAND_FILE);
+	snprintf(recovery_file_path, MAXPGPATH, "%s/%s", local_data_directory, RECOVERY_COMMAND_FILE);
 
 	if (stat(recovery_file_path, &st) == -1)
 	{
