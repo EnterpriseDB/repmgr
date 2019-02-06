@@ -3072,6 +3072,8 @@ _print_election_result(ElectionResult result)
 
 
 /*
+ * Failover decision for nodes attached to the current primary.
+ *
  * NB: this function sets standby_nodes; caller (do_primary_failover)
  * expects to be able to read this list
  */
@@ -3221,61 +3223,66 @@ do_election(void)
 			log_debug("node %i is witness, not querying state", cell->node_info->node_id);
 			continue;
 		}
-		/* XXX don't check 0-priority nodes */
-
-		/* get node's LSN - if "higher" than current winner, current node is candidate */
-
-		cell->node_info->last_wal_receive_lsn = get_last_wal_receive_location(cell->node_info->conn);
-
-		log_verbose(LOG_DEBUG, "node %i's last receive LSN is: %X/%X",
-					cell->node_info->node_id,
-					format_lsn(cell->node_info->last_wal_receive_lsn));
-
-		/* compare LSN */
-		if (cell->node_info->last_wal_receive_lsn > candidate_node->last_wal_receive_lsn)
+		/* don't check 0-priority nodes */
+		if (cell->node_info->priority == 0)
 		{
-			/* other node is ahead */
-			log_verbose(LOG_DEBUG, "node %i is ahead of current candidate %i",
-						cell->node_info->node_id,
-						candidate_node->node_id);
-
-			candidate_node = cell->node_info;
+			log_debug("node %i has priority of 0, skipping",
+						cell->node_info->node_id);
 		}
-		/* LSN is same - tiebreak on priority, then node_id */
-		else if (cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
+		else
 		{
-			log_verbose(LOG_DEBUG, "node %i has same LSN as current candidate %i",
+			/* get node's last receive LSN - if "higher" than current winner, current node is candidate */
+			cell->node_info->last_wal_receive_lsn = get_last_wal_receive_location(cell->node_info->conn);
+
+			log_verbose(LOG_DEBUG, "node %i's last receive LSN is: %X/%X",
 						cell->node_info->node_id,
-						candidate_node->node_id);
-			if (cell->node_info->priority > candidate_node->priority)
+						format_lsn(cell->node_info->last_wal_receive_lsn));
+
+			/* compare LSN */
+			if (cell->node_info->last_wal_receive_lsn > candidate_node->last_wal_receive_lsn)
 			{
-				log_verbose(LOG_DEBUG, "node %i has higher priority (%i) than current candidate %i (%i)",
+				/* other node is ahead */
+				log_verbose(LOG_DEBUG, "node %i is ahead of current candidate %i",
 							cell->node_info->node_id,
-							cell->node_info->priority,
-							candidate_node->node_id,
-							candidate_node->priority);
+							candidate_node->node_id);
+
 				candidate_node = cell->node_info;
 			}
-			else if (cell->node_info->priority == candidate_node->priority)
+			/* LSN is same - tiebreak on priority, then node_id */
+			else if (cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
 			{
-				if (cell->node_info->node_id < candidate_node->node_id)
+				log_verbose(LOG_DEBUG, "node %i has same LSN as current candidate %i",
+							cell->node_info->node_id,
+							candidate_node->node_id);
+				if (cell->node_info->priority > candidate_node->priority)
 				{
-					log_verbose(LOG_DEBUG, "node %i has same priority but lower node_id than current candidate %i",
+					log_verbose(LOG_DEBUG, "node %i has higher priority (%i) than current candidate %i (%i)",
 								cell->node_info->node_id,
-								candidate_node->node_id);
+								cell->node_info->priority,
+								candidate_node->node_id,
+								candidate_node->priority);
 					candidate_node = cell->node_info;
 				}
-			}
-			else
-			{
-				log_verbose(LOG_DEBUG, "node %i has lower priority (%i) than current candidate %i (%i)",
-							cell->node_info->node_id,
-							cell->node_info->priority,
-							candidate_node->node_id,
-							candidate_node->priority);
+				else if (cell->node_info->priority == candidate_node->priority)
+				{
+					if (cell->node_info->node_id < candidate_node->node_id)
+					{
+						log_verbose(LOG_DEBUG, "node %i has same priority but lower node_id than current candidate %i",
+									cell->node_info->node_id,
+									candidate_node->node_id);
+						candidate_node = cell->node_info;
+					}
+				}
+				else
+				{
+					log_verbose(LOG_DEBUG, "node %i has lower priority (%i) than current candidate %i (%i)",
+								cell->node_info->node_id,
+								cell->node_info->priority,
+								candidate_node->node_id,
+								candidate_node->priority);
+				}
 			}
 		}
-
 	}
 
 	if (primary_location_seen == false)
