@@ -66,6 +66,7 @@ do_daemon_status(void)
 	int i;
 	RepmgrdInfo **repmgrd_info;
 	ItemList	warnings = {NULL, NULL};
+	bool		connection_error_found = false;
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database"));
@@ -108,14 +109,18 @@ do_daemon_status(void)
 		repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
 		repmgrd_info[i]->node_id = cell->node_info->node_id;
 		repmgrd_info[i]->pid = UNKNOWN_PID;
+		repmgrd_info[i]->recovery_type = RECTYPE_UNKNOWN;
 		repmgrd_info[i]->paused = false;
 		repmgrd_info[i]->running = false;
 		repmgrd_info[i]->pg_running = true;
+		repmgrd_info[i]->wal_paused_pending_wal = false;
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
+			connection_error_found = true;
+
 			if (runtime_options.verbose)
 			{
 				char		error[MAXLEN];
@@ -165,6 +170,20 @@ do_daemon_status(void)
 			}
 
 			repmgrd_info[i]->paused = repmgrd_is_paused(cell->node_info->conn);
+
+			repmgrd_info[i]->recovery_type = get_recovery_type(cell->node_info->conn);
+
+			if (repmgrd_info[i]->recovery_type == RECTYPE_STANDBY)
+			{
+				repmgrd_info[i]->wal_paused_pending_wal = is_wal_replay_paused(cell->node_info->conn, true);
+
+				if (repmgrd_info[i]->wal_paused_pending_wal == true)
+				{
+					item_list_append_format(&warnings,
+											"WAL replay is paused on node \"%s\" (ID: %i) with WAL replay pending; this node cannot be promoted",
+											cell->node_info->node_name, cell->node_info->node_id);
+				}
+			}
 
 			PQfinish(cell->node_info->conn);
 		}
@@ -244,7 +263,7 @@ do_daemon_status(void)
 			printf(_("  - %s\n"), cell->string);
 		}
 
-		if (runtime_options.verbose == false)
+		if (runtime_options.verbose == false && connection_error_found == true)
 		{
 			log_hint(_("execute with --verbose option to see connection error messages"));
 		}

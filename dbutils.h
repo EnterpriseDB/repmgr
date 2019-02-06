@@ -347,9 +347,11 @@ typedef struct RepmgrdInfo {
 	char pid_file[MAXLEN];
 	bool pg_running;
 	char pg_running_text[MAXLEN];
+	RecoveryType recovery_type;
 	bool running;
 	char repmgrd_running[MAXLEN];
 	bool paused;
+	bool wal_paused_pending_wal;
 } RepmgrdInfo;
 
 

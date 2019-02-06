@@ -5046,7 +5046,7 @@ is_wal_replay_paused(PGconn *conn, bool check_pending_wal)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_db_error(conn, query.data, _("unable to execute \"%s\""), query.data);
+		log_db_error(conn, query.data, _("unable to execute WAL replay pause query"));
 	}
 	else
 	{
