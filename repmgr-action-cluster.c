@@ -24,7 +24,7 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-cluster.h"
 
-#define SHOW_HEADER_COUNT 7
+#define SHOW_HEADER_COUNT 8
 
 typedef enum
 {
@@ -34,6 +34,7 @@ typedef enum
 	SHOW_STATUS,
 	SHOW_UPSTREAM_NAME,
 	SHOW_LOCATION,
+	SHOW_PRIORITY,
 	SHOW_CONNINFO
 }			ShowHeader;
 
@@ -109,6 +110,12 @@ do_cluster_show(void)
 	strncpy(headers_show[SHOW_STATUS].title, _("Status"), MAXLEN);
 	strncpy(headers_show[SHOW_UPSTREAM_NAME].title, _("Upstream"), MAXLEN);
 	strncpy(headers_show[SHOW_LOCATION].title, _("Location"), MAXLEN);
+
+	if (runtime_options.compact == true)
+		strncpy(headers_show[SHOW_PRIORITY].title, _("Prio."), MAXLEN);
+	else
+		strncpy(headers_show[SHOW_PRIORITY].title, _("Priority"), MAXLEN);
+
 	strncpy(headers_show[SHOW_CONNINFO].title, _("Connection string"), MAXLEN);
 
 	/*
@@ -137,7 +144,7 @@ do_cluster_show(void)
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
 		PQExpBufferData details;
-		PQExpBufferData node_id;
+		PQExpBufferData buf;
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
@@ -362,16 +369,25 @@ do_cluster_show(void)
 		PQfinish(cell->node_info->conn);
 		cell->node_info->conn = NULL;
 
-		initPQExpBuffer(&node_id);
-		appendPQExpBuffer(&node_id, "%i", cell->node_info->node_id);
-		headers_show[SHOW_ID].cur_length = strlen(node_id.data);
-		termPQExpBuffer(&node_id);
+		initPQExpBuffer(&buf);
+		appendPQExpBuffer(&buf, "%i", cell->node_info->node_id);
+		headers_show[SHOW_ID].cur_length = strlen(buf.data);
+		termPQExpBuffer(&buf);
 
 		headers_show[SHOW_ROLE].cur_length = strlen(get_node_type_string(cell->node_info->type));
 		headers_show[SHOW_NAME].cur_length = strlen(cell->node_info->node_name);
 		headers_show[SHOW_STATUS].cur_length = strlen(cell->node_info->details);
 		headers_show[SHOW_UPSTREAM_NAME].cur_length = strlen(cell->node_info->upstream_node_name);
+
+		initPQExpBuffer(&buf);
+		appendPQExpBuffer(&buf, "%i", cell->node_info->priority);
+		headers_show[SHOW_PRIORITY].cur_length = strlen(buf.data);
+		termPQExpBuffer(&buf);
+
 		headers_show[SHOW_LOCATION].cur_length = strlen(cell->node_info->location);
+
+
+
 		headers_show[SHOW_CONNINFO].cur_length = strlen(cell->node_info->conninfo);
 
 		for (i = 0; i < SHOW_HEADER_COUNT; i++)
@@ -433,6 +449,7 @@ do_cluster_show(void)
 			printf("| %-*s ", headers_show[SHOW_STATUS].max_length, cell->node_info->details);
 			printf("| %-*s ", headers_show[SHOW_UPSTREAM_NAME].max_length, cell->node_info->upstream_node_name);
 			printf("| %-*s ", headers_show[SHOW_LOCATION].max_length, cell->node_info->location);
+			printf("| %-*i ", headers_show[SHOW_PRIORITY].max_length, cell->node_info->priority);
 
 			if (headers_show[SHOW_CONNINFO].display == true)
 			{
