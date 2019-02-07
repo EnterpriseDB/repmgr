@@ -125,6 +125,27 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     </sect2>
 
     <sect2>
+      <title>repmgrd enhancements</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application> will no longer consider nodes where <application>repmgrd</application>
+			  is not running as promotion candidates.
+            </para>
+			<para>
+			  Previously, if <application>repmgrd</application> was not running on a node, but
+			  that node qualified as the promotion candidate, it would never be promoted due to
+			  the absence of a running <application>repmgrd</application>.
+			</para>
+          </listitem>
+
+		</itemizedlist>
+	  </para>
+	</sect2>
+
+    <sect2>
       <title>Bug fixes</title>
       <para>
         <itemizedlist>

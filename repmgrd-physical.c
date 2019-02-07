@@ -3257,11 +3257,28 @@ do_election(void)
 			log_debug("node %i is witness, not querying state", cell->node_info->node_id);
 			continue;
 		}
+
 		/* don't check 0-priority nodes */
 		if (cell->node_info->priority == 0)
 		{
 			log_debug("node %i has priority of 0, skipping",
 					  cell->node_info->node_id);
+			continue;
+		}
+
+
+		/*
+		 * check if repmgrd running - skip if not
+		 *
+		 * TODO: include pid query in replication info query?
+		 *
+		 * NOTE: from Pg12 we could execute "pg_promote()" from a running repmgrd;
+		 * here we'll need to find a way of ensuring only one repmgrd does this
+		 */
+		if (repmgrd_get_pid(cell->node_info->conn) == UNKNOWN_PID)
+		{
+			log_warning(_("repmgrd not running on node %i, skipping"),
+						cell->node_info->node_id);
 			continue;
 		}
 
