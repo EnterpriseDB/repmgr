@@ -4711,6 +4711,7 @@ init_replication_info(ReplInfo *replication_info)
 	memset(replication_info->last_xact_replay_timestamp, 0, sizeof(replication_info->last_xact_replay_timestamp));
 	replication_info->replication_lag_time = 0;
 	replication_info->receiving_streamed_wal = true;
+	replication_info->wal_replay_paused = false;
 }
 
 
@@ -4736,7 +4737,8 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 						 "            EXTRACT(epoch FROM (pg_catalog.clock_timestamp() - last_xact_replay_timestamp))::INT "
 						 "          END "
 						 "        END AS replication_lag_time, "
-						 "        last_wal_receive_lsn >= last_wal_replay_lsn AS receiving_streamed_wal "
+						 "        last_wal_receive_lsn >= last_wal_replay_lsn AS receiving_streamed_wal, "
+						 "        wal_replay_paused "
 						 "   FROM ( "
 						 " SELECT CURRENT_TIMESTAMP AS ts, "
 						 "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp, ");
@@ -4746,8 +4748,11 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 	{
 		appendPQExpBufferStr(&query,
 							 "        COALESCE(pg_catalog.pg_last_wal_receive_lsn(), '0/0'::PG_LSN) AS last_wal_receive_lsn, "
-							 "        COALESCE(pg_catalog.pg_last_wal_replay_lsn(),  '0/0'::PG_LSN) AS last_wal_replay_lsn ");
-
+							 "        COALESCE(pg_catalog.pg_last_wal_replay_lsn(),  '0/0'::PG_LSN) AS last_wal_replay_lsn, "
+							 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "          THEN FALSE "
+							 "          ELSE pg_catalog.pg_is_wal_replay_paused() "
+							 "        END AS wal_replay_paused ");
 	}
 	else
 	{
@@ -4755,16 +4760,21 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 		{
 			appendPQExpBufferStr(&query,
 								 "        COALESCE(pg_catalog.pg_last_xlog_receive_location(), '0/0'::PG_LSN) AS last_wal_receive_lsn, "
-								 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0'::PG_LSN) AS last_wal_replay_lsn ");
+								 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0'::PG_LSN) AS last_wal_replay_lsn, ");
 		}
 		else
 		{
 			/* 9.3 does not have "pg_lsn" datatype */
 			appendPQExpBufferStr(&query,
 								 "        COALESCE(pg_catalog.pg_last_xlog_receive_location(), '0/0') AS last_wal_receive_lsn, "
-								 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0') AS last_wal_replay_lsn ");
+								 "        COALESCE(pg_catalog.pg_last_xlog_replay_location(),  '0/0') AS last_wal_replay_lsn, ");
 		}
 
+		appendPQExpBufferStr(&query,
+							 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "          THEN FALSE "
+							 "          ELSE pg_catalog.pg_is_xlog_replay_paused() "
+							 "        END AS wal_replay_paused ");
 	}
 
 	appendPQExpBufferStr(&query,
@@ -4788,6 +4798,7 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 		strncpy(replication_info->last_xact_replay_timestamp, PQgetvalue(res, 0, 3), MAXLEN);
 		replication_info->replication_lag_time = atoi(PQgetvalue(res, 0, 4));
 		replication_info->receiving_streamed_wal = atobool(PQgetvalue(res, 0, 5));
+		replication_info->wal_replay_paused = atobool(PQgetvalue(res, 0, 6));
 	}
 
 	termPQExpBuffer(&query);

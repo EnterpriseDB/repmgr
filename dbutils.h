@@ -306,6 +306,7 @@ typedef struct
 	char		last_xact_replay_timestamp[MAXLEN];
 	int			replication_lag_time;
 	bool		receiving_streamed_wal;
+	bool		wal_replay_paused;
 } ReplInfo;
 
 typedef struct
