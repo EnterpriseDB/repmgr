@@ -2044,9 +2044,7 @@ static RecordStatus
 _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info, bool init_defaults)
 {
 	int			ntuples = 0;
-	PGresult   *res = NULL;
-
-	res = PQexec(conn, sqlquery);
+	PGresult   *res = PQexec(conn, sqlquery);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
