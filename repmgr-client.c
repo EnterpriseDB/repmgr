@@ -1889,6 +1889,22 @@ check_cli_parameters(const int action)
 							 "only one of --csv, --nagios and --optformat can be used");
 		}
 	}
+
+	/* --compact */
+
+	if (runtime_options.compact == TRUE)
+	{
+		switch (action)
+		{
+			case CLUSTER_SHOW:
+			case DAEMON_STATUS:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--compact is not effective when executing %s"),
+										action_name(action));
+		}
+	}
 }
 
 
