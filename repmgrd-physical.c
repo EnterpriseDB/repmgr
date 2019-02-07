@@ -3090,6 +3090,8 @@ do_election(void)
 
 	t_node_info *candidate_node = NULL;
 
+	ReplInfo	local_replication_info;
+
 	/*
 	 * Check if at least one server in the primary's location is visible; if
 	 * not we'll assume a network split between this node and the primary
@@ -3182,7 +3184,37 @@ do_election(void)
 	}
 
 	/* get our lsn */
-	local_node_info.last_wal_receive_lsn = get_last_wal_receive_location(local_conn);
+	if (get_replication_info(local_conn, &local_replication_info) == false)
+	{
+		log_error(_("unable to retrieve replication information for local node"));
+		return ELECTION_LOST;
+	}
+
+	/* check if WAL replay on local node is paused */
+	if (local_replication_info.wal_replay_paused == true)
+	{
+		log_debug("WAL replay is paused");
+		if (local_replication_info.last_wal_receive_lsn > local_replication_info.last_wal_replay_lsn)
+		{
+			log_warning(_("WAL replay on this node is paused and WAL is pending replay"));
+			log_detail(_("replay paused at %X/%X; last WAL received is %X/%X"),
+					   format_lsn(local_replication_info.last_wal_replay_lsn),
+					   format_lsn(local_replication_info.last_wal_receive_lsn));
+		}
+
+		/* attempt to resume WAL replay - unlikely this will fail, but just in case */
+		if (resume_wal_replay(local_conn) == false)
+		{
+			log_error(_("unable to resume WAL replay"));
+			log_detail(_("this node cannot be reliably promoted"));
+			return ELECTION_LOST;
+		}
+
+		log_notice(_("WAL replay forcibly resumed"));
+	}
+
+	local_node_info.last_wal_receive_lsn = local_replication_info.last_wal_receive_lsn;
+
 
 	log_debug("our last receive lsn: %X/%X", format_lsn(local_node_info.last_wal_receive_lsn));
 
@@ -3191,6 +3223,8 @@ do_election(void)
 
 	for (cell = sibling_nodes.head; cell; cell = cell->next)
 	{
+		ReplInfo	sibling_replication_info;
+
 		/* assume the worst case */
 		cell->node_info->node_status = NODE_STATUS_UNKNOWN;
 
@@ -3227,60 +3261,80 @@ do_election(void)
 		if (cell->node_info->priority == 0)
 		{
 			log_debug("node %i has priority of 0, skipping",
-						cell->node_info->node_id);
+					  cell->node_info->node_id);
+			continue;
 		}
-		else
+
+		if (get_replication_info(cell->node_info->conn, &sibling_replication_info) == false)
 		{
-			/* get node's last receive LSN - if "higher" than current winner, current node is candidate */
-			cell->node_info->last_wal_receive_lsn = get_last_wal_receive_location(cell->node_info->conn);
+			log_warning(_("unable to retrieve replication information for node %i, skipping"),
+						cell->node_info->node_id);
+			continue;
+		}
 
-			log_verbose(LOG_DEBUG, "node %i's last receive LSN is: %X/%X",
-						cell->node_info->node_id,
-						format_lsn(cell->node_info->last_wal_receive_lsn));
-
-			/* compare LSN */
-			if (cell->node_info->last_wal_receive_lsn > candidate_node->last_wal_receive_lsn)
+		/* check if WAL replay on node is paused */
+		if (sibling_replication_info.wal_replay_paused == true)
+		{
+			/*
+			 * Theoretically the repmgrd on the node should have resumed WAL play
+			 * at this point
+			 */
+			if (sibling_replication_info.last_wal_receive_lsn > sibling_replication_info.last_wal_replay_lsn)
 			{
-				/* other node is ahead */
-				log_verbose(LOG_DEBUG, "node %i is ahead of current candidate %i",
-							cell->node_info->node_id,
-							candidate_node->node_id);
+				log_warning(_("WAL replay on node %i is paused and WAL is pending replay"),
+						   cell->node_info->node_id);
+			}
+		}
 
+		/* get node's last receive LSN - if "higher" than current winner, current node is candidate */
+		cell->node_info->last_wal_receive_lsn = sibling_replication_info.last_wal_receive_lsn;
+
+		log_verbose(LOG_DEBUG, "node %i's last receive LSN is: %X/%X",
+					cell->node_info->node_id,
+					format_lsn(cell->node_info->last_wal_receive_lsn));
+
+		/* compare LSN */
+		if (cell->node_info->last_wal_receive_lsn > candidate_node->last_wal_receive_lsn)
+		{
+			/* other node is ahead */
+			log_verbose(LOG_DEBUG, "node %i is ahead of current candidate %i",
+						cell->node_info->node_id,
+						candidate_node->node_id);
+
+			candidate_node = cell->node_info;
+		}
+		/* LSN is same - tiebreak on priority, then node_id */
+		else if (cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
+		{
+			log_verbose(LOG_DEBUG, "node %i has same LSN as current candidate %i",
+						cell->node_info->node_id,
+						candidate_node->node_id);
+			if (cell->node_info->priority > candidate_node->priority)
+			{
+				log_verbose(LOG_DEBUG, "node %i has higher priority (%i) than current candidate %i (%i)",
+							cell->node_info->node_id,
+							cell->node_info->priority,
+							candidate_node->node_id,
+							candidate_node->priority);
 				candidate_node = cell->node_info;
 			}
-			/* LSN is same - tiebreak on priority, then node_id */
-			else if (cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
+			else if (cell->node_info->priority == candidate_node->priority)
 			{
-				log_verbose(LOG_DEBUG, "node %i has same LSN as current candidate %i",
-							cell->node_info->node_id,
-							candidate_node->node_id);
-				if (cell->node_info->priority > candidate_node->priority)
+				if (cell->node_info->node_id < candidate_node->node_id)
 				{
-					log_verbose(LOG_DEBUG, "node %i has higher priority (%i) than current candidate %i (%i)",
+					log_verbose(LOG_DEBUG, "node %i has same priority but lower node_id than current candidate %i",
 								cell->node_info->node_id,
-								cell->node_info->priority,
-								candidate_node->node_id,
-								candidate_node->priority);
+								candidate_node->node_id);
 					candidate_node = cell->node_info;
 				}
-				else if (cell->node_info->priority == candidate_node->priority)
-				{
-					if (cell->node_info->node_id < candidate_node->node_id)
-					{
-						log_verbose(LOG_DEBUG, "node %i has same priority but lower node_id than current candidate %i",
-									cell->node_info->node_id,
-									candidate_node->node_id);
-						candidate_node = cell->node_info;
-					}
-				}
-				else
-				{
-					log_verbose(LOG_DEBUG, "node %i has lower priority (%i) than current candidate %i (%i)",
-								cell->node_info->node_id,
-								cell->node_info->priority,
-								candidate_node->node_id,
-								candidate_node->priority);
-				}
+			}
+			else
+			{
+				log_verbose(LOG_DEBUG, "node %i has lower priority (%i) than current candidate %i (%i)",
+							cell->node_info->node_id,
+							cell->node_info->priority,
+							candidate_node->node_id,
+							candidate_node->priority);
 			}
 		}
 	}
