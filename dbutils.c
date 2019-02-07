@@ -2000,6 +2000,41 @@ promote_standby(PGconn *conn, bool wait, int wait_seconds)
 }
 
 
+bool
+resume_wal_replay(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	PQExpBufferData query;
+	bool		success = true;
+
+	initPQExpBuffer(&query);
+
+	if (PQserverVersion(conn) >= 100000)
+	{
+		appendPQExpBufferStr(&query,
+							 "SELECT pg_catalog.pg_wal_replay_resume()");
+	}
+	else
+	{
+		appendPQExpBufferStr(&query,
+							 "SELECT pg_catalog.pg_xlog_replay_resume()");
+	}
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("resume_wal_replay(): unable to resume WAL replay"));
+		success = false;
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return success;
+}
+
+
 /* ===================== */
 /* Node record functions */
 /* ===================== */

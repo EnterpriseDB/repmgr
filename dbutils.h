@@ -440,6 +440,7 @@ ExtensionStatus get_repmgr_extension_status(PGconn *conn, t_extension_versions *
 void		checkpoint(PGconn *conn);
 bool		vacuum_table(PGconn *conn, const char *table);
 bool		promote_standby(PGconn *conn, bool wait, int wait_seconds);
+bool		resume_wal_replay(PGconn *conn);
 
 /* node record functions */
 t_server_type parse_node_type(const char *type);
