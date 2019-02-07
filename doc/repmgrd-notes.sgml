@@ -1,0 +1,38 @@
+<chapter id="repmgrd-notes" xreflabel="repmgrd notes">
+
+  <indexterm>
+    <primary>repmgrd</primary>
+    <secondary>notes</secondary>
+  </indexterm>
+  <title>repmgrd notes</title>
+
+  <sect1 id="repmgrd-wal-replay-pause">
+    <indexterm>
+      <primary>repmgrd</primary>
+      <secondary>paused WAL replay</secondary>
+    </indexterm>
+
+    <title>repmgrd and paused WAL replay</title>
+    <para>
+      If WAL replay has been paused (using <command>pg_wal_replay_pause()</command>,
+      on PostgreSQL 9.6 and earlier <command>pg_xlog_replay_pause()</command>),
+      in a failover situation <application>repmgrd</application> will
+      automatically resume WAL replay.
+    </para>
+    <para>
+      This is because if WAL replay is paused, but WAL is pending replay,
+      PostgreSQL cannot be promoted until WAL replay is resumed.
+    </para>
+    <note>
+      <para>
+        <command><link linkend="repmgr-standby-promote">repmgr standby promote</link></command>
+        will refuse to promote a node in this state, as the PostgreSQL
+        <command>promote</command> command will not be acted on until
+        WAL replay is resumed, leaving the cluster in a potentially
+        unstable state. In this case it is up to the user to
+        decide whether to resume WAL replay.
+      </para>
+    </note>
+  </sect1>
+
+</chapter>

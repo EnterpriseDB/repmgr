@@ -89,6 +89,7 @@
   &repmgrd-pausing;
   &repmgrd-degraded-monitoring;
   &repmgrd-monitoring;
+  &repmgrd-notes;
   &repmgrd-bdr;
  </part>
 
