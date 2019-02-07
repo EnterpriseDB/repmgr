@@ -305,7 +305,16 @@ do_cluster_show(void)
 							error_found = true;
 						}
 					}
+
+					/* warn about issue with paused WAL replay */
+					if (is_wal_replay_paused(cell->node_info->conn, true))
+					{
+						item_list_append_format(&warnings,
+												_("WAL replay is paused on node \"%s\" (ID: %i) with WAL replay pending; this node cannot be manually promoted until WAL replay is resumed"),
+												cell->node_info->node_name, cell->node_info->node_id);
+					}
 				}
+
 				break;
 			case WITNESS:
 			case BDR:

@@ -180,7 +180,7 @@ do_daemon_status(void)
 				if (repmgrd_info[i]->wal_paused_pending_wal == true)
 				{
 					item_list_append_format(&warnings,
-											"WAL replay is paused on node \"%s\" (ID: %i) with WAL replay pending; this node cannot be promoted",
+											_("WAL replay is paused on node \"%s\" (ID: %i) with WAL replay pending; this node cannot be manually promoted  until WAL replay is resumed"),
 											cell->node_info->node_name, cell->node_info->node_id);
 				}
 			}
