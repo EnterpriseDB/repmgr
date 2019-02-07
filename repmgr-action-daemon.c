@@ -43,13 +43,14 @@ typedef enum
 	STATUS_ID = 0,
 	STATUS_NAME,
 	STATUS_ROLE,
+	STATUS_PRIORITY,
 	STATUS_PG,
 	STATUS_RUNNING,
 	STATUS_PID,
 	STATUS_PAUSED
 } StatusHeader;
 
-#define STATUS_HEADER_COUNT 7
+#define STATUS_HEADER_COUNT 8
 
 struct ColHeader headers_status[STATUS_HEADER_COUNT];
 
@@ -89,6 +90,12 @@ do_daemon_status(void)
 	strncpy(headers_status[STATUS_ID].title, _("ID"), MAXLEN);
 	strncpy(headers_status[STATUS_NAME].title, _("Name"), MAXLEN);
 	strncpy(headers_status[STATUS_ROLE].title, _("Role"), MAXLEN);
+
+	if (runtime_options.compact == true)
+		strncpy(headers_status[STATUS_PRIORITY].title, _("Prio."), MAXLEN);
+	else
+		strncpy(headers_status[STATUS_PRIORITY].title, _("Priority"), MAXLEN);
+
 	strncpy(headers_status[STATUS_PG].title, _("Status"), MAXLEN);
 	strncpy(headers_status[STATUS_RUNNING].title, _("repmgrd"), MAXLEN);
 	strncpy(headers_status[STATUS_PID].title, _("PID"), MAXLEN);
@@ -105,6 +112,7 @@ do_daemon_status(void)
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
 		int j;
+		PQExpBufferData buf;
 
 		repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
 		repmgrd_info[i]->node_id = cell->node_info->node_id;
@@ -191,6 +199,12 @@ do_daemon_status(void)
 
 		headers_status[STATUS_NAME].cur_length = strlen(cell->node_info->node_name);
 		headers_status[STATUS_ROLE].cur_length = strlen(get_node_type_string(cell->node_info->type));
+
+		initPQExpBuffer(&buf);
+		appendPQExpBuffer(&buf, "%i", cell->node_info->priority);
+		headers_status[STATUS_PRIORITY].cur_length = strlen(buf.data);
+		termPQExpBuffer(&buf);
+
 		headers_status[STATUS_PID].cur_length = strlen(repmgrd_info[i]->pid_text);
 		headers_status[STATUS_RUNNING].cur_length = strlen(repmgrd_info[i]->repmgrd_running);
 		headers_status[STATUS_PG].cur_length = strlen(repmgrd_info[i]->pg_running_text);
@@ -218,20 +232,22 @@ do_daemon_status(void)
 	{
 		if (runtime_options.output_mode == OM_CSV)
 		{
-			printf("%i,%s,%s,%i,%i,%i,%i\n",
+			printf("%i,%s,%s,%i,%i,%i,%i,%i\n",
 				   cell->node_info->node_id,
 				   cell->node_info->node_name,
 				   get_node_type_string(cell->node_info->type),
 				   repmgrd_info[i]->pg_running ? 1 : 0,
 				   repmgrd_info[i]->running ? 1 : 0,
 				   repmgrd_info[i]->pid,
-				   repmgrd_info[i]->paused ? 1 : 0);
+				   repmgrd_info[i]->paused ? 1 : 0,
+				   cell->node_info->priority);
 		}
 		else
 		{
 			printf(" %-*i ",  headers_status[STATUS_ID].max_length, cell->node_info->node_id);
 			printf("| %-*s ", headers_status[STATUS_NAME].max_length, cell->node_info->node_name);
 			printf("| %-*s ", headers_status[STATUS_ROLE].max_length, get_node_type_string(cell->node_info->type));
+			printf("| %-*i ", headers_status[STATUS_PRIORITY].max_length, cell->node_info->priority);
 
 			printf("| %-*s ", headers_status[STATUS_PG].max_length, repmgrd_info[i]->pg_running_text);
 			printf("| %-*s ", headers_status[STATUS_RUNNING].max_length, repmgrd_info[i]->repmgrd_running);
@@ -245,11 +261,11 @@ do_daemon_status(void)
 			printf("\n");
 		}
 
-		free(repmgrd_info[i]);
+		pfree(repmgrd_info[i]);
 		i++;
 	}
 
-	free(repmgrd_info);
+	pfree(repmgrd_info);
 
 	/* emit any warnings */
 
