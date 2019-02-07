@@ -119,7 +119,7 @@
 
 			  <listitem>
 				<simpara>
-                  PostgreSQL server running
+                  PostgreSQL server running (1 = running, 0 = not running)
 				</simpara>
 			  </listitem>
 
