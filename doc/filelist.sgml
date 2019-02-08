@@ -91,6 +91,7 @@
 <!ENTITY appendix-faq      SYSTEM "appendix-faq.sgml">
 <!ENTITY appendix-signatures      SYSTEM "appendix-signatures.sgml">
 <!ENTITY appendix-packages      SYSTEM "appendix-packages.sgml">
+<!ENTITY appendix-support SYSTEM "appendix-support.sgml">
 
 <!ENTITY bookindex  SYSTEM "bookindex.sgml">
 

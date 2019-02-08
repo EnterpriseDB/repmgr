@@ -126,6 +126,7 @@
  &appendix-signatures;
  &appendix-faq;
  &appendix-packages;
+ &appendix-support;
 
  <![%include-index;[&bookindex;]]>
  <![%include-xslt-index;[<index id="bookindex"></index>]]>

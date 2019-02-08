@@ -1,0 +1,96 @@
+<appendix id="appendix-support" xreflabel="repmgr support">
+  <indexterm>
+    <primary>support</primary>
+  </indexterm>
+
+  <title>&repmgr; support</title>
+  <para>
+    <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides 24x7
+    production support for &repmgr; and other PostgreSQL
+    products, including configuration assistance, installation
+    verification and training for running a robust replication cluster.
+  </para>
+  <para>
+    For further details see: <ulink url="https://2ndquadrant.com/en/support/">https://2ndquadrant.com/en/support/</ulink>
+  </para>
+
+  <para>
+    A mailing list/forum is provided via Google groups to discuss contributions or issues: <ulink url="https://groups.google.com/group/repmgr">https://groups.google.com/group/repmgr</ulink>.
+  </para>
+  <para>
+    Please report bugs and other issues to: <ulink url="https://github.com/2ndQuadrant/repmgr">https://github.com/2ndQuadrant/repmgr</ulink>.
+  </para>
+
+  <important>
+    <para>
+      Please read the <link linkend="appendix-support-reporting-issues">following section</link> before submitting questions or issue reports.
+    </para>
+  </important>
+
+  <sect1 id="appendix-support-reporting-issues" xreflabel="Reportins Issues">
+    <indexterm>
+      <primary>support</primary>
+      <secondary>reporting issues</secondary>
+    </indexterm>
+
+    <title>Reporting Issues</title>
+
+    <para>
+      When asking questions or reporting issues, it is extremely helpful if the following information is included:
+
+    <itemizedlist spacing="compact" mark="bullet">
+
+     <listitem>
+      <simpara>
+        &repmgr; version
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        How was &repmgr installed? From source? From packages? If
+        so from which repository?
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        <filename>repmpgr.conf</filename> files (suitably anonymized if necessary)
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        Contents of the <literal>repmgr.nodes</literal> table (suitably anonymized if necessary)
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
+        PostgreSQL version
+      </simpara>
+     </listitem>
+
+    </itemizedlist>
+    </para>
+    <para>
+      If issues are encountered with a &repmgr; client command, please provide
+      the output of that command executed with the options
+      <option>-LDEBUG --verbose</option>, which will ensure &repmgr; emits
+      the maximum level of logging output.
+    </para>
+    <para>
+      If issues are encountered with <application>repmgrd</application>,
+      please provide relevant extracts from the &repmgr; log files
+      and if possible the PostgreSQL log itself. Please ensure these
+      logs do not contain any confidential data.
+    </para>
+    <para>
+      In all cases it is <emphasis>extremely</emphasis> useful to receive
+      information on how to reproduce an issue with as much detail as
+      possible.
+    </para>
+
+  </sect1>
+
+</appendix>
