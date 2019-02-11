@@ -171,7 +171,7 @@
       <varlistentry>
         <indexterm>
           <primary>replication_lag_critical</primary>
-          <secondary>with &quot;repmgr standby switchover &quot;</secondary>
+          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
         </indexterm>
 
         <term><option>replication_lag_critical</option></term>
@@ -187,7 +187,7 @@
       <varlistentry>
         <indexterm>
           <primary>shutdown_check_timeout</primary>
-          <secondary>with &quot;repmgr standby switchover &quot;</secondary>
+          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
         </indexterm>
 
         <term><option>shutdown_check_timeout</option></term>
@@ -215,7 +215,7 @@
       <varlistentry>
         <indexterm>
           <primary>wal_receive_check_timeout</primary>
-          <secondary>with &quot;repmgr standby switchover &quot;</secondary>
+          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
         </indexterm>
 
         <term><option>wal_receive_check_timeout</option></term>
@@ -232,7 +232,7 @@
       <varlistentry>
         <indexterm>
           <primary>standby_reconnect_timeout</primary>
-          <secondary>with &quot;repmgr standby switchover &quot;</secondary>
+          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
         </indexterm>
 
         <term><option>standby_reconnect_timeout</option></term>
@@ -252,7 +252,7 @@
      <varlistentry>
         <indexterm>
           <primary>node_rejoin_timeout</primary>
-          <secondary>with &quot;repmgr standby switchover &quot;</secondary>
+          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
         </indexterm>
 
         <term><option>node_rejoin_timeout</option></term>
