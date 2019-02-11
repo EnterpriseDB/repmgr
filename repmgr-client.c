@@ -1892,7 +1892,7 @@ check_cli_parameters(const int action)
 
 	/* --compact */
 
-	if (runtime_options.compact == TRUE)
+	if (runtime_options.compact == true)
 	{
 		switch (action)
 		{
