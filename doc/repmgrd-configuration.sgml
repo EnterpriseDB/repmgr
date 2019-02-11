@@ -103,7 +103,7 @@
       </para>
     </sect2>
 
-    <sect2 id="repmgrd-service-configuration">
+    <sect2 id="postgresql-service-configuration">
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>PostgreSQL service configuration</secondary>
@@ -125,6 +125,42 @@
         For more details, see <xref linkend="configuration-file-service-commands">.
       </para>
     </sect2>
+
+    <sect2 id="repmgrd-service-configuration">
+      <indexterm>
+        <primary>repmgrd</primary>
+        <secondary>repmgrd service configuration</secondary>
+      </indexterm>
+      <title>repmgrd service configuration</title>
+      <para>
+        If you are intending to use the <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link>
+        and <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link> commands, the following
+        parameters <emphasis>must</emphasis> be set in <filename>repmgr.conf</filename>:
+        <itemizedlist spacing="compact" mark="bullet">
+
+          <listitem>
+            <simpara><varname>repmgrd_service_start_command</varname></simpara>
+          </listitem>
+
+          <listitem>
+            <simpara><varname>repmgrd_service_stop_command</varname></simpara>
+          </listitem>
+
+        </itemizedlist>
+
+      </para>
+      <para>
+        Example (for &repmgr; with PostgreSQL 11 on CentOS 7):
+        <programlisting>
+repmgrd_service_start_command='sudo systemctl repmgr11 start'
+repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
+</programlisting>
+      </para>
+      <para>
+        For more details see the reference page for each command.
+      </para>
+    </sect2>
+
 
     <sect2 id="repmgrd-monitoring-configuration" xreflabel="repmgrd monitoring configuration">
       <indexterm>
