@@ -2273,9 +2273,21 @@ do_node_rejoin(void)
 	 */
 	{
 		bool can_follow;
+		TimeLineID tli = get_min_recovery_end_timeline(config_file_options.data_directory);
+		XLogRecPtr min_recovery_location = get_min_recovery_location(config_file_options.data_directory);
 
-		can_follow = check_node_can_attach(get_min_recovery_end_timeline(config_file_options.data_directory),
-										   get_min_recovery_location(config_file_options.data_directory),
+		/*
+		 * It's possible this was a former primary, so the minRecoveryPoint*
+		 * fields may be empty.
+		 */
+
+		if (min_recovery_location == InvalidXLogRecPtr)
+			min_recovery_location = get_latest_checkpoint_location(config_file_options.data_directory);
+		if (tli == 0)
+			tli = get_timeline(config_file_options.data_directory);
+
+		can_follow = check_node_can_attach(tli,
+										   min_recovery_location,
 										   primary_conn,
 										   &primary_node_record,
 										   true);
