@@ -318,7 +318,8 @@
         <term><option>SUCCESS (0)</option></term>
         <listitem>
           <para>
-            The switchover completed successfully.
+            The switchover completed successfully; or if <option>--dry-run</option> was provided,
+            no issues were detected which would prevent the switchover operation.
           </para>
         </listitem>
       </varlistentry>
@@ -349,7 +350,10 @@
   <refsect1>
     <title>See also</title>
     <para>
-      For more details see the section <xref linkend="performing-switchover">.
+      <xref linkend="repmgr-standby-follow">, <xref linkend="repmgr-node-rejoin">
+    </para>
+    <para>
+      For more details on performing a switchover operation, see the section <xref linkend="performing-switchover">.
     </para>
   </refsect1>
 
