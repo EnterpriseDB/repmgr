@@ -53,14 +53,14 @@
 
 	<note>
 	  <para>
-		If <option>recovery_min_apply_delay</option> is set for the standby, it
-		will not attach to the new upstream node until it has replayed available
-		WAL.
+	    If <option>recovery_min_apply_delay</option> is set for the standby, it
+	    will not attach to the new upstream node until it has replayed available
+	    WAL.
 	  </para>
 	  <para>
-		Conversely, if the standby is attached follows another standby
-		with <option>recovery_min_apply_delay</option> set, that standby's replay
-		state may actually be behind that of its new downstream node.
+	    Conversely, if the standby is attached to an upstream standby
+	    which has <option>recovery_min_apply_delay</option> set, the upstream
+            standby's replay state may actually be behind that of its new downstream node.
 	  </para>
 	</note>
 
@@ -173,7 +173,7 @@ DETAIL: follow target server's timeline 2 forked off current database system tim
       In this case, it may be possible to have this node follow the new upstream
       using <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>
       with the <option>--force-rewind</option> to execute <command>pg_rewind</command>.
-      This does mean that transacations which exist on this node, but not the new upstream,
+      This does mean that transactions which exist on this node, but not the new upstream,
       will be lost.
     </para>
 
