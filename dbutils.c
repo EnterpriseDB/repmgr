@@ -5079,26 +5079,37 @@ is_wal_replay_paused(PGconn *conn, bool check_pending_wal)
 
 	initPQExpBuffer(&query);
 
+	appendPQExpBufferStr(&query,
+						 "SELECT paused.wal_replay_paused ");
+
 	if (PQserverVersion(conn) >= 100000)
 	{
-		appendPQExpBufferStr(&query,
-							 "SELECT pg_catalog.pg_is_wal_replay_paused()");
-
 		if (check_pending_wal == true)
 		{
 			appendPQExpBufferStr(&query,
-								 " AND pg_catalog.pg_last_wal_replay_lsn() < pg_catalog.pg_last_wal_receive_lsn()");
+								 " AND pg_catalog.pg_last_wal_replay_lsn() < pg_catalog.pg_last_wal_receive_lsn() ");
 		}
+
+		appendPQExpBufferStr(&query,
+							 " FROM (SELECT CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "                THEN FALSE "
+							 "                ELSE pg_catalog.pg_is_wal_replay_paused() "
+							 "              END AS wal_replay_paused) paused ");
 	}
 	else
 	{
-		appendPQExpBufferStr(&query,
-							 "SELECT pg_catalog.pg_is_xlog_replay_paused()");
 		if (check_pending_wal == true)
 		{
 			appendPQExpBufferStr(&query,
-								 " AND pg_catalog.pg_last_xlog_replay_location() < pg_catalog.pg_last_xlog_receive_location()");
+								 " AND pg_catalog.pg_last_xlog_replay_location() < pg_catalog.pg_last_xlog_receive_location() ");
 		}
+
+		appendPQExpBufferStr(&query,
+							 " FROM (SELECT CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "                THEN FALSE "
+							 "                ELSE pg_catalog.pg_is_xlog_replay_paused() "
+							 "              END AS wal_replay_paused) paused ");
+
 	}
 
 	res = PQexec(conn, query.data);
