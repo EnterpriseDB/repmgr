@@ -748,7 +748,7 @@ void do_daemon_help(void)
 	printf(_("    --dry-run               check if nodes are reachable but don't pause repmgrd\n"));
 	puts("");
 
-	printf(_("DAEMON PAUSE\n"));
+	printf(_("DAEMON UNPAUSE\n"));
 	puts("");
 	printf(_("  \"daemon unpause\"  instructs repmgrd on each node to resume failover detection\n"));
 	puts("");
