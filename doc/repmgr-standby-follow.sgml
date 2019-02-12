@@ -147,6 +147,39 @@
   </refsect1>
 
   <refsect1>
+    <title>Execution</title>
+
+    <para>
+      Execute with the <literal>--dry-run</literal> option to test the follow operation as
+      far as possible, without actually changing the status of the node.
+    </para>
+
+    <para>
+      Note that &repmgr; will first attempt to determine whether the standby
+      (&quot;follow candidate&quot;) is capable of following the
+      new upstream node (&quot;follow target&quot;).
+    </para>
+    <para>
+      If, for example, the new upstream node has diverged from this node's timeline,
+      for example if the new upstream node was promoted to primary while this node
+      was still attached to the original primary, it will <emphasis>not</emphasis>
+      be possible to follow the new upstream node, and &repmgr; will emit an error
+      message like this:
+      <programlisting>
+ERROR: this node cannot attach to follow target node 3
+DETAIL: follow target server's timeline 2 forked off current database system timeline 1 before current recovery point 0/6108880</programlisting>
+    </para>
+    <para>
+      In this case, it may be possible to have this node follow the new upstream
+      using <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>
+      with the <option>--force-rewind</option> to execute <command>pg_rewind</command>.
+      This does mean that transacations which exist on this node, but not the new upstream,
+      will be lost.
+    </para>
+
+  </refsect1>
+
+  <refsect1>
     <title>Exit codes</title>
     <para>
       One of the following exit codes will be emitted by <command>repmgr standby follow</command>:
@@ -210,7 +243,7 @@
       A <literal>standby_follow</literal> <link linkend="event-notifications">event notification</link> will be generated.
     </para>
     <para>
-      If provided, &repmgr; will substitute the placeholders <literal>%p</literal> with the node ID of the primary
+      If provided, &repmgr; will substitute the placeholders <literal>%p</literal> with the node ID of the node
       being followed, <literal>%c</literal> with its <literal>conninfo</literal> string, and
       <literal>%a</literal> with its node name.
     </para>
