@@ -187,6 +187,22 @@ get_timeline(const char *data_directory)
 }
 
 
+TimeLineID
+get_min_recovery_end_timeline(const char *data_directory)
+{
+	ControlFileInfo *control_file_info = NULL;
+	TimeLineID		 timeline = -1;
+
+	control_file_info = get_controlfile(data_directory);
+
+	timeline = (int) control_file_info->minRecoveryPointTLI;
+
+	pfree(control_file_info);
+
+	return timeline;
+}
+
+
 XLogRecPtr
 get_min_recovery_location(const char *data_directory)
 {
@@ -226,6 +242,8 @@ get_controlfile(const char *DataDir)
 	control_file_info->checkPoint = InvalidXLogRecPtr;
 	control_file_info->data_checksum_version = -1;
 	control_file_info->timeline = -1;
+	control_file_info->minRecoveryPointTLI = -1;
+	control_file_info->minRecoveryPoint = InvalidXLogRecPtr;
 
 	/*
 	 * Read PG_VERSION, as we'll need to determine which struct to read
@@ -298,6 +316,7 @@ get_controlfile(const char *DataDir)
 		control_file_info->checkPoint = ptr->checkPoint;
 		control_file_info->data_checksum_version = ptr->data_checksum_version;
 		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPointTLI = ptr->minRecoveryPointTLI;
 		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 	}
 	else if (version_num >= 90500)
@@ -308,6 +327,7 @@ get_controlfile(const char *DataDir)
 		control_file_info->checkPoint = ptr->checkPoint;
 		control_file_info->data_checksum_version = ptr->data_checksum_version;
 		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPointTLI = ptr->minRecoveryPointTLI;
 		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 	}
 	else if (version_num >= 90400)
@@ -318,6 +338,7 @@ get_controlfile(const char *DataDir)
 		control_file_info->checkPoint = ptr->checkPoint;
 		control_file_info->data_checksum_version = ptr->data_checksum_version;
 		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPointTLI = ptr->minRecoveryPointTLI;
 		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 	}
 	else if (version_num >= 90300)
@@ -328,6 +349,7 @@ get_controlfile(const char *DataDir)
 		control_file_info->checkPoint = ptr->checkPoint;
 		control_file_info->data_checksum_version = ptr->data_checksum_version;
 		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
+		control_file_info->minRecoveryPointTLI = ptr->minRecoveryPointTLI;
 		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
 	}
 

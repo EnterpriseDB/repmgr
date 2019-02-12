@@ -25,6 +25,7 @@ typedef struct
 	XLogRecPtr	checkPoint;
 	uint32		data_checksum_version;
 	TimeLineID	timeline;
+	TimeLineID	minRecoveryPointTLI;
 	XLogRecPtr	minRecoveryPoint;
 } ControlFileInfo;
 
@@ -339,6 +340,7 @@ extern int	get_data_checksum_version(const char *data_directory);
 extern uint64 get_system_identifier(const char *data_directory);
 extern XLogRecPtr get_latest_checkpoint_location(const char *data_directory);
 extern TimeLineID get_timeline(const char *data_directory);
+extern TimeLineID get_min_recovery_end_timeline(const char *data_directory);
 extern XLogRecPtr get_min_recovery_location(const char *data_directory);
 
 #endif							/* _CONTROLDATA_H_ */

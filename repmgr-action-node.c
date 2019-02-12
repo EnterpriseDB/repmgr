@@ -2274,7 +2274,7 @@ do_node_rejoin(void)
 	{
 		bool can_follow;
 
-		can_follow = check_node_can_attach(get_timeline(config_file_options.data_directory),
+		can_follow = check_node_can_attach(get_min_recovery_end_timeline(config_file_options.data_directory),
 										   get_min_recovery_location(config_file_options.data_directory),
 										   primary_conn,
 										   &primary_node_record,
