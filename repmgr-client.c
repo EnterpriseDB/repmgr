@@ -3414,7 +3414,7 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 			}
 		}
 
-		if (success == true && runtime_options.dry_run == true)
+		if (success == true)
 		{
 			if (is_rejoin == false || (is_rejoin == true && runtime_options.force_rewind_used == false))
 			{
