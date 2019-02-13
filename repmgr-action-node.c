@@ -2582,9 +2582,13 @@ do_node_rejoin(void)
 
 			if (i % 5 == 0)
 			{
-				log_info(_("waiting for node %i to connect to new primary; %i of max %i attempts"),
+				log_info(_("waiting for node \"%s\" (ID: %i) to connect to new primary; %i of max %i attempts"),
+						 config_file_options.node_name,
 						 config_file_options.node_id,
 						 i + 1, config_file_options.node_rejoin_timeout);
+				log_detail(_("checking for record in node \"%s\"'s \"pg_stat_replication\" table where \"application_name\" is \"%s\""),
+						   primary_node_record.node_name,
+						   config_file_options.node_name);
 			}
 			else
 			{
@@ -2607,11 +2611,16 @@ do_node_rejoin(void)
 		{
 			termPQExpBuffer(&follow_output);
 			log_error(_("NODE REJOIN failed"));
+			log_detail(_("no record for local node \"%s\" found in node \"%s\"'s \"pg_stat_replication\" table"),
+					   config_file_options.node_name,
+					   primary_node_record.node_name);
+			log_hint(_("check the PostgreSQL log on the local node"));
 			exit(ERR_REJOIN_FAIL);
 		}
 	}
 	else
 	{
+		/* -W/--no-wait provided - check once */
 		success = is_downstream_node_attached(primary_conn, config_file_options.node_name);
 	}
 
