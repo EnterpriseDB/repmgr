@@ -1521,11 +1521,13 @@ get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 
-	int			nfields;
-	TimeLineID	file_tli;
+	PQExpBufferData result;
+	char		*resptr;
+
+	TimeLineHistoryEntry *history;
+	TimeLineID	file_tli = UNKNOWN_TIMELINE_ID;
 	uint32		switchpoint_hi;
 	uint32		switchpoint_lo;
-	TimeLineHistoryEntry *history;
 
 	initPQExpBuffer(&query);
 
@@ -1555,19 +1557,51 @@ get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 		return NULL;
 	}
 
-	nfields = sscanf(PQgetvalue(res, 0, 1),
-					 "%u\t%X/%X",
-					 &file_tli, &switchpoint_hi, &switchpoint_lo);
+	initPQExpBuffer(&result);
+	appendPQExpBufferStr(&result, PQgetvalue(res, 0, 1));
+	PQclear(res);
 
-	if (nfields != 3)
+	resptr = result.data;
+
+	while (*resptr)
 	{
-		log_error(_("unable to parse timeline history file content"));
-		log_detail(_("content is: \"%s\""), PQgetvalue(res, 0, 1));
-		PQclear(res);
-		return NULL;
+		char	buf[MAXLEN];
+		char   *bufptr = buf;
+
+		if (*resptr != '\n')
+		{
+			int		len  = 0;
+
+			memset(buf, 0, MAXLEN);
+
+			while (*resptr && *resptr != '\n' && len < MAXLEN)
+			{
+				*bufptr++ = *resptr++;
+				len++;
+			}
+
+			if (buf[0])
+			{
+				int nfields = sscanf(buf,
+									 "%u\t%X/%X",
+									 &file_tli, &switchpoint_hi, &switchpoint_lo);
+				if (nfields == 3 && file_tli == tli - 1)
+					break;
+			}
+		}
+
+		if (*resptr)
+			resptr++;
 	}
 
-	PQclear(res);
+	termPQExpBuffer(&result);
+
+	if (file_tli == UNKNOWN_TIMELINE_ID || file_tli != tli - 1)
+	{
+		log_error(_("timeline %i not found in timeline history file content"), tli);
+		log_detail(_("content is: \"%s\""), result.data);
+		return NULL;
+	}
 
 	history = (TimeLineHistoryEntry *) palloc(sizeof(TimeLineHistoryEntry));
 	history->tli = file_tli;

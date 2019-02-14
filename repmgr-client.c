@@ -3380,6 +3380,12 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 			return false;
 		}
 
+		log_debug("local tli: %i; local_xlogpos: %X/%X; follow_target_history->tli: %i; follow_target_history->end: %X/%X",
+				  local_tli,
+				  format_lsn(local_xlogpos),
+				  follow_target_history->tli,
+				  format_lsn(follow_target_history->end));
+
 		/*
 		 * Local node has proceeded beyond the follow target's fork, so we
 		 * definitely can't attach.
@@ -3432,6 +3438,10 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 	}
 
 	PQfinish(follow_target_repl_conn);
+
+	if (follow_target_history)
+		pfree(follow_target_history);
+
 	return success;
 }
 
