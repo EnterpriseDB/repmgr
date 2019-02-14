@@ -3206,9 +3206,19 @@ do_standby_switchover(void)
 
 	if (local_node_record.upstream_node_id != remote_node_record.node_id)
 	{
-		log_error(_("local node %i is not a downstream of demotion candidate primary %i"),
+		log_error(_("local node \"%s\" (ID: %i) is not a downstream of demotion candidate primary \"%s\" (ID: %i)"),
+				  local_node_record.node_name,
 				  local_node_record.node_id,
+				  remote_node_record.node_name,
 				  remote_node_record.node_id);
+
+		if (local_node_record.upstream_node_id == UNKNOWN_NODE_ID)
+			log_detail(_("local node has no registered upstream node"));
+		else
+			log_detail(_("registered upstream node ID is %i"),
+					   local_node_record.upstream_node_id);
+
+		log_hint(_("execute \"repmgr standby register --force\" to update the local node's metadata"));
 
 		PQfinish(local_conn);
 		PQfinish(remote_conn);
