@@ -251,6 +251,7 @@ do_primary_unregister(void)
 	PGconn	   *primary_conn = NULL;
 	PGconn	   *local_conn = NULL;
 	t_node_info local_node_info = T_NODE_INFO_INITIALIZER;
+	t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
 
 	t_node_info *target_node_info_ptr = NULL;
 	PGconn	   *target_node_conn = NULL;
@@ -271,8 +272,6 @@ do_primary_unregister(void)
 
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
-		t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
-
 		log_error(_("unable to connect to primary server"));
 
 		if (get_primary_node_record(local_conn, &primary_node_info) == true)
@@ -291,10 +290,19 @@ do_primary_unregister(void)
 	/* Local connection no longer required */
 	PQfinish(local_conn);
 
+	if (get_primary_node_record(primary_conn, &primary_node_info) == false)
+	{
+		log_error(_("unable to retrieve record for primary node"));
+		PQfinish(primary_conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/* Target node is local node? */
-	if (target_node_info.node_id == UNKNOWN_NODE_ID
-		|| target_node_info.node_id == config_file_options.node_id)
+	if (target_node_info.node_id == UNKNOWN_NODE_ID)
+	{
+		target_node_info_ptr = &primary_node_info;
+	}
+	else if (target_node_info.node_id == config_file_options.node_id)
 	{
 		target_node_info_ptr = &local_node_info;
 	}
@@ -302,6 +310,24 @@ do_primary_unregister(void)
 	else
 	{
 		target_node_info_ptr = &target_node_info;
+	}
+
+	/*
+	 * Sanity-check the target node is not a witness
+	 */
+
+	if (target_node_info_ptr->type == WITNESS)
+	{
+		log_error(_("node %s (id: %i) is a witness server, unable to unregister"),
+					  target_node_info_ptr->node_name,
+					  target_node_info_ptr->node_id);
+		if (target_node_info_ptr->type == STANDBY)
+		{
+			log_hint(_("the node can be unregistered with \"repmgr witness unregister\""));
+		}
+
+		PQfinish(primary_conn);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/*

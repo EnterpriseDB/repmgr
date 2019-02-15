@@ -12,6 +12,8 @@
           data directory on the demotion candidate; GitHub #523 (Ian)
         repmgr: ensure "standby switchover" verifies replication connection
 		  exists; GitHub #519 (Ian)
+		repmgr: ensure "primary unregister" behaves correctly when executed
+		  on a witness server; GitHub #548 (Ian)
         repmgr: when executing "standby follow" and "node rejoin", check that
           it will actually be possible to stream from the target node (Ian)
         repmgr: "standby switchover": improve handling of connection URIs when
