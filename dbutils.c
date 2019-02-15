@@ -5957,6 +5957,8 @@ print_node_status(NodeStatus node_status)
 			return "DOWN";
 		case NODE_STATUS_UNCLEAN_SHUTDOWN:
 			return "UNCLEAN_SHUTDOWN";
+		case NODE_STATUS_REJECTED:
+			return "REJECTED";
 	}
 
 	return "UNIDENTIFIED_STATUS";
