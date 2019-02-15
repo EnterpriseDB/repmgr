@@ -291,7 +291,8 @@ do_standby_clone(void)
 		 */
 		check_source_server();
 	}
-	else {
+	else
+	{
 		upstream_node_id = runtime_options.upstream_node_id;
 	}
 
