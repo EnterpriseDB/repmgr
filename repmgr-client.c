@@ -2459,7 +2459,7 @@ _local_command(const char *command, PQExpBufferData *outputbuf, bool simple)
 
 	log_verbose(LOG_DEBUG, "result of command was %i (%i)", WEXITSTATUS(retval), retval);
 
-	if (outputbuf->data != NULL)
+	if (outputbuf->data != NULL && outputbuf->data[0] != '\0')
 		log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
 	else
 		log_verbose(LOG_DEBUG, "local_command(): no output returned");
@@ -2738,7 +2738,7 @@ remote_command(const char *host, const char *user, const char *command, PQExpBuf
 
 	if (outputbuf != NULL)
 	{
-		if (strlen(outputbuf->data))
+		if (outputbuf->data != NULL && outputbuf->data[0] != '\0')
 			log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
 		else
 			log_verbose(LOG_DEBUG, "remote_command(): no output returned");
