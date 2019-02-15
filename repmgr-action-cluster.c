@@ -155,7 +155,12 @@ do_cluster_show(void)
 		}
 		else
 		{
-			cell->node_info->node_status = NODE_STATUS_DOWN;
+			/* check if node is reachable, but just not letting us in */
+			if (is_server_available(cell->node_info->conninfo))
+				cell->node_info->node_status = NODE_STATUS_REJECTED;
+			else
+				cell->node_info->node_status = NODE_STATUS_DOWN;
+
 			cell->node_info->recovery_type = RECTYPE_UNKNOWN;
 
 			connection_error_found = true;
@@ -228,6 +233,19 @@ do_cluster_show(void)
 														"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
 														cell->node_info->node_name, cell->node_info->node_id);
 							}
+						}
+					}
+					/* node is up but cannot connect */
+					else if (cell->node_info->node_status == NODE_STATUS_REJECTED)
+					{
+						if (cell->node_info->active == true)
+						{
+							appendPQExpBufferStr(&details, "? running");
+						}
+						else
+						{
+							appendPQExpBufferStr(&details, "! running");
+								error_found = true;
 						}
 					}
 					/* node is unreachable */
@@ -303,6 +321,19 @@ do_cluster_show(void)
 													cell->node_info->node_name, cell->node_info->node_id);
 						}
 					}
+					/* node is up but cannot connect */
+					else if (cell->node_info->node_status == NODE_STATUS_REJECTED)
+					{
+						if (cell->node_info->active == true)
+						{
+							appendPQExpBufferStr(&details, "? running");
+						}
+						else
+						{
+							appendPQExpBufferStr(&details, "! running");
+								error_found = true;
+						}
+					}
 					/* node is unreachable */
 					else
 					{
@@ -316,11 +347,10 @@ do_cluster_show(void)
 						}
 						else
 						{
-							appendPQExpBufferStr(&details, "- failed");
-							error_found = true;
+								appendPQExpBufferStr(&details, "- failed");
+								error_found = true;
 						}
 					}
-
 				}
 
 				break;
@@ -339,6 +369,20 @@ do_cluster_show(void)
 							appendPQExpBufferStr(&details, "! running");
 							error_found = true;
 						}
+					}
+					/* node is up but cannot connect */
+					else if (cell->node_info->node_status == NODE_STATUS_REJECTED)
+					{
+						if (cell->node_info->active == true)
+						{
+							appendPQExpBufferStr(&details, "? rejected");
+						}
+						else
+						{
+							appendPQExpBufferStr(&details, "! failed");
+							error_found = true;
+						}
+
 					}
 					/* node is unreachable */
 					else

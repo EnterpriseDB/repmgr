@@ -22,6 +22,14 @@
       directly and can be run on any node in the cluster; this is also useful when analyzing
       connectivity from a particular node.
     </para>
+
+    <para>
+      Node availability is tested by connecting from the node where
+      <command>repmgr cluster show</command> is executed, and does not necessarily imply the node
+      is down. See <xref linkend="repmgr-cluster-matrix"> and <xref linkend="repmgr-cluster-crosscheck"> to get
+      better overviews of connections between nodes.
+    </para>
+
   </refsect1>
 
   <refsect1>
@@ -55,30 +63,48 @@
     <title>Notes</title>
     <para>
       The column <literal>Role</literal> shows the expected server role according to the
-      &repmgr; metadata. <literal>Status</literal> shows whether the server is running or unreachable.
+      &repmgr; metadata.
+	</para>
+	<para>
+	  <literal>Status</literal> shows whether the server is running or unreachable.
       If the node has an unexpected role not reflected in the &repmgr; metadata, e.g. a node was manually
-      promoted to primary, this will be highlighted with an exclamation mark, e.g.:
+      promoted to primary, this will be highlighted with an exclamation mark.
+	  If a connection to the node cannot be made, this will be highlighted with a question mark.
+	  Note that the node will only be shown as <literal>? unreachable</literal>
+	  if a connection is not possible at network level; if the PostgreSQL instance on the
+	  node is pingable but not accepting connections, it will be shown as <literal>? running</literal>.
+	</para>
+	<para>
+	  In the following example, executed on <literal>node3</literal>, <literal>node1</literal> is not reachable
+	  at network level and assumed to be down; <literal>node2</literal> has been promoted to primary
+	  (but <literal>node3</literal> is not attached to it, and its metadata has not yet been updated);
+	  <literal>node4</literal> is running but rejecting connections (from <literal>node3</literal> at least).
       <programlisting>
-    $ repmgr -f /etc/repmgr.conf cluster show
+	 ID | Name  | Role    | Status               | Upstream | Location | Priority | Connection string
+	----+-------+---------+----------------------+----------+----------+----------+-----------------------------------------
+	 1  | node1 | primary | ? unreachable        |          | default  | 100      | host=db_node1 dbname=repmgr user=repmgr
+	 2  | node2 | standby | ! running as primary | node1    | default  | 100      | host=db_node2 dbname=repmgr user=repmgr
+	 3  | node3 | standby |   running            | node1    | default  | 100      | host=db_node3 dbname=repmgr user=repmgr
+	 4  | node4 | standby | ? running            | node1    | default  | 100      | host=db_node4 dbname=repmgr user=repmgr
 
-     ID | Name  | Role    | Status               | Upstream | Location | Priority | Connection string
-    ----+-------+---------+----------------------+----------+----------+----------+-----------------------------------------
-     1  | node1 | primary | ? unreachable        |          | default  | 100      | host=db_node1 dbname=repmgr user=repmgr
-     2  | node2 | standby | ! running as primary | node1    | default  | 100      | host=db_node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running            | node1    | default  | 100      | host=db_node3 dbname=repmgr user=repmgr
-
-    WARNING: following issues were detected
-      - unable to connect to node "node1" (ID: 1)
-      - node "node1" (ID: 1) is registered as an active primary but is unreachable
-      - node "node2" (ID: 2) is registered as standby but running as primary
+	WARNING: following issues were detected
+	  - unable to connect to node "node1" (ID: 1)
+	  - node "node1" (ID: 1) is registered as an active primary but is unreachable
+	  - node "node2" (ID: 2) is registered as standby but running as primary
+	  - unable to connect to node "node4" (ID: 4)
     HINT: execute with --verbose option to see connection error messages</programlisting>
     </para>
-    <para>
-      Node availability is tested by connecting from the node where
-      <command>repmgr cluster show</command> is executed, and does not necessarily imply the node
-      is down. See <xref linkend="repmgr-cluster-matrix"> and <xref linkend="repmgr-cluster-crosscheck"> to get
-      better overviews of connections between nodes.
-    </para>
+	<para>
+	  To diagnose connection issues, execute <command>repmgr cluster show</command>
+	  with the <option>--verbose</option> option; this will display the error message
+	  for each failed connection attempt.
+	</para>
+	<tip>
+	  <para>
+		Use <xref linkend="repmgr-cluster-matrix"> and <xref linkend="repmgr-cluster-crosscheck">
+		to diagnose connection issues across the whole replication cluster.
+	  </para>
+	</tip>
   </refsect1>
 
   <refsect1>

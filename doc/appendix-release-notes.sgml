@@ -90,6 +90,18 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
+              <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>:
+			  differentiate between unreachable nodes and nodes which are running but rejecting connections.
+            </para>
+            <para>
+			  This makes it possible to see whether a node is unreachable at network level,
+			  or if it is running but rejecting connections for some reason.
+            </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
               Add <option>--dry-run</option> to <command><link linkend="repmgr-standby-promote">repmgr standby promote</link></command> (GitHub #522).
             </para>
           </listitem>

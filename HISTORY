@@ -2,6 +2,8 @@
         repmgr: add "daemon (start|stop)" command; GitHub #528 (Ian)
         repmgr: add --version-number command line option (Ian)
         repmgr: add --compact option to "cluster show"; GitHub #521 (Ian)
+		repmgr: cluster show - differentiate between unreachable nodes
+		  and nodes which are running but rejecting connections (Ian)
         repmgr: add --dry-run option to "standby promote"; GitHub #522 (Ian)
         repmgr: add "node check --data-directory-config"; GitHub #523 (Ian)
         repmgr: prevent potential race condition in "standby switchover"
