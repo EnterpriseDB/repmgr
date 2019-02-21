@@ -1,4 +1,4 @@
-3.3.3   2017-06
+3.4.0   2019-02
         repmgr: fix `standby register --force` when updating existing node record (Ian)
 
 3.3.2   2017-06-01

@@ -1,6 +1,6 @@
 #ifndef _VERSION_H_
 #define _VERSION_H_
 
-#define REPMGR_VERSION "3.3.2"
+#define REPMGR_VERSION "3.4.0"
 
 #endif
