@@ -7,8 +7,12 @@ replication capabilities with utilities to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or switchover
 operations.
 
-The current `repmgr` version (3.3) supports all PostgreSQL versions from
+This `repmgr` version (3.4) supports PostgreSQL versions from
 9.3 to 9.6.
+
+*NOTE*: we strongly recommend using the repmgr 4.x series, which contains
+many new features and usability enhancements and is being actively developed
+and maintained.
 
 Overview
 --------
@@ -210,7 +214,7 @@ See `PACKAGES.md` for details on building .deb and .rpm packages from the
 Release tarballs are also available:
 
     https://github.com/2ndQuadrant/repmgr/releases
-    http://repmgr.org/
+    https://repmgr.org/
 
 `repmgr` is compiled in the same way as a PostgreSQL extension using the PGXS
 infrastructure, e.g.:
