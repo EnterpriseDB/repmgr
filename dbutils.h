@@ -28,6 +28,8 @@
 #include "strutil.h"
 
 
+#define format_lsn(x) (uint32) (x >> 32), (uint32) x
+
 typedef enum {
 	UNKNOWN = 0,
 	MASTER,
@@ -140,4 +142,9 @@ void        create_checkpoint(PGconn *conn);
 int		    get_node_replication_state(PGconn *conn, char *node_name, char *output);
 t_server_type parse_node_type(const char *type);
 int			get_data_checksum_version(const char *data_directory);
+
+/* backported from repmgr 4.x */
+XLogRecPtr	parse_lsn(const char *str);
+XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
+
 #endif

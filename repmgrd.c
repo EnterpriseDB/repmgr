@@ -514,6 +514,28 @@ main(int argc, char **argv)
 				else if (node_info.type == STANDBY)
 				{
 					log_info(_("starting continuous standby node monitoring\n"));
+
+					/*
+					 * Call update_shared_memory() so it's not stuck at 0/0; this
+					 * will otherwise cause an infinite loop on other repmgrds if
+					 * this repmgrd does not enter failover.
+					 *
+					 * NOTE: this is a temporary workaround for a structural
+					 * issue resolved through architectural redesign in repmgr 4.
+					 */
+					{
+						PQExpBufferData current_lsn;
+
+						XLogRecPtr last_wal_receive_location = get_last_wal_receive_location(my_local_conn);
+
+						initPQExpBuffer(&current_lsn);
+						appendPQExpBuffer(&current_lsn, "%X/%X",
+										  format_lsn(last_wal_receive_location));
+
+						update_shared_memory(current_lsn.data);
+
+						termPQExpBuffer(&current_lsn);
+					}
 				}
 
 				do
@@ -846,6 +868,8 @@ standby_monitor(void)
 			? "master"
 			: "upstream";
 	}
+
+
 
 	/*
 	 * Check that the upstream node is still available
@@ -1421,7 +1445,7 @@ do_master_failover(void)
 			 *
 			 * If the master did come back at this point, the voting algorithm should decide
 			 * it's the "best candidate" anyway and no standby will promote itself or
-			 * attempt to follow* another server.
+			 * attempt to follow another server.
 			 *
 			 * If we don't try and connect to the master here (and the code generally
 			 * assumes it's failed anyway) but it does come back any time from here
@@ -1500,28 +1524,20 @@ do_master_failover(void)
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
-		if (server_version_num >= 100000)
-			sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
-		else
-			sqlquery_snprintf(sqlquery, "SELECT pg_catalog.pg_last_xlog_receive_location()");
+		xlog_recptr = get_last_wal_receive_location(node_conn);
 
-		res = PQexec(node_conn, sqlquery);
-		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		if (xlog_recptr == InvalidXLogRecPtr)
 		{
 			log_info(_("unable to retrieve node's last standby location: %s\n"),
 					 PQerrorMessage(node_conn));
 
 			log_debug(_("connection details: %s\n"), nodes[i].conninfo_str);
-			PQclear(res);
 			PQfinish(node_conn);
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
-		xlog_recptr = lsn_to_xlogrecptr(PQgetvalue(res, 0, 0), &lsn_format_ok);
+		log_debug(_("LSN of node %i is: %X/%X\n"), nodes[i].node_id, format_lsn(xlog_recptr));
 
-		log_debug(_("LSN of node %i is: %s\n"), nodes[i].node_id, PQgetvalue(res, 0, 0));
-
-		PQclear(res);
 		PQfinish(node_conn);
 
 		/* If position is 0/0, error */
@@ -1536,7 +1552,6 @@ do_master_failover(void)
 	}
 
 	/* last we get info about this node, and update shared memory */
-
 	if (server_version_num >= 100000)
 		sprintf(sqlquery, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
 	else

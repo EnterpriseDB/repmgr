@@ -2095,3 +2095,48 @@ get_data_checksum_version(const char *data_directory)
 
 	return (int)control_file.data_checksum_version;
 }
+
+
+
+/* ========================== */
+/* backported from repmgr 4.x */
+/* ========================== */
+
+XLogRecPtr
+parse_lsn(const char *str)
+{
+	XLogRecPtr		ptr = InvalidXLogRecPtr;
+	uint32			high,
+					low;
+
+	if (sscanf(str, "%x/%x", &high, &low) == 2)
+		ptr = (((XLogRecPtr) high) << 32) + (XLogRecPtr) low;
+
+	return ptr;
+}
+
+
+XLogRecPtr
+get_last_wal_receive_location(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	XLogRecPtr	ptr = InvalidXLogRecPtr;
+
+	if (PQserverVersion(conn) >= 100000)
+	{
+		res = PQexec(conn, "SELECT pg_catalog.pg_last_wal_receive_lsn()");
+	}
+	else
+	{
+		res = PQexec(conn, "SELECT pg_catalog.pg_last_xlog_receive_location()");
+	}
+
+	if (PQresultStatus(res) == PGRES_TUPLES_OK)
+	{
+		ptr = parse_lsn(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return ptr;
+}

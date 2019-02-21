@@ -4201,27 +4201,13 @@ stop_backup:
 	exit(retval);
 }
 
-static void
-parse_lsn(XLogRecPtr *ptr, const char *str)
-{
-	uint32 high, low;
-
-	if (sscanf(str, "%x/%x", &high, &low) != 2)
-		return;
-
-	*ptr = (((XLogRecPtr)high) << 32) + (XLogRecPtr)low;
-
-	return;
-}
 
 static XLogRecPtr
 parse_label_lsn(const char *label_key, const char *label_value)
 {
-	XLogRecPtr ptr = InvalidXLogRecPtr;
+	XLogRecPtr ptr = parse_lsn(label_value);
 
-	parse_lsn(&ptr, label_value);
-
-	/* parse_lsn() will not modify ptr if it can't parse the label value */
+	/* parse_lsn() will return InvalidXLogRecPtr if it can't parse the label value */
 	if (ptr == InvalidXLogRecPtr)
 	{
 		log_err(_("Couldn't parse backup label entry \"%s: %s\" as lsn"),
