@@ -1,5 +1,7 @@
-3.4.0   2019-02
+3.4.0   2019-02-
+		default log level is now INFO
         repmgr: fix `standby register --force` when updating existing node record (Ian)
+		repmgrd: set LSN shared memory value at standby startup (Ian)
 
 3.3.2   2017-06-01
         Add support for PostgreSQL 10 (Ian)

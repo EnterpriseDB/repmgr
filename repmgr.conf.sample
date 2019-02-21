@@ -66,8 +66,8 @@
 # -------------------------------
 
 # Log level: possible values are DEBUG, INFO, NOTICE, WARNING, ERR, ALERT, CRIT or EMERG
-# (default: NOTICE)
-#loglevel=NOTICE
+# (default: INFO)
+#loglevel=INFO
 
 # Note that logging facility settings will only apply to `repmgrd` by default;
 # `repmgr` will always write to STDERR unless the switch `--log-to-file` is

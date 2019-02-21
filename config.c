@@ -59,7 +59,7 @@ progname(void)
  * added/changed in reload_config()
  *
  * NOTE: this function is called before the logger is set up, so we need
- * to handle the verbose option ourselves; also the default log level is NOTICE,
+ * to handle the verbose option ourselves; also the default log level is INFO,
  * so we can't use DEBUG.
  */
 bool
