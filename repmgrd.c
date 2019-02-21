@@ -1396,7 +1396,7 @@ do_master_failover(void)
 	}
 
 	total_active_nodes = PQntuples(res);
-	log_debug(_("%d active nodes registered\n"), total_active_nodes);
+	log_info(_("%d active nodes registered\n"), total_active_nodes);
 
 	/*
 	 * Build an array with the nodes and indicate which ones are visible and
@@ -1479,8 +1479,8 @@ do_master_failover(void)
 	}
 	PQclear(res);
 
-	log_debug(_("total nodes counted: registered=%d, visible=%d\n"),
-			  total_active_nodes, visible_nodes);
+	log_info(_("total nodes counted: registered=%d, visible=%d\n"),
+			 total_active_nodes, visible_nodes);
 
 	/*
 	 * Am I on the group that should keep alive? If I see less than half of
@@ -1497,7 +1497,7 @@ do_master_failover(void)
 	/* Query all available nodes to determine readiness and LSN */
 	for (i = 0; i < total_active_nodes; i++)
 	{
-		log_debug("checking node %i...\n", nodes[i].node_id);
+		log_info("checking node %i...\n", nodes[i].node_id);
 
 		/* if the node is not visible, skip it */
 		if (!nodes[i].is_visible)
@@ -1521,6 +1521,7 @@ do_master_failover(void)
 		if (PQstatus(node_conn) != CONNECTION_OK)
 		{
 			log_err(_("It seems new problems are arising, manual intervention is needed\n"));
+			log_detail("%s\n", PQerrorMessage(node_conn));
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
@@ -1528,15 +1529,16 @@ do_master_failover(void)
 
 		if (xlog_recptr == InvalidXLogRecPtr)
 		{
-			log_info(_("unable to retrieve node's last standby location: %s\n"),
+			log_info(_("unable to retrieve last standby location for node %i: %s\n"),
+					 nodes[i].node_id,
 					 PQerrorMessage(node_conn));
 
-			log_debug(_("connection details: %s\n"), nodes[i].conninfo_str);
+			log_detail(_("connection details: %s\n"), nodes[i].conninfo_str);
 			PQfinish(node_conn);
 			terminate(ERR_FAILOVER_FAIL);
 		}
 
-		log_debug(_("LSN of node %i is: %X/%X\n"), nodes[i].node_id, format_lsn(xlog_recptr));
+		log_info(_("current LSN of node %i is: %X/%X\n"), nodes[i].node_id, format_lsn(xlog_recptr));
 
 		PQfinish(node_conn);
 
@@ -1570,6 +1572,9 @@ do_master_failover(void)
 	}
 	/* write last location in shared memory */
 	update_shared_memory(PQgetvalue(res, 0, 0));
+
+	log_info("local node's LSN is %s\n", PQgetvalue(res, 0, 0));
+
 	PQclear(res);
 
 	/* Wait for each node to come up and report a valid LSN */
@@ -1606,6 +1611,9 @@ do_master_failover(void)
 		 */
 		if (PQstatus(node_conn) != CONNECTION_OK)
 		{
+			log_err(_("connection to node %i has gone away:\n%s\n"),
+					nodes[i].node_id,
+					PQerrorMessage(node_conn));
 			log_info(_("At this point, it could be some race conditions "
 					   "that are acceptable, assume the node is restarting "
 					   "and starting failover procedure\n"));
@@ -1622,6 +1630,9 @@ do_master_failover(void)
 			res = PQexec(node_conn, sqlquery);
 			if (PQresultStatus(res) != PGRES_TUPLES_OK)
 			{
+				/*
+				 * Note: in repmgr4 we handle this kind of situation much more gracefully.
+				 */
 				log_err(_("PQexec failed: %s.\nReport an invalid value to not "
 						  "be considered as new master and exit.\n"),
 						PQerrorMessage(node_conn));
@@ -1654,8 +1665,8 @@ do_master_failover(void)
 					 */
 					if (strcmp(location_value, PASSIVE_NODE) == 0)
 					{
-						log_debug("node %i is passive mode\n", nodes[i].node_id);
 						log_info(_("node %i will not be considered for promotion\n"), nodes[i].node_id);
+						log_detail("node %i indicates it is a passive mode\n", nodes[i].node_id);
 						nodes[i].xlog_location = InvalidXLogRecPtr;
 						continue_loop = false;
 					}
@@ -1665,7 +1676,8 @@ do_master_failover(void)
 					 */
 					else if (strcmp(location_value, LSN_QUERY_ERROR) == 0)
 					{
-						log_warning(_("node %i is unable to update its shared memory and will not be considered for promotion\n"), nodes[i].node_id);
+						log_warning(_("node %i is unable to update its shared memory and will not be considered for promotion\n"),
+									nodes[i].node_id);
 						nodes[i].xlog_location = InvalidXLogRecPtr;
 						continue_loop = false;
 					}
@@ -1673,12 +1685,8 @@ do_master_failover(void)
 					/* Unable to parse value returned by `repmgr_get_last_standby_location()` */
 					else if (*location_value == '\0')
 					{
-						log_crit(
-							_("unable to obtain LSN from node %i"), nodes[i].node_id
-							);
-						log_hint(
-							_("please check that 'shared_preload_libraries=repmgr_funcs' is set in postgresql.conf\n")
-							);
+						log_crit(_("unable to obtain LSN from node %i"), nodes[i].node_id);
+						log_hint(_("please check that 'shared_preload_libraries=repmgr_funcs' is set in postgresql.conf\n"));
 
 						PQfinish(node_conn);
 						/* XXX shouldn't we just ignore this node? */
@@ -1690,14 +1698,14 @@ do_master_failover(void)
 					 * strategy keep checking
 					 */
 					else {
-						log_warning(_("unable to parse LSN \"%s\"\n"),
+						log_warning(_("unable to parse shared memory LSN \"%s\"\n"),
 									location_value);
 					}
 				}
 				else
 				{
 					log_debug(
-						_("invalid LSN returned from node %i: '%s'\n"),
+						_("invalid shared memory LSN returned from node %i: '%s'\n"),
 						nodes[i].node_id,
 						location_value);
 				}
@@ -1719,7 +1727,7 @@ do_master_failover(void)
 				nodes[i].xlog_location = xlog_recptr;
 			}
 
-			log_debug(_("LSN of node %i is: %s\n"), nodes[i].node_id, location_value);
+			log_info(_("shared memory LSN of node %i is: %s\n"), nodes[i].node_id, location_value);
 
 			ready_nodes++;
 			nodes[i].is_ready = true;
@@ -1775,7 +1783,7 @@ do_master_failover(void)
 		terminate(ERR_FAILOVER_FAIL);
 	}
 
-	log_debug("best candidate node id is %i\n", best_candidate.node_id);
+	log_info("best candidate node id is %i\n", best_candidate.node_id);
 
 	/* if local node is the best candidate, promote it */
 	if (best_candidate.node_id == local_options.node)
@@ -1791,9 +1799,9 @@ do_master_failover(void)
 		sleep(5);
 
 		log_notice(_("this node is the best candidate to be the new master, promoting...\n"));
-
-		log_debug("promote command is: \"%s\"\n",
-				  local_options.promote_command);
+		log_detail(_("LSN is %X/%X\n"), format_lsn(best_candidate.xlog_location));
+		log_info("promote command is: \"%s\"\n",
+				 local_options.promote_command);
 
 		if (log_type == REPMGR_STDERR && *local_options.logfile)
 		{
@@ -1848,6 +1856,8 @@ do_master_failover(void)
 						  _("node %i promoted to master; old master %i marked as failed"),
 						  node_info.node_id,
 						  failed_master.node_id);
+
+		log_notice("%s", event_details.data);
 
 		/* my_local_conn is now the master */
 		create_event_record(my_local_conn,
@@ -1909,7 +1919,7 @@ do_master_failover(void)
 		}
 
 
-		log_debug(_("executing follow command: \"%s\"\n"), local_options.follow_command);
+		log_notice(_("executing follow command: \"%s\"\n"), local_options.follow_command);
 
 		r = system(local_options.follow_command);
 		if (r != 0)
