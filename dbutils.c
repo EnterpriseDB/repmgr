@@ -322,8 +322,6 @@ is_standby(PGconn *conn)
 bool
 is_pgup(PGconn *conn, int timeout)
 {
-	char		sqlquery[QUERY_STR_LEN];
-
 	/* Check the connection status twice in case it changes after reset */
 	bool		twice = false;
 
@@ -346,8 +344,7 @@ is_pgup(PGconn *conn, int timeout)
 			if (wait_connection_availability(conn, timeout) != 1)
 				goto failed;
 
-			sqlquery_snprintf(sqlquery, "SELECT 1");
-			if (PQsendQuery(conn, sqlquery) == 0)
+			if (PQsendQuery(conn, "SELECT 1") == 0)
 			{
 				log_warning(_("PQsendQuery: Query could not be sent to primary. %s\n"),
 							PQerrorMessage(conn));
