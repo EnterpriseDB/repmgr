@@ -146,5 +146,6 @@ int			get_data_checksum_version(const char *data_directory);
 /* backported from repmgr 4.x */
 XLogRecPtr	parse_lsn(const char *str);
 XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
+bool		is_server_available(const char *conninfo);
 
 #endif

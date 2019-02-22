@@ -2137,3 +2137,19 @@ get_last_wal_receive_location(PGconn *conn)
 
 	return ptr;
 }
+
+
+bool
+is_server_available(const char *conninfo)
+{
+	PGPing		status = PQping(conninfo);
+
+	log_verbose(LOG_DEBUG, "is_server_available(): ping status for \"%s\" is %i\n", conninfo, (int)status);
+
+	if (status == PQPING_OK)
+		return true;
+
+	log_warning("is_server_available(): ping status for \"%s\" is %i\n", conninfo, (int)status);
+
+	return false;
+}

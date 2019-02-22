@@ -879,9 +879,7 @@ standby_monitor(void)
 	 * local_options.reconnect_interval seconds
 	 */
 
-	check_connection(&upstream_conn, upstream_node_type, upstream_conninfo);
-
-	if (PQstatus(upstream_conn) != CONNECTION_OK)
+	if (!check_connection(&upstream_conn, upstream_node_type, upstream_conninfo))
 	{
 		int previous_master_node_id = master_options.node;
 
@@ -2137,8 +2135,11 @@ check_connection(PGconn **conn, const char *type, const char *conninfo)
 {
 	int			connection_retries;
 
+	if (conninfo != NULL && is_server_available(conninfo))
+		return true;
+
 	/*
-	 * Check if the node is still available if after
+	 * Check if the node is still available; if after
 	 * local_options.reconnect_attempts * local_options.reconnect_interval
 	 * seconds of retries we cannot reconnect return false
 	 */
