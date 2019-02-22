@@ -523,6 +523,11 @@ main(int argc, char **argv)
 					 * NOTE: this is a temporary workaround for a structural
 					 * issue resolved through architectural redesign in repmgr 4.
 					 */
+					if (local_options.failover == MANUAL_FAILOVER)
+					{
+						update_shared_memory(PASSIVE_NODE);
+					}
+					else
 					{
 						PQExpBufferData current_lsn;
 
@@ -1664,7 +1669,7 @@ do_master_failover(void)
 					if (strcmp(location_value, PASSIVE_NODE) == 0)
 					{
 						log_info(_("node %i will not be considered for promotion\n"), nodes[i].node_id);
-						log_detail("node %i indicates it is a passive mode\n", nodes[i].node_id);
+						log_detail("node %i indicates it is a passive node\n", nodes[i].node_id);
 						nodes[i].xlog_location = InvalidXLogRecPtr;
 						continue_loop = false;
 					}
