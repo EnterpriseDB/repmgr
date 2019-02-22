@@ -1325,6 +1325,11 @@ do_standby_register(void)
 	/* connection OK - check this is actually a standby */
 	else
 	{
+		if (runtime_options.connection_param_provided)
+		{
+			log_warning(_("database connection parameters not required when the standby to be registered is running"));
+			log_detail(_("repmgr uses the \"conninfo\" parameter in \"repmgr.conf\" to connect to the standby"));
+		}
 		check_recovery_type(conn);
 	}
 
