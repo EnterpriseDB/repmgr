@@ -5954,7 +5954,7 @@ print_node_status(NodeStatus node_status)
 		case NODE_STATUS_SHUTTING_DOWN:
 			return "SHUTTING_DOWN";
 		case NODE_STATUS_DOWN:
-			return "DOWN";
+			return "SHUTDOWN";
 		case NODE_STATUS_UNCLEAN_SHUTDOWN:
 			return "UNCLEAN_SHUTDOWN";
 		case NODE_STATUS_REJECTED:

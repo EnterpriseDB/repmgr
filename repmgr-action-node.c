@@ -671,25 +671,14 @@ _do_node_status_is_shutdown_cleanly(void)
 	log_verbose(LOG_DEBUG, "node status determined as: %s",
 				print_node_status(node_status));
 
-	switch (node_status)
+	appendPQExpBuffer(&output,
+					  "%s", print_node_status(node_status));
+
+	if (node_status == NODE_STATUS_DOWN)
 	{
-		case NODE_STATUS_UP:
-			appendPQExpBufferStr(&output, "RUNNING");
-			break;
-		case NODE_STATUS_SHUTTING_DOWN:
-			appendPQExpBufferStr(&output, "SHUTTING_DOWN");
-			break;
-		case NODE_STATUS_DOWN:
-			appendPQExpBuffer(&output,
-							  "SHUTDOWN --last-checkpoint-lsn=%X/%X",
-							  format_lsn(checkPoint));
-			break;
-		case NODE_STATUS_UNCLEAN_SHUTDOWN:
-			appendPQExpBufferStr(&output, "UNCLEAN_SHUTDOWN");
-			break;
-		case NODE_STATUS_UNKNOWN:
-			appendPQExpBufferStr(&output, "UNKNOWN");
-			break;
+		appendPQExpBuffer(&output,
+						  " --last-checkpoint-lsn=%X/%X",
+						  format_lsn(checkPoint));
 	}
 
 	printf("%s\n", output.data);
