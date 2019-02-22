@@ -3601,15 +3601,15 @@ do_standby_clone(void)
 					/* Only from 9.4 */
 					"pg_dynshmem", "pg_logical", "pg_logical/snapshots", "pg_logical/mappings", "pg_replslot",
 					/* Already in 9.3 */
-					"pg_notify", "pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp", "pg_tblspc",
-					"pg_twophase", "pg_xlog", 0
+					"pg_notify", "pg_serial", "pg_snapshots", "pg_stat", "pg_stat_tmp",
+					"pg_subtrans", "pg_tblspc", "pg_twophase", "pg_xlog", 0
 				};
 				const int vers[] = {
 					100000,
 					90500,
 					90400, 90400, 90400, 90400, 90400,
-					0, 0, 0, 0, 0, 0,
-					0, -100000, 0
+					0, 0, 0, 0, 0,
+					0, 0, 0, -100000
 				};
 				for (i = 0; dirs[i]; i++)
 				{
