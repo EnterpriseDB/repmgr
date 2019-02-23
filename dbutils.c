@@ -1503,6 +1503,8 @@ identify_system(PGconn *repl_conn, t_system_identification *identification)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
 	{
+		log_db_error(repl_conn, NULL, _("unable to execute IDENTIFY_SYSTEM"));
+
 		PQclear(res);
 		return false;
 	}
@@ -1621,6 +1623,7 @@ repmgrd_set_local_node_id(PGconn *conn, int local_node_id)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	initPQExpBuffer(&query);
 
@@ -1629,16 +1632,18 @@ repmgrd_set_local_node_id(PGconn *conn, int local_node_id)
 					  local_node_id);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		PQclear(res);
-		return false;
+		log_db_error(conn, query.data, _("repmgrd_set_local_node_id(): unable to execute query"));
+
+		success = false;
 	}
 
+	termPQExpBuffer(&query);
 	PQclear(res);
-	return true;
+
+	return success;
 }
 
 
@@ -2082,6 +2087,8 @@ _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info, bool init
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
+		log_db_error(conn, sqlquery, _("_get_node_record(): unable to execute query"));
+
 		PQclear(res);
 		return RECORD_ERROR;
 	}
@@ -2991,12 +2998,14 @@ update_node_record_conn_priority(PGconn *conn, t_configuration_options *options)
 					  options->node_id);
 
 	res = PQexec(conn, query.data);
-	termPQExpBuffer(&query);
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
+		log_db_error(conn, query.data, _("update_node_record_conn_priority(): unable to execute query"));
 		success = false;
 	}
+
+	termPQExpBuffer(&query);
 
 	PQclear(res);
 
@@ -4647,6 +4656,11 @@ get_primary_current_lsn(PGconn *conn)
 	{
 		ptr = parse_lsn(PQgetvalue(res, 0, 0));
 	}
+	else
+	{
+		log_db_error(conn, NULL, _("unable to execute get_primary_current_lsn()"));
+	}
+
 
 	PQclear(res);
 
@@ -4672,6 +4686,10 @@ get_last_wal_receive_location(PGconn *conn)
 	if (PQresultStatus(res) == PGRES_TUPLES_OK)
 	{
 		ptr = parse_lsn(PQgetvalue(res, 0, 0));
+	}
+	else
+	{
+		log_db_error(conn, NULL, _("unable to execute get_last_wal_receive_location()"));
 	}
 
 	PQclear(res);
@@ -5072,7 +5090,6 @@ set_primary_last_seen(PGconn *conn)
 
 	termPQExpBuffer(&query);
 	PQclear(res);
-
 }
 
 
