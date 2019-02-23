@@ -308,6 +308,7 @@ typedef struct
 	int			replication_lag_time;
 	bool		receiving_streamed_wal;
 	bool		wal_replay_paused;
+	int			primary_last_seen;
 } ReplInfo;
 
 typedef struct
