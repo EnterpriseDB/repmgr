@@ -81,6 +81,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
+              <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>
+              displays the interval (in seconds) since the <application>repmgrd</application> instance
+              last verified its upstream node was available.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               Add <option>--compact</option> option to <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command> (GitHub #521).
             </para>
             <para>

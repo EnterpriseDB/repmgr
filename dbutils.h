@@ -354,6 +354,8 @@ typedef struct RepmgrdInfo {
 	char repmgrd_running[MAXLEN];
 	bool paused;
 	bool wal_paused_pending_wal;
+	int  upstream_last_seen;
+	char upstream_last_seen_text[MAXLEN];
 } RepmgrdInfo;
 
 

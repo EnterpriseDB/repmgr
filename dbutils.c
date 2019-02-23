@@ -5086,7 +5086,10 @@ get_primary_last_seen(PGconn *conn)
 	initPQExpBuffer(&query);
 
 	appendPQExpBufferStr(&query,
-						 "SELECT repmgr.get_primary_last_seen()");
+						 "SELECT CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+						 "   THEN -1 "
+						 "   ELSE repmgr.get_primary_last_seen() "
+						 " END AS primary_last_seen ");
 
 	res = PQexec(conn, query.data);
 

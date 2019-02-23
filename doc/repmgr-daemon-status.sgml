@@ -49,33 +49,34 @@
     <para>
       <application>repmgrd</application> running normally on all nodes:
     <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
- ID | Name  | Role    | Priority | Status  | repmgrd | PID  | Paused?
-----+-------+---------+----------+---------+---------+------+---------
- 1  | node1 | primary | 100      | running | running | 5722 | no
- 2  | node2 | standby | 100      | running | running | 5731 | no
- 3  | node3 | standby | 100      | running | running | 5779 | no</programlisting>
+ ID | Name  | Role    | Priority | Status  | repmgrd | PID   | Paused? | Upstream last seen
+----+-------+---------+----------+---------+---------+-------+---------+--------------------
+ 1  | node1 | primary | 100      | running | running | 71987 | no      | n/a
+ 2  | node2 | standby | 100      | running | running | 71996 | no      | 1 second(s) ago
+ 3  | node3 | standby | 100      | running | running | 72042 | no      | 1 second(s) ago
+</programlisting>
     </para>
 
     <para>
       <application>repmgrd</application> paused on all nodes (using <xref linkend="repmgr-daemon-pause">):
     <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
- ID | Name  | Role    | Priority | Status  | repmgrd | PID  | Paused?
-----+-------+---------+----------+---------+---------+------+---------
- 1  | node1 | primary | 100      | running | running | 5722 | yes
- 2  | node2 | standby | 100      | running | running | 5731 | yes
- 3  | node3 | standby | 100      | running | running | 5779 | yes</programlisting>
+ ID | Name  | Role    | Priority | Status  | repmgrd | PID   | Paused? | Upstream last seen
+----+-------+---------+----------+---------+---------+-------+---------+--------------------
+ 1  | node1 | primary | 100      | running | running | 71987 | yes     | n/a
+ 2  | node2 | standby | 100      | running | running | 71996 | yes     | 0 second(s) ago
+ 3  | node3 | standby | 100      | running | running | 72042 | yes     | 0 second(s) ago
+</programlisting>
     </para>
 
     <para>
       <application>repmgrd</application> not running on one node:
     <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
- ID | Name  | Role    | Priority | Status  | repmgrd     | PID  | Paused?
-----+-------+---------+----------+---------+-------------+------+---------
- 1  | node1 | primary | 100      | running | running     | 5722 | yes
- 2  | node2 | standby | 100      | running | not running | n/a  | n/a
- 3  | node3 | standby | 100      | running | running     | 5779 | yes</programlisting>
+ ID | Name  | Role    | Priority | Status  | repmgrd     | PID   | Paused? | Upstream last seen
+----+-------+---------+----------+---------+-------------+-------+---------+--------------------
+ 1  | node1 | primary | 100      | running | running     | 71987 | yes     | n/a
+ 2  | node2 | standby | 100      | running | not running | n/a   | n/a     | n/a
+ 3  | node3 | standby | 100      | running | running     | 72042 | yes     | 0 second(s) ago</programlisting>
     </para>
-
   </refsect1>
 
   <refsect1>
@@ -92,9 +93,9 @@
 			parsing by scripts, e.g.:
 			<programlisting>
     $ repmgr -f /etc/repmgr.conf daemon status --csv
-    1,node1,primary,1,1,5722,1,100
-    2,node2,standby,1,0,-1,1,100
-    3,node3,standby,1,1,5779,1,100</programlisting>
+    1,node1,primary,1,1,5722,1,100,-1
+    2,node2,standby,1,0,-1,1,100,1
+    3,node3,standby,1,1,5779,1,100,1</programlisting>
 		  </para>
 		  <para>
 			The columns have following meanings:
@@ -141,11 +142,17 @@
 				</simpara>
 			  </listitem>
 
-			  <listitem>
-				<simpara>
-                  <application>repmgrd</application> priority
-				</simpara>
-			  </listitem>
+              <listitem>
+                <simpara>
+                  <application>repmgrd</application> node priority
+                </simpara>
+              </listitem>
+
+              <listitem>
+                <simpara>
+                  interval in seconds since the node's upstream was last seen
+                </simpara>
+              </listitem>
 
 			</itemizedlist>
 		  </para>

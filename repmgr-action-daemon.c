@@ -47,10 +47,11 @@ typedef enum
 	STATUS_PG,
 	STATUS_RUNNING,
 	STATUS_PID,
-	STATUS_PAUSED
+	STATUS_PAUSED,
+	STATUS_UPSTREAM_LAST_SEEN
 } StatusHeader;
 
-#define STATUS_HEADER_COUNT 8
+#define STATUS_HEADER_COUNT 9
 
 struct ColHeader headers_status[STATUS_HEADER_COUNT];
 
@@ -101,6 +102,12 @@ do_daemon_status(void)
 	strncpy(headers_status[STATUS_PID].title, _("PID"), MAXLEN);
 	strncpy(headers_status[STATUS_PAUSED].title, _("Paused?"), MAXLEN);
 
+	if (runtime_options.compact == true)
+		strncpy(headers_status[STATUS_UPSTREAM_LAST_SEEN].title, _("Upstr. last"), MAXLEN);
+	else
+		strncpy(headers_status[STATUS_UPSTREAM_LAST_SEEN].title, _("Upstream last seen"), MAXLEN);
+
+
 	for (i = 0; i < STATUS_HEADER_COUNT; i++)
 	{
 		headers_status[i].max_length = strlen(headers_status[i].title);
@@ -122,6 +129,7 @@ do_daemon_status(void)
 		repmgrd_info[i]->running = false;
 		repmgrd_info[i]->pg_running = true;
 		repmgrd_info[i]->wal_paused_pending_wal = false;
+		repmgrd_info[i]->upstream_last_seen = -1;
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
@@ -193,6 +201,24 @@ do_daemon_status(void)
 				}
 			}
 
+			repmgrd_info[i]->upstream_last_seen = get_primary_last_seen(cell->node_info->conn);
+
+			if (repmgrd_info[i]->upstream_last_seen < 0)
+			{
+				maxlen_snprintf(repmgrd_info[i]->upstream_last_seen_text, "%s", _("n/a"));
+			}
+			else
+			{
+				if (runtime_options.compact == true)
+				{
+					maxlen_snprintf(repmgrd_info[i]->upstream_last_seen_text, _("%i sec(s) ago"), repmgrd_info[i]->upstream_last_seen);
+				}
+				else
+				{
+					maxlen_snprintf(repmgrd_info[i]->upstream_last_seen_text, _("%i second(s) ago"), repmgrd_info[i]->upstream_last_seen);
+				}
+			}
+
 			PQfinish(cell->node_info->conn);
 		}
 
@@ -208,6 +234,8 @@ do_daemon_status(void)
 		headers_status[STATUS_PID].cur_length = strlen(repmgrd_info[i]->pid_text);
 		headers_status[STATUS_RUNNING].cur_length = strlen(repmgrd_info[i]->repmgrd_running);
 		headers_status[STATUS_PG].cur_length = strlen(repmgrd_info[i]->pg_running_text);
+
+		headers_status[STATUS_UPSTREAM_LAST_SEEN].cur_length = strlen(repmgrd_info[i]->upstream_last_seen_text);
 
 		for (j = 0; j < STATUS_HEADER_COUNT; j++)
 		{
@@ -232,7 +260,7 @@ do_daemon_status(void)
 	{
 		if (runtime_options.output_mode == OM_CSV)
 		{
-			printf("%i,%s,%s,%i,%i,%i,%i,%i\n",
+			printf("%i,%s,%s,%i,%i,%i,%i,%i,%i\n",
 				   cell->node_info->node_id,
 				   cell->node_info->node_name,
 				   get_node_type_string(cell->node_info->type),
@@ -240,7 +268,10 @@ do_daemon_status(void)
 				   repmgrd_info[i]->running ? 1 : 0,
 				   repmgrd_info[i]->pid,
 				   repmgrd_info[i]->paused ? 1 : 0,
-				   cell->node_info->priority);
+				   cell->node_info->priority,
+				   repmgrd_info[i]->pid == UNKNOWN_PID
+				     ? -1
+				     : repmgrd_info[i]->upstream_last_seen);
 		}
 		else
 		{
@@ -254,9 +285,17 @@ do_daemon_status(void)
 			printf("| %-*s ", headers_status[STATUS_PID].max_length, repmgrd_info[i]->pid_text);
 
 			if (repmgrd_info[i]->pid == UNKNOWN_PID)
-				printf("| %-*s ", headers_status[STATUS_PAUSED].max_length, "n/a");
+			{
+				printf("| %-*s ", headers_status[STATUS_PAUSED].max_length, _("n/a"));
+				printf("| %-*s ", headers_status[STATUS_UPSTREAM_LAST_SEEN].max_length, _("n/a"));
+
+			}
 			else
-				printf("| %-*s ", headers_status[STATUS_PAUSED].max_length, repmgrd_info[i]->paused ? "yes" : "no");
+			{
+				printf("| %-*s ", headers_status[STATUS_PAUSED].max_length, repmgrd_info[i]->paused ? _("yes") : _("no"));
+
+				printf("| %-*s ", headers_status[STATUS_UPSTREAM_LAST_SEEN].max_length, repmgrd_info[i]->upstream_last_seen_text);
+			}
 
 			printf("\n");
 		}
