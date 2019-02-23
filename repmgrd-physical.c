@@ -3103,6 +3103,9 @@ do_election(void)
 	 */
 	bool		primary_location_seen = false;
 
+
+	int			nodes_with_primary_still_visible = 0;
+
 	electoral_term = get_current_term(local_conn);
 
 	if (electoral_term == -1)
@@ -3306,7 +3309,7 @@ do_election(void)
 		{
 			/*
 			 * Theoretically the repmgrd on the node should have resumed WAL play
-			 * at this point
+			 * at this point.
 			 */
 			if (sibling_replication_info.last_wal_receive_lsn > sibling_replication_info.last_wal_replay_lsn)
 			{
@@ -3316,6 +3319,25 @@ do_election(void)
 			}
 		}
 
+		/*
+		 * Check if node has seen primary "recently" - if so, we may have "partial primary visibility".
+		 * For now we'll assume the primary is visible if it's been seen less than
+		 * monitor_interval_secs * 2 seconds ago. We may need to adjust this, and/or make the value
+		 * configurable.
+		 */
+
+
+		if (sibling_replication_info.primary_last_seen < (config_file_options.monitor_interval_secs * 2))
+		{
+			nodes_with_primary_still_visible++;
+			log_notice(_("node %i last saw primary node %i second(s) ago, considering primary still visible"),
+					   cell->node_info->node_id, sibling_replication_info.primary_last_seen);
+		}
+		else
+		{
+			log_info(_("node %i last saw primary node %i second(s) ago"),
+					 cell->node_info->node_id, sibling_replication_info.primary_last_seen);
+		}
 		/* get node's last receive LSN - if "higher" than current winner, current node is candidate */
 		cell->node_info->last_wal_receive_lsn = sibling_replication_info.last_wal_receive_lsn;
 
@@ -3397,9 +3419,23 @@ do_election(void)
 		return ELECTION_CANCELLED;
 	}
 
-	log_debug("visible nodes: %i; total nodes: %i",
+	if (nodes_with_primary_still_visible > 0)
+	{
+		log_notice(_("%i nodes can seen the primary"), nodes_with_primary_still_visible);
+		// XXX list nodes as detail
+
+		monitoring_state = MS_DEGRADED;
+		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+
+		reset_node_voting_status();
+
+		return ELECTION_CANCELLED;
+	}
+
+	log_info(_("visible nodes: %i; total nodes: %i; no nodes have seen the primary within the last %i seconds"),
 			  visible_nodes,
-			  total_nodes);
+			 total_nodes,
+			 (config_file_options.monitor_interval_secs * 2));
 
 	if (visible_nodes <= (total_nodes / 2.0))
 	{

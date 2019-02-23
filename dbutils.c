@@ -4818,6 +4818,7 @@ init_replication_info(ReplInfo *replication_info)
 	replication_info->replication_lag_time = 0;
 	replication_info->receiving_streamed_wal = true;
 	replication_info->wal_replay_paused = false;
+	replication_info->primary_last_seen = -1;
 }
 
 
@@ -4844,7 +4845,8 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 						 "          END "
 						 "        END AS replication_lag_time, "
 						 "        last_wal_receive_lsn >= last_wal_replay_lsn AS receiving_streamed_wal, "
-						 "        wal_replay_paused "
+						 "        wal_replay_paused, "
+						 "        primary_last_seen "
 						 "   FROM ( "
 						 " SELECT CURRENT_TIMESTAMP AS ts, "
 						 "        pg_catalog.pg_last_xact_replay_timestamp() AS last_xact_replay_timestamp, ");
@@ -4858,7 +4860,7 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 							 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
 							 "          THEN FALSE "
 							 "          ELSE pg_catalog.pg_is_wal_replay_paused() "
-							 "        END AS wal_replay_paused ");
+							 "        END AS wal_replay_paused, ");
 	}
 	else
 	{
@@ -4880,10 +4882,14 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 							 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
 							 "          THEN FALSE "
 							 "          ELSE pg_catalog.pg_is_xlog_replay_paused() "
-							 "        END AS wal_replay_paused ");
+							 "        END AS wal_replay_paused, ");
 	}
 
 	appendPQExpBufferStr(&query,
+						 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+						 "          THEN -1 "
+						 "          ELSE repmgr.get_primary_last_seen() "
+						 "        END AS primary_last_seen "
 						 "          ) q ");
 
 	log_verbose(LOG_DEBUG, "get_replication_info():\n%s", query.data);
@@ -4905,6 +4911,7 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 		replication_info->replication_lag_time = atoi(PQgetvalue(res, 0, 4));
 		replication_info->receiving_streamed_wal = atobool(PQgetvalue(res, 0, 5));
 		replication_info->wal_replay_paused = atobool(PQgetvalue(res, 0, 6));
+		replication_info->primary_last_seen = atoi(PQgetvalue(res, 0, 7));
 	}
 
 	termPQExpBuffer(&query);
