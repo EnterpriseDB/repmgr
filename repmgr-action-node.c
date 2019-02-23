@@ -368,7 +368,7 @@ do_node_status(void)
 		initPQExpBuffer(&slotinfo);
 
 		appendPQExpBuffer(&slotinfo,
-						  "%i (of maximal %i; %i missing)",
+						  "%i physical (of maximal %i; %i missing)",
 						  node_info.active_replication_slots + node_info.inactive_replication_slots,
 						  node_info.max_replication_slots,
 						  missing_slots.node_count);
@@ -385,13 +385,13 @@ do_node_status(void)
 							  node_info.inactive_replication_slots);
 
 			item_list_append_format(&warnings,
-									_("- node has %i inactive replication slots"),
+									_("- node has %i inactive physical replication slots"),
 									node_info.inactive_replication_slots);
 
 			for (cell = inactive_replication_slots.head; cell; cell = cell->next)
 			{
 				item_list_append_format(&warnings,
-										"  - %s (%s)", cell->key, cell->value);
+										"  - %s", cell->key);
 			}
 
 			key_value_list_free(&inactive_replication_slots);
@@ -1639,12 +1639,12 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 	else if (node_info->total_replication_slots == 0)
 	{
 		appendPQExpBufferStr(&details,
-							 _("node has no replication slots"));
+							 _("node has no physical replication slots"));
 	}
 	else if (node_info->inactive_replication_slots == 0)
 	{
 		appendPQExpBuffer(&details,
-						  _("%i of %i replication slots are active"),
+						  _("%i of %i physical replication slots are active"),
 						  node_info->total_replication_slots,
 						  node_info->total_replication_slots);
 	}
@@ -1653,7 +1653,7 @@ do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, Check
 		status = CHECK_STATUS_CRITICAL;
 
 		appendPQExpBuffer(&details,
-						  _("%i of %i replication slots are inactive"),
+						  _("%i of %i physical replication slots are inactive"),
 						  node_info->inactive_replication_slots,
 						  node_info->total_replication_slots);
 	}
@@ -1721,7 +1721,7 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 		if (missing_slots.node_count == 0)
 		{
 			appendPQExpBufferStr(&details,
-								 _("node has no missing replication slots"));
+								 _("node has no missing physical replication slots"));
 		}
 		else
 		{
@@ -1731,7 +1731,7 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 			status = CHECK_STATUS_CRITICAL;
 
 			appendPQExpBuffer(&details,
-							  _("%i replication slots are missing"),
+							  _("%i physical replication slots are missing"),
 							  missing_slots.node_count);
 
 			if (missing_slots.node_count)
@@ -1792,7 +1792,7 @@ do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_inf
 			if (list_output != NULL)
 			{
 				check_status_list_set(list_output,
-									  "Missing replication slots",
+									  "Missing physical replication slots",
 									  status,
 									  details.data);
 			}

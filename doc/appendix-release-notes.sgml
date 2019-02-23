@@ -17,7 +17,7 @@
 
   <sect1 id="release-4.3">
     <title>Release 4.3</title>
-    <para><emphasis>Feb ???, 2019</emphasis></para>
+    <para><emphasis>Mar ???, 2019</emphasis></para>
     <para>
       &repmgr; 4.3 is a major release.
     </para>
@@ -212,6 +212,15 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
               ensure <command><link linkend="repmgr-primary-unregister">repmgr primary unregister</link></command>
 			  behaves correctly when executed on a witness server. GitHub #548.
             </para>
+		  </listitem>
+
+          <listitem>
+            <para>
+              <command><link linkend="repmgr-node-check">repmgr node check</link></command>
+			  will only consider physical replication slots, as the purpose
+			  of slot checks is to warn about potential issues with
+			  streaming replication standbys which are no longer attached.
+			</para>
 		  </listitem>
 
         </itemizedlist>

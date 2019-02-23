@@ -3982,7 +3982,8 @@ get_free_replication_slot_count(PGconn *conn)
 	appendPQExpBufferStr(&query,
 						 " SELECT pg_catalog.current_setting('max_replication_slots')::INT - "
 						 "        pg_catalog.count(*) AS free_slots"
-						 "   FROM pg_catalog.pg_replication_slots");
+						 "   FROM pg_catalog.pg_replication_slots s"
+						 "  WHERE s.slot_type = 'physical'");
 
 	res = PQexec(conn, query.data);
 
@@ -4022,6 +4023,7 @@ get_inactive_replication_slots(PGconn *conn, KeyValueList *list)
 						 "   SELECT slot_name, slot_type "
 						 "     FROM pg_catalog.pg_replication_slots "
 						 "    WHERE active IS FALSE "
+						 "      AND slot_type = 'physical' "
 						 " ORDER BY slot_name ");
 
 	res = PQexec(conn, query.data);
@@ -4952,9 +4954,9 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 	{
 		appendPQExpBufferStr(&query,
 							 "        current_setting('max_replication_slots')::INT AS max_replication_slots, "
-							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots) AS total_replication_slots, "
-							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE)  AS active_replication_slots, "
-							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE) AS inactive_replication_slots, ");
+							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE slot_type='physical') AS total_replication_slots, "
+							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS TRUE AND slot_type='physical')  AS active_replication_slots, "
+							 "        (SELECT pg_catalog.count(*) FROM pg_catalog.pg_replication_slots WHERE active IS FALSE AND slot_type='physical') AS inactive_replication_slots, ");
 	}
 
 

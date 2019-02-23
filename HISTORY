@@ -21,6 +21,7 @@
         repmgr: fix long node ID display in "cluster show" (Ian)
         repmgr: check for primary server before executing "witness register";
            GitHub #538 (Ian)
+        repmgr: "node check" will only consider physical replication slots (Ian)
         repmgrd: check binary and extension major versions match; GitHub #515 (Ian)
         repmgrd: on a cascaded standby, don't fail over if "failover=manual";
           GitHub #531 (Ian)

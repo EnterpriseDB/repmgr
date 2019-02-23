@@ -18,6 +18,14 @@
       Performs some health checks on a node from a replication perspective.
       This command must be run on the local node.
     </para>
+	<note>
+	  <para>
+		Currently &repmgr; performs health checks on physical replication
+		slots only, with the aim of warning about streaming replication standbys which
+		have become detached and the associated risk of uncontrolled WAL file
+		growth.
+	  </para>
+	</note>
   </refsect1>
 
   <refsect1>
@@ -30,8 +38,8 @@
             Replication lag: OK (N/A - node is primary)
             WAL archiving: OK (0 pending files)
             Downstream servers: OK (2 of 2 downstream nodes attached)
-            Replication slots: OK (node has no replication slots)
-            Missing replication slots: OK (node has no missing replication slots)</programlisting>
+            Replication slots: OK (node has no physical replication slots)
+            Missing replication slots: OK (node has no missing physical replication slots)</programlisting>
     </para>
   </refsect1>
   <refsect1>
@@ -44,7 +52,7 @@
         OK (node is primary)</programlisting>
     </para>
     <para>
-   Parameters for individual checks are as follows:
+	  Parameters for individual checks are as follows:
     <itemizedlist spacing="compact" mark="bullet">
 
      <listitem>
@@ -76,13 +84,13 @@
 
      <listitem>
       <simpara>
-        <literal>--slots</literal>: checks there are no inactive replication slots
+        <literal>--slots</literal>: checks there are no inactive physical replication slots
       </simpara>
      </listitem>
 
      <listitem>
       <simpara>
-        <literal>--missing-slots</literal>: checks there are no missing replication slots
+        <literal>--missing-slots</literal>: checks there are no missing physical replication slots
       </simpara>
      </listitem>
 
