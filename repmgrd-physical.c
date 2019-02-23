@@ -3092,6 +3092,9 @@ do_election(void)
 
 	ReplInfo	local_replication_info;
 
+	/* To collate details of nodes with primary visible for logging purposes */
+	PQExpBufferData nodes_with_primary_visible;
+
 	/*
 	 * Check if at least one server in the primary's location is visible; if
 	 * not we'll assume a network split between this node and the primary
@@ -3224,6 +3227,8 @@ do_election(void)
 	/* pointer to "winning" node, initially self */
 	candidate_node = &local_node_info;
 
+	initPQExpBuffer(&nodes_with_primary_visible);
+
 	for (cell = sibling_nodes.head; cell; cell = cell->next)
 	{
 		ReplInfo	sibling_replication_info;
@@ -3319,6 +3324,11 @@ do_election(void)
 			nodes_with_primary_still_visible++;
 			log_notice(_("node %i last saw primary node %i second(s) ago, considering primary still visible"),
 					   cell->node_info->node_id, sibling_replication_info.primary_last_seen);
+			appendPQExpBuffer(&nodes_with_primary_visible,
+							  " - node \"%s\" (ID: %i): %i second(s) ago\n",
+							  cell->node_info->node_name,
+							  cell->node_info->node_id,
+							  sibling_replication_info.primary_last_seen);
 		}
 		else
 		{
@@ -3394,16 +3404,23 @@ do_election(void)
 
 	if (nodes_with_primary_still_visible > 0)
 	{
-		log_notice(_("%i nodes can seen the primary"), nodes_with_primary_still_visible);
-		// XXX list nodes as detail
+		log_notice(_("%i nodes can see the primary"),
+				   nodes_with_primary_still_visible);
+
+		log_detail(_("following nodes can see the primary:\n%s"),
+				   nodes_with_primary_visible.data);
 
 		monitoring_state = MS_DEGRADED;
 		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
 		reset_node_voting_status();
 
+		termPQExpBuffer(&nodes_with_primary_visible);
+
 		return ELECTION_CANCELLED;
 	}
+
+	termPQExpBuffer(&nodes_with_primary_visible);
 
 	log_info(_("visible nodes: %i; total nodes: %i; no nodes have seen the primary within the last %i seconds"),
 			  visible_nodes,
