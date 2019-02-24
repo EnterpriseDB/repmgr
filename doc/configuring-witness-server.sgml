@@ -20,7 +20,7 @@
    if the primary becomes unavailable it's possible for the standby to decide whether
    it can promote itself without risking a "split brain" scenario: if it can't see either the
    witness or the primary server, it's likely there's a network-level interruption
-   and it should not promote itself. If it can seen the witness but not the primary,
+   and it should not promote itself. If it can see the witness but not the primary,
    this proves there is no network interruption and the primary itself is unavailable,
    and it can therefore promote itself (and ideally take action to fence the
    former primary).
