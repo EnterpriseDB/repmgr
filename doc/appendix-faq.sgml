@@ -100,8 +100,7 @@
      and recloning standbys from this.
    </para>
    <para>
-     To minimize downtime during major upgrades, for more recent PostgreSQL
-     versions (PostgreSQL 9.4 and later),
+     To minimize downtime during major upgrades from PostgreSQL 9.4 and later,
      <ulink url="https://www.2ndquadrant.com/en/resources/pglogical/">pglogical</ulink>
      can be used to set up a parallel cluster using the newer PostgreSQL version,
      which can be kept in sync with the existing production cluster until the
