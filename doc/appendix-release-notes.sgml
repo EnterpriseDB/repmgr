@@ -187,6 +187,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
          <listitem>
             <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>,
+              recheck primary/upstream connection(s) after the data copy operation is complete, as these may
+              have gone away.
+            </para>
+          </listitem>
+
+         <listitem>
+            <para>
               &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
               avoid a potential race condition when comparing received WAL on the standby to the primary's shutdown location,
 			  as the standby's walreceiver may not have yet flushed all received WAL to disk. GitHub #518.

@@ -4272,6 +4272,25 @@ connection_ping(PGconn *conn)
 }
 
 
+ExecStatusType
+connection_ping_reconnect(PGconn *conn)
+{
+	ExecStatusType ping_result = connection_ping(conn);
+
+	if (PQstatus(conn) != CONNECTION_OK)
+	{
+		log_warning(_("connection error, attempting to reset"));
+		log_detail("%s", PQerrorMessage(conn));
+		PQreset(conn);
+		ping_result = connection_ping(conn);
+	}
+
+	log_verbose(LOG_DEBUG, "connection_ping_reconnect(): result is %s", PQresStatus(ping_result));
+
+	return ping_result;
+}
+
+
 
 /* ==================== */
 /* monitoring functions */
