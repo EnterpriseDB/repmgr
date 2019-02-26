@@ -605,7 +605,6 @@ do_standby_clone(void)
 			log_error(_("unknown clone mode"));
 	}
 
-
 	/* If the backup failed then exit */
 	if (r != SUCCESS)
 	{
@@ -5794,6 +5793,12 @@ run_basebackup(t_node_info *node_record)
 	if (r != 0)
 		return ERR_BAD_BASEBACKUP;
 
+	/* check connections are still available */
+	(void)connection_ping_reconnect(primary_conn);
+
+	if (source_conn != primary_conn)
+		(void)connection_ping_reconnect(source_conn);
+
 	/*
 	 * If replication slots in use, check the created slot is on the correct
 	 * node; the slot will initially get created on the source node, and will
@@ -6395,6 +6400,15 @@ stop_backup:
 				t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
 				RecordStatus record_status = RECORD_NOT_FOUND;
 				PGconn	   *upstream_conn = NULL;
+
+
+				/* check connections are still available */
+				(void)connection_ping_reconnect(primary_conn);
+
+				if (source_conn != primary_conn)
+					(void)connection_ping_reconnect(source_conn);
+
+				(void)connection_ping_reconnect(source_conn);
 
 				record_status = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
 

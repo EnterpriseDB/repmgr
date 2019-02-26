@@ -18,6 +18,7 @@
           it will actually be possible to stream from the target node (Ian)
         repmgr: "standby switchover": improve handling of connection URIs when
           executing "node rejoin" on the demotion candidate; GitHub #525 (Ian)
+        repmgr: check for stale connections during "standby clone" (Ian)
         repmgr: fix long node ID display in "cluster show" (Ian)
         repmgr: check for primary server before executing "witness register";
            GitHub #538 (Ian)
