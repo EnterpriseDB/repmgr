@@ -29,21 +29,21 @@
    </para>
 
    <para>
-    &repmgr; was developed by
+    &repmgr; is developed by
     <ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
     along with contributions from other individuals and companies.
     Contributions from the community are appreciated and welcome - get
-    in touch via <ulink url="https://github.com/2ndQuadrant/repmgr">github</>
-    or <ulink url="https://groups.google.com/group/repmgr">the mailing list/forum</>.
+    in touch via <ulink url="https://github.com/2ndQuadrant/repmgr">github</ulink>
+    or <ulink url="https://groups.google.com/group/repmgr">the mailing list/forum</ulink>.
     Multiple 2ndQuadrant customers contribute funding
     to make repmgr development possible.
    </para>
 
    <para>
-    2ndQuadrant, a Platinum sponsor of the PostgreSQL project,
-    continues to develop repmgr to meet internal needs and those of customers.
-     Other companies as well as individual developers
-    are welcome to participate in the efforts.
+     &repmgr; is fully supported by 2ndQuadrant's
+     <ulink url="https://www.2ndquadrant.com/en/support/support-postgresql/">24/7 Production Support</ulink>.
+     2ndQuadrant, a Major Sponsor of the PostgreSQL project, continues to develop and maintain &repmgr;.
+     Other companies as well as individual developers are welcome to participate in the efforts.
    </para>
   </abstract>
 
