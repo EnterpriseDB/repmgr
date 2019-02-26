@@ -1860,7 +1860,7 @@ do_master_failover(void)
 						  node_info.node_id,
 						  failed_master.node_id);
 
-		log_notice("%s", event_details.data);
+		log_notice("%s\n", event_details.data);
 
 		/* my_local_conn is now the master */
 		create_event_record(my_local_conn,
