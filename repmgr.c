@@ -371,9 +371,6 @@ set_primary_last_seen(PG_FUNCTION_ARGS)
 	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 
 	shared_state->primary_last_seen = GetCurrentTimestamp();
-	elog(INFO,
-		 "primary_last_seen: %s",
-		 timestamptz_to_str( 	shared_state->primary_last_seen));
 
 	LWLockRelease(shared_state->lock);
 
