@@ -88,7 +88,7 @@
 
  <para>
   The values provided for <literal>%t</literal> and <literal>%d</literal>
-  will probably contain spaces, so should be quoted in the provided command
+  may contain spaces, so should be quoted in the provided command
   configuration, e.g.:
   <programlisting>
     event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
