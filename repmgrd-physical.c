@@ -3147,9 +3147,19 @@ do_election(void)
 
 	total_nodes = sibling_nodes.node_count + 1;
 
-	log_debug("do_election(): primary location is \"%s\", standby location is \"%s\"",
-			  upstream_node_info.location,
-			  local_node_info.location);
+	if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) != 0)
+	{
+		log_info(_("primary node \"%s\" (ID: %i) has location \"%s\", this node's location is \"%s\""),
+				 upstream_node_info.node_name,
+				 upstream_node_info.node_id,
+				 upstream_node_info.location,
+				 local_node_info.location);
+	}
+	else
+	{
+		log_info(_("primary and this node have the same location (\"%s\")"),
+				 local_node_info.location);
+	}
 
 	local_node_info.last_wal_receive_lsn = InvalidXLogRecPtr;
 
@@ -3158,7 +3168,7 @@ do_election(void)
 	{
 		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
 		{
-			log_debug("no other nodes - we win by default");
+			log_info(_("no other sibling nodes - we win by default"));
 			return ELECTION_WON;
 		}
 		else
@@ -3221,8 +3231,7 @@ do_election(void)
 
 	local_node_info.last_wal_receive_lsn = local_replication_info.last_wal_receive_lsn;
 
-
-	log_debug("our last receive lsn: %X/%X", format_lsn(local_node_info.last_wal_receive_lsn));
+	log_info(_("local node's last receive lsn: %X/%X"), format_lsn(local_node_info.last_wal_receive_lsn));
 
 	/* pointer to "winning" node, initially self */
 	candidate_node = &local_node_info;
@@ -3267,10 +3276,11 @@ do_election(void)
 		}
 
 		/* don't check 0-priority nodes */
-		if (cell->node_info->priority == 0)
+		if (cell->node_info->priority <= 0)
 		{
-			log_debug("node %i has priority of 0, skipping",
-					  cell->node_info->node_id);
+			log_info(_("node %i has priority of %i, skipping"),
+					   cell->node_info->node_id,
+					   cell->node_info->priority);
 			continue;
 		}
 
@@ -3285,14 +3295,16 @@ do_election(void)
 		 */
 		if (repmgrd_get_pid(cell->node_info->conn) == UNKNOWN_PID)
 		{
-			log_warning(_("repmgrd not running on node %i, skipping"),
+			log_warning(_("repmgrd not running on node \"%s\" (ID: %i), skipping"),
+						cell->node_info->node_name,
 						cell->node_info->node_id);
 			continue;
 		}
 
 		if (get_replication_info(cell->node_info->conn, &sibling_replication_info) == false)
 		{
-			log_warning(_("unable to retrieve replication information for node %i, skipping"),
+			log_warning(_("unable to retrieve replication information for node \"%s\" (ID: %i), skipping"),
+						cell->node_info->node_name,
 						cell->node_info->node_id);
 			continue;
 		}
@@ -3306,8 +3318,9 @@ do_election(void)
 			 */
 			if (sibling_replication_info.last_wal_receive_lsn > sibling_replication_info.last_wal_replay_lsn)
 			{
-				log_warning(_("WAL replay on node %i is paused and WAL is pending replay"),
-						   cell->node_info->node_id);
+				log_warning(_("WAL replay on node \"%s\" (ID: %i) is paused and WAL is pending replay"),
+							cell->node_info->node_name,
+							cell->node_info->node_id);
 			}
 		}
 
@@ -3338,52 +3351,66 @@ do_election(void)
 		/* get node's last receive LSN - if "higher" than current winner, current node is candidate */
 		cell->node_info->last_wal_receive_lsn = sibling_replication_info.last_wal_receive_lsn;
 
-		log_verbose(LOG_DEBUG, "node %i's last receive LSN is: %X/%X",
-					cell->node_info->node_id,
-					format_lsn(cell->node_info->last_wal_receive_lsn));
+		log_info(_("last receive LSN for sibling node \"%s\" (ID: %i) is: %X/%X"),
+				 cell->node_info->node_name,
+				 cell->node_info->node_id,
+				 format_lsn(cell->node_info->last_wal_receive_lsn));
 
 		/* compare LSN */
 		if (cell->node_info->last_wal_receive_lsn > candidate_node->last_wal_receive_lsn)
 		{
 			/* other node is ahead */
-			log_verbose(LOG_DEBUG, "node %i is ahead of current candidate %i",
-						cell->node_info->node_id,
-						candidate_node->node_id);
+			log_info(_("node \"%s\" (ID: %i) is ahead of current candidate \"%s\" (ID: %i)"),
+					 cell->node_info->node_name,
+					 cell->node_info->node_id,
+					 candidate_node->node_name,
+					 candidate_node->node_id);
 
 			candidate_node = cell->node_info;
 		}
 		/* LSN is same - tiebreak on priority, then node_id */
 		else if (cell->node_info->last_wal_receive_lsn == candidate_node->last_wal_receive_lsn)
 		{
-			log_verbose(LOG_DEBUG, "node %i has same LSN as current candidate %i",
-						cell->node_info->node_id,
-						candidate_node->node_id);
+			log_info(_("node \"%s\" (ID: %i) has same LSN as current candidate \"%s\" (ID: %i)"),
+					 cell->node_info->node_name,
+					 cell->node_info->node_id,
+					 candidate_node->node_name,
+					 candidate_node->node_id);
+
 			if (cell->node_info->priority > candidate_node->priority)
 			{
-				log_verbose(LOG_DEBUG, "node %i has higher priority (%i) than current candidate %i (%i)",
-							cell->node_info->node_id,
-							cell->node_info->priority,
-							candidate_node->node_id,
-							candidate_node->priority);
+				log_info(_("node \"%s\" (ID: %i) has higher priority (%i) than current candidate \"%s\" (ID: %i) (%i)"),
+						 cell->node_info->node_name,
+						 cell->node_info->node_id,
+						 cell->node_info->priority,
+						 candidate_node->node_name,
+						 candidate_node->node_id,
+						 candidate_node->priority);
+
 				candidate_node = cell->node_info;
 			}
 			else if (cell->node_info->priority == candidate_node->priority)
 			{
 				if (cell->node_info->node_id < candidate_node->node_id)
 				{
-					log_verbose(LOG_DEBUG, "node %i has same priority but lower node_id than current candidate %i",
-								cell->node_info->node_id,
-								candidate_node->node_id);
+					log_info(_("node \"%s\" (ID: %i) has same priority but lower node_id than current candidate \"%s\" (ID: %i)"),
+							 cell->node_info->node_name,
+							 cell->node_info->node_id,
+							 candidate_node->node_name,
+							 candidate_node->node_id);
+
 					candidate_node = cell->node_info;
 				}
 			}
 			else
 			{
-				log_verbose(LOG_DEBUG, "node %i has lower priority (%i) than current candidate %i (%i)",
-							cell->node_info->node_id,
-							cell->node_info->priority,
-							candidate_node->node_id,
-							candidate_node->priority);
+				log_info(_("node \"%s\" (ID: %i) has lower priority (%i) than current candidate \"%s\" (ID: %i) (%i)"),
+						 cell->node_info->node_name,
+						 cell->node_info->node_id,
+						 cell->node_info->priority,
+						 candidate_node->node_name,
+						 candidate_node->node_id,
+						 candidate_node->priority);
 			}
 		}
 	}
@@ -3440,7 +3467,10 @@ do_election(void)
 		return ELECTION_CANCELLED;
 	}
 
-	log_debug("promotion candidate is %i", candidate_node->node_id);
+	log_notice(_("promotion candidate is \"%s\" (ID: %i)"),
+			   candidate_node->node_name,
+			   candidate_node->node_id);
+
 	if (candidate_node->node_id == local_node_info.node_id)
 		return ELECTION_WON;
 
