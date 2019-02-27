@@ -3402,6 +3402,7 @@ do_standby_switchover(void)
 	command_success = remote_command(remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
+									 config_file_options.ssh_options,
 									 &command_output);
 
 	termPQExpBuffer(&remote_command_str);
@@ -3465,6 +3466,7 @@ do_standby_switchover(void)
 	command_success = remote_command(remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
+									 config_file_options.ssh_options,
 									 &command_output);
 
 	termPQExpBuffer(&remote_command_str);
@@ -3692,6 +3694,7 @@ do_standby_switchover(void)
 		command_success = remote_command(remote_host,
 										 runtime_options.remote_user,
 										 remote_command_str.data,
+										 config_file_options.ssh_options,
 										 &command_output);
 
 		termPQExpBuffer(&remote_command_str);
@@ -3744,6 +3747,7 @@ do_standby_switchover(void)
 			command_success = remote_command(remote_host,
 											 runtime_options.remote_user,
 											 remote_command_str.data,
+											 config_file_options.ssh_options,
 											 &command_output);
 
 			termPQExpBuffer(&remote_command_str);
@@ -4173,6 +4177,7 @@ do_standby_switchover(void)
 	(void) remote_command(remote_host,
 						  runtime_options.remote_user,
 						  remote_command_str.data,
+						  config_file_options.ssh_options,
 						  &command_output);
 
 	termPQExpBuffer(&remote_command_str);
@@ -4241,6 +4246,7 @@ do_standby_switchover(void)
 			command_success = remote_command(remote_host,
 											 runtime_options.remote_user,
 											 remote_command_str.data,
+											 config_file_options.ssh_options,
 											 &command_output);
 
 			termPQExpBuffer(&remote_command_str);
@@ -4461,6 +4467,7 @@ do_standby_switchover(void)
 	command_success = remote_command(remote_host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
+									 config_file_options.ssh_options,
 									 &command_output);
 
 	termPQExpBuffer(&remote_command_str);
@@ -4569,6 +4576,7 @@ do_standby_switchover(void)
 			success = remote_command(host,
 									 runtime_options.remote_user,
 									 remote_command_str.data,
+									 config_file_options.ssh_options,
 									 &command_output);
 
 			termPQExpBuffer(&remote_command_str);

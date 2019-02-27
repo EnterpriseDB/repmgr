@@ -41,6 +41,7 @@
 #include "configfile.h"
 #include "dbutils.h"
 #include "log.h"
+#include "sysutils.h"
 
 #define MIN_SUPPORTED_VERSION		"9.3"
 #define MIN_SUPPORTED_VERSION_NUM	90300

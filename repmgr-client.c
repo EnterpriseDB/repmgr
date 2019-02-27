@@ -97,8 +97,6 @@ t_node_info target_node_info = T_NODE_INFO_INITIALIZER;
 static ItemList cli_errors = {NULL, NULL};
 static ItemList cli_warnings = {NULL, NULL};
 
-static bool _local_command(const char *command, PQExpBufferData *outputbuf, bool simple);
-
 int
 main(int argc, char **argv)
 {
@@ -2400,75 +2398,6 @@ test_ssh_connection(char *host, char *remote_user)
 
 
 /*
- * Execute a command locally. "outputbuf" should either be an
- * initialised PQexpbuffer, or NULL
- */
-bool
-local_command(const char *command, PQExpBufferData *outputbuf)
-{
-	return _local_command(command, outputbuf, false);
-}
-
-
-bool
-local_command_simple(const char *command, PQExpBufferData *outputbuf)
-{
-	return _local_command(command, outputbuf, true);
-}
-
-
-static bool
-_local_command(const char *command, PQExpBufferData *outputbuf, bool simple)
-{
-	FILE	   *fp = NULL;
-	char		output[MAXLEN];
-	int			retval = 0;
-	bool		success;
-
-	log_verbose(LOG_DEBUG, "executing:\n  %s", command);
-
-	if (outputbuf == NULL)
-	{
-		retval = system(command);
-		return (retval == 0) ? true : false;
-	}
-
-	fp = popen(command, "r");
-
-	if (fp == NULL)
-	{
-		log_error(_("unable to execute local command:\n%s"), command);
-		return false;
-	}
-
-
-	while (fgets(output, MAXLEN, fp) != NULL)
-	{
-		appendPQExpBuffer(outputbuf, "%s", output);
-
-		if (!feof(fp) && simple == false)
-		{
-			break;
-		}
-	}
-
-	retval = pclose(fp);
-
-	/*  */
-	success = (WEXITSTATUS(retval) == 0 || WEXITSTATUS(retval) == 141) ? true : false;
-
-	log_verbose(LOG_DEBUG, "result of command was %i (%i)", WEXITSTATUS(retval), retval);
-
-	if (outputbuf->data != NULL && outputbuf->data[0] != '\0')
-		log_verbose(LOG_DEBUG, "local_command(): output returned was:\n%s", outputbuf->data);
-	else
-		log_verbose(LOG_DEBUG, "local_command(): no output returned");
-
-	return success;
-}
-
-
-/*
  * get_superuser_connection()
  *
  * Check if provided connection "conn" is a superuser connection, if not attempt to
@@ -2674,78 +2603,6 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 }
 
 
-/*
- * Execute a command via ssh on the remote host.
- *
- * TODO: implement SSH calls using libssh2.
- */
-bool
-remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf)
-{
-	FILE	   *fp;
-	char		ssh_command[MAXLEN] = "";
-	PQExpBufferData ssh_host;
-
-	char		output[MAXLEN] = "";
-
-	initPQExpBuffer(&ssh_host);
-
-	if (*user != '\0')
-	{
-		appendPQExpBuffer(&ssh_host, "%s@", user);
-	}
-
-	appendPQExpBuffer(&ssh_host, "%s", host);
-
-	maxlen_snprintf(ssh_command,
-					"ssh -o Batchmode=yes %s %s %s",
-					config_file_options.ssh_options,
-					ssh_host.data,
-					command);
-
-	termPQExpBuffer(&ssh_host);
-
-	log_debug("remote_command():\n  %s", ssh_command);
-
-	fp = popen(ssh_command, "r");
-
-	if (fp == NULL)
-	{
-		log_error(_("unable to execute remote command:\n  %s"), ssh_command);
-		return false;
-	}
-
-	if (outputbuf != NULL)
-	{
-		/* TODO: better error handling */
-		while (fgets(output, MAXLEN, fp) != NULL)
-		{
-			appendPQExpBuffer(outputbuf, "%s", output);
-		}
-	}
-	else
-	{
-		while (fgets(output, MAXLEN, fp) != NULL)
-		{
-			if (!feof(fp))
-			{
-				break;
-			}
-		}
-	}
-
-	pclose(fp);
-
-	if (outputbuf != NULL)
-	{
-		if (outputbuf->data != NULL && outputbuf->data[0] != '\0')
-			log_verbose(LOG_DEBUG, "remote_command(): output returned was:\n%s", outputbuf->data);
-		else
-			log_verbose(LOG_DEBUG, "remote_command(): no output returned");
-	}
-
-	return true;
-}
 
 
 void
