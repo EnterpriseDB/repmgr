@@ -224,8 +224,6 @@ extern int	check_server_version(PGconn *conn, char *server_type, bool exit_on_er
 extern void check_93_config(void);
 extern bool create_repmgr_extension(PGconn *conn);
 extern int	test_ssh_connection(char *host, char *remote_user);
-extern bool local_command(const char *command, PQExpBufferData *outputbuf);
-extern bool local_command_simple(const char *command, PQExpBufferData *outputbuf);
 
 extern standy_clone_mode get_standby_clone_mode(void);
 
@@ -237,8 +235,6 @@ extern void print_error_list(ItemList *error_list, int log_level);
 extern char *make_pg_path(const char *file);
 
 extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privileged_conn);
-
-extern bool remote_command(const char *host, const char *user, const char *command, PQExpBufferData *outputbuf);
 
 extern void make_remote_repmgr_path(PQExpBufferData *outputbuf, t_node_info *remote_node_record);
 extern void make_repmgrd_path(PQExpBufferData *output_buf);

@@ -1161,6 +1161,7 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, Ite
 		(void) remote_command(host,
 							  runtime_options.remote_user,
 							  command.data,
+							  config_file_options.ssh_options,
 							  &command_output);
 
 		p = command_output.data;
@@ -1373,6 +1374,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length, Item
 			(void) remote_command(host,
 								  runtime_options.remote_user,
 								  quoted_command.data,
+								  config_file_options.ssh_options,
 								  &command_output);
 
 			free_conninfo_params(&remote_conninfo);
