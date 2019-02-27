@@ -47,6 +47,9 @@ lib*.pc
 # other
 /.lineno
 *.dSYM
+*.orig
+*.rej
+
 # generated binaries
 repmgr
 repmgrd
