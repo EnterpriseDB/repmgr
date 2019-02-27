@@ -23,7 +23,6 @@
 #include "repmgrd.h"
 #include "repmgrd-physical.h"
 
-
 typedef enum
 {
 	FAILOVER_STATE_UNKNOWN = -1,
@@ -88,7 +87,8 @@ static void update_monitoring_history(void);
 static void handle_sighup(PGconn **conn, t_server_type server_type);
 
 static const char *format_failover_state(FailoverState failover_state);
-
+static const char * format_failover_state(FailoverState failover_state);
+static void parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out);
 
 void
 handle_sigint_physical(SIGNAL_ARGS)
@@ -3571,7 +3571,58 @@ do_election(void)
 			   candidate_node->node_id);
 
 	if (candidate_node->node_id == local_node_info.node_id)
+	{
+		/*
+		 * If "failover_validation_command" is set, execute that command.
+		 */
+
+		if (config_file_options.failover_validation_command[0] != '\0')
+		{
+			PQExpBufferData failover_validation_command;
+			PQExpBufferData command_output;
+			int return_value = -1;
+
+			initPQExpBuffer(&failover_validation_command);
+			initPQExpBuffer(&command_output);
+
+			parse_failover_validation_command(config_file_options.failover_validation_command,
+											  candidate_node,
+											  &failover_validation_command);
+
+			log_notice(_("executing \"failover_validation_command\""));
+			log_detail("%s", failover_validation_command.data);
+
+			/* we determine success of the command by the value placed into return_value */
+			(void) local_command_return_value(failover_validation_command.data,
+											  &command_output,
+											  &return_value);
+
+			termPQExpBuffer(&failover_validation_command);
+
+			if (return_value != 0)
+				log_warning(_("failover validation command returned %i"), return_value);
+
+			if (command_output.data[0] != '\0')
+			{
+				log_info("output returned by failover validation command:\n%s", command_output.data);
+			}
+			else
+			{
+				log_info(_("no output returned from command"));
+			}
+
+			termPQExpBuffer(&command_output);
+
+			if (return_value != 0)
+			{
+				/* create event here? */
+				log_notice(_("failover validation command returned a non-zero value (%i)"), return_value);
+				return ELECTION_LOST;
+			}
+		}
+
 		return ELECTION_WON;
+	}
 
 	return ELECTION_LOST;
 }
@@ -3781,4 +3832,48 @@ handle_sighup(PGconn **conn, t_server_type server_type)
 	}
 
 	got_SIGHUP = false;
+}
+
+
+static void
+parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out)
+{
+	const char *src_ptr;
+
+	for (src_ptr = template; *src_ptr; src_ptr++)
+	{
+		if (*src_ptr == '%')
+		{
+			switch (src_ptr[1])
+			{
+				case '%':
+					/* %%: replace with % */
+					src_ptr++;
+					appendPQExpBufferChar(out, *src_ptr);
+					break;
+				case 'n':
+					/* %n: node id */
+					src_ptr++;
+					appendPQExpBuffer(out, "%i", node_info->node_id);
+					break;
+				case 'a':
+					/* %a: node name */
+					src_ptr++;
+					appendPQExpBufferStr(out, node_info->node_name);
+					break;
+
+				default:
+					/* otherwise treat the % as not special */
+					appendPQExpBufferChar(out, *src_ptr);
+
+					break;
+			}
+		}
+		else
+		{
+			appendPQExpBufferChar(out, *src_ptr);
+		}
+	}
+
+	return;
 }

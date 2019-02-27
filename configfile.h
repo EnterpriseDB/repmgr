@@ -145,6 +145,7 @@ typedef struct
 	int			sibling_nodes_disconnect_timeout;
 	ConnectionCheckType connection_check_type;
 	bool		primary_visibility_consensus;
+	char		failover_validation_command[MAXPGPATH];
 
 	/* BDR settings */
 	bool		bdr_local_monitoring_only;
@@ -189,7 +190,7 @@ typedef struct
 		/* node information */ \
 		UNKNOWN_NODE_ID, "", "", "", "", "", "", "", REPLICATION_TYPE_PHYSICAL,	\
 		/* log settings */ \
-		"", "", "", DEFAULT_LOG_STATUS_INTERVAL,	\
+		"", "", "", DEFAULT_LOG_STATUS_INTERVAL, \
 		/* standby clone settings */ \
 		false, "", "", { NULL, NULL }, "", false, "", false, "", \
 		/* standby promote settings */ \
@@ -216,7 +217,7 @@ typedef struct
         false, -1, \
 		DEFAULT_ASYNC_QUERY_TIMEOUT, \
 		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT, \
-		-1, "", false, DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT, CHECK_PING, true, \
+		-1, "", false, DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT, CHECK_PING, true, "", \
 		/* BDR settings */ \
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \

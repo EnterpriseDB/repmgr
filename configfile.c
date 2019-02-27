@@ -362,6 +362,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->sibling_nodes_disconnect_timeout = DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT;
 	options->connection_check_type = CHECK_PING;
 	options->primary_visibility_consensus = false;
+	memset(options->failover_validation_command, 0, sizeof(options->failover_validation_command));
 
 	/*-------------
 	 * witness settings
@@ -644,6 +645,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		}
 		else if (strcmp(name, "primary_visibility_consensus") == 0)
 			options->primary_visibility_consensus = parse_bool(value, name, error_list);
+		else if (strcmp(name, "failover_validation_command") == 0)
+			strncpy(options->failover_validation_command, value, sizeof(options->failover_validation_command));
 
 		/* witness settings */
 		else if (strcmp(name, "witness_sync_interval") == 0)
