@@ -77,7 +77,7 @@ typedef struct repmgrdSharedState
 	char		repmgrd_pidfile[MAXPGPATH];
 	bool		repmgrd_paused;
 	/* streaming failover */
-	TimestampTz primary_last_seen;
+	TimestampTz upstream_last_seen;
 	NodeVotingStatus voting_status;
 	int			current_electoral_term;
 	int			candidate_node_id;
@@ -108,11 +108,11 @@ PG_FUNCTION_INFO_V1(standby_set_last_updated);
 Datum		standby_get_last_updated(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(standby_get_last_updated);
 
-Datum		set_primary_last_seen(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(set_primary_last_seen);
+Datum		set_upstream_last_seen(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(set_upstream_last_seen);
 
-Datum		get_primary_last_seen(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(get_primary_last_seen);
+Datum		get_upstream_last_seen(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(get_upstream_last_seen);
 
 Datum		notify_follow_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(notify_follow_primary);
@@ -226,7 +226,7 @@ repmgr_shmem_startup(void)
 		shared_state->repmgrd_paused = false;
 		shared_state->current_electoral_term = 0;
 		/* arbitrary "magic" date to indicate this field hasn't been updated */
-		shared_state->primary_last_seen = POSTGRES_EPOCH_JDATE;
+		shared_state->upstream_last_seen = POSTGRES_EPOCH_JDATE;
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 		shared_state->follow_new_primary = false;
@@ -363,14 +363,14 @@ standby_get_last_updated(PG_FUNCTION_ARGS)
 
 
 Datum
-set_primary_last_seen(PG_FUNCTION_ARGS)
+set_upstream_last_seen(PG_FUNCTION_ARGS)
 {
 	if (!shared_state)
 		PG_RETURN_VOID();
 
 	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 
-	shared_state->primary_last_seen = GetCurrentTimestamp();
+	shared_state->upstream_last_seen = GetCurrentTimestamp();
 
 	LWLockRelease(shared_state->lock);
 
@@ -379,7 +379,7 @@ set_primary_last_seen(PG_FUNCTION_ARGS)
 
 
 Datum
-get_primary_last_seen(PG_FUNCTION_ARGS)
+get_upstream_last_seen(PG_FUNCTION_ARGS)
 {
 	long		secs;
 	int			microsecs;
@@ -394,7 +394,7 @@ get_primary_last_seen(PG_FUNCTION_ARGS)
 
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
-	last_seen = shared_state->primary_last_seen;
+	last_seen = shared_state->upstream_last_seen;
 
 	LWLockRelease(shared_state->lock);
 

@@ -201,7 +201,7 @@ do_daemon_status(void)
 				}
 			}
 
-			repmgrd_info[i]->upstream_last_seen = get_primary_last_seen(cell->node_info->conn);
+			repmgrd_info[i]->upstream_last_seen = get_upstream_last_seen(cell->node_info->conn);
 
 			if (repmgrd_info[i]->upstream_last_seen < 0)
 			{
