@@ -833,7 +833,7 @@ monitor_streaming_standby(void)
 		log_verbose(LOG_DEBUG, "checking %s", upstream_node_info.conninfo);
 		if (is_server_available(upstream_node_info.conninfo) == true)
 		{
-			set_primary_last_seen(local_conn);
+			set_upstream_last_seen(local_conn);
 		}
 		else
 		{
@@ -3332,21 +3332,21 @@ do_election(void)
 		 */
 
 
-		if (sibling_replication_info.primary_last_seen < (config_file_options.monitor_interval_secs * 2))
+		if (sibling_replication_info.upstream_last_seen < (config_file_options.monitor_interval_secs * 2))
 		{
 			nodes_with_primary_still_visible++;
 			log_notice(_("node %i last saw primary node %i second(s) ago, considering primary still visible"),
-					   cell->node_info->node_id, sibling_replication_info.primary_last_seen);
+					   cell->node_info->node_id, sibling_replication_info.upstream_last_seen);
 			appendPQExpBuffer(&nodes_with_primary_visible,
 							  " - node \"%s\" (ID: %i): %i second(s) ago\n",
 							  cell->node_info->node_name,
 							  cell->node_info->node_id,
-							  sibling_replication_info.primary_last_seen);
+							  sibling_replication_info.upstream_last_seen);
 		}
 		else
 		{
 			log_info(_("node %i last saw primary node %i second(s) ago"),
-					 cell->node_info->node_id, sibling_replication_info.primary_last_seen);
+					 cell->node_info->node_id, sibling_replication_info.upstream_last_seen);
 		}
 		/* get node's last receive LSN - if "higher" than current winner, current node is candidate */
 		cell->node_info->last_wal_receive_lsn = sibling_replication_info.last_wal_receive_lsn;

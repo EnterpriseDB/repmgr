@@ -308,7 +308,7 @@ typedef struct
 	int			replication_lag_time;
 	bool		receiving_streamed_wal;
 	bool		wal_replay_paused;
-	int			primary_last_seen;
+	int			upstream_last_seen;
 } ReplInfo;
 
 typedef struct
@@ -555,8 +555,8 @@ bool		get_replication_info(PGconn *conn, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 bool		is_downstream_node_attached(PGconn *conn, char *node_name);
-void		set_primary_last_seen(PGconn *conn);
-int			get_primary_last_seen(PGconn *conn);
+void		set_upstream_last_seen(PGconn *conn);
+int			get_upstream_last_seen(PGconn *conn);
 bool		is_wal_replay_paused(PGconn *conn, bool check_pending_wal);
 
 /* BDR functions */
