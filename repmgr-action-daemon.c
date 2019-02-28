@@ -260,14 +260,24 @@ do_daemon_status(void)
 	{
 		if (runtime_options.output_mode == OM_CSV)
 		{
+			int running = repmgrd_info[i]->running ? 1 : 0;
+			int paused = repmgrd_info[i]->paused ? 1 : 0;
+
+			/* If PostgreSQL is not running, repmgrd status is unknown */
+			if (repmgrd_info[i]->pg_running == false)
+			{
+				running = -1;
+				paused = -1;
+			}
+
 			printf("%i,%s,%s,%i,%i,%i,%i,%i,%i\n",
 				   cell->node_info->node_id,
 				   cell->node_info->node_name,
 				   get_node_type_string(cell->node_info->type),
 				   repmgrd_info[i]->pg_running ? 1 : 0,
-				   repmgrd_info[i]->running ? 1 : 0,
+				   running,
 				   repmgrd_info[i]->pid,
-				   repmgrd_info[i]->paused ? 1 : 0,
+				   paused,
 				   cell->node_info->priority,
 				   repmgrd_info[i]->pid == UNKNOWN_PID
 				     ? -1
