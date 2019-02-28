@@ -72,9 +72,9 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             </para>
             <note>
               <para>
-                For these commands to work reliably, the configuration file settings
+                These commands require the configuration file settings
                 <varname>repmgrd_service_start_command</varname> and <varname>repmgrd_service_stop_command</varname>
-                should be set in <filename>repmgr.conf</filename>.
+                in <filename>repmgr.conf</filename> to be set.
               </para>
             </note>
           </listitem>
@@ -82,8 +82,8 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>
-              displays the interval (in seconds) since the <application>repmgrd</application> instance
-              last verified its upstream node was available.
+              additionally displays the node priority and the interval (in seconds) since the
+              <application>repmgrd</application> instance last verified its upstream node was available.
             </para>
           </listitem>
 
