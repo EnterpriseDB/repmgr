@@ -24,7 +24,7 @@ static bool _local_command(const char *command, PQExpBufferData *outputbuf, bool
 
 /*
  * Execute a command locally. "outputbuf" should either be an
- * initialised PQexpbuffer, or NULL
+ * initialised PQExpPuffer, or NULL
  */
 bool
 local_command(const char *command, PQExpBufferData *outputbuf)
@@ -77,7 +77,7 @@ _local_command(const char *command, PQExpBufferData *outputbuf, bool simple, int
 
 	while (fgets(output, MAXLEN, fp) != NULL)
 	{
-		appendPQExpBuffer(outputbuf, "%s", output);
+		appendPQExpBufferStr(outputbuf, output);
 
 		if (!feof(fp) && simple == false)
 		{
@@ -125,7 +125,7 @@ remote_command(const char *host, const char *user, const char *command, const ch
 		appendPQExpBuffer(&ssh_host, "%s@", user);
 	}
 
-	appendPQExpBuffer(&ssh_host, "%s", host);
+	appendPQExpBufferStr(&ssh_host, host);
 
 	maxlen_snprintf(ssh_command,
 					"ssh -o Batchmode=yes %s %s %s",
@@ -150,7 +150,7 @@ remote_command(const char *host, const char *user, const char *command, const ch
 		/* TODO: better error handling */
 		while (fgets(output, MAXLEN, fp) != NULL)
 		{
-			appendPQExpBuffer(outputbuf, "%s", output);
+			appendPQExpBufferStr(outputbuf, output);
 		}
 	}
 	else
