@@ -128,6 +128,7 @@ CREATE FUNCTION get_upstream_last_seen()
   AS 'MODULE_PATHNAME', 'get_upstream_last_seen'
   LANGUAGE C STRICT;
 
+
 /* failover functions */
 
 CREATE FUNCTION notify_follow_primary(INT)
@@ -185,6 +186,15 @@ CREATE FUNCTION repmgrd_is_paused()
   AS 'MODULE_PATHNAME', 'repmgrd_is_paused'
   LANGUAGE C STRICT;
 
+CREATE FUNCTION get_wal_receiver_pid()
+  RETURNS INT
+  AS 'MODULE_PATHNAME', 'get_wal_receiver_pid'
+  LANGUAGE C STRICT;
+
+
+
+
+/* views */
 
 CREATE VIEW repmgr.replication_status AS
   SELECT m.primary_node_id, m.standby_node_id, n.node_name AS standby_name,

@@ -1079,7 +1079,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 		}
 		else
 		{
-			/* XXX highly unlikely this would ever happen */
+			/* highly unlikely this would ever happen */
 			log_error(_("get_pg_setting(): unknown parameter \"%s\""), PQgetvalue(res, i, 0));
 		}
 	}
@@ -1090,6 +1090,56 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 	}
 
 	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return success;
+}
+
+
+bool
+alter_system_int(PGconn *conn, const char *name, int value)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool		success = false;
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+					  "ALTER SYSTEM SET %s = %i",
+					  name, value);
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		log_db_error(conn, query.data, _("alter_system_int() - unable to execute query"));
+
+		success = false;
+	}
+
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return success;
+}
+
+
+bool
+pg_reload_conf(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	bool		success = false;
+
+	res = PQexec(conn, "SELECT pg_catalog.pg_reload_conf()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, NULL, _("pg_reload_conf() - unable to execute query"));
+
+		success = false;
+	}
+
 	PQclear(res);
 
 	return success;
@@ -1857,6 +1907,29 @@ repmgrd_pause(PGconn *conn, bool pause)
 	PQclear(res);
 
 	return success;
+}
+
+pid_t
+get_wal_receiver_pid(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	pid_t		wal_receiver_pid = UNKNOWN_PID;
+
+	res = PQexec(conn, "SELECT repmgr.get_wal_receiver_pid()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_error(_("unable to execute \"SELECT repmgr.get_wal_receiver_pid()\""));
+		log_detail("%s", PQerrorMessage(conn));
+	}
+	else if (!PQgetisnull(res, 0, 0))
+	{
+		wal_receiver_pid = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return wal_receiver_pid;
 }
 
 /* ================ */

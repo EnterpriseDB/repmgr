@@ -31,6 +31,7 @@
  * NODE CHECK
  * NODE REJOIN
  * NODE SERVICE
+ * NODE CONTROL
  *
  * DAEMON STATUS
  * DAEMON PAUSE
@@ -624,7 +625,7 @@ main(int argc, char **argv)
 				break;
 
 
-				/*--------------
+				/*---------------
 				 * output options
 				 *---------------
 				 */
@@ -638,6 +639,19 @@ main(int argc, char **argv)
 
 			case OPT_OPTFORMAT:
 				runtime_options.optformat = true;
+				break;
+
+				/*---------------------------------
+				 * undocumented options for testing
+				 *----------------------------------
+				 */
+
+			case OPT_DISABLE_WAL_RECEIVER:
+				runtime_options.disable_wal_receiver = true;
+				break;
+
+			case OPT_ENABLE_WAL_RECEIVER:
+				runtime_options.enable_wal_receiver = true;
 				break;
 
 				/*-----------------------------
@@ -912,6 +926,8 @@ main(int argc, char **argv)
 				action = NODE_REJOIN;
 			else if (strcasecmp(repmgr_action, "SERVICE") == 0)
 				action = NODE_SERVICE;
+			else if (strcasecmp(repmgr_action, "CONTROL") == 0)
+				action = NODE_CONTROL;
 		}
 
 		else if (strcasecmp(repmgr_command, "CLUSTER") == 0)
@@ -1334,6 +1350,9 @@ main(int argc, char **argv)
 			break;
 		case NODE_SERVICE:
 			do_node_service();
+			break;
+		case NODE_CONTROL:
+			do_node_control();
 			break;
 
 			/* CLUSTER */

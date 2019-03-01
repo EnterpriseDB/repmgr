@@ -92,6 +92,8 @@
 #define DEFAULT_NODE_REJOIN_TIMEOUT          60  /* seconds */
 #define DEFAULT_WAL_RECEIVE_CHECK_TIMEOUT    30  /* seconds */
 
+#define WALRECEIVER_DISABLE_TIMEOUT_VALUE    86400000 /* milliseconds */
+
 #ifndef RECOVERY_COMMAND_FILE
 #define RECOVERY_COMMAND_FILE "recovery.conf"
 #endif
