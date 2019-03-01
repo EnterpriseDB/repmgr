@@ -147,6 +147,8 @@ PG_FUNCTION_INFO_V1(repmgrd_pause);
 Datum		repmgrd_is_paused(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(repmgrd_is_paused);
 
+Datum		get_wal_receiver_pid(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(get_wal_receiver_pid);
 
 
 /*
@@ -739,4 +741,18 @@ repmgrd_is_paused(PG_FUNCTION_ARGS)
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_BOOL(is_paused);
+}
+
+
+Datum
+get_wal_receiver_pid(PG_FUNCTION_ARGS)
+{
+	int wal_receiver_pid;
+
+	if (!shared_state)
+		PG_RETURN_NULL();
+
+	wal_receiver_pid = WalRcv->pid;
+
+	PG_RETURN_INT32(wal_receiver_pid);
 }

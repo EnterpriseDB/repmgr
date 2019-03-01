@@ -87,7 +87,7 @@ static void update_monitoring_history(void);
 
 static void handle_sighup(PGconn **conn, t_server_type server_type);
 
-static const char * format_failover_state(FailoverState failover_state);
+static const char *format_failover_state(FailoverState failover_state);
 
 
 void
@@ -1979,6 +1979,85 @@ do_primary_failover(void)
 	 */
 	check_connection(&local_node_info, &local_conn);
 
+	/*
+	 * if requested, disable WAL receiver and wait until WAL receivers on all
+	 * sibling nodes are disconnected
+	 */
+	if (config_file_options.standby_disconnect_on_failover == true)
+	{
+		NodeInfoListCell *cell = NULL;
+		static NodeInfoList check_sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
+		int i;
+
+		// XXX make configurable
+		int sibling_nodes_disconnect_timeout = 30;
+		bool sibling_node_wal_receiver_connected = false;
+
+		disable_wal_receiver(local_conn);
+
+		/*
+		 * Loop through all reachable sibling nodes to determine whether
+		 * they have disabled their WAL receivers.
+		 *
+		 * TODO: do_election() also calls get_active_sibling_node_records(),
+		 * consolidate calls if feasible
+		 *
+		 */
+		get_active_sibling_node_records(local_conn,
+										local_node_info.node_id,
+										local_node_info.upstream_node_id,
+										&check_sibling_nodes);
+
+		for (i = 0; i < sibling_nodes_disconnect_timeout; i++)
+		{
+			for (cell = check_sibling_nodes.head; cell; cell = cell->next)
+			{
+				pid_t sibling_wal_receiver_pid;
+
+				if (cell->node_info->conn == NULL)
+					cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
+
+				sibling_wal_receiver_pid = (pid_t)get_wal_receiver_pid(cell->node_info->conn);
+
+				if (sibling_wal_receiver_pid == UNKNOWN_PID)
+				{
+					log_warning(_("unable to query WAL receiver PID on node %i"),
+								cell->node_info->node_id);
+				}
+				else if (sibling_wal_receiver_pid > 0)
+				{
+					log_info(_("WAL receiver PID on node %i is %i"),
+							 cell->node_info->node_id,
+							 sibling_wal_receiver_pid);
+					sibling_node_wal_receiver_connected = true;
+				}
+			}
+
+			if (sibling_node_wal_receiver_connected == false)
+			{
+				log_notice(_("WAL receiver disconnected on all sibling nodes"));
+				break;
+			}
+
+			log_debug("sleeping %i of max %i seconds (\"sibling_nodes_disconnect_timeout\")",
+					  i + 1, sibling_nodes_disconnect_timeout)
+			sleep(1);
+		}
+
+		if (sibling_node_wal_receiver_connected == true)
+		{
+			// XXX what do we do here? abort or continue? make configurable?
+			log_warning(_("WAL receiver still connected on at least one sibling node"));
+		}
+		else
+		{
+			log_info(_("WAL receiver disconnected on all %i sibling nodes"),
+					 check_sibling_nodes.node_count);
+		}
+
+		clear_node_info_list(&check_sibling_nodes);
+	}
+
 	/* attempt to initiate voting process */
 	election_result = do_election();
 
@@ -1986,6 +2065,13 @@ do_primary_failover(void)
 	failover_state = FAILOVER_STATE_UNKNOWN;
 
 	log_debug("election result: %s", _print_election_result(election_result));
+
+	/* Reenable WAL receiver, if disabled and node is not the promotion candidate */
+	if (config_file_options.standby_disconnect_on_failover == true && election_result != ELECTION_WON)
+	{
+		// XXX check return value
+		enable_wal_receiver(local_conn);
+	}
 
 	if (election_result == ELECTION_CANCELLED)
 	{
@@ -3685,3 +3771,5 @@ handle_sighup(PGconn **conn, t_server_type server_type)
 
 	got_SIGHUP = false;
 }
+
+

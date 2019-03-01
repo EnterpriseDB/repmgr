@@ -415,6 +415,8 @@ bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 int		    guc_set(PGconn *conn, const char *parameter, const char *op, const char *value);
 int			guc_set_typed(PGconn *conn, const char *parameter, const char *op, const char *value, const char *datatype);
 bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
+bool		alter_system_int(PGconn *conn, const char *name, int value);
+bool		pg_reload_conf(PGconn *conn);
 
 /* server information functions */
 bool		get_cluster_size(PGconn *conn, char *size);
@@ -436,6 +438,7 @@ pid_t		repmgrd_get_pid(PGconn *conn);
 bool		repmgrd_is_running(PGconn *conn);
 bool		repmgrd_is_paused(PGconn *conn);
 bool		repmgrd_pause(PGconn *conn, bool pause);
+pid_t		get_wal_receiver_pid(PGconn *conn);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn, t_extension_versions *extversions);

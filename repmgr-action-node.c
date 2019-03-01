@@ -2682,6 +2682,39 @@ do_node_rejoin(void)
 
 
 /*
+ * Currently for testing purposes only, not documented;
+ * use at own risk!
+ */
+
+void
+do_node_control(void)
+{
+	PGconn	   *conn = NULL;
+	pid_t	    wal_receiver_pid = UNKNOWN_PID;
+	conn = establish_db_connection(config_file_options.conninfo, true);
+
+	if (runtime_options.disable_wal_receiver == true)
+	{
+		wal_receiver_pid = disable_wal_receiver(conn);
+
+		PQfinish(conn);
+
+		if (wal_receiver_pid == UNKNOWN_PID)
+			exit(ERR_BAD_CONFIG);
+
+		exit(SUCCESS);
+	}
+
+	if (runtime_options.enable_wal_receiver == true)
+	{
+		wal_receiver_pid = enable_wal_receiver(conn);
+	}
+
+	PQfinish(conn);
+}
+
+
+/*
  * For "internal" use by `node rejoin` on the local node when
  * called by "standby switchover" from the remote node.
  *

@@ -40,16 +40,17 @@
 #define NODE_CHECK			   14
 #define NODE_SERVICE		   15
 #define NODE_REJOIN            16
-#define CLUSTER_SHOW		   17
-#define CLUSTER_CLEANUP		   18
-#define CLUSTER_MATRIX		   19
-#define CLUSTER_CROSSCHECK	   20
-#define CLUSTER_EVENT		   21
-#define DAEMON_STATUS		   22
-#define DAEMON_PAUSE		   23
-#define DAEMON_UNPAUSE		   24
-#define DAEMON_START 		   25
-#define DAEMON_STOP 		   26
+#define NODE_CONTROL           17
+#define CLUSTER_SHOW		   18
+#define CLUSTER_CLEANUP		   19
+#define CLUSTER_MATRIX		   20
+#define CLUSTER_CROSSCHECK	   21
+#define CLUSTER_EVENT		   22
+#define DAEMON_STATUS		   23
+#define DAEMON_PAUSE		   24
+#define DAEMON_UNPAUSE		   25
+#define DAEMON_START 		   26
+#define DAEMON_STOP 		   27
 
 /* command line options without short versions */
 #define OPT_HELP						   1001
@@ -97,7 +98,8 @@
 #define OPT_VERSION_NUMBER				   1043
 #define OPT_DATA_DIRECTORY_CONFIG		   1044
 #define OPT_COMPACT		                   1045
-
+#define OPT_DISABLE_WAL_RECEIVER           1046
+#define OPT_ENABLE_WAL_RECEIVER            1047
 
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
@@ -201,6 +203,10 @@ static struct option long_options[] =
 
 /* "cluster cleanup" options */
 	{"keep-history", required_argument, NULL, 'k'},
+
+/* undocumented options for testing */
+	{"disable-wal-receiver", no_argument, NULL, OPT_DISABLE_WAL_RECEIVER},
+	{"enable-wal-receiver", no_argument, NULL, OPT_ENABLE_WAL_RECEIVER},
 
 /* deprecated */
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},

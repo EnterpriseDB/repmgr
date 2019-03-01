@@ -135,6 +135,8 @@ typedef struct
 	/* following options for internal use */
 	char		config_archive_dir[MAXPGPATH];
 	OutputMode	output_mode;
+	bool		disable_wal_receiver;
+	bool		enable_wal_receiver;
 } t_runtime_options;
 
 #define T_RUNTIME_OPTIONS_INITIALIZER { \
@@ -174,7 +176,7 @@ typedef struct
 		/* "cluster cleanup" options */ \
 		0, \
 		/* following options for internal use */ \
-		"/tmp", OM_TEXT	\
+		"/tmp", OM_TEXT, false, false \
 }
 
 

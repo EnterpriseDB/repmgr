@@ -17,6 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <signal.h>
+
 #include "repmgr.h"
 
 static bool _local_command(const char *command, PQExpBufferData *outputbuf, bool simple, int *return_value);
@@ -175,4 +177,123 @@ remote_command(const char *host, const char *user, const char *command, const ch
 	}
 
 	return true;
+}
+
+
+pid_t
+disable_wal_receiver(PGconn *conn)
+{
+	char buf[MAXLEN];
+	int wal_retrieve_retry_interval;
+	pid_t wal_receiver_pid = UNKNOWN_PID;
+
+	if (is_superuser_connection(conn, NULL) == false)
+	{
+		log_error(_("superuser connection required"));
+		return UNKNOWN_PID;
+	}
+
+	get_pg_setting(conn, "wal_retrieve_retry_interval", buf);
+
+	// XXX handle error
+	wal_retrieve_retry_interval = atoi(buf);
+
+
+	if (wal_retrieve_retry_interval < WALRECEIVER_DISABLE_TIMEOUT_VALUE)
+	{
+		alter_system_int(conn, "wal_retrieve_retry_interval", wal_retrieve_retry_interval + WALRECEIVER_DISABLE_TIMEOUT_VALUE);
+		pg_reload_conf(conn);
+	}
+
+	wal_receiver_pid = (pid_t)get_wal_receiver_pid(conn);
+
+	if (wal_receiver_pid == UNKNOWN_PID)
+	{
+		log_warning(_("unable to retrieve walreceiver PID"));
+		return UNKNOWN_PID;
+	}
+
+	if (wal_receiver_pid == 0)
+	{
+		log_warning(_("walreceiver not running"));
+	}
+	else
+	{
+		int kill_ret;
+		int i, j;
+		int max_retries = 2;
+
+		for (i = 0; i < max_retries; i++)
+		{
+			/* why 5? */
+			sleep(5);
+			log_notice(_("killing walreceiver with PID %i"), (int)wal_receiver_pid);
+
+			kill((int)wal_receiver_pid, SIGTERM);
+
+			for (j = 0; j < 30; j++)
+			{
+				kill_ret = kill(wal_receiver_pid, 0);
+
+				if (kill_ret != 0)
+				{
+					log_info("killed");
+					break;
+				}
+				sleep(1);
+			}
+
+			/* */
+			sleep(1);
+			wal_receiver_pid = (pid_t)get_wal_receiver_pid(conn);
+			if (wal_receiver_pid == UNKNOWN_PID || wal_receiver_pid == 0)
+				break;
+		}
+	}
+
+
+	return wal_receiver_pid;
+}
+
+pid_t
+enable_wal_receiver(PGconn *conn)
+{
+	char buf[MAXLEN];
+	int wal_retrieve_retry_interval;
+	pid_t wal_receiver_pid = UNKNOWN_PID;
+
+	if (is_superuser_connection(conn, NULL) == false)
+	{
+		log_error(_("superuser connection required"));
+		return UNKNOWN_PID;
+	}
+
+	get_pg_setting(conn, "wal_retrieve_retry_interval", buf);
+
+	// XXX handle error
+	wal_retrieve_retry_interval = atoi(buf);
+
+	if (wal_retrieve_retry_interval > WALRECEIVER_DISABLE_TIMEOUT_VALUE)
+	{
+		int new_wal_retrieve_retry_interval = wal_retrieve_retry_interval - WALRECEIVER_DISABLE_TIMEOUT_VALUE;
+		log_notice(_("setting \"wal_retrieve_retry_interval\" to %i ms"),
+				   new_wal_retrieve_retry_interval);
+
+		// XXX handle error
+		alter_system_int(conn,
+						 "wal_retrieve_retry_interval",
+						 new_wal_retrieve_retry_interval);
+		pg_reload_conf(conn);
+	}
+	else
+	{
+		// XXX add threshold sanity check
+		log_info(_("\"wal_retrieve_retry_interval\" is %i, not changing"),
+				 wal_retrieve_retry_interval);
+	}
+
+
+	// XXX get wal receiver PID
+
+	return wal_receiver_pid;
 }
