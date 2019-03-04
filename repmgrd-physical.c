@@ -1993,69 +1993,78 @@ do_primary_failover(void)
 		int sibling_nodes_disconnect_timeout = 30;
 		bool sibling_node_wal_receiver_connected = false;
 
-		disable_wal_receiver(local_conn);
-
-		/*
-		 * Loop through all reachable sibling nodes to determine whether
-		 * they have disabled their WAL receivers.
-		 *
-		 * TODO: do_election() also calls get_active_sibling_node_records(),
-		 * consolidate calls if feasible
-		 *
-		 */
-		get_active_sibling_node_records(local_conn,
-										local_node_info.node_id,
-										local_node_info.upstream_node_id,
-										&check_sibling_nodes);
-
-		for (i = 0; i < sibling_nodes_disconnect_timeout; i++)
+		if (PQserverVersion(local_conn) < 90500)
 		{
-			for (cell = check_sibling_nodes.head; cell; cell = cell->next)
-			{
-				pid_t sibling_wal_receiver_pid;
-
-				if (cell->node_info->conn == NULL)
-					cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
-
-				sibling_wal_receiver_pid = (pid_t)get_wal_receiver_pid(cell->node_info->conn);
-
-				if (sibling_wal_receiver_pid == UNKNOWN_PID)
-				{
-					log_warning(_("unable to query WAL receiver PID on node %i"),
-								cell->node_info->node_id);
-				}
-				else if (sibling_wal_receiver_pid > 0)
-				{
-					log_info(_("WAL receiver PID on node %i is %i"),
-							 cell->node_info->node_id,
-							 sibling_wal_receiver_pid);
-					sibling_node_wal_receiver_connected = true;
-				}
-			}
-
-			if (sibling_node_wal_receiver_connected == false)
-			{
-				log_notice(_("WAL receiver disconnected on all sibling nodes"));
-				break;
-			}
-
-			log_debug("sleeping %i of max %i seconds (\"sibling_nodes_disconnect_timeout\")",
-					  i + 1, sibling_nodes_disconnect_timeout)
-			sleep(1);
-		}
-
-		if (sibling_node_wal_receiver_connected == true)
-		{
-			// XXX what do we do here? abort or continue? make configurable?
-			log_warning(_("WAL receiver still connected on at least one sibling node"));
+			log_warning(_("\"standby_disconnect_on_failover\" specified, but not available for this PostgreSQL version"));
+			/* TODO: format server version */
+			log_detail(_("available from PostgreSQL 9.5, this PostgreSQL version is %i"), PQserverVersion(local_conn));
 		}
 		else
 		{
-			log_info(_("WAL receiver disconnected on all %i sibling nodes"),
-					 check_sibling_nodes.node_count);
-		}
+			disable_wal_receiver(local_conn);
 
-		clear_node_info_list(&check_sibling_nodes);
+			/*
+			 * Loop through all reachable sibling nodes to determine whether
+			 * they have disabled their WAL receivers.
+			 *
+			 * TODO: do_election() also calls get_active_sibling_node_records(),
+			 * consolidate calls if feasible
+			 *
+			 */
+			get_active_sibling_node_records(local_conn,
+											local_node_info.node_id,
+											local_node_info.upstream_node_id,
+											&check_sibling_nodes);
+
+			for (i = 0; i < sibling_nodes_disconnect_timeout; i++)
+			{
+				for (cell = check_sibling_nodes.head; cell; cell = cell->next)
+				{
+					pid_t sibling_wal_receiver_pid;
+
+					if (cell->node_info->conn == NULL)
+						cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
+
+					sibling_wal_receiver_pid = (pid_t)get_wal_receiver_pid(cell->node_info->conn);
+
+					if (sibling_wal_receiver_pid == UNKNOWN_PID)
+					{
+						log_warning(_("unable to query WAL receiver PID on node %i"),
+									cell->node_info->node_id);
+					}
+					else if (sibling_wal_receiver_pid > 0)
+					{
+						log_info(_("WAL receiver PID on node %i is %i"),
+								 cell->node_info->node_id,
+								 sibling_wal_receiver_pid);
+						sibling_node_wal_receiver_connected = true;
+					}
+				}
+
+				if (sibling_node_wal_receiver_connected == false)
+				{
+					log_notice(_("WAL receiver disconnected on all sibling nodes"));
+					break;
+				}
+
+				log_debug("sleeping %i of max %i seconds (\"sibling_nodes_disconnect_timeout\")",
+						  i + 1, sibling_nodes_disconnect_timeout)
+					sleep(1);
+			}
+
+			if (sibling_node_wal_receiver_connected == true)
+			{
+				// XXX what do we do here? abort or continue? make configurable?
+				log_warning(_("WAL receiver still connected on at least one sibling node"));
+			}
+			else
+			{
+				log_info(_("WAL receiver disconnected on all %i sibling nodes"),
+						 check_sibling_nodes.node_count);
+			}
+
+			clear_node_info_list(&check_sibling_nodes);
+		}
 	}
 
 	/* attempt to initiate voting process */
@@ -3771,5 +3780,3 @@ handle_sighup(PGconn **conn, t_server_type server_type)
 
 	got_SIGHUP = false;
 }
-
-
