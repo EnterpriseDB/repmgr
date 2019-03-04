@@ -383,6 +383,15 @@ main(int argc, char **argv)
 	 * repmgr has not been properly configured.
 	 */
 
+
+	/* warn about any settings which might not be relevant for the current PostgreSQL version  */
+	if (config_file_options.standby_disconnect_on_failover == true && PQserverVersion(local_conn) < 90500)
+	{
+		log_warning(_("\"standby_disconnect_on_failover\" specified, but not available for this PostgreSQL version"));
+		/* TODO: format server version */
+		log_detail(_("available from PostgreSQL 9.5, this PostgreSQL version is %i"), PQserverVersion(local_conn));
+	}
+
 	/* Check "repmgr" the extension is installed */
 	extension_status = get_repmgr_extension_status(local_conn, &extversions);
 
