@@ -184,8 +184,11 @@ pid_t
 disable_wal_receiver(PGconn *conn)
 {
 	char buf[MAXLEN];
-	int wal_retrieve_retry_interval;
+	int wal_retrieve_retry_interval, new_wal_retrieve_retry_interval;
 	pid_t wal_receiver_pid = UNKNOWN_PID;
+	int kill_ret;
+	int i, j;
+	int max_retries = 2;
 
 	if (is_superuser_connection(conn, NULL) == false)
 	{
@@ -193,64 +196,70 @@ disable_wal_receiver(PGconn *conn)
 		return UNKNOWN_PID;
 	}
 
-	get_pg_setting(conn, "wal_retrieve_retry_interval", buf);
-
-	// XXX handle error
-	wal_retrieve_retry_interval = atoi(buf);
-
-
-	if (wal_retrieve_retry_interval < WALRECEIVER_DISABLE_TIMEOUT_VALUE)
+	if (get_recovery_type(conn) == RECTYPE_PRIMARY)
 	{
-		alter_system_int(conn, "wal_retrieve_retry_interval", wal_retrieve_retry_interval + WALRECEIVER_DISABLE_TIMEOUT_VALUE);
-		pg_reload_conf(conn);
+		log_error(_("node is not in recovery"));
+		log_detail(_("wal receiver can only run on standby nodes"));
+		return UNKNOWN_PID;
 	}
 
 	wal_receiver_pid = (pid_t)get_wal_receiver_pid(conn);
 
 	if (wal_receiver_pid == UNKNOWN_PID)
 	{
-		log_warning(_("unable to retrieve walreceiver PID"));
+		log_warning(_("unable to retrieve wal receiver PID"));
 		return UNKNOWN_PID;
 	}
 
 	if (wal_receiver_pid == 0)
 	{
-		log_warning(_("walreceiver not running"));
+		log_warning(_("wal receiver not running"));
+		return UNKNOWN_PID;
 	}
-	else
+
+	get_pg_setting(conn, "wal_retrieve_retry_interval", buf);
+
+	/* TODO: potentially handle atoi error, though unlikely at this point */
+	wal_retrieve_retry_interval = atoi(buf);
+
+	new_wal_retrieve_retry_interval = wal_retrieve_retry_interval + WALRECEIVER_DISABLE_TIMEOUT_VALUE;
+
+	if (wal_retrieve_retry_interval < WALRECEIVER_DISABLE_TIMEOUT_VALUE)
 	{
-		int kill_ret;
-		int i, j;
-		int max_retries = 2;
-
-		for (i = 0; i < max_retries; i++)
-		{
-			/* why 5? */
-			sleep(5);
-			log_notice(_("killing walreceiver with PID %i"), (int)wal_receiver_pid);
-
-			kill((int)wal_receiver_pid, SIGTERM);
-
-			for (j = 0; j < 30; j++)
-			{
-				kill_ret = kill(wal_receiver_pid, 0);
-
-				if (kill_ret != 0)
-				{
-					log_info("killed");
-					break;
-				}
-				sleep(1);
-			}
-
-			/* */
-			sleep(1);
-			wal_receiver_pid = (pid_t)get_wal_receiver_pid(conn);
-			if (wal_receiver_pid == UNKNOWN_PID || wal_receiver_pid == 0)
-				break;
-		}
+		log_notice(_("setting \"wal_retrieve_retry_interval\" to %i milliseconds"),
+				   new_wal_retrieve_retry_interval);
+		alter_system_int(conn, "wal_retrieve_retry_interval", new_wal_retrieve_retry_interval);
+		pg_reload_conf(conn);
 	}
 
+	/* why 5? */
+	log_info(_("sleeping 5 seconds"));
+	sleep(5);
+
+	for (i = 0; i < max_retries; i++)
+	{
+		log_notice(_("killing walreceiver with PID %i"), (int)wal_receiver_pid);
+
+		kill((int)wal_receiver_pid, SIGTERM);
+
+		for (j = 0; j < 30; j++)
+		{
+			kill_ret = kill(wal_receiver_pid, 0);
+
+			if (kill_ret != 0)
+			{
+				log_info(_("wal receiver with pid %i killed"), (int)wal_receiver_pid);
+				break;
+			}
+			sleep(1);
+		}
+
+		/* */
+		sleep(1);
+		wal_receiver_pid = (pid_t)get_wal_receiver_pid(conn);
+		if (wal_receiver_pid == UNKNOWN_PID || wal_receiver_pid == 0)
+			break;
+	}
 
 	return wal_receiver_pid;
 }
@@ -268,6 +277,13 @@ enable_wal_receiver(PGconn *conn)
 	if (is_superuser_connection(conn, NULL) == false)
 	{
 		log_error(_("superuser connection required"));
+		return UNKNOWN_PID;
+	}
+
+	if (get_recovery_type(conn) == RECTYPE_PRIMARY)
+	{
+		log_error(_("node is not in recovery"));
+		log_detail(_("wal receiver can only run on standby nodes"));
 		return UNKNOWN_PID;
 	}
 
@@ -321,6 +337,8 @@ enable_wal_receiver(PGconn *conn)
 		log_error(_("WAL receiver did not start up after %i seconds"), timeout);
 		return UNKNOWN_PID;
 	}
+
+	log_info(_("WAL receiver started up with PID %i"), (int)wal_receiver_pid);
 
 	return wal_receiver_pid;
 }
