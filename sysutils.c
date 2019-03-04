@@ -211,12 +211,6 @@ disable_wal_receiver(PGconn *conn)
 		return UNKNOWN_PID;
 	}
 
-	if (wal_receiver_pid == 0)
-	{
-		log_warning(_("wal receiver not running"));
-		return UNKNOWN_PID;
-	}
-
 	get_pg_setting(conn, "wal_retrieve_retry_interval", buf);
 
 	/* TODO: potentially handle atoi error, though unlikely at this point */
@@ -232,13 +226,25 @@ disable_wal_receiver(PGconn *conn)
 		pg_reload_conf(conn);
 	}
 
+	/*
+	 * If, at this point, the WAL receiver is not running, we don't need to (and indeed can't)
+	 * kill it.
+	 */
+	if (wal_receiver_pid == 0)
+	{
+		log_warning(_("wal receiver not running"));
+		return UNKNOWN_PID;
+	}
+
+
 	/* why 5? */
 	log_info(_("sleeping 5 seconds"));
 	sleep(5);
 
+	/* see comment below as to why we need a loop here */
 	for (i = 0; i < max_retries; i++)
 	{
-		log_notice(_("killing walreceiver with PID %i"), (int)wal_receiver_pid);
+		log_notice(_("killing WAL receiver with PID %i"), (int)wal_receiver_pid);
 
 		kill((int)wal_receiver_pid, SIGTERM);
 
@@ -248,13 +254,18 @@ disable_wal_receiver(PGconn *conn)
 
 			if (kill_ret != 0)
 			{
-				log_info(_("wal receiver with pid %i killed"), (int)wal_receiver_pid);
+				log_info(_("WAL receiver with pid %i killed"), (int)wal_receiver_pid);
 				break;
 			}
 			sleep(1);
 		}
 
-		/* */
+		/*
+		 * Wait briefly to check that the WAL receiver has indeed gone away -
+		 * for reasons as yet unclear, after a server start/restart, immediately
+		 * after the first time a WAL receiver is killed, a new one is started
+		 * straight away, so we'll need to kill that too.
+		 */
 		sleep(1);
 		wal_receiver_pid = (pid_t)get_wal_receiver_pid(conn);
 		if (wal_receiver_pid == UNKNOWN_PID || wal_receiver_pid == 0)

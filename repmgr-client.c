@@ -1922,6 +1922,28 @@ check_cli_parameters(const int action)
 										action_name(action));
 		}
 	}
+
+	/* --disable-wal-receiver / --enable-wal-receiver */
+	if (runtime_options.disable_wal_receiver == true || runtime_options.enable_wal_receiver == true)
+	{
+		switch (action)
+		{
+			case NODE_CONTROL:
+			{
+				if (runtime_options.disable_wal_receiver == true && runtime_options.enable_wal_receiver == true)
+				{
+						item_list_append(&cli_errors,
+										 _("provide either --disable-wal-receiver or --enable-wal-receiver"));
+				}
+			}
+				break;
+			default:
+					item_list_append_format(&cli_warnings,
+											_("--disable-wal-receiver / --enable-wal-receiver not effective when executing %s"),
+											action_name(action));
+		}
+	}
+
 }
 
 
