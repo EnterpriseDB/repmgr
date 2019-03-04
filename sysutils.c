@@ -262,15 +262,22 @@ enable_wal_receiver(PGconn *conn)
 	int wal_retrieve_retry_interval;
 	pid_t wal_receiver_pid = UNKNOWN_PID;
 
+	/* make timeout configurable */
+	int i, timeout = 30;
+
 	if (is_superuser_connection(conn, NULL) == false)
 	{
 		log_error(_("superuser connection required"));
 		return UNKNOWN_PID;
 	}
 
-	get_pg_setting(conn, "wal_retrieve_retry_interval", buf);
+	if (get_pg_setting(conn, "wal_retrieve_retry_interval", buf) == false)
+	{
+		log_error(_("unable to retrieve \"wal_retrieve_retry_interval\""));
+		return UNKNOWN_PID;
+	}
 
-	// XXX handle error
+	/* TODO: potentially handle atoi error, though unlikely at this point */
 	wal_retrieve_retry_interval = atoi(buf);
 
 	if (wal_retrieve_retry_interval > WALRECEIVER_DISABLE_TIMEOUT_VALUE)
@@ -292,8 +299,28 @@ enable_wal_receiver(PGconn *conn)
 				 wal_retrieve_retry_interval);
 	}
 
+	for (i = 0; i < timeout; i++)
+	{
+		wal_receiver_pid = (pid_t)get_wal_receiver_pid(conn);
 
-	// XXX get wal receiver PID
+		if (wal_receiver_pid > 0)
+			break;
+
+		log_info(_("sleeping %i of maximum %i seconds waiting for WAL receiver to start up"),
+				 i + 1, timeout)
+		sleep(1);
+	}
+
+	if (wal_receiver_pid == UNKNOWN_PID)
+	{
+		log_warning(_("unable to retrieve WAL receiver PID"));
+		return UNKNOWN_PID;
+	}
+	else if (wal_receiver_pid == 0)
+	{
+		log_error(_("WAL receiver did not start up after %i seconds"), timeout);
+		return UNKNOWN_PID;
+	}
 
 	return wal_receiver_pid;
 }
