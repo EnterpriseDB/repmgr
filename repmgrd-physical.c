@@ -3332,7 +3332,7 @@ do_election(void)
 		 */
 
 
-		if (sibling_replication_info.upstream_last_seen < (config_file_options.monitor_interval_secs * 2))
+		if (sibling_replication_info.upstream_last_seen >= 0 && sibling_replication_info.upstream_last_seen < (config_file_options.monitor_interval_secs * 2))
 		{
 			nodes_with_primary_still_visible++;
 			log_notice(_("node %i last saw primary node %i second(s) ago, considering primary still visible"),
