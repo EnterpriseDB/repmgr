@@ -2075,8 +2075,8 @@ do_primary_failover(void)
 
 	log_debug("election result: %s", _print_election_result(election_result));
 
-	/* Reenable WAL receiver, if disabled and node is not the promotion candidate */
-	if (config_file_options.standby_disconnect_on_failover == true && election_result != ELECTION_WON)
+	/* Reenable WAL receiver, if disabled */
+	if (config_file_options.standby_disconnect_on_failover == true)
 	{
 		/* adjust "wal_retrieve_retry_interval" but don't wait for WAL receiver to start */
 		enable_wal_receiver(local_conn, false);
