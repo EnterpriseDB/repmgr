@@ -2707,8 +2707,17 @@ do_node_control(void)
 
 	if (runtime_options.enable_wal_receiver == true)
 	{
-		wal_receiver_pid = enable_wal_receiver(conn);
+		wal_receiver_pid = enable_wal_receiver(conn, true);
+
+		PQfinish(conn);
+
+		if (wal_receiver_pid == UNKNOWN_PID)
+			exit(ERR_BAD_CONFIG);
+
+		exit(SUCCESS);
 	}
+
+	log_error(_("no option provided"));
 
 	PQfinish(conn);
 }

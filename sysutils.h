@@ -26,7 +26,7 @@ extern bool local_command_simple(const char *command, PQExpBufferData *outputbuf
 extern bool remote_command(const char *host, const char *user, const char *command, const char *ssh_options, PQExpBufferData *outputbuf);
 
 extern pid_t disable_wal_receiver(PGconn *conn);
-extern pid_t enable_wal_receiver(PGconn *conn);
+extern pid_t enable_wal_receiver(PGconn *conn, bool wait_startup);
 
 
 #endif							/* _SYSUTILS_H_ */

@@ -276,7 +276,7 @@ disable_wal_receiver(PGconn *conn)
 }
 
 pid_t
-enable_wal_receiver(PGconn *conn)
+enable_wal_receiver(PGconn *conn, bool wait_startup)
 {
 	char buf[MAXLEN];
 	int wal_retrieve_retry_interval;
@@ -325,6 +325,9 @@ enable_wal_receiver(PGconn *conn)
 		log_info(_("\"wal_retrieve_retry_interval\" is %i, not changing"),
 				 wal_retrieve_retry_interval);
 	}
+
+	if (wait_startup == false)
+		return UNKNOWN_PID;
 
 	for (i = 0; i < timeout; i++)
 	{
