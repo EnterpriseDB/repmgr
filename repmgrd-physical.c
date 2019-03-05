@@ -2078,8 +2078,8 @@ do_primary_failover(void)
 	/* Reenable WAL receiver, if disabled and node is not the promotion candidate */
 	if (config_file_options.standby_disconnect_on_failover == true && election_result != ELECTION_WON)
 	{
-		// XXX check return value
-		enable_wal_receiver(local_conn);
+		/* adjust "wal_retrieve_retry_interval" but don't wait for WAL receiver to start */
+		enable_wal_receiver(local_conn, false);
 	}
 
 	if (election_result == ELECTION_CANCELLED)
