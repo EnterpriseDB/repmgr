@@ -322,6 +322,11 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# "--no-pid-file" will force PID file creation to be skipped.
 					# Note: there is normally no need to set this, particularly if
 					# repmgr was installed from packages.
+#standby_disconnect_on_failover=false	# If "true", in a failover situation wait for all standbys to
+                                        # disconnect their WAL receivers before electing a new primary
+#sibling_nodes_disconnect_timeout=30	# If "standby_disconnect_on_failover", maximum length of time (in seconds)
+                                        # to wait for other standbys to confirm they have disconnected their
+                                        # WAL receivers
 
 #------------------------------------------------------------------------------
 # service control commands

@@ -359,6 +359,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->repmgrd_standby_startup_timeout = -1; /* defaults to "standby_reconnect_timeout" if not set */
 	memset(options->repmgrd_pid_file, 0, sizeof(options->repmgrd_pid_file));
 	options->standby_disconnect_on_failover = false;
+	options->sibling_nodes_disconnect_timeout = DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT;
 	options->connection_check_type = CHECK_PING;
 
 	/*-------------
@@ -622,6 +623,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->repmgrd_pid_file, value, MAXPGPATH);
 		else if (strcmp(name, "standby_disconnect_on_failover") == 0)
 			options->standby_disconnect_on_failover = parse_bool(value, name, error_list);
+		else if (strcmp(name, "sibling_nodes_disconnect_timeout") == 0)
+			options->sibling_nodes_disconnect_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "connection_check_type") == 0)
 		{
 			if (strcasecmp(value, "ping") == 0)
