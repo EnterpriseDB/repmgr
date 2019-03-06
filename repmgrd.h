@@ -23,6 +23,7 @@ extern PGconn *local_conn;
 extern bool startup_event_logged;
 extern char pid_file[MAXPGPATH];
 
+bool		check_upstream_connection(PGconn *conn, const char *conninfo);
 void		try_reconnect(PGconn **conn, t_node_info *node_info);
 
 int			calculate_elapsed(instr_time start_time);
@@ -30,6 +31,5 @@ const char *print_monitoring_state(MonitoringState monitoring_state);
 
 void		update_registration(PGconn *conn);
 void		terminate(int retval);
-
 
 #endif							/* _REPMGRD_H_ */

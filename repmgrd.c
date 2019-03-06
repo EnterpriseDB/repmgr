@@ -818,6 +818,58 @@ show_help(void)
 }
 
 
+bool
+check_upstream_connection(PGconn *conn, const char *conninfo)
+{
+	/* Check the connection status twice in case it changes after reset */
+	bool		twice = false;
+
+	if (config_file_options.connection_check_type == CHECK_PING)
+		return is_server_available(conninfo);
+
+	for (;;)
+	{
+		if (PQstatus(conn) != CONNECTION_OK)
+		{
+			if (twice)
+				return false;
+			PQreset(conn);		/* reconnect */
+			twice = true;
+		}
+		else
+		{
+			if (!cancel_query(conn, config_file_options.async_query_timeout))
+				goto failed;
+
+			if (wait_connection_availability(conn, config_file_options.async_query_timeout) != 1)
+				goto failed;
+
+			/* execute a simple query to verify connection availability */
+			if (PQsendQuery(conn, "SELECT 1") == 0)
+			{
+				log_warning(_("unable to send query to upstream"));
+				log_detail("%s", PQerrorMessage(conn));
+				goto failed;
+			}
+
+			if (wait_connection_availability(conn, config_file_options.async_query_timeout) != 1)
+				goto failed;
+
+			break;
+
+	failed:
+			/* retry once */
+			if (twice)
+				return false;
+			PQreset(conn);		/* reconnect */
+			twice = true;
+		}
+	}
+
+	return true;
+}
+
+
 void
 try_reconnect(PGconn **conn, t_node_info *node_info)
 {

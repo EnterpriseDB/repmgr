@@ -27,8 +27,9 @@
         repmgrd: check binary and extension major versions match; GitHub #515 (Ian)
         repmgrd: on a cascaded standby, don't fail over if "failover=manual";
           GitHub #531 (Ian)
-		repmgrd: don't consider nodes where repmgrd is not running as promotion
-		  candidates (Ian)
+        repmgrd: don't consider nodes where repmgrd is not running as promotion
+          candidates (Ian)
+        repmgrd: add option "connection_check_type" (Ian)
 
 4.2.1   2018-??-??
         repmgr: add sanity check for correct extension version (Ian)

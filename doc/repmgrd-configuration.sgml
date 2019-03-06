@@ -101,6 +101,32 @@
         <command>repmgr standby follow</command> will result in the node continuing to follow
         the original primary.
       </para>
+
+      <para>
+        <indexterm>
+          <primary>connection_check_type</primary>
+        </indexterm>
+        Additionally, the option <option>connection_check_type</option> to enable selection of the method
+        <application>repmgrd</application> uses to determine whether the upstream node is available.
+      </para>
+      <para>
+        Possible values are:
+        <itemizedlist spacing="compact" mark="bullet">
+          <listitem>
+            <simpara>
+              <literal>ping</literal> (default) - uses <command>PQping()</command> to
+        determine server availability
+            </simpara>
+          </listitem>
+          <listitem>
+            <simpara>
+              <literal>connection</literal> - determines server availability
+              by executing an SQL statement on the node via the existing connection
+            </simpara>
+          </listitem>
+        </itemizedlist>
+      </para>
+
     </sect2>
 
     <sect2 id="postgresql-service-configuration">
