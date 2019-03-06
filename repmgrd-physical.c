@@ -1989,8 +1989,6 @@ do_primary_failover(void)
 		static NodeInfoList check_sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 		int i;
 
-		// XXX make configurable
-		int sibling_nodes_disconnect_timeout = 30;
 		bool sibling_node_wal_receiver_connected = false;
 
 		if (PQserverVersion(local_conn) < 90500)
@@ -2016,7 +2014,7 @@ do_primary_failover(void)
 											local_node_info.upstream_node_id,
 											&check_sibling_nodes);
 
-			for (i = 0; i < sibling_nodes_disconnect_timeout; i++)
+			for (i = 0; i < config_file_options.sibling_nodes_disconnect_timeout; i++)
 			{
 				for (cell = check_sibling_nodes.head; cell; cell = cell->next)
 				{
@@ -2048,13 +2046,13 @@ do_primary_failover(void)
 				}
 
 				log_debug("sleeping %i of max %i seconds (\"sibling_nodes_disconnect_timeout\")",
-						  i + 1, sibling_nodes_disconnect_timeout)
-					sleep(1);
+						  i + 1, config_file_options.sibling_nodes_disconnect_timeout);
+				sleep(1);
 			}
 
 			if (sibling_node_wal_receiver_connected == true)
 			{
-				// XXX what do we do here? abort or continue? make configurable?
+				/* TODO: prevent any such nodes becoming promotion candidates */
 				log_warning(_("WAL receiver still connected on at least one sibling node"));
 			}
 			else
