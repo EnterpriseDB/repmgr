@@ -285,6 +285,9 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# a value of zero prevents the node being promoted to primary
 					# (default: 100)
 
+#connection_check_type=ping		# How to check availability of the upstream node; valid options:
+                                        #  'ping': use PQping() to check if the node is accepting connections
+                                        #  'connection': execute a throwaway query on the current connection
 #reconnect_attempts=6			# Number of attempts which will be made to reconnect to an unreachable
 					# primary (or other upstream node)
 #reconnect_interval=10			# Interval between attempts to reconnect to an unreachable

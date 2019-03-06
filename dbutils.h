@@ -510,7 +510,7 @@ bool		get_tablespace_name_by_location(PGconn *conn, const char *location, char *
 
 /* asynchronous query functions */
 bool		cancel_query(PGconn *conn, int timeout);
-int			wait_connection_availability(PGconn *conn, long long timeout);
+int			wait_connection_availability(PGconn *conn, int timeout);
 
 /* node availability functions */
 bool		is_server_available(const char *conninfo);

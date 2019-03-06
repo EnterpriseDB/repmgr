@@ -4132,7 +4132,8 @@ cancel_query(PGconn *conn, int timeout)
 	 */
 	if (PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
 	{
-		log_warning(_("unable to stop current query:\n  %s"), errbuf);
+		log_warning(_("unable to cancel current query"));
+		log_detail("%s", errbuf);
 		PQfreeCancel(pgcancel);
 		return false;
 	}
@@ -4150,7 +4151,7 @@ cancel_query(PGconn *conn, int timeout)
  * Returns 1 for success; 0 if any error ocurred; -1 if timeout reached.
  */
 int
-wait_connection_availability(PGconn *conn, long long timeout)
+wait_connection_availability(PGconn *conn, int timeout)
 {
 	PGresult   *res = NULL;
 	fd_set		read_set;
@@ -4159,16 +4160,17 @@ wait_connection_availability(PGconn *conn, long long timeout)
 				before,
 				after;
 	struct timezone tz;
+	long long	timeout_ms;
 
-	/* recalc to microseconds */
-	timeout *= 1000000;
+	/* calculate timeout in microseconds */
+	timeout_ms = timeout * 1000000;
 
-	while (timeout > 0)
+	while (timeout_ms > 0)
 	{
 		if (PQconsumeInput(conn) == 0)
 		{
-			log_warning(_("wait_connection_availability(): could not receive data from connection:\n  %s"),
-						PQerrorMessage(conn));
+			log_warning(_("wait_connection_availability(): unable to receive data from connection"));
+			log_detail("%s", PQerrorMessage(conn));
 			return 0;
 		}
 
@@ -4199,17 +4201,17 @@ wait_connection_availability(PGconn *conn, long long timeout)
 
 		gettimeofday(&after, &tz);
 
-		timeout -= (after.tv_sec * 1000000 + after.tv_usec) -
+		timeout_ms -= (after.tv_sec * 1000000 + after.tv_usec) -
 			(before.tv_sec * 1000000 + before.tv_usec);
 	}
 
 
-	if (timeout >= 0)
+	if (timeout_ms >= 0)
 	{
 		return 1;
 	}
 
-	log_warning(_("wait_connection_availability(): timeout reached"));
+	log_warning(_("wait_connection_availability(): timeout (%i secs) reached"), timeout);
 	return -1;
 }
 

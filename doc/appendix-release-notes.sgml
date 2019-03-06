@@ -160,7 +160,17 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 			  the absence of a running <application>repmgrd</application>.
 			</para>
           </listitem>
-
+          <listitem>
+            <para>
+              Add option <option>connection_check_type</option> to enable selection of the method
+              <application>repmgrd</application> uses to determine whether the upstream node is available.
+            </para>
+            <para>
+              Possible values are <literal>ping</literal> (default; uses <command>PQping()</command> to
+              determine server availability); and <literal>connection</literal> (determines server availability
+              by executing an SQL statement on the node via the existing connection).
+            </para>
+          </listitem>
 		</itemizedlist>
 	  </para>
 	</sect2>

@@ -358,6 +358,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->primary_notification_timeout = DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT;
 	options->repmgrd_standby_startup_timeout = -1; /* defaults to "standby_reconnect_timeout" if not set */
 	memset(options->repmgrd_pid_file, 0, sizeof(options->repmgrd_pid_file));
+	options->connection_check_type = CHECK_PING;
 
 	/*-------------
 	 * witness settings
@@ -618,6 +619,22 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->repmgrd_standby_startup_timeout = repmgr_atoi(value, name, error_list, 0);
 		else if (strcmp(name, "repmgrd_pid_file") == 0)
 			strncpy(options->repmgrd_pid_file, value, MAXPGPATH);
+		else if (strcmp(name, "connection_check_type") == 0)
+		{
+			if (strcasecmp(value, "ping") == 0)
+			{
+				options->connection_check_type = CHECK_PING;
+			}
+			else if (strcasecmp(value, "connection") == 0)
+			{
+				options->connection_check_type = CHECK_CONNECTION;
+			}
+			else
+			{
+				item_list_append(error_list,
+								 _("value for \"connection_check_type\" must be \"ping\" or \"connect\"\n"));
+			}
+		}
 
 		/* witness settings */
 		else if (strcmp(name, "witness_sync_interval") == 0)
@@ -1155,7 +1172,6 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		return false;
 	}
 
-
 	/*
 	 * No configuration problems detected - copy any changed values
 	 *
@@ -1327,6 +1343,14 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		orig_options->repmgrd_standby_startup_timeout = new_options.repmgrd_standby_startup_timeout;
 		log_info(_("\"repmgrd_standby_startup_timeout\" is now \"%i\""), new_options.repmgrd_standby_startup_timeout);
 
+		config_changed = true;
+	}
+
+	if (orig_options->connection_check_type != new_options.connection_check_type)
+	{
+		orig_options->connection_check_type = new_options.connection_check_type;
+		log_info(_("\"connection_check_type\" is now \"%s\""),
+				 new_options.connection_check_type == CHECK_PING ? "ping" : "connection");
 		config_changed = true;
 	}
 

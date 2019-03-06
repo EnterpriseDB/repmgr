@@ -831,7 +831,7 @@ monitor_streaming_standby(void)
 	while (true)
 	{
 		log_verbose(LOG_DEBUG, "checking %s", upstream_node_info.conninfo);
-		if (is_server_available(upstream_node_info.conninfo) == true)
+		if (check_upstream_connection(upstream_conn, upstream_node_info.conninfo) == true)
 		{
 			set_upstream_last_seen(local_conn);
 		}
@@ -1030,9 +1030,10 @@ monitor_streaming_standby(void)
 					  upstream_node_info.node_id,
 					  degraded_monitoring_elapsed);
 
-			if (is_server_available(upstream_node_info.conninfo) == true)
+			if (check_upstream_connection(upstream_conn, upstream_node_info.conninfo) == true)
 			{
-				upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
+				if (config_file_options.connection_check_type == CHECK_PING)
+					upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
 				{
@@ -1604,7 +1605,7 @@ monitor_streaming_witness(void)
 
 	while (true)
 	{
-		if (is_server_available(upstream_node_info.conninfo) == false)
+		if (check_upstream_connection(upstream_conn, upstream_node_info.conninfo) == false)
 		{
 			if (upstream_node_info.node_status == NODE_STATUS_UP)
 			{
@@ -1693,9 +1694,10 @@ monitor_streaming_witness(void)
 					  upstream_node_info.node_id,
 					  degraded_monitoring_elapsed);
 
-			if (is_server_available(upstream_node_info.conninfo) == true)
+			if (check_upstream_connection(primary_conn, upstream_node_info.conninfo) == true)
 			{
-				primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
+				if (config_file_options.connection_check_type == CHECK_PING)
+					primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
 				if (PQstatus(primary_conn) == CONNECTION_OK)
 				{

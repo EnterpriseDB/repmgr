@@ -37,6 +37,12 @@ typedef enum
 	FAILOVER_AUTOMATIC
 } failover_mode_opt;
 
+typedef enum
+{
+	CHECK_PING,
+	CHECK_CONNECTION
+} ConnectionCheckType;
+
 typedef struct EventNotificationListCell
 {
 	struct EventNotificationListCell *next;
@@ -135,6 +141,7 @@ typedef struct
 	int			primary_notification_timeout;
 	int			repmgrd_standby_startup_timeout;
 	char		repmgrd_pid_file[MAXPGPATH];
+	ConnectionCheckType connection_check_type;
 
 	/* BDR settings */
 	bool		bdr_local_monitoring_only;
@@ -206,7 +213,7 @@ typedef struct
         false, -1, \
 		DEFAULT_ASYNC_QUERY_TIMEOUT, \
 		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT,	\
-		-1, "", \
+ 	    -1, "", CHECK_PING, \
 		/* BDR settings */ \
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \
