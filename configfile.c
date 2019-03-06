@@ -632,7 +632,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			else
 			{
 				item_list_append(error_list,
-								 _("value for \"connection_check_type\" must be \"ping\" or \"connect\"\n"));
+								 _("value for \"connection_check_type\" must be \"ping\" or \"connection\"\n"));
 			}
 		}
 

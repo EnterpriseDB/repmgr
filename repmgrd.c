@@ -819,7 +819,7 @@ show_help(void)
 
 
 bool
-check_upstream_connection(PGconn *conn, const char *conninfo)
+check_upstream_connection(PGconn **conn, const char *conninfo)
 {
 	/* Check the connection status twice in case it changes after reset */
 	bool		twice = false;
@@ -829,30 +829,33 @@ check_upstream_connection(PGconn *conn, const char *conninfo)
 
 	for (;;)
 	{
-		if (PQstatus(conn) != CONNECTION_OK)
+		if (PQstatus(*conn) != CONNECTION_OK)
 		{
+			log_debug("connection not OK");
 			if (twice)
 				return false;
-			PQreset(conn);		/* reconnect */
+			/* reconnect */
+			PQfinish(*conn);
+			*conn = PQconnectdb(conninfo);
 			twice = true;
 		}
 		else
 		{
-			if (!cancel_query(conn, config_file_options.async_query_timeout))
+			if (!cancel_query(*conn, config_file_options.async_query_timeout))
 				goto failed;
 
-			if (wait_connection_availability(conn, config_file_options.async_query_timeout) != 1)
+			if (wait_connection_availability(*conn, config_file_options.async_query_timeout) != 1)
 				goto failed;
 
 			/* execute a simple query to verify connection availability */
-			if (PQsendQuery(conn, "SELECT 1") == 0)
+			if (PQsendQuery(*conn, "SELECT 1") == 0)
 			{
 				log_warning(_("unable to send query to upstream"));
-				log_detail("%s", PQerrorMessage(conn));
+				log_detail("%s", PQerrorMessage(*conn));
 				goto failed;
 			}
 
-			if (wait_connection_availability(conn, config_file_options.async_query_timeout) != 1)
+			if (wait_connection_availability(*conn, config_file_options.async_query_timeout) != 1)
 				goto failed;
 
 			break;
@@ -861,7 +864,10 @@ check_upstream_connection(PGconn *conn, const char *conninfo)
 			/* retry once */
 			if (twice)
 				return false;
-			PQreset(conn);		/* reconnect */
+
+			/* reconnect */
+			PQfinish(*conn);
+			*conn = PQconnectdb(conninfo);
 			twice = true;
 		}
 	}
@@ -926,7 +932,7 @@ try_reconnect(PGconn **conn, t_node_info *node_info)
 
 					if (ping_result != PGRES_TUPLES_OK)
 					{
-						log_info("original connnection no longer available, using new connection");
+						log_info("original connection no longer available, using new connection");
 						close_connection(conn);
 						*conn = our_conn;
 					}
