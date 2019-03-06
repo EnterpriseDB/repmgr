@@ -821,8 +821,8 @@ begin_transaction(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to begin transaction:\n	 %s"),
-				  PQerrorMessage(conn));
+		log_error(_("unable to begin transaction"));
+		log_detail("%s", PQerrorMessage(conn));
 
 		PQclear(res);
 		return false;
@@ -845,8 +845,8 @@ commit_transaction(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to commit transaction:\n  %s"),
-				  PQerrorMessage(conn));
+		log_error(_("unable to commit transaction"));
+		log_detail("%s", PQerrorMessage(conn));
 		PQclear(res);
 
 		return false;
@@ -869,8 +869,8 @@ rollback_transaction(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_error(_("unable to rollback transaction:\n	%s"),
-				  PQerrorMessage(conn));
+		log_error(_("unable to rollback transaction"));
+		log_detail("%s", PQerrorMessage(conn));
 		PQclear(res);
 
 		return false;
