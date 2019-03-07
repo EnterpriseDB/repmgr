@@ -1097,6 +1097,10 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * - reconnect_interval
  * - repmgrd_standby_startup_timeout
  * - retry_promote_interval_secs
+ * - standby_disconnect_on_failover
+ * - sibling_nodes_disconnect_timeout
+ * - connection_check_type
+ * - primary_visibility_consensus
  *
  * non-changeable options (repmgrd references these from the "repmgr.nodes"
  * table, not the configuration file)
@@ -1354,6 +1358,25 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		config_changed = true;
 	}
 
+	/* standby_disconnect_on_failover */
+	if (orig_options->standby_disconnect_on_failover != new_options.standby_disconnect_on_failover)
+	{
+		orig_options->standby_disconnect_on_failover = new_options.standby_disconnect_on_failover;
+		log_info(_("\"standby_disconnect_on_failover\" is now \"%s\""),
+				 new_options.standby_disconnect_on_failover == true ? "TRUE" : "FALSE");
+		config_changed = true;
+	}
+
+	/* sibling_nodes_disconnect_timeout */
+	if (orig_options->sibling_nodes_disconnect_timeout != new_options.sibling_nodes_disconnect_timeout)
+	{
+		orig_options->sibling_nodes_disconnect_timeout = new_options.sibling_nodes_disconnect_timeout;
+		log_info(_("\"sibling_nodes_disconnect_timeout\" is now \"%i\""),
+				 new_options.sibling_nodes_disconnect_timeout);
+		config_changed = true;
+	}
+
+	/* connection_check_type */
 	if (orig_options->connection_check_type != new_options.connection_check_type)
 	{
 		orig_options->connection_check_type = new_options.connection_check_type;
@@ -1361,6 +1384,16 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 				 new_options.connection_check_type == CHECK_PING ? "ping" : "connection");
 		config_changed = true;
 	}
+
+	/* primary_visibility_consensus */
+	if (orig_options->primary_visibility_consensus != new_options.primary_visibility_consensus)
+	{
+		orig_options->primary_visibility_consensus = new_options.primary_visibility_consensus;
+		log_info(_("\"primary_visibility_consensus\" is now \"%s\""),
+				 new_options.primary_visibility_consensus == true ? "TRUE" : "FALSE");
+		config_changed = true;
+	}
+
 
 	/*
 	 * Handle changes to logging configuration
