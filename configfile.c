@@ -361,6 +361,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->standby_disconnect_on_failover = false;
 	options->sibling_nodes_disconnect_timeout = DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT;
 	options->connection_check_type = CHECK_PING;
+	options->primary_visibility_consensus = false;
 
 	/*-------------
 	 * witness settings
@@ -641,6 +642,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 								 _("value for \"connection_check_type\" must be \"ping\" or \"connection\"\n"));
 			}
 		}
+		else if (strcmp(name, "primary_visibility_consensus") == 0)
+			options->primary_visibility_consensus = parse_bool(value, name, error_list);
 
 		/* witness settings */
 		else if (strcmp(name, "witness_sync_interval") == 0)
@@ -1227,8 +1230,8 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		{
 			strncpy(orig_options->conninfo, new_options.conninfo, MAXLEN);
 			log_info(_("\"conninfo\" is now \"%s\""), new_options.conninfo);
-
 		}
+
 		PQfinish(conn);
 	}
 
@@ -1305,7 +1308,6 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 
 		config_changed = true;
 	}
-
 
 	/* promote_command */
 	if (strncmp(orig_options->promote_command, new_options.promote_command, MAXLEN) != 0)

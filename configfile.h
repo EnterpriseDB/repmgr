@@ -144,6 +144,7 @@ typedef struct
 	bool		standby_disconnect_on_failover;
 	int			sibling_nodes_disconnect_timeout;
 	ConnectionCheckType connection_check_type;
+	bool		primary_visibility_consensus;
 
 	/* BDR settings */
 	bool		bdr_local_monitoring_only;
@@ -215,7 +216,7 @@ typedef struct
         false, -1, \
 		DEFAULT_ASYNC_QUERY_TIMEOUT, \
 		DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT, \
-		-1, "", false, DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT, CHECK_PING, \
+		-1, "", false, DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT, CHECK_PING, true, \
 		/* BDR settings */ \
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \

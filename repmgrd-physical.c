@@ -3526,20 +3526,24 @@ do_election(void)
 
 	if (nodes_with_primary_still_visible > 0)
 	{
-		log_notice(_("%i nodes can see the primary"),
+		log_info(_("%i nodes can see the primary"),
 				   nodes_with_primary_still_visible);
 
 		log_detail(_("following nodes can see the primary:\n%s"),
 				   nodes_with_primary_visible.data);
 
-		monitoring_state = MS_DEGRADED;
-		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
+		if (config_file_options.primary_visibility_consensus == true)
+		{
+			log_notice(_("cancelling failover as some nodes can still see the primary"));
+			monitoring_state = MS_DEGRADED;
+			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
-		reset_node_voting_status();
+			reset_node_voting_status();
 
-		termPQExpBuffer(&nodes_with_primary_visible);
+			termPQExpBuffer(&nodes_with_primary_visible);
 
-		return ELECTION_CANCELLED;
+			return ELECTION_CANCELLED;
+		}
 	}
 
 	termPQExpBuffer(&nodes_with_primary_visible);
