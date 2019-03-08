@@ -1104,6 +1104,7 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * - sibling_nodes_disconnect_timeout
  * - connection_check_type
  * - primary_visibility_consensus
+ * - failover_validation_command
  *
  * non-changeable options (repmgrd references these from the "repmgr.nodes"
  * table, not the configuration file)
@@ -1397,6 +1398,14 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		config_changed = true;
 	}
 
+	/* failover_validation_command */
+	if (strncmp(orig_options->failover_validation_command, new_options.failover_validation_command, MAXPGPATH) != 0)
+	{
+		strncpy(orig_options->failover_validation_command, new_options.failover_validation_command, MAXPGPATH);
+		log_info(_("\"failover_validation_command\" is now \"%s\""), new_options.failover_validation_command);
+
+		config_changed = true;
+	}
 
 	/*
 	 * Handle changes to logging configuration
