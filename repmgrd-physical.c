@@ -88,6 +88,7 @@ static void handle_sighup(PGconn **conn, t_server_type server_type);
 
 static const char *format_failover_state(FailoverState failover_state);
 static const char * format_failover_state(FailoverState failover_state);
+static ElectionResult execute_failover_validation_command(t_node_info *node_info);
 static void parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out);
 
 void
@@ -3263,7 +3264,13 @@ do_election(void)
 	{
 		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
 		{
+			if (config_file_options.failover_validation_command[0] != '\0')
+			{
+				return execute_failover_validation_command(&local_node_info);
+			}
+
 			log_info(_("no other sibling nodes - we win by default"));
+
 			return ELECTION_WON;
 		}
 		else
@@ -3573,52 +3580,13 @@ do_election(void)
 	if (candidate_node->node_id == local_node_info.node_id)
 	{
 		/*
-		 * If "failover_validation_command" is set, execute that command.
+		 * If "failover_validation_command" is set, execute that command
+		 * and decide the result based on the command's output
 		 */
 
 		if (config_file_options.failover_validation_command[0] != '\0')
 		{
-			PQExpBufferData failover_validation_command;
-			PQExpBufferData command_output;
-			int return_value = -1;
-
-			initPQExpBuffer(&failover_validation_command);
-			initPQExpBuffer(&command_output);
-
-			parse_failover_validation_command(config_file_options.failover_validation_command,
-											  candidate_node,
-											  &failover_validation_command);
-
-			log_notice(_("executing \"failover_validation_command\""));
-			log_detail("%s", failover_validation_command.data);
-
-			/* we determine success of the command by the value placed into return_value */
-			(void) local_command_return_value(failover_validation_command.data,
-											  &command_output,
-											  &return_value);
-
-			termPQExpBuffer(&failover_validation_command);
-
-			if (return_value != 0)
-				log_warning(_("failover validation command returned %i"), return_value);
-
-			if (command_output.data[0] != '\0')
-			{
-				log_info("output returned by failover validation command:\n%s", command_output.data);
-			}
-			else
-			{
-				log_info(_("no output returned from command"));
-			}
-
-			termPQExpBuffer(&command_output);
-
-			if (return_value != 0)
-			{
-				/* create event here? */
-				log_notice(_("failover validation command returned a non-zero value (%i)"), return_value);
-				return ELECTION_LOST;
-			}
+			return execute_failover_validation_command(candidate_node);
 		}
 
 		return ELECTION_WON;
@@ -3834,9 +3802,59 @@ handle_sighup(PGconn **conn, t_server_type server_type)
 	got_SIGHUP = false;
 }
 
+static ElectionResult
+execute_failover_validation_command(t_node_info *node_info)
+{
+	PQExpBufferData failover_validation_command;
+	PQExpBufferData command_output;
+	int return_value = -1;
+
+	initPQExpBuffer(&failover_validation_command);
+	initPQExpBuffer(&command_output);
+
+	parse_failover_validation_command(config_file_options.failover_validation_command,
+									  node_info,
+									  &failover_validation_command);
+
+	log_notice(_("executing \"failover_validation_command\""));
+	log_detail("%s", failover_validation_command.data);
+
+	/* we determine success of the command by the value placed into return_value */
+	(void) local_command_return_value(failover_validation_command.data,
+									  &command_output,
+									  &return_value);
+
+	termPQExpBuffer(&failover_validation_command);
+
+	if (return_value != 0)
+		log_warning(_("failover validation command returned %i"), return_value);
+
+	if (command_output.data[0] != '\0')
+	{
+		log_info("output returned by failover validation command:\n%s", command_output.data);
+	}
+	else
+	{
+		log_info(_("no output returned from command"));
+	}
+
+	termPQExpBuffer(&command_output);
+
+	if (return_value != 0)
+	{
+		/* create event here? */
+		log_notice(_("failover validation command returned a non-zero value (%i)"), return_value);
+		return ELECTION_LOST;
+	}
+
+	log_notice(_("failover validation command returned zero"));
+
+	return ELECTION_WON;
+}
+
 
 static void
-parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out)
+parse_failover_validation_command(const char *template, t_node_info *node_info, PQExpBufferData *out)
 {
 	const char *src_ptr;
 
