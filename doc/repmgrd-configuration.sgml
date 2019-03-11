@@ -200,6 +200,20 @@
 
         <varlistentry>
 
+         <indexterm>
+            <primary>monitor_interval_secs</primary>
+          </indexterm>
+          <term><option>monitor_interval_secs</option></term>
+          <listitem>
+            <para>
+              The interval (in seconds, default: <literal>2</literal>) to check the availability of the upstream node.
+            </para>
+          </listitem>
+
+        </varlistentry>
+
+        <varlistentry>
+
           <indexterm>
             <primary>connection_check_type</primary>
           </indexterm>
@@ -223,6 +237,38 @@
                     <literal>connection</literal> - determines server availability
                     by executing an SQL statement on the node via the existing connection
                   </simpara>
+                </listitem>
+              </itemizedlist>
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+          <indexterm>
+            <primary>failover_validation_command</primary>
+          </indexterm>
+          <term><option>failover_validation_command</option></term>
+          <listitem>
+            <para>
+              User-defined script to execute for an external mechanism to validate the failover
+	      decision made by <application>repmgrd</application>.
+            </para>
+            <note>
+              <para>
+                This optiom <emphasis>must</emphasis> be identically configurered
+                on all nodes.
+              </para>
+            </note>
+            <para>
+              One or both of the following parameter placeholders
+	      should be provided, which will be replaced by repmgrd with the appropriate
+	      value:
+              <itemizedlist spacing="compact" mark="bullet">
+                <listitem>
+                  <simpara><literal>%n</literal>: node ID</simpara>
+                </listitem>
+                <listitem>
+                  <simpara><literal>%a</literal>: node name</simpara>
                 </listitem>
               </itemizedlist>
             </para>
@@ -310,10 +356,8 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
         in <filename>repmgr.conf</filename>.
       </para>
       <para>
-        The default monitoring interval is 2 seconds; this value can be explicitly set using:
-        <programlisting>
-          monitor_interval_secs=&lt;seconds&gt;</programlisting>
-        in <filename>repmgr.conf</filename>.
+        Monitoring data is written at the interval defined by
+        the option <option>monitor_interval_secs</option> (see above).
       </para>
       <para>
         For more details on monitoring, see <xref linkend="repmgrd-monitoring">.
