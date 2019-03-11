@@ -190,7 +190,7 @@
 
     </sect2>
 
-    <sect2 id="repmgrd-automatic-failover-configuration-optionanl">
+    <sect2 id="repmgrd-automatic-failover-configuration-optional">
       <title>Optional configuration for automatic failover</title>
 
       <para>
@@ -407,6 +407,13 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
           </simpara>
         </listitem>
 
+
+        <listitem>
+          <simpara>
+            <varname>connection_check_type</varname>
+          </simpara>
+        </listitem>
+
         <listitem>
           <simpara>
             <varname>conninfo</varname>
@@ -428,6 +435,12 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
         <listitem>
           <simpara>
             <varname>event_notifications</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>failover_validation_command</varname>
           </simpara>
         </listitem>
 
@@ -487,6 +500,12 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
 
         <listitem>
           <simpara>
+            <varname>primary_visibility_consensus</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
             <varname>promote_command</varname>
           </simpara>
         </listitem>
@@ -505,7 +524,25 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
 
         <listitem>
           <simpara>
+            <varname>retry_promote_interval_secs</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
             <varname>repmgrd_standby_startup_timeout</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>sibling_nodes_disconnect_timeout</varname>
+          </simpara>
+        </listitem>
+
+        <listitem>
+          <simpara>
+            <varname>standby_disconnect_on_failover</varname>
           </simpara>
         </listitem>
 

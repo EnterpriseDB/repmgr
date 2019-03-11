@@ -1078,15 +1078,19 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * loop is started up; it therefore only needs to reload options required
  * by repmgrd, which are as follows:
  *
- * changeable options:
+ * changeable options (keep the list in "doc/repmgrd-configuration.sgml" in sync
+ * with these):
+ *
  * - async_query_timeout
  * - bdr_local_monitoring_only
  * - bdr_recovery_timeout
+ * - connection_check_type
  * - conninfo
  * - degraded_monitoring_timeout
  * - event_notification_command
  * - event_notifications
  * - failover
+ * - failover_validation_command
  * - follow_command
  * - log_facility
  * - log_file
@@ -1094,17 +1098,19 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * - log_status_interval
  * - monitor_interval_secs
  * - monitoring_history
+ * - primary_notification_timeout
+ * - primary_visibility_consensus
  * - promote_command
- * - promote_delay
  * - reconnect_attempts
  * - reconnect_interval
  * - repmgrd_standby_startup_timeout
  * - retry_promote_interval_secs
- * - standby_disconnect_on_failover
  * - sibling_nodes_disconnect_timeout
- * - connection_check_type
- * - primary_visibility_consensus
- * - failover_validation_command
+ * - standby_disconnect_on_failover
+ *
+ *
+ * Not publicly documented:
+ * - promote_delay
  *
  * non-changeable options (repmgrd references these from the "repmgr.nodes"
  * table, not the configuration file)
