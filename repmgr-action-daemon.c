@@ -354,17 +354,8 @@ _do_repmgr_pause(bool pause)
 	PGconn	   *conn = NULL;
 	NodeInfoList nodes = T_NODE_INFO_LIST_INITIALIZER;
 	NodeInfoListCell *cell = NULL;
-	RepmgrdInfo **repmgrd_info;
 	int i;
 	int error_nodes = 0;
-
-	repmgrd_info = (RepmgrdInfo **) pg_malloc0(sizeof(RepmgrdInfo *) * nodes.node_count);
-
-	if (repmgrd_info == NULL)
-	{
-		log_error(_("unable to allocate memory"));
-		exit(ERR_OUT_OF_MEMORY);
-	}
 
 	/* Connect to local database to obtain cluster connection data */
 	log_verbose(LOG_INFO, _("connecting to database"));
@@ -380,9 +371,6 @@ _do_repmgr_pause(bool pause)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
-		repmgrd_info[i]->node_id = cell->node_info->node_id;
-
 		log_verbose(LOG_DEBUG, "pausing node %i (%s)",
 					cell->node_info->node_id,
 					cell->node_info->node_name);
