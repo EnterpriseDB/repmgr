@@ -59,12 +59,11 @@ static FailoverState failover_state = FAILOVER_STATE_UNKNOWN;
 
 static int	primary_node_id = UNKNOWN_NODE_ID;
 static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
-static NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 static instr_time last_monitoring_update;
 
 
-static ElectionResult do_election(void);
+static ElectionResult do_election(NodeInfoList *sibling_nodes);
 static const char *_print_election_result(ElectionResult result);
 
 static FailoverState promote_self(void);
@@ -1111,6 +1110,7 @@ monitor_streaming_standby(void)
 					{
 						int			degraded_monitoring_elapsed;
 						int			former_upstream_node_id = local_node_info.upstream_node_id;
+						NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 						update_node_record_set_primary(local_conn,  local_node_info.node_id);
 						record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
@@ -1138,6 +1138,8 @@ monitor_streaming_standby(void)
 														former_upstream_node_id,
 														&sibling_nodes);
 						notify_followers(&sibling_nodes, local_node_info.node_id);
+
+						clear_node_info_list(&sibling_nodes);
 
 						/* this will restart monitoring in primary mode */
 						monitoring_state = MS_NORMAL;
@@ -1173,6 +1175,8 @@ monitor_streaming_standby(void)
 
 				if (config_file_options.failover == FAILOVER_AUTOMATIC && repmgrd_is_paused(local_conn) == false)
 				{
+					NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
+
 					get_active_sibling_node_records(local_conn,
 													local_node_info.node_id,
 													local_node_info.upstream_node_id,
@@ -1747,6 +1751,7 @@ monitor_streaming_witness(void)
 
 				NodeInfoListCell *cell;
 				int			follow_node_id = UNKNOWN_NODE_ID;
+				NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 				get_active_sibling_node_records(local_conn,
 												local_node_info.node_id,
@@ -1976,6 +1981,8 @@ static bool
 do_primary_failover(void)
 {
 	ElectionResult election_result;
+	bool final_result = false;
+	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 	/*
 	 * Double-check status of the local connection
@@ -1989,7 +1996,7 @@ do_primary_failover(void)
 	if (config_file_options.standby_disconnect_on_failover == true)
 	{
 		NodeInfoListCell *cell = NULL;
-		static NodeInfoList check_sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
+		NodeInfoList check_sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 		int i;
 
 		bool sibling_node_wal_receiver_connected = false;
@@ -2069,7 +2076,7 @@ do_primary_failover(void)
 	}
 
 	/* attempt to initiate voting process */
-	election_result = do_election();
+	election_result = do_election(&sibling_nodes);
 
 	/* TODO add pre-event notification here */
 	failover_state = FAILOVER_STATE_UNKNOWN;
@@ -2161,7 +2168,7 @@ do_primary_failover(void)
 			/* election rerun */
 			else if (new_primary_id == ELECTION_RERUN_NOTIFICATION)
 			{
-				log_notice(_("election rerun"));
+				log_notice(_("received notification from promotion candidate to rerun election"));
 				failover_state = FAILOVER_STATE_ELECTION_RERUN;
 			}
 			else if (config_file_options.failover == FAILOVER_MANUAL)
@@ -2225,15 +2232,14 @@ do_primary_failover(void)
 			/* notify former siblings that they should now follow this node */
 			notify_followers(&sibling_nodes, local_node_info.node_id);
 
-			/* we no longer care about our former siblings */
-			clear_node_info_list(&sibling_nodes);
-
 			/* pass control back down to start_monitoring() */
 			log_info(_("switching to primary monitoring mode"));
 
 			failover_state = FAILOVER_STATE_NONE;
-			return true;
 
+			final_result = true;
+
+			break;
 
 		case FAILOVER_STATE_ELECTION_RERUN:
 
@@ -2244,13 +2250,16 @@ do_primary_failover(void)
 					   config_file_options.election_rerun_interval);
 			sleep(config_file_options.election_rerun_interval);
 
+			log_info(_("election rerun will now commence"));
 			/*
 			 * mark the upstream node as "up" so another election is triggered
 			 * after we fall back to monitoring
 			 */
 			upstream_node_info.node_status = NODE_STATUS_UP;
 			failover_state = FAILOVER_STATE_NONE;
-			return false;
+
+			final_result = false;
+			break;
 
 		case FAILOVER_STATE_PRIMARY_REAPPEARED:
 
@@ -2260,17 +2269,15 @@ do_primary_failover(void)
 			 */
 			notify_followers(&sibling_nodes, upstream_node_info.node_id);
 
-			/* we no longer care about our former siblings */
-			clear_node_info_list(&sibling_nodes);
-
 			/* pass control back down to start_monitoring() */
 			log_info(_("resuming standby monitoring mode"));
 			log_detail(_("original primary \"%s\" (node ID: %i) reappeared"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 
 			failover_state = FAILOVER_STATE_NONE;
-			return true;
 
+			final_result = true;
+			break;
 
 		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
 			log_info(_("resuming standby monitoring mode"));
@@ -2278,7 +2285,8 @@ do_primary_failover(void)
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
 
-			return true;
+			final_result = true;
+			break;
 
 		case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
 			log_info(_("resuming standby monitoring mode"));
@@ -2286,13 +2294,15 @@ do_primary_failover(void)
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
 
-			return true;
+			final_result = true;
+			break;
 
 		case FAILOVER_STATE_PROMOTION_FAILED:
 			monitoring_state = MS_DEGRADED;
 			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
-			return false;
+			final_result = false;
+			break;
 
 		case FAILOVER_STATE_FOLLOW_FAIL:
 
@@ -2303,30 +2313,41 @@ do_primary_failover(void)
 			monitoring_state = MS_DEGRADED;
 			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
-			return false;
+			final_result = false;
+			break;
 
 		case FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER:
 			log_info(_("automatic failover disabled for this node, manual intervention required"));
 
 			monitoring_state = MS_DEGRADED;
 			INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
-			return false;
+
+			final_result = false;
+			break;
 
 		case FAILOVER_STATE_NO_NEW_PRIMARY:
 		case FAILOVER_STATE_WAITING_NEW_PRIMARY:
 			/* pass control back down to start_monitoring() */
-			return false;
+			final_result = false;
+			break;
 
 		case FAILOVER_STATE_NODE_NOTIFICATION_ERROR:
 		case FAILOVER_STATE_LOCAL_NODE_FAILURE:
 		case FAILOVER_STATE_UNKNOWN:
 		case FAILOVER_STATE_NONE:
-			return false;
 
+			final_result = false;
+			break;
+
+		default:	/* should never reach here */
+			log_warning(_("unhandled failover state %i"), failover_state);
+			break;
 	}
 
-	/* should never reach here */
-	return false;
+	/* we no longer care about our former siblings */
+	clear_node_info_list(&sibling_nodes);
+
+	return final_result;
 }
 
 
@@ -3208,11 +3229,11 @@ _print_election_result(ElectionResult result)
 /*
  * Failover decision for nodes attached to the current primary.
  *
- * NB: this function sets standby_nodes; caller (do_primary_failover)
+ * NB: this function sets "sibling_nodes"; caller (do_primary_failover)
  * expects to be able to read this list
  */
 static ElectionResult
-do_election(void)
+do_election(NodeInfoList *sibling_nodes)
 {
 	int			electoral_term = -1;
 
@@ -3277,9 +3298,9 @@ do_election(void)
 	get_active_sibling_node_records(local_conn,
 									local_node_info.node_id,
 									upstream_node_info.node_id,
-									&sibling_nodes);
+									sibling_nodes);
 
-	total_nodes = sibling_nodes.node_count + 1;
+	total_nodes = sibling_nodes->node_count + 1;
 
 	if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) != 0)
 	{
@@ -3298,7 +3319,7 @@ do_election(void)
 	local_node_info.last_wal_receive_lsn = InvalidXLogRecPtr;
 
 	/* fast path if no other standbys (or witness) exists - normally win by default */
-	if (sibling_nodes.node_count == 0)
+	if (sibling_nodes->node_count == 0)
 	{
 		if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) == 0)
 		{
@@ -3378,7 +3399,7 @@ do_election(void)
 
 	initPQExpBuffer(&nodes_with_primary_visible);
 
-	for (cell = sibling_nodes.head; cell; cell = cell->next)
+	for (cell = sibling_nodes->head; cell; cell = cell->next)
 	{
 		ReplInfo	sibling_replication_info;
 
