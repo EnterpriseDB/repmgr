@@ -363,6 +363,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->connection_check_type = CHECK_PING;
 	options->primary_visibility_consensus = false;
 	memset(options->failover_validation_command, 0, sizeof(options->failover_validation_command));
+	options->election_rerun_interval = DEFAULT_ELECTION_RERUN_INTERVAL;
 
 	/*-------------
 	 * witness settings
@@ -647,6 +648,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->primary_visibility_consensus = parse_bool(value, name, error_list);
 		else if (strcmp(name, "failover_validation_command") == 0)
 			strncpy(options->failover_validation_command, value, sizeof(options->failover_validation_command));
+		else if (strcmp(name, "election_rerun_interval") == 0)
+			options->election_rerun_interval = repmgr_atoi(value, name, error_list, 0);
 
 		/* witness settings */
 		else if (strcmp(name, "witness_sync_interval") == 0)

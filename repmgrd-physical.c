@@ -37,7 +37,8 @@ typedef enum
 	FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY,
 	FAILOVER_STATE_NO_NEW_PRIMARY,
 	FAILOVER_STATE_FOLLOW_FAIL,
-	FAILOVER_STATE_NODE_NOTIFICATION_ERROR
+	FAILOVER_STATE_NODE_NOTIFICATION_ERROR,
+	FAILOVER_STATE_ELECTION_RERUN
 } FailoverState;
 
 
@@ -46,7 +47,8 @@ typedef enum
 	ELECTION_NOT_CANDIDATE = -1,
 	ELECTION_WON,
 	ELECTION_LOST,
-	ELECTION_CANCELLED
+	ELECTION_CANCELLED,
+	ELECTION_RERUN
 } ElectionResult;
 
 
@@ -2086,6 +2088,14 @@ do_primary_failover(void)
 		log_notice(_("election cancelled"));
 		return false;
 	}
+	else if (election_result == ELECTION_RERUN)
+	{
+		log_notice(_("election rerun"));
+		/* notify siblings that they should rerun the election too */
+		notify_followers(&sibling_nodes, ELECTION_RERUN_NOTIFICATION);
+
+		failover_state = FAILOVER_STATE_ELECTION_RERUN;
+	}
 	else if (election_result == ELECTION_WON)
 	{
 		if (sibling_nodes.node_count > 0)
@@ -2147,6 +2157,12 @@ do_primary_failover(void)
 												upstream_node_info.node_id,
 												&sibling_nodes);
 
+			}
+			/* election rerun */
+			else if (new_primary_id == ELECTION_RERUN_NOTIFICATION)
+			{
+				log_notice(_("election rerun"));
+				failover_state = FAILOVER_STATE_ELECTION_RERUN;
 			}
 			else if (config_file_options.failover == FAILOVER_MANUAL)
 			{
@@ -2218,6 +2234,24 @@ do_primary_failover(void)
 			failover_state = FAILOVER_STATE_NONE;
 			return true;
 
+
+		case FAILOVER_STATE_ELECTION_RERUN:
+
+			/* we no longer care about our former siblings */
+			clear_node_info_list(&sibling_nodes);
+
+			log_notice(_("rerunning election after %i seconds (\"election_rerun_interval\")"),
+					   config_file_options.election_rerun_interval);
+			sleep(config_file_options.election_rerun_interval);
+
+			/*
+			 * mark the upstream node as "up" so another election is triggered
+			 * after we fall back to monitoring
+			 */
+			upstream_node_info.node_status = NODE_STATUS_UP;
+			failover_state = FAILOVER_STATE_NONE;
+			return false;
+
 		case FAILOVER_STATE_PRIMARY_REAPPEARED:
 
 			/*
@@ -2288,6 +2322,7 @@ do_primary_failover(void)
 		case FAILOVER_STATE_UNKNOWN:
 		case FAILOVER_STATE_NONE:
 			return false;
+
 	}
 
 	/* should never reach here */
@@ -3160,6 +3195,9 @@ _print_election_result(ElectionResult result)
 
 		case ELECTION_CANCELLED:
 			return "CANCELLED";
+
+		case ELECTION_RERUN:
+			return "RERUN";
 	}
 
 	/* should never reach here */
@@ -3767,6 +3805,8 @@ format_failover_state(FailoverState failover_state)
 			return "FOLLOW_FAIL";
 		case FAILOVER_STATE_NODE_NOTIFICATION_ERROR:
 			return "NODE_NOTIFICATION_ERROR";
+		case FAILOVER_STATE_ELECTION_RERUN:
+			return "ELECTION_RERUN";
 	}
 
 	/* should never reach here */
@@ -3844,7 +3884,7 @@ execute_failover_validation_command(t_node_info *node_info)
 	{
 		/* create event here? */
 		log_notice(_("failover validation command returned a non-zero value (%i)"), return_value);
-		return ELECTION_LOST;
+		return ELECTION_RERUN;
 	}
 
 	log_notice(_("failover validation command returned zero"));

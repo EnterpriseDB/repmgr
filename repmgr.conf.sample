@@ -332,7 +332,9 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #failover_validation_command=		# Script to execute for an external mechanism to validate the failover
 					# decision made by repmgrd. One or both of the following parameter placeholders
 					# should be provided, which will be replaced by repmgrd with the appropriate
-					# value: %n (node_id), %a (node_name)
+					# value: %n (node_id), %a (node_name). *Must* be the same on all nodes.
+#election_rerun_interval=15		# if "failover_validation_command" is set, and the command returns
+					# an error, pause the specified amount of seconds before rerunning the election.
 
 #------------------------------------------------------------------------------
 # service control commands

@@ -261,7 +261,7 @@
             </note>
             <para>
               One or both of the following parameter placeholders
-	      should be provided, which will be replaced by repmgrd with the appropriate
+			  should be provided, which will be replaced by repmgrd with the appropriate
 	      value:
               <itemizedlist spacing="compact" mark="bullet">
                 <listitem>
@@ -274,6 +274,19 @@
             </para>
           </listitem>
         </varlistentry>
+
+        <varlistentry>
+          <indexterm>
+            <primary>election_rerun_interval</primary>
+          </indexterm>
+          <term><option>election_rerun_interval</option></term>
+          <listitem>
+			<para>
+			  If <option>failover_validation_command</option> is set, and the command returns
+			  an error, pause the specified amount of seconds (default: 15) before rerunning the election.
+			</para>
+		  </listitem>
+		</varlistentry>
 
       </variablelist>
 
