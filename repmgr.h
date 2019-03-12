@@ -60,6 +60,7 @@
 #define NO_UPSTREAM_NODE	-1
 #define UNKNOWN_NODE_ID		-1
 #define MIN_NODE_ID          1
+#define ELECTION_RERUN_NOTIFICATION -2
 #define VOTING_TERM_NOT_SET -1
 #define ARCHIVE_STATUS_DIR_ERROR -1
 
@@ -92,6 +93,7 @@
 #define DEFAULT_NODE_REJOIN_TIMEOUT          60  /* seconds */
 #define DEFAULT_WAL_RECEIVE_CHECK_TIMEOUT    30  /* seconds */
 #define DEFAULT_SIBLING_NODES_DISCONNECT_TIMEOUT 30 /* seconds */
+#define DEFAULT_ELECTION_RERUN_INTERVAL      15  /* seconds */
 
 #define WALRECEIVER_DISABLE_TIMEOUT_VALUE    86400000 /* milliseconds */
 
