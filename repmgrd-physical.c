@@ -2097,7 +2097,7 @@ do_primary_failover(void)
 	}
 	else if (election_result == ELECTION_RERUN)
 	{
-		log_notice(_("election rerun"));
+		log_notice(_("promotion candidate election will be rerun"));
 		/* notify siblings that they should rerun the election too */
 		notify_followers(&sibling_nodes, ELECTION_RERUN_NOTIFICATION);
 
@@ -2835,8 +2835,8 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 {
 	NodeInfoListCell *cell;
 
-	log_verbose(LOG_NOTICE, "%i followers to notify",
-				standby_nodes->node_count);
+	log_info(_("%i followers to notify"),
+			 standby_nodes->node_count);
 
 	for (cell = standby_nodes->head; cell; cell = cell->next)
 	{
@@ -2855,8 +2855,19 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 			continue;
 		}
 
-		log_verbose(LOG_NOTICE, "notifying node %i to follow node %i",
-					cell->node_info->node_id, follow_node_id);
+		if (follow_node_id == ELECTION_RERUN_NOTIFICATION)
+		{
+			log_notice(_("notifying node \"%s\" (node ID: %i) to rerun promotion candidate selection"),
+					   cell->node_info->node_name,
+					   cell->node_info->node_id);
+		}
+		else
+		{
+			log_notice(_("notifying node \"%s\" (node ID: %i) to follow node %i"),
+					   cell->node_info->node_name,
+					   cell->node_info->node_id,
+					   follow_node_id);
+		}
 		notify_follow_primary(cell->node_info->conn, follow_node_id);
 	}
 }
@@ -3887,9 +3898,6 @@ execute_failover_validation_command(t_node_info *node_info)
 
 	termPQExpBuffer(&failover_validation_command);
 
-	if (return_value != 0)
-		log_warning(_("failover validation command returned %i"), return_value);
-
 	if (command_output.data[0] != '\0')
 	{
 		log_info("output returned by failover validation command:\n%s", command_output.data);
@@ -3904,7 +3912,8 @@ execute_failover_validation_command(t_node_info *node_info)
 	if (return_value != 0)
 	{
 		/* create event here? */
-		log_notice(_("failover validation command returned a non-zero value (%i)"), return_value);
+		log_notice(_("failover validation command returned a non-zero value: %i"),
+				   return_value);
 		return ELECTION_RERUN;
 	}
 
