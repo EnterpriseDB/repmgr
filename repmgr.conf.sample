@@ -281,7 +281,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					#    manual attention to reattach it to replication
 					# (does not apply to BDR mode)
 
-#priority=100				# indicate a preferred priority for promoting nodes;
+#priority=100				# indicates a preferred priority for promoting nodes;
 					# a value of zero prevents the node being promoted to primary
 					# (default: 100)
 
@@ -311,7 +311,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #monitoring_history=no                  # Whether to write monitoring data to the "montoring_history" table
 #monitor_interval_secs=2                # Interval (in seconds) at which to write monitoring data
 #degraded_monitoring_timeout=-1		# Interval (in seconds) after which repmgrd will terminate if the
-					# server being monitored is no longer available. -1 (default)
+					# server(s) being monitored are no longer available. -1 (default)
 					# disables the timeout completely.
 #async_query_timeout=60			# Interval (in seconds) which repmgrd will wait before
 					# cancelling an asynchronous query.
@@ -323,12 +323,13 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# Note: there is normally no need to set this, particularly if
 					# repmgr was installed from packages.
 #standby_disconnect_on_failover=false	# If "true", in a failover situation wait for all standbys to
-                                        # disconnect their WAL receivers before electing a new primary
-#sibling_nodes_disconnect_timeout=30	# If "standby_disconnect_on_failover", maximum length of time (in seconds)
-					# to wait for other standbys to confirm they have disconnected their
+					# disconnect their WAL receivers before electing a new primary
+					# (PostgreSQL 9.5 and later only; repmgr user must be a superuser for this)
+#sibling_nodes_disconnect_timeout=30	# If "standby_disconnect_on_failover" is true, the maximum length of time
+					#  (in seconds) to wait for other standbys to confirm they have disconnected their
 					# WAL receivers
 #primary_visibility_consensus=false	# If "true", only continue with failover if no standbys have seen
-					# the primary node recently
+					# the primary node recently. *Must* be the same on all nodes.
 #failover_validation_command=		# Script to execute for an external mechanism to validate the failover
 					# decision made by repmgrd. One or both of the following parameter placeholders
 					# should be provided, which will be replaced by repmgrd with the appropriate
