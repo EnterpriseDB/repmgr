@@ -80,10 +80,10 @@
 
  <part id="using-repmgrd">
   <title>Using repmgrd</title>
+  &repmgrd-overview;
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
   &repmgrd-demonstration;
-  &repmgrd-cascading-replication;
   &repmgrd-network-split;
   &repmgrd-witness-server;
   &repmgrd-pausing;

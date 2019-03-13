@@ -1,0 +1,17 @@
+
+<chapter id="repmgrd-overview" xreflabel="Overview of repmgrd">
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>overview</secondary>
+ </indexterm>
+
+ <title>repmgrd overview</title>
+
+ <para>
+   <application>repmgrd</application> (&quot;<literal>replication manager daemon</literal>&quot;)
+   is a management and monitoring daemon which runs
+   on each node in a replication cluster. It can automate actions such as
+   failover and updating standbys to follow the new primary, as well as
+   providing monitoring information about the state of each standby.
+ </para>
+</chapter>
