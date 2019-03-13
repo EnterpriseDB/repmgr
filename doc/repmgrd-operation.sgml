@@ -213,4 +213,91 @@ NOTICE: node 3 (node3) unpaused</programlisting>
     </note>
   </sect1>
 
+<sect1 id="repmgrd-degraded-monitoring" xreflabel="repmgrd degraded monitoring">
+ <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>degraded monitoring</secondary>
+ </indexterm>
+
+ <indexterm>
+   <primary>degraded monitoring</primary>
+ </indexterm>
+
+ <title>"degraded monitoring" mode</title>
+ <para>
+  In certain circumstances, <application>repmgrd</application> is not able to fulfill its primary mission
+  of monitoring the node's upstream server. In these cases it enters &quot;degraded monitoring&quot;
+  mode, where <application>repmgrd</application> remains active but is waiting for the situation
+  to be resolved.
+ </para>
+ <para>
+  Situations where this happens are:
+  <itemizedlist spacing="compact" mark="bullet">
+
+   <listitem>
+    <simpara>a failover situation has occurred, no nodes in the primary node's location are visible</simpara>
+   </listitem>
+
+   <listitem>
+    <simpara>a failover situation has occurred, but no promotion candidate is available</simpara>
+   </listitem>
+
+   <listitem>
+    <simpara>a failover situation has occurred, but the promotion candidate could not be promoted</simpara>
+   </listitem>
+
+   <listitem>
+    <simpara>a failover situation has occurred, but the node was unable to follow the new primary</simpara>
+   </listitem>
+
+   <listitem>
+    <simpara>a failover situation has occurred, but no primary has become available</simpara>
+   </listitem>
+
+   <listitem>
+    <simpara>a failover situation has occurred, but automatic failover is not enabled for the node</simpara>
+   </listitem>
+
+   <listitem>
+    <simpara>repmgrd is monitoring the primary node, but it is not available (and no other node has been promoted as primary)</simpara>
+   </listitem>
+  </itemizedlist>
+ </para>
+
+ <para>
+  Example output in a situation where there is only one standby with <literal>failover=manual</literal>,
+  and the primary node is unavailable (but is later restarted):
+  <programlisting>
+    [2017-08-29 10:59:19] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state (automatic failover disabled)
+    [2017-08-29 10:59:33] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
+    [2017-08-29 10:59:33] [INFO] checking state of node 1, 1 of 5 attempts
+    [2017-08-29 10:59:33] [INFO] sleeping 1 seconds until next reconnection attempt
+    (...)
+    [2017-08-29 10:59:37] [INFO] checking state of node 1, 5 of 5 attempts
+    [2017-08-29 10:59:37] [WARNING] unable to reconnect to node 1 after 5 attempts
+    [2017-08-29 10:59:37] [NOTICE] this node is not configured for automatic failover so will not be considered as promotion candidate
+    [2017-08-29 10:59:37] [NOTICE] no other nodes are available as promotion candidate
+    [2017-08-29 10:59:37] [HINT] use "repmgr standby promote" to manually promote this node
+    [2017-08-29 10:59:37] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in degraded state (automatic failover disabled)
+    [2017-08-29 10:59:53] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in degraded state (automatic failover disabled)
+    [2017-08-29 11:00:45] [NOTICE] reconnected to upstream node 1 after 68 seconds, resuming monitoring
+    [2017-08-29 11:00:57] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state (automatic failover disabled)</programlisting>
+
+ </para>
+ <para>
+  By default, <literal>repmgrd</literal> will continue in degraded monitoring mode indefinitely.
+  However a timeout (in seconds) can be set with <varname>degraded_monitoring_timeout</varname>,
+  after which <application>repmgrd</application> will terminate.
+ </para>
+
+ <note>
+   <para>
+     If <application>repmgrd</application> is monitoring a primary mode which has been stopped
+     and manually restarted as a standby attached to a new primary, it will automatically detect
+     the status change and update the node record to reflect the node's new status
+     as an active standby. It will then resume monitoring the node as a standby.
+   </para>
+ </note>
+</sect1>
+
 </chapter>
