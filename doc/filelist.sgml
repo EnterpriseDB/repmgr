@@ -54,7 +54,6 @@
 <!ENTITY repmgrd-automatic-failover SYSTEM "repmgrd-automatic-failover.sgml">
 <!ENTITY repmgrd-configuration SYSTEM "repmgrd-configuration.sgml">
 <!ENTITY repmgrd-operation SYSTEM "repmgrd-operation.sgml">
-<!ENTITY repmgrd-witness-server SYSTEM "repmgrd-witness-server.sgml">
 <!ENTITY repmgrd-bdr SYSTEM "repmgrd-bdr.sgml">
 
 <!ENTITY repmgr-primary-register SYSTEM "repmgr-primary-register.sgml">
