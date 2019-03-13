@@ -138,7 +138,7 @@
     </variablelist>
 
       <para>
-        See also <filename><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink></filename> for an annotated sample configuration file..
+        See also <filename><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink></filename> for an annotated sample configuration file.
       </para>
 
     <sect2 id="repmgrd-automatic-failover-configuration">
@@ -341,7 +341,7 @@
             <para>
               One or both of the following parameter placeholders
 			  should be provided, which will be replaced by repmgrd with the appropriate
-	      value:
+	          value:
               <itemizedlist spacing="compact" mark="bullet">
                 <listitem>
                   <simpara><literal>%n</literal>: node ID</simpara>
@@ -350,6 +350,9 @@
                   <simpara><literal>%a</literal>: node name</simpara>
                 </listitem>
               </itemizedlist>
+            </para>
+            <para>
+              See also: <link linkend="repmgrd-failover-validation">Failover validation</link>.
             </para>
           </listitem>
         </varlistentry>

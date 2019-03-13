@@ -32,7 +32,7 @@
 REPMGRD_OPTS="--daemonize=false"</programlisting>
 	  </para>
 	  <para>
-		For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd daemon configuration on Debian/Ubuntu</link>.
+		For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd configuration on Debian/Ubuntu</link>.
 	  </para>
 	</important>
 
@@ -160,6 +160,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 			  the absence of a running <application>repmgrd</application>.
 			</para>
           </listitem>
+
           <listitem>
             <para>
               Add option <option>connection_check_type</option> to enable selection of the method
@@ -171,6 +172,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
               by executing an SQL statement on the node via the existing connection).
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              New configuration option <option>failover_validation_command</option>
+              to allow an external mechanism to validate the failover decision made by <application>repmgrd</application>.
+            </para>
+          </listitem>
+
 		</itemizedlist>
 	  </para>
 	</sect2>

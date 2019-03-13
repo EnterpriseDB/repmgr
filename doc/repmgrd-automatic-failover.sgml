@@ -110,8 +110,61 @@
 
 </sect1>
 
+<sect1 id="repmgrd-failover-validation" xreflabel="Failover validation">
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>failover validation</secondary>
+ </indexterm>
 
-  <sect1 id="cascading-replication">
+  <indexterm>
+    <primary>failover validation</primary>
+  </indexterm>
+
+  <title>Failover validation</title>
+  <para>
+    From <link linkend="release-4.3">repmgr 4.3</link>, &repmgr; makes it possible to provide a script
+    to <application>repmgrd</application> which, in a failover situation,
+    will be executed by the promotion candidate (the node which has been selected
+    to be the new primary) to confirm whether the node should actually be promoted.
+  </para>
+  <para>
+    To use this, <option>failover_validate_command</option> in <filename>repmgr.conf</filename>
+    to a script executable by the <literal>postgres</literal> system user, e.g.:
+    <programlisting>
+      failover_validate_command=/path/to/script.sh %n %a</programlisting>
+  </para>
+  <para>
+    The <literal>%n</literal> parameter will be replaced with the node ID, and the
+    <literal>%a</literal> parameter will be replaced by the node name when the script is executed.
+  </para>
+  <para>
+    This script must return an exit code of <literal>0</literal> to indicate the node should promote itself.
+    Any other value will result in the promotion being aborted and the election rerun.
+    There is a pause of <option>election_rerun_interval</option> seconds before the election is rerun.
+  </para>
+  <para>
+    Sample <application>repmgrd</application> log file output during which the failover validation
+    script rejects the proposed promotion candidate:
+    <programlisting>
+[2019-03-13 21:01:30] [INFO] visible nodes: 2; total nodes: 2; no nodes have seen the primary within the last 4 seconds
+[2019-03-13 21:01:30] [NOTICE] promotion candidate is "node2" (ID: 2)
+[2019-03-13 21:01:30] [NOTICE] executing "failover_validation_command"
+[2019-03-13 21:01:30] [DETAIL] /usr/local/bin/failover-validation.sh 2
+[2019-03-13 21:01:30] [INFO] output returned by failover validation command:
+Node ID: 2
+
+[2019-03-13 21:01:30] [NOTICE] failover validation command returned a non-zero value: "1"
+[2019-03-13 21:01:30] [NOTICE] promotion candidate election will be rerun
+[2019-03-13 21:01:30] [INFO] 1 followers to notify
+[2019-03-13 21:01:30] [NOTICE] notifying node "node3" (node ID: 3) to rerun promotion candidate selection
+INFO:  node 3 received notification to rerun promotion candidate election
+[2019-03-13 21:01:30] [NOTICE] rerunning election after 15 seconds ("election_rerun_interval")</programlisting>
+  </para>
+
+
+</sect1>
+
+  <sect1 id="cascading-replication" xreflabel="Cascading replication">
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>cascading replication</secondary>
