@@ -50,12 +50,12 @@
 <!ENTITY event-notifications  SYSTEM "event-notifications.sgml">
 <!ENTITY upgrading-repmgr  SYSTEM "upgrading-repmgr.sgml">
 
+<!ENTITY repmgrd-overview SYSTEM "repmgrd-overview.sgml">
 <!ENTITY repmgrd-automatic-failover SYSTEM "repmgrd-automatic-failover.sgml">
 <!ENTITY repmgrd-configuration SYSTEM "repmgrd-configuration.sgml">
 <!ENTITY repmgrd-demonstration SYSTEM "repmgrd-demonstration.sgml">
 <!ENTITY repmgrd-monitoring SYSTEM "repmgrd-monitoring.sgml">
 <!ENTITY repmgrd-degraded-monitoring SYSTEM "repmgrd-degraded-monitoring.sgml">
-<!ENTITY repmgrd-cascading-replication SYSTEM "repmgrd-cascading-replication.sgml">
 <!ENTITY repmgrd-network-split SYSTEM "repmgrd-network-split.sgml">
 <!ENTITY repmgrd-witness-server SYSTEM "repmgrd-witness-server.sgml">
 <!ENTITY repmgrd-pausing SYSTEM "repmgrd-pausing.sgml">
