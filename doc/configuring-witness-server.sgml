@@ -1,7 +1,6 @@
 <chapter id="using-witness-server">
  <indexterm>
   <primary>witness server</primary>
-  <seealso>Using a witness server with repmgrd</seealso>
  </indexterm>
 
 
@@ -9,8 +8,9 @@
  <para>
    A <xref linkend="witness-server"> is a normal PostgreSQL instance which
    is not part of the streaming replication cluster; its purpose is, if a
-   failover situation occurs, to provide proof that the primary server
-   itself is unavailable.
+   failover situation occurs, to provide proof that it is the primary server
+   itself which is unavailable, rather than e.g. a network split between
+   different physical locations.
  </para>
 
  <para>
@@ -53,7 +53,7 @@
    in the same physical location as the cluster's primary server.
  </para>
  <para>
-   This instance should *not* be on the same physical host as the primary server,
+   This instance should <emphasis>not</emphasis> be on the same physical host as the primary server,
    as otherwise if the primary server fails due to hardware issues, the witness
    server will be lost too.
  </para>
