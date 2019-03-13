@@ -110,6 +110,53 @@
 
 </sect1>
 
+<sect1 id="repmgrd-standby-disconnection-on-failover" xreflabel="Standby disconnection on failover">
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>standby disconnection on failover</secondary>
+ </indexterm>
+
+  <indexterm>
+    <primary>standby disconnection on failover</primary>
+  </indexterm>
+
+  <title>Standby disconnection on failover</title>
+  <para>
+    If <option>standby_disconnect_on_failover</option> is set to <literal>true</literal> in
+    <filename>repmgr.conf</filename>, in a failover situation <application>repmgrd</application> will forcibly disconnect
+    the local node's WAL receiver before making a failover decision.
+  </para>
+  <note>
+    <para>
+      <option>standby_disconnect_on_failover</option> is available from PostgreSQL 9.5 and later.
+      Additionally this requires that the <literal>repmgr</literal> database user is a superuser.
+    </para>
+  </note>
+  <para>
+    By doing this, it's possible to ensure that, at the point the failover decision is made, no nodes
+    are receiving data from the primary and their LSN location will be static.
+  </para>
+  <important>
+    <para>
+      <option>standby_disconnect_on_failover</option> <emphasis>must</emphasis> be set to the same value on
+      all nodes.
+    </para>
+  </important>
+  <para>
+    Note that when using <option>standby_disconnect_on_failover</option> there will be a delay of 5 seconds
+    plus however many seconds it takes to confirm the WAL receiver is disconnected before
+    <application>repmgrd</application> proceeds with the failover decision.
+  </para>
+  <para>
+    Following the failover operation, no matter what the outcome, each node will reconnect its WAL receiver.
+  </para>
+  <para>
+    If using <option>standby_disconnect_on_failover</option>, we recommend that the
+    <option>primary_visibility_consensus</option> option is also used.
+  </para>
+
+</sect1>
+
 <sect1 id="repmgrd-failover-validation" xreflabel="Failover validation">
   <indexterm>
    <primary>repmgrd</primary>
