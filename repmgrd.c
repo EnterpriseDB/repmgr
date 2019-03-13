@@ -910,8 +910,7 @@ try_reconnect(PGconn **conn, t_node_info *node_info)
 				 node_info->node_id, i + 1, max_attempts);
 		if (is_server_available_params(&conninfo_params) == true)
 		{
-
-			log_notice(_("node has recovered, reconnecting"));
+			log_notice(_("node %i has recovered, reconnecting"), node_info->node_id);
 
 			/*
 			 * XXX we should also handle the case where node is pingable but

@@ -1040,7 +1040,7 @@ monitor_streaming_standby(void)
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
 				{
 
-					log_debug(" upstream node %i has recovered",
+					log_debug("upstream node %i has recovered",
 							  upstream_node_info.node_id);
 
 					/* XXX check here if upstream is still primary */
