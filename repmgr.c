@@ -53,6 +53,7 @@
 #include "voting.h"
 
 #define UNKNOWN_NODE_ID		-1
+#define ELECTION_RERUN_NOTIFICATION -2
 #define UNKNOWN_PID			-1
 
 #define TRANCHE_NAME "repmgrd"
@@ -441,9 +442,17 @@ notify_follow_primary(PG_FUNCTION_ARGS)
 	/* only do something if local_node_id is initialised */
 	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
 	{
-		elog(INFO, "node %i received notification to follow node %i",
-			 shared_state->local_node_id,
-			 primary_node_id);
+		if (primary_node_id == ELECTION_RERUN_NOTIFICATION)
+		{
+			elog(INFO, "node %i received notification to rerun promotion candidate election",
+				 shared_state->local_node_id);
+		}
+		else
+		{
+			elog(INFO, "node %i received notification to follow node %i",
+				 shared_state->local_node_id,
+				 primary_node_id);
+		}
 
 		LWLockRelease(shared_state->lock);
 		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
