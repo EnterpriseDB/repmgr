@@ -83,10 +83,9 @@
   &repmgrd-overview;
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
-  &repmgrd-demonstration;
+  &repmgrd-operation;
   &repmgrd-network-split;
   &repmgrd-witness-server;
-  &repmgrd-pausing;
   &repmgrd-degraded-monitoring;
   &repmgrd-monitoring;
   &repmgrd-notes;
