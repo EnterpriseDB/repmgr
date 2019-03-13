@@ -58,7 +58,6 @@
 <!ENTITY repmgrd-degraded-monitoring SYSTEM "repmgrd-degraded-monitoring.sgml">
 <!ENTITY repmgrd-network-split SYSTEM "repmgrd-network-split.sgml">
 <!ENTITY repmgrd-witness-server SYSTEM "repmgrd-witness-server.sgml">
-<!ENTITY repmgrd-notes SYSTEM "repmgrd-notes.sgml">
 <!ENTITY repmgrd-bdr SYSTEM "repmgrd-bdr.sgml">
 
 <!ENTITY repmgr-primary-register SYSTEM "repmgr-primary-register.sgml">

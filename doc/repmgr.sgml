@@ -88,7 +88,6 @@
   &repmgrd-witness-server;
   &repmgrd-degraded-monitoring;
   &repmgrd-monitoring;
-  &repmgrd-notes;
   &repmgrd-bdr;
  </part>
 
