@@ -175,8 +175,15 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              New configuration option <option>failover_validation_command</option>
+              New configuration option <link linkend="repmgrd-failover-validation"><option>failover_validation_command</option></link>
               to allow an external mechanism to validate the failover decision made by <application>repmgrd</application>.
+            </para>
+          </listitem>
+
+         <listitem>
+            <para>
+              New configuration option <link linkend="repmgrd-standby-disconnection-on-failover"><option>standby_disconnect_on_failover</option></link>
+              to force standbys to disconnect their WAL receivers before making a failover decision.
             </para>
           </listitem>
 

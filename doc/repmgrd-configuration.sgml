@@ -406,6 +406,9 @@
               </para>
             </note>
 
+            <para>
+              See also: <link linkend="repmgrd-standby-disconnection-on-failover">Standby disconnection on failover</link>.
+            </para>
           </listitem>
         </varlistentry>
 
