@@ -84,7 +84,6 @@
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
   &repmgrd-operation;
-  &repmgrd-network-split;
   &repmgrd-witness-server;
   &repmgrd-bdr;
  </part>
