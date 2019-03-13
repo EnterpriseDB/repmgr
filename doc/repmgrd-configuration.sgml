@@ -5,7 +5,7 @@
     <secondary>configuration</secondary>
   </indexterm>
 
-  <title>repmgrd configuration</title>
+  <title>repmgrd setup and configuration</title>
 
   <para>
     <application>repmgrd</application> is a daemon which runs on each PostgreSQL node,
@@ -20,7 +20,7 @@
   </para>
 
   <sect1 id="repmgrd-basic-configuration">
-    <title>repmgrd basic configuration</title>
+    <title>repmgrd configuration</title>
 
     <para>
       To use <application>repmgrd</application>, its associated function library <emphasis>must</emphasis> be
@@ -34,6 +34,112 @@
       the <ulink url="https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-SHARED-PRELOAD-LIBRARIES">PostgreSQL documentation</ulink>.
     </para>
 
+    <para>
+      The following configuraton options apply to <application>repmgrd</application> in all circumstances:
+    </para>
+    <variablelist>
+
+        <varlistentry>
+
+         <indexterm>
+            <primary>monitor_interval_secs</primary>
+          </indexterm>
+          <term><option>monitor_interval_secs</option></term>
+          <listitem>
+            <para>
+              The interval (in seconds, default: <literal>2</literal>) to check the availability of the upstream node.
+            </para>
+          </listitem>
+
+        </varlistentry>
+
+        <varlistentry>
+
+          <indexterm>
+            <primary>connection_check_type</primary>
+          </indexterm>
+          <term><option>connection_check_type</option></term>
+          <listitem>
+            <para>
+              The option <option>connection_check_type</option> is used to select the method
+              <application>repmgrd</application> uses to determine whether the upstream node is available.
+            </para>
+            <para>
+              Possible values are:
+              <itemizedlist spacing="compact" mark="bullet">
+                <listitem>
+                  <simpara>
+                    <literal>ping</literal> (default) - uses <command>PQping()</command> to
+                    determine server availability
+                  </simpara>
+                </listitem>
+                <listitem>
+                  <simpara>
+                    <literal>connection</literal> - determines server availability
+                    by executing an SQL statement on the node via the existing connection
+                  </simpara>
+                </listitem>
+              </itemizedlist>
+            </para>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+         <indexterm>
+            <primary>reconnect_attempts</primary>
+          </indexterm>
+          <term><option>reconnect_attempts</option></term>
+          <listitem>
+            <para>
+              The number of attempts (default: <literal>6</literal>) will be made to reconnect to an unreachable
+			  upstream node before initiating a failover.
+            </para>
+            <para>
+              There will be an interval of <option>reconnect_interval</option> seconds between each reconnection
+              attempt.
+            </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+         <indexterm>
+            <primary>reconnect_interval</primary>
+          </indexterm>
+          <term><option>reconnect_interval</option></term>
+          <listitem>
+            <para>
+              Interval (in seconds, default: <literal>10</literal>) between attempts to reconnect to an unreachable
+              upstream node.
+            </para>
+            <para>
+              The number of reconnection attempts is defined by the parameter <option>reconnect_attempts</option>.
+            </para>
+          </listitem>
+        </varlistentry>
+
+
+
+        <varlistentry>
+          <indexterm>
+            <primary>degraded_monitoring_timeout</primary>
+          </indexterm>
+          <term><option>degraded_monitoring_timeout</option></term>
+          <listitem>
+			<para>
+              Interval (in seconds) after which <application>repmgrd</application> will terminate if
+              either of the servers (local node and or upstream node) being monitored is no longer available
+              (<link linkend="repmgrd-degraded-monitoring">degraded monitoring mode</link>).
+            </para>
+            <para>
+              <literal>-1</literal> (default) disables this timeout completely.
+            </para>
+		  </listitem>
+		</varlistentry>
+
+    </variablelist>
+
+      <para>
+        See also <filename><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink></filename> for an annotated sample configuration file..
+      </para>
 
     <sect2 id="repmgrd-automatic-failover-configuration">
       <title>Required configuration for automatic failover</title>
@@ -194,51 +300,24 @@
       <title>Optional configuration for automatic failover</title>
 
       <para>
-        The following configuraton options can be used to fine-tune automatic failove:
+        The following configuraton options can be use to fine-tune automatic failover:
       </para>
       <variablelist>
 
         <varlistentry>
-
-         <indexterm>
-            <primary>monitor_interval_secs</primary>
-          </indexterm>
-          <term><option>monitor_interval_secs</option></term>
-          <listitem>
-            <para>
-              The interval (in seconds, default: <literal>2</literal>) to check the availability of the upstream node.
-            </para>
-          </listitem>
-
-        </varlistentry>
-
-        <varlistentry>
-
           <indexterm>
-            <primary>connection_check_type</primary>
+            <primary>priority</primary>
           </indexterm>
-          <term><option>connection_check_type</option></term>
+          <term><option>priority</option></term>
           <listitem>
             <para>
-              The option <option>connection_check_type</option> is used to select the method
-              <application>repmgrd</application> uses to determine whether the upstream node is available.
+              Indicates a preferred priority (default: <literal>100</literal>) for promoting nodes;
+			  a value of zero prevents the node being promoted to primary.
             </para>
             <para>
-              Possible values are:
-              <itemizedlist spacing="compact" mark="bullet">
-                <listitem>
-                  <simpara>
-                    <literal>ping</literal> (default) - uses <command>PQping()</command> to
-                    determine server availability
-                  </simpara>
-                </listitem>
-                <listitem>
-                  <simpara>
-                    <literal>connection</literal> - determines server availability
-                    by executing an SQL statement on the node via the existing connection
-                  </simpara>
-                </listitem>
-              </itemizedlist>
+              Note that the priority setting is only applied if two or more nodes are
+              determined as promotion candidates; in that case the node with the
+              higher priority is selected.
             </para>
           </listitem>
         </varlistentry>
@@ -255,7 +334,7 @@
             </para>
             <note>
               <para>
-                This optiom <emphasis>must</emphasis> be identically configurered
+                This option <emphasis>must</emphasis> be identically configured
                 on all nodes.
               </para>
             </note>
@@ -275,6 +354,70 @@
           </listitem>
         </varlistentry>
 
+
+        <varlistentry>
+
+         <indexterm>
+            <primary>primary_visibility_consensus</primary>
+          </indexterm>
+          <term><option>primary_visibility_consensus</option></term>
+          <listitem>
+            <para>
+              If <literal>true</literal>, only continue with failover if no standbys have seen
+			  the primary node recently.
+            </para>
+            <note>
+              <para>
+                This option <emphasis>must</emphasis> be identically configured
+                on all nodes.
+              </para>
+            </note>
+          </listitem>
+        </varlistentry>
+
+        <varlistentry>
+
+         <indexterm>
+            <primary>standby_disconnect_on_failover</primary>
+          </indexterm>
+          <term><option>standby_disconnect_on_failover</option></term>
+          <listitem>
+            <para>
+              In a failover situation, disconnect the local node's WAL receiver.
+            </para>
+            <para>
+              This option is available from PostgreSQL 9.5 and later.
+            </para>
+            <note>
+              <para>
+                This option <emphasis>must</emphasis> be identically configured
+                on all nodes.
+              </para>
+              <para>
+                Additionally the &repmgr; user <emphasis>must</emphasis> be a superuser
+                for this option.
+              </para>
+              <para>
+                <application>repmgrd</application> will refuse to start if this option is set
+                but either of these prerequisites is not met.
+              </para>
+            </note>
+
+          </listitem>
+        </varlistentry>
+
+
+
+
+      </variablelist>
+
+      <para>
+        The following options can be used to further fine-tune failover behaviour.
+        In practice it's unlikely these will need to be changed from their default
+        values, but are available as configuration options should the need arise.
+      </para>
+      <variablelist>
+
         <varlistentry>
           <indexterm>
             <primary>election_rerun_interval</primary>
@@ -288,12 +431,24 @@
 		  </listitem>
 		</varlistentry>
 
+
+        <varlistentry>
+          <indexterm>
+            <primary>sibling_nodes_disconnect_timeout</primary>
+          </indexterm>
+          <term><option>sibling_nodes_disconnect_timeout</option></term>
+          <listitem>
+			<para>
+              If <option>standby_disconnect_on_failover</option> is <literal>true</literal>, the
+              maximum length of time (in seconds, default: <literal>30</literal>)
+			  to wait for other standbys to confirm they have disconnected their
+		      WAL receivers.
+			</para>
+		  </listitem>
+		</varlistentry>
       </variablelist>
 
-      <para>
-        See <filename><ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink></filename>
-        for further <application>repmgrd</application>-specific settings.
-      </para>
+
 
     </sect2>
 
