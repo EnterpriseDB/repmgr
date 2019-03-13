@@ -86,7 +86,6 @@
   &repmgrd-operation;
   &repmgrd-network-split;
   &repmgrd-witness-server;
-  &repmgrd-monitoring;
   &repmgrd-bdr;
  </part>
 
