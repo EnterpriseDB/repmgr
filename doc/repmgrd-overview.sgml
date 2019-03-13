@@ -29,6 +29,13 @@
      2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
      3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr</programlisting>
  </para>
+
+ <tip>
+   <para>
+     See section <link linkend="repmgrd-automatic-failover-configuration">Required configuration for automatic failover</link>
+     for an example of minimal <filename>repmgr.conf</filename> file settings suitable for use with <application>repmgrd</application>.
+   </para>
+ </tip>
  <para>
   Start <application>repmgrd</application> on each standby and verify that it's running by examining the
   log output, which at log level <literal>INFO</literal> will look like this:
