@@ -413,7 +413,7 @@ do_node_status(void)
 								  node_info.upstream_node_name,
 								  node_info.upstream_node_id);
 
-		get_replication_info(conn, &replication_info);
+		get_replication_info(conn, node_info.type, &replication_info);
 
 		key_value_list_set_format(&node_status,
 								  "Replication lag",
