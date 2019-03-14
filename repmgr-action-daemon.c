@@ -201,8 +201,7 @@ do_daemon_status(void)
 				}
 			}
 
-			repmgrd_info[i]->upstream_last_seen = get_upstream_last_seen(cell->node_info->conn);
-
+			repmgrd_info[i]->upstream_last_seen = get_upstream_last_seen(cell->node_info->conn, cell->node_info->type);
 			if (repmgrd_info[i]->upstream_last_seen < 0)
 			{
 				maxlen_snprintf(repmgrd_info[i]->upstream_last_seen_text, "%s", _("n/a"));

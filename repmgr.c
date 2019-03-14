@@ -391,10 +391,6 @@ get_upstream_last_seen(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_INT32(-1);
 
-	/* A primary is always visible */
-	if (!RecoveryInProgress())
-		PG_RETURN_INT32(0);
-
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 
 	last_seen = shared_state->upstream_last_seen;
