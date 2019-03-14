@@ -554,7 +554,7 @@ XLogRecPtr	get_primary_current_lsn(PGconn *conn);
 XLogRecPtr	get_node_current_lsn(PGconn *conn);
 XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
 void		init_replication_info(ReplInfo *replication_info);
-bool		get_replication_info(PGconn *conn, ReplInfo *replication_info);
+bool		get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 bool		is_downstream_node_attached(PGconn *conn, char *node_name);

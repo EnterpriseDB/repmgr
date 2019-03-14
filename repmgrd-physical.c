@@ -2381,7 +2381,7 @@ update_monitoring_history(void)
 
 	init_replication_info(&replication_info);
 
-	if (get_replication_info(local_conn, &replication_info) == false)
+	if (get_replication_info(local_conn, STANDBY, &replication_info) == false)
 	{
 		log_warning(_("unable to retrieve replication status information, unable to update monitoring history"));
 		return;
@@ -3376,7 +3376,7 @@ do_election(NodeInfoList *sibling_nodes)
 	}
 
 	/* get our lsn */
-	if (get_replication_info(local_conn, &local_replication_info) == false)
+	if (get_replication_info(local_conn, STANDBY, &local_replication_info) == false)
 	{
 		log_error(_("unable to retrieve replication information for local node"));
 		return ELECTION_LOST;
@@ -3444,24 +3444,6 @@ do_election(NodeInfoList *sibling_nodes)
 			}
 		}
 
-
-		/* don't interrogate a witness server */
-		if (cell->node_info->type == WITNESS)
-		{
-			log_debug("node %i is witness, not querying state", cell->node_info->node_id);
-			continue;
-		}
-
-		/* don't check 0-priority nodes */
-		if (cell->node_info->priority <= 0)
-		{
-			log_info(_("node %i has priority of %i, skipping"),
-					   cell->node_info->node_id,
-					   cell->node_info->priority);
-			continue;
-		}
-
-
 		/*
 		 * check if repmgrd running - skip if not
 		 *
@@ -3478,7 +3460,7 @@ do_election(NodeInfoList *sibling_nodes)
 			continue;
 		}
 
-		if (get_replication_info(cell->node_info->conn, &sibling_replication_info) == false)
+		if (get_replication_info(cell->node_info->conn, cell->node_info->type, &sibling_replication_info) == false)
 		{
 			log_warning(_("unable to retrieve replication information for node \"%s\" (ID: %i), skipping"),
 						cell->node_info->node_name,
@@ -3526,6 +3508,24 @@ do_election(NodeInfoList *sibling_nodes)
 					 cell->node_info->node_id,
 					 sibling_replication_info.upstream_last_seen);
 		}
+
+
+		/* don't interrogate a witness server */
+		if (cell->node_info->type == WITNESS)
+		{
+			log_debug("node %i is witness, not querying state", cell->node_info->node_id);
+			continue;
+		}
+
+		/* don't check 0-priority nodes */
+		if (cell->node_info->priority <= 0)
+		{
+			log_info(_("node %i has priority of %i, skipping"),
+					   cell->node_info->node_id,
+					   cell->node_info->priority);
+			continue;
+		}
+
 
 		/* get node's last receive LSN - if "higher" than current winner, current node is candidate */
 		cell->node_info->last_wal_receive_lsn = sibling_replication_info.last_wal_receive_lsn;

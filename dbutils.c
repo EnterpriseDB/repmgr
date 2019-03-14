@@ -4898,7 +4898,7 @@ init_replication_info(ReplInfo *replication_info)
 
 
 bool
-get_replication_info(PGconn *conn, ReplInfo *replication_info)
+get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replication_info)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -4960,11 +4960,21 @@ get_replication_info(PGconn *conn, ReplInfo *replication_info)
 							 "        END AS wal_replay_paused, ");
 	}
 
+	if (node_type == WITNESS)
+	{
+		appendPQExpBufferStr(&query,
+							 "        repmgr.get_upstream_last_seen() AS upstream_last_seen");
+	}
+	else
+	{
+		appendPQExpBufferStr(&query,
+							 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "          THEN -1 "
+							 "          ELSE repmgr.get_upstream_last_seen() "
+							 "        END AS upstream_last_seen ");
+	}
+
 	appendPQExpBufferStr(&query,
-						 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
-						 "          THEN -1 "
-						 "          ELSE repmgr.get_upstream_last_seen() "
-						 "        END AS upstream_last_seen "
 						 "          ) q ");
 
 	log_verbose(LOG_DEBUG, "get_replication_info():\n%s", query.data);
