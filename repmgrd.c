@@ -836,11 +836,28 @@ check_upstream_connection(PGconn **conn, const char *conninfo)
 	if (config_file_options.connection_check_type == CHECK_PING)
 		return is_server_available(conninfo);
 
+	if (config_file_options.connection_check_type == CHECK_CONNECTION)
+	{
+		bool success = true;
+		PGconn *test_conn = PQconnectdb(conninfo);
+
+		log_debug("check_upstream_connection(): attempting to connect to \"%s\"", conninfo);
+
+		if (PQstatus(test_conn) != CONNECTION_OK)
+		{
+			log_warning(_("unable to connect to \"%s\""), conninfo);
+			success = false;
+		}
+		PQfinish(test_conn);
+
+		return success;
+	}
+
 	for (;;)
 	{
 		if (PQstatus(*conn) != CONNECTION_OK)
 		{
-			log_debug("connection not OK");
+			log_debug("check_upstream_connection(): connection not OK");
 			if (twice)
 				return false;
 			/* reconnect */

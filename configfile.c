@@ -638,6 +638,10 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			{
 				options->connection_check_type = CHECK_CONNECTION;
 			}
+			else if (strcasecmp(value, "query") == 0)
+			{
+				options->connection_check_type = CHECK_QUERY;
+			}
 			else
 			{
 				item_list_append(error_list,

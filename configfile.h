@@ -40,6 +40,7 @@ typedef enum
 typedef enum
 {
 	CHECK_PING,
+	CHECK_QUERY,
 	CHECK_CONNECTION
 } ConnectionCheckType;
 

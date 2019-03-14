@@ -1034,7 +1034,7 @@ monitor_streaming_standby(void)
 
 			if (check_upstream_connection(&upstream_conn, upstream_node_info.conninfo) == true)
 			{
-				if (config_file_options.connection_check_type == CHECK_PING)
+				if (config_file_options.connection_check_type != CHECK_QUERY)
 					upstream_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
@@ -1707,7 +1707,7 @@ monitor_streaming_witness(void)
 
 			if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo) == true)
 			{
-				if (config_file_options.connection_check_type == CHECK_PING)
+				if (config_file_options.connection_check_type != CHECK_QUERY)
 					primary_conn = establish_db_connection(upstream_node_info.conninfo, false);
 
 				if (PQstatus(primary_conn) == CONNECTION_OK)
