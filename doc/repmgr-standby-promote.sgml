@@ -99,7 +99,7 @@
         </indexterm>
          <simpara>
            <literal>promote_check_interval</literal>:
-           interval (in seconds, default: 1 seconds) to wait between each check
+           interval (in seconds, default: 1 second) to wait between each check
            to determine whether the standby has been promoted.
 		 </simpara>
 	   </listitem>
