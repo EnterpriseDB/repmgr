@@ -24,15 +24,15 @@
 
 	<important>
 	  <para>
-		On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
-		please ensure that in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
-		<varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
-		<programlisting>
+	    On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
+	    please ensure that in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
+	    <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
+	    <programlisting>
 # additional options
 REPMGRD_OPTS="--daemonize=false"</programlisting>
 	  </para>
 	  <para>
-		For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd configuration on Debian/Ubuntu</link>.
+	    For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd configuration on Debian/Ubuntu</link>.
 	  </para>
 	</important>
 
@@ -99,11 +99,11 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>:
-			  differentiate between unreachable nodes and nodes which are running but rejecting connections.
+	      differentiate between unreachable nodes and nodes which are running but rejecting connections.
             </para>
             <para>
-			  This makes it possible to see whether a node is unreachable at network level,
-			  or if it is running but rejecting connections for some reason.
+	      This makes it possible to see whether a node is unreachable at network level,
+	      or if it is running but rejecting connections for some reason.
             </para>
           </listitem>
 
@@ -152,13 +152,13 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <application>repmgrd</application> will no longer consider nodes where <application>repmgrd</application>
-			  is not running as promotion candidates.
+	      is not running as promotion candidates.
             </para>
-			<para>
-			  Previously, if <application>repmgrd</application> was not running on a node, but
-			  that node qualified as the promotion candidate, it would never be promoted due to
-			  the absence of a running <application>repmgrd</application>.
-			</para>
+	    <para>
+	      Previously, if <application>repmgrd</application> was not running on a node, but
+	      that node qualified as the promotion candidate, it would never be promoted due to
+	      the absence of a running <application>repmgrd</application>.
+	    </para>
           </listitem>
 
           <listitem>
@@ -168,7 +168,8 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             </para>
             <para>
               Possible values are <literal>ping</literal> (default; uses <command>PQping()</command> to
-              determine server availability); and <literal>connection</literal> (determines server availability
+              determine server availability), <literal>connection</literal> (attempst to make a new connection to
+              the upstream node), and <literal>query</literal> (determines server availability
               by executing an SQL statement on the node via the existing connection).
             </para>
           </listitem>
@@ -223,7 +224,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             <para>
               &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
               avoid a potential race condition when comparing received WAL on the standby to the primary's shutdown location,
-			  as the standby's walreceiver may not have yet flushed all received WAL to disk. GitHub #518.
+	      as the standby's walreceiver may not have yet flushed all received WAL to disk. GitHub #518.
             </para>
           </listitem>
 
@@ -231,7 +232,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
          <listitem>
             <para>
               &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
-			  verify the standby (promotion candidate) is currently attached to the primary (demotion candidate). GitHub #519.
+	      verify the standby (promotion candidate) is currently attached to the primary (demotion candidate). GitHub #519.
             </para>
           </listitem>
 
@@ -245,25 +246,25 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>:
-			  fix display of node IDs with multiple digits.
+	      fix display of node IDs with multiple digits.
             </para>
-		  </listitem>
+	  </listitem>
 
           <listitem>
             <para>
               ensure <command><link linkend="repmgr-primary-unregister">repmgr primary unregister</link></command>
-			  behaves correctly when executed on a witness server. GitHub #548.
+	      behaves correctly when executed on a witness server. GitHub #548.
             </para>
-		  </listitem>
+	  </listitem>
 
           <listitem>
             <para>
               <command><link linkend="repmgr-node-check">repmgr node check</link></command>
-			  will only consider physical replication slots, as the purpose
-			  of slot checks is to warn about potential issues with
-			  streaming replication standbys which are no longer attached.
-			</para>
-		  </listitem>
+	      will only consider physical replication slots, as the purpose
+	      of slot checks is to warn about potential issues with
+	      streaming replication standbys which are no longer attached.
+	    </para>
+	  </listitem>
 
         </itemizedlist>
       </para>
@@ -289,15 +290,15 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
 	<important>
 	  <para>
-		On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
-		please ensure that the in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
-		<varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
-		<programlisting>
+	    On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
+	    please ensure that the in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
+	    <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
+	    <programlisting>
 # additional options
 REPMGRD_OPTS="--daemonize=false"</programlisting>
 	  </para>
 	  <para>
-		For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd daemon configuration on Debian/Ubuntu</link>.
+	    For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd daemon configuration on Debian/Ubuntu</link>.
 	  </para>
 	</important>
 
