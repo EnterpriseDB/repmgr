@@ -559,7 +559,7 @@ int			get_replication_lag_seconds(PGconn *conn);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 bool		is_downstream_node_attached(PGconn *conn, char *node_name);
 void		set_upstream_last_seen(PGconn *conn);
-int			get_upstream_last_seen(PGconn *conn);
+int			get_upstream_last_seen(PGconn *conn, t_server_type node_type);
 bool		is_wal_replay_paused(PGconn *conn, bool check_pending_wal);
 
 /* BDR functions */

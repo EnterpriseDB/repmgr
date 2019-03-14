@@ -1612,7 +1612,11 @@ monitor_streaming_witness(void)
 
 	while (true)
 	{
-		if (check_upstream_connection(&upstream_conn, upstream_node_info.conninfo) == false)
+		if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo) == true)
+		{
+			set_upstream_last_seen(local_conn);
+		}
+		else
 		{
 			if (upstream_node_info.node_status == NODE_STATUS_UP)
 			{
@@ -3440,6 +3444,7 @@ do_election(NodeInfoList *sibling_nodes)
 			}
 		}
 
+
 		/* don't interrogate a witness server */
 		if (cell->node_info->type == WITNESS)
 		{
@@ -3503,12 +3508,12 @@ do_election(NodeInfoList *sibling_nodes)
 		 * configurable.
 		 */
 
-
 		if (sibling_replication_info.upstream_last_seen >= 0 && sibling_replication_info.upstream_last_seen < (config_file_options.monitor_interval_secs * 2))
 		{
 			nodes_with_primary_still_visible++;
 			log_notice(_("node %i last saw primary node %i second(s) ago, considering primary still visible"),
-					   cell->node_info->node_id, sibling_replication_info.upstream_last_seen);
+					   cell->node_info->node_id,
+					   sibling_replication_info.upstream_last_seen);
 			appendPQExpBuffer(&nodes_with_primary_visible,
 							  " - node \"%s\" (ID: %i): %i second(s) ago\n",
 							  cell->node_info->node_name,
@@ -3518,8 +3523,10 @@ do_election(NodeInfoList *sibling_nodes)
 		else
 		{
 			log_info(_("node %i last saw primary node %i second(s) ago"),
-					 cell->node_info->node_id, sibling_replication_info.upstream_last_seen);
+					 cell->node_info->node_id,
+					 sibling_replication_info.upstream_last_seen);
 		}
+
 		/* get node's last receive LSN - if "higher" than current winner, current node is candidate */
 		cell->node_info->last_wal_receive_lsn = sibling_replication_info.last_wal_receive_lsn;
 

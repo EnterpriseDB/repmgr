@@ -5195,7 +5195,7 @@ set_upstream_last_seen(PGconn *conn)
 
 
 int
-get_upstream_last_seen(PGconn *conn)
+get_upstream_last_seen(PGconn *conn, t_server_type node_type)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -5203,11 +5203,19 @@ get_upstream_last_seen(PGconn *conn)
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBufferStr(&query,
-						 "SELECT CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
-						 "   THEN -1 "
-						 "   ELSE repmgr.get_upstream_last_seen() "
-						 " END AS upstream_last_seen ");
+	if (node_type == WITNESS)
+	{
+		appendPQExpBufferStr(&query,
+							 "SELECT repmgr.get_upstream_last_seen()");
+	}
+	else
+	{
+		appendPQExpBufferStr(&query,
+							 "SELECT CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "   THEN -1 "
+							 "   ELSE repmgr.get_upstream_last_seen() "
+							 " END AS upstream_last_seen ");
+	}
 
 	res = PQexec(conn, query.data);
 
