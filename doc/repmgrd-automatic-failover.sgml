@@ -128,10 +128,10 @@
     to be the new primary) to confirm whether the node should actually be promoted.
   </para>
   <para>
-    To use this, <option>failover_validate_command</option> in <filename>repmgr.conf</filename>
+    To use this, <option>failover_validation_command</option> in <filename>repmgr.conf</filename>
     to a script executable by the <literal>postgres</literal> system user, e.g.:
     <programlisting>
-      failover_validate_command=/path/to/script.sh %n %a</programlisting>
+      failover_validation_command=/path/to/script.sh %n %a</programlisting>
   </para>
   <para>
     The <literal>%n</literal> parameter will be replaced with the node ID, and the
