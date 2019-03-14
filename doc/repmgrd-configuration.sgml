@@ -76,9 +76,16 @@
                 <listitem>
                   <simpara>
                     <literal>connection</literal> - determines server availability
+                    by attempt ingto make a new connection to the upstream node
+                  </simpara>
+                </listitem>
+                <listitem>
+                  <simpara>
+                    <literal>query</literal> - determines server availability
                     by executing an SQL statement on the node via the existing connection
                   </simpara>
                 </listitem>
+
               </itemizedlist>
             </para>
           </listitem>
@@ -92,7 +99,7 @@
           <listitem>
             <para>
               The number of attempts (default: <literal>6</literal>) will be made to reconnect to an unreachable
-			  upstream node before initiating a failover.
+	      upstream node before initiating a failover.
             </para>
             <para>
               There will be an interval of <option>reconnect_interval</option> seconds between each reconnection
@@ -124,7 +131,7 @@
           </indexterm>
           <term><option>degraded_monitoring_timeout</option></term>
           <listitem>
-			<para>
+	    <para>
               Interval (in seconds) after which <application>repmgrd</application> will terminate if
               either of the servers (local node and or upstream node) being monitored is no longer available
               (<link linkend="repmgrd-degraded-monitoring">degraded monitoring mode</link>).
@@ -132,8 +139,8 @@
             <para>
               <literal>-1</literal> (default) disables this timeout completely.
             </para>
-		  </listitem>
-		</varlistentry>
+	  </listitem>
+	</varlistentry>
 
     </variablelist>
 
