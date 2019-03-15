@@ -1,15 +1,15 @@
-<sect1 id="configuration-file" xreflabel="configuration file location">
+<sect1 id="configuration-file" xreflabel="configuration file">
   <indexterm>
     <primary>repmgr.conf</primary>
-    <secondary>location</secondary>
   </indexterm>
 
   <indexterm>
     <primary>configuration</primary>
-    <secondary>repmgr.conf location</secondary>
+    <secondary>repmgr.conf</secondary>
   </indexterm>
 
-  <title>Configuration file location</title>
+  <title>Configuration file</title>
+
   <para>
     <application>repmgr</application> and <application>repmgrd</application>
     use a common configuration file, by default called
@@ -20,6 +20,55 @@
     not explicitly supplied. See section <xref linkend="configuration-file-settings">
     for more details.
   </para>
+
+  <sect2 id="configuration-file-format" xreflabel="configuration file format">
+
+    <indexterm>
+      <primary>repmgr.conf</primary>
+      <secondary>format</secondary>
+    </indexterm>
+
+    <title>Configuration file format</title>
+
+    <para>
+      <filename>repmgr.conf</filename> is a plain text file with one parameter/value
+      combination per line.
+    </para>
+    <para>
+      Whitespace is insignificant (except within a quoted parameter value) and blank lines are ignored.
+      Hash marks (#) designate the remainder of the line as a comment. Parameter values that are not simple
+      identifiers or numbers should be single-quoted. Note that single quote can not be embedded
+      in a parameter value.
+    </para>
+    <important>
+      <para>
+        &repmgr; will interpret double-quotes as being part of a string value; only use single quotes
+        to quote parameter values.
+      </para>
+    </important>
+
+    <para>
+      Example of a valid <filename>repmgr.conf</filename> file:
+      <programlisting>
+# repmgr.conf
+
+node_id=1
+node_name= node1
+conninfo ='host=node1 dbname=repmgr user=repmgr connect_timeout=2'
+data_directory = /var/lib/pgsql/11/data</programlisting>
+
+    </para>
+  </sect2>
+
+
+
+  <sect2 id="configuration-file-location" xreflabel="configuration file location">
+  <indexterm>
+    <primary>repmgr.conf</primary>
+    <secondary>location</secondary>
+  </indexterm>
+
+  <title>Configuration file location</title>
 
   <para>
    The configuration file will be searched for in the following locations:
@@ -50,7 +99,7 @@
    Note that if a file is explicitly specified with <literal>-f/--config-file</literal>,
    an error will be raised if it is not found or not readable, and no attempt will be made to
    check default locations; this is to prevent <application>repmgr</application> unexpectedly
-   reading the wrong configuraton file.
+   reading the wrong configuration file.
   </para>
 
   <note>
@@ -65,5 +114,7 @@
       to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write
       <filename>/path/to/repmgr.conf</filename>).
     </para>
-  </note>
-</sect1>
+   </note>
+
+   </sect2>
+ </sect1>
