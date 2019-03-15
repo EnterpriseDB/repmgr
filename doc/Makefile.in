@@ -61,7 +61,7 @@ clean:
 
 maintainer-clean:
 	rm -rf html
-	rm -rf Makefile
+	rm -f Makefile
 
 zip: html
 	cp -r html repmgr-docs-$(REPMGR_VERSION)
