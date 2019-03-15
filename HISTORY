@@ -1,9 +1,3 @@
-4.2.1   2018-??-??
-        repmgr: add sanity check for correct extension version (Ian)
-        repmgr: ensure "witness register --dry-run" does not attempt to read node
-          tables if repmgr extension not installed; GitHub #513 (Ian)
-        repmgrd: improve witness monitoring when primary node not available (Ian)
-
 4.2     2018-10-24
         repmgr: add parameter "shutdown_check_timeout" for use by "standby switchover";
           GitHub #504 (Ian)
