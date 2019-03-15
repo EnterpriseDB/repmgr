@@ -2,8 +2,8 @@
         repmgr: add "daemon (start|stop)" command; GitHub #528 (Ian)
         repmgr: add --version-number command line option (Ian)
         repmgr: add --compact option to "cluster show"; GitHub #521 (Ian)
-		repmgr: cluster show - differentiate between unreachable nodes
-		  and nodes which are running but rejecting connections (Ian)
+        repmgr: cluster show - differentiate between unreachable nodes
+          and nodes which are running but rejecting connections (Ian)
         repmgr: add --dry-run option to "standby promote"; GitHub #522 (Ian)
         repmgr: add "node check --data-directory-config"; GitHub #523 (Ian)
         repmgr: prevent potential race condition in "standby switchover"
@@ -11,30 +11,16 @@
         repmgr: ensure "standby switchover" verifies repmgr can read the
           data directory on the demotion candidate; GitHub #523 (Ian)
         repmgr: ensure "standby switchover" verifies replication connection
-		  exists; GitHub #519 (Ian)
-		repmgr: ensure "primary unregister" behaves correctly when executed
-		  on a witness server; GitHub #548 (Ian)
-        repmgr: when executing "standby follow" and "node rejoin", check that
-          it will actually be possible to stream from the target node (Ian)
-        repmgr: "standby switchover": improve handling of connection URIs when
-          executing "node rejoin" on the demotion candidate; GitHub #525 (Ian)
-        repmgr: check for stale connections during "standby clone" (Ian)
-        repmgr: fix long node ID display in "cluster show" (Ian)
-        repmgr: check for primary server before executing "witness register";
-           GitHub #538 (Ian)
-        repmgr: show "upstream last seen" interval in "daemon status" output (Ian)
-        repmgr: "node check" will only consider physical replication slots (Ian)
+          exists; GitHub #519 (Ian)
+        repmgr: add sanity check for correct extension version (Ian)
+        repmgr: ensure "witness register --dry-run" does not attempt to read node
+          tables if repmgr extension not installed; GitHub #513 (Ian)
         repmgrd: check binary and extension major versions match; GitHub #515 (Ian)
         repmgrd: on a cascaded standby, don't fail over if "failover=manual";
           GitHub #531 (Ian)
         repmgrd: don't consider nodes where repmgrd is not running as promotion
           candidates (Ian)
         repmgrd: add option "connection_check_type" (Ian)
-
-4.2.1   2018-??-??
-        repmgr: add sanity check for correct extension version (Ian)
-        repmgr: ensure "witness register --dry-run" does not attempt to read node
-          tables if repmgr extension not installed; GitHub #513 (Ian)
         repmgrd: improve witness monitoring when primary node not available (Ian)
 
 4.2     2018-10-24
