@@ -36,9 +36,9 @@
     </para>
     <para>
       Whitespace is insignificant (except within a quoted parameter value) and blank lines are ignored.
-      Hash marks (#) designate the remainder of the line as a comment. Parameter values that are not simple
-      identifiers or numbers should be single-quoted. Note that single quote can not be embedded
-      in a parameter value.
+      Hash marks (<literal>#</literal>) designate the remainder of the line as a comment.
+      Parameter values that are not simple identifiers or numbers should be single-quoted.
+      Note that single quote cannot be embedded in a parameter value.
     </para>
     <important>
       <para>
