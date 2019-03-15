@@ -86,29 +86,15 @@ clean: additional-clean
 maintainer-clean: additional-maintainer-clean
 
 additional-clean:
-	rm -f repmgr-client.o
-	rm -f repmgr-action-primary.o
-	rm -f repmgr-action-standby.o
-	rm -f repmgr-action-witness.o
-	rm -f repmgr-action-bdr.o
-	rm -f repmgr-action-node.o
-	rm -f repmgr-action-cluster.o
-	rm -f repmgr-action-daemon.o
-	rm -f repmgrd.o
-	rm -f repmgrd-physical.o
-	rm -f repmgrd-bdr.o
-	rm -f compat.o
-	rm -f configfile.o
-	rm -f controldata.o
-	rm -f dbutils.o
-	rm -f dirutil.o
-	rm -f log.o
-	rm -f strutil.o
+	rm -f *.o
 
-maintainer-additional-clean: clean
-	rm -f configure
+additional-maintainer-clean: clean
+	$(MAKE) -C doc maintainer-clean
 	rm -f config.status config.log
+	rm -f config.h
+	rm -f repmgr_version.h
 	rm -f Makefile
+	rm -f Makefile.global
 	@rm -rf autom4te.cache/
 
 ifeq ($(MAJORVERSION),$(filter $(MAJORVERSION),9.3 9.4))
