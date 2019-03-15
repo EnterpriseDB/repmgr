@@ -7,7 +7,8 @@
 # parameter will be treated as empty or false.
 #
 # IMPORTANT: string values can be provided as-is, or enclosed in single quotes
-# (but not double-quotes, which will be interpreted as part of the string), e.g.:
+# (but not double-quotes, which will be interpreted as part of the string),
+# e.g.:
 #
 #  node_name=foo
 #  node_name = 'foo'
@@ -24,9 +25,9 @@
 				 # using the server's hostname or another identifier
 				 # unambiguously associated with the server to avoid
 				 # confusion. Avoid choosing names which reflect the
-				 # node's current role, e.g. "primary" or "standby1",
+				 # node's current role, e.g. 'primary' or 'standby1',
 				 # as roles can change and it will be confusing if
-				 # the current primary is called "standby1".
+				 # the current primary is called 'standby1'.
 
 #conninfo=''			 # Database connection information as a conninfo string.
 				 # All servers in the cluster must be able to connect to

@@ -22,12 +22,12 @@
   and two standbys streaming directly from the primary) so that the cluster looks
   something like this:
   <programlisting>
-    $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Location | Connection string
-    ----+-------+---------+-----------+----------+----------+--------------------------------------
-     1  | node1 | primary | * running |          | default  | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | standby |   running | node1    | default  | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node1    | default  | host=node3 dbname=repmgr user=repmgr</programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show --compact
+     ID | Name  | Role    | Status    | Upstream | Location | Prio.
+    ----+-------+---------+-----------+----------+----------+-------
+     1  | node1 | primary | * running |          | default  | 100
+     2  | node2 | standby |   running | node1    | default  | 100
+     3  | node3 | standby |   running | node1    | default  | 100</programlisting>
  </para>
 
  <tip>
@@ -40,10 +40,11 @@
   Start <application>repmgrd</application> on each standby and verify that it's running by examining the
   log output, which at log level <literal>INFO</literal> will look like this:
   <programlisting>
-    [2017-08-24 17:31:00] [NOTICE] using configuration file "/etc/repmgr.conf"
-    [2017-08-24 17:31:00] [INFO] connecting to database "host=node2 dbname=repmgr user=repmgr"
-    [2017-08-24 17:31:00] [NOTICE] starting monitoring of node <literal>node2</literal> (ID: 2)
-    [2017-08-24 17:31:00] [INFO] monitoring connection to upstream node "node1" (node ID: 1)</programlisting>
+    [2019-03-15 06:32:05] [NOTICE] repmgrd (repmgrd 4.3) starting up
+    [2019-03-15 06:32:05] [INFO] connecting to database "host=node2 dbname=repmgr user=repmgr connect_timeout=2"
+    INFO:  set_repmgrd_pid(): provided pidfile is /var/run/repmgr/repmgrd-11.pid
+    [2019-03-15 06:32:05] [NOTICE] starting monitoring of node "node2" (ID: 2)
+    [2019-03-15 06:32:05] [INFO] monitoring connection to upstream node "node1" (node ID: 1)</programlisting>
  </para>
  <para>
   Each <application>repmgrd</application> should also have recorded its successful startup as an event:
@@ -51,9 +52,9 @@
     $ repmgr -f /etc/repmgr.conf cluster event --event=repmgrd_start
      Node ID | Name  | Event         | OK | Timestamp           | Details
     ---------+-------+---------------+----+---------------------+-------------------------------------------------------------
-     3       | node3 | repmgrd_start | t  | 2017-08-24 17:35:54 | monitoring connection to upstream node "node1" (node ID: 1)
-     2       | node2 | repmgrd_start | t  | 2017-08-24 17:35:50 | monitoring connection to upstream node "node1" (node ID: 1)
-     1       | node1 | repmgrd_start | t  | 2017-08-24 17:35:46 | monitoring cluster primary "node1" (node ID: 1)  </programlisting>
+     3       | node3 | repmgrd_start | t  | 2019-03-14 04:17:30 | monitoring connection to upstream node "node1" (node ID: 1)
+     2       | node2 | repmgrd_start | t  | 2019-03-14 04:11:47 | monitoring connection to upstream node "node1" (node ID: 1)
+     1       | node1 | repmgrd_start | t  | 2019-03-14 04:04:31 | monitoring cluster primary "node1" (node ID: 1)</programlisting>
  </para>
  <para>
   Now stop the current primary server with e.g.:
@@ -67,55 +68,59 @@
   decision is made. This is an extract from the log of a standby server (<literal>node2</literal>)
   which has promoted to new primary after failure of the original primary (<literal>node1</literal>).
   <programlisting>
-    [2017-08-24 23:32:01] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state
-    [2017-08-24 23:32:08] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
-    [2017-08-24 23:32:08] [INFO] checking state of node 1, 1 of 5 attempts
-    [2017-08-24 23:32:08] [INFO] sleeping 1 seconds until next reconnection attempt
-    [2017-08-24 23:32:09] [INFO] checking state of node 1, 2 of 5 attempts
-    [2017-08-24 23:32:09] [INFO] sleeping 1 seconds until next reconnection attempt
-    [2017-08-24 23:32:10] [INFO] checking state of node 1, 3 of 5 attempts
-    [2017-08-24 23:32:10] [INFO] sleeping 1 seconds until next reconnection attempt
-    [2017-08-24 23:32:11] [INFO] checking state of node 1, 4 of 5 attempts
-    [2017-08-24 23:32:11] [INFO] sleeping 1 seconds until next reconnection attempt
-    [2017-08-24 23:32:12] [INFO] checking state of node 1, 5 of 5 attempts
-    [2017-08-24 23:32:12] [WARNING] unable to reconnect to node 1 after 5 attempts
-    INFO:  setting voting term to 1
-    INFO:  node 2 is candidate
-    INFO:  node 3 has received request from node 2 for electoral term 1 (our term: 0)
-    [2017-08-24 23:32:12] [NOTICE] this node is the winner, will now promote self and inform other nodes
-    INFO: connecting to standby database
-    NOTICE: promoting standby
-    DETAIL: promoting server using 'pg_ctl -l /var/log/postgres/startup.log -w -D '/var/lib/pgsql/data' promote'
-    INFO: reconnecting to promoted server
+    [2019-03-15 06:37:50] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
+    [2019-03-15 06:37:50] [INFO] checking state of node 1, 1 of 3 attempts
+    [2019-03-15 06:37:50] [INFO] sleeping 5 seconds until next reconnection attempt
+    [2019-03-15 06:37:55] [INFO] checking state of node 1, 2 of 3 attempts
+    [2019-03-15 06:37:55] [INFO] sleeping 5 seconds until next reconnection attempt
+    [2019-03-15 06:38:00] [INFO] checking state of node 1, 3 of 3 attempts
+    [2019-03-15 06:38:00] [WARNING] unable to reconnect to node 1 after 3 attempts
+    [2019-03-15 06:38:00] [INFO] primary and this node have the same location ("default")
+    [2019-03-15 06:38:00] [INFO] local node's last receive lsn: 0/900CBF8
+    [2019-03-15 06:38:00] [INFO] node 3 last saw primary node 12 second(s) ago
+    [2019-03-15 06:38:00] [INFO] last receive LSN for sibling node "node3" (ID: 3) is: 0/900CBF8
+    [2019-03-15 06:38:00] [INFO] node "node3" (ID: 3) has same LSN as current candidate "node2" (ID: 2)
+    [2019-03-15 06:38:00] [INFO] visible nodes: 2; total nodes: 2; no nodes have seen the primary within the last 4 seconds
+    [2019-03-15 06:38:00] [NOTICE] promotion candidate is "node2" (ID: 2)
+    [2019-03-15 06:38:00] [NOTICE] this node is the winner, will now promote itself and inform other nodes
+    [2019-03-15 06:38:00] [INFO] promote_command is:
+      "/usr/pgsql-11/bin/repmgr -f /etc/repmgr/11/repmgr.conf standby promote"
+    NOTICE: promoting standby to primary
+    DETAIL: promoting server "node2" (ID: 2) using "/usr/pgsql-11/bin/pg_ctl  -w -D '/var/lib/pgsql/11/data' promote"
+    NOTICE: waiting up to 60 seconds (parameter "promote_check_timeout") for promotion to complete
     NOTICE: STANDBY PROMOTE successful
-    DETAIL: node 2 was successfully promoted to primary
+    DETAIL: server "node2" (ID: 2) was successfully promoted to primary
+    [2019-03-15 06:38:01] [INFO] 3 followers to notify
+    [2019-03-15 06:38:01] [NOTICE] notifying node "node3" (node ID: 3) to follow node 2
     INFO:  node 3 received notification to follow node 2
-    [2017-08-24 23:32:13] [INFO] switching to primary monitoring mode</programlisting>
+    [2019-03-15 06:38:01] [INFO] switching to primary monitoring mode
+    [2019-03-15 06:38:01] [NOTICE] monitoring cluster primary "node2" (node ID: 2)</programlisting>
  </para>
  <para>
   The cluster status will now look like this, with the original primary (<literal>node1</literal>)
   marked as inactive, and standby <literal>node3</literal> now following the new primary
   (<literal>node2</literal>):
   <programlisting>
-    $ repmgr -f /etc/repmgr.conf cluster show
-     ID | Name  | Role    | Status    | Upstream | Location | Connection string
-    ----+-------+---------+-----------+----------+----------+----------------------------------------------------
-     1  | node1 | primary | - failed  |          | default  | host=node1 dbname=repmgr user=repmgr
-     2  | node2 | primary | * running |          | default  | host=node2 dbname=repmgr user=repmgr
-     3  | node3 | standby |   running | node2    | default  | host=node3 dbname=repmgr user=repmgr</programlisting>
+    $ repmgr -f /etc/repmgr.conf cluster show --compact
+     ID | Name  | Role    | Status    | Upstream | Location | Prio.
+    ----+-------+---------+-----------+----------+----------+-------
+     1  | node1 | primary | - failed  |          | default  | 100
+     2  | node2 | primary | * running |          | default  | 100
+     3  | node3 | standby |   running | node2    | default  | 100</programlisting>
 
  </para>
  <para>
-  <command>repmgr cluster event</command> will display a summary of what happened to each server
-  during the failover:
+   <link linkend="repmgr-cluster-event"><command>repmgr cluster event</command></link> will display a summary of
+   what happened to each server during the failover:
   <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster event
-     Node ID | Name  | Event                    | OK | Timestamp           | Details
-    ---------+-------+--------------------------+----+---------------------+-----------------------------------------------------------------------------------
-     3       | node3 | repmgrd_failover_follow  | t  | 2017-08-24 23:32:16 | node 3 now following new upstream node 2
-     3       | node3 | standby_follow           | t  | 2017-08-24 23:32:16 | node 3 is now attached to node 2
-     2       | node2 | repmgrd_failover_promote | t  | 2017-08-24 23:32:13 | node 2 promoted to primary; old primary 1 marked as failed
-     2       | node2 | standby_promote          | t  | 2017-08-24 23:32:13 | node 2 was successfully promoted to primary</programlisting>
+     Node ID | Name  | Event                      | OK | Timestamp           | Details
+    ---------+-------+----------------------------+----+---------------------+-------------------------------------------------------------
+     3       | node3 | repmgrd_failover_follow    | t  | 2019-03-15 06:38:03 | node 3 now following new upstream node 2
+     3       | node3 | standby_follow             | t  | 2019-03-15 06:38:02 | standby attached to upstream node "node2" (node ID: 2)
+     2       | node2 | repmgrd_reload             | t  | 2019-03-15 06:38:01 | monitoring cluster primary "node2" (node ID: 2)
+     2       | node2 | repmgrd_failover_promote   | t  | 2019-03-15 06:38:01 | node 2 promoted to primary; old primary 1 marked as failed
+     2       | node2 | standby_promote            | t  | 2019-03-15 06:38:01 | server "node2" (ID: 2) was successfully promoted to primary</programlisting>
  </para>
 
   </sect1>
