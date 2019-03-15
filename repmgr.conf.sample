@@ -5,7 +5,13 @@
 # Some configuration items will be set with a default value; this
 # is noted for each item. Where no default value is shown, the
 # parameter will be treated as empty or false.
-
+#
+# IMPORTANT: string values can be provided as-is, or enclosed in single quotes
+# (but not double-quotes, which will be interpreted as part of the string), e.g.:
+#
+#  node_name=foo
+#  node_name = 'foo'
+#
 # =============================================================================
 # Required configuration items
 # =============================================================================
