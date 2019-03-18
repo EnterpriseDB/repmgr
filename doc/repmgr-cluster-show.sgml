@@ -151,10 +151,30 @@
       </varlistentry>
 
       <varlistentry>
+        <term><option>ERR_BAD_CONFIG (1)</option></term>
+        <listitem>
+          <para>
+            An issue was encountered while attempting to retrieve
+            &repmgr; metadata.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>ERR_DB_CONN (6)</option></term>
+        <listitem>
+          <para>
+            &repmgr; was unable to connect to the local PostgreSQL instance.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><option>ERR_NODE_STATUS (25)</option></term>
         <listitem>
           <para>
-            One or more issues were detected.
+            One or more issues were detected with the replication configuration,
+            e.g. a node was not in its expected state.
           </para>
         </listitem>
       </varlistentry>
