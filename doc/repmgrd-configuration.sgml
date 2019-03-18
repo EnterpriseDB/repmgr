@@ -364,27 +364,6 @@
           </listitem>
         </varlistentry>
 
-
-        <varlistentry>
-
-         <indexterm>
-            <primary>primary_visibility_consensus</primary>
-          </indexterm>
-          <term><option>primary_visibility_consensus</option></term>
-          <listitem>
-            <para>
-              If <literal>true</literal>, only continue with failover if no standbys have seen
-			  the primary node recently.
-            </para>
-            <note>
-              <para>
-                This option <emphasis>must</emphasis> be identically configured
-                on all nodes.
-              </para>
-            </note>
-          </listitem>
-        </varlistentry>
-
         <varlistentry>
 
          <indexterm>
@@ -673,12 +652,6 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
         <listitem>
           <simpara>
             <varname>primary_notification_timeout</varname>
-          </simpara>
-        </listitem>
-
-        <listitem>
-          <simpara>
-            <varname>primary_visibility_consensus</varname>
           </simpara>
         </listitem>
 

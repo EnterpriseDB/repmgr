@@ -334,8 +334,6 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #sibling_nodes_disconnect_timeout=30	# If "standby_disconnect_on_failover" is true, the maximum length of time
 					#  (in seconds) to wait for other standbys to confirm they have disconnected their
 					# WAL receivers
-#primary_visibility_consensus=false	# If "true", only continue with failover if no standbys have seen
-					# the primary node recently. *Must* be the same on all nodes.
 #failover_validation_command=		# Script to execute for an external mechanism to validate the failover
 					# decision made by repmgrd. One or both of the following parameter placeholders
 					# should be provided, which will be replaced by repmgrd with the appropriate

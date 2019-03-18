@@ -150,10 +150,6 @@
   <para>
     Following the failover operation, no matter what the outcome, each node will reconnect its WAL receiver.
   </para>
-  <para>
-    If using <option>standby_disconnect_on_failover</option>, we recommend that the
-    <option>primary_visibility_consensus</option> option is also used.
-  </para>
 
 </sect1>
 
