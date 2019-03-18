@@ -3545,9 +3545,10 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 	log_verbose(LOG_DEBUG, "_create_event(): event is \"%s\" for node %i", event, node_id);
 
 	/*
-	 * Only attempt to write a record if a connection handle was provided.
+	 * Only attempt to write a record if a connection handle was provided,
+	 * and the connection handle points to a node which is not in recovery.
 	 */
-	if (conn != NULL && PQstatus(conn) == CONNECTION_OK)
+	if (conn != NULL && PQstatus(conn) == CONNECTION_OK && get_recovery_type(conn) == RECTYPE_PRIMARY)
 	{
 		int			n_node_id = htonl(node_id);
 		char	   *t_successful = successful ? "TRUE" : "FALSE";
