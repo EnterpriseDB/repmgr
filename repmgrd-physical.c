@@ -477,9 +477,17 @@ check_primary_status(int degraded_monitoring_elapsed)
 	PGconn *new_primary_conn;
 	RecordStatus record_status;
 	bool resume_monitoring = true;
+	RecoveryType recovery_type = get_recovery_type(local_conn);
+
+	if (recovery_type == RECTYPE_UNKNOWN)
+	{
+		log_warning(_("unable to determine node recovery status"));
+		/* "true" to indicate repmgrd should continue monitoring in degraded state */
+		return true;
+	}
 
 	/* node is still primary - resume monitoring */
-	if (get_recovery_type(local_conn) == RECTYPE_PRIMARY)
+	if (recovery_type == RECTYPE_PRIMARY)
 	{
 		if (degraded_monitoring_elapsed != NO_DEGRADED_MONITORING_ELAPSED)
 		{
@@ -530,7 +538,16 @@ check_primary_status(int degraded_monitoring_elapsed)
 	if (PQstatus(new_primary_conn) != CONNECTION_OK)
 	{
 		close_connection(&new_primary_conn);
-		log_warning(_("unable to connect to new primary node %i"), primary_node_id);
+
+		if (primary_node_id == UNKNOWN_NODE_ID)
+		{
+			log_warning(_("unable to determine a new primary node"));
+		}
+		else
+		{
+			log_warning(_("unable to connect to new primary node %i"), primary_node_id);
+		}
+
 		/* "true" to indicate repmgrd should continue monitoring in degraded state */
 		return true;
 	}
