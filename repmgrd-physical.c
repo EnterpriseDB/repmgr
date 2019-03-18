@@ -351,7 +351,7 @@ monitor_streaming_primary(void)
 					 * check that the local node is still primary, otherwise switch
 					 * to standby monitoring
 					 */
-					if (check_primary_status(-1) == false)
+					if (check_primary_status(NO_DEGRADED_MONITORING_ELAPSED) == false)
 						return;
 
 					goto loop;
@@ -423,7 +423,7 @@ monitor_streaming_primary(void)
 loop:
 
 		/* check node is still primary, if not restart monitoring */
-		if (check_primary_status(-1) == false)
+		if (check_primary_status(NO_DEGRADED_MONITORING_ELAPSED) == false)
 			return;
 
 		/* emit "still alive" log message at regular intervals, if requested */
