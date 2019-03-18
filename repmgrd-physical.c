@@ -465,151 +465,23 @@ loop:
  * (due to e.g. a switchover), the node has come back as a standby. We therefore
  * need to verify its status and if everything looks OK, restart monitoring in
  * standby mode.
+ *
+ * Returns "true" to indicate repmgrd should continue monitoring the node as
+ * a primary; "false" indicates repmgrd should start monitoring the node as
+ * a standby.
  */
 bool
 check_primary_status(int degraded_monitoring_elapsed)
 {
 	PQExpBufferData event_details;
+	PGconn *new_primary_conn;
+	RecordStatus record_status;
+	bool resume_monitoring = true;
 
-	/* check to see if the node has been restored as a standby */
-	if (get_recovery_type(local_conn) == RECTYPE_STANDBY)
+	/* node is still primary - resume monitoring */
+	if (get_recovery_type(local_conn) == RECTYPE_PRIMARY)
 	{
-		PGconn *new_primary_conn;
-
-		initPQExpBuffer(&event_details);
-
-		if (degraded_monitoring_elapsed > 0)
-		{
-			appendPQExpBuffer(&event_details,
-							  _("reconnected to node after %i seconds, node is now a standby, switching to standby monitoring"),
-							  degraded_monitoring_elapsed);
-		}
-		else
-		{
-			appendPQExpBufferStr(&event_details,
-								 _("node is now a standby, switching to standby monitoring"));
-		}
-
-		log_notice("%s", event_details.data);
-		termPQExpBuffer(&event_details);
-
-		primary_node_id = UNKNOWN_NODE_ID;
-
-		new_primary_conn = get_primary_connection_quiet(local_conn, &primary_node_id, NULL);
-
-		if (PQstatus(new_primary_conn) != CONNECTION_OK)
-		{
-			close_connection(&new_primary_conn);
-			log_warning(_("unable to connect to new primary node %i"), primary_node_id);
-		}
-		else
-		{
-			RecordStatus record_status;
-
-			log_debug("primary node id is now %i", primary_node_id);
-
-			record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
-
-			if (record_status == RECORD_FOUND)
-			{
-				bool resume_monitoring = true;
-
-				log_debug("node %i is registered with type = %s",
-						  config_file_options.node_id,
-						  get_node_type_string(local_node_info.type));
-
-				/*
-				 * node has recovered but metadata not updated - we can do that ourselves,
-				 */
-				if (local_node_info.type == PRIMARY)
-				{
-					log_notice(_("node \"%s\" (ID: %i) still registered as primary, setting to standby"),
-											   config_file_options.node_name,
-											   config_file_options.node_id);
-
-					if (update_node_record_set_active_standby(new_primary_conn, config_file_options.node_id) == false)
-					{
-						resume_monitoring = false;
-					}
-					else
-					{
-						record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
-
-						if (record_status != RECORD_FOUND)
-						{
-							resume_monitoring = false;
-						}
-					}
-				}
-
-				if (resume_monitoring == true)
-				{
-					initPQExpBuffer(&event_details);
-
-					if (degraded_monitoring_elapsed > 0)
-					{
-						monitoring_state = MS_NORMAL;
-
-						log_notice(_("former primary has been restored as standby after %i seconds, updating node record and resuming monitoring"),
-								   degraded_monitoring_elapsed);
-
-
-						appendPQExpBuffer(&event_details,
-										  _("node restored as standby after %i seconds, monitoring connection to upstream node %i"),
-										  degraded_monitoring_elapsed,
-										  local_node_info.upstream_node_id);
-					}
-					else
-					{
-						appendPQExpBuffer(&event_details,
-										  _("node has become a standby, monitoring connection to upstream node %i"),
-										  local_node_info.upstream_node_id);
-					}
-
-					create_event_notification(new_primary_conn,
-											  &config_file_options,
-											  config_file_options.node_id,
-											  "repmgrd_standby_reconnect",
-											  true,
-											  event_details.data);
-
-
-					termPQExpBuffer(&event_details);
-
-					close_connection(&new_primary_conn);
-
-					/* restart monitoring as standby */
-					return false;
-				}
-			}
-			else if (record_status == RECORD_NOT_FOUND)
-			{
-				initPQExpBuffer(&event_details);
-
-				appendPQExpBuffer(&event_details,
-								  _("no metadata record found for this node on current primary %i"),
-								  primary_node_id);
-
-				log_error("%s", event_details.data);
-				log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
-
-				close_connection(&new_primary_conn);
-
-				create_event_notification(NULL,
-										  &config_file_options,
-										  config_file_options.node_id,
-										  "repmgrd_shutdown",
-										  false,
-										  event_details.data);
-				termPQExpBuffer(&event_details);
-
-				terminate(ERR_BAD_CONFIG);
-			}
-		}
-	}
-	else
-	{
-		if (degraded_monitoring_elapsed > 0)
+		if (degraded_monitoring_elapsed != NO_DEGRADED_MONITORING_ELAPSED)
 		{
 			monitoring_state = MS_NORMAL;
 
@@ -628,8 +500,144 @@ check_primary_status(int degraded_monitoring_elapsed)
 			log_notice("%s", event_details.data);
 			termPQExpBuffer(&event_details);
 		}
+
+		return true;
 	}
 
+	/* the node is now a standby */
+
+	initPQExpBuffer(&event_details);
+
+	if (degraded_monitoring_elapsed != NO_DEGRADED_MONITORING_ELAPSED)
+	{
+		appendPQExpBuffer(&event_details,
+						  _("reconnected to node after %i seconds, node is now a standby, switching to standby monitoring"),
+						  degraded_monitoring_elapsed);
+	}
+	else
+	{
+		appendPQExpBufferStr(&event_details,
+							 _("node is now a standby, switching to standby monitoring"));
+	}
+
+	log_notice("%s", event_details.data);
+	termPQExpBuffer(&event_details);
+
+	primary_node_id = UNKNOWN_NODE_ID;
+
+	new_primary_conn = get_primary_connection_quiet(local_conn, &primary_node_id, NULL);
+
+	if (PQstatus(new_primary_conn) != CONNECTION_OK)
+	{
+		close_connection(&new_primary_conn);
+		log_warning(_("unable to connect to new primary node %i"), primary_node_id);
+		/* "true" to indicate repmgrd should continue monitoring in degraded state */
+		return true;
+	}
+
+	log_debug("primary node id is now %i", primary_node_id);
+
+	record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
+
+	/*
+	 * If, for whatever reason, the new primary has no record of this node,
+	 * we won't be able to perform proper monitoring. In that case
+	 * terminate and let the user sort out the situation.
+	 */
+	if (record_status == RECORD_NOT_FOUND)
+	{
+		initPQExpBuffer(&event_details);
+
+		appendPQExpBuffer(&event_details,
+						  _("no metadata record found for this node on current primary %i"),
+						  primary_node_id);
+
+		log_error("%s", event_details.data);
+		log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
+
+		close_connection(&new_primary_conn);
+
+		create_event_notification(NULL,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "repmgrd_shutdown",
+								  false,
+								  event_details.data);
+		termPQExpBuffer(&event_details);
+
+		terminate(ERR_BAD_CONFIG);
+	}
+
+	log_debug("node %i is registered with type = %s",
+			  config_file_options.node_id,
+			  get_node_type_string(local_node_info.type));
+
+	/*
+	 * node has recovered but metadata not updated - we can do that ourselves,
+	 */
+	if (local_node_info.type == PRIMARY)
+	{
+		log_notice(_("node \"%s\" (ID: %i) still registered as primary, setting to standby"),
+				   config_file_options.node_name,
+				   config_file_options.node_id);
+
+		if (update_node_record_set_active_standby(new_primary_conn, config_file_options.node_id) == false)
+		{
+			resume_monitoring = false;
+		}
+		else
+		{
+			/* refresh our copy of the node record from the primary */
+			record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
+
+			/* this is unlikley to happen */
+			if (record_status != RECORD_FOUND)
+			{
+				log_warning(_("unable to retrieve local node record from primary node %i"), primary_node_id);
+				resume_monitoring = false;
+			}
+		}
+	}
+
+	if (resume_monitoring == true)
+	{
+		initPQExpBuffer(&event_details);
+
+		if (degraded_monitoring_elapsed != NO_DEGRADED_MONITORING_ELAPSED)
+		{
+			monitoring_state = MS_NORMAL;
+
+			log_notice(_("former primary has been restored as standby after %i seconds, updating node record and resuming monitoring"),
+					   degraded_monitoring_elapsed);
+
+			appendPQExpBuffer(&event_details,
+							  _("node restored as standby after %i seconds, monitoring connection to upstream node %i"),
+							  degraded_monitoring_elapsed,
+							  local_node_info.upstream_node_id);
+		}
+		else
+		{
+			appendPQExpBuffer(&event_details,
+							  _("node has become a standby, monitoring connection to upstream node %i"),
+							  local_node_info.upstream_node_id);
+		}
+
+		create_event_notification(new_primary_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "repmgrd_standby_reconnect",
+								  true,
+								  event_details.data);
+
+		termPQExpBuffer(&event_details);
+
+		close_connection(&new_primary_conn);
+
+		/* restart monitoring as standby */
+		return false;
+	}
+
+	/* continue monitoring as before */
 	return true;
 }
 
