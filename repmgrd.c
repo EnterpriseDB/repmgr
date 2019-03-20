@@ -561,6 +561,8 @@ start_monitoring(void)
 			   local_node_info.node_name,
 			   local_node_info.node_id);
 
+	log_info(_("\"connection_check_type\" set to \"%s\""), print_connection_check_type(config_file_options.connection_check_type));
+
 	while (true)
 	{
 		switch (local_node_info.type)

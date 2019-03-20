@@ -329,5 +329,6 @@ void free_parsed_argv(char ***argv_array);
 /* called by repmgr-client and repmgrd */
 void		exit_with_cli_errors(ItemList *error_list, const char *repmgr_command);
 void		print_item_list(ItemList *item_list);
+const char *print_connection_check_type(ConnectionCheckType type);
 
 #endif							/* _REPMGR_CONFIGFILE_H_ */
