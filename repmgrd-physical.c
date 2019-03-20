@@ -1616,7 +1616,7 @@ monitor_streaming_witness(void)
 
 		primary_node_id = get_primary_node_id(local_conn);
 
-		log_debug("unable to find current primary; setting primary_node_id to last known ID %i", primary_node_id);
+		log_notice(_("setting primary_node_id to last known ID %i"), primary_node_id);
 
 		record_status = get_node_record(local_conn, primary_node_id, &upstream_node_info);
 
@@ -2302,7 +2302,8 @@ do_primary_failover(void)
 			notify_followers(&sibling_nodes, upstream_node_info.node_id);
 
 			/* pass control back down to start_monitoring() */
-			log_info(_("resuming standby monitoring mode"));
+
+			log_info(_("resuming %s monitoring mode"), get_node_type_string(local_node_info.type));
 			log_detail(_("original primary \"%s\" (node ID: %i) reappeared"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 
@@ -2312,7 +2313,7 @@ do_primary_failover(void)
 			break;
 
 		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
-			log_info(_("resuming standby monitoring mode"));
+			log_info(_("resuming %s monitoring mode"), get_node_type_string(local_node_info.type));
 			log_detail(_("following new primary \"%s\" (node id: %i)"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
@@ -2321,7 +2322,7 @@ do_primary_failover(void)
 			break;
 
 		case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
-			log_info(_("resuming standby monitoring mode"));
+			log_info(_("resuming %s monitoring mode"), get_node_type_string(local_node_info.type));
 			log_detail(_("following original primary \"%s\" (node id: %i)"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
@@ -3748,7 +3749,7 @@ bool do_witness_failover(void)
 	{
 		case FAILOVER_STATE_PRIMARY_REAPPEARED:
 			/* pass control back down to start_monitoring() */
-			log_info(_("resuming witness monitoring mode"));
+			log_info(_("resuming %s monitoring mode"),get_node_type_string(local_node_info.type));
 			log_detail(_("original primary \"%s\" (node ID: %i) reappeared"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 
@@ -3757,7 +3758,7 @@ bool do_witness_failover(void)
 
 
 		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
-			log_info(_("resuming standby monitoring mode"));
+			log_info(_("resuming %s monitoring mode"),get_node_type_string(local_node_info.type));
 			log_detail(_("following new primary \"%s\" (node id: %i)"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
@@ -3765,7 +3766,7 @@ bool do_witness_failover(void)
 			return true;
 
 		case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
-			log_info(_("resuming witness monitoring mode"));
+			log_info(_("resuming %s monitoring mode"),get_node_type_string(local_node_info.type));
 			log_detail(_("following original primary \"%s\" (node id: %i)"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
