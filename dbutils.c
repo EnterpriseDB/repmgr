@@ -5050,13 +5050,12 @@ get_replication_lag_seconds(PGconn *conn)
 		log_warning("%s", PQerrorMessage(conn));
 		PQclear(res);
 
-		/* XXX magic number */
-		return -1;
+		return UNKNOWN_REPLICATION_LAG;
 	}
 
 	if (!PQntuples(res))
 	{
-		return -1;
+		return UNKNOWN_REPLICATION_LAG;
 	}
 
 	lag_seconds = atoi(PQgetvalue(res, 0, 0));
