@@ -2457,6 +2457,7 @@ get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGconn **privil
 	if (PQstatus(*conn) != CONNECTION_OK)
 	{
 		log_error(_("no database connection available"));
+		log_detail("\n%s", PQerrorMessage(*conn));
 		exit(ERR_INTERNAL);
 	}
 

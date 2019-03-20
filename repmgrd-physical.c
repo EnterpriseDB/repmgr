@@ -537,8 +537,6 @@ check_primary_status(int degraded_monitoring_elapsed)
 
 	if (PQstatus(new_primary_conn) != CONNECTION_OK)
 	{
-		close_connection(&new_primary_conn);
-
 		if (primary_node_id == UNKNOWN_NODE_ID)
 		{
 			log_warning(_("unable to determine a new primary node"));
@@ -546,7 +544,10 @@ check_primary_status(int degraded_monitoring_elapsed)
 		else
 		{
 			log_warning(_("unable to connect to new primary node %i"), primary_node_id);
+			log_detail("\n%s", PQerrorMessage(new_primary_conn));
 		}
+
+		close_connection(&new_primary_conn);
 
 		/* "true" to indicate repmgrd should continue monitoring in degraded state */
 		return true;
@@ -1604,6 +1605,8 @@ monitor_streaming_witness(void)
 	}
 	else
 	{
+		log_warning(_("unable to connect to primary"));
+		log_detail("\n%s", PQerrorMessage(primary_conn));
 		/*
 		 * Here we're unable to connect to a primary despite having scanned all
 		 * known nodes, so we'll grab the record of the node we think is primary
@@ -2760,12 +2763,16 @@ promote_self(void)
 	/* connection should stay up, but check just in case */
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
+		log_warning(_("local database connection not available"));
+		log_detail("\n%s", PQerrorMessage(local_conn));
+
 		local_conn = establish_db_connection(local_node_info.conninfo, true);
 
 		/* assume node failed */
 		if (PQstatus(local_conn) != CONNECTION_OK)
 		{
 			log_error(_("unable to reconnect to local node"));
+			log_detail("\n%s", PQerrorMessage(local_conn));
 			/* XXX handle this */
 			return FAILOVER_STATE_LOCAL_NODE_FAILURE;
 		}
@@ -2869,17 +2876,23 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 
 	for (cell = standby_nodes->head; cell; cell = cell->next)
 	{
-		log_verbose(LOG_DEBUG, "intending to notify node %i... ", cell->node_info->node_id);
+		log_verbose(LOG_DEBUG, "intending to notify node %i...", cell->node_info->node_id);
+
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
-			log_debug("reconnecting to node %i... ", cell->node_info->node_id);
+			log_info(_("reconnecting to node \"%s\" (node ID: %i)..."),
+					 cell->node_info->node_name,
+					 cell->node_info->node_id);
 
 			cell->node_info->conn = establish_db_connection(cell->node_info->conninfo, false);
 		}
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
-			log_debug("unable to reconnect to %i ... ", cell->node_info->node_id);
+			log_warning(_("unable to reconnect to \"%s\" (node ID: %i)"),
+						cell->node_info->node_name,
+						cell->node_info->node_id);
+			log_detail("\n%s", PQerrorMessage(cell->node_info->conn));
 
 			continue;
 		}
@@ -3788,6 +3801,7 @@ reset_node_voting_status(void)
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
 		log_error(_("reset_node_voting_status(): local_conn not set"));
+		log_detail("\n%s", PQerrorMessage(local_conn));
 		return;
 	}
 	reset_voting_status(local_conn);
@@ -3799,7 +3813,10 @@ check_connection(t_node_info *node_info, PGconn **conn)
 {
 	if (is_server_available(node_info->conninfo) == false)
 	{
-		log_warning(_("connection to node %i lost"), node_info->node_id);
+		log_warning(_("connection to node \"%s\" (ID: %i) lost"),
+					node_info->node_name,
+					node_info->node_id);
+		log_detail("\n%s", PQerrorMessage(*conn));
 		PQfinish(*conn);
 		*conn = NULL;
 	}

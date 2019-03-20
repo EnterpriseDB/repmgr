@@ -1305,8 +1305,7 @@ do_standby_register(void)
 			log_error(_("unable to connect to local node \"%s\" (ID: %i)"),
 					  config_file_options.node_name,
 					  config_file_options.node_id);
-			log_detail("%s",
-					   PQerrorMessage(conn));
+			log_detail("\n%s", PQerrorMessage(conn));
 			log_hint(_("to register a standby which is not running, provide primary connection parameters and use option -F/--force"));
 
 			exit(ERR_BAD_CONFIG);
@@ -1887,7 +1886,7 @@ do_standby_unregister(void)
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to connect to primary server"));
-		log_detail("%s", PQerrorMessage(conn));
+		log_detail("\n%s", PQerrorMessage(conn));
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -3986,13 +3985,13 @@ do_standby_switchover(void)
 
 		for (cell = all_nodes.head; cell; cell = cell->next)
 		{
-			cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
-
 			repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
 			repmgrd_info[i]->node_id = cell->node_info->node_id;
 			repmgrd_info[i]->pid = UNKNOWN_PID;
 			repmgrd_info[i]->paused = false;
 			repmgrd_info[i]->running = false;
+
+			cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
 			if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 			{
@@ -4304,6 +4303,9 @@ do_standby_switchover(void)
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
 		log_warning(_("connection to local node lost, reconnecting..."));
+		log_detail("\n%s", PQerrorMessage(local_conn));
+		PQfinish(local_conn);
+
 		local_conn = establish_db_connection(config_file_options.conninfo, false);
 
 		if (PQstatus(local_conn) != CONNECTION_OK)
