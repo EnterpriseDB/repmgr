@@ -3883,7 +3883,7 @@ do_standby_switchover(void)
 			log_detail(_("lag is %i seconds (warning threshold: %i)"),
 					   lag_seconds, config_file_options.replication_lag_warning);
 		}
-		else if (lag_seconds < 0)
+		else if (lag_seconds == UNKNOWN_REPLICATION_LAG)
 		{
 			if (runtime_options.force == false)
 			{

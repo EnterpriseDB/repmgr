@@ -1408,7 +1408,7 @@ do_node_check_replication_lag(PGconn *conn, OutputMode mode, t_node_info *node_i
 					break;
 			}
 		}
-		else if (lag_seconds < 0)
+		else if (lag_seconds == UNKNOWN_REPLICATION_LAG)
 		{
 			status = CHECK_STATUS_UNKNOWN;
 
