@@ -53,7 +53,7 @@
 
         </varlistentry>
 
-        <varlistentry>
+        <varlistentry id="connection_check_type">
 
           <indexterm>
             <primary>connection_check_type</primary>

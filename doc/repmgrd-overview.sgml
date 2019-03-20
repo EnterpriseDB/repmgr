@@ -13,6 +13,66 @@
     failover and updating standbys to follow the new primary, as well as
     providing monitoring information about the state of each standby.
   </para>
+  <para>
+    <application>repmgrd</application> is designed to be straightforward to set up
+    and does not require additional external infrastructure.
+  </para>
+  <para>
+    Functionality provided by <application>repmgrd</application> includes:
+    <itemizedlist spacing="compact" mark="bullet">
+
+       <listitem>
+         <simpara>
+           wide range of <link linkend="repmgrd-basic-configuration">configuration options</link>
+         </simpara>
+       </listitem>
+
+       <listitem>
+         <simpara>
+           option to execute custom scripts (&quot;<link linkend="event-notifications">event notifications</link>
+           at different points in the failover sequence
+         </simpara>
+       </listitem>
+
+       <listitem>
+         <simpara>
+           ability to <link linkend="repmgrd-pausing">pause repmgrd</link>
+           operation on all nodes with a
+           <link linkend="repmgr-daemon-pause"><command>single command</command></link>
+         </simpara>
+       </listitem>
+
+       <listitem>
+         <simpara>
+           optional <link linkend="using-witness-server">witness server</link>
+         </simpara>
+       </listitem>
+
+       <listitem>
+         <simpara>
+           &quot;location&quot; configuration option to restrict
+           potential promotion candidates to a single location
+           (e.g. when nodes are spread over multiple data centres)
+         </simpara>
+       </listitem>
+
+       <listitem>
+         <simpara>
+           <link linkend="connection_check_type">choice of method</link> to determine node availability
+           (PostgreSQL ping, query execution or new connection)
+         </simpara>
+       </listitem>
+
+       <listitem>
+         <simpara>
+           retention of monitoring statistics (optional)
+         </simpara>
+       </listitem>
+
+
+    </itemizedlist>
+
+  </para>
 
   <sect1 id="repmgrd-demonstration">
 
