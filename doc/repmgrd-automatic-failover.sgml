@@ -23,37 +23,92 @@
    <primary>witness server</primary>
    <secondary>repmgrd</secondary>
  </indexterm>
+ <title>Using a witness server</title>
+ <para>
+   A <xref linkend="witness-server"> is a normal PostgreSQL instance which
+   is not part of the streaming replication cluster; its purpose is, if a
+   failover situation occurs, to provide proof that it is the primary server
+   itself which is unavailable, rather than e.g. a network split between
+   different physical locations.
+ </para>
 
- <title>Using a witness server with repmgrd</title>
  <para>
-   In a situation caused e.g. by a network interruption between two
-   data centres, it's important to avoid a &quot;split-brain&quot; situation where
-   both sides of the network assume they are the active segment and the
-   side without an active primary unilaterally promotes one of its standbys.
- </para>
- <para>
-   To prevent this situation happening, it's essential to ensure that one
-   network segment has a &quot;voting majority&quot;, so other segments will know
-   they're in the minority and not attempt to promote a new primary. Where
-   an odd number of servers exists, this is not an issue. However, if each
-   network has an even number of nodes, it's necessary to provide some way
-   of ensuring a majority, which is where the witness server becomes useful.
- </para>
- <para>
-   This is not a fully-fledged standby node and is not integrated into
-   replication, but it effectively represents the &quot;casting vote&quot; when
-   deciding which network segment has a majority. A witness server can
-   be set up using <link linkend="repmgr-witness-register"><command>repmgr witness register</command></link>;
-   see also section <link linkend="using-witness-server">Using a witness server</link>.
+   A typical use case for a witness server is a two-node streaming replication
+   setup, where the primary and standby are in different locations (data centres).
+   By creating a witness server in the same location (data centre) as the primary,
+   if the primary becomes unavailable it's possible for the standby to decide whether
+   it can promote itself without risking a "split brain" scenario: if it can't see either the
+   witness or the primary server, it's likely there's a network-level interruption
+   and it should not promote itself. If it can see the witness but not the primary,
+   this proves there is no network interruption and the primary itself is unavailable,
+   and it can therefore promote itself (and ideally take action to fence the
+   former primary).
  </para>
  <note>
    <para>
-     It only
-     makes sense to create a witness server in conjunction with running
-     <application>repmgrd</application>; the witness server will require its own
-     <application>repmgrd</application> instance.
+     <emphasis>Never</emphasis> install a witness server on the same physical host
+     as another node in the replication cluster managed by &repmgr; - it's essential
+     the witness is not affected in any way by failure of another node.
    </para>
  </note>
+ <para>
+   For more complex replication scenarios,e.g. with multiple datacentres, it may
+   be preferable to use location-based failover, which ensures that only nodes
+   in the same location as the primary will ever be promotion candidates;
+   see <xref linkend="repmgrd-network-split"> for more details.
+ </para>
+
+ <note>
+   <simpara>
+     A witness server will only be useful if <application>repmgrd</application>
+     is in use.
+   </simpara>
+ </note>
+
+ <sect2 id="creating-witness-server">
+   <title>Creating a witness server</title>
+ <para>
+   To create a witness server, set up a normal PostgreSQL instance on a server
+   in the same physical location as the cluster's primary server.
+ </para>
+ <para>
+   This instance should <emphasis>not</emphasis> be on the same physical host as the primary server,
+   as otherwise if the primary server fails due to hardware issues, the witness
+   server will be lost too.
+ </para>
+ <note>
+   <simpara>
+     &repmgr; 3.3 and earlier provided a <command>repmgr create witness</command>
+     command, which would automatically create a PostgreSQL instance. However
+     this often resulted in an unsatisfactory, hard-to-customise instance.
+   </simpara>
+ </note>
+ <para>
+   The witness server should be configured in the same way as a normal
+   &repmgr; node; see section <xref linkend="configuration">.
+ </para>
+ <para>
+   Register the witness server with <xref linkend="repmgr-witness-register">.
+   This will create the &repmgr; extension on the witness server, and make
+   a copy of the &repmgr; metadata.
+ </para>
+ <note>
+   <simpara>
+    As the witness server is not part of the replication cluster, further
+    changes to the &repmgr; metadata will be synchronised by
+    <application>repmgrd</application>.
+   </simpara>
+ </note>
+ <para>
+   Once the witness server has been configured, <application>repmgrd</application>
+   should be started.
+ </para>
+
+ <para>
+  To unregister a witness server, use <xref linkend="repmgr-witness-unregister">.
+ </para>
+
+ </sect2>
 
 </sect1>
 

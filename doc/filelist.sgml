@@ -45,7 +45,6 @@
 <!ENTITY promoting-standby  SYSTEM "promoting-standby.sgml">
 <!ENTITY follow-new-primary  SYSTEM "follow-new-primary.sgml">
 <!ENTITY switchover  SYSTEM "switchover.sgml">
-<!ENTITY configuring-witness-server SYSTEM "configuring-witness-server.sgml">
 
 <!ENTITY event-notifications  SYSTEM "event-notifications.sgml">
 <!ENTITY upgrading-repmgr  SYSTEM "upgrading-repmgr.sgml">
