@@ -44,7 +44,7 @@
 
        <listitem>
          <simpara>
-           optional <link linkend="using-witness-server">witness server</link>
+           optional <link linkend="repmgrd-witness-server">witness server</link>
          </simpara>
        </listitem>
 

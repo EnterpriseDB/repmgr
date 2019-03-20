@@ -82,7 +82,6 @@
   &repmgrd-overview;
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
-  &configuring-witness-server;
   &repmgrd-operation;
   &repmgrd-bdr;
  </part>
