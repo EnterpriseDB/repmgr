@@ -56,8 +56,7 @@ do_witness_register(void)
 		log_error(_("unable to connect to witness node \"%s\" (ID: %i)"),
 				  config_file_options.node_name,
 				  config_file_options.node_id);
-		log_detail("%s",
-				   PQerrorMessage(witness_conn));
+		log_detail("\n%s", PQerrorMessage(witness_conn));
 		log_hint(_("the witness node must be running before it can be registered"));
 		exit(ERR_BAD_CONFIG);
 	}
@@ -411,7 +410,7 @@ do_witness_unregister(void)
 			log_error(_("unable to connect to node \"%s\" (ID: %i)"),
 					  config_file_options.node_name,
 					  config_file_options.node_id);
-			log_detail("%s", PQerrorMessage(local_conn));
+			log_detail("\n%s", PQerrorMessage(local_conn));
 			exit(ERR_BAD_CONFIG);
 		}
 
@@ -437,7 +436,7 @@ do_witness_unregister(void)
 	if (PQstatus(primary_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to connect to primary"));
-		log_detail("%s", PQerrorMessage(primary_conn));
+		log_detail("\n%s", PQerrorMessage(primary_conn));
 
 		if (local_node_available == true)
 		{

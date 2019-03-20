@@ -76,7 +76,7 @@ log_db_error(PGconn *conn, const char *query_text, const char *fmt,...)
 
 	if (conn != NULL && PQstatus(conn) == CONNECTION_OK)
 	{
-		log_detail("%s", PQerrorMessage(conn));
+		log_detail("\n%s", PQerrorMessage(conn));
 	}
 
 	if (query_text != NULL)
@@ -190,13 +190,13 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 		{
 			if (log_notice)
 			{
-				log_notice(_("connection to database failed:\n  %s"),
-						   PQerrorMessage(conn));
+				log_notice(_("connection to database failed"));
+				log_detail("\n%s", PQerrorMessage(conn));
 			}
 			else
 			{
-				log_error(_("connection to database failed:\n  %s"),
-						  PQerrorMessage(conn));
+				log_error(_("connection to database failed"));
+				log_detail("\n%s", PQerrorMessage(conn));
 			}
 			log_detail(_("attempted to connect using:\n  %s"),
 					   connection_string);
@@ -287,8 +287,9 @@ establish_db_connection_by_params(t_conninfo_param_list *param_list,
 	/* Check to see that the backend connection was successfully made */
 	if ((PQstatus(conn) != CONNECTION_OK))
 	{
-		log_error(_("connection to database failed:\n	%s"),
-				  PQerrorMessage(conn));
+		log_error(_("connection to database failed"));
+		log_detail("\n%s", PQerrorMessage(conn));
+
 		if (exit_on_error)
 		{
 			PQfinish(conn);
@@ -4202,7 +4203,7 @@ cancel_query(PGconn *conn, int timeout)
 	if (PQcancel(pgcancel, errbuf, ERRBUFF_SIZE) == 0)
 	{
 		log_warning(_("unable to cancel current query"));
-		log_detail("%s", errbuf);
+		log_detail("\n%s", errbuf);
 		PQfreeCancel(pgcancel);
 		return false;
 	}
@@ -4314,6 +4315,7 @@ is_server_available_params(t_conninfo_param_list *param_list)
 	{
 		char *conninfo_str = param_list_to_string(param_list);
 		log_verbose(LOG_DEBUG, "is_server_available_params(): ping status for %s is %i", conninfo_str, (int)status);
+
 		pfree(conninfo_str);
 	}
 
@@ -4351,7 +4353,7 @@ connection_ping_reconnect(PGconn *conn)
 	if (PQstatus(conn) != CONNECTION_OK)
 	{
 		log_warning(_("connection error, attempting to reset"));
-		log_detail("%s", PQerrorMessage(conn));
+		log_detail("\n%s", PQerrorMessage(conn));
 		PQreset(conn);
 		ping_result = connection_ping(conn);
 	}

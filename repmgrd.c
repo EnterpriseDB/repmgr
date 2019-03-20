@@ -433,7 +433,7 @@ main(int argc, char **argv)
 		if (extension_status == REPMGR_UNKNOWN)
 		{
 			log_error(_("unable to determine status of \"repmgr\" extension"));
-			log_detail("%s", PQerrorMessage(local_conn));
+			log_detail("\n%s", PQerrorMessage(local_conn));
 			close_connection(&local_conn);
 			exit(ERR_DB_QUERY);
 		}
@@ -846,6 +846,7 @@ check_upstream_connection(PGconn **conn, const char *conninfo)
 		if (PQstatus(test_conn) != CONNECTION_OK)
 		{
 			log_warning(_("unable to connect to \"%s\""), conninfo);
+			log_detail("\n%s", PQerrorMessage(test_conn));
 			success = false;
 		}
 		PQfinish(test_conn);
