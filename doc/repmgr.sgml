@@ -73,7 +73,6 @@
   &promoting-standby;
   &follow-new-primary;
   &switchover;
-  &configuring-witness-server;
   &event-notifications;
   &upgrading-repmgr;
  </part>
@@ -83,6 +82,7 @@
   &repmgrd-overview;
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
+  &configuring-witness-server;
   &repmgrd-operation;
   &repmgrd-bdr;
  </part>
