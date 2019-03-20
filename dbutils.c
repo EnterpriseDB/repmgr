@@ -4296,9 +4296,12 @@ is_server_available(const char *conninfo)
 {
 	PGPing		status = PQping(conninfo);
 
-	log_verbose(LOG_DEBUG, "is_server_available(): ping status for %s is %i", conninfo, (int)status);
+	log_verbose(LOG_DEBUG, "is_server_available(): ping status for \"%s\" is %s", conninfo, print_pqping_status(status));
 	if (status == PQPING_OK)
 		return true;
+
+	log_warning(_("unable to ping \"%s\""), conninfo);
+	log_detail(_("PQping() returned \"%s\""), print_pqping_status(status));
 
 	return false;
 }
@@ -4312,10 +4315,16 @@ is_server_available_params(t_conninfo_param_list *param_list)
 									  false);
 
 	/* deparsing the param_list adds overhead, so only do it if needed  */
-	if (log_level == LOG_DEBUG)
+	if (log_level == LOG_DEBUG || status != PQPING_OK)
 	{
 		char *conninfo_str = param_list_to_string(param_list);
-		log_verbose(LOG_DEBUG, "is_server_available_params(): ping status for %s is %i", conninfo_str, (int)status);
+		log_verbose(LOG_DEBUG, "is_server_available_params(): ping status for \"%s\" is %s", conninfo_str, print_pqping_status(status));
+
+		if (status != PQPING_OK)
+		{
+			log_warning(_("unable to ping \"%s\""), conninfo_str);
+			log_detail(_("PQping() returned \"%s\""), print_pqping_status(status));
+		}
 
 		pfree(conninfo_str);
 	}
