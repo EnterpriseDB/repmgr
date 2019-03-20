@@ -645,7 +645,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			else
 			{
 				item_list_append(error_list,
-								 _("value for \"connection_check_type\" must be \"ping\" or \"connection\"\n"));
+								 _("value for \"connection_check_type\" must be \"ping\", \"connection\" or \"query\"\n"));
 			}
 		}
 		else if (strcmp(name, "primary_visibility_consensus") == 0)
@@ -1398,7 +1398,7 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 	{
 		orig_options->connection_check_type = new_options.connection_check_type;
 		log_info(_("\"connection_check_type\" is now \"%s\""),
-				 new_options.connection_check_type == CHECK_PING ? "ping" : "connection");
+				 print_connection_check_type(new_options.connection_check_type));
 		config_changed = true;
 	}
 
@@ -2016,4 +2016,22 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	free_parsed_argv(&argv_array);
 
 	return backup_options_ok;
+}
+
+
+const char *
+print_connection_check_type(ConnectionCheckType type)
+{
+	switch (type)
+	{
+		case CHECK_PING:
+			return "ping";
+		case CHECK_QUERY:
+			return "query";
+		case CHECK_CONNECTION:
+			return "connection";
+	}
+
+	/* should never reach here */
+	return "UNKNOWN";
 }
