@@ -2268,6 +2268,7 @@ void
 do_standby_follow(void)
 {
 	PGconn	   *local_conn = NULL;
+	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 	PGconn	   *primary_conn = NULL;
 	int			primary_node_id = UNKNOWN_NODE_ID;
@@ -2305,6 +2306,19 @@ do_standby_follow(void)
 	/* sanity-checks for 9.3 */
 	if (PQserverVersion(local_conn) < 90400)
 		check_93_config();
+
+	/* attempt to retrieve local node record */
+	record_status = get_node_record(local_conn,
+									config_file_options.node_id,
+									&local_node_record);
+
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve record for local node %i"),
+				  config_file_options.node_id);
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	/*
 	 * --upstream-node-id provided - attempt to follow that node
@@ -2549,6 +2563,9 @@ do_standby_follow(void)
 		initialize_conninfo_params(&local_repl_conninfo, false);
 
 		conn_to_param_list(local_conn, &local_repl_conninfo);
+
+		/* Set the replication user from the node record */
+		param_set(&local_repl_conninfo, "user", local_node_record.repluser);
 
 		param_set(&local_repl_conninfo, "replication", "1");
 
