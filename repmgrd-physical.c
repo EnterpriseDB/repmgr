@@ -32,6 +32,7 @@ typedef enum
 	FAILOVER_STATE_PRIMARY_REAPPEARED,
 	FAILOVER_STATE_LOCAL_NODE_FAILURE,
 	FAILOVER_STATE_WAITING_NEW_PRIMARY,
+	FAILOVER_STATE_FOLLOW_NEW_PRIMARY,
 	FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER,
 	FAILOVER_STATE_FOLLOWED_NEW_PRIMARY,
 	FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY,
@@ -63,7 +64,7 @@ static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
 static instr_time last_monitoring_update;
 
 
-static ElectionResult do_election(NodeInfoList *sibling_nodes);
+static ElectionResult do_election(NodeInfoList *sibling_nodes, int *new_primary_id);
 static const char *_print_election_result(ElectionResult result);
 
 static FailoverState promote_self(void);
@@ -91,6 +92,8 @@ static const char *format_failover_state(FailoverState failover_state);
 static const char * format_failover_state(FailoverState failover_state);
 static ElectionResult execute_failover_validation_command(t_node_info *node_info);
 static void parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out);
+static bool check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info);
+
 
 void
 handle_sigint_physical(SIGNAL_ARGS)
@@ -2015,6 +2018,7 @@ do_primary_failover(void)
 	ElectionResult election_result;
 	bool final_result = false;
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
+	int new_primary_id = UNKNOWN_NODE_ID;
 
 	/*
 	 * Double-check status of the local connection
@@ -2108,7 +2112,7 @@ do_primary_failover(void)
 	}
 
 	/* attempt to initiate voting process */
-	election_result = do_election(&sibling_nodes);
+	election_result = do_election(&sibling_nodes, &new_primary_id);
 
 	/* TODO add pre-event notification here */
 	failover_state = FAILOVER_STATE_UNKNOWN;
@@ -2122,10 +2126,19 @@ do_primary_failover(void)
 		enable_wal_receiver(local_conn, false);
 	}
 
+	/* election was cancelled and do_election() did not determine a new primary */
 	if (election_result == ELECTION_CANCELLED)
 	{
-		log_notice(_("election cancelled"));
-		return false;
+		if (new_primary_id == UNKNOWN_NODE_ID)
+		{
+			log_notice(_("election cancelled"));
+			clear_node_info_list(&sibling_nodes);
+			return false;
+		}
+
+		log_info(_("follower node intending to follow new primary %i"), new_primary_id);
+
+		failover_state = FAILOVER_STATE_FOLLOW_NEW_PRIMARY;
 	}
 	else if (election_result == ELECTION_RERUN)
 	{
@@ -2167,13 +2180,19 @@ do_primary_failover(void)
 	}
 
 	/*
+	 * node has determined a new primary is already available
+	 */
+	if (failover_state == FAILOVER_STATE_FOLLOW_NEW_PRIMARY)
+	{
+		failover_state = follow_new_primary(new_primary_id);
+	}
+
+	/*
 	 * node has decided it is a follower, so will await notification from the
 	 * candidate that it has promoted itself and can be followed
 	 */
-	if (failover_state == FAILOVER_STATE_WAITING_NEW_PRIMARY)
+	else if (failover_state == FAILOVER_STATE_WAITING_NEW_PRIMARY)
 	{
-		int			new_primary_id = UNKNOWN_NODE_ID;
-
 		/* TODO: rerun election if new primary doesn't appear after timeout */
 
 		/* either follow, self-promote or time out; either way resume monitoring */
@@ -3287,7 +3306,7 @@ _print_election_result(ElectionResult result)
  * expects to be able to read this list
  */
 static ElectionResult
-do_election(NodeInfoList *sibling_nodes)
+do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 {
 	int			electoral_term = -1;
 
@@ -3328,7 +3347,6 @@ do_election(NodeInfoList *sibling_nodes)
 	}
 
 	log_debug("do_election(): electoral term is %i", electoral_term);
-
 
 	if (config_file_options.failover == FAILOVER_MANUAL)
 	{
@@ -3502,6 +3520,41 @@ do_election(NodeInfoList *sibling_nodes)
 		if (get_replication_info(cell->node_info->conn, cell->node_info->type, &sibling_replication_info) == false)
 		{
 			log_warning(_("unable to retrieve replication information for node \"%s\" (ID: %i), skipping"),
+						cell->node_info->node_name,
+						cell->node_info->node_id);
+			continue;
+		}
+
+		/*
+		 * Check if node is not in recovery - it may have been promoted
+		 * outside of the failover mechanism, in which case we may be able
+		 * to follow it.
+		 */
+
+		if (sibling_replication_info.in_recovery == false)
+		{
+			bool can_follow;
+
+			log_warning(_("node \"%s\" (ID: %i) is not in recovery"),
+						cell->node_info->node_name,
+						cell->node_info->node_id);
+
+			can_follow = check_node_can_follow(local_conn,
+											   local_node_info.last_wal_receive_lsn,
+											   cell->node_info->conn,
+											   cell->node_info);
+
+			if (can_follow == true)
+			{
+				*new_primary_id = cell->node_info->node_id;
+				termPQExpBuffer(&nodes_with_primary_visible);
+				return ELECTION_CANCELLED;
+			}
+
+			/*
+			 * Tricky situation here - we'll assume the node is a rogue primary
+			 */
+			log_warning(_("not possible to attach to node \"%s\" (ID: %i), ignoring"),
 						cell->node_info->node_name,
 						cell->node_info->node_id);
 			continue;
@@ -3875,6 +3928,8 @@ format_failover_state(FailoverState failover_state)
 			return "LOCAL_NODE_FAILURE";
 		case FAILOVER_STATE_WAITING_NEW_PRIMARY:
 			return "WAITING_NEW_PRIMARY";
+		case FAILOVER_STATE_FOLLOW_NEW_PRIMARY:
+			return "FOLLOW_NEW_PRIMARY";
 		case FAILOVER_STATE_REQUIRES_MANUAL_FAILOVER:
 			return "REQUIRES_MANUAL_FAILOVER";
 		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
@@ -4014,4 +4069,215 @@ parse_failover_validation_command(const char *template, t_node_info *node_info, 
 	}
 
 	return;
+}
+
+
+/*
+ * Sanity-check whether the local node can follow the proposed upstream node.
+ *
+ * Note this function is very similar to check_node_can_attach() in
+ * repmgr-client.c, however the later is very focussed on client-side
+ * functionality (including log output related to --dry-run, pg_rewind etc.)
+ * which we don't want here.
+ */
+static bool
+check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info)
+{
+	t_conninfo_param_list local_repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+	PGconn	   *local_repl_conn = NULL;
+	t_system_identification local_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
+
+	t_conninfo_param_list follow_target_repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+	PGconn	   *follow_target_repl_conn = NULL;
+	t_system_identification follow_target_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
+	TimeLineHistoryEntry *follow_target_history = NULL;
+
+	bool can_follow = true;
+	bool success;
+
+	/* Check local replication connection - we want to execute IDENTIFY_SYSTEM
+	 * to get the current timeline ID, which might not yet be written to
+	 * pg_control.
+	 *
+	 * TODO: from 9.6, query "pg_stat_wal_receiver" via the existing local connection
+	 */
+
+	initialize_conninfo_params(&local_repl_conninfo, false);
+
+	conn_to_param_list(local_conn, &local_repl_conninfo);
+
+	/* Set the replication user from the node record */
+	param_set(&local_repl_conninfo, "user", local_node_info.repluser);
+	param_set(&local_repl_conninfo, "replication", "1");
+
+	local_repl_conn = establish_db_connection_by_params(&local_repl_conninfo, false);
+	free_conninfo_params(&local_repl_conninfo);
+
+	if (PQstatus(local_repl_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to establish a replication connection to the local node"));
+		PQfinish(local_repl_conn);
+
+		return false;
+	}
+	success = identify_system(local_repl_conn, &local_identification);
+	PQfinish(local_repl_conn);
+
+	if (success == false)
+	{
+		log_error(_("unable to query the local node's system identification"));
+
+		return false;
+	}
+
+	/* check replication connection */
+	initialize_conninfo_params(&follow_target_repl_conninfo, false);
+
+	conn_to_param_list(follow_target_conn, &follow_target_repl_conninfo);
+
+	if (strcmp(param_get(&follow_target_repl_conninfo, "user"), follow_target_node_info->repluser) != 0)
+	{
+		param_set(&follow_target_repl_conninfo, "user", follow_target_node_info->repluser);
+		param_set(&follow_target_repl_conninfo, "dbname", "replication");
+	}
+
+	param_set(&follow_target_repl_conninfo, "replication", "1");
+
+	follow_target_repl_conn = establish_db_connection_by_params(&follow_target_repl_conninfo, false);
+
+	free_conninfo_params(&follow_target_repl_conninfo);
+
+	if (PQstatus(follow_target_repl_conn) != CONNECTION_OK)
+	{
+		log_error(_("unable to establish a replication connection to the follow target node"));
+		return false;
+	}
+
+	/* check system_identifiers match */
+	if (identify_system(follow_target_repl_conn, &follow_target_identification) == false)
+	{
+		log_error(_("unable to query the follow target node's system identification"));
+
+		PQfinish(follow_target_repl_conn);
+		return false;
+	}
+
+	/*
+	 * Check for thing that should never happen, but expect the unexpected anyway.
+	 */
+	if (follow_target_identification.system_identifier != local_identification.system_identifier)
+	{
+		log_error(_("this node is not part of the follow target node's replication cluster"));
+		log_detail(_("this node's system identifier is %lu, follow target node's system identifier is %lu"),
+				   local_identification.system_identifier,
+				   follow_target_identification.system_identifier);
+		PQfinish(follow_target_repl_conn);
+		return false;
+	}
+
+	/* check timelines */
+
+	log_verbose(LOG_DEBUG, "local timeline: %i; follow target timeline: %i",
+				local_identification.timeline,
+				follow_target_identification.timeline);
+
+	/* upstream's timeline is lower than ours - impossible case */
+	if (follow_target_identification.timeline < local_identification.timeline)
+	{
+		log_error(_("this node's timeline is ahead of the follow target node's timeline"));
+		log_detail(_("this node's timeline is %i, follow target node's timeline is %i"),
+				   local_identification.timeline,
+				   follow_target_identification.timeline);
+		PQfinish(follow_target_repl_conn);
+		return false;
+	}
+
+	/* timeline is the same - check relative positions */
+	if (follow_target_identification.timeline == local_identification.timeline)
+	{
+		XLogRecPtr follow_target_xlogpos = get_node_current_lsn(follow_target_conn);
+
+		if (local_xlogpos == InvalidXLogRecPtr || follow_target_xlogpos == InvalidXLogRecPtr)
+		{
+			log_error(_("unable to compare LSN positions"));
+			PQfinish(follow_target_repl_conn);
+			return false;
+		}
+
+		if (local_xlogpos <= follow_target_xlogpos)
+		{
+			log_info(_("timelines are same, this server is not ahead"));
+			log_detail(_("local node lsn is %X/%X, follow target lsn is %X/%X"),
+					   format_lsn(local_xlogpos),
+					   format_lsn(follow_target_xlogpos));
+		}
+		else
+		{
+			log_error(_("this node is ahead of the follow target"));
+			log_detail(_("local node lsn is %X/%X, follow target lsn is %X/%X"),
+					   format_lsn(local_xlogpos),
+					   format_lsn(follow_target_xlogpos));
+
+			can_follow = false;
+		}
+	}
+	else
+	{
+		/*
+		 * upstream has higher timeline - check where it forked off from this node's timeline
+		 */
+		follow_target_history = get_timeline_history(follow_target_repl_conn,
+													 local_identification.timeline + 1);
+
+		if (follow_target_history == NULL)
+		{
+			/* get_timeline_history() will emit relevant error messages */
+			PQfinish(follow_target_repl_conn);
+			return false;
+		}
+
+		log_debug("local tli: %i; local_xlogpos: %X/%X; follow_target_history->tli: %i; follow_target_history->end: %X/%X",
+				  (int)local_identification.timeline,
+				  format_lsn(local_xlogpos),
+				  follow_target_history->tli,
+				  format_lsn(follow_target_history->end));
+
+		/*
+		 * Local node has proceeded beyond the follow target's fork, so we
+		 * definitely can't attach.
+		 *
+		 * This could be the case if the follow target was promoted, but does
+		 * not contain all changes which are being replayed to this standby.
+		 */
+		if (local_xlogpos > follow_target_history->end)
+		{
+			log_error(_("this node cannot attach to follow target node %i"),
+					  follow_target_node_info->node_id);
+			can_follow = false;
+
+			log_detail(_("follow target server's timeline %lu forked off current database system timeline %lu before current recovery point %X/%X"),
+					   local_identification.system_identifier + 1,
+					   local_identification.system_identifier,
+					   format_lsn(local_xlogpos));
+		}
+
+		if (can_follow == true)
+		{
+			log_info(_("local node %i can attach to follow target node %i"),
+					 config_file_options.node_id,
+					 follow_target_node_info->node_id);
+
+			log_detail(_("local node's recovery point: %X/%X; follow target node's fork point: %X/%X"),
+					   format_lsn(local_xlogpos),
+					   format_lsn(follow_target_history->end));
+		}
+	}
+
+	PQfinish(follow_target_repl_conn);
+
+	if (follow_target_history)
+		pfree(follow_target_history);
+
+
+	return can_follow;
 }

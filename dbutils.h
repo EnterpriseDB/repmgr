@@ -302,6 +302,7 @@ typedef struct BdrNodeInfoList
 typedef struct
 {
 	char		current_timestamp[MAXLEN];
+	bool		in_recovery;
 	XLogRecPtr	last_wal_receive_lsn;
 	XLogRecPtr	last_wal_replay_lsn;
 	char		last_xact_replay_timestamp[MAXLEN];
