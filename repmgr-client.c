@@ -3144,6 +3144,8 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 /*
  * Here we'll perform some timeline sanity checks to ensure the follow target
  * can actually be followed.
+ *
+ * See also comment for check_node_can_follow() in repmgrd-physical.c .
  */
 bool
 check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record, bool is_rejoin)
@@ -3234,6 +3236,7 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 		return false;
 	}
 
+	/* timelines are the same - check relative positions */
 	if (follow_target_identification.timeline == local_tli)
 	{
 		XLogRecPtr follow_target_xlogpos = get_node_current_lsn(follow_target_conn);
@@ -3245,7 +3248,6 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 			return false;
 		}
 
-		/* timeline is the same - check relative positions */
 		if (local_xlogpos <= follow_target_xlogpos)
 		{
 			log_info(_("timelines are same, this server is not ahead"));
