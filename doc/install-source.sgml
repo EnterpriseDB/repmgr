@@ -136,6 +136,16 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
          </itemizedlist>
        </para>
      </note>
+
+     <tip>
+       <para>
+         If building against PostgreSQL 11 or later configured with the <option>--with-llvm</option> option
+         (this is the case with the PGDG-provided packages) you'll also need to install the
+         <literal>llvm-toolset-7-clang</literal> package. This is available via the
+         <ulink url="https://wiki.centos.org/AdditionalResources/Repositories/SCL">Software Collections (SCL) Repository</ulink>.
+       </para>
+     </tip>
+
     </listitem>
    </itemizedlist>
   </para>
