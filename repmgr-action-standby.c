@@ -3990,6 +3990,7 @@ do_standby_switchover(void)
 			repmgrd_info[i]->pid = UNKNOWN_PID;
 			repmgrd_info[i]->paused = false;
 			repmgrd_info[i]->running = false;
+			repmgrd_info[i]->pg_running = true;
 
 			cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
@@ -4002,11 +4003,16 @@ do_standby_switchover(void)
 				repmgrd_info[i]->pg_running = false;
 
 				item_list_append_format(&repmgrd_connection_errors,
-										_("unable to connect to node \"%s\" (ID %i)"),
+										_("unable to connect to node \"%s\" (ID %i):\n%s"),
 										cell->node_info->node_name,
-										cell->node_info->node_id);
+										cell->node_info->node_id,
+										PQerrorMessage(cell->node_info->conn));
+
+				PQfinish(cell->node_info->conn);
+				cell->node_info->conn = NULL;
 
 				unreachable_node_count++;
+				i++;
 				continue;
 			}
 
@@ -4068,11 +4074,37 @@ do_standby_switchover(void)
 
 		}
 
+		/* pause repmgrd on all reachable nodes */
 		if (repmgrd_running_count > 0)
 		{
 			i = 0;
 			for (cell = all_nodes.head; cell; cell = cell->next)
 			{
+
+				/*
+				 * Skip if node was unreachable
+				 */
+				if (repmgrd_info[i]->pg_running == false)
+				{
+					log_warning(_("node %s (ID %i) unreachable, unable to pause repmgrd"),
+								cell->node_info->node_name,
+								cell->node_info->node_id);
+					i++;
+					continue;
+				}
+
+
+				/*
+				 * Skip if repmgrd not running on node
+				 */
+				if (repmgrd_info[i]->running == false)
+				{
+					log_warning(_("repmgrd not running on node %s (ID %i)"),
+								cell->node_info->node_name,
+								cell->node_info->node_id);
+					i++;
+					continue;
+				}
 				/*
 				 * Skip if node is already paused. Note we won't unpause these, to
 				 * leave the repmgrd instances in the cluster in the same state they
@@ -4112,8 +4144,11 @@ do_standby_switchover(void)
 			/* close all connections - we'll reestablish later */
 			for (cell = all_nodes.head; cell; cell = cell->next)
 			{
-				PQfinish(cell->node_info->conn);
-				cell->node_info->conn = NULL;
+				if (cell->node_info->conn != NULL)
+				{
+					PQfinish(cell->node_info->conn);
+					cell->node_info->conn = NULL;
+				}
 			}
 		}
 	}
@@ -4721,9 +4756,10 @@ do_standby_switchover(void)
 				else
 				{
 					item_list_append_format(&repmgrd_unpause_errors,
-											_("unable to connect to node \"%s\" (ID %i)"),
+											_("unable to connect to node \"%s\" (ID %i):\n%s"),
 											cell->node_info->node_name,
-											cell->node_info->node_id);
+											cell->node_info->node_id,
+											PQerrorMessage(cell->node_info->conn));
 					error_node_count++;
 				}
 
@@ -4734,6 +4770,8 @@ do_standby_switchover(void)
 			{
 				PQExpBufferData detail;
 				ItemListCell *cell;
+
+				initPQExpBuffer(&detail);
 
 				for (cell = repmgrd_unpause_errors.head; cell; cell = cell->next)
 				{
