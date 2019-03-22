@@ -152,13 +152,13 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <application>repmgrd</application> will no longer consider nodes where <application>repmgrd</application>
-	      is not running as promotion candidates.
+			  is not running as promotion candidates.
             </para>
-	    <para>
-	      Previously, if <application>repmgrd</application> was not running on a node, but
-	      that node qualified as the promotion candidate, it would never be promoted due to
-	      the absence of a running <application>repmgrd</application>.
-	    </para>
+            <para>
+              Previously, if <application>repmgrd</application> was not running on a node, but
+              that node qualified as the promotion candidate, it would never be promoted due to
+              the absence of a running <application>repmgrd</application>.
+            </para>
           </listitem>
 
           <listitem>
@@ -186,6 +186,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
               New configuration option <link linkend="repmgrd-standby-disconnection-on-failover"><option>standby_disconnect_on_failover</option></link>
               to force standbys to disconnect their WAL receivers before making a failover decision.
             </para>
+          </listitem>
+
+         <listitem>
+            <para>
+			  In a failover situation, <application>repmgrd</application> will not attempt to promote a
+			  node if another standby has already appeared (e.g. by being promoted manually).
+			  GitHub #420.
+			</para>
           </listitem>
 
 		</itemizedlist>
