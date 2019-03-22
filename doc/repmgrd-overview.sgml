@@ -58,7 +58,7 @@
 
        <listitem>
          <simpara>
-           <link linkend="connection_check_type">choice of method</link> to determine node availability
+           <link linkend="connection-check-type">choice of method</link> to determine node availability
            (PostgreSQL ping, query execution or new connection)
          </simpara>
        </listitem>
