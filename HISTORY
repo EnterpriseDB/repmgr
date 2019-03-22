@@ -22,6 +22,8 @@
           candidates (Ian)
         repmgrd: add option "connection_check_type" (Ian)
         repmgrd: improve witness monitoring when primary node not available (Ian)
+		repmgrd: handle situation where a primary has unexpectedly appeared
+		  during failover; GitHub #420 (Ian)
 
 4.2     2018-10-24
         repmgr: add parameter "shutdown_check_timeout" for use by "standby switchover";
