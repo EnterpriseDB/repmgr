@@ -1455,7 +1455,6 @@ loop:
 							   upstream_node_info.node_name, upstream_node_info.node_id);
 					PQfinish(primary_conn);
 					primary_conn = NULL;
-					termPQExpBuffer(&event_details);
 
 					local_node_info.upstream_node_id = UNKNOWN_NODE_ID;
 					return;
