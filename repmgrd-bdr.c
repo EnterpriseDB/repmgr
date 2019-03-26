@@ -68,7 +68,6 @@ monitor_bdr(void)
 	t_bdr_node_info bdr_node_info = T_BDR_NODE_INFO_INITIALIZER;
 	RecordStatus record_status;
 	NodeInfoListCell *cell;
-	PQExpBufferData event_details;
 	instr_time	log_status_interval_start;
 
 	/* sanity check local database */
@@ -229,6 +228,7 @@ monitor_bdr(void)
 								if (cell->node_info->node_status == NODE_STATUS_UP)
 								{
 									int			node_unreachable_elapsed = calculate_elapsed(node_unreachable_start);
+									PQExpBufferData event_details;
 
 									initPQExpBuffer(&event_details);
 
@@ -366,7 +366,6 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 {
 	PGconn	   *next_node_conn = NULL;
 	NodeInfoListCell *cell;
-	PQExpBufferData event_details;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 	t_node_info target_node = T_NODE_INFO_INITIALIZER;
 	t_node_info failed_node = T_NODE_INFO_INITIALIZER;
@@ -460,45 +459,49 @@ do_bdr_failover(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	log_debug("this node is the failover handler");
 
-	initPQExpBuffer(&event_details);
+	{
+		PQExpBufferData event_details;
 
-	event_info.conninfo_str = target_node.conninfo;
-	event_info.node_name = target_node.node_name;
+		initPQExpBuffer(&event_details);
 
-	/* update node record on the active node */
-	update_node_record_set_active(next_node_conn, monitored_node->node_id, false);
+		event_info.conninfo_str = target_node.conninfo;
+		event_info.node_name = target_node.node_name;
 
-	log_notice(_("setting node record for node %i to inactive"), monitored_node->node_id);
+		/* update node record on the active node */
+		update_node_record_set_active(next_node_conn, monitored_node->node_id, false);
 
-	appendPQExpBuffer(&event_details,
-					  _("node \"%s\" (ID: %i) detected as failed; next available node is \"%s\" (ID: %i)"),
-					  monitored_node->node_name,
-					  monitored_node->node_id,
-					  target_node.node_name,
-					  target_node.node_id);
+		log_notice(_("setting node record for node %i to inactive"), monitored_node->node_id);
 
-	/*
-	 * Create an event record
-	 *
-	 * If we were able to connect to another node, we'll update the event log
-	 * there.
-	 *
-	 * In any case the event notification command will be triggered with the
-	 * event "bdr_failover"
-	 */
+		appendPQExpBuffer(&event_details,
+						  _("node \"%s\" (ID: %i) detected as failed; next available node is \"%s\" (ID: %i)"),
+						  monitored_node->node_name,
+						  monitored_node->node_id,
+						  target_node.node_name,
+						  target_node.node_id);
+
+		/*
+		 * Create an event record
+		 *
+		 * If we were able to connect to another node, we'll update the event log
+		 * there.
+		 *
+		 * In any case the event notification command will be triggered with the
+		 * event "bdr_failover"
+		 */
 
 
-	create_event_notification_extended(next_node_conn,
-									   &config_file_options,
-									   monitored_node->node_id,
-									   "bdr_failover",
-									   true,
-									   event_details.data,
-									   &event_info);
+		create_event_notification_extended(next_node_conn,
+										   &config_file_options,
+										   monitored_node->node_id,
+										   "bdr_failover",
+										   true,
+										   event_details.data,
+										   &event_info);
 
-	log_info("%s", event_details.data);
+		log_info("%s", event_details.data);
 
-	termPQExpBuffer(&event_details);
+		termPQExpBuffer(&event_details);
+	}
 
 	unset_bdr_failover_handler(next_node_conn);
 
@@ -513,7 +516,6 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 {
 	PGconn	   *recovered_node_conn;
 
-	PQExpBufferData event_details;
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 	int			i;
 	bool		slot_reactivated = false;
@@ -543,6 +545,8 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	 */
 	if (PQstatus(local_conn) != CONNECTION_OK)
 	{
+		PQExpBufferData event_details;
+
 		local_conn = NULL;
 		log_warning(_("unable to reconnect to local node"));
 
@@ -613,48 +617,49 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 	node_recovery_elapsed = calculate_elapsed(degraded_monitoring_start);
 	monitored_node->monitoring_state = MS_NORMAL;
 
-
-	initPQExpBuffer(&event_details);
-
-	appendPQExpBuffer(&event_details,
-					  _("node \"%s\" (ID: %i) has recovered after %i seconds"),
-					  monitored_node->node_name,
-					  monitored_node->node_id,
-					  node_recovery_elapsed);
-
-	log_notice("%s", event_details.data);
-
-
-	/* other node will generate the event */
-	if (monitored_node->node_id == local_node_info.node_id)
 	{
+		PQExpBufferData event_details;
+
+		initPQExpBuffer(&event_details);
+
+		appendPQExpBuffer(&event_details,
+						  _("node \"%s\" (ID: %i) has recovered after %i seconds"),
+						  monitored_node->node_name,
+						  monitored_node->node_id,
+						  node_recovery_elapsed);
+
+		log_notice("%s", event_details.data);
+
+
+		/* other node will generate the event */
+		if (monitored_node->node_id == local_node_info.node_id)
+		{
+			termPQExpBuffer(&event_details);
+			PQfinish(recovered_node_conn);
+
+			return;
+		}
+
+
+		/* generate the event on the currently active node only */
+		if (monitored_node->node_id != local_node_info.node_id)
+		{
+			event_info.conninfo_str = monitored_node->conninfo;
+			event_info.node_name = monitored_node->node_name;
+
+			create_event_notification_extended(local_conn,
+											   &config_file_options,
+											   config_file_options.node_id,
+											   "bdr_recovery",
+											   true,
+											   event_details.data,
+											   &event_info);
+		}
+
 		termPQExpBuffer(&event_details);
-		PQfinish(recovered_node_conn);
-
-		return;
 	}
-
-
-	/* generate the event on the currently active node only */
-	if (monitored_node->node_id != local_node_info.node_id)
-	{
-		event_info.conninfo_str = monitored_node->conninfo;
-		event_info.node_name = monitored_node->node_name;
-
-		create_event_notification_extended(
-										   local_conn,
-										   &config_file_options,
-										   config_file_options.node_id,
-										   "bdr_recovery",
-										   true,
-										   event_details.data,
-										   &event_info);
-	}
-
 
 	update_node_record_set_active(local_conn, monitored_node->node_id, true);
-
-	termPQExpBuffer(&event_details);
 
 	PQfinish(recovered_node_conn);
 
