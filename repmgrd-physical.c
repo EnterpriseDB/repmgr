@@ -229,43 +229,44 @@ void
 monitor_streaming_primary(void)
 {
 	instr_time	log_status_interval_start;
-	PQExpBufferData event_details;
 
 	reset_node_voting_status();
 
-	initPQExpBuffer(&event_details);
-
-	appendPQExpBuffer(&event_details,
-					  _("monitoring cluster primary \"%s\" (node ID: %i)"),
-					  local_node_info.node_name,
-					  local_node_info.node_id);
-
-
-	/* Log startup event */
-	if (startup_event_logged == false)
 	{
-		create_event_notification(local_conn,
-								  &config_file_options,
-								  config_file_options.node_id,
-								  "repmgrd_start",
-								  true,
-								  event_details.data);
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
 
-		startup_event_logged = true;
+		appendPQExpBuffer(&event_details,
+						  _("monitoring cluster primary \"%s\" (node ID: %i)"),
+						  local_node_info.node_name,
+						  local_node_info.node_id);
+
+		/* Log startup event */
+		if (startup_event_logged == false)
+		{
+			create_event_notification(local_conn,
+									  &config_file_options,
+									  config_file_options.node_id,
+									  "repmgrd_start",
+									  true,
+									  event_details.data);
+
+			startup_event_logged = true;
+		}
+		else
+		{
+			create_event_notification(local_conn,
+									  &config_file_options,
+									  config_file_options.node_id,
+									  "repmgrd_reload",
+									  true,
+									  event_details.data);
+		}
+
+		log_notice("%s", event_details.data);
+
+		termPQExpBuffer(&event_details);
 	}
-	else
-	{
-		create_event_notification(local_conn,
-								  &config_file_options,
-								  config_file_options.node_id,
-								  "repmgrd_reload",
-								  true,
-								  event_details.data);
-	}
-
-	log_notice("%s", event_details.data);
-
-	termPQExpBuffer(&event_details);
 
 	INSTR_TIME_SET_CURRENT(log_status_interval_start);
 	local_node_info.node_status = NODE_STATUS_UP;
@@ -287,34 +288,38 @@ monitor_streaming_primary(void)
 			/* local node is down, we were expecting it to be up */
 			if (local_node_info.node_status == NODE_STATUS_UP)
 			{
-				PQExpBufferData event_details;
+
 				instr_time	local_node_unreachable_start;
 
 				INSTR_TIME_SET_CURRENT(local_node_unreachable_start);
 
-				initPQExpBuffer(&event_details);
+				{
+					PQExpBufferData event_details;
+					initPQExpBuffer(&event_details);
 
-				appendPQExpBufferStr(&event_details,
-									 _("unable to connect to local node"));
+					appendPQExpBufferStr(&event_details,
+										 _("unable to connect to local node"));
 
-				log_warning("%s", event_details.data);
+					log_warning("%s", event_details.data);
+
+
+					/*
+					 * as we're monitoring the primary, no point in trying to
+					 * write the event to the database
+					 *
+					 * XXX possible pre-action event
+					 */
+					create_event_notification(NULL,
+											  &config_file_options,
+											  config_file_options.node_id,
+											  "repmgrd_local_disconnect",
+											  true,
+											  event_details.data);
+
+					termPQExpBuffer(&event_details);
+				}
 
 				local_node_info.node_status = NODE_STATUS_UNKNOWN;
-
-				/*
-				 * as we're monitoring the primary, no point in trying to
-				 * write the event to the database
-				 *
-				 * XXX possible pre-action event
-				 */
-				create_event_notification(NULL,
-										  &config_file_options,
-										  config_file_options.node_id,
-										  "repmgrd_local_disconnect",
-										  true,
-										  event_details.data);
-
-				termPQExpBuffer(&event_details);
 
 				try_reconnect(&local_conn, &local_node_info);
 
@@ -322,6 +327,7 @@ monitor_streaming_primary(void)
 				{
 					int			local_node_unreachable_elapsed = calculate_elapsed(local_node_unreachable_start);
 					int 		stored_local_node_id = UNKNOWN_NODE_ID;
+					PQExpBufferData event_details;
 
 					initPQExpBuffer(&event_details);
 
@@ -375,6 +381,8 @@ monitor_streaming_primary(void)
 			if (config_file_options.degraded_monitoring_timeout > 0
 				&& degraded_monitoring_elapsed > config_file_options.degraded_monitoring_timeout)
 			{
+				PQExpBufferData event_details;
+
 				initPQExpBuffer(&event_details);
 
 				appendPQExpBuffer(&event_details,
@@ -476,7 +484,6 @@ loop:
 bool
 check_primary_status(int degraded_monitoring_elapsed)
 {
-	PQExpBufferData event_details;
 	PGconn *new_primary_conn;
 	RecordStatus record_status;
 	bool resume_monitoring = true;
@@ -494,6 +501,8 @@ check_primary_status(int degraded_monitoring_elapsed)
 	{
 		if (degraded_monitoring_elapsed != NO_DEGRADED_MONITORING_ELAPSED)
 		{
+			PQExpBufferData event_details;
+
 			monitoring_state = MS_NORMAL;
 
 			initPQExpBuffer(&event_details);
@@ -517,22 +526,25 @@ check_primary_status(int degraded_monitoring_elapsed)
 
 	/* the node is now a standby */
 
-	initPQExpBuffer(&event_details);
-
-	if (degraded_monitoring_elapsed != NO_DEGRADED_MONITORING_ELAPSED)
 	{
-		appendPQExpBuffer(&event_details,
-						  _("reconnected to node after %i seconds, node is now a standby, switching to standby monitoring"),
-						  degraded_monitoring_elapsed);
-	}
-	else
-	{
-		appendPQExpBufferStr(&event_details,
-							 _("node is now a standby, switching to standby monitoring"));
-	}
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
 
-	log_notice("%s", event_details.data);
-	termPQExpBuffer(&event_details);
+		if (degraded_monitoring_elapsed != NO_DEGRADED_MONITORING_ELAPSED)
+		{
+			appendPQExpBuffer(&event_details,
+							  _("reconnected to node after %i seconds, node is now a standby, switching to standby monitoring"),
+							  degraded_monitoring_elapsed);
+		}
+		else
+		{
+			appendPQExpBufferStr(&event_details,
+								 _("node is now a standby, switching to standby monitoring"));
+		}
+
+		log_notice("%s", event_details.data);
+		termPQExpBuffer(&event_details);
+	}
 
 	primary_node_id = UNKNOWN_NODE_ID;
 
@@ -567,6 +579,8 @@ check_primary_status(int degraded_monitoring_elapsed)
 	 */
 	if (record_status == RECORD_NOT_FOUND)
 	{
+		PQExpBufferData event_details;
+
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
@@ -622,6 +636,7 @@ check_primary_status(int degraded_monitoring_elapsed)
 
 	if (resume_monitoring == true)
 	{
+		PQExpBufferData event_details;
 		initPQExpBuffer(&event_details);
 
 		if (degraded_monitoring_elapsed != NO_DEGRADED_MONITORING_ELAPSED)
@@ -671,7 +686,6 @@ monitor_streaming_standby(void)
 {
 	RecordStatus record_status;
 	instr_time	log_status_interval_start;
-	PQExpBufferData event_details;
 
 	MonitoringState local_monitoring_state = MS_NORMAL;
 	instr_time	local_degraded_monitoring_start;
@@ -875,37 +889,41 @@ monitor_streaming_standby(void)
 
 				INSTR_TIME_SET_CURRENT(upstream_node_unreachable_start);
 
-				initPQExpBuffer(&event_details);
 
 				upstream_node_info.node_status = NODE_STATUS_UNKNOWN;
 
-				appendPQExpBuffer(&event_details,
-								  _("unable to connect to upstream node \"%s\" (node ID: %i)"),
-								  upstream_node_info.node_name, upstream_node_info.node_id);
-
-				/* XXX possible pre-action event */
-				if (upstream_node_info.type == STANDBY)
 				{
-					create_event_record(primary_conn,
-										&config_file_options,
-										config_file_options.node_id,
-										"repmgrd_upstream_disconnect",
-										true,
-										event_details.data);
-				}
-				else
-				{
-					/* primary connection lost - script notification only */
-					create_event_record(NULL,
-										&config_file_options,
-										config_file_options.node_id,
-										"repmgrd_upstream_disconnect",
-										true,
-										event_details.data);
-				}
+					PQExpBufferData event_details;
+					initPQExpBuffer(&event_details);
 
-				log_warning("%s", event_details.data);
-				termPQExpBuffer(&event_details);
+					appendPQExpBuffer(&event_details,
+									  _("unable to connect to upstream node \"%s\" (node ID: %i)"),
+									  upstream_node_info.node_name, upstream_node_info.node_id);
+
+					/* XXX possible pre-action event */
+					if (upstream_node_info.type == STANDBY)
+					{
+						create_event_record(primary_conn,
+											&config_file_options,
+											config_file_options.node_id,
+											"repmgrd_upstream_disconnect",
+											true,
+											event_details.data);
+					}
+					else
+					{
+						/* primary connection lost - script notification only */
+						create_event_record(NULL,
+											&config_file_options,
+											config_file_options.node_id,
+											"repmgrd_upstream_disconnect",
+											true,
+											event_details.data);
+					}
+
+					log_warning("%s", event_details.data);
+					termPQExpBuffer(&event_details);
+				}
 
 				/*
 				 * if local node is unreachable, make a last-minute attempt to reconnect
@@ -923,6 +941,7 @@ monitor_streaming_standby(void)
 				if (upstream_node_info.node_status == NODE_STATUS_UP)
 				{
 					int			upstream_node_unreachable_elapsed = calculate_elapsed(upstream_node_unreachable_start);
+					PQExpBufferData event_details;
 
 					initPQExpBuffer(&event_details);
 
@@ -939,6 +958,10 @@ monitor_streaming_standby(void)
 						{
 							ExecStatusType ping_result;
 
+							/*
+							 * we're returning at the end of this block and no longer require the
+							 * event details buffer
+							 */
 							termPQExpBuffer(&event_details);
 
 							log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
@@ -1038,6 +1061,8 @@ monitor_streaming_standby(void)
 			if (config_file_options.degraded_monitoring_timeout > 0
 				&& degraded_monitoring_elapsed > config_file_options.degraded_monitoring_timeout)
 			{
+				PQExpBufferData event_details;
+
 				initPQExpBuffer(&event_details);
 
 				appendPQExpBuffer(&event_details,
@@ -1068,6 +1093,7 @@ monitor_streaming_standby(void)
 
 				if (PQstatus(upstream_conn) == CONNECTION_OK)
 				{
+					PQExpBufferData event_details;
 
 					log_debug("upstream node %i has recovered",
 							  upstream_node_info.node_id);
@@ -1140,6 +1166,7 @@ monitor_streaming_standby(void)
 						int			degraded_monitoring_elapsed;
 						int			former_upstream_node_id = local_node_info.upstream_node_id;
 						NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
+						PQExpBufferData event_details;
 
 						update_node_record_set_primary(local_conn,  local_node_info.node_id);
 						record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
@@ -1286,6 +1313,7 @@ loop:
 
 				log_info("%s", monitoring_summary.data);
 				termPQExpBuffer(&monitoring_summary);
+
 				if (monitoring_state == MS_DEGRADED && config_file_options.failover == FAILOVER_AUTOMATIC)
 				{
 					if (PQstatus(local_conn) == CONNECTION_OK && repmgrd_is_paused(local_conn))
@@ -1527,7 +1555,6 @@ monitor_streaming_witness(void)
 	instr_time	log_status_interval_start;
 	instr_time	witness_sync_interval_start;
 
-	PQExpBufferData event_details;
 	RecordStatus record_status;
 
 	int primary_node_id = UNKNOWN_NODE_ID;
@@ -1654,20 +1681,25 @@ monitor_streaming_witness(void)
 
 				INSTR_TIME_SET_CURRENT(upstream_node_unreachable_start);
 
-				initPQExpBuffer(&event_details);
-
 				upstream_node_info.node_status = NODE_STATUS_UNKNOWN;
 
-				appendPQExpBuffer(&event_details,
-								  _("unable to connect to primary node \"%s\" (node ID: %i)"),
-								  upstream_node_info.node_name, upstream_node_info.node_id);
+				{
+					PQExpBufferData event_details;
 
-				create_event_record(NULL,
-									&config_file_options,
-									config_file_options.node_id,
-									"repmgrd_upstream_disconnect",
-									true,
-									event_details.data);
+					initPQExpBuffer(&event_details);
+
+					appendPQExpBuffer(&event_details,
+									  _("unable to connect to primary node \"%s\" (node ID: %i)"),
+									  upstream_node_info.node_name, upstream_node_info.node_id);
+
+					create_event_record(NULL,
+										&config_file_options,
+										config_file_options.node_id,
+										"repmgrd_upstream_disconnect",
+										true,
+										event_details.data);
+					termPQExpBuffer(&event_details);
+				}
 
 				try_reconnect(&primary_conn, &upstream_node_info);
 
@@ -1675,6 +1707,7 @@ monitor_streaming_witness(void)
 				if (upstream_node_info.node_status == NODE_STATUS_UP)
 				{
 					int			upstream_node_unreachable_elapsed = calculate_elapsed(upstream_node_unreachable_start);
+					PQExpBufferData event_details;
 
 					initPQExpBuffer(&event_details);
 
@@ -1742,6 +1775,8 @@ monitor_streaming_witness(void)
 
 				if (PQstatus(primary_conn) == CONNECTION_OK)
 				{
+					PQExpBufferData event_details;
+
 					upstream_node_info.node_status = NODE_STATUS_UP;
 					monitoring_state = MS_NORMAL;
 
@@ -2517,7 +2552,6 @@ update_monitoring_history(void)
 static bool
 do_upstream_standby_failover(void)
 {
-	PQExpBufferData event_details;
 	t_node_info primary_node_info = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	RecoveryType primary_type = RECTYPE_UNKNOWN;
@@ -2599,6 +2633,8 @@ do_upstream_standby_failover(void)
 
 	if (standby_follow_result != 0)
 	{
+		PQExpBufferData event_details;
+
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
@@ -2676,6 +2712,8 @@ do_upstream_standby_failover(void)
 											local_node_info.node_id,
 											primary_node_info.node_id) == false)
 		{
+			PQExpBufferData event_details;
+
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
 							  _("unable to set node %i's new upstream ID to %i"),
@@ -2710,23 +2748,27 @@ do_upstream_standby_failover(void)
 		local_node_info.upstream_node_id = primary_node_info.node_id;
 	}
 
-	initPQExpBuffer(&event_details);
+	{
+		PQExpBufferData event_details;
 
-	appendPQExpBuffer(&event_details,
-					  _("node %i is now following primary node %i"),
-					  local_node_info.node_id,
-					  primary_node_info.node_id);
+		initPQExpBuffer(&event_details);
 
-	log_notice("%s", event_details.data);
+		appendPQExpBuffer(&event_details,
+						  _("node %i is now following primary node %i"),
+						  local_node_info.node_id,
+						  primary_node_info.node_id);
 
-	create_event_notification(primary_conn,
-							  &config_file_options,
-							  local_node_info.node_id,
-							  "repmgrd_failover_follow",
-							  true,
-							  event_details.data);
+		log_notice("%s", event_details.data);
 
-	termPQExpBuffer(&event_details);
+		create_event_notification(primary_conn,
+								  &config_file_options,
+								  local_node_info.node_id,
+								  "repmgrd_failover_follow",
+								  true,
+								  event_details.data);
+
+		termPQExpBuffer(&event_details);
+	}
 
 	/* keep the primary connection open */
 
@@ -2737,7 +2779,6 @@ do_upstream_standby_failover(void)
 static FailoverState
 promote_self(void)
 {
-	PQExpBufferData event_details;
 	char	   *promote_command;
 	int			r;
 
@@ -2802,10 +2843,13 @@ promote_self(void)
 		int			primary_node_id;
 
 		upstream_conn = get_primary_connection(local_conn,
-											   &primary_node_id, NULL);
+											   &primary_node_id,
+											   NULL);
 
 		if (PQstatus(upstream_conn) == CONNECTION_OK && primary_node_id == failed_primary.node_id)
 		{
+			PQExpBufferData event_details;
+
 			log_notice(_("original primary (id: %i) reappeared before this standby was promoted - no action taken"),
 					   failed_primary.node_id);
 
@@ -2833,16 +2877,13 @@ promote_self(void)
 
 
 		log_error(_("promote command failed"));
-		initPQExpBuffer(&event_details);
 
-		create_event_notification(
-								  NULL,
+		create_event_notification(NULL,
 								  &config_file_options,
 								  local_node_info.node_id,
 								  "repmgrd_promote_error",
 								  true,
-								  event_details.data);
-		termPQExpBuffer(&event_details);
+								  "");
 
 		return FAILOVER_STATE_PROMOTION_FAILED;
 	}
@@ -2850,28 +2891,32 @@ promote_self(void)
 	/* bump the electoral term */
 	increment_current_term(local_conn);
 
-	initPQExpBuffer(&event_details);
+	{
+		PQExpBufferData event_details;
 
-	/* update own internal node record */
-	record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
+		/* update own internal node record */
+		record_status = get_node_record(local_conn, local_node_info.node_id, &local_node_info);
 
-	/*
-	 * XXX here we're assuming the promote command updated metadata
-	 */
-	appendPQExpBuffer(&event_details,
-					  _("node %i promoted to primary; old primary %i marked as failed"),
-					  local_node_info.node_id,
-					  failed_primary.node_id);
+		/*
+		 * XXX here we're assuming the promote command updated metadata
+		 */
+		initPQExpBuffer(&event_details);
 
-	/* local_conn is now the primary connection */
-	create_event_notification(local_conn,
-							  &config_file_options,
-							  local_node_info.node_id,
-							  "repmgrd_failover_promote",
-							  true,
-							  event_details.data);
+		appendPQExpBuffer(&event_details,
+						  _("node %i promoted to primary; old primary %i marked as failed"),
+						  local_node_info.node_id,
+						  failed_primary.node_id);
 
-	termPQExpBuffer(&event_details);
+		/* local_conn is now the primary connection */
+		create_event_notification(local_conn,
+								  &config_file_options,
+								  local_node_info.node_id,
+								  "repmgrd_failover_promote",
+								  true,
+								  event_details.data);
+
+		termPQExpBuffer(&event_details);
+	}
 
 	return FAILOVER_STATE_PROMOTED;
 }
@@ -2968,8 +3013,6 @@ static FailoverState
 follow_new_primary(int new_primary_id)
 {
 	char		parsed_follow_command[MAXPGPATH] = "";
-
-	PQExpBufferData event_details;
 	int			i, r;
 
 	/* Store details of the failed node here */
@@ -3069,6 +3112,8 @@ follow_new_primary(int new_primary_id)
 
 			if (upstream_recovery_type == RECTYPE_PRIMARY)
 			{
+				PQExpBufferData event_details;
+
 				initPQExpBuffer(&event_details);
 				appendPQExpBufferStr(&event_details,
 									 _("original primary reappeared - no action taken"));
@@ -3148,22 +3193,26 @@ follow_new_primary(int new_primary_id)
 	repmgrd_set_local_node_id(local_conn, config_file_options.node_id);
 	repmgrd_set_pid(local_conn, getpid(), pid_file);
 
-	initPQExpBuffer(&event_details);
-	appendPQExpBuffer(&event_details,
-					  _("node %i now following new upstream node %i"),
-					  local_node_info.node_id,
-					  upstream_node_info.node_id);
+	{
+		PQExpBufferData event_details;
 
-	log_notice("%s", event_details.data);
+		initPQExpBuffer(&event_details);
+		appendPQExpBuffer(&event_details,
+						  _("node %i now following new upstream node %i"),
+						  local_node_info.node_id,
+						  upstream_node_info.node_id);
 
-	create_event_notification(upstream_conn,
-							  &config_file_options,
-							  local_node_info.node_id,
-							  "repmgrd_failover_follow",
-							  true,
-							  event_details.data);
+		log_notice("%s", event_details.data);
 
-	termPQExpBuffer(&event_details);
+		create_event_notification(upstream_conn,
+								  &config_file_options,
+								  local_node_info.node_id,
+								  "repmgrd_failover_follow",
+								  true,
+								  event_details.data);
+
+		termPQExpBuffer(&event_details);
+	}
 
 	return FAILOVER_STATE_FOLLOWED_NEW_PRIMARY;
 }
@@ -3172,8 +3221,6 @@ follow_new_primary(int new_primary_id)
 static FailoverState
 witness_follow_new_primary(int new_primary_id)
 {
-	PQExpBufferData event_details;
-
 	t_node_info new_primary = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	bool		new_primary_ok = false;
@@ -3250,23 +3297,26 @@ witness_follow_new_primary(int new_primary_id)
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
 
-	initPQExpBuffer(&event_details);
-	appendPQExpBuffer(&event_details,
-					  _("witness node %i now following new primary node %i"),
-					  local_node_info.node_id,
-					  upstream_node_info.node_id);
+	{
+		PQExpBufferData event_details;
 
-	log_notice("%s", event_details.data);
+		initPQExpBuffer(&event_details);
+		appendPQExpBuffer(&event_details,
+						  _("witness node %i now following new primary node %i"),
+						  local_node_info.node_id,
+						  upstream_node_info.node_id);
 
-	create_event_notification(
-							  upstream_conn,
-							  &config_file_options,
-							  local_node_info.node_id,
-							  "repmgrd_failover_follow",
-							  true,
-							  event_details.data);
+		log_notice("%s", event_details.data);
 
-	termPQExpBuffer(&event_details);
+		create_event_notification(upstream_conn,
+								  &config_file_options,
+								  local_node_info.node_id,
+								  "repmgrd_failover_follow",
+								  true,
+								  event_details.data);
+
+		termPQExpBuffer(&event_details);
+	}
 
 	return FAILOVER_STATE_FOLLOWED_NEW_PRIMARY;
 }
@@ -3695,6 +3745,8 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 		INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 
 		reset_node_voting_status();
+
+		termPQExpBuffer(&nodes_with_primary_visible);
 
 		return ELECTION_CANCELLED;
 	}
