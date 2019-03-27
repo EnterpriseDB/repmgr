@@ -15,6 +15,8 @@
         repmgr: add sanity check for correct extension version (Ian)
         repmgr: ensure "witness register --dry-run" does not attempt to read node
           tables if repmgr extension not installed; GitHub #513 (Ian)
+        repmgr: ensure "standby register" fails when --upstream-node-id is the
+          same as the local node ID (Ian)
         repmgrd: check binary and extension major versions match; GitHub #515 (Ian)
         repmgrd: on a cascaded standby, don't fail over if "failover=manual";
           GitHub #531 (Ian)

@@ -1435,6 +1435,17 @@ do_standby_register(void)
 		RecordStatus upstream_record_status = RECORD_NOT_FOUND;
 		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 
+		if (runtime_options.upstream_node_id == config_file_options.node_id)
+		{
+			log_error(_("provided node ID for --upstream-node-id (%i) is the same as the configured local node ID (%i)"),
+					  runtime_options.upstream_node_id,
+					  config_file_options.node_id);
+			PQfinish(primary_conn);
+			if (PQstatus(conn) == CONNECTION_OK)
+				PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
 		upstream_record_status = get_node_record(primary_conn,
 												 runtime_options.upstream_node_id,
 												 &upstream_node_record);
