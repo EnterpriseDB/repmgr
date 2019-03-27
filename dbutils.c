@@ -4237,7 +4237,7 @@ wait_connection_availability(PGconn *conn, int timeout)
 	long long	timeout_ms;
 
 	/* calculate timeout in microseconds */
-	timeout_ms = timeout * 1000000;
+	timeout_ms = (long long) timeout * 1000000;
 
 	while (timeout_ms > 0)
 	{
