@@ -216,7 +216,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               &repmgr;: when executing <command><link linkend="repmgr-witness-register">repmgr witness register</link></command>,
-              chech the node to connected is actually the primary (i.e. not the witness server).  GitHub #528.
+              check the node to connected is actually the primary (i.e. not the witness server).  GitHub #528.
             </para>
           </listitem>
 
@@ -254,25 +254,32 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>:
-	      fix display of node IDs with multiple digits.
+	          fix display of node IDs with multiple digits.
             </para>
-	  </listitem>
+	      </listitem>
 
           <listitem>
             <para>
               ensure <command><link linkend="repmgr-primary-unregister">repmgr primary unregister</link></command>
-	      behaves correctly when executed on a witness server. GitHub #548.
+	          behaves correctly when executed on a witness server. GitHub #548.
             </para>
-	  </listitem>
+	      </listitem>
+
+          <listitem>
+            <para>
+              ensure <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>
+	          fails when <option>--upstream-node-id</option> is the same as the local node ID.
+            </para>
+	      </listitem>
 
           <listitem>
             <para>
               <command><link linkend="repmgr-node-check">repmgr node check</link></command>
-	      will only consider physical replication slots, as the purpose
-	      of slot checks is to warn about potential issues with
-	      streaming replication standbys which are no longer attached.
-	    </para>
-	  </listitem>
+	          will only consider physical replication slots, as the purpose
+	          of slot checks is to warn about potential issues with
+	          streaming replication standbys which are no longer attached.
+	        </para>
+	      </listitem>
 
         </itemizedlist>
       </para>
