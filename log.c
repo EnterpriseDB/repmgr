@@ -85,7 +85,7 @@ _stderr_log_with_level(const char *level_name, int level, const char *fmt, va_li
 
 			time(&t);
 			tm = localtime(&t);
-			strftime(buf, 100, "[%Y-%m-%d %H:%M:%S]", tm);
+			strftime(buf, sizeof(buf), "[%Y-%m-%d %H:%M:%S]", tm);
 			fprintf(stderr, "%s [%s] ", buf, level_name);
 		}
 		else
