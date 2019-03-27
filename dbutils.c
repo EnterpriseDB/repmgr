@@ -67,14 +67,17 @@ void
 log_db_error(PGconn *conn, const char *query_text, const char *fmt,...)
 {
 	va_list		ap;
+	char		buf[MAXLEN];
+	int			retval;
 
 	va_start(ap, fmt);
-
-	log_error(fmt, ap);
-
+	retval = vsnprintf(buf, MAXLEN, fmt, ap);
 	va_end(ap);
 
-	if (conn != NULL && PQstatus(conn) == CONNECTION_OK)
+	if (retval < MAXLEN)
+		log_error("%s", buf);
+
+	if (conn != NULL)
 	{
 		log_detail("\n%s", PQerrorMessage(conn));
 	}
