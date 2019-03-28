@@ -301,6 +301,8 @@ get_controlfile(const char *DataDir)
 					ControlFilePath);
 		log_detail("%s", strerror(errno));
 
+		close(fd);
+
 		return control_file_info;
 	}
 
