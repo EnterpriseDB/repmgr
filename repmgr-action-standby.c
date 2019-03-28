@@ -213,7 +213,7 @@ do_standby_clone(void)
 		param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
 
 		get_conninfo_value(config_file_options.conninfo, "application_name", application_name);
-		if (strlen(application_name) && strncmp(application_name, config_file_options.node_name, MAXLEN) != 0)
+		if (strlen(application_name) && strncmp(application_name, config_file_options.node_name, sizeof(config_file_options.node_name)) != 0)
 		{
 			log_notice(_("\"application_name\" is set in repmgr.conf but will be replaced by the node name"));
 		}

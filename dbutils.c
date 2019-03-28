@@ -2201,9 +2201,9 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_
 		node_info->upstream_node_id = atoi(PQgetvalue(res, row, 2));
 	}
 
-	strncpy(node_info->node_name, PQgetvalue(res, row, 3), MAXLEN);
+	strncpy(node_info->node_name, PQgetvalue(res, row, 3), sizeof(node_info->node_name));
 	strncpy(node_info->conninfo, PQgetvalue(res, row, 4), MAXLEN);
-	strncpy(node_info->repluser, PQgetvalue(res, row, 5), NAMEDATALEN);
+	strncpy(node_info->repluser, PQgetvalue(res, row, 5), sizeof(node_info->repluser));
 	strncpy(node_info->slot_name, PQgetvalue(res, row, 6), MAXLEN);
 	strncpy(node_info->location, PQgetvalue(res, row, 7), MAXLEN);
 	node_info->priority = atoi(PQgetvalue(res, row, 8));
@@ -2211,7 +2211,7 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_
 	strncpy(node_info->config_file, PQgetvalue(res, row, 10), MAXPGPATH);
 
 	/* This won't normally be set */
-	strncpy(node_info->upstream_node_name, PQgetvalue(res, row, 11), MAXLEN);
+	strncpy(node_info->upstream_node_name, PQgetvalue(res, row, 11), sizeof(node_info->upstream_node_name));
 
 	/* Set remaining struct fields with default values */
 
@@ -5771,7 +5771,7 @@ get_bdr_other_node_name(PGconn *conn, int node_id, char *node_name)
 
 	if (PQresultStatus(res) == PGRES_TUPLES_OK)
 	{
-		strncpy(node_name, PQgetvalue(res, 0, 0), MAXLEN);
+		strncpy(node_name, PQgetvalue(res, 0, 0), NAMEDATALEN);
 	}
 	else
 	{

@@ -39,6 +39,9 @@
        called <varname>standby1</varname> (for example), things will be confusing
        to say the least.
      </para>
+     <para>
+       Maximum length is 63 characters.
+     </para>
     </listitem>
    </varlistentry>
 

@@ -356,9 +356,15 @@ main(int argc, char **argv)
 
 				/* --node-name */
 			case OPT_NODE_NAME:
-				strncpy(runtime_options.node_name, optarg, MAXLEN);
+			{
+				if (strlen(optarg) < sizeof(runtime_options.node_name))
+					strncpy(runtime_options.node_name, optarg, sizeof(runtime_options.node_name));
+				else
+					item_list_append_format(&cli_errors,
+											_("value for \"--node-name\" must contain fewer than %lu characters"),
+											sizeof(runtime_options.node_name));
 				break;
-
+			}
 				/* --remote-node-id */
 			case OPT_REMOTE_NODE_ID:
 				runtime_options.remote_node_id = repmgr_atoi(optarg, "--remote-node-id", &cli_errors, MIN_NODE_ID);
@@ -3001,7 +3007,7 @@ init_node_record(t_node_info *node_record)
 		strncpy(node_record->location, "default", MAXLEN);
 
 
-	strncpy(node_record->node_name, config_file_options.node_name, MAXLEN);
+	strncpy(node_record->node_name, config_file_options.node_name, sizeof(node_record->node_name));
 	strncpy(node_record->conninfo, config_file_options.conninfo, MAXLEN);
 	strncpy(node_record->config_file, config_file_path, MAXPGPATH);
 

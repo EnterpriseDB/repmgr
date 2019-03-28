@@ -76,7 +76,7 @@ typedef struct
 {
 	/* node information */
 	int			node_id;
-	char		node_name[MAXLEN];
+	char		node_name[NAMEDATALEN];
 	char		conninfo[MAXLEN];
 	char		replication_user[NAMEDATALEN];
 	char		data_directory[MAXPGPATH];

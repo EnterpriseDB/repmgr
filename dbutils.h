@@ -134,8 +134,8 @@ typedef struct s_node_info
 	int			node_id;
 	int			upstream_node_id;
 	t_server_type type;
-	char		node_name[MAXLEN];
-	char		upstream_node_name[MAXLEN];
+	char		node_name[NAMEDATALEN];
+	char		upstream_node_name[NAMEDATALEN];
 	char		conninfo[MAXLEN];
 	char		repluser[NAMEDATALEN];
 	char		location[MAXLEN];
