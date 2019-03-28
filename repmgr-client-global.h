@@ -70,7 +70,7 @@ typedef struct
 
 	/* general node options */
 	int			node_id;
-	char		node_name[MAXLEN];
+	char		node_name[NAMEDATALEN];
 	char		data_dir[MAXPGPATH];
 	int			remote_node_id;
 

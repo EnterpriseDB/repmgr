@@ -28,6 +28,7 @@
 				 # node's current role, e.g. 'primary' or 'standby1',
 				 # as roles can change and it will be confusing if
 				 # the current primary is called 'standby1'.
+                                 # Maximum length is 63 characters.
 
 #conninfo=''			 # Database connection information as a conninfo string.
 				 # All servers in the cluster must be able to connect to

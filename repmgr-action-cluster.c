@@ -1063,7 +1063,9 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, Ite
 		matrix_rec_list[i] = (t_node_matrix_rec *) pg_malloc0(sizeof(t_node_matrix_rec));
 
 		matrix_rec_list[i]->node_id = cell->node_info->node_id;
-		strncpy(matrix_rec_list[i]->node_name, cell->node_info->node_name, MAXLEN);
+		strncpy(matrix_rec_list[i]->node_name,
+				cell->node_info->node_name,
+				sizeof(cell->node_info->node_name));
 
 		/*
 		 * Find the maximum length of a node name
@@ -1278,7 +1280,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length, Item
 
 		cube[h] = (t_node_status_cube *) pg_malloc(sizeof(t_node_status_cube));
 		cube[h]->node_id = cell->node_info->node_id;
-		strncpy(cube[h]->node_name, cell->node_info->node_name, MAXLEN);
+		strncpy(cube[h]->node_name, cell->node_info->node_name, sizeof(cell->node_info->node_name));
 
 		/*
 		 * Find the maximum length of a node name

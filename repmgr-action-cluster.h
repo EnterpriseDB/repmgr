@@ -30,14 +30,14 @@ typedef struct
 typedef struct
 {
 	int			node_id;
-	char		node_name[MAXLEN];
+	char		node_name[NAMEDATALEN];
 	t_node_status_rec **node_status_list;
 } t_node_matrix_rec;
 
 typedef struct
 {
 	int			node_id;
-	char		node_name[MAXLEN];
+	char		node_name[NAMEDATALEN];
 	t_node_matrix_rec **matrix_list_rec;
 } t_node_status_cube;
 

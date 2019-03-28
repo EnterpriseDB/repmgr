@@ -484,7 +484,14 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			node_id_found = true;
 		}
 		else if (strcmp(name, "node_name") == 0)
-			strncpy(options->node_name, value, MAXLEN);
+		{
+			if (strlen(value) < sizeof(options->node_name))
+				strncpy(options->node_name, value, sizeof(options->node_name));
+			else
+				item_list_append_format(error_list,
+										_("value for \"node_name\" must contain fewer than %lu characters"),
+										sizeof(options->node_name));
+		}
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "data_directory") == 0)
@@ -494,11 +501,12 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 
 		else if (strcmp(name, "replication_user") == 0)
 		{
-			if (strlen(value) < NAMEDATALEN)
-				strncpy(options->replication_user, value, NAMEDATALEN);
+			if (strlen(value) < sizeof(options->replication_user))
+				strncpy(options->replication_user, value, sizeof(options->replication_user));
 			else
-				item_list_append(error_list,
-								 _("value for \"replication_user\" must contain fewer than " STR(NAMEDATALEN) " characters"));
+				item_list_append_format(error_list,
+										_("value for \"replication_user\" must contain fewer than %lu characters"),
+										sizeof(options->replication_user));
 		}
 		else if (strcmp(name, "pg_bindir") == 0)
 			strncpy(options->pg_bindir, value, MAXPGPATH);
@@ -1196,7 +1204,7 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		return false;
 	}
 
-	if (strncmp(new_options.node_name, orig_options->node_name, MAXLEN) != 0)
+	if (strncmp(new_options.node_name, orig_options->node_name, sizeof(orig_options->node_name)) != 0)
 	{
 		log_warning(_("\"node_name\" cannot be changed, keeping current configuration"));
 		return false;
