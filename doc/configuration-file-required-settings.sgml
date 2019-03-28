@@ -40,7 +40,8 @@
        to say the least.
      </para>
      <para>
-       Maximum length is 63 characters.
+       The string's maximum length is 63 characters and it should
+       contain only printable ASCII characters.
      </para>
     </listitem>
    </varlistentry>
