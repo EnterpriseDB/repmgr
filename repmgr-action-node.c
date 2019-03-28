@@ -3108,10 +3108,11 @@ copy_file(const char *src_file, const char *dest_file)
 	int			a = 0;
 
 	ptr_old = fopen(src_file, "r");
-	ptr_new = fopen(dest_file, "w");
 
 	if (ptr_old == NULL)
 		return false;
+
+	ptr_new = fopen(dest_file, "w");
 
 	if (ptr_new == NULL)
 	{
