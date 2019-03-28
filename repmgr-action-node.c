@@ -2854,7 +2854,7 @@ _do_node_archive_config(void)
 			{
 				int			filename_len = j - i;
 
-				if (filename_len > MAXPGPATH)
+				if (filename_len >= MAXPGPATH)
 					filename_len = MAXPGPATH - 1;
 
 				strncpy(filenamebuf, runtime_options.config_files + i, filename_len);
