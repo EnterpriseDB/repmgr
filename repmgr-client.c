@@ -3061,9 +3061,6 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 	/* "full_page_writes" must be on in any case */
 	if (guc_set(conn, "full_page_writes", "=", "off"))
 	{
-		if (can_use == false)
-			appendPQExpBuffer(reason, "; ");
-
 		appendPQExpBuffer(reason,
 						  _("\"full_page_writes\" must be set to \"on\""));
 
