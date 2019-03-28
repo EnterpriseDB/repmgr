@@ -276,6 +276,8 @@ is_pg_running(const char *path)
 			log_warning(_("invalid data in PostgreSQL PID file \"%s\""), path);
 		}
 
+		fclose(pidf);
+
 		return PG_DIR_NOT_RUNNING;
 	}
 

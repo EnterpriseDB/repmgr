@@ -2476,6 +2476,8 @@ do_node_rejoin(void)
 
 						termPQExpBuffer(&slotdir_ent_path);
 					}
+
+					closedir(slotdir);
 				}
 				termPQExpBuffer(&slotdir_path);
 			}

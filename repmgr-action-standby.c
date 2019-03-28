@@ -6440,6 +6440,8 @@ run_file_backup(t_node_info *node_record)
 
 		if (fputs(tablespace_map.data, tablespace_map_file) == EOF)
 		{
+			fclose(tablespace_map_file);
+
 			log_error(_("unable to write to tablespace_map file \"%s\""), tablespace_map_filename.data);
 
 			r = ERR_BAD_BASEBACKUP;
