@@ -2786,6 +2786,7 @@ _do_node_archive_config(void)
 
 	arcdir = opendir(archive_dir.data);
 
+	/* always attempt to open the directory */
 	if (arcdir == NULL)
 	{
 		log_error(_("unable to open archive directory \"%s\""),
@@ -2831,9 +2832,10 @@ _do_node_archive_config(void)
 
 			termPQExpBuffer(&arcdir_ent_path);
 		}
-
-		closedir(arcdir);
 	}
+
+	closedir(arcdir);
+
 
 	/*
 	 * extract list of config files from --config-files
