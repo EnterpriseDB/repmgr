@@ -310,18 +310,26 @@ enable_wal_receiver(PGconn *conn, bool wait_startup)
 	if (wal_retrieve_retry_interval > WALRECEIVER_DISABLE_TIMEOUT_VALUE)
 	{
 		int new_wal_retrieve_retry_interval = wal_retrieve_retry_interval - WALRECEIVER_DISABLE_TIMEOUT_VALUE;
+		bool success;
+
 		log_notice(_("setting \"wal_retrieve_retry_interval\" to %i ms"),
 				   new_wal_retrieve_retry_interval);
 
-		// XXX handle error
-		alter_system_int(conn,
-						 "wal_retrieve_retry_interval",
-						 new_wal_retrieve_retry_interval);
+		success = alter_system_int(conn,
+								   "wal_retrieve_retry_interval",
+								   new_wal_retrieve_retry_interval);
+
+		if (success == false)
+		{
+			log_warning(_("unable to change \"wal_retrieve_retry_interval\""));
+			return UNKNOWN_PID;
+		}
+
 		pg_reload_conf(conn);
 	}
 	else
 	{
-		// XXX add threshold sanity check
+		/* TODO: add threshold sanity check */
 		log_info(_("\"wal_retrieve_retry_interval\" is %i, not changing"),
 				 wal_retrieve_retry_interval);
 	}
