@@ -216,7 +216,7 @@ do_bdr_register(void)
 				ExtensionStatus other_node_extension_status = REPMGR_UNKNOWN;
 
 				/* skip the local node */
-				if (strncmp(node_info.node_name, bdr_cell->node_info->node_name, MAXLEN) == 0)
+				if (strncmp(node_info.node_name, bdr_cell->node_info->node_name, sizeof(node_info.node_name)) == 0)
 				{
 					continue;
 				}
@@ -304,9 +304,9 @@ do_bdr_register(void)
 	node_info.active = true;
 	node_info.priority = config_file_options.priority;
 
-	strncpy(node_info.node_name, config_file_options.node_name, MAXLEN);
-	strncpy(node_info.location, config_file_options.location, MAXLEN);
-	strncpy(node_info.conninfo, config_file_options.conninfo, MAXLEN);
+	strncpy(node_info.node_name, config_file_options.node_name, sizeof(node_info.node_name));
+	strncpy(node_info.location, config_file_options.location, sizeof(node_info.location));
+	strncpy(node_info.conninfo, config_file_options.conninfo, sizeof(node_info.conninfo));
 
 	if (record_status == RECORD_FOUND)
 	{
@@ -330,7 +330,7 @@ do_bdr_register(void)
 		 * name set when the node was registered.
 		 */
 
-		if (strncmp(node_info.node_name, config_file_options.node_name, MAXLEN) != 0)
+		if (strncmp(node_info.node_name, config_file_options.node_name, sizeof(node_info.node_name)) != 0)
 		{
 			log_error(_("a record for node %i is already registered with node_name \"%s\""),
 					  config_file_options.node_id, node_info.node_name);
