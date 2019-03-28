@@ -1680,6 +1680,8 @@ check_cli_parameters(const int action)
 				item_list_append_format(&cli_warnings,
 										_("--replication-user ignored when executing %s"),
 										action_name(action));
+				break;
+
 			default:
 				item_list_append_format(&cli_warnings,
 										_("--replication-user not required when executing %s"),
