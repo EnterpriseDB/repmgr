@@ -4250,6 +4250,7 @@ do_standby_switchover(void)
 	 */
 	if (runtime_options.dry_run == true)
 	{
+		/* we use a buffer here as it will be modified by string_remove_trailing_newlines() */
 		char		shutdown_command[MAXLEN] = "";
 
 		strncpy(shutdown_command, command_output.data, MAXLEN);
