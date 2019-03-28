@@ -1302,7 +1302,7 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length, Item
 			/* we don't need the name here */
 			cube[h]->matrix_list_rec[i]->node_name[0] = '\0';
 
-			cube[h]->matrix_list_rec[i]->node_status_list = (t_node_status_rec **) pg_malloc0(sizeof(t_node_status_rec) * nodes.node_count);
+			cube[h]->matrix_list_rec[i]->node_status_list = (t_node_status_rec **) pg_malloc0(sizeof(t_node_status_rec *) * nodes.node_count);
 
 			j = 0;
 
