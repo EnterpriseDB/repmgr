@@ -6084,10 +6084,11 @@ run_file_backup(t_node_info *node_record)
 				 * Remove prefix
 				 */
 				p = string_skip_prefix(prefix, output);
+
 				if (p == NULL)
 				{
-					log_error("unexpected output from \"barman list-files\": %s",
-							  output);
+					log_error("unexpected output from \"barman list-files\"");
+					log_detail("%s", output);
 					exit(ERR_BARMAN);
 				}
 
@@ -6105,6 +6106,14 @@ run_file_backup(t_node_info *node_record)
 					strncat(prefix, backup_id, MAXLEN - 1);
 					strncat(prefix, "/", MAXLEN - 1);
 					p = string_skip_prefix(backup_id, p);
+
+					if (p == NULL)
+					{
+						log_error("unexpected output from \"barman list-files\"");
+						log_detail("%s", output);
+						exit(ERR_BARMAN);
+					}
+
 					p = string_skip_prefix("/", p);
 
 					/*
@@ -6116,8 +6125,8 @@ run_file_backup(t_node_info *node_record)
 									basebackups_directory,
 									backup_id,
 									local_repmgr_tmp_directory);
-					(void) local_command(
-										 command,
+
+					(void) local_command(command,
 										 NULL);
 
 					/*
