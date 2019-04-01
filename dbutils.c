@@ -1109,7 +1109,7 @@ alter_system_int(PGconn *conn, const char *name, int value)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
-	bool		success = false;
+	bool		success = true;
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
@@ -1124,7 +1124,6 @@ alter_system_int(PGconn *conn, const char *name, int value)
 
 		success = false;
 	}
-
 
 	termPQExpBuffer(&query);
 	PQclear(res);
