@@ -342,7 +342,9 @@ is_superuser_connection(PGconn *conn, t_connection_user *userinfo)
 
 	if (userinfo != NULL)
 	{
-		strncpy(userinfo->username, current_user, MAXLEN);
+		snprintf(userinfo->username,
+				 sizeof(userinfo->username),
+				 "%s", current_user);
 		userinfo->is_superuser = is_superuser;
 	}
 
@@ -1077,7 +1079,7 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 	{
 		if (strcmp(PQgetvalue(res, i, 0), setting) == 0)
 		{
-			strncpy(output, PQgetvalue(res, i, 1), MAXLEN);
+			snprintf(output, MAXLEN, "%s", PQgetvalue(res, i, 1));
 			success = true;
 			break;
 		}
@@ -1178,7 +1180,7 @@ get_cluster_size(PGconn *conn, char *size)
 	}
 	else
 	{
-		strncpy(size, PQgetvalue(res, 0, 0), MAXLEN);
+		snprintf(size, MAXLEN, "%s", PQgetvalue(res, 0, 0));
 	}
 
 	termPQExpBuffer(&query);
@@ -1226,7 +1228,7 @@ get_server_version(PGconn *conn, char *server_version_buf)
 		 * first space.
 		 */
 
-		strncpy(_server_version_buf, PQgetvalue(res, 0, 1), MAXVERSIONSTR);
+		snprintf(_server_version_buf, MAXVERSIONSTR, "%s", PQgetvalue(res, 0, 1));
 
 		for (i = 0; i < MAXVERSIONSTR; i++)
 		{
@@ -1353,7 +1355,8 @@ _get_primary_connection(PGconn *conn,
 
 		/* initialize with the values of the current node being processed */
 		node_id = atoi(PQgetvalue(res, i, 0));
-		strncpy(remote_conninfo, PQgetvalue(res, i, 1), MAXCONNINFO);
+		snprintf(remote_conninfo, MAXCONNINFO, "%s", PQgetvalue(res, i, 1));
+
 		log_verbose(LOG_INFO,
 					_("checking if node %i is primary"),
 					node_id);
@@ -1998,9 +2001,13 @@ get_repmgr_extension_status(PGconn *conn, t_extension_versions *extversions)
 		/* caller wants to know which versions are installed/available */
 		if (extversions != NULL)
 		{
-			strncpy(extversions->default_version, PQgetvalue(res, 0, 2), 7);
+			snprintf(extversions->default_version,
+					 sizeof(extversions->default_version),
+					 "%s", PQgetvalue(res, 0, 2));
 			extversions->default_version_num = available_version;
-			strncpy(extversions->installed_version, PQgetvalue(res, 0, 4), 7);
+			snprintf(extversions->installed_version,
+					 sizeof(extversions->installed_version),
+					 "%s", PQgetvalue(res, 0, 4));
 			extversions->installed_version_num = installed_version;
 		}
 
@@ -2201,17 +2208,17 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_
 		node_info->upstream_node_id = atoi(PQgetvalue(res, row, 2));
 	}
 
-	strncpy(node_info->node_name, PQgetvalue(res, row, 3), sizeof(node_info->node_name));
-	strncpy(node_info->conninfo, PQgetvalue(res, row, 4), MAXLEN);
-	strncpy(node_info->repluser, PQgetvalue(res, row, 5), sizeof(node_info->repluser));
-	strncpy(node_info->slot_name, PQgetvalue(res, row, 6), MAXLEN);
-	strncpy(node_info->location, PQgetvalue(res, row, 7), MAXLEN);
+	snprintf(node_info->node_name, sizeof(node_info->node_name), "%s", PQgetvalue(res, row, 3));
+	snprintf(node_info->conninfo, sizeof(node_info->conninfo), "%s", PQgetvalue(res, row, 4));
+	snprintf(node_info->repluser, sizeof(node_info->repluser), "%s", PQgetvalue(res, row, 5));
+	snprintf(node_info->slot_name, sizeof(node_info->slot_name), "%s", PQgetvalue(res, row, 6));
+	snprintf(node_info->location, sizeof(node_info->location), "%s", PQgetvalue(res, row, 7));
 	node_info->priority = atoi(PQgetvalue(res, row, 8));
 	node_info->active = atobool(PQgetvalue(res, row, 9));
-	strncpy(node_info->config_file, PQgetvalue(res, row, 10), MAXPGPATH);
+	snprintf(node_info->config_file, sizeof(node_info->config_file), "%s", PQgetvalue(res, row, 10));
 
 	/* This won't normally be set */
-	strncpy(node_info->upstream_node_name, PQgetvalue(res, row, 11), sizeof(node_info->upstream_node_name));
+	snprintf(node_info->upstream_node_name, sizeof(node_info->upstream_node_name), "%s", PQgetvalue(res, row, 11));
 
 	/* Set remaining struct fields with default values */
 
@@ -3465,11 +3472,15 @@ config_file_list_add(t_configfile_list *list, const char *file, const char *file
 	}
 
 
-	strncpy(list->files[list->entries]->filepath, file, MAXPGPATH);
+	snprintf(list->files[list->entries]->filepath,
+			 sizeof(list->files[list->entries]->filepath),
+			 "%s", file);
 	canonicalize_path(list->files[list->entries]->filepath);
 
+	snprintf(list->files[list->entries]->filename,
+			 sizeof(list->files[list->entries]->filename),
+			 "%s", filename);
 
-	strncpy(list->files[list->entries]->filename, filename, MAXPGPATH);
 	list->files[list->entries]->in_data_directory = in_data_dir;
 
 	list->entries++;
@@ -3606,7 +3617,7 @@ _create_event(PGconn *conn, t_configuration_options *options, int node_id, char 
 		else
 		{
 			/* Store timestamp to send to the notification command */
-			strncpy(event_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+			snprintf(event_timestamp, MAXLEN, "%s", PQgetvalue(res, 0, 0));
 		}
 
 		termPQExpBuffer(&query);
@@ -4041,8 +4052,12 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 	}
 	else
 	{
-		strncpy(record->slot_name, PQgetvalue(res, 0, 0), MAXLEN);
-		strncpy(record->slot_type, PQgetvalue(res, 0, 1), MAXLEN);
+		snprintf(record->slot_name,
+				 sizeof(record->slot_name),
+				 "%s", PQgetvalue(res, 0, 0));
+		snprintf(record->slot_type,
+				 sizeof(record->slot_type),
+				 "%s", PQgetvalue(res, 0, 1));
 		record->active = atobool(PQgetvalue(res, 0, 2));
 	}
 
@@ -4173,7 +4188,8 @@ get_tablespace_name_by_location(PGconn *conn, const char *location, char *name)
 	}
 	else
 	{
-		strncpy(name, PQgetvalue(res, 0, 0), MAXLEN);
+		snprintf(name, MAXLEN,
+				 "%s", PQgetvalue(res, 0, 0));
 	}
 
 	termPQExpBuffer(&query);
@@ -5003,11 +5019,15 @@ get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replicatio
 	}
 	else
 	{
-		strncpy(replication_info->current_timestamp, PQgetvalue(res, 0, 0), MAXLEN);
+		snprintf(replication_info->current_timestamp,
+				 sizeof(replication_info->current_timestamp),
+				 "%s", PQgetvalue(res, 0, 0));
 		replication_info->in_recovery = atobool(PQgetvalue(res, 0, 1));
 		replication_info->last_wal_receive_lsn = parse_lsn(PQgetvalue(res, 0, 2));
 		replication_info->last_wal_replay_lsn = parse_lsn(PQgetvalue(res, 0, 3));
-		strncpy(replication_info->last_xact_replay_timestamp, PQgetvalue(res, 0, 4), MAXLEN);
+		snprintf(replication_info->last_xact_replay_timestamp,
+				 sizeof(replication_info->last_xact_replay_timestamp),
+				 "%s", PQgetvalue(res, 0, 4));
 		replication_info->replication_lag_time = atoi(PQgetvalue(res, 0, 5));
 		replication_info->receiving_streamed_wal = atobool(PQgetvalue(res, 0, 6));
 		replication_info->wal_replay_paused = atobool(PQgetvalue(res, 0, 7));
@@ -5520,7 +5540,9 @@ get_default_bdr_replication_set(PGconn *conn)
 		/* For BDR2, we use a custom replication set */
 		namelen = strlen(BDR2_REPLICATION_SET_NAME);
 		default_replication_set = pg_malloc0(namelen + 1);
-		strncpy(default_replication_set, BDR2_REPLICATION_SET_NAME, namelen);
+		snprintf(default_replication_set,
+				 namelen + 1,
+				 "%s", BDR2_REPLICATION_SET_NAME);
 
 		return default_replication_set;
 	}
@@ -5550,7 +5572,9 @@ get_default_bdr_replication_set(PGconn *conn)
 	namelen = strlen(PQgetvalue(res, 0, 0));
 	default_replication_set = pg_malloc0(namelen + 1);
 
-	strncpy(default_replication_set, PQgetvalue(res, 0, 0), namelen);
+	snprintf(default_replication_set,
+			 namelen,
+			 "%s", PQgetvalue(res, 0, 0));
 
 	PQclear(res);
 
@@ -5771,7 +5795,9 @@ get_bdr_other_node_name(PGconn *conn, int node_id, char *node_name)
 
 	if (PQresultStatus(res) == PGRES_TUPLES_OK)
 	{
-		strncpy(node_name, PQgetvalue(res, 0, 0), NAMEDATALEN);
+		snprintf(node_name,
+				 NAMEDATALEN,
+				 "%s", PQgetvalue(res, 0, 0));
 	}
 	else
 	{
@@ -5954,12 +5980,12 @@ _populate_bdr_node_records(PGresult *res, BdrNodeInfoList *node_list)
 static void
 _populate_bdr_node_record(PGresult *res, t_bdr_node_info *node_info, int row)
 {
-	strncpy(node_info->node_sysid, PQgetvalue(res, row, 0), MAXLEN);
+	snprintf(node_info->node_sysid, sizeof(node_info->node_sysid), "%s", PQgetvalue(res, row, 0));
 	node_info->node_timeline = atoi(PQgetvalue(res, row, 1));
 	node_info->node_dboid = atoi(PQgetvalue(res, row, 2));
-	strncpy(node_info->node_name, PQgetvalue(res, row, 3), MAXLEN);
-	strncpy(node_info->node_local_dsn, PQgetvalue(res, row, 4), MAXLEN);
-	strncpy(node_info->peer_state_name, PQgetvalue(res, row, 5), MAXLEN);
+	snprintf(node_info->node_name, sizeof(node_info->node_name), "%s", PQgetvalue(res, row, 3));
+	snprintf(node_info->node_local_dsn, sizeof(node_info->node_local_dsn), "%s", PQgetvalue(res, row, 4));
+	snprintf(node_info->peer_state_name, sizeof(node_info->peer_state_name), "%s", PQgetvalue(res, row, 5));
 }
 
 
