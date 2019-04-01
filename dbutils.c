@@ -43,6 +43,8 @@ int			bdr_version_num = UNKNOWN_BDR_VERSION_NUM;
 static void log_db_error(PGconn *conn, const char *query_text, const char *fmt,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 
+static bool _is_server_available(const char *conninfo, bool quiet);
+
 static PGconn *_establish_db_connection(const char *conninfo,
 						 const bool exit_on_error,
 						 const bool log_notice,
@@ -4313,14 +4315,31 @@ wait_connection_availability(PGconn *conn, int timeout)
 bool
 is_server_available(const char *conninfo)
 {
+	return _is_server_available(conninfo, false);
+}
+
+
+bool
+is_server_available_quiet(const char *conninfo)
+{
+	return _is_server_available(conninfo, true);
+}
+
+
+static bool
+_is_server_available(const char *conninfo, bool quiet)
+{
 	PGPing		status = PQping(conninfo);
 
 	log_verbose(LOG_DEBUG, "is_server_available(): ping status for \"%s\" is %s", conninfo, print_pqping_status(status));
 	if (status == PQPING_OK)
 		return true;
 
-	log_warning(_("unable to ping \"%s\""), conninfo);
-	log_detail(_("PQping() returned \"%s\""), print_pqping_status(status));
+	if (quiet == false)
+	{
+		log_warning(_("unable to ping \"%s\""), conninfo);
+		log_detail(_("PQping() returned \"%s\""), print_pqping_status(status));
+	}
 
 	return false;
 }

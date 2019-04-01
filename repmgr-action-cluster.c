@@ -156,7 +156,7 @@ do_cluster_show(void)
 		else
 		{
 			/* check if node is reachable, but just not letting us in */
-			if (is_server_available(cell->node_info->conninfo))
+			if (is_server_available_quiet(cell->node_info->conninfo))
 				cell->node_info->node_status = NODE_STATUS_REJECTED;
 			else
 				cell->node_info->node_status = NODE_STATUS_DOWN;

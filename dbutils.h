@@ -518,6 +518,7 @@ int			wait_connection_availability(PGconn *conn, int timeout);
 
 /* node availability functions */
 bool		is_server_available(const char *conninfo);
+bool		is_server_available_quiet(const char *conninfo);
 bool		is_server_available_params(t_conninfo_param_list *param_list);
 ExecStatusType	connection_ping(PGconn *conn);
 ExecStatusType	connection_ping_reconnect(PGconn *conn);
