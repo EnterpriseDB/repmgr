@@ -76,19 +76,25 @@
    </para>
    <programlisting>
 
-    # Enable replication connections; set this figure to at least one more
+    # Enable replication connections; set this value to at least one more
     # than the number of standbys which will connect to this server
-    # (note that repmgr will execute `pg_basebackup` in WAL streaming mode,
-    # which requires two free WAL senders)
+    # (note that repmgr will execute "pg_basebackup" in WAL streaming mode,
+    # which requires two free WAL senders).
+    #
+    # See: https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-MAX-WAL-SENDERS
 
     max_wal_senders = 10
 
-    # Enable replication slots; set this figure to at least one more
+    # If using replication slots, set this value to at least one more
     # than the number of standbys which will connect to this server.
     # Note that repmgr will only make use of replication slots if
-    # "use_replication_slots" is set to "true" in repmgr.conf
+    # "use_replication_slots" is set to "true" in "repmgr.conf".
+    # (If you are not intending to use replication slots, this value
+    # can be set to "0").
+    #
+    # See: https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-MAX-REPLICATION-SLOTS
 
-    max_replication_slots = 0
+    max_replication_slots = 10
 
     # Ensure WAL files contain enough information to enable read-only queries
     # on the standby.
@@ -103,24 +109,31 @@
 
     # Enable read-only queries on a standby
     # (Note: this will be ignored on a primary but we recommend including
-    # it anyway)
+    # it anyway, in case the primary later becomes a standby)
+    #
+    # See: https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-HOT-STANDBY
 
     hot_standby = on
 
     # Enable WAL file archiving
+    #
+    # See: https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-ARCHIVE-MODE
+
     archive_mode = on
 
-    # Set archive command to a script or application that will safely store
-    # you WALs in a secure place. /bin/true is an example of a command that
-    # ignores archiving. Use something more sensible.
+    # Set archive command to a dummy command; this can later be changed without
+    # needing to restart the PostgreSQL instance.
+    #
+    # See: https://www.postgresql.org/docs/current/runtime-config-wal.html#GUC-ARCHIVE-COMMAND
+
     archive_command = '/bin/true'
    </programlisting>
    <tip>
     <simpara>
       Rather than editing these settings in the default <filename>postgresql.conf</filename>
-     file, create a separate file such as <filename>postgresql.replication.conf</filename> and
+      file, create a separate file such as <filename>postgresql.replication.conf</filename> and
       include it from the end of the main configuration file with:
-     <command>include 'postgresql.replication.conf</command>.
+     <command>include 'postgresql.replication.conf'</command>.
     </simpara>
    </tip>
    <para>
@@ -129,7 +142,8 @@
      <varname>wal_log_hints</varname>; for more details see <xref linkend="repmgr-node-rejoin-pg-rewind">.
    </para>
     <para>
-      See also the <link linkend="configuration-postgresql">PostgreSQL configuration</link> section in the <link linkend="configuration">repmgr configuaration guide</link>.
+      See also the <link linkend="configuration-postgresql">PostgreSQL configuration</link> section in the
+      <link linkend="configuration">repmgr configuration guide</link>.
     </para>
  </sect1>
 
