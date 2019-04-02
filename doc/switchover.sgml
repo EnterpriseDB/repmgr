@@ -72,7 +72,8 @@
      Ensure that a passwordless SSH connection is possible from the promotion candidate
      (standby) to the demotion candidate (current primary). If <literal>--siblings-follow</literal>
      will be used, ensure that passwordless SSH connections are possible from the
-     promotion candidate to all standbys attached to the demotion candidate.
+     promotion candidate to all nodes attached to the demotion candidate
+     (including the witness server, if in use).
    </para>
 
    <note>

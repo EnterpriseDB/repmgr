@@ -3561,9 +3561,26 @@ do_standby_switchover(void)
 	{
 		if (sibling_nodes.node_count > 0)
 		{
+			PQExpBufferData nodes;
+			NodeInfoListCell *cell;
+
+			initPQExpBuffer(&nodes);
+
+			for (cell = sibling_nodes.head; cell; cell = cell->next)
+			{
+				appendPQExpBuffer(&nodes,
+								  "  %s (node ID: %i)",
+								  cell->node_info->node_name,
+								  cell->node_info->node_id);
+				if (cell->next)
+					appendPQExpBufferStr(&nodes, "\n");
+			}
+
 			log_warning(_("%i sibling nodes found, but option \"--siblings-follow\" not specified"),
 						sibling_nodes.node_count);
-			log_detail(_("these nodes will remain attached to the current primary"));
+			log_detail(_("these nodes will remain attached to the current primary:\n%s"), nodes.data);
+
+			termPQExpBuffer(&nodes);
 		}
 	}
 	else
