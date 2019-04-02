@@ -17,10 +17,20 @@
 
   <sect1 id="release-4.3">
     <title>Release 4.3</title>
-    <para><emphasis>Mar ???, 2019</emphasis></para>
+    <para><emphasis>Tue April 2, 2019</emphasis></para>
     <para>
       &repmgr; 4.3 is a major release.
     </para>
+    <para>
+      For details on how to upgrade an existing &repmgr; instrallation, see
+      documentation section <link linkend="upgrading-major-version">Upgrading a major version release</link>.
+    </para>
+    <para>
+      As a PostgreSQL restart <emphasis>is</emphasis> required, we
+      suggest combining this &repmgr; upgrade with the next PostgreSQL
+      minor release, which will require a PostgreSQL restart in any case.
+    </para>
+
 
 	<important>
 	  <para>
