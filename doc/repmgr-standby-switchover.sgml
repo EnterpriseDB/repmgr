@@ -156,6 +156,12 @@
             This will also ensure that a witness node, if in use, is updated
             with the new primary's data.
           </para>
+          <note>
+            <para>
+              In a future &repmgr; release, <option>--siblings-follow</option> will be applied
+              by default.
+            </para>
+          </note>
         </listitem>
       </varlistentry>
     </variablelist>
