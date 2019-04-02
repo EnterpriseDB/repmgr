@@ -1,4 +1,4 @@
-4.3     2019-??
+4.3     2019-04-02
         repmgr: add "daemon (start|stop)" command; GitHub #528 (Ian)
         repmgr: add --version-number command line option (Ian)
         repmgr: add --compact option to "cluster show"; GitHub #521 (Ian)
