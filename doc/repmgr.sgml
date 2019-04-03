@@ -25,7 +25,13 @@
    <para>
    This is the official documentation of &repmgr; &repmgrversion; for
    use with PostgreSQL 9.3 - PostgreSQL 11.
-   It describes the functionality supported by the current version of &repmgr;.
+   </para>
+   <para>
+     &repmgr; is being continually developed and we strongly recommend using the
+     latest version. Please check the
+     <ulink url="https://repmgr.org/">repmgr website</ulink> for details
+     about the current &repmgr; version as well as the
+     <ulink url="https://repmgr.org/docs/current/index.html">current documentation</ulink>.
    </para>
 
    <para>
