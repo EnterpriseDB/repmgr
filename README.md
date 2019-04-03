@@ -27,7 +27,7 @@ Documentation
 
 The main `repmgr` documentation is available here:
 
-> [repmgr 4 documentation](https://repmgr.org/docs/4.2/index.html)
+> [repmgr documentation](https://repmgr.org/docs/current/index.html)
 
 The `README` file for `repmgr` 3.x is available here:
 
@@ -72,7 +72,7 @@ Please report bugs and other issues to:
 
 * https://github.com/2ndQuadrant/repmgr
 
-Further information is available at https://www.repmgr.org/
+Further information is available at https://repmgr.org/
 
 We'd love to hear from you about how you use repmgr. Case studies and
 news are always welcome. Send us an email at info@2ndQuadrant.com, or
@@ -97,6 +97,7 @@ Thanks from the repmgr core team.
 Further reading
 ---------------
 
+* [repmgr documentation](https://repmgr.org/docs/current/index.html)
 * https://blog.2ndquadrant.com/repmgr-3-2-is-here-barman-support-brand-new-high-availability-features/
 * https://blog.2ndquadrant.com/improvements-in-repmgr-3-1-4/
 * https://blog.2ndquadrant.com/managing-useful-clusters-repmgr/
