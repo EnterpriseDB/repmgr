@@ -201,7 +201,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
          <listitem>
             <para>
 			  In a failover situation, <application>repmgrd</application> will not attempt to promote a
-			  node if another standby has already appeared (e.g. by being promoted manually).
+			  node if another primary has already appeared (e.g. by being promoted manually).
 			  GitHub #420.
 			</para>
           </listitem>
@@ -214,52 +214,6 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
       <title>Bug fixes</title>
       <para>
         <itemizedlist>
-
-          <listitem>
-            <para>
-              &repmgr;: when executing <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>,
-              prevent escaping issues with connection URIs when executing <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>
-              on the demotion candidate. GitHub #525.
-            </para>
-          </listitem>
-
-          <listitem>
-            <para>
-              &repmgr;: when executing <command><link linkend="repmgr-witness-register">repmgr witness register</link></command>,
-              check the node to connected is actually the primary (i.e. not the witness server).  GitHub #528.
-            </para>
-          </listitem>
-
-         <listitem>
-            <para>
-              &repmgr;: when executing <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>,
-              recheck primary/upstream connection(s) after the data copy operation is complete, as these may
-              have gone away.
-            </para>
-          </listitem>
-
-         <listitem>
-            <para>
-              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
-              avoid a potential race condition when comparing received WAL on the standby to the primary's shutdown location,
-	      as the standby's walreceiver may not have yet flushed all received WAL to disk. GitHub #518.
-            </para>
-          </listitem>
-
-
-         <listitem>
-            <para>
-              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
-	      verify the standby (promotion candidate) is currently attached to the primary (demotion candidate). GitHub #519.
-            </para>
-          </listitem>
-
-          <listitem>
-            <para>
-              <application>repmgrd</application>: on a cascaded standby, don't fail over if
-              <literal>failover=manual</literal>. GitHub #531.
-            </para>
-          </listitem>
 
           <listitem>
             <para>
@@ -284,12 +238,57 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>,
+              recheck primary/upstream connection(s) after the data copy operation is complete, as these may
+              have gone away.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              &repmgr;: when executing <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>,
+              prevent escaping issues with connection URIs when executing <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>
+              on the demotion candidate. GitHub #525.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+	          verify the standby (promotion candidate) is currently attached to the primary (demotion candidate). GitHub #519.
+            </para>
+          </listitem>
+
+         <listitem>
+            <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+              avoid a potential race condition when comparing received WAL on the standby to the primary's shutdown location,
+	          as the standby's walreceiver may not have yet flushed all received WAL to disk. GitHub #518.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              &repmgr;: when executing <command><link linkend="repmgr-witness-register">repmgr witness register</link></command>,
+              check the node to connected is actually the primary (i.e. not the witness server).  GitHub #528.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
               <command><link linkend="repmgr-node-check">repmgr node check</link></command>
 	          will only consider physical replication slots, as the purpose
 	          of slot checks is to warn about potential issues with
 	          streaming replication standbys which are no longer attached.
 	        </para>
 	      </listitem>
+
+          <listitem>
+            <para>
+              <application>repmgrd</application>: on a cascaded standby, don't fail over if
+              <literal>failover=manual</literal>. GitHub #531.
+            </para>
+          </listitem>
 
         </itemizedlist>
       </para>
