@@ -436,10 +436,6 @@ get_upstream_node_id(PG_FUNCTION_ARGS)
 	if (!shared_state)
 		PG_RETURN_NULL();
 
-	/* A primary node cannot have an upstream ID */
-	if (!RecoveryInProgress())
-		PG_RETURN_INT32(UNKNOWN_NODE_ID);
-
 	LWLockAcquire(shared_state->lock, LW_SHARED);
 	upstream_node_id = shared_state->upstream_node_id;
 	LWLockRelease(shared_state->lock);

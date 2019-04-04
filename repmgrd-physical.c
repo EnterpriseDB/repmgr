@@ -3633,15 +3633,25 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 
 		if (sibling_replication_info.upstream_last_seen >= 0 && sibling_replication_info.upstream_last_seen < (config_file_options.monitor_interval_secs * 2))
 		{
-			nodes_with_primary_still_visible++;
-			log_notice(_("node %i last saw primary node %i second(s) ago, considering primary still visible"),
-					   cell->node_info->node_id,
-					   sibling_replication_info.upstream_last_seen);
-			appendPQExpBuffer(&nodes_with_primary_visible,
-							  " - node \"%s\" (ID: %i): %i second(s) ago\n",
-							  cell->node_info->node_name,
-							  cell->node_info->node_id,
-							  sibling_replication_info.upstream_last_seen);
+			if (sibling_replication_info.upstream_node_id != upstream_node_info.node_id)
+			{
+				log_warning(_("assumed sibling node %i monitoring different upstream node %i"),
+							cell->node_info->node_id,
+							sibling_replication_info.upstream_node_id);
+
+			}
+			else
+			{
+				nodes_with_primary_still_visible++;
+				log_notice(_("node %i last saw primary node %i second(s) ago, considering primary still visible"),
+						   cell->node_info->node_id,
+						   sibling_replication_info.upstream_last_seen);
+				appendPQExpBuffer(&nodes_with_primary_visible,
+								  " - node \"%s\" (ID: %i): %i second(s) ago\n",
+								  cell->node_info->node_name,
+								  cell->node_info->node_id,
+								  sibling_replication_info.upstream_last_seen);
+			}
 		}
 		else
 		{

@@ -4993,7 +4993,8 @@ get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replicatio
 						 "        END AS replication_lag_time, "
 						 "        last_wal_receive_lsn >= last_wal_replay_lsn AS receiving_streamed_wal, "
 						 "        wal_replay_paused, "
-						 "        upstream_last_seen "
+						 "        upstream_last_seen, "
+						 "        upstream_node_id "
 						 "   FROM ( "
 						 " SELECT CURRENT_TIMESTAMP AS ts, "
 						 "        pg_catalog.pg_is_in_recovery() AS in_recovery, "
@@ -5033,10 +5034,12 @@ get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replicatio
 							 "        END AS wal_replay_paused, ");
 	}
 
+	/* Add information about upstream node from shared memory */
 	if (node_type == WITNESS)
 	{
 		appendPQExpBufferStr(&query,
-							 "        repmgr.get_upstream_last_seen() AS upstream_last_seen");
+							 "        repmgr.get_upstream_last_seen() AS upstream_last_seen, "
+							 "        repmgr.get_upstream_node_id() AS upstream_node_id ");
 	}
 	else
 	{
@@ -5044,7 +5047,12 @@ get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replicatio
 							 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
 							 "          THEN -1 "
 							 "          ELSE repmgr.get_upstream_last_seen() "
-							 "        END AS upstream_last_seen ");
+							 "        END AS upstream_last_seen, ");
+		appendPQExpBufferStr(&query,
+							 "        CASE WHEN pg_catalog.pg_is_in_recovery() IS FALSE "
+							 "          THEN -1 "
+							 "          ELSE repmgr.get_upstream_node_id() "
+							 "        END AS upstream_node_id ");
 	}
 
 	appendPQExpBufferStr(&query,
@@ -5075,6 +5083,7 @@ get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replicatio
 		replication_info->receiving_streamed_wal = atobool(PQgetvalue(res, 0, 6));
 		replication_info->wal_replay_paused = atobool(PQgetvalue(res, 0, 7));
 		replication_info->upstream_last_seen = atoi(PQgetvalue(res, 0, 8));
+		replication_info->upstream_node_id = atoi(PQgetvalue(res, 0, 9));
 	}
 
 	termPQExpBuffer(&query);

@@ -310,6 +310,7 @@ typedef struct
 	bool		receiving_streamed_wal;
 	bool		wal_replay_paused;
 	int			upstream_last_seen;
+	int			upstream_node_id;
 } ReplInfo;
 
 typedef struct
