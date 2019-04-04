@@ -440,6 +440,7 @@ bool		repmgrd_is_running(PGconn *conn);
 bool		repmgrd_is_paused(PGconn *conn);
 bool		repmgrd_pause(PGconn *conn, bool pause);
 pid_t		get_wal_receiver_pid(PGconn *conn);
+int			repmgrd_get_upstream_node_id(PGconn *conn);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn, t_extension_versions *extversions);
@@ -560,8 +561,9 @@ bool		get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *repl
 int			get_replication_lag_seconds(PGconn *conn);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 bool		is_downstream_node_attached(PGconn *conn, char *node_name);
-void		set_upstream_last_seen(PGconn *conn);
+void		set_upstream_last_seen(PGconn *conn, int upstream_node_id);
 int			get_upstream_last_seen(PGconn *conn, t_server_type node_type);
+
 bool		is_wal_replay_paused(PGconn *conn, bool check_pending_wal);
 
 /* BDR functions */

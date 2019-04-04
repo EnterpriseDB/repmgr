@@ -1940,6 +1940,31 @@ get_wal_receiver_pid(PGconn *conn)
 	return wal_receiver_pid;
 }
 
+
+int
+repmgrd_get_upstream_node_id(PGconn *conn)
+{
+	PGresult   *res = NULL;
+	int upstream_node_id = UNKNOWN_NODE_ID;
+
+	const char *sqlquery = "SELECT repmgr.get_upstream_node_id()";
+
+	res = PQexec(conn, sqlquery);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, sqlquery, _("repmgrd_get_upstream_node_id(): unable to execute query"));
+	}
+	else if (!PQgetisnull(res, 0, 0))
+	{
+		upstream_node_id = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return upstream_node_id;
+}
+
 /* ================ */
 /* result functions */
 /* ================ */
@@ -5234,15 +5259,16 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 
 
 void
-set_upstream_last_seen(PGconn *conn)
+set_upstream_last_seen(PGconn *conn, int upstream_node_id)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBufferStr(&query,
-						 "SELECT repmgr.set_upstream_last_seen()");
+	appendPQExpBuffer(&query,
+					  "SELECT repmgr.set_upstream_last_seen(%i)",
+					  upstream_node_id);
 
 	res = PQexec(conn, query.data);
 

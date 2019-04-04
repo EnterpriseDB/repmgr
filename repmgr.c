@@ -78,6 +78,7 @@ typedef struct repmgrdSharedState
 	char		repmgrd_pidfile[MAXPGPATH];
 	bool		repmgrd_paused;
 	/* streaming failover */
+	int			upstream_node_id;
 	TimestampTz upstream_last_seen;
 	NodeVotingStatus voting_status;
 	int			current_electoral_term;
@@ -114,6 +115,9 @@ PG_FUNCTION_INFO_V1(set_upstream_last_seen);
 
 Datum		get_upstream_last_seen(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_upstream_last_seen);
+
+Datum		get_upstream_node_id(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(get_upstream_node_id);
 
 Datum		notify_follow_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(notify_follow_primary);
@@ -228,6 +232,7 @@ repmgr_shmem_startup(void)
 		memset(shared_state->repmgrd_pidfile, 0, MAXPGPATH);
 		shared_state->repmgrd_paused = false;
 		shared_state->current_electoral_term = 0;
+		shared_state->upstream_node_id = UNKNOWN_NODE_ID;
 		/* arbitrary "magic" date to indicate this field hasn't been updated */
 		shared_state->upstream_last_seen = POSTGRES_EPOCH_JDATE;
 		shared_state->voting_status = VS_NO_VOTE;
@@ -368,13 +373,20 @@ standby_get_last_updated(PG_FUNCTION_ARGS)
 Datum
 set_upstream_last_seen(PG_FUNCTION_ARGS)
 {
+	int			upstream_node_id = UNKNOWN_NODE_ID;
+
 	if (!shared_state)
 		PG_RETURN_VOID();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	upstream_node_id = PG_GETARG_INT32(0);
 
 	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
 
 	shared_state->upstream_last_seen = GetCurrentTimestamp();
-
+	shared_state->upstream_node_id = upstream_node_id;
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_VOID();
@@ -412,6 +424,27 @@ get_upstream_last_seen(PG_FUNCTION_ARGS)
 
 	/* let's hope repmgrd never runs for more than a century or so without seeing a primary */
 	PG_RETURN_INT32((uint32)secs);
+}
+
+
+
+Datum
+get_upstream_node_id(PG_FUNCTION_ARGS)
+{
+	int			upstream_node_id = UNKNOWN_NODE_ID;
+
+	if (!shared_state)
+		PG_RETURN_NULL();
+
+	/* A primary node cannot have an upstream ID */
+	if (!RecoveryInProgress())
+		PG_RETURN_INT32(UNKNOWN_NODE_ID);
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	upstream_node_id = shared_state->upstream_node_id;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_INT32(upstream_node_id);
 }
 
 

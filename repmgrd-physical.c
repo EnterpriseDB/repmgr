@@ -878,7 +878,7 @@ monitor_streaming_standby(void)
 		log_verbose(LOG_DEBUG, "checking %s", upstream_node_info.conninfo);
 		if (check_upstream_connection(&upstream_conn, upstream_node_info.conninfo) == true)
 		{
-			set_upstream_last_seen(local_conn);
+			set_upstream_last_seen(local_conn, upstream_node_info.node_id);
 		}
 		else
 		{
@@ -1671,7 +1671,7 @@ monitor_streaming_witness(void)
 	{
 		if (check_upstream_connection(&primary_conn, upstream_node_info.conninfo) == true)
 		{
-			set_upstream_last_seen(local_conn);
+			set_upstream_last_seen(local_conn, upstream_node_info.node_id);
 		}
 		else
 		{

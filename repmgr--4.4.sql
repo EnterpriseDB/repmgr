@@ -118,7 +118,7 @@ CREATE FUNCTION standby_get_last_updated()
   AS 'MODULE_PATHNAME', 'standby_get_last_updated'
   LANGUAGE C STRICT;
 
-CREATE FUNCTION set_upstream_last_seen()
+CREATE FUNCTION set_upstream_last_seen(INT)
   RETURNS VOID
   AS 'MODULE_PATHNAME', 'set_upstream_last_seen'
   LANGUAGE C STRICT;
@@ -126,6 +126,11 @@ CREATE FUNCTION set_upstream_last_seen()
 CREATE FUNCTION get_upstream_last_seen()
   RETURNS INT
   AS 'MODULE_PATHNAME', 'get_upstream_last_seen'
+  LANGUAGE C STRICT;
+
+CREATE FUNCTION get_upstream_node_id()
+  RETURNS INT
+  AS 'MODULE_PATHNAME', 'get_upstream_node_id'
   LANGUAGE C STRICT;
 
 
