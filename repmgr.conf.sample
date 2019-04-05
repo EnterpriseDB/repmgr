@@ -72,6 +72,7 @@
 				 # to the user defined in "conninfo".
 
 #replication_type=physical	 # Must be one of 'physical' or 'bdr'.
+				 # NOTE: "bdr" can only be used with BDR 2.x
 
 #location=default		 # arbitrary string defining the location of the node; this
 				 # is used during failover to check visibilty of the
