@@ -10,7 +10,7 @@
 
   <title>BDR failover with repmgrd</title>
   <para>
-    &repmgr; 4.x provides support for monitoring BDR nodes and taking action in
+    &repmgr; 4.x provides support for monitoring a pair of BDR 2.x nodes and taking action in
     case one of the nodes fails.
   </para>
   <note>
@@ -31,8 +31,21 @@
     reconfigure a proxy server/connection pooler such as <application>PgBouncer</application>.
   </para>
 
+  <note>
+    <simpara>
+      This &repmgr; functionality is for BDR 2.x only running on PostgreSQL 9.4/9.6.
+      It is <emphasis>not</emphasis> required for later BDR versions.
+    </simpara>
+  </note>
+
   <sect1 id="bdr-prerequisites" xreflabel="BDR prequisites">
     <title>Prerequisites</title>
+    <important>
+      <para>
+        This &repmgr; functionality is for BDR 2.x only running on PostgreSQL 9.4/9.6.
+        It is <emphasis>not</emphasis> required for later BDR versions.
+      </para>
+    </important>
     <para>
       &repmgr; 4 requires PostgreSQL 9.4 or 9.6 with the BDR 2 extension
       enabled and configured for a two-node BDR network. &repmgr; 4 packages
