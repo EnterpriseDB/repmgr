@@ -96,7 +96,19 @@ monitor_bdr(void)
 	if (!is_bdr_db(local_conn, NULL))
 	{
 		log_error(_("database is not BDR-enabled"));
+		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * Check this is a supported BDR version (basically BDR 2.x)
+	 */
+	if (get_bdr_version_num() > 2)
+	{
+		log_error(_("\"bdr\" mode is for BDR 2.x only"));
+		log_hint(_("for BDR 3 and later, use \"replication_type=physical\""));
+		log_error(_("database is not BDR-enabled"));
+		exit(ERR_DB_CONN);
 	}
 
 	if (is_table_in_bdr_replication_set(local_conn, "nodes", "repmgr") == false)

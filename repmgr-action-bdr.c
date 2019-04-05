@@ -93,6 +93,15 @@ do_bdr_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+	if (get_bdr_version_num() > 2)
+	{
+		log_error(_("\"repmgr bdr register\" is for BDR 2.x only"));
+		PQfinish(conn);
+		pfree(dbname);
+		exit(ERR_BAD_CONFIG);
+	}
+
+
 	/* check for a matching BDR node */
 	{
 		PQExpBufferData bdr_local_node_name;
