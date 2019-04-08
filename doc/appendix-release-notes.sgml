@@ -15,6 +15,33 @@
     See also: <xref linkend="upgrading-repmgr">
   </para>
 
+  <sect1 id="release-4.3.1">
+    <title>Release 4.3.1</title>
+    <para><emphasis>???, 2019</emphasis></para>
+
+    <sect2>
+      <title>repmgr client enhancements</title>
+      <para>
+      </para>
+    </sect2>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              Ensure BDR2-specific functionality cannot be used on BDR3 and later.
+            </para>
+            <para>
+              The BDR support present in &repmgr; is for specific BDR2 use cases.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+  </sect1>
+
   <sect1 id="release-4.3">
     <title>Release 4.3</title>
     <para><emphasis>Tue April 2, 2019</emphasis></para>
@@ -47,7 +74,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 	</important>
 
     <sect2>
-      <title>repmgr enhancements</title>
+      <title>repmgr client enhancements</title>
       <para>
         <itemizedlist>
 
