@@ -770,56 +770,73 @@ do_standby_clone(void)
 void
 check_barman_config(void)
 {
-	char		command[MAXLEN];
+	PQExpBufferData command;
 	bool		command_ok = false;
 
 	/*
 	 * Check that there is at least one valid backup
 	 */
 
-	log_info(_("connecting to Barman server to verify backup for %s"), config_file_options.barman_server);
+	log_info(_("connecting to Barman server to verify backup for \"%s\""), config_file_options.barman_server);
 
-	maxlen_snprintf(command, "%s show-backup %s latest > /dev/null",
-					make_barman_ssh_command(barman_command_buf),
-					config_file_options.barman_server);
+	initPQExpBuffer(&command);
 
-	command_ok = local_command(command, NULL);
+	appendPQExpBuffer(&command, "%s show-backup %s latest > /dev/null",
+					  make_barman_ssh_command(barman_command_buf),
+					  config_file_options.barman_server);
+
+	command_ok = local_command(command.data, NULL);
 
 	if (command_ok == false)
 	{
-		log_error(_("no valid backup for server %s was found in the Barman catalogue"),
+		log_error(_("no valid backup for server \"%s\" was found in the Barman catalogue"),
 				  config_file_options.barman_server);
+		log_detail(_("command executed was:\n  %s"), command.data),
 		log_hint(_("refer to the Barman documentation for more information"));
 
+		termPQExpBuffer(&command);
 		exit(ERR_BARMAN);
 	}
-
-
-	if (!create_pg_dir(local_data_directory, runtime_options.force))
+	else if (runtime_options.dry_run == true)
 	{
-		log_error(_("unable to use directory %s"),
-				  local_data_directory);
-		log_hint(_("use -F/--force option to force this directory to be overwritten"));
-		exit(ERR_BAD_CONFIG);
+		log_info(_("valid backup for server \"%s\" found in the Barman catalogue"),
+				 config_file_options.barman_server);
 	}
 
+	termPQExpBuffer(&command);
 
 	/*
-	 * Create the local repmgr subdirectory
+	 * Attempt to create data directory (unless --dry-run specified,
+	 * in which case do nothing; warnings will be emitted elsewhere about
+	 * any issues with the data directory)
 	 */
-
-	maxlen_snprintf(local_repmgr_tmp_directory,
-					"%s/repmgr", local_data_directory);
-
-	maxlen_snprintf(datadir_list_filename,
-					"%s/data.txt", local_repmgr_tmp_directory);
-
-	if (!create_pg_dir(local_repmgr_tmp_directory, runtime_options.force))
+	if (runtime_options.dry_run == false)
 	{
-		log_error(_("unable to create directory \"%s\""),
-				  local_repmgr_tmp_directory);
+		if (!create_pg_dir(local_data_directory, runtime_options.force))
+		{
+			log_error(_("unable to use directory %s"),
+					  local_data_directory);
+			log_hint(_("use -F/--force option to force this directory to be overwritten"));
+			exit(ERR_BAD_CONFIG);
+		}
 
-		exit(ERR_BAD_CONFIG);
+		/*
+		 * Create the local repmgr subdirectory
+		 */
+
+		maxlen_snprintf(local_repmgr_tmp_directory,
+						"%s/repmgr", local_data_directory);
+
+		maxlen_snprintf(datadir_list_filename,
+						"%s/data.txt", local_repmgr_tmp_directory);
+
+		if (!create_pg_dir(local_repmgr_tmp_directory, runtime_options.force))
+		{
+			log_error(_("unable to create directory \"%s\""),
+					  local_repmgr_tmp_directory);
+
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 
 	/*
@@ -827,20 +844,37 @@ check_barman_config(void)
 	 */
 	log_info(_("connecting to Barman server to fetch server parameters"));
 
-	maxlen_snprintf(command, "%s show-server %s > %s/show-server.txt",
-					make_barman_ssh_command(barman_command_buf),
-					config_file_options.barman_server,
-					local_repmgr_tmp_directory);
+	initPQExpBuffer(&command);
 
-	command_ok = local_command(command, NULL);
+	if (runtime_options.dry_run == true)
+	{
+		appendPQExpBuffer(&command, "%s show-server %s > /dev/null",
+						  make_barman_ssh_command(barman_command_buf),
+						  config_file_options.barman_server);
+	}
+	else
+	{
+		appendPQExpBuffer(&command, "%s show-server %s > %s/show-server.txt",
+						  make_barman_ssh_command(barman_command_buf),
+						  config_file_options.barman_server,
+						  local_repmgr_tmp_directory);
+	}
+
+	command_ok = local_command(command.data, NULL);
 
 	if (command_ok == false)
 	{
 		log_error(_("unable to fetch server parameters from Barman server"));
-
+		log_detail(_("command executed was:\n  %s"), command.data),
+		termPQExpBuffer(&command);
 		exit(ERR_BARMAN);
 	}
+	else if (runtime_options.dry_run == true)
+	{
+		log_info(_("server parameters were successfully fetched from Barman server"));
+	}
 
+	termPQExpBuffer(&command);
 }
 
 
@@ -4999,18 +5033,40 @@ check_source_server()
 	}
 
 	/*
-	 * In the default pg_basebackup mode, we'll cowardly refuse to overwrite
-	 * an existing data directory
+	 * Check the local directory to see if it appears to be a PostgreSQL
+	 * data directory.
+	 *
+	 * Note: a previous call to check_dir() will have checked whether it contains
+	 * a running PostgreSQL instance.
 	 */
-	if (mode == pg_basebackup)
+	if (is_pg_dir(local_data_directory))
 	{
-		if (is_pg_dir(local_data_directory) && runtime_options.force != true)
+		const char *msg = _("target data directory appears to be a PostgreSQL data directory");
+		const char *hint = _("use -F/--force to overwrite the existing data directory");
+
+		if (runtime_options.force == false && runtime_options.dry_run == false)
 		{
-			log_error(_("target data directory appears to be a PostgreSQL data directory"));
+			log_error("%s", msg);
 			log_detail(_("target data directory is \"%s\""), local_data_directory);
-			log_hint(_("use -F/--force to overwrite the existing data directory"));
+			log_hint("%s", hint);
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
+		}
+
+		if (runtime_options.dry_run == true)
+		{
+			if (runtime_options.force == true)
+			{
+				log_warning("%s and will be overwritten", msg);
+				log_detail(_("target data directory is \"%s\""), local_data_directory);
+
+			}
+			else
+			{
+				log_warning("%s", msg);
+				log_detail(_("target data directory is \"%s\""), local_data_directory);
+				log_hint("%s", hint);
+			}
 		}
 	}
 
