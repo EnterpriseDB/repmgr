@@ -2,6 +2,8 @@
         repmgr: ensure BDR2-specific functionality cannot be used on
           BDR3 and later (Ian)
         repmgr: improve --dry-run behaviour in barman mode (Ian)
+        repmgr: fix data directory permissions issue in barman mode where
+          an existing directory is being overwritten (Ian)
 
 4.3     2019-04-02
         repmgr: add "daemon (start|stop)" command; GitHub #528 (Ian)
