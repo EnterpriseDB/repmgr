@@ -336,6 +336,15 @@ create_pg_dir(const char *path, bool force)
 				{
 					log_notice(_("-F/--force provided - deleting existing data directory \"%s\""), path);
 					nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);
+
+					/* recreate the directory ourselves to ensure permissions are correct */
+					if (!create_dir(path))
+					{
+						log_error(_("unable to create directory \"%s\"..."),
+								  path);
+						return false;
+					}
+
 					return true;
 				}
 
@@ -347,6 +356,15 @@ create_pg_dir(const char *path, bool force)
 				{
 					log_notice(_("deleting existing directory \"%s\""), path);
 					nftw(path, unlink_dir_callback, 64, FTW_DEPTH | FTW_PHYS);
+
+					/* recreate the directory ourselves to ensure permissions are correct */
+					if (!create_dir(path))
+					{
+						log_error(_("unable to create directory \"%s\"..."),
+								  path);
+						return false;
+					}
+
 					return true;
 				}
 				return false;

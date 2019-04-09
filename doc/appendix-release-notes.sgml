@@ -46,6 +46,14 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>
+              in <option>--dry-run</option> mode, ensure provision of the <option>--force</option> option
+              does not result in an existing data directory being modified in any way.
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>
