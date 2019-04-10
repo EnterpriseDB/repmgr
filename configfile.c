@@ -836,15 +836,16 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		conninfo_options = PQconninfoParse(options->conninfo, &conninfo_errmsg);
 		if (conninfo_options == NULL)
 		{
-			char		error_message_buf[MAXLEN] = "";
+			PQExpBufferData error_message_buf;
+			initPQExpBuffer(&error_message_buf);
 
-			snprintf(error_message_buf,
-					 MAXLEN,
-					 _("\"conninfo\": %s	(provided: \"%s\")"),
-					 conninfo_errmsg,
-					 options->conninfo);
+			appendPQExpBuffer(&error_message_buf,
+							  _("\"conninfo\": %s	(provided: \"%s\")"),
+							  conninfo_errmsg,
+							  options->conninfo);
 
-			item_list_append(error_list, error_message_buf);
+			item_list_append(error_list, error_message_buf.data);
+			termPQExpBuffer(&error_message_buf);
 		}
 
 		PQconninfoFree(conninfo_options);

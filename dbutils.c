@@ -1521,10 +1521,10 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 	while ((arcdir_ent = readdir(arcdir)) != NULL)
 	{
 		struct stat statbuf;
-		char		file_path[MAXPGPATH] = "";
+		char		file_path[MAXPGPATH + sizeof(arcdir_ent->d_name)];
 		int			basenamelen = 0;
 
-		snprintf(file_path, MAXPGPATH,
+		snprintf(file_path, sizeof(file_path),
 				 "%s/%s",
 				 archive_status_dir,
 				 arcdir_ent->d_name);
