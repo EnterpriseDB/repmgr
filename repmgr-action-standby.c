@@ -906,7 +906,7 @@ _do_create_recovery_conf(void)
 	t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 
 	RecordStatus record_status = RECORD_NOT_FOUND;
-	char		recovery_file_path[MAXPGPATH] = "";
+	char		recovery_file_path[MAXPGPATH + sizeof(RECOVERY_COMMAND_FILE)] = "";
 	struct stat st;
 	bool		node_is_running = false;
 	bool		slot_creation_required = false;
@@ -1151,7 +1151,10 @@ _do_create_recovery_conf(void)
 
 	/* check if recovery.conf exists */
 
-	snprintf(recovery_file_path, MAXPGPATH, "%s/%s", local_data_directory, RECOVERY_COMMAND_FILE);
+	snprintf(recovery_file_path, sizeof(recovery_file_path),
+			 "%s/%s",
+			 local_data_directory,
+			 RECOVERY_COMMAND_FILE);
 
 	if (stat(recovery_file_path, &st) == -1)
 	{
