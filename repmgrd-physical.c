@@ -3580,7 +3580,7 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 		 * to follow it.
 		 */
 
-		if (sibling_replication_info.in_recovery == false)
+		if (sibling_replication_info.in_recovery == false && cell->node_info->type != WITNESS)
 		{
 			bool can_follow;
 
