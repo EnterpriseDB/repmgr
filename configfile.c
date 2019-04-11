@@ -344,7 +344,7 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->failover = FAILOVER_MANUAL;
 	options->priority = DEFAULT_PRIORITY;
 	memset(options->location, 0, sizeof(options->location));
-	strncpy(options->location, DEFAULT_LOCATION, MAXLEN);
+	strncpy(options->location, DEFAULT_LOCATION, sizeof(options->location));
 	memset(options->promote_command, 0, sizeof(options->promote_command));
 	memset(options->follow_command, 0, sizeof(options->follow_command));
 	options->monitor_interval_secs = DEFAULT_MONITORING_INTERVAL;
