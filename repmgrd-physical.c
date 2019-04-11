@@ -3421,6 +3421,8 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 									upstream_node_info.node_id,
 									sibling_nodes);
 
+	log_info(_("%i active sibling nodes registered"), sibling_nodes->node_count);
+
 	total_nodes = sibling_nodes->node_count + 1;
 
 	if (strncmp(upstream_node_info.location, local_node_info.location, MAXLEN) != 0)
@@ -3524,6 +3526,10 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 	{
 		ReplInfo	sibling_replication_info;
 
+		log_info(_("checking state of sibling node \"%s\" (node ID: %i)"),
+				 cell->node_info->node_name,
+				 cell->node_info->node_id);
+
 		/* assume the worst case */
 		cell->node_info->node_status = NODE_STATUS_UNKNOWN;
 
@@ -3546,6 +3552,9 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 		{
 			if (strncmp(cell->node_info->location, upstream_node_info.location, MAXLEN) == 0)
 			{
+				log_debug("node %i in primary location \"%s\"",
+						  cell->node_info->node_id,
+						  cell->node_info->location);
 				primary_location_seen = true;
 			}
 		}
@@ -3573,6 +3582,12 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 						cell->node_info->node_id);
 			continue;
 		}
+
+		log_info(_("node \"%s\" (ID: %i) reports its upstream is node %i, last seen %i second(s) ago"),
+				 cell->node_info->node_name,
+				 cell->node_info->node_id,
+				 upstream_node_info.node_id,
+				 sibling_replication_info.upstream_last_seen);
 
 		/*
 		 * Check if node is not in recovery - it may have been promoted
