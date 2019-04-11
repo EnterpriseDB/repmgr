@@ -3586,7 +3586,7 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 		log_info(_("node \"%s\" (ID: %i) reports its upstream is node %i, last seen %i second(s) ago"),
 				 cell->node_info->node_name,
 				 cell->node_info->node_id,
-				 upstream_node_info.node_id,
+				 sibling_replication_info.upstream_node_id,
 				 sibling_replication_info.upstream_last_seen);
 
 		/*
