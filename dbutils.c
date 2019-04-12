@@ -1965,6 +1965,36 @@ repmgrd_get_upstream_node_id(PGconn *conn)
 	return upstream_node_id;
 }
 
+
+bool
+repmgrd_set_upstream_node_id(PGconn *conn, int node_id)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool		success = true;
+
+	initPQExpBuffer(&query);
+	appendPQExpBuffer(&query,
+					  " SELECT repmgr.set_upstream_node_id(%i) ",
+					  node_id);
+
+	log_verbose(LOG_DEBUG, "repmgrd_set_upstream_node_id():\n  %s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data,
+					 _("repmgrd_set_upstream_node_id(): unable to set upstream node ID (provided value: %i)"), node_id);
+		success = false;
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return success;
+}
+
 /* ================ */
 /* result functions */
 /* ================ */

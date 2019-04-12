@@ -231,6 +231,7 @@ monitor_streaming_primary(void)
 	instr_time	log_status_interval_start;
 
 	reset_node_voting_status();
+	repmgrd_set_upstream_node_id(local_conn, NO_UPSTREAM_NODE);
 
 	{
 		PQExpBufferData event_details;

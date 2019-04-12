@@ -442,6 +442,7 @@ bool		repmgrd_is_paused(PGconn *conn);
 bool		repmgrd_pause(PGconn *conn, bool pause);
 pid_t		get_wal_receiver_pid(PGconn *conn);
 int			repmgrd_get_upstream_node_id(PGconn *conn);
+bool		repmgrd_set_upstream_node_id(PGconn *conn, int node_id);
 
 /* extension functions */
 ExtensionStatus get_repmgr_extension_status(PGconn *conn, t_extension_versions *extversions);

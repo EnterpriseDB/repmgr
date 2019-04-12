@@ -119,6 +119,9 @@ PG_FUNCTION_INFO_V1(get_upstream_last_seen);
 Datum		get_upstream_node_id(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(get_upstream_node_id);
 
+Datum		set_upstream_node_id(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(set_upstream_node_id);
+
 Datum		notify_follow_primary(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(notify_follow_primary);
 
@@ -427,7 +430,6 @@ get_upstream_last_seen(PG_FUNCTION_ARGS)
 }
 
 
-
 Datum
 get_upstream_node_id(PG_FUNCTION_ARGS)
 {
@@ -441,6 +443,36 @@ get_upstream_node_id(PG_FUNCTION_ARGS)
 	LWLockRelease(shared_state->lock);
 
 	PG_RETURN_INT32(upstream_node_id);
+}
+
+Datum
+set_upstream_node_id(PG_FUNCTION_ARGS)
+{
+	int			upstream_node_id = UNKNOWN_NODE_ID;
+	int			local_node_id = UNKNOWN_NODE_ID;
+
+	if (!shared_state)
+		PG_RETURN_NULL();
+
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	upstream_node_id = PG_GETARG_INT32(0);
+
+	LWLockAcquire(shared_state->lock, LW_SHARED);
+	local_node_id = shared_state->local_node_id;
+	LWLockRelease(shared_state->lock);
+
+	if (local_node_id == upstream_node_id)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 (errmsg("upstream node id cannot be the same as the local node id"))));
+
+	LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
+	shared_state->upstream_node_id = upstream_node_id;
+	LWLockRelease(shared_state->lock);
+
+	PG_RETURN_VOID();
 }
 
 
