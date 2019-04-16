@@ -1725,12 +1725,13 @@ do_standby_register(void)
 
 	if (record_created == false)
 	{
-		appendPQExpBufferStr(&details,
-							 "standby registration failed");
+		appendPQExpBuffer(&details,
+						  _("standby registration failed; provided upstream node ID was %i"),
+						  node_record.upstream_node_id);
 
 		if (runtime_options.force == true)
 			appendPQExpBufferStr(&details,
-								 " (-F/--force option was used)");
+								 _(" (-F/--force option was used)"));
 
 		create_event_notification_extended(
 			primary_conn,
@@ -1750,12 +1751,13 @@ do_standby_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	appendPQExpBufferStr(&details,
-						 "standby registration succeeded");
+	appendPQExpBuffer(&details,
+					  _("standby registration succeeded; upstream node ID is %i"),
+					  node_record.upstream_node_id);
 
 	if (runtime_options.force == true)
 		appendPQExpBufferStr(&details,
-							 " (-F/--force option was used)");
+							 _(" (-F/--force option was used)"));
 
 
 	/* Log the event */
