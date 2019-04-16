@@ -1248,7 +1248,7 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 	}
 
 	/* conninfo */
-	if (strncmp(orig_options->conninfo, new_options.conninfo, MAXLEN) != 0)
+	if (strncmp(orig_options->conninfo, new_options.conninfo, sizeof(orig_options->conninfo)) != 0)
 	{
 		/* Test conninfo string works */
 		conn = establish_db_connection(new_options.conninfo, false);
@@ -1258,11 +1258,14 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		}
 		else
 		{
-			strncpy(orig_options->conninfo, new_options.conninfo, MAXLEN);
+			snprintf(orig_options->conninfo, sizeof(orig_options->conninfo),
+					 "%s", new_options.conninfo);
 			log_info(_("\"conninfo\" is now \"%s\""), new_options.conninfo);
 		}
 
 		PQfinish(conn);
+
+		config_changed = true;
 	}
 
 	/* degraded_monitoring_timeout */
@@ -1275,18 +1278,20 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 	}
 
 	/* event_notification_command */
-	if (strncmp(orig_options->event_notification_command, new_options.event_notification_command, MAXLEN) != 0)
+	if (strncmp(orig_options->event_notification_command, new_options.event_notification_command, sizeof(orig_options->event_notification_command)) != 0)
 	{
-		strncpy(orig_options->event_notification_command, new_options.event_notification_command, MAXLEN);
+		snprintf(orig_options->event_notification_command, sizeof(orig_options->event_notification_command),
+				 "%s", new_options.event_notification_command);
 		log_info(_("\"event_notification_command\" is now \"%s\""), new_options.event_notification_command);
 
 		config_changed = true;
 	}
 
 	/* event_notifications */
-	if (strncmp(orig_options->event_notifications_orig, new_options.event_notifications_orig, MAXLEN) != 0)
+	if (strncmp(orig_options->event_notifications_orig, new_options.event_notifications_orig, sizeof(orig_options->event_notifications_orig)) != 0)
 	{
-		strncpy(orig_options->event_notifications_orig, new_options.event_notifications_orig, MAXLEN);
+		snprintf(orig_options->event_notifications_orig, sizeof(orig_options->event_notifications_orig),
+				 "%s", new_options.event_notifications_orig);
 		log_info(_("\"event_notifications\" is now \"%s\""), new_options.event_notifications_orig);
 
 		clear_event_notification_list(orig_options);
@@ -1304,9 +1309,10 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 	}
 
 	/* follow_command */
-	if (strncmp(orig_options->follow_command, new_options.follow_command, MAXLEN) != 0)
+	if (strncmp(orig_options->follow_command, new_options.follow_command, sizeof(orig_options->follow_command)) != 0)
 	{
-		strncpy(orig_options->follow_command, new_options.follow_command, MAXLEN);
+		snprintf(orig_options->follow_command, sizeof(orig_options->follow_command),
+				 "%s", new_options.follow_command);
 		log_info(_("\"follow_command\" is now \"%s\""), new_options.follow_command);
 
 		config_changed = true;
@@ -1340,9 +1346,10 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 	}
 
 	/* promote_command */
-	if (strncmp(orig_options->promote_command, new_options.promote_command, MAXLEN) != 0)
+	if (strncmp(orig_options->promote_command, new_options.promote_command, sizeof(orig_options->promote_command)) != 0)
 	{
-		strncpy(orig_options->promote_command, new_options.promote_command, MAXLEN);
+		snprintf(orig_options->promote_command, sizeof(orig_options->promote_command),
+				 "%s", new_options.promote_command);
 		log_info(_("\"promote_command\" is now \"%s\""), new_options.promote_command);
 
 		config_changed = true;
@@ -1421,9 +1428,10 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 	}
 
 	/* failover_validation_command */
-	if (strncmp(orig_options->failover_validation_command, new_options.failover_validation_command, MAXPGPATH) != 0)
+	if (strncmp(orig_options->failover_validation_command, new_options.failover_validation_command, sizeof(orig_options->failover_validation_command)) != 0)
 	{
-		strncpy(orig_options->failover_validation_command, new_options.failover_validation_command, MAXPGPATH);
+		snprintf(orig_options->failover_validation_command, sizeof(orig_options->failover_validation_command),
+				 "%s", new_options.failover_validation_command);
 		log_info(_("\"failover_validation_command\" is now \"%s\""), new_options.failover_validation_command);
 
 		config_changed = true;
@@ -1434,18 +1442,20 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 	 */
 
 	/* log_facility */
-	if (strncmp(orig_options->log_facility, new_options.log_facility, MAXLEN) != 0)
+	if (strncmp(orig_options->log_facility, new_options.log_facility, sizeof(orig_options->log_facility)) != 0)
 	{
-		strncpy(orig_options->log_facility, new_options.log_facility, MAXLEN);
+		snprintf(orig_options->log_facility, sizeof(orig_options->log_facility),
+				 "%s", new_options.log_facility);
 		log_info(_("\"log_facility\" is now \"%s\""), new_options.log_facility);
 
 		log_config_changed = true;
 	}
 
 	/* log_file */
-	if (strncmp(orig_options->log_file, new_options.log_file, MAXLEN) != 0)
+	if (strncmp(orig_options->log_file, new_options.log_file, sizeof(orig_options->log_file)) != 0)
 	{
-		strncpy(orig_options->log_file, new_options.log_file, MAXLEN);
+		snprintf(orig_options->log_file, sizeof(orig_options->log_file),
+				 "%s", new_options.log_file);
 		log_info(_("\"log_file\" is now \"%s\""), new_options.log_file);
 
 		log_config_changed = true;
@@ -1453,9 +1463,10 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 
 
 	/* log_level */
-	if (strncmp(orig_options->log_level, new_options.log_level, MAXLEN) != 0)
+	if (strncmp(orig_options->log_level, new_options.log_level, sizeof(orig_options->log_level)) != 0)
 	{
-		strncpy(orig_options->log_level, new_options.log_level, MAXLEN);
+		snprintf(orig_options->log_level, sizeof(orig_options->log_level),
+				 "%s", new_options.log_level);
 		log_info(_("\"log_level\" is now \"%s\""), new_options.log_level);
 
 		log_config_changed = true;

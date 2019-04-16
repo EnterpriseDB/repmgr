@@ -88,7 +88,7 @@ typedef struct
 	/* log settings */
 	char		log_level[MAXLEN];
 	char		log_facility[MAXLEN];
-	char		log_file[MAXLEN];
+	char		log_file[MAXPGPATH];
 	int			log_status_interval;
 
 	/* standby clone settings */
