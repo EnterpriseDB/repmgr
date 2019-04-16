@@ -89,7 +89,6 @@ static void update_monitoring_history(void);
 static void handle_sighup(PGconn **conn, t_server_type server_type);
 
 static const char *format_failover_state(FailoverState failover_state);
-static const char * format_failover_state(FailoverState failover_state);
 static ElectionResult execute_failover_validation_command(t_node_info *node_info);
 static void parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out);
 static bool check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info);
