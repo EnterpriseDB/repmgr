@@ -70,8 +70,8 @@
       documentation section <link linkend="upgrading-major-version">Upgrading a major version release</link>.
     </para>
     <para>
-      As a PostgreSQL restart <emphasis>is</emphasis> required, we
-      suggest combining this &repmgr; upgrade with the next PostgreSQL
+      If <application>repmgrd</application> is in use, a PostgreSQL restart <emphasis>is</emphasis> required;
+      in that case we suggest combining this &repmgr; upgrade with the next PostgreSQL
       minor release, which will require a PostgreSQL restart in any case.
     </para>
 
