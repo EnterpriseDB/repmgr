@@ -333,6 +333,72 @@ typedef struct ControlFileData11
 } ControlFileData11;
 
 
+/*
+ * Following field added in Pg12:
+ *
+ *   int max_wal_senders;
+ *
+ * Following fields removed:
+ *
+ *   uint32 nextXidEpoch;
+ *   TransactionId nextXid;
+ *
+ * and replaced by:
+ *
+ *   FullTransactionId nextFullXid;
+ */
+
+typedef struct ControlFileData12
+{
+	uint64		system_identifier;
+
+	uint32		pg_control_version; /* PG_CONTROL_VERSION */
+	uint32		catalog_version_no; /* see catversion.h */
+
+	DBState		state;			/* see enum above */
+	pg_time_t	time;			/* time stamp of last pg_control update */
+	XLogRecPtr	checkPoint;		/* last check point record ptr */
+
+	CheckPoint	checkPointCopy; /* copy of last check point record */
+
+	XLogRecPtr	unloggedLSN;	/* current fake LSN value, for unlogged rels */
+
+	XLogRecPtr	minRecoveryPoint;
+	TimeLineID	minRecoveryPointTLI;
+	XLogRecPtr	backupStartPoint;
+	XLogRecPtr	backupEndPoint;
+	bool		backupEndRequired;
+
+	int			wal_level;
+	bool		wal_log_hints;
+	int			MaxConnections;
+	int			max_worker_processes;
+	int			max_wal_senders;
+	int			max_prepared_xacts;
+	int			max_locks_per_xact;
+	bool		track_commit_timestamp;
+
+	uint32		maxAlign;		/* alignment requirement for tuples */
+	double		floatFormat;	/* constant 1234567.0 */
+
+	uint32		blcksz;			/* data block size for this DB */
+	uint32		relseg_size;	/* blocks per segment of large relation */
+
+	uint32		xlog_blcksz;	/* block size within WAL files */
+	uint32		xlog_seg_size;	/* size of each WAL segment */
+
+	uint32		nameDataLen;	/* catalog name field width */
+	uint32		indexMaxKeys;	/* max number of columns in an index */
+
+	uint32		toast_max_chunk_size;	/* chunk size in TOAST tables */
+	uint32		loblksize;		/* chunk size in pg_largeobject */
+
+	bool		float4ByVal;	/* float4 pass-by-value? */
+	bool		float8ByVal;	/* float8, int8, etc pass-by-value? */
+
+	uint32		data_checksum_version;
+} ControlFileData12;
+
 extern int get_pg_version(const char *data_directory, char *version_string);
 extern DBState get_db_state(const char *data_directory);
 extern const char *describe_db_state(DBState state);
