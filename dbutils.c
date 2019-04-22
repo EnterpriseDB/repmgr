@@ -1575,6 +1575,7 @@ identify_system(PGconn *repl_conn, t_system_identification *identification)
 	return true;
 }
 
+
 TimeLineHistoryEntry *
 get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 {
@@ -1671,6 +1672,46 @@ get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 	return history;
 }
 
+
+bool
+get_child_nodes(PGconn *conn, int node_id, NodeInfoList *node_list)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool		success = true;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
+					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, "
+					  "           '' AS upstream_node_name, "
+					  "           CASE WHEN sr.application_name IS NULL THEN FALSE ELSE TRUE END AS attached "
+					  "      FROM repmgr.nodes n "
+					  " LEFT JOIN pg_catalog.pg_stat_replication sr "
+					  "        ON sr.application_name = n.node_name "
+					  "     WHERE n.upstream_node_id = %i ",
+					  node_id);
+
+		log_verbose(LOG_DEBUG, "get_active_sibling_node_records():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("get_active_sibling_records(): unable to execute query"));
+		success = false;
+	}
+
+	termPQExpBuffer(&query);
+
+	/* this will return an empty list if there was an error executing the query */
+	_populate_node_records(res, node_list);
+
+	PQclear(res);
+
+	return success;
+}
 
 /* =============================== */
 /* repmgrd shared memory functions */
@@ -2273,8 +2314,17 @@ _populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_
 	node_info->active = atobool(PQgetvalue(res, row, 9));
 	snprintf(node_info->config_file, sizeof(node_info->config_file), "%s", PQgetvalue(res, row, 10));
 
-	/* This won't normally be set */
+	/* These are only set by certain queries */
 	snprintf(node_info->upstream_node_name, sizeof(node_info->upstream_node_name), "%s", PQgetvalue(res, row, 11));
+
+	if (PQgetisnull(res, row, 12))
+	{
+		node_info->attached = NODE_ATTACHED_UNKNOWN;
+	}
+	else
+	{
+		node_info->attached = atobool(PQgetvalue(res, row, 12)) ? NODE_ATTACHED : NODE_DETACHED;
+	}
 
 	/* Set remaining struct fields with default values */
 
@@ -2398,7 +2448,7 @@ get_node_record_with_upstream(PGconn *conn, int node_id, t_node_info *node_info)
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
 					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
-					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name "
+					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name, NULL AS attached "
 					  "      FROM repmgr.nodes n "
 					  " LEFT JOIN repmgr.nodes un "
 					  "        ON un.node_id = n.upstream_node_id"
@@ -2698,7 +2748,7 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 
 	appendPQExpBufferStr(&query,
 						 "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
-						 "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name "
+						 "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name, NULL AS attached "
 						 "      FROM repmgr.nodes n "
 						 " LEFT JOIN repmgr.nodes un "
 						 "        ON un.node_id = n.upstream_node_id"

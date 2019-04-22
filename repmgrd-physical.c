@@ -53,6 +53,28 @@ typedef enum
 } ElectionResult;
 
 
+typedef struct t_child_node_info
+{
+	int node_id;
+	char node_name[NAMEDATALEN];
+	NodeAttached attached;
+	instr_time detached_time;
+	struct t_child_node_info *next;
+} t_child_node_info;
+
+typedef struct t_child_node_info_list
+{
+	t_child_node_info *head;
+	t_child_node_info *tail;
+	int			node_count;
+} t_child_node_info_list;
+
+#define T_CHILD_NODE_INFO_LIST_INITIALIZER { \
+	NULL, \
+	NULL, \
+	0 \
+}
+
 static PGconn *upstream_conn = NULL;
 static PGconn *primary_conn = NULL;
 
@@ -63,6 +85,7 @@ static t_node_info upstream_node_info = T_NODE_INFO_INITIALIZER;
 
 static instr_time last_monitoring_update;
 
+static bool child_nodes_disconnect_command_executed = false;
 
 static ElectionResult do_election(NodeInfoList *sibling_nodes, int *new_primary_id);
 static const char *_print_election_result(ElectionResult result);
@@ -73,6 +96,7 @@ static void notify_followers(NodeInfoList *standby_nodes, int follow_node_id);
 static void check_connection(t_node_info *node_info, PGconn **conn);
 
 static bool check_primary_status(int degraded_monitoring_elapsed);
+static void check_primary_child_nodes(t_child_node_info_list *local_child_nodes);
 
 static bool wait_primary_notification(int *new_primary_id);
 static FailoverState follow_new_primary(int new_primary_id);
@@ -93,6 +117,10 @@ static ElectionResult execute_failover_validation_command(t_node_info *node_info
 static void parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out);
 static bool check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info);
 
+static t_child_node_info *append_child_node_record(t_child_node_info_list *nodes, int node_id, const char *node_name, NodeAttached attached);
+static void remove_child_node_record(t_child_node_info_list *nodes, int node_id);
+static void clear_child_node_info_list(t_child_node_info_list *nodes);
+static void parse_child_nodes_disconnect_command(char *parsed_command, char *template, int reporting_node_id);
 
 void
 handle_sigint_physical(SIGNAL_ARGS)
@@ -228,6 +256,8 @@ void
 monitor_streaming_primary(void)
 {
 	instr_time	log_status_interval_start;
+	instr_time	child_nodes_check_interval_start;
+	t_child_node_info_list local_child_nodes = T_CHILD_NODE_INFO_LIST_INITIALIZER;
 
 	reset_node_voting_status();
 	repmgrd_set_upstream_node_id(local_conn, NO_UPSTREAM_NODE);
@@ -269,7 +299,54 @@ monitor_streaming_primary(void)
 	}
 
 	INSTR_TIME_SET_CURRENT(log_status_interval_start);
+	INSTR_TIME_SET_CURRENT(child_nodes_check_interval_start);
 	local_node_info.node_status = NODE_STATUS_UP;
+
+	/*
+	 * get list of expected and attached nodes
+	 */
+
+	{
+		NodeInfoList db_child_node_records = T_NODE_INFO_LIST_INITIALIZER;
+		bool success = get_child_nodes(local_conn, config_file_options.node_id, &db_child_node_records);
+
+		if (!success)
+		{
+			log_error(_("unable to retrieve list of child nodes"));
+		}
+		else
+		{
+			NodeInfoListCell *cell;
+
+			for (cell = db_child_node_records.head; cell; cell = cell->next)
+			{
+				/*
+				 * At startup, if a node for which a repmgr record exists, is not found
+				 * in pg_stat_replication, we can't know whether it has become detached, or
+				 * (e.g. during a provisioning operation) is a new node which has not yet
+				 * attached. We set the status to "NODE_ATTACHED_UNKNOWN" to stop repmgrd
+				 * emitting bogus "node has become detached" alerts.
+				 */
+				(void) append_child_node_record(&local_child_nodes,
+												cell->node_info->node_id,
+												cell->node_info->node_name,
+												cell->node_info->attached == NODE_ATTACHED ? NODE_ATTACHED : NODE_ATTACHED_UNKNOWN);
+
+				if (cell->node_info->attached == NODE_ATTACHED)
+				{
+					log_info(_("child node \"%s\" (node ID: %i) is attached"),
+							 cell->node_info->node_name,
+							 cell->node_info->node_id);
+				}
+				else
+				{
+					log_info(_("child node \"%s\" (node ID: %i) is not yet attached"),
+							 cell->node_info->node_name,
+							 cell->node_info->node_id);
+				}
+			}
+		}
+	}
 
 	while (true)
 	{
@@ -431,6 +508,20 @@ monitor_streaming_primary(void)
 			 * starts up check status, switch monitoring mode
 			 */
 		}
+		else
+		{
+			if (config_file_options.child_nodes_check_interval > 0)
+			{
+				int			child_nodes_check_interval_elapsed = calculate_elapsed(child_nodes_check_interval_start);
+
+				if (child_nodes_check_interval_elapsed >= config_file_options.child_nodes_check_interval)
+				{
+					INSTR_TIME_SET_CURRENT(child_nodes_check_interval_start);
+					check_primary_child_nodes(&local_child_nodes);
+				}
+			}
+		}
+
 loop:
 
 		/* check node is still primary, if not restart monitoring */
@@ -675,6 +766,406 @@ check_primary_status(int degraded_monitoring_elapsed)
 
 	/* continue monitoring as before */
 	return true;
+}
+
+
+static void
+check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
+{
+	NodeInfoList db_child_node_records = T_NODE_INFO_LIST_INITIALIZER;
+	NodeInfoListCell *cell;
+	/* lists for newly attached and missing nodes */
+	t_child_node_info_list disconnected_child_nodes = T_CHILD_NODE_INFO_LIST_INITIALIZER;
+	t_child_node_info_list reconnected_child_nodes = T_CHILD_NODE_INFO_LIST_INITIALIZER;
+	t_child_node_info_list new_child_nodes = T_CHILD_NODE_INFO_LIST_INITIALIZER;
+
+	bool success = get_child_nodes(local_conn, config_file_options.node_id, &db_child_node_records);
+
+	if (!success)
+	{
+		/* unlikely this will happen, but if it does, we'll try again next time round */
+		log_error(_("unable to retrieve list of child nodes"));
+		return;
+	}
+
+	if (db_child_node_records.node_count == 0)
+	{
+		/* no registered child nodes - nothing to do */
+		return;
+	}
+
+	/*
+	 * compare DB records with our internal list;
+	 * this will tell us about:
+	 *  - previously known nodes and their current status
+	 *  - newly registered nodes we didn't know about
+	 *
+	 * We'll need to compare the opposite way to check for nodes
+	 * which are in the internal list, but which have now vanished
+	 */
+	for (cell = db_child_node_records.head; cell; cell = cell->next)
+	{
+		t_child_node_info *local_child_node_rec;
+		bool local_child_node_rec_found = false;
+
+		log_debug("child node: %i; attached: %s",
+				  cell->node_info->node_id,
+				  cell->node_info->attached == NODE_ATTACHED ? "yes" : "no");
+
+		for (local_child_node_rec = local_child_nodes->head; local_child_node_rec; local_child_node_rec = local_child_node_rec->next)
+		{
+			if (local_child_node_rec->node_id == cell->node_info->node_id)
+			{
+				local_child_node_rec_found = true;
+				break;
+			}
+		}
+
+		if (local_child_node_rec_found == true)
+		{
+			/* our node record shows node attached, DB record indicates detached */
+			if (local_child_node_rec->attached == NODE_ATTACHED && cell->node_info->attached == NODE_DETACHED)
+			{
+				t_child_node_info *detached_child_node;
+
+				local_child_node_rec->attached = NODE_DETACHED;
+				INSTR_TIME_SET_CURRENT(local_child_node_rec->detached_time);
+
+				detached_child_node = append_child_node_record(&disconnected_child_nodes,
+															   local_child_node_rec->node_id,
+															   local_child_node_rec->node_name,
+															   NODE_DETACHED);
+				detached_child_node->detached_time = local_child_node_rec->detached_time;
+			}
+			/* our node record shows node detached, DB record indicates attached */
+			else if (local_child_node_rec->attached == NODE_DETACHED && cell->node_info->attached == NODE_ATTACHED)
+			{
+				t_child_node_info *attached_child_node;
+
+				local_child_node_rec->attached = NODE_ATTACHED;
+
+				attached_child_node = append_child_node_record(&reconnected_child_nodes,
+															   local_child_node_rec->node_id,
+															   local_child_node_rec->node_name,
+															   NODE_ATTACHED);
+				attached_child_node->detached_time = local_child_node_rec->detached_time;
+				INSTR_TIME_SET_ZERO(local_child_node_rec->detached_time);
+			}
+			else if (local_child_node_rec->attached == NODE_ATTACHED_UNKNOWN  && cell->node_info->attached == NODE_ATTACHED)
+			{
+				local_child_node_rec->attached = NODE_ATTACHED;
+
+				append_child_node_record(&new_child_nodes,
+										 local_child_node_rec->node_id,
+										 local_child_node_rec->node_name,
+										 NODE_ATTACHED);
+			}
+		}
+		else
+		{
+			/* node we didn't know about before */
+
+			NodeAttached attached = cell->node_info->attached;
+
+			/*
+			 * node registered but not attached - set state to "UNKNOWN"
+			 * to prevent a bogus "reattach" event being generated
+			 */
+			if (attached == NODE_DETACHED)
+				attached = NODE_ATTACHED_UNKNOWN;
+
+			(void) append_child_node_record(local_child_nodes,
+											cell->node_info->node_id,
+											cell->node_info->node_name,
+											attached);
+			(void) append_child_node_record(&new_child_nodes,
+											cell->node_info->node_id,
+											cell->node_info->node_name,
+											attached);
+		}
+	}
+
+	/*
+	 * Check if any nodes in local list are no longer in list returned
+	 * from database.
+	 */
+	{
+		t_child_node_info *local_child_node_rec;
+		bool db_node_rec_found = false;
+
+		for (local_child_node_rec = local_child_nodes->head; local_child_node_rec; local_child_node_rec = local_child_node_rec->next)
+		{
+			for (cell = db_child_node_records.head; cell; cell = cell->next)
+			{
+				if (cell->node_info->node_id == local_child_node_rec->node_id)
+				{
+					db_node_rec_found = true;
+					break;
+				}
+			}
+
+			if (db_node_rec_found == false)
+			{
+				log_notice(_("child node \"%s\" (node id %i) is no longer connected or registered"),
+						   local_child_node_rec->node_name,
+						   local_child_node_rec->node_id);
+				remove_child_node_record(local_child_nodes, local_child_node_rec->node_id);
+			}
+		}
+	}
+
+	/* generate "child_node_disconnect" events */
+	if (disconnected_child_nodes.node_count > 0)
+	{
+		t_child_node_info *child_node_rec;
+		for (child_node_rec = disconnected_child_nodes.head; child_node_rec; child_node_rec = child_node_rec->next)
+		{
+			PQExpBufferData event_details;
+			initPQExpBuffer(&event_details);
+			appendPQExpBuffer(&event_details,
+							  _("node \"%s\" (node ID: %i) has disconnected"),
+							  child_node_rec->node_name,
+							  child_node_rec->node_id);
+			log_notice("%s",  event_details.data);
+
+			create_event_notification(local_conn,
+									  &config_file_options,
+									  local_node_info.node_id,
+									  "child_node_disconnect",
+									  true,
+									  event_details.data);
+
+			termPQExpBuffer(&event_details);
+		}
+	}
+
+	/* generate "child_node_reconnect" events */
+	if (reconnected_child_nodes.node_count > 0)
+	{
+		t_child_node_info *child_node_rec;
+		for (child_node_rec = reconnected_child_nodes.head; child_node_rec; child_node_rec = child_node_rec->next)
+		{
+			PQExpBufferData event_details;
+			initPQExpBuffer(&event_details);
+			appendPQExpBuffer(&event_details,
+							  _("node \"%s\" (node ID: %i) has reconnected after %i seconds"),
+							  child_node_rec->node_name,
+							  child_node_rec->node_id,
+							  calculate_elapsed( child_node_rec->detached_time ));
+			log_notice("%s",  event_details.data);
+
+			create_event_notification(local_conn,
+									  &config_file_options,
+									  local_node_info.node_id,
+									  "child_node_reconnect",
+									  true,
+									  event_details.data);
+
+			termPQExpBuffer(&event_details);
+		}
+	}
+
+	/* generate "child_node_new_connect" events */
+	if (new_child_nodes.node_count > 0)
+	{
+		t_child_node_info *child_node_rec;
+		for (child_node_rec = new_child_nodes.head; child_node_rec; child_node_rec = child_node_rec->next)
+		{
+			PQExpBufferData event_details;
+			initPQExpBuffer(&event_details);
+			appendPQExpBuffer(&event_details,
+							  _("new node \"%s\" (node ID: %i) has connected"),
+							  child_node_rec->node_name,
+							  child_node_rec->node_id);
+			log_notice("%s",  event_details.data);
+
+			create_event_notification(local_conn,
+									  &config_file_options,
+									  local_node_info.node_id,
+									  "child_node_new_connect",
+									  true,
+									  event_details.data);
+
+			termPQExpBuffer(&event_details);
+		}
+	}
+
+
+	if (config_file_options.child_nodes_disconnect_command[0] != '\0')
+	{
+		/*
+		 * script will only be executed if the number of attached
+		 * standbys is lower than this number
+		 */
+		int min_required_connected_count = 1;
+		int connected_count = 0;
+
+		/*
+		 * Calculate hi
+		 */
+
+		if (config_file_options.child_nodes_connected_min_count > 0)
+		{
+			min_required_connected_count = config_file_options.child_nodes_connected_min_count;
+		}
+		else if (config_file_options.child_nodes_disconnect_min_count > 0)
+		{
+			min_required_connected_count =
+				(db_child_node_records.node_count - config_file_options.child_nodes_disconnect_min_count)
+				+ 1;
+		}
+
+		/* calculate number of connected child nodes */
+		for (cell = db_child_node_records.head; cell; cell = cell->next)
+		{
+			if (cell->node_info->attached == NODE_ATTACHED)
+				connected_count ++;
+		}
+
+		log_debug("connected: %i; min required: %i",
+				  connected_count,
+				  min_required_connected_count);
+
+		if (connected_count < min_required_connected_count)
+		{
+			log_notice(_("%i (of %i) child nodes are connected, but at least %i child nodes required"),
+					   connected_count,
+					   db_child_node_records.node_count,
+					   min_required_connected_count);
+
+			if (child_nodes_disconnect_command_executed == false)
+			{
+				t_child_node_info *child_node_rec;
+
+				/* set these for informative purposes */
+				int most_recently_disconnected_node_id = UNKNOWN_NODE_ID;
+				int most_recently_disconnected_elapsed = -1;
+
+				bool most_recent_disconnect_below_threshold = false;
+				instr_time  current_time_base;
+
+				INSTR_TIME_SET_CURRENT(current_time_base);
+
+				for (child_node_rec = local_child_nodes->head; child_node_rec; child_node_rec = child_node_rec->next)
+				{
+					instr_time  current_time = current_time_base;
+					int seconds_since_detached;
+
+					if (child_node_rec->attached != NODE_DETACHED)
+						continue;
+
+					INSTR_TIME_SUBTRACT(current_time, child_node_rec->detached_time);
+					seconds_since_detached = (int) INSTR_TIME_GET_DOUBLE(current_time);
+
+					if (seconds_since_detached < config_file_options.child_nodes_disconnect_timeout)
+					{
+						most_recent_disconnect_below_threshold = true;
+					}
+
+					if (most_recently_disconnected_node_id == UNKNOWN_NODE_ID)
+					{
+						most_recently_disconnected_node_id = child_node_rec->node_id;
+						most_recently_disconnected_elapsed = seconds_since_detached;
+					}
+					else if (seconds_since_detached < most_recently_disconnected_elapsed)
+					{
+						most_recently_disconnected_node_id = child_node_rec->node_id;
+						most_recently_disconnected_elapsed = seconds_since_detached;
+					}
+				}
+
+
+				if (most_recent_disconnect_below_threshold == false && most_recently_disconnected_node_id != UNKNOWN_NODE_ID)
+				{
+					char parsed_child_nodes_disconnect_command[MAXPGPATH];
+					int child_nodes_disconnect_command_result;
+					PQExpBufferData event_details;
+					bool success = true;
+
+					parse_child_nodes_disconnect_command(parsed_child_nodes_disconnect_command,
+														 config_file_options.child_nodes_disconnect_command,
+														 local_node_info.node_id);
+
+					log_info(_("most recently detached child node was %i (ca. %i seconds ago), triggering \"child_nodes_disconnect_command\""),
+							 most_recently_disconnected_node_id,
+							 most_recently_disconnected_elapsed);
+
+					log_info(_("\"child_nodes_disconnect_command\" is:\n  \"%s\""),
+							 parsed_child_nodes_disconnect_command);
+
+					child_nodes_disconnect_command_result = system(parsed_child_nodes_disconnect_command);
+
+					initPQExpBuffer(&event_details);
+
+					if (child_nodes_disconnect_command_result != 0)
+					{
+						success = false;
+
+						appendPQExpBufferStr(&event_details,
+											 _("unable to execute \"child_nodes_disconnect_command\""));
+
+						log_error("%s", event_details.data);
+					}
+					else
+					{
+						appendPQExpBufferStr(&event_details,
+										  _("\"child_nodes_disconnect_command\" successfully executed"));
+
+						log_info("%s", event_details.data);
+					}
+
+					create_event_notification(local_conn,
+											  &config_file_options,
+											  local_node_info.node_id,
+											  "child_nodes_disconnect_command",
+											  success,
+											  event_details.data);
+
+					termPQExpBuffer(&event_details);
+
+					child_nodes_disconnect_command_executed = true;
+				}
+				else if (most_recently_disconnected_node_id != UNKNOWN_NODE_ID)
+				{
+					log_info(_("most recently detached child node was %i (ca. %i seconds ago), not triggering \"child_nodes_disconnect_command\""),
+							 most_recently_disconnected_node_id,
+							 most_recently_disconnected_elapsed);
+					log_detail(_("\"child_nodes_disconnect_timeout\" set to %i seconds"),
+							   config_file_options.child_nodes_disconnect_timeout);
+				}
+				else
+				{
+					log_info(_("no child nodes have detached since repmgrd startup"));
+				}
+			}
+			else
+			{
+				log_info(_("\"child_nodes_disconnect_command\" was previously executed, taking no action"));
+			}
+		}
+		else
+		{
+			/*
+			 * "child_nodes_disconnect_command" was executed, but for whatever reason
+			 * enough child nodes have returned to clear the threshold; in that case reset
+			 * the executed flag so we can execute the command again, if necessary
+			 */
+			if (child_nodes_disconnect_command_executed == true)
+			{
+				log_notice(_("%i (of %i) child nodes are now connected, meeting minimum requirement of %i child nodes"),
+						   connected_count,
+						   db_child_node_records.node_count,
+						   min_required_connected_count);
+				child_nodes_disconnect_command_executed = false;
+			}
+		}
+	}
+
+	clear_child_node_info_list(&disconnected_child_nodes);
+	clear_child_node_info_list(&reconnected_child_nodes);
+	clear_child_node_info_list(&new_child_nodes);
+
+	clear_node_info_list(&db_child_node_records);
 }
 
 
@@ -4356,4 +4847,135 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 
 
 	return can_follow;
+}
+
+
+static t_child_node_info *
+append_child_node_record(t_child_node_info_list *nodes, int node_id, const char *node_name, NodeAttached attached)
+{
+	t_child_node_info *child_node = pg_malloc0(sizeof(t_child_node_info));
+
+	child_node->node_id = node_id;
+	snprintf(child_node->node_name, sizeof(child_node->node_name), "%s", node_name);
+	child_node->attached = attached;
+
+	if (nodes->tail)
+		nodes->tail->next = child_node;
+	else
+		nodes->head = child_node;
+
+	nodes->tail = child_node;
+	nodes->node_count++;
+
+	return child_node;
+}
+
+
+static void
+remove_child_node_record(t_child_node_info_list *nodes, int node_id)
+{
+	t_child_node_info *node;
+	t_child_node_info *prev_node = NULL;
+	t_child_node_info *next_node = NULL;
+
+	node = nodes->head;
+
+	while (node != NULL)
+	{
+		next_node = node->next;
+
+		log_debug("ZZZ node: %i", node->node_id);
+
+		if (node->node_id == node_id)
+		{
+			/* first node */
+			if (node == nodes->head)
+			{
+				nodes->head = next_node;
+			}
+			/* last node */
+			else if (next_node == NULL)
+			{
+				prev_node->next = NULL;
+			}
+			else
+			{
+				prev_node->next = next_node;
+			}
+			pfree(node);
+			nodes->node_count--;
+			return;
+		}
+		else
+		{
+			prev_node = node;
+		}
+		node = next_node;
+	}
+}
+
+static void
+clear_child_node_info_list(t_child_node_info_list *nodes)
+{
+	t_child_node_info *node;
+	t_child_node_info *next_node;
+
+	node = nodes->head;
+
+	while (node != NULL)
+	{
+		next_node = node->next;
+		pfree(node);
+		node = next_node;
+	}
+
+	nodes->head = NULL;
+	nodes->tail = NULL;
+	nodes->node_count = 0;
+}
+
+
+static void
+parse_child_nodes_disconnect_command(char *parsed_command, char *template, int reporting_node_id)
+{
+	const char *src_ptr = NULL;
+	char	   *dst_ptr = NULL;
+	char	   *end_ptr = NULL;
+
+	dst_ptr = parsed_command;
+	end_ptr = (parsed_command + MAXPGPATH) - 1;
+	*end_ptr = '\0';
+
+	for (src_ptr = template; *src_ptr; src_ptr++)
+	{
+		if (*src_ptr == '%')
+		{
+			switch (src_ptr[1])
+			{
+				case '%':
+					/* %%: replace with % */
+					if (dst_ptr < end_ptr)
+					{
+						src_ptr++;
+						*dst_ptr++ = *src_ptr;
+					}
+					break;
+				case 'p':
+					/* %p: node id of the reporting primary */
+					src_ptr++;
+					snprintf(dst_ptr, end_ptr - dst_ptr, "%i", reporting_node_id);
+					dst_ptr += strlen(dst_ptr);
+					break;
+			}
+		}
+		else
+		{
+			if (dst_ptr < end_ptr)
+				*dst_ptr++ = *src_ptr;
+		}
+	}
+
+	*dst_ptr = '\0';
+
+	return;
 }

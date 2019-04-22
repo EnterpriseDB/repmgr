@@ -165,6 +165,111 @@
 
 </sect1>
 
+<sect1 id="repmgrd-primary-standby-disconnection" xreflabel="Monitoring standby disconnections on the primary">
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>standby disconnection</secondary>
+  </indexterm>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>child node disconnection</secondary>
+  </indexterm>
+
+  <title>Monitoring standby disconnections on the primary node</title>
+
+  <note>
+    <para>
+      This functionality is available in <link linkend="release-4.4">&repmgr 4.4</link> and later.
+    </para>
+  </note>
+  <para>
+    When running on the primary node, <application>repmgrd</application> can
+    monitor connections and in particular disconnections by its attached
+    child nodes (standbys), and optionally execute a custom command
+    if certain criteria are met (such as the number of attached nodes falling to
+    zero following a failover to a new primary); this command can be used for
+    example to &quot;fence&quot; the node and ensure it is isolated from any
+    applications attempting to access the replication cluster.
+  </para>
+  <para>
+    <itemizedlist>
+
+      <listitem>
+        <para>
+          Every few seconds (defined by the configuration parameter <varname>child_nodes_check_interval</varname>
+          (a value of <literal>0</literal> disables this altogether), <application>repmgrd</application> queries
+          the <literal>pg_stat_replication</literal> system view and compares
+          the nodes present there against the list of nodes registered with &repmgr; which
+          should be attached to the primary.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          If a child node (standby) is no longer present in <literal>pg_stat_replication</literal>,
+          <application>repmgrd</application> notes the time it detected the node's absence, and additionally generates a
+          <literal>child_node_disconnect</literal> event.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          If a chile node (standby) which was absent from <literal>pg_stat_replication</literal> reappears,
+          <application>repmgrd</application> clears the time it detected the node's absence, and additionally generates a
+          <literal>child_node_reconnect</literal> event.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          If an entirely new child node (standby) is detected, <application>repmgrd</application> adds it to its internal list
+          and additionally generates a <literal>child_node_new_connect</literal> event.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          If the <varname>child_nodes_disconnect_command</varname> parameter is set in
+          <filename>repmgr.conf</filename>, <application>repmgrd</application> will then loop through all child nodes.
+          If it determines that insufficient child nodes are connected, and a
+          minimum of <varname>child_nodes_disconnect_timeout</varname> seconds (default: <literal>30</literal>
+          has elapsed since  the last node became  disconnected, <application>repmgrd</application> will then execute the
+          <varname>child_nodes_disconnect_command</varname> script.
+        </para>
+        <para>
+          By default, the <varname>child_nodes_disconnect_command</varname> will only be executed
+          if all child nodes are disconnected. If <varname>child_nodes_connected_min_count</varname>
+          is set, the <varname>child_nodes_disconnect_command</varname> script will be triggered
+          if the number of connected child nodes falls below the specified value (e.g.
+          if set to <literal>2</literal>, the script will be triggered if only one child node
+          is connected). Alternatively, if <varname>child_nodes_disconnect_min_count</varname>
+          and more than that number of child nodes disconnects, the script will be triggered.
+        </para>
+        <para>
+          The <varname>child_nodes_disconnect_command</varname> script will only be executed once
+          while the criteria for its execution are met. If the criteria for its execution are no longer
+          met (i.e. some child nodes have reconnected), it will be executed again if
+          the criteria for its execution are met again.
+        </para>
+        <para>
+          The <varname>child_nodes_disconnect_command</varname> script will not be executed if <application>repmgrd</application> is paused.
+        </para>
+      </listitem>
+
+      <listitem>
+        <para>
+          Note that child nodes which are not attached when <application>repmgrd</application>
+          starts will <emphasis>not</emphasis> be considered as missing, as <application>repmgrd</application>
+          cannot know why they are not attached.
+        </para>
+      </listitem>
+
+    </itemizedlist>
+  </para>
+
+</sect1>
+
 <sect1 id="repmgrd-standby-disconnection-on-failover" xreflabel="Standby disconnection on failover">
   <indexterm>
    <primary>repmgrd</primary>

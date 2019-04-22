@@ -364,6 +364,11 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->primary_visibility_consensus = false;
 	memset(options->failover_validation_command, 0, sizeof(options->failover_validation_command));
 	options->election_rerun_interval = DEFAULT_ELECTION_RERUN_INTERVAL;
+	options->child_nodes_check_interval = DEFAULT_CHILD_NODES_CHECK_INTERVAL;
+	memset(options->child_nodes_disconnect_command, 0, sizeof(options->child_nodes_disconnect_command));
+	options->child_nodes_disconnect_min_count = DEFAULT_CHILD_NODES_DISCONNECT_MIN_COUNT;
+	options->child_nodes_connected_min_count = DEFAULT_CHILD_NODES_CONNECTED_MIN_COUNT;
+	options->child_nodes_disconnect_timeout = DEFAULT_CHILD_NODES_DISCONNECT_TIMEOUT;
 
 	/*-------------
 	 * witness settings
@@ -662,6 +667,16 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			strncpy(options->failover_validation_command, value, sizeof(options->failover_validation_command));
 		else if (strcmp(name, "election_rerun_interval") == 0)
 			options->election_rerun_interval = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "child_nodes_check_interval") == 0)
+			options->child_nodes_check_interval = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "child_nodes_disconnect_command") == 0)
+			snprintf(options->child_nodes_disconnect_command, sizeof(options->child_nodes_disconnect_command), "%s", value);
+		else if (strcmp(name, "child_nodes_disconnect_min_count") == 0)
+			options->child_nodes_disconnect_min_count = repmgr_atoi(value, name, error_list, -1);
+		else if (strcmp(name, "child_nodes_connected_min_count") == 0)
+			options->child_nodes_connected_min_count = repmgr_atoi(value, name, error_list, -1);
+		else if (strcmp(name, "child_nodes_disconnect_timeout") == 0)
+			options->child_nodes_disconnect_timeout = repmgr_atoi(value, name, error_list, 0);
 
 		/* witness settings */
 		else if (strcmp(name, "witness_sync_interval") == 0)
@@ -1100,6 +1115,11 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * - async_query_timeout
  * - bdr_local_monitoring_only
  * - bdr_recovery_timeout
+ * - child_nodes_check_interval
+ * - child_nodes_connected_min_count
+ * - child_nodes_disconnect_command
+ * - child_nodes_disconnect_min_count
+ * - child_nodes_disconnect_timeout
  * - connection_check_type
  * - conninfo
  * - degraded_monitoring_timeout
@@ -1245,6 +1265,84 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		log_info(_("\"bdr_recovery_timeout\" is now \"%i\""), new_options.bdr_recovery_timeout);
 
 		config_changed = true;
+	}
+
+	/* child_nodes_check_interval */
+	if (orig_options->child_nodes_check_interval != new_options.child_nodes_check_interval)
+	{
+		if (new_options.child_nodes_check_interval < 0)
+		{
+			log_error(_("\"child_nodes_check_interval\" must be \"0\" or greater; provided: \"%i\""),
+					  new_options.child_nodes_check_interval);
+		}
+		else
+		{
+			orig_options->child_nodes_check_interval = new_options.child_nodes_check_interval;
+			log_info(_("\"child_nodes_check_interval\" is now \"%i\""), new_options.child_nodes_check_interval);
+
+			config_changed = true;
+		}
+	}
+
+	/* child_nodes_disconnect_command */
+	if (strncmp(orig_options->child_nodes_disconnect_command, new_options.child_nodes_disconnect_command, sizeof(orig_options->child_nodes_disconnect_command)) != 0)
+	{
+		snprintf(orig_options->child_nodes_disconnect_command, sizeof(orig_options->child_nodes_disconnect_command),
+				 "%s", new_options.child_nodes_disconnect_command);
+		log_info(_("\"child_nodes_disconnect_command\" is now \"%s\""), new_options.child_nodes_disconnect_command);
+
+		config_changed = true;
+	}
+
+	/* child_nodes_disconnect_min_count */
+	if (orig_options->child_nodes_disconnect_min_count != new_options.child_nodes_disconnect_min_count)
+	{
+		if (new_options.child_nodes_disconnect_min_count < 0)
+		{
+			log_error(_("\"child_nodes_disconnect_min_count\" must be \"0\" or greater; provided: \"%i\""),
+					  new_options.child_nodes_disconnect_min_count);
+		}
+		else
+		{
+			orig_options->child_nodes_disconnect_min_count = new_options.child_nodes_disconnect_min_count;
+			log_info(_("\"child_nodes_disconnect_min_count\" is now \"%i\""), new_options.child_nodes_disconnect_min_count);
+
+			config_changed = true;
+		}
+	}
+
+	/* child_nodes_connected_min_count */
+	if (orig_options->child_nodes_connected_min_count != new_options.child_nodes_connected_min_count)
+	{
+		if (new_options.child_nodes_connected_min_count < 0)
+		{
+			log_error(_("\"child_nodes_connected_min_count\" must be \"0\" or greater; provided: \"%i\""),
+					  new_options.child_nodes_connected_min_count);
+		}
+		else
+		{
+			orig_options->child_nodes_connected_min_count = new_options.child_nodes_connected_min_count;
+			log_info(_("\"child_nodes_connected_min_count\" is now \"%i\""), new_options.child_nodes_connected_min_count);
+
+			config_changed = true;
+		}
+	}
+
+	/* child_nodes_disconnect_timeout */
+	if (orig_options->child_nodes_disconnect_timeout != new_options.child_nodes_disconnect_timeout)
+	{
+		if (new_options.child_nodes_disconnect_timeout < 0)
+		{
+			log_error(_("\"child_nodes_disconnect_timeout\" must be \"0\" or greater; provided: \"%i\""),
+					  new_options.child_nodes_disconnect_timeout);
+		}
+		else
+		{
+			orig_options->child_nodes_disconnect_timeout = new_options.child_nodes_disconnect_timeout;
+			log_info(_("\"child_nodes_disconnect_timeout\" is now \"%i\""), new_options.child_nodes_disconnect_timeout);
+
+			config_changed = true;
+		}
 	}
 
 	/* conninfo */

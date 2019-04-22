@@ -346,6 +346,16 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# value: %n (node_id), %a (node_name). *Must* be the same on all nodes.
 #election_rerun_interval=15		# if "failover_validation_command" is set, and the command returns
 					# an error, pause the specified amount of seconds before rerunning the election.
+					#
+					# The following items are relevant for repmgrd running on the primary,
+                                        # and will be ignored on non-primary nodes
+#child_nodes_check_interval=5		# Interval (in seconds) to check for attached child nodes (standbys)
+#child_nodes_connected_min_count=-1	# Minimum number of child nodes which must remain connected, otherwise
+					# disconnection command will be triggered
+#child_nodes_disconnect_min_count=-1	# Minimum number of disconnected child nodes required to execute disconnection command
+					# (ignored if "child_nodes_connected_min_count" set)
+#child_nodes_disconnect_timeout=30	# Interval between child node disconnection and disconnection command execution
+#child_nodes_disconnect_command=	# Command to execute if child node disconnection detected
 
 #------------------------------------------------------------------------------
 # service control commands

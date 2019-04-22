@@ -29,7 +29,7 @@
 #include "strutil.h"
 #include "voting.h"
 
-#define REPMGR_NODES_COLUMNS "n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, n.slot_name, n.location, n.priority, n.active, n.config_file, '' AS upstream_node_name "
+#define REPMGR_NODES_COLUMNS "n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, n.slot_name, n.location, n.priority, n.active, n.config_file, '' AS upstream_node_name, NULL AS attached "
 #define BDR2_NODES_COLUMNS "node_sysid, node_timeline, node_dboid, node_name, node_local_dsn, ''"
 #define BDR3_NODES_COLUMNS "ns.node_id, 0, 0, ns.node_name, ns.interface_connstr, ns.peer_state_name"
 
@@ -94,6 +94,13 @@ typedef enum
 
 typedef enum
 {
+	NODE_ATTACHED_UNKNOWN = -1,
+	NODE_DETACHED,
+	NODE_ATTACHED
+} NodeAttached;
+
+typedef enum
+{
 	SLOT_UNKNOWN = -1,
 	SLOT_INACTIVE,
 	SLOT_ACTIVE
@@ -152,7 +159,7 @@ typedef struct s_node_info
 	/* for ad-hoc use e.g. when working with a list of nodes */
 	char		details[MAXLEN];
 	bool		reachable;
-	bool		attached;
+	NodeAttached attached;
 	/* various statistics */
 	int			max_wal_senders;
 	int			attached_wal_receivers;
@@ -429,6 +436,7 @@ int			get_primary_node_id(PGconn *conn);
 int			get_ready_archive_files(PGconn *conn, const char *data_directory);
 bool		identify_system(PGconn *repl_conn, t_system_identification *identification);
 TimeLineHistoryEntry *get_timeline_history(PGconn *repl_conn, TimeLineID tli);
+bool		get_child_nodes(PGconn *conn, int node_id, NodeInfoList *node_list);
 
 /* repmgrd shared memory functions */
 bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
