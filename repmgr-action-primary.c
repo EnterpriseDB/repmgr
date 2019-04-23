@@ -96,28 +96,6 @@ do_primary_register(void)
 
 	initialize_voting_term(conn);
 
-	/* Ensure there isn't another registered node which is primary */
-	primary_conn = get_primary_connection(conn, &current_primary_id, NULL);
-
-	if (primary_conn != NULL)
-	{
-		if (current_primary_id != config_file_options.node_id)
-		{
-			/*
-			 * it's impossible to add a second primary to a streaming
-			 * replication cluster
-			 */
-			log_error(_("there is already an active registered primary (node ID: %i) in this cluster"), current_primary_id);
-			PQfinish(primary_conn);
-			PQfinish(conn);
-			exit(ERR_BAD_CONFIG);
-		}
-
-		/* we've probably connected to ourselves */
-		PQfinish(primary_conn);
-	}
-
-
 	begin_transaction(conn);
 
 	/*
@@ -128,12 +106,32 @@ do_primary_register(void)
 	current_primary_id = get_primary_node_id(conn);
 	if (current_primary_id != NODE_NOT_FOUND && current_primary_id != config_file_options.node_id)
 	{
-		log_error(_("another node with id %i is already registered as primary"), current_primary_id);
-		log_detail(_("a streaming replication cluster can have only one primary node"));
+		log_debug("XXX %i", current_primary_id);
+		primary_conn = establish_primary_db_connection(conn, false);
 
-		rollback_transaction(conn);
-		PQfinish(conn);
-		exit(ERR_BAD_CONFIG);
+		if (PQstatus(primary_conn) == CONNECTION_OK)
+		{
+			if (get_recovery_type(primary_conn) == RECTYPE_PRIMARY)
+			{
+				log_error(_("there is already an active registered primary (node ID: %i) in this cluster"),
+						  current_primary_id);
+				log_detail(_("a streaming replication cluster can have only one primary node"));
+
+				log_hint(_("ensure this node is shut down before registering a new primary"));
+				PQfinish(primary_conn);
+				rollback_transaction(conn);
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+
+			log_warning(_("node %is is registered as primary but running as a standby"),
+						  current_primary_id);
+			PQfinish(primary_conn);
+		}
+
+		log_notice(_("setting node %i's node record to inactive"),
+						  current_primary_id);
+		update_node_record_set_active(conn, current_primary_id, false);
 	}
 
 	/*
