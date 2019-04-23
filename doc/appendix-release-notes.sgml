@@ -53,9 +53,10 @@
 
           <listitem>
             <para>
-              &repmgr;: when executing <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>
-              in <option>--dry-run</option> mode, ensure provision of the <option>--force</option> option
-              does not result in an existing data directory being modified in any way.
+              &repmgr;: when executing <link linkend="repmgr-primary-register"><command>repmgr primary register</command></link>
+              with the <option>--force</option> option, if another primary record exists but the associated node is
+              unreachable (or running as a standby), set that node's record to inactive to enable the current node
+              to be registered as a primary.
             </para>
           </listitem>
 
