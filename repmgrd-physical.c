@@ -121,6 +121,7 @@ static t_child_node_info *append_child_node_record(t_child_node_info_list *nodes
 static void remove_child_node_record(t_child_node_info_list *nodes, int node_id);
 static void clear_child_node_info_list(t_child_node_info_list *nodes);
 static void parse_child_nodes_disconnect_command(char *parsed_command, char *template, int reporting_node_id);
+static void execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_child_node_info_list *local_child_nodes);
 
 void
 handle_sigint_physical(SIGNAL_ARGS)
@@ -993,172 +994,10 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 
 	if (config_file_options.child_nodes_disconnect_command[0] != '\0')
 	{
-		/*
-		 * script will only be executed if the number of attached
-		 * standbys is lower than this number
-		 */
-		int min_required_connected_count = 1;
-		int connected_count = 0;
+		bool repmgrd_paused = repmgrd_is_paused(local_conn);
 
-		/*
-		 * Calculate hi
-		 */
-
-		if (config_file_options.child_nodes_connected_min_count > 0)
-		{
-			min_required_connected_count = config_file_options.child_nodes_connected_min_count;
-		}
-		else if (config_file_options.child_nodes_disconnect_min_count > 0)
-		{
-			min_required_connected_count =
-				(db_child_node_records.node_count - config_file_options.child_nodes_disconnect_min_count)
-				+ 1;
-		}
-
-		/* calculate number of connected child nodes */
-		for (cell = db_child_node_records.head; cell; cell = cell->next)
-		{
-			if (cell->node_info->attached == NODE_ATTACHED)
-				connected_count ++;
-		}
-
-		log_debug("connected: %i; min required: %i",
-				  connected_count,
-				  min_required_connected_count);
-
-		if (connected_count < min_required_connected_count)
-		{
-			log_notice(_("%i (of %i) child nodes are connected, but at least %i child nodes required"),
-					   connected_count,
-					   db_child_node_records.node_count,
-					   min_required_connected_count);
-
-			if (child_nodes_disconnect_command_executed == false)
-			{
-				t_child_node_info *child_node_rec;
-
-				/* set these for informative purposes */
-				int most_recently_disconnected_node_id = UNKNOWN_NODE_ID;
-				int most_recently_disconnected_elapsed = -1;
-
-				bool most_recent_disconnect_below_threshold = false;
-				instr_time  current_time_base;
-
-				INSTR_TIME_SET_CURRENT(current_time_base);
-
-				for (child_node_rec = local_child_nodes->head; child_node_rec; child_node_rec = child_node_rec->next)
-				{
-					instr_time  current_time = current_time_base;
-					int seconds_since_detached;
-
-					if (child_node_rec->attached != NODE_DETACHED)
-						continue;
-
-					INSTR_TIME_SUBTRACT(current_time, child_node_rec->detached_time);
-					seconds_since_detached = (int) INSTR_TIME_GET_DOUBLE(current_time);
-
-					if (seconds_since_detached < config_file_options.child_nodes_disconnect_timeout)
-					{
-						most_recent_disconnect_below_threshold = true;
-					}
-
-					if (most_recently_disconnected_node_id == UNKNOWN_NODE_ID)
-					{
-						most_recently_disconnected_node_id = child_node_rec->node_id;
-						most_recently_disconnected_elapsed = seconds_since_detached;
-					}
-					else if (seconds_since_detached < most_recently_disconnected_elapsed)
-					{
-						most_recently_disconnected_node_id = child_node_rec->node_id;
-						most_recently_disconnected_elapsed = seconds_since_detached;
-					}
-				}
-
-
-				if (most_recent_disconnect_below_threshold == false && most_recently_disconnected_node_id != UNKNOWN_NODE_ID)
-				{
-					char parsed_child_nodes_disconnect_command[MAXPGPATH];
-					int child_nodes_disconnect_command_result;
-					PQExpBufferData event_details;
-					bool success = true;
-
-					parse_child_nodes_disconnect_command(parsed_child_nodes_disconnect_command,
-														 config_file_options.child_nodes_disconnect_command,
-														 local_node_info.node_id);
-
-					log_info(_("most recently detached child node was %i (ca. %i seconds ago), triggering \"child_nodes_disconnect_command\""),
-							 most_recently_disconnected_node_id,
-							 most_recently_disconnected_elapsed);
-
-					log_info(_("\"child_nodes_disconnect_command\" is:\n  \"%s\""),
-							 parsed_child_nodes_disconnect_command);
-
-					child_nodes_disconnect_command_result = system(parsed_child_nodes_disconnect_command);
-
-					initPQExpBuffer(&event_details);
-
-					if (child_nodes_disconnect_command_result != 0)
-					{
-						success = false;
-
-						appendPQExpBufferStr(&event_details,
-											 _("unable to execute \"child_nodes_disconnect_command\""));
-
-						log_error("%s", event_details.data);
-					}
-					else
-					{
-						appendPQExpBufferStr(&event_details,
-										  _("\"child_nodes_disconnect_command\" successfully executed"));
-
-						log_info("%s", event_details.data);
-					}
-
-					create_event_notification(local_conn,
-											  &config_file_options,
-											  local_node_info.node_id,
-											  "child_nodes_disconnect_command",
-											  success,
-											  event_details.data);
-
-					termPQExpBuffer(&event_details);
-
-					child_nodes_disconnect_command_executed = true;
-				}
-				else if (most_recently_disconnected_node_id != UNKNOWN_NODE_ID)
-				{
-					log_info(_("most recently detached child node was %i (ca. %i seconds ago), not triggering \"child_nodes_disconnect_command\""),
-							 most_recently_disconnected_node_id,
-							 most_recently_disconnected_elapsed);
-					log_detail(_("\"child_nodes_disconnect_timeout\" set to %i seconds"),
-							   config_file_options.child_nodes_disconnect_timeout);
-				}
-				else
-				{
-					log_info(_("no child nodes have detached since repmgrd startup"));
-				}
-			}
-			else
-			{
-				log_info(_("\"child_nodes_disconnect_command\" was previously executed, taking no action"));
-			}
-		}
-		else
-		{
-			/*
-			 * "child_nodes_disconnect_command" was executed, but for whatever reason
-			 * enough child nodes have returned to clear the threshold; in that case reset
-			 * the executed flag so we can execute the command again, if necessary
-			 */
-			if (child_nodes_disconnect_command_executed == true)
-			{
-				log_notice(_("%i (of %i) child nodes are now connected, meeting minimum requirement of %i child nodes"),
-						   connected_count,
-						   db_child_node_records.node_count,
-						   min_required_connected_count);
-				child_nodes_disconnect_command_executed = false;
-			}
-		}
+		if (repmgrd_paused == false)
+			execute_child_nodes_disconnect_command(&db_child_node_records, local_child_nodes);
 	}
 
 	clear_child_node_info_list(&disconnected_child_nodes);
@@ -1166,6 +1005,181 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 	clear_child_node_info_list(&new_child_nodes);
 
 	clear_node_info_list(&db_child_node_records);
+}
+
+
+void
+execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_child_node_info_list *local_child_nodes)
+{
+	/*
+	 * script will only be executed if the number of attached
+	 * standbys is lower than this number
+	 */
+	int min_required_connected_count = 1;
+	int connected_count = 0;
+	NodeInfoListCell *cell;
+
+	/*
+	 * Calculate minimum number of nodes which need to be connected
+	 * (if the total falls below that, "child_nodes_disconnect_command"
+	 * will be executed)
+	 */
+
+	if (config_file_options.child_nodes_connected_min_count > 0)
+	{
+		min_required_connected_count = config_file_options.child_nodes_connected_min_count;
+	}
+	else if (config_file_options.child_nodes_disconnect_min_count > 0)
+	{
+		min_required_connected_count =
+			(db_child_node_records->node_count - config_file_options.child_nodes_disconnect_min_count)
+			+ 1;
+	}
+
+	/* calculate number of connected child nodes */
+	for (cell = db_child_node_records->head; cell; cell = cell->next)
+	{
+		if (cell->node_info->attached == NODE_ATTACHED)
+			connected_count ++;
+	}
+
+	log_debug("connected: %i; min required: %i",
+			  connected_count,
+			  min_required_connected_count);
+
+	if (connected_count < min_required_connected_count)
+	{
+		log_notice(_("%i (of %i) child nodes are connected, but at least %i child nodes required"),
+				   connected_count,
+				   db_child_node_records->node_count,
+				   min_required_connected_count);
+
+		if (child_nodes_disconnect_command_executed == false)
+		{
+			t_child_node_info *child_node_rec;
+
+			/* set these for informative purposes */
+			int most_recently_disconnected_node_id = UNKNOWN_NODE_ID;
+			int most_recently_disconnected_elapsed = -1;
+
+			bool most_recent_disconnect_below_threshold = false;
+			instr_time  current_time_base;
+
+			INSTR_TIME_SET_CURRENT(current_time_base);
+
+			for (child_node_rec = local_child_nodes->head; child_node_rec; child_node_rec = child_node_rec->next)
+			{
+				instr_time  current_time = current_time_base;
+				int seconds_since_detached;
+
+				if (child_node_rec->attached != NODE_DETACHED)
+					continue;
+
+				INSTR_TIME_SUBTRACT(current_time, child_node_rec->detached_time);
+				seconds_since_detached = (int) INSTR_TIME_GET_DOUBLE(current_time);
+
+				if (seconds_since_detached < config_file_options.child_nodes_disconnect_timeout)
+				{
+					most_recent_disconnect_below_threshold = true;
+				}
+
+				if (most_recently_disconnected_node_id == UNKNOWN_NODE_ID)
+				{
+					most_recently_disconnected_node_id = child_node_rec->node_id;
+					most_recently_disconnected_elapsed = seconds_since_detached;
+				}
+				else if (seconds_since_detached < most_recently_disconnected_elapsed)
+				{
+					most_recently_disconnected_node_id = child_node_rec->node_id;
+					most_recently_disconnected_elapsed = seconds_since_detached;
+				}
+			}
+
+
+			if (most_recent_disconnect_below_threshold == false && most_recently_disconnected_node_id != UNKNOWN_NODE_ID)
+			{
+				char parsed_child_nodes_disconnect_command[MAXPGPATH];
+				int child_nodes_disconnect_command_result;
+				PQExpBufferData event_details;
+				bool success = true;
+
+				parse_child_nodes_disconnect_command(parsed_child_nodes_disconnect_command,
+													 config_file_options.child_nodes_disconnect_command,
+													 local_node_info.node_id);
+
+				log_info(_("most recently detached child node was %i (ca. %i seconds ago), triggering \"child_nodes_disconnect_command\""),
+						 most_recently_disconnected_node_id,
+						 most_recently_disconnected_elapsed);
+
+				log_info(_("\"child_nodes_disconnect_command\" is:\n  \"%s\""),
+						 parsed_child_nodes_disconnect_command);
+
+				child_nodes_disconnect_command_result = system(parsed_child_nodes_disconnect_command);
+
+				initPQExpBuffer(&event_details);
+
+				if (child_nodes_disconnect_command_result != 0)
+				{
+					success = false;
+
+					appendPQExpBufferStr(&event_details,
+										 _("unable to execute \"child_nodes_disconnect_command\""));
+
+					log_error("%s", event_details.data);
+				}
+				else
+				{
+					appendPQExpBufferStr(&event_details,
+										 _("\"child_nodes_disconnect_command\" successfully executed"));
+
+					log_info("%s", event_details.data);
+				}
+
+				create_event_notification(local_conn,
+										  &config_file_options,
+										  local_node_info.node_id,
+										  "child_nodes_disconnect_command",
+										  success,
+										  event_details.data);
+
+				termPQExpBuffer(&event_details);
+
+				child_nodes_disconnect_command_executed = true;
+			}
+			else if (most_recently_disconnected_node_id != UNKNOWN_NODE_ID)
+			{
+				log_info(_("most recently detached child node was %i (ca. %i seconds ago), not triggering \"child_nodes_disconnect_command\""),
+						 most_recently_disconnected_node_id,
+						 most_recently_disconnected_elapsed);
+				log_detail(_("\"child_nodes_disconnect_timeout\" set to %i seconds"),
+						   config_file_options.child_nodes_disconnect_timeout);
+			}
+			else
+			{
+				log_info(_("no child nodes have detached since repmgrd startup"));
+			}
+		}
+		else
+		{
+			log_info(_("\"child_nodes_disconnect_command\" was previously executed, taking no action"));
+		}
+	}
+	else
+	{
+		/*
+		 * "child_nodes_disconnect_command" was executed, but for whatever reason
+		 * enough child nodes have returned to clear the threshold; in that case reset
+		 * the executed flag so we can execute the command again, if necessary
+		 */
+		if (child_nodes_disconnect_command_executed == true)
+		{
+			log_notice(_("%i (of %i) child nodes are now connected, meeting minimum requirement of %i child nodes"),
+					   connected_count,
+					   db_child_node_records->node_count,
+					   min_required_connected_count);
+			child_nodes_disconnect_command_executed = false;
+		}
+	}
 }
 
 
