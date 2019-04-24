@@ -269,7 +269,46 @@
   <sect2 id="repmgrd-primary-child-disconnection-example">
 	<title>Standby disconnections monitoring process example</title>
 	<para>
+	  This example shows typical <application>repmgrd</application> log output from a three-node cluster
+	  (primary and two child nodes), with <varname>child_nodes_connected_min_count</varname>
+	  set to <literal>2</literal>.
 	</para>
+	<para>
+	  <application>repmgrd</application> on the primary has started up, while two child
+	  nodes are being provisioned:
+	  <programlisting>
+[2019-04-24 15:25:33] [INFO] monitoring primary node "node1" (node ID: 1) in normal state
+[2019-04-24 15:25:35] [NOTICE] new node "node2" (node ID: 2) has connected
+[2019-04-24 15:25:35] [NOTICE] 1 (of 1) child nodes are connected, but at least 2 child nodes required
+[2019-04-24 15:25:35] [INFO] no child nodes have detached since repmgrd startup
+(...)
+[2019-04-24 15:25:44] [NOTICE] new node "node3" (node ID: 3) has connected
+[2019-04-24 15:25:46] [INFO] monitoring primary node "node1" (node ID: 1) in normal state
+(...)</programlisting>
+	</para>
+	<para>
+	  One of the child nodes has disconnected; <application>repmgrd</application>
+	  is now waiting <varname>child_nodes_disconnect_timeout</varname> seconds
+	  before executing <varname>child_nodes_disconnect_command</varname>:
+	  <programlisting>
+[2019-04-24 15:28:11] [INFO] monitoring primary node "node1" (node ID: 1) in normal state
+[2019-04-24 15:28:17] [INFO] monitoring primary node "node1" (node ID: 1) in normal state
+[2019-04-24 15:28:19] [NOTICE] node "node3" (node ID: 3) has disconnected
+[2019-04-24 15:28:19] [NOTICE] 1 (of 2) child nodes are connected, but at least 2 child nodes required
+[2019-04-24 15:28:19] [INFO] most recently detached child node was 3 (ca. 0 seconds ago), not triggering "child_nodes_disconnect_command"
+[2019-04-24 15:28:19] [DETAIL] "child_nodes_disconnect_timeout" set To 30 seconds
+(...)</programlisting>
+	</para>
+	<para>
+	  <varname>child_nodes_disconnect_command</varname> is executed once:
+	  <programlisting>
+[2019-04-24 15:28:49] [INFO] most recently detached child node was 3 (ca. 30 seconds ago), triggering "child_nodes_disconnect_command"
+[2019-04-24 15:28:49] [INFO] "child_nodes_disconnect_command" is:
+	"/usr/bin/fence-all-the-things.sh"
+[2019-04-24 15:28:51] [NOTICE] 1 (of 2) child nodes are connected, but at least 2 child nodes required
+[2019-04-24 15:28:51] [INFO] "child_nodes_disconnect_command" was previously executed, taking no action</programlisting>
+	</para>
+
   </sect2>
 
   <sect2 id="repmgrd-primary-child-disconnection-configuration">
@@ -319,6 +358,12 @@
 			to be executed by the system user under which the PostgreSQL server itself
 			runs (usually <literal>postgres</literal>).
 		  </para>
+		  <note>
+			<para>
+			  If <varname>child_nodes_disconnect_command</varname> is not set, no action
+			  will be taken.
+			</para>
+		  </note>
 		  <para>
 			If specified, the following format placeholder will be substituted when
 			executing <varname>child_nodes_disconnect_command</varname>:
