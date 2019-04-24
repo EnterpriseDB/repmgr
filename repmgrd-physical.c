@@ -385,7 +385,7 @@ monitor_streaming_primary(void)
 					 * as we're monitoring the primary, no point in trying to
 					 * write the event to the database
 					 *
-					 * XXX possible pre-action event
+					 * TODO: possibly add pre-action event here
 					 */
 					create_event_notification(NULL,
 											  &config_file_options,
@@ -1405,7 +1405,7 @@ monitor_streaming_standby(void)
 									  _("unable to connect to upstream node \"%s\" (node ID: %i)"),
 									  upstream_node_info.node_name, upstream_node_info.node_id);
 
-					/* XXX possible pre-action event */
+					/* TODO: possibly add pre-action event here */
 					if (upstream_node_info.type == STANDBY)
 					{
 						create_event_record(primary_conn,
