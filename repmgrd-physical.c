@@ -4898,8 +4898,6 @@ remove_child_node_record(t_child_node_info_list *nodes, int node_id)
 	{
 		next_node = node->next;
 
-		log_debug("ZZZ node: %i", node->node_id);
-
 		if (node->node_id == node_id)
 		{
 			/* first node */
