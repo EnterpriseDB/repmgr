@@ -165,7 +165,7 @@
 
 </sect1>
 
-<sect1 id="repmgrd-primary-standby-disconnection" xreflabel="Monitoring standby disconnections on the primary">
+<sect1 id="repmgrd-primary-child-disconnection" xreflabel="Monitoring standby disconnections on the primary">
   <indexterm>
    <primary>repmgrd</primary>
    <secondary>standby disconnection</secondary>
@@ -192,13 +192,19 @@
     example to &quot;fence&quot; the node and ensure it is isolated from any
     applications attempting to access the replication cluster.
   </para>
-  <para>
+
+  <sect2 id="repmgrd-primary-child-disconnection-monitoring-process">
+	<title>Standby disconnections monitoring process and criteria</title>
+	<para>
+	  <application>repmgrd</application> monitors attach child nodes and decides
+	  whether to invoke the user-defined command based on the following process
+	  and criteria:
     <itemizedlist>
 
       <listitem>
         <para>
-          Every few seconds (defined by the configuration parameter <varname>child_nodes_check_interval</varname>
-          (a value of <literal>0</literal> disables this altogether), <application>repmgrd</application> queries
+          Every few seconds (defined by the configuration parameter <varname>child_nodes_check_interval</varname>;
+          a value of <literal>0</literal> disables this altogether), <application>repmgrd</application> queries
           the <literal>pg_stat_replication</literal> system view and compares
           the nodes present there against the list of nodes registered with &repmgr; which
           should be attached to the primary.
@@ -233,7 +239,7 @@
           If the <varname>child_nodes_disconnect_command</varname> parameter is set in
           <filename>repmgr.conf</filename>, <application>repmgrd</application> will then loop through all child nodes.
           If it determines that insufficient child nodes are connected, and a
-          minimum of <varname>child_nodes_disconnect_timeout</varname> seconds (default: <literal>30</literal>
+          minimum of <varname>child_nodes_disconnect_timeout</varname> seconds (default: <literal>30</literal>)
           has elapsed since  the last node became  disconnected, <application>repmgrd</application> will then execute the
           <varname>child_nodes_disconnect_command</varname> script.
         </para>
@@ -253,7 +259,8 @@
           the criteria for its execution are met again.
         </para>
         <para>
-          The <varname>child_nodes_disconnect_command</varname> script will not be executed if <application>repmgrd</application> is paused.
+          The <varname>child_nodes_disconnect_command</varname> script will not be executed if
+		  <application>repmgrd</application> is paused.
         </para>
       </listitem>
 
@@ -266,7 +273,122 @@
       </listitem>
 
     </itemizedlist>
-  </para>
+	</para>
+  </sect2>
+
+  <sect2 id="repmgrd-primary-child-disconnection-example">
+	<title>Standby disconnections monitoring process example</title>
+	<para>
+	</para>
+  </sect2>
+
+  <sect2 id="repmgrd-primary-child-disconnection-configuration">
+	<title>Standby disconnections monitoring process configuration</title>
+	<para>
+	</para>
+  </sect2>
+
+  <sect2 id="repmgrd-primary-child-disconnection-events">
+	<title>Standby disconnections monitoring process event notifications</title>
+	<para>
+	  The following <link linkend="event-notifications">event notifications</link> may be generated:
+	</para>
+	<variablelist>
+
+      <varlistentry>
+		<indexterm>
+		  <primary>child_node_disconnect</primary>
+		  <secondary>event notification</secondary>
+		</indexterm>
+        <term><varname>child_node_disconnect</varname></term>
+        <listitem>
+          <para>
+			This event is generated after <application>repmgrd</application>
+			detects that a child node is no longer streaming from the primary node.
+          </para>
+		  <para>
+			Example:
+			<programlisting>
+$ repmgr cluster event --event=child_node_disconnect
+ Node ID | Name  | Event                 | OK | Timestamp           | Details
+---------+-------+-----------------------+----+---------------------+--------------------------------------------
+ 1       | node1 | child_node_disconnect | t  | 2019-04-24 12:41:36 | node "node3" (node ID: 3) has disconnected</programlisting>
+		  </para>
+        </listitem>
+      </varlistentry>
+
+	  <varlistentry>
+		<indexterm>
+		  <primary>child_node_reconnect</primary>
+		  <secondary>event notification</secondary>
+		</indexterm>
+        <term><varname>child_node_reconnect</varname></term>
+        <listitem>
+          <para>
+			This event is generated after <application>repmgrd</application>
+			detects that a child node has resumed streaming from the primary node.
+          </para>
+		  <para>
+			Example:
+			<programlisting>
+$ repmgr cluster event --event=child_node_reconnect
+ Node ID | Name  | Event                | OK | Timestamp           | Details
+---------+-------+----------------------+----+---------------------+------------------------------------------------------------
+1       | node1 | child_node_reconnect | t  | 2019-04-24 12:42:19 | node "node3" (node ID: 3) has reconnected after 42 seconds</programlisting>
+		  </para>
+        </listitem>
+      </varlistentry>
+
+	  <varlistentry>
+		<indexterm>
+		  <primary>child_node_new_connect</primary>
+		  <secondary>event notification</secondary>
+		</indexterm>
+        <term><varname>child_node_new_connect</varname></term>
+        <listitem>
+          <para>
+			This event is generated after <application>repmgrd</application>
+			detects that a new child node has been registered with &repmgr; and has
+			connected to the primary.
+          </para>
+		  <para>
+			Example:
+			<programlisting>
+$ repmgr cluster event --event=child_node_new_connect
+ Node ID | Name  | Event                  | OK | Timestamp           | Details
+---------+-------+------------------------+----+---------------------+---------------------------------------------
+ 1       | node1 | child_node_new_connect | t  | 2019-04-24 12:41:30 | new node "node3" (node ID: 3) has connected</programlisting>
+		  </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+		<indexterm>
+		  <primary>child_nodes_disconnect_command</primary>
+		  <secondary>event notification</secondary>
+		</indexterm>
+        <term><varname>child_nodes_disconnect_command</varname></term>
+        <listitem>
+          <para>
+			This event is generated after <application>repmgrd</application> detects
+			that sufficient child nodes have been disconnected for a sufficient amount
+			of time to trigger execution of the <varname>child_nodes_disconnect_command</varname>.
+          </para>
+		  <para>
+			Example:
+			<programlisting>
+$ repmgr cluster event --event=child_nodes_disconnect_command
+ Node ID | Name  | Event                          | OK | Timestamp           | Details
+---------+-------+--------------------------------+----+---------------------+--------------------------------------------------------
+ 1       | node1 | child_nodes_disconnect_command | t  | 2019-04-24 13:08:17 | "child_nodes_disconnect_command" successfully executed</programlisting>
+		  </para>
+        </listitem>
+      </varlistentry>
+
+	</variablelist>
+
+  </sect2>
+
 
 </sect1>
 

@@ -91,8 +91,7 @@
   may contain spaces, so should be quoted in the provided command
   configuration, e.g.:
   <programlisting>
-    event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'
-  </programlisting>
+    event_notification_command='/path/to/some/script %n %e %s "%t" "%d"'</programlisting>
  </para>
 
  <para>
@@ -147,7 +146,10 @@
  <para>
   By default, all notification types will be passed to the designated script;
   the notification types can be filtered to explicitly named ones using the
-  <varname>event_notifications</varname> parameter.
+  <varname>event_notifications</varname> parameter, e.g.:
+    <programlisting>
+    event_notifications=primary_register,standby_register,witness_register</programlisting>
+
  </para>
 
  <para>
@@ -253,6 +255,19 @@
    </listitem>
    <listitem>
     <simpara><literal>standby_recovery</literal></simpara>
+   </listitem>
+
+   <listitem>
+     <simpara><literal><link linkend="repmgrd-primary-child-disconnection-events">child_node_disconnect</link></literal></simpara>
+   </listitem>
+   <listitem>
+     <simpara><literal><link linkend="repmgrd-primary-child-disconnection-events">child_node_reconnect</link></literal></simpara>
+   </listitem>
+   <listitem>
+     <simpara><literal><link linkend="repmgrd-primary-child-disconnection-events">child_node_new_connect</link></literal></simpara>
+   </listitem>
+   <listitem>
+     <simpara><literal><link linkend="repmgrd-primary-child-disconnection-events">child_nodes_disconnect_command</link></literal></simpara>
    </listitem>
 
    </itemizedlist>
