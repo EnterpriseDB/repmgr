@@ -409,8 +409,8 @@ main(int argc, char **argv)
 			log_detail(_("\"repmgr\" version %s is installed but extension is version %s"),
 					   REPMGR_VERSION,
 					   extversions.installed_version);
+			log_hint(_("update the repmgr binaries to match the installed extension version"));
 
-			log_hint(_("verify the repmgr installation on this server is updated properly before continuing"));
 			close_connection(&local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -421,8 +421,8 @@ main(int argc, char **argv)
 			log_detail(_("\"repmgr\" version %s is installed but extension is version %s"),
 					   REPMGR_VERSION,
 					   extversions.installed_version);
+			log_hint(_("update the installed extension version by executing \"ALTER EXTENSION repmgr UPDATE\""));
 
-			log_hint(_("verify the repmgr extension is updated properly before continuing"));
 			close_connection(&local_conn);
 			exit(ERR_BAD_CONFIG);
 		}
