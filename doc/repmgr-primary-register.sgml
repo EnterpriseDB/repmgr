@@ -38,10 +38,6 @@
       Execute with the <option>--dry-run</option> option to check what would happen without
       actually registering the primary.
     </para>
-    <para>
-      <command>repmgr master register</command> can be used as an alias for
-      <command>repmgr primary register</command>.
-    </para>
 
     <note>
       <para>
@@ -55,6 +51,12 @@
           <filename>/path/to/repmgr.conf</filename>).
       </para>
     </note>
+
+	<para>
+      <command>repmgr master register</command> can be used as an alias for
+      <command>repmgr primary register</command>.
+    </para>
+
   </refsect1>
 
   <refsect1>
