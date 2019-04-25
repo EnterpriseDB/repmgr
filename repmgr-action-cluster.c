@@ -148,21 +148,8 @@ do_cluster_show(void)
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
-		if (PQstatus(cell->node_info->conn) == CONNECTION_OK)
+		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
-			cell->node_info->node_status = NODE_STATUS_UP;
-			cell->node_info->recovery_type = get_recovery_type(cell->node_info->conn);
-		}
-		else
-		{
-			/* check if node is reachable, but just not letting us in */
-			if (is_server_available_quiet(cell->node_info->conninfo))
-				cell->node_info->node_status = NODE_STATUS_REJECTED;
-			else
-				cell->node_info->node_status = NODE_STATUS_DOWN;
-
-			cell->node_info->recovery_type = RECTYPE_UNKNOWN;
-
 			connection_error_found = true;
 
 			if (runtime_options.verbose)

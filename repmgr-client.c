@@ -1977,6 +1977,22 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 {
 	bool error_found = false;
 
+	if (PQstatus(node_info->conn) == CONNECTION_OK)
+	{
+		node_info->node_status = NODE_STATUS_UP;
+		node_info->recovery_type = get_recovery_type(node_info->conn);
+	}
+	else
+	{
+		/* check if node is reachable, but just not letting us in */
+		if (is_server_available_quiet(node_info->conninfo))
+			node_info->node_status = NODE_STATUS_REJECTED;
+		else
+			node_info->node_status = NODE_STATUS_DOWN;
+
+		node_info->recovery_type = RECTYPE_UNKNOWN;
+	}
+
 	/*
 	 * TODO: count nodes marked as "? unreachable" and add a hint about
 	 * the other cluster commands for better determining whether

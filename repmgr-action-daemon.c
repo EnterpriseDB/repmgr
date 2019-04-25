@@ -144,13 +144,6 @@ do_daemon_status(void)
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
-			/* check if node is reachable, but just not letting us in */
-			if (is_server_available_quiet(cell->node_info->conninfo))
-				cell->node_info->node_status = NODE_STATUS_REJECTED;
-			else
-				cell->node_info->node_status = NODE_STATUS_DOWN;
-
-			cell->node_info->recovery_type = RECTYPE_UNKNOWN;
 
 			connection_error_found = true;
 
@@ -172,7 +165,6 @@ do_daemon_status(void)
 			}
 
 			repmgrd_info[i]->pg_running = false;
-			//maxlen_snprintf(repmgrd_info[i]->pg_running_text, "%s", _("not running"));
 			maxlen_snprintf(repmgrd_info[i]->repmgrd_running, "%s", _("n/a"));
 			maxlen_snprintf(repmgrd_info[i]->pid_text, "%s", _("n/a"));
 		}
@@ -180,7 +172,6 @@ do_daemon_status(void)
 		{
 			cell->node_info->node_status = NODE_STATUS_UP;
 			cell->node_info->recovery_type = get_recovery_type(cell->node_info->conn);
-			//maxlen_snprintf(repmgrd_info[i]->pg_running_text, "%s", _("running"));
 
 			repmgrd_info[i]->pid = repmgrd_get_pid(cell->node_info->conn);
 
