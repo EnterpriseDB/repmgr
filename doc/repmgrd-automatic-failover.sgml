@@ -193,6 +193,17 @@
     applications attempting to access the replication cluster.
   </para>
 
+  <note>
+	<para>
+	  Currently <application>repmgrd</application> can only detect disconnections
+	  of streaming replication standbys and cannot determine whether a standby
+	  has disconnected and fallen back to archive recovery.
+	</para>
+	<para>
+	  See section <link linkend="repmgrd-primary-child-disconnection-caveats">caveats</link> below.
+	</para>
+  </note>
+
   <sect2 id="repmgrd-primary-child-disconnection-monitoring-process">
 	<title>Standby disconnections monitoring process and criteria</title>
 	<para>
@@ -310,6 +321,42 @@
 	</para>
 
   </sect2>
+
+  <sect2 id="repmgrd-primary-child-disconnection-caveats">
+	<title>Standby disconnections monitoring caveats</title>
+	<para>
+	  The follwing caveats should be considered if you are intending to use this functionality.
+	</para>
+	<para>
+	  <itemizedlist mark="bullet">
+		<listitem>
+          <para>
+			If a child node is configured to use archive recovery, it's possible that
+			the child node will disconnect from the primary node and fall back to
+			archive recovery. In this case <application>repmgrd</application>
+			will nevertheless register a node disconnection.
+		  </para>
+		</listitem>
+
+        <listitem>
+          <para>
+			&repmgr; relies on <varname>application_name</varname> in the child node's
+			<varname>primary_conninfo</varname> string to be the same as the node name
+			defined in the node's <filename>repmgr.conf</filename> file. Furthermore,
+			this <varname>application_name</varname> must be unique across the replication
+			cluster.
+          </para>
+		  <para>
+			If a custom <varname>application_name</varname> is used, or the
+			<varname>application_name</varname> is not unique across the replication
+			cluster, &repmgr; will not be able to reliably monitor child node connections.
+		  </para>
+        </listitem>
+
+	  </itemizedlist>
+	</para>
+  </sect2>
+
 
   <sect2 id="repmgrd-primary-child-disconnection-configuration">
 	<title>Standby disconnections monitoring process configuration</title>
