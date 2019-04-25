@@ -257,7 +257,7 @@
             </para>
             <para>
               Normally <option>follow_command</option> is set as &repmgr;'s
-              <command><link linkend="repmgr-standby-follow">repmgr standby promote</link></command> command.
+              <command><link linkend="repmgr-standby-follow">repmgr standby follow</link></command> command.
             </para>
             <para>
               The <option>follow_command</option> parameter
