@@ -217,7 +217,7 @@
               <command><link linkend="repmgr-standby-promote">repmgr standby promote</link></command> command.
             </para>
             <para>
-              It is also possible to provide e.g. a shell script to e.g. perform user-defined tasks
+              It is also possible to provide a shell script to e.g. perform user-defined tasks
               before promoting the current node. In this case the script <emphasis>must</emphasis>
               at some point execute <command><link linkend="repmgr-standby-promote">repmgr standby promote</link></command>
               to promote the node; if this is not done, &repmgr; metadata will not be updated and
@@ -270,7 +270,7 @@
               the original primary.
             </para>
             <para>
-              It is also possible to provide e.g. a shell script to e.g. perform user-defined tasks
+              It is also possible to provide a shell script to e.g. perform user-defined tasks
               before promoting the current node. In this case the script <emphasis>must</emphasis>
               at some point execute <command><link linkend="repmgr-standby-follow">repmgr standby follow</link></command>
               to promote the node; if this is not done, &repmgr; metadata will not be updated and
