@@ -184,7 +184,7 @@ do_cluster_show(void)
 
 		initPQExpBuffer(&details);
 
-		if (format_node_status(cell->node_info, &details, &warnings) == false)
+		if (format_node_status(cell->node_info, &details, &warnings) == true)
 			error_found = true;
 		strncpy(cell->node_info->details, details.data, MAXLEN);
 
