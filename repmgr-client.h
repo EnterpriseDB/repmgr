@@ -100,6 +100,7 @@
 #define OPT_COMPACT		                   1045
 #define OPT_DISABLE_WAL_RECEIVER           1046
 #define OPT_ENABLE_WAL_RECEIVER            1047
+#define OPT_DETAIL                         1048
 
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
@@ -122,6 +123,7 @@ static struct option long_options[] =
 	{"wait", optional_argument, NULL, 'w'},
 	{"no-wait", no_argument, NULL, 'W'},
 	{"compact", no_argument, NULL, OPT_COMPACT},
+	{"detail", no_argument, NULL, OPT_DETAIL},
 
 /* connection options */
 	{"dbname", required_argument, NULL, 'd'},

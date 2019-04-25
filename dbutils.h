@@ -30,6 +30,10 @@
 #include "voting.h"
 
 #define REPMGR_NODES_COLUMNS "n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, n.slot_name, n.location, n.priority, n.active, n.config_file, '' AS upstream_node_name, NULL AS attached "
+#define REPMGR_NODES_COLUMNS_WITH_UPSTREAM "n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name, NULL AS attached "
+
+
+
 #define BDR2_NODES_COLUMNS "node_sysid, node_timeline, node_dboid, node_name, node_local_dsn, ''"
 #define BDR3_NODES_COLUMNS "ns.node_id, 0, 0, ns.node_name, ns.interface_connstr, ns.peer_state_name"
 

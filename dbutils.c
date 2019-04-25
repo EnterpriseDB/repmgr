@@ -2447,8 +2447,7 @@ get_node_record_with_upstream(PGconn *conn, int node_id, t_node_info *node_info)
 
 	initPQExpBuffer(&query);
 	appendPQExpBuffer(&query,
-					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
-					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name, NULL AS attached "
+					  "    SELECT " REPMGR_NODES_COLUMNS_WITH_UPSTREAM
 					  "      FROM repmgr.nodes n "
 					  " LEFT JOIN repmgr.nodes un "
 					  "        ON un.node_id = n.upstream_node_id"
@@ -2747,8 +2746,7 @@ get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list)
 	initPQExpBuffer(&query);
 
 	appendPQExpBufferStr(&query,
-						 "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
-						 "           n.slot_name, n.location, n.priority, n.active, n.config_file, un.node_name AS upstream_node_name, NULL AS attached "
+						 "    SELECT " REPMGR_NODES_COLUMNS_WITH_UPSTREAM
 						 "      FROM repmgr.nodes n "
 						 " LEFT JOIN repmgr.nodes un "
 						 "        ON un.node_id = n.upstream_node_id"

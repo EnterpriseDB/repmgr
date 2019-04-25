@@ -271,6 +271,10 @@ main(int argc, char **argv)
 				runtime_options.compact = true;
 				break;
 
+				/* --detail */
+			case OPT_DETAIL:
+				runtime_options.detail = true;
+				break;
 
 				/*----------------------------
 				 * database connection options
@@ -1916,7 +1920,6 @@ check_cli_parameters(const int action)
 	}
 
 	/* --compact */
-
 	if (runtime_options.compact == true)
 	{
 		switch (action)
@@ -1927,6 +1930,20 @@ check_cli_parameters(const int action)
 			default:
 				item_list_append_format(&cli_warnings,
 										_("--compact is not effective when executing %s"),
+										action_name(action));
+		}
+	}
+
+	/* --detail */
+	if (runtime_options.compact == true)
+	{
+		switch (action)
+		{
+			case DAEMON_STATUS:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--detail is not effective when executing %s"),
 										action_name(action));
 		}
 	}
@@ -1952,6 +1969,238 @@ check_cli_parameters(const int action)
 		}
 	}
 
+}
+
+
+bool
+format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *warnings)
+{
+	bool error_found = false;
+
+	/*
+	 * TODO: count nodes marked as "? unreachable" and add a hint about
+	 * the other cluster commands for better determining whether
+	 * unreachable.
+	 */
+	switch (node_info->type)
+	{
+		case PRIMARY:
+		{
+			/* node is reachable */
+			if (node_info->node_status == NODE_STATUS_UP)
+			{
+				if (node_info->active == true)
+				{
+					switch (node_info->recovery_type)
+					{
+						case RECTYPE_PRIMARY:
+							appendPQExpBufferStr(details, "* running");
+							break;
+						case RECTYPE_STANDBY:
+							appendPQExpBufferStr(details, "! running as standby");
+							item_list_append_format(warnings,
+													"node \"%s\" (ID: %i) is registered as primary but running as standby",
+													node_info->node_name, node_info->node_id);
+							break;
+						case RECTYPE_UNKNOWN:
+							appendPQExpBufferStr(details, "! unknown");
+							item_list_append_format(warnings,
+													"node \"%s\" (ID: %i) has unknown replication status",
+													node_info->node_name, node_info->node_id);
+							break;
+					}
+				}
+				else
+				{
+					if (node_info->recovery_type == RECTYPE_PRIMARY)
+					{
+						appendPQExpBufferStr(details, "! running");
+						item_list_append_format(warnings,
+												"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
+												node_info->node_name, node_info->node_id);
+					}
+					else
+					{
+						appendPQExpBufferStr(details, "! running as standby");
+						item_list_append_format(warnings,
+												"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
+												node_info->node_name, node_info->node_id);
+					}
+				}
+			}
+			/* node is up but cannot connect */
+			else if (node_info->node_status == NODE_STATUS_REJECTED)
+			{
+				if (node_info->active == true)
+				{
+					appendPQExpBufferStr(details, "? running");
+				}
+				else
+				{
+					appendPQExpBufferStr(details, "! running");
+					error_found = true;
+				}
+			}
+			/* node is unreachable */
+			else
+			{
+				/* node is unreachable but marked active */
+				if (node_info->active == true)
+				{
+					appendPQExpBufferStr(details, "? unreachable");
+					item_list_append_format(warnings,
+											"node \"%s\" (ID: %i) is registered as an active primary but is unreachable",
+											node_info->node_name, node_info->node_id);
+				}
+				/* node is unreachable and marked as inactive */
+				else
+				{
+					appendPQExpBufferStr(details, "- failed");
+					error_found = true;
+				}
+			}
+		}
+		break;
+		case STANDBY:
+		{
+			/* node is reachable */
+			if (node_info->node_status == NODE_STATUS_UP)
+			{
+				if (node_info->active == true)
+				{
+					switch (node_info->recovery_type)
+					{
+						case RECTYPE_STANDBY:
+							appendPQExpBufferStr(details, "  running");
+							break;
+						case RECTYPE_PRIMARY:
+							appendPQExpBufferStr(details, "! running as primary");
+							item_list_append_format(warnings,
+													"node \"%s\" (ID: %i) is registered as standby but running as primary",
+													node_info->node_name, node_info->node_id);
+							break;
+						case RECTYPE_UNKNOWN:
+							appendPQExpBufferStr(details, "! unknown");
+							item_list_append_format(
+								warnings,
+								"node \"%s\" (ID: %i) has unknown replication status",
+								node_info->node_name, node_info->node_id);
+							break;
+					}
+				}
+				else
+				{
+					if (node_info->recovery_type == RECTYPE_STANDBY)
+					{
+						appendPQExpBufferStr(details, "! running");
+						item_list_append_format(warnings,
+												"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
+												node_info->node_name, node_info->node_id);
+					}
+					else
+					{
+						appendPQExpBufferStr(details, "! running as primary");
+						item_list_append_format(warnings,
+												"node \"%s\" (ID: %i) is running as primary but the repmgr node record is inactive",
+												node_info->node_name, node_info->node_id);
+					}
+				}
+
+				/* warn about issue with paused WAL replay */
+				if (is_wal_replay_paused(node_info->conn, true))
+				{
+					item_list_append_format(warnings,
+											_("WAL replay is paused on node \"%s\" (ID: %i) with WAL replay pending; this node cannot be manually promoted until WAL replay is resumed"),
+											node_info->node_name, node_info->node_id);
+				}
+			}
+			/* node is up but cannot connect */
+			else if (node_info->node_status == NODE_STATUS_REJECTED)
+			{
+				if (node_info->active == true)
+				{
+					appendPQExpBufferStr(details, "? running");
+				}
+				else
+				{
+					appendPQExpBufferStr(details, "! running");
+					error_found = true;
+				}
+			}
+			/* node is unreachable */
+			else
+			{
+				/* node is unreachable but marked active */
+				if (node_info->active == true)
+				{
+					appendPQExpBufferStr(details, "? unreachable");
+					item_list_append_format(warnings,
+											"node \"%s\" (ID: %i) is registered as an active standby but is unreachable",
+											node_info->node_name, node_info->node_id);
+				}
+				else
+				{
+					appendPQExpBufferStr(details, "- failed");
+					error_found = true;
+				}
+			}
+		}
+
+		break;
+		case WITNESS:
+		case BDR:
+		{
+			/* node is reachable */
+			if (node_info->node_status == NODE_STATUS_UP)
+			{
+				if (node_info->active == true)
+				{
+					appendPQExpBufferStr(details, "* running");
+				}
+				else
+				{
+					appendPQExpBufferStr(details, "! running");
+					error_found = true;
+				}
+			}
+			/* node is up but cannot connect */
+			else if (node_info->node_status == NODE_STATUS_REJECTED)
+			{
+				if (node_info->active == true)
+				{
+					appendPQExpBufferStr(details, "? rejected");
+				}
+				else
+				{
+					appendPQExpBufferStr(details, "! failed");
+					error_found = true;
+				}
+			}
+			/* node is unreachable */
+			else
+			{
+				if (node_info->active == true)
+				{
+					appendPQExpBufferStr(details, "? unreachable");
+				}
+				else
+				{
+					appendPQExpBufferStr(details, "- failed");
+					error_found = true;
+				}
+			}
+		}
+		break;
+		case UNKNOWN:
+		{
+			/* this should never happen */
+			appendPQExpBufferStr(details, "? unknown node type");
+			error_found = true;
+		}
+		break;
+	}
+
+	return error_found;
 }
 
 
@@ -2044,8 +2293,9 @@ print_error_list(ItemList *error_list, int log_level)
 void
 print_status_header(int cols, ColHeader *headers)
 {
-	int i;
+	int i, di;
 	int max_cols = 0;
+
 
 	/* count how many columns we actually need to display */
 	for (i = 0; i < cols; i++)
@@ -2073,7 +2323,8 @@ print_status_header(int cols, ColHeader *headers)
 	printf("\n");
 	printf("-");
 
-	for (i = 0; i < max_cols; i++)
+	di = 0;
+	for (i = 0; i < cols; i++)
 	{
 		int			j;
 
@@ -2083,10 +2334,11 @@ print_status_header(int cols, ColHeader *headers)
 		for (j = 0; j < headers[i].max_length; j++)
 			printf("-");
 
-		if (i < (max_cols - 1))
+		if (di < (max_cols - 1))
 			printf("-+-");
 		else
 			printf("-");
+		di++;
 	}
 
 	printf("\n");

@@ -115,6 +115,9 @@ item_list_append_format(ItemList *item_list, const char *format,...)
 	ItemListCell *cell;
 	va_list		arglist;
 
+	if (item_list == NULL)
+		return;
+
 	cell = (ItemListCell *) pg_malloc0(sizeof(ItemListCell));
 
 	if (cell == NULL)

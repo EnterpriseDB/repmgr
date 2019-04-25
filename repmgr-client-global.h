@@ -45,6 +45,7 @@ typedef struct
 	int			wait;
 	bool		no_wait;
 	bool		compact;
+	bool		detail;
 
 	/* logging options */
 	char		log_level[MAXLEN];	/* overrides setting in repmgr.conf */
@@ -143,7 +144,7 @@ typedef struct
 		/* configuration metadata */ \
 		false, false, false, false, false,	\
 		/* general configuration options */	\
-		"", false, false, "", -1, false, false, \
+		"", false, false, "", -1, false, false, false, \
 		/* logging options */ \
 		"", false, false, false, false,	\
 		/* output options */ \
@@ -241,8 +242,8 @@ extern void get_superuser_connection(PGconn **conn, PGconn **superuser_conn, PGc
 extern void make_remote_repmgr_path(PQExpBufferData *outputbuf, t_node_info *remote_node_record);
 extern void make_repmgrd_path(PQExpBufferData *output_buf);
 
-
 /* display functions */
+extern bool format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *warnings);
 extern void print_help_header(void);
 extern void print_status_header(int cols, ColHeader *headers);
 

@@ -1,3 +1,6 @@
+4.4     2019-??-??
+        repmgr: improve "daemon status" output (Ian)
+
 4.3.1   2019-??-??
         repmgr: ensure BDR2-specific functionality cannot be used on
           BDR3 and later (Ian)
