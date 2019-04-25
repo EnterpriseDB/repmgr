@@ -33,6 +33,7 @@
         repmgrd: improve witness monitoring when primary node not available (Ian)
 		repmgrd: handle situation where a primary has unexpectedly appeared
 		  during failover; GitHub #420 (Ian)
+		general: fix Makefile (John)
 
 4.2     2018-10-24
         repmgr: add parameter "shutdown_check_timeout" for use by "standby switchover";
