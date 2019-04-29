@@ -47,6 +47,23 @@ typedef struct TablespaceDataList
 } TablespaceDataList;
 
 
+typedef struct
+{
+	int			reachable_sibling_node_count;
+	int			reachable_sibling_nodes_with_slot_count;
+	int			unreachable_sibling_node_count;
+	int			min_required_wal_senders;
+	int			min_required_free_slots;
+} SiblingNodeStats;
+
+#define T_SIBLING_NODES_STATS_INITIALIZER { \
+	0, \
+	0, \
+	0, \
+	0, \
+	0 \
+}
+
 static PGconn *primary_conn = NULL;
 static PGconn *source_conn = NULL;
 
@@ -97,6 +114,8 @@ static char *make_barman_ssh_command(char *buf);
 
 static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, char *dest, bool as_file);
 static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list);
+static bool check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
+static void sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
@@ -3167,18 +3186,10 @@ do_standby_switchover(void)
 
 	/* store list of sibling nodes if --siblings-follow specified */
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
-	int			reachable_sibling_node_count = 0;
-	int			reachable_sibling_nodes_with_slot_count = 0;
-	int			unreachable_sibling_node_count = 0;
-
-	/* number of free walsenders required on promotion candidate */
-	int			min_required_wal_senders = 1;
+	SiblingNodeStats sibling_nodes_stats = T_SIBLING_NODES_STATS_INITIALIZER;
 
 	/* this will be calculated as max_wal_senders - COUNT(*) FROM pg_stat_replication */
 	int			available_wal_senders = 0;
-
-	/* number of free replication slots required on promotion candidate */
-	int			min_required_free_slots = 0;
 
 	t_event_info event_info = T_EVENT_INFO_INITIALIZER;
 
@@ -3186,6 +3197,11 @@ do_standby_switchover(void)
 	NodeInfoList all_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	RepmgrdInfo **repmgrd_info = NULL;
 	int			repmgrd_running_count = 0;
+
+	/* number of free walsenders required on promotion candidate
+	 * (at least one will be required for the demotion candidate)
+	 */
+	sibling_nodes_stats.min_required_wal_senders = 1;
 
 	/*
 	 * SANITY CHECKS
@@ -3375,7 +3391,7 @@ do_standby_switchover(void)
 	/* keep a running total of how many nodes will require a replication slot */
 	if (remote_node_record.slot_name[0] != '\0')
 	{
-		min_required_free_slots++;
+		sibling_nodes_stats.min_required_free_slots++;
 	}
 
 	/*
@@ -3596,130 +3612,11 @@ do_standby_switchover(void)
 									local_node_record.upstream_node_id,
 									&sibling_nodes);
 
-	if (runtime_options.siblings_follow == false)
+	if (check_sibling_nodes(&sibling_nodes, &sibling_nodes_stats) == false)
 	{
-		if (sibling_nodes.node_count > 0)
-		{
-			PQExpBufferData nodes;
-			NodeInfoListCell *cell;
-
-			initPQExpBuffer(&nodes);
-
-			for (cell = sibling_nodes.head; cell; cell = cell->next)
-			{
-				appendPQExpBuffer(&nodes,
-								  "  %s (ID: %i)",
-								  cell->node_info->node_name,
-								  cell->node_info->node_id);
-				if (cell->next)
-					appendPQExpBufferStr(&nodes, "\n");
-			}
-
-			log_warning(_("%i sibling nodes found, but option \"--siblings-follow\" not specified"),
-						sibling_nodes.node_count);
-			log_detail(_("these nodes will remain attached to the current primary:\n%s"), nodes.data);
-
-			termPQExpBuffer(&nodes);
-		}
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
 	}
-	else
-	{
-		char		host[MAXLEN] = "";
-		NodeInfoListCell *cell;
-
-		log_verbose(LOG_INFO, _("%i active sibling nodes found"),
-					sibling_nodes.node_count);
-
-		if (sibling_nodes.node_count == 0)
-		{
-			log_warning(_("option \"--sibling-nodes\" specified, but no sibling nodes exist"));
-		}
-		else
-		{
-			/* include walsender for promotion candidate in total */
-
-			for (cell = sibling_nodes.head; cell; cell = cell->next)
-			{
-				/* get host from node record */
-				get_conninfo_value(cell->node_info->conninfo, "host", host);
-				r = test_ssh_connection(host, runtime_options.remote_user);
-
-				if (r != 0)
-				{
-					cell->node_info->reachable = false;
-					unreachable_sibling_node_count++;
-				}
-				else
-				{
-					cell->node_info->reachable = true;
-					reachable_sibling_node_count++;
-					min_required_wal_senders++;
-
-					if (cell->node_info->slot_name[0] != '\0')
-					{
-						reachable_sibling_nodes_with_slot_count++;
-						min_required_free_slots++;
-					}
-				}
-			}
-
-			if (unreachable_sibling_node_count > 0)
-			{
-				if (runtime_options.force == false)
-				{
-					log_error(_("%i of %i sibling nodes unreachable via SSH:"),
-							  unreachable_sibling_node_count,
-							  sibling_nodes.node_count);
-				}
-				else
-				{
-					log_warning(_("%i of %i sibling nodes unreachable via SSH:"),
-								unreachable_sibling_node_count,
-								sibling_nodes.node_count);
-				}
-
-				/* display list of unreachable sibling nodes */
-				for (cell = sibling_nodes.head; cell; cell = cell->next)
-				{
-					if (cell->node_info->reachable == true)
-						continue;
-					log_detail("  \"%s\" (ID: %i)",
-							   cell->node_info->node_name,
-							   cell->node_info->node_id);
-				}
-
-				if (runtime_options.force == false)
-				{
-					log_hint(_("use -F/--force to proceed in any case"));
-					PQfinish(local_conn);
-					exit(ERR_BAD_CONFIG);
-				}
-
-				if (runtime_options.dry_run == true)
-				{
-					log_detail(_("F/--force specified, would proceed anyway"));
-				}
-				else
-				{
-					log_detail(_("F/--force specified, proceeding anyway"));
-				}
-			}
-			else
-			{
-				char	   *msg = _("all sibling nodes are reachable via SSH");
-
-				if (runtime_options.dry_run == true)
-				{
-					log_info("%s", msg);
-				}
-				else
-				{
-					log_verbose(LOG_INFO, "%s", msg);
-				}
-			}
-		}
-	}
-
 
 	/*
 	 * check there are sufficient free walsenders - obviously there's potential
@@ -3729,13 +3626,13 @@ do_standby_switchover(void)
 	 * performing a switchover in such an unstable environment, they only have
 	 * themselves to blame).
 	 */
-	if (available_wal_senders < min_required_wal_senders)
+	if (available_wal_senders < sibling_nodes_stats.min_required_wal_senders)
 	{
 		if (runtime_options.force == false || runtime_options.dry_run == true)
 		{
 			log_error(_("insufficient free walsenders on promotion candidate"));
 			log_detail(_("at least %i walsenders required but only %i free walsenders on promotion candidate"),
-					   min_required_wal_senders,
+					   sibling_nodes_stats.min_required_wal_senders,
 					   available_wal_senders);
 			log_hint(_("increase parameter \"max_wal_senders\" or use -F/--force to proceed in any case"));
 
@@ -3749,7 +3646,7 @@ do_standby_switchover(void)
 		{
 			log_warning(_("insufficient free walsenders on promotion candidate"));
 			log_detail(_("at least %i walsenders required but only %i free walsender(s) on promotion candidate"),
-					   min_required_wal_senders,
+					   sibling_nodes_stats.min_required_wal_senders,
 					   available_wal_senders);
 		}
 	}
@@ -3758,7 +3655,7 @@ do_standby_switchover(void)
 		if (runtime_options.dry_run == true)
 		{
 			log_info(_("%i walsenders required, %i available"),
-					 min_required_wal_senders,
+					 sibling_nodes_stats.min_required_wal_senders,
 					 available_wal_senders);
 		}
 	}
@@ -4014,23 +3911,23 @@ do_standby_switchover(void)
 	 * check the promotion candidate has sufficient free slots
 	 */
 
-	if (min_required_free_slots > 0 )
+	if (sibling_nodes_stats.min_required_free_slots > 0 )
 	{
 		int available_slots = local_node_record.max_replication_slots -
 			local_node_record.active_replication_slots;
 
 		log_debug("minimum of %i free slots (%i for siblings) required; %i available",
-				  min_required_free_slots,
-				  reachable_sibling_nodes_with_slot_count,
+				  sibling_nodes_stats.min_required_free_slots,
+				  sibling_nodes_stats.reachable_sibling_nodes_with_slot_count,
 				  available_slots);
 
-		if (available_slots < min_required_free_slots)
+		if (available_slots < sibling_nodes_stats.min_required_free_slots)
 		{
 			if (runtime_options.force == false || runtime_options.dry_run == true)
 			{
 				log_error(_("insufficient free replication slots to attach all nodes"));
 				log_detail(_("at least %i additional replication slots required but only %i free slots available on promotion candidate"),
-						   min_required_free_slots,
+						   sibling_nodes_stats.min_required_free_slots,
 						   available_slots);
 				log_hint(_("increase parameter \"max_replication_slots\" or use -F/--force to proceed in any case"));
 
@@ -4046,7 +3943,7 @@ do_standby_switchover(void)
 			if (runtime_options.dry_run == true)
 			{
 				log_info(_("%i replication slots required, %i available"),
-						 min_required_free_slots,
+						 sibling_nodes_stats.min_required_free_slots,
 						 available_slots);
 			}
 		}
@@ -4645,104 +4542,7 @@ do_standby_switchover(void)
 	 */
 	if (runtime_options.siblings_follow == true && sibling_nodes.node_count > 0)
 	{
-		int			failed_follow_count = 0;
-		char		host[MAXLEN] = "";
-		NodeInfoListCell *cell = NULL;
-
-		log_notice(_("executing STANDBY FOLLOW on %i of %i siblings"),
-				   sibling_nodes.node_count - unreachable_sibling_node_count,
-				   sibling_nodes.node_count);
-
-		for (cell = sibling_nodes.head; cell; cell = cell->next)
-		{
-			bool		success = false;
-			t_node_info sibling_node_record = T_NODE_INFO_INITIALIZER;
-
-			/* skip nodes previously determined as unreachable */
-			if (cell->node_info->reachable == false)
-				continue;
-
-			record_status = get_node_record(local_conn,
-											cell->node_info->node_id,
-											&sibling_node_record);
-
-			initPQExpBuffer(&remote_command_str);
-			make_remote_repmgr_path(&remote_command_str, &sibling_node_record);
-
-			if (sibling_node_record.type == WITNESS)
-			{
-				PGconn *witness_conn = NULL;
-
-				/* TODO: create "repmgr witness resync" or similar */
-				appendPQExpBuffer(&remote_command_str,
-								  "witness register -d \\'%s\\' --force 2>/dev/null && echo \"1\" || echo \"0\"",
-								  local_node_record.conninfo);
-
-				/*
-				 * Notify the witness repmgrd about the new primary, as at this point it will be assuming
-				 * a failover situation is in place. It will detect the new primary at some point, this
-				 * just speeds up the process.
-				 *
-				 * In the unlikely event repmgrd is not running or not in use, this will have no effect.
-				 */
-				witness_conn = establish_db_connection_quiet(cell->node_info->conninfo);
-
-				if (PQstatus(witness_conn) == CONNECTION_OK)
-				{
-					notify_follow_primary(witness_conn, local_node_record.node_id);
-				}
-				PQfinish(witness_conn);
-			}
-			else
-			{
-				appendPQExpBufferStr(&remote_command_str,
-									 "standby follow 2>/dev/null && echo \"1\" || echo \"0\"");
-			}
-			get_conninfo_value(cell->node_info->conninfo, "host", host);
-			log_debug("executing:\n  %s", remote_command_str.data);
-
-			initPQExpBuffer(&command_output);
-
-			success = remote_command(host,
-									 runtime_options.remote_user,
-									 remote_command_str.data,
-									 config_file_options.ssh_options,
-									 &command_output);
-
-			termPQExpBuffer(&remote_command_str);
-
-			if (success == false || command_output.data[0] == '0')
-			{
-				if (sibling_node_record.type == WITNESS)
-				{
-					log_warning(_("WITNESS REGISTER failed on node \"%s\""),
-								cell->node_info->node_name);
-				}
-				else
-				{
-					log_warning(_("STANDBY FOLLOW failed on node \"%s\""),
-								cell->node_info->node_name);
-				}
-				failed_follow_count++;
-			}
-
-			termPQExpBuffer(&command_output);
-		}
-
-		if (failed_follow_count == 0)
-		{
-			log_info(_("STANDBY FOLLOW successfully executed on all reachable sibling nodes"));
-		}
-		else
-		{
-			log_warning(_("execution of STANDBY FOLLOW failed on %i sibling nodes"),
-						failed_follow_count);
-		}
-
-		/*
-		 * TODO: double-check all expected nodes are in pg_stat_replication
-		 * and entries in repmgr.nodes match
-		 */
+		sibling_nodes_follow(&local_node_record, &sibling_nodes, &sibling_nodes_stats);
 	}
 
 	clear_node_info_list(&sibling_nodes);
@@ -7173,6 +6973,241 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 	free_conninfo_params(&env_conninfo);
 	termPQExpBuffer(&conninfo_buf);
 }
+
+
+static bool
+check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats)
+{
+	char		host[MAXLEN] = "";
+	NodeInfoListCell *cell;
+	int			r;
+
+	/*
+	 * If --siblings-follow not specified, warn about any extant
+	 * siblings which will not follow the new primary
+	 */
+
+	if (runtime_options.siblings_follow == false)
+	{
+		if (sibling_nodes->node_count > 0)
+		{
+			PQExpBufferData nodes;
+			NodeInfoListCell *cell;
+
+			initPQExpBuffer(&nodes);
+
+			for (cell = sibling_nodes->head; cell; cell = cell->next)
+			{
+				appendPQExpBuffer(&nodes,
+								  "  %s (node ID: %i)",
+								  cell->node_info->node_name,
+								  cell->node_info->node_id);
+				if (cell->next)
+					appendPQExpBufferStr(&nodes, "\n");
+			}
+
+			log_warning(_("%i sibling nodes found, but option \"--siblings-follow\" not specified"),
+						sibling_nodes->node_count);
+			log_detail(_("these nodes will remain attached to the current primary:\n%s"), nodes.data);
+
+			termPQExpBuffer(&nodes);
+		}
+
+		return true;
+	}
+
+	log_verbose(LOG_INFO, _("%i active sibling nodes found"),
+				sibling_nodes->node_count);
+
+	if (sibling_nodes->node_count == 0)
+	{
+		log_warning(_("option \"--sibling-nodes\" specified, but no sibling nodes exist"));
+		return true;
+	}
+
+	for (cell = sibling_nodes->head; cell; cell = cell->next)
+	{
+		/* get host from node record */
+		get_conninfo_value(cell->node_info->conninfo, "host", host);
+		r = test_ssh_connection(host, runtime_options.remote_user);
+
+		if (r != 0)
+		{
+			cell->node_info->reachable = false;
+			sibling_nodes_stats->unreachable_sibling_node_count++;
+		}
+		else
+		{
+			cell->node_info->reachable = true;
+			sibling_nodes_stats->reachable_sibling_node_count++;
+			sibling_nodes_stats->min_required_wal_senders++;
+
+			if (cell->node_info->slot_name[0] != '\0')
+			{
+				sibling_nodes_stats->reachable_sibling_nodes_with_slot_count++;
+				sibling_nodes_stats->min_required_free_slots++;
+			}
+		}
+	}
+
+	if (sibling_nodes_stats->unreachable_sibling_node_count > 0)
+	{
+		if (runtime_options.force == false)
+		{
+			log_error(_("%i of %i sibling nodes unreachable via SSH:"),
+					  sibling_nodes_stats->unreachable_sibling_node_count,
+					  sibling_nodes->node_count);
+		}
+		else
+		{
+			log_warning(_("%i of %i sibling nodes unreachable via SSH:"),
+						sibling_nodes_stats->unreachable_sibling_node_count,
+						sibling_nodes->node_count);
+		}
+
+		/* display list of unreachable sibling nodes */
+		for (cell = sibling_nodes->head; cell; cell = cell->next)
+		{
+			if (cell->node_info->reachable == true)
+				continue;
+			log_detail("  %s (ID: %i)",
+					   cell->node_info->node_name,
+					   cell->node_info->node_id);
+		}
+
+		if (runtime_options.force == false)
+		{
+			log_hint(_("use -F/--force to proceed in any case"));
+			return false;
+		}
+
+		if (runtime_options.dry_run == true)
+		{
+			log_detail(_("F/--force specified, would proceed anyway"));
+		}
+		else
+		{
+			log_detail(_("F/--force specified, proceeding anyway"));
+		}
+	}
+	else
+	{
+		char	   *msg = _("all sibling nodes are reachable via SSH");
+
+		if (runtime_options.dry_run == true)
+		{
+			log_info("%s", msg);
+		}
+		else
+		{
+			log_verbose(LOG_INFO, "%s", msg);
+		}
+	}
+
+	return true;
+}
+
+
+static void
+sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats)
+{
+	int			failed_follow_count = 0;
+	char		host[MAXLEN] = "";
+	NodeInfoListCell *cell = NULL;
+	PQExpBufferData remote_command_str;
+	PQExpBufferData command_output;
+
+	log_notice(_("executing STANDBY FOLLOW on %i of %i siblings"),
+			   sibling_nodes->node_count - sibling_nodes_stats->unreachable_sibling_node_count,
+			   sibling_nodes->node_count);
+
+	for (cell = sibling_nodes->head; cell; cell = cell->next)
+	{
+		bool		success = false;
+
+		/* skip nodes previously determined as unreachable */
+		if (cell->node_info->reachable == false)
+			continue;
+
+		initPQExpBuffer(&remote_command_str);
+		make_remote_repmgr_path(&remote_command_str, cell->node_info);
+
+		if (cell->node_info->type == WITNESS)
+		{
+			PGconn *witness_conn = NULL;
+
+			/* TODO: create "repmgr witness resync" or similar */
+			appendPQExpBuffer(&remote_command_str,
+							  "witness register -d \\'%s\\' --force 2>/dev/null && echo \"1\" || echo \"0\"",
+							  local_node_record->conninfo);
+
+			/*
+			 * Notify the witness repmgrd about the new primary, as at this point it will be assuming
+			 * a failover situation is in place. It will detect the new primary at some point, this
+			 * just speeds up the process.
+			 *
+			 * In the unlikely event repmgrd is not running or not in use, this will have no effect.
+			 */
+			witness_conn = establish_db_connection_quiet(cell->node_info->conninfo);
+
+			if (PQstatus(witness_conn) == CONNECTION_OK)
+			{
+				notify_follow_primary(witness_conn, local_node_record->node_id);
+			}
+			PQfinish(witness_conn);
+		}
+		else
+		{
+			appendPQExpBufferStr(&remote_command_str,
+								 "standby follow 2>/dev/null && echo \"1\" || echo \"0\"");
+		}
+		get_conninfo_value(cell->node_info->conninfo, "host", host);
+		log_debug("executing:\n  %s", remote_command_str.data);
+
+		initPQExpBuffer(&command_output);
+
+		success = remote_command(host,
+								 runtime_options.remote_user,
+								 remote_command_str.data,
+								 config_file_options.ssh_options,
+								 &command_output);
+
+		termPQExpBuffer(&remote_command_str);
+
+		if (success == false || command_output.data[0] == '0')
+		{
+			if (cell->node_info->type == WITNESS)
+			{
+				log_warning(_("WITNESS REGISTER failed on node \"%s\""),
+							cell->node_info->node_name);
+			}
+			else
+			{
+				log_warning(_("STANDBY FOLLOW failed on node \"%s\""),
+							cell->node_info->node_name);
+			}
+				failed_follow_count++;
+		}
+
+		termPQExpBuffer(&command_output);
+	}
+
+	if (failed_follow_count == 0)
+	{
+		log_info(_("STANDBY FOLLOW successfully executed on all reachable sibling nodes"));
+	}
+	else
+	{
+		log_warning(_("execution of STANDBY FOLLOW failed on %i sibling nodes"),
+					failed_follow_count);
+	}
+
+	/*
+	 * TODO: double-check all expected nodes are in pg_stat_replication
+	 * and entries in repmgr.nodes match
+	 */
+}
+
 
 
 static NodeStatus
