@@ -1948,6 +1948,20 @@ check_cli_parameters(const int action)
 		}
 	}
 
+	/* --siblings-follow */
+	if (runtime_options.siblings_follow == true)
+	{
+		switch (action)
+		{
+			case STANDBY_SWITCHOVER:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("----siblings-follow is not effective when executing %s"),
+										action_name(action));
+		}
+	}
+
 	/* --disable-wal-receiver / --enable-wal-receiver */
 	if (runtime_options.disable_wal_receiver == true || runtime_options.enable_wal_receiver == true)
 	{
