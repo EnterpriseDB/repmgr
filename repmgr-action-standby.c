@@ -4084,16 +4084,24 @@ do_standby_switchover(void)
 
 				repmgrd_info[i]->pg_running = false;
 
-				item_list_append_format(&repmgrd_connection_errors,
-										_("unable to connect to node \"%s\" (ID %i):\n%s"),
-										cell->node_info->node_name,
-										cell->node_info->node_id,
-										PQerrorMessage(cell->node_info->conn));
+				/*
+				 * Only worry about unreachable nodes if they're marked as active
+				 * in the repmgr metadata.
+				 */
+				if (cell->node_info->active == true)
+				{
+					unreachable_node_count++;
+
+					item_list_append_format(&repmgrd_connection_errors,
+											_("unable to connect to node \"%s\" (ID %i):\n%s"),
+											cell->node_info->node_name,
+											cell->node_info->node_id,
+											PQerrorMessage(cell->node_info->conn));
+				}
 
 				PQfinish(cell->node_info->conn);
 				cell->node_info->conn = NULL;
 
-				unreachable_node_count++;
 				i++;
 				continue;
 			}

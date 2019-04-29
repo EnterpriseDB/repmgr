@@ -55,9 +55,17 @@
             </para>
           </listitem>
 
+		  <listitem>
+			<para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>, don't abort if one or more nodes are not reachable <emphasis>and</emphasis>
+			  they are marked as inactive.
+			</para>
+		  </listitem>
+
         </itemizedlist>
-      </para>
+	  </para>
     </sect2>
+
   </sect1>
 
   <sect1 id="release-4.3">
