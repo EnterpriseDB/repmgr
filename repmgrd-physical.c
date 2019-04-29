@@ -4088,12 +4088,6 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 			continue;
 		}
 
-		log_info(_("node \"%s\" (ID: %i) reports its upstream is node %i, last seen %i second(s) ago"),
-				 cell->node_info->node_name,
-				 cell->node_info->node_id,
-				 sibling_replication_info.upstream_node_id,
-				 sibling_replication_info.upstream_last_seen);
-
 		/*
 		 * Check if node is not in recovery - it may have been promoted
 		 * outside of the failover mechanism, in which case we may be able
@@ -4108,6 +4102,21 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 						cell->node_info->node_name,
 						cell->node_info->node_id);
 
+			/*
+			 * Node is not in recovery, but still reporting an upstream
+			 * node ID; possible it was promoted manually (e.g. with "pg_ctl promote"),
+			 * or (less likely) the node's repmgrd has just switched to primary
+			 * monitoring node but has not yet unset the upstream node ID in
+			 * shared memory. Either way, log this.
+			 */
+			if (sibling_replication_info.upstream_node_id != UNKNOWN_NODE_ID)
+			{
+				log_warning(_("node \"%s\" (ID: %i) still reports its upstream is node %i, last seen %i second(s) ago"),
+							cell->node_info->node_name,
+							cell->node_info->node_id,
+							sibling_replication_info.upstream_node_id,
+							sibling_replication_info.upstream_last_seen);
+			}
 			can_follow = check_node_can_follow(local_conn,
 											   local_node_info.last_wal_receive_lsn,
 											   cell->node_info->conn,
@@ -4127,6 +4136,14 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 						cell->node_info->node_name,
 						cell->node_info->node_id);
 			continue;
+		}
+		else
+		{
+			log_info(_("node \"%s\" (ID: %i) reports its upstream is node %i, last seen %i second(s) ago"),
+					 cell->node_info->node_name,
+					 cell->node_info->node_id,
+					 sibling_replication_info.upstream_node_id,
+					 sibling_replication_info.upstream_last_seen);
 		}
 
 		/* check if WAL replay on node is paused */
