@@ -307,7 +307,7 @@ do_daemon_status(void)
 				   repmgrd_info[i]->pid == UNKNOWN_PID
 				     ? -1
  				     : repmgrd_info[i]->upstream_last_seen,
-				   cell->node_info->priority);
+				   cell->node_info->location);
 		}
 		else
 		{
