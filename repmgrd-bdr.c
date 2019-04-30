@@ -128,7 +128,7 @@ monitor_bdr(void)
 
 	if (record_status != RECORD_FOUND)
 	{
-		log_error(_("unable to retrieve BDR record for node %s, terminating"),
+		log_error(_("unable to retrieve BDR record for node \"%s\", terminating"),
 				  local_node_info.node_name);
 		PQfinish(local_conn);
 		exit(ERR_BAD_CONFIG);
@@ -231,7 +231,7 @@ monitor_bdr(void)
 									cell->node_info->conn = NULL;
 								}
 
-								log_warning(_("unable to connect to node %s (ID %i)"),
+								log_warning(_("unable to connect to node \"%s\" (ID %i)"),
 											cell->node_info->node_name, cell->node_info->node_id);
 								//cell->node_info->conn = try_reconnect(cell->node_info);
 								try_reconnect(&cell->node_info->conn, cell->node_info);
@@ -586,7 +586,7 @@ do_bdr_recovery(NodeInfoList *nodes, t_node_info *monitored_node)
 
 	get_bdr_other_node_name(local_conn, local_node_info.node_id, node_name);
 
-	log_info(_("detected recovery on node %s (ID: %i), checking status"),
+	log_info(_("detected recovery on node \"%s\" (ID: %i), checking status"),
 			 monitored_node->node_name,
 			 monitored_node->node_id);
 

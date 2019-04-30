@@ -274,7 +274,7 @@ do_primary_unregister(void)
 
 		if (get_primary_node_record(local_conn, &primary_node_info) == true)
 		{
-			log_detail(_("current primary registered as node %s (id: %i, conninfo: \"%s\")"),
+			log_detail(_("current primary registered as node \"%s\" (ID: %i, conninfo: \"%s\")"),
 					   primary_node_info.node_name,
 					   primary_node_info.node_id,
 					   primary_node_info.conninfo);
@@ -316,7 +316,7 @@ do_primary_unregister(void)
 
 	if (target_node_info_ptr->type == WITNESS)
 	{
-		log_error(_("node %s (id: %i) is a witness server, unable to unregister"),
+		log_error(_("node \"%s\" (ID: %i) is a witness server, unable to unregister"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
 		if (target_node_info_ptr->type == STANDBY)
@@ -377,7 +377,7 @@ do_primary_unregister(void)
 	{
 		if (target_node_info_ptr->type != PRIMARY)
 		{
-			log_error(_("node %s (id: %i) is not a primary, unable to unregister"),
+			log_error(_("node \"%s\" (ID: %i) is not a primary, unable to unregister"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
 			if (target_node_info_ptr->type == STANDBY)
@@ -404,7 +404,7 @@ do_primary_unregister(void)
 			 */
 			if (target_node_info_ptr->type != PRIMARY)
 			{
-				log_error(_("node %s (ID: %i) is a %s, unable to unregister"),
+				log_error(_("node \"%s\" (ID: %i) is a %s, unable to unregister"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id,
 						  get_node_type_string(target_node_info_ptr->type));
@@ -418,7 +418,7 @@ do_primary_unregister(void)
 			 */
 			else if (!runtime_options.force)
 			{
-				log_error(_("node %s (ID: %i) is running as a standby, unable to unregister"),
+				log_error(_("node \"%s\" (ID: %i) is running as a standby, unable to unregister"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 				log_hint(_("the node can be registered as a standby with \"repmgr standby register --force\""));
@@ -443,7 +443,7 @@ do_primary_unregister(void)
 
 			if (primary_record_found == false)
 			{
-				log_error(_("node %s (ID: %i) is a primary node, but no primary node record found"),
+				log_error(_("node \"%s\" (ID: %i) is a primary node, but no primary node record found"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 				log_hint(_("register this node as primary with \"repmgr primary register --force\""));
@@ -458,7 +458,7 @@ do_primary_unregister(void)
 			 */
 			if (primary_node_info.node_id == target_node_info_ptr->node_id)
 			{
-				log_error(_("node %s (ID: %i) is the current primary node, unable to unregister"),
+				log_error(_("node \"%s\" (ID: %i) is the current primary node, unable to unregister"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 
@@ -480,7 +480,7 @@ do_primary_unregister(void)
 	{
 		if (!runtime_options.force)
 		{
-			log_error(_("node %s (ID: %i) is marked as active, unable to unregister"),
+			log_error(_("node \"%s\" (ID: %i) is marked as active, unable to unregister"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
 			log_hint(_("run \"repmgr primary unregister --force\" to unregister this node"));
@@ -491,7 +491,7 @@ do_primary_unregister(void)
 
 	if (runtime_options.dry_run == true)
 	{
-		log_notice(_("node %s (ID: %i) would now be unregistered"),
+		log_notice(_("node \"%s\" (ID: %i) would now be unregistered"),
 				   target_node_info_ptr->node_name,
 				   target_node_info_ptr->node_id);
 		log_hint(_("run the same command without the --dry-run option to unregister this node"));
@@ -504,7 +504,7 @@ do_primary_unregister(void)
 
 		if (delete_success == false)
 		{
-			log_error(_("unable to unregister node %s (ID: %i)"),
+			log_error(_("unable to unregister node \"%s\" (ID: %i)"),
 					  target_node_info_ptr->node_name,
 					  target_node_info_ptr->node_id);
 			PQfinish(primary_conn);
@@ -513,14 +513,14 @@ do_primary_unregister(void)
 
 		initPQExpBuffer(&event_details);
 		appendPQExpBuffer(&event_details,
-						  _("node %s (ID: %i) unregistered"),
+						  _("node \"%s\" (ID: %i) unregistered"),
 						  target_node_info_ptr->node_name,
 						  target_node_info_ptr->node_id);
 
 		if (target_node_info_ptr->node_id != config_file_options.node_id)
 		{
 			appendPQExpBuffer(&event_details,
-							  _(" from node %s (ID: %i)"),
+							  _(" from node \"%s\" (ID: %i)"),
 							  config_file_options.node_name,
 							  config_file_options.node_id);
 		}
@@ -533,7 +533,7 @@ do_primary_unregister(void)
 								  event_details.data);
 		termPQExpBuffer(&event_details);
 
-		log_info(_("node %s (ID: %i) was successfully unregistered"),
+		log_info(_("node \"%s\" (ID: %i) was successfully unregistered"),
 				 target_node_info_ptr->node_name,
 				 target_node_info_ptr->node_id);
 	}

@@ -2490,7 +2490,7 @@ get_node_record_by_name(PGconn *conn, const char *node_name, t_node_info *node_i
 
 	if (record_status == RECORD_NOT_FOUND)
 	{
-		log_verbose(LOG_DEBUG, "get_node_record_by_name(): no record found for node %s",
+		log_verbose(LOG_DEBUG, "get_node_record_by_name(): no record found for node \"%s\"",
 					node_name);
 	}
 

@@ -4178,7 +4178,7 @@ do_standby_switchover(void)
 				 */
 				if (repmgrd_info[i]->pg_running == false)
 				{
-					log_warning(_("node %s (ID %i) unreachable, unable to pause repmgrd"),
+					log_warning(_("node \"%s\" (ID %i) unreachable, unable to pause repmgrd"),
 								cell->node_info->node_name,
 								cell->node_info->node_id);
 					i++;
@@ -4191,7 +4191,7 @@ do_standby_switchover(void)
 				 */
 				if (repmgrd_info[i]->running == false)
 				{
-					log_warning(_("repmgrd not running on node %s (ID %i)"),
+					log_warning(_("repmgrd not running on node \"%s\" (ID %i)"),
 								cell->node_info->node_name,
 								cell->node_info->node_id);
 					i++;
@@ -4212,14 +4212,14 @@ do_standby_switchover(void)
 
 				if (runtime_options.dry_run == true)
 				{
-					log_info(_("would pause repmgrd on node %s (ID %i)"),
+					log_info(_("would pause repmgrd on node \"%s\" (ID %i)"),
 							 cell->node_info->node_name,
 							 cell->node_info->node_id);
 				}
 				else
 				{
 					/* XXX check result  */
-					log_debug("pausing repmgrd on node %s (ID %i)",
+					log_debug("pausing repmgrd on node \"%s\" (ID %i)",
 							 cell->node_info->node_name,
 							 cell->node_info->node_id);
 
@@ -4821,7 +4821,7 @@ do_standby_switchover(void)
 
 				if (repmgrd_info[i]->paused == true)
 				{
-					log_debug("repmgrd on node %s (ID %i) paused before switchover, not unpausing",
+					log_debug("repmgrd on node \"%s\" (ID %i) paused before switchover, not unpausing",
 							  cell->node_info->node_name,
 							  cell->node_info->node_id);
 
@@ -4829,7 +4829,7 @@ do_standby_switchover(void)
 					continue;
 				}
 
-				log_debug("unpausing repmgrd on node %s (ID %i)",
+				log_debug("unpausing repmgrd on node \"%s\" (ID %i)",
 						  cell->node_info->node_name,
 						  cell->node_info->node_id);
 

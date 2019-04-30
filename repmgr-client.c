@@ -1290,7 +1290,7 @@ main(int argc, char **argv)
 			pfree(escaped);
 			if (record_status != RECORD_FOUND)
 			{
-				log_error(_("node %s (specified with --node-name) not found"),
+				log_error(_("node \"%s\" (specified with --node-name) not found"),
 						  runtime_options.node_name);
 				PQfinish(conn);
 				free_conninfo_params(&source_conninfo);
