@@ -2222,7 +2222,7 @@ do_node_rejoin(void)
 	{
 		RecoveryType upstream_recovery_type = get_recovery_type(upstream_conn);
 
-		log_error(_("unable to connect to current registered primary \"%s\" (node ID: %i)"),
+		log_error(_("unable to connect to current registered primary \"%s\" (ID: %i)"),
 				  primary_node_record.node_name,
 				  primary_node_record.node_id);
 		log_detail(_("registered primary node conninfo is: \"%s\""),

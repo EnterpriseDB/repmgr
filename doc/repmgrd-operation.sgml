@@ -117,7 +117,7 @@ NOTICE: node 3 (node3) paused</programlisting>
       If the primary (in this example, <literal>node1</literal>) is stopped, <application>repmgrd</application>
       running on one of the standbys (here: <literal>node2</literal>) will react like this:
       <programlisting>
-[2018-09-20 12:22:21] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
+[2018-09-20 12:22:21] [WARNING] unable to connect to upstream node "node1" (ID: 1)
 [2018-09-20 12:22:21] [INFO] checking state of node 1, 1 of 5 attempts
 [2018-09-20 12:22:21] [INFO] sleeping 1 seconds until next reconnection attempt
 ...
@@ -125,7 +125,7 @@ NOTICE: node 3 (node3) paused</programlisting>
 [2018-09-20 12:22:25] [INFO] checking state of node 1, 5 of 5 attempts
 [2018-09-20 12:22:25] [WARNING] unable to reconnect to node 1 after 5 attempts
 [2018-09-20 12:22:25] [NOTICE] node is paused
-[2018-09-20 12:22:33] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in degraded state
+[2018-09-20 12:22:33] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in degraded state
 [2018-09-20 12:22:33] [DETAIL] repmgrd paused by administrator
 [2018-09-20 12:22:33] [HINT] execute "repmgr daemon unpause" to resume normal failover mode</programlisting>
     </para>
@@ -268,8 +268,8 @@ NOTICE: node 3 (node3) unpaused</programlisting>
   Example output in a situation where there is only one standby with <literal>failover=manual</literal>,
   and the primary node is unavailable (but is later restarted):
   <programlisting>
-    [2017-08-29 10:59:19] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state (automatic failover disabled)
-    [2017-08-29 10:59:33] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
+    [2017-08-29 10:59:19] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in normal state (automatic failover disabled)
+    [2017-08-29 10:59:33] [WARNING] unable to connect to upstream node "node1" (ID: 1)
     [2017-08-29 10:59:33] [INFO] checking state of node 1, 1 of 5 attempts
     [2017-08-29 10:59:33] [INFO] sleeping 1 seconds until next reconnection attempt
     (...)
@@ -278,10 +278,10 @@ NOTICE: node 3 (node3) unpaused</programlisting>
     [2017-08-29 10:59:37] [NOTICE] this node is not configured for automatic failover so will not be considered as promotion candidate
     [2017-08-29 10:59:37] [NOTICE] no other nodes are available as promotion candidate
     [2017-08-29 10:59:37] [HINT] use "repmgr standby promote" to manually promote this node
-    [2017-08-29 10:59:37] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in degraded state (automatic failover disabled)
-    [2017-08-29 10:59:53] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in degraded state (automatic failover disabled)
+    [2017-08-29 10:59:37] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in degraded state (automatic failover disabled)
+    [2017-08-29 10:59:53] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in degraded state (automatic failover disabled)
     [2017-08-29 11:00:45] [NOTICE] reconnected to upstream node 1 after 68 seconds, resuming monitoring
-    [2017-08-29 11:00:57] [INFO] node "node2" (node ID: 2) monitoring upstream node "node1" (node ID: 1) in normal state (automatic failover disabled)</programlisting>
+    [2017-08-29 11:00:57] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in normal state (automatic failover disabled)</programlisting>
 
  </para>
  <para>

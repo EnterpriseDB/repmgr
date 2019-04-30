@@ -288,13 +288,13 @@
 	  <application>repmgrd</application> on the primary has started up, while two child
 	  nodes are being provisioned:
 	  <programlisting>
-[2019-04-24 15:25:33] [INFO] monitoring primary node "node1" (node ID: 1) in normal state
-[2019-04-24 15:25:35] [NOTICE] new node "node2" (node ID: 2) has connected
+[2019-04-24 15:25:33] [INFO] monitoring primary node "node1" (ID: 1) in normal state
+[2019-04-24 15:25:35] [NOTICE] new node "node2" (ID: 2) has connected
 [2019-04-24 15:25:35] [NOTICE] 1 (of 1) child nodes are connected, but at least 2 child nodes required
 [2019-04-24 15:25:35] [INFO] no child nodes have detached since repmgrd startup
 (...)
-[2019-04-24 15:25:44] [NOTICE] new node "node3" (node ID: 3) has connected
-[2019-04-24 15:25:46] [INFO] monitoring primary node "node1" (node ID: 1) in normal state
+[2019-04-24 15:25:44] [NOTICE] new node "node3" (ID: 3) has connected
+[2019-04-24 15:25:46] [INFO] monitoring primary node "node1" (ID: 1) in normal state
 (...)</programlisting>
 	</para>
 	<para>
@@ -302,9 +302,9 @@
 	  is now waiting <varname>child_nodes_disconnect_timeout</varname> seconds
 	  before executing <varname>child_nodes_disconnect_command</varname>:
 	  <programlisting>
-[2019-04-24 15:28:11] [INFO] monitoring primary node "node1" (node ID: 1) in normal state
-[2019-04-24 15:28:17] [INFO] monitoring primary node "node1" (node ID: 1) in normal state
-[2019-04-24 15:28:19] [NOTICE] node "node3" (node ID: 3) has disconnected
+[2019-04-24 15:28:11] [INFO] monitoring primary node "node1" (ID: 1) in normal state
+[2019-04-24 15:28:17] [INFO] monitoring primary node "node1" (ID: 1) in normal state
+[2019-04-24 15:28:19] [NOTICE] node "node3" (ID: 3) has disconnected
 [2019-04-24 15:28:19] [NOTICE] 1 (of 2) child nodes are connected, but at least 2 child nodes required
 [2019-04-24 15:28:19] [INFO] most recently detached child node was 3 (ca. 0 seconds ago), not triggering "child_nodes_disconnect_command"
 [2019-04-24 15:28:19] [DETAIL] "child_nodes_disconnect_timeout" set To 30 seconds
@@ -552,7 +552,7 @@
 $ repmgr cluster event --event=child_node_disconnect
  Node ID | Name  | Event                 | OK | Timestamp           | Details
 ---------+-------+-----------------------+----+---------------------+--------------------------------------------
- 1       | node1 | child_node_disconnect | t  | 2019-04-24 12:41:36 | node "node3" (node ID: 3) has disconnected</programlisting>
+ 1       | node1 | child_node_disconnect | t  | 2019-04-24 12:41:36 | node "node3" (ID: 3) has disconnected</programlisting>
 		  </para>
         </listitem>
       </varlistentry>
@@ -574,7 +574,7 @@ $ repmgr cluster event --event=child_node_disconnect
 $ repmgr cluster event --event=child_node_reconnect
  Node ID | Name  | Event                | OK | Timestamp           | Details
 ---------+-------+----------------------+----+---------------------+------------------------------------------------------------
-1       | node1 | child_node_reconnect | t  | 2019-04-24 12:42:19 | node "node3" (node ID: 3) has reconnected after 42 seconds</programlisting>
+1       | node1 | child_node_reconnect | t  | 2019-04-24 12:42:19 | node "node3" (ID: 3) has reconnected after 42 seconds</programlisting>
 		  </para>
         </listitem>
       </varlistentry>
@@ -597,7 +597,7 @@ $ repmgr cluster event --event=child_node_reconnect
 $ repmgr cluster event --event=child_node_new_connect
  Node ID | Name  | Event                  | OK | Timestamp           | Details
 ---------+-------+------------------------+----+---------------------+---------------------------------------------
- 1       | node1 | child_node_new_connect | t  | 2019-04-24 12:41:30 | new node "node3" (node ID: 3) has connected</programlisting>
+ 1       | node1 | child_node_new_connect | t  | 2019-04-24 12:41:30 | new node "node3" (ID: 3) has connected</programlisting>
 		  </para>
         </listitem>
       </varlistentry>
@@ -725,7 +725,7 @@ Node ID: 2
 [2019-03-13 21:01:30] [NOTICE] failover validation command returned a non-zero value: "1"
 [2019-03-13 21:01:30] [NOTICE] promotion candidate election will be rerun
 [2019-03-13 21:01:30] [INFO] 1 followers to notify
-[2019-03-13 21:01:30] [NOTICE] notifying node "node3" (node ID: 3) to rerun promotion candidate selection
+[2019-03-13 21:01:30] [NOTICE] notifying node "node3" (ID: 3) to rerun promotion candidate selection
 INFO:  node 3 received notification to rerun promotion candidate election
 [2019-03-13 21:01:30] [NOTICE] rerunning election after 15 seconds ("election_rerun_interval")</programlisting>
   </para>

@@ -98,7 +98,7 @@
        describing <application>repmgrd</application>'s current state, e.g.:
      </para>
      <programlisting>
-      [2018-07-12 00:47:32] [INFO] monitoring connection to upstream node "node1" (node ID: 1)</programlisting>
+      [2018-07-12 00:47:32] [INFO] monitoring connection to upstream node "node1" (ID: 1)</programlisting>
     </listitem>
    </varlistentry>
 

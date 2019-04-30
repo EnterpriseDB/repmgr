@@ -268,7 +268,7 @@ monitor_streaming_primary(void)
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
-						  _("monitoring cluster primary \"%s\" (node ID: %i)"),
+						  _("monitoring cluster primary \"%s\" (ID: %i)"),
 						  local_node_info.node_name,
 						  local_node_info.node_id);
 
@@ -335,13 +335,13 @@ monitor_streaming_primary(void)
 
 				if (cell->node_info->attached == NODE_ATTACHED)
 				{
-					log_info(_("child node \"%s\" (node ID: %i) is attached"),
+					log_info(_("child node \"%s\" (ID: %i) is attached"),
 							 cell->node_info->node_name,
 							 cell->node_info->node_id);
 				}
 				else
 				{
-					log_info(_("child node \"%s\" (node ID: %i) is not yet attached"),
+					log_info(_("child node \"%s\" (ID: %i) is not yet attached"),
 							 cell->node_info->node_name,
 							 cell->node_info->node_id);
 				}
@@ -536,7 +536,7 @@ loop:
 
 			if (log_status_interval_elapsed >= config_file_options.log_status_interval)
 			{
-				log_info(_("monitoring primary node \"%s\" (node ID: %i) in %s state"),
+				log_info(_("monitoring primary node \"%s\" (ID: %i) in %s state"),
 						 local_node_info.node_name,
 						 local_node_info.node_id,
 						 print_monitoring_state(monitoring_state));
@@ -660,7 +660,7 @@ check_primary_status(int degraded_monitoring_elapsed)
 		return true;
 	}
 
-	log_debug("primary node id is now %i", primary_node_id);
+	log_debug("primary node ID is now %i", primary_node_id);
 
 	record_status = get_node_record(new_primary_conn, config_file_options.node_id, &local_node_info);
 
@@ -907,7 +907,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 
 			if (db_node_rec_found == false)
 			{
-				log_notice(_("child node \"%s\" (node id %i) is no longer connected or registered"),
+				log_notice(_("child node \"%s\" (ID: %i) is no longer connected or registered"),
 						   local_child_node_rec->node_name,
 						   local_child_node_rec->node_id);
 				remove_child_node_record(local_child_nodes, local_child_node_rec->node_id);
@@ -924,7 +924,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 			PQExpBufferData event_details;
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
-							  _("node \"%s\" (node ID: %i) has disconnected"),
+							  _("node \"%s\" (ID: %i) has disconnected"),
 							  child_node_rec->node_name,
 							  child_node_rec->node_id);
 			log_notice("%s",  event_details.data);
@@ -949,7 +949,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 			PQExpBufferData event_details;
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
-							  _("node \"%s\" (node ID: %i) has reconnected after %i seconds"),
+							  _("node \"%s\" (ID: %i) has reconnected after %i seconds"),
 							  child_node_rec->node_name,
 							  child_node_rec->node_id,
 							  calculate_elapsed( child_node_rec->detached_time ));
@@ -975,7 +975,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 			PQExpBufferData event_details;
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
-							  _("new node \"%s\" (node ID: %i) has connected"),
+							  _("new node \"%s\" (ID: %i) has connected"),
 							  child_node_rec->node_name,
 							  child_node_rec->node_id);
 			log_notice("%s",  event_details.data);
@@ -1356,7 +1356,7 @@ monitor_streaming_standby(void)
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
-						  _("monitoring connection to upstream node \"%s\" (node ID: %i)"),
+						  _("monitoring connection to upstream node \"%s\" (ID: %i)"),
 						  upstream_node_info.node_name,
 						  upstream_node_info.node_id);
 
@@ -1402,7 +1402,7 @@ monitor_streaming_standby(void)
 					initPQExpBuffer(&event_details);
 
 					appendPQExpBuffer(&event_details,
-									  _("unable to connect to upstream node \"%s\" (node ID: %i)"),
+									  _("unable to connect to upstream node \"%s\" (ID: %i)"),
 									  upstream_node_info.node_name, upstream_node_info.node_id);
 
 					/* TODO: possibly add pre-action event here */
@@ -1469,7 +1469,7 @@ monitor_streaming_standby(void)
 							 */
 							termPQExpBuffer(&event_details);
 
-							log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
+							log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 									   upstream_node_info.node_name, upstream_node_info.node_id);
 							PQfinish(upstream_conn);
 							upstream_conn = NULL;
@@ -1803,7 +1803,7 @@ loop:
 				initPQExpBuffer(&monitoring_summary);
 
 				appendPQExpBuffer(&monitoring_summary,
-								  _("node \"%s\" (node ID: %i) monitoring upstream node \"%s\" (node ID: %i) in %s state"),
+								  _("node \"%s\" (ID: %i) monitoring upstream node \"%s\" (ID: %i) in %s state"),
 								  local_node_info.node_name,
 								  local_node_info.node_id,
 								  upstream_node_info.node_name,
@@ -1984,7 +1984,7 @@ loop:
 			{
 				if (get_recovery_type(primary_conn) == RECTYPE_STANDBY)
 				{
-					log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
+					log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 							   upstream_node_info.node_name, upstream_node_info.node_id);
 					PQfinish(primary_conn);
 					primary_conn = NULL;
@@ -2113,7 +2113,7 @@ monitor_streaming_witness(void)
 		initPQExpBuffer(&event_details);
 
 		appendPQExpBuffer(&event_details,
-						  _("witness monitoring connection to primary node \"%s\" (node ID: %i)"),
+						  _("witness monitoring connection to primary node \"%s\" (ID: %i)"),
 						  upstream_node_info.node_name,
 						  upstream_node_info.node_id);
 
@@ -2194,7 +2194,7 @@ monitor_streaming_witness(void)
 					initPQExpBuffer(&event_details);
 
 					appendPQExpBuffer(&event_details,
-									  _("unable to connect to primary node \"%s\" (node ID: %i)"),
+									  _("unable to connect to primary node \"%s\" (ID: %i)"),
 									  upstream_node_info.node_name, upstream_node_info.node_id);
 
 					create_event_record(NULL,
@@ -2224,7 +2224,7 @@ monitor_streaming_witness(void)
 					/* check upstream is still primary */
 					if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
 					{
-						log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
+						log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 								   upstream_node_info.node_name, upstream_node_info.node_id);
 						PQfinish(primary_conn);
 						primary_conn = NULL;
@@ -2297,7 +2297,7 @@ monitor_streaming_witness(void)
 					/* check upstream is still primary */
 					if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
 					{
-						log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
+						log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 								   upstream_node_info.node_name, upstream_node_info.node_id);
 						PQfinish(primary_conn);
 						primary_conn = NULL;
@@ -2489,7 +2489,7 @@ loop:
 			{
 				if (get_recovery_type(primary_conn) != RECTYPE_PRIMARY)
 				{
-					log_notice(_("current upstream node \"%s\" (node ID: %i) is not primary, restarting monitoring"),
+					log_notice(_("current upstream node \"%s\" (ID: %i) is not primary, restarting monitoring"),
 							   upstream_node_info.node_name, upstream_node_info.node_id);
 					PQfinish(primary_conn);
 					primary_conn = NULL;
@@ -2515,7 +2515,7 @@ loop:
 				initPQExpBuffer(&monitoring_summary);
 
 				appendPQExpBuffer(&monitoring_summary,
-								  _("witness node \"%s\" (node ID: %i) monitoring primary node \"%s\" (node ID: %i) in %s state"),
+								  _("witness node \"%s\" (ID: %i) monitoring primary node \"%s\" (ID: %i) in %s state"),
 								  local_node_info.node_name,
 								  local_node_info.node_id,
 								  upstream_node_info.node_name,
@@ -2862,7 +2862,7 @@ do_primary_failover(void)
 			/* pass control back down to start_monitoring() */
 
 			log_info(_("resuming %s monitoring mode"), get_node_type_string(local_node_info.type));
-			log_detail(_("original primary \"%s\" (node ID: %i) reappeared"),
+			log_detail(_("original primary \"%s\" (ID: %i) reappeared"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 
 			failover_state = FAILOVER_STATE_NONE;
@@ -2872,7 +2872,7 @@ do_primary_failover(void)
 
 		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
 			log_info(_("resuming %s monitoring mode"), get_node_type_string(local_node_info.type));
-			log_detail(_("following new primary \"%s\" (node id: %i)"),
+			log_detail(_("following new primary \"%s\" (ID: %i)"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
 
@@ -2881,7 +2881,7 @@ do_primary_failover(void)
 
 		case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
 			log_info(_("resuming %s monitoring mode"), get_node_type_string(local_node_info.type));
-			log_detail(_("following original primary \"%s\" (node id: %i)"),
+			log_detail(_("following original primary \"%s\" (ID: %i)"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
 
@@ -3355,12 +3355,12 @@ promote_self(void)
 		{
 			PQExpBufferData event_details;
 
-			log_notice(_("original primary (id: %i) reappeared before this standby was promoted - no action taken"),
+			log_notice(_("original primary (ID: %i) reappeared before this standby was promoted - no action taken"),
 					   failed_primary.node_id);
 
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
-							  _("original primary \"%s\" (node ID: %i) reappeared"),
+							  _("original primary \"%s\" (ID: %i) reappeared"),
 							  failed_primary.node_name,
 							  failed_primary.node_id);
 
@@ -3449,7 +3449,7 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
-			log_info(_("reconnecting to node \"%s\" (node ID: %i)..."),
+			log_info(_("reconnecting to node \"%s\" (ID: %i)..."),
 					 cell->node_info->node_name,
 					 cell->node_info->node_id);
 
@@ -3458,7 +3458,7 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 
 		if (PQstatus(cell->node_info->conn) != CONNECTION_OK)
 		{
-			log_warning(_("unable to reconnect to \"%s\" (node ID: %i)"),
+			log_warning(_("unable to reconnect to \"%s\" (ID: %i)"),
 						cell->node_info->node_name,
 						cell->node_info->node_id);
 			log_detail("\n%s", PQerrorMessage(cell->node_info->conn));
@@ -3468,13 +3468,13 @@ notify_followers(NodeInfoList *standby_nodes, int follow_node_id)
 
 		if (follow_node_id == ELECTION_RERUN_NOTIFICATION)
 		{
-			log_notice(_("notifying node \"%s\" (node ID: %i) to rerun promotion candidate selection"),
+			log_notice(_("notifying node \"%s\" (ID: %i) to rerun promotion candidate selection"),
 					   cell->node_info->node_name,
 					   cell->node_info->node_id);
 		}
 		else
 		{
-			log_notice(_("notifying node \"%s\" (node ID: %i) to follow node %i"),
+			log_notice(_("notifying node \"%s\" (ID: %i) to follow node %i"),
 					   cell->node_info->node_name,
 					   cell->node_info->node_id,
 					   follow_node_id);
@@ -4031,7 +4031,7 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 	{
 		ReplInfo	sibling_replication_info;
 
-		log_info(_("checking state of sibling node \"%s\" (node ID: %i)"),
+		log_info(_("checking state of sibling node \"%s\" (ID: %i)"),
 				 cell->node_info->node_name,
 				 cell->node_info->node_id);
 
@@ -4401,7 +4401,7 @@ bool do_witness_failover(void)
 		case FAILOVER_STATE_PRIMARY_REAPPEARED:
 			/* pass control back down to start_monitoring() */
 			log_info(_("resuming %s monitoring mode"),get_node_type_string(local_node_info.type));
-			log_detail(_("original primary \"%s\" (node ID: %i) reappeared"),
+			log_detail(_("original primary \"%s\" (ID: %i) reappeared"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 
 			failover_state = FAILOVER_STATE_NONE;
@@ -4410,7 +4410,7 @@ bool do_witness_failover(void)
 
 		case FAILOVER_STATE_FOLLOWED_NEW_PRIMARY:
 			log_info(_("resuming %s monitoring mode"),get_node_type_string(local_node_info.type));
-			log_detail(_("following new primary \"%s\" (node id: %i)"),
+			log_detail(_("following new primary \"%s\" (ID: %i)"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
 
@@ -4418,7 +4418,7 @@ bool do_witness_failover(void)
 
 		case FAILOVER_STATE_FOLLOWING_ORIGINAL_PRIMARY:
 			log_info(_("resuming %s monitoring mode"),get_node_type_string(local_node_info.type));
-			log_detail(_("following original primary \"%s\" (node id: %i)"),
+			log_detail(_("following original primary \"%s\" (ID: %i)"),
 					   upstream_node_info.node_name, upstream_node_info.node_id);
 			failover_state = FAILOVER_STATE_NONE;
 

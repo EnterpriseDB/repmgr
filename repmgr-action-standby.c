@@ -1902,7 +1902,7 @@ do_standby_register(void)
 		PQfinish(conn);
 
 	log_info(_("standby registration complete"));
-	log_notice(_("standby node \"%s\" (id: %i) successfully registered"),
+	log_notice(_("standby node \"%s\" (ID: %i) successfully registered"),
 			   config_file_options.node_name, config_file_options.node_id);
 	return;
 }
@@ -2120,7 +2120,7 @@ do_standby_promote(void)
 
 			get_node_record(conn, existing_primary_id, &primary_rec);
 
-			log_detail(_("current primary is %s (node_id: %i)"),
+			log_detail(_("current primary is \"%s\" (ID: %i)"),
 					   primary_rec.node_name,
 					   existing_primary_id);
 		}
@@ -2754,7 +2754,7 @@ do_standby_follow(void)
 	{
 		log_notice(_("STANDBY FOLLOW successful"));
 		appendPQExpBuffer(&follow_output,
-						  "standby attached to upstream node \"%s\" (node ID: %i)",
+						  "standby attached to upstream node \"%s\" (ID: %i)",
 						  follow_target_node_record.node_name,
 						  follow_target_node_id);
 	}
@@ -2762,7 +2762,7 @@ do_standby_follow(void)
 	{
 		log_error(_("STANDBY FOLLOW failed"));
 		appendPQExpBuffer(&follow_output,
-						  "standby did not attach to upstream node \"%s\" (node ID: %i) after %i seconds",
+						  "standby did not attach to upstream node \"%s\" (ID: %i) after %i seconds",
 						  follow_target_node_record.node_name,
 						  follow_target_node_id,
 						  config_file_options.standby_follow_timeout);
@@ -3608,7 +3608,7 @@ do_standby_switchover(void)
 			for (cell = sibling_nodes.head; cell; cell = cell->next)
 			{
 				appendPQExpBuffer(&nodes,
-								  "  %s (node ID: %i)",
+								  "  %s (ID: %i)",
 								  cell->node_info->node_name,
 								  cell->node_info->node_id);
 				if (cell->next)
@@ -3683,7 +3683,7 @@ do_standby_switchover(void)
 				{
 					if (cell->node_info->reachable == true)
 						continue;
-					log_detail("  %s (ID: %i)",
+					log_detail("  \"%s\" (ID: %i)",
 							   cell->node_info->node_name,
 							   cell->node_info->node_id);
 				}
@@ -5130,7 +5130,7 @@ check_source_server()
 
 		if (record_status == RECORD_FOUND && node_record.node_id != config_file_options.node_id)
 		{
-			log_error(_("another node (node_id: %i) already exists with node_name \"%s\""),
+			log_error(_("another node (ID: %i) already exists with node_name \"%s\""),
 					  node_record.node_id,
 					  config_file_options.node_name);
 			PQfinish(source_conn);

@@ -113,7 +113,7 @@ do_primary_register(void)
 		{
 			if (get_recovery_type(primary_conn) == RECTYPE_PRIMARY)
 			{
-				log_error(_("there is already an active registered primary (node ID: %i) in this cluster"),
+				log_error(_("there is already an active registered primary (ID: %i) in this cluster"),
 						  current_primary_id);
 				log_detail(_("a streaming replication cluster can have only one primary node"));
 
@@ -223,12 +223,12 @@ do_primary_register(void)
 
 	if (record_status == RECORD_FOUND)
 	{
-		log_notice(_("primary node record (id: %i) updated"),
+		log_notice(_("primary node record (ID: %i) updated"),
 				   config_file_options.node_id);
 	}
 	else
 	{
-		log_notice(_("primary node record (id: %i) registered"),
+		log_notice(_("primary node record (ID: %i) registered"),
 				   config_file_options.node_id);
 	}
 
@@ -357,7 +357,7 @@ do_primary_unregister(void)
 		for (cell = downstream_nodes.head; cell; cell = cell->next)
 		{
 			appendPQExpBuffer(&detail,
-							  "  %s (id: %i)\n",
+							  "  %s (ID: %i)\n",
 							  cell->node_info->node_name,
 							  cell->node_info->node_id);
 		}
