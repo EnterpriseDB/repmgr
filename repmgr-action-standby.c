@@ -115,8 +115,8 @@ static char *make_barman_ssh_command(char *buf);
 static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, char *dest, bool as_file);
 static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list);
 static bool check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
-static bool check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats);
-static bool check_free_slots(t_node_info *local_node_record, SiblingNodeStats *sibling_nodes_stats);
+static bool check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success);
+static bool check_free_slots(t_node_info *local_node_record, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success);
 
 static void sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 
@@ -2040,6 +2040,7 @@ do_standby_promote(void)
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	SiblingNodeStats sibling_nodes_stats = T_SIBLING_NODES_STATS_INITIALIZER;
 	int			available_wal_senders = 0;
+	bool		dry_run_success = true;
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
@@ -2209,7 +2210,7 @@ do_standby_promote(void)
 	 * performing a promote in such an unstable environment, they only have
 	 * themselves to blame).
 	 */
-	if (check_free_wal_senders(available_wal_senders, &sibling_nodes_stats) == false)
+	if (check_free_wal_senders(available_wal_senders, &sibling_nodes_stats, &dry_run_success) == false)
 	{
 		if (runtime_options.dry_run == false)
 		{
@@ -2223,14 +2224,25 @@ do_standby_promote(void)
 	 * if replication slots are required by siblings,
 	 * check the promotion candidate has sufficient free slots
 	 */
-	if (check_free_slots(&local_node_record, &sibling_nodes_stats) == false)
+	if (check_free_slots(&local_node_record, &sibling_nodes_stats, &dry_run_success) == false)
 	{
-		PQfinish(local_conn);
-		exit(ERR_BAD_CONFIG);
+		if (runtime_options.dry_run == false)
+		{
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 
 	if (runtime_options.dry_run == true)
 	{
+		PQfinish(local_conn);
+
+		if (dry_run_success == false)
+		{
+			log_error(_("prerequisites for executing STANDBY PROMOTE are *not* met"));
+			log_hint(_("see preceding error messages"));
+			exit(ERR_BAD_CONFIG);
+		}
 		log_info(_("prerequisites for executing STANDBY PROMOTE are met"));
 		exit(SUCCESS);
 	}
@@ -3247,6 +3259,7 @@ do_standby_switchover(void)
 				i;
 	bool		command_success = false;
 	bool		shutdown_success = false;
+	bool		dry_run_success = true;
 
 	/* this flag will use to generate the final message generated */
 	bool		switchover_success = true;
@@ -3664,8 +3677,6 @@ do_standby_switchover(void)
 		log_info(_("able to execute \"%s\" on remote host \"localhost\""), progname());
 	}
 
-
-
 	/*
 	 * populate local node record with current state of various replication-related
 	 * values, so we can check for sufficient walsenders and replication slots
@@ -3700,9 +3711,8 @@ do_standby_switchover(void)
 	 * performing a switchover in such an unstable environment, they only have
 	 * themselves to blame).
 	 */
-	if (check_free_wal_senders(available_wal_senders, &sibling_nodes_stats) == false)
+	if (check_free_wal_senders(available_wal_senders, &sibling_nodes_stats, &dry_run_success) == false)
 	{
-
 		if (runtime_options.dry_run == false)
 		{
 			PQfinish(local_conn);
@@ -3959,10 +3969,13 @@ do_standby_switchover(void)
 	 * if replication slots are required by demotion candidate and/or siblings,
 	 * check the promotion candidate has sufficient free slots
 	 */
-	if (check_free_slots(&local_node_record, &sibling_nodes_stats) == false)
+	if (check_free_slots(&local_node_record, &sibling_nodes_stats, &dry_run_success) == false)
 	{
-		PQfinish(local_conn);
-		exit(ERR_BAD_CONFIG);
+		if (runtime_options.dry_run == false)
+		{
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 
 
@@ -4245,7 +4258,16 @@ do_standby_switchover(void)
 
 		key_value_list_free(&remote_config_files);
 
-		return;
+		if (dry_run_success == false)
+		{
+			log_error(_("prerequisites for executing STANDBY SWITCHOVER are *not* met"));
+			log_hint(_("see preceding error messages"));
+			exit(ERR_BAD_CONFIG);
+		}
+
+		log_info(_("prerequisites for executing STANDBY SWITCHOVER are met"));
+
+		exit(SUCCESS);
 	}
 
 	termPQExpBuffer(&command_output);
@@ -7132,7 +7154,7 @@ check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes
 
 
 static bool
-check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats)
+check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success)
 {
 	if (available_wal_senders < sibling_nodes_stats->min_required_wal_senders)
 	{
@@ -7144,7 +7166,11 @@ check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_node
 					   available_wal_senders);
 			log_hint(_("increase parameter \"max_wal_senders\" or use -F/--force to proceed in any case"));
 
-			if (runtime_options.dry_run == false)
+			if (runtime_options.dry_run == true)
+			{
+				*dry_run_success = false;
+			}
+			else
 			{
 				return false;
 			}
@@ -7173,7 +7199,7 @@ check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_node
 
 
 static bool
-check_free_slots(t_node_info *local_node_record, SiblingNodeStats *sibling_nodes_stats)
+check_free_slots(t_node_info *local_node_record, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success)
 {
 	if (sibling_nodes_stats->min_required_free_slots > 0 )
 	{
@@ -7195,7 +7221,11 @@ check_free_slots(t_node_info *local_node_record, SiblingNodeStats *sibling_nodes
 						   available_slots);
 				log_hint(_("increase parameter \"max_replication_slots\" or use -F/--force to proceed in any case"));
 
-				if (runtime_options.dry_run == false)
+				if (runtime_options.dry_run == true)
+				{
+					*dry_run_success = false;
+				}
+				else
 				{
 					return false;
 				}
