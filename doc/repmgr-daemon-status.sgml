@@ -14,14 +14,14 @@
 
   <refnamediv>
     <refname>repmgr daemon status</refname>
-    <refpurpose>display information about the status of <application>repmgrd</application> on each node in the cluster</refpurpose>
+    <refpurpose>display information about the status of &repmgrd; on each node in the cluster</refpurpose>
   </refnamediv>
 
   <refsect1>
     <title>Description</title>
     <para>
       This command provides an overview over all active nodes in the cluster and the state
-      of each node's <application>repmgrd</application> instance. It can be used to check
+      of each node's &repmgrd; instance. It can be used to check
       the result of <xref linkend="repmgr-daemon-pause"> and <xref linkend="repmgr-daemon-unpause">
       operations.
     </para>
@@ -35,13 +35,13 @@
     </para>
     <para>
       If PostgreSQL is not running on a node, &repmgr; will not be able to determine the
-      status of that node's <application>repmgrd</application> instance.
+      status of that node's &repmgrd; instance.
     </para>
     <note>
       <para>
-        After restarting PostgreSQL on any node, the <application>repmgrd</application> instance
+        After restarting PostgreSQL on any node, the &repmgrd; instance
         will take a second or two before it is able to update its status. Until then,
-        <application>repmgrd</application> will be shown as not running.
+        &repmgrd; will be shown as not running.
       </para>
     </note>
 
@@ -50,7 +50,7 @@
   <refsect1>
     <title>Examples</title>
     <para>
-      <application>repmgrd</application> running normally on all nodes:
+      &repmgrd; running normally on all nodes:
     <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
  ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+---------+-------+---------+--------------------
@@ -60,7 +60,7 @@
     </para>
 
     <para>
-      <application>repmgrd</application> paused on all nodes (using <xref linkend="repmgr-daemon-pause">):
+      &repmgrd; paused on all nodes (using <xref linkend="repmgr-daemon-pause">):
     <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
  ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+---------+-------+---------+--------------------
@@ -70,7 +70,7 @@
     </para>
 
     <para>
-      <application>repmgrd</application> not running on one node:
+      &repmgrd; not running on one node:
     <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
  ID | Name  | Role    | Status    | Upstream | repmgrd     | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+-------------+-------+---------+--------------------
@@ -127,25 +127,25 @@
 
               <listitem>
                 <simpara>
-                  <application>repmgrd</application> running (1 = running, 0 = not running, -1 = unknown)
+                  &repmgrd; running (1 = running, 0 = not running, -1 = unknown)
                 </simpara>
               </listitem>
 
               <listitem>
                 <simpara>
-                  <application>repmgrd</application> PID (-1 if not running or status unknown)
+                  &repmgrd; PID (-1 if not running or status unknown)
                 </simpara>
               </listitem>
 
               <listitem>
                 <simpara>
-                  <application>repmgrd</application> paused (1 = paused, 0 = not paused, -1 = unknown)
+                  &repmgrd; paused (1 = paused, 0 = not paused, -1 = unknown)
                 </simpara>
               </listitem>
 
               <listitem>
                 <simpara>
-                  <application>repmgrd</application> node priority
+                  &repmgrd; node priority
                 </simpara>
               </listitem>
 

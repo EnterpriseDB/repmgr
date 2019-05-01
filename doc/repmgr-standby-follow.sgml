@@ -122,7 +122,7 @@
             If not provided, &repmgr; will attempt to follow the current primary node.
           </para>
           <para>
-            Note that when using <application>repmgrd</application>, <option>--upstream-node-id</option>
+            Note that when using &repmgrd;, <option>--upstream-node-id</option>
             should always be configured;
 			see <link linkend="repmgrd-automatic-failover-configuration">Automatic failover configuration</link>
             for details.

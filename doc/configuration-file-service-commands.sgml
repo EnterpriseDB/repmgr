@@ -10,7 +10,7 @@
   <title>Service command settings</title>
 
   <para>
-    In some circumstances, &repmgr; (and <application>repmgrd</application>) need to
+    In some circumstances, &repmgr; (and &repmgrd;) need to
     be able to stop, start or restart PostgreSQL. &repmgr; commands which need to do this
     include <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>,
     <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link> and
@@ -68,7 +68,7 @@
     </para>
     <para>
       Do not confuse this with <varname>promote_command</varname>, which is used
-      by <application>repmgrd</application> to execute <xref linkend="repmgr-standby-promote">.
+      by &repmgrd; to execute <xref linkend="repmgr-standby-promote">.
     </para>
   </note>
 

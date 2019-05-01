@@ -58,7 +58,7 @@
      <listitem>
       <simpara>
        This is the action which occurs if a primary server fails and a suitable standby
-       is  promoted as the new primary. The <application>repmgrd</application> daemon supports automatic failover
+       is  promoted as the new primary. The &repmgrd; daemon supports automatic failover
        to minimise downtime.
       </simpara>
      </listitem>
@@ -107,7 +107,7 @@
         promotes a (local) standby.
       </para>
       <para>
-        A witness server only needs to be created if <application>repmgrd</application>
+        A witness server only needs to be created if &repmgrd;
         is in use.
       </para>
      </listitem>
@@ -198,7 +198,7 @@
         </listitem>
         <listitem>
           <simpara><literal>repmgr.monitoring_history</literal>: historical standby monitoring information
-            written by <application>repmgrd</application></simpara>
+            written by &repmgrd;</simpara>
         </listitem>
        </itemizedlist>
       </para>
@@ -214,7 +214,7 @@
            name of the server's upstream node</simpara>
         </listitem>
         <listitem>
-          <simpara>repmgr.replication_status: when <application>repmgrd</application>'s monitoring is enabled, shows
+          <simpara>repmgr.replication_status: when &repmgrd;'s monitoring is enabled, shows
             current monitoring status for each standby.</simpara>
         </listitem>
        </itemizedlist>

@@ -23,7 +23,7 @@
     <para>
       If the standby promotion succeeds, the server will not need to be
       restarted. However any other standbys will need to follow the new server,
-      by using <xref linkend="repmgr-standby-follow">; if <application>repmgrd</application>
+      by using <xref linkend="repmgr-standby-follow">; if &repmgrd;
         is active, it will handle this automatically.
     </para>
     <para>

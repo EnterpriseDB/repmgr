@@ -14,17 +14,17 @@
 
   <refnamediv>
     <refname>repmgr daemon start</refname>
-    <refpurpose>Start the <application>repmgrd</application> daemon</refpurpose>
+    <refpurpose>Start the &repmgrd; daemon</refpurpose>
   </refnamediv>
 
   <refsect1>
     <title>Description</title>
     <para>
-      This command starts the <application>repmgrd</application> daemon on the
+      This command starts the &repmgrd; daemon on the
       local node.
     </para>
     <para>
-      By default, &repmgr; will wait for up to 15 seconds to confirm that <application>repmgrd</application>
+      By default, &repmgr; will wait for up to 15 seconds to confirm that &repmgrd;
       started. This behaviour can be overridden by specifying a diffent value using the <option>--wait</option>
       option, or disabled altogether with the <option>--no-wait</option> option.
     </para>
@@ -50,7 +50,7 @@
         <term><option>--dry-run</option></term>
         <listitem>
           <para>
-            Check prerequisites but don't actually attempt to start <application>repmgrd</application>.
+            Check prerequisites but don't actually attempt to start &repmgrd;.
           </para>
           <para>
             This action will output the command which would be executed.
@@ -63,7 +63,7 @@
         <term><option>--wait</option></term>
         <listitem>
           <para>
-            Wait for the specified number of seconds to confirm that <application>repmgrd</application>
+            Wait for the specified number of seconds to confirm that &repmgrd;
             started successfully.
           </para>
           <para>
@@ -77,7 +77,7 @@
         <term><option>--no-wait</option></term>
         <listitem>
           <para>
-            Don't wait to confirm that <application>repmgrd</application>
+            Don't wait to confirm that &repmgrd;
             started successfully.
           </para>
           <para>
@@ -109,7 +109,7 @@
           <para>
             <command>repmgr daemon start</command> will execute the command defined by the
             <varname>repmgrd_service_start_command</varname> parameter in <filename>repmgr.conf</filename>.
-            This must be set to a shell command which will start <application>repmgrd</application>;
+            This must be set to a shell command which will start &repmgrd;;
             if &repmgr; was installed from a package, this will be the service command defined by the
             package. For more details see <link linkend="appendix-packages">Appendix: &repmgr; package details</link>.
           </para>
@@ -117,7 +117,7 @@
             <para>
               If &repmgr; was installed from a system package, and you do not configure
               <varname>repmgrd_service_start_command</varname> to an appropriate service command, this may
-              result in the system becoming confused about the state of the <application>repmgrd</application>
+              result in the system becoming confused about the state of the &repmgrd;
               service; this is particularly the case with <literal>systemd</literal>.
             </para>
           </important>
@@ -139,12 +139,12 @@
         <term><option>SUCCESS (0)</option></term>
         <listitem>
           <para>
-            The <application>repmgrd</application> start command (defined in
+            The &repmgrd; start command (defined in
             <varname>repmgrd_service_start_command</varname>) was successfully executed.
           </para>
           <para>
             If the <option>--wait</option> option was provided, &repmgr; will confirm that
-            <application>repmgrd</application> has actually started up.
+            &repmgrd; has actually started up.
           </para>
         </listitem>
       </varlistentry>
@@ -167,10 +167,10 @@
             &repmgr; was unable to connect to the local PostgreSQL node.
           </para>
           <para>
-            PostgreSQL must be running before <application>repmgrd</application>
+            PostgreSQL must be running before &repmgrd;
             can be started. Additionally, unless the <option>--no-wait</option> option was
             provided, &repmgr; needs to be able to connect to the local PostgreSQL node
-            to determine the state of <application>repmgrd</application>.
+            to determine the state of &repmgrd;.
           </para>
         </listitem>
       </varlistentry>
@@ -180,11 +180,11 @@
         <term><option>ERR_REPMGRD_SERVICE (27)</option></term>
         <listitem>
           <para>
-            The <application>repmgrd</application> start command (defined in
+            The &repmgrd; start command (defined in
             <varname>repmgrd_service_start_command</varname>) was not successfully executed.
           </para>
           <para>
-            This can also mean that &repmgr; was unable to confirm whether <application>repmgrd</application>
+            This can also mean that &repmgr; was unable to confirm whether &repmgrd;
             successfully started (unless the <option>--no-wait</option> option was provided).
           </para>
         </listitem>

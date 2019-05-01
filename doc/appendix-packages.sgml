@@ -310,7 +310,7 @@
       </para>
       <para>
         See also <xref linkend="repmgrd-configuration-debian-ubuntu"> for some specifics related
-        to configuring the <application>repmgrd</application> daemon.
+        to configuring the &repmgrd; daemon.
       </para>
 
       <table id="debian-9-packages">
@@ -552,7 +552,7 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
 
       <listitem>
         <para>
-          PID file location: the default <application>repmgrd</application> PID file
+          PID file location: the default &repmgrd; PID file
           location can be hard-coded by patching <varname>package_pid_file</varname>
           in <filename>repmgrd.c</filename>:
           <programlisting>

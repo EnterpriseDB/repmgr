@@ -24,7 +24,7 @@
 
        <listitem>
          <simpara>
-           the <application>repmgr</application> and <application>repmgrd</application> executables
+           the <application>repmgr</application> and &repmgrd; executables
          </simpara>
        </listitem>
 
@@ -37,7 +37,7 @@
 
        <listitem>
          <simpara>
-           the shared library module used by <application>repmgrd</application> which
+           the shared library module used by &repmgrd; which
            is resident in the PostgreSQL backend
          </simpara>
        </listitem>
@@ -45,8 +45,8 @@
   </para>
   <para>
     With <emphasis>minor releases</emphasis>, usually changes are only made to the <application>repmgr</application>
-    and <application>repmgrd</application> executables. In this case, the upgrade is quite straightforward,
-    and is simply a case of installing the new version, and restarting <application>repmgrd</application>
+    and &repmgrd; executables. In this case, the upgrade is quite straightforward,
+    and is simply a case of installing the new version, and restarting &repmgrd;
     (if running).
   </para>
 
@@ -82,7 +82,7 @@
 
         <listitem>
           <simpara>
-            restart <application>repmgrd</application> on all nodes where it is running
+            restart &repmgrd; on all nodes where it is running
           </simpara>
         </listitem>
 
@@ -93,7 +93,7 @@
     <note>
 	  <para>
         Some packaging systems (e.g. <link linkend="packages-debian-ubuntu">Debian/Ubuntu</link>
-        may restart <application>repmgrd</application> as part of the package upgrade process.
+        may restart &repmgrd; as part of the package upgrade process.
       </para>
     </note>
 
@@ -126,7 +126,7 @@
 	<para>
 	  &quot;major version&quot; upgrades need to be planned more carefully, as they may include
 	  changes to the &repmgr; metadata (which need to be propagated from the primary to all
-	  standbys) and/or changes to the shared object file used by <application>repmgrd</application>
+	  standbys) and/or changes to the shared object file used by &repmgrd;
 	  (which require a PostgreSQL restart).
 	</para>
 	<para>
@@ -138,14 +138,14 @@
 
 		<listitem>
           <simpara>
-			Stop <application>repmgrd</application> (if in use) on all nodes where it is running.
+			Stop &repmgrd; (if in use) on all nodes where it is running.
           </simpara>
 		</listitem>
 
 		<listitem>
           <simpara>
-			Disable the <application>repmgrd</application> service on all nodes where it is in use;
-            this is to prevent packages from prematurely restarting <application>repmgrd</application>.
+			Disable the &repmgrd; service on all nodes where it is in use;
+            this is to prevent packages from prematurely restarting &repmgrd;.
           </simpara>
 		</listitem>
 
@@ -167,12 +167,12 @@ systemctl daemon-reload</programlisting>
 		<listitem>
           <simpara>
 			If the &repmgr; shared library module has been updated (check the <link linkend="appendix-release-notes">release notes</link>!),
-            restart PostgreSQL, then <application>repmgrd</application> (if in use)	on each node,
+            restart PostgreSQL, then &repmgrd; (if in use)	on each node,
             The order in which this is applied to individual nodes is not critical,
-			and it's also fine to restart PostgreSQL on all nodes first before starting <application>repmgrd</application>.
+			and it's also fine to restart PostgreSQL on all nodes first before starting &repmgrd;.
 		  </simpara>
 		  <simpara>
-			Note that if the upgrade requires a PostgreSQL restart, <application>repmgrd</application>
+			Note that if the upgrade requires a PostgreSQL restart, &repmgrd;
 			will only function correctly once all nodes have been restarted.
           </simpara>
 		</listitem>
@@ -188,7 +188,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
 
 		<listitem>
           <simpara>
-			Reenable the <application>repmgrd</application> service on all nodes where it is in use, and
+			Reenable the &repmgrd; service on all nodes where it is in use, and
             ensure it is running.
           </simpara>
 		</listitem>
@@ -212,7 +212,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
 	<title>Checking repmgrd status after an upgrade</title>
 	<para>
       From <link linkend="release-4.2">repmgr 4.2</link>, once the upgrade is complete, execute the <command><link linkend="repmgr-daemon-status">repmgr daemon status</link></command>
-      command (on any node) to show an overview of the status of <application>repmgrd</application> on all nodes.
+      command (on any node) to show an overview of the status of &repmgrd; on all nodes.
     </para>
   </sect2>
  </sect1>
@@ -332,7 +332,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
       </listitem>
       <listitem>
         <simpara><varname>monitoring_history</varname>: this replaces the
-          <application>repmgrd</application> command line option
+          &repmgrd; command line option
           <literal>--monitoring-history</literal></simpara>
       </listitem>
      </itemizedlist>
@@ -433,7 +433,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
   <sect2>
    <title>Upgrading the repmgr schema</title>
    <para>
-    Ensure <application>repmgrd</application> is not running, or any cron jobs which execute the
+    Ensure &repmgrd; is not running, or any cron jobs which execute the
     <command>repmgr</command> binary.
    </para>
    <para>
@@ -499,7 +499,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
     </para>
     <para>
      Check the data is updated as expected by examining the <structname>repmgr.nodes</structname>
-     table; restart <application>repmgrd</application> if required.
+     table; restart &repmgrd; if required.
     </para>
     <para>
      The original <literal>repmgr_$cluster</literal> schema can be dropped at any time.

@@ -48,12 +48,12 @@
     <note>
       <para>
         From <link linkend="release-4.2">repmgr 4.2</link>, &repmgr; will instruct any running
-        <application>repmgrd</application> instances to pause operations while the switchover
-        is being carried out, to prevent <application>repmgrd</application> from
+        &repmgrd; instances to pause operations while the switchover
+        is being carried out, to prevent &repmgrd; from
         unintentionally promoting a node. For more details, see <xref linkend="repmgrd-pausing">.
       </para>
       <para>
-        Users of &repmgr; versions prior to 4.2 should ensure that <application>repmgrd</application>
+        Users of &repmgr; versions prior to 4.2 should ensure that &repmgrd;
         is not running on any nodes while a switchover is being executed.
       </para>
     </note>
@@ -134,11 +134,11 @@
         <term><option>--repmgrd-no-pause</option></term>
         <listitem>
           <para>
-            Don't pause <application>repmgrd</application> while executing a switchover.
+            Don't pause &repmgrd; while executing a switchover.
           </para>
           <para>
             This option should not be used unless you take steps by other means
-            to ensure <application>repmgrd</application> is paused or not
+            to ensure &repmgrd; is paused or not
             running on all nodes.
           </para>
         </listitem>

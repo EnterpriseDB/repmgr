@@ -15,14 +15,14 @@
 
   <refnamediv>
     <refname>repmgr daemon unpause</refname>
-    <refpurpose>Instruct all <application>repmgrd</application> instances in the replication cluster to resume failover operations</refpurpose>
+    <refpurpose>Instruct all &repmgrd; instances in the replication cluster to resume failover operations</refpurpose>
   </refnamediv>
 
   <refsect1>
     <title>Description</title>
     <para>
       This command can be run on any active node in the replication cluster to instruct all
-      running <application>repmgrd</application> instances to &quot;unpause&quot;
+      running &repmgrd; instances to &quot;unpause&quot;
       (following a previous execution of <xref linkend="repmgr-daemon-pause">)
       and resume normal failover/monitoring operation.
     </para>
@@ -30,7 +30,7 @@
     <note>
       <para>
         It's important to wait a few seconds after restarting PostgreSQL on any node before running
-        <command>repmgr daemon pause</command>, as the <application>repmgrd</application> instance
+        <command>repmgr daemon pause</command>, as the &repmgrd; instance
         on the restarted node will take a second or two before it has updated its status.
       </para>
     </note>
@@ -64,7 +64,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
         <term><option>--dry-run</option></term>
         <listitem>
           <para>
-            Check if nodes are reachable but don't unpause <application>repmgrd</application>.
+            Check if nodes are reachable but don't unpause &repmgrd;.
           </para>
         </listitem>
       </varlistentry>
@@ -82,7 +82,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
         <term><option>SUCCESS (0)</option></term>
         <listitem>
           <para>
-            <application>repmgrd</application> could be unpaused on all nodes.
+            &repmgrd; could be unpaused on all nodes.
           </para>
         </listitem>
       </varlistentry>
@@ -91,7 +91,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
         <term><option>ERR_REPMGRD_PAUSE (26)</option></term>
         <listitem>
           <para>
-           <application>repmgrd</application> could not be unpaused on one or mode nodes.
+           &repmgrd; could not be unpaused on one or mode nodes.
           </para>
         </listitem>
       </varlistentry>

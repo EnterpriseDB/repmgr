@@ -105,7 +105,7 @@
       documentation section <link linkend="upgrading-major-version">Upgrading a major version release</link>.
     </para>
     <para>
-      If <application>repmgrd</application> is in use, a PostgreSQL restart <emphasis>is</emphasis> required;
+      If &repmgrd; is in use, a PostgreSQL restart <emphasis>is</emphasis> required;
       in that case we suggest combining this &repmgr; upgrade with the next PostgreSQL
       minor release, which will require a PostgreSQL restart in any case.
     </para>
@@ -113,7 +113,7 @@
 
 	<important>
 	  <para>
-	    On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
+	    On Debian-based systems, including Ubuntu, if using &repmgrd;
 	    please ensure that in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
 	    <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
 	    <programlisting>
@@ -156,7 +156,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             <para>
               New commands <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link> and
               <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link>:
-              these provide a standardized way of starting and stopping <application>repmgrd</application>.
+              these provide a standardized way of starting and stopping &repmgrd;.
               GitHub #528.
             </para>
             <note>
@@ -172,7 +172,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             <para>
               <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>
               additionally displays the node priority and the interval (in seconds) since the
-              <application>repmgrd</application> instance last verified its upstream node was available.
+              &repmgrd; instance last verified its upstream node was available.
             </para>
           </listitem>
 
@@ -240,20 +240,20 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application> will no longer consider nodes where <application>repmgrd</application>
+              &repmgrd; will no longer consider nodes where &repmgrd;
 			  is not running as promotion candidates.
             </para>
             <para>
-              Previously, if <application>repmgrd</application> was not running on a node, but
+              Previously, if &repmgrd; was not running on a node, but
               that node qualified as the promotion candidate, it would never be promoted due to
-              the absence of a running <application>repmgrd</application>.
+              the absence of a running &repmgrd;.
             </para>
           </listitem>
 
           <listitem>
             <para>
               Add option <option>connection_check_type</option> to enable selection of the method
-              <application>repmgrd</application> uses to determine whether the upstream node is available.
+              &repmgrd; uses to determine whether the upstream node is available.
             </para>
             <para>
               Possible values are <literal>ping</literal> (default; uses <command>PQping()</command> to
@@ -266,7 +266,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               New configuration option <link linkend="repmgrd-failover-validation"><option>failover_validation_command</option></link>
-              to allow an external mechanism to validate the failover decision made by <application>repmgrd</application>.
+              to allow an external mechanism to validate the failover decision made by &repmgrd;.
             </para>
           </listitem>
 
@@ -279,7 +279,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
          <listitem>
             <para>
-			  In a failover situation, <application>repmgrd</application> will not attempt to promote a
+			  In a failover situation, &repmgrd; will not attempt to promote a
 			  node if another primary has already appeared (e.g. by being promoted manually).
 			  GitHub #420.
 			</para>
@@ -364,7 +364,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: on a cascaded standby, don't fail over if
+              &repmgrd;: on a cascaded standby, don't fail over if
               <literal>failover=manual</literal>. GitHub #531.
             </para>
           </listitem>
@@ -393,7 +393,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
 	<important>
 	  <para>
-	    On Debian-based systems, including Ubuntu, if using <application>repmgrd</application>
+	    On Debian-based systems, including Ubuntu, if using &repmgrd;
 	    please ensure that the in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
 	    <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
 	    <programlisting>
@@ -488,12 +488,12 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application> can now be &quot;paused&quot;, i.e. instructed
+              &repmgrd; can now be &quot;paused&quot;, i.e. instructed
               not to take any action such as a failover, even if the prerequisites for such an
               action are detected.
             </para>
             <para>
-              This removes the need to stop <application>repmgrd</application> on all nodes when
+              This removes the need to stop &repmgrd; on all nodes when
               performing a planned operation such as a switchover.
             </para>
             <para>
@@ -519,7 +519,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: fix parsing of <option>-d/--daemonize</option> option.
+              &repmgrd;: fix parsing of <option>-d/--daemonize</option> option.
             </para>
           </listitem>
 
@@ -537,7 +537,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     <para>
 	  We recommend upgrading to this version as soon as possible.
 	  This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.1.0;
-      <application>repmgrd</application> (if running) should be restarted.
+      &repmgrd; (if running) should be restarted.
       See <xref linkend="upgrading-repmgr"> for more details.
 	</para>
 
@@ -619,8 +619,8 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             <para>
               Check <varname>promote_command</varname> and <varname>follow_command</varname>
               are defined when reloading configuration. These were checked on startup but
-              not reload by <application>repmgrd</application>, which made it possible to
-              make <application>repmgrd</application> with invalid values. It's unlikely
+              not reload by &repmgrd;, which made it possible to
+              make &repmgrd; with invalid values. It's unlikely
               anyone would want to do this, but we should make it impossible anyway.
               (GitHub #486).
             </para>
@@ -661,7 +661,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: fix startup on witness node when local data is stale. (GitHub #488, #489).
+              &repmgrd;: fix startup on witness node when local data is stale. (GitHub #488, #489).
             </para>
           </listitem>
 
@@ -687,7 +687,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     <title>Release 4.1.0</title>
     <para><emphasis>Tue July 31, 2018</emphasis></para>
     <para>
-      &repmgr; 4.1.0 introduces some changes to <application>repmgrd</application>
+      &repmgr; 4.1.0 introduces some changes to &repmgrd;
       behaviour and some additional configuration parameters.
     </para>
     <para>
@@ -703,7 +703,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           </listitem>
           <listitem>
             <para>
-              <application>repmgrd</application> must be restarted on all nodes where it is running.
+              &repmgrd; must be restarted on all nodes where it is running.
             </para>
           </listitem>
 
@@ -825,14 +825,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: create a PID file by default
+              &repmgrd;: create a PID file by default
               (GitHub #457). For details, see <xref linkend="repmgrd-pid-file">.
             </para>
           </listitem>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: daemonize process by default.
+              &repmgrd;: daemonize process by default.
 			  In case, for whatever reason, the user does not wish to daemonize the
 			  process, provide <option>--daemonize=false</option>.
 			  (GitHub #458).
@@ -901,7 +901,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 	<para>
 	  We recommend upgrading to this version as soon as possible.
 	  This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.5;
-      <application>repmgrd</application> (if running) should be restarted. See <xref linkend="upgrading-repmgr">
+      &repmgrd; (if running) should be restarted. See <xref linkend="upgrading-repmgr">
       for more details.
 	</para>
 
@@ -988,7 +988,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: ensure local node is counted as quorum member
+              &repmgrd;: ensure local node is counted as quorum member
 			  (GitHub #439)
            </para>
           </listitem>
@@ -1005,7 +1005,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     <para>
       &repmgr; 4.0.5 contains a number of usability enhancements related to
       <application>pg_rewind</application> usage, <filename>recovery.conf</filename>
-      generation and (in <application>repmgrd</application>) handling of various
+      generation and (in &repmgrd;) handling of various
       corner-case situations, as well as a number of bug fixes.
     </para>
 
@@ -1070,7 +1070,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: set <literal>connect_timeout=2</literal> (if not explicitly set)
+              &repmgrd;: set <literal>connect_timeout=2</literal> (if not explicitly set)
               when pinging a server.
            </para>
           </listitem>
@@ -1126,20 +1126,20 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: handle <command>pg_ctl promote</command> timeout (GitHub #425).
+              &repmgrd;: handle <command>pg_ctl promote</command> timeout (GitHub #425).
            </para>
           </listitem>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: handle failover situation with only two nodes in the primary
+              &repmgrd;: handle failover situation with only two nodes in the primary
           location, and at least one node in another location (GitHub #407).
             </para>
           </listitem>
 
           <listitem>
             <para>
-               <application>repmgrd</application>: prevent standby connection handle from going stale.
+               &repmgrd;: prevent standby connection handle from going stale.
            </para>
           </listitem>
 
@@ -1163,7 +1163,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     </para>
     <para>
       This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.3;
-      <application>repmgrd</application> (if running) should be restarted. See <xref linkend="upgrading-repmgr">
+      &repmgrd; (if running) should be restarted. See <xref linkend="upgrading-repmgr">
       for more details.
     </para>
 
@@ -1242,14 +1242,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: improve detection of status change from primary to
+              &repmgrd;: improve detection of status change from primary to
               standby
            </para>
           </listitem>
 
           <listitem>
             <para>
-              <application>repmgrd</application>:  improve reconnection to the local node after a
+              &repmgrd;:  improve reconnection to the local node after a
               failover (previously a connection error due to the node starting up was being
               interpreted as the node being unavailable)
            </para>
@@ -1257,14 +1257,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: when running on a witness server, correctly connect
+              &repmgrd;: when running on a witness server, correctly connect
               to new primary after a failover
            </para>
           </listitem>
 
           <listitem>
             <para>
-              <application>repmgrd</application>: add <link linkend="event-notifications">event notification</link>
+              &repmgrd;: add <link linkend="event-notifications">event notification</link>
               <literal>repmgrd_shutdown</literal> (GitHub #393)
            </para>
           </listitem>
@@ -1433,7 +1433,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     </para>
     <para>
       This release can be installed as a simple package upgrade from &repmgr; 4.0.1 or 4.0;
-      <application>repmgrd</application> (if running) should be restarted.
+      &repmgrd; (if running) should be restarted.
     </para>
 
     <sect2>
@@ -1653,10 +1653,10 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
         <listitem>
           <para>
             <emphasis>improved logging output</emphasis>:
-            &repmgr; (and <application>repmgrd</application>) now provide more explicit
+            &repmgr; (and &repmgrd;) now provide more explicit
             logging output giving a better picture of what is going on. Where appropriate,
             <literal>DETAIL</literal> and <literal>HINT</literal> log lines provide additional
-            detail and suggestions for resolving problems. Additionally, <application>repmgrd</application>
+            detail and suggestions for resolving problems. Additionally, &repmgrd;
             now emits informational log lines at regular, configurable intervals
             to confirm that it's running correctly and which node(s) it's monitoring.
           </para>
@@ -1703,11 +1703,11 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             <emphasis>automatic failover</emphasis>:
             improved detection of node status; promotion decision based on a consensual
             model, with the promoted primary explicitly informing other standbys to
-            follow it. The <application>repmgrd</application> daemon will continue
+            follow it. The &repmgrd; daemon will continue
             functioning even if the monitored PostgreSQL instance is down, and resume
             monitoring if it reappears. Additionally, if the instance's role has changed
             (typically from a primary to a standby, e.g. following reintegration of a
-            failed primary using <xref linkend="repmgr-node-rejoin">) <application>repmgrd</application>
+            failed primary using <xref linkend="repmgr-node-rejoin">) &repmgrd;
             will automatically resume monitoring it as a standby.
           </para>
         </listitem>
@@ -1793,7 +1793,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     </para>
 
     <para>
-      <application>repmgrd</application>
+      &repmgrd;
       <itemizedlist>
 
         <listitem><para>
@@ -1915,7 +1915,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
       <listitem>
         <simpara>
           new parameter <varname>log_status_interval</varname>, which causes
-          <application>repmgrd</application> to emit a status log
+          &repmgrd; to emit a status log
           line at the specified interval
         </simpara>
       </listitem>

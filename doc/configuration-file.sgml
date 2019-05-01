@@ -11,7 +11,7 @@
   <title>Configuration file</title>
 
   <para>
-    <application>repmgr</application> and <application>repmgrd</application>
+    <application>repmgr</application> and &repmgrd;
     use a common configuration file, by default called
     <filename>repmgr.conf</filename> (although any name can be used if explicitly specified).
     <filename>repmgr.conf</filename> must contain a number of required parameters, including

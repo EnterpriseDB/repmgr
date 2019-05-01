@@ -24,10 +24,10 @@
   <para>
     In contrast to streaming replication, there's no concept of "promoting" a new
     primary node with BDR. Instead, "failover" involves monitoring both nodes
-    with <application>repmgrd</application> and redirecting queries from the failed node to the remaining
+    with &repmgrd; and redirecting queries from the failed node to the remaining
     active node. This can be done by using an
     <link linkend="event-notifications">event notification</link> script
-    which is called by <application>repmgrd</application> to dynamically
+    which is called by &repmgrd; to dynamically
     reconfigure a proxy server/connection pooler such as <application>PgBouncer</application>.
   </para>
 
@@ -60,7 +60,7 @@
     <para>
       Application database connections *must* be passed through a proxy server/
       connection pooler such as <application>PgBouncer</application>, and it must be possible to dynamically
-      reconfigure that from <application>repmgrd</application>. The example demonstrated in this document
+      reconfigure that from &repmgrd;. The example demonstrated in this document
       will use <application>PgBouncer</application>
     </para>
     <para>
@@ -296,7 +296,7 @@
         </listitem>
         <listitem>
           <simpara>recreates the <application>PgBouncer</application> configuration file on each
-            node using the information provided by <application>repmgrd</application>
+            node using the information provided by &repmgrd;
             (primarily the <varname>conninfo</varname> string) to configure
             <application>PgBouncer</application></simpara>
         </listitem>
@@ -318,21 +318,21 @@
     <title>Node monitoring and failover</title>
     <para>
       At the intervals specified by <varname>monitor_interval_secs</varname>
-      in <filename>repmgr.conf</filename>, <application>repmgrd</application>
+      in <filename>repmgr.conf</filename>, &repmgrd;
       will ping each node to check if it's available. If a node isn't available,
-      <application>repmgrd</application> will enter failover mode and check <varname>reconnect_attempts</varname>
+      &repmgrd; will enter failover mode and check <varname>reconnect_attempts</varname>
       times at intervals of <varname>reconnect_interval</varname> to confirm the node is definitely unreachable.
       This buffer period is necessary to avoid false positives caused by transient
       network outages.
     </para>
     <para>
-      If the node is still unavailable, <application>repmgrd</application> will enter failover mode and execute
+      If the node is still unavailable, &repmgrd; will enter failover mode and execute
       the script defined in <varname>event_notification_command</varname>; an entry will be logged
-      in the <literal>repmgr.events</literal> table and <application>repmgrd</application> will
+      in the <literal>repmgr.events</literal> table and &repmgrd; will
       (unless otherwise configured) resume monitoring of the node in "degraded" mode until it reappears.
     </para>
     <para>
-      <application>repmgrd</application> logfile output during a failover event will look something like this
+      &repmgrd; logfile output during a failover event will look something like this
       on one node (usually the node which has failed, here <literal>node2</literal>):
       <programlisting>
             ...
@@ -388,8 +388,8 @@
     </para>
     <para>
       This assumes only the PostgreSQL instance on <literal>node2</literal> has failed. In this case the
-      <application>repmgrd</application> instance running on <literal>node2</literal> has performed the failover. However if
-      the entire server becomes unavailable, <application>repmgrd</application> on <literal>node1</literal> will perform
+      &repmgrd; instance running on <literal>node2</literal> has performed the failover. However if
+      the entire server becomes unavailable, &repmgrd; on <literal>node1</literal> will perform
       the failover.
     </para>
   </sect1>
@@ -404,7 +404,7 @@
     </para>
     <para>
       If the failed node comes back up and connects correctly, output similar to this
-      will be visible in the <application>repmgrd</application> log:
+      will be visible in the &repmgrd; log:
       <programlisting>
         [2017-07-27 21:25:30] [DETAIL] monitoring node "node2" (ID: 2) in degraded mode
         [2017-07-27 21:25:46] [INFO] monitoring BDR replication status on node "node2" (ID: 2)
@@ -417,10 +417,10 @@
   <sect1 id="bdr-complete-shutdown" xreflabel="Shutdown of both nodes">
     <title>Shutdown of both nodes</title>
     <para>
-      If both PostgreSQL instances are shut down, <application>repmgrd</application> will try and handle the
+      If both PostgreSQL instances are shut down, &repmgrd; will try and handle the
       situation as gracefully as possible, though with no failover candidates available
       there's not much it can do. Should this case ever occur, we recommend shutting
-      down <application>repmgrd</application> on both nodes and restarting it once the PostgreSQL instances
+      down &repmgrd; on both nodes and restarting it once the PostgreSQL instances
       are running properly.
     </para>
   </sect1>

@@ -80,7 +80,7 @@
       the maximum level of logging output.
     </para>
     <para>
-      If issues are encountered with <application>repmgrd</application>,
+      If issues are encountered with &repmgrd;,
       please provide relevant extracts from the &repmgr; log files
       and if possible the PostgreSQL log itself. Please ensure these
       logs do not contain any confidential data.

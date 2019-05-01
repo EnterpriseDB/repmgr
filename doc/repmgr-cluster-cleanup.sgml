@@ -38,7 +38,7 @@
     <title>Notes</title>
 
     <para>
-      Monitoring history will only be written if <application>repmgrd</application> is active, and
+      Monitoring history will only be written if &repmgrd; is active, and
       <varname>monitoring_history</varname> is set to <literal>true</literal> in
       <filename>repmgr.conf</filename>.
     </para>

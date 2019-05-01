@@ -1,4 +1,4 @@
-<!-- doc/src/sgml/postgres.sgml -->
+<!-- doc/repmgr.sgml -->
 
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.2//EN" [
 
@@ -9,6 +9,7 @@
           %filelist;
 
           <!ENTITY repmgr "<productname>repmgr</productname>">
+          <!ENTITY repmgrd "<productname>repmgrd</productname>">
           <!ENTITY postgres "<productname>PostgreSQL</productname>">
 ]>
 

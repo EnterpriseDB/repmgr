@@ -14,25 +14,25 @@
 
   <refnamediv>
     <refname>repmgr daemon stop</refname>
-    <refpurpose>Stop the <application>repmgrd</application> daemon</refpurpose>
+    <refpurpose>Stop the &repmgrd; daemon</refpurpose>
   </refnamediv>
 
   <refsect1>
     <title>Description</title>
     <para>
-      This command stops the <application>repmgrd</application> daemon on the
+      This command stops the &repmgrd; daemon on the
       local node.
     </para>
 
     <para>
-      By default, &repmgr; will wait for up to 15 seconds to confirm that <application>repmgrd</application>
+      By default, &repmgr; will wait for up to 15 seconds to confirm that &repmgrd;
       stopped. This behaviour can be overridden by specifying a diffent value using the <option>--wait</option>
       option, or disabled altogether with the <option>--no-wait</option> option.
     </para>
     <note>
       <para>
         If PostgreSQL is not running on the local node, under some circumstances &repmgr; may not
-        be able to confirm if <application>repmgrd</application> has actually stopped.
+        be able to confirm if &repmgrd; has actually stopped.
       </para>
     </note>
 
@@ -50,7 +50,7 @@
     <para>
       <command>repmgr daemon stop</command> will execute the command defined by the
       <varname>repmgrd_service_stop_command</varname> parameter in <filename>repmgr.conf</filename>.
-      This must be set to a shell command which will stop <application>repmgrd</application>;
+      This must be set to a shell command which will stop &repmgrd;;
       if &repmgr; was installed from a package, this will be the service command defined by the
       package. For more details see <link linkend="appendix-packages">Appendix: &repmgr; package details</link>.
     </para>
@@ -59,7 +59,7 @@
       <para>
         If &repmgr; was installed from a system package, and you do not configure
         <varname>repmgrd_service_stop_command</varname> to an appropriate service command, this may
-        result in the system becoming confused about the state of the <application>repmgrd</application>
+        result in the system becoming confused about the state of the &repmgrd;
         service; this is particularly the case with <literal>systemd</literal>.
       </para>
     </important>
@@ -76,7 +76,7 @@
         <term><option>--dry-run</option></term>
         <listitem>
           <para>
-            Check prerequisites but don't actually attempt to stop <application>repmgrd</application>.
+            Check prerequisites but don't actually attempt to stop &repmgrd;.
           </para>
           <para>
             This action will output the command which would be executed.
@@ -89,7 +89,7 @@
         <term><option>--wait</option></term>
         <listitem>
           <para>
-            Wait for the specified number of seconds to confirm that <application>repmgrd</application>
+            Wait for the specified number of seconds to confirm that &repmgrd;
             stopped successfully.
           </para>
           <para>
@@ -103,7 +103,7 @@
         <term><option>--no-wait</option></term>
         <listitem>
           <para>
-            Don't wait to confirm that <application>repmgrd</application>
+            Don't wait to confirm that &repmgrd;
             stopped successfully.
           </para>
           <para>
@@ -134,7 +134,7 @@
           <para>
             <command>repmgr daemon stop</command> will execute the command defined by the
             <varname>repmgrd_service_stop_command</varname> parameter in <filename>repmgr.conf</filename>.
-            This must be set to a shell command which will stop <application>repmgrd</application>;
+            This must be set to a shell command which will stop &repmgrd;;
             if &repmgr; was installed from a package, this will be the service command defined by the
             package. For more details see <link linkend="appendix-packages">Appendix: &repmgr; package details</link>.
           </para>
@@ -142,7 +142,7 @@
             <para>
               If &repmgr; was installed from a system package, and you do not configure
               <varname>repmgrd_service_stop_command</varname> to an appropriate service command, this may
-              result in the system becoming confused about the state of the <application>repmgrd</application>
+              result in the system becoming confused about the state of the &repmgrd;
               service; this is particularly the case with <literal>systemd</literal>.
             </para>
           </important>
@@ -163,7 +163,7 @@
         <term><option>SUCCESS (0)</option></term>
         <listitem>
           <para>
-            <application>repmgrd</application> could be stopped.
+            &repmgrd; could be stopped.
           </para>
         </listitem>
       </varlistentry>
@@ -182,7 +182,7 @@
         <term><option>ERR_REPMGRD_SERVICE (27)</option></term>
         <listitem>
           <para>
-            <application>repmgrd</application> could not be stopped.
+            &repmgrd; could not be stopped.
           </para>
         </listitem>
       </varlistentry>

@@ -19,7 +19,7 @@
      <para>
       &repmgr; 3.x builds on the improved replication facilities added
       in PostgreSQL 9.3, as well as improved automated failover support
-      via <application>repmgrd</application>, and is not compatible with PostgreSQL 9.2
+      via &repmgrd;, and is not compatible with PostgreSQL 9.2
       and earlier. We recommend upgrading to &repmgr; 4, as the &repmgr; 3.x
       series is no longer maintained.
      </para>
@@ -135,7 +135,7 @@
       No.
     </para>
     <para>
-     &repmgr; (together with <application>repmgrd</application>) assists with
+     &repmgr; (together with &repmgrd;) assists with
      <emphasis>managing</emphasis> replication. It does not actually perform replication, which
      is part of the core PostgreSQL functionality.
     </para>
@@ -152,8 +152,8 @@
    <title>Does it matter if different &repmgr; versions are present in the replication cluster?</title>
    <para>
      Yes. If different &quot;major&quot; &repmgr; versions (e.g. 3.3.x and 4.1.x) are present,
-     &repmgr; (in particular <application>repmgrd</application>)
-     may not run, or run properly, or in the worst case (if different <application>repmgrd</application>
+     &repmgr; (in particular &repmgrd;)
+     may not run, or run properly, or in the worst case (if different &repmgrd;
      versions are running and there are differences in the failover implementation) break
      your replication cluster.
    </para>
@@ -282,19 +282,19 @@
 
   <sect2 id="faq-repmgr-shared-preload-libaries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
     <title>Do I need to include <literal>shared_preload_libraries = 'repmgr'</literal>
-      in <filename>postgresql.conf</filename> if I'm not using <application>repmgrd</application>?</title>
+      in <filename>postgresql.conf</filename> if I'm not using &repmgrd;?</title>
    <para>
-    No, the <literal>repmgr</literal> shared library is only needed when running <application>repmgrd</application>.
-    If you later decide to run <application>repmgrd</application>, you just need to add
+    No, the <literal>repmgr</literal> shared library is only needed when running &repmgrd;.
+    If you later decide to run &repmgrd;, you just need to add
     <literal>shared_preload_libraries = 'repmgr'</literal> and restart PostgreSQL.
    </para>
   </sect2>
 
   <sect2 id="faq-repmgr-permissions" xreflabel="Replication permission problems">
    <title>I've provided replication permission for the <literal>repmgr</literal> user in <filename>pg_hba.conf</filename>
-     but <command>repmgr</command>/<application>repmgrd</application> complains it can't connect to the server... Why?</title>
+     but <command>repmgr</command>/&repmgrd; complains it can't connect to the server... Why?</title>
    <para>
-    <command>repmgr</command> and <application>repmgrd</application> need to be able to connect to the repmgr database
+    <command>repmgr</command> and &repmgrd; need to be able to connect to the repmgr database
     with a normal connection to query metadata. The <literal>replication</literal> connection
     permission is for PostgreSQL's streaming replication (and doesn't  necessarily need to be the <literal>repmgr</literal> user).
    </para>
@@ -349,7 +349,7 @@
  </sect1>
 
  <sect1 id="faq-repmgrd" xreflabel="repmgrd">
-  <title><application>repmgrd</application></title>
+  <title>&repmgrd;</title>
 
 
   <sect2 id="faq-repmgrd-prevent-promotion" xreflabel="Prevent standby from being promoted to primary">
@@ -365,12 +365,12 @@
   </sect2>
 
   <sect2 id="faq-repmgrd-delayed-standby" xreflabel="Delayed standby support">
-   <title>Does <application>repmgrd</application> support delayed standbys?</title>
+   <title>Does &repmgrd; support delayed standbys?</title>
    <para>
-    <application>repmgrd</application> can monitor delayed standbys - those set up with
+    &repmgrd; can monitor delayed standbys - those set up with
     <varname>recovery_min_apply_delay</varname> set to a non-zero value
     in <filename>recovery.conf</filename> - but as it's not currently possible
-    to directly examine the value applied to the standby, <application>repmgrd</application>
+    to directly examine the value applied to the standby, &repmgrd;
     may not be able to properly evaluate the node as a promotion candidate.
    </para>
    <para>
@@ -379,13 +379,13 @@
     <filename>repmgr.conf</filename>.
    </para>
    <para>
-    Note that after registering a delayed standby, <application>repmgrd</application> will only start
+    Note that after registering a delayed standby, &repmgrd; will only start
     once the metadata added in the primary node has been replicated.
    </para>
   </sect2>
 
   <sect2 id="faq-repmgrd-logfile-rotate" xreflabel="repmgrd logfile rotation">
-   <title>How can I get <application>repmgrd</application> to rotate its logfile?</title>
+   <title>How can I get &repmgrd; to rotate its logfile?</title>
    <para>
      Configure your system's <literal>logrotate</literal> service to do this; see <xref linkend="repmgrd-log-rotation">.
    </para>
@@ -393,11 +393,11 @@
   </sect2>
 
   <sect2 id="faq-repmgrd-recloned-no-start" xreflabel="repmgrd not restarting after node cloned">
-   <title>I've recloned a failed primary as a standby, but <application>repmgrd</application> refuses to start?</title>
+   <title>I've recloned a failed primary as a standby, but &repmgrd; refuses to start?</title>
    <para>
     Check you registered the standby after recloning. If unregistered, the standby
     cannot be considered as a promotion candidate even if <varname>failover</varname> is set to
-    <literal>automatic</literal>, which is probably not what you want. <application>repmgrd</application> will start if
+    <literal>automatic</literal>, which is probably not what you want. &repmgrd; will start if
     <varname>failover</varname> is set to <literal>manual</literal> so the node's replication status can still
   be monitored, if desired.
    </para>
@@ -405,7 +405,7 @@
 
   <sect2 id="faq-repmgrd-pg-bindir" xreflabel="repmgrd does not apply pg_bindir to promote_command or follow_command">
     <title>
-      <application>repmgrd</application> ignores pg_bindir when executing <varname>promote_command</varname> or <varname>follow_command</varname>
+      &repmgrd; ignores pg_bindir when executing <varname>promote_command</varname> or <varname>follow_command</varname>
     </title>
     <para>
       <varname>promote_command</varname> or <varname>follow_command</varname> can be user-defined scripts,
@@ -416,13 +416,13 @@
 
   <sect2 id="faq-repmgrd-startup-no-upstream" xreflabel="repmgrd does not start if upstream node is not running">
     <title>
-      <application>repmgrd</application> aborts startup with the error "<literal>upstream node must be running before repmgrd can start</literal>"
+      &repmgrd; aborts startup with the error "<literal>upstream node must be running before repmgrd can start</literal>"
     </title>
     <para>
-      <application>repmgrd</application> does this to avoid starting up on a replication cluster
-      which is not in a healthy state. If the upstream is unavailable, <application>repmgrd</application>
+      &repmgrd; does this to avoid starting up on a replication cluster
+      which is not in a healthy state. If the upstream is unavailable, &repmgrd;
       may initiate a failover immediately after starting up, which could have unintended side-effects,
-      particularly if <application>repmgrd</application> is not running on other nodes.
+      particularly if &repmgrd; is not running on other nodes.
     </para>
     <para>
       In particular, it's possible that the node's local copy of the <literal>repmgr.nodes</literal> copy
@@ -430,7 +430,7 @@
     </para>
     <para>
       The onus is therefore on the adminstrator to manually set the cluster to a stable, healthy state before
-      starting <application>repmgrd</application>.
+      starting &repmgrd;.
     </para>
   </sect2>
 

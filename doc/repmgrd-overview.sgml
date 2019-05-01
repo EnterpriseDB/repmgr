@@ -7,18 +7,18 @@
   <title>repmgrd overview</title>
 
   <para>
-    <application>repmgrd</application> (&quot;<literal>replication manager daemon</literal>&quot;)
+    &repmgrd; (&quot;<literal>replication manager daemon</literal>&quot;)
     is a management and monitoring daemon which runs
     on each node in a replication cluster. It can automate actions such as
     failover and updating standbys to follow the new primary, as well as
     providing monitoring information about the state of each standby.
   </para>
   <para>
-    <application>repmgrd</application> is designed to be straightforward to set up
+    &repmgrd; is designed to be straightforward to set up
     and does not require additional external infrastructure.
   </para>
   <para>
-    Functionality provided by <application>repmgrd</application> includes:
+    Functionality provided by &repmgrd; includes:
     <itemizedlist spacing="compact" mark="bullet">
 
        <listitem>
@@ -93,11 +93,11 @@
  <tip>
    <para>
      See section <link linkend="repmgrd-automatic-failover-configuration">Required configuration for automatic failover</link>
-     for an example of minimal <filename>repmgr.conf</filename> file settings suitable for use with <application>repmgrd</application>.
+     for an example of minimal <filename>repmgr.conf</filename> file settings suitable for use with &repmgrd;.
    </para>
  </tip>
  <para>
-  Start <application>repmgrd</application> on each standby and verify that it's running by examining the
+  Start &repmgrd; on each standby and verify that it's running by examining the
   log output, which at log level <literal>INFO</literal> will look like this:
   <programlisting>
     [2019-03-15 06:32:05] [NOTICE] repmgrd (repmgrd 4.3) starting up
@@ -107,7 +107,7 @@
     [2019-03-15 06:32:05] [INFO] monitoring connection to upstream node "node1" (ID: 1)</programlisting>
  </para>
  <para>
-  Each <application>repmgrd</application> should also have recorded its successful startup as an event:
+  Each &repmgrd; should also have recorded its successful startup as an event:
   <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster event --event=repmgrd_start
      Node ID | Name  | Event         | OK | Timestamp           | Details
@@ -123,8 +123,8 @@
  </para>
  <para>
   This will force the primary to shut down straight away, aborting all processes
-  and transactions.  This will cause a flurry of activity in the <application>repmgrd</application> log
-  files as each <application>repmgrd</application> detects the failure of the primary and a failover
+  and transactions.  This will cause a flurry of activity in the &repmgrd; log
+  files as each &repmgrd; detects the failure of the primary and a failover
   decision is made. This is an extract from the log of a standby server (<literal>node2</literal>)
   which has promoted to new primary after failure of the original primary (<literal>node1</literal>).
   <programlisting>

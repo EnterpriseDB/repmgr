@@ -99,7 +99,7 @@
     <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>.
   </para>
   <para>
-    For <application>repmgrd</application>-specific settings, see <xref linkend="repmgrd-configuration">.
+    For &repmgrd;-specific settings, see <xref linkend="repmgrd-configuration">.
   </para>
 
   <note>

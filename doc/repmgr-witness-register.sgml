@@ -20,7 +20,7 @@
       record to the &repmgr; metadata, and if necessary initialises the witness
       node by installing the &repmgr; extension and copying the &repmgr; metadata
       to the witness server. This command needs to be executed to enable
-      use of the witness server with <application>repmgrd</application>.
+      use of the witness server with &repmgrd;.
     </para>
     <para>
       When executing <command>repmgr witness register</command>, database connection
