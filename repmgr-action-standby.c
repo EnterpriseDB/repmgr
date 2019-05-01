@@ -90,7 +90,7 @@ static char local_repmgr_tmp_directory[MAXPGPATH] = "";
 static char datadir_list_filename[MAXLEN] = "";
 static char barman_command_buf[MAXLEN] = "";
 
-static void _do_standby_promote_internal(PGconn *conn, int server_version_num);
+static void _do_standby_promote_internal(PGconn *conn);
 static void _do_create_recovery_conf(void);
 
 static void check_barman_config(void);
@@ -2030,14 +2030,13 @@ do_standby_promote(void)
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
 
 	int			existing_primary_id = UNKNOWN_NODE_ID;
-	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	log_verbose(LOG_INFO, _("connected to standby, checking its state"));
 
 	/* Verify that standby is a supported server version */
-	server_version_num = check_server_version(local_conn, "standby", true, NULL);
+	(void) check_server_version(local_conn, "standby", true, NULL);
 
 	/* Check we are in a standby node */
 	recovery_type = get_recovery_type(local_conn);
@@ -2161,12 +2160,12 @@ do_standby_promote(void)
 		exit(SUCCESS);
 	}
 
-	_do_standby_promote_internal(local_conn, server_version_num);
+	_do_standby_promote_internal(local_conn);
 }
 
 
 static void
-_do_standby_promote_internal(PGconn *conn, int server_version_num)
+_do_standby_promote_internal(PGconn *conn)
 {
 	int			i;
 	bool		promote_success = false;
@@ -2206,7 +2205,7 @@ _do_standby_promote_internal(PGconn *conn, int server_version_num)
 	 */
 	log_notice(_("promoting standby to primary"));
 
-	if (server_version_num >= 120000)
+	if (PQserverVersion(conn) >= 120000)
 	{
 		log_detail(_("promoting server \"%s\" (ID: %i) using pg_promote()"),
 				   local_node_record.node_name,
@@ -3155,7 +3154,6 @@ do_standby_switchover(void)
 	PGconn	   *local_conn = NULL;
 	PGconn	   *remote_conn = NULL;
 
-	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 	/* the remote server is the primary to be demoted */
@@ -3213,7 +3211,7 @@ do_standby_switchover(void)
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	/* Verify that standby is a supported server version */
-	server_version_num = check_server_version(local_conn, "standby", true, NULL);
+	(void) check_server_version(local_conn, "standby", true, NULL);
 
 	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_record);
 	if (record_status != RECORD_FOUND)
@@ -4398,7 +4396,7 @@ do_standby_switchover(void)
 			  format_lsn(remote_last_checkpoint_lsn));
 
 	/* promote standby (local node) */
-	_do_standby_promote_internal(local_conn, server_version_num);
+	_do_standby_promote_internal(local_conn);
 
 
 	/*
