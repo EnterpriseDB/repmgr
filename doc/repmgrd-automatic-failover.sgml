@@ -574,7 +574,7 @@ $ repmgr cluster event --event=child_node_disconnect
 $ repmgr cluster event --event=child_node_reconnect
  Node ID | Name  | Event                | OK | Timestamp           | Details
 ---------+-------+----------------------+----+---------------------+------------------------------------------------------------
-1       | node1 | child_node_reconnect | t  | 2019-04-24 12:42:19 | node "node3" (ID: 3) has reconnected after 42 seconds</programlisting>
+ 1       | node1 | child_node_reconnect | t  | 2019-04-24 12:42:19 | node "node3" (ID: 3) has reconnected after 42 seconds</programlisting>
 		  </para>
         </listitem>
       </varlistentry>
