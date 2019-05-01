@@ -115,6 +115,9 @@ static char *make_barman_ssh_command(char *buf);
 static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, char *dest, bool as_file);
 static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list);
 static bool check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
+static bool check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats);
+static bool check_free_slots(t_node_info *local_node_record, SiblingNodeStats *sibling_nodes_stats);
+
 static void sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 
 static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_output, XLogRecPtr *checkPoint);
@@ -2031,6 +2034,13 @@ do_standby_promote(void)
 
 	int			existing_primary_id = UNKNOWN_NODE_ID;
 
+	RecordStatus record_status = RECORD_NOT_FOUND;
+	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
+
+	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
+	SiblingNodeStats sibling_nodes_stats = T_SIBLING_NODES_STATS_INITIALIZER;
+	int			available_wal_senders = 0;
+
 	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	log_verbose(LOG_INFO, _("connected to standby, checking its state"));
@@ -2059,6 +2069,17 @@ do_standby_promote(void)
 	else if (runtime_options.dry_run == true)
 	{
 		log_info(_("node is a standby"));
+	}
+
+	record_status = get_node_record(local_conn, config_file_options.node_id, &local_node_record);
+	if (record_status != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve node record for node %i"),
+				  config_file_options.node_id);
+
+		PQfinish(local_conn);
+
+		exit(ERR_DB_QUERY);
 	}
 
 	/*
@@ -2153,6 +2174,60 @@ do_standby_promote(void)
 	}
 
 	PQfinish(current_primary_conn);
+
+	/*
+	 * populate local node record with current state of various replication-related
+	 * values, so we can check for sufficient walsenders and replication slots
+	 */
+	get_node_replication_stats(local_conn, &local_node_record);
+
+	available_wal_senders = local_node_record.max_wal_senders -
+		local_node_record.attached_wal_receivers;
+
+
+	/*
+	 * Get list of sibling nodes; if --siblings-follow specified,
+	 * check they're reachable; if not, the list will be used to warn
+	 * about nodes which will not follow the new primary
+	 */
+	get_active_sibling_node_records(local_conn,
+									local_node_record.node_id,
+									local_node_record.upstream_node_id,
+									&sibling_nodes);
+
+	if (check_sibling_nodes(&sibling_nodes, &sibling_nodes_stats) == false)
+	{
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * check there are sufficient free walsenders - obviously there's potential
+	 * for a later race condition if some walsenders come into use before the
+	 * promote operation gets around to attaching the sibling nodes, but
+	 * this should catch any actual existing configuration issue (and if anyone's
+	 * performing a promote in such an unstable environment, they only have
+	 * themselves to blame).
+	 */
+	if (check_free_wal_senders(available_wal_senders, &sibling_nodes_stats) == false)
+	{
+		if (runtime_options.dry_run == false)
+		{
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+
+	/*
+	 * if replication slots are required by siblings,
+	 * check the promotion candidate has sufficient free slots
+	 */
+	if (check_free_slots(&local_node_record, &sibling_nodes_stats) == false)
+	{
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
 
 	if (runtime_options.dry_run == true)
 	{
@@ -3182,7 +3257,6 @@ do_standby_switchover(void)
 	/* store list of configuration files on the demotion candidate */
 	KeyValueList remote_config_files = {NULL, NULL};
 
-	/* store list of sibling nodes if --siblings-follow specified */
 	NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 	SiblingNodeStats sibling_nodes_stats = T_SIBLING_NODES_STATS_INITIALIZER;
 
@@ -3602,8 +3676,9 @@ do_standby_switchover(void)
 		local_node_record.attached_wal_receivers;
 
 	/*
-	 * If --siblings-follow specified, get list and check they're reachable
-	 * (if not just issue a warning)
+	 * Get list of sibling nodes; if --siblings-follow specified,
+	 * check they're reachable; if not, the list will be used to warn
+	 * about nodes which will remain attached to the demotion candidate
 	 */
 	get_active_sibling_node_records(local_conn,
 									local_node_record.node_id,
@@ -3616,6 +3691,7 @@ do_standby_switchover(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
 	/*
 	 * check there are sufficient free walsenders - obviously there's potential
 	 * for a later race condition if some walsenders come into use before the
@@ -3624,37 +3700,13 @@ do_standby_switchover(void)
 	 * performing a switchover in such an unstable environment, they only have
 	 * themselves to blame).
 	 */
-	if (available_wal_senders < sibling_nodes_stats.min_required_wal_senders)
+	if (check_free_wal_senders(available_wal_senders, &sibling_nodes_stats) == false)
 	{
-		if (runtime_options.force == false || runtime_options.dry_run == true)
-		{
-			log_error(_("insufficient free walsenders on promotion candidate"));
-			log_detail(_("at least %i walsenders required but only %i free walsenders on promotion candidate"),
-					   sibling_nodes_stats.min_required_wal_senders,
-					   available_wal_senders);
-			log_hint(_("increase parameter \"max_wal_senders\" or use -F/--force to proceed in any case"));
 
-			if (runtime_options.dry_run == false)
-			{
-				PQfinish(local_conn);
-				exit(ERR_BAD_CONFIG);
-			}
-		}
-		else
+		if (runtime_options.dry_run == false)
 		{
-			log_warning(_("insufficient free walsenders on promotion candidate"));
-			log_detail(_("at least %i walsenders required but only %i free walsender(s) on promotion candidate"),
-					   sibling_nodes_stats.min_required_wal_senders,
-					   available_wal_senders);
-		}
-	}
-	else
-	{
-		if (runtime_options.dry_run == true)
-		{
-			log_info(_("%i walsenders required, %i available"),
-					 sibling_nodes_stats.min_required_wal_senders,
-					 available_wal_senders);
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
 		}
 	}
 
@@ -3903,49 +3955,16 @@ do_standby_switchover(void)
 
 	PQfinish(remote_conn);
 
-
 	/*
 	 * if replication slots are required by demotion candidate and/or siblings,
 	 * check the promotion candidate has sufficient free slots
 	 */
-
-	if (sibling_nodes_stats.min_required_free_slots > 0 )
+	if (check_free_slots(&local_node_record, &sibling_nodes_stats) == false)
 	{
-		int available_slots = local_node_record.max_replication_slots -
-			local_node_record.active_replication_slots;
-
-		log_debug("minimum of %i free slots (%i for siblings) required; %i available",
-				  sibling_nodes_stats.min_required_free_slots,
-				  sibling_nodes_stats.reachable_sibling_nodes_with_slot_count,
-				  available_slots);
-
-		if (available_slots < sibling_nodes_stats.min_required_free_slots)
-		{
-			if (runtime_options.force == false || runtime_options.dry_run == true)
-			{
-				log_error(_("insufficient free replication slots to attach all nodes"));
-				log_detail(_("at least %i additional replication slots required but only %i free slots available on promotion candidate"),
-						   sibling_nodes_stats.min_required_free_slots,
-						   available_slots);
-				log_hint(_("increase parameter \"max_replication_slots\" or use -F/--force to proceed in any case"));
-
-				if (runtime_options.dry_run == false)
-				{
-					PQfinish(local_conn);
-					exit(ERR_BAD_CONFIG);
-				}
-			}
-		}
-		else
-		{
-			if (runtime_options.dry_run == true)
-			{
-				log_info(_("%i replication slots required, %i available"),
-						 sibling_nodes_stats.min_required_free_slots,
-						 available_slots);
-			}
-		}
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
 	}
+
 
 	/*
 	 * Attempt to pause all repmgrd instances, unless user explicitly
@@ -6973,6 +6992,12 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 }
 
 
+/*
+ * For "standby promote" and "standby follow", check for sibling nodes.
+ * If "--siblings-follow" was specified, fill the provided SiblingNodeStats
+ * struct with some aggregate info about the nodes for later
+ * decision making.
+ */
 static bool
 check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats)
 {
@@ -7099,6 +7124,91 @@ check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes
 		else
 		{
 			log_verbose(LOG_INFO, "%s", msg);
+		}
+	}
+
+	return true;
+}
+
+
+static bool
+check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats)
+{
+	if (available_wal_senders < sibling_nodes_stats->min_required_wal_senders)
+	{
+		if (runtime_options.force == false || runtime_options.dry_run == true)
+		{
+			log_error(_("insufficient free walsenders on promotion candidate"));
+			log_detail(_("at least %i walsenders required but only %i free walsenders on promotion candidate"),
+					   sibling_nodes_stats->min_required_wal_senders,
+					   available_wal_senders);
+			log_hint(_("increase parameter \"max_wal_senders\" or use -F/--force to proceed in any case"));
+
+			if (runtime_options.dry_run == false)
+			{
+				return false;
+			}
+		}
+		else
+		{
+			log_warning(_("insufficient free walsenders on promotion candidate"));
+			log_detail(_("at least %i walsenders required but only %i free walsender(s) on promotion candidate"),
+					   sibling_nodes_stats->min_required_wal_senders,
+					   available_wal_senders);
+			return false;
+		}
+	}
+	else
+	{
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("%i walsenders required, %i available"),
+					 sibling_nodes_stats->min_required_wal_senders,
+					 available_wal_senders);
+		}
+	}
+
+	return true;
+}
+
+
+static bool
+check_free_slots(t_node_info *local_node_record, SiblingNodeStats *sibling_nodes_stats)
+{
+	if (sibling_nodes_stats->min_required_free_slots > 0 )
+	{
+		int available_slots = local_node_record->max_replication_slots -
+			local_node_record->active_replication_slots;
+
+		log_debug("minimum of %i free slots (%i for siblings) required; %i available",
+				  sibling_nodes_stats->min_required_free_slots,
+				  sibling_nodes_stats->reachable_sibling_nodes_with_slot_count,
+				  available_slots);
+
+		if (available_slots < sibling_nodes_stats->min_required_free_slots)
+		{
+			if (runtime_options.force == false || runtime_options.dry_run == true)
+			{
+				log_error(_("insufficient free replication slots to attach all nodes"));
+				log_detail(_("at least %i additional replication slots required but only %i free slots available on promotion candidate"),
+						   sibling_nodes_stats->min_required_free_slots,
+						   available_slots);
+				log_hint(_("increase parameter \"max_replication_slots\" or use -F/--force to proceed in any case"));
+
+				if (runtime_options.dry_run == false)
+				{
+					return false;
+				}
+			}
+		}
+		else
+		{
+			if (runtime_options.dry_run == true)
+			{
+				log_info(_("%i replication slots required, %i available"),
+						 sibling_nodes_stats->min_required_free_slots,
+						 available_slots);
+			}
 		}
 	}
 
