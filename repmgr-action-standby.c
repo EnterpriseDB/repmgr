@@ -2024,7 +2024,7 @@ do_standby_unregister(void)
 void
 do_standby_promote(void)
 {
-	PGconn	   *conn = NULL;
+	PGconn	   *local_conn = NULL;
 	PGconn	   *current_primary_conn = NULL;
 
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
@@ -2032,28 +2032,28 @@ do_standby_promote(void)
 	int			existing_primary_id = UNKNOWN_NODE_ID;
 	int			server_version_num = UNKNOWN_SERVER_VERSION_NUM;
 
-	conn = establish_db_connection(config_file_options.conninfo, true);
+	local_conn = establish_db_connection(config_file_options.conninfo, true);
 
 	log_verbose(LOG_INFO, _("connected to standby, checking its state"));
 
 	/* Verify that standby is a supported server version */
-	server_version_num = check_server_version(conn, "standby", true, NULL);
+	server_version_num = check_server_version(local_conn, "standby", true, NULL);
 
 	/* Check we are in a standby node */
-	recovery_type = get_recovery_type(conn);
+	recovery_type = get_recovery_type(local_conn);
 
 	if (recovery_type != RECTYPE_STANDBY)
 	{
 		if (recovery_type == RECTYPE_PRIMARY)
 		{
 			log_error(_("STANDBY PROMOTE can only be executed on a standby node"));
-			PQfinish(conn);
+			PQfinish(local_conn);
 			exit(ERR_PROMOTION_FAIL);
 		}
 		else
 		{
-			log_error(_("connection to node lost"));
-			PQfinish(conn);
+			log_error(_("unable to determine node's recovery state"));
+			PQfinish(local_conn);
 			exit(ERR_DB_CONN);
 		}
 	}
@@ -2077,10 +2077,10 @@ do_standby_promote(void)
 
 		init_replication_info(&replication_info);
 
-		if (get_replication_info(conn, STANDBY, &replication_info) == false)
+		if (get_replication_info(local_conn, STANDBY, &replication_info) == false)
 		{
 			log_error(_("unable to retrieve replication information from local node"));
-			PQfinish(conn);
+			PQfinish(local_conn);
 			exit(ERR_PROMOTION_FAIL);
 		}
 
@@ -2092,7 +2092,7 @@ do_standby_promote(void)
 		if (replication_info.receiving_streamed_wal == false)
 		{
 			/* just a simple check for paused WAL replay */
-			replay_paused = is_wal_replay_paused(conn, false);
+			replay_paused = is_wal_replay_paused(local_conn, false);
 			if (replay_paused == true)
 			{
 				log_error(_("WAL replay is paused on this node"));
@@ -2104,7 +2104,7 @@ do_standby_promote(void)
 		else
 		{
 			/* check that replay is pause *and* WAL is pending replay */
-			replay_paused = is_wal_replay_paused(conn, true);
+			replay_paused = is_wal_replay_paused(local_conn, true);
 			if (replay_paused == true)
 			{
 				log_error(_("WAL replay is paused on this node but not all WAL has been replayed"));
@@ -2116,18 +2116,18 @@ do_standby_promote(void)
 
 		if (replay_paused == true)
 		{
-			if (PQserverVersion(conn) >= 100000)
+			if (PQserverVersion(local_conn) >= 100000)
 				log_hint(_("execute \"pg_wal_replay_resume()\" to unpause WAL replay"));
 			else
 				log_hint(_("execute \"pg_xlog_replay_resume()\" to unpause WAL replay"));
 
-			PQfinish(conn);
+			PQfinish(local_conn);
 			exit(ERR_PROMOTION_FAIL);
 		}
 	}
 
 	/* check that there's no existing primary */
-	current_primary_conn = get_primary_connection_quiet(conn, &existing_primary_id, NULL);
+	current_primary_conn = get_primary_connection_quiet(local_conn, &existing_primary_id, NULL);
 
 	if (PQstatus(current_primary_conn) == CONNECTION_OK)
 	{
@@ -2137,7 +2137,7 @@ do_standby_promote(void)
 		{
 			t_node_info primary_rec;
 
-			get_node_record(conn, existing_primary_id, &primary_rec);
+			get_node_record(local_conn, existing_primary_id, &primary_rec);
 
 			log_detail(_("current primary is \"%s\" (ID: %i)"),
 					   primary_rec.node_name,
@@ -2145,7 +2145,7 @@ do_standby_promote(void)
 		}
 
 		PQfinish(current_primary_conn);
-		PQfinish(conn);
+		PQfinish(local_conn);
 		exit(ERR_PROMOTION_FAIL);
 	}
 	else if (runtime_options.dry_run == true)
@@ -2161,7 +2161,7 @@ do_standby_promote(void)
 		exit(SUCCESS);
 	}
 
-	_do_standby_promote_internal(conn, server_version_num);
+	_do_standby_promote_internal(local_conn, server_version_num);
 }
 
 

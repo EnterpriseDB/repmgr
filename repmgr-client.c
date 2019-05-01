@@ -1953,6 +1953,7 @@ check_cli_parameters(const int action)
 	{
 		switch (action)
 		{
+			case STANDBY_PROMOTE:
 			case STANDBY_SWITCHOVER:
 				break;
 			default:
