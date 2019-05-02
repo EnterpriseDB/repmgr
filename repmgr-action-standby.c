@@ -2248,6 +2248,19 @@ do_standby_promote(void)
 	}
 
 	_do_standby_promote_internal(local_conn);
+
+	/*
+	 * If --siblings-follow specified, attempt to make them follow the new
+	 * primary
+	 */
+	if (runtime_options.siblings_follow == true && sibling_nodes.node_count > 0)
+	{
+		sibling_nodes_follow(&local_node_record, &sibling_nodes, &sibling_nodes_stats);
+	}
+
+	clear_node_info_list(&sibling_nodes);
+
+	return;
 }
 
 
