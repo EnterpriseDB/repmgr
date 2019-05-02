@@ -17,18 +17,49 @@
     <para>
       Promotes a standby to a primary if the current primary has failed. This
       command requires a valid <filename>repmgr.conf</filename> file for the standby, either
-      specified explicitly  with <literal>-f/--config-file</literal> or located in a
+      specified explicitly with <literal>-f/--config-file</literal> or located in a
       default location; no additional arguments are required.
     </para>
+    <important>
+      <para>
+        If &repmgrd; is active, you must execute
+        <command><link linkend="repmgr-daemon-pause">repmgr daemon pause</link></command>
+        to temporarily disable &repmgrd; while making any changes
+        to the replication cluster.
+      </para>
+    </important>
+
     <para>
       If the standby promotion succeeds, the server will not need to be
-      restarted. However any other standbys will need to follow the new server,
-      by using <xref linkend="repmgr-standby-follow">; if &repmgrd;
-        is active, it will handle this automatically.
+      restarted. However any other standbys will need to follow the new primary,
+      and will need to be restarted to do this.
     </para>
     <para>
-      Note that &repmgr; will wait for up to <varname>promote_check_timeout</varname> seconds
-      (default: 60 seconds) to verify that the standby has been promoted, and will
+      Beginning with <link linkend="release-4.4">repmgr 4.4</link>,
+      the option <option>--siblings-follow</option> can be used to have
+      all other standbys follow the new primary.
+    </para>
+
+    <note>
+      <para>
+        If using &repmgrd;, when invoking
+        <command>repmgr standby promote</command> (either directly via
+        the <option>promote_command</option>, or in a script called
+        via <option>promote_command</option>), <option>--siblings-follow</option>
+        <emphasis>must not</emphasis> be included as a
+        command line option for <command>repmgr standby promote</command>.
+      </para>
+    </note>
+
+    <para>
+      In <link linkend="release-4.3">repmgr 4.3</link> and earlier,
+      <command><link linkend="repmgr-standby-follow">repmgr standby follow</link></command>
+      must be executed on each standby individually.
+    </para>
+
+    <para>
+      &repmgr; will wait for up to <varname>promote_check_timeout</varname> seconds
+      (default: <literal>60</literal>) to verify that the standby has been promoted, and will
       check the promotion every <varname>promote_check_interval</varname> seconds (default: 1 second).
       Both values can be defined in <filename>repmgr.conf</filename>.
     </para>
@@ -72,13 +103,31 @@
     <title>Options</title>
     <variablelist>
       <varlistentry>
+
         <term><option>--dry-run</option></term>
         <listitem>
           <para>
-            Check if this node can be promoted, but don't carry out the promotion
+            Check if this node can be promoted, but don't carry out the promotion.
           </para>
         </listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><option>--siblings-follow</option></term>
+        <listitem>
+          <para>
+            Have all sibling nodes (nodes formerly attached to the same upstream
+            node as the promotion candidate) follow this node after it has been promoted.
+          </para>
+          <important>
+            <para>
+              Do <emphasis>not</emphasis> provide this option when configuring
+              &repmgrd;'s <option>promote_command</option>.
+            </para>
+          </important>
+        </listitem>
+      </varlistentry>
+
     </variablelist>
   </refsect1>
 
