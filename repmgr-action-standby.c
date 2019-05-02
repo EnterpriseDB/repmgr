@@ -7057,9 +7057,17 @@ check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes
 			for (cell = sibling_nodes->head; cell; cell = cell->next)
 			{
 				appendPQExpBuffer(&nodes,
-								  "  %s (node ID: %i)",
+								  "  %s (node ID: %i",
 								  cell->node_info->node_name,
 								  cell->node_info->node_id);
+
+				if (cell->node_info->type == WITNESS)
+				{
+					appendPQExpBufferStr(&nodes,
+										 ", witness server");
+				}
+				appendPQExpBufferChar(&nodes,
+									  ')');
 				if (cell->next)
 					appendPQExpBufferStr(&nodes, "\n");
 			}

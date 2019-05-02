@@ -26,7 +26,9 @@
       these to follow the new primary if the option <literal>--siblings-follow</literal>
       is specified. This requires a passwordless SSH connection between the promotion
       candidate (new primary) and the nodes attached to the demotion candidate
-      (existing primary).
+      (existing primary). Note that a witness server, if in use, is also
+	  counted as a &quot;sibling node&quot; as it needs to be instructed to
+	  synchronise its metadata with the new primary.
     </para>
     <note>
       <para>

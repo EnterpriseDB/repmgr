@@ -37,7 +37,8 @@
     <para>
       Beginning with <link linkend="release-4.4">repmgr 4.4</link>,
       the option <option>--siblings-follow</option> can be used to have
-      all other standbys follow the new primary.
+      all other standbys (and a witness server, if in use)
+	  follow the new primary.
     </para>
 
     <note>
@@ -119,6 +120,11 @@
             Have all sibling nodes (nodes formerly attached to the same upstream
             node as the promotion candidate) follow this node after it has been promoted.
           </para>
+		  <para>
+			Note that a witness server, if in use, is also
+			counted as a &quot;sibling node&quot; as it needs to be instructed to
+			synchronise its metadata with the new primary.
+		  </para>
           <important>
             <para>
               Do <emphasis>not</emphasis> provide this option when configuring
