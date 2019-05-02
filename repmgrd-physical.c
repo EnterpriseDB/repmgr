@@ -4478,10 +4478,13 @@ check_connection(t_node_info *node_info, PGconn **conn)
 		log_info(_("attempting to reconnect to node \"%s\" (ID: %i)"),
 				 node_info->node_name,
 				 node_info->node_id);
+
+		PQfinish(*conn);
 		*conn = establish_db_connection(node_info->conninfo, false);
 
 		if (PQstatus(*conn) != CONNECTION_OK)
 		{
+			PQfinish(*conn);
 			*conn = NULL;
 			log_warning(_("reconnection to node \"%s\" (ID: %i) failed"),
 						node_info->node_name,
