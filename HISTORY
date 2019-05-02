@@ -1,10 +1,13 @@
 4.4     2019-??-??
         repmgr: improve "daemon status" output (Ian)
+        repmgr: add "--siblings-follow" option to "standby promote" (Ian)
+        repmgr: improve "--dry-run" behaviour for "standby promote" and
+          "standby switchover" (Ian)
 
 4.3.1   2019-??-??
         repmgr: ensure BDR2-specific functionality cannot be used on
           BDR3 and later (Ian)
-        repmgr: improve --dry-run behaviour in barman mode (Ian)
+        repmgr: improve "--dry-run" behaviour in barman mode (Ian)
         repmgr: fix data directory permissions issue in barman mode where
           an existing directory is being overwritten (Ian)
 

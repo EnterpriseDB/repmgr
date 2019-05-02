@@ -27,6 +27,24 @@
 
           <listitem>
             <para>
+              <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>: add <option>--siblings-follow</option> (similar to
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>).
+            </para>
+            <note>
+              <para>
+                If using &repmgrd;, when invoking
+                <command>repmgr standby promote</command> (either directly via
+                the <option>promote_command</option>, or in a script called
+                via <option>promote_command</option>), <option>--siblings-follow</option>
+                <emphasis>must not</emphasis> be included as a
+                command line option for <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>.
+
+              </para>
+            </note>
+          </listitem>
+
+          <listitem>
+            <para>
               <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
 			  make output similar to that of
 			  <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
