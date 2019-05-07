@@ -17,7 +17,14 @@
 
   <sect1 id="release-4.3.1">
     <title>Release 4.3.1</title>
-    <para><emphasis>???, 2019</emphasis></para>
+    <para><emphasis>???</emphasis></para>
+
+    <para>
+      &repmgr; 4.3.1 will be a minor release. Note that the changes listed here
+      are listed for inclusion in a potential 4.3.1 release, but it is not yet
+      certain whether this will take place, in which case all changes will
+      be folded into the &repmgr; 4.4 release.
+    </para>
 
     <sect2>
       <title>repmgr client enhancements</title>
@@ -61,6 +68,13 @@
 			  they are marked as inactive.
 			</para>
 		  </listitem>
+
+		  <listitem>
+			<para>
+              &repmgrd;: fix memory leak which occurs while the monitored PostgreSQL node is <emphasis>not</emphasis>
+              running.
+            </para>
+          </listitem>
 
         </itemizedlist>
 	  </para>
