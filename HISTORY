@@ -3,6 +3,7 @@
         repmgr: add "--siblings-follow" option to "standby promote" (Ian)
         repmgr: improve "--dry-run" behaviour for "standby promote" and
           "standby switchover" (Ian)
+        repmgrd: monitor standbys attached to primary (Ian)
 
 4.3.1   2019-??-??
         repmgr: ensure BDR2-specific functionality cannot be used on

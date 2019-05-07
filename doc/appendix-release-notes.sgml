@@ -57,6 +57,27 @@
 	  </para>
     </sect2>
 
+    <sect2>
+      <title>repmgrd enhancements</title>
+      <para>
+        <itemizedlist>
+
+          <listitem>
+            <para>
+              On the primary node, &repmgrd; is now able to monitor standby connections and,
+              if the number of nodes connected falls below a certain (configurable) value,
+              execute a custom script.
+            </para>
+            <para>
+              See section <link linkend="repmgrd-primary-child-disconnection">Monitoring standby disconnections on the primary node</link>
+              for more details.
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
   </sect1>
 
   <sect1 id="release-4.3.1">
