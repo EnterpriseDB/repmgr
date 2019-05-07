@@ -29,6 +29,31 @@
     <sect2>
       <title>repmgr client enhancements</title>
       <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+              if <option>--siblings-follow</option> is not supplied, list all nodes which repmgr considers
+              to be siblings (this will include the witness server, if in use), and
+              which will remain attached to the old primary.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+              ignore nodes which are unreachable and marked as inactive.
+              Previously it would abort if any node was unreachable,
+              as that means it was unable to check if repmgrd is running.
+            </para>
+            <para>
+              However if the node has been marked as inactive in the repmgr metadata, it's
+              reasonable to assume the node is no longer part of the replication cluster
+              and does not need to be checked.
+            </para>
+          </listitem>
+
+        </itemizedlist>
       </para>
     </sect2>
 
@@ -64,7 +89,8 @@
 
 		  <listitem>
 			<para>
-              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>, don't abort if one or more nodes are not reachable <emphasis>and</emphasis>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+              don't abort if one or more nodes are not reachable <emphasis>and</emphasis>
 			  they are marked as inactive.
 			</para>
 		  </listitem>
