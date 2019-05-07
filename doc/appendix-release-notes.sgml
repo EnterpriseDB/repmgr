@@ -118,6 +118,16 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>
+              and <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
+              when executing with the <option>--dry-run</option>, continue checks as far as possible
+              even if errors are encountered.
+            </para>
+          </listitem>
+
+
         </itemizedlist>
       </para>
     </sect2>
