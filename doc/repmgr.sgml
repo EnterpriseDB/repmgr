@@ -9,6 +9,7 @@
           %filelist;
 
           <!ENTITY repmgr "<productname>repmgr</productname>">
+          <!ENTITY repmgrd "<productname>repmgrd</productname>">
           <!ENTITY postgres "<productname>PostgreSQL</productname>">
 ]>
 
