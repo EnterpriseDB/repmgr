@@ -13,7 +13,7 @@
   </para>
 
   <para>
-    See also: <xref linkend="upgrading-repmgr">
+    See also: <xref linkend="upgrading-repmgr"/>
   </para>
 
   <sect1 id="release-4.4">
@@ -627,7 +627,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 	  We recommend upgrading to this version as soon as possible.
 	  This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.1.0;
       &repmgrd; (if running) should be restarted.
-      See <xref linkend="upgrading-repmgr"> for more details.
+      See <xref linkend="upgrading-repmgr"/> for more details.
 	</para>
 
     <sect2>
@@ -802,7 +802,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
        for this release (unless upgrading from repmgr 3.x).
     </para>
     <para>
-       See <xref linkend="upgrading-repmgr-extension"> for more details.
+       See <xref linkend="upgrading-repmgr-extension"/> for more details.
     </para>
 
     <para>
@@ -817,7 +817,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
       </para>
       <para>
         Coinciding with this release, the 2ndQuadrant repository structure has changed.
-        See section <xref linkend="installation-packages"> for details, particularly
+        See section <xref linkend="installation-packages"/> for details, particularly
         if you are using a RPM-based system.
       </para>
     </note>
@@ -830,7 +830,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              Default for <xref linkend="repmgr-conf-log-level"> is now <option>INFO</option>.
+              Default for <xref linkend="repmgr-conf-log-level"/> is now <option>INFO</option>.
               This produces additional informative log output, without creating excessive additional
               log file volume, and matches the setting assumed for examples in the documentation.
               (GitHub #470).
@@ -915,7 +915,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               &repmgrd;: create a PID file by default
-              (GitHub #457). For details, see <xref linkend="repmgrd-pid-file">.
+              (GitHub #457). For details, see <xref linkend="repmgrd-pid-file"/>.
             </para>
           </listitem>
 
@@ -990,7 +990,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 	<para>
 	  We recommend upgrading to this version as soon as possible.
 	  This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.5;
-      &repmgrd; (if running) should be restarted. See <xref linkend="upgrading-repmgr">
+      &repmgrd; (if running) should be restarted. See <xref linkend="upgrading-repmgr"/>
       for more details.
 	</para>
 
@@ -1126,7 +1126,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               Add sanity check if <option>--upstream-node-id</option> not supplied when executing
-              <xref linkend="repmgr-standby-register"> (GitHub #395).
+              <xref linkend="repmgr-standby-register"/> (GitHub #395).
             </para>
           </listitem>
 
@@ -1252,7 +1252,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     </para>
     <para>
       This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.3;
-      &repmgrd; (if running) should be restarted. See <xref linkend="upgrading-repmgr">
+      &repmgrd; (if running) should be restarted. See <xref linkend="upgrading-repmgr"/>
       for more details.
     </para>
 
@@ -1639,14 +1639,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
         <listitem>
           <para>
-            Fix <xref linkend="repmgr-cluster-show"> when <literal>repmgr</literal> schema not set in search path
+            Fix <xref linkend="repmgr-cluster-show"/> when <literal>repmgr</literal> schema not set in search path
             (GitHub #341)
           </para>
         </listitem>
 
         <listitem>
           <para>
-            When using <literal>--force-rewind</literal> with <xref linkend="repmgr-node-rejoin">
+            When using <literal>--force-rewind</literal> with <xref linkend="repmgr-node-rejoin"/>
             delete any replication slots copied by <application>pg_rewind</application>
             (GitHub #334)
           </para>
@@ -1702,7 +1702,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
   </note>
 
   <para>
-    For detailed instructions on upgrading from repmgr 3.x, see <xref linkend="upgrading-from-repmgr-3">.
+    For detailed instructions on upgrading from repmgr 3.x, see <xref linkend="upgrading-from-repmgr-3"/>.
   </para>
 
   <sect2>
@@ -1716,7 +1716,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             the <command>switchover</command> process has been improved and streamlined,
             speeding up the switchover process and can also instruct other standbys
             to follow the new primary once the switchover has completed. See
-             <xref linkend="performing-switchover"> for more details.
+            <xref linkend="performing-switchover"/> for more details.
           </para>
         </listitem>
 
@@ -1767,8 +1767,8 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
         <listitem>
           <para>
             <emphasis>monitoring and status checks</emphasis>:
-            New commands <xref linkend="repmgr-node-check"> and
-            <xref linkend="repmgr-node-status"> providing information
+            New commands <xref linkend="repmgr-node-check"/> and
+            <xref linkend="repmgr-node-status"/> providing information
             about a node's status and replication-related monitoring
             output.
           </para>
@@ -1778,7 +1778,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
         <listitem>
           <para>
             <emphasis>node rejoin</emphasis>:
-            New commands <xref linkend="repmgr-node-rejoin"> enables a failed
+            New commands <xref linkend="repmgr-node-rejoin"/> enables a failed
             primary to be rejoined to a replication cluster, optionally using
             <application>pg_rewind</application> to synchronise its data,
             (note that <application>pg_rewind</application> may not be useable
@@ -1796,7 +1796,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             functioning even if the monitored PostgreSQL instance is down, and resume
             monitoring if it reappears. Additionally, if the instance's role has changed
             (typically from a primary to a standby, e.g. following reintegration of a
-            failed primary using <xref linkend="repmgr-node-rejoin">) &repmgrd;
+            failed primary using <xref linkend="repmgr-node-rejoin"/>) &repmgrd;
             will automatically resume monitoring it as a standby.
           </para>
         </listitem>
@@ -1860,7 +1860,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             by the configuration file option <varname>replication_user</varname>.
             The value (which defaults to the user provided in the <varname>conninfo</varname>
             string) will be stored in the &repmgr; metadata for use by
-            <xref linkend="repmgr-standby-clone"> and <xref linkend="repmgr-standby-follow">.
+            <xref linkend="repmgr-standby-clone"/> and <xref linkend="repmgr-standby-follow"/>.
         </para></listitem>
 
         <listitem><para>
@@ -1875,7 +1875,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             to <varname>primary_conninfo</varname> by default; to force the inclusion
             of a password (not recommended), use the new configuration file parameter
             <varname>use_primary_conninfo_password</varname>. For details, ee section
-            <xref linkend="cloning-advanced-managing-passwords">.
+            <xref linkend="cloning-advanced-managing-passwords"/>.
         </para></listitem>
 
       </itemizedlist>

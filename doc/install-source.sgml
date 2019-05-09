@@ -1,10 +1,11 @@
 <sect1 id="installation-source" xreflabel="Installing from source code">
-  <indexterm>
-   <primary>installation</primary>
-   <secondary>from source</secondary>
-  </indexterm>
 
  <title>Installing &repmgr; from source</title>
+
+ <indexterm>
+  <primary>installation</primary>
+  <secondary>from source</secondary>
+ </indexterm>
 
  <sect2 id="installation-source-prereqs">
   <title>Prerequisites for installing from source</title>
@@ -200,7 +201,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
     &repmgr; website along with a tarball checksum and a matching GnuPG
     signature. See
     <ulink url="http://repmgr.org/">http://repmgr.org/</ulink>
-    for the download information. See <xref linkend="appendix-signatures">
+    for the download information. See <xref linkend="appendix-signatures"/>
     for information on verifying digital signatures.
    </para>
 
@@ -208,11 +209,11 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
     You will need to download the repmgr source, e.g. <filename>repmgr-4.0.tar.gz</filename>.
     You may optionally verify the package checksums from the
     <literal>.md5</literal> files and/or verify the GnuPG signatures
-    per <xref linkend="appendix-signatures">.
+    per <xref linkend="appendix-signatures"/>.
    </para>
 
    <para>
-    After you unpack the source code archives using <literal>tar xf</literal>
+    After you unpack the source code archives using <command>tar xf</command>
     the installation process is the same as if you were installing from a git
     clone.
    </para>
@@ -227,7 +228,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
    To installing &repmgr; from source, simply execute:
 
    <programlisting>
-    ./configure && make install</programlisting>
+    ./configure &amp;&amp; make install</programlisting>
 
    Ensure <command>pg_config</command> for the target PostgreSQL version is in
    <varname>$PATH</varname>.
@@ -245,7 +246,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
     <ulink url="https://www.postgresql.org/docs/9.6/docguide-toolsets.html">
       PostgreSQL documentation</ulink> then execute:
    <programlisting>
-    ./configure && make install-doc</programlisting>
+    ./configure &amp;&amp; make install-doc</programlisting>
    </para>
    <para>
      The generated HTML files will be placed in the <filename>doc/html</filename>
@@ -255,7 +256,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
    <para>
      To build the documentation as a single HTML file, execute:
    <programlisting>
-    cd doc/ && make repmgr.html</programlisting>
+    cd doc/ &amp;&amp; make repmgr.html</programlisting>
    </para>
 
    <note>

@@ -1,13 +1,14 @@
 <chapter id="repmgrd-operation" xreflabel="repmgrd operation">
+  <title>repmgrd operation</title>
+
   <indexterm>
     <primary>repmgrd</primary>
     <secondary>operation</secondary>
   </indexterm>
 
-  <title>repmgrd operation</title>
-
-
   <sect1 id="repmgrd-pausing">
+
+    <title>Pausing repmgrd</title>
 
   <indexterm>
     <primary>repmgrd</primary>
@@ -18,7 +19,6 @@
     <primary>pausing repmgrd</primary>
   </indexterm>
 
-  <title>Pausing repmgrd</title>
 
   <para>
     In normal operation, &repmgrd; monitors the state of the
@@ -185,12 +185,13 @@ NOTICE: node 3 (node3) unpaused</programlisting>
   </sect1>
 
   <sect1 id="repmgrd-wal-replay-pause">
+    <title>repmgrd and paused WAL replay</title>
+
     <indexterm>
       <primary>repmgrd</primary>
       <secondary>paused WAL replay</secondary>
     </indexterm>
 
-    <title>repmgrd and paused WAL replay</title>
     <para>
       If WAL replay has been paused (using <command>pg_wal_replay_pause()</command>,
       on PostgreSQL 9.6 and earlier <command>pg_xlog_replay_pause()</command>),
@@ -214,6 +215,8 @@ NOTICE: node 3 (node3) unpaused</programlisting>
   </sect1>
 
 <sect1 id="repmgrd-degraded-monitoring" xreflabel="repmgrd degraded monitoring">
+ <title>"degraded monitoring" mode</title>
+
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>degraded monitoring</secondary>
@@ -223,7 +226,6 @@ NOTICE: node 3 (node3) unpaused</programlisting>
    <primary>degraded monitoring</primary>
  </indexterm>
 
- <title>"degraded monitoring" mode</title>
  <para>
   In certain circumstances, &repmgrd; is not able to fulfill its primary mission
   of monitoring the node's upstream server. In these cases it enters &quot;degraded monitoring&quot;
@@ -302,6 +304,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
 
 
 <sect1 id="repmgrd-monitoring" xreflabel="Storing monitoring data">
+ <title>Storing monitoring data</title>
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>monitoring</secondary>
@@ -311,7 +314,6 @@ NOTICE: node 3 (node3) unpaused</programlisting>
    <secondary>with repmgrd</secondary>
  </indexterm>
 
- <title>Storing monitoring data</title>
  <para>
    When &repmgrd; is running with the option <literal>monitoring_history=true</literal>,
   it will constantly write standby node status information to the
@@ -346,7 +348,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
  <para>
   As this can generate a large amount of monitoring data in the table
   <literal>repmgr.monitoring_history</literal>. it's advisable to regularly
-  purge historical data using the <xref linkend="repmgr-cluster-cleanup">
+  purge historical data using the <xref linkend="repmgr-cluster-cleanup"/>
   command; use the <literal>-k/--keep-history</literal> option to
   specify how many day's worth of data should be retained.
  </para>

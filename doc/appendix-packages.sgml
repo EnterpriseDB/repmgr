@@ -1,9 +1,11 @@
 <appendix id="appendix-packages" xreflabel="Package details">
+
+  <title>&repmgr; package details</title>
+
   <indexterm>
     <primary>packages</primary>
   </indexterm>
 
-  <title>&repmgr; package details</title>
   <para>
     This section provides technical details about various &repmgr; binary
     packages, such as location of the installed binaries and
@@ -309,7 +311,7 @@
         version number for your installation.
       </para>
       <para>
-        See also <xref linkend="repmgrd-configuration-debian-ubuntu"> for some specifics related
+        See also <xref linkend="repmgrd-configuration-debian-ubuntu"/> for some specifics related
         to configuring the &repmgrd; daemon.
       </para>
 
@@ -508,7 +510,7 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
         Old versions can be located with e.g.:
         <programlisting>
           yum --showduplicates list repmgr96</programlisting>
-        (substitute the appropriate package name; see <xref linkend="packages-centos">) and installed with:
+        (substitute the appropriate package name; see <xref linkend="packages-centos"/>) and installed with:
         <programlisting>
           yum install {package_name}-{version}</programlisting>
         where <literal>{package_name}</literal> is the base package name (e.g. <literal>repmgr96</literal>)
@@ -546,7 +548,7 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
 		char		package_conf_file[MAXPGPATH] = "";</programlisting>
         </para>
         <para>
-          See also: <xref linkend="configuration-file">
+          See also: <xref linkend="configuration-file"/>
         </para>
       </listitem>
 
@@ -560,7 +562,7 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
 		char		package_pid_file[MAXPGPATH] = "";</programlisting>
         </para>
         <para>
-          See also: <xref linkend="repmgrd-pid-file">
+          See also: <xref linkend="repmgrd-pid-file"/>
         </para>
       </listitem>
 

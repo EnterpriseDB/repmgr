@@ -40,7 +40,7 @@
       <para>
         The <filename>repmgr.conf</filename> parameter <varname>repmgrd_service_stop_command</varname>
         must be set for <command>repmgr daemon stop</command> to work; see section
-        <xref linkend="repmgr-daemon-stop-configuration"> for details.
+        <xref linkend="repmgr-daemon-stop-configuration"/> for details.
       </para>
     </important>
   </refsect1>
@@ -124,13 +124,14 @@
     <variablelist>
 
       <varlistentry>
-        <indexterm>
-          <primary>repmgrd_service_stop_command</primary>
-          <secondary>with &quot;repmgr daemon stop&quot;</secondary>
-        </indexterm>
 
         <term><option>repmgrd_service_stop_command</option></term>
         <listitem>
+          <indexterm>
+            <primary>repmgrd_service_stop_command</primary>
+          <secondary>with &quot;repmgr daemon stop&quot;</secondary>
+          </indexterm>
+
           <para>
             <command>repmgr daemon stop</command> will execute the command defined by the
             <varname>repmgrd_service_stop_command</varname> parameter in <filename>repmgr.conf</filename>.
@@ -193,7 +194,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-start">, <xref linkend="repmgr-daemon-status">, <xref linkend="repmgrd-daemon">
+      <xref linkend="repmgr-daemon-start"/>, <xref linkend="repmgr-daemon-status"/>, <xref linkend="repmgrd-daemon"/>
     </para>
   </refsect1>
 

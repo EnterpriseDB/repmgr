@@ -33,7 +33,7 @@
       <para>
         The <filename>repmgr.conf</filename> parameter <varname>repmgrd_service_start_command</varname>
         must be set for <command>repmgr daemon start</command> to work; see section
-        <xref linkend="repmgr-daemon-start-configuration"> for details.
+        <xref linkend="repmgr-daemon-start-configuration"/> for details.
       </para>
     </important>
   </refsect1>
@@ -99,13 +99,14 @@
     <variablelist>
 
       <varlistentry>
-        <indexterm>
-          <primary>repmgrd_service_start_command</primary>
-          <secondary>with &quot;repmgr daemon start&quot;</secondary>
-        </indexterm>
 
         <term><option>repmgrd_service_start_command</option></term>
         <listitem>
+          <indexterm>
+            <primary>repmgrd_service_start_command</primary>
+            <secondary>with &quot;repmgr daemon start&quot;</secondary>
+          </indexterm>
+
           <para>
             <command>repmgr daemon start</command> will execute the command defined by the
             <varname>repmgrd_service_start_command</varname> parameter in <filename>repmgr.conf</filename>.
@@ -196,7 +197,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-stop">, <xref linkend="repmgr-daemon-status">, <xref linkend="repmgrd-daemon">
+      <xref linkend="repmgr-daemon-stop"/>, <xref linkend="repmgr-daemon-status"/>, <xref linkend="repmgrd-daemon"/>
     </para>
   </refsect1>
 

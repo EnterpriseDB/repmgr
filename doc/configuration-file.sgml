@@ -1,4 +1,7 @@
 <sect1 id="configuration-file" xreflabel="configuration file">
+
+  <title>Configuration file</title>
+
   <indexterm>
     <primary>repmgr.conf</primary>
   </indexterm>
@@ -8,8 +11,6 @@
     <secondary>repmgr.conf</secondary>
   </indexterm>
 
-  <title>Configuration file</title>
-
   <para>
     <application>repmgr</application> and &repmgrd;
     use a common configuration file, by default called
@@ -17,18 +18,18 @@
     <filename>repmgr.conf</filename> must contain a number of required parameters, including
     the database connection string for the local node and the location
     of its data directory; other values will be inferred from defaults if
-    not explicitly supplied. See section <xref linkend="configuration-file-settings">
+    not explicitly supplied. See section <xref linkend="configuration-file-settings"/>
     for more details.
   </para>
 
   <sect2 id="configuration-file-format" xreflabel="configuration file format">
 
+    <title>Configuration file format</title>
+
     <indexterm>
       <primary>repmgr.conf</primary>
       <secondary>format</secondary>
     </indexterm>
-
-    <title>Configuration file format</title>
 
     <para>
       <filename>repmgr.conf</filename> is a plain text file with one parameter/value
@@ -63,12 +64,13 @@ data_directory = /var/lib/pgsql/11/data</programlisting>
 
 
   <sect2 id="configuration-file-location" xreflabel="configuration file location">
+  <title>Configuration file location</title>
+
   <indexterm>
     <primary>repmgr.conf</primary>
     <secondary>location</secondary>
   </indexterm>
 
-  <title>Configuration file location</title>
 
   <para>
    The configuration file will be searched for in the following locations:
@@ -105,10 +107,10 @@ data_directory = /var/lib/pgsql/11/data</programlisting>
   <note>
     <para>
       If providing the configuration file location with <literal>-f/--config-file</literal>,
-      avoid using a relative path, particularly when executing <xref linkend="repmgr-primary-register">
-      and <xref linkend="repmgr-standby-register">, as &repmgr; stores the configuration file location
+      avoid using a relative path, particularly when executing <xref linkend="repmgr-primary-register"/>
+      and <xref linkend="repmgr-standby-register"/>, as &repmgr; stores the configuration file location
       in the repmgr metadata for use when &repmgr; is executed remotely (e.g. during
-      <xref linkend="repmgr-standby-switchover">). &repmgr; will attempt to convert the
+      <xref linkend="repmgr-standby-switchover"/>). &repmgr; will attempt to convert the
       a relative path into an absolute one, but this may not be the same as the path you
       would explicitly provide (e.g. <filename>./repmgr.conf</filename> might be converted
       to <filename>/path/to/./repmgr.conf</filename>, whereas you'd normally write

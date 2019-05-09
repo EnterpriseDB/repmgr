@@ -1,11 +1,12 @@
 <sect1 id="install-requirements" xreflabel="installation requirements">
 
+  <title>Requirements for installing repmgr</title>
+
   <indexterm>
    <primary>installation</primary>
    <secondary>requirements</secondary>
   </indexterm>
 
-  <title>Requirements for installing repmgr</title>
   <para>
     repmgr is developed and tested on Linux and OS X, but should work on any
     UNIX-like system supported by PostgreSQL itself. There is no support for
@@ -20,7 +21,7 @@
 
   <note>
    <simpara>
-    If upgrading from &repmgr; 3.x, please see the section <xref linkend="upgrading-from-repmgr-3">.
+    If upgrading from &repmgr; 3.x, please see the section <xref linkend="upgrading-from-repmgr-3"/>.
    </simpara>
   </note>
 
@@ -72,6 +73,8 @@
 
   <sect2 id="install-compatibility-matrix">
 
+    <title>&repmgr; compatibility matrix</title>
+
     <indexterm>
       <primary>repmgr</primary>
       <secondary>compatibility matrix</secondary>
@@ -81,7 +84,6 @@
       <primary>compatibility matrix</primary>
     </indexterm>
 
-    <title>&repmgr; compatibility matrix</title>
     <para>
       The following table provides an overview of which &repmgr; version supports
       which PostgreSQL version.

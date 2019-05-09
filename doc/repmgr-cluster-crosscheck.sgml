@@ -16,9 +16,9 @@
   <refsect1>
     <title>Description</title>
     <para>
-      <command>repmgr cluster crosscheck</command> is similar to <xref linkend="repmgr-cluster-matrix">,
+      <command>repmgr cluster crosscheck</command> is similar to <xref linkend="repmgr-cluster-matrix"/>,
         but cross-checks connections between each combination of nodes. In "Example 3" in
-        <xref linkend="repmgr-cluster-matrix"> we have no information about the state of <literal>node3</literal>.
+        <xref linkend="repmgr-cluster-matrix"/> we have no information about the state of <literal>node3</literal>.
         However by running <command>repmgr cluster crosscheck</command> it's possible to get a better
         overview of the cluster situation:
           <programlisting>

@@ -13,12 +13,13 @@
 
  <sect2 id="installation-packages-redhat" xreflabel="Installing from packages on RHEL, CentOS and Fedora">
 
+  <title>RedHat/CentOS/Fedora</title>
+
   <indexterm>
    <primary>installation</primary>
    <secondary>on Red Hat/CentOS/Fedora etc.</secondary>
   </indexterm>
 
-  <title>RedHat/CentOS/Fedora</title>
   <para>
 	&repmgr; RPM packages for RedHat/CentOS variants and Fedora are available from the
 	<ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
@@ -46,7 +47,7 @@
   <para>
     For more information on the package contents, including details of installation
     paths and relevant <link linkend="configuration-file-service-commands">service commands</link>,
-    see the appendix section <xref linkend="packages-centos">.
+    see the appendix section <xref linkend="packages-centos"/>.
   </para>
 
 
@@ -105,7 +106,7 @@ sudo yum repolist</programlisting>
 
         <listitem>
           <para>
-            Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
+            Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
             <programlisting>
 sudo yum install repmgr10</programlisting>
           </para>
@@ -181,12 +182,13 @@ yum search repmgr</programlisting>
 
  <sect2 id="installation-packages-debian" xreflabel="Installing from packages on Debian or Ubuntu">
 
+  <title>Debian/Ubuntu</title>
+
   <indexterm>
    <primary>installation</primary>
    <secondary>on Debian/Ubuntu etc.</secondary>
   </indexterm>
 
-  <title>Debian/Ubuntu</title>
   <para>.deb packages for &repmgr; are available from the
   PostgreSQL Community APT repository (<ulink url="http://apt.postgresql.org/">http://apt.postgresql.org/</ulink>).
   Instructions can be found in the APT section of the PostgreSQL Wiki
@@ -195,7 +197,7 @@ yum search repmgr</programlisting>
   <para>
     For more information on the package contents, including details of installation
     paths and relevant <link linkend="configuration-file-service-commands">service commands</link>,
-    see the appendix section <xref linkend="packages-debian-ubuntu">.
+    see the appendix section <xref linkend="packages-debian-ubuntu"/>.
   </para>
 
   <sect3 id="installation-packages-debian-ubuntu-2ndq">
@@ -242,7 +244,7 @@ curl https://dl.2ndquadrant.com/default/release/get/deb | sudo bash</programlist
 
 	<listitem>
 	  <para>
-            Install the &repmgr version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
+            Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
             <programlisting>
 sudo apt-get install postgresql-10-repmgr</programlisting>
 	  </para>

@@ -1,10 +1,10 @@
 <chapter id="repmgrd-overview" xreflabel="repmgrd overview">
+  <title>repmgrd overview</title>
+
   <indexterm>
     <primary>repmgrd</primary>
     <secondary>overview</secondary>
   </indexterm>
-
-  <title>repmgrd overview</title>
 
   <para>
     &repmgrd; (&quot;<literal>replication manager daemon</literal>&quot;)

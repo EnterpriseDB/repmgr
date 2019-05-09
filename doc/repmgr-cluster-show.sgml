@@ -26,7 +26,7 @@
     <para>
       Node availability is tested by connecting from the node where
       <command>repmgr cluster show</command> is executed, and does not necessarily imply the node
-      is down. See <xref linkend="repmgr-cluster-matrix"> and <xref linkend="repmgr-cluster-crosscheck"> to get
+      is down. See <xref linkend="repmgr-cluster-matrix"/> and <xref linkend="repmgr-cluster-crosscheck"/> to get
       better overviews of connections between nodes.
     </para>
 
@@ -101,7 +101,7 @@
 	</para>
 	<tip>
 	  <para>
-		Use <xref linkend="repmgr-cluster-matrix"> and <xref linkend="repmgr-cluster-crosscheck">
+		Use <xref linkend="repmgr-cluster-matrix"/> and <xref linkend="repmgr-cluster-crosscheck"/>
 		to diagnose connection issues across the whole replication cluster.
 	  </para>
 	</tip>
@@ -231,7 +231,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-     <xref linkend="repmgr-node-status">, <xref linkend="repmgr-node-check">, <xref linkend="repmgr-daemon-status">
+     <xref linkend="repmgr-node-status"/>, <xref linkend="repmgr-node-check"/>, <xref linkend="repmgr-daemon-status"/>
     </para>
   </refsect1>
 

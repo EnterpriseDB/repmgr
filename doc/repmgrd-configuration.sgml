@@ -1,11 +1,11 @@
 <chapter id="repmgrd-configuration">
 
+  <title>repmgrd setup and configuration</title>
+
   <indexterm>
     <primary>repmgrd</primary>
     <secondary>configuration</secondary>
   </indexterm>
-
-  <title>repmgrd setup and configuration</title>
 
   <para>
     &repmgrd; is a daemon which runs on each PostgreSQL node,
@@ -39,108 +39,111 @@
     </para>
     <variablelist>
 
-        <varlistentry>
-
-         <indexterm>
+      <varlistentry>
+        <term><option>monitor_interval_secs</option></term>
+        <listitem>
+          <indexterm>
             <primary>monitor_interval_secs</primary>
           </indexterm>
-          <term><option>monitor_interval_secs</option></term>
-          <listitem>
-            <para>
-              The interval (in seconds, default: <literal>2</literal>) to check the availability of the upstream node.
-            </para>
-          </listitem>
 
-        </varlistentry>
+          <para>
+            The interval (in seconds, default: <literal>2</literal>) to check the availability of the upstream node.
+          </para>
+        </listitem>
 
-        <varlistentry id="connection-check-type">
+      </varlistentry>
 
+      <varlistentry id="connection-check-type">
+
+        <term><option>connection_check_type</option></term>
+        <listitem>
           <indexterm>
             <primary>connection_check_type</primary>
           </indexterm>
-          <term><option>connection_check_type</option></term>
-          <listitem>
-            <para>
-              The option <option>connection_check_type</option> is used to select the method
-              &repmgrd; uses to determine whether the upstream node is available.
-            </para>
-            <para>
-              Possible values are:
-              <itemizedlist spacing="compact" mark="bullet">
-                <listitem>
+
+          <para>
+            The option <option>connection_check_type</option> is used to select the method
+            &repmgrd; uses to determine whether the upstream node is available.
+          </para>
+          <para>
+            Possible values are:
+            <itemizedlist spacing="compact" mark="bullet">
+              <listitem>
                   <simpara>
                     <literal>ping</literal> (default) - uses <command>PQping()</command> to
                     determine server availability
                   </simpara>
-                </listitem>
-                <listitem>
-                  <simpara>
-                    <literal>connection</literal> - determines server availability
-                    by attempt ingto make a new connection to the upstream node
-                  </simpara>
-                </listitem>
-                <listitem>
-                  <simpara>
-                    <literal>query</literal> - determines server availability
-                    by executing an SQL statement on the node via the existing connection
-                  </simpara>
-                </listitem>
+              </listitem>
+              <listitem>
+                <simpara>
+                  <literal>connection</literal> - determines server availability
+                  by attempt ingto make a new connection to the upstream node
+                </simpara>
+              </listitem>
+              <listitem>
+                <simpara>
+                  <literal>query</literal> - determines server availability
+                  by executing an SQL statement on the node via the existing connection
+                </simpara>
+              </listitem>
 
-              </itemizedlist>
-            </para>
-          </listitem>
-        </varlistentry>
+            </itemizedlist>
+          </para>
+        </listitem>
+      </varlistentry>
 
-        <varlistentry>
-         <indexterm>
+      <varlistentry>
+        <term><option>reconnect_attempts</option></term>
+        <listitem>
+          <indexterm>
             <primary>reconnect_attempts</primary>
           </indexterm>
-          <term><option>reconnect_attempts</option></term>
-          <listitem>
-            <para>
-              The number of attempts (default: <literal>6</literal>) will be made to reconnect to an unreachable
-	      upstream node before initiating a failover.
-            </para>
-            <para>
-              There will be an interval of <option>reconnect_interval</option> seconds between each reconnection
-              attempt.
-            </para>
-          </listitem>
-        </varlistentry>
-        <varlistentry>
-         <indexterm>
+          <para>
+            The number of attempts (default: <literal>6</literal>) will be made to reconnect to an unreachable
+	        upstream node before initiating a failover.
+          </para>
+          <para>
+            There will be an interval of <option>reconnect_interval</option> seconds between each reconnection
+            attempt.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><option>reconnect_interval</option></term>
+
+        <listitem>
+          <indexterm>
             <primary>reconnect_interval</primary>
           </indexterm>
-          <term><option>reconnect_interval</option></term>
-          <listitem>
-            <para>
-              Interval (in seconds, default: <literal>10</literal>) between attempts to reconnect to an unreachable
-              upstream node.
-            </para>
-            <para>
+
+          <para>
+            Interval (in seconds, default: <literal>10</literal>) between attempts to reconnect to an unreachable
+            upstream node.
+          </para>
+          <para>
               The number of reconnection attempts is defined by the parameter <option>reconnect_attempts</option>.
-            </para>
-          </listitem>
-        </varlistentry>
+          </para>
+        </listitem>
+      </varlistentry>
 
-
-
-        <varlistentry>
+      <varlistentry>
+        <term><option>degraded_monitoring_timeout</option></term>
+        <listitem>
           <indexterm>
             <primary>degraded_monitoring_timeout</primary>
           </indexterm>
-          <term><option>degraded_monitoring_timeout</option></term>
-          <listitem>
-	    <para>
-              Interval (in seconds) after which &repmgrd; will terminate if
-              either of the servers (local node and or upstream node) being monitored is no longer available
-              (<link linkend="repmgrd-degraded-monitoring">degraded monitoring mode</link>).
-            </para>
-            <para>
-              <literal>-1</literal> (default) disables this timeout completely.
-            </para>
-	  </listitem>
-	</varlistentry>
+
+	      <para>
+            Interval (in seconds) after which &repmgrd; will terminate if
+            either of the servers (local node and or upstream node) being monitored is no longer available
+            (<link linkend="repmgrd-degraded-monitoring">degraded monitoring mode</link>).
+          </para>
+          <para>
+            <literal>-1</literal> (default) disables this timeout completely.
+          </para>
+	    </listitem>
+	  </varlistentry>
 
     </variablelist>
 
@@ -182,11 +185,12 @@
       <variablelist>
         <varlistentry>
 
-          <indexterm>
-            <primary>failover</primary>
-          </indexterm>
           <term><option>failover</option></term>
           <listitem>
+            <indexterm>
+              <primary>failover</primary>
+            </indexterm>
+
             <para>
               <option>failover</option> can be one of <literal>automatic</literal> or <literal>manual</literal>.
             </para>
@@ -202,11 +206,13 @@
         </varlistentry>
 
         <varlistentry>
-          <indexterm>
-            <primary>promote_command</primary>
-          </indexterm>
           <term><option>promote_command</option></term>
+
           <listitem>
+            <indexterm>
+              <primary>promote_command</primary>
+            </indexterm>
+
             <para>
               The program or script defined in <option>promote_command</option> will be executed
               in a failover situation when &repmgrd; determines that
@@ -245,11 +251,12 @@
         </varlistentry>
 
         <varlistentry>
-          <indexterm>
-            <primary>follow_command</primary>
-          </indexterm>
           <term><option>follow_command</option></term>
           <listitem>
+            <indexterm>
+              <primary>follow_command</primary>
+            </indexterm>
+
             <para>
               The program or script defined in <option>follow_command</option> will be executed
               in a failover situation when &repmgrd; determines that
@@ -312,11 +319,12 @@
       <variablelist>
 
         <varlistentry>
-          <indexterm>
-            <primary>priority</primary>
-          </indexterm>
           <term><option>priority</option></term>
           <listitem>
+            <indexterm>
+              <primary>priority</primary>
+            </indexterm>
+
             <para>
               Indicates a preferred priority (default: <literal>100</literal>) for promoting nodes;
 			  a value of zero prevents the node being promoted to primary.
@@ -330,11 +338,12 @@
         </varlistentry>
 
         <varlistentry>
-          <indexterm>
-            <primary>failover_validation_command</primary>
-          </indexterm>
           <term><option>failover_validation_command</option></term>
           <listitem>
+            <indexterm>
+              <primary>failover_validation_command</primary>
+            </indexterm>
+
             <para>
               User-defined script to execute for an external mechanism to validate the failover
 	      decision made by &repmgrd;.
@@ -366,12 +375,13 @@
 
 
         <varlistentry>
-
-         <indexterm>
-            <primary>primary_visibility_consensus</primary>
-          </indexterm>
           <term><option>primary_visibility_consensus</option></term>
+
           <listitem>
+            <indexterm>
+              <primary>primary_visibility_consensus</primary>
+            </indexterm>
+
             <para>
               If <literal>true</literal>, only continue with failover if no standbys have seen
 			  the primary node recently.
@@ -387,11 +397,12 @@
 
         <varlistentry>
 
-         <indexterm>
-            <primary>standby_disconnect_on_failover</primary>
-          </indexterm>
           <term><option>standby_disconnect_on_failover</option></term>
           <listitem>
+            <indexterm>
+              <primary>standby_disconnect_on_failover</primary>
+            </indexterm>
+
             <para>
               In a failover situation, disconnect the local node's WAL receiver.
             </para>
@@ -429,11 +440,12 @@
       <variablelist>
 
         <varlistentry>
-          <indexterm>
-            <primary>election_rerun_interval</primary>
-          </indexterm>
           <term><option>election_rerun_interval</option></term>
           <listitem>
+            <indexterm>
+              <primary>election_rerun_interval</primary>
+            </indexterm>
+
 			<para>
 			  If <option>failover_validation_command</option> is set, and the command returns
 			  an error, pause the specified amount of seconds (default: 15) before rerunning the election.
@@ -443,11 +455,12 @@
 
 
         <varlistentry>
-          <indexterm>
-            <primary>sibling_nodes_disconnect_timeout</primary>
-          </indexterm>
           <term><option>sibling_nodes_disconnect_timeout</option></term>
           <listitem>
+            <indexterm>
+              <primary>sibling_nodes_disconnect_timeout</primary>
+            </indexterm>
+
 			<para>
               If <option>standby_disconnect_on_failover</option> is <literal>true</literal>, the
               maximum length of time (in seconds, default: <literal>30</literal>)
@@ -463,11 +476,12 @@
     </sect2>
 
     <sect2 id="postgresql-service-configuration">
+      <title>PostgreSQL service configuration</title>
+
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>PostgreSQL service configuration</secondary>
       </indexterm>
-      <title>PostgreSQL service configuration</title>
       <para>
         If using automatic failover, currently &repmgrd; will need to execute
         <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>
@@ -481,16 +495,17 @@
         particularly on <application>systemd</application>-based systems.
       </para>
       <para>
-        For more details, see <xref linkend="configuration-file-service-commands">.
+        For more details, see <xref linkend="configuration-file-service-commands"/>.
       </para>
     </sect2>
 
     <sect2 id="repmgrd-service-configuration">
+      <title>repmgrd service configuration</title>
+
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>repmgrd service configuration</secondary>
       </indexterm>
-      <title>repmgrd service configuration</title>
       <para>
         If you are intending to use the <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link>
         and <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link> commands, the following
@@ -522,11 +537,12 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
 
 
     <sect2 id="repmgrd-monitoring-configuration" xreflabel="repmgrd monitoring configuration">
+      <title>Monitoring configuration</title>
+
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>monitoring configuration</secondary>
       </indexterm>
-      <title>Monitoring configuration</title>
       <para>
         To enable monitoring, set:
         <programlisting>
@@ -538,20 +554,21 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
         the option <option>monitor_interval_secs</option> (see above).
       </para>
       <para>
-        For more details on monitoring, see <xref linkend="repmgrd-monitoring">.
+        For more details on monitoring, see <xref linkend="repmgrd-monitoring"/>.
       </para>
     </sect2>
 
-    <sect2 id="repmgrd-reloading-configuration"xreflabel="reloading repmgrd configuration">
+    <sect2 id="repmgrd-reloading-configuration" xreflabel="reloading repmgrd configuration">
+      <title>Applying configuration changes to repmgrd</title>
+
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>applying configuration changes</secondary>
       </indexterm>
-      <title>Applying configuration changes to repmgrd</title>
       <para>
         To apply configuration file changes to a running &repmgrd;
         daemon, execute the operating system's &repmgrd; service reload command
-        (see <xref linkend="appendix-packages"> for examples),
+        (see <xref linkend="appendix-packages"/> for examples),
           or for instances  which were manually started, execute <command>kill -HUP</command>, e.g.
           <command>kill -HUP `cat /tmp/repmgrd.pid`</command>.
       </para>
@@ -779,18 +796,19 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
   </sect1>
 
   <sect1 id="repmgrd-daemon" xreflabel="repmgrd daemon">
+    <title>repmgrd daemon</title>
+
     <indexterm>
       <primary>repmgrd</primary>
       <secondary>starting and stopping</secondary>
     </indexterm>
-    <title>repmgrd daemon</title>
     <para>
       If installed from a package, the &repmgrd; can be started
       via the operating system's service command, e.g. in <application>systemd</application>
       using <command>systemctl</command>.
     </para>
     <para>
-      See appendix <xref linkend="appendix-packages"> for details of service commands
+      See appendix <xref linkend="appendix-packages"/> for details of service commands
       for different distributions.
     </para>
     <para>
@@ -815,6 +833,8 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
     </para>
 
     <sect2 id="repmgrd-pid-file" xreflabel="repmgrd's PID file">
+      <title>repmgrd's PID file</title>
+
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>PID file</secondary>
@@ -823,7 +843,6 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
         <primary>PID file</primary>
         <secondary>repmgrd</secondary>
       </indexterm>
-      <title>repmgrd's PID file</title>
       <para>
         &repmgrd; will generate a PID file by default.
       </para>
@@ -868,6 +887,8 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
     </sect2>
 
     <sect2 id="repmgrd-configuration-debian-ubuntu">
+      <title>repmgrd daemon configuration on Debian/Ubuntu</title>
+
       <indexterm>
         <primary>repmgrd</primary>
         <secondary>Debian/Ubuntu and daemon configuration</secondary>
@@ -876,8 +897,6 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
         <primary>Debian/Ubuntu</primary>
         <secondary>repmgrd daemon configuration</secondary>
       </indexterm>
-
-      <title>repmgrd daemon configuration on Debian/Ubuntu</title>
 
       <para>
         If &repmgr; was installed from Debian/Ubuntu packages, additional configuration
@@ -915,7 +934,7 @@ REPMGRD_OPTS="--daemonize=false"
       </para>
       <tip>
         <para>
-          See <xref linkend="packages-debian-ubuntu"> for details of the Debian/Ubuntu packages and
+          See <xref linkend="packages-debian-ubuntu"/> for details of the Debian/Ubuntu packages and
           typical file locations (including <filename>repmgr.conf</filename>).
         </para>
       </tip>
@@ -959,7 +978,9 @@ REPMGRD_OPTS="--daemonize=false"
 
 
 
- <sect1 id="repmgrd-log-rotation">
+  <sect1 id="repmgrd-log-rotation">
+     <title>repmgrd log rotation</title>
+
    <indexterm>
      <primary>log rotation</primary>
      <secondary>repmgrd</secondary>
@@ -970,7 +991,6 @@ REPMGRD_OPTS="--daemonize=false"
      <secondary>log rotation</secondary>
    </indexterm>
 
-  <title>repmgrd log rotation</title>
   <para>
    To ensure the current &repmgrd; logfile
    (specified in <filename>repmgr.conf</filename> with the parameter

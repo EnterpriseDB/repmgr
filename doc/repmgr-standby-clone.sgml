@@ -85,12 +85,13 @@
   </refsect1>
 
   <refsect1 id="repmgr-standby-clone-recovery-conf">
-   <indexterm>
+    <title>Customising recovery.conf</title>
+    <indexterm>
      <primary>recovery.conf</primary>
      <secondary>customising with &quot;repmgr standby clone&quot;</secondary>
-   </indexterm>
+    </indexterm>
 
-   <title>Customising recovery.conf</title>
+
    <para>
      By default, &repmgr; will create a minimal <filename>recovery.conf</filename>
      containing following parameters:
@@ -142,7 +143,7 @@
        We recommend using <ulink url="https://www.pgbarman.org/">Barman</ulink> to manage
        WAL file archiving. For more details on combining &repmgr; and <application>Barman</application>,
        in particular using <varname>restore_command</varname> to configure Barman as a backup source of
-       WAL files, see <xref linkend="cloning-from-barman">.
+       WAL files, see <xref linkend="cloning-from-barman"/>.
      </para>
    </note>
 
@@ -186,12 +187,13 @@
 
   <refsect1 id="repmgr-standby-create-recovery-conf">
 
+   <title>Using a standby cloned by another method</title>
+
    <indexterm>
      <primary>recovery.conf</primary>
      <secondary>generating for a standby cloned by another method</secondary>
    </indexterm>
 
-   <title>Using a standby cloned by another method</title>
    <para>
      &repmgr; supports standbys cloned by another method (e.g. using <application>barman</application>'s
      <command><ulink url="http://docs.pgbarman.org/release/2.5/#recover">barman recover</ulink></command> command).
@@ -296,7 +298,7 @@
         <term><option> --recovery-conf-only</option></term>
         <listitem>
           <para>
-            Create <filename>recovery.conf</filename> file for a previously cloned instance. &repmgr 4.0.4 and later.
+            Create <filename>recovery.conf</filename> file for a previously cloned instance. &repmgr; 4.0.4 and later.
           </para>
         </listitem>
       </varlistentry>
@@ -361,7 +363,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      See <xref linkend="cloning-standbys"> for details about various aspects of cloning.
+      See <xref linkend="cloning-standbys"/> for details about various aspects of cloning.
     </para>
   </refsect1>
 </refentry>

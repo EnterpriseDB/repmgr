@@ -69,8 +69,8 @@
   <refsect1>
     <title>See also</title>
     <para>
-      For more details see the sections <xref linkend="repmgrd-monitoring"> and
-      <xref linkend="repmgrd-monitoring-configuration">.
+      For more details see the sections <xref linkend="repmgrd-monitoring"/> and
+      <xref linkend="repmgrd-monitoring-configuration"/>.
     </para>
   </refsect1>
 

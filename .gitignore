@@ -42,8 +42,6 @@ lib*.pc
 /regression.diffs
 /regression.out
 
-/doc/Makefile
-
 # other
 /.lineno
 *.dSYM

@@ -1,9 +1,11 @@
 <appendix id="appendix-support" xreflabel="repmgr support">
+
+  <title>&repmgr; support</title>
+
   <indexterm>
     <primary>support</primary>
   </indexterm>
 
-  <title>&repmgr; support</title>
   <para>
     <ulink url="https://2ndquadrant.com/">2ndQuadrant</ulink> provides 24x7
     production support for &repmgr; and other PostgreSQL
@@ -28,12 +30,13 @@
   </important>
 
   <sect1 id="appendix-support-reporting-issues" xreflabel="Reportins Issues">
+    <title>Reporting Issues</title>
+
     <indexterm>
       <primary>support</primary>
       <secondary>reporting issues</secondary>
     </indexterm>
 
-    <title>Reporting Issues</title>
 
     <para>
       When asking questions or reporting issues, it is extremely helpful if the following information is included:
@@ -48,7 +51,7 @@
 
      <listitem>
       <simpara>
-        How was &repmgr installed? From source? From packages? If
+        How was &repmgr; installed? From source? From packages? If
         so from which repository?
       </simpara>
      </listitem>

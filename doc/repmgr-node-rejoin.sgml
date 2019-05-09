@@ -26,10 +26,10 @@
     <tip>
       <para>
         If the node is running and needs to be attached to the current primary, use
-        <xref linkend="repmgr-standby-follow">.
+        <xref linkend="repmgr-standby-follow"/>.
       </para>
       <para>
-        Note <xref linkend="repmgr-standby-follow"> can only be used for standbys which have not diverged
+        Note <xref linkend="repmgr-standby-follow"/> can only be used for standbys which have not diverged
         from the rest of the cluster.
       </para>
     </tip>
@@ -230,12 +230,13 @@
 
   <refsect1 id="repmgr-node-rejoin-pg-rewind" xreflabel="Using pg_rewind">
 
+   <title>Using <command>pg_rewind</command></title>
+
    <indexterm>
       <primary>pg_rewind</primary>
       <secondary>using with "repmgr node rejoin"</secondary>
     </indexterm>
 
-    <title>Using <command>pg_rewind</command></title>
     <para>
       <command>repmgr node rejoin</command> can optionally use <command>pg_rewind</command> to re-integrate a
       node which has diverged from the rest of the cluster, typically a failed primary.
@@ -321,7 +322,7 @@
         If <option>--force-rewind</option> is used with the <option>--dry-run</option> option,
         this checks the prerequisites for using <application>pg_rewind</application>, but is
         not an absolute guarantee that actually executing <application>pg_rewind</application>
-        will succeed. See also section <xref linkend="repmgr-node-rejoin-caveats"> below.
+        will succeed. See also section <xref linkend="repmgr-node-rejoin-caveats"/> below.
       </para>
 
     </note>
@@ -344,12 +345,13 @@
 
   <refsect1 id="repmgr-node-rejoin-caveats" xreflabel="Caveats">
 
-   <indexterm>
-      <primary>repmgr node rejoin</primary>
-      <secondary>caveats</secondary>
-    </indexterm>
-
    <title>Caveats when using <command>repmgr node rejoin</command></title>
+
+   <indexterm>
+     <primary>repmgr node rejoin</primary>
+     <secondary>caveats</secondary>
+   </indexterm>
+
    <para>
      <command>repmgr node rejoin</command> attempts to determine whether it will succeed by
      comparing the timelines and relative WAL positions of the local node (rejoin candidate) and primary
@@ -381,7 +383,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-     <xref linkend="repmgr-standby-follow">
+     <xref linkend="repmgr-standby-follow"/>
     </para>
   </refsect1>
 </refentry>

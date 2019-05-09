@@ -41,7 +41,7 @@
 	<tip>
       <para>
 		To re-add an inactive node to the replication cluster, use
-		<xref linkend="repmgr-node-rejoin">.
+		<xref linkend="repmgr-node-rejoin"/>.
       </para>
 	</tip>
 
@@ -252,7 +252,7 @@ DETAIL: follow target server's timeline 2 forked off current database system tim
   <refsect1>
     <title>See also</title>
     <para>
-     <xref linkend="repmgr-node-rejoin">
+     <xref linkend="repmgr-node-rejoin"/>
     </para>
   </refsect1>
 </refentry>

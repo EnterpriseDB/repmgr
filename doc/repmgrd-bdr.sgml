@@ -1,4 +1,6 @@
 <chapter id="repmgrd-bdr">
+  <title>BDR failover with repmgrd</title>
+
   <indexterm>
     <primary>repmgrd</primary>
     <secondary>BDR</secondary>
@@ -8,7 +10,6 @@
     <primary>BDR</primary>
   </indexterm>
 
-  <title>BDR failover with repmgrd</title>
   <para>
     &repmgr; 4.x provides support for monitoring a pair of BDR 2.x nodes and taking action in
     case one of the nodes fails.
@@ -94,7 +95,7 @@
 
         # Event notification configuration
         event_notifications=bdr_failover
-        event_notification_command='/path/to/bdr-pgbouncer.sh %n %e %s "%c" "%a" >> /tmp/bdr-failover.log 2>&1'
+        event_notification_command='/path/to/bdr-pgbouncer.sh %n %e %s "%c" "%a" >> /tmp/bdr-failover.log 2>&amp;1'
 
         # repmgrd options
         monitor_interval_secs=5
@@ -120,7 +121,7 @@
       <simpara>
         <varname>event_notification_command</varname> is the script which does the actual "heavy lifting"
         of reconfiguring the proxy server/ connection pooler. It is fully
-        user-definable; see section <xref linkend="bdr-event-notification-command"> for a reference
+        user-definable; see section <xref linkend="bdr-event-notification-command"/> for a reference
         implementation.
       </simpara>
     </note>
@@ -158,7 +159,7 @@
     </important>
     <para>
       At this point the meta data for both nodes has been created; executing
-      <xref linkend="repmgr-cluster-show"> (on either node) should produce output like this:
+      <xref linkend="repmgr-cluster-show"/> (on either node) should produce output like this:
       <programlisting>
         $ repmgr -f /etc/repmgr.conf cluster show
         ID | Name  | Role | Status    | Upstream | Location | Connection string
@@ -168,7 +169,7 @@
     </para>
     <para>
       Additionally it's possible to display log of significant events;  executing
-      <xref linkend="repmgr-cluster-event"> (on either node) should produce output like this:
+      <xref linkend="repmgr-cluster-event"/> (on either node) should produce output like this:
       <programlisting>
         $ repmgr -f /etc/repmgr.conf cluster event
         Node ID | Event        | OK | Timestamp           | Details

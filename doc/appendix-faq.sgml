@@ -1,9 +1,10 @@
 <appendix id="appendix-faq" xreflabel="FAQ">
- <indexterm>
-  <primary>FAQ (Frequently Asked Questions)</primary>
- </indexterm>
 
- <title>FAQ (Frequently Asked Questions)</title>
+  <title>FAQ (Frequently Asked Questions)</title>
+
+  <indexterm>
+   <primary>FAQ (Frequently Asked Questions)</primary>
+  </indexterm>
 
  <sect1 id="faq-general" xreflabel="General">
   <title>General</title>
@@ -125,7 +126,7 @@
   <sect2 id="faq-old-packages">
    <title>How can I obtain old versions of &repmgr; packages?</title>
    <para>
-     See appendix <xref linkend="packages-old-versions"> for details.
+     See appendix <xref linkend="packages-old-versions"/> for details.
    </para>
   </sect2>
 
@@ -251,8 +252,8 @@
    </para>
    <para>
     &repmgr; provides the command <command>repmgr node rejoin</command> which can
-    optionally execute <command>pg_rewind</command>; see the <xref linkend="repmgr-node-rejoin">
-    documentation for details, in particular the section <xref linkend="repmgr-node-rejoin-pg-rewind">.
+    optionally execute <command>pg_rewind</command>; see the <xref linkend="repmgr-node-rejoin"/>
+    documentation for details, in particular the section <xref linkend="repmgr-node-rejoin-pg-rewind"/>.
    </para>
    <para>
     If <command>pg_rewind</command> cannot be used, then the data directory will need
@@ -276,7 +277,7 @@
      directory in <filename>/etc</filename>?</title>
    <para>
     Use the command line option <literal>--copy-external-config-files</literal>. For more details
-    see <xref linkend="repmgr-standby-clone-config-file-copying">.
+    see <xref linkend="repmgr-standby-clone-config-file-copying"/>.
    </para>
   </sect2>
 
@@ -317,7 +318,7 @@
    <para>
      Provide the option <literal>--waldir</literal>  (<literal>--xlogdir</literal> in PostgreSQL 9.6
      and earlier) with the absolute path to the WAL directory in <varname>pg_basebackup_options</varname>.
-     For more details see <xref linkend="cloning-advanced-pg-basebackup-options">.
+     For more details see <xref linkend="cloning-advanced-pg-basebackup-options"/>.
    </para>
   </sect2>
 
@@ -387,7 +388,7 @@
   <sect2 id="faq-repmgrd-logfile-rotate" xreflabel="repmgrd logfile rotation">
    <title>How can I get &repmgrd; to rotate its logfile?</title>
    <para>
-     Configure your system's <literal>logrotate</literal> service to do this; see <xref linkend="repmgrd-log-rotation">.
+     Configure your system's <literal>logrotate</literal> service to do this; see <xref linkend="repmgrd-log-rotation"/>.
    </para>
 
   </sect2>
@@ -410,7 +411,7 @@
     <para>
       <varname>promote_command</varname> or <varname>follow_command</varname> can be user-defined scripts,
       so &repmgr; will not apply <option>pg_bindir</option> even if excuting &repmgr;. Always provide the full
-      path; see <xref linkend="repmgrd-automatic-failover-configuration"> for more details.
+      path; see <xref linkend="repmgrd-automatic-failover-configuration"/> for more details.
     </para>
   </sect2>
 

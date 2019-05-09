@@ -1,10 +1,12 @@
 <sect1 id="configuration-file-settings" xreflabel="required configuration file settings">
+
+ <title>Required configuration file settings</title>
+
   <indexterm>
     <primary>repmgr.conf</primary>
     <secondary>required settings</secondary>
   </indexterm>
 
- <title>Required configuration file settings</title>
  <para>
    Each <filename>repmgr.conf</filename> file must contain the following parameters:
  </para>
@@ -60,7 +62,7 @@
      </para>
      <para>
        For details on conninfo strings, see section <ulink
-       url="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">Connection Strings</>
+       url="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING">Connection Strings</ulink>
         in the PosgreSQL documentation.
      </para>
      <para>
@@ -69,18 +71,18 @@
         string to determine the length of time which elapses before a network
         connection attempt is abandoned; for details see <ulink
         url="https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-CONNECT-TIMEOUT">
-        the PostgreSQL documentation</>.
+        the PostgreSQL documentation</ulink>.
      </para>
     </listitem>
    </varlistentry>
 
    <varlistentry id="repmgr-conf-data-directory" xreflabel="data_directory">
-    <term><varname>data_directory</varname> (<type>string</type>)
-     <indexterm>
-      <primary><varname>data_directory</varname> configuration file parameter</primary>
-     </indexterm>
-    </term>
+    <term><varname>data_directory</varname> (<type>string</type>)</term>
     <listitem>
+      <indexterm>
+        <primary><varname>data_directory</varname> configuration file parameter</primary>
+      </indexterm>
+
      <para>
        The node's data directory. This is needed by repmgr
        when performing operations when the PostgreSQL instance
@@ -99,7 +101,7 @@
     <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>.
   </para>
   <para>
-    For &repmgrd;-specific settings, see <xref linkend="repmgrd-configuration">.
+    For &repmgrd;-specific settings, see <xref linkend="repmgrd-configuration"/>.
   </para>
 
   <note>

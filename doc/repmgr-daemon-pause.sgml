@@ -37,7 +37,7 @@
       </para>
     </note>
     <para>
-      <xref linkend="repmgr-daemon-unpause"> will instruct all previously paused &repmgrd;
+      <xref linkend="repmgr-daemon-unpause"/> will instruct all previously paused &repmgrd;
       instances to resume normal failover operation.
     </para>
   </refsect1>
@@ -107,7 +107,7 @@ NOTICE: node 3 (node3) paused</programlisting>
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-unpause">, <xref linkend="repmgr-daemon-status">
+      <xref linkend="repmgr-daemon-unpause"/>, <xref linkend="repmgr-daemon-status"/>
     </para>
   </refsect1>
 </refentry>

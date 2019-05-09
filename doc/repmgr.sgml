@@ -1,7 +1,8 @@
 <!-- doc/repmgr.sgml -->
 
-<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook V4.2//EN" [
-
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd"
+[
           <!ENTITY % version SYSTEM "version.sgml">
           %version;
 
@@ -38,7 +39,7 @@
    <para>
     &repmgr; is developed by
     <ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
-    along with contributions from other individuals and companies.
+    along with contributions from other individuals and organisations.
     Contributions from the community are appreciated and welcome - get
     in touch via <ulink url="https://github.com/2ndQuadrant/repmgr">github</ulink>
     or <ulink url="https://groups.google.com/group/repmgr">the mailing list/forum</ulink>.
@@ -128,7 +129,6 @@
  &appendix-packages;
  &appendix-support;
 
- <![%include-index;[&bookindex;]]>
- <![%include-xslt-index;[<index id="bookindex"></index>]]>
+ <index id="bookindex"></index>
 
 </book>

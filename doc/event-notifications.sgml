@@ -1,10 +1,10 @@
 <chapter id="event-notifications" xreflabel="event notifications">
+ <title>Event Notifications</title>
 
  <indexterm>
    <primary>event notifications</primary>
  </indexterm>
 
- <title>Event Notifications</title>
  <para>
   Each time &repmgr; or &repmgrd; perform a significant event, a record
   of that event is written into the <literal>repmgr.events</literal> table together with
@@ -27,7 +27,7 @@
     (3 rows)</programlisting>
  </para>
  <para>
-  Alternatively, use <xref linkend="repmgr-cluster-event"> to output a
+  Alternatively, use <xref linkend="repmgr-cluster-event"/> to output a
   formatted list of events.
  </para>
  <para>
@@ -103,10 +103,10 @@
    <term><option>%p</option></term>
    <listitem>
     <para>
-     node ID of the current primary (<xref linkend="repmgr-standby-register"> and <xref linkend="repmgr-standby-follow">)
+     node ID of the current primary (<xref linkend="repmgr-standby-register"/> and <xref linkend="repmgr-standby-follow"/>)
     </para>
     <para>
-     node ID of the demoted primary (<xref linkend="repmgr-standby-switchover"> only)
+     node ID of the demoted primary (<xref linkend="repmgr-standby-switchover"/> only)
     </para>
    </listitem>
   </varlistentry>
@@ -115,7 +115,7 @@
    <listitem>
     <para>
      <literal>conninfo</literal> string of the primary node
-     (<xref linkend="repmgr-standby-register"> and <xref linkend="repmgr-standby-follow">)
+     (<xref linkend="repmgr-standby-register"/> and <xref linkend="repmgr-standby-follow"/>)
     </para>
     <para>
       <literal>conninfo</literal> string of the next available node
@@ -128,7 +128,7 @@
    <term><option>%a</option></term>
    <listitem>
     <para>
-     name of the current primary node (<xref linkend="repmgr-standby-register"> and <xref linkend="repmgr-standby-follow">)
+     name of the current primary node (<xref linkend="repmgr-standby-register"/> and <xref linkend="repmgr-standby-follow"/>)
     </para>
     <para>
      name of the next available node (<varname>bdr_failover</varname> and  <varname>bdr_recovery</varname>)

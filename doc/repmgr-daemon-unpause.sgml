@@ -23,7 +23,7 @@
     <para>
       This command can be run on any active node in the replication cluster to instruct all
       running &repmgrd; instances to &quot;unpause&quot;
-      (following a previous execution of <xref linkend="repmgr-daemon-pause">)
+      (following a previous execution of <xref linkend="repmgr-daemon-pause"/>)
       and resume normal failover/monitoring operation.
     </para>
 
@@ -102,7 +102,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-pause">, <xref linkend="repmgr-daemon-status">
+      <xref linkend="repmgr-daemon-pause"/>, <xref linkend="repmgr-daemon-status"/>
     </para>
   </refsect1>
 </refentry>

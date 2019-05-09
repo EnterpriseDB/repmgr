@@ -1,13 +1,13 @@
 <chapter id="promoting-standby" xreflabel="Promoting a standby">
+ <title>Promoting a standby server with repmgr</title>
  <indexterm>
    <primary>promoting a standby</primary>
    <seealso>repmgr standby promote</seealso>
  </indexterm>
- <title>Promoting a standby server with repmgr</title>
  <para>
    If a primary server fails or needs to be removed from the replication cluster,
    a new primary server must be designated, to ensure the cluster continues
-   to function correctly. This can be done with <xref linkend="repmgr-standby-promote">,
+   to function correctly. This can be done with <xref linkend="repmgr-standby-promote"/>,
    which promotes the standby on the current server to primary.
  </para>
 
@@ -31,7 +31,7 @@
   At this point the replication cluster will be in a partially disabled state, with
   both standbys accepting read-only connections while attempting to connect to the
   stopped primary. Note that the &repmgr; metadata table will not yet have been updated;
-  executing <xref linkend="repmgr-cluster-show"> will note the discrepancy:
+  executing <xref linkend="repmgr-cluster-show"/> will note the discrepancy:
   <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show
      ID | Name  | Role    | Status        | Upstream | Location | Connection string
@@ -60,7 +60,7 @@
     DETAIL: node 2 was successfully promoted to primary</programlisting>
  </para>
  <para>
-  Executing <xref linkend="repmgr-cluster-show"> will show the current state; as there is now an
+  Executing <xref linkend="repmgr-cluster-show"/> will show the current state; as there is now an
   active primary, the previous warning will not be displayed:
   <programlisting>
     $ repmgr -f /etc/repmgr.conf cluster show
@@ -72,8 +72,8 @@
  </para>
  <para>
   However the sole remaining standby (<literal>node3</literal>) is still trying to replicate from the failed
-  primary; <xref linkend="repmgr-standby-follow"> must now be executed to rectify this situation
-  (see <xref linkend="follow-new-primary"> for example).
+  primary; <xref linkend="repmgr-standby-follow"/> must now be executed to rectify this situation
+  (see <xref linkend="follow-new-primary"/> for example).
  </para>
 </chapter>
 

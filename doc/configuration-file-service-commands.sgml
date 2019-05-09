@@ -1,4 +1,6 @@
 <sect1 id="configuration-file-service-commands" xreflabel="service command settings">
+  <title>Service command settings</title>
+
   <indexterm>
     <primary>repmgr.conf</primary>
     <secondary>service command settings</secondary>
@@ -7,7 +9,6 @@
     <primary>service command settings</primary>
     <secondary>configuration in repmgr.conf</secondary>
   </indexterm>
-  <title>Service command settings</title>
 
   <para>
     In some circumstances, &repmgr; (and &repmgrd;) need to
@@ -68,7 +69,7 @@
     </para>
     <para>
       Do not confuse this with <varname>promote_command</varname>, which is used
-      by &repmgrd; to execute <xref linkend="repmgr-standby-promote">.
+      by &repmgrd; to execute <xref linkend="repmgr-standby-promote"/>.
     </para>
   </note>
 

@@ -1,10 +1,11 @@
 <chapter id="repmgrd-automatic-failover" xreflabel="Automatic failover with repmgrd">
+
+ <title>Automatic failover with repmgrd</title>
+
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>automatic failover</secondary>
  </indexterm>
-
- <title>Automatic failover with repmgrd</title>
 
  <para>
   &repmgrd; is a management and monitoring daemon which runs
@@ -13,7 +14,9 @@
   providing monitoring information about the state of each standby.
  </para>
 
-<sect1 id="repmgrd-witness-server" xreflabel="Using a witness server with repmgrd">
+ <sect1 id="repmgrd-witness-server" xreflabel="Using a witness server with repmgrd">
+   <title>Using a witness server</title>
+
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>witness server</secondary>
@@ -23,9 +26,9 @@
    <primary>witness server</primary>
    <secondary>repmgrd</secondary>
  </indexterm>
- <title>Using a witness server</title>
+
  <para>
-   A <xref linkend="witness-server"> is a normal PostgreSQL instance which
+   A <xref linkend="witness-server"/> is a normal PostgreSQL instance which
    is not part of the streaming replication cluster; its purpose is, if a
    failover situation occurs, to provide proof that it is the primary server
    itself which is unavailable, rather than e.g. a network split between
@@ -55,7 +58,7 @@
    For more complex replication scenarios,e.g. with multiple datacentres, it may
    be preferable to use location-based failover, which ensures that only nodes
    in the same location as the primary will ever be promotion candidates;
-   see <xref linkend="repmgrd-network-split"> for more details.
+   see <xref linkend="repmgrd-network-split"/> for more details.
  </para>
 
  <note>
@@ -85,10 +88,10 @@
  </note>
  <para>
    The witness server should be configured in the same way as a normal
-   &repmgr; node; see section <xref linkend="configuration">.
+   &repmgr; node; see section <xref linkend="configuration"/>.
  </para>
  <para>
-   Register the witness server with <xref linkend="repmgr-witness-register">.
+   Register the witness server with <xref linkend="repmgr-witness-register"/>.
    This will create the &repmgr; extension on the witness server, and make
    a copy of the &repmgr; metadata.
  </para>
@@ -105,7 +108,7 @@
  </para>
 
  <para>
-  To unregister a witness server, use <xref linkend="repmgr-witness-unregister">.
+  To unregister a witness server, use <xref linkend="repmgr-witness-unregister"/>.
  </para>
 
  </sect2>
@@ -114,6 +117,7 @@
 
 
 <sect1 id="repmgrd-network-split" xreflabel="Handling network splits with repmgrd">
+ <title>Handling network splits with repmgrd</title>
  <indexterm>
    <primary>repmgrd</primary>
    <secondary>network splits</secondary>
@@ -123,7 +127,6 @@
    <primary>network splits</primary>
  </indexterm>
 
- <title>Handling network splits with repmgrd</title>
  <para>
   A common pattern for replication cluster setups is to spread servers over
   more than one datacentre. This can provide benefits such as geographically-
@@ -134,7 +137,7 @@
   in the main data centre and promoted a standby among themselves.
  </para>
  <para>
-  &repmgr; enables provision of &quot;<xref linkend="witness-server">&quot; to
+  &repmgr; enables provision of &quot;<xref linkend="witness-server"/>&quot; to
   artificially create a quorum of servers in a particular location, ensuring
   that nodes in another location will not elect a new primary if they
   are unable to see the majority of nodes. However this approach does not
@@ -166,6 +169,8 @@
 </sect1>
 
 <sect1 id="repmgrd-primary-child-disconnection" xreflabel="Monitoring standby disconnections on the primary">
+  <title>Monitoring standby disconnections on the primary node</title>
+
   <indexterm>
    <primary>repmgrd</primary>
    <secondary>standby disconnection</secondary>
@@ -176,11 +181,9 @@
    <secondary>child node disconnection</secondary>
   </indexterm>
 
-  <title>Monitoring standby disconnections on the primary node</title>
-
   <note>
     <para>
-      This functionality is available in <link linkend="release-4.4">&repmgr 4.4</link> and later.
+      This functionality is available in <link linkend="release-4.4">&repmgr; 4.4</link> and later.
     </para>
   </note>
   <para>
@@ -367,12 +370,13 @@
 	<variablelist>
 
       <varlistentry>
-		<indexterm>
-		  <primary>child_nodes_check_interval</primary>
-		  <secondary>child node disconnection monitoring</secondary>
-		</indexterm>
         <term><varname>child_nodes_check_interval</varname></term>
         <listitem>
+          <indexterm>
+		    <primary>child_nodes_check_interval</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
 		  <para>
 			Interval (in seconds) after which &repmgrd; queries the
 			<literal>pg_stat_replication</literal> system view and compares the nodes present
@@ -386,12 +390,14 @@
 	  </varlistentry>
 
 	  <varlistentry>
-		<indexterm>
-		  <primary>child_nodes_disconnect_command</primary>
-		  <secondary>child node disconnection monitoring</secondary>
-		</indexterm>
         <term><varname>child_nodes_disconnect_command</varname></term>
+
         <listitem>
+          <indexterm>
+		    <primary>child_nodes_disconnect_command</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
 		  <para>
 			User-definable script to be executed when &repmgrd;
 			determines that an insufficient number of child nodes are connected. By default
@@ -442,12 +448,14 @@
 	  </varlistentry>
 
 	  <varlistentry>
-		<indexterm>
-		  <primary>child_nodes_disconnect_timeout</primary>
-		  <secondary>child node disconnection monitoring</secondary>
-		</indexterm>
         <term><varname>child_nodes_disconnect_timeout</varname></term>
+
         <listitem>
+          <indexterm>
+		    <primary>child_nodes_disconnect_timeout</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
 		  <para>
 			If &repmgrd; determines that an insufficient number of
 			child nodes are connected, it will wait for the specified number of seconds
@@ -460,12 +468,13 @@
 	  </varlistentry>
 
       <varlistentry>
-		<indexterm>
-		  <primary>child_nodes_connected_min_count</primary>
-		  <secondary>child node disconnection monitoring</secondary>
-		</indexterm>
         <term><varname>child_nodes_connected_min_count</varname></term>
         <listitem>
+          <indexterm>
+		    <primary>child_nodes_connected_min_count</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
 		  <para>
 			If the number of child nodes connected falls below the number specified in
 			this parameter, the <varname>child_nodes_disconnect_command</varname> script
@@ -492,12 +501,13 @@
 
 
 	  <varlistentry>
-		<indexterm>
-		  <primary>child_nodes_disconnect_min_count</primary>
-		  <secondary>child node disconnection monitoring</secondary>
-		</indexterm>
         <term><varname>child_nodes_disconnect_min_count</varname></term>
         <listitem>
+          <indexterm>
+		    <primary>child_nodes_disconnect_min_count</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
 		  <para>
 			If the number of disconnected child nodes exceeds the number specified in
 			this parameter, the <varname>child_nodes_disconnect_command</varname> script
@@ -536,12 +546,13 @@
 	<variablelist>
 
       <varlistentry>
-		<indexterm>
-		  <primary>child_node_disconnect</primary>
-		  <secondary>event notification</secondary>
-		</indexterm>
         <term><varname>child_node_disconnect</varname></term>
         <listitem>
+          <indexterm>
+		    <primary>child_node_disconnect</primary>
+		    <secondary>event notification</secondary>
+		  </indexterm>
+
           <para>
 			This event is generated after &repmgrd;
 			detects that a child node is no longer streaming from the primary node.
@@ -558,12 +569,13 @@ $ repmgr cluster event --event=child_node_disconnect
       </varlistentry>
 
 	  <varlistentry>
-		<indexterm>
-		  <primary>child_node_reconnect</primary>
-		  <secondary>event notification</secondary>
-		</indexterm>
         <term><varname>child_node_reconnect</varname></term>
         <listitem>
+          <indexterm>
+		    <primary>child_node_reconnect</primary>
+		    <secondary>event notification</secondary>
+		  </indexterm>
+
           <para>
 			This event is generated after &repmgrd;
 			detects that a child node has resumed streaming from the primary node.
@@ -580,12 +592,13 @@ $ repmgr cluster event --event=child_node_reconnect
       </varlistentry>
 
 	  <varlistentry>
-		<indexterm>
-		  <primary>child_node_new_connect</primary>
-		  <secondary>event notification</secondary>
-		</indexterm>
         <term><varname>child_node_new_connect</varname></term>
         <listitem>
+          <indexterm>
+		    <primary>child_node_new_connect</primary>
+		    <secondary>event notification</secondary>
+		  </indexterm>
+
           <para>
 			This event is generated after &repmgrd;
 			detects that a new child node has been registered with &repmgr; and has
@@ -603,12 +616,13 @@ $ repmgr cluster event --event=child_node_new_connect
       </varlistentry>
 
       <varlistentry>
-		<indexterm>
-		  <primary>child_nodes_disconnect_command</primary>
-		  <secondary>event notification</secondary>
-		</indexterm>
         <term><varname>child_nodes_disconnect_command</varname></term>
         <listitem>
+          <indexterm>
+		    <primary>child_nodes_disconnect_command</primary>
+		    <secondary>event notification</secondary>
+		  </indexterm>
+
           <para>
 			This event is generated after &repmgrd; detects
 			that sufficient child nodes have been disconnected for a sufficient amount
@@ -633,6 +647,8 @@ $ repmgr cluster event --event=child_nodes_disconnect_command
 </sect1>
 
 <sect1 id="repmgrd-standby-disconnection-on-failover" xreflabel="Standby disconnection on failover">
+  <title>Standby disconnection on failover</title>
+
   <indexterm>
    <primary>repmgrd</primary>
    <secondary>standby disconnection on failover</secondary>
@@ -642,7 +658,6 @@ $ repmgr cluster event --event=child_nodes_disconnect_command
     <primary>standby disconnection on failover</primary>
   </indexterm>
 
-  <title>Standby disconnection on failover</title>
   <para>
     If <option>standby_disconnect_on_failover</option> is set to <literal>true</literal> in
     <filename>repmgr.conf</filename>, in a failover situation &repmgrd; will forcibly disconnect
@@ -680,6 +695,8 @@ $ repmgr cluster event --event=child_nodes_disconnect_command
 </sect1>
 
 <sect1 id="repmgrd-failover-validation" xreflabel="Failover validation">
+  <title>Failover validation</title>
+
   <indexterm>
    <primary>repmgrd</primary>
    <secondary>failover validation</secondary>
@@ -689,7 +706,6 @@ $ repmgr cluster event --event=child_nodes_disconnect_command
     <primary>failover validation</primary>
   </indexterm>
 
-  <title>Failover validation</title>
   <para>
     From <link linkend="release-4.3">repmgr 4.3</link>, &repmgr; makes it possible to provide a script
     to &repmgrd; which, in a failover situation,
@@ -733,18 +749,19 @@ INFO:  node 3 received notification to rerun promotion candidate election
 
 </sect1>
 
-  <sect1 id="cascading-replication" xreflabel="Cascading replication">
- <indexterm>
+ <sect1 id="cascading-replication" xreflabel="Cascading replication">
+  <title>repmgrd and cascading replication</title>
+
+  <indexterm>
    <primary>repmgrd</primary>
    <secondary>cascading replication</secondary>
- </indexterm>
+  </indexterm>
 
  <indexterm>
    <primary>cascading replication</primary>
    <secondary>repmgrd</secondary>
  </indexterm>
 
- <title>repmgrd and cascading replication</title>
  <para>
   Cascading replication - where a standby can connect to an upstream node and not
   the primary server itself - was introduced in PostgreSQL 9.2. &repmgr; and

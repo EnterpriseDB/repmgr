@@ -1,9 +1,10 @@
 <chapter id="installation" xreflabel="Installation">
+
+ <title>Installation</title>
+
  <indexterm>
   <primary>installation</primary>
  </indexterm>
-
- <title>Installation</title>
 
  <para>
   &repmgr; can be installed from binary packages provided by your operating
@@ -18,7 +19,7 @@
   only option if there are no packages for your operating system yet.
  </para>
  <para>
-  Before installing &repmgr; make sure you satisfy the <xref linkend="install-requirements">.
+  Before installing &repmgr; make sure you satisfy the <xref linkend="install-requirements"/>.
  </para>
 
  &install-requirements;

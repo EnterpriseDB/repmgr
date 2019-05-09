@@ -44,7 +44,7 @@
     </note>
     <para>
       For more details on performing a switchover, including preparation and configuration,
-      see section <xref linkend="performing-switchover">.
+      see section <xref linkend="performing-switchover"/>.
     </para>
 
     <note>
@@ -52,7 +52,7 @@
         From <link linkend="release-4.2">repmgr 4.2</link>, &repmgr; will instruct any running
         &repmgrd; instances to pause operations while the switchover
         is being carried out, to prevent &repmgrd; from
-        unintentionally promoting a node. For more details, see <xref linkend="repmgrd-pausing">.
+        unintentionally promoting a node. For more details, see <xref linkend="repmgrd-pausing"/>.
       </para>
       <para>
         Users of &repmgr; versions prior to 4.2 should ensure that &repmgrd;
@@ -117,7 +117,7 @@
             (and the prerequisites for using <application>pg_rewind</application> are met).
             If using PostgreSQL 9.3 or 9.4, and the <application>pg_rewind</application>
             binary is not installed in the PostgreSQL <filename>bin</filename> directory,
-            provide its full path. For more details see also <xref linkend="switchover-pg-rewind">.
+            provide its full path. For more details see also <xref linkend="switchover-pg-rewind"/>.
           </para>
         </listitem>
       </varlistentry>
@@ -181,13 +181,14 @@
     <variablelist>
 
       <varlistentry>
-        <indexterm>
-          <primary>replication_lag_critical</primary>
-          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
-        </indexterm>
-
         <term><option>replication_lag_critical</option></term>
         <listitem>
+
+          <indexterm>
+            <primary>replication_lag_critical</primary>
+            <secondary>with &quot;repmgr standby switchover&quot;</secondary>
+          </indexterm>
+
           <para>
             If replication lag (in seconds) on the standby exceeds this value, the
             switchover will be aborted (unless the <literal>-F/--force</literal> option
@@ -197,13 +198,14 @@
       </varlistentry>
 
       <varlistentry>
-        <indexterm>
-          <primary>shutdown_check_timeout</primary>
-          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
-        </indexterm>
 
         <term><option>shutdown_check_timeout</option></term>
         <listitem>
+          <indexterm>
+            <primary>shutdown_check_timeout</primary>
+            <secondary>with &quot;repmgr standby switchover&quot;</secondary>
+          </indexterm>
+
           <para>
             The maximum number of seconds to wait for the
             demotion candidate (current primary) to shut down, before aborting the switchover.
@@ -225,13 +227,13 @@
 
 
       <varlistentry>
-        <indexterm>
-          <primary>wal_receive_check_timeout</primary>
-          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
-        </indexterm>
-
         <term><option>wal_receive_check_timeout</option></term>
         <listitem>
+          <indexterm>
+            <primary>wal_receive_check_timeout</primary>
+          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
+          </indexterm>
+
           <para>
             After the primary has shut down, the maximum number of seconds to wait for the
             walreceiver on the standby to flush WAL to disk before comparing WAL receive location
@@ -242,13 +244,14 @@
 
 
       <varlistentry>
-        <indexterm>
-          <primary>standby_reconnect_timeout</primary>
-          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
-        </indexterm>
 
         <term><option>standby_reconnect_timeout</option></term>
         <listitem>
+          <indexterm>
+            <primary>standby_reconnect_timeout</primary>
+            <secondary>with &quot;repmgr standby switchover&quot;</secondary>
+          </indexterm>
+
           <para>
             The maximum number of seconds to attempt to wait for the demotion candidate (former primary)
             to reconnect to the promoted primary (default: 60 seconds)
@@ -261,14 +264,16 @@
         </listitem>
       </varlistentry>
 
-     <varlistentry>
-        <indexterm>
-          <primary>node_rejoin_timeout</primary>
-          <secondary>with &quot;repmgr standby switchover&quot;</secondary>
-        </indexterm>
+      <varlistentry>
 
         <term><option>node_rejoin_timeout</option></term>
         <listitem>
+
+          <indexterm>
+            <primary>node_rejoin_timeout</primary>
+            <secondary>with &quot;repmgr standby switchover&quot;</secondary>
+          </indexterm>
+
           <para>
             maximum number of seconds to attempt to wait for the demotion candidate (former primary)
             to reconnect to the promoted primary (default: 60 seconds)
@@ -362,10 +367,10 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-standby-follow">, <xref linkend="repmgr-node-rejoin">
+      <xref linkend="repmgr-standby-follow"/>, <xref linkend="repmgr-node-rejoin"/>
     </para>
     <para>
-      For more details on performing a switchover operation, see the section <xref linkend="performing-switchover">.
+      For more details on performing a switchover operation, see the section <xref linkend="performing-switchover"/>.
     </para>
   </refsect1>
 

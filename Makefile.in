@@ -77,12 +77,6 @@ Makefile: Makefile.in config.status configure
 Makefile.global: Makefile.global.in config.status configure
 	./config.status $@
 
-doc:
-	$(MAKE) -C doc all
-
-install-doc:
-	$(MAKE) -C doc install
-
 clean: additional-clean
 
 maintainer-clean: additional-maintainer-clean
@@ -91,7 +85,6 @@ additional-clean:
 	rm -f *.o
 
 additional-maintainer-clean: clean
-	$(MAKE) -C doc maintainer-clean
 	rm -f config.status config.log
 	rm -f config.h
 	rm -f repmgr_version.h

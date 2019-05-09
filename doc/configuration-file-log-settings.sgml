@@ -1,4 +1,6 @@
 <sect1 id="configuration-file-log-settings" xreflabel="log settings">
+  <title>Log settings</title>
+
   <indexterm>
     <primary>repmgr.conf</primary>
     <secondary>log settings</secondary>
@@ -7,7 +9,6 @@
     <primary>log settings</primary>
     <secondary>configuration in repmgr.conf</secondary>
   </indexterm>
-  <title>Log settings</title>
 
   <para>
     By default, &repmgr; and &repmgrd; write log output to
@@ -32,12 +33,11 @@
   <variablelist>
 
    <varlistentry id="repmgr-conf-log-level" xreflabel="log_level">
-    <term><varname>log_level</varname> (<type>string</type>)
+    <term><varname>log_level</varname> (<type>string</type>)</term>
+    <listitem>
      <indexterm>
       <primary><varname>log_level</varname> configuration file parameter</primary>
      </indexterm>
-    </term>
-    <listitem>
      <para>
        One of <option>DEBUG</option>, <option>INFO</option>, <option>NOTICE</option>,
        <option>WARNING</option>, <option>ERROR</option>, <option>ALERT</option>, <option>CRIT</option>
@@ -76,11 +76,11 @@
     </term>
     <listitem>
      <para>
-       If <xref linkend="repmgr-conf-log-facility"> is set to <option>STDERR</option>, log output
+       If <xref linkend="repmgr-conf-log-facility"/> is set to <option>STDERR</option>, log output
        can be redirected to the specified file.
      </para>
      <para>
-       See <xref linkend="repmgrd-log-rotation"> for information on configuring log rotation.
+       See <xref linkend="repmgrd-log-rotation"/> for information on configuring log rotation.
      </para>
     </listitem>
    </varlistentry>

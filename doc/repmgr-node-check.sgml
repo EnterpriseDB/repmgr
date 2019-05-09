@@ -203,7 +203,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-     <xref linkend="repmgr-node-status">, <xref linkend="repmgr-cluster-show">
+     <xref linkend="repmgr-node-status"/>, <xref linkend="repmgr-cluster-show"/>
     </para>
   </refsect1>
 

@@ -1,10 +1,10 @@
 <chapter id="upgrading-repmgr" xreflabel="Upgrading repmgr">
+ <title>Upgrading repmgr</title>
 
  <indexterm>
   <primary>upgrading</primary>
  </indexterm>
 
- <title>Upgrading repmgr</title>
 
  <para>
   &repmgr; is updated regularly with minor releases (e.g. 4.0.1 to 4.0.2)
@@ -13,11 +13,12 @@
  </para>
 
  <sect1 id="upgrading-repmgr-extension" xreflabel="Upgrading repmgr 4.x and later">
+  <title>Upgrading repmgr 4.x and later</title>
+
   <indexterm>
    <primary>upgrading</primary>
    <secondary>repmgr 4.x and later</secondary>
   </indexterm>
-  <title>Upgrading repmgr 4.x and later</title>
   <para>
     From version 4, &repmgr; consists of three elements:
      <itemizedlist spacing="compact" mark="bullet">
@@ -63,11 +64,12 @@
   </important>
 
   <sect2 id="upgrading-minor-version" xreflabel="Upgrading a minor version release">
+	<title>Upgrading a minor version release</title>
+
 	<indexterm>
 	  <primary>upgrading</primary>
 	  <secondary>minor release</secondary>
 	</indexterm>
-	<title>Upgrading a minor version release</title>
 
     <para>
       The process for installing minor version upgrades is quite straightforward:
@@ -118,11 +120,13 @@
   </sect2>
 
   <sect2 id="upgrading-major-version" xreflabel="Upgrading a major version release">
+	<title>Upgrading a major version release</title>
+
 	<indexterm>
 	  <primary>upgrading</primary>
 	  <secondary>major release</secondary>
 	</indexterm>
-	<title>Upgrading a major version release</title>
+
 	<para>
 	  &quot;major version&quot; upgrades need to be planned more carefully, as they may include
 	  changes to the &repmgr; metadata (which need to be propagated from the primary to all
@@ -205,11 +209,12 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
   </sect2>
 
   <sect2 id="upgrading-check-repmgrd" xreflabel="Checking repmgrd status after an upgrade">
+	<title>Checking repmgrd status after an upgrade</title>
+
 	<indexterm>
 	  <primary>upgrading</primary>
 	  <secondary>checking repmgrd status</secondary>
 	</indexterm>
-	<title>Checking repmgrd status after an upgrade</title>
 	<para>
       From <link linkend="release-4.2">repmgr 4.2</link>, once the upgrade is complete, execute the <command><link linkend="repmgr-daemon-status">repmgr daemon status</link></command>
       command (on any node) to show an overview of the status of &repmgrd; on all nodes.
@@ -218,6 +223,8 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
  </sect1>
 
  <sect1 id="upgrading-and-pg-upgrade" xreflabel="pg_upgrade and repmgr">
+  <title>pg_upgrade and repmgr</title>
+
   <indexterm>
    <primary>upgrading</primary>
    <secondary>pg_upgrade</secondary>
@@ -225,7 +232,6 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
   <indexterm>
     <primary>pg_upgrade</primary>
   </indexterm>
-  <title>pg_upgrade and repmgr</title>
 
   <para>
     <application>pg_upgrade</application> requires that if any functions are
@@ -265,12 +271,13 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
 
 
  <sect1 id="upgrading-from-repmgr-3" xreflabel="Upgrading from repmgr 3.x">
+  <title>Upgrading from repmgr 3.x</title>
+
   <indexterm>
    <primary>upgrading</primary>
    <secondary>from repmgr 3.x</secondary>
   </indexterm>
 
-  <title>Upgrading from repmgr 3.x</title>
   <para>
    The upgrade process consists of two steps:
    <orderedlist>
@@ -383,7 +390,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
         to the server configured in Barman (in &repmgr; 3, the deprecated
         <literal>cluster</literal> parameter was used for this);
         the physical Barman hostname is configured with
-        <literal>barman_host</literal> (see <xref linkend="cloning-from-barman-prerequisites">
+        <literal>barman_host</literal> (see <xref linkend="cloning-from-barman-prerequisites"/>
           for details).
       </para>
     </note>

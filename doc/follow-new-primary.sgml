@@ -1,18 +1,19 @@
 <chapter id="follow-new-primary">
+ <title>Following a new primary</title>
+
  <indexterm>
   <primary>Following a new primary</primary>
   <seealso>repmgr standby follow</seealso>
  </indexterm>
 
- <title>Following a new primary</title>
  <para>
    Following the failure or removal of the replication cluster's existing primary
-   server, <xref linkend="repmgr-standby-follow"> can be used to make 'orphaned' standbys
+   server, <xref linkend="repmgr-standby-follow"/> can be used to make &quot;orphaned&quot; standbys
    follow the new primary and catch up to its current state.
  </para>
  <para>
   To demonstrate this, assuming a replication cluster in the same state as the
-  end of the preceding section (<xref linkend="promoting-standby">),
+  end of the preceding section (<xref linkend="promoting-standby"/>),
   execute this:
   <programlisting>
     $ repmgr -f /etc/repmgr.conf standby follow

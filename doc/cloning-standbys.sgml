@@ -2,6 +2,8 @@
  <title>Cloning standbys</title>
 
  <sect1 id="cloning-from-barman" xreflabel="Cloning from Barman">
+   <title>Cloning a standby from Barman</title>
+
    <indexterm>
     <primary>cloning</primary>
     <secondary>from Barman</secondary>
@@ -11,9 +13,8 @@
     <secondary>cloning a standby</secondary>
    </indexterm>
 
-   <title>Cloning a standby from Barman</title>
    <para>
-    <xref linkend="repmgr-standby-clone"> can use
+    <xref linkend="repmgr-standby-clone"/> can use
     <ulink url="https://www.2ndquadrant.com/">2ndQuadrant</ulink>'s
     <ulink url="https://www.pgbarman.org/">Barman</ulink> application
     to clone a standby (and also as a fallback source for WAL files).
@@ -73,7 +74,7 @@
       <para>
         the <varname>restore_command</varname> setting in <filename>repmgr.conf</filename> is configured to
         use a copy of the <command>barman-wal-restore</command> script shipped with the
-        <literal>barman-cli</literal> package (see section <xref linkend="cloning-from-barman-restore-command">
+        <literal>barman-cli</literal> package (see section <xref linkend="cloning-from-barman-restore-command"/>
         below).
       </para>
      </listitem>
@@ -126,12 +127,13 @@
    </para>
   </sect2>
   <sect2 id="cloning-from-barman-restore-command" xreflabel="Using Barman as a WAL file source">
-  <indexterm>
+   <title>Using Barman as a WAL file source</title>
+
+   <indexterm>
     <primary>Barman</primary>
     <secondary>fetching archived WAL</secondary>
    </indexterm>
 
-   <title>Using Barman as a WAL file source</title>
    <para>
     As a fallback in case streaming replication is interrupted, PostgreSQL can optionally
     retrieve WAL files from an archive, such as that provided by Barman. This is done by
@@ -172,7 +174,9 @@
   </sect2>
  </sect1>
 
-<sect1 id="cloning-replication-slots" xreflabel="Cloning and replication slots">
+ <sect1 id="cloning-replication-slots" xreflabel="Cloning and replication slots">
+   <title>Cloning and replication slots</title>
+
    <indexterm>
      <primary>cloning</primary>
      <secondary>replication slots</secondary>
@@ -182,7 +186,6 @@
      <primary>replication slots</primary>
      <secondary>cloning</secondary>
    </indexterm>
-   <title>Cloning and replication slots</title>
    <para>
     Replication slots were introduced with PostgreSQL 9.4 and are designed to ensure
     that any standby connected to the primary using a replication slot will always
@@ -244,18 +247,20 @@
     <simpara>
      As an alternative we recommend using 2ndQuadrant's <ulink url="https://www.pgbarman.org/">Barman</ulink>,
      which offloads WAL management to a separate server, removing the requirement to use a replication
-     slot for each individual standby to reserve WAL. See section <xref linkend="cloning-from-barman">
+     slot for each individual standby to reserve WAL. See section <xref linkend="cloning-from-barman"/>
      for more details on using &repmgr; together with Barman.
     </simpara>
    </tip>
  </sect1>
 
  <sect1 id="cloning-cascading" xreflabel="Cloning and cascading replication">
+   <title>Cloning and cascading replication</title>
+
    <indexterm>
      <primary>cloning</primary>
      <secondary>cascading replication</secondary>
    </indexterm>
-   <title>Cloning and cascading replication</title>
+
    <para>
     Cascading replication, introduced with PostgreSQL 9.2, enables a standby server
     to replicate from another standby server rather than directly from the primary,
@@ -276,7 +281,7 @@
    </para>
    <para>
     To demonstrate cascading replication, first ensure you have a primary and standby
-    set up as shown in the <xref linkend="quickstart">.
+    set up as shown in the <xref linkend="quickstart"/>.
     Then create an additional standby server with <filename>repmgr.conf</filename> looking
     like this:
     <programlisting>
@@ -339,11 +344,11 @@
  </sect1>
 
  <sect1 id="cloning-advanced" xreflabel="Advanced cloning options">
+   <title>Advanced cloning options</title>
    <indexterm>
      <primary>cloning</primary>
      <secondary>advanced options</secondary>
    </indexterm>
-   <title>Advanced cloning options</title>
 
    <sect2 id="cloning-advanced-pg-basebackup-options" xreflabel="pg_basebackup options when cloning a standby">
     <title>pg_basebackup options when cloning a standby</title>
@@ -365,7 +370,7 @@
       <simpara>
         If <application>Barman</application> is set up for the cluster, it's possible to
         clone the standby directly from Barman, without any impact on the server the standby
-        is being cloned from. For more details see <xref linkend="cloning-from-barman">.
+        is being cloned from. For more details see <xref linkend="cloning-from-barman"/>.
       </simpara>
     </tip>
     <para>
@@ -433,7 +438,7 @@
      (but not <filename>~/.pgpass</filename>) and place it into the <varname>primary_conninfo</varname>
      string in <filename>recovery.conf</filename>. Note that <varname>PGPASSWORD</varname>
      will need to be set during any action which causes <filename>recovery.conf</filename> to be
-     rewritten, e.g. <xref linkend="repmgr-standby-follow">.
+     rewritten, e.g. <xref linkend="repmgr-standby-follow"/>.
     </para>
     <para>
      It is of course also possible to include the password value in the <varname>conninfo</varname>
@@ -460,7 +465,7 @@
      replication connections and generating <filename>recovery.conf</filename>. This
      value will also be stored in the parameter <literal>repmgr.nodes</literal>
      table for each node; it no longer needs to be explicitly specified when
-     cloning a node or executing <xref linkend="repmgr-standby-follow">.
+     cloning a node or executing <xref linkend="repmgr-standby-follow"/>.
     </para>
    </sect2>
  </sect1>

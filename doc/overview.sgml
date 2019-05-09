@@ -7,18 +7,18 @@
  </para>
  <sect1 id="repmgr-concepts" xreflabel="Concepts">
 
+  <title>Concepts</title>
+
   <indexterm>
     <primary>concepts</primary>
   </indexterm>
-
-  <title>Concepts</title>
 
   <para>
    This guide assumes that you are familiar with PostgreSQL administration and
    streaming replication concepts. For further details on streaming
    replication, see the PostgreSQL documentation section on <ulink
    url="https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION">
-   streaming replication</>.
+   streaming replication</ulink>.
   </para>
   <para>
    The following terms are used throughout the &repmgr; documentation.

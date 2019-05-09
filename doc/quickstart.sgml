@@ -17,7 +17,7 @@
  <note>
    <simpara>
      To upgrade an existing &repmgr; 3.x installation, see section
-     <xref linkend="upgrading-from-repmgr-3">.
+     <xref linkend="upgrading-from-repmgr-3"/>.
    </simpara>
  </note>
 
@@ -139,7 +139,7 @@
    <para>
      Additionally, if you are intending to use <application>pg_rewind</application>,
      and the cluster was not initialised using data checksums, you may want to consider enabling
-     <varname>wal_log_hints</varname>; for more details see <xref linkend="repmgr-node-rejoin-pg-rewind">.
+     <varname>wal_log_hints</varname>; for more details see <xref linkend="repmgr-node-rejoin-pg-rewind"/>.
    </para>
     <para>
       See also the <link linkend="configuration-postgresql">PostgreSQL configuration</link> section in the
@@ -262,7 +262,7 @@
   <para>
    <filename>repmgr.conf</filename> should not be stored inside the PostgreSQL data directory,
    as it could be overwritten when setting up or reinitialising the PostgreSQL
-   server. See sections <xref linkend="configuration"> and <xref linkend="configuration-file">
+   server. See sections <xref linkend="configuration"/> and <xref linkend="configuration-file"/>
    for further details about <filename>repmgr.conf</filename>.
   </para>
 
@@ -303,7 +303,7 @@
 
   <para>
    See the file
-   <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</>
+   <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>
     for details of all available configuration parameters.
   </para>
 

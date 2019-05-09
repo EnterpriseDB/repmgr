@@ -22,7 +22,7 @@
     <para>
       This command provides an overview over all active nodes in the cluster and the state
       of each node's &repmgrd; instance. It can be used to check
-      the result of <xref linkend="repmgr-daemon-pause"> and <xref linkend="repmgr-daemon-unpause">
+      the result of <xref linkend="repmgr-daemon-pause"/> and <xref linkend="repmgr-daemon-unpause"/>
       operations.
     </para>
   </refsect1>
@@ -60,7 +60,7 @@
     </para>
 
     <para>
-      &repmgrd; paused on all nodes (using <xref linkend="repmgr-daemon-pause">):
+      &repmgrd; paused on all nodes (using <xref linkend="repmgr-daemon-pause"/>):
     <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
  ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+---------+-------+---------+--------------------
@@ -192,7 +192,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-pause">, <xref linkend="repmgr-daemon-unpause">, <xref linkend="repmgr-cluster-show">
+      <xref linkend="repmgr-daemon-pause"/>, <xref linkend="repmgr-daemon-unpause"/>, <xref linkend="repmgr-cluster-show"/>
     </para>
   </refsect1>
 </refentry>

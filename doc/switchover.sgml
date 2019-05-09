@@ -1,10 +1,10 @@
 <chapter id="performing-switchover" xreflabel="Performing a switchover with repmgr">
+ <title>Performing a switchover with repmgr</title>
 
  <indexterm>
   <primary>switchover</primary>
  </indexterm>
 
- <title>Performing a switchover with repmgr</title>
  <para>
   A typical use-case for replication is a combination of primary and standby
   server, with the standby serving as a backup which can easily be activated
@@ -15,7 +15,7 @@
  <para>
   In some cases however it's desirable to promote the standby in a planned
   way, e.g. so maintenance can be performed on the primary; this kind of switchover
-  is supported by the <xref linkend="repmgr-standby-switchover"> command.
+  is supported by the <xref linkend="repmgr-standby-switchover"/> command.
  </para>
  <para>
   <command>repmgr standby switchover</command> differs from other &repmgr;
@@ -44,17 +44,18 @@
     and capturing all output to assist troubleshooting any problems.
   </simpara>
   <simpara>
-   Please also read carefully the sections <xref linkend="preparing-for-switchover"> and
-   <xref linkend="switchover-caveats"> below.
+   Please also read carefully the sections <xref linkend="preparing-for-switchover"/> and
+   <xref linkend="switchover-caveats"/> below.
   </simpara>
  </note>
 
  <sect1 id="preparing-for-switchover" xreflabel="Preparing for switchover">
+   <title>Preparing for switchover</title>
+
    <indexterm>
      <primary>switchover</primary>
      <secondary>preparation</secondary>
    </indexterm>
-   <title>Preparing for switchover</title>
 
    <para>
     As mentioned in the previous section, success of the switchover operation depends on
@@ -114,7 +115,7 @@
        server.
      </para>
      <para>
-       For more details, see <xref linkend="configuration-file-service-commands">.
+       For more details, see <xref linkend="configuration-file-service-commands"/>.
      </para>
    </important>
 
@@ -161,7 +162,7 @@
         From <link linkend="release-4.2">repmgr 4.2</link>, &repmgr; will instruct any running
         &repmgrd; instances to pause operations while the switchover
         is being carried out, to prevent &repmgrd; from
-        unintentionally promoting a node. For more details, see <xref linkend="repmgrd-pausing">.
+        unintentionally promoting a node. For more details, see <xref linkend="repmgrd-pausing"/>.
       </para>
       <para>
         Users of &repmgr; versions prior to 4.2 should ensure that &repmgrd;
@@ -204,18 +205,19 @@
 
    <note>
      <simpara>
-       See <xref linkend="repmgr-standby-switchover"> for a full list of available
+       See <xref linkend="repmgr-standby-switchover"/> for a full list of available
        command line options and <filename>repmgr.conf</filename> settings relevant
        to performing a switchover.
      </simpara>
    </note>
 
-  <sect2 id="switchover-pg-rewind" xreflabel="Switchover and pg_rewind">
+   <sect2 id="switchover-pg-rewind" xreflabel="Switchover and pg_rewind">
+    <title>Switchover and pg_rewind</title>
+
     <indexterm>
       <primary>pg_rewind</primary>
       <secondary>using with "repmgr standby switchover"</secondary>
     </indexterm>
-    <title>Switchover and pg_rewind</title>
     <para>
       If the demotion candidate does not shut down smoothly or cleanly, there's a risk it
       will have a slightly divergent timeline and will not be able to attach to the new
@@ -258,11 +260,12 @@
  </sect1>
 
  <sect1 id="switchover-execution" xreflabel="Executing the switchover command">
+  <title>Executing the switchover command</title>
+
   <indexterm>
    <primary>switchover</primary>
     <secondary>execution</secondary>
   </indexterm>
-  <title>Executing the switchover command</title>
   <para>
    To demonstrate switchover, we will assume a replication cluster with a
    primary (<literal>node1</literal>) and one standby (<literal>node2</literal>);
@@ -328,11 +331,11 @@
 
 
  <sect1 id="switchover-caveats" xreflabel="Caveats">
+  <title>Caveats</title>
   <indexterm>
    <primary>switchover</primary>
     <secondary>caveats</secondary>
   </indexterm>
-  <title>Caveats</title>
   <para>
    <itemizedlist spacing="compact" mark="bullet">
     <listitem>
@@ -357,11 +360,12 @@
  </sect1>
 
  <sect1 id="switchover-troubleshooting" xreflabel="Troubleshooting">
+   <title>Troubleshooting switchover issues</title>
+
    <indexterm>
      <primary>switchover</primary>
      <secondary>troubleshooting</secondary>
    </indexterm>
-   <title>Troubleshooting switchover issues</title>
 
    <para>
      As <link linkend="performing-switchover">emphasised previously</link>, performing a switchover

@@ -93,7 +93,7 @@
    connection from <literal>node3</literal>.
   </para>
   <para>
-    In this case, the <xref linkend="repmgr-cluster-crosscheck"> command will produce a more
+    In this case, the <xref linkend="repmgr-cluster-crosscheck"/> command will produce a more
     useful result.
   </para>
   </refsect1>
