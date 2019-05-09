@@ -33,13 +33,14 @@ html: html-stamp
 html-stamp: stylesheet.xsl repmgr.sgml $(ALLSGML) $(GENERATED_SGML)
 	$(XMLLINT) $(XMLINCLUDE) --noout --valid $(word 2,$^)
 	$(XSLTPROC) $(XMLINCLUDE) $(XSLTPROCFLAGS) $(XSLTPROC_HTML_FLAGS) $(wordlist 1,2,$^)
-	cp $(srcdir)/stylesheet.css html/
+	cp $(srcdir)/stylesheet.css  $(srcdir)/website-docs.css html/
 	touch $@
 
 # single-page HTML
 repmgr.html: stylesheet-html-nochunk.xsl repmgr.sgml $(ALLSGML) $(GENERATED_SGML)
 	$(XMLLINT) $(XMLINCLUDE) --noout --valid $(word 2,$^)
 	$(XSLTPROC) $(XMLINCLUDE) $(XSLTPROCFLAGS) $(XSLTPROC_HTML_FLAGS) -o $@ $(wordlist 1,2,$^)
+
 
 version.sgml: $(repmgr_top_builddir)/repmgr_version.h
 	{ \
