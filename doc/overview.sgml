@@ -17,7 +17,7 @@
    This guide assumes that you are familiar with PostgreSQL administration and
    streaming replication concepts. For further details on streaming
    replication, see the PostgreSQL documentation section on <ulink
-   url="https://www.postgresql.org/docs/current/interactive/warm-standby.html#STREAMING-REPLICATION">
+   url="https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION">
    streaming replication</ulink>.
   </para>
   <para>
