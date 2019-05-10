@@ -155,7 +155,7 @@
     When initially cloning a standby, you will need to ensure
     that all required WAL files remain available while the cloning is taking
     place. To ensure this happens when using the default <command>pg_basebackup</command> method,
-    &repmgr; will set <command>pg_basebackup</command>'s <literal>--xlog-method</literal>
+    &repmgr; will set <command>pg_basebackup</command>'s <literal>--wal-method</literal>
     parameter to <literal>stream</literal>,
     which will ensure all WAL files generated during the cloning process are
     streamed in parallel with the main backup. Note that this requires two
@@ -165,10 +165,10 @@
    </para>
    <para>
     To override this behaviour, in <filename>repmgr.conf</filename> set
-    <command>pg_basebackup</command>'s <literal>--xlog-method</literal>
+    <command>pg_basebackup</command>'s <literal>--wal-method</literal>
     parameter to <literal>fetch</literal>:
     <programlisting>
-      pg_basebackup_options='--xlog-method=fetch'</programlisting>
+      pg_basebackup_options='--wal-method=fetch'</programlisting>
 
     and ensure that <literal>wal_keep_segments</literal> is set to an appropriately high value.
     See the <ulink url="https://www.postgresql.org/docs/current/app-pgbasebackup.html">
@@ -177,9 +177,8 @@
 
    <note>
     <simpara>
-      From PostgreSQL 10, <command>pg_basebackup</command>'s
-      <literal>--xlog-method</literal> parameter has been renamed to
-      <literal>--wal-method</literal>.
+      If using PostgreSQL 9.6 or earlier, replace <literal>--wal-method</literal>
+      with <literal>--xlog-method</literal>.
     </simpara>
    </note>
   </refsect1>
