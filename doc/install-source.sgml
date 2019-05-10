@@ -237,7 +237,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
 
 
 
- <sect2 id="installation-build-repmgr-docs">
+ <sect2 id="installation-build-repmgr-docs" xreflabel="Building repmgr documentation">
    <title>Building &repmgr; documentation</title>
    <para>
     The &repmgr; documentation is (like the main PostgreSQL project)
@@ -254,7 +254,8 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
    </para>
 
    <para>
-     To build the documentation as a single HTML file, execute:
+     To build the documentation as a single HTML file, after configuring and building
+     the main &repmgr; source as described above, execute:
    <programlisting>
     cd doc/ &amp;&amp; make repmgr.html</programlisting>
    </para>

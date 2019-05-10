@@ -78,6 +78,25 @@
       </para>
     </sect2>
 
+   <sect2>
+      <title>Other</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              The &repmgr; documentation has been converted to DocBook XML format,
+              as currently used by the main PostgreSQL project.
+              This means it can now be built against any &repmgr; version
+              (previously it was not possible to build the documentation against
+              PostgreSQL 10 or later).
+            </para>
+            <para>
+              For further details see: <xref linkend="installation-build-repmgr-docs"/>
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+   </sect2>
   </sect1>
 
   <sect1 id="release-4.3.1">
