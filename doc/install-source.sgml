@@ -61,28 +61,28 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
          <itemizedlist spacing="compact" mark="bullet">
 
            <listitem>
-             <simpara><literal>llibedit-dev</literal></simpara>
+             <simpara><literal>libedit-dev</literal></simpara>
            </listitem>
            <listitem>
-             <simpara><literal>llibkrb5-dev</literal></simpara>
+             <simpara><literal>libkrb5-dev</literal></simpara>
            </listitem>
            <listitem>
-             <simpara><literal>llibpam0g-dev</literal></simpara>
+             <simpara><literal>libpam0g-dev</literal></simpara>
            </listitem>
            <listitem>
-             <simpara><literal>llibreadline-dev</literal></simpara>
+             <simpara><literal>libreadline-dev</literal></simpara>
            </listitem>
            <listitem>
-             <simpara><literal>llibselinux1-dev</literal></simpara>
+             <simpara><literal>libselinux1-dev</literal></simpara>
            </listitem>
            <listitem>
-             <simpara><literal>llibssl-dev</literal></simpara>
+             <simpara><literal>libssl-dev</literal></simpara>
            </listitem>
            <listitem>
-             <simpara><literal>llibxml2-dev</literal></simpara>
+             <simpara><literal>libxml2-dev</literal></simpara>
            </listitem>
            <listitem>
-             <simpara><literal>llibxslt1-dev</literal></simpara>
+             <simpara><literal>libxslt1-dev</literal></simpara>
            </listitem>
          </itemizedlist>
        </para>
