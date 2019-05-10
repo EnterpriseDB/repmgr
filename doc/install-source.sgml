@@ -244,7 +244,18 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
     written in DocBook XML format. To build it locally as HTML, you'll need to
     install the required packages as described in the
     <ulink url="https://www.postgresql.org/docs/current/docguide-toolsets.html">
-      PostgreSQL documentation</ulink> then execute:
+      PostgreSQL documentation</ulink>.
+   </para>
+
+   <note>
+     <simpara>
+       In &repmgr; 4.3 and earlier, the documentation can only be built against
+       PostgreSQL 9.6 or earlier.
+     </simpara>
+   </note>
+
+   <para>
+     To build the documentation as HTML, execute:
    <programlisting>
     cd doc/ &amp;&amp; make</programlisting>
    </para>
@@ -260,12 +271,14 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
     cd doc/ &amp;&amp; make repmgr.html</programlisting>
    </para>
 
-   <note>
-     <simpara>
-       In &repmgr; 4.3 and earlier, the documentation can only be built against
-       PostgreSQL 9.6 or earlier.
-     </simpara>
-   </note>
+   <para>
+     To build the documentation as a PDF file, after configuring and building
+     the main &repmgr; source as described above, execute:
+   <programlisting>
+    cd doc/ &amp;&amp; make repmgr-A4.pdf</programlisting>
+   </para>
+
+
  </sect2>
 
 </sect1>

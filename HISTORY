@@ -4,6 +4,7 @@
         repmgr: improve "--dry-run" behaviour for "standby promote" and
           "standby switchover" (Ian)
         repmgrd: monitor standbys attached to primary (Ian)
+        general: documentation converted to DocBook XML format (Ian)
 
 4.3.1   2019-??-??
         repmgr: ensure BDR2-specific functionality cannot be used on

@@ -88,7 +88,8 @@
               as currently used by the main PostgreSQL project.
               This means it can now be built against any &repmgr; version
               (previously it was not possible to build the documentation against
-              PostgreSQL 10 or later).
+              PostgreSQL 10 or later), and makes it easier to provide the documentation
+              in other formats such as PDF.
             </para>
             <para>
               For further details see: <xref linkend="installation-build-repmgr-docs"/>

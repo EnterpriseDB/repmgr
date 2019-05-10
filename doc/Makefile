@@ -18,6 +18,10 @@ ifndef XSLTPROC
 XSLTPROC = $(missing) xsltproc
 endif
 
+ifndef FOP
+FOP = $(missing) fop
+endif
+
 override XSLTPROCFLAGS += --stringparam repmgr.version '$(REPMGR_VERSION)'
 
 GENERATED_SGML = version.sgml
@@ -52,6 +56,32 @@ zip: html
 	cp -r html repmgr-docs-$(REPMGR_VERSION)
 	zip -r repmgr-docs-$(REPMGR_VERSION).zip repmgr-docs-$(REPMGR_VERSION)
 	rm -rf repmgr-docs-$(REPMGR_VERSION)
+
+##
+## Print
+##
+
+repmgr.pdf:
+	$(error Invalid target; use repmgr-A4.pdf or repmgr-US.pdf as targets)
+
+# Standard paper size
+
+repmgr-A4.fo: stylesheet-fo.xsl repmgr.sgml $(ALLSGML)
+	$(XMLLINT) $(XMLINCLUDE) --noout --valid $(word 2,$^)
+	$(XSLTPROC) $(XMLINCLUDE) $(XSLTPROCFLAGS) --stringparam paper.type A4 -o $@ $(wordlist 1,2,$^)
+
+repmgr-A4.pdf: repmgr-A4.fo
+	$(FOP) -fo $< -pdf $@
+
+# North American paper size
+
+repmgr-US.fo: stylesheet-fo.xsl repmgr.sgml $(ALLSGML)
+	$(XMLLINT) $(XMLINCLUDE) --noout --valid $(word 2,$^)
+	$(XSLTPROC) $(XMLINCLUDE) $(XSLTPROCFLAGS) --stringparam paper.type USletter -o $@ $(wordlist 1,2,$^)
+
+repmgr-US.pdf: repmgr-US.fo
+	$(FOP) -fo $< -pdf $@
+
 
 install: html
 	@$(MKDIR_P) $(DESTDIR)$(docdir)/$(docmoduledir)/repmgr
