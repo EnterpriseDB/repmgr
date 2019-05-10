@@ -101,6 +101,7 @@ typedef struct
 	char		force_rewind_path[MAXPGPATH];
 	bool		siblings_follow;
 	bool		repmgrd_no_pause;
+	bool		repmgrd_force_unpause;
 
 	/* "node status" options */
 	bool		is_shutdown_cleanly;
@@ -163,7 +164,7 @@ typedef struct
 		/* "standby register" options */ \
 		false, -1, DEFAULT_WAIT_START,   \
 		/* "standby switchover" options */ \
-		false, false, "", false, false,	\
+		false, false, "", false, false, false,	\
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \

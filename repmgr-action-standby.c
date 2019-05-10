@@ -4671,9 +4671,9 @@ do_standby_switchover(void)
 			for (cell = all_nodes.head; cell; cell = cell->next)
 			{
 
-				if (repmgrd_info[i]->paused == true)
+				if (repmgrd_info[i]->paused == true && runtime_options.repmgrd_force_unpause == false)
 				{
-					log_debug("repmgrd on node \"%s\" (ID %i) paused before switchover, not unpausing",
+					log_debug("repmgrd on node \"%s\" (ID %i) paused before switchover, --repmgrd-force-unpause not provided, not unpausing",
 							  cell->node_info->node_name,
 							  cell->node_info->node_id);
 

@@ -101,6 +101,7 @@
 #define OPT_DISABLE_WAL_RECEIVER           1046
 #define OPT_ENABLE_WAL_RECEIVER            1047
 #define OPT_DETAIL                         1048
+#define OPT_REPMGRD_FORCE_UNPAUSE		   1049
 
 /* deprecated since 3.3 */
 #define OPT_DATA_DIR						999
@@ -173,6 +174,7 @@ static struct option long_options[] =
 	{"always-promote", no_argument, NULL, OPT_ALWAYS_PROMOTE},
 	{"siblings-follow", no_argument, NULL, OPT_SIBLINGS_FOLLOW},
 	{"repmgrd-no-pause", no_argument, NULL, OPT_REPMGRD_NO_PAUSE},
+	{"repmgrd-force-unpause", no_argument, NULL, OPT_REPMGRD_FORCE_UNPAUSE},
 
 /* "node status" options */
 	{"is-shutdown-cleanly", no_argument, NULL, OPT_IS_SHUTDOWN_CLEANLY},

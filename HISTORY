@@ -1,6 +1,7 @@
 4.4     2019-??-??
         repmgr: improve "daemon status" output (Ian)
         repmgr: add "--siblings-follow" option to "standby promote" (Ian)
+        repmgr: add "--repmgrd-force-unpause" option to "standby switchover" (Ian)
         repmgr: improve "--dry-run" behaviour for "standby promote" and
           "standby switchover" (Ian)
         repmgrd: monitor standbys attached to primary (Ian)

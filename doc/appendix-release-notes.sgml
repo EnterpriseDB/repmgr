@@ -43,6 +43,15 @@
             </note>
           </listitem>
 
+		  <listitem>
+            <para>
+			  <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+			  add <option>--repmgrd-force-unpause</option> to unpause all &repmgrd; instances after executing a switchover.
+			  This will ensure that	any &repmgrd; instances which were paused before the switchover will be
+			  unpaused.
+			</para>
+		  </listitem>
+
           <listitem>
             <para>
               <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:

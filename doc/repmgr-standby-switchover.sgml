@@ -143,6 +143,24 @@
             to ensure &repmgrd; is paused or not
             running on all nodes.
           </para>
+		  <para>
+            This option cannot be used together with <option>--repmgrd-force-un/Users/barwick/2ndq/repmgr/doc/repmgr-standby-switchover.sgmlpause</option>.
+          </para>
+
+        </listitem>
+      </varlistentry>
+
+	  <varlistentry>
+        <term><option>--repmgrd-force-unpause</option></term>
+        <listitem>
+          <para>
+            Always unpause all &repmgrd; instances after executing a switchover. This will ensure that
+			any &repmgrd; instances which were paused before the switchover will be
+			unpaused.
+          </para>
+          <para>
+            This option cannot be used together with <option>--repmgrd-no-pause</option>.
+          </para>
         </listitem>
       </varlistentry>
 

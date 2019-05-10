@@ -478,6 +478,10 @@ main(int argc, char **argv)
 				runtime_options.repmgrd_no_pause = true;
 				break;
 
+			case OPT_REPMGRD_FORCE_UNPAUSE:
+				runtime_options.repmgrd_force_unpause = true;
+				break;
+
 				/*----------------------
 				 * "node status" options
 				 *----------------------
@@ -1854,6 +1858,22 @@ check_cli_parameters(const int action)
 			default:
 				item_list_append_format(&cli_warnings,
 										_("--repmgrd-no-pause will be ignored when executing %s"),
+										action_name(action));
+		}
+	}
+
+	if (runtime_options.repmgrd_force_unpause == true)
+	{
+		switch (action)
+		{
+			case STANDBY_SWITCHOVER:
+				if (runtime_options.repmgrd_no_pause == true)
+					item_list_append(&cli_errors,
+									 _("--repmgrd-force-unpause and --repmgrd-no-pause cannot be used together"));
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--repmgrd-force-unpause will be ignored when executing %s"),
 										action_name(action));
 		}
 	}
