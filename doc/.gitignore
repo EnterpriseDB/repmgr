@@ -5,3 +5,6 @@ html/
 nochunks.dsl
 repmgr.html
 version.sgml
+*.fo
+*.pdf
+
