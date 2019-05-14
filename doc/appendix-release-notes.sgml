@@ -80,6 +80,14 @@
             </para>
           </listitem>
 
+		  <listitem>
+            <para>
+              <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
+			  and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
+			  check if a node is attached to its advertised upstream node, and issue a
+			  warning if the node is not attached.
+			</para>
+		  </listitem>
 		</itemizedlist>
 	  </para>
     </sect2>

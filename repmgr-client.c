@@ -2007,6 +2007,10 @@ check_cli_parameters(const int action)
 }
 
 
+/*
+ * Generate formatted node status output for display by "cluster show" and
+ * "daemon status".
+ */
 bool
 format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBufferData *upstream, ItemList *warnings)
 {
@@ -2264,15 +2268,73 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 	}
 	else
 	{
-		if (node_info->upstream_node_id == remote_node_rec.upstream_node_id)
+		if (node_info->upstream_node_id != NO_UPSTREAM_NODE && node_info->upstream_node_id == remote_node_rec.upstream_node_id)
 		{
+			/*
+			 * expected and reported upstreams match - check if node is actually
+			 * connected to the upstream
+			 */
+			NodeAttached attached_to_upstream = NODE_ATTACHED_UNKNOWN;
+			t_node_info upstream_node_rec = T_NODE_INFO_INITIALIZER;
+			RecordStatus upstream_node_rec_found = get_node_record(node_info->conn,
+																   node_info->upstream_node_id,
+																   &upstream_node_rec);
+
+			if (upstream_node_rec_found != RECORD_FOUND)
+			{
+				item_list_append_format(warnings,
+										"unable to find record for upstream node ID %i",
+										node_info->upstream_node_id);
+
+			}
+			else
+			{
+				PGconn *upstream_conn = establish_db_connection_quiet(upstream_node_rec.conninfo);
+
+				if (PQstatus(upstream_conn) != CONNECTION_OK)
+				{
+					item_list_append_format(warnings,
+											"unable to connect to node \"%s\" (ID: %i)'s upstream node \"%s\" (ID: %i)",
+											node_info->node_name,
+											node_info->node_id,
+											upstream_node_rec.node_name,
+											upstream_node_rec.node_id);
+				}
+				else
+				{
+					attached_to_upstream = is_downstream_node_attached(upstream_conn, node_info->node_name);
+				}
+
+				PQfinish(upstream_conn);
+			}
+
+			if (attached_to_upstream == NODE_ATTACHED_UNKNOWN)
+			{
+				appendPQExpBufferStr(upstream, "? ");
+				item_list_append_format(warnings,
+										"unable to determine if node \"%s\" (ID: %i) is attached to its upstream node \"%s\" (ID: %i)",
+										node_info->node_name,
+										node_info->node_id,
+										upstream_node_rec.node_name,
+										upstream_node_rec.node_id);
+			}
+			else if (attached_to_upstream == NODE_DETACHED)
+			{
+				appendPQExpBufferStr(upstream, "! ");
+				item_list_append_format(warnings,
+										"node \"%s\" (ID: %i) is not attached to its upstream node \"%s\" (ID: %i)",
+										node_info->node_name,
+										node_info->node_id,
+										upstream_node_rec.node_name,
+										upstream_node_rec.node_id);
+			}
 			appendPQExpBufferStr(upstream,
 								 node_info->upstream_node_name);
 
 		}
 		else
 		{
-			if (remote_node_rec.upstream_node_id == NO_UPSTREAM_NODE)
+			if (node_info->upstream_node_id != NO_UPSTREAM_NODE && remote_node_rec.upstream_node_id == NO_UPSTREAM_NODE)
 			{
 				appendPQExpBufferChar(upstream, '!');
 				item_list_append_format(warnings,
@@ -2281,7 +2343,8 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 										node_info->node_id,
 										node_info->upstream_node_name);
 			}
-			else
+			else if (node_info->upstream_node_id != NO_UPSTREAM_NODE && remote_node_rec.upstream_node_id != NO_UPSTREAM_NODE)
+
 			{
 				appendPQExpBuffer(upstream,
 								  "! %s", remote_node_rec.upstream_node_name);
