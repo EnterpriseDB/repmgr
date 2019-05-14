@@ -243,8 +243,11 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
     The &repmgr; documentation is (like the main PostgreSQL project)
     written in DocBook XML format. To build it locally as HTML, you'll need to
     install the required packages as described in the
-    <ulink url="https://www.postgresql.org/docs/current/docguide-toolsets.html">
-      PostgreSQL documentation</ulink>.
+    <ulink url="https://www.postgresql.org/docs/current/docguide-toolsets.html">PostgreSQL documentation</ulink>.
+   </para>
+   <para>
+	 The minimum PostgreSQL version for building the &repmgr; documentation is
+	 PostgreSQL 9.5.
    </para>
 
    <note>

@@ -113,7 +113,7 @@
             <para>
               The &repmgr; documentation has been converted to DocBook XML format,
               as currently used by the main PostgreSQL project.
-              This means it can now be built against any &repmgr; version
+              This means it can now be built against any PostgreSQL version from 9.5
               (previously it was not possible to build the documentation against
               PostgreSQL 10 or later), and makes it easier to provide the documentation
               in other formats such as PDF.
