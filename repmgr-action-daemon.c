@@ -129,6 +129,8 @@ do_daemon_status(void)
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
 		int j;
+		PQExpBufferData node_status;
+		PQExpBufferData upstream;
 
 		repmgrd_info[i] = pg_malloc0(sizeof(RepmgrdInfo));
 		repmgrd_info[i]->node_id = cell->node_info->node_id;
@@ -229,15 +231,18 @@ do_daemon_status(void)
 			}
 		}
 
-		{
-			PQExpBufferData node_status;
-			initPQExpBuffer(&node_status);
+		initPQExpBuffer(&node_status);
+		initPQExpBuffer(&upstream);
 
-			(void)format_node_status(cell->node_info, &node_status, &warnings);
-			snprintf(repmgrd_info[i]->pg_running_text, sizeof(cell->node_info->details),
+		(void)format_node_status(cell->node_info, &node_status, &upstream, &warnings);
+		snprintf(repmgrd_info[i]->pg_running_text, sizeof(cell->node_info->details),
 				 "%s", node_status.data);
-			termPQExpBuffer(&node_status);
-		}
+
+		snprintf(cell->node_info->upstream_node_name, sizeof(cell->node_info->upstream_node_name),
+				 "%s", upstream.data);
+
+		termPQExpBuffer(&node_status);
+		termPQExpBuffer(&upstream);
 
 		PQfinish(cell->node_info->conn);
 

@@ -4,6 +4,8 @@
         repmgr: add "--repmgrd-force-unpause" option to "standby switchover" (Ian)
         repmgr: improve "--dry-run" behaviour for "standby promote" and
           "standby switchover" (Ian)
+		repmgr: in "cluster show" and "daemon status", show upstream node name
+		  as reported by each individual node (Ian)
         repmgrd: monitor standbys attached to primary (Ian)
         general: documentation converted to DocBook XML format (Ian)
 

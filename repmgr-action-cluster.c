@@ -142,9 +142,16 @@ do_cluster_show(void)
 		}
 	}
 
+	/*
+	 * TODO: count nodes marked as "? unreachable" and add a hint about
+	 * the other cluster commands for better determining whether
+	 * unreachable.
+	 */
+
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
 		PQExpBufferData node_status;
+		PQExpBufferData upstream;
 		PQExpBufferData buf;
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
@@ -171,14 +178,18 @@ do_cluster_show(void)
 		}
 
 		initPQExpBuffer(&node_status);
+		initPQExpBuffer(&upstream);
 
-		if (format_node_status(cell->node_info, &node_status, &warnings) == true)
+		if (format_node_status(cell->node_info, &node_status, &upstream, &warnings) == true)
 			error_found = true;
 
 		snprintf(cell->node_info->details, sizeof(cell->node_info->details),
 				 "%s", node_status.data);
+		snprintf(cell->node_info->upstream_node_name, sizeof(cell->node_info->upstream_node_name),
+				 "%s", upstream.data);
 
 		termPQExpBuffer(&node_status);
+		termPQExpBuffer(&upstream);
 
 		PQfinish(cell->node_info->conn);
 		cell->node_info->conn = NULL;
@@ -191,6 +202,7 @@ do_cluster_show(void)
 		headers_show[SHOW_ROLE].cur_length = strlen(get_node_type_string(cell->node_info->type));
 		headers_show[SHOW_NAME].cur_length = strlen(cell->node_info->node_name);
 		headers_show[SHOW_STATUS].cur_length = strlen(cell->node_info->details);
+
 		headers_show[SHOW_UPSTREAM_NAME].cur_length = strlen(cell->node_info->upstream_node_name);
 
 		initPQExpBuffer(&buf);

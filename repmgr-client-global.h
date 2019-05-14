@@ -244,7 +244,7 @@ extern void make_remote_repmgr_path(PQExpBufferData *outputbuf, t_node_info *rem
 extern void make_repmgrd_path(PQExpBufferData *output_buf);
 
 /* display functions */
-extern bool format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *warnings);
+extern bool format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBufferData *upstream, ItemList *warnings);
 extern void print_help_header(void);
 extern void print_status_header(int cols, ColHeader *headers);
 

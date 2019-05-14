@@ -2008,14 +2008,18 @@ check_cli_parameters(const int action)
 
 
 bool
-format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *warnings)
+format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBufferData *upstream, ItemList *warnings)
 {
 	bool error_found = false;
+	t_node_info remote_node_rec = T_NODE_INFO_INITIALIZER;
+	RecordStatus remote_node_rec_found = RECORD_NOT_FOUND;
 
 	if (PQstatus(node_info->conn) == CONNECTION_OK)
 	{
 		node_info->node_status = NODE_STATUS_UP;
 		node_info->recovery_type = get_recovery_type(node_info->conn);
+		/* get node's copy of its record so we can see what it thinks its status is */
+		remote_node_rec_found = get_node_record_with_upstream(node_info->conn, node_info->node_id, &remote_node_rec);
 	}
 	else
 	{
@@ -2028,11 +2032,7 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 		node_info->recovery_type = RECTYPE_UNKNOWN;
 	}
 
-	/*
-	 * TODO: count nodes marked as "? unreachable" and add a hint about
-	 * the other cluster commands for better determining whether
-	 * unreachable.
-	 */
+	/* format node status info */
 	switch (node_info->type)
 	{
 		case PRIMARY:
@@ -2045,16 +2045,16 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 					switch (node_info->recovery_type)
 					{
 						case RECTYPE_PRIMARY:
-							appendPQExpBufferStr(details, "* running");
+							appendPQExpBufferStr(node_status, "* running");
 							break;
 						case RECTYPE_STANDBY:
-							appendPQExpBufferStr(details, "! running as standby");
+							appendPQExpBufferStr(node_status, "! running as standby");
 							item_list_append_format(warnings,
 													"node \"%s\" (ID: %i) is registered as primary but running as standby",
 													node_info->node_name, node_info->node_id);
 							break;
 						case RECTYPE_UNKNOWN:
-							appendPQExpBufferStr(details, "! unknown");
+							appendPQExpBufferStr(node_status, "! unknown");
 							item_list_append_format(warnings,
 													"node \"%s\" (ID: %i) has unknown replication status",
 													node_info->node_name, node_info->node_id);
@@ -2065,14 +2065,14 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 				{
 					if (node_info->recovery_type == RECTYPE_PRIMARY)
 					{
-						appendPQExpBufferStr(details, "! running");
+						appendPQExpBufferStr(node_status, "! running");
 						item_list_append_format(warnings,
 												"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
 												node_info->node_name, node_info->node_id);
 					}
 					else
 					{
-						appendPQExpBufferStr(details, "! running as standby");
+						appendPQExpBufferStr(node_status, "! running as standby");
 						item_list_append_format(warnings,
 												"node \"%s\" (ID: %i) is registered as an inactive primary but running as standby",
 												node_info->node_name, node_info->node_id);
@@ -2084,11 +2084,11 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 			{
 				if (node_info->active == true)
 				{
-					appendPQExpBufferStr(details, "? running");
+					appendPQExpBufferStr(node_status, "? running");
 				}
 				else
 				{
-					appendPQExpBufferStr(details, "! running");
+					appendPQExpBufferStr(node_status, "! running");
 					error_found = true;
 				}
 			}
@@ -2098,7 +2098,7 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 				/* node is unreachable but marked active */
 				if (node_info->active == true)
 				{
-					appendPQExpBufferStr(details, "? unreachable");
+					appendPQExpBufferStr(node_status, "? unreachable");
 					item_list_append_format(warnings,
 											"node \"%s\" (ID: %i) is registered as an active primary but is unreachable",
 											node_info->node_name, node_info->node_id);
@@ -2106,7 +2106,7 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 				/* node is unreachable and marked as inactive */
 				else
 				{
-					appendPQExpBufferStr(details, "- failed");
+					appendPQExpBufferStr(node_status, "- failed");
 					error_found = true;
 				}
 			}
@@ -2122,16 +2122,16 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 					switch (node_info->recovery_type)
 					{
 						case RECTYPE_STANDBY:
-							appendPQExpBufferStr(details, "  running");
+							appendPQExpBufferStr(node_status, "  running");
 							break;
 						case RECTYPE_PRIMARY:
-							appendPQExpBufferStr(details, "! running as primary");
+							appendPQExpBufferStr(node_status, "! running as primary");
 							item_list_append_format(warnings,
 													"node \"%s\" (ID: %i) is registered as standby but running as primary",
 													node_info->node_name, node_info->node_id);
 							break;
 						case RECTYPE_UNKNOWN:
-							appendPQExpBufferStr(details, "! unknown");
+							appendPQExpBufferStr(node_status, "! unknown");
 							item_list_append_format(
 								warnings,
 								"node \"%s\" (ID: %i) has unknown replication status",
@@ -2143,14 +2143,14 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 				{
 					if (node_info->recovery_type == RECTYPE_STANDBY)
 					{
-						appendPQExpBufferStr(details, "! running");
+						appendPQExpBufferStr(node_status, "! running");
 						item_list_append_format(warnings,
 												"node \"%s\" (ID: %i) is running but the repmgr node record is inactive",
 												node_info->node_name, node_info->node_id);
 					}
 					else
 					{
-						appendPQExpBufferStr(details, "! running as primary");
+						appendPQExpBufferStr(node_status, "! running as primary");
 						item_list_append_format(warnings,
 												"node \"%s\" (ID: %i) is running as primary but the repmgr node record is inactive",
 												node_info->node_name, node_info->node_id);
@@ -2170,11 +2170,11 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 			{
 				if (node_info->active == true)
 				{
-					appendPQExpBufferStr(details, "? running");
+					appendPQExpBufferStr(node_status, "? running");
 				}
 				else
 				{
-					appendPQExpBufferStr(details, "! running");
+					appendPQExpBufferStr(node_status, "! running");
 					error_found = true;
 				}
 			}
@@ -2184,14 +2184,14 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 				/* node is unreachable but marked active */
 				if (node_info->active == true)
 				{
-					appendPQExpBufferStr(details, "? unreachable");
+					appendPQExpBufferStr(node_status, "? unreachable");
 					item_list_append_format(warnings,
 											"node \"%s\" (ID: %i) is registered as an active standby but is unreachable",
 											node_info->node_name, node_info->node_id);
 				}
 				else
 				{
-					appendPQExpBufferStr(details, "- failed");
+					appendPQExpBufferStr(node_status, "- failed");
 					error_found = true;
 				}
 			}
@@ -2206,11 +2206,11 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 			{
 				if (node_info->active == true)
 				{
-					appendPQExpBufferStr(details, "* running");
+					appendPQExpBufferStr(node_status, "* running");
 				}
 				else
 				{
-					appendPQExpBufferStr(details, "! running");
+					appendPQExpBufferStr(node_status, "! running");
 					error_found = true;
 				}
 			}
@@ -2219,11 +2219,11 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 			{
 				if (node_info->active == true)
 				{
-					appendPQExpBufferStr(details, "? rejected");
+					appendPQExpBufferStr(node_status, "? rejected");
 				}
 				else
 				{
-					appendPQExpBufferStr(details, "! failed");
+					appendPQExpBufferStr(node_status, "! failed");
 					error_found = true;
 				}
 			}
@@ -2232,11 +2232,11 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 			{
 				if (node_info->active == true)
 				{
-					appendPQExpBufferStr(details, "? unreachable");
+					appendPQExpBufferStr(node_status, "? unreachable");
 				}
 				else
 				{
-					appendPQExpBufferStr(details, "- failed");
+					appendPQExpBufferStr(node_status, "- failed");
 					error_found = true;
 				}
 			}
@@ -2245,10 +2245,54 @@ format_node_status(t_node_info *node_info, PQExpBufferData *details, ItemList *w
 		case UNKNOWN:
 		{
 			/* this should never happen */
-			appendPQExpBufferStr(details, "? unknown node type");
+			appendPQExpBufferStr(node_status, "? unknown node type");
 			error_found = true;
 		}
 		break;
+	}
+
+	/* format node upstream info */
+
+	if (remote_node_rec_found == RECORD_NOT_FOUND)
+	{
+		/*
+		 * Unable to retrieve the node's copy of its own record - copy the
+		 * name from our own copy of the record
+		 */
+		appendPQExpBufferStr(upstream,
+							 node_info->upstream_node_name);
+	}
+	else
+	{
+		if (node_info->upstream_node_id == remote_node_rec.upstream_node_id)
+		{
+			appendPQExpBufferStr(upstream,
+								 node_info->upstream_node_name);
+
+		}
+		else
+		{
+			if (remote_node_rec.upstream_node_id == NO_UPSTREAM_NODE)
+			{
+				appendPQExpBufferChar(upstream, '!');
+				item_list_append_format(warnings,
+										"node \"%s\" (ID: %i) reports it has no upstream (expected: \"%s\")",
+										node_info->node_name,
+										node_info->node_id,
+										node_info->upstream_node_name);
+			}
+			else
+			{
+				appendPQExpBuffer(upstream,
+								  "! %s", remote_node_rec.upstream_node_name);
+				item_list_append_format(warnings,
+										"node \"%s\" (ID: %i) reports a different upstream (reported: \"%s\", expected \"%s\")",
+										node_info->node_name,
+										node_info->node_id,
+										remote_node_rec.upstream_node_name,
+										node_info->upstream_node_name);
+			}
+		}
 	}
 
 	return error_found;

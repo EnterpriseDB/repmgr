@@ -62,6 +62,24 @@
             </para>
           </listitem>
 
+		  <listitem>
+            <para>
+              <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
+			  and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
+			  show the upstream node name as reported by each individual node - this helps visualise
+			  situations where the cluster is in an unexpected state, and provide a better idea of the
+			  actual cluster state.
+			</para>
+			<para>
+			  For example, if a cluster has divided somehow and a set of nodes are
+			  following a new primary, when running either of these commands, &repmgr;
+			  will now show the name of the primary those nodes are actually
+			  following, rather than the now outdated node name recorded
+			  on the other side of the &quot;split&quot;. A warning will also be issued
+			  about the unexpected situation.
+            </para>
+          </listitem>
+
 		</itemizedlist>
 	  </para>
     </sect2>
