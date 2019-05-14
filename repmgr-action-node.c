@@ -294,7 +294,7 @@ do_node_status(void)
 				continue;
 			}
 
-			if (is_downstream_node_attached(conn, node_cell->node_info->node_name) == false)
+			if (is_downstream_node_attached(conn, node_cell->node_info->node_name) != NODE_ATTACHED)
 			{
 				missing_nodes_count++;
 				item_list_append_format(&missing_nodes,
@@ -1166,7 +1166,7 @@ do_node_check_downstream(PGconn *conn, OutputMode mode, CheckStatusList *list_ou
 			continue;
 		}
 
-		if (is_downstream_node_attached(conn, cell->node_info->node_name) == false)
+		if (is_downstream_node_attached(conn, cell->node_info->node_name) != NODE_ATTACHED)
 		{
 			missing_nodes_count++;
 			item_list_append_format(&missing_nodes,
@@ -2562,9 +2562,10 @@ do_node_rejoin(void)
 
 		for (;  i < config_file_options.node_rejoin_timeout; i++)
 		{
-			success = is_downstream_node_attached(primary_conn, config_file_options.node_name);
+			NodeStatus node_attached = is_downstream_node_attached(primary_conn,
+																   config_file_options.node_name);
 
-			if (success == true)
+			if (node_attached == NODE_ATTACHED)
 			{
 				log_verbose(LOG_INFO, _("node %i has attached to its upstream node"),
 							config_file_options.node_id);
@@ -2612,7 +2613,9 @@ do_node_rejoin(void)
 	else
 	{
 		/* -W/--no-wait provided - check once */
-		success = is_downstream_node_attached(primary_conn, config_file_options.node_name);
+		NodeStatus node_attached = is_downstream_node_attached(primary_conn, config_file_options.node_name);
+		if (node_attached == NODE_ATTACHED)
+			success = true;
 	}
 
 	/*

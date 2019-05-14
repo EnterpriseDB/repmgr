@@ -5287,7 +5287,7 @@ get_node_replication_stats(PGconn *conn, t_node_info *node_info)
 }
 
 
-bool
+NodeAttached
 is_downstream_node_attached(PGconn *conn, char *node_name)
 {
 	PQExpBufferData query;
@@ -5297,7 +5297,8 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  " SELECT pg_catalog.count(*) FROM pg_catalog.pg_stat_replication "
+					  " SELECT pg_catalog.count(*) "
+					  "   FROM pg_catalog.pg_stat_replication "
 					  "  WHERE application_name = '%s'",
 					  node_name);
 
@@ -5312,7 +5313,7 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 		termPQExpBuffer(&query);
 		PQclear(res);
 
-		return false;
+		return NODE_ATTACHED_UNKNOWN;
 	}
 
 	if (PQntuples(res) != 1)
@@ -5322,7 +5323,7 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 		termPQExpBuffer(&query);
 		PQclear(res);
 
-		return false;
+		return NODE_ATTACHED_UNKNOWN;
 	}
 
 	c = atoi(PQgetvalue(res, 0, 0));
@@ -5334,14 +5335,14 @@ is_downstream_node_attached(PGconn *conn, char *node_name)
 	{
 		log_verbose(LOG_WARNING, _("node \"%s\" not found in \"pg_stat_replication\""), node_name);
 
-		return false;
+		return NODE_DETACHED;
 	}
 
 	if (c > 1)
 		log_verbose(LOG_WARNING, _("multiple entries with \"application_name\" set to  \"%s\" found in \"pg_stat_replication\""),
 					node_name);
 
-	return true;
+	return NODE_ATTACHED;
 }
 
 

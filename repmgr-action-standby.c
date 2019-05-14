@@ -1620,7 +1620,7 @@ do_standby_register(void)
 			else
 			{
 				/* check our standby is connected */
-				if (is_downstream_node_attached(upstream_conn, config_file_options.node_name) == true)
+				if (is_downstream_node_attached(upstream_conn, config_file_options.node_name) == NODE_ATTACHED)
 				{
 					log_verbose(LOG_INFO, _("local node is attached to specified upstream node %i"), runtime_options.upstream_node_id);
 				}
@@ -1679,7 +1679,7 @@ do_standby_register(void)
 						primary_node_id);
 
 			/* check our standby is connected */
-			if (is_downstream_node_attached(primary_conn, config_file_options.node_name) == true)
+			if (is_downstream_node_attached(primary_conn, config_file_options.node_name) == NODE_ATTACHED)
 			{
 				log_verbose(LOG_INFO, _("local node is attached to primary"));
 			}
@@ -2858,9 +2858,13 @@ do_standby_follow(void)
 
 	for (timer = 0; timer < config_file_options.standby_follow_timeout; timer++)
 	{
-		success = is_downstream_node_attached(follow_target_conn, config_file_options.node_name);
-		if (success == true)
+		NodeAttached node_attached = is_downstream_node_attached(follow_target_conn, config_file_options.node_name);
+
+		if (node_attached == NODE_ATTACHED)
+		{
+			success = true;
 			break;
+		}
 
 		log_verbose(LOG_DEBUG, "sleeping %i of max %i seconds waiting for standby to attach to primary",
 					timer + 1,
@@ -3411,7 +3415,7 @@ do_standby_switchover(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	if (is_downstream_node_attached(remote_conn, local_node_record.node_name) == false)
+	if (is_downstream_node_attached(remote_conn, local_node_record.node_name) != NODE_ATTACHED)
 	{
 		log_error(_("local node \"%s\" (ID: %i) is not attached to demotion candidate \"%s\" (ID: %i)"),
 				  local_node_record.node_name,
