@@ -1955,7 +1955,7 @@ check_cli_parameters(const int action)
 	}
 
 	/* --detail */
-	if (runtime_options.compact == true)
+	if (runtime_options.detail == true)
 	{
 		switch (action)
 		{
