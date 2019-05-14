@@ -230,12 +230,13 @@ do_daemon_status(void)
 		}
 
 		{
-			PQExpBufferData details;
-			initPQExpBuffer(&details);
+			PQExpBufferData node_status;
+			initPQExpBuffer(&node_status);
 
-			(void)format_node_status(cell->node_info, &details, &warnings);
-			strncpy(repmgrd_info[i]->pg_running_text, details.data, MAXLEN);
-			termPQExpBuffer(&details);
+			(void)format_node_status(cell->node_info, &node_status, &warnings);
+			snprintf(repmgrd_info[i]->pg_running_text, sizeof(cell->node_info->details),
+				 "%s", node_status.data);
+			termPQExpBuffer(&node_status);
 		}
 
 		PQfinish(cell->node_info->conn);

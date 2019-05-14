@@ -64,6 +64,7 @@ static void cube_set_node_status(t_node_status_cube **cube, int n, int node_id, 
  * CLUSTER SHOW
  *
  * Parameters:
+ *   --compact
  *   --csv
  */
 void
@@ -143,7 +144,7 @@ do_cluster_show(void)
 
 	for (cell = nodes.head; cell; cell = cell->next)
 	{
-		PQExpBufferData details;
+		PQExpBufferData node_status;
 		PQExpBufferData buf;
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
@@ -169,13 +170,15 @@ do_cluster_show(void)
 			}
 		}
 
-		initPQExpBuffer(&details);
+		initPQExpBuffer(&node_status);
 
-		if (format_node_status(cell->node_info, &details, &warnings) == true)
+		if (format_node_status(cell->node_info, &node_status, &warnings) == true)
 			error_found = true;
-		strncpy(cell->node_info->details, details.data, MAXLEN);
 
-		termPQExpBuffer(&details);
+		snprintf(cell->node_info->details, sizeof(cell->node_info->details),
+				 "%s", node_status.data);
+
+		termPQExpBuffer(&node_status);
 
 		PQfinish(cell->node_info->conn);
 		cell->node_info->conn = NULL;
