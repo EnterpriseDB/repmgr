@@ -168,6 +168,225 @@
 
 </sect1>
 
+
+<sect1 id="repmgrd-primary-visibility-consensue" xreflabel="Primary visibility consensus">
+  <title>Primary visibility consensus</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>primary visibility consensus</secondary>
+  </indexterm>
+
+  <indexterm>
+   <primary>primary_visibility_consensus</primary>
+  </indexterm>
+
+  <para>
+    In more complex replication setups, particularly where replication occurs between
+    multiple datacentres, it's possible that some but not all standbys get cut off from the
+    primary (but not from the other standbys).
+  </para>
+  <para>
+    In this situation, normally it's not desirable for any of the standbys which have been
+    cut off to initiate a failover, as the primary is still functioning and standbys are
+    connected. Beginning with <link linkend="release-4.4">&repmgr; 4.4</link>
+    it is now possible for the affected standbys to build a consensus about whether
+    the primary is still available to some standbys (&quot;primary visibility consensus&quot;).
+    This is done by polling each standby for the time it last saw the primary;
+    if any have seen the primary very recently, it's reasonable
+    to infer that the primary is still available and a failover should not be started.
+  </para>
+
+  <para>
+    The time the primary was last seen by each node can be checked by executing
+    <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>,
+    which includes this in its output, e.g.:
+    <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
+ ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
+----+-------+---------+-----------+----------+---------+-------+---------+--------------------
+ 1  | node1 | primary | * running |          | running | 96563 | no      | n/a
+ 2  | node2 | standby |   running | node1    | running | 96572 | no      | 1 second(s) ago
+ 3  | node3 | standby |   running | node1    | running | 96584 | no      | 0 second(s) ago</programlisting>
+
+  </para>
+
+  <para>
+    To enable this functionality, in <filename>repmgr.conf</filename> set:
+    <programlisting>
+      primary_visibility_consensus=true</programlisting>
+  </para>
+  <note>
+    <para>
+      <option>primary_visibility_consensus</option> <emphasis>must</emphasis> be set to
+      <literal>true</literal> on all nodes for it to be effective.
+    </para>
+  </note>
+
+  <para>
+    The following sample &repmgrd; log output demonstrates the behaviour in a situation
+    where one of three standbys is no longer able to connect to the primary, but <emphasis>can</emphasis>
+    connect to the two other standbys (&quot;sibling nodes&quot;):
+    <programlisting>
+    [2019-05-17 05:36:12] [WARNING] unable to reconnect to node 1 after 3 attempts
+    [2019-05-17 05:36:12] [INFO] 2 active sibling nodes registered
+    [2019-05-17 05:36:12] [INFO] local node's last receive lsn: 0/7006E58
+    [2019-05-17 05:36:12] [INFO] checking state of sibling node "node3" (ID: 3)
+    [2019-05-17 05:36:12] [INFO] node "node3" (ID: 3) reports its upstream is node 1, last seen 1 second(s) ago
+    [2019-05-17 05:36:12] [NOTICE] node 3 last saw primary node 1 second(s) ago, considering primary still visible
+    [2019-05-17 05:36:12] [INFO] last receive LSN for sibling node "node3" (ID: 3) is: 0/7006E58
+    [2019-05-17 05:36:12] [INFO] node "node3" (ID: 3) has same LSN as current candidate "node2" (ID: 2)
+    [2019-05-17 05:36:12] [INFO] checking state of sibling node "node4" (ID: 4)
+    [2019-05-17 05:36:12] [INFO] node "node4" (ID: 4) reports its upstream is node 1, last seen 0 second(s) ago
+    [2019-05-17 05:36:12] [NOTICE] node 4 last saw primary node 0 second(s) ago, considering primary still visible
+    [2019-05-17 05:36:12] [INFO] last receive LSN for sibling node "node4" (ID: 4) is: 0/7006E58
+    [2019-05-17 05:36:12] [INFO] node "node4" (ID: 4) has same LSN as current candidate "node2" (ID: 2)
+    [2019-05-17 05:36:12] [INFO] 2 nodes can see the primary
+    [2019-05-17 05:36:12] [DETAIL] following nodes can see the primary:
+     - node "node3" (ID: 3): 1 second(s) ago
+     - node "node4" (ID: 4): 0 second(s) ago
+    [2019-05-17 05:36:12] [NOTICE] cancelling failover as some nodes can still see the primary
+    [2019-05-17 05:36:12] [NOTICE] election cancelled
+    [2019-05-17 05:36:14] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in degraded state</programlisting>
+    In this situation it will cancel the failover and enter degraded monitoring node,
+    waiting for the primary to reappear.
+  </para>
+</sect1>
+
+<sect1 id="repmgrd-standby-disconnection-on-failover" xreflabel="Standby disconnection on failover">
+  <title>Standby disconnection on failover</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>standby disconnection on failover</secondary>
+ </indexterm>
+
+  <indexterm>
+    <primary>standby disconnection on failover</primary>
+  </indexterm>
+
+  <para>
+    If <option>standby_disconnect_on_failover</option> is set to <literal>true</literal> in
+    <filename>repmgr.conf</filename>, in a failover situation &repmgrd; will forcibly disconnect
+    the local node's WAL receiver before making a failover decision.
+  </para>
+  <note>
+    <para>
+      <option>standby_disconnect_on_failover</option> is available from PostgreSQL 9.5 and later.
+      Additionally this requires that the <literal>repmgr</literal> database user is a superuser.
+    </para>
+  </note>
+  <para>
+    By doing this, it's possible to ensure that, at the point the failover decision is made, no nodes
+    are receiving data from the primary and their LSN location will be static.
+  </para>
+  <important>
+    <para>
+      <option>standby_disconnect_on_failover</option> <emphasis>must</emphasis> be set to the same value on
+      all nodes.
+    </para>
+  </important>
+  <para>
+    Note that when using <option>standby_disconnect_on_failover</option> there will be a delay of 5 seconds
+    plus however many seconds it takes to confirm the WAL receiver is disconnected before
+    &repmgrd; proceeds with the failover decision.
+  </para>
+  <para>
+    Following the failover operation, no matter what the outcome, each node will reconnect its WAL receiver.
+  </para>
+  <para>
+    If using <option>standby_disconnect_on_failover</option>, we recommend that the
+    <option>primary_visibility_consensus</option> option is also used.
+  </para>
+
+</sect1>
+
+<sect1 id="repmgrd-failover-validation" xreflabel="Failover validation">
+  <title>Failover validation</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>failover validation</secondary>
+ </indexterm>
+
+  <indexterm>
+    <primary>failover validation</primary>
+  </indexterm>
+
+  <para>
+    From <link linkend="release-4.3">repmgr 4.3</link>, &repmgr; makes it possible to provide a script
+    to &repmgrd; which, in a failover situation,
+    will be executed by the promotion candidate (the node which has been selected
+    to be the new primary) to confirm whether the node should actually be promoted.
+  </para>
+  <para>
+    To use this, <option>failover_validation_command</option> in <filename>repmgr.conf</filename>
+    to a script executable by the <literal>postgres</literal> system user, e.g.:
+    <programlisting>
+      failover_validation_command=/path/to/script.sh %n %a</programlisting>
+  </para>
+  <para>
+    The <literal>%n</literal> parameter will be replaced with the node ID, and the
+    <literal>%a</literal> parameter will be replaced by the node name when the script is executed.
+  </para>
+  <para>
+    This script must return an exit code of <literal>0</literal> to indicate the node should promote itself.
+    Any other value will result in the promotion being aborted and the election rerun.
+    There is a pause of <option>election_rerun_interval</option> seconds before the election is rerun.
+  </para>
+  <para>
+    Sample &repmgrd; log file output during which the failover validation
+    script rejects the proposed promotion candidate:
+    <programlisting>
+[2019-03-13 21:01:30] [INFO] visible nodes: 2; total nodes: 2; no nodes have seen the primary within the last 4 seconds
+[2019-03-13 21:01:30] [NOTICE] promotion candidate is "node2" (ID: 2)
+[2019-03-13 21:01:30] [NOTICE] executing "failover_validation_command"
+[2019-03-13 21:01:30] [DETAIL] /usr/local/bin/failover-validation.sh 2
+[2019-03-13 21:01:30] [INFO] output returned by failover validation command:
+Node ID: 2
+
+[2019-03-13 21:01:30] [NOTICE] failover validation command returned a non-zero value: "1"
+[2019-03-13 21:01:30] [NOTICE] promotion candidate election will be rerun
+[2019-03-13 21:01:30] [INFO] 1 followers to notify
+[2019-03-13 21:01:30] [NOTICE] notifying node "node3" (ID: 3) to rerun promotion candidate selection
+INFO:  node 3 received notification to rerun promotion candidate election
+[2019-03-13 21:01:30] [NOTICE] rerunning election after 15 seconds ("election_rerun_interval")</programlisting>
+  </para>
+
+
+</sect1>
+
+ <sect1 id="cascading-replication" xreflabel="Cascading replication">
+  <title>repmgrd and cascading replication</title>
+
+  <indexterm>
+   <primary>repmgrd</primary>
+   <secondary>cascading replication</secondary>
+  </indexterm>
+
+ <indexterm>
+   <primary>cascading replication</primary>
+   <secondary>repmgrd</secondary>
+ </indexterm>
+
+ <para>
+  Cascading replication - where a standby can connect to an upstream node and not
+  the primary server itself - was introduced in PostgreSQL 9.2. &repmgr; and
+  &repmgrd; support cascading replication by keeping track of the relationship
+  between standby servers - each node record is stored with the node id of its
+  upstream ("parent") server (except of course the primary server).
+ </para>
+ <para>
+  In a failover situation where the primary node fails and a top-level standby
+  is promoted, a standby connected to another standby will not be affected
+  and continue working as normal (even if the upstream standby it's connected
+  to becomes the primary node). If however the node's direct upstream fails,
+  the &quot;cascaded standby&quot; will attempt to reconnect to that node's parent
+  (unless <varname>failover</varname> is set to <literal>manual</literal> in
+  <filename>repmgr.conf</filename>).
+ </para>
+
+  </sect1>
+
 <sect1 id="repmgrd-primary-child-disconnection" xreflabel="Monitoring standby disconnections on the primary">
   <title>Monitoring standby disconnections on the primary node</title>
 
@@ -310,7 +529,7 @@
 [2019-04-24 15:28:19] [NOTICE] node "node3" (ID: 3) has disconnected
 [2019-04-24 15:28:19] [NOTICE] 1 (of 2) child nodes are connected, but at least 2 child nodes required
 [2019-04-24 15:28:19] [INFO] most recently detached child node was 3 (ca. 0 seconds ago), not triggering "child_nodes_disconnect_command"
-[2019-04-24 15:28:19] [DETAIL] "child_nodes_disconnect_timeout" set to 30 seconds
+[2019-04-24 15:28:19] [DETAIL] "child_nodes_disconnect_timeout" set To 30 seconds
 (...)</programlisting>
 	</para>
 	<para>
@@ -645,141 +864,6 @@ $ repmgr cluster event --event=child_nodes_disconnect_command
 
 
 </sect1>
-
-<sect1 id="repmgrd-standby-disconnection-on-failover" xreflabel="Standby disconnection on failover">
-  <title>Standby disconnection on failover</title>
-
-  <indexterm>
-   <primary>repmgrd</primary>
-   <secondary>standby disconnection on failover</secondary>
- </indexterm>
-
-  <indexterm>
-    <primary>standby disconnection on failover</primary>
-  </indexterm>
-
-  <para>
-    If <option>standby_disconnect_on_failover</option> is set to <literal>true</literal> in
-    <filename>repmgr.conf</filename>, in a failover situation &repmgrd; will forcibly disconnect
-    the local node's WAL receiver before making a failover decision.
-  </para>
-  <note>
-    <para>
-      <option>standby_disconnect_on_failover</option> is available from PostgreSQL 9.5 and later.
-      Additionally this requires that the <literal>repmgr</literal> database user is a superuser.
-    </para>
-  </note>
-  <para>
-    By doing this, it's possible to ensure that, at the point the failover decision is made, no nodes
-    are receiving data from the primary and their LSN location will be static.
-  </para>
-  <important>
-    <para>
-      <option>standby_disconnect_on_failover</option> <emphasis>must</emphasis> be set to the same value on
-      all nodes.
-    </para>
-  </important>
-  <para>
-    Note that when using <option>standby_disconnect_on_failover</option> there will be a delay of 5 seconds
-    plus however many seconds it takes to confirm the WAL receiver is disconnected before
-    &repmgrd; proceeds with the failover decision.
-  </para>
-  <para>
-    Following the failover operation, no matter what the outcome, each node will reconnect its WAL receiver.
-  </para>
-  <para>
-    If using <option>standby_disconnect_on_failover</option>, we recommend that the
-    <option>primary_visibility_consensus</option> option is also used.
-  </para>
-
-</sect1>
-
-<sect1 id="repmgrd-failover-validation" xreflabel="Failover validation">
-  <title>Failover validation</title>
-
-  <indexterm>
-   <primary>repmgrd</primary>
-   <secondary>failover validation</secondary>
- </indexterm>
-
-  <indexterm>
-    <primary>failover validation</primary>
-  </indexterm>
-
-  <para>
-    From <link linkend="release-4.3">repmgr 4.3</link>, &repmgr; makes it possible to provide a script
-    to &repmgrd; which, in a failover situation,
-    will be executed by the promotion candidate (the node which has been selected
-    to be the new primary) to confirm whether the node should actually be promoted.
-  </para>
-  <para>
-    To use this, <option>failover_validation_command</option> in <filename>repmgr.conf</filename>
-    to a script executable by the <literal>postgres</literal> system user, e.g.:
-    <programlisting>
-      failover_validation_command=/path/to/script.sh %n %a</programlisting>
-  </para>
-  <para>
-    The <literal>%n</literal> parameter will be replaced with the node ID, and the
-    <literal>%a</literal> parameter will be replaced by the node name when the script is executed.
-  </para>
-  <para>
-    This script must return an exit code of <literal>0</literal> to indicate the node should promote itself.
-    Any other value will result in the promotion being aborted and the election rerun.
-    There is a pause of <option>election_rerun_interval</option> seconds before the election is rerun.
-  </para>
-  <para>
-    Sample &repmgrd; log file output during which the failover validation
-    script rejects the proposed promotion candidate:
-    <programlisting>
-[2019-03-13 21:01:30] [INFO] visible nodes: 2; total nodes: 2; no nodes have seen the primary within the last 4 seconds
-[2019-03-13 21:01:30] [NOTICE] promotion candidate is "node2" (ID: 2)
-[2019-03-13 21:01:30] [NOTICE] executing "failover_validation_command"
-[2019-03-13 21:01:30] [DETAIL] /usr/local/bin/failover-validation.sh 2
-[2019-03-13 21:01:30] [INFO] output returned by failover validation command:
-Node ID: 2
-
-[2019-03-13 21:01:30] [NOTICE] failover validation command returned a non-zero value: "1"
-[2019-03-13 21:01:30] [NOTICE] promotion candidate election will be rerun
-[2019-03-13 21:01:30] [INFO] 1 followers to notify
-[2019-03-13 21:01:30] [NOTICE] notifying node "node3" (ID: 3) to rerun promotion candidate selection
-INFO:  node 3 received notification to rerun promotion candidate election
-[2019-03-13 21:01:30] [NOTICE] rerunning election after 15 seconds ("election_rerun_interval")</programlisting>
-  </para>
-
-
-</sect1>
-
- <sect1 id="cascading-replication" xreflabel="Cascading replication">
-  <title>repmgrd and cascading replication</title>
-
-  <indexterm>
-   <primary>repmgrd</primary>
-   <secondary>cascading replication</secondary>
-  </indexterm>
-
- <indexterm>
-   <primary>cascading replication</primary>
-   <secondary>repmgrd</secondary>
- </indexterm>
-
- <para>
-  Cascading replication - where a standby can connect to an upstream node and not
-  the primary server itself - was introduced in PostgreSQL 9.2. &repmgr; and
-  &repmgrd; support cascading replication by keeping track of the relationship
-  between standby servers - each node record is stored with the node id of its
-  upstream ("parent") server (except of course the primary server).
- </para>
- <para>
-  In a failover situation where the primary node fails and a top-level standby
-  is promoted, a standby connected to another standby will not be affected
-  and continue working as normal (even if the upstream standby it's connected
-  to becomes the primary node). If however the node's direct upstream fails,
-  the &quot;cascaded standby&quot; will attempt to reconnect to that node's parent
-  (unless <varname>failover</varname> is set to <literal>manual</literal> in
-  <filename>repmgr.conf</filename>).
- </para>
-
-  </sect1>
 
 
 </chapter>
