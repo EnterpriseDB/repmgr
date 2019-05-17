@@ -310,7 +310,7 @@
 [2019-04-24 15:28:19] [NOTICE] node "node3" (ID: 3) has disconnected
 [2019-04-24 15:28:19] [NOTICE] 1 (of 2) child nodes are connected, but at least 2 child nodes required
 [2019-04-24 15:28:19] [INFO] most recently detached child node was 3 (ca. 0 seconds ago), not triggering "child_nodes_disconnect_command"
-[2019-04-24 15:28:19] [DETAIL] "child_nodes_disconnect_timeout" set To 30 seconds
+[2019-04-24 15:28:19] [DETAIL] "child_nodes_disconnect_timeout" set to 30 seconds
 (...)</programlisting>
 	</para>
 	<para>
