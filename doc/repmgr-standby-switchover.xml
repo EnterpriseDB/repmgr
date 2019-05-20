@@ -144,7 +144,7 @@
             running on all nodes.
           </para>
 		  <para>
-            This option cannot be used together with <option>--repmgrd-force-un/Users/barwick/2ndq/repmgr/doc/repmgr-standby-switchover.sgmlpause</option>.
+            This option cannot be used together with <option>--repmgrd-force-unpause</option>.
           </para>
 
         </listitem>
