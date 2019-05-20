@@ -1,10 +1,9 @@
 HTML.index
-bookindex.sgml
+bookindex.xml
 html-stamp
 html/
-nochunks.dsl
 repmgr.html
-version.sgml
+version.xml
 *.fo
 *.pdf
 

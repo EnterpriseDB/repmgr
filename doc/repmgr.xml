@@ -1,12 +1,12 @@
-<!-- doc/repmgr.sgml -->
+<!-- doc/repmgr.xml -->
 
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
           "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd"
 [
-          <!ENTITY % version SYSTEM "version.sgml">
+          <!ENTITY % version SYSTEM "version.xml">
           %version;
 
-          <!ENTITY % filelist SYSTEM "filelist.sgml">
+          <!ENTITY % filelist SYSTEM "filelist.xml">
           %filelist;
 
           <!ENTITY repmgr "<productname>repmgr</productname>">

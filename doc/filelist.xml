@@ -1,0 +1,90 @@
+<!-- doc/filelist.xml -->
+
+<!ENTITY legal      SYSTEM "legal.xml">
+
+<!ENTITY bookindex  SYSTEM "bookindex.xml">
+
+<!--
+ Some parts of the documentation are also source for some plain-text
+ files used during installation.  To selectively ignore or include
+ some parts (e.g., external xref's) when generating these files we use
+ these parameter entities.  See also standalone-install.sgml.
+ -->
+<!ENTITY % standalone-ignore  "INCLUDE">
+<!ENTITY % standalone-include "IGNORE">
+
+<!-- doc/filelist.xml -->
+
+<!--
+ By default, no index is included.  Use -i include-index on the command line
+ to include it.
+ -->
+<!ENTITY % include-index "IGNORE">
+
+<!--
+ Create empty index element for processing by XSLT stylesheet.
+ -->
+<!ENTITY % include-xslt-index "IGNORE">
+
+<!--
+ Include external documentation sections
+ -->
+
+<!ENTITY overview      SYSTEM "overview.xml">
+<!ENTITY install SYSTEM "install.xml">
+<!ENTITY install-requirements      SYSTEM "install-requirements.xml">
+<!ENTITY install-packages      SYSTEM "install-packages.xml">
+<!ENTITY install-source      SYSTEM "install-source.xml">
+<!ENTITY quickstart      SYSTEM "quickstart.xml">
+<!ENTITY configuration      SYSTEM "configuration.xml">
+<!ENTITY configuration-file      SYSTEM "configuration-file.xml">
+<!ENTITY configuration-file-required-settings      SYSTEM "configuration-file-required-settings.xml">
+<!ENTITY configuration-file-log-settings      SYSTEM "configuration-file-log-settings.xml">
+<!ENTITY configuration-file-service-commands   SYSTEM "configuration-file-service-commands.xml">
+<!ENTITY cloning-standbys  SYSTEM "cloning-standbys.xml">
+<!ENTITY promoting-standby  SYSTEM "promoting-standby.xml">
+<!ENTITY follow-new-primary  SYSTEM "follow-new-primary.xml">
+<!ENTITY switchover  SYSTEM "switchover.xml">
+
+<!ENTITY event-notifications  SYSTEM "event-notifications.xml">
+<!ENTITY upgrading-repmgr  SYSTEM "upgrading-repmgr.xml">
+
+<!ENTITY repmgrd-overview SYSTEM "repmgrd-overview.xml">
+<!ENTITY repmgrd-automatic-failover SYSTEM "repmgrd-automatic-failover.xml">
+<!ENTITY repmgrd-configuration SYSTEM "repmgrd-configuration.xml">
+<!ENTITY repmgrd-operation SYSTEM "repmgrd-operation.xml">
+<!ENTITY repmgrd-bdr SYSTEM "repmgrd-bdr.xml">
+
+<!ENTITY repmgr-primary-register SYSTEM "repmgr-primary-register.xml">
+<!ENTITY repmgr-primary-unregister SYSTEM "repmgr-primary-unregister.xml">
+<!ENTITY repmgr-standby-clone SYSTEM "repmgr-standby-clone.xml">
+<!ENTITY repmgr-standby-register SYSTEM "repmgr-standby-register.xml">
+<!ENTITY repmgr-standby-unregister SYSTEM "repmgr-standby-unregister.xml">
+<!ENTITY repmgr-standby-promote SYSTEM "repmgr-standby-promote.xml">
+<!ENTITY repmgr-standby-follow SYSTEM "repmgr-standby-follow.xml">
+<!ENTITY repmgr-standby-switchover SYSTEM "repmgr-standby-switchover.xml">
+<!ENTITY repmgr-witness-register SYSTEM "repmgr-witness-register.xml">
+<!ENTITY repmgr-witness-unregister SYSTEM "repmgr-witness-unregister.xml">
+<!ENTITY repmgr-node-status SYSTEM "repmgr-node-status.xml">
+<!ENTITY repmgr-node-check SYSTEM "repmgr-node-check.xml">
+<!ENTITY repmgr-node-rejoin SYSTEM "repmgr-node-rejoin.xml">
+<!ENTITY repmgr-node-service SYSTEM "repmgr-node-service.xml">
+<!ENTITY repmgr-cluster-show SYSTEM "repmgr-cluster-show.xml">
+<!ENTITY repmgr-cluster-matrix SYSTEM "repmgr-cluster-matrix.xml">
+<!ENTITY repmgr-cluster-crosscheck SYSTEM "repmgr-cluster-crosscheck.xml">
+<!ENTITY repmgr-cluster-event SYSTEM "repmgr-cluster-event.xml">
+<!ENTITY repmgr-cluster-cleanup SYSTEM "repmgr-cluster-cleanup.xml">
+<!ENTITY repmgr-daemon-status SYSTEM "repmgr-daemon-status.xml">
+<!ENTITY repmgr-daemon-start SYSTEM "repmgr-daemon-start.xml">
+<!ENTITY repmgr-daemon-stop SYSTEM "repmgr-daemon-stop.xml">
+<!ENTITY repmgr-daemon-pause SYSTEM "repmgr-daemon-pause.xml">
+<!ENTITY repmgr-daemon-unpause SYSTEM "repmgr-daemon-unpause.xml">
+
+<!ENTITY appendix-release-notes  SYSTEM "appendix-release-notes.xml">
+<!ENTITY appendix-faq      SYSTEM "appendix-faq.xml">
+<!ENTITY appendix-signatures      SYSTEM "appendix-signatures.xml">
+<!ENTITY appendix-packages      SYSTEM "appendix-packages.xml">
+<!ENTITY appendix-support SYSTEM "appendix-support.xml">
+
+<!ENTITY bookindex  SYSTEM "bookindex.xml">
+
