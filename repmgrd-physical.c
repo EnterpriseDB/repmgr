@@ -116,6 +116,7 @@ static const char *format_failover_state(FailoverState failover_state);
 static ElectionResult execute_failover_validation_command(t_node_info *node_info);
 static void parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out);
 static bool check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info);
+static void check_witness_attached(t_node_info *node_info);
 
 static t_child_node_info *append_child_node_record(t_child_node_info_list *nodes, int node_id, const char *node_name, NodeAttached attached);
 static void remove_child_node_record(t_child_node_info_list *nodes, int node_id);
@@ -333,6 +334,14 @@ monitor_streaming_primary(void)
 												cell->node_info->node_name,
 												cell->node_info->attached == NODE_ATTACHED ? NODE_ATTACHED : NODE_ATTACHED_UNKNOWN);
 
+				/*
+				 * witness will not be "attached" in the normal way
+				 */
+				if (cell->node_info->type == WITNESS)
+				{
+					check_witness_attached(cell->node_info);
+				}
+
 				if (cell->node_info->attached == NODE_ATTACHED)
 				{
 					log_info(_("child node \"%s\" (ID: %i) is attached"),
@@ -342,7 +351,7 @@ monitor_streaming_primary(void)
 				else
 				{
 					log_info(_("child node \"%s\" (ID: %i) is not yet attached"),
-							 cell->node_info->node_name,
+								 cell->node_info->node_name,
 							 cell->node_info->node_id);
 				}
 			}
@@ -808,6 +817,15 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 	{
 		t_child_node_info *local_child_node_rec;
 		bool local_child_node_rec_found = false;
+
+
+		/*
+		 * witness will not be "attached" in the normal way
+		 */
+		if (cell->node_info->type == WITNESS)
+		{
+			check_witness_attached(cell->node_info);
+		}
 
 		log_debug("child node: %i; attached: %s",
 				  cell->node_info->node_id,
@@ -4881,6 +4899,33 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 
 
 	return can_follow;
+}
+
+
+static void
+check_witness_attached(t_node_info *node_info)
+{
+	/*
+	 * connect and check upstream node id; at this point we don't care if it's
+	 * not reachable, only whether we can mark it as attached or not.
+	 */
+	PGconn *witness_conn = establish_db_connection_quiet(node_info->conninfo);
+
+	if (PQstatus(witness_conn) == CONNECTION_OK)
+	{
+		int witness_upstream_node_id = repmgrd_get_upstream_node_id(witness_conn);
+
+		log_debug("witness node %i's upstream node ID reported as %i",
+				  node_info->node_id,
+				  witness_upstream_node_id);
+
+		if (witness_upstream_node_id == local_node_info.node_id)
+		{
+			node_info->attached = NODE_ATTACHED;
+		}
+	}
+
+	PQfinish(witness_conn);
 }
 
 
