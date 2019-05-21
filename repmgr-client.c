@@ -2268,7 +2268,7 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 	}
 	else if (remote_node_rec.type == WITNESS)
 	{
-		/* unlikely to happen */
+		/* no upstream - unlikely to happen */
 		if (remote_node_rec.upstream_node_id == NO_UPSTREAM_NODE)
 		{
 			appendPQExpBufferStr(upstream, "! ");
@@ -2277,6 +2277,7 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 									node_info->node_name,
 									node_info->node_id);
 		}
+		/* mismatch between reported upstream and upstream in local node's metadata */
 		else if(node_info->upstream_node_id != remote_node_rec.upstream_node_id)
 		{
 			appendPQExpBufferStr(upstream, "! ");
@@ -2289,6 +2290,39 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 										node_info->node_id,
 										remote_node_rec.upstream_node_name,
 										node_info->upstream_node_name);
+			}
+		}
+		else
+		{
+			t_node_info upstream_node_rec = T_NODE_INFO_INITIALIZER;
+			RecordStatus upstream_node_rec_found = get_node_record(node_info->conn,
+																   node_info->upstream_node_id,
+																   &upstream_node_rec);
+
+			if (upstream_node_rec_found != RECORD_FOUND)
+			{
+				appendPQExpBufferStr(upstream, "? ");
+				item_list_append_format(warnings,
+										"unable to find record for upstream node ID %i",
+										node_info->upstream_node_id);
+
+			}
+			else
+			{
+				PGconn *upstream_conn = establish_db_connection_quiet(upstream_node_rec.conninfo);
+
+				if (PQstatus(upstream_conn) != CONNECTION_OK)
+				{
+					appendPQExpBufferStr(upstream, "? ");
+					item_list_append_format(warnings,
+											"unable to connect to node \"%s\" (ID: %i)'s upstream node \"%s\" (ID: %i)",
+											node_info->node_name,
+											node_info->node_id,
+											upstream_node_rec.node_name,
+											upstream_node_rec.node_id);
+				}
+
+				PQfinish(upstream_conn);
 			}
 		}
 
