@@ -2266,7 +2266,37 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 		appendPQExpBufferStr(upstream,
 							 node_info->upstream_node_name);
 	}
-	else
+	else if (remote_node_rec.type == WITNESS)
+	{
+		/* unlikely to happen */
+		if (remote_node_rec.upstream_node_id == NO_UPSTREAM_NODE)
+		{
+			appendPQExpBufferStr(upstream, "! ");
+			item_list_append_format(warnings,
+									"node \"%s\" (ID: %i) is a witness but reports it has no upstream node",
+									node_info->node_name,
+									node_info->node_id);
+		}
+		else if(node_info->upstream_node_id != remote_node_rec.upstream_node_id)
+		{
+			appendPQExpBufferStr(upstream, "! ");
+
+			if (node_info->upstream_node_id != remote_node_rec.upstream_node_id)
+			{
+				item_list_append_format(warnings,
+										"node \"%s\" (ID: %i) reports a different upstream (reported: \"%s\", expected \"%s\")",
+										node_info->node_name,
+										node_info->node_id,
+										remote_node_rec.upstream_node_name,
+										node_info->upstream_node_name);
+			}
+		}
+
+		appendPQExpBufferStr(upstream,
+							 remote_node_rec.upstream_node_name);
+
+	}
+	else if (remote_node_rec.type == STANDBY)
 	{
 		if (node_info->upstream_node_id != NO_UPSTREAM_NODE && node_info->upstream_node_id == remote_node_rec.upstream_node_id)
 		{
