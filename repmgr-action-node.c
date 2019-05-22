@@ -2562,8 +2562,8 @@ do_node_rejoin(void)
 
 		for (;  i < config_file_options.node_rejoin_timeout; i++)
 		{
-			NodeStatus node_attached = is_downstream_node_attached(primary_conn,
-																   config_file_options.node_name);
+			NodeAttached node_attached = is_downstream_node_attached(primary_conn,
+														config_file_options.node_name);
 
 			if (node_attached == NODE_ATTACHED)
 			{
@@ -2613,7 +2613,7 @@ do_node_rejoin(void)
 	else
 	{
 		/* -W/--no-wait provided - check once */
-		NodeStatus node_attached = is_downstream_node_attached(primary_conn, config_file_options.node_name);
+		NodeAttached node_attached = is_downstream_node_attached(primary_conn, config_file_options.node_name);
 		if (node_attached == NODE_ATTACHED)
 			success = true;
 	}
