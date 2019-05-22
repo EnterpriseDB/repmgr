@@ -88,6 +88,14 @@
 			  warning if the node is not attached.
 			</para>
 		  </listitem>
+
+		  <listitem>
+            <para>
+			  <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>:
+			  prevent a standby from being cloned from a witness server.
+			</para>
+		  </listitem>
+
 		</itemizedlist>
 	  </para>
     </sect2>

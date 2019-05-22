@@ -440,8 +440,8 @@ RecoveryType get_recovery_type(PGconn *conn);
 int			get_primary_node_id(PGconn *conn);
 int			get_ready_archive_files(PGconn *conn, const char *data_directory);
 bool		identify_system(PGconn *repl_conn, t_system_identification *identification);
+uint64		system_identifier(PGconn *conn);
 TimeLineHistoryEntry *get_timeline_history(PGconn *repl_conn, TimeLineID tli);
-bool		get_child_nodes(PGconn *conn, int node_id, NodeInfoList *node_list);
 
 /* repmgrd shared memory functions */
 bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);
@@ -484,6 +484,7 @@ bool		get_primary_node_record(PGconn *conn, t_node_info *node_info);
 bool		get_all_node_records(PGconn *conn, NodeInfoList *node_list);
 void		get_downstream_node_records(PGconn *conn, int node_id, NodeInfoList *nodes);
 void		get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id, NodeInfoList *node_list);
+bool		get_child_nodes(PGconn *conn, int node_id, NodeInfoList *node_list);
 void		get_node_records_by_priority(PGconn *conn, NodeInfoList *node_list);
 bool		get_all_node_records_with_upstream(PGconn *conn, NodeInfoList *node_list);
 bool		get_downstream_nodes_with_missing_slot(PGconn *conn, int this_node_id, NodeInfoList *noede_list);

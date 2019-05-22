@@ -1551,12 +1551,12 @@ get_ready_archive_files(PGconn *conn, const char *data_directory)
 }
 
 
-
 bool
 identify_system(PGconn *repl_conn, t_system_identification *identification)
 {
 	PGresult   *res = NULL;
 
+	/* semicolon required here */
 	res = PQexec(repl_conn, "IDENTIFY_SYSTEM;");
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
@@ -1573,6 +1573,43 @@ identify_system(PGconn *repl_conn, t_system_identification *identification)
 
 	PQclear(res);
 	return true;
+}
+
+
+/*
+ * Return the system identifier by querying pg_control_system().
+ *
+ * Note there is a similar function in controldata.c ("get_system_identifier()")
+ * which reads the control file.
+ */
+uint64
+system_identifier(PGconn *conn)
+{
+	uint64		system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
+	PGresult   *res = NULL;
+
+	/*
+	 * pg_control_system() was introduced in PostgreSQL 9.6
+	 */
+	if (PQserverVersion(conn) < 90600)
+	{
+		return UNKNOWN_SYSTEM_IDENTIFIER;
+	}
+
+	res = PQexec(conn, "SELECT system_identifier FROM pg_catalog.pg_control_system()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, NULL, _("get_system_identifier(): unable to query pg_control_system()"));
+	}
+	else
+	{
+		system_identifier = atol(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return system_identifier;
 }
 
 

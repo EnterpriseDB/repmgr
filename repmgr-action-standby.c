@@ -4867,7 +4867,82 @@ check_source_server()
 
 		log_warning(_("repmgr extension not found on source node"));
 	}
+	else
+	{
+		/*
+		 * If upstream is not a standby, retrieve its node records
+		 * and attempt to connect to one; we'll then compare
+		 * that node's system identifier to that of the source
+		 * connection, to ensure we're cloning from a node which is
+		 * part of the physical replication cluster. This is mainly
+		 * to prevent cloning a standby from a witness server.
+		 *
+		 * Note that it doesn't matter if the node from the node record
+		 * list is the same as the source node; also if the source node
+		 * does not have any node records, there's not a lot we can do.
+		 *
+		 * This check will be only carried out on PostgreSQL 9.6 and
+		 * later, as this is a precautionary check and we can retrieve the system
+		 * identifier with a normal connection.
+		 */
+		if (get_recovery_type(source_conn) == RECTYPE_PRIMARY && PQserverVersion(source_conn) >= 90600)
+		{
+			uint64		source_system_identifier = system_identifier(source_conn);
 
+			if (source_system_identifier != UNKNOWN_SYSTEM_IDENTIFIER)
+			{
+				NodeInfoList all_nodes = T_NODE_INFO_LIST_INITIALIZER;
+				NodeInfoListCell *cell = NULL;
+				get_all_node_records(source_conn, &all_nodes);
+
+				log_debug("%i node records returned by source node", all_nodes.node_count);
+
+				/* loop through its nodes table */
+
+				for (cell = all_nodes.head; cell; cell = cell->next)
+				{
+
+					/* exclude the witness node, as its system identifier will be different, of course */
+					if (cell->node_info->type == WITNESS)
+						continue;
+
+					cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
+					if (PQstatus(cell->node_info->conn) == CONNECTION_OK)
+					{
+						uint64		test_system_identifier = system_identifier(cell->node_info->conn);
+						PQfinish(cell->node_info->conn);
+
+						if (test_system_identifier != UNKNOWN_SYSTEM_IDENTIFIER)
+						{
+							if (source_system_identifier != test_system_identifier)
+							{
+								log_error(_("source node's system identifier does not match other nodes in the replication cluster"));
+								log_detail(_("source node's system identifier is %lu, replication cluster member \"%s\"'s system identifier is %lu"),
+										   source_system_identifier,
+										   cell->node_info->node_name,
+										   test_system_identifier);
+								log_hint(_("check that the source node is not a witness server"));
+								PQfinish(source_conn);
+								source_conn = NULL;
+
+								if (superuser_conn != NULL)
+									PQfinish(superuser_conn);
+
+								exit(ERR_BAD_CONFIG);
+							}
+							/* identifiers match - our work here is done */
+							break;
+						}
+					}
+					else
+					{
+						PQfinish(cell->node_info->conn);
+					}
+				}
+				clear_node_info_list(&all_nodes);
+			}
+		}
+	}
 	/* Fetch the source's data directory */
 	get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
 
