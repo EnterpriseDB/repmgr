@@ -933,11 +933,10 @@ try_reconnect(PGconn **conn, t_node_info *node_info)
 			log_notice(_("node %i has recovered, reconnecting"), node_info->node_id);
 
 			/*
-			 * XXX we should also handle the case where node is pingable but
-			 * connection denied due to connection exhaustion - fall back to
-			 * degraded monitoring? - make that configurable
+			 * Note: we could also handle the case where node is pingable but
+			 * connection denied due to connection exhaustion, by falling back to
+			 * degraded monitoring (make configurable)
 			 */
-
 			our_conn = establish_db_connection_by_params(&conninfo_params, false);
 
 			if (PQstatus(our_conn) == CONNECTION_OK)
@@ -948,7 +947,7 @@ try_reconnect(PGconn **conn, t_node_info *node_info)
 
 				if (PQstatus(*conn) == CONNECTION_BAD)
 				{
-					log_verbose(LOG_INFO, "original connection handle returned CONNECTION_BAD, using new connection");
+					log_verbose(LOG_INFO, _("original connection handle returned CONNECTION_BAD, using new connection"));
 					close_connection(conn);
 					*conn = our_conn;
 				}
@@ -960,7 +959,7 @@ try_reconnect(PGconn **conn, t_node_info *node_info)
 
 					if (ping_result != PGRES_TUPLES_OK)
 					{
-						log_info("original connection no longer available, using new connection");
+						log_info(_("original connection no longer available, using new connection"));
 						close_connection(conn);
 						*conn = our_conn;
 					}
@@ -978,7 +977,9 @@ try_reconnect(PGconn **conn, t_node_info *node_info)
 			}
 
 			close_connection(&our_conn);
-			log_notice(_("unable to reconnect to node %i"), node_info->node_id);
+			log_notice(_("unable to reconnect to node \"%s\" (ID: %i)"),
+					   node_info->node_name,
+					   node_info->node_id);
 		}
 
 		if (i + 1 < max_attempts)

@@ -766,9 +766,8 @@ repmgrd_pause(PG_FUNCTION_ARGS)
 
 	if (file == NULL)
 	{
-		elog(DEBUG1, "unable to allocate %s", REPMGRD_STATE_FILE);
+		elog(WARNING, "unable to allocate %s", REPMGRD_STATE_FILE);
 
-		// XXX anything else we can do? log?
 		PG_RETURN_VOID();
 	}
 
@@ -783,8 +782,10 @@ repmgrd_pause(PG_FUNCTION_ARGS)
 					 pause ? 1 : 0);
 	LWLockRelease(shared_state->lock);
 
-	// XXX check success
-	fwrite(buf.data, strlen(buf.data) + 1, 1, file);
+	if (fwrite(buf.data, strlen(buf.data) + 1, 1, file) != strlen(buf.data) + 1)
+	{
+		elog(WARNING, _("unable to write to file %s"), REPMGRD_STATE_FILE);
+	}
 
 
 	resetStringInfo(&buf);
