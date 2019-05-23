@@ -10,14 +10,12 @@
           to its advertised upstream node
         repmgr: prevent a standby being cloned from a witness server (Ian)
         repmgrd: monitor standbys attached to primary (Ian)
-        general: documentation converted to DocBook XML format (Ian)
-
-4.3.1   2019-??-??
         repmgr: ensure BDR2-specific functionality cannot be used on
           BDR3 and later (Ian)
         repmgr: improve "--dry-run" behaviour in barman mode (Ian)
         repmgr: fix data directory permissions issue in barman mode where
           an existing directory is being overwritten (Ian)
+        general: documentation converted to DocBook XML format (Ian)
 
 4.3     2019-04-02
         repmgr: add "daemon (start|stop)" command; GitHub #528 (Ian)

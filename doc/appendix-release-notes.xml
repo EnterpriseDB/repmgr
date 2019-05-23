@@ -27,6 +27,39 @@
 
           <listitem>
             <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+              if <option>--siblings-follow</option> is not supplied, list all nodes which repmgr considers
+              to be siblings (this will include the witness server, if in use), and
+              which will remain attached to the old primary.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+              ignore nodes which are unreachable and marked as inactive.
+              Previously it would abort if any node was unreachable,
+              as that means it was unable to check if repmgrd is running.
+            </para>
+            <para>
+              However if the node has been marked as inactive in the repmgr metadata, it's
+              reasonable to assume the node is no longer part of the replication cluster
+              and does not need to be checked.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>
+              and <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
+              when executing with the <option>--dry-run</option>, continue checks as far as possible
+              even if errors are encountered.
+            </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
               <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>: add <option>--siblings-follow</option> (similar to
               <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>).
             </para>
@@ -121,80 +154,6 @@
       </para>
     </sect2>
 
-   <sect2>
-      <title>Other</title>
-      <para>
-        <itemizedlist>
-          <listitem>
-            <para>
-              The &repmgr; documentation has been converted to DocBook XML format,
-              as currently used by the main PostgreSQL project.
-              This means it can now be built against any PostgreSQL version from 9.5
-              (previously it was not possible to build the documentation against
-              PostgreSQL 10 or later), and makes it easier to provide the documentation
-              in other formats such as PDF.
-            </para>
-            <para>
-              For further details see: <xref linkend="installation-build-repmgr-docs"/>
-            </para>
-          </listitem>
-        </itemizedlist>
-      </para>
-   </sect2>
-  </sect1>
-
-  <sect1 id="release-4.3.1">
-    <title>Release 4.3.1</title>
-    <para><emphasis>???</emphasis></para>
-
-    <para>
-      &repmgr; 4.3.1 will be a minor release. Note that the changes listed here
-      are listed for inclusion in a potential 4.3.1 release, but it is not yet
-      certain whether this will take place, in which case all changes will
-      be folded into the &repmgr; 4.4 release.
-    </para>
-
-    <sect2>
-      <title>repmgr client enhancements</title>
-      <para>
-        <itemizedlist>
-          <listitem>
-            <para>
-              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
-              if <option>--siblings-follow</option> is not supplied, list all nodes which repmgr considers
-              to be siblings (this will include the witness server, if in use), and
-              which will remain attached to the old primary.
-            </para>
-          </listitem>
-
-          <listitem>
-            <para>
-              &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
-              ignore nodes which are unreachable and marked as inactive.
-              Previously it would abort if any node was unreachable,
-              as that means it was unable to check if repmgrd is running.
-            </para>
-            <para>
-              However if the node has been marked as inactive in the repmgr metadata, it's
-              reasonable to assume the node is no longer part of the replication cluster
-              and does not need to be checked.
-            </para>
-          </listitem>
-
-          <listitem>
-            <para>
-              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>
-              and <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
-              when executing with the <option>--dry-run</option>, continue checks as far as possible
-              even if errors are encountered.
-            </para>
-          </listitem>
-
-
-        </itemizedlist>
-      </para>
-    </sect2>
-
     <sect2>
       <title>Bug fixes</title>
       <para>
@@ -244,7 +203,29 @@
 	  </para>
     </sect2>
 
+
+   <sect2>
+      <title>Other</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              The &repmgr; documentation has been converted to DocBook XML format,
+              as currently used by the main PostgreSQL project.
+              This means it can now be built against any PostgreSQL version from 9.5
+              (previously it was not possible to build the documentation against
+              PostgreSQL 10 or later), and makes it easier to provide the documentation
+              in other formats such as PDF.
+            </para>
+            <para>
+              For further details see: <xref linkend="installation-build-repmgr-docs"/>
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+   </sect2>
   </sect1>
+
 
   <sect1 id="release-4.3">
     <title>Release 4.3</title>
