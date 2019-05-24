@@ -481,28 +481,6 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
 
     <sect2 id="packages-old-versions-rhel-centos" xreflabel="old RHEL/CentOS package versions">
       <title>RHEL/CentOS</title>
-      <para>
-        Old RPM packages (<literal>3.2</literal> and later) can be retrieved from the
-        (deprecated) 2ndQuadrant repository at
-        <ulink url="http://packages.2ndquadrant.com/">http://packages.2ndquadrant.com/</ulink>
-        by installing the appropriate repository RPM:
-      </para>
-
-      <itemizedlist spacing="compact" mark="bullet">
-
-        <listitem>
-          <simpara>
-            <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm</ulink>
-          </simpara>
-        </listitem>
-
-        <listitem>
-          <simpara>
-            <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm</ulink>
-          </simpara>
-        </listitem>
-
-      </itemizedlist>
 
       <para>
         Old versions can be located with e.g.:
@@ -519,6 +497,32 @@ repmgr96-4.1.1-0.0git320.g5113ab0.1.el7.x86_64.rpm</programlisting>
         <programlisting>
           yum install repmgr96-4.0.6-1.rhel6</programlisting>
       </para>
+
+      <sect3 id="packages-old-versions-rhel-centos-repmgr3">
+        <title>repmgr 3 packages</title>
+        <para>
+          Old &repmgr; 3 RPM packages (<literal>3.2</literal> and later) can be retrieved from the
+          (deprecated) 2ndQuadrant repository at
+          <ulink url="http://packages.2ndquadrant.com/repmgr/yum/">http://packages.2ndquadrant.com/repmgr/yum/</ulink>
+          by installing the appropriate repository RPM:
+        </para>
+
+        <itemizedlist spacing="compact" mark="bullet">
+
+          <listitem>
+            <simpara>
+              <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-fedora-1.0-1.noarch.rpm</ulink>
+            </simpara>
+          </listitem>
+
+          <listitem>
+            <simpara>
+              <ulink url="http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm">http://packages.2ndquadrant.com/repmgr/yum-repo-rpms/repmgr-rhel-1.0-1.noarch.rpm</ulink>
+            </simpara>
+          </listitem>
+
+        </itemizedlist>
+      </sect3>
 
     </sect2>
   </sect1>
