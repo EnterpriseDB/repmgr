@@ -77,14 +77,31 @@ Makefile: Makefile.in config.status configure
 Makefile.global: Makefile.global.in config.status configure
 	./config.status $@
 
+doc: repmgr_version.h
+	$(MAKE) -C doc html
+
+doc-repmgr.html: repmgr_version.h
+	$(MAKE) -C doc repmgr.html
+
+doc-repmgr-A4.pdf: repmgr_version.h
+	$(MAKE) -C doc repmgr-A4.pdf
+
+doc-repmgr-US.pdf: repmgr_version.h
+	$(MAKE) -C doc repmgr-US.pdf
+
+install-doc: doc
+	$(MAKE) -C doc install
+
 clean: additional-clean
 
 maintainer-clean: additional-maintainer-clean
 
 additional-clean:
 	rm -f *.o
+	$(MAKE) -C doc clean
 
 additional-maintainer-clean: clean
+	$(MAKE) -C doc maintainer-clean
 	rm -f config.status config.log
 	rm -f config.h
 	rm -f repmgr_version.h
@@ -104,3 +121,4 @@ installdirs-scripts:
 .PHONY: installdirs-scripts
 endif
 
+.PHONY: doc doc-repmgr.html doc-repmgr-A4.pdf doc-repmgr-US.pdf install-doc

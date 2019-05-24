@@ -91,6 +91,9 @@ install: html
 clean:
 	rm -f html-stamp
 	rm -f HTML.index $(GENERATED_XML)
+	rm -f repmgr.html
+	rm -f repmgr-A4.pdf
+	rm -f repmgr-US.pdf
 
 maintainer-clean:
 	rm -rf html

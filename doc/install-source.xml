@@ -260,7 +260,7 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
    <para>
      To build the documentation as HTML, execute:
    <programlisting>
-    cd doc/ &amp;&amp; make</programlisting>
+    ./configure &amp;&amp; make doc</programlisting>
    </para>
    <para>
      The generated HTML files will be placed in the <filename>doc/html</filename>
@@ -271,14 +271,14 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
      To build the documentation as a single HTML file, after configuring and building
      the main &repmgr; source as described above, execute:
    <programlisting>
-    cd doc/ &amp;&amp; make repmgr.html</programlisting>
+     ./configure &amp;&amp; make doc-repmgr.html</programlisting>
    </para>
 
    <para>
      To build the documentation as a PDF file, after configuring and building
      the main &repmgr; source as described above, execute:
    <programlisting>
-    cd doc/ &amp;&amp; make repmgr-A4.pdf</programlisting>
+     ./configure &amp;&amp; make doc-repmgr-A4.pdf</programlisting>
    </para>
 
 
