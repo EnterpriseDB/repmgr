@@ -5448,45 +5448,19 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	 * If using pg_basebackup, ensure sufficient replication connections can
 	 * be made. There's no guarantee they'll still be available by the time
 	 * pg_basebackup is executed, but there's nothing we can do about that.
+	 * This check is mainly intended to warn about missing replication permissions
+	 * and/or lack of available walsenders.
 	 */
 	if (mode == pg_basebackup)
 	{
 
 		PGconn	  **connections;
 		int			i;
-		int			min_replication_connections = 1,
-					possible_replication_connections = 0;
+		int			available_wal_senders;
+		int			min_replication_connections = 1;
 
 		t_conninfo_param_list repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
-		/*
-		 * Make a copy of the connection parameter arrays, and append
-		 * "replication"
-		 */
-
-		initialize_conninfo_params(&repl_conninfo, false);
-
-		conn_to_param_list(conn, &repl_conninfo);
-
-		param_set(&repl_conninfo, "replication", "1");
-
-		if (runtime_options.replication_user[0] != '\0')
-		{
-			param_set(&repl_conninfo, "user", runtime_options.replication_user);
-		}
-		else if (upstream_repluser[0] != '\0')
-		{
-			param_set(&repl_conninfo, "user", upstream_repluser);
-		}
-		else if (upstream_node_record->repluser[0] != '\0')
-		{
-			param_set(&repl_conninfo, "user", upstream_node_record->repluser);
-		}
-
-		if (strcmp(param_get(&repl_conninfo, "user"), upstream_user) != 0)
-		{
-			param_set(&repl_conninfo, "dbname", "replication");
-		}
 
 		/*
 		 * work out how many replication connections are required (1 or 2)
@@ -5495,59 +5469,116 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		if (xlog_stream == true)
 			min_replication_connections += 1;
 
-		log_verbose(LOG_NOTICE, "checking for available walsenders on source node (%i required)",
-					min_replication_connections);
+		log_notice(_("checking for available walsenders on the source node (%i required)"),
+				   min_replication_connections);
 
-		connections = pg_malloc0(sizeof(PGconn *) * min_replication_connections);
 
 		/*
-		 * Attempt to create the minimum number of required concurrent
-		 * connections
+		 * check how many free walsenders are available
 		 */
-		for (i = 0; i < min_replication_connections; i++)
+		get_node_replication_stats(conn, upstream_node_record);
+
+		available_wal_senders = upstream_node_record->max_wal_senders -
+			upstream_node_record->attached_wal_receivers;
+
+		if (available_wal_senders < min_replication_connections)
 		{
-			PGconn	   *replication_conn;
-
-			replication_conn = establish_db_connection_by_params(&repl_conninfo, false);
-
-			if (PQstatus(replication_conn) == CONNECTION_OK)
-			{
-				connections[i] = replication_conn;
-				possible_replication_connections++;
-			}
-		}
-
-		/* Close previously created connections */
-		for (i = 0; i < possible_replication_connections; i++)
-		{
-			PQfinish(connections[i]);
-		}
-
-		pfree(connections);
-		free_conninfo_params(&repl_conninfo);
-
-		if (possible_replication_connections < min_replication_connections)
-		{
-			config_ok = false;
-
-			/*
-			 * XXX at this point we could check
-			 * current_setting('max_wal_senders) - COUNT(*) FROM
-			 * pg_stat_replication; if >= min_replication_connections we could
-			 * infer possible authentication error / lack of permissions.
-			 *
-			 * Alternatively call PQconnectStart() and poll for
-			 * presence/absence of CONNECTION_AUTH_OK ?
-			 */
-			log_error(_("unable to establish necessary replication connections"));
-
-			log_hint(_("increase \"max_wal_senders\" by at least %i"),
-					 min_replication_connections - possible_replication_connections);
+			log_error(_("insufficient free walsenders on the source node"));
+			log_detail(_("%i free walsenders required, %i free walsenders available"),
+					   min_replication_connections,
+					   available_wal_senders);
+			log_hint(_("increase \"max_wal_senders\" on the source node by at least %i"),
+					 (upstream_node_record->attached_wal_receivers + min_replication_connections) - upstream_node_record->max_wal_senders);
 
 			if (exit_on_error == true)
 			{
 				PQfinish(conn);
 				exit(ERR_BAD_CONFIG);
+			}
+		}
+		else
+		{
+			/*
+			 * Sufficient free walsenders appear to be available, check if
+			 * we can connect to them. We check that the required number
+			 * of connections can be made e.g. to rule out a very restrictive
+			 * "CONNECTION LIMIT" setting.
+			 */
+
+			int  possible_replication_connections = 0;
+
+			log_notice(_("checking replication connections can be made to the source server (%i required)"),
+					   min_replication_connections);
+
+			/*
+			 * Make a copy of the connection parameter arrays, and append
+			 * "replication".
+			 */
+			initialize_conninfo_params(&repl_conninfo, false);
+
+			conn_to_param_list(conn, &repl_conninfo);
+
+			param_set(&repl_conninfo, "replication", "1");
+
+			if (runtime_options.replication_user[0] != '\0')
+			{
+				param_set(&repl_conninfo, "user", runtime_options.replication_user);
+			}
+			else if (upstream_repluser[0] != '\0')
+			{
+				param_set(&repl_conninfo, "user", upstream_repluser);
+			}
+			else if (upstream_node_record->repluser[0] != '\0')
+			{
+				param_set(&repl_conninfo, "user", upstream_node_record->repluser);
+			}
+
+			if (strcmp(param_get(&repl_conninfo, "user"), upstream_user) != 0)
+			{
+				param_set(&repl_conninfo, "dbname", "replication");
+			}
+
+			connections = pg_malloc0(sizeof(PGconn *) * min_replication_connections);
+
+			/*
+			 * Attempt to create the minimum number of required concurrent
+			 * connections
+			 */
+			for (i = 0; i < min_replication_connections; i++)
+			{
+				PGconn	   *replication_conn;
+
+				replication_conn = establish_db_connection_by_params(&repl_conninfo, false);
+
+				if (PQstatus(replication_conn) == CONNECTION_OK)
+				{
+					connections[i] = replication_conn;
+					possible_replication_connections++;
+				}
+			}
+
+			/* Close previously created connections */
+			for (i = 0; i < possible_replication_connections; i++)
+			{
+				PQfinish(connections[i]);
+			}
+
+			pfree(connections);
+			free_conninfo_params(&repl_conninfo);
+
+			if (possible_replication_connections < min_replication_connections)
+			{
+				config_ok = false;
+
+				log_error(_("unable to establish necessary replication connections"));
+
+				log_hint(_("check replication permissions on the source server"));
+
+				if (exit_on_error == true)
+				{
+					PQfinish(conn);
+					exit(ERR_BAD_CONFIG);
+				}
 			}
 		}
 
