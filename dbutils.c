@@ -1600,7 +1600,7 @@ system_identifier(PGconn *conn)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_db_error(conn, NULL, _("get_system_identifier(): unable to query pg_control_system()"));
+		log_db_error(conn, NULL, _("system_identifier(): unable to query pg_control_system()"));
 	}
 	else
 	{
@@ -3407,6 +3407,10 @@ clear_node_info_list(NodeInfoList *nodes)
 	while (cell != NULL)
 	{
 		next_cell = cell->next;
+
+		if (cell->node_info->replication_info != NULL)
+			pfree(cell->node_info->replication_info);
+
 		pfree(cell->node_info);
 		pfree(cell);
 		cell = next_cell;
@@ -5073,6 +5077,7 @@ init_replication_info(ReplInfo *replication_info)
 {
 	memset(replication_info->current_timestamp, 0, sizeof(replication_info->current_timestamp));
 	replication_info->in_recovery = false;
+	replication_info->timeline_id = UNKNOWN_TIMELINE_ID;
 	replication_info->last_wal_receive_lsn = InvalidXLogRecPtr;
 	replication_info->last_wal_replay_lsn = InvalidXLogRecPtr;
 	memset(replication_info->last_xact_replay_timestamp, 0, sizeof(replication_info->last_xact_replay_timestamp));
@@ -5256,6 +5261,38 @@ get_replication_lag_seconds(PGconn *conn)
 
 	PQclear(res);
 	return lag_seconds;
+}
+
+
+
+TimeLineID
+get_node_timeline(PGconn *conn)
+{
+	TimeLineID timeline_id  = UNKNOWN_TIMELINE_ID;
+	PGresult   *res = NULL;
+
+	/*
+	 * PG_control_checkpoint() was introduced in PostgreSQL 9.6
+	 */
+	if (PQserverVersion(conn) < 90600)
+	{
+		return UNKNOWN_TIMELINE_ID;
+	}
+
+	res = PQexec(conn, "SELECT timeline_id FROM pg_catalog.pg_control_checkpoint()");
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, NULL, _("get_node_timeline(): unable to query pg_control_system()"));
+	}
+	else
+	{
+		timeline_id = atoi(PQgetvalue(res, 0, 0));
+	}
+
+	PQclear(res);
+
+	return timeline_id;
 }
 
 

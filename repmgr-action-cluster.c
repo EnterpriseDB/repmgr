@@ -24,7 +24,7 @@
 #include "repmgr-client-global.h"
 #include "repmgr-action-cluster.h"
 
-#define SHOW_HEADER_COUNT 8
+#define SHOW_HEADER_COUNT 9
 
 typedef enum
 {
@@ -35,6 +35,7 @@ typedef enum
 	SHOW_UPSTREAM_NAME,
 	SHOW_LOCATION,
 	SHOW_PRIORITY,
+	SHOW_TIMELINE_ID,
 	SHOW_CONNINFO
 }			ShowHeader;
 
@@ -113,9 +114,15 @@ do_cluster_show(void)
 	strncpy(headers_show[SHOW_LOCATION].title, _("Location"), MAXLEN);
 
 	if (runtime_options.compact == true)
+	{
 		strncpy(headers_show[SHOW_PRIORITY].title, _("Prio."), MAXLEN);
+		strncpy(headers_show[SHOW_TIMELINE_ID].title, _("TLI"), MAXLEN);
+	}
 	else
+	{
 		strncpy(headers_show[SHOW_PRIORITY].title, _("Priority"), MAXLEN);
+		strncpy(headers_show[SHOW_TIMELINE_ID].title, _("Timeline"), MAXLEN);
+	}
 
 	strncpy(headers_show[SHOW_CONNINFO].title, _("Connection string"), MAXLEN);
 
@@ -128,6 +135,16 @@ do_cluster_show(void)
 	{
 		headers_show[i].display = true;
 
+		/* Don't display timeline on pre-9.6 clusters  */
+		if (i == SHOW_TIMELINE_ID)
+		{
+			if (PQserverVersion(conn) < 90600)
+			{
+				headers_show[i].display = false;
+			}
+		}
+
+		/* if --compact provided, don't display conninfo */
 		if (runtime_options.compact == true)
 		{
 			if (i == SHOW_CONNINFO)
@@ -135,6 +152,7 @@ do_cluster_show(void)
 				headers_show[i].display = false;
 			}
 		}
+
 
 		if (headers_show[i].display == true)
 		{
@@ -153,6 +171,15 @@ do_cluster_show(void)
 		PQExpBufferData node_status;
 		PQExpBufferData upstream;
 		PQExpBufferData buf;
+
+		cell->node_info->replication_info = palloc0(sizeof(ReplInfo));
+		if (cell->node_info->replication_info == NULL)
+		{
+			log_error(_("unable to allocate memory"));
+			exit(ERR_INTERNAL);
+		}
+
+		init_replication_info(cell->node_info->replication_info);
 
 		cell->node_info->conn = establish_db_connection_quiet(cell->node_info->conninfo);
 
@@ -175,6 +202,11 @@ do_cluster_show(void)
 										"unable to connect to node \"%s\" (ID: %i)",
 										cell->node_info->node_name, cell->node_info->node_id);
 			}
+		}
+		else
+		{
+			/* NOP on pre-9.6 servers */
+			cell->node_info->replication_info->timeline_id = get_node_timeline(cell->node_info->conn);
 		}
 
 		initPQExpBuffer(&node_status);
@@ -212,7 +244,18 @@ do_cluster_show(void)
 
 		headers_show[SHOW_LOCATION].cur_length = strlen(cell->node_info->location);
 
-
+		if (cell->node_info->replication_info->timeline_id == UNKNOWN_TIMELINE_ID)
+		{
+			/* display "?" */
+			headers_show[SHOW_PRIORITY].cur_length = 1;
+		}
+		else
+		{
+			initPQExpBuffer(&buf);
+			appendPQExpBuffer(&buf, "%i", cell->node_info->replication_info->timeline_id);
+			headers_show[SHOW_PRIORITY].cur_length = strlen(buf.data);
+			termPQExpBuffer(&buf);
+		}
 
 		headers_show[SHOW_CONNINFO].cur_length = strlen(cell->node_info->conninfo);
 
@@ -276,6 +319,14 @@ do_cluster_show(void)
 			printf("| %-*s ", headers_show[SHOW_UPSTREAM_NAME].max_length, cell->node_info->upstream_node_name);
 			printf("| %-*s ", headers_show[SHOW_LOCATION].max_length, cell->node_info->location);
 			printf("| %-*i ", headers_show[SHOW_PRIORITY].max_length, cell->node_info->priority);
+
+			if (headers_show[SHOW_TIMELINE_ID].display == true)
+			{
+				if (cell->node_info->replication_info->timeline_id == UNKNOWN_TIMELINE_ID)
+					printf("| %-*c ", headers_show[SHOW_TIMELINE_ID].max_length, '?');
+				else
+					printf("| %-*i ", headers_show[SHOW_TIMELINE_ID].max_length, (int)cell->node_info->replication_info->timeline_id);
+			}
 
 			if (headers_show[SHOW_CONNINFO].display == true)
 			{

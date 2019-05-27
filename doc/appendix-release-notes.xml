@@ -97,6 +97,13 @@
 
 		  <listitem>
             <para>
+              <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>:
+			  display each node's timeline ID (PostgreSQL 9.6 and later only).
+			</para>
+		  </listitem>
+
+		  <listitem>
+            <para>
               <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
 			  and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
 			  show the upstream node name as reported by each individual node - this helps visualise

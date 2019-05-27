@@ -164,8 +164,28 @@ typedef struct s_extension_versions {
 	UNKNOWN_SERVER_VERSION_NUM \
 }
 
+
+typedef struct
+{
+	char		current_timestamp[MAXLEN];
+	bool		in_recovery;
+	TimeLineID	timeline_id;
+	XLogRecPtr	last_wal_receive_lsn;
+	XLogRecPtr	last_wal_replay_lsn;
+	char		last_xact_replay_timestamp[MAXLEN];
+	int			replication_lag_time;
+	bool		receiving_streamed_wal;
+	bool		wal_replay_paused;
+	int			upstream_last_seen;
+	int			upstream_node_id;
+} ReplInfo;
+
 /*
- * Struct to store node information
+ * Struct to store node information.
+ *
+ * The first section represents the contents of the "repmgr.nodes"
+ * table; subsequent section contain information collated in
+ * various contexts.
  */
 typedef struct s_node_info
 {
@@ -199,6 +219,8 @@ typedef struct s_node_info
 	int			total_replication_slots;
 	int			active_replication_slots;
 	int			inactive_replication_slots;
+	/* replication info */
+	ReplInfo   *replication_info;
 } t_node_info;
 
 
@@ -225,7 +247,8 @@ typedef struct s_node_info
 	/* for ad-hoc use e.g. when working with a list of nodes */ \
 	"", true, true,	\
 	/* various statistics */ \
-	-1, -1, -1, -1, -1, -1					\
+	-1, -1, -1, -1, -1, -1,	\
+	NULL \
 }
 
 
@@ -338,19 +361,7 @@ typedef struct BdrNodeInfoList
 	0 \
 }
 
-typedef struct
-{
-	char		current_timestamp[MAXLEN];
-	bool		in_recovery;
-	XLogRecPtr	last_wal_receive_lsn;
-	XLogRecPtr	last_wal_replay_lsn;
-	char		last_xact_replay_timestamp[MAXLEN];
-	int			replication_lag_time;
-	bool		receiving_streamed_wal;
-	bool		wal_replay_paused;
-	int			upstream_last_seen;
-	int			upstream_node_id;
-} ReplInfo;
+
 
 typedef struct
 {
@@ -602,6 +613,7 @@ XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
 void		init_replication_info(ReplInfo *replication_info);
 bool		get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);
+TimeLineID	get_node_timeline(PGconn *conn);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 NodeAttached is_downstream_node_attached(PGconn *conn, char *node_name);
 void		set_upstream_last_seen(PGconn *conn, int upstream_node_id);
