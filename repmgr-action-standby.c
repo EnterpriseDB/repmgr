@@ -4766,7 +4766,7 @@ check_source_server()
 	char		cluster_size[MAXLEN];
 	char	   *connstr = NULL;
 
-	t_node_info node_record = T_NODE_INFO_INITIALIZER;
+	t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	ExtensionStatus extension_status = REPMGR_UNKNOWN;
 
@@ -5026,17 +5026,19 @@ check_source_server()
 
 	if (upstream_node_id != UNKNOWN_NODE_ID)
 	{
-		record_status = get_node_record(source_conn, upstream_node_id, &node_record);
+		t_node_info other_node_record = T_NODE_INFO_INITIALIZER;
+
+		record_status = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
 		if (record_status == RECORD_FOUND)
 		{
 			t_conninfo_param_list upstream_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 			char	   *upstream_conninfo_user;
 
 			initialize_conninfo_params(&upstream_conninfo, false);
-			parse_conninfo_string(node_record.conninfo, &upstream_conninfo, NULL, false);
+			parse_conninfo_string(upstream_node_record.conninfo, &upstream_conninfo, NULL, false);
 
-			strncpy(recovery_conninfo_str, node_record.conninfo, MAXLEN);
-			strncpy(upstream_repluser, node_record.repluser, NAMEDATALEN);
+			strncpy(recovery_conninfo_str, upstream_node_record.conninfo, MAXLEN);
+			strncpy(upstream_repluser, upstream_node_record.repluser, NAMEDATALEN);
 
 			upstream_conninfo_user = param_get(&upstream_conninfo, "user");
 			if (upstream_conninfo_user != NULL)
@@ -5057,12 +5059,12 @@ check_source_server()
 		 * check that there's no existing node record with the same name but
 		 * different ID
 		 */
-		record_status = get_node_record_by_name(source_conn, config_file_options.node_name, &node_record);
+		record_status = get_node_record_by_name(source_conn, config_file_options.node_name, &other_node_record);
 
-		if (record_status == RECORD_FOUND && node_record.node_id != config_file_options.node_id)
+		if (record_status == RECORD_FOUND && other_node_record.node_id != config_file_options.node_id)
 		{
 			log_error(_("another node (ID: %i) already exists with node_name \"%s\""),
-					  node_record.node_id,
+					  other_node_record.node_id,
 					  config_file_options.node_name);
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
@@ -5073,7 +5075,7 @@ check_source_server()
 	if (source_server_version_num < 90400)
 		check_93_config();
 
-	check_upstream_config(source_conn, source_server_version_num, &node_record, true);
+	check_upstream_config(source_conn, source_server_version_num, &upstream_node_record, true);
 }
 
 
@@ -5186,7 +5188,7 @@ check_source_server_via_barman()
  */
 
 static bool
-check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_info, bool exit_on_error)
+check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstream_node_record, bool exit_on_error)
 {
 	int			i;
 	bool		config_ok = true;
@@ -5208,8 +5210,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 	 * will influence some checks
 	 */
 
-	backup_options_ok = parse_pg_basebackup_options(
-													config_file_options.pg_basebackup_options,
+	backup_options_ok = parse_pg_basebackup_options(config_file_options.pg_basebackup_options,
 													&backup_options, server_version_num,
 													&backup_option_errors);
 
@@ -5477,9 +5478,9 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_in
 		{
 			param_set(&repl_conninfo, "user", upstream_repluser);
 		}
-		else if (node_info->repluser[0] != '\0')
+		else if (upstream_node_record->repluser[0] != '\0')
 		{
-			param_set(&repl_conninfo, "user", node_info->repluser);
+			param_set(&repl_conninfo, "user", upstream_node_record->repluser);
 		}
 
 		if (strcmp(param_get(&repl_conninfo, "user"), upstream_user) != 0)
