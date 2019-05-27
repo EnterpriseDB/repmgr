@@ -53,6 +53,8 @@ static PGconn *_establish_db_connection(const char *conninfo,
 static PGconn *_get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out, bool quiet);
 
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
+static bool _get_pg_setting(PGconn *conn, const char *setting, char *str_output, int *int_output);
+
 static RecordStatus _get_node_record(PGconn *conn, char *sqlquery, t_node_info *node_info, bool init_defaults);
 static void _populate_node_record(PGresult *res, t_node_info *node_info, int row, bool init_defaults);
 
@@ -995,52 +997,37 @@ guc_set(PGconn *conn, const char *parameter, const char *op,
 	return retval;
 }
 
-/**
- * Just like guc_set except with an extra parameter containing the name of
- * the pg datatype so that the comparison can be done properly.
- */
-int
-guc_set_typed(PGconn *conn, const char *parameter, const char *op,
-			  const char *value, const char *datatype)
+
+bool
+get_pg_setting(PGconn *conn, const char *setting, char *output)
 {
-	PQExpBufferData query;
-	PGresult   *res = NULL;
-	int			retval = 1;
+	bool success = _get_pg_setting(conn, setting, output, NULL);
 
-	char	   *escaped_parameter = escape_string(conn, parameter);
-	char	   *escaped_value = escape_string(conn, value);
-
-	initPQExpBuffer(&query);
-	appendPQExpBuffer(&query,
-					  "SELECT true FROM pg_catalog.pg_settings "
-					  " WHERE name = '%s' AND setting::%s %s '%s'::%s",
-					  parameter, datatype, op, value, datatype);
-
-	log_verbose(LOG_DEBUG, "guc_set_typed():\n%s", query.data);
-
-	res = PQexec(conn, query.data);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (success == true)
 	{
-		log_db_error(conn, query.data, _("guc_set_typed(): unable to execute query"));
-		retval = -1;
-	}
-	else if (PQntuples(res) == 0)
-	{
-		retval = 0;
+		log_verbose(LOG_DEBUG, _("get_pg_setting(): returned value is \"%s\""), output);
 	}
 
-	pfree(escaped_parameter);
-	pfree(escaped_value);
-	termPQExpBuffer(&query);
-	PQclear(res);
-
-	return retval;
+	return success;
 }
 
 
 bool
-get_pg_setting(PGconn *conn, const char *setting, char *output)
+get_pg_setting_int(PGconn *conn, const char *setting, int *output)
+{
+	bool success = _get_pg_setting(conn, setting, NULL, output);
+
+	if (success == true)
+	{
+		log_verbose(LOG_DEBUG, _("get_pg_setting_int(): returned value is \"%i\""), *output);
+	}
+
+	return success;
+}
+
+
+bool
+_get_pg_setting(PGconn *conn, const char *setting, char *str_output, int *int_output)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -1081,7 +1068,11 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 	{
 		if (strcmp(PQgetvalue(res, i, 0), setting) == 0)
 		{
-			snprintf(output, MAXLEN, "%s", PQgetvalue(res, i, 1));
+			if (str_output != NULL)
+				snprintf(str_output, MAXLEN, "%s", PQgetvalue(res, i, 1));
+			else if (int_output != NULL)
+				*int_output = atoi(PQgetvalue(res, i, 1));
+
 			success = true;
 			break;
 		}
@@ -1092,16 +1083,13 @@ get_pg_setting(PGconn *conn, const char *setting, char *output)
 		}
 	}
 
-	if (success == true)
-	{
-		log_verbose(LOG_DEBUG, _("get_pg_setting(): returned value is \"%s\""), output);
-	}
 
 	termPQExpBuffer(&query);
 	PQclear(res);
 
 	return success;
 }
+
 
 
 bool

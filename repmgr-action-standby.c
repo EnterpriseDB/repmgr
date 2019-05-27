@@ -5198,6 +5198,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	ItemList	backup_option_errors = {NULL, NULL};
 	bool		xlog_stream = true;
 	standy_clone_mode mode;
+	bool		pg_setting_ok;
 
 	/*
 	 * Detecting the intended cloning mode
@@ -5299,13 +5300,14 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 
 	if (config_file_options.use_replication_slots)
 	{
-		i = guc_set_typed(conn, "max_replication_slots", ">",
-						  "0", "integer");
-		if (i == 0 || i == -1)
+		pg_setting_ok = get_pg_setting_int(conn, "max_replication_slots", &i);
+
+		if (pg_setting_ok == false || i < 1)
 		{
-			if (i == 0)
+			if (pg_setting_ok == true)
 			{
 				log_error(_("parameter \"max_replication_slots\" must be set to at least 1 to enable replication slots"));
+				log_detail(_("current value is %i"), i);
 				log_hint(_("\"max_replication_slots\" should be set to at least the number of expected standbys"));
 				if (exit_on_error == true)
 				{
@@ -5315,6 +5317,11 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 
 				config_ok = false;
 			}
+		}
+
+		if (pg_setting_ok == true && i > 0 && runtime_options.dry_run == true)
+		{
+			log_info(_("parameter \"max_replication_slots\" set to %i"), i);
 		}
 	}
 
@@ -5327,7 +5334,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		bool		check_wal_keep_segments = false;
 
 		/*
-		 * A non-zero `wal_keep_segments` value will almost certainly be
+		 * A non-zero "wal_keep_segments" value will almost certainly be
 		 * required if pg_basebackup is being used with --xlog-method=fetch,
 		 * *and* no restore command has been specified
 		 */
@@ -5339,11 +5346,12 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 
 		if (check_wal_keep_segments == true)
 		{
-			i = guc_set_typed(conn, "wal_keep_segments", ">", "0", "integer");
 
-			if (i == 0 || i == -1)
+			pg_setting_ok = get_pg_setting_int(conn, "wal_keep_segments", &i);
+
+			if (pg_setting_ok == false || i < 1)
 			{
-				if (i == 0)
+				if (pg_setting_ok == true)
 				{
 					log_error(_("parameter \"wal_keep_segments\" on the upstream server must be be set to a non-zero value"));
 					log_hint(_("Choose a value sufficiently high enough to retain enough WAL "
@@ -5355,8 +5363,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 					{
 						log_hint(_("In PostgreSQL 9.4 and later, replication slots can be used, which "
 								   "do not require \"wal_keep_segments\" to be set "
-								   "(set parameter \"use_replication_slots\" in repmgr.conf to enable)\n"
-								   ));
+								   "(set parameter \"use_replication_slots\" in repmgr.conf to enable)\n"));
 					}
 				}
 
@@ -5367,6 +5374,11 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 				}
 
 				config_ok = false;
+			}
+
+			if (pg_setting_ok == true && i > 0 && runtime_options.dry_run == true)
+			{
+				log_info(_("parameter \"wal_keep_segments\" set to %i"), i);
 			}
 		}
 	}
@@ -5426,12 +5438,13 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		config_ok = false;
 	}
 
-	i = guc_set_typed(conn, "max_wal_senders", ">", "0", "integer");
-	if (i == 0 || i == -1)
+	pg_setting_ok = get_pg_setting_int(conn, "max_wal_senders", &i);
+
+	if (pg_setting_ok == false || i < 1)
 	{
-		if (i == 0)
+		if (pg_setting_ok == true)
 		{
-			log_error(_("parameter \"max_wal_senders\" must be set to be at least 1"));
+			log_error(_("parameter \"max_wal_senders\" must be set to be at least 1 %i"), i);
 			log_hint(_("\"max_wal_senders\" should be set to at least the number of expected standbys"));
 		}
 
@@ -5442,6 +5455,10 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		}
 
 		config_ok = false;
+	}
+	else if (pg_setting_ok == true && i > 0 && runtime_options.dry_run == true)
+	{
+		log_info(_("parameter \"max_wal_senders\" set to %i"), i);
 	}
 
 	/*
@@ -5458,7 +5475,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		int			i;
 		int			available_wal_senders;
 		int			min_replication_connections = 1;
-
+		int			possible_replication_connections = 0;
 		t_conninfo_param_list repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 
 
@@ -5471,7 +5488,6 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 
 		log_notice(_("checking for available walsenders on the source node (%i required)"),
 				   min_replication_connections);
-
 
 		/*
 		 * check how many free walsenders are available
@@ -5496,94 +5512,106 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 				exit(ERR_BAD_CONFIG);
 			}
 		}
-		else
+		else if (runtime_options.dry_run == true)
 		{
-			/*
-			 * Sufficient free walsenders appear to be available, check if
-			 * we can connect to them. We check that the required number
-			 * of connections can be made e.g. to rule out a very restrictive
-			 * "CONNECTION LIMIT" setting.
-			 */
+			log_info(_("sufficient walsenders available on the source node"));
+			log_detail(_("%i required, %i available"),
+					   min_replication_connections,
+					   available_wal_senders);
+		}
 
-			int  possible_replication_connections = 0;
 
-			log_notice(_("checking replication connections can be made to the source server (%i required)"),
-					   min_replication_connections);
+		/*
+		 * Sufficient free walsenders appear to be available, check if
+		 * we can connect to them. We check that the required number
+		 * of connections can be made e.g. to rule out a very restrictive
+		 * "CONNECTION LIMIT" setting.
+		 */
 
-			/*
-			 * Make a copy of the connection parameter arrays, and append
-			 * "replication".
-			 */
-			initialize_conninfo_params(&repl_conninfo, false);
+		log_notice(_("checking replication connections can be made to the source server (%i required)"),
+				   min_replication_connections);
 
-			conn_to_param_list(conn, &repl_conninfo);
+		/*
+		 * Make a copy of the connection parameter arrays, and append
+		 * "replication".
+		 */
+		initialize_conninfo_params(&repl_conninfo, false);
 
-			param_set(&repl_conninfo, "replication", "1");
+		conn_to_param_list(conn, &repl_conninfo);
 
-			if (runtime_options.replication_user[0] != '\0')
+		param_set(&repl_conninfo, "replication", "1");
+
+		if (runtime_options.replication_user[0] != '\0')
+		{
+			param_set(&repl_conninfo, "user", runtime_options.replication_user);
+		}
+		else if (upstream_repluser[0] != '\0')
+		{
+			param_set(&repl_conninfo, "user", upstream_repluser);
+		}
+		else if (upstream_node_record->repluser[0] != '\0')
+		{
+			param_set(&repl_conninfo, "user", upstream_node_record->repluser);
+		}
+
+		if (strcmp(param_get(&repl_conninfo, "user"), upstream_user) != 0)
+		{
+			param_set(&repl_conninfo, "dbname", "replication");
+		}
+
+		connections = pg_malloc0(sizeof(PGconn *) * min_replication_connections);
+
+		/*
+		 * Attempt to create the minimum number of required concurrent
+		 * connections
+		 */
+		for (i = 0; i < min_replication_connections; i++)
+		{
+			PGconn	   *replication_conn;
+
+			replication_conn = establish_db_connection_by_params(&repl_conninfo, false);
+
+			if (PQstatus(replication_conn) == CONNECTION_OK)
 			{
-				param_set(&repl_conninfo, "user", runtime_options.replication_user);
-			}
-			else if (upstream_repluser[0] != '\0')
-			{
-				param_set(&repl_conninfo, "user", upstream_repluser);
-			}
-			else if (upstream_node_record->repluser[0] != '\0')
-			{
-				param_set(&repl_conninfo, "user", upstream_node_record->repluser);
-			}
-
-			if (strcmp(param_get(&repl_conninfo, "user"), upstream_user) != 0)
-			{
-				param_set(&repl_conninfo, "dbname", "replication");
-			}
-
-			connections = pg_malloc0(sizeof(PGconn *) * min_replication_connections);
-
-			/*
-			 * Attempt to create the minimum number of required concurrent
-			 * connections
-			 */
-			for (i = 0; i < min_replication_connections; i++)
-			{
-				PGconn	   *replication_conn;
-
-				replication_conn = establish_db_connection_by_params(&repl_conninfo, false);
-
-				if (PQstatus(replication_conn) == CONNECTION_OK)
-				{
-					connections[i] = replication_conn;
-					possible_replication_connections++;
-				}
-			}
-
-			/* Close previously created connections */
-			for (i = 0; i < possible_replication_connections; i++)
-			{
-				PQfinish(connections[i]);
-			}
-
-			pfree(connections);
-			free_conninfo_params(&repl_conninfo);
-
-			if (possible_replication_connections < min_replication_connections)
-			{
-				config_ok = false;
-
-				log_error(_("unable to establish necessary replication connections"));
-
-				log_hint(_("check replication permissions on the source server"));
-
-				if (exit_on_error == true)
-				{
-					PQfinish(conn);
-					exit(ERR_BAD_CONFIG);
-				}
+				connections[i] = replication_conn;
+				possible_replication_connections++;
 			}
 		}
 
-		log_verbose(LOG_INFO, "sufficient walsenders available on source node (%i required)",
-					min_replication_connections);
+		/* Close previously created connections */
+		for (i = 0; i < possible_replication_connections; i++)
+		{
+			PQfinish(connections[i]);
+		}
+
+		pfree(connections);
+		free_conninfo_params(&repl_conninfo);
+
+		if (possible_replication_connections < min_replication_connections)
+		{
+			config_ok = false;
+
+			log_error(_("unable to establish necessary replication connections"));
+			log_hint(_("check replication permissions on the source server"));
+
+			if (exit_on_error == true)
+			{
+				PQfinish(conn);
+				exit(ERR_BAD_CONFIG);
+			}
+		}
+
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("required number of replication connections could be made to the source server"));
+			log_detail(_("%i replication connections required"),
+					   min_replication_connections);
+		}
+		else
+		{
+			log_verbose(LOG_INFO, _("sufficient replication connections could be made to the source server (%i required)"),
+						min_replication_connections);
+		}
 	}
 
 	return config_ok;

@@ -465,8 +465,8 @@ bool		rollback_transaction(PGconn *conn);
 bool		set_config(PGconn *conn, const char *config_param, const char *config_value);
 bool		set_config_bool(PGconn *conn, const char *config_param, bool state);
 int		    guc_set(PGconn *conn, const char *parameter, const char *op, const char *value);
-int			guc_set_typed(PGconn *conn, const char *parameter, const char *op, const char *value, const char *datatype);
 bool		get_pg_setting(PGconn *conn, const char *setting, char *output);
+bool		get_pg_setting_int(PGconn *conn, const char *setting, int *output);
 bool		alter_system_int(PGconn *conn, const char *name, int value);
 bool		pg_reload_conf(PGconn *conn);
 
