@@ -173,11 +173,24 @@ do_witness_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/*
-	 * TODO: sanity check witness node is not part of main cluster; we could
-	 * add a random application_name to the respective connections,
-	 * and do a simple check of pg_stat_activity
-	 */
+	/* Sanity check witness node is not part of main cluster. */
+	if (PQserverVersion(primary_conn) >= 90600 &&
+		PQserverVersion(witness_conn) >= 90600)
+	{
+		uint64		primary_system_identifier = system_identifier(primary_conn);
+		uint64		witness_system_identifier = system_identifier(witness_conn);
+
+		if (primary_system_identifier == witness_system_identifier &&
+			primary_system_identifier != UNKNOWN_SYSTEM_IDENTIFIER)
+		{
+			log_error(_("witness node cannot be in the same cluster as the primary node"));
+			log_detail(_("primary id: %lu\n witness id: %lu"), primary_system_identifier, witness_system_identifier);
+			PQfinish(witness_conn);
+			PQfinish(primary_conn);
+
+			exit(ERR_BAD_CONFIG);
+		}
+	}
 
 	/* check that primary node is not a BDR node */
 	if (is_bdr_db_quiet(primary_conn) == true)
