@@ -782,7 +782,7 @@ repmgrd_pause(PG_FUNCTION_ARGS)
 					 pause ? 1 : 0);
 	LWLockRelease(shared_state->lock);
 
-	if (fwrite(buf.data, strlen(buf.data) + 1, 1, file) != strlen(buf.data) + 1)
+	if (fwrite(buf.data, strlen(buf.data) + 1, 1, file) != 1)
 	{
 		elog(WARNING, _("unable to write to file %s"), REPMGRD_STATE_FILE);
 	}
