@@ -184,7 +184,9 @@ do_witness_register(void)
 			primary_system_identifier != UNKNOWN_SYSTEM_IDENTIFIER)
 		{
 			log_error(_("witness node cannot be in the same cluster as the primary node"));
-			log_detail(_("primary id: %lu\n witness id: %lu"), primary_system_identifier, witness_system_identifier);
+			log_detail(_("database system identifiers on primary node and provided witness node match (%lu)"),
+					   primary_system_identifier);
+			log_hint(_("the witness node must be created on a separate read/write node"));
 			PQfinish(witness_conn);
 			PQfinish(primary_conn);
 
