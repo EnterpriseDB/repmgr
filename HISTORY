@@ -2,20 +2,28 @@
         repmgr: improve "daemon status" output (Ian)
         repmgr: add "--siblings-follow" option to "standby promote" (Ian)
         repmgr: add "--repmgrd-force-unpause" option to "standby switchover" (Ian)
+        repmgr: fix data directory permissions issue in barman mode where
+          an existing directory is being overwritten (Ian)
         repmgr: improve "--dry-run" behaviour for "standby promote" and
           "standby switchover" (Ian)
+        repmgr: ensure "--dry-run" together with --force when running "standby clone"
+          in barman mode does not modify an existing data directory (Ian)
+        repmgr: improve "--dry-run" output when running "standby clone" in
+          basebackup mode (Ian)
+        repmgr: improve upstream walsender checks when running "standby clone" (Ian)
         repmgr: display node timeline ID in "cluster show" output (Ian)
         repmgr: in "cluster show" and "daemon status", show upstream node name
           as reported by each individual node (Ian)
         repmgr: in "cluster show" and "daemon status", check if a node is attached
           to its advertised upstream node
         repmgr: prevent a standby being cloned from a witness server (Ian)
-        repmgrd: monitor standbys attached to primary (Ian)
+        repmgr: prevent a witness server being registered on the cluster primary (John)
         repmgr: ensure BDR2-specific functionality cannot be used on
           BDR3 and later (Ian)
-        repmgr: improve "--dry-run" behaviour in barman mode (Ian)
-        repmgr: fix data directory permissions issue in barman mode where
-          an existing directory is being overwritten (Ian)
+        repmgrd: monitor standbys attached to primary (Ian)
+        repmgrd: add "primary visibility consensus" functionality (Ian)
+        repmgrd: fix memory leak which occurs while the monitored PostgreSQL
+           node is not running (Ian)
         general: documentation converted to DocBook XML format (Ian)
 
 4.3     2019-04-02

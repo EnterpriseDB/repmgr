@@ -1,4 +1,3 @@
-
 <appendix id="appendix-release-notes">
   <title>Release notes</title>
   <indexterm>
@@ -18,12 +17,31 @@
 
   <sect1 id="release-4.4">
     <title>Release 4.4</title>
-    <para><emphasis>???, 2019</emphasis></para>
+    <para><emphasis>?? June, 2019</emphasis></para>
 
 	<sect2>
       <title>repmgr client enhancements</title>
       <para>
 	    <itemizedlist>
+
+		  <listitem>
+            <para>
+			  <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>:
+			  prevent a standby from being cloned from a witness server (PostgreSQL 9.6 and later only).
+			</para>
+		  </listitem>
+
+		  <listitem>
+            <para>
+			  <link linkend="repmgr-witness-register"><command>repmgr witness register</command></link>:
+			  prevent a witness server from being registered on the replication cluster primary server
+              (PostgreSQL 9.6 and later only).
+			</para>
+            <para>
+              Registering a witness on the primary node would defeat the purpose of having a witness server,
+              which is intended to remain running even if the cluster's primary goes down.
+            </para>
+		  </listitem>
 
           <listitem>
             <para>
@@ -52,7 +70,7 @@
             <para>
               <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>
               and <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
-              when executing with the <option>--dry-run</option>, continue checks as far as possible
+              when executing with the <option>--dry-run</option> option, continue checks as far as possible
               even if errors are encountered.
             </para>
           </listitem>
@@ -60,7 +78,8 @@
 
           <listitem>
             <para>
-              <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>: add <option>--siblings-follow</option> (similar to
+              <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
+              add <option>--siblings-follow</option> (similar to
               <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>).
             </para>
             <note>
@@ -71,7 +90,6 @@
                 via <option>promote_command</option>), <option>--siblings-follow</option>
                 <emphasis>must not</emphasis> be included as a
                 command line option for <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>.
-
               </para>
             </note>
           </listitem>
@@ -129,13 +147,6 @@
 			</para>
 		  </listitem>
 
-		  <listitem>
-            <para>
-			  <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>:
-			  prevent a standby from being cloned from a witness server.
-			</para>
-		  </listitem>
-
 		</itemizedlist>
 	  </para>
     </sect2>
@@ -152,11 +163,30 @@
               execute a custom script.
             </para>
             <para>
+              This provided an additional method for fencing an isolated primary node, and/or taking
+              other action if one or more standys become disconnected.
+            </para>
+            <para>
               See section <link linkend="repmgrd-primary-child-disconnection">Monitoring standby disconnections on the primary node</link>
               for more details.
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              In a failover situation, &repmgrd; nodes on the standbys of the failed primary
+              are now able confirm among themselves that none can still see the primary
+              before continuing with the failover.
+            </para>
+            <para>
+              The <filename>repmgr.conf</filename> option <option>primary_visibility_consensus</option> must
+              be set to <literal>true</literal> to enable this functionality.
+            </para>
+            <para>
+              See section <xref linkend="repmgrd-primary-visibility-consensus"/>
+              for more details.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>
