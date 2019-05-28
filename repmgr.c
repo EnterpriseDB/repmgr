@@ -787,8 +787,8 @@ repmgrd_pause(PG_FUNCTION_ARGS)
 		elog(WARNING, _("unable to write to file %s"), REPMGRD_STATE_FILE);
 	}
 
+	pfree(buf.data);
 
-	resetStringInfo(&buf);
 	FreeFile(file);
 
 	PG_RETURN_VOID();
