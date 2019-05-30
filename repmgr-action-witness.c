@@ -371,13 +371,24 @@ do_witness_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* create event */
-	create_event_record(primary_conn,
-						&config_file_options,
-						config_file_options.node_id,
-						"witness_register",
-						true,
-						NULL);
+	{
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
+
+		appendPQExpBuffer(&event_details,
+						  _("witness registration succeeded; upstream node ID is %i"),
+						  node_record.upstream_node_id);
+
+		/* create event */
+		create_event_notification(primary_conn,
+								  &config_file_options,
+								  config_file_options.node_id,
+								  "witness_register",
+								  true,
+								  event_details.data);
+
+		termPQExpBuffer(&event_details);
+	}
 
 	PQfinish(primary_conn);
 	PQfinish(witness_conn);
@@ -520,13 +531,24 @@ do_witness_unregister(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Log the event */
-	create_event_record(primary_conn,
-						&config_file_options,
-						witness_node_id,
-						"witness_unregister",
-						true,
-						NULL);
+
+	{
+		PQExpBufferData event_details;
+		initPQExpBuffer(&event_details);
+
+		appendPQExpBufferStr(&event_details,
+							 _("witness unregistration succeeded"));
+
+		/* create event */
+		create_event_notification(primary_conn,
+								  &config_file_options,
+								  witness_node_id,
+								  "witness_unregister",
+								  true,
+								  event_details.data);
+
+		termPQExpBuffer(&event_details);
+	}
 
 	PQfinish(primary_conn);
 
