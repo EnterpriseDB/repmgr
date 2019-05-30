@@ -408,11 +408,11 @@ INFO:  node 3 received notification to rerun promotion candidate election
   <para>
     When running on the primary node, &repmgrd; can
     monitor connections and in particular disconnections by its attached
-    child nodes (standbys), and optionally execute a custom command
-    if certain criteria are met (such as the number of attached nodes falling to
-    zero following a failover to a new primary); this command can be used for
-    example to &quot;fence&quot; the node and ensure it is isolated from any
-    applications attempting to access the replication cluster.
+    child nodes (standbys, and if in use, the witness server), and optionally
+    execute a custom command if certain criteria are met (such as the number of
+    attached nodes falling to zero following a failover to a new primary); this
+    command can be used for example to &quot;fence&quot; the node and ensure it
+    is isolated from any applications attempting to access the replication cluster.
   </para>
 
   <note>
@@ -429,7 +429,7 @@ INFO:  node 3 received notification to rerun promotion candidate election
   <sect2 id="repmgrd-primary-child-disconnection-monitoring-process">
 	<title>Standby disconnections monitoring process and criteria</title>
 	<para>
-	  &repmgrd; monitors attach child nodes and decides
+	  &repmgrd; monitors attached child nodes and decides
 	  whether to invoke the user-defined command based on the following process
 	  and criteria:
     <itemizedlist>
@@ -442,6 +442,10 @@ INFO:  node 3 received notification to rerun promotion candidate election
           the nodes present there against the list of nodes registered with &repmgr; which
           should be attached to the primary.
         </para>
+        <para>
+          If a witness server is in use, &repmgrd; connects to it and checks which upstream node
+          it is following.
+        </para>
       </listitem>
 
       <listitem>
@@ -450,19 +454,30 @@ INFO:  node 3 received notification to rerun promotion candidate election
           &repmgrd; notes the time it detected the node's absence, and additionally generates a
           <literal>child_node_disconnect</literal> event.
         </para>
+        <para>
+          If a witness server is in use, and it is no longer following the primary, or not
+          reachable at all, &repmgrd; notes the time it detected the node's absence, and additionally generates a
+          <literal>child_node_disconnect</literal> event.
+        </para>
       </listitem>
 
       <listitem>
         <para>
-          If a chile node (standby) which was absent from <literal>pg_stat_replication</literal> reappears,
+          If a child node (standby) which was absent from <literal>pg_stat_replication</literal> reappears,
           &repmgrd; clears the time it detected the node's absence, and additionally generates a
+          <literal>child_node_reconnect</literal> event.
+        </para>
+        <para>
+          If a witness server is in use, which was previously not reachable or not following the
+          primary node, has become reachable and is following the primary node,  &repmgrd; clears the
+          time it detected the node's absence, and additionally generates a
           <literal>child_node_reconnect</literal> event.
         </para>
       </listitem>
 
       <listitem>
         <para>
-          If an entirely new child node (standby) is detected, &repmgrd; adds it to its internal list
+          If an entirely new child node (standby or witness) is detected, &repmgrd; adds it to its internal list
           and additionally generates a <literal>child_node_new_connect</literal> event.
         </para>
       </listitem>

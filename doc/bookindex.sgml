@@ -1,0 +1,970 @@
+<index id='bookindex'>
+
+<!-- This file was produced by collateindex.pl.         -->
+<!-- Remove this comment if you edit this file by hand! -->
+<!-- ULINK is abused here.
+
+      The URL attribute holds the URL that points from the index entry
+      back to the appropriate place in the output produced by the HTML
+      stylesheet. (It's much easier to calculate this URL in the first
+      pass.)
+
+      The Role attribute holds the ID (either real or manufactured) of
+      the corresponding INDEXTERM.  This is used by the print backends
+      to produce page numbers.
+
+      The entries below are sorted and collated into the correct order.
+      Duplicates may be removed in the HTML backend, but in the print
+      backends, it is impossible to suppress duplicate pages or coalesce
+      sequences of pages into a range.
+-->
+
+<indexdiv><title>A</title>
+
+<indexentry>
+  <primaryie>archive_command
+  </primaryie>
+  <secondaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN924">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>archive_mode
+  </primaryie>
+  <secondaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN905">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>B</title>
+
+<indexentry>
+  <primaryie>Barman
+  </primaryie>
+  <secondaryie>cloning a standby,
+    <ulink url="cloning-from-barman.html" role="AEN1285">Cloning a standby from Barman</ulink>
+  </secondaryie>
+  <secondaryie>fetching archived WAL,
+    <ulink url="cloning-from-barman.html#CLONING-FROM-BARMAN-RESTORE-COMMAND" role="AEN1341">Using Barman as a WAL file source</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>BDR,
+    <ulink url="repmgrd-bdr.html" role="AEN3273">BDR failover with repmgrd</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>C</title>
+
+<indexentry>
+  <primaryie>cascading replication
+  </primaryie>
+  <secondaryie>repmgrd,
+    <ulink url="cascading-replication.html" role="AEN2488">repmgrd and cascading replication</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>CentOS
+  </primaryie>
+  <secondaryie>package information,
+    <ulink url="packages-centos.html" role="AEN7008">CentOS Packages</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>cloning
+  </primaryie>
+  <secondaryie>advanced options,
+    <ulink url="cloning-advanced.html" role="AEN1442">Advanced cloning options</ulink>
+  </secondaryie>
+  <secondaryie>cascading replication,
+    <ulink url="cloning-cascading.html" role="AEN1405">Cloning and cascading replication</ulink>
+  </secondaryie>
+  <secondaryie>from Barman,
+    <ulink url="cloning-from-barman.html" role="AEN1282">Cloning a standby from Barman</ulink>
+  </secondaryie>
+  <secondaryie>replication slots,
+    <ulink url="cloning-replication-slots.html" role="AEN1372">Cloning and replication slots</ulink>
+  </secondaryie>
+  <secondaryie>using passwords,
+    <ulink url="cloning-advanced.html#CLONING-ADVANCED-MANAGING-PASSWORDS" role="AEN1483">Managing passwords</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>compatibility matrix,
+    <ulink url="install-requirements.html#INSTALL-COMPATIBILITY-MATRIX" role="AEN222">repmgr compatibility matrix</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>concepts,
+    <ulink url="repmgr-concepts.html" role="AEN50">Concepts</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>configuration
+  </primaryie>
+  <secondaryie>database user permissions,
+    <ulink url="configuration-permissions.html" role="AEN1266">repmgr database user permissions</ulink>
+  </secondaryie>
+  <secondaryie>PostgreSQL,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN820">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+  <secondaryie>prerequisites,
+    <ulink url="configuration-prerequisites.html" role="AEN782">Prerequisites for configuration</ulink>
+  </secondaryie>
+  <secondaryie>repmgr.conf,
+    <ulink url="configuration-file.html" role="AEN968">Configuration file</ulink>
+  </secondaryie>
+  <secondaryie>ssh,
+    <ulink url="configuration-prerequisites.html" role="AEN785">Prerequisites for configuration</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>connection_check_type,
+    <ulink url="repmgrd-basic-configuration.html" role="AEN2530">repmgrd configuration</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>conninfo configuration file parameter,
+    <ulink url="configuration-file-settings.html" role="AEN1065">Required configuration file settings</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>D</title>
+
+<indexentry>
+  <primaryie>data_directory configuration file parameter,
+    <ulink url="configuration-file-settings.html" role="AEN1080">Required configuration file settings</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>Debian/Ubuntu
+  </primaryie>
+  <secondaryie>package information,
+    <ulink url="packages-debian-ubuntu.html" role="AEN7151">Debian/Ubuntu Packages</ulink>
+  </secondaryie>
+  <secondaryie>repmgrd daemon configuration,
+    <ulink url="repmgrd-daemon.html#REPMGRD-CONFIGURATION-DEBIAN-UBUNTU" role="AEN3007">repmgrd daemon configuration on Debian/Ubuntu</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>degraded monitoring,
+    <ulink url="repmgrd-degraded-monitoring.html" role="AEN3200">"degraded monitoring" mode</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>degraded_monitoring_timeout,
+    <ulink url="repmgrd-basic-configuration.html" role="AEN2571">repmgrd configuration</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>E</title>
+
+<indexentry>
+  <primaryie>election_rerun_interval,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-AUTOMATIC-FAILOVER-CONFIGURATION-OPTIONAL" role="AEN2750">Optional configuration for automatic failover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>event notifications,
+    <ulink url="event-notifications.html" role="AEN1774">Event Notifications</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>F</title>
+
+<indexentry>
+  <primaryie>failover,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-AUTOMATIC-FAILOVER-CONFIGURATION" role="AEN2605">Required configuration for automatic failover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>failover validation,
+    <ulink url="repmgrd-failover-validation.html" role="AEN2463">Failover validation</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>failover_validation_command,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-AUTOMATIC-FAILOVER-CONFIGURATION-OPTIONAL" role="AEN2709">Optional configuration for automatic failover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>FAQ (Frequently Asked Questions),
+    <ulink url="appendix-faq.html" role="AEN6718">FAQ (Frequently Asked Questions)</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>Following a new primary,
+    <ulink url="follow-new-primary.html" role="AEN1559">Following a new primary</ulink>
+  </primaryie>
+  <seealsoie>repmgr standby follow</seealsoie>
+</indexentry>
+
+<indexentry>
+  <primaryie>follow_command,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-AUTOMATIC-FAILOVER-CONFIGURATION" role="AEN2655">Required configuration for automatic failover</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>H</title>
+
+<indexentry>
+  <primaryie>hot_standby
+  </primaryie>
+  <secondaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN831">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>I</title>
+
+<indexentry>
+  <primaryie>installation,
+    <ulink url="installation.html" role="AEN166">Installation</ulink>
+  </primaryie>
+  <secondaryie>from packages,
+    <ulink url="installation-packages.html" role="AEN275">Installing repmgr from packages</ulink>
+  </secondaryie>
+  <secondaryie>from source,
+    <ulink url="installation-source.html" role="AEN407">Installing repmgr from source</ulink>
+  </secondaryie>
+  <secondaryie>old package versions,
+    <ulink url="packages-old-versions.html" role="AEN7290">Installing old package versions</ulink>
+  </secondaryie>
+  <secondaryie>on Debian/Ubuntu etc.,
+    <ulink url="installation-packages.html#INSTALLATION-PACKAGES-DEBIAN" role="AEN358">Debian/Ubuntu</ulink>
+  </secondaryie>
+  <secondaryie>on Red Hat/CentOS/Fedora etc.,
+    <ulink url="installation-packages.html#INSTALLATION-PACKAGES-REDHAT" role="AEN281">RedHat/CentOS/Fedora</ulink>
+  </secondaryie>
+  <secondaryie>requirements,
+    <ulink url="install-requirements.html" role="AEN177">Requirements for installing repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>L</title>
+
+<indexentry>
+  <primaryie>log rotation
+  </primaryie>
+  <secondaryie>repmgrd,
+    <ulink url="repmgrd-log-rotation.html" role="AEN3051">repmgrd log rotation</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>log settings
+  </primaryie>
+  <secondaryie>configuration in repmgr.conf,
+    <ulink url="configuration-file-log-settings.html" role="AEN1107">Log settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>log_facility configuration file parameter,
+    <ulink url="configuration-file-log-settings.html" role="AEN1151">Log settings</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>log_file configuration file parameter,
+    <ulink url="configuration-file-log-settings.html" role="AEN1166">Log settings</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>log_level configuration file parameter,
+    <ulink url="configuration-file-log-settings.html" role="AEN1130">Log settings</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>log_status_interval configuration file parameter,
+    <ulink url="configuration-file-log-settings.html" role="AEN1179">Log settings</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>M</title>
+
+<indexentry>
+  <primaryie>max_replication_slots
+  </primaryie>
+  <secondaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN878">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>max_wal_senders
+  </primaryie>
+  <secondaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN863">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>monitoring
+  </primaryie>
+  <secondaryie>with repmgrd,
+    <ulink url="repmgrd-monitoring.html" role="AEN3236">Storing monitoring data</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>monitor_interval_secs,
+    <ulink url="repmgrd-basic-configuration.html" role="AEN2522">repmgrd configuration</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>N</title>
+
+<indexentry>
+  <primaryie>network splits,
+    <ulink url="repmgrd-network-split.html" role="AEN2416">Handling network splits with repmgrd</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>node_id configuration file parameter,
+    <ulink url="configuration-file-settings.html" role="AEN1043">Required configuration file settings</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>node_name configuration file parameter,
+    <ulink url="configuration-file-settings.html" role="AEN1052">Required configuration file settings</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>node_rejoin_timeout
+  </primaryie>
+  <secondaryie>with "repmgr standby switchover",
+    <ulink url="repmgr-standby-switchover.html#AEN4264" role="AEN4314">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>O</title>
+
+<indexentry>
+  <primaryie>old packages,
+    <ulink url="packages-old-versions.html" role="AEN7285">Installing old package versions</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>P</title>
+
+<indexentry>
+  <primaryie>packages,
+    <ulink url="appendix-packages.html" role="AEN6997">repmgr package details</ulink>
+  </primaryie>
+  <secondaryie>CentOS packages,
+    <ulink url="packages-centos.html" role="AEN7005">CentOS Packages</ulink>
+  </secondaryie>
+  <secondaryie>Debian/Ubuntu packages,
+    <ulink url="packages-debian-ubuntu.html" role="AEN7148">Debian/Ubuntu Packages</ulink>
+  </secondaryie>
+  <secondaryie>information for packagers,
+    <ulink url="packages-packager-info.html" role="AEN7326">Information for packagers</ulink>
+  </secondaryie>
+  <secondaryie>old versions,
+    <ulink url="packages-old-versions.html" role="AEN7287">Installing old package versions</ulink>
+  </secondaryie>
+  <secondaryie>snaphots,
+    <ulink url="packages-snapshot.html" role="AEN7257">Snapshot packages</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>pausing repmgrd,
+    <ulink url="repmgrd-pausing.html" role="AEN3074">Pausing repmgrd</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>pg_ctlcluster
+  </primaryie>
+  <secondaryie>service command settings,
+    <ulink url="configuration-file-service-commands.html" role="AEN1251">Service command settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>pg_rewind
+  </primaryie>
+  <secondaryie>using with "repmgr node rejoin",
+    <ulink url="repmgr-node-rejoin.html#REPMGR-NODE-REJOIN-PG-REWIND" role="AEN4726">Using pg_rewind</ulink>
+  </secondaryie>
+  <secondaryie>using with "repmgr standby switchover",
+    <ulink url="preparing-for-switchover.html#SWITCHOVER-PG-REWIND" role="AEN1673">Switchover and pg_rewind</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>pg_upgrade,
+    <ulink url="upgrading-and-pg-upgrade.html" role="AEN2106">pg_upgrade and repmgr</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>PID file
+  </primaryie>
+  <secondaryie>repmgrd,
+    <ulink url="repmgrd-daemon.html#REPMGRD-PID-FILE" role="AEN2971">repmgrd's PID file</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN823">PostgreSQL configuration for repmgr</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>priority,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-AUTOMATIC-FAILOVER-CONFIGURATION-OPTIONAL" role="AEN2700">Optional configuration for automatic failover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>promote_check_interval
+  </primaryie>
+  <secondaryie>with "repmgr standby promote ",
+    <ulink url="repmgr-standby-promote.html#AEN3976" role="AEN3983">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>promote_check_timeout
+  </primaryie>
+  <secondaryie>with "repmgr standby promote ",
+    <ulink url="repmgr-standby-promote.html#AEN3976" role="AEN3989">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>promote_command,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-AUTOMATIC-FAILOVER-CONFIGURATION" role="AEN2622">Required configuration for automatic failover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>promoting a standby,
+    <ulink url="promoting-standby.html" role="AEN1533">Promoting a standby server with repmgr</ulink>
+  </primaryie>
+  <seealsoie>repmgr standby promote</seealsoie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>Q</title>
+
+<indexentry>
+  <primaryie>quickstart,
+    <ulink url="quickstart.html" role="AEN562">Quick-start guide</ulink>
+  </primaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>R</title>
+
+<indexentry>
+  <primaryie>reconnect_attempts,
+    <ulink url="repmgrd-basic-configuration.html" role="AEN2551">repmgrd configuration</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>reconnect_interval,
+    <ulink url="repmgrd-basic-configuration.html" role="AEN2561">repmgrd configuration</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>recovery.conf
+  </primaryie>
+  <secondaryie>customising with "repmgr standby clone",
+    <ulink url="repmgr-standby-clone.html#REPMGR-STANDBY-CLONE-RECOVERY-CONF" role="AEN3619">Customising recovery.conf</ulink>
+  </secondaryie>
+  <secondaryie>generating for a standby cloned by another method,
+    <ulink url="repmgr-standby-clone.html#REPMGR-STANDBY-CREATE-RECOVERY-CONF" role="AEN3685">Using a standby cloned by another method</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>Release notes,
+    <ulink url="appendix-release-notes.html" role="AEN5699">Release notes</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>replication slots
+  </primaryie>
+  <secondaryie>cloning,
+    <ulink url="cloning-replication-slots.html" role="AEN1375">Cloning and replication slots</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>replication_lag_critical
+  </primaryie>
+  <secondaryie>with "repmgr standby switchover",
+    <ulink url="repmgr-standby-switchover.html#AEN4264" role="AEN4270">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr
+  </primaryie>
+  <secondaryie>compatibility matrix,
+    <ulink url="install-requirements.html#INSTALL-COMPATIBILITY-MATRIX" role="AEN219">repmgr compatibility matrix</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr cluster cleanup,
+    <ulink url="repmgr-cluster-cleanup.html" role="AEN5172">repmgr cluster cleanup</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr cluster crosscheck,
+    <ulink url="repmgr-cluster-crosscheck.html" role="AEN5076">repmgr cluster crosscheck</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr cluster event,
+    <ulink url="repmgr-cluster-event.html" role="AEN5126">repmgr cluster event</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr cluster matrix,
+    <ulink url="repmgr-cluster-matrix.html" role="AEN4999">repmgr cluster matrix</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr cluster show,
+    <ulink url="repmgr-cluster-show.html" role="AEN4878">repmgr cluster show</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr daemon pause,
+    <ulink url="repmgr-daemon-pause.html" role="AEN5572">repmgr daemon pause</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr daemon start,
+    <ulink url="repmgr-daemon-start.html" role="AEN5305">repmgr daemon start</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr daemon status,
+    <ulink url="repmgr-daemon-status.html" role="AEN5217">repmgr daemon status</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr daemon stop,
+    <ulink url="repmgr-daemon-stop.html" role="AEN5439">repmgr daemon stop</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr daemon unpause,
+    <ulink url="repmgr-daemon-unpause.html" role="AEN5637">repmgr daemon unpause</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr node check,
+    <ulink url="repmgr-node-check.html" role="AEN4504">repmgr node check</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr node rejoin,
+    <ulink url="repmgr-node-rejoin.html" role="AEN4604">repmgr node rejoin</ulink>
+  </primaryie>
+  <secondaryie>caveats,
+    <ulink url="repmgr-node-rejoin.html#REPMGR-NODE-REJOIN-CAVEATS" role="AEN4777">Caveats when using repmgr node rejoin</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr node service,
+    <ulink url="repmgr-node-service.html" role="AEN4805">repmgr node service</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr node status,
+    <ulink url="repmgr-node-status.html" role="AEN4462">repmgr node status</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr primary register,
+    <ulink url="repmgr-primary-register.html" role="AEN3474">repmgr primary register</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr primary unregister,
+    <ulink url="repmgr-primary-unregister.html" role="AEN3535">repmgr primary unregister</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr standby clone,
+    <ulink url="repmgr-standby-clone.html" role="AEN3577">repmgr standby clone</ulink>
+  </primaryie>
+  <seealsoie>cloning</seealsoie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr standby follow,
+    <ulink url="repmgr-standby-follow.html" role="AEN4032">repmgr standby follow</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr standby promote,
+    <ulink url="repmgr-standby-promote.html" role="AEN3938">repmgr standby promote</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr standby register,
+    <ulink url="repmgr-standby-register.html" role="AEN3792">repmgr standby register</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr standby switchover,
+    <ulink url="repmgr-standby-switchover.html" role="AEN4172">repmgr standby switchover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr standby unregister,
+    <ulink url="repmgr-standby-unregister.html" role="AEN3897">repmgr standby unregister</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr witness register,
+    <ulink url="repmgr-witness-register.html" role="AEN4371">repmgr witness register</ulink>
+  </primaryie>
+  <seealsoie>witness server</seealsoie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr witness unregister,
+    <ulink url="repmgr-witness-unregister.html" role="AEN4414">repmgr witness unregister</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgr.conf,
+    <ulink url="configuration-file.html" role="AEN966">Configuration file</ulink>
+  </primaryie>
+  <secondaryie>format,
+    <ulink url="configuration-file.html#CONFIGURATION-FILE-FORMAT" role="AEN979">Configuration file format</ulink>
+  </secondaryie>
+  <secondaryie>location,
+    <ulink url="configuration-file.html#CONFIGURATION-FILE-LOCATION" role="AEN994">Configuration file location</ulink>
+  </secondaryie>
+  <secondaryie>log settings,
+    <ulink url="configuration-file-log-settings.html" role="AEN1104">Log settings</ulink>
+  </secondaryie>
+  <secondaryie>required settings,
+    <ulink url="configuration-file-settings.html" role="AEN1031">Required configuration file settings</ulink>
+  </secondaryie>
+  <secondaryie>service command settings,
+    <ulink url="configuration-file-service-commands.html" role="AEN1189">Service command settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgrd
+  </primaryie>
+  <secondaryie>applying configuration changes,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-RELOADING-CONFIGURATION" role="AEN2820">Applying configuration changes to repmgrd</ulink>
+  </secondaryie>
+  <secondaryie>automatic failover,
+    <ulink url="repmgrd-automatic-failover.html" role="AEN2362">Automatic failover with repmgrd</ulink>
+  </secondaryie>
+  <secondaryie>BDR,
+    <ulink url="repmgrd-bdr.html" role="AEN3270">BDR failover with repmgrd</ulink>
+  </secondaryie>
+  <secondaryie>cascading replication,
+    <ulink url="cascading-replication.html" role="AEN2485">repmgrd and cascading replication</ulink>
+  </secondaryie>
+  <secondaryie>configuration,
+    <ulink url="repmgrd-configuration.html" role="AEN2500">repmgrd setup and configuration</ulink>
+  </secondaryie>
+  <secondaryie>Debian/Ubuntu and daemon configuration,
+    <ulink url="repmgrd-daemon.html#REPMGRD-CONFIGURATION-DEBIAN-UBUNTU" role="AEN3004">repmgrd daemon configuration on Debian/Ubuntu</ulink>
+  </secondaryie>
+  <secondaryie>degraded monitoring,
+    <ulink url="repmgrd-degraded-monitoring.html" role="AEN3197">"degraded monitoring" mode</ulink>
+  </secondaryie>
+  <secondaryie>displaying daemon status,
+    <ulink url="repmgr-daemon-status.html" role="AEN5219">repmgr daemon status</ulink>
+  </secondaryie>
+  <secondaryie>failover validation,
+    <ulink url="repmgrd-failover-validation.html" role="AEN2460">Failover validation</ulink>
+  </secondaryie>
+  <secondaryie>log rotation,
+    <ulink url="repmgrd-log-rotation.html" role="AEN3054">repmgrd log rotation</ulink>
+  </secondaryie>
+  <secondaryie>monitoring,
+    <ulink url="repmgrd-monitoring.html" role="AEN3233">Storing monitoring data</ulink>
+  </secondaryie>
+  <secondaryie>monitoring configuration,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-MONITORING-CONFIGURATION" role="AEN2808">Monitoring configuration</ulink>
+  </secondaryie>
+  <secondaryie>network splits,
+    <ulink url="repmgrd-network-split.html" role="AEN2413">Handling network splits with repmgrd</ulink>
+  </secondaryie>
+  <secondaryie>operation,
+    <ulink url="repmgrd-operation.html" role="AEN3066">repmgrd operation</ulink>
+  </secondaryie>
+  <secondaryie>overview,
+    <ulink url="repmgrd-overview.html" role="AEN2295">repmgrd overview</ulink>
+  </secondaryie>
+  <secondaryie>paused WAL replay,
+    <ulink url="repmgrd-wal-replay-pause.html" role="AEN3182">repmgrd and paused WAL replay</ulink>
+  </secondaryie>
+  <secondaryie>pausing,
+    <ulink url="repmgrd-pausing.html" role="AEN3071">Pausing repmgrd</ulink>,
+    <ulink url="repmgr-daemon-pause.html" role="AEN5574">repmgr daemon pause</ulink>
+  </secondaryie>
+  <secondaryie>PID file,
+    <ulink url="repmgrd-daemon.html#REPMGRD-PID-FILE" role="AEN2968">repmgrd's PID file</ulink>
+  </secondaryie>
+  <secondaryie>PostgreSQL service configuration,
+    <ulink url="repmgrd-basic-configuration.html#POSTGRESQL-SERVICE-CONFIGURATION" role="AEN2768">PostgreSQL service configuration</ulink>
+  </secondaryie>
+  <secondaryie>repmgrd service configuration,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-SERVICE-CONFIGURATION" role="AEN2785">repmgrd service configuration</ulink>
+  </secondaryie>
+  <secondaryie>standby disconnection on failover,
+    <ulink url="repmgrd-standby-disconnection-on-failover.html" role="AEN2435">Standby disconnection on failover</ulink>
+  </secondaryie>
+  <secondaryie>starting,
+    <ulink url="repmgr-daemon-start.html" role="AEN5307">repmgr daemon start</ulink>
+  </secondaryie>
+  <secondaryie>starting and stopping,
+    <ulink url="repmgrd-daemon.html" role="AEN2938">repmgrd daemon</ulink>
+  </secondaryie>
+  <secondaryie>stopping,
+    <ulink url="repmgr-daemon-stop.html" role="AEN5441">repmgr daemon stop</ulink>
+  </secondaryie>
+  <secondaryie>unpausing,
+    <ulink url="repmgr-daemon-unpause.html" role="AEN5639">repmgr daemon unpause</ulink>
+  </secondaryie>
+  <secondaryie>witness server,
+    <ulink url="repmgrd-witness-server.html" role="AEN2369">Using a witness server</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgrd_service_start_command
+  </primaryie>
+  <secondaryie>with "repmgr daemon start",
+    <ulink url="repmgr-daemon-start.html#REPMGR-DAEMON-START-CONFIGURATION" role="AEN5367">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>repmgrd_service_stop_command
+  </primaryie>
+  <secondaryie>with "repmgr daemon stop",
+    <ulink url="repmgr-daemon-stop.html#REPMGR-DAEMON-STOP-CONFIGURATION" role="AEN5521">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>S</title>
+
+<indexentry>
+  <primaryie>service command settings
+  </primaryie>
+  <secondaryie>configuration in repmgr.conf,
+    <ulink url="configuration-file-service-commands.html" role="AEN1192">Service command settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>shutdown_check_timeout
+  </primaryie>
+  <secondaryie>with "repmgr standby switchover",
+    <ulink url="repmgr-standby-switchover.html#AEN4264" role="AEN4279">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>sibling_nodes_disconnect_timeout,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-AUTOMATIC-FAILOVER-CONFIGURATION-OPTIONAL" role="AEN2758">Optional configuration for automatic failover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>snapshot packages,
+    <ulink url="packages-snapshot.html" role="AEN7255">Snapshot packages</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>standby disconnection on failover,
+    <ulink url="repmgrd-standby-disconnection-on-failover.html" role="AEN2438">Standby disconnection on failover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>standby_disconnect_on_failover,
+    <ulink url="repmgrd-basic-configuration.html#REPMGRD-AUTOMATIC-FAILOVER-CONFIGURATION-OPTIONAL" role="AEN2730">Optional configuration for automatic failover</ulink>
+  </primaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>standby_reconnect_timeout
+  </primaryie>
+  <secondaryie>with "repmgr standby switchover",
+    <ulink url="repmgr-standby-switchover.html#AEN4264" role="AEN4304">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>support,
+    <ulink url="appendix-support.html" role="AEN7347">repmgr support</ulink>
+  </primaryie>
+  <secondaryie>reporting issues,
+    <ulink url="appendix-support-reporting-issues.html" role="AEN7364">Reporting Issues</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>switchover,
+    <ulink url="performing-switchover.html" role="AEN1575">Performing a switchover with repmgr</ulink>
+  </primaryie>
+  <secondaryie>caveats,
+    <ulink url="switchover-caveats.html" role="AEN1724">Caveats</ulink>
+  </secondaryie>
+  <secondaryie>execution,
+    <ulink url="switchover-execution.html" role="AEN1702">Executing the switchover command</ulink>
+  </secondaryie>
+  <secondaryie>preparation,
+    <ulink url="preparing-for-switchover.html" role="AEN1596">Preparing for switchover</ulink>
+  </secondaryie>
+  <secondaryie>troubleshooting,
+    <ulink url="switchover-troubleshooting.html" role="AEN1743">Troubleshooting switchover issues</ulink>
+  </secondaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>U</title>
+
+<indexentry>
+  <primaryie>upgrading,
+    <ulink url="upgrading-repmgr.html" role="AEN1987">Upgrading repmgr</ulink>
+  </primaryie>
+  <secondaryie>checking repmgrd status,
+    <ulink url="upgrading-repmgr-extension.html#UPGRADING-CHECK-REPMGRD" role="AEN2093">Checking repmgrd status after an upgrade</ulink>
+  </secondaryie>
+  <secondaryie>from repmgr 3.x,
+    <ulink url="upgrading-from-repmgr-3.html" role="AEN2129">Upgrading from repmgr 3.x</ulink>
+  </secondaryie>
+  <secondaryie>major release,
+    <ulink url="upgrading-repmgr-extension.html#UPGRADING-MAJOR-VERSION" role="AEN2048">Upgrading a major version release</ulink>
+  </secondaryie>
+  <secondaryie>minor release,
+    <ulink url="upgrading-repmgr-extension.html#UPGRADING-MINOR-VERSION" role="AEN2022">Upgrading a minor version release</ulink>
+  </secondaryie>
+  <secondaryie>pg_upgrade,
+    <ulink url="upgrading-and-pg-upgrade.html" role="AEN2103">pg_upgrade and repmgr</ulink>
+  </secondaryie>
+  <secondaryie>repmgr 4.x and later,
+    <ulink url="upgrading-repmgr-extension.html" role="AEN1993">Upgrading repmgr 4.x and later</ulink>
+  </secondaryie>
+</indexentry>
+
+</indexdiv>
+<indexdiv><title>W</title>
+
+<indexentry>
+  <primaryie>wal_keep_segments
+  </primaryie>
+  <secondaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN939">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>wal_level
+  </primaryie>
+  <secondaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN848">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>wal_log_hints
+  </primaryie>
+  <secondaryie>PostgreSQL configuration,
+    <ulink url="configuration-prerequisites.html#CONFIGURATION-POSTGRESQL" role="AEN891">PostgreSQL configuration for repmgr</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>wal_receive_check_timeout
+  </primaryie>
+  <secondaryie>with "repmgr standby switchover",
+    <ulink url="repmgr-standby-switchover.html#AEN4264" role="AEN4296">Configuration file settings</ulink>
+  </secondaryie>
+</indexentry>
+
+<indexentry>
+  <primaryie>witness server
+  </primaryie>
+  <secondaryie>repmgrd,
+    <ulink url="repmgrd-witness-server.html" role="AEN2372">Using a witness server</ulink>
+  </secondaryie>
+</indexentry>
+
+</indexdiv>
+</index>
