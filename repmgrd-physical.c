@@ -1003,7 +1003,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 			PQExpBufferData event_details;
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
-							  _("new node %s \"%s\" (ID: %i) has connected"),
+							  _("new %s \"%s\" (ID: %i) has connected"),
 							  get_node_type_string(child_node_rec->type),
 							  child_node_rec->node_name,
 							  child_node_rec->node_id);
