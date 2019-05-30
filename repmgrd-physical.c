@@ -57,6 +57,7 @@ typedef struct t_child_node_info
 {
 	int node_id;
 	char node_name[NAMEDATALEN];
+	t_server_type type;
 	NodeAttached attached;
 	instr_time detached_time;
 	struct t_child_node_info *next;
@@ -118,7 +119,7 @@ static void parse_failover_validation_command(const char *template,  t_node_info
 static bool check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info);
 static void check_witness_attached(t_node_info *node_info, bool startup);
 
-static t_child_node_info *append_child_node_record(t_child_node_info_list *nodes, int node_id, const char *node_name, NodeAttached attached);
+static t_child_node_info *append_child_node_record(t_child_node_info_list *nodes, int node_id, const char *node_name, t_server_type type, NodeAttached attached);
 static void remove_child_node_record(t_child_node_info_list *nodes, int node_id);
 static void clear_child_node_info_list(t_child_node_info_list *nodes);
 static void parse_child_nodes_disconnect_command(char *parsed_command, char *template, int reporting_node_id);
@@ -332,6 +333,7 @@ monitor_streaming_primary(void)
 				(void) append_child_node_record(&local_child_nodes,
 												cell->node_info->node_id,
 												cell->node_info->node_name,
+												cell->node_info->type,
 												cell->node_info->attached == NODE_ATTACHED ? NODE_ATTACHED : NODE_ATTACHED_UNKNOWN);
 
 				/*
@@ -853,6 +855,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 				detached_child_node = append_child_node_record(&disconnected_child_nodes,
 															   local_child_node_rec->node_id,
 															   local_child_node_rec->node_name,
+															   local_child_node_rec->type,
 															   NODE_DETACHED);
 				detached_child_node->detached_time = local_child_node_rec->detached_time;
 			}
@@ -866,6 +869,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 				attached_child_node = append_child_node_record(&reconnected_child_nodes,
 															   local_child_node_rec->node_id,
 															   local_child_node_rec->node_name,
+															   local_child_node_rec->type,
 															   NODE_ATTACHED);
 				attached_child_node->detached_time = local_child_node_rec->detached_time;
 				INSTR_TIME_SET_ZERO(local_child_node_rec->detached_time);
@@ -877,6 +881,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 				append_child_node_record(&new_child_nodes,
 										 local_child_node_rec->node_id,
 										 local_child_node_rec->node_name,
+										 local_child_node_rec->type,
 										 NODE_ATTACHED);
 			}
 		}
@@ -896,10 +901,12 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 			(void) append_child_node_record(local_child_nodes,
 											cell->node_info->node_id,
 											cell->node_info->node_name,
+											cell->node_info->type,
 											attached);
 			(void) append_child_node_record(&new_child_nodes,
 											cell->node_info->node_id,
 											cell->node_info->node_name,
+											cell->node_info->type,
 											attached);
 		}
 	}
@@ -925,7 +932,8 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 
 			if (db_node_rec_found == false)
 			{
-				log_notice(_("child node \"%s\" (ID: %i) is no longer connected or registered"),
+				log_notice(_("%s node \"%s\" (ID: %i) is no longer connected or registered"),
+						   get_node_type_string(local_child_node_rec->type),
 						   local_child_node_rec->node_name,
 						   local_child_node_rec->node_id);
 				remove_child_node_record(local_child_nodes, local_child_node_rec->node_id);
@@ -942,7 +950,8 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 			PQExpBufferData event_details;
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
-							  _("node \"%s\" (ID: %i) has disconnected"),
+							  _("%s node \"%s\" (ID: %i) has disconnected"),
+							  get_node_type_string(child_node_rec->type),
 							  child_node_rec->node_name,
 							  child_node_rec->node_id);
 			log_notice("%s",  event_details.data);
@@ -967,7 +976,8 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 			PQExpBufferData event_details;
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
-							  _("node \"%s\" (ID: %i) has reconnected after %i seconds"),
+							  _("%s node \"%s\" (ID: %i) has reconnected after %i seconds"),
+							  get_node_type_string(child_node_rec->type),
 							  child_node_rec->node_name,
 							  child_node_rec->node_id,
 							  calculate_elapsed( child_node_rec->detached_time ));
@@ -993,7 +1003,8 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 			PQExpBufferData event_details;
 			initPQExpBuffer(&event_details);
 			appendPQExpBuffer(&event_details,
-							  _("new node \"%s\" (ID: %i) has connected"),
+							  _("new node %s \"%s\" (ID: %i) has connected"),
+							  get_node_type_string(child_node_rec->type),
 							  child_node_rec->node_name,
 							  child_node_rec->node_id);
 			log_notice("%s",  event_details.data);
@@ -4938,12 +4949,14 @@ check_witness_attached(t_node_info *node_info, bool startup)
 
 
 static t_child_node_info *
-append_child_node_record(t_child_node_info_list *nodes, int node_id, const char *node_name, NodeAttached attached)
+append_child_node_record(t_child_node_info_list *nodes, int node_id, const char *node_name, t_server_type type, NodeAttached attached)
 {
 	t_child_node_info *child_node = pg_malloc0(sizeof(t_child_node_info));
 
 	child_node->node_id = node_id;
 	snprintf(child_node->node_name, sizeof(child_node->node_name), "%s", node_name);
+
+	child_node->type = type;
 	child_node->attached = attached;
 
 	if (nodes->tail)
