@@ -1945,6 +1945,7 @@ check_cli_parameters(const int action)
 		switch (action)
 		{
 			case CLUSTER_SHOW:
+			case CLUSTER_EVENT:
 			case DAEMON_STATUS:
 				break;
 			default:

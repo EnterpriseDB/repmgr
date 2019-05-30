@@ -382,6 +382,7 @@ do_cluster_show(void)
  *   --node-[id|name]
  *   --event
  *   --csv
+ *   --compact
  */
 
 void
@@ -427,11 +428,11 @@ do_cluster_event(void)
 	strncpy(headers_event[EV_DETAILS].title, _("Details"), MAXLEN);
 
 	/*
-	 * If --terse or --csv provided, simply omit the "Details" column.
+	 * If --compact or --csv provided, simply omit the "Details" column.
 	 * In --csv mode we'd need to quote/escape the contents "Details" column,
 	 * which is doable but which will remain a TODO for now.
 	 */
-	if (runtime_options.terse == true || runtime_options.output_mode == OM_CSV)
+	if (runtime_options.compact == true || runtime_options.output_mode == OM_CSV)
 		column_count --;
 
 	for (i = 0; i < column_count; i++)
@@ -1462,6 +1463,7 @@ do_cluster_help(void)
 	printf(_("    --event                   filter specific event\n"));
 	printf(_("    --node-id                 restrict entries to node with this ID\n"));
 	printf(_("    --node-name               restrict entries to node with this name\n"));
+	printf(_("    --compact                 omit \"Details\" column"));
 	printf(_("    --csv                     emit output as CSV\n"));
 	puts("");
 

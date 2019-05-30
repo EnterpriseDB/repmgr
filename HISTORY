@@ -16,6 +16,7 @@
           as reported by each individual node (Ian)
         repmgr: in "cluster show" and "daemon status", check if a node is attached
           to its advertised upstream node
+        repmgr: use --compact rather than --terse option in "cluster event" (Ian)
         repmgr: prevent a standby being cloned from a witness server (Ian)
         repmgr: prevent a witness server being registered on the cluster primary (John)
         repmgr: ensure BDR2-specific functionality cannot be used on

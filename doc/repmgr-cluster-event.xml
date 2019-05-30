@@ -45,7 +45,7 @@
       </itemizedlist>
     </para>
     <para>
-      The "Details" column can be omitted by providing <literal>--terse</literal>.
+      The &quot;Details&quot; column can be omitted by providing <literal>--compact</literal>.
     </para>
   </refsect1>
 
