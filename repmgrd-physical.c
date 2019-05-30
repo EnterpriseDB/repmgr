@@ -116,7 +116,7 @@ static const char *format_failover_state(FailoverState failover_state);
 static ElectionResult execute_failover_validation_command(t_node_info *node_info);
 static void parse_failover_validation_command(const char *template,  t_node_info *node_info, PQExpBufferData *out);
 static bool check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info);
-static void check_witness_attached(t_node_info *node_info);
+static void check_witness_attached(t_node_info *node_info, bool startup);
 
 static t_child_node_info *append_child_node_record(t_child_node_info_list *nodes, int node_id, const char *node_name, NodeAttached attached);
 static void remove_child_node_record(t_child_node_info_list *nodes, int node_id);
@@ -339,7 +339,7 @@ monitor_streaming_primary(void)
 				 */
 				if (cell->node_info->type == WITNESS)
 				{
-					check_witness_attached(cell->node_info);
+					check_witness_attached(cell->node_info, true);
 				}
 
 				if (cell->node_info->attached == NODE_ATTACHED)
@@ -824,7 +824,7 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 		 */
 		if (cell->node_info->type == WITNESS)
 		{
-			check_witness_attached(cell->node_info);
+			check_witness_attached(cell->node_info, false);
 		}
 
 		log_debug("child node: %i; attached: %s",
@@ -4903,7 +4903,7 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 
 
 static void
-check_witness_attached(t_node_info *node_info)
+check_witness_attached(t_node_info *node_info, bool startup)
 {
 	/*
 	 * connect and check upstream node id; at this point we don't care if it's
@@ -4923,6 +4923,14 @@ check_witness_attached(t_node_info *node_info)
 		{
 			node_info->attached = NODE_ATTACHED;
 		}
+		else
+		{
+			node_info->attached = NODE_DETACHED;
+		}
+	}
+	else
+	{
+		node_info->attached = startup == true ? NODE_ATTACHED_UNKNOWN : NODE_DETACHED;
 	}
 
 	PQfinish(witness_conn);
