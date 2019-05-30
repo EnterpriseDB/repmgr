@@ -5196,7 +5196,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	t_basebackup_options backup_options = T_BASEBACKUP_OPTIONS_INITIALIZER;
 	bool		backup_options_ok = true;
 	ItemList	backup_option_errors = {NULL, NULL};
-	bool		xlog_stream = true;
+	bool		wal_method_stream = true;
 	standy_clone_mode mode;
 	bool		pg_setting_ok;
 
@@ -5206,7 +5206,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	mode = get_standby_clone_mode();
 
 	/*
-	 * Parse `pg_basebackup_options`, if set, to detect whether --xlog-method
+	 * Parse "pg_basebackup_options", if set, to detect whether --wal-method
 	 * has been set to something other than `stream` (i.e. `fetch`), as this
 	 * will influence some checks
 	 */
@@ -5229,8 +5229,8 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		config_ok = false;
 	}
 
-	if (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0)
-		xlog_stream = false;
+	if (strlen(backup_options.wal_method) && strcmp(backup_options.wal_method, "stream") != 0)
+		wal_method_stream = false;
 
 	/* Check that WAL level is set correctly */
 	if (server_version_num < 90400)
@@ -5338,7 +5338,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		 * required if pg_basebackup is being used with --xlog-method=fetch,
 		 * *and* no restore command has been specified
 		 */
-		if (xlog_stream == false
+		if (wal_method_stream == false
 			&& strcmp(config_file_options.restore_command, "") == 0)
 		{
 			check_wal_keep_segments = true;
@@ -5483,7 +5483,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 		 * work out how many replication connections are required (1 or 2)
 		 */
 
-		if (xlog_stream == true)
+		if (wal_method_stream == true)
 			min_replication_connections += 1;
 
 		log_notice(_("checking for available walsenders on the source node (%i required)"),
@@ -5889,7 +5889,7 @@ run_basebackup(t_node_info *node_record)
 	 * avoid WAL buildup on the primary using the -S/--slot, which requires
 	 * -X/--xlog-method=stream (from 10, -X/--wal-method=stream)
 	 */
-	if (!strlen(backup_options.xlog_method))
+	if (!strlen(backup_options.wal_method))
 	{
 		appendPQExpBufferStr(&params, " -X stream");
 	}
@@ -5917,7 +5917,7 @@ run_basebackup(t_node_info *node_record)
 		 * option set, or if --wal-method (--xlog-method) is set to a value
 		 * other than "stream" (in which case we can't use --slot).
 		 */
-		if (strlen(backup_options.slot) || (strlen(backup_options.xlog_method) && strcmp(backup_options.xlog_method, "stream") != 0))
+		if (strlen(backup_options.slot) || (strlen(backup_options.wal_method) && strcmp(backup_options.wal_method, "stream") != 0))
 		{
 			slot_add = false;
 		}

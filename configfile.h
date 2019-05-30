@@ -251,7 +251,7 @@ typedef struct
 typedef struct
 {
 	char		slot[MAXLEN];
-	char		xlog_method[MAXLEN];
+	char		wal_method[MAXLEN];
 	bool		no_slot;		/* from PostgreSQL 10 */
 } t_basebackup_options;
 

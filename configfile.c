@@ -2058,18 +2058,10 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	struct option *long_options = NULL;
 
 
-	/* We're only interested in these options */
-	static struct option long_options_9[] =
-	{
-		{"slot", required_argument, NULL, 'S'},
-		{"xlog-method", required_argument, NULL, 'X'},
-		{NULL, 0, NULL, 0}
-	};
-
 	/*
-	 * From PostgreSQL 10, --xlog-method is renamed --wal-method and there's
-	 * also --no-slot, which we'll want to consider.
+	 * We're only interested in these options.
 	 */
+
 	static struct option long_options_10[] =
 	{
 		{"slot", required_argument, NULL, 'S'},
@@ -2078,6 +2070,17 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 		{NULL, 0, NULL, 0}
 	};
 
+	/*
+	 * Pre-PostgreSQL 10 options
+	 */
+	static struct option long_options_legacy[] =
+	{
+		{"slot", required_argument, NULL, 'S'},
+		{"xlog-method", required_argument, NULL, 'X'},
+		{NULL, 0, NULL, 0}
+	};
+
+
 	/* Don't attempt to tokenise an empty string */
 	if (!strlen(pg_basebackup_options))
 		return backup_options_ok;
@@ -2085,7 +2088,7 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 	if (server_version_num >= 100000)
 		long_options = long_options_10;
 	else
-		long_options = long_options_9;
+		long_options = long_options_legacy;
 
 	argc_item = parse_output_to_argv(pg_basebackup_options, &argv_array);
 
@@ -2104,7 +2107,7 @@ parse_pg_basebackup_options(const char *pg_basebackup_options, t_basebackup_opti
 				strncpy(backup_options->slot, optarg, MAXLEN);
 				break;
 			case 'X':
-				strncpy(backup_options->xlog_method, optarg, MAXLEN);
+				strncpy(backup_options->wal_method, optarg, MAXLEN);
 				break;
 			case 1:
 				backup_options->no_slot = true;
