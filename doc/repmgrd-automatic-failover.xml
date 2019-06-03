@@ -500,6 +500,20 @@ INFO:  node 3 received notification to rerun promotion candidate election
           is connected). Alternatively, if <varname>child_nodes_disconnect_min_count</varname>
           and more than that number of child nodes disconnects, the script will be triggered.
         </para>
+        <note>
+          <para>
+            By default, a witness node, if in use, will <emphasis>not</emphasis> be counted as a
+            child node for the purposes of determining whether to execute
+            <varname>child_nodes_disconnect_command</varname>.
+          </para>
+          <para>
+            To enable the witness node to be counted as a child node, set
+            <varname>child_nodes_connected_include_witness</varname> in <filename>repmgr.conf</filename>
+            to <literal>true</literal>
+            (and <link linkend="repmgrd-reloading-configuration">reload the configuration</link> if &repmgrd;
+            is running).
+          </para>
+        </note>
       </listitem>
 
       <listitem>
@@ -729,7 +743,10 @@ INFO:  node 3 received notification to rerun promotion candidate election
 			the <varname>child_nodes_disconnect_command</varname> script
 			will be executed when no child nodes are connected.
 		  </para>
-
+          <para>
+            A witness node, if in use, will not be counted as a child node unless
+            <varname>child_nodes_connected_include_witness</varname> is set to <literal>true</literal>.
+          </para>
 		</listitem>
 	  </varlistentry>
 
@@ -765,8 +782,32 @@ INFO:  node 3 received notification to rerun promotion candidate election
 			will be executed when no child nodes are connected.
 		  </para>
 
+          <para>
+            A witness node, if in use, will not be counted as a child node unless
+            <varname>child_nodes_connected_include_witness</varname> is set to <literal>true</literal>.
+          </para>
+
 		</listitem>
 	  </varlistentry>
+
+
+	  <varlistentry>
+        <term><varname>child_nodes_connected_include_witness</varname></term>
+        <listitem>
+          <indexterm>
+		    <primary>child_nodes_connected_include_witness</primary>
+		    <secondary>child node disconnection monitoring</secondary>
+		  </indexterm>
+
+		  <para>
+            Whether to count the witness node (if in use) as a child node when
+            determining whether to execute <varname>child_nodes_disconnect_command</varname>.
+          </para>
+          <para>
+            Default to <literal>false</literal>.
+          </para>
+        </listitem>
+      </varlistentry>
 
 	</variablelist>
 
