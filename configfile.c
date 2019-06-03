@@ -1109,7 +1109,7 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * loop is started up; it therefore only needs to reload options required
  * by repmgrd, which are as follows:
  *
- * changeable options (keep the list in "doc/repmgrd-configuration.sgml" in sync
+ * changeable options (keep the list in "doc/repmgrd-configuration.xml" in sync
  * with these):
  *
  * - async_query_timeout
