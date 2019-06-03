@@ -151,6 +151,7 @@ typedef struct
 	int			child_nodes_check_interval;
 	int			child_nodes_disconnect_min_count;
 	int			child_nodes_connected_min_count;
+	bool		child_nodes_connected_include_witness;
 	int			child_nodes_disconnect_timeout;
 	char		child_nodes_disconnect_command[MAXPGPATH];
 
@@ -229,6 +230,7 @@ typedef struct
 		DEFAULT_CHILD_NODES_CHECK_INTERVAL, \
 		DEFAULT_CHILD_NODES_DISCONNECT_MIN_COUNT, \
 		DEFAULT_CHILD_NODES_CONNECTED_MIN_COUNT, \
+		DEFAULT_CHILD_NODES_CONNECTED_INCLUDE_WITNESS, \
 		DEFAULT_CHILD_NODES_DISCONNECT_TIMEOUT, "", \
 		/* BDR settings */ \
 		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \

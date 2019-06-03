@@ -364,11 +364,13 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	options->primary_visibility_consensus = false;
 	memset(options->failover_validation_command, 0, sizeof(options->failover_validation_command));
 	options->election_rerun_interval = DEFAULT_ELECTION_RERUN_INTERVAL;
+
 	options->child_nodes_check_interval = DEFAULT_CHILD_NODES_CHECK_INTERVAL;
-	memset(options->child_nodes_disconnect_command, 0, sizeof(options->child_nodes_disconnect_command));
 	options->child_nodes_disconnect_min_count = DEFAULT_CHILD_NODES_DISCONNECT_MIN_COUNT;
 	options->child_nodes_connected_min_count = DEFAULT_CHILD_NODES_CONNECTED_MIN_COUNT;
+	options->child_nodes_connected_include_witness = DEFAULT_CHILD_NODES_CONNECTED_INCLUDE_WITNESS;
 	options->child_nodes_disconnect_timeout = DEFAULT_CHILD_NODES_DISCONNECT_TIMEOUT;
+	memset(options->child_nodes_disconnect_command, 0, sizeof(options->child_nodes_disconnect_command));
 
 	/*-------------
 	 * witness settings
@@ -675,6 +677,8 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 			options->child_nodes_disconnect_min_count = repmgr_atoi(value, name, error_list, -1);
 		else if (strcmp(name, "child_nodes_connected_min_count") == 0)
 			options->child_nodes_connected_min_count = repmgr_atoi(value, name, error_list, -1);
+		else if (strcmp(name, "child_nodes_connected_include_witness") == 0)
+			options->child_nodes_connected_include_witness = parse_bool(value, name, error_list);
 		else if (strcmp(name, "child_nodes_disconnect_timeout") == 0)
 			options->child_nodes_disconnect_timeout = repmgr_atoi(value, name, error_list, 0);
 
@@ -1117,6 +1121,7 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * - bdr_recovery_timeout
  * - child_nodes_check_interval
  * - child_nodes_connected_min_count
+ * - child_nodes_connected_include_witness
  * - child_nodes_disconnect_command
  * - child_nodes_disconnect_min_count
  * - child_nodes_disconnect_timeout
@@ -1326,6 +1331,15 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 
 			config_changed = true;
 		}
+	}
+
+	/* child_nodes_connected_include_witness */
+	if (orig_options->child_nodes_connected_include_witness != new_options.child_nodes_connected_include_witness)
+	{
+		orig_options->child_nodes_connected_include_witness = new_options.child_nodes_connected_include_witness;
+		log_info(_("\"child_nodes_connected_include_witness\" is now \"%i\""), new_options.child_nodes_connected_include_witness);
+
+		config_changed = true;
 	}
 
 	/* child_nodes_disconnect_timeout */

@@ -1026,7 +1026,10 @@ check_primary_child_nodes(t_child_node_info_list *local_child_nodes)
 		bool repmgrd_paused = repmgrd_is_paused(local_conn);
 
 		if (repmgrd_paused == false)
+		{
+			/* check criteria for execution, and execute if criteria met */
 			execute_child_nodes_disconnect_command(&db_child_node_records, local_child_nodes);
+		}
 	}
 
 	clear_child_node_info_list(&disconnected_child_nodes);
@@ -1060,14 +1063,34 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 	}
 	else if (config_file_options.child_nodes_disconnect_min_count > 0)
 	{
+		int child_node_count = db_child_node_records->node_count;
+
+		if (config_file_options.child_nodes_connected_include_witness == false)
+		{
+			/* reduce total, if witness server in child node list */
+			for (cell = db_child_node_records->head; cell; cell = cell->next)
+			{
+				if (cell->node_info->type == WITNESS)
+				{
+					child_node_count--;
+					break;
+				}
+			}
+		}
+
 		min_required_connected_count =
-			(db_child_node_records->node_count - config_file_options.child_nodes_disconnect_min_count)
+			(child_node_count - config_file_options.child_nodes_disconnect_min_count)
 			+ 1;
 	}
 
 	/* calculate number of connected child nodes */
 	for (cell = db_child_node_records->head; cell; cell = cell->next)
 	{
+		/* exclude witness server from total, if necessay */
+		if (config_file_options.child_nodes_connected_include_witness == false &&
+			cell->node_info->type == WITNESS)
+			continue;
+
 		if (cell->node_info->attached == NODE_ATTACHED)
 			connected_count ++;
 	}
@@ -1100,6 +1123,11 @@ execute_child_nodes_disconnect_command(NodeInfoList *db_child_node_records, t_ch
 			{
 				instr_time  current_time = current_time_base;
 				int seconds_since_detached;
+
+				/* exclude witness server from calculatin if neccessary */
+				if (config_file_options.child_nodes_connected_include_witness == false &&
+					child_node_rec->type == WITNESS)
+					continue;
 
 				if (child_node_rec->attached != NODE_DETACHED)
 					continue;
