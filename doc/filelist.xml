@@ -4,27 +4,6 @@
 
 <!ENTITY bookindex  SYSTEM "bookindex.xml">
 
-<!--
- Some parts of the documentation are also source for some plain-text
- files used during installation.  To selectively ignore or include
- some parts (e.g., external xref's) when generating these files we use
- these parameter entities.  See also standalone-install.sgml.
- -->
-<!ENTITY % standalone-ignore  "INCLUDE">
-<!ENTITY % standalone-include "IGNORE">
-
-<!-- doc/filelist.xml -->
-
-<!--
- By default, no index is included.  Use -i include-index on the command line
- to include it.
- -->
-<!ENTITY % include-index "IGNORE">
-
-<!--
- Create empty index element for processing by XSLT stylesheet.
- -->
-<!ENTITY % include-xslt-index "IGNORE">
 
 <!--
  Include external documentation sections
