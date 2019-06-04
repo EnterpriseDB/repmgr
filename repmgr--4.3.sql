@@ -78,8 +78,6 @@ CREATE VIEW repmgr.show_nodes AS
 LEFT JOIN repmgr.nodes un
        ON un.node_id = n.upstream_node_id;
 
-
-/* XXX update upgrade scripts! */
 CREATE TABLE repmgr.voting_term (
   term INT NOT NULL
 );
