@@ -2991,57 +2991,22 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 		}
 	}
 
-	/* Initialise connection parameters to write as "primary_conninfo" */
-	initialize_conninfo_params(&recovery_conninfo, false);
-
-	/* We ignore any application_name set in the primary's conninfo */
-	parse_conninfo_string(follow_target_node_record->conninfo, &recovery_conninfo, &errmsg, true);
-
+	/*
+	 * store the original upstream node id so we can delete the
+	 * replication slot, if exists
+	 */
+	if (local_node_record.upstream_node_id != UNKNOWN_NODE_ID)
 	{
-		t_conninfo_param_list local_node_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
-		bool		parse_success;
+		original_upstream_node_id = local_node_record.upstream_node_id;
+	}
+	else
+	{
+		original_upstream_node_id = follow_target_node_record->node_id;
+	}
 
-		initialize_conninfo_params(&local_node_conninfo, false);
-
-		parse_success = parse_conninfo_string(local_node_record.conninfo, &local_node_conninfo, &errmsg, false);
-
-		if (parse_success == false)
-		{
-			/*
-			 * this shouldn't happen, but if it does we'll plough on
-			 * regardless
-			 */
-			log_warning(_("unable to parse conninfo string \"%s\":\n  %s"),
-						local_node_record.conninfo, errmsg);
-		}
-		else
-		{
-			char	   *application_name = param_get(&local_node_conninfo, "application_name");
-
-			if (application_name != NULL && strlen(application_name))
-				param_set(&recovery_conninfo, "application_name", application_name);
-		}
-
-		free_conninfo_params(&local_node_conninfo);
-
-		/*
-		 * store the original upstream node id so we can delete the
-		 * replication slot, if exists
-		 */
-		if (local_node_record.upstream_node_id != UNKNOWN_NODE_ID)
-		{
-			original_upstream_node_id = local_node_record.upstream_node_id;
-		}
-		else
-		{
-			original_upstream_node_id = follow_target_node_record->node_id;
-		}
-
-
-		if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
-		{
-			remove_old_replication_slot = true;
-		}
+	if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
+	{
+		remove_old_replication_slot = true;
 	}
 
 	/* Fetch original upstream's record */
@@ -3065,6 +3030,12 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 			log_detail(_("replication slot will need to be removed manually"));
 		}
 	}
+
+	/* Initialise connection parameters to write as "primary_conninfo" */
+	initialize_conninfo_params(&recovery_conninfo, false);
+
+	/* We ignore any application_name set in the primary's conninfo */
+	parse_conninfo_string(follow_target_node_record->conninfo, &recovery_conninfo, &errmsg, true);
 
 	/* Set the application name to this node's name */
 	param_set(&recovery_conninfo, "application_name", config_file_options.node_name);
