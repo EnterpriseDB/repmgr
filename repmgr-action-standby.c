@@ -2991,7 +2991,7 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 		}
 	}
 
-	/* Initialise connection parameters to write as `primary_conninfo` */
+	/* Initialise connection parameters to write as "primary_conninfo" */
 	initialize_conninfo_params(&recovery_conninfo, false);
 
 	/* We ignore any application_name set in the primary's conninfo */

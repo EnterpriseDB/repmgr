@@ -326,8 +326,12 @@
         <term><option>--upstream-conninfo</option></term>
         <listitem>
           <para>
-            <literal>primary_conninfo</literal> value to write in recovery.conf
+            <literal>primary_conninfo</literal> value to write in <filename>recovery.conf</filename>
             when the intended upstream server does not yet exist.
+          </para>
+          <para>
+            Note that &repmgr; may modify the provided value, in particular to set the
+            correct <literal>application_name</literal>.
           </para>
         </listitem>
       </varlistentry>
