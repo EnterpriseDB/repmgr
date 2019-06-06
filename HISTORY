@@ -6,6 +6,8 @@
           an existing directory is being overwritten (Ian)
         repmgr: improve "--dry-run" behaviour for "standby promote" and
           "standby switchover" (Ian)
+        repmgr: when running "standby clone" with the "--upstream-conninfo" option
+          ensure that "application_name" is set correctly in "primary_conninfo" (Ian)
         repmgr: ensure "--dry-run" together with --force when running "standby clone"
           in barman mode does not modify an existing data directory (Ian)
         repmgr: improve "--dry-run" output when running "standby clone" in
