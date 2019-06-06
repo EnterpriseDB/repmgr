@@ -2092,9 +2092,9 @@ get_repmgr_extension_status(PGconn *conn, t_extension_versions *extversions)
 	appendPQExpBufferStr(&query,
 						 "	  SELECT ae.name, e.extname, "
 						 "           ae.default_version, "
-						 "           (((ae.default_version::NUMERIC::INT) * 10000) + (ae.default_version::NUMERIC - ae.default_version::NUMERIC::INT) * 1000)::INT AS available, "
+						 "           (((FLOOR(ae.default_version::NUMERIC)::INT) * 10000) + (ae.default_version::NUMERIC - FLOOR(ae.default_version::NUMERIC)::INT) * 1000)::INT AS available, "
 						 "           ae.installed_version, "
-						 "           (((ae.installed_version::NUMERIC::INT) * 10000) + (ae.installed_version::NUMERIC - ae.installed_version::NUMERIC::INT) * 1000)::INT AS installed "
+						 "           (((FLOOR(ae.installed_version::NUMERIC)::INT) * 10000) + (ae.installed_version::NUMERIC - FLOOR(ae.installed_version::NUMERIC)::INT) * 1000)::INT AS installed "
 						 "     FROM pg_catalog.pg_available_extensions ae "
 						 "LEFT JOIN pg_catalog.pg_extension e "
 						 "       ON e.extname=ae.name "
