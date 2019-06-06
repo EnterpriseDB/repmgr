@@ -112,7 +112,7 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 static int	get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
-static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, char *dest, bool as_file);
+static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, char *dest, bool as_file);
 static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list);
 static bool check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 static bool check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success);
@@ -6942,11 +6942,11 @@ check_recovery_type(PGconn *conn)
  * Creates a recovery.conf file for a standby
  *
  * A database connection pointer is required for escaping primary_conninfo
- * parameters. When cloning from Barman and --no-upstream-connection ) this
- * might not be available.
+ * parameters. When cloning from Barman and --no-upstream-connection supplied,
+ * this might not be available.
  */
-bool
-create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_conninfo, char *dest, bool as_file)
+static bool
+create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, char *dest, bool as_file)
 {
 	PQExpBufferData recovery_file_buf;
 	char		recovery_file_path[MAXPGPATH] = "";
@@ -6961,29 +6961,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *recovery_c
 						 "standby_mode = 'on'\n");
 
 	/* primary_conninfo = '...' */
-
-	/*
-	 * the user specified --upstream-conninfo string - copy that
-	 */
-	if (strlen(runtime_options.upstream_conninfo))
-	{
-		char	   *escaped = escape_recovery_conf_value(runtime_options.upstream_conninfo);
-
-		appendPQExpBuffer(&recovery_file_buf,
-						  "primary_conninfo = '%s'\n",
-						  escaped);
-
-		free(escaped);
-	}
-
-	/*
-	 * otherwise use the conninfo inferred from the upstream connection and/or
-	 * node record
-	 */
-	else
-	{
-		write_primary_conninfo(&recovery_file_buf, recovery_conninfo);
-	}
+	write_primary_conninfo(&recovery_file_buf, primary_conninfo);
 
 	/* recovery_target_timeline = 'latest' */
 	appendPQExpBufferStr(&recovery_file_buf,
