@@ -18,6 +18,7 @@
 <!ENTITY configuration      SYSTEM "configuration.xml">
 <!ENTITY configuration-file      SYSTEM "configuration-file.xml">
 <!ENTITY configuration-file-required-settings      SYSTEM "configuration-file-required-settings.xml">
+<!ENTITY configuration-file-optional-settings      SYSTEM "configuration-file-optional-settings.xml">
 <!ENTITY configuration-file-log-settings      SYSTEM "configuration-file-log-settings.xml">
 <!ENTITY configuration-file-service-commands   SYSTEM "configuration-file-service-commands.xml">
 <!ENTITY cloning-standbys  SYSTEM "cloning-standbys.xml">
