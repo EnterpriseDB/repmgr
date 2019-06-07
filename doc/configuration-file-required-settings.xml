@@ -96,33 +96,6 @@
   </variablelist>
  </para>
 
-  <para>
-    For a full list of annotated configuration items, see the file
-    <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>.
-  </para>
-  <para>
-    For &repmgrd;-specific settings, see <xref linkend="repmgrd-configuration"/>.
-  </para>
 
-  <note>
-    <para>
-    The following parameters in the configuration file can be overridden with
-    command line options:
-    <itemizedlist>
-     <listitem>
-       <simpara>
-         <literal>-L/--log-level</literal> overrides <literal>log_level</literal> in
-         <filename>repmgr.conf</filename>
-       </simpara>
-     </listitem>
-     <listitem>
-       <simpara>
-         <literal>-b/--pg_bindir</literal> overrides <literal>pg_bindir</literal> in
-         <filename>repmgr.conf</filename>
-       </simpara>
-     </listitem>
-    </itemizedlist>
-    </para>
-  </note>
 
 </sect1>

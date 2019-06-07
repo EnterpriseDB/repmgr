@@ -62,6 +62,64 @@ data_directory = /var/lib/pgsql/11/data</programlisting>
   </sect2>
 
 
+  <sect2 id="configuration-file-items" xreflabel="configuration file items">
+
+    <title>Configuration file items</title>
+    <para>
+      The following sections document some sections of the configuration file:
+       <itemizedlist>
+          <listitem>
+            <simpara>
+              <xref linkend="configuration-file-settings"/>
+            </simpara>
+          </listitem>
+
+          <listitem>
+            <simpara>
+              <xref linkend="configuration-file-log-settings"/>
+            </simpara>
+          </listitem>
+
+
+          <listitem>
+            <simpara>
+              <xref linkend="configuration-file-service-commands"/>
+            </simpara>
+          </listitem>
+
+       </itemizedlist>
+
+    </para>
+    <para>
+      For a full list of annotated configuration items, see the file
+      <ulink url="https://raw.githubusercontent.com/2ndQuadrant/repmgr/master/repmgr.conf.sample">repmgr.conf.sample</ulink>.
+    </para>
+    <para>
+      For &repmgrd;-specific settings, see <xref linkend="repmgrd-configuration"/>.
+    </para>
+
+    <note>
+      <para>
+        The following parameters in the configuration file can be overridden with
+        command line options:
+        <itemizedlist>
+          <listitem>
+            <simpara>
+              <literal>-L/--log-level</literal> overrides <literal>log_level</literal> in
+              <filename>repmgr.conf</filename>
+            </simpara>
+          </listitem>
+          <listitem>
+            <simpara>
+              <literal>-b/--pg_bindir</literal> overrides <literal>pg_bindir</literal> in
+              <filename>repmgr.conf</filename>
+            </simpara>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </note>
+
+  </sect2>
 
   <sect2 id="configuration-file-location" xreflabel="configuration file location">
   <title>Configuration file location</title>
