@@ -76,6 +76,12 @@ data_directory = /var/lib/pgsql/11/data</programlisting>
 
           <listitem>
             <simpara>
+              <xref linkend="configuration-file-optional-settings"/>
+            </simpara>
+          </listitem>
+
+          <listitem>
+            <simpara>
               <xref linkend="configuration-file-log-settings"/>
             </simpara>
           </listitem>

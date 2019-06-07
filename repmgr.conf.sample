@@ -67,16 +67,16 @@
 # Replication settings
 #------------------------------------------------------------------------------
 
-#replication_user='repmgr'	 # User to make replication connections with, if not set defaults
-				 # to the user defined in "conninfo".
+#replication_user='repmgr'	 # User to make replication connections with, if not set
+				 #  defaults to the user defined in "conninfo".
 
-#replication_type=physical	 # Must be one of 'physical' or 'bdr'.
+#replication_type=physical	 # Must be one of "physical" or "bdr".
 				 # NOTE: "bdr" can only be used with BDR 2.x
 
-#location=default		 # arbitrary string defining the location of the node; this
-				 # is used during failover to check visibilty of the
-				 # current primary node. See the 'repmgrd' documentation
-				 # in README.md for further details.
+#location=default		 # An arbitrary string defining the location of the node; this
+				 # is used during failover to check visibility of the
+				 # current primary node. For further details see:
+                                 #   https://repmgr.org/docs/current/repmgrd-network-split.html
 
 #use_replication_slots=no	 # whether to use physical replication slots
 				 # NOTE: when using replication slots,

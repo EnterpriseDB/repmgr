@@ -305,6 +305,7 @@
 
   &configuration-file;
   &configuration-file-required-settings;
+  &configuration-file-optional-settings;
   &configuration-file-log-settings;
   &configuration-file-service-commands;
 
