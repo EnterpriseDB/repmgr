@@ -502,10 +502,15 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		else if (strcmp(name, "conninfo") == 0)
 			strncpy(options->conninfo, value, MAXLEN);
 		else if (strcmp(name, "data_directory") == 0)
+		{
 			strncpy(options->data_directory, value, MAXPGPATH);
+			canonicalize_path(options->data_directory);
+		}
 		else if (strcmp(name, "config_directory") == 0)
+		{
 			strncpy(options->config_directory, value, MAXPGPATH);
-
+			canonicalize_path(options->config_directory);
+		}
 		else if (strcmp(name, "replication_user") == 0)
 		{
 			if (strlen(value) < sizeof(options->replication_user))
