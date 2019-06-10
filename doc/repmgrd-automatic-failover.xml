@@ -55,7 +55,7 @@
    </para>
  </note>
  <para>
-   For more complex replication scenarios,e.g. with multiple datacentres, it may
+   For more complex replication scenarios, e.g. with multiple datacentres, it may
    be preferable to use location-based failover, which ensures that only nodes
    in the same location as the primary will ever be promotion candidates;
    see <xref linkend="repmgrd-network-split"/> for more details.
