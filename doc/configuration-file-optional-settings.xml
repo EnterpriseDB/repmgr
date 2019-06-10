@@ -1,0 +1,124 @@
+<sect1 id="configuration-file-optional-settings" xreflabel="optional configuration file settings">
+
+  <title>Optional configuration file settings</title>
+
+  <indexterm>
+    <primary>repmgr.conf</primary>
+    <secondary>optional settings</secondary>
+  </indexterm>
+
+  <variablelist>
+
+
+    <varlistentry id="repmgr-conf-config-directory" xreflabel="config_directory">
+      <term><varname>config_directory</varname> (<type>string</type>)
+        <indexterm>
+          <primary><varname>config_directory</varname> configuration file parameter</primary>
+        </indexterm>
+      </term>
+      <listitem>
+        <para>
+          If PostgreSQL configuration files are located outside the data
+	  directory, specify the directory where the main
+	  <filename>postgresql.conf</filename> file is located.
+        </para>
+        <para>
+          This enables explicit provision of an external configuration file
+          directory, which if set will be passed to <command>pg_ctl</command> as the
+          <option>-D</option> parameter. Otherwise <command>pg_ctl</command> will
+          default to using the data directory, which will cause some operations
+          to fail if the configuration files are not present there.
+        </para>
+        <note>
+          <para>
+           This is implemented primarily for feature completeness and for
+           development/testing purposes. Users who have installed &repmgr; from
+           a package should <emphasis>not</emphasis> rely on  to stop/start/restart PostgreSQL,
+           instead they should set the appropriate <option>service_..._command</option>
+           for their operating system. For more details see
+           <xref linkend="configuration-file-service-commands"/>.
+          </para>
+        </note>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry id="repmgr-conf-replication-user" xreflabel="replication_user">
+      <term><varname>replication_user</varname> (<type>string</type>)
+        <indexterm>
+          <primary><varname>replication_user</varname> configuration file parameter</primary>
+        </indexterm>
+      </term>
+      <listitem>
+        <para>
+          PostgreSQL user to make replication connections with.
+          If not set defaults, to the user defined in <xref linkend="repmgr-conf-conninfo"/>.
+        </para>
+      </listitem>
+    </varlistentry>
+
+
+
+    <varlistentry id="repmgr-conf-replication-type" xreflabel="replication_type">
+      <term><varname>replication_type</varname> (<type>string</type>)
+        <indexterm>
+          <primary><varname>replication_type</varname> configuration file parameter</primary>
+        </indexterm>
+      </term>
+      <listitem>
+        <para>
+          Must be one of <literal>physical</literal> (for standard streaming replication)
+          or <literal>bdr</literal>.
+        </para>
+        <note>
+          <para>
+	    Replication type <literal>bdr</literal> can only be used with BDR 2.x
+          </para>
+          <para>
+            BDR 3.x users should use <literal>physical</literal>.
+          </para>
+        </note>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry id="repmgr-conf-location" xreflabel="location">
+      <term><varname>location</varname> (<type>string</type>)
+        <indexterm>
+          <primary><varname>location</varname> configuration file parameter</primary>
+        </indexterm>
+      </term>
+      <listitem>
+        <para>
+          An arbitrary string defining the location of the node; this
+	  is used during failover to check visibility of the
+	  current primary node.
+        </para>
+        <para>
+          For more details see <xref linkend="repmgrd-network-split"/>.
+        </para>
+      </listitem>
+    </varlistentry>
+
+    <varlistentry id="repmgr-conf-use-replication-slots" xreflabel="use_replication_slots">
+      <term><varname>use_replication_slots</varname> (<type>boolean</type>)
+        <indexterm>
+          <primary><varname>use_replication_slots</varname> configuration file parameter</primary>
+        </indexterm>
+      </term>
+      <listitem>
+        <para>
+          Whether to use physical replication slots.
+        </para>
+        <note>
+          <para>
+	    When using replication slots,
+	    <varname>max_replication_slots</varname> should be configured for
+	    at least the number of standbys which will connect
+	    to the primary.
+          </para>
+        </note>
+      </listitem>
+    </varlistentry>
+
+
+  </variablelist>
+</sect1>
