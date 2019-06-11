@@ -24,6 +24,7 @@
         repmgr: ensure BDR2-specific functionality cannot be used on
           BDR3 and later (Ian)
         repmgr: canonicalize the data directory path (Ian)
+        repmgr: note that "standby follow" requires a primary to be available (Ian)
         repmgrd: monitor standbys attached to primary (Ian)
         repmgrd: add "primary visibility consensus" functionality (Ian)
         repmgrd: fix memory leak which occurs while the monitored PostgreSQL
