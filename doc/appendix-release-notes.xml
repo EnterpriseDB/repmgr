@@ -43,6 +43,14 @@
             </para>
 		  </listitem>
 
+		  <listitem>
+            <para>
+              <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>:
+              note that an active, reachable cluster primary is required for this command;
+			  and provide a more helpful error message if no reachable primary could be found.
+            </para>
+		  </listitem>
+
           <listitem>
             <para>
               &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
@@ -74,7 +82,6 @@
               even if errors are encountered.
             </para>
           </listitem>
-
 
           <listitem>
             <para>

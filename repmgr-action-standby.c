@@ -2784,12 +2784,6 @@ do_standby_follow(void)
 
 	PQfinish(local_conn);
 
-	if (runtime_options.dry_run == true)
-	{
-		log_info(_("prerequisites for executing STANDBY FOLLOW are met"));
-		exit(SUCCESS);
-	}
-
 	/*
 	 * Here we'll need a connection to the primary, if the upstream is not a primary.
 	 */
@@ -2802,10 +2796,28 @@ do_standby_follow(void)
 		primary_conn = get_primary_connection_quiet(follow_target_conn,
 													&primary_node_id,
 													NULL);
+
+		/*
+		 * If follow target is not primary and no other primary could be found,
+		 * abort because we won't be able to update the node record.
+		 */
+		if (PQstatus(primary_conn) != CONNECTION_OK)
+		{
+			log_error(_("unable to determine the cluster primary"));
+			log_detail(_("an active primary node is required for \"repmgr standby follow\""));
+			PQfinish(follow_target_conn);
+			exit(ERR_FOLLOW_FAIL);
+		}
 	}
 	else
 	{
 		primary_conn = follow_target_conn;
+	}
+
+	if (runtime_options.dry_run == true)
+	{
+		log_info(_("prerequisites for executing STANDBY FOLLOW are met"));
+		exit(SUCCESS);
 	}
 
 	initPQExpBuffer(&follow_output);

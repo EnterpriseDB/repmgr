@@ -20,49 +20,54 @@
       (&quot;follow target&quot;). Typically this will be the primary, but this
       command can also be used to attach the standby to another standby.
     </para>
+
     <para>
-      This command requires a valid
-      <filename>repmgr.conf</filename> file for the standby, either specified
-      explicitly with <literal>-f/--config-file</literal> or located in a
+      This command requires a valid <filename>repmgr.conf</filename> file for the standby,
+      either specified explicitly with <literal>-f/--config-file</literal> or located in a
       default location; no additional arguments are required.
     </para>
 
-	<para>
-	  By default &repmgr; will attempt to attach the standby to the current primary.
-	  If <option>--upstream-node-id</option> is provided, &repmgr; will attempt
-	  to attach the standby to the specified node, which can be another standby.
-	</para>
-
-    <para>
-      This command will force a restart of the standby server, which must be
-      running.
+    <para>The standby node (&quot;follow candidate&quot;) <emphasis>must</emphasis>
+      be running. If the new upstream (&quot;follow target&quot;) is not the primary,
+      the cluster primary <emphasis>must</emphasis> be running and accessible from the
+      standby node.
     </para>
 
-	<tip>
+    <tip>
       <para>
-		To re-add an inactive node to the replication cluster, use
-		<xref linkend="repmgr-node-rejoin"/>.
+        To re-add an inactive node to the replication cluster, use
+        <xref linkend="repmgr-node-rejoin"/>.
       </para>
-	</tip>
+    </tip>
 
-	<para>
-	  <command>repmgr standby follow</command> will wait up to
-	  <varname>standby_follow_timeout</varname> seconds (default: <literal>30</literal>)
-	  to verify the standby has actually connected to the new upstream node.
-	</para>
+    <para>
+      By default &repmgr; will attempt to attach the standby to the current primary.
+      If <option>--upstream-node-id</option> is provided, &repmgr; will attempt
+      to attach the standby to the specified node, which can be another standby.
+    </para>
 
-	<note>
-	  <para>
-	    If <option>recovery_min_apply_delay</option> is set for the standby, it
-	    will not attach to the new upstream node until it has replayed available
-	    WAL.
-	  </para>
-	  <para>
-	    Conversely, if the standby is attached to an upstream standby
-	    which has <option>recovery_min_apply_delay</option> set, the upstream
-            standby's replay state may actually be behind that of its new downstream node.
-	  </para>
-	</note>
+    <para>
+      This command will force a restart of PostgreSQL on the standby node.
+    </para>
+
+    <para>
+      <command>repmgr standby follow</command> will wait up to
+      <varname>standby_follow_timeout</varname> seconds (default: <literal>30</literal>)
+      to verify the standby has actually connected to the new upstream node.
+    </para>
+
+    <note>
+      <para>
+        If <option>recovery_min_apply_delay</option> is set for the standby, it
+        will not attach to the new upstream node until it has replayed available
+        WAL.
+      </para>
+      <para>
+        Conversely, if the standby is attached to an upstream standby
+        which has <option>recovery_min_apply_delay</option> set, the upstream
+        standby's replay state may actually be behind that of its new downstream node.
+      </para>
+    </note>
 
   </refsect1>
 
@@ -124,7 +129,7 @@
           <para>
             Note that when using &repmgrd;, <option>--upstream-node-id</option>
             should always be configured;
-			see <link linkend="repmgrd-automatic-failover-configuration">Automatic failover configuration</link>
+            see <link linkend="repmgrd-automatic-failover-configuration">Automatic failover configuration</link>
             for details.
           </para>
         </listitem>
