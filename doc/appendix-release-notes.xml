@@ -19,37 +19,37 @@
     <title>Release 4.4</title>
     <para><emphasis>?? June, 2019</emphasis></para>
 
-	<sect2>
+    <sect2>
       <title>repmgr client enhancements</title>
       <para>
-	    <itemizedlist>
+        <itemizedlist>
 
-		  <listitem>
+          <listitem>
             <para>
-			  <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>:
-			  prevent a standby from being cloned from a witness server (PostgreSQL 9.6 and later only).
-			</para>
-		  </listitem>
+              <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>:
+              prevent a standby from being cloned from a witness server (PostgreSQL 9.6 and later only).
+            </para>
+          </listitem>
 
-		  <listitem>
+          <listitem>
             <para>
-			  <link linkend="repmgr-witness-register"><command>repmgr witness register</command></link>:
-			  prevent a witness server from being registered on the replication cluster primary server
+              <link linkend="repmgr-witness-register"><command>repmgr witness register</command></link>:
+              prevent a witness server from being registered on the replication cluster primary server
               (PostgreSQL 9.6 and later only).
-			</para>
+            </para>
             <para>
               Registering a witness on the primary node would defeat the purpose of having a witness server,
               which is intended to remain running even if the cluster's primary goes down.
             </para>
-		  </listitem>
+          </listitem>
 
-		  <listitem>
+          <listitem>
             <para>
               <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>:
               note that an active, reachable cluster primary is required for this command;
-			  and provide a more helpful error message if no reachable primary could be found.
+              and provide a more helpful error message if no reachable primary could be found.
             </para>
-		  </listitem>
+          </listitem>
 
           <listitem>
             <para>
@@ -101,61 +101,61 @@
             </note>
           </listitem>
 
-		  <listitem>
+          <listitem>
             <para>
-			  <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
-			  add <option>--repmgrd-force-unpause</option> to unpause all &repmgrd; instances after executing a switchover.
-			  This will ensure that	any &repmgrd; instances which were paused before the switchover will be
-			  unpaused.
-			</para>
-		  </listitem>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+              add <option>--repmgrd-force-unpause</option> to unpause all &repmgrd; instances after executing a switchover.
+              This will ensure that any &repmgrd; instances which were paused before the switchover will be
+              unpaused.
+            </para>
+          </listitem>
 
           <listitem>
             <para>
               <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
-			  make output similar to that of
-			  <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
-			  for consistency and to make it easier to identify nodes not in the expected
-			  state.
+              make output similar to that of
+              <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
+              for consistency and to make it easier to identify nodes not in the expected
+              state.
             </para>
           </listitem>
 
-		  <listitem>
+          <listitem>
             <para>
               <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>:
-			  display each node's timeline ID (PostgreSQL 9.6 and later only).
-			</para>
-		  </listitem>
-
-		  <listitem>
-            <para>
-              <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
-			  and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
-			  show the upstream node name as reported by each individual node - this helps visualise
-			  situations where the cluster is in an unexpected state, and provide a better idea of the
-			  actual cluster state.
-			</para>
-			<para>
-			  For example, if a cluster has divided somehow and a set of nodes are
-			  following a new primary, when running either of these commands, &repmgr;
-			  will now show the name of the primary those nodes are actually
-			  following, rather than the now outdated node name recorded
-			  on the other side of the &quot;split&quot;. A warning will also be issued
-			  about the unexpected situation.
+              display each node's timeline ID (PostgreSQL 9.6 and later only).
             </para>
           </listitem>
 
-		  <listitem>
+          <listitem>
             <para>
               <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
-			  and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
-			  check if a node is attached to its advertised upstream node, and issue a
-			  warning if the node is not attached.
-			</para>
-		  </listitem>
+              and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
+              show the upstream node name as reported by each individual node - this helps visualise
+              situations where the cluster is in an unexpected state, and provide a better idea of the
+              actual cluster state.
+            </para>
+            <para>
+              For example, if a cluster has divided somehow and a set of nodes are
+              following a new primary, when running either of these commands, &repmgr;
+              will now show the name of the primary those nodes are actually
+              following, rather than the now outdated node name recorded
+              on the other side of the &quot;split&quot;. A warning will also be issued
+              about the unexpected situation.
+            </para>
+          </listitem>
 
-		</itemizedlist>
-	  </para>
+          <listitem>
+            <para>
+              <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
+              and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
+              check if a node is attached to its advertised upstream node, and issue a
+              warning if the node is not attached.
+            </para>
+          </listitem>
+
+        </itemizedlist>
+      </para>
     </sect2>
 
     <sect2>
@@ -228,21 +228,21 @@
             </para>
           </listitem>
 
-		  <listitem>
-			<para>
+          <listitem>
+            <para>
               &repmgr;: when executing <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>
               with the <option>--upstream-conninfo</option>, ensure that <varname>application_name</varname>
               is set correctly in <varname>primary_conninfo</varname>.
             </para>
           </listitem>
 
-		  <listitem>
-			<para>
+          <listitem>
+            <para>
               &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
               don't abort if one or more nodes are not reachable <emphasis>and</emphasis>
-			  they are marked as inactive.
-			</para>
-		  </listitem>
+              they are marked as inactive.
+            </para>
+          </listitem>
 
           <listitem>
             <para>
@@ -254,15 +254,15 @@
             </para>
           </listitem>
 
-		  <listitem>
-			<para>
+          <listitem>
+            <para>
               &repmgrd;: fix memory leak which occurs while the monitored PostgreSQL node is <emphasis>not</emphasis>
               running.
             </para>
           </listitem>
 
         </itemizedlist>
-	  </para>
+      </para>
     </sect2>
 
 
@@ -306,19 +306,19 @@
     </para>
 
 
-	<important>
-	  <para>
-	    On Debian-based systems, including Ubuntu, if using &repmgrd;
-	    please ensure that in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
-	    <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
-	    <programlisting>
+    <important>
+      <para>
+        On Debian-based systems, including Ubuntu, if using &repmgrd;
+        please ensure that in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
+        <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
+        <programlisting>
 # additional options
 REPMGRD_OPTS="--daemonize=false"</programlisting>
-	  </para>
-	  <para>
-	    For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd configuration on Debian/Ubuntu</link>.
-	  </para>
-	</important>
+      </para>
+      <para>
+        For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd configuration on Debian/Ubuntu</link>.
+      </para>
+    </important>
 
     <sect2>
       <title>repmgr client enhancements</title>
@@ -383,11 +383,11 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>:
-	      differentiate between unreachable nodes and nodes which are running but rejecting connections.
+          differentiate between unreachable nodes and nodes which are running but rejecting connections.
             </para>
             <para>
-	      This makes it possible to see whether a node is unreachable at network level,
-	      or if it is running but rejecting connections for some reason.
+          This makes it possible to see whether a node is unreachable at network level,
+          or if it is running but rejecting connections for some reason.
             </para>
           </listitem>
 
@@ -436,7 +436,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               &repmgrd; will no longer consider nodes where &repmgrd;
-			  is not running as promotion candidates.
+              is not running as promotion candidates.
             </para>
             <para>
               Previously, if &repmgrd; was not running on a node, but
@@ -474,15 +474,15 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
          <listitem>
             <para>
-			  In a failover situation, &repmgrd; will not attempt to promote a
-			  node if another primary has already appeared (e.g. by being promoted manually).
-			  GitHub #420.
-			</para>
+              In a failover situation, &repmgrd; will not attempt to promote a
+              node if another primary has already appeared (e.g. by being promoted manually).
+              GitHub #420.
+            </para>
           </listitem>
 
-		</itemizedlist>
-	  </para>
-	</sect2>
+        </itemizedlist>
+      </para>
+    </sect2>
 
     <sect2>
       <title>Bug fixes</title>
@@ -492,23 +492,23 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <command><link linkend="repmgr-cluster-show">repmgr cluster show</link></command>:
-	          fix display of node IDs with multiple digits.
+              fix display of node IDs with multiple digits.
             </para>
-	      </listitem>
+          </listitem>
 
           <listitem>
             <para>
               ensure <command><link linkend="repmgr-primary-unregister">repmgr primary unregister</link></command>
-	          behaves correctly when executed on a witness server. GitHub #548.
+              behaves correctly when executed on a witness server. GitHub #548.
             </para>
-	      </listitem>
+          </listitem>
 
           <listitem>
             <para>
               ensure <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>
-	          fails when <option>--upstream-node-id</option> is the same as the local node ID.
+              fails when <option>--upstream-node-id</option> is the same as the local node ID.
             </para>
-	      </listitem>
+          </listitem>
 
           <listitem>
             <para>
@@ -529,7 +529,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
-	          verify the standby (promotion candidate) is currently attached to the primary (demotion candidate). GitHub #519.
+              verify the standby (promotion candidate) is currently attached to the primary (demotion candidate). GitHub #519.
             </para>
           </listitem>
 
@@ -537,7 +537,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
             <para>
               &repmgr;: when executing <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
               avoid a potential race condition when comparing received WAL on the standby to the primary's shutdown location,
-	          as the standby's walreceiver may not have yet flushed all received WAL to disk. GitHub #518.
+              as the standby's walreceiver may not have yet flushed all received WAL to disk. GitHub #518.
             </para>
           </listitem>
 
@@ -551,11 +551,11 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <command><link linkend="repmgr-node-check">repmgr node check</link></command>
-	          will only consider physical replication slots, as the purpose
-	          of slot checks is to warn about potential issues with
-	          streaming replication standbys which are no longer attached.
-	        </para>
-	      </listitem>
+              will only consider physical replication slots, as the purpose
+              of slot checks is to warn about potential issues with
+              streaming replication standbys which are no longer attached.
+            </para>
+          </listitem>
 
           <listitem>
             <para>
@@ -586,19 +586,19 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
       <link linkend="upgrading-major-version">Upgrading a major version release</link>.
     </para>
 
-	<important>
-	  <para>
-	    On Debian-based systems, including Ubuntu, if using &repmgrd;
-	    please ensure that the in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
-	    <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
-	    <programlisting>
+    <important>
+      <para>
+        On Debian-based systems, including Ubuntu, if using &repmgrd;
+        please ensure that the in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
+        <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
+        <programlisting>
 # additional options
 REPMGRD_OPTS="--daemonize=false"</programlisting>
-	  </para>
-	  <para>
-	    For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd daemon configuration on Debian/Ubuntu</link>.
-	  </para>
-	</important>
+      </para>
+      <para>
+        For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd daemon configuration on Debian/Ubuntu</link>.
+      </para>
+    </important>
 
     <sect2>
       <title>Configuration file changes</title>
@@ -730,11 +730,11 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
       repmgr 4.1.1 contains a number of usability enhancements and bug fixes.
     </para>
     <para>
-	  We recommend upgrading to this version as soon as possible.
-	  This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.1.0;
+      We recommend upgrading to this version as soon as possible.
+      This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.1.0;
       &repmgrd; (if running) should be restarted.
       See <xref linkend="upgrading-repmgr"/> for more details.
-	</para>
+    </para>
 
     <sect2>
       <title>repmgr enhancements</title>
@@ -996,18 +996,18 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <command><link linkend="repmgr-witness-unregister">repmgr witness unregister</link></command>
-			  can be run on any node, by providing the ID of the witness node with <option>--node-id</option>.
-			  (GitHub #472).
-			</para>
-		  </listitem>
+              can be run on any node, by providing the ID of the witness node with <option>--node-id</option>.
+              (GitHub #472).
+            </para>
+          </listitem>
 
           <listitem>
             <para>
               <command><link linkend="repmgr-standby-switchover">repmgr standby switchover</link></command>
               will refuse to run if an exclusive backup is taking place on the current primary.
-			  (GitHub #476).
-			</para>
-		  </listitem>
+              (GitHub #476).
+            </para>
+          </listitem>
 
         </itemizedlist>
       </para>
@@ -1028,9 +1028,9 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               &repmgrd;: daemonize process by default.
-			  In case, for whatever reason, the user does not wish to daemonize the
-			  process, provide <option>--daemonize=false</option>.
-			  (GitHub #458).
+              In case, for whatever reason, the user does not wish to daemonize the
+              process, provide <option>--daemonize=false</option>.
+              (GitHub #458).
             </para>
           </listitem>
 
@@ -1055,23 +1055,23 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <command><link linkend="repmgr-cluster-cleanup">repmgr cluster cleanup</link></command>:
-			  add missing help options. (GitHub #461/#462).
-			</para>
-		  </listitem>
+              add missing help options. (GitHub #461/#462).
+            </para>
+          </listitem>
 
           <listitem>
             <para>
-			  Ensure witness node follows new primary after switchover. (GitHub #453).
-			</para>
-		  </listitem>
+              Ensure witness node follows new primary after switchover. (GitHub #453).
+            </para>
+          </listitem>
 
           <listitem>
             <para>
               <command><link linkend="repmgr-node-check">repmgr node check</link></command> and
               <command><link linkend="repmgr-node-status">repmgr node status</link></command>:
-			  fix witness node handling. (GitHub #451).
-			</para>
-		  </listitem>
+              fix witness node handling. (GitHub #451).
+            </para>
+          </listitem>
 
           <listitem>
             <para>
@@ -1091,14 +1091,14 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
     <title>Release 4.0.6</title>
     <para><emphasis>Thu June 14, 2018</emphasis></para>
     <para>
-	  &repmgr; 4.0.6 contains a number of bug fixes and usability enhancements.
+      &repmgr; 4.0.6 contains a number of bug fixes and usability enhancements.
     </para>
-	<para>
-	  We recommend upgrading to this version as soon as possible.
-	  This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.5;
+    <para>
+      We recommend upgrading to this version as soon as possible.
+      This release can be installed as a simple package upgrade from repmgr 4.0 ~ 4.0.5;
       &repmgrd; (if running) should be restarted. See <xref linkend="upgrading-repmgr"/>
       for more details.
-	</para>
+    </para>
 
     <sect2>
       <title>Usability enhancements</title>
@@ -1116,33 +1116,33 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
                <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
-			   Improve handling of external configuration file copying,  including consideration in
-			   <option>--dry-run</option> check
-			   (GitHub #443)
+               Improve handling of external configuration file copying,  including consideration in
+               <option>--dry-run</option> check
+               (GitHub #443)
            </para>
           </listitem>
 
           <listitem>
             <para>
               When using <option>--dry-run</option>, force log level to <literal>INFO</literal>
-			  to ensure output will always be displayed
-			  (GitHub #441)
+              to ensure output will always be displayed
+              (GitHub #441)
            </para>
           </listitem>
 
           <listitem>
             <para>
                <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
-			   Improve documentation of <option>--recovery-conf-only</option> mode
-			   (GitHub #438)
+               Improve documentation of <option>--recovery-conf-only</option> mode
+               (GitHub #438)
            </para>
           </listitem>
 
           <listitem>
             <para>
                <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>:
-			   Don't require presence of <varname>user</varname> parameter in conninfo string
-			   (GitHub #437)
+               Don't require presence of <varname>user</varname> parameter in conninfo string
+               (GitHub #437)
            </para>
           </listitem>
 
@@ -1168,23 +1168,23 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
                <command><link linkend="repmgr-standby-follow">repmgr standby follow</link></command>:
-			   check node has actually connected to new primary before reporting success
-			   (GitHub #444)
+               check node has actually connected to new primary before reporting success
+               (GitHub #444)
            </para>
           </listitem>
 
           <listitem>
             <para>
                <command><link linkend="repmgr-node-rejoin">repmgr node rejoin</link></command>:
-			   Fix bug when parsing <option>--config-files</option> parameter
-			   (GitHub #442)
+               Fix bug when parsing <option>--config-files</option> parameter
+               (GitHub #442)
            </para>
           </listitem>
 
           <listitem>
             <para>
               &repmgrd;: ensure local node is counted as quorum member
-			  (GitHub #439)
+              (GitHub #439)
            </para>
           </listitem>
 
