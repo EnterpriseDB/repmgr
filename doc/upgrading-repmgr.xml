@@ -263,7 +263,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
   <tip>
 	<para>
 	  Use <command><link linkend="repmgr-node-check">repmgr node check</link></command>
-	  to determine which replacation slots need to be recreated.
+	  to determine which replication slots need to be recreated.
 	</para>
   </tip>
 
