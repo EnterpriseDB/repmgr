@@ -55,7 +55,7 @@
     $ repmgr -f /etc/repmgr.conf cluster show
 
      ID | Name  | Role    | Status    | Upstream | Location | Priority | Timeline | Connection string
-    ----+-------+---------+-----------+----------+----------+----------+-----------------------------------------
+    ----+-------+---------+-----------+----------+----------+----------+----------+-----------------------------------------
      1  | node1 | primary | * running |          | default  | 100      | 1        | host=db_node1 dbname=repmgr user=repmgr
      2  | node2 | standby |   running | node1    | default  | 100      | 1        | host=db_node2 dbname=repmgr user=repmgr
      3  | node3 | standby |   running | node1    | default  | 100      | 1        | host=db_node3 dbname=repmgr user=repmgr</programlisting>
@@ -82,18 +82,18 @@
 	  (but <literal>node3</literal> is not attached to it, and its metadata has not yet been updated);
 	  <literal>node4</literal> is running but rejecting connections (from <literal>node3</literal> at least).
       <programlisting>
-	 ID | Name  | Role    | Status               | Upstream | Location | Priority | Connection string
-	----+-------+---------+----------------------+----------+----------+----------+-----------------------------------------
-	 1  | node1 | primary | ? unreachable        |          | default  | 100      | host=db_node1 dbname=repmgr user=repmgr
-	 2  | node2 | standby | ! running as primary | node1    | default  | 100      | host=db_node2 dbname=repmgr user=repmgr
-	 3  | node3 | standby |   running            | node1    | default  | 100      | host=db_node3 dbname=repmgr user=repmgr
-	 4  | node4 | standby | ? running            | node1    | default  | 100      | host=db_node4 dbname=repmgr user=repmgr
+     ID | Name  | Role    | Status               | Upstream | Location | Priority | Timeline | Connection string
+    ----+-------+---------+----------------------+----------+----------+----------+----------+-----------------------------------------
+     1  | node1 | primary | ? unreachable        |          | default  | 100      | 1        | host=db_node1 dbname=repmgr user=repmgr
+     2  | node2 | standby | ! running as primary | node1    | default  | 100      | 2        | host=db_node2 dbname=repmgr user=repmgr
+     3  | node3 | standby |   running            | node1    | default  | 100      | 1        | host=db_node3 dbname=repmgr user=repmgr
+     4  | node4 | standby | ? running            | node1    | default  | 100      | ?        | host=db_node4 dbname=repmgr user=repmgr
 
-	WARNING: following issues were detected
-	  - unable to connect to node "node1" (ID: 1)
-	  - node "node1" (ID: 1) is registered as an active primary but is unreachable
-	  - node "node2" (ID: 2) is registered as standby but running as primary
-	  - unable to connect to node "node4" (ID: 4)
+    WARNING: following issues were detected
+      - unable to connect to node "node1" (ID: 1)
+      - node "node1" (ID: 1) is registered as an active primary but is unreachable
+      - node "node2" (ID: 2) is registered as standby but running as primary
+      - unable to connect to node "node4" (ID: 4)
     HINT: execute with --verbose option to see connection error messages</programlisting>
     </para>
 	<para>
