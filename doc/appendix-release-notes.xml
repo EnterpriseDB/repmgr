@@ -170,7 +170,7 @@
               execute a custom script.
             </para>
             <para>
-              This provided an additional method for fencing an isolated primary node, and/or taking
+              This provides an additional method for fencing an isolated primary node, and/or taking
               other action if one or more standys become disconnected.
             </para>
             <para>
