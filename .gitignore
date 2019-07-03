@@ -53,3 +53,6 @@ repmgr
 repmgrd
 repmgr4
 repmgrd4
+
+# generated files
+configfile-scan.c

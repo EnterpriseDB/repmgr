@@ -2,6 +2,7 @@
 # Makefile.global.in
 # @configure_input@
 
+
 # Can only be built using pgxs
 USE_PGXS=1
 
@@ -25,3 +26,11 @@ include $(PGXS)
 
 REPMGR_VERSION=$(shell awk '/^\#define REPMGR_VERSION / { print $3; }' ${repmgr_abs_srcdir}/repmgr_version.h.in | cut -d '"' -f 2)
 
+FLEX = flex
+
+##########################################################################
+#
+# Global targets and rules
+
+%.c: %.l
+	$(FLEX) $(FLEXFLAGS) -o'$@' $<
