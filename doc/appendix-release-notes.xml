@@ -57,6 +57,34 @@
     <title>Release 4.4</title>
     <para><emphasis>27 June, 2019</emphasis></para>
 
+    <para>
+      &repmgr; 4.4 is a major release.
+    </para>
+    <para>
+      For details on how to upgrade an existing &repmgr; instrallation, see
+      documentation section <link linkend="upgrading-major-version">Upgrading a major version release</link>.
+    </para>
+    <para>
+      If &repmgrd; is in use, a PostgreSQL restart <emphasis>is</emphasis> required;
+      in that case we suggest combining this &repmgr; upgrade with the next PostgreSQL
+      minor release, which will require a PostgreSQL restart in any case.
+    </para>
+
+
+    <important>
+      <para>
+        On Debian-based systems, including Ubuntu, if using &repmgrd;
+        please ensure that in the file <filename>/etc/init.d/repmgrd</filename>, the parameter
+        <varname>REPMGRD_OPTS</varname> contains &quot;<literal>--daemonize=false</literal>&quot;, e.g.:
+        <programlisting>
+# additional options
+REPMGRD_OPTS="--daemonize=false"</programlisting>
+      </para>
+      <para>
+        For further details, see <link linkend="repmgrd-configuration-debian-ubuntu">repmgrd configuration on Debian/Ubuntu</link>.
+      </para>
+    </important>
+
     <sect2>
       <title>repmgr client enhancements</title>
       <para>
