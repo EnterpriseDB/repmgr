@@ -31,6 +31,7 @@ ALLXML := $(wildcard $(srcdir)/*.xml) $(GENERATED_XML)
 version.xml: $(repmgr_top_builddir)/repmgr_version.h
 	{ \
 	  echo "<!ENTITY repmgrversion \"$(REPMGR_VERSION)\">"; \
+	  echo "<!ENTITY releasedate \"$(REPMGR_RELEASE_DATE)\">"; \
 	} > $@
 
 ##
