@@ -114,7 +114,7 @@
               &repmgr; 4.x
             </entry>
             <entry>
-              <link linkend="release-current">&repmgrversion;</link> (2019-06-27)
+              <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
             </entry>
             <entry>
               9.3, 9.4, 9.5, 9.6, 10, 11

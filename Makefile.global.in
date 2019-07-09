@@ -24,4 +24,5 @@ include $(PGXS)
 -include ${repmgr_abs_srcdir}/Makefile.custom
 
 REPMGR_VERSION=$(shell awk '/^\#define REPMGR_VERSION / { print $3; }' ${repmgr_abs_srcdir}/repmgr_version.h.in | cut -d '"' -f 2)
+REPMGR_RELEASE_DATE=$(shell awk '/^\#define REPMGR_RELEASE_DATE / { print $3; }' ${repmgr_abs_srcdir}/repmgr_version.h.in | cut -d '"' -f 2)
 
