@@ -14,7 +14,7 @@
   </para>
 
   <para>
-   &repmgr; 4.x is compatible with all PostgreSQL versions from 9.3. See
+   &repmgr; &repmgrversion; is compatible with all PostgreSQL versions from 9.3. See
    section <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>
    for an overview of version compatibility.
   </para>
@@ -39,13 +39,13 @@
 
   <note>
    <simpara>
-     The same &quot;major&quot; &repmgr; version (e.g. <literal>4.2.x</literal>) <emphasis>must</emphasis>
+     The same &quot;major&quot; &repmgr; version (e.g. <literal>&repmgrversion;.x</literal>) <emphasis>must</emphasis>
      be installed on all node in the replication cluster. We strongly recommend keeping all
      nodes on the same (preferably latest) &quot;minor&quot; &repmgr; version to minimize the risk
      of incompatibilities.
    </simpara>
    <simpara>
-     If different &quot;major&quot; &repmgr; versions (e.g. 3.3.x and 4.1.x)
+     If different &quot;major&quot; &repmgr; versions (e.g. 4.1.x and &repmgrversion;.x)
      are installed on different nodes, in the best case &repmgr; (in particular &repmgrd;)
      will not run. In the worst case, you will end up with a broken cluster.
    </simpara>
@@ -114,7 +114,7 @@
               &repmgr; 4.x
             </entry>
             <entry>
-              <link linkend="release-4.2">4.2</link> (2018-10-24)
+              <link linkend="release-current">&repmgrversion;</link> (2019-06-27)
             </entry>
             <entry>
               9.3, 9.4, 9.5, 9.6, 10, 11
@@ -158,7 +158,7 @@
 
 
     <para>
-      Note that some &repmgr; functionality is not available in PostgreSQL 9.3 and PostgreSQL 9.4.
+      Note that some &repmgr; functionality is not available in PostgreSQL 9.3 and PostgreSQL 9.4:
     </para>
     <itemizedlist spacing="compact" mark="bullet">
 
