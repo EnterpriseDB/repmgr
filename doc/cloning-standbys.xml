@@ -52,6 +52,24 @@
    </itemizedlist>
    </para>
 
+
+   <note>
+    <para>
+      Currently &repmgr;'s support for cloning from Barman is implemented by using
+      <productname>rsync</productname> to clone from the Barman server.
+    </para>
+    <para>
+      It is therefore not able to make use of Barman's parallel restore facility, which
+      is executed on the Barman server and clones to the target server.
+    </para>
+    <para>
+      Barman's parallel restore facility can be used by executing it manually on
+      the Barman server and integrating the resulting cloned standby using
+      <command><link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link></command>.
+    </para>
+   </note>
+
+
   <sect2 id="cloning-from-barman-prerequisites">
    <title>Prerequisites for cloning from Barman</title>
    <para>
@@ -99,7 +117,7 @@
       If you have a non-default SSH configuration on the Barman
       server, e.g. using a port other than 22, then you can set those
       parameters in a dedicated Host section in <filename>~/.ssh/config</filename>
-      corresponding to the value of<varname>barman_host</varname> in
+      corresponding to the value of <varname>barman_host</varname> in
       <filename>repmgr.conf</filename>. See the <literal>Host</literal>
       section in <command>man 5 ssh_config</command> for more details.
     </simpara>
