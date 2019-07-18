@@ -54,14 +54,12 @@ $(info Building against PostgreSQL $(MAJORVERSION))
 REPMGR_CLIENT_OBJS = repmgr-client.o \
 	repmgr-action-primary.o repmgr-action-standby.o repmgr-action-witness.o \
 	repmgr-action-bdr.o repmgr-action-cluster.o repmgr-action-node.o repmgr-action-daemon.o \
-	configfile.o configfile-scan.o log.o strutil.o controldata.o dirutil.o compat.o dbutils.o sysutils.o
-REPMGRD_OBJS = repmgrd.o repmgrd-physical.o repmgrd-bdr.o configfile.o configfile-scan.o log.o dbutils.o strutil.o controldata.o compat.o sysutils.o
+	configfile.o log.o strutil.o controldata.o dirutil.o compat.o dbutils.o sysutils.o
+REPMGRD_OBJS = repmgrd.o repmgrd-physical.o repmgrd-bdr.o configfile.o log.o dbutils.o strutil.o controldata.o compat.o sysutils.o
 DATE=$(shell date "+%Y-%m-%d")
 
 repmgr_version.h: repmgr_version.h.in
 	sed '0,/REPMGR_VERSION_DATE/s,\(REPMGR_VERSION_DATE\).*,\1 "$(DATE)",' $< >$@
-
-configfile-scan.c: configfile-scan.l
 
 $(REPMGR_CLIENT_OBJS): repmgr-client.h repmgr_version.h
 

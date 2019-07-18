@@ -317,8 +317,6 @@ const char *progname(void);
 void		load_config(const char *config_file, bool verbose, bool terse, t_configuration_options *options, char *argv0);
 bool		reload_config(t_configuration_options *orig_options, t_server_type server_type);
 
-void		parse_configuration_item(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value);
-
 bool		parse_recovery_conf(const char *data_dir, t_recovery_conf *conf);
 
 bool		parse_bool(const char *s,
@@ -343,8 +341,5 @@ void free_parsed_argv(char ***argv_array);
 void		exit_with_cli_errors(ItemList *error_list, const char *repmgr_command);
 void		print_item_list(ItemList *item_list);
 const char *print_connection_check_type(ConnectionCheckType type);
-
-
-extern bool ProcessConfigFile(FILE *fp, const char *config_file, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
 #endif							/* _REPMGR_CONFIGFILE_H_ */

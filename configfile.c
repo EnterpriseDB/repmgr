@@ -266,6 +266,12 @@ static void
 _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	FILE	   *fp;
+	char	   *s = NULL,
+				buf[MAXLINELENGTH] = "";
+	char		name[MAXLEN] = "";
+	char		value[MAXLEN] = "";
+
+	bool		node_id_found = false;
 
 	/* Initialize configuration options with sensible defaults */
 
@@ -462,12 +468,365 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 		exit(ERR_BAD_CONFIG);
 	}
 
-	(void) ProcessConfigFile(fp, config_file_path, options, error_list, warning_list);
+	/* Read file */
+	while ((s = fgets(buf, sizeof buf, fp)) != NULL)
+	{
+		bool		known_parameter = true;
+
+		/* Parse name/value pair from line */
+		_parse_line(buf, name, value);
+
+		/* Skip blank lines */
+		if (!strlen(name))
+			continue;
+
+		/* Skip comments */
+		if (name[0] == '#')
+			continue;
+
+		/* Copy into correct entry in parameters struct */
+		if (strcmp(name, "node_id") == 0)
+		{
+			options->node_id = repmgr_atoi(value, name, error_list, MIN_NODE_ID);
+			node_id_found = true;
+		}
+		else if (strcmp(name, "node_name") == 0)
+		{
+			if (strlen(value) < sizeof(options->node_name))
+				strncpy(options->node_name, value, sizeof(options->node_name));
+			else
+				item_list_append_format(error_list,
+										_("value for \"node_name\" must contain fewer than %lu characters"),
+										sizeof(options->node_name));
+		}
+		else if (strcmp(name, "conninfo") == 0)
+			strncpy(options->conninfo, value, MAXLEN);
+		else if (strcmp(name, "data_directory") == 0)
+		{
+			strncpy(options->data_directory, value, MAXPGPATH);
+			canonicalize_path(options->data_directory);
+		}
+		else if (strcmp(name, "config_directory") == 0)
+		{
+			strncpy(options->config_directory, value, MAXPGPATH);
+			canonicalize_path(options->config_directory);
+		}
+		else if (strcmp(name, "replication_user") == 0)
+		{
+			if (strlen(value) < sizeof(options->replication_user))
+				strncpy(options->replication_user, value, sizeof(options->replication_user));
+			else
+				item_list_append_format(error_list,
+										_("value for \"replication_user\" must contain fewer than %lu characters"),
+										sizeof(options->replication_user));
+		}
+		else if (strcmp(name, "pg_bindir") == 0)
+			strncpy(options->pg_bindir, value, MAXPGPATH);
+		else if (strcmp(name, "repmgr_bindir") == 0)
+			strncpy(options->repmgr_bindir, value, MAXPGPATH);
+
+		else if (strcmp(name, "replication_type") == 0)
+		{
+			if (strcmp(value, "physical") == 0)
+				options->replication_type = REPLICATION_TYPE_PHYSICAL;
+			else if (strcmp(value, "bdr") == 0)
+				options->replication_type = REPLICATION_TYPE_BDR;
+			else
+				item_list_append(error_list, _("value for \"replication_type\" must be \"physical\" or \"bdr\""));
+		}
+
+		/* log settings */
+		else if (strcmp(name, "log_file") == 0)
+			strncpy(options->log_file, value, MAXLEN);
+		else if (strcmp(name, "log_level") == 0)
+			strncpy(options->log_level, value, MAXLEN);
+		else if (strcmp(name, "log_facility") == 0)
+			strncpy(options->log_facility, value, MAXLEN);
+		else if (strcmp(name, "log_status_interval") == 0)
+			options->log_status_interval = repmgr_atoi(value, name, error_list, 0);
+
+		/* standby clone settings */
+		else if (strcmp(name, "use_replication_slots") == 0)
+			options->use_replication_slots = parse_bool(value, name, error_list);
+		else if (strcmp(name, "pg_basebackup_options") == 0)
+			strncpy(options->pg_basebackup_options, value, MAXLEN);
+		else if (strcmp(name, "tablespace_mapping") == 0)
+			tablespace_list_append(options, value);
+		else if (strcmp(name, "restore_command") == 0)
+			strncpy(options->restore_command, value, MAXLEN);
+		else if (strcmp(name, "recovery_min_apply_delay") == 0)
+		{
+			parse_time_unit_parameter(name, value, options->recovery_min_apply_delay, error_list);
+			options->recovery_min_apply_delay_provided = true;
+		}
+		else if (strcmp(name, "archive_cleanup_command") == 0)
+			strncpy(options->archive_cleanup_command, value, MAXLEN);
+		else if (strcmp(name, "use_primary_conninfo_password") == 0)
+			options->use_primary_conninfo_password = parse_bool(value, name, error_list);
+		else if (strcmp(name, "passfile") == 0)
+			strncpy(options->passfile, value, sizeof(options->passfile));
+
+		/* standby promote settings */
+		else if (strcmp(name, "promote_check_timeout") == 0)
+			options->promote_check_timeout = repmgr_atoi(value, name, error_list, 1);
+
+		else if (strcmp(name, "promote_check_interval") == 0)
+			options->promote_check_interval = repmgr_atoi(value, name, error_list, 1);
+
+		/* standby follow settings */
+		else if (strcmp(name, "primary_follow_timeout") == 0)
+			options->primary_follow_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "standby_follow_timeout") == 0)
+			options->standby_follow_timeout = repmgr_atoi(value, name, error_list, 0);
+
+		/* standby switchover settings */
+		else if (strcmp(name, "shutdown_check_timeout") == 0)
+			options->shutdown_check_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "standby_reconnect_timeout") == 0)
+			options->standby_reconnect_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "wal_receive_check_timeout") == 0)
+			options->wal_receive_check_timeout = repmgr_atoi(value, name, error_list, 0);
+
+		/* node rejoin settings */
+		else if (strcmp(name, "node_rejoin_timeout") == 0)
+			options->node_rejoin_timeout = repmgr_atoi(value, name, error_list, 0);
+
+		/* node check settings */
+		else if (strcmp(name, "archive_ready_warning") == 0)
+			options->archive_ready_warning = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "archive_ready_critical") == 0)
+			options->archive_ready_critical = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "replication_lag_warning") == 0)
+			options->replication_lag_warning = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "replication_lag_critical") == 0)
+			options->replication_lag_critical = repmgr_atoi(value, name, error_list, 1);
+
+		/* repmgrd settings */
+		else if (strcmp(name, "failover") == 0)
+		{
+			if (strcmp(value, "manual") == 0)
+			{
+				options->failover = FAILOVER_MANUAL;
+			}
+			else if (strcmp(value, "automatic") == 0)
+			{
+				options->failover = FAILOVER_AUTOMATIC;
+			}
+			else
+			{
+				item_list_append(error_list,
+								 _("value for \"failover\" must be \"automatic\" or \"manual\"\n"));
+			}
+		}
+		else if (strcmp(name, "priority") == 0)
+			options->priority = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "location") == 0)
+			strncpy(options->location, value, sizeof(options->location));
+		else if (strcmp(name, "promote_command") == 0)
+			strncpy(options->promote_command, value, sizeof(options->promote_command));
+		else if (strcmp(name, "follow_command") == 0)
+			strncpy(options->follow_command, value, sizeof(options->follow_command));
+		else if (strcmp(name, "reconnect_attempts") == 0)
+			options->reconnect_attempts = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "reconnect_interval") == 0)
+			options->reconnect_interval = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "monitor_interval_secs") == 0)
+			options->monitor_interval_secs = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "monitoring_history") == 0)
+			options->monitoring_history = parse_bool(value, name, error_list);
+		else if (strcmp(name, "degraded_monitoring_timeout") == 0)
+			options->degraded_monitoring_timeout = repmgr_atoi(value, name, error_list, -1);
+		else if (strcmp(name, "async_query_timeout") == 0)
+			options->async_query_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "primary_notification_timeout") == 0)
+			options->primary_notification_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "repmgrd_standby_startup_timeout") == 0)
+			options->repmgrd_standby_startup_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "repmgrd_pid_file") == 0)
+			strncpy(options->repmgrd_pid_file, value, MAXPGPATH);
+		else if (strcmp(name, "standby_disconnect_on_failover") == 0)
+			options->standby_disconnect_on_failover = parse_bool(value, name, error_list);
+		else if (strcmp(name, "sibling_nodes_disconnect_timeout") == 0)
+			options->sibling_nodes_disconnect_timeout = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "connection_check_type") == 0)
+		{
+			if (strcasecmp(value, "ping") == 0)
+			{
+				options->connection_check_type = CHECK_PING;
+			}
+			else if (strcasecmp(value, "connection") == 0)
+			{
+				options->connection_check_type = CHECK_CONNECTION;
+			}
+			else if (strcasecmp(value, "query") == 0)
+			{
+				options->connection_check_type = CHECK_QUERY;
+			}
+			else
+			{
+				item_list_append(error_list,
+								 _("value for \"connection_check_type\" must be \"ping\", \"connection\" or \"query\"\n"));
+			}
+		}
+		else if (strcmp(name, "primary_visibility_consensus") == 0)
+			options->primary_visibility_consensus = parse_bool(value, name, error_list);
+		else if (strcmp(name, "failover_validation_command") == 0)
+			strncpy(options->failover_validation_command, value, sizeof(options->failover_validation_command));
+		else if (strcmp(name, "election_rerun_interval") == 0)
+			options->election_rerun_interval = repmgr_atoi(value, name, error_list, 0);
+		else if (strcmp(name, "child_nodes_check_interval") == 0)
+			options->child_nodes_check_interval = repmgr_atoi(value, name, error_list, 1);
+		else if (strcmp(name, "child_nodes_disconnect_command") == 0)
+			snprintf(options->child_nodes_disconnect_command, sizeof(options->child_nodes_disconnect_command), "%s", value);
+		else if (strcmp(name, "child_nodes_disconnect_min_count") == 0)
+			options->child_nodes_disconnect_min_count = repmgr_atoi(value, name, error_list, -1);
+		else if (strcmp(name, "child_nodes_connected_min_count") == 0)
+			options->child_nodes_connected_min_count = repmgr_atoi(value, name, error_list, -1);
+		else if (strcmp(name, "child_nodes_connected_include_witness") == 0)
+			options->child_nodes_connected_include_witness = parse_bool(value, name, error_list);
+		else if (strcmp(name, "child_nodes_disconnect_timeout") == 0)
+			options->child_nodes_disconnect_timeout = repmgr_atoi(value, name, error_list, 0);
+
+		/* witness settings */
+		else if (strcmp(name, "witness_sync_interval") == 0)
+			options->witness_sync_interval = repmgr_atoi(value, name, error_list, 1);
+
+		/* BDR settings */
+		else if (strcmp(name, "bdr_local_monitoring_only") == 0)
+			options->bdr_local_monitoring_only = parse_bool(value, name, error_list);
+		else if (strcmp(name, "bdr_recovery_timeout") == 0)
+			options->bdr_recovery_timeout = repmgr_atoi(value, name, error_list, 0);
+
+		/* service settings */
+		else if (strcmp(name, "pg_ctl_options") == 0)
+			strncpy(options->pg_ctl_options, value, sizeof(options->pg_ctl_options));
+		else if (strcmp(name, "service_start_command") == 0)
+			strncpy(options->service_start_command, value, sizeof(options->service_start_command));
+		else if (strcmp(name, "service_stop_command") == 0)
+			strncpy(options->service_stop_command, value, sizeof(options->service_stop_command));
+		else if (strcmp(name, "service_restart_command") == 0)
+			strncpy(options->service_restart_command, value, sizeof(options->service_restart_command));
+		else if (strcmp(name, "service_reload_command") == 0)
+			strncpy(options->service_reload_command, value, sizeof(options->service_reload_command));
+		else if (strcmp(name, "service_promote_command") == 0)
+			strncpy(options->service_promote_command, value, sizeof(options->service_promote_command));
+
+		/* repmgrd service settings */
+		else if (strcmp(name, "repmgrd_service_start_command") == 0)
+			strncpy(options->repmgrd_service_start_command, value, sizeof(options->repmgrd_service_start_command));
+		else if (strcmp(name, "repmgrd_service_stop_command") == 0)
+			strncpy(options->repmgrd_service_stop_command, value, sizeof(options->repmgrd_service_stop_command));
+
+
+		/* event notification settings */
+		else if (strcmp(name, "event_notification_command") == 0)
+			strncpy(options->event_notification_command, value, sizeof(options->event_notification_command));
+		else if (strcmp(name, "event_notifications") == 0)
+		{
+			/* store unparsed value for comparison when reloading config */
+			strncpy(options->event_notifications_orig, value, sizeof(options->event_notifications_orig));
+			parse_event_notifications_list(options, value);
+		}
+
+		/* barman settings */
+		else if (strcmp(name, "barman_host") == 0)
+			strncpy(options->barman_host, value, sizeof(options->barman_host));
+		else if (strcmp(name, "barman_server") == 0)
+			strncpy(options->barman_server, value, sizeof(options->barman_server));
+		else if (strcmp(name, "barman_config") == 0)
+			strncpy(options->barman_config, value, sizeof(options->barman_config));
+
+		/* rsync/ssh settings */
+		else if (strcmp(name, "rsync_options") == 0)
+			strncpy(options->rsync_options, value, sizeof(options->rsync_options));
+		else if (strcmp(name, "ssh_options") == 0)
+			strncpy(options->ssh_options, value, sizeof(options->ssh_options));
+
+		/* undocumented settings for testing */
+		else if (strcmp(name, "promote_delay") == 0)
+			options->promote_delay = repmgr_atoi(value, name, error_list, 1);
+
+		/*
+		 * Following parameters have been deprecated or renamed from 3.x -
+		 * issue a warning
+		 */
+		else if (strcmp(name, "cluster") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"cluster\" is deprecated and will be ignored"));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "node") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"node\" has been renamed to \"node_id\""));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "upstream_node") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"upstream_node\" has been removed; use \"--upstream-node-id\" when cloning a standby"));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "loglevel") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"loglevel\" has been renamed to \"log_level\""));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "logfacility") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"logfacility\" has been renamed to \"log_facility\""));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "logfile") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"logfile\" has been renamed to \"log_file\""));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "master_reponse_timeout") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"master_reponse_timeout\" has been removed; use \"async_query_timeout\" instead"));
+			known_parameter = false;
+		}
+		else if (strcmp(name, "retry_promote_interval_secs") == 0)
+		{
+			item_list_append(warning_list,
+							 _("parameter \"retry_promote_interval_secs\" has been removed; use \"primary_notification_timeout\" instead"));
+			known_parameter = false;
+		}
+		else
+		{
+			known_parameter = false;
+			log_warning(_("%s/%s: unknown name/value pair provided; ignoring"), name, value);
+		}
+
+		/*
+		 * Raise an error if a known parameter is provided with an empty
+		 * value. Currently there's no reason why empty parameters are needed;
+		 * if we want to accept those, we'd need to add stricter default
+		 * checking, as currently e.g. an empty `node_id` value will be converted
+		 * to '0'.
+		 */
+		if (known_parameter == true && !strlen(value))
+		{
+			char		error_message_buf[MAXLEN] = "";
+
+			maxlen_snprintf(error_message_buf,
+							_("\"%s\": no value provided"),
+							name);
+
+			item_list_append(error_list, error_message_buf);
+		}
+	}
 
 	fclose(fp);
 
 	/* check required parameters */
-	if (options->node_id == UNKNOWN_NODE_ID)
+	if (node_id_found == false)
 	{
 		item_list_append(error_list, _("\"node_id\": required parameter was not found"));
 	}
@@ -560,349 +919,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 }
 
 
-void
-parse_configuration_item(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value)
-{
-	bool		known_parameter = true;
-
-	if (strcmp(name, "node_id") == 0)
-	{
-		options->node_id = repmgr_atoi(value, name, error_list, MIN_NODE_ID);
-	}
-	else if (strcmp(name, "node_name") == 0)
-	{
-		if (strlen(value) < sizeof(options->node_name))
-			strncpy(options->node_name, value, sizeof(options->node_name));
-		else
-			item_list_append_format(error_list,
-									_("value for \"node_name\" must contain fewer than %lu characters"),
-									sizeof(options->node_name));
-	}
-	else if (strcmp(name, "conninfo") == 0)
-	{
-		strncpy(options->conninfo, value, MAXLEN);
-	}
-	else if (strcmp(name, "data_directory") == 0)
-	{
-		strncpy(options->data_directory, value, MAXPGPATH);
-		canonicalize_path(options->data_directory);
-	}
-	else if (strcmp(name, "config_directory") == 0)
-	{
-		strncpy(options->config_directory, value, MAXPGPATH);
-		canonicalize_path(options->config_directory);
-	}
-	else if (strcmp(name, "replication_user") == 0)
-	{
-		if (strlen(value) < sizeof(options->replication_user))
-			strncpy(options->replication_user, value, sizeof(options->replication_user));
-		else
-			item_list_append_format(error_list,
-									_("value for \"replication_user\" must contain fewer than %lu characters"),
-									sizeof(options->replication_user));
-	}
-	else if (strcmp(name, "pg_bindir") == 0)
-		strncpy(options->pg_bindir, value, MAXPGPATH);
-	else if (strcmp(name, "repmgr_bindir") == 0)
-		strncpy(options->repmgr_bindir, value, MAXPGPATH);
-
-	else if (strcmp(name, "replication_type") == 0)
-	{
-		if (strcmp(value, "physical") == 0)
-			options->replication_type = REPLICATION_TYPE_PHYSICAL;
-		else if (strcmp(value, "bdr") == 0)
-			options->replication_type = REPLICATION_TYPE_BDR;
-		else
-			item_list_append(error_list, _("value for \"replication_type\" must be \"physical\" or \"bdr\""));
-	}
-
-	/* log settings */
-	else if (strcmp(name, "log_file") == 0)
-		strncpy(options->log_file, value, MAXLEN);
-	else if (strcmp(name, "log_level") == 0)
-		strncpy(options->log_level, value, MAXLEN);
-	else if (strcmp(name, "log_facility") == 0)
-		strncpy(options->log_facility, value, MAXLEN);
-	else if (strcmp(name, "log_status_interval") == 0)
-		options->log_status_interval = repmgr_atoi(value, name, error_list, 0);
-
-	/* standby clone settings */
-	else if (strcmp(name, "use_replication_slots") == 0)
-		options->use_replication_slots = parse_bool(value, name, error_list);
-	else if (strcmp(name, "pg_basebackup_options") == 0)
-		strncpy(options->pg_basebackup_options, value, MAXLEN);
-	else if (strcmp(name, "tablespace_mapping") == 0)
-		tablespace_list_append(options, value);
-	else if (strcmp(name, "restore_command") == 0)
-		strncpy(options->restore_command, value, MAXLEN);
-	else if (strcmp(name, "recovery_min_apply_delay") == 0)
-	{
-		parse_time_unit_parameter(name, value, options->recovery_min_apply_delay, error_list);
-		options->recovery_min_apply_delay_provided = true;
-	}
-	else if (strcmp(name, "archive_cleanup_command") == 0)
-		strncpy(options->archive_cleanup_command, value, MAXLEN);
-	else if (strcmp(name, "use_primary_conninfo_password") == 0)
-		options->use_primary_conninfo_password = parse_bool(value, name, error_list);
-	else if (strcmp(name, "passfile") == 0)
-		strncpy(options->passfile, value, sizeof(options->passfile));
-
-	/* standby promote settings */
-	else if (strcmp(name, "promote_check_timeout") == 0)
-		options->promote_check_timeout = repmgr_atoi(value, name, error_list, 1);
-
-	else if (strcmp(name, "promote_check_interval") == 0)
-		options->promote_check_interval = repmgr_atoi(value, name, error_list, 1);
-
-	/* standby follow settings */
-	else if (strcmp(name, "primary_follow_timeout") == 0)
-		options->primary_follow_timeout = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "standby_follow_timeout") == 0)
-		options->standby_follow_timeout = repmgr_atoi(value, name, error_list, 0);
-
-	/* standby switchover settings */
-	else if (strcmp(name, "shutdown_check_timeout") == 0)
-		options->shutdown_check_timeout = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "standby_reconnect_timeout") == 0)
-		options->standby_reconnect_timeout = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "wal_receive_check_timeout") == 0)
-		options->wal_receive_check_timeout = repmgr_atoi(value, name, error_list, 0);
-
-	/* node rejoin settings */
-	else if (strcmp(name, "node_rejoin_timeout") == 0)
-		options->node_rejoin_timeout = repmgr_atoi(value, name, error_list, 0);
-
-	/* node check settings */
-	else if (strcmp(name, "archive_ready_warning") == 0)
-		options->archive_ready_warning = repmgr_atoi(value, name, error_list, 1);
-	else if (strcmp(name, "archive_ready_critical") == 0)
-		options->archive_ready_critical = repmgr_atoi(value, name, error_list, 1);
-	else if (strcmp(name, "replication_lag_warning") == 0)
-		options->replication_lag_warning = repmgr_atoi(value, name, error_list, 1);
-	else if (strcmp(name, "replication_lag_critical") == 0)
-		options->replication_lag_critical = repmgr_atoi(value, name, error_list, 1);
-
-	/* repmgrd settings */
-	else if (strcmp(name, "failover") == 0)
-	{
-		if (strcmp(value, "manual") == 0)
-		{
-			options->failover = FAILOVER_MANUAL;
-		}
-		else if (strcmp(value, "automatic") == 0)
-		{
-			options->failover = FAILOVER_AUTOMATIC;
-		}
-		else
-		{
-			item_list_append(error_list,
-							 _("value for \"failover\" must be \"automatic\" or \"manual\"\n"));
-		}
-	}
-	else if (strcmp(name, "priority") == 0)
-		options->priority = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "location") == 0)
-		strncpy(options->location, value, sizeof(options->location));
-	else if (strcmp(name, "promote_command") == 0)
-		strncpy(options->promote_command, value, sizeof(options->promote_command));
-	else if (strcmp(name, "follow_command") == 0)
-		strncpy(options->follow_command, value, sizeof(options->follow_command));
-	else if (strcmp(name, "reconnect_attempts") == 0)
-		options->reconnect_attempts = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "reconnect_interval") == 0)
-		options->reconnect_interval = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "monitor_interval_secs") == 0)
-		options->monitor_interval_secs = repmgr_atoi(value, name, error_list, 1);
-	else if (strcmp(name, "monitoring_history") == 0)
-		options->monitoring_history = parse_bool(value, name, error_list);
-	else if (strcmp(name, "degraded_monitoring_timeout") == 0)
-		options->degraded_monitoring_timeout = repmgr_atoi(value, name, error_list, -1);
-	else if (strcmp(name, "async_query_timeout") == 0)
-		options->async_query_timeout = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "primary_notification_timeout") == 0)
-		options->primary_notification_timeout = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "repmgrd_standby_startup_timeout") == 0)
-		options->repmgrd_standby_startup_timeout = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "repmgrd_pid_file") == 0)
-		strncpy(options->repmgrd_pid_file, value, MAXPGPATH);
-	else if (strcmp(name, "standby_disconnect_on_failover") == 0)
-		options->standby_disconnect_on_failover = parse_bool(value, name, error_list);
-	else if (strcmp(name, "sibling_nodes_disconnect_timeout") == 0)
-		options->sibling_nodes_disconnect_timeout = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "connection_check_type") == 0)
-	{
-		if (strcasecmp(value, "ping") == 0)
-		{
-			options->connection_check_type = CHECK_PING;
-		}
-		else if (strcasecmp(value, "connection") == 0)
-		{
-			options->connection_check_type = CHECK_CONNECTION;
-		}
-		else if (strcasecmp(value, "query") == 0)
-		{
-			options->connection_check_type = CHECK_QUERY;
-		}
-		else
-		{
-			item_list_append(error_list,
-							 _("value for \"connection_check_type\" must be \"ping\", \"connection\" or \"query\"\n"));
-		}
-	}
-	else if (strcmp(name, "primary_visibility_consensus") == 0)
-		options->primary_visibility_consensus = parse_bool(value, name, error_list);
-	else if (strcmp(name, "failover_validation_command") == 0)
-		strncpy(options->failover_validation_command, value, sizeof(options->failover_validation_command));
-	else if (strcmp(name, "election_rerun_interval") == 0)
-		options->election_rerun_interval = repmgr_atoi(value, name, error_list, 0);
-	else if (strcmp(name, "child_nodes_check_interval") == 0)
-		options->child_nodes_check_interval = repmgr_atoi(value, name, error_list, 1);
-	else if (strcmp(name, "child_nodes_disconnect_command") == 0)
-		snprintf(options->child_nodes_disconnect_command, sizeof(options->child_nodes_disconnect_command), "%s", value);
-	else if (strcmp(name, "child_nodes_disconnect_min_count") == 0)
-		options->child_nodes_disconnect_min_count = repmgr_atoi(value, name, error_list, -1);
-	else if (strcmp(name, "child_nodes_connected_min_count") == 0)
-		options->child_nodes_connected_min_count = repmgr_atoi(value, name, error_list, -1);
-	else if (strcmp(name, "child_nodes_connected_include_witness") == 0)
-		options->child_nodes_connected_include_witness = parse_bool(value, name, error_list);
-	else if (strcmp(name, "child_nodes_disconnect_timeout") == 0)
-		options->child_nodes_disconnect_timeout = repmgr_atoi(value, name, error_list, 0);
-
-	/* witness settings */
-	else if (strcmp(name, "witness_sync_interval") == 0)
-		options->witness_sync_interval = repmgr_atoi(value, name, error_list, 1);
-
-	/* BDR settings */
-	else if (strcmp(name, "bdr_local_monitoring_only") == 0)
-		options->bdr_local_monitoring_only = parse_bool(value, name, error_list);
-	else if (strcmp(name, "bdr_recovery_timeout") == 0)
-		options->bdr_recovery_timeout = repmgr_atoi(value, name, error_list, 0);
-
-	/* service settings */
-	else if (strcmp(name, "pg_ctl_options") == 0)
-		strncpy(options->pg_ctl_options, value, sizeof(options->pg_ctl_options));
-	else if (strcmp(name, "service_start_command") == 0)
-		strncpy(options->service_start_command, value, sizeof(options->service_start_command));
-	else if (strcmp(name, "service_stop_command") == 0)
-		strncpy(options->service_stop_command, value, sizeof(options->service_stop_command));
-	else if (strcmp(name, "service_restart_command") == 0)
-		strncpy(options->service_restart_command, value, sizeof(options->service_restart_command));
-	else if (strcmp(name, "service_reload_command") == 0)
-		strncpy(options->service_reload_command, value, sizeof(options->service_reload_command));
-	else if (strcmp(name, "service_promote_command") == 0)
-		strncpy(options->service_promote_command, value, sizeof(options->service_promote_command));
-
-	/* repmgrd service settings */
-	else if (strcmp(name, "repmgrd_service_start_command") == 0)
-		strncpy(options->repmgrd_service_start_command, value, sizeof(options->repmgrd_service_start_command));
-	else if (strcmp(name, "repmgrd_service_stop_command") == 0)
-		strncpy(options->repmgrd_service_stop_command, value, sizeof(options->repmgrd_service_stop_command));
-
-
-	/* event notification settings */
-	else if (strcmp(name, "event_notification_command") == 0)
-		strncpy(options->event_notification_command, value, sizeof(options->event_notification_command));
-	else if (strcmp(name, "event_notifications") == 0)
-	{
-		/* store unparsed value for comparison when reloading config */
-		strncpy(options->event_notifications_orig, value, sizeof(options->event_notifications_orig));
-		parse_event_notifications_list(options, value);
-	}
-
-	/* barman settings */
-	else if (strcmp(name, "barman_host") == 0)
-		strncpy(options->barman_host, value, sizeof(options->barman_host));
-	else if (strcmp(name, "barman_server") == 0)
-		strncpy(options->barman_server, value, sizeof(options->barman_server));
-	else if (strcmp(name, "barman_config") == 0)
-		strncpy(options->barman_config, value, sizeof(options->barman_config));
-
-	/* rsync/ssh settings */
-	else if (strcmp(name, "rsync_options") == 0)
-		strncpy(options->rsync_options, value, sizeof(options->rsync_options));
-	else if (strcmp(name, "ssh_options") == 0)
-		strncpy(options->ssh_options, value, sizeof(options->ssh_options));
-
-	/* undocumented settings for testing */
-	else if (strcmp(name, "promote_delay") == 0)
-		options->promote_delay = repmgr_atoi(value, name, error_list, 1);
-
-	/*
-	 * Following parameters have been deprecated or renamed from 3.x -
-	 * issue a warning
-	 */
-	else if (strcmp(name, "cluster") == 0)
-	{
-		item_list_append(warning_list,
-						 _("parameter \"cluster\" is deprecated and will be ignored"));
-		known_parameter = false;
-	}
-	else if (strcmp(name, "node") == 0)
-	{
-		item_list_append(warning_list,
-						 _("parameter \"node\" has been renamed to \"node_id\""));
-		known_parameter = false;
-	}
-	else if (strcmp(name, "upstream_node") == 0)
-	{
-		item_list_append(warning_list,
-						 _("parameter \"upstream_node\" has been removed; use \"--upstream-node-id\" when cloning a standby"));
-		known_parameter = false;
-	}
-	else if (strcmp(name, "loglevel") == 0)
-	{
-		item_list_append(warning_list,
-						 _("parameter \"loglevel\" has been renamed to \"log_level\""));
-		known_parameter = false;
-	}
-	else if (strcmp(name, "logfacility") == 0)
-	{
-		item_list_append(warning_list,
-						 _("parameter \"logfacility\" has been renamed to \"log_facility\""));
-		known_parameter = false;
-	}
-	else if (strcmp(name, "logfile") == 0)
-	{
-		item_list_append(warning_list,
-						 _("parameter \"logfile\" has been renamed to \"log_file\""));
-		known_parameter = false;
-	}
-	else if (strcmp(name, "master_reponse_timeout") == 0)
-	{
-		item_list_append(warning_list,
-						 _("parameter \"master_reponse_timeout\" has been removed; use \"async_query_timeout\" instead"));
-		known_parameter = false;
-	}
-	else if (strcmp(name, "retry_promote_interval_secs") == 0)
-	{
-		item_list_append(warning_list,
-						 _("parameter \"retry_promote_interval_secs\" has been removed; use \"primary_notification_timeout\" instead"));
-		known_parameter = false;
-	}
-	else
-	{
-		known_parameter = false;
-		log_warning(_("%s/%s: unknown name/value pair provided; ignoring"), name, value);
-	}
-
-	/*
-	 * Raise an error if a known parameter is provided with an empty
-	 * value. Currently there's no reason why empty parameters are needed;
-	 * if we want to accept those, we'd need to add stricter default
-	 * checking, as currently e.g. an empty `node_id` value will be converted
-	 * to '0'.
-	 */
-	if (known_parameter == true && !strlen(value))
-	{
-		char		error_message_buf[MAXLEN] = "";
-
-		maxlen_snprintf(error_message_buf,
-						_("\"%s\": no value provided"),
-						name);
-
-		item_list_append(error_list, error_message_buf);
-	}
-}
 
 
 bool

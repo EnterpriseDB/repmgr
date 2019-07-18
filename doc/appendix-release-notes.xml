@@ -24,33 +24,6 @@
     <sect2>
       <title>General enhancements</title>
       <para>
-        <itemizedlist>
-
-          <listitem>
-            <para>
-              The &repmgr; configuration file is now parsed using
-              <command>flex</command>, meaning it will be parsed in
-              the same way as PostgreSQL parses its own configuration
-              files.
-            </para>
-            <para>
-              This makes configuration file parsing more robust
-              and consistent.
-            </para>
-            <note>
-              <para>
-                This change makes configuration file parsing somewhat stricter
-                than previously. When upgrading, be sure to check your
-                configuration file syntax.
-                <!-- XXX add notes in upgrade section -->
-              </para>
-              <para>
-                In particular, all string values containing spaces
-                <emphasis>must</emphasis> be contained within single quotes.
-              </para>
-            </note>
-          </listitem>
-        </itemizedlist>
       </para>
     </sect2>
   </sect1>
