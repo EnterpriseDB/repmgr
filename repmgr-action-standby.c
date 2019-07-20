@@ -4926,14 +4926,24 @@ check_source_server()
 			}
 		}
 	}
+
 	/* Fetch the source's data directory */
-	get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+	if(PQserverVersion(source_conn) >= 100000 && runtime_options.superuser[0] == '\0'){
+		privileged_conn = source_conn;
+	} else{
+		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+	}
 
 	if (get_pg_setting(privileged_conn, "data_directory", upstream_data_directory) == false)
 	{
 		log_error(_("unable to retrieve source node's data directory"));
-		log_detail(_("STANDBY CLONE must be run with database superuser permissions"));
+		log_detail(_("insufficient privileges"));
 		log_hint(_("provide a database superuser name with -S/--superuser"));
+		if (PQserverVersion(privileged_conn) >= 100000)
+			{
+				log_hint(_("or add the \"%s\" user to group \"pg_read_all_settings\""),
+						   PQuser(privileged_conn));
+			}
 
 		PQfinish(source_conn);
 		source_conn = NULL;
