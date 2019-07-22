@@ -446,11 +446,26 @@ do_standby_clone(void)
 		 * tell this from the below query; we'll probably need to add a check
 		 * for their presence and if missing force copy by SSH
 		 */
-		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+		if(PQserverVersion(source_conn) >= 100000 && runtime_options.superuser[0] == '\0')
+		{
+			privileged_conn = source_conn;
+		} 
+		else
+		{
+			get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+		}
 
 		if (get_configuration_file_locations(privileged_conn, &config_files) == false)
 		{
 			log_notice(_("unable to proceed without establishing configuration file locations"));
+			log_detail(_("insufficient privileges"));
+			log_hint(_("provide a database superuser name with -S/--superuser"));
+			if (PQserverVersion(privileged_conn) >= 100000)
+			{
+				log_hint(_("or add the \"%s\" user to group \"pg_read_all_settings\""),
+							PQuser(privileged_conn));
+			}
+			
 			PQfinish(source_conn);
 
 			if (superuser_conn != NULL)
@@ -4930,7 +4945,9 @@ check_source_server()
 	/* Fetch the source's data directory */
 	if(PQserverVersion(source_conn) >= 100000 && runtime_options.superuser[0] == '\0'){
 		privileged_conn = source_conn;
-	} else{
+	} 
+	else
+	{
 		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
 	}
 
@@ -5730,7 +5747,15 @@ initialise_direct_clone(t_node_info *node_record)
 
 		initPQExpBuffer(&event_details);
 
-		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+		
+		if(PQserverVersion(source_conn) >= 100000 && runtime_options.superuser[0] == '\0') 
+		{
+			privileged_conn = source_conn;
+		} 
+		else 
+		{
+			get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+		}
 
 		if (create_replication_slot(privileged_conn, node_record->slot_name, &event_details) == false)
 		{
@@ -6015,7 +6040,14 @@ run_basebackup(t_node_info *node_record)
 							   node_record->slot_name,
 							   upstream_node_id);
 
-					get_superuser_connection(&upstream_conn, &superuser_conn, &privileged_conn);
+					if(PQserverVersion(upstream_conn) >= 100000 && runtime_options.superuser[0] == '\0') 
+					{
+						privileged_conn = upstream_conn;
+					} 
+					else 
+					{
+						get_superuser_connection(&upstream_conn, &superuser_conn, &privileged_conn);
+					}
 
 					initPQExpBuffer(&event_details);
 					if (create_replication_slot(privileged_conn, node_record->slot_name, &event_details) == false)
@@ -6049,7 +6081,14 @@ run_basebackup(t_node_info *node_record)
 
 		/* delete slot on source server */
 
-		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+		if(PQserverVersion(source_conn) >= 100000 && runtime_options.superuser[0] == '\0')
+		{
+			privileged_conn = source_conn;
+		} 
+		else
+		{
+			get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+		}
 
 		if (slot_info.active == false)
 		{
