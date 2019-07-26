@@ -59,8 +59,8 @@ REPMGRD_OBJS = repmgrd.o repmgrd-physical.o repmgrd-bdr.o configfile.o log.o dbu
 DATE=$(shell date "+%Y-%m-%d")
 
 repmgr_version.h: repmgr_version.h.in
-	$(SED) '0,/REPMGR_VERSION_DATE/s,\(REPMGR_VERSION_DATE\).*,\1 "$(DATE)",' $< >$@; \
-	$(SED) -E 's/PG_ACTUAL_VERSION_NUM/PG_ACTUAL_VERSION_NUM $(VERSION_NUM)/' $< >$@
+	$(SED) -E 's/REPMGR_VERSION_DATE.*""/REPMGR_VERSION_DATE "$(DATE)"/' $< >$@; \
+	$(SED) -i -E 's/PG_ACTUAL_VERSION_NUM/PG_ACTUAL_VERSION_NUM $(VERSION_NUM)/' $@
 
 $(REPMGR_CLIENT_OBJS): repmgr-client.h repmgr_version.h
 
