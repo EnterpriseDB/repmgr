@@ -60,7 +60,7 @@ DATE=$(shell date "+%Y-%m-%d")
 
 repmgr_version.h: repmgr_version.h.in
 	$(SED) '0,/REPMGR_VERSION_DATE/s,\(REPMGR_VERSION_DATE\).*,\1 "$(DATE)",' $< >$@; \
-	$(SED) '0,/PG_ACTUAL_VERSION_NUM/s,\(PG_ACTUAL_VERSION_NUM\).*,\1 $(VERSION_NUM),' $< >$@
+	$(SED) -E 's/PG_ACTUAL_VERSION_NUM/PG_ACTUAL_VERSION_NUM $(VERSION_NUM)/' $< >$@
 
 $(REPMGR_CLIENT_OBJS): repmgr-client.h repmgr_version.h
 
