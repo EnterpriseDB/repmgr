@@ -14,6 +14,9 @@ ifeq ($(vpath_build),yes)
 	VPATH := $(repmgr_abs_srcdir)/$(repmgr_subdir)
 	USE_VPATH :=$(VPATH)
 endif
+
+SED=@SED@
+
 GIT_WORK_TREE=${repmgr_abs_srcdir}
 GIT_DIR=${repmgr_abs_srcdir}/.git
 export GIT_DIR

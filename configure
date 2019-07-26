@@ -589,6 +589,9 @@ PACKAGE_URL='https://repmgr.org/'
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+HAVE_SED
+HAVE_GSED
+HAVE_GNUSED
 vpath_build
 SED
 PG_CONFIG
@@ -1845,6 +1848,133 @@ if test "$srcdir" -ef '.' ; then
 else
   vpath_build=yes
 fi
+
+
+# Extract the first word of "gnused", so it can be a program name with args.
+set dummy gnused; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_HAVE_GNUSED+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$HAVE_GNUSED"; then
+  ac_cv_prog_HAVE_GNUSED="$HAVE_GNUSED" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_HAVE_GNUSED="yes"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_prog_HAVE_GNUSED" && ac_cv_prog_HAVE_GNUSED="no"
+fi
+fi
+HAVE_GNUSED=$ac_cv_prog_HAVE_GNUSED
+if test -n "$HAVE_GNUSED"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $HAVE_GNUSED" >&5
+$as_echo "$HAVE_GNUSED" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+# Extract the first word of "gsed", so it can be a program name with args.
+set dummy gsed; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_HAVE_GSED+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$HAVE_GSED"; then
+  ac_cv_prog_HAVE_GSED="$HAVE_GSED" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_HAVE_GSED="yes"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_prog_HAVE_GSED" && ac_cv_prog_HAVE_GSED="no"
+fi
+fi
+HAVE_GSED=$ac_cv_prog_HAVE_GSED
+if test -n "$HAVE_GSED"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $HAVE_GSED" >&5
+$as_echo "$HAVE_GSED" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+# Extract the first word of "sed", so it can be a program name with args.
+set dummy sed; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_HAVE_SED+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$HAVE_SED"; then
+  ac_cv_prog_HAVE_SED="$HAVE_SED" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_HAVE_SED="yes"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_prog_HAVE_SED" && ac_cv_prog_HAVE_SED="no"
+fi
+fi
+HAVE_SED=$ac_cv_prog_HAVE_SED
+if test -n "$HAVE_SED"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $HAVE_SED" >&5
+$as_echo "$HAVE_SED" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
+if test "$HAVE_GNUSED" = yes; then
+ SED=gnused
+else
+ if test "$HAVE_GSED" = yes; then
+  SED=gsed
+ else
+  SED=sed
+ fi
+fi
+
 
 
 ac_config_files="$ac_config_files Makefile"

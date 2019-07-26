@@ -57,6 +57,22 @@ else
 fi
 AC_SUBST(vpath_build)
 
+AC_CHECK_PROG(HAVE_GNUSED,gnused,yes,no)
+AC_CHECK_PROG(HAVE_GSED,gsed,yes,no)
+AC_CHECK_PROG(HAVE_SED,sed,yes,no)
+
+if test "$HAVE_GNUSED" = yes; then
+ SED=gnused
+else
+ if test "$HAVE_GSED" = yes; then
+  SED=gsed
+ else
+  SED=sed
+ fi
+fi
+AC_SUBST(SED)
+
+
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([Makefile.global])
 AC_OUTPUT
