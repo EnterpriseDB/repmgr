@@ -184,7 +184,7 @@ main(int argc, char **argv)
 		strncpy(runtime_options.username, pw->pw_name, MAXLEN);
 	}
 
-	/* Make getopt emitting errors */
+	/* Make getopt emit errors */
 	opterr = 1;
 
 	while ((c = getopt_long(argc, argv, "?Vb:f:FwWd:h:p:U:R:S:D:ck:L:qtvC:", long_options,
