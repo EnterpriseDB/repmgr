@@ -63,7 +63,7 @@
       &repmgr; 4.4 is a major release.
     </para>
     <para>
-      For details on how to upgrade an existing &repmgr; instrallation, see
+      For details on how to upgrade an existing &repmgr; installation, see
       documentation section <link linkend="upgrading-major-version">Upgrading a major version release</link>.
     </para>
     <para>
@@ -364,7 +364,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
       &repmgr; 4.3 is a major release.
     </para>
     <para>
-      For details on how to upgrade an existing &repmgr; instrallation, see
+      For details on how to upgrade an existing &repmgr; installation, see
       documentation section <link linkend="upgrading-major-version">Upgrading a major version release</link>.
     </para>
     <para>
