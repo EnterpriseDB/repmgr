@@ -22,6 +22,30 @@
     <para><emphasis>?? ???, 2019</emphasis></para>
 
     <sect2>
+      <title>Compatibility changes</title>
+      <para>
+        The following command line options, which have been deprecated since &repmgr; 3.3
+        (and which no longer had any effect other than to generate a warning about their use)
+        have been removed:
+        <itemizedlist spacing="compact" mark="bullet">
+
+          <listitem>
+            <simpara><option>--data-dir</option></simpara>
+          </listitem>
+
+          <listitem>
+            <simpara><option>--no-conninfo-password</option></simpara>
+          </listitem>
+
+          <listitem>
+            <simpara><option>--recovery-min-apply-delay</option></simpara>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
       <title>General enhancements</title>
       <para>
         <itemizedlist>

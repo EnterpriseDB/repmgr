@@ -101,13 +101,9 @@
 #define OPT_DETAIL						   1046
 #define OPT_REPMGRD_FORCE_UNPAUSE		   1047
 
-/* deprecated since 3.3 */
-#define OPT_DATA_DIR						999
-#define OPT_NO_CONNINFO_PASSWORD			998
-#define OPT_RECOVERY_MIN_APPLY_DELAY		997
 /* deprecated since 4.0 */
-#define OPT_CHECK_UPSTREAM_CONFIG		    996
-#define OPT_NODE						    995
+#define OPT_CHECK_UPSTREAM_CONFIG		    999
+#define OPT_NODE						    998
 
 
 static struct option long_options[] =
@@ -157,7 +153,6 @@ static struct option long_options[] =
 	{"copy-external-config-files", optional_argument, NULL, OPT_COPY_EXTERNAL_CONFIG_FILES},
 	{"fast-checkpoint", no_argument, NULL, 'c'},
 	{"no-upstream-connection", no_argument, NULL, OPT_NO_UPSTREAM_CONNECTION},
-	{"recovery-min-apply-delay", required_argument, NULL, OPT_RECOVERY_MIN_APPLY_DELAY},
 	{"replication-user", required_argument, NULL, OPT_REPLICATION_USER},
 	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
 	{"upstream-node-id", required_argument, NULL, OPT_UPSTREAM_NODE_ID},
@@ -215,11 +210,8 @@ static struct option long_options[] =
 
 /* deprecated */
 	{"check-upstream-config", no_argument, NULL, OPT_CHECK_UPSTREAM_CONFIG},
-	{"no-conninfo-password", no_argument, NULL, OPT_NO_CONNINFO_PASSWORD},
 	/* previously used by "standby switchover" */
 	{"remote-config-file", required_argument, NULL, 'C'},
-	/* legacy alias for -D/--pgdata */
-	{"data-dir", required_argument, NULL, OPT_DATA_DIR},
 	/* replaced by --node-id */
 	{"node", required_argument, NULL, OPT_NODE},
 

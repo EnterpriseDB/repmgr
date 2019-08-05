@@ -669,31 +669,18 @@ main(int argc, char **argv)
 				break;
 
 				/*-----------------------------
-				 * options deprecated since 3.3
+				 * options deprecated since 4.0
 				 *-----------------------------
 				 */
 			case OPT_CHECK_UPSTREAM_CONFIG:
 				item_list_append(&cli_warnings,
 								 _("--check-upstream-config is deprecated; use --dry-run instead"));
 				break;
-			case OPT_DATA_DIR:
-				item_list_append(&cli_warnings,
-								 _("--data-dir is deprecated; use -D/--pgdata instead"));
-				break;
-			case OPT_NO_CONNINFO_PASSWORD:
-				item_list_append(&cli_warnings,
-								 _("--no-conninfo-password is deprecated; use --use-recovery-conninfo-password to explicitly set a password"));
-				break;
+
 				/* -C/--remote-config-file */
 			case 'C':
 				item_list_append(&cli_warnings,
 								 _("--remote-config-file is no longer required"));
-				break;
-
-				/* --recovery-min-apply-delay */
-			case OPT_RECOVERY_MIN_APPLY_DELAY:
-				item_list_append(&cli_warnings,
-								 _("--recovery-min-apply-delay is now a configuration file parameter, \"recovery_min_apply_delay\""));
 				break;
 
 			case ':':   /* missing option argument */
