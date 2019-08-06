@@ -5073,6 +5073,7 @@ init_replication_info(ReplInfo *replication_info)
 	replication_info->receiving_streamed_wal = true;
 	replication_info->wal_replay_paused = false;
 	replication_info->upstream_last_seen = -1;
+	replication_info->upstream_node_id = UNKNOWN_NODE_ID;
 }
 
 
