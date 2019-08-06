@@ -364,3 +364,44 @@ enable_wal_receiver(PGconn *conn, bool wait_startup)
 
 	return wal_receiver_pid;
 }
+
+
+/**
+ * Parse the string returned by "repmgr --version", e.g. "repmgr 4.1.2",
+ * and return it as a version integer (e.g. 40102).
+ *
+ * This is required for backwards compatibility as versions prior to
+ * 4.3 do not have the --version-number option.
+ */
+int
+parse_repmgr_version(const char *version_string)
+{
+	int series, major, minor;
+	int version_integer = UNKNOWN_REPMGR_VERSION_NUM;
+	PQExpBufferData sscanf_string;
+
+	initPQExpBuffer(&sscanf_string);
+
+	appendPQExpBuffer(&sscanf_string, "%s ",
+					  progname());
+	appendPQExpBufferStr(&sscanf_string, "%i.%i.%i");
+
+	if (sscanf(version_string, sscanf_string.data, &series, &major, &minor) == 3)
+	{
+		version_integer = (series * 10000) + (major * 100) + minor;
+	}
+	else
+	{
+		resetPQExpBuffer(&sscanf_string);
+		appendPQExpBuffer(&sscanf_string, "%s ",
+						  progname());
+		appendPQExpBufferStr(&sscanf_string, "%i.%i");
+
+		if (sscanf(version_string, "repmgr %i.%i", &series, &major) == 2)
+		{
+			version_integer = (series * 10000) + (major * 100);
+		}
+	}
+
+	return version_integer;
+}
