@@ -373,9 +373,9 @@ connection_has_pg_settings(PGconn *conn)
 		initPQExpBuffer(&query);
 		appendPQExpBufferStr(&query,
 							 "  SELECT CASE "
-							 "           WHEN pg_catalog.pg_has_role(CURRENT_USER, 'pg_monitor','MEMBER') "
+							 "           WHEN pg_catalog.pg_has_role('pg_monitor','MEMBER') "
 							 "             THEN TRUE "
-							 "           WHEN pg_catalog.pg_has_role(CURRENT_USER, 'pg_read_all_settings','MEMBER') "
+							 "           WHEN pg_catalog.pg_has_role('pg_read_all_settings','MEMBER') "
 							 "             THEN TRUE "
 							 "           ELSE FALSE "
 							 "         END AS has_pg_settings");
