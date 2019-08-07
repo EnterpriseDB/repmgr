@@ -4752,6 +4752,7 @@ check_source_server()
 	t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	ExtensionStatus extension_status = REPMGR_UNKNOWN;
+	t_extension_versions extversions = T_EXTENSION_VERSIONS_INITIALIZER;
 
 	/* Attempt to connect to the upstream server to verify its configuration */
 	log_verbose(LOG_DEBUG, "check_source_server()");
@@ -4815,7 +4816,7 @@ check_source_server()
 	 * to be used as a standalone clone tool)
 	 */
 
-	extension_status = get_repmgr_extension_status(primary_conn, NULL);
+	extension_status = get_repmgr_extension_status(primary_conn, &extversions);
 
 	if (extension_status != REPMGR_INSTALLED)
 	{
@@ -4830,20 +4831,25 @@ check_source_server()
 				exit(ERR_DB_QUERY);
 			}
 
-			/* schema doesn't exist */
-			log_error(_("repmgr extension not found on source node"));
-
 			if (extension_status == REPMGR_AVAILABLE)
 			{
-				log_detail(_("repmgr extension is available but not installed in database \"%s\""),
+				log_error(_("repmgr extension is available but not installed in database \"%s\""),
 						   param_get(&source_conninfo, "dbname"));
+				log_hint(_("check that you are cloning from the database where \"repmgr\" is installed"));
 			}
 			else if (extension_status == REPMGR_UNAVAILABLE)
 			{
-				log_detail(_("repmgr extension is not available on the upstream node"));
+				log_error(_("repmgr extension is not available on the upstream node"));
+			}
+			else if (extension_status == REPMGR_OLD_VERSION_INSTALLED)
+			{
+				log_error(_("an older version of the extension is installed on the upstream node"));
+				log_detail(_("version %s is installed but newer version %s is available"),
+						   extversions.installed_version,
+						   extversions.default_version);
+				log_hint(_("upgrade \"repmgr\" on the source node first"));
 			}
 
-			log_hint(_("check that the upstream node is part of a repmgr cluster"));
 			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 		}
@@ -4868,6 +4874,13 @@ check_source_server()
 		 * later, as this is a precautionary check and we can retrieve the system
 		 * identifier with a normal connection.
 		 */
+
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("\"repmgr\" extension is installed in database \"%s\""),
+					 param_get(&source_conninfo, "dbname"));
+		}
+
 		if (get_recovery_type(source_conn) == RECTYPE_PRIMARY && PQserverVersion(source_conn) >= 90600)
 		{
 			uint64		source_system_identifier = system_identifier(source_conn);
