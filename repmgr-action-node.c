@@ -1833,7 +1833,7 @@ do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_in
 	 * a superuser connection
 	 */
 
-	if (is_superuser_connection(conn, NULL) == true)
+	if (connection_has_pg_settings(conn) == true)
 	{
 		/* we expect to have a database connection */
 		if (get_pg_setting(conn, "data_directory", actual_data_directory) == false)
@@ -1878,7 +1878,7 @@ do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_in
 			/* XXX add -S/--superuser option */
 			if (PQserverVersion(conn) >= 100000)
 			{
-				log_hint(_("add the \"%s\" user to group \"pg_read_all_settings\""),
+				log_hint(_("add the \"%s\" user to group \"pg_read_all_settings\" or \"pg_monitor\""),
 						   PQuser(conn));
 			}
 		}

@@ -1,3 +1,6 @@
+4.4.1   2019-??-??
+        repmgr: improve data directory check (Ian)
+
 4.4     2019-06-27
         repmgr: improve "daemon status" output (Ian)
         repmgr: add "--siblings-follow" option to "standby promote" (Ian)
