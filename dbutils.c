@@ -336,12 +336,10 @@ establish_db_connection_by_params(t_conninfo_param_list *param_list,
 bool
 is_superuser_connection(PGconn *conn, t_connection_user *userinfo)
 {
-	char	   *current_user = NULL;
-	const char *superuser_status = NULL;
 	bool		is_superuser = false;
+	const char *current_user = PQuser(conn);
+	const char *superuser_status = PQparameterStatus(conn, "is_superuser");
 
-	current_user = PQuser(conn);
-	superuser_status = PQparameterStatus(conn, "is_superuser");
 	is_superuser = (strcmp(superuser_status, "on") == 0) ? true : false;
 
 	if (userinfo != NULL)
@@ -353,6 +351,51 @@ is_superuser_connection(PGconn *conn, t_connection_user *userinfo)
 	}
 
 	return is_superuser;
+}
+
+
+bool
+connection_has_pg_settings(PGconn *conn)
+{
+	bool		has_pg_settings = false;
+
+	/* superusers can always read pg_settings */
+	if (is_superuser_connection(conn, NULL) == true)
+	{
+		has_pg_settings = true;
+	}
+	/* from PostgreSQL 10, a non-superuser may have been granted access */
+	else if(PQserverVersion(conn) >= 100000)
+	{
+		PQExpBufferData query;
+		PGresult   *res;
+
+		initPQExpBuffer(&query);
+		appendPQExpBufferStr(&query,
+							 "  SELECT CASE "
+							 "           WHEN pg_catalog.pg_has_role(CURRENT_USER, 'pg_monitor','MEMBER') "
+							 "             THEN TRUE "
+							 "           WHEN pg_catalog.pg_has_role(CURRENT_USER, 'pg_read_all_settings','MEMBER') "
+							 "             THEN TRUE "
+							 "           ELSE FALSE "
+							 "         END AS has_pg_settings");
+
+		res = PQexec(conn, query.data);
+
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_db_error(conn, query.data,
+						 _("connection_has_pg_settings(): unable to query user roles"));
+		}
+		else
+		{
+			has_pg_settings = atobool(PQgetvalue(res, 0, 0));
+		}
+		termPQExpBuffer(&query);
+		PQclear(res);
+	}
+
+	return has_pg_settings;
 }
 
 

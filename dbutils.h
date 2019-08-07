@@ -438,6 +438,7 @@ PGconn	   *get_primary_connection(PGconn *standby_conn, int *primary_id, char *p
 PGconn	   *get_primary_connection_quiet(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 
 bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);
+bool		connection_has_pg_settings(PGconn *conn);
 void		close_connection(PGconn **conn);
 
 /* conninfo manipulation functions */
