@@ -3066,8 +3066,8 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 			 * Ideally we'd use PG_AUTOCONF_FILENAME from utils/guc.h, but
 			 * that has too many dependencies for a mere client program.
 			 */
-			appendPQExpBufferStr(&rsync_flags,
-								 " --exclude=postgresql.auto.conf.tmp");
+			appendPQExpBuffer(&rsync_flags, " --exclude=%s.tmp",
+							  PG_AUTOCONF_FILENAME);
 		}
 
 		/* Temporary files which we don't want, if they exist */

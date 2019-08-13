@@ -28,6 +28,12 @@
 /* magic number for use in t_recovery_conf */
 #define TARGET_TIMELINE_LATEST 0
 
+/*
+ * This is defined src/include/utils.h, however it's not practical
+ * to include that from a frontend application.
+ */
+#define PG_AUTOCONF_FILENAME "postgresql.auto.conf"
+
 extern bool config_file_found;
 extern char config_file_path[MAXPGPATH];
 
