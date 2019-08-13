@@ -4909,7 +4909,8 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 		 */
 		if (local_xlogpos > follow_target_history->end)
 		{
-			log_error(_("this node cannot attach to follow target node %i"),
+			log_error(_("this node cannot attach to follow target node \"%s\" (ID: %i)"),
+					  follow_target_node_info->node_name,
 					  follow_target_node_info->node_id);
 			can_follow = false;
 
@@ -4921,8 +4922,10 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 
 		if (can_follow == true)
 		{
-			log_info(_("local node %i can attach to follow target node %i"),
+			log_info(_("local node \"%s\" (ID: %i) can attach to follow target node \"%s\" (ID: %i)"),
+					 config_file_options.node_name,
 					 config_file_options.node_id,
+					 follow_target_node_info->node_name,
 					 follow_target_node_info->node_id);
 
 			log_detail(_("local node's recovery point: %X/%X; follow target node's fork point: %X/%X"),
