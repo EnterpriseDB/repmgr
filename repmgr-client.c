@@ -3029,19 +3029,19 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 	if (*config_file_options.rsync_options == '\0')
 	{
-		appendPQExpBuffer(&rsync_flags, "%s",
-						  "--archive --checksum --compress --progress --rsh=ssh");
+		appendPQExpBufferStr(&rsync_flags,
+							 "--archive --checksum --compress --progress --rsh=ssh");
 	}
 	else
 	{
-		appendPQExpBuffer(&rsync_flags, "%s",
-						  config_file_options.rsync_options);
+		appendPQExpBufferStr(&rsync_flags,
+							 config_file_options.rsync_options);
 	}
 
 	if (runtime_options.force)
 	{
-		appendPQExpBuffer(&rsync_flags, "%s",
-						  " --delete --checksum");
+		appendPQExpBufferStr(&rsync_flags,
+							 " --delete --checksum");
 	}
 
 	if (!remote_user[0])
@@ -3067,11 +3067,11 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 	if (is_directory)
 	{
 		/* Files which we don't want */
-		appendPQExpBuffer(&rsync_flags, "%s",
-						  " --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control");
+		appendPQExpBufferStr(&rsync_flags,
+							 " --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control");
 
-		appendPQExpBuffer(&rsync_flags, "%s",
-						  " --exclude=recovery.conf --exclude=recovery.done");
+		appendPQExpBufferStr(&rsync_flags,
+							 " --exclude=recovery.conf --exclude=recovery.done");
 
 		if (server_version_num >= 90400)
 		{
@@ -3079,8 +3079,8 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 			 * Ideally we'd use PG_AUTOCONF_FILENAME from utils/guc.h, but
 			 * that has too many dependencies for a mere client program.
 			 */
-			appendPQExpBuffer(&rsync_flags, "%s",
-							  " --exclude=postgresql.auto.conf.tmp");
+			appendPQExpBufferStr(&rsync_flags,
+								 " --exclude=postgresql.auto.conf.tmp");
 		}
 
 		/* Temporary files which we don't want, if they exist */
@@ -3091,17 +3091,17 @@ copy_remote_files(char *host, char *remote_user, char *remote_path,
 
 		if (server_version_num >= 100000)
 		{
-			appendPQExpBuffer(&rsync_flags, "%s",
-							  " --exclude=pg_wal/*");
+			appendPQExpBufferStr(&rsync_flags,
+								 " --exclude=pg_wal/*");
 		}
 		else
 		{
-			appendPQExpBuffer(&rsync_flags, "%s",
-							  " --exclude=pg_xlog/*");
+			appendPQExpBufferStr(&rsync_flags,
+								 " --exclude=pg_xlog/*");
 		}
 
-		appendPQExpBuffer(&rsync_flags, "%s",
-						  " --exclude=pg_log/* --exclude=pg_stat_tmp/*");
+		appendPQExpBufferStr(&rsync_flags,
+							 " --exclude=pg_log/* --exclude=pg_stat_tmp/*");
 
 		maxlen_snprintf(script, "rsync %s %s:%s/* %s",
 						rsync_flags.data, host_string, remote_path, local_path);
