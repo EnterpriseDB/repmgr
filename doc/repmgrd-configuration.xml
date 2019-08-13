@@ -222,6 +222,17 @@
               Normally <option>promote_command</option> is set as &repmgr;'s
               <command><link linkend="repmgr-standby-promote">repmgr standby promote</link></command> command.
             </para>
+
+            <note>
+              <para>
+                When invoking <command>repmgr standby promote</command> (either directly via
+                the <option>promote_command</option>, or in a script called
+                via <option>promote_command</option>), <option>--siblings-follow</option>
+                <emphasis>must not</emphasis> be included as a
+                command line option for <command>repmgr standby promote</command>.
+              </para>
+            </note>
+
             <para>
               It is also possible to provide a shell script to e.g. perform user-defined tasks
               before promoting the current node. In this case the script <emphasis>must</emphasis>

@@ -171,7 +171,7 @@
       be possible to follow the new upstream node, and &repmgr; will emit an error
       message like this:
       <programlisting>
-ERROR: this node cannot attach to follow target node 3
+ERROR: this node cannot attach to follow target node &quot;node3&quot; (ID 3)
 DETAIL: follow target server's timeline 2 forked off current database system timeline 1 before current recovery point 0/6108880</programlisting>
     </para>
     <para>
