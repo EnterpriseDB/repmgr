@@ -348,7 +348,7 @@ main(int argc, char **argv)
 				 *-------------
 				 */
 
-				/* -D/--pgdata/--data-dir */
+				/* -D/--pgdata */
 			case 'D':
 				strncpy(runtime_options.data_dir, optarg, MAXPGPATH);
 				break;
