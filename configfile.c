@@ -24,7 +24,10 @@
 #include "log.h"
 
 #include <utils/elog.h>
+
+#if (PG_ACTUAL_VERSION_NUM >= 100000)
 #include <storage/fd.h>			/* for durable_rename() */
+#endif
 
 const static char *_progname = NULL;
 char		config_file_path[MAXPGPATH] = "";
@@ -1882,6 +1885,8 @@ modify_auto_conf(const char *data_dir)
 	KeyValueList config = {NULL, NULL};
 	KeyValueListCell *cell = NULL;
 
+	bool	   success = true;
+
 	initPQExpBuffer(&auto_conf);
 	appendPQExpBuffer(&auto_conf, "%s/%s",
 					  data_dir, PG_AUTOCONF_FILENAME);
@@ -1938,7 +1943,15 @@ modify_auto_conf(const char *data_dir)
 		{
 			fclose(fp);
 
+			// XXX check return values
+#if (PG_ACTUAL_VERSION_NUM >= 100000)
 			(void) durable_rename(auto_conf_tmp.data, auto_conf.data, LOG);
+#else
+			if (rename(auto_conf_tmp.data, auto_conf.data) < 0)
+			{
+				success = false;
+			}
+#endif
 		}
 	}
 
@@ -1948,7 +1961,7 @@ modify_auto_conf(const char *data_dir)
 
 	key_value_list_free(&config);
 
-	return true;
+	return success;
 }
 
 
