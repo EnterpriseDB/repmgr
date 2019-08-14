@@ -71,6 +71,7 @@ do_node_status(void)
 	PQExpBufferData output;
 
 	KeyValueList node_status = {NULL, NULL};
+	KeyValueListCell *cell = NULL;
 	NodeInfoList missing_slots = T_NODE_INFO_LIST_INITIALIZER;
 
 	ItemList	warnings = {NULL, NULL};
@@ -465,8 +466,6 @@ do_node_status(void)
 
 	if (runtime_options.output_mode == OM_CSV)
 	{
-		KeyValueListCell *cell = NULL;
-
 		appendPQExpBuffer(&output,
 						  "\"Node name\",\"%s\"\n",
 						  node_info.node_name);
@@ -540,8 +539,6 @@ do_node_status(void)
 	}
 	else
 	{
-		KeyValueListCell *cell = NULL;
-
 		appendPQExpBuffer(&output,
 						  "Node \"%s\":\n",
 						  node_info.node_name);

@@ -29,6 +29,9 @@ static int
 xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 0)));
 
+static void
+_key_value_list_set(KeyValueList *item_list, bool replace, const char *key, const char *value);
+
 static int
 xvsnprintf(char *str, size_t size, const char *format, va_list ap)
 {
@@ -164,16 +167,74 @@ item_list_free(ItemList *item_list)
 void
 key_value_list_set(KeyValueList *item_list, const char *key, const char *value)
 {
-	key_value_list_set_format(item_list, key, "%s", value);
+	_key_value_list_set(item_list, false, key, value);
 	return;
 }
 
 void
-key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value,...)
+key_value_list_replace_or_set(KeyValueList *item_list, const char *key, const char *value)
+{
+	_key_value_list_set(item_list, true, key, value);
+	return;
+}
+
+void
+key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value, ...)
+{
+	va_list		arglist;
+	char formatted_value[MAXLEN];
+
+	va_start(arglist, value);
+	(void) xvsnprintf(formatted_value, MAXLEN, value, arglist);
+	va_end(arglist);
+
+	return _key_value_list_set(item_list, false, key, formatted_value);
+}
+
+static void
+_key_value_list_set(KeyValueList *item_list, bool replace, const char *key, const char *value)
 {
 	KeyValueListCell *cell = NULL;
-	va_list		arglist;
 	int			keylen = 0;
+	int			vallen = 0;
+
+	if (replace == true)
+	{
+		KeyValueListCell *prev_cell = NULL;
+		KeyValueListCell *next_cell = NULL;
+
+
+		for (cell = item_list->head; cell; cell = next_cell)
+		{
+			next_cell = cell->next;
+
+			if (strcmp(cell->key, key) == 0)
+			{
+				if (item_list->head == cell)
+					item_list->head = cell->next;
+
+				if (prev_cell)
+				{
+					prev_cell->next = cell->next;
+
+					if (item_list->tail == cell)
+						item_list->tail = prev_cell;
+				}
+				else if (item_list->tail == cell)
+				{
+					item_list->tail = NULL;
+				}
+
+				pfree(cell->key);
+				pfree(cell->value);
+				pfree(cell);
+			}
+			else
+			{
+				prev_cell = cell;
+			}
+		}
+	}
 
 	cell = (KeyValueListCell *) pg_malloc0(sizeof(KeyValueListCell));
 
@@ -184,17 +245,14 @@ key_value_list_set_format(KeyValueList *item_list, const char *key, const char *
 	}
 
 	keylen = strlen(key);
+	vallen = strlen(value);
 
 	cell->key = pg_malloc0(keylen + 1);
-	cell->value = pg_malloc0(MAXLEN);
+	cell->value = pg_malloc0(vallen + 1);
 	cell->output_mode = OM_NOT_SET;
 
 	strncpy(cell->key, key, keylen);
-
-	va_start(arglist, value);
-	(void) xvsnprintf(cell->value, MAXLEN, value, arglist);
-	va_end(arglist);
-
+	strncpy(cell->value, value, vallen);
 
 	if (item_list->tail)
 		item_list->tail->next = cell;

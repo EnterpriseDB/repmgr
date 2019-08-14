@@ -57,6 +57,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 
+
 #include "repmgr.h"
 #include "compat.h"
 #include "controldata.h"
@@ -71,7 +72,6 @@
 #include "repmgr-action-daemon.h"
 
 #include <storage/fd.h>			/* for PG_TEMP_FILE_PREFIX */
-
 
 /* globally available variables *
  * ============================ */
@@ -348,7 +348,7 @@ main(int argc, char **argv)
 				 *-------------
 				 */
 
-				/* -D/--pgdata */
+				/* -D/--pgdata/--data-dir */
 			case 'D':
 				strncpy(runtime_options.data_dir, optarg, MAXPGPATH);
 				break;
@@ -803,7 +803,6 @@ main(int argc, char **argv)
 		free_conninfo_params(&source_conninfo);
 		exit_with_cli_errors(&cli_errors, NULL);
 	}
-
 
 	/*----------
 	 * Determine the node type and action; following are valid:

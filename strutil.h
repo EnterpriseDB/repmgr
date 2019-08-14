@@ -120,6 +120,9 @@ extern void
 			key_value_list_set(KeyValueList *item_list, const char *key, const char *value);
 
 extern void
+key_value_list_replace_or_set(KeyValueList *item_list, const char *key, const char *value);
+
+extern void
 key_value_list_set_format(KeyValueList *item_list, const char *key, const char *value,...)
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 

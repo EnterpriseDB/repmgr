@@ -38,6 +38,8 @@ static sigjmp_buf *CONF_flex_fatal_jmp;
 static char *CONF_scanstr(const char *s);
 static int	CONF_flex_fatal(const char *msg);
 
+static bool ProcessConfigFile(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
+
 %}
 
 %option 8bit
@@ -88,9 +90,20 @@ STRING			\'([^'\\\n]|\\.|\'\')*\'
 
 %%
 
+extern bool
+ProcessRepmgrConfigFile(FILE *fp, const char *config_file, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+{
+	return ProcessConfigFile(fp, config_file, NULL, options, error_list, warning_list);
+}
 
 extern bool
-ProcessConfigFile(FILE *fp, const char *config_file, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
+ProcessPostgresConfigFile(FILE *fp, const char *config_file, KeyValueList *contents, ItemList *error_list, ItemList *warning_list)
+{
+	return ProcessConfigFile(fp, config_file, contents, NULL, error_list, warning_list);
+}
+
+static bool
+ProcessConfigFile(FILE *fp, const char *config_file, KeyValueList *contents, t_configuration_options *options, ItemList *error_list, ItemList *warning_list)
 {
 	volatile bool OK = true;
 	volatile YY_BUFFER_STATE lex_buffer = NULL;
@@ -167,12 +180,21 @@ ProcessConfigFile(FILE *fp, const char *config_file, t_configuration_options *op
 		}
 
 		/* OK, process the option name and value */
+		if (contents != NULL)
+		{
+			key_value_list_replace_or_set(contents,
+										  opt_name,
+										  opt_value);
+		}
 
-		parse_configuration_item(options,
-								 error_list,
-								 warning_list,
-								 opt_name,
-								 opt_value);
+		if (options != NULL)
+		{
+			parse_configuration_item(options,
+									 error_list,
+									 warning_list,
+									 opt_name,
+									 opt_value);
+		}
 
 		/* break out of loop if read EOF, else loop for next line */
 		if (token == 0)
