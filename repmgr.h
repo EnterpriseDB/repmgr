@@ -109,6 +109,11 @@
 #define RECOVERY_COMMAND_FILE "recovery.conf"
 #endif
 
+#ifndef STANDBY_SIGNAL_FILE
+#define STANDBY_SIGNAL_FILE "standby.signal"
+#define RECOVERY_SIGNAL_FILE "recovery.signal"
+#endif
+
 #ifndef TABLESPACE_MAP
 #define TABLESPACE_MAP "tablespace_map"
 #endif

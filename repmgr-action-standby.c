@@ -6956,9 +6956,12 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 
 	initPQExpBuffer(&primary_conninfo_buf);
 
-	/* standby_mode = 'on' */
-	key_value_list_set(&recovery_config,
-					   "standby_mode", "on");
+	/* standby_mode = 'on' (Pg 11 and earlier) */
+	if (source_server_version_num < 120000)
+	{
+		key_value_list_set(&recovery_config,
+						   "standby_mode", "on");
+	}
 
 	/* primary_conninfo = '...' */
 	write_primary_conninfo(&primary_conninfo_buf, primary_conninfo);
@@ -7036,7 +7039,51 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 	 */
 	if (source_server_version_num >= 120000)
 	{
-		return modify_auto_conf(dest, &recovery_config);
+		char	    standby_signal_file_path[MAXPGPATH] = "";
+		FILE	   *file;
+
+		if (modify_auto_conf(dest, &recovery_config) == false)
+		{
+			return false;
+		}
+
+		/* create standby.signal */
+
+		snprintf(standby_signal_file_path, MAXPGPATH,
+			 "%s/%s",
+			 config_file_options.data_directory,
+			 STANDBY_SIGNAL_FILE);
+
+		/* Set umask to 0600 */
+		um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
+		file = fopen(standby_signal_file_path, "w");
+		umask(um);
+
+		if (file == NULL)
+		{
+			log_error(_("unable to create %s file at \"%s\""),
+					  STANDBY_SIGNAL_FILE,
+					  standby_signal_file_path);
+			log_detail("%s", strerror(errno));
+
+			return false;
+		}
+
+
+		// write "created by repmgr" or something
+		if (fputs("# foo", file) == EOF)
+		{
+			log_error(_("unable to write to %s file at \"%s\""),
+					  STANDBY_SIGNAL_FILE,
+					  standby_signal_file_path);
+			fclose(file);
+
+			return false;
+		}
+
+		fclose(file);
+
+		return true;
 	}
 
 	/*

@@ -1946,7 +1946,7 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 	}
 	else
 	{
-		if (fwrite(auto_conf_contents.data, strlen(auto_conf_contents.data) + 1, 1, fp) != 1)
+		if (fwrite(auto_conf_contents.data, strlen(auto_conf_contents.data), 1, fp) != 1)
 		{
 			fclose(fp);
 		}
