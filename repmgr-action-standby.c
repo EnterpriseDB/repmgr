@@ -112,7 +112,7 @@ static void get_barman_property(char *dst, char *name, char *local_repmgr_direct
 static int	get_tablespace_data_barman(char *, TablespaceDataList *);
 static char *make_barman_ssh_command(char *buf);
 
-static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, char *dest, bool as_file);
+static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, int server_version_num, char *dest, bool as_file);
 static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list);
 static bool check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 static bool check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success);
@@ -666,9 +666,14 @@ do_standby_clone(void)
 
 	/* Write the recovery.conf file */
 
-	if (create_recovery_file(&local_node_record, &recovery_conninfo, local_data_directory, true) == false)
+	if (create_recovery_file(&local_node_record,
+							 &recovery_conninfo,
+							 source_server_version_num,
+							 local_data_directory,
+							 true) == false)
 	{
 		/* create_recovery_file() will log an error */
+		// XXX Pg12
 		log_notice(_("unable to create recovery.conf; see preceding error messages"));
 		log_hint(_("data directory (\"%s\") may need to be cleaned up manually"),
 				 local_data_directory);
@@ -1173,7 +1178,7 @@ _do_create_recovery_conf(void)
 	}
 
 	/* check if recovery.conf exists */
-
+	// XXX skip in Pg12
 	snprintf(recovery_file_path, sizeof(recovery_file_path),
 			 "%s/%s",
 			 local_data_directory,
@@ -1212,19 +1217,30 @@ _do_create_recovery_conf(void)
 	if (runtime_options.dry_run == true)
 	{
 		char		recovery_conf_contents[MAXLEN] = "";
-		create_recovery_file(&local_node_record, &recovery_conninfo, recovery_conf_contents, false);
+		create_recovery_file(&local_node_record,
+							 &recovery_conninfo,
+							 PQserverVersion(upstream_conn),
+							 recovery_conf_contents,
+							 false);
 
+		// XXX Pg12
 		log_info(_("would create \"recovery.conf\" file in \"%s\""), local_data_directory);
 		log_detail(_("\n%s"), recovery_conf_contents);
 	}
 	else
 	{
-		if (!create_recovery_file(&local_node_record, &recovery_conninfo, local_data_directory, true))
+		if (!create_recovery_file(&local_node_record,
+								  &recovery_conninfo,
+								  PQserverVersion(upstream_conn),
+								  local_data_directory,
+								  true))
 		{
+			// XXX Pg12
 			log_error(_("unable to create \"recovery.conf\""));
 		}
 		else
 		{
+			// XXX Pg12
 			log_notice(_("\"recovery.conf\" created as \"%s\""), recovery_file_path);
 
 			if (node_is_running == true)
@@ -3059,7 +3075,11 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 	log_notice(_("setting node %i's upstream to node %i"),
 			   config_file_options.node_id, follow_target_node_record->node_id);
 
-	if (!create_recovery_file(&local_node_record, &recovery_conninfo, config_file_options.data_directory, true))
+	if (!create_recovery_file(&local_node_record,
+							  &recovery_conninfo,
+							  PQserverVersion(primary_conn),
+							  config_file_options.data_directory,
+							  true))
 	{
 		*error_code = general_error_code;
 		return false;
@@ -6943,7 +6963,7 @@ check_recovery_type(PGconn *conn)
  * this might not be available.
  */
 static bool
-create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, char *dest, bool as_file)
+create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, int server_version_num, char *dest, bool as_file)
 {
 	PQExpBufferData recovery_file_buf;
 	PQExpBufferData primary_conninfo_buf;
@@ -6957,7 +6977,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 	initPQExpBuffer(&primary_conninfo_buf);
 
 	/* standby_mode = 'on' (Pg 11 and earlier) */
-	if (source_server_version_num < 120000)
+	if (server_version_num < 120000)
 	{
 		key_value_list_set(&recovery_config,
 						   "standby_mode", "on");
@@ -7037,7 +7057,7 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 	 * PostgreSQL 12 and later: modify postgresql.auto.conf
 	 *
 	 */
-	if (source_server_version_num >= 120000)
+	if (server_version_num >= 120000)
 	{
 		char	    standby_signal_file_path[MAXPGPATH] = "";
 		FILE	   *file;
