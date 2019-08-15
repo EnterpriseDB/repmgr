@@ -133,12 +133,13 @@ static bool parse_data_directory_config(const char *node_check_output);
  *
  * Parameters:
  *  --upstream-conninfo
+ *  --upstream-node-id
  *  --no-upstream-connection
  *  -F/--force
  *  --dry-run
  *  -c/--fast-checkpoint
  *  --copy-external-config-files
- *  --recovery-min-apply-delay
+ *  -R/--remote-user
  *  --replication-user (only required if no upstream record)
  *  --without-barman
  *  --recovery-conf-only
