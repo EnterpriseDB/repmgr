@@ -114,6 +114,8 @@ static char *make_barman_ssh_command(char *buf);
 
 static bool create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, int server_version_num, char *dest, bool as_file);
 static void write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list);
+static bool write_standby_signal(void);
+
 static bool check_sibling_nodes(NodeInfoList *sibling_nodes, SiblingNodeStats *sibling_nodes_stats);
 static bool check_free_wal_senders(int available_wal_senders, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success);
 static bool check_free_slots(t_node_info *local_node_record, SiblingNodeStats *sibling_nodes_stats, bool *dry_run_success);
@@ -673,8 +675,14 @@ do_standby_clone(void)
 							 true) == false)
 	{
 		/* create_recovery_file() will log an error */
-		// XXX Pg12
-		log_notice(_("unable to create recovery.conf; see preceding error messages"));
+		if (source_server_version_num >= 120000)
+		{
+			log_notice(_("unable to write replication configuration; see preceding error messages"));
+		}
+		else
+		{
+			log_notice(_("unable to create recovery.conf; see preceding error messages"));
+		}
 		log_hint(_("data directory (\"%s\") may need to be cleaned up manually"),
 				 local_data_directory);
 
@@ -1177,40 +1185,42 @@ _do_create_recovery_conf(void)
 		}
 	}
 
-	/* check if recovery.conf exists */
-	// XXX skip in Pg12
-	snprintf(recovery_file_path, sizeof(recovery_file_path),
-			 "%s/%s",
-			 local_data_directory,
-			 RECOVERY_COMMAND_FILE);
-
-	if (stat(recovery_file_path, &st) == -1)
+	/* check if recovery.conf exists (Pg11 and earlier only) */
+	if (PQserverVersion(upstream_conn) < 120000)
 	{
-		if (errno != ENOENT)
-		{
-			log_error(_("unable to check for existing \"recovery.conf\" file in \"%s\""),
-					  local_data_directory);
-			log_detail("%s", strerror(errno));
-			exit(ERR_BAD_CONFIG);
-		}
-	}
-	else
-	{
-		if (runtime_options.force == false)
-		{
-			log_error(_("\"recovery.conf\" already exists in \"%s\""),
-					  local_data_directory);
-			log_hint(_("use -F/--force to overwrite an existing \"recovery.conf\" file"));
-			exit(ERR_BAD_CONFIG);
-		}
+		snprintf(recovery_file_path, sizeof(recovery_file_path),
+				 "%s/%s",
+				 local_data_directory,
+				 RECOVERY_COMMAND_FILE);
 
-		if (runtime_options.dry_run == true)
+		if (stat(recovery_file_path, &st) == -1)
 		{
-			log_warning(_("the existing \"recovery.conf\" file would be overwritten"));
+			if (errno != ENOENT)
+			{
+				log_error(_("unable to check for existing \"recovery.conf\" file in \"%s\""),
+						  local_data_directory);
+				log_detail("%s", strerror(errno));
+			exit(ERR_BAD_CONFIG);
+			}
 		}
 		else
 		{
-			log_warning(_("the existing \"recovery.conf\" file will be overwritten"));
+			if (runtime_options.force == false)
+			{
+				log_error(_("\"recovery.conf\" already exists in \"%s\""),
+						  local_data_directory);
+				log_hint(_("use -F/--force to overwrite an existing \"recovery.conf\" file"));
+				exit(ERR_BAD_CONFIG);
+			}
+
+			if (runtime_options.dry_run == true)
+			{
+				log_warning(_("the existing \"recovery.conf\" file would be overwritten"));
+			}
+			else
+			{
+				log_warning(_("the existing \"recovery.conf\" file will be overwritten"));
+			}
 		}
 	}
 
@@ -1223,8 +1233,15 @@ _do_create_recovery_conf(void)
 							 recovery_conf_contents,
 							 false);
 
-		// XXX Pg12
-		log_info(_("would create \"recovery.conf\" file in \"%s\""), local_data_directory);
+		if (PQserverVersion(upstream_conn) >= 120000)
+		{
+			log_info(_("following items would be added to \"postgresql.auto.conf\" in \"%s\""), local_data_directory);
+		}
+		else
+		{
+			log_info(_("would create \"recovery.conf\" file in \"%s\""), local_data_directory);
+		}
+
 		log_detail(_("\n%s"), recovery_conf_contents);
 	}
 	else
@@ -1235,17 +1252,46 @@ _do_create_recovery_conf(void)
 								  local_data_directory,
 								  true))
 		{
-			// XXX Pg12
-			log_error(_("unable to create \"recovery.conf\""));
+			if (PQserverVersion(upstream_conn) >= 120000)
+			{
+				log_error(_("unable to write replication configuration to \"postgresql.auto.conf\""));
+			}
+			else
+			{
+				log_error(_("unable to create \"recovery.conf\""));
+			}
 		}
 		else
 		{
-			// XXX Pg12
-			log_notice(_("\"recovery.conf\" created as \"%s\""), recovery_file_path);
+			if (PQserverVersion(upstream_conn) >= 120000)
+			{
+				log_notice(_("replication configuration written to \"postgresql.auto.conf\""));
+			}
+			else
+			{
+				log_notice(_("\"recovery.conf\" created as \"%s\""), recovery_file_path);
+			}
 
 			if (node_is_running == true)
 			{
 				log_hint(_("node must be restarted for the new file to take effect"));
+			}
+		}
+	}
+
+	/* Pg12 and later: add standby.signal, if not already there */
+	if (PQserverVersion(upstream_conn) >= 120000)
+	{
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("would write \"standby.signal\" file"));
+
+		}
+		else
+		{
+			if (write_standby_signal() == false)
+			{
+				log_error(_("unable to write \"standby.signal\" file"));
 			}
 		}
 	}
@@ -7059,49 +7105,16 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 	 */
 	if (server_version_num >= 120000)
 	{
-		char	    standby_signal_file_path[MAXPGPATH] = "";
-		FILE	   *file;
 
 		if (modify_auto_conf(dest, &recovery_config) == false)
 		{
 			return false;
 		}
 
-		/* create standby.signal */
-
-		snprintf(standby_signal_file_path, MAXPGPATH,
-			 "%s/%s",
-			 config_file_options.data_directory,
-			 STANDBY_SIGNAL_FILE);
-
-		/* Set umask to 0600 */
-		um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
-		file = fopen(standby_signal_file_path, "w");
-		umask(um);
-
-		if (file == NULL)
+		if (write_standby_signal() == false)
 		{
-			log_error(_("unable to create %s file at \"%s\""),
-					  STANDBY_SIGNAL_FILE,
-					  standby_signal_file_path);
-			log_detail("%s", strerror(errno));
-
 			return false;
 		}
-
-
-		// write "created by repmgr" or something
-		if (fputs("# foo", file) == EOF)
-		{
-			log_error(_("unable to write to %s file at \"%s\""),
-					  STANDBY_SIGNAL_FILE,
-					  standby_signal_file_path);
-			fclose(file);
-
-			return false;
-		}
-
-		fclose(file);
 
 		return true;
 	}
@@ -7149,6 +7162,53 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 
 
 	fclose(recovery_file);
+
+	return true;
+}
+
+
+/*
+ * create standby.signal (PostgreSQL 12 and later)
+ */
+
+static bool
+write_standby_signal(void)
+{
+	char	    standby_signal_file_path[MAXPGPATH] = "";
+	FILE	   *file;
+	mode_t		um;
+
+	snprintf(standby_signal_file_path, MAXPGPATH,
+			 "%s/%s",
+			 config_file_options.data_directory,
+			 STANDBY_SIGNAL_FILE);
+
+	/* Set umask to 0600 */
+	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
+	file = fopen(standby_signal_file_path, "w");
+	umask(um);
+
+	if (file == NULL)
+	{
+		log_error(_("unable to create %s file at \"%s\""),
+				  STANDBY_SIGNAL_FILE,
+				  standby_signal_file_path);
+		log_detail("%s", strerror(errno));
+
+		return false;
+	}
+
+	if (fputs("# created by repmgr\n", file) == EOF)
+	{
+		log_error(_("unable to write to %s file at \"%s\""),
+				  STANDBY_SIGNAL_FILE,
+				  standby_signal_file_path);
+		fclose(file);
+
+		return false;
+	}
+
+	fclose(file);
 
 	return true;
 }
