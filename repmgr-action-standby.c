@@ -216,7 +216,7 @@ do_standby_clone(void)
 
 	/*
 	 * Initialise list of conninfo parameters which will later be used to
-	 * create the `primary_conninfo` string in recovery.conf .
+	 * create the "primary_conninfo" recovery parameter.
 	 *
 	 * We'll initialise it with the host settings specified on the command
 	 * line. As it's possible the standby will be cloned from a node different
@@ -6936,7 +6936,7 @@ check_recovery_type(PGconn *conn)
 
 
 /*
- * Creates a recovery.conf file for a standby
+ * Creates recovery configuration for a standby.
  *
  * A database connection pointer is required for escaping primary_conninfo
  * parameters. When cloning from Barman and --no-upstream-connection supplied,
@@ -6946,39 +6946,42 @@ static bool
 create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_conninfo, char *dest, bool as_file)
 {
 	PQExpBufferData recovery_file_buf;
+	PQExpBufferData primary_conninfo_buf;
 	char		recovery_file_path[MAXPGPATH] = "";
 	FILE	   *recovery_file;
 	mode_t		um;
 
-	/* create file in buffer */
-	initPQExpBuffer(&recovery_file_buf);
+	KeyValueList recovery_config = {NULL, NULL};
+	KeyValueListCell *cell = NULL;
+
+	initPQExpBuffer(&primary_conninfo_buf);
 
 	/* standby_mode = 'on' */
-	appendPQExpBufferStr(&recovery_file_buf,
-						 "standby_mode = 'on'\n");
+	key_value_list_set(&recovery_config,
+					   "standby_mode", "on");
 
 	/* primary_conninfo = '...' */
-	write_primary_conninfo(&recovery_file_buf, primary_conninfo);
+	write_primary_conninfo(&primary_conninfo_buf, primary_conninfo);
+	key_value_list_set(&recovery_config,
+					   "primary_conninfo", primary_conninfo_buf.data);
 
 	/* recovery_target_timeline = 'latest' */
-	appendPQExpBufferStr(&recovery_file_buf,
-						 "recovery_target_timeline = 'latest'\n");
+	key_value_list_set(&recovery_config,
+					   "recovery_target_timeline", "latest");
 
 
 	/* recovery_min_apply_delay = ... (optional) */
 	if (config_file_options.recovery_min_apply_delay_provided == true)
 	{
-		appendPQExpBuffer(&recovery_file_buf,
-						  "recovery_min_apply_delay = %s\n",
-						  config_file_options.recovery_min_apply_delay);
+		key_value_list_set(&recovery_config,
+						   "recovery_min_apply_delay", config_file_options.recovery_min_apply_delay);
 	}
 
 	/* primary_slot_name = '...' (optional, for 9.4 and later) */
 	if (config_file_options.use_replication_slots)
 	{
-		appendPQExpBuffer(&recovery_file_buf,
-						  "primary_slot_name = %s\n",
-						  node_record->slot_name);
+		key_value_list_set(&recovery_config,
+						   "primary_slot_name", node_record->slot_name);
 	}
 
 	/*
@@ -6989,9 +6992,8 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 	{
 		char	   *escaped = escape_recovery_conf_value(config_file_options.restore_command);
 
-		appendPQExpBuffer(&recovery_file_buf,
-						  "restore_command = '%s'\n",
-						  escaped);
+		key_value_list_set(&recovery_config,
+						  "restore_command", escaped);
 		free(escaped);
 	}
 
@@ -6999,33 +7001,73 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 	if (config_file_options.archive_cleanup_command[0] != '\0')
 	{
 		char	   *escaped = escape_recovery_conf_value(config_file_options.archive_cleanup_command);
-		appendPQExpBuffer(&recovery_file_buf,
-						  "archive_cleanup_command = '%s'\n",
-						  escaped);
+
+		key_value_list_set(&recovery_config,
+						  "archive_cleanup_command", escaped);
 		free(escaped);
 	}
 
-	if (as_file == true)
+
+
+
+	if (as_file == false)
 	{
-		maxpath_snprintf(recovery_file_path, "%s/%s", dest, RECOVERY_COMMAND_FILE);
-		log_debug("create_recovery_file(): creating \"%s\"...",
-				  recovery_file_path);
+		/* create file in buffer */
+		initPQExpBuffer(&recovery_file_buf);
 
-		/* Set umask to 0600 */
-		um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
-		recovery_file = fopen(recovery_file_path, "w");
-		umask(um);
-
-		if (recovery_file == NULL)
+		for (cell = recovery_config.head; cell; cell = cell->next)
 		{
-			log_error(_("unable to create recovery.conf file at \"%s\""),
-					  recovery_file_path);
-			log_detail("%s", strerror(errno));
-
-			return false;
+			appendPQExpBuffer(&recovery_file_buf,
+							  "%s = '%s'\n",
+							  cell->key, cell->value);
 		}
 
-		log_debug("recovery file is:\n%s", recovery_file_buf.data);
+		maxlen_snprintf(dest, "%s", recovery_file_buf.data);
+
+		termPQExpBuffer(&recovery_file_buf);
+
+		return true;
+	}
+
+
+	/*
+	 * PostgreSQL 12 and later: modify postgresql.auto.conf
+	 *
+	 */
+	if (source_server_version_num >= 120000)
+	{
+		return modify_auto_conf(dest, &recovery_config);
+	}
+
+	/*
+	 * PostgreSQL 11 and earlier: write recovery.conf
+	 */
+	maxpath_snprintf(recovery_file_path, "%s/%s", dest, RECOVERY_COMMAND_FILE);
+	log_debug("create_recovery_file(): creating \"%s\"...",
+			  recovery_file_path);
+
+	/* Set umask to 0600 */
+	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
+	recovery_file = fopen(recovery_file_path, "w");
+	umask(um);
+
+	if (recovery_file == NULL)
+	{
+		log_error(_("unable to create recovery.conf file at \"%s\""),
+				  recovery_file_path);
+		log_detail("%s", strerror(errno));
+
+		return false;
+	}
+
+	log_debug("recovery file is:\n%s", recovery_file_buf.data);
+
+	for (cell = recovery_config.head; cell; cell = cell->next)
+	{
+		initPQExpBuffer(&recovery_file_buf);
+		appendPQExpBuffer(&recovery_file_buf,
+						  "%s = '%s'\n",
+						  cell->key, cell->value);
 
 		if (fputs(recovery_file_buf.data, recovery_file) == EOF)
 		{
@@ -7035,14 +7077,11 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 			return false;
 		}
 
-		fclose(recovery_file);
-	}
-	else
-	{
-		maxlen_snprintf(dest, "%s", recovery_file_buf.data);
+		termPQExpBuffer(&recovery_file_buf);
 	}
 
-	termPQExpBuffer(&recovery_file_buf);
+
+	fclose(recovery_file);
 
 	return true;
 }
@@ -7132,8 +7171,7 @@ write_primary_conninfo(PQExpBufferData *dest, t_conninfo_param_list *param_list)
 
 	escaped = escape_recovery_conf_value(conninfo_buf.data);
 
-	appendPQExpBuffer(dest,
-					  "primary_conninfo = '%s'\n", escaped);
+	appendPQExpBufferStr(dest, escaped);
 
 	free(escaped);
 	free_conninfo_params(&env_conninfo);

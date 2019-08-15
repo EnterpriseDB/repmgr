@@ -1875,7 +1875,7 @@ tablespace_list_append(t_configuration_options *options, const char *arg)
 
 
 bool
-modify_auto_conf(const char *data_dir)
+modify_auto_conf(const char *data_dir, KeyValueList *items)
 {
 	PQExpBufferData auto_conf;
 	PQExpBufferData auto_conf_tmp;
@@ -1902,9 +1902,20 @@ modify_auto_conf(const char *data_dir)
 		return false;
 	}
 
+	// XXX check return value
 	(void) ProcessPostgresConfigFile(fp, auto_conf.data, &config, NULL, NULL);
-
 	fclose(fp);
+
+	/*
+	 * Append requested items to items extracted from the existing file.
+	 */
+	for (cell = items->head; cell; cell = cell->next)
+	{
+		key_value_list_replace_or_set(&config,
+									  cell->key,
+									  cell->value);
+
+	}
 
 	initPQExpBuffer(&auto_conf_tmp);
 	appendPQExpBuffer(&auto_conf_tmp, "%s.tmp",
@@ -1943,6 +1954,13 @@ modify_auto_conf(const char *data_dir)
 		{
 			fclose(fp);
 
+			/*
+			 * Note: durable_rename() is not exposed to frontend code before Pg 10.
+			 * We only really need to be modifying postgresql.auto.conf from Pg 12,
+			 * but provide backwards compatibitilty for Pg 9.6 and earlier for the
+			 * (unlikely) event that a repmgr built against one of those versions
+			 * is being used against Pg 12 and later.
+			 */
 			// XXX check return values
 #if (PG_ACTUAL_VERSION_NUM >= 100000)
 			(void) durable_rename(auto_conf_tmp.data, auto_conf.data, LOG);

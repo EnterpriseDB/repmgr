@@ -350,7 +350,7 @@ void		exit_with_cli_errors(ItemList *error_list, const char *repmgr_command);
 void		print_item_list(ItemList *item_list);
 const char *print_connection_check_type(ConnectionCheckType type);
 
-extern bool modify_auto_conf(const char *data_dir);
+extern bool modify_auto_conf(const char *data_dir, KeyValueList *items);
 
 extern bool ProcessRepmgrConfigFile(FILE *fp, const char *config_file, t_configuration_options *options, ItemList *error_list, ItemList *warning_list);
 
