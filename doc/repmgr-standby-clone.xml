@@ -18,7 +18,7 @@
     <para>
       <command>repmgr standby clone</command> clones a PostgreSQL node from another
       PostgreSQL node, typically the primary, but optionally from any other node in
-      the cluster or from Barman. It creates the <filename>recovery.conf</filename> file required
+      the cluster or from Barman. It creates the replication configuration required
       to attach the cloned node to the primary node (or another standby, if cascading replication
       is in use).
     </para>
@@ -85,15 +85,20 @@
   </refsect1>
 
   <refsect1 id="repmgr-standby-clone-recovery-conf">
-    <title>Customising recovery.conf</title>
+    <title>Customising replication configuration</title>
     <indexterm>
      <primary>recovery.conf</primary>
      <secondary>customising with &quot;repmgr standby clone&quot;</secondary>
     </indexterm>
 
+	<indexterm>
+     <primary>replication configuration</primary>
+     <secondary>customising with &quot;repmgr standby clone&quot;</secondary>
+    </indexterm>
+
 
    <para>
-     By default, &repmgr; will create a minimal <filename>recovery.conf</filename>
+     By default, &repmgr; will create a minimal replication configuration
      containing following parameters:
    </para>
 
@@ -119,7 +124,7 @@
 
    <para>
      The following additional parameters can be specified in <filename>repmgr.conf</filename>
-     for inclusion in <filename>recovery.conf</filename>:
+     for inclusion in the replication configuration:
    </para>
 
    <itemizedlist spacing="compact" mark="bullet">
@@ -193,6 +198,11 @@
      <secondary>generating for a standby cloned by another method</secondary>
    </indexterm>
 
+   <indexterm>
+     <primary>replication configuration</primary>
+     <secondary>generating for a standby cloned by another method</secondary>
+   </indexterm>
+
    <para>
      &repmgr; supports standbys cloned by another method (e.g. using <application>barman</application>'s
      <command><ulink url="http://docs.pgbarman.org/release/2.5/#recover">barman recover</ulink></command> command).
@@ -204,18 +214,20 @@
      <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>.
      Then execute the command <command>repmgr standby clone --recovery-conf-only</command>.
      This will create the <filename>recovery.conf</filename> file needed to attach
-     the node to its upstream, and will also create a replication slot on the
+     the node to its upstream (in PostgreSQL 12 and later: write replication configuration
+	 to <filename>postgresql.auto.conf</filename>), and will also create a replication slot on the
      upstream node if required.
    </para>
    <para>
-     Note that the upstream node must be running. An existing
+     Note that the upstream node must be running. In PostgreSQL 11 and earlier, an existing
      <filename>recovery.conf</filename> will not be overwritten unless the
      <option>-F/--force</option> option is provided.
    </para>
    <para>
      Execute <command>repmgr standby clone --recovery-conf-only --dry-run</command>
-     to check the prerequisites for creating the <filename>recovery.conf</filename> file,
-     and display the contents of the file without actually creating it.
+     to check the prerequisites for creating the recovery configuration,
+     and display the contents of the configuration which would be added without actually
+	 making any changes.
    </para>
 
    <note>
@@ -249,8 +261,8 @@
           </para>
           <para>
             If <option>--recovery-conf-only</option> specified, the contents of
-            the generated <filename>recovery.conf</filename> file will be displayed
-            but the file itself not written.
+            the generated recovery configuration will be displayed
+            but not written.
           </para>
         </listitem>
       </varlistentry>
@@ -297,8 +309,16 @@
         <term><option> --recovery-conf-only</option></term>
         <listitem>
           <para>
-            Create <filename>recovery.conf</filename> file for a previously cloned instance. &repmgr; 4.0.4 and later.
+            Create recovery configuration for a previously cloned instance. &repmgr; 4.0.4 and later.
           </para>
+		  <para>
+			In PostgreSQL 11 and earlier, the replication configuration will be
+			written to <filename>recovery.conf</filename>.
+		  </para>
+		  <para>
+			In PostgreSQL 12 and later, the replication configuration will be
+			written to <filename>postgresql.auto.conf</filename>.
+		  </para>
         </listitem>
       </varlistentry>
 
@@ -326,7 +346,7 @@
         <term><option>--upstream-conninfo</option></term>
         <listitem>
           <para>
-            <literal>primary_conninfo</literal> value to write in <filename>recovery.conf</filename>
+            <literal>primary_conninfo</literal> value to include in the recovery configuration
             when the intended upstream server does not yet exist.
           </para>
           <para>
