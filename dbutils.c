@@ -1920,7 +1920,7 @@ repmgrd_set_pid(PGconn *conn, pid_t repmgrd_pid, const char *pidfile)
 	else
 	{
 		appendPQExpBufferStr(&query,
-							 " '')");
+							 " NULL)");
 	}
 
 	res = PQexec(conn, query.data);

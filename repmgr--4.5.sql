@@ -176,7 +176,7 @@ CREATE FUNCTION get_repmgrd_pidfile()
 CREATE FUNCTION set_repmgrd_pid(INT, TEXT)
   RETURNS VOID
   AS 'MODULE_PATHNAME', 'set_repmgrd_pid'
-  LANGUAGE C STRICT;
+  LANGUAGE C CALLED ON NULL INPUT;
 
 CREATE FUNCTION repmgrd_is_running()
   RETURNS BOOL
