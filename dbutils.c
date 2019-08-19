@@ -1908,8 +1908,20 @@ repmgrd_set_pid(PGconn *conn, pid_t repmgrd_pid, const char *pidfile)
 	initPQExpBuffer(&query);
 
 	appendPQExpBuffer(&query,
-					  "SELECT repmgr.set_repmgrd_pid(%i, '%s')",
-					  (int) repmgrd_pid, pidfile);
+					  "SELECT repmgr.set_repmgrd_pid(%i, ",
+					  (int) repmgrd_pid);
+
+	if (pidfile != NULL)
+	{
+		appendPQExpBuffer(&query,
+						  " '%s')",
+						  pidfile);
+	}
+	else
+	{
+		appendPQExpBufferStr(&query,
+							 " '')");
+	}
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
