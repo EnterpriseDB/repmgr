@@ -702,7 +702,7 @@ set_repmgrd_pid(PG_FUNCTION_ARGS)
 	shared_state->repmgrd_pid = repmgrd_pid;
 	memset(shared_state->repmgrd_pidfile, 0, MAXPGPATH);
 
-	if(repmgrd_pidfile != NULL)
+	if (repmgrd_pidfile != NULL)
 	{
 		strncpy(shared_state->repmgrd_pidfile, repmgrd_pidfile, MAXPGPATH);
 	}
