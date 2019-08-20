@@ -148,9 +148,19 @@
             instances in the replication cluster which may potentially become a primary server or
             (in cascading replication) the upstream server of a standby.
           </para>
-          <para>
+         <para>
             PostgreSQL documentation: <ulink url="https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-MAX-WAL-SENDERS">max_wal_senders</ulink>.
           </para>
+          <note>
+            <para>
+              From <productname>PostgreSQL 12</productname>, <option>max_wal_senders</option>
+              <emphasis>must</emphasis> be set to the same or a higher value as the primary node
+              (at the time the node was cloned), otherwise the standby will refuse
+              to start (unless <option>hot_standby</option> is set to <literal>off</literal>, which
+              will prevent the node from accepting queries).
+            </para>
+          </note>
+
         </listitem>
       </varlistentry>
 
