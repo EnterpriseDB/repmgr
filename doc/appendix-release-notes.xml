@@ -72,6 +72,11 @@
                 In particular, all string values containing spaces
                 <emphasis>must</emphasis> be contained within single quotes.
               </para>
+              <para>
+                Additionally, leading/trailing white space between single quotes will no longer
+                be trimmed; the entire string between single quotes will be
+                taken literally.
+              </para>
             </note>
           </listitem>
         </itemizedlist>
