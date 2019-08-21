@@ -7140,14 +7140,14 @@ create_recovery_file(t_node_info *node_record, t_conninfo_param_list *primary_co
 		return false;
 	}
 
-	log_debug("recovery file is:\n%s", recovery_file_buf.data);
-
 	for (cell = recovery_config.head; cell; cell = cell->next)
 	{
 		initPQExpBuffer(&recovery_file_buf);
 		appendPQExpBuffer(&recovery_file_buf,
 						  "%s = '%s'\n",
 						  cell->key, cell->value);
+
+		log_debug("recovery.conf line: %s", recovery_file_buf.data);
 
 		if (fputs(recovery_file_buf.data, recovery_file) == EOF)
 		{
