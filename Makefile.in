@@ -20,8 +20,8 @@ DATA = \
   repmgr--4.3.sql \
   repmgr--4.3--4.4.sql \
   repmgr--4.4.sql \
-  repmgr--4.4--4.5.sql \
-  repmgr--4.5.sql
+  repmgr--4.4--5.0.sql \
+  repmgr--5.0.sql
 
 REGRESS = repmgr_extension
 
