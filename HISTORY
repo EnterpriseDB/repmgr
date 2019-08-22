@@ -1,4 +1,5 @@
 5.0     2019-??-??
+		general: add PostgreSQL 12 support (Ian)
         general: parse configuration file using flex (Ian)
 
 4.4.1   2019-??-??
