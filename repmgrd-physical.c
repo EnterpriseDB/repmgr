@@ -1710,9 +1710,6 @@ monitor_streaming_standby(void)
 				 * has been promoted
 				 */
 
-				NodeInfoListCell *cell;
-				int			follow_node_id = UNKNOWN_NODE_ID;
-
 				/* local node has been promoted */
 				if (get_recovery_type(local_conn) == RECTYPE_PRIMARY)
 				{
@@ -1802,6 +1799,9 @@ monitor_streaming_standby(void)
 
 					if (sibling_nodes.node_count > 0)
 					{
+						NodeInfoListCell *cell;
+						t_node_info *follow_node_info = NULL;
+
 						log_debug("scanning %i node records to detect new primary...", sibling_nodes.node_count);
 						for (cell = sibling_nodes.head; cell; cell = cell->next)
 						{
@@ -1828,16 +1828,19 @@ monitor_streaming_standby(void)
 
 							if (get_recovery_type(cell->node_info->conn) == RECTYPE_PRIMARY)
 							{
-								follow_node_id = cell->node_info->node_id;
+								follow_node_info = cell->node_info;
 								close_connection(&cell->node_info->conn);
 								break;
 							}
 							close_connection(&cell->node_info->conn);
 						}
 
-						if (follow_node_id != UNKNOWN_NODE_ID)
+						if (follow_node_info != NULL)
 						{
-							follow_new_primary(follow_node_id);
+							log_info(_("node \"%s\" (node ID: %i) detected as primary"),
+									 follow_node_info->node_name,
+									 follow_node_info->node_id);
+							follow_new_primary(follow_node_info->node_id);
 						}
 					}
 
@@ -2380,8 +2383,6 @@ monitor_streaming_witness(void)
 				 * has been promoted
 				 */
 
-				NodeInfoListCell *cell;
-				int			follow_node_id = UNKNOWN_NODE_ID;
 				NodeInfoList sibling_nodes = T_NODE_INFO_LIST_INITIALIZER;
 
 				get_active_sibling_node_records(local_conn,
@@ -2391,6 +2392,9 @@ monitor_streaming_witness(void)
 
 				if (sibling_nodes.node_count > 0)
 				{
+					NodeInfoListCell *cell;
+					t_node_info *follow_node_info = NULL;
+
 					log_debug("scanning %i node records to detect new primary...", sibling_nodes.node_count);
 					for (cell = sibling_nodes.head; cell; cell = cell->next)
 					{
@@ -2416,18 +2420,22 @@ monitor_streaming_witness(void)
 
 						if (get_recovery_type(cell->node_info->conn) == RECTYPE_PRIMARY)
 						{
-							follow_node_id = cell->node_info->node_id;
+							follow_node_info = cell->node_info;
 							close_connection(&cell->node_info->conn);
 							break;
 						}
 						close_connection(&cell->node_info->conn);
 					}
 
-					if (follow_node_id != UNKNOWN_NODE_ID)
+					if (follow_node_info != NULL)
 					{
-						witness_follow_new_primary(follow_node_id);
+						log_info(_("node \"%s\" (node ID: %i) detected as primary"),
+								 follow_node_info->node_name,
+								 follow_node_info->node_id);
+						witness_follow_new_primary(follow_node_info->node_id);
 					}
 				}
+
 				clear_node_info_list(&sibling_nodes);
 			}
 		}
@@ -3593,6 +3601,10 @@ follow_new_primary(int new_primary_id)
 				  new_primary_id);
 		return FAILOVER_STATE_FOLLOW_FAIL;
 	}
+
+	log_notice(_("attempting to follow new primary \"%s\" (node ID: %i)"),
+				 new_primary.node_name,
+				 new_primary_id);
 
 	record_status = get_node_record(local_conn, local_node_info.upstream_node_id, &failed_primary);
 
