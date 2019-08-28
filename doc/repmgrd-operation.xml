@@ -47,7 +47,7 @@
 
   <note>
     <para>
-      For major PostgreSQL upgrades, e.g. from PostgreSQL 10 to PostgreSQL 11,
+      For major PostgreSQL upgrades, e.g. from PostgreSQL 11 to PostgreSQL 12,
       &repmgrd; should be shut down completely and only started up
       once the &repmgr; packages for the new PostgreSQL major version have been installed.
     </para>

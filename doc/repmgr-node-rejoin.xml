@@ -356,7 +356,7 @@
      <command>repmgr node rejoin</command> attempts to determine whether it will succeed by
      comparing the timelines and relative WAL positions of the local node (rejoin candidate) and primary
      (rejoin target). This is particularly important if planning to use <application>pg_rewind</application>,
-     which currently (as of PostgreSQL 11) may appear to succeed (or indicate there is no action
+     which currently (as of PostgreSQL 12) may appear to succeed (or indicate there is no action
      needed) but potentially allow an impossible action, such as trying to rejoin a standby to a
      primary which is behind the standby. &repmgr; will prevent this situation from occurring.
    </para>

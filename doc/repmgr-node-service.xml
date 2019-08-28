@@ -114,38 +114,38 @@
     <para>
       See what action would be taken for a restart:
       <programlisting>
-[postgres@node1 ~]$ repmgr -f /etc/repmgr/11/repmgr.conf node service --action=restart --checkpoint --dry-run
+[postgres@node1 ~]$ repmgr -f /etc/repmgr/12/repmgr.conf node service --action=restart --checkpoint --dry-run
 INFO: a CHECKPOINT would be issued here
-INFO: would execute server command "sudo service postgresql-11 restart"</programlisting>
+INFO: would execute server command "sudo service postgresql-12 restart"</programlisting>
     </para>
 
     <para>
       Restart the PostgreSQL instance:
       <programlisting>
-[postgres@node1 ~]$ repmgr -f /etc/repmgr/11/repmgr.conf node service --action=restart --checkpoint
+[postgres@node1 ~]$ repmgr -f /etc/repmgr/12/repmgr.conf node service --action=restart --checkpoint
 NOTICE: issuing CHECKPOINT
-DETAIL: executing server command "sudo service postgresql-11 restart"
-Redirecting to /bin/systemctl restart postgresql-11.service</programlisting>
+DETAIL: executing server command "sudo service postgresql-12 restart"
+Redirecting to /bin/systemctl restart postgresql-12.service</programlisting>
     </para>
 
     <para>
       List all commands:
       <programlisting>
-[postgres@node1 ~]$ repmgr -f /etc/repmgr/11/repmgr.conf node service --list-actions
+[postgres@node1 ~]$ repmgr -f /etc/repmgr/12/repmgr.conf node service --list-actions
 Following commands would be executed for each action:
 
-    start: "sudo service postgresql-11 start"
-     stop: "sudo service postgresql-11 stop"
-  restart: "sudo service postgresql-11 restart"
-   reload: "sudo service postgresql-11 reload"
-  promote: "/usr/pgsql-11/bin/pg_ctl  -w -D '/var/lib/pgsql/11/data' promote"</programlisting>
+    start: "sudo service postgresql-12 start"
+     stop: "sudo service postgresql-12 stop"
+  restart: "sudo service postgresql-12 restart"
+   reload: "sudo service postgresql-12 reload"
+  promote: "/usr/pgsql-12/bin/pg_ctl  -w -D '/var/lib/pgsql/12/data' promote"</programlisting>
     </para>
 
     <para>
       List a single command:
       <programlisting>
-[postgres@node1 ~]$ repmgr -f /etc/repmgr/11/repmgr.conf node service --list-actions --action=promote
-/usr/pgsql-11/bin/pg_ctl  -w -D '/var/lib/pgsql/11/data' promote      </programlisting>
+[postgres@node1 ~]$ repmgr -f /etc/repmgr/12/repmgr.conf node service --list-actions --action=promote
+/usr/pgsql-12/bin/pg_ctl  -w -D '/var/lib/pgsql/12/data' promote      </programlisting>
     </para>
   </refsect1>
 </refentry>

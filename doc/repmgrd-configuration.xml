@@ -536,10 +536,10 @@
 
       </para>
       <para>
-        Example (for &repmgr; with PostgreSQL 11 on CentOS 7):
+        Example (for &repmgr; with PostgreSQL 12 on CentOS 7):
         <programlisting>
-repmgrd_service_start_command='sudo systemctl repmgr11 start'
-repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
+repmgrd_service_start_command='sudo systemctl repmgr12 start'
+repmgrd_service_stop_command='sudo systemctl repmgr12 stop'
 </programlisting>
       </para>
       <para>

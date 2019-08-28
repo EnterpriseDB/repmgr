@@ -56,7 +56,7 @@
 node_id=1
 node_name= node1
 conninfo ='host=node1 dbname=repmgr user=repmgr connect_timeout=2'
-data_directory = /var/lib/pgsql/11/data</programlisting>
+data_directory = /var/lib/pgsql/12/data</programlisting>
 
     </para>
   </sect2>
