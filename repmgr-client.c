@@ -1908,6 +1908,7 @@ check_cli_parameters(const int action)
 			case NODE_SERVICE:
 			case DAEMON_PAUSE:
 			case DAEMON_UNPAUSE:
+			case DAEMON_STATUS:
 			case DAEMON_START:
 			case DAEMON_STOP:
 				break;
