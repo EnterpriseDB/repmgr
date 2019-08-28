@@ -14,7 +14,7 @@
 
   <refnamediv>
     <refname>repmgr daemon start</refname>
-    <refpurpose>Start the &repmgrd; service</refpurpose>
+    <refpurpose>Start the &repmgrd; daemon on the local node</refpurpose>
   </refnamediv>
 
   <refsect1>

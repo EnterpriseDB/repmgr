@@ -14,7 +14,7 @@
 
   <refnamediv>
     <refname>repmgr daemon stop</refname>
-    <refpurpose>Stop the &repmgrd; daemon</refpurpose>
+    <refpurpose>Stop the &repmgrd; daemon on the local node</refpurpose>
   </refnamediv>
 
   <refsect1>
