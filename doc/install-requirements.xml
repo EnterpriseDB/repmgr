@@ -109,12 +109,25 @@
         </thead>
 
         <tbody>
+
+          <row>
+            <entry>
+              &repmgr; 5.x
+            </entry>
+            <entry>
+              <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
+            </entry>
+            <entry>
+              9.3, 9.4, 9.5, 9.6, 10, 11, 12
+            </entry>
+          </row>
+
           <row>
             <entry>
               &repmgr; 4.x
             </entry>
             <entry>
-              <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
+              <link linkend="release-4.4">4.4</link> (27 June, 2019)
             </entry>
             <entry>
               9.3, 9.4, 9.5, 9.6, 10, 11
