@@ -1,6 +1,7 @@
 5.0     2019-??-??
-		general: add PostgreSQL 12 support (Ian)
+	general: add PostgreSQL 12 support (Ian)
         general: parse configuration file using flex (Ian)
+        repmgr: rename "repmgr daemon ..." commands to "repmgr service ..." (Ian)
 
 4.4.1   2019-??-??
         repmgr: improve data directory check (Ian)

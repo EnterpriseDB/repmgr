@@ -4782,7 +4782,7 @@ do_standby_switchover(void)
 				log_warning(_("unable to unpause repmgrd on %i node(s)"),
 							error_node_count);
 				log_detail(_("errors encountered for following node(s):\n%s"), detail.data);
-				log_hint(_("check node connection and status; unpause manually with \"repmgr daemon unpause\""));
+				log_hint(_("check node connection and status; unpause manually with \"repmgr service unpause\""));
 
 				termPQExpBuffer(&detail);
 			}

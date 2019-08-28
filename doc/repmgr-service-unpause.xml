@@ -1,6 +1,6 @@
-<refentry id="repmgr-daemon-unpause">
+<refentry id="repmgr-service-unpause">
   <indexterm>
-    <primary>repmgr daemon unpause</primary>
+    <primary>repmgr service unpause</primary>
   </indexterm>
 
   <indexterm>
@@ -8,13 +8,12 @@
     <secondary>unpausing</secondary>
   </indexterm>
 
-
   <refmeta>
-    <refentrytitle>repmgr daemon unpause</refentrytitle>
+    <refentrytitle>repmgr service unpause</refentrytitle>
   </refmeta>
 
   <refnamediv>
-    <refname>repmgr daemon unpause</refname>
+    <refname>repmgr service unpause</refname>
     <refpurpose>Instruct all &repmgrd; instances in the replication cluster to resume failover operations</refpurpose>
   </refnamediv>
 
@@ -23,14 +22,14 @@
     <para>
       This command can be run on any active node in the replication cluster to instruct all
       running &repmgrd; instances to &quot;unpause&quot;
-      (following a previous execution of <xref linkend="repmgr-daemon-pause"/>)
+      (following a previous execution of <xref linkend="repmgr-service-pause"/>)
       and resume normal failover/monitoring operation.
     </para>
 
     <note>
       <para>
         It's important to wait a few seconds after restarting PostgreSQL on any node before running
-        <command>repmgr daemon pause</command>, as the &repmgrd; instance
+        <command>repmgr service pause</command>, as the &repmgrd; instance
         on the restarted node will take a second or two before it has updated its status.
       </para>
     </note>
@@ -40,7 +39,7 @@
   <refsect1>
     <title>Execution</title>
     <para>
-     <command>repmgr daemon unpause</command> can be executed on any active node in the
+     <command>repmgr service unpause</command> can be executed on any active node in the
       replication cluster. A valid <filename>repmgr.conf</filename> file is required.
       It will have no effect on nodes which are not already paused.
     </para>
@@ -50,7 +49,7 @@
     <title>Example</title>
     <para>
     <programlisting>
-$ repmgr -f /etc/repmgr.conf daemon unpause
+$ repmgr -f /etc/repmgr.conf service unpause
 NOTICE: node 1 (node1) unpaused
 NOTICE: node 2 (node2) unpaused
 NOTICE: node 3 (node3) unpaused</programlisting>
@@ -74,7 +73,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
   <refsect1>
     <title>Exit codes</title>
     <para>
-      One of the following exit codes will be emitted by <command>repmgr daemon unpause</command>:
+      One of the following exit codes will be emitted by <command>repmgr service unpause</command>:
     </para>
     <variablelist>
 
@@ -102,7 +101,7 @@ NOTICE: node 3 (node3) unpaused</programlisting>
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-pause"/>, <xref linkend="repmgr-daemon-status"/>
+      <xref linkend="repmgr-service-pause"/>, <xref linkend="repmgr-service-status"/>
     </para>
   </refsect1>
 </refentry>

@@ -54,11 +54,11 @@
 <!ENTITY repmgr-cluster-crosscheck SYSTEM "repmgr-cluster-crosscheck.xml">
 <!ENTITY repmgr-cluster-event SYSTEM "repmgr-cluster-event.xml">
 <!ENTITY repmgr-cluster-cleanup SYSTEM "repmgr-cluster-cleanup.xml">
-<!ENTITY repmgr-daemon-status SYSTEM "repmgr-daemon-status.xml">
+<!ENTITY repmgr-service-status SYSTEM "repmgr-service-status.xml">
+<!ENTITY repmgr-service-pause SYSTEM "repmgr-service-pause.xml">
+<!ENTITY repmgr-service-unpause SYSTEM "repmgr-service-unpause.xml">
 <!ENTITY repmgr-daemon-start SYSTEM "repmgr-daemon-start.xml">
 <!ENTITY repmgr-daemon-stop SYSTEM "repmgr-daemon-stop.xml">
-<!ENTITY repmgr-daemon-pause SYSTEM "repmgr-daemon-pause.xml">
-<!ENTITY repmgr-daemon-unpause SYSTEM "repmgr-daemon-unpause.xml">
 
 <!ENTITY appendix-release-notes  SYSTEM "appendix-release-notes.xml">
 <!ENTITY appendix-faq      SYSTEM "appendix-faq.xml">

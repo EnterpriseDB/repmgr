@@ -88,17 +88,21 @@
   <sect2 id="repmgrd-pausing-execution">
     <title>Pausing/unpausing &repmgrd;</title>
     <para>
-      To pause &repmgrd;, execute <link linkend="repmgr-daemon-pause"><command>repmgr daemon pause</command></link>, e.g.:
+      To pause &repmgrd;, execute <link linkend="repmgr-service-pause"><command>repmgr service pause</command></link>
+      (&repmgr; 4.2 - 4.4: <link linkend="repmgr-service-pause"><command>repmgr daemon pause</command></link>),
+      e.g.:
    <programlisting>
-$ repmgr -f /etc/repmgr.conf daemon pause
+$ repmgr -f /etc/repmgr.conf service pause
 NOTICE: node 1 (node1) paused
 NOTICE: node 2 (node2) paused
 NOTICE: node 3 (node3) paused</programlisting>
     </para>
     <para>
       The state of &repmgrd; on each node can be checked with
-      <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>, e.g.:
-    <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
+      <link linkend="repmgr-service-status"><command>repmgr service status</command></link>
+      (&repmgr; 4.2 - 4.4: <link linkend="repmgr-service-status"><command>repmgr daemon status</command></link>),
+      e.g.:
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
  ID | Name  | Role    | Status  | repmgrd | PID  | Paused?
 ----+-------+---------+---------+---------+------+---------
  1  | node1 | primary | running | running | 7851 | yes
@@ -108,8 +112,8 @@ NOTICE: node 3 (node3) paused</programlisting>
 
     <note>
       <para>
-        If executing a switchover with  <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
-		&repmgr; will automatically pause/unpause &repmgrd; as part of the switchover process.
+        If executing a switchover with <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>,
+	&repmgr; will automatically pause/unpause the &repmgrd; service as part of the switchover process.
       </para>
     </note>
 
@@ -117,29 +121,32 @@ NOTICE: node 3 (node3) paused</programlisting>
       If the primary (in this example, <literal>node1</literal>) is stopped, &repmgrd;
       running on one of the standbys (here: <literal>node2</literal>) will react like this:
       <programlisting>
-[2018-09-20 12:22:21] [WARNING] unable to connect to upstream node "node1" (ID: 1)
-[2018-09-20 12:22:21] [INFO] checking state of node 1, 1 of 5 attempts
-[2018-09-20 12:22:21] [INFO] sleeping 1 seconds until next reconnection attempt
+[2019-08-28 12:22:21] [WARNING] unable to connect to upstream node "node1" (node ID: 1)
+[2019-08-28 12:22:21] [INFO] checking state of node 1, 1 of 5 attempts
+[2019-08-28 12:22:21] [INFO] sleeping 1 seconds until next reconnection attempt
 ...
-[2018-09-20 12:22:24] [INFO] sleeping 1 seconds until next reconnection attempt
-[2018-09-20 12:22:25] [INFO] checking state of node 1, 5 of 5 attempts
-[2018-09-20 12:22:25] [WARNING] unable to reconnect to node 1 after 5 attempts
-[2018-09-20 12:22:25] [NOTICE] node is paused
-[2018-09-20 12:22:33] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (ID: 1) in degraded state
-[2018-09-20 12:22:33] [DETAIL] repmgrd paused by administrator
-[2018-09-20 12:22:33] [HINT] execute "repmgr daemon unpause" to resume normal failover mode</programlisting>
+[2019-08-28 12:22:24] [INFO] sleeping 1 seconds until next reconnection attempt
+[2019-08-28 12:22:25] [INFO] checking state of node 1, 5 of 5 attempts
+[2019-08-28 12:22:25] [WARNING] unable to reconnect to node 1 after 5 attempts
+[2019-08-28 12:22:25] [NOTICE] node is paused
+[2019-08-28 12:22:33] [INFO] node "node2" (ID: 2) monitoring upstream node "node1" (node ID: 1) in degraded state
+[2019-08-28 12:22:33] [DETAIL] repmgrd paused by administrator
+[2019-08-28 12:22:33] [HINT] execute "repmgr service unpause" to resume normal failover mode</programlisting>
     </para>
     <para>
       If the primary becomes available again (e.g. following a software upgrade), &repmgrd;
       will automatically reconnect, e.g.:
       <programlisting>
-[2018-09-20 13:12:41] [NOTICE] reconnected to upstream node 1 after 8 seconds, resuming monitoring</programlisting>
+[2019-08-28 12:25:41] [NOTICE] reconnected to upstream node 1 after 8 seconds, resuming monitoring</programlisting>
     </para>
 
     <para>
-      To unpause &repmgrd;, execute <link linkend="repmgr-daemon-unpause"><command>repmgr daemon unpause</command></link>, e.g.:
+      To unpause the &repmgrd; service, execute
+      <link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link>
+      ((&repmgr; 4.2 - 4.4: <link linkend="repmgr-service-unpause"><command>repmgr daemon unpause</command></link>),
+      e.g.:
    <programlisting>
-$ repmgr -f /etc/repmgr.conf daemon unpause
+$ repmgr -f /etc/repmgr.conf service unpause
 NOTICE: node 1 (node1) unpaused
 NOTICE: node 2 (node2) unpaused
 NOTICE: node 3 (node3) unpaused</programlisting>
@@ -150,11 +157,11 @@ NOTICE: node 3 (node3) unpaused</programlisting>
         If the previous primary is no longer accessible when &repmgrd;
         is unpaused, no failover action will be taken. Instead, a new primary must be manually promoted using
         <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>,
-		and any standbys attached to the new primary with
-		<link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>.
+	and any standbys attached to the new primary with
+	<link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>.
       </para>
       <para>
-        This is to prevent <link linkend="repmgr-daemon-unpause"><command>repmgr daemon unpause</command></link>
+        This is to prevent execution of <link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link>
         resulting in the automatic promotion of a new primary, which may be a problem particularly
         in larger clusters, where &repmgrd; could select a different promotion
         candidate to the one intended by the administrator.
@@ -168,17 +175,17 @@ NOTICE: node 3 (node3) unpaused</programlisting>
       The pause state of each node will be stored over a PostgreSQL restart.
     </para>
 
-	<para>
-	  <link linkend="repmgr-daemon-pause"><command>repmgr daemon pause</command></link> and
-	  <link linkend="repmgr-daemon-unpause"><command>repmgr daemon unpause</command></link> can be
-	  executed even if &repmgrd; is not running; in this case,
-	  &repmgrd; will start up in whichever pause state has been set.
-	</para>
+    <para>
+      <link linkend="repmgr-service-pause"><command>repmgr service pause</command></link> and
+      <link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link> can be
+      executed even if &repmgrd; is not running; in this case,
+      &repmgrd; will start up in whichever pause state has been set.
+    </para>
     <note>
       <para>
-		<link linkend="repmgr-daemon-pause"><command>repmgr daemon pause</command></link> and
-		<link linkend="repmgr-daemon-unpause"><command>repmgr daemon unpause</command></link>
-		<emphasis>do not</emphasis> stop/start &repmgrd;.
+	<link linkend="repmgr-service-pause"><command>repmgr service pause</command></link> and
+	<link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link>
+	<emphasis>do not</emphasis> stop/start &repmgrd;.
       </para>
     </note>
   </sect2>

@@ -14,13 +14,13 @@
 
   <refnamediv>
     <refname>repmgr daemon start</refname>
-    <refpurpose>Start the &repmgrd; daemon</refpurpose>
+    <refpurpose>Start the &repmgrd; service</refpurpose>
   </refnamediv>
 
   <refsect1>
     <title>Description</title>
     <para>
-      This command starts the &repmgrd; daemon on the
+      This command starts the &repmgrd; service on the
       local node.
     </para>
     <para>
@@ -197,7 +197,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-stop"/>, <xref linkend="repmgr-daemon-status"/>, <xref linkend="repmgrd-daemon"/>
+      <xref linkend="repmgr-daemon-stop"/>, <xref linkend="repmgrd-daemon"/>, <xref linkend="repmgr-service-status"/>
     </para>
   </refsect1>
 

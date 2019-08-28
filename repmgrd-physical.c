@@ -1580,7 +1580,7 @@ monitor_streaming_standby(void)
 					{
 						log_notice(_("repmgrd on this node is paused"));
 						log_detail(_("no failover will be carried out"));
-						log_hint(_("execute \"repmgr daemon unpause\" to resume normal failover mode"));
+						log_hint(_("execute \"repmgr service unpause\" to resume normal failover mode"));
 						monitoring_state = MS_DEGRADED;
 						INSTR_TIME_SET_CURRENT(degraded_monitoring_start);
 					}
@@ -1884,7 +1884,7 @@ loop:
 					if (PQstatus(local_conn) == CONNECTION_OK && repmgrd_is_paused(local_conn))
 					{
 						log_detail(_("repmgrd paused by administrator"));
-						log_hint(_("execute \"repmgr daemon unpause\" to resume normal failover mode"));
+						log_hint(_("execute \"repmgr service unpause\" to resume normal failover mode"));
 					}
 					else
 					{

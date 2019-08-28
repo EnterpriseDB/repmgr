@@ -116,11 +116,11 @@
   &repmgr-cluster-crosscheck;
   &repmgr-cluster-event;
   &repmgr-cluster-cleanup;
-  &repmgr-daemon-status;
+  &repmgr-service-status;
+  &repmgr-service-pause;
+  &repmgr-service-unpause;
   &repmgr-daemon-start;
   &repmgr-daemon-stop;
-  &repmgr-daemon-pause;
-  &repmgr-daemon-unpause;
  </part>
 
  &appendix-release-notes;

@@ -23,7 +23,8 @@
     <important>
       <para>
         If &repmgrd; is active, you must execute
-        <command><link linkend="repmgr-daemon-pause">repmgr daemon pause</link></command>
+        <command><link linkend="repmgr-service-pause">repmgr service pause</link></command>
+        (&repmgr; 4.2 - 4.4: <command><link linkend="repmgr-service-pause">repmgr service pause</link></command>)
         to temporarily disable &repmgrd; while making any changes
         to the replication cluster.
       </para>

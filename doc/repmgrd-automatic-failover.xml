@@ -199,9 +199,10 @@
 
   <para>
     The time the primary was last seen by each node can be checked by executing
-    <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>,
+    <link linkend="repmgr-service-status"><command>repmgr service status</command></link>
+    (&repmgr; 4.2 - 4.4: <link linkend="repmgr-service-status"><command>repmgr daemon status</command></link>)
     which includes this in its output, e.g.:
-    <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
  ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+---------+-------+---------+--------------------
  1  | node1 | primary | * running |          | running | 96563 | no      | n/a

@@ -38,7 +38,7 @@
          <simpara>
            ability to <link linkend="repmgrd-pausing">pause repmgrd</link>
            operation on all nodes with a
-           <link linkend="repmgr-daemon-pause"><command>single command</command></link>
+           <link linkend="repmgr-service-pause"><command>single command</command></link>
          </simpara>
        </listitem>
 

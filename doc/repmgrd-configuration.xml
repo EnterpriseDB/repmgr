@@ -8,7 +8,7 @@
   </indexterm>
 
   <para>
-    &repmgrd; is a daemon which runs on each PostgreSQL node,
+    &repmgrd; is a daemon process which runs on each PostgreSQL node,
     monitoring the local node, and (unless it's the primary node) the upstream server
     (the primary server or with cascading replication, another standby) which it's
     connected to.
@@ -519,7 +519,8 @@
       </indexterm>
       <para>
         If you are intending to use the <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link>
-        and <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link> commands, the following
+        and <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link>
+        commands, the following
         parameters <emphasis>must</emphasis> be set in <filename>repmgr.conf</filename>:
         <itemizedlist spacing="compact" mark="bullet">
 
@@ -860,7 +861,7 @@ repmgrd_service_stop_command='sudo systemctl repmgr11 stop'
     <para>
       The commands <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link> and
       <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link> can be used
-      as convenience wrappers to start and stop &repmgrd;.
+      as convenience wrappers to start and stop &repmgrd; on the local node.
     </para>
     <important>
       <para>

@@ -1,19 +1,19 @@
-<refentry id="repmgr-daemon-status">
+<refentry id="repmgr-service-status">
   <indexterm>
-    <primary>repmgr daemon status</primary>
+    <primary>repmgr service status</primary>
   </indexterm>
 
   <indexterm>
     <primary>repmgrd</primary>
-    <secondary>displaying daemon status</secondary>
+    <secondary>displaying service status</secondary>
   </indexterm>
 
   <refmeta>
-    <refentrytitle>repmgr daemon status</refentrytitle>
+    <refentrytitle>repmgr service status</refentrytitle>
   </refmeta>
 
   <refnamediv>
-    <refname>repmgr daemon status</refname>
+    <refname>repmgr service status</refname>
     <refpurpose>display information about the status of &repmgrd; on each node in the cluster</refpurpose>
   </refnamediv>
 
@@ -22,7 +22,7 @@
     <para>
       This command provides an overview over all active nodes in the cluster and the state
       of each node's &repmgrd; instance. It can be used to check
-      the result of <xref linkend="repmgr-daemon-pause"/> and <xref linkend="repmgr-daemon-unpause"/>
+      the result of <xref linkend="repmgr-service-pause"/> and <xref linkend="repmgr-service-unpause"/>
       operations.
     </para>
   </refsect1>
@@ -30,7 +30,7 @@
   <refsect1>
     <title>Execution</title>
     <para>
-      <command>repmgr daemon status</command> can be executed on any active node in the
+      <command>repmgr service status</command> can be executed on any active node in the
       replication cluster. A valid <filename>repmgr.conf</filename> file is required.
     </para>
     <para>
@@ -51,7 +51,7 @@
     <title>Examples</title>
     <para>
       &repmgrd; running normally on all nodes:
-    <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
  ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+---------+-------+---------+--------------------
  1  | node1 | primary | * running |          | running | 96563 | no      | n/a
@@ -60,8 +60,8 @@
     </para>
 
     <para>
-      &repmgrd; paused on all nodes (using <xref linkend="repmgr-daemon-pause"/>):
-    <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
+      &repmgrd; paused on all nodes (using <xref linkend="repmgr-service-pause"/>):
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
  ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+---------+-------+---------+--------------------
  1  | node1 | primary | * running |          | running | 96563 | yes     | n/a
@@ -71,7 +71,7 @@
 
     <para>
       &repmgrd; not running on one node:
-    <programlisting>$ repmgr -f /etc/repmgr.conf daemon status
+    <programlisting>$ repmgr -f /etc/repmgr.conf service status
  ID | Name  | Role    | Status    | Upstream | repmgrd     | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+-------------+-------+---------+--------------------
  1  | node1 | primary | * running |          | running     | 96563 | yes     | n/a
@@ -89,11 +89,11 @@
         <term><option>--csv</option></term>
         <listitem>
           <para>
-            <command>repmgr daemon status</command> accepts an optional parameter <literal>--csv</literal>, which
+            <command>repmgr service status</command> accepts an optional parameter <literal>--csv</literal>, which
             outputs the replication cluster's status in a simple CSV format, suitable for
             parsing by scripts, e.g.:
             <programlisting>
-    $ repmgr -f /etc/repmgr.conf daemon status --csv
+    $ repmgr -f /etc/repmgr.conf service status --csv
     1,node1,primary,1,1,5722,1,100,-1,default
     2,node2,standby,1,0,-1,1,100,1,default
     3,node3,standby,1,1,5779,1,100,1,default</programlisting>
@@ -171,7 +171,7 @@
         <listitem>
           <para>
             Display additional information (<literal>location</literal>, <literal>priority</literal>)
-			about the &repmgr; configuration.
+	    about the &repmgr; configuration.
           </para>
         </listitem>
       </varlistentry>
@@ -180,7 +180,7 @@
         <term><option>--verbose</option></term>
         <listitem>
           <para>
-            Display the full text of any database connection error messages
+            Display the full text of any database connection error messages.
           </para>
         </listitem>
       </varlistentry>
@@ -192,7 +192,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-pause"/>, <xref linkend="repmgr-daemon-unpause"/>, <xref linkend="repmgr-cluster-show"/>
+      <xref linkend="repmgr-service-pause"/>, <xref linkend="repmgr-service-unpause"/>, <xref linkend="repmgr-cluster-show"/>
     </para>
   </refsect1>
 </refentry>

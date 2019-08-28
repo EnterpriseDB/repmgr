@@ -1,5 +1,5 @@
 /*
- * repmgr-action-daemon.h
+ * repmgr-action-service.h
  * Copyright (c) 2ndQuadrant, 2010-2019
  *
  * This program is free software: you can redistribute it and/or modify
@@ -16,11 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _REPMGR_ACTION_DAEMON_H_
-#define _REPMGR_ACTION_DAEMON_H_
+#ifndef _REPMGR_ACTION_SERVICE_H_
+#define _REPMGR_ACTION_SERVICE_H_
 
-extern void do_daemon_start(void);
-extern void do_daemon_stop(void);
 
-extern void do_daemon_help(void);
+extern void do_service_status(void);
+extern void do_service_pause(void);
+extern void do_service_unpause(void);
+
+extern void do_service_help(void);
 #endif

@@ -46,9 +46,9 @@
 #define CLUSTER_MATRIX		   20
 #define CLUSTER_CROSSCHECK	   21
 #define CLUSTER_EVENT		   22
-#define DAEMON_STATUS		   23
-#define DAEMON_PAUSE		   24
-#define DAEMON_UNPAUSE		   25
+#define SERVICE_STATUS		   23
+#define SERVICE_PAUSE		   24
+#define SERVICE_UNPAUSE		   25
 #define DAEMON_START 		   26
 #define DAEMON_STOP 		   27
 

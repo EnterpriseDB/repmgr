@@ -194,7 +194,7 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-start"/>, <xref linkend="repmgr-daemon-status"/>, <xref linkend="repmgrd-daemon"/>
+      <xref linkend="repmgr-daemon-start"/>, <xref linkend="repmgrd-daemon"/>, <xref linkend="repmgr-service-status"/>
     </para>
   </refsect1>
 

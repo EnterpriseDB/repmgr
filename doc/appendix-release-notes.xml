@@ -24,6 +24,45 @@
     <sect2>
       <title>Compatibility changes</title>
       <para>
+        Some <command>repmgr daemon ...</command> commands have been renamed to
+        <command>repmgr service ...</command> as they have a cluster-wide effect
+        and to avoid giving the impression they affect only the local &repmgr; daemon.
+      </para>
+      <para>
+        Following commands are affected:
+
+        <itemizedlist spacing="compact" mark="bullet">
+
+          <listitem>
+            <simpara>
+              <command>repmgr daemon pause</command>
+              (now <link linkend="repmgr-service-pause"><command>repmgr service pause</command></link>)
+            </simpara>
+          </listitem>
+
+          <listitem>
+            <simpara>
+              <command>repmgr daemon unpause</command>
+              (now <link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link>)
+            </simpara>
+          </listitem>
+
+          <listitem>
+            <simpara>
+              <command>repmgr daemon status</command>
+              (now <link linkend="repmgr-service-status"><command>repmgr service status</command></link>)
+            </simpara>
+          </listitem>
+
+        </itemizedlist>
+      </para>
+      <para>
+         The <command>repmgr daemon ...</command> form will still be accepted
+         for backwards compatibility.
+      </para>
+
+
+      <para>
         The following command line options, which have been deprecated since &repmgr; 3.3
         (and which no longer had any effect other than to generate a warning about their use)
         have been removed:
@@ -209,7 +248,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
+              <link linkend="repmgr-service-status"><command>repmgr daemon status</command></link>:
               make output similar to that of
               <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
               for consistency and to make it easier to identify nodes not in the expected
@@ -227,7 +266,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
-              and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
+              and <link linkend="repmgr-service-status"><command>repmgr daemon status</command></link>:
               show the upstream node name as reported by each individual node - this helps visualise
               situations where the cluster is in an unexpected state, and provide a better idea of the
               actual cluster state.
@@ -245,7 +284,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
           <listitem>
             <para>
               <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>
-              and <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>:
+              and <link linkend="repmgr-service-status"><command>repmgr daemon status</command></link>:
               check if a node is attached to its advertised upstream node, and issue a
               warning if the node is not attached.
             </para>
@@ -462,7 +501,7 @@ REPMGRD_OPTS="--daemonize=false"</programlisting>
 
           <listitem>
             <para>
-              <link linkend="repmgr-daemon-status"><command>repmgr daemon status</command></link>
+              <link linkend="repmgr-service-status"><command>repmgr daemon status</command></link>
               additionally displays the node priority and the interval (in seconds) since the
               &repmgrd; instance last verified its upstream node was available.
             </para>

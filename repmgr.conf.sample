@@ -402,7 +402,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# for "promote_command"; do not use "repmgr standby promote"
 					# (or a script which executes "repmgr standby promote") here.
 
-# Used by "repmgr daemon (start|stop)" to control repmgrd
+# Used by "repmgr service (start|stop)" to control repmgrd
 #
 #repmgrd_service_start_command = ''
 #repmgrd_service_stop_command = ''

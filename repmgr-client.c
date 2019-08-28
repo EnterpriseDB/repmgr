@@ -33,9 +33,10 @@
  * NODE SERVICE
  * NODE CONTROL
  *
- * DAEMON STATUS
- * DAEMON PAUSE
- * DAEMON UNPAUSE
+ * SERVICE STATUS
+ * SERVICE PAUSE
+ * SERVICE UNPAUSE
+ *
  * DAEMON START
  * DAEMON STOP
  *
@@ -69,6 +70,7 @@
 #include "repmgr-action-bdr.h"
 #include "repmgr-action-node.h"
 #include "repmgr-action-cluster.h"
+#include "repmgr-action-service.h"
 #include "repmgr-action-daemon.h"
 
 #include <storage/fd.h>			/* for PG_TEMP_FILE_PREFIX */
@@ -813,7 +815,7 @@ main(int argc, char **argv)
 	 *   BDR { REGISTER | UNREGISTER } |
 	 *   NODE { STATUS | CHECK | REJOIN | SERVICE } |
 	 *   CLUSTER { CROSSCHECK | MATRIX | SHOW | EVENT | CLEANUP }
-	 *   DAEMON { STATUS | PAUSE | UNPAUSE | START | STOP }
+	 *   SERVICE { STATUS | PAUSE | UNPAUSE | START | STOP }
 	 *
 	 * [node] is an optional hostname, provided instead of the -h/--host
 	 * option
@@ -952,6 +954,22 @@ main(int argc, char **argv)
 			else if (strcasecmp(repmgr_action, "CLEANUP") == 0)
 				action = CLUSTER_CLEANUP;
 		}
+		else if (strcasecmp(repmgr_command, "SERVICE") == 0)
+		{
+			if (help_option == true)
+			{
+				do_service_help();
+				exit(SUCCESS);
+			}
+
+			if (strcasecmp(repmgr_action, "STATUS") == 0)
+				action = SERVICE_STATUS;
+			else if (strcasecmp(repmgr_action, "PAUSE") == 0)
+				action = SERVICE_PAUSE;
+			else if (strcasecmp(repmgr_action, "UNPAUSE") == 0)
+				action = SERVICE_UNPAUSE;
+
+		}
 		else if (strcasecmp(repmgr_command, "DAEMON") == 0)
 		{
 			if (help_option == true)
@@ -960,16 +978,18 @@ main(int argc, char **argv)
 				exit(SUCCESS);
 			}
 
-			if (strcasecmp(repmgr_action, "STATUS") == 0)
-				action = DAEMON_STATUS;
-			else if (strcasecmp(repmgr_action, "PAUSE") == 0)
-				action = DAEMON_PAUSE;
-			else if (strcasecmp(repmgr_action, "UNPAUSE") == 0)
-				action = DAEMON_UNPAUSE;
-			else if (strcasecmp(repmgr_action, "START") == 0)
+			if (strcasecmp(repmgr_action, "START") == 0)
 				action = DAEMON_START;
 			else if (strcasecmp(repmgr_action, "STOP") == 0)
 				action = DAEMON_STOP;
+
+			/* allow "daemon" as an alias for "service" for repmgr 4.x compatibility */
+			if (strcasecmp(repmgr_action, "STATUS") == 0)
+				action = SERVICE_STATUS;
+			else if (strcasecmp(repmgr_action, "PAUSE") == 0)
+				action = SERVICE_PAUSE;
+			else if (strcasecmp(repmgr_action, "UNPAUSE") == 0)
+				action = SERVICE_UNPAUSE;
 		}
 		else
 		{
@@ -1372,16 +1392,18 @@ main(int argc, char **argv)
 			do_cluster_cleanup();
 			break;
 
+			/* SERVICE */
+		case SERVICE_STATUS:
+			do_service_status();
+			break;
+		case SERVICE_PAUSE:
+			do_service_pause();
+			break;
+		case SERVICE_UNPAUSE:
+			do_service_unpause();
+			break;
+
 			/* DAEMON */
-		case DAEMON_STATUS:
-			do_daemon_status();
-			break;
-		case DAEMON_PAUSE:
-			do_daemon_pause();
-			break;
-		case DAEMON_UNPAUSE:
-			do_daemon_unpause();
-			break;
 		case DAEMON_START:
 			do_daemon_start();
 			break;
@@ -1892,8 +1914,8 @@ check_cli_parameters(const int action)
 			case WITNESS_UNREGISTER:
 			case NODE_REJOIN:
 			case NODE_SERVICE:
-			case DAEMON_PAUSE:
-			case DAEMON_UNPAUSE:
+			case SERVICE_PAUSE:
+			case SERVICE_UNPAUSE:
 			case DAEMON_START:
 			case DAEMON_STOP:
 				break;
@@ -1932,7 +1954,7 @@ check_cli_parameters(const int action)
 		{
 			case CLUSTER_SHOW:
 			case CLUSTER_EVENT:
-			case DAEMON_STATUS:
+			case SERVICE_STATUS:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
@@ -1946,7 +1968,7 @@ check_cli_parameters(const int action)
 	{
 		switch (action)
 		{
-			case DAEMON_STATUS:
+			case SERVICE_STATUS:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
@@ -1996,7 +2018,7 @@ check_cli_parameters(const int action)
 
 /*
  * Generate formatted node status output for display by "cluster show" and
- * "daemon status".
+ * "service status".
  */
 bool
 format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBufferData *upstream, ItemList *warnings)
@@ -2462,12 +2484,13 @@ action_name(const int action)
 		case CLUSTER_CROSSCHECK:
 			return "CLUSTER CROSSCHECK";
 
-		case DAEMON_STATUS:
-			return "DAEMON STATUS";
-		case DAEMON_PAUSE:
-			return "DAEMON PAUSE";
-		case DAEMON_UNPAUSE:
-			return "DAEMON UNPAUSE";
+		case SERVICE_STATUS:
+			return "SERVICE STATUS";
+		case SERVICE_PAUSE:
+			return "SERVICE PAUSE";
+		case SERVICE_UNPAUSE:
+			return "SERVICE UNPAUSE";
+
 		case DAEMON_START:
 			return "DAEMON START";
 		case DAEMON_STOP:
@@ -2582,11 +2605,12 @@ do_help(void)
 	printf(_("    %s [OPTIONS] node    {status|check|rejoin|service}\n"), progname());
 	printf(_("    %s [OPTIONS] cluster {show|event|matrix|crosscheck|cleanup}\n"), progname());
 	printf(_("    %s [OPTIONS] witness {register|unregister}\n"), progname());
-	printf(_("    %s [OPTIONS] daemon  {status|pause|unpause|start|stop}\n"), progname());
+	printf(_("    %s [OPTIONS] service {status|pause|unpause}\n"), progname());
+	printf(_("    %s [OPTIONS] daemon  {start|stop}\n"), progname());
 
 	puts("");
 
-	printf(_("  Execute \"%s {primary|standby|bdr|node|cluster|witness|daemon} --help\" to see command-specific options\n"), progname());
+	printf(_("  Execute \"%s {primary|standby|bdr|node|cluster|witness|service} --help\" to see command-specific options\n"), progname());
 
 	puts("");
 

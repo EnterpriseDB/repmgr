@@ -1,6 +1,6 @@
-<refentry id="repmgr-daemon-pause">
+<refentry id="repmgr-service-pause">
   <indexterm>
-    <primary>repmgr daemon pause</primary>
+    <primary>repmgr service pause</primary>
   </indexterm>
 
   <indexterm>
@@ -9,11 +9,11 @@
   </indexterm>
 
   <refmeta>
-    <refentrytitle>repmgr daemon pause</refentrytitle>
+    <refentrytitle>repmgr service pause</refentrytitle>
   </refmeta>
 
   <refnamediv>
-    <refname>repmgr daemon pause</refname>
+    <refname>repmgr service pause</refname>
     <refpurpose>Instruct all &repmgrd; instances in the replication cluster to pause failover operations</refpurpose>
   </refnamediv>
 
@@ -32,12 +32,12 @@
     <note>
       <para>
         It's important to wait a few seconds after restarting PostgreSQL on any node before running
-        <command>repmgr daemon pause</command>, as the &repmgrd; instance
+        <command>repmgr service pause</command>, as the &repmgrd; instance
         on the restarted node will take a second or two before it has updated its status.
       </para>
     </note>
     <para>
-      <xref linkend="repmgr-daemon-unpause"/> will instruct all previously paused &repmgrd;
+      <xref linkend="repmgr-service-unpause"/> will instruct all previously paused &repmgrd;
       instances to resume normal failover operation.
     </para>
   </refsect1>
@@ -45,7 +45,7 @@
   <refsect1>
     <title>Execution</title>
     <para>
-      <command>repmgr daemon pause</command> can be executed on any active node in the
+      <command>repmgr service pause</command> can be executed on any active node in the
       replication cluster. A valid <filename>repmgr.conf</filename> file is required.
       It will have no effect on previously paused nodes.
     </para>
@@ -55,7 +55,7 @@
     <title>Example</title>
     <para>
     <programlisting>
-$ repmgr -f /etc/repmgr.conf daemon pause
+$ repmgr -f /etc/repmgr.conf service pause
 NOTICE: node 1 (node1) paused
 NOTICE: node 2 (node2) paused
 NOTICE: node 3 (node3) paused</programlisting>
@@ -79,7 +79,7 @@ NOTICE: node 3 (node3) paused</programlisting>
   <refsect1>
     <title>Exit codes</title>
     <para>
-      One of the following exit codes will be emitted by <command>repmgr daemon unpause</command>:
+      One of the following exit codes will be emitted by <command>repmgr service unpause</command>:
     </para>
     <variablelist>
 
@@ -107,7 +107,7 @@ NOTICE: node 3 (node3) paused</programlisting>
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-unpause"/>, <xref linkend="repmgr-daemon-status"/>
+      <xref linkend="repmgr-service-unpause"/>, <xref linkend="repmgr-service-status"/>
     </para>
   </refsect1>
 </refentry>
