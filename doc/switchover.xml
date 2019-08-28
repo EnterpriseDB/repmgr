@@ -317,7 +317,7 @@
   </para>
   <para>
     If &repmgrd; is in use, it's worth double-checking that
-    all nodes are unpaused by executing <command><link linkend="repmgr-daemon-status">repmgr-daemon-status</link></command>.
+    all nodes are unpaused by executing <command><link linkend="repmgr-daemon-status">repmgr daemon status</link></command>.
   </para>
 
    <note>
