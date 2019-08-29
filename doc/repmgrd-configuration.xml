@@ -77,7 +77,7 @@
               <listitem>
                 <simpara>
                   <literal>connection</literal> - determines server availability
-                  by attempt ingto make a new connection to the upstream node
+                  by attempting to make a new connection to the upstream node
                 </simpara>
               </listitem>
               <listitem>
