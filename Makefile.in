@@ -103,6 +103,7 @@ maintainer-clean: additional-maintainer-clean
 
 additional-clean:
 	rm -f *.o
+	rm -f repmgr_version.h
 	$(MAKE) -C doc clean
 
 additional-maintainer-clean: clean
