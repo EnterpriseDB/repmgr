@@ -312,6 +312,7 @@ get_controlfile(const char *DataDir)
 
 	if (version_num >= 120000)
 	{
+#if PG_ACTUAL_VERSION_NUM >= 120000
 		ControlFileData12 *ptr = (struct ControlFileData12 *)ControlFileDataPtr;
 		control_file_info->system_identifier = ptr->system_identifier;
 		control_file_info->state = ptr->state;
@@ -320,6 +321,10 @@ get_controlfile(const char *DataDir)
 		control_file_info->timeline = ptr->checkPointCopy.ThisTimeLineID;
 		control_file_info->minRecoveryPointTLI = ptr->minRecoveryPointTLI;
 		control_file_info->minRecoveryPoint = ptr->minRecoveryPoint;
+#else
+		fprintf(stderr, "ERROR: please use a repmgr version built for PostgreSQL 12\n");
+		exit(ERR_BAD_CONFIG);
+#endif
 	}
 	else if (version_num >= 110000)
 	{

@@ -12,6 +12,7 @@
 #include "postgres_fe.h"
 #include "catalog/pg_control.h"
 
+
 #define MAX_VERSION_STRING 24
 /*
  * A simplified representation of pg_control containing only those fields
@@ -55,7 +56,7 @@ typedef struct CheckPoint93
 } CheckPoint93;
 
 
-/* Same for 9.5, 9.6, 10, HEAD */
+/* Same for 9.5, 9.6, 10, 11 */
 typedef struct CheckPoint95
 {
 	XLogRecPtr	redo;			/* next RecPtr available when we began to
@@ -82,6 +83,50 @@ typedef struct CheckPoint95
 	TransactionId oldestActiveXid;
 } CheckPoint95;
 
+
+#if PG_ACTUAL_VERSION_NUM >= 120000
+/*
+ * Following fields removed in PostgreSQL 12;
+ *
+ *   uint32 nextXidEpoch;
+ *   TransactionId nextXid;
+ *
+ * and replaced by:
+ *
+ *   FullTransactionId nextFullXid;
+ */
+
+typedef struct CheckPoint12
+{
+	XLogRecPtr	redo;			/* next RecPtr available when we began to
+								 * create CheckPoint (i.e. REDO start point) */
+	TimeLineID	ThisTimeLineID; /* current TLI */
+	TimeLineID	PrevTimeLineID; /* previous TLI, if this record begins a new
+								 * timeline (equals ThisTimeLineID otherwise) */
+	bool		fullPageWrites; /* current full_page_writes */
+	FullTransactionId nextFullXid;	/* next free full transaction ID */
+	Oid			nextOid;		/* next free OID */
+	MultiXactId nextMulti;		/* next free MultiXactId */
+	MultiXactOffset nextMultiOffset;	/* next free MultiXact offset */
+	TransactionId oldestXid;	/* cluster-wide minimum datfrozenxid */
+	Oid			oldestXidDB;	/* database with minimum datfrozenxid */
+	MultiXactId oldestMulti;	/* cluster-wide minimum datminmxid */
+	Oid			oldestMultiDB;	/* database with minimum datminmxid */
+	pg_time_t	time;			/* time stamp of checkpoint */
+	TransactionId oldestCommitTsXid;	/* oldest Xid with valid commit
+										 * timestamp */
+	TransactionId newestCommitTsXid;	/* newest Xid with valid commit
+										 * timestamp */
+
+	/*
+	 * Oldest XID still running. This is only needed to initialize hot standby
+	 * mode from an online checkpoint, so we only bother calculating this for
+	 * online checkpoints and only when wal_level is replica. Otherwise it's
+	 * set to InvalidTransactionId.
+	 */
+	TransactionId oldestActiveXid;
+} CheckPoint12;
+#endif
 
 typedef struct ControlFileData93
 {
@@ -333,19 +378,11 @@ typedef struct ControlFileData11
 } ControlFileData11;
 
 
+#if PG_ACTUAL_VERSION_NUM >= 120000
 /*
  * Following field added in Pg12:
  *
  *   int max_wal_senders;
- *
- * Following fields removed:
- *
- *   uint32 nextXidEpoch;
- *   TransactionId nextXid;
- *
- * and replaced by:
- *
- *   FullTransactionId nextFullXid;
  */
 
 typedef struct ControlFileData12
@@ -359,7 +396,7 @@ typedef struct ControlFileData12
 	pg_time_t	time;			/* time stamp of last pg_control update */
 	XLogRecPtr	checkPoint;		/* last check point record ptr */
 
-	CheckPoint	checkPointCopy; /* copy of last check point record */
+	CheckPoint12	checkPointCopy; /* copy of last check point record */
 
 	XLogRecPtr	unloggedLSN;	/* current fake LSN value, for unlogged rels */
 
@@ -398,6 +435,7 @@ typedef struct ControlFileData12
 
 	uint32		data_checksum_version;
 } ControlFileData12;
+#endif
 
 extern int get_pg_version(const char *data_directory, char *version_string);
 extern DBState get_db_state(const char *data_directory);
