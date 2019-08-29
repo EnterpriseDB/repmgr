@@ -122,7 +122,7 @@
 
      <row>
       <entry>Package name example:</entry>
-      <entry><filename>repmgr10-4.0.4-1.rhel7.x86_64</filename></entry>
+      <entry><filename>repmgr11-4.4.0-1.rhel7.x86_64</filename></entry>
      </row>
 
      <row>
@@ -132,12 +132,12 @@
 
      <row>
       <entry>Installation command:</entry>
-      <entry><literal>yum install repmgr10</literal></entry>
+      <entry><literal>yum install repmgr11</literal></entry>
      </row>
 
      <row>
       <entry>Binary location:</entry>
-      <entry><filename>/usr/pgsql-10/bin</filename></entry>
+      <entry><filename>/usr/pgsql-11/bin</filename></entry>
      </row>
 
      <row>
@@ -147,22 +147,22 @@
 
      <row>
       <entry>Configuration file location:</entry>
-      <entry><filename>/etc/repmgr/10/repmgr.conf</filename></entry>
+      <entry><filename>/etc/repmgr/11/repmgr.conf</filename></entry>
      </row>
 
      <row>
       <entry>Data directory:</entry>
-      <entry><filename>/var/lib/pgsql/10/data</filename></entry>
+      <entry><filename>/var/lib/pgsql/11/data</filename></entry>
      </row>
 
      <row>
       <entry>repmgrd service command:</entry>
-      <entry><command>systemctl [start|stop|restart|reload] repmgr10</command></entry>
+      <entry><command>systemctl [start|stop|restart|reload] repmgr11</command></entry>
      </row>
 
      <row>
       <entry>repmgrd service file location:</entry>
-      <entry><filename>/usr/lib/systemd/system/repmgr10.service</filename></entry>
+      <entry><filename>/usr/lib/systemd/system/repmgr11.service</filename></entry>
      </row>
 
      <row>
@@ -323,7 +323,7 @@
 
             <row>
               <entry>Package name example:</entry>
-              <entry><filename>postgresql-10-repmgr</filename></entry>
+              <entry><filename>postgresql-11-repmgr</filename></entry>
             </row>
 
             <row>
@@ -333,12 +333,12 @@
 
             <row>
               <entry>Installation command:</entry>
-              <entry><literal>apt-get install postgresql-10-repmgr</literal></entry>
+              <entry><literal>apt-get install postgresql-11-repmgr</literal></entry>
             </row>
 
             <row>
               <entry>Binary location:</entry>
-              <entry><filename>/usr/lib/postgresql/10/bin</filename></entry>
+              <entry><filename>/usr/lib/postgresql/11/bin</filename></entry>
             </row>
 
             <row>
@@ -353,12 +353,12 @@
 
             <row>
               <entry>Data directory:</entry>
-              <entry><filename>/var/lib/postgresql/10/main</filename></entry>
+              <entry><filename>/var/lib/postgresql/11/main</filename></entry>
             </row>
 
             <row>
               <entry>PostgreSQL service command:</entry>
-              <entry><command>systemctl [start|stop|restart|reload] postgresql@10-main</command></entry>
+              <entry><command>systemctl [start|stop|restart|reload] postgresql@11-main</command></entry>
 
             </row>
 
@@ -386,7 +386,7 @@
           it's recommended to execute <command>pg_ctlcluster</command> (as <literal>root</literal>,
           either directly or via <command>sudo</command>), e.g.:
           <programlisting>
-            <command>pg_ctlcluster 10 main [start|stop|restart|reload]</command></programlisting>
+            <command>pg_ctlcluster 11 main [start|stop|restart|reload]</command></programlisting>
         </para>
         <para>
           For pre-<application>systemd</application> systems, <command>pg_ctlcluster</command>

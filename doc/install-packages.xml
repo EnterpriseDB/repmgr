@@ -81,9 +81,9 @@
 	    (this enables the 2ndQuadrant repository as a source of &repmgr; packages).
 	  </para>
 	  <para>
-	    For example, for PostgreSQL 10 on CentOS, execute:
+	    For example, for PostgreSQL 11 on CentOS, execute:
 	    <programlisting>
-curl https://dl.2ndquadrant.com/default/release/get/10/rpm | sudo bash</programlisting>
+curl https://dl.2ndquadrant.com/default/release/get/11/rpm | sudo bash</programlisting>
 	  </para>
 
 	  <para>
@@ -99,8 +99,8 @@ curl https://dl.2ndquadrant.com/default/release/get/9.6/rpm | sudo bash</program
 sudo yum repolist</programlisting>
 	    The output should contain two entries like this:
 	    <programlisting>
-2ndquadrant-dl-default-release-pg10/7/x86_64        2ndQuadrant packages (PG10) for 7 - x86_64          4
-2ndquadrant-dl-default-release-pg10-debug/7/x86_64  2ndQuadrant packages (PG10) for 7 - x86_64 - Debug  3</programlisting>
+2ndquadrant-dl-default-release-pg11/7/x86_64         2ndQuadrant packages (PG11) for 7 - x86_64               18
+2ndquadrant-dl-default-release-pg11-debug/7/x86_64   2ndQuadrant packages (PG11) for 7 - x86_64 - Debug        8</programlisting>
 	  </para>
 	</listitem>
 
@@ -108,7 +108,7 @@ sudo yum repolist</programlisting>
           <para>
             Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
             <programlisting>
-sudo yum install repmgr10</programlisting>
+sudo yum install repmgr11</programlisting>
           </para>
           <note>
             <para>
@@ -153,19 +153,23 @@ yum search repmgr</programlisting>
       To install a specific package version, execute <command>yum --showduplicates list</command>
       for the package in question:
       <programlisting>
-        [root@localhost ~]# yum --showduplicates list repmgr10
-        Loaded plugins: fastestmirror
-        Loading mirror speeds from cached hostfile
-         * base: ftp.iij.ad.jp
-         * extras: ftp.iij.ad.jp
-         * updates: ftp.iij.ad.jp
-        Available Packages
-		repmgr10.x86_64                       4.0.3-1.rhel7                        pgdg10
-		repmgr10.x86_64                       4.0.4-1.rhel7                        pgdg10
-		repmgr10.x86_64                       4.0.5-1.el7                          2ndquadrant-repo-10</programlisting>
+[root@localhost ~]# yum --showduplicates list repmgr11
+Loaded plugins: fastestmirror
+Loading mirror speeds from cached hostfile
+ * base: ftp.tsukuba.wide.ad.jp
+ * epel: nrt.edge.kernel.org
+ * extras: ftp.tsukuba.wide.ad.jp
+ * updates: ftp.tsukuba.wide.ad.jp
+Installed Packages
+repmgr11.x86_64                        4.4.0-1.rhel7                         @pgdg11
+Available Packages
+repmgr11.x86_64                        4.2-1.el7                             2ndquadrant-dl-default-release-pg11
+repmgr11.x86_64                        4.2-2.el7                             2ndquadrant-dl-default-release-pg11
+repmgr11.x86_64                        4.3-1.el7                             2ndquadrant-dl-default-release-pg11
+repmgr11.x86_64                        4.4-1.el7                             2ndquadrant-dl-default-release-pg11</programlisting>
       then append the appropriate version number to the package name with a hyphen, e.g.:
       <programlisting>
-        [root@localhost ~]# yum install repmgr10-4.0.3-1.rhel7</programlisting>
+[root@localhost ~]# yum install repmgr11-4.3-1.el7</programlisting>
     </para>
 
     <para>
@@ -220,13 +224,13 @@ yum search repmgr</programlisting>
 
       <itemizedlist>
 
-	<listitem>
-	  <para>
+	    <listitem>
+	      <para>
             Install the repository definition for your distribution and PostgreSQL version
-	    (this enables the 2ndQuadrant repository as a source of &repmgr; packages) by executing:
+	        (this enables the 2ndQuadrant repository as a source of &repmgr; packages) by executing:
             <programlisting>
-curl https://dl.2ndquadrant.com/default/release/get/deb | sudo bash</programlisting>
-	  </para>
+              curl https://dl.2ndquadrant.com/default/release/get/deb | sudo bash</programlisting>
+	      </para>
           <note>
             <para>
               This will automatically install the following additional packages, if not already present:
@@ -242,20 +246,20 @@ curl https://dl.2ndquadrant.com/default/release/get/deb | sudo bash</programlist
           </note>
         </listitem>
 
-	<listitem>
-	  <para>
-            Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr10</literal>):
+	    <listitem>
+	      <para>
+            Install the &repmgr; version appropriate for your PostgreSQL version (e.g. <literal>repmgr11</literal>):
             <programlisting>
-sudo apt-get install postgresql-10-repmgr</programlisting>
-	  </para>
+              sudo apt-get install postgresql-11-repmgr</programlisting>
+	      </para>
           <note>
             <para>
-            For packages for PostgreSQL 9.6 and earlier, the package name includes
-            a period between major and minor version numbers, e.g.
-            <literal>postgresql-9.6-repmgr</literal>.
+              For packages for PostgreSQL 9.6 and earlier, the package name includes
+              a period between major and minor version numbers, e.g.
+              <literal>postgresql-9.6-repmgr</literal>.
             </para>
           </note>
-	</listitem>
+	    </listitem>
 
       </itemizedlist>
 
