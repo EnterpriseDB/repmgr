@@ -37,6 +37,15 @@
   </refsect1>
 
   <refsect1>
+    <title>Prerequisites</title>
+    <para>
+      PostgreSQL must be accessible on all nodes (using the <varname>conninfo</varname> string shown by
+      <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>)
+      from the node where <command>repmgr service pause</command> is executed.
+    </para>
+  </refsect1>
+
+  <refsect1>
     <title>Execution</title>
     <para>
      <command>repmgr service unpause</command> can be executed on any active node in the

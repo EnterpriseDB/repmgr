@@ -28,15 +28,27 @@
   </refsect1>
 
   <refsect1>
+    <title>Prerequisites</title>
+    <para>
+      PostgreSQL should be accessible on all nodes (using the <varname>conninfo</varname> string shown by
+      <link linkend="repmgr-cluster-show"><command>repmgr cluster show</command></link>)
+      from the node where <command>repmgr service status</command> is executed.
+    </para>
+  </refsect1>
+
+  <refsect1>
     <title>Execution</title>
     <para>
       <command>repmgr service status</command> can be executed on any active node in the
       replication cluster. A valid <filename>repmgr.conf</filename> file is required.
     </para>
     <para>
-      If PostgreSQL is not running on a node, &repmgr; will not be able to determine the
-      status of that node's &repmgrd; instance.
+      If a node is not accessible, or PostgreSQL itself is not running on the node,
+      &repmgr; will not be able to determine the status of that node's &repmgrd; instance,
+      and &quot;<literal>n/a</literal>&quot; will be displayed in the node's <literal>repmgrd</literal>
+      column.
     </para>
+
     <note>
       <para>
         After restarting PostgreSQL on any node, the &repmgrd; instance
