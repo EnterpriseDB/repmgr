@@ -6,9 +6,9 @@
     <secondary>operation</secondary>
   </indexterm>
 
-  <sect1 id="repmgrd-pausing">
+  <sect1 id="repmgrd-pausing" xreflabel="pausing the repmgrd service">
 
-    <title>Pausing repmgrd</title>
+    <title>Pausing the repmgrd service</title>
 
   <indexterm>
     <primary>repmgrd</primary>
@@ -183,9 +183,15 @@ NOTICE: node 3 (node3) unpaused</programlisting>
     </para>
     <note>
       <para>
-	<link linkend="repmgr-service-pause"><command>repmgr service pause</command></link> and
-	<link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link>
-	<emphasis>do not</emphasis> stop/start &repmgrd;.
+	    <link linkend="repmgr-service-pause"><command>repmgr service pause</command></link> and
+	    <link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link>
+	    <emphasis>do not</emphasis> start/stop &repmgrd;.
+      </para>
+      <para>
+        The commands <link linkend="repmgr-daemon-start"><command>repmgr daemon start</command></link>
+        and <link linkend="repmgr-daemon-stop"><command>repmgr daemon stop</command></link>
+        (<link linkend="repmgrd-service-configuration">if correctly configured</link>) can be used to start/stop
+        &repmgrd; on individual nodes.
       </para>
     </note>
   </sect2>
