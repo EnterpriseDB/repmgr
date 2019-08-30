@@ -107,7 +107,11 @@ NOTICE: node 3 (node3) paused</programlisting>
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-service-unpause"/>, <xref linkend="repmgr-service-status"/>
+      <xref linkend="repmgr-service-unpause"/>,
+      <xref linkend="repmgr-service-status"/>,
+      <xref linkend="repmgrd-pausing"/>,
+      <xref linkend="repmgr-daemon-start"/>,
+      <xref linkend="repmgr-daemon-stop"/>
     </para>
   </refsect1>
 </refentry>

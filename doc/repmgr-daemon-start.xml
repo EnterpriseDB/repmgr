@@ -197,7 +197,11 @@
   <refsect1>
     <title>See also</title>
     <para>
-      <xref linkend="repmgr-daemon-stop"/>, <xref linkend="repmgrd-daemon"/>, <xref linkend="repmgr-service-status"/>
+      <xref linkend="repmgr-daemon-stop"/>,
+      <xref linkend="repmgrd-daemon"/>,
+      <xref linkend="repmgr-service-status"/>,
+      <xref linkend="repmgr-service-pause"/>,
+      <xref linkend="repmgr-service-unpause"/>
     </para>
   </refsect1>
 
