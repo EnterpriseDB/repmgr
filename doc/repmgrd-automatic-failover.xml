@@ -268,11 +268,12 @@
   <para>
     If <option>standby_disconnect_on_failover</option> is set to <literal>true</literal> in
     <filename>repmgr.conf</filename>, in a failover situation &repmgrd; will forcibly disconnect
-    the local node's WAL receiver before making a failover decision.
+    the local node's WAL receiver, and wait for the WAL receiver on all sibling nodes to be
+	disconnected, before making a failover decision.
   </para>
   <note>
     <para>
-      <option>standby_disconnect_on_failover</option> is available from PostgreSQL 9.5 and later.
+      <option>standby_disconnect_on_failover</option> is available with PostgreSQL 9.5 and later.
       Additionally this requires that the <literal>repmgr</literal> database user is a superuser.
     </para>
   </note>
@@ -290,6 +291,12 @@
     Note that when using <option>standby_disconnect_on_failover</option> there will be a delay of 5 seconds
     plus however many seconds it takes to confirm the WAL receiver is disconnected before
     &repmgrd; proceeds with the failover decision.
+  </para>
+  <para>
+	&repmgrd; will wait up to <option>sibling_nodes_disconnect_timeout</option> seconds (default:
+	<literal>30</literal>) to confirm that the WAL receiver on all sibling nodes hase been
+	disconnected before proceding with the failover operation. If the timeout is reached, the
+	failover operation will go ahead anyway.
   </para>
   <para>
     Following the failover operation, no matter what the outcome, each node will reconnect its WAL receiver.
