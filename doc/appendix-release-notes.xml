@@ -19,75 +19,145 @@
 
   <sect1 id="release-5.0">
     <title id="release-current">Release 5.0</title>
-    <para><emphasis>?? ???, 2019</emphasis></para>
+    <para><emphasis>?? September ??, 2019</emphasis></para>
+
+    <para>
+      &repmgr; 5.0 is a major release.
+    </para>
+    <para>
+      For details on how to upgrade an existing &repmgr; installation, see
+      documentation section <link linkend="upgrading-major-version">Upgrading a major version release</link>.
+    </para>
+    <para>
+      If &repmgrd; is in use, a PostgreSQL restart <emphasis>is</emphasis> required;
+      in that case we suggest combining this &repmgr; upgrade with the next PostgreSQL
+      minor release, which will require a PostgreSQL restart in any case.
+    </para>
+
 
     <sect2>
       <title>Compatibility changes</title>
-      <para>
-        Some <command>repmgr daemon ...</command> commands have been renamed to
-        <command>repmgr service ...</command> as they have a cluster-wide effect
-        and to avoid giving the impression they affect only the local &repmgr; daemon.
+
+      <sect3 id="repmgr-5-0-config-file-parsing">
+        <title>Configuration file parsing has been made stricter</title>
+        <para>
+         String parameters should always be enclosed in single quotes.
+        </para>
+        <para>
+          For example, in &repmgr; 4.4 and earlier, the following <filename>repmgr.conf</filename>
+          entry was valid:
+          <programlisting>
+conninfo=host=node1 user=repmgr dbname=repmgr connect_timeout=2</programlisting>
+          This must now be changed to:
+          <programlisting>
+conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlisting>
+        </para>
+        <para>
+          Note that simple string identifiers (e.g. <literal>node_name=node1</literal>)
+          may remain unquoted, though we recommend always enclosing
+          strings in single quotes.
+        </para>
+        <para>
+          Additionally, leading/trailing white space between single quotes will no longer
+          be trimmed; the entire string between single quotes will be
+          taken literally.
+        </para>
+        <para>
+          Strings enclosed in double quotes (e.g. <literal>node_name=&quot;node1&quot;</literal>)
+          will now be rejected; previously they were accepted, but the double quotes were
+          interpreted as part of the string, which was a frequent cause of confusion.
+        </para>
+        <para>
+          This syntax matches that used by PostgreSQL itself.
+        </para>
+      </sect3>
+
+      <sect3>
+        <title>Some &quot;repmgr daemon ...&quot; commands renamed</title>
+
+        <para>
+          Some &quot;<command>repmgr daemon ...</command>&quot; commands have been renamed to
+          &quot;<command>repmgr service ...</command>&quot; as they have a cluster-wide effect
+          and to avoid giving the impression they affect only the local &repmgr; daemon.
+        </para>
+        <para>
+          The following commands are affected:
+
+          <itemizedlist spacing="compact" mark="bullet">
+
+            <listitem>
+              <simpara>
+                <command>repmgr daemon pause</command>
+                (now <link linkend="repmgr-service-pause"><command>repmgr service pause</command></link>)
+              </simpara>
+            </listitem>
+
+            <listitem>
+              <simpara>
+                <command>repmgr daemon unpause</command>
+                (now <link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link>)
+              </simpara>
+            </listitem>
+
+            <listitem>
+              <simpara>
+                <command>repmgr daemon status</command>
+                (now <link linkend="repmgr-service-status"><command>repmgr service status</command></link>)
+              </simpara>
+            </listitem>
+
+          </itemizedlist>
+        </para>
+        <para>
+          The &quot;<command>repmgr daemon ...</command>&quot; form will still be accepted
+          for backwards compatibility.
+        </para>
+      </sect3>
+
+     <sect3>
+       <title>Some deprecated command line options removed</title>
+       <para>
+         The following command line options, which have been deprecated since &repmgr; 3.3
+         (and which no longer had any effect other than to generate a warning about their use)
+         have been removed:
+         <itemizedlist spacing="compact" mark="bullet">
+
+           <listitem>
+             <simpara><option>--data-dir</option></simpara>
+           </listitem>
+
+           <listitem>
+             <simpara><option>--no-conninfo-password</option></simpara>
+           </listitem>
+
+           <listitem>
+             <simpara><option>--recovery-min-apply-delay</option></simpara>
+           </listitem>
+
+         </itemizedlist>
       </para>
-      <para>
-        Following commands are affected:
+     </sect3>
 
-        <itemizedlist spacing="compact" mark="bullet">
-
-          <listitem>
-            <simpara>
-              <command>repmgr daemon pause</command>
-              (now <link linkend="repmgr-service-pause"><command>repmgr service pause</command></link>)
-            </simpara>
-          </listitem>
-
-          <listitem>
-            <simpara>
-              <command>repmgr daemon unpause</command>
-              (now <link linkend="repmgr-service-unpause"><command>repmgr service unpause</command></link>)
-            </simpara>
-          </listitem>
-
-          <listitem>
-            <simpara>
-              <command>repmgr daemon status</command>
-              (now <link linkend="repmgr-service-status"><command>repmgr service status</command></link>)
-            </simpara>
-          </listitem>
-
-        </itemizedlist>
-      </para>
-      <para>
-         The <command>repmgr daemon ...</command> form will still be accepted
-         for backwards compatibility.
-      </para>
-
-
-      <para>
-        The following command line options, which have been deprecated since &repmgr; 3.3
-        (and which no longer had any effect other than to generate a warning about their use)
-        have been removed:
-        <itemizedlist spacing="compact" mark="bullet">
-
-          <listitem>
-            <simpara><option>--data-dir</option></simpara>
-          </listitem>
-
-          <listitem>
-            <simpara><option>--no-conninfo-password</option></simpara>
-          </listitem>
-
-          <listitem>
-            <simpara><option>--recovery-min-apply-delay</option></simpara>
-          </listitem>
-
-        </itemizedlist>
-      </para>
     </sect2>
 
     <sect2>
       <title>General enhancements</title>
       <para>
         <itemizedlist>
+          <listitem>
+            <para>
+              Support for PostgreSQL 12 added.
+            </para>
+            <para>
+              Beginning with PostgreSQL 12, replication configuration has been integrated
+              into the main PostgreSQL configuraton system and the conventional
+              <filename>recovery.conf</filename> file is no longer valid.
+            </para>
+            <para>
+              &repmgr; has been modified to be compatible with this change.
+            </para>
+          </listitem>
+
 
           <listitem>
             <para>
@@ -100,23 +170,31 @@
               This makes configuration file parsing more robust
               and consistent.
             </para>
-            <note>
-              <para>
-                This change makes configuration file parsing somewhat stricter
-                than previously. When upgrading, be sure to check your
-                configuration file syntax.
-                <!-- XXX add notes in upgrade section -->
-              </para>
-              <para>
-                In particular, all string values containing spaces
-                <emphasis>must</emphasis> be contained within single quotes.
-              </para>
-              <para>
-                Additionally, leading/trailing white space between single quotes will no longer
-                be trimmed; the entire string between single quotes will be
-                taken literally.
-              </para>
-            </note>
+            <para>
+              See item <link linkend="repmgr-5-0-config-file-parsing">Configuration file parsing has been made stricter</link>
+              for details.
+            </para>
+          </listitem>
+
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-clone"><command>repmgr standby clone</command></link>:
+              checks for availability of the &repmgr; extension on the upstream node have
+              been improved and error messages improved.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              
+            </para>
           </listitem>
         </itemizedlist>
       </para>
