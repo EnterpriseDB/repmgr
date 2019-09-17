@@ -156,6 +156,11 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
             <para>
               &repmgr; has been modified to be compatible with this change.
             </para>
+            <para>
+              &repmgr; additionally takes advantage of the new <command>pg_promote()</command>
+              function, which enables a standby to be promoted to primary using an SQL
+              command.
+            </para>
           </listitem>
 
 
@@ -193,7 +198,12 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
         <itemizedlist>
           <listitem>
             <para>
-              
+              Check role membership when trying to read <literal>pg_settings</literal>.
+            </para>
+            <para>
+              Previously &repmgr; assumed only superusers could read <literal>pg_settings</literal>,
+              but from PostgreSQL 10, all members of the roles <literal>pg_read_all_settings</literal>
+              or <literal>pg_monitor</literal> are permitted to do this as well.
             </para>
           </listitem>
         </itemizedlist>
