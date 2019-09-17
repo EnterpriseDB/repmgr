@@ -41,7 +41,13 @@
       <sect3 id="repmgr-5-0-config-file-parsing">
         <title>Configuration file parsing has been made stricter</title>
         <para>
-         String parameters should always be enclosed in single quotes.
+          &repmgr; now parses <link linkend="configuration-file-format">configuration files</link>
+          in the same way that PostgreSQL itself does, which means some files used with
+          earlier &repmgr; versions may need slight modification before they can be used
+          with &repmgr; 5 and later.
+        </para>
+        <para>
+          The main change is that string parameters should always be enclosed in single quotes.
         </para>
         <para>
           For example, in &repmgr; 4.4 and earlier, the following <filename>repmgr.conf</filename>

@@ -31,6 +31,8 @@
       <secondary>format</secondary>
     </indexterm>
 
+
+
     <para>
       <filename>repmgr.conf</filename> is a plain text file with one parameter/value
       combination per line.
@@ -39,14 +41,10 @@
       Whitespace is insignificant (except within a quoted parameter value) and blank lines are ignored.
       Hash marks (<literal>#</literal>) designate the remainder of the line as a comment.
       Parameter values that are not simple identifiers or numbers should be single-quoted.
-      Note that single quote cannot be embedded in a parameter value.
     </para>
-    <important>
-      <para>
-        &repmgr; will interpret double-quotes as being part of a string value; only use single quotes
-        to quote parameter values.
-      </para>
-    </important>
+    <para>
+      To embed a single quote in a parameter value, write either two quotes (preferred) or backslash-quote.
+    </para>
 
     <para>
       Example of a valid <filename>repmgr.conf</filename> file:
@@ -56,9 +54,32 @@
 node_id=1
 node_name= node1
 conninfo ='host=node1 dbname=repmgr user=repmgr connect_timeout=2'
-data_directory = /var/lib/pgsql/12/data</programlisting>
+data_directory = '/var/lib/pgsql/12/data'</programlisting>
 
     </para>
+
+    <note>
+      <para>
+        Beginning with <link linkend="release-5.0">repmgr 5.0</link>, configuration
+        file parsing has been tightened up and now matches the way PostgreSQL
+        itself parses configuration files.
+      </para>
+      <para>
+        This means <filename>repmgr.conf</filename> files used with earlier &repmgr;
+        versions may need slight modification before they can be used with &repmgr; 5
+        and later.
+      </para>
+      <para>
+        The main change is that &repmgr; requires most string values to be
+        enclosed in single quotes. For example, this was previously valid:
+          <programlisting>
+conninfo=host=node1 user=repmgr dbname=repmgr connect_timeout=2</programlisting>
+          but must now be changed to:
+          <programlisting>
+conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlisting>
+      </para>
+    </note>
+
   </sect2>
 
 
