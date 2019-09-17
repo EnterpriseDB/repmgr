@@ -1,6 +1,8 @@
 /*
  * sysutils.c
  *
+ * Functions which need to be executed on the local system.
+ *
  * Copyright (c) 2ndQuadrant, 2010-2019
  *
  * This program is free software: you can redistribute it and/or modify
@@ -115,7 +117,7 @@ bool
 remote_command(const char *host, const char *user, const char *command, const char *ssh_options, PQExpBufferData *outputbuf)
 {
 	FILE	   *fp;
-	char		ssh_command[MAXLEN] = "";
+	PQExpBufferData ssh_command;
 	PQExpBufferData ssh_host;
 
 	char		output[MAXLEN] = "";
@@ -129,23 +131,28 @@ remote_command(const char *host, const char *user, const char *command, const ch
 
 	appendPQExpBufferStr(&ssh_host, host);
 
-	maxlen_snprintf(ssh_command,
-					"ssh -o Batchmode=yes %s %s %s",
-					ssh_options,
-					ssh_host.data,
-					command);
+	initPQExpBuffer(&ssh_command);
+
+	appendPQExpBuffer(&ssh_command,
+					  "ssh -o Batchmode=yes %s %s %s",
+					  ssh_options,
+					  ssh_host.data,
+					  command);
 
 	termPQExpBuffer(&ssh_host);
 
-	log_debug("remote_command():\n  %s", ssh_command);
+	log_debug("remote_command():\n  %s", ssh_command.data);
 
-	fp = popen(ssh_command, "r");
+	fp = popen(ssh_command.data, "r");
 
 	if (fp == NULL)
 	{
-		log_error(_("unable to execute remote command:\n  %s"), ssh_command);
+		log_error(_("unable to execute remote command:\n  %s"), ssh_command.data);
+		termPQExpBuffer(&ssh_command);
 		return false;
 	}
+
+	termPQExpBuffer(&ssh_command);
 
 	if (outputbuf != NULL)
 	{
