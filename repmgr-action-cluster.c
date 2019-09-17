@@ -987,7 +987,19 @@ build_cluster_matrix(t_node_matrix_rec ***matrix_rec_dest, int *name_length, Ite
 		make_remote_repmgr_path(&command, cell->node_info);
 
 		appendPQExpBufferStr(&command,
-							 " cluster show --csv -L NOTICE --terse\"");
+							 " cluster show --csv --terse");
+
+		/*
+		 * Usually we'll want NOTICE as the log level, but if the user
+		 * explicitly provided one with --log-level, that will be passed
+		 * in the remote repmgr invocation.
+		 */
+		if (runtime_options.log_level[0] == '\0')
+		{
+			appendPQExpBufferStr(&command,
+								 " -L NOTICE");
+		}
+		appendPQExpBufferChar(&command, '"');
 
 		log_verbose(LOG_DEBUG, "build_cluster_matrix(): executing:\n  %s", command.data);
 
@@ -1175,7 +1187,18 @@ build_cluster_crosscheck(t_node_status_cube ***dest_cube, int *name_length, Item
 		make_remote_repmgr_path(&command, cell->node_info);
 
 		appendPQExpBufferStr(&command,
-							 " cluster matrix --csv -L NOTICE --terse");
+							 " cluster matrix --csv --terse");
+
+		/*
+		 * Usually we'll want NOTICE as the log level, but if the user
+		 * explicitly provided one with --log-level, that will be passed
+		 * in the remote repmgr invocation.
+		 */
+		if (runtime_options.log_level[0] == '\0')
+		{
+			appendPQExpBufferStr(&command,
+								 " -L NOTICE");
+		}
 
 		initPQExpBuffer(&command_output);
 

@@ -3167,6 +3167,18 @@ make_remote_repmgr_path(PQExpBufferData *output_buf, t_node_info *remote_node_re
 					  "%s -f %s ",
 					  progname(),
 					  remote_node_record->config_file);
+
+	/*
+	 * If --log-level was explicitly supplied, pass that through
+	 * to the remote repmgr client too.
+	 */
+	if (runtime_options.log_level[0] != '\0')
+	{
+		appendPQExpBuffer(output_buf,
+						  " -L %s ",
+						  runtime_options.log_level);
+	}
+
 }
 
 

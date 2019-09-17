@@ -194,6 +194,22 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
               been improved and error messages improved.
             </para>
           </listitem>
+
+		  <listitem>
+			<para>
+			  When executing &repmgr; remotely, if the &repmgr; log level was explicitly
+			  provided (with <option>-L</option>/<option>--log-level</option>), that log level
+			  will be passed to the remote &repmgr;.
+			</para>
+			<para>
+			  This makes it possible to return log output when executing repmgr
+			  remotely at a different level to the one defined in the remote
+			  &repmgr;'s <filename>repmgr.conf</filename>.
+			</para>
+			<para>
+			  This is particularly useful when <literal>DEBUG</literal> output is required.
+			</para>
+		  </listitem>
         </itemizedlist>
       </para>
     </sect2>
