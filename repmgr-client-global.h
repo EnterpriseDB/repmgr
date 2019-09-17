@@ -260,5 +260,6 @@ extern void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slo
 extern bool check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record, bool is_rejoin);
 extern void check_shared_library(PGconn *conn);
 extern bool is_repmgrd_running(PGconn *conn);
+extern int parse_repmgr_version(const char *version_string);
 
 #endif							/* _REPMGR_CLIENT_GLOBAL_H_ */

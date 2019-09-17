@@ -28,6 +28,4 @@ extern bool remote_command(const char *host, const char *user, const char *comma
 extern pid_t disable_wal_receiver(PGconn *conn);
 extern pid_t enable_wal_receiver(PGconn *conn, bool wait_startup);
 
-extern int parse_repmgr_version(const char *version_string);
-
 #endif							/* _SYSUTILS_H_ */
