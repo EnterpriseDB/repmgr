@@ -62,6 +62,9 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
          <itemizedlist spacing="compact" mark="bullet">
 
            <listitem>
+             <simpara><literal>flex</literal></simpara>
+           </listitem>
+           <listitem>
              <simpara><literal>libedit-dev</literal></simpara>
            </listitem>
            <listitem>
@@ -115,6 +118,9 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
 
          <itemizedlist spacing="compact" mark="bullet">
 
+           <listitem>
+             <simpara><literal>flex</literal></simpara>
+           </listitem>
            <listitem>
              <simpara><literal>libselinux-devel</literal></simpara>
            </listitem>
