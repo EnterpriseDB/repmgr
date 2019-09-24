@@ -183,7 +183,8 @@ deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisti
    </para>
 
    <para>
-    There are also tags for each &repmgr; release, e.g. <literal>v4.2.0</literal>.
+    There are also tags for each <ulink url="https://github.com/2ndQuadrant/repmgr/releases">&repmgr; release</ulink>, e.g.
+    <literal><ulink url="https://github.com/2ndQuadrant/repmgr/releases/tag/v4.4.0">v4.4.0</ulink></literal>.
    </para>
 
    <para>
