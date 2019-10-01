@@ -3,443 +3,442 @@
   <title>FAQ (Frequently Asked Questions)</title>
 
   <indexterm>
-   <primary>FAQ (Frequently Asked Questions)</primary>
+    <primary>FAQ (Frequently Asked Questions)</primary>
   </indexterm>
 
- <sect1 id="faq-general" xreflabel="General">
-  <title>General</title>
+  <sect1 id="faq-general" xreflabel="General">
+    <title>General</title>
 
-  <sect2 id="faq-xrepmgr-version-diff" xreflabel="Version differences">
-    <title>What's the difference between the repmgr versions?</title>
-    <para>
-      &repmgr; 4 is a complete rewrite of the previous &repmgr; code base
-      and implements &repmgr; as a PostgreSQL extension. It
-      supports all PostgreSQL versions from 9.3 (although some &repmgr;
-      features are not available for PostgreSQL 9.3 and 9.4).
-     </para>
-    <note>
+    <sect2 id="faq-xrepmgr-version-diff" xreflabel="Version differences">
+      <title>What's the difference between the repmgr versions?</title>
       <para>
-        &repmgr; 5 is fundamentally the same code base as &repmgr; 4, but provides
-        support for the revised replication configuration mechanism in PostgreSQL 12.
+        &repmgr; 4 is a complete rewrite of the previous &repmgr; code base
+        and implements &repmgr; as a PostgreSQL extension. It
+        supports all PostgreSQL versions from 9.3 (although some &repmgr;
+        features are not available for PostgreSQL 9.3 and 9.4).
       </para>
-    </note>
-     <para>
-      &repmgr; 3.x builds on the improved replication facilities added
-      in PostgreSQL 9.3, as well as improved automated failover support
-      via &repmgrd;, and is not compatible with PostgreSQL 9.2
-      and earlier. We recommend upgrading to &repmgr; 4, as the &repmgr; 3.x
-      series is no longer maintained.
-     </para>
-     <para>
-      &repmgr; 2.x supports PostgreSQL 9.0 ~ 9.3. While it is compatible
-      with PostgreSQL 9.3, we recommend using repmgr 4.x. &repmgr; 2.x is
-      no longer maintained.
-     </para>
-     <para>
-       See also <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>
-       and <link linkend="faq-upgrade-repmgr">Should I upgrade &repmgr;?</link>.
-     </para>
-  </sect2>
+      <note>
+        <para>
+          &repmgr; 5 is fundamentally the same code base as &repmgr; 4, but provides
+          support for the revised replication configuration mechanism in PostgreSQL 12.
+        </para>
+      </note>
+      <para>
+        &repmgr; 3.x builds on the improved replication facilities added
+        in PostgreSQL 9.3, as well as improved automated failover support
+        via &repmgrd;, and is not compatible with PostgreSQL 9.2
+        and earlier. We recommend upgrading to &repmgr; 4, as the &repmgr; 3.x
+        series is no longer maintained.
+      </para>
+      <para>
+        &repmgr; 2.x supports PostgreSQL 9.0 ~ 9.3. While it is compatible
+        with PostgreSQL 9.3, we recommend using repmgr 4.x. &repmgr; 2.x is
+        no longer maintained.
+      </para>
+      <para>
+        See also <link linkend="install-compatibility-matrix">&repmgr; compatibility matrix</link>
+        and <link linkend="faq-upgrade-repmgr">Should I upgrade &repmgr;?</link>.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-replication-slots-advantage" xreflabel="Advantages of replication slots">
-   <title>What's the advantage of using replication slots?</title>
-   <para>
-    Replication slots, introduced in PostgreSQL 9.4, ensure that the
-    primary server will retain WAL files until they have been consumed
-    by all standby servers. This means standby servers should never
-    fail due to not being able to retrieve required WAL files from the
-    primary.
-   </para>
-   <para>
-    However this does mean that if a standby is no longer connected to the
-    primary, the presence of the replication slot will cause WAL files
-    to be retained indefinitely, and eventually lead to disk space
-    exhaustion.
-   </para>
+    <sect2 id="faq-replication-slots-advantage" xreflabel="Advantages of replication slots">
+      <title>What's the advantage of using replication slots?</title>
+      <para>
+        Replication slots, introduced in PostgreSQL 9.4, ensure that the
+        primary server will retain WAL files until they have been consumed
+        by all standby servers. This means standby servers should never
+        fail due to not being able to retrieve required WAL files from the
+        primary.
+      </para>
+      <para>
+        However this does mean that if a standby is no longer connected to the
+        primary, the presence of the replication slot will cause WAL files
+        to be retained indefinitely, and eventually lead to disk space
+        exhaustion.
+      </para>
 
-   <tip>
-     <para>
-       2ndQuadrant's recommended configuration is to configure
-       <ulink url="https://www.pgbarman.org/">Barman</ulink> as a fallback
-       source of WAL files, rather than maintain replication slots for
-       each standby. See also: <link linkend="cloning-from-barman-restore-command">Using Barman as a WAL file source</link>.
-     </para>
-   </tip>
-  </sect2>
+      <tip>
+        <para>
+          2ndQuadrant's recommended configuration is to configure
+          <ulink url="https://www.pgbarman.org/">Barman</ulink> as a fallback
+          source of WAL files, rather than maintain replication slots for
+          each standby. See also: <link linkend="cloning-from-barman-restore-command">Using Barman as a WAL file source</link>.
+        </para>
+      </tip>
+    </sect2>
 
-  <sect2 id="faq-replication-slots-number" xreflabel="Number of replication slots">
-   <title>How many replication slots should I define in <varname>max_replication_slots</varname>?</title>
-   <para>
-    Normally at least same number as the number of standbys which will connect
-    to the node. Note that changes to <varname>max_replication_slots</varname> require a server
-    restart to take effect, and as there is no particular penalty for unused
-    replication slots, setting a higher figure will make adding new nodes
-    easier.
-   </para>
-  </sect2>
+    <sect2 id="faq-replication-slots-number" xreflabel="Number of replication slots">
+      <title>How many replication slots should I define in <varname>max_replication_slots</varname>?</title>
+      <para>
+        Normally at least same number as the number of standbys which will connect
+        to the node. Note that changes to <varname>max_replication_slots</varname> require a server
+        restart to take effect, and as there is no particular penalty for unused
+        replication slots, setting a higher figure will make adding new nodes
+        easier.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-hash-index" xreflabel="Hash indexes">
-   <title>Does &repmgr; support hash indexes?</title>
-   <para>
-    Before PostgreSQL 10, hash indexes were not WAL logged and are therefore not suitable
-    for use in streaming replication in PostgreSQL 9.6 and earlier. See the
-    <ulink url="https://www.postgresql.org/docs/9.6/sql-createindex.html#AEN80279">PostgreSQL documentation</ulink>
-    for details.
-   </para>
-   <para>
-    From PostgreSQL 10, this restriction has been lifted and hash indexes can be used
-    in a streaming replication cluster.
-   </para>
-  </sect2>
+    <sect2 id="faq-hash-index" xreflabel="Hash indexes">
+      <title>Does &repmgr; support hash indexes?</title>
+      <para>
+        Before PostgreSQL 10, hash indexes were not WAL logged and are therefore not suitable
+        for use in streaming replication in PostgreSQL 9.6 and earlier. See the
+        <ulink url="https://www.postgresql.org/docs/9.6/sql-createindex.html#AEN80279">PostgreSQL documentation</ulink>
+        for details.
+      </para>
+      <para>
+        From PostgreSQL 10, this restriction has been lifted and hash indexes can be used
+        in a streaming replication cluster.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-upgrades" xreflabel="Upgrading PostgreSQL with repmgr">
-   <title>Can &repmgr; assist with upgrading a PostgreSQL cluster?</title>
-   <para>
-     For <emphasis>minor</emphasis> version upgrades, e.g. from 9.6.7 to 9.6.8, a common
-     approach is to upgrade a standby to the latest version, perform a
-     <link linkend="performing-switchover">switchover</link> promoting it to a primary,
-     then upgrade the former primary.
-   </para>
-   <para>
-     For <emphasis>major</emphasis> version upgrades (e.g. from PostgreSQL 9.6 to PostgreSQL 10),
-     the traditional approach is to "reseed" a cluster by upgrading a single
-     node with <ulink url="https://www.postgresql.org/docs/current/pgupgrade.html">pg_upgrade</ulink>
-     and recloning standbys from this.
-   </para>
-   <para>
-     To minimize downtime during major upgrades from PostgreSQL 9.4 and later,
-     <ulink url="https://www.2ndquadrant.com/en/resources/pglogical/">pglogical</ulink>
-     can be used to set up a parallel cluster using the newer PostgreSQL version,
-     which can be kept in sync with the existing production cluster until the
-     new cluster is ready to be put into production.
-   </para>
-  </sect2>
+    <sect2 id="faq-upgrades" xreflabel="Upgrading PostgreSQL with repmgr">
+      <title>Can &repmgr; assist with upgrading a PostgreSQL cluster?</title>
+      <para>
+        For <emphasis>minor</emphasis> version upgrades, e.g. from 9.6.7 to 9.6.8, a common
+        approach is to upgrade a standby to the latest version, perform a
+        <link linkend="performing-switchover">switchover</link> promoting it to a primary,
+        then upgrade the former primary.
+      </para>
+      <para>
+        For <emphasis>major</emphasis> version upgrades (e.g. from PostgreSQL 9.6 to PostgreSQL 10),
+        the traditional approach is to "reseed" a cluster by upgrading a single
+        node with <ulink url="https://www.postgresql.org/docs/current/pgupgrade.html">pg_upgrade</ulink>
+        and recloning standbys from this.
+      </para>
+      <para>
+        To minimize downtime during major upgrades from PostgreSQL 9.4 and later,
+        <ulink url="https://www.2ndquadrant.com/en/resources/pglogical/">pglogical</ulink>
+        can be used to set up a parallel cluster using the newer PostgreSQL version,
+        which can be kept in sync with the existing production cluster until the
+        new cluster is ready to be put into production.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-libdir-repmgr-error">
-   <title>What does this error mean: <literal>ERROR: could not access file "$libdir/repmgr"</literal>?</title>
-   <para>
-     It means the &repmgr; extension code is not installed in the
-     PostgreSQL application directory. This typically happens when using PostgreSQL
-     packages provided by a third-party vendor, which often have different
-     filesystem layouts.
-   </para>
-   <para>
-     Either use PostgreSQL packages provided by the community or 2ndQuadrant; if this
-     is not possible, contact your vendor for assistance.
-   </para>
-  </sect2>
+    <sect2 id="faq-libdir-repmgr-error">
+      <title>What does this error mean: <literal>ERROR: could not access file "$libdir/repmgr"</literal>?</title>
+      <para>
+        It means the &repmgr; extension code is not installed in the
+        PostgreSQL application directory. This typically happens when using PostgreSQL
+        packages provided by a third-party vendor, which often have different
+        filesystem layouts.
+      </para>
+      <para>
+        Either use PostgreSQL packages provided by the community or 2ndQuadrant; if this
+        is not possible, contact your vendor for assistance.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-old-packages">
-   <title>How can I obtain old versions of &repmgr; packages?</title>
-   <para>
-     See appendix <xref linkend="packages-old-versions"/> for details.
-   </para>
-  </sect2>
+    <sect2 id="faq-old-packages">
+      <title>How can I obtain old versions of &repmgr; packages?</title>
+      <para>
+        See appendix <xref linkend="packages-old-versions"/> for details.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-required-for-replication">
-    <title>Is &repmgr; required for streaming replication?</title>
-    <para>
-      No.
-    </para>
-    <para>
-     &repmgr; (together with &repmgrd;) assists with
-     <emphasis>managing</emphasis> replication. It does not actually perform replication, which
-     is part of the core PostgreSQL functionality.
-    </para>
-  </sect2>
+    <sect2 id="faq-repmgr-required-for-replication">
+      <title>Is &repmgr; required for streaming replication?</title>
+      <para>
+        No.
+      </para>
+      <para>
+        &repmgr; (together with &repmgrd;) assists with
+        <emphasis>managing</emphasis> replication. It does not actually perform replication, which
+        is part of the core PostgreSQL functionality.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-what-if-repmgr-uninstalled">
-   <title>Will replication stop working if &repmgr; is uninstalled?</title>
-   <para>
-     No. See preceding question.
-   </para>
-  </sect2>
+    <sect2 id="faq-what-if-repmgr-uninstalled">
+      <title>Will replication stop working if &repmgr; is uninstalled?</title>
+      <para>
+        No. See preceding question.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-version-mix">
-   <title>Does it matter if different &repmgr; versions are present in the replication cluster?</title>
-   <para>
-     Yes. If different &quot;major&quot; &repmgr; versions (e.g. 3.3.x and 4.1.x) are present,
-     &repmgr; (in particular &repmgrd;)
-     may not run, or run properly, or in the worst case (if different &repmgrd;
-     versions are running and there are differences in the failover implementation) break
-     your replication cluster.
-   </para>
-   <para>
-     If different &quot;minor&quot; &repmgr; versions (e.g. 4.1.1 and 4.1.6) are installed,
-     &repmgr; will function, but we strongly recommend always running the same version
-     to ensure there are no unexpected suprises, e.g. a newer version behaving slightly
-     differently to the older version.
-   </para>
-   <para>
-     See also <link linkend="faq-upgrade-repmgr">Should I upgrade &repmgr;?</link>.
-   </para>
-  </sect2>
+    <sect2 id="faq-version-mix">
+      <title>Does it matter if different &repmgr; versions are present in the replication cluster?</title>
+      <para>
+        Yes. If different &quot;major&quot; &repmgr; versions (e.g. 3.3.x and 4.1.x) are present,
+        &repmgr; (in particular &repmgrd;)
+        may not run, or run properly, or in the worst case (if different &repmgrd;
+        versions are running and there are differences in the failover implementation) break
+        your replication cluster.
+      </para>
+      <para>
+        If different &quot;minor&quot; &repmgr; versions (e.g. 4.1.1 and 4.1.6) are installed,
+        &repmgr; will function, but we strongly recommend always running the same version
+        to ensure there are no unexpected suprises, e.g. a newer version behaving slightly
+        differently to the older version.
+      </para>
+      <para>
+        See also <link linkend="faq-upgrade-repmgr">Should I upgrade &repmgr;?</link>.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-upgrade-repmgr">
-    <title>Should I upgrade &repmgr;?</title>
-    <para>
-      Yes.
-    </para>
-    <para>
-      We don't release new versions for fun, you know. Upgrading may require a little effort,
-      but running an older &repmgr; version with bugs which have since been fixed may end up
-      costing you more effort. The same applies to PostgreSQL itself.
-    </para>
+    <sect2 id="faq-upgrade-repmgr">
+      <title>Should I upgrade &repmgr;?</title>
+      <para>
+        Yes.
+      </para>
+      <para>
+        We don't release new versions for fun, you know. Upgrading may require a little effort,
+        but running an older &repmgr; version with bugs which have since been fixed may end up
+        costing you more effort. The same applies to PostgreSQL itself.
+      </para>
+    </sect2>
 
-  </sect2>
+    <sect2 id="faq-repmgr-conf-data-directory">
+      <title>Why do I need to specify the data directory location in repmgr.conf?</title>
+      <para>
+        In some circumstances &repmgr; may need to access a PostgreSQL data
+        directory while the PostgreSQL server is not running, e.g. to confirm
+        it shut down cleanly during a <link linkend="performing-switchover">switchover</link>.
+      </para>
+      <para>
+        Additionally, this provides support when using &repmgr; on PostgreSQL 9.6 and
+        earlier, where the <literal>repmgr</literal> user is not a superuser; in that
+        case the <literal>repmgr</literal> user will not be able to access the
+        <literal>data_directory</literal> configuration setting, access to which is restricted
+        to superusers. (In PostgreSQL 10 and later, non-superusers can be added to the
+        group <option>pg_read_all_settings</option> which will enable them to read this setting).
+      </para>
+    </sect2>
+  </sect1>
 
-  <sect2 id="faq-repmgr-conf-data-directory">
-    <title>Why do I need to specify the data directory location in repmgr.conf?</title>
-    <para>
-      In some circumstances &repmgr; may need to access a PostgreSQL data
-      directory while the PostgreSQL server is not running, e.g. to confirm
-      it shut down cleanly during a <link linkend="performing-switchover">switchover</link>.
-    </para>
-    <para>
-      Additionally, this provides support when using &repmgr; on PostgreSQL 9.6 and
-      earlier, where the <literal>repmgr</literal> user is not a superuser; in that
-      case the <literal>repmgr</literal> user will not be able to access the
-      <literal>data_directory</literal> configuration setting, access to which is restricted
-      to superusers. (In PostgreSQL 10 and later, non-superusers can be added to the
-      group <option>pg_read_all_settings</option> which will enable them to read this setting).
-    </para>
-  </sect2>
- </sect1>
+  <sect1 id="faq-repmgr" xreflabel="repmgr">
+    <title><command>repmgr</command></title>
 
- <sect1 id="faq-repmgr" xreflabel="repmgr">
-  <title><command>repmgr</command></title>
+    <sect2 id="faq-register-existing-node" xreflabel="registering an existing node">
+      <title>Can I register an existing PostgreSQL server with repmgr?</title>
+      <para>
+        Yes, any existing PostgreSQL server which is part of the same replication
+        cluster can be registered with &repmgr;. There's no requirement for a
+        standby to have been cloned using &repmgr;.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-register-existing-node" xreflabel="registering an existing node">
-   <title>Can I register an existing PostgreSQL server with repmgr?</title>
-   <para>
-    Yes, any existing PostgreSQL server which is part of the same replication
-    cluster can be registered with &repmgr;. There's no requirement for a
-    standby to have been cloned using &repmgr;.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-clone-other-source" >
+      <title>Can I use a standby not cloned by &repmgr; as a &repmgr; node?</title>
 
-  <sect2 id="faq-repmgr-clone-other-source" >
-   <title>Can I use a standby not cloned by &repmgr; as a &repmgr; node?</title>
+      <para>
+        For a standby which has been manually cloned or recovered from an external
+        backup manager such as Barman, the command
+        <command><link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link></command>
+        can be used to create the correct <filename>recovery.conf</filename> file for
+        use with &repmgr; (and will create a replication slot if required). Once this has been done,
+        <link linkend="repmgr-standby-register">register the node</link> as usual.
+      </para>
+    </sect2>
 
-   <para>
-     For a standby which has been manually cloned or recovered from an external
-     backup manager such as Barman, the command
-     <command><link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link></command>
-     can be used to create the correct <filename>recovery.conf</filename> file for
-     use with &repmgr; (and will create a replication slot if required). Once this has been done,
-     <link linkend="repmgr-standby-register">register the node</link> as usual.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-recovery-conf" >
+      <title>What does &repmgr; write in <filename>recovery.conf</filename>, and what options can be set there?</title>
+      <para>
+        See section <link linkend="repmgr-standby-clone-recovery-conf">Customising recovery.conf</link>.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-recovery-conf" >
-    <title>What does &repmgr; write in <filename>recovery.conf</filename>, and what options can be set there?</title>
-   <para>
-     See section <link linkend="repmgr-standby-clone-recovery-conf">Customising recovery.conf</link>.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-failed-primary-standby" xreflabel="Reintegrate a failed primary as a standby">
+      <title>How can a failed primary be re-added as a standby?</title>
+      <para>
+        This is a two-stage process. First, the failed primary's data directory
+        must be re-synced with the current primary; secondly the failed primary
+        needs to be re-registered as a standby.
+      </para>
+      <para>
+        It's possible to use <command>pg_rewind</command> to re-synchronise the existing data
+        directory, which will usually be much
+        faster than re-cloning the server. However <command>pg_rewind</command> can only
+        be used if PostgreSQL either has <varname>wal_log_hints</varname> enabled, or
+        data checksums were enabled when the cluster was initialized.
+      </para>
+      <para>
+        Note that <command>pg_rewind</command> is available as part of the core PostgreSQL
+        distribution from PostgreSQL 9.5, and as a third-party utility for PostgreSQL 9.3 and 9.4.
+      </para>
+      <para>
+        &repmgr; provides the command <command>repmgr node rejoin</command> which can
+        optionally execute <command>pg_rewind</command>; see the <xref linkend="repmgr-node-rejoin"/>
+        documentation for details, in particular the section <xref linkend="repmgr-node-rejoin-pg-rewind"/>.
+      </para>
+      <para>
+        If <command>pg_rewind</command> cannot be used, then the data directory will need
+        to be re-cloned from scratch.
+      </para>
 
-  <sect2 id="faq-repmgr-failed-primary-standby" xreflabel="Reintegrate a failed primary as a standby">
-   <title>How can a failed primary be re-added as a standby?</title>
-   <para>
-    This is a two-stage process. First, the failed primary's data directory
-    must be re-synced with the current primary; secondly the failed primary
-    needs to be re-registered as a standby.
-   </para>
-   <para>
-    It's possible to use <command>pg_rewind</command> to re-synchronise the existing data
-    directory, which will usually be much
-    faster than re-cloning the server. However <command>pg_rewind</command> can only
-    be used if PostgreSQL either has <varname>wal_log_hints</varname> enabled, or
-    data checksums were enabled when the cluster was initialized.
-   </para>
-   <para>
-     Note that <command>pg_rewind</command> is available as part of the core PostgreSQL
-     distribution from PostgreSQL 9.5, and as a third-party utility for PostgreSQL 9.3 and 9.4.
-   </para>
-   <para>
-    &repmgr; provides the command <command>repmgr node rejoin</command> which can
-    optionally execute <command>pg_rewind</command>; see the <xref linkend="repmgr-node-rejoin"/>
-    documentation for details, in particular the section <xref linkend="repmgr-node-rejoin-pg-rewind"/>.
-   </para>
-   <para>
-    If <command>pg_rewind</command> cannot be used, then the data directory will need
-    to be re-cloned from scratch.
-   </para>
+    </sect2>
 
-  </sect2>
+    <sect2 id="faq-repmgr-check-configuration" xreflabel="Check PostgreSQL configuration">
+      <title>Is there an easy way to check my primary server is correctly configured for use with &repmgr;?</title>
+      <para>
+        Execute <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>
+        with the <literal>--dry-run</literal> option; this will report any configuration problems
+        which need to be rectified.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-check-configuration" xreflabel="Check PostgreSQL configuration">
-   <title>Is there an easy way to check my primary server is correctly configured for use with &repmgr;?</title>
-   <para>
-    Execute <command><link linkend="repmgr-standby-clone">repmgr standby clone</link></command>
-    with the <literal>--dry-run</literal> option; this will report any configuration problems
-    which need to be rectified.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-clone-skip-config-files" xreflabel="">
+      <title>When cloning a standby, how can I get &repmgr; to copy
+        <filename>postgresql.conf</filename> and <filename>pg_hba.conf</filename> from the PostgreSQL configuration
+        directory in <filename>/etc</filename>?</title>
+      <para>
+        Use the command line option <literal>--copy-external-config-files</literal>. For more details
+        see <xref linkend="repmgr-standby-clone-config-file-copying"/>.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-clone-skip-config-files" xreflabel="">
-   <title>When cloning a standby, how can I get &repmgr; to copy
-     <filename>postgresql.conf</filename> and <filename>pg_hba.conf</filename> from the PostgreSQL configuration
-     directory in <filename>/etc</filename>?</title>
-   <para>
-    Use the command line option <literal>--copy-external-config-files</literal>. For more details
-    see <xref linkend="repmgr-standby-clone-config-file-copying"/>.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-shared-preload-libaries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
+      <title>Do I need to include <literal>shared_preload_libraries = 'repmgr'</literal>
+        in <filename>postgresql.conf</filename> if I'm not using &repmgrd;?</title>
+      <para>
+        No, the <literal>repmgr</literal> shared library is only needed when running &repmgrd;.
+        If you later decide to run &repmgrd;, you just need to add
+        <literal>shared_preload_libraries = 'repmgr'</literal> and restart PostgreSQL.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-shared-preload-libaries-no-repmgrd" xreflabel="shared_preload_libraries without repmgrd">
-    <title>Do I need to include <literal>shared_preload_libraries = 'repmgr'</literal>
-      in <filename>postgresql.conf</filename> if I'm not using &repmgrd;?</title>
-   <para>
-    No, the <literal>repmgr</literal> shared library is only needed when running &repmgrd;.
-    If you later decide to run &repmgrd;, you just need to add
-    <literal>shared_preload_libraries = 'repmgr'</literal> and restart PostgreSQL.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-permissions" xreflabel="Replication permission problems">
+      <title>I've provided replication permission for the <literal>repmgr</literal> user in <filename>pg_hba.conf</filename>
+        but <command>repmgr</command>/&repmgrd; complains it can't connect to the server... Why?</title>
+      <para>
+        <command>repmgr</command> and &repmgrd; need to be able to connect to the repmgr database
+        with a normal connection to query metadata. The <literal>replication</literal> connection
+        permission is for PostgreSQL's streaming replication (and doesn't  necessarily need to be the <literal>repmgr</literal> user).
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-permissions" xreflabel="Replication permission problems">
-   <title>I've provided replication permission for the <literal>repmgr</literal> user in <filename>pg_hba.conf</filename>
-     but <command>repmgr</command>/&repmgrd; complains it can't connect to the server... Why?</title>
-   <para>
-    <command>repmgr</command> and &repmgrd; need to be able to connect to the repmgr database
-    with a normal connection to query metadata. The <literal>replication</literal> connection
-    permission is for PostgreSQL's streaming replication (and doesn't  necessarily need to be the <literal>repmgr</literal> user).
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-clone-provide-primary-conninfo" xreflabel="Providing primary connection parameters">
+      <title>When cloning a standby, why do I need to provide the connection parameters
+        for the primary server on the command line, not in the configuration file?</title>
+      <para>
+        Cloning a standby is a one-time action; the role of the server being cloned
+        from could change, so fixing it in the configuration file would create
+        confusion. If &repmgr; needs to establish a connection to the primary
+        server, it can retrieve this from the <literal>repmgr.nodes</literal> table on the local
+        node, and if necessary scan the replication cluster until it locates the active primary.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-clone-provide-primary-conninfo" xreflabel="Providing primary connection parameters">
-   <title>When cloning a standby, why do I need to provide the connection parameters
-     for the primary server on the command line, not in the configuration file?</title>
-   <para>
-    Cloning a standby is a one-time action; the role of the server being cloned
-    from could change, so fixing it in the configuration file would create
-    confusion. If &repmgr; needs to establish a connection to the primary
-    server, it can retrieve this from the <literal>repmgr.nodes</literal> table on the local
-    node, and if necessary scan the replication cluster until it locates the active primary.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-clone-waldir-xlogdir" xreflabel="Providing a custom WAL directory">
+      <title>When cloning a standby, how do I ensure the WAL files are placed in a custom directory?</title>
+      <para>
+        Provide the option <literal>--waldir</literal>  (<literal>--xlogdir</literal> in PostgreSQL 9.6
+        and earlier) with the absolute path to the WAL directory in <varname>pg_basebackup_options</varname>.
+        For more details see <xref linkend="cloning-advanced-pg-basebackup-options"/>.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-clone-waldir-xlogdir" xreflabel="Providing a custom WAL directory">
-   <title>When cloning a standby, how do I ensure the WAL files are placed in a custom directory?</title>
-   <para>
-     Provide the option <literal>--waldir</literal>  (<literal>--xlogdir</literal> in PostgreSQL 9.6
-     and earlier) with the absolute path to the WAL directory in <varname>pg_basebackup_options</varname>.
-     For more details see <xref linkend="cloning-advanced-pg-basebackup-options"/>.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgr-events-no-fkey" xreflabel="No foreign key on node_id in repmgr.events">
+      <title>Why is there no foreign key on the <literal>node_id</literal> column in the <literal>repmgr.events</literal>
+        table?</title>
+      <para>
+        Under some circumstances event notifications can be generated for servers
+        which have not yet been registered; it's also useful to retain a record
+        of events which includes servers removed from the replication cluster
+        which no longer have an entry in the <literal>repmgr.nodes</literal> table.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgr-events-no-fkey" xreflabel="No foreign key on node_id in repmgr.events">
-   <title>Why is there no foreign key on the <literal>node_id</literal> column in the <literal>repmgr.events</literal>
-     table?</title>
-   <para>
-     Under some circumstances event notifications can be generated for servers
-     which have not yet been registered; it's also useful to retain a record
-     of events which includes servers removed from the replication cluster
-     which no longer have an entry in the <literal>repmgr.nodes</literal> table.
-   </para>
-  </sect2>
-
-  <sect2 id="faq-repmgr-recovery-conf-quoted-values" xreflabel="Quoted values in recovery.conf">
-    <title>Why are some values in <filename>recovery.conf</filename> surrounded by pairs of single quotes?</title>
-    <para>
-      This is to ensure that user-supplied values which are written as parameter values in <filename>recovery.conf</filename>
-      are escaped correctly and do not cause errors when <filename>recovery.conf</filename> is parsed.
-    </para>
-    <para>
-      The escaping is performed by an internal PostgreSQL routine, which leaves strings consisting
-      of digits and alphabetical characters only as-is, but wraps everything else in pairs of single quotes,
-      even if the string does not contain any characters which need escaping.
-    </para>
-  </sect2>
-
-
- </sect1>
-
- <sect1 id="faq-repmgrd" xreflabel="repmgrd">
-  <title>&repmgrd;</title>
+    <sect2 id="faq-repmgr-recovery-conf-quoted-values" xreflabel="Quoted values in recovery.conf">
+      <title>Why are some values in <filename>recovery.conf</filename> surrounded by pairs of single quotes?</title>
+      <para>
+        This is to ensure that user-supplied values which are written as parameter values in <filename>recovery.conf</filename>
+        are escaped correctly and do not cause errors when <filename>recovery.conf</filename> is parsed.
+      </para>
+      <para>
+        The escaping is performed by an internal PostgreSQL routine, which leaves strings consisting
+        of digits and alphabetical characters only as-is, but wraps everything else in pairs of single quotes,
+        even if the string does not contain any characters which need escaping.
+      </para>
+    </sect2>
 
 
-  <sect2 id="faq-repmgrd-prevent-promotion" xreflabel="Prevent standby from being promoted to primary">
-   <title>How can I prevent a node from ever being promoted to primary?</title>
-   <para>
-     In <filename>repmgr.conf</filename>, set its priority to a value of <literal>0</literal>; apply the changed setting with
-    <command><link linkend="repmgr-standby-register">repmgr standby register --force</link></command>.
-   </para>
-   <para>
-    Additionally, if <varname>failover</varname> is set to <literal>manual</literal>, the node will never
-    be considered as a promotion candidate.
-   </para>
-  </sect2>
+  </sect1>
 
-  <sect2 id="faq-repmgrd-delayed-standby" xreflabel="Delayed standby support">
-   <title>Does &repmgrd; support delayed standbys?</title>
-   <para>
-    &repmgrd; can monitor delayed standbys - those set up with
-    <varname>recovery_min_apply_delay</varname> set to a non-zero value
-    in <filename>recovery.conf</filename> - but as it's not currently possible
-    to directly examine the value applied to the standby, &repmgrd;
-    may not be able to properly evaluate the node as a promotion candidate.
-   </para>
-   <para>
-    We recommend that delayed standbys are explicitly excluded from promotion
-    by setting <varname>priority</varname> to <literal>0</literal> in
-    <filename>repmgr.conf</filename>.
-   </para>
-   <para>
-    Note that after registering a delayed standby, &repmgrd; will only start
-    once the metadata added in the primary node has been replicated.
-   </para>
-  </sect2>
+  <sect1 id="faq-repmgrd" xreflabel="repmgrd">
+    <title>&repmgrd;</title>
 
-  <sect2 id="faq-repmgrd-logfile-rotate" xreflabel="repmgrd logfile rotation">
-   <title>How can I get &repmgrd; to rotate its logfile?</title>
-   <para>
-     Configure your system's <literal>logrotate</literal> service to do this; see <xref linkend="repmgrd-log-rotation"/>.
-   </para>
 
-  </sect2>
+    <sect2 id="faq-repmgrd-prevent-promotion" xreflabel="Prevent standby from being promoted to primary">
+      <title>How can I prevent a node from ever being promoted to primary?</title>
+      <para>
+        In <filename>repmgr.conf</filename>, set its priority to a value of <literal>0</literal>; apply the changed setting with
+        <command><link linkend="repmgr-standby-register">repmgr standby register --force</link></command>.
+      </para>
+      <para>
+        Additionally, if <varname>failover</varname> is set to <literal>manual</literal>, the node will never
+        be considered as a promotion candidate.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgrd-recloned-no-start" xreflabel="repmgrd not restarting after node cloned">
-   <title>I've recloned a failed primary as a standby, but &repmgrd; refuses to start?</title>
-   <para>
-    Check you registered the standby after recloning. If unregistered, the standby
-    cannot be considered as a promotion candidate even if <varname>failover</varname> is set to
-    <literal>automatic</literal>, which is probably not what you want. &repmgrd; will start if
-    <varname>failover</varname> is set to <literal>manual</literal> so the node's replication status can still
-  be monitored, if desired.
-   </para>
-  </sect2>
+    <sect2 id="faq-repmgrd-delayed-standby" xreflabel="Delayed standby support">
+      <title>Does &repmgrd; support delayed standbys?</title>
+      <para>
+        &repmgrd; can monitor delayed standbys - those set up with
+        <varname>recovery_min_apply_delay</varname> set to a non-zero value
+        in <filename>recovery.conf</filename> - but as it's not currently possible
+        to directly examine the value applied to the standby, &repmgrd;
+        may not be able to properly evaluate the node as a promotion candidate.
+      </para>
+      <para>
+        We recommend that delayed standbys are explicitly excluded from promotion
+        by setting <varname>priority</varname> to <literal>0</literal> in
+        <filename>repmgr.conf</filename>.
+      </para>
+      <para>
+        Note that after registering a delayed standby, &repmgrd; will only start
+        once the metadata added in the primary node has been replicated.
+      </para>
+    </sect2>
 
-  <sect2 id="faq-repmgrd-pg-bindir" xreflabel="repmgrd does not apply pg_bindir to promote_command or follow_command">
-    <title>
-      &repmgrd; ignores pg_bindir when executing <varname>promote_command</varname> or <varname>follow_command</varname>
-    </title>
-    <para>
-      <varname>promote_command</varname> or <varname>follow_command</varname> can be user-defined scripts,
-      so &repmgr; will not apply <option>pg_bindir</option> even if excuting &repmgr;. Always provide the full
-      path; see <xref linkend="repmgrd-automatic-failover-configuration"/> for more details.
-    </para>
-  </sect2>
+    <sect2 id="faq-repmgrd-logfile-rotate" xreflabel="repmgrd logfile rotation">
+      <title>How can I get &repmgrd; to rotate its logfile?</title>
+      <para>
+        Configure your system's <literal>logrotate</literal> service to do this; see <xref linkend="repmgrd-log-rotation"/>.
+      </para>
 
-  <sect2 id="faq-repmgrd-startup-no-upstream" xreflabel="repmgrd does not start if upstream node is not running">
-    <title>
-      &repmgrd; aborts startup with the error "<literal>upstream node must be running before repmgrd can start</literal>"
-    </title>
-    <para>
-      &repmgrd; does this to avoid starting up on a replication cluster
-      which is not in a healthy state. If the upstream is unavailable, &repmgrd;
-      may initiate a failover immediately after starting up, which could have unintended side-effects,
-      particularly if &repmgrd; is not running on other nodes.
-    </para>
-    <para>
-      In particular, it's possible that the node's local copy of the <literal>repmgr.nodes</literal> copy
-      is out-of-date, which may lead to incorrect failover behaviour.
-    </para>
-    <para>
-      The onus is therefore on the adminstrator to manually set the cluster to a stable, healthy state before
-      starting &repmgrd;.
-    </para>
-  </sect2>
+    </sect2>
 
- </sect1>
+    <sect2 id="faq-repmgrd-recloned-no-start" xreflabel="repmgrd not restarting after node cloned">
+      <title>I've recloned a failed primary as a standby, but &repmgrd; refuses to start?</title>
+      <para>
+        Check you registered the standby after recloning. If unregistered, the standby
+        cannot be considered as a promotion candidate even if <varname>failover</varname> is set to
+        <literal>automatic</literal>, which is probably not what you want. &repmgrd; will start if
+        <varname>failover</varname> is set to <literal>manual</literal> so the node's replication status can still
+        be monitored, if desired.
+      </para>
+    </sect2>
+
+    <sect2 id="faq-repmgrd-pg-bindir" xreflabel="repmgrd does not apply pg_bindir to promote_command or follow_command">
+      <title>
+        &repmgrd; ignores pg_bindir when executing <varname>promote_command</varname> or <varname>follow_command</varname>
+      </title>
+      <para>
+        <varname>promote_command</varname> or <varname>follow_command</varname> can be user-defined scripts,
+        so &repmgr; will not apply <option>pg_bindir</option> even if excuting &repmgr;. Always provide the full
+        path; see <xref linkend="repmgrd-automatic-failover-configuration"/> for more details.
+      </para>
+    </sect2>
+
+    <sect2 id="faq-repmgrd-startup-no-upstream" xreflabel="repmgrd does not start if upstream node is not running">
+      <title>
+        &repmgrd; aborts startup with the error "<literal>upstream node must be running before repmgrd can start</literal>"
+      </title>
+      <para>
+        &repmgrd; does this to avoid starting up on a replication cluster
+        which is not in a healthy state. If the upstream is unavailable, &repmgrd;
+        may initiate a failover immediately after starting up, which could have unintended side-effects,
+        particularly if &repmgrd; is not running on other nodes.
+      </para>
+      <para>
+        In particular, it's possible that the node's local copy of the <literal>repmgr.nodes</literal> copy
+        is out-of-date, which may lead to incorrect failover behaviour.
+      </para>
+      <para>
+        The onus is therefore on the adminstrator to manually set the cluster to a stable, healthy state before
+        starting &repmgrd;.
+      </para>
+    </sect2>
+
+  </sect1>
 </appendix>
