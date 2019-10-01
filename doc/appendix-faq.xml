@@ -12,11 +12,17 @@
   <sect2 id="faq-xrepmgr-version-diff" xreflabel="Version differences">
     <title>What's the difference between the repmgr versions?</title>
     <para>
-      &repmgr; 4 is a complete rewrite of the existing &repmgr; code base
+      &repmgr; 4 is a complete rewrite of the previous &repmgr; code base
       and implements &repmgr; as a PostgreSQL extension. It
       supports all PostgreSQL versions from 9.3 (although some &repmgr;
       features are not available for PostgreSQL 9.3 and 9.4).
      </para>
+    <note>
+      <para>
+        &repmgr; 5 is fundamentally the same code base as &repmgr; 4, but provides
+        support for the revised replication configuration mechanism in PostgreSQL 12.
+      </para>
+    </note>
      <para>
       &repmgr; 3.x builds on the improved replication facilities added
       in PostgreSQL 9.3, as well as improved automated failover support
