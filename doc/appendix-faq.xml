@@ -199,8 +199,13 @@
         earlier, where the <literal>repmgr</literal> user is not a superuser; in that
         case the <literal>repmgr</literal> user will not be able to access the
         <literal>data_directory</literal> configuration setting, access to which is restricted
-        to superusers. (In PostgreSQL 10 and later, non-superusers can be added to the
-        group <option>pg_read_all_settings</option> which will enable them to read this setting).
+        to superusers.
+      </para>
+      <para>
+        In PostgreSQL 10 and later, non-superusers can be added to the
+        <ulink url="https://www.postgresql.org/docs/current/default-roles.html">default role</ulink>
+        <option>pg_read_all_settings</option> (or the meta-role <option>pg_monitor</option>)
+        which will enable them to read this setting.
       </para>
     </sect2>
 
