@@ -203,6 +203,23 @@
         group <option>pg_read_all_settings</option> which will enable them to read this setting).
       </para>
     </sect2>
+
+    <sect2 id="faq-third-party-packages">
+      <title>Are &repmgr; packages compatible with <literal>$third_party_vendor</literal>'s packages?</title>
+      <para>
+        &repmgr; packages provided by 2ndQuadrant are compatible with the community-provided PostgreSQL
+        packages and any software provided by 2ndQuadrant.
+      </para>
+      <para>
+        A number of other vendors provide their own versions of PostgreSQL packages, often with different
+        package naming schemes and/or file locations.
+      </para>
+      <para>
+        We cannot guarantee that &repmgr; packages will be compatible with these packages.
+        It may be possible to override package dependencies (e.g. <literal>rpm --nodeps</literal>
+        for CentOS-based systems or <literal>dpkg --force-depends</literal> for Debian-based systems).
+      </para>
+    </sect2>
   </sect1>
 
   <sect1 id="faq-repmgr" xreflabel="repmgr">
