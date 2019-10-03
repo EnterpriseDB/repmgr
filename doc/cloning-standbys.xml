@@ -125,23 +125,19 @@
    <para>
     It's now possible to clone a standby from Barman, e.g.:
     <programlisting>
-    NOTICE: using configuration file "/etc/repmgr.conf"
+    $ repmgr -f /etc/repmgr.conf -h node1 -U repmgr -d repmgr standby clone
     NOTICE: destination directory "/var/lib/postgresql/data" provided
-    INFO: connecting to Barman server to verify backup for test_cluster
+    INFO: connecting to Barman server to verify backup for "test_cluster"
     INFO: checking and correcting permissions on existing directory "/var/lib/postgresql/data"
     INFO: creating directory "/var/lib/postgresql/data/repmgr"...
     INFO: connecting to Barman server to fetch server parameters
-    INFO: connecting to upstream node
-    INFO: connected to source node, checking its state
-    INFO: successfully connected to source node
-    DETAIL: current installation size is 29 MB
+    INFO: connecting to source node
+    DETAIL: current installation size is 30 MB
     NOTICE: retrieving backup from Barman...
-    receiving file list ...
     (...)
     NOTICE: standby clone (from Barman) complete
     NOTICE: you can now start your PostgreSQL server
     HINT: for example: pg_ctl -D /var/lib/postgresql/data start</programlisting>
-
    </para>
   </sect2>
   <sect2 id="cloning-from-barman-restore-command" xreflabel="Using Barman as a WAL file source">
