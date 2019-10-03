@@ -91,8 +91,8 @@
      <listitem>
       <para>
         the <varname>restore_command</varname> setting in <filename>repmgr.conf</filename> is configured to
-        use a copy of the <command>barman-wal-restore</command> script shipped with the
-        <literal>barman-cli</literal> package (see section <xref linkend="cloning-from-barman-restore-command"/>
+        use the <command>barman-wal-restore</command> script
+        (see section <xref linkend="cloning-from-barman-restore-command"/>
         below).
       </para>
      </listitem>
@@ -160,7 +160,7 @@
    </para>
    <para>
      <command>barman-wal-restore</command> is a Python script provided as part of the <literal>barman-cli</literal>
-     package (Barman 2.0 and later).
+     package (Barman 2.0 ~ 2.7) or as part of the core Barman distribution (Barman 2.8 and later).
    </para>
    <para>
     To use <command>barman-wal-restore</command> with &repmgr;
