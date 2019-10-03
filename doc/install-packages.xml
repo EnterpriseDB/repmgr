@@ -42,6 +42,10 @@
       customers, as the PostgreSQL filesystem layout may be different to the community RPMs.
       Please contact your support vendor for assistance.
     </para>
+    <para>
+      See also <link linkend="appendix-faq">FAQ</link> entry
+      <xref linkend="faq-third-party-packages"/>.
+    </para>
   </note>
 
   <para>
