@@ -160,8 +160,7 @@
    </para>
    <para>
      <command>barman-wal-restore</command> is a Python script provided as part of the <literal>barman-cli</literal>
-     package (Barman 2.0 and later; for Barman 1.x the script is provided separately as
-     <command>barman-wal-restore.py</command>) which performs this function for Barman.
+     package (Barman 2.0 and later).
    </para>
    <para>
     To use <command>barman-wal-restore</command> with &repmgr;
