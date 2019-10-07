@@ -6726,9 +6726,8 @@ make_barman_ssh_command(char *buf)
 
 
 static int
-			get_tablespace_data_barman
-			(char *tablespace_data_barman,
-			 TablespaceDataList *tablespace_list)
+get_tablespace_data_barman(char *tablespace_data_barman,
+						   TablespaceDataList *tablespace_list)
 {
 	/*
 	 * Example: [('main', 24674, '/var/lib/postgresql/tablespaces/9.5/main'),
