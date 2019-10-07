@@ -6,12 +6,13 @@
 # is noted for each item. Where no default value is shown, the
 # parameter will be treated as empty or false.
 #
-# IMPORTANT: string values can be provided as-is, or enclosed in single quotes
-# (but not double-quotes, which will be interpreted as part of the string),
-# e.g.:
+# repmgr parses its configuration file in the same way as PostgreSQL itself
+# does. In particular, strings must be enclosed in single quotes (although
+# simple identifiers may be provided as-is).
 #
-#  node_name=foo
-#  node_name = 'foo'
+# For details on the configuration file format see the documentation at:
+#
+#   https://repmgr.org/docs/current/configuration-file.html#CONFIGURATION-FILE-FORMAT
 #
 # =============================================================================
 # Required configuration items
@@ -70,10 +71,10 @@
 #replication_user='repmgr'	 # User to make replication connections with, if not set
 				 #  defaults to the user defined in "conninfo".
 
-#replication_type=physical	 # Must be one of "physical" or "bdr".
+#replication_type='physical'	 # Must be one of "physical" or "bdr".
 				 # NOTE: "bdr" can only be used with BDR 2.x
 
-#location=default		 # An arbitrary string defining the location of the node; this
+#location='default'		 # An arbitrary string defining the location of the node; this
 				 # is used during failover to check visibility of the
 				 # current primary node. For further details see:
                                  #   https://repmgr.org/docs/current/repmgrd-network-split.html
@@ -101,10 +102,10 @@
 # This is mainly intended for those cases when `repmgr` is executed directly
 # by `repmgrd`.
 
-#log_level=INFO			 # Log level: possible values are DEBUG, INFO, NOTICE,
+#log_level='INFO'		 # Log level: possible values are DEBUG, INFO, NOTICE,
 				 # WARNING, ERROR, ALERT, CRIT or EMERG
 
-#log_facility=STDERR		 # Logging facility: possible values are STDERR, or for
+#log_facility='STDERR'		 # Logging facility: possible values are STDERR, or for
 				 # syslog integration, one of LOCAL0, LOCAL1, ..., LOCAL7, USER
 
 #log_file=''			 # STDERR can be redirected to an arbitrary file
@@ -281,7 +282,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 # These settings are only applied when repmgrd is running. Values shown
 # are defaults.
 
-#failover=manual			# one of 'automatic', 'manual'.
+#failover='manual'			# one of 'automatic', 'manual'.
 					# determines what action to take in the event of upstream failure
 					#
 					# 'automatic': repmgrd will automatically attempt to promote the
@@ -339,7 +340,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# WAL receivers
 #primary_visibility_consensus=false	# If "true", only continue with failover if no standbys have seen
 					# the primary node recently. *Must* be the same on all nodes.
-#failover_validation_command=		# Script to execute for an external mechanism to validate the failover
+#failover_validation_command=''		# Script to execute for an external mechanism to validate the failover
 					# decision made by repmgrd. One or both of the following parameter placeholders
 					# should be provided, which will be replaced by repmgrd with the appropriate
 					# value: %n (node_id), %a (node_name). *Must* be the same on all nodes.
@@ -354,7 +355,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #child_nodes_disconnect_min_count=-1	# Minimum number of disconnected child nodes required to execute disconnection command
 					# (ignored if "child_nodes_connected_min_count" set)
 #child_nodes_disconnect_timeout=30	# Interval between child node disconnection and disconnection command execution
-#child_nodes_disconnect_command=	# Command to execute if child node disconnection detected
+#child_nodes_disconnect_command=''	# Command to execute if child node disconnection detected
 
 #------------------------------------------------------------------------------
 # service control commands
