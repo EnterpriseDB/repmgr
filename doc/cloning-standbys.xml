@@ -102,8 +102,8 @@
      under the &quot;<literal>barman</literal>&quot; user account,
      <filename>repmgr.conf</filename> should contain the following entries:
     <programlisting>
-    barman_host=barman@barmansrv
-    barman_server=somedb</programlisting>
+    barman_host='barman@barmansrv'
+    barman_server='somedb'</programlisting>
    </para>
 
    <note>
@@ -188,9 +188,9 @@
     <filename>/usr/bin/barman-wal-restore</filename>,
     <filename>repmgr.conf</filename> should include the following lines:
     <programlisting>
-    barman_host=barman@barmansrv
-    barman_server=somedb
-    restore_command=/usr/bin/barman-wal-restore barmansrv somedb %f %p</programlisting>
+    barman_host='barman@barmansrv'
+    barman_server='somedb'
+    restore_command='/usr/bin/barman-wal-restore barmansrv somedb %f %p'</programlisting>
    </para>
    <note>
     <simpara>
