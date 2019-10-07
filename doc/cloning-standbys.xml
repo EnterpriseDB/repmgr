@@ -78,8 +78,7 @@
    <itemizedlist spacing="compact" mark="bullet">
      <listitem>
       <para>
-        the <varname>barman_server</varname> setting in <filename>repmgr.conf</filename> is the same as the
-        server configured in Barman;
+        the Barman catalogue must include at least one valid backup for this server;
       </para>
      </listitem>
      <listitem>
@@ -90,28 +89,40 @@
      </listitem>
      <listitem>
       <para>
-        the <varname>restore_command</varname> setting in <filename>repmgr.conf</filename> is configured to
-        use the <command>barman-wal-restore</command> script
-        (see section <xref linkend="cloning-from-barman-restore-command"/>
-        below).
+        the <varname>barman_server</varname> setting in <filename>repmgr.conf</filename> is the same as the
+        server configured in Barman.
       </para>
      </listitem>
-     <listitem>
-      <para>
-        the Barman catalogue includes at least one valid backup for this  server.
-      </para>
-     </listitem>
+
    </itemizedlist>
    </para>
+
+   <para>
+     For example, assuming Barman is located on the host &quot;<literal>barmansrv</literal>&quot;
+     under the &quot;<literal>barman</literal>&quot; user account,
+     <filename>repmgr.conf</filename> should contain the following entries:
+    <programlisting>
+    barman_host=barman@barmansrv
+    barman_server=somedb</programlisting>
+   </para>
+
    <note>
-    <simpara>
-     Barman support is automatically enabled if <varname>barman_server</varname>
-     is set. Normally it is good practice to use Barman, for instance
-     when fetching a base backup while cloning a standby; in any case,
-     Barman mode can be disabled using the <literal>--without-barman</literal>
-     command line option.
-    </simpara>
+    <para>
+     To use a non-default Barman configuration file on the Barman server,
+     specify this in <filename>repmgr.conf</filename> with <filename>barman_config</filename>:
+     <programlisting>
+      barman_config=/path/to/barman.conf</programlisting>
+    </para>
    </note>
+
+
+   <para>
+     We also recommend configuring the <varname>restore_command</varname> setting in <filename>repmgr.conf</filename>
+     to use the <command>barman-wal-restore</command> script
+     (see section <xref linkend="cloning-from-barman-restore-command"/> below).
+   </para>
+
+
    <tip>
     <simpara>
       If you have a non-default SSH configuration on the Barman
@@ -139,6 +150,17 @@
     NOTICE: you can now start your PostgreSQL server
     HINT: for example: pg_ctl -D /var/lib/postgresql/data start</programlisting>
    </para>
+
+   <note>
+    <simpara>
+     Barman support is automatically enabled if <varname>barman_server</varname>
+     is set. Normally it is good practice to use Barman, for instance
+     when fetching a base backup while cloning a standby; in any case,
+     Barman mode can be disabled using the <literal>--without-barman</literal>
+     command line option.
+    </simpara>
+   </note>
+
   </sect2>
   <sect2 id="cloning-from-barman-restore-command" xreflabel="Using Barman as a WAL file source">
    <title>Using Barman as a WAL file source</title>
@@ -159,31 +181,25 @@
      package (Barman 2.0 ~ 2.7) or as part of the core Barman distribution (Barman 2.8 and later).
    </para>
    <para>
-    To use <command>barman-wal-restore</command> with &repmgr;
-    and assuming Barman is located on the <literal>barmansrv</literal> host
+    To use <command>barman-wal-restore</command> with &repmgr;,
+    assuming Barman is located on the host &quot;<literal>barmansrv</literal>&quot;
+    under the &quot;<literal>barman</literal>&quot; user account,
     and that <command>barman-wal-restore</command> is located as an executable at
     <filename>/usr/bin/barman-wal-restore</filename>,
     <filename>repmgr.conf</filename> should include the following lines:
     <programlisting>
-    barman_host=barmansrv
+    barman_host=barman@barmansrv
     barman_server=somedb
     restore_command=/usr/bin/barman-wal-restore barmansrv somedb %f %p</programlisting>
    </para>
    <note>
     <simpara>
       <command>barman-wal-restore</command> supports command line switches to
-      control parallelism (<literal>--parallel=N</literal>) and compression (
-      <literal>--bzip2</literal>, <literal>--gzip</literal>).
+      control parallelism (<literal>--parallel=N</literal>) and compression
+      (<literal>--bzip2</literal>, <literal>--gzip</literal>).
     </simpara>
    </note>
-   <note>
-    <para>
-     To use a non-default Barman configuration file on the Barman server,
-     specify this in <filename>repmgr.conf</filename> with <filename>barman_config</filename>:
-     <programlisting>
-      barman_config=/path/to/barman.conf</programlisting>
-    </para>
-   </note>
+
   </sect2>
  </sect1>
 
