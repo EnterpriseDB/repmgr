@@ -75,10 +75,22 @@
    <para>
     Under some circumstances you may wish to register a standby which is not
     yet running; this can be the case when using provisioning tools to create
-    a complex replication cluster. In this case, by using the <option>-F/--force</option>
-    option and providing the connection parameters to the primary server,
-    the standby can be registered.
+    a complex replication cluster, or if the node was not cloned by &repmgr;.
    </para>
+   <para>
+    In this case, by using the <option>-F/--force</option>
+    option and providing the connection parameters to the primary server,
+    the standby can be registered even if it has not yet been started.
+   </para>
+   <tip>
+     <para>
+       Connection parameters can either be provided either as a <literal>conninfo</literal> string
+       (e.g. <option>-d 'host=node1 user=repmgr'</option> or as individual connection parameters
+        (<option>-h/--host</option>, <option>-d/--dbname</option>,
+       <option>-U/--user</option>, <option>-p/--port</option> etc.).
+     </para>
+   </tip>
+
    <para>
     Similarly, with cascading replication it may be necessary to register
     a standby whose upstream node has not yet been registered - in this case,
@@ -96,9 +108,10 @@
     <title>Registering a node not cloned by repmgr</title>
     <para>
       If you've cloned a standby using another method (e.g. <application>barman</application>'s
-     <command>barman recover</command> command), first execute
+     <command>barman recover</command> command), register the node as detailed in section
+     <xref linkend="repmgr-standby-register-inactive-node"/> then execute
      <link linkend="repmgr-standby-create-recovery-conf">repmgr standby clone --recovery-conf-only</link>
-     to add the <filename>recovery.conf</filename> file, then register the standby as usual.
+     to generate the appropriate replication configuration.
     </para>
   </refsect1>
 
