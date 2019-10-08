@@ -119,7 +119,7 @@
 
 
       <varlistentry>
-       <term><option>-F</option><option>--force</option></term>
+       <term><option>-F</option>/<option>--force</option></term>
         <listitem>
           <para>
             Overwrite an existing node record
