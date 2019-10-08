@@ -212,6 +212,18 @@
      ensure the <filename>repmgr.conf</filename>
      file is created for the node, and that it has been registered using
      <command><link linkend="repmgr-standby-register">repmgr standby register</link></command>.
+   </para>
+   <tip>
+     <para>
+       To register a standby which is not running, execute
+       <link linkend="repmgr-standby-register">repmgr standby register --force</link>
+       and provide the connection details for the primary.
+     </para>
+     <para>
+       See <xref linkend="repmgr-standby-register-inactive-node"/> for more details.
+     </para>
+   </tip>
+   <para>
      Then execute the command <command>repmgr standby clone --recovery-conf-only</command>.
      This will create the <filename>recovery.conf</filename> file needed to attach
      the node to its upstream (in PostgreSQL 12 and later: write replication configuration
