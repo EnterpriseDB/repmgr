@@ -73,7 +73,16 @@ while(<$fh>) {
         if ($param eq 'data_directory') {
             $data_directory_found = 1;
         }
-        push @outp, $line;
+
+        # Don't quote numbers
+        if ($value =~ /^\d+$/) {
+            push @outp, sprintf(q|%s=%s|, $param, $value);
+        }
+        # Quote everything else
+        else {
+            $value =~ s/'/''/g;
+            push @outp, sprintf(q|%s='%s'|, $param, $value);
+        }
     }
 }
 
@@ -83,6 +92,6 @@ print join("\n", @outp);
 print "\n";
 
 if ($data_directory_found == 0) {
-    print "data_directory=\n";
+    print "data_directory=''\n";
 }
 

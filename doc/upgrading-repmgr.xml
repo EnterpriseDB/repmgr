@@ -419,13 +419,13 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
      <programlisting>
     $ ./convert-config.pl /etc/repmgr.conf
     node_id=2
-    node_name=node2
-    conninfo=host=node2 dbname=repmgr user=repmgr connect_timeout=2
+    node_name='node2'
+    conninfo='host=node2 dbname=repmgr user=repmgr connect_timeout=2'
     pg_ctl_options='-l /var/log/postgres/startup.log'
-    rsync_options=--exclude=postgresql.local.conf --archive
-    log_level=INFO
-    pg_basebackup_options=--no-slot
-    data_directory=</programlisting>
+    rsync_options='--exclude=postgresql.local.conf --archive'
+    log_level='INFO'
+    pg_basebackup_options='--no-slot'
+    data_directory=''</programlisting>
     </para>
     <para>
       The converted file is printed to <literal>STDOUT</literal> and the original file is not
@@ -434,8 +434,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
     <para>
       Please note that the the conversion script will add an empty
       placeholder parameter for <varname>data_directory</varname>, which
-      is a required parameter in repmgr4 and which <emphasis>must</emphasis>
-      be provided.
+      is a required parameter from &repmgr; 4.
     </para>
    </sect3>
   </sect2>
