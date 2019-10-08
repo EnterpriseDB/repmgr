@@ -108,7 +108,8 @@
     <title>Registering a node not cloned by repmgr</title>
     <para>
       If you've cloned a standby using another method (e.g. <application>barman</application>'s
-     <command>barman recover</command> command), register the node as detailed in section
+     <command><ulink url="https://docs.pgbarman.org/#recover">barman recover</ulink></command>
+     command), register the node as detailed in section
      <xref linkend="repmgr-standby-register-inactive-node"/> then execute
      <link linkend="repmgr-standby-create-recovery-conf">repmgr standby clone --recovery-conf-only</link>
      to generate the appropriate replication configuration.

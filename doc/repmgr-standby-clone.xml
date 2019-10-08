@@ -205,7 +205,7 @@
 
    <para>
      &repmgr; supports standbys cloned by another method (e.g. using <application>barman</application>'s
-     <command><ulink url="http://docs.pgbarman.org/release/2.5/#recover">barman recover</ulink></command> command).
+     <command><ulink url="https://docs.pgbarman.org/#recover">barman recover</ulink></command> command).
    </para>
    <para>
      To integrate the standby as a &repmgr; node, once the standby has been cloned,
