@@ -1,10 +1,11 @@
-5.0     2019-09-??
+5.0     2019-10-??
         general: add PostgreSQL 12 support (Ian)
         general: parse configuration file using flex (Ian)
         repmgr: rename "repmgr daemon ..." commands to "repmgr service ..." (Ian)
         repmgr: improve data directory check (Ian)
         repmgr: improve extension check during "standby clone" (Ian)
 		repmgr: pass provided log level when executing repmgr remotely (Ian)
+        repmgrd: fix handling of upstream node change check (Ian)
 
 4.4     2019-06-27
         repmgr: improve "daemon status" output (Ian)

@@ -2086,7 +2086,6 @@ loop:
 			}
 		}
 
-
 		if (got_SIGHUP)
 		{
 			handle_sighup(&local_conn, STANDBY);
@@ -2096,13 +2095,34 @@ loop:
 
 		if (local_monitoring_state == MS_NORMAL && last_known_upstream_node_id != local_node_info.upstream_node_id)
 		{
-			log_notice(_("local node %i's upstream appears to have changed, restarting monitoring"),
-					   local_node_info.node_id);
-			log_detail(_("currently monitoring upstream %i; new upstream is %i"),
-					   last_known_upstream_node_id,
-					   local_node_info.upstream_node_id);
-			close_connection(&upstream_conn);
-			return;
+			/*
+			 * It's possible that after a change of upstream, the local node record will not
+			 * yet have been updated with the new upstream node ID. Therefore we check the
+			 * node record on the upstream, and if that matches "last_known_upstream_node_id",
+			 * take that as the correct value.
+			 */
+
+			if (monitoring_state == MS_NORMAL)
+			{
+				t_node_info node_info_on_upstream = T_NODE_INFO_INITIALIZER;
+				record_status = get_node_record(primary_conn, config_file_options.node_id, &node_info_on_upstream);
+
+				if (last_known_upstream_node_id == node_info_on_upstream.upstream_node_id)
+				{
+					local_node_info.upstream_node_id = last_known_upstream_node_id;
+				}
+			}
+
+			if (last_known_upstream_node_id != local_node_info.upstream_node_id)
+			{
+				log_notice(_("local node %i's upstream appears to have changed, restarting monitoring"),
+						   local_node_info.node_id);
+				log_detail(_("currently monitoring upstream %i; new upstream is %i"),
+						   last_known_upstream_node_id,
+						   local_node_info.upstream_node_id);
+				close_connection(&upstream_conn);
+				return;
+			}
 		}
 
 		log_verbose(LOG_DEBUG, "sleeping %i seconds (parameter \"monitor_interval_secs\")",

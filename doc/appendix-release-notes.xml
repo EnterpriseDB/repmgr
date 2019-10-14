@@ -228,8 +228,34 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
               or <literal>pg_monitor</literal> are permitted to do this as well.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              &repmgrd;: Fix handling of upstream node change check.
+            </para>
+            <para>
+              &repmgrd; has a check to see if the upstream node has unexpectedly
+              changed, e.g. if the repmgrd service is paused and the PostgreSQL
+              instance has been pointed to another node.
+            </para>
+            <para>
+              However this check was relying on the node record on the local node
+              being up-to-date, which may not be the case immediately after a
+              failover, when the node is still replaying records updated prior
+              to the node's own record being updated. In this case it will
+              mistakenly assume the node is following the original primary
+              and attempt to restart monitoring, which will fail as the original
+              primary is no longer available.
+            </para>
+            <para>
+              To prevent this, the node's record on the upstream node is checked
+              to see if the reported upstream <literal>node_id</literal> matches
+              the expected <literal>node_id</literal>. GitHub #587/#588.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
+
     </sect2>
   </sect1>
 
