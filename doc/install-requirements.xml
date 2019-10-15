@@ -174,6 +174,16 @@
       </para>
     </important>
 
+  </sect2>
+
+  <sect2 id="install-postgresql-93-94">
+
+    <title>PostgreSQL 9.3 and 9.4 support</title>
+
+    <indexterm>
+      <primary>PostgreSQL 9.3</primary>
+      <secondary>repmgr support</secondary>
+    </indexterm>
 
     <para>
       Note that some &repmgr; functionality is not available in PostgreSQL 9.3 and PostgreSQL 9.4:
@@ -195,5 +205,22 @@
       </listitem>
     </itemizedlist>
 
+    <important>
+      <para>
+        PostgreSQL 9.3 has reached the end of its community support period (final release was
+        <ulink url="https://www.postgresql.org/docs/9.3/release-9-3-25.html">9.3.25</ulink>)
+        and will no longer be updated with security or bugfixes.
+      </para>
+      <para>
+        PostgreSQL 9.4. is scheduled for its final release in February 2020
+        (see <ulink url="https://www.postgresql.org/support/versioning/">PostgreSQL Versioning Policy</ulink>).
+      </para>
+      <para>
+        We recommend that users of these versions migrate to a recent PostgreSQL version
+        as soon as possible.
+      </para>
+    </important>
+
   </sect2>
+
  </sect1>
