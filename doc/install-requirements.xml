@@ -167,6 +167,11 @@
         The &repmgr; 2.x and 3.x series are no longer maintained or supported.
         We strongly recommend  upgrading to the latest &repmgr; version.
       </para>
+      <para>
+        Following the release of &repmgr; 5.0, there will be no further releases of
+        the &repmgr; 4.x series. Note that &repmgr; 5.x is an incremental development
+        of the 4.x series and &repmgr; 4.x users should upgrade to this as soon as possible.
+      </para>
     </important>
 
 
