@@ -1,3 +1,6 @@
+5.1     2019-??-??
+        repmgr: don't query upstream's data directory (Ian)
+
 5.0     2019-10-15
         general: add PostgreSQL 12 support (Ian)
         general: parse configuration file using flex (Ian)

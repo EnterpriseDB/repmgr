@@ -72,7 +72,6 @@ static bool local_data_directory_provided = false;
 
 static bool upstream_conninfo_found = false;
 static int	upstream_node_id = UNKNOWN_NODE_ID;
-static char upstream_data_directory[MAXPGPATH] = "";
 
 static t_conninfo_param_list recovery_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 static char recovery_conninfo_str[MAXLEN] = "";
@@ -4810,9 +4809,6 @@ do_standby_switchover(void)
 static void
 check_source_server()
 {
-	PGconn	   *superuser_conn = NULL;
-	PGconn	   *privileged_conn = NULL;
-
 	char		cluster_size[MAXLEN];
 	char	   *connstr = NULL;
 
@@ -4988,9 +4984,6 @@ check_source_server()
 								PQfinish(source_conn);
 								source_conn = NULL;
 
-								if (superuser_conn != NULL)
-									PQfinish(superuser_conn);
-
 								exit(ERR_BAD_CONFIG);
 							}
 							/* identifiers match - our work here is done */
@@ -5006,26 +4999,6 @@ check_source_server()
 			}
 		}
 	}
-	/* Fetch the source's data directory */
-	get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
-
-	if (get_pg_setting(privileged_conn, "data_directory", upstream_data_directory) == false)
-	{
-		log_error(_("unable to retrieve source node's data directory"));
-		log_detail(_("STANDBY CLONE must be run with database superuser permissions"));
-		log_hint(_("provide a database superuser name with -S/--superuser"));
-
-		PQfinish(source_conn);
-		source_conn = NULL;
-
-		if (superuser_conn != NULL)
-			PQfinish(superuser_conn);
-
-		exit(ERR_BAD_CONFIG);
-	}
-
-	if (superuser_conn != NULL)
-		PQfinish(superuser_conn);
 
 	/*
 	 * If no target data directory was explicitly provided, we'll default to
@@ -5033,10 +5006,10 @@ check_source_server()
 	 */
 	if (local_data_directory_provided == false)
 	{
-		strncpy(local_data_directory, upstream_data_directory, MAXPGPATH);
-
-		log_notice(_("setting data directory to: \"%s\""), local_data_directory);
+		log_error(_("no data directory provided"));
 		log_hint(_("use -D/--pgdata to explicitly specify a data directory"));
+		PQfinish(source_conn);
+		exit(ERR_BAD_CONFIG);
 	}
 
 	/*
