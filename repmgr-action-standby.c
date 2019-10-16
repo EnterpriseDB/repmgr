@@ -5091,10 +5091,7 @@ check_source_server()
 		}
 	}
 
-	/* disable configuration file options incompatible with 9.3 */
-	if (source_server_version_num < 90400)
-		check_93_config();
-
+	/* Check the source node is configured sufficiently to be able to clone from */
 	check_upstream_config(source_conn, source_server_version_num, &upstream_node_record, true);
 }
 
@@ -5201,8 +5198,6 @@ check_source_server_via_barman()
  * Perform sanity check on upstream server configuration before starting cloning
  * process
  *
- * For PostreSQL 9.3, ensure check_93_config() is called before calling this.
- *
  * TODO:
  *  - check user is qualified to perform base backup
  */
@@ -5219,6 +5214,10 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
 	bool		wal_method_stream = true;
 	standy_clone_mode mode;
 	bool		pg_setting_ok;
+
+	/* Disable configuration file options incompatible with 9.3 */
+	if (server_version_num < 90400)
+		check_93_config();
 
 	/*
 	 * Detecting the intended cloning mode
