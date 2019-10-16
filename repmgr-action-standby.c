@@ -175,16 +175,9 @@ do_standby_clone(void)
 	/*
 	 * Copy the provided data directory; if a configuration file was provided,
 	 * use the (mandatory) value from that; if -D/--pgdata was provided, use
-	 * that; otherwise repmgr will default to using the same directory path as
-	 * on the source host. The last case will only ever occur when executing
-	 * "repmgr standby clone" with no configuration file.
+	 * that.
 	 *
 	 * Note that barman mode requires -D/--pgdata.
-	 *
-	 * If no data directory is explicitly provided, and we're not cloning from
-	 * barman, the source host's data directory will be fetched later, after
-	 * we've connected to it, in check_source_server().
-	 *
 	 */
 
 	get_node_data_directory(local_data_directory);
