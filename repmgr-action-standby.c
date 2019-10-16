@@ -68,7 +68,6 @@ static PGconn *primary_conn = NULL;
 static PGconn *source_conn = NULL;
 
 static char local_data_directory[MAXPGPATH] = "";
-static bool local_data_directory_provided = false;
 
 static bool upstream_conninfo_found = false;
 static int	upstream_node_id = UNKNOWN_NODE_ID;
@@ -155,6 +154,8 @@ do_standby_clone(void)
 	/* dummy node record */
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
+	bool local_data_directory_provided = false;
+
 	initialize_conninfo_params(&recovery_conninfo, false);
 
 	/*
@@ -187,13 +188,14 @@ do_standby_clone(void)
 		log_notice(_("destination directory \"%s\" provided"),
 				   local_data_directory);
 	}
-	else if (mode == barman)
+	else
 	{
 		/*
-		 * XXX in Barman mode it's still possible to connect to the upstream,
-		 * so only fail if that's not available.
+		 * If a configuration file is provided, repmgr will error out after
+		 * parsing it if no data directory is provided; this check is for
+		 * niche use-cases where no configuration file is provided.
 		 */
-		log_error(_("Barman mode requires a data directory"));
+		log_error(_("no data directory provided"));
 		log_hint(_("use -D/--pgdata to explicitly specify a data directory"));
 		exit(ERR_BAD_CONFIG);
 	}
@@ -4993,17 +4995,6 @@ check_source_server()
 		}
 	}
 
-	/*
-	 * If no target data directory was explicitly provided, we'll default to
-	 * the source host's data directory.
-	 */
-	if (local_data_directory_provided == false)
-	{
-		log_error(_("no data directory provided"));
-		log_hint(_("use -D/--pgdata to explicitly specify a data directory"));
-		PQfinish(source_conn);
-		exit(ERR_BAD_CONFIG);
-	}
 
 	/*
 	 * Check the local directory to see if it appears to be a PostgreSQL
