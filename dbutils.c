@@ -355,6 +355,51 @@ is_superuser_connection(PGconn *conn, t_connection_user *userinfo)
 
 
 bool
+is_replication_role(PGconn *conn, char *rolname)
+{
+	PQExpBufferData query;
+	PGresult   *res;
+	bool		is_replication_role = false;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBufferStr(&query,
+						 "  SELECT rolreplication "
+						 "    FROM pg_catalog.pg_authid "
+						 "   WHERE rolname = ");
+
+	if (rolname != NULL)
+	{
+		appendPQExpBuffer(&query,
+						  "'%s'",
+						  rolname);
+	}
+	else
+	{
+		appendPQExpBufferStr(&query,
+							 "CURRENT_USER");
+	}
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data,
+					 _("is_replication_role(): unable to query user roles"));
+	}
+	else
+	{
+		is_replication_role = atobool(PQgetvalue(res, 0, 0));
+	}
+
+	termPQExpBuffer(&query);
+	PQclear(res);
+
+	return is_replication_role;
+}
+
+
+bool
 connection_has_pg_settings(PGconn *conn)
 {
 	bool		has_pg_settings = false;

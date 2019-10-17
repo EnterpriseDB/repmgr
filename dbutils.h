@@ -437,7 +437,8 @@ PGconn	   *establish_primary_db_connection(PGconn *conn,
 PGconn	   *get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 PGconn	   *get_primary_connection_quiet(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 
-bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);
+bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);\
+bool		is_replication_role(PGconn *conn, char *rolname);
 bool		connection_has_pg_settings(PGconn *conn);
 void		close_connection(PGconn **conn);
 
