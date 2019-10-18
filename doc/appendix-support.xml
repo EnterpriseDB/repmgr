@@ -45,6 +45,12 @@
 
      <listitem>
       <simpara>
+        PostgreSQL version
+      </simpara>
+     </listitem>
+
+     <listitem>
+      <simpara>
         &repmgr; version
       </simpara>
      </listitem>
@@ -68,9 +74,18 @@
       </simpara>
      </listitem>
 
+
      <listitem>
       <simpara>
-        PostgreSQL version
+        PostgreSQL 11 and earlier: contents of the <filename>recovery.conf</filename> file
+        (suitably anonymized if necessary).
+      </simpara>
+     </listitem>
+     <listitem>
+      <simpara>
+        PostgreSQL 12 and later: contents of the <filename>postgresql.auto.conf</filename> file
+        (suitably anonymized if necessary), and whether or not the PostgreSQL data directory
+        contains the files <filename>standby.signal</filename> and/or <filename>recovery.signal</filename>.
       </simpara>
      </listitem>
 
