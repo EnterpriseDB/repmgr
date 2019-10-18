@@ -1,5 +1,7 @@
 5.1     2019-??-??
         repmgr: don't query upstream's data directory (Ian)
+        repmgr: rename --recovery-conf-only to --replication-conf-only (Ian)
+        repmgr: ensure postgresql.auto.conf is created with corretc permissions (Ian)
 
 5.0     2019-10-15
         general: add PostgreSQL 12 support (Ian)
