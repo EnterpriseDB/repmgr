@@ -188,18 +188,18 @@
    </note>
   </refsect1>
 
-
+<!-- don't rename this id as it may be used in external links -->
   <refsect1 id="repmgr-standby-create-recovery-conf">
 
    <title>Using a standby cloned by another method</title>
 
    <indexterm>
-     <primary>recovery.conf</primary>
+     <primary>replication configuration</primary>
      <secondary>generating for a standby cloned by another method</secondary>
    </indexterm>
 
    <indexterm>
-     <primary>replication configuration</primary>
+     <primary>recovery.conf</primary>
      <secondary>generating for a standby cloned by another method</secondary>
    </indexterm>
 
@@ -224,7 +224,7 @@
      </para>
    </tip>
    <para>
-     Then execute the command <command>repmgr standby clone --recovery-conf-only</command>.
+     Then execute the command <command>repmgr standby clone --replication-conf-only</command>.
      This will create the <filename>recovery.conf</filename> file needed to attach
      the node to its upstream (in PostgreSQL 12 and later: append replication configuration
      to <filename>postgresql.auto.conf</filename>), and will also create a replication slot on the
@@ -236,7 +236,7 @@
      <option>-F/--force</option> option is provided.
    </para>
    <para>
-     Execute <command>repmgr standby clone --recovery-conf-only --dry-run</command>
+     Execute <command>repmgr standby clone --replication-conf-only --dry-run</command>
      to check the prerequisites for creating the recovery configuration,
      and display the contents of the configuration which would be added without actually
 	 making any changes.
@@ -266,7 +266,7 @@
             Check prerequisites but don't actually clone the standby.
           </para>
           <para>
-            If <option>--recovery-conf-only</option> specified, the contents of
+            If <option>--replication-conf-only</option> specified, the contents of
             the generated recovery configuration will be displayed
             but not written.
           </para>
@@ -312,7 +312,7 @@
       </varlistentry>
 
       <varlistentry>
-        <term><option> --recovery-conf-only</option></term>
+        <term><option>--replication-conf-only</option></term>
         <listitem>
           <para>
             Create recovery configuration for a previously cloned instance.

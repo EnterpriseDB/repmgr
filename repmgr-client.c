@@ -431,8 +431,8 @@ main(int argc, char **argv)
 				runtime_options.without_barman = true;
 				break;
 
-			case OPT_RECOVERY_CONF_ONLY:
-				runtime_options.recovery_conf_only = true;
+			case OPT_REPLICATION_CONF_ONLY:
+				runtime_options.replication_conf_only = true;
 				break;
 
 
@@ -1705,7 +1705,7 @@ check_cli_parameters(const int action)
 		}
 	}
 
-	if (runtime_options.recovery_conf_only == true)
+	if (runtime_options.replication_conf_only == true)
 	{
 		switch (action)
 		{

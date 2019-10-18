@@ -85,7 +85,7 @@ typedef struct
 	char		replication_user[MAXLEN];
 	char		upstream_conninfo[MAXLEN];
 	bool		without_barman;
-	bool		recovery_conf_only;
+	bool		replication_conf_only;
 
 	/* "standby clone"/"standby follow" options */
 	int			upstream_node_id;

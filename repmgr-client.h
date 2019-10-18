@@ -89,7 +89,7 @@
 #define OPT_WAIT_START					   1034
 #define OPT_REPL_CONN					   1035
 #define OPT_REMOTE_NODE_ID				   1036
-#define OPT_RECOVERY_CONF_ONLY			   1037
+#define OPT_REPLICATION_CONF_ONLY		   1037
 #define OPT_NO_WAIT						   1038
 #define OPT_MISSING_SLOTS				   1039
 #define OPT_REPMGRD_NO_PAUSE			   1040
@@ -157,7 +157,9 @@ static struct option long_options[] =
 	{"upstream-conninfo", required_argument, NULL, OPT_UPSTREAM_CONNINFO},
 	{"upstream-node-id", required_argument, NULL, OPT_UPSTREAM_NODE_ID},
 	{"without-barman", no_argument, NULL, OPT_WITHOUT_BARMAN},
-	{"recovery-conf-only", no_argument, NULL, OPT_RECOVERY_CONF_ONLY},
+	{"replication-conf-only", no_argument, NULL, OPT_REPLICATION_CONF_ONLY},
+	/* deprecate this once Pg11 and earlier are unsupported */
+	{"recovery-conf-only", no_argument, NULL, OPT_REPLICATION_CONF_ONLY},
 
 /* "standby register" options */
 	{"wait-start", required_argument, NULL, OPT_WAIT_START},

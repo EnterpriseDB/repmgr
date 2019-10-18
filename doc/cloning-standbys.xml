@@ -64,8 +64,9 @@
     </para>
     <para>
       Barman's parallel restore facility can be used by executing it manually on
-      the Barman server and integrating the resulting cloned standby using
-      <command><link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link></command>.
+      the Barman server and configuring replication on the resulting cloned
+      standby using
+      <command><link linkend="repmgr-standby-clone">repmgr standby clone --replication-conf-only</link></command>.
     </para>
    </note>
 

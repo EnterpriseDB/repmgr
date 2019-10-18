@@ -142,7 +142,7 @@ static bool parse_data_directory_config(const char *node_check_output);
  *  -R/--remote-user
  *  --replication-user (only required if no upstream record)
  *  --without-barman
- *  --recovery-conf-only
+ *  --replication-conf-only (--recovery-conf-only)
  */
 
 void
@@ -159,9 +159,9 @@ do_standby_clone(void)
 	initialize_conninfo_params(&recovery_conninfo, false);
 
 	/*
-	 * --recovery-conf-only provided - we'll handle that separately
+	 * --replication-conf-only provided - we'll handle that separately
 	 */
-	if (runtime_options.recovery_conf_only == true)
+	if (runtime_options.replication_conf_only == true)
 	{
 		return _do_create_recovery_conf();
 	}
@@ -7908,7 +7908,7 @@ do_standby_help(void)
 			 "                                        when the intended upstream server does not yet exist\n"));
 	printf(_("  --upstream-node-id                  ID of the upstream node to replicate from (optional, defaults to primary node)\n"));
 	printf(_("  --without-barman                    do not use Barman even if configured\n"));
-	printf(_("  --recovery-conf-only                generate replication configuration for a previously cloned instance\n"));
+	printf(_("  --replication-conf-only             generate replication configuration for a previously cloned instance\n"));
 
 	puts("");
 

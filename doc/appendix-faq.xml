@@ -245,7 +245,7 @@
       <para>
         For a standby which has been manually cloned or recovered from an external
         backup manager such as Barman, the command
-        <command><link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link></command>
+        <command><link linkend="repmgr-standby-clone">repmgr standby clone --replication-conf-only</link></command>
         can be used to create the correct <filename>recovery.conf</filename> file for
         use with &repmgr; (and will create a replication slot if required). Once this has been done,
         <link linkend="repmgr-standby-register">register the node</link> as usual.
