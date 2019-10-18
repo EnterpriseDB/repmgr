@@ -7952,7 +7952,7 @@ do_standby_help(void)
 			 "                                        when the intended upstream server does not yet exist\n"));
 	printf(_("  --upstream-node-id                  ID of the upstream node to replicate from (optional, defaults to primary node)\n"));
 	printf(_("  --without-barman                    do not use Barman even if configured\n"));
-	printf(_("  --recovery-conf-only                create \"recovery.conf\" file for a previously cloned instance\n"));
+	printf(_("  --recovery-conf-only                generate replication configuration for a previously cloned instance\n"));
 
 	puts("");
 
