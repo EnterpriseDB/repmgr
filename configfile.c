@@ -1882,6 +1882,8 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 	PQExpBufferData auto_conf_contents;
 
 	FILE	   *fp;
+	mode_t		um;
+
 	KeyValueList config = {NULL, NULL};
 	KeyValueListCell *cell = NULL;
 
@@ -1937,7 +1939,11 @@ modify_auto_conf(const char *data_dir, KeyValueList *items)
 						  cell->key, cell->value);
 	}
 
+	/* Set umask to 0600 */
+	um = umask((~(S_IRUSR | S_IWUSR)) & (S_IRWXG | S_IRWXO));
 	fp = fopen(auto_conf_tmp.data, "w");
+	umask(um);
+
 	if (fp == NULL)
 	{
 		fprintf(stderr, "unable to open \"%s\": %s\n",
