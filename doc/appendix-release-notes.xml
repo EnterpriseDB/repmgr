@@ -167,6 +167,10 @@ conninfo='host=node1 user=repmgr dbname=repmgr connect_timeout=2'</programlistin
               function, which enables a standby to be promoted to primary using an SQL
               command.
             </para>
+            <para>
+              For an overview of general changes to replication configuration, see this blog entry:
+              <ulink url="https://www.2ndquadrant.com/en/blog/replication-configuration-changes-in-postgresql-12/">Replication configuration changes in PostgreSQL 12</ulink>
+            </para>
           </listitem>
 
 
