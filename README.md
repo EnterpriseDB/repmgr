@@ -7,17 +7,14 @@ replication capabilities with utilities to set up standby servers, monitor
 replication, and perform administrative tasks such as failover or switchover
 operations.
 
-`repmgr 4` is a complete rewrite of the existing `repmgr` codebase, allowing
-the use of all of the latest features in PostgreSQL replication.
-
-PostgreSQL 11, 10, 9.6 and 9.5 are fully supported.
+PostgreSQL 12, 11, 10, 9.6 and 9.5 are fully supported.
 PostgreSQL 9.4 and 9.3 are supported, with some restrictions.
 
 `repmgr` is distributed under the GNU GPL 3 and maintained by 2ndQuadrant.
 
 ### BDR support
 
-`repmgr 4` supports monitoring of a two-node BDR 2.0 cluster on PostgreSQL 9.6
+`repmgr` supports monitoring of a two-node BDR 2.0 cluster on PostgreSQL 9.6
 only. Note that BDR 2.0 is not publicly available; please contact 2ndQuadrant
 for details.
 
