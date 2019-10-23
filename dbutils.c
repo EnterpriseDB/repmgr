@@ -4138,7 +4138,7 @@ create_slot_name(char *slot_name, int node_id)
 
 
 bool
-create_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_msg)
+create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *error_msg)
 {
 	PQExpBufferData query;
 	RecordStatus record_status = RECORD_NOT_FOUND;
@@ -4193,8 +4193,8 @@ create_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_ms
 						  slot_name);
 	}
 
-	log_debug(_("create_replication_slot(): creating slot \"%s\" on upstream"), slot_name);
-	log_verbose(LOG_DEBUG, "create_replication_slot():\n%s", query.data);
+	log_debug(_("create_replication_slot_sql(): creating slot \"%s\" on upstream"), slot_name);
+	log_verbose(LOG_DEBUG, "create_replication_slot_sql():\n%s", query.data);
 
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
@@ -4215,7 +4215,7 @@ create_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_ms
 
 
 bool
-drop_replication_slot(PGconn *conn, char *slot_name)
+drop_replication_slot_sql(PGconn *conn, char *slot_name)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -4227,14 +4227,14 @@ drop_replication_slot(PGconn *conn, char *slot_name)
 					  "SELECT pg_catalog.pg_drop_replication_slot('%s')",
 					  slot_name);
 
-	log_verbose(LOG_DEBUG, "drop_replication_slot():\n  %s", query.data);
+	log_verbose(LOG_DEBUG, "drop_replication_slot_sql():\n  %s", query.data);
 
 	res = PQexec(conn, query.data);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
 		log_db_error(conn, query.data,
-					 _("drop_replication_slot(): unable to drop replication slot \"%s\""),
+					 _("drop_replication_slot_sql(): unable to drop replication slot \"%s\""),
 					 slot_name);
 
 		success = false;

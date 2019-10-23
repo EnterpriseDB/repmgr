@@ -560,8 +560,8 @@ PGresult   *get_event_records(PGconn *conn, int node_id, const char *node_name, 
 
 /* replication slot functions */
 void		create_slot_name(char *slot_name, int node_id);
-bool		create_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_msg);
-bool		drop_replication_slot(PGconn *conn, char *slot_name);
+bool		create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *error_msg);
+bool		drop_replication_slot_sql(PGconn *conn, char *slot_name);
 RecordStatus get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 int			get_free_replication_slot_count(PGconn *conn);
 int			get_inactive_replication_slots(PGconn *conn, KeyValueList *list);

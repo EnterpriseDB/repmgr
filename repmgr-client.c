@@ -3622,7 +3622,7 @@ drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 	{
 		if (slot_info.active == false)
 		{
-			if (drop_replication_slot(conn, slot_name) == true)
+			if (drop_replication_slot_sql(conn, slot_name) == true)
 			{
 				log_notice(_("replication slot \"%s\" deleted on node %i"), slot_name, node_id);
 			}
