@@ -95,10 +95,16 @@ char		path_buf[MAXLEN] = "";
  */
 t_node_info target_node_info = T_NODE_INFO_INITIALIZER;
 
+/* used by create_replication_slot() */
+static t_user_type ReplicationSlotUser = USER_TYPE_UNKNOWN;
 
 /* Collate command line errors and warnings here for friendlier reporting */
 static ItemList cli_errors = {NULL, NULL};
 static ItemList cli_warnings = {NULL, NULL};
+
+static void _determine_replication_slot_user(PGconn *conn,
+											 t_node_info *upstream_node_record,
+											 char **replication_user);
 
 int
 main(int argc, char **argv)
@@ -3602,47 +3608,266 @@ can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *rea
 }
 
 
-void
+// provided connection should be for the normal repmgr user
+// upstream_node_record may be NULL or initialised to default values
+bool
+create_replication_slot(PGconn *conn, char *slot_name, t_node_info *upstream_node_record, PQExpBufferData *error_msg)
+{
+	PGconn *slot_conn = NULL;
+	bool use_replication_protocol = false;
+	bool success = true;
+	char *replication_user = NULL;
+
+	_determine_replication_slot_user(conn, upstream_node_record, &replication_user);
+	/*
+	 * If called in --dry-run context, if the replication slot user is not the
+	 * repmgr user, attempt to validate the connection.
+	 */
+	if (runtime_options.dry_run == true)
+	{
+		switch (ReplicationSlotUser)
+		{
+			case USER_TYPE_UNKNOWN:
+				log_error("unable to determine user for replication slot creation");
+				return false;
+			case  REPMGR_USER:
+				log_info(_("replication slots will be created by user \"%s\""),
+						 PQuser(conn));
+				return true;
+
+			case REPLICATION_USER_NODE:
+			case REPLICATION_USER_OPT:
+			{
+				PGconn *repl_conn = duplicate_connection(conn,
+														 replication_user,
+														 true);
+				if (repl_conn == NULL || PQstatus(repl_conn) != CONNECTION_OK)
+				{
+					log_error(_("unable to create replication connection as user \"%s\""),
+							  replication_user);
+					log_detail("%s", PQerrorMessage(repl_conn));
+
+					PQfinish(repl_conn);
+					return false;
+				}
+				log_info(_("replication slots will be created by replication user \"%s\""),
+						 replication_user);
+				PQfinish(repl_conn);
+				return true;
+			}
+			case SUPERUSER:
+			{
+				PGconn *superuser_conn = duplicate_connection(conn,
+															  runtime_options.superuser,
+															  false);
+				if (superuser_conn == NULL || PQstatus(superuser_conn )!= CONNECTION_OK)
+				{
+					log_error(_("unable to create superuser connection as user \"%s\""),
+							  runtime_options.superuser);
+					log_detail("%s", PQerrorMessage(superuser_conn));
+
+					PQfinish(superuser_conn);
+
+					return false;
+				}
+
+				log_info(_("replication slots will be created by superuser \"%s\""),
+						 runtime_options.superuser);
+				PQfinish(superuser_conn);
+			}
+		}
+
+	}
+
+	/*
+	 * If we can't create a replication slot with the connection provided to
+	 * the function, create an connection with appropriate permissions.
+	 */
+	switch (ReplicationSlotUser)
+	{
+		case USER_TYPE_UNKNOWN:
+			log_error("unable to determine user for replication slot creation");
+			return false;
+		case  REPMGR_USER:
+			slot_conn = conn;
+			log_info(_("creating replication slot as user \"%s\""),
+					 PQuser(conn));
+			break;
+
+		case REPLICATION_USER_NODE:
+		case REPLICATION_USER_OPT:
+		{
+			slot_conn = duplicate_connection(conn,
+											 replication_user,
+											 true);
+			if (slot_conn == NULL || PQstatus(slot_conn) != CONNECTION_OK)
+			{
+				log_error(_("unable to create replication connection as user \"%s\""),
+						  runtime_options.replication_user);
+				log_detail("%s", PQerrorMessage(slot_conn));
+
+				PQfinish(slot_conn);
+					return false;
+			}
+			use_replication_protocol = true;
+			log_info(_("creating replication slot as replication user \"%s\""),
+					 replication_user);
+		}
+			break;
+
+		case SUPERUSER:
+		{
+			slot_conn = duplicate_connection(conn,
+											 runtime_options.superuser,
+											 false);
+			if (slot_conn == NULL || PQstatus(slot_conn )!= CONNECTION_OK)
+			{
+				log_error(_("unable to create super connection as user \"%s\""),
+						  runtime_options.superuser);
+				log_detail("%s", PQerrorMessage(slot_conn));
+
+				PQfinish(slot_conn);
+
+				return false;
+			}
+			log_info(_("creating replication slot as superuser \"%s\""),
+					 runtime_options.superuser);
+		}
+			break;
+	}
+
+	if (use_replication_protocol == true)
+	{
+		success = create_replication_slot_replprot(conn, slot_conn, slot_name, error_msg);
+	}
+	else
+	{
+		success = create_replication_slot_sql(slot_conn, slot_name, error_msg);
+	}
+
+
+	if (slot_conn != conn)
+		PQfinish(slot_conn);
+
+	return success;
+}
+
+
+bool
 drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name)
 {
+	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
-	RecordStatus record_status = get_slot_record(conn, slot_name, &slot_info);
+	RecordStatus record_status;
+
+	char *replication_user = NULL;
+	bool success = true;
+
+	if (node_id != UNKNOWN_NODE_ID)
+	{
+		record_status = get_node_record(conn, node_id, &node_record);
+	}
+
+	_determine_replication_slot_user(conn, &node_record, &replication_user);
+
+	record_status = get_slot_record(conn, slot_name, &slot_info);
 
 	log_verbose(LOG_DEBUG, "attempting to delete slot \"%s\" on node %i",
 				slot_name, node_id);
 
 	if (record_status != RECORD_FOUND)
 	{
-		/* this is a good thing */
+		/* this is not a bad good thing */
 		log_verbose(LOG_INFO,
 					_("slot \"%s\" does not exist on node %i, nothing to remove"),
 					slot_name, node_id);
+		return true;
 	}
-	else
-	{
-		if (slot_info.active == false)
-		{
-			if (drop_replication_slot_sql(conn, slot_name) == true)
-			{
-				log_notice(_("replication slot \"%s\" deleted on node %i"), slot_name, node_id);
-			}
-			else
-			{
-				log_error(_("unable to delete replication slot \"%s\" on node %i"), slot_name, node_id);
-			}
-		}
 
-		/*
-		 * if active replication slot exists, call Houston as we have a
-		 * problem
-		 */
+	if (slot_info.active == false)
+	{
+		if (drop_replication_slot_sql(conn, slot_name) == true)
+		{
+			log_notice(_("replication slot \"%s\" deleted on node %i"), slot_name, node_id);
+		}
 		else
 		{
-			log_warning(_("replication slot \"%s\" is still active on node %i"), slot_name, node_id);
+			log_error(_("unable to delete replication slot \"%s\" on node %i"), slot_name, node_id);
+			success = false;
+		}
+	}
+
+	/*
+	 * If an active replication slot exists, call Houston as we have a
+	 * problem.
+	 */
+	else
+	{
+		log_warning(_("replication slot \"%s\" is still active on node %i"), slot_name, node_id);
+		success = false;
+	}
+
+	return success;
+}
+
+
+static void
+_determine_replication_slot_user(PGconn *conn, t_node_info *upstream_node_record, char **replication_user)
+{
+	/*
+	 * If not previously done, work out which user will be responsible
+	 * for creating replication slots.
+	 */
+	if (ReplicationSlotUser == USER_TYPE_UNKNOWN)
+	{
+		/*
+		 * Is the repmgr user a superuser?
+		 */
+		if (is_superuser_connection(conn, NULL))
+		{
+			ReplicationSlotUser = REPMGR_USER;
+		}
+		/*
+		 * Does the repmgr user have the REPLICATION role?
+		 * Note we don't care here whether the repmgr user can actually
+		 * make a replication connection, we're just confirming that the
+		 * connection we have has the appropriate permissions.
+		 */
+		else if (is_replication_role(conn, NULL))
+		{
+			ReplicationSlotUser = REPMGR_USER;
+		}
+		/*
+		 * Is a superuser provided with --superuser?
+		 * We'll check later whether we can make a connection as that user.
+		 */
+		else if (runtime_options.superuser[0] != '\0')
+		{
+			ReplicationSlotUser = SUPERUSER;
+		}
+		/*
+		 * Is a replication user provided with --replication-user?
+		 * We'll check later whether we can make a replication connection as that user.
+		 * Overrides any replication user defined in the upstream node record.
+		 */
+		else if (runtime_options.replication_user[0] != '\0')
+		{
+			ReplicationSlotUser = REPLICATION_USER_OPT;
+			*replication_user = runtime_options.replication_user;
+		}
+		/*
+		 * Is the upstream's node record provided, and does it have a different
+		 * replication user?
+		 * We'll check later whether we can make a replication connection as that user.
+		 */
+		else if (upstream_node_record != NULL && upstream_node_record->node_id != UNKNOWN_NODE_ID
+			 && strncmp(upstream_node_record->repluser, PQuser(conn), NAMEDATALEN) != 0)
+		{
+			ReplicationSlotUser = REPLICATION_USER_NODE;
+			*replication_user = upstream_node_record->repluser;
 		}
 	}
 }
-
 
 /*
  * Here we'll perform some timeline sanity checks to ensure the follow target

@@ -201,6 +201,16 @@ typedef enum
 } t_server_action;
 
 
+typedef enum
+{
+	USER_TYPE_UNKNOWN = -1,
+	REPMGR_USER,
+	REPLICATION_USER_OPT,
+	REPLICATION_USER_NODE,
+	SUPERUSER
+} t_user_type;
+
+
 typedef struct ColHeader
 {
 	char		title[MAXLEN];
@@ -255,7 +265,9 @@ extern void get_node_config_directory(char *config_dir_buf);
 extern void get_node_data_directory(char *data_dir_buf);
 extern void init_node_record(t_node_info *node_record);
 extern bool can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBufferData *reason);
-extern void drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
+
+extern bool create_replication_slot(PGconn *conn, char *slot_name, t_node_info *upstream_node_record, PQExpBufferData *error_msg);
+extern bool drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
 
 extern bool check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record, bool is_rejoin);
 extern void check_shared_library(PGconn *conn);

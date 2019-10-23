@@ -107,7 +107,7 @@ static bool check_upstream_config(PGconn *conn, int server_version_num, t_node_i
 static void check_primary_standby_version_match(PGconn *conn, PGconn *primary_conn);
 static void check_recovery_type(PGconn *conn);
 
-static void initialise_direct_clone(t_node_info *node_record);
+static void initialise_direct_clone(t_node_info *local_node_record, t_node_info *upstream_node_record);
 static int	run_basebackup(t_node_info *node_record);
 static int	run_file_backup(t_node_info *node_record);
 
@@ -162,6 +162,7 @@ do_standby_clone(void)
 
 	/* dummy node record */
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
+	t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 
 	bool local_data_directory_provided = false;
 
@@ -308,10 +309,12 @@ do_standby_clone(void)
 	/*
 	 * By default attempt to connect to the source node. This will fail if no
 	 * connection is possible, unless in Barman mode, in which case we can
-	 * fall back to connecting to the source node via Barman.
+	 * fall back to connecting to the source node via Barman (if available).
 	 */
 	if (runtime_options.no_upstream_connection == false)
 	{
+		RecordStatus record_status = RECORD_NOT_FOUND;
+
 		/*
 		 * This connects to the source node and performs sanity checks, also
 		 * sets "recovery_conninfo_str", "upstream_repluser", "upstream_user" and
@@ -321,6 +324,18 @@ do_standby_clone(void)
 		 * "barman" mode.
 		 */
 		check_source_server();
+
+		/* attempt to retrieve upstream node record */
+		record_status = get_node_record(source_conn,
+										upstream_node_id,
+										&upstream_node_record);
+
+		if (record_status != RECORD_FOUND)
+		{
+			log_error(_("unable to retrieve record for upstream node %i"),
+					  upstream_node_id);
+			exit(ERR_BAD_CONFIG);
+		}
 	}
 	else
 	{
@@ -585,6 +600,35 @@ do_standby_clone(void)
 
 	if (runtime_options.dry_run == true)
 	{
+		/*
+		 * If replication slots in use, sanity-check whether we can create them
+		 * with the available user permissions.
+		 */
+		if (config_file_options.use_replication_slots == true && PQstatus(source_conn) == CONNECTION_OK)
+		{
+			PQExpBufferData msg;
+			bool success = true;
+
+			initPQExpBuffer(&msg);
+
+			/*
+			 * "create_replication_slot()" knows about --dry-run mode and
+			 * will perform checks but not actually create the slot.
+			 */
+			success = create_replication_slot(source_conn,
+											  local_node_record.slot_name,
+											  &upstream_node_record,
+											  &msg);
+			if (success == false)
+			{
+				log_error(_("prerequisites not met for creating a replication slot on upstream node %i"),
+						  upstream_node_record.node_id);
+				termPQExpBuffer(&msg);
+				exit(ERR_BAD_CONFIG);
+			}
+			termPQExpBuffer(&msg);
+		}
+
 		if (upstream_node_id != UNKNOWN_NODE_ID)
 		{
 			log_notice(_("standby will attach to upstream node %i"), upstream_node_id);
@@ -599,15 +643,16 @@ do_standby_clone(void)
 			log_hint(_("consider using the -c/--fast-checkpoint option"));
 		}
 
+		PQfinish(source_conn);
+
 		log_info(_("all prerequisites for \"standby clone\" are met"));
 
-		PQfinish(source_conn);
 		exit(SUCCESS);
 	}
 
 	if (mode != barman)
 	{
-		initialise_direct_clone(&local_node_record);
+		initialise_direct_clone(&local_node_record, &upstream_node_record);
 	}
 
 	switch (mode)
@@ -650,7 +695,15 @@ do_standby_clone(void)
 		/* If a replication slot was previously created, drop it */
 		if (config_file_options.use_replication_slots == true)
 		{
-			drop_replication_slot_sql(source_conn, local_node_record.slot_name);
+			/*
+			 * In the case where a standby is being cloned from a node other than its
+			 * intended upstream, We can't be sure of the source node's node_id. This
+			 * is only required by "drop_replication_slot_if_exists()" to determine
+			 * from the node's record whether it has a different replication user, and
+			 * as in this case that would need to be supplied via "--replication-user"
+			 * it's not a problem.
+			 */
+			drop_replication_slot_if_exists(source_conn, UNKNOWN_NODE_ID, local_node_record.slot_name);
 		}
 
 		log_error(_("unable to take a base backup of the primary server"));
@@ -1313,8 +1366,20 @@ _do_create_replication_conf(void)
 	/* add replication slot, if required */
 	if (slot_creation_required == true)
 	{
+		PQExpBufferData msg;
+		initPQExpBuffer(&msg);
+
 		if (runtime_options.dry_run == true)
 		{
+			/*
+			 * In --dry-run mode this will check availability
+			 * of a user who can create replication slots.
+			 */
+			// XXX check return value
+			create_replication_slot(upstream_conn,
+									local_node_record.slot_name,
+									NULL,
+									&msg);
 			log_info(_("would create replication slot \"%s\" on upstream node \"%s\" (ID: %i)"),
 					 local_node_record.slot_name,
 					 upstream_node_record.node_name,
@@ -1322,11 +1387,10 @@ _do_create_replication_conf(void)
 		}
 		else
 		{
-			PQExpBufferData msg;
-			initPQExpBuffer(&msg);
 
-			if (create_replication_slot_sql(upstream_conn,
+			if (create_replication_slot(upstream_conn,
 										local_node_record.slot_name,
+										NULL,
 										&msg) == false)
 			{
 				log_error("%s", msg.data);
@@ -1335,13 +1399,14 @@ _do_create_replication_conf(void)
 				exit(ERR_BAD_CONFIG);
 			}
 
-			termPQExpBuffer(&msg);
 
 			log_notice(_("replication slot \"%s\" created on upstream node \"%s\" (ID: %i)"),
 					   local_node_record.slot_name,
 					   upstream_node_record.node_name,
 					   upstream_node_id);
 		}
+		termPQExpBuffer(&msg);
+
 	}
 
 
@@ -3070,8 +3135,9 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 		}
 
 
-		if (create_replication_slot_sql(follow_target_conn,
+		if (create_replication_slot(follow_target_conn,
 									local_node_record.slot_name,
+									NULL,
 									output) == false)
 		{
 			log_error("%s", output->data);
@@ -5163,6 +5229,14 @@ check_source_server()
 			exit(ERR_BAD_CONFIG);
 		}
 	}
+
+	/*
+	 * To create replication slots, we'll need a user with the REPLICATION
+	 * privilege, or a superuser.
+	 */
+	if (config_file_options.use_replication_slots == true)
+	{
+	}
 }
 
 
@@ -5718,7 +5792,7 @@ check_upstream_config(PGconn *conn, int server_version_num, t_node_info *upstrea
  * - standby_clone
  */
 static void
-initialise_direct_clone(t_node_info *node_record)
+initialise_direct_clone(t_node_info *local_node_record, t_node_info *upstream_node_record)
 {
 	/*
 	 * Check the destination data directory can be used (in Barman mode, this
@@ -5820,15 +5894,11 @@ initialise_direct_clone(t_node_info *node_record)
 
 	if (config_file_options.use_replication_slots == true)
 	{
-		PGconn	   *superuser_conn = NULL;
-		PGconn	   *privileged_conn = NULL;
 		PQExpBufferData event_details;
 
 		initPQExpBuffer(&event_details);
 
-		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
-
-		if (create_replication_slot_sql(privileged_conn, node_record->slot_name, &event_details) == false)
+		if (create_replication_slot(source_conn, local_node_record->slot_name, upstream_node_record, &event_details) == false)
 		{
 			log_error("%s", event_details.data);
 
@@ -5841,9 +5911,6 @@ initialise_direct_clone(t_node_info *node_record)
 
 			PQfinish(source_conn);
 
-			if (superuser_conn != NULL)
-				PQfinish(superuser_conn);
-
 			exit(ERR_DB_QUERY);
 		}
 
@@ -5851,10 +5918,7 @@ initialise_direct_clone(t_node_info *node_record)
 
 		log_verbose(LOG_INFO,
 					_("replication slot \"%s\" created on source node"),
-					node_record->slot_name);
-
-		if (superuser_conn != NULL)
-			PQfinish(superuser_conn);
+					local_node_record->slot_name);
 	}
 
 	return;
@@ -6050,10 +6114,6 @@ run_basebackup(t_node_info *node_record)
 	 */
 	if (config_file_options.use_replication_slots && upstream_node_id != UNKNOWN_NODE_ID)
 	{
-
-		PGconn	   *superuser_conn = NULL;
-		PGconn	   *privileged_conn = NULL;
-
 		t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
 		t_replication_slot slot_info = T_REPLICATION_SLOT_INITIALIZER;
 		RecordStatus record_status = RECORD_NOT_FOUND;
@@ -6062,7 +6122,7 @@ run_basebackup(t_node_info *node_record)
 		record_status = get_node_record(source_conn, upstream_node_id, &upstream_node_record);
 
 		/*
-		 * if there's no upstream record, there's no point in trying to create
+		 * If there's no upstream record, there's no point in trying to create
 		 * a replication slot on the designated upstream, as the assumption is
 		 * it won't exist at this point.
 		 */
@@ -6111,10 +6171,8 @@ run_basebackup(t_node_info *node_record)
 							   node_record->slot_name,
 							   upstream_node_id);
 
-					get_superuser_connection(&upstream_conn, &superuser_conn, &privileged_conn);
-
 					initPQExpBuffer(&event_details);
-					if (create_replication_slot_sql(privileged_conn, node_record->slot_name, &event_details) == false)
+					if (create_replication_slot(upstream_conn, node_record->slot_name, &upstream_node_record, &event_details) == false)
 					{
 						log_error("%s", event_details.data);
 
@@ -6127,14 +6185,8 @@ run_basebackup(t_node_info *node_record)
 
 						PQfinish(source_conn);
 
-						if (superuser_conn != NULL)
-							PQfinish(superuser_conn);
-
 						exit(ERR_DB_QUERY);
 					}
-
-					if (superuser_conn != NULL)
-						PQfinish(superuser_conn);
 
 					termPQExpBuffer(&event_details);
 				}
@@ -6143,21 +6195,22 @@ run_basebackup(t_node_info *node_record)
 			}
 		}
 
-		/* delete slot on source server */
-
-		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
-
 		if (slot_info.active == false)
 		{
 			if (slot_exists_on_upstream == false)
 			{
-				if (drop_replication_slot_sql(privileged_conn, node_record->slot_name) == true)
+
+				/* delete slot on source server */
+
+				if (drop_replication_slot_if_exists(source_conn, UNKNOWN_NODE_ID, node_record->slot_name) == true)
 				{
-					log_notice(_("replication slot \"%s\" deleted on source node"), node_record->slot_name);
+					log_notice(_("replication slot \"%s\" deleted on source node"),
+							   node_record->slot_name);
 				}
 				else
 				{
-					log_error(_("unable to delete replication slot \"%s\" on source node"), node_record->slot_name);
+					log_error(_("unable to delete replication slot \"%s\" on source node"),
+							  node_record->slot_name);
 				}
 			}
 		}
@@ -6168,21 +6221,17 @@ run_basebackup(t_node_info *node_record)
 		 */
 		else
 		{
-			log_warning(_("replication slot \"%s\" is still active on source node"), node_record->slot_name);
+			log_warning(_("replication slot \"%s\" is still active on source node"),
+						node_record->slot_name);
 		}
-
-		if (superuser_conn != NULL)
-			PQfinish(superuser_conn);
-
 	}
-
 
 	return SUCCESS;
 }
 
 
 static int
-run_file_backup(t_node_info *node_record)
+run_file_backup(t_node_info *local_node_record)
 {
 	int			r = SUCCESS,
 				i;
@@ -6681,31 +6730,37 @@ stop_backup:
 					}
 					else
 					{
-						record_status = get_slot_record(upstream_conn, node_record->slot_name, &slot_info);
+						record_status = get_slot_record(upstream_conn, local_node_record->slot_name, &slot_info);
 
 						if (record_status == RECORD_FOUND)
 						{
 							log_verbose(LOG_INFO,
 										_("replication slot \"%s\" aleady exists on upstream node %i"),
-										node_record->slot_name,
+										local_node_record->slot_name,
 										upstream_node_id);
 						}
 						else
 						{
 							PQExpBufferData errmsg;
+							bool success;
 
 							initPQExpBuffer(&errmsg);
-
-							if (create_replication_slot_sql(upstream_conn, node_record->slot_name, &errmsg) == false)
+							success = create_replication_slot(upstream_conn,
+															  local_node_record->slot_name,
+															  &upstream_node_record,
+															  &errmsg);
+							if (success == false)
 							{
-								log_error(_("unable to create replication slot on upstream node %i"), upstream_node_id);
+								log_error(_("unable to create replication slot \"%s\" on upstream node %i"),
+										  local_node_record->slot_name,
+										  upstream_node_id);
 								log_detail("%s", errmsg.data);
 								slot_warning = true;
 							}
 							else
 							{
 								log_notice(_("replication slot \"%s\" created on upstream node \"%s\" (ID: %i)"),
-										   node_record->slot_name,
+										   local_node_record->slot_name,
 										   upstream_node_record.node_name,
 										   upstream_node_id );
 							}
@@ -6722,7 +6777,7 @@ stop_backup:
 			{
 				log_warning(_("\"use_replication_slots\" specified but a replication slot could not be created"));
 				log_hint(_("ensure a replication slot called \"%s\" is created on the upstream node (ID: %i)"),
-						 node_record->slot_name,
+						 local_node_record->slot_name,
 						 upstream_node_id);
 			}
 		}

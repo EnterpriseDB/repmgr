@@ -133,6 +133,8 @@ typedef enum
 typedef enum
 {
 	SLOT_UNKNOWN = -1,
+	SLOT_NOT_FOUND,
+	SLOT_NOT_PHYSICAL,
 	SLOT_INACTIVE,
 	SLOT_ACTIVE
 } ReplSlotStatus;
@@ -436,6 +438,7 @@ PGconn	   *establish_primary_db_connection(PGconn *conn,
 								const bool exit_on_error);
 PGconn	   *get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 PGconn	   *get_primary_connection_quiet(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
+PGconn	   *duplicate_connection(PGconn *conn, const char *user, bool replication);
 
 bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);\
 bool		is_replication_role(PGconn *conn, char *rolname);
@@ -564,7 +567,7 @@ void		create_slot_name(char *slot_name, int node_id);
 bool		create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *error_msg);
 bool		create_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_name, PQExpBufferData *error_msg);
 bool		drop_replication_slot_sql(PGconn *conn, char *slot_name);
-bool		drop_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_name);
+bool		drop_replication_slot_replprot(PGconn *repl_conn, char *slot_name);
 
 RecordStatus get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
 int			get_free_replication_slot_count(PGconn *conn);

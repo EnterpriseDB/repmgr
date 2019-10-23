@@ -62,7 +62,7 @@ static void _populate_node_records(PGresult *res, NodeInfoList *node_list);
 
 static bool _create_update_node_record(PGconn *conn, char *action, t_node_info *node_info);
 
-static bool _verify_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_msg);
+static ReplSlotStatus _verify_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_msg);
 
 static bool _create_event(PGconn *conn, t_configuration_options *options, int node_id, char *event, bool successful, char *details, t_event_info *event_info, bool send_notification);
 
@@ -344,6 +344,44 @@ establish_db_connection_by_params(t_conninfo_param_list *param_list,
 	}
 
 	return conn;
+}
+
+
+PGconn *
+get_primary_connection(PGconn *conn,
+					   int *primary_id, char *primary_conninfo_out)
+{
+	return _get_primary_connection(conn, primary_id, primary_conninfo_out, false);
+}
+
+
+PGconn *
+get_primary_connection_quiet(PGconn *conn,
+							 int *primary_id, char *primary_conninfo_out)
+{
+	return _get_primary_connection(conn, primary_id, primary_conninfo_out, true);
+}
+
+PGconn *
+duplicate_connection(PGconn *conn, const char *user, bool replication)
+{
+	t_conninfo_param_list conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+	PGconn *duplicate_conn = NULL;
+
+	initialize_conninfo_params(&conninfo, false);
+	conn_to_param_list(conn, &conninfo);
+
+	if (user != NULL)
+		param_set(&conninfo, "user", user);
+
+	if (replication == true)
+		param_set(&conninfo, "replication", "1");
+
+	duplicate_conn = establish_db_connection_by_params(&conninfo, false);
+
+	free_conninfo_params(&conninfo);
+
+	return duplicate_conn;
 }
 
 
@@ -1499,20 +1537,6 @@ _get_primary_connection(PGconn *conn,
 	return NULL;
 }
 
-PGconn *
-get_primary_connection(PGconn *conn,
-					   int *primary_id, char *primary_conninfo_out)
-{
-	return _get_primary_connection(conn, primary_id, primary_conninfo_out, false);
-}
-
-
-PGconn *
-get_primary_connection_quiet(PGconn *conn,
-							 int *primary_id, char *primary_conninfo_out)
-{
-	return _get_primary_connection(conn, primary_id, primary_conninfo_out, true);
-}
 
 
 /*
@@ -4151,7 +4175,7 @@ create_slot_name(char *slot_name, int node_id)
 }
 
 
-static bool
+static ReplSlotStatus
 _verify_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_msg)
 {
 	RecordStatus record_status = RECORD_NOT_FOUND;
@@ -4160,7 +4184,7 @@ _verify_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_m
 	/*
 	 * Check whether slot exists already; if it exists and is active, that
 	 * means another active standby is using it, which creates an error
-	 * situation; if not we can reuse it as-is
+	 * situation; if not we can reuse it as-is.
 	 */
 	record_status = get_slot_record(conn, slot_name, &slot_info);
 
@@ -4168,10 +4192,11 @@ _verify_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_m
 	{
 		if (strcmp(slot_info.slot_type, "physical") != 0)
 		{
-			appendPQExpBuffer(error_msg,
-							  _("slot \"%s\" exists and is not a physical slot\n"),
-							  slot_name);
-			return false;
+			if (error_msg)
+				appendPQExpBuffer(error_msg,
+								  _("slot \"%s\" exists and is not a physical slot\n"),
+								  slot_name);
+			return SLOT_NOT_PHYSICAL;
 		}
 
 		if (slot_info.active == false)
@@ -4179,16 +4204,17 @@ _verify_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_m
 			log_debug("replication slot \"%s\" exists but is inactive; reusing",
 					  slot_name);
 
-			return true;
+			return SLOT_INACTIVE;
 		}
 
-		appendPQExpBuffer(error_msg,
-						  _("slot \"%s\" already exists as an active slot\n"),
-						  slot_name);
-		return false;
+		if (error_msg)
+			appendPQExpBuffer(error_msg,
+							  _("slot \"%s\" already exists as an active slot\n"),
+							  slot_name);
+		return SLOT_ACTIVE;
 	}
 
-	return true;
+	return SLOT_NOT_FOUND;
 }
 
 
@@ -4199,8 +4225,15 @@ create_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_nam
 	PGresult   *res = NULL;
 	bool		success = true;
 
-	if (_verify_replication_slot(conn, slot_name, error_msg) == false)
+	ReplSlotStatus slot_status = _verify_replication_slot(conn, slot_name, error_msg);
+
+	/* Replication slot is unusable */
+	if (slot_status == SLOT_NOT_PHYSICAL || slot_status == SLOT_ACTIVE)
 		return false;
+
+	/* Replication slot can be reused */
+	if (slot_status == SLOT_INACTIVE)
+		return true;
 
 	initPQExpBuffer(&query);
 
@@ -4219,10 +4252,11 @@ create_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_nam
 
 	res = PQexec(repl_conn, query.data);
 
+
 	if ((PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res)) && error_msg != NULL)
 	{
 		appendPQExpBuffer(error_msg,
-						  _("unable to create slot \"%s\" on the upstream node: %s\n"),
+						  _("unable to create replication slot \"%s\" on the upstream node: %s\n"),
 						  slot_name,
 						  PQerrorMessage(conn));
 		success = false;
@@ -4240,8 +4274,15 @@ create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *erro
 	PGresult   *res = NULL;
 	bool		success = true;
 
-	if (_verify_replication_slot(conn, slot_name, error_msg) == false)
+	ReplSlotStatus slot_status = _verify_replication_slot(conn, slot_name, error_msg);
+
+	/* Replication slot is unusable */
+	if (slot_status == SLOT_NOT_PHYSICAL || slot_status == SLOT_ACTIVE)
 		return false;
+
+	/* Replication slot can be reused */
+	if (slot_status == SLOT_INACTIVE)
+		return true;
 
 	initPQExpBuffer(&query);
 
@@ -4268,7 +4309,7 @@ create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *erro
 	if (PQresultStatus(res) != PGRES_TUPLES_OK && error_msg != NULL)
 	{
 		appendPQExpBuffer(error_msg,
-						  _("unable to create slot \"%s\" on the upstream node: %s\n"),
+						  _("unable to create replication slot \"%s\" on the upstream node: %s\n"),
 						  slot_name,
 						  PQerrorMessage(conn));
 		success = false;
@@ -4318,7 +4359,7 @@ drop_replication_slot_sql(PGconn *conn, char *slot_name)
 
 
 bool
-drop_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_name)
+drop_replication_slot_replprot(PGconn *repl_conn, char *slot_name)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -4336,7 +4377,7 @@ drop_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_name)
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_db_error(conn, query.data,
+		log_db_error(repl_conn, query.data,
 					 _("drop_replication_slot_sql(): unable to drop replication slot \"%s\""),
 					 slot_name);
 
