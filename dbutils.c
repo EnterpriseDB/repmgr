@@ -161,6 +161,7 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 	char	   *errmsg = NULL;
 
 	t_conninfo_param_list conninfo_params = T_CONNINFO_PARAM_LIST_INITIALIZER;
+	bool		is_replication_connection = false;
 	bool		parse_success = false;
 
 	initialize_conninfo_params(&conninfo_params, false);
@@ -178,6 +179,9 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 	/* set some default values if not explicitly provided */
 	param_set_ine(&conninfo_params, "connect_timeout", "2");
 	param_set_ine(&conninfo_params, "fallback_application_name", "repmgr");
+
+	if (param_get(&conninfo_params, "replication") != NULL)
+		is_replication_connection = true;
 
 	connection_string = param_list_to_string(&conninfo_params);
 
@@ -224,7 +228,8 @@ _establish_db_connection(const char *conninfo, const bool exit_on_error, const b
 	 * XXX set this explicitly before any write operations
 	 */
 
-	else if (set_config(conn, "synchronous_commit", "local") == false)
+	else if (is_replication_connection == false &&
+			 set_config(conn, "synchronous_commit", "local") == false)
 	{
 		if (exit_on_error)
 		{
