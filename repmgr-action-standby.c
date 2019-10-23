@@ -88,6 +88,15 @@ static char local_repmgr_tmp_directory[MAXPGPATH] = "";
 static char datadir_list_filename[MAXLEN] = "";
 static char barman_command_buf[MAXLEN] = "";
 
+/*
+ * To enable "standby clone" to run with lowest possible user
+ * privileges, we'll need to determine which actions need to
+ * be run and which of the available users, which will be one
+ * of the repmgr user, the replication user (if available) or
+ * the superuser (if available).
+ */
+static t_user_type SettingsUser = REPMGR_USER;
+
 static void _do_standby_promote_internal(PGconn *conn);
 static void _do_create_recovery_conf(void);
 
@@ -200,10 +209,13 @@ do_standby_clone(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* Sanity-check barman connection and installation */
+
 	if (mode == barman)
 	{
-		/* this will exit with ERR_BARMAN if problems found */
+		/*
+		 * Sanity-check barman connection and installation;
+		 * this will exit with ERR_BARMAN if problems found.
+		 */
 		check_barman_config();
 	}
 
@@ -443,7 +455,15 @@ do_standby_clone(void)
 		 * tell this from the below query; we'll probably need to add a check
 		 * for their presence and if missing force copy by SSH
 		 */
-		get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+
+		if (SettingsUser == REPMGR_USER)
+		{
+			privileged_conn = source_conn;
+		}
+		else
+		{
+			get_superuser_connection(&source_conn, &superuser_conn, &privileged_conn);
+		}
 
 		if (get_configuration_file_locations(privileged_conn, &config_files) == false)
 		{
@@ -4821,6 +4841,7 @@ check_source_server()
 	pfree(connstr);
 
 	source_conn = establish_db_connection_by_params(&source_conninfo, false);
+
 	/*
 	 * Unless in barman mode, exit with an error;
 	 * establish_db_connection_by_params() will have already logged an error
@@ -4832,17 +4853,21 @@ check_source_server()
 		source_conn = NULL;
 		if (mode == barman)
 			return;
-		else
-			exit(ERR_DB_CONN);
+
+		exit(ERR_DB_CONN);
 	}
 
 	/*
 	 * If a connection was established, perform some sanity checks on the
-	 * provided upstream connection
+	 * provided upstream connection.
 	 */
 
 	source_server_version_num = check_server_version(source_conn, "primary", true, NULL);
 
+	/*
+	 * It's not essential to know the cluster size, but useful to sanity-check
+	 * we can actually run a query before going any further.
+	 */
 	if (get_cluster_size(source_conn, cluster_size) == false)
 		exit(ERR_DB_QUERY);
 
@@ -4871,7 +4896,7 @@ check_source_server()
 	/*
 	 * Sanity-check that the primary node has a repmgr extension - if not
 	 * present, fail with an error unless -F/--force is used (to enable repmgr
-	 * to be used as a standalone clone tool)
+	 * to be used as a standalone clone tool).
 	 */
 
 	extension_status = get_repmgr_extension_status(primary_conn, &extversions);
@@ -5076,8 +5101,8 @@ check_source_server()
 		}
 
 		/*
-		 * check that there's no existing node record with the same name but
-		 * different ID
+		 * Check that there's no existing node record with the same name but
+		 * different ID.
 		 */
 		record_status = get_node_record_by_name(source_conn, config_file_options.node_name, &other_node_record);
 
@@ -5093,6 +5118,51 @@ check_source_server()
 
 	/* Check the source node is configured sufficiently to be able to clone from */
 	check_upstream_config(source_conn, source_server_version_num, &upstream_node_record, true);
+
+	/*
+	 * Work out which users need to perform which tasks.
+	 *
+	 * Here we'll check the qualifications of the repmgr user as we have the
+	 * connection open; replication and superuser connections will be opened
+	 * when required and any errors will be raised at that point.
+	 */
+
+	/*
+	 * If the user wants to copy configuration files located outside the
+	 * data directory, we'll need to be able to query the upstream node's data
+	 * directory location, which is available only to superusers or members
+	 * of the appropriate role.
+	 */
+	if (runtime_options.copy_external_config_files == true)
+	{
+		/*
+		 * This will check if the user is superuser or (from Pg10) is a member
+		 * of "pg_read_all_settings"/"pg_monitor"
+		 */
+		if (connection_has_pg_settings(source_conn))
+		{
+			SettingsUser = REPMGR_USER;
+		}
+		else if (runtime_options.superuser[0] != '\0')
+		{
+			SettingsUser = SUPERUSER;
+		}
+		else
+		{
+			log_error(_("--copy-external-config-files requires a user with permission to read the data directory on the source node"));
+
+			if (PQserverVersion(source_conn) >= 100000)
+			{
+				log_hint(_("the repmgr user must be superuser or member of role \"pg_monitor\" or \"pg_read_all_settings\", or a superuser provided with -S/--superuser"));
+			}
+			else
+			{
+				log_hint(_("the repmgr user must be superuser, or a superuser provided with -S/--superuser"));
+			}
+
+			exit(ERR_BAD_CONFIG);
+		}
+	}
 }
 
 

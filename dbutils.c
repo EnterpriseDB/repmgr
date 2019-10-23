@@ -4165,7 +4165,6 @@ create_replication_slot(PGconn *conn, char *slot_name, PQExpBufferData *error_ms
 
 		if (slot_info.active == false)
 		{
-			/* XXX is this a good idea? */
 			log_debug("replication slot \"%s\" exists but is inactive; reusing",
 					  slot_name);
 

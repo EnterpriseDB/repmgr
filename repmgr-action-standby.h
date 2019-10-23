@@ -19,6 +19,14 @@
 #ifndef _REPMGR_ACTION_STANDBY_H_
 #define _REPMGR_ACTION_STANDBY_H_
 
+typedef enum
+{
+	REPMGR_USER = 0,
+	REPLICATION_USER,
+	REPLICATION_PROTOCOL_USER,
+	SUPERUSER
+} t_user_type;
+
 extern void do_standby_clone(void);
 extern void do_standby_register(void);
 extern void do_standby_unregister(void);
