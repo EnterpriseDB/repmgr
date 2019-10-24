@@ -12,24 +12,25 @@ PostgreSQL 9.4 and 9.3 are supported, with some restrictions.
 
 `repmgr` is distributed under the GNU GPL 3 and maintained by 2ndQuadrant.
 
-### BDR support
-
-`repmgr` supports monitoring of a two-node BDR 2.0 cluster on PostgreSQL 9.6
-only. Note that BDR 2.0 is not publicly available; please contact 2ndQuadrant
-for details.
-
-
 Documentation
 -------------
 
-The main `repmgr` documentation is available here:
+The full `repmgr` documentation is available here:
 
 > [repmgr documentation](https://repmgr.org/docs/current/index.html)
 
-The `README` file for `repmgr` 3.x is available here:
+The old `README` file for `repmgr` 3.x is available here:
 
 > https://github.com/2ndQuadrant/repmgr/blob/REL3_3_STABLE/README.md
 
+Note that the `repmgr` 3.x series is no longer supported and contains known bugs;
+please upgrade to the current `repmgr` version as soon as possible.
+
+Versions
+--------
+
+For an overview of `repmgr` versions and PostgreSQL compatibility, see the
+[repmgr compatibility matrix](https://repmgr.org/docs/current/install-requirements.html#INSTALL-COMPATIBILITY-MATRIX).
 
 Files
 ------
@@ -68,6 +69,8 @@ The IRC channel #repmgr is registered with freenode.
 Please report bugs and other issues to:
 
 * https://github.com/2ndQuadrant/repmgr
+
+See 
 
 Further information is available at https://repmgr.org/
 
