@@ -100,6 +100,9 @@
               &repmgr; version
             </entry>
             <entry>
+              Supported?
+            </entry>
+            <entry>
               Latest release
             </entry>
             <entry>
@@ -115,6 +118,9 @@
               &repmgr; 5.x
             </entry>
             <entry>
+              YES
+            </entry>
+            <entry>
               <link linkend="release-current">&repmgrversion;</link> (&releasedate;)
             </entry>
             <entry>
@@ -125,6 +131,9 @@
           <row>
             <entry>
               &repmgr; 4.x
+            </entry>
+            <entry>
+              NO
             </entry>
             <entry>
               <link linkend="release-4.4">4.4</link> (2019-06-27)
@@ -139,6 +148,9 @@
               &repmgr; 3.x
             </entry>
             <entry>
+              NO
+            </entry>
+            <entry>
               <ulink url="https://repmgr.org/release-notes-3.3.2.html">3.3.2</ulink> (2017-05-30)
             </entry>
             <entry>
@@ -149,6 +161,9 @@
           <row>
             <entry>
               &repmgr; 2.x
+            </entry>
+            <entry>
+              NO
             </entry>
             <entry>
               <ulink url="https://repmgr.org/release-notes-2.0.3.html">2.0.3</ulink> (2015-04-16)
