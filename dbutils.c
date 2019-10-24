@@ -67,6 +67,12 @@ static bool _is_bdr_db(PGconn *conn, PQExpBufferData *output, bool quiet);
 static void _populate_bdr_node_record(PGresult *res, t_bdr_node_info *node_info, int row);
 static void _populate_bdr_node_records(PGresult *res, BdrNodeInfoList *node_list);
 
+/*
+ * This provides a standardized way of logging database errors. Note
+ * that the provided PGconn can be a normal or a replication connection;
+ * no attempt is made to write to the database, only to report the output
+ * of PQerrorMessage().
+ */
 void
 log_db_error(PGconn *conn, const char *query_text, const char *fmt,...)
 {
