@@ -379,7 +379,7 @@ is_replication_role(PGconn *conn, char *rolname)
 
 	appendPQExpBufferStr(&query,
 						 "  SELECT rolreplication "
-						 "    FROM pg_catalog.pg_authid "
+						 "    FROM pg_catalog.pg_roles "
 						 "   WHERE rolname = ");
 
 	if (rolname != NULL)
