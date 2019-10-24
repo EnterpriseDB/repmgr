@@ -98,7 +98,7 @@ static char barman_command_buf[MAXLEN] = "";
 static t_user_type SettingsUser = REPMGR_USER;
 
 static void _do_standby_promote_internal(PGconn *conn);
-static void _do_create_recovery_conf(void);
+static void _do_create_replication_conf(void);
 
 static void check_barman_config(void);
 static void check_source_server(void);
@@ -172,7 +172,7 @@ do_standby_clone(void)
 	 */
 	if (runtime_options.replication_conf_only == true)
 	{
-		return _do_create_recovery_conf();
+		return _do_create_replication_conf();
 	}
 
 	/*
@@ -929,7 +929,7 @@ check_barman_config(void)
 
 
 /*
- * _do_create_recovery_conf()
+ * _do_create_replication_conf()
  *
  * Create recovery.conf for a previously cloned instance.
  *
@@ -950,7 +950,7 @@ check_barman_config(void)
  */
 
 static void
-_do_create_recovery_conf(void)
+_do_create_replication_conf(void)
 {
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 	t_node_info upstream_node_record = T_NODE_INFO_INITIALIZER;
