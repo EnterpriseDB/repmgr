@@ -106,7 +106,7 @@ do_primary_register(void)
 	current_primary_id = get_primary_node_id(conn);
 	if (current_primary_id != NODE_NOT_FOUND && current_primary_id != config_file_options.node_id)
 	{
-		log_debug("XXX %i", current_primary_id);
+		log_debug("current active primary node ID is %i", current_primary_id);
 		primary_conn = establish_primary_db_connection(conn, false);
 
 		if (PQstatus(primary_conn) == CONNECTION_OK)
