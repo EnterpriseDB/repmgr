@@ -4197,10 +4197,10 @@ create_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_nam
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	if (_verify_replication_slot(conn, slot_name, error_msg) == false)
 		return false;
-
 
 	initPQExpBuffer(&query);
 
@@ -4219,16 +4219,17 @@ create_replication_slot_replprot(PGconn *conn, PGconn *repl_conn, char *slot_nam
 
 	res = PQexec(repl_conn, query.data);
 
-	if (PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res))
+	if ((PQresultStatus(res) != PGRES_TUPLES_OK || !PQntuples(res)) && error_msg != NULL)
 	{
-		log_db_error(conn, NULL, _("unable to execute CREATE_REPLICATION_SLOT"));
-
-		PQclear(res);
-		return false;
+		appendPQExpBuffer(error_msg,
+						  _("unable to create slot \"%s\" on the upstream node: %s\n"),
+						  slot_name,
+						  PQerrorMessage(conn));
+		success = false;
 	}
 
 	PQclear(res);
-	return true;
+	return success;
 }
 
 
@@ -4237,6 +4238,7 @@ create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *erro
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
+	bool		success = true;
 
 	if (_verify_replication_slot(conn, slot_name, error_msg) == false)
 		return false;
@@ -4263,18 +4265,17 @@ create_replication_slot_sql(PGconn *conn, char *slot_name, PQExpBufferData *erro
 	res = PQexec(conn, query.data);
 	termPQExpBuffer(&query);
 
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	if (PQresultStatus(res) != PGRES_TUPLES_OK && error_msg != NULL)
 	{
 		appendPQExpBuffer(error_msg,
 						  _("unable to create slot \"%s\" on the upstream node: %s\n"),
 						  slot_name,
 						  PQerrorMessage(conn));
-		PQclear(res);
-		return false;
+		success = false;
 	}
 
 	PQclear(res);
-	return true;
+	return success;
 }
 
 
