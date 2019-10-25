@@ -63,6 +63,37 @@
   </refsect1>
 
   <refsect1>
+    <title>User permission requirements</title>
+    <para><emphasis>CHECKPOINT</emphasis></para>
+    <para>
+      &repmgr; executes <command>CHECKPOINT</command> on the demotion candidate as part of the shutdown
+      process.
+    </para>
+    <para>
+      Note that <command>CHECKPOINT</command> requires database superuser permissions to execute.
+      If the <literal>repmgr</literal> user is not a superuser, the checkpoint operation will
+      fail, though this is not a fatal error &repmgr; will continue the switchover process.
+    </para>
+    <para><emphasis>pg_promote() (PostgreSQL 12)</emphasis></para>
+    <para>
+      From PostgreSQL 12, &repmgr; uses the <command>pg_promote()</command> function to promote a standby
+      to primary.
+    </para>
+    <para>
+      By default, execution of <command>pg_promote()</command> is restricted to superusers.
+      If the <literal>repmgr</literal> use is not a superuser, execution permission for this
+      function must be granted with e.g.:
+      <programlisting>
+    GRANT EXECUTE ON FUNCTION pg_catalog.pg_promote TO repmgr</programlisting>
+    </para>
+    <para>
+      A future &repmgr; release will relax this restriction by falling back to
+      <command>pg_ctl promote</command>, as used for pre-PostgreSQL 12 versions.
+    </para>
+  </refsect1>
+
+  <refsect1>
+
     <title>Options</title>
     <variablelist>
 

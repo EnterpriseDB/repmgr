@@ -86,6 +86,7 @@
   </refsect1>
 
 
+
   <refsect1>
     <title>Example</title>
     <para>
@@ -100,6 +101,26 @@
     </para>
   </refsect1>
 
+
+  <refsect1>
+    <title>User permission requirements</title>
+    <para><emphasis>pg_promote() (PostgreSQL 12)</emphasis></para>
+    <para>
+      From PostgreSQL 12, &repmgr; uses the <command>pg_promote()</command> function to promote a standby
+      to primary.
+    </para>
+    <para>
+      By default, execution of <command>pg_promote()</command> is restricted to superusers.
+      If the <literal>repmgr</literal> use is not a superuser, execution permission for this
+      function must be granted with e.g.:
+      <programlisting>
+    GRANT EXECUTE ON FUNCTION pg_catalog.pg_promote TO repmgr</programlisting>
+    </para>
+    <para>
+      A future &repmgr; release will relax this restriction by falling back to
+      <command>pg_ctl promote</command>, as used for pre-PostgreSQL 12 versions.
+    </para>
+  </refsect1>
 
   <refsect1>
     <title>Options</title>
