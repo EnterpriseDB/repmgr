@@ -24,10 +24,15 @@
 
     <note>
       <para>
-        It's possibly to install the &repmgr; extension manually before executing
+        &repmgr; will attempt to install the &repmgr; extension as part of this command,
+        however this will fail if the <literal>repmgr</literal> user is not a superuser.
+      </para>
+      <para>
+        It's possible to install the &repmgr; extension manually before executing
         <command>repmgr primary register</command>; in this case &repmgr; will
         detect the presence of the extension and skip that step.
       </para>
+ 
     </note>
 
   </refsect1>
@@ -59,6 +64,21 @@
 
   </refsect1>
 
+  <refsect1>
+    <title>User permission requirements</title>
+    <para>
+      The <literal>repmgr</literal> user must be a superuser in order for &repmgr;
+      to be able to install the <literal>repmgr</literal> extension.
+    </para>
+    <para>
+      If this is not the case, the <literal>repmgr</literal> extension can be installed
+      manually before executing <command>repmgr primary register</command>.
+    </para>
+    <para>
+      A future &repmgr; release will enable the provision of a <option>--superuser</option>
+      name for the installation of the extension.
+    </para>
+  </refsect1>
   <refsect1>
 
     <title>Options</title>
