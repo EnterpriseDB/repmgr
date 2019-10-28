@@ -6072,7 +6072,7 @@ run_basebackup(t_node_info *node_record)
 				if (record_status == RECORD_FOUND)
 				{
 					log_verbose(LOG_INFO,
-								_("replication slot \"%s\" aleady exists on upstream node %i"),
+								_("replication slot \"%s\" already exists on upstream node %i"),
 								node_record->slot_name,
 								upstream_node_id);
 					slot_exists_on_upstream = true;
