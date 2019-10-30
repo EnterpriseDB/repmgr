@@ -293,8 +293,7 @@ main(int argc, char **argv)
 				 * These are the standard database connection options; with
 				 * the exception of -d/--dbname (which could be a conninfo
 				 * string) we'll also set these values in "source_conninfo"
-				 * (overwriting preset values from environment variables). XXX
-				 * check this is same as psql
+				 * (overwriting preset values from environment variables).
 				 */
 				/* -d/--dbname */
 			case 'd':
@@ -1435,9 +1434,6 @@ main(int argc, char **argv)
  *
  * Messages will be added to the command line warning and error lists
  * as appropriate.
- *
- * XXX for each individual actions, check only required actions
- * for non-required actions check warn if provided
  */
 
 static void
@@ -1493,10 +1489,15 @@ check_cli_parameters(const int action)
 					}
 
 					/*
-					 * XXX if -D/--pgdata provided, and also
-					 * config_file_options.pgdata, warn -D/--pgdata will be
-					 * ignored
+					 * If -D/--pgdata was provided, but config_file_options.pgdata
+					 * is set, warn that -D/--pgdata will be ignored.
 					 */
+					if (runtime_options.data_dir[0] && config_file_options.data_directory[0])
+					{
+						item_list_append(&cli_warnings,
+										 _("-D/--pgdata will be ignored if a repmgr configuration file is provided"));
+
+					}
 
 					if (*runtime_options.upstream_conninfo)
 					{
