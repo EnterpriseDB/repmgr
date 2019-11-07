@@ -103,9 +103,22 @@
      <filename>repmgr.conf</filename> should contain the following entries:
     <programlisting>
     barman_host='barman@barmansrv'
-    barman_server='somedb'</programlisting>
+    barman_server='pg'</programlisting>
    </para>
-
+   <para>
+     Here <literal>pg</literal> corresponds to a section in Barman's configuration file for a specific
+     server backup configuration, which would look something like:
+     <programlisting>
+[pg]
+description = "Main cluster"
+...
+     </programlisting>
+   </para>
+   <para>
+     More details on Barman configuration can be found in the
+     <ulink url="https://docs.pgbarman.org/">Barman documentation</ulink>'s
+     <ulink url="https://docs.pgbarman.org/#configuration">configuration section</ulink>.
+   </para>
    <note>
     <para>
      To use a non-default Barman configuration file on the Barman server,
@@ -189,8 +202,8 @@
     <filename>repmgr.conf</filename> should include the following lines:
     <programlisting>
     barman_host='barman@barmansrv'
-    barman_server='somedb'
-    restore_command='/usr/bin/barman-wal-restore barmansrv somedb %f %p'</programlisting>
+    barman_server='pg'
+    restore_command='/usr/bin/barman-wal-restore barmansrv pg %f %p'</programlisting>
    </para>
    <note>
     <simpara>
