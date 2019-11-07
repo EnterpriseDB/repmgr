@@ -112,7 +112,7 @@
      To use a non-default Barman configuration file on the Barman server,
      specify this in <filename>repmgr.conf</filename> with <filename>barman_config</filename>:
      <programlisting>
-      barman_config=/path/to/barman.conf</programlisting>
+      barman_config='/path/to/barman.conf'</programlisting>
     </para>
    </note>
 
