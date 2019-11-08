@@ -146,7 +146,7 @@ Script and template file should be installed on each node where `repmgrd` is run
 Finally, set `promote_command` in `repmgr.conf` on each node to
 point to the custom promote script:
 
-    promote_command=/var/lib/postgres/repmgr/promote.sh
+    promote_command='/var/lib/postgres/repmgr/promote.sh'
 
 and reload/restart any running `repmgrd` instances for the changes to take
 effect.

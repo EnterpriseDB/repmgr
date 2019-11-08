@@ -94,7 +94,7 @@
         replication_type='bdr'
 
         # Event notification configuration
-        event_notifications=bdr_failover
+        event_notifications='bdr_failover'
         event_notification_command='/path/to/bdr-pgbouncer.sh %n %e %s "%c" "%a" >> /tmp/bdr-failover.log 2>&amp;1'
 
         # repmgrd options
