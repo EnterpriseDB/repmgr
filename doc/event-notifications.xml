@@ -148,7 +148,7 @@
   the notification types can be filtered to explicitly named ones using the
   <varname>event_notifications</varname> parameter, e.g.:
     <programlisting>
-    event_notifications=primary_register,standby_register,witness_register</programlisting>
+    event_notifications='primary_register,standby_register,witness_register;</programlisting>
 
  </para>
 
