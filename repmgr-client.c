@@ -3883,7 +3883,6 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 	t_conninfo_param_list follow_target_repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	PGconn	   *follow_target_repl_conn = NULL;
 	t_system_identification follow_target_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
-	TimeLineHistoryEntry *follow_target_history = NULL;
 	bool success = true;
 
 	const char *action = is_rejoin == true ? "rejoin" : "follow";
@@ -4001,7 +4000,8 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 		/*
 		 * upstream has higher timeline - check where it forked off from this node's timeline
 		 */
-		follow_target_history = get_timeline_history(follow_target_repl_conn, local_tli + 1);
+		TimeLineHistoryEntry *follow_target_history = get_timeline_history(follow_target_repl_conn,
+																		   local_tli + 1);
 
 		if (follow_target_history == NULL)
 		{
@@ -4065,12 +4065,11 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 						   format_lsn(follow_target_history->end));
 			}
 		}
+
+		pfree(follow_target_history);
 	}
 
 	PQfinish(follow_target_repl_conn);
-
-	if (follow_target_history)
-		pfree(follow_target_history);
 
 	return success;
 }
