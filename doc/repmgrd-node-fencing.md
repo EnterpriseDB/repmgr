@@ -108,7 +108,7 @@ The actual script is as follows; adjust the configurable items as appropriate:
 
     # 1. Promote this node from standby to primary
 
-    repmgr standby promote -f /etc/repmgr.conf
+    repmgr standby promote -f /etc/repmgr.conf --log-to-file
 
     # 2. Reconfigure pgbouncer instances
 
