@@ -7704,7 +7704,8 @@ sibling_nodes_follow(t_node_info *local_node_record, NodeInfoList *sibling_nodes
 				log_warning(_("STANDBY FOLLOW failed on node \"%s\""),
 							cell->node_info->node_name);
 			}
-				failed_follow_count++;
+
+			failed_follow_count++;
 		}
 
 		termPQExpBuffer(&command_output);
