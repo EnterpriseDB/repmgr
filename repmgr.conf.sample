@@ -195,7 +195,7 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 #
 # Examples:
 #
-#   tablespace_mapping=/path/to/original/tablespace=/path/to/new/tablespace
+#   tablespace_mapping='/path/to/original/tablespace=/path/to/new/tablespace'
 #   restore_command = 'cp /path/to/archived/wals/%f %p'
 
 #tablespace_mapping=''			# Tablespaces can be remapped from one
