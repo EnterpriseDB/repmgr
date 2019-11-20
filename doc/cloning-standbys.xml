@@ -510,6 +510,34 @@ description = "Main cluster"
      cloning a node or executing <xref linkend="repmgr-standby-follow"/>.
     </para>
    </sect2>
+
+
+   <sect2 id="cloning-advanced-tablespace-mapping" xreflabel="Tablespace mapping">
+    <title>Tablespace mapping</title>
+    <indexterm>
+      <primary>tablespace mapping</primary>
+    </indexterm>
+    <para>
+      &repmgr; provides a <option>tablespace_mapping</option> configuration
+      file option, which will makes it possible to map the tablespace on the source node to
+      a different location on the local node.
+    </para>
+    <para>
+      To use this, add <option>tablespace_mapping</option> to <filename>repmgr.conf</filename>
+      like this:
+<programlisting>
+  tablespace_mapping='/var/lib/pgsql/tblspc1=/data/pgsql/tblspc1'
+</programlisting>
+    </para>
+    <para>
+      where the left-hand value represents the tablespace on the source node,
+      and the right-hand value represents  the tablespace on the standby to be cloned.
+    </para>
+    <para>
+      This parameter can be provided multiple times.
+    </para>
+   </sect2>
+
  </sect1>
 
 
