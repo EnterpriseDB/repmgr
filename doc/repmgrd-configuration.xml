@@ -486,6 +486,23 @@
 
     </sect2>
 
+
+    <sect2 id="repmgrd-automatic-failover-configuration-pgbouncer-fencing">
+      <title>Configuring &repmgrd; and pgbouncer to fence a failed primary node</title>
+      <indexterm>
+        <primary>fencing</primary>
+        <secondary>using repmgrd and pgbouncer to fence a failed primary node</secondary>
+      </indexterm>
+      <indexterm>
+        <primary>PgBouncer</primary>
+        <secondary>using repmgrd and pgbouncer to fence a failed primary node</secondary>
+      </indexterm>
+      <para>
+        For further details and a reference implementation, see the separate document
+        <ulink url="https://github.com/2ndQuadrant/repmgr/blob/master/doc/repmgrd-node-fencing.md">Fencing a failed master node with repmgrd and PgBouncer</ulink>.
+      </para>
+    </sect2>
+
     <sect2 id="postgresql-service-configuration">
       <title>PostgreSQL service configuration</title>
 
