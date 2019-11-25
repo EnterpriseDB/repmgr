@@ -119,6 +119,27 @@
       </listitem>
     </varlistentry>
 
+    <varlistentry id="repmgr-conf-ssh-options" xreflabel="ssh_options">
+      <term><varname>ssh_options</varname> (<type>string</type>)
+        <indexterm>
+          <primary><varname>ssh_options</varname> configuration file parameter</primary>
+        </indexterm>
+      </term>
+      <listitem>
+        <para>
+          Options to append to the <command>ssh</command> command when executed
+          by &repmgr;.
+        </para>
+        <para>
+          We recommend adding <literal>-q</literal> to suppress any superfluous
+          SSH chatter such as login banners, and also an explicit
+          <option>ConnectTimeout</option> value,
+          e.g.:
+<programlisting>
+ssh_options='-q -o ConnectTimeout=10'</programlisting>
+        </para>
+      </listitem>
+    </varlistentry>
 
   </variablelist>
 </sect1>
