@@ -303,11 +303,11 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# primary (or other upstream node)
 #reconnect_interval=10			# Interval between attempts to reconnect to an unreachable
 					# primary (or other upstream node)
-#promote_command=			# command repmgrd executes when promoting a new primary; use something like:
+#promote_command=''			# command repmgrd executes when promoting a new primary; use something like:
 					#
 					#     repmgr standby promote -f /etc/repmgr.conf
 					#
-#follow_command=			# command repmgrd executes when instructing a standby to follow a new primary;
+#follow_command=''			# command repmgrd executes when instructing a standby to follow a new primary;
 					# use something like:
 					#
 					#     repmgr standby follow -f /etc/repmgr.conf -W --upstream-node-id=%n
