@@ -14,6 +14,30 @@
   <para>
     See also: <xref linkend="upgrading-repmgr">
   </para>
+  <sect1 id="release-4.3.1">
+    <title>Release 4.3.1</title>
+    <para><emphasis>??? December ??, 2019</emphasis></para>
+    <para>
+      &repmgr; 4.3.1 is a minor release.
+    </para>
+
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+         <listitem>
+            <para>
+              <command><link linkend="repmgr-standby-follow">repmgr standby follow</link></command>:
+	          ensure an existing replication slot is not deleted if the
+              follow target is the node's current upstream.
+            </para>
+	      </listitem>
+
+        </itemizedlist>
+      </para>
+    </sect2>
+
+  </sect1>
 
   <sect1 id="release-4.3">
     <title>Release 4.3</title>

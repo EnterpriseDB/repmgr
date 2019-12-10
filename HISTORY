@@ -1,3 +1,8 @@
+4.3.1   2019-12-??
+        repmgr: ensure an existing replication slot is not deleted if the
+          follow target is the node's current upstream (Ian)
+
+4.3     2019-04-02
         repmgr: add "daemon (start|stop)" command; GitHub #528 (Ian)
         repmgr: add --version-number command line option (Ian)
         repmgr: add --compact option to "cluster show"; GitHub #521 (Ian)
