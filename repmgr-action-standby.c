@@ -3004,8 +3004,8 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 	}
 
 	/*
-	 * store the original upstream node id so we can delete the
-	 * replication slot, if exists
+	 * Store the original upstream node id so we can delete the
+	 * replication slot, if it exists.
 	 */
 	if (local_node_record.upstream_node_id != UNKNOWN_NODE_ID)
 	{
@@ -3016,9 +3016,17 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 		original_upstream_node_id = follow_target_node_record->node_id;
 	}
 
-	if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false && original_upstream_node_id != UNKNOWN_NODE_ID)
+	if (config_file_options.use_replication_slots && runtime_options.host_param_provided == false)
 	{
-		remove_old_replication_slot = true;
+		/*
+		 * Only attempt to delete the old replication slot if the old upstream
+		 * node is known and is different to the follow target node.
+		 */
+		if (original_upstream_node_id != UNKNOWN_NODE_ID
+		 && original_upstream_node_id != follow_target_node_record->node_id)
+		{
+			remove_old_replication_slot = true;
+		}
 	}
 
 	/* Fetch original upstream's record */
@@ -3170,8 +3178,6 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 	 * Note that if this function is called by do_standby_switchover(), the
 	 * "repmgr node rejoin" command executed on the demotion candidate may already
 	 * have removed the slot, so there may be nothing to do.
-	 *
-	 * XXX check if former upstream is current primary?
 	 */
 
 	if (remove_old_replication_slot == true)
