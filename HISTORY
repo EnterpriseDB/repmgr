@@ -1,3 +1,7 @@
+5.0.1   20??-??-??
+        repmgr: ensure an existing replication slot is not deleted if the
+          follow target is the node's current upstream (Ian)
+
 5.0     2019-10-15
         general: add PostgreSQL 12 support (Ian)
         general: parse configuration file using flex (Ian)
