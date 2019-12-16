@@ -3766,6 +3766,33 @@ do_standby_switchover(void)
 	termPQExpBuffer(&command_output);
 
 	/*
+	 * We should check remote configure file if exists or not first.
+	 */
+	initPQExpBuffer(&remote_command_str);
+	appendPQExpBuffer(&remote_command_str, "test -f %s && echo 1 || echo 0", remote_node_record.config_file);
+	initPQExpBuffer(&command_output);
+	command_success = remote_command(remote_host,
+					 runtime_options.remote_user,
+					 remote_command_str.data,
+					 config_file_options.ssh_options,
+					 &command_output);
+
+	termPQExpBuffer(&remote_command_str);
+
+	if (command_success == false || command_output.data[0] == '0')
+	{
+		log_error("not found configure file in remote server, Please Re register with the correct file path.",
+				remote_node_record.config_file);
+
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+
+		termPQExpBuffer(&command_output);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
 	 * Sanity-check remote "data_directory" is correctly configured in repmgr.conf.
 	 *
 	 * This is important as we'll need to be able to run "repmgr node status" on the data
