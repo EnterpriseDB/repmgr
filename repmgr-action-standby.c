@@ -3760,6 +3760,44 @@ do_standby_switchover(void)
 	}
 	termPQExpBuffer(&command_output);
 
+
+	/*
+	 * Check if the expected remote repmgr.conf file exists
+	 */
+	initPQExpBuffer(&remote_command_str);
+
+	appendPQExpBuffer(&remote_command_str,
+					  "test -f %s && echo 1 || echo 0",
+					  remote_node_record.config_file);
+	initPQExpBuffer(&command_output);
+
+	command_success = remote_command(remote_host,
+									 runtime_options.remote_user,
+									 remote_command_str.data,
+									 config_file_options.ssh_options,
+									 &command_output);
+
+	termPQExpBuffer(&remote_command_str);
+
+	if (command_success == false || command_output.data[0] == '0')
+	{
+		log_error(_("expected configuration file not found on the demotion candiate \"%s\" (ID: %i)"),
+				  remote_node_record.node_name,
+				  remote_node_record.node_id);
+		log_detail(_("registered configuration file is \"%s\""),
+				   remote_node_record.config_file);
+		log_hint(_("ensure the configuration file is in the expected location, or re-register \"%s\" to update the configuration file location"),
+				  remote_node_record.node_name);
+
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+
+		termPQExpBuffer(&command_output);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+
 	/*
 	 * Sanity-check remote "data_directory" is correctly configured in repmgr.conf.
 	 *
