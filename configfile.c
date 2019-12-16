@@ -1180,7 +1180,8 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 	_parse_config(&new_options, &config_errors, &config_warnings);
 
 
-	if (server_type == PRIMARY || server_type == STANDBY)
+	if (new_options.failover == FAILOVER_AUTOMATIC
+		&& (server_type == PRIMARY || server_type == STANDBY))
 	{
 		if (new_options.promote_command[0] == '\0')
 		{
