@@ -26,9 +26,17 @@
 	<ulink url="https://dl.2ndquadrant.com/">public repository</ulink>; see following
 	section for details.
   </para>
+  <note>
+    <para>
+      Currently the <ulink url="https://2ndquadrant.com">2ndQuadrant</ulink>
+	  <ulink url="https://dl.2ndquadrant.com/">public repository</ulink> provides
+      support for RedHat/CentOS versions 5, 6 and 7. Support for version 8 is
+      available via the PGDG repository; see below for details.
+    </para>
+  </note>
   <para>
    RPM packages for &repmgr; are also available via Yum through
-   the PostgreSQL Global Development Group RPM repository
+   the PostgreSQL Global Development Group (PGDG) RPM repository
    (<ulink url="https://yum.postgresql.org/">http://yum.postgresql.org/</ulink>).
    Follow the instructions for your distribution (RedHat, CentOS,
    Fedora, etc.) and architecture as detailed there. Note that it can take some days
