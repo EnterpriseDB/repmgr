@@ -1,7 +1,7 @@
 /*
  * configfile.h
  *
- * Copyright (c) 2ndQuadrant, 2010-2019
+ * Copyright (c) 2ndQuadrant, 2010-2020
  *
  *
  * This program is free software: you can redistribute it and/or modify

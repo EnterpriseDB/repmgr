@@ -2,7 +2,7 @@
  * repmgr-action-daemon.c
  *
  * Implements repmgrd actions for the repmgr command line utility
- * Copyright (c) 2ndQuadrant, 2010-2019
+ * Copyright (c) 2ndQuadrant, 2010-2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

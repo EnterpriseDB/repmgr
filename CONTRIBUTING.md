@@ -2,7 +2,7 @@ License and Contributions
 =========================
 
 `repmgr` is licensed under the GPL v3.  All of its code and documentation is
-Copyright 2010-2019, 2ndQuadrant Limited.  See the files COPYRIGHT and LICENSE for
+Copyright 2010-2020, 2ndQuadrant Limited.  See the files COPYRIGHT and LICENSE for
 details.
 
 The development of repmgr has primarily been sponsored by 2ndQuadrant customers.
