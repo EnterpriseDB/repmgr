@@ -71,8 +71,7 @@
 #replication_user='repmgr'	 # User to make replication connections with, if not set
 				 #  defaults to the user defined in "conninfo".
 
-#replication_type='physical'	 # Must be one of "physical" or "bdr".
-				 # NOTE: "bdr" can only be used with BDR 2.x
+#replication_type='physical'	 # Must "physical" (the default).
 
 #location='default'		 # An arbitrary string defining the location of the node; this
 				 # is used during failover to check visibility of the
@@ -290,7 +289,6 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					#    node or follow the new upstream node
 					# 'manual': repmgrd will take no action and the node will require
 					#    manual attention to reattach it to replication
-					# (does not apply to BDR mode)
 
 #priority=100				# indicates a preferred priority for promoting nodes;
 					# a value of zero prevents the node being promoted to primary
@@ -436,12 +434,3 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# issues with shutting down the demotion candidate.
 
 
-#------------------------------------------------------------------------------
-# BDR monitoring options
-#------------------------------------------------------------------------------
-
-#bdr_local_monitoring_only=false	 # Only monitor the local node; no checks will be
-					 # performed on the other node
-#bdr_recovery_timeout			 # If a BDR node was offline and has become available
-					 # maximum length of time in seconds to wait for the
-					 # node to reconnect to the cluster

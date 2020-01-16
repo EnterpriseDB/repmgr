@@ -161,10 +161,6 @@ typedef struct
 	int			child_nodes_disconnect_timeout;
 	char		child_nodes_disconnect_command[MAXPGPATH];
 
-	/* BDR settings */
-	bool		bdr_local_monitoring_only;
-	bool		bdr_recovery_timeout;
-
 	/* service settings */
 	char		pg_ctl_options[MAXLEN];
 	char		service_start_command[MAXPGPATH];
@@ -238,8 +234,6 @@ typedef struct
 		DEFAULT_CHILD_NODES_CONNECTED_MIN_COUNT, \
 		DEFAULT_CHILD_NODES_CONNECTED_INCLUDE_WITNESS, \
 		DEFAULT_CHILD_NODES_DISCONNECT_TIMEOUT, "", \
-		/* BDR settings */ \
-		false, DEFAULT_BDR_RECOVERY_TIMEOUT, \
 		/* service settings */ \
 		"", "", "", "", "", "", \
 		/* repmgrd service settings */ \

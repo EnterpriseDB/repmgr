@@ -74,18 +74,6 @@ do_witness_register(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
-	/* check that witness node is not a BDR node */
-	if (is_bdr_db_quiet(witness_conn) == true)
-	{
-		log_error(_("witness node is a BDR node"));
-		log_hint(_("a witness node cannot be configured for a BDR cluster"));
-
-		PQfinish(witness_conn);
-
-		exit(ERR_BAD_CONFIG);
-	}
-
-
 	/* connect to primary with provided parameters */
 	log_info(_("connecting to primary node"));
 
@@ -193,19 +181,6 @@ do_witness_register(void)
 			exit(ERR_BAD_CONFIG);
 		}
 	}
-
-	/* check that primary node is not a BDR node */
-	if (is_bdr_db_quiet(primary_conn) == true)
-	{
-		log_error(_("primary node is a BDR node"));
-		log_hint(_("a witness node cannot be configured for a BDR cluster"));
-
-		PQfinish(witness_conn);
-		PQfinish(primary_conn);
-
-		exit(ERR_BAD_CONFIG);
-	}
-
 
 	/* create repmgr extension, if does not exist */
 	if (runtime_options.dry_run == false &&  !create_repmgr_extension(witness_conn))

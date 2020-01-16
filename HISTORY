@@ -1,4 +1,5 @@
 5.1     2019-??-??
+        repmgr: remove BDR 2.x support
         repmgr: don't query upstream's data directory (Ian)
         repmgr: rename --recovery-conf-only to --replication-conf-only (Ian)
         repmgr: ensure postgresql.auto.conf is created with corretc permissions (Ian)

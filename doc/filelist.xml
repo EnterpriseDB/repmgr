@@ -33,7 +33,6 @@
 <!ENTITY repmgrd-automatic-failover SYSTEM "repmgrd-automatic-failover.xml">
 <!ENTITY repmgrd-configuration SYSTEM "repmgrd-configuration.xml">
 <!ENTITY repmgrd-operation SYSTEM "repmgrd-operation.xml">
-<!ENTITY repmgrd-bdr SYSTEM "repmgrd-bdr.xml">
 
 <!ENTITY repmgr-primary-register SYSTEM "repmgr-primary-register.xml">
 <!ENTITY repmgr-primary-unregister SYSTEM "repmgr-primary-unregister.xml">

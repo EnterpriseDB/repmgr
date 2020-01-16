@@ -18,7 +18,7 @@
     <para>
       Displays information about each registered node in the replication cluster. This
       command polls each registered server and shows its role (<literal>primary</literal> /
-      <literal>standby</literal> / <literal>bdr</literal>) and status. It polls each server
+      <literal>standby</literal>) and status. It polls each server
       directly and can be run on any node in the cluster; this is also useful when analyzing
       connectivity from a particular node.
     </para>

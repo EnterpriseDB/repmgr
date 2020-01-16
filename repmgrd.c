@@ -26,7 +26,6 @@
 #include "repmgr.h"
 #include "repmgrd.h"
 #include "repmgrd-physical.h"
-#include "repmgrd-bdr.h"
 #include "configfile.h"
 #include "voting.h"
 
@@ -484,9 +483,6 @@ main(int argc, char **argv)
 			case REPLICATION_TYPE_PHYSICAL:
 				log_hint(_("check that 'repmgr (primary|standby) register' was executed for this node"));
 				break;
-			case REPLICATION_TYPE_BDR:
-				log_hint(_("check that 'repmgr bdr register' was executed for this node"));
-				break;
 		}
 
 		close_connection(&local_conn);
@@ -513,20 +509,13 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (config_file_options.replication_type == REPLICATION_TYPE_BDR)
-	{
-		log_debug("node id is %i", local_node_info.node_id);
-		do_bdr_node_check();
-	}
-	else
+	if (config_file_options.replication_type == REPLICATION_TYPE_PHYSICAL)
 	{
 		log_debug("node id is %i, upstream node id is %i",
 				  local_node_info.node_id,
 				  local_node_info.upstream_node_id);
 		do_physical_node_check();
 	}
-
-
 
 	if (daemonize == true)
 	{
@@ -576,9 +565,6 @@ start_monitoring(void)
 			case WITNESS:
 				monitor_streaming_witness();
 				break;
-			case BDR:
-				monitor_bdr();
-				return;
 			case UNKNOWN:
 				/* should never happen */
 				break;
@@ -771,10 +757,6 @@ setup_event_handlers(void)
 	 */
 	switch (config_file_options.replication_type)
 	{
-		case REPLICATION_TYPE_BDR:
-			pqsignal(SIGINT, handle_sigint_bdr);
-			pqsignal(SIGTERM, handle_sigint_bdr);
-			break;
 		case REPLICATION_TYPE_PHYSICAL:
 			pqsignal(SIGINT, handle_sigint_physical);
 			pqsignal(SIGTERM, handle_sigint_physical);

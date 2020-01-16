@@ -619,18 +619,6 @@ repmgrd_service_stop_command='sudo systemctl repmgr12 stop'
           </simpara>
         </listitem>
 
-        <listitem>
-          <simpara>
-            <varname>bdr_local_monitoring_only</varname>
-          </simpara>
-        </listitem>
-
-        <listitem>
-          <simpara>
-            <varname>bdr_recovery_timeout</varname>
-          </simpara>
-        </listitem>
-
          <listitem>
           <simpara>
             <varname>child_nodes_check_interval</varname>

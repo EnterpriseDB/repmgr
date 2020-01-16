@@ -17,8 +17,6 @@ SELECT * FROM repmgr.replication_status;
 SELECT * FROM repmgr.show_nodes;
 
 -- functions
-SELECT repmgr.am_bdr_failover_handler(-1);
-SELECT repmgr.am_bdr_failover_handler(NULL);
 SELECT repmgr.get_new_primary();
 SELECT repmgr.notify_follow_primary(-1);
 SELECT repmgr.notify_follow_primary(NULL);
@@ -27,4 +25,3 @@ SELECT repmgr.set_local_node_id(-1);
 SELECT repmgr.set_local_node_id(NULL);
 SELECT repmgr.standby_get_last_updated();
 SELECT repmgr.standby_set_last_updated();
-SELECT repmgr.unset_bdr_failover_handler();

@@ -159,7 +159,6 @@ do_node_status(void)
 								 _("- node is registered as standby but running as primary"));
 			}
 			break;
-		case BDR:
 		default:
 			break;
 	}
@@ -1552,34 +1551,6 @@ do_node_check_role(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckS
 									 _("node is witness"));
 			}
 			break;
-		case BDR:
-			{
-				PQExpBufferData output;
-
-				initPQExpBuffer(&output);
-				if (is_bdr_db(conn, &output) == false)
-				{
-					status = CHECK_STATUS_CRITICAL;
-					appendPQExpBufferStr(&details,
-										 output.data);
-				}
-				termPQExpBuffer(&output);
-
-				if (status == CHECK_STATUS_OK)
-				{
-					if (is_active_bdr_node(conn, node_info->node_name) == false)
-					{
-						status = CHECK_STATUS_CRITICAL;
-						appendPQExpBufferStr(&details,
-											 _("node is not an active BDR node"));
-					}
-					else
-					{
-						appendPQExpBufferStr(&details,
-											 _("node is an active BDR node"));
-					}
-				}
-			}
 		default:
 			break;
 	}

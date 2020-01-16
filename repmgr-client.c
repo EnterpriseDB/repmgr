@@ -18,9 +18,6 @@
  * STANDBY FOLLOW
  * STANDBY SWITCHOVER
  *
- * BDR REGISTER
- * BDR UNREGISTER
- *
  * CLUSTER SHOW
  * CLUSTER EVENT
  * CLUSTER CROSSCHECK
@@ -67,7 +64,6 @@
 #include "repmgr-action-primary.h"
 #include "repmgr-action-standby.h"
 #include "repmgr-action-witness.h"
-#include "repmgr-action-bdr.h"
 #include "repmgr-action-node.h"
 #include "repmgr-action-cluster.h"
 #include "repmgr-action-service.h"
@@ -817,7 +813,6 @@ main(int argc, char **argv)
 	 *   { PRIMARY | MASTER } REGISTER |
 	 *   STANDBY { REGISTER | UNREGISTER | CLONE [node] | PROMOTE | FOLLOW [node] | SWITCHOVER } |
 	 *   WITNESS { CREATE | REGISTER | UNREGISTER }
-	 *   BDR { REGISTER | UNREGISTER } |
 	 *   NODE { STATUS | CHECK | REJOIN | SERVICE } |
 	 *   CLUSTER { CROSSCHECK | MATRIX | SHOW | EVENT | CLEANUP }
 	 *   SERVICE { STATUS | PAUSE | UNPAUSE | START | STOP }
@@ -887,6 +882,7 @@ main(int argc, char **argv)
 			else if (strcasecmp(repmgr_action, "STATUS") == 0)
 				action = NODE_STATUS;
 		}
+
 		else if (strcasecmp(repmgr_command, "WITNESS") == 0)
 		{
 			if (help_option == true)
@@ -898,23 +894,6 @@ main(int argc, char **argv)
 				action = WITNESS_REGISTER;
 			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
 				action = WITNESS_UNREGISTER;
-		}
-		else if (strcasecmp(repmgr_command, "BDR") == 0)
-		{
-			if (help_option == true)
-			{
-				do_bdr_help();
-				exit(SUCCESS);
-			}
-
-			if (strcasecmp(repmgr_action, "REGISTER") == 0)
-				action = BDR_REGISTER;
-			else if (strcasecmp(repmgr_action, "UNREGISTER") == 0)
-				action = BDR_UNREGISTER;
-			else if (strcasecmp(repmgr_action, "CHECK") == 0)
-				action = NODE_CHECK;
-			else if (strcasecmp(repmgr_action, "STATUS") == 0)
-				action = NODE_STATUS;
 		}
 
 		else if (strcasecmp(repmgr_command, "NODE") == 0)
@@ -1355,13 +1334,6 @@ main(int argc, char **argv)
 		case WITNESS_UNREGISTER:
 			do_witness_unregister();
 			break;
-			/* BDR */
-		case BDR_REGISTER:
-			do_bdr_register();
-			break;
-		case BDR_UNREGISTER:
-			do_bdr_unregister();
-			break;
 
 			/* NODE */
 		case NODE_STATUS:
@@ -1681,7 +1653,6 @@ check_cli_parameters(const int action)
 			case STANDBY_CLONE:
 			case STANDBY_REGISTER:
 			case STANDBY_FOLLOW:
-			case BDR_REGISTER:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,
@@ -2220,7 +2191,6 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 
 		break;
 		case WITNESS:
-		case BDR:
 		{
 			/* node is reachable */
 			if (node_info->node_status == NODE_STATUS_UP)
@@ -2469,11 +2439,6 @@ action_name(const int action)
 		case WITNESS_UNREGISTER:
 			return "WITNESS UNREGISTER";
 
-		case BDR_REGISTER:
-			return "BDR REGISTER";
-		case BDR_UNREGISTER:
-			return "BDR UNREGISTER";
-
 		case NODE_STATUS:
 			return "NODE STATUS";
 		case NODE_CHECK:
@@ -2609,7 +2574,6 @@ do_help(void)
 	printf(_("Usage:\n"));
 	printf(_("    %s [OPTIONS] primary {register|unregister}\n"), progname());
 	printf(_("    %s [OPTIONS] standby {register|unregister|clone|promote|follow|switchover}\n"), progname());
-	printf(_("    %s [OPTIONS] bdr     {register|unregister}\n"), progname());
 	printf(_("    %s [OPTIONS] node    {status|check|rejoin|service}\n"), progname());
 	printf(_("    %s [OPTIONS] cluster {show|event|matrix|crosscheck|cleanup}\n"), progname());
 	printf(_("    %s [OPTIONS] witness {register|unregister}\n"), progname());
@@ -2618,7 +2582,7 @@ do_help(void)
 
 	puts("");
 
-	printf(_("  Execute \"%s {primary|standby|bdr|node|cluster|witness|service} --help\" to see command-specific options\n"), progname());
+	printf(_("  Execute \"%s {primary|standby|node|cluster|witness|service} --help\" to see command-specific options\n"), progname());
 
 	puts("");
 
@@ -2742,14 +2706,7 @@ create_repmgr_extension(PGconn *conn)
 
 	/* 4. Create extension */
 
-	initPQExpBuffer(&query);
-
-	wrap_ddl_query(&query, config_file_options.replication_type,
-				   "CREATE EXTENSION repmgr");
-
-	res = PQexec(schema_create_conn, query.data);
-
-	termPQExpBuffer(&query);
+	res = PQexec(schema_create_conn, "CREATE EXTENSION repmgr");
 
 	if ((PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK))
 	{
@@ -2770,13 +2727,13 @@ create_repmgr_extension(PGconn *conn)
 	{
 		initPQExpBuffer(&query);
 
-		wrap_ddl_query(&query, config_file_options.replication_type,
-					   "GRANT USAGE ON SCHEMA repmgr TO %s",
-					   userinfo.username);
+		appendPQExpBuffer(&query,
+						  "GRANT USAGE ON SCHEMA repmgr TO %s",
+						  userinfo.username);
 
 		res = PQexec(schema_create_conn, query.data);
-
 		termPQExpBuffer(&query);
+
 		if (PQresultStatus(res) != PGRES_COMMAND_OK)
 		{
 			log_error(_("unable to grant usage on \"repmgr\" extension to %s:\n  %s"),
@@ -2791,12 +2748,12 @@ create_repmgr_extension(PGconn *conn)
 		}
 
 		initPQExpBuffer(&query);
-		wrap_ddl_query(&query, config_file_options.replication_type,
-					   "GRANT ALL ON ALL TABLES IN SCHEMA repmgr TO %s",
-					   userinfo.username);
+
+		appendPQExpBuffer(&query,
+						  "GRANT ALL ON ALL TABLES IN SCHEMA repmgr TO %s",
+						  userinfo.username);
 
 		res = PQexec(schema_create_conn, query.data);
-
 		termPQExpBuffer(&query);
 
 		if (PQresultStatus(res) != PGRES_COMMAND_OK)

@@ -78,10 +78,8 @@
 #define MIN_SUPPORTED_VERSION_NUM	90300
 
 #define REPLICATION_TYPE_PHYSICAL 1
-#define REPLICATION_TYPE_BDR	  2
 
 #define UNKNOWN_SERVER_VERSION_NUM -1
-#define UNKNOWN_BDR_VERSION_NUM -1
 #define UNKNOWN_REPMGR_VERSION_NUM -1
 
 #define UNKNOWN_TIMELINE_ID -1
@@ -98,8 +96,6 @@
 #define ARCHIVE_STATUS_DIR_ERROR -1
 #define NO_DEGRADED_MONITORING_ELAPSED -1
 
-#define BDR2_REPLICATION_SET_NAME "repmgr"
-
 /*
  * various default values - ensure repmgr.conf.sample is update
  * if any of these are changed
@@ -113,7 +109,6 @@
 #define DEFAULT_PRIMARY_NOTIFICATION_TIMEOUT 60  /* seconds */
 #define DEFAULT_PRIMARY_FOLLOW_TIMEOUT       60  /* seconds */
 #define DEFAULT_STANDBY_FOLLOW_TIMEOUT       30  /* seconds */
-#define DEFAULT_BDR_RECOVERY_TIMEOUT         30  /* seconds */
 #define DEFAULT_ARCHIVE_READY_WARNING        16  /* WAL files */
 #define DEFAULT_ARCHIVE_READY_CRITICAL       128 /* WAL files */
 #define	DEFAULT_REPLICATION_LAG_WARNING      300 /* seconds */

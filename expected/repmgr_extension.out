@@ -32,18 +32,6 @@ SELECT * FROM repmgr.show_nodes;
 (0 rows)
 
 -- functions
-SELECT repmgr.am_bdr_failover_handler(-1);
- am_bdr_failover_handler 
--------------------------
- 
-(1 row)
-
-SELECT repmgr.am_bdr_failover_handler(NULL);
- am_bdr_failover_handler 
--------------------------
- 
-(1 row)
-
 SELECT repmgr.get_new_primary();
  get_new_primary 
 -----------------
@@ -89,12 +77,6 @@ SELECT repmgr.standby_get_last_updated();
 SELECT repmgr.standby_set_last_updated();
  standby_set_last_updated 
 --------------------------
- 
-(1 row)
-
-SELECT repmgr.unset_bdr_failover_handler();
- unset_bdr_failover_handler 
-----------------------------
  
 (1 row)
 

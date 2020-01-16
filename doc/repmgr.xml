@@ -91,7 +91,6 @@
   &repmgrd-automatic-failover;
   &repmgrd-configuration;
   &repmgrd-operation;
-  &repmgrd-bdr;
  </part>
 
  <part id="repmgr-command-reference">

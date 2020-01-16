@@ -378,13 +378,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 	 */
 	options->witness_sync_interval = DEFAULT_WITNESS_SYNC_INTERVAL;
 
-	/*-------------
-	 * BDR settings
-	 *-------------
-	 */
-	options->bdr_local_monitoring_only = false;
-	options->bdr_recovery_timeout = DEFAULT_BDR_RECOVERY_TIMEOUT;
-
 	/*-------------------------
 	 * service command settings
 	 *-------------------------
@@ -616,10 +609,8 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 	{
 		if (strcmp(value, "physical") == 0)
 			options->replication_type = REPLICATION_TYPE_PHYSICAL;
-		else if (strcmp(value, "bdr") == 0)
-			options->replication_type = REPLICATION_TYPE_BDR;
 		else
-			item_list_append(error_list, _("value for \"replication_type\" must be \"physical\" or \"bdr\""));
+			item_list_append(error_list, _("value for \"replication_type\" must be \"physical\""));
 	}
 
 	/* log settings */
@@ -777,12 +768,6 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 	/* witness settings */
 	else if (strcmp(name, "witness_sync_interval") == 0)
 		options->witness_sync_interval = repmgr_atoi(value, name, error_list, 1);
-
-	/* BDR settings */
-	else if (strcmp(name, "bdr_local_monitoring_only") == 0)
-		options->bdr_local_monitoring_only = parse_bool(value, name, error_list);
-	else if (strcmp(name, "bdr_recovery_timeout") == 0)
-		options->bdr_recovery_timeout = repmgr_atoi(value, name, error_list, 0);
 
 	/* service settings */
 	else if (strcmp(name, "pg_ctl_options") == 0)
@@ -1112,8 +1097,6 @@ parse_time_unit_parameter(const char *name, const char *value, char *dest, ItemL
  * with these):
  *
  * - async_query_timeout
- * - bdr_local_monitoring_only
- * - bdr_recovery_timeout
  * - child_nodes_check_interval
  * - child_nodes_connected_min_count
  * - child_nodes_connected_include_witness
@@ -1246,24 +1229,6 @@ reload_config(t_configuration_options *orig_options, t_server_type server_type)
 		orig_options->async_query_timeout = new_options.async_query_timeout;
 
 		log_info(_("\"async_query_timeout\" is now \"%i\""), new_options.async_query_timeout);
-
-		config_changed = true;
-	}
-
-	/* bdr_local_monitoring_only */
-	if (orig_options->bdr_local_monitoring_only != new_options.bdr_local_monitoring_only)
-	{
-		orig_options->bdr_local_monitoring_only = new_options.bdr_local_monitoring_only;
-		log_info(_("\"bdr_local_monitoring_only\" is now \"%s\""), new_options.bdr_local_monitoring_only == true ? "TRUE" : "FALSE");
-
-		config_changed = true;
-	}
-
-	/* bdr_recovery_timeout */
-	if (orig_options->bdr_recovery_timeout != new_options.bdr_recovery_timeout)
-	{
-		orig_options->bdr_recovery_timeout = new_options.bdr_recovery_timeout;
-		log_info(_("\"bdr_recovery_timeout\" is now \"%i\""), new_options.bdr_recovery_timeout);
 
 		config_changed = true;
 	}

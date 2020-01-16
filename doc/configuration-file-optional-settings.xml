@@ -66,17 +66,8 @@
       </term>
       <listitem>
         <para>
-          Must be one of <literal>physical</literal> (for standard streaming replication)
-          or <literal>bdr</literal>.
+          Must be <literal>physical</literal> (the default).
         </para>
-        <note>
-          <para>
-	    Replication type <literal>bdr</literal> can only be used with BDR 2.x
-          </para>
-          <para>
-            BDR 3.x users should use <literal>physical</literal>.
-          </para>
-        </note>
       </listitem>
     </varlistentry>
 

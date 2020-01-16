@@ -60,11 +60,6 @@
 	"NULL AS attached "
 
 
-
-#define BDR2_NODES_COLUMNS "node_sysid, node_timeline, node_dboid, node_name, node_local_dsn, ''"
-#define BDR3_NODES_COLUMNS "ns.node_id, 0, 0, ns.node_name, ns.interface_connstr, ns.peer_state_name"
-
-
 #define ERRBUFF_SIZE 512
 
 typedef enum
@@ -72,8 +67,7 @@ typedef enum
 	UNKNOWN = 0,
 	PRIMARY,
 	STANDBY,
-	WITNESS,
-	BDR
+	WITNESS
 } t_server_type;
 
 typedef enum
@@ -326,45 +320,6 @@ typedef struct s_connection_user
 #define T_CONNECTION_USER_INITIALIZER { "", false }
 
 
-/* represents an entry in bdr.bdr_nodes */
-typedef struct s_bdr_node_info
-{
-	char		node_sysid[MAXLEN];
-	uint32		node_timeline;
-	uint32		node_dboid;
-	char		node_name[MAXLEN];
-	char		node_local_dsn[MAXLEN];
-	char		peer_state_name[MAXLEN];
-} t_bdr_node_info;
-
-#define T_BDR_NODE_INFO_INITIALIZER { \
-	"", InvalidOid, InvalidOid, \
-    "", "", "" \
-}
-
-
-/* structs to store a list of BDR node records */
-typedef struct BdrNodeInfoListCell
-{
-	struct BdrNodeInfoListCell *next;
-	t_bdr_node_info *node_info;
-} BdrNodeInfoListCell;
-
-typedef struct BdrNodeInfoList
-{
-	BdrNodeInfoListCell *head;
-	BdrNodeInfoListCell *tail;
-	int			node_count;
-} BdrNodeInfoList;
-
-#define T_BDR_NODE_INFO_LIST_INITIALIZER { \
-	NULL, \
-	NULL, \
-	0 \
-}
-
-
-
 typedef struct
 {
 	char		filepath[MAXPGPATH];
@@ -374,6 +329,7 @@ typedef struct
 
 #define T_CONFIGFILE_INFO_INITIALIZER { "", "", false }
 
+
 typedef struct
 {
 	int			size;
@@ -382,6 +338,7 @@ typedef struct
 } t_configfile_list;
 
 #define T_CONFIGFILE_LIST_INITIALIZER { 0, 0, NULL }
+
 
 typedef struct
 {
@@ -422,10 +379,6 @@ typedef struct RepmgrdInfo {
 /* utility functions */
 
 XLogRecPtr	parse_lsn(const char *str);
-
-extern void
-wrap_ddl_query(PQExpBufferData *query_buf, int replication_type, const char *fmt,...)
-__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 bool		atobool(const char *value);
 
 /* connection functions */
@@ -629,27 +582,6 @@ void		set_upstream_last_seen(PGconn *conn, int upstream_node_id);
 int			get_upstream_last_seen(PGconn *conn, t_server_type node_type);
 
 bool		is_wal_replay_paused(PGconn *conn, bool check_pending_wal);
-
-/* BDR functions */
-int			get_bdr_version_num(void);
-void		get_all_bdr_node_records(PGconn *conn, BdrNodeInfoList *node_list);
-RecordStatus get_bdr_node_record_by_name(PGconn *conn, const char *node_name, t_bdr_node_info *node_info);
-bool		is_bdr_db(PGconn *conn, PQExpBufferData *output);
-bool		is_bdr_db_quiet(PGconn *conn);
-bool		is_active_bdr_node(PGconn *conn, const char *node_name);
-bool		is_bdr_repmgr(PGconn *conn);
-char	   *get_default_bdr_replication_set(PGconn *conn);
-bool		is_table_in_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
-bool		add_table_to_bdr_replication_set(PGconn *conn, const char *tablename, const char *set);
-void		add_extension_tables_to_bdr_replication_set(PGconn *conn);
-bool		bdr_node_name_matches(PGconn *conn, const char *node_name, PQExpBufferData *bdr_local_node_name);
-ReplSlotStatus get_bdr_node_replication_slot_status(PGconn *conn, const char *node_name);
-void		get_bdr_other_node_name(PGconn *conn, int node_id, char *name_buf);
-
-bool		am_bdr_failover_handler(PGconn *conn, int node_id);
-void		unset_bdr_failover_handler(PGconn *conn);
-bool		bdr_node_has_repmgr_set(PGconn *conn, const char *node_name);
-bool		bdr_node_set_repmgr_set(PGconn *conn, const char *node_name);
 
 /* miscellaneous debugging functions */
 const char *print_node_status(NodeStatus node_status);

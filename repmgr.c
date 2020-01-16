@@ -84,8 +84,6 @@ typedef struct repmgrdSharedState
 	int			current_electoral_term;
 	int			candidate_node_id;
 	bool		follow_new_primary;
-	/* BDR failover */
-	int			bdr_failover_handler;
 } repmgrdSharedState;
 
 static repmgrdSharedState *shared_state = NULL;
@@ -130,12 +128,6 @@ PG_FUNCTION_INFO_V1(get_new_primary);
 
 Datum		reset_voting_status(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(reset_voting_status);
-
-Datum		am_bdr_failover_handler(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(am_bdr_failover_handler);
-
-Datum		unset_bdr_failover_handler(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(unset_bdr_failover_handler);
 
 Datum		set_repmgrd_pid(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(set_repmgrd_pid);
@@ -241,7 +233,6 @@ repmgr_shmem_startup(void)
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 		shared_state->follow_new_primary = false;
-		shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
 	}
 
 	LWLockRelease(AddinShmemInitLock);
@@ -563,63 +554,6 @@ reset_voting_status(PG_FUNCTION_ARGS)
 		shared_state->voting_status = VS_NO_VOTE;
 		shared_state->candidate_node_id = UNKNOWN_NODE_ID;
 		shared_state->follow_new_primary = false;
-	}
-
-	LWLockRelease(shared_state->lock);
-
-	PG_RETURN_VOID();
-}
-
-
-Datum
-am_bdr_failover_handler(PG_FUNCTION_ARGS)
-{
-	int			node_id = UNKNOWN_NODE_ID;
-	bool		am_handler = false;
-
-	if (!shared_state)
-		PG_RETURN_NULL();
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
-	node_id = PG_GETARG_INT32(0);
-
-	LWLockAcquire(shared_state->lock, LW_SHARED);
-
-	if (shared_state->bdr_failover_handler == UNKNOWN_NODE_ID)
-	{
-		LWLockRelease(shared_state->lock);
-		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
-		shared_state->bdr_failover_handler = node_id;
-		am_handler = true;
-	}
-	else if (shared_state->bdr_failover_handler == node_id)
-	{
-		am_handler = true;
-	}
-
-	LWLockRelease(shared_state->lock);
-
-	PG_RETURN_BOOL(am_handler);
-}
-
-
-Datum
-unset_bdr_failover_handler(PG_FUNCTION_ARGS)
-{
-	if (!shared_state)
-		PG_RETURN_NULL();
-
-	LWLockAcquire(shared_state->lock, LW_SHARED);
-
-	/* only do something if local_node_id is initialised */
-	if (shared_state->local_node_id != UNKNOWN_NODE_ID)
-	{
-		LWLockRelease(shared_state->lock);
-		LWLockAcquire(shared_state->lock, LW_EXCLUSIVE);
-
-		shared_state->bdr_failover_handler = UNKNOWN_NODE_ID;
 	}
 
 	LWLockRelease(shared_state->lock);
