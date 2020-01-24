@@ -37,7 +37,7 @@
   <para>
    RPM packages for &repmgr; are also available via Yum through
    the PostgreSQL Global Development Group (PGDG) RPM repository
-   (<ulink url="https://yum.postgresql.org/">http://yum.postgresql.org/</ulink>).
+   (<ulink url="https://yum.postgresql.org/">https://yum.postgresql.org/</ulink>).
    Follow the instructions for your distribution (RedHat, CentOS,
    Fedora, etc.) and architecture as detailed there. Note that it can take some days
    for new &repmgr; packages to become available via the this repository.
@@ -206,7 +206,7 @@ repmgr11.x86_64                        4.4-1.el7                             2nd
   </indexterm>
 
   <para>.deb packages for &repmgr; are available from the
-  PostgreSQL Community APT repository (<ulink url="http://apt.postgresql.org/">http://apt.postgresql.org/</ulink>).
+  PostgreSQL Community APT repository (<ulink url="https://apt.postgresql.org/">https://apt.postgresql.org/</ulink>).
   Instructions can be found in the APT section of the PostgreSQL Wiki
   (<ulink url="https://wiki.postgresql.org/wiki/Apt">https://wiki.postgresql.org/wiki/Apt</ulink>).
   </para>
