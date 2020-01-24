@@ -291,7 +291,7 @@
           <tbody>
             <row>
               <entry>Repository URL:</entry>
-              <entry><ulink url="http://apt.postgresql.org/">http://apt.postgresql.org/</ulink></entry>
+              <entry><ulink url="https://apt.postgresql.org/">https://apt.postgresql.org/</ulink></entry>
             </row>
             <row>
               <entry>Repository documentation:</entry>

@@ -24,8 +24,7 @@
     <listitem>
      <para>
       <literal>Debian</literal> and <literal>Ubuntu</literal>: First
-      add the <ulink
-      url="http://apt.postgresql.org/">apt.postgresql.org</ulink>
+      add the <ulink url="https://apt.postgresql.org/">apt.postgresql.org</ulink>
       repository to your <filename>sources.list</filename> if you
       have not already done so, and ensure the source repository is enabled.
      </para>
@@ -36,8 +35,8 @@
          line in the repository file, which is usually
          <filename>/etc/apt/sources.list.d/pgdg.list</filename>, e.g.:
          <programlisting>
-deb http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main
-deb-src http://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisting>
+deb https://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main
+deb-src https://apt.postgresql.org/pub/repos/apt/ stretch-pgdg main</programlisting>
        </para>
      </tip>
      <para>
