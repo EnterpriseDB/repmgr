@@ -253,20 +253,14 @@
     </indexterm>
 
     <para>
-      &repmgr; <literal>.deb</literal> packages are provided via the
+      &repmgr; <literal>.deb</literal> packages are provided by 2ndQuadrant as well as the
       PostgreSQL Community APT repository, and are available for each community-supported
       PostgreSQL version, currently supported Debian releases, and currently supported
       Ubuntu LTS releases.
     </para>
 
     <sect2 id="packages-apt-repository">
-      <title>APT repository</title>
-
-      <para>
-        &repmgr; packages are available from the  PostgreSQL Community APT repository,
-        which is updated immediately after each &repmgr; release.
-      </para>
-
+      <title>APT repositories</title>
 
       <table id="apt-2ndquadrant-repository">
         <title>2ndQuadrant public repository</title>
@@ -382,9 +376,9 @@
       </table>
       <note>
         <para>
-          Instead of using the <application>systemd</application> service command directly,
-          it's recommended to execute <command>pg_ctlcluster</command> (as <literal>root</literal>,
-          either directly or via <command>sudo</command>), e.g.:
+          When using Debian packages, instead of using the <application>systemd</application> service
+          command directly,  it's recommended to execute <command>pg_ctlcluster</command>
+          (as <literal>root</literal>, either directly or via <command>sudo</command>), e.g.:
           <programlisting>
             <command>pg_ctlcluster 11 main [start|stop|restart|reload]</command></programlisting>
         </para>
