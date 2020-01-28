@@ -3988,7 +3988,7 @@ do_standby_switchover(void)
 							exit(ERR_SWITCHOVER_FAIL);
 						}
 
-						log_warning(_("number of pending archive files on demotion candidate \"%s\" is critical"),
+						log_warning(_("number of pending archive files on demotion candidate \"%s\" exceeds the critical threshold"),
 									remote_node_record.node_name);
 						log_detail(_("%i pending archive files (critical threshold: %i)"),
 								   files, threshold);
@@ -3998,7 +3998,7 @@ do_standby_switchover(void)
 
 				case CHECK_STATUS_WARNING:
 					{
-						log_warning(_("number of pending archive files on demotion candidate \"%s\" is warning"),
+						log_warning(_("number of pending archive files on demotion candidate \"%s\" exceeds the warning threshold"),
 									remote_node_record.node_name);
 						log_detail(_("%i pending archive files (warning threshold: %i)"),
 								   files, threshold);
