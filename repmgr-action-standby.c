@@ -3827,7 +3827,9 @@ do_standby_switchover(void)
 
 	if (runtime_options.dry_run == true)
 	{
-		log_info(_("able to execute \"%s\" on remote host \"localhost\""), progname());
+		log_info(_("able to execute \"%s\" on remote host \"%s\""),
+				 progname(),
+				 remote_host);
 	}
 
 	/*
