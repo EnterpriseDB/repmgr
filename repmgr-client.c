@@ -2456,6 +2456,8 @@ action_name(const int action)
 			return "STANDBY PROMOTE";
 		case STANDBY_FOLLOW:
 			return "STANDBY FOLLOW";
+		case STANDBY_SWITCHOVER:
+			return "STANDBY SWITCHOVER";
 
 		case WITNESS_REGISTER:
 			return "WITNESS REGISTER";
@@ -2475,9 +2477,13 @@ action_name(const int action)
 			return "NODE REJOIN";
 		case NODE_SERVICE:
 			return "NODE SERVICE";
+		case NODE_CONTROL:
+			return "NODE CONTROL";
 
 		case CLUSTER_SHOW:
 			return "CLUSTER SHOW";
+		case CLUSTER_CLEANUP:
+			return "CLUSTER CLEANUP";
 		case CLUSTER_EVENT:
 			return "CLUSTER EVENT";
 		case CLUSTER_MATRIX:
