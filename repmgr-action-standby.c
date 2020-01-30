@@ -4329,6 +4329,9 @@ do_standby_switchover(void)
 				 remote_node_record.node_name,
 				 shutdown_command);
 
+		log_info(_("parameter \"shutdown_check_timeout\" is set to %i seconds"),
+				 config_file_options.shutdown_check_timeout);
+
 		clear_node_info_list(&sibling_nodes);
 
 		key_value_list_free(&remote_config_files);
