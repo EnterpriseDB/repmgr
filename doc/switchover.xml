@@ -186,6 +186,7 @@
       NOTICE: local node "node2" (ID: 2) will be promoted to primary; current primary "node1" (ID: 1) will be demoted to standby
       INFO: following shutdown command would be run on node "node1":
         "pg_ctl -l /var/log/postgresql/startup.log -D '/var/lib/postgresql/data' -m fast -W stop"
+      INFO: parameter "shutdown_check_timeout" is set to 60 seconds
     </programlisting>
    </para>
 
