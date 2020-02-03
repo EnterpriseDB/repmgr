@@ -2229,6 +2229,21 @@ do_node_rejoin(void)
 	}
 
 	/*
+	 * Sanity-check replication slot availability
+	 */
+	if (config_file_options.use_replication_slots)
+	{
+		bool slots_available = check_replication_slots_available(primary_node_record.node_id,
+																 primary_conn);
+		if (slots_available == false)
+		{
+			PQfinish(primary_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+	}
+
+
+	/*
 	 * sanity-check that it will actually be possible to stream from the new upstream
 	 */
 	{

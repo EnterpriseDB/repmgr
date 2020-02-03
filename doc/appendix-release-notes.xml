@@ -48,6 +48,14 @@
     <sect2>
       <title>Bug fixes</title>
       <para>
+       <itemizedlist>
+          <listitem>
+            <para>
+              Ensure <link linkend="repmgr-node-rejoin"><command>repmgr node rejoin</command></link>
+              checks for available replication slots on the rejoin target.
+            </para>
+          </listitem>
+        </itemizedlist>
         <itemizedlist>
           <listitem>
             <para>
