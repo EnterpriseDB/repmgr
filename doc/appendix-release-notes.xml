@@ -45,6 +45,22 @@
       </para>
     </sect2>
 
+    <sect2>
+      <title>Bug fixes</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link> and
+              <link linkend="repmgr-node-rejoin"><command>repmgr node rejoin</command></link> will now return
+              an error code if the operation fails if a replication slot is not available or cannot
+              be created on the follow/rejoin target.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+
   </sect1>
 
   <sect1 id="release-5.0">

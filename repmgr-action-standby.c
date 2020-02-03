@@ -3142,6 +3142,8 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
 		{
 			log_error("%s", output->data);
 
+			*error_code = general_error_code;
+
 			return false;
 		}
 	}

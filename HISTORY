@@ -2,9 +2,11 @@
         repmgr: remove BDR 2.x support
         repmgr: don't query upstream's data directory (Ian)
         repmgr: rename --recovery-conf-only to --replication-conf-only (Ian)
-        repmgr: ensure postgresql.auto.conf is created with corretc permissions (Ian)
+        repmgr: ensure postgresql.auto.conf is created with correct permissions (Ian)
         repmgr: minimize requirement to check upstream data directory location
           during "standby clone" (Ian)
+        repmgr: report error code on follow/rejoin failure due to non-available
+          replication slot (Ian)
 
 5.0     2019-10-15
         general: add PostgreSQL 12 support (Ian)
