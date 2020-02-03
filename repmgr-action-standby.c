@@ -2824,31 +2824,14 @@ do_standby_follow(void)
 
 	if (config_file_options.use_replication_slots)
 	{
-		int free_slots = get_free_replication_slot_count(follow_target_conn);
-		if (free_slots < 0)
+		bool slots_available = check_replication_slots_available(follow_target_node_id,
+																 follow_target_conn);
+		if (slots_available == false)
 		{
-			log_error(_("unable to determine number of free replication slots on node %i"),
-					  follow_target_node_id);
 			PQfinish(follow_target_conn);
 			PQfinish(local_conn);
 			exit(ERR_FOLLOW_FAIL);
 		}
-
-		if (free_slots == 0)
-		{
-			log_error(_("no free replication slots available on node %i"), follow_target_node_id);
-			log_hint(_("consider increasing \"max_replication_slots\""));
-			PQfinish(follow_target_conn);
-			PQfinish(local_conn);
-			exit(ERR_FOLLOW_FAIL);
-		}
-		else if (runtime_options.dry_run == true)
-		{
-			log_info(_("replication slots in use, %i free slots on node %i"),
-					 follow_target_node_id,
-					 free_slots);
-		}
-
 	}
 
 	/* XXX check this is not current upstream anyway */

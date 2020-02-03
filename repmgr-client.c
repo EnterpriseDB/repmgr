@@ -3833,6 +3833,39 @@ _determine_replication_slot_user(PGconn *conn, t_node_info *upstream_node_record
 	}
 }
 
+
+bool
+check_replication_slots_available(int node_id, PGconn* conn)
+{
+	int max_replication_slots = UNKNOWN_VALUE;
+	int free_slots = get_free_replication_slot_count(conn, &max_replication_slots);
+
+	if (free_slots < 0)
+	{
+		log_error(_("unable to determine number of free replication slots on node %i"),
+				  node_id);
+		return false;
+	}
+
+	if (free_slots == 0)
+	{
+		log_error(_("no free replication slots available on node %i"),
+				  node_id);
+		log_hint(_("consider increasing \"max_replication_slots\" (current value: %i)"),
+				 max_replication_slots);
+		return false;
+	}
+	else if (runtime_options.dry_run == true)
+	{
+		log_info(_("replication slots in use, %i free slots on node %i"),
+				 node_id,
+				 free_slots);
+	}
+
+	return true;
+}
+
+
 /*
  * Here we'll perform some timeline sanity checks to ensure the follow target
  * can actually be followed.

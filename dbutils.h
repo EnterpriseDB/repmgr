@@ -523,7 +523,7 @@ bool		drop_replication_slot_sql(PGconn *conn, char *slot_name);
 bool		drop_replication_slot_replprot(PGconn *repl_conn, char *slot_name);
 
 RecordStatus get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record);
-int			get_free_replication_slot_count(PGconn *conn);
+int			get_free_replication_slot_count(PGconn *conn, int *max_replication_slots);
 int			get_inactive_replication_slots(PGconn *conn, KeyValueList *list);
 
 /* tablespace functions */

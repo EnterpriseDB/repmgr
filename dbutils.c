@@ -4398,7 +4398,7 @@ get_slot_record(PGconn *conn, char *slot_name, t_replication_slot *record)
 
 
 int
-get_free_replication_slot_count(PGconn *conn)
+get_free_replication_slot_count(PGconn *conn, int *max_replication_slots)
 {
 	PQExpBufferData query;
 	PGresult   *res = NULL;
@@ -4408,7 +4408,10 @@ get_free_replication_slot_count(PGconn *conn)
 
 	appendPQExpBufferStr(&query,
 						 " SELECT pg_catalog.current_setting('max_replication_slots')::INT - "
-						 "        pg_catalog.count(*) AS free_slots"
+						 "          pg_catalog.count(*) "
+						 "          AS free_slots, "
+						 "        pg_catalog.current_setting('max_replication_slots')::INT "
+						 "          AS max_replication_slots "
 						 "   FROM pg_catalog.pg_replication_slots s"
 						 "  WHERE s.slot_type = 'physical'");
 
@@ -4419,15 +4422,17 @@ get_free_replication_slot_count(PGconn *conn)
 		log_db_error(conn, query.data,
 					 _("get_free_replication_slot_count(): unable to execute replication slot query"));
 
-		free_slots = -1;
+		free_slots = UNKNOWN_VALUE;
 	}
 	else if (PQntuples(res) == 0)
 	{
-		free_slots = -1;
+		free_slots = UNKNOWN_VALUE;
 	}
 	else
 	{
 		free_slots = atoi(PQgetvalue(res, 0, 0));
+		if (max_replication_slots != NULL)
+			*max_replication_slots = atoi(PQgetvalue(res, 0, 1));
 	}
 
 	termPQExpBuffer(&query);
