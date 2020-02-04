@@ -3368,6 +3368,16 @@ do_standby_follow_internal(PGconn *primary_conn, PGconn *follow_target_conn, t_n
  * Where running and not already paused, repmgrd will be paused (and
  * subsequently unpaused), unless --repmgrd-no-pause provided.
  *
+ * Note that this operation can only be considered to have failed completely
+ * ("ERR_SWITCHOVER_FAIL") in these situations:
+ *
+ *  - the prerequisites for a switchover are not met
+ *  - the demotion candidate could not be shut down cleanly
+ *  - the promotion candidate could not be promoted
+ *
+ * All other failures (demotion candidate did not connect to new primary etc.)
+ * are considered partial failures ("ERR_SWITCHOVER_INCOMPLETE")
+ *
  * TODO:
  *  - make connection test timeouts/intervals configurable (see below)
  */
@@ -4601,6 +4611,14 @@ do_standby_switchover(void)
 	 * requested.
 	 */
 	initPQExpBuffer(&node_rejoin_options);
+
+	/*
+	 * Don't wait for repmgr on the remote node to report the success
+	 * of the rejoin operation - we'll check it from here.
+	 */
+	appendPQExpBufferStr(&node_rejoin_options,
+						 " --no-wait");
+
 	if (replication_info.last_wal_receive_lsn < remote_last_checkpoint_lsn)
 	{
 		KeyValueListCell *cell = NULL;
@@ -4656,7 +4674,7 @@ do_standby_switchover(void)
 		char	   *conninfo_normalized = normalize_conninfo_string(local_node_record.conninfo);
 
 		appendPQExpBuffer(&remote_command_str,
-						  "%s-d  ",
+						  "%s -d ",
 						  node_rejoin_options.data);
 
 		appendRemoteShellString(&remote_command_str,
@@ -4698,21 +4716,56 @@ do_standby_switchover(void)
 	else
 	{
 		PQExpBufferData event_details;
+		standy_join_status join_success = check_standby_join(local_conn,
+															 &local_node_record,
+															 &remote_node_record);
 
 		initPQExpBuffer(&event_details);
 
-		appendPQExpBuffer(&event_details,
-						  "node %i promoted to primary, node %i demoted to standby",
-						  config_file_options.node_id,
-						  remote_node_record.node_id);
+		switch (join_success) {
+			case JOIN_FAIL_NO_PING:
+				appendPQExpBuffer(&event_details,
+								  _("node \"%s\" (ID: %i) promoted to primary, but demote node \"%s\" (ID: %i) did not beome available"),
+								  config_file_options.node_name,
+								  config_file_options.node_id,
+								  remote_node_record.node_name,
+								  remote_node_record.node_id);
+				switchover_success = false;
+
+				break;
+			case JOIN_FAIL_NO_REPLICATION:
+				appendPQExpBuffer(&event_details,
+								  _("node \"%s\" (ID: %i) promoted to primary, but demote node \"%s\" (ID: %i) did not connect to the new primary"),
+								  config_file_options.node_name,
+								  config_file_options.node_id,
+								  remote_node_record.node_name,
+								  remote_node_record.node_id);
+				switchover_success = false;
+				break;
+			case JOIN_SUCCESS:
+				appendPQExpBuffer(&event_details,
+								  _("node  \"%s\" (ID: %i) promoted to primary, node \"%s\" (ID: %i) demoted to standby"),
+								  config_file_options.node_name,
+								  config_file_options.node_id,
+								  remote_node_record.node_name,
+								  remote_node_record.node_id);
+		}
 
 		create_event_notification_extended(local_conn,
 										   &config_file_options,
 										   config_file_options.node_id,
 										   "standby_switchover",
-										   true,
+										   switchover_success,
 										   event_details.data,
 										   &event_info);
+		if (switchover_success == true)
+		{
+			log_notice("%s", event_details.data);
+		}
+		else
+		{
+			log_error("%s", event_details.data);
+		}
 		termPQExpBuffer(&event_details);
 	}
 
@@ -4728,8 +4781,6 @@ do_standby_switchover(void)
 	}
 
 	clear_node_info_list(&sibling_nodes);
-
-	PQfinish(local_conn);
 
 	/*
 	 * Clean up remote node (primary demoted to standby). It's possible that the node is
@@ -4757,9 +4808,11 @@ do_standby_switchover(void)
 		/* TODO: double-check whether new standby has attached */
 
 		log_warning(_("switchover did not fully complete"));
-		log_detail(_("node \"%s\" is now primary but node \"%s\" is not reachable"),
+		log_detail(_("node \"%s\" (ID: %i) is now primary but node \"%s\" (ID: %i) is not reachable"),
 				   local_node_record.node_name,
-				   remote_node_record.node_name);
+				   local_node_record.node_id,
+				   remote_node_record.node_name,
+				   remote_node_record.node_id);
 
 		if (config_file_options.use_replication_slots == true)
 		{
@@ -4768,22 +4821,47 @@ do_standby_switchover(void)
 	}
 	else
 	{
+		NodeAttached node_attached;
+
+		/*
+		 * We were able to connect to the former primary - attempt to drop
+		 * this node's former replication slot, if it exists.
+		 */
 		if (config_file_options.use_replication_slots == true)
 		{
 			drop_replication_slot_if_exists(remote_conn,
 											remote_node_record.node_id,
 											local_node_record.slot_name);
 		}
-		/* TODO warn about any inactive replication slots */
 
-		log_notice(_("switchover was successful"));
-		log_detail(_("node \"%s\" is now primary and node \"%s\" is attached as standby"),
-				   local_node_record.node_name,
-				   remote_node_record.node_name);
+
+		/*
+		 * Do a final check that the standby has connected - it's possible
+		 * the standby became reachable but has not connected (or became disconnected).
+		 */
+
+		 node_attached = is_downstream_node_attached(local_conn,
+													 remote_node_record.node_name);
+		if (node_attached == NODE_ATTACHED)
+		{
+			log_notice(_("switchover was successful"));
+			log_detail(_("node \"%s\" is now primary and node \"%s\" is attached as standby"),
+					   local_node_record.node_name,
+					   remote_node_record.node_name);
+		}
+		else
+		{
+			log_notice(_("switchover is incomplete"));
+			log_detail(_("node \"%s\" is now primary but node \"%s\" is not attached as standby"),
+					   local_node_record.node_name,
+					   remote_node_record.node_name);
+			switchover_success = false;
+		}
 
 	}
 
 	PQfinish(remote_conn);
+	PQfinish(local_conn);
 
 	/*
 	 * Attempt to unpause all paused repmgrd instances, unless user explicitly
@@ -4877,7 +4955,6 @@ do_standby_switchover(void)
 		log_hint(_("see preceding log message(s) for details"));
 		exit(ERR_SWITCHOVER_INCOMPLETE);
 	}
-
 
 	return;
 }

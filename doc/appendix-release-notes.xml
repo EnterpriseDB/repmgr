@@ -46,6 +46,20 @@
     </sect2>
 
     <sect2>
+      <title>General improvements</title>
+      <para>
+        <itemizedlist>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>:
+              Improve logging and checking of potential failure situations.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+    </sect2>
+
+    <sect2>
       <title>Bug fixes</title>
       <para>
        <itemizedlist>
