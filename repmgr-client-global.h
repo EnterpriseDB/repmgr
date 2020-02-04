@@ -28,6 +28,8 @@
 /* default value for "cluster event --limit"*/
 #define CLUSTER_EVENT_LIMIT 20
 
+
+
 typedef struct
 {
 	/* configuration metadata */
@@ -210,6 +212,13 @@ typedef enum
 	SUPERUSER
 } t_user_type;
 
+typedef enum
+{
+	JOIN_SUCCESS,
+	JOIN_FAIL_NO_PING,
+	JOIN_FAIL_NO_REPLICATION
+} standy_join_status;
+
 
 typedef struct ColHeader
 {
@@ -269,8 +278,10 @@ extern bool can_use_pg_rewind(PGconn *conn, const char *data_directory, PQExpBuf
 extern bool create_replication_slot(PGconn *conn, char *slot_name, t_node_info *upstream_node_record, PQExpBufferData *error_msg);
 extern bool drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slot_name);
 
+extern standy_join_status check_standby_join(PGconn *primary_conn, t_node_info *primary_node_record, t_node_info *standby_node_record);
 extern bool check_replication_slots_available(int node_id, PGconn* conn);
 extern bool check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record, bool is_rejoin);
+
 extern void check_shared_library(PGconn *conn);
 extern bool is_repmgrd_running(PGconn *conn);
 extern int parse_repmgr_version(const char *version_string);

@@ -2118,6 +2118,7 @@ do_node_rejoin(void)
 	PQExpBufferData follow_output;
 	struct stat statbuf;
 	t_node_info primary_node_record = T_NODE_INFO_INITIALIZER;
+	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
 
 	bool		success = true;
 	int			follow_error_code = SUCCESS;
@@ -2225,6 +2226,21 @@ do_node_rejoin(void)
 		/* TODO: hint about checking cluster */
 		PQfinish(primary_conn);
 
+		exit(ERR_BAD_CONFIG);
+	}
+
+	/*
+	 * Fetch the local node record - we'll need this later, and it acts as an
+	 * additional sanity-check that the node is known to the primary.
+	 */
+	if (get_node_record(primary_conn, config_file_options.node_id, &local_node_record) != RECORD_FOUND)
+	{
+		log_error(_("unable to retrieve node record for the local node"));
+		log_hint(_("check the local node is registered with the current primary \"%s\" (ID: %i)"),
+				 primary_node_record.node_name,
+				 primary_node_record.node_id);
+		PQfinish(upstream_conn);
+		PQfinish(primary_conn);
 		exit(ERR_BAD_CONFIG);
 	}
 
@@ -2520,79 +2536,34 @@ do_node_rejoin(void)
 	 */
 	if (runtime_options.no_wait == false)
 	{
-		int i;
-
-		for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
-		{
-			if (is_server_available(config_file_options.conninfo))
-			{
-				log_verbose(LOG_INFO, _("demoted primary is pingable"));
-				break;
-			}
-
-			if (i % 5 == 0)
-			{
-				log_verbose(LOG_INFO, _("waiting for node %i to respond to pings; %i of max %i attempts"),
-							config_file_options.node_id,
-							i + 1, config_file_options.node_rejoin_timeout);
-			}
-			else
-			{
-				log_debug("sleeping 1 second waiting for node %i to respond to pings; %i of max %i attempts",
-						  config_file_options.node_id,
-						  i + 1, config_file_options.node_rejoin_timeout);
-			}
-
-			sleep(1);
-		}
-
-		for (;  i < config_file_options.node_rejoin_timeout; i++)
-		{
-			NodeAttached node_attached = is_downstream_node_attached(primary_conn,
-														config_file_options.node_name);
-
-			if (node_attached == NODE_ATTACHED)
-			{
-				log_verbose(LOG_INFO, _("node %i has attached to its upstream node"),
-							config_file_options.node_id);
-				break;
-			}
-
-			if (i % 5 == 0)
-			{
-				log_info(_("waiting for node \"%s\" (ID: %i) to connect to new primary; %i of max %i attempts"),
-						 config_file_options.node_name,
-						 config_file_options.node_id,
-						 i + 1, config_file_options.node_rejoin_timeout);
-				log_detail(_("checking for record in node \"%s\"'s \"pg_stat_replication\" table where \"application_name\" is \"%s\""),
-						   primary_node_record.node_name,
-						   config_file_options.node_name);
-			}
-			else
-			{
-				log_debug("sleeping 1 second waiting for node %i to connect to new primary; %i of max %i attempts",
-						  config_file_options.node_id,
-						  i + 1, config_file_options.node_rejoin_timeout);
-			}
-
-			sleep(1);
-		}
+		standy_join_status join_success = check_standby_join(primary_conn,
+															 &primary_node_record,
+															 &local_node_record);
 
 		create_event_notification(primary_conn,
 								  &config_file_options,
 								  config_file_options.node_id,
 								  "node_rejoin",
-								  success,
+								  join_success == JOIN_SUCCESS ? true : false,
 								  follow_output.data);
 
-		if (success == false)
+		if (join_success != JOIN_SUCCESS)
 		{
 			termPQExpBuffer(&follow_output);
 			log_error(_("NODE REJOIN failed"));
-			log_detail(_("no record for local node \"%s\" found in node \"%s\"'s \"pg_stat_replication\" table"),
-					   config_file_options.node_name,
-					   primary_node_record.node_name);
+
+			if (join_success == JOIN_FAIL_NO_PING) {
+				log_detail(_("local node \"%s\" did not become available start after %i seconds"),
+						   config_file_options.node_name,
+						   config_file_options.node_rejoin_timeout);
+			}
+			else {
+				log_detail(_("no record for local node \"%s\" found in node \"%s\"'s \"pg_stat_replication\" table"),
+						   config_file_options.node_name,
+						   primary_node_record.node_name);
+			}
 			log_hint(_("check the PostgreSQL log on the local node"));
+
 			exit(ERR_REJOIN_FAIL);
 		}
 	}

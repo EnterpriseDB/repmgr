@@ -3867,6 +3867,98 @@ check_replication_slots_available(int node_id, PGconn* conn)
 
 
 /*
+ * Check whether the specified standby has joined to its upstream.
+ *
+ * This is used by "standby switchover" and "node rejoin" to check
+ * the success of a node rejoin operation.
+ *
+ * IMPORTANT: the timeout settings will be taken from the node where the check
+ * is performed, which might not be the standby itself.
+ */
+standy_join_status
+check_standby_join(PGconn *upstream_conn, t_node_info *upstream_node_record, t_node_info *standby_node_record)
+ {
+	 int i;
+	 bool available = false;
+
+	 for (i = 0; i < config_file_options.standby_reconnect_timeout; i++)
+	 {
+		 if (is_server_available(config_file_options.conninfo))
+		 {
+			 log_verbose(LOG_INFO, _("node \"%s\" (ID: %i) is pingable"),
+						 standby_node_record->node_name,
+						 standby_node_record->node_id);
+			 available = true;
+			 break;
+		 }
+
+		 if (i % 5 == 0)
+		 {
+			 log_verbose(LOG_INFO, _("waiting for node \"%s\" (ID: %i) to respond to pings; %i of max %i attempts (parameter \"node_rejoin_timeout\")"),
+						 standby_node_record->node_name,
+						 standby_node_record->node_id,
+						 i + 1,
+						 config_file_options.node_rejoin_timeout);
+		 }
+		 else
+		 {
+			 log_debug("sleeping 1 second waiting for node \"%s\" (ID: %i) to respond to pings; %i of max %i attempts",
+					   standby_node_record->node_name,
+					   standby_node_record->node_id,
+					   i + 1,
+					   config_file_options.node_rejoin_timeout);
+		 }
+
+		 sleep(1);
+	 }
+
+	 /* node did not become available */
+	 if (available == false)
+	 {
+		 return JOIN_FAIL_NO_PING;
+	 }
+
+	 for (; i < config_file_options.node_rejoin_timeout; i++)
+	 {
+		 NodeAttached node_attached = is_downstream_node_attached(upstream_conn,
+																  standby_node_record->node_name);
+		 if (node_attached == NODE_ATTACHED)
+		 {
+			 log_verbose(LOG_INFO, _("node \"%s\" (ID: %i) has attached to its upstream node"),
+						 standby_node_record->node_name,
+						 standby_node_record->node_id);
+			 return JOIN_SUCCESS;
+		 }
+
+		 if (i % 5 == 0)
+		 {
+			 log_info(_("waiting for node \"%s\" (ID: %i) to connect to new primary; %i of max %i attempts (parameter \"node_rejoin_timeout\")"),
+					  standby_node_record->node_name,
+					  standby_node_record->node_id,
+					  i + 1,
+					  config_file_options.node_rejoin_timeout);
+
+			 log_detail(_("checking for record in node \"%s\"'s \"pg_stat_replication\" table where \"application_name\" is \"%s\""),
+						upstream_node_record->node_name,
+						standby_node_record->node_name);
+		 }
+		 else
+		 {
+			 log_debug("sleeping 1 second waiting for node  \"%s\" (ID: %i) to connect to new primary; %i of max %i attempts",
+					   standby_node_record->node_name,
+					   standby_node_record->node_id,
+					   i + 1,
+					   config_file_options.node_rejoin_timeout);
+		 }
+
+		 sleep(1);
+	 }
+
+	 return JOIN_FAIL_NO_REPLICATION;
+}
+
+
+/*
  * Here we'll perform some timeline sanity checks to ensure the follow target
  * can actually be followed.
  *
