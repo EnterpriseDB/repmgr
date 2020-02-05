@@ -4844,6 +4844,7 @@ do_standby_switchover(void)
 													 remote_node_record.node_name);
 		if (node_attached == NODE_ATTACHED)
 		{
+			switchover_success = true;
 			log_notice(_("switchover was successful"));
 			log_detail(_("node \"%s\" is now primary and node \"%s\" is attached as standby"),
 					   local_node_record.node_name,
