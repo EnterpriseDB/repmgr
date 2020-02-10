@@ -2862,6 +2862,8 @@ do_standby_follow(void)
 
 		param_set(&local_repl_conninfo, "replication", "1");
 
+		param_set(&local_repl_conninfo, "dbname", "replication");
+
 		local_repl_conn = establish_db_connection_by_params(&local_repl_conninfo, false);
 		free_conninfo_params(&local_repl_conninfo);
 
