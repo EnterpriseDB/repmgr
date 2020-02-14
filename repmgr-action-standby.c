@@ -1000,6 +1000,9 @@ _do_create_recovery_conf(void)
 	/* check connection */
 	source_conn = establish_db_connection_by_params(&source_conninfo, true);
 
+	/* Verify that source is a supported server version */
+	(void) check_server_version(source_conn, "source node", true, NULL);
+
 	/* determine node for primary_conninfo */
 
 	if (runtime_options.upstream_node_id != UNKNOWN_NODE_ID)
