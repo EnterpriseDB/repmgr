@@ -2814,15 +2814,25 @@ create_repmgr_extension(PGconn *conn)
 int
 check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *server_version_string)
 {
-	int			conn_server_version_num = get_server_version(conn, server_version_string);
+	char		version_string[MAXVERSIONSTR] = "";
+	int			conn_server_version_num = get_server_version(conn, version_string);
+
+	/* Copy the version string, if the caller wants it */
+	if (server_version_string != NULL)
+		strncpy(server_version_string, version_string, MAXVERSIONSTR);
 
 	if (conn_server_version_num < MIN_SUPPORTED_VERSION_NUM)
 	{
 		if (conn_server_version_num > 0)
+		{
 			log_error(_("%s requires %s to be PostgreSQL %s or later"),
 					  progname(),
 					  server_type,
 					  MIN_SUPPORTED_VERSION);
+			log_detail(_("%s server version is %s"),
+					   server_type,
+					   version_string);
+		}
 
 		if (exit_on_error == true)
 		{
@@ -2832,6 +2842,38 @@ check_server_version(PGconn *conn, char *server_type, bool exit_on_error, char *
 
 		return UNKNOWN_SERVER_VERSION_NUM;
 	}
+
+	/*
+	 * If it's clear a particular repmgr feature branch won't be able to support
+	 * PostgreSQL from a particular PostgreSQL release onwards (e.g. 4.4 with PostgreSQL
+	 * 12 and later due to recovery.conf removal), set MAX_UNSUPPORTED_VERSION and
+	 * MAX_UNSUPPORTED_VERSION_NUM in "repmgr.h" to define the first PostgreSQL
+	 * version which can't be suppored.
+	 */
+#ifdef MAX_UNSUPPORTED_VERSION_NUM
+	if (conn_server_version_num >= MAX_UNSUPPORTED_VERSION_NUM)
+	{
+		if (conn_server_version_num > 0)
+		{
+			log_error(_("%s %s does not support PostgreSQL %s or later"),
+					  progname(),
+					  REPMGR_VERSION,
+					  MAX_UNSUPPORTED_VERSION);
+			log_detail(_("%s server version is %s"),
+					   server_type,
+					   version_string);
+			log_hint(_("For details of supported versions see: https://repmgr.org/docs/current/install-requirements.html#INSTALL-COMPATIBILITY-MATRIX"));
+		}
+
+		if (exit_on_error == true)
+		{
+			PQfinish(conn);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		return UNKNOWN_SERVER_VERSION_NUM;
+	}
+#endif
 
 	return conn_server_version_num;
 }
