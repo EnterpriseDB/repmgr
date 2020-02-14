@@ -223,16 +223,20 @@
     <important>
       <para>
         PostgreSQL 9.3 has reached the end of its community support period (final release was
-        <ulink url="https://www.postgresql.org/docs/9.3/release-9-3-25.html">9.3.25</ulink>)
-        and will no longer be updated with security or bugfixes.
+        <ulink url="https://www.postgresql.org/docs/9.3/release-9-3-25.html">9.3.25</ulink>
+        in November 2018) and will no longer be updated with security or bugfixes.
       </para>
       <para>
-        PostgreSQL 9.4. is scheduled for its final release in February 2020
-        (see <ulink url="https://www.postgresql.org/support/versioning/">PostgreSQL Versioning Policy</ulink>).
+        PostgreSQL 9.4 has reached the end of its community support period (final release was
+        <ulink url="https://www.postgresql.org/docs/9.4/release-9-4-26.html">9.4.26</ulink>
+        in February 2020) and will no longer be updated with security or bugfixes.
       </para>
       <para>
         We recommend that users of these versions migrate to a recent PostgreSQL version
         as soon as possible.
+      </para>
+      <para>
+        For further details, see the  <ulink url="https://www.postgresql.org/support/versioning/">PostgreSQL Versioning Policy</ulink>.
       </para>
     </important>
 
