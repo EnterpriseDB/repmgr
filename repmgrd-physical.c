@@ -4029,7 +4029,9 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 	}
 	else
 	{
-		log_info(_("primary and this node have the same location (\"%s\")"),
+		log_info(_("primary node  \"%s\" (ID: %i) and this node have the same location (\"%s\")"),
+				 upstream_node_info.node_name,
+				 upstream_node_info.node_id,
 				 local_node_info.location);
 	}
 
