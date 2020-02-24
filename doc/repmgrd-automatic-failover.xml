@@ -192,8 +192,8 @@
     connected. Beginning with <link linkend="release-4.4">&repmgr; 4.4</link>
     it is now possible for the affected standbys to build a consensus about whether
     the primary is still available to some standbys (&quot;primary visibility consensus&quot;).
-    This is done by polling each standby for the time it last saw the primary;
-    if any have seen the primary very recently, it's reasonable
+    This is done by polling each standby (and the witness, if present) for the time it last saw the
+    primary; if any have seen the primary very recently, it's reasonable
     to infer that the primary is still available and a failover should not be started.
   </para>
 
@@ -205,9 +205,10 @@
     <programlisting>$ repmgr -f /etc/repmgr.conf service status
  ID | Name  | Role    | Status    | Upstream | repmgrd | PID   | Paused? | Upstream last seen
 ----+-------+---------+-----------+----------+---------+-------+---------+--------------------
- 1  | node1 | primary | * running |          | running | 96563 | no      | n/a
- 2  | node2 | standby |   running | node1    | running | 96572 | no      | 1 second(s) ago
- 3  | node3 | standby |   running | node1    | running | 96584 | no      | 0 second(s) ago</programlisting>
+ 1  | node1 | primary | * running |          | running | 27259 | no      | n/a
+ 2  | node2 | standby |   running | node1    | running | 27272 | no      | 1 second(s) ago
+ 3  | node3 | standby |   running | node1    | running | 27282 | no      | 0 second(s) ago
+ 4  | node4 | witness | * running | node1    | running | 27298 | no      | 1 second(s) ago</programlisting>
 
   </para>
 
