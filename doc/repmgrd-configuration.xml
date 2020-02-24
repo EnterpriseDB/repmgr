@@ -394,8 +394,8 @@
             </indexterm>
 
             <para>
-              If <literal>true</literal>, only continue with failover if no standbys have seen
-			  the primary node recently.
+              If <literal>true</literal>, only continue with failover if no standbys
+              (or the witness server, if present) have seen the primary node recently.
             </para>
             <note>
               <para>
