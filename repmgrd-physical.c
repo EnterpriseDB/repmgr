@@ -4271,7 +4271,9 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 			else
 			{
 				nodes_with_primary_still_visible++;
-				log_notice(_("node %i last saw primary node %i second(s) ago, considering primary still visible"),
+				log_notice(_("%s node \"%s\" (ID: %i) last saw primary node %i second(s) ago, considering primary still visible"),
+						   get_node_type_string(cell->node_info->type),
+						   cell->node_info->node_name,
 						   cell->node_info->node_id,
 						   sibling_replication_info.upstream_last_seen);
 				appendPQExpBuffer(&nodes_with_primary_visible,
@@ -4283,7 +4285,9 @@ do_election(NodeInfoList *sibling_nodes, int *new_primary_id)
 		}
 		else
 		{
-			log_info(_("node %i last saw primary node %i second(s) ago"),
+			log_info(_("%s node \"%s\" (ID: %i) last saw primary node %i second(s) ago"),
+					 get_node_type_string(cell->node_info->type),
+					 cell->node_info->node_name,
 					 cell->node_info->node_id,
 					 sibling_replication_info.upstream_last_seen);
 		}
