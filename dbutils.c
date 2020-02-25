@@ -5456,31 +5456,43 @@ get_replication_lag_seconds(PGconn *conn)
 
 
 TimeLineID
-get_node_timeline(PGconn *conn)
+get_node_timeline(PGconn *conn, char *timeline_id_str)
 {
 	TimeLineID timeline_id  = UNKNOWN_TIMELINE_ID;
-	PGresult   *res = NULL;
 
 	/*
 	 * PG_control_checkpoint() was introduced in PostgreSQL 9.6
 	 */
-	if (PQserverVersion(conn) < 90600)
+	if (PQserverVersion(conn) >= 90600)
 	{
-		return UNKNOWN_TIMELINE_ID;
+		PGresult   *res = NULL;
+
+		res = PQexec(conn, "SELECT timeline_id FROM pg_catalog.pg_control_checkpoint()");
+
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_db_error(conn, NULL, _("get_node_timeline(): unable to query pg_control_system()"));
+		}
+		else
+		{
+			timeline_id = atoi(PQgetvalue(res, 0, 0));
+		}
+
+		PQclear(res);
 	}
 
-	res = PQexec(conn, "SELECT timeline_id FROM pg_catalog.pg_control_checkpoint()");
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	/* If requested, format the timeline ID as a string */
+	if (timeline_id_str != NULL)
 	{
-		log_db_error(conn, NULL, _("get_node_timeline(): unable to query pg_control_system()"));
+		if (timeline_id == UNKNOWN_TIMELINE_ID)
+		{
+			strncpy(timeline_id_str, "?", MAXLEN);
+		}
+		else
+		{
+			snprintf(timeline_id_str, MAXLEN, "%i", timeline_id);
+		}
 	}
-	else
-	{
-		timeline_id = atoi(PQgetvalue(res, 0, 0));
-	}
-
-	PQclear(res);
 
 	return timeline_id;
 }

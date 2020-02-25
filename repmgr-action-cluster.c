@@ -206,7 +206,8 @@ do_cluster_show(void)
 		else
 		{
 			/* NOP on pre-9.6 servers */
-			cell->node_info->replication_info->timeline_id = get_node_timeline(cell->node_info->conn);
+			cell->node_info->replication_info->timeline_id = get_node_timeline(cell->node_info->conn,
+																			   cell->node_info->replication_info->timeline_id_str);
 		}
 
 		initPQExpBuffer(&node_status);
@@ -244,18 +245,13 @@ do_cluster_show(void)
 
 		headers_show[SHOW_LOCATION].cur_length = strlen(cell->node_info->location);
 
-		if (cell->node_info->replication_info->timeline_id == UNKNOWN_TIMELINE_ID)
+		/* Format timeline ID */
+		if (cell->node_info->type == WITNESS)
 		{
-			/* display "?" */
-			headers_show[SHOW_TIMELINE_ID].cur_length = 1;
+			/* The witness node's timeline ID is irrelevant */
+			strncpy(cell->node_info->replication_info->timeline_id_str, _("n/a"), MAXLEN);
 		}
-		else
-		{
-			initPQExpBuffer(&buf);
-			appendPQExpBuffer(&buf, "%i", cell->node_info->replication_info->timeline_id);
-			headers_show[SHOW_TIMELINE_ID].cur_length = strlen(buf.data);
-			termPQExpBuffer(&buf);
-		}
+		headers_show[SHOW_TIMELINE_ID].cur_length = strlen(cell->node_info->replication_info->timeline_id_str);
 
 		headers_show[SHOW_CONNINFO].cur_length = strlen(cell->node_info->conninfo);
 
@@ -322,10 +318,7 @@ do_cluster_show(void)
 
 			if (headers_show[SHOW_TIMELINE_ID].display == true)
 			{
-				if (cell->node_info->replication_info->timeline_id == UNKNOWN_TIMELINE_ID)
-					printf("| %-*c ", headers_show[SHOW_TIMELINE_ID].max_length, '?');
-				else
-					printf("| %-*i ", headers_show[SHOW_TIMELINE_ID].max_length, (int)cell->node_info->replication_info->timeline_id);
+				printf("| %-*s ", headers_show[SHOW_TIMELINE_ID].max_length, cell->node_info->replication_info->timeline_id_str);
 			}
 
 			if (headers_show[SHOW_CONNINFO].display == true)

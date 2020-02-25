@@ -166,6 +166,7 @@ typedef struct
 	char		current_timestamp[MAXLEN];
 	bool		in_recovery;
 	TimeLineID	timeline_id;
+	char		timeline_id_str[MAXLEN];
 	XLogRecPtr	last_wal_receive_lsn;
 	XLogRecPtr	last_wal_replay_lsn;
 	char		last_xact_replay_timestamp[MAXLEN];
@@ -575,7 +576,7 @@ XLogRecPtr	get_last_wal_receive_location(PGconn *conn);
 void		init_replication_info(ReplInfo *replication_info);
 bool		get_replication_info(PGconn *conn, t_server_type node_type, ReplInfo *replication_info);
 int			get_replication_lag_seconds(PGconn *conn);
-TimeLineID	get_node_timeline(PGconn *conn);
+TimeLineID	get_node_timeline(PGconn *conn, char *timeline_id_str);
 void		get_node_replication_stats(PGconn *conn, t_node_info *node_info);
 NodeAttached is_downstream_node_attached(PGconn *conn, char *node_name);
 void		set_upstream_last_seen(PGconn *conn, int upstream_node_id);
