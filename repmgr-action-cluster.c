@@ -247,13 +247,13 @@ do_cluster_show(void)
 		if (cell->node_info->replication_info->timeline_id == UNKNOWN_TIMELINE_ID)
 		{
 			/* display "?" */
-			headers_show[SHOW_PRIORITY].cur_length = 1;
+			headers_show[SHOW_TIMELINE_ID].cur_length = 1;
 		}
 		else
 		{
 			initPQExpBuffer(&buf);
 			appendPQExpBuffer(&buf, "%i", cell->node_info->replication_info->timeline_id);
-			headers_show[SHOW_PRIORITY].cur_length = strlen(buf.data);
+			headers_show[SHOW_TIMELINE_ID].cur_length = strlen(buf.data);
 			termPQExpBuffer(&buf);
 		}
 
