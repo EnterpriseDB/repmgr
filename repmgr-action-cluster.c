@@ -336,13 +336,24 @@ do_cluster_show(void)
 	/* emit any warnings */
 	if (warnings.head != NULL && runtime_options.terse == false && runtime_options.output_mode != OM_CSV)
 	{
-		ItemListCell *cell = NULL;
 
-		printf(_("\nWARNING: following issues were detected\n"));
+		ItemListCell *cell = NULL;
+		PQExpBufferData warning;
+
+		initPQExpBuffer(&warning);
+
+		appendPQExpBufferStr(&warning,
+							 _("following issues were detected\n"));
 		for (cell = warnings.head; cell; cell = cell->next)
 		{
-			printf(_("  - %s\n"), cell->string);
+			appendPQExpBuffer(&warning,
+							  _("  - %s\n"), cell->string);
 		}
+
+		puts("");
+		log_warning("%s", warning.data);
+
+		termPQExpBuffer(&warning);
 
 		if (runtime_options.verbose == false && connection_error_found == true)
 		{
