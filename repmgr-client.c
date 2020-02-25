@@ -2250,8 +2250,9 @@ format_node_status(t_node_info *node_info, PQExpBufferData *node_status, PQExpBu
 		 * Unable to retrieve the node's copy of its own record - copy the
 		 * name from our own copy of the record
 		 */
-		appendPQExpBufferStr(upstream,
-							 node_info->upstream_node_name);
+		appendPQExpBuffer(upstream,
+						  "? %s",
+						  node_info->upstream_node_name);
 	}
 	else if (remote_node_rec.type == WITNESS)
 	{
