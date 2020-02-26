@@ -88,7 +88,7 @@
      1  | node1 | primary | ? unreachable        |          | default  | 100      |          | host=db_node1 dbname=repmgr user=repmgr
      2  | node2 | standby | ! running as primary | ? node1  | default  | 100      | 2        | host=db_node2 dbname=repmgr user=repmgr
      3  | node3 | standby |   running            | ? node1  | default  | 100      | 1        | host=db_node3 dbname=repmgr user=repmgr
-     4  | node4 | standby | ? running            | node1    | default  | 100      |          | host=db_node4 dbname=repmgr user=repmgr
+     4  | node4 | standby | ? running            | ? node1  | default  | 100      |          | host=db_node4 dbname=repmgr user=repmgr
 
     WARNING: following issues were detected
       - unable to connect to node "node1" (ID: 1)
