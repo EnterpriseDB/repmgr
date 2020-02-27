@@ -1025,6 +1025,13 @@ _do_create_replication_conf(void)
 		exit(ERR_BAD_CONFIG);
 	}
 
+
+	/* check connection */
+	source_conn = establish_db_connection_by_params(&source_conninfo, true);
+
+	/* Verify that source is a supported server version */
+	(void) check_server_version(source_conn, "source node", true, NULL);
+
 	/*
 	 * Do some sanity checks on the data directory to make sure
 	 * it contains a valid but dormant instance
@@ -1034,14 +1041,17 @@ _do_create_replication_conf(void)
 		case DIR_ERROR:
 			log_error(_("unable to access specified data directory \"%s\""), local_data_directory);
 			log_detail("%s", strerror(errno));
+			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 			break;
 		case DIR_NOENT:
 			log_error(_("specified data directory \"%s\" does not exist"), local_data_directory);
+			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 			break;
 		case DIR_EMPTY:
 			log_error(_("specified data directory \"%s\" is empty"), local_data_directory);
+			PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
 			break;
 		case DIR_NOT_EMPTY:
@@ -1049,6 +1059,7 @@ _do_create_replication_conf(void)
 			if (!is_pg_dir(local_data_directory))
 			{
 				log_error(_("specified data directory \"%s\" does not contain a PostgreSQL instance"), local_data_directory);
+				PQfinish(source_conn);
 				exit(ERR_BAD_CONFIG);
 			}
 
@@ -1058,7 +1069,16 @@ _do_create_replication_conf(void)
 				{
 					log_error(_("specified data directory \"%s\" appears to contain a running PostgreSQL instance"),
 							  local_data_directory);
-					log_hint(_("use -F/--force to create \"recovery.conf\" anyway"));
+
+					if (PQserverVersion(source_conn) >= 120000)
+					{
+						log_hint(_("use -F/--force to create replication configuration anyway"));
+					}
+					else
+					{
+						log_hint(_("use -F/--force to create \"recovery.conf\" anyway"));
+					}
+
 					exit(ERR_BAD_CONFIG);
 				}
 
@@ -1066,11 +1086,25 @@ _do_create_replication_conf(void)
 
 				if (runtime_options.dry_run == true)
 				{
-					log_warning(_("\"recovery.conf\" would be created in an active data directory"));
+					if (PQserverVersion(source_conn) >= 120000)
+					{
+						log_warning(_("replication configuration would be created in an active data directory"));
+					}
+					else
+					{
+						log_warning(_("\"recovery.conf\" would be created in an active data directory"));
+					}
 				}
 				else
 				{
-					log_warning(_("creating \"recovery.conf\" in an active data directory"));
+					if (PQserverVersion(source_conn) >= 120000)
+					{
+						log_warning(_("creating replication configuration in an active data directory"));
+					}
+					else
+					{
+						log_warning(_("creating \"recovery.conf\" in an active data directory"));
+					}
 				}
 			}
 			break;
@@ -1078,11 +1112,6 @@ _do_create_replication_conf(void)
 			break;
 	}
 
-	/* check connection */
-	source_conn = establish_db_connection_by_params(&source_conninfo, true);
-
-	/* Verify that source is a supported server version */
-	(void) check_server_version(source_conn, "source node", true, NULL);
 
 	/* determine node for primary_conninfo */
 
