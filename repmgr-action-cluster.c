@@ -67,6 +67,8 @@ static void cube_set_node_status(t_node_status_cube **cube, int n, int node_id, 
  * Parameters:
  *   --compact
  *   --csv
+ *   --terse
+ *   --verbose
  */
 void
 do_cluster_show(void)
