@@ -176,9 +176,8 @@ main(int argc, char **argv)
 
 	/* set default user for -R/--remote-user */
 	{
-		struct passwd *pw = NULL;
+		struct passwd *pw = getpwuid(geteuid());
 
-		pw = getpwuid(geteuid());
 		if (pw == NULL)
 		{
 			fprintf(stderr, _("could not get current user name: %s\n"), strerror(errno));
