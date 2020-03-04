@@ -3430,6 +3430,7 @@ do_standby_switchover(void)
 	char		remote_host[MAXLEN] = "";
 	int			remote_node_id = UNKNOWN_NODE_ID;
 	t_node_info remote_node_record = T_NODE_INFO_INITIALIZER;
+	int 		remote_repmgr_version = UNKNOWN_REPMGR_VERSION_NUM;
 
 	RecordStatus record_status = RECORD_NOT_FOUND;
 	RecoveryType recovery_type = RECTYPE_UNKNOWN;
@@ -3781,7 +3782,12 @@ do_standby_switchover(void)
 	initPQExpBuffer(&remote_command_str);
 	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
 
-	appendPQExpBufferStr(&remote_command_str, "--version 2>/dev/null && echo \"1\" || echo \"0\"");
+	/*
+	 * Here we're executing an arbitrary repmgr command which is guaranteed to
+	 * succeed if repmgr is executed. We'll extract the actual version number in the
+	 * next step.
+	 */
+	appendPQExpBufferStr(&remote_command_str, "--version >/dev/null 2>&1 && echo \"1\" || echo \"0\"");
 	initPQExpBuffer(&command_output);
 	command_success = remote_command(remote_host,
 									 runtime_options.remote_user,
@@ -3827,8 +3833,57 @@ do_standby_switchover(void)
 
 		exit(ERR_BAD_CONFIG);
 	}
+
 	termPQExpBuffer(&command_output);
 
+	/*
+	 * Now we're sure the binary can be executed, fetch its version number.
+	 */
+	initPQExpBuffer(&remote_command_str);
+	make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+
+	appendPQExpBufferStr(&remote_command_str, "--version 2>/dev/null");
+	initPQExpBuffer(&command_output);
+	command_success = remote_command(remote_host,
+									 runtime_options.remote_user,
+									 remote_command_str.data,
+									 config_file_options.ssh_options,
+									 &command_output);
+
+	termPQExpBuffer(&remote_command_str);
+
+	if (command_success == true)
+	{
+		remote_repmgr_version = parse_repmgr_version(command_output.data);
+		if (remote_repmgr_version == UNKNOWN_REPMGR_VERSION_NUM)
+		{
+			log_error(_("unable to parse \"%s\"'s reported version on \"%s\""),
+					  progname(), remote_host);
+			PQfinish(remote_conn);
+			PQfinish(local_conn);
+			exit(ERR_BAD_CONFIG);
+		}
+		log_debug(_("\"%s\" version on \"%s\" is %i"),
+				  progname(), remote_host, remote_repmgr_version );
+
+	}
+	else
+	{
+		log_error(_("unable to execute \"%s\" on \"%s\""),
+				  progname(), remote_host);
+
+		if (strlen(command_output.data) > 2)
+			log_detail("%s", command_output.data);
+
+		termPQExpBuffer(&command_output);
+
+		PQfinish(remote_conn);
+		PQfinish(local_conn);
+
+		exit(ERR_BAD_CONFIG);
+	}
+
+	termPQExpBuffer(&command_output);
 
 	/*
 	 * Check if the expected remote repmgr.conf file exists
@@ -3939,9 +3994,12 @@ do_standby_switchover(void)
 	 * correct user, otherwise the node will probably not be able to attach to
 	 * the promotion candidate (and is a sign of bad configuration anyway) so we
 	 * will complain vocally.
+	 *
+	 * We'll only do this if we've determined the remote repmgr binary is new
+	 * enough to have the "node check --replication-config-owner" option.
 	 */
 
-	if (PQserverVersion(local_conn) >= 120000)
+	if (PQserverVersion(local_conn) >= 120000 && remote_repmgr_version >= 50100)
 	{
 		initPQExpBuffer(&remote_command_str);
 		make_remote_repmgr_path(&remote_command_str, &remote_node_record);
