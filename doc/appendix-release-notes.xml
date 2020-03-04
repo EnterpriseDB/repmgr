@@ -19,7 +19,7 @@
 
   <sect1 id="release-5.1.0">
     <title>Release 5.1.0</title>
-    <para><emphasis>?? ?? ??, 20??</emphasis></para>
+    <para><emphasis>?? ?? ??, 2020</emphasis></para>
 
     <para>
       &repmgr; 5.1.0 is a major release.
@@ -53,6 +53,15 @@
             <para>
               <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link>:
               Improve logging and checking of potential failure situations.
+            </para>
+          </listitem>
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-switchover"><command>repmgr standby switchover</command></link>:
+              Replication configuration files (PostgreSQL 11 and earlier:
+              <filename>recovery.conf</filename>; PostgreSQL 12 and later: <filename>postgresql.auto.conf</filename>)
+              will be checked to ensure they are owned by the same user who owns the PostgreSQL
+              data directory.
             </para>
           </listitem>
         </itemizedlist>

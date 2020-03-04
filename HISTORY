@@ -8,7 +8,9 @@
         repmgr: report error code on follow/rejoin failure due to non-available
           replication slot (Ian)
         repmgr: ensure "node rejoin" checks for available replication slots (Ian)
-        repmgr: improve "standby switchover" completion checks
+        repmgr: improve "standby switchover" completion checks (Ian)
+        repmgr: add replication configuration file ownership check to
+          "standby switchover" (Ian)
 
 5.0     2019-10-15
         general: add PostgreSQL 12 support (Ian)
