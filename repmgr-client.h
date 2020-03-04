@@ -98,6 +98,7 @@
 #define OPT_ENABLE_WAL_RECEIVER			   1045
 #define OPT_DETAIL						   1046
 #define OPT_REPMGRD_FORCE_UNPAUSE		   1047
+#define OPT_REPLICATION_CONFIG_OWNER	   1048
 
 /* deprecated since 4.0 */
 #define OPT_CHECK_UPSTREAM_CONFIG		    999
@@ -185,6 +186,7 @@ static struct option long_options[] =
 	{"has-passfile", no_argument, NULL, OPT_HAS_PASSFILE},
 	{"replication-connection", no_argument, NULL, OPT_REPL_CONN},
 	{"data-directory-config", no_argument, NULL, OPT_DATA_DIRECTORY_CONFIG},
+	{"replication-config-owner", no_argument, NULL, OPT_REPLICATION_CONFIG_OWNER},
 
 /* "node rejoin" options */
 	{"config-files", required_argument, NULL, OPT_CONFIG_FILES},

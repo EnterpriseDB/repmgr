@@ -118,6 +118,7 @@ typedef struct
 	bool		has_passfile;
 	bool		replication_connection;
 	bool		data_directory_config;
+	bool		replication_config_owner;
 
 	/* "node rejoin" options */
 	char		config_files[MAXLEN];
@@ -170,7 +171,7 @@ typedef struct
 		/* "node status" options */ \
 		false, \
 		/* "node check" options */ \
-		false, false, false, false, false, false, false, false,	false, \
+		false, false, false, false, false, false, false, false,	false, false, \
 		/* "node rejoin" options */ \
 		"", \
 		/* "node service" options */ \
@@ -281,6 +282,7 @@ extern bool drop_replication_slot_if_exists(PGconn *conn, int node_id, char *slo
 extern standy_join_status check_standby_join(PGconn *primary_conn, t_node_info *primary_node_record, t_node_info *standby_node_record);
 extern bool check_replication_slots_available(int node_id, PGconn* conn);
 extern bool check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record, bool is_rejoin);
+extern bool check_replication_config_owner(int pg_version, const char *data_directory, PQExpBufferData *error_msg, PQExpBufferData *detail_msg);
 
 extern void check_shared_library(PGconn *conn);
 extern bool is_repmgrd_running(PGconn *conn);

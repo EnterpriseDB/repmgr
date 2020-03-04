@@ -49,7 +49,7 @@ static CheckStatus do_node_check_role(PGconn *conn, OutputMode mode, t_node_info
 static CheckStatus do_node_check_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_missing_slots(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 static CheckStatus do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
-
+static CheckStatus do_node_check_replication_config_owner(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output);
 /*
  * NODE STATUS
  *
@@ -799,6 +799,16 @@ do_node_check(void)
 												   runtime_options.output_mode,
 												   &node_info,
 												   NULL);
+		PQfinish(conn);
+		exit(return_code);
+	}
+
+	if (runtime_options.replication_config_owner == true)
+	{
+		return_code = do_node_check_replication_config_owner(conn,
+													   runtime_options.output_mode,
+													   &node_info,
+													   NULL);
 		PQfinish(conn);
 		exit(return_code);
 	}
@@ -1799,11 +1809,11 @@ do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_in
 	}
 
 	initPQExpBuffer(&details);
+
 	/*
 	 * Check actual data directory matches that in repmgr.conf; note this requires
 	 * a superuser connection
 	 */
-
 	if (connection_has_pg_settings(conn) == true)
 	{
 		/* we expect to have a database connection */
@@ -1909,6 +1919,40 @@ do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_in
 	}
 
 	termPQExpBuffer(&details);
+
+	return status;
+}
+
+/*
+ * This is not included in the general list output
+ */
+static
+CheckStatus do_node_check_replication_config_owner(PGconn *conn, OutputMode mode, t_node_info *node_info, CheckStatusList *list_output)
+{
+	CheckStatus status = CHECK_STATUS_OK;
+
+	PQExpBufferData errmsg;
+	PQExpBufferData details;
+
+	if (mode != OM_OPTFORMAT)
+	{
+		log_error(_("--replication-config-owner option can only be used with --optformat"));
+		PQfinish(conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	initPQExpBuffer(&errmsg);
+	initPQExpBuffer(&details);
+
+	if (check_replication_config_owner(PQserverVersion(conn),
+									   config_file_options.data_directory,
+									   &errmsg, &details) == false)
+	{
+		status = CHECK_STATUS_CRITICAL;
+	}
+
+	printf("--replication-config-owner=%s\n",
+		   output_check_status(status));
 
 	return status;
 }

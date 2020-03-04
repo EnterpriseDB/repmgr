@@ -133,6 +133,8 @@ static NodeStatus parse_node_status_is_shutdown_cleanly(const char *node_status_
 static CheckStatus parse_node_check_archiver(const char *node_check_output, int *files, int *threshold);
 static ConnectionStatus parse_remote_node_replication_connection(const char *node_check_output);
 static bool parse_data_directory_config(const char *node_check_output);
+static bool parse_replication_config_owner(const char *node_check_output);
+
 
 /*
  * STANDBY CLONE
@@ -3434,6 +3436,8 @@ do_standby_switchover(void)
 	PQExpBufferData remote_command_str;
 	PQExpBufferData command_output;
 	PQExpBufferData node_rejoin_options;
+	PQExpBufferData errmsg;
+	PQExpBufferData detailmsg;
 
 	int			r,
 				i;
@@ -3525,6 +3529,39 @@ do_standby_switchover(void)
 
 		exit(ERR_SWITCHOVER_FAIL);
 	}
+
+	/*
+	 * Check that the local replication configuration file is owned by the data
+	 * directory owner.
+	 *
+	 * For PostgreSQL 11 and earlier, if PostgreSQL is not able rename "recovery.conf",
+	 * promotion will fail.
+	 *
+	 * For PostgreSQL 12 and later, promotion will not fail even if "postgresql.auto.conf"
+	 * is owned by another user, but we'll check just in case, as it is indicative of a
+	 * poorly configured setup. In any case we will need to check "postgresql.auto.conf" on
+	 * the demotion candidate as the rejoin will fail if we are unable to to write to that.
+	 */
+
+	initPQExpBuffer(&errmsg);
+	initPQExpBuffer(&detailmsg);
+
+	if (check_replication_config_owner(PQserverVersion(local_conn),
+									   config_file_options.data_directory,
+									   &errmsg, &detailmsg) == false)
+	{
+		log_error("%s", errmsg.data);
+		log_detail("%s", detailmsg.data);
+
+		termPQExpBuffer(&errmsg);
+		termPQExpBuffer(&detailmsg);
+
+		PQfinish(local_conn);
+		exit(ERR_BAD_CONFIG);
+	}
+
+	termPQExpBuffer(&errmsg);
+	termPQExpBuffer(&detailmsg);
 
 	/* check remote server connection and retrieve its record */
 	remote_conn = get_primary_connection(local_conn, &remote_node_id, remote_conninfo);
@@ -3896,6 +3933,63 @@ do_standby_switchover(void)
 				 progname(),
 				 remote_host);
 	}
+
+	/*
+	 * For PostgreSQL 12 and later, check "postgresql.auto.conf" is owned by the
+	 * correct user, otherwise the node will probably not be able to attach to
+	 * the promotion candidate (and is a sign of bad configuration anyway) so we
+	 * will complain vocally.
+	 */
+
+	if (PQserverVersion(local_conn) >= 120000)
+	{
+		initPQExpBuffer(&remote_command_str);
+		make_remote_repmgr_path(&remote_command_str, &remote_node_record);
+
+		appendPQExpBufferStr(&remote_command_str, "node check --replication-config-owner --optformat -LINFO 2>/dev/null");
+
+		initPQExpBuffer(&command_output);
+		command_success = remote_command(remote_host,
+										 runtime_options.remote_user,
+										 remote_command_str.data,
+										 config_file_options.ssh_options,
+										 &command_output);
+
+		termPQExpBuffer(&remote_command_str);
+
+		if (command_success == false)
+		{
+			log_error(_("unable to execute \"%s node check --replication-config-owner\" on \"%s\":"),
+					  progname(), remote_host);
+			log_detail("%s", command_output.data);
+
+			PQfinish(remote_conn);
+			PQfinish(local_conn);
+
+			termPQExpBuffer(&command_output);
+
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (parse_replication_config_owner(command_output.data) == false)
+		{
+			log_error(_("\"%s\" file on \"%s\" has incorrect ownership"),
+					  PG_AUTOCONF_FILENAME,
+					  remote_node_record.node_name);
+
+			log_hint(_("check the file has the same owner/group as the data directory"));
+
+			PQfinish(remote_conn);
+			PQfinish(local_conn);
+
+			termPQExpBuffer(&command_output);
+
+			exit(ERR_BAD_CONFIG);
+		}
+
+		termPQExpBuffer(&command_output);
+	}
+
 
 	/*
 	 * populate local node record with current state of various replication-related
@@ -8106,6 +8200,59 @@ parse_data_directory_config(const char *node_check_output)
 	struct option node_check_options[] =
 	{
 		{"configured-data-directory", required_argument, NULL, 'C'},
+		{NULL, 0, NULL, 0}
+	};
+
+	/* Don't attempt to tokenise an empty string */
+	if (!strlen(node_check_output))
+	{
+		return false;
+	}
+
+	argc_item = parse_output_to_argv(node_check_output, &argv_array);
+
+	/* Reset getopt's optind variable */
+	optind = 0;
+
+	/* Prevent getopt from emitting errors */
+	opterr = 0;
+
+	while ((c = getopt_long(argc_item, argv_array, "C:", node_check_options,
+							&optindex)) != -1)
+	{
+		switch (c)
+		{
+			/* --configured-data-directory */
+			case 'C':
+				{
+					/* we only care whether it's "OK" or not */
+					if (strncmp(optarg, "OK", 2) != 0)
+						config_ok = false;
+				}
+				break;
+		}
+	}
+
+	free_parsed_argv(&argv_array);
+
+	return config_ok;
+}
+
+
+static bool
+parse_replication_config_owner(const char *node_check_output)
+{
+	bool		config_ok = true;
+
+	int			c = 0,
+				argc_item = 0;
+	char	  **argv_array = NULL;
+	int			optindex = 0;
+
+	/* We're only interested in this option */
+	struct option node_check_options[] =
+	{
+		{"replication-config-owner", required_argument, NULL, 'C'},
 		{NULL, 0, NULL, 0}
 	};
 

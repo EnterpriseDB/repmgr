@@ -533,6 +533,10 @@ main(int argc, char **argv)
 				runtime_options.data_directory_config = true;
 				break;
 
+			case OPT_REPLICATION_CONFIG_OWNER:
+				runtime_options.replication_config_owner = true;
+				break;
+
 				/*--------------------
 				 * "node rejoin" options
 				 *--------------------
@@ -4202,6 +4206,91 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 	PQfinish(follow_target_repl_conn);
 
 	return success;
+}
+
+
+/*
+ * Check that the replication configuration file is owned by the user who
+ * owns the data directory.
+ */
+extern bool
+check_replication_config_owner(int pg_version, const char *data_directory, PQExpBufferData *error_msg, PQExpBufferData *detail_msg)
+{
+	PQExpBufferData replication_config_file;
+	struct stat     dirstat;
+	struct stat     confstat;
+
+	if (stat(data_directory, &dirstat))
+	{
+		if (error_msg != NULL)
+		{
+			appendPQExpBuffer(error_msg,
+							  "unable to check ownership of data directory \"%s\"",
+							  data_directory);
+			appendPQExpBufferStr(detail_msg,
+								 strerror(errno));
+		}
+		return false;
+	}
+
+	initPQExpBuffer(&replication_config_file);
+
+	appendPQExpBuffer(&replication_config_file,
+					  "%s/%s",
+					  config_file_options.data_directory,
+					  pg_version >= 120000 ? PG_AUTOCONF_FILENAME : RECOVERY_COMMAND_FILE);
+
+	stat(replication_config_file.data, &confstat);
+
+	if (confstat.st_uid == dirstat.st_uid)
+	{
+		termPQExpBuffer(&replication_config_file);
+		return true;
+	}
+
+	if (error_msg != NULL)
+	{
+		char conf_owner[MAXLEN];
+		char dir_owner[MAXLEN];
+		struct passwd *pw;
+
+		pw = getpwuid(confstat.st_uid);
+		if (!pw)
+		{
+			maxlen_snprintf(conf_owner,
+							"(unknown user %i)",
+							confstat.st_uid);
+		}
+		else
+		{
+			strncpy(conf_owner, pw->pw_name, MAXLEN);
+		}
+
+		pw = getpwuid(dirstat.st_uid);
+
+		if (!pw)
+		{
+			maxlen_snprintf(conf_owner,
+							"(unknown user %i)",
+							dirstat.st_uid);
+		}
+		else
+		{
+			strncpy(dir_owner, pw->pw_name, MAXLEN);
+		}
+
+		appendPQExpBuffer(error_msg,
+						  "ownership error for file \"%s\"",
+						  replication_config_file.data);
+		appendPQExpBuffer(detail_msg,
+						  "file owner is \"%s\", data directory owner is \"%s\"",
+						  conf_owner,
+						  dir_owner);
+	}
+
+	termPQExpBuffer(&replication_config_file);
+
+	return false;
 }
 
 
