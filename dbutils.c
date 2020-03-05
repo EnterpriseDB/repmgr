@@ -43,6 +43,8 @@ static PGconn *_establish_db_connection(const char *conninfo,
 						 const bool log_notice,
 						 const bool verbose_only);
 
+static PGconn * _establish_replication_connection_from_params(PGconn *conn, const char *conninfo, const char *repluser);
+
 static PGconn *_get_primary_connection(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out, bool quiet);
 
 static bool _set_config(PGconn *conn, const char *config_param, const char *sqlquery);
@@ -303,6 +305,50 @@ establish_db_connection_by_params(t_conninfo_param_list *param_list,
 	}
 
 	return conn;
+}
+
+
+/*
+ * Given an existing active connection and the name of a replication
+ * user, extract the connection parameters from that connection and
+ * attempt to return a replication connection.
+ */
+PGconn *
+establish_replication_connection_from_conn(PGconn *conn, const char *repluser)
+{
+	return _establish_replication_connection_from_params(conn, NULL, repluser);
+}
+
+
+PGconn *
+establish_replication_connection_from_conninfo(const char *conninfo, const char *repluser)
+{
+	return _establish_replication_connection_from_params(NULL, conninfo, repluser);
+}
+
+
+static PGconn *
+_establish_replication_connection_from_params(PGconn *conn, const char *conninfo, const char *repluser)
+{
+	t_conninfo_param_list repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+	PGconn *repl_conn = NULL;
+
+	initialize_conninfo_params(&repl_conninfo, false);
+
+	if (conn != NULL)
+		conn_to_param_list(conn, &repl_conninfo);
+	else if (conninfo != NULL)
+		parse_conninfo_string(conninfo, &repl_conninfo, NULL, false);
+
+	/* Set the provided replication user */
+	param_set(&repl_conninfo, "user", repluser);
+	param_set(&repl_conninfo, "replication", "1");
+	param_set(&repl_conninfo, "dbname", "replication");
+
+	repl_conn = establish_db_connection_by_params(&repl_conninfo, false);
+	free_conninfo_params(&repl_conninfo);
+
+	return repl_conn;
 }
 
 

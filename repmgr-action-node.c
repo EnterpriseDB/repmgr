@@ -918,7 +918,6 @@ do_node_check_replication_connection(void)
 	PGconn *repl_conn = NULL;
 	t_node_info node_record = T_NODE_INFO_INITIALIZER;
 	RecordStatus record_status = RECORD_NOT_FOUND;
-	t_conninfo_param_list remote_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	PQExpBufferData output;
 
 
@@ -948,17 +947,8 @@ do_node_check_replication_connection(void)
 		return;
 	}
 
-	initialize_conninfo_params(&remote_conninfo, false);
-	parse_conninfo_string(node_record.conninfo, &remote_conninfo, NULL, false);
-
-	if (strcmp(param_get(&remote_conninfo, "user"), node_record.repluser) != 0)
-	{
-		param_set(&remote_conninfo, "user", node_record.repluser);
-		param_set(&remote_conninfo, "dbname", "replication");
-	}
-	param_set(&remote_conninfo, "replication", "1");
-
-	repl_conn = establish_db_connection_by_params(&remote_conninfo, false);
+	repl_conn = establish_replication_connection_from_conninfo(node_record.conninfo,
+															   node_record.repluser);
 
 	if (PQstatus(repl_conn) != CONNECTION_OK)
 	{

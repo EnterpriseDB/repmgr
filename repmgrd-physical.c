@@ -4779,11 +4779,9 @@ parse_failover_validation_command(const char *template, t_node_info *node_info, 
 static bool
 check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_info)
 {
-	t_conninfo_param_list local_repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	PGconn	   *local_repl_conn = NULL;
 	t_system_identification local_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 
-	t_conninfo_param_list follow_target_repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	PGconn	   *follow_target_repl_conn = NULL;
 	t_system_identification follow_target_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 	TimeLineHistoryEntry *follow_target_history = NULL;
@@ -4791,23 +4789,7 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 	bool can_follow = true;
 	bool success;
 
-	/* Check local replication connection - we want to execute IDENTIFY_SYSTEM
-	 * to get the current timeline ID, which might not yet be written to
-	 * pg_control.
-	 *
-	 * TODO: from 9.6, query "pg_stat_wal_receiver" via the existing local connection
-	 */
-
-	initialize_conninfo_params(&local_repl_conninfo, false);
-
-	conn_to_param_list(local_conn, &local_repl_conninfo);
-
-	/* Set the replication user from the node record */
-	param_set(&local_repl_conninfo, "user", local_node_info.repluser);
-	param_set(&local_repl_conninfo, "replication", "1");
-
-	local_repl_conn = establish_db_connection_by_params(&local_repl_conninfo, false);
-	free_conninfo_params(&local_repl_conninfo);
+	local_repl_conn = establish_replication_connection_from_conn(local_conn, local_node_info.repluser);
 
 	if (PQstatus(local_repl_conn) != CONNECTION_OK)
 	{
@@ -4816,6 +4798,7 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 
 		return false;
 	}
+
 	success = identify_system(local_repl_conn, &local_identification);
 	PQfinish(local_repl_conn);
 
@@ -4827,22 +4810,8 @@ check_node_can_follow(PGconn *local_conn, XLogRecPtr local_xlogpos, PGconn *foll
 	}
 
 	/* check replication connection */
-	initialize_conninfo_params(&follow_target_repl_conninfo, false);
-
-	conn_to_param_list(follow_target_conn, &follow_target_repl_conninfo);
-
-	if (strcmp(param_get(&follow_target_repl_conninfo, "user"), follow_target_node_info->repluser) != 0)
-	{
-		param_set(&follow_target_repl_conninfo, "user", follow_target_node_info->repluser);
-		param_set(&follow_target_repl_conninfo, "dbname", "replication");
-	}
-
-	param_set(&follow_target_repl_conninfo, "replication", "1");
-
-	follow_target_repl_conn = establish_db_connection_by_params(&follow_target_repl_conninfo, false);
-
-	free_conninfo_params(&follow_target_repl_conninfo);
-
+	follow_target_repl_conn = establish_replication_connection_from_conn(follow_target_conn,
+																		 follow_target_node_info->repluser);
 	if (PQstatus(follow_target_repl_conn) != CONNECTION_OK)
 	{
 		log_error(_("unable to establish a replication connection to the follow target node"));

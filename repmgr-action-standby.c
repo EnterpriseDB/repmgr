@@ -2870,10 +2870,8 @@ do_standby_follow(void)
 
 	/* XXX check this is not current upstream anyway */
 
-
 	/* check if we can attach to the follow target */
 	{
-		t_conninfo_param_list local_repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 		PGconn	   *local_repl_conn = NULL;
 		t_system_identification local_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 
@@ -2887,18 +2885,8 @@ do_standby_follow(void)
 		 * TODO: from 9.6, query "pg_stat_wal_receiver" via the existing local connection
 		 */
 
-		initialize_conninfo_params(&local_repl_conninfo, false);
-
-		conn_to_param_list(local_conn, &local_repl_conninfo);
-
-		/* Set the replication user from the node record */
-		param_set(&local_repl_conninfo, "user", local_node_record.repluser);
-
-		param_set(&local_repl_conninfo, "replication", "1");
-
-		local_repl_conn = establish_db_connection_by_params(&local_repl_conninfo, false);
-		free_conninfo_params(&local_repl_conninfo);
-
+		local_repl_conn = establish_replication_connection_from_conn(local_conn,
+																	 local_node_record.repluser);
 		if (PQstatus(local_repl_conn) != CONNECTION_OK)
 		{
 			log_error(_("unable to establish a replication connection to the local node"));

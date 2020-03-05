@@ -4014,7 +4014,6 @@ bool
 check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *follow_target_conn, t_node_info *follow_target_node_record, bool is_rejoin)
 {
 	uint64		local_system_identifier = UNKNOWN_SYSTEM_IDENTIFIER;
-	t_conninfo_param_list follow_target_repl_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
 	PGconn	   *follow_target_repl_conn = NULL;
 	t_system_identification follow_target_identification = T_SYSTEM_IDENTIFICATION_INITIALIZER;
 	bool success = true;
@@ -4022,21 +4021,8 @@ check_node_can_attach(TimeLineID local_tli, XLogRecPtr local_xlogpos, PGconn *fo
 	const char *action = is_rejoin == true ? "rejoin" : "follow";
 
 	/* check replication connection */
-	initialize_conninfo_params(&follow_target_repl_conninfo, false);
-
-	conn_to_param_list(follow_target_conn, &follow_target_repl_conninfo);
-
-	if (strcmp(param_get(&follow_target_repl_conninfo, "user"), follow_target_node_record->repluser) != 0)
-	{
-		param_set(&follow_target_repl_conninfo, "user", follow_target_node_record->repluser);
-		param_set(&follow_target_repl_conninfo, "dbname", "replication");
-	}
-
-	param_set(&follow_target_repl_conninfo, "replication", "1");
-
-	follow_target_repl_conn = establish_db_connection_by_params(&follow_target_repl_conninfo, false);
-
-	free_conninfo_params(&follow_target_repl_conninfo);
+	follow_target_repl_conn = establish_replication_connection_from_conn(follow_target_conn,
+																		 follow_target_node_record->repluser);
 
 	if (PQstatus(follow_target_repl_conn) != CONNECTION_OK)
 	{
