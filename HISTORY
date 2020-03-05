@@ -11,6 +11,7 @@
         repmgr: improve "standby switchover" completion checks (Ian)
         repmgr: add replication configuration file ownership check to
           "standby switchover" (Ian)
+        repmgr: consolidate replication connection code (Ian)
 
 5.0     2019-10-15
         general: add PostgreSQL 12 support (Ian)

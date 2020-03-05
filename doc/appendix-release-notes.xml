@@ -78,8 +78,7 @@
               checks for available replication slots on the rejoin target.
             </para>
           </listitem>
-        </itemizedlist>
-        <itemizedlist>
+
           <listitem>
             <para>
               <link linkend="repmgr-standby-follow"><command>repmgr standby follow</command></link> and
@@ -88,6 +87,15 @@
               be created on the follow/rejoin target.
             </para>
           </listitem>
+
+          <listitem>
+            <para>
+              Fix situation where replication connections were not created correctly, which
+              could lead to spurious replication connection failures in some situations, e.g.
+              where password files are used.
+            </para>
+          </listitem>
+
         </itemizedlist>
       </para>
     </sect2>
