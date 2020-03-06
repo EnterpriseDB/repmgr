@@ -195,6 +195,23 @@
 		 </simpara>
 	   </listitem>
 
+       <listitem>
+        <indexterm>
+          <primary>service_promote_command</primary>
+          <secondary>with &quot;repmgr standby promote &quot;</secondary>
+        </indexterm>
+         <simpara>
+           <literal>service_promote_command</literal>:
+           a command which will be executed instead of <command>pg_ctl promote</command>
+           or (in PostgreSQL 12 and later) <function>pg_promote()</function>.
+         </simpara>
+         <simpara>
+           This is intended for systems which provide a package-level promote command,
+           such as Debian's <application>pg_ctlcluster</application>, to promote the
+           PostgreSQL from standby to primary.
+         </simpara>
+       </listitem>
+
 	  </itemizedlist>
 	</para>
 

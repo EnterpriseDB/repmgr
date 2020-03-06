@@ -97,6 +97,12 @@
             </para>
           </listitem>
 
+          <listitem>
+            <para>
+              <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>:
+              in PostgreSQL 12 and later, use <varname>service_promote_command</varname> if set.
+            </para>
+          </listitem>
 
           <listitem>
             <para>

@@ -2487,7 +2487,11 @@ _do_standby_promote_internal(PGconn *conn)
 		{
 			use_pg_promote = true;
 
-			if (can_execute_pg_promote(conn) == false)
+			if (config_file_options.service_promote_command[0] != '\0')
+			{
+				use_pg_promote = false;
+			}
+			else if (can_execute_pg_promote(conn) == false)
 			{
 				use_pg_promote = false;
 				log_info(_("user \"%s\" does not have permission to execute \"pg_promote()\", falling back to \"pg_ctl promote\""),
