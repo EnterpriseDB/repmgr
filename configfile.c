@@ -562,8 +562,6 @@ _parse_config(t_configuration_options *options, ItemList *error_list, ItemList *
 void
 parse_configuration_item(t_configuration_options *options, ItemList *error_list, ItemList *warning_list, const char *name, const char *value)
 {
-	bool		known_parameter = true;
-
 	if (strcmp(name, "node_id") == 0)
 	{
 		options->node_id = repmgr_atoi(value, name, error_list, MIN_NODE_ID);
@@ -826,73 +824,47 @@ parse_configuration_item(t_configuration_options *options, ItemList *error_list,
 	{
 		item_list_append(warning_list,
 						 _("parameter \"cluster\" is deprecated and will be ignored"));
-		known_parameter = false;
 	}
 	else if (strcmp(name, "node") == 0)
 	{
 		item_list_append(warning_list,
 						 _("parameter \"node\" has been renamed to \"node_id\""));
-		known_parameter = false;
 	}
 	else if (strcmp(name, "upstream_node") == 0)
 	{
 		item_list_append(warning_list,
 						 _("parameter \"upstream_node\" has been removed; use \"--upstream-node-id\" when cloning a standby"));
-		known_parameter = false;
 	}
 	else if (strcmp(name, "loglevel") == 0)
 	{
 		item_list_append(warning_list,
 						 _("parameter \"loglevel\" has been renamed to \"log_level\""));
-		known_parameter = false;
 	}
 	else if (strcmp(name, "logfacility") == 0)
 	{
 		item_list_append(warning_list,
 						 _("parameter \"logfacility\" has been renamed to \"log_facility\""));
-		known_parameter = false;
 	}
 	else if (strcmp(name, "logfile") == 0)
 	{
 		item_list_append(warning_list,
 						 _("parameter \"logfile\" has been renamed to \"log_file\""));
-		known_parameter = false;
 	}
 	else if (strcmp(name, "master_reponse_timeout") == 0)
 	{
 		item_list_append(warning_list,
 						 _("parameter \"master_reponse_timeout\" has been removed; use \"async_query_timeout\" instead"));
-		known_parameter = false;
 	}
 	else if (strcmp(name, "retry_promote_interval_secs") == 0)
 	{
 		item_list_append(warning_list,
 						 _("parameter \"retry_promote_interval_secs\" has been removed; use \"primary_notification_timeout\" instead"));
-		known_parameter = false;
 	}
 	else
 	{
-		known_parameter = false;
 		log_warning(_("%s/%s: unknown name/value pair provided; ignoring"), name, value);
 	}
 
-	/*
-	 * Raise an error if a known parameter is provided with an empty
-	 * value. Currently there's no reason why empty parameters are needed;
-	 * if we want to accept those, we'd need to add stricter default
-	 * checking, as currently e.g. an empty `node_id` value will be converted
-	 * to '0'.
-	 */
-	if (known_parameter == true && !strlen(value))
-	{
-		char		error_message_buf[MAXLEN] = "";
-
-		maxlen_snprintf(error_message_buf,
-						_("\"%s\": no value provided"),
-						name);
-
-		item_list_append(error_list, error_message_buf);
-	}
 }
 
 
