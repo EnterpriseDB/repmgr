@@ -1723,6 +1723,43 @@ get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 /* user/role information functions */
 /* =============================== */
 
+
+bool
+can_execute_pg_promote(PGconn *conn)
+{
+	PQExpBufferData query;
+	PGresult   *res;
+	bool		has_pg_promote= false;
+
+	/* pg_promote() available from PostgreSQL 12 */
+	if(PQserverVersion(conn) < 120000)
+		return false;
+
+	initPQExpBuffer(&query);
+	appendPQExpBufferStr(&query,
+						 " SELECT pg_catalog.has_function_privilege( "
+						 "    CURRENT_USER, "
+						 "    'pg_catalog.pg_promote(bool,int)', "
+						 "    'execute' "
+						 " )");
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data,
+					 _("can_execute_pg_promote(): unable to query user function privilege"));
+	}
+	else
+	{
+		has_pg_promote = atobool(PQgetvalue(res, 0, 0));
+	}
+	termPQExpBuffer(&query);
+
+	return has_pg_promote;
+}
+
+
 bool
 connection_has_pg_settings(PGconn *conn)
 {

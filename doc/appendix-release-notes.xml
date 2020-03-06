@@ -90,6 +90,16 @@
 
           <listitem>
             <para>
+              <link linkend="repmgr-standby-promote"><command>repmgr standby promote</command></link>
+              will check if the <literal>repmgr</literal> user has permission to execute
+              <function>pg_promote()</function> and fall back to <command>pg_ctl promote</command> if
+              necessary.
+            </para>
+          </listitem>
+
+
+          <listitem>
+            <para>
               Fix situation where replication connections were not created correctly, which
               could lead to spurious replication connection failures in some situations, e.g.
               where password files are used.

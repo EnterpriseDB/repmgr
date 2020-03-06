@@ -441,6 +441,7 @@ uint64		system_identifier(PGconn *conn);
 TimeLineHistoryEntry *get_timeline_history(PGconn *repl_conn, TimeLineID tli);
 
 /* user/role information functions */
+bool		can_execute_pg_promote(PGconn *conn);
 bool		connection_has_pg_settings(PGconn *conn);
 bool		is_replication_role(PGconn *conn, char *rolname);
 bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);

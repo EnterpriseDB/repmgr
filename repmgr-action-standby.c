@@ -2476,45 +2476,62 @@ _do_standby_promote_internal(PGconn *conn)
 	 * option so we can't be sure when or if the promotion completes. For now
 	 * we'll poll the server until the default timeout (60 seconds)
 	 *
-	 * For PostgreSQL 12+, use the pg_promote() function - note this is
-	 * experimental
+	 * For PostgreSQL 12+, use the pg_promote() function, unless one of
+	 * "service_promote_command" or "use_pg_ctl_promote" is set.
 	 */
-	log_notice(_("promoting standby to primary"));
-
-	if (PQserverVersion(conn) >= 120000)
 	{
-		log_detail(_("promoting server \"%s\" (ID: %i) using pg_promote()"),
-				   local_node_record.node_name,
-				   local_node_record.node_id);
+		bool use_pg_promote = false;
 
-		/*
-		 * We'll check for promotion success ourselves, but will abort
-		 * if some unrecoverable error prevented the function from being
-		 * executed.
-		 */
-		if (!promote_standby(conn, false, 0))
+
+		if (PQserverVersion(conn) >= 120000)
 		{
-			log_error(_("unable to promote server from standby to primary"));
-			exit(ERR_PROMOTION_FAIL);
+			use_pg_promote = true;
+
+			if (can_execute_pg_promote(conn) == false)
+			{
+				use_pg_promote = false;
+				log_info(_("user \"%s\" does not have permission to execute \"pg_promote()\", falling back to \"pg_ctl promote\""),
+						 PQuser(conn));
+			}
 		}
-	}
-	else
-	{
-		char		script[MAXLEN];
-		int			r;
 
-		get_server_action(ACTION_PROMOTE, script, (char *) data_dir);
+		log_notice(_("promoting standby to primary"));
 
-		log_detail(_("promoting server \"%s\" (ID: %i) using \"%s\""),
-				   local_node_record.node_name,
-				   local_node_record.node_id,
-				   script);
-
-		r = system(script);
-		if (r != 0)
+		if (use_pg_promote == true)
 		{
-			log_error(_("unable to promote server from standby to primary"));
-			exit(ERR_PROMOTION_FAIL);
+			log_detail(_("promoting server \"%s\" (ID: %i) using pg_promote()"),
+					   local_node_record.node_name,
+					   local_node_record.node_id);
+
+			/*
+			 * We'll check for promotion success ourselves, but will abort
+			 * if some unrecoverable error prevented the function from being
+			 * executed.
+			 */
+			if (!promote_standby(conn, false, 0))
+			{
+				log_error(_("unable to promote server from standby to primary"));
+				exit(ERR_PROMOTION_FAIL);
+			}
+		}
+		else
+		{
+			char		script[MAXLEN];
+			int			r;
+
+			get_server_action(ACTION_PROMOTE, script, (char *) data_dir);
+
+			log_detail(_("promoting server \"%s\" (ID: %i) using \"%s\""),
+					   local_node_record.node_name,
+					   local_node_record.node_id,
+					   script);
+
+			r = system(script);
+			if (r != 0)
+			{
+				log_error(_("unable to promote server from standby to primary"));
+				exit(ERR_PROMOTION_FAIL);
+			}
 		}
 	}
 

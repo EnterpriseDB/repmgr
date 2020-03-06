@@ -12,6 +12,8 @@
         repmgr: add replication configuration file ownership check to
           "standby switchover" (Ian)
         repmgr: consolidate replication connection code (Ian)
+        repmgr: check permissions for "pg_promote()" and fall back to pg_ctl
+          if necessary (Ian)
 
 5.0     2019-10-15
         general: add PostgreSQL 12 support (Ian)
