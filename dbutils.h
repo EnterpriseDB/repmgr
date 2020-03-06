@@ -397,9 +397,6 @@ PGconn	   *get_primary_connection(PGconn *standby_conn, int *primary_id, char *p
 PGconn	   *get_primary_connection_quiet(PGconn *standby_conn, int *primary_id, char *primary_conninfo_out);
 PGconn	   *duplicate_connection(PGconn *conn, const char *user, bool replication);
 
-bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);\
-bool		is_replication_role(PGconn *conn, char *rolname);
-bool		connection_has_pg_settings(PGconn *conn);
 void		close_connection(PGconn **conn);
 
 /* conninfo manipulation functions */
@@ -442,6 +439,11 @@ int			get_ready_archive_files(PGconn *conn, const char *data_directory);
 bool		identify_system(PGconn *repl_conn, t_system_identification *identification);
 uint64		system_identifier(PGconn *conn);
 TimeLineHistoryEntry *get_timeline_history(PGconn *repl_conn, TimeLineID tli);
+
+/* user/role information functions */
+bool		connection_has_pg_settings(PGconn *conn);
+bool		is_replication_role(PGconn *conn, char *rolname);
+bool		is_superuser_connection(PGconn *conn, t_connection_user *userinfo);
 
 /* repmgrd shared memory functions */
 bool		repmgrd_set_local_node_id(PGconn *conn, int local_node_id);

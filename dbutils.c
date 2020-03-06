@@ -390,116 +390,6 @@ duplicate_connection(PGconn *conn, const char *user, bool replication)
 }
 
 
-bool
-is_superuser_connection(PGconn *conn, t_connection_user *userinfo)
-{
-	bool		is_superuser = false;
-	const char *current_user = PQuser(conn);
-	const char *superuser_status = PQparameterStatus(conn, "is_superuser");
-
-	is_superuser = (strcmp(superuser_status, "on") == 0) ? true : false;
-
-	if (userinfo != NULL)
-	{
-		snprintf(userinfo->username,
-				 sizeof(userinfo->username),
-				 "%s", current_user);
-		userinfo->is_superuser = is_superuser;
-	}
-
-	return is_superuser;
-}
-
-
-bool
-is_replication_role(PGconn *conn, char *rolname)
-{
-	PQExpBufferData query;
-	PGresult   *res;
-	bool		is_replication_role = false;
-
-	initPQExpBuffer(&query);
-
-	appendPQExpBufferStr(&query,
-						 "  SELECT rolreplication "
-						 "    FROM pg_catalog.pg_roles "
-						 "   WHERE rolname = ");
-
-	if (rolname != NULL)
-	{
-		appendPQExpBuffer(&query,
-						  "'%s'",
-						  rolname);
-	}
-	else
-	{
-		appendPQExpBufferStr(&query,
-							 "CURRENT_USER");
-	}
-
-	res = PQexec(conn, query.data);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		log_db_error(conn, query.data,
-					 _("is_replication_role(): unable to query user roles"));
-	}
-	else
-	{
-		is_replication_role = atobool(PQgetvalue(res, 0, 0));
-	}
-
-	termPQExpBuffer(&query);
-	PQclear(res);
-
-	return is_replication_role;
-}
-
-
-bool
-connection_has_pg_settings(PGconn *conn)
-{
-	bool		has_pg_settings = false;
-
-	/* superusers can always read pg_settings */
-	if (is_superuser_connection(conn, NULL) == true)
-	{
-		has_pg_settings = true;
-	}
-	/* from PostgreSQL 10, a non-superuser may have been granted access */
-	else if(PQserverVersion(conn) >= 100000)
-	{
-		PQExpBufferData query;
-		PGresult   *res;
-
-		initPQExpBuffer(&query);
-		appendPQExpBufferStr(&query,
-							 "  SELECT CASE "
-							 "           WHEN pg_catalog.pg_has_role('pg_monitor','MEMBER') "
-							 "             THEN TRUE "
-							 "           WHEN pg_catalog.pg_has_role('pg_read_all_settings','MEMBER') "
-							 "             THEN TRUE "
-							 "           ELSE FALSE "
-							 "         END AS has_pg_settings");
-
-		res = PQexec(conn, query.data);
-
-		if (PQresultStatus(res) != PGRES_TUPLES_OK)
-		{
-			log_db_error(conn, query.data,
-						 _("connection_has_pg_settings(): unable to query user roles"));
-		}
-		else
-		{
-			has_pg_settings = atobool(PQgetvalue(res, 0, 0));
-		}
-		termPQExpBuffer(&query);
-		PQclear(res);
-	}
-
-	return has_pg_settings;
-}
-
 
 void
 close_connection(PGconn **conn)
@@ -1829,45 +1719,120 @@ get_timeline_history(PGconn *repl_conn, TimeLineID tli)
 }
 
 
+/* =============================== */
+/* user/role information functions */
+/* =============================== */
+
 bool
-get_child_nodes(PGconn *conn, int node_id, NodeInfoList *node_list)
+connection_has_pg_settings(PGconn *conn)
+{
+	bool		has_pg_settings = false;
+
+	/* superusers can always read pg_settings */
+	if (is_superuser_connection(conn, NULL) == true)
+	{
+		has_pg_settings = true;
+	}
+	/* from PostgreSQL 10, a non-superuser may have been granted access */
+	else if(PQserverVersion(conn) >= 100000)
+	{
+		PQExpBufferData query;
+		PGresult   *res;
+
+		initPQExpBuffer(&query);
+		appendPQExpBufferStr(&query,
+							 "  SELECT CASE "
+							 "           WHEN pg_catalog.pg_has_role('pg_monitor','MEMBER') "
+							 "             THEN TRUE "
+							 "           WHEN pg_catalog.pg_has_role('pg_read_all_settings','MEMBER') "
+							 "             THEN TRUE "
+							 "           ELSE FALSE "
+							 "         END AS has_pg_settings");
+
+		res = PQexec(conn, query.data);
+
+		if (PQresultStatus(res) != PGRES_TUPLES_OK)
+		{
+			log_db_error(conn, query.data,
+						 _("connection_has_pg_settings(): unable to query user roles"));
+		}
+		else
+		{
+			has_pg_settings = atobool(PQgetvalue(res, 0, 0));
+		}
+		termPQExpBuffer(&query);
+		PQclear(res);
+	}
+
+	return has_pg_settings;
+}
+
+
+bool
+is_replication_role(PGconn *conn, char *rolname)
 {
 	PQExpBufferData query;
-	PGresult   *res = NULL;
-	bool		success = true;
+	PGresult   *res;
+	bool		is_replication_role = false;
 
 	initPQExpBuffer(&query);
 
-	appendPQExpBuffer(&query,
-					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
-					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, "
-					  "           '' AS upstream_node_name, "
-					  "           CASE WHEN sr.application_name IS NULL THEN FALSE ELSE TRUE END AS attached "
-					  "      FROM repmgr.nodes n "
-					  " LEFT JOIN pg_catalog.pg_stat_replication sr "
-					  "        ON sr.application_name = n.node_name "
-					  "     WHERE n.upstream_node_id = %i ",
-					  node_id);
+	appendPQExpBufferStr(&query,
+						 "  SELECT rolreplication "
+						 "    FROM pg_catalog.pg_roles "
+						 "   WHERE rolname = ");
 
-		log_verbose(LOG_DEBUG, "get_active_sibling_node_records():\n%s", query.data);
+	if (rolname != NULL)
+	{
+		appendPQExpBuffer(&query,
+						  "'%s'",
+						  rolname);
+	}
+	else
+	{
+		appendPQExpBufferStr(&query,
+							 "CURRENT_USER");
+	}
 
 	res = PQexec(conn, query.data);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		log_db_error(conn, query.data, _("get_active_sibling_records(): unable to execute query"));
-		success = false;
+		log_db_error(conn, query.data,
+					 _("is_replication_role(): unable to query user roles"));
+	}
+	else
+	{
+		is_replication_role = atobool(PQgetvalue(res, 0, 0));
 	}
 
 	termPQExpBuffer(&query);
-
-	/* this will return an empty list if there was an error executing the query */
-	_populate_node_records(res, node_list);
-
 	PQclear(res);
 
-	return success;
+	return is_replication_role;
 }
+
+
+bool
+is_superuser_connection(PGconn *conn, t_connection_user *userinfo)
+{
+	bool		is_superuser = false;
+	const char *current_user = PQuser(conn);
+	const char *superuser_status = PQparameterStatus(conn, "is_superuser");
+
+	is_superuser = (strcmp(superuser_status, "on") == 0) ? true : false;
+
+	if (userinfo != NULL)
+	{
+		snprintf(userinfo->username,
+				 sizeof(userinfo->username),
+				 "%s", current_user);
+		userinfo->is_superuser = is_superuser;
+	}
+
+	return is_superuser;
+}
+
 
 /* =============================== */
 /* repmgrd shared memory functions */
@@ -2859,6 +2824,46 @@ get_active_sibling_node_records(PGconn *conn, int node_id, int upstream_node_id,
 	PQclear(res);
 
 	return;
+}
+
+bool
+get_child_nodes(PGconn *conn, int node_id, NodeInfoList *node_list)
+{
+	PQExpBufferData query;
+	PGresult   *res = NULL;
+	bool		success = true;
+
+	initPQExpBuffer(&query);
+
+	appendPQExpBuffer(&query,
+					  "    SELECT n.node_id, n.type, n.upstream_node_id, n.node_name, n.conninfo, n.repluser, "
+					  "           n.slot_name, n.location, n.priority, n.active, n.config_file, "
+					  "           '' AS upstream_node_name, "
+					  "           CASE WHEN sr.application_name IS NULL THEN FALSE ELSE TRUE END AS attached "
+					  "      FROM repmgr.nodes n "
+					  " LEFT JOIN pg_catalog.pg_stat_replication sr "
+					  "        ON sr.application_name = n.node_name "
+					  "     WHERE n.upstream_node_id = %i ",
+					  node_id);
+
+		log_verbose(LOG_DEBUG, "get_active_sibling_node_records():\n%s", query.data);
+
+	res = PQexec(conn, query.data);
+
+	if (PQresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		log_db_error(conn, query.data, _("get_active_sibling_records(): unable to execute query"));
+		success = false;
+	}
+
+	termPQExpBuffer(&query);
+
+	/* this will return an empty list if there was an error executing the query */
+	_populate_node_records(res, node_list);
+
+	PQclear(res);
+
+	return success;
 }
 
 
