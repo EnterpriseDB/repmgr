@@ -167,7 +167,7 @@
     For the sake of simplicity, the <literal>repmgr</literal> user is created
     as a superuser. If desired, it's possible to create the <literal>repmgr</literal>
     user as a normal user. However for certain operations superuser permissions
-    are requiredl; in this case the command line option <command>--superuser</command>
+    are required; in this case the command line option <command>--superuser</command>
     can be provided to specify a superuser.
    </para>
    <para>
