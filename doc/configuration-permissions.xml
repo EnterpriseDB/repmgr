@@ -1,0 +1,18 @@
+<sect1 id="configuration-permissions" xreflabel="Database user permissions">
+  <title>repmgr database user permissions</title>
+
+  <indexterm>
+    <primary>configuration</primary>
+    <secondary>database user permissions</secondary>
+  </indexterm>
+
+  <para>
+    &repmgr; will create an extension database containing objects
+    for administering &repmgr; metadata. The user defined in the <varname>conninfo</varname>
+    setting must be able to access all objects. Additionally, superuser permissions
+    are required to install the &repmgr; extension. The easiest way to do this
+    is create the &repmgr; user as a superuser, however if this is not
+    desirable, the &repmgr; user can be created as a normal user and a
+    superuser specified with <literal>--superuser</literal> when registering a &repmgr; node.
+  </para>
+</sect1>
