@@ -7,12 +7,19 @@
   </indexterm>
 
   <para>
-    &repmgr; will create an extension database containing objects
-    for administering &repmgr; metadata. The user defined in the <varname>conninfo</varname>
-    setting must be able to access all objects. Additionally, superuser permissions
-    are required to install the &repmgr; extension. The easiest way to do this
-    is create the &repmgr; user as a superuser, however if this is not
-    desirable, the &repmgr; user can be created as a normal user and a
-    superuser specified with <literal>--superuser</literal> when registering a &repmgr; node.
+    &repmgr; requires that the database defined in the <varname>conninfo</varname>
+    setting contains the <literal>repmgr</literal> extension. The database user defined in the
+    <varname>conninfo</varname> setting must be able to access this database and
+    the database objects contained within the extension.
+  </para>
+  <para>
+    The <literal>repmgr</literal> extension can only be installed by a superuser.
+    If the &repmgr; user is a superuser, &repmgr; will create the extension automatically.
+  </para>
+
+  <para>
+    Alternatively, the extension can be created manually by a superuser
+    (with &quot;<command>CREATE EXTENSION repmgr</command>&quot;) before executing
+    <link linkend="repmgr-primary-register">repmgr primary register</link>.
   </para>
 </sect1>
