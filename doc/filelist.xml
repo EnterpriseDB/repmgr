@@ -21,6 +21,7 @@
 <!ENTITY configuration-file-optional-settings      SYSTEM "configuration-file-optional-settings.xml">
 <!ENTITY configuration-file-log-settings      SYSTEM "configuration-file-log-settings.xml">
 <!ENTITY configuration-file-service-commands   SYSTEM "configuration-file-service-commands.xml">
+<!ENTITY configuration-permissions   SYSTEM "configuration-permissions.xml">
 <!ENTITY cloning-standbys  SYSTEM "cloning-standbys.xml">
 <!ENTITY promoting-standby  SYSTEM "promoting-standby.xml">
 <!ENTITY follow-new-primary  SYSTEM "follow-new-primary.xml">
