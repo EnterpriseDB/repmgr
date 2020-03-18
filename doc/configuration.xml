@@ -319,5 +319,6 @@
   &configuration-file-log-settings;
   &configuration-file-service-commands;
   &configuration-permissions;
+  &configuration-password-management;
 
 </chapter>
