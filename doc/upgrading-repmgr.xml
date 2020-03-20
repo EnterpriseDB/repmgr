@@ -269,6 +269,29 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
 	</para>
   </tip>
 
+  <sect2 id="upgrading-pg-upgrade-standby" xreflabel="pg_upgrade and repmgr">
+    <title>Upgrading standbys with pg_upgrade and rsync</title>
+    <para>
+      If you are intending to upgrade a standby using the <command>rsync</command> method described
+      in the <ulink url="https://www.postgresql.org/docs/current/pgupgrade.html#PGUPGRADE-STEP-REPLICAS">pg_upgrade documentation</ulink>,
+      you <emphasis>must</emphasis> ensure the standby's replication configuration is present and correct
+      before starting the standby.
+    </para>
+    <para>
+      Use <link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link> to generate
+      the correct replication configuration.
+    </para>
+
+    <tip>
+	  <para>
+        If upgrading from PostgreSQL 11 or earlier, be sure to delete <filename>recovery.conf</filename>, if present,
+        otherwise PostgreSQL will refuse to start.
+      </para>
+    </tip>
+
+  </sect2>
+
+
  </sect1>
 
 
