@@ -269,7 +269,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
 	</para>
   </tip>
 
-  <sect2 id="upgrading-pg-upgrade-standby" xreflabel="pg_upgrade and repmgr">
+  <sect2 id="upgrading-pg-upgrade-standby" xreflabel="pg_upgrade and upgrading standbys">
     <title>Upgrading standbys with pg_upgrade and rsync</title>
     <para>
       If you are intending to upgrade a standby using the <command>rsync</command> method described
@@ -278,7 +278,7 @@ ALTER EXTENSION repmgr UPDATE</programlisting>
       before starting the standby.
     </para>
     <para>
-      Use <link linkend="repmgr-standby-clone">repmgr standby clone --recovery-conf-only</link> to generate
+      Use <link linkend="repmgr-standby-clone">repmgr standby clone --replication-conf-only</link> to generate
       the correct replication configuration.
     </para>
 
