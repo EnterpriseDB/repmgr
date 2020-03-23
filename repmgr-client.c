@@ -1686,6 +1686,20 @@ check_cli_parameters(const int action)
 		}
 	}
 
+	if (runtime_options.superuser[0])
+	{
+		switch (action)
+		{
+			case STANDBY_CLONE:
+				break;
+			default:
+				item_list_append_format(&cli_warnings,
+										_("--superuser ignored when executing %s"),
+										action_name(action));
+		}
+	}
+
+
 	if (runtime_options.replication_conf_only == true)
 	{
 		switch (action)
@@ -2622,7 +2636,6 @@ do_help(void)
 
 	printf(_("  -p, --port=PORT                     database server port (default: \"%s\")\n"), runtime_options.port);
 	printf(_("  -U, --username=USERNAME             database user name to connect as (default: \"%s\")\n"), runtime_options.username);
-	printf(_("  -S, --superuser=USERNAME            superuser to use, if repmgr user is not superuser\n"));
 
 	puts("");
 
