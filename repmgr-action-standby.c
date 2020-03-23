@@ -403,9 +403,9 @@ do_standby_clone(void)
 
 		if (parse_success == false)
 		{
-			log_error(_("unable to parse conninfo string \"%s\" for upstream node:\n  %s"),
-					  recovery_conninfo_str, errmsg);
-
+			log_error(_("unable to parse conninfo string \"%s\" for upstream node"),
+					  recovery_conninfo_str);
+			log_detail("%s", errmsg);
 			if (PQstatus(source_conn) == CONNECTION_OK)
 				PQfinish(source_conn);
 			exit(ERR_BAD_CONFIG);
