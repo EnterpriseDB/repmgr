@@ -14,6 +14,7 @@
         repmgr: consolidate replication connection code (Ian)
         repmgr: check permissions for "pg_promote()" and fall back to pg_ctl
           if necessary (Ian)
+        repmgr: accept option -S/--superuser for "node check"; GitHub #612 (Ian)
         repmgr: enable "service_promote_command" in PostgreSQL 12 (Ian)
 
 5.0     2019-10-15

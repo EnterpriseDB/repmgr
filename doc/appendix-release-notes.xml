@@ -64,6 +64,12 @@
               data directory.
             </para>
           </listitem>
+          <listitem>
+            <para>
+              <link linkend="repmgr-node-check"><command>repmgr node check</command></link>:
+              accept option <option>-S</option>/<option>--superuser</option> GitHub #621.
+            </para>
+          </listitem>
         </itemizedlist>
       </para>
     </sect2>

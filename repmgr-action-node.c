@@ -716,10 +716,45 @@ do_node_check(void)
 		exit(SUCCESS);
 	}
 
-	if (strlen(config_file_options.conninfo))
-		conn = establish_db_connection(config_file_options.conninfo, true);
+
+	if (config_file_options.conninfo[0] != '\0')
+	{
+		t_conninfo_param_list node_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+		char	   *errmsg = NULL;
+		bool		parse_success = false;
+
+		initialize_conninfo_params(&node_conninfo, false);
+
+		parse_success = parse_conninfo_string(config_file_options.conninfo,
+											  &node_conninfo,
+											  &errmsg, false);
+
+		if (parse_success == false)
+		{
+			log_error(_("unable to parse conninfo string \"%s\" for local node"),
+					  config_file_options.conninfo);
+			log_detail("%s", errmsg);
+
+			exit(ERR_BAD_CONFIG);
+		}
+
+		/*
+		 * If --superuser option provided, attempt to connect as the specified user
+		 */
+
+		if (runtime_options.superuser[0] != '\0')
+		{
+			param_set(&node_conninfo,
+					  "user",
+					  runtime_options.superuser);
+		}
+
+		conn = establish_db_connection_by_params(&node_conninfo, true);
+	}
 	else
+	{
 		conn = establish_db_connection_by_params(&source_conninfo, true);
+	}
 
 	if (get_node_record(conn, config_file_options.node_id, &node_info) != RECORD_FOUND)
 	{
@@ -1846,10 +1881,9 @@ do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_in
 		{
 			log_info(_("connection is not a superuser connection, falling back to simple check"));
 
-			/* XXX add -S/--superuser option */
 			if (PQserverVersion(conn) >= 100000)
 			{
-				log_hint(_("add the \"%s\" user to group \"pg_read_all_settings\" or \"pg_monitor\""),
+				log_hint(_("provide a superuser with -S/--superuser, or add the \"%s\" user to role \"pg_read_all_settings\" or \"pg_monitor\""),
 						   PQuser(conn));
 			}
 		}
@@ -1869,6 +1903,12 @@ do_node_check_data_directory(PGconn *conn, OutputMode mode, t_node_info *node_in
 			}
 
 			status = CHECK_STATUS_CRITICAL;
+		}
+		else
+		{
+			appendPQExpBuffer(&details,
+							  _("configured \"data_directory\" is \"%s\""),
+							  config_file_options.data_directory);
 		}
 	}
 
@@ -3164,17 +3204,21 @@ do_node_help(void)
 	puts("");
 	printf(_("  Configuration file required, runs on local node only.\n"));
 	puts("");
-	printf(_("    --csv                   emit output as CSV (not available for individual check output)\n"));
-	printf(_("    --nagios                emit output in Nagios format (individual check output only)\n"));
+	printf(_("  Connection options:\n"));
+	printf(_("    -S, --superuser=USERNAME  superuser to use, if repmgr user is not superuser\n"));
+	puts("");
+	printf(_("  Output options:\n"));
+	printf(_("    --csv                     emit output as CSV (not available for individual check output)\n"));
+	printf(_("    --nagios                  emit output in Nagios format (individual check output only)\n"));
 	puts("");
 	printf(_("  Following options check an individual status:\n"));
-	printf(_("    --archive-ready         number of WAL files ready for archiving\n"));
-	printf(_("    --downstream            whether all downstream nodes are connected\n"));
-	printf(_("    --replication-lag       replication lag in seconds (standbys only)\n"));
-	printf(_("    --role                  check node has expected role\n"));
-	printf(_("    --slots                 check for inactive replication slots\n"));
-	printf(_("    --missing-slots         check for missing replication slots\n"));
-	printf(_("    --data-directory-config check repmgr's data directory configuration\n"));
+	printf(_("    --archive-ready           number of WAL files ready for archiving\n"));
+	printf(_("    --downstream              whether all downstream nodes are connected\n"));
+	printf(_("    --replication-lag         replication lag in seconds (standbys only)\n"));
+	printf(_("    --role                    check node has expected role\n"));
+	printf(_("    --slots                   check for inactive replication slots\n"));
+	printf(_("    --missing-slots           check for missing replication slots\n"));
+	printf(_("    --data-directory-config   check repmgr's data directory configuration\n"));
 
 	puts("");
 

@@ -1691,6 +1691,7 @@ check_cli_parameters(const int action)
 		switch (action)
 		{
 			case STANDBY_CLONE:
+			case NODE_CHECK:
 				break;
 			default:
 				item_list_append_format(&cli_warnings,

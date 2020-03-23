@@ -57,20 +57,20 @@
 
      <listitem>
       <simpara>
-        <literal>--role</literal>: checks if the node has the expected role
+        <option>--role</option>: checks if the node has the expected role
       </simpara>
      </listitem>
 
      <listitem>
       <simpara>
-        <literal>--replication-lag</literal>: checks if the node is lagging by more than
+        <option>--replication-lag</option>: checks if the node is lagging by more than
         <varname>replication_lag_warning</varname> or <varname>replication_lag_critical</varname>
       </simpara>
      </listitem>
 
      <listitem>
       <simpara>
-        <literal>--archive-ready</literal>: checks for WAL files which have not yet been archived,
+        <option>--archive-ready</option>: checks for WAL files which have not yet been archived,
         and returns <literal>WARNING</literal> or <literal>CRITICAL</literal> if the number
         exceeds <varname>archive_ready_warning</varname> or <varname>archive_ready_critical</varname> respectively.
       </simpara>
@@ -78,25 +78,25 @@
 
      <listitem>
       <simpara>
-        <literal>--downstream</literal>: checks that the expected downstream nodes are attached
+        <option>--downstream</option>: checks that the expected downstream nodes are attached
       </simpara>
      </listitem>
 
      <listitem>
       <simpara>
-        <literal>--slots</literal>: checks there are no inactive physical replication slots
+        <option>--slots</option>: checks there are no inactive physical replication slots
       </simpara>
      </listitem>
 
      <listitem>
       <simpara>
-        <literal>--missing-slots</literal>: checks there are no missing physical replication slots
+        <option>--missing-slots</option>: checks there are no missing physical replication slots
       </simpara>
      </listitem>
 
      <listitem>
       <simpara>
-        <literal>--data-directory-config</literal>: checks the data directory configured in
+        <option>--data-directory-config</option>: checks the data directory configured in
         <filename>repmgr.conf</filename> matches the actual data directory.
         This check is not directly related to replication, but is useful to verify &repmgr;
         is correctly configured.
@@ -109,20 +109,36 @@
   </refsect1>
 
   <refsect1>
+    <title>Connection options</title>
+    <para>
+      <itemizedlist spacing="compact" mark="bullet">
+
+        <listitem>
+          <simpara>
+            <option>-S</option>/<option>--superuser</option>: connect as the
+            named superuser instead of the &repmgr; user
+          </simpara>
+        </listitem>
+
+      </itemizedlist>
+    </para>
+  </refsect1>
+
+  <refsect1>
     <title>Output format</title>
     <para>
       <itemizedlist spacing="compact" mark="bullet">
 
         <listitem>
           <simpara>
-            <literal>--csv</literal>: generate output in CSV format (not available
+            <option>--csv</option>: generate output in CSV format (not available
             for individual checks)
           </simpara>
         </listitem>
 
         <listitem>
           <simpara>
-            <literal>--nagios</literal>: generate output in a Nagios-compatible format
+            <option>--nagios</option>: generate output in a Nagios-compatible format
             (for individual checks only)
           </simpara>
         </listitem>
@@ -130,13 +146,15 @@
     </para>
   </refsect1>
 
+
+
   <refsect1>
     <title>Exit codes</title>
 
     <para>
       When executing <command>repmgr node check</command> with one of the individual
       checks listed above, &repmgr; will emit one of the following Nagios-style exit codes
-      (even if <literal>--nagios</literal> is not supplied):
+      (even if <option>--nagios</option> is not supplied):
 
       <itemizedlist spacing="compact" mark="bullet">
 
