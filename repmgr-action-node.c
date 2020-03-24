@@ -2026,26 +2026,43 @@ do_node_service(void)
 
 	if ((action == ACTION_STOP || action == ACTION_RESTART) && runtime_options.checkpoint == true)
 	{
-		if (runtime_options.dry_run == true)
+		PGconn	   *conn = NULL;
+
+		if (strlen(config_file_options.conninfo))
+			conn = establish_db_connection(config_file_options.conninfo, true);
+		else
+			conn = establish_db_connection_by_params(&source_conninfo, true);
+
+		if (is_superuser_connection(conn, NULL) == false)
 		{
-			log_info(_("a CHECKPOINT would be issued here"));
+			if (runtime_options.dry_run == true)
+			{
+				log_warning(_("a CHECKPOINT would be issued here but no superuser connection is available"));
+			}
+			else
+			{
+				log_warning(_("a superuser connection is required to issue a CHECKPOINT"));
+			}
+
+			log_hint(_("provide a superuser with -S/--superuser"));
 		}
 		else
 		{
-			PGconn	   *conn = NULL;
-
-			if (strlen(config_file_options.conninfo))
-				conn = establish_db_connection(config_file_options.conninfo, true);
+			if (runtime_options.dry_run == true)
+			{
+				log_info(_("a CHECKPOINT would be issued here"));
+			}
 			else
-				conn = establish_db_connection_by_params(&source_conninfo, true);
+			{
 
-			log_notice(_("issuing CHECKPOINT"));
+				log_notice(_("issuing CHECKPOINT"));
 
-			/* check superuser conn! */
-			checkpoint(conn);
+				checkpoint(conn);
 
-			PQfinish(conn);
+			}
 		}
+
+		PQfinish(conn);
 	}
 
 	get_server_action(action, command, data_dir);
