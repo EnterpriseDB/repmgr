@@ -75,8 +75,22 @@
           <para>
             Issue a <command>CHECKPOINT</command> before stopping or restarting the node.
           </para>
+          <para>
+            Note that a superuser connection is required to be able to execute the
+             <command>CHECKPOINT</command> command.
+          </para>
         </listitem>
      </varlistentry>
+
+     <varlistentry>
+        <term><option>-S</option>/<option>--superuser</option></term>
+        <listitem>
+          <para>
+           Connect as the named superuser instead of the normal &repmgr; user.
+          </para>
+        </listitem>
+     </varlistentry>
+
     </variablelist>
 
   </refsect1>
