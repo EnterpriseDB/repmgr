@@ -74,21 +74,17 @@
       If the <literal>repmgr</literal> user is not a superuser, the checkpoint operation will
       fail, though this is not a fatal error &repmgr; will continue the switchover process.
     </para>
-    <para><emphasis>pg_promote() (PostgreSQL 12)</emphasis></para>
+    <para><emphasis>pg_promote() (PostgreSQL 12 and later)</emphasis></para>
     <para>
-      From PostgreSQL 12, &repmgr; uses the <command>pg_promote()</command> function to promote a standby
-      to primary.
+      From PostgreSQL 12, &repmgr; defaults to using the built-in <command>pg_promote()</command> function to
+      promote a standby to primary.
     </para>
     <para>
-      By default, execution of <command>pg_promote()</command> is restricted to superusers.
-      If the <literal>repmgr</literal> use is not a superuser, execution permission for this
-      function must be granted with e.g.:
-      <programlisting>
-    GRANT EXECUTE ON FUNCTION pg_catalog.pg_promote TO repmgr</programlisting>
-    </para>
-    <para>
-      A future &repmgr; release will relax this restriction by falling back to
-      <command>pg_ctl promote</command>, as used for pre-PostgreSQL 12 versions.
+      Note that execution of <function>pg_promote()</function> is restricted to superusers or to
+      any user who has been granted execution permission for this function. If the &repmgr; user
+      is not permitted to execute <function>pg_promote()</function>, &repmgr; will fall back to using
+      &quot;<command>pg_ctl promote</command>&quot;. For more details see
+      <link linkend="repmgr-standby-promote">repmgr standby promote</link>.
     </para>
   </refsect1>
 

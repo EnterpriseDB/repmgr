@@ -104,15 +104,15 @@
 
   <refsect1>
     <title>User permission requirements</title>
-    <para><emphasis>pg_promote() (PostgreSQL 12)</emphasis></para>
+    <para><emphasis>pg_promote() (PostgreSQL 12 and later)</emphasis></para>
     <para>
-      From PostgreSQL 12, &repmgr; will attempt to use the <function>pg_promote()</function> function
-      to promote a standby to primary.
+      From PostgreSQL 12, &repmgr; will attempt to use the built-in <function>pg_promote()</function>
+      function to promote a standby to primary.
     </para>
     <para>
       By default, execution of <function>pg_promote()</function> is restricted to superusers.
       If the <literal>repmgr</literal> user does not have permission to execute
-      <function>pg_promote()</function>, &repmgr; will fall back to using <command>pg_ctl promote</command>.
+      <function>pg_promote()</function>, &repmgr; will fall back to using &quot;<command>pg_ctl promote</command>&quot;.
     </para>
     <tip>
       <para>
@@ -122,6 +122,10 @@
     GRANT EXECUTE ON FUNCTION pg_catalog.pg_promote TO repmgr</programlisting>
       </para>
     </tip>
+    <para>
+      For more details on <function>pg_promote()</function>, see the
+      <ulink url="https://www.postgresql.org/docs/current/functions-admin.html#FUNCTIONS-RECOVERY-CONTROL-TABLE">PostgreSQL documentation</ulink>.
+    </para>
   </refsect1>
 
   <refsect1>
