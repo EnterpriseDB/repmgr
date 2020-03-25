@@ -2077,10 +2077,11 @@ do_node_service(void)
 			else
 			{
 
-				log_notice(_("issuing CHECKPOINT"));
+				log_notice(_("issuing CHECKPOINT on node \"%s\" (ID: %i) "),
+						   config_file_options.node_name,
+						   config_file_options.node_id);
 
 				checkpoint(conn);
-
 			}
 		}
 
