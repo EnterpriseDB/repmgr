@@ -388,6 +388,10 @@ PGconn	   *establish_db_connection(const char *conninfo,
 PGconn	   *establish_db_connection_quiet(const char *conninfo);
 PGconn	   *establish_db_connection_by_params(t_conninfo_param_list *param_list,
 								  const bool exit_on_error);
+PGconn	   *establish_db_connection_with_replacement_param(const char *conninfo,
+														   const char *param,
+														   const char *value,
+														   const bool exit_on_error);
 PGconn	   *establish_replication_connection_from_conn(PGconn *conn, const char *repluser);
 PGconn	   *establish_replication_connection_from_conninfo(const char *conninfo, const char *repluser);
 

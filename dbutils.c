@@ -237,6 +237,46 @@ establish_db_connection_quiet(const char *conninfo)
 
 
 PGconn *
+establish_db_connection_with_replacement_param(const char *conninfo,
+											   const char *param,
+											   const char *value,
+											   const bool exit_on_error)
+{
+	t_conninfo_param_list node_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
+	char	   *errmsg = NULL;
+	bool		parse_success = false;
+	PGconn	   *conn = NULL;
+
+	initialize_conninfo_params(&node_conninfo, false);
+
+	parse_success = parse_conninfo_string(conninfo,
+										  &node_conninfo,
+										  &errmsg, false);
+
+	if (parse_success == false)
+	{
+		log_error(_("unable to parse conninfo string \"%s\" for local node"),
+				  conninfo);
+		log_detail("%s", errmsg);
+
+		if (exit_on_error == true)
+			exit(ERR_BAD_CONFIG);
+
+		return NULL;
+	}
+
+	param_set(&node_conninfo,
+			  param,
+			  value);
+
+	conn = establish_db_connection_by_params(&node_conninfo, exit_on_error);
+
+	free_conninfo_params(&node_conninfo);
+
+	return conn;
+}
+
+PGconn *
 establish_primary_db_connection(PGconn *conn,
 								const bool exit_on_error)
 {

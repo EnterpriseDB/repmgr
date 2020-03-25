@@ -744,12 +744,16 @@ do_node_check(void)
 
 		if (runtime_options.superuser[0] != '\0')
 		{
-			param_set(&node_conninfo,
-					  "user",
-					  runtime_options.superuser);
+			conn = establish_db_connection_with_replacement_param(
+				config_file_options.conninfo,
+				"user",
+				runtime_options.superuser,
+				true);
 		}
-
-		conn = establish_db_connection_by_params(&node_conninfo, true);
+		else
+		{
+			conn = establish_db_connection_by_params(&node_conninfo, true);
+		}
 	}
 	else
 	{
@@ -2030,37 +2034,21 @@ do_node_service(void)
 
 		if (config_file_options.conninfo[0] != '\0')
 		{
-			t_conninfo_param_list node_conninfo = T_CONNINFO_PARAM_LIST_INITIALIZER;
-			char	   *errmsg = NULL;
-			bool		parse_success = false;
-
-			initialize_conninfo_params(&node_conninfo, false);
-
-			parse_success = parse_conninfo_string(config_file_options.conninfo,
-												  &node_conninfo,
-												  &errmsg, false);
-
-			if (parse_success == false)
-			{
-				log_error(_("unable to parse conninfo string \"%s\" for local node"),
-						  config_file_options.conninfo);
-				log_detail("%s", errmsg);
-
-				exit(ERR_BAD_CONFIG);
-			}
-
 			/*
 			 * If --superuser option provided, attempt to connect as the specified user
 			 */
-
 			if (runtime_options.superuser[0] != '\0')
 			{
-				param_set(&node_conninfo,
-						  "user",
-						  runtime_options.superuser);
+				conn = establish_db_connection_with_replacement_param(
+					config_file_options.conninfo,
+					"user",
+					runtime_options.superuser,
+					true);
 			}
-
-			conn = establish_db_connection_by_params(&node_conninfo, true);
+			else
+			{
+				conn = establish_db_connection(config_file_options.conninfo, true);
+			}
 		}
 		else
 		{
