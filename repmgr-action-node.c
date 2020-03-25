@@ -3288,7 +3288,7 @@ do_node_help(void)
 			 "                            after executing \"pg_rewind\"\n"));
 	printf(_("    --config-archive-dir    directory to temporarily store retained configuration files\n" \
 			 "                              (default: /tmp)\n"));
-	printf(_("    -W/--no-wait            don't wait for the node to rejoin cluster\n"));
+	printf(_("    -W, --no-wait           don't wait for the node to rejoin cluster\n"));
 	puts("");
 
 	printf(_("NODE SERVICE\n"));
@@ -3298,10 +3298,11 @@ do_node_help(void)
 	puts("");
 	printf(_("  Configuration file required, runs on local node only.\n"));
 	puts("");
-	printf(_("    --dry-run             show what action would be performed, but don't execute it\n"));
-	printf(_("    --action              action to perform (one of \"start\", \"stop\", \"restart\" or \"reload\")\n"));
-	printf(_("    --list-actions        show what command would be performed for each action\n"));
-	printf(_("    --checkpoint          issue a CHECKPOINT before stopping or restarting the node\n"));
+	printf(_("    --dry-run                 show what action would be performed, but don't execute it\n"));
+	printf(_("    --action                  action to perform (one of \"start\", \"stop\", \"restart\" or \"reload\")\n"));
+	printf(_("    --list-actions            show what command would be performed for each action\n"));
+	printf(_("    --checkpoint              issue a CHECKPOINT before stopping or restarting the node\n"));
+	printf(_("    -S, --superuser=USERNAME  superuser to use, if repmgr user is not superuser\n"));
 	puts("");
 
 
