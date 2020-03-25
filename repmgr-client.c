@@ -1691,6 +1691,7 @@ check_cli_parameters(const int action)
 		switch (action)
 		{
 			case STANDBY_CLONE:
+			case STANDBY_SWITCHOVER:
 			case NODE_CHECK:
 			case NODE_SERVICE:
 				break;

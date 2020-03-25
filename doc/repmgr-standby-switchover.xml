@@ -67,12 +67,17 @@
     <para><emphasis>CHECKPOINT</emphasis></para>
     <para>
       &repmgr; executes <command>CHECKPOINT</command> on the demotion candidate as part of the shutdown
-      process.
+      process to ensure it shuts down as smoothly as possible.
     </para>
     <para>
       Note that <command>CHECKPOINT</command> requires database superuser permissions to execute.
-      If the <literal>repmgr</literal> user is not a superuser, the checkpoint operation will
-      fail, though this is not a fatal error &repmgr; will continue the switchover process.
+      If the <literal>repmgr</literal> user is not a superuser, the name of a superuser should be
+      provided with the <option>-S</option>/<option>--superuser</option>.
+    </para>
+    <para>
+      If &repmgr; is unable to execute the <command>CHECKPOINT</command> command, the switchover
+      can still be carried out, albeit at a greater risk that the demotion candidate may not
+      be able to shut down as smoothly as might otherwise have been the case.
     </para>
     <para><emphasis>pg_promote() (PostgreSQL 12 and later)</emphasis></para>
     <para>
@@ -211,6 +216,17 @@
           </note>
         </listitem>
       </varlistentry>
+
+     <varlistentry>
+        <term><option>-S</option>/<option>--superuser</option></term>
+        <listitem>
+          <para>
+            Use the named superuser instead of the normal &repmgr; user to perform
+            actions requiring superuser permissions.
+          </para>
+        </listitem>
+     </varlistentry>
+
     </variablelist>
 
   </refsect1>

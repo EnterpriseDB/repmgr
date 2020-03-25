@@ -3430,6 +3430,7 @@ void
 do_standby_switchover(void)
 {
 	PGconn	   *local_conn = NULL;
+	PGconn	   *superuser_conn = NULL;
 	PGconn	   *remote_conn = NULL;
 
 	t_node_info local_node_record = T_NODE_INFO_INITIALIZER;
@@ -3523,6 +3524,41 @@ do_standby_switchover(void)
 		log_notice(_("executing switchover on node \"%s\" (ID: %i)"),
 				   local_node_record.node_name,
 				   local_node_record.node_id);
+	}
+
+	/* if -S/--superuser option provided, check that a superuser connection can be made */
+
+	if (runtime_options.superuser[0] != '\0')
+	{
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("validating database connection for superuser \"%s\""), runtime_options.superuser);
+		}
+
+		superuser_conn = establish_db_connection_with_replacement_param(
+			config_file_options.conninfo,
+			"user",
+			runtime_options.superuser, false);
+
+		if (PQstatus(superuser_conn) != CONNECTION_OK)
+		{
+			log_error(_("unable to connect as provided superuser \"%s\""),
+					  runtime_options.superuser);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (is_superuser_connection(superuser_conn, NULL) == false)
+		{
+			log_error(_("database connection established for provided superuser \"%s\" is not a superuser connection"),
+					  runtime_options.superuser);
+			exit(ERR_BAD_CONFIG);
+		}
+
+		if (runtime_options.dry_run == true)
+		{
+			log_info(_("successfully established database connection established for provided superuser \"%s\""),
+					 runtime_options.superuser);
+		}
 	}
 
 	/* Check that this is a standby */
@@ -4604,6 +4640,13 @@ do_standby_switchover(void)
 				   remote_node_record.node_id);
 		appendPQExpBufferStr(&remote_command_str,
 							 "node service --action=stop --checkpoint");
+
+		if (runtime_options.superuser[0] != '\0')
+		{
+			appendPQExpBuffer(&remote_command_str,
+							  " --superuser=%s",
+							  runtime_options.superuser);
+		}
 	}
 
 	/* XXX handle failure */
@@ -4820,8 +4863,21 @@ do_standby_switchover(void)
 			  format_lsn(replication_info.last_wal_receive_lsn),
 			  format_lsn(remote_last_checkpoint_lsn));
 
-	/* promote standby (local node) */
-	_do_standby_promote_internal(local_conn);
+	/*
+	 * Promote standby (local node).
+	 *
+	 * If PostgreSQL 12 or later, and -S/--superuser provided, we will provide
+	 * a superuser connection so that pg_promote() can be used.
+	 */
+
+	if (PQserverVersion(local_conn) >= 120000 && superuser_conn != NULL)
+	{
+		_do_standby_promote_internal(superuser_conn);
+	}
+	else
+	{
+		_do_standby_promote_internal(local_conn);
+	}
 
 
 	/*
@@ -4832,8 +4888,23 @@ do_standby_switchover(void)
 	 */
 	if (runtime_options.force_rewind_used == true)
 	{
-		log_notice(_("issuing CHECKPOINT"));
-		checkpoint(local_conn);
+		PGconn *checkpoint_conn = local_conn;
+		if (superuser_conn != NULL)
+		{
+			checkpoint_conn = superuser_conn;
+		}
+
+		if (is_superuser_connection(checkpoint_conn, NULL) == true)
+		{
+			log_notice(_("issuing CHECKPOINT on node \"%s\" (ID: %i) "),
+					   config_file_options.node_name,
+					   config_file_options.node_id);
+			checkpoint(superuser_conn);
+		}
+		else
+		{
+			log_warning(_("no superuser connection available, unable to issue CHECKPOINT"));
+		}
 	}
 
 	/*
@@ -8445,6 +8516,7 @@ do_standby_help(void)
 	printf(_("                                        (9.3 and 9.4 - provide \"pg_rewind\" path)\n"));
 
 	printf(_("  -R, --remote-user=USERNAME          database server username for SSH operations (default: \"%s\")\n"), runtime_options.username);
+	printf(_("  -S, --superuser=USERNAME            superuser to use, if repmgr user is not superuser\n"));
 	printf(_("  --repmgrd-no-pause                  don't pause repmgrd\n"));
 	printf(_("  --siblings-follow                   have other standbys follow new primary\n"));
 
