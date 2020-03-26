@@ -3561,6 +3561,16 @@ do_standby_switchover(void)
 		}
 	}
 
+	/*
+	 * Warn if no superuser connection is available.
+	 */
+	if (superuser_conn == NULL && is_superuser_connection(local_conn, NULL) == false)
+	{
+		log_warning(_("no superuser connection available"));
+		log_detail(_("it is recommended to perform switchover operations with a database superuser"));
+		log_hint(_("provide the name of a superuser with -S/--superuser"));
+	}
+
 	/* Check that this is a standby */
 	recovery_type = get_recovery_type(local_conn);
 	if (recovery_type != RECTYPE_STANDBY)
