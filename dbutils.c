@@ -2359,7 +2359,7 @@ checkpoint(PGconn *conn)
 	return;
 }
 
-/* assumes superuser connection */
+
 bool
 vacuum_table(PGconn *primary_conn, const char *table)
 {
@@ -2375,7 +2375,8 @@ vacuum_table(PGconn *primary_conn, const char *table)
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		log_db_error(primary_conn, NULL, _("unable to vacuum table \"%s\""), table);
+		log_db_error(primary_conn, NULL,
+					 _("unable to vacuum table \"%s\""), table);
 		success = false;
 	}
 

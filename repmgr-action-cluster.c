@@ -1402,6 +1402,10 @@ do_cluster_cleanup(void)
 		log_warning(_("unable to vacuum table \"repmgr.monitoring_history\""));
 		log_detail("%s", PQerrorMessage(primary_conn));
 	}
+	else
+	{
+		log_info(_("vacuum of table \"repmgr.monitoring_history\" completed"));
+	}
 
 	if (runtime_options.keep_history == 0)
 	{
